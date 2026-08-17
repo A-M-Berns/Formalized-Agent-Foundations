@@ -133,8 +133,10 @@ in the FFS-INVENTORY block alongside the nodes it de-vacuates. Four witnesses:
 | `emptyFS` | `Empty`, `B = {⊥}` | the `|S| = 0` case; `not_isFactorization_empty_basis` confirms `B = ∅` is *not* a factorization of the empty set, matching Proposition 5 |
 | `unitFS` | `Unit`, `B = ∅` | the `|S| = 1` case; `unitFS_basis_unique` proves this is the *only* factorization of a one-element set, again matching Proposition 5 |
 
-The two structure fields are also independent: `fstFactor` alone satisfies `nontrivial`
-but not `bijective`, and `{⊤}` over `Unit` satisfies `bijective` but not `nontrivial`.
+The two structure fields are also independent, and the same file carries both halves:
+`not_isFactorization_singleton_fstFactor` shows `{fstFactor}` satisfies `nontrivial` and
+fails `bijective`, and `not_isFactorization_unit_singleton_top` shows `{⊤}` over `Unit`
+satisfies `bijective` and fails `nontrivial`. Both are inventoried.
 
 **Constructing the factored sets is not on its own enough**, because §2.5 and §3 add
 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`, `Before`,
@@ -150,9 +152,12 @@ vocabulary over the witnesses, and every declaration below is inventoried:
 | `Before` really is only a preorder | `xorPart`, `history_xorPart`, `history_not_injective`, `before_xorPart_bot_and_back` | reading Proposition 18 as a partial order. The XOR partition and `Dis_S` are *distinct* partitions with the same history, so each is before the other — which is why Proposition 18 claims reflexivity and transitivity and stops |
 | `Nonempty S` in §3 is load-bearing | `emptyFS_history_bot`, `emptyFS_history_ne_singleton`, `emptyFS_history_ne_setOf_before` | reading the `Nonempty S` on Proposition 13 clause 4 and Proposition 19 as decoration. Over `Empty` both conclusions are false as stated |
 
-Two friction points a client will meet, recorded at the site: `Finite F.B` — the standing
-hypothesis of all of §3 — is discharged by instance search on every witness, but
-`Fintype F.B` is not (`Setoid (Bool × Bool)` has no `DecidableEq`, so membership in the
-basis is undecidable), and `natCard_eq_prod` needs the `Fintype` in scope at *statement*
-elaboration time. And `size` / `dim` unfold for a client only through `rfl`, since
-`size_eq_mk` and `dim_eq_mk` are `private`.
+One friction point a client will meet, recorded at the site: `Finite F.B` — the
+hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing
+in §3 needs `S` finite) — is discharged by instance search on every witness, but
+`Fintype F.B` is not. The reason is not a missing `DecidableEq`: under `open scoped
+Classical`, `Setoid (Bool × Bool)` has one and `Fintype ↥({fstFactor, sndFactor} : Set _)`
+is synthesized by `Set.fintypeInsert`. It is that `coordBasis` and `coordFS.B` are
+non-reducible `def`s, which instance search will not unfold to reach that `insert`. A
+client passes `Fintype.ofFinite _` by hand, and `natCard_eq_prod` needs it in scope at
+*statement* elaboration time.

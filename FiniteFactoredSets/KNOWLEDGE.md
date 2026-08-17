@@ -120,7 +120,7 @@ Paper node → Lean declaration. Extended as nodes land.
 | Definition 10 (factorization) | `IsFactorization` | `Basic.lean` |
 | Definition 11 (factored set) | `FactoredSet` | `Basic.lean` |
 | Definition 12 (chimera function) | `FactoredSet.chimeraFun` | `Basic.lean` |
-| Definition 13 (`χ^F_C`) | `FactoredSet.chimera` | `Basic.lean` |
+| Definition 13 (`χ^F_C(s,t)` and setwise `χ^F_C(T,R)`) | `FactoredSet.chimera`, `FactoredSet.chimeraImage` | `Basic.lean` |
 | Proposition 1 | `equivalence_setoid` | `Basic.lean` |
 | Proposition 2 | `bot_le_and_le_top` | `Basic.lean` |
 | Proposition 3 | `FactoredSet.eq_of_forall_rel` | `Basic.lean` |
@@ -318,8 +318,11 @@ it belongs in the library as a stated open `Prop` with this note attached.
   proofs fail at the first `history_spec`/`le_iff_history_subset` call), though Prop 13
   clauses 1 and 4 and Prop 15(1)/Prop 17(→) are provable without it; uniform `[Finite F.B]`
   is a legibility choice. `Finite F.B` resolves by instance search on every concrete witness
-  (`instFiniteSetoid` + `Subtype.finite`); `Fintype F.B` does NOT (`Setoid` has no
-  `DecidableEq`) — pass `Fintype.ofFinite _` explicitly to `natCard_eq_prod`.
+  (`instFiniteSetoid` + `Subtype.finite`); `Fintype F.B` does NOT — and **not** because `Setoid` lacks
+  `DecidableEq` (under `open scoped Classical`, `#synth DecidableEq (Setoid (Bool × Bool))`
+  succeeds and so does `Fintype ↥{fstFactor, sndFactor}`); it fails because `coordBasis` /
+  `coordFS.B` are non-reducible `def`s that instance search will not unfold. Pass
+  `Fintype.ofFinite _` explicitly to `natCard_eq_prod` (round 3 correction, R3-F09).
 * **`Nonempty S` in Prop 13(4) and Prop 19 is load-bearing**: both are false on `emptyFS`
   (`h ⊥ = ∅` there, yet `⊥ ∈ B`). Witnessed in `Examples.lean`.
 * Cleared suspicions (do not re-raise): `Setoid.classes` is the paper's block set including
@@ -352,6 +355,56 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * Definition 15's third sentence (finite / finite-dimensional) has no Lean carrier — it is
   `[Finite S]` / `Finite F.B` under `dd:finiteness-minimal`; record it in the README's
   Mathlib-rendered table when the layered finite-`S` notion lands at §5.
+
+## Round 3 audit — durable lessons (convergence round)
+
+* Verdict shape: Lens A found nothing (ten reversed-reading refutations compiled); codex
+  statement sweep `[]`; every finding was documentation/consumer-surface drift, most of it
+  stale relative to round 2's own fixes plus one false docstring in the smoke tests (a
+  "common coarsening ... contained in either history" gloss on `history X ⊆ history (X ⊓ Y)`
+  — the order-flip trap surfacing in prose, not in a statement). Hardening cap reached.
+* Reversed-reading pins extended (Lens A): Prop 11(1) `C={fst}, Y=fst, X=⊥`; Prop 16
+  swapped `X=fst, Y=⊥, C={fst}`; Prop 17 swapped `X=snd, Y=⊥, Z=fst`; Prop 19 as
+  `{b | Before X b}` at `X=⊥`. **Prop 14's reversed reading is TRUE at `(fst, snd)`** — the
+  discriminator is `X = Y = ⊤`. Prop 13(2)'s `⊔` reading refutes via clause 1 with
+  `le_sup_left/right`, no need to compute `fst ⊔ snd`. The `⊓`-vs-`⊔` clauses Prop 11(2),
+  15(3), 18(4) are NOT refutable by counterexample (the `⊔` reading is weaker-true); their
+  orientation is pinned only by being the strictly stronger, paper-matching claim.
+* Prop 5's identification clauses recover the paper's literal `B = {⊥}` / `B = ∅` in three
+  lines from the theorem (`obtain ⟨⟨B₀, _, huniq⟩, h1, h2⟩ := existsUnique_trivialFactorization S`,
+  then `(huniq B hB).trans (huniq _ (h1 h)).symm`). Not drift.
+* Claims with no dedicated carrier, disclosed at the site (cleared; do not re-raise): Prop 2
+  sentence 1 (`PartialOrder (Setoid S)`), Definition 14 sentence 2 (`IsTrivialFactorization
+  F.B`), Definition 15 sentence 3 (`[Finite S]` / `Finite F.B`). Corollary 1 is carried
+  contrapositively (`part b₀ s = part b₁ t → b₀ = b₁`) — equivalent since `classes` is the
+  image of `part`, and the form §5 needs. Prop 10 clauses 1↔2 and 5↔6 are `Iff.rfl`, as the
+  paper's own "by definition".
+* `existsUnique_trivialFactorization (S : Type u)` takes `S` explicitly. `fstFactor p q`
+  unfolds by delta to `p.1 = q.1` (close by type ascription; `congrArg Prod.fst` is for `⊥`
+  on the product). `open scoped Classical` at namespace level (Examples.lean) covers the whole
+  file, unlike Basic.lean's block-scoped one.
+* API.lean is a pure re-export (module doc + one import): its whole risk surface is prose
+  accuracy — treat every sentence there as an assertion to check. The in-module `example`s
+  and the APITests examples must not be copies of each other; the API tests exist to prove
+  *different* downstream facts through the curated import.
+* `cardFactors_listProd` is derivable from `Nat.primeFactorsList_unique` + `List.Perm.length_eq`;
+  not a duplicate of a named fact, but the shorter route exists if §5 touches it.
+* Unused public lemmas (candidates for the de-slop pass, not defects): `isTrivialPartition_top`,
+  `not_isTrivialPartition_of_isEmpty`, `mem_chimeraImage`, `chimeraFun_rel`, `part_eq_iff`.
+* `IsFactorization`'s two fields are independent, now witnessed in Examples (R3-F07):
+  `not_isFactorization_singleton_fstFactor` (nontrivial, not bijective) and
+  `not_isFactorization_unit_singleton_top` (bijective, not nontrivial — the fact that keeps
+  Proposition 5's uniqueness true).
+* **`[Finite F.B]` starts at Proposition 12**, not at §3: Props 10–11 carry no finiteness;
+  `history_isLeast` is the first endpoint that needs it. `[Finite S]` is never global — only
+  `finite_basis_of_finite` (Prop 6) carries it, where the paper's statement has it.
+* `#assert_axioms_clean` emits nothing on success; a green `lake build AxiomAudit` is the only
+  signal (and it reports only the first tainted declaration on failure).
+* From inside `namespace FiniteFactoredSets.Examples`, bare `rw [size_eq_mk]` does not resolve
+  (the lemma lives in `FactoredSet`); write `rw [coordFS.size_eq_mk]`. The workaround lemmas
+  `size_coordFS_eq_mk`/`dim_coordFS_eq_mk` were deleted in round 3 — do not reintroduce.
+* `((F.generates_tfae hC X).out 2 6).1 h` works in term position; the typed-`have` rule
+  applies when the *result* is a strict-implicit `∀ ⦃x y⦄` clause you then apply.
 
 ## Round 1 audit — durable lessons
 

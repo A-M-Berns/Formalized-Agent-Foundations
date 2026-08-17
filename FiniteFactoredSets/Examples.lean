@@ -24,10 +24,15 @@ calling out: `history_not_injective` shows `Before` is a preorder and *not* anti
 `emptyFS_*` lemmas show the `Nonempty S` hypothesis on Proposition 13 clause 4 and
 Proposition 19 is load-bearing rather than decorative.
 
-Every declaration here is a non-vacuity witness (kind `N±`), so all of them are `lemma`s:
-the `theorem` keyword is reserved for the paper's numbered nodes, and none of these is
-one.  They are inventoried in `AxiomAudit.lean` alongside the nodes they de-vacuate.  They cite the paper in prose rather than carrying the reserved node annotation: the
-paper's Examples 1 and 2 are §6 orthogonality databases, not these.
+No declaration here is a paper node, so all of them are `lemma`s: the `theorem` keyword is
+reserved for the paper's numbered nodes.  Every *witness* lemma — the ones that carry a
+non-vacuity claim, kind `N±` — is inventoried in `AxiomAudit.lean` alongside the nodes it
+de-vacuates; the proof helpers that only exist to shorten those proofs
+(`fstFactor_ne_sndFactor`, `coordFS_chimera_eq`, `coordFS_basis_eq`, `fstFactor_mem`,
+`sndFactor_mem`, the `singleton_*_subset` and `commonRefinement_singleton_*` lemmas) are
+not, since they claim nothing about the paper.  The witnesses cite the paper in prose
+rather than carrying the reserved node annotation: the paper's Examples 1 and 2 are §6
+orthogonality databases, not these.
 -/
 
 universe u
@@ -149,11 +154,53 @@ lemma unitFS_basis_unique (F : FactoredSet Unit) : F.B = ∅ := by
   subst hst
   exact b.refl' s
 
+/-! ### Definition 10's two fields are independent.
+
+Neither field of `IsFactorization` implies the other, so neither is decoration.  The two
+lemmas below exhibit a set of partitions satisfying `nontrivial` and failing `bijective`,
+and one satisfying `bijective` and failing `nontrivial`. -/
+
+/-- `nontrivial` does not imply `bijective`: `{fstFactor}` is a set of nontrivial
+partitions of `Bool × Bool`, but nothing in it sees the second coordinate, so the
+coordinate map is not injective. -/
+lemma not_isFactorization_singleton_fstFactor :
+    (∀ b ∈ ({fstFactor} : Set (Setoid (Bool × Bool))), ¬ IsTrivialPartition b) ∧
+      ¬ IsFactorization ({fstFactor} : Set (Setoid (Bool × Bool))) := by
+  refine ⟨?_, ?_⟩
+  · rintro b hb ⟨-, h⟩
+    simp only [Set.mem_singleton_iff] at hb
+    subst hb
+    exact Bool.noConfusion (h (true, true) (false, true))
+  · rintro ⟨-, hinj, -⟩
+    refine Bool.noConfusion (congrArg Prod.snd (hinj (funext fun b => ?_) :
+      ((true, true) : Bool × Bool) = (true, false)))
+    obtain ⟨b, hb⟩ := b
+    simp only [Set.mem_singleton_iff] at hb
+    subst hb
+    exact Quotient.sound (rfl : fstFactor (true, true) (true, false))
+
+/-- `bijective` does not imply `nontrivial`: over `Unit` the basis `{Ind_S}` has a
+bijective coordinate map, yet `Ind_Unit` is the one-block partition and so is barred as a
+factor.  Dropping the `nontrivial` field would therefore give `Unit` two factorizations,
+`∅` and `{Ind_S}`, falsifying Proposition 5's uniqueness. -/
+lemma not_isFactorization_unit_singleton_top :
+    Function.Bijective (fun (s : Unit) (b : ({(⊤ : Setoid Unit)} : Set (Setoid Unit))) =>
+        Quotient.mk (b : Setoid Unit) s) ∧
+      ¬ IsFactorization ({(⊤ : Setoid Unit)} : Set (Setoid Unit)) := by
+  refine ⟨⟨fun s t _ => Subsingleton.elim s t, fun y => ⟨(), funext fun b => ?_⟩⟩, ?_⟩
+  · obtain ⟨b, hb⟩ := b
+    simp only [Set.mem_singleton_iff] at hb
+    subst hb
+    refine Eq.trans (Quotient.sound (?_ : (⊤ : Setoid Unit) _ _)) (Quotient.out_eq _)
+    trivial
+  · rintro ⟨hnt, -⟩
+    exact hnt ⊤ rfl ⟨⟨()⟩, fun _ _ => trivial⟩
+
 /-! ## §2.5 and §3 over the witnesses
 
 Everything below is stated for `coordFS` unless it says otherwise.  `Finite F.B` — the
-standing hypothesis of §3 — is discharged by instance search on each witness, so no
-declaration here has to supply it by hand. -/
+hypothesis every §3.2–§3.4 theorem carries — is discharged by instance search on each
+witness, so no declaration here has to supply it by hand. -/
 
 example : Finite coordFS.B := inferInstance
 example : Finite boolFS.B := inferInstance
@@ -174,20 +221,17 @@ lemma singleton_sndFactor_subset :
     ({sndFactor} : Set (Setoid (Bool × Bool))) ⊆ coordFS.B :=
   Set.singleton_subset_iff.2 sndFactor_mem
 
-/-! ### §2.5: size, dimension, and Propositions 7–9 on a witness. -/
+/-! ### §2.5: size, dimension, and Propositions 7–9 on a witness.
 
-/-- `size` and `dim` unfold for a client only through `rfl`; `size_eq_mk` and `dim_eq_mk`
-are `private`. -/
-lemma size_coordFS_eq_mk : coordFS.size = Cardinal.mk (Bool × Bool) := rfl
-
-lemma dim_coordFS_eq_mk : coordFS.dim = Cardinal.mk coordFS.B := rfl
+`size` and `dim` unfold for a client through the public `@[simp]` lemmas `size_eq_mk` and
+`dim_eq_mk`, which is how the two computations below start. -/
 
 lemma size_coordFS : coordFS.size = ((4 : ℕ) : Cardinal) := by
-  rw [size_coordFS_eq_mk, Cardinal.mk_prod, Cardinal.mk_bool, Cardinal.lift_two]
+  rw [coordFS.size_eq_mk, Cardinal.mk_prod, Cardinal.mk_bool, Cardinal.lift_two]
   norm_num
 
 lemma dim_coordFS : coordFS.dim = ((2 : ℕ) : Cardinal) := by
-  rw [dim_coordFS_eq_mk, coordFS_basis_eq, Cardinal.mk_insert (by
+  rw [coordFS.dim_eq_mk, coordFS_basis_eq, Cardinal.mk_insert (by
     simp only [Set.mem_singleton_iff]; exact fstFactor_ne_sndFactor), Cardinal.mk_singleton]
   norm_num
 
@@ -386,10 +430,14 @@ lemma entangled_xorPart_fstFactor : coordFS.Entangled xorPart fstFactor := by
 /-! ### `Fintype F.B` is *not* dischargeable by instance search on a witness.
 
 `Finite coordFS.B` is (the four `inferInstance`s above), but `natCard_eq_prod` asks for
-`Fintype F.B`, which no witness supplies: `Setoid (Bool × Bool)` has no `DecidableEq`, so
-membership in `coordBasis` is not decidable.  A client must build the instance by hand,
-and it has to be in scope *at statement elaboration time*, because the `∏` in the
-statement needs it. -/
+`Fintype F.B`, which no witness supplies.  The reason is *not* a missing `DecidableEq`:
+`open scoped Classical` is in force in this file, so `DecidableEq (Setoid (Bool × Bool))`
+synthesizes as `Classical.propDecidable`, and `Fintype ↥({fstFactor, sndFactor} : Set _)`
+synthesizes as `Set.fintypeInsert`.  What fails is `Fintype ↥coordBasis` — and hence
+`Fintype ↥coordFS.B` — because `coordBasis` and `coordFS` are ordinary non-reducible
+`def`s, which instance search will not unfold to find the `insert`/`singleton` structure
+underneath.  So a client must build the instance by hand, and it has to be in scope *at
+statement elaboration time*, because the `∏` in the statement needs it. -/
 
 section FintypeFriction
 

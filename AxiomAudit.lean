@@ -1084,6 +1084,10 @@ open FiniteFactoredSets in
   Examples.empty_isFactorization Examples.emptyFS
   Examples.not_isFactorization_empty_basis
   Examples.unit_isFactorization Examples.unitFS Examples.unitFS_basis_unique
+  -- Definition 10's two fields are independent: each of these exhibits one field holding
+  -- while the other fails, so neither is decoration.
+  Examples.not_isFactorization_singleton_fstFactor
+  Examples.not_isFactorization_unit_singleton_top
   -- §2.5 on `coordFS` / `boolFS`: Propositions 7-9 applied to a concrete factored set.
   Examples.size_coordFS Examples.dim_coordFS
   Examples.size_eq_prod_coordFS Examples.dim_spec_coordFS Examples.boolFS_trivial
@@ -1136,3 +1140,12 @@ open CartesianFrames in
   Frame.Subagent.congr Frame.multSubagent_iff_multSubagentCategorical
   Frame.commit_outcome Frame.assume_outcome Frame.external_outcome
   Frame.externalQuot_outcome Frame.internal_outcome Frame.internalSect_outcome
+
+open FiniteFactoredSets in
+#assert_axioms_clean
+  FactoredSet.StrictlyBefore.before FactoredSet.strictlyBefore_def FactoredSet.before_def
+  FactoredSet.orthogonal_def FactoredSet.orthogonal_iff_forall_notMem
+  FactoredSet.entangled_iff FactoredSet.size_eq_mk FactoredSet.dim_eq_mk
+  FactoredSet.dim_eq_zero_iff FactoredSet.generates_iff_rel
+  FactoredSet.generates_iff_sInf_le FactoredSet.generates_iff_history_subset
+  FactoredSet.le_iff_history_subset FactoredSet.commonRefinement_history_le
