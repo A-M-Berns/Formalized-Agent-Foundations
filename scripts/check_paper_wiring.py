@@ -37,6 +37,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paper_nodes  # noqa: E402
 from papers import PAPERS, NON_PAPER_LIBRARIES  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -108,6 +109,14 @@ for key, paper in sorted(PAPERS.items()):
             violations.append("%s: %s missing at %s" % (tag, field, rel))
         elif field == "source" and os.path.getsize(path(rel)) == 0:
             violations.append("%s: paper source %s is empty" % (tag, rel))
+
+    # A registry entry whose (scheme, source_format) pair has no parser is worse than a
+    # missing one: nothing else notices, and the tooling that reads it just finds no
+    # nodes — which reads as "this paper numbers nothing" rather than as an error.
+    try:
+        paper_nodes.scheme_of(paper)
+    except KeyError as exc:
+        violations.append("%s: node-citation scheme is unusable — %s" % (tag, exc.args[0]))
 
     for field in ("knowledge", "errata", "coverage_table"):
         rel = paper.get(field)

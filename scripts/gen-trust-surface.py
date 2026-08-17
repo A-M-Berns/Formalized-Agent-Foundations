@@ -367,6 +367,29 @@ def clean_title(t):
     return t.replace('{', '').replace('}', '').strip()
 
 
+class ExtractionRenderer:
+    """Render a statement that was read off a `pdftotext -layout` extraction.
+
+    Condensation has no TeX source (see `scripts/papers.py`), so there is no markup to
+    convert: what is committed is the printed page as plain text, with its own line
+    breaks, column alignment and inline display equations.  Reflowing that into prose
+    would silently rewrite the paper's statement, and glyph-substituting it would claim a
+    conversion that never happened — so it is shown *verbatim*, in a preformatted block,
+    with only HTML escaping applied.
+
+    Its interface matches `TexRenderer`'s so `build_correspondence` need not branch, and
+    its `failures`/`omitted` are permanently empty: nothing is approximated here, so
+    there is nothing to warn about.
+    """
+
+    def __init__(self):
+        self.failures = []
+        self.omitted = []
+
+    def block(self, s, label=None):
+        return '<pre class="extract">%s</pre>' % html.escape(s)
+
+
 def renderer_warnings(key, renderer):
     """What a paper's conversion could not render, named so it can be checked by hand."""
     out = ['%s: %s prints a %s the converter has no faithful rendering for — the card '
@@ -803,13 +826,29 @@ PAPERS_EDITORIAL = {
         'macros': (), 'pre_macros': FFS_PRE_LATEX,
         'sections': r'\\(section|subsection)\{([^\n]*)', 'appendix': False,
     },
+    # No TeX, hence no macro layer and no `\section` pattern: sectioning is read off the
+    # extraction's own page layout, and statements are shown verbatim.
+    'condensation': {
+        'macros': (), 'pre_macros': (),
+        'sections': paper_nodes.printed_extraction_sections, 'appendix': False,
+        'renderer': ExtractionRenderer,
+    },
 }
 
 
 def source_tag(paper):
-    """`arXiv:1609.03543v5` — the exact version committed, from the source filename."""
-    stem = os.path.basename(paper['source']).removesuffix('-main.tex')
-    return 'arXiv:' + stem
+    """The exact version committed, named the way the paper is citable.
+
+    `arXiv:1609.03543v5` for a preprint; for a paper with no preprint record the
+    OpenReview id, and failing that the committed source's own filename — never a
+    fabricated arXiv id.
+    """
+    if paper.get('arxiv'):
+        stem = os.path.basename(paper['source']).removesuffix('-main.tex')
+        return 'arXiv:' + stem
+    if paper.get('openreview'):
+        return 'OpenReview:' + paper['openreview']
+    return os.path.basename(paper['source'])
 
 
 def anchor_for(prefix, node_id):
@@ -962,8 +1001,11 @@ def build_correspondence(key, paper, warnings, *, extras=None):
     """A paper node beside its Lean endpoints, with no invented tier or audit note."""
     conf = PAPERS_EDITORIAL[key]
     tex = read(paper['source'])
-    renderer = TexRenderer(conf['macros'], conf['pre_macros'])
-    scheme = paper_nodes.SCHEMES[paper['scheme']]
+    renderer = (conf['renderer']() if conf.get('renderer')
+                else TexRenderer(conf['macros'], conf['pre_macros']))
+    # Not `SCHEMES[paper['scheme']]`: the parser depends on the *source format* too, and
+    # reading an extraction with the TeX parser fails silently rather than loudly.
+    scheme = paper_nodes.scheme_of(paper)
 
     located = scheme['declarations'](tex)
     numbered = scheme['source_nodes'](tex)
@@ -982,8 +1024,9 @@ def build_correspondence(key, paper, warnings, *, extras=None):
 
     extras = extras or {}
     prefix = {'cartesian-frames': 'cf-', 'modal-agents': 'ma-',
-              'finite-factored-sets': 'ffs-'}[key]
-    sections = section_titles(tex, conf['sections'], conf['appendix'])
+              'finite-factored-sets': 'ffs-', 'condensation': 'cd-'}[key]
+    sections = (conf['sections'](tex) if callable(conf['sections'])
+                else section_titles(tex, conf['sections'], conf['appendix']))
     tag = source_tag(paper)
     nav, cards = [], []
     for sec, group in group_by_section([located[n] for n in renderable], sections):
@@ -1042,6 +1085,14 @@ def main():
 
     ffs_paper = PAPERS['finite-factored-sets']
     ffs = build_correspondence('finite-factored-sets', ffs_paper, warnings)
+
+    cd_paper = PAPERS['condensation']
+    cd = build_correspondence('condensation', cd_paper, warnings)
+    cd_uncited = sorted(set(cd['numbered']) - cd['covered'],
+                        key=paper_nodes.printed_extraction_node_sort_key)
+    cd_missing_html = (
+        ', '.join('<code>%s</code>' % html.escape(n) for n in cd_uncited)
+        if cd_uncited else 'none — every numbered node carries a Lean statement')
 
     # --- ModalAgents: inventoried endpoints that deliberately carry no annotation ---
     ma_inventory = paper_nodes.read_inventory(ROOT + 'AxiomAudit.lean', 'MA-INVENTORY') or set()
@@ -1125,17 +1176,30 @@ def main():
              'nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated '
              'as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 '
              'are out of scope by ruling; <strong>no strength classification exists for '
-             'this paper</strong>')):
+             'this paper</strong>'),
+            ('condensation', cd,
+             '<strong>in progress (milestone M0)</strong> — nothing here is claimed '
+             'proved. The cards show the paper statement beside whatever Lean statement '
+             'currently carries it, so the section grows as the formalization lands; '
+             '<strong>no strength classification exists for this paper</strong>')):
         p = PAPERS[key]
+        if p.get('arxiv'):
+            cite_link = ('<a href="https://arxiv.org/abs/%s">arXiv:%s</a>'
+                         % (p['arxiv'], p['arxiv']))
+        elif p.get('url'):
+            cite_link = ('<a href="%s">OpenReview:%s</a>'
+                         % (html.escape(p['url'], quote=True),
+                            html.escape(p.get('openreview', 'record'))))
+        else:
+            cite_link = html.escape(os.path.basename(p['source']))
         index_rows += (
             '<tr><td><a href="#paper-%s">%s</a><div class="idx-cite">%s (%d) · '
-            '<a href="https://arxiv.org/abs/%s">arXiv:%s</a></div></td>'
+            '%s</div></td>'
             '<td class="count">%d</td><td><code>%s/</code></td><td>%s</td></tr>'
             % (key, html.escape(p['title']), html.escape(p['authors']), p['year'],
-               p['arxiv'], p['arxiv'], section['total'], html.escape(p['library']),
-               editorial))
+               cite_link, section['total'], html.escape(p['library']), editorial))
 
-    total_nodes = li['total'] + cf['total'] + ma['total'] + ffs['total']
+    total_nodes = li['total'] + cf['total'] + ma['total'] + ffs['total'] + cd['total']
 
     page = read('scripts/trust-surface-template.html')
     for placeholder, value in (
@@ -1143,10 +1207,14 @@ def main():
             ('%%NAV_CF%%', '\n'.join(cf['nav'])),
             ('%%NAV_MA%%', '\n'.join(ma['nav'])),
             ('%%NAV_FFS%%', '\n'.join(ffs['nav'])),
+            ('%%NAV_CD%%', '\n'.join(cd['nav'])),
             ('%%CARDS_LI%%', '\n'.join(li['cards'])),
             ('%%CARDS_CF%%', '\n'.join(cf['cards'])),
             ('%%CARDS_MA%%', '\n'.join(ma['cards'])),
             ('%%CARDS_FFS%%', '\n'.join(ffs['cards'])),
+            ('%%CARDS_CD%%', '\n'.join(cd['cards'])),
+            ('%%CD_MISSING%%', cd_missing_html),
+            ('%%NCD%%', str(cd['total'])),
             ('%%INDEX%%', index_rows),
             ('%%T2ROWS%%', t2_li),
             ('%%T2ROWS_CF%%', t2_cf),
@@ -1174,14 +1242,17 @@ def main():
     page += ('\n<!-- trust-surface-papers: %s -->\n'
              % ' '.join('%s=%d' % (k, s['total']) for k, s in
                         (('logical-induction', li), ('cartesian-frames', cf),
-                         ('modal-agents', ma), ('finite-factored-sets', ffs))))
+                         ('modal-agents', ma), ('finite-factored-sets', ffs),
+                         ('condensation', cd))))
     page += ('\n<!-- trust-surface-sources: %s -->\n'
              % paper_nodes.trust_surface_hash(ROOT))
     open(ROOT + 'docs/trust-surface.html', 'w', encoding='utf-8').write(page)
 
     print('wrote docs/trust-surface.html — %d nodes (%d Logical Induction, '
-          '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets)'
-          % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total']))
+          '%d Cartesian Frames, %d ModalAgents, %d Finite Factored Sets, '
+          '%d Condensation)'
+          % (total_nodes, li['total'], cf['total'], ma['total'], ffs['total'],
+             cd['total']))
     for w in warnings:
         print('  note: %s' % w)
 

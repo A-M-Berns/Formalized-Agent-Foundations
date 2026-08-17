@@ -144,6 +144,12 @@ table.index td.count { text-align: right; font-weight: 700; color: var(--accent-
   font-family: var(--serif); font-size: 14.5px; padding: 14px 18px;
   border-right: 1px solid var(--hair); }
 .paper-pane p { margin: 0 0 8px; }
+/* A statement read off a `pdftotext -layout` extraction rather than TeX (Condensation):
+   shown verbatim, so the printed line breaks and the alignment of displayed equations
+   are preserved rather than reflowed. */
+pre.extract { font-family: var(--mono); font-size: 11.5px; line-height: 1.55;
+  margin: 0; padding: 0; background: none; white-space: pre; overflow-x: auto;
+  color: var(--paper-ink); }
 .paper-pane .dm { margin: 8px 0 8px 14px; font-size: 14.5px; }
 .im, .dm { font-style: italic; }
 .dmath { margin: 8px 0 8px 10px; overflow-x: auto; padding: 2px 0; }
@@ -208,11 +214,13 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   %%NAV_MA%%
   <a class="nav-paper" href="#paper-finite-factored-sets">Finite Factored Sets</a>
   %%NAV_FFS%%
+  <a class="nav-paper" href="#paper-condensation">Condensation</a>
+  %%NAV_CD%%
 </nav>
 <main>
   <h1>Formalized Agent Foundations — the trust-surface read-through</h1>
-  <p class="subtitle">Every paper node beside the Lean statement that carries it, for all
-  three formalized papers. The kernel has already checked every proof body; what it cannot
+  <p class="subtitle">Every paper node beside the Lean statement that carries it, for every
+  paper this repository formalizes. The kernel has already checked every proof body; what it cannot
   check is whether each <em>statement</em> says what the paper says. That judgment requires
   a human reader — this page is the map for making it.</p>
 
@@ -234,9 +242,10 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     interchangeable, and the narrower ones appear only where a node is marked qualified.</div>
 
     <h3>What is on each card, and what is not</h3>
-    <p>Every card is the same mechanical pair: the paper's printed statement, machine-converted
-    from the committed TeX, beside the exact source text of the Lean statement (or statements)
-    annotated with that node. Beyond that pair, the three papers carry <em>different</em>
+    <p>Every card is the same mechanical pair: the paper's printed statement — machine-converted
+    from the committed TeX, or, where no TeX source for the paper exists, shown verbatim as
+    extracted from the committed PDF — beside the exact source text of the Lean statement (or
+    statements) annotated with that node. Beyond that pair, the papers carry <em>different</em>
     editorial material, because different material exists — and the difference is real, not a
     presentational choice:</p>
     <div style="overflow-x:auto"><table class="index">
@@ -525,6 +534,51 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   </div>
 
   %%CARDS_FFS%%
+  </section>
+
+  <section class="paper-section" id="paper-condensation">
+  <h2 class="paper-head">Condensation: A Theory of Concepts</h2>
+  <p class="paper-cite">Eisenstat (2025) ·
+  <a href="https://openreview.net/forum?id=HwKFJ3odui">OpenReview:HwKFJ3odui</a> ·
+  <code>Condensation/</code> · %%NCD%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> It is at milestone M0 — repository wiring
+    and the §2/§3 statements — so nothing in this section is claimed proved, and a card
+    appearing here asserts only that the Lean statement shown is the one intended to
+    carry that paper node. The paper's scope is settled at 42 numbered nodes; Examples
+    5.1–5.3 are <em>proposed</em> out of scope pending a ruling, and the standing
+    modelling narrowing <code>dd:finite-range</code> — every random variable of a model
+    has finite range, rather than merely countable discrete range with finite entropy —
+    is disclosed in <code>Condensation/README.md</code> and at every model structure.
+    Numbered nodes with no Lean statement annotated to them: %%CD_MISSING%%.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>This paper numbers its results through a single section-scoped counter shared by
+    every environment — definitions, propositions, lemmas, theorems, corollaries and
+    examples all draw from it — so node ids read <code>Definition 2.1</code> through
+    <code>Corollary 5.10</code>, and the printed number is the provenance key. What is
+    different here is the <em>source</em>. This paper has no arXiv record and its LaTeX
+    is not public, so unlike every other paper on this page there is no TeX in the
+    repository to recompute numbers from. The committed source is
+    <code>Condensation/notes/condensation-25-07.txt</code>, a
+    <code>pdftotext&nbsp;-layout</code> extraction of the committed PDF, and
+    <code>scripts/check-condensation-nodes.py</code> reads the printed numbers off its
+    header lines. Because the extraction is therefore itself provenance-bearing, that
+    checker additionally asserts that exactly the paper's 42 nodes are derived, so a
+    re-extraction that mangles a header fails the build instead of quietly shrinking the
+    set of nodes an annotation is allowed to name.</p>
+    <p>For the same reason the paper statements below are shown <strong>verbatim as
+    extracted</strong>, in a preformatted block, rather than converted to typeset
+    mathematics as the other four sections are: there is no markup to convert, and
+    reflowing the text would mean rewriting the paper's statement. The extraction keeps
+    the printed line breaks and the alignment of displayed equations, and the extractor's
+    f-ligature slots are resolved back to letters; nothing else is altered. Where a
+    statement is hard to read here, read the committed PDF.</p>
+  </div>
+
+  %%CARDS_CD%%
   </section>
 </main>
 </div>

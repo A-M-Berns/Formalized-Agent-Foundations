@@ -22,6 +22,10 @@ provenance keys:
   `<section>.<n>` and a bare integer will not do.  Its `definition` environment is
   uncounted, so `Definition` is not an accepted kind here (citing one is caught, with
   a sharper message, by `scripts/check-modal-agents-nodes.py`).
+* `Condensation/` — that paper labels nothing and no TeX source for it exists, so the
+  printed number read off the committed text extraction is the key.  Its counter is
+  section-scoped and shared across every environment including `definition` and
+  `example`, so node numbers read `<section>.<n>` and a bare integer will not do.
 
 This linter enforces only that a `theorem` *names* a node in its library's format;
 that the node exists in the committed TeX, that the annotation is anchored to a named
@@ -46,6 +50,13 @@ FFS_LABEL = re.compile(
 MA_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary|Condition)\s+[0-9]+\.[0-9]+"
 )
+# Condensation shares one section-scoped counter across every environment, so its
+# node ids read `<section>.<n>` as ModalAgents' do — but `Definition` and `Example` are
+# counted there, so both are accepted kinds.
+CD_LABEL = re.compile(
+    r"Paper node:.*(Definition|Proposition|Lemma|Theorem|Corollary|Example)"
+    r"\s+[0-9]+\.[0-9]+"
+)
 DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
 def block_depth_after(line, depth):
@@ -68,6 +79,7 @@ libraries = {
     Path("CartesianFrames"): CF_LABEL,
     Path("ModalAgents"): MA_LABEL,
     Path("FiniteFactoredSets"): FFS_LABEL,
+    Path("Condensation"): CD_LABEL,
 }
 paths = [(path, label) for library, label in libraries.items()
          for path in library.rglob("*.lean")]

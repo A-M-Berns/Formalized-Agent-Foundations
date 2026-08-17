@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets]
+    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, condensation]
   pull_request:
 
 concurrency:
@@ -49,6 +49,17 @@ jobs:
       # from ModalAgents' single section-scoped counter).
       - name: Check Finite Factored Sets node annotations
         run: python3 scripts/check-finite-factored-sets-nodes.py
+
+      # Blocking: same contract for Condensation. That paper labels nothing and has no
+      # arXiv record, and no TeX source for it exists in this project — so the committed
+      # source is a `pdftotext -layout` extraction of the PDF and the provenance keys are
+      # the printed `<section>.<n>` numbers read off its header lines, not numbers
+      # recomputed from counters. Because the extraction is itself provenance-bearing,
+      # this checker also asserts that exactly the paper's 42 nodes are derived, so a
+      # re-extraction that mangles a header fails here rather than silently shrinking the
+      # set of nodes an annotation may name.
+      - name: Check Condensation node annotations
+        run: python3 scripts/check-condensation-nodes.py
 
       # Blocking: docs/trust-surface.html (the read-through guide) must be regenerated
       # whenever any of its inputs changes; the page carries a hash stamp over them.

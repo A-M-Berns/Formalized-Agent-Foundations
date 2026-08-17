@@ -33,6 +33,21 @@ sources differ, not by preference:
                     `Theorem 4.5`.
 
 A paper's scheme is a fact about its source; do not "harmonize" them.
+
+**Source formats.** `scheme` says how the *paper* numbers its results; the optional
+`source_format` says what the committed source file physically is, and therefore which
+parser derives the numbers:
+
+* absent (the default, `"tex"`) — the committed source is the paper's LaTeX, and the
+  scheme's parser reads the TeX directly.
+* `"text-extraction"` — no TeX source is in hand, so the committed source is a
+  `pdftotext -layout` extraction of the committed PDF and the printed numbers are read
+  off its header lines rather than derived from counters.  The extraction is then the
+  thing under version control that the provenance check is against, so its checker
+  asserts the expected node count to catch extraction drift.
+
+`paper_nodes.scheme_of(paper)` resolves the pair; do not index `SCHEMES` by `scheme`
+alone.
 """
 
 PAPERS = {
@@ -110,6 +125,41 @@ PAPERS = {
         # paper completion").
         "api": "FiniteFactoredSets/API.lean",
         "api_test": "APITests/FiniteFactoredSets.lean",
+    },
+    "condensation": {
+        "title": "Condensation: A Theory of Concepts",
+        "authors": "Eisenstat",
+        "year": 2025,
+        # No preprint server ID: this paper is not on arXiv.  The record is the
+        # OpenReview submission below; the committed PDF is the author's copy from
+        # https://sameisenstat.net/doc/condensation-25-07.pdf.
+        "arxiv": None,
+        "openreview": "HwKFJ3odui",
+        "url": "https://openreview.net/forum?id=HwKFJ3odui",
+        "library": "Condensation",
+        "status": "in-progress",
+        "source": "Condensation/notes/condensation-25-07.txt",
+        "pdf": "Condensation/notes/condensation-25-07.pdf",
+        # The paper numbers through a *single* section-scoped LaTeX theorem counter
+        # shared by Definition/Proposition/Lemma/Theorem/Corollary/Example, so node ids
+        # read `<section>.<n>` exactly as in ModalAgents — hence `printed-counter`,
+        # which is a fact about the paper and stays true whatever we can read.
+        #
+        # What differs is the source we hold.  No TeX exists in this project, so the
+        # counter cannot be *emulated*; the committed source is the `pdftotext -layout`
+        # extraction of the PDF, and `scripts/check-condensation-nodes.py` reads the
+        # printed numbers straight off its header lines (`source_format` below selects
+        # that parser).  The extraction is therefore itself provenance-bearing: the
+        # checker asserts the derived set is exactly the paper's 42 nodes, so a
+        # re-extraction that silently drops or mangles a header fails rather than
+        # narrowing the node set behind our backs.  Ligature loss in the extraction
+        # ("Denition") is a tool artifact and is absorbed by the checker's regex.
+        "scheme": "printed-counter",
+        "source_format": "text-extraction",
+        "node_checker": "scripts/check-condensation-nodes.py",
+        "readme": "Condensation/README.md",
+        "knowledge": "Condensation/KNOWLEDGE.md",
+        "errata": "Condensation/notes/paper-errata.md",
     },
 }
 

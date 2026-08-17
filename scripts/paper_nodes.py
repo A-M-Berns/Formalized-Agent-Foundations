@@ -166,8 +166,15 @@ def read_inventory(audit_path, block):
 
 
 def library_sources(root_module, lib_dir):
-    """The Lean files of a library, in the order the checkers walk them."""
-    return [Path(root_module), *sorted(Path(lib_dir).rglob("*.lean"))]
+    """The Lean files of a library, in the order the checkers walk them.
+
+    A library registered `in-progress` may not have its aggregator module yet, so a
+    missing root module is skipped rather than raised: an annotation check over a
+    library with no Lean is vacuous, not broken.  That the library exists and contains
+    Lean at all is `scripts/check_paper_wiring.py`'s job, and it is checked there.
+    """
+    paths = [Path(root_module), *sorted(Path(lib_dir).rglob("*.lean"))]
+    return [path for path in paths if path.is_file()]
 
 
 class Annotation:
@@ -225,7 +232,7 @@ def collect_annotations(root_module, lib_dir, node_id_re):
 
 def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                    source_nodes, node_shape, root_prefix=None, empty_source_message=None,
-                   summary, scope_manifest=None):
+                   summary, scope_manifest=None, inventory_required=True):
     """Drive one paper's provenance check; returns the process exit status.
 
     Every message this emits is the message the per-paper checkers emitted before the
@@ -236,21 +243,32 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
     "every in-scope node has a carrier or is Mathlib-rendered" into a fail-closed check:
     (source nodes) − out_of_scope − mathlib_rendered must equal the annotated node set,
     in both directions.  Papers that do not pass a manifest keep the old behaviour.
+
+    `inventory_required=False` is for a paper registered `in-progress` before its
+    `AxiomAudit.lean` block exists.  It downgrades *only* the "the block is absent"
+    message, and only while nothing in the library is annotated, to a note; the moment a
+    declaration carries an annotation the block is demanded again, and each annotated
+    declaration is an uninventoried endpoint until it is listed.  So this loosens the
+    gate exactly over the window in which there is nothing for the gate to protect.
     """
     violations: list[str] = []
+    notes: list[str] = []
 
     if empty_source_message is not None and not source_nodes:
         violations.append(empty_source_message)
 
     inventory = read_inventory(audit, inventory_block)
-    if inventory is None:
-        violations.append(f"{audit}: missing {inventory_block}-BEGIN/END markers")
+    inventory_missing = inventory is None
+    if inventory_missing:
         inventory = set()
+        if inventory_required:
+            violations.append(f"{audit}: missing {inventory_block}-BEGIN/END markers")
     resolved = inventory if root_prefix is None else (
         inventory | {f"{root_prefix}.{entry}" for entry in inventory})
 
     citations = 0
     annotated_nodes: set[str] = set()
+    annotated_carriers = 0
 
     for path in library_sources(root_module, lib):
         text = path.read_text()
@@ -307,6 +325,7 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                 continue
             prefix = prefixes.get(decl_line, "")
             qualified = f"{prefix}.{name}" if prefix else name
+            annotated_carriers += 1
             if qualified not in resolved:
                 violations.append(
                     f"{path}:{decl_line}: UNINVENTORIED ENDPOINT: {qualified!r} carries a "
@@ -340,6 +359,19 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
             for node in sorted(annotated_nodes & (out | rendered))
         ]
 
+    if inventory_missing and not inventory_required:
+        if annotated_carriers:
+            violations.append(f"{audit}: missing {inventory_block}-BEGIN/END markers")
+        else:
+            notes.append(
+                f"note: {audit} has no {inventory_block}-BEGIN/END block yet, and "
+                f"nothing under {lib}/ carries a '{MARKER}' annotation, so there is no "
+                f"endpoint to inventory. The block is required from the first annotated "
+                f"declaration onwards."
+            )
+
+    for entry in notes:
+        print(entry)
     for violation in violations:
         print(violation)
 
@@ -626,6 +658,205 @@ def printed_independent_declarations(tex_text):
     return out
 
 
+# --- printed-counter read off a text extraction (Condensation) -----------------------
+#
+# Eisenstat's *Condensation* numbers its results exactly the way ModalAgents does — a
+# single section-scoped counter shared by `definition`, `proposition`, `lemma`,
+# `theorem`, `corollary` and `example`, so ids read `<section>.<n>` — but no TeX source
+# for it exists in this project.  The committed source is a `pdftotext -layout`
+# extraction of the committed PDF, so the counter cannot be emulated: the printed
+# numbers are read straight off the extraction's header lines.
+#
+# That makes the extraction itself provenance-bearing, which is a weaker position than
+# holding the TeX, and the checker compensates by asserting the expected node count (see
+# `scripts/check-condensation-nodes.py`).  A re-extraction that reflows a header, or a
+# `pdftotext` version that mangles one, then fails loudly instead of quietly shrinking
+# the set of nodes a `Paper node:` annotation is allowed to name.
+#
+# The extractor does not resolve the paper's f-ligatures to letters: it emits the font's
+# own slot for them, a C0 control character.  "Definition" therefore comes out as
+# `De\x1cnition` — which prints as "Denition" and reads as a dropped `fi` — and likewise
+# `\x1b` for `ff`, `\x1d` for `fl`, `\x1e` for `ffi`.  `De(?:fi)?.?nition` accepts the
+# extraction's spelling, the control-character spelling and plain "Definition", and
+# nothing else; the kind is normalised to `Definition` before it becomes part of a node
+# id.  The optional parenthetical covers the two titled nodes, `Theorem 4.15 (Comparison
+# of perfect condensations).` and `Theorem 5.8 (Comparison of latent variable models).`
+# The trailing period is what separates a *header* from a cross-reference: "Corollary
+# 4.6 tells us something about…" opens a line but does not end its number with a dot.
+#
+# **Split this text with `split("\n")`, never `splitlines()`.**  Python's `splitlines`
+# also breaks on `\x1c`, `\x1d`, `\x1e`, `\x0b`, `\x0c` and `\x85`, four of which are
+# exactly the ligature slots above — so `splitlines()` tears `De\x1cnition` into a line
+# ending "De" and a line beginning "nition", and every Definition header in the paper
+# silently disappears from the node set.
+
+PRINTED_EXTRACTION_KINDS = ("Definition", "Proposition", "Lemma", "Theorem",
+                            "Corollary", "Example")
+PRINTED_EXTRACTION_HEADER = re.compile(
+    r"^[ \t]*(De(?:fi)?.?nition|Proposition|Lemma|Theorem|Corollary|Example)"
+    r"[ \t]+([0-9]+)\.([0-9]+)((?:[ \t]*\([^)]*\))?)\.")
+# The extraction's font slots, resolved for display.  Only glyphs whose identity is
+# unambiguous from the paper are mapped; anything else is left exactly as extracted, so
+# a reader of the rendered statement sees the extraction, not our guess at it.
+PRINTED_EXTRACTION_GLYPHS = {
+    "\x1b": "ff", "\x1c": "fi", "\x1d": "fl", "\x1e": "ffi",
+    "\x10": "“", "\x11": "”", "\x12": "‘", "\x13": "’",
+    "\x15": "–", "\x16": "—",
+}
+PRINTED_EXTRACTION_NODE_ID = re.compile(
+    r"(" + "|".join(PRINTED_EXTRACTION_KINDS) + r")\s+([0-9]+\.[0-9]+)")
+# Sectioning in this layout: numbered sections are centred on their own line, and
+# subsections are run in at the left margin ("5.2.   Comparison of latent variable
+# models. We now proceed…").  The table of contents indents its entries, so anchoring
+# subsections at column 0 keeps the contents listing out of the section index.
+PRINTED_EXTRACTION_SECTION = re.compile(
+    r"^[ \t]{8,}([0-9]+)\.[ \t]+([A-Z][^\n]*?)[ \t]*$")
+PRINTED_EXTRACTION_SUBSECTION = re.compile(
+    r"^([0-9]+\.[0-9]+)\.[ \t]{2,}([A-Z][^\n.]*)\.")
+# A statement's printed body ends at the proof, at the next node, at a sectioning line,
+# or where the paper starts a fresh prose paragraph — which this layout marks with a
+# small left indent (display equations are indented far further, or carry their equation
+# number at the margin, so they are not mistaken for one).  Two things are indented like
+# a new paragraph without being one, and both are continuations: the paper's enumerated
+# conditions, `(1)` / `(A2)` / `(iii)`; and the remainder of a statement that a page
+# break interrupted, which is re-indented on the next page.  A third case is a sentence
+# resumed after an inline display, which `-layout` also indents — so a paragraph break is
+# only believed where the statement so far has actually ended a sentence.
+PRINTED_EXTRACTION_PARAGRAPH = re.compile(r"^[ \t]{2,4}\S")
+PRINTED_EXTRACTION_ITEM = re.compile(r"^[ \t]{0,8}\((?:[A-Za-z]{0,2}[0-9]+|[ivxIVX]+)\)")
+PRINTED_EXTRACTION_PROOF = re.compile(r"^[ \t]*Proof\.")
+# The bibliography, whose entries open with their citation key.  The paper's last node
+# is followed by commentary rather than a proof, so without this the final statement
+# would run on into the references.
+PRINTED_EXTRACTION_BIBLIOGRAPHY = re.compile(r"^[ \t]*\[[A-Za-z][A-Za-z0-9+]*\]")
+# Belt and braces on the paragraph heuristics: no printed statement in this paper is
+# anywhere near this long, so a card can be imprecise but never unbounded.
+PRINTED_EXTRACTION_MAX_LINES = 60
+
+
+def extraction_lines(text):
+    """The extraction's lines.  See the warning above: never `splitlines()` this."""
+    return text.split("\n")
+
+
+def resolve_extraction_glyphs(s):
+    """Resolve the extraction's font slots (ligatures, quotes, dashes) for display."""
+    for slot, glyph in PRINTED_EXTRACTION_GLYPHS.items():
+        s = s.replace(slot, glyph)
+    return s
+
+
+def _extraction_furniture(text):
+    """Predicate: is this line running head / page number, not paper content?
+
+    `pdftotext -layout` keeps the running head and folio of every page, which would
+    otherwise land in the middle of any statement that spans a page break.  The running
+    head is taken from the extraction's own first non-blank line (the title as it is set
+    on the page), so this stays a property of the file rather than a hard-coded string.
+    """
+    head = ""
+    for line in extraction_lines(text):
+        if line.strip():
+            head = line.strip()
+            break
+
+    def furniture(line):
+        stripped = line.strip()
+        if not stripped:
+            return False
+        if head and stripped.startswith(head):
+            return True
+        if re.fullmatch(r"[0-9]{1,3}", stripped):
+            return True
+        # Other running heads set in caps ("REFERENCES   26"), which `pdftotext` can
+        # emit in the middle of a statement that spans the page break.
+        return bool(re.fullmatch(r"[A-Z][A-Z0-9 ,.:;'’—–-]{3,}?(?:\s+[0-9]{1,3})?",
+                                 stripped))
+
+    return furniture
+
+
+def _extraction_kind(raw):
+    """Normalise a header's printed kind, healing the extractor's ligature slot."""
+    return "Definition" if raw.startswith("De") else raw
+
+
+def printed_extraction_node_sort_key(node_id):
+    """Sort `Definition 3.10` after `Definition 3.9`, and by section first."""
+    kind, _, number = node_id.partition(" ")
+    section, _, index = number.partition(".")
+    return (int(section or 0), int(index or 0), kind)
+
+
+def printed_extraction_sections(text):
+    """`(offset, title)` for each numbered section and subsection, in source order."""
+    out = []
+    offset = 0
+    for line in extraction_lines(text):
+        m = PRINTED_EXTRACTION_SECTION.match(line)
+        if m:
+            out.append((offset, "%s. %s" % (m.group(1), m.group(2).strip())))
+        else:
+            m = PRINTED_EXTRACTION_SUBSECTION.match(line)
+            if m:
+                out.append((offset, "%s. %s" % (m.group(1), m.group(2).strip())))
+        offset += len(line) + 1
+    return out
+
+
+def printed_extraction_nodes(text):
+    """The paper's printed node ids, read off the extraction's header lines."""
+    return {node.id for node in printed_extraction_declarations(text).values()}
+
+
+def printed_extraction_declarations(text):
+    """Every numbered node with its printed statement, read off the extraction."""
+    lines = extraction_lines(text)
+    offsets, running = [], 0
+    for line in lines:
+        offsets.append(running)
+        running += len(line) + 1
+
+    furniture = _extraction_furniture(text)
+    starts = [(idx, m) for idx, m in
+              ((idx, PRINTED_EXTRACTION_HEADER.match(line)) for idx, line in enumerate(lines))
+              if m and not furniture(lines[idx])]
+
+    out = {}
+    for idx, m in starts:
+        kind = _extraction_kind(m.group(1))
+        number = "%s.%s" % (m.group(2), m.group(3))
+        title = (m.group(4) or "").strip().strip("()").strip()
+        body = [lines[idx][m.end():].strip()]
+        across_page_break = False
+        for j in range(idx + 1, len(lines)):
+            following = lines[j]
+            if furniture(following) or "\x0c" in following:
+                across_page_break = True
+                continue
+            if (PRINTED_EXTRACTION_HEADER.match(following)
+                    or PRINTED_EXTRACTION_PROOF.match(following)
+                    or PRINTED_EXTRACTION_SECTION.match(following)
+                    or PRINTED_EXTRACTION_SUBSECTION.match(following)
+                    or PRINTED_EXTRACTION_BIBLIOGRAPHY.match(following)
+                    or len(body) >= PRINTED_EXTRACTION_MAX_LINES):
+                break
+            ended = next((chunk.rstrip() for chunk in reversed(body) if chunk.strip()), "")
+            if (PRINTED_EXTRACTION_PARAGRAPH.match(following)
+                    and not PRINTED_EXTRACTION_ITEM.match(following)
+                    and not across_page_break
+                    and ended.rstrip("”’\"')").endswith((".", "!", "?"))):
+                break
+            if following.strip():
+                across_page_break = False
+            body.append(following)
+        node_id = "%s %s" % (kind, number)
+        out[node_id] = Node(node_id, kind, number, resolve_extraction_glyphs(title),
+                            resolve_extraction_glyphs("\n".join(body).strip("\n").rstrip()),
+                            offsets[idx])
+    return out
+
+
 SCHEMES = {
     "latex-label": {
         "node_id_re": LATEX_LABEL_NODE_ID,
@@ -648,6 +879,42 @@ SCHEMES = {
         "declarations": printed_independent_declarations,
     },
 }
+
+# A paper's `scheme` says how the *paper* numbers its results; its `source_format` says
+# what the committed source physically is.  The two are independent, and the parser is
+# chosen by the pair: `printed-counter` over TeX emulates the counter, `printed-counter`
+# over a text extraction reads the printed numbers off the page.  Registry entries
+# without a `source_format` are TeX, which is the case for every paper but Condensation.
+EXTRACTION_SCHEMES = {
+    "printed-counter": {
+        "node_id_re": PRINTED_EXTRACTION_NODE_ID,
+        "source_nodes": printed_extraction_nodes,
+        "declarations": printed_extraction_declarations,
+    },
+}
+
+
+def scheme_of(paper):
+    """The `{node_id_re, source_nodes, declarations}` parser for a registered paper.
+
+    Always prefer this to indexing `SCHEMES` by `paper['scheme']`: the scheme name alone
+    does not determine the parser once a paper's source is an extraction rather than TeX,
+    and picking the TeX parser for an extraction fails *silently* — it simply finds no
+    nodes, which reads as "this paper numbers nothing" rather than as an error.
+    """
+    fmt = paper.get("source_format", "tex")
+    if fmt == "tex":
+        table = SCHEMES
+    elif fmt == "text-extraction":
+        table = EXTRACTION_SCHEMES
+    else:
+        raise KeyError("unknown source_format %r (expected 'tex' or 'text-extraction')"
+                       % fmt)
+    scheme = paper.get("scheme")
+    if scheme not in table:
+        raise KeyError("no parser for scheme %r over source_format %r; registered: %s"
+                       % (scheme, fmt, ", ".join(sorted(table))))
+    return table[scheme]
 
 
 # ------------------------------------------------------- trust-surface freshness inputs

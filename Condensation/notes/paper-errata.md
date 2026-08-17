@@ -1,0 +1,140 @@
+# Condensation (Eisenstat, July 2025) — paper errata noticed during formalization
+
+Curated during the Lean formalization in `Condensation/`. Each entry cites the committed
+source `Condensation/notes/condensation-25-07.txt` (the `pdftotext -layout` extraction of
+`Condensation/notes/condensation-25-07.pdf`), by line number where useful.
+
+**What this file is for.** Read it before concluding that a Lean statement or proof
+diverges from the printed one: in several places below the printed text is the thing that
+is wrong, and a formalizer's first instinct on a mismatch is to assume the Lean is wrong.
+Each entry names its **location** (node, and which part of it), what is **printed**, and
+what is **meant**. Entries also say whether the defect was re-confirmed against the
+committed extraction or is carried forward unverified from the feasibility spike
+(`Condensation/SPIKE-REPORT.md`); as of this writing all of them are confirmed.
+
+**Not an erratum: the missing ligatures.** `pdftotext` drops the `fi` and `ff` ligatures,
+so the extraction reads `Denition`, `nite`, `dierent`, `sucient`, `signicant`. That is a
+*tool* artifact of the extractor, not a defect of the paper — the PDF itself is fine. Do
+not log one here. (It is also why the node checker's regex reads `De.?nition`.)
+
+Keep the numbered-entry shape below — `N. **headline naming the node**` followed by the
+detail. The trust-surface generator parses Cartesian Frames' errata headlines exactly that
+way (`^\s*(\d+)\.\s+\*\*(.+?)\*\*`, pulling node ids out of the headline), and a
+Condensation-specific reader will do the same; a headline that does not name its node
+cannot be attached to it on the generated page.
+
+---
+
+1. **Lemma 4.5, statement of clause (2), and Corollary 4.6, statement: `P I` printed for
+   `P⁺ I`.** Clause (2) of Lemma 4.5 reads "For all `i ∈ I` and `A ∈ PI` such that `i ∈ A`"
+   (L637), and Corollary 4.6 reads "whenever we have `i ∈ A ∈ PI`" (L660). In both places
+   the intended index set is the **nonempty** power set `P⁺ I` of Definition 2.2, which is
+   what the surrounding statements quantify over — clause (1) of the same lemma writes
+   `A ∈ P⁺ I`, as does the `(⇐=)` half of its proof. **Confirmed in the committed
+   extraction**, and confirmed to be a real omission rather than an extraction artifact:
+   the extractor does render this paper's superscript `+` (it lands on its own line,
+   e.g. L635 for clause (1) and L649 for the proof), and no such line accompanies L637 or
+   L660. Benign in effect — for `i ∈ A` the set `A` is nonempty anyway, so the two readings
+   coincide — but the Lean statements use `PPlus I` throughout (`dd:pplus`), and a reader
+   comparing them to the printed clause should not read the difference as a divergence.
+
+2. **Lemma 4.5, proof: cites "Corollary 2.5", but 2.5 is a Proposition.** The `(=⇒)` half
+   reads "Hence, using Corollary 2.5 `Y_∋i`, and a fortiori `Y_A` for any `A` containing
+   `i`, is almost everywhere equal to a function of `X_i`" (L647). The paper prints
+   **Proposition** 2.5 (L195), the determinism bridge `H(Y | X) = 0 ⟹ Y = f(X)` a.e.; that
+   is the result being used, and there is no Corollary 2.5 in the paper (§2 contains
+   Definitions 2.1–2.4 and Proposition 2.5, and nothing else). A pure citation slip; the
+   argument is correct. **Confirmed in the committed extraction.** Worth recording because
+   the node checker validates the *kind* of a cited node, so `Paper node: Corollary 2.5`
+   would fail even though it is what the paper's own prose says.
+
+3. **Corollary 4.6, proof: cites only Proposition 4.2, but the argument also needs
+   Lemma 4.5.** The whole proof is "Using Proposition 4.2, this follows immediately."
+   (L662). Proposition 4.2 supplies the chain `σ_L(A) ≥ χ_L(A) ≥ H(Y_∩A) ≥ H(X_A)` (4.6),
+   which — combined with the hypothesis that `L` perfectly condenses `M`, i.e.
+   `χ_L(A) = H(X_A)` — gives `H(Y_∩A) = H(X_A)`. That is exactly clause (1) of Lemma 4.5;
+   the conclusion asserted by the corollary, the existence of the functions `f^i_A` with
+   `Y_A = f^i_A(X_i)` almost everywhere, is clause (2), and it is Lemma 4.5's `(1) =⇒ (2)`
+   that gets from one to the other. Proposition 4.2 alone does not. The corollary is true
+   as stated; only the citation is incomplete. **Confirmed in the committed extraction.**
+
+4. **Theorem 4.9, condition (B2): the "almost everywhere" of (A2) is dropped.** (A2) reads
+   "the latent variable `Y_A` is a function of `X_i` **almost everywhere**" (L741–742),
+   while the parallel (B2) reads "the latent variable `Y_A` is a function of `X_i`."
+   (L748–749) with no qualifier. The intended reading is the a.e. one: the whole
+   development is a.e.-based (Definition 2.1's fifth convention, Definition 3.2's condition
+   on `π^* X_i`), the proof of `(B1) ⟺ (B2)` goes through the same Proposition 2.5 route as
+   (A2), and the everywhere reading is not implied by (B1) — a perfect condensation can be
+   modified on a null set. **Confirmed in the committed extraction.** A formalization has to
+   pick one, and this one picks a.e. (`dd:ae-function`), so the Lean (B2) will read
+   `AEFunctionOf` where the printed (B2) reads as if it meant `FunctionOf`. That difference
+   is this erratum, not a divergence.
+
+5. **Theorem 4.15, proof: `F_i` is used but never defined, and the induction is asserted
+   rather than set up.** The proof says it will "apply Lemma 4.14 repeatedly, using
+   induction", states the lemma's hypotheses for two upward-closed `F, G ⊆ P⁺I`, and then
+   concludes from the display
+   `(4.62)  ⋂_{i∈A} F_i = {B : B ⊇ A}` (L1173)
+   that `Y_A` is a function of `Z_{⊇A}` almost everywhere. **`F_i` occurs exactly once in
+   the paper, at (4.62), and is never defined** — a grep of the extraction for `Fi ` returns
+   that line and no other. It evidently means `F_i = {B ∈ P⁺I : i ∈ B}`, which is
+   upward-closed and does satisfy (4.62). What is missing is more than a symbol: the actual
+   induction — intersect the `|A|` upward-closed sets `F_i` pairwise, discharging Lemma
+   4.14's conditional-independence side condition at each step via Proposition 4.10 — is
+   never written down, and (4.62) is the only place the induction is specified.
+   **Confirmed in the committed extraction.** This is the most substantive entry in this
+   file: formalizing Theorem 4.15 means supplying the induction, not transcribing it, and
+   the node should be budgeted well above what its half-page of printed proof suggests.
+
+6. **Theorem 5.8, proof: "(5.14)" printed for "(5.13)".** The proof opens "We will first
+   prove (5.14)", establishes (5.15) by induction over the intersection tree, specializes
+   it to the root, and then says "Specializing this equation to the root, we establish
+   (5.14). Equation (5.14) follows by a term-by-term comparison." (L1465). The second
+   occurrence should read **(5.13)** — the *inequality*, which is what the following
+   term-by-term comparison (5.17)–(5.20) actually derives from the just-proved exact
+   identity (5.14). **Confirmed in the committed extraction.**
+
+7. **Corollary 5.10, equation (5.24): "`n − 1`" printed for "`k − 1`".** (5.24) reads
+   `G = {C ⊆ I : C contains at least all but n − 1 elements of A}` (L1520–1522), but the
+   corollary has no parameter `n`: its parameter is `k`, and `F` is "the collection of all
+   those `C ⊆ A` with cardinality `k`" (L1517). The `n` is left over from the §5.2
+   motivating prose, which says the same thing with `n`: "if `F` consists of all
+   `n`-element subsets of `A`, then … `G` consists of all sets that contain at least all but
+   `n − 1` elements of `A`" (L1371–1372). With `k`, the claim is right: `C` meets every
+   `k`-element subset of `A` exactly when `|A \ C| ≤ k − 1`. **Confirmed in the committed
+   extraction**, together with its source in the §5.2 prose.
+
+8. **Corollary 5.10, statement: `k` is used one sentence before it is bound.** *(Newly
+   found during this pass; not in the spike report.)* The hypothesis reads "Suppose that
+   `ϱ_Y(C) ≤ α` for all `C ∈ P⁺I` with cardinality `k`. Now, let `A` be an element of `P⁺I`
+   and `k ∈ N`, and define `F` to be the collection of all those `C ⊆ A` with cardinality
+   `k`." (L1515–1517). `k` is quantified over in the second sentence but already used in
+   the first; the intended statement introduces `A ∈ P⁺I` and `k ∈ N` first and *then*
+   imposes the uniform bound `ϱ_Y(C) ≤ α` on all `C` of cardinality `k`. Purely an ordering
+   slip, but it has to be resolved to state the corollary in Lean at all. A related
+   loose end in the same sentence, recorded here rather than as its own entry: `F` is
+   required to be a subset of `P⁺I`, so the degenerate `k = 0` (which would give
+   `F = {∅} ⊄ P⁺I`) is excluded, and `k > |A|` gives `F = ∅` and hence `G = P⁺I`, making
+   (5.25) hold trivially. The paper does not say which of these it means to exclude.
+   **Confirmed in the committed extraction.**
+
+9. **Definition 5.6 versus Theorem 5.8 and Corollaries 5.9, 5.10: the intersection tree's
+   label function is renamed from `ℓ` to `I`, colliding with the index set and with the
+   mutual-information operator.** *(Newly found during this pass; not in the spike report.)*
+   Definition 5.6 introduces an intersection tree as a triple `(V, E, ℓ)` and writes its
+   labels `ℓ(u) = ℓ(v) ∩ ℓ(w)` (L1326–1344), and Proposition 5.7 keeps `ℓ` (L1346–1350).
+   Theorem 5.8 then writes "let `T = (V, E, I)` be an intersection tree" (L1398) and uses
+   `I(v)` for the label throughout — as do the §5.2 prose and Corollaries 5.9 and 5.10
+   (`intersections ({L(v), R(v)}, I(v))_{v∈N}`). In those same statements `I` is also the
+   index set of the random variable family (`(X_i)_{i∈I}`, `P⁺I`), and inside the displayed
+   bounds `I` is also the mutual-information operator: (5.13) contains
+   `I(Z_{L(v)} ; Z_{R(v)} | Z_{I(v)})`, in which the outer `I` and the subscripted `I` are
+   different things. The intended reading is that `I(·)` in §5.2–§5.3 is Definition 5.6's
+   `ℓ`. **Confirmed in the committed extraction** that the *symbol changes in the paper*
+   and not in the extractor: the extractor reproduces `ℓ` faithfully wherever the paper
+   uses it (L1327, L1333, L1336, L1340, L1347–1349), and renders the §5.2–§5.3 label
+   function as `I` (L1398, and every `Z_{I(v)}` in §5.2–§5.3).
+   **Not determined:** whether the printed glyph in §5.2–§5.3 is an italic `I` or a
+   calligraphic `ℐ` — both extract as `I` — so the collision may be visual-only in the PDF.
+   Either way the formalization cannot reuse the letter, and `dd:tree` computes the label
+   from the tree structure instead of carrying a named labelling function.
