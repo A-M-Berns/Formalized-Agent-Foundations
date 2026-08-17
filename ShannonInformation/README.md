@@ -126,8 +126,8 @@ re-check `SCOPE.md`, since a newer upstream may have relaxed hypotheses.
 ## Motivation, and what this is not
 
 The infrastructure was motivated by a feasibility spike for **Condensation** (Eisenstat),
-and is expected to be relevant to **Natural Latents** (Wentworth–Lorell) — though whether
-that paper's statements fit inside the finite-range fragment has **not** been checked; see
-`SCOPE.md` §6. Neither paper is a dependency of this layer, neither is formalized here, and
+and is relevant to **Natural Latents** (Wentworth–Lorell) — which has since been assessed
+and does **not** fit inside the finite-range fragment as written, though its computed
+examples do; see `SCOPE.md` §6. Neither paper is a dependency of this layer, neither is formalized here, and
 no declaration from either appears anywhere in it. This is shared substrate; the papers are
 separate work.

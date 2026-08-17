@@ -121,10 +121,25 @@ move: it may be cheaper to upstream a generalization into PFR than to fork one i
   into a finite-valued one, and its examples are built from finite families of
   finitely-valued variables. A formalization could therefore state §4 under `FiniteRange`
   and cover the paper's substance, at the cost of a disclosed narrowing of its hypotheses.
-- *Natural Latents* (Wentworth–Lorell) — **not assessed.** It is frequently cited as a
-  motivation for this layer, but nobody has yet checked its statements against
-  `FiniteRange`. Do not read its appearance in the motivation as a claim of coverage; that
-  check is outstanding work for whoever formalizes it.
+- *Natural Latents* (Wentworth–Lorell, arXiv:2509.03780) — **assessed, and the answer is
+  no.** Its theorems are stated for generic latents with no finiteness hypothesis, and its
+  own worked quantitative example puts a **uniform prior on `Λ` over the interval `[0,1]`**
+  — a continuous latent, outside not just finite range but discreteness. So the paper as
+  written is **not** covered by this layer.
+
+  Two mitigations, both real:
+  * the quantities the worked example actually *computes* are finite-range (`N₁, N₂ ∈
+    {0,…,1000}`, `Λ' ∈ {0,1}`), so a finite-range formalization would cover the theorems
+    *as applied*, while excluding the continuous-latent modelling built around them;
+  * the paper's primitive is **KL divergence**, not entropy — "satisfies a Bayes net to
+    within `ε`" is `ε ≥ D_KL(P ‖ ∏ⱼ P[Yⱼ|Y_pa(j)])` — and Mathlib's
+    `InformationTheory.klDiv` is defined in full generality. Only the bridge
+    `Y ← X → Y  ⟺  ε ≥ H(Y|X)` lands in the entropy layer.
+
+  Verified by probe: `ShannonInformation.API` and
+  `Mathlib.InformationTheory.KullbackLeibler.Basic` **co-import cleanly**, and both NL
+  primitives are expressible side by side. One impedance mismatch to expect: `klDiv` is
+  `EReal`-valued while PFR's entropy is `ℝ`-valued.
 
 So the honest position is: **the current layer supports finite-valued information theory.
 Whether that suffices for a given paper is a question about that paper, to be answered
