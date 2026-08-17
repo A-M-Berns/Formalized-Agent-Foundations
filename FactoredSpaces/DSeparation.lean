@@ -20,6 +20,11 @@ non-collider trail vertices, so the zero-edge trail `v — v` is blocked iff `v 
 Proposition 5.8 uses ("the path from `v₂` to itself has zero edges and can only be blocked
 by itself"), and the only reading under which Proposition 5.5 holds for arbitrary
 `V₁, V₂, V₃` (see `notes/dsep-sizing/memo-2026-08-17.md`, §2, and `notes/paper-errata.md`).
+
+Both conventions are pinned by regression examples in `FactoredSpaces/Examples.lean`, over
+the collider `0 → 2 ← 1`: conditioning on the collider opens the trail, conditioning on
+nothing blocks it, and a vertex is never d-separated from itself given a set missing it.
+Flipping either convention here breaks that file.
 -/
 
 universe u
@@ -62,6 +67,13 @@ non-collider (endpoints included) is in `Z`. -/
 def Walk.Active {s t : V} (p : G.Walk s t) (Z : Finset V) : Prop :=
   ∀ k v, p.verts[k]? = some v →
     (p.IsColliderAt k → v ∈ Z ∨ ∃ z ∈ Z, G.IsAncestor v z) ∧ (¬ p.IsColliderAt k → v ∉ Z)
+
+variable (G) in
+/-- The condition `Walk.Active` imposes at a collider, named: `v` is in `Z` or has a
+descendant in `Z`.  (Definitionally the disjunct above; the graph-theoretic development of
+`ConditionalHistory.lean` and `ActiveTrails.lean` reasons about it as a predicate.) -/
+def ColliderOK (Z : Finset V) (v : V) : Prop :=
+  v ∈ Z ∨ ∃ z ∈ Z, G.IsAncestor v z
 
 /-- Every trail is a walk. -/
 def Trail.toWalk {s t : V} (p : G.Trail s t) : G.Walk s t := ⟨p.verts, p.chain, p.head, p.last⟩

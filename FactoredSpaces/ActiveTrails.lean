@@ -28,6 +28,12 @@ In this shape `append` and `reverse` have clean activity lemmas
 the hard direction and the shortcut in `exists_active_trail_of_active_walk` short.
 `activeFrom_iff_activeBi` is the bridge back to `Walk.Active`; it needs acyclicity,
 because only then is the orientation of a skeleton edge determined.
+
+`OWalk` and the list helpers `prevOf`/`ColliderFrom`/`ActiveFrom` sit in the root
+`Digraph` namespace but deliberately in this file rather than in `DSeparation.lean`
+(`dd:owalk`): they are proof machinery for the `Z`-closure criterion, with no role in the
+*statement* of d-separation, and `DSeparation.lean` is kept to the small readable surface
+that Proposition 5.5 and the trust-surface read-through are checked against.
 -/
 
 universe u
@@ -37,10 +43,6 @@ namespace Digraph
 variable {V : Type u} {G : Digraph V}
 
 /-! ## Collider conditions -/
-
-/-- A collider on an active walk must lie in `Z` or have a descendant in `Z`. -/
-def ColliderOK (G : Digraph V) (Z : Finset V) (v : V) : Prop :=
-  v ∈ Z ∨ ∃ z ∈ Z, G.IsAncestor v z
 
 /-- The activity condition at a vertex of a walk, as a function of its collider status. -/
 def vertCond (G : Digraph V) (Z : Finset V) : Bool → V → Prop
@@ -387,9 +389,6 @@ lemma activeFrom_cons (Z : Finset V) (a? : Option V) (v : V) (l : List V) :
     | zero => simp only [List.getElem?_cons_zero, Option.some.injEq] at hw; subst hw; exact h0
     | succ k => rw [← colliderFrom_cons a?]; exact h k w (by simpa using hw)
 
-lemma IsAcyclic.not_adj_symm (hG : G.IsAcyclic) {a b : V} (h : G.Adj a b) : ¬ G.Adj b a :=
-  fun h' => hG a (Relation.TransGen.trans (Relation.TransGen.single h) (Relation.TransGen.single h'))
-
 lemma activeFrom_iff_activeBi (hG : G.IsAcyclic) (Z : Finset V) :
     ∀ {s t : V} (p : G.OWalk s t) (a? : Option V) (b : Bool),
       (∀ x, a? = some x → (b = true ↔ G.Adj x s)) → (a? = none → b = false) →
@@ -574,56 +573,6 @@ lemma exists_trail_of_owalk (hG : G.IsAcyclic) {s t : V} {Z : Finset V} (p : G.O
   rw [Trail.Active, walk_active_iff]
   exact (activeFrom_iff_activeBi hG Z r none false (by simp) fun _ => rfl).2 hr
 
-/-! ## Unblocked ancestors -/
-
-lemma mem_unblockedAnc_iff {Z : Finset V} {u v : V} :
-    u ∈ G.unblockedAnc Z v ↔
-      Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) u v := Iff.rfl
-
-lemma unblockedAnc_subset_of_reflTransGen {Z : Finset V} {u d : V}
-    (h : Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) u d) :
-    G.unblockedAnc Z u ⊆ G.unblockedAnc Z d := fun _ hx => hx.trans h
-
-lemma not_mem_of_mem_unblockedAnc {Z : Finset V} {u v : V} (h : u ∈ G.unblockedAnc Z v)
-    (hne : u ≠ v) : u ∉ Z := by
-  rcases Relation.ReflTransGen.cases_head h with rfl | ⟨c, hc, -⟩
-  · exact absurd rfl hne
-  · exact hc.2
-
-/-- From a collider condition at `u`: some `d ∈ Z` is reachable from `u` by a directed path
-whose non-terminal vertices avoid `Z`. -/
-lemma exists_mem_reflTransGen_of_isAncestor {Z : Finset V} {z : V} (hz : z ∈ Z) {u : V}
-    (h : G.IsAncestor u z) : u ∉ Z →
-      ∃ d ∈ Z, Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) u d := by
-  refine Relation.TransGen.head_induction_on
-    (motive := fun a _ => a ∉ Z →
-      ∃ d ∈ Z, Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) a d) h ?_ ?_
-  · intro a h' hu
-    exact ⟨z, hz, Relation.ReflTransGen.single ⟨h', hu⟩⟩
-  · intro a c h' _ ihc hu
-    by_cases hc : c ∈ Z
-    · exact ⟨c, hc, Relation.ReflTransGen.single ⟨h', hu⟩⟩
-    · obtain ⟨d, hd, hpath⟩ := ihc hc
-      exact ⟨d, hd, Relation.ReflTransGen.head ⟨h', hu⟩ hpath⟩
-
-lemma exists_zNode {Z : Finset V} {u : V} (h : G.ColliderOK Z u) :
-    ∃ d ∈ Z, G.unblockedAnc Z u ⊆ G.unblockedAnc Z d := by
-  by_cases hu : u ∈ Z
-  · exact ⟨u, hu, subset_rfl⟩
-  rcases h with hz | ⟨z, hz, hanc⟩
-  · exact absurd hz hu
-  · obtain ⟨d, hd, hp⟩ := exists_mem_reflTransGen_of_isAncestor hz hanc hu
-    exact ⟨d, hd, unblockedAnc_subset_of_reflTransGen hp⟩
-
-/-- A `Z`-closed set that meets `A_Z(u)` for a vertex `u` satisfying the collider condition
-contains all of `A_Z(u)`. -/
-lemma unblockedAnc_subset_of_colliderOK {Z : Finset V} {S : Set V} (hS : G.IsZClosed Z S)
-    {u : V} (hc : G.ColliderOK Z u) (hne : (G.unblockedAnc Z u ∩ S).Nonempty) :
-    G.unblockedAnc Z u ⊆ S := by
-  obtain ⟨d, hd, hsub⟩ := exists_zNode hc
-  obtain ⟨m, hm1, hm2⟩ := hne
-  exact hsub.trans (hS d hd ⟨m, hsub hm1, hm2⟩)
-
 /-! ## Directed pieces of a walk -/
 
 lemma exists_ascWalk {Z : Finset V} : ∀ {m w : V}, m ∈ G.unblockedAnc Z w →
@@ -693,14 +642,11 @@ lemma reach_of_activeBi {Z : Finset V} {S : Set V} (hS : G.IsZClosed Z S) :
 section
 variable [DecidableEq V]
 
-lemma zClosure_eq_empty {Z : Finset V} {s : V} (hs : s ∈ Z) : G.zClosure Z s = ∅ := by
-  simp [zClosure, hs]
-
 /-- Every vertex of `S_Z(s)` carries an active walk from `s` to it whose terminal condition
 is the one the vertex gets when the walk is continued *into* it. -/
 lemma exists_cert {Z : Finset V} {s : V} (hs : s ∉ Z) :
     ∀ u ∈ G.zClosure Z s, ∃ p : G.OWalk s u, p.ActiveBi Z false true := by
-  refine zClosure_induction hs ?_ ?_
+  refine zClosure_induction ?_ ?_
   · intro u hu
     obtain ⟨p, hopen, hend, -⟩ := exists_descWalk hu
     have huZ : u ∉ Z := by
@@ -738,17 +684,11 @@ lemma exists_cert {Z : Finset V} {s : V} (hs : s ∉ Z) :
       rw [hdend huw]
       exact huZ
 
-/-! ## The interface consumed by `Separation.lean`
-
-The `[Fintype V]` hypothesis of these four statements is inherited from the surrounding
-development and is not used by any of the proofs (the walk-shortening argument runs by
-strong induction on the walk's length, not by finiteness of `V`); it is kept so that the
-statements read exactly as `Separation.lean` and the audit trail expect. -/
+/-! ## The interface consumed by `Separation.lean` -/
 
 section Interface
-set_option linter.unusedSectionVars false
-variable [Fintype V]
 
+omit [DecidableEq V] in
 /-- An active walk between `s` and `t` shortens to an active trail: d-separation may
 equivalently be defined through walks. -/
 lemma exists_active_trail_of_active_walk (hG : G.IsAcyclic) {s t : V} {Z : Finset V}
@@ -813,6 +753,47 @@ lemma dSeparated_iff_disjoint_zClosureSet (hG : G.IsAcyclic) (V₁ V₂ V₃ : F
     have m2 : x ∈ G.zClosureSet V₃ V₂ := by
       simp only [zClosureSet, Set.mem_iUnion, exists_prop]; exact ⟨t, ht, hx2⟩
     exact h m1 m2
+
+/-! ## The local Markov property (graph side)
+
+The d-separation the "I-map implies factorization" theorem of `PerfectMap.lean` consumes.
+It is proved from the `Z`-closure criterion above rather than from trails, which is the
+standing preference for new d-separation facts. -/
+
+/-- **Local Markov property (graph side).**  A node `v` is d-separated, given its parents,
+from every set `N` of nodes that are neither `v`, nor descendants of `v`, nor parents of
+`v`. -/
+lemma dSeparated_singleton_parents [Fintype V] [DecidableRel G.Adj] (hG : G.IsAcyclic)
+    (v : V) (N : Finset V)
+    (hN : ∀ u ∈ N, u ≠ v ∧ ¬ G.IsAncestor v u ∧ u ∉ G.parents v) :
+    G.DSeparated {v} N (G.parents v) := by
+  rw [dSeparated_iff_disjoint_zClosureSet hG]
+  have hclosed : G.IsZClosed (G.parents v) ({v} : Set V) := by
+    rintro w hw ⟨m, hm1, hm2⟩
+    rw [Set.mem_singleton_iff] at hm2
+    subst hm2
+    exact absurd hm1 (notMem_unblockedAnc_of_mem_parents hG hw)
+  have hsub : G.zClosure (G.parents v) v ⊆ {v} :=
+    zClosure_subset hclosed (unblockedAnc_parents_self (G := G) v).subset
+  have hne : ∀ u ∈ N, v ∉ G.zClosure (G.parents v) u := by
+    intro u hu hv
+    obtain ⟨hune, hnanc, -⟩ := hN u hu
+    refine zClosure_induction (P := fun m => m ≠ v) ?_ ?_ v hv rfl
+    · rintro m hm rfl
+      rcases Relation.reflTransGen_iff_eq_or_transGen.mp
+        (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hm) with h | h
+      · exact hune h
+      · exact hnanc h
+    · rintro w hw m hm _ rfl
+      exact notMem_unblockedAnc_of_mem_parents hG hw hm
+  rw [Set.disjoint_left]
+  intro a ha hb
+  obtain ⟨s, hs, has⟩ := Set.mem_iUnion₂.mp ha
+  obtain ⟨t, ht, hat⟩ := Set.mem_iUnion₂.mp hb
+  rw [Finset.mem_singleton] at hs
+  subst hs
+  rw [Set.mem_singleton_iff.mp (hsub has)] at hat
+  exact hne t ht hat
 
 end Interface
 

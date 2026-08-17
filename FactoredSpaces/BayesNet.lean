@@ -15,11 +15,13 @@ observation variable `X = (X_v)_v`, factorization of a distribution over `G`
 (Proposition 5.4) and the ancestor relation (Proposition 5.6).
 -/
 
-universe u
+universe u w
 
 /-! ## DAGs (generic vocabulary, in the root `Digraph` namespace) -/
 
 namespace Digraph
+
+section
 
 variable {V : Type u} (G : Digraph V)
 
@@ -45,49 +47,128 @@ def parents [Fintype V] [DecidableRel G.Adj] (v : V) : Finset V :=
 lemma mem_parents [Fintype V] [DecidableRel G.Adj] {u v : V} : u ∈ G.parents v ↔ G.Adj u v := by
   simp [parents]
 
+end
+
+/-! ### Consequences of acyclicity
+
+The one-line facts every file of §5.2 uses: an edge has distinct endpoints, is not
+reversible, and its head is not an ancestor-or-self of its tail. -/
+
+section Acyclic
+
+variable {V : Type u} {G : Digraph V}
+
+/-- An edge of an acyclic digraph has distinct endpoints. -/
+lemma IsAcyclic.ne_of_adj (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) : u ≠ v := by
+  rintro rfl
+  exact hG u (Relation.TransGen.single h)
+
+/-- An edge of an acyclic digraph has no reverse edge. -/
+lemma IsAcyclic.not_adj_symm (hG : G.IsAcyclic) {a b : V} (h : G.Adj a b) : ¬ G.Adj b a :=
+  fun h' => hG a ((Relation.TransGen.single h).trans (Relation.TransGen.single h'))
+
+/-- The head of an edge is neither the tail nor an ancestor of the tail. -/
+lemma IsAcyclic.not_ancestor_of_adj (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) :
+    ¬ (v = u ∨ G.IsAncestor v u) := by
+  rintro (rfl | hvu)
+  · exact hG _ (Relation.TransGen.single h)
+  · exact hG v (hvu.trans (Relation.TransGen.single h))
+
+end Acyclic
+
+/-! ### Parents, depth and ancestral closure
+
+`depth` is strictly increasing along edges, so it is a topological order on an acyclic
+`G`; ancestrally closed sets are the sets the chain rule of
+`FactoredSpaces.prob_agreeOn_eq_prod` recurses on, by removing a node of maximal depth. -/
+
+section Depth
+
+variable {V : Type u} [Fintype V] {G : Digraph V} [DecidableRel G.Adj]
+
+/-- No vertex of an acyclic digraph is one of its own parents. -/
+lemma notMem_parents_self (hG : G.IsAcyclic) (v : V) : v ∉ G.parents v := fun h =>
+  hG v (Relation.TransGen.single ((mem_parents G).mp h))
+
+/-- The depth of a node: `0` at the sources, one more than the deepest parent elsewhere.
+`depth_lt` makes it a topological order on an acyclic `G`. -/
+noncomputable def depth (hG : G.IsAcyclic) : V → ℕ :=
+  hG.wf.fix fun v ih => (G.parents v).attach.sup fun u => ih u.1 ((mem_parents G).mp u.2) + 1
+
+lemma depth_eq (hG : G.IsAcyclic) (v : V) :
+    depth hG v = (G.parents v).attach.sup fun u => depth hG u.1 + 1 := by
+  conv_lhs => rw [depth]
+  rw [WellFounded.fix_eq]
+  rfl
+
+lemma depth_lt (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) : depth hG u < depth hG v := by
+  rw [depth_eq hG v]
+  exact lt_of_lt_of_le (Nat.lt_succ_self _)
+    (Finset.le_sup (f := fun w : {w // w ∈ G.parents v} => depth hG w.1 + 1)
+      (Finset.mem_attach _ ⟨u, (mem_parents G).mpr h⟩))
+
+lemma depth_lt_of_isAncestor (hG : G.IsAcyclic) {u v : V} (h : G.IsAncestor u v) :
+    depth hG u < depth hG v := by
+  induction h with
+  | single h => exact depth_lt hG h
+  | tail _ h ih => exact ih.trans (depth_lt hG h)
+
+variable (G) in
+/-- A set of nodes is *ancestrally closed* if it contains the parents of each of its
+members.  `Finset.univ` is, and removing a node of maximal depth preserves it, which is
+the recursion the chain rule of `FactoredSpaces.prob_agreeOn_eq_prod` runs on. -/
+def AncClosed (S : Finset V) : Prop :=
+  ∀ v ∈ S, G.parents v ⊆ S
+
+end Depth
+
 end Digraph
 
 namespace FactoredSpaces
 
-/-! ## Auxiliary facts about distributions and histories
+/-! ## Families of variables
 
-Generic statements used below that are not part of the paper's §5.2 vocabulary; they are
-private to this file (`Dist`-level product identities and one reformulation of `history`).
--/
+A factored space model observes `Ω` through a *family* `X = (X_w)_{w∈W}` of variables;
+`famVar` is the subfamily `X_S` and `famJoint` the joint variable `(X_w)_{w∈W}`.  The node
+variables of a DAG (below) are the case `W = V`, and `nodesVar`/`jointVar` are literally
+`famVar`/`famJoint` applied to them, so Proposition 5.5 and Definition 5.7 speak about the
+same functions. -/
 
-section Aux
+section Family
 
-universe uI vΩ
+variable {I : Type*} {Ω : I → Type*} {W : Type*} {Val : W → Type*}
 
-variable {S : Type uI} [Fintype S]
+/-- The subfamily `X_S = (X_w)_{w∈S}` of a family of variables `X = (X_w)_{w∈W}` on `Ω`. -/
+def famVar (X : ∀ w : W, Pt Ω → Val w) (S : Finset W) : Pt Ω → PtOn Val S :=
+  fun ω w => X w ω
 
-variable {I : Type uI} [DecidableEq I] [Fintype I] {Ω : I → Type vΩ} [∀ i, Fintype (Ω i)]
+/-- The joint variable `(X_w)_{w∈W} : Ω → ×_w Val_w` of a family — the observation variable
+of the model `(Ω, X)`. -/
+def famJoint (X : ∀ w : W, Pt Ω → Val w) : Pt Ω → Pt Val := fun ω w => X w ω
 
-variable {α : Type*}
-
-end Aux
+end Family
 
 /-! ## The factored space of a DAG -/
 
 section Construction
 
 variable {V : Type u} [Fintype V] [DecidableEq V] (G : Digraph V) [DecidableRel G.Adj]
-  (Val : V → Type u) [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
+  (Val : V → Type w) [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
 
 /-- The paper's `Val_{pa(v)}`: assignments of values to the parents of `v`.  (`PtOn Val
 (G.parents v)` — the joint value space `Val = ×_v Val_v` is itself the point type
 `Pt Val`, so the §4 projection vocabulary applies to it.) -/
-abbrev ParentVals (v : V) : Type u := PtOn Val (G.parents v)
+abbrev ParentVals (v : V) : Type max u w := PtOn Val (G.parents v)
 
 /-- The parent configuration `x_pa(v)` of a joint value `x ∈ Val`. -/
 def parentConfig (x : Pt Val) (v : V) : ParentVals G Val v := proj (G.parents v) x
 
 /-- The index set `I = ⋃_{v∈V} I_v` with `I_v = {(v, x_pa(v)) | x_pa(v) ∈ Val_pa(v)}`. -/
-abbrev bnIndex : Type u := Σ v : V, ParentVals G Val v
+abbrev bnIndex : Type max u w := Σ v : V, ParentVals G Val v
 
 /-- The factors `Ω^G_{(v, x_pa(v))} = Val_v`; the factored space constructed from `G` is
 `Pt (bnFactor G Val)`. -/
-abbrev bnFactor : bnIndex G Val → Type u := fun i => Val i.1
+abbrev bnFactor : bnIndex G Val → Type w := fun i => Val i.1
 
 variable {G Val}
 
@@ -105,32 +186,97 @@ lemma nodeVar_apply (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val)) :
   rfl
 
 /-- The joint node variable `X = (X_v)_{v∈V} : Ω^G → Val`, the observation variable `O` of
-the factored space model `M^G = (Ω^G, X)` constructed from `G` (§5.2). -/
+the factored space model `M^G = (Ω^G, X)` constructed from `G` (§5.2) — the family
+`(X_v)_{v∈V}` read as one variable. -/
 noncomputable def jointVar (hG : G.IsAcyclic) : Pt (bnFactor G Val) → Pt Val :=
-  fun ω v => nodeVar hG v ω
+  famJoint (nodeVar hG)
 
 /-- The family `X_S = (X_v)_{v∈S}` for a set of nodes `S ⊆ V`. -/
 noncomputable def nodesVar (hG : G.IsAcyclic) (S : Finset V) : Pt (bnFactor G Val) → PtOn Val S :=
-  fun ω v => nodeVar hG v ω
+  famVar (nodeVar hG) S
+
+/-! ### Reading off the node variables
+
+`X_v(ω)` is a single table lookup, at the index `(v, X_pa(v)(ω))` that the joint value
+`X(ω)` realizes at `v` (`nodeVar_eq_idxAt`).  Everything downstream constructs points of
+`Ω^G` by prescribing those lookups, so this is the API the whole of §5.2 reads `nodeVar`
+through; the evaluation principle is `nodeVar_eq_of_diag`. -/
+
+variable (G Val) in
+/-- The index `(v, x_pa(v))` that a joint value `x` realizes at `v`. -/
+def idxAt (x : Pt Val) (v : V) : bnIndex G Val := ⟨v, parentConfig G Val x v⟩
 
 omit [DecidableEq V] [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)] in
-lemma nodesVar_eq_proj_comp (hG : G.IsAcyclic) (S : Finset V) :
-    nodesVar (Val := Val) hG S = proj S ∘ jointVar hG := rfl
+@[simp] lemma idxAt_fst (x : Pt Val) (v : V) : (idxAt G Val x v).1 = v := rfl
 
-/-! ### Reading off the node variables (private) -/
+omit [DecidableEq V] [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)] in
+/-- Two lookups at the same node with equal parent configurations agree.  (Stated
+separately because rewriting the index of a dependent lookup `ω i` fails the motive
+check.) -/
+lemma table_congr (ω : Pt (bnFactor G Val)) {q : V} {c d : ParentVals G Val q} (h : c = d) :
+    ω ⟨q, c⟩ = ω ⟨q, d⟩ := by cases h; rfl
 
-omit [DecidableEq V] in
-/-- A vertex is not its own parent. -/
-private lemma not_mem_parents_self (hG : G.IsAcyclic) (v : V) : v ∉ G.parents v := fun h =>
-  hG v (Relation.TransGen.single ((Digraph.mem_parents G).mp h))
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+/-- If the parent configuration seen at `v` is `c`, then `X_v` reads off the factor
+`(v, c)`. -/
+lemma nodeVar_eq_coord (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val))
+    (c : ParentVals G Val v) (hc : parentConfig G Val (jointVar hG ω) v = c) :
+    nodeVar hG v ω = ω ⟨v, c⟩ := by
+  rw [nodeVar_apply, show (fun u : ↥(G.parents v) => nodeVar hG (u : V) ω) = c from hc]
 
-omit [Fintype V] [DecidableEq V] [DecidableRel G.Adj] in
-/-- The head of an edge is neither the tail nor an ancestor of the tail. -/
-private lemma not_ancestor_of_adj (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) :
-    ¬ (v = u ∨ G.IsAncestor v u) := by
-  rintro (rfl | hvu)
-  · exact hG _ (Relation.TransGen.single h)
-  · exact hG v (hvu.trans (Relation.TransGen.single h))
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+/-- `X_v(ω) = ω_{(v, X_pa(v)(ω))}`: the index consulted at `v` is the one realized by the
+joint value `X(ω)`. -/
+lemma nodeVar_eq_idxAt (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val)) :
+    nodeVar hG v ω = ω (idxAt G Val (jointVar hG ω) v) :=
+  nodeVar_eq_coord hG v ω _ rfl
+
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+/-- A node whose table is constant takes that constant value. -/
+lemma nodeVar_eq_of_const (hG : G.IsAcyclic) {ω : Pt (bnFactor G Val)} {q : V} {c : Val q}
+    (h : ∀ y : ParentVals G Val q, ω ⟨q, y⟩ = c) : nodeVar hG q ω = c := by
+  rw [nodeVar_eq_idxAt]; exact h _
+
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+/-- **The evaluation principle.**  If `ω` returns `x_q` at every index realized by `x`,
+then `X(ω) = x`. -/
+lemma nodeVar_eq_of_diag (hG : G.IsAcyclic) {x : Pt Val} {ω : Pt (bnFactor G Val)}
+    (h : ∀ q, ω (idxAt G Val x q) = x q) (q : V) : nodeVar hG q ω = x q := by
+  induction q using hG.wf.induction with
+  | _ q ih =>
+    have hc : parentConfig G Val (jointVar hG ω) q = parentConfig G Val x q :=
+      funext fun p => ih p.1 ((Digraph.mem_parents G).mp p.2)
+    rw [nodeVar_eq_idxAt]
+    exact (table_congr ω hc).trans (h q)
+
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+lemma jointVar_eq_of_diag (hG : G.IsAcyclic) {x : Pt Val} {ω : Pt (bnFactor G Val)}
+    (h : ∀ q, ω (idxAt G Val x q) = x q) : jointVar hG ω = x :=
+  funext (nodeVar_eq_of_diag hG h)
+
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+/-- The set identity behind Lemma B.2: `{X = x} = {ω | ∀ v, ω_{(v, x_pa(v))} = x_v}`. -/
+lemma jointVar_eq_iff (hG : G.IsAcyclic) (ω : Pt (bnFactor G Val)) (x : Pt Val) :
+    jointVar hG ω = x ↔ ∀ v, ω (idxAt G Val x v) = x v := by
+  refine ⟨fun hj v => ?_, jointVar_eq_of_diag hG⟩
+  have hc : parentConfig G Val x v = parentConfig G Val (jointVar hG ω) v := by rw [hj]
+  exact (table_congr ω hc).trans ((nodeVar_eq_idxAt hG v ω).symm.trans (congrFun hj v))
+
+variable (G Val) in
+/-- The "constant table" `ω_x`, with every factor of `I_v` holding `x_v`; it satisfies
+`X(ω_x) = x`. -/
+def constTable (x : Pt Val) : Pt (bnFactor G Val) := fun i => x i.1
+
+omit [DecidableEq V] [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)] in
+@[simp] lemma constTable_apply (x : Pt Val) (i : bnIndex G Val) :
+    constTable G Val x i = x i.1 := rfl
+
+omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
+lemma jointVar_constTable (hG : G.IsAcyclic) (x : Pt Val) :
+    jointVar hG (constTable G Val x) = x :=
+  jointVar_eq_of_diag hG fun _ => rfl
+
+/-! ### Private helpers -/
 
 omit [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)] in
 /-- Every parent configuration is realized by a joint value. -/
@@ -156,7 +302,7 @@ private lemma exists_parentConfig_val (hG : G.IsAcyclic) (x₀ : Pt Val) (v : V)
     intro h
     have hmem := u.2
     rw [h] at hmem
-    exact not_mem_parents_self hG v hmem
+    exact Digraph.notMem_parents_self hG v hmem
   show Function.update x v a (u : V) = y u
   rw [Function.update_of_ne hu]
   exact congrFun hx u
@@ -181,37 +327,6 @@ private lemma nodeVar_congr (hG : G.IsAcyclic) (ω ω' : Pt (bnFactor G Val)) (v
     rw [key]
     exact h ⟨v, _⟩ (Or.inl rfl)
 
-omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
-/-- The set identity behind Lemma B.2: `{X = x} = {ω | ∀ v, ω_{(v, x_pa(v))} = x_v}`. -/
-private lemma jointVar_eq_iff (hG : G.IsAcyclic) (ω : Pt (bnFactor G Val)) (x : Pt Val) :
-    jointVar hG ω = x ↔ ∀ v, ω ⟨v, parentConfig G Val x v⟩ = x v := by
-  constructor
-  · intro hj v
-    have h1 : ∀ u, nodeVar hG u ω = x u := fun u => congrFun hj u
-    have h2 : (fun u : ↥(G.parents v) => nodeVar hG (u : V) ω) = parentConfig G Val x v := by
-      funext u; exact h1 u
-    rw [← h2, ← nodeVar_apply hG v ω]
-    exact h1 v
-  · intro h
-    funext v
-    show nodeVar hG v ω = x v
-    induction v using hG.wf.induction with
-    | _ v ih =>
-      rw [nodeVar_apply]
-      have h2 : (fun u : ↥(G.parents v) => nodeVar hG (u : V) ω) = parentConfig G Val x v := by
-        funext u
-        exact ih (u : V) ((Digraph.mem_parents G).mp u.2)
-      rw [h2]
-      exact h v
-
-omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
-/-- If the parent configuration seen at `v` is `c`, then `X_v` reads off the factor
-`(v, c)`. -/
-private lemma nodeVar_eq_coord (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val))
-    (c : ParentVals G Val v) (hc : parentConfig G Val (jointVar hG ω) v = c) :
-    nodeVar hG v ω = ω ⟨v, c⟩ := by
-  rw [nodeVar_apply, show (fun u : ↥(G.parents v) => nodeVar hG (u : V) ω) = c from hc]
-
 omit [(v : V) → Fintype (Val v)] in
 /-- Changing a factor of `I_v` does not change the parent configuration seen at `v`. -/
 private lemma parentConfig_jointVar_update (hG : G.IsAcyclic) (v : V)
@@ -225,7 +340,7 @@ private lemma parentConfig_jointVar_update (hG : G.IsAcyclic) (v : V)
   have hne : j ≠ i := by
     intro hji
     rw [hji, hi] at hj
-    exact not_ancestor_of_adj hG ((Digraph.mem_parents G).mp u.2) hj
+    exact hG.not_ancestor_of_adj ((Digraph.mem_parents G).mp u.2) hj
   exact Function.update_of_ne hne _ _
 
 omit [(v : V) → Fintype (Val v)] in
@@ -238,21 +353,11 @@ private lemma nodeVar_update_eq (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G 
   rw [hc] at h
   rw [nodeVar_eq_coord hG v _ c h, Function.update_self]
 
-variable (G Val) in
-/-- The "constant table" `ω_x`, with every factor of `I_v` holding `x_v`; it satisfies
-`X(ω_x) = x`. -/
-private def constTable (x : Pt Val) : Pt (bnFactor G Val) := fun i => x i.1
-
-omit [DecidableEq V] [(v : V) → Fintype (Val v)] [(v : V) → DecidableEq (Val v)] in
-private lemma jointVar_constTable (hG : G.IsAcyclic) (x : Pt Val) :
-    jointVar hG (constTable G Val x) = x :=
-  (jointVar_eq_iff hG _ x).mpr fun _ => rfl
-
 /-! ## Factorization over a DAG (`dd:cpd`) -/
 
 /-- A family of conditional probability distributions: for every node `v` and parent
 configuration `x_pa(v)`, a distribution `P(· | x_pa(v))` on `Val_v`. -/
-abbrev CPD : Type u := ∀ v : V, ParentVals G Val v → Dist (Val v)
+abbrev CPD : Type max u w := ∀ v : V, ParentVals G Val v → Dist (Val v)
 
 variable (G Val) in
 /-- **`P` factorizes over `G`** (§5.2, eq. (4)): `P(x) = ∏_v P(x_v | x_pa(v))` for all
@@ -267,6 +372,10 @@ def FactorizesOverDAG (P : Dist (Pt Val)) : Prop :=
 variable (G Val) in
 /-- The set `Δ^*(G)` of distributions on `Val` that factorize over `G` (Lemma 5.3). -/
 def dagFactorizing : Set (Dist (Pt Val)) := {P | FactorizesOverDAG G Val P}
+
+omit [∀ v, DecidableEq (Val v)] in
+lemma mem_dagFactorizing {P : Dist (Pt Val)} :
+    P ∈ dagFactorizing G Val ↔ FactorizesOverDAG G Val P := Iff.rfl
 
 /-- The conditional probabilities `P(x_v | x_pa(v))` of a strictly positive `P` as a CPD
 family — the factors the paper's eq. (4) and Lemma 5.3 write. -/
@@ -348,7 +457,11 @@ x_pa(v))`, i.e. the product over `I` of the CPDs. -/
 noncomputable def tauInv (φ : CPD (G := G) (Val := Val)) : Dist (Pt (bnFactor G Val)) :=
   Dist.prod fun i => φ i.1 i.2
 
-lemma factorizes_tauInv (φ : CPD (G := G) (Val := Val)) : Factorizes (tauInv φ) :=
+/-- **`τ⁻¹` lands in `Δ^F(Ω^G)`** (Lemma 5.3, first claim for `τ⁻¹`): the distribution
+`τ⁻¹(φ)` built from a CPD family is a product over `I`, hence factorizes over `Ω^G`.
+
+Paper node: Lemma 5.3 (§5.2). -/
+theorem factorizes_tauInv (φ : CPD (G := G) (Val := Val)) : Factorizes (tauInv φ) :=
   factorizes_prod _
 
 /-- **`τ` maps `Δ^F(Ω^G)` into `Δ^*(G)`** (Lemma 5.3, first claim).
@@ -374,33 +487,10 @@ theorem tau_tauInv (hG : G.IsAcyclic) {P : Dist (Pt Val)} (φ : CPD (G := G) (Va
 
 /-- `τ` preserves strict positivity. -/
 lemma tau_strictlyPositive (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
-    (_hP : Factorizes PΩ) (hpos : PΩ.StrictlyPositive) : (tau hG PΩ).StrictlyPositive := by
+    (hpos : PΩ.StrictlyPositive) : (tau hG PΩ).StrictlyPositive := by
   intro x
   rw [tau_mass, PΩ.prob_pos_iff]
   exact ⟨constTable G Val x, jointVar_constTable hG x, hpos _⟩
-
-/-- `τ⁻¹` of the conditional probabilities of a strictly positive `P` is strictly positive.
-
-Acyclicity is needed (and is implicit in the paper, which only ever considers DAGs): with
-a self-loop at `v` the event `{X_v = a} ∩ {X_pa(v) = y}` is empty for `a ≠ y_v`, and the
-corresponding conditional probability vanishes. -/
-lemma tauInv_condCPD_strictlyPositive (hG : G.IsAcyclic) (P : Dist (Pt Val))
-    (hpos : P.StrictlyPositive) :
-    (tauInv (condCPD (G := G) P hpos)).StrictlyPositive := by
-  classical
-  intro ω
-  obtain ⟨x₀⟩ := P.nonempty_carrier
-  rw [show (tauInv (condCPD (G := G) P hpos)).mass ω
-      = ∏ i, (condCPD (G := G) P hpos i.1 i.2).mass (ω i) from rfl]
-  refine Finset.prod_pos fun i _ => ?_
-  show 0 < P.condProb {x | x i.1 = ω i} {x | parentConfig G Val x i.1 = i.2}
-  obtain ⟨x, hx1, hx2⟩ := exists_parentConfig_val hG x₀ i.1 i.2 (ω i)
-  rw [Dist.condProb]
-  refine div_pos ?_ ?_
-  · rw [P.prob_pos_iff]
-    exact ⟨x, ⟨hx2, hx1⟩, hpos x⟩
-  · rw [P.prob_pos_iff]
-    exact ⟨x, hx1, hpos x⟩
 
 /-- The conditional probabilities of `τ(P^Ω)` are the marginals of `P^Ω` on the
 corresponding factors — the computation behind the inverse formula of Lemma 5.3. -/
@@ -456,12 +546,12 @@ private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val
   rw [← hPΩ] at hkey
   rw [Dist.condProb, h1, h2, hkey, mul_div_assoc, div_self hEpos.ne', mul_one]
 
-/-- `τ` on the strictly positive factorizing distributions, landing in the strictly positive
+/-- `τ` on the strictly positive members of `Δ^F(Ω^G)`, landing in the strictly positive
 members of `Δ^*(G)`. -/
 noncomputable def tauPos (hG : G.IsAcyclic) :
-    {PΩ : Dist (Pt (bnFactor G Val)) // Factorizes PΩ ∧ PΩ.StrictlyPositive} →
-      {P : Dist (Pt Val) // FactorizesOverDAG G Val P ∧ P.StrictlyPositive} :=
-  fun PΩ => ⟨tau hG PΩ.1, factorizesOverDAG_tau hG PΩ.2.1, tau_strictlyPositive hG PΩ.2.1 PΩ.2.2⟩
+    {PΩ : Dist (Pt (bnFactor G Val)) // PΩ ∈ factorizing (bnFactor G Val) ∧ PΩ.StrictlyPositive} →
+      {P : Dist (Pt Val) // P ∈ dagFactorizing G Val ∧ P.StrictlyPositive} :=
+  fun PΩ => ⟨tau hG PΩ.1, factorizesOverDAG_tau hG PΩ.2.1, tau_strictlyPositive hG PΩ.2.2⟩
 
 /-- **The inverse formula of Lemma 5.3**: for strictly positive factorizing `P^Ω`,
 `τ⁻¹(τ(P^Ω))(ω) = ∏_{(v, x_pa(v)) ∈ I} τ(P^Ω)(ω_{v,x_pa(v)} | x_pa(v)) = P^Ω(ω)`, with the
@@ -470,16 +560,16 @@ factors the genuine conditional probabilities of `τ(P^Ω)`.
 Paper node: Lemma 5.3 (§5.2). -/
 theorem tauInv_condCPD_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) (hpos : PΩ.StrictlyPositive) :
-    tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hP hpos)) = PΩ := by
+    tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos)) = PΩ := by
   have hφ : (fun i : bnIndex G Val =>
-      condCPD (tau hG PΩ) (tau_strictlyPositive hG hP hpos) i.1 i.2)
+      condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos) i.1 i.2)
       = fun i => PΩ.margAt i := by
     funext i
     ext a
     exact condProb_tau_eq hG hP hpos i.1 i.2 a
-  rw [show tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hP hpos))
+  rw [show tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos))
       = Dist.prod (fun i : bnIndex G Val =>
-          condCPD (tau hG PΩ) (tau_strictlyPositive hG hP hpos) i.1 i.2) from rfl, hφ]
+          condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos) i.1 i.2) from rfl, hφ]
   exact hP.eq_prod_margAt.symm
 
 private lemma tauInv_condCPD_congr {P Q : Dist (Pt Val)} (hP : P.StrictlyPositive)
@@ -590,7 +680,7 @@ private lemma history_nodeVar_mono_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcy
   obtain ⟨ω, ω', hoff, hne⟩ := (mem_history_iff_exists_ne _ _).mp hi
   have hiv : i.1 ≠ v := by
     intro h
-    exact not_ancestor_of_adj hG hadj (by rw [← h]; exact history_nodeVar_subset hG w hi)
+    exact hG.not_ancestor_of_adj hadj (by rw [← h]; exact history_nodeVar_subset hG w hi)
   set d : ParentVals G Val v := parentConfig G Val (jointVar hG ω) v with hd
   set d' : ParentVals G Val v := parentConfig G Val (jointVar hG ω') v with hd'
   have hdd : d ≠ d' := fun h => hne (congrFun h ⟨w, (Digraph.mem_parents G).mpr hadj⟩)
@@ -655,6 +745,12 @@ lemma mem_history_nodeVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) (v 
 iff `X_{v₁} <_{Ω^G} X_{v₂}`.  Needs every `Val_v` to have at least two elements (the
 paper's standing assumption on `Val`; with a one-element `Val_v` the node `v` carries no
 randomness and drops out of every history).
+
+Applying this to a concrete DAG, supply the value family explicitly — `… (Val := Val) …` —
+rather than leaving it to be inferred from the expected type: with `Val` a metavariable the
+unifier compares the `Fintype`/`DecidableEq` instances of `Pt (bnFactor G Val)` by
+evaluating them, and exceeds the heartbeat limit.  `FactoredSpaces/Examples.lean` shows the
+working idiom.
 
 Paper node: Proposition 5.6 (§5.2). -/
 theorem isAncestor_iff_strictlyBefore [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)

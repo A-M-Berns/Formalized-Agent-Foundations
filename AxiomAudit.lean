@@ -1768,9 +1768,10 @@ open FactoredSpaces in
   structIndepGiven_iff_forall_condIndepVar structIndepGiven_of_open
   -- §5.1: Definition 5.1, Proposition 5.2
   IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid
-  isCompositionalSemigraphoid_structIndepRel
+  isCompositionalSemigraphoid_structIndepRel not_isGraphoid_structIndepRel
   -- §5.2 / Appendix B: Lemma 5.3, B.2; Propositions 5.4, 5.5, 5.6, 5.8; Definition 5.7
-  prob_jointVar_fiber factorizesOverDAG_tau tau_tauInv tauPos_bijective tauInv_condCPD_tau
+  prob_jointVar_fiber factorizesOverDAG_tau factorizes_tauInv tau_tauInv tauPos_bijective
+  tauInv_condCPD_tau
   factorizesOverDAG_iff_isFactoredSpaceModel isAncestor_iff_strictlyBefore
   dSeparated_iff_structIndepGiven
   IsPerfectMapDAG IsPerfectMapFSM isPerfectMapFSM_nodeVar_of_isPerfectMapDAG

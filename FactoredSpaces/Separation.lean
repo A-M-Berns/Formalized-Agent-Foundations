@@ -14,15 +14,21 @@ probabilistic is used, and no external theorem is cited.
 
 namespace FactoredSpaces
 
-universe u
+universe u w
 
 variable {V : Type u} [Fintype V] [DecidableEq V] {G : Digraph V} [DecidableRel G.Adj]
-  {Val : V → Type u} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
+  {Val : V → Type w} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
 
 /-- **d-separation.** For sets of nodes `V₁, V₂, V₃ ⊆ V`: `V₁` and `V₂` are d-separated
 given `V₃` in `G` iff `X_{V₁}` and `X_{V₂}` are structurally independent given `X_{V₃}` in
 `M^G`.  Needs every `Val_v` to have at least two elements (the paper's standing
 assumption; a one-element `Val_v` makes `v` invisible to the histories).
+
+Applying this to a concrete DAG, supply the value family explicitly — `… (Val := Val) …` —
+rather than leaving it to be inferred from the expected type: with `Val` a metavariable the
+unifier compares the `Fintype`/`DecidableEq` instances of `Pt (bnFactor G Val)` by
+evaluating them, and exceeds the heartbeat limit.  `FactoredSpaces/Examples.lean` shows the
+working idiom.
 
 Paper node: Proposition 5.5 (§5.2). -/
 theorem dSeparated_iff_structIndepGiven [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)

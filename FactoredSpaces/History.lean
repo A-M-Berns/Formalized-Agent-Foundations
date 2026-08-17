@@ -21,11 +21,6 @@ variable {I : Type u} [DecidableEq I] {Ω : I → Type v}
 def splice (J : Finset I) (S T : Set (Pt Ω)) : Set (Pt Ω) :=
   {ω | ∃ a ∈ S, ∃ b ∈ T, ω = J.piecewise a b}
 
-/-- `Finset.piecewise_same` at `Pt Ω`, retained only for the call site in
-`Completeness.lean`; use `Finset.piecewise_same` directly. -/
-lemma piecewise_self (J : Finset I) (a : Pt Ω) : J.piecewise a a = a :=
-  Finset.piecewise_same J a
-
 lemma mem_splice_iff {J : Finset I} {S T : Set (Pt Ω)} {ω : Pt Ω} :
     ω ∈ splice J S T ↔ (∃ a ∈ S, ∀ i ∈ J, ω i = a i) ∧ (∃ b ∈ T, ∀ i ∉ J, ω i = b i) := by
   constructor

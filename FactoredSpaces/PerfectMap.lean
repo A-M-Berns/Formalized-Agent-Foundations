@@ -15,130 +15,27 @@ E7): a perfect map `G` of `P` makes `P` *factorize* over `G`, which is what make
 factored space *model* of `P` (Proposition 5.4).  That is the standard "I-map implies
 factorization" theorem (Koller–Friedman, Theorem 3.1), proved here as
 `factorizesOverDAG_of_isIMapDAG` from the local Markov d-separations
-(`Digraph.dSeparated_singleton_parents`) and the chain rule along the DAG's depth order.
+(`Digraph.dSeparated_singleton_parents`, `ActiveTrails.lean`) and the chain rule along the
+DAG's depth order (`Digraph.depth`, `Digraph.AncClosed`, `BayesNet.lean`).
 -/
 
-universe u
-
-/-! ## Depth and the local Markov property
-
-The two purely graph-theoretic ingredients of the factorization theorem: a depth function
-strictly increasing along edges — the topological order the chain rule runs in — and the
-local Markov d-separations "`v` is d-separated from any set of non-descendants given
-`pa(v)`". -/
-
-namespace Digraph
-
-section LocalMarkov
-
-variable {V : Type u} [Fintype V] [DecidableEq V] {G : Digraph V} [DecidableRel G.Adj]
-
-/-- The depth of a node: `0` at the sources, one more than the deepest parent elsewhere.
-`depth_lt` makes it a topological order on an acyclic `G`. -/
-noncomputable def depth (hG : G.IsAcyclic) : V → ℕ :=
-  hG.wf.fix fun v ih => (G.parents v).attach.sup fun u => ih u.1 ((mem_parents G).mp u.2) + 1
-
-omit [DecidableEq V] in
-lemma depth_eq (hG : G.IsAcyclic) (v : V) :
-    depth hG v = (G.parents v).attach.sup fun u => depth hG u.1 + 1 := by
-  conv_lhs => rw [depth]
-  rw [WellFounded.fix_eq]
-  rfl
-
-omit [DecidableEq V] in
-lemma depth_lt (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) : depth hG u < depth hG v := by
-  rw [depth_eq hG v]
-  exact lt_of_lt_of_le (Nat.lt_succ_self _)
-    (Finset.le_sup (f := fun w : {w // w ∈ G.parents v} => depth hG w.1 + 1)
-      (Finset.mem_attach _ ⟨u, (mem_parents G).mpr h⟩))
-
-omit [DecidableEq V] in
-lemma depth_lt_of_isAncestor (hG : G.IsAcyclic) {u v : V} (h : G.IsAncestor u v) :
-    depth hG u < depth hG v := by
-  induction h with
-  | single h => exact depth_lt hG h
-  | tail _ h ih => exact ih.trans (depth_lt hG h)
-
-/-- A set of nodes is *ancestrally closed* if it contains the parents of each of its
-members.  `Finset.univ` is, and removing a node of maximal depth preserves it, which is
-the recursion the chain rule of `FactoredSpaces.prob_agreeOn_eq_prod` runs on. -/
-def AncClosed (G : Digraph V) [DecidableRel G.Adj] (S : Finset V) : Prop :=
-  ∀ v ∈ S, G.parents v ⊆ S
-
-omit [DecidableEq V] in
-/-- No vertex of an acyclic digraph is one of its own parents. -/
-lemma notMem_parents_self (hG : G.IsAcyclic) (v : V) : v ∉ G.parents v := fun h =>
-  hG v (Relation.TransGen.single ((mem_parents G).mp h))
-
-omit [DecidableEq V] in
-/-- With `Z = pa(v)` every edge into `v` is blocked at once, so `A_Z(v) = {v}`. -/
-lemma unblockedAnc_parents_self (v : V) :
-    G.unblockedAnc (G.parents v) v = {v} := by
-  ext u
-  constructor
-  · intro hu
-    rcases Relation.ReflTransGen.cases_tail hu with h | ⟨c, _, hc⟩
-    · exact h ▸ rfl
-    · exact absurd ((mem_parents G).mpr hc.1) hc.2
-  · rintro rfl
-    exact mem_unblockedAnc_self _ _
-
-omit [DecidableEq V] in
-/-- With `Z = pa(v)` no `A_Z(w)` for `w ∈ Z` contains `v`: that would close a cycle. -/
-lemma notMem_unblockedAnc_of_mem_parents (hG : G.IsAcyclic) {v w : V}
-    (hw : w ∈ G.parents v) : v ∉ G.unblockedAnc (G.parents v) w := fun hv =>
-  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hv)
-    ((mem_parents G).mp hw))
-
-/-- **Local Markov property (graph side).**  A node `v` is d-separated, given its parents,
-from every set `N` of nodes that are neither `v`, nor descendants of `v`, nor parents of
-`v`.  This is the d-separation the "I-map implies factorization" theorem consumes. -/
-lemma dSeparated_singleton_parents (hG : G.IsAcyclic) (v : V) (N : Finset V)
-    (hN : ∀ u ∈ N, u ≠ v ∧ ¬ G.IsAncestor v u ∧ u ∉ G.parents v) :
-    G.DSeparated {v} N (G.parents v) := by
-  rw [dSeparated_iff_disjoint_zClosureSet hG]
-  have hclosed : G.IsZClosed (G.parents v) ({v} : Set V) := by
-    rintro w hw ⟨m, hm1, hm2⟩
-    rw [Set.mem_singleton_iff] at hm2
-    subst hm2
-    exact absurd hm1 (notMem_unblockedAnc_of_mem_parents hG hw)
-  have hsub : G.zClosure (G.parents v) v ⊆ {v} :=
-    zClosure_subset hclosed (unblockedAnc_parents_self (G := G) v).subset
-  have hne : ∀ u ∈ N, v ∉ G.zClosure (G.parents v) u := by
-    intro u hu hv
-    obtain ⟨hune, hnanc, hupa⟩ := hN u hu
-    refine zClosure_induction (P := fun m => m ≠ v) hupa ?_ ?_ v hv rfl
-    · rintro m hm rfl
-      rcases Relation.reflTransGen_iff_eq_or_transGen.mp
-        (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hm) with h | h
-      · exact hune h
-      · exact hnanc h
-    · rintro w hw m hm _ rfl
-      exact notMem_unblockedAnc_of_mem_parents hG hw hm
-  rw [Set.disjoint_left]
-  intro a ha hb
-  obtain ⟨s, hs, has⟩ := Set.mem_iUnion₂.mp ha
-  obtain ⟨t, ht, hat⟩ := Set.mem_iUnion₂.mp hb
-  rw [Finset.mem_singleton] at hs
-  subst hs
-  rw [Set.mem_singleton_iff.mp (hsub has)] at hat
-  exact hne t ht hat
-
-end LocalMarkov
-
-end Digraph
+universe u w
 
 namespace FactoredSpaces
 
 section DAG
 
-variable {V : Type u} [Fintype V] [DecidableEq V] {Val : V → Type u} [∀ v, Fintype (Val v)]
+variable {V : Type u} [Fintype V] [DecidableEq V] {Val : V → Type w} [∀ v, Fintype (Val v)]
 
 /-- **Perfect map (DAG).** `G` (with value space `Val = ×_v Val_v`) is a perfect map of a
 distribution `P` on `Val` if for all sets of nodes `V₁, V₂, V₃ ⊆ V`, `V₁` and `V₂` are
 d-separated given `V₃` in `G` iff `X_{V₁}` and `X_{V₂}` are independent given `X_{V₃}` in
 `P` — the `X_S` being the coordinate projections of the observation space `Val`, which is
 the paper's `Val(X̄) = Obs`.
+
+The paper takes `G` to be a DAG throughout; acyclicity is not part of this definition but
+travels as a separate hypothesis `hG : G.IsAcyclic` on the Proposition 5.8 statements, so
+that the definition itself reads against Definition 5.7 as printed.
 
 Paper node: Definition 5.7 (§5.2). -/
 def IsPerfectMapDAG (G : Digraph V) (P : Dist (Pt Val)) : Prop :=
@@ -149,16 +46,8 @@ end DAG
 
 section FSM
 
-variable {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type u} [∀ i, Fintype (Ω i)]
-variable {W : Type u} [Fintype W] [DecidableEq W] {Val : W → Type u} [∀ w, Fintype (Val w)]
-
-/-- The subfamily `X_S = (X_w)_{w∈S}` of a family of variables `X = (X_w)_{w∈W}` on `Ω`. -/
-def famVar (X : ∀ w : W, Pt Ω → Val w) (S : Finset W) : Pt Ω → PtOn Val S :=
-  fun ω w => X w ω
-
-/-- The joint variable `(X_w)_{w∈W} : Ω → ×_w Val_w` of a family — the observation variable
-of the model `(Ω, X)`. -/
-def famJoint (X : ∀ w : W, Pt Ω → Val w) : Pt Ω → Pt Val := fun ω w => X w ω
+variable {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → Type*} [∀ i, Fintype (Ω i)]
+variable {W : Type*} [Fintype W] [DecidableEq W] {Val : W → Type*} [∀ w, Fintype (Val w)]
 
 /-- **Perfect map (factored space model).** The model `M = (Ω, X)`, `X = (X_w)_{w∈W}` a
 family of variables on `Ω` with joint value space `Val = ×_w Val_w`, is a perfect map of a
@@ -180,7 +69,7 @@ end FSM
 section Expressiveness
 
 variable {V : Type u} [Fintype V] [DecidableEq V] {G : Digraph V} [DecidableRel G.Adj]
-  {Val : V → Type u} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
+  {Val : V → Type w} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
 
 /-! ## From an I-map to a factorization (Koller–Friedman Theorem 3.1)
 
@@ -239,14 +128,15 @@ lemma agreeOn_singleton (v : V) (x : Pt Val) :
 `P`, made total by falling back on the uniform distribution at parent configurations of
 probability zero — where `P` determines nothing (`dd:cpd`).  This is the CPD family
 witnessing `FactorizesOverDAG` in `factorizesOverDAG_of_isIMapDAG`. -/
-noncomputable def cpdOfDist [∀ v, Nonempty (Val v)] (P : Dist (Pt Val)) (v : V)
+noncomputable def cpdOfDist (P : Dist (Pt Val)) (v : V)
     (y : ParentVals G Val v) : Dist (Val v) :=
+  letI : Nonempty (Val v) := ⟨(Classical.choice P.nonempty_carrier) v⟩
   if h : 0 < P.prob (fiber (proj (G.parents v)) y) then
     (condDist P _ h).map fun x => x v
   else Dist.uniform
 
 omit [∀ v, DecidableEq (Val v)] in
-lemma cpdOfDist_mass_of_pos [∀ v, Nonempty (Val v)] {P : Dist (Pt Val)} {v : V} (x : Pt Val)
+lemma cpdOfDist_mass_of_pos {P : Dist (Pt Val)} {v : V} (x : Pt Val)
     (h : 0 < P.prob (agreeOn (G.parents v) x)) :
     (cpdOfDist P v (parentConfig G Val x v)).mass (x v) =
       P.prob (agreeOn ({v} ∪ G.parents v) x) / P.prob (agreeOn (G.parents v) x) := by
@@ -264,7 +154,7 @@ every other member of `S \ {v}` is a non-descendant of `v`, so the local Markov
 d-separation `{v} ⊥ (S \ {v}) \ pa(v) | pa(v)` collapses the conditional on `S \ {v}` onto
 one on `pa(v)`.  Parent configurations of probability zero need no separate treatment: the
 whole prefix then has probability zero and the corresponding factor is zero. -/
-lemma prob_agreeOn_eq_prod [∀ v, Nonempty (Val v)] (hG : G.IsAcyclic) {P : Dist (Pt Val)}
+lemma prob_agreeOn_eq_prod (hG : G.IsAcyclic) {P : Dist (Pt Val)}
     (h : IsIMapDAG G P) (x : Pt Val) :
     ∀ S : Finset V, G.AncClosed S →
       P.prob (agreeOn S x) = ∏ v ∈ S, (cpdOfDist P v (parentConfig G Val x v)).mass (x v) := by
@@ -324,7 +214,7 @@ of the acyclic `G` is a conditional independence of `P`, then `P` factorizes ove
 
 This is the step Proposition 5.8(1) needs and the paper's proof omits
 (`notes/paper-errata.md`, E7). -/
-lemma factorizesOverDAG_of_isIMapDAG [∀ v, Nonempty (Val v)] (hG : G.IsAcyclic)
+lemma factorizesOverDAG_of_isIMapDAG (hG : G.IsAcyclic)
     {P : Dist (Pt Val)} (h : IsIMapDAG G P) : FactorizesOverDAG G Val P := by
   refine ⟨fun v y => cpdOfDist P v y, fun x => ?_⟩
   have hx := prob_agreeOn_eq_prod hG h x Finset.univ fun v _ => Finset.subset_univ _
@@ -350,7 +240,7 @@ Paper node: Proposition 5.8 (§5.2). -/
 theorem exists_isPerfectMapFSM_of_exists_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
     {P : Dist (Pt Val)}
     (h : ∃ (G : Digraph V) (_ : DecidableRel G.Adj), G.IsAcyclic ∧ IsPerfectMapDAG G P) :
-    ∃ (I : Type u) (Ω : I → Type u) (_ : Fintype I) (_ : DecidableEq I)
+    ∃ (I : Type max u w) (Ω : I → Type w) (_ : Fintype I) (_ : DecidableEq I)
       (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P := by
   obtain ⟨G, hdec, hG, hpm⟩ := h
   haveI := hdec
@@ -386,8 +276,8 @@ lemma history_eq_empty_iff {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → T
 Independence of the projections `π_{W_k}` under the law `P^Ω ∘ X⁻¹` of the joint variable
 is independence of the subfamilies `X_{W_k}` under `P^Ω`, because `π_W ∘ X = X_W`: the two
 sides are literally the same identity between probabilities of the same events. -/
-lemma condIndepVar_map_famJoint {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type u}
-    [∀ i, Fintype (Ω i)] {W : Type u} [Fintype W] [DecidableEq W] {Val : W → Type u}
+lemma condIndepVar_map_famJoint {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → Type*}
+    [∀ i, Fintype (Ω i)] {W : Type*} [Fintype W] [DecidableEq W] {Val : W → Type*}
     [∀ w, Fintype (Val w)] (X : ∀ w : W, Pt Ω → Val w) (Q : Dist (Pt Ω))
     (W₁ W₂ W₃ : Finset W) :
     CondIndepVar (Q.map (famJoint X)) (proj W₁) (proj W₂) (proj W₃) ↔
@@ -544,7 +434,7 @@ lemma eq_empty_of_notMem {S : Finset Bool} (h1 : false ∉ S) (h2 : true ∉ S) 
 
 /-- Disjointness of two subsets of the one-element index set is triviality of one of
 them. -/
-lemma disjoint_unit_iff (s t : Finset Unit) : Disjoint s t ↔ s = ∅ ∨ t = ∅ := by
+private lemma disjoint_unit_iff (s t : Finset Unit) : Disjoint s t ↔ s = ∅ ∨ t = ∅ := by
   constructor
   · intro h
     by_cases hs : s = ∅
@@ -712,6 +602,11 @@ space model that is a perfect map of `P` with regard to `(X_v)_v`, but no DAG wi
 `V` that is a perfect map of `P`.  The paper's witness: `Ω = Ω₁ = {0, 1, 2}`,
 `X₁ = U₁`, `X₂ = [U₁ > 0]`, so `X₂ ⊥ X₂ | X₁` holds in `P` and structurally, while no
 graph d-separates `v₂` from itself given `v₁`.
+
+The acyclicity hypothesis on the right-hand side is stated only to match the paper: the
+witness lemma `Prop58Witness.not_isPerfectMapDAG` proves the stronger statement that *no*
+digraph on `V` — acyclic or not — is a perfect map of `P`, since a vertex is never
+d-separated from itself given a set not containing it.
 
 Paper node: Proposition 5.8 (§5.2). -/
 theorem exists_isPerfectMapFSM_not_exists_isPerfectMapDAG :

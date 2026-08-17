@@ -8197,10 +8197,10 @@ endalign*</p>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.factorizesOverDAG_tau</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="5">1 / 5</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.factorizes_tauInv</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem factorizes_tauInv (φ : CPD (G</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.factorizesOverDAG_tau</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) : FactorizesOverDAG G Val (tau hG PΩ)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.tau_tauInv</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem tau_tauInv (hG : G.IsAcyclic) {P : Dist (Pt Val)} (φ : CPD (G</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.tauInv_condCPD_tau</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem tauInv_condCPD_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) (hpos : PΩ.StrictlyPositive) :
-    tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hP hpos)) = PΩ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.tauPos_bijective</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem tauPos_bijective (hG : G.IsAcyclic) : Function.Bijective (tauPos (G</pre></div>
+    tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos)) = PΩ</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.tauPos_bijective</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem tauPos_bijective (hG : G.IsAcyclic) : Function.Bijective (tauPos (G</pre></div>
     </section>
   </div>
 </article>
@@ -8315,7 +8315,7 @@ be a factored space model. Let <math xmlns="http://www.w3.org/1998/Math/MathML" 
     IsPerfectMapFSM (nodeVar (Val</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.exists_isPerfectMapFSM_of_exists_isPerfectMapDAG</code><span class="ep-file">FactoredSpaces/PerfectMap.lean</span></div><pre class="sig">theorem exists_isPerfectMapFSM_of_exists_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
     {P : Dist (Pt Val)}
     (h : ∃ (G : Digraph V) (_ : DecidableRel G.Adj), G.IsAcyclic ∧ IsPerfectMapDAG G P) :
-    ∃ (I : Type u) (Ω : I → Type u) (_ : Fintype I) (_ : DecidableEq I)
+    ∃ (I : Type max u w) (Ω : I → Type w) (_ : Fintype I) (_ : DecidableEq I)
       (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.exists_isPerfectMapFSM_not_exists_isPerfectMapDAG</code><span class="ep-file">FactoredSpaces/PerfectMap.lean</span></div><pre class="sig">theorem exists_isPerfectMapFSM_not_exists_isPerfectMapDAG :
     ∃ (V : Type) (_ : Fintype V) (_ : DecidableEq V) (Val : V → Type) (_ : ∀ v, Fintype (Val v))
       (_ : ∀ v, Nontrivial (Val v)) (P : Dist (Pt Val)),
@@ -9087,4 +9087,4 @@ Then we have <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 -->
 
-<!-- trust-surface-sources: ce008fcb17b4b78ac7b264df28b7176b584146e701871d6a30ee92f3c8062155 -->
+<!-- trust-surface-sources: 32c81085194f90f69aaab008717bf5dc2872bbfdf3f754a7e4a532b54ddfe571 -->

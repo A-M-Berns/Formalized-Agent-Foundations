@@ -485,7 +485,7 @@ theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
     have hdisK : Disintegrates (cohistory A C)ᶜ C := (disintegrates_cohistory A C).compl
     have hspliceK : A ∩ C = splice (cohistory A C)ᶜ (A ∩ C) C := by
       apply Set.Subset.antisymm
-      · exact fun ω hω => ⟨ω, hω, ω, hω.2, (piecewise_self _ ω).symm⟩
+      · exact fun ω hω => ⟨ω, hω, ω, hω.2, (Finset.piecewise_same _ ω).symm⟩
       · rintro ω ⟨a, haAC, b, hbC, rfl⟩
         have hcC : ((cohistory A C)ᶜ).piecewise a b ∈ C := hdisK.splice_mem haAC.2 hbC
         refine ⟨?_, hcC⟩

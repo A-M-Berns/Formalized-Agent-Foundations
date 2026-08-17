@@ -29,7 +29,7 @@ propagates along `D` from a source).  Keeping the dependent index `(v, y : Val_p
 out of every rewrite is what `table_congr` is for.
 -/
 
-universe u
+universe u w
 
 namespace Digraph
 
@@ -54,6 +54,11 @@ def zClosureSet (Z A : Finset V) : Set V := ⋃ a ∈ A, G.zClosure Z a
 variable {G}
 
 omit [DecidableEq V] in
+lemma mem_unblockedAnc_iff {Z : Finset V} {u v : V} :
+    u ∈ G.unblockedAnc Z v ↔
+      Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) u v := Iff.rfl
+
+omit [DecidableEq V] in
 lemma mem_unblockedAnc_self (Z : Finset V) (v : V) : v ∈ G.unblockedAnc Z v :=
   Relation.ReflTransGen.refl
 
@@ -63,6 +68,14 @@ omit [DecidableEq V] in
 lemma unblockedAnc_subset_of_mem {Z : Finset V} {u w : V} (h : u ∈ G.unblockedAnc Z w) :
     G.unblockedAnc Z u ⊆ G.unblockedAnc Z w :=
   fun _ ha => ha.trans h
+
+omit [DecidableEq V] in
+/-- Only the terminal vertex of an unblocked path may lie in `Z`. -/
+lemma not_mem_of_mem_unblockedAnc {Z : Finset V} {u v : V} (h : u ∈ G.unblockedAnc Z v)
+    (hne : u ≠ v) : u ∉ Z := by
+  rcases Relation.ReflTransGen.cases_head h with rfl | ⟨c, hc, -⟩
+  · exact absurd rfl hne
+  · exact hc.2
 
 omit [DecidableEq V] in
 /-- A non-`Z` parent of `v` is an unblocked ancestor of `v`. -/
@@ -110,13 +123,10 @@ lemma isZClosed_zClosure (Z : Finset V) (s : V) : G.IsZClosed Z (G.zClosure Z s)
   · intro w hw hne a ha S hS
     exact hS.1 w hw ⟨hne.choose, hne.choose_spec.1, hne.choose_spec.2 S hS⟩ ha
 
--- `hs` is part of the stated interface (`S_Z(s)` is only the closure for `s ∉ Z`); the
--- proof does not need it, because `zClosure Z s = ∅` makes the conclusion vacuous for
--- `s ∈ Z`.
-set_option linter.unusedVariables false in
 /-- The induction principle for `S_Z(s)`: it is generated from `A_Z(s)` by repeatedly
-adjoining `A_Z(w)` for `w ∈ Z` whenever `A_Z(w)` meets what has been built. -/
-lemma zClosure_induction {Z : Finset V} {s : V} (hs : s ∉ Z) {P : V → Prop}
+adjoining `A_Z(w)` for `w ∈ Z` whenever `A_Z(w)` meets what has been built.  (No `s ∉ Z`
+hypothesis is needed: for `s ∈ Z` the closure is empty and the conclusion is vacuous.) -/
+lemma zClosure_induction {Z : Finset V} {s : V} {P : V → Prop}
     (base : ∀ u ∈ G.unblockedAnc Z s, P u)
     (step : ∀ w ∈ Z, ∀ u ∈ G.unblockedAnc Z w, (∃ m ∈ G.unblockedAnc Z w, P m) → P u) :
     ∀ u ∈ G.zClosure Z s, P u :=
@@ -125,7 +135,7 @@ lemma zClosure_induction {Z : Finset V} {s : V} (hs : s ∉ Z) {P : V → Prop}
 /-- `S_Z(s)` is closed under unblocked ancestors: if `u ∈ S_Z(s)` then `A_Z(u) ⊆ S_Z(s)`. -/
 lemma unblockedAnc_subset_zClosure_of_mem {Z : Finset V} {s : V} (hs : s ∉ Z) :
     ∀ u ∈ G.zClosure Z s, G.unblockedAnc Z u ⊆ G.zClosure Z s := by
-  refine G.zClosure_induction hs (P := fun u => G.unblockedAnc Z u ⊆ G.zClosure Z s)
+  refine G.zClosure_induction (P := fun u => G.unblockedAnc Z u ⊆ G.zClosure Z s)
     (fun u hu => ?_) (fun w hw u hu hex => ?_)
   · exact (G.unblockedAnc_subset_of_mem hu).trans (G.unblockedAnc_subset_zClosure hs)
   · obtain ⟨m, hm, hmP⟩ := hex
@@ -133,6 +143,52 @@ lemma unblockedAnc_subset_zClosure_of_mem {Z : Finset V} {s : V} (hs : s ∉ Z) 
     have : G.unblockedAnc Z w ⊆ G.zClosure Z s :=
       G.isZClosed_zClosure Z s w hw ⟨m, hm, hmem⟩
     exact (G.unblockedAnc_subset_of_mem hu).trans this
+
+lemma zClosure_eq_empty {Z : Finset V} {s : V} (hs : s ∈ Z) : G.zClosure Z s = ∅ := by
+  simp [zClosure, hs]
+
+/-! ### `Z`-closure and the collider condition
+
+`ColliderOK Z u` (`DSeparation.lean`) is exactly what makes `A_Z(u)` behave like an
+`A_Z(w)` for `w ∈ Z` against a `Z`-closed set. -/
+
+omit [DecidableEq V] in
+/-- From an ancestor in `Z`: some `d ∈ Z` is reachable by a directed path whose
+non-terminal vertices avoid `Z`. -/
+lemma exists_mem_reflTransGen_of_isAncestor {Z : Finset V} {z : V} (hz : z ∈ Z) {u : V}
+    (h : G.IsAncestor u z) : u ∉ Z →
+      ∃ d ∈ Z, Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) u d := by
+  refine Relation.TransGen.head_induction_on
+    (motive := fun a _ => a ∉ Z →
+      ∃ d ∈ Z, Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) a d) h ?_ ?_
+  · intro a h' hu
+    exact ⟨z, hz, Relation.ReflTransGen.single ⟨h', hu⟩⟩
+  · intro a c h' _ ihc hu
+    by_cases hc : c ∈ Z
+    · exact ⟨c, hc, Relation.ReflTransGen.single ⟨h', hu⟩⟩
+    · obtain ⟨d, hd, hpath⟩ := ihc hc
+      exact ⟨d, hd, Relation.ReflTransGen.head ⟨h', hu⟩ hpath⟩
+
+omit [DecidableEq V] in
+/-- A vertex satisfying the collider condition has its `A_Z` inside that of some `z`-node. -/
+lemma exists_zNode {Z : Finset V} {u : V} (h : G.ColliderOK Z u) :
+    ∃ d ∈ Z, G.unblockedAnc Z u ⊆ G.unblockedAnc Z d := by
+  by_cases hu : u ∈ Z
+  · exact ⟨u, hu, subset_rfl⟩
+  rcases h with hz | ⟨z, hz, hanc⟩
+  · exact absurd hz hu
+  · obtain ⟨d, hd, hp⟩ := exists_mem_reflTransGen_of_isAncestor hz hanc hu
+    exact ⟨d, hd, unblockedAnc_subset_of_mem hp⟩
+
+omit [DecidableEq V] in
+/-- A `Z`-closed set that meets `A_Z(u)` for a vertex `u` satisfying the collider condition
+contains all of `A_Z(u)`. -/
+lemma unblockedAnc_subset_of_colliderOK {Z : Finset V} {S : Set V} (hS : G.IsZClosed Z S)
+    {u : V} (hc : G.ColliderOK Z u) (hne : (G.unblockedAnc Z u ∩ S).Nonempty) :
+    G.unblockedAnc Z u ⊆ S := by
+  obtain ⟨d, hd, hsub⟩ := exists_zNode hc
+  obtain ⟨m, hm1, hm2⟩ := hne
+  exact hsub.trans (hS d hd ⟨m, hsub hm1, hm2⟩)
 
 variable (G) in
 /-- `{q | v ⇝ q by an unblocked path}`: the set the table constructions propagate along.
@@ -155,11 +211,6 @@ lemma unblockedDesc_step {Z : Finset V} {v q : V} (hq : q ∈ G.unblockedDesc Z 
   rcases Relation.ReflTransGen.cases_tail hq with h | ⟨p, hvp, hadj, hpZ⟩
   · exact absurd h hqv
   · exact ⟨p, hvp, hpZ, hadj⟩
-
-omit [DecidableEq V] in
-lemma IsAcyclic.ne_of_adj (hG : G.IsAcyclic) {u v : V} (h : G.Adj u v) : u ≠ v := by
-  rintro rfl
-  exact hG u (Relation.TransGen.single h)
 
 omit [DecidableEq V] in
 /-- No unblocked path runs from `v` back to a parent of `v`: a parent of `v` is never an
@@ -201,6 +252,36 @@ lemma zClosureSet_liveParent {Z A : Finset V} {v p : V} (hv : v ∈ G.zClosureSe
     (hp : p ∉ Z) (hadj : G.Adj p v) : p ∈ G.zClosureSet Z A :=
   G.unblockedAnc_subset_zClosureSet hv (G.mem_unblockedAnc_of_adj hp hadj)
 
+/-! ### `A_Z` with `Z = pa(v)`
+
+The instance of the closure vocabulary the local Markov property runs on. -/
+
+section Parents
+
+variable [Fintype V] [DecidableRel G.Adj]
+
+omit [DecidableEq V] in
+/-- With `Z = pa(v)` every edge into `v` is blocked at once, so `A_Z(v) = {v}`. -/
+lemma unblockedAnc_parents_self (v : V) :
+    G.unblockedAnc (G.parents v) v = {v} := by
+  ext u
+  constructor
+  · intro hu
+    rcases Relation.ReflTransGen.cases_tail hu with h | ⟨c, _, hc⟩
+    · exact h ▸ rfl
+    · exact absurd ((mem_parents G).mpr hc.1) hc.2
+  · rintro rfl
+    exact mem_unblockedAnc_self _ _
+
+omit [DecidableEq V] in
+/-- With `Z = pa(v)` no `A_Z(w)` for `w ∈ Z` contains `v`: that would close a cycle. -/
+lemma notMem_unblockedAnc_of_mem_parents (hG : G.IsAcyclic) {v w : V}
+    (hw : w ∈ G.parents v) : v ∉ G.unblockedAnc (G.parents v) w := fun hv =>
+  hG v (Relation.TransGen.tail' (Relation.ReflTransGen.mono (fun _ _ hab => hab.1) hv)
+    ((mem_parents G).mp hw))
+
+end Parents
+
 end Digraph
 
 namespace FactoredSpaces
@@ -212,63 +293,13 @@ set_option linter.unusedSectionVars false
 
 
 variable {V : Type u} [Fintype V] [DecidableEq V] {G : Digraph V} [DecidableRel G.Adj]
-  {Val : V → Type u} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
+  {Val : V → Type w} [∀ v, Fintype (Val v)] [∀ v, DecidableEq (Val v)]
 
 /-- `I^z`: the indices `(u, y)` whose parent configuration `y` agrees with `z` on
 `pa(u) ∩ Z`. -/
-def zConsistent (G : Digraph V) [DecidableRel G.Adj] (Val : V → Type u) {Z : Finset V}
+def zConsistent (G : Digraph V) [DecidableRel G.Adj] (Val : V → Type w) {Z : Finset V}
     (z : PtOn Val Z) : Set (bnIndex G Val) :=
   {i | ∀ p : G.parents i.1, ∀ hp : p.1 ∈ Z, i.2 p = z ⟨p.1, hp⟩}
-
-/-! ### Realized indices and the unfolding of `X_v` -/
-
-variable (G Val) in
-/-- The index `(v, x_pa(v))` that a joint value `x` realizes at `v`. -/
-def idxAt (x : Pt Val) (v : V) : bnIndex G Val := ⟨v, parentConfig G Val x v⟩
-
-@[simp] lemma idxAt_fst (x : Pt Val) (v : V) : (idxAt G Val x v).1 = v := rfl
-
-/-- `X_v(ω) = ω_{(v, X_pa(v)(ω))}`: the index consulted at `v` is the one realized by the
-joint value `X(ω)`. -/
-lemma nodeVar_eq_idxAt (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val)) :
-    nodeVar hG v ω = ω (idxAt G Val (jointVar hG ω) v) :=
-  nodeVar_apply hG v ω
-
-/-- Two lookups at the same node with equal parent configurations agree.  (Stated
-separately because rewriting the index of a dependent lookup `ω i` fails the motive
-check.) -/
-lemma table_congr (ω : Pt (bnFactor G Val)) {q : V} {c d : ParentVals G Val q} (h : c = d) :
-    ω ⟨q, c⟩ = ω ⟨q, d⟩ := by cases h; rfl
-
-/-- A node whose table is constant takes that constant value. -/
-lemma nodeVar_eq_of_const (hG : G.IsAcyclic) {ω : Pt (bnFactor G Val)} {q : V} {c : Val q}
-    (h : ∀ y : ParentVals G Val q, ω ⟨q, y⟩ = c) : nodeVar hG q ω = c := by
-  rw [nodeVar_eq_idxAt]; exact h _
-
-/-- **The evaluation principle.**  If `ω` returns `x_q` at every index realized by `x`,
-then `X(ω) = x`. -/
-lemma nodeVar_eq_of_diag (hG : G.IsAcyclic) {x : Pt Val} {ω : Pt (bnFactor G Val)}
-    (h : ∀ q, ω (idxAt G Val x q) = x q) (q : V) : nodeVar hG q ω = x q := by
-  induction q using hG.wf.induction with
-  | _ q ih =>
-    have hc : parentConfig G Val (jointVar hG ω) q = parentConfig G Val x q :=
-      funext fun p => ih p.1 ((Digraph.mem_parents G).mp p.2)
-    rw [nodeVar_eq_idxAt]
-    exact (table_congr ω hc).trans (h q)
-
-lemma jointVar_eq_of_diag (hG : G.IsAcyclic) {x : Pt Val} {ω : Pt (bnFactor G Val)}
-    (h : ∀ q, ω (idxAt G Val x q) = x q) : jointVar hG ω = x :=
-  funext (nodeVar_eq_of_diag hG h)
-
-variable (G Val) in
-/-- The constant tables `ω_{(v,·)} ≡ x_v` realizing a joint value `x`. -/
-def constTable (x : Pt Val) : Pt (bnFactor G Val) := fun i => x i.1
-
-@[simp] lemma constTable_apply (x : Pt Val) (i : bnIndex G Val) : constTable G Val x i = x i.1 := rfl
-
-lemma jointVar_constTable (hG : G.IsAcyclic) (x : Pt Val) :
-    jointVar hG (constTable G Val x) = x :=
-  jointVar_eq_of_diag hG fun _ => rfl
 
 /-! ### The conditioning event -/
 
@@ -610,7 +641,7 @@ lemma disintegrates_zcIdx (hG : G.IsAcyclic) {Z : Finset V} {z : PtOn Val Z} {S 
     exact (mem_fiber_nodesVar_iff hG).mp hω' w
 
 /-- The easy half of Theorem 1: `H(X_A | z) ⊆ I^z ∩ I_{S_Z(A)}`. -/
-lemma history_nodesVar_subset [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
+lemma history_nodesVar_subset [∀ v, Nonempty (Val v)] (hG : G.IsAcyclic)
     {Z : Finset V} (z : PtOn Val Z) (A : Finset V) :
     history (nodesVar (Val := Val) hG A) (fiber (nodesVar hG Z) z)
       ⊆ zcIdx G Val z (G.zClosureSet Z A) := by
@@ -780,7 +811,7 @@ lemma mem_history_of_mem_zClosure [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
     ∀ u ∈ G.zClosure Z a, ∀ i : bnIndex G Val, i ∈ zConsistent G Val z → i.1 = u →
       i ∈ history (nodesVar (Val := Val) hG A) (fiber (nodesVar hG Z) z) := by
   haveI : ∀ v, Nonempty (Val v) := fun v => inferInstance
-  refine G.zClosure_induction haZ (P := fun u => ∀ i : bnIndex G Val,
+  refine G.zClosure_induction (P := fun u => ∀ i : bnIndex G Val,
     i ∈ zConsistent G Val z → i.1 = u →
       i ∈ history (nodesVar (Val := Val) hG A) (fiber (nodesVar hG Z) z)) ?_ ?_
   · intro u hu i hi hiu
