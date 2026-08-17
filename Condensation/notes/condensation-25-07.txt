@@ -1,0 +1,1571 @@
+              CONDENSATION: A THEORY OF CONCEPTS
+
+                                       SAM EISENSTAT
+
+          Abstract.    We understand agents as creating concepts in order to organize
+          their understanding of the world, and as often sharing concepts and so being
+          able to work out how to make sense of the world together, forming language
+          communities. Here, we look at how probability distributions can be organized
+          by introducing appropriate latent variables, which we aim to use as a model
+          of these phenomena. Our main result shows that under certain information-
+          theoretic hypotheses, dierent systems of latent variables stand in a kind of
+          correspondence.
+
+
+
+
+                                          Contents
+
+  1.     Introduction                                                                       1
+  2.     Background and notation                                                            3
+  3.     Set-up                                                                             5
+  3.1.    Morphisms                                                                         6
+  4.     Perfect condensation                                                              10
+  5.     Comparison of latent variable models                                              20
+  5.1.    Suggestive examples                                                              20
+  5.2.    Comparison of latent variable models                                             22
+  5.3.    Variation                                                                        25
+  References                                                                               26
+
+
+
+
+                                     1. Introduction
+
+                   Entication begins at arm's length; the points of condensation in the
+                   primordial conceptual scheme are things glimpsed, not glimpses.
+
+
+                                                                          W. V. Quine [Qui60]
+
+  We are concerned here with understanding, as may be possessed by an agent,
+shared in a language community, or presented in a scientic theory.                In particu-
+lar, we will examine a mathematical model intended to show some aspects of this
+phenomenon which we otherwise might see less clearly.
+  Our motivating idea of meaning goes as follows. We possess and create bodies
+of meaning. We may regard the traditional logical elementspropositions, entities,
+relationsas among their conceptual constituents. We introduce such concepts
+say, entities like trees, numbers, or peopleand they help us organize the world.
+We do not always introduce new elements by denition. For example, one cannot
+dene physical objects in terms of one's visual perceptions, though one can make
+inferences from perception.
+                                               1
+                       CONDENSATION: A THEORY OF CONCEPTS                              2
+
+
+     Instead, the physical objects have a reality that surpasses their connection to
+one's visual perception. We expect the objects to also be perceived by other senses,
+and by other people.      If one changes somewhat one's understanding of the con-
+nection between objects and perception, we expect that roughly the same objects
+will still be comprehended, that there will be a correspondence for the most part
+between old and new. Even without a source in shared culture, as with babies or
+upon making new contact with people with a dierent way of life, we expect to
+have enough meaning in common to be able to get started in working out a greater
+shared understanding over time.
+     Here, we will try to say these things in the language of probability theory, to the
+extent possible. Something postulated that goes beyond one's observations can be
+understood as a parameter of a statistical models, or a latent variable. (Reecting a
+Bayesian view, we won't try to distinguish these.) But we want to be more precise
+about the role of latent variables here.     One motive behind introducing a latent
+variable is as a mere postulateas we conceive it, its only role is to predict the
+observable variables more accurately.      However, we can point out other reasons,
+following the above discussion. We might like latent variables to be    intersubjective,
+in that other agents represent the world in terms of similar variables. We also might
+like latent variables to be more deeply integrated into a body of meaning, and thus
+to be things that we can look at many ways, as it suits us, rather than acting like
+black boxes, which we only use to predict something else. To these reasons we can
+add another. We may have certain concepts which one has reason to use even if
+one only wants to predict, but which we want to also use to understand our values,
+such as concepts dealing with the experience of others.
+     With this motivation, we give conditions under which certain latent variables
+of dierent probabilistic models will admit a kind of correspondence. We can take
+this to give some indication of how and why dierent agents might be expected to
+use corresponding concepts to understand the world, even before they have been
+inducted into a shared language community. This is carried out in Sections 4 and
+5.   Section 4 uses rather restricted hypotheses, in order to illustrate the idea, in
+Theorem 4.15, and Section 5 generalizes the idea using quantitative hypotheses
+with more interesting examples in Theorem 5.8, which demonstrates a kind of
+approximate correspondence.
+     We can related these ideas to others in statistical theory. Many traditional para-
+metric models introduce variables whose meaningfulness is created by human un-
+derstanding of the subject matter. In other contexts, such as latent causal discovery
+with structural causal models [SGS01; PJS17], hidden Markov models, independent
+component analysis, factor analysis[Bis06; Mac02], sparse autoencoders[Cun+23],
+and factored space models[Gar+24], we introduce particular latent variables as part
+of a statistical method, and we often hope that these variables will make sense to
+us, and will t into our bodies of meaning. We aim for the theory introduced here
+to be able to clarify how these ideas work, and what we are asking for when we
+ask that they discover meaningful variables. We do not, though, initiate such an
+analysis here.
+     The particular form of latent variable models introduced here most parallels
+structural causal models and factored space models. One point of contrast is that
+these theories are organized around determination and conditional independence,
+whereas here we will express things using inequalities, in terms of entropy and
+                      CONDENSATION: A THEORY OF CONCEPTS                              3
+
+
+mutual information. We should note that information-theoretic methods are widely
+used in work on structural causal models though.
+   The aim towards intersubjectivity here can be seen in the context of the work of
+de Finetti [Fin29] on exchangability and Wentworth and Lorell [WL24] on natural
+latents.   The principal dierence in approach is that we seek here to work with
+many latent variables, which together form a kind of system of meaninga model
+of the world structured in terms of a set of diverse conceptual parts.
+
+
+                         2. Background and notation
+
+   First, we review some basic points about probability theory in order to establish
+some conventions for our discussion.
+
+Denition 2.1. A random variable is a measurable function X : Ω → R between
+measurable spaces. We will say that X is a random variable      on Ω and valued in R,
+or with    range R.
+   However, we will consider many measurable functions here, but we will only call
+some of them random variables.      When we call a measurable function a random
+variable, we indicate that we intend to use the following forms of expression. First,
+and most importantly, we may talk about a random variable valued in R as if it is
+an element of R. For example, if X is a random variable valued in R and f : R → S
+is a measurable function, we write f (X) to mean f ◦ X , and given a pair of random
+variables X : Ω → R and Y : Ω → S , we write (X, Y ) for the random variable
+Ω → R × S dened as
+(2.1)                           ω 7→ (X (ω) , Y (ω)) .
+We may treat random variables as elements of their ranges in other such ways
+if we feel the meaning to be clear. This idea is the main reason for the random-
+variable concept, but we will also establish some other conventions involving random
+variables.
+   Second of all, if X is a random variable on Ω and π : Λ → Ω is a measurable
+map, then we call the random variable X ◦ π , which is dened on Λ and has the
+same range as X , the   pullback of X by π , and we denote it symbolically as π ∗ X .
+However, when we feel that the meaning is clear, we will just write the pullback as
+X . We can get away with this because probabilistic concepts are preserved here.
+For example, if Ω and Λ have the structure of probability spaces, π : Λ → Ω is
+measure preserving, and X and Y are random variables on Ω, then the mutual
+information of X and Y satises
+
+(2.2)                        I (X; Y ) = I (π ∗ X; π ∗ Y ) .
+Following a similar idea, we can write expressions like I (X; Y | Z), where Z is a
+                                                      ∗
+random variable on Λ.    This can only mean I (π X; π ∗ Y | Z), since the pullback
+lets us make sense of X and Y as random variables on Λ, but we don't have a
+convention for making sense of Z as a random variable on Ω.
+   Third, if X is a random variable, we may use the notation R X to denote the
+codomain of X . Fourth, if X : Ω → R is a random variable and the domain Ω is
+given the structure of a probability space (i.e.     it is equipped with a probability
+measure P), then we call the probability measure X∗ P is the        distribution of X .
+Fifth, again given a random variable X : Ω → R on a probability space (Ω, P), if
+the range R is given the structure of a subset of a vector space V , then we call the
+                      CONDENSATION: A THEORY OF CONCEPTS                              4
+
+
+integral of X with respect to P the  expectation of X . Fifth, if X and Y are random
+variables, we may say that Y    is a function of X , with the meaning that there is
+a measurable function f :   R X → R Y such that Y = f (X). Analogously, we may
+say that Y   is a function of X almost everywhere.
+  Next, we'll x some notations.
+
+Denition 2.2. The expression P + S will denote the nonempty power set of a set
+S , that is, the set of all nonempty subsets of S .
+Denition 2.3. We use the standard notations H (X) and H (X | Y ) for the en-
+tropy of a random variable X and the conditional entropy of a random variable
+X given a random variable Y . We also use I (X; Y | Z) to denote the mutual in-
+formation of random variables X and Y given a random variable Z . Sometimes
+we write multiple random variables in such an expression using commas, such as
+in H (X, Y ); this means the entropy of the product random variable (X, Y )this
+quantity is known as the    joint entropy of X and Y . Other such expressions have
+corresponding meanings.
+  We will also have need for the    interaction information,
+(2.3)                  I (X; Y ; Z) = I (X; Y ) − I (X; Y | Z) .
+Note that this quantity is invariant under permutation of its arguments.
+
+  While many of our arguments readily generalize to more continuous settings,
+where Halmos [Hal59] denes information-theoretic quantities in a more general
+sense, we will generally assume here for simplicity that our probability spaces are
+countable and discrete, and have nite entropy.
+  It will simplify a few things to equip the space of probability measures on a
+measurable space with the structure of a measurable space.         This idea has been
+carried much further, especially by Giry [Gir82] and Fritz [Fri20].
+
+Denition 2.4. The space of probability measures on a measurable space Ω can
+itself be equipped with the structure of a measurable space, using the smallest
+σ -algebra such that for each measurable set E ⊆ Ω, the map
+(2.4)                                 P 7→ P (E)
+is measurable. This space will be denoted G (Ω).
+
+Proposition 2.5. Let X and Y be random variables with nite entropy and count-
+able discrete range on a countable discrete probability space (Ω, P), and suppose
+that H (Y | X) = 0. Then, then there is a measurable function f : RX → RY such
+that Y = f (X) almost everywhere.
+Proof. Let A ⊆ RX be the set of those x such that the singleton {x} has positive
+measure under the pushforward X∗ P.          Since RX is countable, A has full mea-
+                                       −1
+sure. Everywhere on the preimage X          A, we can dene the conditional probability
+distribution P (· | X = x).   From the denition of conditional entropy, each such
+probability distribution is a Dirac measure in G (Ω) for almost every x ∈ RX . This
+
+gives us a function fe: A → RY such that
+
+(2.5)                                 Y = fe(X)
+almost everywhere. Since RX is discrete, we can extend this to a function f : RX →
+RY , which is automatically measurable.                                              □
+                       CONDENSATION: A THEORY OF CONCEPTS                               5
+
+
+                                       3. Set-up
+
+  In this section, we will introduce the central concepts of latent variable models
+and latent string models.      We intend for latent variable models to organize the
+structure of random variable models by positing additional latent variables, which
+cannot necessarily be dened from the given random variables. However, our de-
+nition of latent variable models will be rather weak. We ask that the given variables
+can be recovered from the latent variable, but we don't ask that this serve any or-
+ganizing role, we don't ask that we attain an enlightening perspective on the given
+variables. So, we supplement this using various scoring functions. A latent variable
+model that gets a good score may more likely help us understand the underlying
+random variable model.
+  Now, we can proceed with our objects of study.
+
+Denition 3.1. A random variable model is a countable discrete probability space
+Ω with nite entropy, together with a nite family of random variables Xi : Ω → Ri ,
+each of which has countable and discrete range.
+
+  Our aim here is to understand random variable models by means of auxiliary
+random variables, which we'll call latent variables.   In particular, in a random
+                               
+variable model      Ω, (Xi )i∈I , we want the random variables Xi to be functions
+of certain latent variables.   We won't necessarily dene these latent variables on
+Ω; instead we might need an extension of the probability space. This leads to a
+denition.
+
+Denition 3.2. A latent variable model for a random variable model Ω, (Xi )i∈I
+                                                                                        
+
+is an ordered pair consisting of a random variable model         Λ, (YA )A∈P + I   with
+its random variables indexed by the power set of I , together with a probability-
+                                                                                   ∗
+preserving map π : Λ → Ω such that for each random variable Xi the pullback π          Xi
+is almost everywhere a function of the random variables YA such that A ⊆ I and
+A ∋ i. In other words, π ∗ Xi is almost everywhere equal to fi (YA : A ⊆ I, A ∋ i) for
+some measurable function fi from the product of the ranges of the random variables
+(YA )A⊆I,A∋i to the range of Xi . We call the variables (YA )A∈P + I latent variables,
+and if i ∈ A, we say that index A contributes to i.
+
+  We can compare dierent latent variable models using scoring functions. Lower
+scores should be better; we'll see how later.
+
+Denition 3.3. Let M be a random variable model, with random variables (Xi )i∈I ,
+and L an associated latent variable model with latent variables (YA )A∈P + I . The
+simple score of L at A ⊆ I is
+                                             X
+(3.1)                           σL (A) =            H (YB ) ,
+                                               +
+                                           B∈P I
+                                           B∩A̸=∅
+
+and correspondingly, the    conditioned score of L at A is
+                                     X                     
+(3.2)                    χL (A) =            H YB | (YC )C⊋B .
+                                    B∩A̸=∅
+
+Finally, the   reconstruction score of L at A is
+                                                       
+(3.3)                     ϱL (A) = H (YB )B⊇A | (Xi )i∈A .
+                         CONDENSATION: A THEORY OF CONCEPTS                           6
+
+
+   All these quantities are nite, since all the random variables of the form Xi
+and YA have nite entropy.       These scores are in some sense local, measuring the
+complexity of the latent model as it pertains to the product of the random variables
+(Xi )i∈A . To score the latent model L as a whole, we could perform an aggregation
+of these scores. For example, for a latent model L with latent variables (YA )A∈P + I ,
+                                       X
+                               λ
+(3.4)                         σL =             λA σL (A)
+                                     A∈P + I
+                                       X        X
+                                 =                      λA H (YB )
+                                     A∈P + I B∩A̸=∅
+                                                         
+                                     X          X
+                                 =                     λA  H (YB )
+                                     B⊆I       A∩B̸=∅
+
+and the analogous statements holds for the conditioned score as well. We will not
+pursue that route further here.
+   In order to work with the latent variable models, we dene some notation for
+random variables.
+
+Denition 3.4. Let M be a random variable model with variables (Xi )i∈I and
+L an associated latent variable model with variables (YA )A∈P + I . We will write X
+                                                                              +
+and Y with certain subscripts other than elements, respectively, of I and P I to
+denote certain products of the random variables in these families. If A ⊆ I , we
+write XA to denote the joint random variable at A, which is the product random
+                                             +
+variable (Xi )i∈A . Similarly, for any F ⊆ P I , we write YF to denote the joint
+random variable (YA )A∈F . We also dene the following notations:
+
+                         Y∩A = YB : B ∈ P + I, B ∩ A ̸= ∅
+                                                         
+(3.5)
+
+                         Y⊇A = YB : B ∈ P + I, A ⊆ B
+                                                       
+(3.6)
+
+                         Y⊋A = YB : B ∈ P + I, A ⊊ B
+                                                       
+(3.7)
+
+                          Y∋i = YB : B ∈ P + I, i ∈ B .
+                                                     
+(3.8)
+
+In particular, note that for any i ∈ I ,
+
+(3.9)                                Y∋i = Y∩{i} = Y⊇{i} .
+In words, we call the random variables Y∩A and Y∋i the latents that      contribute to
+A or i, respectively.
+3.1.   Morphisms. We will also dene morphisms of random variable models. We'll
+give a bit of the idea rst.      A probability-preserving map of probability spaces
+π : Ω → Λ forgets distinctions. We can think of Ω as an extension of Λ. In other
+                                                       −1
+words, we can say that Ω has all the measurable sets π    E corresponding to mea-
+surable sets E in Λ, but it can also have other measurable sets. So, a morphism
+of random variable models will be similar, but we also account for the random
+variables named by our index set. In particular, we correspondingly let the ran-
+dom variables of the source model make more distinctions than those of the target
+model. Now, we'll say all this more precisely.
+
+Denition 3.5. A morphism of random variable models has the form
+                                                              
+(3.10)                  π, ι, (fj )j∈J : Ω, (Xi )i∈I → Λ, (Yj )j∈J ,
+                           CONDENSATION: A THEORY OF CONCEPTS                                                          7
+
+
+where π : Ω → Λ is a probability-preserving map, ι is a function J → I , and fj is a
+function from the range of Xι(j) to the range of Yj . We require, for all j ∈ J , that
+                  
+Yj = fj Xι(j)         almost everywhere on Ω. Note that the function fj is automatically
+measurable, since these random variables have countable and discrete range, and
+                                                                                   
+from the same premises that the condition Yj = fj                        Xι(j)         denes a measurable set.
+
+                                                                               ∗
+                                                                        
+  Making the pullback explicit, we can write this as π    Yj = fj Xι(j) . Also, note
+that this is equivalent to the condition that on a set of full measure in Ω, we have
+               
+Yj = fj Xι(j) for all j ∈ J .
+   (We may observe that the map π in a latent variable model ((Λ, Y ) , π) is not
+necessarily a morphism of random variable models here, since each random variable
+Xi may depend nontrivially on multiple latent variables.)
+Denition 3.6. Given two morphisms
+                                                                 
+(3.11)                    π, ι, (fj )j∈J : Ω, (Xi )i∈I → Λ, (Yj )j∈J
+                                                                    
+(3.12)                   ρ, ν, (gk )k∈K : Λ, (Yj )j∈J → Π, (Zk )k∈K ,
+
+their   composite is the morphism
+                                                                          
+(3.13)                ρ ◦ π, ι ◦ ν, gk ◦ fν(k) k∈K : Ω, (Xi )i∈I → Π, (Zk )k∈K .
+
+  We can conrm that this is well-dened, checking in particular that Zk = gk ◦
+                  
+fν(k) Xι◦ν(k)         for all k ∈ K almost everywhere. We know that, for all k ∈ K ,
+
+                                            ρ∗ Zk = gk Yν(k)
+                                                                     
+(3.14)
+
+almost everywhere, so since π is probability-preserving, we have almost everywhere
+that
+                             ∗
+                      (ρ ◦ π) Zk = π ∗ ρ∗ Zk = π ∗ gk Yν(k) = gk π ∗ Yν(k)
+                                                                          
+(3.15)
+                                                       
+                                 = gk ◦ fν(k) Xι◦ν(k) .
+as desired.
+
+Proposition 3.7. Random variable models and morphism form a category.
+Proof. On a random variable model Ω, (Xi )i∈I , we have the morphism
+                                                                 
+                                                                  
+(3.16)                                    idΩ , idI , (idR Xi )i∈I ,
+which we can see serves as an identity morphism. Further, we can see that compo-
+sition is associative by checking associativity for any three morphisms
+(3.17)
+                   (π,ι,(fj )j∈J )                     (ρ,ν,(gk )
+                                                                     k∈K   )                        (σ,o,(hℓ )ℓ∈L )                    
+  Ω1 , (Wi )i∈I                         Ω2 , (Xj )j∈J                              Ω3 , (Yk )k∈K                           Ω4 , (Zℓ )ℓ∈L .
+
+The composite of the rst two morphisms is
+                                                                 
+(3.18)                                ρ ◦ π, ι ◦ ν, gk ◦ fν(k) k∈K
+
+and that of the last two is
+                                                              
+(3.19)                                σ ◦ ρ, ν ◦ o, hℓ ◦ go(ℓ) ℓ∈L ,
+                                  CONDENSATION: A THEORY OF CONCEPTS                                                      8
+
+
+so the triple composite, interpreted in either order, is
+                                                                         
+(3.20)                        σ ◦ ρ ◦ π, ι ◦ ν ◦ o, hℓ ◦ go(ℓ) ◦ fν(o(ℓ)) ℓ∈L .
+                                                                                                                         □
+  Because of the phenomenon of equality almost everywhere, there are a few dif-
+ferent notions of equivalence that we may use in discussing this category.
+
+Proposition 3.8. A morphism of random variable models
+                                                                     
+(3.21)                        π, ι, (fj )j∈J : Ω, (Xi )i∈I → Λ, (Yj )j∈J
+is an isomorphism if and only if π is an isomorphism of measurable spaces; ι is a
+bijection; and for every j ∈ J , the map fj is an isomorphism of measurable spaces.
+Proof. It is clear that isomorphisms have these properties. Conversely, if a mor- 
+                                                                                                                  
+phism        π, ι, (fj )j∈J       has these properties, consider the triple                    π −1 , ι−1 , fι−1
+                                                                                                              −1 (i)           .
+                                                                                                                         i∈I
+                                                                                                                         −1
+Since π is probability-preserving and is an isomorphism of measurable spaces, π
+is also probability-preserving. For all i ∈ I , we have
+
+(3.22)                                           Yι−1 (i) = fι−1 (i) (Xi )
+almost everywhere, so
+
+                                                 fι−1
+                                                                   
+(3.23)                                             −1 (i) Yι−1 (i)   = Xi ,
+almost everywhere, and we see that our triple is in fact a morphism. It is immediate
+                                                        
+that it is an inverse to                π, ι, (fj )j∈J       , so that map is an isomorphism.                            □
+
+Denition 3.9. Morphisms π, ι, (fj )j∈J
+                                                                                            
+                                                                    and       ρ, ν, (gj )j∈J       from (Ω, X) to (Λ, Y )
+
+are   equal almost everywhere if
+      (1) the maps π and ρ are equal almost everywhere as measurable functions,
+             and
+      (2) the functions ι and ν are equal.
+
+  Note that we put no further condition on f and g . It is possible that they are
+unequal; by the denition of morphisms, we have for all j that
+                                                                    
+(3.24)                            fj Xι(j) = Yj = gj Xν(j) = gj Xι(j)
+                                                                                                                     
+almost everywhere (on Ω), but not necessarily everywhere.                                          Even if fj   Xι(j) =
+             
+gj Xι(j)         everywhere, we may have fj ̸= gj since Xι(j) , considered as a measurable
+function, may not be surjective.
+
+Denition 3.10. Two random variable models M and N are equivalent if there
+are morphisms
+                                                            
+(3.25)                                    π = π, ι, (fj )j∈J : M → N
+                                                             
+(3.26)                                     ρ = ρ, ν, (gi )i∈I : N → M
+such that ρ ◦ π and π ◦ ρ are, respectively, equal almost everywhere to the identity
+morphisms on          M and N .              In this case, we also say that the pair                       (π, ρ) is an
+equivalence.
+                        CONDENSATION: A THEORY OF CONCEPTS                               9
+
+
+   We can say informally that an equivalence is an isomorphism almost everywhere.
+                                                                 
+                                       Ω, (Xi )i∈I and Λ, (Yi )i∈I are random
+To express this another way, suppose that
+variable models, π : Ω → Λ and ρ : Λ → Ω are probability-preserving maps, and
+fi : R Xi → R Yi and gi : R Yi → R Xi are measurable maps for every i ∈ I .
+We'd like to know when the obvious triples we can make from these are a pair of
+morphisms constituting an equivalence. Laying out the denitions, we see that this
+holds if and only if
+
+    (1)   ρ ◦ π and π ◦ ρ are respectively equal almost everywhere to idΩ and idΛ ,
+          and
+    (2)   fi (Xi ) = π ∗ Yi and gi (Yi ) = ρ∗ Xi almost everywhere for all i ∈ I .
+We are taking a little more care by making the pullbacks explicit here, to avoid the
+potential for ambiguity.
+   We can say a few things to establish that these notions behave as we expect. In
+categorical language, the next proposition amounts to saying that random variable
+models, morphisms of random variable models, and equality almost everywhere
+together form a (strict)     2-category.   We won't use the language of       2-categories
+further here though.
+
+Proposition 3.11. Equality almost everywhere of morphisms of random variable
+models is a congruence with respect to composition. That is,
+   (1) equality almost everywhere of morphisms of random variable models is an
+        equivalence relation, and
+   (2) given random variable models L, M, and N , and morphisms
+
+(3.27)                   π, ρ : L → M,             σ, τ : M → N
+          such that π is equal almost everywhere to ρ, and σ is to τ , the composite
+          σ ◦ π is equal almost everywhere to τ ◦ ρ.
+Proof. (1) is immediate. To conrm (2), we will verify that the underlying measur-
+able maps of the morphisms σ ◦π and τ ◦ρ are equal. Let's use lightface symbols to
+denote the underlying measurable maps of morphisms denoted with corresponding
+boldface symbols. Then, π and ρ agree on a set E ⊆ Ω of full measure, and σ and
+τ similarly agree on such a set F ⊆ Λ. The set E ∩ π −1 (F ) has full measure, and
+for all ω in this set
+
+(3.28)                      σ ◦ π (ω) = τ ◦ π (ω) = τ ◦ ρ (ω) ,
+as desired.                                                                             □
+   Since we have a 2-category, it follows that equivalence of random variable models
+is also an equivalence relation. We'll spell this out a bit more.
+
+Proposition 3.12. Equivalence of random variable models is an equivalence rela-
+tion.
+Proof. Reexivity and symmetry are immediate.             Suppose    (π, ρ) is an equiva-
+lence between L and M, and (σ, τ ) is an equivalence between M and N . Then,
+(σ ◦ π, ρ ◦ τ ) is an equivalence between L and N , since
+(3.29)                       (ρ ◦ τ ) ◦ (σ ◦ π) = ρ ◦ π = idL
+and the opposite composite is similarly        idN , so we see that equivalence is also
+transitive.                                                                          □
+                         CONDENSATION: A THEORY OF CONCEPTS                                    10
+
+
+                               4. Perfect condensation
+
+  In order to understand our scoring functions, we will ask some questions broadly
+following two directions of inquiry. First, what is a good score? When is a score
+good enough that we should be interested in a latent variable model that attains
+that score? Second, what can we conclude about the structure of a latent variable
+model that gets a good score? We will start with latent variable models rather than
+latent string models, though the ideas of this section apply to both. Ultimately,
+latent string models have more interesting applications, but latent variable mod-
+els are more mathematically convenient.            First, we note that we do indeed have
+uninteresting latent variable models with bad scores.
+
+Example 4.1. Let M = Ω, (Xi )i∈I
+                                            
+                                                be a random variable model. Consider the
+latent variable models L1 and L2 associated with M, dened as follows. First, L1
+and L2 have the same underlying probability space as M, that is,
+                                                                                        
+(4.1)       L1 =      Ω, (YA )A∈P + I , idΩ             L2 =         Ω, (ZA )A∈P + I , idΩ
+for some families Y and Z of random variables. We will set Y{i} = Xi for i ∈ I .
+            +
+For A ∈ P       I with |A| ̸= 1, let YA be constant. Next, let ZI = XI , and let ZA be
+constant for A ⊊ I . If all the following quantities are dened, we have
+                                    X                  X
+(4.2)                 σL1 (A) =            H (YB ) =         H (Xi )
+                                  B∩A̸=∅               i∈A
+                                    X                          X
+(4.3)                 χL1 (A) =            H (YB | Y⊋B ) =           H (Xi )
+                                  B∩A̸=∅                       i∈A
+                                    X
+(4.4)                 σL2 (A) =            H (ZB ) = H (ZI ) = H (XI )
+                                  B∩A̸=∅
+                                    X
+(4.5)                 χL2 (A) =            H (ZB | Z⊋B ) = H (XI ) .
+                                  B∩A̸=∅
+
+Since we didn't use anything about the structure of M to produce these latent
+variable models, we expect that they don't tell us much about M, at least in the
+typical case. So, these should usually be bad scores. If we want to produce even
+worse scores, we could add more entropy to the latent variables in a way that is
+irrelevant to determining the variables Xi .
+
+  Now, we can establish some easy lower bounds on the simple and conditioned
+scores.
+
+Proposition 4.2. Let Ω, (Xi )i∈I be a random variable model and L an associated
+                                       
+
+latent variable model with latent variables (YA )A∈P + I . Then, for any A ⊆ I , we
+have
+(4.6)                    σL (A) ≥ χL (A) ≥ H (Y∩A ) ≥ H (XA ) .
+Proof. It is immediate that σL (A) ≥ χL (A). To see that χL (A) ≥ H (Y∩A ), we
+proceed as follows. The set
+
+                                 B | B ∈ P + I, B ∩ A ̸= ∅
+                                
+(4.7)
+
+is partially ordered by the inclusion relation B1            ⊇ B2 .    This extends to a total
+order, i.e. there exists a total order ⪯ on this set such that whenever B1 ⊇ B2 , we
+                        CONDENSATION: A THEORY OF CONCEPTS                             11
+
+
+have B1 ⪯ B2 . Thus, using the nonnegativity of mutual information, we have
+                                                       
+(4.8)                   H YB | (YC )C⊋B ≥ H YB | (YC )C≺B .
+Now we can establish the next inequality by a calculation:
+                                       X                      
+(4.9)                      χL (A) =            H YB | (YC )C⊋B
+                                      B∩A̸=∅
+                                       X                         
+                                  ≥            H YB | (YC )C≺B
+                                      B∩A̸=∅
+                                  = H (Y∩A ) .
+Finally, the random variable XA is a function of Y∩A almost everywhere by deni-
+tion, so H (Y∩A ) ≥ H (XA ) .                                                          □
+  This motivates a denition of perfect condensation.
+
+Denition 4.3. A latent variable model L perfectly condenses a random variable
+model M =       Ω, (Xi )i∈I   if χL (A) = H (XA ) for all A ⊆ I .    Further, L   simply-
+perfectly condenses M if σL (A) = H (XA ) for all A ⊆ I .
+Example 4.4. Let I be an index set, and consider any random variable model
+L =      Ω, (YA )A∈P + I , indexed by the nonempty power set of I , such that the
+variables YA are jointly independent. We will construct a random variable model
+                   
+M = Ω, (Xi )i∈I        such that M is perfectly condensed by L, as related to M via
+the identity map idΩ .     For each i ∈ I , we dene Xi to be the product random
+variable
+
+(4.10)                        Xi = Y∋i = (YA : i ∈ A ⊆ I) .
+Now, for any set A ⊆ I , we have
+
+(4.11)             H (XA ) = H (Xi : i ∈ A) = H (YB : B ∩ A ̸= ∅)
+                              X
+                           =        H (YB ) ,
+                                B∩A̸=∅
+
+using the independence assumption in the last step. This is just the simple score,
+so L simply-perfectly condenses M.
+
+  We can say quite a lot about a latent variable model if we know that it is a
+perfect condensation or a simple-perfect condensation.
+
+Lemma 4.5. Let M be a random variable model with random variables (Xi )i∈I ,
+let L be an associated latent variable model with latent variables (YA )A∈P + I . Then,
+the following are equivalent.
+    (1) For all A ∈ P I , we have H (Y∩A ) = H (XA ).
+                       +
+
+    (2) For all i ∈ I and A ∈ PI such that i ∈ A, there is some measurable function
+         fAi : R Xi → R YA such that YA = fAi (Xi ) almost everywhere.
+Proof. (=⇒) For each i ∈ A, we have
+(4.12)                             H (Xi ) = H (Y∋i ) ,
+so since Xi is a function of Y∋i almost everywhere,
+
+(4.13)                    H (Y∋i | Xi ) = H (Y∋i ) − H (Xi ) = 0.
+                         CONDENSATION: A THEORY OF CONCEPTS                                              12
+
+
+Hence, using Corollary 2.5 Y∋i , and a fortiori YA for any A containing i, is almost
+everywhere equal to a function of Xi .
+                            +
+  (⇐=) For any A ∈ P            I , we have H (Y∩A ) ≥ H (XA ) by Proposition 4.2. Fur-
+ther, picking any i ∈ A, the random variable Y∩A is almost everywhere equal to a
+measurable function of Xi , and therefore to a measurable function of XA , so
+
+(4.14)                                 H (Y∩A | XA ) = 0
+
+(4.15)                     H (Y∩A ) ≤ H (Y∩A , XA ) = H (XA ) .
+                                                                                                         □
+Corollary 4.6. Let M be a random variable model with random variables (Xi )i∈I ,
+let L be an associated latent variable model with latent variables (YA )A∈P + I that
+perfectly condenses M. Then, whenever we have i ∈ A ∈ PI , there is some mea-
+surable function fAi : R Xi → R YA such that YA = fAi (Xi ) almost everywhere.
+Proof. Using Proposition 4.2, this follows immediately.                                                  □
+  We can also express the conclusion of this corollary in terms of an equivalence.
+
+Proposition 4.7.
+              Let M =                      be a random variable model and L =
+                                                     
+                                       Ω, (Xi )i∈I
+  Λ, (YA )A∈P + I , π an associated latent variable model. Then, the following are
+equivalent.
+                                          +
+    (1) For all i ∈ I and A ∈ P      I such that i ∈ A, there is some measurable
+                   i                                     i
+                     R Xi → R YA such
+         function fA :                    that YA = fA (Xi ) almost everywhere.
+                                    
+    (2) Λ, (Xi )i∈I and Λ, Y∩{i}          are equivalent as random variable models,
+                                     i∈I
+                                                                                   
+        via an equivalence of the form idΛ , idI , (gi )i∈I and idΛ , idI , (hi )i∈I for
+        some families of functions g and h.
+
+Proof. (=⇒) By hypothesis, for each i ∈ I and each A ⊆ I satisfying i ∈ A, we
+              i
+have YA = fA (Xi ) almost everywhere. Dene gi :            R Xi → R Y∋i to be the product
+                                          fAi (x) : A ⊆ I, i ∈ A
+                                                                
+(4.16)                     gi (x) =                               ;
+                                    
+we can see that idΛ , idI , (gi )i∈I is a morphism. Also, by the denition of latent
+variable model, we have functions hi : R Y∋i → R Xi such that
+
+(4.17)                                   Xi = hi (Y∋i )
+                                               
+almost everywhere, so      idΛ , idI , (hi )i∈I is also a morphism. Now, it is immediate
+that we have an equivalence.
+                                                                                                  
+  (⇐=) Take any i and A satisfying i                 ∈ A ⊆ I.   Since       idΛ , idI , (gj )j∈I       is a
+
+morphism, we have
+
+(4.18)                                    Y∋i = gi (Xi )
+                             i
+almost everywhere. Let pA be the coordinate projection
+                                              Y
+(4.19)                            R Y∋i =           R YB → R YA .
+                                              B∋i
+
+Then,
+
+(4.20)                           YA = piA (Y∋i ) = piA (gi (Xi )) ,
+    i
+so pA ◦ gi has the desired property.                                                                     □
+                        CONDENSATION: A THEORY OF CONCEPTS                           13
+
+
+Corollary 4.6 tells us something about perfect, and hence simply-perfect, condensa-
+tions. By imposing further conditions, we can dene stronger properties, which will
+give us equivalences. First, we give a denition about probabilistic independence,
+which can be seen as a form of the Markov condition from the theory of structural
+causal models [SGS01].
+
+
+Denition 4.8. Let I be a nite set, and suppose that (YA )A∈P I are random
+                                                                         +
+
+variables on some probability space.        The family Y satises the    ordered Markov
+condition if the following statement holds.
+     • For any A ∈ P + I , let F ⊆ P + I be the collection of all B ∈ P + I such that
+       B is incomparable in the inclusion order to A, i.e. B is neither a subset nor
+       a superset of A. Then, the random variables YA and YF are independent
+       conditional on Y⊋A .
+
+
+Theorem 4.9. Let M = Ω, (Xi )i∈I be a random variable model and L =
+                                         
+
+ Λ, (YA )A∈P + I , π an associated latent variable model. The following are equiv-
+alent.
+  (A1)   L is a simple-perfect condensation of M.
+  (A2)   For all i ∈ I and A ∈ P + I such that i ∈ A, the latent variable YA is a
+         function of Xi almost everywhere. Further, the latent variables (YA )A∈P + I
+         are jointly independent.
+  (A3)   L is a perfect condensation of M and the latent variables (YA )A∈P + I are
+         jointly independent.
+Further, the following are also equivalent:
+  (B1)   L is a perfect condensation of M.
+  (B2)   For all i ∈ I and A ∈ P + I such that i ∈ A, the latent variable YA is
+         a function of Xi . Further, the latent variables obey the ordered Markov
+         condition.
+Proof. (A1 =⇒ A3) Since L is a simple-perfect condensation, it follows from Propo-
+sition 4.2 that for each A ⊆ I ,
+
+                X
+(4.21)                  H (YB ) = σL (A) ≥ χL (A) ≥ H (Y∩A ) = σL (A)
+               B∩A̸=∅
+
+
+so all these quantities are equal. In particular,
+
+
+(4.22)                               χL (A) = H (Y∩A ) ,
+
+so L is a perfect condensation of M. Further, it follows from
+
+                            X
+(4.23)                               H (YB ) = σL (I) = H (Y∩I )
+                           B∈P + I
+
+that the latent variables (YA )A∈P + I are jointly independent. To spell this out a bit
+                                                       +
+more, consider any two disjoint families F, G ⊆ P          I , and let
+
+(4.24)                               H = P + I − F − G.
+                       CONDENSATION: A THEORY OF CONCEPTS                                       14
+
+
+Then, we can calculate
+
+(4.25)                  H (Y∩I ) ≤ H (YF ∪G ) + H (YH )
+                                  ≤ H (YF ) + H (YG ) + H (YH )
+                                     X
+                                  ≤        H (YB ) = H (Y∩I ) ,
+                                    B∈P + I
+
+so all these are equal, and so
+
+(4.26)              I (YF ; YG ) = H (YF ) + H (YG ) − H (YF ∪G ) = 0.
+  (A3 =⇒ A2) This is immediate from Corollary 4.6.
+                                                         +
+  (A2 =⇒ A1) Each latent variable YA for A ∈ P               I is almost everywhere a function
+of Xi for any i ∈ A, and therefore is almost everywhere a function of XB for any
+B ⊆ I with B ∩ A ̸= ∅. Taking the product random variable over all such A for a
+xed B , we see that Y∩B is a function of XB almost everywhere, and so
+
+(4.27)                            H (Y∩B ) ≤ H (XB ) .
+Now, using also the independence hypothesis,
+
+(4.28)                 σL (B) ≥ H (XB ) ≥ H (Y∩B ) = σL (B) ,
+so L is a simple-perfect condensation of M.
+  (B1 =⇒ B2) The rst part of this is simply the statement of Lemma 4.5. Next,
+                                                                                        +
+as in the proof of Proposition 4.2, we will choose a linear order ⪯ on P                    I such
+that whenever B ⊇ C , we have B ⪯ C . In this case, we want to choose ⪯ so that
+every element of F precedes A. We can do this starting with the partial order ⪯p
+dened so that B ⪯p C if and only if either (1) B ⊇ C or (2) B is incomparable to
+A in the inclusion order and A ⊇ C . It is straightforward to see that ⪯p is indeed
+a partial order, and any extension of ⪯p to a linear order gives an order ⪯ with the
+desired property.
+  Using the perfect condensation hypothesis, we have
+                                         X
+(4.29)                  H (YP + I ) =             H (YB | YC : C ≺ B)
+                                        B∈P + I
+                                         X
+                                   ≤              H (YB | Y⊋B )
+                                        B∈P + I
+                                   = χL (I) = H (YP + I ) ,
+and in particular corresponding elements of the sums here are equal. Looking at
+the terms in the sums corresponding to B = A, we have
+
+(4.30)                   H (YA | YC : C ≺ A) = H (YA | Y⊋A ) ,
+and since
+
+(4.31)                     {C | C ≺ A} ⊇ F ∪ {D | D ⊋ A} ,
+it follows that
+
+(4.32)                    H (YA | YF , Y⊋A ) = H (YA | Y⊋A ) .
+This is equivalent to the desired independence statement.
+                                                                                    +
+  (B2 =⇒ B1) We want to show that χL (A) = H (XA ) for all A ∈ P                    I . Take
+                                          +
+any such A. First, whenever B ∈ P             I with B ∩ A ̸= ∅, the latent variable YB is a
+                      CONDENSATION: A THEORY OF CONCEPTS                                     15
+
+
+function of XA almost everywhere, so the variable Y∩A is a function of XA almost
+everywhere, and so we have
+
+(4.33)                            H (Y∩A ) = H (XA ) .
+                                                              +
+Next, let ⪯ be a linear order on the set of those B ∈ P           I which intersect A, such
+that B ⪯ C whenever C ⊇ B . Writing our usual sum, we now have
+                                             X
+(4.34)           H (XA ) = H (Y∩A ) =                H (YB | YC : C ≺ B)
+                                            B∩A̸=∅
+                                                                                +
+For each B in this sum, the set {C | C ≺ B} contains all sets C ∈ P                 I which are
+strict supersets of B . Further, all its elements that are not strict supersets of B are
+inclusion-incomparable to B . So, by our Markov-condition-style hypothesis,
+
+(4.35)              H (YB | YC : C ≺ B) = H (YB | YD : D ⊋ B)
+for each such B . Hence,
+                                X
+(4.36)            H (XA ) =             H (YB | YD : D ⊋ B) = χL (A)
+                               B∩A̸=∅
+
+as desired.                                                                                  □
+
+  The ordered Markov condition can be stated in another form, which lets us make
+another statement equivalent to (B1) and (B2).
+
+Proposition 4.10. Let I be a nite set, and suppose that (YA )A∈P I are random
+                                                                            +
+
+variables with nite entropy on some probability space. Then, the following are
+equivalent.
+                         +
+    (1) For any A ∈ P   I , if F ⊆ P + I is the collection of all B ∈ P + I that are
+        incomparable to A, then the random variables YA and YF are independent
+        conditional on Y⊋A .
+                                                  +
+    (2) For any two upward-closed sets F, G ⊆ P I , the random variables YF and
+        YG are independent conditional on YF ∩G .
+
+Proof. (1 =⇒ 2) Let F, G ⊆ P + I be two upward-closed sets. We want to show that
+(4.37)                       H (YG | YF ) = H (YG | YF ∩G ) .
+Let ⪯ be a total order on G − F such that whenever A ⊇ B , we have A ⪯ B . We
+can expand
+                                X
+(4.38)        H (YG | YF ) =            H (YA | YF , (YB : B ∈ G − F, B ≺ A))
+                               A∈G−F
+                                X
+          H (YG | YF ∩G ) =             H (YA | YF ∩G , (YB : B ∈ G − F, B ≺ A)) ,
+                               A∈G−F
+
+so it would suce to show that the corresponding terms are equal. Now, for each
+A ∈ G − F , let IA ⊆ P + I be the set of all such sets incomparable with A, and
+SA ⊆ P + I be the set of strict supersets of A; we know by hypothesis that A is
+conditionally independent of YIA given YSA = Y⊋A . By construction,
+
+(4.39)              SA ⊆ F ∪ {B ∈ G − F | B ≺ A} ⊆ IA
+                    SA ⊆ (F ∩ G) ∪ {B ∈ G − F | B ≺ A} ⊆ IA ,
+                      CONDENSATION: A THEORY OF CONCEPTS                            16
+
+
+so
+
+
+(4.40)        H (YA | YF , (YB : B ≺ A)) = H (YA | Y⊋A )
+                                           = H (YA | YF ∩G , (YB : B ≺ A))
+
+as desired.
+                          +
+     (2 =⇒ 1) Let A ∈ P    I , let F ⊆ P + I be the collection of all such sets incom-
+parable to A, and let S be the collection of strict supersets of A. Statement (2)
+tells us that F ∪ S is conditionally independent of S ∪ {A} given S , from which the
+conclusion follows.                                                                 □
+
+
+Theorem 4.9 looks like an analogue of Lemma 4.5, strengthening the condition that
+H (Y∩A ) = H (XA ). This condition is fairly dierent from perfect condensation in
+other ways though. Recall the latent variable model L1 from Example 4.1, in which
+Y{i} = Xi and YA is constant for all other A. Here, the condition H (Y∩A ) = H (XA )
+is satised for every set A. We were able to construct such a latent variable model
+for any given random variable modelwe could for example construct a random
+variable model M with random variables X and an associated perfect condensation
+with many nontrivial latents Y , using Theorem 4.9, and then M would admit a
+very dierent random variable model as in Example 4.1 with latents Z , and both
+these latent variable models would satisfy the same condition:
+
+
+(4.41)                        H (Y∩A ) = H (Z∩A ) = H (XA )
+
+for all subsets A of the index set.
+     By contrast, the condition of perfect condensation is much more rigid.     Given
+a random variable model M and associated latent variable models L1 and L2 , we
+want to say that L1 and L2 are essentially the same. It would be straightforward
+to express this by asserting the existence of an equivalence between L1 and L2
+satisfying certain properties. Unfortunately, the condition of an equivalence L1 ≃
+L2 would be too strong.        It may be that the underlying measure spaces of our
+two latent variable modelscall them Λ1 and Λ2 dier in a way that does not
+interact with the random variables of interest. Maybe dierent points of Λ1 can
+always be distinguished by some latent variable, but Λ2 is the product of Λ1 by
+the unit interval equipped with Lebesgue measure, for example. In order to regard
+such a dierence as inessential, we should be willing to extend our latent variable
+models by arbitrary morphisms. That is, we should be satised with studying latent
+variable models L
+                f1 and L
+                       f2 , together with morphisms L
+                                                    fk → Lk for each k , and an
+equivalence between L
+                    f1 and L
+                           f2 .
+
+Denition 4.11. Let Ω, Λ1 , and Λ2 be probability spaces, and πk : Λk → Ω
+probability preserving maps for k ∈ {1, 2}. An        amalgamation of the diagram
+
+                                                 Λ1
+(4.42)                                            π1
+                                            π2
+                                      Λ2         Ω
+                        CONDENSATION: A THEORY OF CONCEPTS                                      17
+
+
+is a countable discrete probability space Λ0 together with probability-preserving
+maps ρk : Λ0 → Λk such that the diagram
+                                                   ρ1
+                                        Λ0              Λ1
+(4.43)                                        ρ2         π1
+                                                   π2
+                                        Λ2              Ω
+of probability-preserving maps commutes.
+
+Denition 4.12. Let M =
+                                          
+                              Ω, (Xi )i∈I be a random variable   model, and let
+L1 = Λ1 , (YA )A∈P + I , π1 and L2 = Λ2 , (ZA )A∈P + I , π2 be latent variable
+models associated with M. An amalgamation of L1 and L2 consists of
+
+   (1) a countable discrete probability space Λ0 ;
+   (2) two latent variable models Le1 and Le2 , both of which have underlying prob-
+       ability space Λ0 and associated random variable model M; and
+   (3) two morphisms, ρk : L ek → Lk for k ∈ {1, 2}, which each act as the iden-
+         tity on the respective index sets of the latent variable models and on the
+         respective ranges of all the latent variables, that is, they have the forms
+                                                          
+(4.44)                 ρ1 = ρ1 , idP + I , (idRYA )A∈P + I : L
+                                                             f1 → L1
+                                                          
+(4.45)                ρ2 = ρ2 , idP + I , (idRZA )A∈P + I : Lf2 → L2 .
+
+Lemma 4.13. Let          = Ω, (Xi )i∈I be a random        variable model, and let L1 =
+                                            
+                    M
+  Λ1 , (YA )A∈P + I , π1 and L2 = Λ2 , (ZA )A∈P + I , π2 be latent variable models
+                                                               
+
+associated with M. Then, there is a probability space Λ0 with maps ρk : Λ0 → Λk for
+k ∈ {1, 2}, which is an amalgamation of the diagram made by π1 and π2 . Further,
+there is an amalgamation of L1 and L2 , consisting of Λ0 together with the objects
+(4.46)
+
+          Λ0 , (ρ∗1 YA )A∈P + I , π1 ◦ ρ1                       Λ0 , (ρ∗2 ZA )A∈P + I , π2 ◦ ρ2
+                                                                                             
+ L
+ f1 =                                                    L
+                                                         f2 =
+and
+                                                                   
+(4.47)                       ρ1 = ρ1 , idP + I , (idRYA )A∈P + I
+                                                                
+(4.48)                       ρ2 = ρ2 , idP + I , (idRZA )A∈P + I .
+Proof. First, we construct Λ0 . The plan is to construct a measurable space for
+Λ0 as a pullback in the category of measurable spaces, and then to construct a
+probability measure using a conditional-independence idea. Consider the set
+
+(4.49)           S = {(λ1 , λ2 ) | λ1 ∈ Λ1 , λ2 ∈ Λ2 , π1 (λ1 ) = π2 (λ2 )} .
+This is a subset of the product measurable space Λ1 × Λ2 , so we can view it as a
+countable discrete measurable space. We dene the measurable maps ρk : S → Λk
+by
+
+(4.50)                                 ρk (λ1 , λ2 ) = λk ,
+and we dene π0 : S → Ω by
+
+(4.51)                             π0 = π1 ◦ ρ1 = π2 ◦ ρ2 .
+  Now, let PΩ be the probability measure on Ω, and let P1 and P2 be those on
+Λ1 and Λ2 , respectively. For any ω ∈ Ω with PΩ ({ω}) > 0, since
+(4.52)                  PΩ ({ω}) = P1 (π1 = ω) = P2 (π2 = ω) ,
+                             CONDENSATION: A THEORY OF CONCEPTS                                      18
+
+
+we can dene the conditional probabilities ω 7→ P1 (· | π1 = ω) and ω 7→ P2 (· | π1 = ω),
+taking values in the spaces of measures G (Λ1 ) and G (Λ2 ), for almost all ω ∈ Ω.
+Hence, we can dene the integral
+                                 Z
+(4.53)          P
+                f0 (E) =              [P1 (· | π1 = ω)] × [P2 (· | π2 = ω)] (E) dPΩ
+                                  Ω
+
+for every set E ⊆ Λ1 × Λ2 . The integrand
+
+(4.54)                            [P1 (· | π1 = ω)] × [P2 (· | π2 = ω)]
+denotes a probability measure for almost all ω , so the function P
+                                                                 f0 is nonnegative
+             f0 (Λ1 × Λ2 ) = 1. We also have countable additivity; we can apply
+and satises P
+Tonelli's theorem since the summand is nonnegative.
+
+                    ∞                    Z ∞
+                              !
+                    [                      X
+(4.55)    P
+          f0             Ek          =             [P1 (· | π1 = ω)] × [P2 (· | π2 = ω)] (Ek ) dPΩ
+                  k=1                     Ω k=1
+                                         ∞ Z
+                                         X
+                                     =             [P1 (· | π1 = ω)] × [P2 (· | π2 = ω)] (Ek ) dPΩ
+                                         k=1   Ω
+                                               ∞
+                                                          !
+                                               [
+                                     =P
+                                      f0             Ek       .
+                                               k=1
+
+       f0 is a probability measure on Λ1 × Λ2 . Further,
+Hence, P
+                             Z
+                                     [P1 (· | π1 = ω) × P2 (· | π2 = ω)] S ∩ π0−1 (ω) dPΩ
+                                                                                     
+(4.56)      P
+            f0 (S) =
+                             ZΩ
+                                     P1 π1−1 (ω) | π1 = ω P2 π2−1 (ω) | π2 = ω dPΩ
+                                                                             
+                         =
+                             ZΩ
+                         =           1 dPΩ = 1,
+                              Ω
+
+                     f0 (E ∩ S), we see that P0 is a probability measure on S . We
+so, letting P0 (E) = P
+can now dene Λ0 to be the countable discrete probability space (S, P0 ).
+  Next, we conrm that the maps ρk , interpreted as maps Λ0 → Λk of probability
+spaces, are probability-preserving. For any E ⊆ Λ1 , and any ω ∈ Ω,
+
+          ρ−1       −1
+           1 (E) ∩ π0 (ω) = {(λ1 , λ2 ) | λ1 ∈ E, π1 (λ1 ) = π2 (λ2 ) = ω}
+
+                          = E ∩ π1−1 (ω) × π2−1 (ω) ,
+                                            
+
+which is a rectangle, so
+
+(4.57)
+                    Z
+P0 ρ−1                   [P1 (· | π1 = ω) × P2 (· | π2 = ω)] ρ−1       −1
+                                                                           
+    1 (E)       =                                             1 (E) ∩ π0 (ω) d (π1 )∗ P1
+                    ZΩ
+                         P1 E ∩ π1−1 (ω) | π1 = ω · 1 d (π1 )∗ P1
+                                                 
+                =
+                    Ω
+                = P1 (E) ,
+and so ρ1 is probability-preserving. The same reasoning tells us that ρ2 is probability-
+preserving as well. It is immediate from denitions that the diagram (4.43) com-
+mutes.
+                       CONDENSATION: A THEORY OF CONCEPTS                         19
+
+
+   Having dened Λ0 and the maps ρk , we have also dened L
+                                                          fk for k ∈ {1, 2}. It
+is immediate that they are indeed latent variable models for M, it is immediate
+that ρ1 and ρ2 are morphisms, and the other conditions in the denition of an
+amalgamation in the sense of latent variable models are also immediate.           □
+   Now we will be able to state a theorem on the relation between dierent perfect
+condensations of the same random variable model. In order to prove that theorem,
+though, we rst introduce a lemma.
+
+Lemma 4.14. Let X , Y1 , Y2 , and C be random variables on some countable dis-
+crete probability space (Ω, P), and suppose that C has discrete range. Suppose
+further that Y1 and Y2 are conditionally independent given C , that X is almost
+everywhere a function of (C, Y1 ), and that X is also almost everywhere a function
+of (C, Y2 ). Then, X is almost everywhere a function of C .
+Proof. Fix any c ∈ C such that P (C = c) is positive; working on the measurable
+subspace
+
+(4.58)                           Ωc = {ω ∈ Ω | C = c}
+equipped with the probability measure Pc = P (· | C = c), we will see that X is
+almost everywhere constant.
+   Let A ⊆ Ωc be the set of points with positive mass. By hypothesis, there are
+functions fi :   R Yi → R X for i ∈ {1, 2} such that
+(4.59)                           X = f1 (Y1 ) = f2 (Y2 )
+almost everywhere, and therefore in particular everywhere on A. For any two points
+ω0 , ω ∈ A, if there is some υ ∈ A with
+(4.60)                 Y1 (υ) = Y1 (ω0 )          Y2 (υ) = Y2 (ω) ,
+then
+
+(4.61)                     X (ω) = f2 (Y2 (ω)) = f2 (Y2 (υ))
+                                  = f1 (Y1 (υ)) = f1 (Y1 (ω0 ))
+                                  = X (ω0 ) .
+We know that Y1 and Y2 are conditionally independent given C , so they are in
+particular independent on Ωc . Thus,
+
+         Pc (Y1 = Y1 (ω0 ) ∧ Y2 = Y2 (ω)) = Pc (Y1 = Y1 (ω0 )) · Pc Y2 = Y2 (ω)
+                                           ≥ Pc (ω0 ) · Pc (ω) > 0,
+so we can indeed always pick such a point v . Hence, X is constant on A, and so
+almost everywhere on Ωc .
+    Since this holds for almost every c ∈ RC , we now know that there is a function
+g : RC → RX such that X = g (C) almost everywhere. Since RC is discrete, this
+function is automatically measurable, as desired.                                 □
+Theorem 4.15 (Comparison of perfect condensations). Let M be a random vari-
+able model with random variables (Xi )i∈I , and suppose that L1 and L2 are both
+perfect condensations of M. Then, we can put the latent variables of L 1 and L2
+into correspondence in the following sense. Let L
+                                                f1 = Λ0 , (YA )
+                                                                A∈P + I , π
+                                                                          e 1 and
+                         e2 be the latent variable models in an amalgamation of
+                          
+L2 = Λ0 , (ZA )A∈P + I , π
+f
+                        CONDENSATION: A THEORY OF CONCEPTS                               20
+
+
+L1 and L2 . Then, the random variable YA is a function of Z⊇A almost everywhere,
+and reciprocally ZA is a function of Y⊇A almost everywhere.
+Proof. We know that such an amalgamation exists by Lemma 4.13. We want to
+deduce that YA is a function of Z⊇A almost everywhere; using the symmetry of the
+situation to interchange Y and Z , the result would then follow.
+      Consider any i ∈ A. By Theorem 4.9, YA is a function of Xi almost everywhere,
+and by the denition of latent variable model,              Xi is a function of Z∋i almost
+everywhere, so YA is a function of Z∋i almost everywhere.
+      From here, we will apply Lemma 4.14 repeatedly, using induction. Consider any
+                                       +
+two upward-closed sets F, G ⊆ P            I . That lemma tells us that if YA is a function
+of ZF almost everywhere and is a function of ZG almost everywhere, and if ZF is
+conditionally independent of ZG given ZF ∩G , then YA is a function of ZF ∩G almost
+everywhere. The conditional independence condition follows from the hypothesis
+that L2 is a perfect condensation, using Proposition 4.10. Since
+                                  \
+(4.62)                                 Fi = {B : B ⊇ A} ,
+                                 i∈A
+
+we can conclude that YA is a function of Z⊇A almost everywhere, as desired.              □
+
+                    5. Comparison of latent variable models
+
+5.1.   Suggestive examples. We can generalize the ideas of the comparison the-
+orem, Theorem 4.15, beyond the hypothesis of perfect condensation. As we have
+seen in results like Theorem 4.9, perfect condensation is a signicant constraint on
+the structure of a latent variable model. However, we will see in Theorem 5.8 that
+an analogue of Theorem 4.15 in a more general setting does exist, if we are willing
+to exchange a few of the objects in its statement for appropriate approximations.
+To begin to suggest an idea, consider the following examples.
+
+Example 5.1. Let L be a random variable with range [0, 1], and let (Xi )ni=1 be
+conditionally independent coins with         bias L. That is, the Xi are 2-valued random
+variables, which are conditionally independent given L, and which, conditional on
+L, take the value 1 with probability L and 0 with probability 1−L. This determines
+                                                              n
+a random variable model with random variables (Xi )i=1 . We would like to consider
+an associated latent variable model with latent variables
+
+(5.1)                        Ye{1,...,n} = L
+                                    Yei = Xi        (i = 1 to n),
+
+but L does not have a countable range, so we can instead consider
+
+                                       Y{1,...,n} = b (L)
+                                               Yi = Xi
+for some    bucketing function b. That is, we pick a nite set of disjoint intervals with
+union [0, 1], and dene b to assign to each number the unique interval containing
+it.
+
+      Without yet posing a denite sense, one might suspect that the latent variable
+model constructed here is approximately the only reasonable latent variable model
+associated with the given random variable model, up to some notion of approxi-
+mation. Indeed, we have constructed a number of dierent latent variable models,
+                         CONDENSATION: A THEORY OF CONCEPTS                                21
+
+
+depending on our choice of bucketing function b, which we can regard as approxi-
+mating each other, as long as the intervals are suciently small. A precise form of
+the ideas that such models are approximately unique will be realized in a general-
+ization of Theorem 4.15. We will also mention some more diverse examples before
+continuing.
+
+Example 5.2. Suppose that we have some coins with dierent unknown but in-
+dependent biases. We cannot observe ips of the coins directly. Instead, two coins
+are chosen at a timewe know which twoand we are told the number of heads,
+which may be zero, one, or two.
+   Formally, let (Lj )
+                           j∈J be a family of independent random variables with range
+                                                                           i    i
+[0, 1]; let c1 , c2 : I → J be (deterministic)
+                                              functions; for i ∈ I , let C1 , C2 be Bernoulli
+                         i
+random variables Ck ∼ Bern Lck (i) , conditionally independent given L; and dene
+Xi = C1i + C2i .
+   We can construct an associated latent variable model with latent variables (YA )A∈P + I
+as follows. For each A with |A| > 1, let S ⊆ J be the set of all j ∈ J such that
+ck (i) = j for some i in A and k ∈ {1, 2}informally, this is the set of j ∈ J that
+contribute to XA . Then, let
+
+(5.2)                             YA = (b (Lj ) : j ∈ S) ,
+for some bucketing function b, and let
+
+(5.3)                                    Y{i} = Xi .
+   We will see that this is in some sense approximately the only reasonable latent
+variable model when the buckets are suciently small and the sets of observations
+Xi to which each coin Lj contributes are suciently large and suciently dierent
+as j varies.
+
+Example 5.3. Here we use the language of structural causal models [SGS01;
+PJS17].    Given a structural causal model, we can produce a corresponding la-
+tent variable model in our sense as follows. Let G be a causal graph with vertices
+{Xj }j∈J , and with a subset of those vertices, corresponding to indices I ⊆ J , desig-
+nated as observed. We can view the joint distribution as a random variable model
+                      
+MJ = (Ω, P) , (Xj )j∈J such that G and P satisfy the causal Markov condition,
+                                                                         
+and we can also consider the random variable model MI = (Ω, P) , (Xi )i∈I on
+only the observed variables. The problem of latent causal discovery is concerned
+with recovering information about MJ and G from MI , generally under reason-
+able further hypotheses, or with similar questions involving more general sorts of
+graphical structures. In our language, we can represent MJ by a latent variable
+model L with latent variables (YA )A∈P + I as follows. For all j ∈ J and i ∈ I , we
+denote by j   ◀ i the relation that there is a directed path from Xj to Xi in the
+graph G. Then, let
+
+(5.4)                           YA = (Xj : ∃i ∈ A. j ◀ i) .
+   It is common in the theory of latent causal discovery to have failures of iden-
+tiability, wherein the desired information about such a pair (MJ , G) cannot be
+recovered from MI . Thus, we cannot expect an analogue of Theorem 4.15 to apply
+to a latent variable model like L without further assumptions. But when such a
+theorem does apply, we can hope to use that fact to derive an identiability result
+for structural causal models.
+                         CONDENSATION: A THEORY OF CONCEPTS                                     22
+
+
+        X                             Y1                        X                          Y1
+
+
+
+
+                          Y2                                                     Y2
+
+         H(X|C)         H(X|Y1 , Y2 , C)                      H(X|Y1 , C)        H(X|Y2 , C)
+
+                                                              I(Y1 ; Y2 ; X|C)
+
+
+                   Figure 5.1. Information diagrams for Lemma 5.4
+
+
+5.2.   Comparison of latent variable models. We now proceed toward an ana-
+logue of Theorem 4.15, starting with a quantitative variant of Lemma 4.14.
+
+Lemma 5.4. Let X , Y1 , Y2 , and C be random variables on some probability space,
+each of which has nite entropy. Then,
+(5.5)          H (X | C) ≤ H (X | Y1 , C) + H (X | Y2 , C) + I (Y1 ; Y2 | C) ,
+and further, we can make the exact statement
+(5.6)        H (X | C) = H (X | Y1 , C) + H (X | Y2 , C) − H (X | Y1 , Y2 , C)
+                                    + I (Y1 ; Y2 ; X | C) .
+Proof. We can verify (5.6) with a straightforward if unenlightening calculation.
+This can be claried to a certain extent pictorially, as in Figure 5.1.
+
+(5.7)        H (X | Y1 , C) + H (X | Y2 , C) − H (X | Y1 , Y2 , C) + I (Y1 ; Y2 ; X | C)
+                  = H (X | Y1 , C) + I (X; Y1 | Y2 , C) + I (X; Y1 ; Y2 | C)
+                  = H (X | Y1 , C) + I (X; Y1 | C)
+                  = H (X | C) .
+To deduce the inequality form, we use the nonnegativity of entropy and mutual
+information.
+
+(5.8)        H (X | C) = H (X | Y1 , C) + H (X | Y2 , C) − H (X | Y1 , Y2 , C)
+                                   + I (Y1 ; Y2 ; X | C)
+                         ≤ H (X | Y1 , C) + H (X | Y2 , C)
+                                   + I (Y1 ; Y2 | C) − I (Y1 ; Y2 | X, C)
+                         ≤ H (X | Y1 , C) + H (X | Y2 , C) + I (Y1 ; Y2 | C) .
+                                                                                                □
+Denition 5.5. The polar of a subset F of some nonempty power set P + I is the
+collection
+
+                          F ◦ = B ∈ P + I : ∀A ∈ F. A ∩ B ̸= ∅ .
+                               
+(5.9)
+                         CONDENSATION: A THEORY OF CONCEPTS                              23
+
+
+   In order to state the general comparison theorem, we will need to inductively
+take intersections of certain sets. We can organize this induction with the concept
+of an intersection tree as follows.
+
+Denition 5.6. An intersection tree T on an intersection-closed collection of sets
+M is a triple (V, E, ℓ) of vertices, edges, and labels, satisfying the following condi-
+tions.
+
+    (1)   (V, E) is a directed binary tree ; every vertex either has no parents (and so is
+          a   leaf ) or exactly two parents (and so is internal ), and there is one vertex,
+          the   root, to which every vertex has a unique directed path.
+    (2)   ℓ is a function from V to M .
+    (3) For each internal vertex u, with parents v and w , we have
+
+(5.10)                              ℓ (u) = ℓ (v) ∩ ℓ (w) .
+For each internal vertex v of T , suppose that av and bv are the labels of its parents.
+Then, we call the family
+
+(5.11)                              v 7→ ({av , bv } , ℓ (v)) ,
+ranging over internal vertices      v of T , the family of intersections of T , and we
+correspondingly call each element ({av , bv } , ℓ (v)) an intersection of T . Be warned
+that the same intersection may appear more than once in the family of intersections,
+assigned to dierent internal vertices.
+
+Proposition 5.7. Let (V, E) be a directed binary tree, let M be an intersection-
+closed collection of sets, and let ℓ̃ be a function from the set of leaves of V to M .
+Then, there is a unique extension of ℓe to a function ℓ : V → M such that (V, E, ℓ)
+is an intersection tree. That function ℓ assigns to each internal vertex the meet of
+all the labels of the leaves which are its ancestors.
+Proof. Induction.
+                                                                                         □
+   Now, we are ready for the general comparison theorem. This will involve intro-
+ducing various sets of indices, and then using them to state an inequality, (5.13). We
+can compare this inequality to Theorem 4.15 to better understand what it is claim-
+ing. To analogize an inequality to an exact statement, we can think of it as saying
+that if each of the terms on the right-hand side is small, then the left-hand side is
+small as well. Starting on the right-hand side, we will have two kinds of terms. The
+terms of the form H (Y⊇A | XB ) being small is an approximate form of Y∩B being a
+function of XB almost everywhere, assuming that A ∩ B ̸= ∅, and that would be a
+consequence of perfect condensation. So, the analogy is strongest when A ∩ B ̸= ∅
+                                                                               
+for every B ∈ F , that is, when A ∈ G . Next, the term I  ZL(v) ; ZR(v) | ZI(v) being
+small is an approximate form of the statement that ZL(v) and ZR(v) are indepen-
+dent given ZI(v) , which follows from Proposition 4.10. On the left-hand side, we
+conclude that H (Y⊇A | ZG ) is smallhere we have replace Z⊇A with ZG relative
+to Theorem 4.15. Again, consider the case A ∈ G . Then, every set containing A
+is also in G , so when we say that H (Y⊇A | ZG ) is small, we are saying that the
+information in Y⊇A is not necessarily in Z⊇A , but it is mostly in the larger ZG . We
+can think of G as a penumbra around {C : C ⊇ A}. For example, if F consists of all
+n-element subsets of A, then we can see that G consists of all sets that contain at
+least all but n − 1 elements of A. We can make G better approximate {C : C ⊇ A}
+                       CONDENSATION: A THEORY OF CONCEPTS                                                           24
+
+
+by picking a larger F , though this comes at a cost in the form of extra terms on
+the right-hand side.
+  We also have the exact statement (5.14). This is in some sense stronger, but it
+has a less clear interpretation, without the analogy to Theorem 4.15. The merit
+of (5.13) is that it controls a quantity relating Y                         and Z using terms that each
+depend only on one of the two specied latent variable models. Thus, this theorem
+establishes that if each of those two latent variable models has a certain property,
+then a certain relation between them follows. In contrast, (5.14) has both Y and
+Z in each of its terms, so it merely reasons from some properties relating Y and Z
+to other such.
+
+Theorem 5.8 (Comparison of latent variable models). Let (Xi )i∈I be the random
+variables of some random variable model, and let (YA )A∈P + I and (ZA )A∈P + I be the
+latent variable of two associated latent variable models. Form an amalgamation of
+those latent variable models with some underlying probability space Λ0 ; in the sequel,
+when we write random variables X , Y , or Z , we will mean their pullbacks to Λ0
+under the appropriate maps. Next, consider any set A ∈ P + I and any collection
+F ⊆ P + I ; let G = F ◦ be the polar
+                           G = C ∈ P + I : ∀B ∈ F. B ∩ C ̸= ∅ ;
+                              
+(5.12)
+
+let T = (V, E, I) be an intersection tree on the lattice of upward-closed subsets
+of P + I such that I restricts to a bijection between the leaves of T and the set
+of sets {C ∈ P + I : B ∩ C ̸= ∅} ranging over B ∈ F ; and write the set of leaves
+of T as L, its set of internal vertices as N , and its family of intersections as
+({L (v) , R (v)} , I (v))v∈N . Then, we have
+                             "                              #       "                                       #
+                                 X                                      X                               
+(5.13)   H (Y⊇A | ZG ) ≤               H (Y⊇A | XB ) +                        I ZL(v) ; ZR(v) | ZI(v)           .
+                                 B∈F                                    v∈N
+  Further, we can make the exact statement
+                              "                                 #       "                                   #
+                                  X                                        X                           
+(5.14)   H (Y⊇A | ZG ) =               H Y⊇A | ZI(v)                −           H Y⊇A | ZL(v)∪R(v)
+                                 v∈L                                     v∈N
+                                      "                                                      #
+                                          X                                              
+                                  +             I ZL(v) ; ZR(v) ; Y⊇A | ZI(v)                    .
+                                          v∈N
+
+Proof. We will rst prove (5.14), which we can do following the inductive idea of
+Theorem 4.15, but now repeatedly applying Lemma 5.4.                               For any vertex v of T ,
+let Tv be the subgraph of T which contains those vertices which are ancestors of v .
+Then, Tv is itself an intersection tree, which has root v . Write the set of leaves of
+Tv as L (v) and its set of internal vertices as N (v).
+   For each v ∈ T , we will establish an analogue of (5.14) for Tv , which will be
+
+(5.15)
+                                                                                                                 
+                           X                                              X                                   
+ H Y⊇A | ZI(v) =                 H Y⊇A | ZI(w)  −                              H Y⊇A | ZL(w)∪R(w) 
+                       w∈L(v)                                           w∈N (v)
+                                                                                        
+                                  X                                                  
+                           +              I ZL(w) ; ZR(w) ; Y⊇A | ZI(w)  .
+                              w∈N (v)
+                       CONDENSATION: A THEORY OF CONCEPTS                                25
+                                                                       
+                                                            Y⊇A | ZI(v) . If v is
+If v is a leaf, then both sides of this equation are equal to H
+internal, we can use Lemma 5.4let s and t be the parents of v .
+
+(5.16)
+
+                                                                
+H Y⊇A | ZI(v) = H Y⊇A | ZI(s) + H Y⊇A | ZI(t) − H Y⊇A | ZI(s)∪I(t)
+                                                    
+                    + I ZI(s) ; ZI(t) ; Y⊇A | ZI(v)
+                                                                       
+                  X                               X                    
+               =     H Y⊇A | ZI(w)  −              H Y⊇A | ZL(w)∪R(w) 
+                       w∈L(v)                            w∈N (s)∪N (t)
+                                                                                    
+                                     X                                           
+                             +                  I ZL(w) ; ZR(w) ; Y⊇A | ZI(w) 
+                                 w∈N (s)∪N (t)
+                                                                           
+                       − H Y⊇A | ZI(s)∪I(t) + I ZI(s) ; ZI(t) ; Y⊇A | ZI(v)
+                                                                           
+                     X                       X                             
+                  =    H Y⊇A | ZI(w)  −        H Y⊇A | ZL(w)∪R(w) 
+                       w∈L(v)                            w∈N (v)
+                                                                            
+                                    X                                    
+                             +            I ZL(w) ; ZR(w) ; Y⊇A | ZI(w)  .
+                                 w∈N (v)
+
+Specializing this equation to the root, we establish (5.14).
+   Equation (5.14) follows by a term-by-term comparison. We have
+                      X                    X
+(5.17)                      H Y⊇A | ZI(v) =   H (Y⊇A | Z∩B ) ,
+                      v∈L                         B∈F
+
+and for all B ∈ F ,
+
+(5.18)                       H (Y⊇A | Z∩B ) ≤ H (Y⊇A | XB )
+since XB is a function of Z∩B almost everywhere. For all v ∈ N ,
+
+(5.19)                          −H (Y⊇A | ZLv ∪Rv ) ≤ 0
+and
+                                             
+(5.20)       I ZL(v) ; ZR(v) ; Y⊇A | ZI(v)
+                                                                                
+                       = I ZL(v) ; ZR(v) | ZI(v) − I ZL(v) ; ZR(v) | Y⊇A , ZI(v)
+                                                
+                       ≤ I ZL(v) ; ZR(v) | ZI(v) .
+                                                                                         □
+
+5.3.   Variation. To better understand what the comparison theorem is saying, and
+to develop its consequences, we will look at a few variants of it.
+   First, we can consider the following simplied forms of Theorem 5.8.
+
+Corollary 5.9. Let (Xi )i∈I be the random variables of a random variable model, let
+(YA )A∈P + I and (ZA )A∈P + I be latent variables of associated latent variable models,
+and form an amalgamation of the latent variable models. Take A ∈ P + I and
+F ⊆ P + I , and suppose that every set B ∈ F is a subset of A.
+                                       REFERENCES                                     26
+
+
+   Then, if we let G be the polar of F and we pick an intersection tree with leaves
+L labeled by F and intersections ({L (v) , R (v)} , I (v))v∈N , we have
+                             "            # "                                  #
+                               X                X                            
+(5.21)       H (Y⊇A | ZG ) ≤       ϱY (B) +           I ZL(v) ; ZR(v) | ZI(v) .
+                               B∈F                v∈N
+In particular, if Z satises the ordered Markov condition, then we have simply
+                                               X
+(5.22)                      H (Y⊇A | ZG ) ≤          ϱY (B) .
+                                               B∈F
+
+Proof. The rst form follows from 5.8 since, whenever B ⊆ A,
+(5.23)               H (Y⊇A | XB ) ≤ H (Y⊇B | XB ) = ϱY (B) .
+The second form follows from the denition of the ordered Markov condition.           □
+   We can also consider an example of how the polar of a family serves to approxi-
+mate the upward cone of a set.
+
+Corollary 5.10. Let (Xi )i∈I be the random variables of a random variable model,
+let (YA )A∈P + I and (ZA )A∈P + I be latent variables of associated latent variable mod-
+els, and form an amalgamation of the latent variable models. Suppose that ϱY (C) ≤
+α for all C ∈ P + I with cardinality k . Now, let A be an element of P + I and k ∈ N,
+and dene F to be the collection of all those C ⊆ A with cardinality k. Then, if we
+let G be the polar of F and we pick an intersection tree with leaves L labeled by F
+and intersections ({L (v) , R (v)} , I (v))v∈N , we have
+             G = C ⊆ I : C contains at least all but n − 1 elements of A ,
+                
+(5.24)
+
+and                                           "                            #
+                                       
+                                     |A|        X                        
+(5.25)         H (Y⊇A | ZG ) ≤            ·α+     I ZL(v) ; ZR(v) | ZI(v) .
+                                      k
+                                                v∈N
+
+   In general, the structure of a latent variable model may lead us to apply The-
+orem 5.8 to whichever pairs (A, F) we nd appropriate, but the form chosen in
+Corollary 5.10 gives us a simple characterization of the structure of the polar.
+
+
+                                      References
+
+[Bis06]     Christopher M Bishop.      Pattern recognition and machine learning. Springer,
+            2006.
+[Cun+23]    Hoagy Cunningham et al. Sparse Autoencoders Find Highly Interpretable
+            Features in Language Models. Oct. 4, 2023. arXiv: 2309.08600[cs].
+            url: http://arxiv.org/abs/2309.08600.
+[Den91]     Daniel C. Dennett.  Real Patterns. In:       Journal of Philosophy 88.1
+            (1991). Publisher: Journal of Philosophy Inc, pp. 2751.
+[Fin29]     Bruno de Finetti.  Funzione caratteristica di un fenomeno aleatorio.
+            In:Atti del Congresso Internazionale dei Matematici: Bologna del 3 al
+            10 de settembre di 1928. 1929, pp. 179190.
+[Fri20]     Tobias Fritz.  A synthetic approach to Markov kernels, conditional in-
+            dependence and theorems on sucient statistics. In: Advances in Math-
+            ematics 370 (Aug. 26, 2020), p. 107239.
+[Gar+24]    Scott Garrabrant et al. Factored space models: Towards causality be-
+            tween levels of abstraction. Dec. 20, 2024. arXiv: 2412.02579[cs].
+                                 REFERENCES                                      27
+
+
+[Gir82]   Michèle Giry.  A categorical approach to probability theory. In:   Cat-
+          egorical Aspects of Topology and Analysis. 1982, pp. 6885.
+[Hal59]   Paul Richard Halmos.  Entropy in ergodic theory. In: University of
+          Chicago, 1959.
+[Mac02]   David J. C. MacKay. Information Theory, Inference & Learning Algo-
+          rithms. USA: Cambridge University Press, 2002.
+[PJS17]   Jonas Peters, Dominik Janzing, and Bernhard Schölkopf. Elements of
+          Causal Inference: Foundations and Learning Algorithms. Accepted: 2019-
+          01-20 23:42:51. The MIT Press, 2017.
+[Qui60]   Willard Van Orman Quine.    Word and Object. The MIT Press, 1960.
+[SGS01]   Peter Spirtes, Clark Glymour, and Richard Scheines.Causation, Pre-
+          diction, and Search. The MIT Press, Jan. 29, 2001.
+[WL24]    John Wentworth and David Lorell.  Natural Latents: The Concepts.
+          In: (Mar. 20, 2024). url: https://www.alignmentforum.org/posts/
+          mMEbfooQzMwJERAJJ/natural-latents-the-concepts.
+
