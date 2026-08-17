@@ -225,11 +225,17 @@ def collect_annotations(root_module, lib_dir, node_id_re):
 
 def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                    source_nodes, node_shape, root_prefix=None, empty_source_message=None,
-                   summary):
+                   summary, scope_manifest=None):
     """Drive one paper's provenance check; returns the process exit status.
 
     Every message this emits is the message the per-paper checkers emitted before the
     scheme logic was factored out here — the checkers differ only in configuration.
+
+    `scope_manifest`, when given, is a dict with `out_of_scope` and `mathlib_rendered`
+    lists of node ids (plus a `path` for messages).  It turns the completeness sentence
+    "every in-scope node has a carrier or is Mathlib-rendered" into a fail-closed check:
+    (source nodes) − out_of_scope − mathlib_rendered must equal the annotated node set,
+    in both directions.  Papers that do not pass a manifest keep the old behaviour.
     """
     violations: list[str] = []
 
@@ -307,6 +313,32 @@ def run_node_check(*, tex, lib, root_module, audit, inventory_block, node_id_re,
                     f"'{MARKER}' annotation but is not listed in {audit}'s "
                     f"{inventory_block} block"
                 )
+
+    if scope_manifest is not None:
+        mpath = scope_manifest.get("path", "scope manifest")
+        out = set(scope_manifest.get("out_of_scope", []))
+        rendered = set(scope_manifest.get("mathlib_rendered", []))
+        for label, group in (("out_of_scope", out), ("mathlib_rendered", rendered)):
+            violations += [
+                f"{mpath}: SCOPE MANIFEST: {label} names {node!r}, which is not numbered in {tex}"
+                for node in sorted(group) if node not in source_nodes
+            ]
+        overlap = out & rendered
+        violations += [
+            f"{mpath}: SCOPE MANIFEST: {node!r} is listed as both out_of_scope and mathlib_rendered"
+            for node in sorted(overlap)
+        ]
+        expected = set(source_nodes) - out - rendered
+        violations += [
+            f"{mpath}: UNCOVERED NODE: {node!r} is in scope but no declaration carries a "
+            f"'{MARKER}' annotation for it"
+            for node in sorted(expected - annotated_nodes)
+        ]
+        violations += [
+            f"{mpath}: SCOPE MANIFEST: {node!r} carries a '{MARKER}' annotation but the "
+            f"manifest lists it as out_of_scope or mathlib_rendered"
+            for node in sorted(annotated_nodes & (out | rendered))
+        ]
 
     for violation in violations:
         print(violation)

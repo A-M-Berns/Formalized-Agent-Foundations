@@ -545,6 +545,34 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Post-completion (2026-08-17) — external audit, evidence bundle, exact-coverage gate
+
+* **External cross-family review landed.** GPT-5.6 Sol reviewed the fixed head `4cbb1a7`
+  read-only via GitHub (filed as `notes/audit/external-audit-gpt56sol-2026-08-17.md`).
+  Verdict: mathematical/formal **PASS** for the ruled scope — no surviving theorem-level
+  issue, no laundered antecedent, no vacuous witness family; process **CONDITIONAL PASS** on
+  five items: (1) Anson's mandated human read-through of the frozen statement surface not
+  yet recorded; (2) round-11 raw evidence lived only in ephemeral `.harness/`; (3) round 11
+  had no cross-family per-finding adjudication; (4) the `87 + 9 = 96` sentence was prose,
+  not CI; (5) anonymous `example`s carrying accounting weight. Appendix B of that review
+  lists what should NOT be reopened (the settled `dd:` renderings, Conjecture 1 as a
+  `def : Prop`, Examples 3–4 out, the vacuous corners) — read it before re-litigating.
+* **Closed here:** (2) — `notes/audit/round-11-findings.json`, `round-11-resolution.md`
+  (ledger dispositions per finding), `round-11-adjudication-prompts.md`; (4) —
+  `notes/scope-manifest.json` + a `scope_manifest` hook in `scripts/paper_nodes.run_node_check`
+  make exact coverage a fail-closed check in `check-finite-factored-sets-nodes.py` (tested
+  in all three failure directions: dropped carrier, bogus rendered node, bogus out-of-scope
+  node); (5) — README wording kept modest for `OrthogonalSub` (round 11).
+* **Still open, and whose:** (1) the read-through — `notes/statement-readthrough-checklist.md`
+  is the checklist (51 Tier-A definitions, 43 Tier-B theorems, file:line, generated from the
+  annotations); it is Anson's to perform and sign. (3) cross-family adjudication of the 38
+  round-11 findings — prompts parked, codex quota resets 2026-08-20; note that the external
+  review is whole-artifact cross-family coverage of the *fixed* surface, which is the
+  stronger property, but not per-finding adjudication.
+* **Release-record rule (from the review):** the read-through, the adversarial audit and the
+  green build must name the same SHA. Any correction from the read-through re-opens the
+  gate at a new SHA; the checklist's sign-off block records it.
+
 ## Final audit (round 11) — durable lessons
 
 The last adversarial round over the whole library, run after §7 landed. Its findings are in
@@ -582,7 +610,8 @@ single-family until that happens.
 * **The node checker enforces one direction, not two.** `check-finite-factored-sets-nodes.py`
   enforces annotation ⇒ inventory, node-number validity against the committed TeX, and
   anchoring to a named declaration. It does **not** enforce inventory ⇒ annotation (it
-  cannot: the block also holds witnesses), and it does not check node *coverage*. An
+  cannot: the block also holds witnesses). Node *coverage* it DOES check since 2026-08-17,
+  against `notes/scope-manifest.json` (see the post-completion section at the top). An
   FFS-INVENTORY line naming a declaration that does not exist passes the Python checker with
   `EXIT=0` and is caught only when `AxiomAudit.lean` elaborates. Two registers said "both
   directions" / "checked both ways" for three rounds. `lake build AxiomAudit` is part of that

@@ -86,16 +86,33 @@ declaration. It does **not** enforce the converse: the inventory also holds the
 non-vacuity witnesses, so it has far more entries than there are annotations, and a line
 naming a declaration that does not exist passes the checker and is caught only when
 `AxiomAudit.lean` is elaborated, by `#assert_axioms_clean` failing to resolve the name.
-Nothing machine-checks that all 96 in-scope nodes are covered either; the accounting above
-is prose, re-derivable by comparing
-`grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u` against
-`scripts/paper_nodes.py`. Every endpoint — §2–§7, witnesses included —
+Node *coverage* is machine-checked since 2026-08-17: `notes/scope-manifest.json` records
+the ruling (Examples 3–4 out) and the nine Mathlib-rendered nodes, and the same checker
+fails unless (numbered nodes in the TeX) − out-of-scope − Mathlib-rendered equals the
+annotated node set in both directions — so removing the only carrier of an in-scope node,
+or annotating a node the manifest says is rendered, is a CI failure, and the `87 + 9 = 96`
+above is an invariant, not prose. (Recount by hand with
+`grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u` if you like;
+editing the manifest is a scope change and needs a ruling recorded here.) Every endpoint — §2–§7, witnesses included —
 is `sorry`-free and clean at `[propext, Classical.choice, Quot.sound]`; the library has no
 open proof obligation. **Zero `sorry`, zero `axiom`.** Conjecture 1 is not an exception to
 that and should not be read as one: `FundamentalTheoremFiniteDim` is a `def … : Prop` with
 no proof anywhere, which is a *definition* and not a `sorry` — it carries no `sorryAx`, adds
 no axiom, and cannot weaken any statement of ours except by appearing among that statement's
 hypotheses, which nothing in §2–§7 does.
+
+## Audit trail and what is still owed
+
+The final fresh-context adversarial audit (harness round 11) and an independent external
+review are filed under `notes/audit/`: `round-11-findings.json` (38 raw findings with ids),
+`round-11-resolution.md` (disposition of each), `round-11-adjudication-prompts.md` (the
+cross-family sweeps that could not run — codex quota; re-run when it resets), and
+`external-audit-gpt56sol-2026-08-17.md` (GPT-5.6 Sol's read-only review of head `4cbb1a7`:
+mathematical PASS, process CONDITIONAL PASS). Two of its conditions are still open and are
+recorded rather than hidden: **the human read-through of the frozen statement surface** —
+`notes/statement-readthrough-checklist.md` is the checklist, unsigned until Anson performs
+it — and the per-finding cross-family adjudication of round 11. Neither is a mathematical
+gap; both are trust-accounting obligations of the repo's own standard.
 
 ## What is not claimed
 

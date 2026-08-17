@@ -58,13 +58,16 @@ inventory exactly (inventory entries may omit the `FiniteFactoredSets.` root pre
 since the block is elaborated under `open FiniteFactoredSets in`).  There is no
 bare-suffix matching — `foo` in the inventory never covers `A.B.foo` in the library.
 
-Two things this checker deliberately does **not** enforce, both of which a reader has
-mistaken for enforced in the past:
+4. **Exact scope coverage** — `FiniteFactoredSets/notes/scope-manifest.json` records the
+   ruling (Examples 3 and 4 out of scope) and the nine nodes rendered by Mathlib
+   vocabulary with no carrier of ours; the checker requires that (numbered nodes in the
+   TeX) − out_of_scope − mathlib_rendered equal the annotated node set, in both
+   directions.  Removing the only carrier of an in-scope node, or annotating a node the
+   manifest says is rendered, is a violation.  Editing the manifest is a scope change.
 
-* **The converse node direction** — that every *numbered node of the paper* has a Lean
-  statement.  Coverage of the paper's 98 nodes, and the scope ruling that puts Examples 3
-  and 4 out of it, are prose in `FiniteFactoredSets/README.md`, re-derived by hand rather
-  than machine-checked here.
+One thing this checker deliberately does **not** enforce, which a reader has mistaken for
+enforced in the past:
+
 * **The converse inventory direction** — that every name listed between the FFS-INVENTORY
   markers is a real, annotated declaration.  The block holds far more entries than there
   are annotations (it also carries the non-vacuity witnesses), so no such correspondence
@@ -76,6 +79,7 @@ mistaken for enforced in the past:
 Run from the repo root.
 """
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -87,12 +91,18 @@ TEX = Path("FiniteFactoredSets/notes/2109.11513-main.tex")
 LIB = Path("FiniteFactoredSets")
 ROOT_MODULE = Path("FiniteFactoredSets.lean")
 AUDIT = Path("AxiomAudit.lean")
+MANIFEST = Path("FiniteFactoredSets/notes/scope-manifest.json")
 
 
 def summary(*, citations, nodes, source, inventory):
     return ("finite-factored-sets node check: OK "
             f"({citations} citations, {len(nodes)} distinct nodes, "
-            f"{len(source)} numbered in the paper, {len(inventory)} inventoried endpoints)")
+            f"{len(source)} numbered in the paper, {len(inventory)} inventoried endpoints; "
+            f"scope manifest: exact coverage)")
+
+
+_manifest = json.loads(MANIFEST.read_text())
+_manifest["path"] = str(MANIFEST)
 
 
 sys.exit(paper_nodes.run_node_check(
@@ -107,4 +117,5 @@ sys.exit(paper_nodes.run_node_check(
     node_shape="(Definition|Theorem|Proposition|Corollary|Lemma|Example|Conjecture) <n>",
     empty_source_message=f"{TEX}: no numbered nodes found — is the source intact?",
     summary=summary,
+    scope_manifest=_manifest,
 ))

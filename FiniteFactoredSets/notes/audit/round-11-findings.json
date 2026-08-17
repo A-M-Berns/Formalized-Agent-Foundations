@@ -1,0 +1,382 @@
+[
+ {
+  "file": "FiniteFactoredSets/Basic.lean",
+  "lines": "L111-L119",
+  "severity": "MINOR",
+  "category": "surface-hygiene",
+  "claim": "Definition 8's second sentence (the binary common refinement `X ∨_S Y = ⋁_S({X,Y})`) has no carrier, no row in either README accounting table, and no Lean lemma anywhere establishing that it is Mathlib's `X ⊓ Y` — even though Propositions 11, 13, 15 and 18 are all stated using `⊓` for it.",
+  "evidence": "Paper tex:152 (Definition 8): 'Given $X,Y\\in\\parts$, we let $X\\vee_S Y=\\bigvee_S(\\{X,Y\\})$.' Lean carries only the set form: `def commonRefinement (C : Set (Setoid S)) : Setoid S := sInf C` with `Paper node: Definition 8 (§2.1)` (Basic.lean:115-116). The four propositions that use the binary join render it as `⊓` (History.lean `generates_spec` clause 2 `F.Generates C (X ⊓ Y)`, `history_spec` clause 2, Orthogonality.lean `orthogonal_spec` clause 3, `before_spec` clause 4), and the identification is asserted only in prose (History.lean module doc: 'its binary join `X ∨_S Y` is Mathlib's `X ⊓ Y`'; the `dd:order-flip` glossary entry in FiniteFactoredSets.lean:51-57 mentions only `⋁_S(C)`, not `∨_S`). FiniteFactoredSets/README.md:213-237 claims exhaustive accounting — 'recorded here so that nothing in a printed node is silently unaccounted for', with explicit partial-entry rows for Proposition 2's first sentence, Definition 15's third sentence and Proposition 31's 'irreducible' — but has no row for Definition 8's second sentence, and Definition 8 is absent from the multi-carrier table at README.md:68-76. The identification is in fact TRUE (verified below), so this is an accounting/bridge gap, not a mathematical error; but it is the one order-translation step in §3 that is prose-only, and five paper clauses depend on it.",
+  "executable_check": "import FiniteFactoredSets\nopen FiniteFactoredSets\n-- no library lemma states this (`exact?` fails), yet it is provable, so the prose claim is right but unpinned:\nexample {S : Type} (X Y : Setoid S) : commonRefinement {X, Y} = X ⊓ Y := by exact?\nexample {S : Type} (X Y : Setoid S) : commonRefinement {X, Y} = X ⊓ Y := by\n  ext s t\n  simp only [commonRefinement_iff, Set.mem_insert_iff, Set.mem_singleton_iff]\n  aesop",
+  "id": "R11-F01"
+ },
+ {
+  "file": "FiniteFactoredSets/README.md",
+  "lines": "L210, L230-L232 (same claim in FiniteFactoredSets.lean:90-92, dd:poly, and in Polynomial.lean's file header bullet 'Irreducibility (Proposition 31, next file) is Mathlib's Irreducible ... so it coincides with the paper's \"no factorization into two polynomials of nonempty support\"')",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The dd:poly justification for rendering Proposition 31's 'irreducible' as Mathlib's `Irreducible` asserts the two readings 'coincide'; they do not coincide as predicates — Mathlib's is strictly stronger (the error is in the safe direction, so no Lean statement is unfaithful).",
+  "evidence": "README:210 says 'Mathlib's `Irreducible` in `Poly S`; over `ℝ` its units are the nonzero constants, so the two readings coincide', and README:231-232 calls 'the two readings agreeing ... a fact about ℝ worth stating rather than assuming'. But the paper's phrasing (Prop 31's proof: 'Assume for the purpose of contradiction that p₀·p₁ = poly^F_C(E), and that both p₀ and p₁ have nonempty support') is satisfied by every nonzero constant and by 0, while Mathlib's `Irreducible` additionally requires `¬ IsUnit p`. They agree only on nonzero non-units — which is all Prop 31 ranges over (C nonempty, E nonempty), so `irreducible_poly_of_mem_irr` proves *more* than the paper and the endpoint is fine. Only the recorded justification is overstated.",
+  "executable_check": "import FiniteFactoredSets.Polynomial\nimport Mathlib.Algebra.MvPolynomial.Nilpotent\nopen FiniteFactoredSets MvPolynomial\n-- compiles: the paper's condition holds for a nonzero constant, Mathlib's Irreducible fails\nexample : (∀ p q : Poly Bool, p * q = C (1:ℝ) → p.vars = ∅ ∨ q.vars = ∅)\n    ∧ ¬ Irreducible (C (1:ℝ) : Poly Bool) := by\n  refine ⟨?_, ?_⟩\n  · intro p q h\n    have hu : IsUnit p := isUnit_of_mul_isUnit_left (y := q) (by rw [h]; simp)\n    obtain ⟨r, -, rfl⟩ := (MvPolynomial.isUnit_iff_eq_C_of_isReduced (R := ℝ)).mp hu\n    exact Or.inl vars_C\n  · exact fun h => h.not_isUnit (by simpa using isUnit_one (M := Poly Bool))",
+  "id": "R11-F02"
+ },
+ {
+  "file": "FiniteFactoredSets/Conjecture.lean",
+  "lines": "L21-L23, L55-L62",
+  "severity": "MINOR",
+  "category": "duplicate-of-existing",
+  "claim": "`fundamentalTheoremFiniteDim_of_finite` is a verbatim re-statement of Theorem 3 (`FactoredSet.orthogonalGiven_iff_forall_isDistribution`), and its docstring's claim that it 'records that the `Prop` restricts to the proved theorem when `S` is finite' is not machine-checked, because the statement never mentions `FundamentalTheoremFiniteDim`.",
+  "evidence": "Conjecture.lean:55-62 states `[Finite S] (F) (X Y Z) : F.OrthogonalGiven X Y Z ↔ ∀ P : ProbDist S, F.IsDistribution P → …`, which is character-for-character Probability.lean's Theorem 3 statement modulo binder order; the appended check below discharges each from the other in one term. Nothing in the type ties it to the `Prop` at L45-52, so if the `Prop`'s body drifted this lemma would still compile unchanged. (The real mechanical exercise of the `Prop`'s shape is elsewhere: `InfiniteExamples.lean:174,184` and `APITests/FiniteFactoredSets.lean:719` take `(h : FundamentalTheoremFiniteDim.{0})` as a hypothesis and apply it.)",
+  "executable_check": "import FiniteFactoredSets.Conjecture\nopen FiniteFactoredSets FactoredSet\nexample {S : Type} [Finite S] (F : FactoredSet S) (X Y Z : Setoid S) :\n    F.OrthogonalGiven X Y Z ↔\n      ∀ P : ProbDist S, F.IsDistribution P →\n        ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,\n          P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=\n  F.orthogonalGiven_iff_forall_isDistribution X Y Z\nexample {S : Type} [Finite S] (F : FactoredSet S) (X Y Z : Setoid S) :\n    F.OrthogonalGiven X Y Z ↔\n      ∀ P : ProbDist S, F.IsDistribution P →\n        ∀ x ∈ X.classes, ∀ y ∈ Y.classes, ∀ z ∈ Z.classes,\n          P (x ∩ z) * P (y ∩ z) = P (x ∩ y ∩ z) * P z :=\n  fundamentalTheoremFiniteDim_of_finite F X Y Z\n-- both compile (verified at HEAD)",
+  "id": "R11-F03"
+ },
+ {
+  "file": "FiniteFactoredSets/Conjecture.lean",
+  "lines": "L14-L19, L45-L52",
+  "severity": "MINOR",
+  "category": "definition-drift",
+  "claim": "Conjecture 1's `Prop` quantifies over `ProbDist S` at an infinite carrier, but the paper's Definition 36 defines a probability distribution only 'given a finite set S'; over an infinite `S` the rendering silently admits merely finitely-additive distributions (no countable additivity, no σ-algebra) that the paper never contemplated, so the Lean `Prop` is one particular sharpening of a one-sentence informal conjecture rather than 'nothing else changes'.",
+  "evidence": "Paper §7.2: 'Theorem 3 can be generalized to finite-dimensional factored sets' (no formal statement). Paper Definition 36: 'Given a **finite** set $S$, a probability distribution on $S$ is a function $P:\\mathcal{P}(S)\\to\\mathbb{R}$ …' with only finite additivity. Conjecture.lean:16-19 says the weakening is `[Finite S] → [Finite F.B]` and 'Nothing else changes', but dropping `Finite S` also changes *what `ProbDist S` ranges over*: e.g. on `ℕ × Bool` a density-style finitely-additive `P` with `P {s} = 0` for all `s` satisfies Definition 36 and Definition 37 vacuously, and such objects strengthen the `→` direction and weaken the `←` direction of the biconditional. Consequence a future agent must not miss: proving or refuting the Lean `Prop` would not by itself settle the paper's conjecture. No disclosure entry records this particular extension (dd:conjecture records the finiteness weakening; dd:probability records only that Definition 36 typechecks over any `S`).",
+  "executable_check": null,
+  "id": "R11-F04"
+ },
+ {
+  "file": "FiniteFactoredSets/EmbeddedAgency.lean",
+  "lines": "L79",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "Section header cites the wrong paper subsubsection: Definition 50 (conditional time) is §7.3.5, not §7.3.6 (§7.3.6 is 'Logical Causality').",
+  "evidence": "In 2109.11513-main.tex the subsubsections of \\subsection{Embedded Agency} (line 1372) are, in order: Embedded Observations (1373) = 7.3.1, Counterfactability (1403) = 7.3.2, Cartesian Frames (1428) = 7.3.3, Unraveling Causal Loops (1433) = 7.3.4, Conditional Time (1442) = 7.3.5, Logical Causality (1451) = 7.3.6. EmbeddedAgency.lean:79 reads `/-! ## §7.3.6 Conditional time -/`. (The `Paper node: Definition 50 (§7.3)` line itself is correct, so the node checker does not catch this.)",
+  "executable_check": null,
+  "id": "R11-F05"
+ },
+ {
+  "file": "FiniteFactoredSets/InferenceExamples.lean",
+  "lines": "L14-L16",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "Module docstring misattributes Example 2's third factor `Z'` to Definition 39; `Z'` is introduced in Proposition 35's *proof*, while Definition 39 is the preimage definition (`f⁻¹(ω)`, `f⁻¹(E)`, `f⁻¹(X)`).",
+  "evidence": "InferenceExamples.lean:14-15: \"so `Z'` (Definition 39's third factor, \\\"the third bit exists and is `i`\\\" / \\\"there are only two bits\\\")\". The quoted phrases are from Proposition 35's proof (tex ~line 1215: \"let $z^\\prime_i=\\{00i,01i,10i,11i\\}$ be the event that the third bit exists and is $i$\"); Definition 39 (tex 1112-1120) defines preimages only. The same file uses \"Definition 39's `f⁻¹(-)`\" correctly at L244.",
+  "executable_check": null,
+  "id": "R11-F06"
+ },
+ {
+  "file": "FiniteFactoredSets/Inference.lean",
+  "lines": "L110-L118",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "`OrthDatabase.Before` names the paper's **strict** relation `X <_D Y`, while `FactoredSet.Before` in the same library names the non-strict `X ≤^F Y`; the shared name invites a reader (or a client that opens both namespaces) to read an inferred order as non-strict.",
+  "evidence": "Inference.lean:115-118 defines `Before D X Y := ∀ M, Models M D → M.F.StrictlyBefore (M.pullback X) (M.pullback Y)` (Definition 45, `<_D`), whereas Orthogonality.lean's `FactoredSet.Before X Y := F.history X ⊆ F.history Y` is Definition 19's `≤^F` and `FactoredSet.StrictlyBefore` is `<^F`. The definition itself is faithful (strict, as the paper has it); only the name is ambiguous across namespaces. The paper has no `≤_D`, so a `strictlyBefore`-style name was available.",
+  "executable_check": null,
+  "id": "R11-F07"
+ },
+ {
+  "file": "FiniteFactoredSets/EmbeddedAgency.lean",
+  "lines": "L24-L27",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The §7.3 module doc justifies carrying no finiteness by 'history/historySub/Orthogonal/OrthogonalGiven are defined for every factored set', without the caveat that at infinite dimension those notions no longer mean the paper's (history need not generate), so `Observes`/`Counterfactable`/`BeforeGivenSet` applied to an infinite-dimensional `F` are well-formed but say something else.",
+  "evidence": "Paper Definitions 46-50 all begin 'Let $F=(S,B)$ be a finite factored set'. History.lean's module doc states the failure explicitly ('over `S = ℕ → Bool` … the intersection of all generating subsets is empty and generates nothing') and Orthogonality.lean's doc carries the matching warning ('an unrestricted `F.Orthogonal X Y` is a well-formed statement; it is just not one Propositions 14-19 say anything about'). EmbeddedAgency.lean:24-27 carries no analogous sentence, so e.g. `Counterfactable X` on an infinite-dimensional `F` degenerates to `X = ⊤` whenever `history X = ∅`.",
+  "executable_check": null,
+  "id": "R11-F08"
+ },
+ {
+  "file": "FiniteFactoredSets/ConditionalOrthogonality.lean",
+  "lines": "L138 (also L87, L93)",
+  "severity": "MINOR",
+  "category": "weakened-generality",
+  "claim": "Proposition 24 (`orthogonal_iff_orthogonalGiven_top`) carries `[Finite F.B]`, which its statement does not need; the same is true of the supporting `orthogonalSub_ofSetoid` (L87) and `beforeSub_ofSetoid` (L93).",
+  "evidence": "`historySub (ofSetoid X) = history X` is definitional under `generatesSub_ofSetoid` (both sides are `⋂₀` over the *same* family `{C | C ⊆ F.B ∧ …}`), so no finiteness is needed to identify Definition 24 with Definition 17 on partitions of `S`; and Proposition 24's two cases (`classes_top` for `Nonempty S`, vacuity plus `history X = ∅` for empty `S`) use nothing else. The unnecessary hypothesis is inherited from bundling Proposition 22's two sentences into one `[Finite F.B]` endpoint (`historySub_isLeast_and_eq_history`, SubpartitionHistory.lean:118), whose *first* conjunct genuinely needs finiteness. This contradicts the register sentences `dd:finiteness-minimal` — \"finiteness hypotheses are carried only where they are used, never globally\" (FiniteFactoredSets.lean:59) — and SubpartitionHistory.lean:11, \"`[Finite F.B]` (finite dimension) is carried exactly where the paper's proofs use it\". Faithfulness to the paper is not damaged (the paper's Proposition 24 assumes a finite factored set), so this is a policy/register defect, not a statement defect.",
+  "executable_check": "import FiniteFactoredSets.ConditionalOrthogonality\nopen FiniteFactoredSets FiniteFactoredSets.Subpartition\nuniverse u\nvariable {S : Type u}\nprivate lemma hsub (F : FactoredSet S) (X : Setoid S) :\n    F.historySub (ofSetoid X) = F.history X := by\n  simp only [FactoredSet.historySub, FactoredSet.history, FactoredSet.generatesSub_ofSetoid]\n-- Proposition 24 with NO `[Finite F.B]`:\nexample (F : FactoredSet S) (X Y : Setoid S) :\n    F.Orthogonal X Y ↔ F.OrthogonalGiven X Y ⊤ := by\n  rcases isEmpty_or_nonempty S with hS | hS\n  · constructor\n    · intro _ z hz\n      obtain ⟨y, rfl⟩ := hz\n      exact (IsEmpty.false y).elim\n    · intro _\n      rw [FactoredSet.orthogonal_def]\n      have h : F.history X = ∅ := by\n        have : (∅ : Set (Setoid S)) ∈ {C : Set (Setoid S) | C ⊆ F.B ∧ F.Generates C X} := by\n          refine ⟨by simp, ?_⟩\n          intro x hx\n          obtain ⟨y, rfl⟩ := hx\n          exact (IsEmpty.false y).elim\n        have := Set.sInter_subset_of_mem this\n        exact Set.subset_empty_iff.mp (by simpa [FactoredSet.history] using this)\n      simp [h]\n  · rw [FactoredSet.orthogonalGiven_def, FiniteFactoredSets.classes_top hS]\n    simp only [Set.mem_singleton_iff, forall_eq, FactoredSet.orthogonalGivenSet_def,\n      Subpartition.restrict_univ, hsub, FactoredSet.orthogonal_def]",
+  "id": "R11-F09"
+ },
+ {
+  "file": "FiniteFactoredSets/Subpartition.lean",
+  "lines": "L19-L29",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The `dd:subpartition` module docstring justifies the PER carrier with \"Mathlib has no partial-equivalence-relation structure to reuse, so this one is repo-generic\"; the installed Mathlib does have partitions of a *subset* together with their induced partial equivalence relation, so the recorded justification overstates the absence of reusable API.",
+  "evidence": ".lake/packages/mathlib/Mathlib/Order/Partition/Basic.lean:70 defines `structure Partition [CompleteLattice α] (s : α)`, instantiated at `α = Set S` this is exactly the paper's Definition 20/21 object (`Σ E : Set S, Partition E`), and L328 defines `Partition.Rel`, documented at L34 as \"The partial equivalence relation induced by a partition of a set\", with `rel_rfl_iff : P.Rel x x ↔ x ∈ u` (the Definition 21 domain), `Std.Symm`/`IsTrans` instances, `partOf` (blocks), `le_def : P ≤ Q ↔ ∀ x ∈ P, ∃ y ∈ Q, x ≤ y` (refinement, oriented finer ≤ coarser exactly as `Subpartition`'s `≤`), and `instSemilatticeInf` with `mem_inf_iff` (the nonempty pairwise meets, i.e. the paper's `∨_E`). Subpartition.lean re-develops `part`, `classes`, the `PartialOrder`, `Min`/`SemilatticeInf` and the PER↔partition bridge over that. The *rendering choice* stays justified — Mathlib's `Partition u` carries its domain in the type, which is precisely the dependent-transport cost `dd:subpartition` was approved to avoid — so only the justification sentence is defective; flagging per the rule that a disclosure's recorded justification may itself be wrong.",
+  "executable_check": null,
+  "id": "R11-F10"
+ },
+ {
+  "file": "FiniteFactoredSets/Basic.lean",
+  "lines": "L368-L377",
+  "severity": "MINOR",
+  "category": "duplicate-of-existing",
+  "claim": "`chimera_eq_right`'s four-line body is re-derived inline in two downstream files instead of being cited, and its docstring's claim that \"§4 and §6 both run on\" it is false for §4 - §4 is one of the places that re-derives it.",
+  "evidence": "Basic.lean:372 `lemma chimera_eq_right {C} {s t} (h : ∀ b ∈ C, b ∈ F.B → b s t) : F.chimera C s t = t` with proof `eq_of_forall_rel` + `by_cases b ∈ C` + `chimera_rel_of_mem`/`chimera_rel_of_notMem`. The identical body appears verbatim at History.lean:104-107 (`tfae_have 6 → 7`: `have heq : F.chimera C s t = t := F.eq_of_forall_rel fun b hb => by by_cases hbC : b ∈ C ...`) and again at Subpartition.lean:383-386 (§4.1, `generatesSub_tfae`). The only actual call site of `chimera_eq_right` in the whole library is InferenceExamples.lean:1067 (§6.2), so the docstring's \"§4 and §6 both run on\" names a §4 use that does not exist while §4 silently duplicates the proof. Repo CLAUDE.md rule 2b treats re-proofs of existing facts as a defect in their own right.",
+  "executable_check": "import FiniteFactoredSets.Orthogonality\nopen FiniteFactoredSets\nuniverse u\nvariable {S : Type u}\n-- the History.lean:104 / Subpartition.lean:383 goal, discharged by the existing lemma:\nexample (F : FactoredSet S) (C : Set (Setoid S)) (s t : S)\n    (hst : commonRefinement C s t) : F.chimera C s t = t :=\n  F.chimera_eq_right fun b hbC _ => commonRefinement_iff.1 hst b hbC",
+  "id": "R11-F11"
+ },
+ {
+  "file": "FiniteFactoredSets/History.lean",
+  "lines": "L12-L21",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The module doc justifies the `[Finite F.B]` binder with a specific, checkable counterexample that no declaration in the library proves, while every comparable load-bearingness claim in this development is backed by an inventoried witness.",
+  "evidence": "History.lean:17-20 asserts: \"this genuinely fails for infinite `B` — over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the 'eventually equal' partition, so the intersection of all generating subsets is empty and generates nothing.\" I verified the mathematics by hand and it is correct, but nothing proves it: InfiniteExamples.lean:252-256 repeats the same prose and the only formalized fact there is `not_finite_B` (`¬ Finite infFS.B`), i.e. that `infFS` is outside the hypothesis - not that Proposition 12 fails on it. Contrast the discipline applied to the sibling hypotheses: `Nonempty S` on Prop 13 clause 4 / Prop 19 is discharged as false-without-it by the inventoried `Examples.emptyFS_history_ne_singleton` and `Examples.emptyFS_history_ne_setOf_before` (Examples.lean:637-652), and §5's `E.Nonempty` binders get the same treatment. So the one binder whose justification is the library's headline `dd:finiteness-minimal` claim is the one left as prose.",
+  "executable_check": null,
+  "id": "R11-F12"
+ },
+ {
+  "file": "AxiomAudit.lean",
+  "lines": "L1044-L1057",
+  "severity": "MINOR",
+  "category": "surface-hygiene",
+  "claim": "The FFS-INVENTORY preamble's enumeration of the Mathlib-rendered §2.1 nodes omits Definition 1, so the audit block's accounting is one node short of the 9-node figure the root CLAUDE.md and README use.",
+  "evidence": "AxiomAudit.lean:1048-1053 reads \"Several of the paper's §2.1 nodes have no Lean carrier at all ... Definition 2 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6 (finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9 (`∏(B)`) is the dependent product; §5.1's Definitions 29 ... 30 ... and §6.1's Definition 39 ...\" — eight nodes, phrased as a closed list (\"and Definition 9\"). Definition 1 (disjoint union `⊔S`, tex L34-L36) is a §2.1 node with no carrier and no annotation anywhere; it is the ninth, and FiniteFactoredSets/README.md:200 does carry a row for it (\"absorbed into `Setoid` / the dependent product\"). CLAUDE.md and README.md:55 both quote \"87 by declarations, nine by Mathlib vocabulary\", which only adds up with Definition 1 included. The audit block is the checked artifact a reader consults first, so the omission is where it matters least in content and most in provenance.",
+  "executable_check": null,
+  "id": "R11-F13"
+ },
+ {
+  "file": "FiniteFactoredSets/Subpartition.lean",
+  "lines": "L19-L20",
+  "severity": "MAJOR",
+  "category": "duplicate-of-existing",
+  "claim": "The recorded justification for `dd:subpartition` — \"Mathlib has no partial-equivalence-relation structure to reuse, so this one is repo-generic\" — is false against the pinned Mathlib (v4.31.0), which ships `Mathlib/Order/Partition/Basic.lean`: `Partition (E : Set α)` whose own module docstring says it \"is equivalent to a transitive and symmetric binary relation `r : α → α → Prop` where `s` is the set of all `x` for which `r x x`\", together with `Partition.Rel`, `Partition.partOf`, the same refinement `PartialOrder` (`Partition.rel_le_iff_le`), `Partition.instSemilatticeInf`, and `Partition.rel_rfl_iff` (dom = self-related points). Roughly a dozen of `Subpartition`'s support lemmas are that API restated on a new carrier.",
+  "evidence": ".lake/packages/mathlib/Mathlib/Order/Partition/Basic.lean:17-21 (\"a `Partition s` corresponds to a partition of the elements of `s` into a family of nonempty sets. This is equivalent to a transitive and symmetric binary relation `r : α → α → Prop` where `s` is the set of all `x` for which `r x x`\"), :328 `def Rel`, :331 `rel_le_iff_le`, :349 `rel_rfl_iff`, :382 `def partOf`, :384 `partOf_subset`, :244 `instSemilatticeInf`, :361 `Rel.symm`, :365 `Rel.trans`, :367 `Rel.left_mem`. Lean side: `Subpartition.dom` (L66), `mem_dom_of_rel`/`mem_dom_of_rel'` (L68,L71), `part` (L75), `part_subset_dom` (L84), `part_eq_of_rel` (L87), `le_def` (L187), `instSemilatticeInf` (L204) each restate one of those on `Subpartition`. NOTE: I am NOT contesting the `dd:subpartition` rendering (settled by ruling); the finding is that its written justification is factually wrong, so a future maintainer or upstreamer will not know that Mathlib already has this API. The genuine reason to prefer a PER carrier — `Partition` is indexed by its support, so `SubPart(S)` would be `Σ E, Partition E`, and Mathlib has no restriction across supports — is not what the docstring says.",
+  "executable_check": "import Mathlib.Order.Partition.Basic\nsection\nvariable {α : Type} (E : Set α)\nexample (P : Partition E) (a b c : α) (h₁ : P.Rel a b) (h₂ : P.Rel b c) : P.Rel a c := h₁.trans h₂\nexample (P : Partition E) (a b : α) (h : P.Rel a b) : P.Rel b a := h.symm\nexample (P : Partition E) (a : α) : Set α := P.partOf a\nexample (P Q : Partition E) : P.Rel ≤ Q.Rel ↔ P ≤ Q := Partition.rel_le_iff_le\nexample (P Q : Partition E) : Partition E := P ⊓ Q\nexample (P : Partition E) (a : α) : P.Rel a a ↔ a ∈ E := Partition.rel_rfl_iff\nend  -- compiles against this repo's toolchain (verified with `lake env lean`)",
+  "id": "R11-F14"
+ },
+ {
+  "file": "FiniteFactoredSets/Subpartition.lean",
+  "lines": "L242-L256, L305-L307",
+  "severity": "MINOR",
+  "category": "unused-hypothesis",
+  "claim": "`restrict_part_subset_inf` carries two hypotheses its proof never uses (`hE : X.dom = Y.dom` and `hs : s ∈ X.dom`), with the unused-variable linter explicitly silenced, and the file's own client-facing `example` at L305-307 propagates both into the shape a downstream reader will copy — so the API advertises a same-domain side condition that the block inclusion does not need.",
+  "evidence": "L244 `set_option linter.unusedVariables false in`; L247-248 signature `(hE : X.dom = Y.dom) {s : S} (hs : s ∈ X.dom)`; the tactic block L249-256 mentions neither. The disclosing comment at L242-243 gives a reason (\"`X.part s` is empty unless `s ∈ dom X`\") that explains only `hs`, not `hE`. Only one call site exists (SubpartitionHistory.lean:450, inside Lemma 2, where hE and hr are already in scope), so the extra hypotheses buy nothing.",
+  "executable_check": "import FiniteFactoredSets.ConditionalOrthogonality\nuniverse u\nnamespace FiniteFactoredSets\nopen Subpartition\nvariable {S : Type u}\n-- both hypotheses are removable:\nexample {X Y : Subpartition S} {s : S} : (Y.restrict (X.part s)).Subset (X ⊓ Y) := by\n  intro u hu t\n  rw [dom_restrict] at hu\n  obtain ⟨-, huX⟩ := hu\n  exact ⟨fun h => ⟨X.trans' h.1 (X.symm' huX), h.2.2⟩,\n    fun h => ⟨X.trans' h.1 huX, huX, h.2⟩⟩\nend FiniteFactoredSets  -- compiles",
+  "id": "R11-F15"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L1235-L1248",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The two concrete Theorem-2 witnesses are instantiated at degenerate arguments, so neither exercises the clause it names: `thm2_decomposition_coordFS` takes `W = ⊤`, making its first conjunct literally the already-proved `orthogonalGiven_fst_snd_top` and its second conjunct a triviality (`h^F(⊤|z) = ∅` by Proposition 23 clause 4 alone); `thm2_weakUnion_coordFS` takes `W = Y = sndFactor`, `Z = ⊤`. Theorem 2's clauses 4 (contraction) and 5 (composition) — the two whose proofs consume Lemma 2 and Proposition 23 clause 2 — get no concrete witness anywhere in Examples.lean.",
+  "evidence": "L1235-1241: `have h : coordFS.OrthogonalGiven fstFactor (sndFactor ⊓ ⊤) ⊤ := by rw [inf_top_eq]; exact orthogonalGiven_fst_snd_top`, conclusion `OrthogonalGiven fstFactor sndFactor ⊤ ∧ OrthogonalGiven fstFactor ⊤ ⊤`. L1243-1248 uses `inf_idem`. The AxiomAudit register comment at AxiomAudit.lean:1192 reads \"Proposition 25 and Theorem 2 exhibited on the witness\", which is generous for two degenerate instantiations out of five clauses. `grep -n thm2_` in Examples.lean returns exactly these two.",
+  "executable_check": "import FiniteFactoredSets.Examples\nnamespace FiniteFactoredSets\nopen Subpartition Examples\n-- the whole conclusion of `thm2_decomposition_coordFS` without Theorem 2:\nexample : coordFS.OrthogonalGiven fstFactor sndFactor ⊤ ∧\n    coordFS.OrthogonalGiven fstFactor (⊤ : Setoid (Bool × Bool)) ⊤ :=\n  ⟨orthogonalGiven_fst_snd_top, by\n    rintro z ⟨r, rfl⟩\n    refine (coordFS.orthogonalGivenSet_def fstFactor ⊤ _).2 ?_\n    have h : coordFS.historySub ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict {x | (⊤ : Setoid (Bool × Bool)) x r}) = ∅ := by\n      refine (coordFS.historySub_spec ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict {x | (⊤ : Setoid (Bool × Bool)) x r}) ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict {x | (⊤ : Setoid (Bool × Bool)) x r}) ((ofSetoid (⊤ : Setoid (Bool × Bool))).restrict {x | (⊤ : Setoid (Bool × Bool)) x r}) rfl).2.2.2.1.2 ?_\n      rw [dom_restrict_ofSetoid]\n      exact Subpartition.ext fun s t => ⟨fun h => ⟨h.1, h.2.1⟩, fun h => ⟨h.1, h.2, trivial⟩⟩\n    rw [h, Set.inter_empty]⟩\nend FiniteFactoredSets  -- compiles",
+  "id": "R11-F16"
+ },
+ {
+  "file": "FiniteFactoredSets/SubpartitionHistory.lean",
+  "lines": "L169-L174",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "Proposition 23 (`historySub_spec`) bundles the clause-3-only argument `Z` into the same conjunction as clauses 1/2/4/5, and `Z` is not inferable from any of those clauses, so every use of clauses 1, 2, 4 or 5 must supply a dummy `Z` explicitly; the same wart affects `generatesSub_spec`'s `C`, `D` and `Z`.",
+  "evidence": "SubpartitionHistory.lean:169 `theorem historySub_spec [Finite F.B] (X Y Z : Subpartition S) (hE : X.dom = Y.dom)`. Every internal and witness call passes dummies: SubpartitionHistory.lean:198-202 `(F.generatesSub_spec ∅ ∅ X X X rfl)`, ConditionalOrthogonality.lean:132-133 `(F.historySub_spec ((ofSetoid X).restrict E) ((ofSetoid Y).restrict E) ((ofSetoid X).restrict E) (by simp))`, Examples.lean:838 `(coordFS.historySub_spec indDiag indDiag indDiag rfl)`. Writing `_` for `Z` fails elaboration: `error: don't know how to synthesize placeholder for argument Z`.",
+  "executable_check": "import FiniteFactoredSets.Examples\nnamespace FiniteFactoredSets\nopen Subpartition Examples\n-- fails: `Z` cannot be inferred when projecting clause 4.\nexample : coordFS.historySub indDiag = ∅ :=\n  (coordFS.historySub_spec indDiag indDiag _ rfl).2.2.2.1.2 (by rw [dom_indDiag]; rfl)\nend FiniteFactoredSets  -- expected: \"don't know how to synthesize placeholder for argument Z\"",
+  "id": "R11-F17"
+ },
+ {
+  "file": "FiniteFactoredSets/InfiniteExamples.lean",
+  "lines": "L161-L189 (with L11-L19 and FiniteFactoredSets/Conjecture.lean L22-L27)",
+  "severity": "MAJOR",
+  "category": "degenerate-witness",
+  "claim": "The section headed 'Conjecture 1 is not vacuous at natBoolFS' is carried entirely by point masses, and the point-mass family satisfies Theorem 3's right-hand-side identity for *every* triple of sets — so the exhibited family cannot distinguish the conjecture's two sides, and if it were the whole of `IsDistribution` it would REFUTE Conjecture 1 rather than certify it.",
+  "evidence": "`isDistribution_diracAt_natBoolFS` (L164-L166) is the only Definition-37 distribution exhibited on any infinite carrier in the library; the file header (L17-L19) reads 'isDistribution_diracAt supplies a distribution there, so the conjecture's right-hand side quantifies over a nonempty family', the section header (L168-L172) reads 'Conjecture 1 is not vacuous at natBoolFS ... a quantification over an inhabited family', and Conjecture.lean L22-L27 says InfiniteExamples 'carries the witnesses that make both sides of this statement mean something'. But `ProbDist.diracAt s0` satisfies `P(x∩z)·P(y∩z) = P(x∩y∩z)·P(z)` for arbitrary sets x,y,z (witnesses §1), while the same file proves `not_orthogonal_natFactor_self` (L147) — so the dirac family alone makes the conjecture's RHS true at a triple whose LHS the library itself refutes (witnesses §2). Compare the finite side, where the library explicitly guards against exactly this failure mode: Examples.lean L3040-L3060 ('Theorem 3's right-hand side is not universally true ... Without this, \"for every distribution P …\" could be suspected of being satisfiable by every triple'). No such discriminating witness exists on `natBoolFS`, though one is cheap: `LensC2.rich` (witnesses §3) is a `ProbDist (ℕ × Bool)` uniform on {0,1}×Bool, is a Definition-37 distribution on `natBoolFS` (`rich_isDistribution`), and violates the identity at X = Y = natFactor, Z = Ind_S (`rich_discriminates`). Note also that this is the only non-point-mass `ProbDist` on an infinite carrier anywhere in the library.",
+  "executable_check": ".harness/audit/final-lensC-witnesses.lean §1-§3 (compiles): `LensC.dirac_rhs_trivial`, `LensC.dirac_only_would_refute`, `LensC2.rich_isDistribution`, `LensC2.rich_discriminates`.",
+  "id": "R11-F18"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L3084-L3130, L3138-L3151",
+  "severity": "MINOR",
+  "category": "missing-witness",
+  "claim": "No `Model` with an empty carrier is exhibited, and `emptyDB_consistent` has no companion showing that Definition 45 infers nothing from it — so the metering of Definition 45 against the degenerate end of Definition 38 is asserted in prose but never run.",
+  "evidence": "The four exhibited models (`coordModel`, `boolModel`, `fstModel`, `pointModel`, L3084-L3116) have carriers of size 4, 4, 4 and 1; Definition 38 admits an empty carrier (`emptyFS` is right there at L307), and an empty-carrier model kills `StrictlyBefore` outright, which is the precise mechanism by which a database with `N = ∅` infers nothing. `Examples.lean` records `emptyDB_consistent` (L3147) and `not_emptyDB_complete` (L3152) but nothing about `emptyDB.Before`; the two facts that close the loop are one-liners.",
+  "executable_check": ".harness/audit/final-lensC-witnesses.lean §4 (compiles): `LensC5.voidModel : Model (Bool × Bool)` on the empty carrier, and `LensC5.not_emptyDB_before : ∀ X Y, ¬ emptyDB.Before X Y`.",
+  "id": "R11-F19"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L3581-L3597, L3628-L3640",
+  "severity": "MINOR",
+  "category": "degenerate-witness",
+  "claim": "Definition 47 (`ObservesPartition`) is witnessed only with a *constant* sub-agent family, so nothing in the library separates it from its constant-family special case — i.e. from Definition 46 read blockwise.",
+  "evidence": "The two positive instances are `observesPartition_fst_snd` (L3585, `fun _ => fstFactor`) and `observesPartition_top` (L3632, `fun _ => ⊤`), both constant; the docstrings say so honestly ('with the constant family A_x = fstFactor', 'the degenerate corner'). Paper Definition 47's content is the existence of a decomposition `A = ⋁_S {A_i}` into *possibly distinct* sub-agents, one per block of X — the `∃ As` and the `sInf (Set.range As)` do no work at a constant family, where `sInf (Set.range As) = A` reduces to `sInf_singleton`. Grep confirms these are the only `ObservesPartition` instances in the repo (Examples.lean L3585, L3614, L3633; APITests has none).",
+  "executable_check": null,
+  "id": "R11-F20"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L2309, L2749-L2752, L2996-L2999, L3006-L3010",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The '(three) independent routes' / 'the argument never invokes Lemma 3' claim around `orthogonalGiven_from_independence` is not true of the dependency graph: route 3 goes through route 2's endpoint.",
+  "evidence": "Examples.lean:2752 'Three independent derivations of one fact are three exercised endpoints', L2309 'the three derivations ... take three independent routes on purpose', and L2996-L2999 'the hypothesis being obtained from `clause3_fst_snd_top` through Proposition 32, so the argument never invokes Lemma 3 or Theorem 3's forward direction'. But `orthogonalGiven_from_independence` (L3010) is `(coordFS.orthogonalGiven_iff_forall_isDistribution ...).2 ...`; that endpoint's converse branch is `refine F.orthogonalGiven_of_Q_mul_Q_eq ?_` (Probability.lean:384); and `orthogonalGiven_of_Q_mul_Q_eq` is literally `((F.orthogonalGiven_tfae X Y Z).out 2 0).1 h` (CharacteristicOrthogonality.lean:339-340) — i.e. Lemma 3's TFAE. Route 2 (`orthogonalGiven_from_clause3`, L2774) is `coordFS.orthogonalGiven_of_Q_mul_Q_eq clause3_fst_snd_top`, the very same endpoint. So routes 2 and 3 share their final step and both invoke Lemma 3; only route 1 (Proposition 24) is independent. The claim is true only of the declaration's own proof *text*, which the sibling cross-check paragraph (L2325-L2329) is careful to say explicitly ('the separation is textual') and this one is not.",
+  "executable_check": null,
+  "id": "R11-F21"
+ },
+ {
+  "file": "FiniteFactoredSets/Polynomial.lean",
+  "lines": "L415-L420, L428-L431",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "The docstrings of `Q_eq_poly` (Proposition 26) and `degreeOf_Q_le` assert that relaxing `[Finite S]` to `[Finite F.B]` buys only degenerate content; it in fact buys genuine, non-degenerate content (finite `E` inside an infinite `S`), and the repo already contains a factored set exhibiting it.",
+  "evidence": "Polynomial.lean:417-420: 'The extra content this buys over the paper's `[Finite S]` form is degenerate and is not oversold: for an infinite `E` both sides are the `finsum` junk value `0`'; L430-L431 repeats it for `degreeOf_Q_le`. The claim covers only infinite `E`. The cases `[Finite S]` excludes also include *finite* `E` inside an *infinite* `S`, where nothing is junk — `InfiniteExamples.natBoolFS` (dimension 2 on `ℕ × Bool`) is exactly such a factored set, and `natBoolFS.Q {(0,true)} = poly natBoolFS.B {(0,true)}` holds with both sides nonzero. The error understates the artifact's strength (it cannot inflate trust), but the docstring assertion as written is false.",
+  "executable_check": "import FiniteFactoredSets.InfiniteExamples\nopen FiniteFactoredSets FactoredSet MvPolynomial InfiniteExamples\nexample : natBoolFS.Q {((0 : ℕ), true)} = poly natBoolFS.B {((0 : ℕ), true)} :=\n  natBoolFS.Q_eq_poly _\nexample : natBoolFS.Q {((0 : ℕ), true)} ≠ 0 := by\n  rw [Q_eq_finsum_mono, finsum_mem_singleton, mono_eq_prod natBoolFS_B_finite]\n  intro h\n  have := congrArg (eval fun _ => (1 : ℝ)) h\n  simp at this\nexample : ¬ Finite (ℕ × Bool) := not_finite_natBool",
+  "id": "R11-F22"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L3518-3529, L3581-3598",
+  "severity": "MINOR",
+  "category": "trivialized",
+  "claim": "The only positive witnesses for Definitions 46 and 47 discharge their second clause for a reason independent of the agent: at the chosen world model both `Observes A sndFactor (vsnd true)` and `ObservesPartition A sndFactor sndFactor` reduce to clause 1 for EVERY agent `A` and EVERY sub-agent family, so the sub-agent decomposition that is Definition 47's distinctive content is never exercised.",
+  "evidence": "Paper Definition 47 (§7.3): `A` observes `X` w.r.t. `W` if `A ⊥ X` AND there are `A_i` with `A = ⋁_S{A_i}` and `A_i ⊥ W | S\\x_i`. `observes_fst_snd_vsnd_true` (L3523) picks `W = sndFactor`, `E = vsnd true`, so `Eᶜ` is a *block* of `W` and `W|Eᶜ` is indiscrete — clause 2 holds for any `A`; `observesPartition_fst_snd` (L3585) picks `W = X = sndFactor` and the constant family, so each clause-2 obligation is the same automatic one. The docstring at L3519 discloses `X_E = W` for Definition 46, but the Definition 47 register (AxiomAudit L1560-1567) names only agent-triviality (`observesPartition_top`) as the honesty corner, not clause-2 triviality.",
+  "executable_check": "import FiniteFactoredSets\nopen FiniteFactoredSets FiniteFactoredSets.Examples\nexample (A : Setoid (Bool × Bool)) :\n    coordFS.ObservesPartition A sndFactor sndFactor ↔ coordFS.Orthogonal A sndFactor := by\n  haveI : Nonempty ↥sndFactor.classes := ⟨⟨vsnd true, vsnd_true_mem_sndFactor_classes⟩⟩\n  constructor\n  · exact fun h => h.1\n  · intro h\n    refine ⟨h, fun _ => A, by rw [Set.range_const, sInf_singleton], ?_⟩\n    rintro ⟨x, hx⟩\n    rw [classes_sndFactor] at hx\n    rcases hx with rfl | rfl\n    · show coordFS.OrthogonalGivenSet A sndFactor (vsnd true)ᶜ\n      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_true, historySub_snd_restrict_vsnd,\n        Set.inter_empty]\n    · show coordFS.OrthogonalGivenSet A sndFactor (vsnd false)ᶜ\n      rw [coordFS.orthogonalGivenSet_def, compl_vsnd_false, historySub_snd_restrict_vsnd,\n        Set.inter_empty]\n-- compiles; the same holds for Definition 46 at `(vsnd true)`",
+  "id": "R11-F23"
+ },
+ {
+  "file": "FiniteFactoredSets/InferenceExamples.lean",
+  "lines": "L296-297 (vs L469-511, L606-618)",
+  "severity": "MINOR",
+  "category": "style",
+  "claim": "Section docstring for Proposition 35 asserts that all six verdicts go through upper bounds on the *restricted* histories and that the only lower bound needed is `h^F(f⁻¹(Z)|y) ≠ ∅`; the file's own proofs contradict both halves.",
+  "evidence": "L296-297: “All six verdicts go through *upper* bounds on the restricted histories — the only lower bound anyone needs is that `h^F(f⁻¹(Z)|y)` is nonempty, for `¬(Z ⊥_D Z | Y)`.” But `history_ZP : carrierFS.history ZP = carrierFS.B` (L469) is proved by `Set.Subset.antisymm (history_subset ZP) ?_` — 40 lines establishing the ⊇ (lower-bound) direction — and `not_orth_X'_ZP` (L606) / `not_orth_V'_ZP` (L613) consume exactly that lower bound (`X' ∈ {X'} ∩ B` after rewriting by `history_X'` and `history_ZP`). Those three verdicts are unconditional and involve no restricted history at all.",
+  "executable_check": null,
+  "id": "R11-F24"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L3381-3456",
+  "severity": "MINOR",
+  "category": "convention-violation",
+  "claim": "Eight lemmas that are general facts about an arbitrary `F : FactoredSet S` (not witnesses) live in the witness file under namespace `Examples`, and since `FiniteFactoredSets/API.lean` does not import `Examples.lean` they are unreachable from the documented consumer import — while API.lean tells the client that §7.3 “adds nothing to prove with”.",
+  "evidence": "`historySub_top_restrict` (L3381), `historySub_restrict_empty` (L3390), `orthogonalGivenSet_comm` (L3398), `orthogonalGivenSet_top_left/right` (L3402/L3406), `orthogonalGiven_given_self` (L3413), `counterfactableRel_of_counterfactable` (L3429), `counterfactableRel_top` (L3437), `beforeGivenSet_univ_iff` (L3443), `beforeGivenSet_empty` (L3453) are all stated `variable (F : FactoredSet S)` with no reference to `coordFS`. `API.lean` imports ConditionalOrthogonality/Conjecture/EmbeddedAgency/Factoring/Inference/InferenceExamples/Probability — not Examples — and states at L231-236 that the §7.3 layer “adds nothing to prove with”, although `Definition 48 ⇒ Definition 49` and `Definition 50 at E = S is Definition 19` are in fact proved (in Examples). Note: `KNOWLEDGE.md` appears to record a ‘stage 6 helper relocation’ decision covering `orthogonalGiven_given_self`/`historySub_top_restrict` (seen only in a grep line; KB is denied to this audit), so this may be a settled placement — flagging for the orchestrator to check against that entry.",
+  "executable_check": null,
+  "id": "R11-F25"
+ },
+ {
+  "file": "docs/trust-surface.html",
+  "lines": "L1 (stamp) / whole file",
+  "severity": "MAJOR",
+  "category": "stale-register",
+  "claim": "The committed trust-surface guide is stale at HEAD 6f5a3f5, so a blocking CI step fails on the branch head that the registers describe as complete.",
+  "evidence": "`python3 scripts/check_trust_surface.py` prints 'FAIL - docs/trust-surface.html is stale. One of its 143 inputs changed since the page was generated' and exits 1. That script is a blocking CI step (.github/workflows/ci.yml:57-58: 'Check trust-surface guide freshness'), and root README.md:70-71 asserts 'the page's freshness and its coverage of every registered paper are both blocking CI checks'. All other gates (lint_paper_labels, check-paper-nodes.sh, check-finite-factored-sets-nodes.py, check_endpoint_coverage.py, check_paper_wiring.py) are green, so this is the one red gate at HEAD.",
+  "executable_check": "python3 scripts/check_trust_surface.py; echo EXIT=$?   # prints FAIL, EXIT=1",
+  "id": "R11-F26"
+ },
+ {
+  "file": "scripts/trust-surface-template.html",
+  "lines": "L440-L444 (rendered at docs/trust-surface.html:5742-5746); scripts/gen-trust-surface.py:1123-1125 (rendered at docs/trust-surface.html:518)",
+  "severity": "MAJOR",
+  "category": "stale-register",
+  "claim": "The read-through guide tells the reader the FFS section covers '§2.1-§2.3 only', while the same page renders all 87 annotated nodes through §7; the sentence is hardcoded in the template and the generator, so regenerating the page does not fix it.",
+  "evidence": "trust-surface-template.html:442: 'The cards below cover §2.1–§2.3 only — partitions, factorizations, and chimera functions.'  gen-trust-surface.py:1124 puts '<strong>in progress</strong> — §2.1–§2.3 only' in the index-table row for finite-factored-sets. But the rendered FFS section contains cards for Definitions 1-50, Propositions 1-36, Theorems 1-3, Lemmas 1-3, Examples 1-2 and Conjecture 1 (93 distinct printed node ids appear inside the section), and the same index row's count column reads 87. FiniteFactoredSets/README.md:8 and root README.md:29 say the formalization is complete through §7.",
+  "executable_check": "python3 - <<'EOF'\nimport re\nt=open('/Users/anson/AgentFoundations-ffs/docs/trust-surface.html').read()\ni=t.index('<h2 class=\"paper-head\">Temporal Inference with Finite Factored Sets')\nsec=t[i:]\nprint('claims 2.1-2.3 only:', '\\u00a72.1\\u2013\\u00a72.3 only' in sec)\nprint('renders Definition 50 card:', 'Definition 50' in sec)\nprint('renders Conjecture 1 card:', 'Conjecture 1' in sec)\nEOF",
+  "id": "R11-F27"
+ },
+ {
+  "file": "AxiomAudit.lean",
+  "lines": "L1040-L1043 (and FiniteFactoredSets/README.md:77-79)",
+  "severity": "MAJOR",
+  "category": "oversold-gate",
+  "claim": "The FFS-INVENTORY preamble and the README claim the node checker enforces the annotation/inventory correspondence 'in both directions' / 'checked both ways'; only one direction is enforced, and an inventory entry naming a declaration that does not exist passes the checker.",
+  "evidence": "AxiomAudit.lean:1041-1043: 'every declaration carrying a `Paper node:` annotation in `FiniteFactoredSets/` must itself be listed between the FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces that in both directions.'  FiniteFactoredSets/README.md:77-79 repeats 'checked both ways'.  scripts/check-finite-factored-sets-nodes.py's own docstring enumerates only three enforced properties (validity, anchoring, annotated->inventory) and states 'The converse direction (every *node* has a Lean statement) is deliberately not checked here'.  The block holds 371 entries against 94 annotations, so inventory->annotation cannot be enforced; the '96 in-scope nodes accounted for' claim is prose, not machine-checked.",
+  "executable_check": "SB=/tmp/ffs-mirror; rm -rf $SB; mkdir -p $SB; ln -s /Users/anson/AgentFoundations-ffs/FiniteFactoredSets $SB/FiniteFactoredSets; ln -s /Users/anson/AgentFoundations-ffs/FiniteFactoredSets.lean $SB/FiniteFactoredSets.lean; cp -r /Users/anson/AgentFoundations-ffs/scripts $SB/scripts; python3 -c \"s=open('/Users/anson/AgentFoundations-ffs/AxiomAudit.lean').read(); s=s.replace('-- FFS-INVENTORY-END','  FiniteFactoredSets.this_declaration_does_not_exist\\n-- FFS-INVENTORY-END'); open('$SB/AxiomAudit.lean','w').write(s)\"; cd $SB && python3 scripts/check-finite-factored-sets-nodes.py; echo EXIT=$?   # prints OK (372 inventoried endpoints), EXIT=0",
+  "id": "R11-F28"
+ },
+ {
+  "file": "FiniteFactoredSets/API.lean",
+  "lines": "L242-L245 (also L77-L82)",
+  "severity": "MAJOR",
+  "category": "false-consumer-guidance",
+  "claim": "The consumer API's namespace guidance is executably wrong: it instructs a client to 'write `eventPartition E`', but under the API's own stated recipe (`open FiniteFactoredSets` plus dot notation) that identifier does not resolve, and the analogy it draws to `mono`/`monos`/`poly` is false because those do resolve.",
+  "evidence": "API.lean:242-245: '`eventPartition` is an auxiliary of ours: it carries no paper-node annotation ... and, like `mono`/`monos`/`poly`, it **takes no `F`** — write `eventPartition E`, never `F.eventPartition E`'.  API.lean:30-32 sets the recipe: 'Everything lives in the `FiniteFactoredSets` namespace ... (use `open FiniteFactoredSets` and dot notation on `F : FactoredSet S`)'.  But eventPartition is declared inside `namespace FactoredSet` (FiniteFactoredSets/EmbeddedAgency.lean:31/35/46), so its full name is `FiniteFactoredSets.FactoredSet.eventPartition` — and dot notation is impossible because it takes no `FactoredSet` argument.  AxiomAudit.lean:1544 spells it correctly as `FactoredSet.eventPartition`, and Examples.lean:3533 writes `FactoredSet.eventPartition`.  The same unqualified spelling is used at API.lean:77-82 for `ofSetoid`, `ofSetoidOn E Y` and `indiscrete E`, which are `Subpartition.*` and also fail to resolve.",
+  "executable_check": "cat > /tmp/ep.lean <<'EOF'\nimport FiniteFactoredSets.API\nopen FiniteFactoredSets\nexample (E : Set Bool) : Setoid Bool := eventPartition E   -- Unknown identifier `eventPartition`\n#check @ofSetoid       -- Unknown identifier `ofSetoid`\n#check @indiscrete     -- Unknown identifier `indiscrete`\n#check @mono           -- resolves\nEOF\ncd /Users/anson/AgentFoundations-ffs && lake env lean /tmp/ep.lean",
+  "id": "R11-F29"
+ },
+ {
+  "file": "FiniteFactoredSets/Examples.lean",
+  "lines": "L3315-L3458 (esp. L3429, L3443, L3453); duplicated at APITests/FiniteFactoredSets.lean:680-684",
+  "severity": "MAJOR",
+  "category": "duplicate-of-existing",
+  "claim": "General, reusable §7.3 lemmas about an arbitrary factored set live in the fixture file that the consumer boundary explicitly excludes, and as a direct consequence the client smoke test re-proves one of them verbatim.",
+  "evidence": "Examples.lean opens a general section at L3315/L3378 (`variable {S : Type u}` / `variable (F : FactoredSet S)`) and proves `counterfactableRel_of_counterfactable` (L3429), `beforeGivenSet_univ_iff` (L3443: `F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y`, general in S and F) and `beforeGivenSet_empty` (L3453).  API.lean:445-453 declares `FiniteFactoredSets.Examples` outside the boundary — 'it is a regression fixture, not a dependency surface' — so a client cannot reach them.  APITests/FiniteFactoredSets.lean:680-684 therefore states and re-proves the identical lemma `beforeGivenSet_univ_iff {S : Type u} (F : FactoredSet S) [Finite F.B] (X Y : Setoid S) : F.BeforeGivenSet X Y Set.univ ↔ F.Before X Y`, together with four further general helpers (`restrict_top_eq_indiscrete`, `historySub_restrict_eq_empty`, `orthogonal_top_left`, `observes_empty_iff`, `counterfactable_of_mem_basis`) that exist nowhere in the library.  CLAUDE.md's rule 2b makes a second divergent proof of the same fact a defect in itself; here it is also evidence that the API boundary is drawn in the wrong place for §7.3.",
+  "executable_check": "diff <(sed -n '3443,3444p' /Users/anson/AgentFoundations-ffs/FiniteFactoredSets/Examples.lean) <(sed -n '680,681p' /Users/anson/AgentFoundations-ffs/APITests/FiniteFactoredSets.lean)  # same statement, two proofs",
+  "id": "R11-F30"
+ },
+ {
+  "file": "scripts/papers.py",
+  "lines": "L93-L111 (esp. L98, L107-L108)",
+  "severity": "MAJOR",
+  "category": "register-inconsistency",
+  "claim": "Five registers declare the Finite Factored Sets formalization complete while the machine-readable registry and the public read-through guide declare it in progress; the registry's own comment about the consumer surface directly contradicts API.lean.",
+  "evidence": "papers.py:98 `\"status\": \"in-progress\"` and papers.py:107-108 'In progress, but the consumer surface is maintained incrementally from the start'.  Against that: FiniteFactoredSets/API.lean:18-20 '**Status: complete** ... This boundary is therefore the whole consumer surface rather than an incremental one'; FiniteFactoredSets/README.md:8 '**Status: complete'; root README.md:29 '**Complete** — §2–§7'; CLAUDE.md's FFS paragraph 'is **complete**'; AxiomAudit.lean:1045 'This formalization is **complete** for its ruled scope'; and docs/trust-surface.html:5743 'This formalization is in progress'.  papers.py's own docstring calls itself 'the single source of truth about what this repository formalizes'.  All four completion artifacts CLAUDE.md requires for `completed` (api, api_test, APITests aggregation, default CI build) are present and green, so the registry is the lagging register — but a reader is given contradictory answers by five files.",
+  "executable_check": "grep -n 'Status: complete\\|\"status\"' /Users/anson/AgentFoundations-ffs/FiniteFactoredSets/README.md /Users/anson/AgentFoundations-ffs/FiniteFactoredSets/API.lean /Users/anson/AgentFoundations-ffs/scripts/papers.py",
+  "id": "R11-F31"
+ },
+ {
+  "file": "FiniteFactoredSets/API.lean",
+  "lines": "L270-L273 (and FiniteFactoredSets.lean:160-161)",
+  "severity": "MINOR",
+  "category": "false-register-sentence",
+  "claim": "Two registers say the unproved Conjecture-1 `Prop` 'acquires no axiom, appears in no axiom check'; it is listed in the FFS-INVENTORY `#assert_axioms_clean` block and reports the standard three axioms.",
+  "evidence": "API.lean:270-272 'An unproved `Prop` is a definition, not a `sorry`: it acquires no axiom, appears in no axiom check ...'; FiniteFactoredSets.lean:160-161 'it adds no axiom and appears in no axiom check'.  AxiomAudit.lean:1420 lists `FundamentalTheoremFiniteDim` inside `#assert_axioms_clean`, and AxiomAudit.lean:1415-1417 says so explicitly ('So listing it here checks the statement's own axiom profile').  `#print axioms FiniteFactoredSets.FundamentalTheoremFiniteDim` reports [propext, Classical.choice, Quot.sound].  (FiniteFactoredSets/README.md:83-84 states this correctly — 'carries no `sorryAx`' — so only the API module doc and the glossary are wrong.)",
+  "executable_check": "cat > /tmp/ax.lean <<'EOF'\nimport FiniteFactoredSets\n#print axioms FiniteFactoredSets.FundamentalTheoremFiniteDim\nEOF\ncd /Users/anson/AgentFoundations-ffs && lake env lean /tmp/ax.lean && grep -n 'FundamentalTheoremFiniteDim' AxiomAudit.lean | sed -n 3p",
+  "id": "R11-F32"
+ },
+ {
+  "file": "AxiomAudit.lean",
+  "lines": "L1412-L1415",
+  "severity": "MINOR",
+  "category": "stale-register",
+  "claim": "The FFS-INVENTORY comment says the only uses of `FundamentalTheoremFiniteDim` are two `example`s in `InfiniteExamples`; the client smoke test consumes it as a hypothesis too.",
+  "evidence": "AxiomAudit.lean:1413-1415 '... is deliberately **not proved**: no declaration in the repo has that type, the only uses being the two `example`s in `InfiniteExamples` that take it *as a hypothesis* and instantiate it at a witness.'  There are three such uses: FiniteFactoredSets/InfiniteExamples.lean:174, :184 and APITests/FiniteFactoredSets.lean:719 (`example (h : FundamentalTheoremFiniteDim.{0}) ...`), the last of which FiniteFactoredSets/README.md:537-540 advertises.",
+  "executable_check": "grep -rn 'example (h : FundamentalTheoremFiniteDim' /Users/anson/AgentFoundations-ffs/FiniteFactoredSets /Users/anson/AgentFoundations-ffs/APITests",
+  "id": "R11-F33"
+ },
+ {
+  "file": "AxiomAudit.lean",
+  "lines": "L1047-L1055 (and docs/trust-surface.html:5764-5771 / scripts/trust-surface-template.html:462-468)",
+  "severity": "MINOR",
+  "category": "stale-register",
+  "claim": "Two registers enumerate the Mathlib-rendered nodes incompletely: the FFS-INVENTORY preamble omits Definition 1, and the trust-surface page names only five of the nine while its own adjacent count says nine.",
+  "evidence": "AxiomAudit.lean:1049-1053 lists 'Definition 2 ... Definition 5 ... Definition 6 ... Definition 7 ... Definition 9 ... Definitions 29 and 30 and ... Definition 39' — eight, omitting Definition 1 (the disjoint union), which FiniteFactoredSets/README.md:200 counts among the nine and which the '87 + 9 = 96' arithmetic needs.  docs/trust-surface.html:5764-5771 lists only Definitions 2, 5, 6, 7, 9 as Mathlib-rendered, three lines after stating 'Nodes with no Lean statement annotated to them: 9 of the paper's definitions'.  The page also has a section headed 'One node carried only in part' naming only Proposition 2, where README.md:213-232 records three partial entries (Proposition 2's first sentence, Definition 15's third sentence, Proposition 31's 'irreducible').",
+  "executable_check": "python3 -c \"import re,sys; sys.path.insert(0,'/Users/anson/AgentFoundations-ffs/scripts'); import paper_nodes as pn; from pathlib import Path; d=pn.printed_independent_declarations(Path('/Users/anson/AgentFoundations-ffs/FiniteFactoredSets/notes/2109.11513-main.tex').read_text()); ann={m for f in __import__('glob').glob('/Users/anson/AgentFoundations-ffs/FiniteFactoredSets/*.lean') for m in re.findall(r'Paper node: ([A-Za-z]+ [0-9]+)', open(f).read())}; print(sorted(set(d)-ann-{'Example 3','Example 4'}))\"   # ['Definition 1','Definition 2','Definition 29','Definition 30','Definition 39','Definition 5','Definition 6','Definition 7','Definition 9']",
+  "id": "R11-F34"
+ },
+ {
+  "file": "scripts/check-finite-factored-sets-nodes.py",
+  "lines": "L4 (also scripts/trust-surface-template.html:448, docs/trust-surface.html:5750, .github/workflows/ci.yml:44-45)",
+  "severity": "MINOR",
+  "category": "false-register-sentence",
+  "claim": "Four registers state the paper 'labels only 32 of its 98 numbered nodes'; 32 is the count of \\label commands in the source, of which two are not on nodes, so exactly 30 numbered nodes carry a label.",
+  "evidence": "The TeX has 32 `\\label{...}`; `tab:my_label` labels a table and `inftime` labels `\\section{Inferring Time}` (2109.11513-main.tex:1095). The remaining 30 sit inside definition/proposition/theorem/corollary/lemma2/example environments.",
+  "executable_check": "python3 - <<'EOF'\nimport re\nt=open('/Users/anson/AgentFoundations-ffs/FiniteFactoredSets/notes/2109.11513-main.tex').read()\nn=0\nfor m in re.finditer(r'\\\\label\\{([^}]*)\\}',t):\n    env=re.findall(r'\\\\begin\\{(\\w+)\\}',t[max(0,m.start()-160):m.start()])\n    if env and env[-1] in {'definition','proposition','theorem','corollary','lemma2','example','conjecture'}: n+=1\nprint('labels total', len(re.findall(r'\\\\label',t)), 'labels on numbered nodes', n)\nEOF",
+  "id": "R11-F35"
+ },
+ {
+  "file": "FiniteFactoredSets/README.md",
+  "lines": "L13-L20 (claim), FiniteFactoredSets/Examples.lean:1280 (the only occurrence)",
+  "severity": "MINOR",
+  "category": "oversold-register",
+  "claim": "`OrthogonalSub` is listed among the vocabulary that is 'computed over' the witnesses 'rather than merely defined', but nothing computes its value on any witness; its single occurrence is an anonymous `example` restating its unfolding lemma.",
+  "evidence": "README.md:13-20 lists `OrthogonalSub` in the status paragraph's roster of computed vocabulary.  `grep -n OrthogonalSub FiniteFactoredSets/Examples.lean` returns exactly two hits: line 16 (the file's own docstring copy of that roster) and line 1280, `example : coordFS.OrthogonalSub fstOnEdiag sndOnEdiag ↔ coordFS.historySub fstOnEdiag ∩ coordFS.historySub sndOnEdiag = ∅ := coordFS.orthogonalSub_def ...`, which is `orthogonalSub_def` instantiated and states no verdict.  It is anonymous, so it is not in the FFS-INVENTORY block either, unlike every other roster entry.",
+  "executable_check": "grep -n 'OrthogonalSub' /Users/anson/AgentFoundations-ffs/FiniteFactoredSets/Examples.lean; grep -c 'OrthogonalSub' /Users/anson/AgentFoundations-ffs/AxiomAudit.lean",
+  "id": "R11-F36"
+ },
+ {
+  "file": "FiniteFactoredSets/README.md",
+  "lines": "L522-L523, L500 (table preambles); FiniteFactoredSets/API.lean:450; README.md:96",
+  "severity": "MINOR",
+  "category": "stale-register",
+  "claim": "Four smaller register sentences are false or stale: the §7 table's inventory parenthetical, the §6 table's blanket 'every declaration below is inventoried', API.lean's excludes description, and the root README's library count.",
+  "evidence": "(a) README.md:522-523 '(every name below exists once in the witness files and once in the FFS-INVENTORY block)' — false for `eventPartition` (declared at FiniteFactoredSets/EmbeddedAgency.lean:46, in no inventory block at all) and for `fundamentalTheoremFiniteDim_of_finite` (Conjecture.lean:55, in the consumer-conveniences block at AxiomAudit.lean:1734, which AxiomAudit.lean:1418-1419 says is where it sits — not FFS-INVENTORY).  (b) README.md:500 'Every declaration below is inventoried' heads a table whose last row (L507) names `OrthDatabase.not_before_self_of_consistent` and `OrthDatabase.before_of_not_consistent`, both in the conveniences block (AxiomAudit.lean:1735), not FFS-INVENTORY.  (c) API.lean:450, in 'What this boundary excludes', still says Examples carries 'the §2.5, §3, §4, §5 and §6 vocabulary computed over them', omitting §7 although README.md:514-532 documents the §7.3 witnesses in that file.  (d) root README.md:96 '`lake build AxiomAudit` ... subsumes all three libraries' — there are four paper libraries (AxiomAudit.lean:54-67 imports LogicalInduction, ModalAgents, CartesianFrames and FiniteFactoredSets).",
+  "executable_check": "grep -n 'eventPartition\\|fundamentalTheoremFiniteDim_of_finite\\|not_before_self_of_consistent' /Users/anson/AgentFoundations-ffs/AxiomAudit.lean | sed -n '1,20p'",
+  "id": "R11-F37"
+ },
+ {
+  "file": "CLAUDE.md",
+  "lines": "FFS paragraph, 'EmbeddedAgency.lean (§7.3: Definitions 46-50 - ...)'",
+  "severity": "MINOR",
+  "category": "register-inconsistency",
+  "claim": "The root CLAUDE.md paragraph lists six names as the carriers of Definitions 46-50, including `eventPartition`, which every other register states is an unannotated auxiliary and not a node carrier.",
+  "evidence": "CLAUDE.md: '`EmbeddedAgency.lean` (§7.3: Definitions 46–50 — `eventPartition`, `Observes`, `ObservesPartition`, `Counterfactable`, `CounterfactableRel`, `BeforeGivenSet`; definitions only ...)' — six names for five nodes.  FiniteFactoredSets.lean:43-44, FiniteFactoredSets/README.md:316, API.lean:242-244 and AxiomAudit.lean:1544-1546 all say `eventPartition` carries no paper-node annotation and that Definition 46's carrier is `Observes`; the annotation scan confirms `eventPartition` has no `Paper node:` line.",
+  "executable_check": "grep -n -B3 'def eventPartition' /Users/anson/AgentFoundations-ffs/FiniteFactoredSets/EmbeddedAgency.lean   # docstring has no 'Paper node:' line",
+  "id": "R11-F38"
+ }
+]
