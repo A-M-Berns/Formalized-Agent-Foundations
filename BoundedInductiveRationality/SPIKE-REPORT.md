@@ -5,7 +5,7 @@ Caspar Oesterheld, Abram Demski, Vincent Conitzer, TARK 2023 (EPTCS 379, pp. 421
 Feasibility / representation probe. Not a formalization, not registered in
 `scripts/papers.py`, not on the trust surface, not in `AxiomAudit`.
 
-Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1685 lines, **zero
+Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1692 lines, **zero
 `sorry`**, every listed endpoint axiom-clean (`propext`, `Classical.choice`, `Quot.sound`
 only; the `#print axioms` block at the end of the file is part of the build).
 Build it with `./BoundedInductiveRationality/spike-build.sh
@@ -35,7 +35,7 @@ Per-layer:
 | Layer | Rating | One-line reason |
 |---|---|---|
 | Extensional BRIA mathematics (Defs 1–7, Lemma 6) | **GREEN — CF-like** | Compiled, with reading lemmas; the only design decision that mattered was rendering "the sequence indexed by `B` tends to `−∞`", and `atTop ⊓ 𝓟 B` settles it. |
-| BRIA construction — Theorem 1's mathematical half | **GREEN/YELLOW — FSM-like** | One representation choice (total `pickWinner` + a separate attainment proof), then routine. Full extensional existence theorem compiled over a genuinely countable family. |
+| BRIA construction — Theorem 1's mathematical half | **GREEN/YELLOW — FSM-like** | One representation choice (total `pickWinner` + a separate attainment proof), then routine. Full extensional existence theorem compiled over a genuinely countable family — *and* over reactive environments that compute rewards from the agent's own choices, which is what §3 and §7 need and which the paper never states (E35). |
 | Computability (Thm 1 part 4, Thm 2, "e.c." in Thms 3/4) | **RED/YELLOW — LI-like** | No machine model in the paper; LI's `dd:fuel` class is hardwired *polynomial* and its lower-calibration is the open direction Theorem 2 needs. |
 | Runtime complexity (`O(g(t)q(t))`) | **RED — not presently formalizable faithfully** | The printed bound is not a well-formed claim: `q` is defined to contain a factor `g`, so "arbitrarily slow-growing `q`" is false whenever `g` is unbounded (E16), and there is no input-size convention (E17). |
 | vMWC randomness (Def 8, Thm 4; Defs 9–10, Thm 9) | **RED/YELLOW** | **Definition 8 as printed is unsatisfiable** on binary sequences with mean 1/2 — the paper's own π-digits example (E6, proved). The corrected notion is formalizable, but its quantifier ranges over sets "decidable from available information", a phrase never defined (E15). |
