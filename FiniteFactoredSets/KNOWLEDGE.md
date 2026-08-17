@@ -439,6 +439,50 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 7 audit — durable lessons (§5.1–5.2 convergence round)
+
+* Verdict shape: codex statement sweep `[]`; Lens A no drift; the residue was minimality and
+  register hygiene. Two paper-node binders relaxed under `dd:finiteness-minimal` (Anson's
+  standing ruling, as §3–§4 were): **Prop 26 `Q_eq_poly` and Prop 29 `irr_partition` /
+  `irr_isPartition` take `[Finite F.B]`** — their proofs used `Finite S` only to obtain
+  `Finite F.B`. For infinite `E`, Prop 26's both sides are the finsum junk value `0`, so the
+  extra content is degenerate (recorded in the docstring; do not oversell).
+  `degreeOf_poly_le` needs no finiteness; `coeff_add_mul_of_split` needs no `DecidableEq`.
+* **Cross-check discipline has two halves**: (i) the witness must not name the endpoint, and
+  (ii) it must state *the same proposition* as its applied twin. Round 7 caught a Prop 29
+  "cross-check" that was `⋃₀ {B} = B` (a Set identity) beside an applied
+  `⋃₀ irr Ediag = B`. When auditing a pair, diff the two statements first.
+* Lean `.support` (Mathlib coefficient support, exponent vectors) is not the paper's `supp`
+  (`vars`); `mem_support_poly`/`monos_eq_of_support_eq` use the former — translate. Compiled
+  discriminator: `Ediag` and the antidiagonal have equal `(poly B ·).vars` but different
+  `monos`. Mathlib `Irreducible` excludes `0`; the paper's wording would count `0`
+  irreducible — the concrete reason the stronger rendering is safe. `mem_vars_poly`'s `hC` is
+  used-but-removable (vars ignores multiplicity); kept for uniformity with `degreeOf_poly_le`.
+* Minimality audit of the public §5 surface: `coeff_poly`, `mem_support_poly`,
+  `monos_eq_of_support_eq`, `poly_ne_zero`, `mem_vars_poly` genuinely need `[Finite S]`
+  (infinite `monos` ⇒ junk `0`); `mono_eq_iff`'s `[Finite F.B]` is minimal (infinite `C`
+  ⇒ `mono C s = 1`). `Finite F.B` is `inferInstance` from `[Finite S]` — the three
+  `haveI : Finite F.B := F.finite_basis_of_finite` lines were dead weight.
+* Refuted (do not re-raise): `prod_X_eq_monomial` is not Mathlib's `prod_X_pow` (indexes
+  through a possibly non-injective `f`, needed for `C ⊄ B`); Mathlib has no
+  `IsUnit p → p.vars = ∅` beyond `isUnit_iff_eq_C_of_isReduced` + `vars_C`, and no
+  coefficient-of-product-under-disjoint-vars lemma. `MvPolynomial.support_subset_vars_of_mem_support`
+  exists and replaces the hand reconstruction.
+* Docstrings must not carry commit hashes / spike history (consolidation rule); provenance
+  lives here and in `notes/`.
+* Round-7 fix outcomes: `Q_eq_poly`, `degreeOf_Q_le`, `irr_partition`, `irr_isPartition` at
+  `[Finite F.B]`; `degreeOf_poly_le` finiteness-free (both finsum/finprod junk values respect
+  the bound — generic private `degreeOf_finsum_mem_le` + `degreeOf_mono_le`);
+  `coeff_add_mul_of_split` DecidableEq-free. **Binder inventory (33 public §5 decls): 14
+  `[Finite S]` / 5 `[Finite F.B]` / 14 free** — recount mechanically before editing the
+  register (it drifted twice). The §5.1 relaxations are degenerate over infinite `E` (junk `0`),
+  Prop 29's is not — keep the two cases separated in prose. `monoExp_apply` takes
+  `(hCfin : C.Finite)`. `open scoped Classical`'s *position* in Polynomial.lean matters (nothing
+  above it has `DecidableEq (Set S)`); `X v ≠ 1` via `congrArg (eval fun _ => 0)`; the additive
+  `finsum_*` junk lemmas are `to_additive` images — grep the multiplicative name;
+  `support_subset_vars_of_mem_support`, `degreeOf_monomial_eq`, `Set.disjoint_singleton` exist;
+  don't byte-length-lint these files (`wc -m`).
+
 ## Round 6 audit — durable lessons (first audit of §5.1–5.2)
 
 * Verdict shape: codex statement sweep `[]`; Lens A no statement drift (executable pins:

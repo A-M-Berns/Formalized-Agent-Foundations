@@ -51,8 +51,8 @@ polynomial, and neither mentions `Q_eq_poly`, so `prop26_coordFS_crosscheck` re-
 proposition here rather than echoing it (`prop26_coordFS_applied` is the separate, honest
 *application* of the endpoint).  The same pairing runs for Proposition 30
 (`Q_coordFS_univ_eq_mul_poly` computed, `prop30_coordFS_univ_applied` applied).  Third,
-`Irr^F` is computed at three subsets and the answers differ: at `S` and at the block
-`Efst` the irreducible parts are the two singletons `{fstFactor}`, `{sndFactor}`, while on
+`Irr^F` is computed at four subsets and the answers differ: at `S`, at the block `Efst` and
+at `∅` the irreducible parts are the two singletons `{fstFactor}`, `{sndFactor}`, while on
 the diagonal `Ediag` the first coordinate determines the second,
 `χ^F_{fst}(Ediag, Ediag) ≠ Ediag`, and the only irreducible part is the whole basis — the
 §5 shadow of the §4 fact that restriction entangles.  Note the minimality clause of
@@ -1942,10 +1942,11 @@ lemma prop29_coordFS_univ_applied :
   coordFS.irr_partition univ_nonempty_coord
 
 /-- The cover clause cross-checked against the computed `Irr^F(S) = {{fst}, {snd}}`: this
-declaration does not mention `irr_partition`. -/
+is Proposition 29's third conjunct at `E = S` verbatim, re-derived from Definition 35's
+computed value, and this declaration does not mention `irr_partition`. -/
 lemma sUnion_irr_coordFS_univ_crosscheck :
-    ⋃₀ ({{fstFactor}, {sndFactor}} : Set (Set (Setoid (Bool × Bool)))) = coordFS.B := by
-  rw [Set.sUnion_insert, Set.sUnion_singleton]
+    ⋃₀ coordFS.irr Set.univ = coordFS.B := by
+  rw [irr_coordFS_univ, Set.sUnion_insert, Set.sUnion_singleton]
   rfl
 
 /-- **Proposition 29 applied at `E = Ediag`**, where the partition of `B` is the single
@@ -1955,9 +1956,12 @@ lemma prop29_coordFS_Ediag_applied :
     ⋃₀ coordFS.irr Ediag = coordFS.B :=
   (coordFS.irr_partition Ediag_nonempty).2.2
 
+/-- The same cover clause at `E = Ediag`, re-derived from the computed
+`Irr^F(Ediag) = {B}`: this declaration does not mention `irr_partition` either. -/
 lemma sUnion_irr_coordFS_Ediag_crosscheck :
-    ⋃₀ ({coordFS.B} : Set (Set (Setoid (Bool × Bool)))) = coordFS.B :=
-  Set.sUnion_singleton _
+    ⋃₀ coordFS.irr Ediag = coordFS.B := by
+  rw [irr_coordFS_Ediag]
+  exact Set.sUnion_singleton _
 
 /-- `irr_isPartition` applied: Proposition 29's §4 restatement is inhabited on the
 witness, so the `Subpartition` it promises really is constructed. -/
@@ -2056,12 +2060,30 @@ lemma irr_coordFS_empty : coordFS.irr (∅ : Set (Bool × Bool)) = {{fstFactor},
         rw [Set.ssubset_singleton_iff] at hD
         exact absurd hne (hD ▸ Set.not_nonempty_empty)⟩
 
-/-- **Proposition 29's `hE` really is unused**, as its docstring discloses: its conclusion
-holds at `E = ∅` on the witness. -/
+/-- **Proposition 29's `hE` really is unused**, as its docstring discloses: all three of
+its conjuncts — nonemptiness of the blocks, pairwise disjointness, and the cover — hold at
+`E = ∅` on the witness, computed from `irr_coordFS_empty` rather than from the endpoint. -/
 lemma irr_partition_holds_at_empty :
-    ⋃₀ coordFS.irr (∅ : Set (Bool × Bool)) = coordFS.B := by
-  rw [irr_coordFS_empty, Set.sUnion_insert, Set.sUnion_singleton]
-  rfl
+    (∀ C ∈ coordFS.irr (∅ : Set (Bool × Bool)), C.Nonempty) ∧
+      (coordFS.irr (∅ : Set (Bool × Bool))).PairwiseDisjoint id ∧
+        ⋃₀ coordFS.irr (∅ : Set (Bool × Bool)) = coordFS.B := by
+  rw [irr_coordFS_empty]
+  refine ⟨?_, ?_, ?_⟩
+  · intro C hC
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hC
+    rcases hC with rfl | rfl
+    · exact ⟨fstFactor, rfl⟩
+    · exact ⟨sndFactor, rfl⟩
+  · intro C₀ h₀ C₁ h₁ hne
+    show Disjoint C₀ C₁
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at h₀ h₁
+    rcases h₀ with rfl | rfl <;> rcases h₁ with rfl | rfl
+    · exact absurd rfl hne
+    · exact Set.disjoint_singleton.2 fstFactor_ne_sndFactor
+    · exact Set.disjoint_singleton.2 (Ne.symm fstFactor_ne_sndFactor)
+    · exact absurd rfl hne
+  · rw [Set.sUnion_insert, Set.sUnion_singleton]
+    rfl
 
 /-- **Proposition 28's `hE` is load-bearing**: at `E = ∅`, `Q^F_∅ = 0`, so *every*
 polynomial divides it, while `poly^F_C(∅) = 0` for every `C` — the conclusion fails for

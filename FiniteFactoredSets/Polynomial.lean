@@ -30,10 +30,13 @@ read off the single exponent vector `monoExp C s`.
   declaration of ours, so neither is inventoried; they belong in the README's table of
   Mathlib-rendered nodes, whose §5 rows land with this stage's README update.
 * Sums and products over *sets* (`∑_{s ∈ E}`, `∏_{b ∈ B}`) are `finsum`/`finprod`, so the
-  definitions carry no finiteness hypothesis and `[Finite S]` appears exactly on the
-  statements the paper makes for finite factored sets (`dd:finiteness-minimal`).  This is
-  the section where `Finite S` genuinely enters: for infinite `S` a `finsum` over an
-  infinite `E` is `0`, and nothing below is claimed about that junk value.
+  definitions carry no finiteness hypothesis, and each statement carries the weakest
+  finiteness its own proof consumes (`dd:finiteness-minimal`).  This is the section where
+  `Finite S` genuinely enters — for infinite `S` a `finsum` over an infinite `E` is `0`,
+  and nothing below is claimed about that junk value — but it does not enter uniformly:
+  `mono_eq_iff`, Proposition 26 (`Q_eq_poly`) and `degreeOf_Q_le` need only `Finite F.B`,
+  and `degreeOf_poly_le` needs no finiteness at all.  The exact carrier list is maintained
+  in the "Finiteness" section of `API.lean`.
 * Irreducibility (Proposition 31, next file) is Mathlib's `Irreducible` in this ring; over
   the field `ℝ` its units are the nonzero constants, so it coincides with the paper's
   "no factorization into two polynomials of nonempty support".
@@ -70,17 +73,17 @@ private lemma filter_zero_of_notMem {V : σ → Prop} [DecidablePred V] {f : σ 
 no combining of like terms in their product: the coefficient of `a + b` in `p * q`, for
 `a` supported in `p`'s variables and `b` in `q`'s, is `coeff a p * coeff b q`.  This is the
 generic fact behind Proposition 28's "there can be no combining like terms"; it is not
-FFS-specific and is upstreamable.  (Re-landed from the feasibility spike, commit
-`19a2254`.) -/
-lemma coeff_add_mul_of_split {σ : Type*} [DecidableEq σ] {p q : MvPolynomial σ ℝ}
+FFS-specific and is upstreamable. -/
+lemma coeff_add_mul_of_split {σ : Type*} {p q : MvPolynomial σ ℝ}
     (hpq : Disjoint p.vars q.vars) {a b : σ →₀ ℕ}
     (ha : ∀ i ∈ a.support, i ∈ p.vars) (hb : ∀ i ∈ b.support, i ∈ q.vars) :
     (p * q).coeff (a + b) = p.coeff a * q.coeff b := by
+  classical
   have hp : ∀ c ∈ p.support, ∀ i, c i ≠ 0 → i ∈ p.vars := fun c hc i hi =>
-    (mem_vars_iff_mem_support i).2 ⟨c, hc, Finsupp.mem_support_iff.2 hi⟩
+    support_subset_vars_of_mem_support hc (Finsupp.mem_support_iff.2 hi)
   have hq : ∀ c ∈ q.support, ∀ i, c i ≠ 0 → i ∉ p.vars := fun c hc i hi =>
-    Finset.disjoint_right.1 hpq ((mem_vars_iff_mem_support i).2
-      ⟨c, hc, Finsupp.mem_support_iff.2 hi⟩)
+    Finset.disjoint_right.1 hpq
+      (support_subset_vars_of_mem_support hc (Finsupp.mem_support_iff.2 hi))
   have hda : ∀ i, a i ≠ 0 → i ∈ p.vars := fun i hi => ha i (Finsupp.mem_support_iff.2 hi)
   have hdb : ∀ i, b i ≠ 0 → i ∉ p.vars := fun i hi =>
     Finset.disjoint_right.1 hpq (hb i (Finsupp.mem_support_iff.2 hi))
@@ -156,6 +159,30 @@ lemma mono_congr {C : Set (Setoid S)} {s t : S} (h : ∀ b ∈ C, part b s = par
 lemma mono_union {C D : Set (Setoid S)} (hd : Disjoint C D) (hC : C.Finite) (hD : D.Finite)
     (s : S) : mono (C ∪ D) s = mono C s * mono D s :=
   finprod_mem_union hd hC hD
+
+private lemma X_ne_one (v : Set S) : (X v : Poly S) ≠ 1 := fun h => by
+  simpa using congrArg (eval fun _ => (0 : ℝ)) h
+
+/-- The junk value of Definition 32 at an infinite factor set: `∏ᶠ` collapses to `1`.  No
+`C ⊆ B` is needed — no variable `X v` is `1`, so the multiplicative support is all of `C`. -/
+private lemma mono_eq_one_of_infinite {C : Set (Setoid S)} (hC : ¬ C.Finite) (s : S) :
+    mono C s = 1 :=
+  finprod_mem_eq_one_of_infinite <| by
+    rw [Set.inter_eq_self_of_subset_left
+      fun b _ => Function.mem_mulSupport.2 (X_ne_one (part b s))]
+    exact hC
+
+/-- A `finsum` of polynomials whose members all have `v`-degree at most `n` has `v`-degree
+at most `n`, junk value included: an infinite support gives `0`.  This is what lets the
+squarefreeness of `poly^F_C(E)` be stated with no finiteness hypothesis at all. -/
+private lemma degreeOf_finsum_mem_le {ι : Type*} {f : ι → Poly S} {t : Set ι} {v : Set S}
+    {n : ℕ} (h : ∀ i ∈ t, (f i).degreeOf v ≤ n) : (∑ᶠ i ∈ t, f i).degreeOf v ≤ n := by
+  by_cases hfin : (t ∩ Function.support f).Finite
+  · rw [finsum_mem_eq_sum f hfin]
+    exact (degreeOf_sum_le v _ f).trans
+      (Finset.sup_le fun i hi => h i (hfin.mem_toFinset.1 hi).1)
+  · rw [finsum_mem_eq_zero_of_infinite hfin, degreeOf_zero]
+    exact Nat.zero_le _
 
 lemma poly_eq_sum_image [Finite S] (C : Set (Setoid S)) (E : Set S) :
     poly C E = ∑ m ∈ (Set.toFinite E).toFinset.image (mono C), m := by
@@ -236,8 +263,10 @@ lemma coeff_poly [Finite S] (C : Set (Setoid S)) (E : Set S) (d : (Set S) →₀
   rw [coeff_poly_monoExp C E d]
   exact if_congr (monomial_mem_monos_iff C E d).symm rfl rfl
 
-/-- The support of `poly^F_C(E)` read as Definition 33: an exponent vector occurs iff its
-monic monomial is one of the `C`-monomials of `E`. -/
+/-- The *coefficient* support of `poly^F_C(E)` read as Definition 33: an exponent vector
+occurs iff its monic monomial is one of the `C`-monomials of `E`.  This is Mathlib's
+`MvPolynomial.support` — the finset of exponent vectors with nonzero coefficient — and not
+the paper's `supp` of Definition 30, which is `MvPolynomial.vars` (see `mem_vars_poly`). -/
 lemma mem_support_poly [Finite S] (C : Set (Setoid S)) (E : Set S) {d : (Set S) →₀ ℕ} :
     d ∈ (poly C E).support ↔ (monomial d (1 : ℝ) : Poly S) ∈ monos C E := by
   rw [mem_support_poly_monoExp, monomial_mem_monos_iff]
@@ -260,16 +289,17 @@ private lemma monos_eq_image_support [Finite S] (C : Set (Setoid S)) (E : Set S)
     funext (mono_eq_monomial (Set.toFinite C))
   rw [monos, hm, hsupp, Set.image_image]
 
-/-- `poly^F_C(E)` determines `monos^F_C(E)`: the monomial set is the image of the support,
-so two `C`-polynomials with the same support have the same monomials.  Proposition 31 uses
-this to recover a point of `E` from an equality of polynomials up to a nonzero constant. -/
+/-- `poly^F_C(E)` determines `monos^F_C(E)`: the monomial set is the image of the
+coefficient support, so two `C`-polynomials with the same coefficient support have the same
+monomials.  "Support" here is Mathlib's `MvPolynomial.support`, the set of exponent vectors
+with nonzero coefficient — *not* the paper's `supp` of Definition 30, which is
+`MvPolynomial.vars`, the set of occurring variables.  Proposition 31 uses this to recover a
+point of `E` from an equality of polynomials up to a nonzero constant. -/
 lemma monos_eq_of_support_eq [Finite S] {C : Set (Setoid S)} {E E' : Set S}
     (h : (poly C E).support = (poly C E').support) : monos C E = monos C E' := by
   rw [monos_eq_image_support, monos_eq_image_support, h]
 
 namespace FactoredSet
-
-open scoped Classical
 
 variable (F : FactoredSet S)
 
@@ -290,10 +320,11 @@ lemma Q_eq_sum [Finite S] (E : Set S) :
 
 /-- The exponent of a variable in `mono^F_C(s)` is `1` if the variable is one of the blocks
 `[s]_b`, `b ∈ C`, and `0` otherwise.  Corollary 1 (`eq_of_part_eq`) is what rules out two
-factors of `C` contributing the same variable, which is why `C ⊆ B` is needed. -/
-private lemma monoExp_apply [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
+factors of `C` contributing the same variable, which is why `C ⊆ B` is needed.  The
+finiteness of `C` is a hypothesis rather than an instance on `F.B`, so that the squarefree
+facts below can be stated for an arbitrary basis. -/
+private lemma monoExp_apply {C : Set (Setoid S)} (hCfin : C.Finite) (hC : C ⊆ F.B) (s : S)
     (v : Set S) : monoExp C s v = if ∃ b ∈ C, part b s = v then 1 else 0 := by
-  have hCfin : C.Finite := (Set.toFinite F.B).subset hC
   rw [monoExp_eq_sum hCfin, Finsupp.finsetSum_apply]
   simp only [Finsupp.single_apply]
   split_ifs with h
@@ -310,7 +341,7 @@ private lemma monoExp_apply [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (
 
 private lemma monoExp_ne_zero_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
     (v : Set S) : monoExp C s v ≠ 0 ↔ ∃ b ∈ C, part b s = v := by
-  rw [F.monoExp_apply hC]
+  rw [F.monoExp_apply ((Set.toFinite F.B).subset hC) hC]
   split_ifs with h <;> simp [h]
 
 /-- Two `C`-monomials agree exactly when their arguments agree on every factor in `C`
@@ -323,7 +354,7 @@ lemma mono_eq_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
   rw [mono_eq_monomial hCfin, mono_eq_monomial hCfin] at h
   have hexp : monoExp C s = monoExp C t := monomial_left_injective one_ne_zero h
   have hv : monoExp C s (part b s) = monoExp C t (part b s) := by rw [hexp]
-  rw [F.monoExp_apply hC s, F.monoExp_apply hC t, if_pos ⟨b, hb, rfl⟩] at hv
+  rw [F.monoExp_apply hCfin hC s, F.monoExp_apply hCfin hC t, if_pos ⟨b, hb, rfl⟩] at hv
   by_cases hex : ∃ b' ∈ C, part b' t = part b s
   · obtain ⟨b', hb'C, hb'⟩ := hex
     have hbb : b' = b := F.eq_of_part_eq (hC hb'C) (hC hb) hb'
@@ -332,15 +363,29 @@ lemma mono_eq_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
   · rw [if_neg hex] at hv
     exact absurd hv one_ne_zero
 
+/-- Every variable has degree at most one in `mono^F_C(s)` for `C ⊆ B` — Corollary 1 says
+the factors of `C` contribute pairwise distinct variables, so the monomial is squarefree.
+No finiteness: for an infinite `C` the `finprod` takes its junk value `1`. -/
+private lemma degreeOf_mono_le {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S) (v : Set S) :
+    (mono C s).degreeOf v ≤ 1 := by
+  by_cases hCfin : C.Finite
+  · rw [mono_eq_monomial hCfin, degreeOf_monomial_eq _ _ (one_ne_zero (α := ℝ)),
+      F.monoExp_apply hCfin hC]
+    split_ifs <;> simp
+  · rw [mono_eq_one_of_infinite hCfin, degreeOf_one]
+    exact Nat.zero_le _
+
 /-- Every variable has degree at most one in `poly^F_C(E)` for `C ⊆ B`: the monomials of a
-factorization are squarefree, which is exactly where Corollary 1 does its work. -/
-lemma degreeOf_poly_le [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S)
+factorization are squarefree, which is exactly where Corollary 1 does its work.  No
+finiteness is needed anywhere — `poly^F_C(E)` is a `finsum` of squarefree monomials, and
+both of its junk values (`1` for an infinite `C`, `0` for an infinite monomial set) satisfy
+the bound. -/
+lemma degreeOf_poly_le {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S)
     (v : Set S) : (poly C E).degreeOf v ≤ 1 := by
-  rw [degreeOf_le_iff]
-  intro d hd
-  obtain ⟨s, -, rfl⟩ := (mem_support_poly_monoExp C E).1 hd
-  rw [F.monoExp_apply hC s]
-  split_ifs <;> simp
+  rw [poly]
+  refine degreeOf_finsum_mem_le fun m hm => ?_
+  obtain ⟨s, -, rfl⟩ := hm
+  exact F.degreeOf_mono_le hC s v
 
 /-- The variables of `poly^F_C(E)` are exactly the blocks `[s]_b` for `b ∈ C`, `s ∈ E`
 (for `C ⊆ B`). -/
@@ -367,15 +412,24 @@ private lemma mono_basis_injective [Finite F.B] : Function.Injective (mono F.B) 
 /-- **Proposition 26** — `Q^F_E = poly^F_B(E)`: distinct elements have distinct
 `B`-monomials (Proposition 3), so summing over `monos^F_B(E)` is summing over `E`.
 
+Only the *dimension* has to be finite (`dd:finiteness-minimal`): the argument is
+`finsum_mem_image` applied to `mono_basis_injective`, and injectivity of `mono^F_B` needs
+`Finite F.B` alone.  The extra content this buys over the paper's `[Finite S]` form is
+degenerate and is not oversold: for an infinite `E` both sides are the `finsum` junk value
+`0` — `Q^F_E` sums a family of nonzero monomials over an infinite set, and so does
+`poly^F_B(E)`, `mono^F_B` being injective — so the statement is `0 = 0` there.
+
 Paper node: Proposition 26 (§5.1). -/
-theorem Q_eq_poly [Finite S] (E : Set S) : F.Q E = poly F.B E := by
+theorem Q_eq_poly [Finite F.B] (E : Set S) : F.Q E = poly F.B E := by
   rw [Q_eq_finsum_mono, poly, monos]
   exact (finsum_mem_image (f := fun m : Poly S => m)
     (fun s _ t _ h => F.mono_basis_injective h)).symm
 
 /-- Every variable has degree at most one in `Q^F_E` — Proposition 26 followed by
-`degreeOf_poly_le` at `C = B`. -/
-lemma degreeOf_Q_le [Finite S] (E : Set S) (v : Set S) : (F.Q E).degreeOf v ≤ 1 := by
+`degreeOf_poly_le` at `C = B`.  Both of those now need at most `[Finite F.B]`, so this does
+too; as with Proposition 26, the extra content over `[Finite S]` is degenerate, an infinite
+`E` giving `Q^F_E = 0` and degree `0`. -/
+lemma degreeOf_Q_le [Finite F.B] (E : Set S) (v : Set S) : (F.Q E).degreeOf v ≤ 1 := by
   rw [F.Q_eq_poly E]
   exact F.degreeOf_poly_le le_rfl E v
 
@@ -489,14 +543,15 @@ Paper node: Proposition 28 (§5.1). -/
 theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Poly S}
     (hp : p ∣ F.Q E) : ∃ (r : ℝ) (C : Set (Setoid S)), C ⊆ F.B ∧ p = MvPolynomial.C r * poly C E := by
   obtain ⟨q, hq⟩ := hp
+  have hBfin : (F.B : Set (Setoid S)).Finite := Set.toFinite _
   have hQ0 : F.Q E ≠ 0 := F.Q_ne_zero hE
   have hp0 : p ≠ 0 := fun h => hQ0 (by rw [hq, h, zero_mul])
   have hq0 : q ≠ 0 := fun h => hQ0 (by rw [hq, h, mul_zero])
   have hdisj : Disjoint p.vars q.vars := F.vars_disjoint_of_mul_eq_Q hE hq.symm
-  have hpv : ∀ a ∈ p.support, ∀ i ∈ a.support, i ∈ p.vars := fun a ha i hi =>
-    (mem_vars_iff_mem_support i).2 ⟨a, ha, hi⟩
-  have hqv : ∀ b ∈ q.support, ∀ i ∈ b.support, i ∈ q.vars := fun b hb i hi =>
-    (mem_vars_iff_mem_support i).2 ⟨b, hb, hi⟩
+  have hpv : ∀ a ∈ p.support, ∀ i ∈ a.support, i ∈ p.vars := fun _ ha _ hi =>
+    support_subset_vars_of_mem_support ha hi
+  have hqv : ∀ b ∈ q.support, ∀ i ∈ b.support, i ∈ q.vars := fun _ hb _ hi =>
+    support_subset_vars_of_mem_support hb hi
   -- (A) every `p`-term times every `q`-term is a term of `Q^F_E`, of coefficient one.
   have hA : ∀ a ∈ p.support, ∀ b ∈ q.support, ∃ s ∈ E, monoExp F.B s = a + b := by
     intro a ha b hb
@@ -544,9 +599,9 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     by_contra hbt
     obtain ⟨u, hu, hueq⟩ := hA _ (hCsplit s hs).1 _ (hCsplit t ht).2
     have hes : monoExp F.B s (part b s) = 1 := by
-      rw [F.monoExp_apply le_rfl, if_pos ⟨b, hbB, rfl⟩]
+      rw [F.monoExp_apply hBfin le_rfl, if_pos ⟨b, hbB, rfl⟩]
     have het : monoExp F.B t (part b t) = 1 := by
-      rw [F.monoExp_apply le_rfl, if_pos ⟨b, hbB, rfl⟩]
+      rw [F.monoExp_apply hBfin le_rfl, if_pos ⟨b, hbB, rfl⟩]
     have hvs : ((monoExp F.B s).filter (· ∈ p.vars)) (part b s) = 1 := by
       rw [Finsupp.filter_apply]; simp [hbs, hes]
     have hvt : ((monoExp F.B t).filter (fun v => v ∉ p.vars)) (part b t) = 1 := by
@@ -572,7 +627,8 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
   have hev : ∀ s ∈ E, (monoExp F.B s).filter (· ∈ p.vars) = monoExp C s := by
     intro s hs
     refine Finsupp.ext fun v => ?_
-    rw [Finsupp.filter_apply, F.monoExp_apply le_rfl, F.monoExp_apply hCsub]
+    rw [Finsupp.filter_apply, F.monoExp_apply hBfin le_rfl,
+      F.monoExp_apply (hBfin.subset hCsub) hCsub]
     by_cases hv : v ∈ p.vars
     · rw [if_pos hv]
       refine if_congr ⟨?_, ?_⟩ rfl rfl

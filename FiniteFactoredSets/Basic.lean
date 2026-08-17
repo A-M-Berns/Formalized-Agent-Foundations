@@ -596,7 +596,6 @@ lemma subsingleton_basis_of_card_prime {p : ℕ} (hp : p.Prime) (hS : Cardinal.m
     F.B.Subsingleton := by
   haveI : Finite S := Cardinal.lt_aleph0_iff_finite.1 (by rw [hS]; exact Cardinal.natCast_lt_aleph0)
   haveI : Fintype S := Fintype.ofFinite S
-  haveI : Finite F.B := F.finite_basis_of_finite
   haveI : Fintype F.B := Fintype.ofFinite _
   have hcard : Nat.card S = p := by
     rw [Nat.card_eq_fintype_card, ← Cardinal.mk_toNat_eq_card, hS, Cardinal.toNat_natCast]
@@ -703,7 +702,6 @@ theorem dim_spec :
     haveI : Finite S :=
       Cardinal.lt_aleph0_iff_finite.1 (by rw [hsize]; exact Cardinal.natCast_lt_aleph0)
     haveI : Fintype S := Fintype.ofFinite S
-    haveI : Finite F.B := F.finite_basis_of_finite
     haveI : Fintype F.B := Fintype.ofFinite _
     have hcard : Nat.card S = l.prod := by
       rw [Nat.card_eq_fintype_card, ← Cardinal.mk_toNat_eq_card, hsize, Cardinal.toNat_natCast]

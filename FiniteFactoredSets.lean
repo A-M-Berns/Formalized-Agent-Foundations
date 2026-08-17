@@ -45,12 +45,18 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
 * `dd:finiteness-minimal` — finiteness hypotheses are carried only where they are used,
   never globally.  `FactoredSet` takes an arbitrary `S : Type u` with no `Finite`
   constraint; §3–§4 (history, orthogonality, time, subpartitions, conditional
-  orthogonality) are stated with `Finite B` alone; and `Finite S` enters only at §5.  The
-  boundary is exact: `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` has monomials of finite degree
-  `|B|`, but its *sum* ranges over `E ⊆ S`, so once `S` is infinite it is not a polynomial
-  and none of §5 applies to it.  This is what the paper means by having assumed finiteness
-  "fairly gratuitously" (§7.2), and it is what makes Conjecture 1 — the
-  finite-*dimensional* fundamental theorem — statable in this library at all.
+  orthogonality) are stated with `Finite B` alone; and `Finite S` enters at §5.  The reason
+  it enters there is exact: `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` has monomials of finite
+  degree `|B|`, but its *sum* ranges over `E ⊆ S`, so once `E` is infinite the `finsum`
+  collapses to `0` and it is not the intended polynomial.  This is what the paper means by
+  having assumed finiteness "fairly gratuitously" (§7.2), and it is what makes Conjecture 1
+  — the finite-*dimensional* fundamental theorem — statable in this library at all.
+
+  The rule is applied per statement, not per section, so §5 is *not* uniformly finite-`S`:
+  Propositions 26 and 29 and several supporting lemmas carry `Finite B` alone or no
+  finiteness at all, and do apply over an infinite `S`.  `API.lean`'s "Finiteness" section
+  is the maintained per-declaration register; read it there rather than assuming a
+  section-wide hypothesis.
 
 * `dd:subpartition` — Definition 20's subpartition (a partition of a subset `E ⊆ S`) is
   modeled as a **partial equivalence relation** on `S` — a symmetric, transitive relation —
@@ -71,9 +77,11 @@ standing choices (each also documented in `FiniteFactoredSets/README.md`):
   Mathlib's `Irreducible` (over `ℝ` the units are the nonzero constants, so it coincides
   with the paper's "no factorization into two polynomials of nonempty support").  Sums and
   products over sets are `finsum`/`finprod`, so the definitions carry no finiteness and
-  `[Finite S]` sits exactly on the §5 statements the paper makes for finite factored sets —
-  this is where finite *size* genuinely enters.  `mono`/`monos`/`poly` take no `F` (the
-  paper's superscript is notational; they depend on `C` only); `Q` and `Irr` do.
+  each statement carries the weakest finiteness its own proof consumes — this is where
+  finite *size* genuinely enters, for the sum over `E ⊆ S`, but not on every §5 statement
+  (Propositions 26 and 29 need `Finite B` alone; `API.lean` has the register).
+  `mono`/`monos`/`poly` take no `F` (the paper's superscript is notational; they depend on
+  `C` only); `Q` and `Irr` do.
 
 * `dd:quotient` — Definition 9's Cartesian product `∏(B)` (functions choosing one block
   from each partition) is modeled as the dependent product `(b : B) → Quotient b`, and

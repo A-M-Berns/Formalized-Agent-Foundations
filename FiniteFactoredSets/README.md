@@ -78,14 +78,31 @@ fundamental theorem to fail in (Example 3 is its intended counterexample).
 
 A consequence worth knowing before reading any §3–§4 statement: **finiteness is kept
 minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
-only, because none of that material touches polynomials. `|S|` finite enters only at §5,
-where `Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being a polynomial once `S` is infinite —
-and with §5.1–§5.2 landed it now does: `[Finite S]` sits on every §5 *proved* statement
-and on none of the §5 *definitions*, which is why a client can write `Q^F_E` over an
-infinite `S` and simply have no theorem of ours apply to the result. The exact list is in
-the "Finiteness" section of `API.lean`. That boundary is also what makes Conjecture 1 — the
-finite-*dimensional* fundamental theorem — statable here at all. See `KNOWLEDGE.md` for
-its status in the literature.
+only, because none of that material touches polynomials. `|S|` finite enters at §5, where
+`Q^F_E = ∑_{s ∈ E} ∏_{b ∈ B} [s]_b` stops being the intended polynomial once `E` is
+infinite — the `finsum` collapses to `0`.
+
+It does not enter across the board, and it would be wrong to read §5 as a
+finite-`S`-only section. Of the 33 public §5 declarations, fourteen carry `[Finite S]`,
+five carry `[Finite F.B]` only, and fourteen carry no finiteness at all. So there are
+statements of ours that *do* apply over an infinite `S`, and a client working there gets
+more than the definitions:
+
+* with no hypothesis whatever — `poly_empty`, `mono_eq_prod`, `mono_congr`, `mono_union`,
+  `Q_eq_finsum_mono`, `mem_irr`, the upstreamable `coeff_add_mul_of_split`, and
+  `degreeOf_poly_le` (every variable has degree at most one in `poly^F_C(E)` for `C ⊆ B`,
+  junk values included);
+* with `Finite B` alone — `mono_eq_iff`, `Q_eq_poly` (Proposition 26), `degreeOf_Q_le`,
+  and Proposition 29 with its §4 restatement (`irr_partition`, `irr_isPartition`), so
+  `Irr^F(E)` partitions `B` over an infinite `S` too.
+
+Of those, the three §5.1 `Finite B` statements are degenerate over an infinite `E` — both
+sides are junk values — while Proposition 29 is not. The rest of §5 genuinely needs `|S|`
+finite: an infinite `E` makes `Q_ne_zero`, `coeff_poly`, `mem_vars_poly` and Propositions
+27, 28, 30 and 31 false rather than merely unproved. The exact per-declaration register,
+with what each hypothesis is consumed for, is the "Finiteness" section of `API.lean`. That
+boundary is also what makes Conjecture 1 — the finite-*dimensional* fundamental theorem —
+statable here at all. See `KNOWLEDGE.md` for its status in the literature.
 
 ## Nodes rendered by Mathlib vocabulary, with no declaration of ours
 
@@ -117,8 +134,10 @@ here so that nothing in a printed node is silently unaccounted for:
 * **Definition 15, third sentence.** "Finite" and "finite-dimensional" are not a
   definition this library makes: under `dd:finiteness-minimal` they are the typeclass
   hypotheses `[Finite S]` and `Finite F.B`, carried on the individual statements that use
-  them rather than bundled into a `FiniteFactoredSet` structure. `[Finite S]` is what §5.1
-  and §5.2 carry throughout; §3–§4 carry `Finite F.B` only.
+  them rather than bundled into a `FiniteFactoredSet` structure. §3–§4 carry `Finite F.B`
+  only; §5.1–§5.2 carry whichever of the two each statement's proof consumes, which is
+  `[Finite S]` for most of them but `Finite F.B` for Propositions 26 and 29 (see the
+  finiteness paragraph above and `API.lean`'s register).
 * **Definition 29 and Definition 30.** Evaluation and support are `MvPolynomial.eval` and
   `MvPolynomial.vars` — whole nodes, but of §5.1 rather than §2.1.
 * **Proposition 31's word "irreducible."** The proposition itself is carried
@@ -242,10 +261,10 @@ hypotheses visibly load-bearing. Every declaration below is inventoried:
 | Proposition 30's factorization is cross-checked, and separately applied | `Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_univ_applied`, `prop30_coordFS_Ediag_applied`, `prop30_coordFS_Efst_applied`, `prop30_coordFS_Efst_crosscheck` | the same defect as above one section on. The factorization `Q^F_S = poly^F_{fst}(S) · poly^F_{snd}(S)` is obtained by expanding both sides from Definitions 31 and 34, mentioning neither `Q_eq_finprod_poly_irr` nor `Irr^F`; the applications land on the same product, and at `Ediag` degenerate into Proposition 26's statement. At `Efst` the two factors are genuinely different polynomials, so the product structure is visible rather than symmetric |
 | Proposition 27 is applied at a nontrivial split, and its chimera's orientation is pinned | `prop27_coordFS_applied`, `prop27_coordFS_crosscheck`, `prop27_reversed_false` | Proposition 27 being exercised only where it degenerates. The split is `C₀ = {fstFactor}`, `C₁ = {sndFactor}` — disjoint, both nonempty, union `B` — with `E₀ = Efst ≠ S = E₁`; the cross-check recomputes the identity without `poly_union_chimeraImage`; and reading the spliced set as `χ^F_{C₀}(E₁, E₀)` instead of `χ^F_{C₀}(E₀, E₁)` makes the conclusion *false* here, so the argument order is not a convention |
 | Proposition 28's conclusion is doing work, not restating its hypothesis | `poly_singleton_fst_dvd_Q_coordFS_univ`, `prop28_coordFS_scaled_applied`, `prop28_r_loadbearing`, `prop28_coordFS_const_applied`, `prop28_const_forces_empty` | Proposition 28 quantifying over divisors that do not exist, *and* a witness that exhibits its conclusion where the conclusion is free. `poly^F_{fst}(S)` really divides `Q^F_S` (computed, not read off the endpoint) — but asserting `p = C r · poly^F_C(S)` at `p := poly^F_{fst}(S)` is a triviality, provable for every `C ⊆ B` and every `E` with none of the proposition's hypotheses (the probe `example` in `Examples.lean` proves exactly that). The two informative divisors are `2 · poly^F_{fst}(S)`, which is *no* `poly^F_C(S)`, so the real coefficient `r` cannot be dropped; and a nonzero constant, where the returned `C` is forced to `∅` |
-| Proposition 29 is applied and cross-checked, and its `Subpartition` form is inhabited | `prop29_coordFS_univ_applied`, `sUnion_irr_coordFS_univ_crosscheck`, `prop29_coordFS_Ediag_applied`, `sUnion_irr_coordFS_Ediag_crosscheck`, `irr_isPartition_coordFS_univ_applied` | Proposition 29 asserting a constant. It is applied at the two subsets where `Irr^F` differs, and in each case the cover clause is re-derived from the computed value without mentioning `irr_partition` |
+| Proposition 29 is applied and cross-checked, and its `Subpartition` form is inhabited | `prop29_coordFS_univ_applied`, `sUnion_irr_coordFS_univ_crosscheck`, `prop29_coordFS_Ediag_applied`, `sUnion_irr_coordFS_Ediag_crosscheck`, `irr_isPartition_coordFS_univ_applied` | Proposition 29 asserting a constant. It is applied at the two subsets where `Irr^F` differs, and in each case the cover clause — `⋃₀ Irr^F(E) = B`, the endpoint's own third conjunct, not a set identity standing in for it — is re-derived by rewriting with the computed `Irr^F(E)`, without mentioning `irr_partition` |
 | Proposition 31 is applied, and `Irreducible` is not vacuously total here | `prop31_coordFS_fst_applied`, `prop31_coordFS_snd_applied`, `not_isUnit_poly_singleton_fst_univ`, `not_isUnit_poly_singleton_snd_univ`, `not_irreducible_Q_coordFS_univ` | Proposition 31 calling units irreducible, or being true because everything in sight is irreducible. Both factors are irreducible and neither is a unit, while `Q^F_S` itself is *reducible* |
 | The remaining §5.1 endpoints are applied, not merely shadowed | `Q_ne_zero_coordFS_applied`, `degreeOf_Q_le_coordFS_applied`, `vars_disjoint_coordFS_applied` | the computed facts standing in for the endpoints. Each of `Q_ne_zero`, `degreeOf_Q_le` and `vars_disjoint_of_mul_eq_Q` is instantiated on `coordFS` beside its computed counterpart |
-| The `E.Nonempty` hypotheses of §5 are load-bearing, and Proposition 29's disclosed exception is real | `poly_empty_eq_zero`, `Q_coordFS_empty`, `prop28_hE_loadbearing`, `prop30_hE_loadbearing`, `prop31_hE_loadbearing`, `irr_partition_holds_at_empty` | reading `hE` as decoration. At `E = ∅` both `Q^F_∅` and every `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright — 30's on the zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the empty product `1`. Proposition 29 is the exception its docstring discloses, and the computation at `E = ∅` is what backs that |
+| The `E.Nonempty` hypotheses of §5 are load-bearing, and Proposition 29's disclosed exception is real | `poly_empty_eq_zero`, `Q_coordFS_empty`, `prop28_hE_loadbearing`, `prop30_hE_loadbearing`, `prop31_hE_loadbearing`, `irr_partition_holds_at_empty` | reading `hE` as decoration. At `E = ∅` both `Q^F_∅` and every `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright — 30's on the zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the empty product `1`. Proposition 29 is the exception its docstring discloses, and the computation at `E = ∅` is what backs that — `irr_partition_holds_at_empty` states all three of the proposition's conjuncts there, not just the cover |
 | `poly^F_C(E)` is total in `C`, so it has junk values off the paper's `C ⊆ B` | `poly_top_univ_junk`, `top_notMem_coordFS_basis` | reading a §5 statement as covering every `C`. At `C = {Ind_S}` the value is a single variable, and `Ind_S ∉ B`, so no `C ⊆ B` hypothesis of §5.1–§5.2 is satisfied by it |
 
 Several of those rows carry a discipline worth naming, since it is the defect an earlier
@@ -254,11 +273,16 @@ endpoint it checks.** `prop26_coordFS_crosscheck`, `prop26_coordFS_Efst_crossche
 `Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_Efst_crosscheck`,
 `prop27_coordFS_crosscheck`, `sUnion_irr_coordFS_univ_crosscheck` and
 `sUnion_irr_coordFS_Ediag_crosscheck` compute their claim from Definitions 31–35 and
-elementary algebra; `prop26_coordFS_applied`, `prop30_coordFS_univ_applied`,
+elementary algebra. A second half of the same discipline, which a later round had to
+repair here: a cross-check must also *state* what the endpoint states. The two
+`sUnion_irr_*` lemmas once read `⋃₀ {{fst}, {snd}} = B` and `⋃₀ {B} = B` — true set
+identities that mention no `Irr^F` at all, so they checked nothing; they now state
+`⋃₀ Irr^F(E) = B` and get there by rewriting with the computed `Irr^F(E)`. The honest
+applications, recorded as the separate claims they are, are `prop26_coordFS_applied`,
+`prop30_coordFS_univ_applied`,
 `prop30_coordFS_Ediag_applied`, `prop30_coordFS_Efst_applied`, `prop27_coordFS_applied`,
 `prop29_coordFS_univ_applied`, `prop29_coordFS_Ediag_applied`, `prop31_coordFS_*_applied`
-and the `prop28_*_applied` pair are the honest applications, recorded as the separate
-claims they are.
+and the `prop28_*_applied` pair.
 
 **How that separation is checked, and how it is not.** The check is *textual*: a
 cross-check names no endpoint, so reading the declaration — or grepping the file for the

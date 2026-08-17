@@ -1101,8 +1101,12 @@ open FiniteFactoredSets in
   -- (evaluation `p(f)`, support `supp(p)`) have no declaration of ours — they are
   -- `MvPolynomial.eval` and `MvPolynomial.vars`, so they belong in the README's table of
   -- Mathlib-rendered nodes.  This is the first block that needs `[Finite S]` rather than
-  -- `Finite F.B`: `Q^F_E` sums over `E ⊆ S`, so it is a polynomial only for finite `S`.
-  -- Proposition 28 (`factor2`) is the load-bearing result the rest of §5 routes through.
+  -- `Finite F.B`: `Q^F_E` sums over `E ⊆ S`, so it is the intended polynomial only for
+  -- finite `E`.  Not every statement here does, though — per `dd:finiteness-minimal` each
+  -- carries what its own proof consumes, and Proposition 26 (`Q_eq_poly`) needs only
+  -- `Finite F.B`, its content over an infinite `E` being the degenerate `0 = 0`.
+  -- Propositions 27 and 28 are the two here that genuinely need `[Finite S]`, and 28
+  -- (`factor2`) is the load-bearing result the rest of §5 routes through.
   Poly FactoredSet.Q mono monos poly
   FactoredSet.Q_eq_poly FactoredSet.poly_union_chimeraImage
   FactoredSet.eq_C_mul_poly_of_dvd_Q
@@ -1189,8 +1193,11 @@ open FiniteFactoredSets in
   -- disjoint, cover `B`", which under `dd:partition` is what "is a partition of the set
   -- `B`" means (`irr_isPartition` restates it as a `Subpartition`, and is machinery rather
   -- than a node).  Propositions 30 and 31 together are the factorization of `Q^F_E` into
-  -- irreducibles.  This is the block where `[Finite S]` — finite *size*, not just finite
-  -- dimension — is genuinely consumed, for the reason recorded under `dd:poly`.
+  -- irreducibles.  Propositions 30 and 31 are where `[Finite S]` — finite *size*, not just
+  -- finite dimension — is genuinely consumed, for the reason recorded under `dd:poly`.
+  -- Proposition 29 is not: its proof is the minimal-element argument over subsets of `B`
+  -- plus the `chimeraImage` closure lemmas, so it carries `Finite F.B` alone and holds
+  -- over an infinite `S` — and, unlike the §5.1 relaxations, non-degenerately.
   FactoredSet.irr FactoredSet.irr_partition
   FactoredSet.Q_eq_finprod_poly_irr FactoredSet.irreducible_poly_of_mem_irr
   -- §5.1-§5.2 on `coordFS`: the characteristic polynomial computed outright.  `vfst`/`vsnd`
@@ -1263,6 +1270,10 @@ open FiniteFactoredSets in
   -- Proposition 29 applied at both computed subsets, each cross-checked against the
   -- computed `Irr^F` without mentioning `irr_partition`; and its §4 restatement
   -- `irr_isPartition` instantiated, so the `Subpartition` it promises is constructed.
+  -- The two cross-checks state the endpoint's own third conjunct, `⋃₀ Irr^F(E) = B`, and
+  -- reach it by rewriting with the computed `Irr^F(E)`; they are not the generic set
+  -- identities `⋃₀ {{fst}, {snd}} = B` / `⋃₀ {B} = B`, which mention no `Irr^F` and so
+  -- would check nothing.
   Examples.prop29_coordFS_univ_applied Examples.sUnion_irr_coordFS_univ_crosscheck
   Examples.prop29_coordFS_Ediag_applied Examples.sUnion_irr_coordFS_Ediag_crosscheck
   Examples.irr_isPartition_coordFS_univ_applied
@@ -1280,7 +1291,8 @@ open FiniteFactoredSets in
   -- `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright (30's on the
   -- zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the product `1`).  Proposition
   -- 29's `hE` is the exception, and `irr_partition_holds_at_empty` is the computation
-  -- backing that disclosure rather than a load-bearing claim.
+  -- backing that disclosure rather than a load-bearing claim: it states all three of
+  -- Proposition 29's conjuncts at `E = ∅`, computed from `irr_coordFS_empty`.
   Examples.poly_empty_eq_zero Examples.Q_coordFS_empty Examples.irr_coordFS_empty
   Examples.irr_partition_holds_at_empty
   Examples.prop28_hE_loadbearing Examples.prop30_hE_loadbearing

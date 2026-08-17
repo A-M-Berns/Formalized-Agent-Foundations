@@ -10,7 +10,9 @@ This file is §5.2 of Garrabrant, *Temporal Inference with Finite Factored Sets*
 the fact that it partitions `B` (Proposition 29), and the factorization of `Q^F_E` into
 irreducibles (Propositions 30 and 31).  `dd:poly` fixes the polynomial ring; Mathlib's
 `Irreducible` renders the paper's irreducibility (over `ℝ` the units are the nonzero
-constants).  `[Finite S]` is carried where the paper's "finite factored set" is used.
+constants).  Finiteness is carried per statement under `dd:finiteness-minimal`:
+`irr_partition` (Proposition 29) and `irr_isPartition` need only `[Finite F.B]`, since they
+never touch a polynomial; `[Finite S]` is carried by the statements that do.
 
 The monomial-level description of `poly^F_C(E)` these proofs run on — its coefficients,
 support, variables and degrees, all read off Corollary 1 — is §5.1 material and lives in
@@ -110,10 +112,13 @@ every `C`, so `Irr^F(∅) = {{b} | b ∈ B}`, which is still a partition of `B`.
 silenced for this declaration (Lean has no per-binder form) rather than renaming `hE`, so
 the statement reads as the paper states it.
 
+Only the *dimension* has to be finite (`dd:finiteness-minimal`), not `|S|`: the whole proof
+is the minimal-element argument over subsets of `B` and the three `chimeraImage` closure
+lemmas above, none of which touches a polynomial or a sum over `E`.
+
 Paper node: Proposition 29 (§5.2). -/
-theorem irr_partition [Finite S] {E : Set S} (hE : E.Nonempty) :
+theorem irr_partition [Finite F.B] {E : Set S} (hE : E.Nonempty) :
     (∀ C ∈ F.irr E, C.Nonempty) ∧ (F.irr E).PairwiseDisjoint id ∧ ⋃₀ F.irr E = F.B := by
-  haveI : Finite F.B := F.finite_basis_of_finite
   have hBfin : F.B.Finite := Set.toFinite _
   refine ⟨fun C hC => hC.1, ?_, ?_⟩
   · intro C₀ h₀ C₁ h₁ hCne
@@ -163,8 +168,9 @@ theorem irr_partition [Finite S] {E : Set S} (hE : E.Nonempty) :
         exact hdmem.2 hd
 
 /-- Proposition 29 in the vocabulary of §4: `Irr^F(E)` is the block set of a subpartition of
-`Setoid S` with domain `B`. -/
-lemma irr_isPartition [Finite S] {E : Set S} (hE : E.Nonempty) :
+`Setoid S` with domain `B`.  It inherits Proposition 29's `[Finite F.B]`, the rest of the
+argument being the construction of the partial equivalence relation. -/
+lemma irr_isPartition [Finite F.B] {E : Set S} (hE : E.Nonempty) :
     ∃ P : Subpartition (Setoid S), P.dom = F.B ∧ P.classes = F.irr E := by
   obtain ⟨hne, hdisj, hcover⟩ := F.irr_partition hE
   have huniq : ∀ C ∈ F.irr E, ∀ C' ∈ F.irr E, ∀ b, b ∈ C → b ∈ C' → C = C' := by

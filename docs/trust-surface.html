@@ -7047,7 +7047,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.Q_eq_poly</code><span class="ep-file">FiniteFactoredSets/Polynomial.lean</span></div><pre class="sig">theorem Q_eq_poly [Finite S] (E : Set S) : F.Q E = poly F.B E</pre></div>
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.Q_eq_poly</code><span class="ep-file">FiniteFactoredSets/Polynomial.lean</span></div><pre class="sig">theorem Q_eq_poly [Finite F.B] (E : Set S) : F.Q E = poly F.B E</pre></div>
     </section>
   </div>
 </article>
@@ -7132,7 +7132,7 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.irr_partition</code><span class="ep-file">FiniteFactoredSets/Factoring.lean</span></div><pre class="sig">theorem irr_partition [Finite S] {E : Set S} (hE : E.Nonempty) :
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FiniteFactoredSets.FactoredSet.irr_partition</code><span class="ep-file">FiniteFactoredSets/Factoring.lean</span></div><pre class="sig">theorem irr_partition [Finite F.B] {E : Set S} (hE : E.Nonempty) :
     (∀ C ∈ F.irr E, C.Nonempty) ∧ (F.irr E).PairwiseDisjoint id ∧ ⋃₀ F.irr E = F.B</pre></div>
     </section>
   </div>
@@ -7236,4 +7236,4 @@ Given <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><m
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=63 -->
 
-<!-- trust-surface-sources: b30b51002f43ac4d9640cb682bf9838c81ea286e2e8cc79616846cbd81288440 -->
+<!-- trust-surface-sources: d1ccfa57641da9ce4852fd1d1e906260728d8b963fbab0605c068324c884cbec -->
