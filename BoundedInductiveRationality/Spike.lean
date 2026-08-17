@@ -1050,8 +1050,15 @@ theorem not_summable_invLin : ¬ Summable (fun n : ℕ => 1 / ((n : ℝ) + 1)) :
   refine Real.not_summable_one_div_natCast ?_
   exact (summable_nat_add_iff 1).1 (by simpa using h)
 
-/-- **The paper's example schedule**, `A(n,i) = (n+1)⁻¹ (i+1)⁻²` (shifted by
-`dd:index0`), with all three requirements discharged. -/
+/-- **The paper's analytic example schedule**, `A(n,i) = (n+1)⁻¹ (i+1)⁻²` (shifted by
+`dd:index0`), with all three requirements discharged.
+
+Appendix A.2 part 4 gives a *second* schedule — the same function truncated to `i < n`,
+so that `A(n, ·)` has finite support and only finitely many hypotheses are active at any
+time. That one is not compiled here: it exists solely for the computability argument,
+which is out of scope, and its three requirements go through the same way (the column
+sums still diverge over `n > i`; the round totals are dominated by the untruncated
+ones). -/
 noncomputable def harmonicSquare : Allowance where
   A n i := (1 / ((n : ℝ) + 1)) * (1 / ((i : ℝ) + 1) ^ 2)
   nonneg n i := by positivity

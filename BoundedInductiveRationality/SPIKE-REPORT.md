@@ -5,7 +5,7 @@ Caspar Oesterheld, Abram Demski, Vincent Conitzer, TARK 2023 (EPTCS 379, pp. 421
 Feasibility / representation probe. Not a formalization, not registered in
 `scripts/papers.py`, not on the trust surface, not in `AxiomAudit`.
 
-Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1434 lines, 98 top-level declarations, **zero
+Compiled artifact: `BoundedInductiveRationality/Spike.lean` — 1685 lines, **zero
 `sorry`**, every listed endpoint axiom-clean (`propext`, `Classical.choice`, `Quot.sound`
 only; the `#print axioms` block at the end of the file is part of the build).
 Build it with `./BoundedInductiveRationality/spike-build.sh
@@ -258,20 +258,34 @@ though it is not needed — see E21. Non-vacuity witnessed by an explicit instan
 So **all four numbered parts of the printed proof are covered except part 4**, which is
 the computability and complexity argument. That is the seam.
 
-**Allowance schedule.** `harmonicSquare` with `summable_invSq`, `not_summable_invLin`.
+**Allowance schedule.** `harmonicSquare` — the paper's *analytic* example
+`A(n,i) = n⁻¹i⁻²` — with `summable_invSq` and `not_summable_invLin`. The paper gives a
+*second* schedule in Appendix A.2 part 4, the same function truncated to `i < n` so the
+active set stays finite; that one is not compiled, because it exists only for part 4,
+which is out of scope by ruling. Its three requirements go through the same way (~40
+lines).
+
+**Theorem 1a for reactive environments.** `reactiveWealth`, `reactiveReward`,
+`wealth_reactive`, `theorem1_reactive` — see E35. Demonstrated on the Simplified
+Adversarial Offer (`saoEnv`).
 
 **Theorem 2.** `diagChoice`, `diagHyp`, `rejectionSet_diagHyp`,
 `testSet_diagHyp_disjoint`, `theorem2_extensional`, `theorem2_no_bria`.
 
-**Definition 8 / Theorem 4.** `vmwcPrinted_forces_pointwise`,
-`vmwcPrinted_vacuous_on_bits` (the refutation), `record_bddBelow_of_vmwc`,
-`theorem4_single` (using Lemma 6 for the paper's WLOG), `theorem4`.
+**Definition 8 / Theorem 4.** `VMWCPrinted`, `VMWCAveraged`, `VMWCAveragedOn`,
+`vmwcPrinted_forces_pointwise`, `vmwcPrinted_vacuous_on_bits` and its corollary
+`not_vmwcPrinted_of_bits` (the refutation), `record_bddBelow_of_finite`,
+`record_bddBelow_of_vmwc`, `theorem4_single` (using Lemma 6 for the paper's WLOG),
+`theorem4`.
 
 **Theorem 5, converse half.** `theorem5_converse`, plus `pdRow` / `pdRow_maximin` and a
 Prisoner's Dilemma instance exercising the actual construction.
 
 **Computability interface.** `PromiseRepresentation` with `ratPromises` and
-`realPromises`, and `DiagonalObligations`.
+`realPromises`; `DiagonalObligations` — each decision procedure carrying its
+specification — with `classicalDiagonalObligations`, which compiles the point that the
+interface is still inhabited classically and therefore cannot, by itself, distinguish a
+computable diagonal hypothesis from an uncomputable one.
 
 **Non-vacuity witnesses.** `boolDP`, `constAgent`, and the three required examples: a
 hypothesis covered because it stops outpromising; one covered because repeated tests
@@ -317,7 +331,14 @@ this spike did.
   accounting is real, not a finite-support dodge). A finite-hypothesis toy would have
   proved nothing; this does not use one.
 
-Three by-products worth recording:
+**And it extends to the self-referential setting.** `theorem1_reactive` proves the same
+existence theorem for an environment that computes each round's reward from the agent's
+own choice, with the fixed-point equation `r t = env t (α.choice t)` proved rather than
+assumed. This matters more than it looks: Theorem 1 as printed is about an exogenous
+`DP, r̄`, while §3, §4.5 and §7 all need the reactive form (E35). The paper never states
+it; it costs about sixty lines.
+
+Four by-products worth recording:
 
 * **Part 3A is redundant.** The paper separately proves that `M_i` is infinite. Nothing
   in Definitions 6 or 7 requires it, and part 3C alone establishes coverage —
@@ -462,8 +483,8 @@ and LI's separation is by output size where BIR's Theorem 2 needs one by time.
 
 ## G. Source ambiguities and errata
 
-Thirty-four findings — twenty-three from the spike, eleven more from an independent
-fresh-context re-reading (§M), which also confirmed all twenty-three. Each is classified
+Thirty-five findings — twenty-three from the spike, twelve more surfaced by two
+independent fresh-context reviews (§M), which also confirmed all twenty-three. Each is classified
 as **typo**, **harmless omitted convention**, **missing hypothesis**, **genuine
 mathematical gap**, **formalization choice**, or **theorem-strength reduction**. References are to the arXiv v1 PDF / the committed
 `main.tex`.
@@ -751,6 +772,23 @@ though the proof introduced them as `M` and `h̄_{a,ε}` (copy-paste residue fro
 B); Theorem 9 defines `M_ε` and then uses only `M`, and re-binds `ε` to a different value
 mid-proof.
 
+**E35. Theorem 1 is stated for a *given* `DP, r̄`; the paper's motivating cases need a
+reactive version it never states.** "Then there exists an algorithm that computes a BRIA
+covering `H` … **for any `DP, r̄`**" quantifies over an exogenous decision-problem and
+reward sequence. But §3's Simplified Adversarial Offer, §4.5's worked examples, and §7's
+two BRIAs playing each other all have `r_t` computed *from the agent's own choice* — §2
+says so explicitly ("The sequence of decision problems `DP_t` may in turn be calculated
+depending on the agent's choices"). Nothing in the paper connects the two: Theorem 1 as
+printed does not supply an agent for a self-referential environment, which is the setting
+the whole paper is motivated by.
+
+The gap is cheap to close and the spike closes it: the round-`t` winner depends only on
+wealth at `t`, hence only on rounds `< t`, so the reward stream can be generated by the
+same structural recursion. `theorem1_reactive` produces, for any environment
+`env : ℕ → Action → ℝ` with nonnegative values, a BRIA together with the proved fixed-point
+equation `r t = env t (α.choice t)` — demonstrated on the SAO. *Missing theorem, not a
+missing proof; ~60 lines.*
+
 **E34. The conclusion overclaims.** §9: "we demonstrated the theory's utility by using it
 to **justify Nash equilibrium play**." The paper proves a folk theorem about *correlated*
 strategy profiles and a pure-maximin lower bound. Nash equilibrium is never established —
@@ -908,6 +946,62 @@ already has.
 
 ## M. Fresh-context adversarial audit
 
-Per §17 of the brief, a fresh reviewer was given the compiled spike and the paper, denied
-this report's conclusions, and asked: *what would make this spike falsely classify BIR as
-easy?* Findings and dispositions are in the next section.
+Two reviewers were run, both denied this report:
+
+* **Reviewer A** got `Spike.lean` and the paper and one question — *what would make this
+  spike falsely classify BIR as easy?* — with thirteen named attack vectors.
+* **Reviewer B** got the paper and the fifteen headline errata claims, and was told to
+  refute them.
+
+Reviewer B confirmed all fifteen and added twelve more findings of its own (E24–E35).
+Reviewer A found one **blocker in my own Lean**, two majors, and six minors, and cleared
+the other seven attack vectors explicitly.
+
+### M.1 What Reviewer A found, and what was done
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| 1 | **`theorem4` had hoisted the paper's own derivation into a hypothesis.** It dropped the recommended option `ā` and the computability of `α` entirely, and asserted the averaged-vMWC condition *directly on the agent's test set* — i.e. assumed the conclusion of the paper's two-step argument. Worse, the division `∑/(card)` was unguarded, so `0/0 = 0` makes the hypothesis **satisfiable by an empty test set**. Reviewer A compiled that counterexample. | BLOCKER | **Fixed.** `VMWCAveragedOn` now relativises the randomness to `{t \| αᶜ_t = a_t}` and keeps the `S.Infinite` guard; `theorem4_single` takes `a`, `hia : (H i).choice = a`, an abstract selector class `Sel`, and the *named* residue `hsel : (M i \ Z) ∈ Sel` — which is exactly the paper's sentence "`M` is by assumption computable in `O(h(t))`". `record_bddBelow_of_finite` supplies the finite branch so the guard costs nothing. |
+| 2 | **`DiagonalObligations` had three contentless fields** — the two `Bool` "decision procedures" were unrelated to the propositions they claimed to decide, and `altOption` was not required to differ from `α.choice t`. Inhabited by garbage; Reviewer A compiled that too. | MAJOR | **Fixed.** Every field now carries its specification. `classicalDiagonalObligations` compiles the *real* point: the interface is still inhabited classically, so no theorem stated over it can exclude an uncomputable diagonal hypothesis. |
+| 3 | The unguarded division in `record_bddBelow_of_vmwc`, sold in its docstring as a convenience. | MAJOR | **Fixed** by (1); the lemma is kept as the unguarded engine with a docstring that says so and warns against feeding it an unguarded quantifier. |
+| 4 | **The reactive-environment circularity was named in the file's header and never addressed.** Every compiled theorem took `r` exogenous, while the paper's motivating cases all compute `r_t` from the agent's own choice. Reviewer A called this "the single largest un-probed construction cost in the paper". | MAJOR | **Fixed, and it turned into a result.** `theorem1_reactive` proves the causal fixed point; the cost was ~60 lines, not a construction project. Recorded as E35, and it *lowers* the estimate rather than raising it. |
+| 5 | Two docstrings cited declaration names that do not exist. | MINOR | Fixed. |
+| 6 | `vmwcPrinted_vacuous_on_bits` proved less than its section heading claimed (it refutes the condition for a *given* infinite `S`; the heading claims `¬ VMWCPrinted`). | MINOR | Fixed: `not_vmwcPrinted_of_bits` is the missing corollary. |
+| 7 | `hL0`/`hL1` in `theorem3` and `hv0`/`hv1` in `theorem5_converse` are derivable from the family member's own structure fields. | MINOR | **Accepted, not fixed.** They are redundant but harmless, and spelling the `[0,1]` bounds at the statement is what makes E7 (Theorem 3's genuinely missing hypothesis) legible to a reader comparing against the paper. Recorded here so it is a decision, not an oversight. |
+| 8 | `theorem2_extensional`'s docstring stated the opposite of the theorem. | MINOR | Fixed. |
+| 9 | `harmonicSquare` is the paper's *analytic* example schedule, not the finite-support variant that part 4's computability argument requires. | MINOR | **Accepted, not fixed.** The truncated schedule `A(n,i) = n⁻¹i⁻²` for `i < n` satisfies the same three requirements (the column sums still diverge, the round totals are dominated by the untruncated ones), and it is only needed for Theorem 1's part 4 — which is out of scope by ruling. §E's prose now says which one it is. Cost if wanted: ~40 lines. |
+
+### M.2 What Reviewer A cleared
+
+Explicitly checked and found honest: no mathematical sequence is presented as executable
+(everything is `noncomputable` and routes through `Classical.choice`); real-comparison
+computability is not smuggled — `realPromises` *compiles* the fact that the interface
+cannot exclude an uncomputable promise, and `arg max` attainment is proved rather than
+assumed; `Covers`'s filter encoding is faithful and is not silently strengthened (the
+counterexample separating it from global convergence compiles); **countability is
+genuine** — no `Fintype`, no `Finite`, no finite support, no finite active set anywhere,
+with `Allowance.rowSummable` being summability rather than finite support; `Allowance`'s
+three fields match Appendix A.2 part 1 (and splitting `rowSummable` out is *necessary*,
+not gold-plating, because Lean's `∑'` junk-value convention means display (1) alone would
+not imply it); test sets are not assumed decidable; minimax is not assumed; no theorem is
+vacuous or a conclusion-in-hypothesis squeeze; and no docstring claims paper strength for
+anything that has dropped the `O(g(t))` clause.
+
+Reviewer A also probed something I had not: whether §D composes with §C end-to-end.
+It does, cheaply — `theorem3` applied to `theorem1_extensional`'s output compiles with
+`rfl` for both membership components, so the auction layer and the Theorem-3 layer share
+conventions.
+
+### M.3 Unresolved
+
+Two items are accepted rather than repaired (M.1 rows 7 and 9), both recorded above with
+reasons. Everything else Reviewer A raised is fixed and recompiled.
+
+One methodological note worth keeping. The blocker in row 1 is the exact failure mode
+this spike exists to detect — *the hard part sitting in a hypothesis while the theorem is
+presented as a result* — and I wrote it. It survived my own review because the hypothesis
+looked like a faithful transcription of a printed sentence; what exposed it was a reviewer
+asking whether the hypothesis was *satisfiable*, and finding that an empty test set
+satisfies it. **Satisfiability of hypotheses, checked by compiling a witness, catches what
+reading the statement does not.** That is the FAF non-vacuity rule, and it earned its
+keep here.
