@@ -573,6 +573,24 @@ almost surely, not always. The theorem is stated as plain existence. Recoverable
 (probability-one existence implies existence) but only after building the probability
 space. *Theorem-strength / modeling.*
 
+Two mechanisms in that construction are worth recording, because they explain otherwise
+puzzling features of the statement and they price the constructive half:
+
+* **Why the theorem says "there exists `c′` arbitrarily close to `c`" rather than `c`.**
+  The target profile is implemented "by deterministically cycling through the different
+  strategies in the appropriate numbers" — a deterministic cycle realises only *rational*
+  frequencies. So `c′` is a rational approximation of `c` inside `Δ(A₁ × A₂)`. That is a
+  small, real formalization obligation (rational points are dense in the finite simplex,
+  with the coordinates still summing to 1) which Mathlib does not supply off the shelf,
+  and it is the whole reason the statement is an approximation.
+* **How the coverage test sets are arranged.** In the `p_c` branch, "no hypotheses are
+  tested"; in the `p_{a_i}` branch, "Player `i` … tests every hypothesis that estimates
+  more than `v_i`" while player `−i` best-responds. So the test sets are exactly the
+  punishment rounds, and coverage holds because on those rounds the tested hypothesis
+  receives at most `max_{a_i} min_{a_{−i}} u_i` while having promised more than `v_i >`
+  that. This is why the construction needs no auction and does not invoke Theorem 1 —
+  and why it is the randomisation, not the mechanism, that carries the weight.
+
 **E21. Theorem 1's part 3A is redundant.** See §E.1. *Redundant proof step.*
 
 ---
