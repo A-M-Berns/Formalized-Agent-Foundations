@@ -1750,7 +1750,36 @@ open FactoredSpaces in
   StructIndep StructIndepGiven Before StrictlyBefore
   structIndep_of_before before_of_forall_bg before_iff_forall_structIndep
   structIndepGiven_pair
+  -- Probability substrate: Definitions 4.3, 4.4, 6.1, C.1, C.2; Lemmas C.11, C.13, C.14,
+  -- C.15, C.16, C.17
+  Factorizes IsFactoredSpaceModel Dist.marg Dist.outer
+  Dist.prob_pos_of_support_subset Dist.support_outerCompl Dist.prob_pos_of_marg_support_subset
+  CondIndep CondIndepVar CondIndepEventVar.of_pair CondIndepEventVar.of_proj_subset
+  Dist.prob_cyl_inter_cyl Factorizes.prob_sliceAt Dist.prob_outerCompl_delta
+  condIndepVarEvent_proj_history
+  -- §6 / Appendix C.2–C.3: Lemmas 6.3, 6.4, 6.5, C.5, C.7, C.8, C.9, C.10, C.12, C.18,
+  -- C.19, C.20; Definition C.6; Theorem 6.2; Proposition 6.6
+  condIndep_of_disjoint_eventHistory
+  exists_polynomial_interp_prob interp_prob_pos condIndepVar_of_local
+  PQIrrelevant Irrelevant cohistory pqIrrelevant_or_of_condIndepAll
+  cohistory_union_eq_univ_of_condIndepAll condProb_eq_of_agree_on_relevant
+  condIndepEventVar_proj_cohistory condIndepVarEvent_proj_cohistory disintegrates_cohistory
+  cohistory_eq_compl_eventHistory disjoint_eventHistory_of_condIndepAll
+  structIndepGiven_iff_forall_condIndepVar structIndepGiven_of_open
+  -- §5.1: Definition 5.1, Proposition 5.2
+  IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid
+  isCompositionalSemigraphoid_structIndepRel
 -- FS-INVENTORY-END
+
+/-! Tier-2 boundary structures for the Factored Space Models surface. -/
+#assert_fields FactoredSpaces.Dist
+  mass nonneg sum_eq_one
+#assert_fields FactoredSpaces.IsSemigraphoid
+  symm decomposition weakUnion contraction
+#assert_fields FactoredSpaces.IsGraphoid
+  toIsSemigraphoid intersection
+#assert_fields FactoredSpaces.IsCompositionalSemigraphoid
+  toIsSemigraphoid composition
 
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 

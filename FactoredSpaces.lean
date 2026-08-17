@@ -63,9 +63,29 @@ standing choices (each also documented in `FactoredSpaces/README.md`):
   (`eventHistory`).  Nothing depends on the two values being `0` and `1`, only on there
   being two of them.
 
+* `dd:dist` — a probability distribution on a finite type is its mass function
+  (`Dist S`: `mass : S → ℝ`, nonnegative, summing to `1`), with `P(A) = ∑_{s∈A} P(s)`
+  derived.  This is not `FiniteFactoredSets.ProbDist` (an event-based `Set S → ℝ` with
+  additivity, `dd:probability` there): everything this paper does with distributions —
+  Definition 4.3's pointwise factorization, the factorwise interpolation `⨂((1−λ)Q_i +
+  λP_i)`, delta and outer products — is pointwise, and a mass function is the object the
+  paper manipulates.  `Δ^F(Ω)` is `factorizing Ω`, `Δ^F_C(Ω)` is `factorizingPos C`,
+  and `P ∈ Δ^F` is spelled `Factorizes P`.
+
+* `dd:open-ball` — Proposition 6.6's "nonempty open `S ⊆ Δ^F(Ω)`" (open in the subspace
+  topology from `ℝ^Ω`) is stated through the metric-ball criterion for the Euclidean
+  distance `euclDist`: every `Q ∈ S` has an `ε`-ball within `Δ^F(Ω)` contained in `S`.
+  In a metric subspace that *is* openness, and it is the form Lemma 6.5 consumes.
+
 * `dd:finiteness-minimal` — as in the sibling formalizations: finiteness and
   decidability hypotheses are carried only where they are used.
 -/
 import FactoredSpaces.Basic
 import FactoredSpaces.History
 import FactoredSpaces.Independence
+import FactoredSpaces.Probability
+import FactoredSpaces.Soundness
+import FactoredSpaces.LocalToGlobal
+import FactoredSpaces.Completeness
+import FactoredSpaces.MainTheorem
+import FactoredSpaces.Semigraphoid

@@ -82,7 +82,7 @@ lemma prodSplit_eq_splice (J : Finset I) (C : Set (Pt Ω)) : prodSplit J C = spl
 /-- **The load-bearing equivalence of the encoding** (`dd:splice`): `J` disintegrates
 `C` iff `C` is closed under splicing two of its members at `J`.  Everything downstream
 uses this form. -/
-theorem disintegrates_iff_splice (J : Finset I) (C : Set (Pt Ω)) :
+lemma disintegrates_iff_splice (J : Finset I) (C : Set (Pt Ω)) :
     Disintegrates J C ↔ ∀ a ∈ C, ∀ b ∈ C, J.piecewise a b ∈ C := by
   rw [Disintegrates, prodSplit_eq_splice]
   constructor
@@ -157,7 +157,7 @@ def Generates (J : Finset I) (X : Pt Ω → α) (C : Set (Pt Ω)) : Prop :=
 
 /-- The working form of generation, obtained from Lemma C.3: `J` disintegrates `C` and
 `X` is constant on the members of `C` that agree on `J`. -/
-theorem generates_iff [Nonempty α] (J : Finset I) (X : Pt Ω → α) (C : Set (Pt Ω)) :
+lemma generates_iff [Nonempty α] (J : Finset I) (X : Pt Ω → α) (C : Set (Pt Ω)) :
     Generates J X C ↔
       Disintegrates J C ∧ ∀ a ∈ C, ∀ b ∈ C, (∀ i ∈ J, a i = b i) → X a = X b := by
   rw [Generates, derivedOn_iff]
@@ -390,7 +390,10 @@ theorem history_eq_iUnion_fibers [Nonempty α] (X : Pt Ω → α) (C : Set (Pt �
     obtain ⟨x, hx⟩ := Set.mem_iUnion.mp hi
     exact hsub x hx
 
-/-- Lemma 4.9 in `Finset` form for a finite value space. -/
+/-- **History of a variable is the union of the histories of its events**, in `Finset`
+form for a finite value space `Val(X)` (the paper's hypothesis).
+
+Paper node: Lemma 4.9 (§4.2). -/
 theorem history_eq_biUnion_fibers [Nonempty α] [Fintype α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
     history X C = Finset.univ.biUnion fun x : α => eventHistory (fiber X x) C := by
   apply Finset.coe_injective
