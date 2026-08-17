@@ -1154,7 +1154,8 @@ open FiniteFactoredSets in
   Examples.ofSetoidOn_bot_Efst Examples.roundtrip_sndOnEfst Examples.roundtrip_bot_Efst
   Examples.restrict_restrict_sndOnEfst
   -- Lemmas 1 and 2 instantiated: their hypothesis sets are satisfiable, and Lemma 2's two
-  -- sides are computed independently to `B`.
+  -- sides are each computed to `B` without invoking Lemma 2 (the left from Proposition 22,
+  -- the right from Lemma 1), so the pair cross-checks Lemma 2 on the witness.
   Examples.historySub_ofSetoid_fstFactor Examples.historySub_ofSetoid_sndFactor
   Examples.historySub_disjoint_coord Examples.lemma1_coordFS Examples.lemma1_coordFS'
   Examples.lemma2_lhs_coordFS Examples.lemma2_rhs_coordFS
@@ -1184,9 +1185,10 @@ open FiniteFactoredSets in
 
 The trust-surface inventories above remain the paper-facing accounting.  These
 declarations instead belong to the supported consumer surface: they are small
-extensionality, simplification, certification, and transport tools exercised by
-`APITests`.  Axiom-checking them here does not designate them as paper claims or add them
-to any `*-INVENTORY` block. -/
+extensionality, simplification, certification, and transport tools advertised in each
+paper's consumer API module, a subset of which is exercised by `APITests`.
+Axiom-checking them here does not designate them as paper claims or add them to any
+`*-INVENTORY` block. -/
 
 open LogicalInduction in
 #assert_axioms_clean
@@ -1204,6 +1206,8 @@ open CartesianFrames in
   Frame.commit_outcome Frame.assume_outcome Frame.external_outcome
   Frame.externalQuot_outcome Frame.internal_outcome Frame.internalSect_outcome
 
+-- Finite Factored Sets: the consumer-surface conveniences advertised in
+-- `FiniteFactoredSets/API.lean`; a subset of them is exercised by `APITests`.
 open FiniteFactoredSets in
 #assert_axioms_clean
   FactoredSet.StrictlyBefore.before FactoredSet.strictlyBefore_def FactoredSet.before_def
@@ -1211,11 +1215,11 @@ open FiniteFactoredSets in
   FactoredSet.entangled_iff FactoredSet.size_eq_mk FactoredSet.dim_eq_mk
   FactoredSet.dim_eq_zero_iff FactoredSet.generates_iff_rel
   FactoredSet.generates_iff_sInf_le FactoredSet.generates_iff_history_subset
-  FactoredSet.le_iff_history_subset FactoredSet.commonRefinement_history_le
+  FactoredSet.le_iff_history_subset
   FactoredSet.chimera_self FactoredSet.chimera_sdiff FactoredSet.chimera_union
   FactoredSet.chimera_inter FactoredSet.chimera_left_idem FactoredSet.chimera_right_idem
   FactoredSet.chimera_left_comm FactoredSet.chimera_basis FactoredSet.chimera_empty
-  Subpartition.ofSetoidOn Subpartition.dom_ofSetoidOn
+  Subpartition.ofSetoidOn Subpartition.dom_ofSetoidOn Subpartition.toSetoid_ofSetoidOn
   Subpartition.restrict_univ Subpartition.restrict_restrict_of_subset
   Subpartition.dom_restrict_ofSetoid Subpartition.part_restrict_ofSetoid
   Subpartition.restrict_ofSetoid_inf

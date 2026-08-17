@@ -246,13 +246,14 @@ example :
       (clientPairFS.orthogonalGiven_self_iff obsFst ⊤).1 h
     exact Bool.noConfusion (hle trivial : obsFst (true, true) (false, true))
 
-/-- And the `Ind_S` case really is the §3 statement, by Proposition 24 read backwards: the
-failure above is exactly the failure of unconditional self-orthogonality, which Proposition
-15 clause 4 pins to `obsFst ≠ Ind_S`. -/
-example : ¬ clientPairFS.Orthogonal obsFst obsFst := by
-  intro h
-  have htop : obsFst = (⊤ : Setoid (Bool × Bool)) :=
-    (clientPairFS.orthogonal_spec obsFst obsFst obsFst).2.2.2.1 h
-  exact Bool.noConfusion (show obsFst (true, true) (false, true) by rw [htop]; trivial)
+/-- And the `Ind_S` case really is the §3 statement, by Proposition 24 read backwards: an
+unconditional `obsFst ⊥^F obsFst` would transport to `obsFst ⊥^F obsFst | Ind_S`, the third
+conjunct just refuted, so it fails.  The route — Proposition 24 into Proposition 25 — never
+touches Proposition 15's basis characterization. -/
+example : ¬ clientPairFS.Orthogonal obsFst obsFst := fun hO =>
+  Bool.noConfusion
+    ((clientPairFS.orthogonalGiven_self_iff obsFst ⊤).1
+      ((clientPairFS.orthogonal_iff_orthogonalGiven_top obsFst obsFst).1 hO)
+      trivial : obsFst (true, true) (false, true))
 
 end APITests.FiniteFactoredSets

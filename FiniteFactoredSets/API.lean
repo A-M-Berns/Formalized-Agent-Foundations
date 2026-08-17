@@ -62,7 +62,9 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `X|E`.  The bridge to partitions is `ofSetoid : Setoid S → Subpartition S` (total PERs),
   with `ofSetoidOn E Y : Subpartition S` for a partition `Y : Setoid E` of a client's own
   subset and `toSetoid : Setoid X.dom` the inverse; `ofSetoidOn_toSetoid` and
-  `ofSetoidOn_univ` are the round trips.  `indiscrete E` is `Ind_E`; the order is Mathlib's
+  `toSetoid_ofSetoidOn` are the two round trips, `dom_ofSetoidOn` computes
+  `(ofSetoidOn E Y).dom = E`, and `ofSetoidOn_univ` is the compatibility with `ofSetoid`
+  on `Set.univ`.  `indiscrete E` is `Ind_E`; the order is Mathlib's
   again (`X ⊓ Y` is the paper's `X ∨_E Y`, `Y ≤ X` its `X ≤_E Y`), and `Subset` is the
   paper's inclusion *as sets of blocks*, which is a different relation from `≤`.  The
   restriction glue a client actually reaches for is `restrict_univ`,

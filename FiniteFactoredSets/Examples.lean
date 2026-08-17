@@ -534,10 +534,6 @@ def Efst : Set (Bool × Bool) := {p | p.1 = true}
 /-- The diagonal `{(false, false), (true, true)}` — a block of `xorPart`. -/
 def Ediag : Set (Bool × Bool) := {p | p.1 = p.2}
 
-lemma mem_Efst {p : Bool × Bool} : p ∈ Efst ↔ p.1 = true := Iff.rfl
-
-lemma mem_Ediag {p : Bool × Bool} : p ∈ Ediag ↔ p.1 = p.2 := Iff.rfl
-
 lemma Ediag_eq : Ediag = ({(false, false), (true, true)} : Set (Bool × Bool)) := by
   ext p
   obtain ⟨a, b⟩ := p
@@ -555,9 +551,6 @@ Definition 23 is neither empty nor total on the witness. -/
 def sndOnEfst : Subpartition (Bool × Bool) := (ofSetoid sndFactor).restrict Efst
 
 lemma dom_sndOnEfst : sndOnEfst.dom = Efst := dom_restrict_ofSetoid _ _
-
-lemma sndOnEfst_apply (s t : Bool × Bool) :
-    sndOnEfst s t ↔ s.1 = true ∧ t.1 = true ∧ s.2 = t.2 := Iff.rfl
 
 /-- Definition 22's blocks, computed: `sndFactor|Efst` is the *discrete* partition of
 `Efst`, with the two singleton blocks. -/
@@ -825,9 +818,6 @@ lemma roundtrip_bot_Efst (a b : (ofSetoidOn Efst (⊥ : Setoid Efst)).dom) :
       (⊥ : Setoid Efst) ⟨a, by simpa using a.2⟩ ⟨b, by simpa using b.2⟩ :=
   toSetoid_ofSetoidOn Efst (⊥ : Setoid Efst) a b
 
-lemma dom_ofSetoidOn_Efst : (ofSetoidOn Efst (⊥ : Setoid Efst)).dom = Efst :=
-  dom_ofSetoidOn _ _
-
 /-- `Subset`, positive: the diagonal is a block of `xorPart`, so `Ind_Ediag ⊆ xorPart`. -/
 lemma subset_indDiag_xorPart : indDiag.Subset (ofSetoid xorPart) := by
   intro s hs t
@@ -864,17 +854,13 @@ lemma restrict_restrict_sndOnEfst :
     subst hp
     rfl)
 
-lemma dom_restrict_restrict_sndOnEfst :
-    (sndOnEfst.restrict {((true, true) : Bool × Bool)}).dom
-      = {((true, true) : Bool × Bool)} := by
-  rw [restrict_restrict_sndOnEfst, dom_restrict_ofSetoid]
-
 /-! ### §4.2: Lemmas 1 and 2 instantiated on `coordFS`
 
 Both lemmas carry hypotheses (`X.dom = Y.dom`, disjoint histories, a point of the domain)
 that a reader could suspect of being jointly unsatisfiable.  They are not: on `coordFS`
-every one of them is discharged in a line, and both sides of Lemma 2 are computed
-independently to `B`. -/
+every one of them is discharged in a line, and Lemma 2's two sides are each computed to
+`B` *without* invoking Lemma 2 — the left side from Proposition 22, the right side from
+Lemma 1 — so the pair cross-checks Lemma 2 on the witness. -/
 
 lemma historySub_ofSetoid_fstFactor :
     coordFS.historySub (ofSetoid fstFactor) = {fstFactor} := by
@@ -923,15 +909,28 @@ lemma lemma2_lhs_coordFS :
     coordFS.historySub (ofSetoid fstFactor ⊓ ofSetoid sndFactor) = coordFS.B := by
   rw [inf_ofSetoid_coord, coordFS.historySub_isLeast_and_eq_history.2, history_bot]
 
-/-- **Lemma 2** on the witness: its right side computes to `B` as well. -/
+/-- **Lemma 2**'s right side, computed *without* using Lemma 2, so that the pair
+`lemma2_lhs_coordFS`/`lemma2_rhs_coordFS` genuinely cross-checks it on `coordFS`: every
+union term is `{sndFactor}` by Lemma 1 (`lemma1_coordFS'`) and `h^F(fstFactor)` is
+`{fstFactor}`, so the union is `{fstFactor, sndFactor} = B`. -/
 lemma lemma2_rhs_coordFS :
     coordFS.historySub (ofSetoid fstFactor) ∪
       (⋃ s ∈ (ofSetoid fstFactor).dom,
         coordFS.historySub ((ofSetoid sndFactor).restrict ((ofSetoid fstFactor).part s)))
       = coordFS.B := by
-  rw [← coordFS.historySub_inf_eq (X := ofSetoid fstFactor) (Y := ofSetoid sndFactor)
-    (by simp)]
-  exact lemma2_lhs_coordFS
+  have h : ∀ s : Bool × Bool,
+      coordFS.historySub ((ofSetoid sndFactor).restrict ((ofSetoid fstFactor).part s))
+        = {sndFactor} := lemma1_coordFS'
+  simp only [h, historySub_ofSetoid_fstFactor, dom_ofSetoid]
+  ext b
+  simp only [Set.mem_union, Set.mem_iUnion, Set.mem_singleton_iff, Set.mem_univ, exists_const]
+  constructor
+  · rintro (rfl | rfl)
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+  · rintro (rfl | rfl)
+    · exact Or.inl rfl
+    · exact Or.inr rfl
 
 /-! ### §4.3: conditioning on the diagonal entangles the coordinate factors
 

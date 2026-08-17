@@ -418,6 +418,52 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 5 audit — durable lessons (§4 convergence round)
+
+* Verdict shape: no statement changed since round 4 (diff the extracts first — that is now
+  the cheapest opening move of any re-audit); Lens A and the codex statement sweep found
+  nothing; the one MAJOR was cross-family (codex + Lens B): `lemma2_rhs_coordFS` "computed"
+  Lemma 2's right side by applying Lemma 2 — a witness that *applies* an endpoint and one
+  that *cross-checks* it are different things, and the register said the latter. **Rule:
+  a witness advertised as a cross-check must not mention the endpoint it checks.**
+* **Mathlib's `Order/Partition/Basic.lean` (`Partition (s : α)`, with a `Rel` documented as
+  "the partial equivalence relation induced by a partition") is NOT a substitute for
+  `dd:subpartition`**: it is indexed by its support, so `SubPart(S)` would again be
+  `Σ E, Partition E`, and §4 takes `⊓` of subpartitions with *different* domains
+  (`botInfIndEfalse = ofSetoid ⊥ ⊓ indiscrete Efalse`), which `Partition s` cannot type.
+  A future auditor will find it and suspect duplication; it is not.
+* Executable pins added: Lemma 2's X/Y pairing is oriented (the half-swap
+  `h(X) ∪ ⋃_{s ∈ Y.dom} h(X|[s]_Y)` is false at `fst`/`snd`: LHS `= B`, drifted RHS `= {fst}`;
+  the full swap is true by commutativity, so only the half-swap discriminates); Prop 20
+  clause 7a is oriented (`C = ∅`, `X = ofSetoid ⊥`: reversed 7a and true 7b both hold yet
+  `GeneratesSub ∅ (ofSetoid ⊥)` fails).
+* Cleared: Prop 21(4) at `dom = ∅`; `classes`/`classes_restrict` exclude empty blocks
+  because paper Definition 2 requires nonempty blocks; `Subset` is strictly stronger than
+  `≤` (do not substitute); `Setoid.classes_top` absent from Mathlib; Theorem 2 has no
+  disjointness hypothesis by the paper's own closing remark; the last
+  ConditionalOrthogonality example (`OrthogonalGivenSet X Y univ → Orthogonal X Y`) is not
+  derivable from Prop 24 over empty `S` (strictly stronger there).
+* Cheap audits worth repeating: `lake env lean <file>` (~5 s/file) with the
+  `unusedVariables` linter is a real unused-binder audit (it fires on theorem binders);
+  paste every backticked name from API.lean into a `#print axioms` scratch to check the doc
+  names nothing nonexistent and everything is clean (80 names at 0f1022c).
+* **You cannot walk a theorem's proof-term dependency graph in this toolchain**:
+  `ConstantInfo.value?` is `none` for theorems (async elaboration), so a hand-rolled
+  `getUsedConstants` walk sees only the *type*'s constants and answers "independent of X"
+  for every X — a checker that passes for the wrong reason. Use declaration order within a
+  module (Lemma 1 at SubpartitionHistory.lean:307 precedes Lemma 2 at :388, so the RHS
+  witness path cannot reach Lemma 2) or `#print axioms`, never a naive walk.
+* `lemma2_lhs_coordFS`/`lemma2_rhs_coordFS` are a cross-check pair: neither may mention
+  `historySub_inf_eq` (left: Prop 22 + `history_bot`; right: Lemma 1 + Prop 22 + set algebra).
+  `commonRefinement_history_le` is an internal §3.3 helper, deliberately off the consumer
+  surface (not in API.lean/APITests/conveniences block). The two round trips are
+  `ofSetoidOn_toSetoid` and `toSetoid_ofSetoidOn`; `ofSetoidOn_univ` is a third, unrelated
+  compatibility fact. `unusedSimpArgs` warnings survive a "green" build — grep the log for
+  your filenames.
+* `APITests.clientPairFS` is definitionally `Examples.coordFS`; any *fact* proved about it
+  should be checked against Examples' lemmas first (the reconstruction is ratified, verbatim
+  re-derivations of facts are not).
+
 ## Round 4 audit — durable lessons (first audit of §4)
 
 * Verdict shape: both codex sweeps clean (`[]`, valid); no mathematical finding from any

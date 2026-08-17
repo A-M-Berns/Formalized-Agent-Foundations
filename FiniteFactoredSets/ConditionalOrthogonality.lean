@@ -343,10 +343,10 @@ example (F : FactoredSet S) [Finite F.B] (X Y Z : Setoid S)
 /-- `OrthogonalSub` and `StrictlyBeforeSub` used as a client would: a strict predecessor of
 `Y` inherits `Y`'s subpartition orthogonalities, because both are read off the same
 history inclusion. -/
-example (F : FactoredSet S) (A B C : Subpartition S) (h : F.StrictlyBeforeSub A B)
-    (hBC : F.OrthogonalSub B C) : F.OrthogonalSub A C :=
-  (F.orthogonalSub_iff_forall_notMem A C).2 fun b hb =>
-    (F.orthogonalSub_iff_forall_notMem B C).1 hBC b (StrictlyBeforeSub.beforeSub F h hb)
+example (F : FactoredSet S) (X Y Z : Subpartition S) (h : F.StrictlyBeforeSub X Y)
+    (hYZ : F.OrthogonalSub Y Z) : F.OrthogonalSub X Z :=
+  (F.orthogonalSub_iff_forall_notMem X Z).2 fun b hb =>
+    (F.orthogonalSub_iff_forall_notMem Y Z).1 hYZ b (StrictlyBeforeSub.beforeSub F h hb)
 
 /-- Definition 26 read directly: orthogonality given the whole of `S` is unconditional
 orthogonality, which is Proposition 24 with its single block already supplied. -/
