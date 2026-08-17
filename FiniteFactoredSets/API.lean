@@ -109,16 +109,25 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `factor1`) and `eq_C_mul_poly_of_dvd_Q` (Proposition 28, `factor2` — every divisor of
   `Q^F_E` is `r · poly^F_C(E)` for some real `r` and some `C ⊆ B`), with the supporting
   `degreeOf_Q_le`, `Q_ne_zero`, `vars_disjoint_of_mul_eq_Q` and the upstreamable generic
-  `coeff_add_mul_of_split`.  A trap worth knowing before computing: `monos C E` is an
-  *image*, so coincident monomials collapse and `poly^F_C(E)` can have strictly fewer
-  summands than `E` has elements — Proposition 26 is the statement that this does not
-  happen at `C = B`.
+  `coeff_add_mul_of_split`.  Rewriting glue: `Q_eq_sum` and `poly_eq_sum_image` turn the
+  `finsum`/`finprod` definitions into `Finset` sums, and `mono_eq_prod`, `mono_congr`,
+  `mono_union`, `poly_empty` are the elementary `mono`/`poly` identities.  The
+  monomial-level description of `poly^F_C(E)` is exposed too, because §5.2 and any client
+  computing with these polynomials needs it: `coeff_poly` (every coefficient is `0` or `1`,
+  and `1` exactly on `monos^F_C(E)`), `mem_support_poly`, `poly_ne_zero`,
+  `monos_eq_of_support_eq` (the monomial set is recoverable from the polynomial), and — for
+  `C ⊆ B`, where Corollary 1 makes the monomials squarefree — `mono_eq_iff`,
+  `degreeOf_poly_le` and `mem_vars_poly`.  A trap worth knowing before computing:
+  `monos C E` is an *image*, so coincident monomials collapse and `poly^F_C(E)` can have
+  strictly fewer summands than `E` has elements — Proposition 26 is the statement that this
+  does not happen at `C = B`.
 * **Factoring characteristic polynomials** (§5.2): `FactoredSet.irr E` is `Irr^F(E)`
   (Definition 35), the minimal nonempty `C ⊆ B` with `χ^F_C(E,E) = E`, unfolded by
   `mem_irr`.  `irr_partition` (Proposition 29) says those sets partition `B`, with
   `irr_isPartition` restating it in §4's vocabulary as a `Subpartition` of `Setoid S`
   with domain `B`; `Q_eq_finprod_poly_irr` (Proposition 30) factors
-  `Q^F_E = ∏_{C ∈ Irr^F(E)} poly^F_C(E)`; and `irreducible_poly_of_mem_irr`
+  `Q^F_E = ∏_{C ∈ Irr^F(E)} poly^F_C(E)`, with `poly_dvd_Q` its divisibility corollary; and
+  `irreducible_poly_of_mem_irr`
   (Proposition 31) says each factor is `Irreducible` in `Poly S` — Mathlib's
   `Irreducible`, whose units over `ℝ` are the nonzero constants, which is the paper's
   "no factorization into two polynomials of nonempty support".  Definition 35's minimality
@@ -162,19 +171,30 @@ the reason `dd:finiteness-minimal` draws its line here.  `Q^F_E = ∑_{s ∈ E} 
 `finsum` over an infinite support it collapses to `0`, and divisibility, `Irr^F(E)` and
 irreducibility have nothing to say about that junk value.  The exact carriers:
 
-* `[Finite S]` **is** carried by, in §5.1, `Q_eq_poly` (Proposition 26),
-  `poly_union_chimeraImage` (Proposition 27), `degreeOf_Q_le`, `Q_ne_zero`,
-  `vars_disjoint_of_mul_eq_Q` and `eq_C_mul_poly_of_dvd_Q` (Proposition 28); and in §5.2,
-  `irr_partition` (Proposition 29), `irr_isPartition`, `Q_eq_finprod_poly_irr`
-  (Proposition 30) and `irreducible_poly_of_mem_irr` (Proposition 31).  That is every §5
-  statement that proves something — ten of them, and no others.
-* It is **not** carried by any §5 *definition* or unfolding: `Poly`, `mono`, `monos`,
-  `poly`, `Q`, `Q_eq_finsum_mono`, `irr`, `mem_irr` and the generic, upstreamable
-  `coeff_add_mul_of_split` are all finiteness-free, so a client may write down `Q^F_E`
-  over an infinite `S` — and gets the junk value, with no theorem of ours applying to it.
-* No §5 statement carries `[Finite F.B]` on top of `[Finite S]`, because it does not have
-  to: `Finite F.B` is synthesized from `Finite S` by instance search (see below), so the
-  §3–§4 endpoints those proofs call are supplied automatically.
+* `[Finite S]` **is** carried by nineteen public §5 statements, and no others.  In §5.1:
+  the paper endpoints `Q_eq_poly` (Proposition 26), `poly_union_chimeraImage`
+  (Proposition 27) and `eq_C_mul_poly_of_dvd_Q` (Proposition 28); the `Q`-level supporting
+  facts `Q_eq_sum`, `degreeOf_Q_le`, `Q_ne_zero` and `vars_disjoint_of_mul_eq_Q`; and the
+  monomial-level description of `poly^F_C(E)` — `poly_eq_sum_image`, `coeff_poly`,
+  `mem_support_poly`, `poly_ne_zero`, `monos_eq_of_support_eq`, `degreeOf_poly_le` and
+  `mem_vars_poly`.  In §5.2: `irr_partition` (Proposition 29), `irr_isPartition`,
+  `Q_eq_finprod_poly_irr` (Proposition 30), `poly_dvd_Q` and
+  `irreducible_poly_of_mem_irr` (Proposition 31).  All of these quantify over a *subset*
+  `E ⊆ S`, and it is `E`'s finiteness — reached through `Set.toFinite` — that they consume.
+* Exactly one public §5 statement carries `[Finite F.B]` instead: `mono_eq_iff`, which
+  compares two `C`-monomials for `C ⊆ B` and so needs only the *dimension* to be finite.
+  Nothing in §5 carries `[Finite F.B]` on top of `[Finite S]`, because it does not have to:
+  `Finite F.B` is synthesized from `Finite S` by instance search (see below), so both
+  `mono_eq_iff` and the §3–§4 endpoints these proofs call are supplied automatically to a
+  client who has `[Finite S]`.
+* Finiteness is **not** carried by any §5 *definition*, unfolding or elementary identity:
+  `Poly`, `mono`, `monos`, `poly`, `Q`, `Q_eq_finsum_mono`, `poly_empty`, `mono_eq_prod`,
+  `mono_congr`, `mono_union`, `irr`, `mem_irr` and the generic, upstreamable
+  `coeff_add_mul_of_split` are all finiteness-free — thirteen of them — so a client may
+  write down `Q^F_E` over an infinite `S` and gets the junk value, with no theorem of ours
+  applying to it.  (`mono_eq_prod` and `mono_union` take a `Set.Finite` *hypothesis* on the
+  factor set rather than an instance, which is a different thing: they are statements about
+  a finite `C`, over an arbitrary `S`.)
 
 `Finite F.B` is found by instance search whenever `Finite S` is.  `Fintype F.B` is not —
 and not for the reason one first suspects: under `open scoped Classical`, `Setoid` does

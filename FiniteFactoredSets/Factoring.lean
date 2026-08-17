@@ -1,5 +1,6 @@
 import FiniteFactoredSets.Polynomial
 import FiniteFactoredSets.Subpartition
+import Mathlib.Algebra.MvPolynomial.Nilpotent
 
 /-!
 # Factoring characteristic polynomials
@@ -11,11 +12,10 @@ irreducibles (Propositions 30 and 31).  `dd:poly` fixes the polynomial ring; Mat
 `Irreducible` renders the paper's irreducibility (over `ℝ` the units are the nonzero
 constants).  `[Finite S]` is carried where the paper's "finite factored set" is used.
 
-The first section below is not §5.2 material: it is the monomial-level description of
-`poly^F_C(E)` — under `[Finite S]` it is the sum of the distinct squarefree monomials
-`mono^F_C(s)`, `s ∈ E`, each with coefficient `1` — which Propositions 30 and 31 consume
-and which `Polynomial.lean` does not state.  It belongs with §5.1 and is a candidate for
-moving upstream.
+The monomial-level description of `poly^F_C(E)` these proofs run on — its coefficients,
+support, variables and degrees, all read off Corollary 1 — is §5.1 material and lives in
+`Polynomial.lean` (`coeff_poly`, `mem_support_poly`, `monos_eq_of_support_eq`,
+`poly_ne_zero`, `mono_eq_iff`, `degreeOf_poly_le`, `mem_vars_poly`).
 -/
 
 universe u
@@ -28,163 +28,15 @@ variable {S : Type u}
 
 open scoped Classical
 
-/-! ## The monomial structure of `poly^F_C(E)`
-
-Corollary 1 makes `b ↦ [s]_b` injective on `B`, so `mono^F_C(s)` is a *squarefree*
-monomial with coefficient `1`, and `poly^F_C(E)` is the sum of the distinct such monomials
-over `s ∈ E`.  Everything §5.2 needs about supports, variables and degrees follows from
-that one description. -/
-
-private lemma prod_X_eq_monomial {ι : Type*} (t : Finset ι) (f : ι → Set S) :
-    (∏ i ∈ t, (X (f i) : Poly S)) = monomial (∑ i ∈ t, Finsupp.single (f i) 1) 1 := by
-  classical
-  induction t using Finset.induction_on with
-  | empty => simp
-  | @insert a t ha ih =>
-      rw [Finset.prod_insert ha, Finset.sum_insert ha, ih, ← pow_one (X (f a)),
-        X_pow_eq_monomial, monomial_mul, mul_one]
-
-/-- The exponent vector of the monomial `mono^F_C(s)`. -/
-private noncomputable def monoExp (C : Set (Setoid S)) (s : S) : (Set S) →₀ ℕ :=
-  ∑ᶠ b ∈ C, Finsupp.single (part b s) 1
-
-private lemma monoExp_eq_sum [Finite S] (C : Set (Setoid S)) (s : S) :
-    monoExp C s = ∑ b ∈ (Set.toFinite C).toFinset, Finsupp.single (part b s) 1 := by
-  rw [monoExp, ← finsum_mem_coe_finset, Set.Finite.coe_toFinset]
-
-private lemma mono_eq_monomial [Finite S] (C : Set (Setoid S)) (s : S) :
-    mono C s = monomial (monoExp C s) 1 := by
-  have h1 : mono C s = ∏ b ∈ (Set.toFinite C).toFinset, X (part b s) := by
-    rw [mono, ← finprod_mem_coe_finset, Set.Finite.coe_toFinset]
-  rw [h1, monoExp_eq_sum, prod_X_eq_monomial]
-
-private lemma monoExp_empty (s : S) : monoExp (∅ : Set (Setoid S)) s = 0 := by
-  rw [monoExp, finsum_mem_empty]
-
-private lemma poly_eq_finsum_monomial [Finite S] (C : Set (Setoid S)) (E : Set S) :
-    poly C E = ∑ᶠ d ∈ monoExp C '' E, monomial d 1 := by
-  have hm : mono C = fun s => (monomial (monoExp C s) 1 : Poly S) :=
-    funext (mono_eq_monomial C)
-  rw [poly, monos, hm, ← Set.image_image (fun d => (monomial d 1 : Poly S)) (monoExp C),
-    finsum_mem_image (Function.Injective.injOn (monomial_left_injective one_ne_zero))]
-
-private lemma coeff_poly [Finite S] (C : Set (Setoid S)) (E : Set S) (d : (Set S) →₀ ℕ) :
-    coeff d (poly C E) = if d ∈ monoExp C '' E then 1 else 0 := by
-  have hfin : (monoExp C '' E).Finite := (Set.toFinite E).image _
-  rw [poly_eq_finsum_monomial, ← hfin.coe_toFinset, finsum_mem_coe_finset, coeff_sum]
-  simp only [coeff_monomial]
-  rw [Finset.sum_ite_eq' hfin.toFinset d (fun _ => (1 : ℝ))]
-  simp
-
-private lemma mem_support_poly [Finite S] (C : Set (Setoid S)) (E : Set S)
-    {d : (Set S) →₀ ℕ} : d ∈ (poly C E).support ↔ d ∈ monoExp C '' E := by
-  rw [mem_support_iff, coeff_poly]
-  split_ifs with h <;> simp [h]
-
-/-- `poly^F_C(E)` is nonzero for nonempty `E` — its monomials all have coefficient `1`, so
-none of them cancels. -/
-lemma poly_ne_zero [Finite S] (C : Set (Setoid S)) {E : Set S} (hE : E.Nonempty) :
-    poly C E ≠ 0 := by
-  obtain ⟨s, hs⟩ := hE
-  intro h
-  have hco := coeff_poly C E (monoExp C s)
-  rw [h, if_pos ⟨s, hs, rfl⟩] at hco
-  simp at hco
-
-
-/-- A unit of `Poly^F` has empty support: `ℝ` has no zero divisors, so degrees add. -/
+/-- A unit of `Poly^F` has empty support: over the reduced ring `ℝ` the units of
+`MvPolynomial` are exactly the constants. -/
 private lemma vars_eq_empty_of_isUnit {p : Poly S} (h : IsUnit p) : p.vars = ∅ := by
-  obtain ⟨u, rfl⟩ := h
-  have h1 : (u : Poly S) * (↑u⁻¹ : Poly S) = 1 := u.mul_inv
-  have hu : (u : Poly S) ≠ 0 := u.ne_zero
-  have hv : (↑u⁻¹ : Poly S) ≠ 0 := u⁻¹.ne_zero
-  ext v
-  simp only [Finset.notMem_empty, iff_false]
-  rw [mem_vars_iff_degreeOf_ne_zero]
-  intro hne
-  have hd := degreeOf_mul_eq (n := v) hu hv
-  rw [h1] at hd
-  simp only [degreeOf_one] at hd
-  omega
+  obtain ⟨r, -, rfl⟩ := isUnit_iff_eq_C_of_isReduced.1 h
+  exact vars_C
 
 namespace FactoredSet
 
 variable (F : FactoredSet S)
-
-/-- The exponent of a variable in `mono^F_C(s)` is `1` if the variable is one of the blocks
-`[s]_b`, `b ∈ C`, and `0` otherwise.  Corollary 1 (`eq_of_part_eq`) is what rules out two
-factors of `C` contributing the same variable, which is why `C ⊆ B` is needed. -/
-private lemma monoExp_apply [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S) (v : Set S) :
-    monoExp C s v = if ∃ b ∈ C, part b s = v then 1 else 0 := by
-  rw [monoExp_eq_sum, Finsupp.finsetSum_apply]
-  simp only [Finsupp.single_apply]
-  split_ifs with h
-  · obtain ⟨b₀, hb₀C, hb₀⟩ := h
-    rw [Finset.sum_eq_single b₀]
-    · rw [if_pos hb₀]
-    · intro b hb hne
-      rw [if_neg]
-      intro hbv
-      exact hne (F.eq_of_part_eq (hC (by simpa using hb)) (hC hb₀C) (hbv.trans hb₀.symm))
-    · intro hb₀f
-      exact absurd (by simpa using hb₀C) hb₀f
-  · exact Finset.sum_eq_zero fun b hb => if_neg fun hbv => h ⟨b, by simpa using hb, hbv⟩
-
-/-- Two elements have the same `C`-monomial exactly when they agree on every factor of `C`
-(for `C ⊆ B`).  This is the step Proposition 31 uses to pull an element of `E` back out of
-an equality of monomial sets. -/
-lemma mono_eq_iff [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
-    mono C s = mono C t ↔ ∀ b ∈ C, part b s = part b t := by
-  rw [mono_eq_monomial, mono_eq_monomial]
-  constructor
-  · intro h b hb
-    have hexp : monoExp C s = monoExp C t := monomial_left_injective one_ne_zero h
-    have hv : monoExp C s (part b s) = monoExp C t (part b s) := by rw [hexp]
-    rw [F.monoExp_apply hC s, F.monoExp_apply hC t, if_pos ⟨b, hb, rfl⟩] at hv
-    by_cases hex : ∃ b' ∈ C, part b' t = part b s
-    · obtain ⟨b', hb'C, hb'⟩ := hex
-      have hbb : b' = b := F.eq_of_part_eq (hC hb'C) (hC hb) hb'
-      rw [hbb] at hb'
-      exact hb'.symm
-    · rw [if_neg hex] at hv
-      exact absurd hv one_ne_zero
-  · intro h
-    have hexp : monoExp C s = monoExp C t := by
-      ext v
-      rw [F.monoExp_apply hC s, F.monoExp_apply hC t]
-      congr 1
-      exact propext ⟨fun ⟨b, hb, he⟩ => ⟨b, hb, (h b hb) ▸ he⟩,
-        fun ⟨b, hb, he⟩ => ⟨b, hb, (h b hb).symm ▸ he⟩⟩
-    rw [hexp]
-
-/-- Every variable has degree at most one in `poly^F_C(E)` for `C ⊆ B` — the `poly` analogue
-of `degreeOf_Q_le`, and the fact that forces the two factors in Proposition 31 to use
-disjoint sets of factors. -/
-lemma degreeOf_poly_le [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S) (v : Set S) :
-    (poly C E).degreeOf v ≤ 1 := by
-  rw [degreeOf_le_iff]
-  intro d hd
-  obtain ⟨s, -, rfl⟩ := (mem_support_poly C E).1 hd
-  rw [F.monoExp_apply hC s]
-  split_ifs <;> simp
-
-/-- The support of `poly^F_C(E)` is exactly `{[s]_b | b ∈ C, s ∈ E}` (for `C ⊆ B`). -/
-lemma mem_vars_poly [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S) {v : Set S} :
-    v ∈ (poly C E).vars ↔ ∃ b ∈ C, ∃ s ∈ E, part b s = v := by
-  rw [mem_vars_iff_mem_support]
-  constructor
-  · rintro ⟨d, hd, hv⟩
-    obtain ⟨s, hs, rfl⟩ := (mem_support_poly C E).1 hd
-    rw [Finsupp.mem_support_iff, F.monoExp_apply hC s] at hv
-    by_cases hex : ∃ b ∈ C, part b s = v
-    · obtain ⟨b, hb, hbv⟩ := hex
-      exact ⟨b, hb, s, hs, hbv⟩
-    · rw [if_neg hex] at hv
-      exact absurd rfl hv
-  · rintro ⟨b, hb, s, hs, rfl⟩
-    refine ⟨monoExp C s, (mem_support_poly C E).2 ⟨s, hs, rfl⟩, ?_⟩
-    rw [Finsupp.mem_support_iff, F.monoExp_apply hC s, if_pos ⟨b, hb, rfl⟩]
-    exact one_ne_zero
 
 /-- Reading a factor set off the support of its polynomial: for `b ∈ B` and any `s ∈ E`,
 `b ∈ C` iff `[s]_b` is a variable of `poly^F_C(E)`.  This is the paper's "`b ∈ C` if and
@@ -255,8 +107,8 @@ are nonempty, pairwise disjoint, and cover `B`.  Under `dd:partition` a partitio
 
 The paper's `E.Nonempty` is kept for faithfulness but is not consumed: `χ^F_C(∅,∅) = ∅` for
 every `C`, so `Irr^F(∅) = {{b} | b ∈ B}`, which is still a partition of `B`.  The linter is
-silenced on that one binder rather than renaming it, so the statement reads as the paper
-states it.
+silenced for this declaration (Lean has no per-binder form) rather than renaming `hE`, so
+the statement reads as the paper states it.
 
 Paper node: Proposition 29 (§5.2). -/
 theorem irr_partition [Finite S] {E : Set S} (hE : E.Nonempty) :
@@ -485,20 +337,19 @@ theorem irreducible_poly_of_mem_irr [Finite S] {E : Set S} (hE : E.Nonempty)
     have hrel : poly C E
         = MvPolynomial.C (r₀ * r₁) * poly C (F.chimeraImage C₀ E E) := by
       rw [hfac, hprod, hp₀, hp₁, map_mul]; ring
-    -- `monos^F_C(E) = monos^F_C(χ^F_{C₀}(E,E))`, in the form of an equality of supports.
-    have hsupp : monoExp C '' E = monoExp C '' (F.chimeraImage C₀ E E) := by
+    -- `monos^F_C(E) = monos^F_C(χ^F_{C₀}(E,E))`: a nonzero constant does not move a support.
+    have hsupp : (poly C E).support = (poly C (F.chimeraImage C₀ E E)).support := by
       ext d
-      rw [← mem_support_poly C E, ← mem_support_poly C (F.chimeraImage C₀ E E),
-        mem_support_iff, mem_support_iff, hrel, coeff_C_mul]
+      rw [mem_support_iff, mem_support_iff, hrel, coeff_C_mul]
       simp [hr₀, hr₁]
+    have hmonos : monos C E = monos C (F.chimeraImage C₀ E E) := monos_eq_of_support_eq hsupp
     refine Set.Subset.antisymm ?_ (F.subset_chimeraImage_self C₀ E)
     rintro u ⟨s₀, hs₀, s₁, hs₁, rfl⟩
-    have hu' : monoExp C (F.chimera C₀ s₀ s₁) ∈ monoExp C '' E := by
-      rw [hsupp]
-      exact ⟨_, ⟨s₀, hs₀, s₁, hs₁, rfl⟩, rfl⟩
-    obtain ⟨s₃, hs₃, heq⟩ := hu'
-    have hmono : mono C s₃ = mono C (F.chimera C₀ s₀ s₁) := by
-      rw [mono_eq_monomial, mono_eq_monomial, heq]
+    have hu' : mono C (F.chimera C₀ s₀ s₁) ∈ monos C E := by
+      rw [hmonos, monos]
+      exact Set.mem_image_of_mem _ (F.mem_chimeraImage.2 ⟨s₀, hs₀, s₁, hs₁, rfl⟩)
+    rw [monos, Set.mem_image] at hu'
+    obtain ⟨s₃, hs₃, hmono⟩ := hu'
     have hagree : ∀ b ∈ C, part b s₃ = part b (F.chimera C₀ s₀ s₁) :=
       (F.mono_eq_iff hCB).1 hmono
     have hueq : F.chimera C₀ s₀ s₁ = F.chimera C s₃ s₁ := by

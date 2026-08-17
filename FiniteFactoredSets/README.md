@@ -227,27 +227,48 @@ the monomials `mono`/`monos`/`poly`, and the irreducible parts `Irr^F(E)` — an
 characteristic polynomial outright: `Q^{coordFS}_S` is the four-term multilinear
 polynomial `∑_{a,b} X_{[·]₁=a} · X_{[·]₂=b}` over the four variables `vfst true`,
 `vfst false`, `vsnd true`, `vsnd false`. `[Finite S]` — the hypothesis §5 introduces and
-§2–§4 never needed — is discharged by instance search on `Bool × Bool`. Every declaration
-below is inventoried:
+§2–§4 never needed — is discharged by instance search on `Bool × Bool`. The §5 vocabulary
+is then run at four subsets — `S`, the block `Efst`, the diagonal `Ediag` and `∅` — which
+is what makes `poly^F_C(E)` and `Irr^F(E)` visibly depend on `E` and the `E.Nonempty`
+hypotheses visibly load-bearing. Every declaration below is inventoried:
 
 | Claim | Declarations | What it rules out |
 |---|---|---|
 | Definition 31 is computed, not just written down | `vfst`, `vsnd`, `Q_coordFS_univ_eq`, `Q_coordFS_univ_ne_zero`, `degreeOf_Q_coordFS_univ_le_one` | `Q^F_E` being an unevaluated `finsum` of `finprod`s, or being `0`. The `finsum`/`finprod` are eliminated, the polynomial evaluates to `4` at all-ones, and every variable has degree ≤ 1 in it — Corollary 1 doing the work Proposition 28's proof needs |
 | Definition 33's image *collapses*, and Proposition 26 is the statement that it does not at `C = B` | `mono_singleton_fst_true_false`, `poly_singleton_fst_univ`, `poly_singleton_snd_univ`, `mono_coordFS_basis_injective` | reading `monos^F_C(E)` as indexed by `E`. `S` has four points but `poly^F_{fst}(S)` has *two* summands; at `C = B` the collapse does not happen, and `mono_coordFS_basis_injective` proves that on the witness by separating evaluation rather than by citing Proposition 3 |
-| Proposition 26 is cross-checked, and separately applied | `poly_coordFS_basis_univ_eq`, `prop26_coordFS_crosscheck`, `prop26_coordFS_applied` | a witness that "checks" an endpoint by applying it. `Q_coordFS_univ_eq` and `poly_coordFS_basis_univ_eq` compute their own sides to the same explicit polynomial and neither mentions `Q_eq_poly`, so the cross-check re-derives Proposition 26 here; the application is recorded as the separate claim it is |
-| Definition 35 takes different values at different `E` | `mem_irr_singleton_fst_univ`, `mem_irr_singleton_snd_univ`, `irr_coordFS_univ`, `chimeraImage_singleton_fst_Ediag_ne`, `chimeraImage_singleton_snd_Ediag_ne`, `irr_coordFS_Ediag` | `Irr^F` being empty, a singleton by construction, or independent of `E`. `Irr^{coordFS}(S) = {{fstFactor}, {sndFactor}}` while `Irr^{coordFS}(Ediag) = {B}` — the §5 shadow of the §4 fact that restricting to the diagonal entangles two orthogonal factors. Note the minimality clause of Definition 35 is *vacuous* at a singleton, `∅` being the only strict subset and not nonempty |
-| Proposition 30's factorization is cross-checked, and separately applied | `Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_univ_applied`, `prop30_coordFS_Ediag_applied` | the same defect as above one section on. The factorization `Q^F_S = poly^F_{fst}(S) · poly^F_{snd}(S)` is obtained by expanding both sides from Definitions 31 and 34, mentioning neither `Q_eq_finprod_poly_irr` nor `Irr^F`; the applications land on the same product, and at `Ediag` degenerate into Proposition 26's statement |
-| Propositions 28 and 31 have satisfiable, nondegenerate instances | `dvd_Q_coordFS_univ_prop28_shape`, `not_isUnit_poly_singleton_fst_univ` | Proposition 28 quantifying over divisors that do not exist, and Proposition 31 calling units irreducible. A real divisor of `Q^F_S` is exhibited with Proposition 28's `r · poly^F_C(E)` shape at `r = 1`, `C = {fstFactor}` — computed, not read off the endpoint — and that polynomial is not a unit |
+| Proposition 26 is cross-checked, and separately applied | `poly_coordFS_basis_univ_eq`, `prop26_coordFS_crosscheck`, `prop26_coordFS_applied`, `Q_coordFS_Efst_eq`, `poly_coordFS_basis_Efst_eq`, `prop26_coordFS_Efst_crosscheck`, `prop26_coordFS_Efst_applied` | a witness that "checks" an endpoint by applying it. `Q_coordFS_univ_eq` and `poly_coordFS_basis_univ_eq` compute their own sides to the same explicit polynomial and neither mentions `Q_eq_poly`, so the cross-check re-derives Proposition 26 here; the application is recorded as the separate claim it is. The same pair runs again at `E = Efst`, where the polynomial is a different one |
+| Definition 34 takes a different value at a third subset | `poly_singleton_fst_Efst`, `poly_singleton_snd_Efst` | `poly^F_C(E)` being insensitive to `E`. On the block `Efst` the first coordinate is constant, so `poly^F_{fst}(Efst)` collapses to a *single variable* while `poly^F_{snd}(Efst)` keeps both of its — which is what makes Propositions 27 and 30 factor `Q^F_{Efst}` into two visibly *different* polynomials, where at `E = S` the two factors are symmetric |
+| Definition 35 takes different values at different `E` | `mem_irr_singleton_fst_univ`, `mem_irr_singleton_snd_univ`, `irr_coordFS_univ`, `chimeraImage_singleton_fst_Ediag_ne`, `chimeraImage_singleton_snd_Ediag_ne`, `irr_coordFS_Ediag`, `irr_coordFS_Efst`, `irr_coordFS_empty` | `Irr^F` being empty, a singleton by construction, or independent of `E`. `Irr^{coordFS}(S) = {{fstFactor}, {sndFactor}}` while `Irr^{coordFS}(Ediag) = {B}` — the §5 shadow of the §4 fact that restricting to the diagonal entangles two orthogonal factors. Note the minimality clause of Definition 35 is *vacuous* at a singleton, `∅` being the only strict subset and not nonempty. At `Efst` the value is the two singletons again, so `Irr^F` agreeing at two subsets does *not* mean the factorizations do |
+| Proposition 30's factorization is cross-checked, and separately applied | `Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_univ_applied`, `prop30_coordFS_Ediag_applied`, `prop30_coordFS_Efst_applied`, `prop30_coordFS_Efst_crosscheck` | the same defect as above one section on. The factorization `Q^F_S = poly^F_{fst}(S) · poly^F_{snd}(S)` is obtained by expanding both sides from Definitions 31 and 34, mentioning neither `Q_eq_finprod_poly_irr` nor `Irr^F`; the applications land on the same product, and at `Ediag` degenerate into Proposition 26's statement. At `Efst` the two factors are genuinely different polynomials, so the product structure is visible rather than symmetric |
+| Proposition 27 is applied at a nontrivial split, and its chimera's orientation is pinned | `prop27_coordFS_applied`, `prop27_coordFS_crosscheck`, `prop27_reversed_false` | Proposition 27 being exercised only where it degenerates. The split is `C₀ = {fstFactor}`, `C₁ = {sndFactor}` — disjoint, both nonempty, union `B` — with `E₀ = Efst ≠ S = E₁`; the cross-check recomputes the identity without `poly_union_chimeraImage`; and reading the spliced set as `χ^F_{C₀}(E₁, E₀)` instead of `χ^F_{C₀}(E₀, E₁)` makes the conclusion *false* here, so the argument order is not a convention |
+| Proposition 28's conclusion is doing work, not restating its hypothesis | `poly_singleton_fst_dvd_Q_coordFS_univ`, `prop28_coordFS_scaled_applied`, `prop28_r_loadbearing`, `prop28_coordFS_const_applied`, `prop28_const_forces_empty` | Proposition 28 quantifying over divisors that do not exist, *and* a witness that exhibits its conclusion where the conclusion is free. `poly^F_{fst}(S)` really divides `Q^F_S` (computed, not read off the endpoint) — but asserting `p = C r · poly^F_C(S)` at `p := poly^F_{fst}(S)` is a triviality, provable for every `C ⊆ B` and every `E` with none of the proposition's hypotheses (the probe `example` in `Examples.lean` proves exactly that). The two informative divisors are `2 · poly^F_{fst}(S)`, which is *no* `poly^F_C(S)`, so the real coefficient `r` cannot be dropped; and a nonzero constant, where the returned `C` is forced to `∅` |
+| Proposition 29 is applied and cross-checked, and its `Subpartition` form is inhabited | `prop29_coordFS_univ_applied`, `sUnion_irr_coordFS_univ_crosscheck`, `prop29_coordFS_Ediag_applied`, `sUnion_irr_coordFS_Ediag_crosscheck`, `irr_isPartition_coordFS_univ_applied` | Proposition 29 asserting a constant. It is applied at the two subsets where `Irr^F` differs, and in each case the cover clause is re-derived from the computed value without mentioning `irr_partition` |
+| Proposition 31 is applied, and `Irreducible` is not vacuously total here | `prop31_coordFS_fst_applied`, `prop31_coordFS_snd_applied`, `not_isUnit_poly_singleton_fst_univ`, `not_isUnit_poly_singleton_snd_univ`, `not_irreducible_Q_coordFS_univ` | Proposition 31 calling units irreducible, or being true because everything in sight is irreducible. Both factors are irreducible and neither is a unit, while `Q^F_S` itself is *reducible* |
+| The remaining §5.1 endpoints are applied, not merely shadowed | `Q_ne_zero_coordFS_applied`, `degreeOf_Q_le_coordFS_applied`, `vars_disjoint_coordFS_applied` | the computed facts standing in for the endpoints. Each of `Q_ne_zero`, `degreeOf_Q_le` and `vars_disjoint_of_mul_eq_Q` is instantiated on `coordFS` beside its computed counterpart |
+| The `E.Nonempty` hypotheses of §5 are load-bearing, and Proposition 29's disclosed exception is real | `poly_empty_eq_zero`, `Q_coordFS_empty`, `prop28_hE_loadbearing`, `prop30_hE_loadbearing`, `prop31_hE_loadbearing`, `irr_partition_holds_at_empty` | reading `hE` as decoration. At `E = ∅` both `Q^F_∅` and every `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright — 30's on the zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the empty product `1`. Proposition 29 is the exception its docstring discloses, and the computation at `E = ∅` is what backs that |
+| `poly^F_C(E)` is total in `C`, so it has junk values off the paper's `C ⊆ B` | `poly_top_univ_junk`, `top_notMem_coordFS_basis` | reading a §5 statement as covering every `C`. At `C = {Ind_S}` the value is a single variable, and `Ind_S ∉ B`, so no `C ⊆ B` hypothesis of §5.1–§5.2 is satisfied by it |
 
-Three of those rows carry a discipline worth naming, since it is the defect an earlier
+Several of those rows carry a discipline worth naming, since it is the defect an earlier
 audit round caught here: **a witness advertised as a cross-check must not mention the
-endpoint it checks.** `prop26_coordFS_crosscheck`, `Q_coordFS_univ_eq_mul_poly` and
-`dvd_Q_coordFS_univ_prop28_shape` are axiom-clean at
-`[propext, Classical.choice, Quot.sound]` and stay clean no matter what happens to the
-§5 proofs; `prop26_coordFS_applied`, `prop30_coordFS_univ_applied` and
-`prop30_coordFS_Ediag_applied` are the honest applications and inherit whatever those
-proofs depend on. Reading `#print axioms` on the two groups is the mechanical check that
-the separation is real.
+endpoint it checks.** `prop26_coordFS_crosscheck`, `prop26_coordFS_Efst_crosscheck`,
+`Q_coordFS_univ_eq_mul_poly`, `prop30_coordFS_Efst_crosscheck`,
+`prop27_coordFS_crosscheck`, `sUnion_irr_coordFS_univ_crosscheck` and
+`sUnion_irr_coordFS_Ediag_crosscheck` compute their claim from Definitions 31–35 and
+elementary algebra; `prop26_coordFS_applied`, `prop30_coordFS_univ_applied`,
+`prop30_coordFS_Ediag_applied`, `prop30_coordFS_Efst_applied`, `prop27_coordFS_applied`,
+`prop29_coordFS_univ_applied`, `prop29_coordFS_Ediag_applied`, `prop31_coordFS_*_applied`
+and the `prop28_*_applied` pair are the honest applications, recorded as the separate
+claims they are.
+
+**How that separation is checked, and how it is not.** The check is *textual*: a
+cross-check names no endpoint, so reading the declaration — or grepping the file for the
+endpoint's name — is what verifies it. `#print axioms` does **not** verify it now that the
+§5 endpoints are proved: every declaration in both groups reports the same
+`[propext, Classical.choice, Quot.sound]`, so the command separates the two groups only
+while an endpoint is still `sorry`d, when the applications pick up `sorryAx` and the
+cross-checks do not. It is a useful regression tripwire during development and an inert
+one afterwards; do not read a clean `#print axioms` as evidence that a witness is
+independent of the endpoint it checks.
 
 One friction point a client will meet, recorded at the site: `Finite F.B` — the
 hypothesis every §3.2–§3.4 theorem carries (Propositions 10 and 11 need none, and nothing

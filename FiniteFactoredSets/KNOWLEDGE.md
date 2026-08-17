@@ -12,7 +12,7 @@ trust surface and `FiniteFactoredSets.lean` for the `dd:` glossary.
 | `dd:partition` | Partitions are `Setoid S` | Matches `CartesianFrames/`; repo coherence beats a bespoke `Finpartition`-based encoding. Note Mathlib *does* now have a bundled `Setoid.Partitions` with a `CompleteLattice` instance (`Mathlib/Data/Setoid/Partition.lean`), which the CF library's comment predates — but `Setoid` is what the whole lattice API is stated over, so it stays. |
 | `dd:order-flip` | Use Mathlib's order, never the paper's glyphs | Carrying both conventions in one file is how sign errors get proved. |
 | `dd:quotient` | `∏(B)` is `(b : B) → Quotient b` | Canonical; a presentation change, not a content change. |
-| `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on exactly ten §5.1–5.2 statements (listed in API.lean). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
+| `dd:poly` | `Poly S := MvPolynomial (Set S) ℝ`; eval = `MvPolynomial.eval`, supp = `vars`, irreducible = Mathlib `Irreducible`; set sums via `finsum`/`finprod` | Blocks are variables verbatim under `dd:partition`. Definitions carry no finiteness; `[Finite S]` sits on the §5.1–5.2 *theorems* and helper lemmas whose statements quantify over `E ⊆ S` (the exact list is in API.lean, maintained per round — round 6 caught an undercount). `mono`/`monos`/`poly` take no `F` (paper superscript notational) — the `size` trap avoided at design time. |
 | `dd:subpartition` | A subpartition of `S` is a partial equivalence relation on `S` (`structure Subpartition`), domain `{s | r s s}` | Mathlib has no PER structure and `Σ E, Setoid E` would put dependent subtypes and domain transports into every §4 statement. The correspondence is exhibited (`toSetoid`, `ofSetoidOn`, round-trip lemmas). Payoff observed by the §4.1 shard: `X (χ_C s t) s` already implies `χ_C s t ∈ dom X` (`mem_dom_of_rel`), so half of Proposition 20's "extra condition" is free and Prop 21 clause 5 needs no `χ(E,E) = E` bookkeeping. |
 | history | `history X := ⋂₀ {C | C ⊆ F.B ∧ Generates C X}` | Definition 17's "smallest generating subset". `history_isLeast` (Proposition 12) is what earns "smallest", and it needs `[Finite F.B]` **genuinely**: over `S = ℕ → Bool` with the coordinate factors, every cofinite subset of `B` generates the "eventually equal" partition, so the intersection of all generating subsets is `∅`, which generates nothing. All of §3 is stated with `Finite F.B` (finite *dimension*) and never `Finite S`. |
 
@@ -229,6 +229,11 @@ witness (round 2): over `coordFS`, `C = {⊥} ⊄ B` satisfies clause 7 but not 
 defining family `{C | C ⊆ F.B ∧ Generates C X}` requires it definitionally. Do not add subset
 hypotheses to `generates_spec` "for symmetry", and do not strip them from those three.
 
+**Definitions 32–34's `mono`/`monos`/`poly` are stated for unrestricted `C`** (the paper takes
+`C ⊆ B`); forced by `dd:poly` (they take no `F`, so there is nothing to state `C ⊆ B`
+against) and harmless — every theorem needing squarefreeness carries `hC : C ⊆ F.B`. Third
+instance of the Proposition 4 / Definition 16 pattern; do not re-raise.
+
 **Propositions 7–9 are stated over `Cardinal`s with no `[Finite S]`** (Props 7 and 9 over
 `size`/`dim`; Prop 8 over `Cardinal.mk S`, since it quantifies over a bare basis with no
 `FactoredSet` in scope — `size` is definitionally `Cardinal.mk S`, bridged by `size_eq_mk`). The
@@ -241,7 +246,8 @@ re-audit as drift.
 
 ## Open trust-surface caveats
 
-**None outstanding after round 4.** Non-vacuity is discharged by construction in
+**Reopened by stage 5a, closing in round 6.** Props 27 and 31 had no witness when §5.1–5.2
+landed (Lens A, R6-F03); round 6 lands them. Non-vacuity is discharged by construction in
 `Examples.lean` — §2 witnesses in round 1 (R1-F01), §3 witnesses on `coordFS` (history,
 orthogonality, time, the XOR partition) in round 2 (R2-F03), §4 witnesses (subpartition
 histories, the superset-non-monotonicity counterexample, conditioning on the XOR partition
@@ -433,6 +439,60 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * The node checker is whole-directory: during parallel shards it stays red until the last
   shard's inventory rows land; read the file names in its output, not the count.
 
+## Round 6 audit — durable lessons (first audit of §5.1–5.2)
+
+* Verdict shape: codex statement sweep `[]`; Lens A no statement drift (executable pins:
+  Def 35's `D.Nonempty` is load-bearing since `χ_∅(E,E) = E`; Prop 27's argument order
+  discriminates at `E₀ = {(t,t)}, E₁ = {(f,f)}`; Mathlib `Irreducible` is strictly stronger
+  than the paper's phrasing and both extras hold); the MAJORs were repo hygiene:
+  `vars_eq_empty_of_isUnit` re-proves `MvPolynomial.isUnit_iff_eq_C_of_isReduced` + `vars_C`
+  (rule 2b — grep the fact; the KB's own "workhorse" note had entrenched the hand route), the
+  two exponent-vector layers (known), and two register overclaims — API.lean's "ten `[Finite S]`
+  statements and no others" (seven more public ones), and README's "`#print axioms` is the
+  mechanical check" for cross-check witnesses, which is **inert once the endpoints are proved**
+  (all six print the same axioms). The cross-check discipline is a *textual* property: the
+  witness's proof must not name the endpoint; `#print axioms` separates them only while the
+  endpoint is sorried.
+* `hE : E.Nonempty` is used-but-removable in `vars_disjoint_of_mul_eq_Q` and `poly_dvd_Q`
+  (both true at `E = ∅`) but genuinely needed in Props 30/31 (`E = ∅, B = ∅`: `Q ∅ = 0 ≠ 1`;
+  `E = ∅, B ≠ ∅`: `poly {b} ∅ = 0` is not irreducible). Prop 30 at `B = ∅` is consistent
+  (`|S| = 1`). Prop 29's first conjunct is definitionally free (Def 35 clause 1) — faithful to
+  Def 2, not padding.
+* `set_option linter.unusedVariables false in` silences the WHOLE declaration; the
+  `lake env lean` unused-binder audit gives a false all-clear there (Prop 29). Repo-root
+  scratch copies are safe for the node checker (it scans `FiniteFactoredSets/` only).
+* `mono`/`monos`/`poly` are stated for unrestricted `C` (third instance of the Prop 4 / Def 16
+  pattern) — recorded under Intentional deviations.
+* Lens C6 landmarks: `irr Efst = irr univ = irr ∅ = {{fst},{snd}}` — `Efst` does not
+  discriminate (`χ_C(Efst,Efst) = Efst` for every `C`); `Ediag` is the only subset so far
+  where `Irr` differs. At `E = Efst` Prop 30's two factors are *different* polynomials.
+  `coordSep` evaluation landmarks: `poly ∅ S ↦ 1`, `poly {fst} S ↦ 5`, `poly {snd} S ↦ 12`,
+  `poly B S ↦ 60` — with `subset_coordFS_basis_cases`, one `congrArg (eval coordSep)` refutes
+  "p = some `poly C S`" in four `norm_num` lines (how `r ≠ 1` in Prop 28 is shown load-bearing).
+  Junk values: `poly C ∅ = 0`; `poly ∅ E = 1` (nonempty E); `poly {⊤} univ = X univ`. Prop 30's
+  `hE` needs the zero-dimensional `unitFS` to fail (`B = ∅`: empty finprod `= 1`, `Q ∅ = 0`).
+  Prop 28 at a unit divisor forces `C = ∅` (`vars_C_mul`, `mem_vars_poly`). Traps: `if_pos rfl`
+  fails on set-membership `if`s (use `if_pos (Set.mem_singleton _)`); a `Set.mem_insert_iff`
+  singleton branch leaves `x ∈ {x}` for `rfl`. Names: `C_injective`, `vars_C_mul`,
+  `not_irreducible_zero`, `Irreducible.isUnit_or_isUnit`, `isUnit_zero_iff`.
+* Round-6 fixes: **the exponent-vector layer is single**, private `monoExp` in Polynomial.lean
+  (`ev`/`vset` deleted); it won because it is unconditionally correct (`mono C s = monomial
+  (monoExp C s) 1` needs only `C.Finite`; `C ⊆ B` enters at `monoExp_apply`) — *represent the
+  exponent vector, not the variable set*. Public in `monos` vocabulary: `coeff_poly`,
+  `mem_support_poly`, `monos_eq_of_support_eq`, `poly_ne_zero`, `mono_eq_iff` (now
+  `[Finite F.B]`), `degreeOf_poly_le`, `mem_vars_poly`. `private` is module-scoped: a public
+  lemma whose statement mentions a private def is unusable downstream. `Q_eq_poly` (Prop 26)
+  no longer *needs* `[Finite S]` (only `Finite F.B`) — binder kept deliberately as a paper-node
+  statement; a candidate for a minimality ruling. Redundant `haveI : Finite F.B` lines remain
+  in Basic.lean (599, 706) and `irr_partition` — de-slop candidates. Witnesses now run at four
+  subsets (`S`, `Efst`, `Ediag`, `∅`); `poly_singleton_fst_dvd_Q_coordFS_univ` replaced the
+  trivially-satisfiable-shape witness; a witness that exhibits an existential conclusion at
+  the existential's own witness form certifies nothing (pin the data or the object outside the
+  family). `poly C ∅ = 0` vs `poly ∅ E = 1` — adjacent corners with opposite values.
+* Public §5 helpers with no external consumer (candidates for API doc or de-slop):
+  `poly_eq_sum_image`, `Q_eq_sum`, `poly_dvd_Q`; finiteness-free: `poly_empty`,
+  `mono_eq_prod`, `mono_congr`, `mono_union`.
+
 ## Stage 5a (§5.1–5.2) — durable lessons
 
 * **Proposition 28 (`factor2`) was not the crux it was budgeted as**: with the (A)–(G)
@@ -476,7 +536,7 @@ it belongs in the library as a stated open `Prop` with this note attached.
 * Witness technique: prove monomials distinct by ONE separating `MvPolynomial.eval` into ℝ
   (variables ↦ 2,3,5,7) — ten lines for `Function.Injective (mono coordFS.B)`. Cross-check
   pairs (`prop26_coordFS_crosscheck`, `Q_coordFS_univ_eq_mul_poly`,
-  `dvd_Q_coordFS_univ_prop28_shape`) vs applications (`prop26_coordFS_applied`,
+  `poly_singleton_fst_dvd_Q_coordFS_univ` (was `dvd_Q_coordFS_univ_prop28_shape`)) vs applications (`prop26_coordFS_applied`,
   `prop30_coordFS_*_applied`): while the endpoints were sorried, `#print axioms` split them
   exactly — a mechanical certificate of independence. `subset_coordFS_basis_cases` enumerates
   the four subsets of `coordFS.B`.

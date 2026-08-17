@@ -51,12 +51,36 @@ polynomial, and neither mentions `Q_eq_poly`, so `prop26_coordFS_crosscheck` re-
 proposition here rather than echoing it (`prop26_coordFS_applied` is the separate, honest
 *application* of the endpoint).  The same pairing runs for Proposition 30
 (`Q_coordFS_univ_eq_mul_poly` computed, `prop30_coordFS_univ_applied` applied).  Third,
-`Irr^F` is computed at two subsets and the answers differ: at `S` the irreducible parts
-are the two singletons `{fstFactor}`, `{sndFactor}`, while on the diagonal `Ediag` the
-first coordinate determines the second, `χ^F_{fst}(Ediag, Ediag) ≠ Ediag`, and the only
-irreducible part is the whole basis — the §5 shadow of the §4 fact that restriction
-entangles.  Note the minimality clause of Definition 35 is *vacuous* at a singleton: the
-only strict subset of `{b}` is `∅`, which is not nonempty.
+`Irr^F` is computed at three subsets and the answers differ: at `S` and at the block
+`Efst` the irreducible parts are the two singletons `{fstFactor}`, `{sndFactor}`, while on
+the diagonal `Ediag` the first coordinate determines the second,
+`χ^F_{fst}(Ediag, Ediag) ≠ Ediag`, and the only irreducible part is the whole basis — the
+§5 shadow of the §4 fact that restriction entangles.  Note the minimality clause of
+Definition 35 is *vacuous* at a singleton: the only strict subset of `{b}` is `∅`, which
+is not nonempty.
+
+Four further groups make the §5 endpoints say something rather than merely typecheck.
+Proposition 27 is applied at a genuinely nontrivial split (`C₀ = {fstFactor}`,
+`C₁ = {sndFactor}` disjoint and nonempty, `E₀ = Efst ≠ S = E₁`), cross-checked by
+computation, and its chimera's argument order is pinned by `prop27_reversed_false`, which
+shows the reversed reading false.  Proposition 28 is applied at two divisors its
+conclusion actually has to work for — `2 · poly^F_{fst}(S)`, which
+`prop28_r_loadbearing` shows is no `poly^F_C(S)` at all, so the real coefficient `r`
+cannot be dropped; and a nonzero constant, where `prop28_const_forces_empty` shows the
+returned `C` must be `∅`.  Propositions 29 and 31 are applied and paired with negatives:
+`irr_isPartition` is instantiated, and `not_irreducible_Q_coordFS_univ` shows
+`Irreducible` is not vacuously total on this ring.  Finally the `E.Nonempty` hypotheses of
+Propositions 28, 30 and 31 are each shown load-bearing at `E = ∅` (Proposition 30's on
+`unitFS`, where the empty product is `1` while `Q^F_∅ = 0`), while
+`irr_partition_holds_at_empty` backs Proposition 29's disclosure that *its* `hE` is not
+consumed; and `poly_top_univ_junk` records what the total function `poly` does at a `C`
+outside `B`, so nobody reads a §5 statement as covering that value.
+
+One negative record deserves its name here: Proposition 28's conclusion, asserted at a
+`poly^F_C(E)`, is a triviality — provable for every `C ⊆ B` and every `E` with none of the
+proposition's hypotheses, as the `example` beside
+`poly_singleton_fst_dvd_Q_coordFS_univ` shows.  A witness of that shape certifies nothing,
+which is why the informative Proposition 28 instances are the two above.
 
 No declaration here is a paper node, so all of them are `lemma`s: the `theorem` keyword is
 reserved for the paper's numbered nodes.  Every *witness* lemma — the ones that carry a
@@ -69,11 +93,15 @@ in §4 the `mem_*`, `dom_*`, `*_apply` unfoldings together with `Ediag_eq`,
 `generatesSub_fstOnEdiag_forces`, `generatesSub_sndOnEdiag_forces` and
 `inf_ofSetoid_coord`, and in §5 the `part_*` unfoldings and distinctness lemmas for the
 variables, the separating evaluation `coordSep` with its four `coordSep_*` values,
-`eval_coordSep_mono_coordFS`, `mono_coordFS_basis`, `mono_singleton_fst`,
+`eval_coordSep_mono_coordFS`, `eval_coordSep_poly_fst`, `eval_coordSep_poly_snd`,
+`eval_coordSep_poly_basis`, `mono_coordFS_basis`, `mono_singleton_fst`,
 `mono_singleton_snd`, `monos_singleton_fst_univ`, `monos_singleton_snd_univ`,
 `degreeOf_X_mul_X_le_one`, `subset_coordFS_basis_cases`, `chimeraImage_univ_univ`,
-`singleton_mem_irr_univ`, `Ediag_nonempty`, `chimeraImage_basis_Ediag` and
-`singleton_fst_ne_singleton_snd`) are
+`singleton_mem_irr_univ`, `Ediag_nonempty`, `Efst_nonempty`, `Efst_eq`,
+`univ_nonempty_coord`, `chimeraImage_basis_Ediag`, `chimeraImage_Efst`,
+`chimeraImage_fst_Efst_univ`, `chimeraImage_empty`, `part_top_eq_univ`,
+`singleton_fst_union_snd_eq_basis`, `disjoint_singleton_fst_snd`,
+`two_mul_poly_fst_dvd_Q_coordFS_univ` and `singleton_fst_ne_singleton_snd`) are
 not, since they claim nothing about the paper.  The witnesses cite the paper in prose
 rather than carrying the reserved node annotation: the paper's Examples 1 and 2 are §6
 orthogonality databases, not these.
@@ -1167,6 +1195,9 @@ docstring says it *applies* a proposition. -/
 
 open MvPolynomial
 
+/-- `[Finite S]` itself, not just `[Finite F.B]`, and by instance search alone. -/
+example : Finite (Bool × Bool) := inferInstance
+
 /-- The variable `[s]_fstFactor` of `Poly^{coordFS}` for any `s` with `s.1 = a` — the
 block `{p | p.1 = a}` of `fstFactor`, which under `dd:partition` *is* a subset of `S` and
 so is a variable of the ring verbatim. -/
@@ -1531,17 +1562,29 @@ between two endpoints rather than a factorization. -/
 lemma prop30_coordFS_Ediag_applied : coordFS.Q Ediag = poly coordFS.B Ediag := by
   rw [coordFS.Q_eq_finprod_poly_irr Ediag_nonempty, irr_coordFS_Ediag, finprod_mem_singleton]
 
-/-- **Proposition 28's conclusion exhibited, computed.**  `poly^F_{fst}(S)` divides
-`Q^F_S`, and it is `r · poly^F_C(S)` for `r = 1` and `C = {fstFactor} ⊆ B` — so the
-proposition's existential is satisfiable at a nondegenerate divisor.  Nothing here cites
-`eq_C_mul_poly_of_dvd_Q`. -/
-lemma dvd_Q_coordFS_univ_prop28_shape :
-    poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ ∣ coordFS.Q Set.univ ∧
-      ∃ (r : ℝ) (C : Set (Setoid (Bool × Bool))), C ⊆ coordFS.B ∧
-        poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
-          = MvPolynomial.C r * poly C Set.univ :=
-  ⟨⟨_, Q_coordFS_univ_eq_mul_poly⟩,
-    1, {fstFactor}, singleton_fstFactor_subset, by rw [map_one, one_mul]⟩
+/-- **Proposition 28's divisor exhibited, computed.**  `poly^F_{fst}(S)` really divides
+`Q^F_S`, so Proposition 28 is not quantifying over an empty set of divisors on this
+witness.  Nothing here cites `eq_C_mul_poly_of_dvd_Q` — the cofactor is read straight off
+`Q_coordFS_univ_eq_mul_poly`.
+
+The proposition's *conclusion* is deliberately not folded into this statement: exhibiting
+`p = C r · poly^F_C(S)` at `p := poly^F_{fst}(S)` is trivially satisfiable at `r = 1`,
+`C = {fstFactor}` (see the probe `example` below, which proves that shape for *every*
+`C ⊆ B` with no finiteness, no divisibility and no nonemptiness).  The informative
+instances are `prop28_coordFS_scaled_applied` / `prop28_r_loadbearing`, where the divisor
+is *not* any `poly^F_C(S)` and the coefficient `r` is what saves the conclusion, and
+`prop28_coordFS_const_applied` / `prop28_const_forces_empty`, where `C` is forced to `∅`. -/
+lemma poly_singleton_fst_dvd_Q_coordFS_univ :
+    poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ ∣ coordFS.Q Set.univ :=
+  ⟨_, Q_coordFS_univ_eq_mul_poly⟩
+
+/-- The probe behind the paragraph above: Proposition 28's existential, *asserted at a
+`poly^F_C(E)`*, is a triviality — it holds for every `C ⊆ B` and every `E`, with none of
+the proposition's hypotheses.  So a witness of that shape certifies nothing beyond the
+divisibility it is paired with. -/
+example {S : Type u} (F : FactoredSet S) {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S) :
+    ∃ (r : ℝ) (C' : Set (Setoid S)), C' ⊆ F.B ∧ poly C E = MvPolynomial.C r * poly C' E :=
+  ⟨1, C, hC, by rw [map_one, one_mul]⟩
 
 /-- **Proposition 31's conclusion is not vacuous on the witness**: `poly^F_{fst}(S)` is not
 a unit, so calling it irreducible says something.  (In `Poly^F` over `ℝ` the units are the
@@ -1557,6 +1600,538 @@ lemma not_isUnit_poly_singleton_fst_univ :
   have hu := h.map (MvPolynomial.eval (fun _ => (0 : ℝ)))
   rw [h0] at hu
   exact zero_ne_one (isUnit_zero_iff.1 hu)
+
+/-- …and neither is the other factor. -/
+lemma not_isUnit_poly_singleton_snd_univ :
+    ¬ IsUnit (poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ) := by
+  intro h
+  have h0 : MvPolynomial.eval (fun _ => (0 : ℝ))
+      (poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ) = 0 := by
+    rw [poly_singleton_snd_univ]
+    simp
+  have hu := h.map (MvPolynomial.eval (fun _ => (0 : ℝ)))
+  rw [h0] at hu
+  exact zero_ne_one (isUnit_zero_iff.1 hu)
+
+/-! ### `E = Efst`: a third subset, where Definitions 31 and 34 take different values
+
+`Efst = {p | p.1 = true}` is a *block* of `fstFactor`, so the first coordinate is constant
+on it and the second is free.  That makes it the subset the §5 endpoints have the most to
+say about: `poly^F_{fst}(Efst)` collapses to a single variable while `poly^F_{snd}(Efst)`
+keeps both of its, so Propositions 27 and 30 factor `Q^{coordFS}_{Efst}` into two
+*different* polynomials — where at `E = S` the two factors are symmetric and at `E = Ediag`
+there is only one factor.  `S` and `Efst` also make Proposition 27's two set arguments
+genuinely different, which is what its chimera splice needs in order to be doing work. -/
+
+lemma Efst_nonempty : Efst.Nonempty := ⟨(true, true), rfl⟩
+
+lemma Efst_eq : Efst = ({(true, true), (true, false)} : Set (Bool × Bool)) := by
+  ext ⟨a, b⟩
+  constructor
+  · intro h
+    cases b
+    · exact Or.inr (by rw [(show a = true from h)]; rfl)
+    · exact Or.inl (by rw [(show a = true from h)])
+  · rintro (h | h) <;> rw [h] <;> rfl
+
+/-- **Definition 34 at `C = {fstFactor}`, `E = Efst`**: the image `monos` collapses `Efst`'s
+two points to one monomial, so `poly^F_{fst}(Efst)` is the *single variable* `X_{[·]₁=true}`
+— a different value from `poly^F_{fst}(S)`, which has two summands. -/
+lemma poly_singleton_fst_Efst :
+    poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+      = (X (vfst true) : Poly (Bool × Bool)) := by
+  have hmonos : monos ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+      = ({X (vfst true)} : Set (Poly (Bool × Bool))) := by
+    ext m
+    simp only [monos, Set.mem_image, Set.mem_singleton_iff]
+    constructor
+    · rintro ⟨s, hs, rfl⟩
+      rw [mono_singleton_fst, (show s.1 = true from hs)]
+    · rintro rfl
+      exact ⟨(true, true), rfl, mono_singleton_fst _⟩
+  rw [poly, hmonos, finsum_mem_singleton]
+
+/-- …while at `C = {sndFactor}` nothing collapses: `poly^F_{snd}(Efst)` still has both
+blocks of the second coordinate. -/
+lemma poly_singleton_snd_Efst :
+    poly ({sndFactor} : Set (Setoid (Bool × Bool))) Efst
+      = (X (vsnd true) + X (vsnd false) : Poly (Bool × Bool)) := by
+  have hmonos : monos ({sndFactor} : Set (Setoid (Bool × Bool))) Efst
+      = ({X (vsnd true), X (vsnd false)} : Set (Poly (Bool × Bool))) := by
+    ext m
+    simp only [monos, Efst_eq, Set.image_insert_eq, Set.image_singleton,
+      Set.mem_insert_iff, Set.mem_singleton_iff, mono_singleton_snd]
+  rw [poly, hmonos,
+    finsum_mem_pair (fun h => vsnd_true_ne_false (MvPolynomial.X_injective h))]
+
+/-- **Definition 31 computed at `E = Efst`**: a two-term polynomial, half of `Q^F_S`. -/
+lemma Q_coordFS_Efst_eq :
+    coordFS.Q Efst
+      = (X (vfst true) * X (vsnd true) + X (vfst true) * X (vsnd false) :
+          Poly (Bool × Bool)) := by
+  rw [coordFS.Q_eq_finsum_mono, Efst_eq,
+    finsum_mem_pair (show ((true, true) : Bool × Bool) ≠ (true, false) by
+      intro h; exact Bool.noConfusion (congrArg Prod.snd h)),
+    mono_coordFS_basis, mono_coordFS_basis]
+
+/-- Definition 34 at `C = B`, `E = Efst`, computed to the same explicit polynomial
+`Q_coordFS_Efst_eq` computes `Q^F_{Efst}` to — the `E = Efst` half of the Proposition 26
+cross-check pair. -/
+lemma poly_coordFS_basis_Efst_eq :
+    poly coordFS.B Efst
+      = (X (vfst true) * X (vsnd true) + X (vfst true) * X (vsnd false) :
+          Poly (Bool × Bool)) := by
+  rw [poly, monos, finsum_mem_image mono_coordFS_basis_injective.injOn, Efst_eq,
+    finsum_mem_pair (show ((true, true) : Bool × Bool) ≠ (true, false) by
+      intro h; exact Bool.noConfusion (congrArg Prod.snd h)),
+    mono_coordFS_basis, mono_coordFS_basis]
+
+/-- Proposition 26 **applied** at `E = Efst`. -/
+lemma prop26_coordFS_Efst_applied : coordFS.Q Efst = poly coordFS.B Efst :=
+  coordFS.Q_eq_poly Efst
+
+/-- …and **cross-checked** at `E = Efst`: both sides computed, no mention of `Q_eq_poly`. -/
+lemma prop26_coordFS_Efst_crosscheck : coordFS.Q Efst = poly coordFS.B Efst :=
+  Q_coordFS_Efst_eq.trans poly_coordFS_basis_Efst_eq.symm
+
+/-- Every point of `Efst` has first coordinate `true`, so *every* `C` fixes `Efst` in the
+sense of Definition 35 — including the singletons.  This is what makes `Irr^F(Efst)` the
+two singletons rather than `{B}`. -/
+lemma chimeraImage_Efst (C : Set (Setoid (Bool × Bool))) :
+    coordFS.chimeraImage C Efst Efst = Efst := by
+  ext u
+  constructor
+  · rintro ⟨s, hs, t, ht, rfl⟩
+    rw [coordFS_chimera_eq]
+    show (if fstFactor ∈ C then s.1 else t.1) = true
+    split_ifs
+    · exact hs
+    · exact ht
+  · intro hu
+    exact ⟨u, hu, u, hu, coordFS.chimera_self _ u⟩
+
+/-- **Definition 35 computed at `E = Efst`**: `Irr^F(Efst) = {{fstFactor}, {sndFactor}}`, as
+at `E = S` — so `Irr^F` agreeing at two subsets does *not* mean the factorizations agree,
+because the factors themselves differ (`prop30_coordFS_Efst_applied`). -/
+lemma irr_coordFS_Efst : coordFS.irr Efst = {{fstFactor}, {sndFactor}} := by
+  ext D
+  constructor
+  · rintro ⟨⟨c, hc⟩, hsub, -, hmin⟩
+    rcases subset_coordFS_basis_cases hsub with rfl | rfl | rfl | rfl
+    · exact absurd hc (Set.notMem_empty c)
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+    · refine absurd (chimeraImage_Efst ({fstFactor} : Set (Setoid (Bool × Bool))))
+        (hmin {fstFactor} ⟨Set.singleton_subset_iff.2 fstFactor_mem, ?_⟩ ⟨fstFactor, rfl⟩)
+      intro hcon
+      exact fstFactor_ne_sndFactor (Set.mem_singleton_iff.1 (hcon sndFactor_mem)).symm
+  · rintro (rfl | rfl)
+    · exact ⟨⟨fstFactor, rfl⟩, singleton_fstFactor_subset, chimeraImage_Efst _, by
+        intro D hD hne
+        rw [Set.ssubset_singleton_iff] at hD
+        exact absurd hne (hD ▸ Set.not_nonempty_empty)⟩
+    · exact ⟨⟨sndFactor, rfl⟩, singleton_sndFactor_subset, chimeraImage_Efst _, by
+        intro D hD hne
+        rw [Set.ssubset_singleton_iff] at hD
+        exact absurd hne (hD ▸ Set.not_nonempty_empty)⟩
+
+/-- **Proposition 30 applied at `E = Efst`**, where the two factors are *different*
+polynomials: `poly^F_{fst}(Efst)` is a single variable and `poly^F_{snd}(Efst)` is a sum of
+two.  At `E = S` the factorization is symmetric and at `E = Ediag` it has one factor, so
+this is the instance where the product structure is visible. -/
+lemma prop30_coordFS_Efst_applied :
+    coordFS.Q Efst
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Efst := by
+  rw [coordFS.Q_eq_finprod_poly_irr Efst_nonempty, irr_coordFS_Efst,
+    finprod_mem_pair singleton_fst_ne_singleton_snd]
+
+/-- …cross-checked by computing both sides.  This declaration does not mention
+`Q_eq_finprod_poly_irr`. -/
+lemma prop30_coordFS_Efst_crosscheck :
+    coordFS.Q Efst
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Efst := by
+  rw [Q_coordFS_Efst_eq, poly_singleton_fst_Efst, poly_singleton_snd_Efst]
+  ring
+
+/-! ### Proposition 27 at a nontrivial split, and the orientation of its chimera
+
+Proposition 27 splices `E₀` against `E₁` along a *disjoint* pair `C₀`, `C₁` of subsets of
+`B`.  The instance below takes `C₀ = {fstFactor}`, `C₁ = {sndFactor}`, `E₀ = Efst`,
+`E₁ = S` — so `C₀ ∪ C₁ = B`, `C₀ ∩ C₁ = ∅`, both are nonempty, and `E₀ ≠ E₁`.  Every
+degeneracy the proposition could hide behind is therefore ruled out at once, and the
+argument order of the chimera is pinned executably by `prop27_reversed_false`. -/
+
+lemma singleton_fst_union_snd_eq_basis :
+    ({fstFactor} : Set (Setoid (Bool × Bool))) ∪ {sndFactor} = coordFS.B := rfl
+
+lemma disjoint_singleton_fst_snd :
+    Disjoint ({fstFactor} : Set (Setoid (Bool × Bool))) {sndFactor} := by
+  rw [Set.disjoint_singleton]
+  exact fstFactor_ne_sndFactor
+
+/-- Splicing `Efst`'s first coordinate onto anything leaves `Efst`: `χ^F_{fst}(Efst, S)`
+is `Efst` again. -/
+lemma chimeraImage_fst_Efst_univ :
+    coordFS.chimeraImage ({fstFactor} : Set (Setoid (Bool × Bool))) Efst Set.univ = Efst := by
+  ext u
+  constructor
+  · rintro ⟨s, hs, t, -, rfl⟩
+    rw [coordFS_chimera_eq]
+    show (if fstFactor ∈ ({fstFactor} : Set (Setoid (Bool × Bool))) then s.1 else t.1) = true
+    rw [if_pos (Set.mem_singleton _)]
+    exact hs
+  · intro hu
+    exact ⟨u, hu, u, Set.mem_univ _, coordFS.chimera_self _ u⟩
+
+/-- **Proposition 27 applied on `coordFS` at a nontrivial split**: `C₀ = {fstFactor}` and
+`C₁ = {sndFactor}` are disjoint and nonempty, and `E₀ = Efst ≠ S = E₁`. -/
+lemma prop27_coordFS_applied :
+    poly coordFS.B Efst
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ := by
+  have h := coordFS.poly_union_chimeraImage singleton_fstFactor_subset
+    singleton_sndFactor_subset disjoint_singleton_fst_snd Efst Set.univ
+  rwa [chimeraImage_fst_Efst_univ, singleton_fst_union_snd_eq_basis] at h
+
+/-- The same identity **computed** from Definitions 32–34: this declaration does not
+mention `poly_union_chimeraImage`. -/
+lemma prop27_coordFS_crosscheck :
+    poly coordFS.B Efst
+      = poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ := by
+  rw [poly_coordFS_basis_Efst_eq, poly_singleton_fst_Efst, poly_singleton_snd_univ]
+  ring
+
+/-- **Proposition 27's chimera argument order is load-bearing.**  Reading its spliced set as
+`χ^F_{C₀}(E₁, E₀)` instead of `χ^F_{C₀}(E₀, E₁)` makes the conclusion *false* at
+`C₀ = {fstFactor}`, `C₁ = {sndFactor}`, `E₀ = Efst`, `E₁ = S`: the reversed splice is all
+of `S`, whose `poly^F_B` evaluates to `60` under `coordSep`, where the right-hand side
+evaluates to `2 · 12 = 24`. -/
+lemma prop27_reversed_false :
+    poly coordFS.B
+        (coordFS.chimeraImage ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ Efst)
+      ≠ poly ({fstFactor} : Set (Setoid (Bool × Bool))) Efst
+        * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ := by
+  have hchi : coordFS.chimeraImage ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ Efst
+      = Set.univ := by
+    ext ⟨a, b⟩
+    simp only [Set.mem_univ, iff_true]
+    refine ⟨(a, a), Set.mem_univ _, (true, b), rfl, ?_⟩
+    rw [coordFS_chimera_eq, if_pos (Set.mem_singleton _),
+      if_neg (by simpa using Ne.symm fstFactor_ne_sndFactor)]
+  rw [hchi]
+  intro h
+  have h' := congrArg (MvPolynomial.eval coordSep) h
+  rw [poly_coordFS_basis_univ_eq] at h'
+  rw [poly_singleton_fst_Efst, poly_singleton_snd_univ] at h'
+  simp only [map_add, map_mul, eval_X, coordSep_vfst_true, coordSep_vfst_false,
+    coordSep_vsnd_true, coordSep_vsnd_false] at h'
+  norm_num at h'
+
+/-! ### Proposition 28 where its conclusion is doing work
+
+The divisor exhibited above has Proposition 28's shape for the uninteresting reason that
+it *is* a `poly^F_C(S)`.  The two instances here are the ones that certify the endpoint's
+two moving parts.  First, `2 · poly^F_{fst}(S)` is a divisor of `Q^F_S` that is not equal
+to `poly^F_C(S)` for **any** `C ⊆ B`, so the real coefficient `r` in the conclusion cannot
+be dropped.  Second, a nonzero constant divides `Q^F_S` too, and there the conclusion's
+`C` is forced to be `∅` — the degenerate corner Proposition 31's case split exists for. -/
+
+lemma univ_nonempty_coord : (Set.univ : Set (Bool × Bool)).Nonempty :=
+  ⟨(true, true), Set.mem_univ _⟩
+
+lemma two_mul_poly_fst_dvd_Q_coordFS_univ :
+    (MvPolynomial.C (2 : ℝ) * poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ)
+      ∣ coordFS.Q Set.univ := by
+  refine ⟨MvPolynomial.C (2⁻¹ : ℝ) * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ, ?_⟩
+  rw [Q_coordFS_univ_eq_mul_poly,
+    show (MvPolynomial.C (2 : ℝ) * poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ)
+        * (MvPolynomial.C (2⁻¹ : ℝ) * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ)
+      = (MvPolynomial.C (2 : ℝ) * MvPolynomial.C (2⁻¹ : ℝ))
+        * (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+          * poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ) from by ring,
+    ← map_mul, show (2 : ℝ) * 2⁻¹ = 1 from by norm_num, map_one, one_mul]
+
+/-- **Proposition 28 applied at a divisor that is not any `poly^F_C(S)`.** -/
+lemma prop28_coordFS_scaled_applied :
+    ∃ (r : ℝ) (C : Set (Setoid (Bool × Bool))), C ⊆ coordFS.B ∧
+      MvPolynomial.C (2 : ℝ) * poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+        = MvPolynomial.C r * poly C Set.univ :=
+  coordFS.eq_C_mul_poly_of_dvd_Q univ_nonempty_coord two_mul_poly_fst_dvd_Q_coordFS_univ
+
+lemma eval_coordSep_poly_fst :
+    MvPolynomial.eval coordSep (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ)
+      = 5 := by
+  rw [poly_singleton_fst_univ]
+  simp only [map_add, eval_X, coordSep_vfst_true, coordSep_vfst_false]
+  norm_num
+
+lemma eval_coordSep_poly_snd :
+    MvPolynomial.eval coordSep (poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ)
+      = 12 := by
+  rw [poly_singleton_snd_univ]
+  simp only [map_add, eval_X, coordSep_vsnd_true, coordSep_vsnd_false]
+  norm_num
+
+lemma eval_coordSep_poly_basis :
+    MvPolynomial.eval coordSep (poly coordFS.B Set.univ) = 60 := by
+  rw [poly_coordFS_basis_univ_eq]
+  simp only [map_add, map_mul, eval_X, coordSep_vfst_true, coordSep_vfst_false,
+    coordSep_vsnd_true, coordSep_vsnd_false]
+  norm_num
+
+/-- **Proposition 28's real coefficient `r` is load-bearing.**  The divisor
+`2 · poly^F_{fst}(S)` of `Q^F_S` is not equal to `poly^F_C(S)` for any of the four
+`C ⊆ B`, so the conclusion would be false without the `C r` factor.  Separated by the
+evaluation `coordSep`, at which the four candidates take the values `1`, `5`, `12`, `60`
+while the divisor takes `10`. -/
+lemma prop28_r_loadbearing :
+    ∀ C ⊆ coordFS.B,
+      MvPolynomial.C (2 : ℝ) * poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ
+        ≠ poly C Set.univ := by
+  intro D hD h
+  have h' := congrArg (MvPolynomial.eval coordSep) h
+  rw [map_mul, eval_C, eval_coordSep_poly_fst] at h'
+  rcases subset_coordFS_basis_cases hD with rfl | rfl | rfl | rfl
+  · rw [poly_empty univ_nonempty_coord] at h'; norm_num at h'
+  · rw [eval_coordSep_poly_fst] at h'; norm_num at h'
+  · rw [eval_coordSep_poly_snd] at h'; norm_num at h'
+  · rw [eval_coordSep_poly_basis] at h'; norm_num at h'
+
+/-- **Proposition 28 applied at a constant (unit) divisor.**  Every nonzero constant
+divides `Q^F_S`, so this instance is forced on the endpoint. -/
+lemma prop28_coordFS_const_applied :
+    ∃ (r : ℝ) (C : Set (Setoid (Bool × Bool))), C ⊆ coordFS.B ∧
+      (MvPolynomial.C (3 : ℝ) : Poly (Bool × Bool))
+        = MvPolynomial.C r * poly C Set.univ := by
+  refine coordFS.eq_C_mul_poly_of_dvd_Q univ_nonempty_coord ?_
+  exact ⟨MvPolynomial.C (3⁻¹ : ℝ) * coordFS.Q Set.univ, by
+    rw [← mul_assoc, ← map_mul, show (3 : ℝ) * 3⁻¹ = 1 from by norm_num, map_one, one_mul]⟩
+
+/-- …and the `C` it returns really must be `∅`, so the empty factor set in Proposition 28's
+conclusion is not decoration: a constant has no variables, while `poly^F_C(S)` has one for
+every `b ∈ C`. -/
+lemma prop28_const_forces_empty
+    {r : ℝ} {D : Set (Setoid (Bool × Bool))} (hD : D ⊆ coordFS.B)
+    (h : (MvPolynomial.C (3 : ℝ) : Poly (Bool × Bool)) = MvPolynomial.C r * poly D Set.univ) :
+    D = ∅ := by
+  by_contra hne
+  obtain ⟨b, hb⟩ := Set.nonempty_iff_ne_empty.2 hne
+  have hr : r ≠ 0 := by
+    rintro rfl
+    rw [map_zero, zero_mul] at h
+    exact three_ne_zero (MvPolynomial.C_injective _ _ (h.trans (map_zero _).symm))
+  have hmem : part b ((true, true) : Bool × Bool) ∈ (poly D Set.univ).vars :=
+    (coordFS.mem_vars_poly hD Set.univ).2 ⟨b, hb, (true, true), Set.mem_univ _, rfl⟩
+  have hvars : (poly D Set.univ).vars = (MvPolynomial.C (3 : ℝ) : Poly (Bool × Bool)).vars := by
+    rw [h, vars_C_mul _ hr]
+  rw [hvars, vars_C] at hmem
+  exact absurd hmem (Finset.notMem_empty _)
+
+/-! ### Proposition 29 applied, cross-checked against the computed `Irr^F`
+
+The endpoint is applied at both subsets where `Irr^F` was computed, and in each case the
+cover clause is re-derived from the computed value without mentioning `irr_partition`. -/
+
+/-- **Proposition 29 applied at `E = S`**: all three clauses. -/
+lemma prop29_coordFS_univ_applied :
+    (∀ C ∈ coordFS.irr Set.univ, C.Nonempty) ∧
+      (coordFS.irr Set.univ).PairwiseDisjoint id ∧ ⋃₀ coordFS.irr Set.univ = coordFS.B :=
+  coordFS.irr_partition univ_nonempty_coord
+
+/-- The cover clause cross-checked against the computed `Irr^F(S) = {{fst}, {snd}}`: this
+declaration does not mention `irr_partition`. -/
+lemma sUnion_irr_coordFS_univ_crosscheck :
+    ⋃₀ ({{fstFactor}, {sndFactor}} : Set (Set (Setoid (Bool × Bool)))) = coordFS.B := by
+  rw [Set.sUnion_insert, Set.sUnion_singleton]
+  rfl
+
+/-- **Proposition 29 applied at `E = Ediag`**, where the partition of `B` is the single
+block `B` — a different partition from the one at `E = S`, so the proposition is not
+asserting a constant. -/
+lemma prop29_coordFS_Ediag_applied :
+    ⋃₀ coordFS.irr Ediag = coordFS.B :=
+  (coordFS.irr_partition Ediag_nonempty).2.2
+
+lemma sUnion_irr_coordFS_Ediag_crosscheck :
+    ⋃₀ ({coordFS.B} : Set (Set (Setoid (Bool × Bool)))) = coordFS.B :=
+  Set.sUnion_singleton _
+
+/-- `irr_isPartition` applied: Proposition 29's §4 restatement is inhabited on the
+witness, so the `Subpartition` it promises really is constructed. -/
+lemma irr_isPartition_coordFS_univ_applied :
+    ∃ P : Subpartition (Setoid (Bool × Bool)),
+      P.dom = coordFS.B ∧ P.classes = coordFS.irr Set.univ :=
+  coordFS.irr_isPartition univ_nonempty_coord
+
+/-! ### Proposition 31 applied, and the negative that stops `Irreducible` being total -/
+
+/-- **Proposition 31 applied on `coordFS`**: `poly^F_{fst}(S)` is irreducible. -/
+lemma prop31_coordFS_fst_applied :
+    Irreducible (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ) :=
+  coordFS.irreducible_poly_of_mem_irr univ_nonempty_coord mem_irr_singleton_fst_univ
+
+/-- …and so is the other irreducible part's polynomial. -/
+lemma prop31_coordFS_snd_applied :
+    Irreducible (poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ) :=
+  coordFS.irreducible_poly_of_mem_irr univ_nonempty_coord mem_irr_singleton_snd_univ
+
+/-- **The negative check**: `Irreducible` is not vacuously total on `Poly^{coordFS}` —
+`Q^F_S` itself is *reducible*, since it factors as the product of the two irreducibles
+above.  Without this, Proposition 31 could be true because everything in sight is
+irreducible. -/
+lemma not_irreducible_Q_coordFS_univ : ¬ Irreducible (coordFS.Q Set.univ) := by
+  intro h
+  rcases h.isUnit_or_isUnit Q_coordFS_univ_eq_mul_poly with hu | hu
+  · exact not_isUnit_poly_singleton_fst_univ hu
+  · exact not_isUnit_poly_singleton_snd_univ hu
+
+/-! ### The remaining §5.1 endpoints, applied on the witness
+
+`Q_ne_zero`, `degreeOf_Q_le` and `vars_disjoint_of_mul_eq_Q` are the three §5.1 results the
+computed facts above shadow but never instantiate.  Each is applied here, so the computed
+and the applied form sit side by side. -/
+
+lemma Q_ne_zero_coordFS_applied : coordFS.Q Set.univ ≠ 0 :=
+  coordFS.Q_ne_zero univ_nonempty_coord
+
+lemma degreeOf_Q_le_coordFS_applied (v : Set (Bool × Bool)) :
+    (coordFS.Q Set.univ).degreeOf v ≤ 1 :=
+  coordFS.degreeOf_Q_le Set.univ v
+
+/-- The variable-disjointness behind Proposition 28's coefficient argument, applied to the
+computed factorization: the two factors of `Q^F_S` share no variable. -/
+lemma vars_disjoint_coordFS_applied :
+    Disjoint (poly ({fstFactor} : Set (Setoid (Bool × Bool))) Set.univ).vars
+      (poly ({sndFactor} : Set (Setoid (Bool × Bool))) Set.univ).vars :=
+  coordFS.vars_disjoint_of_mul_eq_Q univ_nonempty_coord Q_coordFS_univ_eq_mul_poly.symm
+
+/-! ### The `E.Nonempty` hypotheses of §5 are load-bearing, not decoration
+
+Propositions 28, 30 and 31 all carry `hE : E.Nonempty`.  At `E = ∅` the characteristic
+polynomial is `0` and every `poly^F_C(∅)` is `0`, and each of the three conclusions fails
+outright — Proposition 30's on the zero-dimensional `unitFS`, where the empty product is
+`1` rather than `0`.  Proposition 29's `hE`, by contrast, is *not* consumed (its docstring
+says so), and `irr_partition_holds_at_empty` is the computation that backs that claim. -/
+
+/-- `poly^F_C(∅) = 0` for every `C`: the sum over an empty image.  Not to be confused with
+`poly_empty`, which is the `C = ∅` corner and gives `1`. -/
+lemma poly_empty_eq_zero (C : Set (Setoid (Bool × Bool))) :
+    poly C (∅ : Set (Bool × Bool)) = 0 := by
+  rw [poly, monos, Set.image_empty, finsum_mem_empty]
+
+lemma Q_coordFS_empty : coordFS.Q (∅ : Set (Bool × Bool)) = 0 := by
+  rw [coordFS.Q_eq_finsum_mono, finsum_mem_empty]
+
+lemma chimeraImage_empty (C : Set (Setoid (Bool × Bool))) :
+    coordFS.chimeraImage C (∅ : Set (Bool × Bool)) ∅ = ∅ := by
+  ext u
+  simp only [Set.mem_empty_iff_false, iff_false]
+  rintro ⟨s, hs, -⟩
+  exact hs
+
+/-- **Definition 35 computed at `E = ∅`**: `Irr^F(∅) = {{b} | b ∈ B}`, since `χ^F_C(∅,∅) = ∅`
+for every `C`. -/
+lemma irr_coordFS_empty : coordFS.irr (∅ : Set (Bool × Bool)) = {{fstFactor}, {sndFactor}} := by
+  ext D
+  constructor
+  · rintro ⟨⟨c, hc⟩, hsub, -, hmin⟩
+    rcases subset_coordFS_basis_cases hsub with rfl | rfl | rfl | rfl
+    · exact absurd hc (Set.notMem_empty c)
+    · exact Or.inl rfl
+    · exact Or.inr rfl
+    · refine absurd (chimeraImage_empty ({fstFactor} : Set (Setoid (Bool × Bool))))
+        (hmin {fstFactor} ⟨Set.singleton_subset_iff.2 fstFactor_mem, ?_⟩ ⟨fstFactor, rfl⟩)
+      intro hcon
+      exact fstFactor_ne_sndFactor (Set.mem_singleton_iff.1 (hcon sndFactor_mem)).symm
+  · rintro (rfl | rfl)
+    · exact ⟨⟨fstFactor, rfl⟩, singleton_fstFactor_subset, chimeraImage_empty _, by
+        intro D hD hne
+        rw [Set.ssubset_singleton_iff] at hD
+        exact absurd hne (hD ▸ Set.not_nonempty_empty)⟩
+    · exact ⟨⟨sndFactor, rfl⟩, singleton_sndFactor_subset, chimeraImage_empty _, by
+        intro D hD hne
+        rw [Set.ssubset_singleton_iff] at hD
+        exact absurd hne (hD ▸ Set.not_nonempty_empty)⟩
+
+/-- **Proposition 29's `hE` really is unused**, as its docstring discloses: its conclusion
+holds at `E = ∅` on the witness. -/
+lemma irr_partition_holds_at_empty :
+    ⋃₀ coordFS.irr (∅ : Set (Bool × Bool)) = coordFS.B := by
+  rw [irr_coordFS_empty, Set.sUnion_insert, Set.sUnion_singleton]
+  rfl
+
+/-- **Proposition 28's `hE` is load-bearing**: at `E = ∅`, `Q^F_∅ = 0`, so *every*
+polynomial divides it, while `poly^F_C(∅) = 0` for every `C` — the conclusion fails for
+`p = X_{[·]₁ = true}`. -/
+lemma prop28_hE_loadbearing :
+    (X (vfst true) : Poly (Bool × Bool)) ∣ coordFS.Q (∅ : Set (Bool × Bool)) ∧
+      ¬ ∃ (r : ℝ) (C : Set (Setoid (Bool × Bool))), C ⊆ coordFS.B ∧
+        (X (vfst true) : Poly (Bool × Bool)) = MvPolynomial.C r * poly C ∅ := by
+  refine ⟨⟨0, by rw [Q_coordFS_empty, mul_zero]⟩, ?_⟩
+  rintro ⟨r, D, -, h⟩
+  rw [poly_empty_eq_zero, mul_zero] at h
+  exact X_ne_zero _ h
+
+/-- **Proposition 31's `hE` is load-bearing**: `{fstFactor} ∈ Irr^F(∅)` but
+`poly^F_{fst}(∅) = 0`, which is not irreducible. -/
+lemma prop31_hE_loadbearing :
+    ({fstFactor} : Set (Setoid (Bool × Bool))) ∈ coordFS.irr (∅ : Set (Bool × Bool)) ∧
+      ¬ Irreducible (poly ({fstFactor} : Set (Setoid (Bool × Bool))) ∅) := by
+  refine ⟨by rw [irr_coordFS_empty]; exact Or.inl rfl, ?_⟩
+  rw [poly_empty_eq_zero]
+  exact not_irreducible_zero
+
+/-- **Proposition 30's `hE` is load-bearing**, on the zero-dimensional witness `unitFS`
+(`B = ∅`): there `Irr^F(∅) = ∅`, so the empty product is `1`, while `Q^F_∅ = 0`. -/
+lemma prop30_hE_loadbearing :
+    unitFS.Q (∅ : Set Unit) ≠ ∏ᶠ C ∈ unitFS.irr (∅ : Set Unit), poly C (∅ : Set Unit) := by
+  have hirr : unitFS.irr (∅ : Set Unit) = ∅ := by
+    ext D
+    simp only [Set.mem_empty_iff_false, iff_false]
+    rintro ⟨⟨c, hc⟩, hsub, -, -⟩
+    exact hsub hc
+  rw [hirr, finprod_mem_empty, unitFS.Q_eq_finsum_mono, finsum_mem_empty]
+  exact zero_ne_one
+
+/-! ### `poly^F_C(E)` is total, so it takes junk values off the paper's `C ⊆ B`
+
+Definition 34 is written for `C ⊆ B`, but the Lean `poly` is a total function of `C`.  The
+record below is what it does at a `C` the paper never speaks about, so that nobody reads a
+§5 statement as covering it: at `C = {Ind_S}` every point has the same block, `monos`
+collapses to one monomial, and `poly^F_{{Ind_S}}(S)` is a *single variable* — where the
+paper's `poly` for `C ⊆ B` would have `|monos^F_C(S)|` summands.  `Ind_S ∉ B`, so no
+hypothesis of §5.1–§5.2 is satisfied by it and no §5 theorem applies to this value. -/
+
+lemma part_top_eq_univ (s : Bool × Bool) :
+    part (⊤ : Setoid (Bool × Bool)) s = (Set.univ : Set (Bool × Bool)) := rfl
+
+lemma poly_top_univ_junk :
+    poly ({(⊤ : Setoid (Bool × Bool))} : Set (Setoid (Bool × Bool))) Set.univ
+      = (X Set.univ : Poly (Bool × Bool)) := by
+  have hmonos : monos ({(⊤ : Setoid (Bool × Bool))} : Set (Setoid (Bool × Bool))) Set.univ
+      = ({X (Set.univ : Set (Bool × Bool))} : Set (Poly (Bool × Bool))) := by
+    ext m
+    simp only [monos, Set.image_univ, Set.mem_range, Set.mem_singleton_iff]
+    constructor
+    · rintro ⟨s, rfl⟩
+      rw [mono, finprod_mem_singleton, part_top_eq_univ]
+    · rintro rfl
+      exact ⟨(true, true), by rw [mono, finprod_mem_singleton, part_top_eq_univ]⟩
+  rw [poly, hmonos, finsum_mem_singleton]
+
+/-- The junk value is out of the paper's reach: `Ind_S ∉ B`, so no `C ⊆ B` hypothesis of
+§5.1–§5.2 is satisfied by `{Ind_S}`. -/
+lemma top_notMem_coordFS_basis : (⊤ : Setoid (Bool × Bool)) ∉ coordFS.B := by
+  rintro (h | h)
+  · have hr : (⊤ : Setoid (Bool × Bool)) (true, false) (false, false) := trivial
+    rw [h] at hr
+    exact Bool.noConfusion (hr : (true : Bool) = false)
+  · have hr : (⊤ : Setoid (Bool × Bool)) (false, true) (false, false) := trivial
+    rw [h] at hr
+    exact Bool.noConfusion (hr : (true : Bool) = false)
 
 end Examples
 end FiniteFactoredSets

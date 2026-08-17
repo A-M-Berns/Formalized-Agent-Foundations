@@ -292,6 +292,27 @@ example {S : Type u} [Finite S] (F : FactoredSet S) {C : Set (Setoid S)} (hC : C
   rw [Set.union_empty] at h
   rw [h, poly_empty h₁, mul_one]
 
+/-- Proposition 27 where it *is* a factorization: on the client's own two-dimensional
+factored set, at the split `C₀ = {obsFst}`, `C₁ = {obsSnd}` — disjoint, both nonempty,
+and covering `B` — with two independent subsets `E₀`, `E₁`.  Neither factor is the empty
+product, so unlike the `C₁ = ∅` instance above this genuinely splits the whole-basis
+polynomial of the spliced set into two, and it is what a client reaches for when the two
+observables are measured on different data. -/
+example (E₀ E₁ : Set (Bool × Bool)) :
+    poly clientPairFS.B (clientPairFS.chimeraImage {obsFst} E₀ E₁)
+      = poly ({obsFst} : Set (Setoid (Bool × Bool))) E₀
+        * poly ({obsSnd} : Set (Setoid (Bool × Bool))) E₁ := by
+  have hne : obsFst ≠ obsSnd := by
+    intro hEq
+    have hr : obsFst (true, true) (true, false) := rfl
+    rw [hEq] at hr
+    exact Bool.noConfusion (hr : (true : Bool) = false)
+  have hunion : ({obsFst} : Set (Setoid (Bool × Bool))) ∪ {obsSnd} = clientPairFS.B := rfl
+  have h := clientPairFS.poly_union_chimeraImage
+    (Set.singleton_subset_iff.2 (Or.inl rfl)) (Set.singleton_subset_iff.2 (Or.inr rfl))
+    (Set.disjoint_singleton.2 hne) E₀ E₁
+  rwa [hunion] at h
+
 /-- Propositions 30 and 31 composed into the sentence a client actually wants: `Q^F_E` is
 a product of *irreducibles*, indexed by `Irr^F(E)`.  Neither proposition says that on its
 own — 30 gives the product, 31 gives the irreducibility of each factor. -/

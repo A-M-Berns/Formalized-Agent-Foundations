@@ -1042,7 +1042,8 @@ Same contract as the CF-INVENTORY block above: every declaration carrying a
 FFS-INVENTORY markers below, and `scripts/check-finite-factored-sets-nodes.py` enforces
 that in both directions.
 
-This formalization is **in progress**: the list below covers §2, §3 and §4.  Several
+This formalization is **in progress**: the list below covers §2, §3, §4 and §5.1–§5.2
+(§5.3 onwards and §6–§7 are not yet claimed).  Several
 of the paper's §2.1 nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean` — Definition 2
 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation, Definition 6
@@ -1105,12 +1106,13 @@ open FiniteFactoredSets in
   Poly FactoredSet.Q mono monos poly
   FactoredSet.Q_eq_poly FactoredSet.poly_union_chimeraImage
   FactoredSet.eq_C_mul_poly_of_dvd_Q
-  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§4 endpoint is
+  -- Non-vacuity witnesses (FiniteFactoredSets/Examples.lean).  Every §2-§5.2 endpoint is
   -- stated over `FactoredSet`; these are what make those endpoints say something.
   -- `coordFS` is the load-bearing one: with a single factor every `C` behaves as `∅` or
   -- `B`, so Proposition 4 would be near-tautologous — and with a single factor there is no
   -- subset of `S` on which the §4 restrictions can pull apart or entangle two factors,
-  -- which is what the §4 block at the end of this list needs.
+  -- which is what the §4 block at the end of this list needs, nor any nontrivial disjoint
+  -- split of `B` for Proposition 27 or nontrivial `Irr^F(E)` for Propositions 29-31.
   Examples.bool_isFactorization Examples.boolFS
   Examples.coord_isFactorization Examples.coordFS
   Examples.not_subsingleton_coordFS_basis Examples.coordFS_chimera_corners
@@ -1230,12 +1232,63 @@ open FiniteFactoredSets in
   -- so agrees with Proposition 26 there.
   Examples.Q_coordFS_univ_eq_mul_poly
   Examples.prop30_coordFS_univ_applied Examples.prop30_coordFS_Ediag_applied
-  -- Propositions 28 and 31 are not vacuous on the witness: `poly^F_{fst}(S)` really divides
-  -- `Q^F_S` and has Proposition 28's `r · poly^F_C(E)` shape at `r = 1`, `C = {fstFactor}`
-  -- (computed, not via the endpoint); and it is not a unit, so calling it irreducible says
-  -- something.
-  Examples.dvd_Q_coordFS_univ_prop28_shape
-  Examples.not_isUnit_poly_singleton_fst_univ
+  -- §5 at `E = Efst`, a *third* subset, where Definitions 31 and 34 take values distinct
+  -- from both earlier ones: `poly^F_{fst}(Efst)` collapses to one variable while
+  -- `poly^F_{snd}(Efst)` keeps two, so Propositions 26 and 30 factor `Q^F_{Efst}` into two
+  -- *different* polynomials (at `E = S` the two factors are symmetric; at `Ediag` there is
+  -- one).  `Irr^F(Efst)` is the two singletons again — so `Irr^F` agreeing at two subsets
+  -- does not mean the factorizations do.
+  Examples.poly_singleton_fst_Efst Examples.poly_singleton_snd_Efst
+  Examples.Q_coordFS_Efst_eq Examples.poly_coordFS_basis_Efst_eq
+  Examples.prop26_coordFS_Efst_applied Examples.prop26_coordFS_Efst_crosscheck
+  Examples.irr_coordFS_Efst
+  Examples.prop30_coordFS_Efst_applied Examples.prop30_coordFS_Efst_crosscheck
+  -- Proposition 27 at a nontrivial split — `C₀ = {fstFactor}`, `C₁ = {sndFactor}` disjoint
+  -- and nonempty with `C₀ ∪ C₁ = B`, and `E₀ = Efst ≠ S = E₁` — applied, cross-checked by
+  -- computation (no mention of `poly_union_chimeraImage`), and with the chimera's argument
+  -- order pinned executably: the reversed reading `χ^F_{C₀}(E₁, E₀)` is *false* here.
+  Examples.prop27_coordFS_applied Examples.prop27_coordFS_crosscheck
+  Examples.prop27_reversed_false
+  -- Proposition 28 is not vacuous on the witness, and its conclusion is doing work.
+  -- `poly^F_{fst}(S)` really divides `Q^F_S` (computed, not via the endpoint).  The
+  -- conclusion's `r · poly^F_C(E)` shape is *not* inventoried at that divisor, because
+  -- asserting it at a `poly^F_C(E)` is a triviality — provable for every `C ⊆ B` and every
+  -- `E` with none of the proposition's hypotheses (the `example` beside the divisor in
+  -- Examples.lean is the probe).  The informative instances are the two below: at
+  -- `2 · poly^F_{fst}(S)` the divisor is no `poly^F_C(S)` at all, so the real coefficient
+  -- `r` cannot be dropped; and at a nonzero constant the returned `C` is forced to `∅`.
+  Examples.poly_singleton_fst_dvd_Q_coordFS_univ
+  Examples.prop28_coordFS_scaled_applied Examples.prop28_r_loadbearing
+  Examples.prop28_coordFS_const_applied Examples.prop28_const_forces_empty
+  -- Proposition 29 applied at both computed subsets, each cross-checked against the
+  -- computed `Irr^F` without mentioning `irr_partition`; and its §4 restatement
+  -- `irr_isPartition` instantiated, so the `Subpartition` it promises is constructed.
+  Examples.prop29_coordFS_univ_applied Examples.sUnion_irr_coordFS_univ_crosscheck
+  Examples.prop29_coordFS_Ediag_applied Examples.sUnion_irr_coordFS_Ediag_crosscheck
+  Examples.irr_isPartition_coordFS_univ_applied
+  -- Proposition 31 applied to both irreducible parts, with the two negatives that stop it
+  -- being vacuous: neither factor is a unit, and `Irreducible` is not total on this ring —
+  -- `Q^F_S` itself is reducible.
+  Examples.prop31_coordFS_fst_applied Examples.prop31_coordFS_snd_applied
+  Examples.not_isUnit_poly_singleton_fst_univ Examples.not_isUnit_poly_singleton_snd_univ
+  Examples.not_irreducible_Q_coordFS_univ
+  -- The three §5.1 endpoints the computed facts above shadow but never instantiate,
+  -- applied on the witness.
+  Examples.Q_ne_zero_coordFS_applied Examples.degreeOf_Q_le_coordFS_applied
+  Examples.vars_disjoint_coordFS_applied
+  -- The `E.Nonempty` hypotheses of §5 are load-bearing: at `E = ∅` both `Q^F_∅` and every
+  -- `poly^F_C(∅)` are `0`, and Propositions 28, 30 and 31 each fail outright (30's on the
+  -- zero-dimensional `unitFS`, where `Irr^F(∅) = ∅` makes the product `1`).  Proposition
+  -- 29's `hE` is the exception, and `irr_partition_holds_at_empty` is the computation
+  -- backing that disclosure rather than a load-bearing claim.
+  Examples.poly_empty_eq_zero Examples.Q_coordFS_empty Examples.irr_coordFS_empty
+  Examples.irr_partition_holds_at_empty
+  Examples.prop28_hE_loadbearing Examples.prop30_hE_loadbearing
+  Examples.prop31_hE_loadbearing
+  -- `poly` is total in `C`, so it takes a junk value off the paper's `C ⊆ B`.  Recorded so
+  -- that nobody reads a §5 statement as covering it: at `C = {Ind_S}` it is a single
+  -- variable, and `Ind_S ∉ B`, so no §5.1-§5.2 hypothesis is satisfied by it.
+  Examples.poly_top_univ_junk Examples.top_notMem_coordFS_basis
 -- FFS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Finite Factored Sets surface. -/
@@ -1295,3 +1348,19 @@ open FiniteFactoredSets in
   FactoredSet.orthogonalSub_iff_forall_notMem FactoredSet.orthogonalSub_ofSetoid
   FactoredSet.beforeSub_ofSetoid FactoredSet.orthogonalGivenSet_def
   FactoredSet.orthogonalGiven_def FactoredSet.historySub_restrict_inf
+  -- §5.1-§5.2: the polynomial surface.  `Q_eq_finsum_mono`, `Q_eq_sum`,
+  -- `poly_eq_sum_image`, `mono_eq_prod`, `mono_congr`, `mono_union` and `poly_empty` are
+  -- the unfoldings of Definitions 31-34; `coeff_poly`, `mem_support_poly`, `poly_ne_zero`
+  -- and `monos_eq_of_support_eq` describe `poly^F_C(E)` monomial by monomial; and
+  -- `mono_eq_iff`, `degreeOf_poly_le`, `mem_vars_poly`, `degreeOf_Q_le`, `Q_ne_zero`,
+  -- `vars_disjoint_of_mul_eq_Q` are the squarefreeness facts Corollary 1 buys, with
+  -- `coeff_add_mul_of_split` the generic, upstreamable one.  `mem_irr` and `poly_dvd_Q`
+  -- are §5.2's unfolding and divisibility corollary; `irr_isPartition` restates
+  -- Proposition 29 in §4's vocabulary.  None of these is a paper node.
+  FactoredSet.Q_eq_finsum_mono FactoredSet.Q_eq_sum poly_eq_sum_image
+  mono_eq_prod mono_congr mono_union poly_empty
+  coeff_poly mem_support_poly poly_ne_zero monos_eq_of_support_eq
+  FactoredSet.mono_eq_iff FactoredSet.degreeOf_poly_le FactoredSet.mem_vars_poly
+  FactoredSet.degreeOf_Q_le FactoredSet.Q_ne_zero FactoredSet.vars_disjoint_of_mul_eq_Q
+  coeff_add_mul_of_split
+  FactoredSet.mem_irr FactoredSet.poly_dvd_Q FactoredSet.irr_isPartition

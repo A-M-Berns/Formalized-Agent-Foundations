@@ -14,6 +14,11 @@ a subset, the monomials `mono^F_C(s)`, `monos^F_C(E)`, `poly^F_C(E)`, and the tw
 factoring propositions the rest of §5 rests on — Proposition 27 (`factor1`) and
 Proposition 28 (`factor2`, the load-bearing lemma of the paper).
 
+It also carries the monomial-level description of `poly^F_C(E)` that §5.2 consumes:
+`mono^F_C(s)` is a monic monomial, so for `C ⊆ B` (where Corollary 1 makes it
+*squarefree*) the coefficients, support, variables and degrees of `poly^F_C(E)` are all
+read off the single exponent vector `monoExp C s`.
+
 ## Modeling decision — `dd:poly`
 
 * `Poly^F` is `MvPolynomial (Set S) ℝ`: the paper's variables are the subsets `𝒫(S)`
@@ -138,53 +143,6 @@ lemma poly_empty {E : Set S} (hE : E.Nonempty) : poly (∅ : Set (Setoid S)) E =
     exact hE.image_const 1]
   exact finsum_mem_singleton
 
-/-! ### Internal vocabulary for §5.1
-
-Every polynomial in §5.1 is a sum of *squarefree monic* monomials: `mono^F_C(s)` is a
-product of pairwise distinct variables (distinct by Corollary 1), hence `monomial (ev V) 1`
-for the finite variable set `V = vset C s`.  These two helpers turn the polynomial
-identities below into computations with `Finset (Set S)`, which is what makes Propositions
-27 and 28 tractable. -/
-
-open scoped Classical
-
-/-- The exponent vector of the squarefree monic monomial whose variable set is `V`. -/
-private noncomputable def ev (V : Finset (Set S)) : (Set S) →₀ ℕ :=
-  Finsupp.indicator V fun _ _ => 1
-
-private lemma ev_apply (V : Finset (Set S)) (v : Set S) : ev V v = if v ∈ V then 1 else 0 := by
-  by_cases h : v ∈ V
-  · rw [if_pos h, ev, Finsupp.indicator_of_mem h]
-  · rw [if_neg h, ev, Finsupp.indicator_of_notMem h]
-
-@[simp] private lemma support_ev (V : Finset (Set S)) : (ev V).support = V := by
-  ext v
-  rw [Finsupp.mem_support_iff, ev_apply]
-  by_cases h : v ∈ V <;> simp [h]
-
-private lemma ev_injective : Function.Injective (ev (S := S)) := fun V W h => by
-  have h2 := congrArg Finsupp.support h
-  rwa [support_ev, support_ev] at h2
-
-private lemma prod_X_eq_monomial_ev (V : Finset (Set S)) :
-    (∏ v ∈ V, X v : Poly S) = monomial (ev V) 1 := by
-  have h := MvPolynomial.prod_X_pow (R := ℝ) (fun _ : Set S => 1) V
-  simpa [ev] using h
-
-private lemma ev_filter (V : Finset (Set S)) (P : Set S → Prop) [DecidablePred P] :
-    (ev V).filter P = ev (V.filter P) := by
-  refine Finsupp.ext fun v => ?_
-  rw [Finsupp.filter_apply, ev_apply, ev_apply]
-  by_cases hP : P v <;> by_cases hV : v ∈ V <;> simp [hP, hV]
-
-/-- The variable set of `mono^F_C(s)`: the blocks `[s]_b` for `b ∈ C`. -/
-private noncomputable def vset [Finite S] (C : Set (Setoid S)) (s : S) : Finset (Set S) :=
-  (Set.toFinite C).toFinset.image fun b => part b s
-
-private lemma mem_vset [Finite S] {C : Set (Setoid S)} {s : S} {v : Set S} :
-    v ∈ vset C s ↔ ∃ b ∈ C, part b s = v := by
-  simp [vset]
-
 /-! ### Elementary rewriting of `mono` and `poly` -/
 
 lemma mono_eq_prod {C : Set (Setoid S)} (hC : C.Finite) (s : S) :
@@ -204,6 +162,110 @@ lemma poly_eq_sum_image [Finite S] (C : Set (Setoid S)) (E : Set S) :
   have h : monos C E = ↑((Set.toFinite E).toFinset.image (mono C)) := by
     rw [monos, Finset.coe_image, Set.Finite.coe_toFinset]
   rw [poly, h, finsum_mem_coe_finset]
+
+/-! ### The monomial layer
+
+`mono^F_C(s)` is a product of variables, hence the monic monomial `monomial (monoExp C s) 1`
+for the exponent vector `monoExp C s = ∑_{b ∈ C} δ_{[s]_b}`.  That one description carries
+every fact §5 needs about the coefficients, support, variables and degrees of `poly^F_C(E)`.
+The exponent vector itself is an implementation detail and stays private; the statements it
+proves are phrased in the paper's own vocabulary (`mono`, `monos`, `poly`).
+
+For `C ⊆ B` the vector is `0`/`1`-valued — that is Corollary 1 (`eq_of_part_eq`) at work,
+and it is why the squarefreeness facts below are stated inside the `FactoredSet` namespace
+with a `C ⊆ B` hypothesis. -/
+
+open scoped Classical
+
+private lemma prod_X_eq_monomial {ι : Type*} (t : Finset ι) (f : ι → Set S) :
+    (∏ i ∈ t, (X (f i) : Poly S)) = monomial (∑ i ∈ t, Finsupp.single (f i) 1) 1 := by
+  classical
+  induction t using Finset.induction_on with
+  | empty => simp
+  | @insert a t ha ih =>
+      rw [Finset.prod_insert ha, Finset.sum_insert ha, ih, ← pow_one (X (f a)),
+        X_pow_eq_monomial, monomial_mul, mul_one]
+
+/-- The exponent vector of the monomial `mono^F_C(s)`. -/
+private noncomputable def monoExp (C : Set (Setoid S)) (s : S) : (Set S) →₀ ℕ :=
+  ∑ᶠ b ∈ C, Finsupp.single (part b s) 1
+
+private lemma monoExp_eq_sum {C : Set (Setoid S)} (hC : C.Finite) (s : S) :
+    monoExp C s = ∑ b ∈ hC.toFinset, Finsupp.single (part b s) 1 := by
+  rw [monoExp, ← finsum_mem_coe_finset, Set.Finite.coe_toFinset]
+
+private lemma mono_eq_monomial {C : Set (Setoid S)} (hC : C.Finite) (s : S) :
+    mono C s = monomial (monoExp C s) 1 := by
+  rw [mono_eq_prod hC, monoExp_eq_sum hC, prod_X_eq_monomial]
+
+private lemma poly_eq_finsum_monomial {C : Set (Setoid S)} (hC : C.Finite) (E : Set S) :
+    poly C E = ∑ᶠ d ∈ monoExp C '' E, monomial d 1 := by
+  have hm : mono C = fun s => (monomial (monoExp C s) 1 : Poly S) :=
+    funext (mono_eq_monomial hC)
+  rw [poly, monos, hm, ← Set.image_image (fun d => (monomial d 1 : Poly S)) (monoExp C),
+    finsum_mem_image (Function.Injective.injOn (monomial_left_injective one_ne_zero))]
+
+private lemma coeff_poly_monoExp [Finite S] (C : Set (Setoid S)) (E : Set S)
+    (d : (Set S) →₀ ℕ) :
+    coeff d (poly C E) = if d ∈ monoExp C '' E then 1 else 0 := by
+  have hfin : (monoExp C '' E).Finite := (Set.toFinite E).image _
+  rw [poly_eq_finsum_monomial (Set.toFinite C), ← hfin.coe_toFinset, finsum_mem_coe_finset,
+    coeff_sum]
+  simp only [coeff_monomial]
+  rw [Finset.sum_ite_eq' hfin.toFinset d (fun _ => (1 : ℝ))]
+  simp
+
+private lemma mem_support_poly_monoExp [Finite S] (C : Set (Setoid S)) (E : Set S)
+    {d : (Set S) →₀ ℕ} : d ∈ (poly C E).support ↔ d ∈ monoExp C '' E := by
+  rw [mem_support_iff, coeff_poly_monoExp]
+  split_ifs with h <;> simp [h]
+
+private lemma monomial_mem_monos_iff [Finite S] (C : Set (Setoid S)) (E : Set S)
+    (d : (Set S) →₀ ℕ) :
+    (monomial d (1 : ℝ) : Poly S) ∈ monos C E ↔ d ∈ monoExp C '' E := by
+  rw [monos, Set.mem_image, Set.mem_image]
+  refine exists_congr fun s => and_congr_right fun _ => ?_
+  rw [mono_eq_monomial (Set.toFinite C)]
+  exact ⟨fun h => monomial_left_injective one_ne_zero h, fun h => by rw [h]⟩
+
+/-- Every coefficient of `poly^F_C(E)` is `0` or `1`, and it is `1` exactly on the monomials
+of `monos^F_C(E)`.  (Definition 33 is an *image*, so a monomial occurring for several points
+of `E` still occurs once.) -/
+lemma coeff_poly [Finite S] (C : Set (Setoid S)) (E : Set S) (d : (Set S) →₀ ℕ) :
+    coeff d (poly C E) = if (monomial d (1 : ℝ) : Poly S) ∈ monos C E then 1 else 0 := by
+  rw [coeff_poly_monoExp C E d]
+  exact if_congr (monomial_mem_monos_iff C E d).symm rfl rfl
+
+/-- The support of `poly^F_C(E)` read as Definition 33: an exponent vector occurs iff its
+monic monomial is one of the `C`-monomials of `E`. -/
+lemma mem_support_poly [Finite S] (C : Set (Setoid S)) (E : Set S) {d : (Set S) →₀ ℕ} :
+    d ∈ (poly C E).support ↔ (monomial d (1 : ℝ) : Poly S) ∈ monos C E := by
+  rw [mem_support_poly_monoExp, monomial_mem_monos_iff]
+
+/-- `poly^F_C(E)` is nonzero for nonempty `E` — its monomials all have coefficient `1`, so
+none of them cancels. -/
+lemma poly_ne_zero [Finite S] (C : Set (Setoid S)) {E : Set S} (hE : E.Nonempty) :
+    poly C E ≠ 0 := by
+  obtain ⟨s, hs⟩ := hE
+  intro h
+  have hco := coeff_poly_monoExp C E (monoExp C s)
+  rw [h, if_pos ⟨s, hs, rfl⟩] at hco
+  simp at hco
+
+private lemma monos_eq_image_support [Finite S] (C : Set (Setoid S)) (E : Set S) :
+    monos C E = (fun d => (monomial d (1 : ℝ) : Poly S)) '' ↑(poly C E).support := by
+  have hsupp : ↑(poly C E).support = monoExp C '' E := by
+    ext d; rw [Finset.mem_coe]; exact mem_support_poly_monoExp C E
+  have hm : mono C = fun s => (monomial (monoExp C s) 1 : Poly S) :=
+    funext (mono_eq_monomial (Set.toFinite C))
+  rw [monos, hm, hsupp, Set.image_image]
+
+/-- `poly^F_C(E)` determines `monos^F_C(E)`: the monomial set is the image of the support,
+so two `C`-polynomials with the same support have the same monomials.  Proposition 31 uses
+this to recover a point of `E` from an equality of polynomials up to a nonzero constant. -/
+lemma monos_eq_of_support_eq [Finite S] {C : Set (Setoid S)} {E E' : Set S}
+    (h : (poly C E).support = (poly C E').support) : monos C E = monos C E' := by
+  rw [monos_eq_image_support, monos_eq_image_support, h]
 
 namespace FactoredSet
 
@@ -226,39 +288,81 @@ lemma Q_eq_sum [Finite S] (E : Set S) :
     F.Q E = ∑ s ∈ (Set.toFinite E).toFinset, mono F.B s :=
   finsum_mem_eq_finite_toFinset_sum _ (Set.toFinite E)
 
-/-- Corollary 1 in the form §5.1 uses it: on a subset of the basis, `b ↦ [s]_b` is
-injective, so `mono^F_C(s)` is a product of `|C|` distinct variables. -/
-private lemma part_injOn {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S) :
-    Set.InjOn (fun b => part b s) C := fun _ h₀ _ h₁ h =>
-  F.eq_of_part_eq (hC h₀) (hC h₁) h
+/-- The exponent of a variable in `mono^F_C(s)` is `1` if the variable is one of the blocks
+`[s]_b`, `b ∈ C`, and `0` otherwise.  Corollary 1 (`eq_of_part_eq`) is what rules out two
+factors of `C` contributing the same variable, which is why `C ⊆ B` is needed. -/
+private lemma monoExp_apply [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
+    (v : Set S) : monoExp C s v = if ∃ b ∈ C, part b s = v then 1 else 0 := by
+  have hCfin : C.Finite := (Set.toFinite F.B).subset hC
+  rw [monoExp_eq_sum hCfin, Finsupp.finsetSum_apply]
+  simp only [Finsupp.single_apply]
+  split_ifs with h
+  · obtain ⟨b₀, hb₀C, hb₀⟩ := h
+    rw [Finset.sum_eq_single b₀]
+    · rw [if_pos hb₀]
+    · intro b hb hne
+      rw [if_neg]
+      intro hbv
+      exact hne (F.eq_of_part_eq (hC (by simpa using hb)) (hC hb₀C) (hbv.trans hb₀.symm))
+    · intro hb₀f
+      exact absurd (by simpa using hb₀C) hb₀f
+  · exact Finset.sum_eq_zero fun b hb => if_neg fun hbv => h ⟨b, by simpa using hb, hbv⟩
 
-private lemma mono_eq_monomial [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S) :
-    mono C s = monomial (ev (vset C s)) 1 := by
-  rw [← prod_X_eq_monomial_ev, mono_eq_prod (Set.toFinite C), vset,
-    Finset.prod_image fun _ h₀ _ h₁ h =>
-      F.part_injOn hC s (by simpa using h₀) (by simpa using h₁) h]
+private lemma monoExp_ne_zero_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
+    (v : Set S) : monoExp C s v ≠ 0 ↔ ∃ b ∈ C, part b s = v := by
+  rw [F.monoExp_apply hC]
+  split_ifs with h <;> simp [h]
 
 /-- Two `C`-monomials agree exactly when their arguments agree on every factor in `C`
-(for `C ⊆ B`).  This is Corollary 1 in the form Propositions 26 and 27 use. -/
-private lemma mono_eq_iff [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
+(for `C ⊆ B`).  This is Corollary 1 in the form Propositions 26, 27 and 31 use it: only the
+*dimension* has to be finite. -/
+lemma mono_eq_iff [Finite F.B] {C : Set (Setoid S)} (hC : C ⊆ F.B) {s t : S} :
     mono C s = mono C t ↔ ∀ b ∈ C, part b s = part b t := by
+  have hCfin : C.Finite := (Set.toFinite F.B).subset hC
   refine ⟨fun h b hb => ?_, mono_congr⟩
-  rw [F.mono_eq_monomial hC, F.mono_eq_monomial hC] at h
-  have hV : vset C s = vset C t :=
-    ev_injective (monomial_left_injective (one_ne_zero) h)
-  have hmem : part b s ∈ vset C t := hV ▸ mem_vset.2 ⟨b, hb, rfl⟩
-  obtain ⟨b', hb', hb'eq⟩ := mem_vset.1 hmem
-  rw [← hb'eq, F.eq_of_part_eq (hC hb') (hC hb) hb'eq]
+  rw [mono_eq_monomial hCfin, mono_eq_monomial hCfin] at h
+  have hexp : monoExp C s = monoExp C t := monomial_left_injective one_ne_zero h
+  have hv : monoExp C s (part b s) = monoExp C t (part b s) := by rw [hexp]
+  rw [F.monoExp_apply hC s, F.monoExp_apply hC t, if_pos ⟨b, hb, rfl⟩] at hv
+  by_cases hex : ∃ b' ∈ C, part b' t = part b s
+  · obtain ⟨b', hb'C, hb'⟩ := hex
+    have hbb : b' = b := F.eq_of_part_eq (hC hb'C) (hC hb) hb'
+    rw [hbb] at hb'
+    exact hb'.symm
+  · rw [if_neg hex] at hv
+    exact absurd hv one_ne_zero
+
+/-- Every variable has degree at most one in `poly^F_C(E)` for `C ⊆ B`: the monomials of a
+factorization are squarefree, which is exactly where Corollary 1 does its work. -/
+lemma degreeOf_poly_le [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S)
+    (v : Set S) : (poly C E).degreeOf v ≤ 1 := by
+  rw [degreeOf_le_iff]
+  intro d hd
+  obtain ⟨s, -, rfl⟩ := (mem_support_poly_monoExp C E).1 hd
+  rw [F.monoExp_apply hC s]
+  split_ifs <;> simp
+
+/-- The variables of `poly^F_C(E)` are exactly the blocks `[s]_b` for `b ∈ C`, `s ∈ E`
+(for `C ⊆ B`). -/
+lemma mem_vars_poly [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (E : Set S) {v : Set S} :
+    v ∈ (poly C E).vars ↔ ∃ b ∈ C, ∃ s ∈ E, part b s = v := by
+  rw [mem_vars_iff_mem_support]
+  constructor
+  · rintro ⟨d, hd, hv⟩
+    obtain ⟨s, hs, rfl⟩ := (mem_support_poly_monoExp C E).1 hd
+    rw [Finsupp.mem_support_iff, F.monoExp_ne_zero_iff hC] at hv
+    obtain ⟨b, hb, hbv⟩ := hv
+    exact ⟨b, hb, s, hs, hbv⟩
+  · rintro ⟨b, hb, s, hs, rfl⟩
+    refine ⟨monoExp C s, (mem_support_poly_monoExp C E).2 ⟨s, hs, rfl⟩, ?_⟩
+    rw [Finsupp.mem_support_iff, F.monoExp_ne_zero_iff hC]
+    exact ⟨b, hb, rfl⟩
 
 /-- The paper's first paragraph in Proposition 26: distinct elements of `S` have distinct
 `B`-monomials.  Proposition 3 supplies a factor separating them, Corollary 1 keeps that
 factor's block out of the other monomial. -/
-private lemma mono_basis_injective [Finite S] : Function.Injective (mono F.B) := fun _ _ h =>
+private lemma mono_basis_injective [Finite F.B] : Function.Injective (mono F.B) := fun _ _ h =>
   F.eq_of_forall_rel fun b hb => part_eq_iff.1 ((F.mono_eq_iff le_rfl).1 h b hb)
-
-private lemma ev_vset_basis_injective [Finite S] {s t : S}
-    (h : ev (vset F.B s) = ev (vset F.B t)) : s = t :=
-  F.mono_basis_injective (by rw [F.mono_eq_monomial le_rfl, F.mono_eq_monomial le_rfl, h])
 
 /-- **Proposition 26** — `Q^F_E = poly^F_B(E)`: distinct elements have distinct
 `B`-monomials (Proposition 3), so summing over `monos^F_B(E)` is summing over `E`.
@@ -269,35 +373,32 @@ theorem Q_eq_poly [Finite S] (E : Set S) : F.Q E = poly F.B E := by
   exact (finsum_mem_image (f := fun m : Poly S => m)
     (fun s _ t _ h => F.mono_basis_injective h)).symm
 
+/-- Every variable has degree at most one in `Q^F_E` — Proposition 26 followed by
+`degreeOf_poly_le` at `C = B`. -/
+lemma degreeOf_Q_le [Finite S] (E : Set S) (v : Set S) : (F.Q E).degreeOf v ≤ 1 := by
+  rw [F.Q_eq_poly E]
+  exact F.degreeOf_poly_le le_rfl E v
+
+lemma Q_ne_zero [Finite S] {E : Set S} (hE : E.Nonempty) : F.Q E ≠ 0 := by
+  rw [F.Q_eq_poly E]
+  exact poly_ne_zero F.B hE
+
 /-! ### The coefficients of `Q^F_E`
 
 `Q^F_E` is a sum of pairwise distinct squarefree monic monomials, so each of its
-coefficients is `0` or `1`.  Proposition 28 runs entirely on these three lemmas. -/
+coefficients is `0` or `1`.  Proposition 28 runs entirely on these two lemmas. -/
 
-private lemma coeff_Q [Finite S] (E : Set S) (a : (Set S) →₀ ℕ) :
-    (F.Q E).coeff a
-      = ((((Set.toFinite E).toFinset.filter fun s => ev (vset F.B s) = a).card : ℕ) : ℝ) := by
-  rw [F.Q_eq_sum E, coeff_sum]
-  simp_rw [F.mono_eq_monomial le_rfl, coeff_monomial]
-  exact Finset.sum_boole _ _
-
-private lemma coeff_Q_ev [Finite S] {E : Set S} {s : S} (hs : s ∈ E) :
-    (F.Q E).coeff (ev (vset F.B s)) = 1 := by
-  have hfil : ((Set.toFinite E).toFinset.filter fun t => ev (vset F.B t) = ev (vset F.B s))
-      = {s} := by
-    ext t
-    simp only [Finset.mem_filter, Set.Finite.mem_toFinset, Finset.mem_singleton]
-    refine ⟨fun h => F.ev_vset_basis_injective h.2, ?_⟩
-    rintro rfl
-    exact ⟨hs, rfl⟩
-  rw [F.coeff_Q E, hfil, Finset.card_singleton, Nat.cast_one]
+private lemma coeff_Q_monoExp [Finite S] {E : Set S} {s : S} (hs : s ∈ E) :
+    (F.Q E).coeff (monoExp F.B s) = 1 := by
+  rw [F.Q_eq_poly E, coeff_poly_monoExp, if_pos ⟨s, hs, rfl⟩]
 
 private lemma exists_of_coeff_Q_ne_zero [Finite S] {E : Set S} {a : (Set S) →₀ ℕ}
-    (h : (F.Q E).coeff a ≠ 0) : ∃ s ∈ E, ev (vset F.B s) = a := by
-  rw [F.coeff_Q E] at h
-  obtain ⟨s, hs⟩ := Finset.card_ne_zero.1 fun hc => h (by rw [hc, Nat.cast_zero])
-  rw [Finset.mem_filter, Set.Finite.mem_toFinset] at hs
-  exact ⟨s, hs.1, hs.2⟩
+    (h : (F.Q E).coeff a ≠ 0) : ∃ s ∈ E, monoExp F.B s = a := by
+  rw [F.Q_eq_poly E, coeff_poly_monoExp] at h
+  split_ifs at h with hmem
+  · obtain ⟨s, hs, hsa⟩ := hmem
+    exact ⟨s, hs, hsa⟩
+  · exact absurd rfl h
 
 private lemma part_chimera_of_mem {C : Set (Setoid S)} (s t : S) {b : Setoid S}
     (hb : b ∈ F.B) (hbC : b ∈ C) : part b (F.chimera C s t) = part b s :=
@@ -365,49 +466,6 @@ theorem poly_union_chimeraImage [Finite S] {C₀ C₁ : Set (Setoid S)} (h₀ : 
     simp only [Finset.mem_coe, Finset.mem_product, Finset.mem_image, Set.Finite.mem_toFinset]
     exact ⟨⟨t, ht, rfl⟩, r, hr, rfl⟩
 
-/-! ### Squarefreeness -/
-
-/-- The degree of a variable in `mono^F_C(s)` counts the factors of `C` whose block at `s`
-is that variable. -/
-private lemma degreeOf_mono_eq [Finite S] (C : Set (Setoid S)) (s : S) (v : Set S) :
-    (mono C s).degreeOf v = ((Set.toFinite C).toFinset.filter fun b => v = part b s).card := by
-  rw [mono_eq_prod (Set.toFinite C), degreeOf_prod_eq _ _ fun _ _ => X_ne_zero _,
-    Finset.card_filter]
-  exact Finset.sum_congr rfl fun b _ => by rw [degreeOf_X]
-
-/-- `mono^F_C(s)` is squarefree for `C ⊆ B`.  This is precisely where Corollary 1
-(`eq_of_part_eq`) does its work: at most one factor of `B` has a given block. -/
-private lemma degreeOf_mono_le [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B) (s : S)
-    (v : Set S) : (mono C s).degreeOf v ≤ 1 := by
-  rw [degreeOf_mono_eq C s v]
-  refine Finset.card_le_one.2 fun b₀ hb₀ b₁ hb₁ => ?_
-  simp only [Finset.mem_filter, Set.Finite.mem_toFinset] at hb₀ hb₁
-  exact F.eq_of_part_eq (hC hb₀.1) (hC hb₁.1) (hb₀.2.symm.trans hb₁.2)
-
-private lemma degreeOf_sum_mono_le [Finite S] {C : Set (Setoid S)} (hC : C ⊆ F.B)
-    (T : Finset S) (v : Set S) : (∑ s ∈ T, mono C s).degreeOf v ≤ 1 := by
-  induction T using Finset.induction_on with
-  | empty => simp
-  | insert a T ha ih =>
-      rw [Finset.sum_insert ha]
-      exact le_trans (degreeOf_add_le _ _ _) (max_le (F.degreeOf_mono_le hC a v) ih)
-
-/-- Every variable has degree at most one in `Q^F_E`: the monomials of a factorization are
-squarefree, which is exactly where Corollary 1 does its work. -/
-lemma degreeOf_Q_le [Finite S] (E : Set S) (v : Set S) : (F.Q E).degreeOf v ≤ 1 := by
-  rw [F.Q_eq_sum E]
-  exact F.degreeOf_sum_mono_le le_rfl _ v
-
-lemma Q_ne_zero [Finite S] {E : Set S} (hE : E.Nonempty) : F.Q E ≠ 0 := by
-  intro h
-  have hev : eval (fun _ => (1 : ℝ)) (F.Q E) = (((Set.toFinite E).toFinset.card : ℕ) : ℝ) := by
-    rw [F.Q_eq_sum E, map_sum]
-    simp [mono_eq_prod (Set.toFinite F.B)]
-  rw [h, map_zero] at hev
-  obtain ⟨s, hs⟩ := hE
-  have hne : (Set.toFinite E).toFinset.Nonempty := ⟨s, (Set.toFinite E).mem_toFinset.2 hs⟩
-  exact absurd hev.symm (by exact_mod_cast hne.card_pos.ne')
-
 /-- The two factors of `Q^F_E` share no variable (the first step of the paper's proof of
 Proposition 28). -/
 lemma vars_disjoint_of_mul_eq_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p q : Poly S}
@@ -440,7 +498,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
   have hqv : ∀ b ∈ q.support, ∀ i ∈ b.support, i ∈ q.vars := fun b hb i hi =>
     (mem_vars_iff_mem_support i).2 ⟨b, hb, hi⟩
   -- (A) every `p`-term times every `q`-term is a term of `Q^F_E`, of coefficient one.
-  have hA : ∀ a ∈ p.support, ∀ b ∈ q.support, ∃ s ∈ E, ev (vset F.B s) = a + b := by
+  have hA : ∀ a ∈ p.support, ∀ b ∈ q.support, ∃ s ∈ E, monoExp F.B s = a + b := by
     intro a ha b hb
     refine F.exists_of_coeff_Q_ne_zero ?_
     rw [hq, coeff_add_mul_of_split hdisj (hpv a ha) (hqv b hb)]
@@ -448,7 +506,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
   have hA1 : ∀ a ∈ p.support, ∀ b ∈ q.support, coeff a p * coeff b q = 1 := by
     intro a ha b hb
     obtain ⟨s, hs, hsa⟩ := hA a ha b hb
-    have h1 : (F.Q E).coeff (a + b) = 1 := by rw [← hsa]; exact F.coeff_Q_ev hs
+    have h1 : (F.Q E).coeff (a + b) = 1 := by rw [← hsa]; exact F.coeff_Q_monoExp hs
     rwa [hq, coeff_add_mul_of_split hdisj (hpv a ha) (hqv b hb)] at h1
   -- Splitting an exponent vector along `supp p`.
   have hfil : ∀ a ∈ p.support, ∀ b ∈ q.support,
@@ -462,21 +520,21 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     · rw [Finsupp.filter_add, filter_zero_of_notMem (fun i hi h => h (hda i hi)),
         filter_self_of_mem hdb, zero_add]
   -- (C) each term of `Q^F_E` splits across the two factors.
-  have hCsplit : ∀ s ∈ E, (ev (vset F.B s)).filter (· ∈ p.vars) ∈ p.support ∧
-      (ev (vset F.B s)).filter (fun v => v ∉ p.vars) ∈ q.support := by
+  have hCsplit : ∀ s ∈ E, (monoExp F.B s).filter (· ∈ p.vars) ∈ p.support ∧
+      (monoExp F.B s).filter (fun v => v ∉ p.vars) ∈ q.support := by
     intro s hs
-    have hmem : ev (vset F.B s) ∈ (F.Q E).support :=
-      mem_support_iff.2 (by rw [F.coeff_Q_ev hs]; exact one_ne_zero)
+    have hmem : monoExp F.B s ∈ (F.Q E).support :=
+      mem_support_iff.2 (by rw [F.coeff_Q_monoExp hs]; exact one_ne_zero)
     rw [hq] at hmem
     obtain ⟨a, ha, b, hb, hab⟩ := Finset.mem_add.1 (support_mul p q hmem)
     obtain ⟨h1, h2⟩ := hfil a ha b hb
     rw [hab] at h1 h2
     exact ⟨by rw [h1]; exact ha, by rw [h2]; exact hb⟩
   -- Corollary 1: a variable of `mono^F_B(u)` of the form `[x]_c` is `[u]_c`.
-  have hkey : ∀ (c : Setoid S) (x u : S), c ∈ F.B → part c x ∈ vset F.B u →
+  have hkey : ∀ (c : Setoid S) (x u : S), c ∈ F.B → monoExp F.B u (part c x) ≠ 0 →
       part c x = part c u := by
-    intro c x u hc hmem
-    obtain ⟨b', hb', hb'eq⟩ := mem_vset.1 hmem
+    intro c x u hc hne
+    obtain ⟨b', hb', hb'eq⟩ := (F.monoExp_ne_zero_iff le_rfl u (part c x)).1 hne
     have hb'c : b' = c := F.eq_of_part_eq hb' hc hb'eq
     rw [hb'c] at hb'eq
     exact hb'eq.symm
@@ -485,24 +543,20 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     intro b hbB s hs t ht hbs
     by_contra hbt
     obtain ⟨u, hu, hueq⟩ := hA _ (hCsplit s hs).1 _ (hCsplit t ht).2
-    have hms : part b s ∈ vset F.B s := mem_vset.2 ⟨b, hbB, rfl⟩
-    have hmt : part b t ∈ vset F.B t := mem_vset.2 ⟨b, hbB, rfl⟩
-    have hvs : ((ev (vset F.B s)).filter (· ∈ p.vars)) (part b s) = 1 := by
-      rw [Finsupp.filter_apply, ev_apply]; simp [hbs, hms]
-    have hvt : ((ev (vset F.B t)).filter (fun v => v ∉ p.vars)) (part b t) = 1 := by
-      rw [Finsupp.filter_apply, ev_apply]; simp [hbt, hmt]
+    have hes : monoExp F.B s (part b s) = 1 := by
+      rw [F.monoExp_apply le_rfl, if_pos ⟨b, hbB, rfl⟩]
+    have het : monoExp F.B t (part b t) = 1 := by
+      rw [F.monoExp_apply le_rfl, if_pos ⟨b, hbB, rfl⟩]
+    have hvs : ((monoExp F.B s).filter (· ∈ p.vars)) (part b s) = 1 := by
+      rw [Finsupp.filter_apply]; simp [hbs, hes]
+    have hvt : ((monoExp F.B t).filter (fun v => v ∉ p.vars)) (part b t) = 1 := by
+      rw [Finsupp.filter_apply]; simp [hbt, het]
     have hus : part b s = part b u := by
       refine hkey b s u hbB ?_
-      have h2 : (ev (vset F.B u)) (part b s) ≠ 0 := by
-        rw [hueq, Finsupp.add_apply, hvs]; omega
-      have h3 := Finsupp.mem_support_iff.2 h2
-      rwa [support_ev] at h3
+      rw [hueq, Finsupp.add_apply, hvs]; omega
     have hut : part b t = part b u := by
       refine hkey b t u hbB ?_
-      have h2 : (ev (vset F.B u)) (part b t) ≠ 0 := by
-        rw [hueq, Finsupp.add_apply, hvt]; omega
-      have h3 := Finsupp.mem_support_iff.2 h2
-      rwa [support_ev] at h3
+      rw [hueq, Finsupp.add_apply, hvt]; omega
     exact hbt (by rw [hut, ← hus]; exact hbs)
   -- (E) the set of factors: those whose block at some (hence every) point of `E` is a
   -- variable of `p`.
@@ -515,19 +569,21 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     intro b hbB s hs
     rw [hCmemiff b]
     exact ⟨fun h => ⟨hbB, hD b hbB s hs s₀ hs₀ h⟩, fun h => hD b hbB s₀ hs₀ s hs h.2⟩
-  have hvsetC : ∀ s ∈ E, vset C s = (vset F.B s).filter (· ∈ p.vars) := by
+  have hev : ∀ s ∈ E, (monoExp F.B s).filter (· ∈ p.vars) = monoExp C s := by
     intro s hs
-    ext v
-    simp only [Finset.mem_filter]
-    constructor
-    · intro hv
-      obtain ⟨b, hb, rfl⟩ := mem_vset.1 hv
-      exact ⟨mem_vset.2 ⟨b, hCsub hb, rfl⟩, (hmemC b (hCsub hb) s hs).2 hb⟩
-    · rintro ⟨hv1, hv2⟩
-      obtain ⟨b, hb, rfl⟩ := mem_vset.1 hv1
-      exact mem_vset.2 ⟨b, (hmemC b hb s hs).1 hv2, rfl⟩
-  have hev : ∀ s ∈ E, (ev (vset F.B s)).filter (· ∈ p.vars) = ev (vset C s) := by
-    intro s hs; rw [ev_filter, hvsetC s hs]
+    refine Finsupp.ext fun v => ?_
+    rw [Finsupp.filter_apply, F.monoExp_apply le_rfl, F.monoExp_apply hCsub]
+    by_cases hv : v ∈ p.vars
+    · rw [if_pos hv]
+      refine if_congr ⟨?_, ?_⟩ rfl rfl
+      · rintro ⟨b, hbB, hbv⟩
+        exact ⟨b, (hmemC b hbB s hs).1 (hbv ▸ hv), hbv⟩
+      · rintro ⟨b, hbC, hbv⟩
+        exact ⟨b, hCsub hbC, hbv⟩
+    · have hnot : ¬ ∃ b ∈ C, part b s = v := by
+        rintro ⟨b, hbC, rfl⟩
+        exact hv ((hmemC b (hCsub hbC) s hs).2 hbC)
+      rw [if_neg hv, if_neg hnot]
   -- (B) all coefficients of `p` are the same real.
   obtain ⟨a₀, ha₀⟩ := support_nonempty.2 hp0
   obtain ⟨b₀, hb₀⟩ := support_nonempty.2 hq0
@@ -536,7 +592,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
     refine mul_right_cancel₀ (mem_support_iff.1 hb₀) ?_
     rw [hA1 a ha b₀ hb₀, hA1 a₀ ha₀ b₀ hb₀]
   -- (F) the support of `p` is exactly the `C`-monomial support of `E`.
-  have hsupp : p.support = (Set.toFinite E).toFinset.image (fun s => ev (vset C s)) := by
+  have hsupp : p.support = (Set.toFinite E).toFinset.image (fun s => monoExp C s) := by
     ext a
     simp only [Finset.mem_image, Set.Finite.mem_toFinset]
     constructor
@@ -551,12 +607,12 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
       exact (hCsplit s hs).1
   -- (G) assemble.
   have himg : (Set.toFinite E).toFinset.image (mono C)
-      = ((Set.toFinite E).toFinset.image (fun s => ev (vset C s))).image
+      = ((Set.toFinite E).toFinset.image (fun s => monoExp C s)).image
           (fun d => (monomial d (1 : ℝ) : Poly S)) := by
     rw [Finset.image_image]
-    exact Finset.image_congr fun s _ => F.mono_eq_monomial hCsub s
+    exact Finset.image_congr fun s _ => mono_eq_monomial (Set.toFinite C) s
   have hpolyC : poly C E
-      = ∑ d ∈ (Set.toFinite E).toFinset.image (fun s => ev (vset C s)),
+      = ∑ d ∈ (Set.toFinite E).toFinset.image (fun s => monoExp C s),
           (monomial d (1 : ℝ) : Poly S) := by
     rw [poly_eq_sum_image, himg]
     exact Finset.sum_image fun d _ d' _ h => monomial_left_injective one_ne_zero h
@@ -565,7 +621,7 @@ theorem eq_C_mul_poly_of_dvd_Q [Finite S] {E : Set S} (hE : E.Nonempty) {p : Pol
   calc p = ∑ d ∈ p.support, monomial d (coeff d p) := (support_sum_monomial_coeff p).symm
     _ = ∑ d ∈ p.support, monomial d (coeff a₀ p) :=
         Finset.sum_congr rfl fun d hd => by rw [hconst d hd]
-    _ = ∑ d ∈ (Set.toFinite E).toFinset.image (fun s => ev (vset C s)),
+    _ = ∑ d ∈ (Set.toFinite E).toFinset.image (fun s => monoExp C s),
           (monomial d (coeff a₀ p) : Poly S) := by rw [hsupp]
     _ = _ := Finset.sum_congr rfl fun d _ => by rw [C_mul_monomial, mul_one]
 
