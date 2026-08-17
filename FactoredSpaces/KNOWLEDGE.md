@@ -134,7 +134,32 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 * **Lemma C.10 is proved by the factorwise bound**, not the paper's expansion (which is
   wrong at `I = ∅`, errata E4): `λP'_i ≤ (1−λ)P_i + λP'_i` gives `R^λ(C) ≥ λ^{|I|}P'(C)`.
 
+* **Lemma 5.3's inverse formula needs no reverse-topological marginalization.** Work
+  upstairs in `Ω^G`: `E := {X_pa(v) = y}` is invariant under changing the single
+  coordinate `(v, y)` (no parent of `v` has `v` as ancestor-or-self), and on `E`,
+  `X_v = ω_(v,y)`; so for a product `P^Ω`, `P^Ω(E ∩ {ω_(v,y) = a}) = p_(v,y)(a)·P^Ω(E)`
+  (`Dist.prob_prod_inter_bg`), giving the conditional probability directly. Also:
+  strictly positive members of `Δ^*(G)` have strictly positive CPDs (every `(v, y, a)` is
+  realized by a joint value since `v ∉ pa(v)`), which is what makes `tauPos` surjective.
+* **Where inhabitation comes from in §5.2.** `Nonempty (Pt Val)` from any
+  `Dist (Pt Val)` (`Dist.nonempty_carrier`) is the cheap source of `Nonempty (Val u)` for
+  all `u`; do not try to get it from a point of `Ω^G` (circular). In the history section it
+  comes from `[∀ v, Nontrivial (Val v)]`, and `Nonempty (ParentVals G Val v)` is then
+  `inferInstance` — the paper's "since `I_v` is nonempty" step of Proposition 5.6.
+* **Lemma C.7's proof avoids topology on `Δ^F_{C,i}`**: the paper's "continuous, hence
+  nonzero on an open set" step is replaced by "the numerator polynomial has finitely many
+  roots" (`Polynomial.finite_setOf_isRoot`); same content, no topology on distributions.
+* **Lemma C.12 does not use C.11(3)** (false as printed): positivity along the
+  replacement chain comes from `Dist.prod_mass_pos_iff` + C.11(1), and the interpolant is
+  `q' i = if i ∈ cohistory then uniform else P.margAt i`.
+* **Lemma C.20's statement is unconditional**: the empty-`Ω` and empty-`C` cases are
+  vacuous via `disintegrates_iff_splice`; do not add `[Nonempty (Pt Ω)]` downstream.
+
 ## Intentional deviations from the paper
+
+* **`tauInv_condCPD_strictlyPositive` takes `hG : G.IsAcyclic`** (non-paper helper): false
+  over an arbitrary digraph — a self-loop at `v` empties `{x_v = a} ∩ {x_pa(v) = y}` for
+  `a ≠ y_v`. The paper only considers DAGs.
 
 * **`[Nonempty β]` in Lemma C.3 (`derivedOn_iff`).** The paper's (ii)⟹(i) direction
   chooses `f(x)` "arbitrary" for unattained `x`, which presupposes `Val(Y)` inhabited; the
@@ -176,6 +201,41 @@ load-bearing (E8).
 * For a degree-≤1 polynomial prefer `C a + C (b − a) * X` over `C a * (1 − X) + C b * X`:
   the degree bound is then four lemma applications, no `compute_degree`.
 * `push_neg` is deprecated → `push Not`.
+* **A seeded `.lake` makes `#print axioms` lie**: `lake env lean Scratch.lean` importing a
+  module you just edited elaborates against the *stale* olean from the seed; run the gate
+  `lake build` before any axiom check.
+* **The `omit` cascade**: once one lemma sheds instance variables via `omit`, downstream
+  lemmas that only used it start warning too; iterate the linter's own suggestion lines.
+  A sorried lemma may show a different unused-variable set than the finished one.
+* `WellFounded.fix` at a function-valued motive: `show hG.wf.fix (C := fun v => Pt … → Val v)
+  F v ω = _; rw [WellFounded.fix_eq]; rfl` — the motive must be given explicitly.
+* `Function.update_of_ne` against `Pt (bnFactor G Val)` needs `(β := bnFactor G Val)`;
+  `Finset.sum_nbij'`'s value hypothesis is last; `Finset.prod_image` takes `Set.InjOn`.
+* `Finset.sum_div` lives in `Mathlib.Algebra.BigOperators.Field` (now imported by
+  Probability.lean); `Set.Icc_infinite` in `Mathlib.Order.Interval.Set.Infinite`;
+  `Polynomial.finite_setOf_isRoot` is the name; `Set.Infinite.mono` takes the subset first
+  (`hinf.mono hsub`); `Set.indicator_of_notMem`, `Set.notMem_empty`,
+  `Function.update_self`/`update_of_ne` are the current names.
+* `linear_combination` is NOT in the import closure — and an unknown tactic silently
+  swallows the rest of the `by` block, reporting a misleading `unsolved goals`. Use
+  `have : … := by ring` + `rw` + `ring`, or `linarith` (which handles bilinear identities).
+* `unitInterval` coercion lemmas are `Set.Icc.coe_zero/coe_one`; `((⟨x,hx⟩ : unitInterval) : ℝ) = x` is `rfl`.
+* `set x := e with h` traps: `set` an index-set abbreviation BEFORE introducing anything
+  whose type mentions it; `set` folds only existing occurrences; prefer generalising to a
+  lemma over `set` when the abbreviation appears under `Finset` complement/coercion.
+* `CondIndep`, `PQIrrelevant`, `Irrelevant`, `Factorizes` are plain `def`s: no dot notation,
+  `rw` needs `simp only [CondIndep]`/`show`; `unfold CondIndep at h` fails when `h` is a
+  `CondIndepEventVar` (binder) — unfold on the goal and `exact h y`.
+* Destructuring `hPQ : (P, Q) ∈ pairsDifferingAt C i` yields facts about `(P,Q).1`; restate
+  with ascriptions before `obtain ⟨p, rfl⟩ := (factorizes_iff_exists_prod P).mp _`.
+* `Fintype.sum_equiv e f g h`: pass `f` explicitly or the rewrite pattern comes out as
+  `∑ x, g (e x)`; `rw [← Fintype.sum_prod_type]` needs the function given — use `calc`.
+* Stating a helper with a bare `if s ∈ A then …` over a `Set` forces `Decidable` into the
+  statement; use `Set.indicator` and `Set.indicator_apply` in proofs.
+* Iteration cost calibration: with warm oleans `lake env lean` on a 600-line file is 3–7 s;
+  a §C.3-sized lemma is tens of minutes, not hours; the Appendix-C probability bookkeeping
+  (28 obligations) took ~1 h wall clock once the two transports (`splitEquiv`, `unionEquiv`)
+  existed. Only the final gate needs `safe-lake.sh build`.
 
 * `omit [Fintype I] in` / `omit [DecidableEq I] in` must precede the docstring, not sit
   between the docstring and the declaration.
