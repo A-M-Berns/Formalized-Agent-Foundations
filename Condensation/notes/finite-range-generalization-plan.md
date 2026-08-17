@@ -1,5 +1,13 @@
 # Generalizing the Shannon substrate from finite range to countable range with finite entropy
 
+> **Status (2026-08-17, after Phase 1 landed at `ca3d7fb`):** ruled a desired endpoint by Anson; Phases 2
+> and 3 dispatched in parallel. Two corrections from Phase 1: (i) §3/§7's claim that `Summable.tsum_prod`
+> is absent is wrong — Mathlib has the nonneg-family product/fibre summability under `to_additive`
+> names in `Mathlib/Topology/Algebra/InfiniteSum/{Constructions,Real,Order}.lean` (grep the target
+> names, not `theorem`), so the ℝ-vs-`ℝ≥0∞` hazard for Phase 2 is small; (ii) the plumbing multiplier
+> observed was ~2–2.5×, not 3–5× (Phase 1: 712 lines of Lean incl. docs, under an hour with three
+> agents). Substrate-thread pitfalls are collected in `ShannonInformation/KNOWLEDGE.md`.
+
 **Status:** research/planning note. No Lean was written into the repo for this; the
 calibration experiments live in a scratch directory (paths given in §3) and are
 reproduced inline. Nothing here is committed as a decision — it is input to Anson's

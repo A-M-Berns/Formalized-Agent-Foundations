@@ -93,13 +93,14 @@ Measured against the vendored source, not assumed. `FiniteRange` **not** require
 - `entropy_le_log_card` (needs `Fintype S` instead), `entropy_comp_of_injective`
 - `condEntropy_nonneg`
 - `mutualInfo_def` (it is a definitional unfolding), `IdentDistrib.mutualInfo_eq`,
+  `mutualInfo_comm` (measurability only — corrected 2026-08-17, it was mislisted below),
   `condMutualInfo_comm`
 
 `FiniteRange` **required**:
 
 - all chain rules — `chain_rule`, `chain_rule'`, `chain_rule''`, `cond_chain_rule`,
   `cond_chain_rule'`
-- `mutualInfo_nonneg`, `condMutualInfo_nonneg`, `mutualInfo_comm`
+- `mutualInfo_nonneg`, `condMutualInfo_nonneg`
 - the independence characterizations — `mutualInfo_eq_zero`, `condMutualInfo_eq_zero`,
   `entropy_pair_eq_add`, `ent_of_cond_indep`
 - `condEntropy_le_entropy`, `condEntropy_comp_self`, `IdentDistrib.condEntropy_eq`
