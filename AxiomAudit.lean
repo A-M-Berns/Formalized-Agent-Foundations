@@ -1776,6 +1776,18 @@ open FactoredSpaces in
   dSeparated_iff_structIndepGiven
   IsPerfectMapDAG IsPerfectMapFSM isPerfectMapFSM_nodeVar_of_isPerfectMapDAG
   exists_isPerfectMapFSM_of_exists_isPerfectMapDAG exists_isPerfectMapFSM_not_exists_isPerfectMapDAG
+  -- Non-vacuity witnesses and convention pins (`FactoredSpaces/Examples.lean`): the paper's
+  -- two-coin example, the trivial one-factor model of every distribution (remark after
+  -- Definition 4.4), the collider DAG pinning the `dd:dsep` conventions, Props 5.5/5.6 with
+  -- content, and the first inhabitant of `IsPerfectMapDAG` (Prop 5.8(1) is not vacuous).
+  Examples.disintegrates_univ_diag Examples.not_disintegrates_singleton_diag
+  Examples.history_bg_zero Examples.structIndep_bg_zero_one Examples.not_structIndep_bg_self
+  Examples.isFactoredSpaceModel_single
+  Examples.collider_isAcyclic Examples.not_dSeparated_given_collider
+  Examples.not_colliderTrail_active_empty Examples.dSeparated_parents_of_collider
+  Examples.nil_active_zero Examples.not_nil_active_zero Examples.not_dSeparated_self_zero
+  Examples.not_dSeparated_adj Examples.not_structIndepGiven_nodesVar
+  Examples.strictlyBefore_nodeVar Examples.G₁_acyclic Examples.isPerfectMapDAG_G₁_Q
 -- FS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Factored Space Models surface. -/

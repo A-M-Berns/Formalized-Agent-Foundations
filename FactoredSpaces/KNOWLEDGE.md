@@ -254,7 +254,7 @@ None.
 
 ## Paper errata
 
-All in `notes/paper-errata.md` (E1–E8): C.3 needs `Val(Y) ≠ ∅` (E1); factors may be empty
+All in `notes/paper-errata.md` (E1–E13; E9–E13 from the round-1 audit: Prop 5.8(2)'s "arbitrary P", the empty-projection singleton, Lemma A.1's missing union inclusion, Lemma A.2 false for `Val(X) = ∅` and its swapped identities, cosmetic slips in 4.8/C.9/C.20): C.3 needs `Val(Y) ≠ ∅` (E1); factors may be empty
 (E2); **C.11(3) false as printed** — needs the `I∖J`-marginal supports too (E3); C.10's
 displayed inequality false at `I = ∅` (E4); **Lemma 5.3 "τ bijective" false** — true on
 strictly positive distributions (E5); Def 5.7(2) types `X_w : Ω → Obs` (E6); **Prop 5.8(1)'s
