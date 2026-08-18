@@ -80,10 +80,10 @@ section Probabilistic
 variable [∀ i, Fintype (Ω i)]
 
 /-- Probabilistic conditional independence in `P`, as an `IndepRel`. -/
-def condIndepRel (P : Dist (Pt Ω)) : IndepRel Ω := fun X Y Z => CondIndepVar P X Y Z
+def condIndepRel (P : Distr (Pt Ω)) : IndepRel Ω := fun X Y Z => CondIndepVar P X Y Z
 
 /-- The decomposition axiom for probabilistic conditional independence. -/
-private lemma condIndepVar_decomposition {α β κ δ : Type*} (P : Dist (Pt Ω)) {X : Pt Ω → α}
+private lemma condIndepVar_decomposition {α β κ δ : Type*} (P : Distr (Pt Ω)) {X : Pt Ω → α}
     {Y : Pt Ω → β} {Z : Pt Ω → κ} {W : Pt Ω → δ} (h : CondIndepVar P X (pair Y Z) W) :
     CondIndepVar P X Y W := by
   classical
@@ -92,14 +92,14 @@ private lemma condIndepVar_decomposition {α β κ δ : Type*} (P : Dist (Pt Ω)
     Finset.mem_image_of_mem Z (Finset.mem_univ ω)
   have hsum1 : P.prob (fiber Y y ∩ fiber W w)
       = ∑ z ∈ Finset.univ.image Z, P.prob (fiber Y y ∩ fiber Z z ∩ fiber W w) := by
-    rw [Dist.prob_eq_sum_fiber P (fiber Y y ∩ fiber W w) Z _ hT]
+    rw [Distr.prob_eq_sum_fiber P (fiber Y y ∩ fiber W w) Z _ hT]
     refine Finset.sum_congr rfl fun z _ => ?_
     congr 1
     ext ω; simp only [Set.mem_inter_iff]; tauto
   have hsum2 : P.prob (fiber X x ∩ fiber Y y ∩ fiber W w)
       = ∑ z ∈ Finset.univ.image Z,
         P.prob (fiber X x ∩ (fiber Y y ∩ fiber Z z) ∩ fiber W w) := by
-    rw [Dist.prob_eq_sum_fiber P (fiber X x ∩ fiber Y y ∩ fiber W w) Z _ hT]
+    rw [Distr.prob_eq_sum_fiber P (fiber X x ∩ fiber Y y ∩ fiber W w) Z _ hT]
     refine Finset.sum_congr rfl fun z _ => ?_
     congr 1
     ext ω; simp only [Set.mem_inter_iff]; tauto
@@ -112,7 +112,7 @@ private lemma condIndepVar_decomposition {α β κ δ : Type*} (P : Dist (Pt Ω)
   exact hz
 
 /-- The weak union axiom for probabilistic conditional independence. -/
-private lemma condIndepVar_weakUnion {α β κ δ : Type*} (P : Dist (Pt Ω)) {X : Pt Ω → α}
+private lemma condIndepVar_weakUnion {α β κ δ : Type*} (P : Distr (Pt Ω)) {X : Pt Ω → α}
     {Y : Pt Ω → β} {Z : Pt Ω → κ} {W : Pt Ω → δ} (h : CondIndepVar P X (pair Y Z) W) :
     CondIndepVar P X Z (pair Y W) := by
   rintro x z ⟨y, w⟩
@@ -131,9 +131,9 @@ private lemma condIndepVar_weakUnion {α β κ δ : Type*} (P : Dist (Pt Ω)) {X
   rw [fiber_pair, e1, e2, e3]
   by_cases hq : P.prob (fiber Y y ∩ fiber W w) = 0
   · have hu : P.prob (fiber X x ∩ fiber Y y ∩ fiber W w) = 0 :=
-      Dist.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2, hω.2⟩) hq
+      Distr.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2, hω.2⟩) hq
     have hs : P.prob (fiber X x ∩ (fiber Y y ∩ fiber Z z) ∩ fiber W w) = 0 :=
-      Dist.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2.1, hω.2⟩) hq
+      Distr.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2.1, hω.2⟩) hq
     rw [hu, hs, hq, zero_mul, zero_mul]
   · have hqpos : 0 < P.prob (fiber Y y ∩ fiber W w) :=
       lt_of_le_of_ne (P.prob_nonneg _) (Ne.symm hq)
@@ -154,7 +154,7 @@ private lemma condIndepVar_weakUnion {α β κ δ : Type*} (P : Dist (Pt Ω)) {X
             * P.prob (fiber Y y ∩ fiber W w) * P.prob (fiber W w) := by ring
 
 /-- The contraction axiom for probabilistic conditional independence. -/
-private lemma condIndepVar_contraction {α β κ δ : Type*} (P : Dist (Pt Ω)) {X : Pt Ω → α}
+private lemma condIndepVar_contraction {α β κ δ : Type*} (P : Distr (Pt Ω)) {X : Pt Ω → α}
     {Y : Pt Ω → β} {Z : Pt Ω → κ} {W : Pt Ω → δ} (h₁ : CondIndepVar P X Y W)
     (h₂ : CondIndepVar P X Z (pair Y W)) : CondIndepVar P X (pair Y Z) W := by
   rintro x ⟨y, z⟩ w
@@ -182,9 +182,9 @@ private lemma condIndepVar_contraction {α β κ δ : Type*} (P : Dist (Pt Ω)) 
   rw [fiber_pair]
   by_cases hq : P.prob (fiber Y y ∩ fiber W w) = 0
   · have hv : P.prob (fiber Y y ∩ fiber Z z ∩ fiber W w) = 0 :=
-      Dist.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.1, hω.2⟩) hq
+      Distr.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.1, hω.2⟩) hq
     have hs : P.prob (fiber X x ∩ (fiber Y y ∩ fiber Z z) ∩ fiber W w) = 0 :=
-      Dist.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2.1, hω.2⟩) hq
+      Distr.prob_eq_zero_of_subset P (by intro ω hω; exact ⟨hω.1.2.1, hω.2⟩) hq
     rw [hv, hs, mul_zero, zero_mul]
   · have hqpos : 0 < P.prob (fiber Y y ∩ fiber W w) :=
       lt_of_le_of_ne (P.prob_nonneg _) (Ne.symm hq)
@@ -205,7 +205,7 @@ private lemma condIndepVar_contraction {α β κ δ : Type*} (P : Dist (Pt Ω)) 
 /-- Probabilistic conditional independence (Definition 6.1) is a semigraphoid — the fact
 the paper cites from Pearl (1988) in the proof of Proposition 5.2, proved here for the
 product-form definition with its `P(C) = 0` convention. -/
-lemma isSemigraphoid_condIndepRel (P : Dist (Pt Ω)) : IsSemigraphoid (condIndepRel P) := by
+lemma isSemigraphoid_condIndepRel (P : Distr (Pt Ω)) : IsSemigraphoid (condIndepRel P) := by
   refine ⟨?_, ?_, ?_, ?_⟩
   · intro α β δ _ _ X Y W h y x w
     exact (h x y w).symm

@@ -64,7 +64,7 @@ standing choices (each also documented in `FactoredSpaces/README.md`):
   being two of them.
 
 * `dd:dist` — a probability distribution on a finite type is its mass function
-  (`Dist S`: `mass : S → ℝ`, nonnegative, summing to `1`), with `P(A) = ∑_{s∈A} P(s)`
+  (`Distr S`: `mass : S → ℝ`, nonnegative, summing to `1`), with `P(A) = ∑_{s∈A} P(s)`
   derived.  This is not `FiniteFactoredSets.ProbDist` (an event-based `Set S → ℝ` with
   additivity, `dd:probability` there): everything this paper does with distributions —
   Definition 4.3's pointwise factorization, the factorwise interpolation `⨂((1−λ)Q_i +

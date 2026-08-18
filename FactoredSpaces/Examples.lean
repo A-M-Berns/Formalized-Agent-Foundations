@@ -89,9 +89,9 @@ one-factor space `Ω = Obs` with the identity observation variable. -/
 `O ω = ω ()`; the model distribution is `P` itself, which factorizes over a one-element
 index set.  This is the paper's remark after Definition 4.4, and it witnesses that
 `IsFactoredSpaceModel` is inhabited for every `P`. -/
-lemma isFactoredSpaceModel_single (Obs : Type u) [Fintype Obs] (P : Dist Obs) :
+lemma isFactoredSpaceModel_single (Obs : Type u) [Fintype Obs] (P : Distr Obs) :
     IsFactoredSpaceModel (Ω := fun _ : Unit => Obs) (fun ω => ω ()) P := by
-  refine ⟨Dist.prod (fun _ => P), factorizes_prod _, fun o => ?_⟩
+  refine ⟨Distr.prod (fun _ => P), factorizes_prod _, fun o => ?_⟩
   have hset : fiber (fun ω : Pt (fun _ : Unit => Obs) => ω ()) o = {fun _ => o} := by
     ext ω
     constructor
@@ -101,7 +101,7 @@ lemma isFactoredSpaceModel_single (Obs : Type u) [Fintype Obs] (P : Dist Obs) :
       exact h
     · rintro rfl
       rfl
-  rw [hset, Dist.prob_singleton, Dist.prod_mass]
+  rw [hset, Distr.prob_singleton, Distr.prod_mass]
   simp
 
 /-! ### d-separation conventions on the collider DAG `0 → 2 ← 1`
@@ -295,9 +295,9 @@ lemma G₁_acyclic : G₁.IsAcyclic := by
   | tail _ h _ => exact h
 
 /-- The uniform distribution on the observation space of `G₁`. -/
-noncomputable def Q : Dist (Pt UVal) := Dist.uniform
+noncomputable def Q : Distr (Pt UVal) := Distr.uniform
 
-private lemma Q_pos (c : Pt UVal) : 0 < Q.mass c := Dist.uniform_strictlyPositive c
+private lemma Q_pos (c : Pt UVal) : 0 < Q.mass c := Distr.uniform_strictlyPositive c
 
 /-- A `Finset Unit` is empty or everything. -/
 private lemma unit_finset_cases (S : Finset Unit) : S = ∅ ∨ S = Finset.univ := by
@@ -326,16 +326,16 @@ private lemma fiber_proj_univ (c : Pt UVal) :
 
 private lemma prob_inter_singleton_mem {A : Set (Pt UVal)} (c : Pt UVal) (h : c ∈ A) :
     Q.prob (A ∩ {c}) = Q.mass c := by
-  rw [Set.inter_eq_right.mpr (Set.singleton_subset_iff.mpr h), Dist.prob_singleton]
+  rw [Set.inter_eq_right.mpr (Set.singleton_subset_iff.mpr h), Distr.prob_singleton]
 
 private lemma prob_inter_singleton_not {A : Set (Pt UVal)} (c : Pt UVal) (h : c ∉ A) :
     Q.prob (A ∩ {c}) = 0 := by
-  rw [Set.inter_singleton_eq_empty.mpr h, Dist.prob_empty]
+  rw [Set.inter_singleton_eq_empty.mpr h, Distr.prob_empty]
 
 /-- Conditioning on a single point makes every pair of events independent. -/
 private lemma condIndep_singleton (A B : Set (Pt UVal)) (c : Pt UVal) : CondIndep Q A B {c} := by
   show Q.prob (A ∩ {c}) * Q.prob (B ∩ {c}) = Q.prob (A ∩ B ∩ {c}) * Q.prob {c}
-  rw [Dist.prob_singleton]
+  rw [Distr.prob_singleton]
   by_cases hA : c ∈ A
   · by_cases hB : c ∈ B
     · rw [prob_inter_singleton_mem c hA, prob_inter_singleton_mem c hB,
@@ -411,8 +411,8 @@ lemma isPerfectMapDAG_G₁_Q : IsPerfectMapDAG G₁ Q := by
               Q.prob ({(fun _ : Unit => true)} ∩ Set.univ)
               = Q.prob (({(fun _ : Unit => false)} ∩ {(fun _ : Unit => true)}) ∩ Set.univ)
                 * Q.prob Set.univ := h
-          rw [Set.inter_univ, Set.inter_univ, Set.inter_univ, Dist.prob_singleton,
-            Dist.prob_singleton, hcf, Dist.prob_empty, zero_mul] at h'
+          rw [Set.inter_univ, Set.inter_univ, Set.inter_univ, Distr.prob_singleton,
+            Distr.prob_singleton, hcf, Distr.prob_empty, zero_mul] at h'
           exact (mul_pos (Q_pos _) (Q_pos _)).ne' h'
   · subst h3
     constructor

@@ -21,7 +21,7 @@ probability distributions `P` that factorize over `Ω`.
 Paper node: Theorem 6.2 (§6.1). -/
 theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) :
-    StructIndepGiven X Y Z ↔ ∀ P : Dist (Pt Ω), Factorizes P → CondIndepVar P X Y Z := by
+    StructIndepGiven X Y Z ↔ ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z := by
   -- Lemma 4.9 turns the histories of `X` and `Y` into unions over their events, so
   -- disjointness of the histories is disjointness of every pair of event histories
   have hkey : ∀ D : Set (Pt Ω), Disjoint (history X D) (history Y D) ↔
@@ -51,13 +51,13 @@ theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
 /-- The soundness direction of Theorem 6.2 on its own. -/
 lemma condIndepVar_of_structIndepGiven [Nonempty α] [Nonempty β]
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (h : StructIndepGiven X Y Z)
-    (P : Dist (Pt Ω)) (hP : Factorizes P) : CondIndepVar P X Y Z :=
+    (P : Distr (Pt Ω)) (hP : Factorizes P) : CondIndepVar P X Y Z :=
   (structIndepGiven_iff_forall_condIndepVar X Y Z).mp h P hP
 
 /-- The completeness direction of Theorem 6.2 on its own. -/
 lemma structIndepGiven_of_forall_condIndepVar [Nonempty α] [Nonempty β]
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ}
-    (h : ∀ P : Dist (Pt Ω), Factorizes P → CondIndepVar P X Y Z) : StructIndepGiven X Y Z :=
+    (h : ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z) : StructIndepGiven X Y Z :=
   (structIndepGiven_iff_forall_condIndepVar X Y Z).mpr h
 
 /-- **Strong completeness.** If there is a nonempty open set `S ⊆ Δ^F(Ω)` with
@@ -67,9 +67,9 @@ subspace of `ℝ^Ω` with the Euclidean topology — is stated as the metric-bal
 
 Paper node: Proposition 6.6 (§6.2). -/
 theorem structIndepGiven_of_open [Nonempty α] [Nonempty β]
-    {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (S : Set (Dist (Pt Ω)))
+    {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (S : Set (Distr (Pt Ω)))
     (hS : S ⊆ factorizing Ω) (hne : S.Nonempty)
-    (hopen : ∀ Q ∈ S, ∃ ε > (0 : ℝ), ∀ Q' ∈ factorizing Ω, Dist.euclDist Q Q' < ε → Q' ∈ S)
+    (hopen : ∀ Q ∈ S, ∃ ε > (0 : ℝ), ∀ Q' ∈ factorizing Ω, Distr.euclDist Q Q' < ε → Q' ∈ S)
     (h : ∀ P ∈ S, CondIndepVar P X Y Z) : StructIndepGiven X Y Z := by
   obtain ⟨Q, hQS⟩ := hne
   obtain ⟨ε, hε, hball⟩ := hopen Q hQS

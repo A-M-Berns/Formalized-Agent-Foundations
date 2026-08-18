@@ -357,7 +357,7 @@ private lemma nodeVar_update_eq (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G 
 
 /-- A family of conditional probability distributions: for every node `v` and parent
 configuration `x_pa(v)`, a distribution `P(· | x_pa(v))` on `Val_v`. -/
-abbrev CPD : Type max u w := ∀ v : V, ParentVals G Val v → Dist (Val v)
+abbrev CPD : Type max u w := ∀ v : V, ParentVals G Val v → Distr (Val v)
 
 variable (G Val) in
 /-- **`P` factorizes over `G`** (§5.2, eq. (4)): `P(x) = ∏_v P(x_v | x_pa(v))` for all
@@ -365,25 +365,25 @@ variable (G Val) in
 — one per node and parent configuration — as in Koller–Friedman's definition, which the
 paper follows (`dd:cpd`; the CPD at a parent configuration of probability zero is not
 determined by `P`, see `KNOWLEDGE.md`). -/
-def FactorizesOverDAG (P : Dist (Pt Val)) : Prop :=
+def FactorizesOverDAG (P : Distr (Pt Val)) : Prop :=
   ∃ φ : CPD (G := G) (Val := Val), ∀ x : Pt Val,
     P.mass x = ∏ v, (φ v (parentConfig G Val x v)).mass (x v)
 
 variable (G Val) in
 /-- The set `Δ^*(G)` of distributions on `Val` that factorize over `G` (Lemma 5.3). -/
-def dagFactorizing : Set (Dist (Pt Val)) := {P | FactorizesOverDAG G Val P}
+def dagFactorizing : Set (Distr (Pt Val)) := {P | FactorizesOverDAG G Val P}
 
 omit [∀ v, DecidableEq (Val v)] in
-lemma mem_dagFactorizing {P : Dist (Pt Val)} :
+lemma mem_dagFactorizing {P : Distr (Pt Val)} :
     P ∈ dagFactorizing G Val ↔ FactorizesOverDAG G Val P := Iff.rfl
 
 /-- The conditional probabilities `P(x_v | x_pa(v))` of a strictly positive `P` as a CPD
 family — the factors the paper's eq. (4) and Lemma 5.3 write. -/
-noncomputable def condCPD (P : Dist (Pt Val)) (hP : P.StrictlyPositive) : CPD (G := G) (Val := Val) :=
+noncomputable def condCPD (P : Distr (Pt Val)) (hP : P.StrictlyPositive) : CPD (G := G) (Val := Val) :=
   fun v y =>
     { mass := fun a => P.condProb {x | x v = a} {x | parentConfig G Val x v = y}
       nonneg := fun _ => by
-        unfold Dist.condProb
+        unfold Distr.condProb
         exact div_nonneg (P.prob_nonneg _) (P.prob_nonneg _)
       sum_eq_one := by
         classical
@@ -394,7 +394,7 @@ noncomputable def condCPD (P : Dist (Pt Val)) (hP : P.StrictlyPositive) : CPD (G
           exact ⟨x, hx, hP x⟩
         have hsum : ∑ a : Val v, P.prob ({x | x v = a} ∩ {x | parentConfig G Val x v = y})
             = P.prob {x | parentConfig G Val x v = y} := by
-          simp only [Dist.prob]
+          simp only [Distr.prob]
           rw [Finset.sum_comm]
           refine Finset.sum_congr rfl fun x _ => ?_
           have hpt : ∀ a : Val v,
@@ -408,7 +408,7 @@ noncomputable def condCPD (P : Dist (Pt Val)) (hP : P.StrictlyPositive) : CPD (G
                 simp [h1, h2]
           rw [Finset.sum_congr rfl fun a _ => hpt a, Finset.sum_ite_eq]
           simp
-        simp only [Dist.condProb, div_eq_mul_inv, ← Finset.sum_mul, hsum]
+        simp only [Distr.condProb, div_eq_mul_inv, ← Finset.sum_mul, hsum]
         exact mul_inv_cancel₀ hCpos.ne' }
 
 /-! ## Lemma B.2 and the map `τ` (Lemma 5.3) -/
@@ -416,12 +416,12 @@ noncomputable def condCPD (P : Dist (Pt Val)) (hP : P.StrictlyPositive) : CPD (G
 /-- **`P^Ω(X = x) = ∏_v P^Ω(U_{(v, x_pa(v))} = x_v)`** for `P^Ω` factorizing over `Ω^G`.
 
 Paper node: Lemma B.2 (§B.2). -/
-theorem prob_jointVar_fiber (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+theorem prob_jointVar_fiber (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) (x : Pt Val) :
     PΩ.prob (fiber (jointVar hG) x) =
       ∏ v, (PΩ.margAt ⟨v, parentConfig G Val x v⟩).mass (x v) := by
   classical
-  have hPΩ : PΩ = Dist.prod (fun i => PΩ.margAt i) := hP.eq_prod_margAt
+  have hPΩ : PΩ = Distr.prod (fun i => PΩ.margAt i) := hP.eq_prod_margAt
   set κ : V → bnIndex G Val := fun v => ⟨v, parentConfig G Val x v⟩ with hκ
   have hinj : Set.InjOn κ (Finset.univ : Finset V) := fun a _ b _ hab => congrArg Sigma.fst hab
   have hset : fiber (jointVar hG) x
@@ -436,26 +436,26 @@ theorem prob_jointVar_fiber (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))
     · intro h v
       exact h (κ v) ⟨v, rfl⟩
   calc PΩ.prob (fiber (jointVar hG) x)
-      = (Dist.prod (fun i => PΩ.margAt i)).prob
+      = (Distr.prod (fun i => PΩ.margAt i)).prob
           {ω : Pt (bnFactor G Val) |
             ∀ i ∈ Finset.image κ Finset.univ, ω i = constTable G Val x i} := by
         rw [hset]; conv_lhs => rw [hPΩ]
     _ = ∏ i ∈ Finset.image κ Finset.univ, (PΩ.margAt i).mass (constTable G Val x i) :=
-        Dist.prob_prod_agree_on _ _ _
+        Distr.prob_prod_agree_on _ _ _
     _ = ∏ v, (PΩ.margAt (κ v)).mass (constTable G Val x (κ v)) := Finset.prod_image hinj
     _ = ∏ v, (PΩ.margAt ⟨v, parentConfig G Val x v⟩).mass (x v) := rfl
 
 /-- The map `τ : Δ^F(Ω^G) → Δ^*(G)`, `τ(P^Ω)(x) = P^Ω(X = x)` (Lemma 5.3). -/
-noncomputable def tau (hG : G.IsAcyclic) (PΩ : Dist (Pt (bnFactor G Val))) : Dist (Pt Val) :=
+noncomputable def tau (hG : G.IsAcyclic) (PΩ : Distr (Pt (bnFactor G Val))) : Distr (Pt Val) :=
   PΩ.map (jointVar hG)
 
-lemma tau_mass (hG : G.IsAcyclic) (PΩ : Dist (Pt (bnFactor G Val))) (x : Pt Val) :
+lemma tau_mass (hG : G.IsAcyclic) (PΩ : Distr (Pt (bnFactor G Val))) (x : Pt Val) :
     (tau hG PΩ).mass x = PΩ.prob (fiber (jointVar hG) x) := rfl
 
 /-- The paper's `τ⁻¹`, from a CPD family: `τ⁻¹(P)(ω) = ∏_{(v, x_pa(v)) ∈ I} P(ω_{v,x_pa(v)} |
 x_pa(v))`, i.e. the product over `I` of the CPDs. -/
-noncomputable def tauInv (φ : CPD (G := G) (Val := Val)) : Dist (Pt (bnFactor G Val)) :=
-  Dist.prod fun i => φ i.1 i.2
+noncomputable def tauInv (φ : CPD (G := G) (Val := Val)) : Distr (Pt (bnFactor G Val)) :=
+  Distr.prod fun i => φ i.1 i.2
 
 /-- **`τ⁻¹` lands in `Δ^F(Ω^G)`** (Lemma 5.3, first claim for `τ⁻¹`): the distribution
 `τ⁻¹(φ)` built from a CPD family is a product over `I`, hence factorizes over `Ω^G`.
@@ -467,7 +467,7 @@ theorem factorizes_tauInv (φ : CPD (G := G) (Val := Val)) : Factorizes (tauInv 
 /-- **`τ` maps `Δ^F(Ω^G)` into `Δ^*(G)`** (Lemma 5.3, first claim).
 
 Paper node: Lemma 5.3 (§5.2). -/
-theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) : FactorizesOverDAG G Val (tau hG PΩ) :=
   ⟨fun v y => PΩ.margAt ⟨v, y⟩, fun x => by
     rw [tau_mass]; exact prob_jointVar_fiber hG hP x⟩
@@ -476,17 +476,17 @@ theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val
 `τ(τ⁻¹(P)) = P` (Lemma 5.3, surjectivity).
 
 Paper node: Lemma 5.3 (§5.2). -/
-theorem tau_tauInv (hG : G.IsAcyclic) {P : Dist (Pt Val)} (φ : CPD (G := G) (Val := Val))
+theorem tau_tauInv (hG : G.IsAcyclic) {P : Distr (Pt Val)} (φ : CPD (G := G) (Val := Val))
     (hφ : ∀ x : Pt Val, P.mass x = ∏ v, (φ v (parentConfig G Val x v)).mass (x v)) :
     tau hG (tauInv φ) = P := by
   ext x
   rw [tau_mass, prob_jointVar_fiber hG (factorizes_tauInv φ) x, hφ x]
   refine Finset.prod_congr rfl fun v _ => ?_
   rw [show (tauInv φ).margAt ⟨v, parentConfig G Val x v⟩
-      = φ v (parentConfig G Val x v) from Dist.margAt_prod _ _]
+      = φ v (parentConfig G Val x v) from Distr.margAt_prod _ _]
 
 /-- `τ` preserves strict positivity. -/
-lemma tau_strictlyPositive (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+lemma tau_strictlyPositive (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
     (hpos : PΩ.StrictlyPositive) : (tau hG PΩ).StrictlyPositive := by
   intro x
   rw [tau_mass, PΩ.prob_pos_iff]
@@ -494,13 +494,13 @@ lemma tau_strictlyPositive (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
 
 /-- The conditional probabilities of `τ(P^Ω)` are the marginals of `P^Ω` on the
 corresponding factors — the computation behind the inverse formula of Lemma 5.3. -/
-private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) (hpos : PΩ.StrictlyPositive) (v : V) (y : ParentVals G Val v)
     (a : Val v) :
     (tau hG PΩ).condProb {x : Pt Val | x v = a} {x | parentConfig G Val x v = y}
       = (PΩ.margAt ⟨v, y⟩).mass a := by
   classical
-  have hPΩ : PΩ = Dist.prod (fun i => PΩ.margAt i) := hP.eq_prod_margAt
+  have hPΩ : PΩ = Distr.prod (fun i => PΩ.margAt i) := hP.eq_prod_margAt
   set E : Set (Pt (bnFactor G Val)) :=
     {ω | parentConfig G Val (jointVar hG ω) v = y} with hEdef
   have hcoord : ∀ ω ∈ E, nodeVar hG v ω = ω ⟨v, y⟩ := fun ω hω =>
@@ -535,22 +535,22 @@ private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val
   have h1 : (tau hG PΩ).prob ({x : Pt Val | x v = a} ∩ {x | parentConfig G Val x v = y})
       = PΩ.prob (E ∩ {ω | ω ⟨v, y⟩ = a}) := by
     show (PΩ.map (jointVar hG)).prob _ = _
-    rw [Dist.map_prob, hAE]
+    rw [Distr.map_prob, hAE]
   have h2 : (tau hG PΩ).prob {x : Pt Val | parentConfig G Val x v = y} = PΩ.prob E := by
     show (PΩ.map (jointVar hG)).prob _ = _
-    rw [Dist.map_prob]
+    rw [Distr.map_prob]
     rfl
-  have hkey : (Dist.prod (fun i => PΩ.margAt i)).prob (E ∩ {ω | ω ⟨v, y⟩ = a})
-      = (PΩ.margAt ⟨v, y⟩).mass a * (Dist.prod (fun i => PΩ.margAt i)).prob E :=
-    Dist.prob_prod_inter_bg (fun i => PΩ.margAt i) ⟨v, y⟩ a hinv
+  have hkey : (Distr.prod (fun i => PΩ.margAt i)).prob (E ∩ {ω | ω ⟨v, y⟩ = a})
+      = (PΩ.margAt ⟨v, y⟩).mass a * (Distr.prod (fun i => PΩ.margAt i)).prob E :=
+    Distr.prob_prod_inter_bg (fun i => PΩ.margAt i) ⟨v, y⟩ a hinv
   rw [← hPΩ] at hkey
-  rw [Dist.condProb, h1, h2, hkey, mul_div_assoc, div_self hEpos.ne', mul_one]
+  rw [Distr.condProb, h1, h2, hkey, mul_div_assoc, div_self hEpos.ne', mul_one]
 
 /-- `τ` on the strictly positive members of `Δ^F(Ω^G)`, landing in the strictly positive
 members of `Δ^*(G)`. -/
 noncomputable def tauPos (hG : G.IsAcyclic) :
-    {PΩ : Dist (Pt (bnFactor G Val)) // PΩ ∈ factorizing (bnFactor G Val) ∧ PΩ.StrictlyPositive} →
-      {P : Dist (Pt Val) // P ∈ dagFactorizing G Val ∧ P.StrictlyPositive} :=
+    {PΩ : Distr (Pt (bnFactor G Val)) // PΩ ∈ factorizing (bnFactor G Val) ∧ PΩ.StrictlyPositive} →
+      {P : Distr (Pt Val) // P ∈ dagFactorizing G Val ∧ P.StrictlyPositive} :=
   fun PΩ => ⟨tau hG PΩ.1, factorizesOverDAG_tau hG PΩ.2.1, tau_strictlyPositive hG PΩ.2.2⟩
 
 /-- **The inverse formula of Lemma 5.3**: for strictly positive factorizing `P^Ω`,
@@ -558,7 +558,7 @@ noncomputable def tauPos (hG : G.IsAcyclic) :
 factors the genuine conditional probabilities of `τ(P^Ω)`.
 
 Paper node: Lemma 5.3 (§5.2). -/
-theorem tauInv_condCPD_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
+theorem tauInv_condCPD_tau (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
     (hP : Factorizes PΩ) (hpos : PΩ.StrictlyPositive) :
     tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos)) = PΩ := by
   have hφ : (fun i : bnIndex G Val =>
@@ -568,11 +568,11 @@ theorem tauInv_condCPD_tau (hG : G.IsAcyclic) {PΩ : Dist (Pt (bnFactor G Val))}
     ext a
     exact condProb_tau_eq hG hP hpos i.1 i.2 a
   rw [show tauInv (condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos))
-      = Dist.prod (fun i : bnIndex G Val =>
+      = Distr.prod (fun i : bnIndex G Val =>
           condCPD (tau hG PΩ) (tau_strictlyPositive hG hpos) i.1 i.2) from rfl, hφ]
   exact hP.eq_prod_margAt.symm
 
-private lemma tauInv_condCPD_congr {P Q : Dist (Pt Val)} (hP : P.StrictlyPositive)
+private lemma tauInv_condCPD_congr {P Q : Distr (Pt Val)} (hP : P.StrictlyPositive)
     (hQ : Q.StrictlyPositive) (h : P = Q) :
     tauInv (condCPD (G := G) P hP) = tauInv (condCPD (G := G) Q hQ) := by
   subst h; rfl
@@ -620,7 +620,7 @@ theorem tauPos_bijective (hG : G.IsAcyclic) : Function.Bijective (tauPos (G := G
 space model of `P`.
 
 Paper node: Proposition 5.4 (§5.2). -/
-theorem factorizesOverDAG_iff_isFactoredSpaceModel (hG : G.IsAcyclic) (P : Dist (Pt Val)) :
+theorem factorizesOverDAG_iff_isFactoredSpaceModel (hG : G.IsAcyclic) (P : Distr (Pt Val)) :
     FactorizesOverDAG G Val P ↔ IsFactoredSpaceModel (jointVar hG) P := by
   constructor
   · rintro ⟨φ, hφ⟩

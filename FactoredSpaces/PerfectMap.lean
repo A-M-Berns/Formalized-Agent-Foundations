@@ -38,7 +38,7 @@ travels as a separate hypothesis `hG : G.IsAcyclic` on the Proposition 5.8 state
 that the definition itself reads against Definition 5.7 as printed.
 
 Paper node: Definition 5.7 (§5.2). -/
-def IsPerfectMapDAG (G : Digraph V) (P : Dist (Pt Val)) : Prop :=
+def IsPerfectMapDAG (G : Digraph V) (P : Distr (Pt Val)) : Prop :=
   ∀ V₁ V₂ V₃ : Finset V,
     G.DSeparated V₁ V₂ V₃ ↔ CondIndepVar P (proj V₁) (proj V₂) (proj V₃)
 
@@ -58,7 +58,7 @@ projections of `Val`) iff they are structurally independent given `X_{W₃}` in 
 joint variable, which is how Proposition 5.8 uses it — see `notes/paper-errata.md`.)
 
 Paper node: Definition 5.7 (§5.2). -/
-def IsPerfectMapFSM (X : ∀ w : W, Pt Ω → Val w) (P : Dist (Pt Val)) : Prop :=
+def IsPerfectMapFSM (X : ∀ w : W, Pt Ω → Val w) (P : Distr (Pt Val)) : Prop :=
   IsFactoredSpaceModel (famJoint X) P ∧
     ∀ W₁ W₂ W₃ : Finset W,
       CondIndepVar P (proj W₁) (proj W₂) (proj W₃) ↔
@@ -82,11 +82,11 @@ collapsed onto the parents by the local Markov d-separations. -/
 
 /-- `G` is an **I-map** of `P`: every d-separation of `G` is a conditional independence of
 `P`.  This is the direction of Definition 5.7(1) that the factorization theorem uses. -/
-def IsIMapDAG (G : Digraph V) (P : Dist (Pt Val)) : Prop :=
+def IsIMapDAG (G : Digraph V) (P : Distr (Pt Val)) : Prop :=
   ∀ V₁ V₂ V₃ : Finset V, G.DSeparated V₁ V₂ V₃ → CondIndepVar P (proj V₁) (proj V₂) (proj V₃)
 
 omit [DecidableRel G.Adj] [∀ v, DecidableEq (Val v)] in
-lemma IsPerfectMapDAG.isIMapDAG {P : Dist (Pt Val)} (h : IsPerfectMapDAG G P) :
+lemma IsPerfectMapDAG.isIMapDAG {P : Distr (Pt Val)} (h : IsPerfectMapDAG G P) :
     IsIMapDAG G P := fun V₁ V₂ V₃ hd => (h V₁ V₂ V₃).mp hd
 
 /-- The event `{y | y_S = x_S}` that a joint value agrees with `x` on `S` — the fibre of
@@ -128,21 +128,21 @@ lemma agreeOn_singleton (v : V) (x : Pt Val) :
 `P`, made total by falling back on the uniform distribution at parent configurations of
 probability zero — where `P` determines nothing (`dd:cpd`).  This is the CPD family
 witnessing `FactorizesOverDAG` in `factorizesOverDAG_of_isIMapDAG`. -/
-noncomputable def cpdOfDist (P : Dist (Pt Val)) (v : V)
-    (y : ParentVals G Val v) : Dist (Val v) :=
+noncomputable def cpdOfDist (P : Distr (Pt Val)) (v : V)
+    (y : ParentVals G Val v) : Distr (Val v) :=
   letI : Nonempty (Val v) := ⟨(Classical.choice P.nonempty_carrier) v⟩
   if h : 0 < P.prob (fiber (proj (G.parents v)) y) then
     (condDist P _ h).map fun x => x v
-  else Dist.uniform
+  else Distr.uniform
 
 omit [∀ v, DecidableEq (Val v)] in
-lemma cpdOfDist_mass_of_pos {P : Dist (Pt Val)} {v : V} (x : Pt Val)
+lemma cpdOfDist_mass_of_pos {P : Distr (Pt Val)} {v : V} (x : Pt Val)
     (h : 0 < P.prob (agreeOn (G.parents v) x)) :
     (cpdOfDist P v (parentConfig G Val x v)).mass (x v) =
       P.prob (agreeOn ({v} ∪ G.parents v) x) / P.prob (agreeOn (G.parents v) x) := by
   have he : cpdOfDist P v (parentConfig G Val x v)
       = (condDist P (agreeOn (G.parents v) x) h).map fun y => y v := dif_pos h
-  rw [he, Dist.map_mass, condDist_prob, ← agreeOn_singleton, agreeOn_inter]
+  rw [he, Distr.map_mass, condDist_prob, ← agreeOn_singleton, agreeOn_inter]
 
 omit [∀ v, DecidableEq (Val v)] in
 /-- **The chain rule along the DAG.**  For an I-map `G` of `P` and an ancestrally closed
@@ -154,7 +154,7 @@ every other member of `S \ {v}` is a non-descendant of `v`, so the local Markov
 d-separation `{v} ⊥ (S \ {v}) \ pa(v) | pa(v)` collapses the conditional on `S \ {v}` onto
 one on `pa(v)`.  Parent configurations of probability zero need no separate treatment: the
 whole prefix then has probability zero and the corresponding factor is zero. -/
-lemma prob_agreeOn_eq_prod (hG : G.IsAcyclic) {P : Dist (Pt Val)}
+lemma prob_agreeOn_eq_prod (hG : G.IsAcyclic) {P : Distr (Pt Val)}
     (h : IsIMapDAG G P) (x : Pt Val) :
     ∀ S : Finset V, G.AncClosed S →
       P.prob (agreeOn S x) = ∏ v ∈ S, (cpdOfDist P v (parentConfig G Val x v)).mass (x v) := by
@@ -163,7 +163,7 @@ lemma prob_agreeOn_eq_prod (hG : G.IsAcyclic) {P : Dist (Pt Val)}
   | _ S ih =>
     intro hS
     rcases S.eq_empty_or_nonempty with rfl | hne
-    · simp [agreeOn_empty, Dist.prob_univ]
+    · simp [agreeOn_empty, Distr.prob_univ]
     obtain ⟨v, hvS, hvmax⟩ := S.exists_max_image (Digraph.depth hG) hne
     have hpaT : G.parents v ⊆ S.erase v := by
       intro u hu
@@ -215,17 +215,17 @@ of the acyclic `G` is a conditional independence of `P`, then `P` factorizes ove
 This is the step Proposition 5.8(1) needs and the paper's proof omits
 (`notes/paper-errata.md`, E7). -/
 lemma factorizesOverDAG_of_isIMapDAG (hG : G.IsAcyclic)
-    {P : Dist (Pt Val)} (h : IsIMapDAG G P) : FactorizesOverDAG G Val P := by
+    {P : Distr (Pt Val)} (h : IsIMapDAG G P) : FactorizesOverDAG G Val P := by
   refine ⟨fun v y => cpdOfDist P v y, fun x => ?_⟩
   have hx := prob_agreeOn_eq_prod hG h x Finset.univ fun v _ => Finset.subset_univ _
-  rwa [agreeOn_univ, Dist.prob_singleton] at hx
+  rwa [agreeOn_univ, Distr.prob_singleton] at hx
 
 /-- **Perfect maps of graphs and factored spaces (1)**, concretely: if `G` is a perfect map
 of `P` then `M^G` is a perfect map of `P` with regard to `(X_v)_{v∈V}`.
 
 Paper node: Proposition 5.8 (§5.2). -/
 theorem isPerfectMapFSM_nodeVar_of_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
-    (hG : G.IsAcyclic) {P : Dist (Pt Val)} (h : IsPerfectMapDAG G P) :
+    (hG : G.IsAcyclic) {P : Distr (Pt Val)} (h : IsPerfectMapDAG G P) :
     IsPerfectMapFSM (nodeVar (Val := Val) hG) P := by
   refine ⟨?_, fun W₁ W₂ W₃ => ?_⟩
   · exact (factorizesOverDAG_iff_isFactoredSpaceModel hG P).mp
@@ -238,7 +238,7 @@ perfect map of `P` with regard to `X`.
 
 Paper node: Proposition 5.8 (§5.2). -/
 theorem exists_isPerfectMapFSM_of_exists_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
-    {P : Dist (Pt Val)}
+    {P : Distr (Pt Val)}
     (h : ∃ (G : Digraph V) (_ : DecidableRel G.Adj), G.IsAcyclic ∧ IsPerfectMapDAG G P) :
     ∃ (I : Type max u w) (Ω : I → Type w) (_ : Fintype I) (_ : DecidableEq I)
       (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P := by
@@ -278,14 +278,14 @@ is independence of the subfamilies `X_{W_k}` under `P^Ω`, because `π_W ∘ X =
 sides are literally the same identity between probabilities of the same events. -/
 lemma condIndepVar_map_famJoint {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → Type*}
     [∀ i, Fintype (Ω i)] {W : Type*} [Fintype W] [DecidableEq W] {Val : W → Type*}
-    [∀ w, Fintype (Val w)] (X : ∀ w : W, Pt Ω → Val w) (Q : Dist (Pt Ω))
+    [∀ w, Fintype (Val w)] (X : ∀ w : W, Pt Ω → Val w) (Q : Distr (Pt Ω))
     (W₁ W₂ W₃ : Finset W) :
     CondIndepVar (Q.map (famJoint X)) (proj W₁) (proj W₂) (proj W₃) ↔
       CondIndepVar Q (famVar X W₁) (famVar X W₂) (famVar X W₃) := by
   have key : ∀ (S : Finset W) (x : PtOn Val S),
       famJoint X ⁻¹' fiber (proj S) x = fiber (famVar X S) x := fun _ _ => rfl
   refine forall_congr' fun x => forall_congr' fun y => forall_congr' fun z => ?_
-  simp only [CondIndep, Dist.map_prob, Set.preimage_inter, key]
+  simp only [CondIndep, Distr.map_prob, Set.preimage_inter, key]
 
 /-! ## The counterexample of Proposition 5.8(2) -/
 
@@ -331,20 +331,20 @@ lemma pt_ext {a b : Pt Om} (h : a () = b ()) : a = b := by
   exact h
 
 /-- The uniform distribution on the single factor, as a distribution on `Ω`. -/
-noncomputable def PO : Dist (Pt Om) :=
-  Dist.prod (fun _ : Unit => (Dist.uniform : Dist (Fin 3)))
+noncomputable def PO : Distr (Pt Om) :=
+  Distr.prod (fun _ : Unit => (Distr.uniform : Distr (Fin 3)))
 
 lemma factorizes_PO : Factorizes PO := factorizes_prod _
 
 /-- `P^Ω` has full support, so every nonempty event has positive probability. -/
 lemma prob_PO_pos {A : Set (Pt Om)} (h : A.Nonempty) : 0 < PO.prob A := by
   obtain ⟨ω, hω⟩ := h
-  rw [Dist.prob_pos_iff]
-  exact ⟨ω, hω, (Dist.prod_mass_pos_iff _ ω).mpr fun _ => Dist.uniform_strictlyPositive _⟩
+  rw [Distr.prob_pos_iff]
+  exact ⟨ω, hω, (Distr.prod_mass_pos_iff _ ω).mpr fun _ => Distr.uniform_strictlyPositive _⟩
 
 /-- The distribution `P` of the counterexample: the law of `X` under the uniform
 distribution on `Ω`. -/
-noncomputable def P : Dist (Pt Val) := PO.map (famJoint X)
+noncomputable def P : Distr (Pt Val) := PO.map (famJoint X)
 
 /-- Two points agree under `X_S` exactly when they agree in the coordinates `S` selects:
 the value of `U₁` when `v₁ ∈ S`, its positivity when `v₂ ∈ S`. -/
@@ -528,7 +528,7 @@ lemma not_condIndep {A B C : Set (Pt Om)} (hAC : (A ∩ C).Nonempty) (hBC : (B �
     (hABC : A ∩ B ∩ C = ∅) : ¬ CondIndep PO A B C := by
   intro h
   have h' : PO.prob (A ∩ C) * PO.prob (B ∩ C) = PO.prob (A ∩ B ∩ C) * PO.prob C := h
-  rw [hABC, Dist.prob_empty, zero_mul] at h'
+  rw [hABC, Distr.prob_empty, zero_mul] at h'
   exact (mul_pos (prob_PO_pos hAC) (prob_PO_pos hBC)).ne' h'
 
 /-- **Step 3: the probabilistic conditional independences of `P^Ω` are exactly `ind`.**
@@ -611,7 +611,7 @@ d-separated from itself given a set not containing it.
 Paper node: Proposition 5.8 (§5.2). -/
 theorem exists_isPerfectMapFSM_not_exists_isPerfectMapDAG :
     ∃ (V : Type) (_ : Fintype V) (_ : DecidableEq V) (Val : V → Type) (_ : ∀ v, Fintype (Val v))
-      (_ : ∀ v, Nontrivial (Val v)) (P : Dist (Pt Val)),
+      (_ : ∀ v, Nontrivial (Val v)) (P : Distr (Pt Val)),
       (∃ (I : Type) (Ω : I → Type) (_ : Fintype I) (_ : DecidableEq I) (_ : ∀ i, Fintype (Ω i))
         (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P) ∧
       ∀ G : Digraph V, G.IsAcyclic → ¬ IsPerfectMapDAG G P :=

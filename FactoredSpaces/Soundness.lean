@@ -40,19 +40,19 @@ theorem condIndep_of_disjoint_eventHistory {A B C : Set (Pt Ω)}
   have e1 : P.prob (A ∩ C) =
       (P.marg J).prob (projSet J (A ∩ C)) * (P.marg Jᶜ).prob (projSet Jᶜ C) := by
     conv_lhs => rw [hA, splice_eq_cyl_inter]
-    exact Dist.prob_cyl_inter_cyl hOC _ _
+    exact Distr.prob_cyl_inter_cyl hOC _ _
   have e2 : P.prob (B ∩ C) =
       (P.marg J).prob (projSet J C) * (P.marg Jᶜ).prob (projSet Jᶜ (B ∩ C)) := by
     conv_lhs => rw [hB, splice_eq_cyl_inter]
-    exact Dist.prob_cyl_inter_cyl hOC _ _
+    exact Distr.prob_cyl_inter_cyl hOC _ _
   have e3 : P.prob (A ∩ B ∩ C) =
       (P.marg J).prob (projSet J (A ∩ C)) * (P.marg Jᶜ).prob (projSet Jᶜ (B ∩ C)) := by
     conv_lhs => rw [hAB, splice_eq_cyl_inter]
-    exact Dist.prob_cyl_inter_cyl hOC _ _
+    exact Distr.prob_cyl_inter_cyl hOC _ _
   have e4 : P.prob C =
       (P.marg J).prob (projSet J C) * (P.marg Jᶜ).prob (projSet Jᶜ C) := by
     conv_lhs => rw [hC, splice_eq_cyl_inter]
-    exact Dist.prob_cyl_inter_cyl hOC _ _
+    exact Distr.prob_cyl_inter_cyl hOC _ _
   show P.prob (A ∩ C) * P.prob (B ∩ C) = P.prob (A ∩ B ∩ C) * P.prob C
   rw [e1, e2, e3, e4]; ring
 

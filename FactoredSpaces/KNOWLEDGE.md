@@ -34,23 +34,23 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 | Lemma B.1 | `structIndepGiven_pair` | |
 | Lemma C.3 | `derivedOn_iff` | needs `[Nonempty β]`, see errata |
 | Lemma C.4 | `generates_indic_iff_agree` (i⟺ii), `generates_indic_iff_splice` (i⟺iii), `eventHistory_minimal_splice` | |
-| distribution on a finite type `S` (`Δ(S)`) | `Dist S` (`mass`, `nonneg`, `sum_eq_one`); `P(A)` is `P.prob A` | `dd:dist` |
+| distribution on a finite type `S` (`Δ(S)`) | `Distr S` (`mass`, `nonneg`, `sum_eq_one`); `P(A)` is `P.prob A` | `dd:dist` |
 | `P(A \| C)` | `P.condProb A C` (`= 0` when `P(C) = 0`) | |
-| `supp(P)`, `δ_s`, `(1−λ)P + λQ` | `P.support`, `Dist.delta s`, `Dist.mix t P Q` | |
-| `P_i = P ∘ U_i⁻¹`, `P_J` (Def C.2) | `P.margAt i`, `P.marg J` (`Dist.map (proj J)`) | |
-| `⨂_i P_i` | `Dist.prod p` | |
+| `supp(P)`, `δ_s`, `(1−λ)P + λQ` | `P.support`, `Distr.delta s`, `Distr.mix t P Q` | |
+| `P_i = P ∘ U_i⁻¹`, `P_J` (Def C.2) | `P.margAt i`, `P.marg J` (`Distr.map (proj J)`) | |
+| `⨂_i P_i` | `Distr.prod p` | |
 | `P` factorizes over `Ω` (Def 4.3), `Δ^F(Ω)`, `Δ^F_C(Ω)` | `Factorizes P`, `factorizing Ω`, `factorizingPos C` | pointwise, literal |
 | `M = (Ω, O)` is an FSM for `P` (Def 4.4) | `IsFactoredSpaceModel O P` | |
-| `P_J ⊗ P_K` (Def C.1) | `Dist.outer h PJ PK`; the always-used `P_J ⊗ P_{I∖J}` on `Ω` is `Dist.outerCompl PJ PK` | |
+| `P_J ⊗ P_K` (Def C.1) | `Distr.outer h PJ PK`; the always-used `P_J ⊗ P_{I∖J}` on `Ω` is `Distr.outerCompl PJ PK` | |
 | `A_J × A_{I∖J}` for `A_J ⊆ Ω_J` | `cyl J A ∩ cyl Jᶜ B` | `splice_eq_cyl_inter` bridges to `splice` |
 | `D^α` | `sliceAt J α D` | |
 | `A ⊥^P B \| C`, `X ⊥^P Y \| Z` (Def 6.1), mixed forms | `CondIndep P A B C`, `CondIndepVar P X Y Z`, `CondIndepEventVar`, `CondIndepVarEvent` | product form only |
 | `A ⊥^⊗ B \| C` | `CondIndepAll A B C` | |
 | `R^λ = ⨂((1−λ)Q_i + λP_i)` | `interp Q P t` | `t : unitInterval` |
-| Euclidean distance on `Δ(Ω)` | `Dist.euclDist` | |
+| Euclidean distance on `Δ(Ω)` | `Distr.euclDist` | |
 | `(P,Q)`-irrelevant, irrelevant, `Cohistory(A\|C)` (Def C.6), `Δ^F_{C,i}` | `PQIrrelevant`, `Irrelevant`, `cohistory`, `pairsDifferingAt` | |
 | Lemma 6.3 / 6.4 / 6.5 / Thm 6.2 / Prop 6.6 | `condIndep_of_disjoint_eventHistory` / `disjoint_eventHistory_of_condIndepAll` / `condIndepVar_of_local` / `structIndepGiven_iff_forall_condIndepVar` / `structIndepGiven_of_open` | |
-| Lemmas C.5, C.7, C.8, C.9, C.10, C.11, C.12, C.13, C.14, C.15, C.16, C.17, C.18, C.19, C.20 | `exists_polynomial_interp_prob`, `cohistory_union_eq_univ_of_condIndepAll`, `cohistory_eq_compl_eventHistory`, `pqIrrelevant_or_of_condIndepAll`, `interp_prob_pos`, `Dist.prob_pos_of_support_subset`/`support_outerCompl`/`prob_pos_of_marg_support_subset`, `condProb_eq_of_agree_on_relevant`, `CondIndepEventVar.of_pair`, `CondIndepEventVar.of_proj_subset`, `Dist.prob_cyl_inter_cyl`, `Factorizes.prob_sliceAt`/`Dist.prob_outerCompl_delta`, `condIndepVarEvent_proj_history`, `condIndepEventVar_proj_cohistory`, `condIndepVarEvent_proj_cohistory`, `disintegrates_cohistory` | |
+| Lemmas C.5, C.7, C.8, C.9, C.10, C.11, C.12, C.13, C.14, C.15, C.16, C.17, C.18, C.19, C.20 | `exists_polynomial_interp_prob`, `cohistory_union_eq_univ_of_condIndepAll`, `cohistory_eq_compl_eventHistory`, `pqIrrelevant_or_of_condIndepAll`, `interp_prob_pos`, `Distr.prob_pos_of_support_subset`/`support_outerCompl`/`prob_pos_of_marg_support_subset`, `condProb_eq_of_agree_on_relevant`, `CondIndepEventVar.of_pair`, `CondIndepEventVar.of_proj_subset`, `Distr.prob_cyl_inter_cyl`, `Factorizes.prob_sliceAt`/`Distr.prob_outerCompl_delta`, `condIndepVarEvent_proj_history`, `condIndepEventVar_proj_cohistory`, `condIndepVarEvent_proj_cohistory`, `disintegrates_cohistory` | |
 | semigraphoid / graphoid / compositional (Def 5.1); Prop 5.2 | `IsSemigraphoid`, `IsGraphoid`, `IsCompositionalSemigraphoid` on an `IndepRel Ω`; `isCompositionalSemigraphoid_structIndepRel` (`structIndepRel Ω`) | value spaces `Type v`, nonempty |
 | DAG `G = (V, E, Val)`, `pa(v)`, `an(v)` | `G : Digraph V` with `hG : G.IsAcyclic`, `Val : V → Type u`, `G.parents v`, `G.IsAncestor u v` | root `Digraph` namespace |
 | `I_v`, `I`, `Ω^G`, `X_v`, `X`, `X_S` | `ParentVals G Val v`, `bnIndex G Val` (`Σ v, ParentVals`), `bnFactor G Val`, `nodeVar hG v`, `jointVar hG`, `nodesVar hG S` | `nodeVar_apply` is eq. (4) |
@@ -68,7 +68,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   `(∀ i : ↥J, Ω i)` and transports across `↥(J ∪ K) ≃ ↥J ⊕ ↥K` makes §4 and Appendix A a
   dependent-subtype slog. Disintegration is equivalent to closure under
   `Finset.piecewise` (`disintegrates_iff_splice`, proved against the literal product form),
-  after which Lemma A.1 is two `piecewise` rewrites (`piecewise_union`, `piecewise_inter`)
+  after which Lemma A.1 is two `piecewise` rewrites (`Finset.piecewise_union`, `Finset.piecewise_inter`, ours, root namespace)
   and A.2 / 4.7 / 4.8 / C.4 are short. Measured in the spike (`notes/spike-2026-08-17.md`).
 * **Definition 4.5 stated literally.** `Disintegrates J C := C = prodSplit J C` with
   `prodSplit` built from the genuine projections `proj J`, so the paper node reads against
@@ -97,7 +97,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   citation boundary remains. Symmetry (axiom 1) is `Disjoint.symm` directly, and composition
   (axiom 6) is Lemma B.1 from `history_pair`. (Corrected in round 1, R1-F30.)
 
-* **`Dist` rather than `FiniteFactoredSets.ProbDist` (`dd:dist`).** FFS's distribution is
+* **`Distr` rather than `FiniteFactoredSets.ProbDist` (`dd:dist`).** FFS's distribution is
   event-based (`Set S → ℝ`, additivity) because Garrabrant's Definition 36 is; this paper's
   Definition 4.3, its factorwise interpolation `⨂((1−λ)Q_i + λP_i)`, delta and outer
   products are all pointwise, so the mass function is the object manipulated. Not a
@@ -109,7 +109,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   is extensionally a no-op: with Lean's `condProb = 0` at zero-probability conditions, the
   literal reading `P(x) = ∏ P(x_v | x_pa(v))` defines the *same* `Δ^*(G)` (⟸ both sides `0`
   when a parent configuration has probability `0`; ⟹ ancestral-closure marginals plus
-  extension of the CPDs, `Val v` nonempty from `Dist (Pt Val)`), so no disclosure is owed.
+  extension of the CPDs, `Val v` nonempty from `Distr (Pt Val)`), so no disclosure is owed.
   The `0/0` problem bites in `τ⁻¹` — whose formula needs a factor at *every* `(v, y) ∈ I` —
   not in the definition of `Δ^*(G)`; that is what breaks Lemma 5.3's bijectivity (errata
   E5). For strictly positive `P` the CPDs *are* the conditionals (`condCPD`), the regime in
@@ -142,11 +142,11 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   upstairs in `Ω^G`: `E := {X_pa(v) = y}` is invariant under changing the single
   coordinate `(v, y)` (no parent of `v` has `v` as ancestor-or-self), and on `E`,
   `X_v = ω_(v,y)`; so for a product `P^Ω`, `P^Ω(E ∩ {ω_(v,y) = a}) = p_(v,y)(a)·P^Ω(E)`
-  (`Dist.prob_prod_inter_bg`), giving the conditional probability directly. Also:
+  (`Distr.prob_prod_inter_bg`), giving the conditional probability directly. Also:
   strictly positive members of `Δ^*(G)` have strictly positive CPDs (every `(v, y, a)` is
   realized by a joint value since `v ∉ pa(v)`), which is what makes `tauPos` surjective.
 * **Where inhabitation comes from in §5.2.** `Nonempty (Pt Val)` from any
-  `Dist (Pt Val)` (`Dist.nonempty_carrier`) is the cheap source of `Nonempty (Val u)` for
+  `Distr (Pt Val)` (`Distr.nonempty_carrier`) is the cheap source of `Nonempty (Val u)` for
   all `u`; do not try to get it from a point of `Ω^G` (circular). In the history section it
   comes from `[∀ v, Nontrivial (Val v)]`, and `Nonempty (ParentVals G Val v)` is then
   `inferInstance` — the paper's "since `I_v` is nonempty" step of Proposition 5.6.
@@ -154,7 +154,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   nonzero on an open set" step is replaced by "the numerator polynomial has finitely many
   roots" (`Polynomial.finite_setOf_isRoot`); same content, no topology on distributions.
 * **Lemma C.12 does not use C.11(3)** (false as printed): positivity along the
-  replacement chain comes from `Dist.prod_mass_pos_iff` + C.11(1), and the interpolant is
+  replacement chain comes from `Distr.prod_mass_pos_iff` + C.11(1), and the interpolant is
   `q' i = if i ∈ cohistory then uniform else P.margAt i`.
 * **Lemma C.20's statement is unconditional**: the empty-`Ω` and empty-`C` cases are
   vacuous via `disintegrates_iff_splice`; do not add `[Nonempty (Pt Ω)]` downstream.
@@ -213,11 +213,34 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   `Digraph.IsAcyclic.not_adj_symm` belongs next to `IsAcyclic`; `Digraph.prevOf` is a pure
   list helper in the `Digraph` namespace.
 
-## Intentional deviations from the paper
+* **Round-1 consolidation (2026-08-17).** `Dist` renamed **`Distr`** (collision with Mathlib's
+  root `Dist` class made `open FactoredSpaces` + `Dist S` an ambiguity error). Definition 5.1:
+  `IndepRel` binds `[Nonempty]` only on the two independent slots (where Theorem 6.2 needs it
+  through Lemma C.3), nothing on the conditioning slot; `IsGraphoid.intersection` is stated
+  cross-typed (`Y : →β`, `Z : →γ`) with side condition `β = γ → ¬ HEq Y Z` — do NOT
+  simplify to a bare `¬ HEq Y Z` (not dischargeable for `β ≠ γ`: needs Pi-type injectivity);
+  `not_isGraphoid_structIndepRel` is Table 1's negative claim (structural independence fails
+  intersection). `[Nonempty γ]` dropped from Theorem 6.2/Prop 6.6; `[Fintype γ]` from C.13;
+  `[Nonempty β]` from Lemma 4.12. `Val : V → Type w` in its own universe (`ParentVals :
+  Type max u w`, hand-written); `famVar`/`famJoint` live in BayesNet with no instances and
+  `nodesVar`/`jointVar` are DEFINED through them. One public `nodeVar` reading-off API in
+  BayesNet (`idxAt`, `table_congr`, `nodeVar_eq_of_diag`, `jointVar_eq_iff`, `constTable`, …);
+  `Digraph.depth`/`AncClosed`/acyclicity one-liners next to `IsAcyclic`; `ColliderOK` in
+  DSeparation; `dSeparated_singleton_parents` in ActiveTrails; `OWalk` stays in ActiveTrails
+  (`dd:owalk`, deliberate). `Examples.lean` holds all non-vacuity witnesses (`Coins`/`diag`,
+  `isFactoredSpaceModel_single`, `collider` d-sep convention pins, `G₁`/`Q`/
+  `isPerfectMapDAG_G₁_Q` — the only inhabitant of `IsPerfectMapDAG`). Remaining relocation
+  debt: `history_eq_empty_iff` → History, `condIndepVar_map_famJoint` → Probability.
+* **R1-F50 (client-side timeout on Props 5.5/5.6) — decision: accept the documented
+  idiom.** Applying `dSeparated_iff_structIndepGiven`/`isAncestor_iff_strictlyBefore`
+  against a written-out statement times out unless `(Val := …)` is passed on the
+  APPLICATION (unifier evaluates the `Fintype`/`DecidableEq` instances of the `abbrev`s
+  `ParentVals`/`bnIndex` while `Val` is a metavariable; `irreducible nodeVar`/`parents` do
+  not help). Both docstrings and `Examples.lean` show the idiom. The real fix — non-reducible
+  `def`s for `ParentVals`/`bnIndex`/`bnFactor` — would break the recorded definitional
+  bridges and is left for a later consolidation if consumers hit it.
 
-* **`tauInv_condCPD_strictlyPositive` takes `hG : G.IsAcyclic`** (non-paper helper): false
-  over an arbitrary digraph — a self-loop at `v` empties `{x_v = a} ∩ {x_pa(v) = y}` for
-  `a ≠ y_v`. The paper only considers DAGs.
+## Intentional deviations from the paper
 
 * **`[Nonempty β]` in Lemma C.3 (`derivedOn_iff`).** The paper's (ii)⟹(i) direction
   chooses `f(x)` "arbitrary" for unattained `x`, which presupposes `Val(Y)` inhabited; the
@@ -241,10 +264,11 @@ load-bearing (E8).
 ## Pitfalls
 
 * `rw [h]` with `h : S = splice J S T` also fires inside `projSet J S` on the goal's RHS;
-  use `conv_lhs => rw [h, splice_eq_cyl_inter]` then `exact Dist.prob_cyl_inter_cyl …`.
+  use `conv_lhs => rw [h, splice_eq_cyl_inter]` then `exact Distr.prob_cyl_inter_cyl …`.
   Expect this in every `P.prob E = (P.marg J).prob (projSet J E) * …` step.
-* `piecewise_compl : Jᶜ.piecewise a b = J.piecewise b a` (complement on the LHS, arguments
-  swapped); `splice_compl : splice Jᶜ S T = splice J T S`.
+* Mathlib's `Finset.piecewise_compl : sᶜ.piecewise f g = s.piecewise g f` (complement on the
+  LHS, arguments swapped) and `Finset.piecewise_same`; ours are `splice_compl : splice Jᶜ S T =
+  splice J T S` and the root-`Finset` `piecewise_union`/`piecewise_inter` (Basic.lean).
 * `Disintegrates` is a `def` wrapping an `Eq`: no `hd.trans`; to get `C = splice J C C`
   from `hd`, `rwa [Disintegrates, prodSplit_eq_splice] at h'`.
 * `[Nonempty α]` on the history lemmas is found automatically at `α := Prop` (event
@@ -301,9 +325,6 @@ load-bearing (E8).
 * Definitional bridges: `parentConfig G Val (jointVar hG ω) v p` ≡ `nodeVar hG p.1 ω`;
   `nodesVar hG A ω a` ≡ `nodeVar hG a.1 ω`; `unblockedDesc`/`unblockedAnc` membership are
   `Iff.rfl` duals.
-* `famVar`/`famJoint`/`IsPerfectMapFSM` bind `I, Ω, W, Val` all in the SAME universe `u`; a
-  general lemma about them must use `Type u` (not `Type*`) or application fails with a
-  universe mismatch that reads like an instance error.
 * `push Not` on `¬(s = ∅ ∨ t = ∅)` for `Finset` yields `s.Nonempty ∧ t.Nonempty`.
 * `rw [f, dif_pos h]` fails when `h` matches the `dite` condition only definitionally; use a
   term-mode `have he : … := dif_pos h`.
