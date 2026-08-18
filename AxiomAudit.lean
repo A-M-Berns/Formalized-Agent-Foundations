@@ -1732,9 +1732,16 @@ direction, together with the validity of each cited node against the committed T
 converse (every listed name is a real declaration) is caught only when this file is
 elaborated.
 
-This formalization is **in progress** (`scripts/papers.py`: `in-progress`); the list
-below grows with each stage and the README's coverage table is the accounting of what is
-and is not yet claimed. -/
+This formalization is **complete** (`scripts/papers.py`: `completed`): all 50 numbered
+nodes of the paper are annotated and inventoried, and `notes/scope-manifest.json` records
+that nothing was ruled out of scope.  Besides the numbered nodes the block carries two
+kinds of unannotated entries, both deliberate: the non-vacuity witnesses of
+`FactoredSpaces/Examples.lean`, and two claims the paper makes without a number —
+`not_isGraphoid_structIndepRel` (Table 1, row "Intersection": structural independence
+is *not* a graphoid; §5.1 calls this an important property) and
+`isSemigraphoid_condIndepRel` (the Pearl 1988 fact cited in the proof of Proposition
+5.2, proved here so that no citation boundary remains).  Neither can carry a
+`Paper node:` line, since the checker admits only numbered nodes. -/
 
 open FactoredSpaces in
 -- FS-INVENTORY-BEGIN
@@ -1766,9 +1773,11 @@ open FactoredSpaces in
   condIndepEventVar_proj_cohistory condIndepVarEvent_proj_cohistory disintegrates_cohistory
   cohistory_eq_compl_eventHistory disjoint_eventHistory_of_condIndepAll
   structIndepGiven_iff_forall_condIndepVar structIndepGiven_of_open
-  -- §5.1: Definition 5.1, Proposition 5.2
+  -- §5.1: Definition 5.1, Proposition 5.2; plus the two unnumbered claims named in the
+  -- preamble (Table 1 "Intersection" row; the Pearl semigraphoid fact behind Prop 5.2)
   IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid
   isCompositionalSemigraphoid_structIndepRel not_isGraphoid_structIndepRel
+  isSemigraphoid_condIndepRel
   -- §5.2 / Appendix B: Lemma 5.3, B.2; Propositions 5.4, 5.5, 5.6, 5.8; Definition 5.7
   prob_jointVar_fiber factorizesOverDAG_tau factorizes_tauInv tau_tauInv tauPos_bijective
   tauInv_condCPD_tau
@@ -1793,6 +1802,12 @@ open FactoredSpaces in
 /-! Tier-2 boundary structures for the Factored Space Models surface. -/
 #assert_fields FactoredSpaces.Distr
   mass nonneg sum_eq_one
+-- `#assert_fields` freezes field *names* only.  The content of these three structures is
+-- carried by the field *types*: `IsGraphoid.intersection` carries the cross-typed side
+-- condition `β = γ → ¬ HEq Y Z` (the paper's `Y ≠ Z`), and the `[Nonempty _]` binders on
+-- the axiom fields are the minimal ones Theorem 6.2 needs — weakening either would pass
+-- this freeze silently, so any such change must be reviewed against
+-- `FactoredSpaces/KNOWLEDGE.md` (round-1 record) rather than trusted to the audit.
 #assert_fields FactoredSpaces.IsSemigraphoid
   symm decomposition weakUnion contraction
 #assert_fields FactoredSpaces.IsGraphoid

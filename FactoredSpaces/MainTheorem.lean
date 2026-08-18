@@ -49,10 +49,13 @@ theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
       disjoint_eventHistory_of_condIndepAll fun P hP => h P hP x y z
 
 /-- The soundness direction of Theorem 6.2 on its own. -/
-lemma condIndepVar_of_structIndepGiven [Nonempty α] [Nonempty β]
+lemma condIndepVar_of_structIndepGiven
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (h : StructIndepGiven X Y Z)
-    (P : Distr (Pt Ω)) (hP : Factorizes P) : CondIndepVar P X Y Z :=
-  (structIndepGiven_iff_forall_condIndepVar X Y Z).mp h P hP
+    (P : Distr (Pt Ω)) (hP : Factorizes P) : CondIndepVar P X Y Z := by
+  haveI : Nonempty (Pt Ω) := P.nonempty_carrier
+  haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
+  haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
+  exact (structIndepGiven_iff_forall_condIndepVar X Y Z).mp h P hP
 
 /-- The completeness direction of Theorem 6.2 on its own. -/
 lemma structIndepGiven_of_forall_condIndepVar [Nonempty α] [Nonempty β]

@@ -246,7 +246,10 @@ theorem isCompositionalSemigraphoid_structIndepRel [∀ i, Fintype (Ω i)] :
 
 /-- **Structural independence is not a graphoid**: it fails the intersection axiom.  This
 is the negative claim of Table 1 that §5.1 calls an important property of structural
-independence.
+independence.  On its own the statement `¬ IsGraphoid` only says *some* graphoid axiom
+fails; it pins the failure on axiom 5 (intersection) only together with Proposition 5.2
+(`isCompositionalSemigraphoid_structIndepRel`), which supplies axioms 1–4 — the proof below
+does refute intersection directly, but the theorem statement does not expose that.
 
 The witness is the one-factor space `Ω = {0, 1}` with `X = Y = U`, `Z = ¬U` and `W`
 constant.  Conditioning on `(Z, W)` or on `(Y, W)` pins the single factor down to one

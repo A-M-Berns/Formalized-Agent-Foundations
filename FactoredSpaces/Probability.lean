@@ -47,9 +47,6 @@ variable {S : Type w} {T : Type w'} [Fintype S] [Fintype T]
 /-- The probability `P(A) = ∑_{s ∈ A} P(s)` of an event `A ⊆ S`. -/
 noncomputable def prob (P : Distr S) (A : Set S) : ℝ := ∑ s, A.indicator P.mass s
 
-/-- The distributions on `S` — the paper's `Δ(S)`. -/
-abbrev all (S : Type w) [Fintype S] : Set (Distr S) := Set.univ
-
 instance [Nonempty S] : Nonempty (Distr S) := by
   classical
   obtain ⟨s⟩ := ‹Nonempty S›
@@ -81,12 +78,6 @@ lemma prob_eq_sum_filter (P : Distr S) (A : Set S) [DecidablePred (· ∈ A)] :
     P.prob A = ∑ s ∈ Finset.univ.filter (· ∈ A), P.mass s := by
   simp only [prob, Set.indicator_apply, Finset.sum_ite, Finset.sum_const_zero, add_zero]
 
-lemma prob_eq_sum_subtype (P : Distr S) (A : Set S) [Fintype A] :
-    P.prob A = ∑ s : A, P.mass s := by
-  classical
-  rw [prob_eq_sum_filter]
-  exact Finset.sum_subtype _ (by simp) _
-
 /-- The support `supp(P) = {s | P(s) > 0}` (§C.3). -/
 def support (P : Distr S) : Set S := {s | 0 < P.mass s}
 
@@ -114,19 +105,14 @@ lemma prob_pos_iff (P : Distr S) (A : Set S) : 0 < P.prob A ↔ (A ∩ P.support
     rw [Set.indicator_of_mem hsA]
     exact hsp
 
+lemma prob_eq_zero_of_subset {A B : Set S} (P : Distr S) (hAB : A ⊆ B) (h : P.prob B = 0) :
+    P.prob A = 0 :=
+  le_antisymm (h ▸ P.prob_mono hAB) (P.prob_nonneg _)
+
 lemma prob_eq_zero_iff (P : Distr S) (A : Set S) : P.prob A = 0 ↔ Disjoint A P.support := by
   rw [Set.disjoint_iff_inter_eq_empty, ← Set.not_nonempty_iff_eq_empty, ← prob_pos_iff,
     not_lt]
   exact ⟨fun h => h.le, fun h => le_antisymm h (P.prob_nonneg A)⟩
-
-lemma prob_support (P : Distr S) : P.prob P.support = 1 := by
-  classical
-  rw [prob, ← P.sum_eq_one]
-  refine Finset.sum_congr rfl fun s _ => ?_
-  by_cases hs : s ∈ P.support
-  · simp [hs]
-  · have hle : P.mass s ≤ 0 := not_lt.mp hs
-    simp [hs, le_antisymm hle (P.nonneg s)]
 
 /-- The conditional probability `P(A | C) = P(A ∩ C) / P(C)` (`0` when `P(C) = 0`,
 by Lean's convention for division; the paper only uses it when `P(C) > 0`). -/
@@ -262,8 +248,6 @@ def Factorizes (P : Distr (Pt Ω)) : Prop :=
 def factorizing (Ω : I → Type v) [∀ i, Fintype (Ω i)] : Set (Distr (Pt Ω)) :=
   {P | Factorizes P}
 
-lemma mem_factorizing {P : Distr (Pt Ω)} : P ∈ factorizing Ω ↔ Factorizes P := Iff.rfl
-
 omit [∀ i, Fintype (Ω i)] in
 /-- A product over `I` splits off the factor at `i`. -/
 private lemma prod_split_at (i : I) (f : ∀ j, Ω j → ℝ) (ω : Pt Ω) :
@@ -351,9 +335,6 @@ noncomputable def Distr.marg (P : Distr (Pt Ω)) (J : Finset I) : Distr (PtOn Ω
 lemma Distr.marg_mass (P : Distr (Pt Ω)) (J : Finset I) (α : PtOn Ω J) :
     (P.marg J).mass α = P.prob (proj J ⁻¹' {α}) := rfl
 
-/-- Restriction of a family over `K` to a subset `J ⊆ K`. -/
-def restrict {J K : Finset I} (h : J ⊆ K) (α : PtOn Ω K) : PtOn Ω J := fun i => α ⟨i, h i.2⟩
-
 /-- The bridge between the two encodings of `Ω = Ω_J × Ω_{I∖J}` (`dd:splice`). -/
 def splitEquiv (J : Finset I) : Pt Ω ≃ PtOn Ω J × PtOn Ω Jᶜ where
   toFun ω := (proj J ω, proj Jᶜ ω)
@@ -385,17 +366,17 @@ lemma splitEquiv_symm_proj (J : Finset I) (ω : Pt Ω) :
 Definition C.1. -/
 def unionEquiv {J K : Finset I} (h : Disjoint J K) :
     PtOn Ω (J ∪ K) ≃ PtOn Ω J × PtOn Ω K where
-  toFun α := (restrict Finset.subset_union_left α, restrict Finset.subset_union_right α)
+  toFun α := (Finset.restrict₂ Finset.subset_union_left α, Finset.restrict₂ Finset.subset_union_right α)
   invFun q i := if hi : (i : I) ∈ J then q.1 ⟨i, hi⟩
     else q.2 ⟨i, (Finset.mem_union.mp i.2).resolve_left hi⟩
   left_inv α := by
     funext i
-    by_cases hi : (i : I) ∈ J <;> simp [restrict, hi]
+    by_cases hi : (i : I) ∈ J <;> simp [Finset.restrict₂, hi]
   right_inv q := by
     ext ⟨i, hi⟩
-    · simp [restrict, hi]
+    · simp [Finset.restrict₂, hi]
     · have hnJ : i ∉ J := fun hc => Finset.disjoint_left.mp h hc hi
-      simp [restrict, hnJ]
+      simp [Finset.restrict₂, hnJ]
 
 /-- Summing over `Ω` is summing over `Ω_J × Ω_{I∖J}` (`dd:splice`). -/
 private lemma sum_eq_sum_split (J : Finset I) (F : Pt Ω → ℝ) :
@@ -449,13 +430,13 @@ lemma Distr.marg_mass_eq_sum (P : Distr (Pt Ω)) (J : Finset I) (α : PtOn Ω J)
 Paper node: Definition C.1 (§C). -/
 noncomputable def Distr.outer {J K : Finset I} (h : Disjoint J K) (PJ : Distr (PtOn Ω J))
     (PK : Distr (PtOn Ω K)) : Distr (PtOn Ω (J ∪ K)) where
-  mass α := PJ.mass (restrict Finset.subset_union_left α) *
-    PK.mass (restrict Finset.subset_union_right α)
+  mass α := PJ.mass (Finset.restrict₂ Finset.subset_union_left α) *
+    PK.mass (Finset.restrict₂ Finset.subset_union_right α)
   nonneg α := mul_nonneg (PJ.nonneg _) (PK.nonneg _)
   sum_eq_one := by
     have hsplit := Fintype.sum_equiv (unionEquiv h)
-      (fun α : PtOn Ω (J ∪ K) => PJ.mass (restrict Finset.subset_union_left α) *
-        PK.mass (restrict Finset.subset_union_right α))
+      (fun α : PtOn Ω (J ∪ K) => PJ.mass (Finset.restrict₂ Finset.subset_union_left α) *
+        PK.mass (Finset.restrict₂ Finset.subset_union_right α))
       (fun q : PtOn Ω J × PtOn Ω K => PJ.mass q.1 * PK.mass q.2) fun _ => rfl
     rw [hsplit, Fintype.sum_prod_type]
     simp_rw [← Finset.mul_sum, PK.sum_eq_one, mul_one, PJ.sum_eq_one]
@@ -624,7 +605,7 @@ lemma CondIndep.symm {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : CondIndep P 
 lemma CondIndep.of_prob_eq_zero {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : P.prob C = 0) :
     CondIndep P A B C := by
   have hz : ∀ D : Set (Pt Ω), P.prob (D ∩ C) = 0 := fun D =>
-    le_antisymm (h ▸ P.prob_mono Set.inter_subset_right) (P.prob_nonneg _)
+    P.prob_eq_zero_of_subset Set.inter_subset_right h
   simp [CondIndep, hz A, hz B, h]
 
 /-- The paper's `A ⊥^⊗ B | C`: independence in every factorizing distribution (§C.3). -/
@@ -699,9 +680,9 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
   intro α'
   have key : ∀ (D : Set (Pt Ω)) (α : PtOn Ω J),
       D ∩ fiber (proj J') α' ∩ C ∩ proj J ⁻¹' {α} =
-        if restrict hJ α = α' then D ∩ fiber (proj J) α ∩ C else ∅ := by
+        if Finset.restrict₂ hJ α = α' then D ∩ fiber (proj J) α ∩ C else ∅ := by
     intro D α
-    by_cases hα : restrict hJ α = α'
+    by_cases hα : Finset.restrict₂ hJ α = α'
     · rw [if_pos hα]
       ext ω
       simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
@@ -712,7 +693,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
       · rintro ⟨⟨hD, hp⟩, hC⟩
         refine ⟨⟨⟨hD, ?_⟩, hC⟩, hp⟩
         rw [← hα]
-        exact congrArg (restrict hJ) hp
+        exact congrArg (Finset.restrict₂ hJ) hp
     · rw [if_neg hα]
       ext ω
       simp only [fiber, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_preimage,
@@ -720,7 +701,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
       rintro ⟨⟨⟨_, hp'⟩, _⟩, hp⟩
       exact hα (by rw [← hp]; exact hp')
   have e : ∀ D : Set (Pt Ω), P.prob (D ∩ fiber (proj J') α' ∩ C) =
-      ∑ α : PtOn Ω J, if restrict hJ α = α' then P.prob (D ∩ fiber (proj J) α ∩ C) else 0 := by
+      ∑ α : PtOn Ω J, if Finset.restrict₂ hJ α = α' then P.prob (D ∩ fiber (proj J) α ∩ C) else 0 := by
     intro D
     refine (P.prob_eq_sum_fiber _ (proj J) Finset.univ (fun _ => Finset.mem_univ _)).trans
       (Finset.sum_congr rfl fun α _ => ?_)
@@ -729,7 +710,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
     · rfl
     · exact P.prob_empty
   have eC : P.prob (fiber (proj J') α' ∩ C) =
-      ∑ α : PtOn Ω J, if restrict hJ α = α' then P.prob (fiber (proj J) α ∩ C) else 0 := by
+      ∑ α : PtOn Ω J, if Finset.restrict₂ hJ α = α' then P.prob (fiber (proj J) α ∩ C) else 0 := by
     simpa only [Set.univ_inter] using e Set.univ
   unfold CondIndep
   rw [eC, e B, Finset.mul_sum, Finset.sum_mul]
@@ -925,11 +906,6 @@ Paper node: Lemma C.17 (§C.3). -/
 theorem condIndepVarEvent_proj_history (A C : Set (Pt Ω)) (P : Distr (Pt Ω)) (hP : Factorizes P) :
     CondIndepVarEvent P (proj (eventHistory A C)) (proj (eventHistory A C)ᶜ) C :=
   condIndepVarEvent_proj_of_disintegrates (generates_history (indic A) C).2 hP
-
-
-lemma Distr.prob_eq_zero_of_subset {S : Type w} [Fintype S] {A B : Set S} (P : Distr S) (hAB : A ⊆ B)
-    (h : P.prob B = 0) : P.prob A = 0 :=
-  le_antisymm (h ▸ P.prob_mono hAB) (P.prob_nonneg _)
 
 /-! ## Further `Distr` facts used by Appendix C.3
 

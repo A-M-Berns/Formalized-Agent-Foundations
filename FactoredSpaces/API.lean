@@ -28,9 +28,11 @@ Everything lives in the `FactoredSpaces` namespace, with generic graph vocabular
 
 * **The factored space** (`dd:pi-space`, `dd:splice`).  `Pt Ω = ∀ i, Ω i` for
   `Ω : I → Type v` is `Ω = ×_{i∈I} Ω_i`; `PtOn Ω J`, `proj J`, `projSet J A` are `Ω_J`,
-  `π_J`, `A_J`; `bg i` is the background variable `U_i`; the merge `a_J · b_{I∖J}` is
-  `J.piecewise a b` and `S_J × T_{I∖J}` is `splice J S T`, with `prodSplit J C = splice J C C`
-  and `mem_splice_iff`, `splice_eq_cyl_inter`, `splice_compl`.  A random variable is any
+  `π_J`, `A_J` (`proj J` is definitionally Mathlib's `Finset.restrict J`, `proj_eq_restrict`;
+  the sub-restriction `Ω_K → Ω_J` is Mathlib's `Finset.restrict₂`); `bg i` is the background
+  variable `U_i`; the merge `a_J · b_{I∖J}` is `J.piecewise a b` and `S_J × T_{I∖J}` is
+  `splice J S T`, with `prodSplit J C = splice J C C` and `mem_splice_iff`,
+  `splice_eq_cyl_inter`, `splice_compl`.  A random variable is any
   `X : Pt Ω → α` (`dd:variable`); `fiber X x` is the event `{X = x}`, `pair X Y` the joint
   variable, `indic A` the indicator (`dd:event-indicator`).  Derived variables: `DerivedOn C X
   Y` (Definition 4.1) with `derivedOn_iff` (Lemma C.3, needs `[Nonempty β]`), `DerivedOn.trans`,
@@ -65,7 +67,7 @@ Everything lives in the `FactoredSpaces` namespace, with generic graph vocabular
   `Examples.isFactoredSpaceModel_single`), `Distr.marg` (Definition C.2), `Distr.outer`
   (Definition C.1) and its working form `Distr.outerCompl` (`outerCompl_mass`,
   `Factorizes.eq_outerCompl`, `Factorizes.marg_mass`, `outerCompl_delta_eq_prod`), `cyl`,
-  `sliceAt`, `restrict`, `splitEquiv`, `unionEquiv`, `unionComplEquiv`; Lemmas C.11
+  `sliceAt`, `splitEquiv`, `unionEquiv`, `unionComplEquiv`; Lemmas C.11
   (`Distr.prob_pos_of_support_subset`, `Distr.support_outerCompl`,
   `Distr.prob_pos_of_marg_support_subset` — corrected form, errata E3), C.15
   (`Distr.prob_cyl_inter_cyl`), C.16 (`Factorizes.prob_sliceAt`,

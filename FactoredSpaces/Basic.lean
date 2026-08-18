@@ -1,4 +1,5 @@
 import Mathlib.Data.Finset.Piecewise
+import Mathlib.Data.Finset.Pi
 import Mathlib.Data.Finset.Lattice.Fold
 import Mathlib.Data.Finset.Max
 import Mathlib.Data.Finset.Card
@@ -75,6 +76,10 @@ def bg (i : I) : Pt Ω → Ω i := fun ω => ω i
 def projSet (J : Finset I) (A : Set (Pt Ω)) : Set (PtOn Ω J) := proj J '' A
 
 @[simp] lemma proj_apply (J : Finset I) (ω : Pt Ω) (i : J) : proj J ω i = ω i := rfl
+
+/-- `proj J` is Mathlib's `Finset.restrict J` under the paper's name; the identity is
+definitional, so Mathlib's `Finset.restrict` API applies after `rw [proj_eq_restrict]`. -/
+lemma proj_eq_restrict (J : Finset I) : (proj J : Pt Ω → PtOn Ω J) = J.restrict := rfl
 
 lemma proj_eq_iff {J : Finset I} {a b : Pt Ω} :
     proj J a = proj J b ↔ ∀ i ∈ J, a i = b i := by
