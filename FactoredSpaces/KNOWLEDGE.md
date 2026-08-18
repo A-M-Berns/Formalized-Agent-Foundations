@@ -56,7 +56,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 | `I_v`, `I`, `Ω^G`, `X_v`, `X`, `X_S` | `ParentVals G Val v`, `bnIndex G Val` (`Σ v, ParentVals`), `bnFactor G Val`, `nodeVar hG v`, `jointVar hG`, `nodesVar hG S` | `nodeVar_apply` is eq. (4) |
 | `P` factorizes over `G` (eq. (2)), `Δ^*(G)`, CPDs | `FactorizesOverDAG G Val P`, `dagFactorizing G Val`, `CPD`, `condCPD P hpos` | `dd:cpd` |
 | `τ`, `τ⁻¹` (Lemma 5.3) | `tau hG`, `tauInv φ`; `tauPos_bijective`, `tauInv_condCPD_tau` | true form, see errata E5 |
-| Lemma B.2 / Prop 5.4 / Prop 5.6 | `prob_jointVar_fiber` / `factorizesOverDAG_iff_isFactoredSpaceModel` / `isAncestor_iff_strictlyBefore` | |
+| Lemma B.2 / Prop 5.4 / Prop 5.6 | `prob_jointVar_fiber` / `factorizesOverDAG_iff_isFactoredSpaceModel` / `isAncestor_iff_strictlyBefore` | Prop 5.6 lives in `Separation.lean` (round 2), derived from `mem_history_nodesVar_iff` |
 | trail, active trail, d-separation | `Digraph.Trail`, `Digraph.Walk`, `Walk.IsColliderAt`, `Walk.Active`, `Trail.Active`, `Digraph.DSeparated` | `dd:dsep` |
 | `A_Z(v)`, `Z`-closed, `S_Z(s)`, `S_Z(A)`, `I^z` (memo) | `Digraph.unblockedAnc`, `Digraph.IsZClosed`, `Digraph.zClosure`, `Digraph.zClosureSet`, `zConsistent` | `ConditionalHistory.lean` |
 | Prop 5.5 | `dSeparated_iff_structIndepGiven` | direct route |
@@ -270,10 +270,25 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
     the field types (`β = γ → ¬ HEq Y Z` side condition, minimal `[Nonempty]` binders) —
     the AxiomAudit comment says so.
   * Which Examples lemma pins the d-separation ENDPOINT convention: `not_dSeparated_adj`
-    (and the round-2 addition `dSeparated {0} {2} {2}` on the collider) — the nil-trail
+    (and the round-2 addition `dSeparated_given_endpoint`, `collider.DSeparated {0} {2} {2}`) — the nil-trail
     lemmas do not discriminate the readings; `not_dSeparated_given_collider` pins the
     collider convention. The convention lives in the bodies of `Walk.IsColliderAt`,
     `Walk.Active`, `DSeparated` (defs, not inventoried), so those pins are the only guard.
+  * **Degenerate-case history API (R2-F11/F12).** Lemma 4.8 (`history_pair`), Lemma 4.12
+    (`before_of_forall_bg`, `before_iff_forall_structIndep`) and Lemma B.1
+    (`structIndepGiven_pair`) carry NO value-space hypotheses, matching the paper (this
+    supersedes the round-1 note that only `[Nonempty β]` was dropped from 4.12). With
+    `IsEmpty (Val X)`, `Pt Ω` is empty, every event is `∅`, and `Generates J X C ↔
+    IsEmpty (PtOn Ω J)` (`generates_iff_isEmpty_ptOn`) — so all empty-valued variables
+    share one history (`history_eq_of_isEmpty`): `{i₀}` for a unique empty factor, `∅`
+    for two or more. Helpers: `exists_isEmpty_factor`, `history_eq_empty_of_eq_empty`,
+    `history_congr` (equal generating families ⟹ equal history; needed because
+    `{J | IsEmpty (PtOn Ω J)}` is NOT ∩-closed, so `generates_history` has no analogue
+    there), `history_subset_singleton_of_isEmpty_factor`, `history_eq_singleton_of_mem`.
+    Use these before adding a `[Nonempty]` binder to any new history statement. The
+    binders that remain (`generates_iff`, `generates_history`, `history_unique_minimal`,
+    `history_mono_of_derived`, `history_eq_iUnion_fibers`, `mem_history_iff_exists_ne`)
+    are load-bearing; `mem_history_iff_exists_ne` is outright false without it.
   * `Disintegrates` is a def wrapping an `Eq`: dot notation (`hd.trans …`) DOES resolve
     (whnf finds `Eq`); the trap is only `rw`/`simp only [Disintegrates]`.
   * Lemma 6.5's printed statement leaves `ε` unquantified; `condIndepVar_of_local` binds it

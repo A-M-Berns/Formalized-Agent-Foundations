@@ -761,11 +761,10 @@ It is proved from the `Z`-closure criterion above rather than from trails, which
 standing preference for new d-separation facts. -/
 
 /-- **Local Markov property (graph side).**  A node `v` is d-separated, given its parents,
-from every set `N` of nodes that are neither `v`, nor descendants of `v`, nor parents of
-`v`. -/
+from every set `N` of nodes that are neither `v` nor descendants of `v`.  (Nodes of `N` may
+be parents of `v`; those are blocked by the conditioning set itself.) -/
 lemma dSeparated_singleton_parents [Fintype V] [DecidableRel G.Adj] (hG : G.IsAcyclic)
-    (v : V) (N : Finset V)
-    (hN : ∀ u ∈ N, u ≠ v ∧ ¬ G.IsAncestor v u ∧ u ∉ G.parents v) :
+    (v : V) (N : Finset V) (hN : ∀ u ∈ N, u ≠ v ∧ ¬ G.IsAncestor v u) :
     G.DSeparated {v} N (G.parents v) := by
   rw [dSeparated_iff_disjoint_zClosureSet hG]
   have hclosed : G.IsZClosed (G.parents v) ({v} : Set V) := by
@@ -777,7 +776,7 @@ lemma dSeparated_singleton_parents [Fintype V] [DecidableRel G.Adj] (hG : G.IsAc
     zClosure_subset hclosed (unblockedAnc_parents_self (G := G) v).subset
   have hne : ∀ u ∈ N, v ∉ G.zClosure (G.parents v) u := by
     intro u hu hv
-    obtain ⟨hune, hnanc, -⟩ := hN u hu
+    obtain ⟨hune, hnanc⟩ := hN u hu
     refine zClosure_induction (P := fun m => m ≠ v) ?_ ?_ v hv rfl
     · rintro m hm rfl
       rcases Relation.reflTransGen_iff_eq_or_transGen.mp

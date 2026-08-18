@@ -36,8 +36,6 @@ variable {V : Type u} (G : Digraph V)
 /-- The skeleton: `u — v` iff `u → v` or `v → u`. -/
 def Skel (u v : V) : Prop := G.Adj u v ∨ G.Adj v u
 
-lemma Skel.symm {u v : V} (h : G.Skel u v) : G.Skel v u := Or.symm h
-
 /-- A trail from `s` to `t`: distinct vertices `v₀ = s, …, v_n = t`, consecutive ones
 adjacent in the skeleton.  (Zero-edge trails `[s]` are trails from `s` to `s`.) -/
 structure Trail (s t : V) where

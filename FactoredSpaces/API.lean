@@ -46,7 +46,9 @@ Everything lives in the `FactoredSpaces` namespace, with generic graph vocabular
   `history_unique_minimal`; Lemma 4.8: `history_pair`; Lemma 4.9:
   `history_eq_iUnion_fibers`, `history_eq_biUnion_fibers`; `history_mono_of_derived`,
   `history_bg_subset`, `mem_history_bg_of_mem_history`, and the membership criteria
-  `mem_history_of_sep`, `mem_history_iff_exists_ne`, `exists_ne_of_mem_history`),
+  `mem_history_of_sep`, `mem_history_iff_exists_ne`, `exists_ne_of_mem_history`; the
+  empty-value-space regime: `generates_iff_isEmpty_ptOn`, `history_eq_of_isEmpty`,
+  `history_eq_empty_of_eq_empty`, `history_congr`),
   `eventHistory A C` (Lemma C.4: `generates_indic_iff_agree`, `generates_indic_iff_splice`,
   `eventHistory_minimal_splice`, `inter_eq_splice`).
 * **Structural independence and time** (Definitions 4.10, 4.11): `StructIndep X Y`,
@@ -105,21 +107,24 @@ Everything lives in the `FactoredSpaces` namespace, with generic graph vocabular
   `FactorizesOverDAG G Val P` (`dd:cpd`), `dagFactorizing G Val`, `condCPD`; Lemma B.2
   `prob_jointVar_fiber`; Lemma 5.3 as `factorizesOverDAG_tau`, `factorizes_tauInv`,
   `tau_tauInv`, `tauPos_bijective`, `tauInv_condCPD_tau` (true form, errata E5; `tau`,
-  `tauInv`, `tauPos`); Proposition 5.4 `factorizesOverDAG_iff_isFactoredSpaceModel`;
-  Proposition 5.6 `isAncestor_iff_strictlyBefore` (`mem_history_nodeVar_iff`).
+  `tauInv`, `tauPos`); Proposition 5.4 `factorizesOverDAG_iff_isFactoredSpaceModel`.
 * **d-separation and perfect maps** (`dd:dsep`): `Digraph.Trail`, `Walk`, `Walk.IsColliderAt`,
   `Walk.Active`, `Trail.Active`, `ColliderOK`, `DSeparated` (`Trail.nil`,
   `Trail.nil_active_iff`, `not_dSeparated_self`, `dSeparated_iff_forall_singleton`,
   `dSeparated_singleton_parents`, `dSeparated_iff_disjoint_zClosureSet`); Proposition 5.5
   `dSeparated_iff_structIndepGiven` — pass `(Val := …)` explicitly when applying it against
-  a written-out statement (see `Examples.lean`); Definition 5.7 `IsPerfectMapDAG`,
+  a written-out statement (see `Examples.lean`); Proposition 5.6
+  `isAncestor_iff_strictlyBefore` (`mem_history_nodeVar_iff`, the `Z = ∅` case of the
+  closed-form conditional history, in `Separation.lean`); Definition 5.7 `IsPerfectMapDAG`,
   `IsPerfectMapFSM` (`IsIMapDAG`, `factorizesOverDAG_of_isIMapDAG` — the I-map ⟹
   factorization theorem, errata E7); Proposition 5.8 `isPerfectMapFSM_nodeVar_of_isPerfectMapDAG`,
   `exists_isPerfectMapFSM_of_exists_isPerfectMapDAG`,
   `exists_isPerfectMapFSM_not_exists_isPerfectMapDAG` (`Prop58Witness`).
 * **Witnesses** (`FactoredSpaces.Examples`): the two-coin space `Coins`/`diag`, the trivial
-  model `isFactoredSpaceModel_single`, the collider DAG with its d-separation convention pins,
-  the one-node perfect map `G₁`/`Q`/`isPerfectMapDAG_G₁_Q`.
+  model `isFactoredSpaceModel_single`, the collider DAG with its d-separation convention pins
+  (`not_dSeparated_given_collider`, `not_dSeparated_adj`, `dSeparated_given_endpoint`, …),
+  the positive/negative structural-independence pair `structIndepGiven_collider` /
+  `not_structIndepGiven_nodesVar`, the one-node perfect map `G₁`/`Q`/`isPerfectMapDAG_G₁_Q`.
 
 `APITests/FactoredSpaces.lean` exercises this boundary the way a client would.
 -/

@@ -183,9 +183,9 @@ lemma prob_agreeOn_eq_prod (hG : G.IsAcyclic) {P : Distr (Pt Val)}
     -- the local Markov independence, at the values of `x`
     have hsep := Digraph.dSeparated_singleton_parents hG v (S.erase v \ G.parents v) (by
       intro u hu
-      obtain ⟨huT, hupa⟩ := Finset.mem_sdiff.mp hu
+      obtain ⟨huT, -⟩ := Finset.mem_sdiff.mp hu
       have huS : u ∈ S := (Finset.mem_erase.mp huT).2
-      refine ⟨(Finset.mem_erase.mp huT).1, fun hanc => ?_, hupa⟩
+      refine ⟨(Finset.mem_erase.mp huT).1, fun hanc => ?_⟩
       exact absurd (hvmax u huS) (not_le.mpr (Digraph.depth_lt_of_isAncestor hG hanc)))
     have hRT : S.erase v \ G.parents v ∪ G.parents v = S.erase v :=
       Finset.sdiff_union_of_subset hpaT
@@ -235,6 +235,7 @@ theorem isPerfectMapFSM_nodeVar_of_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
       (factorizesOverDAG_of_isIMapDAG hG h.isIMapDAG)
   · exact (h W₁ W₂ W₃).symm.trans (dSeparated_iff_structIndepGiven hG W₁ W₂ W₃)
 
+omit [∀ v, DecidableEq (Val v)] in
 /-- **Perfect maps of graphs and factored spaces (1).** If some DAG `G` with nodes `V` is a
 perfect map of `P`, then some factored space model `M = (Ω, X)` with `X = (X_v)_{v∈V}` is a
 perfect map of `P` with regard to `X`.
@@ -242,13 +243,13 @@ perfect map of `P` with regard to `X`.
 Paper node: Proposition 5.8 (§5.2). -/
 theorem exists_isPerfectMapFSM_of_exists_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
     {P : Distr (Pt Val)}
-    (h : ∃ (G : Digraph V) (_ : DecidableRel G.Adj), G.IsAcyclic ∧ IsPerfectMapDAG G P) :
+    (h : ∃ G : Digraph V, G.IsAcyclic ∧ IsPerfectMapDAG G P) :
     ∃ (I : Type max u w) (Ω : I → Type w) (_ : Fintype I) (_ : DecidableEq I)
       (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P := by
-  obtain ⟨G, hdec, hG, hpm⟩ := h
-  haveI := hdec
+  classical
+  obtain ⟨G, hG, hpm⟩ := h
   exact ⟨bnIndex G Val, bnFactor G Val, inferInstance, inferInstance, inferInstance,
-    nodeVar hG, isPerfectMapFSM_nodeVar_of_isPerfectMapDAG hG hpm⟩
+    nodeVar hG, isPerfectMapFSM_nodeVar_of_isPerfectMapDAG (Val := Val) hG hpm⟩
 
 end Expressiveness
 
@@ -305,10 +306,6 @@ abbrev Val : Bool → Type
 instance instFintypeVal : ∀ b : Bool, Fintype (Val b)
   | false => inferInstanceAs (Fintype (Fin 3))
   | true => inferInstanceAs (Fintype Bool)
-
-instance instInhabitedVal : ∀ b : Bool, Inhabited (Val b)
-  | false => inferInstanceAs (Inhabited (Fin 3))
-  | true => inferInstanceAs (Inhabited Bool)
 
 instance instNontrivialVal : ∀ b : Bool, Nontrivial (Val b)
   | false => inferInstanceAs (Nontrivial (Fin 3))

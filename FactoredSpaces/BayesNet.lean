@@ -11,8 +11,9 @@ A DAG `G = (V, E, Val)` (a `Digraph V` that is acyclic, with a value type `Val v
 node), the factored space `Ω^G` indexed by `I = ⋃_v I_v`, `I_v = {(v, x_pa(v))}`, the
 node variables `X_v(ω) = ω_{(v, X_pa(v)(ω))}` (well-founded recursion along the DAG), the
 observation variable `X = (X_v)_v`, factorization of a distribution over `G`
-(`dd:cpd`), the map `τ` (Lemma 5.3), Lemma B.2, the factorization property
-(Proposition 5.4) and the ancestor relation (Proposition 5.6).
+(`dd:cpd`), the map `τ` (Lemma 5.3), Lemma B.2 and the factorization property
+(Proposition 5.4).  The ancestor relation (Proposition 5.6) is proved in
+`FactoredSpaces/Separation.lean`, as a corollary of the closed-form conditional history.
 -/
 
 universe u w
@@ -343,16 +344,6 @@ private lemma parentConfig_jointVar_update (hG : G.IsAcyclic) (v : V)
     exact hG.not_ancestor_of_adj ((Digraph.mem_parents G).mp u.2) hj
   exact Function.update_of_ne hne _ _
 
-omit [(v : V) → Fintype (Val v)] in
-/-- Overwriting the factor `(v, c)` that `X_v` reads sets the value of `X_v`. -/
-private lemma nodeVar_update_eq (hG : G.IsAcyclic) (v : V) (ω : Pt (bnFactor G Val))
-    (c : ParentVals G Val v) (hc : parentConfig G Val (jointVar hG ω) v = c) (b : Val v) :
-    nodeVar hG v (Function.update ω ⟨v, c⟩ b) = b := by
-  classical
-  have h := parentConfig_jointVar_update hG v ω ⟨v, c⟩ rfl b
-  rw [hc] at h
-  rw [nodeVar_eq_coord hG v _ c h, Function.update_self]
-
 /-! ## Factorization over a DAG (`dd:cpd`) -/
 
 /-- A family of conditional probability distributions: for every node `v` and parent
@@ -633,153 +624,6 @@ theorem factorizesOverDAG_iff_isFactoredSpaceModel (hG : G.IsAcyclic) (P : Distr
       exact hprob o
     rw [← hEq]
     exact factorizesOverDAG_tau hG hfac
-
-/-! ## Proposition 5.6: the ancestor relation -/
-
-/-- The history of `X_v` is contained in `⋃_{u ∈ an(v) ∪ {v}} I_u` (`nodeVar_congr`
-packaged through Lemma 4.7). -/
-private lemma history_nodeVar_subset [∀ v, Nonempty (Val v)] (hG : G.IsAcyclic) (v : V)
-    {i : bnIndex G Val}
-    (hi : i ∈ history (nodeVar (Val := Val) hG v) (Set.univ : Set (Pt (bnFactor G Val)))) :
-    i.1 = v ∨ G.IsAncestor i.1 v := by
-  classical
-  have hgen : Generates
-      (Finset.univ.filter fun j : bnIndex G Val => j.1 = v ∨ G.IsAncestor j.1 v)
-      (nodeVar (Val := Val) hG v) (Set.univ : Set (Pt (bnFactor G Val))) := by
-    rw [generates_iff]
-    refine ⟨disintegrates_univ_set _, fun a _ b _ hab => ?_⟩
-    exact nodeVar_congr hG a b v fun j hj =>
-      hab j (Finset.mem_filter.mpr ⟨Finset.mem_univ j, hj⟩)
-  exact (Finset.mem_filter.mp (history_subset_of_generates hgen hi)).2
-
-/-- Every factor of `I_v` lies in the history of `X_v`. -/
-private lemma mem_history_nodeVar_self [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) (v : V)
-    (c : ParentVals G Val v) :
-    (⟨v, c⟩ : bnIndex G Val) ∈
-      history (nodeVar (Val := Val) hG v) (Set.univ : Set (Pt (bnFactor G Val))) := by
-  classical
-  obtain ⟨x, hx⟩ := exists_parentConfig (fun u => Classical.arbitrary (Val u)) v c
-  obtain ⟨s, hs⟩ := exists_ne (x v)
-  have hc : parentConfig G Val (jointVar hG (constTable G Val x)) v = c := by
-    rw [jointVar_constTable hG x]; exact hx
-  refine (mem_history_iff_exists_ne _ _).mpr
-    ⟨constTable G Val x, Function.update (constTable G Val x) ⟨v, c⟩ s, ?_, ?_⟩
-  · intro j hj
-    exact (Function.update_of_ne (β := bnFactor G Val) hj s _).symm
-  · rw [nodeVar_update_eq hG v (constTable G Val x) c hc s,
-      nodeVar_eq_coord hG v (constTable G Val x) c hc]
-    exact fun h => hs h.symm
-
-/-- The history of `X_w` is contained in that of `X_v` whenever `w → v`. -/
-private lemma history_nodeVar_mono_adj [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) {w v : V}
-    (hadj : G.Adj w v) :
-    history (nodeVar (Val := Val) hG w) (Set.univ : Set (Pt (bnFactor G Val)))
-      ⊆ history (nodeVar (Val := Val) hG v) Set.univ := by
-  classical
-  intro i hi
-  obtain ⟨ω, ω', hoff, hne⟩ := (mem_history_iff_exists_ne _ _).mp hi
-  have hiv : i.1 ≠ v := by
-    intro h
-    exact hG.not_ancestor_of_adj hadj (by rw [← h]; exact history_nodeVar_subset hG w hi)
-  set d : ParentVals G Val v := parentConfig G Val (jointVar hG ω) v with hd
-  set d' : ParentVals G Val v := parentConfig G Val (jointVar hG ω') v with hd'
-  have hdd : d ≠ d' := fun h => hne (congrFun h ⟨w, (Digraph.mem_parents G).mpr hadj⟩)
-  have hidx : (⟨v, d⟩ : bnIndex G Val) ≠ ⟨v, d'⟩ := by
-    simp only [ne_eq, Sigma.mk.injEq, heq_eq_eq, true_and]
-    exact hdd
-  have hiv1 : i ≠ (⟨v, d⟩ : bnIndex G Val) := fun h => hiv (by rw [h])
-  have hiv2 : i ≠ (⟨v, d'⟩ : bnIndex G Val) := fun h => hiv (by rw [h])
-  obtain ⟨α, β, hαβ⟩ := exists_pair_ne (Val v)
-  set upd : Pt (bnFactor G Val) → Pt (bnFactor G Val) :=
-    fun σ => Function.update (Function.update σ ⟨v, d⟩ α) ⟨v, d'⟩ β with hupd
-  have hpc : ∀ σ : Pt (bnFactor G Val),
-      parentConfig G Val (jointVar hG (upd σ)) v = parentConfig G Val (jointVar hG σ) v := by
-    intro σ
-    rw [hupd]
-    rw [parentConfig_jointVar_update hG v _ ⟨v, d'⟩ rfl β,
-      parentConfig_jointVar_update hG v σ ⟨v, d⟩ rfl α]
-  have hval : ∀ (σ : Pt (bnFactor G Val)) (c : ParentVals G Val v),
-      parentConfig G Val (jointVar hG σ) v = c → (upd σ) ⟨v, c⟩ = nodeVar hG v (upd σ) := by
-    intro σ c hσ
-    rw [nodeVar_eq_coord hG v (upd σ) c (by rw [hpc σ]; exact hσ)]
-  refine (mem_history_iff_exists_ne _ _).mpr ⟨upd ω, upd ω', fun j hj => ?_, ?_⟩
-  · by_cases h1 : j = (⟨v, d'⟩ : bnIndex G Val)
-    · subst h1
-      rw [hupd]
-      simp only [Function.update_self]
-    · by_cases h2 : j = (⟨v, d⟩ : bnIndex G Val)
-      · subst h2
-        rw [hupd]
-        simp only [Function.update_of_ne h1, Function.update_self]
-      · rw [hupd]
-        simp only [Function.update_of_ne h1, Function.update_of_ne h2]
-        exact hoff j hj
-  · rw [← hval ω d hd.symm, ← hval ω' d' hd'.symm, hupd]
-    simp only [Function.update_of_ne hidx, Function.update_self]
-    exact hαβ
-
-/-- The history of `X_u` is contained in that of `X_v` whenever `u` is an ancestor of `v`. -/
-private lemma history_nodeVar_mono_ancestor [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
-    {u v : V} (h : G.IsAncestor u v) :
-    history (nodeVar (Val := Val) hG u) (Set.univ : Set (Pt (bnFactor G Val)))
-      ⊆ history (nodeVar (Val := Val) hG v) Set.univ := by
-  induction h with
-  | single hadj => exact history_nodeVar_mono_adj hG hadj
-  | tail _ hbc ih => exact ih.trans (history_nodeVar_mono_adj hG hbc)
-
-/-- The history of a node variable: `H(X_v) = ⋃_{u ∈ an(v) ∪ {v}} I_u` (the identity the
-proof of Proposition 5.6 starts from), stated as a membership criterion. -/
-lemma mem_history_nodeVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic) (v : V)
-    (i : bnIndex G Val) :
-    i ∈ history (nodeVar (Val := Val) hG v) (Set.univ : Set (Pt (bnFactor G Val))) ↔
-      i.1 = v ∨ G.IsAncestor i.1 v := by
-  constructor
-  · exact fun hi => history_nodeVar_subset hG v hi
-  · obtain ⟨u, c⟩ := i
-    rintro (h | h)
-    · subst h
-      exact mem_history_nodeVar_self hG u c
-    · exact history_nodeVar_mono_ancestor hG h (mem_history_nodeVar_self hG u c)
-
-/-- **Ancestor relation.** For distinct nodes `v₁ ≠ v₂`: `v₁` is an ancestor of `v₂` in `G`
-iff `X_{v₁} <_{Ω^G} X_{v₂}`.  Needs every `Val_v` to have at least two elements (the
-paper's standing assumption on `Val`; with a one-element `Val_v` the node `v` carries no
-randomness and drops out of every history).
-
-Applying this to a concrete DAG, supply the value family explicitly — `… (Val := Val) …` —
-rather than leaving it to be inferred from the expected type: with `Val` a metavariable the
-unifier compares the `Fintype`/`DecidableEq` instances of `Pt (bnFactor G Val)` by
-evaluating them, and exceeds the heartbeat limit.  `FactoredSpaces/Examples.lean` shows the
-working idiom.
-
-Paper node: Proposition 5.6 (§5.2). -/
-theorem isAncestor_iff_strictlyBefore [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
-    {v₁ v₂ : V} (hne : v₁ ≠ v₂) :
-    G.IsAncestor v₁ v₂ ↔ StrictlyBefore (nodeVar (Val := Val) hG v₁) (nodeVar hG v₂) := by
-  constructor
-  · intro h
-    have hsub : history (nodeVar (Val := Val) hG v₁) (Set.univ : Set (Pt (bnFactor G Val)))
-        ⊆ history (nodeVar (Val := Val) hG v₂) Set.univ := by
-      intro i hi
-      rw [mem_history_nodeVar_iff] at hi ⊢
-      rcases hi with h1 | h1
-      · exact Or.inr (by rw [h1]; exact h)
-      · exact Or.inr (h1.trans h)
-    refine (Finset.ssubset_iff_of_subset hsub).mpr ?_
-    obtain ⟨c⟩ : Nonempty (ParentVals G Val v₂) := inferInstance
-    refine ⟨⟨v₂, c⟩, (mem_history_nodeVar_iff hG v₂ _).mpr (Or.inl rfl), ?_⟩
-    rw [mem_history_nodeVar_iff]
-    rintro (h1 | h1)
-    · exact hne h1.symm
-    · exact hG v₁ (h.trans h1)
-  · intro h
-    obtain ⟨c⟩ : Nonempty (ParentVals G Val v₁) := inferInstance
-    have hmem : (⟨v₁, c⟩ : bnIndex G Val) ∈
-        history (nodeVar (Val := Val) hG v₂) (Set.univ : Set (Pt (bnFactor G Val))) :=
-      subset_of_ssubset h ((mem_history_nodeVar_iff hG v₁ _).mpr (Or.inl rfl))
-    rcases (mem_history_nodeVar_iff hG v₂ _).mp hmem with h1 | h1
-    · exact absurd h1 hne
-    · exact h1
 
 end Construction
 

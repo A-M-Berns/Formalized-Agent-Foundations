@@ -11,9 +11,10 @@ Nothing here is a paper node.  The file exists for two reasons.
    non-inhabitants — i.e. that the definitions are neither empty nor trivially true.
    The paper's two-coin example and its "every distribution has a one-factor model"
    remark are checked here against the Lean definitions, and §5.2's `IsPerfectMapDAG`,
-   `StrictlyBefore` and `StructIndepGiven` are exhibited on concrete DAGs — including a
-   DAG that *is* a perfect map, which discharges the vacuity risk on the hypothesis of
-   Proposition 5.8(1).
+   `StrictlyBefore` and `StructIndepGiven` are exhibited on concrete DAGs, each with a
+   matching negative instance (`structIndepGiven_collider` against
+   `not_structIndepGiven_nodesVar`) — including a DAG that *is* a perfect map, which
+   discharges the vacuity risk on the hypothesis of Proposition 5.8(1).
 
 2. **Convention regression.** d-separation is the one load-bearing definition that the
    paper does not supply (`dd:dsep`, errata E8); the collider and endpoint conventions
@@ -193,9 +194,7 @@ lemma dSeparated_parents_of_collider : collider.DSeparated {0} {1} ∅ := by
       intro u hu
       rw [Finset.mem_singleton] at hu
       subst hu
-      refine ⟨by decide, fun hanc => absurd (collider_ancestor_rank hanc) (by decide), ?_⟩
-      rw [hpa]
-      exact Finset.notMem_empty 1)
+      exact ⟨by decide, fun hanc => absurd (collider_ancestor_rank hanc) (by decide)⟩)
   rwa [hpa] at h
 
 /-- **Endpoint convention** (`Trail.nil_active_iff`), concretely: the zero-edge trail at
@@ -246,6 +245,19 @@ lemma not_dSeparated_adj : ¬ collider.DSeparated {0} {2} {1} := by
     decide
   | (n + 2) => simp at hv
 
+/-- **Endpoint convention, discriminating pin.**  The same one-edge trail `0 — 2` of
+`not_dSeparated_adj`, but conditioning on its *endpoint* `2`: here `0` and `2` **are**
+d-separated given `{2}`, because endpoints count as non-collider trail vertices and so
+block when they lie in the conditioning set (`dd:dsep`).  Under the alternative convention
+— only interior vertices are tested — the trail `0 — 2` would stay active and this would be
+false.  Together with `not_dSeparated_self_zero` this pins the convention from both sides;
+flipping it in `DSeparation.lean` breaks one of the two. -/
+lemma dSeparated_given_endpoint : collider.DSeparated {0} {2} {2} := by
+  rw [Digraph.dSeparated_iff_disjoint_zClosureSet collider_isAcyclic, Set.disjoint_right]
+  intro a ha _
+  obtain ⟨t, ht, htZ, -⟩ := Digraph.exists_of_mem_zClosureSet ha
+  exact htZ ht
+
 /-! ### Propositions 5.5 and 5.6 have content on `collider`
 
 The edge `0 → 2` of `collider` produces a genuine strict "before" and a genuine
@@ -255,6 +267,17 @@ structural *dependence* in the constructed factored space model `M^{collider}`.
 /-- Two-element value space at each node of `collider`; supplies `Nontrivial`, the standing
 assumption of Propositions 5.5 and 5.6. -/
 abbrev ColliderVal : Fin 3 → Type := fun _ => Bool
+
+/-- Definition 4.10's conditional form is inhabited on a concrete DAG: with nothing
+conditioned on, the two parents `0` and `1` of the collider `2` are structurally
+independent in `M^{collider}` (Proposition 5.5 applied to
+`dSeparated_parents_of_collider`).  Together with `not_structIndepGiven_nodesVar` this
+shows `StructIndepGiven` is neither empty nor trivially true. -/
+lemma structIndepGiven_collider :
+    StructIndepGiven (nodesVar (Val := ColliderVal) collider_isAcyclic {0})
+      (nodesVar collider_isAcyclic {1}) (nodesVar collider_isAcyclic ∅) :=
+  (dSeparated_iff_structIndepGiven (Val := ColliderVal) collider_isAcyclic {0} {1} ∅).mp
+    dSeparated_parents_of_collider
 
 /-- Proposition 5.5 has content: the node variables at the adjacent nodes `0` and `2` are
 structurally *dependent* given `X_1`, so the iff is not vacuously "always independent". -/
@@ -430,7 +453,7 @@ conclusion produces an actual factored space model that is a perfect map of `Q`.
 example : ∃ (I : Type) (Ω : I → Type) (_ : Fintype I) (_ : DecidableEq I)
     (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → UVal v), IsPerfectMapFSM X Q :=
   exists_isPerfectMapFSM_of_exists_isPerfectMapDAG (V := Unit) (Val := UVal) (P := Q)
-    ⟨G₁, inferInstance, G₁_acyclic, isPerfectMapDAG_G₁_Q⟩
+    ⟨G₁, G₁_acyclic, isPerfectMapDAG_G₁_Q⟩
 
 end Examples
 end FactoredSpaces

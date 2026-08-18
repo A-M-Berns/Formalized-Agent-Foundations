@@ -26,7 +26,7 @@ Proposition 5.5 in `notes/dsep-sizing/`.
 | 4.2 | Disintegration, generation, history; minimal generating set; history of a joint variable; history as union over values | Definitions 4.5, 4.6; Lemmas 4.7, 4.8, 4.9 | `History.lean` |
 | 4.3–4.4 | Structural independence; structural time; time via independence | Definitions 4.10, 4.11; Lemma 4.12 | `Independence.lean` |
 | 5.1 | Semigraphoid / graphoid / compositional semigraphoid; structural independence is a compositional semigraphoid | Definition 5.1; Proposition 5.2 | `Semigraphoid.lean` |
-| 5.2 | The FSM `M^G` of a DAG; `τ` (in its true form, errata E5); factorization property; **d-separation ⟺ structural independence** (direct proof, no external citation); ancestor relation | Lemma 5.3; Propositions 5.4, 5.5, 5.6 | `BayesNet.lean`, `Separation.lean` |
+| 5.2 | The FSM `M^G` of a DAG; `τ` (in its true form, errata E5); factorization property; **d-separation ⟺ structural independence** (direct proof, no external citation); ancestor relation | Lemma 5.3; Propositions 5.4, 5.5, 5.6 | `BayesNet.lean` (5.3, 5.4), `Separation.lean` (5.5, 5.6) |
 | 5.2.3 | Perfect maps; factored space models are more expressive than DAGs (both parts, with the I-map ⟹ factorization step the paper omits, errata E7, and the paper's own 3-point witness) | Definition 5.7; Proposition 5.8 | `PerfectMap.lean` |
 | 6 | Conditional independence; **soundness and completeness**; soundness and completeness for events; local-to-global; strong completeness | Definition 6.1; **Theorem 6.2**; Lemmas 6.3, 6.4, 6.5; Proposition 6.6 | `Probability.lean`, `Soundness.lean`, `Completeness.lean`, `LocalToGlobal.lean`, `MainTheorem.lean` |
 | A | Disintegration closed under ∩, ∪; generation closed under ∩ | Lemmas A.1, A.2 | `History.lean` |
@@ -54,7 +54,9 @@ remains anywhere. d-separation itself, which the paper uses without defining, is
   `eventHistory A C = history (indic A) C` is `H(A | C)` (`dd:event-indicator`);
   `fiber Z z` is the event `{Z = z}`, so `history X (fiber Z z)` is `H(X | z)`.
 * Value spaces carry `[Nonempty α]` exactly where Lemma C.3's construction needs it —
-  see `notes/paper-errata.md`.
+  see `notes/paper-errata.md`; the paper-facing Lemmas 4.8, 4.12 and B.1 carry no
+  value-space hypothesis at all (their empty-value cases are proved directly through the
+  degenerate-history lemmas of `History.lean`).
 
 The `dd:` glossary lives in `FactoredSpaces.lean`; settled decisions, the correspondence
 table and pitfalls are in `KNOWLEDGE.md`.

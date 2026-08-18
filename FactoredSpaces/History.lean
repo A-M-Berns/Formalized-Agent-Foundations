@@ -252,25 +252,143 @@ lemma history_mono_of_derived [Nonempty α] [Nonempty β] {X : Pt Ω → α} {Y 
     {C : Set (Pt Ω)} (h : DerivedOn C X Y) : history Y C ⊆ history X C :=
   history_subset_of_generates ((generates_history X C).mono_left h)
 
+/-! ### The degenerate cases: an empty event, and an empty value space
+
+Lemma C.3 (`derivedOn_iff`) needs `Val(Y)` inhabited (erratum E1), and that hypothesis
+propagates as `[Nonempty α]` through `generates_iff` to the whole generation API.  The
+paper allows both `Val(X)` and the factors `Ω_i` to be empty (erratum E2), so the two
+cases the API excludes are handled here directly from `Generates`, which lets Lemmas 4.8
+and 4.12 be stated with no hypothesis on the value spaces at all.
+
+Note that a variable `X : Ω → Val(X)` with `Val(X)` empty forces `Ω` itself to have no
+points, hence every event to be `∅`; the whole of `history` then degenerates. -/
+
+omit [DecidableEq I] [Fintype I] in
+/-- If the factored space has no points then some factor is empty. -/
+lemma exists_isEmpty_factor [IsEmpty (Pt Ω)] : ∃ i : I, IsEmpty (Ω i) := by
+  by_contra hcon
+  have hpt : Pt Ω := fun i => (not_isEmpty_iff.mp fun h => hcon ⟨i, h⟩).some
+  exact isEmptyElim hpt
+
+/-- Every `J` disintegrates the empty event; `disintegrates_empty` is the `J = ∅` case of
+the same vacuity. -/
+lemma disintegrates_of_eq_empty (J : Finset I) {C : Set (Pt Ω)} (hC : C = ∅) :
+    Disintegrates J C := by
+  rw [disintegrates_iff_splice]
+  intro a ha
+  rw [hC] at ha
+  exact absurd ha (Set.notMem_empty a)
+
+/-- With an inhabited value space every `J` generates `X` given the empty event: both
+halves of `Generates` are vacuous there. -/
+lemma generates_of_eq_empty [Nonempty α] (J : Finset I) (X : Pt Ω → α) {C : Set (Pt Ω)}
+    (hC : C = ∅) : Generates J X C := by
+  subst hC
+  exact ⟨⟨fun _ => Classical.arbitrary α, fun ω hω => absurd hω (Set.notMem_empty ω)⟩,
+    disintegrates_of_eq_empty J rfl⟩
+
+/-- With an inhabited value space the history given the empty event is empty. -/
+lemma history_eq_empty_of_eq_empty [Nonempty α] (X : Pt Ω → α) {C : Set (Pt Ω)}
+    (hC : C = ∅) : history X C = ∅ :=
+  Finset.subset_empty.mp (history_subset_of_generates (generates_of_eq_empty ∅ X hC))
+
+/-- Histories are computed from the generating family alone, so variables (over possibly
+different value spaces) with the same generating sets have the same history. -/
+lemma history_congr {X : Pt Ω → α} {Y : Pt Ω → β} {C D : Set (Pt Ω)}
+    (h : ∀ J : Finset I, Generates J X C ↔ Generates J Y D) : history X C = history Y D := by
+  classical
+  simp only [history]
+  congr 1
+  exact Finset.filter_congr fun J _ => h J
+
+/-- With an **empty** value space, `J` generates `X` given `C` exactly when the partial
+product `Ω_J` is empty, i.e. when `J` contains an empty factor.  The criterion mentions
+neither `X` nor `C`: the ambient space has no points, so both halves of `Generates`
+reduce to the existence of a function `Ω_J → Val(X)`. -/
+lemma generates_iff_isEmpty_ptOn [IsEmpty α] {J : Finset I} (X : Pt Ω → α)
+    (C : Set (Pt Ω)) : Generates J X C ↔ IsEmpty (PtOn Ω J) := by
+  haveI : IsEmpty (Pt Ω) := Function.isEmpty X
+  constructor
+  · intro hG
+    obtain ⟨f, -⟩ : ∃ f : PtOn Ω J → α, ∀ ω ∈ C, X ω = f (proj J ω) := hG.1
+    exact Function.isEmpty f
+  · intro hJ
+    exact ⟨⟨fun p => hJ.elim p, fun ω _ => isEmptyElim ω⟩,
+      disintegrates_of_eq_empty J (Set.eq_empty_of_subset_empty fun ω _ => isEmptyElim ω)⟩
+
+/-- Two variables with **empty** value spaces have the same history, given any events:
+by `generates_iff_isEmpty_ptOn` their generating families are the same family. -/
+lemma history_eq_of_isEmpty [IsEmpty α] [IsEmpty β] (X : Pt Ω → α) (Y : Pt Ω → β)
+    (C D : Set (Pt Ω)) : history X C = history Y D :=
+  history_congr fun J => by
+    rw [generates_iff_isEmpty_ptOn X C, generates_iff_isEmpty_ptOn Y D]
+
+/-- With an empty value space the history is contained in `{i₀}` for every empty factor
+`Ω_{i₀}`. -/
+lemma history_subset_singleton_of_isEmpty_factor [IsEmpty α] (X : Pt Ω → α)
+    (C : Set (Pt Ω)) {i₀ : I} (h : IsEmpty (Ω i₀)) : history X C ⊆ {i₀} :=
+  history_subset_of_generates ((generates_iff_isEmpty_ptOn X C).mpr
+    ⟨fun p => h.elim (p ⟨i₀, Finset.mem_singleton_self i₀⟩)⟩)
+
+/-- With an empty value space, a factor lying in the history is itself an empty factor,
+and is then the whole history: `H(X | C) = {i}` (which happens exactly when `i` is the
+*unique* empty factor — with two or more empty factors the history is `∅`). -/
+lemma history_eq_singleton_of_mem [IsEmpty α] {X : Pt Ω → α} {C : Set (Pt Ω)} {i : I}
+    (hi : i ∈ history X C) : IsEmpty (Ω i) ∧ history X C = {i} := by
+  haveI : IsEmpty (Pt Ω) := Function.isEmpty X
+  obtain ⟨i₀, h₀⟩ := exists_isEmpty_factor (Ω := Ω)
+  have hsub := history_subset_singleton_of_isEmpty_factor X C h₀
+  have hii : i = i₀ := Finset.mem_singleton.mp (hsub hi)
+  subst hii
+  exact ⟨h₀, Finset.Subset.antisymm hsub (Finset.singleton_subset_iff.mpr hi)⟩
+
 /-- **History of a joint variable.** `H((X, Y) | C) = H(X | C) ∪ H(Y | C)`.
 
+Stated exactly as the paper states it, with no hypothesis on `Val(X)`, `Val(Y)`: when
+either value space is empty the ambient space has no points and the identity is read off
+`history_eq_of_isEmpty` / `history_eq_empty_of_eq_empty`.
+
 Paper node: Lemma 4.8 (§4.2). -/
-theorem history_pair [Nonempty α] [Nonempty β] (X : Pt Ω → α) (Y : Pt Ω → β)
+theorem history_pair (X : Pt Ω → α) (Y : Pt Ω → β)
     (C : Set (Pt Ω)) : history (pair X Y) C = history X C ∪ history Y C := by
-  apply Finset.Subset.antisymm
-  · refine history_subset_of_generates ?_
-    rw [generates_iff]
-    have hX := generates_history X C
-    have hY := generates_history Y C
-    rw [generates_iff] at hX hY
-    refine ⟨hX.1.union hY.1, fun a ha b hb hab => ?_⟩
-    have h1 : X a = X b := hX.2 a ha b hb fun i hi => hab i (Finset.mem_union_left _ hi)
-    have h2 : Y a = Y b := hY.2 a ha b hb fun i hi => hab i (Finset.mem_union_right _ hi)
-    simp [pair, h1, h2]
-  · have hP := generates_history (pair X Y) C
-    exact Finset.union_subset
-      (history_subset_of_generates (hP.mono_left (DerivedOn.comp_left Prod.fst)))
-      (history_subset_of_generates (hP.mono_left (DerivedOn.comp_left Prod.snd)))
+  rcases isEmpty_or_nonempty α with hα | hα
+  · -- `Val(X)` empty: `Ω` has no points, and `Val((X, Y))` is empty too
+    haveI := hα
+    have hCe : C = ∅ := by
+      haveI : IsEmpty (Pt Ω) := Function.isEmpty X
+      exact Set.eq_empty_of_subset_empty fun ω _ => isEmptyElim ω
+    have hP : history (pair X Y) C = history X C := history_eq_of_isEmpty _ _ _ _
+    have hY : history Y C ⊆ history X C := by
+      rcases isEmpty_or_nonempty β with hβ | hβ
+      · haveI := hβ
+        rw [history_eq_of_isEmpty Y X C C]
+      · haveI := hβ
+        simp [history_eq_empty_of_eq_empty Y hCe]
+    rw [hP, Finset.union_eq_left.mpr hY]
+  · haveI := hα
+    rcases isEmpty_or_nonempty β with hβ | hβ
+    · -- `Val(Y)` empty, symmetrically
+      haveI := hβ
+      have hCe : C = ∅ := by
+        haveI : IsEmpty (Pt Ω) := Function.isEmpty Y
+        exact Set.eq_empty_of_subset_empty fun ω _ => isEmptyElim ω
+      have hP : history (pair X Y) C = history Y C := history_eq_of_isEmpty _ _ _ _
+      rw [hP, history_eq_empty_of_eq_empty X hCe, Finset.empty_union]
+    · haveI := hβ
+      apply Finset.Subset.antisymm
+      · refine history_subset_of_generates ?_
+        rw [generates_iff]
+        have hX := generates_history X C
+        have hY := generates_history Y C
+        rw [generates_iff] at hX hY
+        refine ⟨hX.1.union hY.1, fun a ha b hb hab => ?_⟩
+        have h1 : X a = X b := hX.2 a ha b hb fun i hi => hab i (Finset.mem_union_left _ hi)
+        have h2 : Y a = Y b := hY.2 a ha b hb fun i hi => hab i (Finset.mem_union_right _ hi)
+        simp [pair, h1, h2]
+      · have hP := generates_history (pair X Y) C
+        exact Finset.union_subset
+          (history_subset_of_generates (hP.mono_left (DerivedOn.comp_left Prod.fst)))
+          (history_subset_of_generates (hP.mono_left (DerivedOn.comp_left Prod.snd)))
 
 /-- The history of an event `A` given `C`: `H(A | C) = H(1_A | C)` (`dd:event-indicator`). -/
 noncomputable abbrev eventHistory (A C : Set (Pt Ω)) : Finset I := history (indic A) C

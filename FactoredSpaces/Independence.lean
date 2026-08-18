@@ -84,24 +84,44 @@ theorem structIndep_of_before {X : Pt Ω → α} {Y : Pt Ω → β} (h : Before 
 for every variable `Z`, then `X ≤ Y`".  Only the background variables `U_i` are needed
 as witnesses, so the hypothesis is stated for them.
 
+No hypothesis on `Val(X)`: if it is empty then `Ω` has no points and `H(X)` is either
+`∅` (nothing to prove) or the singleton `{i}` of the unique empty factor, in which case
+`H(U_i) = H(X)` and the hypothesis at `i` is already contradictory
+(`history_eq_singleton_of_mem`, `history_eq_of_isEmpty`).
+
 Paper node: Lemma 4.12 (§4.4). -/
-theorem before_of_forall_bg [Nonempty α] {X : Pt Ω → α} {Y : Pt Ω → β}
+theorem before_of_forall_bg {X : Pt Ω → α} {Y : Pt Ω → β}
     (h : ∀ i : I, StructIndep Y (bg (Ω := Ω) i) → StructIndep X (bg i)) : Before X Y := by
-  intro i hi
-  by_contra hiY
-  have hYU : StructIndep Y (bg (Ω := Ω) i) := by
-    refine Finset.disjoint_left.mpr fun j hjY hjU => ?_
-    have := history_bg_subset i _ (disintegrates_univ_set {i}) hjU
-    rw [Finset.mem_singleton] at this
-    exact hiY (this ▸ hjY)
-  exact Finset.disjoint_left.mp (h i hYU) hi (mem_history_bg_of_mem_history hi)
+  rcases isEmpty_or_nonempty α with hα | hα
+  · haveI := hα
+    intro i hi
+    obtain ⟨hΩi, hHX⟩ := history_eq_singleton_of_mem hi
+    haveI := hΩi
+    have hbg : history (bg (Ω := Ω) i) (Set.univ : Set (Pt Ω))
+        = history X (Set.univ : Set (Pt Ω)) := history_eq_of_isEmpty _ _ _ _
+    have hibg : i ∈ history (bg (Ω := Ω) i) (Set.univ : Set (Pt Ω)) := by rw [hbg]; exact hi
+    have hnX : ¬ StructIndep X (bg (Ω := Ω) i) := fun hd =>
+      Finset.disjoint_left.mp hd hi hibg
+    have hnY : ¬ Disjoint (history Y (Set.univ : Set (Pt Ω)))
+        (history (bg (Ω := Ω) i) (Set.univ : Set (Pt Ω))) := fun hY => hnX (h i hY)
+    rw [hbg, hHX, Finset.disjoint_singleton_right, not_not] at hnY
+    exact hnY
+  · haveI := hα
+    intro i hi
+    by_contra hiY
+    have hYU : StructIndep Y (bg (Ω := Ω) i) := by
+      refine Finset.disjoint_left.mpr fun j hjY hjU => ?_
+      have := history_bg_subset i _ (disintegrates_univ_set {i}) hjU
+      rw [Finset.mem_singleton] at this
+      exact hiY (this ▸ hjY)
+    exact Finset.disjoint_left.mp (h i hYU) hi (mem_history_bg_of_mem_history hi)
 
 /-- **Structural time and structural independence.** `X ≤_Ω Y` iff
 `Y ⊥_Ω Z ⟹ X ⊥_Ω Z` for all variables `Z` on `Ω` (with `Val(Z)` ranging over the
 factors' universe, which is where the witnesses `U_i` live).
 
 Paper node: Lemma 4.12 (§4.4). -/
-theorem before_iff_forall_structIndep [Nonempty α] (X : Pt Ω → α) (Y : Pt Ω → β) :
+theorem before_iff_forall_structIndep (X : Pt Ω → α) (Y : Pt Ω → β) :
     Before X Y ↔ ∀ (γ : Type v) (Z : Pt Ω → γ), StructIndep Y Z → StructIndep X Z :=
   ⟨fun h _ Z hYZ => structIndep_of_before h Z hYZ,
    fun h => before_of_forall_bg fun i => h (Ω i) (bg i)⟩
@@ -110,7 +130,7 @@ theorem before_iff_forall_structIndep [Nonempty α] (X : Pt Ω → α) (Y : Pt �
 `X ⊥ Y | W` and `X ⊥ Z | W` imply `X ⊥ (Y, Z) | W`.
 
 Paper node: Lemma B.1 (§B.1). -/
-theorem structIndepGiven_pair [Nonempty β] [Nonempty γ] {X : Pt Ω → α} {Y : Pt Ω → β}
+theorem structIndepGiven_pair {X : Pt Ω → α} {Y : Pt Ω → β}
     {Z : Pt Ω → γ} {W : Pt Ω → δ} (hY : StructIndepGiven X Y W) (hZ : StructIndepGiven X Z W) :
     StructIndepGiven X (pair Y Z) W := by
   intro w
