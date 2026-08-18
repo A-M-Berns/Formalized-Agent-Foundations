@@ -1726,23 +1726,44 @@ open FiniteFactoredSets in
 Nodes are cited by printed number (`Paper node: \`Definition 3.1\``) read off the committed
 text extraction `Condensation/notes/condensation-25-07.txt`; `scripts/check-condensation-nodes.py`
 enforces validity, anchoring, and that every annotated declaration appears in one of the
-two blocks below.  Status: **in progress** (M1 — statements for §2, §3, §3.1, §4 and §5;
-seventeen proofs still `sorry`, every one of them inside a declaration that carries a
-paper-node annotation, and `scripts/check_sorry_ledger.py` is what asserts that).  Nothing here is claimed complete; the roadmap is
-`Condensation/notes/roadmap.md`.  There are **no** residual modeling substitutions: the
+two blocks below.  Status: **statements and proofs complete** as of M2 (landed
+2026-08-18).  Every in-scope node of §2, §3, §3.1, §4 and §5 has a carrier, every carrier
+is proved, and there is **no `sorry` anywhere in `Condensation/`**:
+`scripts/check_sorry_ledger.py` enumerates every `sorryAx`-dependent declaration of the
+library from the compiled environment and reports zero for this paper.  Consequently the
+`CONDENSATION-PENDING` block below is **empty**, and the whole annotated surface is in the
+`#assert_axioms_clean` block.  (Examples 5.1-5.3 carry no declaration; they are
+illustrations rather than claims, and the coverage ruling that excludes them is on the
+record as *proposed*, not settled — `scripts/check-condensation-nodes.py` therefore reports
+39/42 rather than 42/42.)
+
+This is **not** the same as the paper being `completed` in `scripts/papers.py`: that status
+additionally requires a curated `Condensation/API.lean` boundary, client tests in
+`APITests/`, a human read-through and a final fresh-context audit, none of which has
+happened.  The roadmap is `Condensation/notes/roadmap.md`.  There are **no** residual
+modeling substitutions: the
 `dd:finite-range` narrowing was retired on 2026-08-17, and `Condensation.RVModel` is now
 Definition 3.1 verbatim — a countable discrete probability space *with finite entropy*
 (`ShannonInformation.FiniteEntropyMeasure`) carrying countable-discrete-range variables of
 finite entropy.  See `Condensation/README.md`.
 
-**Why there are two blocks: the staged inventory.**  This formalization reaches the
-paper's endpoints statement-first.  Several declarations already carry a `Paper node:`
-annotation because their *statement* is final and is the paper's real endpoint, while the
-proof is still `sorry` — milestone M2's work.  Such a declaration cannot be listed in
-`#assert_axioms_clean`: that command exists to catch exactly a `sorryAx` dependency, and
-listing it would either fail the build or tempt someone to weaken the check.  Dropping the
-`Paper node:` annotation instead would be a lie about the statement's provenance, and the
-node checker would then also stop guarding the statement.
+**Why there are two blocks: the staged inventory.**  This formalization reached the
+paper's endpoints statement-first, and the second block is the mechanism that made that
+honest.  A declaration may carry a `Paper node:` annotation because its *statement* is
+final and is the paper's real endpoint, while its proof is still `sorry`.  Such a
+declaration cannot be listed in `#assert_axioms_clean`: that command exists to catch
+exactly a `sorryAx` dependency, and listing it would either fail the build or tempt someone
+to weaken the check.  Dropping the `Paper node:` annotation instead would be a lie about
+the statement's provenance, and the node checker would then also stop guarding the
+statement.
+
+**The pending block is empty by construction, and is retained deliberately.**  M2
+discharged the last staged endpoint, so nothing is named there today.  It is kept, rather
+than deleted, because it is a live gate in both directions: `check_sorry_ledger.py` fails
+on a `sorryAx`-dependent declaration that is named in neither section *and* on a ledger
+entry that no longer depends on `sorryAx`, so an empty block is an assertion that there is
+nothing to stage, re-checked on every run.  Deleting it would remove the assertion, not
+record it.  A future statement-first endpoint is staged by adding a line back.
 
 So the annotated surface is split.  The `CONDENSATION-INVENTORY` block below is the
 ordinary axiom gate.  The `CONDENSATION-PENDING` block that follows it is **pure Lean
@@ -1767,9 +1788,9 @@ in *either* block, and fences the staging with four hard failures: a name in bot
 a pending entry naming no annotated declaration (a stale entry outliving its endpoint), a
 malformed pending line, and a non-empty pending block once `scripts/papers.py` registers
 the paper `completed`.  A surviving non-empty block prints as a note carrying the count,
-which is the number to watch shrink.  **Moving a name from the pending block to the
-inventory block is what "M2 proved this endpoint" means**; the two edits belong in the
-same commit as the proof. -/
+which is the number to watch shrink; it prints no such note now.  **Moving a name from the
+pending block to the inventory block is what "M2 proved this endpoint" means**; the two
+edits belong in the same commit as the proof, and M2 made the last of them. -/
 
 -- CONDENSATION-INVENTORY-BEGIN
 #assert_axioms_clean
@@ -1809,11 +1830,10 @@ same commit as the proof. -/
   Condensation.RVModel.IsEquivalence Condensation.RVModel.Equivalent
   Condensation.RVModel.Hom.aeEq_equivalence Condensation.RVModel.Hom.comp_aeEq_congr
   Condensation.RVModelObj.equivalent_equivalence
-  -- §4 (Condensation/Perfect.lean, Amalgamation.lean, Examples.lean): the endpoints whose
-  -- proofs are finished.  Proposition 4.2 is three separate inequalities and only two of
-  -- them are here -- the middle one, (4.7)-(4.9), is staged below, and Corollary 4.6 with
-  -- it, since Corollary 4.6's proof consumes it.  Definitions 4.11 and 4.12 are structures
-  -- and are clean as such.
+  -- §4 (Condensation/Perfect.lean, Amalgamation.lean, Comparison.lean, Examples.lean).
+  -- All three of Proposition 4.2's inequalities are here as of M2, including the middle
+  -- one, (4.7)-(4.9), which used to be staged; Corollary 4.6, whose proof consumes it,
+  -- came with it.  Definitions 4.11 and 4.12 are structures and are clean as such.
   --
   -- **Lemma 4.13 is complete as of 2026-08-17.**  Its three supporting measure lemmas --
   -- (4.55)-(4.56) total mass and both halves of (4.57) -- were the library's last
@@ -1824,16 +1844,23 @@ same commit as the proof. -/
   -- rather than staged, and every remaining `sorry` in the library now sits inside a
   -- declaration that carries a paper-node annotation.
   Condensation.LatentModel.simpleScore_ge_condScore
+  Condensation.LatentModel.condScore_ge_entropy_jointContrib
   Condensation.LatentModel.entropy_jointContrib_ge_entropy_joint
   Condensation.LatentModel.PerfectlyCondenses Condensation.LatentModel.SimplyPerfectlyCondenses
   Condensation.LatentModel.perfect_entropy_iff_aeFunctionOf
+  Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses
+  Condensation.LatentModel.perfect_tfae_A Condensation.LatentModel.perfect_tfae_B
   Condensation.LatentModel.aeFunctionOf_iff_isEquivalence_contribModel
-  Condensation.RVModel.OrderedMarkov
+  Condensation.RVModel.OrderedMarkov Condensation.RVModel.orderedMarkov_iff
   Condensation.Amalgamation Condensation.LatentAmalgamation
   Condensation.Amalgamation.canonical Condensation.nonempty_amalgamation
   Condensation.LatentAmalgamation.canonical Condensation.nonempty_latentAmalgamation
   Condensation.Example41.L₁ Condensation.Example41.L₂
   Condensation.Example44.M44 Condensation.Example44.L44
+  -- Example 4.1's (4.2)-(4.5) and Example 4.4's (4.11) and conclusion: proved at M2.
+  Condensation.Example41.L₁_simpleScore Condensation.Example41.L₁_condScore
+  Condensation.Example41.L₂_simpleScore Condensation.Example41.L₂_condScore
+  Condensation.Example44.entropy_joint_eq Condensation.Example44.simplyPerfectlyCondenses
   -- §5 (Condensation/Quantitative.lean): Lemma 5.4 in both printed forms, Definition 5.5's
   -- polar, Definition 5.6's intersection tree with its computed labels and its family of
   -- intersections (5.11), Proposition 5.7 in full (existence and uniqueness of the
@@ -1854,6 +1881,15 @@ same commit as the proof. -/
   Condensation.ITree.label_eq_leaves_foldr
   Condensation.eq_decorate_of_isIntersectionTree Condensation.existsUnique_intersectionTree
   Condensation.polar_kSubsets
+  -- Lemma 4.14 (Comparison.lean), proved at M2 with the [MeasurableSingletonClass S] binder ruling.
+  Condensation.aeFunctionOf_of_condIndepFun
+  -- Theorem 4.15 (Comparison.lean), proved at M2 (the induction the paper omits — erratum 5 — is `aeFunctionOf_jointAbove_aux`).
+  Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses
+  -- M2: Theorem 5.8 in both printed forms, Corollary 5.9 (both forms) and Corollary 5.10's (5.25).
+  Condensation.condEntropy_jointAbove_eq Condensation.condEntropy_jointAbove_le
+  Condensation.condEntropy_jointAbove_le_reconScore
+  Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov
+  Condensation.condEntropy_jointAbove_le_choose
 -- CONDENSATION-INVENTORY-END
 
 -- The staged half of the Condensation annotated surface: endpoints whose *statements* are
@@ -1864,29 +1900,15 @@ same commit as the proof. -/
 -- `#assert_axioms_clean` block above is what "M2 proved this endpoint" means, and the two
 -- edits belong in the same commit as the proof.
 --
+-- **Both sections are empty as of M2 (2026-08-18), and that is the point.**  There is no
+-- `sorry` left in `Condensation/`, so there is nothing to stage.  Do not delete the block:
+-- `scripts/check_sorry_ledger.py` cross-checks it against the compiled environment in both
+-- directions on every run, so "empty" is a re-verified assertion rather than an absence.
+-- The `-- SECTION:` marker line must stay for the same reason -- the second section is
+-- where an un-annotated consumer of a staged theorem would be named (R2-F22).
+--
 -- CONDENSATION-PENDING-BEGIN
--- Condensation.LatentModel.condScore_ge_entropy_jointContrib   -- M2: Proposition 4.2 (4.7)-(4.9); needs the finite-family chain rule
--- Condensation.LatentModel.aeFunctionOf_of_perfectlyCondenses  -- M2: Corollary 4.6; proof complete, but consumes Proposition 4.2's staged inequality
--- Condensation.RVModel.orderedMarkov_iff                       -- M2: Proposition 4.10 (4.38); same chain rule
--- Condensation.LatentModel.perfect_tfae_A                      -- M2: Theorem 4.9 (A1)-(A3); same chain rule
--- Condensation.LatentModel.perfect_tfae_B                      -- M2: Theorem 4.9 (B1) iff (B2); same chain rule
--- Condensation.aeFunctionOf_of_condIndepFun                    -- M2: Lemma 4.14
--- Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses   -- M2: Theorem 4.15; the induction is not in the paper (errata 5)
--- Condensation.condEntropy_jointAbove_le                       -- M2: Theorem 5.8 (5.13)
--- Condensation.condEntropy_jointAbove_eq                       -- M2: Theorem 5.8 (5.14)
--- Condensation.condEntropy_jointAbove_le_reconScore            -- M2: Corollary 5.9 (5.21)
--- Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov -- M2: Corollary 5.9 (5.22)
--- Condensation.condEntropy_jointAbove_le_choose                -- M2: Corollary 5.10 (5.25)
--- Condensation.Example41.L₁_simpleScore                        -- M2: Example 4.1, equation (4.2)
--- Condensation.Example41.L₁_condScore                          -- M2: Example 4.1, equation (4.3)
--- Condensation.Example41.L₂_simpleScore                        -- M2: Example 4.1, equation (4.4) (errata 11: takes A.Nonempty)
--- Condensation.Example41.L₂_condScore                          -- M2: Example 4.1, equation (4.5) (errata 11: takes A.Nonempty)
--- Condensation.Example44.entropy_joint_eq                      -- M2: Example 4.4, equation (4.11); needs joint independence
--- Condensation.Example44.simplyPerfectlyCondenses              -- M2: Example 4.4's conclusion; immediate from (4.11)
 -- SECTION: consumers (un-annotated)
--- Condensation.LatentModel.entropy_joint_le_condScore          -- consumes Proposition 4.2's staged inequality (4.7)-(4.9)
--- Condensation.LatentModel.entropy_joint_le_simpleScore        -- consumes Proposition 4.2's staged inequality, via entropy_joint_le_condScore
--- Condensation.LatentModel.PerfectlyCondenses.of_simply        -- consumes Proposition 4.2's staged inequality, via entropy_joint_le_condScore
 -- CONDENSATION-PENDING-END
 
 /-! Tier-2 boundary structures for the Condensation surface.
@@ -2129,6 +2151,37 @@ open Condensation in
   Condensation.LatentModel.entropy_pullbackJoint
   Condensation.contribIdx_subset_contrib Condensation.incomparable
   Condensation.isUpperSet_contrib Condensation.isUpperSet_above Condensation.contrib_injective
+  -- M2 additions.  `ChainRule.lean`: the chain rule for a *finite family* of joint
+  -- variables along a strict linear order, which PFR does not have (it stops at the two-
+  -- and three-variable forms) and which all four remaining §4 endpoints run on.  None of
+  -- it is a numbered node: `entropy_jointOn_eq_sum` is the shape of (4.9)/(4.29)/(4.34),
+  -- `condEntropy_jointOn_eq_sum` the shape of (4.38), `condEntropy_jointOn_mono` is (4.8),
+  -- and the two `condIndepFun` bridges are the termwise equalities (4.30)/(4.35)/(4.40).
+  -- The two order constructions are the paper's own linear extensions -- of reverse
+  -- inclusion (4.7), and of the partial order `⪯ₚ` of the paragraph before (4.29).
+  Condensation.exists_strictTotalOrder_ext
+  Condensation.exists_revIncl_strictTotalOrder
+  Condensation.exists_revIncl_strictTotalOrder_incomparable_first
+  Condensation.pred_subset_incomparable_union_strictAbove
+  Condensation.RVModel.condEntropy_pair_jointOn Condensation.RVModel.condEntropy_jointOn_mono
+  Condensation.RVModel.condEntropy_jointOn_sdiff Condensation.RVModel.condEntropy_jointOn_above
+  Condensation.RVModel.condEntropy_jointOn_eq_sum Condensation.RVModel.entropy_jointOn_eq_sum
+  Condensation.RVModel.condEntropy_jointOn_eq_of_condIndepFun
+  Condensation.RVModel.condIndepFun_of_condEntropy_jointOn_eq
+  -- and the two directions of "joint independence of a finite family ⟺ additivity of
+  -- entropy", which Theorem 4.9's (A1) ⟺ (A3) needs both of.  PFR's
+  -- `iIndepFun.entropy_eq_add` is the forward direction only, and only at `Fin m`.
+  Condensation.RVModel.entropy_jointOn_le_sum
+  Condensation.RVModel.entropy_jointOn_eq_sum_of_iIndepFun
+  Condensation.RVModel.entropy_jointOn_eq_sum_of_subset
+  Condensation.RVModel.indepFun_X_jointOn_of_entropy_eq
+  Condensation.RVModel.iIndepFun_of_entropy_jointOn_eq_sum
+  -- The three consequences of Proposition 4.2's chain that used to sit in the pending
+  -- block's `consumers` section: with (4.7)-(4.9) proved they are axiom-clean, and they
+  -- are consequences of the chain rather than nodes of the paper, so they belong here.
+  Condensation.LatentModel.entropy_joint_le_condScore
+  Condensation.LatentModel.entropy_joint_le_simpleScore
+  Condensation.LatentModel.PerfectlyCondenses.of_simply
   -- `Morphism.lean`: the §3.1 machinery around the endpoints.  `Hom.ofSameIndex` and
   -- `isEquivalence_ofSameIndex_iff` are the "laid out" characterization the paragraph after
   -- Definition 3.10 gives, which is the shape Proposition 4.7 consumes; `Hom.ext` needs
@@ -2187,3 +2240,51 @@ open Condensation in
   Condensation.coinCollapse Condensation.coinObj Condensation.twoCoinObj
   Condensation.coinCollapseArrow
   Condensation.pairCoinModel Condensation.pairCoinHom₁ Condensation.pairCoinHom₂
+  -- M2 close-out (2026-08-18): the generic machinery the four M2 proof shards needed.
+  -- Each shard owned a single file, so these landed in "TO BE MOVED" sections of
+  -- `Comparison.lean` / `Quantitative.lean` / `Examples.lean` and were relocated to their
+  -- proper homes in this pass; they are listed here, not in the inventory above, because
+  -- none of them is a numbered node.
+  --
+  -- `Probability.lean`, beside the rest of the `AEFunctionOf` API and the §2 entropy
+  -- substrate.  `congr_left`/`congr_right` transport a dependence across an a.e. equality
+  -- of the independent/dependent variable respectively -- `congr_right` is what consumes
+  -- `LatentAmalgamation.comm`, reconciling Definition 4.12's `π̃₂` with Theorem 5.8's `π̃₁`.
+  -- The three `condEntropy_*_of_aeFunctionOf` lemmas are the conditional analogues of
+  -- `entropy_le_of_aeFunctionOf`; the two `_of_subsingleton` lemmas are the companions of
+  -- `condEntropy_eq_entropy_of_subsingleton` above, for a *conditioned* variable of
+  -- subsingleton range (Example 4.1's guarded-subtype encoding of "let `Y_A` be constant").
+  Condensation.AEFunctionOf.congr_left Condensation.AEFunctionOf.congr_right
+  Condensation.AEFunctionOf.prodMk_left
+  Condensation.condEntropy_congr_of_aeFunctionOf
+  Condensation.condEntropy_le_condEntropy_of_aeFunctionOf
+  Condensation.condEntropy_le_of_aeFunctionOf
+  Condensation.entropy_eq_zero_of_subsingleton Condensation.condEntropy_eq_zero_of_subsingleton
+  -- `Model.lean`, beside the Definition 3.4 auxiliaries and the other index-family facts.
+  -- `functionOf_jointOn_union` is the union companion of `functionOf_jointOn_mono` above;
+  -- `above_mono` is antitonicity of the upward cones; `isUpperSet_iInter_contribIdx` is the
+  -- invariant Theorem 4.15's induction carries, so that Proposition 4.10 applies at each
+  -- step.
+  Condensation.RVModel.functionOf_jointOn_union
+  Condensation.above_mono Condensation.isUpperSet_iInter_contribIdx
+  -- `ChainRule.lean`: the `famFinset` restatement of `entropy_jointOn_eq_sum_of_iIndepFun`
+  -- above, which is the form §4's clients rewrite with.  It replaces three `private`
+  -- lemmas that had been re-proved independently in `Examples.lean`.
+  Condensation.RVModel.entropy_jointOn_eq_sum_famFinset
+  -- `Amalgamation.lean`: `symm` reads an amalgamation of `L₁` with `L₂` backwards, which is
+  -- the paper's "using the symmetry of the situation to interchange `Y` and `Z`".  The two
+  -- `condScore_lat` lemmas transfer Definition 3.3's `χ` along `ρₖ`; they are what let
+  -- Corollary 4.6 and Theorem 4.9 be applied to `L̃ₖ` rather than to `Lₖ`, which is
+  -- necessary because R2-F12/F20 deleted the `ρₖ_π` fields and left no relation between
+  -- `Lₖ.π ∘ ρₖ` and `π̃ₖ`.  `finiteEntropyOf'` is the same instance as
+  -- `RVModel.finiteEntropyOf` with the sample space spelled `Λ₀`; the spelling is
+  -- load-bearing, since `lat₁`/`rv₁` are plain `def`s that instance search will not unfold.
+  Condensation.LatentAmalgamation.symm
+  Condensation.LatentAmalgamation.condScore_lat₁ Condensation.LatentAmalgamation.condScore_lat₂
+  Condensation.LatentAmalgamation.finiteEntropyOf'
+  -- `Comparison.lean`: the `PerfectlyCondenses` companions of the two `condScore_lat`
+  -- lemmas.  They stay here rather than moving to `Amalgamation.lean` with the rest,
+  -- because Definition 4.3 lives in `Perfect.lean`, which `Amalgamation.lean` does not
+  -- import.
+  Condensation.LatentAmalgamation.perfectlyCondenses_lat₁
+  Condensation.LatentAmalgamation.perfectlyCondenses_lat₂

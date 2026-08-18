@@ -1,3 +1,4 @@
+import Condensation.ChainRule
 import Condensation.Morphism
 
 /-!
@@ -94,16 +95,19 @@ namespace Condensation
 -- collides with `LatentModel`'s field name `π`.
 open MeasureTheory ProbabilityTheory
 
-/-! ## Note for whoever proves the remaining `sorry`s
+/-! ## Note on the machinery this file runs on
 
 The linear-extension argument that Proposition 4.2 (4.7)–(4.9), Theorem 4.9 (4.29)–(4.36)
-and Proposition 4.10 (4.38) all run on needs `Mathlib.Order.Extension.Linear`
-(`LinearExtension`, `toLinearExtension`), which is *not* in the transitive import closure
-of `ShannonInformation.API` at this pin; `Condensation/Model.lean` imports it explicitly so
-that it is available here.  It also needs a chain rule for a *finite family* of variables
-along a linear order; the vendored library has only the two- and three-variable forms
-(`chain_rule`, `chain_rule'`, `chain_rule''`, `cond_chain_rule`, `cond_chain_rule'`), so
-that generalization has to be built.
+and Proposition 4.10 (4.38) all run on, together with the chain rule for a *finite family*
+of variables along a linear order that the vendored library does not have (it stops at
+`chain_rule`, `chain_rule'`, `chain_rule''`, `cond_chain_rule`, `cond_chain_rule'`), lives
+in `Condensation/ChainRule.lean`: `exists_revIncl_strictTotalOrder` and
+`exists_revIncl_strictTotalOrder_incomparable_first` are the two orders, and
+`RVModel.entropy_jointOn_eq_sum` / `RVModel.condEntropy_jointOn_eq_sum` the expansion.
+`RVModel.condEntropy_jointOn_mono` is (4.8), and the two bridges
+`RVModel.condEntropy_jointOn_eq_of_condIndepFun` /
+`RVModel.condIndepFun_of_condEntropy_jointOn_eq` are the termwise equalities
+(4.30)/(4.32), (4.35) and (4.40).
 
 The generic facts about `RVModel.joint`/`RVModel.jointOn` and the index families of
 Definition 3.4 that this file runs on — `RVModel.functionOf_jointOn_mono`,
@@ -144,7 +148,21 @@ information (4.8), and recognises the resulting sum as a chain-rule expansion of
 Paper node: `Proposition 4.2` -/
 theorem condScore_ge_entropy_jointContrib (A : Finset I) :
     H[L.jointContrib A ; L.P] ≤ L.condScore A := by
-  sorry
+  obtain ⟨r, hr, hrev⟩ := exists_revIncl_strictTotalOrder (I := I)
+  haveI := hr
+  have hcoe : ((famFinset (contrib A) : Finset (PPlus I)) : Set (PPlus I)) = contrib A := by
+    ext B; simp
+  have hexp := L.L.entropy_jointOn_eq_sum r (famFinset (contrib A))
+  rw [hcoe] at hexp
+  rw [show L.jointContrib A = L.L.jointOn (contrib A) from rfl, hexp]
+  refine Finset.sum_le_sum fun B hB => ?_
+  -- (4.8): every strict superset of `B` already contributes to `A`, and precedes `B` in
+  -- `r`, so `Y_⊋B` is a coordinate restriction of `Y_{C ≺ B}` and conditioning on the
+  -- larger family can only decrease the entropy.
+  refine L.L.condEntropy_jointOn_mono (L.L.measurable_X B) fun C hC => ?_
+  obtain ⟨i, hiA, hiB⟩ := mem_famFinset.mp hB
+  have hBC : B < C := PPlus.lt_iff.mpr hC
+  exact ⟨mem_famFinset.mpr ⟨i, hiA, PPlus.le_iff.mp hBC.le hiB⟩, hrev C B hBC⟩
 
 /-- The third inequality of **(4.6)**: `H(Y_∩A) ≥ H(X_A)`.  `X_A` is a.e. a function of
 `Y_∩A` by Definition 3.2, and entropy is monotone under a.e. functional dependence.
@@ -166,15 +184,14 @@ itself — the chain `σ_L(A) ≥ χ_L(A) ≥ H(Y_∩A) ≥ H(X_A)` is the three
 `entropy_jointContrib_ge_entropy_joint`, which are what carry the paper-node annotation
 for Proposition 4.2.
 
-Depends on Proposition 4.2's staged middle inequality, so it is not axiom-clean; it is
-listed in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block among the un-annotated
-consumers. -/
+A consequence of the chain rather than a node of the paper, so it carries no paper-node
+annotation; it is inventoried in `AxiomAudit.lean` among the un-annotated conveniences. -/
 lemma entropy_joint_le_condScore (A : Finset I) : H[M.joint A ; M.P] ≤ L.condScore A :=
   (L.entropy_jointContrib_ge_entropy_joint A).trans (L.condScore_ge_entropy_jointContrib A)
 
 /-- The two outer ends of (4.6) again, one step further out: `H(X_A) ≤ σ_L(A)`.  Like
 `entropy_joint_le_condScore`, a consequence of the chain rather than a node of the paper,
-and staged for the same reason. -/
+and un-annotated for the same reason. -/
 lemma entropy_joint_le_simpleScore (A : Finset I) : H[M.joint A ; M.P] ≤ L.simpleScore A :=
   (L.entropy_joint_le_condScore A).trans (L.simpleScore_ge_condScore A)
 
@@ -200,10 +217,8 @@ def SimplyPerfectlyCondenses : Prop := ∀ A : Finset I, L.simpleScore A = H[M.j
 /-- A simple-perfect condensation is a perfect condensation: this is the squeeze
 `σ_L(A) ≥ χ_L(A) ≥ H(X_A) = σ_L(A)` of (4.21).
 
-Carries no paper-node annotation — (4.21) is a step inside a proof, not a numbered node — and
-consumes Proposition 4.2's staged middle inequality through
-`entropy_joint_le_condScore`, so it is staged among the un-annotated consumers of
-`AxiomAudit.lean`'s `CONDENSATION-PENDING` block. -/
+Carries no paper-node annotation — (4.21) is a step inside a proof, not a numbered node — so
+it is inventoried among the un-annotated conveniences of `AxiomAudit.lean`. -/
 lemma PerfectlyCondenses.of_simply (h : L.SimplyPerfectlyCondenses) : L.PerfectlyCondenses :=
   fun A => le_antisymm ((h A) ▸ L.simpleScore_ge_condScore A) (L.entropy_joint_le_condScore A)
 
@@ -396,14 +411,114 @@ def RVModel.OrderedMarkov (N : RVModel (PPlus I)) : Prop :=
 upward-closed families `F, G ⊆ P⁺I`, the variables `Y_F` and `Y_G` are independent
 conditional on `Y_{F ∩ G}`.
 
-The paper's hypothesis is that the `Y_A` have finite entropy; here that is supplied by
-`dd:finite-range`, which every `RVModel` carries.
+The paper's hypothesis is that the `Y_A` have finite entropy; here that comes from
+Definition 3.1's own clause on `Ω` — the `RVModel` field `finiteEntropy_Ω`, via
+`RVModel.finiteEntropyOf` — so no hypothesis is carried locally.  (Until 2026-08-17 it was
+supplied by the narrowing `dd:finite-range` instead; that decision is retired.)
 
 Paper node: `Proposition 4.10` -/
 theorem RVModel.orderedMarkov_iff (N : RVModel (PPlus I)) :
     N.OrderedMarkov ↔ ∀ F G : Set (PPlus I), IsUpperSet F → IsUpperSet G →
       CondIndepFun (N.jointOn F) (N.jointOn G) (N.jointOn (F ∩ G)) N.P := by
-  sorry
+  classical
+  have hsymm : ∀ {S₁ S₂ S₃ : Set (PPlus I)},
+      CondIndepFun (N.jointOn S₁) (N.jointOn S₂) (N.jointOn S₃) N.P →
+      CondIndepFun (N.jointOn S₂) (N.jointOn S₁) (N.jointOn S₃) N.P := by
+    intro S₁ S₂ S₃ h
+    rw [← ShannonInformation.condMutualInfo_eq_zero (N.measurable_jointOn _)
+      (N.measurable_jointOn _) (N.measurable_jointOn _)] at h ⊢
+    rwa [ProbabilityTheory.condMutualInfo_comm (N.measurable_jointOn S₂)
+      (N.measurable_jointOn S₁)]
+  constructor
+  · intro hM F G hF hG
+    have key : H[N.jointOn G | N.jointOn F ; N.P] =
+        H[N.jointOn G | N.jointOn (F ∩ G) ; N.P] := by
+      obtain ⟨r, hr, hrev⟩ := exists_revIncl_strictTotalOrder (I := I)
+      haveI := hr
+      obtain ⟨D, hD⟩ : ∃ D : Finset (PPlus I), (↑D : Set (PPlus I)) = G \ F :=
+        ⟨famFinset (G \ F), by ext B; simp⟩
+      have hterm : ∀ A ∈ D, ∀ W : Set (PPlus I), F ∩ G ⊆ W → W ⊆ F →
+          H[N.X A | N.jointOn ({C | C ∈ D ∧ r C A} ∪ W) ; N.P] =
+            H[N.X A | N.jointOn (strictAbove A.toFinset) ; N.P] := by
+        intro A hA W hW1 hW2
+        have hAD : A ∈ G \ F := by rw [← hD]; exact hA
+        refine N.condEntropy_jointOn_eq_of_condIndepFun (N.measurable_X A) (hM A) ?_ ?_
+        · intro B hB
+          have hAB : A < B := PPlus.lt_iff.mpr hB
+          have hBG : B ∈ G := hG hAB.le hAD.1
+          simp only [Set.mem_union, Set.mem_setOf_eq]
+          by_cases hBF : B ∈ F
+          · exact Or.inr (hW1 ⟨hBF, hBG⟩)
+          · exact Or.inl ⟨by rw [← Finset.mem_coe, hD]; exact ⟨hBG, hBF⟩, hrev B A hAB⟩
+        · intro B hB
+          simp only [Set.mem_union, Set.mem_setOf_eq] at hB
+          have hnle : ¬ B ≤ A := by
+            rcases hB with hBP | hBW
+            · intro hBA
+              rcases eq_or_lt_of_le hBA with rfl | hlt
+              · exact irrefl_of r B hBP.2
+              · exact irrefl_of r B (trans_of r hBP.2 (hrev A B hlt))
+            · intro hBA
+              exact hAD.2 (hF hBA (hW2 hBW))
+          simp only [Set.mem_union, mem_incomparable, mem_strictAbove]
+          by_cases hAle : A ≤ B
+          · exact Or.inr (PPlus.lt_iff.mp
+              (lt_of_le_of_ne hAle (fun hc => hnle (hc ▸ le_rfl))))
+          · exact Or.inl ⟨hnle, hAle⟩
+      have step : ∀ W : Set (PPlus I), F ∩ G ⊆ W → W ⊆ F →
+          H[N.jointOn G | N.jointOn W ; N.P] =
+            ∑ A ∈ D, H[N.X A | N.jointOn (strictAbove A.toFinset) ; N.P] := by
+        intro W hW1 hW2
+        have hGW : G \ W = G \ F := by
+          ext B
+          simp only [Set.mem_sdiff]
+          exact ⟨fun h => ⟨h.1, fun hBF => h.2 (hW1 ⟨hBF, h.1⟩)⟩,
+            fun h => ⟨h.1, fun hBW => h.2 (hW2 hBW)⟩⟩
+        rw [N.condEntropy_jointOn_sdiff G W, hGW, ← hD,
+          N.condEntropy_jointOn_eq_sum (N.measurable_jointOn W) r D]
+        refine Finset.sum_congr rfl fun A hA => ?_
+        rw [N.condEntropy_pair_jointOn (N.measurable_X A) {C | C ∈ D ∧ r C A} W]
+        exact hterm A hA W hW1 hW2
+      rw [step F Set.inter_subset_left subset_rfl,
+        step (F ∩ G) subset_rfl Set.inter_subset_left]
+    exact hsymm (N.condIndepFun_of_condEntropy_jointOn_eq (N.measurable_jointOn G)
+      (Set.union_subset subset_rfl Set.inter_subset_left) key)
+  · intro h2 A
+    have hF : IsUpperSet (incomparable A ∪ strictAbove A.toFinset) := by
+      rintro B C hBC (hB | hB)
+      · have hCA : ¬ C ≤ A := fun h => hB.1 (hBC.trans h)
+        by_cases hAC : A ≤ C
+        · exact Or.inr (PPlus.lt_iff.mp
+            (lt_of_le_of_ne hAC (fun hc => hCA (hc ▸ le_rfl))))
+        · exact Or.inl ⟨hCA, hAC⟩
+      · exact Or.inr (PPlus.lt_iff.mp (lt_of_lt_of_le (PPlus.lt_iff.mpr hB) hBC))
+    have hG : IsUpperSet (above A.toFinset) := isUpperSet_above _
+    have hFG : (incomparable A ∪ strictAbove A.toFinset) ∩ above A.toFinset =
+        strictAbove A.toFinset := by
+      ext B
+      constructor
+      · rintro ⟨hB | hB, hBG⟩
+        · exact absurd (PPlus.le_iff.mpr hBG) hB.2
+        · exact hB
+      · intro hB
+        exact ⟨Or.inr hB, strictAbove_subset_above _ hB⟩
+    have h := hsymm (h2 (incomparable A ∪ strictAbove A.toFinset) (above A.toFinset) hF hG)
+    rw [hFG] at h
+    have e1 : H[N.jointOn (above A.toFinset) |
+          N.jointOn (incomparable A ∪ strictAbove A.toFinset) ; N.P] =
+        H[N.jointOn (above A.toFinset) | N.jointOn (strictAbove A.toFinset) ; N.P] :=
+      N.condEntropy_jointOn_eq_of_condIndepFun (N.measurable_jointOn _) h
+        Set.subset_union_right Set.subset_union_left
+    have e2 : H[N.jointOn (above A.toFinset) |
+          N.jointOn (incomparable A ∪ strictAbove A.toFinset) ; N.P] =
+        H[N.X A | N.jointOn (incomparable A ∪ strictAbove A.toFinset) ; N.P] :=
+      N.condEntropy_jointOn_above A Set.subset_union_right
+    have e3 : H[N.jointOn (above A.toFinset) |
+          N.jointOn (strictAbove A.toFinset) ; N.P] =
+        H[N.X A | N.jointOn (strictAbove A.toFinset) ; N.P] :=
+      N.condEntropy_jointOn_above A subset_rfl
+    exact N.condIndepFun_of_condEntropy_jointOn_eq (N.measurable_X A) subset_rfl
+      (by rw [← e2, ← e3, e1])
 
 end Markov
 
@@ -430,7 +545,61 @@ theorem perfect_tfae_A :
         (∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P) ∧
           iIndepFun L.Y L.P,
         L.PerfectlyCondenses ∧ iIndepFun L.Y L.P] := by
-  sorry
+  classical
+  -- (A1 ⇒ A3), equations (4.21)–(4.26).
+  tfae_have 1 → 3 := by
+    intro h1
+    refine ⟨PerfectlyCondenses.of_simply L h1, ?_⟩
+    letI : Fintype I := Fintype.ofFinite I
+    -- Every `B ∈ P⁺I` is nonempty, hence meets `I`: `contrib I` is all of `P⁺I`.
+    have hcontrib : contrib (Finset.univ : Finset I) = (Set.univ : Set (PPlus I)) := by
+      ext B
+      simp only [mem_contrib, Set.mem_univ, iff_true]
+      obtain ⟨i, hi⟩ := B.nonempty
+      exact ⟨i, Finset.mem_univ i, hi⟩
+    have hcoe : ((famFinset (contrib (Finset.univ : Finset I)) : Finset (PPlus I)) :
+        Set (PPlus I)) = contrib (Finset.univ : Finset I) := by
+      ext B; simp
+    refine L.L.iIndepFun_of_entropy_jointOn_eq_sum
+      (t := famFinset (contrib (Finset.univ : Finset I)))
+      (fun B => mem_famFinset.mpr (hcontrib ▸ Set.mem_univ B)) ?_
+    rw [hcoe]
+    -- (4.21) at `A = I`: `σ_L(I) ≥ χ_L(I) ≥ H(Y_∩I) ≥ H(X_I) = σ_L(I)`, so `(4.23)`.
+    have h2 := L.condScore_ge_entropy_jointContrib (Finset.univ : Finset I)
+    have h3 := L.simpleScore_ge_condScore (Finset.univ : Finset I)
+    have h4 := L.entropy_jointContrib_ge_entropy_joint (Finset.univ : Finset I)
+    have h5 := h1 (Finset.univ : Finset I)
+    show H[L.jointContrib (Finset.univ : Finset I) ; L.P] = L.simpleScore Finset.univ
+    linarith
+  -- (A3 ⇒ A2): Corollary 4.6, carrying the independence conjunct through.
+  tfae_have 3 → 2 := fun h => ⟨L.aeFunctionOf_of_perfectlyCondenses h.1, h.2⟩
+  -- (A2 ⇒ A1), equations (4.27)–(4.28).
+  tfae_have 2 → 1 := by
+    rintro ⟨hfun, hindep⟩
+    have hent := L.perfect_entropy_iff_aeFunctionOf.mpr hfun
+    intro B
+    rcases B.eq_empty_or_nonempty with rfl | hB
+    · -- `contrib ∅ = ∅`, so `σ_L(∅)` is the empty sum and `X_∅` is a constant.
+      have hfam : famFinset (contrib (∅ : Finset I)) = (∅ : Finset (PPlus I)) := by
+        ext C; simp
+      haveI : IsEmpty ((∅ : Finset I) : Type _) := ⟨fun i => Finset.notMem_empty i.1 i.2⟩
+      have hconst : M.joint (∅ : Finset I) =
+          fun _ => (default : ∀ i : (∅ : Finset I), M.R i) :=
+        funext fun _ => Subsingleton.elim _ _
+      calc L.simpleScore (∅ : Finset I)
+          = ∑ C ∈ famFinset (contrib (∅ : Finset I)), H[L.L.X C ; L.L.P] := rfl
+        _ = 0 := by rw [hfam, Finset.sum_empty]
+        _ = H[M.joint (∅ : Finset I) ; M.P] := by rw [hconst, entropy_const]
+    · -- (4.28): `σ_L(B) = H(Y_∩B)` by independence, and `H(Y_∩B) = H(X_B)` by Lemma 4.5.
+      have hA := hent ⟨B, hB⟩
+      have halpha := L.L.entropy_jointOn_eq_sum_of_iIndepFun hindep (famFinset (contrib B))
+      have hcoe : ((famFinset (contrib B) : Finset (PPlus I)) : Set (PPlus I)) = contrib B := by
+        ext C; simp
+      rw [hcoe] at halpha
+      calc L.simpleScore B = ∑ C ∈ famFinset (contrib B), H[L.L.X C ; L.L.P] := rfl
+        _ = H[L.L.jointOn (contrib B) ; L.L.P] := halpha.symm
+        _ = H[M.joint B ; M.P] := hA
+  tfae_finish
 
 /-- **Theorem 4.9**, the (B1) ⟺ (B2) equivalence: `L` perfectly condenses `M` if and only
 if every `Y_A` with `i ∈ A` is a.e. a function of `X_i` and the latents obey the ordered
@@ -447,7 +616,87 @@ theorem perfect_tfae_B :
     L.PerfectlyCondenses ↔
       ((∀ (i : I) (A : PPlus I), i ∈ A → AEFunctionOf (M.X i ∘ L.π) (L.Y A) L.P) ∧
         L.L.OrderedMarkov) := by
-  sorry
+  constructor
+  · -- (B1 ⇒ B2).  The first conjunct is Lemma 4.5, through Corollary 4.6.
+    intro h
+    refine ⟨L.aeFunctionOf_of_perfectlyCondenses h, fun A => ?_⟩
+    letI : Fintype I := Fintype.ofFinite I
+    -- the special order of the paragraph before (4.29): supersets first, and every
+    -- element incomparable to `A` before `A`.
+    obtain ⟨r, hr, hrev, hinc⟩ := exists_revIncl_strictTotalOrder_incomparable_first A
+    haveI := hr
+    -- every `B ∈ P⁺I` is nonempty, hence contributes to the full index set
+    have huniv : contrib (Finset.univ : Finset I) = (Set.univ : Set (PPlus I)) := by
+      ext B
+      simp only [mem_contrib, Set.mem_univ, iff_true, Finset.mem_univ, true_and]
+      obtain ⟨i, hi⟩ := B.nonempty
+      exact ⟨i, hi⟩
+    set U : Finset (PPlus I) := famFinset (contrib (Finset.univ : Finset I)) with hU
+    have hUall : ∀ C : PPlus I, C ∈ U := fun C => mem_famFinset.mpr (huniv ▸ Set.mem_univ C)
+    have hcoe : ((U : Finset (PPlus I)) : Set (PPlus I)) = contrib (Finset.univ : Finset I) := by
+      ext C; simp [hU]
+    -- (4.29): the perfect-condensation hypothesis squeezes the chain expansion of
+    -- `H(Y_{P⁺I})` against `χ_L(I)`, so the two sums are equal.
+    have hsq : H[L.L.jointOn (contrib (Finset.univ : Finset I)) ; L.L.P] =
+        L.condScore (Finset.univ : Finset I) :=
+      le_antisymm (L.condScore_ge_entropy_jointContrib _)
+        ((h Finset.univ) ▸ L.entropy_jointContrib_ge_entropy_joint _)
+    have hexp := L.L.entropy_jointOn_eq_sum r U
+    rw [hcoe] at hexp
+    rw [hexp] at hsq
+    have hsc : L.condScore (Finset.univ : Finset I) =
+        ∑ B ∈ U, H[L.L.X B | L.L.jointOn (strictAbove B.toFinset) ; L.L.P] := rfl
+    rw [hsc] at hsq
+    -- termwise the left side is `≤` the right, so the equality of sums is termwise
+    have hle : ∀ B ∈ U, H[L.L.X B | L.L.jointOn {C | C ∈ U ∧ r C B} ; L.L.P] ≤
+        H[L.L.X B | L.L.jointOn (strictAbove B.toFinset) ; L.L.P] := fun B _ =>
+      L.L.condEntropy_jointOn_mono (L.L.measurable_X B)
+        (fun C hC => ⟨hUall C, hrev C B (PPlus.lt_iff.mpr hC)⟩)
+    have hterm := (Finset.sum_eq_sum_iff_of_le hle).mp hsq A (hUall A)
+    -- (4.30)–(4.32): read at `B = A`, and `{C | C ≺ A} ⊇ F ∪ {D | D ⊋ A}` by construction
+    -- of `r`, so the equality is the desired conditional independence.
+    refine L.L.condIndepFun_of_condEntropy_jointOn_eq (L.L.measurable_X A) ?_ hterm
+    rintro C (hC | hC)
+    · exact ⟨hUall C, hinc C hC⟩
+    · exact ⟨hUall C, hrev C A (PPlus.lt_iff.mpr hC)⟩
+  · -- (B2 ⇒ B1), equations (4.33)–(4.36).
+    rintro ⟨hae, hmk⟩ A
+    have hent := L.perfect_entropy_iff_aeFunctionOf.mpr hae
+    rcases A.eq_empty_or_nonempty with rfl | hA
+    · have hc : contrib (∅ : Finset I) = (∅ : Set (PPlus I)) := by ext B; simp
+      have h1 : L.condScore (∅ : Finset I) = 0 := by
+        have hfe : famFinset (contrib (∅ : Finset I)) = (∅ : Finset (PPlus I)) := by
+          ext B; simp [hc]
+        rw [show L.condScore (∅ : Finset I)
+          = ∑ B ∈ famFinset (contrib (∅ : Finset I)),
+              H[L.Y B | L.jointStrictAbove B.toFinset ; L.P] from rfl, hfe, Finset.sum_empty]
+      -- `X_∅` is a map into a subsingleton, but there is no need to say so: the outer two
+      -- ends of (4.6) already squeeze `H(X_∅)` between `0` and `χ_L(∅) = 0`.
+      rw [h1]
+      exact (le_antisymm (h1 ▸ L.entropy_joint_le_condScore (∅ : Finset I))
+        (entropy_nonneg _ _)).symm
+    · -- (4.34): expand `H(Y_∩A)` along a linear extension of reverse inclusion, then
+      -- (4.35): the ordered Markov condition makes each term `H(Y_B | Y_⊋B)`.
+      obtain ⟨r, hr, hrev⟩ := exists_revIncl_strictTotalOrder (I := I)
+      haveI := hr
+      have hcoe : ((famFinset (contrib A) : Finset (PPlus I)) : Set (PPlus I)) = contrib A := by
+        ext B; simp
+      have hexp := L.L.entropy_jointOn_eq_sum r (famFinset (contrib A))
+      rw [hcoe] at hexp
+      have key : L.condScore A = H[L.jointContrib A ; L.P] := by
+        rw [show L.jointContrib A = L.L.jointOn (contrib A) from rfl, hexp,
+          show L.condScore A = ∑ B ∈ famFinset (contrib A),
+            H[L.L.X B | L.L.jointOn (strictAbove B.toFinset) ; L.L.P] from rfl]
+        refine Finset.sum_congr rfl fun B hB => ?_
+        obtain ⟨i, hiA, hiB⟩ := mem_famFinset.mp hB
+        refine (L.L.condEntropy_jointOn_eq_of_condIndepFun (L.L.measurable_X B) (hmk B)
+          (fun C hC => ?_) ?_).symm
+        · exact ⟨mem_famFinset.mpr ⟨i, hiA, PPlus.le_iff.mp (PPlus.lt_iff.mpr hC).le hiB⟩,
+            hrev C B (PPlus.lt_iff.mpr hC)⟩
+        · exact pred_subset_incomparable_union_strictAbove hrev B (fun C hC => hC.2)
+      -- (4.33): `H(Y_∩A) = H(X_A)` is Lemma 4.5 again.
+      rw [key]
+      exact hent ⟨A, hA⟩
 
 end LatentModel
 

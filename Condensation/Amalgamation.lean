@@ -303,6 +303,124 @@ def diagonal (L : LatentModel.{u, v, w, u₁, v₁} M) :
   ρ₂_Y := fun _ => Filter.Eventually.of_forall fun _ => rfl
   comm := Filter.Eventually.of_forall fun _ => rfl
 
+/-! ### Symmetry, entropy finiteness, and score transfer along `ρₖ`
+
+`symm` is what cashes the paper's "using the symmetry of the situation to interchange `Y`
+and `Z`"; the two `condScore` lemmas are what let Corollary 4.6 and Theorem 4.9 be applied
+to `L̃₁`/`L̃₂` rather than to `L₁`/`L₂`.  The latter are needed because Definition 4.12
+relates `L̃ₖ` to `Lₖ` only through `ρₖ` — and, since round 2 deleted the `ρₖ_π` fields
+(R2-F12/F20), there is *no* relation between `Lₖ.π ∘ ρₖ` and `π̃ₖ` to transport a
+dependence on `X_i` along.  Transporting the *hypothesis* instead is what works, and it
+works precisely because `LatentModel.condScore` mentions only the latent family and never
+`π`.
+
+The `PerfectlyCondenses` companions of the `condScore` lemmas live in
+`Condensation/Comparison.lean`: Definition 4.3 is stated in `Condensation/Perfect.lean`,
+which this file does not import. -/
+
+/-- An amalgamation of `L₁` with `L₂`, read as an amalgamation of `L₂` with `L₁`. -/
+def symm (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂) :
+    LatentAmalgamation.{u, v, w, u₀, u₂, v₂, u₁, v₁} L₂ L₁ where
+  Λ₀ := Am.Λ₀
+  P₀ := Am.P₀
+  Y₁ := Am.Y₂
+  measurable_Y₁ := Am.measurable_Y₂
+  finiteEntropy_Y₁ := Am.finiteEntropy_Y₂
+  π₁ := Am.π₂
+  π₁_pres := Am.π₂_pres
+  contributes₁ := Am.contributes₂
+  Y₂ := Am.Y₁
+  measurable_Y₂ := Am.measurable_Y₁
+  finiteEntropy_Y₂ := Am.finiteEntropy_Y₁
+  π₂ := Am.π₁
+  π₂_pres := Am.π₁_pres
+  contributes₂ := Am.contributes₁
+  ρ₁ := Am.ρ₂
+  ρ₁_pres := Am.ρ₂_pres
+  ρ₁_Y := Am.ρ₂_Y
+  ρ₂ := Am.ρ₁
+  ρ₂_pres := Am.ρ₁_pres
+  ρ₂_Y := Am.ρ₁_Y
+  comm := Am.comm.mono fun _ hl => hl.symm
+
+/-- `RVModel.finiteEntropyOf` for an amalgamation, with the sample space spelled `Λ₀`
+rather than `lat₁.Λ`/`lat₂.Λ`.
+
+The spelling is load-bearing, not cosmetic.  `Am.Λ₀`, `Am.lat₁.Λ` and `Am.lat₂.Λ` are
+definitionally equal but only through `LatentAmalgamation.lat₁`/`rv₁`, which are plain
+`def`s and so are *not* unfolded by instance search.  An instance registered at one
+spelling is therefore invisible to a goal phrased in another, and §5's proofs — which mix
+`Y`-side, `Z`-side and `Λ₀`-side variables in one conditional entropy — need a version
+pinned to `Λ₀`. -/
+lemma finiteEntropyOf' (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂)
+    {S : Type*} [MeasurableSpace S] [MeasurableSingletonClass S] {Z : Am.Λ₀ → S}
+    (hZ : Measurable Z) : ShannonInformation.FiniteEntropyOf Z Am.P₀ :=
+  ShannonInformation.finiteEntropyMeasure_map Am.P₀ hZ
+
+/-- The transfer step behind `LatentAmalgamation.condScore_lat₁`/`condScore_lat₂`: one
+summand of (3.2), for the bare data of a morphism (4.44)/(4.45).  A probability-preserving
+`ρ : Λ₀ → L.Λ` with `L.Y A ∘ ρ = Y A` a.e. for every `A ∈ P⁺I` makes the pair `(Y_B, Y_⊋B)`
+on `Λ₀` identically distributed to `(L.Y B, L.Y_⊋B)` on `L.Λ`, hence equates the two
+conditional entropies.  Only the *latent family* is involved — no `π` anywhere — which is
+why the score transfers along `ρₖ` even though nothing relates `Lₖ.π ∘ ρₖ` to `π̃ₖ`.
+
+Stated over a bare family `Y` rather than over `Am.lat₁` on purpose: with `Am.lat₁.Y B` on
+the left, `ShannonInformation.IdentDistrib.condEntropy_eq`'s *shared* `[MeasurableSpace S]`
+is taken from `Am.rv₁.mR B`, and instance search (reducible transparency only) cannot get
+from there to `L₁.L.mR B` — the reported failure is then a `FiniteEntropyOf` instance on
+the right-hand side that synthesises perfectly well on its own. -/
+private lemma condEntropy_strictAbove_transfer {Λ₀ : Type u₀} [MeasurableSpace Λ₀]
+    [Countable Λ₀] [MeasurableSingletonClass Λ₀] {P₀ : Measure Λ₀} [IsProbabilityMeasure P₀]
+    [ShannonInformation.FiniteEntropyMeasure P₀] (L : LatentModel.{u, v, w, u₁, v₁} M)
+    (Y : ∀ A : PPlus I, Λ₀ → L.L.R A) (hY : ∀ A, Measurable (Y A)) (ρ : Λ₀ → L.Λ)
+    (hρ : MeasurePreserving ρ P₀ L.P) (hρY : ∀ A : PPlus I, ∀ᵐ l ∂P₀, L.Y A (ρ l) = Y A l)
+    (B : PPlus I) :
+    H[Y B | (fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l) ; P₀]
+      = H[L.Y B | L.jointStrictAbove B.toFinset ; L.P] := by
+  have hjm : Measurable (fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l) :=
+    measurable_pi_lambda _ fun C => hY _
+  haveI : ShannonInformation.FiniteEntropyOf (Y B) P₀ :=
+    ShannonInformation.finiteEntropyMeasure_map P₀ (hY B)
+  haveI : ShannonInformation.FiniteEntropyOf
+      (fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l) P₀ :=
+    ShannonInformation.finiteEntropyMeasure_map P₀ hjm
+  have hmeas : Measurable
+      (⟨L.Y B, L.jointStrictAbove B.toFinset⟩ :
+        L.Λ → L.L.R B × (∀ C : ↥(strictAbove B.toFinset), L.L.R C)) :=
+    (L.L.measurable_X B).prodMk (L.L.measurable_jointOn _)
+  have key : ∀ᵐ l ∂P₀, ∀ A : PPlus I, L.Y A (ρ l) = Y A l :=
+    MeasureTheory.ae_all_iff.mpr hρY
+  have h1 : ProbabilityTheory.IdentDistrib
+      (⟨Y B, fun l (C : ↥(strictAbove B.toFinset)) => Y (C : PPlus I) l⟩)
+      ((⟨L.Y B, L.jointStrictAbove B.toFinset⟩ :
+        L.Λ → L.L.R B × (∀ C : ↥(strictAbove B.toFinset), L.L.R C)) ∘ ρ) P₀ P₀ := by
+    refine ProbabilityTheory.IdentDistrib.of_ae_eq (((hY B).prodMk hjm).aemeasurable) ?_
+    filter_upwards [key] with l hl
+    exact Prod.ext (hl B).symm (funext fun C => (hl (C : PPlus I)).symm)
+  have h2 : ProbabilityTheory.IdentDistrib
+      ((⟨L.Y B, L.jointStrictAbove B.toFinset⟩ :
+        L.Λ → L.L.R B × (∀ C : ↥(strictAbove B.toFinset), L.L.R C)) ∘ ρ)
+      (⟨L.Y B, L.jointStrictAbove B.toFinset⟩) P₀ L.P :=
+    ⟨(hmeas.comp hρ.measurable).aemeasurable, hmeas.aemeasurable, by
+      rw [← MeasureTheory.Measure.map_map hmeas hρ.measurable, hρ.map_eq]⟩
+  exact ShannonInformation.IdentDistrib.condEntropy_eq (hY B) hjm (L.L.measurable_X B)
+    (L.L.measurable_jointOn _) (h1.trans h2)
+
+/-- `χ_{L̃₁} = χ_{L₁}`: the conditioned score is invariant along the morphism `ρ₁` of
+(4.44).  Definition 3.3's `χ` mentions only the latent family, never `π`, and `ρ₁` is
+probability preserving with `L₁.Y A ∘ ρ₁ = Ỹ_A` a.e., so every summand of (3.2) is a
+conditional entropy of a pair with the same joint law. -/
+lemma condScore_lat₁ (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂)
+    (A : Finset I) : Am.lat₁.condScore A = L₁.condScore A :=
+  Finset.sum_congr rfl fun B _ =>
+    condEntropy_strictAbove_transfer L₁ Am.Y₁ Am.measurable_Y₁ Am.ρ₁ Am.ρ₁_pres Am.ρ₁_Y B
+
+/-- `χ_{L̃₂} = χ_{L₂}`, the mirror of `LatentAmalgamation.condScore_lat₁` along (4.45). -/
+lemma condScore_lat₂ (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂)
+    (A : Finset I) : Am.lat₂.condScore A = L₂.condScore A :=
+  Finset.sum_congr rfl fun B _ =>
+    condEntropy_strictAbove_transfer L₂ Am.Y₂ Am.measurable_Y₂ Am.ρ₂ Am.ρ₂_pres Am.ρ₂_Y B
+
 end LatentAmalgamation
 
 /-! ## Lemma 4.13 — existence, and the explicit construction

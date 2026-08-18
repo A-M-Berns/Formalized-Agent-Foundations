@@ -213,6 +213,23 @@ lemma aeFunctionOf_jointOn_mono (N : RVModel J) {F G : Set J} (h : G ⊆ F)
     (μ : Measure N.Ω) : AEFunctionOf (N.jointOn F) (N.jointOn G) μ :=
   AEFunctionOf.of_functionOf (N.functionOf_jointOn_mono h)
 
+/-- `Y_{F ∪ G}` is (everywhere) a function of the pair `(Y_F, Y_G)`: each coordinate of the
+union is a coordinate of one of the two halves.  The companion of
+`RVModel.functionOf_jointOn_mono`, and what turns Lemma 5.4's `H (X | Y₁, Y₂, C)` into
+Theorem 5.8's `H (Y_⊇A | Z_{L(v) ∪ R(v)})`. -/
+lemma functionOf_jointOn_union (N : RVModel J) (F G : Set J) :
+    FunctionOf (⟨N.jointOn F, N.jointOn G⟩ : N.Ω → _) (N.jointOn (F ∪ G)) := by
+  classical
+  refine ⟨fun p B => if h : (B : J) ∈ F then p.1 ⟨B, h⟩ else p.2 ⟨B, B.2.resolve_left h⟩,
+    measurable_pi_lambda _ fun B => ?_, fun ω => ?_⟩
+  · by_cases h : (B : J) ∈ F
+    · simp only [dif_pos h]
+      exact (measurable_pi_apply _).comp measurable_fst
+    · simp only [dif_neg h]
+      exact (measurable_pi_apply _).comp measurable_snd
+  · funext B
+    by_cases h : (B : J) ∈ F <;> simp [h, RVModel.jointOn]
+
 /-- A single coordinate of a joint variable: `X_i` is (everywhere) a function of `X_A`
 whenever `i ∈ A`. -/
 lemma functionOf_joint (N : RVModel I) {A : Finset I} {i : I} (hi : i ∈ A) :
@@ -310,6 +327,10 @@ lemma contribIdx_subset_contrib {i : I} {A : Finset I} (hi : i ∈ A) :
     contribIdx i ⊆ contrib A :=
   fun _ hB => ⟨i, hi, hB⟩
 
+/-- The upward cones of Definition 3.4 are antitone: a smaller set has a larger cone. -/
+lemma above_mono {A B : Finset I} (h : B ⊆ A) : above A ⊆ above B :=
+  fun _ hC => h.trans hC
+
 /-! ### Upward closure
 
 §4.10 and §5 quantify over *upward-closed* subfamilies of `P⁺I`.  That is Mathlib's
@@ -327,6 +348,14 @@ lemma isUpperSet_contrib (A : Finset I) : IsUpperSet (contrib A) := by
 lemma isUpperSet_above (A : Finset I) : IsUpperSet (above A) := by
   intro B C hBC hB
   exact (hB : A ⊆ B.toFinset).trans (PPlus.le_iff.mp hBC)
+
+/-- `⋂ i ∈ T, {B : i ∈ B}` is upward closed, for any `T` — the invariant Theorem 4.15's
+induction carries, so that Proposition 4.10 applies at every step. -/
+lemma isUpperSet_iInter_contribIdx (T : Finset I) :
+    IsUpperSet (⋂ i ∈ T, contribIdx i) := by
+  intro B C hBC hB
+  simp only [Set.mem_iInter] at hB ⊢
+  exact fun i hi => PPlus.le_iff.mp hBC (hB i hi)
 
 /-- `B ↦ {C : B ∩ C ≠ ∅}` is injective on `P⁺I`.  This is what makes Theorem 5.8's
 hypothesis "`ℓ` restricts to a bijection between the leaves of `T` and the sets

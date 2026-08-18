@@ -41,12 +41,16 @@ latent model gets it from the structure and never as a separate hypothesis.  Any
 measurable variable derived from a model's sample space gets it in one step from
 `RVModel.finiteEntropyOf`.  The §2 substrate lemmas of `Condensation/Probability.lean` are
 stated over bare variables rather than models, and those carry the hypothesis explicitly —
-seven of them do (`condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
+eleven of them do (`condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
 `condEntropy_eq_entropy_of_subsingleton`, `entropy_le_of_aeFunctionOf`,
 `condEntropy_eq_zero_of_aeFunctionOf`, `aeFunctionOf_of_condEntropy_eq_zero`,
-`aeFunctionOf_iff_condEntropy_eq_zero`), while the `IdentDistrib`-based pullback
-identities, `interactionInfo_comm` and `entropy_pair_of_aeFunctionOf` need no finiteness at
-all.  It is *not* the case that every statement with entropy content carries it.
+`aeFunctionOf_iff_condEntropy_eq_zero`, and the four M2 additions
+`condEntropy_congr_of_aeFunctionOf`, `condEntropy_le_condEntropy_of_aeFunctionOf`,
+`condEntropy_le_of_aeFunctionOf` and `condEntropy_eq_zero_of_subsingleton`), while the
+`IdentDistrib`-based pullback identities, `interactionInfo_comm`,
+`entropy_pair_of_aeFunctionOf`, `entropy_eq_zero_of_subsingleton` and the whole
+`AEFunctionOf` congruence API need no finiteness at all.  It is *not* the case that every
+statement with entropy content carries it.
 
 **Namespace hazard, and it is the one most likely to cost you an hour.**  Both versions of
 several entropy facts are reachable through the single import, and with `ProbabilityTheory`
@@ -174,49 +178,59 @@ they are not obvious and were settled by construction: `Perfect.lean` imports
 imports `Perfect.lean`, so the §3.1 witnesses — the concrete morphisms and category
 objects — live at the end of `Examples.lean` rather than in `Morphism.lean`, which would
 close a cycle.  `Morphism.lean` therefore imports `Model.lean` and nothing else of the
-library.
+library.  `ChainRule.lean` sits beside `Morphism.lean` over `Model.lean`, and is imported
+by `Perfect.lean`: it is stated over a bare `RVModel J` and knows nothing about latent
+variable models, so §5 can consume it too without going through §4.
 
 | file | content |
 |---|---|
-| `Condensation/Probability.lean` | §2: `FunctionOf`/`AEFunctionOf`, pullback invariance (2.2), `PPlus`, interaction information, the Giry alias, **Proposition 2.5** |
+| `Condensation/Probability.lean` | §2: `FunctionOf`/`AEFunctionOf` with its congruence and product lemmas, pullback invariance (2.2), `PPlus`, interaction information, the Giry alias, **Proposition 2.5**, and the generic conditional-entropy comparisons under a.e. functional dependence |
 | `Condensation/Model.lean` | Definitions 3.1–3.4: `RVModel` (Definition 3.1 verbatim, both finite-entropy clauses) with `RVModel.finiteEntropyOf`, `LatentModel`, joint variables, the four families `∩A`/`⊇A`/`⊋A`/`∋i` plus `incomparable`, (3.9), the scores σ/χ/ϱ, and the generic joint-variable and upward-closure lemmas §4 and §5 run on |
+| `Condensation/ChainRule.lean` | machinery, no paper node: the chain rule for a *finite family* of joint variables along a linear order (which PFR does not have), both directions of "joint independence ⟺ additivity of entropy", the two linear extensions of reverse inclusion §4 uses, and the bridge between Definition 4.8's conditional independence and the termwise entropy equalities |
 | `Condensation/Morphism.lean` | §3.1: Definitions 3.5, 3.6, Propositions 3.7, 3.8, Definitions 3.9, 3.10, Propositions 3.11, 3.12 |
 | `Condensation/Perfect.lean` | §4 up to Proposition 4.10: Proposition 4.2, Definition 4.3, Lemma 4.5, Corollary 4.6, Proposition 4.7, Definition 4.8, **Theorem 4.9**, Proposition 4.10 |
-| `Condensation/Amalgamation.lean` | Definitions 4.11, 4.12, **Lemma 4.13** (the measure construction of (4.49)–(4.53), proved), and `LatentAmalgamation.diagonal` |
+| `Condensation/Amalgamation.lean` | Definitions 4.11, 4.12, **Lemma 4.13** (the measure construction of (4.49)–(4.53), proved), `LatentAmalgamation.diagonal`, and the derived `symm` / `condScore_lat₁`/`₂` / `finiteEntropyOf'` that §4.15 and §5 run on |
 | `Condensation/Comparison.lean` | Lemma 4.14, **Theorem 4.15** |
 | `Condensation/Quantitative.lean` | §5: Lemma 5.4, Definitions 5.5, 5.6, Proposition 5.7, **Theorem 5.8**, Corollaries 5.9, 5.10 |
 | `Condensation/Examples.lean` | Examples 4.1 and 4.4, constructed inhabitants of every boundary structure, the general non-vacuity result `LatentModel.nonempty`, the §3.1 witnesses, and `Example.geomModel` — the infinite-range model that the retired `dd:finite-range` narrowing excluded |
 
-## Status at milestone M1
+## Status at milestone M2 (landed 2026-08-18)
 
-**Statements for every in-scope node have landed; seventeen proofs are still `sorry`.**  All
-39 in-scope nodes of the paper's 42 carry at least one annotated declaration; the three
-that do not are Examples 5.1–5.3, which are out of scope by the proposed ruling recorded
-in `Condensation/notes/roadmap.md` (5.1 and 5.2 posit `[0,1]`-valued latents, outside the
-paper's own countable-discrete framework; 5.3 is a prose translation of structural causal
-models with no claim, and nothing downstream cites any of the three).
+**Every in-scope node has a Lean carrier, every carrier is proved, and there is no `sorry`
+anywhere in `Condensation/`.**  All 39 in-scope nodes of the paper's 42 carry at least one
+annotated declaration; the three that do not are Examples 5.1–5.3, which are out of scope
+by the proposed ruling recorded in `Condensation/notes/roadmap.md` (5.1 and 5.2 posit
+`[0,1]`-valued latents, outside the paper's own countable-discrete framework; 5.3 is a
+prose translation of structural causal models with no claim, and nothing downstream cites
+any of the three).  Because that ruling is *proposed* rather than settled,
+`scripts/check-condensation-nodes.py` reports coverage as 39/42, not 42/42.
 
-The `sorry`s are milestone M2's and are enumerated, per file and per declaration, in
-`Condensation/README.md`.  Every one of them now sits inside a declaration that carries a
-paper-node annotation; the library has no `sorry` in a supporting lemma.  They are staged
-in `AxiomAudit.lean`'s `CONDENSATION-PENDING` block: an annotated endpoint whose proof is
-not finished cannot go into `#assert_axioms_clean` (that command exists to catch exactly a
-`sorry`), so it is listed in a comment block beside the inventory instead, and
-`scripts/check-condensation-nodes.py` accepts an endpoint listed in *either* block while
-failing if a name appears in both, if a pending entry names no annotated declaration, or if
-the pending block is non-empty once `scripts/papers.py` registers the paper `completed`.
-The block has a second section for declarations that depend on a `sorry` without being
-endpoints — three of them today, small consequences of Proposition 4.2's staged inequality.
-That the two sections together are *complete* is itself machine-checked, by
-`scripts/check_sorry_ledger.py`, which asks Lean from the compiled environment which
-declarations depend on `sorryAx` and fails on drift in either direction.  Everything not in
-that block is axiom-checked in the ordinary way.
+Every annotated endpoint is therefore in `AxiomAudit.lean`'s `#assert_axioms_clean`
+inventory, depending on nothing beyond `propext`, `Classical.choice` and `Quot.sound`, and
+the `CONDENSATION-PENDING` block is **empty in both sections**.  That block is retained,
+not deleted: it is the mechanism by which a statement-first endpoint is staged honestly —
+an annotated endpoint whose proof is unfinished cannot go into `#assert_axioms_clean` (that
+command exists to catch exactly a `sorry`), so it is listed in a comment block beside the
+inventory instead, and `scripts/check-condensation-nodes.py` accepts an endpoint listed in
+*either* block while failing if a name appears in both, if a pending entry names no
+annotated declaration, or if the block is non-empty once `scripts/papers.py` registers the
+paper `completed`.  Its second section is for declarations that depend on a `sorry` without
+being endpoints.  That the two sections together are *complete* — and, now, that they are
+correctly empty — is machine-checked by `scripts/check_sorry_ledger.py`, which asks Lean
+from the compiled environment which declarations depend on `sorryAx` and fails on drift in
+either direction.
+
+**M2 is not the registry's `completed`.**  That status additionally requires a curated
+`Condensation/API.lean` consumer boundary, client tests under `APITests/`, a human
+read-through of the frozen surface, and a final fresh-context adversarial audit.  None of
+those has happened; `Condensation/README.md` tracks them per criterion.
 
 `Condensation/README.md` is the trust surface, `Condensation/KNOWLEDGE.md` the
 institutional memory, and `Condensation/notes/roadmap.md` the plan and full `dd:` table.
 -/
 import Condensation.Probability
 import Condensation.Model
+import Condensation.ChainRule
 import Condensation.Morphism
 import Condensation.Perfect
 import Condensation.Amalgamation

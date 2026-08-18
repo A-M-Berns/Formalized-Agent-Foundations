@@ -62,10 +62,12 @@ them:
 Those four constructions and the six equations they carry — (4.2)–(4.5), (4.11) and
 Example 4.4's conclusion — are the node-annotated declarations of this file, and the only
 `theorem`s in it.  The equations *are* the examples' content, so they are paper-facing
-statements in the sense the surface rule means, not internal lemmas; while their proofs
-are `sorry` they are staged in `AxiomAudit.lean`'s CONDENSATION-PENDING block rather than
-inventoried.  Everything else here is a `lemma`: the non-vacuity witnesses and their
-supporting computations state nothing the paper states.
+statements in the sense the surface rule means, not internal lemmas.  All six were proved
+at M2 and are inventoried in `AxiomAudit.lean`'s CONDENSATION-INVENTORY block; nothing in
+this file is `sorry`.  Everything else here is a `lemma` (or a `private def`, where the
+thing produced is an instance rather than a proof): the non-vacuity witnesses, the
+guarded-latent machinery of Example 4.1, and their supporting computations state nothing
+the paper states.
 -/
 
 universe u v w
@@ -75,6 +77,7 @@ namespace Condensation
 -- `Real` is deliberately *not* opened: it would make `π` notation for `Real.pi`, which
 -- collides with `LatentModel`'s field name `π` in structure-instance syntax.
 open MeasureTheory ProbabilityTheory
+
 
 /-! ## The fair coin as a random variable model -/
 
@@ -715,13 +718,68 @@ noncomputable def L₂ (M : RVModel.{u, v, w} I) : LatentModel M where
     filter_upwards with ω
     rfl
 
+/-! ### The two shapes a guarded latent takes
+
+Every term of (4.2)–(4.5) is one of two things: a latent whose guard *fails*, whose range
+is then a one-point type, or a latent whose guard *holds*, whose range is then a
+relabelling of the given variables it names.  The four lemmas below are those two shapes
+for `L₁` and `L₂`; the equations are bookkeeping on top of them. -/
+
+/-- When `B` is not a singleton, `L₁`'s guard `{i : I // B = {i}}` is empty, so the latent
+range `Y_B` is a one-point type — the paper's "let `Y_B` be constant". -/
+@[reducible] private def L₁RV_unique (M : RVModel.{u, v, w} I) {B : PPlus I}
+    (hB : ∀ i : I, B.toFinset ≠ {i}) : Unique ((L₁ M).L.R B) := by
+  haveI : IsEmpty {i : I // B.toFinset = {i}} := ⟨fun j => hB j.1 j.2⟩
+  exact Pi.uniqueOfIsEmpty _
+
+/-- `Y_{i} = X_i` up to the guarded-subtype relabelling: the index type
+`{j : I // {i} = {j}}` is a one-point type, so evaluating at its inhabitant `⟨i, rfl⟩` is
+an injective map of ranges and entropy is invariant under it. -/
+private lemma L₁_entropy_single (M : RVModel.{u, v, w} I) (i : I) :
+    H[(L₁ M).Y (PPlus.single i) ; (L₁ M).P] = H[M.X i ; M.P] := by
+  -- The relabelling is passed explicitly: leaving it to higher-order unification against
+  -- `?f ∘ X` is a heartbeat bomb at every `entropy_comp_of_injective` call site.
+  have hinj : Function.Injective
+      (fun x : (∀ j : {k : I // (PPlus.single i).toFinset = {k}}, M.R j.1) => x ⟨i, rfl⟩) := by
+    intro x y hxy
+    funext j
+    obtain rfl : j = ⟨i, rfl⟩ := Subtype.ext (Finset.singleton_injective j.2).symm
+    exact hxy
+  exact (entropy_comp_of_injective (L₁ M).P ((L₁ M).L.measurable_X _)
+    (fun x : (∀ j : {k : I // (PPlus.single i).toFinset = {k}}, M.R j.1) => x ⟨i, rfl⟩)
+    hinj).symm
+
+/-- The contributing latents of `L₁` that are *not* constant are exactly the singletons
+`{i}` with `i ∈ A` — the shared bookkeeping of (4.2) and (4.3). -/
+private lemma L₁_sum_eq (A : Finset I) (f : PPlus I → ℝ)
+    (hzero : ∀ B : PPlus I, (∀ i : I, B.toFinset ≠ {i}) → f B = 0) :
+    ∑ B ∈ famFinset (contrib A), f B = ∑ i ∈ A, f (PPlus.single i) := by
+  classical
+  have hsub : A.image PPlus.single ⊆ famFinset (contrib A) := by
+    intro B hB
+    obtain ⟨i, hiA, rfl⟩ := Finset.mem_image.1 hB
+    exact mem_famFinset.2 ⟨i, hiA, by simp⟩
+  rw [← Finset.sum_subset hsub, Finset.sum_image]
+  · intro i _ j _ hij
+    simpa using congrArg PPlus.toFinset hij
+  · intro B hB hB'
+    refine hzero B fun i hi => hB' ?_
+    obtain ⟨j, hjA, hjB⟩ := mem_famFinset.1 hB
+    have hji : j = i := Finset.mem_singleton.1 (hi ▸ (hjB : j ∈ B.toFinset))
+    subst hji
+    exact Finset.mem_image.2 ⟨j, hjA, PPlus.ext hi.symm⟩
+
 /-- **Equation (4.2)**: `σ_{L₁}(A) = ∑_{B ∩ A ≠ ∅} H(Y_B) = ∑_{i ∈ A} H(Xᵢ)`.  The latents
 that contribute to `A` and are not constant are exactly the singletons `{i}`, `i ∈ A`.
 
 Paper node: `Example 4.1` -/
 theorem L₁_simpleScore (M : RVModel.{u, v, w} I) (A : Finset I) :
     (L₁ M).simpleScore A = ∑ i ∈ A, H[M.X i ; M.P] := by
-  sorry
+  rw [LatentModel.simpleScore,
+    L₁_sum_eq A _ fun B hB => by
+      letI := L₁RV_unique M hB
+      exact entropy_eq_zero_of_subsingleton _]
+  exact Finset.sum_congr rfl fun i _ => L₁_entropy_single M i
 
 /-- **Equation (4.3)**: `χ_{L₁}(A) = ∑_{B ∩ A ≠ ∅} H(Y_B | Y_⊋B) = ∑_{i ∈ A} H(Xᵢ)`.  The
 conditioning does nothing here: everything strictly above a singleton has `|B| ≠ 1` and is
@@ -730,7 +788,53 @@ therefore constant, so `Y_⊋{i}` is constant and `H(Y_{i} | Y_⊋{i}) = H(Xᵢ)
 Paper node: `Example 4.1` -/
 theorem L₁_condScore (M : RVModel.{u, v, w} I) (A : Finset I) :
     (L₁ M).condScore A = ∑ i ∈ A, H[M.X i ; M.P] := by
-  sorry
+  rw [LatentModel.condScore,
+    L₁_sum_eq A _ fun B hB => by
+      letI := L₁RV_unique M hB
+      exact condEntropy_eq_zero_of_subsingleton ((L₁ M).L.measurable_X B)
+        ((L₁ M).L.measurable_jointOn _)]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  -- Everything strictly above `{i}` has at least two elements, so `Y_⊋{i}` is constant.
+  haveI : ∀ C : ↥(strictAbove (PPlus.single i).toFinset), Unique ((L₁ M).L.R ↑C) := by
+    intro C
+    refine L₁RV_unique M fun k hk => ?_
+    have h : (PPlus.single i).toFinset < (C : PPlus I).toFinset := C.2
+    rw [hk] at h
+    have : i = k := Finset.mem_singleton.1 (h.le (Finset.mem_singleton_self i))
+    subst this
+    exact absurd h (lt_irrefl _)
+  rw [condEntropy_eq_entropy_of_subsingleton ((L₁ M).L.measurable_X _), L₁_entropy_single]
+
+/-- When `B` is not all of `I`, `L₂`'s guard `{_i : I // ∀ k, k ∈ B}` is empty, so the
+latent range `Z_B` is a one-point type — the paper's "let `Z_B` be constant". -/
+@[reducible] private def L₂RV_unique (M : RVModel.{u, v, w} I) {B : PPlus I} {k : I}
+    (hk : k ∉ B.toFinset) : Unique ((L₂ M).L.R B) := by
+  haveI : IsEmpty {_i : I // ∀ k : I, k ∈ B.toFinset} := ⟨fun j => hk (j.2 k)⟩
+  exact Pi.uniqueOfIsEmpty _
+
+omit [Finite I] in
+/-- Anything other than the top element of `P⁺I` misses an index.  Stated through
+"`T` contains every index" rather than `T.toFinset = Finset.univ` so that no `Fintype I`
+datum is needed. -/
+private lemma L₂_exists_notMem_of_ne {B T : PPlus I} (hT : ∀ k : I, k ∈ T.toFinset)
+    (hBT : B ≠ T) : ∃ k : I, k ∉ B.toFinset := by
+  by_contra h
+  exact hBT (PPlus.ext (Finset.Subset.antisymm (fun k _ => hT k)
+    (fun k _ => not_not.1 fun hk => h ⟨k, hk⟩)))
+
+/-- `Z_I = X_I` up to the guarded-subtype relabelling: where the guard holds its subtype is
+a copy of `I` itself, and `Z_I` is `M.jointAll` read along that copy.  Entropy is invariant
+under the relabelling because it is injective. -/
+private lemma L₂_entropy_top (M : RVModel.{u, v, w} I) {T : PPlus I}
+    (hT : ∀ k : I, k ∈ T.toFinset) :
+    H[(L₂ M).Y T ; (L₂ M).P] = H[M.jointAll ; M.P] := by
+  -- `f` is passed explicitly: leaving it to higher-order unification is a heartbeat bomb.
+  have hinj : Function.Injective (fun (x : (L₂ M).L.R T) (i : I) => x ⟨i, hT⟩) := by
+    intro x y hxy
+    funext j
+    exact congrFun hxy j.1
+  exact (entropy_comp_of_injective (L₂ M).P ((L₂ M).L.measurable_X T)
+    (fun (x : (L₂ M).L.R T) (i : I) => x ⟨i, hT⟩) hinj).symm
 
 /-- **Equation (4.4)**: `σ_{L₂}(A) = ∑_{B ∩ A ≠ ∅} H(Z_B) = H(Z_I) = H(X_I)`.
 
@@ -745,7 +849,19 @@ the corresponding (4.2)–(4.3) hold at `A = ∅` because both sides are then em
 Paper node: `Example 4.1` -/
 theorem L₂_simpleScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
     (L₂ M).simpleScore A = H[M.jointAll ; M.P] := by
-  sorry
+  classical
+  letI : Fintype I := Fintype.ofFinite I
+  obtain ⟨a, haA⟩ := hA
+  set T : PPlus I := ⟨Finset.univ, ⟨a, Finset.mem_univ a⟩⟩ with hTdef
+  have hTu : ∀ k : I, k ∈ T.toFinset := by rw [hTdef]; exact fun k => Finset.mem_univ k
+  have hmem : T ∈ famFinset (contrib A) := mem_famFinset.2 ⟨a, haA, hTu a⟩
+  have hzero : ∀ B ∈ famFinset (contrib A), B ≠ T → H[(L₂ M).Y B ; (L₂ M).P] = 0 := by
+    intro B _ hBT
+    obtain ⟨k, hk⟩ := L₂_exists_notMem_of_ne hTu hBT
+    letI := L₂RV_unique M hk
+    exact entropy_eq_zero_of_subsingleton _
+  rw [LatentModel.simpleScore, Finset.sum_eq_single_of_mem T hmem hzero,
+    L₂_entropy_top M hTu]
 
 /-- **Equation (4.5)**: `χ_{L₂}(A) = ∑_{B ∩ A ≠ ∅} H(Z_B | Z_⊋B) = H(X_I)`.  Nothing
 strictly contains the top element of `P⁺I`, so `Z_⊋I` is a variable into a one-point type
@@ -756,7 +872,27 @@ and its term is the unconditioned `H(Z_I)`; every other term is the entropy of a
 Paper node: `Example 4.1` -/
 theorem L₂_condScore (M : RVModel.{u, v, w} I) {A : Finset I} (hA : A.Nonempty) :
     (L₂ M).condScore A = H[M.jointAll ; M.P] := by
-  sorry
+  classical
+  letI : Fintype I := Fintype.ofFinite I
+  obtain ⟨a, haA⟩ := hA
+  set T : PPlus I := ⟨Finset.univ, ⟨a, Finset.mem_univ a⟩⟩ with hTdef
+  have hTu : ∀ k : I, k ∈ T.toFinset := by rw [hTdef]; exact fun k => Finset.mem_univ k
+  have hmem : T ∈ famFinset (contrib A) := mem_famFinset.2 ⟨a, haA, hTu a⟩
+  have hzero : ∀ B ∈ famFinset (contrib A), B ≠ T →
+      H[(L₂ M).Y B | (L₂ M).jointStrictAbove B.toFinset ; (L₂ M).P] = 0 := by
+    intro B _ hBT
+    obtain ⟨k, hk⟩ := L₂_exists_notMem_of_ne hTu hBT
+    letI := L₂RV_unique M hk
+    exact condEntropy_eq_zero_of_subsingleton ((L₂ M).L.measurable_X B)
+      ((L₂ M).L.measurable_jointOn _)
+  rw [LatentModel.condScore, Finset.sum_eq_single_of_mem T hmem hzero]
+  -- Nothing strictly contains the top element of `P⁺I`, so `Z_⊋I` is empty-indexed.
+  haveI : IsEmpty ↥(strictAbove T.toFinset) := by
+    refine ⟨fun C => ?_⟩
+    have h : T.toFinset < (C : PPlus I).toFinset := C.2
+    have h2 : (C : PPlus I).toFinset ≤ T.toFinset := fun k _ => hTu k
+    exact absurd (lt_of_lt_of_le h h2) (lt_irrefl _)
+  rw [condEntropy_eq_entropy_of_subsingleton ((L₂ M).L.measurable_X _), L₂_entropy_top M hTu]
 
 end Example41
 
@@ -813,7 +949,28 @@ Paper node: `Example 4.4` -/
 theorem entropy_joint_eq (L : RVModel.{u, v, w} (PPlus I))
     (hindep : iIndepFun L.X L.P) (A : Finset I) :
     H[(M44 L).joint A ; (M44 L).P] = ∑ B ∈ famFinset (contrib A), H[L.X B ; L.P] := by
-  sorry
+  rw [← L.entropy_jointOn_eq_sum_famFinset hindep (contrib A)]
+  -- `X_A` and `Y_∩A` are functions of each other: `X_A` repeats each `Y_B` once for every
+  -- `i ∈ A ∩ B`, so the relabelling is surjective-with-repeats rather than injective and
+  -- the Schröder–Bernstein form of entropy invariance is what applies.
+  have hA' : ∀ C : ↥(contrib A), (mem_contrib.1 C.2).choose ∈ A :=
+    fun C => (mem_contrib.1 C.2).choose_spec.1
+  have hC' : ∀ C : ↥(contrib A), (mem_contrib.1 C.2).choose ∈ (C : PPlus I) :=
+    fun C => (mem_contrib.1 C.2).choose_spec.2
+  -- Two data-processing inequalities rather than the packaged `entropy_of_comp_eq_of_comp`:
+  -- that lemma takes one measure, and `(M44 L).P` is `L.P` only *definitionally*, so its
+  -- `[FiniteEntropyOf _ μ]` arguments end up carrying `(M44 L).mΩ` on one side and `L.mΩ`
+  -- on the other — a mismatch instance search cannot bridge (it will not unfold `M44`).
+  -- Split this way, each inequality stays inside one model and finds its own instance.
+  -- Both relabellings are passed explicitly; a `_` there is a higher-order-unification
+  -- heartbeat bomb.
+  refine le_antisymm
+    (ShannonInformation.entropy_comp_le L.P (L.measurable_jointOn (contrib A))
+      (fun (y : ∀ C : ↥(contrib A), L.R ↑C) (i : ↥A) (B : ↥(contribIdx (i : I))) =>
+        y ⟨(B : PPlus I), ⟨(i : I), i.2, B.2⟩⟩))
+    (ShannonInformation.entropy_comp_le (M44 L).P ((M44 L).measurable_joint A)
+      (fun (x : ∀ i : ↥A, (M44 L).R ↑i) (C : ↥(contrib A)) =>
+        x ⟨(mem_contrib.1 C.2).choose, hA' C⟩ ⟨(C : PPlus I), hC' C⟩))
 
 /-- Example 4.4's conclusion: `L` **simply-perfectly condenses** `M44 L`, i.e.
 `σ_L(A) = H(X_A)` for every `A ⊆ I`.  Immediate from (4.11): the simple score is by
@@ -824,8 +981,8 @@ that universally quantified equation.
 
 Paper node: `Example 4.4` -/
 theorem simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
-    (hindep : iIndepFun L.X L.P) : (L44 L).SimplyPerfectlyCondenses := by
-  sorry
+    (hindep : iIndepFun L.X L.P) : (L44 L).SimplyPerfectlyCondenses :=
+  fun A => (entropy_joint_eq L hindep A).symm
 
 end Example44
 

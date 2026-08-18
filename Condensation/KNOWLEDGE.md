@@ -6,6 +6,22 @@ purpose — a future session (or auditor) reads this before touching the library
 `README.md` for the trust surface, `notes/roadmap.md` for the plan and the `dd:` glossary
 in full, and `Condensation.lean` for the glossary as shipped.
 
+## Status as of 2026-08-18 (M2 complete)
+
+Re-derived from the checkers on the date shown, not copied. **Re-run them before quoting
+any of these numbers** — that is the discipline this file's last pitfall exists to enforce.
+
+- `python3 scripts/check_sorry_ledger.py` → `OK — 0 sorry-dependent declarations, all
+  ledgered (0 main, 0 consumers)`. There is **no `sorry` anywhere in `Condensation/`**, and
+  `AxiomAudit.lean`'s `CONDENSATION-PENDING` block is empty in both of its sections. Every
+  annotated endpoint is inventoried and axiom-clean.
+- `python3 scripts/check-condensation-nodes.py` → `OK (79 citations, 39 distinct nodes,
+  42 numbered in the paper, 112 inventoried endpoints)`; coverage 39/42 — §2 5/5, §3 12/12,
+  §4 15/15, §5 7/10. The three uncited nodes are Examples 5.1, 5.2 and 5.3, which the
+  proposed ruling puts out of scope (see intentional deviations).
+- Note that some *module docstrings* have not caught up with this; where one contradicts
+  the numbers above, the checkers win.
+
 ## Correspondence table
 
 | Paper (§/symbol) | Lean name | Notes |
@@ -34,32 +50,69 @@ in full, and `Condensation.lean` for the glossary as shipped.
 | Def 3.10 equivalence | `RVModel.IsEquivalence` (the pair), `RVModel.Equivalent` (the ∃) | the "laid out" characterization is `RVModel.Hom.ofSameIndex` + `RVModel.isEquivalence_ofSameIndex_iff`; Prop 4.7 consumes exactly that shape. Since 2026-08-17 `Hom.ofSameIndex` takes its two models as **explicit** arguments (`ofSameIndex M N π hπ f hf`): every occurrence of `M`/`N` in the other arguments is behind a projection (`M.Ω`, `M.P`, `M.R`, `M.X`), which unification cannot invert, so with them implicit every call site wrote `(M := …) (N := …)` anyway — R2-F10 |
 | Prop 3.11 congruence | `RVModel.Hom.aeEq_equivalence`, `RVModel.Hom.comp_aeEq_congr` | |
 | Prop 3.12 equivalence relation | `RVModelObj.equivalent_equivalence` | over `RVModelObj.Equivalent`; the universe-polymorphic `RVModel.Equivalent.refl/symm/trans` are the pieces |
-| Ex 4.1 `L₁`, `L₂` | `Condensation.Example41.L₁`, `.L₂` (+ `L₁RV`, `L₂RV`) | guarded-subtype encoding of "let `Y_A` be constant"; (4.2)–(4.5) are `L₁_simpleScore`, `L₁_condScore`, `L₂_simpleScore`, `L₂_condScore` — **annotated `theorem`s citing `Example 4.1` since 2026-08-17 (R2-F15) and staged in CONDENSATION-PENDING**; `sorry` at M1. (4.4)/(4.5) take `A.Nonempty` (errata 11) and name `X_I` as `RVModel.jointAll` |
-| Prop 4.2 (4.6) | `LatentModel.simpleScore_ge_condScore`, `.condScore_ge_entropy_jointContrib`, `.entropy_jointContrib_ge_entropy_joint` | three separate inequalities; the middle one is `sorry` (needs the finite-family chain rule) |
+| Ex 4.1 `L₁`, `L₂` | `Condensation.Example41.L₁`, `.L₂` (+ `L₁RV`, `L₂RV`) | guarded-subtype encoding of "let `Y_A` be constant"; (4.2)–(4.5) are `L₁_simpleScore`, `L₁_condScore`, `L₂_simpleScore`, `L₂_condScore` — annotated `theorem`s citing `Example 4.1` since 2026-08-17 (R2-F15). **All four PROVED at M2 (2026-08-18) and inventoried**; the pending block no longer names them. The proofs run on the two subsingleton-range lemmas `Condensation.entropy_eq_zero_of_subsingleton` / `.condEntropy_eq_zero_of_subsingleton` (`Probability.lean`). (4.4)/(4.5) take `A.Nonempty` (errata 11) and name `X_I` as `RVModel.jointAll` |
+| Prop 4.2 (4.6) | `LatentModel.simpleScore_ge_condScore`, `.condScore_ge_entropy_jointContrib`, `.entropy_jointContrib_ge_entropy_joint` | three separate inequalities. **All three PROVED at M2 (2026-08-18)**; the middle one — the one that needed the finite-family chain rule — now runs on `Condensation.exists_revIncl_strictTotalOrder` and `RVModel.entropy_jointOn_eq_sum` from the new `Condensation/ChainRule.lean`, plus `RVModel.condEntropy_jointOn_mono` for (4.8). The supporting `LatentModel.aeFunctionOf_jointContrib_pullbackJoint` is the "by definition" step of the printed proof |
 | Def 4.3 perfect / simply-perfect | `LatentModel.PerfectlyCondenses`, `.SimplyPerfectlyCondenses` | quantified over `Finset I`, not `PPlus I` — nothing degenerates at `A = ∅` |
 | Lemma 4.5 | `LatentModel.perfect_entropy_iff_aeFunctionOf` | proved |
-| Cor 4.6 | `LatentModel.aeFunctionOf_of_perfectlyCondenses` | proved, but *depends on* Prop 4.2's `sorry` |
-| Ex 4.4 | `Condensation.Example44.M44`, `.L44` (+ (4.11) `.entropy_joint_eq` and the conclusion `.simplyPerfectlyCondenses`) | `X_i := Y_∋i`; this is why latent universes are unpinned. The last two are annotated `theorem`s citing `Example 4.4` since 2026-08-17 (R2-F15), `sorry` at M1, staged in CONDENSATION-PENDING |
+| Cor 4.6 | `LatentModel.aeFunctionOf_of_perfectlyCondenses` | proved and **axiom-clean since M2**: its own proof was always finished, but it consumed Prop 4.2, so until 2026-08-18 it was a `sorryAx` consumer |
+| Ex 4.4 | `Condensation.Example44.M44`, `.L44` (+ (4.11) `.entropy_joint_eq` and the conclusion `.simplyPerfectlyCondenses`) | `X_i := Y_∋i`; this is why latent universes are unpinned. The last two are annotated `theorem`s citing `Example 4.4` since 2026-08-17 (R2-F15) and **PROVED at M2 (2026-08-18)**; (4.11) goes through `RVModel.entropy_jointOn_eq_sum_famFinset` (`ChainRule.lean`) |
 | Prop 4.7 | `LatentModel.aeFunctionOf_iff_isEquivalence_contribModel` | the two models it compares are `LatentModel.pullbackModel` (`(Λ, (X_i))`) and `LatentModel.contribModel` (`(Λ, (Y_∩{i}))`); clause (2) is `RVModel.IsEquivalence` of two `Hom.ofSameIndex` triples at `π = ρ = id_Λ`. Proved |
 | Def 4.8 ordered Markov | `Condensation.RVModel.OrderedMarkov` | stated over a bare `RVModel (PPlus I)`, as the paper does |
-| Thm 4.9 | `LatentModel.perfect_tfae_A` (A1–A3), `.perfect_tfae_B` (B1 ⟺ B2) | both `sorry` |
-| Prop 4.10 | `RVModel.orderedMarkov_iff` | "upward closed" is Mathlib's `IsUpperSet`, not a synonym; `sorry` |
+| Thm 4.9 | `LatentModel.perfect_tfae_A` (A1–A3), `.perfect_tfae_B` (B1 ⟺ B2) | **both PROVED at M2 (2026-08-18).** `perfect_tfae_A` is a `List.TFAE` closed by `tfae_have 1 → 3 := …`, `tfae_have 3 → 2 := …`, `tfae_have 2 → 1 := …`, `tfae_finish`; (A1)⟺(A3) is the `entropy_jointOn_eq_sum_of_iIndepFun` / `iIndepFun_of_entropy_jointOn_eq_sum` pair from `ChainRule.lean` (both directions were needed — PFR has only the forward one, and only over `Fin m`). `perfect_tfae_B`'s (B1 ⇒ B2) runs on `exists_revIncl_strictTotalOrder_incomparable_first` plus `condIndepFun_of_condEntropy_jointOn_eq` |
+| Prop 4.10 | `RVModel.orderedMarkov_iff` | "upward closed" is Mathlib's `IsUpperSet`, not a synonym. **PROVED at M2 (2026-08-18)**, from `ChainRule.lean`'s `condEntropy_jointOn_eq_of_condIndepFun` / `condIndepFun_of_condEntropy_jointOn_eq` sandwich pair and `RVModel.condEntropy_jointOn_above`. NB the declaration's docstring still says its finiteness comes from `dd:finite-range`; that phrase is stale (the class was retired 2026-08-17) — finiteness comes from Definition 3.1's `Ω`-clause via `RVModel.finiteEntropyOf` |
 | Def 4.11 amalgamation of a cospan | `Condensation.Amalgamation` | `dd:amalgamation`; **unchanged** by the 2026-08-17 generalization — it builds no random variable model, so Definition 3.1's clauses never reach it |
 | Def 4.12 amalgamation of two latent models | `Condensation.LatentAmalgamation` | `Λ₀` primary, `lat₁`/`lat₂` derived (`.Λ` definitionally `Λ₀`); `comm` is the **only** added field (errata 10) — the fields `ρ₁_π`/`ρ₂_π` (`Lₖ.π ∘ ρₖ =ᵐ π̃ₖ`) and the lemma `comm_ρ` derived from them were **deleted on 2026-08-17 (R2-F12/F20)**: Definition 4.12(3)'s morphisms are Definition 3.5 morphisms of the underlying *random variable* models, and the paper never defines a morphism of latent models, so nothing relates `Lₖ.π ∘ ρₖ` to `π̃ₖ`. Carries `[finiteEntropy_Λ₀ : ShannonInformation.FiniteEntropyMeasure P₀]` since 2026-08-17 — Definition 4.12(1) asks for a random variable model on `Λ₀`, and Definition 3.1 now really demands the `Ω`-clause — and its `finiteRange_Y₁`/`finiteRange_Y₂` fields are `finiteEntropy_Y₁`/`finiteEntropy_Y₂` |
 | Lemma 4.13 | `Amalgamation.canonical`, `nonempty_amalgamation`, `LatentAmalgamation.canonical`, `nonempty_latentAmalgamation` | the (4.49)–(4.53) construction. **All four PROVED on 2026-08-17 (round-2 fix wave); they are in the inventory block, not staged.** The three supporting measure lemmas — (4.55)–(4.56) total mass (`isProbabilityMeasure_canonicalMeasure`), and both halves of (4.57) (`measurePreserving_fst`/`_snd`) — were the library's last un-annotated `sorry`s. **Beware a real off-by-one in the prose here: THREE is the count of `sorry` *sites*, but FOUR supporting lemmas were `sorryAx`-dependent** — `finiteEntropyMeasure_canonicalMeasure` had a complete proof that *consumed* the other three, so it carried no `sorry` of its own and still failed an axiom check. Both numbers are correct about different things; say which you mean. For non-vacuity of `LatentAmalgamation` prefer `Condensation.LatentAmalgamation.diagonal` (R2-F19) — a latent model amalgamated with itself along the identity — which is independent of Lemma 4.13 entirely. (Until 2026-08-17 that preference was a *requirement*: these four were `sorry`-dependent, so citing them proved nothing, which is what R2-F19 found.) `Amalgamation.finiteEntropyMeasure_canonicalMeasure` (new 2026-08-17, proved) is what discharges `finiteEntropy_Λ₀` in `LatentAmalgamation.canonical`: the fibre product of (4.49) injects into `Λ₁ × Λ₂`, so `ShannonInformation.finiteEntropyMeasure_of_injective` applied to the pair `⟨fst, snd⟩` inherits finite entropy. Under `dd:finite-range` this obligation did not arise at all. **The proof factors through six `private` declarations** in `Amalgamation.lean`: `offWeight` (the (4.53) weight extended by zero to all of `Λ₁ × Λ₂`, so the sums become iterated sums over `Λ₁` and `Λ₂` rather than sums over a subtype), `offWeight_of_eq`/`_of_ne`, `tsum_offWeight_right`/`_left` (equation (4.54) — the only real mathematical content; the paper's `0/0 = 0` case is where `PΩ {π₁ a} = 0`, closed by `P₁ {a} ≤ P₁ (π₁ ⁻¹' {π₁ a}) = 0`), `tsum_carrier` (the subtype-to-product reindexing, `tsum_subtype` then `ENNReal.tsum_prod`), and `canonicalMeasure_preimage_fst`/`_snd`. **A new fact about `canonicalMeasure` should be phrased as a `g`-instance of `tsum_carrier`, not reproved from `Measure.sum_apply`.** Note the route is *not* `HasSum.isProbabilityMeasure_sum_dirac_ennreal`; the Dirac lemmas do the plumbing at the ends only |
-| Lemma 4.14 | `Condensation.aeFunctionOf_of_condIndepFun` | `sorry`. **Binders are minimal since 2026-08-17 (R2-F01/F23)**: countable discrete `Ω` with `[IsProbabilityMeasure μ]`, `[Countable] [MeasurableSingletonClass]` on **`C`'s range only** (that is what makes the witnessing function measurable, the last line of the printed proof), measurability of `X`, `Y₁`, `Y₂`, `C`, and the three hypotheses. The ranges of `X`/`Y₁`/`Y₂` carry only `MeasurableSpace`, and there is **no** finiteness binder of any kind — the printed proof is measure-theoretic and forms no entropy. Phase 4b had swapped four `FiniteRange` binders for four `FiniteEntropyOf` ones; round 2 established that neither belonged. A `FiniteEntropyOf` binder on this statement is a finding |
-| Thm 4.15 | `Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses` | `sorry`; the induction is not in the paper (errata 5) |
+| Lemma 4.14 | `Condensation.aeFunctionOf_of_condIndepFun` | **PROVED at M2 (2026-08-18), with a corrected binder: the lemma is FALSE as printed** — see errata 15 and the design-decisions entry below. Binders as they now stand: countable discrete `Ω` with `[IsProbabilityMeasure μ]`; `[Countable] [MeasurableSingletonClass]` on **`C`'s range** (`U`) — that is what makes the witnessing function measurable, the last line of the printed proof; `[MeasurableSingletonClass S]` on **`X`'s range** — the M2 repair, without which the statement is refutable; `T₁`, `T₂` carry only `MeasurableSpace`. There is still **no** finiteness binder of any kind: the printed proof is measure-theoretic and forms no entropy, so a `FiniteRange` or `FiniteEntropyOf` binder here is a finding (Phase 4b swapped four `FiniteRange` binders for four `FiniteEntropyOf` ones; round 2 R2-F01/F23 established that neither belonged — and then went one range too far). The `Ω`-side singleton instance is the *named* binder `[_hΩsing : MeasurableSingletonClass Ω]`, so a caller working on `Am.lat₂.Λ` can pass it explicitly (`(_hΩsing := Am.singΛ₀)`); Theorem 4.15 does exactly that |
+| Thm 4.15 | `Condensation.aeFunctionOf_jointAbove_of_perfectlyCondenses` | **PROVED at M2 (2026-08-18).** Conjunction of two directions, the second got from the first by `Am.symm` (`LatentAmalgamation.symm`, in `Amalgamation.lean`); the shared direction is the `private` `aeFunctionOf_jointAbove_aux`, which carries the induction the paper omits (errata 5). Its ingredients: `LatentAmalgamation.perfectlyCondenses_lat₁/₂` to move the hypothesis onto `L̃ₖ`, `AEFunctionOf.congr_left` to read a dependence witnessed through `π̃₁` as one through `π̃₂` (field `Am.comm`), Prop 4.10 via Thm 4.9 (B1 ⇒ B2) for the conditional-independence side condition, Lemma 4.14 at each induction step, `isUpperSet_iInter_contribIdx` as the invariant, and `iInter_contribIdx_eq_above` (4.62) to close |
 | Lemma 5.4 (5.5), (5.6) | `Condensation.condEntropy_le_of_pair`, `.condEntropy_eq_of_pair` | proved; the `condInteractionInfo` symmetries `condInteractionInfo_comm/_swap/_rotate` and `condEntropy_pair_rotate` are the machinery |
 | Def 5.5 polar `F°` | `Condensation.polar` | with `mem_polar_iff`, `isUpperSet_polar`, `polar_antitone`, `polar_singleton`, `polar_eq_iInter` |
 | Def 5.6 intersection tree | `Condensation.ITree`, `.label`, `.intersections`, `.LabelsIn` | `dd:tree`; `ITree.leaves`, `.subtrees`, `.label_eq_polar` are the machinery |
 | Prop 5.7 | `ITree.label_eq_leaves_foldr`, `Condensation.eq_decorate_of_isIntersectionTree`, `.existsUnique_intersectionTree` | over `LTree` (an arbitrary labelling of every position) and `ITree.decorate`; proved. **`existsUnique_intersectionTree` is the `M`-version since 2026-08-17 (R2-F08/F11)**: the paper's `ℓ̃` maps the leaves *into* an intersection-closed collection `M` and the unique extension is `ℓ : V → M`, so the statement now takes `{M : Set α}`, `hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M` and `ht : t.LabelsIn M`, and concludes `∃! d, d.erase = t ∧ d.IsIntersectionTree ∧ d.LabelsIn M`. Three explicit arguments where there was one — a call site written against the old arity breaks. The old `M`-free statement survives, un-annotated, as `existsUnique_intersectionTree_ambient`. New machinery: `LTree.LabelsIn` (+ `labelsIn_leaf`/`labelsIn_node`) and `ITree.labelsIn_decorate` |
-| Thm 5.8 (5.13), (5.14) | `Condensation.condEntropy_jointAbove_le`, `.condEntropy_jointAbove_eq` | stated over `LatentAmalgamation L₁ L₂`: `Y_⊇A` = `Am.lat₁.jointAbove`, `Z_G` = `Am.lat₂.jointOn`, `X_B` = `Am.lat₁.pullbackJoint`; the two contribution conditions are *fields*, not hypotheses. Both `sorry` |
-| Cor 5.9 (5.21), (5.22) | `Condensation.condEntropy_jointAbove_le_reconScore`, `.condEntropy_jointAbove_le_reconScore_of_orderedMarkov` | both `sorry` |
-| Cor 5.10 (5.24), (5.25) | `Condensation.polar_kSubsets` (proved), `.condEntropy_jointAbove_le_choose` (`sorry`) | `kSubsets` is `F`. **The `1 ≤ k` binder is asymmetric on purpose (R2-F21)**: `polar_kSubsets` (5.24) keeps it — the identity is genuinely false at `k = 0`, where the LHS is `polar ∅ = P⁺I` and the RHS is the upward cone `above A.toFinset` (truncated `ℕ` subtraction makes `k - 1 = 0`) — while `condEntropy_jointAbove_le_choose` (5.25) has **no** `hk`, because its tree hypothesis is unsatisfiable at `k = 0` and the statement is vacuous there. See errata 8 and the new errata 14 |
+| Thm 5.8 (5.13), (5.14) | `Condensation.condEntropy_jointAbove_le`, `.condEntropy_jointAbove_eq` | stated over `LatentAmalgamation L₁ L₂`: `Y_⊇A` = `Am.lat₁.jointAbove`, `Z_G` = `Am.lat₂.jointOn`, `X_B` = `Am.lat₁.pullbackJoint`; the two contribution conditions are *fields*, not hypotheses. **Both PROVED at M2 (2026-08-18)**; the proof factors through the `private` chain `condEntropy_jointOn_pair_of_subset`, `condEntropy_jointOn_triple`, `condEntropy_eq_tree`/`condEntropy_eq_tree'`, `sum_leaves_eq`, `condInteractionInfo_jointOn_le` and `condEntropy_jointContrib_le_pullbackJoint`, with `ITree.label_eq_polar` putting `Z_G` on the left |
+| Cor 5.9 (5.21), (5.22) | `Condensation.condEntropy_jointAbove_le_reconScore`, `.condEntropy_jointAbove_le_reconScore_of_orderedMarkov` | **both PROVED at M2 (2026-08-18)**, and both inventoried. (5.22) consumes Proposition 4.10, whose proof landed in the same milestone, so it was the last §5 endpoint to become axiom-clean |
+| Cor 5.10 (5.24), (5.25) | `Condensation.polar_kSubsets`, `.condEntropy_jointAbove_le_choose` | **both proved** (5.25 at M2, 2026-08-18). `kSubsets` is `F`. **The `1 ≤ k` binder is asymmetric on purpose (R2-F21)**: `polar_kSubsets` (5.24) keeps it — the identity is genuinely false at `k = 0`, where the LHS is `polar ∅ = P⁺I` and the RHS is the upward cone `above A.toFinset` (truncated `ℕ` subtraction makes `k - 1 = 0`) — while `condEntropy_jointAbove_le_choose` (5.25) has **no** `hk`, because its tree hypothesis is unsatisfiable at `k = 0` and the statement is vacuous there. See errata 8 and the new errata 14 |
 | auxiliary: `{B : B incomparable to A}` | `Condensation.incomparable` | in `Model.lean` beside `contrib`/`above`; no paper node, like them. Defined **via Mathlib's `IncompRel (· ≤ ·)`** since 2026-08-17 (`Mathlib.Order.Comparable`, imported by `Model.lean`): `IncompRel r a b` unfolds to `¬ r a b ∧ ¬ r b a`, so `mem_incomparable` stays `Iff.rfl`. Same policy as "upward closed" = `IsUpperSet`: no local synonym (R2-F27) |
 | auxiliary: "upward closed" | Mathlib `IsUpperSet` on `PPlus I` | **not** a FAF definition — an earlier local `IsUpwardClosed` in `Perfect.lean` was a synonym and is retired |
 | auxiliary: `FiniteRange` of a dependent product | ~~`Condensation.finiteRange_pi`~~ | **retired 2026-08-17**, and removed from `AxiomAudit.lean`'s inventory. It supplied `FiniteRange` for a dependent product of finitely many finite-range variables, which the vendored `FiniteRange/Defs.lean` still lacks. After the swap it had *zero* callers — `Example41.L₁RV`/`L₂RV` were the last two and now go through `M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)` — and an unused inventoried declaration is what this library's own rule says not to keep. `Model.lean` carries a paragraph where it stood; reinstating it is six lines of `Set.Finite.pi` |
 | witness: a model the old class could not contain | in `namespace Condensation.Example` (singular): `geomModel`, `geomModel_X`, `geomModel_P`, `geomModel_not_finiteRange`, `geomModel_entropy`, `geomModel_entropy_pos`, `geomLatent`, `geomLatent_reconScore` | no paper node; all proved, none `sorry`. `geomModel : RVModel Unit` has `Ω = ℕ`, `P = ShannonInformation.geom` (the `Geometric(1/2)` law), `X () = id`, entropy `2 log 2`, together with a proof that `id` does **not** have finite range; `geomLatent = LatentModel.ofJoint geomModel` and its reconstruction score is `0`. They sit after `LatentModel.ofJoint` in `Examples.lean` rather than beside the fair-coin witnesses, precisely because `geomLatent` *is* `ofJoint geomModel` and there is nothing model-specific to say about the latent side. It is the evidence that retiring `dd:finite-range` has content rather than being a bookkeeping change — every other witness lives on a finite sample space and cannot tell the two readings apart. The law, its instances and the entropy computation live in `ShannonInformation/FiniteEntropy/Examples.lean` and are not restated; `geomLatent` is just `LatentModel.ofJoint geomModel` |
+
+### M2 machinery (2026-08-18) — no paper nodes
+
+Everything in this block landed with the four parallel M2 proof shards. None of it is a
+numbered node, so none is annotated; all of it is ordinary `lemma`/`def` and is covered by
+the ordinary axiom gate. The **homes below are the post-consolidation ones** — the four
+shards each parked their generic helpers in a "TO BE MOVED" section of the file they owned,
+and those sections were deleted when the wave was integrated. Do not look for a helper in
+the file whose proof first needed it.
+
+| Machinery | Lean name | Notes |
+|---|---|---|
+| the finite-family chain rule (whole new file) | `Condensation/ChainRule.lean` | imports only `Condensation.Model`; stated over a bare `RVModel J` with `[Finite J]`, not over a latent model, because that is the generality §4 uses. It is the single piece of infrastructure the KNOWLEDGE pitfall predicted would unblock four §4 endpoints (Prop 4.2's second inequality, Prop 4.10, both halves of Thm 4.9), and it did |
+| Szpilrajn, strict form | `Condensation.exists_strictTotalOrder_ext` | Mathlib's `extend_partialOrder` yields a *reflexive* linear order; the chain-rule induction needs an irreflexive one, so this rebuilds `r a b := s a b ∧ a ≠ b` and re-registers the four `Std`/`Is*` classes by hand |
+| the order of (4.7) | `Condensation.exists_revIncl_strictTotalOrder` | strict linear order on `P⁺I` with supersets first (`C < B → r B C`), by extending reverse inclusion |
+| the order before (4.29) | `Condensation.exists_revIncl_strictTotalOrder_incomparable_first` | same, and additionally `∀ B ∈ incomparable A, r B A`; built by extending the paper's own partial order `B ⊇ C ∨ (B incomparable to A ∧ A ⊇ C)` |
+| (4.35)/(4.39)'s converse containment | `Condensation.pred_subset_incomparable_union_strictAbove` | everything `r`-below `B` is incomparable to `B` or a strict superset of it |
+| pair of joint variables as one | `RVModel.condEntropy_pair_jointOn` | `H[X \| ⟨Y_S, Y_T⟩] = H[X \| Y_{S ∪ T}]`; used constantly |
+| (4.8) | `RVModel.condEntropy_jointOn_mono` | `S ⊆ T → H[X \| Y_T] ≤ H[X \| Y_S]` |
+| drop already-given coordinates | `RVModel.condEntropy_jointOn_sdiff`, `.condEntropy_jointOn_above` | `H[Y_G \| Y_W] = H[Y_{G∖W} \| Y_W]`; and `H[Y_⊇A \| Y_W] = H[X_A \| Y_W]` when `⊋A ⊆ W` |
+| the chain rule itself | `RVModel.condEntropy_jointOn_eq_sum`, `.entropy_jointOn_eq_sum` | conditioned (4.38) and unconditioned (4.9)/(4.29)/(4.34) forms, by induction peeling the `r`-greatest element off a `Finset`; the private helpers are `exists_greatest`, `pred_eq_erase`, `pred_erase` |
+| subadditivity for a finite family | `RVModel.entropy_jointOn_le_sum` | `H(Y_s) ≤ ∑_{B ∈ s} H(Y_B)`, the first inequality of (4.25) |
+| independence ⇒ additivity | `RVModel.entropy_jointOn_eq_sum_of_iIndepFun` | the heterogeneous, arbitrary-finite-index analogue of PFR's `iIndepFun.entropy_eq_add`, which is `Fin m`-only |
+| additivity ⇒ independence | `RVModel.iIndepFun_of_entropy_jointOn_eq_sum` | (4.23)–(4.26), the direction PFR and Mathlib do **not** have. Hypothesis is `{t : Finset J} (ht : ∀ j, j ∈ t)` rather than `Finset.univ`, so no `Fintype J` has to be produced to name it; supporting steps are `.entropy_jointOn_eq_sum_of_subset` (4.25) and `.indepFun_X_jointOn_of_entropy_eq` (4.26), plus the private `entropy_jointOn_empty`/`_insert`/`_split` |
+| Def 4.8 as a termwise entropy equality | `RVModel.condEntropy_jointOn_eq_of_condIndepFun`, `.condIndepFun_of_condEntropy_jointOn_eq` | (4.30)/(4.32), (4.35), (4.40), both stated in the "sandwich" shape `S₂ ⊆ W ⊆ S₁ ∪ S₂` the proofs need |
+| entropy additivity over a **Set**-indexed family | `RVModel.entropy_jointOn_eq_sum_famFinset` (in `Condensation/ChainRule.lean`) | `H[Y_F] = ∑ B ∈ famFinset F, H[Y_B]` for `F : Set (PPlus I)`. `Examples.lean` grew three `private` helpers for this in parallel — `entropy_pi_finset_eq_sum_of_iIndepFun`, `entropy_jointOn_eq_sum_toFinset`, `entropy_jointOn_eq_sum_of_iIndepFun` — which were **deduplicated away** at M2 integration against ChainRule's `Finset`-indexed `RVModel.entropy_jointOn_eq_sum_of_iIndepFun`; this is the thin `famFinset` restatement of that. The `Finset` indexing is not incidental: the induction runs on a `Finset`, while `Condensation.famFinset` is not generic in the index type (it is declared inside `LatentModel`'s score section and takes a `Set (PPlus I)`), so both spellings have to exist |
+| a.e.-functional dependence, congruence | `Condensation.AEFunctionOf.congr_left`, `.congr_right` | in `Condensation/Probability.lean`, beside the rest of the `AEFunctionOf` API. `congr_left : AEFunctionOf X Y μ → X =ᵐ[μ] X' → AEFunctionOf X' Y μ` replaces the **independent** variable (the one everything is a function *of*); `congr_right : AEFunctionOf X Y μ → Y' =ᵐ[μ] Y → AEFunctionOf X Y' μ` replaces the **dependent** one. Recall `AEFunctionOf X Y μ` means "`Y` is a function of `X`", so left/right are the *argument* positions, not the roles. These are how the field `LatentAmalgamation.comm` is consumed — `π̃₁` vs `π̃₂`. `congr_right` is exactly the three-line lemma this file predicted M2 would need |
+| pairing a dependence | `Condensation.AEFunctionOf.prodMk_left` | in `Probability.lean`: `AEFunctionOf W V μ → AEFunctionOf ⟨X, W⟩ ⟨X, V⟩ μ` |
+| conditional-entropy comparisons under a.e. dependence | `Condensation.condEntropy_congr_of_aeFunctionOf`, `.condEntropy_le_condEntropy_of_aeFunctionOf`, `.condEntropy_le_of_aeFunctionOf` | in `Probability.lean`. Respectively: conditioning on either of two mutually a.e.-functional variables is the same; conditioning on more can only help; and data processing for the *conditioned* variable (`H(V\|W) ≤ H(X\|W)` when `V` is a.e. a function of `X`) — (5.23)'s only client. All three open with `rcases eq_zero_or_isProbabilityMeasure μ with rfl \| hμ` because they cite `finiteEntropyOf_pair` |
+| variables with subsingleton *range* | `Condensation.entropy_eq_zero_of_subsingleton`, `.condEntropy_eq_zero_of_subsingleton` | in `Probability.lean`, the companions of `condEntropy_eq_entropy_of_subsingleton` (which is about the *conditioning* variable). They are what makes Example 4.1's guarded-subtype encoding pay off; they were `private` in `Examples.lean` and became public on the move |
+| upward cones are antitone | `Condensation.above_mono` | in `Condensation/Model.lean`: `B ⊆ A → above A ⊆ above B` |
+| joint over a union | `Condensation.RVModel.functionOf_jointOn_union` | in `Model.lean`, the companion of `RVModel.functionOf_jointOn_mono`: `Y_{F ∪ G}` is (everywhere) a function of `⟨Y_F, Y_G⟩`. What turns Lemma 5.4's `H(X \| Y₁, Y₂, C)` into Theorem 5.8's `H(Y_⊇A \| Z_{L(v) ∪ R(v)})` |
+| (4.62) and its invariant | `Condensation.iInter_contribIdx_eq_above` (in `Comparison.lean`), `Condensation.isUpperSet_iInter_contribIdx` (in `Model.lean`) | `⋂_{i ∈ A} {B : i ∈ B} = {B : A ⊆ B}` — the paper's undefined `F_i` is `contribIdx i` (errata 5) — and the upper-set invariant Theorem 4.15's induction carries so that Proposition 4.10 applies at every step |
+| amalgamation symmetry | `Condensation.LatentAmalgamation.symm` | in `Condensation/Amalgamation.lean`. `LatentAmalgamation L₁ L₂ → LatentAmalgamation L₂ L₁`, swapping the two sides field by field; `comm` transports as `Am.comm.mono fun _ hl => hl.symm`. This is the paper's "using the symmetry of the situation to interchange `Y` and `Z`", and it is what makes Theorem 4.15's second conjunct free |
+| scores transfer along `ρₖ` | `Condensation.LatentAmalgamation.condScore_lat₁`, `.condScore_lat₂` | in `Amalgamation.lean`: `χ_{L̃ₖ} = χ_{Lₖ}`. Sound because Definition 3.3's `χ` mentions only the latent family and never `π` — which matters, since round 2 deleted the `ρₖ_π` fields (R2-F12/F20) and nothing relates `Lₖ.π ∘ ρₖ` to `π̃ₖ`. The private workhorse is `condEntropy_strictAbove_transfer`, stated over a **bare family** rather than over `Am.lat₁` on purpose (see pitfalls) |
+| perfection transfers along `ρₖ` | `Condensation.LatentAmalgamation.perfectlyCondenses_lat₁`, `.perfectlyCondenses_lat₂` | these stay in `Condensation/Comparison.lean`, not in `Amalgamation.lean`, because `PerfectlyCondenses` is defined in `Perfect.lean` and `Amalgamation.lean` does not import it. If you go looking for them beside `symm` and `condScore_lat₁`, this is why they are not there |
+| `Λ₀`-pinned finiteness for an amalgamation | `Condensation.LatentAmalgamation.finiteEntropyOf'` | in `Amalgamation.lean`. `RVModel.finiteEntropyOf` with the sample space spelled `Λ₀` rather than `lat₁.Λ`/`lat₂.Λ`. The spelling is load-bearing, not cosmetic — see the Ω-three-spellings pitfall |
 
 (Extend as declarations land. Every formalized node gets a row.)
 
@@ -95,7 +148,9 @@ below.
   `RVModel.finiteEntropyOf`, seven `Probability.lean` signatures changed, the §5 Lemma 5.4
   block and Lemma 4.14 rebound, `LatentAmalgamation` given `finiteEntropy_Λ₀` plus the new
   `Amalgamation.finiteEntropyMeasure_canonicalMeasure` to discharge it — and *no statement of
-  any §3–§5 theorem changed*. The `sorry` count is unchanged at 20. Every §4/§5 theorem still
+  any §3–§5 theorem changed*. The `sorry` count was unchanged at 20 by that migration (it
+  reached **zero** with the M2 proof wave on 2026-08-18 — do not read "20" as current).
+  Every §4/§5 theorem still
   gets its finiteness from the structure and never as a hypothesis, exactly as the hedge
   intended. The substrate, not the paper library, was where the work was.
 
@@ -177,11 +232,22 @@ below.
   `Quantitative.lean` used `IsUpperSet`; they are the same predicate up to argument order,
   and the local one is retired. `Model.lean` imports `Mathlib.Order.UpperLower.Basic` for
   it. Do not reintroduce a synonym.
+- **Lemma 4.14 carries one binder the paper does not: `[MeasurableSingletonClass S]` on
+  `X`'s range (M2 ruling, 2026-08-18).** This is the only deliberate binder divergence in
+  §4, and it is a *repair*, not a narrowing of convenience: as printed the lemma is false,
+  with a machine-checked counterexample (errata 15). Round 2's binder strip (R2-F01/F23)
+  had gone one range too far — it correctly removed the finiteness binders and correctly
+  left `T₁`, `T₂` bare, but it also removed the one binder the statement cannot survive
+  without. The orchestrator ruled on 2026-08-18 that the binder is restored, on the licence
+  of the paper's own §2 standing convention. Two consequences for anyone editing this
+  statement: adding a `FiniteRange`/`FiniteEntropyOf` binder here is still a finding, and
+  *removing* `[MeasurableSingletonClass S]` is now also a finding.
 - **`Mathlib.Order.Extension.Linear` is not in the substrate's import closure** and is
   imported explicitly by `Model.lean` for M2's benefit. `ShannonInformation.API` does not
   bring `LinearExtension`/`toLinearExtension` transitively at this pin, and the §4 tranche
   needs them; discovering that at proof time costs an import edit plus a full rebuild of
-  everything downstream.
+  everything downstream. It landed as predicted: `Condensation/ChainRule.lean`'s
+  `exists_strictTotalOrder_ext` is the only consumer, through `extend_partialOrder`.
 - Registry: `scripts/papers.py` uses two axes for this paper — `scheme: printed-counter`
   (how the paper numbers) and `source_format: text-extraction` (what the committed source
   is). Resolve parsers via `paper_nodes.scheme_of(paper)`, never `SCHEMES[scheme]` (the TeX
@@ -193,9 +259,12 @@ below.
   Condensation Lean file, README, KNOWLEDGE, errata, extraction, `papers.py`,
   `paper_nodes.py`, generator or template (the freshness hash covers all of them; CI blocks).
 - Scope completeness is not yet machine-checked: `check-condensation-nodes.py` checks cited
-  nodes are real, not that every in-scope node is cited. Once the Examples 5.1–5.3 ruling
-  lands, pass a `scope_manifest` (`out_of_scope`, `mathlib_rendered` = Def 2.1, Def 2.4) to
-  `paper_nodes.run_node_check` as the FFS checker does.
+  nodes are real and *reports* coverage, but does not fail on an in-scope node that no
+  declaration cites. As of 2026-08-18 it reports `39/42` — §2 5/5, §3 12/12, §4 15/15,
+  §5 7/10 — with the three uncited being Examples 5.1, 5.2, 5.3, which the proposed ruling
+  puts out of scope. Once that ruling lands, pass a `scope_manifest` (`out_of_scope`,
+  `mathlib_rendered` = Def 2.1, Def 2.4) to `paper_nodes.run_node_check` as the FFS checker
+  does, and the 39/42 becomes a green 39/39.
 - Substrate: `ShannonInformation.API` only. Never name `PFR.*`; never `import Mathlib`
   wholesale in a Condensation file (clashes with the vendored shims — see
   `ShannonInformation/README.md`).
@@ -229,7 +298,10 @@ below.
 - Examples 5.1–5.3 carry no declarations (proposed ruling; see roadmap). Note this is
   *not* rescued by the finite-entropy generalization and never was: the paper's own text
   says `L` there has uncountable range, so it is outside countable discreteness, not
-  merely outside finite range.
+  merely outside finite range. They are the **only** uncited numbered nodes of the paper as
+  of 2026-08-18 — the node checker's `not yet cited (3)` line names exactly these three, so
+  that line is the standing evidence for the ruling and should go to zero (by
+  `scope_manifest`, not by new declarations) when it lands.
 - Universe stratification (`dd:bundled-model`): `RVModel` fixes `Ω : Type u` and
   `R : I → Type v`, and the category instance is taken at fixed universes, where the paper
   quantifies without stratification. Presentational rather than a cardinality bound
@@ -275,20 +347,42 @@ in for a paper claim it does not make.
 - Def 5.6's "parents" of a vertex are its *children* under the usual convention (its edges
   point towards the root). Not an error, but it inverts a formalizer's reading and cost one
   wrong first draft.
+- **Lemma 4.14 is false as printed** (entry 15, found at M2, 2026-08-18). The printed
+  hypotheses constrain only the ambient space ("countable discrete probability space") and
+  `C`'s range ("discrete"); the ranges of `X`, `Y₁`, `Y₂` are unconstrained. If `X`'s range
+  carries a σ-algebra that does not separate points, the conditional-independence hypothesis
+  goes vacuous while the conclusion still constrains `X`. The machine-checked refutation of
+  the literal transcription: `Ω = Bool` uniform, `U = Unit` (so `C` is constant),
+  `S = T₁ = T₂` a two-point type carrying the **trivial σ-algebra `⊥`**, and
+  `X = Y₁ = Y₂ = id` — every hypothesis holds (any map into a `⊥`-space is measurable,
+  `comap Yₖ ⊥ = ⊥` makes the independence automatic, and `Prod.snd` witnesses both
+  functional dependences) while the conclusion would force `id` to be a.e. constant. **The
+  repair is one binder**: `X`'s range gets `[MeasurableSingletonClass S]`, which is licensed
+  by the paper's own §2 convention ("our probability spaces are countable and discrete",
+  stated just before Definition 2.4) and is free at every call site in this library, since
+  `X` is always a model's variable and `RVModel` carries `singR`. `T₁` and `T₂` genuinely
+  need only `MeasurableSpace`. This is a *narrowing of the printed statement*, and it is the
+  one place in §4 where the Lean is deliberately not the printed binders.
 
-Full list (fourteen entries) with line numbers: `notes/paper-errata.md`.
+Full list (fifteen entries) with line numbers: `notes/paper-errata.md`.
 
 ## Pitfalls
 
 - **"`sorry` count" and "`sorryAx`-dependent count" are different numbers, and this repo
-  quotes both.** The compiler's `declaration uses 'sorry'` warnings count declarations
-  *containing* a `sorry` (17 as of 2026-08-17). The ledger counts declarations *depending
-  on* `sorryAx` (21), which also picks up complete proofs that consume a staged one: the
-  three un-annotated consumers, plus Corollary 4.6
-  (`aeFunctionOf_of_perfectlyCondenses`, an annotated endpoint whose own proof is finished),
-  and historically `Amalgamation.finiteEntropyMeasure_canonicalMeasure`. 17 + 1 + 3 = 21. Do not reconcile them by "fixing"
-  one; state which you mean. This gap is the whole reason the `CONDENSATION-PENDING` block
-  needed its `SECTION: consumers (un-annotated)` second section.
+  quotes both.** Both are **zero** as of the M2 wave (2026-08-18) — `check_sorry_ledger.py`
+  reports `0 sorry-dependent declarations, all ledgered (0 main, 0 consumers)` and the
+  `CONDENSATION-PENDING` block is empty in both of its sections — so the distinction is
+  currently moot, but it will bite again the moment one `sorry` is reintroduced, and the
+  history is what explains the ledger's shape. The compiler's `declaration uses 'sorry'`
+  warnings count declarations *containing* a `sorry` (17 on 2026-08-17). The ledger counts
+  declarations *depending on* `sorryAx` (21 the same day), which also picks up complete
+  proofs that consume a staged one: three un-annotated consumers, plus Corollary 4.6
+  (`aeFunctionOf_of_perfectlyCondenses`, an annotated endpoint whose own proof was
+  finished), and historically `Amalgamation.finiteEntropyMeasure_canonicalMeasure`.
+  17 + 1 + 3 = 21. Do not reconcile them by "fixing" one; state which you mean. This gap is
+  the whole reason the `CONDENSATION-PENDING` block needed its
+  `SECTION: consumers (un-annotated)` second section — which is now present but empty, and
+  should stay present.
 - **`scripts/check_trust_surface.py` is a freshness hash over ~156 inputs and says nothing
   about correctness.** In a multi-agent session it fails constantly on pure staleness. The
   only meaningful reading is "regenerate with `gen-trust-surface.py`, then immediately
@@ -392,10 +486,12 @@ Full list (fourteen entries) with line numbers: `notes/paper-errata.md`.
   equation-level node id like `Example 4.1 (4.2)`; the checker matches printed headers in
   `notes/condensation-25-07.txt` and a node string that parses to nothing is a hard failure.
 - **Mentioning `sorry` in docstring prose is normal here, so `grep -c sorry <file>`
-  overcounts.** `Amalgamation.lean`, `Quantitative.lean`, `Perfect.lean` and `Examples.lean`
-  all discuss `sorry` in prose. The authoritative count is the compiler's
-  `declaration uses 'sorry'` warnings in the build log, which are per-declaration and report
-  the *declaration's* line, not the tactic's.
+  overcounts.** As of 2026-08-18 the string occurs four times in `Condensation/` —
+  `Quantitative.lean` twice, `Comparison.lean` and `Examples.lean` once each — and **every
+  one of them is prose**; there are no `sorry` tactics left. The authoritative counts are
+  the compiler's `declaration uses 'sorry'` warnings in the build log (per-declaration, and
+  reporting the *declaration's* line, not the tactic's) and
+  `python3 scripts/check_sorry_ledger.py`, which reads the compiled environment.
 
 - `pdftotext` emits the font's f-ligature slots as C0 bytes (`\x1c`=fi, `\x1b`=ff,
   `\x1d`=fl, `\x1e`=ffi), so `Definition` is stored as `De\x1cnition` (prints `Denition`).
@@ -555,14 +651,19 @@ Full list (fourteen entries) with line numbers: `notes/paper-errata.md`.
   joint variables, pullbacks, relabellings — is measurable, so its finiteness is one step and
   never a summability argument. The instinct carried over from `dd:finite-range` (find or
   build a closure instance for the shape of the variable) is now the slow route.
-- **PFR has no chain rule for a finite family, and that single gap blocks four §4
-  endpoints.** The vendored library stops at the two- and three-variable forms
-  (`chain_rule`, `chain_rule'`, `chain_rule''`, `cond_chain_rule`, `cond_chain_rule'`).
-  Proposition 4.2's second inequality, Proposition 4.10, and both halves of Theorem 4.9 all
-  run on a chain rule along a *linear extension* of the inclusion order on `P⁺I`. Budget
-  them as one piece of infrastructure plus four applications, not as four independent
-  proofs. The linear order itself comes from `Mathlib.Order.Extension.Linear`, imported
-  explicitly by `Model.lean` (see design decisions).
+- **PFR has no chain rule for a finite family, and that single gap blocked four §4
+  endpoints — it is now filled by `Condensation/ChainRule.lean` (M2, 2026-08-18).** The
+  vendored library stops at the two- and three-variable forms (`chain_rule`, `chain_rule'`,
+  `chain_rule''`, `cond_chain_rule`, `cond_chain_rule'`). Proposition 4.2's second
+  inequality, Proposition 4.10, and both halves of Theorem 4.9 all run on a chain rule along
+  a *linear extension* of the inclusion order on `P⁺I`. The "one piece of infrastructure
+  plus four applications" estimate held: `ChainRule.lean` is ~670 lines and the four
+  consumers are short. The linear order comes from `Mathlib.Order.Extension.Linear`,
+  imported explicitly by `Model.lean` (see design decisions). **Before proving anything new
+  about joint variables, read `ChainRule.lean`'s `## Contents` docstring** — it also carries
+  relabelling (`condEntropy_pair_jointOn`), monotonicity (`condEntropy_jointOn_mono`) and
+  coordinate-dropping (`condEntropy_jointOn_sdiff`, `condEntropy_jointOn_above`) lemmas that
+  are easy to re-derive by accident.
 - **`RVModel.Hom`'s `f` field is dependent on `ι`, so morphism extensionality goes through
   `HEq`.** `Hom.ext` takes `hπ : φ.π = ψ.π`, `hι : φ.ι = ψ.ι` and `hf : HEq φ.f ψ.f`, and
   the `HEq` is unavoidable: `f : ∀ j, M.R (ι j) → N.R j` mentions `ι`. `Morphism.lean`
@@ -610,14 +711,154 @@ Full list (fourteen entries) with line numbers: `notes/paper-errata.md`.
   statements.** `Am.contributes₂` is phrased through `Am.π₂`, while `X_B` in Theorem 5.8 is
   pulled back along `Am.π₁`. They agree only *almost everywhere*, by the field `Am.comm`.
   Two statements that differ only in which `π` they name look identical at a glance and are
-  not interchangeable without that field. M2's proof of (5.13) has to use it, and will want
-  an `AEFunctionOf.congr_right` (`AEFunctionOf X Y μ → Y' =ᵐ[μ] Y → AEFunctionOf X Y' μ`,
-  three lines) in `Probability.lean` beside the rest of the `AEFunctionOf` API. It is
-  deliberately not written yet, because an unused declaration would have to be inventoried
-  for no current benefit.
+  not interchangeable without that field. M2's proof of (5.13) does use it, through
+  `AEFunctionOf.congr_right` (`AEFunctionOf X Y μ → Y' =ᵐ[μ] Y → AEFunctionOf X Y' μ`) —
+  predicted here, and written by two M2 shards independently; Theorem 4.15 needs the other
+  side, `AEFunctionOf.congr_left`. Both now live in `Probability.lean` beside the rest of
+  the `AEFunctionOf` API.
 - **Stale-olean trap, hit twice in the round-1 fix wave.** `lake env lean Condensation/X.lean`
   elaborates `X` against the *built* oleans of its imports, not against your edits to them.
   After editing `Probability.lean`, `lake env lean Condensation/Model.lean` reported
   `failed to synthesize Finite (PPlus I)` for an instance that was already in the source.
   Rebuild the upstream module (`safe-lake.sh build Condensation.Probability`) before
   iterating downstream.
+
+- **`Am.Λ₀`, `Am.lat₁.Λ` and `Am.lat₂.Λ` are three spellings of one type, and instance
+  search sees only the one it is handed.** They are definitionally equal, but only through
+  `LatentAmalgamation.lat₁`/`lat₂`/`rv₁`/`rv₂`, which are plain `def`s — not `abbrev`s, not
+  `@[reducible]` — and instance search unfolds at *reducible* transparency only. So an
+  instance registered at one spelling is invisible to a goal phrased at another, and the
+  error you get is a "failed to synthesize" on something that synthesises perfectly well
+  when you `#check` it on its own. Three consequences, all of them load-bearing in M2's
+  code: (a) `LatentAmalgamation.finiteEntropyOf'` exists purely to be the `Λ₀`-pinned
+  version of `RVModel.finiteEntropyOf`, and §5's proofs — which mix `Y`-side, `Z`-side and
+  `Λ₀`-side variables inside one conditional entropy — need exactly that one; (b) inside a
+  proof phrased at `Am.lat₂`, re-register by hand
+  (`haveI : Countable Am.lat₂.Λ := Am.countΛ₀`,
+  `haveI : MeasurableSingletonClass Am.lat₂.Λ := Am.singΛ₀`); (c) where a lemma takes the
+  instance as a *named* binder, pass it — Theorem 4.15 calls Lemma 4.14 as
+  `aeFunctionOf_of_condIndepFun (_hΩsing := Am.singΛ₀) …`, which is why that binder is named
+  `_hΩsing` rather than anonymous. Do not "fix" this by making `lat₁`/`rv₁` reducible
+  without measuring what it does to elaboration time.
+- **The cross-model one-measure trap: a shared instance binder is taken from ONE side, and
+  the reported failure names the other.** `ShannonInformation.IdentDistrib.condEntropy_eq`
+  relates two conditional entropies whose conditioned variables share a single
+  `[MeasurableSpace S]`. With `Am.lat₁.Y B` on the left, that instance is picked up as
+  `Am.rv₁.mR B`, and instance search (reducible transparency again) cannot travel from there
+  to `L₁.L.mR B` on the right — but what Lean *prints* is a `FiniteEntropyOf` failure on the
+  **right**-hand side, a goal that synthesises fine in isolation. The fix that works is to
+  restate the lemma over a **bare family** `Y : ∀ A : PPlus I, Λ₀ → L.L.R A` instead of over
+  `Am.lat₁`, so that only one spelling of the range ever appears;
+  `condEntropy_strictAbove_transfer` (private, `Comparison.lean`) is the worked example and
+  `LatentAmalgamation.condScore_lat₁`/`_lat₂` are its two one-line clients. General lesson:
+  when an instance error names a goal that is independently solvable, suspect a *shared*
+  binder being fixed by the other argument, not the goal it names.
+- **`entropy_comp_of_injective` will not invent the relabelling function `f`.** Its
+  statement is `H[f ∘ X ; μ] = H[X ; μ]` with `f` an explicit argument, and the goals in
+  this development have a *joint variable* (`N.jointOn (↑s)`, `L.jointStrictAbove _`) where
+  the `f ∘ X` should be — higher-order unification will not solve for `f`. The pattern that
+  works throughout `ChainRule.lean` and `Examples.lean` is: `set f : … := … with hf`, prove
+  `Function.Injective f` separately, then use the lemma **backwards** inside a `have`
+  (`(entropy_comp_of_injective N.P hmeas f hinj).symm`) and let defeq do the matching.
+  Mathlib's own uses (`entropy_comm`, `entropy_assoc`) open with a `change H[f ∘ X ; μ] = …`
+  for the same reason. The conditional form
+  `ProbabilityTheory.condEntropy_comp_of_injective` additionally needs the conditioning
+  variable by name — `(Y := N.jointOn W)` — or it picks the wrong one.
+- **Extending a partial order to a *strict* linear one: Mathlib gives you the reflexive
+  form, and the rest is hand-rolled.** `extend_partialOrder p` (`Mathlib.Order.Extension.Linear`)
+  returns `⟨s, IsLinearOrder α s, ∀ a b, p a b → s a b⟩`. The chain-rule induction needs an
+  irreflexive order (it peels off a greatest element and needs `{C | r C A}` to exclude `A`),
+  so `Condensation.exists_strictTotalOrder_ext` takes `r a b := s a b ∧ a ≠ b` and registers
+  the classes by hand, in this order: `Std.Irrefl`, `IsTrans`, `Std.Trichotomous`, then
+  `IsStrictOrder α r := {}` and `IsStrictTotalOrder α r := {}` — the last two are structure
+  instances synthesised from the first three and are written as literal empty anonymous
+  constructors. Transitivity and trichotomy are proved as plain `∀`-statements first
+  (`htrans`, `htri`) and fed in; `antisymm_of s`, `trans_of s`, `total_of s` are the
+  accessors for the reflexive order's own classes. To build a *specific* extension, feed
+  `exists_strictTotalOrder_ext` a `p` you have proved `IsPartialOrder` for — that is how
+  `exists_revIncl_strictTotalOrder` (reverse inclusion) and
+  `exists_revIncl_strictTotalOrder_incomparable_first` (the paper's `⪯ₚ`,
+  `C ≤ B ∨ (B ∈ incomparable A ∧ C ≤ A)`) are built.
+- **Half of the `Is*` order classes are deprecated aliases of `Std.*` at this pin, and the
+  new ones take the relation only.** `IsIrrefl α r`, `IsRefl`, `IsSymm`, `IsAsymm`,
+  `IsAntisymm`, `IsTotal`, `IsTrichotomous` are `@[deprecated]` `abbrev`s for `Std.Irrefl r`,
+  `Std.Refl r`, `Std.Symm r`, `Std.Asymm r`, `Std.Antisymm r`, `Std.Total r`,
+  `Std.Trichotomous r` (`Mathlib/Order/Defs/Unbundled.lean`, deprecations dated 2025-12 to
+  2026-03). Note the **arity change**: the `Std` classes take only `r`, the old ones took
+  `α` as well. But `IsTrans α r`, `IsStrictOrder α r`, `IsPartialOrder α r`,
+  `IsLinearOrder α r`, `IsStrictTotalOrder α r` are *not* deprecated and still take `α`, so
+  a single `haveI` block legitimately mixes the two shapes — `ChainRule.lean`'s
+  `exists_strictTotalOrder_ext` does. Do not "normalise" one way or the other.
+- **`tfae_have` syntax at this pin is `tfae_have i → j := proof`.** The goal is stated as an
+  implication between numbered clauses and *assigned* with `:=`, taking either a term or a
+  `by` block; there is no name and no colon. `LatentModel.perfect_tfae_A` is the worked
+  example (`tfae_have 1 → 3 := by …`, `tfae_have 3 → 2 := fun h => …`,
+  `tfae_have 2 → 1 := by …`, then `tfae_finish`). Copy that shape rather than the older
+  spellings you will find in tutorials and pre-2025 mathlib (`tfae_have h : 1 → 3`, or a
+  bare `tfae_have 1 → 3` followed by a tactic block); those are the pre-rename syntax, and
+  nothing in this repo uses them.
+- **`Finset.set_biInter_insert` lives in `Mathlib/Order/CompleteLattice/Finset.lean`, which
+  is why grepping `Data/Finset` and `Data/Set/Lattice` for it finds nothing.** It is
+  `⋂ x ∈ insert a s, t x = t a ∩ ⋂ x ∈ s, t x` for `s : Finset α`, needs `[DecidableEq α]`,
+  and is **not** `@[simp]`; the `Set`-indexed cousin is `Set.biInter_insert`, and the
+  degenerate case is `Finset.set_biInter_singleton`. There is **no `set_biInter_cons`**, so
+  an induction run with `Finset.Nonempty.cons_induction` (which is what you want when the
+  base case must be a nonempty singleton) has to close the corresponding step by
+  `ext B; simp [Set.mem_iInter, Finset.mem_cons]` instead — `aeFunctionOf_jointAbove_aux`
+  in `Comparison.lean` does exactly that, while `ChainRule.lean`'s
+  `iIndepFun_of_entropy_jointOn_eq_sum` uses the `insert` lemma directly.
+- **A mathlib lemma you cannot find by its additive name may exist only under its
+  multiplicative one.** `Summable.le_tsum` (used in `Probability.lean`'s
+  `aeFunctionOf_of_condEntropy_eq_zero`, as `hsummable.le_tsum x fun j _ ↦ hnonneg j`) does
+  **not** appear anywhere in mathlib's source: it is generated by `@[to_additive]` from
+  `Multipliable.le_tprod` in `Mathlib/Topology/Algebra/InfiniteSum/Order.lean`. A plain
+  `grep -r le_tsum .lake/packages/mathlib` returns nothing and reads like "the lemma does
+  not exist". The general rule: for anything about `∑`/`∑'`/`+`/`0`/`≤`, grep the
+  *multiplicative* spelling too (`tprod`, `prod`, `mul`, `one`), or skip grep and use
+  `exact?`/`loogle`, which see the generated declarations. This is the same failure mode as
+  the "Mathlib lacks X" comments recorded above: a grep that comes back empty is weak
+  evidence, and it should be written down as *which search you ran*, not as a conclusion.
+- **Two parallel provers will write the same helper, and the collision is a hard error at
+  import time, not an ambiguity.** Two M2 shards independently wrote
+  `Condensation.AEFunctionOf.congr_right` — one into `Comparison.lean`, one into
+  `Quantitative.lean`. Neither file imports the other, so each compiled clean in isolation
+  and nothing complained until a module downstream of both was elaborated. The same shape
+  bit again mid-relocation, when a helper had been copied into its new home but not yet
+  deleted from its old one:
+  `error: import Condensation.Comparison failed, environment already contains 'Condensation.AEFunctionOf.congr_left' from Condensation.Probability`.
+  Two lessons. Lean does **not** resolve this by shadowing or ambiguity — the import fails
+  outright. And the error surfaces in whatever runs first over the *whole* import closure,
+  which here was `scripts/check_sorry_ledger.py`, so it reads like a gate malfunction rather
+  than a duplicate declaration. When integrating parallel shards, grep every new declaration
+  name across all of `Condensation/` before building, and when relocating a helper delete
+  **every** copy, not just the one you were looking at.
+- **Re-derive every count in prose from the checker scripts; never copy one out of README,
+  KNOWLEDGE or a module docstring.** Every M2 shard left the shared counts stale — `sorry`
+  counts, node-coverage counts, "staged in CONDENSATION-PENDING" claims and inventory
+  numbers — because each was true when its file was written and false by the time the wave
+  landed. The two commands are `python3 scripts/check_sorry_ledger.py` (needs the oleans, so
+  build first) and `python3 scripts/check-condensation-nodes.py` (pure text, always safe to
+  run). This whole reconciliation pass exists because those numbers were copied rather than
+  re-derived. The same applies to a *file's own* module docstring — a status paragraph
+  written mid-shard is a snapshot, not a fact. One survivor was found and fixed in this
+  pass — `Perfect.lean`'s Proposition 4.10 docstring credited the retired `dd:finite-range`
+  for its finiteness, which actually comes from Definition 3.1's `Ω`-clause via
+  `RVModel.finiteEntropyOf`. Grep for `dd:finite-range` in docstrings before trusting any
+  claim about where a finiteness hypothesis comes from.
+- **`notes/paper-errata.md` has a documented headline shape; entry 15 arrived violating it
+  and was reformatted in the M2 close-out.** The file's preamble requires
+  `N. **headline naming the node**` with the body indented as list continuation; entry 15
+  landed as a Markdown heading (`## 15. Lemma 4.14 as printed is false`). Copy entry 14's
+  shape.
+
+  **But do not repeat the reasoning that flagged it.** Two independent agents inferred that
+  the malformed headline would "fail to attach on the generated page". It would not, and
+  neither does a well-formed one: `scripts/gen-trust-surface.py` calls
+  `cartesian_frames_errata(cf_paper)` with `PAPERS['cartesian-frames']` **only**, so no
+  other paper's errata file is parsed for headlines at all — Condensation's is an input to
+  the staleness hash and nothing more. Two further reasons it could not work as assumed:
+  the node-id regex accepts only `Definition|Claim|Theorem` (not `Lemma`, `Proposition`,
+  `Corollary` or `Example`), and it captures `([0-9]+)`, so Condensation's dotted numbering
+  would key `Lemma 4.14` as `Theorem 4` at best. The headline shape is a *forward-looking
+  convention* the preamble asks for against a future Condensation-specific reader, not a
+  live wiring. Wiring it up is a real piece of work on the generator, not a formatting fix.

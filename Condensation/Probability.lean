@@ -171,6 +171,37 @@ lemma AEFunctionOf.comp_measurePreserving [MeasurableSpace Λ] {μΛ : Measure �
   have := hπ.quasiMeasurePreserving.ae hfX
   filter_upwards [this] with l hl using hl
 
+/-- Replacing the *independent* variable of an a.e. functional dependence by an
+a.e.-equal one.  `LatentAmalgamation.comm` makes this a workhorse of Theorem 4.15: a
+dependence witnessed through `π̃₁` has to be read through `π̃₂`. -/
+lemma AEFunctionOf.congr_left {X X' : Ω → S} {Y : Ω → T} (h : AEFunctionOf X Y μ)
+    (hX : X =ᵐ[μ] X') : AEFunctionOf X' Y μ := by
+  obtain ⟨f, hf, hfX⟩ := h
+  refine ⟨f, hf, ?_⟩
+  filter_upwards [hfX, hX] with ω hω hω' using hω.trans (congrArg f hω')
+
+/-- Replacing the *dependent* variable of an a.e. functional dependence by an a.e.-equal
+one: if `Y` is a.e. a function of `X` and `Y' = Y` a.e., then so is `Y'`.
+
+This is also what reconciles the two maps `Λ₀ → Ω` of an amalgamation.  Definition 4.12's
+contribution condition for `L̃₂` is phrased through `π̃₂` while Theorem 5.8's `X_B` is pulled
+back along `π̃₁`; the field `LatentAmalgamation.comm` says the two agree almost everywhere,
+and this lemma is how that field is consumed. -/
+lemma AEFunctionOf.congr_right {X : Ω → S} {Y Y' : Ω → T} (h : AEFunctionOf X Y μ)
+    (hY : Y' =ᵐ[μ] Y) : AEFunctionOf X Y' μ := by
+  obtain ⟨f, hf, hfX⟩ := h
+  refine ⟨f, hf, ?_⟩
+  filter_upwards [hfX, hY] with ω hω hω' using hω'.trans hω
+
+/-- `⟨X, V⟩` is a.e. a function of `⟨X, W⟩` when `V` is a.e. a function of `W`. -/
+lemma AEFunctionOf.prodMk_left {X : Ω → S} {W : Ω → T} {V : Ω → U}
+    (h : AEFunctionOf W V μ) :
+    AEFunctionOf (⟨X, W⟩ : Ω → S × T) (⟨X, V⟩ : Ω → S × U) μ := by
+  obtain ⟨f, hf, hfW⟩ := h
+  refine ⟨fun p => (p.1, f p.2), measurable_fst.prodMk (hf.comp measurable_snd), ?_⟩
+  filter_upwards [hfW] with ω hω
+  simp [hω]
+
 end FunctionOf
 
 /-! ## Equation (2.2) — invariance of the information quantities under pullback
@@ -529,5 +560,109 @@ lemma aeFunctionOf_iff_condEntropy_eq_zero [Countable Ω] [MeasurableSingletonCl
   ⟨condEntropy_eq_zero_of_aeFunctionOf hX hY, aeFunctionOf_of_condEntropy_eq_zero hX hY⟩
 
 end Prop25
+
+/-! ## Conditional entropy under a.e. functional dependence
+
+Generic consequences of Proposition 2.5 and the chain rule, with no paper node of their
+own.  They are what §4 and §5 use to compare two conditionings of the same variable. -/
+
+section CondEntropyComparison
+
+variable {Ω S T U : Type*} [MeasurableSpace Ω] [MeasurableSpace S] [MeasurableSpace T]
+  [MeasurableSpace U]
+  [Countable S] [MeasurableSingletonClass S] [Countable T] [MeasurableSingletonClass T]
+  [Countable U] [MeasurableSingletonClass U]
+  {μ : Measure Ω} [IsZeroOrProbabilityMeasure μ]
+  {X : Ω → S} {W : Ω → T} {V : Ω → U}
+
+/-- **Conditioning on either of two mutually a.e.-functional variables is the same.**
+`H (X | W) = H (X | V)` when each of `V`, `W` is almost everywhere a function of the other.
+
+Proved from the chain rule and `entropy_le_of_aeFunctionOf` in both directions, which is
+why it needs no injectivity or relabelling data. -/
+lemma condEntropy_congr_of_aeFunctionOf (hX : Measurable X) (hW : Measurable W)
+    (hV : Measurable V)
+    [hfX : ShannonInformation.FiniteEntropyOf X μ] [hfW : ShannonInformation.FiniteEntropyOf W μ]
+    [hfV : ShannonInformation.FiniteEntropyOf V μ]
+    (h : AEFunctionOf W V μ) (h' : AEFunctionOf V W μ) : H[X | W ; μ] = H[X | V ; μ] := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp
+  haveI := ShannonInformation.finiteEntropyOf_pair (μ := μ) hX hW
+  haveI := ShannonInformation.finiteEntropyOf_pair (μ := μ) hX hV
+  have hWV : H[W ; μ] = H[V ; μ] :=
+    le_antisymm (entropy_le_of_aeFunctionOf hV h') (entropy_le_of_aeFunctionOf hW h)
+  have hpair : H[(⟨X, W⟩ : Ω → S × T) ; μ] = H[(⟨X, V⟩ : Ω → S × U) ; μ] :=
+    le_antisymm (entropy_le_of_aeFunctionOf (hX.prodMk hV) (AEFunctionOf.prodMk_left h'))
+      (entropy_le_of_aeFunctionOf (hX.prodMk hW) (AEFunctionOf.prodMk_left h))
+  rw [ShannonInformation.chain_rule'' μ hX hW, ShannonInformation.chain_rule'' μ hX hV,
+    hWV, hpair]
+
+/-- **Conditioning on more can only help**: if `V` is a.e. a function of `W`, then
+`H (X | W) ≤ H (X | V)`.  Submodularity gives `H (X | W, V) ≤ H (X | V)`, and
+`condEntropy_congr_of_aeFunctionOf` identifies `H (X | W, V)` with `H (X | W)`. -/
+lemma condEntropy_le_condEntropy_of_aeFunctionOf (hX : Measurable X) (hW : Measurable W)
+    (hV : Measurable V)
+    [hfX : ShannonInformation.FiniteEntropyOf X μ] [hfW : ShannonInformation.FiniteEntropyOf W μ]
+    [hfV : ShannonInformation.FiniteEntropyOf V μ]
+    (h : AEFunctionOf W V μ) : H[X | W ; μ] ≤ H[X | V ; μ] := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp
+  haveI := ShannonInformation.finiteEntropyOf_pair (μ := μ) hW hV
+  have e : H[X | W ; μ] = H[X | (⟨W, V⟩ : Ω → T × U) ; μ] :=
+    condEntropy_congr_of_aeFunctionOf hX hW (hW.prodMk hV)
+      (aeFunctionOf_self.prodMk h)
+      (AEFunctionOf.of_functionOf (functionOf_comp (f := Prod.fst) measurable_fst))
+  rw [e]
+  exact ShannonInformation.entropy_submodular hX hW hV
+
+/-- **Data processing for the conditioned variable**: an a.e. function of `X` carries no
+more conditional entropy than `X` does, `H (V | W) ≤ H (X | W)`.  The conditional analogue
+of `entropy_le_of_aeFunctionOf`; (5.23) is its only client here. -/
+lemma condEntropy_le_of_aeFunctionOf (hX : Measurable X) (hV : Measurable V)
+    (hW : Measurable W)
+    [hfX : ShannonInformation.FiniteEntropyOf X μ] [hfV : ShannonInformation.FiniteEntropyOf V μ]
+    [hfW : ShannonInformation.FiniteEntropyOf W μ]
+    (h : AEFunctionOf X V μ) : H[V | W ; μ] ≤ H[X | W ; μ] := by
+  rcases eq_zero_or_isProbabilityMeasure μ with rfl | hμ
+  · simp
+  haveI := ShannonInformation.finiteEntropyOf_pair (μ := μ) hX hW
+  haveI := ShannonInformation.finiteEntropyOf_pair (μ := μ) hV hW
+  have hfst : AEFunctionOf (⟨X, W⟩ : Ω → S × T) X μ :=
+    AEFunctionOf.of_functionOf ⟨Prod.fst, measurable_fst, fun _ => rfl⟩
+  have hsnd : AEFunctionOf (⟨X, W⟩ : Ω → S × T) W μ :=
+    AEFunctionOf.of_functionOf ⟨Prod.snd, measurable_snd, fun _ => rfl⟩
+  have hle : H[(⟨V, W⟩ : Ω → U × T) ; μ] ≤ H[(⟨X, W⟩ : Ω → S × T) ; μ] :=
+    entropy_le_of_aeFunctionOf (hX.prodMk hW) ((hfst.trans h).prodMk hsnd)
+  rw [ShannonInformation.chain_rule'' μ hV hW, ShannonInformation.chain_rule'' μ hX hW]
+  linarith
+
+end CondEntropyComparison
+
+/-! ## Auxiliaries: variables with subsingleton *range*
+
+The companions of `condEntropy_eq_entropy_of_subsingleton`, which says what happens when
+the *conditioning* variable has subsingleton range.  These say what happens when the
+*conditioned* variable does: Example 4.1's guarded-subtype encoding makes "let `Y_A` be
+constant" into "the range of `Y_A` is a one-point type", and both scores then need every
+such term to drop out. -/
+
+/-- A random variable into a subsingleton has zero entropy: it is literally constant. -/
+lemma entropy_eq_zero_of_subsingleton {Ω S : Type*} [MeasurableSpace Ω]
+    [MeasurableSpace S] [MeasurableSingletonClass S] [Subsingleton S] [Nonempty S]
+    {μ : Measure Ω} [IsZeroOrProbabilityMeasure μ] (X : Ω → S) : H[X ; μ] = 0 := by
+  have hX : X = fun _ => Classical.arbitrary S := funext fun _ => Subsingleton.elim _ _
+  rw [hX, entropy_const]
+
+/-- A random variable into a subsingleton has zero conditional entropy given anything. -/
+lemma condEntropy_eq_zero_of_subsingleton {Ω S T : Type*} [MeasurableSpace Ω]
+    [MeasurableSpace S] [MeasurableSpace T] [Countable S] [MeasurableSingletonClass S]
+    [Subsingleton S] [Nonempty S] [Countable T] [MeasurableSingletonClass T]
+    {μ : Measure Ω} [IsProbabilityMeasure μ] {X : Ω → S} {Y : Ω → T}
+    (hX : Measurable X) (hY : Measurable Y)
+    [ShannonInformation.FiniteEntropyOf X μ] [ShannonInformation.FiniteEntropyOf Y μ] :
+    H[X | Y ; μ] = 0 :=
+  condEntropy_eq_zero_of_aeFunctionOf hY hX
+    ⟨fun _ => Classical.arbitrary S, measurable_const,
+      Filter.Eventually.of_forall fun _ => Subsingleton.elim _ _⟩
 
 end Condensation

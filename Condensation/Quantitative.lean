@@ -67,12 +67,23 @@ before Theorem 5.8 says which of them the proof of (5.13) actually uses and why 
 ## Status
 
 Statements are complete, match the paper as printed, and quantify over Definition 4.12's
-`LatentAmalgamation` throughout.  Five proofs are `sorry`, all of them milestone M2's:
+`LatentAmalgamation` throughout.  **No proof in this file is `sorry` as of M2**: Lemma 5.4
+in both forms, Definition 5.5's polar facts, Definition 5.6 and Proposition 5.7 in full,
 Theorem 5.8's (5.13) and (5.14), Corollary 5.9's (5.21) and (5.22), and Corollary 5.10's
-(5.25).  Everything else is proved — Lemma 5.4 in both forms, Definition 5.5's polar facts,
-Definition 5.6 and Proposition 5.7 in full, Corollary 5.10's (5.24), and the structural
-bridge `ITree.label_eq_polar` (the root label of Theorem 5.8's tree *is* the polar `G`,
-which is what puts `Z_G` on the left of (5.13)/(5.14)).
+(5.24) and (5.25) are all proved, as is the structural bridge `ITree.label_eq_polar` (the
+root label of Theorem 5.8's tree *is* the polar `G`, which is what puts `Z_G` on the left
+of (5.13)/(5.14)).
+
+All five §5 endpoints are inventoried in `AxiomAudit.lean` and axiom-clean, including
+`condEntropy_jointAbove_le_reconScore_of_orderedMarkov` (5.22): it consumes Proposition
+4.10 (`RVModel.orderedMarkov_iff`, `Condensation/Perfect.lean`), whose proof was completed
+in the same milestone.
+
+The general machinery M2 needed is generic and does not belong to §5, so it lives upstream:
+the `AEFunctionOf` congruences and the three conditional-entropy comparison lemmas in
+`Condensation/Probability.lean`, `above_mono` and the union companion of
+`RVModel.functionOf_jointOn_mono` in `Condensation/Model.lean`, and the `Λ₀`-pinned
+finiteness helper `LatentAmalgamation.finiteEntropyOf'` in `Condensation/Amalgamation.lean`.
 -/
 
 universe u v w u₀ u₁ v₁ u₂ v₂
@@ -396,6 +407,26 @@ lemma label_mem_of_labelsIn [SemilatticeInf α] {M : Set α}
     · exact ihl h.1 s hs
     · exact ihr h.2 s hs
 
+/-- What (5.11)'s entries look like: for every internal vertex, the two children's labels
+lie in `M` and the vertex's own label is their meet.  This is `label_mem_of_labelsIn` read
+along `intersections`, and it is what lets Corollary 5.9's second form (5.22) feed each
+entry of the family of intersections to Proposition 4.10, whose hypothesis is that the two
+families are upward-closed. -/
+lemma intersections_spec [SemilatticeInf α] {M : Set α}
+    (hM : ∀ a ∈ M, ∀ b ∈ M, a ⊓ b ∈ M) (t : ITree α) (h : t.LabelsIn M) :
+    ∀ p ∈ t.intersections, p.1 ∈ M ∧ p.2.1 ∈ M ∧ p.2.2 = p.1 ⊓ p.2.1 := by
+  induction t with
+  | leaf a => simp
+  | node l r ihl ihr =>
+    rw [labelsIn_node] at h
+    intro p hp
+    rw [intersections_node, List.mem_cons, List.mem_append] at hp
+    rcases hp with rfl | hp | hp
+    · exact ⟨label_mem_of_labelsIn hM l h.1 l (mem_subtrees_self l),
+        label_mem_of_labelsIn hM r h.2 r (mem_subtrees_self r), rfl⟩
+    · exact ihl h.1 p hp
+    · exact ihr h.2 p hp
+
 end ITree
 
 /-! ### Proposition 5.7 -/
@@ -652,6 +683,201 @@ variable {I : Type w} [Finite I] {M : RVModel.{u, v, w} I}
   {L₁ : LatentModel.{u, v, w, u₁, v₁} M} {L₂ : LatentModel.{u, v, w, u₂, v₂} M}
   (Am : LatentAmalgamation.{u, v, w, u₀, u₁, v₁, u₂, v₂} L₁ L₂)
 
+/-! ### The induction of (5.15)–(5.16)
+
+The proof of (5.14) is an induction over the tree, done here for an arbitrary variable `X`
+on `Λ₀` — the paper's `Y_⊇A` plays no role in it beyond being *some* variable, and keeping
+it abstract is what makes the induction hypothesis usable.  Each step is Lemma 5.4
+(`condEntropy_eq_of_pair`) at `C = Z_{ℓ(v)}`, `Y₁ = Z_{ℓ(s)}`, `Y₂ = Z_{ℓ(t)}`, followed by
+three identifications of conditioning variables, which are the two lemmas below.  Note that
+the tree's upper-set hypothesis is *not* used for (5.14): it is Corollary 5.9's (5.22) that
+needs it.
+
+`X` is spelled `Am.Λ₀ → S` rather than `Am.lat₁.Λ → S` throughout, so that the finiteness
+instances all sit at one spelling of the sample space — see
+`LatentAmalgamation.finiteEntropyOf'` for why that matters. -/
+
+section Induction
+
+variable {S : Type*} [MeasurableSpace S] [Countable S] [MeasurableSingletonClass S]
+  {X : Am.Λ₀ → S} (hX : Measurable X)
+  (hfX : ShannonInformation.FiniteEntropyOf X Am.P₀)
+
+include hX hfX
+
+/-- Conditioning on `(Z_F, Z_G)` with `G ⊆ F` is conditioning on `Z_F`, because `Z_G` is
+then a coordinate projection of `Z_F`.  This is the step
+`H (Y_⊇A | Z_{ℓ(s)}, Z_{ℓ(v)}) = H (Y_⊇A | Z_{ℓ(s)})` of (5.16), where
+`ℓ(v) = ℓ(s) ⊓ ℓ(t) ⊆ ℓ(s)`. -/
+private lemma condEntropy_jointOn_pair_of_subset {F G : Set (PPlus I)} (h : G ⊆ F) :
+    H[X | ⟨Am.lat₂.jointOn F, Am.lat₂.jointOn G⟩ ; Am.P₀]
+      = H[X | Am.lat₂.jointOn F ; Am.P₀] :=
+  condEntropy_congr_of_aeFunctionOf (hfX := hfX)
+    (hfW := Am.finiteEntropyOf' ((Am.lat₂.L.measurable_jointOn F).prodMk
+      (Am.lat₂.L.measurable_jointOn G)))
+    (hfV := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn F))
+    hX
+    ((Am.lat₂.L.measurable_jointOn F).prodMk (Am.lat₂.L.measurable_jointOn G))
+    (Am.lat₂.L.measurable_jointOn F)
+    (AEFunctionOf.of_functionOf (functionOf_comp (f := Prod.fst) measurable_fst))
+    (aeFunctionOf_self.prodMk (Am.lat₂.L.aeFunctionOf_jointOn_mono h _))
+
+/-- Conditioning on `(Z_F, Z_G, Z_K)` with `K ⊆ F ∪ G` is conditioning on `Z_{F ∪ G}`: the
+triple and the joint over the union are a.e. functions of each other
+(`RVModel.functionOf_jointOn_union` one way, `RVModel.functionOf_jointOn_mono` the other).
+This is the step `H (Y_⊇A | Z_{ℓ(s)}, Z_{ℓ(t)}, Z_{ℓ(v)}) = H (Y_⊇A | Z_{ℓ(s) ∪ ℓ(t)})`
+of (5.16). -/
+private lemma condEntropy_jointOn_triple {F G K : Set (PPlus I)} (hK : K ⊆ F ∪ G) :
+    H[X | ⟨Am.lat₂.jointOn F, ⟨Am.lat₂.jointOn G, Am.lat₂.jointOn K⟩⟩ ; Am.P₀]
+      = H[X | Am.lat₂.jointOn (F ∪ G) ; Am.P₀] := by
+  refine condEntropy_congr_of_aeFunctionOf (hfX := hfX)
+    (hfW := Am.finiteEntropyOf' ((Am.lat₂.L.measurable_jointOn F).prodMk
+      ((Am.lat₂.L.measurable_jointOn G).prodMk (Am.lat₂.L.measurable_jointOn K))))
+    (hfV := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn (F ∪ G)))
+    hX
+    ((Am.lat₂.L.measurable_jointOn F).prodMk
+      ((Am.lat₂.L.measurable_jointOn G).prodMk (Am.lat₂.L.measurable_jointOn K)))
+    (Am.lat₂.L.measurable_jointOn (F ∪ G)) ?_ ?_
+  · exact AEFunctionOf.trans
+      (AEFunctionOf.of_functionOf
+        ⟨fun p => (p.1, p.2.1), measurable_fst.prodMk (measurable_fst.comp measurable_snd),
+          fun _ => rfl⟩)
+      (AEFunctionOf.of_functionOf (Am.lat₂.L.functionOf_jointOn_union F G))
+  · exact (Am.lat₂.L.aeFunctionOf_jointOn_mono Set.subset_union_left _).prodMk
+      ((Am.lat₂.L.aeFunctionOf_jointOn_mono Set.subset_union_right _).prodMk
+        (Am.lat₂.L.aeFunctionOf_jointOn_mono hK _))
+
+/-- **Equation (5.15)** at every vertex, which is the induction (5.16) proves: the tree form
+of (5.14), with the root label in place of the polar and an arbitrary `X` in place of
+`Y_⊇A`.  A leaf is (5.15) read at a leaf, where both sides are `H (X | Z_{ℓ(v)})`; an
+internal vertex is Lemma 5.4 plus the two identifications above. -/
+private lemma condEntropy_eq_tree (T : ITree (Set (PPlus I))) :
+    H[X | Am.lat₂.jointOn T.label ; Am.P₀]
+      = (T.leaves.map fun s => H[X | Am.lat₂.jointOn s ; Am.P₀]).sum
+        - (T.intersections.map fun p =>
+            H[X | Am.lat₂.jointOn (p.1 ∪ p.2.1) ; Am.P₀]).sum
+        + (T.intersections.map fun p =>
+            condInteractionInfo (Am.lat₂.jointOn p.1) (Am.lat₂.jointOn p.2.1) X
+              (Am.lat₂.jointOn p.2.2) Am.P₀).sum := by
+  haveI := hfX
+  induction T with
+  | leaf a =>
+    simp only [ITree.leaves_leaf, ITree.intersections_leaf, List.map_cons, List.map_nil,
+      List.sum_cons, List.sum_nil, add_zero, sub_zero]
+    rfl
+  | node l r ihl ihr =>
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn l.label)
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn r.label)
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn (ITree.node l r).label)
+    have key : H[X | Am.lat₂.jointOn (ITree.node l r).label ; Am.P₀]
+        = H[X | ⟨Am.lat₂.jointOn l.label, Am.lat₂.jointOn (ITree.node l r).label⟩ ; Am.P₀]
+          + H[X | ⟨Am.lat₂.jointOn r.label, Am.lat₂.jointOn (ITree.node l r).label⟩ ; Am.P₀]
+          - H[X | ⟨Am.lat₂.jointOn l.label, ⟨Am.lat₂.jointOn r.label,
+                Am.lat₂.jointOn (ITree.node l r).label⟩⟩ ; Am.P₀]
+          + condInteractionInfo (Am.lat₂.jointOn l.label) (Am.lat₂.jointOn r.label) X
+              (Am.lat₂.jointOn (ITree.node l r).label) Am.P₀ :=
+      condEntropy_eq_of_pair (μ := Am.P₀) hX
+        (Am.lat₂.L.measurable_jointOn l.label) (Am.lat₂.L.measurable_jointOn r.label)
+        (Am.lat₂.L.measurable_jointOn (ITree.node l r).label)
+    have e1 : H[X | ⟨Am.lat₂.jointOn l.label, Am.lat₂.jointOn (ITree.node l r).label⟩ ; Am.P₀]
+        = H[X | Am.lat₂.jointOn l.label ; Am.P₀] :=
+      condEntropy_jointOn_pair_of_subset Am hX hfX inf_le_left
+    have e2 : H[X | ⟨Am.lat₂.jointOn r.label, Am.lat₂.jointOn (ITree.node l r).label⟩ ; Am.P₀]
+        = H[X | Am.lat₂.jointOn r.label ; Am.P₀] :=
+      condEntropy_jointOn_pair_of_subset Am hX hfX inf_le_right
+    have e3 : H[X | ⟨Am.lat₂.jointOn l.label,
+          ⟨Am.lat₂.jointOn r.label, Am.lat₂.jointOn (ITree.node l r).label⟩⟩ ; Am.P₀]
+        = H[X | Am.lat₂.jointOn (l.label ∪ r.label) ; Am.P₀] :=
+      condEntropy_jointOn_triple Am hX hfX (inf_le_left.trans Set.subset_union_left)
+    rw [e1, e2, e3] at key
+    simp only [ITree.leaves_node, ITree.intersections_node, List.map_append, List.sum_append,
+      List.map_cons, List.sum_cons]
+    rw [key, ihl, ihr]
+    ring
+
+/-- `condEntropy_eq_tree` with the root label named separately, so that Theorem 5.8 can
+substitute `ITree.label_eq_polar` without rewriting under the dependent type of the
+conditioning variable. -/
+private lemma condEntropy_eq_tree' (T : ITree (Set (PPlus I))) {G : Set (PPlus I)}
+    (hG : T.label = G) :
+    H[X | Am.lat₂.jointOn G ; Am.P₀]
+      = (T.leaves.map fun s => H[X | Am.lat₂.jointOn s ; Am.P₀]).sum
+        - (T.intersections.map fun p =>
+            H[X | Am.lat₂.jointOn (p.1 ∪ p.2.1) ; Am.P₀]).sum
+        + (T.intersections.map fun p =>
+            condInteractionInfo (Am.lat₂.jointOn p.1) (Am.lat₂.jointOn p.2.1) X
+              (Am.lat₂.jointOn p.2.2) Am.P₀).sum := by
+  subst hG
+  exact condEntropy_eq_tree Am hX hfX T
+
+omit [Countable S] [MeasurableSingletonClass S] hX hfX in
+/-- **Equation (5.17)**: the leaf sum of (5.14) is the sum over `F`, reindexed along
+Theorem 5.8's bijection between the leaves of `T` and `(Z_{∩B})_{B ∈ F}`.  The multiset
+hypothesis is exactly what makes this a `Finset` sum. -/
+private lemma sum_leaves_eq (T : ITree (Set (PPlus I))) (F : Set (PPlus I))
+    (hleaves : (T.leaves : Multiset (Set (PPlus I)))
+      = (famFinset F).val.map fun B => contrib B.toFinset) :
+    (T.leaves.map fun s => H[X | Am.lat₂.jointOn s ; Am.P₀]).sum
+      = ∑ B ∈ famFinset F, H[X | Am.lat₂.jointOn (contrib B.toFinset) ; Am.P₀] := by
+  rw [← Multiset.sum_coe, ← Multiset.map_coe, hleaves, Multiset.map_map, Finset.sum]
+  rfl
+
+omit [Countable S] [MeasurableSingletonClass S] hX hfX in
+/-- **Equation (5.20)**: `I (Z_F; Z_G; X | Z_K) ≤ I (Z_F; Z_G | Z_K)`, because the
+subtracted term `I (Z_F; Z_G | X, Z_K)` is nonnegative. -/
+private lemma condInteractionInfo_jointOn_le (F G K : Set (PPlus I)) :
+    condInteractionInfo (Am.lat₂.jointOn F) (Am.lat₂.jointOn G) X (Am.lat₂.jointOn K) Am.P₀
+      ≤ I[Am.lat₂.jointOn F : Am.lat₂.jointOn G | Am.lat₂.jointOn K ; Am.P₀] := by
+  haveI : ShannonInformation.FiniteEntropyOf (Am.lat₂.jointOn F) Am.P₀ :=
+    Am.lat₂.L.finiteEntropy_jointOn F
+  haveI : ShannonInformation.FiniteEntropyOf (Am.lat₂.jointOn G) Am.P₀ :=
+    Am.lat₂.L.finiteEntropy_jointOn G
+  haveI : IsProbabilityMeasure (α := Am.lat₂.Λ) Am.P₀ := Am.probP₀
+  have h : (0 : ℝ) ≤ I[Am.lat₂.jointOn F : Am.lat₂.jointOn G | ⟨X, Am.lat₂.jointOn K⟩ ;
+      Am.P₀] :=
+    ShannonInformation.condMutualInfo_nonneg
+      (Am.lat₂.L.measurable_jointOn F) (Am.lat₂.L.measurable_jointOn G)
+  rw [condInteractionInfo]
+  linarith
+
+end Induction
+
+/-! ### The `Z`-side contribution condition, at (5.18) -/
+
+/-- **Equation (5.18)'s hypothesis**: `X_B` is almost everywhere a function of `Z_{∩B}`.
+
+This is Definition 3.2's contribution condition for `L̃₂` (the field
+`LatentAmalgamation.contributes₂`), assembled coordinatewise over `i ∈ B` and read through
+`LatentAmalgamation.comm`: the field is phrased with `π̃₂` while `X_B` is pulled back along
+`π̃₁`, and the two agree almost everywhere.  Theorem 5.8 uses the `Z`-side condition without
+listing it as a hypothesis; the licence is Definition 4.12 (see the section preamble and
+`Condensation/notes/paper-errata.md`). -/
+private lemma aeFunctionOf_pullbackJoint (B : PPlus I) :
+    AEFunctionOf (Am.lat₂.jointOn (contrib B.toFinset))
+      (Am.lat₁.pullbackJoint B.toFinset) Am.P₀ := by
+  have hcontrib : ∀ i : I, i ∈ B.toFinset →
+      AEFunctionOf (Am.lat₂.jointOn (contrib B.toFinset)) (M.X i ∘ Am.π₁) Am.P₀ := by
+    intro i hi
+    refine AEFunctionOf.trans
+      (Am.lat₂.L.aeFunctionOf_jointOn_mono (contribIdx_subset_contrib hi) _) ?_
+    refine AEFunctionOf.congr_right (Am.contributes₂ i) ?_
+    filter_upwards [Am.comm] with l hl
+    exact congrArg (M.X i) hl
+  exact AEFunctionOf.pi fun i : B.toFinset => hcontrib i.1 i.2
+
+/-- **Equation (5.18)**: `H (Y_⊇A | Z_{∩B}) ≤ H (Y_⊇A | X_B)`. -/
+private lemma condEntropy_jointContrib_le_pullbackJoint {S : Type*} [MeasurableSpace S]
+    [Countable S] [MeasurableSingletonClass S] {X : Am.Λ₀ → S} (hX : Measurable X)
+    (hfX : ShannonInformation.FiniteEntropyOf X Am.P₀) (B : PPlus I) :
+    H[X | Am.lat₂.jointOn (contrib B.toFinset) ; Am.P₀]
+      ≤ H[X | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀] :=
+  condEntropy_le_condEntropy_of_aeFunctionOf (hfX := hfX)
+    (hfW := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn (contrib B.toFinset)))
+    (hfV := Am.finiteEntropyOf' (Am.lat₁.measurable_pullbackJoint B.toFinset))
+    hX (Am.lat₂.L.measurable_jointOn (contrib B.toFinset))
+    (Am.lat₁.measurable_pullbackJoint B.toFinset)
+    (aeFunctionOf_pullbackJoint Am B)
+
 /-! ### The tree hypothesis
 
 Theorem 5.8 asks for an intersection tree `T` on the lattice of upward-closed subsets of
@@ -669,6 +895,7 @@ Definition 5.6's "on an intersection-closed collection `M`"; it is *implied* by 
 multiset equation together with `isUpperSet_contrib`, and is carried anyway because it is
 part of the printed statement. -/
 
+set_option linter.unusedVariables false in
 /-- **Theorem 5.8** (comparison of latent variable models), equation (5.13):
 
 `H (Y_⊇A | Z_G) ≤ [∑_{B ∈ F} H (Y_⊇A | X_B)] + [∑_{v ∈ N} I (Z_{L(v)}; Z_{R(v)} | Z_{I(v)})]`
@@ -690,8 +917,51 @@ theorem condEntropy_jointAbove_le
         + (T.intersections.map fun p =>
             I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
               Am.P₀]).sum := by
-  sorry
+  have hX : Measurable (Am.lat₁.jointAbove A.toFinset) :=
+    Am.lat₁.L.measurable_jointOn (above A.toFinset)
+  have hfX := Am.finiteEntropyOf' hX
+  -- (5.14).
+  have heq : H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (polar F) ; Am.P₀]
+      = (T.leaves.map fun s =>
+            H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn s ; Am.P₀]).sum
+        - (T.intersections.map fun p =>
+            H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (p.1 ∪ p.2.1) ; Am.P₀]).sum
+        + (T.intersections.map fun p =>
+            condInteractionInfo (Am.lat₂.jointOn p.1) (Am.lat₂.jointOn p.2.1)
+              (Am.lat₁.jointAbove A.toFinset) (Am.lat₂.jointOn p.2.2) Am.P₀).sum :=
+    condEntropy_eq_tree' Am hX hfX T (ITree.label_eq_polar hleaves)
+  -- (5.17): the leaf sum is the sum over `F`.
+  have h517 : (T.leaves.map fun s =>
+        H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn s ; Am.P₀]).sum
+      = ∑ B ∈ famFinset F,
+          H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (contrib B.toFinset) ; Am.P₀] :=
+    sum_leaves_eq Am T F hleaves
+  -- (5.18): each leaf term is bounded by the corresponding `H (Y_⊇A | X_B)`.
+  have h518 : ∀ B ∈ famFinset F,
+      H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (contrib B.toFinset) ; Am.P₀]
+        ≤ H[Am.lat₁.jointAbove A.toFinset | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀] := by
+    intro B _
+    exact condEntropy_jointContrib_le_pullbackJoint Am hX hfX B
+  -- (5.19): the subtracted sum is nonnegative.
+  have h519 : (0 : ℝ) ≤ (T.intersections.map fun p =>
+      H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (p.1 ∪ p.2.1) ; Am.P₀]).sum := by
+    refine List.sum_nonneg ?_
+    intro x hx
+    simp only [List.mem_map] at hx
+    obtain ⟨p, _, rfl⟩ := hx
+    exact condEntropy_nonneg _ _ _
+  -- (5.20): each interaction information is bounded by the conditional mutual information.
+  have h520 : (T.intersections.map fun p =>
+        condInteractionInfo (Am.lat₂.jointOn p.1) (Am.lat₂.jointOn p.2.1)
+          (Am.lat₁.jointAbove A.toFinset) (Am.lat₂.jointOn p.2.2) Am.P₀).sum
+      ≤ (T.intersections.map fun p =>
+          I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
+            Am.P₀]).sum :=
+    List.sum_le_sum fun p _ => condInteractionInfo_jointOn_le Am p.1 p.2.1 p.2.2
+  have hsum := Finset.sum_le_sum h518
+  linarith
 
+set_option linter.unusedVariables false in
 /-- **Theorem 5.8**, equation (5.14) — the exact statement:
 
 `H (Y_⊇A | Z_G) = [∑_{v ∈ L} H (Y_⊇A | Z_{I(v)})] − [∑_{v ∈ N} H (Y_⊇A | Z_{L(v) ∪ R(v)})]`
@@ -699,6 +969,11 @@ theorem condEntropy_jointAbove_le
 
 The leaf sum ranges over `T.leaves` (the labels `I(v)` at the leaves `v ∈ L`) and the two
 internal sums over `T.intersections`.
+
+`hupper` is carried because it is part of the printed statement, but the induction of
+(5.15)–(5.16) never consults it: nothing in the exact form depends on the labels being
+upward-closed.  It is Corollary 5.9's second form (5.22) that needs it, to feed each entry
+of the family of intersections to Proposition 4.10.  The same is true of (5.13).
 
 Paper node: `Theorem 5.8` -/
 theorem condEntropy_jointAbove_eq
@@ -714,7 +989,27 @@ theorem condEntropy_jointAbove_eq
         + (T.intersections.map fun p =>
             condInteractionInfo (Am.lat₂.jointOn p.1) (Am.lat₂.jointOn p.2.1)
               (Am.lat₁.jointAbove A.toFinset) (Am.lat₂.jointOn p.2.2) Am.P₀).sum := by
-  sorry
+  have hX : Measurable (Am.lat₁.jointAbove A.toFinset) :=
+    Am.lat₁.L.measurable_jointOn (above A.toFinset)
+  exact condEntropy_eq_tree' Am hX (Am.finiteEntropyOf' hX) T
+    (ITree.label_eq_polar hleaves)
+
+/-- **Equation (5.23)**: `H (Y_⊇A | X_B) ≤ H (Y_⊇B | X_B) = ϱ_Y(B)` whenever `B ⊆ A`.
+The inequality is data processing for the conditioned variable — `above A ⊆ above B`, so
+`Y_⊇A` is a coordinate projection of `Y_⊇B` — and the equality is `LatentModel.reconScore`
+unfolded. -/
+private lemma condEntropy_jointAbove_le_reconScore_term {A B : PPlus I} (hBA : B ≤ A) :
+    H[Am.lat₁.jointAbove A.toFinset | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀]
+      ≤ Am.lat₁.reconScore B.toFinset := by
+  haveI : IsProbabilityMeasure (α := Am.lat₁.Λ) Am.P₀ := Am.probP₀
+  exact condEntropy_le_of_aeFunctionOf
+    (hfX := Am.finiteEntropyOf' (Am.lat₁.L.measurable_jointOn (above B.toFinset)))
+    (hfV := Am.finiteEntropyOf' (Am.lat₁.L.measurable_jointOn (above A.toFinset)))
+    (hfW := Am.finiteEntropyOf' (Am.lat₁.measurable_pullbackJoint B.toFinset))
+    (Am.lat₁.L.measurable_jointOn (above B.toFinset))
+    (Am.lat₁.L.measurable_jointOn (above A.toFinset))
+    (Am.lat₁.measurable_pullbackJoint B.toFinset)
+    (Am.lat₁.L.aeFunctionOf_jointOn_mono (above_mono hBA) _)
 
 /-- **Corollary 5.9**, equation (5.21): when every `B ∈ F` is a subset of `A`, the leaf
 terms of (5.13) are bounded by the reconstruction scores `ϱ_Y(B)` of Definition 3.3.
@@ -730,7 +1025,13 @@ theorem condEntropy_jointAbove_le_reconScore
         + (T.intersections.map fun p =>
             I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
               Am.P₀]).sum := by
-  sorry
+  have h513 := condEntropy_jointAbove_le Am A F T hupper hleaves
+  have h523 : ∀ B ∈ famFinset F,
+      H[Am.lat₁.jointAbove A.toFinset | Am.lat₁.pullbackJoint B.toFinset ; Am.P₀]
+        ≤ Am.lat₁.reconScore B.toFinset := fun B hB =>
+    condEntropy_jointAbove_le_reconScore_term Am (hFA B (mem_famFinset.mp hB))
+  have hsum := Finset.sum_le_sum h523
+  linarith
 
 /-- **Corollary 5.9**, equation (5.22): if in addition the `Z` family satisfies Definition
 4.8's ordered Markov condition, the internal terms vanish (Proposition 4.10) and only the
@@ -745,7 +1046,28 @@ theorem condEntropy_jointAbove_le_reconScore_of_orderedMarkov
       = (famFinset F).val.map fun B => contrib B.toFinset) :
     H[Am.lat₁.jointAbove A.toFinset | Am.lat₂.jointOn (polar F) ; Am.P₀]
       ≤ ∑ B ∈ famFinset F, Am.lat₁.reconScore B.toFinset := by
-  sorry
+  have h521 := condEntropy_jointAbove_le_reconScore Am A F hFA T hupper hleaves
+  have hspec := ITree.intersections_spec isUpperSet_inf_closed T hupper
+  have hzero : (T.intersections.map fun p =>
+      I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
+        Am.P₀]).sum = 0 := by
+    refine List.sum_eq_zero ?_
+    intro x hx
+    simp only [List.mem_map] at hx
+    obtain ⟨p, hp, rfl⟩ := hx
+    obtain ⟨q₁, q₂, q₃⟩ := p
+    obtain ⟨hq₁, hq₂, hq₃⟩ := hspec _ hp
+    simp only at hq₁ hq₂ hq₃
+    subst hq₃
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn q₁)
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn q₂)
+    haveI := Am.finiteEntropyOf' (Am.lat₂.L.measurable_jointOn (q₁ ⊓ q₂))
+    refine (ShannonInformation.condMutualInfo_eq_zero (μ := Am.P₀)
+      (Am.lat₂.L.measurable_jointOn q₁) (Am.lat₂.L.measurable_jointOn q₂)
+      (Am.lat₂.L.measurable_jointOn (q₁ ⊓ q₂))).mpr ?_
+    exact (Am.rv₂.orderedMarkov_iff).mp hmarkov q₁ q₂ hq₁ hq₂
+  rw [hzero] at h521
+  linarith
 
 /-- The `k`-element subsets of `A`, Corollary 5.10's family `F`. -/
 def kSubsets (A : PPlus I) (k : ℕ) : Set (PPlus I) :=
@@ -803,6 +1125,27 @@ theorem polar_kSubsets [DecidableEq I] (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
     rw [hD.2] at this
     omega
 
+/-- The `k`-element subsets of `A` number `|A| choose k`.
+
+Stated for `1 ≤ k`, which is where `kSubsets A k` really *is* `Finset.powersetCard k A`
+transported along `PPlus.toFinset`: the transport needs each member to be nonempty, which
+is what `1 ≤ k` supplies.  At `k = 0` the two sides differ — the left is `0` (no member of
+`P⁺I` is empty) and the right is `1` — and (5.25) handles that case separately, by
+observing that its tree hypothesis is unsatisfiable there. -/
+private lemma card_famFinset_kSubsets (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :
+    (famFinset (kSubsets A k)).card = A.toFinset.card.choose k := by
+  rw [← Finset.card_powersetCard k A.toFinset]
+  refine Finset.card_bij (fun C _ => C.toFinset) ?_ ?_ ?_
+  · intro C hC
+    rw [mem_famFinset] at hC
+    exact Finset.mem_powersetCard.mpr ⟨hC.1, hC.2⟩
+  · intro C₁ _ C₂ _ h
+    exact PPlus.toFinset_injective h
+  · intro D hD
+    rw [Finset.mem_powersetCard] at hD
+    have hne : D.Nonempty := Finset.card_pos.mp (by omega)
+    exact ⟨⟨D, hne⟩, by rw [mem_famFinset]; exact ⟨hD.1, hD.2⟩, rfl⟩
+
 /-- **Corollary 5.10**, equation (5.25): with `F` the `k`-element subsets of `A` and
 `ϱ_Y(C) ≤ α` for every `C` of cardinality `k`, the leaf sum of (5.21) is at most
 `(|A| choose k) · α`.
@@ -827,7 +1170,33 @@ theorem condEntropy_jointAbove_le_choose
         + (T.intersections.map fun p =>
             I[Am.lat₂.jointOn p.1 : Am.lat₂.jointOn p.2.1 | Am.lat₂.jointOn p.2.2 ;
               Am.P₀]).sum := by
-  sorry
+  rcases Nat.eq_zero_or_pos k with rfl | hk
+  · -- The tree hypothesis is unsatisfiable at `k = 0`: `kSubsets A 0` is empty, so
+    -- `hleaves` would make `T` leafless, which no `ITree` is.
+    exfalso
+    have hempty : famFinset (kSubsets A 0) = (∅ : Finset (PPlus I)) := by
+      ext B
+      simp only [mem_famFinset, Finset.notMem_empty, iff_false, kSubsets, Set.mem_setOf_eq,
+        not_and]
+      intro _
+      exact fun hcard =>
+        absurd (Finset.card_eq_zero.mp hcard) (Finset.nonempty_iff_ne_empty.mp B.nonempty)
+    rw [hempty, Finset.empty_val, Multiset.map_zero] at hleaves
+    simp only [Multiset.coe_eq_zero] at hleaves
+    exact ITree.leaves_ne_nil T hleaves
+  have h521 := condEntropy_jointAbove_le_reconScore Am A (kSubsets A k)
+    (fun B hB => hB.1) T hupper hleaves
+  have h1 : ∀ B ∈ famFinset (kSubsets A k), Am.lat₁.reconScore B.toFinset ≤ α := by
+    intro B hB
+    rw [mem_famFinset] at hB
+    exact hϱ B hB.2
+  have hb : ∑ B ∈ famFinset (kSubsets A k), Am.lat₁.reconScore B.toFinset
+      ≤ (A.toFinset.card.choose k : ℝ) * α := by
+    calc ∑ B ∈ famFinset (kSubsets A k), Am.lat₁.reconScore B.toFinset
+        ≤ (famFinset (kSubsets A k)).card • α := Finset.sum_le_card_nsmul _ _ _ h1
+      _ = ((famFinset (kSubsets A k)).card : ℝ) * α := by rw [nsmul_eq_mul]
+      _ = (A.toFinset.card.choose k : ℝ) * α := by rw [card_famFinset_kSubsets A hk]
+  linarith
 
 end Comparison
 

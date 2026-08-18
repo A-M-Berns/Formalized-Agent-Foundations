@@ -234,3 +234,24 @@ cannot be attached to it on the generated page.
     `hk` would be dead weight rather than a faithfulness fix. `Condensation.polar_kSubsets`
     (5.24) keeps `1 ≤ k`, because there it is load-bearing — (5.24) is an identity of
     index families with no tree in sight.
+
+15. **Lemma 4.14 as printed is false: nothing constrains `X`'s range, and without the
+    paper's own countable-discrete convention on it the lemma has a counterexample.**
+    *(Found at M2, 2026-08-18, by trying to prove the round-2 statement; the ruling of the
+    same date restored one binder that R2-F01/R2-F23 had stripped.)* Lemma 4.14
+    hypothesises only that the variables live on a countable discrete probability space and
+    that "C has discrete range"; the ranges of X, Y₁, Y₂ are unconstrained. With X's range
+    carrying a σ-algebra that does not separate points, the conditional-independence
+    hypothesis becomes vacuous while the conclusion still constrains X.
+
+    Machine-checked refutation of the literal Lean transcription (`.harness`-archived
+    scratch, also recorded in `Condensation/Comparison.lean`'s header): Ω = Bool uniform,
+    U = Unit (C constant), S = T₁ = T₂ = a two-point type with the trivial σ-algebra ⊥,
+    X = Y₁ = Y₂ = id — every hypothesis holds, the conclusion forces id to be a.e.
+    constant.
+
+    Repair: X's range must be countable discrete (the paper's own §2 convention, "our
+    probability spaces are countable and discrete", stated just before Definition 2.4).
+    `Condensation.aeFunctionOf_of_condIndepFun` carries `[MeasurableSingletonClass S]` on
+    X's range and nothing more; T₁, T₂ need only measurable-space structure. The binder is
+    free at every call site, since X is always a model variable.
