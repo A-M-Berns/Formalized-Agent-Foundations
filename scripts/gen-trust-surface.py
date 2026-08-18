@@ -1001,7 +1001,7 @@ PAPERS_EDITORIAL = {
         'macros': (), 'pre_macros': (),
         'sections': paper_nodes.printed_extraction_sections, 'appendix': False,
         'renderer': ExtractionRenderer,
-        # Statement-first at milestone M1: the statements are final, a good many of the
+        # Statement-first at milestone M1 (historical; at M2 all proofs landed): the statements are final, a good many of the
         # proofs are not.  No count here on purpose — the generator reads both blocks of
         # `AxiomAudit.lean` at run time, so a number written into this comment buys
         # nothing and goes stale the moment a proof lands.  Naming the two blocks here is
@@ -1359,13 +1359,13 @@ def main():
     # of staged endpoints it quotes cannot drift from the pending block it counts.
     if cd['staging'] is None:
         cd_editorial = (
-            '<strong>in progress (milestone M1)</strong> — nothing here is claimed '
-            'proved')
+            '<strong>in progress (milestone M2)</strong> — every in-scope node proved; '
+            'no staging block')
     else:
         cd_proved, cd_staged = cd['staging'].counts(cd['rendered'])
         cd_editorial = (
-            '<strong>in progress (milestone M1)</strong> — statements for every in-scope '
-            'node have landed, and each declaration is badged: %d <em>axiom-clean</em>, '
+            '<strong>in progress (milestone M2; read-through outstanding)</strong> — every '
+            'in-scope node has a proved carrier, and each declaration is badged: %d <em>axiom-clean</em>, '
             '%d <em>staged</em> (statement final, proof still <code>sorry</code>). '
             'Nothing badged staged is claimed proved'
             % (cd_proved, cd_staged))

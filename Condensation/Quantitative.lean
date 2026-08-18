@@ -82,7 +82,8 @@ Theorem 5.8's (5.13) and (5.14), Corollary 5.9's (5.21) and (5.22), and Corollar
 root label of Theorem 5.8's tree *is* the polar `G`, which is what puts `Z_G` on the left
 of (5.13)/(5.14)).
 
-All five §5 endpoints are inventoried in `AxiomAudit.lean` and axiom-clean, including
+Every annotated §5 declaration (sixteen carriers across seven nodes) is inventoried in
+`AxiomAudit.lean` and axiom-clean, including
 `condEntropy_jointAbove_le_reconScore_of_orderedMarkov` (5.22): it consumes Proposition
 4.10 (`RVModel.orderedMarkov_iff`, `Condensation/Perfect.lean`), whose proof was completed
 in the same milestone.

@@ -121,7 +121,8 @@ there with the `<section>.<n>` form, so a bare integer will not do.
 
 The converse direction (every *node* carries a Lean statement) is not yet checked: the
 scope is settled (42 nodes, with Examples 5.1–5.3 proposed out pending a ruling) but the
-formalization is at milestone M1.  The per-section coverage readout below is the
+formalization is at milestone M2 (all proofs landed; the completed-status flip awaits the
+read-through ruling).  The per-section coverage readout below is the
 progress view in the meantime; when the scope ruling lands it should become a
 `scope_manifest` passed to `paper_nodes.run_node_check`, as Finite Factored Sets does.
 
