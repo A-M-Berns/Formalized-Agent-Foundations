@@ -18,7 +18,8 @@ distributions that factorize over the factored space (Definition 4.3), factored 
 models (Definition 4.4), conditional independence in the paper's product form
 (Definition 6.1), outer products and marginals (Definitions C.1, C.2), supports, delta
 distributions, and the interpolation `R^λ = ⨂ ((1−λ)Q_i + λP_i)` used by Lemmas C.5,
-C.10 and 6.5.  The Appendix-C bookkeeping lemmas that involve no history — C.11, C.13,
+C.10 and 6.5.  The Appendix-C bookkeeping lemmas of §C.0–C.1/C.3 that need only this
+substrate — C.11, C.13,
 C.14, C.15, C.16, C.17 — live here too.
 -/
 
@@ -586,8 +587,9 @@ theorem Distr.prob_pos_of_marg_support_subset {J : Finset I} {P Q : Distr (Pt Ω
 
 /-- **Conditional independence of events**, in the paper's product form:
 `A ⊥^P B | C` iff `P(A ∩ C)·P(B ∩ C) = P(A ∩ B ∩ C)·P(C)`.  When `P(C) = 0` this holds
-trivially — the paper's convention, and it is load-bearing (it is what makes the
-intersection axiom fail); never restate it in the conditional form.
+trivially — the paper's convention.  (Under Lean's `x / 0 = 0` the conditional form
+`P(A|C)·P(B|C) = P(A∩B|C)` is provably equivalent; the product form is kept because it is
+the paper's, and because it needs no division.)
 
 Paper node: Definition 6.1 (§6). -/
 def CondIndep (P : Distr (Pt Ω)) (A B C : Set (Pt Ω)) : Prop :=

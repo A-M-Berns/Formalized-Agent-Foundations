@@ -31,7 +31,10 @@ variable {V : Type u} [Fintype V] [DecidableEq V] {Val : V → Type w} [∀ v, F
 distribution `P` on `Val` if for all sets of nodes `V₁, V₂, V₃ ⊆ V`, `V₁` and `V₂` are
 d-separated given `V₃` in `G` iff `X_{V₁}` and `X_{V₂}` are independent given `X_{V₃}` in
 `P` — the `X_S` being the coordinate projections of the observation space `Val`, which is
-the paper's `Val(X̄) = Obs`.
+the paper's `Val(X̄) = Obs`.  The quantification is over *arbitrary* (possibly overlapping)
+`V₁, V₂, V₃`, as the paper writes it — strictly stronger than the Koller–Friedman perfect map
+(pairwise disjoint triples) the paper cites; Proposition 5.8(2) depends on this
+(`notes/paper-errata.md`, E17).
 
 The paper takes `G` to be a DAG throughout; acyclicity is not part of this definition but
 travels as a separate hypothesis `hG : G.IsAcyclic` on the Proposition 5.8 statements, so
