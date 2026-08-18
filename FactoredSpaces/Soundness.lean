@@ -15,7 +15,7 @@ universe u v
 variable {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type v} [∀ i, Fintype (Ω i)]
 
 /-- **Soundness for events.** If `H(A | C) ∩ H(B | C) = ∅` then `A ⊥^P B | C` holds
-for all `P ∈ Δ^F(Ω)`.
+for all `P ∈ Δ^⊗(Ω)`.
 
 Paper node: Lemma 6.3 (§6.1). -/
 theorem condIndep_of_disjoint_eventHistory {A B C : Set (Pt Ω)}

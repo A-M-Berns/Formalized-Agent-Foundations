@@ -23,13 +23,13 @@ variable {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type v} [∀ i, Fi
 
 /-! ## Definition C.6: irrelevant factors and the cohistory -/
 
-/-- The paper's `Δ^F_{C,i}(Ω)`: pairs `(P, Q)` of factorizing distributions with
+/-- The paper's `Δ^*_{C,i}(Ω)`: pairs `(P, Q)` of factorizing distributions with
 `P(C) > 0`, `Q(C) > 0` that agree in every factor other than `i` (§C.3). -/
 def pairsDifferingAt (C : Set (Pt Ω)) (i : I) : Set (Distr (Pt Ω) × Distr (Pt Ω)) :=
   {PQ | PQ.1 ∈ factorizingPos C ∧ PQ.2 ∈ factorizingPos C ∧
     ∀ j, j ≠ i → PQ.1.margAt j = PQ.2.margAt j}
 
-/-- **`(P, Q)`-irrelevance.** For `(P, Q) ∈ Δ^F_{C,i}`, the factor `i` is
+/-- **`(P, Q)`-irrelevance.** For `(P, Q) ∈ Δ^*_{C,i}`, the factor `i` is
 `(P, Q)`-irrelevant to `A` given `C` if `P(A | C) = Q(A | C)`.
 
 Paper node: Definition C.6 (§C.3). -/
@@ -37,7 +37,7 @@ def PQIrrelevant (P Q : Distr (Pt Ω)) (A C : Set (Pt Ω)) : Prop :=
   P.condProb A C = Q.condProb A C
 
 /-- **(Global) irrelevance.** The factor `i` is irrelevant to `A` given `C` if it is
-`(P, Q)`-irrelevant for every `(P, Q) ∈ Δ^F_{C,i}(Ω)`.
+`(P, Q)`-irrelevant for every `(P, Q) ∈ Δ^*_{C,i}(Ω)`.
 
 Paper node: Definition C.6 (§C.3). -/
 def Irrelevant (i : I) (A C : Set (Pt Ω)) : Prop :=
@@ -56,7 +56,7 @@ lemma mem_cohistory_iff {i : I} {A C : Set (Pt Ω)} : i ∈ cohistory A C ↔ Ir
 
 /-! ## Lemma C.9: mutual exclusion -/
 
-/-- **Mutual exclusion principle.** If `A ⊥^⊗ B | C` and `(P, Q) ∈ Δ^F_{C,i}`, then `i`
+/-- **Mutual exclusion principle.** If `A ⊥^⊗ B | C` and `(P, Q) ∈ Δ^*_{C,i}`, then `i`
 cannot be `(P, Q)`-relevant to both `A` and `B` given `C`.
 
 Paper node: Lemma C.9 (§C.3). -/
@@ -171,7 +171,7 @@ theorem cohistory_union_eq_univ_of_condIndepAll {A B C : Set (Pt Ω)} (h : CondI
   obtain ⟨p', rfl⟩ := (factorizes_iff_exists_prod P').mp hPQ'.1.1
   obtain ⟨q', rfl⟩ := (factorizes_iff_exists_prod Q').mp hPQ'.2.1.1
   simp only [Distr.margAt_prod] at hag'
-  -- The interpolated pairs `(P^λ, Q^λ)` stay in `Δ^F_{C,i}(Ω)`, so Lemma C.9 applies.
+  -- The interpolated pairs `(P^λ, Q^λ)` stay in `Δ^*_{C,i}(Ω)`, so Lemma C.9 applies.
   have hPtC : ∀ t : unitInterval, 0 < (interp p p' t).prob C := interp_prob_pos p p' hPC hP'C
   have hQtC : ∀ t : unitInterval, 0 < (interp q q' t).prob C := interp_prob_pos q q' hQC hQ'C
   have hmem : ∀ t : unitInterval, (interp p p' t, interp q q' t) ∈ pairsDifferingAt C i := by
@@ -230,7 +230,7 @@ theorem cohistory_union_eq_univ_of_condIndepAll {A B C : Set (Pt Ω)} (h : CondI
 
 /-- The strictly-positive special case of Lemma C.12.  Replacing the factors of `⨂ p`
 indexed by `Cohistory(A | C)` one at a time by those of `⨂ q` leaves `P(A | C)`
-unchanged: each single-factor replacement is a pair in `Δ^F_{C,j}(Ω)`, so irrelevance of
+unchanged: each single-factor replacement is a pair in `Δ^*_{C,j}(Ω)`, so irrelevance of
 `j` applies.  Strict positivity of the new factors on the cohistory is what keeps
 `P(C) > 0` along the induction (via Lemma C.11 part 1). -/
 private lemma condProb_eq_of_replace {A C : Set (Pt Ω)} (p q : ∀ i, Distr (Ω i))
@@ -289,7 +289,7 @@ private lemma condProb_eq_of_replace {A C : Set (Pt Ω)} (p q : ∀ i, Distr (Ω
   rw [hfull] at this
   exact this.symm
 
-/-- **Progressive application of irrelevance.** If `P, Q ∈ Δ^F_C(Ω)` agree in every
+/-- **Progressive application of irrelevance.** If `P, Q ∈ Δ^*_C(Ω)` agree in every
 factor relevant to `A` given `C`, then `P(A | C) = Q(A | C)`.
 
 Paper node: Lemma C.12 (§C.3). -/
@@ -362,7 +362,7 @@ theorem condIndepEventVar_proj_cohistory (A C : Set (Pt Ω)) (P : Distr (Pt Ω))
   set mJ := (P.marg J).mass α with hmJ
   set sC := (P.marg Jᶜ).prob (projSet Jᶜ (sliceAt J α C)) with hsCdef
   set sAC := (P.marg Jᶜ).prob (projSet Jᶜ (sliceAt J α (A ∩ C))) with hsACdef
-  -- the auxiliary distribution `δ_α ⊗ P_{I∖J}` and its membership in `Δ^F_C(Ω)`
+  -- the auxiliary distribution `δ_α ⊗ P_{I∖J}` and its membership in `Δ^*_C(Ω)`
   set R := Distr.outerCompl (Distr.delta α) (P.marg Jᶜ) with hR
   have hRprod : R = Distr.prod fun i =>
       if h : i ∈ J then Distr.delta (α ⟨i, h⟩) else P.margAt i := outerCompl_delta_eq_prod hP α
@@ -562,7 +562,7 @@ theorem cohistory_eq_compl_eventHistory (A C : Set (Pt Ω)) :
 
 /-! ## Lemma 6.4: completeness for events -/
 
-/-- **Completeness for events.** If `A ⊥^P B | C` for all `P ∈ Δ^F(Ω)`, then
+/-- **Completeness for events.** If `A ⊥^P B | C` for all `P ∈ Δ^⊗(Ω)`, then
 `H(A | C) ∩ H(B | C) = ∅`.
 
 Paper node: Lemma 6.4 (§6.1). -/

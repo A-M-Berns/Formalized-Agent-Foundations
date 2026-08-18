@@ -263,7 +263,7 @@ Paper node: Definition 4.3 (§4.1). -/
 def Factorizes (P : Distr (Pt Ω)) : Prop :=
   ∀ ω : Pt Ω, P.mass ω = ∏ i, (P.margAt i).mass (ω i)
 
-/-- The set `Δ^F(Ω)` of distributions that factorize over `Ω`. -/
+/-- The set `Δ^⊗(Ω)` of distributions that factorize over `Ω`. -/
 def factorizing (Ω : I → Type v) [∀ i, Fintype (Ω i)] : Set (Distr (Pt Ω)) :=
   {P | Factorizes P}
 
@@ -331,7 +331,7 @@ lemma factorizes_iff_exists_prod (P : Distr (Pt Ω)) :
   · rintro ⟨p, rfl⟩
     exact factorizes_prod p
 
-/-- The set `Δ^F_C(Ω)` of factorizing distributions with `P(C) > 0` (§C.3). -/
+/-- The set `Δ^*_C(Ω)` of factorizing distributions with `P(C) > 0` (§C.3). -/
 def factorizingPos (C : Set (Pt Ω)) : Set (Distr (Pt Ω)) :=
   {P | Factorizes P ∧ 0 < P.prob C}
 
@@ -1013,7 +1013,7 @@ lemma condDist_prob {S : Type w} [Fintype S] (P : Distr S) (C : Set S) (h : 0 < 
 
 /-- The paper's `δ_α ⊗ P_{I∖J}` read as an outer product over all of `I`: the factors are
 the deltas `δ_{α_i}` on `J` and the marginals `P_i` off `J`.  This is what makes it
-visibly a member of `Δ^F(Ω)` and pins down its one-factor marginals (Lemma C.18). -/
+visibly a member of `Δ^⊗(Ω)` and pins down its one-factor marginals (Lemma C.18). -/
 lemma outerCompl_delta_eq_prod {J : Finset I} {P : Distr (Pt Ω)} (hP : Factorizes P)
     (α : PtOn Ω J) :
     Distr.outerCompl (Distr.delta α) (P.marg Jᶜ) =

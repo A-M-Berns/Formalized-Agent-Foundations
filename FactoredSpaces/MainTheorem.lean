@@ -3,8 +3,8 @@ import FactoredSpaces.Completeness
 /-!
 # Soundness and completeness of structural independence (Theorem 6.2, Proposition 6.6)
 
-`X ⊥_Ω Y | Z` iff `X ⊥^P Y | Z` for every `P ∈ Δ^F(Ω)`; and it suffices to have the
-probabilistic independence on a nonempty open subset of `Δ^F(Ω)`.
+`X ⊥_Ω Y | Z` iff `X ⊥^P Y | Z` for every `P ∈ Δ^⊗(Ω)`; and it suffices to have the
+probabilistic independence on a nonempty open subset of `Δ^⊗(Ω)`.
 -/
 
 namespace FactoredSpaces
@@ -70,10 +70,10 @@ lemma structIndepGiven_of_forall_condIndepVar [Nonempty α] [Nonempty β]
     (h : ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z) : StructIndepGiven X Y Z :=
   (structIndepGiven_iff_forall_condIndepVar X Y Z).mpr h
 
-/-- **Strong completeness.** If there is a nonempty open set `S ⊆ Δ^F(Ω)` with
-`X ⊥^P Y | Z` for all `P ∈ S`, then `X ⊥_Ω Y | Z`.  Openness of `S` in `Δ^F(Ω)` — a
+/-- **Strong completeness.** If there is a nonempty open set `S ⊆ Δ^⊗(Ω)` with
+`X ⊥^P Y | Z` for all `P ∈ S`, then `X ⊥_Ω Y | Z`.  Openness of `S` in `Δ^⊗(Ω)` — a
 subspace of `ℝ^Ω` with the Euclidean topology — is stated as the metric-ball criterion
-(`dd:open-ball`): every `Q ∈ S` has an `ε`-ball in `Δ^F(Ω)` inside `S`.
+(`dd:open-ball`): every `Q ∈ S` has an `ε`-ball in `Δ^⊗(Ω)` inside `S`.
 
 Paper node: Proposition 6.6 (§6.2). -/
 theorem structIndepGiven_of_open

@@ -9,7 +9,7 @@ import Mathlib.Order.Interval.Set.Infinite
 
 Interpolating two factorizing distributions factorwise, `R^λ = ⨂_i ((1−λ)Q_i + λP_i)`,
 makes every event probability a polynomial in `λ` (Lemma C.5); the interpolant stays in
-`Δ^F_C(Ω)`, i.e. it factorizes and keeps `P(C)` positive (Lemma C.10); and a conditional
+`Δ^*_C(Ω)`, i.e. it factorizes and keeps `P(C)` positive (Lemma C.10); and a conditional
 independence holding on a Euclidean ε-ball of factorizing distributions holds on all of
 them (Lemma 6.5).
 -/
@@ -94,8 +94,8 @@ theorem interp_prob_pos (P P' : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
     have hpos : 0 < (t : ℝ) ^ Fintype.card I * (Distr.prod P').prob C := by positivity
     linarith
 
-/-- **Lemma C.10 in full**: `P, P' ∈ Δ^F_C(Ω)` implies `P^λ ∈ Δ^F_C(Ω)`.  Membership in
-`Δ^F_C(Ω)` is factorization together with `P(C) > 0`, and the two halves are proved
+/-- **Lemma C.10 in full**: `P, P' ∈ Δ^*_C(Ω)` implies `P^λ ∈ Δ^*_C(Ω)`.  Membership in
+`Δ^*_C(Ω)` is factorization together with `P(C) > 0`, and the two halves are proved
 separately — `factorizes_interp` and `interp_prob_pos` — because §C.3 uses them
 separately; this is the conjunction the paper states.
 
@@ -131,7 +131,7 @@ private lemma exists_delta_euclDist_interp (Q P : ∀ i, Distr (Ω i)) {ε : ℝ
 
 /-- **From local to global conditional independence.** If `X ⊥^{Q'} Y | Z` holds for every
 factorizing `Q'` within Euclidean distance `ε` of a factorizing `Q`, then it holds for
-every `P ∈ Δ^F(Ω)`.
+every `P ∈ Δ^⊗(Ω)`.
 
 Paper node: Lemma 6.5 (§6.2). -/
 theorem condIndepVar_of_local {α β γ : Type*} {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ}

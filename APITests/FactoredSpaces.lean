@@ -376,8 +376,8 @@ example (h : ∀ P : Distr (Pt Bits), Factorizes P →
   refine Finset.disjoint_left.1 hd ((mem_history_iff_exists_ne _ 0).2 ?_)
   exact ⟨pt true false false, pt false false false, by decide, by decide⟩
 
-/-- **Proposition 6.6 at `S = Δ^F(Ω)` itself.**  All of `Δ^F(Ω)` is trivially open in
-`Δ^F(Ω)` under the metric-ball criterion (`dd:open-ball`) and is nonempty because the
+/-- **Proposition 6.6 at `S = Δ^⊗(Ω)` itself.**  All of `Δ^⊗(Ω)` is trivially open in
+`Δ^⊗(Ω)` under the metric-ball criterion (`dd:open-ball`) and is nonempty because the
 client already built a member of it, so strong completeness specialises back to Theorem
 6.2's completeness direction.  A client should check this before trusting
 `structIndepGiven_of_open` on a smaller `S`: it is the sanity condition that the openness
@@ -493,7 +493,7 @@ private lemma chainPΩ_factorizes : Factorizes chainPΩ := factorizes_prod _
 private lemma chainPΩ_pos : chainPΩ.StrictlyPositive := fun ω =>
   (Distr.prod_mass_pos_iff _ ω).mpr fun _ => Distr.uniform_strictlyPositive _
 
-/-- **`Δ^*(G)` is exactly the `τ`-image of `Δ^F(Ω^G)`, on the client's chain.**  Both halves
+/-- **`Δ^*(G)` is exactly the `τ`-image of `Δ^⊗(Ω^G)`, on the client's chain.**  Both halves
 of Lemma 5.3 in one statement: `τ⁻¹` of a CPD family witnesses `⟹` (`factorizes_tauInv` +
 `tau_tauInv`), `factorizesOverDAG_tau` witnesses `⟸`.  Neither endpoint states the
 equality, and it is the form a client asking "does my distribution come from a Bayes net
@@ -722,13 +722,13 @@ example (x : Pt ChainVal) : ¬ IsPerfectMapDAG chainG (Distr.delta x) := fun h =
   chain_not_dSeparated_empty
     ((h {0} {2} ∅).mpr fun _ _ _ => chain_condIndep_delta x _ _ _)
 
-/-! ### Proposition 6.6 on a *proper* open piece of `Δ^F(Ω)` -/
+/-! ### Proposition 6.6 on a *proper* open piece of `Δ^⊗(Ω)` -/
 
 /-- The client's all-ones point, the single coordinate reading the open condition below
 constrains. -/
 def allOnes : Pt Bits := fun _ => true
 
-/-- A **proper** open piece of `Δ^F(Ω)`: the factorizing distributions that put more than
+/-- A **proper** open piece of `Δ^⊗(Ω)`: the factorizing distributions that put more than
 half their mass on `allOnes`.  Because it constrains one mass only, `abs_sub_le_euclDist`
 is the whole of the metric input its openness needs. -/
 def heavyOnOnes : Set (Distr (Pt Bits)) := {P | Factorizes P ∧ 1 / 2 < P.mass allOnes}
@@ -749,7 +749,7 @@ private lemma heavyOnOnes_open : ∀ Q ∈ heavyOnOnes, ∃ ε > (0 : ℝ),
 
 /-- **The piece is genuinely proper.**  The point mass at the all-zeros point factorizes but
 misses it, so the independence hypothesis fed to `structIndepGiven_of_open` below is
-assumed of strictly fewer distributions than `Δ^F(Ω)` contains. -/
+assumed of strictly fewer distributions than `Δ^⊗(Ω)` contains. -/
 lemma heavyOnOnes_ssubset : heavyOnOnes ⊂ factorizing Bits := by
   refine ⟨heavyOnOnes_subset, fun hsub => ?_⟩
   have hne : allOnes ≠ (fun _ => false : Pt Bits) := fun h => Bool.noConfusion (congrFun h 0)
@@ -758,8 +758,8 @@ lemma heavyOnOnes_ssubset : heavyOnOnes ⊂ factorizing Bits := by
   norm_num at h
 
 /-- **Proposition 6.6 where it earns its keep.**  Unlike the specialisation at
-`S = Δ^F(Ω)` above, the independence hypothesis here is assumed only on `heavyOnOnes`,
-which `heavyOnOnes_ssubset` shows is a *proper* subset of `Δ^F(Ω)`; strong completeness
+`S = Δ^⊗(Ω)` above, the independence hypothesis here is assumed only on `heavyOnOnes`,
+which `heavyOnOnes_ssubset` shows is a *proper* subset of `Δ^⊗(Ω)`; strong completeness
 still returns the structural statement, and Theorem 6.2 then re-exports it to every
 factorizing distribution — including the all-zeros point mass, which is one of the ones the
 hypothesis said nothing about.  That gap is exactly what `structIndepGiven_of_open` buys

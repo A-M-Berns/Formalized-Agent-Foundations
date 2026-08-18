@@ -77,12 +77,12 @@ of the statements meets first.  The standing choices:
   additivity, `dd:probability` there): everything this paper does with distributions —
   Definition 4.3's pointwise factorization, the factorwise interpolation `⨂((1−λ)Q_i +
   λP_i)`, delta and outer products — is pointwise, and a mass function is the object the
-  paper manipulates.  `Δ^F(Ω)` is `factorizing Ω`, `Δ^F_C(Ω)` is `factorizingPos C`,
-  and `P ∈ Δ^F` is spelled `Factorizes P`.
+  paper manipulates.  `Δ^⊗(Ω)` is `factorizing Ω`, `Δ^*_C(Ω)` is `factorizingPos C`,
+  and `P ∈ Δ^⊗` is spelled `Factorizes P`.
 
-* `dd:open-ball` — Proposition 6.6's "nonempty open `S ⊆ Δ^F(Ω)`" (open in the subspace
+* `dd:open-ball` — Proposition 6.6's "nonempty open `S ⊆ Δ^⊗(Ω)`" (open in the subspace
   topology from `ℝ^Ω`) is stated through the metric-ball criterion for the Euclidean
-  distance `euclDist`: every `Q ∈ S` has an `ε`-ball within `Δ^F(Ω)` contained in `S`.
+  distance `euclDist`: every `Q ∈ S` has an `ε`-ball within `Δ^⊗(Ω)` contained in `S`.
   In a metric subspace that *is* openness, and it is the form Lemma 6.5 consumes.
 
 * `dd:cpd` — "`P` factorizes over `G`" (§5.2, eq. (2)) is the Koller–Friedman form the

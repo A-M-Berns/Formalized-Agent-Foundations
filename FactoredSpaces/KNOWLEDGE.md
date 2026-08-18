@@ -39,7 +39,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 | `supp(P)`, `δ_s`, `(1−λ)P + λQ` | `P.support`, `Distr.delta s`, `Distr.mix t P Q` | |
 | `P_i = P ∘ U_i⁻¹`, `P_J` (Def C.2) | `P.margAt i`, `P.marg J` (`Distr.map (proj J)`) | |
 | `⨂_i P_i` | `Distr.prod p` | |
-| `P` factorizes over `Ω` (Def 4.3), `Δ^F(Ω)`, `Δ^F_C(Ω)` | `Factorizes P`, `factorizing Ω`, `factorizingPos C` | pointwise, literal |
+| `P` factorizes over `Ω` (Def 4.3), `Δ^⊗(Ω)`, `Δ^*_C(Ω)` | `Factorizes P`, `factorizing Ω`, `factorizingPos C` | pointwise, literal |
 | `M = (Ω, O)` is an FSM for `P` (Def 4.4) | `IsFactoredSpaceModel O P` | |
 | `P_J ⊗ P_K` (Def C.1) | `Distr.outer h PJ PK`; the always-used `P_J ⊗ P_{I∖J}` on `Ω` is `Distr.outerCompl PJ PK` | |
 | `A_J × A_{I∖J}` for `A_J ⊆ Ω_J` | `cyl J A ∩ cyl Jᶜ B` | `splice_eq_cyl_inter` bridges to `splice` |
@@ -48,7 +48,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 | `A ⊥^⊗ B \| C` | `CondIndepAll A B C` | |
 | `R^λ = ⨂((1−λ)Q_i + λP_i)` | `interp Q P t` | `t : unitInterval` |
 | Euclidean distance on `Δ(Ω)` | `Distr.euclDist` | |
-| `(P,Q)`-irrelevant, irrelevant, `Cohistory(A\|C)` (Def C.6), `Δ^F_{C,i}` | `PQIrrelevant`, `Irrelevant`, `cohistory`, `pairsDifferingAt` | |
+| `(P,Q)`-irrelevant, irrelevant, `Cohistory(A\|C)` (Def C.6), `Δ^*_{C,i}` | `PQIrrelevant`, `Irrelevant`, `cohistory`, `pairsDifferingAt` | |
 | Lemma 6.3 / 6.4 / 6.5 / Thm 6.2 / Prop 6.6 | `condIndep_of_disjoint_eventHistory` / `disjoint_eventHistory_of_condIndepAll` / `condIndepVar_of_local` / `structIndepGiven_iff_forall_condIndepVar` / `structIndepGiven_of_open` | |
 | Lemmas C.5, C.7, C.8, C.9, C.10, C.11, C.12, C.13, C.14, C.15, C.16, C.17, C.18, C.19, C.20 | `exists_polynomial_interp_prob`, `cohistory_union_eq_univ_of_condIndepAll`, `cohistory_eq_compl_eventHistory`, `pqIrrelevant_or_of_condIndepAll`, `interp_prob_pos`, `Distr.prob_pos_of_support_subset`/`support_outerCompl`/`prob_pos_of_marg_support_subset`, `condProb_eq_of_agree_on_relevant`, `CondIndepEventVar.of_pair`, `CondIndepEventVar.of_proj_subset`, `Distr.prob_cyl_inter_cyl`, `Factorizes.prob_sliceAt`/`Distr.prob_outerCompl_delta`, `condIndepVarEvent_proj_history`, `condIndepEventVar_proj_cohistory`, `condIndepVarEvent_proj_cohistory`, `disintegrates_cohistory` | |
 | semigraphoid / graphoid / compositional (Def 5.1); Prop 5.2 | `IsSemigraphoid`, `IsGraphoid`, `IsCompositionalSemigraphoid` on an `IndepRel Ω`; `isCompositionalSemigraphoid_structIndepRel` (`structIndepRel Ω`) | value spaces `Type v`, nonempty |
@@ -150,7 +150,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   all `u`; do not try to get it from a point of `Ω^G` (circular). In the history section it
   comes from `[∀ v, Nontrivial (Val v)]`, and `Nonempty (ParentVals G Val v)` is then
   `inferInstance` — the paper's "since `I_v` is nonempty" step of Proposition 5.6.
-* **Lemma C.7's proof avoids topology on `Δ^F_{C,i}`**: the paper's "continuous, hence
+* **Lemma C.7's proof avoids topology on `Δ^*_{C,i}`**: the paper's "continuous, hence
   nonzero on an open set" step is replaced by "the numerator polynomial has finitely many
   roots" (`Polynomial.finite_setOf_isRoot`); same content, no topology on distributions.
 * **Lemma C.12 does not use C.11(3)** (false as printed): positivity along the
@@ -229,7 +229,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   DSeparation; `dSeparated_singleton_parents` in ActiveTrails; `OWalk` stays in ActiveTrails
   (`dd:owalk`, deliberate). `Examples.lean` holds all non-vacuity witnesses (`Coins`/`diag`,
   `isFactoredSpaceModel_single`, `collider` d-sep convention pins, `G₁`/`Q`/
-  `isPerfectMapDAG_G₁_Q` — the only inhabitant of `IsPerfectMapDAG`). Remaining relocation
+  `isPerfectMapDAG_G₁_Q`, and since round 3 `G₂ = (0 → 1)`/`Pedge`/`isPerfectMapDAG_G₂_Pedge`, the first perfect-map inhabitant with an edge, plus the three factorization refutations `not_factorizes_diag`, `not_isFactoredSpaceModel_const`, `not_factorizesOverDAG_diag`). Remaining relocation
   debt: `history_eq_empty_iff` → History, `condIndepVar_map_famJoint` → Probability.
 * **R1-F50 (client-side timeout on Props 5.5/5.6) — decision: accept the documented
   idiom.** Applying `dSeparated_iff_structIndepGiven`/`isAncestor_iff_strictlyBefore`
@@ -293,6 +293,48 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
     (whnf finds `Eq`); the trap is only `rw`/`simp only [Disintegrates]`.
   * Lemma 6.5's printed statement leaves `ε` unquantified; `condIndepVar_of_local` binds it
     (and restricts `Q'` to factorizing, i.e. the paper's own domain of `d`).
+
+* **Final blind audit (2026-08-18) — nine Opus auditors (A1–A5 blind on statement
+  extracts, B1–B3, C) + two codex sweeps, all denied KNOWLEDGE/errata; 60 findings,
+  0 BLOCKER.** Blind rediscovery of errata E1, E3, E5, E6, E7, E8, E9, E11–E17 by ≥2
+  channels each (strong corroboration); new errata E18–E20. Substantive fixes:
+  * `IndepRel` and the Definition 5.1 structures bind NO `[Nonempty]` (R3-F51, corroborated
+    by codex×2 + Opus A3): Prop 5.2 reproved by splitting on `isEmpty_or_nonempty (Pt Ω)`
+    (the empty regime makes every history independent of the conditioning event —
+    `history_indep_of_isEmpty_pt` — and `history_pair` does the rest). No axiom is false in
+    any degenerate case. The `Type v` restriction remains (structure fields cannot quantify
+    over universes; Theorem 6.2/Prop 6.6/Lemma B.1 stay universe-polymorphic).
+  * Table 1's negative claim is now `not_intersection_structIndepRel` (pairwise-distinct
+    `X = U`, `Y = U+1`, `Z = U+2` on one `Fin 3` factor — the old `X = Y` witness was
+    degenerate under Pearl's disjointness convention, R3-F57) with
+    `not_isGraphoid_structIndepRel` derived from it.
+  * Definition 6.1 (`CondIndep*`) is over an arbitrary `{S} [Fintype S]` (R3-F34); its
+    events are `{s | X s = x}` — `fiber X x` unfolded — so `rw`/`set` against
+    `fiber`-stated lemmas needs `show … (fiber …) …` or a type-ascribed `have` first
+    (sites: Probability C.13/C.14/`condIndepVarEvent_proj_of_disintegrates`, Completeness
+    C.18, Semigraphoid, PerfectMap `condIndepVar_map_famJoint`, Examples `isPerfectMapDAG_G₁_Q`).
+  * Non-vacuity (Lens C, R3-F54): `not_factorizes_diag`, `not_isFactoredSpaceModel_const`,
+    `not_factorizesOverDAG_diag`, and the edge-carrying perfect map `isPerfectMapDAG_G₂_Pedge`
+    (checking `IsPerfectMapDAG` on a two-node DAG collapses to `V₁ ⊆ V₃ ∨ V₂ ⊆ V₃` via
+    `condIndepVar_proj_of_subset_left/right`, `CondIndepVar.of_proj_subset`,
+    `not_condIndepVar_proj_self` — no 64-triple bash). Prop 6.6 now has a client test at a
+    proper open `S` (`heavyOnOnes`, APITests) enabled by `Distr.abs_sub_le_euclDist`.
+  * Lemma C.10's carrier is `interp_mem_factorizingPos` (`P^λ ∈ Δ^*_C(Ω)`, both halves);
+    `history_unique_minimal` is an iff naming `history`; idle `[Nonempty α]` dropped from
+    `history_mono_of_derived` (only `[Nonempty β]` load-bearing — corrects the round-2 note)
+    and `mem_history_of_sep`; dead decls removed (`DerivedOn.refl`, `cyl_inter`,
+    `mem_unblockedDesc_iff_mem_unblockedAnc`, `OWalk.toWalk`, `Examples.edgeTrail`).
+  * Docstrings use the paper's glyphs `Δ^⊗(Ω)` / `Δ^*_C(Ω)` (the macro `\distributionsF`
+    prints `Δ^⊗`; `Δ^F` appears nowhere in the PDF); memo citations replaced by
+    self-contained statements (the sizing memo is cited once, in Separation.lean).
+  * Relocation debt (new): the seven `CondIndepTools` lemmas in `PerfectMap.lean`
+    (`CondIndep.of_subset_left`, `.of_disjoint_left`, `CondIndepVar.symm`,
+    `fiber_proj_subset_or_disjoint`, `condIndepVar_proj_of_subset_left/right`,
+    `CondIndepVar.of_proj_subset`, `not_condIndepVar_proj_self`) are §6.1 vocabulary and
+    belong in `Probability.lean`.
+  * Wontfix (documented): file-wide `linter.unusedSectionVars false` in
+    ConditionalHistory.lean (inline binders hand-probed); unnumbered paper claims are
+    `lemma`s (the keyword rule requires every `theorem` to carry a numbered node).
 
 ## Intentional deviations from the paper
 

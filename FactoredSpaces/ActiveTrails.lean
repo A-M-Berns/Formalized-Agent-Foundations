@@ -3,8 +3,8 @@ import FactoredSpaces.ConditionalHistory
 /-!
 # Active trails and the `Z`-closure criterion
 
-The graph-theoretic half of the direct proof of Proposition 5.5
-(`notes/dsep-sizing/memo-2026-08-17.md`, Theorem 3): for vertices `s, t`,
+The graph-theoretic half of the direct proof of Proposition 5.5, the **`Z`-closure
+criterion**: for vertices `s, t`,
 `S_Z(s) ∩ S_Z(t) ≠ ∅` iff there is an active trail between `s` and `t` given `Z`.  The
 easy direction decomposes an active trail at its colliders into forks; the hard direction
 builds an active *walk* from a witness of the intersection and shortens it to a trail.
@@ -309,18 +309,9 @@ lemma isChain_verts : ∀ {s t : V} (p : G.OWalk s t), p.verts.IsChain G.Skel :=
       simp only [verts_head?, Option.mem_def, Option.some.injEq] at hy
       subst hy; exact Or.inr h
 
-/-- The underlying walk of an oriented walk. -/
-def toWalk {s t : V} (p : G.OWalk s t) : G.Walk s t :=
-  ⟨p.verts, p.isChain_verts, p.verts_head?, p.verts_getLast?⟩
-
 /-- An oriented walk without repeated vertices is a trail. -/
 def toTrail {s t : V} (p : G.OWalk s t) (h : p.verts.Nodup) : G.Trail s t :=
   ⟨p.verts, p.isChain_verts, p.verts_head?, p.verts_getLast?, h⟩
-
-@[simp] lemma verts_toWalk {s t : V} (p : G.OWalk s t) : p.toWalk.verts = p.verts := rfl
-
-@[simp] lemma verts_toTrail {s t : V} (p : G.OWalk s t) (h : p.verts.Nodup) :
-    (p.toTrail h).verts = p.verts := rfl
 
 end OWalk
 
@@ -698,7 +689,9 @@ lemma exists_active_trail_of_active_walk (hG : G.IsAcyclic) {s t : V} {Z : Finse
   rw [walk_active_iff, ← hr] at hp
   exact (activeFrom_iff_activeBi hG Z r none false (by simp) fun _ => rfl).1 hp
 
-/-- **Active trail ⟹ the closures meet** (memo, Theorem 3, easy direction). -/
+/-- **Active trail ⟹ the closures meet.**  If some trail from `s` to `t` is active given
+`Z`, then `S_Z(s) ∩ S_Z(t) ≠ ∅`.  (The easy direction of the `Z`-closure criterion: orient
+the trail and read the meeting point off its decomposition at the colliders.) -/
 lemma zClosure_inter_nonempty_of_active_trail (hG : G.IsAcyclic) {s t : V} {Z : Finset V}
     (p : G.Trail s t) (hp : p.Active Z) : (G.zClosure Z s ∩ G.zClosure Z t).Nonempty := by
   obtain ⟨r, hr⟩ := exists_owalk p.toWalk
@@ -711,7 +704,10 @@ lemma zClosure_inter_nonempty_of_active_trail (hG : G.IsAcyclic) {s t : V} {Z : 
     reach_of_activeBi (isZClosed_zClosure Z s) r false hract (unblockedAnc_subset_zClosure hs)
   exact ⟨m, hm2, unblockedAnc_subset_zClosure ht hm1⟩
 
-/-- **The closures meet ⟹ an active trail exists** (memo, Theorem 3, hard direction). -/
+/-- **The closures meet ⟹ an active trail exists.**  If `S_Z(s) ∩ S_Z(t) ≠ ∅`, then some
+trail from `s` to `t` is active given `Z`.  (The hard direction of the `Z`-closure
+criterion: glue the two certificates at the meeting point into an active oriented walk and
+shorten it to a trail.) -/
 lemma exists_active_trail_of_zClosure_inter_nonempty (hG : G.IsAcyclic) {s t : V}
     {Z : Finset V} (h : (G.zClosure Z s ∩ G.zClosure Z t).Nonempty) :
     ∃ p : G.Trail s t, p.Active Z := by
@@ -735,7 +731,8 @@ lemma exists_active_trail_of_zClosure_inter_nonempty (hG : G.IsAcyclic) {s t : V
   exact ⟨hp.1, hp'.1, hcomb⟩
 
 /-- **`Z`-closure criterion for d-separation**: `V₁` and `V₂` are d-separated given `V₃`
-iff `S_{V₃}(V₁) ∩ S_{V₃}(V₂) = ∅` (memo, Theorem 3, set form). -/
+iff `S_{V₃}(V₁) ∩ S_{V₃}(V₂) = ∅`.  This is the set form of the two lemmas above, and the
+form Proposition 5.5 is assembled from. -/
 lemma dSeparated_iff_disjoint_zClosureSet (hG : G.IsAcyclic) (V₁ V₂ V₃ : Finset V) :
     G.DSeparated V₁ V₂ V₃ ↔ Disjoint (G.zClosureSet V₃ V₁) (G.zClosureSet V₃ V₂) := by
   rw [Set.disjoint_left]

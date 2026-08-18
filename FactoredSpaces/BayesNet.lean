@@ -436,7 +436,7 @@ theorem prob_jointVar_fiber (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val)
     _ = ∏ v, (PΩ.margAt (κ v)).mass (constTable G Val x (κ v)) := Finset.prod_image hinj
     _ = ∏ v, (PΩ.margAt ⟨v, parentConfig G Val x v⟩).mass (x v) := rfl
 
-/-- The map `τ : Δ^F(Ω^G) → Δ^*(G)`, `τ(P^Ω)(x) = P^Ω(X = x)` (Lemma 5.3). -/
+/-- The map `τ : Δ^⊗(Ω^G) → Δ^*(G)`, `τ(P^Ω)(x) = P^Ω(X = x)` (Lemma 5.3). -/
 noncomputable def tau (hG : G.IsAcyclic) (PΩ : Distr (Pt (bnFactor G Val))) : Distr (Pt Val) :=
   PΩ.map (jointVar hG)
 
@@ -448,14 +448,14 @@ x_pa(v))`, i.e. the product over `I` of the CPDs. -/
 noncomputable def tauInv (φ : CPD (G := G) (Val := Val)) : Distr (Pt (bnFactor G Val)) :=
   Distr.prod fun i => φ i.1 i.2
 
-/-- **`τ⁻¹` lands in `Δ^F(Ω^G)`** (Lemma 5.3, first claim for `τ⁻¹`): the distribution
+/-- **`τ⁻¹` lands in `Δ^⊗(Ω^G)`** (Lemma 5.3, first claim for `τ⁻¹`): the distribution
 `τ⁻¹(φ)` built from a CPD family is a product over `I`, hence factorizes over `Ω^G`.
 
 Paper node: Lemma 5.3 (§5.2). -/
 theorem factorizes_tauInv (φ : CPD (G := G) (Val := Val)) : Factorizes (tauInv φ) :=
   factorizes_prod _
 
-/-- **`τ` maps `Δ^F(Ω^G)` into `Δ^*(G)`** (Lemma 5.3, first claim).
+/-- **`τ` maps `Δ^⊗(Ω^G)` into `Δ^*(G)`** (Lemma 5.3, first claim).
 
 Paper node: Lemma 5.3 (§5.2). -/
 theorem factorizesOverDAG_tau (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Val))}
@@ -537,7 +537,7 @@ private lemma condProb_tau_eq (hG : G.IsAcyclic) {PΩ : Distr (Pt (bnFactor G Va
   rw [← hPΩ] at hkey
   rw [Distr.condProb, h1, h2, hkey, mul_div_assoc, div_self hEpos.ne', mul_one]
 
-/-- `τ` on the strictly positive members of `Δ^F(Ω^G)`, landing in the strictly positive
+/-- `τ` on the strictly positive members of `Δ^⊗(Ω^G)`, landing in the strictly positive
 members of `Δ^*(G)`. -/
 noncomputable def tauPos (hG : G.IsAcyclic) :
     {PΩ : Distr (Pt (bnFactor G Val)) // PΩ ∈ factorizing (bnFactor G Val) ∧ PΩ.StrictlyPositive} →
@@ -568,10 +568,10 @@ private lemma tauInv_condCPD_congr {P Q : Distr (Pt Val)} (hP : P.StrictlyPositi
     tauInv (condCPD (G := G) P hP) = tauInv (condCPD (G := G) Q hQ) := by
   subst h; rfl
 
-/-- **`τ` is a bijection between the strictly positive members of `Δ^F(Ω^G)` and of
+/-- **`τ` is a bijection between the strictly positive members of `Δ^⊗(Ω^G)` and of
 `Δ^*(G)`** (Lemma 5.3, bijectivity — in its true form).
 
-The paper claims `τ` is bijective on all of `Δ^F(Ω^G)`, which fails: two factorizing
+The paper claims `τ` is bijective on all of `Δ^⊗(Ω^G)`, which fails: two factorizing
 `P^Ω` that differ only in a factor `(v, y)` whose parent configuration `y` has
 probability zero under `X_pa(v)` have the same `τ`-image (a chain `a → b` with
 `P^Ω(X_a = 0) = 1` and any two distributions on the `(b, 1)` factor).  The paper's own

@@ -19,7 +19,9 @@ non-collider trail vertices, so the zero-edge trail `v — v` is blocked iff `v 
 `V₁ ∩ V₂ ⊄ V₃` is never d-separated.  This is the reading the paper's own proof of
 Proposition 5.8 uses ("the path from `v₂` to itself has zero edges and can only be blocked
 by itself"), and the only reading under which Proposition 5.5 holds for arbitrary
-`V₁, V₂, V₃` (see `notes/dsep-sizing/memo-2026-08-17.md`, §2, and `notes/paper-errata.md`).
+`V₁, V₂, V₃`: under the alternative convention — only interior trail vertices are tested —
+a vertex would be d-separated from itself given a set missing it, while `X_v` is never
+structurally independent of itself (see `notes/paper-errata.md`, E8).
 
 Both conventions are pinned by regression examples in `FactoredSpaces/Examples.lean`, over
 the collider `0 → 2 ← 1`: conditioning on the collider opens the trail, conditioning on
@@ -107,6 +109,84 @@ lemma Trail.nil_active_iff (s : V) (Z : Finset V) : (Trail.nil (G := G) s).Activ
 lemma not_dSeparated_self {V₁ V₂ V₃ : Finset V} {v : V} (h₁ : v ∈ V₁) (h₂ : v ∈ V₂)
     (h₃ : v ∉ V₃) : ¬ G.DSeparated V₁ V₂ V₃ := fun h =>
   h v h₁ v h₂ (Trail.nil v) ((Trail.nil_active_iff v V₃).2 h₃)
+
+/-- **Conditioning on all of `V₁` d-separates it from everything.**  A trail out of
+`s ∈ V₁` has `s` at position `0`, an endpoint and hence a non-collider, so `s ∈ V₃` blocks
+it. -/
+lemma dSeparated_of_subset_left {V₁ V₂ V₃ : Finset V} (h : V₁ ⊆ V₃) :
+    G.DSeparated V₁ V₂ V₃ := by
+  intro s hs t _ p hact
+  have hhead := p.head
+  have h0 : p.toWalk.verts[0]? = some s := by
+    show p.verts[0]? = some s
+    cases hv : p.verts with
+    | nil => rw [hv] at hhead; simp at hhead
+    | cons a l => rw [hv] at hhead; exact List.getElem?_cons_zero.trans hhead
+  have hnc : ¬ p.toWalk.IsColliderAt 0 := by
+    rintro ⟨a, b, c, -, -, -, hk, -, -⟩
+    exact absurd hk (lt_irrefl 0)
+  exact (hact 0 s h0).2 hnc (h hs)
+
+/-- The mirror of `dSeparated_of_subset_left`, blocking at the last trail vertex. -/
+lemma dSeparated_of_subset_right {V₁ V₂ V₃ : Finset V} (h : V₂ ⊆ V₃) :
+    G.DSeparated V₁ V₂ V₃ := by
+  intro s _ t ht p hact
+  have hlast := p.last
+  have hn : p.toWalk.verts[p.verts.length - 1]? = some t := by
+    show p.verts[p.verts.length - 1]? = some t
+    rw [← List.getLast?_eq_getElem?]
+    exact hlast
+  have hnc : ¬ p.toWalk.IsColliderAt (p.verts.length - 1) := by
+    rintro ⟨a, b, c, -, -, hc, hk, -, -⟩
+    rw [show p.verts.length - 1 + 1 = p.verts.length by omega] at hc
+    rw [show p.toWalk.verts = p.verts from rfl,
+      List.getElem?_eq_none (le_refl p.verts.length)] at hc
+    simp at hc
+  exact (hact _ t hn).2 hnc (h ht)
+
+/-- The one-edge trail `s — t` along a skeleton edge between distinct vertices. -/
+def Trail.pair {s t : V} (h : G.Skel s t) (hne : s ≠ t) : G.Trail s t where
+  verts := [s, t]
+  chain := by simpa using h
+  head := rfl
+  last := rfl
+  nodup := by simp [hne]
+
+private lemma Trail.pair_verts {s t : V} (h : G.Skel s t) (hne : s ≠ t) :
+    (Trail.pair h hne).toWalk.verts = [s, t] := rfl
+
+private lemma Trail.pair_not_isColliderAt {s t : V} (h : G.Skel s t) (hne : s ≠ t) (k : ℕ) :
+    ¬ (Trail.pair h hne).toWalk.IsColliderAt k := by
+  rintro ⟨a, b, c, -, -, hc, hk, -, -⟩
+  rw [Trail.pair_verts] at hc
+  rcases Nat.lt_or_ge (k + 1) 2 with hlt | hge
+  · omega
+  · rw [List.getElem?_eq_none (by simpa using hge)] at hc
+    simp at hc
+
+/-- The one-edge trail is active given `Z` as soon as neither endpoint is in `Z`: it has no
+collider, and its only vertices are its two endpoints. -/
+lemma Trail.pair_active {s t : V} (h : G.Skel s t) (hne : s ≠ t) {Z : Finset V}
+    (hs : s ∉ Z) (ht : t ∉ Z) : (Trail.pair h hne).Active Z := by
+  intro k v hv
+  refine ⟨fun hcol => absurd hcol (Trail.pair_not_isColliderAt h hne k), fun _ => ?_⟩
+  rw [Trail.pair_verts] at hv
+  match k with
+  | 0 =>
+    have : v = s := by simpa using hv.symm
+    exact this ▸ hs
+  | 1 =>
+    have : v = t := by simpa using hv.symm
+    exact this ▸ ht
+  | (n + 2) => simp at hv
+
+/-- **Adjacent vertices outside the conditioning set are never d-separated.**  If `s ∈ V₁`
+and `t ∈ V₂` are distinct, joined by an edge in either direction, and neither is in `V₃`,
+then the one-edge trail between them is active. -/
+lemma not_dSeparated_of_skel {V₁ V₂ V₃ : Finset V} {s t : V} (hs : s ∈ V₁) (ht : t ∈ V₂)
+    (hne : s ≠ t) (hadj : G.Skel s t) (hs3 : s ∉ V₃) (ht3 : t ∉ V₃) :
+    ¬ G.DSeparated V₁ V₂ V₃ := fun h =>
+  h s hs t ht (Trail.pair hadj hne) (Trail.pair_active hadj hne hs3 ht3)
 
 /-- d-separation of sets is d-separation of their members pairwise. -/
 lemma dSeparated_iff_forall_singleton (V₁ V₂ V₃ : Finset V) :

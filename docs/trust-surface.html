@@ -8000,8 +8000,9 @@ endalign</p>
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.generates_history</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem generates_history [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
     Generates (history X C) X C</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_subset_of_generates</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_subset_of_generates {J : Finset I} {X : Pt Ω → α} {C : Set (Pt Ω)}
-    (hJ : Generates J X C) : history X C ⊆ J</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_unique_minimal</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_unique_minimal [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
-    ∃! J : Finset I, Generates J X C ∧ ∀ K, Generates K X C → J ⊆ K</pre></div>
+    (hJ : Generates J X C) : history X C ⊆ J</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_unique_minimal</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_unique_minimal [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω))
+    (J : Finset I) :
+    (Generates J X C ∧ ∀ K, Generates K X C → J ⊆ K) ↔ J = history X C</pre></div>
     </section>
   </div>
 </article>
@@ -8021,7 +8022,7 @@ endalign</p>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_pair</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_pair [Nonempty α] [Nonempty β] (X : Pt Ω → α) (Y : Pt Ω → β)
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.history_pair</code><span class="ep-file">FactoredSpaces/History.lean</span></div><pre class="sig">theorem history_pair (X : Pt Ω → α) (Y : Pt Ω → β)
     (C : Set (Pt Ω)) : history (pair X Y) C = history X C ∪ history Y C</pre></div>
     </section>
   </div>
@@ -8109,8 +8110,8 @@ We say that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><m
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.structIndep_of_before</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem structIndep_of_before {X : Pt Ω → α} {Y : Pt Ω → β} (h : Before X Y)
-    (Z : Pt Ω → γ) (hYZ : StructIndep Y Z) : StructIndep X Z</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_of_forall_bg</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_of_forall_bg [Nonempty α] {X : Pt Ω → α} {Y : Pt Ω → β}
-    (h : ∀ i : I, StructIndep Y (bg (Ω</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_iff_forall_structIndep</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_iff_forall_structIndep [Nonempty α] (X : Pt Ω → α) (Y : Pt Ω → β) :
+    (Z : Pt Ω → γ) (hYZ : StructIndep Y Z) : StructIndep X Z</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_of_forall_bg</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_of_forall_bg {X : Pt Ω → α} {Y : Pt Ω → β}
+    (h : ∀ i : I, StructIndep Y (bg (Ω</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.before_iff_forall_structIndep</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem before_iff_forall_structIndep (X : Pt Ω → α) (Y : Pt Ω → β) :
     Before X Y ↔ ∀ (γ : Type v) (Z : Pt Ω → γ), StructIndep Y Z → StructIndep X Z</pre></div>
     </section>
   </div>
@@ -8132,20 +8133,20 @@ We say that <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><m
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
       <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.IsSemigraphoid</code><span class="ep-file">FactoredSpaces/Semigraphoid.lean</span></div><pre class="sig">structure IsSemigraphoid (R : IndepRel Ω) : Prop where
-  symm : ∀ {α β δ : Type v} [Nonempty α] [Nonempty β]
+  symm : ∀ {α β δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (W : Pt Ω → δ), R X Y W → R Y X W
-  decomposition : ∀ {α β γ δ : Type v} [Nonempty α] [Nonempty β] [Nonempty γ]
+  decomposition : ∀ {α β γ δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) (W : Pt Ω → δ), R X (pair Y Z) W → R X Y W
-  weakUnion : ∀ {α β γ δ : Type v} [Nonempty α] [Nonempty β] [Nonempty γ]
+  weakUnion : ∀ {α β γ δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) (W : Pt Ω → δ),
     R X (pair Y Z) W → R X Z (pair Y W)
-  contraction : ∀ {α β γ δ : Type v} [Nonempty α] [Nonempty β] [Nonempty γ]
+  contraction : ∀ {α β γ δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) (W : Pt Ω → δ),
     R X Y W → R X Z (pair Y W) → R X (pair Y Z) W</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.IsGraphoid</code><span class="ep-file">FactoredSpaces/Semigraphoid.lean</span></div><pre class="sig">structure IsGraphoid (R : IndepRel Ω) : Prop extends IsSemigraphoid R where
-  intersection : ∀ {α β γ δ : Type v} [Nonempty α] [Nonempty β] [Nonempty γ]
+  intersection : ∀ {α β γ δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) (W : Pt Ω → δ),
     R X Y (pair Z W) → R X Z (pair Y W) → (β = γ → ¬ HEq Y Z) → R X (pair Y Z) W</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.IsCompositionalSemigraphoid</code><span class="ep-file">FactoredSpaces/Semigraphoid.lean</span></div><pre class="sig">structure IsCompositionalSemigraphoid (R : IndepRel Ω) : Prop extends IsSemigraphoid R where
-  composition : ∀ {α β γ δ : Type v} [Nonempty α] [Nonempty β] [Nonempty γ]
+  composition : ∀ {α β γ δ : Type v}
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) (W : Pt Ω → δ),
     R X Y W → R X Z W → R X (pair Y Z) W</pre></div>
     </section>
@@ -8261,7 +8262,7 @@ endalign*</p>
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.isAncestor_iff_strictlyBefore</code><span class="ep-file">FactoredSpaces/BayesNet.lean</span></div><pre class="sig">theorem isAncestor_iff_strictlyBefore [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.isAncestor_iff_strictlyBefore</code><span class="ep-file">FactoredSpaces/Separation.lean</span></div><pre class="sig">theorem isAncestor_iff_strictlyBefore [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
     {v₁ v₂ : V} (hne : v₁ ≠ v₂) :
     G.IsAncestor v₁ v₂ ↔ StrictlyBefore (nodeVar (Val</pre></div>
     </section>
@@ -8314,7 +8315,7 @@ be a factored space model. Let <math xmlns="http://www.w3.org/1998/Math/MathML" 
     (hG : G.IsAcyclic) {P : Distr (Pt Val)} (h : IsPerfectMapDAG G P) :
     IsPerfectMapFSM (nodeVar (Val</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.exists_isPerfectMapFSM_of_exists_isPerfectMapDAG</code><span class="ep-file">FactoredSpaces/PerfectMap.lean</span></div><pre class="sig">theorem exists_isPerfectMapFSM_of_exists_isPerfectMapDAG [∀ v, Nontrivial (Val v)]
     {P : Distr (Pt Val)}
-    (h : ∃ (G : Digraph V) (_ : DecidableRel G.Adj), G.IsAcyclic ∧ IsPerfectMapDAG G P) :
+    (h : ∃ G : Digraph V, G.IsAcyclic ∧ IsPerfectMapDAG G P) :
     ∃ (I : Type max u w) (Ω : I → Type w) (_ : Fintype I) (_ : DecidableEq I)
       (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Val v), IsPerfectMapFSM X P</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.exists_isPerfectMapFSM_not_exists_isPerfectMapDAG</code><span class="ep-file">FactoredSpaces/PerfectMap.lean</span></div><pre class="sig">theorem exists_isPerfectMapFSM_not_exists_isPerfectMapDAG :
     ∃ (V : Type) (_ : Fintype V) (_ : DecidableEq V) (Val : V → Type) (_ : ∀ v, Fintype (Val v))
@@ -8345,8 +8346,8 @@ If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.CondIndep</code><span class="ep-file">FactoredSpaces/Probability.lean</span></div><pre class="sig">def CondIndep (P : Distr (Pt Ω)) (A B C : Set (Pt Ω)) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.CondIndepVar</code><span class="ep-file">FactoredSpaces/Probability.lean</span></div><pre class="sig">def CondIndepVar {α β γ : Type*} (P : Distr (Pt Ω)) (X : Pt Ω → α) (Y : Pt Ω → β)
-    (Z : Pt Ω → γ) : Prop</pre></div>
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.CondIndep</code><span class="ep-file">FactoredSpaces/Probability.lean</span></div><pre class="sig">def CondIndep {S : Type w} [Fintype S] (P : Distr S) (A B C : Set S) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.CondIndepVar</code><span class="ep-file">FactoredSpaces/Probability.lean</span></div><pre class="sig">def CondIndepVar {S : Type w} [Fintype S] {α β γ : Type*} (P : Distr S) (X : S → α)
+    (Y : S → β) (Z : S → γ) : Prop</pre></div>
     </section>
   </div>
 </article>
@@ -8528,7 +8529,7 @@ If <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.structIndepGiven_pair</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem structIndepGiven_pair [Nonempty β] [Nonempty γ] {X : Pt Ω → α} {Y : Pt Ω → β}
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.structIndepGiven_pair</code><span class="ep-file">FactoredSpaces/Independence.lean</span></div><pre class="sig">theorem structIndepGiven_pair {X : Pt Ω → α} {Y : Pt Ω → β}
     {Z : Pt Ω → γ} {W : Pt Ω → δ} (hY : StructIndepGiven X Y W) (hZ : StructIndepGiven X Z W) :
     StructIndepGiven X (pair Y Z) W</pre></div>
     </section>
@@ -8788,9 +8789,11 @@ For <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mro
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.interp_prob_pos</code><span class="ep-file">FactoredSpaces/LocalToGlobal.lean</span></div><pre class="sig">theorem interp_prob_pos (P P&#x27; : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">FactoredSpaces.interp_prob_pos</code><span class="ep-file">FactoredSpaces/LocalToGlobal.lean</span></div><pre class="sig">theorem interp_prob_pos (P P&#x27; : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
     (hP : 0 &lt; (Distr.prod P).prob C) (hP&#x27; : 0 &lt; (Distr.prod P&#x27;).prob C) (t : unitInterval) :
-    0 &lt; (interp P P&#x27; t).prob C</pre></div>
+    0 &lt; (interp P P&#x27; t).prob C</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FactoredSpaces.interp_mem_factorizingPos</code><span class="ep-file">FactoredSpaces/LocalToGlobal.lean</span></div><pre class="sig">theorem interp_mem_factorizingPos (P P&#x27; : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
+    (hP : Distr.prod P ∈ factorizingPos C) (hP&#x27; : Distr.prod P&#x27; ∈ factorizingPos C)
+    (t : unitInterval) : interp P P&#x27; t ∈ factorizingPos C</pre></div>
     </section>
   </div>
 </article>
@@ -9087,4 +9090,4 @@ Then we have <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 -->
 
-<!-- trust-surface-sources: d2080a21ed0d0c37279674551a584bf0746fad6464166d38c9159b5ceeb14d34 -->
+<!-- trust-surface-sources: 6fa8b27a2c90968a762c4158b22dd4b97c464b564719f493305ee8dfd6c6de8e -->
