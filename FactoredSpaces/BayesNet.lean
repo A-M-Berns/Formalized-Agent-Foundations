@@ -360,7 +360,7 @@ configuration `x_pa(v)`, a distribution `P(· | x_pa(v))` on `Val_v`. -/
 abbrev CPD : Type max u w := ∀ v : V, ParentVals G Val v → Distr (Val v)
 
 variable (G Val) in
-/-- **`P` factorizes over `G`** (§5.2, eq. (4)): `P(x) = ∏_v P(x_v | x_pa(v))` for all
+/-- **`P` factorizes over `G`** (§5.2, eq. (2)): `P(x) = ∏_v P(x_v | x_pa(v))` for all
 `x ∈ Val`, where the factors `P(· | x_pa(v))` are conditional probability distributions
 — one per node and parent configuration — as in Koller–Friedman's definition, which the
 paper follows (`dd:cpd`; the CPD at a parent configuration of probability zero is not
@@ -378,7 +378,7 @@ lemma mem_dagFactorizing {P : Distr (Pt Val)} :
     P ∈ dagFactorizing G Val ↔ FactorizesOverDAG G Val P := Iff.rfl
 
 /-- The conditional probabilities `P(x_v | x_pa(v))` of a strictly positive `P` as a CPD
-family — the factors the paper's eq. (4) and Lemma 5.3 write. -/
+family — the factors the paper's eq. (2) and Lemma 5.3 write. -/
 noncomputable def condCPD (P : Distr (Pt Val)) (hP : P.StrictlyPositive) : CPD (G := G) (Val := Val) :=
   fun v y =>
     { mass := fun a => P.condProb {x | x v = a} {x | parentConfig G Val x v = y}

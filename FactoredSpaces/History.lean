@@ -17,7 +17,7 @@ variable {I : Type u} [DecidableEq I] {Ω : I → Type v}
 
 /-- `S_J × T_{I∖J}` for two events `S`, `T`, rendered by splicing: the points
 `J.piecewise a b = a_J · b_{I∖J}` with `a ∈ S`, `b ∈ T`.  `prodSplit J C = splice J C C`
-(`splice_self`). -/
+(`prodSplit_eq_splice`). -/
 def splice (J : Finset I) (S T : Set (Pt Ω)) : Set (Pt Ω) :=
   {ω | ∃ a ∈ S, ∃ b ∈ T, ω = J.piecewise a b}
 

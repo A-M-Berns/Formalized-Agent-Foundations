@@ -54,7 +54,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
 | semigraphoid / graphoid / compositional (Def 5.1); Prop 5.2 | `IsSemigraphoid`, `IsGraphoid`, `IsCompositionalSemigraphoid` on an `IndepRel Ω`; `isCompositionalSemigraphoid_structIndepRel` (`structIndepRel Ω`) | value spaces `Type v`, nonempty |
 | DAG `G = (V, E, Val)`, `pa(v)`, `an(v)` | `G : Digraph V` with `hG : G.IsAcyclic`, `Val : V → Type u`, `G.parents v`, `G.IsAncestor u v` | root `Digraph` namespace |
 | `I_v`, `I`, `Ω^G`, `X_v`, `X`, `X_S` | `ParentVals G Val v`, `bnIndex G Val` (`Σ v, ParentVals`), `bnFactor G Val`, `nodeVar hG v`, `jointVar hG`, `nodesVar hG S` | `nodeVar_apply` is eq. (4) |
-| `P` factorizes over `G` (eq. (4)), `Δ^*(G)`, CPDs | `FactorizesOverDAG G Val P`, `dagFactorizing G Val`, `CPD`, `condCPD P hpos` | `dd:cpd` |
+| `P` factorizes over `G` (eq. (2)), `Δ^*(G)`, CPDs | `FactorizesOverDAG G Val P`, `dagFactorizing G Val`, `CPD`, `condCPD P hpos` | `dd:cpd` |
 | `τ`, `τ⁻¹` (Lemma 5.3) | `tau hG`, `tauInv φ`; `tauPos_bijective`, `tauInv_condCPD_tau` | true form, see errata E5 |
 | Lemma B.2 / Prop 5.4 / Prop 5.6 | `prob_jointVar_fiber` / `factorizesOverDAG_iff_isFactoredSpaceModel` / `isAncestor_iff_strictlyBefore` | |
 | trail, active trail, d-separation | `Digraph.Trail`, `Digraph.Walk`, `Walk.IsColliderAt`, `Walk.Active`, `Trail.Active`, `Digraph.DSeparated` | `dd:dsep` |
