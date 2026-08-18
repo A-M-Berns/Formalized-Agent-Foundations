@@ -113,3 +113,4 @@ import FactoredSpaces.ActiveTrails
 import FactoredSpaces.Separation
 import FactoredSpaces.PerfectMap
 import FactoredSpaces.Examples
+import FactoredSpaces.API
