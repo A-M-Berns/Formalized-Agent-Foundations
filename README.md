@@ -28,7 +28,7 @@ or replaces paper-legible statements with unnecessary abstraction.
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Complete — 60/60 nodes |
 | Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete — 96/98 nodes (Ex. 3–4 out of scope); Conjecture 1 stated, unproved |
 | Garrabrant, Mayer, Wache, Lang, Eisenstat, and Dell (2024), [*Factored Space Models*](https://arxiv.org/abs/2412.02579) | [`FactoredSpaces/`](FactoredSpaces/README.md) | Complete — 50/50 nodes |
-| Eisenstat (2025), [*Condensation: A Theory of Concepts*](https://openreview.net/forum?id=HwKFJ3odui) | [`Condensation/`](Condensation/README.md) | Complete — 39/42 nodes (Ex. 5.1–5.3 out of scope); read-through deferred |
+| Eisenstat (2025), [*Condensation: A Theory of Concepts*](https://openreview.net/forum?id=HwKFJ3odui) | [`Condensation/`](Condensation/README.md) | Complete — 39/42 nodes (Ex. 5.1–5.3 out of scope) |
 
 All zero `sorry`, zero `axiom`; each directory's README gives the detailed statement-level
 accounting — what is proved, what is modeled, which printed statements were corrected — and
