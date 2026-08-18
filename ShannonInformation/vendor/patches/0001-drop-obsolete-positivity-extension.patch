@@ -1,0 +1,40 @@
+--- a/PFR/ForMathlib/Entropy/Measure.lean
++++ b/PFR/ForMathlib/Entropy/Measure.lean
+@@ -791,25 +791,16 @@
+ end measureMutualInfo
+ 
+ end ProbabilityTheory
+-
+-namespace Mathlib.Meta.Positivity
+-open Lean Meta Qq Function ProbabilityTheory
+-
+-/-- Extension for `measureMutualInfo`. -/
+-@[positivity measureMutualInfo _]
+-meta def evalMeasureMutualInfo : PositivityExt where eval {u α} _ pα? e := do
+-  let some _ := pα? | pure .none
+-  match u, α, e with
+-  | 0, ~q(ℝ), ~q(@measureMutualInfo $S $T $measS $measT $μ) =>
+-    assertInstancesCommute
+-    let _ ← synthInstanceQ q(MeasurableSingletonClass $S)
+-    let _ ← synthInstanceQ q(MeasurableSingletonClass $T)
+-    let _ ← synthInstanceQ q(FiniteSupport $μ)
+-    pure <| .nonnegative q(measureMutualInfo_nonneg (μ := $μ))
+-  | _, _, _ => throwError "failed to match ProbabilityTheory.measureMutualInfo"
+ 
+-example {S T : Type*} [MeasurableSpace S] [MeasurableSpace T] [MeasurableSingletonClass S]
+-    [MeasurableSingletonClass T] {μ : Measure (S × T)} [FiniteSupport μ] : 0 ≤ Im[μ] := by
+-  positivity
+-
+-end Mathlib.Meta.Positivity
++-- FAF VENDOR PATCH 1 (compatibility only; see ShannonInformation/vendor/PROVENANCE.md).
++--
++-- Upstream defines a `positivity` tactic extension for `measureMutualInfo` here.  It does
++-- not elaborate against FAF's pinned Mathlib: `Mathlib.Meta.Positivity.PositivityExt.eval`
++-- takes its partial-order argument as `Q(PartialOrder $α)` in this Mathlib, where the
++-- upstream Mathlib pin had `Option _`.
++--
++-- The extension is removed rather than repaired.  This is tactic plumbing, NOT
++-- mathematics: the theorem it wrapped, `measureMutualInfo_nonneg`, is defined above and
++-- is untouched, and is re-exported by `ShannonInformation.API`.  The only consequence is
++-- that `positivity` will not discharge `0 ≤ Im[μ]` automatically; cite
++-- `measureMutualInfo_nonneg` instead.

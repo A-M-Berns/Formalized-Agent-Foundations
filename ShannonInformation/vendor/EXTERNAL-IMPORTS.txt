@@ -1,0 +1,28 @@
+# Non-PFR modules the vendored closure imports.  All must be Mathlib: an entry
+# here from AddCombi or any other PFR dependency would mean the closure has
+# reached beyond information theory.
+Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
+Mathlib.Data.Finset.Pairwise
+Mathlib.Data.Set.Basic
+Mathlib.Data.Set.Card
+Mathlib.Data.Set.Insert
+Mathlib.MeasureTheory.Constructions.Pi
+Mathlib.MeasureTheory.Integral.Bochner.Basic
+Mathlib.MeasureTheory.Integral.Lebesgue.Basic
+Mathlib.MeasureTheory.Integral.Lebesgue.Countable
+Mathlib.MeasureTheory.Integral.Prod
+Mathlib.MeasureTheory.Measure.Dirac
+Mathlib.MeasureTheory.Measure.Map
+Mathlib.MeasureTheory.Measure.Prod
+Mathlib.MeasureTheory.Measure.Real
+Mathlib.Probability.ConditionalProbability
+Mathlib.Probability.IdentDistrib
+Mathlib.Probability.Independence.Basic
+Mathlib.Probability.Independence.Kernel.IndepFun
+Mathlib.Probability.Kernel.Composition.Comp
+Mathlib.Probability.Kernel.Composition.Prod
+Mathlib.Probability.Kernel.CondDistrib
+Mathlib.Probability.UniformOn
+Mathlib.Tactic.Basic
+Mathlib.Tactic.Finiteness
+Mathlib.Util.Notation3
