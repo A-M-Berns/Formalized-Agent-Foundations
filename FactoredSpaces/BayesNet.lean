@@ -147,6 +147,17 @@ def famVar (X : ∀ w : W, Pt Ω → Val w) (S : Finset W) : Pt Ω → PtOn Val 
 of the model `(Ω, X)`. -/
 def famJoint (X : ∀ w : W, Pt Ω → Val w) : Pt Ω → Pt Val := fun ω w => X w ω
 
+/-- **Conditional independence transfers along the joint variable of a family.**
+Independence of the projections `π_{W_k}` under the law `P^Ω ∘ X⁻¹` of the joint variable
+is independence of the subfamilies `X_{W_k}` under `P^Ω`, because `π_W ∘ X = X_W`; it is
+the `f = famJoint X` case of `condIndepVar_map`. -/
+lemma condIndepVar_map_famJoint [DecidableEq I] [Fintype I] [∀ i, Fintype (Ω i)]
+    [Fintype W] [DecidableEq W] [∀ w, Fintype (Val w)] (X : ∀ w : W, Pt Ω → Val w)
+    (Q : Distr (Pt Ω)) (W₁ W₂ W₃ : Finset W) :
+    CondIndepVar (Q.map (famJoint X)) (proj W₁) (proj W₂) (proj W₃) ↔
+      CondIndepVar Q (famVar X W₁) (famVar X W₂) (famVar X W₃) :=
+  condIndepVar_map (famJoint X) Q (proj W₁) (proj W₂) (proj W₃)
+
 end Family
 
 /-! ## The factored space of a DAG -/

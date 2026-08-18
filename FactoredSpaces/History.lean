@@ -256,6 +256,21 @@ lemma generates_iff_history_subset [Nonempty α] {J : Finset I} {X : Pt Ω → �
     ⟨fun a i => a ⟨i, h i.2⟩, fun _ _ => rfl⟩
   exact ⟨hJH.trans (generates_history X C).1, hJ⟩
 
+/-- **A history is empty exactly when the variable is constant.** `H(X | C) = ∅` iff `X`
+takes the same value at all points of `C`: the empty index set disintegrates every event,
+so it generates `X` given `C` precisely when `X` is constant on `C`. -/
+lemma history_eq_empty_iff [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
+    history X C = ∅ ↔ ∀ a ∈ C, ∀ b ∈ C, X a = X b := by
+  constructor
+  · intro h a ha b hb
+    have hgen : Generates (∅ : Finset I) X C :=
+      (generates_iff_history_subset (disintegrates_empty C)).mpr (by simp [h])
+    exact ((generates_iff _ _ _).mp hgen).2 a ha b hb (by simp)
+  · intro h
+    rw [← Finset.subset_empty]
+    exact history_subset_of_generates
+      ((generates_iff _ _ _).mpr ⟨disintegrates_empty C, fun a ha b hb _ => h a ha b hb⟩)
+
 /-- Only `Val(Y)` needs to be inhabited: with `Val(X)` empty the space `Ω` has no points,
 so `C = ∅` and `H(Y | C) = ∅` (see the degenerate-cases note below). -/
 lemma history_mono_of_derived [Nonempty β] {X : Pt Ω → α} {Y : Pt Ω → β}

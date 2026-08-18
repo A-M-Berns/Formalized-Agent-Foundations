@@ -2084,10 +2084,10 @@ open FactoredSpaces in
   tau_mass
   Distr.mem_support_iff
   -- The two general d-separation discharge routes and the one-edge trail they are checked
-  -- against (`FactoredSpaces/DSeparation.lean`), plus the conditional-independence tools a
-  -- client needs to verify Definition 5.7 by hand over arbitrary, possibly overlapping
-  -- triples (`FactoredSpaces/PerfectMap.lean`; they belong with §6.1's vocabulary in
-  -- `Probability.lean` and are a standing relocation debt).
+  -- against (`FactoredSpaces/DSeparation.lean`), plus the §6.1 conditional-independence
+  -- tools a client needs to verify Definition 5.7 by hand over arbitrary, possibly
+  -- overlapping triples, and the transport of a conditional independence along a
+  -- pushforward (`FactoredSpaces/Probability.lean`).
   Digraph.dSeparated_of_subset_left
   Digraph.dSeparated_of_subset_right
   Digraph.Trail.pair
@@ -2101,6 +2101,7 @@ open FactoredSpaces in
   condIndepVar_proj_of_subset_right
   CondIndepVar.of_proj_subset
   not_condIndepVar_proj_self
+  condIndepVar_map
   -- The new witness objects `FactoredSpaces/API.lean` advertises by name.
   Examples.G₂
   Examples.Pedge

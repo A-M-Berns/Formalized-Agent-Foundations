@@ -192,8 +192,9 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   Fin 3`, `Val true = Bool`, one factor `Fin 3`, `P` = uniform pushed along the joint; both
   sides of the perfect-map iff are shown equal to one decision predicate `ind`, collapsing
   64 cases; the probabilistic `⟹` needs no numeric probability (`decide` cannot evaluate
-  `ℝ`). `history_eq_empty_iff` (`H(X|C) = ∅ ↔ X` constant on `C`) and
-  `condIndepVar_map_famJoint` are general facts hoisted there.
+  `ℝ`). The two general facts it runs on live upstream: `history_eq_empty_iff`
+  (`H(X|C) = ∅ ↔ X` constant on `C`) in `History.lean` and `condIndepVar_map_famJoint` in
+  `BayesNet.lean`.
 
 * **Oriented walks (`dd:owalk`, `ActiveTrails.lean`).** `Digraph.Walk`/`Trail` read collider
   status off `verts[k±1]?` — right for the *statement*, bad to construct in. All proofs run
@@ -207,12 +208,6 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   one structural induction with `reachCond Z S b u` — no collider/fork enumeration. Walk→trail
   shortcut is ~30 lines given `OWalk.colliderOK_of_activeOpen`; the real cost was the
   `Walk ↔ OWalk` bridge (~110 lines).
-* Relocation debts (harmless, for a consolidation pass): `Digraph.depth`/`AncClosed` and the
-  local-Markov `dSeparated_singleton_parents` sit in `PerfectMap.lean`; several `unblockedAnc`/
-  `zClosure` facts sit in `ActiveTrails.lean` rather than `ConditionalHistory.lean`;
-  `Digraph.IsAcyclic.not_adj_symm` belongs next to `IsAcyclic`; `Digraph.prevOf` is a pure
-  list helper in the `Digraph` namespace.
-
 * **Round-1 consolidation (2026-08-17).** `Dist` renamed **`Distr`** (collision with Mathlib's
   root `Dist` class made `open FactoredSpaces` + `Dist S` an ambiguity error). Definition 5.1:
   `IndepRel` binds `[Nonempty]` only on the two independent slots (where Theorem 6.2 needs it
@@ -229,8 +224,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   DSeparation; `dSeparated_singleton_parents` in ActiveTrails; `OWalk` stays in ActiveTrails
   (`dd:owalk`, deliberate). `Examples.lean` holds all non-vacuity witnesses (`Coins`/`diag`,
   `isFactoredSpaceModel_single`, `collider` d-sep convention pins, `G₁`/`Q`/
-  `isPerfectMapDAG_G₁_Q`, and since round 3 `G₂ = (0 → 1)`/`Pedge`/`isPerfectMapDAG_G₂_Pedge`, the first perfect-map inhabitant with an edge, plus the three factorization refutations `not_factorizes_diag`, `not_isFactoredSpaceModel_const`, `not_factorizesOverDAG_diag`). Remaining relocation
-  debt: `history_eq_empty_iff` → History, `condIndepVar_map_famJoint` → Probability.
+  `isPerfectMapDAG_G₁_Q`, and since round 3 `G₂ = (0 → 1)`/`Pedge`/`isPerfectMapDAG_G₂_Pedge`, the first perfect-map inhabitant with an edge, plus the three factorization refutations `not_factorizes_diag`, `not_isFactoredSpaceModel_const`, `not_factorizesOverDAG_diag`).
 * **R1-F50 (client-side timeout on Props 5.5/5.6) — decision: accept the documented
   idiom.** Applying `dSeparated_iff_structIndepGiven`/`isAncestor_iff_strictlyBefore`
   against a written-out statement times out unless `(Val := …)` is passed on the
@@ -312,7 +306,7 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
     events are `{s | X s = x}` — `fiber X x` unfolded — so `rw`/`set` against
     `fiber`-stated lemmas needs `show … (fiber …) …` or a type-ascribed `have` first
     (sites: Probability C.13/C.14/`condIndepVarEvent_proj_of_disintegrates`, Completeness
-    C.18, Semigraphoid, PerfectMap `condIndepVar_map_famJoint`, Examples `isPerfectMapDAG_G₁_Q`).
+    C.18, Semigraphoid, Probability `condIndepVar_map`, Examples `isPerfectMapDAG_G₁_Q`).
   * Non-vacuity (Lens C, R3-F54): `not_factorizes_diag`, `not_isFactoredSpaceModel_const`,
     `not_factorizesOverDAG_diag`, and the edge-carrying perfect map `isPerfectMapDAG_G₂_Pedge`
     (checking `IsPerfectMapDAG` on a two-node DAG collapses to `V₁ ⊆ V₃ ∨ V₂ ⊆ V₃` via
@@ -327,14 +321,35 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   * Docstrings use the paper's glyphs `Δ^⊗(Ω)` / `Δ^*_C(Ω)` (the macro `\distributionsF`
     prints `Δ^⊗`; `Δ^F` appears nowhere in the PDF); memo citations replaced by
     self-contained statements (the sizing memo is cited once, in Separation.lean).
-  * Relocation debt (new): the seven `CondIndepTools` lemmas in `PerfectMap.lean`
-    (`CondIndep.of_subset_left`, `.of_disjoint_left`, `CondIndepVar.symm`,
-    `fiber_proj_subset_or_disjoint`, `condIndepVar_proj_of_subset_left/right`,
-    `CondIndepVar.of_proj_subset`, `not_condIndepVar_proj_self`) are §6.1 vocabulary and
-    belong in `Probability.lean`.
   * Wontfix (documented): file-wide `linter.unusedSectionVars false` in
     ConditionalHistory.lean (inline binders hand-probed); unnumbered paper claims are
     `lemma`s (the keyword rule requires every `theorem` to carry a numbered node).
+
+* **Relocation pass (2026-08-18) — every recorded relocation debt is discharged; nothing
+  is left to move.** What moved, and where to look for it now: the seven `CondIndepTools`
+  lemmas (`CondIndep.of_subset_left`, `.of_disjoint_left`, `CondIndepVar.symm`,
+  `fiber_proj_subset_or_disjoint`, `condIndepVar_proj_of_subset_left/right`,
+  `CondIndepVar.of_proj_subset`, `not_condIndepVar_proj_self`) are §6.1 vocabulary and now
+  sit in `Probability.lean` — at the **end** of that file, not next to Corollary C.14,
+  because `not_condIndepVar_proj_self` needs `Distr.nonempty_carrier`, which lives in the
+  later "Further `Distr` facts" section; `history_eq_empty_iff` is in `History.lean` next
+  to `generates_iff_history_subset`; `condIndepVar_map_famJoint` is in `BayesNet.lean`
+  beside `famVar`/`famJoint` and is now one line, the `f = famJoint X` case of the new
+  generic transport `condIndepVar_map` (pushforward along any `f : S → T`, stated over
+  arbitrary finite sample spaces beside Definition 6.1 in `Probability.lean`; `proj S ∘
+  famJoint X = famVar X S` is `rfl`, so the corollary is a bare application). Its proof is
+  `forall_congr'`×3 then `simp only [CondIndep, Distr.map_prob, Set.preimage_inter]` and
+  `exact Iff.rfl` — a `have key : ∀ {κ : Type*} …` helper does **not** work here: the extra
+  universe parameter makes the declaration fail with `commitConst: constant has level
+  params …`, and the helper never fires as a simp lemma. `Digraph.prevOf` and `prevOf_cons`
+  are now `private` (used only inside `ActiveTrails.lean`, under the public
+  `ColliderFrom`/`ActiveFrom`). Debts recorded earlier that were **already** resolved and
+  are simply gone: `Digraph.depth`/`AncClosed`/`IsAcyclic.not_adj_symm` are in
+  `BayesNet.lean` next to `IsAcyclic`, `dSeparated_singleton_parents` is in
+  `ActiveTrails.lean`, and every `unblockedAnc`/`zClosure` lemma still in `ActiveTrails.lean`
+  (`exists_ascWalk`, `exists_descWalk`, `zClosure_inter_nonempty_of_active_trail`,
+  `exists_active_trail_of_zClosure_inter_nonempty`, `dSeparated_iff_disjoint_zClosureSet`)
+  mentions walks or trails, so it belongs there rather than in `ConditionalHistory.lean`.
 
 ## Intentional deviations from the paper
 

@@ -94,8 +94,8 @@ Everything lives in the `FactoredSpaces` namespace, with generic graph vocabular
   `condIndepVar_proj_of_subset_right` (a conditioned-on family is independent of
   everything), `CondIndepVar.of_proj_subset` (restrict both sides to subfamilies) and
   `not_condIndepVar_proj_self` (a non-degenerate coordinate is never independent of itself
-  given a family omitting it).  These live in `PerfectMap.lean` for now, since checking a
-  perfect map is what needs them.
+  given a family omitting it); and `condIndepVar_map`, the transport of a conditional
+  independence along a pushforward `Q.map f`.
 * **Soundness and completeness**: Theorem 6.2 `structIndepGiven_iff_forall_condIndepVar`
   (directions `condIndepVar_of_structIndepGiven`, `structIndepGiven_of_forall_condIndepVar`),
   Lemma 6.3 `condIndep_of_disjoint_eventHistory`, Lemma 6.4

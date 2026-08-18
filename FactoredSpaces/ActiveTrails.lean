@@ -29,7 +29,8 @@ the hard direction and the shortcut in `exists_active_trail_of_active_walk` shor
 `activeFrom_iff_activeBi` is the bridge back to `Walk.Active`; it needs acyclicity,
 because only then is the orientation of a skeleton edge determined.
 
-`OWalk` and the list helpers `prevOf`/`ColliderFrom`/`ActiveFrom` sit in the root
+`OWalk` and the list helpers `ColliderFrom`/`ActiveFrom` (over the private index helper
+`prevOf`) sit in the root
 `Digraph` namespace but deliberately in this file rather than in `DSeparation.lean`
 (`dd:owalk`): they are proof machinery for the `Z`-closure criterion, with no role in the
 *statement* of d-separation, and `DSeparation.lean` is kept to the small readable surface
@@ -345,7 +346,7 @@ lemma exists_owalk {s t : V} (w : G.Walk s t) : ∃ p : G.OWalk s t, p.verts = w
 
 /-- The vertex preceding index `k` of `l`, with `a?` standing for the (virtual) vertex
 before the list. -/
-def prevOf (a? : Option V) (l : List V) : ℕ → Option V
+private def prevOf (a? : Option V) (l : List V) : ℕ → Option V
   | 0 => a?
   | k + 1 => l[k]?
 
@@ -358,7 +359,7 @@ def ActiveFrom (G : Digraph V) (Z : Finset V) (a? : Option V) (l : List V) : Pro
   ∀ k v, l[k]? = some v →
     (G.ColliderFrom a? l k → G.ColliderOK Z v) ∧ (¬ G.ColliderFrom a? l k → v ∉ Z)
 
-lemma prevOf_cons (a? : Option V) (v : V) (l : List V) (k : ℕ) :
+private lemma prevOf_cons (a? : Option V) (v : V) (l : List V) (k : ℕ) :
     prevOf (some v) l k = prevOf a? (v :: l) (k + 1) := by
   cases k <;> simp [prevOf]
 
