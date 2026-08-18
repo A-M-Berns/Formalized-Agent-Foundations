@@ -25,8 +25,9 @@ wrappers, which count where first stated and not where restated.  Five nodes car
 the provenance key throughout — the `printed-counter-appendix` scheme in
 `scripts/paper_nodes.py`.
 
-A `dd:` tag records a choice made by the formalization rather than by the paper.  The
-standing choices (each also documented in `FactoredSpaces/README.md`):
+A `dd:` tag records a choice made by the formalization rather than by the paper.  This
+glossary is the one complete list; `FactoredSpaces/README.md` restates the ones a reader
+of the statements meets first.  The standing choices:
 
 * `dd:pi-space` — the factored space `Ω = ×_{i∈I} Ω_i` of Definition 4.2 is the data
   `(I, Ω)` of an index type and a family `Ω : I → Type` of factors, with the point set
@@ -93,6 +94,13 @@ standing choices (each also documented in `FactoredSpaces/README.md`):
   one under which Proposition 5.5 holds for arbitrary `V₁, V₂, V₃` (E8). Proposition 5.5
   is proved directly (`ConditionalHistory.lean`, `ActiveTrails.lean`), not through the
   cited soundness/completeness of d-separation.
+
+* `dd:owalk` — the proof of Proposition 5.5 works with *oriented walks* (`OWalk` in
+  `ActiveTrails.lean`: a walk carrying the direction of each step, allowing repeated
+  vertices) and transfers to the trail-based `Digraph.DSeparated` at the end
+  (`exists_active_trail_of_active_walk`).  The oriented-walk calculus is proof
+  machinery, not a second definition of d-separation: nothing on the trust surface is
+  stated in terms of `OWalk`.
 
 * `dd:finiteness-minimal` — as in the sibling formalizations: finiteness and
   decidability hypotheses are carried only where they are used.

@@ -6,10 +6,14 @@ abstraction* ([arXiv:2412.02579](https://arxiv.org/abs/2412.02579), v2). The pap
 specification: `notes/2412.02579v2-main.tex` (with `notes/meta/environment.tex` and
 `notes/tables/`) is the exact arXiv source and `notes/2412.02579v2.pdf` the matching PDF.
 
-**Status: all 50 numbered nodes (14 definitions, 28 lemmas, 6 propositions, 1 theorem,
-1 corollary) are stated and proved — 0 `sorry`, axiom-clean, gates green; the adversarial
-audit rounds and the consumer-API pass are still to come, so the registry says
-`in-progress`.** This file says what is claimed and how. The feasibility spike that
+**Status: complete.** All 50 numbered nodes (14 definitions, 28 lemmas, 6 propositions,
+1 theorem, 1 corollary) are stated and proved — 0 `sorry`, axiom-clean
+(`AxiomAudit.lean`, FS-INVENTORY), every node cited from a `Paper node:` line and checked
+against the TeX (`scripts/check-factored-spaces-nodes.py`, `notes/scope-manifest.json`:
+nothing ruled out of scope), consumer boundary `FactoredSpaces/API.lean` exercised by
+`APITests/FactoredSpaces.lean`, registry `scripts/papers.py`: `completed`.  The
+formalization went through two adversarial audit rounds plus a final blind audit; the
+round records are summarized in `KNOWLEDGE.md`.  This file says what is claimed and how. The feasibility spike that
 preceded this formalization is recorded in `notes/spike-2026-08-17.md`, the paper defects
 found on the way in `notes/paper-errata.md`, and the sizing memo for the direct proof of
 Proposition 5.5 in `notes/dsep-sizing/`.

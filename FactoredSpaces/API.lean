@@ -16,10 +16,11 @@ and Dell, arXiv:2412.02579v2, are stated and proved (`FactoredSpaces/README.md` 
 trust surface; `notes/paper-errata.md` lists the paper defects the Lean does not copy).  This
 boundary is therefore the whole consumer surface.  It deliberately hands you the paper's
 vocabulary in the paper's shape (`dd:` glossary in `FactoredSpaces.lean`), plus the
-non-vacuity witnesses of `Examples.lean`; the proof machinery behind Proposition 5.5
-(`ConditionalHistory.lean`, `ActiveTrails.lean`) is a construction import, reachable through
-`FactoredSpaces.Separation` when a client needs the closed-form conditional history or the
-oriented-walk calculus themselves.
+non-vacuity witnesses of `Examples.lean`.  The import re-exports the whole library, so the
+proof machinery behind Proposition 5.5 (`ConditionalHistory.lean`: the closed-form
+conditional history `zClosure`/`unblockedAnc`; `ActiveTrails.lean`: the oriented-walk
+calculus, `dd:owalk`) is in scope too, but only the names listed below are the supported
+vocabulary.
 
 ## Vocabulary
 

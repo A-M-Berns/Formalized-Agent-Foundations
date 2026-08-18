@@ -240,6 +240,45 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   `def`s for `ParentVals`/`bnIndex`/`bnFactor` — would break the recorded definitional
   bridges and is left for a later consolidation if consumers hit it.
 
+* **Round 2 (2026-08-17) — hardening pass, five Lens A + five Lens B Opus auditors +
+  two codex sweeps; 38 findings, 0 BLOCKER; all MAJORs were repo-mode duplicates or idle
+  binders, none a faithfulness defect.** Settled there:
+  * `proj J` is definitionally Mathlib's `Finset.restrict J` (`proj_eq_restrict`, rfl) and
+    the sub-restriction `Ω_K → Ω_J` IS Mathlib's `Finset.restrict₂` (the paper-local
+    `restrict` was deleted, R2-F22/F23); `restrict₂_comp_restrict` is
+    `Finset.restrict₂ h (proj K ω) = proj J ω`. `splitEquiv` is NOT `Equiv.piEquivPiSubtypeProd`
+    (different second-factor index type); `Finset.piecewise_union/inter` have no Mathlib
+    counterpart (checked in full) — do not re-raise either.
+  * `[Nonempty α] [Nonempty β]` are dropped from `condIndepVar_of_structIndepGiven` and
+    Prop 6.6 (`structIndepGiven_of_open`) — derived inside from `P.nonempty_carrier` /
+    `Q.nonempty_carrier` (R2-F20). They REMAIN on Theorem 6.2's iff, `generates_iff`,
+    `Generates.inter`, `generates_history`, `history_mono_of_derived` where they are
+    load-bearing (verified by delete-and-rebuild; the empty-factor counterexample of E12
+    kills the binder-free forms). `[DecidableEq I]` is needed to *state* the §6 endpoints
+    (`Distr (Pt Ω)` needs `Pi.fintype`); `[∀ v, DecidableEq (Val v)]` is needed to state
+    Props 5.5/5.6 (`DecidableEq (bnIndex G Val)`), idle only on Prop 5.8(1) (fixed, R2-F31).
+  * The Prop 5.6 block moved out of `BayesNet.lean`: `mem_history_nodeVar_iff` is now the
+    `Z = ∅`, `A = {v}` case of `mem_history_nodesVar_iff` (R2-F30/F35), so BayesNet holds
+    only the construction, Lemmas 5.3/B.2 and Prop 5.4.
+  * `not_isGraphoid_structIndepRel` and `isSemigraphoid_condIndepRel` are inventoried
+    without `Paper node:` lines (unnumbered paper claims — Table 1 row "Intersection", and
+    the Pearl fact behind Prop 5.2); the FS-INVENTORY preamble records this. The
+    graphoid refutation is genuine: `IsGraphoid` is inhabited (`fun _ _ _ => True/False`),
+    the witness space satisfies `IsSemigraphoid`, and the paper's homogeneous form is
+    provable at `Ω = fun _ : Unit => Bool` (verified R2-B3).
+  * `#assert_fields` on the semigraphoid structures freezes names only; their content is in
+    the field types (`β = γ → ¬ HEq Y Z` side condition, minimal `[Nonempty]` binders) —
+    the AxiomAudit comment says so.
+  * Which Examples lemma pins the d-separation ENDPOINT convention: `not_dSeparated_adj`
+    (and the round-2 addition `dSeparated {0} {2} {2}` on the collider) — the nil-trail
+    lemmas do not discriminate the readings; `not_dSeparated_given_collider` pins the
+    collider convention. The convention lives in the bodies of `Walk.IsColliderAt`,
+    `Walk.Active`, `DSeparated` (defs, not inventoried), so those pins are the only guard.
+  * `Disintegrates` is a def wrapping an `Eq`: dot notation (`hd.trans …`) DOES resolve
+    (whnf finds `Eq`); the trap is only `rw`/`simp only [Disintegrates]`.
+  * Lemma 6.5's printed statement leaves `ε` unquantified; `condIndepVar_of_local` binds it
+    (and restricts `Q'` to factorizing, i.e. the paper's own domain of `d`).
+
 ## Intentional deviations from the paper
 
 * **`[Nonempty β]` in Lemma C.3 (`derivedOn_iff`).** The paper's (ii)⟹(i) direction
@@ -254,7 +293,7 @@ None.
 
 ## Paper errata
 
-All in `notes/paper-errata.md` (E1–E13; E9–E13 from the round-1 audit: Prop 5.8(2)'s "arbitrary P", the empty-projection singleton, Lemma A.1's missing union inclusion, Lemma A.2 false for `Val(X) = ∅` and its swapped identities, cosmetic slips in 4.8/C.9/C.20): C.3 needs `Val(Y) ≠ ∅` (E1); factors may be empty
+All in `notes/paper-errata.md` (E1–E17; E9–E13 from the round-1 audit, E14–E17 from round 2: Prop 5.8(2)'s "arbitrary P", the empty-projection singleton, Lemma A.1's missing union inclusion, Lemma A.2 false for `Val(X) = ∅` and its swapped identities, cosmetic slips in 4.8/C.9/C.20): C.3 needs `Val(Y) ≠ ∅` (E1); factors may be empty
 (E2); **C.11(3) false as printed** — needs the `I∖J`-marginal supports too (E3); C.10's
 displayed inequality false at `I = ∅` (E4); **Lemma 5.3 "τ bijective" false** — true on
 strictly positive distributions (E5); Def 5.7(2) types `X_w : Ω → Obs` (E6); **Prop 5.8(1)'s
