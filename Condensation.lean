@@ -140,7 +140,11 @@ finding IDs that forced any are recorded in `Condensation/KNOWLEDGE.md`.
   `Condensation/Quantitative.lean` as `ITree` (the tree), `ITree.label` (the computed
   labelling), `LTree` (an arbitrary labelling of every position, which is what Proposition
   5.7 quantifies over) and `ITree.intersections` (Definition 5.6's family (5.11), a `List`
-  because the paper warns that the same intersection may recur).
+  because the paper warns that the same intersection may recur).  Theorem 5.8's "bijection
+  between the leaves of `T` and `{C : B ∩ C ≠ ∅}` ranging over `B ∈ F`" is rendered as the
+  **multiset** equation `(T.leaves : Multiset _) = (famFinset F).val.map (fun B => contrib
+  B.toFinset)` — the leaf labels with multiplicity — which is a bijection rather than a
+  surjection because `contrib_injective` makes the right-hand multiset duplicate-free.
 
 * `dd:category` — Proposition 3.7 is a `CategoryTheory.Category` instance on the bundled
   type of random variable models; Proposition 3.8 uses `CategoryTheory.IsIso`; Definition

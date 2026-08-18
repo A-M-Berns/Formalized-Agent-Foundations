@@ -17,31 +17,51 @@ Lemma 4.14 and Theorem 4.15 of Eisenstat, *Condensation: A Theory of Concepts*:
 * Lemma 4.14 is stated over **bare random variables**, not over a model: the paper states
   it for "random variables on some countable discrete probability space", and it is used
   inside Theorem 4.15's induction at variables (`Z_F`, `Z_G`, `Z_{F∩G}`) that are joints
-  over *set-indexed* subfamilies rather than model variables.  Its binders are the paper's:
-  the countable discrete probability space is `Ω`, and the only *range* carrying a
-  countability hypothesis is `C`'s — the `[Countable U] [MeasurableSingletonClass U]` pair
-  is what makes the witnessing function automatically measurable (the last line of the
-  printed proof).  The ranges of `X`, `Y₁` and `Y₂` carry nothing beyond a measurable-space
-  structure, and no finiteness hypothesis of any kind appears: the printed argument is
-  measure-theoretic and uses no entropy.  (Before 2026-08-17 the statement carried
-  `FiniteRange` binders on all four ranges; Phase 4b swapped them for
+  over *set-indexed* subfamilies rather than model variables.  Read off the declaration, the
+  binders are exactly these.  On the sample space: `[MeasurableSpace Ω] [Countable Ω]`
+  and `[_hΩsing : MeasurableSingletonClass Ω]`, together with `[IsProbabilityMeasure μ]` — the
+  paper's countable discrete probability space; the singleton-class instance is *named* so
+  that a caller working on `Am.lat₂.Λ` can pass it explicitly, as Theorem 4.15's proof does
+  (`(_hΩsing := Am.singΛ₀)`).  On `C`'s range: `[MeasurableSpace U] [Countable U]
+  [MeasurableSingletonClass U]`, which is what makes the witnessing function automatically
+  measurable (the last line of the printed proof).  On `X`'s range: `[MeasurableSpace S]`
+  **and `[MeasurableSingletonClass S]`** — the one binder that is not printed in the paper,
+  and the subject of the next bullet.  On `Y₁`'s and `Y₂`'s ranges: `[MeasurableSpace T₁]`
+  and `[MeasurableSpace T₂]`, and nothing else.  So `U` is the only *range* carrying a
+  countability hypothesis, and no finiteness hypothesis of any kind appears anywhere: the
+  printed argument is measure-theoretic and uses no entropy.  (Before 2026-08-17 the
+  statement carried `FiniteRange` binders on all four ranges; Phase 4b swapped them for
   `ShannonInformation.FiniteEntropyOf` binders, and round 2 established that neither
   belonged here in the first place — R2-F01/F23.)
 
-  **As printed, the lemma is false** — nothing in the printed binders makes `X`'s range
-  separate points, and when it does not, `CondIndepFun Y₁ Y₂ C μ` can be vacuous while the
-  conclusion is a real constraint: `Ω = Bool` uniform, `U = Unit` (so `C` is constant),
-  `S = T₁ = T₂` the two-point set carrying the *trivial* σ-algebra `⊥`, and
-  `X = Y₁ = Y₂ = id` satisfies every hypothesis (any map into a `⊥`-space is measurable,
-  `comap Yₖ ⊥ = ⊥` makes the independence automatic, and `Prod.snd` witnesses both
-  functional dependences) while the conclusion would force `X` to be a.e. constant
-  (machine-checked, M2-B1; `notes/paper-errata.md` entry 15).  The Lean statement therefore
-  carries `[MeasurableSingletonClass S]` on `X`'s range — free at every call site here (`X`
-  is always a model's variable, and `RVModel` carries `singR`) and licensed by the paper's
-  standing convention that "our probability spaces are countable and discrete" (§2, just
-  before Definition 2.4).  `T₁`, `T₂` genuinely need only a measurable-space structure.
-  Orchestrator ruling 2026-08-18: round 2's binder strip (R2-F01/F23) had gone one range
-  too far; the binder is restored and the lemma is proved.
+  **As printed, the lemma is false**, and `[MeasurableSingletonClass S]` is the repair
+  (`notes/paper-errata.md` entry 15; orchestrator ruling 2026-08-18).  The mechanism is
+  worth stating precisely, because the obvious reading of it is wrong.
+  `ProbabilityTheory.CondIndepFun Y₁ Y₂ C μ` **never mentions `S` at all**, so the vacuity
+  is not something `X`'s range does.  It comes from `T₁` and `T₂`: when the ranges of `Y₁`
+  and `Y₂` carry the trivial σ-algebra `⊥`, `MeasurableSpace.comap Yₖ ⊥ = ⊥` and the
+  conditional independence holds trivially.  `S` at `⊥` is a separate matter — it is what
+  makes the two `AEFunctionOf` *hypotheses* satisfiable, since every map into a `⊥`-space is
+  measurable, so `Prod.snd` witnesses both functional dependences — while the conclusion
+  `AEFunctionOf C X μ` stays a real constraint.  Machine-checked refutation (M2-B1):
+  `Ω = Bool` uniform, `U = Unit` (so `C` is constant), `S = T₁ = T₂` a two-point type
+  carrying `⊥`, `X = Y₁ = Y₂ = id`; every hypothesis holds and the conclusion would force
+  `X` to be a.e. constant.
+
+  Consequently there are **two independent minimal repairs**, and the printed statement
+  needs exactly one of them.  (i) Require a `MeasurableSingletonClass` on `S`: informally,
+  this is what makes the argument's step "`X`'s level sets lie a.e. in
+  `σ(C, Y₁) ∩ σ(C, Y₂)`" meaningful.  (ii) Require `MeasurableSingletonClass` on `T₁` and
+  `T₂`: this removes the vacuity at its source, and it is what the *printed proof*
+  implicitly uses.  Both are licensed by the paper's §2 standing conventions ("our
+  probability spaces are countable and discrete", just before Definition 2.4).  **The Lean
+  carries (i)** — free at every call site here, since `X` is always a model's variable and
+  `RVModel` carries `singR` — and leaves `T₁`, `T₂` with only a measurable-space structure.
+  Note the exact strength: what is needed of `X`'s range is that it **separate points**, and
+  there is no `Countable S` binder anywhere in the statement, so "`X` has countable discrete
+  range" would claim more than the repair does.  Orchestrator ruling 2026-08-18: round 2's
+  binder strip (R2-F01/F23) had gone one range too far; the binder is restored and the lemma
+  is proved.
 * Theorem 4.15 quantifies over an arbitrary `LatentAmalgamation L₁ L₂`, not over the
   canonical one of Lemma 4.13.  The paper says "let `L̃₁` and `L̃₂` be the latent variable
   models **in an** amalgamation of `L₁` and `L₂`".  The hypothesis is not vacuous: the
@@ -99,22 +119,30 @@ Recall also `ProbabilityTheory.CondIndepFun f g h μ`: `f` and `g` are condition
 independent **given** `h` (`PFR/ForMathlib/ConditionalIndependence.lean`), so the
 hypothesis below is the paper's "`Y₁` and `Y₂` are conditionally independent given `C`".
 
-The binders are the paper's own and no more.  The countable discrete probability space is
-`Ω`; among the *ranges*, only `C`'s carries `[Countable] [MeasurableSingletonClass]`,
-because that is what the printed proof uses — it defines the witnessing function
-pointwise on the (countable, discrete) range of `C` and appeals to
-`measurable_of_countable`.  The ranges of `X`, `Y₁` and `Y₂` need only a measurable-space
-structure, and no finiteness hypothesis appears at all: the argument is measure-theoretic
-and never forms an entropy.
+The binders are the paper's own with **one** addition, `[MeasurableSingletonClass S]`.  In
+full: the countable discrete probability space is `Ω`, carrying `[Countable Ω]`,
+`[MeasurableSingletonClass Ω]` and `[IsProbabilityMeasure μ]`; among the *ranges*, `C`'s
+range `U` carries `[Countable U] [MeasurableSingletonClass U]`, because that is what the
+printed proof uses — it defines the witnessing function pointwise on the (countable,
+discrete) range of `C` and appeals to `measurable_of_countable`; `X`'s range `S` carries
+`[MeasurableSingletonClass S]` and no countability; and `Y₁`'s and `Y₂`'s ranges `T₁`, `T₂`
+carry nothing beyond `MeasurableSpace`.  No finiteness hypothesis appears at all: the
+argument is measure-theoretic and never forms an entropy.
 
-**Binder ruling (M2, 2026-08-18).** `[MeasurableSingletonClass S]` on `X`'s range is required:
-without it the statement is *false* — with `S` carrying the trivial σ-algebra the
-conditional-independence hypothesis is vacuous while the conclusion is not (machine-checked
-refutation recorded in `notes/paper-errata.md`, entry 15). It is licensed by the paper's
-standing convention (§2: "our probability spaces are countable and discrete") and is free
-at every call site. `T₁`, `T₂` genuinely need only `MeasurableSpace`. The measurability
-hypotheses on `X`, `Y₁`, `Y₂` are the paper's "random variables" and are not used by the
-proof (only `C`'s is).
+**Binder ruling (M2, 2026-08-18).** `[MeasurableSingletonClass S]` is required: without it
+the statement is *false*, with a machine-checked refutation recorded in
+`notes/paper-errata.md`, entry 15.  The mechanism is not the one the shape of the
+counterexample first suggests: `ProbabilityTheory.CondIndepFun Y₁ Y₂ C μ` never mentions
+`S`, so the vacuity of the independence hypothesis comes from `T₁`, `T₂` carrying the
+trivial σ-algebra, while `S` carrying it is what makes the two `AEFunctionOf` hypotheses
+satisfiable.  There are accordingly two minimal repairs — a `MeasurableSingletonClass` on
+`S`, or one on each of `T₁` and `T₂` (the latter is what the printed proof implicitly uses)
+— and exactly one is needed; this statement takes the
+first, which is free at every call site here, and the paper's §2 standing convention ("our
+probability spaces are countable and discrete") licenses either.  What is asked of `X`'s
+range is only that it *separate points*; there is deliberately no `Countable S`.  The
+measurability hypotheses on `X`, `Y₁`, `Y₂` are the paper's "random variables" and are not
+used by the proof (only `C`'s is).
 
 Paper node: `Lemma 4.14` -/
 theorem aeFunctionOf_of_condIndepFun {Ω S T₁ T₂ U : Type*} [MeasurableSpace Ω] [Countable Ω]
@@ -316,6 +344,12 @@ The amalgamation hypothesis is not vacuous, twice over: the paper's own existenc
 `Condensation.nonempty_latentAmalgamation` (Lemma 4.13) is proved, and
 `Condensation.LatentAmalgamation.diagonal` constructs one directly — a latent variable
 model amalgamated with itself along the identity — independently of that construction.
+
+Neither is the perfect-condensation hypothesis: `Condensation.coinLatent_perfectlyCondenses`
+(`Condensation/Examples.lean`) exhibits a concrete latent variable model that perfectly
+condenses a concrete random variable model, so `h₁`/`h₂` are satisfiable and the theorem is
+not vacuously true.  Combined with `LatentAmalgamation.diagonal` at that model, all three
+hypotheses are witnessed at once.
 
 Paper node: `Theorem 4.15` -/
 theorem aeFunctionOf_jointAbove_of_perfectlyCondenses

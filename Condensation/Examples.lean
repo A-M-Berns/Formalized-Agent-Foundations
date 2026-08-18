@@ -42,6 +42,17 @@ geometric law `geomModel` is built on.  That module is deliberately not re-expor
 `ShannonInformation.API` (it would cost every client
 `Mathlib.Probability.Distributions.Geometric`), so the import has to be named here.
 
+Beside the *structures*, the **conditions** of §4 get witnesses too, added 2026-08-18 and
+collected in the "Definitions 4.3 and 4.8" section below.  Until then nothing in the library
+exhibited a latent variable model that perfectly condenses anything, so Theorem 4.9,
+Proposition 4.10 and Theorem 4.15 were non-vacuous only in the sense that their statements
+elaborate.  Now `coinLatent_perfectlyCondenses` inhabits Definition 4.3's conditioned
+clause, `coinLatent_orderedMarkov` (through Theorem 4.9's (B1 ⇒ B2)) inhabits Definition
+4.8, `Example44.L44_coin_simplyPerfectlyCondenses` inhabits the simple clause and discharges
+Example 4.4's joint-independence hypothesis on a constructed family, and
+`noisyLatent_not_perfectlyCondenses` is the **negative** witness that perfect condensation
+is a real restriction rather than a property every latent variable model has.
+
 A caution the earlier draft of this file got wrong: it is **not** true that every score is
 positive on `coinLatent`.  `coinLatent.reconScore {()} = 0`, proved below — perfect
 reconstruction is exactly what `ϱ = 0` means, and the `L₁` recipe achieves it.  The
@@ -475,6 +486,136 @@ lemma noisyLatent_condScore :
     ShannonInformation.IndepFun.condEntropy_eq_entropy (indepFun_const_right _ _)
       (noisyLatent.L.measurable_X (PPlus.single ())) measurable_const,
     noisy_entropy_Y]
+
+/-! ## Definitions 4.3 and 4.8 — witnesses on both sides
+
+`PerfectlyCondenses`, `SimplyPerfectlyCondenses` (Definition 4.3) and `OrderedMarkov`
+(Definition 4.8) are the standing hypotheses of Theorem 4.9, Proposition 4.10 and Theorem
+4.15.  Until this section nothing in the library exhibited a latent variable model
+satisfying any of them, so those results were non-vacuous only in the weak sense that their
+*statements* elaborate — the boundary structures had inhabitants, the conditions on them
+did not.  This section supplies witnesses in both directions.
+
+* `coinLatent_perfectlyCondenses` — the fair coin's `L₁`-shaped latent variable model
+  perfectly condenses `coinModel`.  There is one latent, it *is* the coin, the coin is the
+  only observable, and nothing strictly contains `{()}` in `P⁺Unit`, so `χ_L({()})` is the
+  bare `H(Y_{()}) = log 2 = H(X_{()})`.  Theorem 4.9's (B1 ⇒ B2) then hands over the
+  ordered Markov condition for free (`coinLatent_orderedMarkov`), so Definition 4.8 is
+  inhabited too.
+* `Example44.L44_coin_simplyPerfectlyCondenses` — the *simple* clause of Definition 4.3,
+  and with it the joint-independence hypothesis of `Example44.simplyPerfectlyCondenses`,
+  which no previous declaration discharged for a concrete family.  Over the one-element
+  index type `P⁺Unit` joint independence is automatic (`iIndepFun_of_subsingleton`), so
+  Example 4.4's construction applies to the coin's latent family on the nose.
+* `noisyLatent_not_perfectlyCondenses` — the **negative** witness, and the reason the
+  positive ones are worth having: perfect condensation is a real condition, not one every
+  latent variable model happens to satisfy.  Here `χ_L({()}) = 2 log 2` while
+  `H(X_{()}) = log 2`; the gap is exactly the bit `π = Prod.fst` discards, which the score
+  counts and the observables cannot see.
+
+The `Unit`-indexed combinatorics these proofs run on — that `{()}` is the only element of
+`P⁺Unit`, that `contrib {()}` is `{{()}}` and that `strictAbove {()}` is empty — is already
+proved above for `noisyLatent` (`noisy_pplus_eq`, `noisy_famFinset`, `noisy_strictAbove'`);
+none of it mentions a model, so it is reused here rather than restated.  That is also why
+this section sits below the `noisyLatent` block rather than beside `coinLatent`. -/
+
+section Definition43
+
+/-- `P⁺Unit` is a one-element type.  Registered as an instance because it is what makes
+joint independence of the coin's latent family automatic, via
+`iIndepFun_of_subsingleton`. -/
+instance : Subsingleton (PPlus Unit) :=
+  ⟨fun A B => (noisy_pplus_eq A).trans (noisy_pplus_eq B).symm⟩
+
+/-- Nothing strictly contains `{()}`, so `Y_⊋{()}` is a variable into a one-point type.  The
+`noisyLatent` block proves the underlying set equation (`noisy_strictAbove'`); this is the
+instance form, which is what `condEntropy_eq_entropy_of_subsingleton` consumes. -/
+instance : IsEmpty ↥(strictAbove (PPlus.single () : PPlus Unit).toFinset) :=
+  Set.isEmpty_coe_sort.mpr noisy_strictAbove'
+
+/-- Every latent of `coinLatent` is the fair coin, of entropy `log 2`. -/
+lemma coinLatent_entropy (B : PPlus Unit) :
+    H[coinLatent.Y B ; coinLatent.P] = Real.log 2 := by
+  show H[(id : Bool → Bool) ; coinMeasure] = Real.log 2
+  have huniform : IsUniform (Set.univ : Set Bool) (id : Bool → Bool) coinMeasure :=
+    isUniform_uniformOn
+  have h := huniform.entropy_eq' Set.finite_univ measurable_id
+  simpa [Set.ncard_univ, Nat.card_eq_fintype_card] using h
+
+/-- `χ_{coinLatent}({()}) = log 2`: one contributing latent, and nothing strictly above it
+to condition on. -/
+lemma coinLatent_condScore :
+    coinLatent.condScore ({()} : Finset Unit) = Real.log 2 := by
+  rw [LatentModel.condScore, noisy_famFinset, Finset.sum_singleton,
+    condEntropy_eq_entropy_of_subsingleton (coinLatent.L.measurable_X _)]
+  exact coinLatent_entropy _
+
+/-- `χ_{coinLatent}(∅) = 0`: `contrib ∅` is empty, so (3.2)'s sum is the empty sum. -/
+private lemma coinLatent_condScore_empty : coinLatent.condScore (∅ : Finset Unit) = 0 := by
+  have hfam : famFinset (contrib (∅ : Finset Unit)) = (∅ : Finset (PPlus Unit)) := by
+    ext C; simp
+  rw [LatentModel.condScore, hfam, Finset.sum_empty]
+
+/-- `H(X_∅) = 0`: the joint variable over the empty index set is constant. -/
+private lemma coinModel_entropy_joint_empty :
+    H[coinModel.joint (∅ : Finset Unit) ; coinModel.P] = 0 := by
+  haveI : IsEmpty ((∅ : Finset Unit) : Type _) := ⟨fun i => Finset.notMem_empty i.1 i.2⟩
+  have hconst : coinModel.joint (∅ : Finset Unit) =
+      fun _ => (default : ∀ i : (∅ : Finset Unit), coinModel.R i) :=
+    funext fun _ => Subsingleton.elim _ _
+  rw [hconst, entropy_const]
+
+/-- `Finset Unit` has exactly two elements. -/
+private lemma finsetUnit_cases (A : Finset Unit) : A = ∅ ∨ A = {()} := by
+  rcases A.eq_empty_or_nonempty with h | ⟨u, hu⟩
+  · exact Or.inl h
+  · refine Or.inr (Finset.eq_singleton_iff_unique_mem.2 ⟨?_, fun x _ => Subsingleton.elim x ()⟩)
+    have hu' : u = () := Subsingleton.elim u ()
+    subst hu'
+    exact hu
+
+/-- **`coinLatent` perfectly condenses `coinModel`** — a constructed inhabitant of
+Definition 4.3's first clause, and so of the hypothesis of Theorem 4.15 and of (B1) in
+Theorem 4.9.  Both instances of the quantifier are checked: at `A = ∅` the score and
+`H(X_∅)` are both `0`, and at `A = {()}` both are `log 2`. -/
+lemma coinLatent_perfectlyCondenses : coinLatent.PerfectlyCondenses := by
+  intro A
+  rcases finsetUnit_cases A with rfl | rfl
+  · rw [coinLatent_condScore_empty, coinModel_entropy_joint_empty]
+  · rw [coinLatent_condScore, coinModel.entropy_joint_singleton (), coinModel_entropy]
+
+/-- **Definition 4.8 is inhabited**: the coin's latent family obeys the ordered Markov
+condition.  Not proved by hand — it is Theorem 4.9's (B1 ⇒ B2) applied to
+`coinLatent_perfectlyCondenses`, which is the cheapest honest way to get a witness for a
+conditional-independence condition. -/
+lemma coinLatent_orderedMarkov : coinLatent.L.OrderedMarkov :=
+  ((LatentModel.perfect_tfae_B coinLatent).mp coinLatent_perfectlyCondenses).2
+
+/-- The coin's latent family is jointly independent, for the trivial reason that `P⁺Unit`
+has a single element.  This is what Example 4.4's hypothesis asks for. -/
+lemma coinLatentRV_iIndepFun : iIndepFun coinLatent.L.X coinLatent.L.P :=
+  iIndepFun_of_subsingleton _ _
+
+/-- `H(X_{()}) = log 2` on the noisy model: `X_()` is the identity on `Bool` under the
+pushforward of `noisyMeasure` along `π = Prod.fst`, and convention (2.2) computes its
+entropy upstairs, where `noisy_entropy_pullback` already has it. -/
+lemma noisyModel_entropy_joint :
+    H[noisyModel.joint ({()} : Finset Unit) ; noisyModel.P] = Real.log 2 :=
+  (noisyLatent.entropy_pullbackJoint ({()} : Finset Unit)).symm.trans noisy_entropy_pullback
+
+/-- **The negative witness**: `noisyLatent` does *not* perfectly condense `noisyModel`.
+The conditioned score at `{()}` is `2 log 2` — the latent carries two independent bits and
+has nothing above it to be conditioned on — while `H(X_{()})` is `log 2`, the one bit `π`
+keeps.  So Definition 4.3 is a genuine restriction on latent variable models, and the
+positive witnesses above are not recording a triviality. -/
+lemma noisyLatent_not_perfectlyCondenses : ¬ noisyLatent.PerfectlyCondenses := by
+  intro h
+  have hA := h ({()} : Finset Unit)
+  rw [noisyLatent_condScore, noisyModel_entropy_joint] at hA
+  have hlog : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  linarith
+
+end Definition43
 
 /-! ## Non-vacuity in general: every model has a latent variable model
 
@@ -983,6 +1124,31 @@ Paper node: `Example 4.4` -/
 theorem simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
     (hindep : iIndepFun L.X L.P) : (L44 L).SimplyPerfectlyCondenses :=
   fun A => (entropy_joint_eq L hindep A).symm
+
+/-! ### Example 4.4 on a constructed family
+
+`simplyPerfectlyCondenses` above quantifies over a family `L` satisfying a
+joint-independence hypothesis, and nothing so far discharged that hypothesis for a concrete
+`L`.  The coin's latent family does, for the trivial reason that its index type `P⁺Unit`
+has a single element (`iIndepFun_of_subsingleton`, `Subsingleton (PPlus Unit)` — both
+declared in the Definition 4.3 section above).  These two witnesses are what keep
+Definition 4.3's *simple* clause from being a condition with no exhibited inhabitant; the
+`coinLatent` witnesses above cover the conditioned clause and Definition 4.8. -/
+
+/-- **Example 4.4's hypothesis is satisfiable, so its conclusion is non-vacuous**: `L44`
+over the coin's latent family simply-perfectly condenses the model `M44` it builds.  A
+constructed inhabitant of Definition 4.3's `SimplyPerfectlyCondenses`. -/
+lemma L44_coin_simplyPerfectlyCondenses :
+    (L44 coinLatent.L).SimplyPerfectlyCondenses :=
+  simplyPerfectlyCondenses coinLatent.L coinLatentRV_iIndepFun
+
+/-- …and hence a second inhabitant of `PerfectlyCondenses`, through the squeeze
+`PerfectlyCondenses.of_simply` of (4.21).  (`perfect_tfae_A`'s (A1 ⇒ A3) carries the same
+implication with the joint-independence conjunct attached; `of_simply` is that implication
+with nothing extra, and is what a non-vacuity claim should cite.) -/
+lemma L44_coin_perfectlyCondenses :
+    (L44 coinLatent.L).PerfectlyCondenses :=
+  LatentModel.PerfectlyCondenses.of_simply _ L44_coin_simplyPerfectlyCondenses
 
 end Example44
 

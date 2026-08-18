@@ -33,11 +33,16 @@ variables, forced while the vendored theorems existed only in the finite-range f
 was **retired on 2026-08-17**; there is no modeling substitution in this file.
 
 Finiteness is **not** carried by every statement with entropy content, and it is worth
-knowing which: exactly seven declarations here take it, namely
+knowing which: exactly **eleven** declarations here take it, namely
 `condEntropy_comp_measurePreserving`, `interactionInfo_swap`,
 `condEntropy_eq_entropy_of_subsingleton`, `entropy_le_of_aeFunctionOf`,
-`condEntropy_eq_zero_of_aeFunctionOf`, `aeFunctionOf_of_condEntropy_eq_zero` and
-`aeFunctionOf_iff_condEntropy_eq_zero`.  The pullback identities
+`condEntropy_eq_zero_of_aeFunctionOf`, `aeFunctionOf_of_condEntropy_eq_zero`,
+`aeFunctionOf_iff_condEntropy_eq_zero`, `condEntropy_congr_of_aeFunctionOf`,
+`condEntropy_le_condEntropy_of_aeFunctionOf`, `condEntropy_le_of_aeFunctionOf` and
+`condEntropy_eq_zero_of_subsingleton`.  (The count read "seven" until 2026-08-18; the last
+four arrived with the conditional-entropy comparison block and the subsingleton companions
+and were never added to it.  Re-derive it by grepping `FiniteEntropyOf` in the binders,
+not by trusting this sentence.)  The pullback identities
 `entropy_comp_measurePreserving` and `mutualInfo_comp_measurePreserving`, the first
 symmetry `interactionInfo_comm` and `entropy_pair_of_aeFunctionOf` are `IdentDistrib`- or
 injectivity-based and hold with no finiteness at all (`entropy_pair_of_aeFunctionOf` lost
@@ -664,5 +669,26 @@ lemma condEntropy_eq_zero_of_subsingleton {Ω S T : Type*} [MeasurableSpace Ω]
   condEntropy_eq_zero_of_aeFunctionOf hY hX
     ⟨fun _ => Classical.arbitrary S, measurable_const,
       Filter.Eventually.of_forall fun _ => Subsingleton.elim _ _⟩
+
+/-- **Joint independence is automatic over a subsingleton index type.**  The defining
+identity of `iIndepFun` quantifies over finite subfamilies, and over a subsingleton index
+type the only ones are `∅` and a singleton, where it reads `μ univ = 1` and `μ s = μ s`.
+
+The companion of the two lemmas above at the level of an index *family* rather than a
+range: it is what makes Example 4.4's joint-independence hypothesis discharge on a
+`Unit`-indexed witness, where `P⁺Unit` has the single element `{()}`.  Nothing about it is
+specific to this paper; it is stated for a bare family of measurable functions and would
+belong in `ShannonInformation/API.lean`, or upstream of it, if a second client wanted it. -/
+lemma iIndepFun_of_subsingleton {ι : Type*} [Subsingleton ι] {Ω : Type*} [MeasurableSpace Ω]
+    {β : ι → Type*} [∀ i, MeasurableSpace (β i)] (f : ∀ i, Ω → β i) (μ : Measure Ω)
+    [IsProbabilityMeasure μ] : iIndepFun f μ := by
+  classical
+  rw [iIndepFun_iff_measure_inter_preimage_eq_mul]
+  intro s sets _
+  rcases s.eq_empty_or_nonempty with rfl | ⟨a, ha⟩
+  · simp
+  · obtain rfl : s = {a} :=
+      Finset.eq_singleton_iff_unique_mem.2 ⟨ha, fun x _ => Subsingleton.elim x a⟩
+    simp
 
 end Condensation

@@ -45,18 +45,25 @@ variables.  The paper's own order is 3.1, 3.2, 3.3, 3.4; nothing in the content 
 
 ## Imports
 
-Beyond `Condensation.Probability` this file imports exactly two targeted `Mathlib.Order.*`
+Beyond `Condensation.Probability` this file imports exactly three targeted `Mathlib.Order.*`
 modules (never `import Mathlib` wholesale — that fails to elaborate against the vendored
 shims):
 
+* `Mathlib.Order.Comparable` for `IncompRel`, which is how `Condensation.incomparable`
+  below spells "`B` is inclusion-incomparable to `A`" — `IncompRel r a b` unfolds to
+  `¬ r a b ∧ ¬ r b a`, so `mem_incomparable` is `Iff.rfl`.  Same policy as `IsUpperSet`:
+  Mathlib's relation directly, no local synonym.
 * `Mathlib.Order.UpperLower.Basic` for `IsUpperSet`, which is how §4.10 and §5 spell
   "upward-closed subfamily of `P⁺I`".  The library uses Mathlib's predicate directly and
   defines no synonym for it.
-* `Mathlib.Order.Extension.Linear` for `LinearExtension`/`toLinearExtension`.  Nothing in
-  this file uses it; it is here because the linear-extension argument that Proposition 4.2
-  (4.7)–(4.9), Theorem 4.9 (4.29)–(4.36) and Proposition 4.10 (4.38) all run on needs it,
-  and it is *not* otherwise in the transitive import closure of `ShannonInformation.API`
-  at this pin.
+* `Mathlib.Order.Extension.Linear` for `extend_partialOrder` (Szpilrajn: every partial
+  order extends to a linear one).  Nothing in this file uses it; it is here because the
+  linear-extension argument that Proposition 4.2 (4.7)–(4.9), Theorem 4.9 (4.29)–(4.36) and
+  Proposition 4.10 (4.38) all run on needs it, and it is *not* otherwise in the transitive
+  import closure of `ShannonInformation.API` at this pin.  The single consumer is
+  `Condensation.exists_strictTotalOrder_ext` in `Condensation/ChainRule.lean`; the module's
+  other export, `LinearExtension`/`toLinearExtension`, is **not** used anywhere in
+  `Condensation/` — an earlier version of this paragraph credited it by mistake.
 -/
 
 universe u v w u' v'

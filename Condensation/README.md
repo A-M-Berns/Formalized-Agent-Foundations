@@ -280,7 +280,7 @@ Mirrors the table in [`notes/roadmap.md`](notes/roadmap.md); the same glossary s
 | `dd:ae-function` | "`Y` is a function of `X` almost everywhere" is `AEFunctionOf X Y P := ∃ f, Measurable f ∧ ∀ᵐ ω ∂P, Y ω = f (X ω)`; the everywhere version `FunctionOf` likewise without `∀ᵐ`. Measurability of `f` is kept in the definition (paper: "measurable function") and discharged by `measurable_of_countable` on countable discrete ranges. | Verbatim Def 2.1's fifth convention; the measurability conjunct is free in our setting but keeping it stops the definition drifting from the paper. |
 | `dd:pullback` | Pullback `π^* X` is plain composition `X ∘ π`; probability-preserving = Mathlib `MeasureTheory.MeasurePreserving π P_Λ P_Ω`. Equation (2.2) invariance is `IdentDistrib`-based (`MeasurePreserving` gives `IdentDistrib (X ∘ π) X`). | Repo rule: never redefine what Mathlib has. |
 | `dd:interaction` | Def 2.3's `I(X;Y;Z) := I[X : Y] − I[X : Y \| Z]` and its conditional form `I(X;Y;Z \| C) := I[X : Y \| C] − I[X : Y \| ⟨Z, C⟩]` (needed by Lemma 5.4 / Thm 5.8) are FAF-authored `def`s over the vendored `mutualInfo`/`condMutualInfo`; symmetry is a lemma. | The API deliberately adds no definitions; interaction information is paper-specific until a second client needs it. |
-| `dd:tree` | Def 5.6's intersection tree is an inductive binary tree `ITree (M) := leaf (a : M) \| node (l r : ITree M)` with the label of a node *computed* as the meet of its children's labels; Prop 5.7 is stated as: any labeling of the tree's positions that agrees on leaves and satisfies (5.10) at every internal position equals the computed labeling. Leaves/internal vertices are lists of positions; Thm 5.8's "bijection between leaves and `{C : B∩C≠∅}_{B∈F}`" is `List.Nodup` + `toFinset = image`. | A directed rooted binary tree with unique paths to the root *is* an inductive binary tree; the (V,E,ℓ) presentation would import graph theory for no content. Recorded as a rendering, not a substitution; auditors should attack it if any §5 statement loses generality. |
+| `dd:tree` | Def 5.6's intersection tree is an inductive binary tree `ITree (M) := leaf (a : M) \| node (l r : ITree M)` with the label of a node *computed* as the meet of its children's labels; Prop 5.7 is stated as: any labeling of the tree's positions that agrees on leaves and satisfies (5.10) at every internal position equals the computed labeling. Leaves/internal vertices are lists of positions; Thm 5.8's "bijection between leaves and `{C : B∩C≠∅}_{B∈F}`" is the **multiset** equation `(T.leaves : Multiset _) = (famFinset F).val.map (fun B => contrib B.toFinset)` — leaf labels *with multiplicity* — and it is a bijection rather than a surjection because `contrib_injective` makes the right-hand multiset duplicate-free. (It is **not** `List.Nodup` + `toFinset = image`; that phrasing stood here until 2026-08-18 and never matched the Lean.) | A directed rooted binary tree with unique paths to the root *is* an inductive binary tree; the (V,E,ℓ) presentation would import graph theory for no content. Recorded as a rendering, not a substitution; auditors should attack it if any §5 statement loses generality. |
 | `dd:category` | Prop 3.7 is a `CategoryTheory.Category` instance on the bundled type of random variable models (objects `Σ I, RVModel I` at fixed universes); Prop 3.8 uses `CategoryTheory.IsIso`; Def 3.9's a.e.-equality is a relation on hom-types (a `Setoid`), 3.10–3.12 are stated over it. No `Bicategory`. | Follows the paper, which names the 2-category and declines to use it. |
 | `dd:amalgamation` | Def 4.11's Λ₀ is the subtype `{p : Λ₁ × Λ₂ // π₁ p.1 = π₂ p.2}` with the discrete σ-algebra and the measure `∑' p, w p • dirac p`, `w (λ₁,λ₂) = P₁{λ₁} P₂{λ₂} / P_Ω{π₁ λ₁}` (0 when the denominator is 0) — the paper's (4.53) integral evaluated on a countable discrete space. | Same object; the sum form is what a countable-discrete Λ₀ means. |
 
@@ -333,7 +333,7 @@ Per section, with the in-scope ruling — reproduced from
 |---|---|---|
 | 2 | Def 2.1 (random variable), 2.2 (`P⁺S`), 2.3 (`H`, `I`, interaction information), 2.4 (`G(Ω)`), Prop 2.5 (determinism bridge) | yes; 2.1 and 2.4 Mathlib-rendered (`Measurable`, `Measure.instMeasurableSpace`) with `Paper node:` on the alias/`abbrev` that names them |
 | 3 | Def 3.1 (random variable model), 3.2 (latent variable model), 3.3 (scores σ, χ, ϱ), 3.4 (joint variables `X_A`, `Y_F`, `Y_∩A`, `Y_⊇A`, `Y_⊋A`, `Y_∋i`), 3.5 (morphism), 3.6 (composite), Prop 3.7 (category), 3.8 (iso characterization), Def 3.9 (a.e.-equal morphisms), 3.10 (equivalence), Prop 3.11 (congruence), 3.12 (equivalence is an equivalence relation) | yes, all |
-| 4 | Ex 4.1, Prop 4.2, Def 4.3, Ex 4.4, Lemma 4.5, Cor 4.6, Prop 4.7, Def 4.8, Thm 4.9, Prop 4.10, Def 4.11, 4.12, Lemma 4.13, 4.14, Thm 4.15 | yes, all (examples 4.1/4.4 are constructive and double as non-vacuity witnesses) |
+| 4 | Ex 4.1, Prop 4.2, Def 4.3, Ex 4.4, Lemma 4.5, Cor 4.6, Prop 4.7, Def 4.8, Thm 4.9, Prop 4.10, Def 4.11, 4.12, Lemma 4.13, 4.14, Thm 4.15 | yes, all (examples 4.1/4.4 are constructive and double as non-vacuity witnesses — and since 2026-08-18 Example 4.4 is instantiated at a concrete family, `Example44.L44_coin_simplyPerfectlyCondenses`, so its joint-independence hypothesis is discharged rather than merely assumed) |
 | 5 | Ex 5.1, 5.2, 5.3, Lemma 5.4, Def 5.5 (polar), 5.6 (intersection tree), Prop 5.7, Thm 5.8, Cor 5.9, 5.10 | 5.4–5.10 yes. **Ex 5.1–5.3 proposed OUT** (pending Anson's ruling): 5.1/5.2 posit `[0,1]`-valued latents `L`, outside the paper's own countable-discrete framework and only bucketed into it informally; 5.3 is a prose translation of structural causal models with no claim. Nothing downstream cites them. |
 
 Everything else in the paper — equation (3.4)'s score aggregation, the 2-category remark
@@ -643,6 +643,17 @@ What is actually constructed and proved at M0, so that no reader has to take the
 | `LatentModel.ofJoint` / `.nonempty` | the tautological latent model `Y_A = X_A` of an arbitrary `M` | `Nonempty (LatentModel M)` for **every** random variable model `M` |
 | `Example.geomModel` / `.geomLatent` (added 2026-08-17) | `I = Unit`, `Ω = ℕ` with the `Geometric(1/2)` law, `X_() = id : ℕ → ℕ`; `geomLatent` is `LatentModel.ofJoint geomModel` | `geomModel_entropy : H(X_()) = 2 log 2` (the textbook two bits) and `geomModel_not_finiteRange : ¬ FiniteRange (geomModel.X ())`. This is the witness that retiring `dd:finite-range` has content rather than being a re-spelling: every other witness here lives on a finite sample space and so cannot tell Definition 3.1's reading from the narrowed one. `geomLatent_reconScore = 0` for the same reason `coinLatent`'s does |
 
+Every row above witnesses a *structure*. The rows below, added 2026-08-18, witness the
+**conditions** of §4 — Definition 4.3's two clauses and Definition 4.8 — which until then
+had no constructed inhabitant at all, so Theorem 4.9, Proposition 4.10 and Theorem 4.15
+were non-vacuous only in the sense that their statements elaborate:
+
+| witness | what it is | what is *proved* about it |
+|---|---|---|
+| `coinLatent` again | the same `L₁`-shaped latent model over the fair coin | `coinLatent_perfectlyCondenses : coinLatent.PerfectlyCondenses` — Definition 4.3's conditioned clause, checked at both elements of `Finset Unit` (`0 = 0` at `∅`, `log 2 = log 2` at `{()}`). Hence `coinLatent_orderedMarkov : coinLatent.L.OrderedMarkov`, Definition 4.8, obtained through Theorem 4.9's (B1 ⇒ B2) rather than proved by hand |
+| `Example44.L44 coinLatent.L` | Example 4.4's construction applied to the coin's latent family | `Example44.L44_coin_simplyPerfectlyCondenses` — Definition 4.3's *simple* clause. This is also what discharges `Example44.simplyPerfectlyCondenses`'s joint-independence hypothesis on a concrete family: `P⁺Unit` is a one-element index type, so `iIndepFun_of_subsingleton` applies. `L44_coin_perfectlyCondenses` follows by the (4.21) squeeze |
+| `noisyLatent` again | the same `Λ = Bool × Bool`, `π = fst` witness | **the negative witness**: `noisyLatent_not_perfectlyCondenses : ¬ noisyLatent.PerfectlyCondenses`. `χ_L({()}) = 2 log 2` while `H(X_{()}) = log 2` — the gap is the bit `π` discards. Without this row the positive ones would not establish that perfect condensation is a *restriction* rather than a property every latent variable model has |
+
 Two of those exist to correct a specific over-claim. An earlier draft of `Examples.lean`
 asserted that *every* score is positive on the coin witness; that is false —
 `coinLatent.reconScore {()} = 0`, and `ϱ_L(A) = H(Y_⊇A | X_A)` vanishes for any latent
@@ -654,8 +665,19 @@ identically zero.
 The paper's own worked examples supply the rest at M1 — Example 4.1's two deliberately-bad
 latent systems `L₁` (with `Y_{i} = X_i` and the other latents constant) and `L₂` (with
 `Z_I = X_I` and the other latents constant), and Example 4.4's independent-latents model,
-which *simply-perfectly* condenses the model built from it and so keeps Definition 4.3 and
-Theorem 4.9 from being about an empty class. `coinLatent` follows `L₁`'s recipe but is not
+which *simply-perfectly* condenses the model built from it.
+
+That last clause used to continue "…and so keeps Definition 4.3 and Theorem 4.9 from being
+about an empty class". It did not, and the gap stood until 2026-08-18:
+`Example44.simplyPerfectlyCondenses` is stated for an *arbitrary* family `L` satisfying a
+joint-independence hypothesis, and nothing discharged that hypothesis for a concrete `L`, so
+the theorem was as capable of being about an empty class as any other conditional. What
+closes it is `Example44.L44_coin_simplyPerfectlyCondenses` in the second table above, which
+instantiates the construction at the coin's latent family and discharges the independence
+hypothesis outright. The general lesson: a `def` producing a structure witnesses the
+structure, not the *conditions* a theorem imposes on it — those need their own witnesses.
+
+`coinLatent` follows `L₁`'s recipe but is not
 yet annotated as Example 4.1: that annotation waits for the general statement, since with
 `I = Unit` the `L₁` and `L₂` recipes coincide and prove nothing about the distinction the
 example is making.

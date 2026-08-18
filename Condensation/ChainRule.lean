@@ -205,17 +205,8 @@ arguments use it: if `S ⊆ T` then `H(X | Y_T) ≤ H(X | Y_S)`. -/
 lemma condEntropy_jointOn_mono (hX : Measurable X) {S T : Set J} (h : S ⊆ T) :
     H[X | N.jointOn T ; N.P] ≤ H[X | N.jointOn S ; N.P] := by
   haveI := N.finiteEntropyOf hX
-  have hunion : (T \ S) ∪ S = T := by
-    ext B
-    simp only [Set.mem_union, Set.mem_diff]
-    exact ⟨fun hB => hB.elim (·.1) (h ·), fun hB => (em (B ∈ S)).elim Or.inr
-      fun hBS => Or.inl ⟨hB, hBS⟩⟩
-  calc H[X | N.jointOn T ; N.P]
-      = H[X | ⟨N.jointOn (T \ S), N.jointOn S⟩ ; N.P] := by
-        rw [N.condEntropy_pair_jointOn hX (T \ S) S, hunion]
-    _ ≤ H[X | N.jointOn S ; N.P] :=
-        ShannonInformation.entropy_submodular hX (N.measurable_jointOn _)
-          (N.measurable_jointOn _)
+  exact Condensation.condEntropy_le_condEntropy_of_aeFunctionOf hX (N.measurable_jointOn T)
+    (N.measurable_jointOn S) (N.aeFunctionOf_jointOn_mono h N.P)
 
 /-- `H(Y_G | Y_W) = H(Y_{G ∖ W} | Y_W)`: the coordinates of `G` that already lie in `W`
 contribute nothing once `Y_W` is given. -/
@@ -259,7 +250,7 @@ section Chain
 
 omit [Finite J] in
 /-- A finite nonempty set has a `r`-greatest element, for any strict linear order `r`. -/
-private lemma exists_greatest {r : J → J → Prop} [IsTrans J r] [IsTrichotomous J r]
+private lemma exists_greatest {r : J → J → Prop} [IsTrans J r] [Std.Trichotomous r]
     (s : Finset J) : s.Nonempty → ∃ A ∈ s, ∀ C ∈ s, C ≠ A → r C A := by
   classical
   induction s using Finset.induction_on with
@@ -461,8 +452,13 @@ private lemma entropy_jointOn_split [DecidableEq J] {s t : Finset J} (hst : s �
         exact ⟨by simpa using hB, hBs⟩⟩
   exact (entropy_comp_of_injective N.P (N.measurable_jointOn _) f hinj).symm
 
-/-- **Subadditivity of entropy for a finite family**: `H(Y_s) ≤ ∑_{B ∈ s} H(Y_B)`.  The
-first inequality of the paper's (4.25). -/
+/-- **Subadditivity of entropy for a finite family**: `H(Y_s) ≤ ∑_{B ∈ s} H(Y_B)`.
+
+(4.25) of the paper is a chain of *three* inequalities,
+`H(Y_∩I) ≤ H(Y_{F ∪ G}) + H(Y_H) ≤ H(Y_F) + H(Y_G) + H(Y_H) ≤ ∑_{B ∈ P⁺I} H(Y_B)`,
+and this lemma is the **third** link — full subadditivity down to singletons, applied to
+each of `F`, `G`, `H` in turn.  The first two links are instances of the two-variable
+`ShannonInformation.entropy_pair_le_add`, not of this lemma. -/
 lemma entropy_jointOn_le_sum (s : Finset J) :
     H[N.jointOn (↑s : Set J) ; N.P] ≤ ∑ B ∈ s, H[N.X B ; N.P] := by
   classical

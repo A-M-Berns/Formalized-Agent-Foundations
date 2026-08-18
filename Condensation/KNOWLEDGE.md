@@ -59,7 +59,7 @@ any of these numbers** — that is the discipline this file's last pitfall exist
 | Prop 4.7 | `LatentModel.aeFunctionOf_iff_isEquivalence_contribModel` | the two models it compares are `LatentModel.pullbackModel` (`(Λ, (X_i))`) and `LatentModel.contribModel` (`(Λ, (Y_∩{i}))`); clause (2) is `RVModel.IsEquivalence` of two `Hom.ofSameIndex` triples at `π = ρ = id_Λ`. Proved |
 | Def 4.8 ordered Markov | `Condensation.RVModel.OrderedMarkov` | stated over a bare `RVModel (PPlus I)`, as the paper does |
 | Thm 4.9 | `LatentModel.perfect_tfae_A` (A1–A3), `.perfect_tfae_B` (B1 ⟺ B2) | **both PROVED at M2 (2026-08-18).** `perfect_tfae_A` is a `List.TFAE` closed by `tfae_have 1 → 3 := …`, `tfae_have 3 → 2 := …`, `tfae_have 2 → 1 := …`, `tfae_finish`; (A1)⟺(A3) is the `entropy_jointOn_eq_sum_of_iIndepFun` / `iIndepFun_of_entropy_jointOn_eq_sum` pair from `ChainRule.lean` (both directions were needed — PFR has only the forward one, and only over `Fin m`). `perfect_tfae_B`'s (B1 ⇒ B2) runs on `exists_revIncl_strictTotalOrder_incomparable_first` plus `condIndepFun_of_condEntropy_jointOn_eq` |
-| Prop 4.10 | `RVModel.orderedMarkov_iff` | "upward closed" is Mathlib's `IsUpperSet`, not a synonym. **PROVED at M2 (2026-08-18)**, from `ChainRule.lean`'s `condEntropy_jointOn_eq_of_condIndepFun` / `condIndepFun_of_condEntropy_jointOn_eq` sandwich pair and `RVModel.condEntropy_jointOn_above`. NB the declaration's docstring still says its finiteness comes from `dd:finite-range`; that phrase is stale (the class was retired 2026-08-17) — finiteness comes from Definition 3.1's `Ω`-clause via `RVModel.finiteEntropyOf` |
+| Prop 4.10 | `RVModel.orderedMarkov_iff` | "upward closed" is Mathlib's `IsUpperSet`, not a synonym. **PROVED at M2 (2026-08-18)**, from `ChainRule.lean`'s `condEntropy_jointOn_eq_of_condIndepFun` / `condIndepFun_of_condEntropy_jointOn_eq` sandwich pair and `RVModel.condEntropy_jointOn_above`. Finiteness comes from Definition 3.1's `Ω`-clause via `RVModel.finiteEntropyOf`, so the statement carries no local hypothesis. (This row used to warn that the declaration's docstring still credited the retired `dd:finite-range`; that docstring was corrected in the M2 close-out and the warning was itself stale by 2026-08-18 — the docstring now names `finiteEntropy_Ω` / `RVModel.finiteEntropyOf` and records the retirement. Re-read the docstring before trusting a row like this one.) |
 | Def 4.11 amalgamation of a cospan | `Condensation.Amalgamation` | `dd:amalgamation`; **unchanged** by the 2026-08-17 generalization — it builds no random variable model, so Definition 3.1's clauses never reach it |
 | Def 4.12 amalgamation of two latent models | `Condensation.LatentAmalgamation` | `Λ₀` primary, `lat₁`/`lat₂` derived (`.Λ` definitionally `Λ₀`); `comm` is the **only** added field (errata 10) — the fields `ρ₁_π`/`ρ₂_π` (`Lₖ.π ∘ ρₖ =ᵐ π̃ₖ`) and the lemma `comm_ρ` derived from them were **deleted on 2026-08-17 (R2-F12/F20)**: Definition 4.12(3)'s morphisms are Definition 3.5 morphisms of the underlying *random variable* models, and the paper never defines a morphism of latent models, so nothing relates `Lₖ.π ∘ ρₖ` to `π̃ₖ`. Carries `[finiteEntropy_Λ₀ : ShannonInformation.FiniteEntropyMeasure P₀]` since 2026-08-17 — Definition 4.12(1) asks for a random variable model on `Λ₀`, and Definition 3.1 now really demands the `Ω`-clause — and its `finiteRange_Y₁`/`finiteRange_Y₂` fields are `finiteEntropy_Y₁`/`finiteEntropy_Y₂` |
 | Lemma 4.13 | `Amalgamation.canonical`, `nonempty_amalgamation`, `LatentAmalgamation.canonical`, `nonempty_latentAmalgamation` | the (4.49)–(4.53) construction. **All four PROVED on 2026-08-17 (round-2 fix wave); they are in the inventory block, not staged.** The three supporting measure lemmas — (4.55)–(4.56) total mass (`isProbabilityMeasure_canonicalMeasure`), and both halves of (4.57) (`measurePreserving_fst`/`_snd`) — were the library's last un-annotated `sorry`s. **Beware a real off-by-one in the prose here: THREE is the count of `sorry` *sites*, but FOUR supporting lemmas were `sorryAx`-dependent** — `finiteEntropyMeasure_canonicalMeasure` had a complete proof that *consumed* the other three, so it carried no `sorry` of its own and still failed an axiom check. Both numbers are correct about different things; say which you mean. For non-vacuity of `LatentAmalgamation` prefer `Condensation.LatentAmalgamation.diagonal` (R2-F19) — a latent model amalgamated with itself along the identity — which is independent of Lemma 4.13 entirely. (Until 2026-08-17 that preference was a *requirement*: these four were `sorry`-dependent, so citing them proved nothing, which is what R2-F19 found.) `Amalgamation.finiteEntropyMeasure_canonicalMeasure` (new 2026-08-17, proved) is what discharges `finiteEntropy_Λ₀` in `LatentAmalgamation.canonical`: the fibre product of (4.49) injects into `Λ₁ × Λ₂`, so `ShannonInformation.finiteEntropyMeasure_of_injective` applied to the pair `⟨fst, snd⟩` inherits finite entropy. Under `dd:finite-range` this obligation did not arise at all. **The proof factors through six `private` declarations** in `Amalgamation.lean`: `offWeight` (the (4.53) weight extended by zero to all of `Λ₁ × Λ₂`, so the sums become iterated sums over `Λ₁` and `Λ₂` rather than sums over a subtype), `offWeight_of_eq`/`_of_ne`, `tsum_offWeight_right`/`_left` (equation (4.54) — the only real mathematical content; the paper's `0/0 = 0` case is where `PΩ {π₁ a} = 0`, closed by `P₁ {a} ≤ P₁ (π₁ ⁻¹' {π₁ a}) = 0`), `tsum_carrier` (the subtype-to-product reindexing, `tsum_subtype` then `ENNReal.tsum_prod`), and `canonicalMeasure_preimage_fst`/`_snd`. **A new fact about `canonicalMeasure` should be phrased as a `g`-instance of `tsum_carrier`, not reproved from `Measure.sum_apply`.** Note the route is *not* `HasSum.isProbabilityMeasure_sum_dirac_ennreal`; the Dirac lemmas do the plumbing at the ends only |
@@ -97,7 +97,7 @@ the file whose proof first needed it.
 | (4.8) | `RVModel.condEntropy_jointOn_mono` | `S ⊆ T → H[X \| Y_T] ≤ H[X \| Y_S]` |
 | drop already-given coordinates | `RVModel.condEntropy_jointOn_sdiff`, `.condEntropy_jointOn_above` | `H[Y_G \| Y_W] = H[Y_{G∖W} \| Y_W]`; and `H[Y_⊇A \| Y_W] = H[X_A \| Y_W]` when `⊋A ⊆ W` |
 | the chain rule itself | `RVModel.condEntropy_jointOn_eq_sum`, `.entropy_jointOn_eq_sum` | conditioned (4.38) and unconditioned (4.9)/(4.29)/(4.34) forms, by induction peeling the `r`-greatest element off a `Finset`; the private helpers are `exists_greatest`, `pred_eq_erase`, `pred_erase` |
-| subadditivity for a finite family | `RVModel.entropy_jointOn_le_sum` | `H(Y_s) ≤ ∑_{B ∈ s} H(Y_B)`, the first inequality of (4.25) |
+| subadditivity for a finite family | `RVModel.entropy_jointOn_le_sum` | `H(Y_s) ≤ ∑_{B ∈ s} H(Y_B)`, the **third** inequality of (4.25) — full subadditivity down to singletons, applied to each of `F`, `G`, `H` and summed. (4.25) is a chain of three: `H(Y_∩I) ≤ H(Y_{F∪G}) + H(Y_H) ≤ H(Y_F) + H(Y_G) + H(Y_H) ≤ ∑_{B∈P⁺I} H(Y_B) = H(Y_∩I)`; the first two links are the two-variable `ShannonInformation.entropy_pair_le_add`. This row said "first" until 2026-08-18 and seeded the same error in the declaration's docstring |
 | independence ⇒ additivity | `RVModel.entropy_jointOn_eq_sum_of_iIndepFun` | the heterogeneous, arbitrary-finite-index analogue of PFR's `iIndepFun.entropy_eq_add`, which is `Fin m`-only |
 | additivity ⇒ independence | `RVModel.iIndepFun_of_entropy_jointOn_eq_sum` | (4.23)–(4.26), the direction PFR and Mathlib do **not** have. Hypothesis is `{t : Finset J} (ht : ∀ j, j ∈ t)` rather than `Finset.univ`, so no `Fintype J` has to be produced to name it; supporting steps are `.entropy_jointOn_eq_sum_of_subset` (4.25) and `.indepFun_X_jointOn_of_entropy_eq` (4.26), plus the private `entropy_jointOn_empty`/`_insert`/`_split` |
 | Def 4.8 as a termwise entropy equality | `RVModel.condEntropy_jointOn_eq_of_condIndepFun`, `.condIndepFun_of_condEntropy_jointOn_eq` | (4.30)/(4.32), (4.35), (4.40), both stated in the "sandwich" shape `S₂ ⊆ W ⊆ S₁ ∪ S₂` the proofs need |
@@ -248,6 +248,18 @@ below.
   needs them; discovering that at proof time costs an import edit plus a full rebuild of
   everything downstream. It landed as predicted: `Condensation/ChainRule.lean`'s
   `exists_strictTotalOrder_ext` is the only consumer, through `extend_partialOrder`.
+- **`Condensation.exists_strictTotalOrder_ext` is an upstreaming candidate: Mathlib has no
+  strict Szpilrajn.** `Mathlib.Order.Extension.Linear` provides only the *reflexive* form
+  (`extend_partialOrder : ∃ s, IsLinearOrder α s ∧ ∀ a b, p a b → s a b`, plus the
+  `LinearExtension` type synonym). There is no companion producing an
+  `IsStrictTotalOrder α r` extending a strict partial order, which is what any
+  peel-off-a-greatest-element induction actually wants — so this library had to build one by
+  hand (see the pitfall below for the exact class-registration order). It is fully generic:
+  it mentions nothing about `PPlus`, entropy, or this paper, and its proof is ~20 lines over
+  `extend_partialOrder`. **Leave the code where it is** — this is a note for a future
+  upstreaming pass, not an instruction to move or delete anything. A Mathlib PR would want
+  it in `Mathlib/Order/Extension/Linear.lean` beside `extend_partialOrder`, stated for
+  `[IsStrictOrder α p]` or as the `∧ a ≠ b` transform of the existing result.
 - Registry: `scripts/papers.py` uses two axes for this paper — `scheme: printed-counter`
   (how the paper numbers) and `source_format: text-extraction` (what the committed source
   is). Resolve parsers via `paper_nodes.scheme_of(paper)`, never `SCHEMES[scheme]` (the TeX
@@ -364,7 +376,39 @@ in for a paper claim it does not make.
   need only `MeasurableSpace`. This is a *narrowing of the printed statement*, and it is the
   one place in §4 where the Lean is deliberately not the printed binders.
 
-Full list (fifteen entries) with line numbers: `notes/paper-errata.md`.
+  **The mechanism, as recorded here until 2026-08-18, was wrong, and the wrong version is
+  seductive — do not re-derive it.** The wrong account: "the conditional-independence
+  hypothesis goes vacuous because `X`'s range fails to separate points". It cannot:
+  `ProbabilityTheory.CondIndepFun Y₁ Y₂ C μ` mentions only `Y₁`, `Y₂` and `C`, **never `S`**.
+  The correct account: the vacuity is `T₁`/`T₂` at `⊥` (`comap Yₖ ⊥ = ⊥` makes the
+  independence automatic); `S` at `⊥` plays the *other* role in the counterexample, making
+  the two `AEFunctionOf` hypotheses trivially satisfiable, since any map into a `⊥`-space is
+  measurable and `Prod.snd` then witnesses both. The consequence that matters is that there
+  are **two independent minimal repairs**, and the printed statement needs exactly one of
+  them: (i) `[MeasurableSingletonClass S]` — the Lean's choice, informally what makes the
+  argument's step "`X`'s level sets lie a.e. in `σ(C,Y₁) ∩ σ(C,Y₂)`" meaningful; or (ii)
+  `[MeasurableSingletonClass T₁]` and `[MeasurableSingletonClass T₂]` — the repair the
+  *printed proof* implicitly uses. Both are licensed by §2. So the Lean's binder is a
+  *choice* between two repairs, not the unique fix. And the strength claim: what is needed
+  is that **`X`'s range separates points**, not that it is "countable discrete" — there is no
+  `Countable S` binder in `aeFunctionOf_of_condIndepFun` and adding one would overstate what
+  the proof uses. General lesson: before attributing a vacuity to a typeclass, check which
+  types the hypothesis's *definition* actually mentions.
+- **(4.39)'s right-hand containment is self-contradictory as printed** (entry 16, candidate,
+  found 2026-08-18). In Proposition 4.10's proof — *not* Theorem 4.9's — the paper displays
+  `S_A ⊆ F ∪ {B ∈ G∖F : B ≺ A} ⊆ I_A` (and the `F ∩ G` variant on the next line), where
+  `I_A` is the set of elements incomparable with `A` and `S_A` the set of strict supersets of
+  `A`. But `S_A ∩ I_A = ∅` by construction and the left containment is genuine, so the
+  display asserts `S_A ⊆ I_A`, which fails for every `A` that has a strict superset. The
+  intended right-hand set is `I_A ∪ S_A`. Two things make this a slip in the symbolic
+  rendering rather than a mathematical error: the paper states the *same* sandwich correctly
+  in prose at the parallel step (4.35), and the Lean already carries the intended version —
+  `RVModel.condEntropy_jointOn_eq_of_condIndepFun` is exactly the sandwich `S₂ ⊆ W ⊆ S₁ ∪ S₂`,
+  instantiated at Proposition 4.10's call site with `S₁ = incomparable A` and
+  `S₂ = strictAbove A.toFinset`, with `pred_subset_incomparable_union_strictAbove`
+  discharging the right inclusion.
+
+Full list (sixteen entries) with line numbers: `notes/paper-errata.md`.
 
 ## Pitfalls
 

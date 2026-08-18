@@ -11,17 +11,26 @@ The short version:
 > summability hypothesis, not redefining anything; FAF has now done that for the
 > load-bearing corpus, and §4 says exactly which theorems that is.
 
-## Generalization: what has landed, and what has not
+## Generalization: what has landed
 
-**Phases 1–4a of `Condensation/notes/finite-range-generalization-plan.md` have landed**
-(`ShannonInformation/FiniteEntropy/`, re-exported through `ShannonInformation.API`). The
-summability hypothesis §5 calls for exists as a class,
+**One account, and it is this one.** Earlier revisions of this file left stale
+"not yet migrated" text in §5 and §6 that contradicted this section; those have been
+deleted. The current state, as of 2026-08-17, is: **Phases 1–4b of
+`Condensation/notes/finite-range-generalization-plan.md` have landed**, consumers included,
+and **both surfaces are live at once** — the `FiniteRange` originals and the
+`FiniteEntropyOf` versions. What remains outstanding is listed in §5, and it is a tail of
+un-restated vendored statements plus two hypothesis gaps, not any part of the migration.
+
+Phases 1–4a are the layer itself (`ShannonInformation/FiniteEntropy/`, re-exported through
+`ShannonInformation.API`). The summability hypothesis §5 calls for exists as a class,
 `ShannonInformation.FiniteEntropyOf X μ`, together with its instances — `FiniteRange X` and
 `FiniteSupport μ` both discharge it, so nothing that was provable before stops being
 provable — and its closure lemmas: marginals, functions of a variable, pairs, conditioning
-on an event, and transport along a measure-preserving map. A geometric variable on `ℕ` is
-constructed in `APITests/ShannonInformationFiniteEntropy.lean` with the class instance and
-a proof of `¬ FiniteRange`, so the generalization is provably strict rather than nominal.
+on an event, and transport along a measure-preserving map. A geometric variable on `ℕ` with
+the class instance and a proof of `¬ FiniteRange` separates the two hypotheses, so the
+generalization is provably strict rather than nominal; it is constructed in
+`FiniteEntropy/Examples.lean` (library, not test code) and exercised in
+`APITests/ShannonInformationFiniteEntropy.lean`.
 
 **The theorems have moved too**, which is what earlier revisions of this file deferred.
 `FiniteEntropy/ChainRule.lean` (Phase 2) restates the five chain rules and gives
@@ -40,8 +49,9 @@ variables of finite entropy — and `Condensation.Example.geomModel` (`Ω = ℕ`
 `X = id`) is a model the old field excluded. Four further lemmas were added to
 `FiniteEntropy/Derived.lean` for that migration (`mutualInfo_const`,
 `IndepFun.condEntropy_eq_entropy`, `const_of_nonpos_entropy`,
-`finiteEntropyMeasure_of_injective`), and `FiniteEntropy/Examples.lean` now holds the
-separating witness as library rather than test code.
+`finiteEntropyMeasure_of_injective`); §4's table below is up to date with them.
+`Condensation/` now names `FiniteRange` in exactly one statement,
+`Condensation.Example.geomModel_not_finiteRange`, where it is *negated*.
 
 The `FiniteRange` re-exports are **not** deprecated, so both
 surfaces are live at once — `ShannonInformation/API.lean`'s "which version to cite" table
@@ -139,8 +149,9 @@ right-hand column are `ShannonInformation.*`.
 | mutual information via conditional entropy | `mutualInfo_eq_entropy_sub_condEntropy`, `mutualInfo_eq_entropy_sub_condEntropy'` | same names |
 | entropy under maps | `condEntropy_comp_self`, `condEntropy_of_injective'`, `entropy_of_comp_eq_of_comp` | same names |
 | identically distributed | `IdentDistrib.condEntropy_eq` | same name, but **not** reachable by dot notation |
-| conditional independence and entropy | `ent_of_cond_indep`, `IndepFun.condEntropy_eq_entropy` | not restated (see `Derived.lean`'s header) |
-| constants | `mutualInfo_const`, `const_of_nonpos_entropy` | not restated (see `Derived.lean`'s header) |
+| independence and conditional entropy | `IndepFun.condEntropy_eq_entropy` | same name (added for Phase 4b; **not** reachable by dot notation) |
+| conditional independence and entropy | `ent_of_cond_indep` | not restated (see `Derived.lean`'s header) |
+| constants | `mutualInfo_const`, `const_of_nonpos_entropy` | same names (added for Phase 4b) — but `ShannonInformation.const_of_nonpos_entropy` additionally needs `[Countable S]`, the layer's one genuine strengthening; see `Derived.lean`'s "One genuine strengthening" |
 | fibrewise injectivity | `condEntropy_of_injective`, `condMutualInfo_of_inj`, `condMutualInfo_of_inj'`, `condMutualInfo_of_inj_map` | not restated (see `Derived.lean`'s header) |
 | two-sided data processing | `mutual_comp_comp_le`, `condMutual_comp_comp_le` | not restated (see `Derived.lean`'s header) |
 
@@ -196,13 +207,24 @@ essentially all docstring and rewrite chains. That is comfortably inside the
 taken to PFR, and the layer's kernel-free measure-level proofs are what made forking cheaper
 than generalizing PFR's `FiniteSupport` kernel machinery would have been.
 
-**What is still outstanding.** Three things, none of them mathematics. Consumers have not
-been migrated — `Condensation`'s `RVModel` still carries a `FiniteRange` field (Phase 4b).
-The vendored statements listed as "not restated" in §4 remain `FiniteRange`-only. And the
-residual hypothesis gap stands: three vendored nonnegativity statements need no measure
-hypothesis at all where ours need `IsZeroOrProbabilityMeasure`, and
-`ShannonInformation.condMutualInfo_eq` needs `FiniteEntropyOf` on all three variables where
-the vendored one needs `FiniteRange` on one.
+**What is still outstanding.** Phase 4b — the consumer migration — landed on 2026-08-17
+(see the top section), so nothing about the migration itself is outstanding. Two things
+are, neither of them mathematics:
+
+1. **The un-restated tail.** The vendored statements §4's table marks "not restated" remain
+   `FiniteRange`-only: `ent_of_cond_indep`, the fibrewise-injectivity family
+   (`condEntropy_of_injective`, `condMutualInfo_of_inj`/`_of_inj'`/`_of_inj_map`) and
+   two-sided data processing (`mutual_comp_comp_le`, `condMutual_comp_comp_le`). Each is a
+   rewrite chain over rows already done; `FiniteEntropy/Derived.lean`'s header carries the
+   authoritative list.
+2. **Two disclosed hypothesis gaps** — named here, stated in full among §4's caveats, which
+   are the authoritative wording. The FAF nonnegativity/subadditivity statements require
+   `[IsZeroOrProbabilityMeasure μ]` where three vendored ones require no measure hypothesis
+   at all, and `ShannonInformation.condMutualInfo_eq` requires `FiniteEntropyOf` on all
+   three variables where `ProbabilityTheory.condMutualInfo_eq` requires `FiniteRange` on
+   `Z` only. These are the only two places a `FiniteRange` client loses generality by
+   switching surfaces; both are also recorded in `ShannonInformation/KNOWLEDGE.md` and in
+   `ShannonInformation/API.lean`'s "which version to cite" notes.
 
 ## 6. Is the current layer sufficient for the motivating consumers?
 
@@ -214,12 +236,12 @@ the vendored one needs `FiniteRange` on one.
   cover its stated generality. `ShannonInformation.FiniteEntropyOf` is exactly that
   hypothesis, and the chain rules, subadditivity, submodularity and both independence
   characterizations are now available at it — so a formalization of the paper's §4 no longer
-  has to narrow its hypotheses to `FiniteRange` and disclose the narrowing. **This does not
-  mean the Condensation formalization has been migrated: it has not.** `Condensation`'s
-  `RVModel` still carries a `FiniteRange` field, and swapping it is Phase 4b of the plan.
-  Anyone doing that swap should check §4's table first — the not-restated tail is still
-  `FiniteRange`-only, and Prop 2.5's generalized form is paper-specific work that belongs in
-  `Condensation/`, not here.
+  has to narrow its hypotheses to `FiniteRange` and disclose the narrowing. **And the
+  Condensation formalization has been migrated** (Phase 4b, 2026-08-17): `RVModel` no longer
+  carries a `FiniteRange` field, it is Definition 3.1 verbatim, and `dd:finite-range` — the
+  narrowing this bullet used to disclose — is retired. Anyone extending that library should
+  still check §4's table first: the not-restated tail remains `FiniteRange`-only, and Prop
+  2.5's generalized form was paper-specific work done in `Condensation/`, not here.
 - *Natural Latents* (Wentworth–Lorell, arXiv:2509.03780) — **assessed, and the answer is
   no.** Its theorems are stated for generic latents with no finiteness hypothesis, and its
   own worked quantitative example puts a **uniform prior on `Λ` over the interval `[0,1]`**

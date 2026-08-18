@@ -1865,7 +1865,9 @@ edits belong in the same commit as the proof, and M2 made the last of them. -/
   -- polar, Definition 5.6's intersection tree with its computed labels and its family of
   -- intersections (5.11), Proposition 5.7 in full (existence and uniqueness of the
   -- extension of a leaf labelling), and Corollary 5.10's (5.24).  Theorem 5.8, Corollary
-  -- 5.9 and Corollary 5.10's (5.25) are staged below.
+  -- 5.9 and Corollary 5.10's (5.25) were staged when this comment was first written; all
+  -- three were **proved at M2** and are inventoried at the foot of this block, so the
+  -- staged half of the §5 surface is now empty.
   --
   -- Proposition 5.7 is the **`M`-version** since 2026-08-17 (R2-F08/F11): the paper's `ℓ̃`
   -- maps the leaves *into an intersection-closed collection `M`* and the unique extension
@@ -2121,6 +2123,27 @@ open Condensation in
   Condensation.noisyModel Condensation.noisyLatent Condensation.noisyLatent_reconScore
   Condensation.noisyLatent_reconScore_pos Condensation.noisyLatent_simpleScore
   Condensation.noisyLatent_condScore
+  -- Round 3 (2026-08-18): witnesses for the *conditions* of §4 rather than its structures
+  -- (R3-F08).  Definitions 4.3 and 4.8 had no constructed inhabitant before this, so
+  -- Theorem 4.9, Proposition 4.10 and Theorem 4.15 were non-vacuous only in the sense that
+  -- their statements elaborate.  `coinLatent_perfectlyCondenses` is Definition 4.3's
+  -- conditioned clause on the fair coin; `coinLatent_orderedMarkov` is Definition 4.8, got
+  -- from it by Theorem 4.9's (B1 => B2) rather than proved by hand;
+  -- `Example44.L44_coin_simplyPerfectlyCondenses` is the simple clause, and is also what
+  -- discharges `Example44.simplyPerfectlyCondenses`'s joint-independence hypothesis on a
+  -- constructed family (`iIndepFun_of_subsingleton` over the one-element `P⁺Unit`).
+  -- `noisyLatent_not_perfectlyCondenses` is the NEGATIVE witness: perfect condensation is a
+  -- real restriction, not a property every latent variable model has.  None of these is a
+  -- paper statement -- the paper asserts no instance of Definition 4.3 beyond Example 4.4,
+  -- which is `Example44.simplyPerfectlyCondenses` in the inventory block above -- so they
+  -- belong here.
+  Condensation.iIndepFun_of_subsingleton
+  Condensation.coinLatent_entropy Condensation.coinLatent_condScore
+  Condensation.coinLatent_perfectlyCondenses Condensation.coinLatent_orderedMarkov
+  Condensation.coinLatentRV_iIndepFun
+  Condensation.Example44.L44_coin_simplyPerfectlyCondenses
+  Condensation.Example44.L44_coin_perfectlyCondenses
+  Condensation.noisyModel_entropy_joint Condensation.noisyLatent_not_perfectlyCondenses
   -- Phase 4b (2026-08-17): the witness with an **infinite-range** variable, which the
   -- retired `dd:finite-range` narrowing excluded and Definition 3.1 admits.  `Ω = ℕ` under
   -- the geometric law of `ShannonInformation/FiniteEntropy/Examples.lean`, `X () = id`.
@@ -2206,8 +2229,13 @@ open Condensation in
   -- `diagonal` amalgamates a latent variable model with itself along the identity: it is
   -- the *axiom-clean* inhabitant of `LatentAmalgamation`, and therefore what makes Theorem
   -- 4.15 and every §5 statement non-vacuous today.  Lemma 4.13's `canonical` /
-  -- `nonempty_latentAmalgamation` are the paper's own, stronger, existence claim and are
-  -- staged below; a non-vacuity argument must not cite them (R2-F19).
+  -- `nonempty_latentAmalgamation` are the paper's own, stronger, existence claim; they were
+  -- staged when this comment was written and were **proved on 2026-08-17**, so they now sit
+  -- in the CONDENSATION-INVENTORY block above and are axiom-clean like everything else
+  -- there.  The reason `diagonal` is still named as *the* non-vacuity witness is not that
+  -- the others are unproved but that it is the one an existence-free argument may cite:
+  -- a non-vacuity claim about Definition 4.12 must not be routed through Lemma 4.13's
+  -- existence theorem (R2-F19).
   -- (The lemma `comm_ρ` stood here until 2026-08-17.  It said the square (4.43) commutes
   -- a.e. inside Definition 4.12, and was provable only from the fields `ρ₁_π`/`ρ₂_π`, which
   -- are not in Definition 4.12 and were deleted with it -- R2-F12/F20.)
