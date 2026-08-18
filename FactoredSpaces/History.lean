@@ -230,15 +230,23 @@ theorem history_subset_of_generates {J : Finset I} {X : Pt Ω → α} {C : Set (
   have hmem : J ∈ Finset.univ.filter (fun J : Finset I => Generates J X C) := by simp [hJ]
   exact Finset.inf_le (f := (id : Finset I → Finset I)) hmem
 
-/-- **History is the minimal generating set** — packaged as uniqueness: `H(X | C)` is the
-unique generating set contained in every generating set.
+/-- **History is the minimal generating set** — packaged as uniqueness, and naming the
+witness: a set is a generating set contained in every generating set **iff** it is
+`H(X | C)`.  The `←` direction is existence (`H(X | C)` is such a set, by
+`generates_history` and `history_subset_of_generates`) and the `→` direction is
+uniqueness, so this is the paper's "`H(X | C)` is the unique minimal set which generates
+`X` given `C`" with `H(X | C)` actually named.
 
 Paper node: Lemma 4.7 (§4.2). -/
-theorem history_unique_minimal [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
-    ∃! J : Finset I, Generates J X C ∧ ∀ K, Generates K X C → J ⊆ K := by
-  refine ⟨history X C, ⟨generates_history X C, fun _ hK => history_subset_of_generates hK⟩,
-    fun J ⟨hJ, hmin⟩ => ?_⟩
-  exact Finset.Subset.antisymm (hmin _ (generates_history X C)) (history_subset_of_generates hJ)
+theorem history_unique_minimal [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω))
+    (J : Finset I) :
+    (Generates J X C ∧ ∀ K, Generates K X C → J ⊆ K) ↔ J = history X C := by
+  constructor
+  · rintro ⟨hJ, hmin⟩
+    exact Finset.Subset.antisymm (hmin _ (generates_history X C))
+      (history_subset_of_generates hJ)
+  · rintro rfl
+    exact ⟨generates_history X C, fun _ hK => history_subset_of_generates hK⟩
 
 lemma generates_iff_history_subset [Nonempty α] {J : Finset I} {X : Pt Ω → α}
     {C : Set (Pt Ω)} (hJ : Disintegrates J C) : Generates J X C ↔ history X C ⊆ J := by
@@ -248,17 +256,42 @@ lemma generates_iff_history_subset [Nonempty α] {J : Finset I} {X : Pt Ω → �
     ⟨fun a i => a ⟨i, h i.2⟩, fun _ _ => rfl⟩
   exact ⟨hJH.trans (generates_history X C).1, hJ⟩
 
-lemma history_mono_of_derived [Nonempty α] [Nonempty β] {X : Pt Ω → α} {Y : Pt Ω → β}
-    {C : Set (Pt Ω)} (h : DerivedOn C X Y) : history Y C ⊆ history X C :=
-  history_subset_of_generates ((generates_history X C).mono_left h)
+/-- Only `Val(Y)` needs to be inhabited: with `Val(X)` empty the space `Ω` has no points,
+so `C = ∅` and `H(Y | C) = ∅` (see the degenerate-cases note below). -/
+lemma history_mono_of_derived [Nonempty β] {X : Pt Ω → α} {Y : Pt Ω → β}
+    {C : Set (Pt Ω)} (h : DerivedOn C X Y) : history Y C ⊆ history X C := by
+  rcases isEmpty_or_nonempty α with hα | hα
+  · haveI := hα
+    haveI : IsEmpty (Pt Ω) := Function.isEmpty X
+    have hgen : Generates (∅ : Finset I) Y C :=
+      ⟨⟨fun _ => Classical.arbitrary β, fun ω _ => isEmptyElim ω⟩, disintegrates_empty C⟩
+    exact Finset.Subset.trans (history_subset_of_generates hgen) (Finset.empty_subset _)
+  · haveI := hα
+    exact history_subset_of_generates ((generates_history X C).mono_left h)
 
 /-! ### The degenerate cases: an empty event, and an empty value space
 
 Lemma C.3 (`derivedOn_iff`) needs `Val(Y)` inhabited (erratum E1), and that hypothesis
-propagates as `[Nonempty α]` through `generates_iff` to the whole generation API.  The
-paper allows both `Val(X)` and the factors `Ω_i` to be empty (erratum E2), so the two
-cases the API excludes are handled here directly from `Generates`, which lets Lemmas 4.8
-and 4.12 be stated with no hypothesis on the value spaces at all.
+propagates as `[Nonempty α]` through `generates_iff`.  On Lemmas 4.7
+(`history_unique_minimal`), A.2 (`Generates.inter`) and 4.9 (`history_eq_iUnion_fibers`)
+the hypothesis is **not** merely inherited from that route: each of those statements is
+*false* as printed, so `[Nonempty α]` there is a correction to the paper rather than an
+artefact of the proof taken (errata E1, E12).  Both witnesses are machine-checked and
+take `Val(X)` empty, where generation depends on `J` alone —
+`Generates J X C ↔ IsEmpty (Ω_J)` (`generates_iff_isEmpty_ptOn`):
+
+* *Lemmas 4.7 and A.2*, with **two** empty factors (`I = {0, 1}`, `Ω_0 = Ω_1 = ∅`).
+  `Ω_∅` is a one-point space, so `∅` does not generate, while `{0}` and `{1}` both do:
+  generation is not closed under `∩`, the generating family has no least element, and
+  there is no minimal generating set at all.  (`H(X | C)`, the intersection of that
+  family, is still defined — it is `∅` — but it does not generate.)
+* *Lemma 4.9*, with **one** empty factor `i₀`.  Every generating `J` contains `i₀` and
+  `{i₀}` generates, so `H(X | Ω) = {i₀}`, whereas the union `⋃_{x ∈ Val(X)} H(x | Ω)`
+  runs over the empty `Val(X)` and is `∅`.
+
+The paper allows both `Val(X)` and the factors `Ω_i` to be empty (erratum E2), so the two
+cases the `[Nonempty α]` API excludes are handled here directly from `Generates`, which
+lets Lemmas 4.8 and 4.12 be stated with no hypothesis on the value spaces at all.
 
 Note that a variable `X : Ω → Val(X)` with `Val(X)` empty forces `Ω` itself to have no
 points, hence every event to be `∅`; the whole of `history` then degenerates. -/
@@ -454,7 +487,9 @@ theorem eventHistory_minimal_splice (A C : Set (Pt Ω)) :
 `H(X | C) = ⋃_{x ∈ Val(X)} H(x | C)`, where `H(x | C)` is the history of the event
 `{X = x}`.  The paper assumes `Val(X)` finite; the union is stated over the whole
 codomain (as a set), which needs no finiteness of `Val(X)` — the histories of the
-unattained values are empty (`dd:variable`).
+unattained values are empty (`dd:variable`).  The `[Nonempty α]` the Lean adds is
+necessary: with `Val(X)` empty and a single empty factor `i₀` the left-hand side is
+`{i₀}` while the union over `Val(X) = ∅` is empty (degenerate-cases note above).
 
 Paper node: Lemma 4.9 (§4.2). -/
 theorem history_eq_iUnion_fibers [Nonempty α] (X : Pt Ω → α) (C : Set (Pt Ω)) :
@@ -519,14 +554,22 @@ lemma inter_eq_splice {J : Finset I} {A B C : Set (Pt Ω)}
 
 /-- **Relevance criterion for membership in a history.**  If two members of `C` differ only
 at `i` and are separated by `X`, then `i ∈ H(X | C)`.  (The conditional form of the
-`←` direction of `mem_history_iff_exists_ne`, which is this lemma at `C = Ω`.) -/
-lemma mem_history_of_sep [Nonempty α] {X : Pt Ω → α} {C : Set (Pt Ω)} {i : I} {a b : Pt Ω}
+`←` direction of `mem_history_iff_exists_ne`, which is this lemma at `C = Ω`.)
+
+No hypothesis on `Val(X)` is needed: an empty `Val(X)` leaves `Ω` with no points, and
+then the hypothesis `a ∈ C` cannot be met. -/
+lemma mem_history_of_sep {X : Pt Ω → α} {C : Set (Pt Ω)} {i : I} {a b : Pt Ω}
     (ha : a ∈ C) (hb : b ∈ C) (hagree : ∀ j, j ≠ i → a j = b j) (hne : X a ≠ X b) :
     i ∈ history X C := by
-  by_contra hi
-  have hg := generates_history X C
-  rw [generates_iff] at hg
-  exact hne (hg.2 a ha b hb fun j hj => hagree j fun h => hi (h ▸ hj))
+  rcases isEmpty_or_nonempty α with hα | hα
+  · haveI := hα
+    haveI : IsEmpty (Pt Ω) := Function.isEmpty X
+    exact isEmptyElim a
+  · haveI := hα
+    by_contra hi
+    have hg := generates_history X C
+    rw [generates_iff] at hg
+    exact hne (hg.2 a ha b hb fun j hj => hagree j fun h => hi (h ▸ hj))
 
 /-- A factor lies in the (unconditional) history of `X` exactly when `X` is sensitive to
 it: two points agreeing off `i` with different `X`-values exist.  The `←` direction is

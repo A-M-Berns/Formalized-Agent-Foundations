@@ -1743,7 +1743,10 @@ the claims the paper makes without a number —
 is *not* a graphoid; §5.1 calls this an important property) and
 `isSemigraphoid_condIndepRel` (the Pearl 1988 fact cited in the proof of Proposition
 5.2, proved here so that no citation boundary remains).  Neither can carry a
-`Paper node:` line, since the checker admits only numbered nodes. -/
+`Paper node:` line, since the checker admits only numbered nodes.
+A third unnumbered entry joins them: `not_intersection_structIndepRel`, the same Table 1
+"Intersection" claim with the failing axiom written out, so that reading the negative
+claim needs no Proposition 5.2 alongside it. -/
 
 open FactoredSpaces in
 -- FS-INVENTORY-BEGIN
@@ -1770,6 +1773,7 @@ open FactoredSpaces in
   -- C.19, C.20; Definition C.6; Theorem 6.2; Proposition 6.6
   condIndep_of_disjoint_eventHistory
   exists_polynomial_interp_prob interp_prob_pos condIndepVar_of_local
+  interp_mem_factorizingPos
   PQIrrelevant Irrelevant cohistory pqIrrelevant_or_of_condIndepAll
   cohistory_union_eq_univ_of_condIndepAll condProb_eq_of_agree_on_relevant
   condIndepEventVar_proj_cohistory condIndepVarEvent_proj_cohistory disintegrates_cohistory
@@ -1779,6 +1783,7 @@ open FactoredSpaces in
   -- preamble (Table 1 "Intersection" row; the Pearl semigraphoid fact behind Prop 5.2)
   IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid
   isCompositionalSemigraphoid_structIndepRel not_isGraphoid_structIndepRel
+  not_intersection_structIndepRel
   isSemigraphoid_condIndepRel
   -- §5.2 / Appendix B: Lemma 5.3, B.2; Propositions 5.4, 5.5, 5.6, 5.8; Definition 5.7
   prob_jointVar_fiber factorizesOverDAG_tau factorizes_tauInv tau_tauInv tauPos_bijective
@@ -1985,6 +1990,7 @@ open FactoredSpaces in
   Distr.map Distr.map_mass Distr.map_prob Distr.map_map
   Distr.delta Distr.delta_mass Distr.delta_prob Distr.support_delta Distr.delta_eq_prod
   Distr.uniform Distr.uniform_strictlyPositive Distr.mix Distr.euclDist
+  Distr.euclDist_self Distr.euclDist_comm Distr.euclDist_nonneg Distr.abs_sub_le_euclDist
   Distr.nonempty_carrier condDist condDist_mass condDist_prob
   Distr.prod Distr.prod_mass Distr.prod_mass_pos_iff Distr.prob_prod_agree_on
   Distr.prob_prod_inter_bg Distr.margAt Distr.margAt_prod

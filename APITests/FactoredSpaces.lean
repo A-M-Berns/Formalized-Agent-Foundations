@@ -408,7 +408,7 @@ example (h₁ : StructIndepGiven (bg (Ω := Bits) 0) (bg (Ω := Bits) 1) someBit
 wants from it is the general statement that no argument can upgrade Proposition 5.2's
 compositional semigraphoid to a graphoid.  Composing the two endpoints gives exactly
 that. -/
-example : ¬ ∀ R : IndepRel (fun _ : Unit => Bool), IsCompositionalSemigraphoid R → IsGraphoid R :=
+example : ¬ ∀ R : IndepRel (fun _ : Unit => Fin 3), IsCompositionalSemigraphoid R → IsGraphoid R :=
   fun h => not_isGraphoid_structIndepRel (h _ isCompositionalSemigraphoid_structIndepRel)
 
 /-! ### A client DAG: the chain `0 → 1 → 2` over a heterogeneous value family
@@ -721,5 +721,55 @@ perfect map off a degenerate distribution. -/
 example (x : Pt ChainVal) : ¬ IsPerfectMapDAG chainG (Distr.delta x) := fun h =>
   chain_not_dSeparated_empty
     ((h {0} {2} ∅).mpr fun _ _ _ => chain_condIndep_delta x _ _ _)
+
+/-! ### Proposition 6.6 on a *proper* open piece of `Δ^F(Ω)` -/
+
+/-- The client's all-ones point, the single coordinate reading the open condition below
+constrains. -/
+def allOnes : Pt Bits := fun _ => true
+
+/-- A **proper** open piece of `Δ^F(Ω)`: the factorizing distributions that put more than
+half their mass on `allOnes`.  Because it constrains one mass only, `abs_sub_le_euclDist`
+is the whole of the metric input its openness needs. -/
+def heavyOnOnes : Set (Distr (Pt Bits)) := {P | Factorizes P ∧ 1 / 2 < P.mass allOnes}
+
+private lemma heavyOnOnes_subset : heavyOnOnes ⊆ factorizing Bits := fun _ hP => hP.1
+
+private lemma heavyOnOnes_nonempty : heavyOnOnes.Nonempty :=
+  ⟨Distr.delta allOnes, factorizes_delta allOnes, by
+    rw [Distr.delta_mass, if_pos rfl]; norm_num⟩
+
+private lemma heavyOnOnes_open : ∀ Q ∈ heavyOnOnes, ∃ ε > (0 : ℝ),
+    ∀ Q' ∈ factorizing Bits, Distr.euclDist Q Q' < ε → Q' ∈ heavyOnOnes := by
+  rintro Q ⟨-, hQ⟩
+  refine ⟨Q.mass allOnes - 1 / 2, by linarith, fun Q' hQ' hd => ⟨hQ', ?_⟩⟩
+  have hb := (le_abs_self (Q.mass allOnes - Q'.mass allOnes)).trans
+    (Distr.abs_sub_le_euclDist Q Q' allOnes)
+  linarith
+
+/-- **The piece is genuinely proper.**  The point mass at the all-zeros point factorizes but
+misses it, so the independence hypothesis fed to `structIndepGiven_of_open` below is
+assumed of strictly fewer distributions than `Δ^F(Ω)` contains. -/
+lemma heavyOnOnes_ssubset : heavyOnOnes ⊂ factorizing Bits := by
+  refine ⟨heavyOnOnes_subset, fun hsub => ?_⟩
+  have hne : allOnes ≠ (fun _ => false : Pt Bits) := fun h => Bool.noConfusion (congrFun h 0)
+  have h := (hsub (factorizes_delta (fun _ => false : Pt Bits))).2
+  rw [Distr.delta_mass, if_neg hne] at h
+  norm_num at h
+
+/-- **Proposition 6.6 where it earns its keep.**  Unlike the specialisation at
+`S = Δ^F(Ω)` above, the independence hypothesis here is assumed only on `heavyOnOnes`,
+which `heavyOnOnes_ssubset` shows is a *proper* subset of `Δ^F(Ω)`; strong completeness
+still returns the structural statement, and Theorem 6.2 then re-exports it to every
+factorizing distribution — including the all-zeros point mass, which is one of the ones the
+hypothesis said nothing about.  That gap is exactly what `structIndepGiven_of_open` buys
+over `structIndepGiven_of_forall_condIndepVar`. -/
+example {α β γ : Type} {X : Pt Bits → α} {Y : Pt Bits → β} {Z : Pt Bits → γ}
+    (h : ∀ P ∈ heavyOnOnes, CondIndepVar P X Y Z) :
+    StructIndepGiven X Y Z ∧
+      CondIndepVar (Distr.delta (fun _ => false : Pt Bits)) X Y Z := by
+  have hs := structIndepGiven_of_open heavyOnOnes heavyOnOnes_subset heavyOnOnes_nonempty
+    heavyOnOnes_open h
+  exact ⟨hs, condIndepVar_of_structIndepGiven hs _ (factorizes_delta _)⟩
 
 end APITests.FactoredSpaces

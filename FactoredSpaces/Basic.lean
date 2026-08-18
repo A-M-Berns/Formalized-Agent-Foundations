@@ -138,9 +138,6 @@ lemma DerivedOn.trans {C : Set (Pt Ω)} {X : Pt Ω → α} {Y : Pt Ω → β} {Z
   obtain ⟨g, hg⟩ := hYZ
   exact ⟨g ∘ f, fun ω hω => by simp [hg ω hω, hf ω hω]⟩
 
-lemma DerivedOn.refl (C : Set (Pt Ω)) (X : Pt Ω → α) : DerivedOn C X X :=
-  ⟨id, fun _ _ => rfl⟩
-
 lemma DerivedOn.comp_left {C : Set (Pt Ω)} {X : Pt Ω → α} (f : α → β) :
     DerivedOn C X (f ∘ X) :=
   ⟨f, fun _ _ => rfl⟩

@@ -8,9 +8,10 @@ import Mathlib.Order.Interval.Set.Infinite
 # The local-to-global principle (Lemma 6.5, Lemmas C.5 and C.10)
 
 Interpolating two factorizing distributions factorwise, `R^λ = ⨂_i ((1−λ)Q_i + λP_i)`,
-makes every event probability a polynomial in `λ` (Lemma C.5); positivity of `P(C)` is
-preserved along the interpolation (Lemma C.10); and a conditional independence holding
-on a Euclidean ε-ball of factorizing distributions holds on all of them (Lemma 6.5).
+makes every event probability a polynomial in `λ` (Lemma C.5); the interpolant stays in
+`Δ^F_C(Ω)`, i.e. it factorizes and keeps `P(C)` positive (Lemma C.10); and a conditional
+independence holding on a Euclidean ε-ball of factorizing distributions holds on all of
+them (Lemma 6.5).
 -/
 
 namespace FactoredSpaces
@@ -92,6 +93,17 @@ theorem interp_prob_pos (P P' : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
       nlinarith [(P i).nonneg (ω i)]
     have hpos : 0 < (t : ℝ) ^ Fintype.card I * (Distr.prod P').prob C := by positivity
     linarith
+
+/-- **Lemma C.10 in full**: `P, P' ∈ Δ^F_C(Ω)` implies `P^λ ∈ Δ^F_C(Ω)`.  Membership in
+`Δ^F_C(Ω)` is factorization together with `P(C) > 0`, and the two halves are proved
+separately — `factorizes_interp` and `interp_prob_pos` — because §C.3 uses them
+separately; this is the conjunction the paper states.
+
+Paper node: Lemma C.10 (§C.3). -/
+theorem interp_mem_factorizingPos (P P' : ∀ i, Distr (Ω i)) {C : Set (Pt Ω)}
+    (hP : Distr.prod P ∈ factorizingPos C) (hP' : Distr.prod P' ∈ factorizingPos C)
+    (t : unitInterval) : interp P P' t ∈ factorizingPos C :=
+  ⟨factorizes_interp P P' t, interp_prob_pos P P' hP.2 hP'.2 t⟩
 
 /-- Continuity of `λ ↦ R^λ` at `λ = 0`, in the explicit `ε`-`δ` form Lemma 6.5 consumes:
 every Euclidean ball around `⨂Q` contains `R^λ` for all small enough `λ`. -/
