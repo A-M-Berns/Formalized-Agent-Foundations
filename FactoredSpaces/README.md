@@ -7,7 +7,12 @@ specification: `notes/2412.02579v2-main.tex` (with `notes/meta/environment.tex` 
 `notes/tables/`) is the exact arXiv source and `notes/2412.02579v2.pdf` the matching PDF.
 
 **Status: complete.** All 50 numbered nodes (14 definitions, 28 lemmas, 6 propositions,
-1 theorem, 1 corollary) are stated and proved — 0 `sorry`, axiom-clean
+1 theorem, 1 corollary) are stated and proved — **five of them in corrected form, because
+the printed statement is false**: Lemma 5.3's "τ bijective" (true on strictly positive
+distributions, E5), Lemma C.11(3) (needs both marginal-support inclusions, E3), Lemmas
+4.7/A.2/4.9 and Theorem 6.2 (need the independent variables' value spaces nonempty,
+E1/E12/E14), and Lemma 6.5 (needs `ε > 0`, E15); each correction is disclosed at the
+declaration and in `notes/paper-errata.md` — 0 `sorry`, axiom-clean
 (`AxiomAudit.lean`, FS-INVENTORY), every node cited from a `Paper node:` line and checked
 against the TeX (`scripts/check-factored-spaces-nodes.py`, `notes/scope-manifest.json`:
 nothing ruled out of scope), consumer boundary `FactoredSpaces/API.lean` exercised by
@@ -53,10 +58,11 @@ remains anywhere. d-separation itself, which the paper uses without defining, is
 * `history X C` is `H(X | C)`; `history X Set.univ` is the unconditional `H(X)`;
   `eventHistory A C = history (indic A) C` is `H(A | C)` (`dd:event-indicator`);
   `fiber Z z` is the event `{Z = z}`, so `history X (fiber Z z)` is `H(X | z)`.
-* Value spaces carry `[Nonempty α]` exactly where Lemma C.3's construction needs it —
-  see `notes/paper-errata.md`; the paper-facing Lemmas 4.8, 4.12 and B.1 carry no
-  value-space hypothesis at all (their empty-value cases are proved directly through the
-  degenerate-history lemmas of `History.lean`).
+* Value spaces carry `[Nonempty α]` only where the printed statement is otherwise
+  *false* — Lemmas 4.7, A.2, 4.9 and Theorem 6.2 (errata E1, E12, E14; see
+  `notes/paper-errata.md`); Definition 5.1 / Proposition 5.2, Lemmas 4.8, 4.12 and B.1
+  carry no value-space hypothesis at all (their empty-value cases are proved directly
+  through the degenerate-history lemmas of `History.lean`).
 
 The `dd:` glossary lives in `FactoredSpaces.lean`; settled decisions, the correspondence
 table and pitfalls are in `KNOWLEDGE.md`.

@@ -56,8 +56,15 @@ of the statements meets first.  The standing choices:
   `Val(X)` is the codomain type `α`, not the image.  Statements quantifying over "all
   values `x ∈ Val(X)`" therefore quantify over `α`; the events `{X = x}` for unattained
   `x` are empty and carry empty histories, which is why Lemma 4.9 needs no finiteness of
-  `Val(X)`.  Value spaces are `[Nonempty]` exactly where Lemma C.3's construction of `f`
-  requires it (see that lemma's docstring and `notes/paper-errata.md`).
+  `Val(X)`.  Value spaces are `[Nonempty]` only where the statement is otherwise
+  *false*: Lemma C.3's construction of `f` (E1), and its consequences Lemmas 4.7, A.2,
+  4.9 and Theorem 6.2 (E12, E14) — each fails outright for an empty value space, since an
+  empty `Val(X)` forces `Ω = ∅` and then `Generates J X C ↔ IsEmpty Ω_J`.  Lemmas 4.8,
+  4.12 and B.1 carry no such hypothesis.  Every `[Nonempty]` on a paper-facing statement
+  is disclosed at the declaration and in `notes/paper-errata.md`.  Where the paper writes
+  `Y ≠ Z` between variables of possibly different value spaces (Table 1, intersection),
+  the Lean side condition is `β = γ → ¬ HEq Y Z` — variables of different types count
+  as distinct, and for equal types it is ordinary inequality (`Semigraphoid.lean`).
 
 * `dd:event-indicator` — the paper's indicator `1_A : Ω → {0, 1}` is `indic A : Pt Ω → Prop`,
   `ω ↦ (ω ∈ A)`; the history of an event `H(A | C)` is `history (indic A) C`
@@ -78,7 +85,7 @@ of the statements meets first.  The standing choices:
   distance `euclDist`: every `Q ∈ S` has an `ε`-ball within `Δ^F(Ω)` contained in `S`.
   In a metric subspace that *is* openness, and it is the form Lemma 6.5 consumes.
 
-* `dd:cpd` — "`P` factorizes over `G`" (§5.2, eq. (4)) is the Koller–Friedman form the
+* `dd:cpd` — "`P` factorizes over `G`" (§5.2, eq. (2)) is the Koller–Friedman form the
   paper follows: `P(x) = ∏_v φ_v(x_v | x_pa(v))` for some family `φ` of conditional
   probability distributions, one per node and parent configuration (`FactorizesOverDAG`).
   Reading `P(x_v | x_pa(v))` as `P`'s own conditionals is undefined at parent
@@ -94,6 +101,16 @@ of the statements meets first.  The standing choices:
   one under which Proposition 5.5 holds for arbitrary `V₁, V₂, V₃` (E8). Proposition 5.5
   is proved directly (`ConditionalHistory.lean`, `ActiveTrails.lean`), not through the
   cited soundness/completeness of d-separation.
+
+* `dd:perfect-map` — Definition 5.7 as printed is ill-typed (E6: `X_w : Ω → Obs`) and
+  names Koller–Friedman's perfect map while quantifying over arbitrary, possibly
+  overlapping node sets (E17).  `IsPerfectMapDAG G P` takes `P : Distr (Pt Val)` on the
+  observation space and quantifies over all `V₁ V₂ V₃ : Finset V` (the overlapping
+  reading — the only one under which Proposition 5.8(2) is true), with `X_v` the
+  coordinate projections; it does not bundle acyclicity, which travels as
+  `hG : G.IsAcyclic` on Proposition 5.8.  `IsPerfectMapFSM X P` takes the family
+  `X : ∀ w, Pt Ω → Val w` and reads the observation `O` as the joint variable
+  `famJoint X` — the only reading under which "`X_{W₁} ⊥ X_{W₂} | X_{W₃}` in `P`" parses.
 
 * `dd:owalk` — the proof of Proposition 5.5 works with *oriented walks* (`OWalk` in
   `ActiveTrails.lean`: a walk carrying the direction of each step, allowing repeated

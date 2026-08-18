@@ -1734,9 +1734,11 @@ elaborated.
 
 This formalization is **complete** (`scripts/papers.py`: `completed`): all 50 numbered
 nodes of the paper are annotated and inventoried, and `notes/scope-manifest.json` records
-that nothing was ruled out of scope.  Besides the numbered nodes the block carries two
-kinds of unannotated entries, both deliberate: the non-vacuity witnesses of
-`FactoredSpaces/Examples.lean`, and two claims the paper makes without a number —
+that nothing was ruled out of scope.  Besides the numbered nodes the block carries three
+kinds of unannotated entries, all deliberate: the non-vacuity witnesses of
+`FactoredSpaces/Examples.lean`; the working form `disintegrates_iff_splice` of Definition
+4.5 (the equivalence every history proof goes through, audited beside its definition); and
+the claims the paper makes without a number —
 `not_isGraphoid_structIndepRel` (Table 1, row "Intersection": structural independence
 is *not* a graphoid; §5.1 calls this an important property) and
 `isSemigraphoid_condIndepRel` (the Pearl 1988 fact cited in the proof of Proposition
