@@ -425,6 +425,14 @@ of probability measures* on `Ω`, and the proof of Proposition 2.5 reads "each s
 probability distribution is a Dirac measure in `G (Ω)`", which is a statement about a
 point of that space.
 
+That quotation settles the *carrier*, and only the carrier.  **The sentence it comes from
+is itself wrong about which space the Dirac lives in** (`notes/paper-errata.md` entry 18):
+`H(Y | X) = 0` makes the pushforward `Y_* P(· | X = x)` a Dirac measure in `G (R_Y)`, not
+`P(· | X = x)` a Dirac measure in `G (Ω)` — the hypothesis determines `Y` from `X`, not `ω`
+from `X`.  Nothing here inherits the slip: this is an `abbrev` for a σ-algebra, and
+Proposition 2.5's Lean endpoints below are stated with `AEFunctionOf` and conditional
+entropy and never form the Dirac measure at all.
+
 Paper node: `Definition 2.4` -/
 abbrev GiryMeasurableSpace (Ω : Type*) [MeasurableSpace Ω] :
     MeasurableSpace (ProbabilityMeasure Ω) :=
@@ -670,25 +678,12 @@ lemma condEntropy_eq_zero_of_subsingleton {Ω S T : Type*} [MeasurableSpace Ω]
     ⟨fun _ => Classical.arbitrary S, measurable_const,
       Filter.Eventually.of_forall fun _ => Subsingleton.elim _ _⟩
 
-/-- **Joint independence is automatic over a subsingleton index type.**  The defining
-identity of `iIndepFun` quantifies over finite subfamilies, and over a subsingleton index
-type the only ones are `∅` and a singleton, where it reads `μ univ = 1` and `μ s = μ s`.
+/-! ### Joint independence over a subsingleton index type is Mathlib's
 
-The companion of the two lemmas above at the level of an index *family* rather than a
-range: it is what makes Example 4.4's joint-independence hypothesis discharge on a
-`Unit`-indexed witness, where `P⁺Unit` has the single element `{()}`.  Nothing about it is
-specific to this paper; it is stated for a bare family of measurable functions and would
-belong in `ShannonInformation/API.lean`, or upstream of it, if a second client wanted it. -/
-lemma iIndepFun_of_subsingleton {ι : Type*} [Subsingleton ι] {Ω : Type*} [MeasurableSpace Ω]
-    {β : ι → Type*} [∀ i, MeasurableSpace (β i)] (f : ∀ i, Ω → β i) (μ : Measure Ω)
-    [IsProbabilityMeasure μ] : iIndepFun f μ := by
-  classical
-  rw [iIndepFun_iff_measure_inter_preimage_eq_mul]
-  intro s sets _
-  rcases s.eq_empty_or_nonempty with rfl | ⟨a, ha⟩
-  · simp
-  · obtain rfl : s = {a} :=
-      Finset.eq_singleton_iff_unique_mem.2 ⟨ha, fun x _ => Subsingleton.elim x a⟩
-    simp
+This file used to carry a `Condensation.iIndepFun_of_subsingleton`.  It was a duplicate of
+`ProbabilityTheory.iIndepFun.of_subsingleton`
+(`Mathlib/Probability/Independence/Basic.lean`), which is `@[nontriviality, simp]` and takes
+its family implicitly, and it was deleted on 2026-08-18 (R4-F22).  Cite Mathlib's directly;
+`Examples.lean`'s `coinLatentRV_iIndepFun` is the one client. -/
 
 end Condensation

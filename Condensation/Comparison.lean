@@ -53,10 +53,18 @@ Lemma 4.14 and Theorem 4.15 of Eisenstat, *Condensation: A Theory of Concepts*:
   this is what makes the argument's step "`X`'s level sets lie a.e. in
   `σ(C, Y₁) ∩ σ(C, Y₂)`" meaningful.  (ii) Require `MeasurableSingletonClass` on `T₁` and
   `T₂`: this removes the vacuity at its source, and it is what the *printed proof*
-  implicitly uses.  Both are licensed by the paper's §2 standing conventions ("our
-  probability spaces are countable and discrete", just before Definition 2.4).  **The Lean
-  carries (i)** — free at every call site here, since `X` is always a model's variable and
-  `RVModel` carries `singR` — and leaves `T₁`, `T₂` with only a measurable-space structure.
+  implicitly uses.  What licenses both is the paper's standing setting that every random
+  variable it considers has **countable discrete range** — Definition 3.1 says so in as many
+  words ("a finite family of random variables `Xᵢ : Ω → Rᵢ`, each of which has countable and
+  discrete range"), and §2 puts the same condition on the individual variables of
+  Proposition 2.5.  It is *not* licensed by the §2 sentence just before Definition 2.4 on its
+  own ("our probability spaces are countable and discrete, and have finite entropy"): that
+  sentence constrains the sample space `Ω`, not the ranges, and the whole content of
+  erratum 15 is that constraining `Ω` alone is not enough.  The licence is available here
+  because Lemma 4.14 is only ever *applied* to variables of a model, which are exactly the
+  variables Definition 3.1 constrains.  **The Lean carries (i)** — free at every call site
+  here, since `X` is always a model's variable and `RVModel` carries `singR` — and leaves
+  `T₁`, `T₂` with only a measurable-space structure.
   Note the exact strength: what is needed of `X`'s range is that it **separate points**, and
   there is no `Countable S` binder anywhere in the statement, so "`X` has countable discrete
   range" would claim more than the repair does.  Orchestrator ruling 2026-08-18: round 2's
@@ -138,8 +146,12 @@ trivial σ-algebra, while `S` carrying it is what makes the two `AEFunctionOf` h
 satisfiable.  There are accordingly two minimal repairs — a `MeasurableSingletonClass` on
 `S`, or one on each of `T₁` and `T₂` (the latter is what the printed proof implicitly uses)
 — and exactly one is needed; this statement takes the
-first, which is free at every call site here, and the paper's §2 standing convention ("our
-probability spaces are countable and discrete") licenses either.  What is asked of `X`'s
+first, which is free at every call site here.  What licenses either is the standing setting
+of Definition 3.1 and §2 that every random variable under consideration has **countable
+discrete range**, not the §2 sentence about probability *spaces* being countable and
+discrete: that sentence constrains `Ω`, and erratum 15 is precisely the observation that
+constraining `Ω` alone leaves the lemma false.  Lemma 4.14 is applied here only to variables
+of a model, which is where the licence bites.  What is asked of `X`'s
 range is only that it *separate points*; there is deliberately no `Countable S`.  The
 measurability hypotheses on `X`, `Y₁`, `Y₂` are the paper's "random variables" and are not
 used by the proof (only `C`'s is).

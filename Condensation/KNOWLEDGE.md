@@ -77,6 +77,9 @@ any of these numbers** — that is the discipline this file's last pitfall exist
 | auxiliary: `FiniteRange` of a dependent product | ~~`Condensation.finiteRange_pi`~~ | **retired 2026-08-17**, and removed from `AxiomAudit.lean`'s inventory. It supplied `FiniteRange` for a dependent product of finitely many finite-range variables, which the vendored `FiniteRange/Defs.lean` still lacks. After the swap it had *zero* callers — `Example41.L₁RV`/`L₂RV` were the last two and now go through `M.finiteEntropyOf (measurable_pi_lambda _ fun j => M.measurable_X j.1)` — and an unused inventoried declaration is what this library's own rule says not to keep. `Model.lean` carries a paragraph where it stood; reinstating it is six lines of `Set.Finite.pi` |
 | witness: a model the old class could not contain | in `namespace Condensation.Example` (singular): `geomModel`, `geomModel_X`, `geomModel_P`, `geomModel_not_finiteRange`, `geomModel_entropy`, `geomModel_entropy_pos`, `geomLatent`, `geomLatent_reconScore` | no paper node; all proved, none `sorry`. `geomModel : RVModel Unit` has `Ω = ℕ`, `P = ShannonInformation.geom` (the `Geometric(1/2)` law), `X () = id`, entropy `2 log 2`, together with a proof that `id` does **not** have finite range; `geomLatent = LatentModel.ofJoint geomModel` and its reconstruction score is `0`. They sit after `LatentModel.ofJoint` in `Examples.lean` rather than beside the fair-coin witnesses, precisely because `geomLatent` *is* `ofJoint geomModel` and there is nothing model-specific to say about the latent side. It is the evidence that retiring `dd:finite-range` has content rather than being a bookkeeping change — every other witness lives on a finite sample space and cannot tell the two readings apart. The law, its instances and the entropy computation live in `ShannonInformation/FiniteEntropy/Examples.lean` and are not restated; `geomLatent` is just `LatentModel.ofJoint geomModel` |
 
+| witness: Def 4.3 / Def 4.8 **with content**, at `I = Bool` | `Condensation.twoCoinF`, `.twoCoinF_ne_twoCoinTF`, `.twoCoin_famFinset_contrib_F`, `.twoCoin_famFinset_contrib_TF`, `.twoCoinLatent_condEntropy_F`, `.twoCoinLatent_condScore_F`, `.twoCoinLatent_condScore_TF`, `.twoCoinLatent_perfectlyCondenses`, `.twoCoinLatent_not_simplyPerfectlyCondenses`, `.twoCoin_incomparable_T`, `.twoCoinLatent_orderedMarkov` | no paper node; all in `Examples.lean`'s new `section Definition43Bool`, added 2026-08-18 (R4-F23). All three latents are one fair coin, so `χ_L = log 2` at each of the three nonempty `A ∈ Finset Bool` while `σ_L({true}) = 2 log 2` — hence `PerfectlyCondenses` **and** `¬ SimplyPerfectlyCondenses` on the *same* witness, which is the proof that `LatentModel.PerfectlyCondenses.of_simply` has no converse. `twoCoinLatent_orderedMarkov` goes through `perfect_tfae_B` (B1 ⇒ B2) like the `Unit` one, but here the condition has content: `twoCoin_incomparable_T` computes `incomparable twoCoinT = {twoCoinF}`, nonempty. `H(X_A)` at a non-singleton `A` comes from `ProbabilityTheory.entropy_comp_of_injective`, not from `RVModel.entropy_joint_singleton`, which only reaches singletons |
+| the degeneracy of the `Unit` witnesses, proved | `Condensation.condScore_eq_simpleScore_of_subsingleton_index`, `.incomparable_eq_empty_of_subsingleton_index` | no paper node; `Examples.lean`, 2026-08-18 (R4-F23). Over a subsingleton `P⁺I`: `χ_L = σ_L` for **every** latent variable model (the only `B` has nothing strictly above it, so (3.2)'s conditioning is on a variable into a one-point type), and Definition 4.8's family of incomparable indices is **empty**. These are what make "the `coinLatent_*` witnesses show satisfiability only" a proved claim rather than an assertion. **There is deliberately no `orderedMarkov_of_subsingleton_index`** — see the pitfall on `condMutualInfo_const` for why it is not cheap |
+
 ### M2 machinery (2026-08-18) — no paper nodes
 
 Everything in this block landed with the four parallel M2 proof shards. None of it is a
@@ -219,7 +222,16 @@ below.
   (`ITree.label`, the meet of the children's labels); `LTree` is the separate type of trees
   with a label at *every* position, which is what Proposition 5.7 quantifies over
   (`eq_decorate_of_isIntersectionTree`, `existsUnique_intersectionTree`, with
-  `ITree.decorate` the computed decoration). Definition 5.6's family of intersections
+  `ITree.decorate` the computed decoration). **`ITree` being inductive, it ranges over
+  exactly the FINITE trees, and since 2026-08-18 (R4-F02) that is written down as a
+  *disclosed reading* rather than as "nothing is lost".** Definition 5.6 as printed carries
+  no finiteness or well-foundedness clause — its condition (1) says only that every vertex
+  has a unique directed path *to* the root, which an upward-infinite tree with no leaves at
+  all satisfies (errata 17). The reading is licensed by Theorem 5.8, whose (5.14) is a
+  finite sum over the tree's leaves and internal vertices and is meaningless otherwise. The
+  disclosure is written in `Quantitative.lean` twice (the module docstring and the `ITree`
+  docstring), in `Condensation.lean`'s glossary and in `README.md`'s `dd:tree` row; if you
+  reword one, reword all four. Definition 5.6's family of intersections
   (5.11) is a `List`, not a `Finset` — the paper explicitly warns that the same
   intersection may occur more than once — and Theorem 5.8's "bijection between the leaves
   of `T` and `{C : B∩C≠∅}` ranging over `B ∈ F`" is a **multiset equation**
@@ -242,6 +254,34 @@ below.
   of the paper's own §2 standing convention. Two consequences for anyone editing this
   statement: adding a `FiniteRange`/`FiniteEntropyOf` binder here is still a finding, and
   *removing* `[MeasurableSingletonClass S]` is now also a finding.
+
+  **Say the licence precisely (R4-F13, 2026-08-18).** It is Definition 3.1 and §2's standing
+  setting that every random variable under consideration has **countable discrete range**
+  ("a finite family of random variables `Xᵢ : Ω → Rᵢ`, each of which has countable and
+  discrete range", paper L228–230; §2 puts the same condition on Proposition 2.5's
+  variables at L196). It is **not** the §2 sentence just before Definition 2.4 ("our
+  probability spaces are countable and discrete, and have finite entropy", L184) taken on
+  its own: that one constrains the sample space `Ω`, and the entire content of erratum 15 is
+  that constraining `Ω` alone leaves the lemma false. The licence is available here because
+  Lemma 4.14 is only ever *applied* to variables of a model, which is exactly what
+  Definition 3.1 constrains. An earlier docstring cited the `Ω` sentence alone and so
+  appeared to license the repair with the very hypothesis the counterexample satisfies.
+- **§4's Def 4.8 / Prop 4.10 are stated over `RVModel (PPlus I)`; Lemmas 4.14 and 5.4 are
+  over bare variables. This asymmetry is a deliberate, documented generality choice
+  (R4-F21), not drift.** `RVModel.OrderedMarkov` and `RVModel.orderedMarkov_iff` quantify
+  over a bundled model, so they inherit §2's blanket convention wholesale — countable
+  discrete sample space of finite entropy, countable discrete ranges — and carry **no**
+  local finiteness or discreteness hypotheses at all; finiteness reaches them through
+  `finiteEntropy_Ω` and `RVModel.finiteEntropyOf`. `Condensation.aeFunctionOf_of_condIndepFun`
+  (4.14) and `Condensation.condEntropy_le_of_pair` / `.condEntropy_eq_of_pair` (5.4) are
+  stated over bare measurable functions with explicit binders, because the paper states them
+  that way and because they are substrate lemmas with clients outside a model. The cost is
+  that the two halves of §4 are not directly comparable binder-for-binder, and the benefit is
+  that neither is weaker than the paper's own statement. A bare-family restatement of
+  Definition 4.8 and Proposition 4.10 — over `(Y : PPlus I → Ω → R _)` with explicit
+  finite-entropy binders — is a **possible follow-up**, not a defect: it would be strictly
+  more general, and nothing in §4 or §5 needs it, since every consumer already has a model in
+  hand. Do not "fix" the asymmetry by adding hypotheses to the model-side statements.
 - **`Mathlib.Order.Extension.Linear` is not in the substrate's import closure** and is
   imported explicitly by `Model.lean` for M2's benefit. `ShannonInformation.API` does not
   bring `LinearExtension`/`toLinearExtension` transitively at this pin, and the §4 tranche
@@ -408,7 +448,68 @@ in for a paper claim it does not make.
   `S₂ = strictAbove A.toFinset`, with `pred_subset_incomparable_union_strictAbove`
   discharging the right inclusion.
 
-Full list (sixteen entries) with line numbers: `notes/paper-errata.md`.
+- **Def 5.6 never requires the tree to be finite or well-founded** (entry 17, from the final
+  blind audits, 2026-08-18). Condition (1) constrains directed paths *to* the root, which the
+  full infinite binary tree satisfies; Thm 5.8's (5.13)/(5.14) are finite sums over leaves
+  and internal vertices, and the leaf-bijection hypothesis does not bound the internal ones.
+  The inductive `ITree` reads Def 5.6 as ranging over the finite trees — a *disclosed
+  reading*, licensed by Thm 5.8's sums, and no longer described as "nothing is lost". Note
+  entry 14's "such a tree has at least one leaf" is licensed only by this reading.
+- **Prop 2.5's proof calls `P(· | X = x)` a Dirac measure in `G(Ω)`** (entry 18). It is the
+  *pushforward* `Y_* P(· | X = x)` that is Dirac, in `G(R_Y)`; `H(Y|X) = 0` determines `Y`
+  from `X`, not `ω` from `X`. `Probability.lean`'s Def 2.4 docstring quotes this sentence to
+  justify the `ProbabilityMeasure Ω` carrier — the quotation settles the carrier and only
+  the carrier, and the docstring now says the sentence is wrong about the space.
+- **Lemma 4.5 (⇐)'s "picking any `i ∈ A`" is wrong** (entry 19). Different `B ∈ contrib A`
+  need different `i`: at `A = {1,2}`, `B = {2}`, the latent `Y_{2}` is constrained only
+  through `X_2`. Harmless to the conclusion, and the Lean routes through `X_A` directly.
+- **Lemma 4.13's (4.53) sentence writes `P₂(· | π₁ = ω)` for `P₂(· | π₂ = ω)`** (entry 20).
+  Prose only; every display around it is correct, and `Amalgamation.canonical` is built from
+  the displays.
+- **The discussion before Thm 5.8 names `Y_∩B` where `Y_⊇A` is meant** (entry 21, *soft*).
+  Recorded with an explicit caveat: a charitable reading makes the defect the phrase "is an
+  approximate form of" rather than the subscript. Motivating prose; nothing formal depends
+  on it. Do not upgrade it to a flat misprint without re-reading L1358–1361.
+- **Cor 5.9's proof attributes (5.22) to Def 4.8; it needs Prop 4.10** (entry 22). The tree's
+  label sets are *upward-closed*, so killing the interaction terms is Prop 4.10 clause (2),
+  not the definition. The paper itself says so correctly at L1363–1365. This is why (5.22)
+  was the last §5 endpoint to become axiom-clean.
+
+**One candidate was REFUTED and must not be re-raised**: "the prose after Prop 4.7 reverses
+the perfect / simply-perfect implication". L717–718 ("Corollary 4.6 tells us something about
+perfect, and hence simply-perfect, condensations") is a claim about the *scope of Cor 4.6*,
+licensed by the true direction simply-perfect ⇒ perfect. Ambiguous English, not a reversed
+implication. The refutation is recorded at the foot of `notes/paper-errata.md`.
+
+Full list (twenty-two entries, plus the one refuted candidate) with line numbers:
+`notes/paper-errata.md`.
+
+## Audit history and corroboration
+
+**What the trust surface actually rests on, as of 2026-08-18.** The library has been through
+four adversarial audit rounds, and the last one is the load-bearing evidence, so it is worth
+recording what it did rather than merely that it happened.
+
+- **The final audits were *blind*.** Two independent auditors — an Opus fresh-context
+  auditor and a codex (cross-family) auditor — were given only the paper, the Lean source
+  and the standing orchestrator rulings. They were **not** given `notes/paper-errata.md`,
+  `KNOWLEDGE.md`'s errata section, or any prior round's findings. So anything they reported
+  that matches an existing entry is a genuine independent rediscovery, not an echo.
+- **They independently rediscovered errata 1, 2, 4, 6, 8, 10, 11, 15 and 16.** That is nine
+  of the recorded defects re-derived from the paper alone, including the two hardest
+  (15, Lemma 4.14's falsity as printed, and 16, (4.39)'s self-contradictory containment).
+- **They confirmed both standing orchestrator rulings with counterexamples of their own
+  construction** rather than by agreeing with the recorded argument.
+- **Treat this as the corroboration the trust surface rests on, and do not quietly weaken
+  it.** The specific thing that would destroy its value is showing a future auditor the
+  errata file before they audit: the errata list is a set of *answers*, and an auditor who
+  has read it can no longer supply independent evidence that the paper's defects are real.
+  If a future round needs the errata file for context, run it as a *separate*, clearly
+  labelled non-blind pass and do not count its agreements as corroboration.
+- Round 4 itself (this wave) was where the blind audits' output landed: the `dd:tree`
+  finiteness disclosure (R4-F02), the Mathlib duplication (R4-F22), the degenerate Def
+  4.3/4.8 witnesses (R4-F23), the API/trust-surface documentation errors (R4-F01/F13/F20/
+  F24–F27) and errata 17 onward.
 
 ## Pitfalls
 
@@ -521,6 +622,23 @@ Full list (sixteen entries) with line numbers: `notes/paper-errata.md`.
   cost real time twice on this branch: a "Mathlib lacks X" comment is a *claim about a
   moving target* and ages badly — re-check it with `exact?`/`grep` in `.lake/packages/mathlib`
   before building around it, and if you write one, write the search you ran.
+- **The same failure, third occurrence: `Condensation.iIndepFun_of_subsingleton` duplicated
+  Mathlib's `ProbabilityTheory.iIndepFun.of_subsingleton` for the whole of M1–M2 (deleted
+  2026-08-18, R4-F22).** Mathlib's is at `Mathlib/Probability/Independence/Basic.lean:246`,
+  is `@[nontriviality, simp]`, takes its family **implicitly**, and sits beside
+  `iIndepSets.of_subsingleton` and `iIndep.of_subsingleton`. The local copy was an
+  eleven-line tactic proof of the same statement with the family explicit. What made this
+  survive audits is instructive and worth guarding against: its docstring ended "…it is
+  stated for a bare family of measurable functions and **would belong in
+  `ShannonInformation/API.lean`, or upstream of it**, if a second client wanted it" — a
+  sentence that reads as diligence (the author noticed it was generic!) while actually
+  *asserting* that upstream does not have it. **A "this would belong upstream" note is a
+  Mathlib-lacks-X claim in disguise and must carry the search that justifies it.** The one
+  that would have settled it in seconds: `grep -rn "of_subsingleton"
+  .lake/packages/mathlib/Mathlib/Probability/Independence/Basic.lean`. Concretely: before
+  writing a lemma whose statement mentions no paper vocabulary, grep Mathlib for the
+  *shape* under the naming convention Mathlib would use (`Foo.of_bar`, not `foo_of_bar`) —
+  the dot-namespaced spelling is the one this library's `foo_of_bar` habit will not find.
 - **The `Paper node:` line is the ledger's only hook, so an un-annotated declaration that
   states a paper claim is invisible to every gate.** Six `sorry`'d equations of Examples 4.1
   and 4.4 sat outside `check-condensation-nodes.py` and outside the `CONDENSATION-PENDING`
@@ -732,9 +850,77 @@ Full list (sixteen entries) with line numbers: `notes/paper-errata.md`.
 - **Lean 4 includes an instance binder from a `variable` block only when the declaration
   actually uses a variable mentioning it**, which is why `Condensation.kSubsets` does *not*
   pick up `[Finite I]` even though `[Finite I]` is in scope and `kSubsets` mentions `I`
-  (`Finite I` mentions `I`, but nothing in `kSubsets`'s body needs the instance). That is
-  what makes `polar_kSubsets`'s `omit [Finite I] in` legal. Do not reason about the
-  inclusion rules from memory — `#check @foo` and read the actual signature.
+  (`Finite I` mentions `I`, but nothing in `kSubsets`'s body needs the instance). Do not
+  reason about the inclusion rules from memory — `#check @foo` and read the actual signature.
+
+  **This bullet used to continue "…that is what makes `polar_kSubsets`'s `omit [Finite I] in`
+  legal", and that causal story is WRONG (corrected 2026-08-18, R4-F20).** It was tested by
+  deleting the `omit` and running `#check @Condensation.polar_kSubsets`: the theorem *does*
+  auto-include `[Finite I]`, and the binder duly appears in the signature. What is actually
+  true is that the included binder is **unused** — (5.24) is pure `Finset` combinatorics —
+  so the `unusedSectionVars` linter fires and `omit` is the silencer. `omit` is legal for an
+  included-but-*unused* binder, not for a never-included one. The distinction matters
+  because the old wording predicts the wrong outcome for exactly the experiment a "restore
+  the binder for uniformity" finding asks you to run, and a fixer who trusts it will report
+  a surprise.
+- **`decide` traps around `PPlus` extend to the ORDER, not just the index families.**
+  `PPlus.instPartialOrder` is a `PartialOrder.lift toFinset`, so there is **no**
+  `DecidableLE (PPlus I)` and `decide` fails on any goal mentioning `≤` or `incomparable`.
+  Same workaround as for `strictAbove`: `simp only [mem_incomparable, Set.mem_singleton_iff,
+  PPlus.le_iff]` first — turning `≤` into `Finset` inclusion — then `revert B; decide`.
+  `Condensation.twoCoin_incomparable_T` (`incomparable twoCoinT = {twoCoinF}`) closes in
+  four lines this way. Conversely, `revert A; decide` *does* prove
+  `∀ A : Finset Bool, A = ∅ ∨ A = {true} ∨ A = {false} ∨ A = {true, false}` instantly
+  (`finsetBool_cases`); contrast the hand-rolled `finsetUnit_cases` directly above it in
+  `Examples.lean`, which predates that insight and is five lines of `rcases`.
+- **There is no `condMutualInfo_const` (nor `condEntropy_const`) in the vendored layer, and
+  that is why `orderedMarkov_of_subsingleton_index` does not exist.** Record before
+  re-attempting it: the available characterization of Definition 4.8's PFR `CondIndepFun` is
+  `ShannonInformation.condMutualInfo_eq_zero` (the trick `Perfect.lean`'s `hsymm` uses),
+  which reduces the goal to `I(X ; const | Z) = 0` and then has nothing to finish with.
+  Mathlib's `ProbabilityTheory.condIndepFun_const_right`
+  (`Mathlib/Probability/Independence/Conditional.lean:716`) is stated for Mathlib's
+  *sub-σ-algebra* `CondIndepFun m' hm' f g μ`, **not** PFR's three-variable
+  `CondIndepFun f g h μ` that `RVModel.OrderedMarkov` uses, so it is not directly citable.
+  Anyone wanting the lemma should either bridge the two `CondIndepFun`s or add
+  `condMutualInfo_const` to `ShannonInformation/FiniteEntropy/Derived.lean`. `Examples.lean`
+  states the degeneracy as prose backed by the proved
+  `incomparable_eq_empty_of_subsingleton_index` instead.
+- **`lt_irrefl` does not apply to `Finset`'s `⊂`, and `simp` makes no progress on
+  `hC : s ⊂ s`.** There is no `ssubset_irrefl` or `Finset.not_ssubset_self` at this pin; the
+  only relevant lemma in `Mathlib/Data/Finset/Defs.lean` is `ssubset_iff_subset_ne` (:297).
+  The working one-liner is `exact (Finset.ssubset_iff_subset_ne.mp hC).2 rfl`. Relatedly,
+  `Subsingleton.elim C.1 B ▸ C.2` fails with "failed to compute motive"; the form that works
+  is `have hC : B.toFinset ⊂ (C : PPlus I).toFinset := C.2` then
+  `rw [Subsingleton.elim (C : PPlus I) B] at hC`.
+- **A wrong belief, held and corrected 2026-08-18: instance *synthesis* refuses to unfold a
+  concrete model, but defeq checking in `exact` unfolds it happily.** The expectation was
+  that the measurable-space instance on `∀ i : ↥A, twoCoinModel.R i` (from the bundled `mR`
+  field) would not unify with the plain pi instance on `∀ _ : ↥A, Bool`, so an `exact` across
+  that boundary would need `show`/`convert`. It unified with no hint. The standing KNOWLEDGE
+  warning that "instance search will not unfold a concrete model" — the one behind
+  `LatentAmalgamation.finiteEntropyOf'`'s load-bearing `Λ₀` spelling — is about *instance
+  synthesis*, which really does refuse. Two different mechanisms; do not generalize that
+  warning into avoiding `exact` across the model boundary.
+- **`ProbabilityTheory.entropy_comp_of_injective` is genuinely hypothesis-free** (no
+  `FiniteRange`, no `FiniteEntropyOf`) and is the general route to `H[M.joint A]` at a
+  **non-singleton** `A` for a model whose every `X i` is the identity:
+  `entropy_comp_of_injective coinMeasure (measurable_id) _ hinj` with
+  `hinj : Function.Injective (fun (b : Bool) (_ : {x // x ∈ A}) => b) :=
+  fun _ _ hab => congrFun hab ⟨i, hi⟩` from any `i ∈ A`. `RVModel.entropy_joint_singleton`
+  only reaches singletons.
+- **`omit … in` is this repo's idiom for an unused auto-included section binder; nothing here
+  uses `set_option linter.unusedSectionVars false`.** As of 2026-08-18: ~25 `omit … in`
+  occurrences across `Condensation/` (`Amalgamation.lean` 14, `Quantitative.lean` 3,
+  `ChainRule.lean` 3 — of which three are `omit [Finite J] in` — `Probability.lean` 3,
+  `Examples.lean` 1 `omit [Finite I] in`), and **zero** occurrences of the `set_option`;
+  `lakefile.lean` sets no warnings-as-errors. R4-F20 proposed deleting `polar_kSubsets`'s
+  `omit [Finite I] in` for §5 uniformity; the documented fallback (keep the `omit`, say in
+  the docstring why) was taken instead, because restoring an unused instance binder costs a
+  permanent linter warning *and* adds an assumption the proof never consumes, against
+  CLAUDE.md's minimal-typeclass rule. Weigh any future "restore for uniformity" finding
+  against this: the uniformity argument is local to one declaration, the idiom argument is
+  repo-wide, and forcing the restore would mean introducing the `set_option` mechanism.
 - **Verify a reconciliation with a scratch block of `rfl`/`Iff.rfl` `example`s and
   `#check @…`, all in one elaboration, then delete the block.** Restating a theorem over a
   bundled structure raises several "are these the same term?" questions at once; batching

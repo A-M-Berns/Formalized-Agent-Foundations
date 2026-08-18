@@ -2131,19 +2131,54 @@ open Condensation in
   -- from it by Theorem 4.9's (B1 => B2) rather than proved by hand;
   -- `Example44.L44_coin_simplyPerfectlyCondenses` is the simple clause, and is also what
   -- discharges `Example44.simplyPerfectlyCondenses`'s joint-independence hypothesis on a
-  -- constructed family (`iIndepFun_of_subsingleton` over the one-element `P⁺Unit`).
+  -- constructed family (Mathlib's `ProbabilityTheory.iIndepFun.of_subsingleton` over the
+  -- one-element `P⁺Unit`).
   -- `noisyLatent_not_perfectlyCondenses` is the NEGATIVE witness: perfect condensation is a
   -- real restriction, not a property every latent variable model has.  None of these is a
   -- paper statement -- the paper asserts no instance of Definition 4.3 beyond Example 4.4,
   -- which is `Example44.simplyPerfectlyCondenses` in the inventory block above -- so they
   -- belong here.
-  Condensation.iIndepFun_of_subsingleton
+  --
+  -- **The `coinLatent_*` witnesses above are DEGENERATE, and round 4 (R4-F23) corrected the
+  -- over-claim this comment used to make.**  At `I = Unit` the ordered Markov condition
+  -- holds for *every* `RVModel (PPlus Unit)` and `condScore = simpleScore` for *every*
+  -- latent over an `RVModel Unit`, so `coinLatent_orderedMarkov` witnesses satisfiability
+  -- and nothing about the content of Definition 4.8.  The witnesses that carry content are
+  -- the `twoCoinLatent_*` ones at `I = Bool` listed further down, where `P⁺Bool` has three
+  -- elements and `incomparable twoCoinT` is nonempty.
   Condensation.coinLatent_entropy Condensation.coinLatent_condScore
   Condensation.coinLatent_perfectlyCondenses Condensation.coinLatent_orderedMarkov
   Condensation.coinLatentRV_iIndepFun
   Condensation.Example44.L44_coin_simplyPerfectlyCondenses
   Condensation.Example44.L44_coin_perfectlyCondenses
   Condensation.noisyModel_entropy_joint Condensation.noisyLatent_not_perfectlyCondenses
+  -- Round 4 (2026-08-18, R4-F23): the witnesses that carry CONTENT, at `I = Bool`, plus the
+  -- two lemmas that prove the `Unit`-indexed ones above do not.
+  --
+  -- The degeneracy, proved rather than asserted: over a subsingleton `P⁺I`,
+  -- `condScore_eq_simpleScore_of_subsingleton_index` says `χ_L = σ_L` for **every** latent
+  -- variable model, and `incomparable_eq_empty_of_subsingleton_index` says Definition 4.8's
+  -- family of incomparable indices is empty.  So at `I = Unit` neither Definition 4.3's
+  -- distinction nor Definition 4.8's conditional independence has any content, and the
+  -- `coinLatent_*` witnesses establish satisfiability only.
+  --
+  -- At `I = Bool` with all three latents equal to one fair coin: `χ_L = log 2` at each of
+  -- the three nonempty `A` while `σ_L({true}) = 2 log 2`, so
+  -- `twoCoinLatent_perfectlyCondenses` and `twoCoinLatent_not_simplyPerfectlyCondenses`
+  -- **separate Definition 4.3's two clauses on a single witness** —
+  -- `LatentModel.PerfectlyCondenses.of_simply` has no converse, and that is not observable
+  -- at `I = Unit`.  `twoCoinLatent_orderedMarkov` inhabits Definition 4.8 where the
+  -- condition is not vacuous: `twoCoin_incomparable_T` computes
+  -- `incomparable twoCoinT = {twoCoinF}`, which is nonempty.
+  Condensation.twoCoinF Condensation.twoCoinF_ne_twoCoinTF
+  Condensation.condScore_eq_simpleScore_of_subsingleton_index
+  Condensation.incomparable_eq_empty_of_subsingleton_index
+  Condensation.twoCoin_famFinset_contrib_F Condensation.twoCoin_famFinset_contrib_TF
+  Condensation.twoCoinLatent_condEntropy_F
+  Condensation.twoCoinLatent_condScore_F Condensation.twoCoinLatent_condScore_TF
+  Condensation.twoCoinLatent_perfectlyCondenses
+  Condensation.twoCoinLatent_not_simplyPerfectlyCondenses
+  Condensation.twoCoin_incomparable_T Condensation.twoCoinLatent_orderedMarkov
   -- Phase 4b (2026-08-17): the witness with an **infinite-range** variable, which the
   -- retired `dd:finite-range` narrowing excluded and Definition 3.1 admits.  `Ω = ℕ` under
   -- the geometric law of `ShannonInformation/FiniteEntropy/Examples.lean`, `X () = id`.
@@ -2174,6 +2209,12 @@ open Condensation in
   Condensation.LatentModel.entropy_pullbackJoint
   Condensation.contribIdx_subset_contrib Condensation.incomparable
   Condensation.isUpperSet_contrib Condensation.isUpperSet_above Condensation.contrib_injective
+  -- The five membership `Iff`s of the Definition 3.4 auxiliaries and of `incomparable`.
+  -- They are `@[simp]` and mostly `Iff.rfl`, which is exactly why they were missed until
+  -- R4-F27: a client rewrites with them constantly, so they are part of the supported
+  -- boundary even though nothing here has to be *proved*.
+  Condensation.mem_contrib Condensation.mem_above Condensation.mem_strictAbove
+  Condensation.mem_contribIdx Condensation.mem_incomparable
   -- M2 additions.  `ChainRule.lean`: the chain rule for a *finite family* of joint
   -- variables along a strict linear order, which PFR does not have (it stops at the two-
   -- and three-variable forms) and which all four remaining §4 endpoints run on.  None of
@@ -2215,6 +2256,9 @@ open Condensation in
   Condensation.RVModel.Hom.ext
   Condensation.RVModel.Hom.IsMeasurableIso Condensation.RVModel.Hom.isMeasurableIso_of_bijective
   Condensation.RVModel.Hom.ofSameIndex Condensation.RVModel.isEquivalence_ofSameIndex_iff
+  -- Definition 3.9 packaged as a `Setoid` on each hom-type (`dd:category`); the `≈`
+  -- notation a client uses for a.e. equality of morphisms resolves through it (R4-F27).
+  Condensation.RVModel.Hom.instSetoid
   Condensation.RVModel.Equivalent.refl Condensation.RVModel.Equivalent.symm
   Condensation.RVModel.Equivalent.trans
   Condensation.RVModelObj.Equivalent Condensation.RVModelObj.id_eq Condensation.RVModelObj.comp_eq
@@ -2253,6 +2297,7 @@ open Condensation in
   Condensation.condInteractionInfo_swap Condensation.condInteractionInfo_rotate
   Condensation.mem_polar Condensation.mem_polar_iff Condensation.isUpperSet_polar
   Condensation.polar_antitone Condensation.polar_singleton Condensation.polar_eq_iInter
+  Condensation.polar_empty
   Condensation.isUpperSet_inf_closed
   Condensation.ITree.leaves Condensation.ITree.subtrees
   Condensation.ITree.label_mem_of_labelsIn Condensation.ITree.label_eq_polar

@@ -189,7 +189,7 @@ Where each stands:
 | 1. faithful paper coverage | **met, conditionally.** Every in-scope node is carried and proved (39/42, the three exclusions being Examples 5.1–5.3). The condition is that the exclusion is still a *proposed* ruling — open ruling 2 — not a settled one. |
 | 2. provenance and trust-surface accounting | **met.** This file, [`KNOWLEDGE.md`](KNOWLEDGE.md), [`notes/paper-errata.md`](notes/paper-errata.md), the `Paper node:` annotation contract checked fail-closed including node *kind*, and per-declaration coverage in `AxiomAudit.lean`. |
 | 3. axiom cleanliness and disclosed trust boundaries | **met.** Zero `sorry`, 112 endpoints axiom-clean, an empty pending block, no `axiom` declarations, no modeling substitutions, and the two remaining restrictions (universe stratification, the Examples 5.1–5.3 scope ruling) disclosed above and in `KNOWLEDGE.md`. Universe stratification is open ruling 3. |
-| 4. a documented consumer import | **met.** [`API.lean`](API.lean) is the recommended entrypoint, registered as this paper's `api` key. It imports the whole paper surface and documents it as an interface: vocabulary section by section, the `ShannonInformation.API` substrate rules, the errata a client should know, and — the part that answers the question this row used to leave open — which declarations are paper endpoints as against conveniences, by pointing at `AxiomAudit.lean`'s two blocks. The rulings it settles: the §3.1 category machinery, the amalgamation constructions and `ChainRule.lean`'s substrate are all **on** the boundary (a client doing quantitative work with joint variables needs the chain-rule layer, and neither Mathlib nor the vendored PFR snapshot has it), and so is `Examples.lean` — unlike `FiniteFactoredSets/Examples.lean`, it is not a fixture file: it carries Examples 4.1 and 4.4 as *paper nodes stated over an arbitrary model*, together with `LatentModel.ofJoint`/`nonempty`, which is the first latent model a client can reach for. The genuinely fixture-shaped witnesses come along with it in the same file and are documented as regression fixtures rather than a dependency surface. |
+| 4. a documented consumer import | **met.** [`API.lean`](API.lean) is the recommended entrypoint, registered as this paper's `api` key. It imports the whole paper surface and documents it as an interface: vocabulary section by section, the `ShannonInformation.API` substrate rules, the errata a client should know, and — the part that answers the question this row used to leave open — which declarations are paper endpoints as against conveniences, by cataloguing `AxiomAudit.lean`'s **three** Condensation blocks and saying what each is actually for (the `Paper node:` docstring line, not block membership, is what marks an endpoint). The rulings it settles: the §3.1 category machinery, the amalgamation constructions and `ChainRule.lean`'s substrate are all **on** the boundary (a client doing quantitative work with joint variables needs the chain-rule layer, and neither Mathlib nor the vendored PFR snapshot has it), and so is `Examples.lean` — unlike `FiniteFactoredSets/Examples.lean`, it is not a fixture file: it carries Examples 4.1 and 4.4 as *paper nodes stated over an arbitrary model*, together with `LatentModel.ofJoint`/`nonempty`, which is the first latent model a client can reach for. The genuinely fixture-shaped witnesses come along with it in the same file and are documented as regression fixtures rather than a dependency surface. |
 | 5. client-style smoke tests | **met.** [`../APITests/Condensation.lean`](../APITests/Condensation.lean) imports only `Condensation.API` and builds a client model from scratch (`Ω = Bool × Bool` uniform, `I = Bool`, the two coordinates as observables — not one of `Examples.lean`'s fixtures), a latent model over it, computes both scores by rewriting through `famFinset`/`contrib`, and then composes endpoints: Proposition 2.5 with `AEFunctionOf.trans`, Proposition 4.2's chain, Theorem 4.9 into `OrderedMarkov`, `LatentAmalgamation.diagonal` into Theorem 4.15, Theorem 5.8 at a one-leaf tree, a `Hom` composition with `Hom.isIso_iff`, and the chain-rule layer's `iIndepFun_of_entropy_jointOn_eq_sum` to certify that the client's two observables are independent. It is collected in `APITests.lean` and so builds by default. |
 
 `scripts/papers.py` now carries both the `api` and the `api_test` key for this paper, so
@@ -209,7 +209,10 @@ the ninth (`ChainRule.lean`) is machinery a quantitative client demonstrably nee
 cannot get from Mathlib or the vendored PFR snapshot — `APITests/Condensation.lean` uses it
 to certify that a client's own observables are independent. The curation is therefore in
 *what is documented as supported*, not in a narrower import: the API docstring separates
-paper endpoints from conveniences by pointing at `AxiomAudit.lean`'s two blocks, and marks
+paper endpoints from conveniences by cataloguing `AxiomAudit.lean`'s three Condensation
+blocks — the `CONDENSATION-INVENTORY` axiom gate, the pure-comment `CONDENSATION-PENDING`
+staging block, and the marker-less `## Consumer API conveniences` block where the plumbing
+and the constructed witnesses are asserted clean — and marks
 `Examples.lean`'s fixture-shaped witnesses as regression fixtures rather than a dependency
 surface. If the read-through disagrees, the fix is to split `Examples.lean` along the line
 the docstring already draws.
@@ -299,7 +302,7 @@ Mirrors the table in [`notes/roadmap.md`](notes/roadmap.md); the same glossary s
 | `dd:ae-function` | "`Y` is a function of `X` almost everywhere" is `AEFunctionOf X Y P := ∃ f, Measurable f ∧ ∀ᵐ ω ∂P, Y ω = f (X ω)`; the everywhere version `FunctionOf` likewise without `∀ᵐ`. Measurability of `f` is kept in the definition (paper: "measurable function") and discharged by `measurable_of_countable` on countable discrete ranges. | Verbatim Def 2.1's fifth convention; the measurability conjunct is free in our setting but keeping it stops the definition drifting from the paper. |
 | `dd:pullback` | Pullback `π^* X` is plain composition `X ∘ π`; probability-preserving = Mathlib `MeasureTheory.MeasurePreserving π P_Λ P_Ω`. Equation (2.2) invariance is `IdentDistrib`-based (`MeasurePreserving` gives `IdentDistrib (X ∘ π) X`). | Repo rule: never redefine what Mathlib has. |
 | `dd:interaction` | Def 2.3's `I(X;Y;Z) := I[X : Y] − I[X : Y \| Z]` and its conditional form `I(X;Y;Z \| C) := I[X : Y \| C] − I[X : Y \| ⟨Z, C⟩]` (needed by Lemma 5.4 / Thm 5.8) are FAF-authored `def`s over the vendored `mutualInfo`/`condMutualInfo`; symmetry is a lemma. | The API deliberately adds no definitions; interaction information is paper-specific until a second client needs it. |
-| `dd:tree` | Def 5.6's intersection tree is an inductive binary tree `ITree (M) := leaf (a : M) \| node (l r : ITree M)` with the label of a node *computed* as the meet of its children's labels; Prop 5.7 is stated as: any labeling of the tree's positions that agrees on leaves and satisfies (5.10) at every internal position equals the computed labeling. Leaves/internal vertices are lists of positions; Thm 5.8's "bijection between leaves and `{C : B∩C≠∅}_{B∈F}`" is the **multiset** equation `(T.leaves : Multiset _) = (famFinset F).val.map (fun B => contrib B.toFinset)` — leaf labels *with multiplicity* — and it is a bijection rather than a surjection because `contrib_injective` makes the right-hand multiset duplicate-free. (It is **not** `List.Nodup` + `toFinset = image`; that phrasing stood here until 2026-08-18 and never matched the Lean.) | A directed rooted binary tree with unique paths to the root *is* an inductive binary tree; the (V,E,ℓ) presentation would import graph theory for no content. Recorded as a rendering, not a substitution; auditors should attack it if any §5 statement loses generality. |
+| `dd:tree` | Def 5.6's intersection tree is an inductive binary tree `ITree (M) := leaf (a : M) \| node (l r : ITree M)` with the label of a node *computed* as the meet of its children's labels; Prop 5.7 is stated as: any labeling of the tree's positions that agrees on leaves and satisfies (5.10) at every internal position equals the computed labeling. Leaves/internal vertices are lists of positions; Thm 5.8's "bijection between leaves and `{C : B∩C≠∅}_{B∈F}`" is the **multiset** equation `(T.leaves : Multiset _) = (famFinset F).val.map (fun B => contrib B.toFinset)` — leaf labels *with multiplicity* — and it is a bijection rather than a surjection because `contrib_injective` makes the right-hand multiset duplicate-free. (It is **not** `List.Nodup` + `toFinset = image`; that phrasing stood here until 2026-08-18 and never matched the Lean.) | A directed rooted binary tree with unique paths to the root *is* an inductive binary tree; the (V,E,ℓ) presentation would import graph theory for no content. **One disclosed reading rides on this (R4-F02, 2026-08-18):** `ITree` is inductive, so it reads Def 5.6 as ranging over **finite** trees, and Def 5.6 as printed carries no finiteness or well-foundedness clause — its condition (1) constrains directed paths *to* the root, which an upward-infinite leafless tree satisfies (errata 17). The reading is licensed by Thm 5.8, whose (5.14) is a finite sum over the tree's leaves and internal vertices and so has content only for a finite tree. This is a rendering plus a disclosed reading, not a modeling substitution; auditors should attack it if any §5 statement loses generality. |
 | `dd:category` | Prop 3.7 is a `CategoryTheory.Category` instance on the bundled type of random variable models (objects `Σ I, RVModel I` at fixed universes); Prop 3.8 uses `CategoryTheory.IsIso`; Def 3.9's a.e.-equality is a relation on hom-types (a `Setoid`), 3.10–3.12 are stated over it. No `Bicategory`. | Follows the paper, which names the 2-category and declines to use it. |
 | `dd:amalgamation` | Def 4.11's Λ₀ is the subtype `{p : Λ₁ × Λ₂ // π₁ p.1 = π₂ p.2}` with the discrete σ-algebra and the measure `∑' p, w p • dirac p`, `w (λ₁,λ₂) = P₁{λ₁} P₂{λ₂} / P_Ω{π₁ λ₁}` (0 when the denominator is 0) — the paper's (4.53) integral evaluated on a countable discrete space. | Same object; the sum form is what a countable-discrete Λ₀ means. |
 
@@ -325,6 +328,30 @@ explicit universe list at *existence* statements (`Nonempty (LatentModel.{u,v,w,
 and nothing at all at the statement shape every §4/§5 theorem uses
 (`{I} [Finite I] {M : RVModel I} (L : LatentModel M) …`); `Nonempty (RVModel.{u,v,w} I)`
 already needed the same annotation, so this is not a new kind of friction.
+
+### Bundled model vs. bare variables: a documented generality choice, not drift
+
+Raised as R4-F21 and recorded because an auditor comparing §4's statements side by side will
+notice the asymmetry and should not read it as inconsistency.
+
+**Definition 4.8 and Proposition 4.10 are stated over `RVModel (PPlus I)`** — a bundled
+model, indexed by the nonempty subsets — so they inherit §2's blanket convention wholesale:
+countable discrete sample space of finite entropy, countable discrete ranges. They carry
+**no** local finiteness or discreteness hypothesis at all, because finiteness reaches them
+through Definition 3.1's `finiteEntropy_Ω` field and `RVModel.finiteEntropyOf`.
+
+**Lemma 4.14 and Lemma 5.4 are stated over bare random variables** with explicit binders
+(`Condensation.aeFunctionOf_of_condIndepFun`, `Condensation.condEntropy_le_of_pair` /
+`.condEntropy_eq_of_pair`), because the paper states them that way and because they are
+substrate lemmas with clients that have no model in hand.
+
+The cost is that the two halves of §4 are not comparable binder-for-binder; the benefit is
+that neither is weaker than the paper's own statement. A bare-family restatement of
+Definition 4.8 and Proposition 4.10 — over `(Y : PPlus I → Ω → R _)` with explicit
+finite-entropy binders — would be strictly more general and is a **possible follow-up**, not
+a defect: nothing in §4 or §5 needs it, since every consumer already has a model. The wrong
+way to remove the asymmetry is to add hypotheses to the model-side statements, which would
+narrow them below the paper.
 
 ## Scope
 
@@ -523,7 +550,14 @@ cannot be listed in `#assert_axioms_clean`: that command exists to catch exactly
 the check. Dropping the annotation instead would be a lie about the statement's provenance,
 and would also stop the node checker from guarding the statement.
 
-So the annotated surface is split across two blocks in `AxiomAudit.lean`. The
+So the *annotated* surface is split across two of `AxiomAudit.lean`'s three Condensation
+blocks. (The third is the marker-less `## Consumer API conveniences` `#assert_axioms_clean`
+block near the end of the file, which is where the un-annotated consumer plumbing and the
+constructed non-vacuity witnesses are asserted clean. It plays no part in the staging
+mechanism described here, and it is a common misreading — corrected in round 4, R4-F24 — to
+suppose that the `-- SECTION: consumers (un-annotated)` marker below is where those live.
+It is not: that marker belongs to the staging block and names un-annotated consumers *of a
+staged theorem*.) The
 `CONDENSATION-INVENTORY` block is the ordinary axiom gate. The `CONDENSATION-PENDING`
 block that follows it is **pure Lean comment** — it compiles to nothing and asserts nothing
 — and names, one per line with a reason, every annotated endpoint that is not yet
@@ -590,13 +624,23 @@ supporting results are `lemma` (or `private lemma`), and data-valued carriers ar
 ## Errata
 
 Defects found in the printed paper while formalizing are recorded in
-[`notes/paper-errata.md`](notes/paper-errata.md) — **fifteen entries as of M2**: a wrong
-equation reference in Theorem 5.8's proof, an undefined symbol in Theorem 4.15's proof, a
-leftover parameter name in Corollary 5.10, a dropped "almost everywhere" in Theorem 4.9,
-one lemma that is **false as printed**, and several citation and notation slips.
+[`notes/paper-errata.md`](notes/paper-errata.md) — **twenty-two entries as of the round-4
+close-out (2026-08-18)**, plus one candidate investigated and *refuted*, recorded at the
+foot of that file so it is not re-raised: a wrong equation reference in Theorem 5.8's proof,
+an undefined symbol in Theorem 4.15's proof, a leftover parameter name in Corollary 5.10, a
+dropped "almost everywhere" in Theorem 4.9, one lemma that is **false as printed**, a
+definition missing the finiteness clause its own consuming theorem needs, and several
+citation and notation slips.
 
-Six of the fifteen bear directly on a Lean statement, and each was found by trying to write
-that statement down or by trying to prove it:
+Entries 17–22 came from the **final blind audits** — an Opus auditor and a codex auditor
+given only the paper, the Lean source and the standing rulings, and deliberately *not* given
+this errata file. Those same audits independently rediscovered entries 1, 2, 4, 6, 8, 10,
+11, 15 and 16, which is the corroboration the trust surface rests on; see `KNOWLEDGE.md`,
+*Audit history and corroboration*, including the reason not to show a future auditor this
+file before they audit.
+
+Seven of the twenty-two bear directly on a Lean statement or docstring, and each was found
+by trying to write that statement down or by trying to prove it:
 
 * **entry 10 — Definition 4.12 does not tie `π̃₁` to `π̃₂`.** Each `L̃ₖ` carries its own map
   to `Ω`, and the commuting square (4.43) that would relate them belongs to Definition
@@ -633,10 +677,21 @@ that statement down or by trying to prove it:
   weakening the conclusion: `Condensation.aeFunctionOf_of_condIndepFun` carries
   `[MeasurableSingletonClass S]` on `X`'s range, which is free at every call site (`X` is
   always a model variable, and `RVModel` carries `singR`) and is licensed by the paper's own
-  standing §2 convention that "our probability spaces are countable and discrete". `T₁` and
+  standing setting — Definition 3.1 and §2 — that every random variable under consideration
+  has countable discrete **range**. (Not by the §2 sentence about probability *spaces* being
+  countable and discrete: that constrains `Ω`, and the whole content of entry 15 is that
+  constraining `Ω` alone leaves the lemma false. R4-F13 corrected this attribution.) `T₁` and
   `T₂` still need nothing beyond a measurable-space structure. Round 2's binder strip
   (R2-F01/F23) had gone one range too far; the orchestrator ruling of 2026-08-18 restored
   this one binder and the lemma is proved.
+* **entry 17 — Definition 5.6 never requires the intersection tree to be finite or
+  well-founded**, though Theorem 5.8's (5.13)/(5.14) are finite sums over its leaves and
+  internal vertices. Condition (1) constrains directed paths *to* the root, which the full
+  infinite binary tree satisfies, and the leaf-bijection hypothesis bounds only the leaves.
+  The Lean's inductive `ITree` reads Definition 5.6 as ranging over the **finite** trees;
+  since R4-F02 that is written down as a *disclosed reading* licensed by Theorem 5.8's sums,
+  not as "nothing is lost" — see the `dd:tree` row above. Note that entry 14's step "such a
+  tree has at least one leaf" is licensed only by this reading.
 
 **Consult that file before concluding that a Lean statement or proof diverges from the
 printed one**, because in several places the printed text is the thing that is wrong. This
@@ -665,12 +720,24 @@ What is actually constructed and proved at M0, so that no reader has to take the
 Every row above witnesses a *structure*. The rows below, added 2026-08-18, witness the
 **conditions** of §4 — Definition 4.3's two clauses and Definition 4.8 — which until then
 had no constructed inhabitant at all, so Theorem 4.9, Proposition 4.10 and Theorem 4.15
-were non-vacuous only in the sense that their statements elaborate:
+were non-vacuous only in the sense that their statements elaborate.
+
+**Read the `I = Unit` rows as satisfiability only** (R4-F23, corrected 2026-08-18). Round 3
+landed them and over-claimed: at a subsingleton `P⁺I` both definitions collapse, and the
+collapse is now *proved* rather than argued —
+`condScore_eq_simpleScore_of_subsingleton_index` shows `χ_L = σ_L` for **every** latent
+variable model over such an index, so `coinLatent_perfectlyCondenses` cannot tell Definition
+4.3's two clauses apart; and `incomparable_eq_empty_of_subsingleton_index` shows Definition
+4.8's family of incomparable indices is **empty** there, so the ordered Markov condition is
+an assertion of conditional independence from a variable into a one-point type and holds for
+every `RVModel (PPlus Unit)`. The `I = Bool` rows are the ones with content:
 
 | witness | what it is | what is *proved* about it |
 |---|---|---|
-| `coinLatent` again | the same `L₁`-shaped latent model over the fair coin | `coinLatent_perfectlyCondenses : coinLatent.PerfectlyCondenses` — Definition 4.3's conditioned clause, checked at both elements of `Finset Unit` (`0 = 0` at `∅`, `log 2 = log 2` at `{()}`). Hence `coinLatent_orderedMarkov : coinLatent.L.OrderedMarkov`, Definition 4.8, obtained through Theorem 4.9's (B1 ⇒ B2) rather than proved by hand |
-| `Example44.L44 coinLatent.L` | Example 4.4's construction applied to the coin's latent family | `Example44.L44_coin_simplyPerfectlyCondenses` — Definition 4.3's *simple* clause. This is also what discharges `Example44.simplyPerfectlyCondenses`'s joint-independence hypothesis on a concrete family: `P⁺Unit` is a one-element index type, so `iIndepFun_of_subsingleton` applies. `L44_coin_perfectlyCondenses` follows by the (4.21) squeeze |
+| `coinLatent` again (`I = Unit`, **degenerate**) | the same `L₁`-shaped latent model over the fair coin | `coinLatent_perfectlyCondenses : coinLatent.PerfectlyCondenses` — Definition 4.3's conditioned clause, checked at both elements of `Finset Unit` (`0 = 0` at `∅`, `log 2 = log 2` at `{()}`). Hence `coinLatent_orderedMarkov : coinLatent.L.OrderedMarkov`, Definition 4.8, obtained through Theorem 4.9's (B1 ⇒ B2) rather than proved by hand. **Satisfiability only** — see the two degeneracy lemmas above |
+| `twoCoinLatent` (`I = Bool`) — **Definition 4.3's two clauses separated on one witness** | `P⁺Bool` has three elements; all three latents are the same fair coin | `twoCoinLatent_perfectlyCondenses : twoCoinLatent.PerfectlyCondenses`, checked at all four values of `Finset Bool` (`χ_L = log 2 = H(X_A)` at each nonempty `A`, `0 = 0` at `∅`), **together with** `twoCoinLatent_not_simplyPerfectlyCondenses : ¬ twoCoinLatent.SimplyPerfectlyCondenses`, since `σ_L({true}) = 2 log 2` while `H(X_{true}) = log 2`. So `LatentModel.PerfectlyCondenses.of_simply` has **no converse**, and this is invisible at `I = Unit` |
+| `twoCoinLatent` again — **Definition 4.8 with content** | the same two-index witness | `twoCoinLatent_orderedMarkov : twoCoinLatent.L.OrderedMarkov`, again through Theorem 4.9's (B1 ⇒ B2). Unlike the `Unit` case the condition is not vacuous here: `twoCoin_incomparable_T` computes `incomparable twoCoinT = {twoCoinF}`, which is nonempty, so the conditional independence being asserted is about a genuine variable |
+| `Example44.L44 coinLatent.L` | Example 4.4's construction applied to the coin's latent family | `Example44.L44_coin_simplyPerfectlyCondenses` — Definition 4.3's *simple* clause. This is also what discharges `Example44.simplyPerfectlyCondenses`'s joint-independence hypothesis on a concrete family: `P⁺Unit` is a one-element index type, so Mathlib's `ProbabilityTheory.iIndepFun.of_subsingleton` applies. `L44_coin_perfectlyCondenses` follows by the (4.21) squeeze |
 | `noisyLatent` again | the same `Λ = Bool × Bool`, `π = fst` witness | **the negative witness**: `noisyLatent_not_perfectlyCondenses : ¬ noisyLatent.PerfectlyCondenses`. `χ_L({()}) = 2 log 2` while `H(X_{()}) = log 2` — the gap is the bit `π` discards. Without this row the positive ones would not establish that perfect condensation is a *restriction* rather than a property every latent variable model has |
 
 Two of those exist to correct a specific over-claim. An earlier draft of `Examples.lean`

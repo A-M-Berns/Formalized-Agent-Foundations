@@ -19,7 +19,8 @@ What is here, and what each witness is *for*:
 * `twoCoinLatent` — a **two-index** witness (`I = Bool`), where `P⁺I` has three elements
   and the conditioning in Definition 3.3's `χ_L` does real work: `σ = 2 log 2` while
   `χ = log 2`.  The `Unit`-indexed witness cannot show that, its `P⁺I` having a single
-  element with nothing strictly above it.
+  element with nothing strictly above it.  This is also the witness that carries the
+  content of Definitions 4.3 and 4.8; see below.
 * `noisyLatent` — a witness whose **reconstruction score is strictly positive**.  This one
   exists because `ϱ_L(A) = H(Y_⊇A | X_A)` vanishes whenever the latents above `A` are a
   function of `X_A`, which is the case for both witnesses above; a reader who saw only
@@ -43,15 +44,30 @@ geometric law `geomModel` is built on.  That module is deliberately not re-expor
 `Mathlib.Probability.Distributions.Geometric`), so the import has to be named here.
 
 Beside the *structures*, the **conditions** of §4 get witnesses too, added 2026-08-18 and
-collected in the "Definitions 4.3 and 4.8" section below.  Until then nothing in the library
-exhibited a latent variable model that perfectly condenses anything, so Theorem 4.9,
+collected in the two "Definitions 4.3 and 4.8" sections below.  Until then nothing in the
+library exhibited a latent variable model that perfectly condenses anything, so Theorem 4.9,
 Proposition 4.10 and Theorem 4.15 were non-vacuous only in the sense that their statements
-elaborate.  Now `coinLatent_perfectlyCondenses` inhabits Definition 4.3's conditioned
-clause, `coinLatent_orderedMarkov` (through Theorem 4.9's (B1 ⇒ B2)) inhabits Definition
-4.8, `Example44.L44_coin_simplyPerfectlyCondenses` inhabits the simple clause and discharges
-Example 4.4's joint-independence hypothesis on a constructed family, and
-`noisyLatent_not_perfectlyCondenses` is the **negative** witness that perfect condensation
-is a real restriction rather than a property every latent variable model has.
+elaborate.
+
+Those witnesses come at two index types, and the distinction matters:
+
+* At `I = Unit`, `coinLatent_perfectlyCondenses` inhabits Definition 4.3's conditioned
+  clause, `coinLatent_orderedMarkov` (through Theorem 4.9's (B1 ⇒ B2)) inhabits Definition
+  4.8, and `Example44.L44_coin_simplyPerfectlyCondenses` inhabits the simple clause and
+  discharges Example 4.4's joint-independence hypothesis on a constructed family.  These
+  establish **satisfiability only**: at a subsingleton `P⁺I` the conditioned and simple
+  scores coincide (`condScore_eq_simpleScore_of_subsingleton_index`) and Definition 4.8's
+  family of incomparable indices is empty (`incomparable_eq_empty_of_subsingleton_index`),
+  so neither condition has any content there.
+* At `I = Bool`, `twoCoinLatent_perfectlyCondenses` and
+  `twoCoinLatent_not_simplyPerfectlyCondenses` **separate** Definition 4.3's two clauses on
+  a single latent variable model, and `twoCoinLatent_orderedMarkov` inhabits Definition 4.8
+  where its conditional independence is not vacuous — `incomparable twoCoinT = {twoCoinF}`
+  is nonempty (`twoCoin_incomparable_T`).  These are the witnesses with content.
+
+In the other direction, `noisyLatent_not_perfectlyCondenses` is the **negative** witness
+that perfect condensation is a real restriction rather than a property every latent
+variable model has.
 
 A caution the earlier draft of this file got wrong: it is **not** true that every score is
 positive on `coinLatent`.  `coinLatent.reconScore {()} = 0`, proved below — perfect
@@ -98,6 +114,15 @@ noncomputable def coinMeasure : Measure Bool := uniformOn (Set.univ : Set Bool)
 instance : IsProbabilityMeasure coinMeasure := by
   unfold coinMeasure; infer_instance
 
+/-- `H(id) = log 2` for the uniform law on `Bool`.  Every entropy computation in this file
+that lands on a fair coin reduces to this one by `show`, the coin being the identity on
+`Bool` in `coinModel`, `coinLatentRV`, `twoCoinModel` and `twoCoinLatentRV` alike. -/
+private lemma coinMeasure_entropy_id : H[(id : Bool → Bool) ; coinMeasure] = Real.log 2 := by
+  have huniform : IsUniform (Set.univ : Set Bool) (id : Bool → Bool) coinMeasure :=
+    isUniform_uniformOn
+  have h := huniform.entropy_eq' Set.finite_univ measurable_id
+  simpa [Set.ncard_univ, Nat.card_eq_fintype_card] using h
+
 /-- The fair coin as a random variable model with a single variable: `Ω = Bool` with the
 uniform measure, indexed by `Unit`, and `X () = id`. -/
 noncomputable def coinModel : RVModel Unit where
@@ -116,10 +141,7 @@ noncomputable def coinModel : RVModel Unit where
 every information quantity vanishes. -/
 lemma coinModel_entropy : H[coinModel.X () ; coinModel.P] = Real.log 2 := by
   show H[(id : Bool → Bool) ; coinMeasure] = Real.log 2
-  have huniform : IsUniform (Set.univ : Set Bool) (id : Bool → Bool) coinMeasure :=
-    isUniform_uniformOn
-  have h := huniform.entropy_eq' Set.finite_univ measurable_id
-  simpa [Set.ncard_univ, Nat.card_eq_fintype_card] using h
+  exact coinMeasure_entropy_id
 
 lemma coinModel_entropy_pos : 0 < H[coinModel.X () ; coinModel.P] := by
   rw [coinModel_entropy]; exact Real.log_pos (by norm_num)
@@ -211,10 +233,18 @@ noncomputable def twoCoinLatent : LatentModel twoCoinModel where
 /-- `{true} ∈ P⁺ Bool`. -/
 def twoCoinT : PPlus Bool := ⟨{true}, Finset.singleton_nonempty _⟩
 
+/-- `{false} ∈ P⁺ Bool`.  Together with `twoCoinT` and `twoCoinTF` this exhausts `P⁺ Bool`,
+which is what makes the Bool-indexed witnesses of the "Definitions 4.3 and 4.8 at
+`I = Bool`" section below non-degenerate: `incomparable twoCoinT = {twoCoinF}` is nonempty
+(`twoCoin_incomparable_T`), where the `Unit`-indexed `incomparable` is empty. -/
+def twoCoinF : PPlus Bool := ⟨{false}, Finset.singleton_nonempty _⟩
+
 /-- `{true, false} ∈ P⁺ Bool`, the maximum of `P⁺ Bool`. -/
 def twoCoinTF : PPlus Bool := ⟨{true, false}, ⟨true, by decide⟩⟩
 
 lemma twoCoinT_ne_twoCoinTF : twoCoinT ≠ twoCoinTF := by decide
+
+lemma twoCoinF_ne_twoCoinTF : twoCoinF ≠ twoCoinTF := by decide
 
 /-- The latents contributing to `{true}` are exactly `{true}` and `{true, false}`. -/
 lemma twoCoin_famFinset_contrib :
@@ -229,10 +259,7 @@ lemma twoCoin_famFinset_contrib :
 lemma twoCoinLatent_entropy (B : PPlus Bool) :
     H[twoCoinLatent.Y B ; twoCoinLatent.P] = Real.log 2 := by
   show H[(id : Bool → Bool) ; coinMeasure] = Real.log 2
-  have huniform : IsUniform (Set.univ : Set Bool) (id : Bool → Bool) coinMeasure :=
-    isUniform_uniformOn
-  have h := huniform.entropy_eq' Set.finite_univ measurable_id
-  simpa [Set.ncard_univ, Nat.card_eq_fintype_card] using h
+  exact coinMeasure_entropy_id
 
 /-- `σ_L({true}) = 2 log 2` — two contributing latents, each a fair coin. -/
 lemma twoCoinLatent_simpleScore :
@@ -487,31 +514,52 @@ lemma noisyLatent_condScore :
       (noisyLatent.L.measurable_X (PPlus.single ())) measurable_const,
     noisy_entropy_Y]
 
-/-! ## Definitions 4.3 and 4.8 — witnesses on both sides
+/-! ## Definitions 4.3 and 4.8 at `I = Unit` — satisfiable, but degenerate
 
 `PerfectlyCondenses`, `SimplyPerfectlyCondenses` (Definition 4.3) and `OrderedMarkov`
 (Definition 4.8) are the standing hypotheses of Theorem 4.9, Proposition 4.10 and Theorem
 4.15.  Until this section nothing in the library exhibited a latent variable model
 satisfying any of them, so those results were non-vacuous only in the weak sense that their
 *statements* elaborate — the boundary structures had inhabitants, the conditions on them
-did not.  This section supplies witnesses in both directions.
+did not.  This section supplies `Unit`-indexed witnesses in both directions.
+
+**Read the positive `Unit` witnesses as satisfiability only.**  At `I = Unit` both
+definitions collapse, and the collapse is proved here rather than asserted:
+
+* `condScore_eq_simpleScore_of_subsingleton_index` — whenever `P⁺I` is a subsingleton,
+  `χ_L = σ_L` for **every** latent variable model, because the only `B` has nothing
+  strictly above it and (3.2)'s conditioning is on a variable into a one-point type.  So
+  `coinLatent_perfectlyCondenses` cannot tell Definition 4.3's two clauses apart: over
+  `P⁺Unit` they are the same condition.
+* `incomparable_eq_empty_of_subsingleton_index` — whenever `P⁺I` is a subsingleton, the
+  family `F` of Definition 4.8 is **empty**, so `Y_F` is a variable into a one-point type
+  and the ordered Markov condition is an assertion of conditional independence from a
+  constant.  It holds for every `RVModel (PPlus Unit)`, and `coinLatent_orderedMarkov`
+  accordingly records nothing about Definition 4.8's content.
+
+The witnesses that *do* carry content are the `Bool`-indexed ones in the next section
+(`twoCoinLatent_perfectlyCondenses`, `twoCoinLatent_not_simplyPerfectlyCondenses`,
+`twoCoinLatent_orderedMarkov`); this section establishes only that the definitions are
+inhabited at all, and the negative witness below.
 
 * `coinLatent_perfectlyCondenses` — the fair coin's `L₁`-shaped latent variable model
   perfectly condenses `coinModel`.  There is one latent, it *is* the coin, the coin is the
   only observable, and nothing strictly contains `{()}` in `P⁺Unit`, so `χ_L({()})` is the
   bare `H(Y_{()}) = log 2 = H(X_{()})`.  Theorem 4.9's (B1 ⇒ B2) then hands over the
-  ordered Markov condition for free (`coinLatent_orderedMarkov`), so Definition 4.8 is
-  inhabited too.
+  ordered Markov condition (`coinLatent_orderedMarkov`), so Definition 4.8 is inhabited
+  too — vacuously, per the second bullet above.
 * `Example44.L44_coin_simplyPerfectlyCondenses` — the *simple* clause of Definition 4.3,
   and with it the joint-independence hypothesis of `Example44.simplyPerfectlyCondenses`,
   which no previous declaration discharged for a concrete family.  Over the one-element
-  index type `P⁺Unit` joint independence is automatic (`iIndepFun_of_subsingleton`), so
-  Example 4.4's construction applies to the coin's latent family on the nose.
+  index type `P⁺Unit` joint independence is automatic
+  (`ProbabilityTheory.iIndepFun.of_subsingleton`), so Example 4.4's construction applies to
+  the coin's latent family on the nose.
 * `noisyLatent_not_perfectlyCondenses` — the **negative** witness, and the reason the
   positive ones are worth having: perfect condensation is a real condition, not one every
   latent variable model happens to satisfy.  Here `χ_L({()}) = 2 log 2` while
   `H(X_{()}) = log 2`; the gap is exactly the bit `π = Prod.fst` discards, which the score
-  counts and the observables cannot see.
+  counts and the observables cannot see.  This one is *not* degenerate — it is a negative
+  statement, so the collapse of `χ_L` onto `σ_L` does not weaken it.
 
 The `Unit`-indexed combinatorics these proofs run on — that `{()}` is the only element of
 `P⁺Unit`, that `contrib {()}` is `{{()}}` and that `strictAbove {()}` is empty — is already
@@ -523,7 +571,7 @@ section Definition43
 
 /-- `P⁺Unit` is a one-element type.  Registered as an instance because it is what makes
 joint independence of the coin's latent family automatic, via
-`iIndepFun_of_subsingleton`. -/
+`ProbabilityTheory.iIndepFun.of_subsingleton`. -/
 instance : Subsingleton (PPlus Unit) :=
   ⟨fun A B => (noisy_pplus_eq A).trans (noisy_pplus_eq B).symm⟩
 
@@ -533,14 +581,44 @@ instance form, which is what `condEntropy_eq_entropy_of_subsingleton` consumes. 
 instance : IsEmpty ↥(strictAbove (PPlus.single () : PPlus Unit).toFinset) :=
   Set.isEmpty_coe_sort.mpr noisy_strictAbove'
 
+/-! ### Why the `Unit` witnesses are degenerate
+
+The two lemmas below are the reason the positive `Unit`-indexed witnesses of this section
+prove satisfiability and nothing else.  Both are stated at a subsingleton `P⁺I` rather than
+at `Unit`, because that is the actual hypothesis; `I = Unit` is the instance in play. -/
+
+/-- Nothing strictly contains a maximal element, so at a subsingleton `P⁺I` the conditioning
+of (3.2) has nothing to condition on and the two scores of Definition 3.3 **coincide**:
+`χ_L = σ_L` for every latent variable model.  Consequently Definition 4.3's two clauses are
+the same condition at `I = Unit`, and `coinLatent_perfectlyCondenses` separates nothing.
+The `Bool`-indexed `twoCoinLatent` is what separates them. -/
+lemma condScore_eq_simpleScore_of_subsingleton_index {I : Type w} [Finite I]
+    [Subsingleton (PPlus I)] {M : RVModel.{u, v, w} I} (L : LatentModel M) (A : Finset I) :
+    L.condScore A = L.simpleScore A := by
+  refine Finset.sum_congr rfl fun B _ => ?_
+  haveI : IsEmpty ↥(strictAbove B.toFinset) := by
+    refine ⟨fun C => ?_⟩
+    have hC : B.toFinset ⊂ (C : PPlus I).toFinset := C.2
+    rw [Subsingleton.elim (C : PPlus I) B] at hC
+    exact (Finset.ssubset_iff_subset_ne.mp hC).2 rfl
+  exact condEntropy_eq_entropy_of_subsingleton (L.L.measurable_X B) _
+
+/-- At a subsingleton `P⁺I` the family `F` of Definition 4.8 is empty for every `A`, so the
+ordered Markov condition asserts conditional independence from a variable into a one-point
+type — it holds for every `RVModel (PPlus Unit)`, and `coinLatent_orderedMarkov` therefore
+carries no information about the condition.  At `I = Bool` the family is not empty:
+`twoCoin_incomparable_T` computes it to be `{twoCoinF}`. -/
+lemma incomparable_eq_empty_of_subsingleton_index {I : Type w} [Subsingleton (PPlus I)]
+    (A : PPlus I) : incomparable A = (∅ : Set (PPlus I)) := by
+  ext B
+  exact ⟨fun hB => (mem_incomparable.mp hB).1 (le_of_eq (Subsingleton.elim B A)),
+    fun hB => hB.elim⟩
+
 /-- Every latent of `coinLatent` is the fair coin, of entropy `log 2`. -/
 lemma coinLatent_entropy (B : PPlus Unit) :
     H[coinLatent.Y B ; coinLatent.P] = Real.log 2 := by
   show H[(id : Bool → Bool) ; coinMeasure] = Real.log 2
-  have huniform : IsUniform (Set.univ : Set Bool) (id : Bool → Bool) coinMeasure :=
-    isUniform_uniformOn
-  have h := huniform.entropy_eq' Set.finite_univ measurable_id
-  simpa [Set.ncard_univ, Nat.card_eq_fintype_card] using h
+  exact coinMeasure_entropy_id
 
 /-- `χ_{coinLatent}({()}) = log 2`: one contributing latent, and nothing strictly above it
 to condition on. -/
@@ -594,7 +672,7 @@ lemma coinLatent_orderedMarkov : coinLatent.L.OrderedMarkov :=
 /-- The coin's latent family is jointly independent, for the trivial reason that `P⁺Unit`
 has a single element.  This is what Example 4.4's hypothesis asks for. -/
 lemma coinLatentRV_iIndepFun : iIndepFun coinLatent.L.X coinLatent.L.P :=
-  iIndepFun_of_subsingleton _ _
+  ProbabilityTheory.iIndepFun.of_subsingleton
 
 /-- `H(X_{()}) = log 2` on the noisy model: `X_()` is the identity on `Bool` under the
 pushforward of `noisyMeasure` along `π = Prod.fst`, and convention (2.2) computes its
@@ -616,6 +694,183 @@ lemma noisyLatent_not_perfectlyCondenses : ¬ noisyLatent.PerfectlyCondenses := 
   linarith
 
 end Definition43
+
+/-! ## Definitions 4.3 and 4.8 at `I = Bool` — the witnesses with content
+
+The section above proves Definitions 4.3 and 4.8 *satisfiable* and, by its own two
+degeneracy lemmas, nothing more: over `P⁺Unit` the conditioned and simple scores are equal
+and the ordered Markov condition conditions on nothing.  This section supplies the
+witnesses that separate the definitions from their trivial neighbourhoods, at `I = Bool`,
+where `P⁺Bool = {twoCoinT, twoCoinF, twoCoinTF}` has three elements, the maximal one
+strictly contains the other two, and `twoCoinT`, `twoCoinF` are incomparable.
+
+The model is `twoCoinModel` and the latent variable model `twoCoinLatent`, both already
+built above: two given variables and three latents, every one of them the same fair coin.
+
+* `twoCoinLatent_perfectlyCondenses` — Definition 4.3's conditioned clause, checked at all
+  four subsets of `Bool`.  Unlike the `Unit` case the conditioning is load-bearing at three
+  of them: the sums of (3.2) at `{true}`, `{false}` and `{true, false}` have two, two and
+  three terms, and every term but the maximal one is killed by `Y_{true,false}`, leaving
+  `log 2 = H(X_A)` each time.  Without the conditioning the value would be `2 log 2`,
+  `2 log 2` and `3 log 2`.
+* `twoCoinLatent_not_simplyPerfectlyCondenses` — **the point of this section**: the *same*
+  latent variable model fails Definition 4.3's simple clause, `σ_L({true}) = 2 log 2`
+  against `H(X_{true}) = log 2`.  So Definition 4.3's two clauses genuinely separate, on a
+  single witness: `PerfectlyCondenses` is strictly weaker than `SimplyPerfectlyCondenses`
+  and the converse of `LatentModel.PerfectlyCondenses.of_simply` is false.  No
+  `Unit`-indexed model can exhibit this, by
+  `condScore_eq_simpleScore_of_subsingleton_index`.
+* `twoCoinLatent_orderedMarkov` — Definition 4.8 where it is not vacuous.  Obtained from
+  Theorem 4.9's (B1 ⇒ B2) as in the `Unit` case, but here what it asserts at `A = twoCoinT`
+  is conditional independence of `Y_{true}` from `Y_{false}` given `Y_{true,false}`: the
+  family `F` is `{twoCoinF}` (`twoCoin_incomparable_T`), not the empty family of
+  `incomparable_eq_empty_of_subsingleton_index`.
+
+Two further pieces of the `Bool` combinatorics are proved here rather than above because
+nothing before this section needed them: `famFinset (contrib A)` at `A = {false}` and
+`A = {true, false}` (the `{true}` case is `twoCoin_famFinset_contrib`, in the `twoCoin`
+block), and the case split `finsetBool_cases` that `PerfectlyCondenses`'s quantifier over
+`Finset Bool` runs on. -/
+
+section Definition43Bool
+
+/-- The latents contributing to `{false}` are exactly `{false}` and `{true, false}`. -/
+lemma twoCoin_famFinset_contrib_F :
+    famFinset (contrib ({false} : Finset Bool)) = {twoCoinF, twoCoinTF} := by
+  ext B
+  simp only [mem_famFinset, mem_contrib, Finset.mem_singleton, exists_eq_left, PPlus.mem_iff,
+    Finset.mem_insert]
+  revert B
+  decide
+
+/-- Every element of `P⁺Bool` contributes to `{true, false}`. -/
+lemma twoCoin_famFinset_contrib_TF :
+    famFinset (contrib ({true, false} : Finset Bool)) = {twoCoinT, twoCoinF, twoCoinTF} := by
+  ext B
+  simp only [mem_famFinset, mem_contrib, Finset.mem_insert, Finset.mem_singleton, PPlus.mem_iff]
+  revert B
+  decide
+
+/-- Nothing contributes to `∅`, so (3.1)–(3.2) are empty sums there. -/
+private lemma twoCoin_famFinset_contrib_empty :
+    famFinset (contrib (∅ : Finset Bool)) = (∅ : Finset (PPlus Bool)) := by
+  ext B; simp
+
+/-- `Y_{false}` is a.e. a function of `Y_⊋{false}`, since `{true, false} ⊋ {false}`. -/
+lemma twoCoinLatent_condEntropy_F :
+    H[twoCoinLatent.Y twoCoinF | twoCoinLatent.jointStrictAbove twoCoinF.toFinset ;
+      twoCoinLatent.P] = 0 := by
+  have hmem : twoCoinTF ∈ strictAbove twoCoinF.toFinset := by
+    show twoCoinF.toFinset ⊂ twoCoinTF.toFinset
+    decide
+  refine condEntropy_eq_zero_of_aeFunctionOf
+    (twoCoinLatent.L.measurable_jointOn _) (twoCoinLatent.L.measurable_X _) ?_
+  refine ⟨fun g => g ⟨twoCoinTF, hmem⟩, measurable_of_countable _, ?_⟩
+  filter_upwards with ω
+  rfl
+
+/-- `χ_L({false}) = log 2` — the mirror image of `twoCoinLatent_condScore`. -/
+lemma twoCoinLatent_condScore_F :
+    twoCoinLatent.condScore ({false} : Finset Bool) = Real.log 2 := by
+  rw [LatentModel.condScore, twoCoin_famFinset_contrib_F,
+    Finset.sum_pair twoCoinF_ne_twoCoinTF, twoCoinLatent_condEntropy_F,
+    twoCoinLatent_condEntropy_TF, zero_add]
+
+/-- `χ_L({true, false}) = log 2`: three contributing latents, and the conditioning kills
+both non-maximal terms.  The simple score here is `3 log 2`. -/
+lemma twoCoinLatent_condScore_TF :
+    twoCoinLatent.condScore ({true, false} : Finset Bool) = Real.log 2 := by
+  rw [LatentModel.condScore, twoCoin_famFinset_contrib_TF,
+    Finset.sum_insert (by decide), Finset.sum_pair twoCoinF_ne_twoCoinTF,
+    twoCoinLatent_condEntropy_T, twoCoinLatent_condEntropy_F, twoCoinLatent_condEntropy_TF,
+    zero_add, zero_add]
+
+/-- `χ_L(∅) = 0`: `contrib ∅` is empty, so (3.2)'s sum is the empty sum. -/
+private lemma twoCoinLatent_condScore_empty :
+    twoCoinLatent.condScore (∅ : Finset Bool) = 0 := by
+  rw [LatentModel.condScore, twoCoin_famFinset_contrib_empty, Finset.sum_empty]
+
+/-- `H(X_A) = log 2` at every nonempty `A ⊆ Bool`.  Both variables of `twoCoinModel` are
+the identity on `Bool`, so `X_A = (b ↦ fun _ => b) ∘ id`, and that outer map is injective
+as soon as `A` has an element to evaluate at.  `RVModel.entropy_joint_singleton` covers the
+two singletons, but not `A = {true, false}`, so the injectivity argument is made once here
+for all nonempty `A`. -/
+private lemma twoCoinModel_entropy_joint {A : Finset Bool} (hA : A.Nonempty) :
+    H[twoCoinModel.joint A ; twoCoinModel.P] = Real.log 2 := by
+  obtain ⟨i, hi⟩ := hA
+  have hinj : Function.Injective (fun (b : Bool) (_ : {x : Bool // x ∈ A}) => b) :=
+    fun _ _ hab => congrFun hab ⟨i, hi⟩
+  have h := ProbabilityTheory.entropy_comp_of_injective coinMeasure
+    (measurable_id : Measurable (id : Bool → Bool)) _ hinj
+  rw [coinMeasure_entropy_id] at h
+  exact h
+
+/-- `H(X_∅) = 0`: the joint variable over the empty index set is constant. -/
+private lemma twoCoinModel_entropy_joint_empty :
+    H[twoCoinModel.joint (∅ : Finset Bool) ; twoCoinModel.P] = 0 := by
+  haveI : IsEmpty ((∅ : Finset Bool) : Type _) := ⟨fun i => Finset.notMem_empty i.1 i.2⟩
+  have hconst : twoCoinModel.joint (∅ : Finset Bool) =
+      fun _ => (default : ∀ i : (∅ : Finset Bool), twoCoinModel.R i) :=
+    funext fun _ => Subsingleton.elim _ _
+  rw [hconst, entropy_const]
+
+/-- `Finset Bool` has exactly four elements. -/
+private lemma finsetBool_cases (A : Finset Bool) :
+    A = ∅ ∨ A = {true} ∨ A = {false} ∨ A = {true, false} := by
+  revert A
+  decide
+
+/-- **`twoCoinLatent` perfectly condenses `twoCoinModel`** — an inhabitant of Definition
+4.3's conditioned clause at an index type where that clause has content.  All four
+instances of the quantifier are checked: `χ_L(∅) = 0 = H(X_∅)`, and `χ_L(A) = log 2 =
+H(X_A)` at each of the three nonempty `A`, the conditioning of (3.2) discarding the
+non-maximal terms in every case. -/
+lemma twoCoinLatent_perfectlyCondenses : twoCoinLatent.PerfectlyCondenses := by
+  intro A
+  rcases finsetBool_cases A with rfl | rfl | rfl | rfl
+  · rw [twoCoinLatent_condScore_empty, twoCoinModel_entropy_joint_empty]
+  · rw [twoCoinLatent_condScore, twoCoinModel_entropy_joint ⟨true, by decide⟩]
+  · rw [twoCoinLatent_condScore_F, twoCoinModel_entropy_joint ⟨false, by decide⟩]
+  · rw [twoCoinLatent_condScore_TF, twoCoinModel_entropy_joint ⟨true, by decide⟩]
+
+/-- **Definition 4.3's two clauses separate on a single witness.**  `twoCoinLatent`
+perfectly condenses `twoCoinModel` and does *not* simply-perfectly condense it:
+`σ_L({true}) = 2 log 2` counts the entropy of `Y_{true}` and `Y_{true,false}` twice over,
+while `H(X_{true}) = log 2`.  So `LatentModel.PerfectlyCondenses.of_simply` has no converse,
+and Definition 4.3 is really two conditions rather than one written twice.  This is exactly
+what the `Unit`-indexed witnesses cannot show, since
+`condScore_eq_simpleScore_of_subsingleton_index` makes the two clauses coincide there. -/
+lemma twoCoinLatent_not_simplyPerfectlyCondenses :
+    ¬ twoCoinLatent.SimplyPerfectlyCondenses := by
+  intro h
+  have hA := h ({true} : Finset Bool)
+  rw [twoCoinLatent_simpleScore, twoCoinModel_entropy_joint ⟨true, by decide⟩] at hA
+  have hlog : 0 < Real.log 2 := Real.log_pos (by norm_num)
+  linarith
+
+/-- The indices incomparable to `{true}` in `P⁺Bool` are exactly `{{false}}`.  This is the
+family `F` of Definition 4.8 at `A = twoCoinT`, and it is **nonempty** — which is what
+distinguishes `twoCoinLatent_orderedMarkov` from its `Unit`-indexed counterpart, where
+`incomparable_eq_empty_of_subsingleton_index` makes `F` empty and the condition vacuous. -/
+lemma twoCoin_incomparable_T : incomparable twoCoinT = {twoCoinF} := by
+  ext B
+  simp only [mem_incomparable, Set.mem_singleton_iff, PPlus.le_iff]
+  revert B
+  decide
+
+/-- **Definition 4.8 is inhabited with content**: the two-coin latent family obeys the
+ordered Markov condition.  As in the `Unit` case this is Theorem 4.9's (B1 ⇒ B2) applied to
+the perfect-condensation witness rather than a hand proof; unlike the `Unit` case the
+resulting statement is not vacuous.  At `A = twoCoinT` it asserts that `Y_{true}` and
+`Y_{false}` are conditionally independent given `Y_{true,false}` — a genuine pair of
+variables, `incomparable twoCoinT = {twoCoinF}` being nonempty
+(`twoCoin_incomparable_T`) — whereas at `I = Unit` the corresponding family is empty
+(`incomparable_eq_empty_of_subsingleton_index`) and the condition holds for every
+`RVModel (PPlus Unit)`. -/
+lemma twoCoinLatent_orderedMarkov : twoCoinLatent.L.OrderedMarkov :=
+  ((LatentModel.perfect_tfae_B twoCoinLatent).mp twoCoinLatent_perfectlyCondenses).2
+
+end Definition43Bool
 
 /-! ## Non-vacuity in general: every model has a latent variable model
 
@@ -1130,10 +1385,13 @@ theorem simplyPerfectlyCondenses (L : RVModel.{u, v, w} (PPlus I))
 `simplyPerfectlyCondenses` above quantifies over a family `L` satisfying a
 joint-independence hypothesis, and nothing so far discharged that hypothesis for a concrete
 `L`.  The coin's latent family does, for the trivial reason that its index type `P⁺Unit`
-has a single element (`iIndepFun_of_subsingleton`, `Subsingleton (PPlus Unit)` — both
-declared in the Definition 4.3 section above).  These two witnesses are what keep
-Definition 4.3's *simple* clause from being a condition with no exhibited inhabitant; the
-`coinLatent` witnesses above cover the conditioned clause and Definition 4.8. -/
+has a single element (Mathlib's `ProbabilityTheory.iIndepFun.of_subsingleton`, at the
+`Subsingleton (PPlus Unit)` instance declared in the Definition 4.3 section above).  These
+two witnesses are what keep Definition 4.3's *simple* clause from being a condition with no
+exhibited inhabitant.  Being `Unit`-indexed they are degenerate in the sense that section
+records — over `P⁺Unit` the simple and conditioned clauses coincide — so the witness that
+*separates* the two clauses is the `Bool`-indexed
+`twoCoinLatent_not_simplyPerfectlyCondenses`. -/
 
 /-- **Example 4.4's hypothesis is satisfiable, so its conclusion is non-vacuous**: `L44`
 over the coin's latent family simply-perfectly condenses the model `M44` it builds.  A
@@ -1258,3 +1516,4 @@ example : RVModel.Hom.AEEq pairCoinHom₁ pairCoinHom₂ :=
 end MorphismWitnesses
 
 end Condensation
+

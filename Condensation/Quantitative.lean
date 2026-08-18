@@ -24,14 +24,22 @@ This file is §5.2–§5.3 of Eisenstat, *Condensation: A Theory of Concepts*:
 binary tree `ITree`, with the label of an internal vertex *computed* as the meet of its
 children's labels (`ITree.label`).  Note the paper's direction convention: its "parents" of
 a vertex `u` are what the inductive presentation calls the *children* of `u`, and the
-"ancestors" of `v` are the vertices of the subtree above `v`.  A directed rooted binary
-tree in which every vertex has a unique directed path to the root *is* an inductive binary
-tree, so nothing is lost; the `(V, E, ℓ)` presentation would import graph theory for no
-content.  Proposition 5.7 is then the statement that an arbitrary labeling of *all* the
-vertices (rendered as a fully-decorated tree `LTree`) which restricts to the given leaf
-labeling, satisfies (5.10) everywhere and lands in `M` everywhere (`LTree.LabelsIn`) is the
-computed one — existence and uniqueness of a function `ℓ : V → M`, exactly as printed.  Definition 5.6's family of intersections (5.11) is a `List`, not a
-`Finset`: the paper explicitly warns that the same intersection may occur more than once.
+"ancestors" of `v` are the vertices of the subtree above `v`.  Because `ITree` is an
+inductive type, it ranges over exactly the **finite** trees: this is a *disclosed reading*
+of Definition 5.6, not a neutral change of presentation, since the definition as printed
+carries no finiteness or well-foundedness clause (`notes/paper-errata.md` entry 17).  The
+reading is licensed by Theorem 5.8, whose conclusion (5.14) is a finite sum over the leaves
+and internal vertices of the tree — an infinite or non-well-founded tree makes that sum
+meaningless, so the finite reading is the only one under which the paper's own theorem has
+content.  Read that way, a directed rooted binary tree in which every vertex has a unique
+directed path to the root *is* an inductive binary tree, and the `(V, E, ℓ)` presentation
+would import graph theory for no content.  Proposition 5.7 is then the statement that an
+arbitrary labeling of *all* the vertices (rendered as a fully-decorated tree `LTree`) which
+restricts to the given leaf labeling, satisfies (5.10) everywhere and lands in `M`
+everywhere (`LTree.LabelsIn`) is the computed one — existence and uniqueness of a function
+`ℓ : V → M`, exactly as printed.  Definition 5.6's family of intersections (5.11) is a
+`List`, not a `Finset`: the paper explicitly warns that the same intersection may occur
+more than once.
 
 `dd:interaction` — Theorem 5.8's `I (Z_{L(v)} ; Z_{R(v)} ; Y_⊇A | Z_{I(v)})` is
 `Condensation.condInteractionInfo` from `Condensation/Probability.lean`.
@@ -272,6 +280,12 @@ end Polar
 or exactly two parents (an *internal* vertex), and there is one vertex, the root, to which
 every vertex has a unique directed path.  Read the paper's "parents of `u`" as the
 constructor arguments `l`, `r` of `node l r`.
+
+Being inductive, `ITree` ranges over exactly the **finite** trees.  That is a disclosed
+reading of Definition 5.6, which as printed carries no finiteness or well-foundedness
+clause (`notes/paper-errata.md` entry 17); it is licensed by Theorem 5.8, whose conclusion
+(5.14) is a finite sum over the leaves and internal vertices of the tree, and so has
+content only for a finite tree.
 
 Paper node: `Definition 5.6` -/
 inductive ITree (α : Type*) where
@@ -1097,7 +1111,10 @@ case, since an `ITree` always has at least one leaf and so no tree can satisfy t
 bijection hypothesis with `F = ∅`.
 
 `DecidableEq I` appears only to write the `Finset` difference `A \ C`; it is classical
-data, not a restriction on `I`.
+data, not a restriction on `I`.  The `omit [Finite I] in` above this docstring is
+deliberate, and is the one place in §5 where the section binder is dropped: (5.24) is pure
+`Finset` combinatorics and holds for an arbitrary `I`, so carrying the unused instance
+would both weaken the statement and draw the `unusedSectionVars` linter.
 
 Paper node: `Corollary 5.10` -/
 theorem polar_kSubsets [DecidableEq I] (A : PPlus I) {k : ℕ} (hk : 1 ≤ k) :

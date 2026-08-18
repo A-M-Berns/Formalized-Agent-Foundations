@@ -145,8 +145,15 @@ finding IDs that forced any are recorded in `Condensation/KNOWLEDGE.md`.
 * `dd:tree` — Definition 5.6's intersection tree is an inductive binary tree with the
   label of a node *computed* as the meet of its children's labels; Proposition 5.7 is
   stated as: any labeling of the tree's positions agreeing on leaves and satisfying (5.10)
-  at every internal position equals the computed labeling.  A directed rooted binary tree
-  with unique paths to the root *is* an inductive binary tree; the `(V, E, ℓ)`
+  at every internal position equals the computed labeling.  Being inductive, `ITree` ranges
+  over exactly the **finite** trees, and that is a *disclosed reading* of Definition 5.6
+  rather than a neutral change of presentation: the definition as printed carries no
+  finiteness or well-foundedness clause (`notes/paper-errata.md` entry 17 — its condition
+  (1) constrains directed paths *to* the root, which an upward-infinite tree with no leaves
+  satisfies).  The reading is licensed by Theorem 5.8, whose conclusion (5.14) is a finite
+  sum over the tree's leaves and internal vertices and so has content only for a finite
+  tree.  Read that way, a directed rooted binary tree with unique paths to the root *is* an
+  inductive binary tree; the `(V, E, ℓ)`
   presentation would import graph theory for no content.  Landed in
   `Condensation/Quantitative.lean` as `ITree` (the tree), `ITree.label` (the computed
   labelling), `LTree` (an arbitrary labelling of every position, which is what Proposition

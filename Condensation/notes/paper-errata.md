@@ -330,3 +330,158 @@ cannot be attached to it on the generated page.
     (4.35) and "the right-hand inclusion of (4.39)". So the Lean was written against the
     intended reading from the start; this entry records that the printed one cannot be
     transcribed. **Confirmed in the committed extraction** (L887–892).
+
+17. **Definition 5.6: the intersection tree is never required to be finite or
+    well-founded, though Theorem 5.8 sums over its vertices.** *(Found by the final blind
+    audits, 2026-08-18; R4-F02.)* Definition 5.6(1) asks that "`(V, E)` is a directed binary
+    tree ; every vertex either has no parents (and so is a *leaf* ) or exactly two parents
+    (and so is *internal* ), and there is one vertex, the *root*, to which every vertex has
+    a unique directed path" (L1330–1332), and nothing else in the paper constrains the tree:
+    a grep of the extraction for `tree` returns L1324, L1326, L1330, L1346, L1349, L1398,
+    L1420, L1496, L1518, and the word "finite" modifies it at none of them. Unique paths
+    *to* the root bound each vertex's descent, not the tree's height, so the full infinite
+    binary tree — every vertex internal, no leaves — satisfies (1) as printed. But
+    Theorem 5.8's conclusions are finite sums over the tree: `Σ_{v∈L}` and `Σ_{v∈N}` in
+    `(5.14)  H(Y_⊇A | Z_G) = [Σ_{v∈L} H(Y_⊇A | Z_{I(v)})] − [Σ_{v∈N} H(Y_⊇A |
+    Z_{L(v)∪R(v)})] + [Σ_{v∈N} I(Z_{L(v)} ; Z_{R(v)} ; Y_⊇A | Z_{I(v)})]` (L1408–1415), and
+    `Σ_{v∈N}` in (5.13) (L1403–1406). **Confirmed in the committed extraction.**
+
+    **The leaf-bijection hypothesis does not supply it.** Theorem 5.8 requires `I` to
+    restrict to a bijection between the leaves and `{C ∈ P⁺I : B ∩ C ≠ ∅}` over `B ∈ F`
+    (L1398–1402), and `I` is finite, so the *leaf* set is finite. That does not bound the
+    internal vertices: a root with one leaf parent and one leafless infinite full binary
+    parent has exactly one leaf and infinitely many internal vertices, so `Σ_{v∈N}` is still
+    an infinite sum. That the paper means well-founded is clear from Proposition 5.7, whose
+    conclusion — `ℓ` "assigns to each internal vertex the meet of all the labels of the
+    leaves which are its ancestors" (L1349–1350) — is ill-defined at an internal vertex with
+    no leaf ancestors, and whose proof is the single word "Induction." (L1351).
+
+    **Interaction with entry 14.** Entry 14 argues that at `F = ∅` no admissible tree exists
+    because "such a tree is nonempty and therefore has at least one leaf". That step is
+    licensed only by the finiteness this entry says is not printed — a leafless infinite
+    tree satisfies Definition 5.6(1) and satisfies the `F = ∅` bijection vacuously. Entry
+    14's conclusion stands under the intended reading; this entry records that the reading
+    has to be supplied.
+
+    **What the Lean does.** It supplies the reading structurally, and now discloses it as a
+    reading rather than as a neutral encoding. `Condensation.ITree`
+    (`Condensation/Quantitative.lean`) is an inductive binary tree (`leaf` / `node l r`),
+    hence finite, so `T.leaves` and `T.intersections` are `List`s and both sums are literally
+    finite (`dd:tree`). The disclosure is written in `Quantitative.lean` (module docstring
+    and the `ITree` docstring), `Condensation.lean`'s glossary, `README.md`'s `dd:tree` row
+    and `notes/roadmap.md`'s; the four must stay in agreement.
+
+18. **Proposition 2.5, proof: the conditional measure `P(· | X = x)` is called a Dirac
+    measure in `G(Ω)`; it is its pushforward under `Y` that is Dirac.** The proof reads
+    "Everywhere on the preimage `X⁻¹A`, we can dene the conditional probability
+    distribution `P (· | X = x)`. From the denition of conditional entropy, each such
+    probability distribution is a Dirac measure in `G (Ω)` for almost every `x ∈ R_X`"
+    (L202–204). `G(Ω)` is Definition 2.4's space of probability measures **on `Ω`**
+    (L189–193), so as printed the claim is that `P(· | X = x)` is a point mass on `Ω`. That
+    is false in general and is not what `H(Y | X) = 0` gives: the hypothesis determines `Y`
+    from `X`, not `ω` from `X` — with `X` and `Y` both constant, `P(· | X = x) = P`, which is
+    Dirac only if `Ω` is a point. What the definition of conditional entropy actually yields,
+    from `0 = H(Y | X) = Σ_x P(X = x)·H(Y | X ← x)`, is that `H(Y | X ← x) = 0` for a.e. `x`,
+    i.e. that the pushforward `Y_* P(· | X = x)` is a Dirac measure in `G(R_Y)`. That is
+    exactly what (2.5), `Y = f̃(X)` a.e., needs. **Confirmed in the committed extraction.**
+    Worth recording because `Condensation/Probability.lean`'s Definition 2.4 docstring quotes
+    this sentence when justifying the `ProbabilityMeasure Ω` carrier: the quotation is
+    faithful, but the sentence it quotes is wrong about *which* space the Dirac lives in, and
+    the docstring now says so. The Lean endpoints
+    (`Condensation.aeFunctionOf_of_condEntropy_eq_zero` and its converse) are stated in terms
+    of `AEFunctionOf` and conditional entropy and never form the Dirac measure at all, so
+    nothing in the formalization inherits the slip.
+
+19. **Lemma 4.5, proof of `(⇐=)`: "picking any `i ∈ A`" — a single `i` cannot witness all of
+    `Y_∩A`.** The half reads "For any `A ∈ P⁺I`, we have `H (Y_∩A ) ≥ H (X_A )` by
+    Proposition 4.2. Further, picking any `i ∈ A`, the random variable `Y_∩A` is almost
+    everywhere equal to a measurable function of `X_i`, and therefore to a measurable
+    function of `X_A`" (L650–652). `Y_∩A` is the family `(Y_B : B ∈ P⁺I, B ∩ A ≠ ∅)` (L308),
+    and clause (2) supplies `Y_B = f^i_B(X_i)` only when `i ∈ B`. So each `B ∈ contrib A`
+    needs its **own** witness `i ∈ A ∩ B`, and no single `i` serves them all: at `A = {1,2}`
+    and `B = {2}` the latent `Y_{2}` belongs to `Y_∩A` but is constrained only through `X_2`,
+    so `i = 1` fails. The conclusion is unaffected — every `B ∈ contrib A` meets `A`, so each
+    `Y_B` is a.e. a function of some `X_i` with `i ∈ A`, hence of `X_A`, which is all (4.14)
+    and (4.15) use. **Confirmed in the committed extraction.** The Lean proof of
+    `Condensation.LatentModel.perfect_entropy_iff_aeFunctionOf` therefore routes through
+    `X_A` directly rather than through any one `X_i`, and a reader comparing it to the
+    printed step should read the difference as this erratum rather than as a divergence.
+
+20. **Lemma 4.13, proof: the sentence introducing (4.53) writes `P₂(· | π₁ = ω)` for
+    `P₂(· | π₂ = ω)`.** The sentence reads "we can dene the conditional probabilities
+    `ω ↦ P₁ (· | π₁ = ω)` and `ω ↦ P₂ (· | π₁ = ω)`, taking values in the spaces of measures
+    `G (Λ₁)` and `G (Λ₂)`, for almost all `ω ∈ Ω`" (L1022–1023). The second must be
+    `P₂(· | π₂ = ω)`: `π₁` is a map out of `Λ₁` and is not defined on `Λ₂`, and the same
+    sentence says the conditional takes values in `G(Λ₂)`. The slip is confined to the prose
+    — the displays get it right at (4.53) itself, `∫_Ω [P₁ (· | π₁ = ω)] × [P₂ (· | π₂ = ω)]
+    (E) dP_Ω` (L1026–1027), and again at (4.54) (L1032), (4.55) (L1043, L1047) and L1059.
+    **Confirmed in the committed extraction**, and confirmed not to be an extraction
+    artifact: the extractor renders the subscripts of `π₁`/`π₂` correctly on every
+    surrounding line. Benign for the formalization —
+    `Condensation.Amalgamation.canonical` is built from the displays, not the prose.
+
+21. **The discussion preceding Theorem 5.8: `Y_∩B` printed where `Y_⊇A` is meant, in the
+    reading of (5.13)'s first family of terms.** *(Soft finding — see the caveat below.)*
+    The passage reads "Starting on the right-hand side, we will have two kinds of terms. The
+    terms of the form `H (Y_⊇A | X_B )` being small is an approximate form of `Y_∩B` being a
+    function of `X_B` almost everywhere, assuming that `A ∩ B ≠ ∅`, and that would be a
+    consequence of perfect condensation." (L1358–1361). The term displayed is
+    `H(Y_⊇A | X_B)`, so its smallness is an approximate form of **`Y_⊇A`** being a function
+    of `X_B`, not of `Y_∩B`. The two are not interchangeable: when `A ∩ B ≠ ∅` we have
+    `{C : C ⊇ A} ⊆ {C : C ∩ B ≠ ∅}`, so `Y_∩B` is the strictly *larger* family and "`Y_∩B` is
+    a function of `X_B`" is strictly stronger — a small `H(Y_⊇A | X_B)` does not approximate
+    it. The tell that `Y_⊇A` is meant is the clause "assuming that `A ∩ B ≠ ∅`": under
+    perfect condensation "`Y_∩B` is a function of `X_B`" holds by Corollary 4.6 with **no**
+    hypothesis on `A`, and the hypothesis is needed only to get from that to the `Y_⊇A`
+    statement. **Confirmed in the committed extraction** (L1358–1361).
+
+    **Caveat, stated adversarially.** A charitable reader can take the author to be
+    deliberately naming the *stronger sufficient condition* that perfect condensation
+    supplies, in which case the defect is not the subscript but the phrase "is an approximate
+    form of", which then states the implication backwards. Either way something in the
+    sentence is not right, but this entry is softer than the others in the file and is
+    recorded with that qualification rather than as a flat misprint. Note also that the
+    passage belongs to the discussion *preceding* Theorem 5.8, not to Definition 5.6.
+    Nothing in the Lean depends on it: it is motivating prose, and the corresponding formal
+    step is `Condensation.condEntropy_jointContrib_le_pullbackJoint`.
+
+22. **Corollary 5.9, proof: (5.22) is attributed to "the denition of the ordered Markov
+    condition" (Definition 4.8), but it needs Proposition 4.10's upward-closed
+    characterization.** The proof's last line is "The second form follows from the denition
+    of the ordered Markov condition." (L1509), where the second form is
+    `(5.22)  H (Y_⊇A | Z_G ) ≤ Σ_{B∈F} ϱ_Y (B)` (L1504) — (5.21) with every
+    `I(Z_{L(v)} ; Z_{R(v)} | Z_{I(v)})` dropped. Those terms vanish exactly when `Z_{L(v)}`
+    and `Z_{R(v)}` are conditionally independent given `Z_{I(v)}`, for the **upward-closed**
+    label sets of Theorem 5.8's tree, which "is an intersection tree on the lattice of
+    upward-closed subsets of `P⁺I`" (L1398) with `I(v) = L(v) ∩ R(v)`. That is clause (2) of
+    Proposition 4.10 — "For any two upward-closed sets `F, G ⊆ P⁺I`, the random variables
+    `Y_F` and `Y_G` are independent conditional on `Y_{F∩G}`" (L872–873) — whereas
+    Definition 4.8, which is clause (1), constrains a single `A` against its incomparables
+    conditional on `Y_⊋A` (L729–732). Getting from (1) to (2) is the chain-rule argument
+    (4.38)–(4.40), the one entry 16 is about; it is not a reading-off of the definition. The
+    paper states the same step correctly elsewhere: the §5.2 discussion says the term "being
+    small is an approximate form of the statement that `Z_{L(v)}` and `Z_{R(v)}` are
+    independent given `Z_{I(v)}`, **which follows from Proposition 4.10**" (L1363–1365).
+    **Confirmed in the committed extraction.** The Lean matches the intended route:
+    `Condensation.condEntropy_jointAbove_le_reconScore_of_orderedMarkov`
+    (`Condensation/Quantitative.lean`) kills the internal terms with
+    `(Am.rv₂.orderedMarkov_iff).mp hmarkov q₁ q₂ hq₁ hq₂` — Proposition 4.10, `(1) ⟹ (2)` —
+    and carries the tree's `hupper : T.LabelsIn {s | IsUpperSet s}` for exactly this step,
+    which (5.14) does not need. This is why (5.22) was the last §5 endpoint to become
+    axiom-clean: it waited on Proposition 4.10's proof, not on Definition 4.8.
+
+---
+
+**One candidate was investigated and REFUTED, and is recorded here so that it is not
+re-raised.** A blind auditor reported that "the prose after Proposition 4.7 reverses the
+perfect / simply-perfect implication". It does not. The sentence is "Corollary 4.6 tells us
+something about perfect, and hence simply-perfect, condensations." (L717–718), and the claim
+it makes is about the *scope of Corollary 4.6* — the corollary is stated for perfect
+condensations and therefore also applies to simply-perfect ones, an inference licensed by
+the true direction simply-perfect ⇒ perfect
+(`Condensation.LatentModel.PerfectlyCondenses.of_simply`). The reading "perfect
+condensations, which are hence simply-perfect" is grammatically available and would be
+false, but it is also vacuous as a remark, so it is not what the sentence is doing.
+Ambiguous English, not a reversed implication. Nothing else in §4 states an implication in
+the wrong direction: L740–751 keep (A1) ⇒ (A3) straight, and L626's "so L simply-perfectly
+condenses M" is correct, since (4.11) computes the *simple* score.

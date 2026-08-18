@@ -51,7 +51,7 @@ carrying no claim.  Nothing downstream cites any of the three.  Because the ruli
 
 ### Errata a client should know about
 
-Sixteen defects in the printed paper are recorded in
+Twenty-two defects in the printed paper are recorded in
 `Condensation/notes/paper-errata.md`, and **that file is the first place to look when a
 Lean statement here appears to diverge from the printed one** — in several places the
 printed text is the thing that is wrong.  Three bear on statements you are likely to use:
@@ -63,7 +63,10 @@ printed text is the thing that is wrong.  Three bear on statements you are likel
   binder*, not a weakened conclusion: `aeFunctionOf_of_condIndepFun` carries
   `[MeasurableSingletonClass S]` on `X`'s range, free at every call site (`X` is always a
   model variable and `RVModel` carries `singR`) and licensed by the paper's own standing
-  §2 convention that its probability spaces are countable and discrete.
+  setting — Definition 3.1 and §2 — that every random variable under consideration has
+  countable discrete *range*.  (Not by the §2 sentence about probability *spaces* being
+  countable and discrete: that constrains `Ω`, and the erratum is precisely that
+  constraining `Ω` alone leaves the lemma false.)
 * **Definition 4.12 does not tie `π̃₁` to `π̃₂`** (entry 10).  Theorem 4.15's proof needs
   them to agree almost everywhere, so `LatentAmalgamation` carries the a.e. commutation as
   the explicit field `comm`.  That is the *only* added field; a client constructing a
@@ -121,7 +124,9 @@ printed text is the thing that is wrong.  Three bear on statements you are likel
   `entropy_eq_zero_of_subsingleton`, `condEntropy_eq_zero_of_subsingleton`,
   `condEntropy_eq_entropy_of_subsingleton` (conditioning on a variable into a subsingleton
   costs nothing — this is what makes a maximal `B ∈ P⁺I`, with `strictAbove B = ∅`,
-  computable) and `iIndepFun_of_subsingleton`.
+  computable).  For joint independence over a subsingleton index type, cite **Mathlib's**
+  `ProbabilityTheory.iIndepFun.of_subsingleton` (it is `@[simp]`); this library carried a
+  duplicate of it until 2026-08-18 and no longer does.
 
 ### §3 — models, latent models, joint variables and scores (`Condensation/Model.lean`)
 
@@ -257,14 +262,23 @@ neither Mathlib nor the vendored PFR snapshot has it:
   it are `LatentModel.perfect_entropy_iff_aeFunctionOf` (Lemma 4.5),
   `LatentModel.aeFunctionOf_of_perfectlyCondenses` (Corollary 4.6) and
   `LatentModel.aeFunctionOf_jointContrib_pullbackJoint`.
-* **Proposition 4.7 and Theorem 4.9** are the two TFAE bundles
-  `LatentModel.perfect_tfae_A` and `LatentModel.perfect_tfae_B`; Proposition 4.7's clause
-  (2) *is* Definition 3.10, which is why `Perfect.lean` imports `Morphism.lean`, and the
-  bridge is `LatentModel.aeFunctionOf_iff_isEquivalence_contribModel`.  Project the
-  direction you want with `List.TFAE.out i j` — note that its autoparams do not elaborate
-  in term position, so bind it in an explicitly typed `have` first.
-* **Definition 4.8** is `RVModel.OrderedMarkov`, with `RVModel.orderedMarkov_iff` its
-  characterization; Proposition 4.10 is `polar`-flavoured and lives with §5's vocabulary.
+* **Proposition 4.7** is `LatentModel.aeFunctionOf_iff_isEquivalence_contribModel`, and that
+  declaration is its whole carrier — it is *not* one of the TFAE bundles below.  Its clause
+  (2) *is* Definition 3.10, which is why `Perfect.lean` imports `Morphism.lean`: the models
+  compared are `LatentModel.pullbackModel` and `LatentModel.contribModel`, and clause (2) is
+  `RVModel.IsEquivalence` of two `RVModel.Hom.ofSameIndex` triples at `π = ρ = id`.
+* **Theorem 4.9** has **two** carriers, and they are different shapes — do not assume the
+  `tfae` in both names means both are `List.TFAE`.  `LatentModel.perfect_tfae_A` is a genuine
+  `List.TFAE` over (A1)–(A3); project the direction you want with `List.TFAE.out i j`, which
+  *does* elaborate in term position against this concrete three-element list (no explicitly
+  typed `have` is needed — `APITests/Condensation.lean` exercises exactly that).
+  `LatentModel.perfect_tfae_B` is an ordinary `↔` (B1 ⟺ B2), so reach for `.mp`/`.mpr`
+  directly; `(L.perfect_tfae_B.mp h).2` is Definition 4.8's ordered Markov condition.
+* **Definition 4.8** is `RVModel.OrderedMarkov`.  **Proposition 4.10** is
+  `RVModel.orderedMarkov_iff`, which lives in `Condensation/Perfect.lean` immediately beside
+  it — and it is phrased with Mathlib's `IsUpperSet` over two upward-closed families of
+  `P⁺I`, **not** with `polar`.  (`polar` is Definition 5.5 and belongs to §5's vocabulary
+  below; the two are related, but Proposition 4.10 does not mention it.)
 * **Definitions 4.11 and 4.12** are the structures `Amalgamation` and `LatentAmalgamation`
   (`dd:amalgamation`).  `Λ₀` is the subtype `{p : Λ₁ × Λ₂ // π₁ p.1 = π₂ p.2}` with the
   discrete σ-algebra and the measure `∑' p, w p • dirac p`, which is the paper's (4.53)
@@ -421,23 +435,43 @@ distinction is worth holding onto.
 **The trust surface** answers "what do we publicly claim faithfully formalizes the paper?"
 It is exactly the declarations carrying the repository's paper-node annotation — the
 docstring line naming the printed node, which `scripts/check-condensation-nodes.py` reads,
-and which is why this module docstring cannot spell that token out — and it is enumerated
-in `AxiomAudit.lean`'s **`CONDENSATION-INVENTORY`** block, which asserts every one of them
-axiom-clean.  (The `CONDENSATION-PENDING` block beside it is the staging mechanism for an
-annotated endpoint whose proof is unfinished; at M2 both of its sections are **empty**, and
-the block is retained rather than deleted because it is the machinery that keeps a
-statement-first endpoint honest.)  `scripts/check-condensation-nodes.py` enforces the
-annotation contract fail-closed, including node *kind*, and `scripts/check_sorry_ledger.py`
-asks Lean from the compiled environment which declarations depend on `sorryAx`.
+and which is why this module docstring cannot spell that token out.
+`scripts/check-condensation-nodes.py` enforces the annotation contract fail-closed,
+including node *kind*, and `scripts/check_sorry_ledger.py` asks Lean from the compiled
+environment which declarations depend on `sorryAx`.
 
 **This consumer boundary** answers a different question — "what should downstream research
 depend on as the supported mathematical interface?" — and it contains a good deal that is
 *not* a paper claim: the whole chain-rule layer, the `famFinset`/`PPlus`/`contrib` plumbing,
 the finite-entropy instances, the degenerate-case lemmas, the `AEFunctionOf` congruence
-algebra, and the constructed witnesses.  Those are inventoried separately, in the
-**`-- SECTION: consumers (un-annotated)`** part of `AxiomAudit.lean`, which asserts them
-axiom-clean without claiming they render anything the paper says.  Reading the two blocks
-side by side is the fastest way to tell a paper endpoint from a convenience.
+algebra, and the constructed witnesses.
+
+`AxiomAudit.lean` carries **three** Condensation blocks, not two, and it is worth knowing
+which is which before using them to tell a paper endpoint from a convenience:
+
+1. **`CONDENSATION-INVENTORY`** — an `#assert_axioms_clean` block.  It is where the annotated
+   endpoints are enumerated, but it is *not* a list of annotated endpoints only: it also
+   carries the witnesses and conveniences that were first listed alongside them (for
+   instance `coinModel`/`coinLatent`).  So membership here does not by itself mean
+   "paper endpoint" — the paper-node annotation line does.  Roughly two thirds of the
+   names in it are annotated; run `scripts/check-condensation-nodes.py` for the current
+   split rather than quoting a number from prose.
+2. **`CONDENSATION-PENDING`** — pure comment, compiling to nothing and asserting nothing.
+   It is the staging mechanism for an annotated endpoint whose proof is unfinished, and both
+   of its sections are **empty** at M2.  Its `-- SECTION: consumers (un-annotated)` marker
+   line belongs to that staging machinery — it is where an un-annotated *consumer of a
+   staged theorem* would be named — and is emphatically **not** where this boundary's
+   conveniences live.  The block is retained rather than deleted because
+   `scripts/check_sorry_ledger.py` cross-checks it against the compiled environment in both
+   directions, so "empty" is a re-verified assertion rather than an absence.
+3. **The `## Consumer API conveniences` block** — a marker-less `#assert_axioms_clean` near
+   the end of the file.  *This* is where the consumer-surface plumbing and the constructed
+   non-vacuity witnesses are inventoried, asserted axiom-clean without claiming they render
+   anything the paper says.
+
+Reading blocks 1 and 3 side by side is the fastest way to survey what is asserted clean;
+reading the paper-node annotation lines is the only way to tell what is *claimed to be the
+paper*.
 
 One qualification, since the repo standard asks for "an intentionally *small*" API.  This
 boundary imports all nine modules of the library, and there is no deeper construction import
@@ -445,8 +479,9 @@ held back behind it.  That is a fact about this library rather than a dodge: eig
 nine files carry paper nodes, so no module could be excluded without dropping part of the
 paper, and the ninth — `ChainRule.lean` — is machinery a quantitative client demonstrably
 needs and cannot get from Mathlib or the vendored PFR snapshot.  The curation is therefore
-in what is *documented as supported* rather than in a narrower import: the two `AxiomAudit`
-blocks separate paper endpoints from conveniences, and `Examples.lean`'s fixture-shaped
+in what is *documented as supported* rather than in a narrower import: the `AxiomAudit`
+blocks catalogued above separate the paper's endpoints from the conveniences, and
+`Examples.lean`'s fixture-shaped
 witnesses are marked above as regression fixtures rather than a dependency surface.  If that
 line ever needs to be enforced by the import graph rather than by documentation, the split
 to make is the one drawn in the *Constructions and witnesses* section above.
@@ -465,7 +500,8 @@ stratification `dd:bundled-model`, and the Examples 5.1–5.3 scope ruling.
 * `Condensation.lean` — the aggregator, whose docstring carries the full `dd:` glossary.
   It imports the same modules as this file; the difference is that this one is *documented
   as a boundary* and is what the registry records as the supported entrypoint.
-* `Condensation/notes/paper-errata.md` — sixteen entries, consulted before concluding that a
+* `Condensation/notes/paper-errata.md` — twenty-two entries (plus one investigated and
+  refuted candidate, recorded so it is not re-raised), consulted before concluding that a
   Lean statement diverges from the printed one.
 * `APITests/Condensation.lean` — client-style tests that import only this file.
 -/
