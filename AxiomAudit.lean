@@ -66,6 +66,7 @@ import CartesianFrames.Operations
 import CartesianFrames.Categorical
 import FiniteFactoredSets
 import Condensation
+import FactoredSpaces
 
 open Lean Elab Command in
 /-- Fail elaboration unless every named declaration exists and depends on no axioms
@@ -1969,6 +1970,137 @@ catches it. -/
   Y₂ measurable_Y₂ finiteEntropy_Y₂ «π₂» π₂_pres contributes₂
   «ρ₁» ρ₁_pres ρ₁_Y «ρ₂» ρ₂_pres ρ₂_Y comm
 
+/-! ## Factored Space Models — the checked endpoint inventory
+
+Same contract as the FFS-INVENTORY block above: every declaration carrying a
+`Paper node:` annotation in `FactoredSpaces/` must itself be listed between the
+FS-INVENTORY markers below, and `scripts/check-factored-spaces-nodes.py` enforces that
+direction, together with the validity of each cited node against the committed TeX
+(`printed-counter-appendix` scheme: section-scoped shared counter, lettered appendix,
+`restatable` wrappers) and the anchoring of each annotation to a named declaration.  The
+converse (every listed name is a real declaration) is caught only when this file is
+elaborated.
+
+This formalization is **complete** (`scripts/papers.py`: `completed`): all 50 numbered
+nodes of the paper are annotated and inventoried, and `notes/scope-manifest.json` records
+that nothing was ruled out of scope.  Besides the numbered nodes the block carries three
+kinds of unannotated entries, all deliberate: the non-vacuity witnesses of
+`FactoredSpaces/Examples.lean`; the working form `disintegrates_iff_splice` of Definition
+4.5 (the equivalence every history proof goes through, audited beside its definition); and
+the claims the paper makes without a number —
+`not_isGraphoid_structIndepRel` (Table 1, row "Intersection": structural independence
+is *not* a graphoid; §5.1 calls this an important property) and
+`isSemigraphoid_condIndepRel` (the Pearl 1988 fact cited in the proof of Proposition
+5.2, proved here so that no citation boundary remains).  Neither can carry a
+`Paper node:` line, since the checker admits only numbered nodes.
+A third unnumbered entry joins them: `not_intersection_structIndepRel`, the same Table 1
+"Intersection" claim with the failing axiom written out, so that reading the negative
+claim needs no Proposition 5.2 alongside it. -/
+
+open FactoredSpaces in
+-- FS-INVENTORY-BEGIN
+#assert_axioms_clean
+  -- §4.1: Definitions 4.1, 4.2 and Lemma C.3
+  Pt bg DerivedOn derivedOn_iff
+  -- §4.2 / Appendix A: Definitions 4.5, 4.6; Lemmas 4.7, 4.8, 4.9, A.1, A.2, C.4
+  Disintegrates disintegrates_iff_splice Disintegrates.union Disintegrates.inter
+  Generates history generates_history history_subset_of_generates history_unique_minimal
+  Generates.inter history_pair history_eq_iUnion_fibers history_eq_biUnion_fibers
+  generates_indic_iff_agree generates_indic_iff_splice eventHistory_minimal_splice
+  -- §4.3–4.4 / Appendix B: Definitions 4.10, 4.11; Lemmas 4.12, B.1
+  StructIndep StructIndepGiven Before StrictlyBefore
+  structIndep_of_before before_of_forall_bg before_iff_forall_structIndep
+  structIndepGiven_pair
+  -- Probability substrate: Definitions 4.3, 4.4, 6.1, C.1, C.2; Lemmas C.11, C.13, C.14,
+  -- C.15, C.16, C.17
+  Factorizes IsFactoredSpaceModel Distr.marg Distr.outer
+  Distr.prob_pos_of_support_subset Distr.support_outerCompl Distr.prob_pos_of_marg_support_subset
+  CondIndep CondIndepVar CondIndepEventVar.of_pair CondIndepEventVar.of_proj_subset
+  Distr.prob_cyl_inter_cyl Factorizes.prob_sliceAt Distr.prob_outerCompl_delta
+  condIndepVarEvent_proj_history
+  -- §6 / Appendix C.2–C.3: Lemmas 6.3, 6.4, 6.5, C.5, C.7, C.8, C.9, C.10, C.12, C.18,
+  -- C.19, C.20; Definition C.6; Theorem 6.2; Proposition 6.6
+  condIndep_of_disjoint_eventHistory
+  exists_polynomial_interp_prob interp_prob_pos condIndepVar_of_local
+  interp_mem_factorizingPos
+  PQIrrelevant Irrelevant cohistory pqIrrelevant_or_of_condIndepAll
+  cohistory_union_eq_univ_of_condIndepAll condProb_eq_of_agree_on_relevant
+  condIndepEventVar_proj_cohistory condIndepVarEvent_proj_cohistory disintegrates_cohistory
+  cohistory_eq_compl_eventHistory disjoint_eventHistory_of_condIndepAll
+  structIndepGiven_iff_forall_condIndepVar structIndepGiven_of_open
+  -- §5.1: Definition 5.1, Proposition 5.2; plus the two unnumbered claims named in the
+  -- preamble (Table 1 "Intersection" row; the Pearl semigraphoid fact behind Prop 5.2)
+  IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid
+  isCompositionalSemigraphoid_structIndepRel not_isGraphoid_structIndepRel
+  not_intersection_structIndepRel
+  isSemigraphoid_condIndepRel
+  -- §5.2 / Appendix B: Lemma 5.3, B.2; Propositions 5.4, 5.5, 5.6, 5.8; Definition 5.7
+  prob_jointVar_fiber factorizesOverDAG_tau factorizes_tauInv tau_tauInv tauPos_bijective
+  tauInv_condCPD_tau
+  factorizesOverDAG_iff_isFactoredSpaceModel isAncestor_iff_strictlyBefore
+  dSeparated_iff_structIndepGiven
+  IsPerfectMapDAG IsPerfectMapFSM isPerfectMapFSM_nodeVar_of_isPerfectMapDAG
+  exists_isPerfectMapFSM_of_exists_isPerfectMapDAG exists_isPerfectMapFSM_not_exists_isPerfectMapDAG
+  -- Non-vacuity witnesses and convention pins (`FactoredSpaces/Examples.lean`): the paper's
+  -- two-coin example, the trivial one-factor model of every distribution (remark after
+  -- Definition 4.4), the collider DAG pinning the `dd:dsep` conventions from both sides
+  -- (`not_dSeparated_self_zero` and `dSeparated_given_endpoint` are the two discriminating
+  -- endpoint pins), Props 5.5/5.6 with content — `StructIndepGiven` positively inhabited
+  -- (`structIndepGiven_collider`) as well as refuted — and the first inhabitant of
+  -- `IsPerfectMapDAG` (Prop 5.8(1) is not vacuous).
+  Examples.disintegrates_univ_diag Examples.not_disintegrates_singleton_diag
+  Examples.history_bg_zero Examples.structIndep_bg_zero_one Examples.not_structIndep_bg_self
+  Examples.isFactoredSpaceModel_single
+  Examples.collider_isAcyclic Examples.not_dSeparated_given_collider
+  Examples.not_colliderTrail_active_empty Examples.dSeparated_parents_of_collider
+  Examples.nil_active_zero Examples.not_nil_active_zero Examples.not_dSeparated_self_zero
+  Examples.not_dSeparated_adj Examples.dSeparated_given_endpoint
+  Examples.structIndepGiven_collider Examples.not_structIndepGiven_nodesVar
+  Examples.strictlyBefore_nodeVar Examples.G₁_acyclic Examples.isPerfectMapDAG_G₁_Q
+  -- Negative instances of the paper's three *factorizes* predicates, so that none of them
+  -- is trivially true: a constant observation variable is not a factored space model of a
+  -- non-degenerate law (Definition 4.4), and the perfectly-correlated two-coin law `Pdiag`
+  -- factorizes neither over `Ω` (Definition 4.3) nor over the edgeless two-node DAG `G₀`
+  -- (§5.2, eq. (2)).
+  Examples.not_isFactoredSpaceModel_const
+  Examples.not_factorizes_diag
+  Examples.G₀_acyclic
+  Examples.not_factorizesOverDAG_diag
+  -- Definition 5.7(1) inhabited by a DAG that actually has an edge, so that neither side
+  -- of its equivalence is idle: `G₂ = (0 -> 1)` is a perfect map of the law `Pedge` whose
+  -- two coordinates are dependent.  `not_dSeparated_G₂` / `dSeparated_G₂_given_endpoint`
+  -- pin the graph side and `not_condIndepVar_Pedge` the probability side.
+  Examples.G₂_acyclic
+  Examples.G₂_adj_zero_one
+  Examples.not_dSeparated_G₂
+  Examples.dSeparated_G₂_given_endpoint
+  Examples.not_condIndepVar_Pedge
+  Examples.isPerfectMapDAG_G₂_Pedge
+  -- The empty-value-space errata (E12, E16), kernel-checked rather than asserted in prose
+  Examples.generates_not_inter_closed_twoEmpty Examples.history_ne_iUnion_fibers_oneEmpty
+  Examples.history_bg_eq_empty_twoUnit
+-- FS-INVENTORY-END
+
+/-! Tier-2 boundary structures for the Factored Space Models surface. -/
+#assert_fields FactoredSpaces.Distr
+  mass nonneg sum_eq_one
+-- `#assert_fields` freezes field *names* only.  The content of these three structures is
+-- carried by the field *types*: `IsGraphoid.intersection` carries the cross-typed side
+-- condition `β = γ → ¬ HEq Y Z` (the paper's `Y ≠ Z`), and the `[Nonempty _]` binders on
+-- the axiom fields are the minimal ones Theorem 6.2 needs — weakening either would pass
+-- this freeze silently, so any such change must be reviewed against
+-- `FactoredSpaces/KNOWLEDGE.md` (round-1 record) rather than trusted to the audit.
+#assert_fields FactoredSpaces.IsSemigraphoid
+  symm decomposition weakUnion contraction
+#assert_fields FactoredSpaces.IsGraphoid
+  toIsSemigraphoid intersection
+#assert_fields FactoredSpaces.IsCompositionalSemigraphoid
+  toIsSemigraphoid composition
+#assert_fields Digraph.Trail
+  verts chain head last nodup
+#assert_fields Digraph.Walk
+  verts chain head last
+
 /-! ## Consumer API conveniences (not paper endpoint inventories)
 
 The trust-surface inventories above remain the paper-facing accounting.  These
@@ -2361,3 +2493,133 @@ open Condensation in
   -- import.
   Condensation.LatentAmalgamation.perfectlyCondenses_lat₁
   Condensation.LatentAmalgamation.perfectlyCondenses_lat₂
+
+-- Factored Space Models: the consumer-surface conveniences advertised in
+-- `FactoredSpaces/API.lean` that are not paper endpoints; a subset of them is exercised by
+-- `APITests`.  Auto-generated field projections (`Distr.mass`, `.nonneg`, `.sum_eq_one`)
+-- are not listed, matching the Finite Factored Sets register above; `Distr` and the two
+-- trail structures are, because the boundary advertises the types themselves and their
+-- fields are frozen separately by `#assert_fields`.
+open FactoredSpaces in
+#assert_axioms_clean
+  -- §4.1: the ambient factored space and the splice calculus (`dd:pi-space`, `dd:splice`).
+  -- `Pt`, `bg`, `DerivedOn` and `derivedOn_iff` are paper nodes and stay in the inventory
+  -- above; these are the surrounding vocabulary a client actually writes with.
+  PtOn proj projSet proj_eq_restrict splice prodSplit mem_splice_iff splice_eq_cyl_inter
+  splice_compl fiber pair indic
+  DerivedOn.trans DerivedOn.mono DerivedOn.pair DerivedOn.comp_left
+  -- §4.2: the corners and working forms of Definitions 4.5/4.6 and the membership
+  -- criteria for `history` that every §5 proof and every client runs on.
+  Disintegrates.compl disintegrates_univ disintegrates_empty disintegrates_univ_set
+  generates_iff generates_univ generates_iff_history_subset
+  history_mono_of_derived history_bg_subset mem_history_bg_of_mem_history
+  mem_history_of_sep mem_history_iff_exists_ne exists_ne_of_mem_history
+  eventHistory inter_eq_splice
+  -- §4.3: the symmetry a client needs before Definition 4.10 is usable.
+  StructIndepGiven.symm
+  -- Probability substrate (`dd:dist`).  `Distr` itself, its `@[ext]` lemma, the whole
+  -- `prob` calculus, and the constructions (`map`, `delta`, `uniform`, `mix`, `prod`,
+  -- `margAt`, `outerCompl`, `condDist`, `cyl`, `sliceAt`) with the transport equivalences
+  -- `splitEquiv`/`unionEquiv`/`unionComplEquiv`.  None of these is a paper node; the nodes
+  -- they support (Definitions 4.3, 4.4, C.1, C.2) are inventoried above.
+  Distr Distr.ext Distr.prob Distr.prob_nonneg Distr.prob_univ Distr.prob_empty
+  Distr.prob_mono Distr.prob_le_one Distr.prob_union_of_disjoint Distr.prob_singleton
+  Distr.prob_eq_sum_filter Distr.prob_eq_sum_fiber Distr.prob_pos_iff
+  Distr.prob_eq_zero_iff Distr.prob_eq_zero_of_subset
+  Distr.support Distr.condProb Distr.StrictlyPositive
+  Distr.map Distr.map_mass Distr.map_prob Distr.map_map
+  Distr.delta Distr.delta_mass Distr.delta_prob Distr.support_delta Distr.delta_eq_prod
+  Distr.uniform Distr.uniform_strictlyPositive Distr.mix Distr.euclDist
+  Distr.euclDist_self Distr.euclDist_comm Distr.euclDist_nonneg Distr.abs_sub_le_euclDist
+  Distr.nonempty_carrier condDist condDist_mass condDist_prob
+  Distr.prod Distr.prod_mass Distr.prod_mass_pos_iff Distr.prob_prod_agree_on
+  Distr.prob_prod_inter_bg Distr.margAt Distr.margAt_prod
+  factorizing factorizingPos factorizes_iff_exists_prod factorizes_prod
+  Factorizes.eq_prod_margAt factorizes_delta
+  Distr.outerCompl Distr.outerCompl_mass Factorizes.eq_outerCompl Factorizes.marg_mass
+  outerCompl_delta_eq_prod cyl sliceAt splitEquiv unionEquiv unionComplEquiv
+  -- §6.1 and Appendix C: the mixed conditional-independence forms, the two directions of
+  -- Theorem 6.2 isolated from the iff (which is how a client consumes it), the
+  -- interpolation, and the general form of Lemma C.17.
+  CondIndepEventVar CondIndepVarEvent CondIndepAll CondIndep.symm CondIndep.of_prob_eq_zero
+  fiber_pair condIndepVar_of_structIndepGiven structIndepGiven_of_forall_condIndepVar
+  condIndepVarEvent_proj_of_disintegrates
+  interp interp_zero interp_one factorizes_interp pairsDifferingAt mem_cohistory_iff
+  -- §5.1: the carrier of Definition 5.1's axioms and the two relations Proposition 5.2
+  -- and Theorem 6.2 instantiate it at.
+  IndepRel structIndepRel condIndepRel
+  -- §5.2, graph side (root `Digraph` namespace): acyclicity and its one-line consequences,
+  -- ancestry, parents, and the depth/ancestral-closure order the chain rule of
+  -- `factorizesOverDAG_of_isIMapDAG` runs on.
+  Digraph.IsAcyclic Digraph.IsAcyclic.wf Digraph.IsAcyclic.ne_of_adj
+  Digraph.IsAcyclic.not_adj_symm Digraph.IsAcyclic.not_ancestor_of_adj
+  Digraph.IsAncestor Digraph.parents Digraph.mem_parents Digraph.notMem_parents_self
+  Digraph.depth Digraph.depth_lt Digraph.depth_lt_of_isAncestor Digraph.AncClosed
+  -- §5.2, construction side: `Ω^G` and the node variables, with the reading-off API, plus
+  -- the CPD vocabulary and the components of `τ`.  The Lemma 5.3 / Propositions 5.4, 5.6
+  -- statements themselves are inventoried above.  `mem_history_nodeVar_iff` is the closed
+  -- form of `H(X_v)` that Proposition 5.6 is read off from (`FactoredSpaces/Separation.lean`).
+  ParentVals parentConfig bnIndex bnFactor nodeVar nodeVar_apply nodeVar_eq_of_diag
+  jointVar_eq_iff constTable jointVar_constTable jointVar nodesVar famVar famJoint
+  CPD FactorizesOverDAG dagFactorizing condCPD tau tauInv tauPos mem_history_nodeVar_iff
+  -- d-separation (`dd:dsep`): the definition itself is not a paper node (the paper does not
+  -- define it, errata E8), so all of it lives here — trails, collider status, activity, the
+  -- `Z`-closure criterion, and the local Markov property.
+  Digraph.Trail Digraph.Walk Digraph.Walk.IsColliderAt Digraph.Walk.Active
+  Digraph.Trail.Active Digraph.ColliderOK Digraph.DSeparated Digraph.Trail.nil
+  Digraph.Trail.nil_active_iff Digraph.not_dSeparated_self
+  Digraph.dSeparated_iff_forall_singleton Digraph.dSeparated_singleton_parents
+  Digraph.dSeparated_iff_disjoint_zClosureSet
+  -- §5.2.3: the I-map weakening of Definition 5.7(1) and the theorem the paper's proof of
+  -- Proposition 5.8(1) omits (errata E7).
+  IsIMapDAG factorizesOverDAG_of_isIMapDAG
+  -- The witness objects of `FactoredSpaces/Examples.lean` the API advertises by name; the
+  -- facts proved about them are inventoried above.
+  Examples.Coins Examples.diag Examples.G₁ Examples.Q
+  Examples.Pdiag Examples.G₀
+  -- The `Z`-closure vocabulary of `ConditionalHistory.lean` (root `Digraph` namespace).
+  -- `dSeparated_iff_disjoint_zClosureSet` above is *stated* in it, so a client cannot use
+  -- that criterion without these names; `Skel` and `Trail.toWalk` are what writing a
+  -- concrete trail down and reading its collider status take; and
+  -- `exists_active_trail_of_active_walk` is the walk-to-trail bridge the `dd:owalk`
+  -- glossary cites, which lets a client define d-separation through walks instead.
+  Digraph.unblockedAnc
+  Digraph.IsZClosed
+  Digraph.zClosure
+  Digraph.zClosureSet
+  Digraph.zClosure_subset
+  Digraph.mem_zClosureSet_self
+  Digraph.mem_zClosureSet_of_mem_unblockedAnc
+  Digraph.exists_of_mem_zClosureSet
+  Digraph.Skel
+  Digraph.Trail.toWalk
+  Digraph.exists_active_trail_of_active_walk
+  -- Small tools `APITests` uses that the bullets above did not name: the `Ω^G` index at a
+  -- joint value and the transport that keeps its dependent argument out of a rewrite, the
+  -- mass of the Lemma 5.3 pushforward, and the support-membership criterion.
+  idxAt
+  table_congr
+  tau_mass
+  Distr.mem_support_iff
+  -- The two general d-separation discharge routes and the one-edge trail they are checked
+  -- against (`FactoredSpaces/DSeparation.lean`), plus the §6.1 conditional-independence
+  -- tools a client needs to verify Definition 5.7 by hand over arbitrary, possibly
+  -- overlapping triples, and the transport of a conditional independence along a
+  -- pushforward (`FactoredSpaces/Probability.lean`).
+  Digraph.dSeparated_of_subset_left
+  Digraph.dSeparated_of_subset_right
+  Digraph.Trail.pair
+  Digraph.Trail.pair_active
+  Digraph.not_dSeparated_of_skel
+  CondIndep.of_subset_left
+  CondIndep.of_disjoint_left
+  CondIndepVar.symm
+  fiber_proj_subset_or_disjoint
+  condIndepVar_proj_of_subset_left
+  condIndepVar_proj_of_subset_right
+  CondIndepVar.of_proj_subset
+  not_condIndepVar_proj_self
+  condIndepVar_map
+  -- The new witness objects `FactoredSpaces/API.lean` advertises by name.
+  Examples.G₂
+  Examples.Pedge

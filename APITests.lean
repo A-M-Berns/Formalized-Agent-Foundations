@@ -3,6 +3,7 @@ import APITests.ModalAgents
 import APITests.CartesianFrames
 import APITests.FiniteFactoredSets
 import APITests.Condensation
+import APITests.FactoredSpaces
 import APITests.ShannonInformation
 import APITests.ShannonInformationFiniteEntropy
 import APITests.ShannonInformationChainRule

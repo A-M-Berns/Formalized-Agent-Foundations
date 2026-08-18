@@ -1,0 +1,7 @@
+{
+  "paper": "Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell, Factored space models (arXiv:2412.02579v2)",
+  "ruling": "Anson, 2026-08-17: all 50 numbered nodes in scope (a real complete formalization); the d-separation trio (Prop 5.5, Def 5.7, Prop 5.8) included, proved directly rather than through the cited Koller-Friedman theorems.",
+  "out_of_scope": [],
+  "mathlib_rendered": [],
+  "note": "scripts/check-factored-spaces-nodes.py enforces: (numbered nodes in the TeX) minus out_of_scope minus mathlib_rendered == the set of nodes carrying a `Paper node:` annotation, in both directions. Editing this file is a scope change and needs a ruling recorded in FactoredSpaces/README.md and KNOWLEDGE.md."
+}

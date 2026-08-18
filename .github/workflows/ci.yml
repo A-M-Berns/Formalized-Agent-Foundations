@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, condensation]
+    branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, factored-space-models, condensation]
   pull_request:
 
 concurrency:
@@ -74,6 +74,12 @@ jobs:
       # set of nodes an annotation may name.
       - name: Check Condensation node annotations
         run: python3 scripts/check-condensation-nodes.py
+
+      # Blocking: same contract for Factored Space Models. Five of that paper's fifty
+      # nodes carry no \label, so the provenance keys are the printed section-scoped
+      # numbers (with lettered appendix sections), recomputed from the committed TeX.
+      - name: Check Factored Space Models node annotations
+        run: python3 scripts/check-factored-spaces-nodes.py
 
       # Blocking: docs/trust-surface.html (the read-through guide) must be regenerated
       # whenever any of its inputs changes; the page carries a hash stamp over them.

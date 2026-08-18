@@ -30,6 +30,10 @@ lean_lib Condensation where
   -- would leave the aggregator `Condensation.lean` (and its `dd:` glossary) unbuilt.
   globs := #[.andSubmodules `Condensation]
 
+@[default_target]
+lean_lib FactoredSpaces where
+  srcDir := "."
+
 -- Vendored Shannon-information substrate: the entropy import closure of
 -- teorth/pfr @ 01c9b666945eaf73b3f7d8b20ffe003f8640e630 (Apache-2.0), 25 modules, kept at
 -- upstream module paths so diffs against upstream stay readable. Two compatibility

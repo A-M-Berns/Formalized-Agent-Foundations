@@ -223,6 +223,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   %%NAV_MA%%
   <a class="nav-paper" href="#paper-finite-factored-sets">Finite Factored Sets</a>
   %%NAV_FFS%%
+  <a class="nav-paper" href="#paper-factored-space-models">Factored Space Models</a>
+  %%NAV_FSM%%
   <a class="nav-paper" href="#paper-condensation">Condensation</a>
   %%NAV_CD%%
 </nav>
@@ -543,6 +545,43 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   </div>
 
   %%CARDS_FFS%%
+  </section>
+
+  <section class="paper-section" id="paper-factored-space-models">
+  <h2 class="paper-head">Factored space models: Towards causality between levels of abstraction</h2>
+  <p class="paper-cite">Garrabrant, Mayer, Wache, Lang, Eisenstat, Dell (2024) ·
+  <a href="https://arxiv.org/abs/2412.02579">arXiv:2412.02579</a> ·
+  <code>FactoredSpaces/</code> · %%NFSM%% nodes</p>
+
+  <div class="method">
+    <div class="no-tier"><b>This formalization is in progress, and no strength
+    classification exists for this paper.</b> The cards below are the correspondence view
+    of what has landed so far — every paper node beside the Lean statement that carries
+    it — and assert the correspondence only. Nodes with no Lean statement annotated to
+    them yet: %%FSM_MISSING%%.</div>
+
+    <h3>How nodes are cited</h3>
+    <p>The paper labels 45 of its 50 numbered nodes and leaves five unlabeled — among them
+    Definition 4.2, the factored space itself — so the provenance key is the
+    <em>printed</em> number, recomputed from the committed TeX
+    (<code>scripts/check-factored-spaces-nodes.py</code>). The source declares one
+    section-scoped counter shared by <code>theorem</code>, <code>definition</code>,
+    <code>lemma</code>, <code>proposition</code> and <code>corollary</code> (so numbers
+    read <code>Lemma 4.7</code>, <code>Definition 6.1</code>), wraps several results in
+    thmtools' <code>restatable</code> — counted where first stated, not where restated —
+    and letters its appendix sections, so appendix nodes read <code>Lemma A.1</code>,
+    <code>Definition C.6</code>.</p>
+
+    <h3>Reading the statements</h3>
+    <p>The factored space <code>Ω = ×<sub>i∈I</sub> Ω<sub>i</sub></code> is the dependent
+    function type <code>Pt Ω</code>; the paper's product <code>C<sub>J</sub> ×
+    C<sub>I∖J</sub></code> is stated literally (<code>prodSplit</code>) and worked with
+    through its proved equivalent, closure under splicing two points at <code>J</code>
+    (<code>Finset.piecewise</code>). The design decisions are tagged <code>dd:</code> in
+    <code>FactoredSpaces.lean</code>.</p>
+  </div>
+
+  %%CARDS_FSM%%
   </section>
 
   <section class="paper-section" id="paper-condensation">
