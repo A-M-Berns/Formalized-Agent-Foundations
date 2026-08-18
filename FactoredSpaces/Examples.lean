@@ -783,5 +783,83 @@ example : ∃ (I : Type) (Ω : I → Type) (_ : Fintype I) (_ : DecidableEq I)
   exists_isPerfectMapFSM_of_exists_isPerfectMapDAG (V := Fin 2) (Val := Coins) (P := Pedge)
     ⟨G₂, G₂_acyclic, isPerfectMapDAG_G₂_Pedge⟩
 
+
+/-! ### The empty-value-space errata, kernel-checked
+
+The disclosures at `History.lean` (Lemmas 4.7, A.2, 4.9 need `[Nonempty α]`; the printed
+proof of Lemma 4.12 asserts `H(U_i) = {i}`) are backed here by the actual counterexamples. -/
+
+/-- Two empty factors: the regime in which Lemmas 4.7 and A.2 fail as printed. -/
+abbrev twoEmpty : Bool → Type := fun _ => Empty
+
+/-- **Lemmas 4.7 / A.2 are false for `Val(X) = ∅`** (errata E12): over two empty factors each
+singleton generates the empty-valued `X` but their (empty) intersection does not — generation
+is not `∩`-closed and no minimal generating set exists.  This is why `generates_history`,
+`Generates.inter` and `history_unique_minimal` carry `[Nonempty α]`. -/
+lemma generates_not_inter_closed_twoEmpty (X : Pt twoEmpty → Empty) :
+    Generates ({true} : Finset Bool) X Set.univ
+      ∧ Generates ({false} : Finset Bool) X Set.univ
+      ∧ ¬ Generates (({true} : Finset Bool) ∩ {false}) X Set.univ := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact (generates_iff_isEmpty_ptOn X _).mpr ⟨fun p => (p ⟨true, by decide⟩).elim⟩
+  · exact (generates_iff_isEmpty_ptOn X _).mpr ⟨fun p => (p ⟨false, by decide⟩).elim⟩
+  · intro h
+    have hempty : (({true} : Finset Bool) ∩ {false}) = ∅ := by decide
+    rw [hempty] at h
+    have h2 := (generates_iff_isEmpty_ptOn X (J := (∅ : Finset Bool)) Set.univ).mp h
+    exact h2.elim (fun i => absurd i.2 (Finset.notMem_empty _))
+
+/-- One empty factor (`true`) and one singleton factor: the regime in which Lemma 4.9 fails. -/
+abbrev oneEmpty : Bool → Type := fun b => cond b Empty PUnit
+
+/-- **Lemma 4.9 is false for `Val(X) = ∅`** (errata E12): with exactly one empty factor,
+`H(X | Ω) = {i₀}` while the union over the empty `Val(X)` is `∅`; hence the `[Nonempty α]`
+on `history_eq_iUnion_fibers`. -/
+lemma history_ne_iUnion_fibers_oneEmpty (X : Pt oneEmpty → Empty) :
+    (history X Set.univ : Set Bool) ≠
+      ⋃ x : Empty, ((eventHistory (fiber X x) Set.univ : Finset Bool) : Set Bool) := by
+  classical
+  have hmem : true ∈ history X (Set.univ : Set (Pt oneEmpty)) := by
+    have hle : ({true} : Finset Bool) ≤ history X (Set.univ : Set (Pt oneEmpty)) := by
+      simp only [history]
+      refine Finset.le_inf ?_
+      intro J hJ
+      have hg : Generates J X (Set.univ : Set (Pt oneEmpty)) := (Finset.mem_filter.mp hJ).2
+      have hE := (generates_iff_isEmpty_ptOn X (J := J) Set.univ).mp hg
+      have htJ : true ∈ J := by
+        by_contra hnt
+        exact hE.elim (fun i => by
+          have hif : (i : Bool) = false := by
+            rcases Bool.eq_false_or_eq_true (i : Bool) with h1 | h1
+            · exact absurd (h1 ▸ i.2) hnt
+            · exact h1
+          exact cast (by rw [hif]; rfl) (PUnit.unit : PUnit))
+      simpa [Finset.singleton_subset_iff] using htJ
+    simpa [Finset.singleton_subset_iff] using hle
+  intro hEq
+  have hin : (true : Bool) ∈
+      (⋃ x : Empty, ((eventHistory (fiber X x) Set.univ : Finset Bool) : Set Bool)) := by
+    rw [← hEq]; exact hmem
+  simp at hin
+
+/-- Two singleton factors: the regime in which the printed proof of Lemma 4.12 goes wrong. -/
+abbrev twoUnit : Bool → Type := fun _ => PUnit
+
+/-- **`H(U_i) = {i}` fails for a singleton factor** (errata E16): the printed proof of Lemma
+4.12 asserts it; here `H(U_true) = ∅`.  Lean proves only `H(U_i) ⊆ {i}` (`history_bg_subset`)
+plus the membership transfer `mem_history_bg_of_mem_history`. -/
+lemma history_bg_eq_empty_twoUnit :
+    history (bg (Ω := twoUnit) true) (Set.univ : Set (Pt twoUnit)) = ∅ := by
+  ext j
+  simp only [Finset.notMem_empty, iff_false]
+  intro hj
+  have hsub : history (bg (Ω := twoUnit) true) (Set.univ : Set (Pt twoUnit)) ⊆ {true} :=
+    history_bg_subset true _ (disintegrates_univ_set _)
+  have hjt : j = true := Finset.mem_singleton.mp (hsub hj)
+  subst hjt
+  obtain ⟨a, b, hab, hne⟩ := (mem_history_iff_exists_ne (bg (Ω := twoUnit) true) true).mp hj
+  exact hne rfl
+
+
 end Examples
 end FactoredSpaces

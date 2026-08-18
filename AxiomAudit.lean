@@ -1827,6 +1827,9 @@ open FactoredSpaces in
   Examples.dSeparated_G₂_given_endpoint
   Examples.not_condIndepVar_Pedge
   Examples.isPerfectMapDAG_G₂_Pedge
+  -- The empty-value-space errata (E12, E16), kernel-checked rather than asserted in prose
+  Examples.generates_not_inter_closed_twoEmpty Examples.history_ne_iUnion_fibers_oneEmpty
+  Examples.history_bg_eq_empty_twoUnit
 -- FS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Factored Space Models surface. -/

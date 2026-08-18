@@ -276,8 +276,9 @@ propagates as `[Nonempty α]` through `generates_iff`.  On Lemmas 4.7
 (`history_unique_minimal`), A.2 (`Generates.inter`) and 4.9 (`history_eq_iUnion_fibers`)
 the hypothesis is **not** merely inherited from that route: each of those statements is
 *false* as printed, so `[Nonempty α]` there is a correction to the paper rather than an
-artefact of the proof taken (errata E1, E12).  Both witnesses are machine-checked and
-take `Val(X)` empty, where generation depends on `J` alone —
+artefact of the proof taken (errata E1, E12).  Both witnesses are kernel-checked in
+`Examples.lean` (`generates_not_inter_closed_twoEmpty`, `history_ne_iUnion_fibers_oneEmpty`)
+and take `Val(X)` empty, where generation depends on `J` alone —
 `Generates J X C ↔ IsEmpty (Ω_J)` (`generates_iff_isEmpty_ptOn`):
 
 * *Lemmas 4.7 and A.2*, with **two** empty factors (`I = {0, 1}`, `Ω_0 = Ω_1 = ∅`).
