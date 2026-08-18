@@ -58,10 +58,13 @@ approximate hypotheses buy an approximate correspondence rather than none.
 **Milestone M2 landed 2026-08-18. Every in-scope node has a Lean carrier, every proof is
 complete, and there is no `sorry` anywhere in `Condensation/`.**
 
-That is a claim about the mathematics, not about the paper being *finished* here: the
+That is a claim about the mathematics, not about the paper being *finished* here. The
 consumer pass the repo standard requires before a paper may be registered `completed` has
-not been done, and the registry still reads `in-progress`. See *Consumer readiness* below
-for what precisely is outstanding. What is settled, with every number below taken from a
+since landed its two artifacts — [`API.lean`](API.lean), the documented consumer import,
+and [`../APITests/Condensation.lean`](../APITests/Condensation.lean), the client-style
+tests — but the human read-through of the frozen surface and the final fresh-context
+adversarial audit have not run, so the registry still reads `in-progress`. See *Consumer
+readiness* below for the per-criterion state. What is settled, with every number below taken from a
 checker rather than maintained by hand:
 
 * **Every in-scope node has a carrier.** `scripts/check-condensation-nodes.py` reports
@@ -186,18 +189,34 @@ Where each stands:
 | 1. faithful paper coverage | **met, conditionally.** Every in-scope node is carried and proved (39/42, the three exclusions being Examples 5.1–5.3). The condition is that the exclusion is still a *proposed* ruling — open ruling 2 — not a settled one. |
 | 2. provenance and trust-surface accounting | **met.** This file, [`KNOWLEDGE.md`](KNOWLEDGE.md), [`notes/paper-errata.md`](notes/paper-errata.md), the `Paper node:` annotation contract checked fail-closed including node *kind*, and per-declaration coverage in `AxiomAudit.lean`. |
 | 3. axiom cleanliness and disclosed trust boundaries | **met.** Zero `sorry`, 112 endpoints axiom-clean, an empty pending block, no `axiom` declarations, no modeling substitutions, and the two remaining restrictions (universe stratification, the Examples 5.1–5.3 scope ruling) disclosed above and in `KNOWLEDGE.md`. Universe stratification is open ruling 3. |
-| 4. a documented consumer import | **outstanding.** There is no `Condensation/API.lean`. `Condensation.lean` is the aggregator — it imports everything and is not a curated boundary. Nothing has yet been decided about which of the §3.1 category machinery, the amalgamation constructions, `ChainRule.lean`'s substrate and the `Examples.lean` witnesses belong in a default client import versus a deeper construction import. |
-| 5. client-style smoke tests | **outstanding.** There is no `APITests/Condensation.lean`; criterion 5 cannot be attempted before criterion 4 exists, since the tests must import *only* that API. |
+| 4. a documented consumer import | **met.** [`API.lean`](API.lean) is the recommended entrypoint, registered as this paper's `api` key. It imports the whole paper surface and documents it as an interface: vocabulary section by section, the `ShannonInformation.API` substrate rules, the errata a client should know, and — the part that answers the question this row used to leave open — which declarations are paper endpoints as against conveniences, by pointing at `AxiomAudit.lean`'s two blocks. The rulings it settles: the §3.1 category machinery, the amalgamation constructions and `ChainRule.lean`'s substrate are all **on** the boundary (a client doing quantitative work with joint variables needs the chain-rule layer, and neither Mathlib nor the vendored PFR snapshot has it), and so is `Examples.lean` — unlike `FiniteFactoredSets/Examples.lean`, it is not a fixture file: it carries Examples 4.1 and 4.4 as *paper nodes stated over an arbitrary model*, together with `LatentModel.ofJoint`/`nonempty`, which is the first latent model a client can reach for. The genuinely fixture-shaped witnesses come along with it in the same file and are documented as regression fixtures rather than a dependency surface. |
+| 5. client-style smoke tests | **met.** [`../APITests/Condensation.lean`](../APITests/Condensation.lean) imports only `Condensation.API` and builds a client model from scratch (`Ω = Bool × Bool` uniform, `I = Bool`, the two coordinates as observables — not one of `Examples.lean`'s fixtures), a latent model over it, computes both scores by rewriting through `famFinset`/`contrib`, and then composes endpoints: Proposition 2.5 with `AEFunctionOf.trans`, Proposition 4.2's chain, Theorem 4.9 into `OrderedMarkov`, `LatentAmalgamation.diagonal` into Theorem 4.15, Theorem 5.8 at a one-leaf tree, a `Hom` composition with `Hom.isIso_iff`, and the chain-rule layer's `iIndepFun_of_entropy_jointOn_eq_sum` to certify that the client's two observables are independent. It is collected in `APITests.lean` and so builds by default. |
 
-`scripts/papers.py` therefore carries no `api` or `api_test` key for this paper, and
-`scripts/check_paper_wiring.py` passes today only because it "permits incremental
-`in-progress` entries." It "makes these artifacts and their default CI build mandatory for
-every `completed` paper," so the gate arms itself the moment the status changes — as does
-the node checker's rule that a non-empty `CONDENSATION-PENDING` block is a **violation**,
-not a note, once the registry says `completed`.
+`scripts/papers.py` now carries both the `api` and the `api_test` key for this paper, so
+`scripts/check_paper_wiring.py` checks those two artifacts and their collection in
+`APITests.lean` rather than merely permitting their absence. The status stays
+`in-progress` regardless: the gate "makes these artifacts and their default CI build
+mandatory for every `completed` paper," and it arms the rest of itself the moment the
+status changes — as does the node checker's rule that a non-empty `CONDENSATION-PENDING`
+block is a **violation**, not a note, once the registry says `completed`.
 
-Two further steps sit outside that list and are also outstanding, in the order the root
-`../CLAUDE.md` fixes:
+One honest qualification on criterion 4, since the standard's wording is "an intentionally
+*small* API". `Condensation/API.lean` imports all nine modules of the library, so it is not
+small in module count, and there is no "deeper construction import" held back behind it.
+That is a fact about this library rather than a dodge: eight of the nine files carry paper
+nodes, so there is no module that could be excluded without dropping part of the paper, and
+the ninth (`ChainRule.lean`) is machinery a quantitative client demonstrably needs and
+cannot get from Mathlib or the vendored PFR snapshot — `APITests/Condensation.lean` uses it
+to certify that a client's own observables are independent. The curation is therefore in
+*what is documented as supported*, not in a narrower import: the API docstring separates
+paper endpoints from conveniences by pointing at `AxiomAudit.lean`'s two blocks, and marks
+`Examples.lean`'s fixture-shaped witnesses as regression fixtures rather than a dependency
+surface. If the read-through disagrees, the fix is to split `Examples.lean` along the line
+the docstring already draws.
+
+**Criteria 4 and 5 being met does not make the paper complete.** Two further steps sit
+outside that list and are outstanding, in the order the root `../CLAUDE.md` fixes; neither
+is a formality:
 
 * **the human read-through.** "Anson reads every top-level **statement** and every
   **definition** before the work is called done," and the sequencing note is that it runs

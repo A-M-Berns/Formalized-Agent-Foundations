@@ -2,7 +2,18 @@
 # Condensation (Eisenstat, 2025)
 
 This is the root import for the formalization of Sam Eisenstat, *Condensation: A Theory of
-Concepts* (July 2025, 27 pp.; OpenReview `HwKFJ3odui`).  The paper is the specification:
+Concepts* (July 2025, 27 pp.; OpenReview `HwKFJ3odui`).
+
+**If you are a downstream client, import `Condensation.API` instead.**  This module is the
+*aggregator*: it re-exports every file of the formalization and carries the `dd:` glossary,
+but it is not a curated boundary and says nothing about what is supported.
+`Condensation/API.lean` imports the same modules and documents them as an interface — the
+vocabulary section by section, the substrate rules, the errata a client should know, and
+which declarations are paper endpoints as against conveniences.  It is the entrypoint
+recorded in `scripts/papers.py`, and `APITests/Condensation.lean` is the client-style test
+that imports only it.
+
+The paper is the specification:
 `Condensation/notes/condensation-25-07.pdf` is the PDF and
 `Condensation/notes/condensation-25-07.txt` is the committed `pdftotext -layout`
 extraction that the node checker reads.  No TeX source exists in hand, so the printed

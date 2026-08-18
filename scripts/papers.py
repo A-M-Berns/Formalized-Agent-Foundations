@@ -137,7 +137,13 @@ PAPERS = {
         "openreview": "HwKFJ3odui",
         "url": "https://openreview.net/forum?id=HwKFJ3odui",
         "library": "Condensation",
+        # Still `in-progress` at M2: the proofs are finished and criteria 4 and 5 (the
+        # `api`/`api_test` keys below) are now met, but the human read-through of the
+        # frozen surface and the final fresh-context adversarial audit have not run.
+        # See `Condensation/README.md`, *Consumer readiness*, for the per-criterion state.
         "status": "in-progress",
+        "api": "Condensation/API.lean",
+        "api_test": "APITests/Condensation.lean",
         "source": "Condensation/notes/condensation-25-07.txt",
         "pdf": "Condensation/notes/condensation-25-07.pdf",
         # The paper numbers through a *single* section-scoped LaTeX theorem counter
