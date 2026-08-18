@@ -18,6 +18,13 @@ variable {α β γ : Type*}
 `X, Y, Z` on the factored space `Ω`: `X ⊥_Ω Y | Z` iff `X ⊥^P Y | Z` holds for all
 probability distributions `P` that factorize over `Ω`.
 
+The two `[Nonempty]` binders on `Val(X)` and `Val(Y)` are **added** by the formalization:
+the theorem as printed quantifies over arbitrary random variables and is false without
+them (`notes/paper-errata.md`, E14 — with an empty factor `Ω_i` and `Val(X)`, `Val(Y)`
+both empty there is no distribution at all, so the right-hand side is vacuously true
+while `H(X | z)` is a nonempty set of indices).  Nothing is assumed about `Val(Z)`.  See
+`dd:variable` in the glossary for where value-space inhabitation enters this development.
+
 Paper node: Theorem 6.2 (§6.1). -/
 theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) :

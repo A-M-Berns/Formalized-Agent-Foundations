@@ -286,8 +286,10 @@ lemma condIndepVar_map_famJoint {I : Type*} [DecidableEq I] [Fintype I] {Ω : I 
     (W₁ W₂ W₃ : Finset W) :
     CondIndepVar (Q.map (famJoint X)) (proj W₁) (proj W₂) (proj W₃) ↔
       CondIndepVar Q (famVar X W₁) (famVar X W₂) (famVar X W₃) := by
+  -- Definition 6.1 is stated over an arbitrary sample space, so its events are written as
+  -- set-builders rather than as `fiber`s; both sides here are still `rfl`.
   have key : ∀ (S : Finset W) (x : PtOn Val S),
-      famJoint X ⁻¹' fiber (proj S) x = fiber (famVar X S) x := fun _ _ => rfl
+      famJoint X ⁻¹' {t | proj S t = x} = {t | famVar X S t = x} := fun _ _ => rfl
   refine forall_congr' fun x => forall_congr' fun y => forall_congr' fun z => ?_
   simp only [CondIndep, Distr.map_prob, Set.preimage_inter, key]
 

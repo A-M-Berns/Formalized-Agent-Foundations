@@ -216,6 +216,25 @@ lemma mix_one (P Q : Distr S) : mix 1 P Q = Q := by
 /-- The Euclidean distance between two distributions, viewing `Δ(S) ⊆ ℝ^S` (§6.2). -/
 noncomputable def euclDist (P Q : Distr S) : ℝ := √(∑ s, (P.mass s - Q.mass s) ^ 2)
 
+/-- The Euclidean distance from a distribution to itself is zero. -/
+lemma euclDist_self (P : Distr S) : euclDist P P = 0 := by
+  simp [euclDist]
+
+/-- The Euclidean distance is symmetric. -/
+lemma euclDist_comm (P Q : Distr S) : euclDist P Q = euclDist Q P :=
+  congrArg Real.sqrt (Finset.sum_congr rfl fun s _ => by ring)
+
+/-- The Euclidean distance is nonnegative. -/
+lemma euclDist_nonneg (P Q : Distr S) : 0 ≤ euclDist P Q := Real.sqrt_nonneg _
+
+/-- Each single mass difference is bounded by the Euclidean distance, so an `ε`-ball around
+`P` controls every coordinate at once — this is what makes a one-coordinate condition an
+open condition on `Δ(S)` (§6.2, `dd:open-ball`). -/
+lemma abs_sub_le_euclDist (P Q : Distr S) (s : S) : |P.mass s - Q.mass s| ≤ euclDist P Q := by
+  rw [← Real.sqrt_sq_eq_abs]
+  exact Real.sqrt_le_sqrt (Finset.single_le_sum
+    (f := fun t => (P.mass t - Q.mass t) ^ 2) (fun t _ => sq_nonneg _) (Finset.mem_univ s))
+
 end Distr
 
 /-! ## Distributions on a factored space -/
@@ -478,11 +497,6 @@ lemma splice_eq_cyl_inter (J : Finset I) (S T : Set (Pt Ω)) :
     exact ⟨⟨a, ha, fun i hi => (congrFun hJa ⟨i, hi⟩).symm⟩,
       ⟨b, hb, fun i hi => (congrFun hJb ⟨i, Finset.mem_compl.mpr hi⟩).symm⟩⟩
 
-omit [DecidableEq I] [Fintype I] [∀ i, Fintype (Ω i)] in
-/-- Two cylinders over the same index set intersect as a cylinder. -/
-lemma cyl_inter (J : Finset I) (S T : Set (PtOn Ω J)) :
-    cyl J S ∩ cyl J T = cyl J (S ∩ T) := Set.preimage_inter.symm
-
 /-- The marginal of a factorizing distribution factorizes over `Ω_J` in the same sense:
 `P_J = ⨂_{i∈J} P_i` (remark after Definition C.2), stated pointwise. -/
 lemma Factorizes.marg_mass {P : Distr (Pt Ω)} (h : Factorizes P) (J : Finset I) (α : PtOn Ω J) :
@@ -572,39 +586,43 @@ trivially — the paper's convention.  (Under Lean's `x / 0 = 0` the conditional
 `P(A|C)·P(B|C) = P(A∩B|C)` is provably equivalent; the product form is kept because it is
 the paper's, and because it needs no division.)
 
+Stated — as the paper states it — for an arbitrary finite sample space `S`; the factored
+space `Pt Ω` is the instance §6 then applies it to.
+
 Paper node: Definition 6.1 (§6). -/
-def CondIndep (P : Distr (Pt Ω)) (A B C : Set (Pt Ω)) : Prop :=
+def CondIndep {S : Type w} [Fintype S] (P : Distr S) (A B C : Set S) : Prop :=
   P.prob (A ∩ C) * P.prob (B ∩ C) = P.prob (A ∩ B ∩ C) * P.prob C
 
 /-- **Conditional independence of random variables**: `X ⊥^P Y | Z` iff
-`x ⊥^P y | z` for all values `x, y, z`, where `x` is the event `{X = x}`.
+`x ⊥^P y | z` for all values `x, y, z`, where `x` is the event `{X = x}`.  On the factored
+space `{s | X s = x}` is `fiber X x`, definitionally.
 
 Paper node: Definition 6.1 (§6). -/
-def CondIndepVar {α β γ : Type*} (P : Distr (Pt Ω)) (X : Pt Ω → α) (Y : Pt Ω → β)
-    (Z : Pt Ω → γ) : Prop :=
-  ∀ (x : α) (y : β) (z : γ), CondIndep P (fiber X x) (fiber Y y) (fiber Z z)
+def CondIndepVar {S : Type w} [Fintype S] {α β γ : Type*} (P : Distr S) (X : S → α)
+    (Y : S → β) (Z : S → γ) : Prop :=
+  ∀ (x : α) (y : β) (z : γ), CondIndep P {s | X s = x} {s | Y s = y} {s | Z s = z}
 
 /-- The paper's mixed notation `B ⊥^P Y | C` (an event, a variable, an event): `B ⊥^P y | C`
 for all values `y` (§C.3, "Further notation for conditional independence"). -/
-def CondIndepEventVar {β : Type*} (P : Distr (Pt Ω)) (B : Set (Pt Ω)) (Y : Pt Ω → β)
-    (C : Set (Pt Ω)) : Prop :=
-  ∀ y : β, CondIndep P B (fiber Y y) C
+def CondIndepEventVar {S : Type w} [Fintype S] {β : Type*} (P : Distr S) (B : Set S)
+    (Y : S → β) (C : Set S) : Prop :=
+  ∀ y : β, CondIndep P B {s | Y s = y} C
 
 /-- The paper's mixed notation `X ⊥^P Y | C` (two variables, an event). -/
-def CondIndepVarEvent {α β : Type*} (P : Distr (Pt Ω)) (X : Pt Ω → α) (Y : Pt Ω → β)
-    (C : Set (Pt Ω)) : Prop :=
-  ∀ (x : α) (y : β), CondIndep P (fiber X x) (fiber Y y) C
+def CondIndepVarEvent {S : Type w} [Fintype S] {α β : Type*} (P : Distr S) (X : S → α)
+    (Y : S → β) (C : Set S) : Prop :=
+  ∀ (x : α) (y : β), CondIndep P {s | X s = x} {s | Y s = y} C
 
-lemma CondIndep.symm {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : CondIndep P A B C) :
-    CondIndep P B A C := by
+lemma CondIndep.symm {S : Type w} [Fintype S] {P : Distr S} {A B C : Set S}
+    (h : CondIndep P A B C) : CondIndep P B A C := by
   unfold CondIndep at *
   rw [mul_comm, h]
   congr 2
   ext ω; simp only [Set.mem_inter_iff]; tauto
 
-lemma CondIndep.of_prob_eq_zero {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : P.prob C = 0) :
-    CondIndep P A B C := by
-  have hz : ∀ D : Set (Pt Ω), P.prob (D ∩ C) = 0 := fun D =>
+lemma CondIndep.of_prob_eq_zero {S : Type w} [Fintype S] {P : Distr S} {A B C : Set S}
+    (h : P.prob C = 0) : CondIndep P A B C := by
+  have hz : ∀ D : Set S, P.prob (D ∩ C) = 0 := fun D =>
     P.prob_eq_zero_of_subset Set.inter_subset_right h
   simp [CondIndep, hz A, hz B, h]
 
@@ -667,6 +685,7 @@ theorem CondIndepEventVar.of_pair {β γ : Type*} {P : Distr (Pt Ω)} {B C : Set
       = ∑ z ∈ Finset.univ.image Z, P.prob (B ∩ fiber (pair Y Z) (y, z) ∩ C) :=
     (P.prob_eq_sum_fiber _ Z _ hT).trans
       (Finset.sum_congr rfl fun z _ => by rw [h₂ z])
+  show CondIndep P B (fiber Y y) C
   unfold CondIndep
   rw [e₁, e₂, Finset.mul_sum, Finset.sum_mul]
   exact Finset.sum_congr rfl fun z _ => h (y, z)
@@ -712,6 +731,7 @@ theorem CondIndepEventVar.of_proj_subset {P : Distr (Pt Ω)} {B C : Set (Pt Ω)}
   have eC : P.prob (fiber (proj J') α' ∩ C) =
       ∑ α : PtOn Ω J, if Finset.restrict₂ hJ α = α' then P.prob (fiber (proj J) α ∩ C) else 0 := by
     simpa only [Set.univ_inter] using e Set.univ
+  show CondIndep P B (fiber (proj J') α') C
   unfold CondIndep
   rw [eC, e B, Finset.mul_sum, Finset.sum_mul]
   refine Finset.sum_congr rfl fun α _ => ?_
@@ -896,6 +916,7 @@ lemma condIndepVarEvent_proj_of_disintegrates {J : Finset I} {C : Set (Pt Ω)}
   have eC : P.prob C = (P.marg J).prob (projSet J C) * (P.marg Jᶜ).prob (projSet Jᶜ C) := by
     conv_lhs => rw [hCsplit]
     exact hC15 _ _
+  show CondIndep P (fiber (proj J) x) (fiber (proj Jᶜ) y) C
   unfold CondIndep
   rw [e1, e2, e3, eC, hC15, hC15, hC15]
   ring

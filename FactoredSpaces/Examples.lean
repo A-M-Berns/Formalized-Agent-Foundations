@@ -403,6 +403,9 @@ lemma isPerfectMapDAG_G₁_Q : IsPerfectMapDAG G₁ Q := by
     · subst h1
       constructor
       · intro _ x y z
+        -- Definition 6.1's events are set-builders (it is stated over an arbitrary sample
+        -- space); `fiber` is the same set, so the ascription is definitional.
+        show CondIndep Q (fiber (proj ∅) x) (fiber (proj V₂) y) (fiber (proj ∅) z)
         rw [fiber_proj_empty x]
         exact condIndep_univ_left _ _
       · intro _
@@ -411,6 +414,7 @@ lemma isPerfectMapDAG_G₁_Q : IsPerfectMapDAG G₁ Q := by
       · subst h1; subst h2
         constructor
         · intro _ x y z
+          show CondIndep Q (fiber (proj Finset.univ) x) (fiber (proj ∅) y) (fiber (proj ∅) z)
           rw [fiber_proj_empty y]
           exact condIndep_univ_right _ _
         · intro _ s hs t ht
@@ -426,9 +430,12 @@ lemma isPerfectMapDAG_G₁_Q : IsPerfectMapDAG G₁ Q := by
             rw [Set.singleton_inter_eq_empty]
             intro h
             exact Bool.false_ne_true (congrFun (Set.mem_singleton_iff.mp h) ())
-          have h := hci (proj Finset.univ (fun _ : Unit => false))
-            (proj Finset.univ (fun _ : Unit => true))
-            (proj (∅ : Finset Unit) (fun _ : Unit => false))
+          have h : CondIndep Q (fiber (proj Finset.univ) (proj Finset.univ (fun _ : Unit => false)))
+              (fiber (proj Finset.univ) (proj Finset.univ (fun _ : Unit => true)))
+              (fiber (proj (∅ : Finset Unit)) (proj (∅ : Finset Unit) (fun _ : Unit => false))) :=
+            hci (proj Finset.univ (fun _ : Unit => false))
+              (proj Finset.univ (fun _ : Unit => true))
+              (proj (∅ : Finset Unit) (fun _ : Unit => false))
           rw [fiber_proj_univ, fiber_proj_univ, fiber_proj_empty] at h
           have h' : Q.prob ({(fun _ : Unit => false)} ∩ Set.univ) *
               Q.prob ({(fun _ : Unit => true)} ∩ Set.univ)
@@ -443,6 +450,8 @@ lemma isPerfectMapDAG_G₁_Q : IsPerfectMapDAG G₁ Q := by
       obtain ⟨c, hc⟩ : ∃ c : Pt UVal, z = proj Finset.univ c :=
         ⟨fun i => z ⟨i, Finset.mem_univ i⟩, rfl⟩
       subst hc
+      show CondIndep Q (fiber (proj V₁) x) (fiber (proj V₂) y)
+        (fiber (proj Finset.univ) (proj Finset.univ c))
       rw [fiber_proj_univ]
       exact condIndep_singleton _ _ _
     · intro _

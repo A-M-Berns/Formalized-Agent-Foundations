@@ -332,6 +332,9 @@ theorem condIndepEventVar_proj_cohistory (A C : Set (Pt Ω)) (P : Distr (Pt Ω))
   classical
   set J := cohistory A C with hJ
   intro α
+  -- Definition 6.1 is stated over an arbitrary sample space, so its events are written
+  -- as set-builders; `fiber` is that set-builder on a factored space, definitionally.
+  show CondIndep P A (fiber (proj J) α) C
   set B := fiber (proj J) α with hB
   have hBC : B ∩ C = sliceAt J α C := Set.inter_comm _ _
   have hABC : A ∩ B ∩ C = sliceAt J α (A ∩ C) := by
