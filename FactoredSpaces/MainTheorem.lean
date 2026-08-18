@@ -66,12 +66,16 @@ subspace of `ℝ^Ω` with the Euclidean topology — is stated as the metric-bal
 (`dd:open-ball`): every `Q ∈ S` has an `ε`-ball in `Δ^F(Ω)` inside `S`.
 
 Paper node: Proposition 6.6 (§6.2). -/
-theorem structIndepGiven_of_open [Nonempty α] [Nonempty β]
+theorem structIndepGiven_of_open
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (S : Set (Distr (Pt Ω)))
     (hS : S ⊆ factorizing Ω) (hne : S.Nonempty)
     (hopen : ∀ Q ∈ S, ∃ ε > (0 : ℝ), ∀ Q' ∈ factorizing Ω, Distr.euclDist Q Q' < ε → Q' ∈ S)
     (h : ∀ P ∈ S, CondIndepVar P X Y Z) : StructIndepGiven X Y Z := by
   obtain ⟨Q, hQS⟩ := hne
+  -- a distribution on `Ω` exists, so `Ω` and hence the value spaces of `X`, `Y` are inhabited
+  haveI : Nonempty (Pt Ω) := Q.nonempty_carrier
+  haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
+  haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
   obtain ⟨ε, hε, hball⟩ := hopen Q hQS
   exact structIndepGiven_of_forall_condIndepVar
     (condIndepVar_of_local (hS hQS) hε fun Q' hQ'f hd => h Q' (hball Q' hQ'f hd))
