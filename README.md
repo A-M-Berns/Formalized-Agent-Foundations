@@ -28,6 +28,7 @@ or replaces paper-legible statements with unnecessary abstraction.
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Complete — 60/60 nodes |
 | Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete — 96/96 in-scope nodes; Conjecture 1 stated, unproved |
 | Garrabrant, Mayer, Wache, Lang, Eisenstat, and Dell (2024), [*Factored Space Models*](https://arxiv.org/abs/2412.02579) | [`FactoredSpaces/`](FactoredSpaces/README.md) | Complete — 50/50 nodes; d-separation proved directly |
+| Eisenstat (2025), [*Condensation: A Theory of Concepts*](https://openreview.net/forum?id=HwKFJ3odui) | [`Condensation/`](Condensation/README.md) | Statements and proofs complete — 39/42 nodes (Examples 5.1–5.3 out of scope by ruling), no modeling substitutions, consumer API + tests, 22 paper errata recorded. In progress — human read-through deferred by Anson (2026-08-18); registry `in-progress` |
 
 All zero `sorry`, zero `axiom`; each directory's README gives the detailed statement-level
 accounting — what is proved, what is modeled, which printed statements were corrected — and
@@ -72,6 +73,14 @@ the ModalAgents scope boundaries and its deliberately unannotated endpoints). No
 invented for a paper that does not have one. Regenerate with
 `python3 scripts/gen-trust-surface.py`; the page's freshness and its coverage of every
 registered paper are both blocking CI checks.
+
+Some of the machinery is shared rather than per-paper: `ShannonInformation/` is a
+paper-neutral entropy layer over a vendored, audited slice of the
+[PFR project](https://github.com/teorth/pfr), whose FAF-authored
+`ShannonInformation/FiniteEntropy/` restates the entropy corpus under finite *entropy*
+rather than finite range — the generality *Condensation* is stated at
+([`ShannonInformation/README.md`](ShannonInformation/README.md), one import:
+`import ShannonInformation.API`).
 
 Along the way the project has also produced some free-standing artifacts: a from-scratch
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized

@@ -63,7 +63,8 @@ consumer pass the repo standard requires before a paper may be registered `compl
 since landed its two artifacts — [`API.lean`](API.lean), the documented consumer import,
 and [`../APITests/Condensation.lean`](../APITests/Condensation.lean), the client-style
 tests — but the human read-through of the frozen surface and the final fresh-context
-adversarial audit have not run, so the registry still reads `in-progress`. See *Consumer
+adversarial audit have not run, so the registry still reads `in-progress`. The
+read-through is **deferred by Anson (2026-08-18), not waived**; see *Consumer readiness*. See *Consumer
 readiness* below for the per-criterion state. What is settled, with every number below taken from a
 checker rather than maintained by hand:
 
@@ -221,10 +222,18 @@ the docstring already draws.
 outside that list and are outstanding, in the order the root `../CLAUDE.md` fixes; neither
 is a formality:
 
-* **the human read-through.** "Anson reads every top-level **statement** and every
-  **definition** before the work is called done," and the sequencing note is that it runs
-  "**once, over the consolidated frozen surface** — not per-milestone," after the
-  consolidation / API pass, with the surface re-freezing before it. It has not run.
+* **the human read-through — DEFERRED (Anson, 2026-08-18), not waived.** "Anson reads
+  every top-level **statement** and every **definition** before the work is called done,"
+  and the sequencing note is that it runs "**once, over the consolidated frozen surface**
+  — not per-milestone," after the consolidation / API pass, with the surface re-freezing
+  before it. It has not run. Anson is confident in the formalization on the strength of
+  the harness rounds and the external audit, but is deferring the read-through until he
+  understands the mathematics deeply enough to review the statements himself — the same
+  deferral already recorded for Finite Factored Sets and Cartesian Frames in
+  [`../FiniteFactoredSets/notes/statement-readthrough-checklist.md`](../FiniteFactoredSets/notes/statement-readthrough-checklist.md),
+  and it stands for Factored Space Models as well. Deferred is not waived: this is
+  recorded so the repository's own standard (root `../CLAUDE.md`) is seen to be pending,
+  not met.
 * **a final fresh-context adversarial audit, last** — hunting specifically for vacuous
   theorems, conclusion-in-hypothesis squeezes, oversold stubs, type-`(c)` substitutions,
   degenerate non-vacuity and off-loaded steps. The audit rounds so far were mid-flight
