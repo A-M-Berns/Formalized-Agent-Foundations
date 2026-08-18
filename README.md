@@ -26,7 +26,7 @@ or replaces paper-legible statements with unnecessary abstraction.
 | Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Complete — 53/53 nodes, two disclosed modeling substitutions |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | Complete at the GL level; Thm 4.6 unformalized |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Complete — 60/60 nodes |
-| Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete — 96/96 nodes; Conjecture 1 stated, unproved |
+| Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete — 96/98 nodes (Ex. 3–4 out of scope); Conjecture 1 stated, unproved |
 | Garrabrant, Mayer, Wache, Lang, Eisenstat, and Dell (2024), [*Factored Space Models*](https://arxiv.org/abs/2412.02579) | [`FactoredSpaces/`](FactoredSpaces/README.md) | Complete — 50/50 nodes |
 | Eisenstat (2025), [*Condensation: A Theory of Concepts*](https://openreview.net/forum?id=HwKFJ3odui) | [`Condensation/`](Condensation/README.md) | Complete — 39/42 nodes (Ex. 5.1–5.3 out of scope); read-through deferred |
 
