@@ -3,9 +3,9 @@ import FactoredSpaces.DSeparation
 /-!
 # Conditional histories in the factored space of a DAG
 
-The closed form behind the direct proof of Proposition 5.5
-(`notes/dsep-sizing/memo-2026-08-17.md`, Theorem 1).  For a DAG `G`, a conditioning set
-`Z ⊆ V` with value `z`, and a node `s`:
+The closed form behind the direct proof of Proposition 5.5: the conditional history of a
+family of node variables in `M^G` is `H(X_A | X_Z = z) = I^z ∩ I_{S_Z(A)}`.  For a DAG
+`G`, a conditioning set `Z ⊆ V` with value `z`, and a node `s`:
 
 * `A_Z(v)` (`unblockedAnc`) — the vertices reaching `v` by a directed path whose
   non-terminal vertices avoid `Z` (so `v ∈ A_Z(v)`);
@@ -192,13 +192,10 @@ lemma unblockedAnc_subset_of_colliderOK {Z : Finset V} {S : Set V} (hS : G.IsZCl
 
 variable (G) in
 /-- `{q | v ⇝ q by an unblocked path}`: the set the table constructions propagate along.
-`u ∈ A_Z(v)` iff `v ∈ unblockedDesc Z u` (`mem_unblockedDesc_iff_mem_unblockedAnc`). -/
+It is `unblockedAnc` read in the other direction — `v ∈ unblockedDesc Z u` and
+`u ∈ A_Z(v)` are the same proposition, definitionally. -/
 def unblockedDesc (Z : Finset V) (v : V) : Set V :=
   {q | Relation.ReflTransGen (fun a b => G.Adj a b ∧ a ∉ Z) v q}
-
-omit [DecidableEq V] in
-lemma mem_unblockedDesc_iff_mem_unblockedAnc {Z : Finset V} {u v : V} :
-    v ∈ G.unblockedDesc Z u ↔ u ∈ G.unblockedAnc Z v := Iff.rfl
 
 omit [DecidableEq V] in
 lemma mem_unblockedDesc_self (Z : Finset V) (v : V) : v ∈ G.unblockedDesc Z v :=
@@ -836,7 +833,9 @@ lemma exists_mem_fiber_nodesVar (hG : G.IsAcyclic) (Z : Finset V) (x : Pt Val) :
     jointVar_constTable hG x⟩
 
 /-- **The conditional history of a family of node variables**, in closed form:
-`H(X_A | X_Z = z) = I^z ∩ I_{S_Z(A)}` (memo, Theorem 1). -/
+`H(X_A | X_Z = z) = I^z ∩ I_{S_Z(A)}` — an index `(u, y)` is in the conditional history iff
+its parent configuration `y` agrees with `z` on `pa(u) ∩ Z` and `u` lies in the `Z`-closure
+of `A`.  In particular the vertex set does not depend on `z`. -/
 lemma mem_history_nodesVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
     (A Z : Finset V) (z : PtOn Val Z) (i : bnIndex G Val) :
     i ∈ history (nodesVar (Val := Val) hG A) (fiber (nodesVar hG Z) z) ↔
@@ -849,7 +848,9 @@ lemma mem_history_nodesVar_iff [∀ v, Nontrivial (Val v)] (hG : G.IsAcyclic)
     exact mem_history_of_mem_zClosure hG z haA haZ i.1 hia i hiz rfl
 
 /-- **Structural independence of node families is a vertex-set criterion**:
-`X_{V₁} ⊥ X_{V₂} | X_{V₃}` in `M^G` iff `S_{V₃}(V₁) ∩ S_{V₃}(V₂) = ∅` (memo, Corollary 2). -/
+`X_{V₁} ⊥ X_{V₂} | X_{V₃}` in `M^G` iff `S_{V₃}(V₁) ∩ S_{V₃}(V₂) = ∅`.  Immediate from the
+closed form above, since the two conditional histories are disjoint iff their vertex sets
+are; this is the probability-free half of Proposition 5.5. -/
 lemma structIndepGiven_nodesVar_iff_disjoint_zClosure [∀ v, Nontrivial (Val v)]
     (hG : G.IsAcyclic) (V₁ V₂ V₃ : Finset V) :
     StructIndepGiven (nodesVar (Val := Val) hG V₁) (nodesVar hG V₂) (nodesVar hG V₃) ↔

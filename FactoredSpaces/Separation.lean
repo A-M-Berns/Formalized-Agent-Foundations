@@ -5,7 +5,8 @@ import FactoredSpaces.ActiveTrails
 
 The paper proves Proposition 5.5 by citing the soundness and completeness of d-separation
 (Koller–Friedman) and applying Lemma 5.3 and Theorem 6.2, remarking that a direct proof
-is possible.  We take the direct route (`notes/dsep-sizing/memo-2026-08-17.md`): a
+is possible.  We take the direct route (sized in advance in the planning memo
+`notes/dsep-sizing/memo-2026-08-17.md`, the only place it is cited): a
 closed-form description of the conditional histories `H(X_A | X_Z = z)` in `M^G`
 (`ConditionalHistory.lean`) and a purely graph-theoretic equivalence between the resulting
 vertex-set criterion and the existence of an active trail (`ActiveTrails.lean`).  Nothing

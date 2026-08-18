@@ -1801,6 +1801,25 @@ open FactoredSpaces in
   Examples.not_dSeparated_adj Examples.dSeparated_given_endpoint
   Examples.structIndepGiven_collider Examples.not_structIndepGiven_nodesVar
   Examples.strictlyBefore_nodeVar Examples.G₁_acyclic Examples.isPerfectMapDAG_G₁_Q
+  -- Negative instances of the paper's three *factorizes* predicates, so that none of them
+  -- is trivially true: a constant observation variable is not a factored space model of a
+  -- non-degenerate law (Definition 4.4), and the perfectly-correlated two-coin law `Pdiag`
+  -- factorizes neither over `Ω` (Definition 4.3) nor over the edgeless two-node DAG `G₀`
+  -- (§5.2, eq. (2)).
+  Examples.not_isFactoredSpaceModel_const
+  Examples.not_factorizes_diag
+  Examples.G₀_acyclic
+  Examples.not_factorizesOverDAG_diag
+  -- Definition 5.7(1) inhabited by a DAG that actually has an edge, so that neither side
+  -- of its equivalence is idle: `G₂ = (0 -> 1)` is a perfect map of the law `Pedge` whose
+  -- two coordinates are dependent.  `not_dSeparated_G₂` / `dSeparated_G₂_given_endpoint`
+  -- pin the graph side and `not_condIndepVar_Pedge` the probability side.
+  Examples.G₂_acyclic
+  Examples.G₂_adj_zero_one
+  Examples.not_dSeparated_G₂
+  Examples.dSeparated_G₂_given_endpoint
+  Examples.not_condIndepVar_Pedge
+  Examples.isPerfectMapDAG_G₂_Pedge
 -- FS-INVENTORY-END
 
 /-! Tier-2 boundary structures for the Factored Space Models surface. -/
@@ -2028,3 +2047,49 @@ open FactoredSpaces in
   -- The witness objects of `FactoredSpaces/Examples.lean` the API advertises by name; the
   -- facts proved about them are inventoried above.
   Examples.Coins Examples.diag Examples.G₁ Examples.Q
+  Examples.Pdiag Examples.G₀
+  -- The `Z`-closure vocabulary of `ConditionalHistory.lean` (root `Digraph` namespace).
+  -- `dSeparated_iff_disjoint_zClosureSet` above is *stated* in it, so a client cannot use
+  -- that criterion without these names; `Skel` and `Trail.toWalk` are what writing a
+  -- concrete trail down and reading its collider status take; and
+  -- `exists_active_trail_of_active_walk` is the walk-to-trail bridge the `dd:owalk`
+  -- glossary cites, which lets a client define d-separation through walks instead.
+  Digraph.unblockedAnc
+  Digraph.IsZClosed
+  Digraph.zClosure
+  Digraph.zClosureSet
+  Digraph.zClosure_subset
+  Digraph.mem_zClosureSet_self
+  Digraph.mem_zClosureSet_of_mem_unblockedAnc
+  Digraph.exists_of_mem_zClosureSet
+  Digraph.Skel
+  Digraph.Trail.toWalk
+  Digraph.exists_active_trail_of_active_walk
+  -- Small tools `APITests` uses that the bullets above did not name: the `Ω^G` index at a
+  -- joint value and the transport that keeps its dependent argument out of a rewrite, the
+  -- mass of the Lemma 5.3 pushforward, and the support-membership criterion.
+  idxAt
+  table_congr
+  tau_mass
+  Distr.mem_support_iff
+  -- The two general d-separation discharge routes and the one-edge trail they are checked
+  -- against (`FactoredSpaces/DSeparation.lean`), plus the conditional-independence tools a
+  -- client needs to verify Definition 5.7 by hand over arbitrary, possibly overlapping
+  -- triples (`FactoredSpaces/PerfectMap.lean`; they belong with §6.1's vocabulary in
+  -- `Probability.lean` and are a standing relocation debt).
+  Digraph.dSeparated_of_subset_left
+  Digraph.dSeparated_of_subset_right
+  Digraph.Trail.pair
+  Digraph.Trail.pair_active
+  Digraph.not_dSeparated_of_skel
+  CondIndep.of_subset_left
+  CondIndep.of_disjoint_left
+  CondIndepVar.symm
+  fiber_proj_subset_or_disjoint
+  condIndepVar_proj_of_subset_left
+  condIndepVar_proj_of_subset_right
+  CondIndepVar.of_proj_subset
+  not_condIndepVar_proj_self
+  -- The new witness objects `FactoredSpaces/API.lean` advertises by name.
+  Examples.G₂
+  Examples.Pedge

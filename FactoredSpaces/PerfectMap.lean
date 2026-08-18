@@ -286,10 +286,156 @@ lemma condIndepVar_map_famJoint {I : Type*} [DecidableEq I] [Fintype I] {Ω : I 
     (W₁ W₂ W₃ : Finset W) :
     CondIndepVar (Q.map (famJoint X)) (proj W₁) (proj W₂) (proj W₃) ↔
       CondIndepVar Q (famVar X W₁) (famVar X W₂) (famVar X W₃) := by
+  -- Stated with the fibres written out rather than as `fiber …`, so that the rewrite fires
+  -- whichever of the two spellings `CondIndep` unfolds to; both sides are `rfl`.
   have key : ∀ (S : Finset W) (x : PtOn Val S),
-      famJoint X ⁻¹' fiber (proj S) x = fiber (famVar X S) x := fun _ _ => rfl
+      famJoint X ⁻¹' {t : Pt Val | proj S t = x} = {ω : Pt Ω | famVar X S ω = x} :=
+    fun _ _ => rfl
   refine forall_congr' fun x => forall_congr' fun y => forall_congr' fun z => ?_
-  simp only [CondIndep, Distr.map_prob, Set.preimage_inter, key]
+  simp only [CondIndep, Distr.map_prob, Set.preimage_inter, fiber, key]
+
+/-! ## Conditional-independence tools for checking a perfect map
+
+Verifying `IsPerfectMapDAG G P` means deciding `CondIndepVar P (proj V₁) (proj V₂) (proj V₃)`
+for *arbitrary, possibly overlapping* `V₁, V₂, V₃` (Definition 5.7 as printed; errata E17).
+These are the general facts that make that tractable: a family already determined by the
+conditioning family is independent of everything (`condIndepVar_proj_of_subset_left`), a
+conditional independence of families restricts to subfamilies
+(`CondIndepVar.of_proj_subset`), and — the reason the overlapping quantification is not
+idle — a non-degenerate coordinate is never independent of *itself* given a family that
+omits it (`not_condIndepVar_proj_self`).  They belong with §6.1's vocabulary in
+`Probability.lean`; they are stated here because `Examples.lean` is the first consumer.
+-/
+
+section CondIndepTools
+
+variable {I : Type*} [DecidableEq I] [Fintype I] {Ω : I → Type*} [∀ i, Fintype (Ω i)]
+
+/-- If the conditioning event is contained in `A`, then `A` is conditionally independent of
+everything given it. -/
+lemma CondIndep.of_subset_left {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : C ⊆ A) :
+    CondIndep P A B C := by
+  have h1 : A ∩ C = C := Set.inter_eq_right.mpr h
+  have h2 : A ∩ B ∩ C = B ∩ C := by
+    ext ω
+    simp only [Set.mem_inter_iff]
+    exact ⟨fun hh => ⟨hh.1.2, hh.2⟩, fun hh => ⟨⟨h hh.2, hh.1⟩, hh.2⟩⟩
+  show P.prob (A ∩ C) * P.prob (B ∩ C) = P.prob (A ∩ B ∩ C) * P.prob C
+  rw [h1, h2]
+  ring
+
+/-- If `A` is disjoint from the conditioning event, it is conditionally independent of
+everything given it (both sides vanish). -/
+lemma CondIndep.of_disjoint_left {P : Distr (Pt Ω)} {A B C : Set (Pt Ω)} (h : Disjoint A C) :
+    CondIndep P A B C := by
+  have h1 : A ∩ C = ∅ := Set.disjoint_iff_inter_eq_empty.mp h
+  have h2 : A ∩ B ∩ C = ∅ := by
+    rw [Set.eq_empty_iff_forall_notMem]
+    intro ω hω
+    have hmem : ω ∈ A ∩ C := ⟨hω.1.1, hω.2⟩
+    rw [h1] at hmem
+    simp at hmem
+  show P.prob (A ∩ C) * P.prob (B ∩ C) = P.prob (A ∩ B ∩ C) * P.prob C
+  rw [h1, h2, P.prob_empty]
+  ring
+
+/-- Conditional independence of variables is symmetric. -/
+lemma CondIndepVar.symm {α β γ : Type*} {P : Distr (Pt Ω)} {X : Pt Ω → α} {Y : Pt Ω → β}
+    {Z : Pt Ω → γ} (h : CondIndepVar P X Y Z) : CondIndepVar P Y X Z :=
+  fun y x z => (h x y z).symm
+
+omit [DecidableEq I] [Fintype I] [∀ i, Fintype (Ω i)] in
+/-- A fibre of `U_J` either sits inside a given fibre of `U_{J'}` (`J' ⊆ J`) or misses it. -/
+lemma fiber_proj_subset_or_disjoint {J' J : Finset I} (h : J' ⊆ J) (x : PtOn Ω J')
+    (z : PtOn Ω J) :
+    fiber (proj J) z ⊆ fiber (proj J') x ∨
+      Disjoint (fiber (proj J') x) (fiber (proj J) z) := by
+  by_cases hx : Finset.restrict₂ h z = x
+  · refine Or.inl fun ω hω => ?_
+    show proj J' ω = x
+    rw [← hx]
+    show (fun i : J' => ω i) = Finset.restrict₂ h z
+    funext i
+    exact congrFun (show proj J ω = z from hω) ⟨i, h i.2⟩
+  · refine Or.inr (Set.disjoint_left.2 fun ω hω hω' => hx ?_)
+    have hz : proj J ω = z := hω'
+    have hx' : proj J' ω = x := hω
+    rw [← hz, ← hx']
+    rfl
+
+/-- **A conditioned-on family is independent of everything.**  If `J₁ ⊆ J₃` then `U_{J₁}` is
+conditionally independent of any variable given `U_{J₃}`, because each fibre of `U_{J₃}`
+either lies inside or misses each fibre of `U_{J₁}`. -/
+lemma condIndepVar_proj_of_subset_left {P : Distr (Pt Ω)} {J₁ J₃ : Finset I} (h : J₁ ⊆ J₃)
+    {β : Type*} (Y : Pt Ω → β) : CondIndepVar P (proj J₁) Y (proj J₃) := by
+  intro x _ z
+  rcases fiber_proj_subset_or_disjoint h x z with hsub | hdisj
+  · exact CondIndep.of_subset_left hsub
+  · exact CondIndep.of_disjoint_left hdisj
+
+/-- The right-hand form of `condIndepVar_proj_of_subset_left`. -/
+lemma condIndepVar_proj_of_subset_right {P : Distr (Pt Ω)} {J₂ J₃ : Finset I} (h : J₂ ⊆ J₃)
+    {α : Type*} (X : Pt Ω → α) : CondIndepVar P X (proj J₂) (proj J₃) :=
+  (condIndepVar_proj_of_subset_left h X).symm
+
+/-- **Shrinking both sides of a conditional independence of families**: two applications of
+Lemma C.14 (`CondIndepEventVar.of_proj_subset`), with a symmetry between them. -/
+lemma CondIndepVar.of_proj_subset {P : Distr (Pt Ω)} {J₁' J₁ J₂' J₂ : Finset I} {γ : Type*}
+    {Z : Pt Ω → γ} (h₁ : J₁' ⊆ J₁) (h₂ : J₂' ⊆ J₂)
+    (h : CondIndepVar P (proj J₁) (proj J₂) Z) : CondIndepVar P (proj J₁') (proj J₂') Z := by
+  intro x y z
+  have s1 : ∀ x₁ : PtOn Ω J₁,
+      CondIndepEventVar P (fiber (proj J₁) x₁) (proj J₂') (fiber Z z) :=
+    fun x₁ => CondIndepEventVar.of_proj_subset h₂ (fun y₂ => h x₁ y₂ z)
+  have s2 : CondIndepEventVar P (fiber (proj J₂') y) (proj J₁') (fiber Z z) :=
+    CondIndepEventVar.of_proj_subset h₁ (fun x₁ => (s1 x₁ y).symm)
+  exact (s2 x).symm
+
+/-- **A non-degenerate coordinate is never conditionally independent of itself.**  Under a
+strictly positive `P`, with `i ∉ J` and `Ω_i` nontrivial, `U_i ⊥ U_i | U_J` fails: two
+distinct fibres of `U_i` both meet the conditioning fibre in positive probability but are
+disjoint from each other.  This is what makes the *overlapping* triples of Definition 5.7
+(errata E17) real content, and it discharges every `V₁ ∩ V₂ ⊄ V₃` case uniformly. -/
+lemma not_condIndepVar_proj_self {P : Distr (Pt Ω)} (hP : P.StrictlyPositive) {i : I}
+    {J : Finset I} (hi : i ∉ J) [Nontrivial (Ω i)] :
+    ¬ CondIndepVar P (proj ({i} : Finset I)) (proj ({i} : Finset I)) (proj J) := by
+  intro h
+  obtain ⟨ω⟩ := P.nonempty_carrier
+  obtain ⟨b, hb⟩ := exists_ne (ω i)
+  set ω' : Pt Ω := Function.update ω i b with hω'def
+  have hω'i : ω' i = b := Function.update_self (β := Ω) i b ω
+  have hω'ne : ∀ j : I, j ≠ i → ω' j = ω j := fun j hj => Function.update_of_ne hj b ω
+  set A := fiber (proj ({i} : Finset I)) (proj {i} ω) with hA
+  set B := fiber (proj ({i} : Finset I)) (proj {i} ω') with hB
+  set C := fiber (proj J) (proj J ω) with hC
+  have key := h (proj {i} ω) (proj {i} ω') (proj J ω)
+  have hAB : A ∩ B = ∅ := by
+    rw [Set.eq_empty_iff_forall_notMem]
+    rintro x ⟨hx1, hx2⟩
+    have e1 : proj ({i} : Finset I) x = proj {i} ω := hx1
+    have e2 : proj ({i} : Finset I) x = proj {i} ω' := hx2
+    have : ω i = ω' i :=
+      congrFun (e1.symm.trans e2) ⟨i, Finset.mem_singleton_self i⟩
+    rw [hω'i] at this
+    exact hb this.symm
+  have hABC : A ∩ B ∩ C = ∅ := by
+    rw [Set.eq_empty_iff_forall_notMem]
+    intro x hx
+    have hmem : x ∈ A ∩ B := hx.1
+    rw [hAB] at hmem
+    simp at hmem
+  have hωAC : ω ∈ A ∩ C := ⟨rfl, rfl⟩
+  have hω'BC : ω' ∈ B ∩ C := by
+    refine ⟨rfl, ?_⟩
+    show proj J ω' = proj J ω
+    exact proj_eq_iff.mpr fun j hj => hω'ne j (fun hji => hi (hji ▸ hj))
+  have hpos1 : 0 < P.prob (A ∩ C) := (P.prob_pos_iff _).2 ⟨ω, hωAC, hP ω⟩
+  have hpos2 : 0 < P.prob (B ∩ C) := (P.prob_pos_iff _).2 ⟨ω', hω'BC, hP ω'⟩
+  have hkey : P.prob (A ∩ C) * P.prob (B ∩ C) = P.prob (A ∩ B ∩ C) * P.prob C := key
+  rw [hABC, P.prob_empty, zero_mul] at hkey
+  exact (mul_pos hpos1 hpos2).ne' hkey
+
+end CondIndepTools
 
 /-! ## The counterexample of Proposition 5.8(2) -/
 

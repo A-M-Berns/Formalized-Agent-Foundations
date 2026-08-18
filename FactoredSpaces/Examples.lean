@@ -7,14 +7,22 @@ Nothing here is a paper node.  The file exists for two reasons.
 
 1. **Non-vacuity.** The library's §4 and §5.2 vocabulary is otherwise never instantiated,
    so a reader cannot tell from the artifact alone that `Disintegrates`, `history`,
-   `StructIndep`, `IsFactoredSpaceModel` and `Digraph.DSeparated` have inhabitants and
-   non-inhabitants — i.e. that the definitions are neither empty nor trivially true.
-   The paper's two-coin example and its "every distribution has a one-factor model"
-   remark are checked here against the Lean definitions, and §5.2's `IsPerfectMapDAG`,
-   `StrictlyBefore` and `StructIndepGiven` are exhibited on concrete DAGs, each with a
-   matching negative instance (`structIndepGiven_collider` against
-   `not_structIndepGiven_nodesVar`) — including a DAG that *is* a perfect map, which
-   discharges the vacuity risk on the hypothesis of Proposition 5.8(1).
+   `StructIndep`, `Factorizes`, `IsFactoredSpaceModel`, `FactorizesOverDAG` and
+   `Digraph.DSeparated` have inhabitants and non-inhabitants — i.e. that the definitions
+   are neither empty nor trivially true.  The paper's two-coin example and its "every
+   distribution has a one-factor model" remark are checked here against the Lean
+   definitions, and each of the paper's three *factorizes* predicates is also refuted on a
+   concrete object: `not_isFactoredSpaceModel_const` (Definition 4.4, a constant
+   observation variable against a non-degenerate law), `not_factorizes_diag`
+   (Definition 4.3) and `not_factorizesOverDAG_diag` (§5.2, eq. (2)), the last two on the
+   perfectly-correlated two-coin law `Pdiag`.  §5.2's `StrictlyBefore` and
+   `StructIndepGiven` are exhibited on concrete DAGs with a matching negative instance
+   (`structIndepGiven_collider` against `not_structIndepGiven_nodesVar`), and
+   `IsPerfectMapDAG` is inhabited twice over, which discharges the vacuity risk on the
+   hypothesis of Proposition 5.8(1): by the edgeless one-node `isPerfectMapDAG_G₁_Q`, and —
+   so that neither side of Definition 5.7(1)'s equivalence is idle — by
+   `isPerfectMapDAG_G₂_Pedge` on the DAG `0 → 1` carrying a law whose two coordinates are
+   genuinely dependent (`not_dSeparated_G₂`, `not_condIndepVar_Pedge`).
 
 2. **Convention regression.** d-separation is the one load-bearing definition that the
    paper does not supply (`dd:dsep`, errata E8); the collider and endpoint conventions
@@ -105,6 +113,140 @@ lemma isFactoredSpaceModel_single (Obs : Type u) [Fintype Obs] (P : Distr Obs) :
   rw [hset, Distr.prob_singleton, Distr.prod_mass]
   simp
 
+/-- **A constant observation variable is not a model of a non-degenerate law.**  On the
+two-coin space the observation `O ≡ true` has empty fibre over `false`, so no factorizing
+`P^Ω` can give `false` the mass `1/2` that the uniform law on `Bool` does.  Together with
+`isFactoredSpaceModel_single` this shows Definition 4.4 is neither empty nor trivially
+true. -/
+lemma not_isFactoredSpaceModel_const :
+    ¬ IsFactoredSpaceModel (Ω := Coins) (fun _ => true) (Distr.uniform : Distr Bool) := by
+  rintro ⟨PΩ, -, h⟩
+  have hf : fiber (fun _ : Pt Coins => true) false = (∅ : Set (Pt Coins)) := by
+    ext ω; simp [fiber]
+  have h0 := h false
+  rw [hf, Distr.prob_empty] at h0
+  have hu : (Distr.uniform : Distr Bool).mass false = (2 : ℝ)⁻¹ := by
+    show ((Fintype.card Bool : ℝ))⁻¹ = _
+    norm_num
+  rw [hu] at h0
+  norm_num at h0
+
+/-! ### The diagonal law factorizes over nothing
+
+`Pdiag` is the law of the paper's two coins when they are *perfectly correlated*: each of
+`00` and `11` has probability `1/2`.  It refutes Definition 4.3 on `Ω = Coins` and eq. (2)
+on the edgeless two-node DAG, so neither predicate is trivially true. -/
+
+/-- The **diagonal law** on the two-coin space: the two coins always agree, each of `00`
+and `11` carrying probability `1/2`. -/
+noncomputable def Pdiag : Distr (Pt Coins) :=
+  (Distr.uniform : Distr Bool).map (fun b => (fun _ => b : Pt Coins))
+
+private lemma unif_mass (b : Bool) : (Distr.uniform : Distr Bool).mass b = (2 : ℝ)⁻¹ := by
+  show ((Fintype.card Bool : ℝ))⁻¹ = _
+  norm_num
+
+private lemma Pdiag_mass (x : Pt Coins) :
+    Pdiag.mass x = if x 0 = x 1 then (2 : ℝ)⁻¹ else 0 := by
+  rw [Pdiag, Distr.map_mass]
+  by_cases h : x 0 = x 1
+  · have hset : (fun b => (fun _ => b : Pt Coins)) ⁻¹' {x} = {x 0} := by
+      ext c
+      simp only [Set.mem_preimage, Set.mem_singleton_iff]
+      constructor
+      · intro hc; exact congrFun hc 0
+      · rintro rfl
+        funext v
+        fin_cases v
+        · rfl
+        · exact h
+    rw [hset, Distr.prob_singleton, unif_mass, if_pos h]
+  · have hset : (fun b => (fun _ => b : Pt Coins)) ⁻¹' {x} = (∅ : Set Bool) := by
+      ext c
+      simp only [Set.mem_preimage, Set.mem_singleton_iff, Set.mem_empty_iff_false, iff_false]
+      intro hc
+      exact h ((congrFun hc 0).symm.trans (congrFun hc 1))
+    rw [hset, Distr.prob_empty, if_neg h]
+
+private lemma Pdiag_const (b : Bool) : Pdiag.mass (fun _ => b) = (2 : ℝ)⁻¹ := by
+  rw [Pdiag_mass]; exact if_pos rfl
+
+private lemma Pdiag_of_ne {x : Pt Coins} (h : x 0 ≠ x 1) : Pdiag.mass x = 0 := by
+  rw [Pdiag_mass]; exact if_neg h
+
+/-- The point `01` of the two-coin space. -/
+private def coinFT : Pt Coins := fun i => if i = 0 then false else true
+
+/-- The point `10` of the two-coin space. -/
+private def coinTF : Pt Coins := fun i => if i = 0 then true else false
+
+private lemma coinFT_zero : coinFT 0 = false := by simp [coinFT]
+private lemma coinFT_one : coinFT 1 = true := by simp [coinFT]
+private lemma coinTF_zero : coinTF 0 = true := by simp [coinTF]
+private lemma coinTF_one : coinTF 1 = false := by simp [coinTF]
+
+private lemma Pdiag_margAt (i : Fin 2) (b : Bool) : (Pdiag.margAt i).mass b = (2 : ℝ)⁻¹ := by
+  show (Pdiag.map (bg i)).mass b = _
+  rw [Distr.map_mass, Pdiag, Distr.map_prob]
+  have hset : (fun c => (fun _ => c : Pt Coins)) ⁻¹' (bg i ⁻¹' {b}) = {b} := by
+    ext c; simp [bg]
+  rw [hset, Distr.prob_singleton, unif_mass]
+
+/-- **Definition 4.3 is not trivially true**: the diagonal law does not factorize.  Both
+marginals are uniform, so factorization would force `P(01) = 1/4`, but `P(01) = 0`. -/
+lemma not_factorizes_diag : ¬ Factorizes Pdiag := by
+  intro h
+  have hx := h coinFT
+  rw [Pdiag_of_ne (by rw [coinFT_zero, coinFT_one]; decide), Fin.prod_univ_two,
+    Pdiag_margAt, Pdiag_margAt] at hx
+  norm_num at hx
+
+/-- The edgeless DAG on two nodes. -/
+def G₀ : Digraph (Fin 2) := ⟨fun _ _ => False⟩
+
+instance : DecidableRel G₀.Adj := fun _ _ => inferInstanceAs (Decidable False)
+
+/-- `G₀` is acyclic. -/
+lemma G₀_acyclic : G₀.IsAcyclic := by
+  intro v h
+  cases h with
+  | single h => exact h
+  | tail _ h => exact h
+
+private lemma parentConfig_G₀ (v : Fin 2) (x y : Pt Coins) :
+    parentConfig G₀ Coins x v = parentConfig G₀ Coins y v := by
+  funext i
+  exact ((Digraph.mem_parents G₀).mp i.2).elim
+
+/-- **Eq. (2) is not trivially true**: the diagonal law does not factorize over the
+edgeless two-node DAG.  With no parents every CPD is a fixed distribution `A`, `B` on
+`Bool`, and `A(t)B(t) = A(f)B(f) = 1/2` with `A(t)B(f) = A(f)B(t) = 0` is contradictory. -/
+lemma not_factorizesOverDAG_diag : ¬ FactorizesOverDAG G₀ Coins Pdiag := by
+  rintro ⟨φ, hφ⟩
+  set A : Bool → ℝ := fun b => (φ 0 (parentConfig G₀ Coins (fun _ => true) 0)).mass b with hA
+  set B : Bool → ℝ := fun b => (φ 1 (parentConfig G₀ Coins (fun _ => true) 1)).mass b with hB
+  have key : ∀ x : Pt Coins, Pdiag.mass x = A (x 0) * B (x 1) := by
+    intro x
+    rw [hφ x, Fin.prod_univ_two, hA, hB,
+      parentConfig_G₀ 0 x (fun _ => true), parentConfig_G₀ 1 x (fun _ => true)]
+  have h1 : A true * B true = (2 : ℝ)⁻¹ := by
+    have := key (fun _ => true); rw [Pdiag_const] at this; exact this.symm
+  have h2 : A false * B false = (2 : ℝ)⁻¹ := by
+    have := key (fun _ => false); rw [Pdiag_const] at this; exact this.symm
+  have h3 : A false * B true = 0 := by
+    have := key coinFT
+    rw [Pdiag_of_ne (by rw [coinFT_zero, coinFT_one]; decide), coinFT_zero, coinFT_one] at this
+    exact this.symm
+  have h4 : A true * B false = 0 := by
+    have := key coinTF
+    rw [Pdiag_of_ne (by rw [coinTF_zero, coinTF_one]; decide), coinTF_zero, coinTF_one] at this
+    exact this.symm
+  have hcontr : (2 : ℝ)⁻¹ * (2 : ℝ)⁻¹ = 0 :=
+    calc (2 : ℝ)⁻¹ * (2 : ℝ)⁻¹ = (A true * B true) * (A false * B false) := by rw [h1, h2]
+      _ = (A true * B false) * (A false * B true) := by ring
+      _ = 0 := by rw [h3, h4]; ring
+  norm_num at hcontr
+
 /-! ### d-separation conventions on the collider DAG `0 → 2 ← 1`
 
 `DSeparation.lean` fixes two conventions the paper leaves implicit (`dd:dsep`, errata E8):
@@ -142,15 +284,24 @@ def colliderTrail : collider.Trail 0 1 where
 @[simp]
 private lemma colliderTrail_verts : colliderTrail.toWalk.verts = [0, 2, 1] := rfl
 
-private lemma colliderTrail_isColliderAt_one : colliderTrail.toWalk.IsColliderAt 1 :=
+/- **Positions versus vertices.**  `Walk.IsColliderAt` is indexed by *position along the
+trail*, not by vertex name, and `colliderTrail.verts = [0, 2, 1]`: position `0` is vertex
+`0`, position `1` is the collider `2`, and position `2` is vertex `1`.  The three pins
+below are named for the **vertex** they are about, so their numeral arguments deliberately
+differ from the numerals in their names. -/
+
+/-- Vertex `2` (trail position `1`) is a collider on `colliderTrail`. -/
+private lemma colliderTrail_isColliderAt_vertex_two : colliderTrail.toWalk.IsColliderAt 1 :=
   ⟨0, 2, 1, rfl, rfl, rfl, by norm_num, by simp [collider], by simp [collider]⟩
 
-private lemma colliderTrail_not_isColliderAt_zero :
+/-- Vertex `0` (trail position `0`) is not a collider: it is an endpoint. -/
+private lemma colliderTrail_not_isColliderAt_vertex_zero :
     ¬ colliderTrail.toWalk.IsColliderAt 0 := by
   rintro ⟨a, b, c, -, -, -, h, -⟩
   exact absurd h (lt_irrefl 0)
 
-private lemma colliderTrail_not_isColliderAt_two :
+/-- Vertex `1` (trail position `2`) is not a collider: it is the other endpoint. -/
+private lemma colliderTrail_not_isColliderAt_vertex_one :
     ¬ colliderTrail.toWalk.IsColliderAt 2 := by
   rintro ⟨a, b, c, -, -, h, -⟩
   simp at h
@@ -161,15 +312,15 @@ private lemma colliderTrail_active : colliderTrail.Active ({2} : Finset (Fin 3))
   | 0 =>
     have hv : v = 0 := by simpa using hk.symm
     subst hv
-    exact ⟨fun h => absurd h colliderTrail_not_isColliderAt_zero, fun _ => by decide⟩
+    exact ⟨fun h => absurd h colliderTrail_not_isColliderAt_vertex_zero, fun _ => by decide⟩
   | 1 =>
     have hv : v = 2 := by simpa using hk.symm
     subst hv
-    exact ⟨fun _ => Or.inl (by decide), fun h => absurd colliderTrail_isColliderAt_one h⟩
+    exact ⟨fun _ => Or.inl (by decide), fun h => absurd colliderTrail_isColliderAt_vertex_two h⟩
   | 2 =>
     have hv : v = 1 := by simpa using hk.symm
     subst hv
-    exact ⟨fun h => absurd h colliderTrail_not_isColliderAt_two, fun _ => by decide⟩
+    exact ⟨fun h => absurd h colliderTrail_not_isColliderAt_vertex_one, fun _ => by decide⟩
   | (n + 3) => simp at hk
 
 /-- **Collider convention.** Conditioning on a collider *opens* the trail through it, so
@@ -181,7 +332,7 @@ lemma not_dSeparated_given_collider : ¬ collider.DSeparated {0} {1} {2} :=
 `Z` and has no descendant in `Z`. -/
 lemma not_colliderTrail_active_empty : ¬ colliderTrail.Active (∅ : Finset (Fin 3)) := by
   intro h
-  rcases (h 1 2 rfl).1 colliderTrail_isColliderAt_one with h1 | ⟨z, hz, -⟩
+  rcases (h 1 2 rfl).1 colliderTrail_isColliderAt_vertex_two with h1 | ⟨z, hz, -⟩
   · simp at h1
   · simp at hz
 
@@ -212,38 +363,12 @@ lemma not_dSeparated_self_zero : ¬ collider.DSeparated {0} {0} ∅ :=
   Digraph.not_dSeparated_self (Finset.mem_singleton_self 0) (Finset.mem_singleton_self 0)
     (Finset.notMem_empty 0)
 
-/-- The one-edge trail `0 — 2`. -/
-def edgeTrail : collider.Trail 0 2 where
-  verts := [0, 2]
-  chain := by simp [List.isChain_cons, Digraph.Skel, collider]
-  head := rfl
-  last := rfl
-  nodup := by decide
-
-@[simp]
-private lemma edgeTrail_verts : edgeTrail.toWalk.verts = [0, 2] := rfl
-
 /-- **Adjacent vertices are never d-separated** by a conditioning set avoiding them: the
-one-edge trail has no collider and no non-collider in `Z`. -/
-lemma not_dSeparated_adj : ¬ collider.DSeparated {0} {2} {1} := by
-  refine fun h => h 0 (by decide) 2 (by decide) edgeTrail ?_
-  have hnc : ∀ j, ¬ edgeTrail.toWalk.IsColliderAt j := by
-    rintro (_ | _ | j) ⟨a, b, c, -, -, h3, hj, -⟩
-    · exact absurd hj (lt_irrefl 0)
-    · simp at h3
-    · simp at h3
-  intro k v hv
-  refine ⟨fun hc => absurd hc (hnc k), fun _ => ?_⟩
-  match k with
-  | 0 =>
-    have : v = 0 := by simpa using hv.symm
-    subst this
-    decide
-  | 1 =>
-    have : v = 2 := by simpa using hv.symm
-    subst this
-    decide
-  | (n + 2) => simp at hv
+one-edge trail `0 — 2` has no collider, and neither of its two vertices is in `Z`
+(`Digraph.not_dSeparated_of_skel`). -/
+lemma not_dSeparated_adj : ¬ collider.DSeparated {0} {2} {1} :=
+  Digraph.not_dSeparated_of_skel (V₁ := {0}) (V₂ := {2}) (V₃ := {1}) (s := 0) (t := 2)
+    (by decide) (by decide) (by decide) (Or.inl (Or.inl ⟨rfl, rfl⟩)) (by decide) (by decide)
 
 /-- **Endpoint convention, discriminating pin.**  The same one-edge trail `0 — 2` of
 `not_dSeparated_adj`, but conditioning on its *endpoint* `2`: here `0` and `2` **are**
@@ -378,20 +503,11 @@ private lemma condIndep_univ_left (B C : Set (Pt UVal)) : CondIndep Q Set.univ B
 private lemma condIndep_univ_right (A C : Set (Pt UVal)) : CondIndep Q A Set.univ C :=
   (condIndep_univ_left A C).symm
 
-/-- In `G₁` a trail is blocked as soon as its source lies in the conditioning set. -/
+/-- In `G₁` a trail is blocked as soon as its source lies in the conditioning set (the
+general `Digraph.dSeparated_of_subset_left`, specialized). -/
 private lemma dSeparated_of_mem (V₁ V₂ V₃ : Finset Unit) (h : ∀ s ∈ V₁, s ∈ V₃) :
-    G₁.DSeparated V₁ V₂ V₃ := by
-  intro s hs t ht p hact
-  have hhead := p.head
-  have h0 : p.toWalk.verts[0]? = some s := by
-    show p.verts[0]? = some s
-    cases hv : p.verts with
-    | nil => rw [hv] at hhead; simp at hhead
-    | cons a l => rw [hv] at hhead; exact List.getElem?_cons_zero.trans hhead
-  have hnc : ¬ p.toWalk.IsColliderAt 0 := by
-    rintro ⟨a, b, c, -, -, -, hk, -, -⟩
-    exact absurd hk (lt_irrefl 0)
-  exact (hact 0 s h0).2 hnc (h s hs)
+    G₁.DSeparated V₁ V₂ V₃ :=
+  Digraph.dSeparated_of_subset_left h
 
 /-- Definition 5.7 is inhabited: the edgeless one-node DAG is a perfect map of the uniform
 distribution.  This is the hypothesis of Proposition 5.8(1). -/
@@ -454,6 +570,207 @@ example : ∃ (I : Type) (Ω : I → Type) (_ : Fintype I) (_ : DecidableEq I)
     (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → UVal v), IsPerfectMapFSM X Q :=
   exists_isPerfectMapFSM_of_exists_isPerfectMapDAG (V := Unit) (Val := UVal) (P := Q)
     ⟨G₁, G₁_acyclic, isPerfectMapDAG_G₁_Q⟩
+
+/-! ### A perfect map with an edge
+
+`G₁` above is edgeless, so its perfect-map property says nothing about the d-separation
+side of Definition 5.7(1).  `G₂` is the two-node DAG `0 → 1` and `Pedge` makes its two
+coordinates agree with probability `3/4`; `isPerfectMapDAG_G₂_Pedge` is therefore an
+inhabitant of Definition 5.7(1) in which both sides of the equivalence have content
+(`not_dSeparated_G₂` and `not_condIndepVar_Pedge` are the two negative instances).
+-/
+
+/-- The two-node DAG with a single edge `0 → 1`. -/
+def G₂ : Digraph (Fin 2) := ⟨fun u v => u = 0 ∧ v = 1⟩
+
+instance G₂_decidableAdj : DecidableRel G₂.Adj :=
+  fun u v => inferInstanceAs (Decidable (u = 0 ∧ v = 1))
+
+/-- `G₂` really has an edge — the point of this witness. -/
+lemma G₂_adj_zero_one : G₂.Adj 0 1 := ⟨rfl, rfl⟩
+
+private lemma G₂_adj_rank {a b : Fin 2} (h : G₂.Adj a b) :
+    (if a = 1 then 1 else 0) < (if b = 1 then 1 else 0) := by
+  obtain ⟨rfl, rfl⟩ := h
+  decide
+
+private lemma G₂_ancestor_rank {a b : Fin 2} (h : G₂.IsAncestor a b) :
+    (if a = 1 then 1 else 0) < (if b = 1 then 1 else 0) := by
+  induction h with
+  | single hab => exact G₂_adj_rank hab
+  | tail _ hbc ih => exact ih.trans (G₂_adj_rank hbc)
+
+/-- `G₂` is acyclic. -/
+lemma G₂_acyclic : G₂.IsAcyclic :=
+  fun _ h => absurd (G₂_ancestor_rank h) (lt_irrefl _)
+
+/-- Distinct nodes of `G₂` are always skeleton-adjacent. -/
+private lemma G₂_skel {s t : Fin 2} (h : s ≠ t) : G₂.Skel s t := by
+  have key : ∀ s t : Fin 2, s ≠ t → ((s = 0 ∧ t = 1) ∨ (t = 0 ∧ s = 1)) := by decide
+  exact key s t h
+
+private lemma fin2_eq_or {s t : Fin 2} (h : s ≠ t) (a : Fin 2) : a = s ∨ a = t := by
+  revert h
+  revert s t a
+  decide
+
+private lemma fin2_pair {s t : Fin 2} (h : s ≠ t) : (s = 0 ∧ t = 1) ∨ (s = 1 ∧ t = 0) := by
+  have key : ∀ a b : Fin 2, a ≠ b → ((a = 0 ∧ b = 1) ∨ (a = 1 ∧ b = 0)) := by decide
+  exact key s t h
+
+private def coinEquiv : Pt Coins ≃ (Bool × Bool) where
+  toFun x := (x 0, x 1)
+  invFun p := ![p.1, p.2]
+  left_inv x := by funext i; fin_cases i <;> rfl
+  right_inv p := rfl
+
+private lemma sum_pt (f : Pt Coins → ℝ) :
+    ∑ x : Pt Coins, f x
+      = f ![false, false] + f ![false, true] + f ![true, false] + f ![true, true] := by
+  rw [← Equiv.sum_comp coinEquiv.symm f, Fintype.sum_prod_type]
+  rw [Fintype.sum_bool]
+  rw [Fintype.sum_bool, Fintype.sum_bool]
+  show f ![true, true] + f ![true, false] + (f ![false, true] + f ![false, false]) = _
+  ring
+
+/-- `X₁ = X₀` with probability `3/4`: a strictly positive law on the two coins with uniform
+marginals whose coordinates are dependent. -/
+noncomputable def Pedge : Distr (Pt Coins) where
+  mass x := if x 0 = x 1 then 3 / 8 else 1 / 8
+  nonneg x := by split_ifs <;> norm_num
+  sum_eq_one := by rw [sum_pt]; norm_num
+
+private lemma Pedge_mass (x : Pt Coins) :
+    Pedge.mass x = if x 0 = x 1 then 3 / 8 else 1 / 8 := rfl
+
+private lemma Pedge_pos : Pedge.StrictlyPositive := by
+  intro x
+  rw [Pedge_mass]
+  split_ifs <;> norm_num
+
+private lemma Pedge_prob (A : Set (Pt Coins)) :
+    Pedge.prob A = A.indicator Pedge.mass ![false, false]
+      + A.indicator Pedge.mass ![false, true]
+      + A.indicator Pedge.mass ![true, false]
+      + A.indicator Pedge.mass ![true, true] :=
+  sum_pt _
+
+private lemma fiber_proj_singleton (i : Fin 2) (ω₀ : Pt Coins) :
+    fiber (proj ({i} : Finset (Fin 2))) (proj {i} ω₀) = {ω : Pt Coins | ω i = ω₀ i} := by
+  ext ω
+  constructor
+  · intro h
+    exact congrFun (show proj ({i} : Finset (Fin 2)) ω = proj {i} ω₀ from h)
+      ⟨i, Finset.mem_singleton_self i⟩
+  · intro h
+    show proj ({i} : Finset (Fin 2)) ω = proj {i} ω₀
+    exact proj_eq_iff.mpr fun j hj => by
+      rw [Finset.mem_singleton] at hj; exact hj ▸ h
+
+private lemma fiber_proj_empty_coins (z : PtOn Coins (∅ : Finset (Fin 2))) :
+    fiber (proj (∅ : Finset (Fin 2))) z = Set.univ := by
+  ext ω
+  simp only [Set.mem_univ, iff_true]
+  show proj (∅ : Finset (Fin 2)) ω = z
+  funext i
+  exact absurd i.2 (Finset.notMem_empty _)
+
+/-- **The two coins of `Pedge` are dependent.**  `P(X₀ = 1)·P(X₁ = 1) = 1/4 ≠ 3/8 =
+P(X₀ = X₁ = 1)`, so the conditional-independence side of `isPerfectMapDAG_G₂_Pedge` is not
+vacuously true. -/
+lemma not_condIndepVar_Pedge :
+    ¬ CondIndepVar Pedge (proj ({0} : Finset (Fin 2))) (proj ({1} : Finset (Fin 2)))
+        (proj (∅ : Finset (Fin 2))) := by
+  intro h
+  have key := h (proj {0} (![true, true] : Pt Coins)) (proj {1} (![true, true] : Pt Coins))
+    (proj (∅ : Finset (Fin 2)) (![true, true] : Pt Coins))
+  rw [fiber_proj_singleton, fiber_proj_singleton, fiber_proj_empty_coins] at key
+  have key' : Pedge.prob ({ω : Pt Coins | ω 0 = (![true, true] : Pt Coins) 0} ∩ Set.univ)
+      * Pedge.prob ({ω : Pt Coins | ω 1 = (![true, true] : Pt Coins) 1} ∩ Set.univ)
+      = Pedge.prob (({ω : Pt Coins | ω 0 = (![true, true] : Pt Coins) 0}
+          ∩ {ω : Pt Coins | ω 1 = (![true, true] : Pt Coins) 1}) ∩ Set.univ)
+        * Pedge.prob (Set.univ : Set (Pt Coins)) := key
+  rw [Set.inter_univ, Set.inter_univ, Set.inter_univ, Pedge_prob, Pedge_prob, Pedge_prob,
+    Pedge_prob] at key'
+  norm_num [Set.indicator_apply, Pedge_mass] at key'
+
+/-- On `G₂` both sides of Definition 5.7(1) collapse to `V₁ ⊆ V₃ ∨ V₂ ⊆ V₃`: the graph
+side.  `G₂` has no collider, so a trail is active given `V₃` exactly when neither of its
+vertices lies in `V₃`. -/
+private lemma dSeparated_G₂_iff (V₁ V₂ V₃ : Finset (Fin 2)) :
+    G₂.DSeparated V₁ V₂ V₃ ↔ V₁ ⊆ V₃ ∨ V₂ ⊆ V₃ := by
+  constructor
+  · intro hd
+    by_contra hcon
+    push Not at hcon
+    obtain ⟨s, hs, hs3⟩ := Finset.not_subset.mp hcon.1
+    obtain ⟨t, ht, ht3⟩ := Finset.not_subset.mp hcon.2
+    by_cases hst : s = t
+    · subst hst
+      exact Digraph.not_dSeparated_self hs ht hs3 hd
+    · exact Digraph.not_dSeparated_of_skel hs ht hst (G₂_skel hst) hs3 ht3 hd
+  · rintro (h | h)
+    · exact Digraph.dSeparated_of_subset_left h
+    · exact Digraph.dSeparated_of_subset_right h
+
+/-- The probability side of the same collapse: `Pedge` is strictly positive with dependent
+coordinates, so a conditional independence among the coordinate projections holds exactly
+when one side is already determined by the conditioning family. -/
+private lemma condIndepVar_Pedge_iff (V₁ V₂ V₃ : Finset (Fin 2)) :
+    CondIndepVar Pedge (proj V₁) (proj V₂) (proj V₃) ↔ V₁ ⊆ V₃ ∨ V₂ ⊆ V₃ := by
+  constructor
+  · intro h
+    by_contra hcon
+    push Not at hcon
+    obtain ⟨s, hs, hs3⟩ := Finset.not_subset.mp hcon.1
+    obtain ⟨t, ht, ht3⟩ := Finset.not_subset.mp hcon.2
+    have hst : CondIndepVar Pedge (proj ({s} : Finset (Fin 2)))
+        (proj ({t} : Finset (Fin 2))) (proj V₃) :=
+      CondIndepVar.of_proj_subset (Finset.singleton_subset_iff.mpr hs)
+        (Finset.singleton_subset_iff.mpr ht) h
+    by_cases hsteq : s = t
+    · subst hsteq
+      haveI : Nontrivial (Coins s) := inferInstanceAs (Nontrivial Bool)
+      exact not_condIndepVar_proj_self Pedge_pos hs3 hst
+    · have hV₃ : V₃ = ∅ := by
+        rw [Finset.eq_empty_iff_forall_notMem]
+        intro a ha
+        rcases fin2_eq_or hsteq a with rfl | rfl
+        · exact hs3 ha
+        · exact ht3 ha
+      subst hV₃
+      rcases fin2_pair hsteq with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+      · exact not_condIndepVar_Pedge hst
+      · exact not_condIndepVar_Pedge hst.symm
+  · rintro (h | h)
+    · exact condIndepVar_proj_of_subset_left h _
+    · exact condIndepVar_proj_of_subset_right h _
+
+/-- **Definition 5.7(1) is inhabited by a DAG with an edge.**  `G₂ = (0 → 1)` is a perfect
+map of `Pedge`, whose two coordinates are genuinely dependent.  Unlike
+`isPerfectMapDAG_G₁_Q` — where the graph is edgeless and the law a product — the
+equivalence here has content on both sides: see `not_dSeparated_G₂` and
+`not_condIndepVar_Pedge`. -/
+lemma isPerfectMapDAG_G₂_Pedge : IsPerfectMapDAG G₂ Pedge := fun V₁ V₂ V₃ =>
+  (dSeparated_G₂_iff V₁ V₂ V₃).trans (condIndepVar_Pedge_iff V₁ V₂ V₃).symm
+
+/-- The equivalence of `isPerfectMapDAG_G₂_Pedge` is not vacuously "everything is
+d-separated": the two endpoints of the edge are not d-separated given nothing. -/
+lemma not_dSeparated_G₂ : ¬ G₂.DSeparated {0} {1} ∅ := by
+  rw [dSeparated_G₂_iff]
+  simp
+
+/-- …nor vacuously "nothing is d-separated": conditioning on an endpoint separates. -/
+lemma dSeparated_G₂_given_endpoint : G₂.DSeparated {0} {1} {0} := by
+  rw [dSeparated_G₂_iff]
+  simp
+
+/-- Proposition 5.8(1) applied to a DAG with an edge: the factored space model it produces
+is a perfect map of `Pedge`. -/
+example : ∃ (I : Type) (Ω : I → Type) (_ : Fintype I) (_ : DecidableEq I)
+    (_ : ∀ i, Fintype (Ω i)) (X : ∀ v, Pt Ω → Coins v), IsPerfectMapFSM X Pedge :=
+  exists_isPerfectMapFSM_of_exists_isPerfectMapDAG (V := Fin 2) (Val := Coins) (P := Pedge)
+    ⟨G₂, G₂_acyclic, isPerfectMapDAG_G₂_Pedge⟩
 
 end Examples
 end FactoredSpaces
