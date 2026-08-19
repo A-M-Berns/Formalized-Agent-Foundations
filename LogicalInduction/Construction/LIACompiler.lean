@@ -7358,6 +7358,79 @@ theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess
     fun n φ => (liaStates DP n).quote_mem_Icc φ,
     fun _ _ => rfl⟩
 
+/-! ## Public computability interface for downstream market constructions
+
+Everything above is `private` because it is implementation detail of *this* file's
+compiler.  That is the right default, but it has a cost: a construction that prices the
+Trading Firm **together with a further trader** — a privileged enforcement trader, say —
+runs the same erased recurrence with one extra trade list in the day's aggregate, and needs
+exactly the same first-order ingredients to show its own bounded evaluator computable.
+With those ingredients sealed, such a construction has to re-derive this file.
+
+This section re-exports the ingredients and nothing else.  Each declaration is a public
+name for an existing private lemma; no proof, definition or statement above is changed, so
+nothing that currently builds can break.  What is deliberately *not* exported is the
+recurrence itself: a downstream construction states and proves its own, which is where its
+own soundness obligation belongs.
+
+Provided here: the expressible-feature constructors and `EF.absBound`; the two erased steps
+of the day recurrence (the firm's trade list, and the MarketMaker search over a raw trade
+list); the day error schedule; the deductive-stage prefix decoder; and the belief state's
+exact rational quote.
+-/
+
+/-- `EF.const` is primitive recursive. -/
+lemma efConst_primrec : Primrec EF.const := efConst_prim
+
+/-- `EF.price` is primitive recursive in the sentence and the day. -/
+lemma efPrice_primrec : Primrec₂ EF.price := efPrice_prim
+
+/-- `EF.add` is primitive recursive in both arguments. -/
+lemma efAdd_primrec : Primrec₂ EF.add := efAdd_prim
+
+/-- `EF.mul` is primitive recursive in both arguments. -/
+lemma efMul_primrec : Primrec₂ EF.mul := efMul_prim
+
+/-- `EF.max` is primitive recursive in both arguments. -/
+lemma efMax_primrec : Primrec₂ EF.max := efMax_prim
+
+/-- `EF.absBound` is primitive recursive.  A downstream trader that sizes its position
+against the ordinary aggregate's syntactic bound needs this. -/
+lemma efAbsBound_primrec : Primrec EF.absBound := efAbsBound_prim
+
+/-- The day error schedule is primitive recursive. -/
+lemma marketMakerError_primrec : Primrec marketMakerError := marketMakerError_prim
+
+/-- A belief state's exact rational quote is primitive recursive. -/
+lemma rationalBeliefStateQuote_primrec : Primrec₂ RationalBeliefState.quote :=
+  rationalBeliefStateQuote_prim
+
+/-- The bounded deductive-stage prefix decoder is primitive recursive. -/
+lemma processStagePrefixAtFuel_primrec {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n :=
+  processStagePrefixAtFuel_prim process
+
+/-- The Trading Firm's day-`n` trade list is primitive recursive in the decoded stage
+prefix, the prior belief states and the day. -/
+lemma tradingFirmTradesFromStageTradeLists_primrec :
+    Primrec fun p : (List (Finset Sentence) × List RationalBeliefState) × ℕ =>
+      tradingFirmTradesFromStageTradeLists
+        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 :=
+  tradingFirmTradesFromStageTradeLists_prim
+
+/-- The bounded MarketMaker search over a raw trade list is primitive recursive in the
+trade list, the day, the prior states, the tolerance and the fuel. -/
+lemma marketMakerSearchUpToTradeList_primrec :
+    Primrec fun p : (((List (EF × Sentence) × ℕ) × List RationalBeliefState) × ℚ) × ℕ =>
+      marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 :=
+  marketMakerSearchUpToTradeList_prim
+
+#print axioms efAbsBound_primrec
+#print axioms tradingFirmTradesFromStageTradeLists_primrec
+#print axioms marketMakerSearchUpToTradeList_primrec
+#print axioms processStagePrefixAtFuel_primrec
+
 #print axioms liaEncodedQuoteNatAtFuel_computable
 #print axioms LIA_is_logical_inductor
 #print axioms exists_logical_inductor
