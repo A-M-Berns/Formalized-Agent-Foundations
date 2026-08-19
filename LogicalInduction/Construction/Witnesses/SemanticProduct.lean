@@ -12,7 +12,7 @@ cut clauses for *every* product before a market or source LUV is chosen.
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 -- Keep the pairing decoder opaque while elaborating fixed job syntax.
 attribute [local irreducible] Nat.sqrt
@@ -83,6 +83,15 @@ lemma mem_semanticProductStageList {e k : ℕ} (h : e ≤ k) :
       · have he : e = k + 1 := le_antisymm h hge
         simp [semanticProductStageList, he]
 
+lemma semanticProductStageList_exists {φ : Sentence} {k : ℕ}
+    (h : φ ∈ semanticProductStageList k) : ∃ e, φ = semanticProductDefSentence e := by
+  induction k with
+  | zero => exact ⟨0, by simpa [semanticProductStageList] using h⟩
+  | succ k ih =>
+      rcases List.mem_cons.mp h with h | h
+      · exact ⟨k + 1, h⟩
+      · exact ih h
+
 /-- The fixed semantic closure process.  It has no `X`, `W`, market, weight, or deferral
 parameter. -/
 def semanticProductDP : DeductiveProcess where
@@ -94,7 +103,7 @@ def semanticProductDP : DeductiveProcess where
 
 /-! ### Computability of the fixed closure -/
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 4000000 in
 lemma semanticProductDefSentence_computable : Computable semanticProductDefSentence := by
   classical
   refine Computable.encode_iff.mp ?_
@@ -190,11 +199,10 @@ lemma semanticProductDefSentence_computable : Computable semanticProductDefSente
     rfl
   · simp [h1, hg1']
   · simp only [h0, h1, hneg', decide_true, decide_false, cond_true, cond_false]
-    rfl
   · simp [h0, h1, hneg']
 
-/-- The whole fixed semantic closure is a computable deductive process. -/
 set_option maxHeartbeats 1000000 in
+/-- The whole fixed semantic closure is a computable deductive process. -/
 lemma semanticProductDP_computable : ComputableDeductiveProcess semanticProductDP := by
   have hlist : Computable semanticProductStageList := by
     have hstep : Computable fun p : ℕ × List Sentence =>
@@ -217,6 +225,47 @@ lemma semanticProductDP_computable : ComputableDeductiveProcess semanticProductD
   refine ⟨code, fun k => ?_⟩
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticProductStageList k))
+
+/-! ### Fixed-process non-vacuity -/
+
+open Classical in
+noncomputable def semanticProductWorld : PCWorld := fun a =>
+  if a.unpair.1 = semanticPrimeTag ∧ a.unpair.2.unpair.1.unpair.1 = 1 then
+    decodedQuotationRat a.unpair.2.unpair.2.unpair.2 < 0
+  else False
+
+lemma semanticProductWorld_nonneg (schema n : ℕ) (q : ℚ) (hq : 0 ≤ q) :
+    ¬ semanticProductWorld.Holds
+      (semanticPrimeSentence schema (Nat.pair n (Encodable.encode q))) := by
+  change ¬ semanticProductWorld
+    (semanticPrimeCode schema (Nat.pair n (Encodable.encode q)))
+  simp only [semanticProductWorld, semanticPrimeCode, Nat.unpair_pair,
+    decodedQuotationRat_encode]
+  split <;> simp_all
+
+lemma semanticProductWorld_productAtom (left right n : ℕ) (r : ℚ) :
+    semanticProductWorld.Holds (semanticProductAtom left right n r) ↔ r < 0 := by
+  change semanticProductWorld
+    (semanticPrimeCode (semanticProductSchema left right) (Nat.pair n (Encodable.encode r))) ↔ _
+  simp [semanticProductWorld, semanticPrimeCode, semanticProductSchema,
+    decodedQuotationRat_encode]
+
+lemma semanticProductWorld_holds_schema (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
+    semanticProductWorld.Holds (semanticProductSchemaInstance left right n kind r zs zt) := by
+  rw [semanticProductSchemaInstance]
+  split_ifs with hkind hpos hkind hneg hr
+  · intro h
+    exact False.elim
+      ((semanticProductWorld_nonneg left n (meshIndexRat zs) (meshIndexRat_nonneg zs)) h.1)
+  · exact PCWorld.holds_top _
+  · intro hp
+    have hp' : r < 0 := (semanticProductWorld_productAtom left right n r).mp hp
+    have hs : 0 ≤ meshIndexRat zs * meshIndexRat zt :=
+      mul_nonneg (meshIndexRat_nonneg zs) (meshIndexRat_nonneg zt)
+    linarith
+  · exact PCWorld.holds_top _
+  · exact (semanticProductWorld_productAtom left right n r).mpr hr
+  · exact PCWorld.holds_top _
 
 /-- The process used for the eventual `LIA` is fixed from the arithmetic theory alone:
 the ordinary provability stream and the semantic product closure are combined before any
@@ -268,7 +317,6 @@ noncomputable def theoremSemanticProductWorld (T : ArithmeticTheory) : PCWorld :
   if a.unpair.1 = semanticPrimeTag then semanticProductWorld a else provabilityWorld T a
 
 section
-attribute [local irreducible] Nat.sqrt
 
 lemma theoremSemanticProductWorld_agree_base (T : ArithmeticTheory) {a : ℕ}
     (ha : a.unpair.1 ≠ semanticPrimeTag) :
@@ -300,8 +348,12 @@ lemma theoremSemanticProductWorld_nonneg (T : ArithmeticTheory) (schema n : ℕ)
 
 lemma theoremSemanticProductWorld_productAtom (T : ArithmeticTheory) (left right n : ℕ) (r : ℚ) :
     (theoremSemanticProductWorld T).Holds (semanticProductAtom left right n r) ↔ r < 0 := by
-  rw [theoremSemanticProductWorld_holds_semanticPrime,
-    semanticProductWorld_productAtom]
+  change (theoremSemanticProductWorld T).Holds
+      (semanticPrimeSentence (semanticProductSchema left right)
+        (Nat.pair n (Encodable.encode r))) ↔ r < 0
+  rw [theoremSemanticProductWorld_holds_semanticPrime]
+  change semanticProductWorld.Holds (semanticProductAtom left right n r) ↔ r < 0
+  exact semanticProductWorld_productAtom left right n r
 
 lemma theoremSemanticProductWorld_holds_schema (T : ArithmeticTheory)
     (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
@@ -337,7 +389,7 @@ theorem theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜�
       Finset.mem_range] at hbase
     obtain ⟨e, _, rfl⟩ := hbase
     exact eventAtom_atomCodes_ne_semanticPrimeTag e a ha
-  · obtain ⟨e, rfl⟩ := exists_of_mem_semanticProductStageList (List.mem_toFinset.mp hsemantic)
+  · obtain ⟨e, rfl⟩ := semanticProductStageList_exists (List.mem_toFinset.mp hsemantic)
     rw [semanticProductDefSentence]
     exact theoremSemanticProductWorld_holds_schema T _ _ _ _ _ _ _
 
@@ -392,53 +444,6 @@ lemma holds_semanticProduct_below {v : PCWorld}
 
 end
 
-/-! ## Fixed-process non-vacuity
-
-With no source facts asserted, every semantic product has value zero.  This canonical world
-therefore makes exactly its negative thresholds true.  Unlike `productExtensionWorld`, it
-is defined once for all possible source schemas. -/
-
-open Classical in
-noncomputable def semanticProductWorld : PCWorld := fun a =>
-  if a.unpair.1 = semanticPrimeTag ∧ a.unpair.2.unpair.1.unpair.1 = 1 then
-    decodedQuotationRat a.unpair.2.unpair.2.unpair.2 < 0
-  else False
-
-section
-
-lemma semanticProductWorld_nonneg (schema n : ℕ) (q : ℚ) (hq : 0 ≤ q) :
-    ¬ semanticProductWorld.Holds
-      (semanticPrimeSentence schema (Nat.pair n (Encodable.encode q))) := by
-  change ¬ semanticProductWorld
-    (semanticPrimeCode schema (Nat.pair n (Encodable.encode q)))
-  simp only [semanticProductWorld, semanticPrimeCode, Nat.unpair_pair,
-    decodedQuotationRat_encode]
-  split <;> simp_all
-
-lemma semanticProductWorld_productAtom (left right n : ℕ) (r : ℚ) :
-    semanticProductWorld.Holds (semanticProductAtom left right n r) ↔ r < 0 := by
-  change semanticProductWorld
-    (semanticPrimeCode (semanticProductSchema left right) (Nat.pair n (Encodable.encode r))) ↔ _
-  simp [semanticProductWorld, semanticPrimeCode, semanticProductSchema,
-    decodedQuotationRat_encode]
-
-lemma semanticProductWorld_holds_schema (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
-    semanticProductWorld.Holds (semanticProductSchemaInstance left right n kind r zs zt) := by
-  rw [semanticProductSchemaInstance]
-  split_ifs with hkind hpos hkind hneg hr
-  · intro h
-    exact False.elim
-      ((semanticProductWorld_nonneg left n (meshIndexRat zs) (meshIndexRat_nonneg zs)) h.1)
-  · exact PCWorld.holds_top _
-  · intro hp
-    have hp' : r < 0 := (semanticProductWorld_productAtom left right n r).mp hp
-    have hs : 0 ≤ meshIndexRat zs * meshIndexRat zt :=
-      mul_nonneg (meshIndexRat_nonneg zs) (meshIndexRat_nonneg zt)
-    linarith
-  · exact PCWorld.holds_top _
-  · exact (semanticProductWorld_productAtom left right n r).mpr hr
-  · exact PCWorld.holds_top _
-
 lemma exists_of_mem_semanticProductStageList {φ : Sentence} {k : ℕ}
     (h : φ ∈ semanticProductStageList k) : ∃ e, φ = semanticProductDefSentence e := by
   induction k with
@@ -455,8 +460,6 @@ theorem semanticProductDP_hworld :
   obtain ⟨e, rfl⟩ := exists_of_mem_semanticProductStageList (List.mem_toFinset.mp hφ)
   rw [semanticProductDefSentence]
   exact semanticProductWorld_holds_schema _ _ _ _ _ _ _
-
-end
 
 /-- Exact product reflection over the single fixed semantic closure process.  This is the
 existing `productLUV_valuesAt` rational-density proof with only the three schema lookups
@@ -489,7 +492,6 @@ theorem semanticProductLUV_valuesAt {v : PCWorld}
 
 /-! ## `def:ec` for semantic products -/
 
-attribute [local irreducible] Nat.sqrt in
 lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (semanticProductAtom left right m.unpair.1
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))) := by
@@ -510,8 +512,8 @@ lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
     ((PolyFueled.const semanticPrimeTag).pair
       ((PolyFueled.const (semanticProductSchema left right)).pair (hn.pair meshPF)))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
-  simp only [semanticProductAtom, semanticPrimeSentence, semanticPrimeCode, Nat.unpair_pair,
-    ifzSelFn]
+  rw [semanticProductAtom, semanticPrimeSentence, semanticPrimeCode, encode_atom]
+  simp only [Nat.unpair_pair, ifzSelFn]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
   · rw [if_pos hk0, hk0]
     norm_num
