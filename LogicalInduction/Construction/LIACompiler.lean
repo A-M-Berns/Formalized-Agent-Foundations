@@ -7358,6 +7358,164 @@ theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess
     fun n φ => (liaStates DP n).quote_mem_Icc φ,
     fun _ _ => rfl⟩
 
+/-! ## Public computability interface for downstream market constructions
+
+Everything above is `private` because it is implementation detail of *this* file's
+compiler.  That is the right default, but it has a cost: a construction that prices the
+Trading Firm **together with a further trader** — a privileged enforcement trader, say —
+runs the same erased recurrence with one extra trade list in the day's aggregate, and needs
+exactly the same first-order ingredients to show its own bounded evaluator computable.
+With those ingredients sealed, such a construction has to re-derive this file.
+
+This section re-exports the ingredients and nothing else.  Each declaration is a public
+name for an existing private lemma; no proof, definition or statement above is changed, so
+nothing that currently builds can break.  What is deliberately *not* exported is the
+recurrence itself: a downstream construction states and proves its own, which is where its
+own soundness obligation belongs.
+
+Provided here: the expressible-feature constructors and `EF.absBound`; the two erased steps
+of the day recurrence (the firm's trade list, and the MarketMaker search over a raw trade
+list); the day error schedule; the deductive-stage prefix decoder; and the belief state's
+exact rational quote.
+-/
+
+/-- `EF.const` is primitive recursive. -/
+lemma efConst_primrec : Primrec EF.const := efConst_prim
+
+/-- `EF.price` is primitive recursive in the sentence and the day. -/
+lemma efPrice_primrec : Primrec₂ EF.price := efPrice_prim
+
+/-- `EF.add` is primitive recursive in both arguments. -/
+lemma efAdd_primrec : Primrec₂ EF.add := efAdd_prim
+
+/-- `EF.mul` is primitive recursive in both arguments. -/
+lemma efMul_primrec : Primrec₂ EF.mul := efMul_prim
+
+/-- `EF.max` is primitive recursive in both arguments. -/
+lemma efMax_primrec : Primrec₂ EF.max := efMax_prim
+
+/-- `EF.absBound` is primitive recursive.  A downstream trader that sizes its position
+against the ordinary aggregate's syntactic bound needs this. -/
+lemma efAbsBound_primrec : Primrec EF.absBound := efAbsBound_prim
+
+/-- The day error schedule is primitive recursive. -/
+lemma marketMakerError_primrec : Primrec marketMakerError := marketMakerError_prim
+
+/-- A belief state's exact rational quote is primitive recursive. -/
+lemma rationalBeliefStateQuote_primrec : Primrec₂ RationalBeliefState.quote :=
+  rationalBeliefStateQuote_prim
+
+/-- The bounded deductive-stage prefix decoder is primitive recursive. -/
+lemma processStagePrefixAtFuel_primrec {DP : DeductiveProcess}
+    (process : DeductiveProcessComputation DP) :
+    Primrec₂ fun fuel n => processStagePrefixAtFuel process fuel n :=
+  processStagePrefixAtFuel_prim process
+
+/-- The Trading Firm's day-`n` trade list is primitive recursive in the decoded stage
+prefix, the prior belief states and the day. -/
+lemma tradingFirmTradesFromStageTradeLists_primrec :
+    Primrec fun p : (List (Finset Sentence) × List RationalBeliefState) × ℕ =>
+      tradingFirmTradesFromStageTradeLists
+        (decodedStageTable p.1.1) (rationalHistory p.1.2) p.2 :=
+  tradingFirmTradesFromStageTradeLists_prim
+
+/-- The bounded MarketMaker search over a raw trade list is primitive recursive in the
+trade list, the day, the prior states, the tolerance and the fuel. -/
+lemma marketMakerSearchUpToTradeList_primrec :
+    Primrec fun p : (((List (EF × Sentence) × ℕ) × List RationalBeliefState) × ℚ) × ℕ =>
+      marketMakerSearchUpToTradeList p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 :=
+  marketMakerSearchUpToTradeList_prim
+
+
+/-! ### Finite propositional evaluation on an atom list
+
+A downstream development that builds a *region of credences* from the deductive stage has
+to decide, as a primitive recursive function of finite data, which Boolean assignments to
+the atoms occurring in a stage satisfy that stage.  Every ingredient is already proved
+above, in the erased atom-list forms the budgeter's own compiler runs on; what is missing
+is only that they are stated against the public `Sentence.atoms` / `sentenceBool` /
+`tableConsistent` vocabulary, so that a caller does not have to rebuild the
+strong-recursion tower over the formula encoding.
+
+Nothing new is proved here.  `tableConsistent` is public (`Budgeter`), `sentenceBool` and
+`Sentence.atoms` are public (`Budgeter`), and `supportSentenceList` is public
+(`MarketMaker`); the two definitions below are aliases for the erased forms, and the two
+computability facts are the corresponding private lemmas re-exported. -/
+
+/-- **The canonical sentence list of a finite sentence set is primitive recursive.**
+`supportSentenceList` is already public (`MarketMaker`); only its computability was not. -/
+lemma supportSentenceList_primrec : Primrec supportSentenceList :=
+  supportSentenceList_prim
+
+/-- The atoms occurring in a list of sentences, as a list rather than a `Finset`, so that
+a computability statement can mention it. -/
+def sentenceListAtoms (sentences : List Sentence) : List ℕ :=
+  sentenceListAtomOccurrences sentences
+
+@[simp] lemma mem_sentenceListAtoms (sentences : List Sentence) (a : ℕ) :
+    a ∈ sentenceListAtoms sentences ↔ ∃ φ ∈ sentences, a ∈ φ.atoms :=
+  mem_sentenceListAtomOccurrences sentences a
+
+/-- The atom list of a list of sentences is primitive recursive. -/
+lemma sentenceListAtoms_primrec : Primrec sentenceListAtoms :=
+  sentenceListAtomOccurrences_prim
+
+/-- The Boolean atom table that a list of atoms and a list of bits determine: the `i`-th
+bit is the value of the `i`-th listed atom, and an unlisted atom is `false`. -/
+def atomTableFromList (atoms : List ℕ) (xs : List Bool) : ℕ → Bool :=
+  atomListTable atoms xs
+
+/-- The table reads the bit at the atom's position, and `false` off the list. -/
+lemma atomTableFromList_apply (atoms : List ℕ) (xs : List Bool) (a : ℕ) :
+    atomTableFromList atoms xs a =
+      if a ∈ atoms then xs.getD (atoms.idxOf a) false else false := rfl
+
+private lemma tableConsistent_atomTableFromList_eq (atoms : List ℕ) (xs : List Bool)
+    (D : Finset Sentence) :
+    tableConsistentFromAtomList atoms xs D = tableConsistent (atomTableFromList atoms xs) D := by
+  have hfold : ∀ l : List Sentence,
+      (l.foldr (fun φ ok => sentenceBoolFromAtomList atoms xs φ && ok) true = true ↔
+        ∀ φ ∈ l, sentenceBoolFromAtomList atoms xs φ = true) := by
+    intro l
+    induction l with
+    | nil => simp
+    | cons φ l ih => simp [ih]
+  rw [Bool.eq_iff_iff]
+  simp only [tableConsistentFromAtomList, tableConsistent, decide_eq_true_eq, hfold]
+  simp [supportSentenceList, sentenceBoolFromAtomList, atomTableFromList]
+
+/-- Propositional evaluation against an atom-list table is primitive recursive.  With
+`boolPayoutRat u φ = if sentenceBool u φ then 1 else 0` this also settles the payout a
+Boolean assignment gives a sentence. -/
+lemma sentenceBool_atomTableFromList_primrec :
+    Primrec fun p : (List ℕ × List Bool) × Sentence =>
+      sentenceBool (atomTableFromList p.1.1 p.1.2) p.2 :=
+  sentenceBoolFromAtomList_prim
+
+/-- The enumeration of all Boolean lists of a given length is primitive recursive.  A
+downstream construction enumerating the assignments to a stage's atoms needs it. -/
+lemma allBoolLists_primrec : Primrec allBoolLists :=
+  allBoolLists_prim
+
+/-- **Finite consistency against an atom-list table is primitive recursive.**  This is what
+lets a downstream construction enumerate the Boolean assignments a deductive stage admits,
+uniformly in the stage. -/
+lemma tableConsistent_atomTableFromList_primrec :
+    Primrec fun p : (List ℕ × List Bool) × Finset Sentence =>
+      tableConsistent (atomTableFromList p.1.1 p.1.2) p.2 :=
+  tableConsistentFromAtomList_prim.of_eq fun p =>
+    tableConsistent_atomTableFromList_eq p.1.1 p.1.2 p.2
+
+#print axioms supportSentenceList_primrec
+#print axioms sentenceListAtoms_primrec
+#print axioms sentenceBool_atomTableFromList_primrec
+#print axioms allBoolLists_primrec
+#print axioms tableConsistent_atomTableFromList_primrec
+#print axioms efAbsBound_primrec
+#print axioms tradingFirmTradesFromStageTradeLists_primrec
+#print axioms marketMakerSearchUpToTradeList_primrec
+#print axioms processStagePrefixAtFuel_primrec
+
 #print axioms liaEncodedQuoteNatAtFuel_computable
 #print axioms LIA_is_logical_inductor
 #print axioms exists_logical_inductor
