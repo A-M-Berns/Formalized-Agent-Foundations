@@ -7484,6 +7484,19 @@ private lemma tableConsistent_atomTableFromList_eq (atoms : List ℕ) (xs : List
   simp only [tableConsistentFromAtomList, tableConsistent, decide_eq_true_eq, hfold]
   simp [supportSentenceList, sentenceBoolFromAtomList, atomTableFromList]
 
+/-- Propositional evaluation against an atom-list table is primitive recursive.  With
+`boolPayoutRat u φ = if sentenceBool u φ then 1 else 0` this also settles the payout a
+Boolean assignment gives a sentence. -/
+lemma sentenceBool_atomTableFromList_primrec :
+    Primrec fun p : (List ℕ × List Bool) × Sentence =>
+      sentenceBool (atomTableFromList p.1.1 p.1.2) p.2 :=
+  sentenceBoolFromAtomList_prim
+
+/-- The enumeration of all Boolean lists of a given length is primitive recursive.  A
+downstream construction enumerating the assignments to a stage's atoms needs it. -/
+lemma allBoolLists_primrec : Primrec allBoolLists :=
+  allBoolLists_prim
+
 /-- **Finite consistency against an atom-list table is primitive recursive.**  This is what
 lets a downstream construction enumerate the Boolean assignments a deductive stage admits,
 uniformly in the stage. -/
@@ -7495,6 +7508,8 @@ lemma tableConsistent_atomTableFromList_primrec :
 
 #print axioms supportSentenceList_primrec
 #print axioms sentenceListAtoms_primrec
+#print axioms sentenceBool_atomTableFromList_primrec
+#print axioms allBoolLists_primrec
 #print axioms tableConsistent_atomTableFromList_primrec
 #print axioms efAbsBound_primrec
 #print axioms tradingFirmTradesFromStageTradeLists_primrec
