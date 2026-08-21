@@ -38,5 +38,6 @@ import LogicalInduction.Construction.Witnesses.RpnFreeze
 import LogicalInduction.Construction.Witnesses.StrictSeparators
 import LogicalInduction.Construction.Witnesses.SemanticPrime
 import LogicalInduction.Construction.Witnesses.SemanticQuote
+import LogicalInduction.Construction.Witnesses.SemanticSource
 import LogicalInduction.Construction.Witnesses.ProductDefinition
 import LogicalInduction.Construction.Witnesses.SemanticProduct
