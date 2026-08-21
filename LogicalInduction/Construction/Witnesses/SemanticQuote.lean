@@ -12,7 +12,7 @@ definitional closure between two public names for the same universal quotation i
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 def semanticQuoteLeaf (code input : ℕ) : Sentence :=
   semanticPrimeSentence (semanticQuoteSchema code) input
@@ -132,6 +132,20 @@ lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP :=
   refine ⟨code, fun k => ?_⟩
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticQuoteStageList k))
+
+/-- Canonical theorem/quotation base, fixed from the arithmetic theory alone.  It lives
+here so all downstream source and product registries share one quotation namespace. -/
+noncomputable def theoremQuoteBaseDP
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+  (theoremDP T).union semanticQuoteDP
+
+noncomputable def theoremQuoteBaseDPComputation
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    DeductiveProcessComputation (theoremQuoteBaseDP T) :=
+  ((theoremDP_computable T).nonemptyComputation.some).union
+    semanticQuoteDP_computable.nonemptyComputation.some
 
 lemma holds_semanticQuoteDefSentence {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticQuoteDP) (e : ℕ) :

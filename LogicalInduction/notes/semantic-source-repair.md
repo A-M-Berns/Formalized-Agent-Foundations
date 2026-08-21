@@ -109,11 +109,11 @@ plumbing theorem
 It deliberately remains non-paper-facing: source interpretation, weight presentation, and
 the right quoted product are still explicit premises.
 
-The remaining upstream task is therefore precise: implement the fixed universal verifier
-which evaluates the emitter/certificate pair stored in a tag-`0` schema, checks old-language
-ownership and base-stage membership for successively larger finite cut prefixes, and only
-then emits the source equivalences.  Joint non-vacuity must extend the checked cut prefixes;
-no caller-specific clauses may be added to the process.
+That formerly remaining verifier is now implemented by `SemanticSourceRegistry.lean` and
+`SemanticSourceDP.lean`: it evaluates the emitter/certificate pair stored in a tag-`0`
+schema, checks old-language ownership and base-stage membership on finite prefixes, and
+only then activates source equivalences. `SemanticRegistryProduct.lean` supplies the joint
+non-vacuity proof without caller-specific clauses.
 
 The remaining representation theorem is equally precise.  To claim the full paper source
 quantifier, FAF must define the paper-facing old-language formula/proof object and compile it
@@ -122,3 +122,57 @@ program.  The current Foundation pin has first-order formula coding and derivati
 still has no arithmetic-internal rational-order/threshold compiler for arbitrary
 value-defining formulas.  Until that compiler exists, `CertifiedSourceLUVSeq` is the checked
 target interface, not yet a proved exact image of every paper `def:luv` source.
+
+## Mixed quotation-factor and exact CCEE checkpoint (2026-08-21)
+
+The downstream semantic route is now closed over that checked target interface.
+`SemanticQuoteFactor.lean` implements a fixed finite-prefix admission test for tag-`2`
+rational quotation factors. For every downward query it requires both an exposed
+positive/negative quotation fact and the corresponding fixed quote-leaf link. Thus it
+does not promote arbitrary or malformed quotation selectors merely from their namespace.
+`rationalQuote_semanticQuoteFactorPrefix_eventually` proves that every repository
+`RationalQuoteCode` is eventually admitted.
+
+`semanticRegistryProductDP` now uses the mixed executable predicate
+`semanticFactorPrefixValidAtFuel`: tag `0` factors must pass the proof-carrying source
+registry, tag `2` factors must pass the quotation-factor checker, and every other tag is
+rejected. The process remains fixed from its base computation alone.
+`semanticRegistryProductDP_hworld` was strengthened accordingly: its canonical extension
+world satisfies source-source, source-quote, and quote-quote clauses. In the quote case,
+the checked link clauses transport the old quotation fact to the semantic leaf. Hence
+joint non-vacuity does not rely on an unstated choice of quote interpretation.
+
+The new capstone
+`lic_no_expected_net_update_conditional_paper_closed` has caller arguments
+
+```text
+T, f, X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T),
+w : ℕ → ℚ, weight_mem, weight_generable
+```
+
+and no caller-supplied weight LUV, product presentation, source/weight valuedness proof,
+right-reflection proof, freshness premise, second-market generator, or slack. Both the
+deferred-weight code and the deferred weighted-expectation code are constructed internally.
+The left product is `semanticSchemaProductLUV` and its `ValuesAt` certificate is exact.
+The inductor is `liaHistory (theoremQuoteSemanticRegistryProductDP T)`, whose process is
+fixed from `T` before `X`, `f`, or `w`; no correspondence with the older
+`liaHistory (theoremDP T)` is claimed.
+
+The paper-proof ledger is now:
+
+| Paper step | Checked FAF justification |
+|---|---|
+| e.c. genuine `[0,1]` source | `CertifiedSourceLUVSeq.threshold_codes`, executable emitter, freshness, and `SourceCutCertificate` |
+| quote `w_{f(n)}` | `registryDeferredWeightQuoteCode` and `rationalQuote_factor_eventually` |
+| exact `X_n w_{f(n)}` | `semanticSchemaProductLUV_valuesAt` |
+| quote `E_{f(n)}(X_n) w_{f(n)}` | `registryConditionalExpectationQuoteCode` and `RationalQuoteCode.reflected` |
+| conditional no-net-update argument | `lic_no_expected_net_update_conditional_ofRepresentation` with zero slack |
+| completed worlds exist | `theoremQuoteSemanticRegistryProductDP_hworld` |
+
+This is Outcome B, not yet literal paper-strength Outcome A. The only remaining
+representation gap is upstream: FAF still lacks a kernel-checked compiler proving that
+every paper Definition 4.8.1 old-language e.c. uniquely `[0,1]`-valued formula yields the
+five fields of `CertifiedSourceLUVSeq`. In particular, the arbitrary-rational emitter and
+executable base-stage cut certificate are still fields of the translation target rather
+than derived from a formal paper-FOL source object. Therefore the official `thm:ccee`
+coverage row remains `qualified` despite the now-exact, closed downstream theorem.

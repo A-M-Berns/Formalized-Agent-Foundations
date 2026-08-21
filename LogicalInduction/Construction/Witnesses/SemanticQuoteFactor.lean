@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.SemanticRegistryProduct
+import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
 
 /-!
 # Executable admission of rational quotation factors
@@ -77,7 +77,7 @@ lemma semanticSentenceSeenAtFuel_prim {DP : DeductiveProcess}
       (sentenceMemSupport_prim.comp₂ Primrec₂.right
         (Primrec.fst.comp₂ (Primrec.fst.comp₂ Primrec₂.left))).decide
     exact (Primrec.option_casesOn hstage (Primrec.const false) hmem).to₂.of_eq fun p k => by
-      cases h : base.stageAtFuel p.2 k <;> simp [h]
+      cases base.stageAtFuel p.2 k <;> simp
   exact listRangeAny_prim' hbound htest
 
 lemma semanticSentenceSeenAtFuel_iff {DP : DeductiveProcess}
@@ -128,14 +128,28 @@ noncomputable def semanticQuoteFactorClaim (schema n z : ℕ) (positive : Bool) 
     (Nat.pair n (Encodable.encode (decodedQuotationRat z))))
   bif positive then atom else ∼atom
 
+/-- The fixed quote-leaf direction needed to turn an exposed old quotation literal into
+the corresponding semantic fact (positive), or conversely (negative). -/
+noncomputable def semanticQuoteFactorLink (schema n z : ℕ) (positive : Bool) : Sentence :=
+  let input := Nat.pair n (Encodable.encode (decodedQuotationRat z))
+  semanticQuoteDefSentence
+    (Nat.pair (bif positive then 0 else 1) (Nat.pair schema.unpair.2 input))
+
+noncomputable def semanticQuoteFactorEvidenceAtFuel {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    (schema fuel n z : ℕ) (positive : Bool) : Bool :=
+  semanticSentenceSeenAtFuel base (semanticQuoteFactorClaim schema n z positive) fuel &&
+    semanticSentenceSeenAtFuel base (semanticQuoteFactorLink schema n z positive) fuel
+
+attribute [local irreducible] semanticQuoteFactorClaim semanticQuoteFactorLink
+  semanticQuoteFactorEvidenceAtFuel
+
 noncomputable def semanticQuoteFactorDownwardAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema fuel n zr zs : ℕ) : Bool :=
   if decodedQuotationRat zr < decodedQuotationRat zs then
-    semanticSentenceSeenAtFuel base
-      (semanticQuoteFactorClaim schema n zr true) fuel ||
-    semanticSentenceSeenAtFuel base
-      (semanticQuoteFactorClaim schema n zs false) fuel
+    semanticQuoteFactorEvidenceAtFuel base schema fuel n zr true ||
+      semanticQuoteFactorEvidenceAtFuel base schema fuel n zs false
   else true
 
 /-- Inclusive bounded conjunction over the right-threshold coordinate. -/
@@ -195,9 +209,69 @@ lemma semanticQuoteFactorClaim_computable :
         (Nat.pair p.1.1.2 (Encodable.encode (decodedQuotationRat p.1.2)))) :=
     quoteAtom_computable.comp (Primrec₂.natPair.to_comp.comp hcode hinput)
   exact (Computable.cond hpositive hatom (sentenceNeg_computable.comp hatom)).of_eq
-    fun p => by cases p.2 <;> rfl
+    fun p => by cases p.2 <;> rw [semanticQuoteFactorClaim]
 
-set_option maxHeartbeats 1000000 in
+lemma semanticQuoteFactorLink_computable :
+    Computable fun p : ((ℕ × ℕ) × ℕ) × Bool =>
+      semanticQuoteFactorLink p.1.1.1 p.1.1.2 p.1.2 p.2 := by
+  let P := ((ℕ × ℕ) × ℕ) × Bool
+  have hschema : Computable fun p : P => p.1.1.1 :=
+    (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).to_comp
+  have hn : Computable fun p : P => p.1.1.2 :=
+    (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)).to_comp
+  have hz : Computable fun p : P => p.1.2 :=
+    (Primrec.snd.comp Primrec.fst).to_comp
+  have hcode : Computable fun p : P => p.1.1.1.unpair.2 :=
+    (Primrec.snd.comp Primrec.unpair).to_comp.comp hschema
+  have hinput : Computable fun p : P => Nat.pair p.1.1.2
+      (Encodable.encode (decodedQuotationRat p.1.2)) :=
+    Primrec₂.natPair.to_comp.comp hn
+      (Computable.encode.comp (decodedQuotationRat_prim.to_comp.comp hz))
+  have hkind : Computable fun p : P => bif p.2 then 0 else 1 :=
+    (Computable.cond Computable.snd (Computable.const 0) (Computable.const 1)).of_eq
+      fun p => by cases p.2 <;> rfl
+  have hjob : Computable fun p : P => Nat.pair (bif p.2 then 0 else 1)
+      (Nat.pair p.1.1.1.unpair.2
+        (Nat.pair p.1.1.2 (Encodable.encode (decodedQuotationRat p.1.2)))) :=
+    Primrec₂.natPair.to_comp.comp hkind
+      (Primrec₂.natPair.to_comp.comp hcode hinput)
+  exact (semanticQuoteDefSentence_computable.comp hjob).of_eq fun p => by
+    rw [semanticQuoteFactorLink]
+
+set_option maxHeartbeats 2000000 in
+lemma semanticQuoteFactorEvidenceAtFuel_computable {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) :
+    Computable fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × Bool) =>
+      semanticQuoteFactorEvidenceAtFuel base p.1.1.1.1 p.1.1.1.2
+        p.1.1.2 p.1.2 p.2 := by
+  let P := ((((ℕ × ℕ) × ℕ) × ℕ) × Bool)
+  have hschema : Computable fun p : P => p.1.1.1.1 :=
+    (Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))).to_comp
+  have hfuel : Computable fun p : P => p.1.1.1.2 :=
+    (Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))).to_comp
+  have hn : Computable fun p : P => p.1.1.2 :=
+    (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)).to_comp
+  have hz : Computable fun p : P => p.1.2 :=
+    (Primrec.snd.comp Primrec.fst).to_comp
+  have hpositive : Computable fun p : P => p.2 := Computable.snd
+  have hclaim : Computable fun p : P =>
+      semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 p.1.2 p.2 :=
+    semanticQuoteFactorClaim_computable.comp
+      (((hschema.pair hn).pair hz).pair hpositive)
+  have hlink : Computable fun p : P =>
+      semanticQuoteFactorLink p.1.1.1.1 p.1.1.2 p.1.2 p.2 :=
+    semanticQuoteFactorLink_computable.comp
+      (((hschema.pair hn).pair hz).pair hpositive)
+  have hclaimSeen : Computable fun p : P => semanticSentenceSeenAtFuel base
+      (semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 p.1.2 p.2) p.1.1.1.2 :=
+    semanticSentenceSeenAtFuel_prim base |>.to_comp.comp (hclaim.pair hfuel)
+  have hlinkSeen : Computable fun p : P => semanticSentenceSeenAtFuel base
+      (semanticQuoteFactorLink p.1.1.1.1 p.1.1.2 p.1.2 p.2) p.1.1.1.2 :=
+    semanticSentenceSeenAtFuel_prim base |>.to_comp.comp (hlink.pair hfuel)
+  exact ((Primrec.dom_bool₂ (· && ·)).to_comp.comp hclaimSeen hlinkSeen).of_eq
+    fun p => by rw [semanticQuoteFactorEvidenceAtFuel]
+
+set_option maxHeartbeats 2000000 in
 lemma semanticQuoteFactorDownwardAtFuel_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Computable fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
@@ -227,22 +301,18 @@ lemma semanticQuoteFactorDownwardAtFuel_computable {DP : DeductiveProcess}
         simp [h, hnlt]
       · have hlt : decodedQuotationRat p.1.2 < decodedQuotationRat p.2 := lt_of_not_ge h
         simp [h, hlt]
-  have claim (positive : Bool) (z : P → ℕ) (hz : Computable z) :
-      Computable fun p : P => semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 (z p) positive :=
-    semanticQuoteFactorClaim_computable.comp
-      (((hschema.pair hn).pair hz).pair (Computable.const positive))
-  have hseen (positive : Bool) (z : P → ℕ) (hz : Computable z) :
-      Computable fun p : P => semanticSentenceSeenAtFuel base
-        (semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 (z p) positive) p.1.1.1.2 :=
-    semanticSentenceSeenAtFuel_prim base |>.to_comp.comp
-      ((claim positive z hz).pair hfuel)
+  have hevidence (positive : Bool) (z : P → ℕ) (hz : Computable z) :
+      Computable fun p : P => semanticQuoteFactorEvidenceAtFuel base
+        p.1.1.1.1 p.1.1.1.2 p.1.1.2 (z p) positive :=
+    semanticQuoteFactorEvidenceAtFuel_computable base |>.comp
+      ((((hschema.pair hfuel).pair hn).pair hz).pair (Computable.const positive))
   have hbody : Computable fun p : P =>
-      semanticSentenceSeenAtFuel base
-          (semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 p.1.2 true) p.1.1.1.2 ||
-        semanticSentenceSeenAtFuel base
-          (semanticQuoteFactorClaim p.1.1.1.1 p.1.1.2 p.2 false) p.1.1.1.2 :=
+      semanticQuoteFactorEvidenceAtFuel base p.1.1.1.1 p.1.1.1.2
+          p.1.1.2 p.1.2 true ||
+        semanticQuoteFactorEvidenceAtFuel base p.1.1.1.1 p.1.1.1.2
+          p.1.1.2 p.2 false :=
     (Primrec.dom_bool₂ (· || ·)).to_comp.comp
-      (hseen true _ hzr) (hseen false _ hzs)
+      (hevidence true _ hzr) (hevidence false _ hzs)
   exact (Computable.cond hlt hbody (Computable.const true)).of_eq fun p => by
     simp only [semanticQuoteFactorDownwardAtFuel]
     by_cases h : decodedQuotationRat p.1.2 < decodedQuotationRat p.2 <;> simp [h]
@@ -331,10 +401,13 @@ lemma semanticQuoteFactorDownwardAtFuel_mono {DP : DeductiveProcess}
     (h : semanticQuoteFactorDownwardAtFuel base schema fuel n zr zs = true) :
     semanticQuoteFactorDownwardAtFuel base schema fuel' n zr zs = true := by
   by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
-  · simp only [semanticQuoteFactorDownwardAtFuel, if_pos hrs, Bool.or_eq_true] at h ⊢
+  · simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
+      if_pos hrs, Bool.or_eq_true, Bool.and_eq_true] at h ⊢
     rcases h with h | h
-    · exact Or.inl (semanticSentenceSeenAtFuel_mono base hff h)
-    · exact Or.inr (semanticSentenceSeenAtFuel_mono base hff h)
+    · exact Or.inl ⟨semanticSentenceSeenAtFuel_mono base hff h.1,
+        semanticSentenceSeenAtFuel_mono base hff h.2⟩
+    · exact Or.inr ⟨semanticSentenceSeenAtFuel_mono base hff h.1,
+        semanticSentenceSeenAtFuel_mono base hff h.2⟩
   · simp [semanticQuoteFactorDownwardAtFuel, hrs]
 
 private lemma semanticQuoteFactorZsValid_mono {DP : DeductiveProcess}
@@ -417,7 +490,26 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually
         simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk
       obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually
         (theoremQuoteBaseDPComputation T) hbase
-      exact ⟨fuel, by simp [semanticQuoteFactorDownwardAtFuel, hrs, hfuel]⟩
+      let e := Nat.pair 0 (Nat.pair q.code
+        (Nat.pair n (Encodable.encode (decodedQuotationRat zr))))
+      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zr true ∈
+          (theoremQuoteBaseDP T).D e := by
+        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
+        apply Finset.mem_union_right
+        change _ ∈ (semanticQuoteStageList e).toFinset
+        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
+          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e)))
+      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually
+        (theoremQuoteBaseDPComputation T) hlinkBase
+      let common := max fuel linkFuel
+      have hc := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
+        (Nat.le_max_left fuel linkFuel) hfuel
+      have hl := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
+        (Nat.le_max_right fuel linkFuel) hlinkFuel
+      exact ⟨common, by
+        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
+          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+        exact Or.inl ⟨hc, hl⟩⟩
     · have hvs : value n < decodedQuotationRat zs :=
         lt_of_le_of_lt (not_lt.mp hrv) hrs
       obtain ⟨k, hk⟩ := (quotationPresentation T).quote_negative_refutes q.code
@@ -430,7 +522,26 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually
         simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk
       obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually
         (theoremQuoteBaseDPComputation T) hbase
-      exact ⟨fuel, by simp [semanticQuoteFactorDownwardAtFuel, hrs, hfuel]⟩
+      let e := Nat.pair 1 (Nat.pair q.code
+        (Nat.pair n (Encodable.encode (decodedQuotationRat zs))))
+      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zs false ∈
+          (theoremQuoteBaseDP T).D e := by
+        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
+        apply Finset.mem_union_right
+        change _ ∈ (semanticQuoteStageList e).toFinset
+        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
+          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e)))
+      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually
+        (theoremQuoteBaseDPComputation T) hlinkBase
+      let common := max fuel linkFuel
+      have hc := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
+        (Nat.le_max_left fuel linkFuel) hfuel
+      have hl := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
+        (Nat.le_max_right fuel linkFuel) hlinkFuel
+      exact ⟨common, by
+        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
+          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+        exact Or.inr ⟨hc, hl⟩⟩
   · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
 
 set_option maxHeartbeats 2000000 in
