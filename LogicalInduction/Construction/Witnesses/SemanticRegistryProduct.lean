@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 import LogicalInduction.Construction.Witnesses.SemanticProduct
+import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
 
 /-!
 # Registry-guarded exact semantic products
@@ -710,9 +711,243 @@ theorem theoremSemanticRegistryProductDP_hworld
     ((theoremDP_computable T).nonemptyComputation.some) (provabilityWorld T)
     (theoremDP_hworld T) (theoremDP_semanticPrimeFresh T)
 
+/-! ## Quotation-aware fixed substrate -/
+
+noncomputable def theoremQuoteBaseDP
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+  (theoremDP T).union semanticQuoteDP
+
+noncomputable def theoremQuoteBaseDPComputation
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    DeductiveProcessComputation (theoremQuoteBaseDP T) :=
+  ((theoremDP_computable T).nonemptyComputation.some).union
+    semanticQuoteDP_computable.nonemptyComputation.some
+
+noncomputable def theoremQuoteSemanticRegistryProductDP
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+  semanticRegistryClosureDP (theoremQuoteBaseDPComputation T)
+
+noncomputable def theoremQuoteSemanticRegistryProductDPComputation
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    DeductiveProcessComputation (theoremQuoteSemanticRegistryProductDP T) :=
+  semanticRegistryClosureDPComputation (theoremQuoteBaseDPComputation T)
+
+private noncomputable abbrev theoremQuoteRegistryWorld
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : PCWorld :=
+  semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
+    (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))
+
+lemma theoremQuoteRegistryWorld_quoteLeaf
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (code input : ℕ) :
+    (theoremQuoteRegistryWorld T).Holds (semanticQuoteLeaf code input) ↔
+      (theoremQuoteCertifiedProductWorld T).Holds (semanticQuoteLeaf code input) := by
+  change (semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
+      (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))).Holds
+        (semanticPrimeSentence (semanticQuoteSchema code) input) ↔ _
+  rw [semanticRegistryProductExtensionWorld_leaf
+    (theoremQuoteBaseDPComputation T)
+    (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))
+    (semanticQuoteSchema code) input (by simp [semanticQuoteSchema])]
+  change semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T)
+      (semanticPrimeCode (semanticQuoteSchema code) input) ↔
+    theoremQuoteCertifiedProductWorld T
+      (semanticPrimeCode (semanticQuoteSchema code) input)
+  simp [semanticSourceExtensionWorld, semanticPrimeCode, semanticQuoteSchema]
+
+lemma theoremQuoteRegistryWorld_quoteAtom
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (w : ℕ) :
+    (theoremQuoteRegistryWorld T).Holds (quoteAtom w) ↔
+      (theoremQuoteCertifiedProductWorld T).Holds (quoteAtom w) := by
+  change semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
+      (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))
+        (quotationClaimCode universalQuotePos universalQuoteNeg w) ↔
+    theoremQuoteCertifiedProductWorld T
+      (quotationClaimCode universalQuotePos universalQuoteNeg w)
+  rw [semanticRegistryProductExtensionWorld_agree]
+  · apply semanticSourceExtensionWorld_agree
+    simp [quotationClaimCode, semanticPrimeTag]
+  · simp [quotationClaimCode, semanticPrimeTag]
+
+lemma theoremQuoteRegistryWorld_consistent_quote
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (theoremQuoteRegistryWorld T).ConsistentWithTheory semanticQuoteDP := by
+  intro k φ hφ
+  obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
+    (List.mem_toFinset.mp hφ)
+  rw [semanticQuoteDefSentence]
+  by_cases hkind : e.unpair.1 = 0
+  · rw [if_pos hkind]
+    intro hbase
+    exact (theoremQuoteRegistryWorld_quoteLeaf T _ _).mpr
+      ((theoremQuoteCertifiedProductWorld_quote T _ _).mpr
+        ((theoremQuoteCertifiedProductWorld_quoteAtom T _).mp
+          ((theoremQuoteRegistryWorld_quoteAtom T _).mp hbase)))
+  · rw [if_neg hkind]
+    intro hleaf
+    exact (theoremQuoteRegistryWorld_quoteAtom T _).mpr
+      ((theoremQuoteCertifiedProductWorld_quoteAtom T _).mpr
+        ((theoremQuoteCertifiedProductWorld_quote T _ _).mp
+          ((theoremQuoteRegistryWorld_quoteLeaf T _ _).mp hleaf)))
+
+lemma theoremQuoteCertifiedProductWorld_consistent_base
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (theoremQuoteCertifiedProductWorld T).ConsistentWithTheory
+      (theoremQuoteBaseDP T) := by
+  intro k φ hφ
+  rw [theoremQuoteBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
+  rcases hφ with htheorem | hquote
+  · exact theoremQuoteCertifiedProductWorld_consistent_theorem T k φ htheorem
+  · exact theoremQuoteCertifiedProductWorld_consistent_quote T k φ hquote
+
+lemma theoremQuoteRegistryWorld_consistent_theorem
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (theoremQuoteRegistryWorld T).ConsistentWithTheory (theoremDP T) := by
+  intro k φ hφ
+  have hfresh := theoremDP_semanticPrimeFresh T k φ hφ
+  exact (semanticRegistryProductExtensionWorld_holds_fresh
+      (theoremQuoteBaseDPComputation T)
+      (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T)) hfresh).mpr
+    ((semanticSourceExtensionWorld_holds_fresh
+      (theoremQuoteCertifiedProductWorld T) hfresh).mpr
+        (theoremQuoteCertifiedProductWorld_consistent_theorem T k φ hφ))
+
+/-- Joint non-vacuity of theorem, quotation, certified source interpretation, and
+registry-guarded exact products, all fixed before the eventual source and market. -/
+theorem theoremQuoteSemanticRegistryProductDP_hworld
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (theoremQuoteRegistryWorld T).ConsistentWithTheory
+      (theoremQuoteSemanticRegistryProductDP T) := by
+  intro k φ hφ
+  rw [theoremQuoteSemanticRegistryProductDP, semanticRegistryClosureDP,
+    DeductiveProcess.union_stage, Finset.mem_union,
+    DeductiveProcess.union_stage, Finset.mem_union] at hφ
+  rcases hφ with (hbase | hsource) | hproduct
+  · rw [theoremQuoteBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
+    rcases hbase with htheorem | hquote
+    · exact theoremQuoteRegistryWorld_consistent_theorem T k φ htheorem
+    · exact theoremQuoteRegistryWorld_consistent_quote T k φ hquote
+  · obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hsource)
+    exact semanticRegistryProductExtensionWorld_holds_sourceDef
+      (theoremQuoteBaseDPComputation T) (theoremQuoteCertifiedProductWorld T) e
+  · exact semanticRegistryProductDP_hworld (theoremQuoteBaseDPComputation T)
+      (theoremQuoteCertifiedProductWorld T)
+      (theoremQuoteCertifiedProductWorld_consistent_base T) k φ hproduct
+
+/-! ## Exact CCEE over certified factors -/
+
+private lemma theoremQuoteRegistry_consistent_base
+    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
+    v.ConsistentWithTheory (theoremQuoteBaseDP T) :=
+  PCWorld.consistentWithTheory_union_left
+    (PCWorld.consistentWithTheory_union_left hv)
+
+private lemma theoremQuoteRegistry_consistent_source
+    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
+    v.ConsistentWithTheory semanticSourceDP :=
+  PCWorld.consistentWithTheory_union_right
+    (PCWorld.consistentWithTheory_union_left hv)
+
+private lemma theoremQuoteRegistry_consistent_product
+    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
+    v.ConsistentWithTheory
+      (semanticRegistryProductDP (theoremQuoteBaseDPComputation T)) :=
+  PCWorld.consistentWithTheory_union_right hv
+
+/-- Exact CCEE after all three LUV families have entered through the executable certified
+source registry.  Source valuedness and exact left multiplication are internal. -/
+theorem lic_no_expected_net_update_conditional_registryCertified
+    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {P : History} [IsLogicalInductor P (theoremQuoteSemanticRegistryProductDP T)]
+    (f : DeferralFunction)
+    (X W Z' : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat P w)
+    (weight_value : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremQuoteBaseDP T) →
+      v.ValuesAt (W.toLUV n) (w (f n)))
+    (right_value : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremQuoteBaseDP T) →
+      v.ValuesAt (Z'.toLUV n)
+        ((X.toPresented.toLUV n).expect P (f n) * w (f n))) :
+    (fun n => (semanticProductLUV X.toPresented W.toPresented n).expect P n) ≈ₙ
+      fun n => (Z'.toPresented.toLUV n).expect P n := by
+  refine lic_no_expected_net_update_conditional_ofRepresentation
+    (DP := theoremQuoteSemanticRegistryProductDP T) f X.toPresented.toLUV
+    (semanticProductLUV X.toPresented W.toPresented) Z'.toPresented.toLUV w
+    weight_mem weight_generable X.toPresented.threshold_codes
+    (semanticProductLUV_rpnThresholdCodeSeq X.toPresented W.toPresented)
+    Z'.toPresented.threshold_codes (fun _ => 0) tendsto_const_nhds
+    (fun n v hv => ?_) (fun n v hv x hx => ?_) (fun n v hv => ?_)
+    (fun n => ⟨theoremQuoteRegistryWorld T,
+      theoremQuoteSemanticRegistryProductDP_hworld T n⟩)
+  · obtain ⟨x, hx⟩ := X.source_valued n v (theoremQuoteRegistry_consistent_base hv)
+    exact ⟨x, (certifiedSource_valuesAt_iff X n x v
+      (theoremQuoteRegistry_consistent_source hv)).2 hx⟩
+  · refine ⟨x * (w (f n) : ℝ), ?_, by simp⟩
+    apply semanticRegistryProductLUV_valuesAt (theoremQuoteBaseDPComputation T)
+      (theoremQuoteRegistry_consistent_product hv) X W n hx
+    exact (certifiedSource_valuesAt_iff W n (w (f n)) v
+      (theoremQuoteRegistry_consistent_source hv)).2
+        (weight_value n v (theoremQuoteRegistry_consistent_base hv))
+  · exact (certifiedSource_valuesAt_iff Z' n _ v
+      (theoremQuoteRegistry_consistent_source hv)).2
+        (right_value n v (theoremQuoteRegistry_consistent_base hv))
+
+private noncomputable abbrev theoremQuoteSemanticRegistryProductLIA
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    IsLogicalInductor (liaHistory (theoremQuoteSemanticRegistryProductDP T))
+      (theoremQuoteSemanticRegistryProductDP T) :=
+  LIA_is_logical_inductor _
+    (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
+
+theorem lic_no_expected_net_update_conditional_registryCertified_closed
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (f : DeferralFunction)
+    (X W Z' : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat
+      (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
+    (weight_value : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremQuoteBaseDP T) →
+      v.ValuesAt (W.toLUV n) (w (f n)))
+    (right_value : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremQuoteBaseDP T) →
+      v.ValuesAt (Z'.toLUV n)
+        ((X.toPresented.toLUV n).expect
+          (liaHistory (theoremQuoteSemanticRegistryProductDP T)) (f n) * w (f n))) :
+    (fun n => (semanticProductLUV X.toPresented W.toPresented n).expect
+      (liaHistory (theoremQuoteSemanticRegistryProductDP T)) n) ≈ₙ
+      fun n => (Z'.toPresented.toLUV n).expect
+        (liaHistory (theoremQuoteSemanticRegistryProductDP T)) n := by
+  haveI := theoremQuoteSemanticRegistryProductLIA T
+  exact lic_no_expected_net_update_conditional_registryCertified
+    f X W Z' w weight_mem weight_generable weight_value right_value
+
 #print axioms semanticRegistryProductDP_computable
 #print axioms semanticRegistryProductLUV_valuesAt
 #print axioms semanticRegistryProductDP_hworld
 #print axioms theoremSemanticRegistryProductDP_hworld
+#print axioms theoremQuoteSemanticRegistryProductDP_hworld
+#print axioms lic_no_expected_net_update_conditional_registryCertified_closed
 
 end LogicalInduction
