@@ -552,6 +552,110 @@ theorem certified_downward_eventually_checked {DP : DeductiveProcess}
   rw [hst']
   simp [hkLaw]
 
+/-! ## Finite-prefix admission
+
+The universal product process cannot safely activate an entire schema after finitely
+observing an infinite cut certificate.  Instead it activates successively larger finite
+query prefixes.  Each prefix checks every source formula for old-language ownership, both
+bounds where applicable, and downward closure between every pair of thresholds in the
+prefix. -/
+
+/-- Has a fresh decoded source formula for this query appeared by the supplied clock? -/
+def semanticSourceFreshSeen (schema n z fuel : ℕ) : Bool :=
+  (List.range (fuel + 1)).any fun f =>
+    match semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode (decodedQuotationRat z))) f with
+    | some φ => semanticPrimeFreshSentenceB φ
+    | none => false
+
+/-- Has one fully checked cut-law query appeared by the supplied clock? -/
+def semanticSourceLawSeen {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (schema job fuel : ℕ) : Bool :=
+  (List.range (fuel + 1)).any fun f =>
+    (semanticSourceCheckedLawAtFuel base schema job f).isSome
+
+/-- All executable evidence required to expose query indices at most `prefix`. -/
+def semanticSourcePrefixValidAtFuel {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (schema limit fuel : ℕ) : Bool :=
+  (List.range (limit + 1)).all fun n =>
+    (List.range (limit + 1)).all fun zr =>
+      let r := decodedQuotationRat zr
+      semanticSourceFreshSeen schema n zr fuel &&
+      (if r < 0 then
+        semanticSourceLawSeen base schema (sourceCutBelowJob n r) fuel else true) &&
+      (if 1 < r then
+        semanticSourceLawSeen base schema (sourceCutAboveJob n r) fuel else true) &&
+      (List.range (limit + 1)).all fun zs =>
+        let s := decodedQuotationRat zs
+        if r < s then
+          semanticSourceLawSeen base schema (sourceCutDownwardJob n r s) fuel
+        else true
+
+lemma semanticSourceFreshSeen_iff (schema n z fuel : ℕ) :
+    semanticSourceFreshSeen schema n z fuel = true ↔
+      ∃ f ≤ fuel, ∃ φ,
+        semanticSourceSentenceAtFuel schema
+          (Nat.pair n (Encodable.encode (decodedQuotationRat z))) f = some φ ∧
+        SemanticPrimeFreshSentence φ := by
+  rw [semanticSourceFreshSeen, List.any_eq_true]
+  simp only [List.mem_range, Nat.lt_add_one_iff]
+  constructor
+  · rintro ⟨f, hf, h⟩
+    cases hemit : semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode (decodedQuotationRat z))) f with
+    | none => simp [hemit] at h
+    | some φ =>
+        exact ⟨f, hf, φ, hemit,
+          (semanticPrimeFreshSentenceB_eq_true φ).1 (by simpa [hemit] using h)⟩
+  · rintro ⟨f, hf, φ, hemit, hfresh⟩
+    exact ⟨f, hf, by simp [hemit, (semanticPrimeFreshSentenceB_eq_true φ).2 hfresh]⟩
+
+lemma semanticSourceLawSeen_iff {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (schema job fuel : ℕ) :
+    semanticSourceLawSeen base schema job fuel = true ↔
+      ∃ f ≤ fuel, ∃ law,
+        semanticSourceCheckedLawAtFuel base schema job f = some law := by
+  rw [semanticSourceLawSeen, List.any_eq_true]
+  simp only [List.mem_range, Nat.lt_add_one_iff]
+  constructor
+  · rintro ⟨f, hf, hsome⟩
+    cases h : semanticSourceCheckedLawAtFuel base schema job f with
+    | none => simp [h] at hsome
+    | some law => exact ⟨f, hf, law, h⟩
+  · rintro ⟨f, hf, law, hlaw⟩
+    exact ⟨f, hf, by simp [hlaw]⟩
+
+/-- Prefix validity exposes freshness for every admitted source query. -/
+theorem semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
+    (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
+    (hn : n ≤ limit) (hz : z ≤ limit) :
+    semanticSourceFreshSeen schema n z fuel = true := by
+  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true] at hvalid
+  have hnmem : n ∈ List.range (limit + 1) := by simp [hn]
+  have hzmem : z ∈ List.range (limit + 1) := by simp [hz]
+  have h := List.all_eq_true.mp (hvalid n hnmem) z hzmem
+  simp only [Bool.and_eq_true] at h
+  exact h.1.1.1
+
+/-- Prefix validity exposes every applicable pairwise downward law. -/
+theorem semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {schema limit fuel n zr zs : ℕ}
+    (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
+    (hn : n ≤ limit) (hzr : zr ≤ limit) (hzs : zs ≤ limit)
+    (hrs : decodedQuotationRat zr < decodedQuotationRat zs) :
+    semanticSourceLawSeen base schema
+      (sourceCutDownwardJob n (decodedQuotationRat zr) (decodedQuotationRat zs)) fuel = true := by
+  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true] at hvalid
+  have hnmem : n ∈ List.range (limit + 1) := by simp [hn]
+  have hzrmem : zr ∈ List.range (limit + 1) := by simp [hzr]
+  have hzsmem : zs ∈ List.range (limit + 1) := by simp [hzs]
+  have h := List.all_eq_true.mp (hvalid n hnmem) zr hzrmem
+  simp only [Bool.and_eq_true] at h
+  have hlast := h.2
+  have hz := List.all_eq_true.mp hlast zs hzsmem
+  simpa [hrs] using hz
+
 #print axioms semanticSourceCheckedLawAtFuel_prim
 #print axioms semanticSourceCheckedLawAtFuel_mem
 #print axioms certified_downward_eventually_checked
