@@ -591,6 +591,85 @@ def semanticSourcePrefixValidAtFuel {DP : DeductiveProcess}
           semanticSourceLawSeen base schema (sourceCutDownwardJob n r s) fuel
         else true
 
+private lemma listRangeAny_prim {α : Type} [Primcodable α]
+    {bound : α → ℕ} {test : α → ℕ → Bool}
+    (hbound : Primrec bound) (htest : Primrec₂ test) :
+    Primrec fun a => (List.range (bound a + 1)).any (test a) := by
+  have hrange : Primrec fun a => List.range (bound a + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp hbound (Primrec.const 1))
+  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 || q.2 :=
+    (Primrec.dom_bool₂ (· || ·)).comp₂
+      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hrange (Primrec.const false) hstep).of_eq fun a => by
+    induction List.range (bound a + 1) with
+    | nil => rfl
+    | cons x xs ih => simp [List.any, ih]
+
+private lemma listRangeAll_prim {α : Type} [Primcodable α]
+    {bound : α → ℕ} {test : α → ℕ → Bool}
+    (hbound : Primrec bound) (htest : Primrec₂ test) :
+    Primrec fun a => (List.range (bound a + 1)).all (test a) := by
+  have hrange : Primrec fun a => List.range (bound a + 1) :=
+    Primrec.list_range.comp
+      (Primrec.nat_add.comp hbound (Primrec.const 1))
+  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 && q.2 :=
+    (Primrec.dom_bool₂ (· && ·)).comp₂
+      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
+      (Primrec.snd.comp₂ Primrec₂.right)
+  exact (Primrec.list_foldr hrange (Primrec.const true) hstep).of_eq fun a => by
+    induction List.range (bound a + 1) with
+    | nil => rfl
+    | cons x xs ih => simp [List.all, ih]
+
+lemma semanticSourceFreshSeen_prim : Primrec fun p : ((ℕ × ℕ) × ℕ) × ℕ =>
+    semanticSourceFreshSeen p.1.1.1 p.1.1.2 p.1.2 p.2 := by
+  let P := ((ℕ × ℕ) × ℕ) × ℕ
+  have hschema : Primrec fun p : P => p.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hz : Primrec fun p : P => p.1.2 := Primrec.snd.comp Primrec.fst
+  have hr : Primrec fun p : P => decodedQuotationRat p.1.2 :=
+    decodedQuotationRat_prim.comp hz
+  have hinput : Primrec fun p : P =>
+      Nat.pair p.1.1.2 (Encodable.encode (decodedQuotationRat p.1.2)) :=
+    Primrec₂.natPair.comp hn (Primrec.encode.comp hr)
+  have htest : Primrec₂ fun (p : P) (f : ℕ) =>
+      match semanticSourceSentenceAtFuel p.1.1.1
+          (Nat.pair p.1.1.2 (Encodable.encode (decodedQuotationRat p.1.2))) f with
+      | some φ => semanticPrimeFreshSentenceB φ
+      | none => false := by
+    let Q := P × ℕ
+    have hs : Primrec fun q : Q => semanticSourceSentenceAtFuel q.1.1.1.1
+        (Nat.pair q.1.1.1.2 (Encodable.encode (decodedQuotationRat q.1.1.2))) q.2 :=
+      semanticSourceSentenceAtFuel_prim.comp
+        (((hschema.comp Primrec.fst).pair (hinput.comp Primrec.fst)).pair Primrec.snd)
+    exact (Primrec.option_casesOn hs (Primrec.const false)
+      ((semanticPrimeFreshSentenceB_prim.comp Primrec.snd).to₂)).to₂.of_eq
+        fun p f => by
+          cases semanticSourceSentenceAtFuel p.1.1.1
+            (Nat.pair p.1.1.2 (Encodable.encode (decodedQuotationRat p.1.2))) f <;> rfl
+  exact listRangeAny_prim Primrec.snd htest
+
+lemma semanticSourceLawSeen_prim {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) :
+    Primrec fun p : (ℕ × ℕ) × ℕ =>
+      semanticSourceLawSeen base p.1.1 p.1.2 p.2 := by
+  let P := (ℕ × ℕ) × ℕ
+  have hpack : Primrec (fun q : P × ℕ =>
+      (((q.1.1.1, q.1.1.2), q.2) : (ℕ × ℕ) × ℕ)) := by
+    exact ((Primrec.fst.comp (Primrec.fst.comp Primrec.fst)).pair
+      (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))).pair Primrec.snd
+  have hcheck : Primrec₂ fun (p : P) (f : ℕ) =>
+      semanticSourceCheckedLawAtFuel base p.1.1 p.1.2 f :=
+    ((semanticSourceCheckedLawAtFuel_prim base).comp hpack).to₂.of_eq fun _ _ => rfl
+  have htest : Primrec₂ fun (p : P) (f : ℕ) =>
+      (semanticSourceCheckedLawAtFuel base p.1.1 p.1.2 f).isSome :=
+    Primrec.option_isSome.comp₂ hcheck
+  exact listRangeAny_prim Primrec.snd htest
+
 lemma semanticSourceFreshSeen_iff (schema n z fuel : ℕ) :
     semanticSourceFreshSeen schema n z fuel = true ↔
       ∃ f ≤ fuel, ∃ φ,
