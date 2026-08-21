@@ -48,3 +48,4 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
 import LogicalInduction.Construction.Witnesses.SemanticRegistryProduct
 import LogicalInduction.Construction.Witnesses.PaperFirstOrder
+import LogicalInduction.Construction.Witnesses.PaperFirstOrderCompiler

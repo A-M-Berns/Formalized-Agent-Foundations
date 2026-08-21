@@ -31,25 +31,29 @@ Existing computation, quotation, product-definition, and semantic-prime atoms us
 from semantic handles by construction. -/
 def paperPrimeTag : ℕ := 7
 
-/-- Compact public name of a positive first-order prime sentence. -/
-def paperPrimeCode (φ : ArithmeticSentence) : ℕ :=
-  Nat.pair paperPrimeTag (Encodable.encode φ)
+/-- Compact public name of a first-order prime reading.  The Boolean records whether the
+stored formula is read positively.  Negative prime heads store their original formula with
+polarity `false`; the outer propositional negation then recovers the formula's truth. -/
+def paperPrimeCode (positive : Bool) (φ : ArithmeticSentence) : ℕ :=
+  Nat.pair paperPrimeTag (Nat.pair (Encodable.encode positive) (Encodable.encode φ))
 
-/-- A positive first-order prime embedded into FAF's existing propositional language. -/
-def paperPrimeSentence (φ : ArithmeticSentence) : Sentence :=
-  Formula.atom (paperPrimeCode φ)
+/-- A first-order prime reading embedded into FAF's existing propositional language. -/
+def paperPrimeSentence (positive : Bool) (φ : ArithmeticSentence) : Sentence :=
+  Formula.atom (paperPrimeCode positive φ)
 
-@[simp] lemma paperPrimeCode_unpair_tag (φ : ArithmeticSentence) :
-    (paperPrimeCode φ).unpair.1 = paperPrimeTag := by
+@[simp] lemma paperPrimeCode_unpair_tag (positive : Bool) (φ : ArithmeticSentence) :
+    (paperPrimeCode positive φ).unpair.1 = paperPrimeTag := by
   simp [paperPrimeCode]
 
-lemma paperPrimeCode_injective : Function.Injective paperPrimeCode := by
-  intro φ ψ h
+lemma paperPrimeCode_injective :
+    Function.Injective (fun p : Bool × ArithmeticSentence => paperPrimeCode p.1 p.2) := by
+  rintro ⟨b, φ⟩ ⟨c, ψ⟩ h
   simp only [paperPrimeCode, Nat.pair_eq_pair] at h
-  exact Encodable.encode_inj.mp h.2
+  exact Prod.ext (Encodable.encode_inj.mp h.2.1) (Encodable.encode_inj.mp h.2.2)
 
-lemma paperPrimeSentence_injective : Function.Injective paperPrimeSentence := by
-  intro φ ψ h
+lemma paperPrimeSentence_injective :
+    Function.Injective (fun p : Bool × ArithmeticSentence => paperPrimeSentence p.1 p.2) := by
+  rintro ⟨b, φ⟩ ⟨c, ψ⟩ h
   apply paperPrimeCode_injective
   injection h
 
@@ -63,10 +67,10 @@ def paperPrimeDecompose : ArithmeticSentence → Sentence
   | .falsum => ⊥
   | .and φ ψ => paperPrimeDecompose φ ⋏ paperPrimeDecompose ψ
   | .or φ ψ => paperPrimeDecompose φ ⋎ paperPrimeDecompose ψ
-  | .rel r v => paperPrimeSentence (.rel r v)
-  | .nrel r v => ∼paperPrimeSentence (.rel r v)
-  | .exs φ => paperPrimeSentence (.exs φ)
-  | .all φ => ∼paperPrimeSentence (.exs (∼φ))
+  | .rel r v => paperPrimeSentence true (.rel r v)
+  | .nrel r v => ∼paperPrimeSentence false (.nrel r v)
+  | .exs φ => paperPrimeSentence true (.exs φ)
+  | .all φ => ∼paperPrimeSentence false (.all φ)
 
 @[simp] lemma paperPrimeDecompose_verum :
     paperPrimeDecompose (Semiformula.verum : ArithmeticSentence) = (⊤ : Sentence) := by
@@ -84,8 +88,8 @@ def paperPrimeDecompose : ArithmeticSentence → Sentence
     paperPrimeDecompose (.or φ ψ) = paperPrimeDecompose φ ⋎ paperPrimeDecompose ψ := by
   simp [paperPrimeDecompose]
 
-@[simp] lemma sentenceAtomCodes_paperPrimeSentence (φ : ArithmeticSentence) :
-    sentenceAtomCodes (paperPrimeSentence φ) = {paperPrimeCode φ} := rfl
+@[simp] lemma sentenceAtomCodes_paperPrimeSentence (positive : Bool) (φ : ArithmeticSentence) :
+    sentenceAtomCodes (paperPrimeSentence positive φ) = {paperPrimeCode positive φ} := rfl
 
 /-- Every atom introduced by the first-order compiler has the old-language tag. -/
 lemma paperPrimeDecompose_atom_tag :
@@ -113,17 +117,20 @@ canonical, while atoms outside tag `7` remain false. -/
 
 /-- The propositional world induced by a first-order arithmetic structure. -/
 noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ M] : PCWorld :=
-  fun a => ∃ φ : ArithmeticSentence, a = paperPrimeCode φ ∧ M ↓[ℒₒᵣ] ⊧ φ
+  fun a => ∃ (positive : Bool) (φ : ArithmeticSentence),
+    a = paperPrimeCode positive φ ∧ if positive then M ↓[ℒₒᵣ] ⊧ φ else ¬M ↓[ℒₒᵣ] ⊧ φ
 
 @[simp] lemma paperPrimeWorld_paperPrimeCode (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
-    (φ : ArithmeticSentence) :
-    paperPrimeWorld M (paperPrimeCode φ) ↔ M ↓[ℒₒᵣ] ⊧ φ := by
+    (positive : Bool) (φ : ArithmeticSentence) :
+    paperPrimeWorld M (paperPrimeCode positive φ) ↔
+      if positive then M ↓[ℒₒᵣ] ⊧ φ else ¬M ↓[ℒₒᵣ] ⊧ φ := by
   constructor
-  · rintro ⟨ψ, hcode, hψ⟩
-    have : φ = ψ := paperPrimeCode_injective hcode
-    simpa [this] using hψ
+  · rintro ⟨polarity, ψ, hcode, hψ⟩
+    have hp : (positive, φ) = (polarity, ψ) := paperPrimeCode_injective hcode
+    cases hp
+    exact hψ
   · intro hφ
-    exact ⟨φ, rfl, hφ⟩
+    exact ⟨positive, φ, rfl, hφ⟩
 
 /-- Prime decomposition preserves first-order truth in the induced p.c. world. -/
 lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒᵣ M] :
@@ -150,27 +157,35 @@ lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒ
         LogicalConnective.HomClass.map_or,
         LO.Propositional.Formula.Boolean.val] using or_congr ihφ ihψ
   | case5 arity r v =>
-      change paperPrimeWorld M (paperPrimeCode (.rel r v)) ↔
-        Semiformula.Realize M (.rel r v)
-      exact paperPrimeWorld_paperPrimeCode M _
+      change paperPrimeWorld M (paperPrimeCode true (.rel r v)) ↔
+        M ↓[ℒₒᵣ] ⊧ (.rel r v)
+      exact paperPrimeWorld_paperPrimeCode M true (.rel r v)
   | case6 arity r v =>
-      change (¬paperPrimeWorld M (paperPrimeCode (.rel r v))) ↔
-        ¬Semiformula.Realize M (.rel r v)
-      exact not_congr (paperPrimeWorld_paperPrimeCode M _)
+      change (¬paperPrimeWorld M (paperPrimeCode false (.nrel r v))) ↔
+        M ↓[ℒₒᵣ] ⊧ (.nrel r v)
+      have h := paperPrimeWorld_paperPrimeCode M false (.nrel r v)
+      simp only [Bool.false_eq_true, ↓reduceIte] at h
+      constructor
+      · intro hn
+        by_contra hm
+        exact hn (h.mpr hm)
+      · intro hm hw
+        exact (h.mp hw) hm
   | case7 ψ =>
-      change paperPrimeWorld M (paperPrimeCode (.exs ψ)) ↔
-        Semiformula.Realize M (.exs ψ)
-      exact paperPrimeWorld_paperPrimeCode M _
+      change paperPrimeWorld M (paperPrimeCode true (.exs ψ)) ↔
+        M ↓[ℒₒᵣ] ⊧ (.exs ψ)
+      exact paperPrimeWorld_paperPrimeCode M true (.exs ψ)
   | case8 ψ =>
-      have hall : (Semiformula.all ψ : ArithmeticSentence) = ∼(.exs (∼ψ)) := by
-        calc
-          Semiformula.all ψ = Semiformula.all (∼∼ψ) :=
-            congrArg Semiformula.all (Semiformula.neg_neg ψ).symm
-          _ = ∼(Semiformula.exs (∼ψ)) := rfl
-      rw [hall, models_iff, LogicalConnective.HomClass.map_neg]
-      change (¬paperPrimeWorld M (paperPrimeCode (.exs (∼ψ)))) ↔
-        ¬Semiformula.Realize M (.exs (∼ψ))
-      exact not_congr (paperPrimeWorld_paperPrimeCode M _)
+      change (¬paperPrimeWorld M (paperPrimeCode false (.all ψ))) ↔
+        M ↓[ℒₒᵣ] ⊧ (.all ψ)
+      have h := paperPrimeWorld_paperPrimeCode M false (.all ψ)
+      simp only [Bool.false_eq_true, ↓reduceIte] at h
+      constructor
+      · intro hn
+        by_contra hm
+        exact hn (h.mpr hm)
+      · intro hm hw
+        exact (h.mp hw) hm
 
 #print axioms paperPrimeCode_injective
 #print axioms paperPrimeDecompose_atom_tag
