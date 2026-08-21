@@ -943,11 +943,93 @@ theorem lic_no_expected_net_update_conditional_registryCertified_closed
   exact lic_no_expected_net_update_conditional_registryCertified
     f X W Z' w weight_mem weight_generable weight_value right_value
 
+noncomputable def theoremQuoteRegistryMarketComputation
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    MarketComputation (liaHistory (theoremQuoteSemanticRegistryProductDP T)) :=
+  liaMarketComputation (theoremQuoteSemanticRegistryProductDP T)
+    (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
+
+noncomputable def registryDeferredWeightQuoteCode
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (f : DeferralFunction) (w : ℕ → ℚ)
+    (hw : PGenerableRat (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    RationalQuoteCode T (fun n => w (f n)) :=
+  deferredWeightQuoteCode T (theoremQuoteRegistryMarketComputation T)
+    f w hw weight_mem
+
+noncomputable def registryConditionalExpectationQuoteCode
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (f : DeferralFunction) (X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T))
+    (w : ℕ → ℚ)
+    (hw : PGenerableRat (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
+    RationalQuoteCode T (fun n =>
+      (theoremQuoteRegistryMarketComputation T).expectQuoteAt
+        X.toPresented.toLUV n (f n) * w (f n)) :=
+  conditionalExpectationQuoteCode T (theoremQuoteRegistryMarketComputation T)
+    f X.toPresented.toLUV X.toPresented.threshold_codes w hw weight_mem
+
+private lemma theoremQuoteRegistry_consistent_theoremDP
+    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
+    v.ConsistentWithTheory (theoremDP T) :=
+  PCWorld.consistentWithTheory_union_left (theoremQuoteRegistry_consistent_base hv)
+
+/-- The right-hand deferred weighted-expectation quotation is now constructed internally;
+only admission of the deferred weight as an exact product factor remains explicit. -/
+theorem lic_no_expected_net_update_conditional_registry_rightClosed
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (f : DeferralFunction)
+    (X W : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
+    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat
+      (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
+    (weight_value : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremQuoteBaseDP T) →
+      v.ValuesAt (W.toLUV n) (w (f n))) :
+    (fun n => (semanticProductLUV X.toPresented W.toPresented n).expect
+      (liaHistory (theoremQuoteSemanticRegistryProductDP T)) n) ≈ₙ
+    fun n => ((registryConditionalExpectationQuoteCode T f X w weight_generable
+      weight_mem).luv n).expect
+        (liaHistory (theoremQuoteSemanticRegistryProductDP T)) n := by
+  haveI := theoremQuoteSemanticRegistryProductLIA T
+  let q := registryConditionalExpectationQuoteCode T f X w weight_generable weight_mem
+  refine lic_no_expected_net_update_conditional_ofRepresentation
+    (DP := theoremQuoteSemanticRegistryProductDP T) f X.toPresented.toLUV
+    (semanticProductLUV X.toPresented W.toPresented) q.luv w
+    weight_mem weight_generable X.toPresented.threshold_codes
+    (semanticProductLUV_rpnThresholdCodeSeq X.toPresented W.toPresented) q.poly
+    (fun _ => 0) tendsto_const_nhds (fun n v hv => ?_)
+    (fun n v hv x hx => ?_) (fun n v hv => ?_)
+    (fun n => ⟨theoremQuoteRegistryWorld T,
+      theoremQuoteSemanticRegistryProductDP_hworld T n⟩)
+  · obtain ⟨x, hx⟩ := X.source_valued n v (theoremQuoteRegistry_consistent_base hv)
+    exact ⟨x, (certifiedSource_valuesAt_iff X n x v
+      (theoremQuoteRegistry_consistent_source hv)).2 hx⟩
+  · refine ⟨x * (w (f n) : ℝ), ?_, by simp⟩
+    apply semanticRegistryProductLUV_valuesAt (theoremQuoteBaseDPComputation T)
+      (theoremQuoteRegistry_consistent_product hv) X W n hx
+    exact (certifiedSource_valuesAt_iff W n (w (f n)) v
+      (theoremQuoteRegistry_consistent_source hv)).2
+        (weight_value n v (theoremQuoteRegistry_consistent_base hv))
+  · have h := RationalQuoteCode.reflected (quotationPresentation T) q n v
+      (theoremQuoteRegistry_consistent_theoremDP hv)
+    rwa [Rat.cast_mul,
+      ← (theoremQuoteRegistryMarketComputation T).expectQuoteAt_cast
+        X.toPresented.toLUV n (f n)] at h
+
 #print axioms semanticRegistryProductDP_computable
 #print axioms semanticRegistryProductLUV_valuesAt
 #print axioms semanticRegistryProductDP_hworld
 #print axioms theoremSemanticRegistryProductDP_hworld
 #print axioms theoremQuoteSemanticRegistryProductDP_hworld
 #print axioms lic_no_expected_net_update_conditional_registryCertified_closed
+#print axioms lic_no_expected_net_update_conditional_registry_rightClosed
 
 end LogicalInduction
