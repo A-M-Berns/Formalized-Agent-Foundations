@@ -116,4 +116,42 @@ lemma DeductiveProcess.exists_consistentWithTheory (DP : DeductiveProcess)
       t htd htn (htcl 0).isCompact htcl
   exact ⟨PCWorld.ofBits b, fun n => Set.mem_iInter.mp hb n⟩
 
+/-- A semantic consequence of the completed theory is already forced by one finite stage.
+
+This is the finite-consequence form of propositional compactness.  It is useful when a
+computable construction can decide finite-stage entailment: a search over stages then
+eventually discovers every consequence of the completed theory. -/
+lemma DeductiveProcess.exists_stage_entails (DP : DeductiveProcess) (phi : Sentence)
+    (h : ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds phi) :
+    ∃ k, ∀ v : PCWorld, v.ConsistentWith (DP.D k) → v.Holds phi := by
+  classical
+  by_contra hstage
+  push Not at hstage
+  set t : ℕ → Set (ℕ → Bool) := fun n =>
+    {b | (PCWorld.ofBits b).ConsistentWith (DP.D n) ∧
+      ¬ (PCWorld.ofBits b).Holds phi} with ht
+  have htd : ∀ i, t (i + 1) ⊆ t i := by
+    intro i b hb
+    exact ⟨fun psi hpsi => hb.1 psi (DP.mono i hpsi), hb.2⟩
+  have htn : ∀ i, (t i).Nonempty := by
+    intro i
+    obtain ⟨v, hvD, hvphi⟩ := hstage i
+    obtain ⟨b, hb⟩ := PCWorld.exists_bits v
+    exact ⟨b, (fun psi hpsi => (hb psi).2 (hvD psi hpsi)), fun hphi => hvphi ((hb phi).1 hphi)⟩
+  have htcl : ∀ i, IsClosed (t i) := by
+    intro i
+    have hset : t i =
+        {b : ℕ → Bool | (PCWorld.ofBits b).ConsistentWith (DP.D i)} ∩
+          {b : ℕ → Bool | (PCWorld.ofBits b).Holds phi}ᶜ := by
+      ext b
+      simp [t]
+    rw [hset]
+    exact (PCWorld.isClosed_setOf_consistentWith (DP.D i)).inter
+      (PCWorld.isClopen_setOf_holds phi).compl.isClosed
+  obtain ⟨b, hb⟩ :=
+    IsCompact.nonempty_iInter_of_sequence_nonempty_isCompact_isClosed
+      t htd htn (htcl 0).isCompact htcl
+  have hb0 : ∀ n, b ∈ t n := fun n => Set.mem_iInter.mp hb n
+  exact (hb0 0).2 (h (PCWorld.ofBits b) (fun n => (hb0 n).1))
+
 end LogicalInduction
