@@ -50,3 +50,4 @@ import LogicalInduction.Construction.Witnesses.SemanticRegistryProduct
 import LogicalInduction.Construction.Witnesses.PaperFirstOrder
 import LogicalInduction.Construction.Witnesses.PaperFirstOrderCompiler
 import LogicalInduction.Construction.Witnesses.PaperTheoryDP
+import LogicalInduction.Construction.Witnesses.PaperCutLawDP

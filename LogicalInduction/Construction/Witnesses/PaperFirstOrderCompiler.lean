@@ -41,6 +41,18 @@ def paperPublicAndCode (left right : ℕ) : ℕ :=
 def paperPublicOrCode (left right : ℕ) : ℕ :=
   Nat.pair 4 (Nat.pair left right) + 1
 
+/-- Numeric propositional implication. -/
+def paperPublicImpCode (left right : ℕ) : ℕ :=
+  Nat.pair 2 (Nat.pair left right) + 1
+
+@[simp] lemma paperPublicImpCode_spec (φ ψ : Sentence) :
+    paperPublicImpCode (Encodable.encode φ) (Encodable.encode ψ) =
+      Encodable.encode (φ 🡒 ψ) := rfl
+
+lemma paperPublicImpCode_prim : Primrec₂ paperPublicImpCode := by
+  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+    (Primrec₂.natPair.comp Primrec.fst Primrec.snd))).to₂.of_eq fun _ _ => rfl
+
 /-! ## Numeric first-order negation
 
 Canonical paper primes require the dual of a negative prime head.  Foundation's typed
@@ -206,6 +218,24 @@ lemma paperFirstOrderNegCode_prim : Primrec paperFirstOrderNegCode := by
   have hrec := Primrec.nat_strong_rec (fun (_ : Unit) n => paperFirstOrderNegCode n)
     hstep (fun _ n => by simpa using congrArg some (paperFirstOrderNegStep_history n))
   exact (hrec.comp (Primrec.const ()) Primrec.id).of_eq fun _ => rfl
+
+/-- Raw Gödel code of first-order implication, represented in Foundation's NNF syntax as
+`¬left ∨ right`. -/
+def paperFirstOrderImpCode (left right : ℕ) : ℕ :=
+  Nat.pair 5 (Nat.pair (paperFirstOrderNegCode left) right) + 1
+
+lemma paperFirstOrderImpCode_spec (φ ψ : ArithmeticProposition) :
+    paperFirstOrderImpCode (Encodable.encode φ) (Encodable.encode ψ) =
+      Encodable.encode (φ 🡒 ψ) := by
+  simp [paperFirstOrderImpCode, Semiformula.imp_eq,
+    paperFirstOrderNegCode_toNat, Semiformula.neg_eq,
+    LO.FirstOrder.Semiformula.encode_eq_toNat, LO.FirstOrder.Semiformula.toNat]
+
+lemma paperFirstOrderImpCode_prim : Primrec₂ paperFirstOrderImpCode := by
+  exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
+    (Primrec₂.natPair.comp
+      (paperFirstOrderNegCode_prim.comp Primrec.fst) Primrec.snd))).to₂.of_eq
+        fun _ _ => rfl
 
 @[simp] lemma paperPrimeAtomCodeRaw_spec (positive : Bool) (φ : ArithmeticProposition) :
     paperPrimeAtomCodeRaw positive (Encodable.encode φ) =

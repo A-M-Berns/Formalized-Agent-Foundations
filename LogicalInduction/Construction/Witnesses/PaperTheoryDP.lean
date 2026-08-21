@@ -211,6 +211,12 @@ lemma paperTheoryDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy
 
 /-! ## Non-vacuity -/
 
+lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
+    (hwf : Bootstrapping.IsFormula ℒₒᵣ formulaCode) :
+    ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode := by
+  rcases hwf.sound with ⟨φ, hφ⟩
+  exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
+
 lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] {formulaCode : ℕ}
     (hfire : paperTheoremFires T formulaCode) :
@@ -219,9 +225,7 @@ lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
   rcases hfire with ⟨d, hd⟩
   have hwf : Bootstrapping.IsFormula ℒₒᵣ formulaCode := by
     simpa [Bootstrapping.Proof] using hd.isFormulaSet
-  rcases hwf.sound with ⟨φ, hφ⟩
-  have hcode : Encodable.encode φ = formulaCode := by
-    simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ
+  rcases paperFormulaCode_has_proposition hwf with ⟨φ, hcode⟩
   refine ⟨φ, hcode, ?_⟩
   rw [hcode]
   exact ⟨d, hd⟩
