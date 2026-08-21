@@ -574,22 +574,35 @@ def semanticSourceLawSeen {DP : DeductiveProcess}
   (List.range (fuel + 1)).any fun f =>
     (semanticSourceCheckedLawAtFuel base schema job f).isSome
 
-/-- All executable evidence required to expose query indices at most `prefix`. -/
+/-- Pairwise downward checks for one source index and one left threshold. -/
+def semanticSourceDownwardPrefixValidAtFuel {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    (schema limit fuel n zr : ℕ) : Bool :=
+  (List.range (limit + 1)).all fun zs =>
+    let r := decodedQuotationRat zr
+    let s := decodedQuotationRat zs
+    if r < s then
+      semanticSourceLawSeen base schema (sourceCutDownwardJob n r s) fuel
+    else true
+
+/-- Freshness, bounds, and all downward checks for one threshold query. -/
+def semanticSourceThresholdPrefixValidAtFuel {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    (schema limit fuel n zr : ℕ) : Bool :=
+  let r := decodedQuotationRat zr
+  semanticSourceFreshSeen schema n zr fuel &&
+  (if r < 0 then
+    semanticSourceLawSeen base schema (sourceCutBelowJob n r) fuel else true) &&
+  (if 1 < r then
+    semanticSourceLawSeen base schema (sourceCutAboveJob n r) fuel else true) &&
+  semanticSourceDownwardPrefixValidAtFuel base schema limit fuel n zr
+
+/-- All executable evidence required to expose query indices at most `limit`. -/
 def semanticSourcePrefixValidAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (schema limit fuel : ℕ) : Bool :=
   (List.range (limit + 1)).all fun n =>
     (List.range (limit + 1)).all fun zr =>
-      let r := decodedQuotationRat zr
-      semanticSourceFreshSeen schema n zr fuel &&
-      (if r < 0 then
-        semanticSourceLawSeen base schema (sourceCutBelowJob n r) fuel else true) &&
-      (if 1 < r then
-        semanticSourceLawSeen base schema (sourceCutAboveJob n r) fuel else true) &&
-      (List.range (limit + 1)).all fun zs =>
-        let s := decodedQuotationRat zs
-        if r < s then
-          semanticSourceLawSeen base schema (sourceCutDownwardJob n r s) fuel
-        else true
+      semanticSourceThresholdPrefixValidAtFuel base schema limit fuel n zr
 
 private lemma listRangeAny_prim {α : Type} [Primcodable α]
     {bound : α → ℕ} {test : α → ℕ → Bool}
@@ -670,6 +683,148 @@ lemma semanticSourceLawSeen_prim {DP : DeductiveProcess}
     Primrec.option_isSome.comp₂ hcheck
   exact listRangeAny_prim Primrec.snd htest
 
+set_option maxHeartbeats 2000000 in
+lemma semanticSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) :
+    Primrec fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
+      semanticSourceDownwardPrefixValidAtFuel base
+        p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 := by
+  let P := ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ)
+  have hschema : Primrec fun p : P => p.1.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hlimit : Primrec fun p : P => p.1.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hfuel : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun p : P => p.1.2 := Primrec.snd.comp Primrec.fst
+  have hzr : Primrec fun p : P => p.2 := Primrec.snd
+  have hr : Primrec fun p : P => decodedQuotationRat p.2 :=
+    decodedQuotationRat_prim.comp hzr
+  have htest : Primrec₂ fun (p : P) (zs : ℕ) =>
+      if decodedQuotationRat p.2 < decodedQuotationRat zs then
+        semanticSourceLawSeen base p.1.1.1.1
+          (sourceCutDownwardJob p.1.2 (decodedQuotationRat p.2)
+            (decodedQuotationRat zs)) p.1.1.2
+      else true := by
+    let Q := P × ℕ
+    have hs : Primrec fun q : Q => decodedQuotationRat q.2 :=
+      decodedQuotationRat_prim.comp Primrec.snd
+    have hjob : Primrec fun q : Q => sourceCutDownwardJob q.1.1.2
+        (decodedQuotationRat q.1.2) (decodedQuotationRat q.2) := by
+      unfold sourceCutDownwardJob
+      exact Primrec₂.natPair.comp (Primrec.const 2)
+        (Primrec₂.natPair.comp (hn.comp Primrec.fst)
+          (Primrec₂.natPair.comp
+            (Primrec.encode.comp (hr.comp Primrec.fst))
+            (Primrec.encode.comp hs)))
+    have hpack : Primrec fun q : Q =>
+        ((q.1.1.1.1.1, sourceCutDownwardJob q.1.1.2
+          (decodedQuotationRat q.1.2) (decodedQuotationRat q.2)), q.1.1.1.2) :=
+      ((hschema.comp Primrec.fst).pair hjob).pair (hfuel.comp Primrec.fst)
+    have hseen : Primrec fun q : Q => semanticSourceLawSeen base q.1.1.1.1.1
+        (sourceCutDownwardJob q.1.1.2 (decodedQuotationRat q.1.2)
+          (decodedQuotationRat q.2)) q.1.1.1.2 :=
+      (semanticSourceLawSeen_prim base).comp hpack
+    have hlt : PrimrecPred fun q : Q =>
+        decodedQuotationRat q.1.2 < decodedQuotationRat q.2 :=
+      (ratLE_prim.comp hs (hr.comp Primrec.fst)).not.of_eq fun _ => by simp [not_le]
+    exact (Primrec.ite hlt hseen (Primrec.const true)).to₂
+  exact listRangeAll_prim hlimit htest
+
+set_option maxHeartbeats 2000000 in
+lemma semanticSourceThresholdPrefixValidAtFuel_prim {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) :
+    Primrec fun p : ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ) =>
+      semanticSourceThresholdPrefixValidAtFuel base
+        p.1.1.1.1 p.1.1.1.2 p.1.1.2 p.1.2 p.2 := by
+  let P := ((((ℕ × ℕ) × ℕ) × ℕ) × ℕ)
+  have hschema : Primrec fun p : P => p.1.1.1.1 :=
+    Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))
+  have hfuel : Primrec fun p : P => p.1.1.2 :=
+    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
+  have hn : Primrec fun p : P => p.1.2 := Primrec.snd.comp Primrec.fst
+  have hzr : Primrec fun p : P => p.2 := Primrec.snd
+  have hr : Primrec fun p : P => decodedQuotationRat p.2 :=
+    decodedQuotationRat_prim.comp hzr
+  have hfreshPack : Primrec fun p : P =>
+      (((p.1.1.1.1, p.1.2), p.2), p.1.1.2) :=
+    ((hschema.pair hn).pair hzr).pair hfuel
+  have hfresh : Primrec fun p : P =>
+      semanticSourceFreshSeen p.1.1.1.1 p.1.2 p.2 p.1.1.2 :=
+    semanticSourceFreshSeen_prim.comp hfreshPack
+  have hbelowJob : Primrec fun p : P => sourceCutBelowJob p.1.2
+      (decodedQuotationRat p.2) := by
+    unfold sourceCutBelowJob
+    exact Primrec₂.natPair.comp (Primrec.const 0)
+      (Primrec₂.natPair.comp hn (Primrec.encode.comp hr))
+  have haboveJob : Primrec fun p : P => sourceCutAboveJob p.1.2
+      (decodedQuotationRat p.2) := by
+    unfold sourceCutAboveJob
+    exact Primrec₂.natPair.comp (Primrec.const 1)
+      (Primrec₂.natPair.comp hn (Primrec.encode.comp hr))
+  have hbelowPack : Primrec fun p : P =>
+      ((p.1.1.1.1, sourceCutBelowJob p.1.2 (decodedQuotationRat p.2)), p.1.1.2) :=
+    (hschema.pair hbelowJob).pair hfuel
+  have habovePack : Primrec fun p : P =>
+      ((p.1.1.1.1, sourceCutAboveJob p.1.2 (decodedQuotationRat p.2)), p.1.1.2) :=
+    (hschema.pair haboveJob).pair hfuel
+  have hbelowSeen : Primrec fun p : P => semanticSourceLawSeen base p.1.1.1.1
+      (sourceCutBelowJob p.1.2 (decodedQuotationRat p.2)) p.1.1.2 :=
+    (semanticSourceLawSeen_prim base).comp hbelowPack
+  have haboveSeen : Primrec fun p : P => semanticSourceLawSeen base p.1.1.1.1
+      (sourceCutAboveJob p.1.2 (decodedQuotationRat p.2)) p.1.1.2 :=
+    (semanticSourceLawSeen_prim base).comp habovePack
+  have hbelowPred : PrimrecPred fun p : P => decodedQuotationRat p.2 < 0 :=
+    (ratLE_prim.comp (Primrec.const 0) hr).not.of_eq fun _ => by simp [not_le]
+  have habovePred : PrimrecPred fun p : P => 1 < decodedQuotationRat p.2 :=
+    (ratLE_prim.comp hr (Primrec.const 1)).not.of_eq fun _ => by simp [not_le]
+  have hbelow : Primrec fun p : P =>
+      if decodedQuotationRat p.2 < 0 then
+        semanticSourceLawSeen base p.1.1.1.1
+          (sourceCutBelowJob p.1.2 (decodedQuotationRat p.2)) p.1.1.2
+      else true :=
+    Primrec.ite hbelowPred hbelowSeen (Primrec.const true)
+  have habove : Primrec fun p : P =>
+      if 1 < decodedQuotationRat p.2 then
+        semanticSourceLawSeen base p.1.1.1.1
+          (sourceCutAboveJob p.1.2 (decodedQuotationRat p.2)) p.1.1.2
+      else true :=
+    Primrec.ite habovePred haboveSeen (Primrec.const true)
+  have hdown : Primrec fun p : P =>
+      semanticSourceDownwardPrefixValidAtFuel base p.1.1.1.1 p.1.1.1.2
+        p.1.1.2 p.1.2 p.2 :=
+    semanticSourceDownwardPrefixValidAtFuel_prim base
+  have hand {a b : P → Bool} (ha : Primrec a) (hb : Primrec b) :
+      Primrec fun p : P => a p && b p :=
+    (Primrec.dom_bool₂ (· && ·)).comp ha hb
+  exact hand (hand (hand hfresh hbelow) habove) hdown |>.of_eq fun _ => rfl
+
+set_option maxHeartbeats 2000000 in
+lemma semanticSourcePrefixValidAtFuel_prim {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) :
+    Primrec fun p : (ℕ × ℕ) × ℕ =>
+      semanticSourcePrefixValidAtFuel base p.1.1 p.1.2 p.2 := by
+  let P := (ℕ × ℕ) × ℕ
+  have hlimit : Primrec fun p : P => p.1.2 := Primrec.snd.comp Primrec.fst
+  have hinner : Primrec₂ fun (p : P) (n : ℕ) =>
+      (List.range (p.1.2 + 1)).all fun zr =>
+        semanticSourceThresholdPrefixValidAtFuel base p.1.1 p.1.2 p.2 n zr := by
+    let Q := P × ℕ
+    have hlimitQ : Primrec fun q : Q => q.1.1.2 := hlimit.comp Primrec.fst
+    have htest : Primrec₂ fun (q : Q) (zr : ℕ) =>
+        semanticSourceThresholdPrefixValidAtFuel base
+          q.1.1.1 q.1.1.2 q.1.2 q.2 zr := by
+      have hpack : Primrec fun z : Q × ℕ =>
+          ((((z.1.1.1.1, z.1.1.1.2), z.1.1.2), z.1.2), z.2) := by
+        exact (((((Primrec.fst.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst))).pair
+          (Primrec.snd.comp (Primrec.fst.comp (Primrec.fst.comp Primrec.fst)))).pair
+          (Primrec.snd.comp (Primrec.fst.comp Primrec.fst))).pair
+          (Primrec.snd.comp Primrec.fst)).pair Primrec.snd)
+      exact ((semanticSourceThresholdPrefixValidAtFuel_prim base).comp hpack).to₂.of_eq
+        fun _ _ => rfl
+    exact (listRangeAll_prim hlimitQ htest).to₂
+  exact listRangeAll_prim hlimit hinner
+
 lemma semanticSourceFreshSeen_iff (schema n z fuel : ℕ) :
     semanticSourceFreshSeen schema n z fuel = true ↔
       ∃ f ≤ fuel, ∃ φ,
@@ -704,6 +859,216 @@ lemma semanticSourceLawSeen_iff {DP : DeductiveProcess}
   · rintro ⟨f, hf, law, hlaw⟩
     exact ⟨f, hf, by simp [hlaw]⟩
 
+lemma semanticSourceFreshSeen_mono {schema n z fuel fuel' : ℕ}
+    (hff : fuel ≤ fuel')
+    (h : semanticSourceFreshSeen schema n z fuel = true) :
+    semanticSourceFreshSeen schema n z fuel' = true := by
+  obtain ⟨f, hf, φ, hemit, hfresh⟩ :=
+    (semanticSourceFreshSeen_iff schema n z fuel).1 h
+  exact (semanticSourceFreshSeen_iff schema n z fuel').2
+    ⟨f, hf.trans hff, φ, hemit, hfresh⟩
+
+lemma semanticSourceLawSeen_mono {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {schema job fuel fuel' : ℕ}
+    (hff : fuel ≤ fuel')
+    (h : semanticSourceLawSeen base schema job fuel = true) :
+    semanticSourceLawSeen base schema job fuel' = true := by
+  obtain ⟨f, hf, law, hlaw⟩ :=
+    (semanticSourceLawSeen_iff base schema job fuel).1 h
+  exact (semanticSourceLawSeen_iff base schema job fuel').2
+    ⟨f, hf.trans hff, law, hlaw⟩
+
+private lemma listAll_eventually_of_mono {l : List ℕ} {test : ℕ → ℕ → Bool}
+    (hmono : ∀ x {fuel fuel'}, fuel ≤ fuel' → test x fuel = true →
+      test x fuel' = true)
+    (heventual : ∀ x ∈ l, ∃ fuel, test x fuel = true) :
+    ∃ fuel, l.all (fun x => test x fuel) = true := by
+  induction l with
+  | nil => exact ⟨0, rfl⟩
+  | cons x xs ih =>
+      obtain ⟨fx, hfx⟩ := heventual x (by simp)
+      obtain ⟨fs, hfs⟩ := ih (fun y hy => heventual y (by simp [hy]))
+      refine ⟨max fx fs, ?_⟩
+      rw [List.all_cons, Bool.and_eq_true]
+      exact ⟨hmono x (Nat.le_max_left _ _) hfx, by
+        rw [List.all_eq_true] at hfs ⊢
+        intro y hy
+        exact hmono y (Nat.le_max_right _ _) (hfs y hy)⟩
+
+lemma certifiedSourceFreshSeen_eventually {DP : DeductiveProcess}
+    (X : CertifiedSourceLUVSeq DP) (n z : ℕ) :
+    ∃ fuel, semanticSourceFreshSeen X.thresholdSchema n z fuel = true := by
+  let r := decodedQuotationRat z
+  obtain ⟨fuel, hemit⟩ := evaln_decode_sentence_eventually X.emitterCode
+    (Nat.pair n (Encodable.encode r)) ((X.toLUV n).gt r) (X.emitter_spec n r)
+  have hemit' : semanticSourceSentenceAtFuel X.thresholdSchema
+      (Nat.pair n (Encodable.encode r)) fuel = some ((X.toLUV n).gt r) := by
+    simpa [semanticSourceSentenceAtFuel, certified_thresholdSchema_emitterCode] using hemit
+  exact ⟨fuel, (semanticSourceFreshSeen_iff X.thresholdSchema n z fuel).2
+    ⟨fuel, le_rfl, (X.toLUV n).gt r, hemit', X.old_language n r⟩⟩
+
+lemma certifiedSourceBelowSeen_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (n : ℕ) (r : ℚ) (hr : (r : ℝ) < 0) :
+    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
+      (sourceCutBelowJob n r) fuel = true := by
+  obtain ⟨fuel, h⟩ := certified_below_eventually_checked base X n r hr
+  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
+    (sourceCutBelowJob n r) fuel).2 ⟨fuel, le_rfl, (X.toLUV n).gt r, h⟩⟩
+
+lemma certifiedSourceAboveSeen_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (n : ℕ) (r : ℚ) (hr : 1 < (r : ℝ)) :
+    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
+      (sourceCutAboveJob n r) fuel = true := by
+  obtain ⟨fuel, h⟩ := certified_above_eventually_checked base X n r hr
+  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
+    (sourceCutAboveJob n r) fuel).2 ⟨fuel, le_rfl, ∼(X.toLUV n).gt r, h⟩⟩
+
+lemma certifiedSourceDownwardSeen_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (n : ℕ) (r s : ℚ) (hrs : r < s) :
+    ∃ fuel, semanticSourceLawSeen base X.thresholdSchema
+      (sourceCutDownwardJob n r s) fuel = true := by
+  obtain ⟨fuel, h⟩ := certified_downward_eventually_checked base X n r s hrs
+  exact ⟨fuel, (semanticSourceLawSeen_iff base X.thresholdSchema
+    (sourceCutDownwardJob n r s) fuel).2
+      ⟨fuel, le_rfl, (X.toLUV n).gt s 🡒 (X.toLUV n).gt r, h⟩⟩
+
+lemma semanticSourceDownwardPrefixValidAtFuel_mono {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    {schema limit n zr fuel fuel' : ℕ} (hff : fuel ≤ fuel')
+    (h : semanticSourceDownwardPrefixValidAtFuel base schema limit fuel n zr = true) :
+    semanticSourceDownwardPrefixValidAtFuel base schema limit fuel' n zr = true := by
+  rw [semanticSourceDownwardPrefixValidAtFuel, List.all_eq_true] at h ⊢
+  intro zs hzs
+  have hz := h zs hzs
+  by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
+  · simpa [hrs] using semanticSourceLawSeen_mono base hff (by simpa [hrs] using hz)
+  · simpa [hrs]
+
+lemma certifiedSourceDownwardPrefix_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (limit n zr : ℕ) :
+    ∃ fuel, semanticSourceDownwardPrefixValidAtFuel base X.thresholdSchema
+      limit fuel n zr = true := by
+  let test : ℕ → ℕ → Bool := fun zs fuel =>
+    if decodedQuotationRat zr < decodedQuotationRat zs then
+      semanticSourceLawSeen base X.thresholdSchema
+        (sourceCutDownwardJob n (decodedQuotationRat zr) (decodedQuotationRat zs)) fuel
+    else true
+  have hmono : ∀ zs {fuel fuel'}, fuel ≤ fuel' → test zs fuel = true →
+      test zs fuel' = true := by
+    intro zs fuel fuel' hff h
+    by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
+    · simpa [test, hrs] using semanticSourceLawSeen_mono base hff (by simpa [test, hrs] using h)
+    · simp [test, hrs]
+  have heventual : ∀ zs ∈ List.range (limit + 1), ∃ fuel, test zs fuel = true := by
+    intro zs _
+    by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
+    · obtain ⟨fuel, h⟩ := certifiedSourceDownwardSeen_eventually base X n _ _ hrs
+      exact ⟨fuel, by simpa [test, hrs] using h⟩
+    · exact ⟨0, by simp [test, hrs]⟩
+  simpa [semanticSourceDownwardPrefixValidAtFuel, test] using
+    (listAll_eventually_of_mono hmono heventual)
+
+lemma semanticSourceThresholdPrefixValidAtFuel_mono {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    {schema limit n zr fuel fuel' : ℕ} (hff : fuel ≤ fuel')
+    (h : semanticSourceThresholdPrefixValidAtFuel base schema limit fuel n zr = true) :
+    semanticSourceThresholdPrefixValidAtFuel base schema limit fuel' n zr = true := by
+  rw [semanticSourceThresholdPrefixValidAtFuel] at h ⊢
+  simp only [Bool.and_eq_true] at h ⊢
+  refine ⟨⟨⟨semanticSourceFreshSeen_mono hff h.1.1.1, ?_⟩, ?_⟩,
+    semanticSourceDownwardPrefixValidAtFuel_mono base hff h.2⟩
+  · by_cases hr : decodedQuotationRat zr < 0
+    · simpa [hr] using semanticSourceLawSeen_mono base hff (by simpa [hr] using h.1.1.2)
+    · simp [hr]
+  · by_cases hr : 1 < decodedQuotationRat zr
+    · simpa [hr] using semanticSourceLawSeen_mono base hff (by simpa [hr] using h.1.2)
+    · simp [hr]
+
+lemma certifiedSourceThresholdPrefix_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (limit n zr : ℕ) :
+    ∃ fuel, semanticSourceThresholdPrefixValidAtFuel base X.thresholdSchema
+      limit fuel n zr = true := by
+  let r := decodedQuotationRat zr
+  obtain ⟨ffresh, hfresh⟩ := certifiedSourceFreshSeen_eventually X n zr
+  obtain ⟨fbelow, hbelow⟩ : ∃ fuel,
+      (if r < 0 then semanticSourceLawSeen base X.thresholdSchema
+        (sourceCutBelowJob n r) fuel else true) = true := by
+    by_cases hr : r < 0
+    · have hrR : (r : ℝ) < 0 := by exact_mod_cast hr
+      obtain ⟨fuel, h⟩ := certifiedSourceBelowSeen_eventually base X n r hrR
+      exact ⟨fuel, by simpa [hr] using h⟩
+    · exact ⟨0, by simp [hr]⟩
+  obtain ⟨fabove, habove⟩ : ∃ fuel,
+      (if 1 < r then semanticSourceLawSeen base X.thresholdSchema
+        (sourceCutAboveJob n r) fuel else true) = true := by
+    by_cases hr : 1 < r
+    · have hrR : 1 < (r : ℝ) := by exact_mod_cast hr
+      obtain ⟨fuel, h⟩ := certifiedSourceAboveSeen_eventually base X n r hrR
+      exact ⟨fuel, by simpa [hr] using h⟩
+    · exact ⟨0, by simp [hr]⟩
+  obtain ⟨fdown, hdown⟩ := certifiedSourceDownwardPrefix_eventually base X limit n zr
+  let fuel := max ffresh (max fbelow (max fabove fdown))
+  have hffresh : ffresh ≤ fuel := by simp [fuel]
+  have hffbelow : fbelow ≤ fuel := by simp [fuel]
+  have hffabove : fabove ≤ fuel := by simp [fuel]
+  have hffdown : fdown ≤ fuel := by simp [fuel]
+  have hfresh' := semanticSourceFreshSeen_mono hffresh hfresh
+  have hbelow' : (if r < 0 then semanticSourceLawSeen base X.thresholdSchema
+      (sourceCutBelowJob n r) fuel else true) = true := by
+    by_cases hr : r < 0
+    · simp only [if_pos hr]
+      exact semanticSourceLawSeen_mono base hffbelow (by simpa [hr] using hbelow)
+    · simp [hr]
+  have habove' : (if 1 < r then semanticSourceLawSeen base X.thresholdSchema
+      (sourceCutAboveJob n r) fuel else true) = true := by
+    by_cases hr : 1 < r
+    · simp only [if_pos hr]
+      exact semanticSourceLawSeen_mono base hffabove (by simpa [hr] using habove)
+    · simp [hr]
+  have hdown' := semanticSourceDownwardPrefixValidAtFuel_mono base hffdown hdown
+  refine ⟨fuel, ?_⟩
+  rw [semanticSourceThresholdPrefixValidAtFuel]
+  simp only [Bool.and_eq_true]
+  exact ⟨⟨⟨hfresh', hbelow'⟩, habove'⟩, hdown'⟩
+
+/-- Every finite prefix of every certified source is eventually admitted by the fixed
+executable registry. -/
+theorem certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
+    (limit : ℕ) :
+    ∃ fuel, semanticSourcePrefixValidAtFuel base X.thresholdSchema limit fuel = true := by
+  let row : ℕ → ℕ → Bool := fun n fuel =>
+    (List.range (limit + 1)).all fun zr =>
+      semanticSourceThresholdPrefixValidAtFuel base X.thresholdSchema limit fuel n zr
+  have hrowMono : ∀ n {fuel fuel'}, fuel ≤ fuel' → row n fuel = true →
+      row n fuel' = true := by
+    intro n fuel fuel' hff h
+    simp only [row, List.all_eq_true] at h ⊢
+    intro zr hzr
+    exact semanticSourceThresholdPrefixValidAtFuel_mono base hff (h zr hzr)
+  have hrowEventually : ∀ n ∈ List.range (limit + 1), ∃ fuel, row n fuel = true := by
+    intro n _
+    obtain ⟨fuel, hfuel⟩ := listAll_eventually_of_mono
+      (l := List.range (limit + 1))
+      (test := fun zr fuel => semanticSourceThresholdPrefixValidAtFuel
+        base X.thresholdSchema limit fuel n zr)
+      (fun zr _ _ hff h => semanticSourceThresholdPrefixValidAtFuel_mono base hff h)
+      (by
+        intro zr _
+        exact certifiedSourceThresholdPrefix_eventually base X limit n zr)
+    exact ⟨fuel, by simpa [row] using hfuel⟩
+  obtain ⟨fuel, hfuel⟩ := listAll_eventually_of_mono
+    (l := List.range (limit + 1)) (test := row) hrowMono hrowEventually
+  refine ⟨fuel, ?_⟩
+  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true]
+  intro n hn
+  exact List.all_eq_true.mp hfuel n hn
+
 /-- Prefix validity exposes freshness for every admitted source query. -/
 theorem semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
@@ -714,6 +1079,7 @@ theorem semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
   have hnmem : n ∈ List.range (limit + 1) := by simp [hn]
   have hzmem : z ∈ List.range (limit + 1) := by simp [hz]
   have h := List.all_eq_true.mp (hvalid n hnmem) z hzmem
+  rw [semanticSourceThresholdPrefixValidAtFuel] at h
   simp only [Bool.and_eq_true] at h
   exact h.1.1.1
 
@@ -730,6 +1096,8 @@ theorem semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
   have hzrmem : zr ∈ List.range (limit + 1) := by simp [hzr]
   have hzsmem : zs ∈ List.range (limit + 1) := by simp [hzs]
   have h := List.all_eq_true.mp (hvalid n hnmem) zr hzrmem
+  rw [semanticSourceThresholdPrefixValidAtFuel,
+    semanticSourceDownwardPrefixValidAtFuel] at h
   simp only [Bool.and_eq_true] at h
   have hlast := h.2
   have hz := List.all_eq_true.mp hlast zs hzsmem
