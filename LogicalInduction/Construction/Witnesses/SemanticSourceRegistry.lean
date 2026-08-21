@@ -399,7 +399,7 @@ theorem semanticSourceCheckedLawAtFuel_source {DP : DeductiveProcess}
 
 /-! ## Completeness for genuine certified packages -/
 
-private lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
+lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
     (input : ℕ) (φ : Sentence) (h : Encodable.encode φ ∈ code.eval input) :
     ∃ fuel, (code.evaln fuel input).bind (Encodable.decode (α := Sentence)) = some φ := by
   obtain ⟨fuel, hfuel⟩ := Nat.Partrec.Code.evaln_complete.mp h
