@@ -115,7 +115,7 @@ lemma semanticDiagonalLUVSeq_rpnThresholdCodeSeq :
 
 /-- No completed world can validate threshold reflection between the diagonal source and
 any `PresentedLUVSeq`.  The contradiction occurs at the presentation's own schema index. -/
-theorem semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLUVSeq) :
+lemma semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLUVSeq) :
     ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
       ∀ n r,
         (v.Holds ((Xhat.toLUV n).gt r) ↔
@@ -138,7 +138,7 @@ theorem semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : Presented
 is inconsistent.  Any successful bridge must restore the paper's language-separation fact
 (for example as a type-level source-language invariant); parser computability alone cannot
 prove it from `RpnThresholdCodeSeq`. -/
-theorem no_nonvacuous_universal_presented_of_rpn (DP : DeductiveProcess)
+lemma no_nonvacuous_universal_presented_of_rpn (DP : DeductiveProcess)
     (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.RpnThresholdCodeSeq X →
       ∃ Xhat : PresentedLUVSeq,
         ∀ n r (v : PCWorld), v.ConsistentWithTheory DP →
@@ -186,13 +186,13 @@ lemma semanticValuedDiagonalLUVSeq_isIndicator (DP : DeductiveProcess) (n : ℕ)
 
 /-- Hence the valued diagonal satisfies the closed CCEE `source_valued` premise for every
 process, at the Boolean value of its defining indicator proposition. -/
-theorem semanticValuedDiagonalLUVSeq_valuesAt (DP : DeductiveProcess) (n : ℕ)
+lemma semanticValuedDiagonalLUVSeq_valuesAt (DP : DeductiveProcess) (n : ℕ)
     (v : PCWorld) (hv : v.ConsistentWithTheory DP) :
     v.ValuesAt (semanticValuedDiagonalLUVSeq n)
       (v.payout (∼semanticValuedDiagonalProp n)) :=
   (semanticValuedDiagonalLUVSeq_isIndicator DP n).valuesAt hv
 
-theorem semanticValuedDiagonalLUVSeq_source_valued (DP : DeductiveProcess) :
+lemma semanticValuedDiagonalLUVSeq_source_valued (DP : DeductiveProcess) :
     ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (semanticValuedDiagonalLUVSeq n) x := by
   intro n v hv
@@ -258,7 +258,7 @@ lemma semanticValuedDiagonalLUVSeq_rpnThresholdCodeSeq :
 
 /-- Even inside the actual world-valued e.c. source class used by closed CCEE, no
 presentation can reflect this source in a completed world. -/
-theorem semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
+lemma semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
     (Xhat : PresentedLUVSeq) :
     ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
@@ -280,7 +280,7 @@ theorem semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
 /-- Strengthened obstruction: even restricting the universal bridge to source families
 that satisfy the exact completed-world valuedness premise of closed CCEE is incompatible
 with a non-vacuous fixed process. -/
-theorem no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
+lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
     (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.RpnThresholdCodeSeq X →
       (∀ n (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x) →
       ∃ Xhat : PresentedLUVSeq,

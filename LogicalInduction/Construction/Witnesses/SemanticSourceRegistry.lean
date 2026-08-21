@@ -323,7 +323,7 @@ private lemma keepLawIfMem_prim : Primrec₂ keepLawIfMem := by
 
 /-- The full bounded admission checker is primitive recursive for every fixed computable
 base process.  This is the executable gate needed by a single universal source DP. -/
-theorem semanticSourceCheckedLawAtFuel_prim {DP : DeductiveProcess}
+lemma semanticSourceCheckedLawAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Primrec fun p : (ℕ × ℕ) × ℕ =>
       semanticSourceCheckedLawAtFuel base p.1.1 p.1.2 p.2 := by
@@ -372,7 +372,7 @@ theorem semanticSourceCheckedLawAtFuel_prim {DP : DeductiveProcess}
 
 /-- A successful registry check can only return a theorem in the actual fixed base
 deductive process. -/
-theorem semanticSourceCheckedLawAtFuel_mem {DP : DeductiveProcess}
+lemma semanticSourceCheckedLawAtFuel_mem {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema job fuel : ℕ} {law : Sentence}
     (h : semanticSourceCheckedLawAtFuel base schema job fuel = some law) :
     ∃ k, law ∈ DP.D k := by
@@ -388,7 +388,7 @@ theorem semanticSourceCheckedLawAtFuel_mem {DP : DeductiveProcess}
   exact ⟨k, base.stageAtFuel_sound hstage ▸ hmem⟩
 
 /-- A successful check necessarily belongs to the source-schema namespace. -/
-theorem semanticSourceCheckedLawAtFuel_source {DP : DeductiveProcess}
+lemma semanticSourceCheckedLawAtFuel_source {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema job fuel : ℕ} {law : Sentence}
     (h : semanticSourceCheckedLawAtFuel base schema job fuel = some law) :
     schema.unpair.1 = 0 := by
@@ -399,7 +399,7 @@ theorem semanticSourceCheckedLawAtFuel_source {DP : DeductiveProcess}
 
 /-- A successful downward-law check exposes the two uniquely emitted fresh formulas and
 the exact implication checked against the base process. -/
-theorem semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
+lemma semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema fuel n : ℕ} {r s : ℚ}
     {law : Sentence} (hrs : r < s)
     (h : semanticSourceCheckedLawAtFuel base schema
@@ -447,7 +447,7 @@ lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
 
 /-- Every valid lower-bound certificate query of a genuine source eventually passes the
 fixed executable checker. -/
-theorem certified_below_eventually_checked {DP : DeductiveProcess}
+lemma certified_below_eventually_checked {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
     (n : ℕ) (r : ℚ) (hr : (r : ℝ) < 0) :
     ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
@@ -490,7 +490,7 @@ theorem certified_below_eventually_checked {DP : DeductiveProcess}
 
 /-- Every valid upper-bound certificate query of a genuine source eventually passes the
 fixed executable checker. -/
-theorem certified_above_eventually_checked {DP : DeductiveProcess}
+lemma certified_above_eventually_checked {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
     (n : ℕ) (r : ℚ) (hr : 1 < (r : ℝ)) :
     ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
@@ -533,7 +533,7 @@ theorem certified_above_eventually_checked {DP : DeductiveProcess}
 
 /-- Every valid downward-closure certificate query of a genuine source eventually passes
 the fixed executable checker. -/
-theorem certified_downward_eventually_checked {DP : DeductiveProcess}
+lemma certified_downward_eventually_checked {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
     (n : ℕ) (r s : ℚ) (hrs : r < s) :
     ∃ fuel, semanticSourceCheckedLawAtFuel base X.thresholdSchema
@@ -1088,7 +1088,7 @@ lemma certifiedSourceThresholdPrefix_eventually {DP : DeductiveProcess}
 
 /-- Every finite prefix of every certified source is eventually admitted by the fixed
 executable registry. -/
-theorem certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
+lemma certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
     (limit : ℕ) :
     ∃ fuel, semanticSourcePrefixValidAtFuel base X.thresholdSchema limit fuel = true := by
@@ -1120,7 +1120,7 @@ theorem certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
   exact List.all_eq_true.mp hfuel n hn
 
 /-- Prefix validity exposes freshness for every admitted source query. -/
-theorem semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
+lemma semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
     (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
     (hn : n ≤ limit) (hz : z ≤ limit) :
@@ -1134,7 +1134,7 @@ theorem semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
   exact h.1.1.1
 
 /-- Prefix validity exposes every applicable pairwise downward law. -/
-theorem semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
+lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n zr zs : ℕ}
     (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
     (hn : n ≤ limit) (hzr : zr ≤ limit) (hzs : zs ≤ limit)

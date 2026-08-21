@@ -19,7 +19,7 @@ attribute [local irreducible] Nat.sqrt
 
 /-- The universal product clauses are inconsistent with factors that are false at zero
 but true at one.  Genuine `[0,1]` cuts cannot have this pattern. -/
-theorem semanticProductDP_no_increasing_factor_assignment {v : PCWorld}
+lemma semanticProductDP_no_increasing_factor_assignment {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticProductDP) (left right n : ℕ)
     (hleftOne : v.Holds (semanticPrimeSentence left
       (Nat.pair n (Encodable.encode (1 : ℚ)))))
@@ -89,7 +89,7 @@ lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
 /-- Freshness plus efficient emission is not sufficient for joint source/product
 non-vacuity: exact reflection of the fresh malformed source makes the fixed product
 closure inconsistent. -/
-theorem semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
+lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
     ¬∃ v : PCWorld, v.ConsistentWithTheory semanticProductDP ∧
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
         v.Holds ((semanticFreshIncreasingLUVSeq n).gt r) := by
@@ -128,7 +128,7 @@ noncomputable def increasingQuoteCode (T : ArithmeticTheory)
 /-- The unrestricted quote interpreter and unrestricted product interpreter have no joint
 completed world, even together with the ordinary theorem process.  This forces explicit
 factor-schema ownership in the repaired architecture. -/
-theorem theorem_quote_product_not_jointly_satisfiable
+lemma theorem_quote_product_not_jointly_satisfiable
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     ¬∃ v : PCWorld,
       v.ConsistentWithTheory (theoremDP T) ∧

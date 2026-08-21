@@ -545,7 +545,7 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually
   · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
 
 set_option maxHeartbeats 2000000 in
-theorem rationalQuote_semanticQuoteFactorPrefix_eventually
+lemma rationalQuote_semanticQuoteFactorPrefix_eventually
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :

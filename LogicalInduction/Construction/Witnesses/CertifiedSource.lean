@@ -48,7 +48,7 @@ lemma carrier_bddAbove (h : v.RationalCutAt X) : BddAbove (carrier v X) := by
   exact le_of_not_gt (fun hgt => h.above_one r hgt hr)
 
 /-- A bounded downward rational cut determines a unique repository LUV value. -/
-theorem exists_valuesAt (h : v.RationalCutAt X) : ∃ x : ℝ, v.ValuesAt X x := by
+lemma exists_valuesAt (h : v.RationalCutAt X) : ∃ x : ℝ, v.ValuesAt X x := by
   let S := carrier v X
   have hSne : S.Nonempty := h.carrier_nonempty
   have hSbdd : BddAbove S := h.carrier_bddAbove
@@ -136,7 +136,7 @@ variable {DP : DeductiveProcess} {X : ℕ → LUV}
 
 /-- A checked executable certificate makes every completed base-theory world see a bounded
 downward cut. -/
-theorem rationalCutAt (C : SourceCutCertificate DP X) {v : PCWorld}
+lemma rationalCutAt (C : SourceCutCertificate DP X) {v : PCWorld}
     (hv : v.ConsistentWithTheory DP) (n : ℕ) : v.RationalCutAt (X n) := by
   refine ⟨?_, ?_, ?_⟩
   · intro r hr
@@ -151,7 +151,7 @@ theorem rationalCutAt (C : SourceCutCertificate DP X) {v : PCWorld}
 
 /-- Consequently executable cut certification discharges the actual `source_valued`
 premise used by closed CCEE. -/
-theorem valuesAt (C : SourceCutCertificate DP X) {v : PCWorld}
+lemma valuesAt (C : SourceCutCertificate DP X) {v : PCWorld}
     (hv : v.ConsistentWithTheory DP) (n : ℕ) : ∃ x : ℝ, v.ValuesAt (X n) x :=
   (C.rationalCutAt hv n).exists_valuesAt
 
@@ -181,7 +181,7 @@ namespace CertifiedSourceLUVSeq
 variable {DP : DeductiveProcess}
 
 /-- The faithful source object internally supplies completed-world valuedness. -/
-theorem source_valued (X : CertifiedSourceLUVSeq DP) (n : ℕ) (v : PCWorld)
+lemma source_valued (X : CertifiedSourceLUVSeq DP) (n : ℕ) (v : PCWorld)
     (hv : v.ConsistentWithTheory DP) : ∃ x : ℝ, v.ValuesAt (X.toLUV n) x :=
   X.cut_certificate.valuesAt hv n
 
@@ -264,7 +264,7 @@ end CertifiedSourceLUVSeq
 /-- The malformed fresh increasing family cannot carry an executable cut certificate for
 any non-vacuous base process.  This is the registry-level rejection counterpart of
 `semanticFreshIncreasing_not_jointly_reflected`. -/
-theorem semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
+lemma semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
     (hworld : ∃ v : PCWorld, v.ConsistentWithTheory DP) :
     SourceCutCertificate DP semanticFreshIncreasingLUVSeq → False := by
   intro C

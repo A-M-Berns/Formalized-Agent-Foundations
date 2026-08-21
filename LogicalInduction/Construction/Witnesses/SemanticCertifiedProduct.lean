@@ -170,7 +170,7 @@ lemma holds_semanticCertifiedProduct_below {v : PCWorld}
   exact h
 
 /-- Exact multiplication is unchanged for certified tag-`0` factor presentations. -/
-theorem semanticCertifiedProductLUV_valuesAt {v : PCWorld}
+lemma semanticCertifiedProductLUV_valuesAt {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticCertifiedProductDP)
     (X W : PresentedLUVSeq) (n : ℕ) {x c : ℝ}
     (hx : v.ValuesAt (X.toLUV n) x) (hc : v.ValuesAt (W.toLUV n) c) :
@@ -200,7 +200,7 @@ theorem semanticCertifiedProductLUV_valuesAt {v : PCWorld}
       (by simpa only [PresentedLUVSeq.gt_eq] using (hcthr _).2 hct)
 
 /-- The old canonical product world also satisfies the guarded process. -/
-theorem semanticCertifiedProductDP_hworld :
+lemma semanticCertifiedProductDP_hworld :
     semanticProductWorld.ConsistentWithTheory semanticCertifiedProductDP := by
   intro k φ hφ
   obtain ⟨e, rfl⟩ := semanticCertifiedProductStageList_exists
@@ -367,7 +367,7 @@ noncomputable def theoremQuoteCertifiedProductDPComputation
       semanticCertifiedProductDP_computable.nonemptyComputation.some
 
 /-- Joint non-vacuity of the fixed theorem, quotation, and certified-product substrate. -/
-theorem theoremQuoteCertifiedProductDP_hworld
+lemma theoremQuoteCertifiedProductDP_hworld
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     (theoremQuoteCertifiedProductWorld T).ConsistentWithTheory
       (theoremQuoteCertifiedProductDP T) := by
@@ -384,7 +384,7 @@ theorem theoremQuoteCertifiedProductDP_hworld
 /-- Exact multiplication enters the generic CCEE theorem over the jointly non-vacuous
 theorem/quote/certified-product process.  The remaining presentation premises are kept
 explicit here; the proof-carrying source interpreter is responsible for discharging them. -/
-theorem lic_no_expected_net_update_conditional_certifiedSemantic
+lemma lic_no_expected_net_update_conditional_certifiedSemantic
     {T : ArithmeticTheory} [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     {P : History} [IsLogicalInductor P (theoremQuoteCertifiedProductDP T)]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
@@ -422,7 +422,7 @@ private noncomputable abbrev theoremQuoteCertifiedProductLIA
 /-- Closed-inductor form of the repaired exact semantic endpoint.  This is not yet the
 paper-facing capstone: `PresentedLUVSeq`, weight presentation, and the right quote remain
 visible until the universal certified-source registry is implemented. -/
-theorem lic_no_expected_net_update_conditional_certifiedSemantic_closed
+lemma lic_no_expected_net_update_conditional_certifiedSemantic_closed
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)

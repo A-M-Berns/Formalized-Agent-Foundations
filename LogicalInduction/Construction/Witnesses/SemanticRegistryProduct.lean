@@ -287,7 +287,7 @@ lemma holds_semanticRegistryProduct_below {DP : DeductiveProcess}
   simpa [semanticProductSchemaInstance, hr] using h
 
 /-- Registry admission recovers exact multiplication for arbitrary certified factors. -/
-theorem semanticRegistryProductLUV_valuesAt {DP : DeductiveProcess}
+lemma semanticRegistryProductLUV_valuesAt {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
     (X W : CertifiedSourceLUVSeq DP) (n : ℕ) {x c : ℝ}
@@ -687,7 +687,7 @@ lemma semanticRegistryProductExtensionWorld_holds_defSentence {DP : DeductivePro
 
 /-- The registry-guarded product process has an explicit model over every model of its
 fixed base process. -/
-theorem semanticRegistryProductDP_hworld {DP : DeductiveProcess}
+lemma semanticRegistryProductDP_hworld {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP) :
     (semanticRegistryProductExtensionWorld base
@@ -739,7 +739,7 @@ lemma semanticRegistryProductExtensionWorld_holds_sourceDef {DP : DeductiveProce
   · rw [if_neg hschema]
     exact PCWorld.holds_top _
 
-theorem semanticSourceRegistryProductDP_hworld {DP : DeductiveProcess}
+lemma semanticSourceRegistryProductDP_hworld {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP) :
     (semanticRegistryProductExtensionWorld base
@@ -763,7 +763,7 @@ noncomputable def semanticRegistryClosureDPComputation {DP : DeductiveProcess}
   (base.union semanticSourceDP_computable.nonemptyComputation.some).union
     (semanticRegistryProductDP_computable base).nonemptyComputation.some
 
-theorem semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
+lemma semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP)
     (hDPfresh : ∀ k φ, φ ∈ DP.D k → SemanticPrimeFreshSentence φ) :
@@ -797,7 +797,7 @@ noncomputable def theoremSemanticRegistryProductDPComputation
   semanticRegistryClosureDPComputation
     ((theoremDP_computable T).nonemptyComputation.some)
 
-theorem theoremSemanticRegistryProductDP_hworld
+lemma theoremSemanticRegistryProductDP_hworld
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
     (semanticRegistryProductExtensionWorld
@@ -908,7 +908,7 @@ lemma theoremQuoteRegistryWorld_consistent_theorem
 
 /-- Joint non-vacuity of theorem, quotation, certified source interpretation, and
 registry-guarded exact products, all fixed before the eventual source and market. -/
-theorem theoremQuoteSemanticRegistryProductDP_hworld
+lemma theoremQuoteSemanticRegistryProductDP_hworld
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
     (theoremQuoteRegistryWorld T).ConsistentWithTheory
@@ -1044,7 +1044,7 @@ lemma holds_semanticRegistryProduct_below_of_eventually {DP : DeductiveProcess}
     n 2 r 0 0
   simpa [semanticProductSchemaInstance, hneg] using h
 
-theorem semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
+lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
     (left right : ℕ)
@@ -1104,7 +1104,7 @@ private lemma theoremQuoteRegistry_consistent_product
 
 /-- Exact CCEE after all three LUV families have entered through the executable certified
 source registry.  Source valuedness and exact left multiplication are internal. -/
-theorem lic_no_expected_net_update_conditional_registryCertified
+lemma lic_no_expected_net_update_conditional_registryCertified
     {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     {P : History} [IsLogicalInductor P (theoremQuoteSemanticRegistryProductDP T)]
@@ -1151,7 +1151,7 @@ private noncomputable abbrev theoremQuoteSemanticRegistryProductLIA
   LIA_is_logical_inductor _
     (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
 
-theorem lic_no_expected_net_update_conditional_registryCertified_closed
+lemma lic_no_expected_net_update_conditional_registryCertified_closed
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)
@@ -1214,7 +1214,7 @@ private lemma theoremQuoteRegistry_consistent_theoremDP
 
 /-- The right-hand deferred weighted-expectation quotation is now constructed internally;
 only admission of the deferred weight as an exact product factor remains explicit. -/
-theorem lic_no_expected_net_update_conditional_registry_rightClosed
+lemma lic_no_expected_net_update_conditional_registry_rightClosed
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)
@@ -1312,7 +1312,7 @@ lemma rationalQuote_semanticHandle_valuesAt
 /-- Paper-facing exact CCEE over the proof-carrying source-LUV front end.  The deferred
 weight factor and the right conditional-expectation quotation are constructed internally;
 the deductive process is fixed from `T` before `X`, `f`, or `w`. -/
-theorem lic_no_expected_net_update_conditional_certifiedSource_closed
+lemma lic_no_expected_net_update_conditional_certifiedSource_closed
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)

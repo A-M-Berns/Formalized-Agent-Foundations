@@ -377,7 +377,7 @@ lemma theoremSemanticProductWorld_holds_schema (T : ArithmeticTheory)
 end
 
 /-- The pre-market combined process has a completed world at every stage. -/
-theorem theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] :
     (theoremSemanticProductWorld T).ConsistentWithTheory (theoremSemanticProductDP T) := by
   intro n φ hφ
@@ -454,7 +454,7 @@ lemma exists_of_mem_semanticProductStageList {φ : Sentence} {k : ℕ}
       · exact ih h
 
 /-- Every stage of the fixed semantic closure has a canonical satisfying world. -/
-theorem semanticProductDP_hworld :
+lemma semanticProductDP_hworld :
     semanticProductWorld.ConsistentWithTheory semanticProductDP := by
   intro k φ hφ
   obtain ⟨e, rfl⟩ := exists_of_mem_semanticProductStageList (List.mem_toFinset.mp hφ)
@@ -464,7 +464,7 @@ theorem semanticProductDP_hworld :
 /-- Exact product reflection over the single fixed semantic closure process.  This is the
 existing `productLUV_valuesAt` rational-density proof with only the three schema lookups
 replaced by their self-describing semantic-prime counterparts. -/
-theorem semanticProductLUV_valuesAt {v : PCWorld}
+lemma semanticProductLUV_valuesAt {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticProductDP) (X W : PresentedLUVSeq) (n : ℕ)
     {x c : ℝ} (hx : v.ValuesAt (X.toLUV n) x) (hc : v.ValuesAt (W.toLUV n) c) :
     v.ValuesAt (semanticProductLUV X W n) (x * c) := by
@@ -540,7 +540,7 @@ lemma semanticProductLUV_rpnThresholdCodeSeq (X W : PresentedLUVSeq) :
 
 /-- The paper's conditional-expectation conclusion with the exact semantic product, over
 the single process fixed from `T` before the market and all source data are chosen. -/
-theorem lic_no_expected_net_update_conditional_semantic
+lemma lic_no_expected_net_update_conditional_semantic
     {T : ArithmeticTheory} [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     {P : History} [IsLogicalInductor P (theoremSemanticProductDP T)]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
@@ -574,7 +574,7 @@ private noncomputable abbrev theoremSemanticProductLIA (T : ArithmeticTheory)
 worlds are constructed internally.  Its remaining hypotheses are precisely the paper's
 source/weight/right-quotation representation premises, now carried by semantic-prime LUV
 presentations rather than a mesh approximation. -/
-theorem lic_no_expected_net_update_conditional_semantic_closed
+lemma lic_no_expected_net_update_conditional_semantic_closed
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)

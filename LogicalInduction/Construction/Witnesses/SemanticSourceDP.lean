@@ -142,7 +142,7 @@ lemma semanticSourceDefSentence_prim : Primrec semanticSourceDefSentence := by
     fun e => by simp [semanticSourceDefSentence]
 
 /-- The universal source interpreter is a computable deductive process. -/
-theorem semanticSourceDP_computable : ComputableDeductiveProcess semanticSourceDP := by
+lemma semanticSourceDP_computable : ComputableDeductiveProcess semanticSourceDP := by
   have hlist : Computable semanticSourceStageList := by
     have hstep : Computable fun p : ℕ × List Sentence =>
         semanticSourceDefSentence (p.1 + 1) :: p.2 :=
@@ -290,14 +290,14 @@ lemma semanticSourceExtensionWorld_holds_defSentence (v₀ : PCWorld) (e : ℕ) 
 
 /-- The fixed universal source process has an explicit completed world over every base
 world; no consistency premise is hidden in source reflection. -/
-theorem semanticSourceDP_hworld (v₀ : PCWorld) :
+lemma semanticSourceDP_hworld (v₀ : PCWorld) :
     (semanticSourceExtensionWorld v₀).ConsistentWithTheory semanticSourceDP := by
   intro k φ hφ
   obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hφ)
   exact semanticSourceExtensionWorld_holds_defSentence v₀ e
 
 /-- Conservative combination with any base process whose stages stay in the old language. -/
-theorem semanticSourceExtensionWorld_consistentWith_union
+lemma semanticSourceExtensionWorld_consistentWith_union
     (B : DeductiveProcess) (v₀ : PCWorld)
     (hBfresh : ∀ k φ, φ ∈ B.D k → SemanticPrimeFreshSentence φ)
     (hv₀ : v₀.ConsistentWithTheory B) :
@@ -330,7 +330,7 @@ lemma theoremDP_semanticPrimeFresh (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁
   exact eventAtom_atomCodes_ne_semanticPrimeTag e
 
 /-- Explicit non-vacuity of the fixed theorem-plus-source process. -/
-theorem theoremSemanticSourceDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma theoremSemanticSourceDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] :
     (semanticSourceExtensionWorld (provabilityWorld T)).ConsistentWithTheory
       (theoremSemanticSourceDP T) :=
@@ -362,7 +362,7 @@ lemma semanticSourceDefSentence_job (schema input direction fuel : ℕ) :
 
 /-- Any successfully decoded fresh source sentence is reflected by its semantic handle in
 every completed world of the one fixed process. -/
-theorem semanticSourceSentenceAtFuel_reflected {v : PCWorld}
+lemma semanticSourceSentenceAtFuel_reflected {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticSourceDP)
     (schema input fuel : ℕ) (hschema : schema.unpair.1 = 0)
     {φ : Sentence} (hemit : semanticSourceSentenceAtFuel schema input fuel = some φ)
@@ -384,7 +384,7 @@ theorem semanticSourceSentenceAtFuel_reflected {v : PCWorld}
 
 /-- Every proof-carrying paper source has exact threshold reflection through its canonical
 compact wrapper. -/
-theorem certifiedSource_threshold_reflected {DP : DeductiveProcess}
+lemma certifiedSource_threshold_reflected {DP : DeductiveProcess}
     (X : CertifiedSourceLUVSeq DP) (n : ℕ) (r : ℚ) (v : PCWorld)
     (hv : v.ConsistentWithTheory semanticSourceDP) :
     v.Holds ((X.toPresented.toLUV n).gt r) ↔ v.Holds ((X.toLUV n).gt r) := by
@@ -396,7 +396,7 @@ theorem certifiedSource_threshold_reflected {DP : DeductiveProcess}
   · exact X.old_language n r
 
 /-- Exact threshold reflection transfers the repository's `ValuesAt` relation both ways. -/
-theorem certifiedSource_valuesAt_iff {DP : DeductiveProcess}
+lemma certifiedSource_valuesAt_iff {DP : DeductiveProcess}
     (X : CertifiedSourceLUVSeq DP) (n : ℕ) (x : ℝ) (v : PCWorld)
     (hv : v.ConsistentWithTheory semanticSourceDP) :
     v.ValuesAt (X.toPresented.toLUV n) x ↔ v.ValuesAt (X.toLUV n) x := by
