@@ -68,3 +68,45 @@ process has no encoded first-order LUV-certificate registry from which to build 
 paper LUV presentations.  Adding that registry would revise the representation of the
 canonical theory/language from the outset; no equality with `liaHistory (theoremDP T)`
 should be claimed without a separate market correspondence theorem.
+
+## Proof-carrying cut checkpoint
+
+`CertifiedSource.lean` now isolates the exact semantic certificate required at the current
+threshold ABI.  `PCWorld.RationalCutAt` consists of lower and upper `[0,1]` bounds plus
+downward closure; `RationalCutAt.exists_valuesAt` proves, by taking the supremum of the true
+rational thresholds, that these laws are sufficient for the repository's full `ValuesAt`
+interface.  They do not decide truth at the represented value, so the interface still admits
+the paper's genuinely uncertain/nonstandard boundary behavior.
+
+`SourceCutCertificate` carries an actual `Nat.Partrec.Code` returning base-process stages
+which contain the three cut laws.  `CertifiedSourceLUVSeq` packages that executable evidence,
+the existing `RpnThresholdCodeSeq`, and old-language ownership.  Its canonical
+`toPresented` handle stores both the source emitter code and certificate code.  This is not
+yet the universal interpreter: the next construction must run and validate those programs
+inside one fixed process.  The negative theorem
+`semanticFreshIncreasing_no_cutCertificate` confirms that the malformed increasing source
+cannot enter this registry whenever the base process is non-vacuous.
+
+## Product/quotation ownership checkpoint
+
+There was a second collision beyond source tag freshness.  The original `semanticProductDP`
+ranges over every schema, while `semanticQuoteDP` interprets every Boolean program in quote
+tag `2`.  `theorem_quote_product_not_jointly_satisfiable` constructs an increasing quote
+program and proves that the theorem, quote, and unrestricted-product processes have no joint
+completed world.
+
+`SemanticCertifiedProduct.lean` repairs this by activating product clauses only when both
+factor schemas have certified-source tag `0`.  The new `semanticCertifiedProductDP` is fixed,
+computable, non-vacuous, and retains exact `ValuesAt` multiplication.  More importantly,
+`theoremQuoteCertifiedProductDP_hworld` gives an explicit completed world for the single
+fixed union of the theorem, quotation, and guarded-product processes.  The exact closed
+plumbing theorem
+`lic_no_expected_net_update_conditional_certifiedSemantic_closed` is green over that process.
+It deliberately remains non-paper-facing: source interpretation, weight presentation, and
+the right quoted product are still explicit premises.
+
+The remaining upstream task is therefore precise: implement the fixed universal verifier
+which evaluates the emitter/certificate pair stored in a tag-`0` schema, checks old-language
+ownership and base-stage membership for successively larger finite cut prefixes, and only
+then emits the source equivalences.  Joint non-vacuity must extend the checked cut prefixes;
+no caller-specific clauses may be added to the process.

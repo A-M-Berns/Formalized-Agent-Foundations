@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.SemanticSource
 import LogicalInduction.Construction.Witnesses.SemanticProduct
+import LogicalInduction.Construction.Witnesses.SemanticQuote
 
 /-!
 # Joint semantic-source/product stress tests
@@ -12,7 +13,7 @@ coherent rational cuts.  This file gives the finite, kernel-checked counterexamp
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 
 attribute [local irreducible] Nat.sqrt
 
@@ -108,8 +109,56 @@ theorem semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
   exact semanticProductDP_no_increasing_factor_assignment hv
     Xhat.thresholdSchema Xhat.thresholdSchema 0 hone hone hzero hzero
 
+/-! ## Quote/product ownership must also be separated
+
+`semanticQuoteDP` deliberately interprets every partial-recursive Boolean selector.  Such a
+selector need not be a coherent LUV threshold family.  Since the original
+`semanticProductDP` ranges over every schema number, it also treats quote schemas as product
+factors.  The following finite contradiction shows that simply unioning all three current
+processes (`theoremDP`, quote aliases, products) is impossible.
+-/
+
+noncomputable def increasingQuoteCode (T : ArithmeticTheory)
+    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] : BooleanQuoteCode T
+      (fun input => input = Nat.pair 0 (Encodable.encode (1 : ℚ))) :=
+  BooleanQuoteCode.ofComputable
+    ((Primrec.eq.comp Primrec.id
+      (Primrec.const (Nat.pair 0 (Encodable.encode (1 : ℚ))))).computablePred)
+
+/-- The unrestricted quote interpreter and unrestricted product interpreter have no joint
+completed world, even together with the ordinary theorem process.  This forces explicit
+factor-schema ownership in the repaired architecture. -/
+theorem theorem_quote_product_not_jointly_satisfiable
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    ¬∃ v : PCWorld,
+      v.ConsistentWithTheory (theoremDP T) ∧
+      v.ConsistentWithTheory semanticQuoteDP ∧
+      v.ConsistentWithTheory semanticProductDP := by
+  rintro ⟨v, htheorem, hquote, hproduct⟩
+  let q := increasingQuoteCode T
+  let input0 := Nat.pair 0 (Encodable.encode (0 : ℚ))
+  let input1 := Nat.pair 0 (Encodable.encode (1 : ℚ))
+  have hq0 : ¬v.Holds (quoteAtom (Nat.pair q.code input0)) := by
+    intro h
+    have hfalse := (BooleanQuoteCode.reflected (quotationPresentation T) q input0 v htheorem).mp h
+    simp [input0, input1] at hfalse
+  have hq1 : v.Holds (quoteAtom (Nat.pair q.code input1)) :=
+    (BooleanQuoteCode.reflected (quotationPresentation T) q input1 v htheorem).mpr (by rfl)
+  have hzero : ¬v.Holds (semanticQuoteLeaf q.code input0) := by
+    intro h
+    exact hq0 ((semanticQuoteLeaf_reflected hquote q.code input0).mp h)
+  have hone : v.Holds (semanticQuoteLeaf q.code input1) :=
+    (semanticQuoteLeaf_reflected hquote q.code input1).mpr hq1
+  exact semanticProductDP_no_increasing_factor_assignment hproduct
+    (semanticQuoteSchema q.code) (semanticQuoteSchema q.code) 0
+    (by simpa [semanticQuoteLeaf, input1] using hone)
+    (by simpa [semanticQuoteLeaf, input1] using hone)
+    (by simpa [semanticQuoteLeaf, input0] using hzero)
+    (by simpa [semanticQuoteLeaf, input0] using hzero)
+
 #print axioms semanticProductDP_no_increasing_factor_assignment
 #print axioms semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq
 #print axioms semanticFreshIncreasing_not_jointly_reflected
+#print axioms theorem_quote_product_not_jointly_satisfiable
 
 end LogicalInduction
