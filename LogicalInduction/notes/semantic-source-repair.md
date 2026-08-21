@@ -143,7 +143,7 @@ the checked link clauses transport the old quotation fact to the semantic leaf. 
 joint non-vacuity does not rely on an unstated choice of quote interpretation.
 
 The new capstone
-`lic_no_expected_net_update_conditional_paper_closed` has caller arguments
+`lic_no_expected_net_update_conditional_certifiedSource_closed` has caller arguments
 
 ```text
 T, f, X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T),

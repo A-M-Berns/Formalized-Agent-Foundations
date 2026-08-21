@@ -1312,7 +1312,7 @@ lemma rationalQuote_semanticHandle_valuesAt
 /-- Paper-facing exact CCEE over the proof-carrying source-LUV front end.  The deferred
 weight factor and the right conditional-expectation quotation are constructed internally;
 the deductive process is fixed from `T` before `X`, `f`, or `w`. -/
-theorem lic_no_expected_net_update_conditional_paper_closed
+theorem lic_no_expected_net_update_conditional_certifiedSource_closed
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)
@@ -1365,6 +1365,6 @@ theorem lic_no_expected_net_update_conditional_paper_closed
 #print axioms theoremQuoteSemanticRegistryProductDP_hworld
 #print axioms lic_no_expected_net_update_conditional_registryCertified_closed
 #print axioms lic_no_expected_net_update_conditional_registry_rightClosed
-#print axioms lic_no_expected_net_update_conditional_paper_closed
+#print axioms lic_no_expected_net_update_conditional_certifiedSource_closed
 
 end LogicalInduction
