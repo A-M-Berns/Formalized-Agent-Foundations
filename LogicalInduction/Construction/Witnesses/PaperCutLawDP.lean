@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.PaperTheoryDP
+import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 
 /-!
 # Exact public cut laws from first-order proofs
@@ -391,11 +392,34 @@ lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
   let f : ℕ → M := fun _ => Classical.choice hMne
   exact ⟨paperTheoryExtensionWorld T M f, paperBaseDP_hworld_of_model T hT f⟩
 
+lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) (sentence : Sentence)
+    (hsentence : sentence ∈ (paperBaseDP T).D k) :
+    SemanticPrimeFreshSentence sentence := by
+  intro a ha
+  rw [paperBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hsentence
+  rcases hsentence with hbase | hcut
+  · rw [theoremPaperDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
+    rcases hbase with htheorem | hpaper
+    · exact theoremDP_semanticPrimeFresh T k sentence htheorem a ha
+    · have htag := paperTheoryDP_atom_tag T hpaper ha
+      simp [htag, paperPrimeTag, semanticPrimeTag]
+  · simp only [paperCutLawDP, paperCutLawStage, Finset.mem_image,
+      Finset.mem_filter, Finset.mem_range] at hcut
+    obtain ⟨e, ⟨-, hsome⟩, rfl⟩ := hcut
+    have hfire : paperCutLawFires T e := by
+      obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
+      exact ((exists_paperCutLawCode T).choose_spec e).mp
+        (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
+    have htag := paperCutLawSentence_atom_tag_of_fire T hfire ha
+    simp [htag, paperPrimeTag, semanticPrimeTag]
+
 #print axioms paperCutLawFires_re
 #print axioms paperCutLawSentence_prim
 #print axioms paperCutLawDP_computable
 #print axioms paperCutLawDP_hworld_of_model
 #print axioms paperBaseDPComputation
 #print axioms paperBaseDP_nonvacuous
+#print axioms paperBaseDP_semanticPrimeFresh
 
 end LogicalInduction

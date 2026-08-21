@@ -250,6 +250,21 @@ lemma paperTheoryDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     paperPrimeWorld_holds_decompose M f]
   exact provable_proposition_evalf_of_model T hT f hprov
 
+lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] {k : ℕ} {sentence : Sentence}
+    (hsentence : sentence ∈ (paperTheoryDP T).D k) {a : ℕ}
+    (ha : a ∈ sentenceAtomCodes sentence) : a.unpair.1 = paperPrimeTag := by
+  simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
+    Finset.mem_filter, Finset.mem_range] at hsentence
+  obtain ⟨formulaCode, ⟨-, hsome⟩, rfl⟩ := hsentence
+  have hfire : paperTheoremFires T formulaCode := by
+    obtain ⟨out, hout⟩ := Option.isSome_iff_exists.mp hsome
+    exact ((exists_paperTheoremCode T).choose_spec formulaCode).mp
+      (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
+  obtain ⟨φ, hcode, -⟩ := paperTheoremFires_has_proposition T hfire
+  rw [← hcode, paperTheoremSentence_spec] at ha
+  exact paperPrimeDecompose_atom_tag φ a ha
+
 /-- Completeness turns the already-proved consistency of the arithmetic base into an
 explicit completed world.  Thus the universal theorem stream is not merely syntactically
 computable; it is non-vacuous. -/
