@@ -41,3 +41,4 @@ import LogicalInduction.Construction.Witnesses.SemanticQuote
 import LogicalInduction.Construction.Witnesses.SemanticSource
 import LogicalInduction.Construction.Witnesses.ProductDefinition
 import LogicalInduction.Construction.Witnesses.SemanticProduct
+import LogicalInduction.Construction.Witnesses.SemanticJoint

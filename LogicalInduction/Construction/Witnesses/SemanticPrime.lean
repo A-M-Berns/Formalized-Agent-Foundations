@@ -30,6 +30,41 @@ def semanticPrimeSentence (schema input : ℕ) : Sentence :=
 /-- Leaf schema names occupy the tag-`0` branch of the self-describing schema language. -/
 def semanticSourceSchema (base : ℕ) : ℕ := Nat.pair 0 base
 
+/-- Generic emitted-source programs and quotation aliases have disjoint schema tags.
+This prevents two fixed interpreters from assigning different meanings to the same
+semantic-prime handle.  Tag `1` remains the product constructor. -/
+def semanticEmitterSchema (code : ℕ) : ℕ :=
+  semanticSourceSchema code
+
+def semanticQuoteSchema (code : ℕ) : ℕ :=
+  Nat.pair 2 code
+
+@[simp] lemma semanticEmitterSchema_source (code : ℕ) :
+    (semanticEmitterSchema code).unpair.1 = 0 := by
+  simp [semanticEmitterSchema, semanticSourceSchema]
+
+@[simp] lemma semanticQuoteSchema_source (code : ℕ) :
+    (semanticQuoteSchema code).unpair.1 = 2 := by
+  simp [semanticQuoteSchema]
+
+lemma semanticEmitterSchema_ne_quote (emitter quote : ℕ) :
+    semanticEmitterSchema emitter ≠ semanticQuoteSchema quote := by
+  intro h
+  simp [semanticEmitterSchema, semanticQuoteSchema, semanticSourceSchema,
+    Nat.pair_eq_pair] at h
+
+lemma semanticEmitterSchema_prim : Primrec semanticEmitterSchema :=
+  (Primrec₂.natPair.comp (Primrec.const 0) Primrec.id).of_eq (fun _ => rfl)
+
+lemma semanticQuoteSchema_prim : Primrec semanticQuoteSchema :=
+  (Primrec₂.natPair.comp (Primrec.const 2) Primrec.id).of_eq (fun _ => rfl)
+
+lemma semanticPrimeSentence_encode_prim : Primrec fun p : ℕ × ℕ =>
+    Encodable.encode (semanticPrimeSentence p.1 p.2) :=
+  (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
+    (Primrec₂.natPair.comp (Primrec.const semanticPrimeTag)
+      (Primrec₂.natPair.comp Primrec.fst Primrec.snd)))).of_eq (fun _ => rfl)
+
 /-- Distinct schema/input pairs have distinct public names. -/
 lemma semanticPrimeCode_injective :
     Function.Injective (fun p : ℕ × ℕ => semanticPrimeCode p.1 p.2) := by

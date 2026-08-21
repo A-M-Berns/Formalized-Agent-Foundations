@@ -4,8 +4,9 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 /-!
 # Fixed quote leaves for semantic-prime syntax
 
-A source leaf `semanticSourceSchema code` names the already-existing quotation selector
-`code`.  This is deliberately not a general first-order bridge: it is a fixed syntactic
+A quote leaf `semanticQuoteSchema code` names the already-existing quotation selector
+`code`.  Generic emitted-source programs use the disjoint `semanticEmitterSchema`
+namespace.  This is deliberately not a general first-order bridge: it is a fixed syntactic
 definitional closure between two public names for the same universal quotation instance.
 -/
 
@@ -14,7 +15,7 @@ namespace LogicalInduction
 open LO LO.Propositional
 
 def semanticQuoteLeaf (code input : ℕ) : Sentence :=
-  semanticPrimeSentence (semanticSourceSchema code) input
+  semanticPrimeSentence (semanticQuoteSchema code) input
 
 /-- The existing universal quotation atom is uniformly computable as a sentence-valued
 function; this is the reusable emitter core for the fixed quote-leaf process. -/
@@ -53,50 +54,61 @@ noncomputable def semanticQuoteDP : DeductiveProcess where
     simp only [List.mem_toFinset] at h ⊢
     exact List.mem_cons_of_mem _ h
 
-set_option maxHeartbeats 1000000 in
-/-- The narrow quotation closure is computably enumerable.  In particular, it does not
-need an oracle for a market or for the source LUV eventually represented by a leaf. -/
-lemma semanticQuoteDefSentence_computable : Computable semanticQuoteDefSentence := by
-  classical
-  refine Computable.encode_iff.mp ?_
-  have hkind : Computable fun e : ℕ => e.unpair.1 :=
-    (Primrec.fst.comp Primrec.unpair).to_comp
-  have hrest : Computable fun e : ℕ => e.unpair.2 :=
-    (Primrec.snd.comp Primrec.unpair).to_comp
+set_option maxHeartbeats 2000000 in
+private lemma semanticQuoteLeafJob_encode_computable : Computable fun e : ℕ =>
+    Encodable.encode (semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2) := by
+  have hcode : Computable fun e : ℕ => e.unpair.2.unpair.1 :=
+    (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
+  have hinput : Computable fun e : ℕ => e.unpair.2.unpair.2 :=
+    (Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
+  have hschema : Computable fun e : ℕ => semanticQuoteSchema e.unpair.2.unpair.1 :=
+    (Primrec₂.natPair.comp (Primrec.const 2)
+      (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair)))).to_comp
+      |>.of_eq (fun _ => rfl)
+  exact (Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp
+    (Computable.const 1) (Computable₂.comp Primrec₂.natPair.to_comp
+      (Computable.const semanticPrimeTag) (Computable₂.comp Primrec₂.natPair.to_comp
+        hschema hinput)))).of_eq (fun _ => rfl)
+
+private lemma semanticQuoteAtomJob_encode_computable : Computable fun e : ℕ =>
+    Encodable.encode (quoteAtom
+      (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2)) := by
   have hcode : Computable fun e : ℕ => e.unpair.2.unpair.1 :=
     (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
   have hinput : Computable fun e : ℕ => e.unpair.2.unpair.2 :=
     (Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))).to_comp
   have hpair : Computable fun e : ℕ => Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
     Computable₂.comp Primrec₂.natPair.to_comp hcode hinput
-  have hquote : Computable fun e : ℕ => Encodable.encode (quoteAtom
-      (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2)) :=
-    Computable.encode.comp (quoteAtom_computable.comp hpair)
-  have hschema : Computable fun e : ℕ => semanticSourceSchema e.unpair.2.unpair.1 :=
-    (Primrec₂.natPair.comp (Primrec.const 0)
-      (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair)))).to_comp
-      |>.of_eq (fun _ => rfl)
-  have hleaf : Computable fun e : ℕ => Encodable.encode (semanticQuoteLeaf
-      e.unpair.2.unpair.1 e.unpair.2.unpair.2) :=
-    (Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp
-      (Computable.const 1) (Computable₂.comp Primrec₂.natPair.to_comp
-        (Computable.const semanticPrimeTag) (Computable₂.comp Primrec₂.natPair.to_comp
-          hschema hinput)))).of_eq (fun _ => rfl)
-  have harr : Computable fun p : ℕ × ℕ => Nat.succ (Nat.pair 2 (Nat.pair p.1 p.2)) :=
-    (Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 2)
-      (Computable₂.comp Primrec₂.natPair.to_comp Computable.fst Computable.snd)))
+  exact Computable.encode.comp (quoteAtom_computable.comp hpair)
+
+private lemma semanticQuoteImpJob_encode_computable : Computable fun p : ℕ × ℕ =>
+    Nat.succ (Nat.pair 2 (Nat.pair p.1 p.2)) :=
+  Computable.succ.comp (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 2)
+    (Computable₂.comp Primrec₂.natPair.to_comp Computable.fst Computable.snd))
+
+set_option maxHeartbeats 1000000 in
+/-- The narrow quotation closure is computably enumerable.  In particular, it does not
+need an oracle for a market or for the source LUV eventually represented by a leaf. -/
+lemma semanticQuoteDefSentence_computable : Computable semanticQuoteDefSentence := by
+  classical
+  refine Computable.encode_iff.mp ?_
+  have hfraw := semanticQuoteImpJob_encode_computable.comp
+      (semanticQuoteAtomJob_encode_computable.pair semanticQuoteLeafJob_encode_computable)
   have hforward : Computable fun e : ℕ => Encodable.encode
       (quoteAtom (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2) 🡒
         semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2) :=
-    harr.comp (hquote.pair hleaf)
+    hfraw.of_eq (fun _ => rfl)
+  have hbraw := semanticQuoteImpJob_encode_computable.comp
+      (semanticQuoteLeafJob_encode_computable.pair semanticQuoteAtomJob_encode_computable)
   have hbackward : Computable fun e : ℕ => Encodable.encode
       (semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2 🡒
         quoteAtom (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2)) :=
-    harr.comp (hleaf.pair hquote)
-  exact ((Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const 0)).decide
-    .cond hforward hbackward).of_eq (fun e => by
+    hbraw.of_eq (fun _ => rfl)
+  have hzero : Computable fun e : ℕ => decide (e.unpair.1 = 0) :=
+    (Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const 0)).decide.to_comp
+  exact (Computable.cond hzero hforward hbackward).of_eq (fun e => by
       rw [semanticQuoteDefSentence]
-      split_ifs <;> rfl)
+      split_ifs <;> simp_all)
 
 lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP := by
   have hlist : Computable semanticQuoteStageList := by
