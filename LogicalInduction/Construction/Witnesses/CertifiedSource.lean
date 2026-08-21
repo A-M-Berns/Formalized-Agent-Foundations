@@ -166,6 +166,13 @@ Unlike `PresentedLUVSeq`, this object does not assume semantic-prime reflection.
 structure CertifiedSourceLUVSeq (DP : DeductiveProcess) where
   toLUV : ℕ → LUV
   threshold_codes : LUV.RpnThresholdCodeSeq toLUV
+  /-- Total compiler for arbitrary rational threshold queries.  The paper supplies this by
+  syntactically substituting the rational into the e.c.-emitted one-variable LUV formula;
+  `RpnThresholdCodeSeq` separately certifies polynomial emission on the expectation grids. -/
+  emitterCode : Nat.Partrec.Code
+  emitter_spec : ∀ (n : ℕ) (r : ℚ),
+    Encodable.encode ((toLUV n).gt r) ∈
+      emitterCode.eval (Nat.pair n (Encodable.encode r))
   old_language : SemanticPrimeFreshLUVSeq toLUV
   cut_certificate : SourceCutCertificate DP toLUV
 
@@ -230,7 +237,7 @@ lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
 emission and cut-certificate stage lookup. -/
 noncomputable def thresholdSchema (X : CertifiedSourceLUVSeq DP) : ℕ :=
   semanticEmitterSchema (Nat.pair
-    (Encodable.encode (rpnThresholdSourceCode X.threshold_codes))
+    (Encodable.encode X.emitterCode)
     (Encodable.encode X.cut_certificate.stageCode))
 
 @[simp] lemma thresholdSchema_source (X : CertifiedSourceLUVSeq DP) :

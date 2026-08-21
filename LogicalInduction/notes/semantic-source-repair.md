@@ -80,7 +80,11 @@ the paper's genuinely uncertain/nonstandard boundary behavior.
 
 `SourceCutCertificate` carries an actual `Nat.Partrec.Code` returning base-process stages
 which contain the three cut laws.  `CertifiedSourceLUVSeq` packages that executable evidence,
-the existing `RpnThresholdCodeSeq`, and old-language ownership.  Its canonical
+the existing `RpnThresholdCodeSeq`, a total arbitrary-rational threshold compiler, and
+old-language ownership.  The total compiler is the operation the paper obtains by
+substituting a rational into its e.c.-emitted one-variable formula; it is intentionally not
+claimed derivable from the flattened `RpnThresholdCodeSeq`, whose contract only exposes the
+nonnegative expectation grids.  Its canonical
 `toPresented` handle stores both the source emitter code and certificate code.  This is not
 yet the universal interpreter: the next construction must run and validate those programs
 inside one fixed process.  The negative theorem
@@ -110,3 +114,11 @@ which evaluates the emitter/certificate pair stored in a tag-`0` schema, checks 
 ownership and base-stage membership for successively larger finite cut prefixes, and only
 then emits the source equivalences.  Joint non-vacuity must extend the checked cut prefixes;
 no caller-specific clauses may be added to the process.
+
+The remaining representation theorem is equally precise.  To claim the full paper source
+quantifier, FAF must define the paper-facing old-language formula/proof object and compile it
+to `CertifiedSourceLUVSeq`, thereby deriving the arbitrary-rational emitter and cut-stage
+program.  The current Foundation pin has first-order formula coding and derivations, but FAF
+still has no arithmetic-internal rational-order/threshold compiler for arbitrary
+value-defining formulas.  Until that compiler exists, `CertifiedSourceLUVSeq` is the checked
+target interface, not yet a proved exact image of every paper `def:luv` source.
