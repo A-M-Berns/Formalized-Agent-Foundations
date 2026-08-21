@@ -225,6 +225,31 @@ lemma semanticSourceExtensionWorld_leaf_iff (v₀ : PCWorld)
   · intro hholds
     exact ⟨fuel, φ, hemit, hfresh, hholds⟩
 
+/-- Any downward law admitted by the executable registry is semantically valid between
+the corresponding source leaves in the canonical extension of a base model. -/
+lemma semanticSourceExtensionWorld_downward_of_seen {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
+    (hv₀ : v₀.ConsistentWithTheory DP) {schema n fuel : ℕ} {r s : ℚ}
+    (hrs : r < s)
+    (hseen : semanticSourceLawSeen base schema
+      (sourceCutDownwardJob n r s) fuel = true) :
+    (semanticSourceExtensionWorld v₀).Holds
+      (semanticPrimeSentence schema (Nat.pair n (Encodable.encode s))) →
+    (semanticSourceExtensionWorld v₀).Holds
+      (semanticPrimeSentence schema (Nat.pair n (Encodable.encode r))) := by
+  obtain ⟨f, _, law, hchecked⟩ :=
+    (semanticSourceLawSeen_iff base schema (sourceCutDownwardJob n r s) fuel).1 hseen
+  obtain ⟨φr, φs, hφr, hφs, hfr, hfs, rfl⟩ :=
+    semanticSourceCheckedDownward_spec base hrs hchecked
+  have hsource := semanticSourceCheckedLawAtFuel_source base hchecked
+  obtain ⟨k, hk⟩ := semanticSourceCheckedLawAtFuel_mem base hchecked
+  have hbase : v₀.Holds (φs 🡒 φr) := hv₀ k _ hk
+  intro hs
+  have hs₀ : v₀.Holds φs :=
+    (semanticSourceExtensionWorld_leaf_iff v₀ schema _ f hsource hφs hfs).mp hs
+  exact (semanticSourceExtensionWorld_leaf_iff v₀ schema _ f hsource hφr hfr).mpr
+    (hbase hs₀)
+
 /-- Every source-definition clause is true in the canonical extension world. -/
 lemma semanticSourceExtensionWorld_holds_defSentence (v₀ : PCWorld) (e : ℕ) :
     (semanticSourceExtensionWorld v₀).Holds (semanticSourceDefSentence e) := by

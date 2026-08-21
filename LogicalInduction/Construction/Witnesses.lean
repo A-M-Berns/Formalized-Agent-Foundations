@@ -46,3 +46,4 @@ import LogicalInduction.Construction.Witnesses.CertifiedSource
 import LogicalInduction.Construction.Witnesses.SemanticSourceRegistry
 import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
+import LogicalInduction.Construction.Witnesses.SemanticRegistryProduct

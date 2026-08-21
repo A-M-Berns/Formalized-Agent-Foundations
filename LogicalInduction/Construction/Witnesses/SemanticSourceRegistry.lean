@@ -397,6 +397,44 @@ theorem semanticSourceCheckedLawAtFuel_source {DP : DeductiveProcess}
   · assumption
   · contradiction
 
+/-- A successful downward-law check exposes the two uniquely emitted fresh formulas and
+the exact implication checked against the base process. -/
+theorem semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {schema fuel n : ℕ} {r s : ℚ}
+    {law : Sentence} (hrs : r < s)
+    (h : semanticSourceCheckedLawAtFuel base schema
+      (sourceCutDownwardJob n r s) fuel = some law) :
+    ∃ φr φs,
+      semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode r)) fuel = some φr ∧
+      semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode s)) fuel = some φs ∧
+      SemanticPrimeFreshSentence φr ∧ SemanticPrimeFreshSentence φs ∧
+      law = (φs 🡒 φr) := by
+  have hsource := semanticSourceCheckedLawAtFuel_source base h
+  unfold semanticSourceCheckedLawAtFuel at h
+  rw [if_pos hsource] at h
+  obtain ⟨law', hcut, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨stageIndex, _, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨stage, _, h⟩ := Option.bind_eq_some_iff.mp h
+  split at h <;> try contradiction
+  simp only [Option.some.injEq] at h
+  subst law'
+  unfold semanticSourceCutLawAtFuel at hcut
+  simp only [sourceCutDownwardJob, Nat.unpair_pair, if_neg (by decide : ¬(2 : ℕ) = 0),
+    if_neg (by decide : ¬(2 : ℕ) = 1), if_pos rfl,
+    decodedQuotationRat_encode, if_pos hrs] at hcut
+  obtain ⟨φr, hφr, hcut⟩ := Option.bind_eq_some_iff.mp hcut
+  obtain ⟨φs, hφs, hcut⟩ := Option.bind_eq_some_iff.mp hcut
+  unfold freshImpSourceSentence at hcut
+  by_cases hfr : semanticPrimeFreshSentenceB φr = true <;>
+    by_cases hfs : semanticPrimeFreshSentenceB φs = true <;>
+    simp [hfr, hfs] at hcut
+  subst law
+  exact ⟨φr, φs, hφr, hφs,
+    (semanticPrimeFreshSentenceB_eq_true φr).1 hfr,
+    (semanticPrimeFreshSentenceB_eq_true φs).1 hfs, rfl⟩
+
 /-! ## Completeness for genuine certified packages -/
 
 lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
@@ -987,6 +1025,18 @@ lemma semanticSourceThresholdPrefixValidAtFuel_mono {DP : DeductiveProcess}
   · by_cases hr : 1 < decodedQuotationRat zr
     · simpa [hr] using semanticSourceLawSeen_mono base hff (by simpa [hr] using h.1.2)
     · simp [hr]
+
+lemma semanticSourcePrefixValidAtFuel_mono {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP)
+    {schema limit fuel fuel' : ℕ} (hff : fuel ≤ fuel')
+    (h : semanticSourcePrefixValidAtFuel base schema limit fuel = true) :
+    semanticSourcePrefixValidAtFuel base schema limit fuel' = true := by
+  rw [semanticSourcePrefixValidAtFuel, List.all_eq_true] at h ⊢
+  intro n hn
+  rw [List.all_eq_true]
+  intro zr hzr
+  exact semanticSourceThresholdPrefixValidAtFuel_mono base hff
+    (List.all_eq_true.mp (h n hn) zr hzr)
 
 lemma certifiedSourceThresholdPrefix_eventually {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP)
