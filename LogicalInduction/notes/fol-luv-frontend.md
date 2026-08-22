@@ -36,7 +36,7 @@ needed. Consequently `PaperLUV.rationalCutAt` constructs the abstract rational c
 completed `paperTheoryDP` world, and `PaperLUV.source_valued` obtains a real `ValuesAt`
 witness from the generic supremum theorem in `Framework/RationalCut.lean`.
 
-## Remaining compiler boundary
+## Structured-RPN kill test: counted format blocked
 
 The existing `paperPrimeDecompose` correctly treats quantified first-order sentences as
 propositional prime atoms, matching the paper. Its public atom name, however, contains the
@@ -44,11 +44,39 @@ whole first-order Gödel code. Existing canonical RPN represents that atom by th
 `paperPrimeCode ... + 5`. Producing this token under `PolyFueled` meters construction of the
 whole natural code, not emission of the first-order formula's symbols.
 
-Thus primitive-recursive Gödel compilation is not enough to prove the required
-symbol-metered `RpnThresholdCodeSeq`. The next implementation milestone is a narrow additive
-structured-prime block in the RPN frontend (or an equivalent fixed semantic handle): emit a
-first-order prime formula symbol-by-symbol, then contract it to the existing tag-7 public atom.
-It must preserve all current RPN clients and prove a bridge to `RpnSentenceCodes`.
+`StructuredPaperRpn.lean` tests the proposed additive format without installing it in the
+shared parser:
+
+```text
+[1, 0, polarityCode, symbolCount, symbols...]
+```
+
+where the formerly invalid ordinary payload `0` is the marker and the explicit count makes
+the block self-delimiting. The checkpoint grammar is intentionally tiny: postfix symbols for
+first-order `⊤`, conjunction, and existential quantification. It contracts a linearly growing
+family `∃ x, (⊤ ∧ ⋯ ∧ ⊤)` to the exact existing tag-`7` `paperPrimeSentence`, and
+`structuredFOTestBlock_polySegStream` proves that the input block itself is polynomially
+emittable.
+
+The basic cost boundary is favorable: `PolySegStream` would certify only the structured
+input symbols, while contraction is a denotational validation step rather than a
+`PolyFueled` output. The giant final Gödel value is therefore not itself the blocker.
+
+The blocker is the rest of the RPN ABI. `parseRpn_structuredFOTestBlock_none` proves that the
+current parser rejects the marker, while
+`structuredFOTest_conditioning_exits_after_marker` proves that the conditioning run automaton
+exits after `[1,0]`, before polarity, count, or formula symbols. Installing the counted parser
+branch would make its central run/parse theorem false. Moreover, the generic conditioning
+compiler accepts arbitrary digit-emitted inputs and clamps large token values; storing an
+untrusted count token directly would reintroduce a polynomial-output problem on malformed
+streams even though valid counted blocks have small counts.
+
+The next implementation milestone must therefore change the block framing before building a
+full codec. The leading candidate is a small-token, self-delimiting prefix grammar (or a
+reserved small terminator) whose scanner tracks only polynomially bounded parse state. That
+format must be implemented jointly in `parseRpn`, its numeric mirror, `RpnConditioning`, and
+the corresponding freeze/splice scanners, with the run/parse invariant re-proved. Only after
+that green integration should the grammar be generalized to complete arithmetic syntax.
 
 No caller-supplied threshold family or cut certificate enters the semantic API. The next
-checkpoint is solely the symbol-metered structured-prime emission bridge.
+checkpoint is a scanner-compatible structured-leaf framing spike.

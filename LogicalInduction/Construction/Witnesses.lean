@@ -53,3 +53,4 @@ import LogicalInduction.Construction.Witnesses.PaperFirstOrderCompiler
 import LogicalInduction.Construction.Witnesses.PaperTheoryDP
 import LogicalInduction.Construction.Witnesses.PaperCutLawDP
 import LogicalInduction.Construction.Witnesses.PaperLUV
+import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
