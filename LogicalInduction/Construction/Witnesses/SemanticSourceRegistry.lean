@@ -128,6 +128,13 @@ private def freshImpSourceSentence (φr φs : Sentence) : Option Sentence :=
     some (φs 🡒 φr)
   else none
 
+lemma freshImpSourceSentence_eq_some_of_fresh {φr φs : Sentence}
+    (hφr : SemanticPrimeFreshSentence φr)
+    (hφs : SemanticPrimeFreshSentence φs) :
+    freshImpSourceSentence φr φs = some (φs 🡒 φr) := by
+  simp [freshImpSourceSentence, (semanticPrimeFreshSentenceB_eq_true φr).2 hφr,
+    (semanticPrimeFreshSentenceB_eq_true φs).2 hφs]
+
 private lemma sentenceNeg_prim : Primrec fun φ : Sentence => ∼φ := by
   apply Primrec.encode_iff.mp
   exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
@@ -202,6 +209,34 @@ def semanticSourceCutLawAtFuel (schema job fuel : ℕ) : Option Sentence :=
       freshImpSourceSentence φr φs
     else none
   else none
+
+/-- Decode a successful raw downward-law reconstruction, independently of how the law
+will later be certified. -/
+lemma semanticSourceCutLawAtFuel_downward_spec {schema fuel n : ℕ} {r s : ℚ}
+    {law : Sentence} (hrs : r < s)
+    (h : semanticSourceCutLawAtFuel schema
+      (sourceCutDownwardJob n r s) fuel = some law) :
+    ∃ φr φs,
+      semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode r)) fuel = some φr ∧
+      semanticSourceSentenceAtFuel schema
+        (Nat.pair n (Encodable.encode s)) fuel = some φs ∧
+      SemanticPrimeFreshSentence φr ∧ SemanticPrimeFreshSentence φs ∧
+      law = (φs 🡒 φr) := by
+  unfold semanticSourceCutLawAtFuel at h
+  simp only [sourceCutDownwardJob, Nat.unpair_pair,
+    if_neg (by decide : ¬(2 : ℕ) = 0), if_neg (by decide : ¬(2 : ℕ) = 1),
+    decodedQuotationRat_encode, if_pos hrs] at h
+  obtain ⟨φr, hφr, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨φs, hφs, h⟩ := Option.bind_eq_some_iff.mp h
+  unfold freshImpSourceSentence at h
+  by_cases hfr : semanticPrimeFreshSentenceB φr = true <;>
+    by_cases hfs : semanticPrimeFreshSentenceB φs = true <;>
+    simp [hfr, hfs] at h
+  subst law
+  exact ⟨φr, φs, hφr, hφs,
+    (semanticPrimeFreshSentenceB_eq_true φr).1 hfr,
+    (semanticPrimeFreshSentenceB_eq_true φs).1 hfs, rfl⟩
 
 lemma semanticSourceCutLawAtFuel_prim : Primrec fun p : (ℕ × ℕ) × ℕ =>
     semanticSourceCutLawAtFuel p.1.1 p.1.2 p.2 := by

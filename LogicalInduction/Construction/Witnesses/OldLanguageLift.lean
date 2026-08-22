@@ -12,7 +12,7 @@ are deliberately no axioms identifying the renamed atoms with their original nam
 
 namespace LogicalInduction
 
-open LO LO.Propositional
+open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-- Reserved outer tag for the fixed copy of the pre-extension propositional language. -/
 def oldLanguageTag : ℕ := 8
@@ -23,6 +23,26 @@ def oldAtom (a : ℕ) : ℕ := Nat.pair oldLanguageTag a
 /-- Syntactically rename every atom into the fixed old-language namespace. -/
 def liftSentence (phi : Sentence) : Sentence :=
   phi⟦fun a => Formula.atom (oldAtom a)⟧
+
+/-- Atom support of the renamed sentence is exactly the image of the original support. -/
+@[simp] lemma sentenceAtomCodes_liftSentence (phi : Sentence) :
+    sentenceAtomCodes (liftSentence phi) =
+      (sentenceAtomCodes phi).image oldAtom := by
+  induction phi using Formula.rec' with
+  | hfalsum => rfl
+  | hatom a => simp [liftSentence, Formula.subst]
+  | himp phi psi ihphi ihpsi =>
+      change sentenceAtomCodes (liftSentence phi) ∪
+        sentenceAtomCodes (liftSentence psi) = _
+      rw [ihphi, ihpsi, sentenceAtomCodes_imp, Finset.image_union]
+  | hand phi psi ihphi ihpsi =>
+      change sentenceAtomCodes (liftSentence phi) ∪
+        sentenceAtomCodes (liftSentence psi) = _
+      rw [ihphi, ihpsi, sentenceAtomCodes_and, Finset.image_union]
+  | hor phi psi ihphi ihpsi =>
+      change sentenceAtomCodes (liftSentence phi) ∪
+        sentenceAtomCodes (liftSentence psi) = _
+      rw [ihphi, ihpsi, sentenceAtomCodes_or, Finset.image_union]
 
 /-- Read the old-language namespace of a world as a world on the original language. -/
 def pullOldWorld (v : PCWorld) : PCWorld := fun a => v (oldAtom a)
@@ -83,6 +103,45 @@ lemma oldAtom_ne_semanticPrimeCode (a schema input : ℕ) :
   intro h
   have := congrArg (fun n : ℕ => n.unpair.1) h
   simp [oldAtom, oldLanguageTag, semanticPrimeCode, semanticPrimeTag] at this
+
+/-- The established theorem/event vocabulary does not use the reserved old-copy tag. -/
+lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
+    ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ oldLanguageTag := by
+  intro a ha
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
+        ComputationClaimKind.godelCode, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_quoteAtom _ a ha, oldLanguageTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_quoteAtom _ a ha, oldLanguageTag] at hc
+  · simp at ha
+
+lemma theoremDP_oldLanguageFresh (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (k : ℕ) (phi : Sentence) (hphi : phi ∈ (theoremDP T).D k) :
+    ∀ a ∈ sentenceAtomCodes phi, a.unpair.1 ≠ oldLanguageTag := by
+  simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
+    Finset.mem_range] at hphi
+  obtain ⟨e, _, rfl⟩ := hphi
+  exact eventAtom_atomCodes_ne_oldLanguageTag e
 
 /-! ## Executable syntax lift -/
 

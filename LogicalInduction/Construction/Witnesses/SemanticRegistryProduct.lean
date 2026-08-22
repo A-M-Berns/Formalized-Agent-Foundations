@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 import LogicalInduction.Construction.Witnesses.SemanticProduct
 import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
 import LogicalInduction.Construction.Witnesses.SemanticQuoteFactor
+import LogicalInduction.Construction.Witnesses.EntailedSourceRegistry
 
 /-!
 # Registry-guarded exact semantic products
@@ -31,7 +32,8 @@ uses quotation facts together with their fixed semantic-link clauses. -/
 noncomputable def semanticFactorPrefixValidAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (schema limit fuel : ℕ) : Bool :=
   if schema.unpair.1 = 0 then
-    semanticSourcePrefixValidAtFuel base schema limit fuel
+    semanticSourcePrefixValidAtFuel base schema limit fuel ||
+      entailedSourcePrefixValidAtFuel base schema limit fuel
   else if schema.unpair.1 = 2 then
     semanticQuoteFactorPrefixValidAtFuel base schema limit fuel
   else false
@@ -124,8 +126,11 @@ lemma semanticFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
   have htwo : Computable fun p : (ℕ × ℕ) × ℕ => decide (p.1.1.unpair.1 = 2) :=
     (Primrec.eq.comp htagP (Primrec.const 2)).decide.to_comp
   have hsource : Computable fun p : (ℕ × ℕ) × ℕ =>
-      semanticSourcePrefixValidAtFuel base p.1.1 p.1.2 p.2 :=
-    (semanticSourcePrefixValidAtFuel_prim base).to_comp
+      semanticSourcePrefixValidAtFuel base p.1.1 p.1.2 p.2 ||
+        entailedSourcePrefixValidAtFuel base p.1.1 p.1.2 p.2 :=
+    (Primrec.dom_bool₂ (· || ·)).to_comp.comp
+      (semanticSourcePrefixValidAtFuel_prim base).to_comp
+      (entailedSourcePrefixValidAtFuel_prim base).to_comp
   have hquote : Computable fun p : (ℕ × ℕ) × ℕ =>
       semanticQuoteFactorPrefixValidAtFuel base p.1.1 p.1.2 p.2 :=
     semanticQuoteFactorPrefixValidAtFuel_computable base
@@ -424,9 +429,9 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
         (semanticPrimeSentence schema
           (Nat.pair n (Encodable.encode (decodedQuotationRat zr)))) := by
   by_cases hsource : schema.unpair.1 = 0
-  · have hsourceValid : semanticSourcePrefixValidAtFuel base schema limit fuel = true := by
-      simpa [semanticFactorPrefixValidAtFuel, hsource] using hvalid
-    have hseen := semanticSourcePrefixValidAtFuel_downward base hsourceValid hn hzr hzs hrs
+  · have hsourceValid : semanticSourcePrefixValidAtFuel base schema limit fuel = true ∨
+        entailedSourcePrefixValidAtFuel base schema limit fuel = true := by
+      simpa [semanticFactorPrefixValidAtFuel, hsource, Bool.or_eq_true] using hvalid
     have hne : schema.unpair.1 ≠ 1 := by omega
     intro hs
     have hs' : (semanticSourceExtensionWorld v₀).Holds
@@ -434,7 +439,15 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
           (Nat.pair n (Encodable.encode (decodedQuotationRat zs)))) :=
       (semanticRegistryProductExtensionWorld_leaf base (semanticSourceExtensionWorld v₀)
         schema (Nat.pair n (Encodable.encode (decodedQuotationRat zs))) hne).mp hs
-    have hr' := semanticSourceExtensionWorld_downward_of_seen base v₀ hv₀ hrs hseen hs'
+    have hr' : (semanticSourceExtensionWorld v₀).Holds
+        (semanticPrimeSentence schema
+          (Nat.pair n (Encodable.encode (decodedQuotationRat zr)))) := by
+      rcases hsourceValid with hcert | hentails
+      · exact semanticSourceExtensionWorld_downward_of_seen base v₀ hv₀ hrs
+          (semanticSourcePrefixValidAtFuel_downward base hcert hn hzr hzs hrs) hs'
+      · exact semanticSourceExtensionWorld_downward_of_entailedSeen base v₀ hv₀
+          hsource hrs
+          (entailedSourcePrefixValidAtFuel_downward base hentails hn hzr hzs hrs) hs'
     exact (semanticRegistryProductExtensionWorld_leaf base (semanticSourceExtensionWorld v₀)
       schema (Nat.pair n (Encodable.encode (decodedQuotationRat zr))) hne).mpr hr'
   · have hquote : schema.unpair.1 = 2 := by
@@ -952,7 +965,10 @@ lemma semanticFactorPrefixValidAtFuel_mono {DP : DeductiveProcess}
     semanticFactorPrefixValidAtFuel base schema limit fuel' = true := by
   by_cases hzero : schema.unpair.1 = 0
   · simp only [semanticFactorPrefixValidAtFuel, if_pos hzero] at h ⊢
-    exact semanticSourcePrefixValidAtFuel_mono base hff h
+    simp only [Bool.or_eq_true] at h ⊢
+    rcases h with h | h
+    · exact Or.inl (semanticSourcePrefixValidAtFuel_mono base hff h)
+    · exact Or.inr (entailedSourcePrefixValidAtFuel_mono base hff h)
   · have htwo : schema.unpair.1 = 2 := by
       unfold semanticFactorPrefixValidAtFuel at h
       rw [if_neg hzero] at h
