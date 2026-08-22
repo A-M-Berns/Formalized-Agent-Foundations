@@ -46,7 +46,7 @@ variable {T : ArithmeticTheory} [T.Δ₁]
 /-- Literal first-order threshold formula `⌜X > r⌝`: every value satisfying `X`
 is greater than the represented external rational. No out-of-range threshold is
 replaced by a propositional constant. -/
-def thresholdFormula (X : PaperLUV T) (r : ℚ) : ArithmeticProposition :=
+def thresholdFormula (X : PaperLUV T) (r : ℚ) : ArithmeticSentence :=
   ∀⁰ (X.formula 🡒 paperRatGtDef r)
 
 /-- The corresponding ordinary FAF LUV, obtained only by prime decomposition. -/
