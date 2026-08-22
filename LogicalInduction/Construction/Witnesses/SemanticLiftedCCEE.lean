@@ -306,18 +306,18 @@ lemma liftedRpnSemanticHandle_valuesAt {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) (n : ℕ) (v : PCWorld) (x : ℝ)
     (hsource : v.ConsistentWithTheory semanticSourceDP)
     (hx : v.ValuesAt (liftLUV (X n)) x) :
-    v.ValuesAt (CertifiedSourceLUVSeq.semanticHandleLUVSeq
+    v.ValuesAt (semanticHandleLUVSeq
       (liftedRpnSourceSchema hX) n) x := by
   refine ⟨hx.1, hx.2.1, fun r => ⟨?_, ?_⟩⟩
   · intro hr
-    rw [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt]
+    rw [semanticHandleLUVSeq_gt]
     apply (liftedRpnSource_reflected hX n r v hsource).2
     by_cases hr0 : r < 0
     · rw [liftedRpnSourceSentence, if_pos hr0]
       exact PCWorld.holds_top v
     · simpa [liftedRpnSourceSentence, hr0, liftLUV] using (hx.2.2 r).1 hr
   · intro hr hleaf
-    rw [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] at hleaf
+    rw [semanticHandleLUVSeq_gt] at hleaf
     have hemitted := (liftedRpnSource_reflected hX n r v hsource).1 hleaf
     by_cases hr0 : r < 0
     · exfalso
@@ -392,10 +392,10 @@ noncomputable def canonicalConditionalExpectationQuoteCode
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n =>
       (canonicalCCEEMarketComputation T).expectQuoteAt
-        (CertifiedSourceLUVSeq.semanticHandleLUVSeq schema) n (f n) * w (f n)) :=
+        (semanticHandleLUVSeq schema) n (f n) * w (f n)) :=
   conditionalExpectationQuoteCode T (canonicalCCEEMarketComputation T)
-    f (CertifiedSourceLUVSeq.semanticHandleLUVSeq schema)
-    (CertifiedSourceLUVSeq.semanticHandleLUVSeq_rpnThresholdCodeSeq schema)
+    f (semanticHandleLUVSeq schema)
+    (semanticHandleLUVSeq_rpnThresholdCodeSeq schema)
     w hw weight_mem
 
 /-- **`thm:ccee`, exact paper-facing form.**  The source is automatically renamed and
@@ -421,7 +421,7 @@ theorem lic_no_expected_net_update_conditional_closed_exact
         (liaHistory (canonicalCCEEDP T)) n := by
   haveI := canonicalCCEELIA T
   let sourceSchema := liftedRpnSourceSchema hX
-  let sourceHandle := CertifiedSourceLUVSeq.semanticHandleLUVSeq sourceSchema
+  let sourceHandle := semanticHandleLUVSeq sourceSchema
   let weightQ := canonicalDeferredWeightQuoteCode T f w weight_generable weight_mem
   let rightQ := canonicalConditionalExpectationQuoteCode T f sourceSchema w
     weight_generable weight_mem
@@ -429,7 +429,7 @@ theorem lic_no_expected_net_update_conditional_closed_exact
     (DP := canonicalCCEEDP T) f sourceHandle
     (semanticSchemaProductLUV sourceSchema (semanticQuoteSchema weightQ.code))
     rightQ.luv w weight_mem weight_generable
-    (CertifiedSourceLUVSeq.semanticHandleLUVSeq_rpnThresholdCodeSeq sourceSchema)
+    (semanticHandleLUVSeq_rpnThresholdCodeSeq sourceSchema)
     (semanticSchemaProductLUV_rpnThresholdCodeSeq sourceSchema
       (semanticQuoteSchema weightQ.code)) rightQ.poly
     (fun _ => 0) tendsto_const_nhds (fun n v hv => ?_)

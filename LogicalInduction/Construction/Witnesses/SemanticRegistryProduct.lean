@@ -1067,8 +1067,8 @@ lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
     (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
     (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
     (n : ℕ) {x c : ℝ}
-    (hx : v.ValuesAt (CertifiedSourceLUVSeq.semanticHandleLUVSeq left n) x)
-    (hc : v.ValuesAt (CertifiedSourceLUVSeq.semanticHandleLUVSeq right n) c) :
+    (hx : v.ValuesAt (semanticHandleLUVSeq left n) x)
+    (hc : v.ValuesAt (semanticHandleLUVSeq right n) c) :
     v.ValuesAt (semanticSchemaProductLUV left right n) (x * c) := by
   obtain ⟨hx0, hx1, hxthr⟩ := hx
   obtain ⟨hc0, hc1, hcthr⟩ := hc
@@ -1082,8 +1082,8 @@ lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
       obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
       obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
       exact holds_semanticRegistryProduct_pos_of_eventually base hv left right hl hr n hst
-        (by simpa [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] using (hxthr _).1 hsx)
-        (by simpa [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] using (hcthr _).1 htc)
+        (by simpa [semanticHandleLUVSeq_gt] using (hxthr _).1 hsx)
+        (by simpa [semanticHandleLUVSeq_gt] using (hcthr _).1 htc)
   · intro hrc
     rw [semanticSchemaProductLUV_gt]
     obtain ⟨s, t, hs0, ht0, hst, hxs, hct⟩ :=
@@ -1091,8 +1091,8 @@ lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
     obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
     obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
     exact not_holds_semanticRegistryProduct_neg_of_eventually base hv left right hl hr n hst
-      (by simpa [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] using (hxthr _).2 hxs)
-      (by simpa [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] using (hcthr _).2 hct)
+      (by simpa [semanticHandleLUVSeq_gt] using (hxthr _).2 hxs)
+      (by simpa [semanticHandleLUVSeq_gt] using (hcthr _).2 hct)
 
 private lemma theoremQuoteRegistry_consistent_base
     {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
@@ -1308,19 +1308,19 @@ lemma rationalQuote_semanticHandle_valuesAt
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (n : ℕ) (v : PCWorld)
     (htheorem : v.ConsistentWithTheory (theoremDP T))
     (hquote : v.ConsistentWithTheory semanticQuoteDP) :
-    v.ValuesAt (CertifiedSourceLUVSeq.semanticHandleLUVSeq
+    v.ValuesAt (semanticHandleLUVSeq
       (semanticQuoteSchema q.code) n) (value n) := by
   obtain ⟨h0, h1, hthr⟩ := RationalQuoteCode.reflected
     (quotationPresentation T) q n v htheorem
   refine ⟨h0, h1, fun r => ⟨?_, ?_⟩⟩
   · intro hr
-    rw [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt]
+    rw [semanticHandleLUVSeq_gt]
     apply (semanticQuoteLeaf_reflected hquote q.code
       (Nat.pair n (Encodable.encode r))).mpr
     exact (hthr r).1 hr
   · intro hr hleaf
     apply (hthr r).2 hr
-    rw [CertifiedSourceLUVSeq.semanticHandleLUVSeq_gt] at hleaf
+    rw [semanticHandleLUVSeq_gt] at hleaf
     exact (semanticQuoteLeaf_reflected hquote q.code
       (Nat.pair n (Encodable.encode r))).mp (by
         simpa only [semanticQuoteLeaf, semanticQuoteSchema] using hleaf)

@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.QuotationAffine
+import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 
 /-!
 # Compact semantic-prime names
@@ -38,6 +38,49 @@ def semanticEmitterSchema (code : ℕ) : ℕ :=
 
 def semanticQuoteSchema (code : ℕ) : ℕ :=
   Nat.pair 2 code
+
+/-- The ordinary `LUV` family named by one compact semantic schema. -/
+def semanticHandleLUVSeq (schema n : ℕ) : LUV where
+  gt r := semanticPrimeSentence schema (Nat.pair n (Encodable.encode r))
+
+@[simp] lemma semanticHandleLUVSeq_gt (schema n : ℕ) (r : ℚ) :
+    (semanticHandleLUVSeq schema n).gt r =
+      semanticPrimeSentence schema (Nat.pair n (Encodable.encode r)) := rfl
+
+/-- Compact handles preserve the repository's symbol-metered threshold interface. -/
+lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
+    LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hn := PolyFueled.left
+  have hk := PolyFueled.left.comp PolyFueled.right
+  have hi := PolyFueled.right.comp PolyFueled.right
+  have gPF := hgcd.comp (hi.pair hk)
+  have pgPF := predc_polyFueled.comp gPF
+  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
+  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
+  have h2num := had.comp (numPF.pair numPF)
+  have meshPF := ifzSel_polyFueled.comp
+    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  have fullPF := ((PolyFueled.const 1).pair
+    ((PolyFueled.const semanticPrimeTag).pair
+      ((PolyFueled.const schema).pair (hn.pair meshPF)))).succ_comp
+  apply LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+  refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
+  rw [semanticHandleLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode, encode_atom]
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk0 : m.unpair.2.unpair.1 = 0
+  · rw [if_pos hk0, hk0]
+    norm_num
+    rfl
+  · rw [if_neg hk0]
+    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
+    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
+        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [hg1, encode_rat_natCast_div hk0, two_mul]
 
 @[simp] lemma semanticEmitterSchema_source (code : ℕ) :
     (semanticEmitterSchema code).unpair.1 = 0 := by
