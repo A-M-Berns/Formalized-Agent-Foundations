@@ -8,10 +8,17 @@ sources by `lic_no_expected_net_update_conditional_closed_exact`.
 
 `PaperLUV.lean` chooses a fixed representation of a nonnegative rational inside one-sorted
 arithmetic: a value object is the Foundation pair code of numerator `a` and positive
-denominator `b`. `paperRatGtDef a b` expresses strict comparison by cross multiplication.
+denominator `b`. `paperRatGtDef r` expresses strict comparison by cross multiplication.
 `paperRatGtDef_eval_nat` checks the intended standard-model semantics. A `PaperLUV T` keeps
 the literal one-variable formula separate from sequence efficiency and carries object-level
-proofs of unique existence and `[0,1]` membership.
+Foundation proofs of unique existence and `[0,1]` membership. Its threshold is uniformly
+`∀ q, X(q) → q > r`; negative and above-one thresholds are not replaced by public constants.
+
+The pair representation is deliberately an ordered-value frontend, not a rational arithmetic
+library. Different fraction codes such as `1/2` and `2/4` have the same external threshold cut,
+while the `PaperLUV` uniqueness proof selects one object-level code. This is sufficient for
+expectations and `ValuesAt`; arithmetic/equality closure between LUV values remains outside this
+PR unless a downstream consumer demonstrates that canonical reduction is necessary.
 
 ## Remaining compiler boundary
 
