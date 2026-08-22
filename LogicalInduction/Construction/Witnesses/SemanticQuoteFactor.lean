@@ -544,6 +544,122 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually
         exact Or.inr ⟨hc, hl⟩⟩
   · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
 
+/-- The quotation-factor completeness argument works in any fixed computable base which
+contains the canonical theorem/quotation stages. -/
+lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
+    (hsub : ∀ k phi, phi ∈ (theoremQuoteBaseDP T).D k → phi ∈ DP.D k)
+    {value : ℕ → ℚ} (q : RationalQuoteCode T value)
+    (n zr zs : ℕ) :
+    ∃ fuel, semanticQuoteFactorDownwardAtFuel base
+      (semanticQuoteSchema q.code) fuel n zr zs = true := by
+  by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
+  · by_cases hrv : decodedQuotationRat zr < value n
+    · obtain ⟨k, hk⟩ := (quotationPresentation T).quote_positive_enters q.code
+          (Nat.pair n (Encodable.encode (decodedQuotationRat zr)))
+          (q.pos_complete n _ hrv)
+      have hbase : semanticQuoteFactorClaim (semanticQuoteSchema q.code) n zr true ∈
+          DP.D k := hsub k _ (by
+        change _ ∈ (theoremDP T).D k ∪ semanticQuoteDP.D k
+        apply Finset.mem_union_left
+        simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk)
+      obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually base hbase
+      let e := Nat.pair 0 (Nat.pair q.code
+        (Nat.pair n (Encodable.encode (decodedQuotationRat zr))))
+      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zr true ∈
+          DP.D e := hsub e _ (by
+        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
+        apply Finset.mem_union_right
+        change _ ∈ (semanticQuoteStageList e).toFinset
+        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
+          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e))))
+      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually base hlinkBase
+      let common := max fuel linkFuel
+      have hc := semanticSentenceSeenAtFuel_mono base
+        (Nat.le_max_left fuel linkFuel) hfuel
+      have hl := semanticSentenceSeenAtFuel_mono base
+        (Nat.le_max_right fuel linkFuel) hlinkFuel
+      exact ⟨common, by
+        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
+          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+        exact Or.inl ⟨hc, hl⟩⟩
+    · have hvs : value n < decodedQuotationRat zs :=
+        lt_of_le_of_lt (not_lt.mp hrv) hrs
+      obtain ⟨k, hk⟩ := (quotationPresentation T).quote_negative_refutes q.code
+          (Nat.pair n (Encodable.encode (decodedQuotationRat zs)))
+          (q.neg_complete n _ hvs)
+      have hbase : semanticQuoteFactorClaim (semanticQuoteSchema q.code) n zs false ∈
+          DP.D k := hsub k _ (by
+        change _ ∈ (theoremDP T).D k ∪ semanticQuoteDP.D k
+        apply Finset.mem_union_left
+        simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk)
+      obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually base hbase
+      let e := Nat.pair 1 (Nat.pair q.code
+        (Nat.pair n (Encodable.encode (decodedQuotationRat zs))))
+      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zs false ∈
+          DP.D e := hsub e _ (by
+        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
+        apply Finset.mem_union_right
+        change _ ∈ (semanticQuoteStageList e).toFinset
+        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
+          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e))))
+      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually base hlinkBase
+      let common := max fuel linkFuel
+      have hc := semanticSentenceSeenAtFuel_mono base
+        (Nat.le_max_left fuel linkFuel) hfuel
+      have hl := semanticSentenceSeenAtFuel_mono base
+        (Nat.le_max_right fuel linkFuel) hlinkFuel
+      exact ⟨common, by
+        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
+          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
+        exact Or.inr ⟨hc, hl⟩⟩
+  · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
+
+set_option maxHeartbeats 2000000 in
+lemma rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
+    (hsub : ∀ k phi, phi ∈ (theoremQuoteBaseDP T).D k → phi ∈ DP.D k)
+    {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
+    ∃ fuel, semanticQuoteFactorPrefixValidAtFuel base
+      (semanticQuoteSchema q.code) limit fuel = true := by
+  have hzs (n zr : ℕ) : ∃ fuel,
+      semanticQuoteFactorZsValid base (semanticQuoteSchema q.code)
+        fuel n zr limit = true := by
+    simpa [semanticQuoteFactorZsValid] using
+      (listAll_eventually (test := fun zs fuel =>
+        semanticQuoteFactorDownwardAtFuel base
+          (semanticQuoteSchema q.code) fuel n zr zs)
+        (fun zs _ _ hfg h => semanticQuoteFactorDownwardAtFuel_mono
+          base _ _ _ _ hfg h)
+        (fun zs => rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
+          T base hsub q n zr zs)
+        (List.range (limit + 1)))
+  have hzr (n : ℕ) : ∃ fuel,
+      semanticQuoteFactorZrValid base (semanticQuoteSchema q.code)
+        limit fuel n = true := by
+    apply listAll_eventually
+        (test := fun zr fuel => semanticQuoteFactorZsValid
+          base (semanticQuoteSchema q.code) fuel n zr limit)
+        _ (hzs n) (List.range (limit + 1))
+    intro zr f g hfg h
+    exact semanticQuoteFactorZsValid_mono base
+      (semanticQuoteSchema q.code) n zr limit hfg h
+  obtain ⟨fuel, hfuel⟩ := listAll_eventually
+    (test := fun n fuel => semanticQuoteFactorZrValid
+      base (semanticQuoteSchema q.code) limit fuel n)
+    (fun n _ _ hfg h => semanticQuoteFactorZrValid_mono
+      base (semanticQuoteSchema q.code) limit n hfg h)
+    hzr (List.range (limit + 1))
+  refine ⟨fuel, ?_⟩
+  rw [semanticQuoteFactorPrefixValidAtFuel, Bool.and_eq_true]
+  exact ⟨by simp [semanticQuoteSchema], by
+    rw [semanticQuoteFactorNValid, List.all_eq_true]
+    exact List.all_eq_true.mp hfuel⟩
+
 set_option maxHeartbeats 2000000 in
 lemma rationalQuote_semanticQuoteFactorPrefix_eventually
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]

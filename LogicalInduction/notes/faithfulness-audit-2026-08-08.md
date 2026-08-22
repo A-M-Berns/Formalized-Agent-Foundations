@@ -1,5 +1,11 @@
 # Faithfulness audit — LogicalInduction vs. arXiv:1609.03543v5 (2026-08-08)
 
+> **Historical snapshot.** Two qualifications recorded below have since been closed:
+> `thm:wubexp` by its feedback bridge, and `thm:ccee` by the fixed old-language lift and
+> entailment-gated exact semantic registry in `SemanticLiftedCCEE.lean`. The current
+> coverage table and README are authoritative; this file retains the adversarial audit
+> that motivated those repairs.
+
 Fresh, current-state audit of `LogicalInduction/`, `AxiomAudit.lean`, and the public
 statement inventory at HEAD `bbef282`, against the paper source
 `LogicalInduction/notes/1609.03543v5-main.tex`.

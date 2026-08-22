@@ -1,5 +1,15 @@
 # Boundary 2 — the propositional substrate: what closing it would cost
 
+> **Superseded resolution (2026-08-21).** The historical source-dependent extension
+> assessed below remains correctly rejected, but its claimed exhaustiveness was wrong.
+> `SemanticLiftedCCEE.lean` uses a fixed old-language atom injection plus an executable
+> finite-entailment gate to admit every raw `RpnThresholdCodeSeq` source satisfying the
+> paper's completed-world `source_valued` premise. One canonical non-vacuous process is
+> fixed from `T` before the source, deferral, or weight; exact semantic multiplication then
+> gives zero slack. The endpoint of record is
+> `lic_no_expected_net_update_conditional_closed_exact`. The analysis below is retained as
+> the record of why `productDefDP` itself was not a faithful solution.
+
 _2026-08-08. Two questions, answered against the installed toolchain and the paper text:
 what would it take to close this boundary outright, and what does the one endpoint it
 blocks (`thm:ccee`) actually cost to fix? Every claim about what an endpoint takes or

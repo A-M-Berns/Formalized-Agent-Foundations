@@ -169,10 +169,52 @@ The paper-proof ledger is now:
 | conditional no-net-update argument | `lic_no_expected_net_update_conditional_ofRepresentation` with zero slack |
 | completed worlds exist | `theoremQuoteSemanticRegistryProductDP_hworld` |
 
-This is Outcome B, not yet literal paper-strength Outcome A. The only remaining
-representation gap is upstream: FAF still lacks a kernel-checked compiler proving that
-every paper Definition 4.8.1 old-language e.c. uniquely `[0,1]`-valued formula yields the
-five fields of `CertifiedSourceLUVSeq`. In particular, the arbitrary-rational emitter and
-executable base-stage cut certificate are still fields of the translation target rather
-than derived from a formal paper-FOL source object. Therefore the official `thm:ccee`
-coverage row remains `qualified` despite the now-exact, closed downstream theorem.
+## Resolution: fixed lifting plus semantic entailment (2026-08-21)
+
+The Outcome B conclusion immediately above is superseded. Literal first-order
+reconstruction is not required for `thm:ccee`. The missing information can be recovered
+uniformly from the paper-facing flat interface without inspecting caller proofs inside a
+deductive process:
+
+1. `oldAtom` and `liftSentence` inject every caller sentence into a fixed namespace
+   disjoint from semantic source, product, and quotation handles. `liftDP (theoremDP T)`
+   is a renamed copy, with no aliases back to the caller's original atoms.
+2. `source_valued` semantically entails the lower, upper, and downward rational-cut laws.
+   `DeductiveProcess.exists_stage_entails` gives a finite base stage for each such law.
+3. `stageEntails` decides that finite propositional consequence. The universal registry
+   can therefore dovetail over emitter fuel and base stage and eventually admit exactly
+   the needed prefixes, without a caller-visible `SourceCutCertificate`.
+4. `rpnThresholdSourceCode` supplies all mesh queries used by the exact product. No
+   arbitrary-rational emitter is required by the final path.
+
+`SemanticLiftedCCEE.lean` packages the resulting single process:
+
+```text
+liftedCCEEBaseDP T = theoremQuoteBaseDP T ∪ liftDP (theoremDP T)
+canonicalCCEEDP T  = semanticRegistryClosureDP (liftedCCEEBaseDPComputation T)
+```
+
+Both are fixed from `T` before `X`, `f`, or `w`. `canonicalCCEEDP_hworld` constructs a
+completed world for the entire universal registry, including malformed and unselected
+programs. The endpoint of record is
+`lic_no_expected_net_update_conditional_closed_exact`; its caller supplies only the raw
+`X`, `RpnThresholdCodeSeq X`, the completed-world `source_valued` premise, a deferral,
+and a P-generable `[0,1]` weight. Weight quotation, right quotation, source admission, and
+exact product presentation are internal, and the slack passed to the conditional trader
+is identically zero.
+
+### Paper-premise ledger
+
+| Paper/current mesh premise | Exact endpoint |
+|---|---|
+| arbitrary e.c. source `X` | same `X : ℕ → LUV` and `RpnThresholdCodeSeq X` |
+| genuine `[0,1]` source LUV | same completed-world `source_valued` premise |
+| arbitrary deferral | same `DeferralFunction` |
+| P-generable `[0,1]` weight | same `w`, bounds, and `PGenerableRat`, at the one canonical market |
+| product syntax | constructed as an exact semantic-schema product |
+| deferred weighted expectation | constructed by the market quotation compiler |
+| product error | `0`, rather than the historical `1/(n+1)` mesh residual |
+
+This is one representation chosen before market construction, not a source-dependent
+extension of an already constructed market. Accordingly the theorem makes no claim that
+`liaHistory (canonicalCCEEDP T)` has the same prices as `liaHistory (theoremDP T)`.
