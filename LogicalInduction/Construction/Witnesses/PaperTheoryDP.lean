@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.PaperFirstOrderCompiler
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Coding
+import Foundation.FirstOrder.Bootstrapping.DerivabilityCondition.D1
 import Foundation.FirstOrder.Completeness.CounterModel
 
 /-!
@@ -146,6 +147,29 @@ lemma paperTheoryDP_covers_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
   simpa using paperTheoryDP_covers T (formulaCode := Encodable.encode φ) hφ
+
+/-- Ordinary object-level provability is the public interface to the fixed theorem
+process; encoded provability remains only an implementation detail of its enumerator. -/
+lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
+    ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
+  have hquote : Bootstrapping.Provable T (⌜φ⌝ : ℕ) :=
+    Bootstrapping.provable_iff_provable.mpr hφ
+  apply paperTheoryDP_covers_provable T φ
+  have hencode : Encodable.encode (φ : ArithmeticProposition) = (⌜φ⌝ : ℕ) := by
+    simpa using (LO.FirstOrder.Sentence.quote_eq_encode (V := ℕ) φ).symm
+  rw [hencode]
+  exact hquote
+
+/-- Every completed public world of `paperTheoryDP T` holds the prime decomposition of
+each ordinary theorem of `T`. -/
+lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] (v : PCWorld)
+    (hv : v.ConsistentWithTheory (paperTheoryDP T))
+    (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
+    v.Holds (paperPrimeDecompose φ) := by
+  obtain ⟨k, hk⟩ := paperTheoryDP_covers_outer_provable T φ hφ
+  exact hv k _ hk
 
 lemma paperTheoremStage_eq_toFinset (c : Nat.Partrec.Code) (n : ℕ) :
     paperTheoremStage c n =

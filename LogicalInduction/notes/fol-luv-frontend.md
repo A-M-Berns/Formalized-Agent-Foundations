@@ -20,6 +20,22 @@ while the `PaperLUV` uniqueness proof selects one object-level code. This is suf
 expectations and `ValuesAt`; arithmetic/equality closure between LUV values remains outside this
 PR unless a downstream consumer demonstrates that canonical reduction is necessary.
 
+## Completed semantic bridge
+
+The literal object now supplies its abstract completed-world semantics without any
+caller-provided cut certificate. Foundation arithmetic completeness derives three ordinary
+theorems of `T` from `PaperLUV.unique` and `PaperLUV.unit`:
+
+- every negative rational threshold holds;
+- every threshold strictly above one is false;
+- threshold truth is downward closed.
+
+`paperTheoryDP T` publishes the prime decompositions of those theorems. Prime decomposition
+respects negation and implication in every `PCWorld`, so no auxiliary `paperCutLawDP` is
+needed. Consequently `PaperLUV.rationalCutAt` constructs the abstract rational cut in every
+completed `paperTheoryDP` world, and `PaperLUV.source_valued` obtains a real `ValuesAt`
+witness from the generic supremum theorem in `Framework/RationalCut.lean`.
+
 ## Remaining compiler boundary
 
 The existing `paperPrimeDecompose` correctly treats quantified first-order sentences as
@@ -34,7 +50,5 @@ structured-prime block in the RPN frontend (or an equivalent fixed semantic hand
 first-order prime formula symbol-by-symbol, then contract it to the existing tag-7 public atom.
 It must preserve all current RPN clients and prove a bridge to `RpnSentenceCodes`.
 
-After that bridge, the remaining semantic work is to derive the public upper/downward laws
-from the two `PaperLUV` theory proofs and expose them through the canonical
-`paperTheoryDP`/`paperCutLawDP` process. No caller-supplied threshold family or cut certificate
-should enter the final API.
+No caller-supplied threshold family or cut certificate enters the semantic API. The next
+checkpoint is solely the symbol-metered structured-prime emission bridge.
