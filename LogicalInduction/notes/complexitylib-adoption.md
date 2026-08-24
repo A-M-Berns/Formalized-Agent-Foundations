@@ -3,7 +3,14 @@
 _Scoping pass, 2026-08-24. No strength claim, coverage tier, paper label, or AxiomAudit
 endpoint changes in this PR; see §11._
 
-> **Part IV (below, same date) closes Stage-3 coverage down to the enumeration index.**
+> **Part V (below, same date) lands the machine trader class and enumeration coverage, and
+> finds that Stage 3 does not close.** Two items remain, both diagnosed rather than
+> half-attempted: soundness needs a clocked simulator (§V.3, 600–1,200 lines, larger than
+> Part IV assumed), and the TradingFirm integration turns out to depend on Stage 2 (§V.4).
+> **The recommended ordering is now Stage 2 before Stage 3's TradingFirm migration** — an
+> inversion of what the earlier passes assumed. §IV.6's table is superseded by §V.6.
+>
+> **Part IV closes Stage-3 coverage down to the enumeration index.**
 > `TM.exists_singleTape_computesInTime` — Part II's riskiest remaining theorem — landed
 > upstream at 195 lines, confirming it was an exposure problem rather than new simulation
 > mathematics. The chain from `f ∈ FP` to a `TMDesc` computing `f` under an explicit
@@ -1966,3 +1973,173 @@ hand-managing it fights the tool. The pattern that works:
 * let Lake own FAF's `.lake` entirely — `lake update complexitylib` after re-pinning, and
   never interrupt it mid-clone;
 * never `pgrep -f` for a pattern that appears in the watcher's own command line.
+
+---
+
+# Part V — the machine trader class, coverage, and why Stage 3 does not yet close (2026-08-24)
+
+_Fifth pass. Scope: the paper-facing machine trader class, its enumeration, and coverage.
+Stage 2 and general `thm:ifp` untouched._
+
+**Stage 3 is not closed.** The mathematical core landed; two items remain, and both are
+diagnosed below rather than half-attempted. Read §V.3 and §V.4 before planning the next pass
+— one of them changes what "finish Stage 3" costs.
+
+## V.0 What landed
+
+```lean
+def MachineEfficientTrader (Tr : Trader) : Prop :=
+  ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
+    ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
+
+theorem exists_enumeratedMachineTrader_eq (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
+    ∃ i : ℕ, enumeratedMachineTrader i = Tr
+```
+
+Exact trader equality, not eventual agreement. Axioms
+`[propext, Classical.choice, Quot.sound]`, no `sorry`.
+
+Conventions, all derived from existing framework definitions rather than invented:
+
+* **unary day** — `unaryDay n = List.replicate n true` has length exactly `n`, so a machine
+  polynomial in input length is polynomial in the day and `Complexity.FP`'s asymptotics are
+  the paper's; a binary rendering would silently strengthen the class;
+* **token stream, not a numeral** — the class is stated over the machine's finite output
+  word, so nothing has to construct a giant natural;
+* **one decoder** — `strategyOfTokens ∘ unRpn ∘ undigitize ∘ bitsToDigits`, the existing
+  pipeline, so malformed output keeps the established zero-strategy fallback;
+* **class ≠ enumeration membership** — kept distinct, as the two are proved related, not
+  defined equal.
+
+Supporting results in `DescExec` (`runUntilHalt_complete` and friends) close the converse the
+audit named as the last non-plumbing item, at ~95 lines against the projected 80–150.
+
+One design point worth carrying forward: the budget must **strictly** exceed the running
+time, because `stepFrozen` spends one iteration *noticing* that `codedStep` returned `none`.
+That is absorbed by bumping the clock coefficient (`lt_clock_succ`), not by weakening the
+converse.
+
+## V.1 The chain, complete
+
+```
+f ∈ Complexity.FP
+  → TM k in poly time         mem_FP_iff_computesInTime_polynomial   (upstream)
+  → TM 1                      TM.exists_singleTape_computesInTime    (fork, Part IV)
+  → TMDesc under q.eval       exists_desc_computesInTime_polynomial  (fork, Part IV)
+  → under a·(n+1)^k + a       exists_clock_of_polynomial             (FAF, Part IV)
+  → machineTokens i           machineTokens_eq_of_computesInTime     (FAF, this pass)
+  → enumeratedMachineTrader i exists_enumeratedMachineTrader_eq      (FAF, this pass)
+```
+
+The UTM is not on this path. `ClockConstructible` is not on this path.
+
+## V.2 Where the two remaining items sit
+
+```
+  MachineEfficientTrader  ──coverage ✓──▶  enumeratedMachineTrader
+          ▲                                          │
+          │                                          │ soundness ✗  (§V.3)
+          └──────────────────────────────────────────┘
+
+  enumeratedMachineTrader  ──?──▶  tradingFirmTrader     (§V.4)
+```
+
+## V.3 Soundness needs a clocked simulator — and that is structural
+
+Soundness is `∀ i, MachineEfficientTrader (enumeratedMachineTrader i)`. In the fuel setting
+its analogue `enumeratedTrader_ec` is `rfl`-shaped. At a machine class it is a real theorem,
+and `boundary-efficiency-model.md` (line 50) already anticipated exactly that: *"At a machine
+class both become theorems."*
+
+The obstruction is precise. A bogus index — malformed description, or a clock too small for
+the machine it names — denotes the machine's **truncated** behaviour. Exhibiting a
+`Complexity.FP` witness for a truncation means exhibiting a machine that counts steps and
+stops, i.e. a clocked simulator. There is no way around it: the truncation is what makes the
+enumerated object total, and totality is what has to be certified.
+
+complexitylib *has* the simulator — `UTM.ClockedUtm.clockedUtmTM : TM 7`, with
+`clockedUtmTM_hoareTime_halt` and `clockedUtmTM_hoareTime_timeout` both proved, at a bound
+linear in the clock. Reaching it costs:
+
+| requirement | cost |
+| --- | --- |
+| `UTM.ClockConstructible` for the `a·(n+1)^k + a` clock register | 2,316 lines; has `clockConstructible_pow` and `mul_succ`, but scalar multiplication and addition need checking |
+| `UTM.Clock`, `UTM.ClockedUtm` | 1,004 + 940 lines |
+| counter subroutines beneath them | `Subroutines/Counter.lean` was among the files that failed the earlier port waves |
+| description onto the UTM tape as `pair α x` | reintroduces `encodeDesc` and the `TerminatedRegion` side condition that indexing on `TMDesc` deliberately avoided |
+| timeout convention mismatch | `clockedUtmTM` writes a sentinel `Γ.one` at cell 1 on timeout; `machineTokens` emits `[]` — a post-processing step |
+| `HoareTime` → `ComputesInTime` → `FP` | assembly |
+
+**Estimate 600–1,200 lines**, most of it porting and auditing modules currently outside the
+trust path. That is a materially larger figure than Part IV's remaining-work table assumed,
+and it is the single biggest revision this pass produces.
+
+**Nothing downstream needs it.** `Construction/TradingFirm.lean` consumes coverage alone —
+`boundary-efficiency-model.md` line 287 says so explicitly — and `enumeratedTrader_ec` is
+inventoried but not depended on. Soundness is a quality claim about the enumeration, not a
+premise of the dominance theorem.
+
+## V.4 TradingFirm integration is a migration, not an integration
+
+The good news first: `trading_firm_dominance_of_covered` uses `enumeratedTrader` **only
+opaquely** — through `firmRawTrader j = (enumeratedTrader j).gate j` and
+`Trader.gate_strat_of_lt`, both generic in the trader. Its 1,041-line proof does not depend
+on the definition and would survive a redefinition untouched. The `hcov` seam is doing
+exactly the job it was designed for.
+
+The blocker is that `tradingFirmTrader` is hard-wired to `enumeratedTrader`. Two routes:
+
+**(a) Redefine `enumeratedTrader`** to interleave the fuel and machine enumerations (even
+indices one, odd the other). TradingFirm survives; fuel coverage survives via one branch;
+machine coverage arrives via the other. But:
+
+* `enumeratedTrader_ec : EfficientlyComputable (enumeratedTrader j)` becomes **false as
+  stated** — a machine-enumerated trader need not be *fuel*-efficiently-computable — and it
+  is an inventoried `AxiomAudit` endpoint, so this moves the trust surface;
+* `LIACompiler.enumeratedTraderTrades_prim` needs reproving as a case split (both halves are
+  `Primrec`, so this part is routine).
+
+**(b) Parameterise TradingFirm** over the enumeration. Surgical in principle, but the
+signature change propagates through `firmRawTrader`, `tradingFirmTotalBound`,
+`tradingFirmComponentAt`, `tradingFirmTrader` and their ~55 mentions across
+`TradingFirm`/`LIAComputation`/`LIACompiler`/`LIA`, and changes `tradingFirmTrader`'s type,
+which the property tail consumes.
+
+Neither is an integration; both are migrations, and both are the kind of global API churn
+that should wait for Stage 2's `PolyFueled → Complexity.FP` transport. With that transport in
+hand, route (a) becomes clean: `enumeratedTrader_ec` can be restated at the machine class and
+the fuel branch retired, rather than the two coexisting awkwardly.
+
+**Recommendation: do Stage 2 before finishing Stage 3's TradingFirm integration.** That
+inverts the ordering the earlier passes assumed, and it is the main planning consequence of
+this pass.
+
+## V.5 What `dd:fuel` means now
+
+| question | status |
+| --- | --- |
+| does a genuine machine trader class exist in FAF? | **yes** — `MachineEfficientTrader`, over `Complexity.FP` |
+| is it effectively enumerable? | **yes** — `enumeratedMachineTrader`, total, `Primrec₂` evaluator |
+| is every member covered by the enumeration? | **yes** — exact equality |
+| is every enumerated item in the class? | **not yet** — §V.3 |
+| does the LIA construction range over it? | **not yet** — §V.4 |
+| is `dd:fuel` eliminated? | **no**, and it should not be described as such |
+
+`PolyFueled`/`EfficientlyComputable` remain the internal certification technology every
+concrete property proof uses, exactly as before. What changed is that the machine class and
+its coverage now exist as theorems, so the remaining distance is a migration plus one
+simulator, not open research.
+
+## V.6 Revised remaining work
+
+| item | LOC | passes |
+| --- | ---: | ---: |
+| Stage 2: `PolyFueled → Complexity.FP` | 2.5–4k | 4–6 |
+| Stage 3 soundness (clocked simulator, §V.3) | 0.6–1.2k | 2–3 |
+| Stage 3 TradingFirm migration (§V.4, after Stage 2) | 0.3–0.6k | 1–2 |
+| `LIACompiler` swap + property touch-ups | 0.2–0.4k | 1–2 |
+| **total** | **3.6–6.2k** | **8–13** |
+
+Part IV projected ~0.6–1.2k for all of Stage 3's remainder; §V.3 alone is that size, and
+§V.4 turns out to depend on Stage 2. The overall project figure is roughly unchanged
+(~4–7k) because Stage 2 always dominated it — what moved is the *ordering*.

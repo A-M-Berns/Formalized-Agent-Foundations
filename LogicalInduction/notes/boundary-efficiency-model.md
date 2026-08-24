@@ -45,6 +45,25 @@ Estimate: ~120–200 lemmas / 3000–6000 lines.
 
 ## The hard side (universal enumeration)
 
+> **Superseded, 2026-08-24 — and the estimate below was pessimistic by an order of
+> magnitude.** This section priced a universal simulator at 4,000–7,000 lines because it
+> assumed FAF would have to build one. Adopting `SamuelSchlesinger/complexitylib` supplied
+> it, and the executable route turned out not to need it at all: the enumeration is indexed
+> by `TMDesc` descriptions, which are finite first-order data, so FAF executes *described*
+> machines directly rather than simulating arbitrary ones. See
+> `complexitylib-adoption.md` Parts I–V.
+>
+> What actually landed: a paper-facing `MachineEfficientTrader` over `Complexity.FP`, a
+> total `Primrec₂` evaluator, and **exact enumeration coverage** — the half this section
+> called "exact-coverage" and the half `TradingFirm.lean` consumes.
+>
+> The section's structural claim below is nonetheless **correct and was load-bearing**: at a
+> machine class both halves become theorems, and the *soundness* half is where the universal
+> simulator reappears — a bogus index denotes a machine's truncated behaviour, and certifying
+> a truncation needs a clocked simulator. complexitylib has one (`UTM.ClockedUtm`), so this
+> is now 600–1,200 lines of porting and assembly rather than new mathematics. See
+> `complexitylib-adoption.md` §V.3.
+
 In the fuel model both halves of the enumeration property are *definitional*
 (`EfficientlyComputable` is literally the image of the enumeration;
 `enumeratedTrader_ec` is `rfl`-shaped). At a machine class both become theorems, and
@@ -286,6 +305,16 @@ that object must be:
   The enumeration half is definitional (`TraderProgram` *is* the witness quadruple;
   `enumeratedTrader_ec` is `rfl`-shaped; `TradingFirm.lean` consumes only the coverage
   fact `∃ j, enumeratedTrader j = Tr`). Nothing downstream inspects `evaln`.
+
+  > **Confirmed against the machine class, 2026-08-24.** This observation held up exactly:
+  > `trading_firm_dominance_of_covered` uses `enumeratedTrader` only opaquely, through
+  > `firmRawTrader` and `Trader.gate_strat_of_lt`, so its 1,041-line proof is independent of
+  > the definition. What the observation did *not* anticipate is that `tradingFirmTrader` is
+  > hard-wired to `enumeratedTrader`, so pointing the construction at the machine enumeration
+  > is a migration (either redefining `enumeratedTrader`, which falsifies the inventoried
+  > `enumeratedTrader_ec`, or parameterising ~55 mentions across four files) rather than an
+  > instantiation. That migration should follow Stage 2, not precede it —
+  > `complexitylib-adoption.md` §V.4.
 * The fuel model's certificate-realizing lemmas (`ecTok_of_*`, `ecDigit_of_*`,
   `ec_of_raw*`, `EfficientlyComputable.ofTradeBlocks`, …) all *produce* class
   membership from fuel certificates. Stage 2 sits after them: it consumes the class's
