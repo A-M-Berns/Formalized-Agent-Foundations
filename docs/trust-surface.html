@@ -2572,8 +2572,8 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     (hx : v.ValuesAt X x) (hy : v.ValuesAt X y) : x = y</pre></div>
     </section>
   </div>
-  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The trust-relevant delta: the paper&#x27;s LUV is a first-order formula free in one variable; here a LUV <em>is</em> its family of threshold atoms <code>⌜X &gt; r⌝</code> (field <code>gt</code>). World-value semantics is supplied per-world by <code>PCWorld.ValuesAt</code> — the disclosed propositional substitution.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> threshold-sentence abstraction; the certified first-order bridge exists only for the <code>dd:luv-arith</code> class</footer>
+  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The paper&#x27;s LUV is a first-order formula free in one variable; the abstract carrier here is its family of threshold atoms <code>⌜X &gt; r⌝</code> (field <code>gt</code>), which is what downstream results consume. A literal frontend now produces that carrier: <code>PaperLUV</code> is an actual one-variable arithmetic formula with object-level unique/<code>[0,1]</code> proofs, and <code>PaperLUVSeq</code> derives both <code>PCWorld.ValuesAt</code> and <code>RpnThresholdCodeSeq</code> rather than assuming them, with a varying concrete inhabitant. Retained: the abstract carrier itself, and a fixed numerator/denominator pair-code value representation.</div>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> a literal first-order frontend now exists for arbitrary value-defining formulas (<code>PaperLUV</code>/<code>PaperLUVSeq</code>: object-level unique/<code>[0,1]</code> proofs, derived <code>ValuesAt</code>, exact threshold syntax, <code>RpnThresholdCodeSeq</code>, varying concrete inhabitant); what remains retained is the abstract threshold carrier downstream consumes and the fixed numerator/denominator pair-code value representation</footer>
 </article>
 
 <article class="node" id="thm-ec">
@@ -10706,4 +10706,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 7ecf4d08e6bd1991b9676b651d494faed288dc2292c410223463b38dc5ec19eb -->
+<!-- trust-surface-sources: b97ecae9bacda1e8919f55208192edaea77a74b9468ff68dbca28f77c8d4fb73 -->
