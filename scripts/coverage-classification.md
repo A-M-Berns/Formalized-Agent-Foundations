@@ -69,7 +69,7 @@ gradient, inviting the false inference that a `conditional` row is a weaker resu
 | def:fuz | instantiated | direct rendering of a generable weighting (`PGenerableWeighting`), strictly less data than `def:ece` carries |
 | def:lia | instantiated | the constructed recursive algorithm (`liaStates`/`liaHistory`), certified by `thm:lia` |
 | def:lic | instantiated | range law bundled through `marketComputable`; trader class is `def:ec`'s, disclosed globally |
-| def:luv | qualified | threshold-sentence abstraction; the certified first-order bridge exists only for the `dd:luv-arith` class |
+| def:luv | qualified | a literal first-order frontend now exists for arbitrary value-defining formulas (`PaperLUV`/`PaperLUVSeq`: object-level unique/`[0,1]` proofs, derived `ValuesAt`, exact threshold syntax, `RpnThresholdCodeSeq`, varying concrete inhabitant); what remains retained is the abstract threshold carrier downstream consumes and the fixed numerator/denominator pair-code value representation |
 | def:trader | instantiated | direct rendering |
 | def:tradestrat | instantiated | direct rendering, with the paper's rank/horizon bound on traded features |
 | lem:mesh | universal | `mesh_independence_ofSyntax` retains only `WorldValued`, which is the paper's own `def:luv` world-value fact (tex:1642-1648) — the condition that cuts our over-general `LUV` type down to the paper's object, not a restriction |

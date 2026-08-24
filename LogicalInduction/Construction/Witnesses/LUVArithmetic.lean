@@ -32,11 +32,15 @@ and the sup collapses to that rational.  This is what lets the downstream presen
 (`ExactTheoryPresentation`, `WorldValued`, `ValuesAt`) be *derived* rather than *assumed*
 (`LUVPresentation.lean`).
 
-**What is not reconstructed.**  The fully general `def:luv` (an *arbitrary* value-defining
-formula, with rationals encoded inside `ℒₒᵣ` and its genuinely nonstandard world values) is *not*
-built: Mathlib/Foundation expose no arithmetic-internal rational order.  Public claims must say the
-expectation tail is faithful to `def:luv` **for computable `[0,1]`-valued functions**, the class
-the paper's expectation development actually uses ("we assume `Θ` represents computations").
+**Scope of this file.**  This class is the paper's own worked example, and the decidability
+collapse above is what makes its world value pin exactly.  It is *not* the only first-order
+bridge in the repository: `Witnesses/StructuredPaperRpn.lean` and `Witnesses/PaperLUV.lean`
+now carry a literal frontend (`PaperLUV`, `PaperLUVSeq`) for an *arbitrary* value-defining
+one-variable arithmetic formula, with the value represented inside `ℒₒᵣ` as a
+numerator/positive-denominator pair code and the world value obtained from a rational cut
+rather than from decidability.  What that frontend fixes is the value *representation*, not
+the formula: canonical rational arithmetic inside `ℒₒᵣ` remains unbuilt, and arithmetic
+closure between LUV values is outside both files.
 
 All comparisons inside the r.e. predicate are over `ℕ` (this Mathlib has no `Primrec`/`Computable`
 arithmetic on `ℤ`/`ℚ`); the rational threshold's sign and magnitude are decoded from its canonical
