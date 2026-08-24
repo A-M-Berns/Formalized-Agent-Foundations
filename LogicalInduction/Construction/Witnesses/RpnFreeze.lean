@@ -38,6 +38,11 @@ The transducer itself is an instance of the emitter-generic run rewriter in
 
 ## Disclosed residual: the emission certificate
 
+This residual predates the structured first-order leaf and is independent of it: the
+obstruction is `decode` on an exponentially large escape payload, which the structured
+codec neither introduces nor worsens.  A structured leaf simply lands on the same side of
+the boundary, for the reason given above.
+
 Everything below is unconditional and axiom-clean, but it does **not** yield
 `liaEfficientPrefixPatch`.  The missing step is the fuel certificate for the emitted
 segment: `matchRun_polyFueled` asks for a `PolyFueled` (poly-*bounded*) token function,

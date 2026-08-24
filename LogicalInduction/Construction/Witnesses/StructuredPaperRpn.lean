@@ -29,14 +29,36 @@ Contents:
 * negation as a token map, which transports a structural certificate to the negated
   family without re-deriving its emission;
 * the frontend `PaperLUVSeq`: a structurally certified family of literal paper LUVs
-  compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax.  See the
-  inhabitation disclosure at `PaperLUVSeq`.
+  compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, inhabited by
+  the varying `1/(n+1)` family `unitFracPaperLUVSeq`.
+
+## Compatibility with the shared grammar
+
+The leaf is an extension of infrastructure several passes share, so the compatibility
+obligations are discharged where they live:
+
+* every stream the pre-structured grammar accepted keeps its parse and its suffix
+  (`parseRpn_of_legacy`), and the ordinary two-token escape `[1, code]` is unchanged for
+  every `code ≠ 0`;
+* conditioning consumes a structured leaf as **one** atom: the run automaton gains the
+  structured payload modes, the pending-subtree counter decrements exactly once at the
+  terminator, and the buffered run keeps the whole block (`RpnConditioning.lean`);
+* the freeze pass decides targets at the list level with the full parser, so structured
+  leaves are matched like any other block; its *positional* matcher stays scoped to the
+  legacy fragment for a `dd:fuel` reason that predates this codec (`RpnFreeze.lean`);
+* splice and quotation treat sentence blocks abstractly and needed no change.
 -/
 
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Propositional
 
+/-! ## Structured naturals and arithmetic syntax
+
+Naturals travel as a recursive small-token binary code, never as one large value, and the
+Foundation term/formula constructors get one fixed tag each. -/
+
+/-- Binary code of a natural in the tags `0`/`1`/`2`. -/
 def encodeStructuredNat : ℕ → List ℕ
   | 0 => [0]
   | n + 1 =>
@@ -74,6 +96,10 @@ def encodeArithmeticFormulaSymbols {k : ℕ} : ArithmeticSemiformula ℕ k → L
       16 :: (encodeArithmeticFormulaSymbols φ ++ encodeArithmeticFormulaSymbols ψ)
   | .all φ => 17 :: encodeArithmeticFormulaSymbols φ
   | .exs φ => 18 :: encodeArithmeticFormulaSymbols φ
+
+/-! ## Round trips
+
+Each encoder is inverted exactly by its numeric parser, with the unread suffix preserved. -/
 
 lemma parseStructuredNat_encode (n : ℕ) (tail : List ℕ) {fuel : ℕ}
     (hfuel : (encodeStructuredNat n).length ≤ fuel) :
@@ -236,11 +262,13 @@ lemma parseStructuredArithmeticFormula_encode
           rw [ih tail (by simpa [encodeArithmeticFormulaSymbols] using hfuel)]
           rfl
 
+/-- Decode one arithmetic term from a symbol stream. -/
 def parseArithmeticTermSymbols (k : ℕ) (symbols : List ℕ) :
     Option (ArithmeticSemiterm ℕ k × List ℕ) :=
   (parseStructuredArithmeticTerm symbols.length k symbols).bind fun p =>
     (Encodable.decode (α := ArithmeticSemiterm ℕ k) p.1).map fun t => (t, p.2)
 
+/-- Decode one arithmetic formula from a symbol stream. -/
 def parseArithmeticFormulaSymbols (k : ℕ) (symbols : List ℕ) :
     Option (ArithmeticSemiformula ℕ k × List ℕ) :=
   (parseStructuredArithmeticFormula symbols.length k symbols).bind fun p =>
@@ -258,19 +286,25 @@ lemma parseArithmeticFormulaSymbols_encode {k : ℕ} (φ : ArithmeticSemiformula
   rw [parseArithmeticFormulaSymbols, parseStructuredArithmeticFormula_encode φ tail (by simp)]
   simp [Encodable.encodek]
 
+/-! ## The structured paper-prime leaf
+
+One arithmetic proposition as a single atomic RPN block: the `[1, 0]` dispatch prefix, the
+polarity bit, a unary payload length, the payload, and the reserved terminator. -/
+
+/-- The atomic block whose contraction is `paperPrimeSentence positive φ`. -/
 def structuredPaperPrimeBlock (positive : Bool) (φ : ArithmeticProposition) : List ℕ :=
   let payload := encodeArithmeticFormulaSymbols φ
   [1, 0, Encodable.encode positive] ++
     (List.replicate payload.length 1 ++ (0 :: payload ++ [19]))
 
-lemma readStructuredLength_replicate (n : ℕ) (tail : List ℕ) :
+private lemma readStructuredLength_replicate (n : ℕ) (tail : List ℕ) :
     readStructuredLength (List.replicate n 1 ++ 0 :: tail) = some (n, tail) := by
   induction n with
   | zero => rfl
   | succ n ih => simp only [List.replicate_succ, List.cons_append,
       readStructuredLength, ih, Option.map_some]
 
-lemma parseStructuredPaperPrime_encode (positive : Bool) (φ : ArithmeticProposition)
+private lemma parseStructuredPaperPrime_encode (positive : Bool) (φ : ArithmeticProposition)
     (tail : List ℕ) :
     parseStructuredPaperPrime
       (Encodable.encode positive ::
@@ -293,7 +327,7 @@ lemma parseStructuredPaperPrime_encode (positive : Bool) (φ : ArithmeticProposi
   simp
   simp [paperPrimeSentence, paperPrimeCode, paperPrimeTag]
 
-lemma structuredPaperPrimeBlock_length_pos (positive : Bool) (φ : ArithmeticProposition) :
+private lemma structuredPaperPrimeBlock_length_pos (positive : Bool) (φ : ArithmeticProposition) :
     0 < (structuredPaperPrimeBlock positive φ).length := by
   simp [structuredPaperPrimeBlock]
 
@@ -309,6 +343,12 @@ lemma parseRpn_structuredPaperPrimeBlock (positive : Bool) (φ : ArithmeticPropo
       norm_num
       exact parseStructuredPaperPrime_encode positive φ tail
 
+/-! ## The decomposition compiler
+
+`paperPrimeDecompose` recurses through the outer Boolean structure and stops at the
+first-order leaves, so the block mirrors that shape exactly. -/
+
+/-- The block whose contraction is `paperPrimeDecompose φ`. -/
 def structuredPaperDecomposeBlock : ArithmeticProposition → List ℕ
   | .verum => rpn (⊤ : Sentence)
   | .falsum => rpn (⊥ : Sentence)
@@ -783,30 +823,30 @@ calculus already computes (`gcdc_polyFueled`, `divmod1_polyFueled`).  Together w
 implication shell this discharges the threshold-body certificate from a certificate on
 the LUVs' defining formulas alone. -/
 
-def ratGtPre : List ℕ :=
+private def ratGtPre : List ℕ :=
   [18, 18, 15, 16, 15, 13, 3, 2, 0, 3, 0, 11, 3, 1, 2, 0, 7, 8, 3, 0, 3, 0, 3, 2,
    0, 15, 16, 11, 3, 0, 3, 2, 0, 13, 3, 0, 3, 2, 0, 11, 3, 1, 2, 0, 7, 7, 8, 3, 2,
    0, 3, 2, 0, 3, 2, 0, 3, 0, 15, 13, 5, 3, 0, 13, 8]
 
-def ratGtMid : List ℕ := [3, 0, 8, 3, 2, 0]
+private def ratGtMid : List ℕ := [3, 0, 8, 3, 2, 0]
 
-lemma oringMul_term :
+private lemma oringMul_term :
     (Semiterm.Operator.Mul.mul : Semiterm.Operator ℒₒᵣ 2).term =
       Semiterm.func Language.Mul.mul Semiterm.bvar := rfl
 
-lemma oringAdd_term :
+private lemma oringAdd_term :
     (Semiterm.Operator.Add.add : Semiterm.Operator ℒₒᵣ 2).term =
       Semiterm.func Language.Add.add Semiterm.bvar := rfl
 
-lemma oringOne_term :
+private lemma oringOne_term :
     (Semiterm.Operator.One.one : Semiterm.Operator ℒₒᵣ 0).term =
       Semiterm.func Language.One.one ![] := rfl
 
-lemma oringNumZero_term :
+private lemma oringNumZero_term :
     (Semiterm.Operator.numeral ℒₒᵣ 0).term =
       Semiterm.func Language.Zero.zero ![] := rfl
 
-lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
+private lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
     (Rew.emb ((Rew.subst ![]) t) : ArithmeticSemiterm ℕ n) =
       (Rew.subst ![]) (Rew.emb t) := by
   have h : ((Rew.emb : Rew ℒₒᵣ Empty n ℕ n).comp (Rew.subst ![])) =
@@ -816,11 +856,11 @@ lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
     · exact IsEmpty.elim inferInstance x
   rw [← Rew.comp_app, h, Rew.comp_app]
 
-def encNumeral (v : ℕ) : List ℕ :=
+private def encNumeral (v : ℕ) : List ℕ :=
   encodeArithmeticTermSymbols
     ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ 3)
 
-lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
+private lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
     encodeArithmeticFormulaSymbols
       ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
       ratGtPre ++ encNumeral r.num.natAbs ++ ratGtMid ++ encNumeral r.den := by
@@ -832,9 +872,9 @@ lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
     Semiterm.Operator.const, oringMul_term, oringAdd_term,
     oringNumZero_term, Matrix.fun_eq_vec_two, emb_subst_nil_comm]
 
-lemma encNumeral_zero : encNumeral 0 = [5] := rfl
+private lemma encNumeral_zero : encNumeral 0 = [5] := rfl
 
-lemma encNumeral_of_ne_zero {v : ℕ} (hv : v ≠ 0) :
+private lemma encNumeral_of_ne_zero {v : ℕ} (hv : v ≠ 0) :
     encNumeral v = List.replicate (v - 1) 7 ++ List.replicate v 6 :=
   encodeArithmeticTermSymbols_numeral v hv
 
@@ -859,7 +899,7 @@ lemma encNumeral_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv
   · rw [if_pos h, h, encNumeral_zero]
   · rw [if_neg h, encNumeral_of_ne_zero h]
 
-/-- The query rational at index `⟨n, ⟨k, i⟩⟩`. -/
+/-- The threshold rational named by a `RpnThresholdCodeSeq` query index `⟨n, ⟨k, i⟩⟩`. -/
 def queryRat (m : ℕ) : ℚ :=
   (m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)
 
@@ -991,16 +1031,16 @@ discharged in any theory extending `𝗜𝚺₁` by completeness over its models
 def unitFracFormula (n : ℕ) : ArithmeticSemisentence 1 :=
   “q. ∃ b, !!(Semiterm.Operator.numeral ℒₒᵣ (n + 1)) = b ∧ !pairDef q 1 b”
 
-def unitFracPost : List ℕ :=
+private def unitFracPost : List ℕ :=
   [3, 0, 16, 15, 13, 6, 3, 0, 11, 3, 2, 0, 7, 8, 3, 0, 3, 0, 6, 15, 16, 11, 3, 0,
    6, 13, 3, 0, 6, 11, 3, 2, 0, 7, 7, 8, 6, 6, 6, 3, 0]
 
-lemma oringNumOne_term :
+private lemma oringNumOne_term :
     (Semiterm.Operator.numeral ℒₒᵣ 1).term =
       Semiterm.func Language.One.one ![] := rfl
 
 /-- The numeral encoding in the normal form the frame computation leaves behind. -/
-lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
+private lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
     encodeArithmeticTermSymbols
       (((Rew.subst ![]) (Rew.emb (Semiterm.Operator.numeral ℒₒᵣ v).term)) :
         ArithmeticSemiterm ℕ k) =
@@ -1008,7 +1048,7 @@ lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
   have h := encodeArithmeticTermSymbols_numeral (k := k) v hv
   simpa [Semiterm.Operator.const, Semiterm.Operator.operator] using h
 
-lemma enc_unitFracFormula (n : ℕ) :
+private lemma enc_unitFracFormula (n : ℕ) :
     encodeArithmeticFormulaSymbols
       ((unitFracFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
       [18, 15, 11] ++ (List.replicate n 7 ++ List.replicate (n + 1) 6) ++
@@ -1066,7 +1106,7 @@ lemma unitFrac_polyArithmeticFormulaSeq :
       (PolySegStream.repeatTag 6 hsucc)).append
         (PolySegStream.constList unitFracPost))).of_eq fun n => ?_
   rw [enc_unitFracFormula n]
-  simp [List.append_assoc]
+  simp
 
 /-- **Non-vacuity** (`N+`): a genuinely varying family of literal paper LUVs, with
 values `1/(n+1)`, carrying the structural certificate. -/
@@ -1085,9 +1125,20 @@ lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
       LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) :=
   ⟨fun n => PaperLUV.source_valued (X.luv n), X.rpnThresholdCodeSeq⟩
 
+/-- **The frontend on a concrete family**: the literal `1/(n+1)` LUVs are valued on every
+completed world of the canonical theorem process and efficiently thresholded, so the
+frontend's two conclusions hold of an actual first-order family rather than only of a
+hypothetical one. -/
+lemma unitFracPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
+        ∃ x : ℝ, v.ValuesAt ((unitFracPaperLUVSeq T).luv n).toLUV x) ∧
+      LUV.RpnThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
+  (unitFracPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+
 end Frontend
 
 #print axioms unitFracPaperLUVSeq
+#print axioms unitFracPaperLUVSeq_frontend
 #print axioms PaperLUVSeq.rpnThresholdCodeSeq
 #print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
 
