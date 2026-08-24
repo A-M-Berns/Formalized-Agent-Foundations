@@ -957,13 +957,7 @@ Foundation codes, a caller-provided tag-7 code, or a semantic handle.  Everythin
 threshold syntax adds on top (the implication shell, the fixed comparison template, and
 the reduced numerals of the query rational) is discharged internally.
 
-**Disclosed residual (concrete instances).**  `PaperLUVSeq.const` shows the certificate
-is satisfiable by any single `PaperLUV T`, so efficiency is not the obstruction to an
-instance.  What this development does not yet supply is a concrete `PaperLUV T` itself:
-that means exhibiting a defining formula together with object-level derivations of
-`T ⊢ ∃⁰! formula` and `T ⊢ ∀⁰ (formula 🡒 paperRatUnitDef)` in a concrete theory.  That
-is first-order proof work in Foundation, independent of the codec and of the emission
-calculus. -/
+Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`. -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv : ℕ → PaperLUV T
   structural : PolyArithmeticFormulaSeq (fun n =>
@@ -975,10 +969,9 @@ lemma PaperLUVSeq.thresholdBody_structural (X : PaperLUVSeq T) :
       paperThresholdBody (X.luv m.unpair.1) (queryRat m)) :=
   paperThresholdBody_polySegStream X.luv X.structural
 
-/-- **Non-vacuity** (`N+`): a single literal paper LUV presents as a constant family,
-so the certificate is satisfiable.  A constant family is deliberately degenerate — it
-witnesses inhabitation, not the intended generality, which is a family whose defining
-formulas genuinely vary with `n`. -/
+/-- Any single literal paper LUV presents as a constant family.  This is a
+convenience, not the non-vacuity witness: see `unitFracPaperLUVSeq` for a family whose
+defining formulas genuinely vary with `n`. -/
 def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T where
   luv _ := X
   structural := PolySegStream.constList _
@@ -987,6 +980,99 @@ lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
     LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
   have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.thresholdBody_structural
   exact h.of_eq fun m => (paperLUV_gt_eq _ _).symm
+
+/-! ### A concrete family
+
+The interface is inhabited by a genuinely varying family: the LUVs of value `1/(n+1)`,
+whose defining formulas grow with `n` and whose uniqueness and unit-interval facts are
+discharged in any theory extending `𝗜𝚺₁` by completeness over its models. -/
+
+/-- The value `1/(n+1)`: the code of that fraction, with the denominator named once. -/
+def unitFracFormula (n : ℕ) : ArithmeticSemisentence 1 :=
+  “q. ∃ b, !!(Semiterm.Operator.numeral ℒₒᵣ (n + 1)) = b ∧ !pairDef q 1 b”
+
+def unitFracPost : List ℕ :=
+  [3, 0, 16, 15, 13, 6, 3, 0, 11, 3, 2, 0, 7, 8, 3, 0, 3, 0, 6, 15, 16, 11, 3, 0,
+   6, 13, 3, 0, 6, 11, 3, 2, 0, 7, 7, 8, 6, 6, 6, 3, 0]
+
+lemma oringNumOne_term :
+    (Semiterm.Operator.numeral ℒₒᵣ 1).term =
+      Semiterm.func Language.One.one ![] := rfl
+
+/-- The numeral encoding in the normal form the frame computation leaves behind. -/
+lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
+    encodeArithmeticTermSymbols
+      (((Rew.subst ![]) (Rew.emb (Semiterm.Operator.numeral ℒₒᵣ v).term)) :
+        ArithmeticSemiterm ℕ k) =
+      List.replicate (v - 1) 7 ++ List.replicate v 6 := by
+  have h := encodeArithmeticTermSymbols_numeral (k := k) v hv
+  simpa [Semiterm.Operator.const, Semiterm.Operator.operator] using h
+
+lemma enc_unitFracFormula (n : ℕ) :
+    encodeArithmeticFormulaSymbols
+      ((unitFracFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
+      [18, 15, 11] ++ (List.replicate n 7 ++ List.replicate (n + 1) 6) ++
+        unitFracPost := by
+  rw [unitFracFormula]
+  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
+    encodeStructuredNat, unitFracPost,
+    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
+    Semiformula.Operator.le_def, Semiterm.Operator.operator,
+    Semiterm.Operator.const, oringMul_term, oringAdd_term,
+    oringNumZero_term, oringNumOne_term, Matrix.fun_eq_vec_two,
+    emb_subst_nil_comm, encNumeral_norm _ (n + 1) (by omega)]
+
+/-- The literal paper LUV of value `1/(n+1)`. -/
+def unitFracPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (n : ℕ) :
+    PaperLUV T where
+  formula := unitFracFormula n
+  unique := by
+    apply LO.FirstOrder.Arithmetic.complete T
+    intro (M : Type) _ hM
+    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    simp [models_iff, unitFracFormula, pairDef, numeral_eq_natCast]
+    rcases Nat.eq_zero_or_pos n with rfl | hn
+    · simp
+    · simp [hn, hn.ne']
+  unit := by
+    apply LO.FirstOrder.Arithmetic.complete T
+    intro (M : Type) _ hM
+    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    simp [models_iff, unitFracFormula, pairDef, paperRatUnitDef,
+      numeral_eq_natCast]
+    intro x hx
+    refine ⟨1, (n : M) + 1, ?_, ?_, ?_⟩
+    · rcases hx with ⟨hn, rfl⟩ | ⟨rfl, rfl⟩
+      · exact Or.inl ⟨by simpa using hn, rfl⟩
+      · exact Or.inr ⟨by simp, by simp⟩
+    · simp
+    · simp
+
+/-- The defining formulas of the `1/(n+1)` family are structurally emittable. -/
+lemma unitFrac_polyArithmeticFormulaSeq :
+    PolyArithmeticFormulaSeq (fun n =>
+      ((unitFracFormula n : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) := by
+  have hid : PolyFueled _ (fun n : ℕ => n) := PolyFueled.id
+  have hsucc : PolyFueled _ (fun n : ℕ => n + 1) := PolyFueled.id.succ_comp
+  refine ((PolySegStream.constList [18, 15, 11]).append
+    (((PolySegStream.repeatTag 7 hid).append
+      (PolySegStream.repeatTag 6 hsucc)).append
+        (PolySegStream.constList unitFracPost))).of_eq fun n => ?_
+  rw [enc_unitFracFormula n]
+  simp [List.append_assoc]
+
+/-- **Non-vacuity** (`N+`): a genuinely varying family of literal paper LUVs, with
+values `1/(n+1)`, carrying the structural certificate. -/
+def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
+  luv n := unitFracPaperLUV T n
+  structural := unitFrac_polyArithmeticFormulaSeq
 
 /-- **The literal paper frontend**: an efficiently presented family of literal
 first-order paper LUVs is both semantically valued on every completed world of the
@@ -1001,6 +1087,7 @@ lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
 
 end Frontend
 
+#print axioms unitFracPaperLUVSeq
 #print axioms PaperLUVSeq.rpnThresholdCodeSeq
 #print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
 
