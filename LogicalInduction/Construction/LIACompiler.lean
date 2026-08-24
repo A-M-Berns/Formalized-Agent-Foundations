@@ -2984,6 +2984,536 @@ standard `Primrec` combinators. -/
 private abbrev PCtx :=
   (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
 
+private lemma structuredNatG_prim : Primrec structuredNatG := by
+  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
+      prev.length.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
+    (Primrec.ofNat (List ℕ)).comp
+      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
+  let Ctx := (List (Option (ℕ × List ℕ)) × ℕ) × (ℕ × List ℕ)
+  have hprev : Primrec fun x : Ctx => x.1.1 := Primrec.fst.comp Primrec.fst
+  have hfuel' : Primrec fun x : Ctx => x.1.2 := Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun x : Ctx => x.2.1 := Primrec.fst.comp Primrec.snd
+  have hrest : Primrec fun x : Ctx => x.2.2 := Primrec.snd.comp Primrec.snd
+  have hlook : Primrec fun x : Ctx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp hprev
+        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
+      (Primrec.const none)
+  have hzero : Primrec fun x : Ctx => (some (0, x.2.2) : Option (ℕ × List ℕ)) :=
+    Primrec.option_some.comp ((Primrec.const 0).pair hrest)
+  have heven : Primrec fun x : Ctx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
+        fun p => (2 * p.1, p.2) := by
+    exact Primrec.option_map hlook
+      ((Primrec.nat_mul.comp (Primrec.const 2) (Primrec.fst.comp Primrec.snd)).pair
+        (Primrec.snd.comp Primrec.snd)).to₂
+  have hodd : Primrec fun x : Ctx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
+        fun p => (2 * p.1 + 1, p.2) := by
+    exact Primrec.option_map hlook
+      ((Primrec.succ.comp
+        (Primrec.nat_mul.comp (Primrec.const 2) (Primrec.fst.comp Primrec.snd))).pair
+        (Primrec.snd.comp Primrec.snd)).to₂
+  have heqt : ∀ k : ℕ, PrimrecPred fun x : Ctx => x.2.1 = k := fun k =>
+    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+  have hbody : Primrec fun x : Ctx =>
+      if x.2.1 = 0 then some (0, x.2.2)
+      else if x.2.1 = 1 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
+          fun p => (2 * p.1, p.2)
+      else if x.2.1 = 2 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map
+          fun p => (2 * p.1 + 1, p.2)
+      else none := by
+    exact Primrec.ite (heqt 0) hzero <|
+      Primrec.ite (heqt 1) heven <| Primrec.ite (heqt 2) hodd (Primrec.const none)
+  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
+      | [] => (none : Option (ℕ × List ℕ))
+      | t :: rest =>
+          if t = 0 then some (0, rest)
+          else if t = 1 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
+              fun (q : ℕ × List ℕ) => (2 * q.1, q.2)
+          else if t = 2 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
+              fun (q : ℕ × List ℕ) => (2 * q.1 + 1, q.2)
+          else none :=
+    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
+      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
+  refine (Primrec.option_some.comp
+    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
+  rw [structuredNatG]
+  rcases hf : prev.length.unpair.1 with _ | fuel
+  · simp [structuredNatGCore, hf]
+  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
+  · simp [structuredNatGCore, hf, hs]
+  simp [structuredNatGCore, hf, hs]
+
+private lemma parseStructuredNat_prim : Primrec₂ parseStructuredNat := by
+  have hF : Primrec₂ (fun (_ : Unit) => structuredNatF) :=
+    Primrec.nat_strong_rec _ (structuredNatG_prim.comp Primrec.snd).to₂
+      fun _ n => structuredNatG_spec n
+  have hF1 : Primrec structuredNatF := hF.comp (Primrec.const ()) Primrec.id
+  have h2 : Primrec fun p : ℕ × List ℕ =>
+      structuredNatF (Nat.pair p.1 (Encodable.encode p.2)) :=
+    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
+  exact h2.to₂.of_eq fun fuel ts => by
+    rw [structuredNatF, Nat.unpair_pair, Denumerable.ofNat_encode]
+
+private lemma structuredTermG_prim : Primrec structuredTermG := by
+  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
+      prev.length.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
+    (Primrec.ofNat (List ℕ)).comp
+      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
+  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
+  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
+  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+  have hnat : Primrec fun x : PCtx => parseStructuredNat x.1.2 x.2.2 :=
+    parseStructuredNat_prim.comp hfuel' hrest
+  have hvar (kind : ℕ) : Primrec fun x : PCtx =>
+      (parseStructuredNat x.1.2 x.2.2).map fun p =>
+        (Nat.pair kind p.1 + 1, p.2) := by
+    refine Primrec.option_map hnat ?_
+    exact (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const kind)
+      (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
+  have hconst (symbol : ℕ) : Primrec fun x : PCtx =>
+      (some (arithmeticFuncCode 0 symbol 0, x.2.2) : Option (ℕ × List ℕ)) :=
+    Primrec.option_some.comp ((Primrec.const _).pair hrest)
+  have hlook1 : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp hprev
+        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
+      (Primrec.const none)
+  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
+        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
+          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
+      (Primrec.const none)
+  have hout : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      (arithmeticFuncCode 2 (if z.1.1.2.1 = 7 then 0 else 1)
+        (arithmeticVec2Code z.1.2.1 z.2.1), z.2.2) := by
+    have hsymbol : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        if z.1.1.2.1 = 7 then 0 else 1 :=
+      Primrec.ite
+        (PrimrecRel.comp Primrec.eq
+          (ht.comp (Primrec.fst.comp Primrec.fst)) (Primrec.const 7))
+        (Primrec.const 0) (Primrec.const 1)
+    have hvec : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        arithmeticVec2Code z.1.2.1 z.2.1 := by
+      simp only [arithmeticVec2Code]
+      exact Primrec.succ.comp (Primrec₂.natPair.comp
+        (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+        (Primrec.succ.comp (Primrec₂.natPair.comp
+          (Primrec.fst.comp Primrec.snd) (Primrec.const 0))))
+    have hcode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        arithmeticFuncCode 2 (if z.1.1.2.1 = 7 then 0 else 1)
+          (arithmeticVec2Code z.1.2.1 z.2.1) := by
+      simp only [arithmeticFuncCode]
+      exact Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
+        (Primrec₂.natPair.comp (Primrec.const 2)
+          (Primrec₂.natPair.comp hsymbol hvec)))
+    exact hcode.pair (Primrec.snd.comp Primrec.snd)
+  have hbin : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+          (arithmeticFuncCode 2 (if x.2.1 = 7 then 0 else 1)
+            (arithmeticVec2Code p.1 q.1), q.2) :=
+    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hout.to₂).to₂
+  have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
+    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+  have hbody : Primrec fun x : PCtx =>
+      if x.2.1 = 3 then
+        (parseStructuredNat x.1.2 x.2.2).map fun p => (Nat.pair 0 p.1 + 1, p.2)
+      else if x.2.1 = 4 then
+        (parseStructuredNat x.1.2 x.2.2).map fun p => (Nat.pair 1 p.1 + 1, p.2)
+      else if x.2.1 = 5 then some (arithmeticFuncCode 0 0 0, x.2.2)
+      else if x.2.1 = 6 then some (arithmeticFuncCode 0 1 0, x.2.2)
+      else if x.2.1 = 7 ∨ x.2.1 = 8 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+            (arithmeticFuncCode 2 (if x.2.1 = 7 then 0 else 1)
+              (arithmeticVec2Code p.1 q.1), q.2)
+      else none := by
+    exact Primrec.ite (heqt 3) (hvar 0) <| Primrec.ite (heqt 4) (hvar 1) <|
+      Primrec.ite (heqt 5) (hconst 0) <| Primrec.ite (heqt 6) (hconst 1) <|
+        Primrec.ite ((heqt 7).or (heqt 8)) hbin (Primrec.const none)
+  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
+      | [] => (none : Option (ℕ × List ℕ))
+      | t :: rest =>
+          if t = 3 then
+            (parseStructuredNat p.2 rest).map fun (q : ℕ × List ℕ) =>
+              (Nat.pair 0 q.1 + 1, q.2)
+          else if t = 4 then
+            (parseStructuredNat p.2 rest).map fun (q : ℕ × List ℕ) =>
+              (Nat.pair 1 q.1 + 1, q.2)
+          else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
+          else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
+          else if t = 7 ∨ t = 8 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind
+                fun (q : ℕ × List ℕ) =>
+              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
+                fun (r : ℕ × List ℕ) =>
+                (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
+                  (arithmeticVec2Code q.1 r.1), r.2)
+          else none :=
+    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
+      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
+  refine (Primrec.option_some.comp
+    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
+  rw [structuredTermG]
+  rcases hf : prev.length.unpair.1 with _ | fuel
+  · simp [structuredTermGCore, hf]
+  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
+  · simp [structuredTermGCore, hf, hs]
+  simp [structuredTermGCore, hf, hs]
+
+private lemma parseStructuredArithmeticTerm_prim :
+    Primrec₂ fun fuel ts => parseStructuredArithmeticTerm fuel 0 ts := by
+  have hF : Primrec₂ (fun (_ : Unit) => structuredTermF) :=
+    Primrec.nat_strong_rec _ (structuredTermG_prim.comp Primrec.snd).to₂
+      fun _ n => structuredTermG_spec n
+  have hF1 : Primrec structuredTermF := hF.comp (Primrec.const ()) Primrec.id
+  have h2 : Primrec fun p : ℕ × List ℕ =>
+      structuredTermF (Nat.pair p.1 (Encodable.encode p.2)) :=
+    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
+  exact h2.to₂.of_eq fun fuel ts => by
+    rw [structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
+
+private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
+  have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
+      prev.length.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.list_length)
+  have hts0 : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      Denumerable.ofNat (List ℕ) p.1.length.unpair.2 :=
+    (Primrec.ofNat (List ℕ)).comp
+      (Primrec.snd.comp (Primrec.unpair.comp (Primrec.list_length.comp Primrec.fst)))
+  have hprev : Primrec fun x : PCtx => x.1.1 := Primrec.fst.comp Primrec.fst
+  have hfuel' : Primrec fun x : PCtx => x.1.2 := Primrec.snd.comp Primrec.fst
+  have ht : Primrec fun x : PCtx => x.2.1 := Primrec.fst.comp Primrec.snd
+  have hrest : Primrec fun x : PCtx => x.2.2 := Primrec.snd.comp Primrec.snd
+  have hconst (tag : ℕ) : Primrec fun x : PCtx =>
+      (some (Nat.pair tag 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
+    Primrec.option_some.comp
+      ((Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag)
+        (Primrec.const 0))).pair hrest)
+  have hterm1 : Primrec fun x : PCtx =>
+      parseStructuredArithmeticTerm x.1.2 0 x.2.2 :=
+    parseStructuredArithmeticTerm_prim.comp hfuel' hrest
+  have hterm2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+      parseStructuredArithmeticTerm y.1.1.2 0 y.2.2 :=
+    parseStructuredArithmeticTerm_prim.comp (hfuel'.comp Primrec.fst)
+      (Primrec.snd.comp Primrec.snd)
+  have hrelOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      (arithmeticRelCode (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14)
+        (if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1)
+        z.1.2.1 z.2.1, z.2.2) := by
+    have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
+    have heqt : ∀ k : ℕ, PrimrecPred fun z :
+        (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) => z.1.1.2.1 = k := fun k =>
+      PrimrecRel.comp Primrec.eq htag (Primrec.const k)
+    have hnegative : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        if decide (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14) then 1 else 0 :=
+      (Primrec.ite ((heqt 12).or (heqt 14)) (Primrec.const 1)
+        (Primrec.const 0)).of_eq fun z => by simp
+    have hsymbol : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1 :=
+      Primrec.ite ((heqt 11).or (heqt 12)) (Primrec.const 0) (Primrec.const 1)
+    have hvec : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        arithmeticVec2Code z.1.2.1 z.2.1 := by
+      simp only [arithmeticVec2Code]
+      exact Primrec.succ.comp (Primrec₂.natPair.comp
+        (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+        (Primrec.succ.comp (Primrec₂.natPair.comp
+          (Primrec.fst.comp Primrec.snd) (Primrec.const 0))))
+    have hcode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        arithmeticRelCode (z.1.1.2.1 = 12 ∨ z.1.1.2.1 = 14)
+          (if z.1.1.2.1 = 11 ∨ z.1.1.2.1 = 12 then 0 else 1)
+          z.1.2.1 z.2.1 := by
+      simp only [arithmeticRelCode]
+      exact Primrec.succ.comp (Primrec₂.natPair.comp hnegative
+        (Primrec₂.natPair.comp (Primrec.const 2)
+          (Primrec₂.natPair.comp hsymbol hvec)))
+    exact hcode.pair (Primrec.snd.comp Primrec.snd)
+  have hrel : Primrec fun x : PCtx =>
+      (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
+        (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
+          (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
+            (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2) :=
+    Primrec.option_bind hterm1 (Primrec.option_map hterm2 hrelOut.to₂).to₂
+  have hlook1 : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp hprev
+        (Primrec₂.natPair.comp hfuel' (Primrec.encode.comp hrest)))
+      (Primrec.const none)
+  have hlook2 : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+      ((y.1.1.1[Nat.pair y.1.1.2 (Encodable.encode y.2.2)]?).getD none) :=
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp (hprev.comp Primrec.fst)
+        (Primrec₂.natPair.comp (hfuel'.comp Primrec.fst)
+          (Primrec.encode.comp (Primrec.snd.comp Primrec.snd))))
+      (Primrec.const none)
+  have hbinOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      (Nat.pair (if z.1.1.2.1 = 15 then 4 else 5)
+        (Nat.pair z.1.2.1 z.2.1) + 1, z.2.2) := by
+    have htag : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        z.1.1.2.1 := ht.comp (Primrec.fst.comp Primrec.fst)
+    have hkind : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        if z.1.1.2.1 = 15 then 4 else 5 :=
+      Primrec.ite (PrimrecRel.comp Primrec.eq htag (Primrec.const 15))
+        (Primrec.const 4) (Primrec.const 5)
+    have hpq : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+        Nat.pair z.1.2.1 z.2.1 :=
+      Primrec₂.natPair.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+        (Primrec.fst.comp Primrec.snd)
+    exact (Primrec.succ.comp (Primrec₂.natPair.comp hkind hpq)).pair
+      (Primrec.snd.comp Primrec.snd)
+  have hbin : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+          (Nat.pair (if x.2.1 = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2) :=
+    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hbinOut.to₂).to₂
+  have hquantOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+      (Nat.pair (if y.1.2.1 = 17 then 6 else 7) y.2.1 + 1, y.2.2) := by
+    have hkind : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+        if y.1.2.1 = 17 then 6 else 7 :=
+      Primrec.ite (PrimrecRel.comp Primrec.eq (ht.comp Primrec.fst) (Primrec.const 17))
+        (Primrec.const 6) (Primrec.const 7)
+    exact (Primrec.succ.comp (Primrec₂.natPair.comp hkind
+      (Primrec.fst.comp Primrec.snd))).pair (Primrec.snd.comp Primrec.snd)
+  have hquant : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
+        (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2) :=
+    Primrec.option_map hlook1 hquantOut.to₂
+  have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
+    PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+  have hbody : Primrec fun x : PCtx =>
+      if x.2.1 = 9 then some (Nat.pair 2 0 + 1, x.2.2)
+      else if x.2.1 = 10 then some (Nat.pair 3 0 + 1, x.2.2)
+      else if x.2.1 = 11 ∨ x.2.1 = 12 ∨ x.2.1 = 13 ∨ x.2.1 = 14 then
+        (parseStructuredArithmeticTerm x.1.2 0 x.2.2).bind fun p =>
+          (parseStructuredArithmeticTerm x.1.2 0 p.2).map fun q =>
+            (arithmeticRelCode (x.2.1 = 12 ∨ x.2.1 = 14)
+              (if x.2.1 = 11 ∨ x.2.1 = 12 then 0 else 1) p.1 q.1, q.2)
+      else if x.2.1 = 15 ∨ x.2.1 = 16 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+            (Nat.pair (if x.2.1 = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
+      else if x.2.1 = 17 ∨ x.2.1 = 18 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
+          (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2)
+      else none := by
+    exact Primrec.ite (heqt 9) (hconst 2) <| Primrec.ite (heqt 10) (hconst 3) <|
+      Primrec.ite ((heqt 11).or ((heqt 12).or ((heqt 13).or (heqt 14)))) hrel <|
+        Primrec.ite ((heqt 15).or (heqt 16)) hbin <|
+          Primrec.ite ((heqt 17).or (heqt 18)) hquant (Primrec.const none)
+  have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
+      match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
+      | [] => (none : Option (ℕ × List ℕ))
+      | t :: rest =>
+          if t = 9 then some (Nat.pair 2 0 + 1, rest)
+          else if t = 10 then some (Nat.pair 3 0 + 1, rest)
+          else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
+            (parseStructuredArithmeticTerm p.2 0 rest).bind fun q =>
+              (parseStructuredArithmeticTerm p.2 0 q.2).map fun (r : ℕ × List ℕ) =>
+                (arithmeticRelCode (t = 12 ∨ t = 14)
+                  (if t = 11 ∨ t = 12 then 0 else 1) q.1 r.1, r.2)
+          else if t = 15 ∨ t = 16 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
+              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
+                fun (r : ℕ × List ℕ) =>
+                (Nat.pair (if t = 15 then 4 else 5) (Nat.pair q.1 r.1) + 1, r.2)
+          else if t = 17 ∨ t = 18 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
+              fun (q : ℕ × List ℕ) =>
+              (Nat.pair (if t = 17 then 6 else 7) q.1 + 1, q.2)
+          else none :=
+    (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
+      rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
+  refine (Primrec.option_some.comp
+    (Primrec.nat_casesOn hfuel (Primrec.const none) hinner.to₂)).of_eq fun prev => ?_
+  rw [structuredFormulaG]
+  rcases hf : prev.length.unpair.1 with _ | fuel
+  · simp [structuredFormulaGCore, hf]
+  rcases hs : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with _ | ⟨t, rest⟩
+  · simp [structuredFormulaGCore, hf, hs]
+  simp [structuredFormulaGCore, hf, hs]
+
+private lemma parseStructuredArithmeticFormula_prim :
+    Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel 0 ts := by
+  have hF : Primrec₂ (fun (_ : Unit) => structuredFormulaF) :=
+    Primrec.nat_strong_rec _ (structuredFormulaG_prim.comp Primrec.snd).to₂
+      fun _ n => structuredFormulaG_spec n
+  have hF1 : Primrec structuredFormulaF := hF.comp (Primrec.const ()) Primrec.id
+  have h2 : Primrec fun p : ℕ × List ℕ =>
+      structuredFormulaF (Nat.pair p.1 (Encodable.encode p.2)) :=
+    hF1.comp (Primrec₂.natPair.comp Primrec.fst (Primrec.encode.comp Primrec.snd))
+  exact h2.to₂.of_eq fun fuel ts => by
+    rw [structuredFormulaF, Nat.unpair_pair, Denumerable.ofNat_encode]
+
+private lemma readStructuredLength_prim : Primrec readStructuredLength := by
+  have hstep : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+      if x.2.1 = 0 then some (0, x.2.2.1)
+      else if x.2.1 = 1 then x.2.2.2.map fun p => (p.1 + 1, p.2)
+      else none := by
+    have ht : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+        x.2.1 := Primrec.fst.comp Primrec.snd
+    have hrest : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+        x.2.2.1 := Primrec.fst.comp (Primrec.snd.comp Primrec.snd)
+    have hzero : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+        (some (0, x.2.2.1) : Option (ℕ × List ℕ)) :=
+      Primrec.option_some.comp ((Primrec.const 0).pair hrest)
+    have hih : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+        x.2.2.2 := Primrec.snd.comp (Primrec.snd.comp Primrec.snd)
+    have hsucc : Primrec fun x : List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) =>
+        x.2.2.2.map fun p => (p.1 + 1, p.2) := by
+      refine Primrec.option_map hih ?_
+      exact (Primrec.succ.comp (Primrec.fst.comp Primrec.snd)).pair
+        (Primrec.snd.comp Primrec.snd)
+    have heqt : ∀ k : ℕ, PrimrecPred fun x :
+        List ℕ × (ℕ × List ℕ × Option (ℕ × List ℕ)) => x.2.1 = k := fun k =>
+      PrimrecRel.comp Primrec.eq ht (Primrec.const k)
+    exact Primrec.ite (heqt 0) hzero <|
+      Primrec.ite (heqt 1) hsucc (Primrec.const none)
+  exact (Primrec.list_rec Primrec.id (Primrec.const none) hstep.to₂).of_eq fun ts => by
+    induction ts with
+    | nil => rfl
+    | cons t rest ih =>
+        simp only [id_eq, Prod.fst, Prod.snd] at ih ⊢
+        rw [ih]
+        rcases t with _ | t
+        · rfl
+        rcases t with _ | t
+        · rfl
+        simp [readStructuredLength]
+
+private abbrev StructuredPrimeHeadCtx := List ℕ × (ℕ × List ℕ)
+private abbrev StructuredPrimeLenCtx := StructuredPrimeHeadCtx × (ℕ × List ℕ)
+
+private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrimeC := by
+  have hpol : Primrec fun y : StructuredPrimeHeadCtx => y.2.1 :=
+    Primrec.fst.comp Primrec.snd
+  have hframed : Primrec fun y : StructuredPrimeHeadCtx => y.2.2 :=
+    Primrec.snd.comp Primrec.snd
+  have hlen : Primrec fun y : StructuredPrimeHeadCtx => readStructuredLength y.2.2 :=
+    readStructuredLength_prim.comp hframed
+  have hn : Primrec fun z : StructuredPrimeLenCtx => z.2.1 :=
+    Primrec.fst.comp Primrec.snd
+  have hpayload : Primrec fun z : StructuredPrimeLenCtx => z.2.2 :=
+    Primrec.snd.comp Primrec.snd
+  have htake : Primrec fun z : StructuredPrimeLenCtx => z.2.2.take z.2.1 :=
+    Primrec.list_take.comp hn hpayload
+  have hdrop : Primrec fun z : StructuredPrimeLenCtx => z.2.2.drop (z.2.1 + 1) :=
+    Primrec.list_drop.comp (Primrec.succ.comp hn) hpayload
+  have hformula : Primrec fun z : StructuredPrimeLenCtx =>
+      parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1) :=
+    parseStructuredArithmeticFormula_prim.comp hn htake
+  have hresult : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+      if w.2.2 = [] ∧ List.getD w.1.2.2 w.1.2.1 0 = 19 then
+        some (Nat.pair 1 (Nat.pair 7 (Nat.pair w.1.1.2.1 w.2.1)) + 1,
+          w.1.2.2.drop (w.1.2.1 + 1))
+      else none := by
+    have hrest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.2 :=
+      Primrec.snd.comp Primrec.snd
+    have hempty : PrimrecPred fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        w.2.2 = [] := by
+      exact (PrimrecRel.comp Primrec.eq (Primrec.list_length.comp hrest)
+        (Primrec.const 0)).of_eq fun w => by simp
+    have hget : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        List.getD w.1.2.2 w.1.2.1 0 :=
+      (Primrec.list_getD 0).comp (hpayload.comp Primrec.fst) (hn.comp Primrec.fst)
+    have hterm : PrimrecPred fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        List.getD w.1.2.2 w.1.2.1 0 = 19 :=
+      PrimrecRel.comp Primrec.eq hget (Primrec.const 19)
+    have hpol' : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        w.1.1.2.1 := hpol.comp (Primrec.fst.comp Primrec.fst)
+    have hcode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.1 :=
+      Primrec.fst.comp Primrec.snd
+    have houtCode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        Nat.pair 1 (Nat.pair 7 (Nat.pair w.1.1.2.1 w.2.1)) + 1 :=
+      Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
+        (Primrec₂.natPair.comp (Primrec.const 7)
+          (Primrec₂.natPair.comp hpol' hcode)))
+    have houtRest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
+        w.1.2.2.drop (w.1.2.1 + 1) :=
+      hdrop.comp Primrec.fst
+    exact Primrec.ite (hempty.and hterm)
+      (Primrec.option_some.comp (houtCode.pair houtRest)) (Primrec.const none)
+  have hparsed : Primrec fun z : StructuredPrimeLenCtx =>
+      (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
+        if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
+          some (Nat.pair 1 (Nat.pair 7 (Nat.pair z.1.2.1 p.1)) + 1,
+            z.2.2.drop (z.2.1 + 1))
+        else none :=
+    Primrec.option_bind hformula hresult.to₂
+  have hwithin : PrimrecPred fun z : StructuredPrimeLenCtx =>
+      z.2.1 ≤ z.2.2.length :=
+    Primrec.nat_le.comp hn (Primrec.list_length.comp hpayload)
+  have hafterLength : Primrec fun z : StructuredPrimeLenCtx =>
+      if z.2.1 ≤ z.2.2.length then
+        (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
+          if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
+            some (Nat.pair 1 (Nat.pair 7 (Nat.pair z.1.2.1 p.1)) + 1,
+              z.2.2.drop (z.2.1 + 1))
+          else none
+      else none :=
+    Primrec.ite hwithin hparsed (Primrec.const none)
+  have hlengthBody : Primrec fun y : StructuredPrimeHeadCtx =>
+      (readStructuredLength y.2.2).bind fun p =>
+        if p.1 ≤ p.2.length then
+          (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
+            if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
+              some (Nat.pair 1 (Nat.pair 7 (Nat.pair y.2.1 q.1)) + 1,
+                p.2.drop (p.1 + 1))
+            else none
+        else none :=
+    Primrec.option_bind hlen hafterLength.to₂
+  have hpolarity : PrimrecPred fun y : StructuredPrimeHeadCtx => y.2.1 ≤ 1 :=
+    Primrec.nat_le.comp hpol (Primrec.const 1)
+  have hcons : Primrec fun y : StructuredPrimeHeadCtx =>
+      if y.2.1 ≤ 1 then
+        (readStructuredLength y.2.2).bind fun p =>
+          if p.1 ≤ p.2.length then
+            (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
+              if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
+                some (Nat.pair 1 (Nat.pair 7 (Nat.pair y.2.1 q.1)) + 1,
+                  p.2.drop (p.1 + 1))
+              else none
+          else none
+      else none :=
+    Primrec.ite hpolarity hlengthBody (Primrec.const none)
+  exact (Primrec.list_casesOn Primrec.id (Primrec.const none) hcons.to₂).of_eq fun ts => by
+    rcases ts with _ | ⟨polarity, framed⟩
+    · rfl
+    simp only [id_eq, List.casesOn, parseStructuredPaperPrimeC]
+    by_cases hpol : polarity ≤ 1
+    · simp only [hpol, if_true]
+      rcases hl : readStructuredLength framed with _ | p
+      · simp [hl]
+      simp only [hl, Option.bind_some]
+      by_cases hlen : p.1 ≤ p.2.length
+      · simp only [hlen, if_true]
+        rcases hf : parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+          _ | ⟨code, rest⟩
+        · simp [hf]
+        rcases rest with _ | ⟨r, rest⟩ <;> simp [hf]
+      · simp [hlen]
+    · simp [hpol]
+
 private lemma parseG_prim : Primrec parseG := by
   have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
       prev.length.unpair.1 :=
@@ -3000,18 +3530,42 @@ private lemma parseG_prim : Primrec parseG := by
       (some (Nat.pair 0 0 + 1, x.2.2) : Option (ℕ × List ℕ)) :=
     Primrec.option_some.comp ((Primrec.const (Nat.pair 0 0 + 1)).pair hrest)
   have hesc : Primrec fun x : PCtx =>
-      x.2.2.head?.bind fun c =>
-        if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-        else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
-          x.2.2.tail) := by
-    refine Primrec.option_bind (Primrec.list_head?.comp hrest) ?_
-    have he : Primrec fun y : PCtx × ℕ =>
-        Encodable.encode (Encodable.decode (α := Sentence) y.2) :=
-      (Primrec.encdec.comp Primrec.snd).of_eq fun y => rfl
-    exact (Primrec.ite (PrimrecRel.comp Primrec.eq he (Primrec.const 0))
-      (Primrec.const none)
-      (Primrec.option_some.comp ((Primrec.pred.comp he).pair
-        (Primrec.list_tail.comp (hrest.comp Primrec.fst))))).to₂
+      match x.2.2 with
+      | 0 :: payload => parseStructuredPaperPrimeC payload
+      | c :: tail =>
+          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
+      | [] => none := by
+    have hc : Primrec fun y : PCtx × (ℕ × List ℕ) => y.2.1 :=
+      Primrec.fst.comp Primrec.snd
+    have htail : Primrec fun y : PCtx × (ℕ × List ℕ) => y.2.2 :=
+      Primrec.snd.comp Primrec.snd
+    have he : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+        Encodable.encode (Encodable.decode (α := Sentence) y.2.1) :=
+      (Primrec.encdec.comp hc).of_eq fun y => rfl
+    have hstructured : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+        parseStructuredPaperPrimeC y.2.2 :=
+      parseStructuredPaperPrimeC_prim.comp htail
+    have hlegacy : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+        if Encodable.encode (Encodable.decode (α := Sentence) y.2.1) = 0 then none
+        else some (Encodable.encode (Encodable.decode (α := Sentence) y.2.1) - 1,
+          y.2.2) :=
+      Primrec.ite (PrimrecRel.comp Primrec.eq he (Primrec.const 0))
+        (Primrec.const none)
+        (Primrec.option_some.comp ((Primrec.pred.comp he).pair htail))
+    have hcons : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+        if y.2.1 = 0 then parseStructuredPaperPrimeC y.2.2
+        else if Encodable.encode (Encodable.decode (α := Sentence) y.2.1) = 0 then none
+        else some (Encodable.encode (Encodable.decode (α := Sentence) y.2.1) - 1,
+          y.2.2) :=
+      Primrec.ite (PrimrecRel.comp Primrec.eq hc (Primrec.const 0))
+        hstructured hlegacy
+    exact (Primrec.list_casesOn hrest (Primrec.const none) hcons.to₂).of_eq fun x => by
+      rcases x.2.2 with _ | ⟨c, tail⟩
+      · rfl
+      rcases c with _ | c
+      · rfl
+      simp
   have hlook1 : Primrec fun x : PCtx =>
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none) :=
     Primrec.option_getD.comp
@@ -3050,10 +3604,12 @@ private lemma parseG_prim : Primrec parseG := by
   have hbody : Primrec fun x : PCtx =>
       if x.2.1 = 0 then some (Nat.pair 0 0 + 1, x.2.2)
       else if x.2.1 = 1 then
-        x.2.2.head?.bind fun c =>
-          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
-            x.2.2.tail)
+        match x.2.2 with
+        | 0 :: payload => parseStructuredPaperPrimeC payload
+        | c :: tail =>
+            if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+            else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
+        | [] => none
       else if x.2.1 = 2 ∨ x.2.1 = 3 ∨ x.2.1 = 4 then
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
           ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).bind fun q =>
@@ -3068,12 +3624,13 @@ private lemma parseG_prim : Primrec parseG := by
       | t :: rest =>
           if t = 0 then some (Nat.pair 0 0 + 1, rest)
           else if t = 1 then
-            rest.head?.bind fun c =>
-              if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then
-                none
-              else some
-                (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
-                  rest.tail)
+            match rest with
+            | 0 :: payload => parseStructuredPaperPrimeC payload
+            | c :: tail =>
+                if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+                else some
+                  (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
+            | [] => none
           else if t = 2 ∨ t = 3 ∨ t = 4 then
             ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind
               fun q1 =>
@@ -3093,7 +3650,9 @@ private lemma parseG_prim : Primrec parseG := by
   | succ fuel' =>
       cases hts : Denumerable.ofNat (List ℕ) prev.length.unpair.2 with
       | nil => simp [hts]
-      | cons t rest => simp [hts]
+      | cons t rest =>
+          simp only [hts]
+          rfl
 
 /-- The symbol-block parser is primitive recursive. -/
 lemma parseRpnC_prim : Primrec₂ parseRpnC := by

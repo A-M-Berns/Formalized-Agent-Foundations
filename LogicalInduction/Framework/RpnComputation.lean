@@ -34,12 +34,17 @@ lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest :
       · rw [if_pos h1] at h
         rcases ts with _ | ⟨c, ts'⟩
         · simp at h
-        rw [List.head?_cons] at h
-        rcases hdec : Encodable.decode (α := Sentence) c with _ | ψ
-        · simp [hdec] at h
-        · simp only [Option.bind_some, hdec, Option.map_some, List.tail_cons] at h
-          obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
-          exact (List.suffix_cons c ts').trans (List.suffix_cons t (c :: ts'))
+        cases c with
+        | zero =>
+            exact (parseStructuredPaperPrime_suffix h).trans
+              ((List.suffix_cons 0 ts').trans (List.suffix_cons t (0 :: ts')))
+        | succ c =>
+            rcases hdec : Encodable.decode (α := Sentence) (c + 1) with _ | ψ
+            · simp [hdec] at h
+            · simp only [hdec, Option.map_some] at h
+              obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+              exact (List.suffix_cons (c + 1) ts').trans
+                (List.suffix_cons t ((c + 1) :: ts'))
       rw [if_neg h1] at h
       have hbin : ∀ (mk : Sentence → Sentence → Sentence),
           ((parseRpn fuel ts).bind fun p =>
@@ -106,6 +111,210 @@ lemma encode_le_of_suffix : ∀ {l₁ l₂ : List ℕ}, l₁ <:+ l₂ →
             le_of_lt (encode_lt_encode_cons a _)
         _ = Encodable.encode ((a :: p) ++ l₁) := rfl
 
+/-! ## Strong recursion for the structured natural decoder -/
+
+public def structuredNatF (m : ℕ) : Option (ℕ × List ℕ) :=
+  parseStructuredNat m.unpair.1 (Denumerable.ofNat (List ℕ) m.unpair.2)
+
+public def structuredNatGCore (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)) :
+    Option (ℕ × List ℕ) :=
+  match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 0 then some (0, rest)
+      else if t = 1 then
+        (look (Nat.pair fuel (Encodable.encode rest))).map fun p => (2 * p.1, p.2)
+      else if t = 2 then
+        (look (Nat.pair fuel (Encodable.encode rest))).map fun p => (2 * p.1 + 1, p.2)
+      else none
+
+private lemma structured_smaller_index {m fuel t rest}
+    (hfuel : m.unpair.1 = fuel + 1)
+    (hts : Denumerable.ofNat (List ℕ) m.unpair.2 = t :: rest) :
+    Nat.pair fuel (Encodable.encode rest) < m := by
+  have hm2 : Encodable.encode (t :: rest) = m.unpair.2 := by
+    rw [← hts]
+    exact Denumerable.encode_ofNat _
+  calc
+    Nat.pair fuel (Encodable.encode rest) ≤
+        Nat.pair fuel (Encodable.encode (t :: rest)) :=
+      pair_le_pair_right' fuel (le_of_lt (encode_lt_encode_cons t rest))
+    _ < Nat.pair (fuel + 1) (Encodable.encode (t :: rest)) :=
+      Nat.pair_lt_pair_left _ (Nat.lt_succ_self fuel)
+    _ = m := by rw [hm2, ← hfuel, Nat.pair_unpair]
+
+public lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
+    (hlook : ∀ i, i < m → look i = structuredNatF i) :
+    structuredNatGCore m look = structuredNatF m := by
+  rw [structuredNatGCore, structuredNatF]
+  rcases hf : m.unpair.1 with _ | fuel
+  · rfl
+  rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
+  · rfl
+  simp only [parseStructuredNat]
+  by_cases h0 : t = 0 <;> simp only [h0, if_true, if_false]
+  by_cases h1 : t = 1 <;> simp only [h1, if_true, if_false]
+  · rw [hlook _ (structured_smaller_index hf hs), structuredNatF,
+      Nat.unpair_pair, Denumerable.ofNat_encode]
+  by_cases h2 : t = 2 <;> simp only [h2, if_true, if_false]
+  rw [hlook _ (structured_smaller_index hf hs), structuredNatF,
+    Nat.unpair_pair, Denumerable.ofNat_encode]
+
+public def structuredNatG (prev : List (Option (ℕ × List ℕ))) :
+    Option (Option (ℕ × List ℕ)) :=
+  some (structuredNatGCore prev.length fun i => (prev[i]?).getD none)
+
+public lemma structuredNatG_spec (m : ℕ) :
+    structuredNatG ((List.range m).map structuredNatF) = some (structuredNatF m) := by
+  rw [structuredNatG, show ((List.range m).map structuredNatF).length = m from by simp]
+  congr 1
+  refine structuredNatGCore_spec m _ fun i hi => ?_
+  have hib : i < ((List.range m).map structuredNatF).length := by simpa using hi
+  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
+    List.getElem_range]
+
+public def structuredTermF (m : ℕ) : Option (ℕ × List ℕ) :=
+  parseStructuredArithmeticTerm m.unpair.1 0
+    (Denumerable.ofNat (List ℕ) m.unpair.2)
+
+public def structuredTermGCore (m : ℕ)
+    (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
+  match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 3 then
+        (parseStructuredNat fuel rest).map fun p =>
+          (Nat.pair 0 p.1 + 1, p.2)
+      else if t = 4 then
+        (parseStructuredNat fuel rest).map fun p => (Nat.pair 1 p.1 + 1, p.2)
+      else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
+      else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
+      else if t = 7 ∨ t = 8 then
+        (look (Nat.pair fuel (Encodable.encode rest))).bind fun p =>
+          (look (Nat.pair fuel (Encodable.encode p.2))).map fun q =>
+            (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
+              (arithmeticVec2Code p.1 q.1), q.2)
+      else none
+
+public lemma structuredTermGCore_spec (m : ℕ)
+    (look : ℕ → Option (ℕ × List ℕ))
+    (hlook : ∀ i, i < m → look i = structuredTermF i) :
+    structuredTermGCore m look = structuredTermF m := by
+  rw [structuredTermGCore, structuredTermF]
+  rcases hf : m.unpair.1 with _ | fuel
+  · rfl
+  rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
+  · rfl
+  simp only [parseStructuredArithmeticTerm]
+  by_cases h3 : t = 3 <;> simp only [h3, if_true, if_false]
+  by_cases h4 : t = 4 <;> simp only [h4, if_true, if_false]
+  by_cases h5 : t = 5 <;> simp only [h5, if_true, if_false]
+  by_cases h6 : t = 6 <;> simp only [h6, if_true, if_false]
+  by_cases hb : t = 7 ∨ t = 8 <;> simp only [hb, if_true, if_false]
+  rw [hlook _ (structured_smaller_index hf hs), structuredTermF,
+    Nat.unpair_pair, Denumerable.ofNat_encode]
+  rcases hp : parseStructuredArithmeticTerm fuel 0 rest with _ | p
+  · rfl
+  simp only [Option.bind_some]
+  have hpSuffix := parseStructuredArithmeticTerm_suffix hp
+  have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
+    calc
+      Nat.pair fuel (Encodable.encode p.2) ≤
+          Nat.pair fuel (Encodable.encode rest) :=
+        pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
+      _ < m := structured_smaller_index hf hs
+  rw [hlook _ hidx, structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
+
+public def structuredTermG
+    (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
+  some (structuredTermGCore prev.length fun i => (prev[i]?).getD none)
+
+public lemma structuredTermG_spec (m : ℕ) :
+    structuredTermG ((List.range m).map structuredTermF) =
+      some (structuredTermF m) := by
+  rw [structuredTermG, show ((List.range m).map structuredTermF).length = m from by simp]
+  congr 1
+  refine structuredTermGCore_spec m _ fun i hi => ?_
+  have hib : i < ((List.range m).map structuredTermF).length := by simpa using hi
+  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
+    List.getElem_range]
+
+public def structuredFormulaF (m : ℕ) : Option (ℕ × List ℕ) :=
+  parseStructuredArithmeticFormula m.unpair.1 0
+    (Denumerable.ofNat (List ℕ) m.unpair.2)
+
+public def structuredFormulaGCore (m : ℕ)
+    (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
+  match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 9 then some (Nat.pair 2 0 + 1, rest)
+      else if t = 10 then some (Nat.pair 3 0 + 1, rest)
+      else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
+        (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
+          (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+            (arithmeticRelCode (t = 12 ∨ t = 14)
+              (if t = 11 ∨ t = 12 then 0 else 1) p.1 q.1, q.2)
+      else if t = 15 ∨ t = 16 then
+        (look (Nat.pair fuel (Encodable.encode rest))).bind fun p =>
+          (look (Nat.pair fuel (Encodable.encode p.2))).map fun q =>
+            (Nat.pair (if t = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
+      else if t = 17 ∨ t = 18 then
+        (look (Nat.pair fuel (Encodable.encode rest))).map fun p =>
+          (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
+      else none
+
+public lemma structuredFormulaGCore_spec (m : ℕ)
+    (look : ℕ → Option (ℕ × List ℕ))
+    (hlook : ∀ i, i < m → look i = structuredFormulaF i) :
+    structuredFormulaGCore m look = structuredFormulaF m := by
+  rw [structuredFormulaGCore, structuredFormulaF]
+  rcases hf : m.unpair.1 with _ | fuel
+  · rfl
+  rcases hs : Denumerable.ofNat (List ℕ) m.unpair.2 with _ | ⟨t, rest⟩
+  · rfl
+  simp only [parseStructuredArithmeticFormula]
+  by_cases h9 : t = 9 <;> simp only [h9, if_true, if_false]
+  by_cases h10 : t = 10 <;> simp only [h10, if_true, if_false]
+  by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 <;>
+    simp only [hrel, if_true, if_false]
+  by_cases hbin : t = 15 ∨ t = 16 <;> simp only [hbin, if_true, if_false]
+  · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
+      Nat.unpair_pair, Denumerable.ofNat_encode]
+    rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+    · rfl
+    simp only [Option.bind_some]
+    have hpSuffix := parseStructuredArithmeticFormula_suffix hp
+    have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
+      calc
+        Nat.pair fuel (Encodable.encode p.2) ≤
+            Nat.pair fuel (Encodable.encode rest) :=
+          pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
+        _ < m := structured_smaller_index hf hs
+    rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
+      Denumerable.ofNat_encode]
+  by_cases hquant : t = 17 ∨ t = 18 <;> simp only [hquant, if_true, if_false]
+  rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
+    Nat.unpair_pair, Denumerable.ofNat_encode]
+
+public def structuredFormulaG
+    (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
+  some (structuredFormulaGCore prev.length fun i => (prev[i]?).getD none)
+
+public lemma structuredFormulaG_spec (m : ℕ) :
+    structuredFormulaG ((List.range m).map structuredFormulaF) =
+      some (structuredFormulaF m) := by
+  rw [structuredFormulaG,
+    show ((List.range m).map structuredFormulaF).length = m from by simp]
+  congr 1
+  refine structuredFormulaGCore_spec m _ fun i hi => ?_
+  have hib : i < ((List.range m).map structuredFormulaF).length := by simpa using hi
+  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
+    List.getElem_range]
+
 /-! ## The strong-recursion package -/
 
 /-- `parseRpnC` on the paired index (list argument via the canonical `ofNat`). -/
@@ -120,10 +329,12 @@ def parseGCore (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ
   | fuel' + 1, t :: rest =>
       if t = 0 then some (Nat.pair 0 0 + 1, rest)
       else if t = 1 then
-        rest.head?.bind fun c =>
-          if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
-          else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1,
-            rest.tail)
+        match rest with
+        | 0 :: payload => parseStructuredPaperPrimeC payload
+        | c :: tail =>
+            if Encodable.encode (Encodable.decode (α := Sentence) c) = 0 then none
+            else some (Encodable.encode (Encodable.decode (α := Sentence) c) - 1, tail)
+        | [] => none
       else if t = 2 ∨ t = 3 ∨ t = 4 then
         (look (Nat.pair fuel' (Encodable.encode rest))).bind fun p =>
           (look (Nat.pair fuel' (Encodable.encode p.2))).bind fun q =>
@@ -164,6 +375,7 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
   rw [if_neg h0, if_neg h0]
   by_cases h1 : t = 1
   · rw [if_pos h1, if_pos h1]
+    rfl
   rw [if_neg h1, if_neg h1]
   by_cases hb : t = 2 ∨ t = 3 ∨ t = 4
   · rw [if_pos hb]

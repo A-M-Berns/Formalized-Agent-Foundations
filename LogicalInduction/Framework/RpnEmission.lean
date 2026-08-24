@@ -27,7 +27,9 @@ lemma escExpandFold_range (tf : ℕ → ℕ) (n count : ℕ) :
     escExpandFold 0 ((List.range count).map fun j => tf (Nat.pair n j)) =
       (List.range count).flatMap fun j =>
         if escModeList (vpre tf n j) = 1 ∨ escModeList (vpre tf n j) = 3
-        then [1, tf (Nat.pair n j)] else [tf (Nat.pair n j)] := by
+        then if tf (Nat.pair n j) = 0 then [1, 0, 2]
+          else [1, tf (Nat.pair n j)]
+        else [tf (Nat.pair n j)] := by
   induction count with
   | zero => rfl
   | succ count ih =>
@@ -44,7 +46,9 @@ lemma escExpand_eq_flatMap {ts : List ℕ} {tf : ℕ → ℕ} {n : ℕ}
     (hget : ∀ i, i < ts.length → tf (Nat.pair n i) = ts.getD i 0) :
     escExpand ts = (List.range ts.length).flatMap fun j =>
       if escModeList (vpre tf n j) = 1 ∨ escModeList (vpre tf n j) = 3
-      then [1, tf (Nat.pair n j)] else [tf (Nat.pair n j)] := by
+      then if tf (Nat.pair n j) = 0 then [1, 0, 2]
+        else [1, tf (Nat.pair n j)]
+      else [tf (Nat.pair n j)] := by
   have hts : ts = (List.range ts.length).map fun j => tf (Nat.pair n j) := by
     apply List.ext_getElem
     · simp
@@ -191,18 +195,24 @@ theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
   have hds : PolySegStream ds :=
     PrefixPatchCompile.clockedTokens_polySegStream lc tc a k
   obtain ⟨⟨cc, hcnt⟩, hbig⟩ := hds.undigitizeTokens
+  have hbigCopy := hbig
+  obtain ⟨clen, cdig, hlen, hdig⟩ := hbig
   obtain ⟨cm, hmode⟩ := hds.escModeScan
   obtain ⟨cad, had⟩ := addc_polyFueled
   obtain ⟨cml, hml⟩ := mul_polyFueled
   -- Per-position digit segment: escape-prefix the sentence slots.
-  have hcopy := hbig.blockSeg
+  have hcopy := hbigCopy.blockSeg
   have hesc := (PolySegStream.block (PolyFueled.const 1)).append hcopy
+  have hpoison := (PolySegStream.block (PolyFueled.const 1)).append
+    ((PolySegStream.block (PolyFueled.const 0)).append
+      (PolySegStream.block (PolyFueled.const 2)))
+  have hescSafe := hpoison.ifZero hesc hlen
   have heq1 := had.comp ((subc_polyFueled.comp (hmode.pair (PolyFueled.const 1))).pair
     (subc_polyFueled.comp ((PolyFueled.const 1).pair hmode)))
   have heq3 := had.comp ((subc_polyFueled.comp (hmode.pair (PolyFueled.const 3))).pair
     (subc_polyFueled.comp ((PolyFueled.const 3).pair hmode)))
   have hsel := hml.comp (heq1.pair heq3)
-  have hseg := hesc.ifZero hcopy hsel
+  have hseg := hescSafe.ifZero hcopy hsel
   have hassembled := hseg.concatVar hcnt
   have hclean : PolySegStream (fun n => digitize (escExpand (undigitize (ds n)))) := by
     refine hassembled.of_eq fun n => ?_
@@ -222,7 +232,20 @@ theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
         (fun w => (undigitize (ds w.unpair.1)).getD w.unpair.2 0) n j) = 3
     · rw [if_pos (by
         rcases hm with hm | hm <;> rw [hm]), if_pos hm]
-      simp [digitize]
+      by_cases hz : (undigitize (ds n)).getD j 0 = 0
+      · rw [if_pos hz]
+        have hlen_zero : len4 ((undigitize (ds n)).getD j 0) = 0 := by
+          rw [hz]
+          exact len4_zero
+        rw [if_pos hlen_zero]
+        simp [digitize, hz]
+      · rw [if_neg hz]
+        have hlen_ne : len4 ((undigitize (ds n)).getD j 0) ≠ 0 := by
+          have hpos : 0 < len4 ((undigitize (ds n)).getD j 0) :=
+            (lt_len4_iff _ 0).mpr (Nat.one_le_iff_ne_zero.mpr hz)
+          omega
+        rw [if_neg hlen_ne]
+        simp [digitize, hz]
     · rw [if_neg (by
         push_neg at hm
         simp only [Nat.mul_eq_zero]

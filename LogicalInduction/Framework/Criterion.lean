@@ -1698,6 +1698,150 @@ def rpn : Sentence → List ℕ
   | Formula.or φ ψ => 4 :: (rpn φ ++ rpn ψ)
   | Formula.imp φ ψ => 2 :: (rpn φ ++ rpn ψ)
 
+/-! ### Structured arithmetic leaves
+
+The formerly invalid escape prefix `[1, 0]` introduces an exact paper-prime atom.  Its
+payload is a small-token prefix tree.  Tags `0`--`2` encode naturals in binary; tags
+`3`--`8` encode arithmetic terms; and tags `9`--`18` encode arithmetic formulas.  The
+numeric parser below deliberately constructs Foundation's established Godel code only
+inside contraction.  In particular, the emitted stream never contains that code as a
+token. -/
+
+/-- Arity of one node in the shared structured arithmetic payload grammar. -/
+public def structuredArithmeticArity (t : ℕ) : Option ℕ :=
+  if t = 0 then some 0
+  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 then some 1
+  else if t = 5 ∨ t = 6 ∨ t = 9 ∨ t = 10 then some 0
+  else if t ≤ 16 then some 2
+  else none
+
+public def arithmeticVec2Code (a b : ℕ) : ℕ :=
+  Nat.pair a (Nat.pair b 0 + 1) + 1
+
+public def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
+  Nat.pair 2 (Nat.pair arity (Nat.pair symbol args)) + 1
+
+public def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
+  Nat.pair (if negative then 1 else 0)
+    (Nat.pair 2 (Nat.pair symbol (arithmeticVec2Code a b))) + 1
+
+/- Numeric mirror of the structural arithmetic codec.  The three mutually recursive
+parsers return an exact Foundation code and the untouched suffix. -/
+mutual
+  public def parseStructuredNat : ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _ => none
+    | _ + 1, [] => none
+    | fuel + 1, t :: rest =>
+        if t = 0 then some (0, rest)
+        else if t = 1 then
+          (parseStructuredNat fuel rest).map fun p => (2 * p.1, p.2)
+        else if t = 2 then
+          (parseStructuredNat fuel rest).map fun p => (2 * p.1 + 1, p.2)
+        else none
+
+  public def parseStructuredArithmeticTerm : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _, _ => none
+    | _ + 1, _, [] => none
+    | fuel + 1, depth, t :: rest =>
+        if t = 3 then
+          (parseStructuredNat fuel rest).map fun p =>
+            (Nat.pair 0 p.1 + 1, p.2)
+        else if t = 4 then
+          (parseStructuredNat fuel rest).map fun p => (Nat.pair 1 p.1 + 1, p.2)
+        else if t = 5 then some (arithmeticFuncCode 0 0 0, rest)
+        else if t = 6 then some (arithmeticFuncCode 0 1 0, rest)
+        else if t = 7 ∨ t = 8 then
+          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+              (arithmeticFuncCode 2 (if t = 7 then 0 else 1)
+                (arithmeticVec2Code p.1 q.1), q.2)
+        else none
+
+  public def parseStructuredArithmeticFormula : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
+    | 0, _, _ => none
+    | _ + 1, _, [] => none
+    | fuel + 1, depth, t :: rest =>
+        if t = 9 then some (Nat.pair 2 0 + 1, rest)
+        else if t = 10 then some (Nat.pair 3 0 + 1, rest)
+        else if t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 then
+          (parseStructuredArithmeticTerm fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticTerm fuel 0 p.2).map fun q =>
+              (arithmeticRelCode (t = 12 ∨ t = 14) (if t = 11 ∨ t = 12 then 0 else 1)
+                p.1 q.1, q.2)
+        else if t = 15 ∨ t = 16 then
+          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+              (Nat.pair (if t = 15 then 4 else 5) (Nat.pair p.1 q.1) + 1, q.2)
+        else if t = 17 ∨ t = 18 then
+          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+            (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
+        else none
+end
+
+/-- Unary payload-length field.  Unary is intentional: every framing token stays small
+even on malformed input, so grammar scanners retain polynomially bounded state. -/
+def readStructuredLength : List ℕ → Option (ℕ × List ℕ)
+  | 0 :: rest => some (0, rest)
+  | 1 :: rest => (readStructuredLength rest).map fun p => (p.1 + 1, p.2)
+  | _ => none
+
+/-- Parse the tail of a `[1, 0, ...]` structured paper-prime escape.  After polarity,
+`L` copies of `1` and a terminating `0` delimit exactly `L` payload symbols.  Token
+`19`, which is outside the arithmetic codec alphabet `0..18`, closes the atomic block
+for syntax-preserving streaming scanners. -/
+def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
+  | polarity :: framed =>
+      if polarity ≤ 1 then
+        (readStructuredLength framed).bind fun p =>
+          if p.1 ≤ p.2.length then
+            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            | some (formulaCode, []) =>
+                if List.getD p.2 p.1 0 = 19 then
+                  some (Formula.atom (Nat.pair 7 (Nat.pair polarity formulaCode)),
+                    p.2.drop (p.1 + 1))
+                else none
+            | _ => none
+          else none
+      else none
+  | [] => none
+
+/-- Code-level result of the same structured leaf contraction. -/
+def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
+  | polarity :: framed =>
+      if polarity ≤ 1 then
+        (readStructuredLength framed).bind fun p =>
+          if p.1 ≤ p.2.length then
+            match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            | some (formulaCode, []) =>
+                if List.getD p.2 p.1 0 = 19 then
+                  some (Nat.pair 1 (Nat.pair 7 (Nat.pair polarity formulaCode)) + 1,
+                    p.2.drop (p.1 + 1))
+                else none
+            | _ => none
+          else none
+      else none
+  | [] => none
+
+/-- The pre-structured RPN grammar, retained to state generic backwards compatibility. -/
+def parseRpnLegacy : ℕ → List ℕ → Option (Sentence × List ℕ)
+  | 0, _ => none
+  | _ + 1, [] => none
+  | fuel + 1, t :: rest =>
+      if t = 0 then some (Formula.falsum, rest)
+      else if t = 1 then
+        rest.head?.bind fun c =>
+          (Encodable.decode (α := Sentence) c).map fun φ => (φ, rest.tail)
+      else if t = 2 then
+        (parseRpnLegacy fuel rest).bind fun p =>
+          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.imp p.1 q.1, q.2)
+      else if t = 3 then
+        (parseRpnLegacy fuel rest).bind fun p =>
+          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.and p.1 q.1, q.2)
+      else if t = 4 then
+        (parseRpnLegacy fuel rest).bind fun p =>
+          (parseRpnLegacy fuel p.2).bind fun q => some (Formula.or p.1 q.1, q.2)
+      else some (Formula.atom (t - 5), rest)
+
 /-- `parseRpn fuel ts` reads one sentence block from the front of `ts`, returning the
 parsed sentence and the unread suffix.  Any `fuel ≥ ts.length` is enough. -/
 def parseRpn : ℕ → List ℕ → Option (Sentence × List ℕ)
@@ -1706,8 +1850,10 @@ def parseRpn : ℕ → List ℕ → Option (Sentence × List ℕ)
   | fuel + 1, t :: rest =>
       if t = 0 then some (Formula.falsum, rest)
       else if t = 1 then
-        rest.head?.bind fun c =>
-          (Encodable.decode (α := Sentence) c).map fun φ => (φ, rest.tail)
+        match rest with
+        | 0 :: payload => parseStructuredPaperPrime payload
+        | c :: tail => (Encodable.decode (α := Sentence) c).map fun φ => (φ, tail)
+        | [] => none
       else if t = 2 then
         (parseRpn fuel rest).bind fun p =>
           (parseRpn fuel p.2).bind fun q => some (Formula.imp p.1 q.1, q.2)
