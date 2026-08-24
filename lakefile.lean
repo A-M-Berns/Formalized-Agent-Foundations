@@ -64,6 +64,17 @@ lean_lib APITests where
 lean_lib AxiomAudit where
   srcDir := "."
 
+-- The counted-step machine (Stage 1) and the executable description bridge (Stage 3) of
+-- the efficiency-model program. A default target so CI compiles it, but deliberately *not*
+-- imported by `LogicalInduction.lean`: nothing here carries a paper node, and no strength
+-- claim depends on it. `DescExec` is the only module in this repository that names a
+-- `Complexity.*` declaration; its import surface is `…UTM.Internal.Interp`, a 5-file /
+-- ~2.2k-line closure of the pinned fork, not the whole library.
+@[default_target]
+lean_lib MachineExec where
+  srcDir := "."
+  roots := #[`LogicalInduction.Construction.Machine]
+
 -- Scratch verification of the Mathlib + Foundation substrate (not part of the
 -- formalization proper; see Scratchpad.lean). Excluded from the default target.
 lean_lib Scratchpad where
@@ -83,6 +94,31 @@ lean_lib Scratchpad where
 -- repo — a scoped follow-up, not part of routine bumping. Mathlib and all other pins
 -- are transitive through Foundation's manifest; keep `lean-toolchain` matched to
 -- Foundation's.
+-- Pinned Lean-4.31 compatibility fork of SamuelSchlesinger/complexitylib (Apache-2.0),
+-- the complexity-theory substrate for the machine-efficiency recalibration of `dd:fuel`
+-- (see `LogicalInduction/notes/complexitylib-adoption.md`).
+--
+-- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
+-- exactly two commits: a 36-line mechanical port to this project's Lean/Mathlib pin
+-- (upstream is on 4.30; no mathematical statement, definition or proof is altered), and
+-- one additive theorem, `utmTM_simulates_computer`, which exposes the universal machine's
+-- *arbitrary function output* rather than only its decision cell — a strictly weaker
+-- projection of a theorem upstream already proves. Both are upstreamable and are meant to
+-- be upstreamed; the fork retires into a plain upstream `require` once upstream reaches
+-- this toolchain.
+--
+-- Required rather than vendored: the useful upstream slice is ~35k lines — 3.4× this
+-- repository's largest vendored body — while the port is 36 mechanical lines that a
+-- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
+-- bump and degrade the diff-against-upstream story each time. See the adoption note §5.
+--
+-- FAF's own import surface is far narrower than the fork: `Construction/Machine/DescExec`
+-- imports only `…UTM.Internal.Interp`, whose closure is 5 files / ~2.2k lines. Nothing
+-- else in this repository may name a `Complexity.*` declaration — the same discipline
+-- `PFR/` ↔ `ShannonInformation.API` follows.
+require complexitylib from git
+  "https://github.com/A-M-Berns/complexitylib" @ "a16b3f568dab7183b205368bb950856a44db583c"
+
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
 

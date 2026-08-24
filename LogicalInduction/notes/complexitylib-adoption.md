@@ -3,7 +3,13 @@
 _Scoping pass, 2026-08-24. No strength claim, coverage tier, paper label, or AxiomAudit
 endpoint changes in this PR; see §11._
 
-> **Part II (below, same date) supersedes two of Part I's estimates.** The Stage-3
+> **Part III (below, same date) is the productionization pass.** The fork is stood up and
+> pinned, `DescExec` is a CI-built module, output extraction is closed, and `machineTokens`
+> with `Primrec₂ machineTokens` is landed. Read §III.0 for the layered architecture as
+> built, and §III.2 for the finding that FAF's import surface is 5 files / ~2.2k lines
+> rather than the fork's 26k. Part II's §II.9 table is superseded by §III.10.
+>
+> **Part II supersedes two of Part I's estimates.** The Stage-3
 > executability bottleneck is retired — see §II.0 and §II.5 — and the port cost for the
 > path Stage 3 actually needs is 36 lines, not 100–250 (§II.2). Part I's §14 totals and
 > §15 answers 10, 15, 16, 17 and 18 are revised in §II.9–§II.11. Everything else in
@@ -1403,3 +1409,342 @@ Second: `ClockConstructible.lean`, unaudited, on the soundness path.
 Stage 2 (`PolyFueled → FP`) is unchanged by this pass and remains sequenced after, per
 Part I §7 — including the still-unscouted Route D shortcut through
 `TuringMachine/Registers/`.
+
+---
+
+# Part III — Productionization (2026-08-24)
+
+_Third pass. Scope: stand up the pinned fork, wire it into FAF reproducibly, move the
+Stage-3 spike into a CI-built module, close output extraction, and land the first bounded
+total machine-token evaluator with its `Primrec₂` obligation. Coverage is explicitly out of
+scope (§III.8). `thm:ifp` untouched; Part I §10–§11 stand._
+
+## III.0 The layered architecture, as built
+
+```
+  SEMANTIC / COMPLEXITY LAYER          pinned fork, A-M-Berns/complexitylib @ faf/v4.31
+    Complexity.TM / reachesIn / FP     upstream b673821 + 2 commits
+    TMDesc, decodeDesc, TMDesc.toTM    FAF imports only …UTM.Internal.Interp
+    utmTM_simulates_computer             (5 files / ~2.2k lines of the ~329k library)
+                  │
+  ════════════════╪══════════════════════ trust boundary ════════════════════════
+                  │
+  EXECUTABLE LAYER                     LogicalInduction/Construction/Machine/DescExec.lean
+    CodedTape / CodedCfg               finite window, blanks outside
+    codedStep_eq, runUntilHalt_spec    executable steps ARE real steps
+    Primcodable ×8, primrec_codedStep  real Gödel coding
+    codedOutput, hasOutput_outputWord  extraction = upstream Tape.HasOutput
+                  │
+  LI ENUMERATION LAYER                 same file, upper section
+    progDesc / progCoeff / progDeg     plain functions, not projections
+    machineTokens : ℕ → ℕ → List ℕ     total; [] on timeout
+    primrec_machineTokens              ← the LIACompiler obligation
+    machineTokens_steps_le             ← polynomial soundness, step form
+    length_machineTokens_le            ← polynomial soundness, size form
+                  │
+  TRADING LAYER                        unchanged
+    strategyOfTokens ∘ unRpn ∘ undigitize     generic in List ℕ — reused verbatim
+    trading_firm_dominance_of_covered         the coverage seam, still untouched
+```
+
+The three layers are kept apart on purpose. `DescExec` proves **nothing** about polynomial
+time; the complexity theory is upstream; and coverage is a third fact that neither supplies.
+
+## III.1 The fork
+
+| field | value |
+| --- | --- |
+| upstream base | `SamuelSchlesinger/complexitylib` @ `b673821` (`dev`) |
+| fork | `https://github.com/A-M-Berns/complexitylib` |
+| branch | `faf/v4.31` |
+| head | `a16b3f568dab7183b205368bb950856a44db583c` |
+
+Exactly two commits on top of the base, kept separate so the second can be offered upstream
+on its own:
+
+**`badc970` — `compat: port to Lean 4.31.0 / Mathlib v4.31.0`.** 36 changed lines across 6
+files, plus `lean-toolchain`, `lakefile.toml` and `lake-manifest.json` realigned to FAF's
+Mathlib pin (`fabf563a`). No mathematical statement, definition or proof is altered; every
+change is a tactic repair against 4.31's elaborator and simp set —
+`Asymptotics.lean` (17), `UTM/Internal/HaltTest.lean` (10), `SingleTape/Internal/Correctness.lean`
+(3), `Mathlib/NatBits.lean` (2), `TuringMachine/Hoare.lean` (2), `UTM/Internal/BodyLoop.lean` (2).
+
+**`a16b3f5` — `feat(UTM): expose universal simulation for arbitrary function output`.** 69
+added lines in `UTM/Universal.lean`: `utmTM_simulates_computer`, plus the private
+`length_eq_of_hasOutput` it turns on. Additive; nothing existing is touched.
+Axioms: `[propext, Classical.choice, Quot.sound]`, the same three as
+`utmTM_simulates_decider` and `utmTM_universal`.
+
+No FAF-specific trader or `Primrec` machinery is in the fork.
+
+## III.2 The dependency
+
+```lean
+require complexitylib from git
+  "https://github.com/A-M-Berns/complexitylib" @ "a16b3f568dab7183b205368bb950856a44db583c"
+```
+
+Pinned by commit, not by branch. `lake-manifest.json` records the same SHA. Mathlib stays at
+`fabf563a` (v4.31.0) and Foundation at `41d20b51` — the new dependency reconciles with both
+rather than moving either, which is what makes the pin safe.
+
+**FAF's import surface is far narrower than the fork.** `DescExec` imports only
+`Complexitylib.Models.TuringMachine.UTM.Internal.Interp`, whose closure is **5 files /
+2,160 lines**:
+
+| lines | module |
+| ---: | --- |
+| 906 | `Complexitylib.Models.TuringMachine` |
+| 509 | `…UTM.Internal.Desc` |
+| 264 | `…UTM.Encoding` |
+| 264 | `…UTM.Internal.Interp` |
+| 217 | `Complexitylib.Mathlib.NatBits` |
+
+versus 44 files / 26,461 lines for `UTM.Universal`, and ~329k for the library. **Only one of
+the six port-fixed files (`NatBits`, 2 lines) is inside it** — the other 34 port lines and
+the UTM wrapper are upstream-useful but sit outside FAF's trust path entirely. That is a
+12× reduction against Part II's assumption and worth recording as the main structural gain
+of this pass.
+
+`DescExec` is the *only* module in the repository that names a `Complexity.*` declaration,
+mirroring the `PFR/` ↔ `ShannonInformation.API` discipline.
+
+## III.3 Production module
+
+`LogicalInduction/Construction/Machine/DescExec.lean`, imported by
+`LogicalInduction/Construction/Machine.lean`, built by a new default target:
+
+```lean
+@[default_target]
+lean_lib MachineExec where
+  srcDir := "."
+  roots := #[`LogicalInduction.Construction.Machine]
+```
+
+Two consequences worth stating plainly:
+
+* **This directory was not previously compiled by anything.** `lean_lib LogicalInduction`
+  declares no `globs`, so it builds `LogicalInduction.lean` and its import closure only, and
+  `Construction/Machine.lean` is imported by nothing in it. The Stage-1 counted machine has
+  therefore never been CI-built. The new target fixes that for `Basic`/`Closure`/`Pairing`
+  as well as for `DescExec`.
+* **It is built but load-bearing for nothing.** Still not imported by `LogicalInduction.lean`,
+  still carries no paper node, still relates to `EfficientlyComputable` by no theorem.
+
+`MachineExec` is registered in `scripts/papers.py`'s `NON_PAPER_LIBRARIES`, which the wiring
+gate requires.
+
+House convention: every declaration is a `lemma`, not a `theorem`, because
+`scripts/lint_paper_labels.py` requires every `theorem` under `LogicalInduction/` to name a
+paper node and nothing here renders one. **Part II's `notes/probes/DescExec.lean` violated
+that gate in 43 places** — it was added to the tree without the linter being run. Moving the
+module fixes it; the probe copy is deleted and the two fork patches stay in `notes/probes/`
+as provenance.
+
+## III.4 Output extraction
+
+The gap Part II left. Upstream's convention is
+
+```lean
+def Tape.HasOutput (t : Tape) (y : List Bool) : Prop :=
+  (∀ i (h : i < y.length), t.cells (i + 1) = Γ.ofBool (y[i]'h)) ∧
+  t.cells (y.length + 1) = Γ.blank
+```
+
+so extraction reads the window up to the first blank:
+
+```lean
+def CodedTape.frontier (t : CodedTape) : ℕ := t.cells.findIdx fun g => g == Γ.blank
+def CodedTape.outputWord (t : CodedTape) : List Bool :=
+  (List.range t.frontier).map fun j => decide ((t.cells[j]?).getD Γ.blank = Γ.one)
+def codedOutput (c : CodedCfg) : List Bool := c.output.outputWord
+```
+
+Written as a `range`/`map` rather than a `takeWhile`, the same device already used for
+`setAt`, because that form is directly primitive recursive.
+
+**Correctness is an equality against upstream's convention, not a length bound:**
+
+```lean
+lemma CodedTape.hasOutput_outputWord {t : CodedTape} (ht : t.NoStart) :
+    t.decode.HasOutput t.outputWord
+```
+
+The `NoStart` side condition — the window never holds the left-end marker — is discharged
+rather than assumed: `δ` writes only `Γw`, which structurally excludes `Γ.start`, so
+`codedStep_output_noStart` propagates it and `initCoded`'s empty output tape starts it.
+Blank tails cannot leak into the output because `findIdx` returns the window length when no
+blank is present, and cell `length + 1` decodes to `Γ.blank` by the decode map itself.
+
+## III.5 The bounded evaluator
+
+Part II's `runCoded` iterates a *fixed* number of steps and returns `none` when the machine
+halts early — the opposite of what a clocked evaluator needs. Added:
+
+```lean
+def stepFrozen (d : TMDesc) (s : CodedCfg × Bool) : CodedCfg × Bool
+def runUntilHalt (d : TMDesc) (t : ℕ) (c : CodedCfg) : Option CodedCfg
+def evalHalted (d : TMDesc) (t : ℕ) (x : List Bool) : Option CodedCfg
+```
+
+The frozen-pair form makes the budgeted run a plain iteration, hence primitive recursive by
+`Primrec.nat_iterate`. Its specification carries the step bound the soundness argument needs:
+
+```lean
+lemma evalHalted_spec (h : evalHalted d t x = some c) :
+    ∃ s ≤ t, (d.toTM).reachesIn s ((d.toTM).initCfg x) (CodedCfg.decode d c) ∧
+      (d.toTM).halted (CodedCfg.decode d c) ∧
+      (CodedCfg.decode d c).output.HasOutput (codedOutput c)
+```
+
+## III.6 `machineTokens`
+
+```lean
+def descAt    (i : ℕ) : TMDesc := (Encodable.decode i).getD ⟨0, 0, 0, []⟩
+def progDesc  (j : ℕ) : TMDesc := descAt (Nat.unpair (Nat.unpair j).1).1
+def progCoeff (j : ℕ) : ℕ      := (Nat.unpair (Nat.unpair j).1).2
+def progDeg   (j : ℕ) : ℕ      := (Nat.unpair j).2
+def progClock (j n : ℕ) : ℕ    := progCoeff j * (n + 1) ^ progDeg j + progCoeff j
+
+def machineTokens (j n : ℕ) : List ℕ :=
+  tokensOf (evalHalted (progDesc j) (progClock j n) (unaryDay n))
+```
+
+`ℕ → ℕ → List ℕ`, matching `clockedTokens`'s convention exactly, so the decoding chain
+`strategyOfTokens ∘ unRpn ∘ undigitize` is reused verbatim. The index layout mirrors
+`TraderProgram.index` / `traderProgramAt`.
+
+**Indexing by `TMDesc`, not by description bits.** Upstream's `decodeDesc : List Bool →
+TMDesc` exists because the universal machine reads its program off a tape; here the described
+machine is executed directly, so the index decodes straight to a `TMDesc` through the
+`Primcodable` instance. That keeps `decodeDesc`, `encodeDesc`, their roundtrip, and the
+`TerminatedRegion` side condition Part I flagged as a loose end off this path entirely.
+
+**No certificate field.** `(coeff, deg)` is a *claim*, never checked (§III.7).
+
+**One elaboration hazard, worth recording because it cost most of this pass.** `descAt` goes
+through `Encodable.decode` at `TMDesc`, whose instance is a stack of `Primcodable.ofEquiv`s
+down to `Fin 4`. *Any* `rfl` obligation that lets the elaborator unfold it sends `whnf` into
+that stack and does not return: four builds failed on `whnf` timeouts at 200k, 1M, 2M, 4M and
+8M heartbeats before the cause was clear. The fix is structural, not a bigger budget —
+`descAt` is sealed `attribute [irreducible]` immediately after its `Primrec` lemma; the index
+fields are plain functions rather than projections out of `MachineTraderProgram` (which
+survives only as index bookkeeping for coverage); the `Option` fallback is factored into
+`tokensOf : Option CodedCfg → List ℕ` so `Primrec.option_casesOn` is unified at that small
+domain instead of at `ℕ × ℕ`; and every `Primrec` lemma is a bare `.comp` whose underlying
+function is *syntactically* the definition it characterises, so no `of_eq` defeq check is
+ever performed at a type carrying the coding stack. Anyone extending this file should keep
+that discipline.
+
+**One adapter was unavoidable and is minimal.** The machine speaks `List Bool`; the digit
+layer speaks `List ℕ`. `bitsToDigits` packs three bits per digit, most significant first,
+dropping a trailing partial group. It needs no validity side condition, because groups with
+value `≥ 4` are exactly what `undigitizeStep` already treats as block terminators — so
+*every* bitstring denotes some digit stream.
+
+**Totality has four failure points and needed one new fallback.** Malformed description →
+`decodeDesc` is total and `lookup` defaults to halting. Out-of-range state → `TMDesc.toTM`
+clamps and `codedStep` mirrors the clamp. Malformed trader stream → `strategyOfTokens`
+already returns the zero strategy. Only "did not halt in budget" is new, and it emits `[]`.
+
+## III.7 Soundness at this layer
+
+```lean
+lemma machineTokens_steps_le (j n : ℕ) :          -- step form
+    machineTokens j n = [] ∨ ∃ c, ∃ s ≤ (machineProgramAt j).clock n, …
+lemma length_machineTokens_le (j n : ℕ) :          -- size form
+    (machineTokens j n).length ≤ (machineProgramAt j).clock n
+```
+
+Both hold for **every** index, with no truthfulness assumption about `(coeff, deg)`. That is
+the content of "no clock certificate is needed": truncation at the claimed polynomial is not
+merely a totality device, it *is* the soundness argument, since a machine run for at most
+`p n` steps computes something polynomial-time whatever `p` was claimed to be.
+
+The size bound comes from a second invariant, `CodedTape.Bounded k := head ≤ k ∧ cells.length ≤ k`,
+preserved with `k → k + 1` by each step: one executable step writes at most one cell.
+
+**What is deliberately *not* claimed here.** These are function-level, step-counting facts.
+The statement "every `machineTokens` index induces a machine-polytime trader" needs the
+paper-facing machine class, which does not exist yet and would force the rest of the Stage-3
+API. The exact next statement is recorded in §III.9.
+
+## III.8 `ClockConstructible` is off the trust path
+
+Part II flagged `UTM/ClockConstructible.lean` (2,316 lines) as unaudited and on the soundness
+path. **It is not, under this architecture.** That file exists to construct a unary clock
+register on a tape for `clockedUtmTM`, which matters only if the *universal machine* carries
+the clock. Here the clock is a Lean-level `ℕ` consumed by `runUntilHalt`, and the described
+machine is executed directly, so neither `clockedUtmTM` nor its clock construction is
+imported: both are outside the 5-file closure of §III.2.
+
+They return to relevance only for the eventual `FP` membership statement, where a *machine*
+must witness the clocked computation. Recorded, not audited — there is no consumer yet.
+
+## III.9 What remains for coverage
+
+Unchanged from Part II §II.10 in substance, sharpened in form. The missing theorem is
+
+```lean
+lemma TM.exists_singleTape_computesInTime {k : ℕ} (M : TM k) {f} {T}
+    (h : M.ComputesInTime f T) :
+    ∃ M₁ : TM 1, M₁.ComputesInTime f (NTM.singleTapeSimTime k T)
+```
+
+which is what turns `f ∈ FP` into a `TMDesc` an index can name. `NTM.SingleTape.Corr.outputEq`
+already carries full output-tape equality, so the mathematics is present and only its
+exposure is decider-shaped; realising it means re-deriving `singleTapeSim_computesInTime`, a
+`ComputesInTime` analogue of `toTM_decidesInTime` (whose `RejectsWithZero` side condition
+should vanish), and `pad0_computesInTime`, inside the 5,344-line
+`SingleTape/Internal/Correctness.lean`. **400–800 lines, upstreamable, belongs in the fork.**
+
+Coverage then needs, in FAF: the paper-facing machine-trader class; `machineTrader` and its
+enumeration; the soundness and coverage lemmas mirroring `enumeratedTrader_ec` and
+`exists_enumeratedTrader_eq`; the `LIACompiler` swap; and the ~15 property-file touch-ups.
+
+## III.10 Revised Stage-3 remaining
+
+| tranche | status | LOC | passes |
+| --- | --- | ---: | ---: |
+| complexity theory / universality | UPSTREAM, DONE | 0 | 0 |
+| 4.31 port | **DONE** (36 lines, fork) | 0 | 0 |
+| function-output UTM wrapper | **DONE** (69 lines, fork) | 0 | 0 |
+| fork + reproducible dependency | **DONE** | ~30 | 0 |
+| production `DescExec` + CI target | **DONE** | — | 0 |
+| output extraction + correctness | **DONE** | ~120 | 0 |
+| `machineTokens` + `Primrec₂` | **DONE** | ~210 | 0 |
+| polynomial soundness (step + size) | **DONE** | ~110 | 0 |
+| single-tape reduction **for functions** | remaining, **the hard one** | 400–800 | 2–3 |
+| machine-trader class + enumeration | remaining | 300–500 | 1–2 |
+| `FP` membership / clock construction | remaining | 200–400 | 1–2 |
+| `LIACompiler` swap + property touch-ups | remaining | 200–400 | 1–2 |
+| **Stage-3 remaining** | | **1.1–2.1k** | **5–9** |
+
+Part II projected 1.2–2.2k remaining; roughly 0.4k of that is now landed and the rest is
+unchanged, so the projection is holding. Overall project remains **~5–8k**, still dominated
+by Stage 2 (`PolyFueled → FP`), which no pass has touched.
+
+## III.10a Build result
+
+`lake build MachineExec` → **887 jobs, exit 0, no errors, no `sorry`.**
+`DescExec.lean` is 1,330 lines / 134 declarations. Axiom report, from the build itself —
+every endpoint exactly `[propext, Classical.choice, Quot.sound]`:
+
+```
+codedStep_eq                    runUntilHalt_spec         decode_initCoded
+evalHalted_spec                 primrec_codedStep         primrec_runUntilHalt
+CodedTape.hasOutput_outputWord  primrec_machineTokens
+machineTokens_steps_le          length_machineTokens_le
+```
+
+Repository gates: `lint_paper_labels.py` clean (Part II's `notes/probes/DescExec.lean` had
+put 43 violations into the tree; moving it to production code under the `lemma` convention
+removes them), `check_paper_wiring.py` OK with `MachineExec` excused,
+`check-paper-nodes.sh` OK — 68 labels, both directions, strength distribution unchanged.
+
+## III.11 Riskiest remaining theorem
+
+Still `TM.exists_singleTape_computesInTime` (§III.9), and now unambiguously so: everything
+that stood between the spike and a working evaluator is done, and coverage is the only thing
+left that is not routine. It is also the only remaining item that must be written against a
+5k-line upstream file rather than in FAF.
