@@ -2283,3 +2283,166 @@ a bounded loop with a step counter, built from `forRegTM`/`iterTM`, with a time 
 the arithmetic layer above is common. Building Stage 2's machine layer should therefore make
 Stage-3 soundness materially cheaper than its standalone 600–1,200 line estimate. Not a
 collapse; a genuine shared substrate.
+
+---
+
+# Part VII — Stage 2A: the arithmetic substrate (2026-08-24)
+
+_Seventh pass. Scope: the concrete arithmetic machines the `evaln → FP` compiler needs.
+Stage 3 untouched; general `thm:ifp` untouched; no migration._
+
+**Stage 2 is not closed.** This pass landed the first missing arithmetic primitive and, more
+importantly, measured what the rest costs. The measurement is the main output, and it is
+worse than Part VI assumed — see §VII.4.
+
+## VII.1 What `evaln` actually demands
+
+From Mathlib's definitions (`Mathlib/Data/Nat/Pairing.lean`):
+
+```
+Nat.pair a b  = if a < b then b * b + a else a * a + a + b
+Nat.unpair n  = let s := sqrt n
+                if n - s * s < s then (n - s * s, s) else (s, n - s * s - s)
+```
+
+so the primitive-operation table is:
+
+| `Code` constructor | concrete operations |
+| --- | --- |
+| `zero`, `const` | write a constant register |
+| `succ` | increment |
+| `left`, `right` | `sqrt`, squaring, truncated subtraction, comparison |
+| `pair` | comparison, squaring, addition |
+| `comp` | sequencing, temporary registers |
+| `prec` | comparison, decrement, bounded loop, carried state |
+| `rfind'` | comparison, increment, decrement, search state, `Option` tag |
+
+`Nat.pair`'s exact formula forces squaring and comparison; `unpair`'s forces `sqrt` and
+truncated subtraction. None of these is avoidable by choosing a different pairing — the
+theorem must match *Mathlib's* `pair`/`unpair`, since `evaln` is defined over them.
+
+## VII.2 Representation, frozen
+
+complexitylib's registers, unchanged: `IsReg v t` puts `v` cells of `Γ.one` on a work tape
+at cells `1 … v`, head parked at 1, blank beyond (`regTape`, `regCells`). Values are
+**unary**. That is sound here for the reason Part VI gave — everything is polynomially
+bounded in a unary day — and it keeps every Hoare bound elementary.
+
+Registers live on work tapes indexed by `Fin n`; temporaries are extra tape indices;
+one machine step is one `TM.step`. Costs compose through `HoareTime`.
+
+## VII.3 Substrate inventory, after this pass
+
+| operation | source | status |
+| --- | --- | --- |
+| increment | `Registers.RegisterOps.incRegTM` | upstream ✓ |
+| decrement (truncated) | `Registers.DecReg.decRegTM` | upstream ✓ |
+| clear | `Registers.RegisterOps.clearRegTM` | upstream ✓ |
+| bounded loop | `Registers.ForReg.forRegTM` | upstream ✓ |
+| addition | `Registers.Arith.addIntoTM` | upstream ✓ |
+| copy | `Registers.Arith.copyIntoTM` | upstream ✓ |
+| multiply-accumulate | `Registers.Arith.mulAddIntoTM` | upstream ✓ |
+| **truncated subtraction** | `Registers.Arith.subIntoTM` | **added this pass** ✓ |
+| comparison | — | **missing** |
+| zero test | `UTM.Clock.zeroTestTM` exists but sits in the UTM tree | needs extraction |
+| integer `sqrt` | — | **missing** |
+| `Nat.pair` machine | — | **missing** |
+| `Nat.unpair` machine | — | **missing** |
+
+Added upstream (fork `df9c431`), generic, nothing FAF-specific:
+
+```lean
+def subIntoTM (src dst : Fin n) : TM n := forRegTM (decRegTM dst) src
+
+theorem subIntoTM_hoareTime (src dst) (hne : src ≠ dst) (a b) … :
+    (subIntoTM src dst).HoareTime
+      (EmitPred inp₀ work₀ ys)
+      (EmitPred inp₀ (Function.update work₀ dst (regTape (b - a))) ys)
+      (a * ((2 * b + 4) + 2) + (a + 2))
+```
+
+Truncation is inherited from `decRegTM`, which floors at zero, so **no underflow test phase
+is needed** — the loop simply decrements an already-empty register. That is a small but real
+simplification over what the operation table suggested.
+
+The same commit completes the 4.31 port of `Subroutines/Counter.lean`, which had been left
+failing since the original port waves and blocks `Registers.Arith` transitively. Four sites,
+all the familiar drift (`simpa` comparing syntactically where the sides are defeq:
+`idleDir (Tape.init []).read` vs `Dir3.right`; `qstart` vs `LinearCounterPhase.scan`).
+
+## VII.4 The measurement, and why it is bad news
+
+`addIntoTM_hoareTime` — the *simplest* derived operation, a bounded loop around a primitive
+that already has its own Hoare spec — is **70 lines**. `subIntoTM_hoareTime`, written as its
+mirror, is **75**. That is the cost of one operation whose proof is a direct analogy to an
+existing one.
+
+Extrapolating honestly to the operations that have no such analogy:
+
+| operation | shape | estimate |
+| --- | --- | --- |
+| zero test / comparison | branch on a register, or extract `zeroTestTM` from the UTM tree | 150–300 |
+| squaring | `copyIntoTM` + `mulAddIntoTM` | 80–150 |
+| `sqrt` | loop maintaining `k` and `k²`, comparison each step | 300–500 |
+| `Nat.pair` | comparison + branch + squaring + additions | 250–400 |
+| `Nat.unpair` | `sqrt` + two subtractions + comparison + branch | 300–500 |
+| frame/composition glue for multi-register machines | — | 200–400 |
+| **arithmetic substrate total** | | **1.3–2.3k** |
+
+and that is *before* the eight-constructor compiler (900–1,500) and the time recurrence
+(300–500). **Revised Stage-2 total: 2.5–4.3k lines, 5–8 sessions** — at the top of Part VI's
+range rather than the bottom, and the arithmetic layer alone is a session or two.
+
+The reason is structural, not incidental: every operation must carry a `HoareTime`
+specification threading `Parked` invariants and `Function.update` frame conditions through
+each register, and those obligations do not shrink with familiarity. complexitylib's own
+`Registers` directory is ~6k lines for the handful of operations it provides, which is the
+same ratio.
+
+## VII.5 `Option ℕ` representation, decided now
+
+Deciding this before the hard constructors, as the brief asks, because deferring it forces a
+refactor. The compiled interpreter carries a **tag register** alongside the value register:
+
+```
+tag = 0        ↦  none
+tag = 1, val   ↦  some val
+```
+
+Both are ordinary unary registers, so every existing operation applies to them, and the tag
+is a zero-test away from a branch. `comp` propagates a `none` by testing the callee's tag
+before running the caller; `prec` and `rfind'` test it each iteration and exit early. No new
+machinery is needed beyond the comparison/zero-test that the arithmetic already requires.
+
+## VII.6 Status
+
+```
+abstract complexity
+  codeEvalSteps_poly                      ✓  (Part VI)
+  codeEvalBound_poly, codeEvaln_result_le ✓  (pre-existing)
+
+concrete arithmetic
+  inc / dec / clear / loop / add / copy / mulAdd  ✓  upstream
+  truncated subtraction                            ✓  this pass
+  comparison, sqrt, pair, unpair                   open
+
+Code compiler
+  every constructor                                open
+
+PolyFueled / EfficientlyComputable → FP            open
+```
+
+The headline question for this tranche — *do we now have a substrate on which the compiler
+can be built without remaining uncertainty about pair/unpair complexity?* — is **no**.
+`pair`/`unpair` are not built, and the two operations they rest on (comparison, `sqrt`) are
+not built either. What *is* settled is that no conceptual obstacle remains: every missing
+piece is a bounded loop over unary registers with an elementary time bound, and the pattern
+for writing them is now demonstrated twice.
+
+## VII.7 Reuse for Stage-3 soundness
+
+`subIntoTM`, and the comparison/zero-test that comes next, are stated over generic registers
+with no `Nat.Partrec.Code` anywhere — deliberately, per the brief. The clocked `TMDesc`
+simulator that Stage-3 soundness needs uses the same `forRegTM`/`decRegTM` counter idiom, so
+this layer should serve both. Keeping the arithmetic free of interpreter-specific structure
+is the one design constraint worth defending as the layer grows.
