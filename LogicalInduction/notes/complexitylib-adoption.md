@@ -3,6 +3,12 @@
 _Scoping pass, 2026-08-24. No strength claim, coverage tier, paper label, or AxiomAudit
 endpoint changes in this PR; see §11._
 
+> **Part II (below, same date) supersedes two of Part I's estimates.** The Stage-3
+> executability bottleneck is retired — see §II.0 and §II.5 — and the port cost for the
+> path Stage 3 actually needs is 36 lines, not 100–250 (§II.2). Part I's §14 totals and
+> §15 answers 10, 15, 16, 17 and 18 are revised in §II.9–§II.11. Everything else in
+> Part I stands, including §10 on `thm:ifp`.
+
 Audited against `SamuelSchlesinger/complexitylib` @ `b673821` (branch `dev`,
 "Merge pull request #21 from BoltonBailey/feat/bitstring-encoding"), toolchain
 `leanprover/lean4:v4.30.0`, Mathlib `v4.30.0`, Apache-2.0. FAF side audited at
@@ -977,3 +983,423 @@ anticipate it.**
 - **Not formalized and not proposed for formalization:** the `thm:ifp` counterexample of
   §10 (the claim that no polynomial-time device emits a `2^(2^n)` numeral is argued from
   the output-length bound, not proved in Lean).
+
+---
+
+# Part II — Stage-3 de-risking pass (2026-08-24)
+
+_Second pass. Scope: expose function-output universal simulation, and settle the
+executability bottleneck this note's Part I identified as the largest remaining risk.
+The broad adoption question is not reopened. `thm:ifp` is untouched (§10, §11 stand)._
+
+Everything below was compiled against the ported complexitylib at Lean 4.31 /
+Mathlib v4.31.0. Artifacts and a reproduction recipe: `notes/probes/README.md`.
+
+## II.0 Headline
+
+**Yes — and better than the framing suggested.** FAF need not implement generic
+executable machine semantics. It also need not execute the fixed universal machine.
+It should execute the **described** machine `TMDesc.toTM` directly, which is strictly
+cheaper than both.
+
+`TMDesc.toTM` (`UTM/Internal/Interp.lean:44`) has
+
+```lean
+Q := Fin (2 ^ d.w + 1)                       -- numeric states
+δ := fun q si sw so => … d.lookup q.val si (sw 0) so …   -- a List.find? over d.entries
+```
+
+so a described machine is *already* first-order finite data. Nothing about it needs
+`Fintype.equivFin`, and nothing is `noncomputable`. By contrast `utmTM` is assembled by
+combinators (`seqTM`/`loopTM`/`ifTM` over `bodyTM`, `haltTestTM`, `extractTM`) with a
+nested phase-inductive state type, and would be materially harder to code executably.
+
+The three-way comparison that settles it:
+
+| execute what | feasible? | cost |
+| --- | --- | --- |
+| arbitrary `TM k` | **no** — `Q : Type` is a bundled type, not finite data | — |
+| the fixed `utmTM` | yes | high: combinator-built `Q`, 7 tapes |
+| **`TMDesc.toTM`, uniformly in `d`** | **yes** | **low: `Fin (2^w+1)` + list lookup** |
+
+Uniformity is not lost by dropping `utmTM`: the enumeration is indexed by descriptions,
+so a *uniformly computable family* indexed by `d` is exactly what is needed, and a fixed
+machine is not. This was measured, not argued: the whole executable layer is **734 lines**
+(`notes/probes/DescExec.lean`), against Part I's estimate of 2,500–3,500.
+
+`utmTM` does not disappear — it moves to the *semantic* layer, where it belongs (§II.6).
+
+## II.1 The function-output universal theorem — landed
+
+Part I found the public UTM theorems decider-shaped while `utmTM_hoareTime`'s
+postcondition already pinned the whole output region. That is now cashed out.
+
+Added to `UTM/Universal.lean` (`notes/probes/0001-utm-function-output.patch`):
+
+```lean
+theorem utmTM_simulates_computer {α : List Bool} (hterm : TerminatedRegion α)
+    {f : List Bool → List Bool} {T : ℕ → ℕ}
+    (hcomp : (decodeDesc α).toTM.ComputesInTime f T) (x : List Bool) :
+    ∃ c' t, t ≤ utmTime α (T x.length) x.length ∧
+      utmTM.reachesIn t (utmTM.initCfg (pair α x)) c' ∧
+      utmTM.halted c' ∧
+      c'.output.HasOutput (f x)
+```
+
+No Boolean decision anywhere in the statement; the explicit `utmTime` bound is preserved
+verbatim from the decider version; `utmTM_hoareTime` is reused, not reproved. The whole
+proof is **69 lines including docstring**, and the mathematical content is one lemma:
+
+```lean
+private theorem length_eq_of_hasOutput {t : Tape} {y : List Bool} {m : ℕ}
+    (hy : t.HasOutput y) (hblank : t.cells (m + 1) = Γ.blank)
+    (hne : ∀ j, j < m → t.cells (j + 1) ≠ Γ.blank) : m = y.length
+```
+
+— the postcondition's frontier is the output length, by uniqueness of the first blank.
+Part I's "40–80 lines" estimate was accurate.
+
+`#print axioms utmTM_simulates_computer` → `[propext, Classical.choice, Quot.sound]`,
+identical to `utmTM_simulates_decider` and `utmTM_universal`.
+
+It is written in upstream style, sits in the upstream file, and carries the upstream
+copyright header: it belongs in the fork and should be offered upstream. **FAF does not
+depend on it** — nothing in FAF imports Complexitylib yet.
+
+**Deliberately not stated: the multi-tape analogue of `utmTM_universal`.** That needs a
+function-shaped `TM.exists_singleTape_computesInTime`, which does not exist. The
+single-tape correspondence invariant already carries full output-tape equality
+(`Corr.outputEq : c1.output = c.output`), so this is a strengthening of exposure rather
+than new mathematics — but it touches the 5,344-line `SingleTape/Internal/Correctness.lean`
+and is not thin. It is needed for **coverage** and nothing else (§II.8).
+
+## II.2 The port, remeasured on the path that matters
+
+Part I reported "100–250 fix sites" for the whole Stage-3 + Cobham slice. That number is
+right for that slice and **wrong for the path Stage 3 needs**, because `Counter`,
+`PairEmit`, `StepAlgebra`, `Lift` and `Subroutines/Internal` are *not* on the UTM path.
+
+Measured: **`Complexitylib.Models.TuringMachine.UTM.Universal` and
+`Complexitylib.Classes.P.Defs` both build on FAF's exact pin after 36 changed lines in
+6 files** (`notes/probes/0002-lean431-port-fixes.patch`):
+
+| file | changed lines | class of fix |
+| --- | ---: | --- |
+| `Asymptotics.lean` | 17 | `convert`+`ext` descending into `Norm ℝ` → direct cast rewrite |
+| `UTM/Internal/HaltTest.lean` | 10 | `simpa` unfolding `Γw.toΓ` into a match → `exact` (defeq) |
+| `SingleTape/Internal/Correctness.lean` | 3 | `rw` of a beta-redex 4.31 already reduced → `simp only` |
+| `Mathlib/NatBits.lean` | 2 | missing `List.length_cons` in a `simp only` |
+| `TuringMachine/Hoare.lean` | 2 | `convert … using 1` → `exact` |
+| `UTM/Internal/BodyLoop.lean` | 2 | two no-op `dsimp only` |
+
+This includes the 5,344-line `SingleTape/Internal/Correctness.lean`, which was the file
+Part I flagged as the likely hard one. It needed **one line**.
+
+**Revised port estimate for the Stage-3 path: well under one agent-day.** The larger
+figure stands only if Cobham and the wider `Subroutines` tree are also wanted, and §1.5
+already recommends against Cobham.
+
+## II.3 The exact `LIACompiler` obligation
+
+Traced live, not recalled. The chain is
+
+```
+TraderProgram → enumeratedTrader → firmRawTrader → TradingFirm → LIACompiler
+```
+
+and the computability content is concentrated in **one** lemma
+(`LIACompiler.lean:3904`):
+
+```lean
+private lemma enumeratedTraderTrades_prim : Primrec₂ fun j n =>
+    ((enumeratedTrader j).strat n).trades
+```
+
+Everything above it (`traderProgram{LengthCode,TokenCode,Coefficient,Degree}_prim`,
+`traderProgramClock_prim`, `clockedTokens_prim`) is private scaffolding *for* that lemma;
+everything below (`firmRawTraderTrades_prim` at `:3925`, its two uses at `:5788`/`:5797`)
+derives from it by an `if n < j` gate.
+
+The decisive structural fact is that `clockedTrader` factors the token *producer* from
+the strategy *decoder* (`Criterion.lean:1902`):
+
+```lean
+def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ) : Trader where
+  strat n := strategyOfTokens n (unRpn (undigitize
+    (clockedTokens lengthCode tokenCode (clock n) n)))
+```
+
+`strategyOfTokens ∘ unRpn ∘ undigitize` is generic in a `List ℕ`. **Only `clockedTokens`
+is fuel-specific.** So:
+
+> **Weakest sufficient theorem.** Supply a total
+> `machineTokens : ℕ → ℕ → List ℕ` (index, day) with `Primrec₂ machineTokens`, and define
+> `machineTrader j : Trader where strat n := strategyOfTokens n (unRpn (undigitize
+> (machineTokens j n)))`. Then `Primrec₂ fun j n => ((machineTrader j).strat n).trades`
+> follows by the *same* proof as `enumeratedTraderTrades_prim`, with `clockedTokens_prim`
+> replaced by `Primrec₂ machineTokens`. Nothing else in `LIACompiler` changes.
+
+No generic computability theorem about complexitylib machines is needed — and none should
+be proved. The whole obligation is `Primrec₂ machineTokens`.
+
+**Consumers needing modification** (exhaustive, from the trace):
+
+| file | change |
+| --- | --- |
+| `Construction/TraderEnumeration.lean` (97 lines) | new index/decoder + the two lemmas; the fuel version can stay beside it |
+| `Construction/LIACompiler.lean` `:2833–2931`, `:3904–3937` | swap `clockedTokens_prim` for `Primrec₂ machineTokens`; ~5 private lemmas |
+| `Construction/TradingFirm.lean` `:1030–1034` | the one bridging corollary (`trading_firm_dominance`) |
+| `Framework/Criterion.lean` | add `machineTrader`; `clockedTrader` untouched |
+| ~15 `Properties/*` files | uniform touch-up where a fuel certificate now needs transporting (Part I §9) |
+
+`trading_firm_dominance_of_covered` and the entire 1,041-line property tail are
+**unchanged** — they consume `hcov`, not the class.
+
+## II.4 The finite configuration representation
+
+Chosen, and it fell out of upstream rather than being invented. `Tape.init`'s cell
+function (`TuringMachine.lean:243`) is
+
+```lean
+cells := fun i => if i = 0 then Γ.start else (contents[i - 1]?).getD Γ.blank
+```
+
+— exactly "finite window, blanks outside". So the decode map is upstream's own:
+
+```lean
+structure CodedTape where
+  head : ℕ
+  cells : List Γ          -- cells 1, 2, …; blank beyond the end
+
+def CodedTape.decode (t : CodedTape) : Tape where
+  head := t.head
+  cells := fun i => if i = 0 then Γ.start else (t.cells[i - 1]?).getD Γ.blank
+
+structure CodedCfg where
+  state : ℕ               -- clamped to ≤ 2 ^ d.w, the invariant δ already maintains
+  input work output : CodedTape
+```
+
+No head-motion or reachable-region bound is needed anywhere. That was the anticipated
+hard part and it evaporates: the window grows with the write, so `setAt` pads on demand
+and the representation is closed under stepping with no side condition. `OutputBounds.lean`
+and `SpaceTime.lean` were not needed.
+
+One deliberate design choice: `setAt` is written as a `range`/`map`, not a two-argument
+recursion —
+
+```lean
+def setAt (l : List Γ) (i : ℕ) (s : Γ) : List Γ :=
+  (List.range (max l.length (i + 1))).map
+    fun j => if j = i then s else (l[j]?).getD Γ.blank
+```
+
+— because that form is directly primitive recursive via `Primrec.list_range` /
+`list_map` / `list_getElem?`, whereas the recursive form is not without extra work. Its
+whole specification is one lemma, `getElem?_setAt`.
+
+## II.5 The vertical slice — compiled
+
+All of the following are proved, `sorry`-free, in `notes/probes/DescExec.lean` (734 lines,
+70 declarations), each with axioms `[propext, Classical.choice, Quot.sound]`.
+
+**Simulation.**
+
+```lean
+theorem codedStep_eq (d : TMDesc) (c : CodedCfg) :
+    (codedStep d c).map (CodedCfg.decode d) = (d.toTM).step (CodedCfg.decode d c)
+
+theorem runCoded_eq (d : TMDesc) : ∀ (t : ℕ) (c c' : CodedCfg),
+    runCoded d t c = some c' →
+      (d.toTM).reachesIn t (CodedCfg.decode d c) (CodedCfg.decode d c')
+
+theorem decode_initCoded (d : TMDesc) (x : List Bool) :
+    CodedCfg.decode d (initCoded d x) = (d.toTM).initCfg x
+
+theorem evalCoded_reachesIn (d : TMDesc) (t : ℕ) (x : List Bool) {c : CodedCfg}
+    (h : evalCoded d t x = some c) :
+    (d.toTM).reachesIn t ((d.toTM).initCfg x) (CodedCfg.decode d c)
+```
+
+The last is the end-to-end statement: from a genuine input word, `t` executable steps on
+finite data are `t` real steps of the real machine.
+
+**Primitive recursiveness.** Gödel coding is implemented, not assumed: `Primcodable`
+instances for `Γ`, `Γw`, `Dir3`, `DescAct`, `DescEntry`, `TMDesc`, `CodedTape`, `CodedCfg`,
+each by an explicit `Equiv` to a nested product.
+
+```lean
+theorem primrec_lookup :            -- the transition table itself
+    Primrec fun z : TMDesc × ℕ × Γ × Γ × Γ => z.1.lookup z.2.1 z.2.2.1 z.2.2.2.1 z.2.2.2.2
+theorem primrec_codedStep : Primrec fun z : TMDesc × CodedCfg => codedStep z.1 z.2
+theorem primrec_runCoded : Primrec fun z : TMDesc × ℕ × CodedCfg => runCoded z.1 z.2.1 z.2.2
+theorem primrec_evalCoded : Primrec fun z : TMDesc × ℕ × List Bool => evalCoded z.1 z.2.1 z.2.2
+```
+
+Two supporting facts worth keeping, both general:
+
+* `list_find?_eq_getElem? : l.find? p = l[l.findIdx p]?`, giving
+  `primrec_list_find?` from Mathlib's `list_findIdx` + `list_getElem?`. Mathlib has no
+  `Primrec` lemma for `List.find?`; this is a small upstreamable gap.
+* `primrec_of_gamma` / `primrec_of_gammaW` / `primrec_of_bool` — any function out of a
+  fixed finite type is primitive recursive, as a constant lookup table. This is what makes
+  the direction-sanitizing and `readback` cases free.
+
+**What is not yet done in the probe:** output-word extraction
+(`CodedCfg → List Bool` up to the first blank, plus its `HasOutput` agreement lemma).
+It is straightforward — `takeWhile (· ≠ blank)` on the output cell list — but needs a
+side condition that reachable output cells avoid `Γ.start`, which upstream's
+`Tape.StartInvariant` supplies. Estimated ~80 lines. This is the only gap between the
+probe and a usable `machineTokens`.
+
+## II.6 Three layers, kept apart
+
+The probe deliberately proves **nothing** about polynomial time, and the complexity
+results prove nothing about executability. They meet only at the enumeration.
+
+| layer | owner | content |
+| --- | --- | --- |
+| **semantic universality** | complexitylib (fork) | `f ∈ FP` → description → `utmTM_simulates_computer`, polynomial overhead |
+| **executability** | FAF `DescExec.lean` | `Primrec₂` bounded evaluation of `TMDesc.toTM`; no complexity claim |
+| **trader enumeration** | FAF `MachineTraderEnumeration.lean` | index → `Trader`; soundness + coverage |
+
+`utmTM` and `clockedUtmTM` live only in the first layer. The executable evaluator never
+mentions them, and must not: making the `Primrec` evaluator carry the polynomial-time
+proof is exactly the conflation to avoid.
+
+## II.7 Proposed enumeration index and fallback
+
+```lean
+structure MachineTraderProgram where
+  desc  : List Bool     -- raw description bits; decodeDesc is total
+  coeff : ℕ
+  deg   : ℕ
+```
+
+encoded into `ℕ` by the existing `Nat.pair` idiom, exactly mirroring `TraderProgram.index`
+/ `traderProgramAt` (`TraderEnumeration.lean:32–50`), so `traderProgramAt_index` transfers
+verbatim.
+
+```lean
+def machineTokens (j n : ℕ) : List ℕ :=
+  let p := machineProgramAt j
+  let d := decodeDesc p.desc
+  match evalCoded d (p.coeff * (n + 1) ^ p.deg + p.coeff) (unaryDay n) with
+  | none   => []                       -- did not halt within the claimed clock
+  | some c => outputTokens c           -- total; malformed output decodes downstream
+```
+
+**Totality holds at four independent points, three of them already upstream or in FAF:**
+
+1. *Malformed description* — `decodeDesc : List Bool → TMDesc` is total
+   (`Desc.lean:394`), and `TMDesc.lookup` falls back to `defaultAct` on a missing key.
+   Every bitstring denotes some machine.
+2. *Out-of-range state* — `TMDesc.toTM` clamps targets with `min _ (2^w)`; the coded
+   step mirrors the clamp, which is what makes `decodeState` total.
+3. *Timeout* — `evalCoded` returns `none`; we map that to `[]`.
+4. *Malformed trader output* — **FAF already handles this**: `strategyOfTokens`
+   (`Criterion.lean:1546`) returns the zero strategy when `deserializeTrades` fails *or*
+   when the rank discipline is violated. No new fallback machinery is needed.
+
+So the fallback is `[]` at exactly one new place, and the existing decoder absorbs the
+rest.
+
+## II.8 No clock certificate is needed — and the clamp does double duty
+
+This is worth stating sharply, because it removes an obligation the old plan carried.
+
+The enumeration ranges over `(desc, coeff, deg)` and simply runs for
+`coeff * (n+1)^deg + coeff` steps. **We never verify that `(coeff, deg)` is a truthful
+complexity bound.**
+
+*Soundness* — every enumerated trader is genuinely polynomial-time — holds **because of**
+the clamp, not despite it: a machine run for at most `p(n)` steps computes something
+polynomial-time whatever `p` was claimed to be. Truncation is not merely a totality
+device; it is the soundness argument. The machine witnessing it is upstream:
+`clockedUtmTM : TM 7` (`UTM/ClockedUtm.lean:299`), with both branches proved —
+
+```lean
+theorem clockedUtmTM_hoareTime_halt    …  -- output agrees with the simulated machine's
+theorem clockedUtmTM_hoareTime_timeout …  -- writes the timeout sentinel at cell 1
+```
+
+both within `clockedUtmTime α x V`, which is linear in `V`. One residual: `clockedUtmTM`
+receives its clock as a unary register `regTape V` on tape 6, so a self-contained
+`FP` membership additionally needs the clock *constructed from the input*. That is what
+`UTM/ClockConstructible.lean` (2,316 LOC) is for; it has not been audited in this pass and
+is the main unknown left in soundness.
+
+*Coverage* — every genuinely polynomial-time trader appears — is where the real remaining
+work sits, and it is **not** helped by the clamp. Given a machine-polytime trader we must
+produce a description: `f ∈ FP` gives a `TM k`, and reaching `TMDesc` needs
+`TM k → TM 1 → TMDesc`, i.e. the function-shaped single-tape reduction of §II.1 that does
+not exist. Then a sufficiently large `(coeff, deg)` majorising the true bound is picked,
+and `evalCoded` agrees with the unclamped run. **This is the one place the missing
+single-tape-for-functions theorem is load-bearing.**
+
+## II.9 Revised Stage-3 decomposition
+
+Replacing Part I §14's single "D. Stage 3 enumeration / TradingFirm migration, 2.5–3.5k
+LOC, 6–9 passes":
+
+| tranche | status | LOC | passes |
+| --- | --- | ---: | ---: |
+| complexity theory / universality | **UPSTREAM, DONE** | 0 | 0 |
+| 4.31 port of the UTM path | **DONE** (36 lines, 6 files) | ~0 | <1 |
+| function-output UTM wrapper | **DONE** (69 lines, compiled) | 0 | 0 |
+| finite executable coding + simulation | **DONE** (734 lines, compiled) | 0 | 0 |
+| `Primrec` bounded evaluator | **DONE** (in the same file) | 0 | 0 |
+| output-word extraction + `HasOutput` | remaining, straightforward | ~80 | 0.5 |
+| single-tape reduction **for functions** | remaining, **the hard one** | 400–800 | 2–3 |
+| clock construction / `FP` soundness | remaining, partly upstream | 200–400 | 1–2 |
+| trader enumeration + two lemmas | remaining | 300–500 | 1–2 |
+| `LIACompiler` swap + property touch-ups | remaining | 200–400 | 1–2 |
+| **Stage-3 total** | | **~1.2–2.2k** | **6–10** |
+
+Against Part I's 2.5–3.5k LOC: **roughly halved**, and the largest single risk item
+(executability) is now retired rather than estimated.
+
+Part I §14's overall figure of ~6.5–10k new FAF LOC becomes **~5–8k**, still dominated by
+Stage 2 (`PolyFueled → FP`), which this pass did not touch.
+
+## II.10 Revised risk
+
+**Part I's riskiest theorem is retired.** "The agreement theorem between an executable
+`List`-based simulator and complexitylib's `Tape`-based `TM.step`" is `codedStep_eq`, and
+it compiles in 20 lines. The risk was mispriced because the audit assumed the target was
+`TM k` or `utmTM`; against `TMDesc.toTM` it is easy.
+
+**The new riskiest theorem is the function-shaped single-tape reduction**,
+
+```lean
+theorem TM.exists_singleTape_computesInTime {k : ℕ} (M : TM k) {f} {T}
+    (h : M.ComputesInTime f T) :
+    ∃ M₁ : TM 1, M₁.ComputesInTime f (NTM.singleTapeSimTime k T)
+```
+
+needed **only for coverage** (§II.8). Grounds for confidence: the correspondence invariant
+already carries `outputEq : c1.output = c.output`, full tape equality, so the mathematics
+is present and only its exposure is decider-shaped. Grounds for caution: realising it
+means re-deriving `singleTapeSim_computesInTime`, a `ComputesInTime` analogue of
+`toTM_decidesInTime` (whose `RejectsWithZero` side condition should simply vanish), and
+`pad0_computesInTime`, inside a 5,344-line file. Estimated 400–800 lines. It is
+upstreamable and should be offered upstream.
+
+Second: `ClockConstructible.lean`, unaudited, on the soundness path.
+
+## II.11 Next implementation tranche
+
+1. **Stand up the fork** `A-M-Berns/complexitylib`, branch `faf/v4.31`, at `b673821` plus
+   `0002-lean431-port-fixes.patch`; then `0001-utm-function-output.patch` as a separate
+   commit, and open it upstream. Wire it into FAF's `lakefile.lean` and move
+   `notes/probes/DescExec.lean` to `LogicalInduction/Construction/Machine/DescExec.lean`
+   so it is built and CI-covered. **This is the only thing blocking everything else.**
+2. **Output extraction** (~80 lines) — completes `machineTokens`.
+3. **`TM.exists_singleTape_computesInTime`** — the risk item; do it before designing the
+   coverage proof, not after.
+4. **Audit `ClockConstructible.lean`** for the `FP` soundness chain.
+5. Only then: the enumeration, the `LIACompiler` swap, and the property touch-ups.
+
+Stage 2 (`PolyFueled → FP`) is unchanged by this pass and remains sequenced after, per
+Part I §7 — including the still-unscouted Route D shortcut through
+`TuringMachine/Registers/`.
