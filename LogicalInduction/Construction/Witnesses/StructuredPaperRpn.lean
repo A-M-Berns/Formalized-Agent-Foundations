@@ -774,34 +774,218 @@ lemma paperLUV_gt_eq (X : PaperLUV T) (r : ℚ) :
     X.toLUV.gt r = paperPrimeDecompose (.all (paperThresholdBody X r)) := by
   rw [PaperLUV.toLUV_gt, paperThresholdFormula_eq_all]
 
-/-- An efficiently presented family of literal paper LUVs: the structural certificate
-is symbol emission of the threshold bodies, never a bound on Foundation codes.
+/-! ### Threshold syntax as small tokens
 
-**Disclosed residual (inhabitation).**  No family witness is constructed yet, so the
-compiler below is a conditional result: it converts this certificate into the emission
-certificate, and does not assert that any concrete paper LUV family carries it.  Two
-pieces are missing for a witness, both about the *threshold rational* rather than the
-codec.  The numeral half is settled: `paperRatGtDef r` embeds `r.num.natAbs` and
-`r.den` as Foundation numerals, whose encoding is the two-run pattern of
-`encodeArithmeticTermSymbols_numeral` and is emitted by
-`encodeArithmeticTermSymbols_numeral_polySegStream`.  What remains is the *index*: at
-query `⟨n, ⟨k, i⟩⟩` the threshold is the reduced rational `i / k`, so numerator and
-denominator are `gcd`-normalized, and certifying those as poly-fueled is rational
-normalization work — deliberately out of scope here, and a limit of the fuel calculus
-(`dd:fuel`) rather than of the mathematics.  Until it lands, `PaperLUVSeq` is an
-interface, not an inhabited class. -/
+`paperRatGtDef` is a fixed template around two Foundation numerals, so its encoding
+splits into two constant blocks and two numeral runs; the numerals at query index
+`⟨n, ⟨k, i⟩⟩` are the reduced numerator and denominator of `i / k`, which the fuel
+calculus already computes (`gcdc_polyFueled`, `divmod1_polyFueled`).  Together with the
+implication shell this discharges the threshold-body certificate from a certificate on
+the LUVs' defining formulas alone. -/
+
+def ratGtPre : List ℕ :=
+  [18, 18, 15, 16, 15, 13, 3, 2, 0, 3, 0, 11, 3, 1, 2, 0, 7, 8, 3, 0, 3, 0, 3, 2,
+   0, 15, 16, 11, 3, 0, 3, 2, 0, 13, 3, 0, 3, 2, 0, 11, 3, 1, 2, 0, 7, 7, 8, 3, 2,
+   0, 3, 2, 0, 3, 2, 0, 3, 0, 15, 13, 5, 3, 0, 13, 8]
+
+def ratGtMid : List ℕ := [3, 0, 8, 3, 2, 0]
+
+lemma oringMul_term :
+    (Semiterm.Operator.Mul.mul : Semiterm.Operator ℒₒᵣ 2).term =
+      Semiterm.func Language.Mul.mul Semiterm.bvar := rfl
+
+lemma oringAdd_term :
+    (Semiterm.Operator.Add.add : Semiterm.Operator ℒₒᵣ 2).term =
+      Semiterm.func Language.Add.add Semiterm.bvar := rfl
+
+lemma oringOne_term :
+    (Semiterm.Operator.One.one : Semiterm.Operator ℒₒᵣ 0).term =
+      Semiterm.func Language.One.one ![] := rfl
+
+lemma oringNumZero_term :
+    (Semiterm.Operator.numeral ℒₒᵣ 0).term =
+      Semiterm.func Language.Zero.zero ![] := rfl
+
+lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
+    (Rew.emb ((Rew.subst ![]) t) : ArithmeticSemiterm ℕ n) =
+      (Rew.subst ![]) (Rew.emb t) := by
+  have h : ((Rew.emb : Rew ℒₒᵣ Empty n ℕ n).comp (Rew.subst ![])) =
+      ((Rew.subst ![]).comp (Rew.emb : Rew ℒₒᵣ Empty 0 ℕ 0)) := by
+    ext x
+    · exact Fin.elim0 x
+    · exact IsEmpty.elim inferInstance x
+  rw [← Rew.comp_app, h, Rew.comp_app]
+
+def encNumeral (v : ℕ) : List ℕ :=
+  encodeArithmeticTermSymbols
+    ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ 3)
+
+lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
+    encodeArithmeticFormulaSymbols
+      ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
+      ratGtPre ++ encNumeral r.num.natAbs ++ ratGtMid ++ encNumeral r.den := by
+  rw [paperRatGtDef, if_neg hr]
+  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
+    encodeStructuredNat, ratGtPre, ratGtMid, encNumeral,
+    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
+    Semiformula.Operator.le_def, Semiterm.Operator.operator,
+    Semiterm.Operator.const, oringMul_term, oringAdd_term,
+    oringNumZero_term, Matrix.fun_eq_vec_two, emb_subst_nil_comm]
+
+lemma encNumeral_zero : encNumeral 0 = [5] := rfl
+
+lemma encNumeral_of_ne_zero {v : ℕ} (hv : v ≠ 0) :
+    encNumeral v = List.replicate (v - 1) 7 ++ List.replicate v 6 :=
+  encodeArithmeticTermSymbols_numeral v hv
+
+/-- Every fixed token list is a segment stream. -/
+lemma PolySegStream.constList : ∀ c : List ℕ, PolySegStream (fun _ : ℕ => c)
+  | [] => PolySegStream.ofTokenStream PolyTokenStream.nil
+  | t :: c =>
+      ((PolySegStream.ofTokenStream (PolyTokenStream.const t)).append
+        (PolySegStream.constList c)).of_eq fun _ => rfl
+
+/-- Numerals of a poly-fueled value stream are emittable, zero included. -/
+lemma encNumeral_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv v) :
+    PolySegStream (fun n => encNumeral (v n)) := by
+  have hpred : PolyFueled _ (fun n => v n - 1) :=
+    (subc_polyFueled.comp (hv.pair (PolyFueled.const 1))).of_eq fun n => by
+      simp only [Nat.unpair_pair]
+  have hpos : PolySegStream (fun n => List.replicate (v n - 1) 7 ++
+      List.replicate (v n) 6) :=
+    (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
+  refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
+  by_cases h : v n = 0
+  · rw [if_pos h, h, encNumeral_zero]
+  · rw [if_neg h, encNumeral_of_ne_zero h]
+
+/-- The query rational at index `⟨n, ⟨k, i⟩⟩`. -/
+def queryRat (m : ℕ) : ℚ :=
+  (m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)
+
+lemma queryRat_nonneg (m : ℕ) : ¬ queryRat m < 0 := by
+  rw [queryRat]
+  exact not_lt.mpr (div_nonneg (by positivity) (by positivity))
+
+lemma queryNum_polyFueled :
+    ∃ c, PolyFueled c (fun m => (queryRat m).num.natAbs) := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  have hk := PolyFueled.left.comp PolyFueled.right
+  have hi := PolyFueled.right.comp PolyFueled.right
+  have gPF := hgcd.comp (hi.pair hk)
+  have pgPF := predc_polyFueled.comp gPF
+  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 0).pair numPF).pair hk)).of_eq fun m => ?_⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk0 : m.unpair.2.unpair.1 = 0
+  · rw [if_pos hk0, queryRat, hk0]
+    simp
+  · rw [if_neg hk0, queryRat]
+    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
+    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
+        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [hg1, ComputableLUV.natCast_div_num hk0, Int.natAbs_natCast]
+
+lemma queryDen_polyFueled :
+    ∃ c, PolyFueled c (fun m => (queryRat m).den) := by
+  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
+  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
+  have hk := PolyFueled.left.comp PolyFueled.right
+  have hi := PolyFueled.right.comp PolyFueled.right
+  have gPF := hgcd.comp (hi.pair hk)
+  have pgPF := predc_polyFueled.comp gPF
+  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 1).pair denPF).pair hk)).of_eq fun m => ?_⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk0 : m.unpair.2.unpair.1 = 0
+  · rw [if_pos hk0, queryRat, hk0]
+    simp
+  · rw [if_neg hk0, queryRat]
+    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
+    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
+        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
+      Nat.succ_pred_eq_of_pos hg
+    rw [hg1, ComputableLUV.natCast_div_den hk0]
+
+/-- The implication shell in symbol form. -/
+lemma encodeArithmeticFormulaSymbols_imp {k : ℕ}
+    (A B : ArithmeticSemiformula ℕ k) :
+    encodeArithmeticFormulaSymbols (A 🡒 B) =
+      16 :: ((encodeArithmeticFormulaSymbols A).map negArithTok ++
+        encodeArithmeticFormulaSymbols B) := by
+  show encodeArithmeticFormulaSymbols ((∼A).or B) = _
+  rw [encodeArithmeticFormulaSymbols, encodeArithmeticFormulaSymbols_neg]
+
+/-- The threshold syntax of a rational query is structurally emittable. -/
+lemma paperRatGt_polySegStream :
+    PolySegStream (fun m => encodeArithmeticFormulaSymbols
+      ((paperRatGtDef (queryRat m) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) := by
+  obtain ⟨cn, hnum⟩ := queryNum_polyFueled
+  obtain ⟨cd, hden⟩ := queryDen_polyFueled
+  refine (((PolySegStream.constList ratGtPre).append
+    (encNumeral_polySegStream hnum)).append
+      ((PolySegStream.constList ratGtMid).append
+        (encNumeral_polySegStream hden))).of_eq fun m => ?_
+  rw [enc_paperRatGtDef _ (queryRat_nonneg m)]
+  simp [List.append_assoc]
+
+lemma paperThresholdBody_polySegStream (X : ℕ → PaperLUV T)
+    (h : PolyArithmeticFormulaSeq (fun n =>
+      (((X n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1))) :
+    PolyArithmeticFormulaSeq (fun m =>
+      paperThresholdBody (X m.unpair.1) (queryRat m)) := by
+  obtain ⟨cf, hf⟩ := negArithTok_polyFueled (PolyFueled.id)
+  have hX := h.comp (PolyFueled.left)
+  refine ((PolySegStream.constList [16]).append
+    ((hX.mapTok hf).append paperRatGt_polySegStream)).of_eq fun m => ?_
+  show _ = encodeArithmeticFormulaSymbols (paperThresholdBody _ _)
+  rw [paperThresholdBody]
+  simp only [LogicalConnective.HomClass.map_imply]
+  rw [encodeArithmeticFormulaSymbols_imp]
+  simp [List.append_assoc]
+
+/-- An efficiently presented family of literal paper LUVs.  The certificate is
+structural symbol emission of the LUVs' own *defining formulas* — never a bound on
+Foundation codes, a caller-provided tag-7 code, or a semantic handle.  Everything the
+threshold syntax adds on top (the implication shell, the fixed comparison template, and
+the reduced numerals of the query rational) is discharged internally.
+
+**Disclosed residual (concrete instances).**  `PaperLUVSeq.const` shows the certificate
+is satisfiable by any single `PaperLUV T`, so efficiency is not the obstruction to an
+instance.  What this development does not yet supply is a concrete `PaperLUV T` itself:
+that means exhibiting a defining formula together with object-level derivations of
+`T ⊢ ∃⁰! formula` and `T ⊢ ∀⁰ (formula 🡒 paperRatUnitDef)` in a concrete theory.  That
+is first-order proof work in Foundation, independent of the codec and of the emission
+calculus. -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv : ℕ → PaperLUV T
-  structural : PolyArithmeticFormulaSeq (fun m =>
-    paperThresholdBody (luv m.unpair.1)
-      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+  structural : PolyArithmeticFormulaSeq (fun n =>
+    (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1))
 
-/-- **The literal first-order threshold compiler**: an efficiently presented paper LUV
-family emits its exact threshold sentences as a poly stream of small structured
-tokens. -/
+/-- The threshold bodies inherit the family's structural certificate. -/
+lemma PaperLUVSeq.thresholdBody_structural (X : PaperLUVSeq T) :
+    PolyArithmeticFormulaSeq (fun m =>
+      paperThresholdBody (X.luv m.unpair.1) (queryRat m)) :=
+  paperThresholdBody_polySegStream X.luv X.structural
+
+/-- **Non-vacuity** (`N+`): a single literal paper LUV presents as a constant family,
+so the certificate is satisfiable.  A constant family is deliberately degenerate — it
+witnesses inhabitation, not the intended generality, which is a family whose defining
+formulas genuinely vary with `n`. -/
+def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T where
+  luv _ := X
+  structural := PolySegStream.constList _
+
 lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
     LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
-  have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.structural
+  have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.thresholdBody_structural
   exact h.of_eq fun m => (paperLUV_gt_eq _ _).symm
 
 /-- **The literal paper frontend**: an efficiently presented family of literal
