@@ -213,10 +213,12 @@ construction.
 > `PaperLUVSeq`, `Witnesses/StructuredPaperRpn.lean`) compiles an *arbitrary* value-defining
 > one-variable arithmetic formula into the abstract `LUV`, deriving both world-valuedness and
 > `RpnThresholdCodeSeq` instead of assuming them, and is inhabited by a varying concrete
-> family. The `def:luv` row stays `qualified`, on the narrower ground recorded in
-> `scripts/coverage-classification.md`: the carrier consumed downstream is still the abstract
-> threshold family, and the object-level value representation is a fixed
-> numerator/denominator pair code.
+> family. The `def:luv` row is reclassified `instantiated`: the paper's definition is
+> rendered directly by `PaperLUV`, with the world value derived rather than assumed. What
+> this section says about the *carrier* still stands and is now charged where it actually
+> bites — `def:blcp`, which quantifies over the abstract `LUV` type — together with the
+> object-level pair-code value representation recorded in
+> `scripts/coverage-classification.md`.
 
 This abstraction is appropriate for the propositional substrate and most endpoints quantify
 over exactly the world-value behavior the paper uses. It nevertheless admits arbitrary

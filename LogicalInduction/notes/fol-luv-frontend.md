@@ -176,8 +176,10 @@ part of this frontend.
   covers quantifier-headed propositions, which is what `thresholdFormula` always produces.
   A version for arbitrary outer Boolean structure would need a bracket-counting scan over
   the payload; it is not required by this frontend.
-- **The abstract carrier is unchanged.** Downstream theorems still quantify over `LUV`, so
-  the `def:luv` representation qualification is reduced, not removed.
+- **The abstract carrier is unchanged.** Downstream theorems still quantify over `LUV`,
+  which admits threshold families that are not literal paper LUVs. `def:luv` itself is
+  classified `instantiated` — its definition is rendered by `PaperLUV` — while that
+  carrier-level charge is carried by `def:blcp`.
 - **`dd:fuel` is independent.** The legacy-only positional matcher in `RpnFreeze` is scoped
   to the pre-structured grammar for a fuel-model reason that predates this work and is not
   a limitation of this codec; see that module's disclosure.

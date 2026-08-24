@@ -35,7 +35,14 @@ def paperRatGtDef (r : ℚ) : ArithmeticSemisentence 1 :=
 
 /-- A literal paper `[0,1]`-LUV: one free value variable, with object-level theory
 proofs of unique existence and unit-interval membership. Efficiency belongs to the
-separate sequence layer. -/
+separate sequence layer.
+
+This is the paper's definition rendered directly: the formula is an actual
+`ArithmeticSemisentence 1`, and `unique`/`unit` are derivations in `T`, not Lean-level
+side conditions. `toLUV` compiles it into the abstract threshold carrier the rest of the
+development consumes, and `source_valued` derives the world value rather than assuming
+it. The object-level value is named by a numerator/positive-denominator pair code.
+Paper node: `def:luv` -/
 structure PaperLUV (T : ArithmeticTheory) [T.Δ₁] where
   formula : ArithmeticSemisentence 1
   unique : T ⊢ ∃⁰! formula

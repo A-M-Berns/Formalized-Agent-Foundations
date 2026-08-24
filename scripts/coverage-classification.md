@@ -61,7 +61,7 @@ gradient, inviting the false inference that a `conditional` row is a weaker resu
 |---|---|---|
 | def:affcomsen | instantiated | direct rendering (`AffineCombination`: a constant feature plus a list of feature/sentence terms) |
 | def:bap | instantiated | direct rendering (`BoundedCombinationSequence`): an efficiency certificate plus one uniform `l1Norm` bound |
-| def:blcp | qualified | bounded LUV-combination sequence over the threshold-abstracted `LUV` type; the abstraction is charged at `def:luv` |
+| def:blcp | qualified | direct rendering of the paper's two clauses, but stated over the abstract `LUV` carrier, which still admits threshold families that are not literal paper LUVs. `def:luv` no longer carries this charge: its own definition is rendered literally by `PaperLUV`, whereas this node quantifies over the carrier |
 | def:dedproc | instantiated | direct rendering (`DeductiveProcess` plus its `DeductiveProcessComputation` certificate) |
 | def:deferralfunc | instantiated | direct rendering: `n < f n` with the emitter clocked polynomially in `f n`, as the paper asks |
 | def:ec | qualified | this row **is** the `dd:fuel` substitution: a symbol-metered clocked interpreter, not a complexity class; lower calibration (paper-e.c. ⊆ this class) is open |
@@ -69,7 +69,7 @@ gradient, inviting the false inference that a `conditional` row is a weaker resu
 | def:fuz | instantiated | direct rendering of a generable weighting (`PGenerableWeighting`), strictly less data than `def:ece` carries |
 | def:lia | instantiated | the constructed recursive algorithm (`liaStates`/`liaHistory`), certified by `thm:lia` |
 | def:lic | instantiated | range law bundled through `marketComputable`; trader class is `def:ec`'s, disclosed globally |
-| def:luv | qualified | a literal first-order frontend now exists for arbitrary value-defining formulas (`PaperLUV`/`PaperLUVSeq`: object-level unique/`[0,1]` proofs, derived `ValuesAt`, exact threshold syntax, `RpnThresholdCodeSeq`, varying concrete inhabitant); what remains retained is the abstract threshold carrier downstream consumes and the fixed numerator/denominator pair-code value representation |
+| def:luv | instantiated | direct rendering (`PaperLUV`: a literal one-variable arithmetic formula with object-level `T`-proofs of unique existence and `[0,1]` membership), compiled to the abstract carrier by `toLUV`, with world value *derived* (`source_valued`, via `paperTheoryDP` and the rational cut) and literal threshold syntax compiled to `RpnThresholdCodeSeq` (`PaperLUVSeq`); inhabited by the varying `1/(n+1)` family. The object-level value is named by a numerator/positive-denominator pair code |
 | def:trader | instantiated | direct rendering |
 | def:tradestrat | instantiated | direct rendering, with the paper's rank/horizon bound on traded features |
 | lem:mesh | universal | `mesh_independence_ofSyntax` retains only `WorldValued`, which is the paper's own `def:luv` world-value fact (tex:1642-1648) — the condition that cuts our over-general `LUV` type down to the paper's object, not a restriction |
