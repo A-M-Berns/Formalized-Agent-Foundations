@@ -68,6 +68,7 @@ claim in the repository changes because of it. Declarations use `lemma`, not `th
 that reason (`scripts/lint_paper_labels.py`).
 -/
 import Complexitylib.Models.TuringMachine.UTM.Internal.Interp
+import Complexitylib.Classes.P.Description
 import Mathlib.Computability.Primrec.List
 
 open Complexity
@@ -1324,6 +1325,45 @@ lemma primrec_machineTokens : Primrec₂ machineTokens :=
     (primrec_evalHalted.comp (Primrec.pair
       (primrec_progDesc.comp Primrec.fst)
       (Primrec.pair primrec_progClock (primrec_unaryDay.comp Primrec.snd))))
+
+/-! ## From an `FP` witness to an enumeration index
+
+`Complexity.exists_desc_computesInTime_polynomial` hands back a description together with a
+`Polynomial ℕ` time bound. An index of this enumeration carries instead a clock in the
+`a * (n + 1) ^ k + a` normal form shared with `IsPolyBounded` and `EfficientlyComputable`.
+The conversion is the only arithmetic gap between the two, and it is uniform: a
+natural-coefficient polynomial is dominated by its coefficient sum times `(n + 1)` to its
+degree, at *every* `n`.
+
+This is what makes coverage a matter of *choosing* an index rather than of proving anything
+further about the machine: given `f ∈ FP`, take the description, take the clock below, and
+the corresponding index runs the described machine long enough. -/
+
+/-- A natural-coefficient polynomial is dominated at every point by the clock normal form
+`a * (n + 1) ^ k + a`, with `a` its coefficient sum and `k` its degree. -/
+lemma exists_clock_of_polynomial (q : Polynomial ℕ) :
+    ∃ a k : ℕ, ∀ n, q.eval n ≤ a * (n + 1) ^ k + a := by
+  refine ⟨∑ i ∈ Finset.range (q.natDegree + 1), q.coeff i, q.natDegree, fun n => ?_⟩
+  rw [Polynomial.eval_eq_sum_range, Finset.sum_mul]
+  refine le_trans (Finset.sum_le_sum fun i hi => ?_) (Nat.le_add_right _ _)
+  refine Nat.mul_le_mul_left _ ?_
+  calc n ^ i ≤ (n + 1) ^ i := Nat.pow_le_pow_left (Nat.le_succ n) i
+    _ ≤ (n + 1) ^ q.natDegree :=
+        Nat.pow_le_pow_right (Nat.succ_le_succ (Nat.zero_le n))
+          (Nat.lt_succ_iff.mp (Finset.mem_range.mp hi))
+
+/-- **Every polynomial-time function is computed by a described machine under a clock in
+the enumeration's normal form.** The composite of
+`Complexity.exists_desc_computesInTime_polynomial` with the conversion above: this is the
+statement the coverage half of the machine-trader enumeration consumes, and the last step
+that mentions `Complexity.FP` rather than an index. -/
+lemma exists_desc_computesInTime_clock {f : List Bool → List Bool}
+    (hf : f ∈ Complexity.FP) :
+    ∃ (d : TMDesc) (a k : ℕ) (T : ℕ → ℕ),
+      d.toTM.ComputesInTime f T ∧ ∀ n, T n ≤ a * (n + 1) ^ k + a := by
+  obtain ⟨d, q, -, hd⟩ := Complexity.exists_desc_computesInTime_polynomial hf
+  obtain ⟨a, k, hak⟩ := exists_clock_of_polynomial q
+  exact ⟨d, a, k, q.eval, hd, hak⟩
 
 end LogicalInduction.MachineExec
 
