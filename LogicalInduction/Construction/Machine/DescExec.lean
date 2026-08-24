@@ -1152,6 +1152,12 @@ def descAt (i : ℕ) : TMDesc := (Encodable.decode i).getD ⟨0, 0, 0, []⟩
 lemma primrec_descAt : Primrec descAt :=
   Primrec.option_getD.comp (Primrec.decode (α := TMDesc)) (Primrec.const (⟨0, 0, 0, []⟩ : TMDesc))
 
+/-- `descAt` inverts `Encodable.encode`. Stated here, *before* the seal below, because it is
+the only fact about `descAt`'s internals anything downstream needs — sealing it afterwards is
+what keeps `whnf` out of the `Primcodable TMDesc` stack. -/
+@[simp] lemma descAt_encode (d : TMDesc) : descAt (Encodable.encode d) = d := by
+  rw [descAt, Encodable.encodek]; rfl
+
 attribute [irreducible] descAt
 
 /-- The description named by index `j`. -/
@@ -1185,6 +1191,32 @@ def MachineTraderProgram.index (p : MachineTraderProgram) : ℕ :=
 /-- Decode every natural into a description/clock tuple. Total, so the enumeration is. -/
 def machineProgramAt (j : ℕ) : MachineTraderProgram :=
   ⟨progDesc j, progCoeff j, progDeg j⟩
+
+/-- Decoding a canonical index returns its description. -/
+@[simp] lemma progDesc_index (d : TMDesc) (a k : ℕ) :
+    progDesc (MachineTraderProgram.index ⟨d, a, k⟩) = d := by
+  rw [progDesc, MachineTraderProgram.index, Nat.unpair_pair, Nat.unpair_pair, descAt_encode]
+
+/-- Decoding a canonical index returns its clock coefficient. -/
+@[simp] lemma progCoeff_index (d : TMDesc) (a k : ℕ) :
+    progCoeff (MachineTraderProgram.index ⟨d, a, k⟩) = a := by
+  rw [progCoeff, MachineTraderProgram.index, Nat.unpair_pair, Nat.unpair_pair]
+
+/-- Decoding a canonical index returns its clock degree. -/
+@[simp] lemma progDeg_index (d : TMDesc) (a k : ℕ) :
+    progDeg (MachineTraderProgram.index ⟨d, a, k⟩) = k := by
+  rw [progDeg, MachineTraderProgram.index, Nat.unpair_pair]
+
+/-- Decoding a canonical index returns its clock. -/
+lemma progClock_index (d : TMDesc) (a k n : ℕ) :
+    progClock (MachineTraderProgram.index ⟨d, a, k⟩) n = a * (n + 1) ^ k + a := by
+  rw [progClock, progCoeff_index, progDeg_index]
+
+/-- Round-trip on the packaged form. -/
+@[simp] lemma machineProgramAt_index (p : MachineTraderProgram) :
+    machineProgramAt p.index = p := by
+  cases p
+  rw [machineProgramAt, progDesc_index, progCoeff_index, progDeg_index]
 
 /-- The paper-faithful unary rendering of day `n`. -/
 def unaryDay (n : ℕ) : List Bool := List.replicate n true
@@ -1365,7 +1397,132 @@ lemma exists_desc_computesInTime_clock {f : List Bool → List Bool}
   obtain ⟨a, k, hak⟩ := exists_clock_of_polynomial q
   exact ⟨d, a, k, q.eval, hd, hak⟩
 
+/-! ## Completeness of the budgeted run
+
+`runUntilHalt_spec` says the budgeted run is *sound*: whatever it reports really is a halted
+configuration the machine reaches. Coverage needs the converse — that when the real machine
+halts inside the budget, the executable run finds it rather than timing out.
+
+That direction is available because the machine is deterministic and `codedStep` tracks
+`TM.step` exactly (`codedStep_eq`): there is only one run to follow, so the executable one
+cannot miss the halt. Note the budget must exceed the running time strictly: `stepFrozen`
+spends one iteration *noticing* that `codedStep` returned `none`. -/
+
+/-- A coded step reports `none` exactly when the decoded machine has halted. The forward
+direction is `halted_of_codedStep_none`; this is the converse, and the two together are what
+make the executable run faithful in both directions. -/
+lemma codedStep_eq_none_iff {d : TMDesc} {c : CodedCfg} :
+    codedStep d c = none ↔ (d.toTM).halted (CodedCfg.decode d c) := by
+  refine ⟨halted_of_codedStep_none, fun h => ?_⟩
+  have h2 := codedStep_eq d c
+  rw [TM.step, if_pos h] at h2
+  exact Option.map_eq_none_iff.mp h2
+
+/-- **Completeness of the budgeted run.** If the real machine reaches a halted configuration
+in `s` steps and the budget strictly exceeds `s`, the executable run reports it — with the
+same decoded configuration, so nothing about the output is lost. -/
+lemma runUntilHalt_complete (d : TMDesc) :
+    ∀ (s : ℕ) (c : CodedCfg) (cr : Cfg 1 (d.toTM).Q),
+      (d.toTM).reachesIn s (CodedCfg.decode d c) cr → (d.toTM).halted cr →
+      ∀ t, s < t → ∃ c', runUntilHalt d t c = some c' ∧ CodedCfg.decode d c' = cr
+  | 0, c, cr, hreach, hhalt, t, ht => by
+      cases hreach
+      obtain ⟨t', rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
+      have hs : codedStep d c = none := codedStep_eq_none_iff.mpr hhalt
+      have hfz : stepFrozen d (c, false) = (c, true) := by
+        rw [stepFrozen]; simp only [hs]; rfl
+      refine ⟨c, ?_, rfl⟩
+      rw [runUntilHalt, Function.iterate_succ_apply, hfz, stepFrozen_frozen]
+      simp
+  | (s + 1), c, cr, hreach, hhalt, t, ht => by
+      cases hreach with
+      | step hstep hrest =>
+          rename_i c''
+          obtain ⟨t', rfl⟩ : ∃ t', t = t' + 1 := ⟨t - 1, by omega⟩
+          -- the coded step mirrors the real one, so it produces a configuration
+          have h2 := codedStep_eq d c
+          rw [hstep] at h2
+          obtain ⟨c₁, hc₁, hdec⟩ : ∃ c₁, codedStep d c = some c₁ ∧
+              CodedCfg.decode d c₁ = c'' := by
+            cases hcs : codedStep d c with
+            | none => rw [hcs] at h2; exact absurd h2.symm (by simp)
+            | some c₁ =>
+                rw [hcs, Option.map_some, Option.some.injEq] at h2
+                exact ⟨c₁, rfl, h2⟩
+          have hfz : stepFrozen d (c, false) = (c₁, false) := by
+            rw [stepFrozen]; simp only [hc₁]; rfl
+          obtain ⟨c', hrun, hdec'⟩ :=
+            runUntilHalt_complete d s c₁ cr (by rw [hdec]; exact hrest) hhalt t' (by omega)
+          refine ⟨c', ?_, hdec'⟩
+          rw [runUntilHalt, Function.iterate_succ_apply, hfz]
+          exact hrun
+
+/-- `Tape.HasOutput` determines the output word: the first blank fixes the length, and the
+cells fix the bits. -/
+lemma hasOutput_unique {t : Tape} {y z : List Bool}
+    (hy : t.HasOutput y) (hz : t.HasOutput z) : y = z := by
+  have hlen : y.length = z.length := by
+    rcases Nat.lt_trichotomy y.length z.length with hlt | heq | hgt
+    · exact absurd (hz.1 y.length hlt ▸ hy.2) (Γ.ofBool_ne_blank _)
+    · exact heq
+    · exact absurd (hy.1 z.length hgt ▸ hz.2) (Γ.ofBool_ne_blank _)
+  refine List.ext_getElem hlen fun i hi hi' => ?_
+  have h1 := hy.1 i hi
+  have h2 := hz.1 i hi'
+  rw [h1] at h2
+  cases hyi : y[i] <;> cases hzi : z[i] <;> rw [hyi, hzi] at h2 <;> simp_all [Γ.ofBool]
+
+/-- **The budgeted evaluator recovers any in-clock output.** If the described machine computes
+`f` within `T` and the budget strictly exceeds `T |x|`, the executable evaluator halts and
+extracts exactly `f x`.
+
+This is the bridge coverage needs: it turns a `Complexity.ComputesInTime` fact about a
+`TMDesc` into an equation about `machineTokens`. -/
+lemma evalHalted_complete {d : TMDesc} {f : List Bool → List Bool} {T : ℕ → ℕ}
+    (h : (d.toTM).ComputesInTime f T) (x : List Bool) {t : ℕ} (ht : T x.length < t) :
+    ∃ c, evalHalted d t x = some c ∧ codedOutput c = f x := by
+  obtain ⟨cr, s, hs, hreach, hhalt, hout⟩ := h x
+  rw [← decode_initCoded d x] at hreach
+  obtain ⟨c', hrun, hdec⟩ :=
+    runUntilHalt_complete d s (initCoded d x) cr hreach hhalt t (by omega)
+  refine ⟨c', hrun, ?_⟩
+  have hmine : (CodedCfg.decode d c').output.HasOutput (codedOutput c') :=
+    CodedTape.hasOutput_outputWord (evalHalted_output_invariants hrun).1
+  rw [hdec] at hmine
+  exact hasOutput_unique hmine hout
+
+/-! ## `machineTokens` completeness
+
+`machineTokens_steps_le` is the soundness half: whatever an index emits came from a genuine
+in-clock run. This is the completeness half, and it is what coverage consumes — if the
+description an index names really does compute `f` inside the clock that index claims, then
+the index emits exactly `f`'s digit stream.
+
+Note the strict inequality: `stepFrozen` spends one iteration *noticing* that `codedStep`
+returned `none`, so the budget must exceed the running time rather than merely match it.
+Coverage supplies that by bumping the clock coefficient, which the clock normal form absorbs
+(`progClock_lt_of_le`). -/
+
+/-- Bumping the coefficient makes the clock strictly dominate any bound it weakly dominates.
+The slack `stepFrozen` needs, obtained without weakening the converse. -/
+lemma lt_clock_succ {a k m n : ℕ} (h : m ≤ a * (n + 1) ^ k + a) :
+    m < (a + 1) * (n + 1) ^ k + (a + 1) := by
+  have h1 : a * (n + 1) ^ k ≤ (a + 1) * (n + 1) ^ k :=
+    Nat.mul_le_mul_right _ (Nat.le_succ a)
+  omega
+
+/-- **`machineTokens` completeness.** If index `j`'s description computes `f` within a bound
+its own clock strictly exceeds, then on day `n` the index emits exactly the digit stream of
+`f`'s output on the unary day. -/
+lemma machineTokens_eq_of_computesInTime {j : ℕ} {f : List Bool → List Bool} {T : ℕ → ℕ}
+    (h : ((progDesc j).toTM).ComputesInTime f T) (n : ℕ)
+    (ht : T (unaryDay n).length < progClock j n) :
+    machineTokens j n = bitsToDigits (f (unaryDay n)) := by
+  obtain ⟨c, hc, hout⟩ := evalHalted_complete h (unaryDay n) ht
+  rw [machineTokens, hc, tokensOf, hout]
+
 end LogicalInduction.MachineExec
+
 
 /-! ## Axiom report
 

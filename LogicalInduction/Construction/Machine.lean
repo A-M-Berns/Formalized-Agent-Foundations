@@ -38,3 +38,5 @@ import LogicalInduction.Construction.Machine.Basic
 import LogicalInduction.Construction.Machine.Closure
 import LogicalInduction.Construction.Machine.Pairing
 import LogicalInduction.Construction.Machine.DescExec
+
+import LogicalInduction.Construction.MachineTraderEnumeration
