@@ -243,52 +243,29 @@ assertion starts failing and gets promoted to a plain clean assertion.
    threshold sentences `⌜X > r⌝`, with its world-value semantics carried as explicit,
    build-frozen certificate structures rather than derived from first-order syntax.
 
-   This boundary has one consequence sharp enough to name on its own.
-   **`thm:ccee`'s quoted product is realized only to within `1/(n+1)`, not exactly.**
-   The paper's quoted product `⌜Xₙ · w_{f(n)}⌝` is a first-order term, whereas here a
-   product LUV must be built from threshold sentences, and an *exact* one needs either the
-   value of `w_{f(n)}` (unavailable to an emitter: the weight is only P-generable, and
-   deferred, and the resulting threshold's denominator is not polynomially sized) or the
-   infinite disjunction `⋁_{s∈ℚ} (⌜w > s⌝ ∧ ⌜X > r/s⌝)` — the existential the propositional
-   substrate lacks. What *is* emittable is the finite **mesh** product
-   `⋁_{j<n+1} (⌜w_{f(n)} > j/(n+1)⌝ ∧ ⌜Xₙ > r(n+1)/(j+1)⌝)`, built only from the deferred
-   weight's own threshold atoms; it values the product within `1/(n+1)`. So
-   `ConditionalExpectationQuote.left_reflected` is a **vanishing-slack** condition rather
-   than an equation — a declared type-`(c)` substitution — and in exchange the fully-closed
-   endpoint `lic_no_expected_net_update_conditional_closed` takes the paper's arbitrary
-   e.c. source family. The slack is inert downstream: it enters the exploiting trader's
-   block-price bound additively beside the existing `1/(m+1)` grid errors, and the
-   conclusion is unchanged in form. Non-vacuity is witnessed at both ends — the mesh
-   inhabits the relaxed field for a general source, and the indicator product still
-   inhabits it at zero slack (`indicatorProductLUV_exact_left_reflected`).
+   The flat atom representation once forced the closed `thm:ccee` endpoint through a
+   `1/(n+1)` mesh product. That historical endpoint remains available, but it is no longer
+   the endpoint of record. `Construction/Witnesses/SemanticLiftedCCEE.lean` constructs one
+   canonical language and deductive process from `T` before the source, deferral, or weight
+   is selected. A fixed injective renaming places every caller source in an old-language
+   namespace disjoint from semantic handles. The renamed theorem stream is a genuine
+   independent copy—there are no alias axioms back to the original atoms—so the prior
+   self-reference diagonal is unavailable.
 
-   **The slack is known to be substrate-shaped, and the diagnosis is proved.**
-   `Construction/Witnesses/ProductDefinition.lean` gives the quoted product a syntactic
-   existence the propositional substrate otherwise denies it: a family of *fresh atoms*
-   whose defining schema is entered by an extra computable **deductive process** — nothing
-   is added to the theory, and the extension is proved conservative on the base language
-   (`productDefDP_union_consistentWithTheory`). Over the constructed `LIA` on
-   `theoremDP T ∪ productDefDP`, `lic_no_expected_net_update_conditional_exact_closed`
-   reflects the product *exactly* (`slack = 0`, no positivity hypothesis on the weight),
-   with `hworld`, `source_valued`, `weight_valued` and `right_reflected` all discharged and
-   a jointly satisfiable premise set exhibited. Same trader, same criterion, slack gone. So
-   the `1/(n+1)` is an artifact of the substrate's missing product term, not of logical
-   induction.
+   Source admission is not proof-carrying. From the existing completed-world
+   `source_valued` premise, rational-cut laws follow semantically; propositional compactness
+   gives a finite theorem stage, and an executable finite entailment checker lets the fixed
+   universal registry discover that stage. `RpnThresholdCodeSeq` supplies the mesh-query
+   emitter needed by exact semantic multiplication. Thus
+   `lic_no_expected_net_update_conditional_closed_exact` has the same caller source class as
+   the former mesh endpoint, constructs the deferred weight and right quotation internally,
+   and instantiates the conditional trader theorem with slack identically zero.
 
-   **That result is a diagnosis, not a stronger `thm:ccee`, and the mesh endpoint keeps the
-   row.** It establishes nothing about the base inductor's conditional expectations: `LIA`
-   over the extended process is a *different* inductor, and conservativity of completed-world
-   truth does not carry prices across — no market-preservation correspondence is proved
-   anywhere here, and none is implied by conservativity. It also pays two costs the mesh
-   endpoint does not: `ProductAtomFresh X`, which genuinely narrows the arbitrary e.c. source
-   class in a flat atom space (a theorem rather than an assumption for every family this
-   repository builds, but a restriction nonetheless), and `def:pgen` for the weight at the
-   *extended* market, carried separately because a generable feature's denotation is
-   evaluated at the history. A cross-family adjudication on 2026-08-11 rejected reading it as
-   `thm:ccee` at an instance and ranked the renderings mesh > extension > narrowing `w` to
-   `PolyRatCodes`. Both statements stand, and they are siblings rather than rungs: the mesh
-   endpoint is the maximal faithful statement about the base inductor, and the extension
-   result is the proof that what it gives up is substrate-shaped.
+   This is not the rejected source-dependent `productDefDP` maneuver. There is one market,
+   `liaHistory (canonicalCCEEDP T)`, constructed over a fixed enlarged language from the
+   outset; no equality with prices of `liaHistory (theoremDP T)` is asserted or needed.
+   `canonicalCCEEDP_hworld` supplies an explicit completed-world witness for the full
+   universal source, quotation, and product process.
 
    **The slack is invisible at the one known downstream interface.** The deference port
    of "Deference Done Better" into this framework consumes `thm:ccee` as a hypothesis
@@ -298,50 +275,15 @@ assertion starts failing and gets promoted to a plain clean assertion.
    as an exactly-reflecting one would. Details, and the rest of the compatibility
    surface, in [`notes/deference-compatibility.md`](notes/deference-compatibility.md).
 
-All three are disclosed at every affected statement, not just here.
+Both modeling choices are disclosed at every affected statement, not just here.
 
 ## What is left, and what it is blocked on
 
-Both remaining qualified nodes trace back to the two modeling boundaries; there is no
-longer a third that is merely unfinished. (`thm:wubexp` was that third one. Its route —
-build the mesh feedback bridge from the *approximate* determination that combination-level
-`def:affthmval` actually supplies, rather than from a per-component-LUV strengthening — is
-now landed; see `FeedbackTruth.luv_wubexp_ofComputation`.) The two are not alike: one
-(`thm:ccee`) is **settled** — the boundary is fully mapped, the qualification is understood
-rather than merely disclosed, and there is no pending work item; the other (`thm:ifp`) is
-genuinely open. Estimates are engineering judgment, not measurements — the ones marked
-*checked* were made after confirming the required lemmas exist, and the rest are structural
-reads that have twice moved upward on contact.
+The `thm:ccee` qualification is closed by the fixed language-lift construction above.
+The remaining qualified theorem node is attributable to the efficiency-model boundary.
 
-**Attributable to a disclosed modeling boundary (2).**
+**Attributable to a disclosed modeling boundary (1).**
 
-* **`thm:ccee` — the propositional substrate. Settled, not pending.** This entry no longer
-  names work to do; the boundary is fully mapped and the qualification is now understood
-  rather than merely disclosed. An *exactly* reflecting product LUV over the base inductor
-  needs either the deferred weight's value (unavailable to an emitter: only P-generable,
-  deferred, and the resulting threshold's denominator is not polynomially sized) or the
-  infinite disjunction `⋁_{s∈ℚ}(⌜w > s⌝ ∧ ⌜X > r/s⌝)`. Propositional logic has neither, so
-  the mesh product reflects only to within `1/(n+1)`, and
-  `lic_no_expected_net_update_conditional_closed` — arbitrary e.c. source family, no
-  freshness restriction, over the base `LIA` — is the **maximal faithful statement about the
-  inductor the paper is talking about**. Alongside it,
-  `lic_no_expected_net_update_conditional_exact_closed`
-  (`Construction/Witnesses/ProductDefinition.lean`) proves the residual is *substrate-shaped*:
-  give the deductive process fresh product atoms and their defining schema — a conservative
-  definitional extension of the process, not of the theory — and the same trader and the same
-  criterion yield the conclusion at `slack = 0`. The two are **siblings, not rungs**. The
-  extension result establishes nothing about the base inductor's conditional expectations
-  (`LIA` over the extended process is a different inductor, and conservativity of
-  completed-world truth does not carry prices across), and it pays a genuine freshness
-  restriction on the source class plus `def:pgen` at the extended market. A cross-family
-  adjudication on 2026-08-11 rejected reading it as `thm:ccee` at an instance and ranked the
-  renderings mesh > extension > narrowing `w` to `PolyRatCodes` (which would drop the paper's
-  own worked example at tex:2077). So the row stays `qualified` and stays with the mesh
-  endpoint; what would move it is a richer term syntax or a proved market-preservation
-  correspondence for conservative extensions, neither of which is cheap and neither of which
-  is scheduled. The one known downstream consumer does **not** need exactness — see the
-  interface note above. Full assessment and the adjudication outcome in
-  [`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
 * **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
   digit calculus's toolkit does not provide (the inverse-operation ceiling: the emitted
   freeze stream's certificate needs a decode test on exponentially large codes, which no
@@ -357,10 +299,8 @@ reads that have twice moved upward on contact.
 
 ## Closing the boundaries
 
-Each of the two modeling boundaries has a scoped feasibility note, written against what
-the installed toolchain actually provides rather than against what one might hope for.
-Both conclude that the boundary is real; they differ in what it would cost and in what
-closing it would buy.
+The efficiency-model boundary has a scoped feasibility note, written against the
+installed toolchain rather than against hypothetical APIs.
 
 **Boundary 1 — the efficiency model.** The realistic route is a two-model architecture:
 define efficiency at a genuine machine class, let the trading firm enumerate it via
@@ -373,19 +313,11 @@ certificate on this page. The staged plan, the two places Mathlib stops short (n
 simulation theory; `FinTM2` not enumerable as-is), and the effort estimate are in
 [`notes/boundary-efficiency-model.md`](notes/boundary-efficiency-model.md).
 
-**Boundary 2 — the propositional substrate.** The paper's own `def:world` builds worlds
-by Boolean algebra over **prime sentences**, so this repo's propositional worlds are a
-faithful rendering of the paper's, not an approximation of them. What the propositional
-substrate lacks is not the product *term* but **deferred denotation** — a sentence that
-names a value without computing it; a first-order `LUV` would supply exactly that, and
-with it exact `thm:ccee` over the base inductor. A dedicated feasibility spike
-([`notes/boundary-substrate-fol-scope.md`](notes/boundary-substrate-fol-scope.md))
-scoped that migration and recommends against it: 10–20 months, roughly half of it
-Foundation-side, with a *regressive* middle (an empty emission class until the rebuilt
-first-order symbol calculus lands) and a payoff that is inert at the one known consumer.
-The boundary therefore stays, with its full map in
-[`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md)
-(as amended by the spike) and the worked `thm:ccee` instance settled — see the row.
+**Former Boundary 2 — the propositional substrate.** The historical diagnosis and the
+rejected source-dependent extension remain documented in
+[`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
+The fixed language lift plus entailment-gated registry closes the endpoint without a
+global first-order migration; see [`notes/semantic-source-repair.md`](notes/semantic-source-repair.md).
 
 ## Faithfulness
 
@@ -393,9 +325,8 @@ The current statement surface was checked by a fresh, current-state adversarial 
 Its findings are a snapshot of the final signatures and verified obstructions, without
 the superseded diagnoses or repair history of earlier passes:
 [`notes/faithfulness-audit-2026-08-08.md`](notes/faithfulness-audit-2026-08-08.md).
-One of its findings has since been closed rather than merely disclosed — `thm:wubexp`
-(B1), which is why the counts above read 51/2 where that snapshot reads 50/3; the finding
-carries a dated resolution banner.
+Two of its findings have since been closed rather than merely disclosed: `thm:wubexp`
+(B1) and exact `thm:ccee`. The historical audit carries dated resolution banners.
 The process surfaced five errata in the paper itself, recorded with repairs in
 [`notes/paper-errata.md`](notes/paper-errata.md).
 

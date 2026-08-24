@@ -3553,7 +3553,7 @@ private lemma supportSentenceList_prim : Primrec supportSentenceList := by
     fun S => by
       rw [sentenceFinsetEncode_eq_supportSentenceList]
 
-private lemma sentenceMemSupport_prim :
+lemma sentenceMemSupport_prim :
     PrimrecRel fun (S : Finset Sentence) (φ : Sentence) => φ ∈ S := by
   have hmem : PrimrecRel fun (l : List Sentence) (φ : Sentence) => φ ∈ l :=
     (Primrec.eq.exists_mem_list).of_eq fun l φ => by simp
@@ -4818,7 +4818,7 @@ private lemma marketMakerSearchUpToTradeList_prim :
 /-- Occurrence list of atoms in a sentence.  Deduplication and sorting are deliberately
 kept separate, since the Budgeter atom universe combines many sentences before
 canonicalizing. -/
-private def sentenceAtomOccurrences : Sentence → List ℕ
+def sentenceAtomOccurrences : Sentence → List ℕ
   | .atom a => [a]
   | .falsum => []
   | .and φ ψ => sentenceAtomOccurrences φ ++ sentenceAtomOccurrences ψ
@@ -5019,7 +5019,7 @@ private lemma formulaAtomOccurrencesDecoded_prim :
       simpa using congrArg some (formulaAtomOccurrencesStep_history n))
   exact hrec.comp (Primrec.const ()) Primrec.id
 
-private lemma sentenceAtomOccurrences_prim :
+lemma sentenceAtomOccurrences_prim :
     Primrec sentenceAtomOccurrences := by
   have hdecoded : Primrec fun φ : Sentence =>
       formulaAtomOccurrencesDecoded (Encodable.encode φ) :=
@@ -5033,7 +5033,7 @@ private lemma sentenceAtomOccurrences_prim :
     simp [formulaAtomOccurrencesDecoded,
       LO.Propositional.Formula.ofNat_toNat]
 
-@[simp] private theorem mem_sentenceAtomOccurrences :
+@[simp] theorem mem_sentenceAtomOccurrences :
     ∀ (φ : Sentence) (a : ℕ),
       a ∈ sentenceAtomOccurrences φ ↔ a ∈ φ.atoms := by
   intro φ

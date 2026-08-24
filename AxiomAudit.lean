@@ -536,7 +536,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_self_trust_closed
   theoremIntervalQuoteCode lic_introspection_closed
 
--- `ccee`: the weighted conditional, **general-source** closed form.  The deferred-weight
+-- Historical mesh `ccee`: the weighted conditional, **general-source** closed form. The deferred-weight
 -- quote code names the `w ∘ f` program (deferral costs nothing at emission), and
 -- `meshProductLUV` renders the product from that quote's own threshold atoms on a
 -- width-`n+1` mesh, so no emitter ever needs the value `w (f n)` (which is neither
@@ -544,7 +544,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- left product reflects only to within `1/(n+1)`: a **disclosed type-`(c)` substitution**
 -- carried by `ConditionalExpectationQuote.slack`.  `indicatorProductLUV_exact_left_reflected`
 -- is the non-vacuity witness at the exact (`slack = 0`) end.  See the Part F header and the
--- README's modeling-boundary list; the exact route stays in future work.
+-- README's modeling-boundary history. The exact endpoint of record is audited next.
 #assert_axioms_clean
   PCWorld.ValuesAt.eq
   theoremDeferredWeightQuoteCode
@@ -554,15 +554,29 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   indicatorProductLUV_exact_left_reflected
   lic_no_expected_net_update_conditional_closed
 
+-- Construction/Witnesses/SemanticLiftedCCEE.lean — endpoint of record for `thm:ccee`.
+-- A fixed old-language copy prevents semantic self-reference; finite-stage entailment
+-- admits every source satisfying the paper-facing `source_valued` premise. The one
+-- canonical process is fixed from `T`, has an explicit completed world, and supports the
+-- exact semantic product with zero slack.
+#assert_axioms_clean
+  liftedCCEEBaseDP_computable
+  liftedCCEEBaseWorld_hworld
+  canonicalCCEEDP_computable
+  canonicalCCEEDP_hworld
+  liftedRpnSemanticHandle_valuesAt
+  liftedRpnSource_factor_eventually
+  canonicalRationalQuote_factor_eventually
+  lic_no_expected_net_update_conditional_closed_exact
+
 -- Construction/Witnesses/ProductDefinition.lean — the exact-reflection route for the quoted
 -- product.  Fresh product atoms are defined by the deductive process itself (a definitional
 -- extension of the *process*, not of the theory), so a completed world values the product at
 -- exactly `x · w` — `slack = 0`, no positivity hypothesis on the weight.
 --
--- This does **not** carry the `thm:ccee` row, and is inventoried so that its axiom
--- cleanliness is gated rather than left to the file's own `#print axioms`.
--- `lic_no_expected_net_update_conditional_closed` above remains the `thm:ccee` endpoint of
--- record, at the disclosed `1/(n+1)` slack over the base `LIA`.
+-- This historical diagnostic does **not** carry the `thm:ccee` row, and is inventoried so
+-- its axiom cleanliness is gated. The endpoint of record is now the fixed-language
+-- construction `lic_no_expected_net_update_conditional_closed_exact` above.
 --
 -- The route reaches a closed statement, `lic_no_expected_net_update_conditional_exact_closed`:
 -- exact reflection over the constructed `LIA` on `theoremDP T ∪ productDefDP`, with `hworld`,

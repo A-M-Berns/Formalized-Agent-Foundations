@@ -1,5 +1,13 @@
 # Boundary 2, second pass — a first-order substrate: what it would cost, what it would buy
 
+> **Superseded for `thm:ccee` (2026-08-21).** The Foundation-scale first-order migration
+> scoped below is not needed to close this endpoint. A fixed old-language renaming and
+> finite propositional entailment recover coherent source admission from the existing
+> paper-facing `RpnThresholdCodeSeq + source_valued` interface, while a universal semantic
+> registry supplies exact products in one canonical process. See
+> `SemanticLiftedCCEE.lean` and `semantic-source-repair.md`. The engineering inventory
+> below remains valid for any future global first-order migration.
+
 _Read-only scoping spike, 2026-08-11. Conducted against the installed toolchain (Lean
 v4.31.0; Foundation pinned at `41d20b5158e9331e9b8dd86e16dbf488cc688bdb`; Mathlib arriving
 transitively through Foundation). Every existence and non-existence claim below was checked

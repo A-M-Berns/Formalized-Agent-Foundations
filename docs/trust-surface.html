@@ -293,7 +293,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <div class="nav-sec">Self-Trust</div>
 <a class="nav-item" href="#thm-cee" data-node="thm-cee"><span class="dot instantiated"></span>thm:cee</a>
 <a class="nav-item" href="#thm-ceu" data-node="thm-ceu"><span class="dot instantiated"></span>thm:ceu</a>
-<a class="nav-item" href="#thm-ccee" data-node="thm-ccee"><span class="dot qualified"></span>thm:ccee</a>
+<a class="nav-item" href="#thm-ccee" data-node="thm-ccee"><span class="dot instantiated"></span>thm:ccee</a>
 <a class="nav-item" href="#thm-st" data-node="thm-st"><span class="dot instantiated"></span>thm:st</a>
 <div class="nav-sec">Constructing TradingFirm</div>
 <a class="nav-item" href="#lem-tfdom" data-node="lem-tfdom"><span class="dot instantiated"></span>lem:tfdom</a>
@@ -689,10 +689,10 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
       <span class="tier universal">paper strength · universal</span><span class="count">31 — the paper's own statement, for every logical inductor</span>
     </div>
     <div class="legend">
-      <span class="tier instantiated">paper strength · instantiated</span><span class="count">30 — additionally holds of the constructed LIA with obligations discharged</span>
+      <span class="tier instantiated">paper strength · instantiated</span><span class="count">31 — additionally holds of the constructed LIA with obligations discharged</span>
     </div>
     <div class="legend">
-      <span class="tier qualified">qualified</span><span class="count">5 — a named interface or class restriction is retained; the note says which</span>
+      <span class="tier qualified">qualified</span><span class="count">4 — a named interface or class restriction is retained; the note says which</span>
     </div>
     <p>The tier and note on every card are read from
     <code>scripts/coverage-classification.md</code>, which is machine-checked against the
@@ -3881,7 +3881,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     <label class="check"><input type="checkbox" data-node="thm-ccee" aria-label="mark thm:ccee read"></label>
     <span class="node-label">thm:ccee</span>
     <span class="node-title">No Expected Net Update under Conditionals</span>
-    <span class="tier qualified">qualified</span>
+    <span class="tier instantiated">paper strength · instantiated</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -3891,18 +3891,22 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="18">1 / 18</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_closed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_closed
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="26">1 / 26</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_closed_exact</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_closed_exact
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
-    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      ∃ x, v.ValuesAt (X n) x)
+    (source_valued : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x)
     (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
-    (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) :
-    (fun n ↦ (meshProductLUV
-        (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n).expect
-          (liaHistory (theoremDP T)) n) ≈ₙ
-      fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable
-        weight_mem).luv n).expect (liaHistory (theoremDP T)) n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional</code><span class="ep-file">LogicalInduction/Properties/SelfTrust.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
+    (weight_generable : PGenerableRat (liaHistory (canonicalCCEEDP T)) w) :
+    (fun n =&gt; (semanticSchemaProductLUV (liftedRpnSourceSchema hX)
+      (semanticQuoteSchema
+        (canonicalDeferredWeightQuoteCode T f w weight_generable weight_mem).code) n).expect
+          (liaHistory (canonicalCCEEDP T)) n) ≈ₙ
+    fun n =&gt; ((canonicalConditionalExpectationQuoteCode T f
+      (liftedRpnSourceSchema hX) w weight_generable weight_mem).luv n).expect
+        (liaHistory (canonicalCCEEDP T)) n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional</code><span class="ep-file">LogicalInduction/Properties/SelfTrust.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (f : DeferralFunction) (X Z Z&#x27; : ℕ → LUV)
     (w : ℕ → ℚ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3949,7 +3953,48 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
       v.ValuesAt (X n) x →
         ∃ z, v.ValuesAt (indicatorProductLUV
             (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n) z ∧
-          |z - x * w (f n)| ≤ 0</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productDefDP_computable {X W : ℕ → LUV}
+          |z - x * w (f n)| ≤ 0</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_no_expected_net_update_conditional_closed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_no_expected_net_update_conditional_closed
+    (f : DeferralFunction)
+    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
+      ∃ x, v.ValuesAt (X n) x)
+    (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
+    (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) :
+    (fun n ↦ (meshProductLUV
+        (theoremDeferredWeightQuoteCode T f w weight_generable weight_mem) X n).expect
+          (liaHistory (theoremDP T)) n) ≈ₙ
+      fun n ↦ ((theoremConditionalExpectationQuoteCode T f X hX w weight_generable
+        weight_mem).luv n).expect (liaHistory (theoremDP T)) n</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">liftedCCEEBaseDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma liftedCCEEBaseDP_computable
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    ComputableDeductiveProcess (liftedCCEEBaseDP T)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">liftedCCEEBaseWorld_hworld</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma liftedCCEEBaseWorld_hworld
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (liftedCCEEBaseWorld T).ConsistentWithTheory (liftedCCEEBaseDP T)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">canonicalCCEEDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma canonicalCCEEDP_computable
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    ComputableDeductiveProcess (canonicalCCEEDP T)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">canonicalCCEEDP_hworld</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma canonicalCCEEDP_hworld
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (canonicalCCEEWorld T).ConsistentWithTheory (canonicalCCEEDP T)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">liftedRpnSemanticHandle_valuesAt</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma liftedRpnSemanticHandle_valuesAt {X : ℕ → LUV}
+    (hX : LUV.RpnThresholdCodeSeq X) (n : ℕ) (v : PCWorld) (x : ℝ)
+    (hsource : v.ConsistentWithTheory semanticSourceDP)
+    (hx : v.ValuesAt (liftLUV (X n)) x) :
+    v.ValuesAt (semanticHandleLUVSeq
+      (liftedRpnSourceSchema hX) n) x</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">liftedRpnSource_factor_eventually</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma liftedRpnSource_factor_eventually
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X)
+    (source_valued : ∀ n (v : PCWorld),
+      v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x)
+    (limit : ℕ) :
+    ∃ fuel, semanticFactorPrefixValidAtFuel (liftedCCEEBaseDPComputation T)
+      (liftedRpnSourceSchema hX) limit fuel = true</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">canonicalRationalQuote_factor_eventually</code><span class="ep-file">LogicalInduction/Construction/Witnesses/SemanticLiftedCCEE.lean</span></div><pre class="sig">lemma canonicalRationalQuote_factor_eventually
+    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
+    ∃ fuel, semanticFactorPrefixValidAtFuel (liftedCCEEBaseDPComputation T)
+      (semanticQuoteSchema q.code) limit fuel = true</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_computable</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productDefDP_computable {X W : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
     ComputableDeductiveProcess (productDefDP X W)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productDefDP_union_consistentWithTheory</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">theorem productDefDP_union_consistentWithTheory {B : DeductiveProcess} {X W : ℕ → LUV}
     (hX : ProductAtomFresh X) (hW : ProductAtomFresh W)
@@ -4022,8 +4067,8 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
       fun n ↦ (Z&#x27; n).expect (liaHistory (theoremDP T)) n</pre></div>
     </section>
   </div>
-  <div class="reading-note"><span class="reading-tag">How the panes line up</span> Left side is the <em>mesh</em> product of Xₙ with the deferred weight (exact to within 1/(n+1) — the disclosed substitution); right side quotes the market&#x27;s deferred weighted expectation exactly. The premises are the paper&#x27;s: arbitrary e.c. source + [0,1] generable weight + deferral function.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> unconditional over <code>LIA</code> with both quoted products constructed, a bare <code>DeferralFunction</code>, and — as of the mesh product — the paper&#x27;s <strong>arbitrary</strong> e.c. source family (<code>lic_no_expected_net_update_conditional_closed</code> takes <code>X : ℕ → LUV</code> with <code>RpnThresholdCodeSeq</code> + <code>source_valued</code>, the same premises <code>thm:cee</code> carries). What keeps the row below <code>instantiated</code> is a declared type-<code>(c)</code> substitution rather than a class restriction: the left quoted product is reflected only to within <code>1/(n+1)</code> (<code>ConditionalExpectationQuote.slack</code>), because an exactly-reflecting product LUV built from the source&#x27;s <em>own</em> threshold atoms would need either the value of the deferred weight or an infinite disjunction, neither available. Non-vacuity witnessed at both ends (<code>meshProductLUV_valuesAt</code>; <code>indicatorProductLUV_exact_left_reflected</code> at zero slack). <strong>The slack is now known to be substrate-shaped, and that does not change this row.</strong> <code>lic_no_expected_net_update_conditional_exact_closed</code> proves the same conclusion with <code>slack = 0</code> — same trader, same criterion — over the constructed <code>LIA</code> on <code>theoremDP T ∪ productDefDP</code>, i.e. once the quoted product is given a syntactic existence the propositional substrate otherwise denies it. That is evidence about <em>where the slack comes from</em>: it is an artifact of the substrate, not of logical induction. It is <strong>not</strong> a stronger <code>thm:ccee</code> and does not take the endpoint-of-record role, because it establishes nothing about the base inductor&#x27;s conditional expectations: <code>LIA</code> over the extended process is a different inductor, and conservativity of completed-world truth does not carry prices across. It also pays two costs the mesh endpoint does not — <code>ProductAtomFresh X</code>, a genuine narrowing of the arbitrary e.c. source class in a flat atom space, and <code>def:pgen</code> at the extended market. Its premise set is exhibited jointly satisfiable by an index-varying witness (<code>..._nonvacuous</code>), and its <code>hworld</code> is discharged by extending the base construction&#x27;s own plausible world. Cross-family adjudication (2026-08-11) rejected the instance reading and ranked the renderings mesh &gt; extension &gt; weight-narrowing. Whether the row moves to <code>instantiated</code> is deferred to Anson&#x27;s read-through and turns on the slack alone, not on the demonstration. Assessment and adjudication outcome: <code>LogicalInduction/notes/boundary-propositional-substrate.md</code>. The one assessed route to <code>slack = 0</code> over the base inductor is a first-order substrate (deferred denotation via a first-order <code>LUV</code>); scoped and recommended against in <code>LogicalInduction/notes/boundary-substrate-fol-scope.md</code>.</footer>
+  <div class="reading-note"><span class="reading-tag">How the panes line up</span> Exact zero-slack endpoint over one non-vacuous canonical process fixed from T. A fixed old-language lift and executable finite-entailment gate internally admit every arbitrary e.c. source satisfying the paper&#x27;s completed-world [0,1]-valued premise; deferred weight, exact product, and right quotation are constructed internally.</div>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> <code>lic_no_expected_net_update_conditional_closed_exact</code> takes exactly the paper-facing source interface (<code>X : ℕ → LUV</code>, <code>RpnThresholdCodeSeq X</code>, and completed-world <code>source_valued</code>), a bare <code>DeferralFunction</code>, and a P-generable <code>[0,1]</code> weight. A fixed atom injection represents the caller&#x27;s source in an old-language namespace, and a universal finite-entailment gate derives source admission from <code>source_valued</code>; no freshness or proof-carrying certificate is caller-visible. The sole market is <code>liaHistory (canonicalCCEEDP T)</code>, whose computable, explicitly non-vacuous process is fixed from <code>T</code> before <code>X</code>, <code>f</code>, or <code>w</code>. Deferred-weight and right-hand quotation LUVs are built internally, semantic multiplication is exact, and the generic CCEE theorem is instantiated with identically zero slack. This is one canonical enlarged language from the outset, not a source-dependent extension and not a market-correspondence claim about <code>liaHistory (theoremDP T)</code>.</footer>
 </article>
 
 <article class="node" id="thm-st">
@@ -10661,4 +10706,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 75512bce09e80374cf9d25cbb1bd7fb37188fd8f0d3b06880366a0425be39e44 -->
+<!-- trust-surface-sources: e1b3a6bc0c03bc91a8af56426d6977a0538fdce3721e1923b258d33e8e0358b3 -->
