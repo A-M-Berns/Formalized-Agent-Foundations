@@ -2143,3 +2143,143 @@ simulator, not open research.
 Part IV projected ~0.6–1.2k for all of Stage 3's remainder; §V.3 alone is that size, and
 §V.4 turns out to depend on Stage 2. The overall project figure is roughly unchanged
 (~4–7k) because Stage 2 always dominated it — what moved is the *ordering*.
+
+---
+
+# Part VI — Stage 2: route decision and the interpreter time bound (2026-08-24)
+
+_Sixth pass. Scope: choose a route for `PolyFueled`/`EfficientlyComputable → Complexity.FP`,
+and land the foundational fact that route needs. Stage 3 untouched; general `thm:ifp`
+untouched._
+
+**Stage 2 is not closed.** What landed is the route decision, grounded in measurement, and
+the conceptual theorem §13 of the brief asked to test — which came out affirmative.
+
+## VI.0 A correction to the target, before anything else
+
+The brief frames Stage 2 as `PolyFueled → FP`. Checking the definitions, that is **not the
+theorem the trader-level capstone needs**:
+
+```lean
+def EfficientlyComputable (Tr : Trader) : Prop :=
+  ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+    clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
+```
+
+`EfficientlyComputable` quantifies over **arbitrary** codes under a polynomial clock — it
+never mentions `PolyFueled`. So `EfficientlyComputable Tr → MachineEfficientTrader Tr`
+requires clocked `evaln` on *arbitrary* codes to be `FP`, not just on the `PolyFueled`
+fragment. `PolyFueled` is how FAF's concrete certificates are *built*; it is not what the
+class quantifies over.
+
+Consequence for §8 of the brief: the "which constructor fragment do LI certificates use?"
+question does not reduce scope the way it was hoped to. The certificates do use `prec`
+heavily (`addc`, `mulc`, `divmodc`, `mul`, `divmod1`, `gcdc` all go through
+`PolyFueled.prec`) and `PolyFueled` has no `rfind'` introduction rule at all — but that only
+constrains the *certificates*, not the class. **`rfind'` must be handled**, because
+`EfficientlyComputable`'s codes are arbitrary.
+
+There is a fallback if that proves too costly: prove the transport for `PolyFueled`-derived
+traders only, and state the trader capstone over a restricted class. That weakens the public
+claim and should be a last resort, not a plan.
+
+## VI.1 Route comparison
+
+| route | new LOC | hardest lemma | reuse | risk | verdict |
+| --- | ---: | --- | --- | --- | --- |
+| **A** counted machine bridge | 3–5k | stack-machine → TM with step accounting | `MachinePolyEC.comp`/`.pair` | high | **reject** |
+| **B** direct `evaln` → complexitylib TM | 2.5–4k | `prec` loop with time recurrence | `Registers` library | medium | **accept** |
+| **C** Cobham | 3–5k + 20k import | `rfind'` as bounded recursion on notation | `CobhamFP_eq_FP` | high | **reject** |
+
+**A rejected.** `Machine/Basic.lean`'s own header states that reading its step count as a
+time measure rests on the stack-machine ↔ TM polynomial-overhead fact, which is *"standard
+and is not formalized here"*. So route A pays for that simulation **and** the
+`evaln` → stack-machine compiler: two bridges where B needs one, and it leaves three machine
+models alive. Sunk cost is not a reason.
+
+**C rejected** (brief §18-D). `Cobham.boundedRec` requires the recursion's output to be
+length-bounded by a function *already in the algebra*. For `evaln`'s `prec` ladder that is
+plausible via `codeEvalBound`, but `rfind'` has no natural reading as recursion on notation —
+its argument *grows* while fuel shrinks (`KNOWLEDGE.md`: "its guard failures are real") — and
+the `Option` plumbing has no home in a `List Bool` algebra. It also costs +20k lines of
+import surface for a class equality we would use in one direction.
+
+**B accepted.** complexitylib's register library is a real head start:
+`incRegTM`, `clearRegTM`, `addIntoTM`, `copyIntoTM`, `mulAddIntoTM`, `forRegTM`, `iterTM` —
+each with a `HoareTime` specification. Missing and needed: subtraction, comparison, and
+`Nat.sqrt` (for `unpair`).
+
+**Representation.** complexitylib's registers are **unary** — `IsReg v t` puts `v` cells of
+`Γ.one` on the tape. That is acceptable here and it is worth being explicit about why:
+`PolyFueled` bounds values polynomially in the day `n`, the day is presented in unary, and
+`Nat.pair` of two polynomially-bounded values is again polynomially bounded, so every
+intermediate stays polynomial in the input length. Unary keeps the arithmetic machines and
+their Hoare bounds simple, and `FP` does not care about the exponent. Should a nested loop
+turn out to square the degree once too often, the fallback is a binary register layer, but
+nothing so far suggests it is needed.
+
+## VI.2 The theorem §13 asked us to test — and it holds
+
+The brief's §13 asked whether fixed-code `evaln` has a structural polynomial time bound, and
+said to test rather than assume. It does, and `LogicalInduction/Construction/Machine/CodeSteps.lean`
+proves it:
+
+```lean
+def codeEvalSteps : Nat.Partrec.Code → ℕ → ℕ        -- interpreter invocations
+lemma codeEvalSteps_poly (c : Nat.Partrec.Code) : IsPolyBounded (codeEvalSteps c)
+```
+
+The reason it is true is a genuine asymmetry in `evaln`'s own recursion:
+
+* `pair` and `comp` recurse into **structurally smaller codes at unchanged fuel**;
+* `prec` and `rfind'` recurse into the **same code with one less fuel**.
+
+So for a fixed code the fuel-consuming clauses unroll into a sum over fuel levels, and their
+nesting depth becomes the polynomial's exponent. The proof bounds each sub-count by the
+*monotone majorant* its own polynomial bound supplies (avoiding a separate monotonicity
+induction over the lexicographic order the definition uses), then sums.
+
+This is the **time** half of the calibration. `Framework/Emission.lean` already had the
+**value** half — `codeEvalBound`, `codeEvalBound_poly`, `codeEvaln_result_le` — and the model
+card is right that the two must not be conflated: a small answer can cost enormous work. Both
+now exist.
+
+Also added, because the `prec` case needs it and `Framework/Computable.lean` lacked it:
+`IsPolyBounded.mul` (two-function product) and `IsPolyBounded.add'`. `KNOWLEDGE.md` had
+already flagged the missing `.mul` as something `exists_clock_loop` would need.
+
+**Why this dissolves the `dd:fuel` worry rather than repairing it.** Compose
+`codeEvalSteps_poly` with either `PolyFueled`'s fuel bound or `EfficientlyComputable`'s
+explicit clock `a·(n+1)^k + a`, and the interpreter's step count is polynomial in the day `n`.
+Because the paper presents the day in **unary**, polynomial in `n` *is* polynomial in the
+input length. The historical concern was that value-polynomial bounds in a numeric parameter
+might not be time-polynomial bounds — and under the paper's own unary convention they are.
+
+## VI.3 What remains for Stage 2
+
+Route B's remaining work, now against a settled time bound rather than an open question:
+
+| item | LOC | notes |
+| --- | ---: | --- |
+| unary arithmetic: compare, subtract, `Nat.sqrt` | 400–700 | on top of `Registers`; `sqrt` is a bounded search via `forRegTM` |
+| `Nat.pair` / `Nat.unpair` machines + Hoare specs | 300–500 | `pair` from `mulAddIntoTM`; `unpair` needs `sqrt` |
+| structural compiler, 8 constructors | 900–1,500 | `prec` and `rfind'` are the loops; the rest compose |
+| time recurrence → `ComputesInTime` | 300–500 | `codeEvalSteps_poly` supplies the combinatorics |
+| `PolyFueled.toFP` / clocked-`evaln` capstone | 200–300 | assembly |
+| `EfficientlyComputableTok` → `FP`, trader capstone | 300–500 | reuses `unaryDay`/`strategyOfOutput` from Stage 3 |
+| **total** | **2.4–4.0k** | matching the original estimate |
+
+The estimate did **not** improve — §2 of the brief hoped to beat 2.5–4k and the audit says
+no. What improved is the risk: the conceptual question (is fixed-code clocked `evaln` even
+polynomial-time?) is now answered in Lean rather than assumed, and the register library
+removes the lowest layer of machine construction.
+
+## VI.4 Interaction with Stage-3 soundness
+
+Worth recording because the brief (§18-E) asked. Stage-3 soundness needs "a clocked run of a
+`TMDesc` is `FP`"; Stage 2 needs "a clocked run of a `Nat.Partrec.Code` is `FP`". These are
+different interpreters, so no single theorem discharges both. But the *technique* is shared —
+a bounded loop with a step counter, built from `forRegTM`/`iterTM`, with a time bound — and
+the arithmetic layer above is common. Building Stage 2's machine layer should therefore make
+Stage-3 soundness materially cheaper than its standalone 600–1,200 line estimate. Not a
+collapse; a genuine shared substrate.
