@@ -11,15 +11,25 @@ and — at a price-day position — look the quote up *from the run*.
 
 The lookup is the whole content of this file.  The LIA's prefix quote table is a finite
 list of `(sentence, rational)` entries (`PrefixPatchCompile.liaPrefixQuote`), so for each
-table sentence we must decide whether the buffered run denotes it.  A run for a fixed
+table sentence we must decide whether the buffered run denotes it.  The list-level
+decision `runMatches` runs the full block parser, so it covers every block of the
+extended grammar — structured paper-prime leaves included — and transfers the
+token-model table verbatim (`runQuoteFromEntries_exact`,
+`runPrefixQuoteFromStates_exact`).
+
+The *positional* matcher is scoped to the legacy fragment.  A legacy run for a fixed
 target is a fixed *constant-depth* pattern — the target's Polish traversal, with any
 subterm optionally replaced by the two-token escape `[1, code]` — so the decision is a
 bounded composition of token comparisons, not a scan: `matchRun` recurses on the target
 sentence and returns the position just past the matched run.  Its characterization
-`matchRun_iff` (soundness `matchRun_sound` + completeness `matchRun_complete`) says the
-matcher stops exactly at the block's end iff the block parses to the target, which
-transfers the token-model table verbatim (`runQuoteFromEntries_exact`,
-`runPrefixQuoteFromStates_exact`).
+`matchRun_iff` (soundness `matchRun_sound` + completeness `matchRun_complete`) stops
+exactly at the block's end iff the block parses **in the legacy grammar**
+(`parseRpnLegacy`).  A structured paper-prime leaf has no constant-depth positional
+decision: its payload admits non-canonical spellings, so the positional test would have
+to replay the structured parser, whose contracted state is a whole Foundation code —
+the same side of the `dd:fuel` boundary as the escape decode below.  The positional
+chain (`runMatchesLegacy`, `runQuoteFromEntriesAt`, `runPrefixQuoteFromStatesAt`)
+therefore certifies the legacy fragment only.
 
 The transducer itself is an instance of the emitter-generic run rewriter in
 `RpnConditioning.lean`: `freezeEmit` plugs into `rpnConditionRun`, so the commutation
@@ -27,6 +37,11 @@ The transducer itself is an instance of the emitter-generic run rewriter in
 `rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
 
 ## Disclosed residual: the emission certificate
+
+This residual predates the structured first-order leaf and is independent of it: the
+obstruction is `decode` on an exponentially large escape payload, which the structured
+codec neither introduces nor worsens.  A structured leaf simply lands on the same side of
+the boundary, for the reason given above.
 
 Everything below is unconditional and axiom-clean, but it does **not** yield
 `liaEfficientPrefixPatch`.  The missing step is the fuel certificate for the emitted
@@ -143,38 +158,38 @@ lemma matchRun_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p =
 /-- Two complete self-delimiting blocks parse in sequence under any binary shell. -/
 lemma parseRpn_bin_body {b₁ b₂ : List ℕ} {φ ψ : Sentence}
     (mk : Sentence → Sentence → Sentence) {fuel : ℕ}
-    (h₁ : parseRpn b₁.length b₁ = some (φ, []))
-    (h₂ : parseRpn b₂.length b₂ = some (ψ, []))
+    (h₁ : parseRpnLegacy b₁.length b₁ = some (φ, []))
+    (h₂ : parseRpnLegacy b₂.length b₂ = some (ψ, []))
     (hfuel : (b₁ ++ b₂).length ≤ fuel) :
-    ((parseRpn fuel (b₁ ++ b₂)).bind fun p =>
-        (parseRpn fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) =
+    ((parseRpnLegacy fuel (b₁ ++ b₂)).bind fun p =>
+        (parseRpnLegacy fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) =
       some (mk φ ψ, []) := by
   simp only [List.length_append] at hfuel
-  rw [parseRpn_block_head h₁ b₂ (by omega)]
+  rw [parseRpnLegacy_block_head h₁ b₂ (by omega)]
   simp only [Option.bind_some]
-  rw [parseRpn_mono b₂ (by omega) h₂]
+  rw [parseRpnLegacy_mono b₂ (by omega) h₂]
   rfl
 
 
 /-- Inversion of a complete binary-shell parse into its two complete sub-blocks. -/
 lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
     {mk : Sentence → Sentence → Sentence} {φ : Sentence}
-    (h : ((parseRpn fuel rest).bind fun p =>
-      (parseRpn fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, [])) :
+    (h : ((parseRpnLegacy fuel rest).bind fun p =>
+      (parseRpnLegacy fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, [])) :
     ∃ b₁ b₂ φ₁ φ₂, rest = b₁ ++ b₂ ∧ φ = mk φ₁ φ₂ ∧
-      parseRpn b₁.length b₁ = some (φ₁, []) ∧
-      parseRpn b₂.length b₂ = some (φ₂, []) := by
-  rcases hp : parseRpn fuel rest with _ | ⟨φ₁, r₁⟩
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, []) := by
+  rcases hp : parseRpnLegacy fuel rest with _ | ⟨φ₁, r₁⟩
   · rw [hp] at h; simp at h
   rw [hp] at h
   simp only [Option.bind_some] at h
-  rcases hq : parseRpn fuel r₁ with _ | ⟨φ₂, r₂⟩
+  rcases hq : parseRpnLegacy fuel r₁ with _ | ⟨φ₂, r₂⟩
   · rw [hq] at h; simp at h
   rw [hq] at h
   simp only [Option.bind_some, Option.some.injEq, Prod.mk.injEq] at h
   obtain ⟨hmk, rfl⟩ := h
-  obtain ⟨b₁, hb₁, hpb₁⟩ := parseRpn_strip fuel rest hp
-  obtain ⟨b₂, hb₂, hpb₂⟩ := parseRpn_strip fuel r₁ hq
+  obtain ⟨b₁, hb₁, hpb₁⟩ := parseRpnLegacy_strip fuel rest hp
+  obtain ⟨b₂, hb₂, hpb₂⟩ := parseRpnLegacy_strip fuel r₁ hq
   rw [List.append_nil] at hb₂
   subst hb₂
   exact ⟨b₁, r₁, φ₁, φ₂, hb₁, hmk.symm, hpb₁, hpb₂⟩
@@ -183,10 +198,10 @@ lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
 consumed form a complete self-delimiting block parsing to the target. -/
 lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
     matchRun get φ p = q + 1 →
-    p ≤ q ∧ parseRpn (segOf get p q).length (segOf get p q) = some (φ, []) := by
+    p ≤ q ∧ parseRpnLegacy (segOf get p q).length (segOf get p q) = some (φ, []) := by
   have hesc : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ), get p = 1 →
       matchRun get φ p = q + 1 →
-      p ≤ q ∧ parseRpn (segOf get p q).length (segOf get p q) = some (φ, []) := by
+      p ≤ q ∧ parseRpnLegacy (segOf get p q).length (segOf get p q) = some (φ, []) := by
     intro φ get p q he h
     rw [matchRun_escape get φ p he] at h
     by_cases hm : sentenceMatches φ (get (p + 1)) = 1
@@ -198,7 +213,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
         rw [segOf_cons get (by omega), segOf_cons get (by omega)]
         simp
       rw [hseg, he]
-      exact parseRpn_escape' ((sentenceMatches_eq_one_iff φ (get (p + 1))).mp hm)
+      exact parseRpnLegacy_escape' ((sentenceMatches_eq_one_iff φ (get (p + 1))).mp hm)
         [] (by simp)
     · rw [if_neg hm] at h
       omega
@@ -234,7 +249,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
           have hseg : segOf get p (p + 1) = get p :: [] := by
             rw [segOf_cons get (by omega)]
             simp
-          rw [hseg, h0, List.length_cons, List.length_nil, parseRpn_cons,
+          rw [hseg, h0, List.length_cons, List.length_nil, parseRpnLegacy_cons,
             if_neg (by omega), if_neg (by omega), if_neg (by omega),
             if_neg (by omega), if_neg (by omega)]
           simp
@@ -258,7 +273,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
             obtain ⟨h2le, h2parse⟩ := ihψ get r q h
             refine ⟨by omega, ?_⟩
             rw [segOf_cons get (by omega), segOf_split get h1le h2le, h0,
-              List.length_cons, parseRpn_cons, if_neg (by omega),
+              List.length_cons, parseRpnLegacy_cons, if_neg (by omega),
               if_neg (by omega), if_pos rfl]
             exact parseRpn_bin_body LO.Propositional.Formula.imp h1parse h2parse
               le_rfl
@@ -281,7 +296,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
             obtain ⟨h2le, h2parse⟩ := ihψ get r q h
             refine ⟨by omega, ?_⟩
             rw [segOf_cons get (by omega), segOf_split get h1le h2le, h0,
-              List.length_cons, parseRpn_cons, if_neg (by omega),
+              List.length_cons, parseRpnLegacy_cons, if_neg (by omega),
               if_neg (by omega), if_neg (by omega), if_pos rfl]
             exact parseRpn_bin_body LO.Propositional.Formula.and h1parse h2parse
               le_rfl
@@ -304,7 +319,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
             obtain ⟨h2le, h2parse⟩ := ihψ get r q h
             refine ⟨by omega, ?_⟩
             rw [segOf_cons get (by omega), segOf_split get h1le h2le, h0,
-              List.length_cons, parseRpn_cons, if_neg (by omega),
+              List.length_cons, parseRpnLegacy_cons, if_neg (by omega),
               if_neg (by omega), if_neg (by omega), if_neg (by omega),
               if_pos rfl]
             exact parseRpn_bin_body LO.Propositional.Formula.or h1parse h2parse
@@ -315,7 +330,7 @@ lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),
 the target at position `p`, the positional matcher succeeds exactly at the block's end. -/
 lemma matchRun_complete : ∀ (N : ℕ) (b : List ℕ), b.length ≤ N →
     ∀ (φ : Sentence) (get : ℕ → ℕ) (p : ℕ),
-    parseRpn b.length b = some (φ, []) →
+    parseRpnLegacy b.length b = some (φ, []) →
     (∀ i, i < b.length → get (p + i) = b.getD i 0) →
     matchRun get φ p = p + b.length + 1 := by
   intro N
@@ -323,15 +338,15 @@ lemma matchRun_complete : ∀ (N : ℕ) (b : List ℕ), b.length ≤ N →
   | zero =>
       intro b hb φ get p h _
       obtain rfl : b = [] := List.eq_nil_of_length_eq_zero (by omega)
-      simp at h
+      simp [parseRpnLegacy] at h
   | succ N ih =>
       intro b hb φ get p h hget
       match b with
-      | [] => simp at h
+      | [] => simp [parseRpnLegacy] at h
       | t :: rest =>
           have hp0 : get p = t := by simpa using hget 0 (by simp)
           simp only [List.length_cons] at hb h
-          rw [parseRpn_cons] at h
+          rw [parseRpnLegacy_cons] at h
           by_cases h0 : t = 0
           · subst h0
             rw [if_pos rfl, Option.some.injEq, Prod.mk.injEq] at h
@@ -358,8 +373,8 @@ lemma matchRun_complete : ∀ (N : ℕ) (b : List ℕ), b.length ≤ N →
           rw [if_neg h1] at h
           -- The three binary shells share the sub-block decomposition.
           have hbin : ∀ (mk : Sentence → Sentence → Sentence),
-              ((parseRpn rest.length rest).bind fun x =>
-                (parseRpn rest.length x.2).bind fun y =>
+              ((parseRpnLegacy rest.length rest).bind fun x =>
+                (parseRpnLegacy rest.length x.2).bind fun y =>
                   some (mk x.1 y.1, y.2)) = some (φ, []) →
               ∃ b₁ b₂ φ₁ φ₂, rest = b₁ ++ b₂ ∧ φ = mk φ₁ φ₂ ∧
                 matchRun get φ₁ (p + 1) = p + 1 + b₁.length + 1 ∧
@@ -429,7 +444,7 @@ the matcher stops exactly at the block's end iff the block parses to the target.
 Paper node: `app:ifp` -/
 lemma matchRun_iff {b : List ℕ} {φ : Sentence} {get : ℕ → ℕ} {p : ℕ}
     (hget : ∀ i, i < b.length → get (p + i) = b.getD i 0) :
-    matchRun get φ p = p + b.length + 1 ↔ parseRpn b.length b = some (φ, []) := by
+    matchRun get φ p = p + b.length + 1 ↔ parseRpnLegacy b.length b = some (φ, []) := by
   constructor
   · intro h
     obtain ⟨hle, hparse⟩ := matchRun_sound φ get p (p + b.length) h
@@ -443,23 +458,18 @@ lemma matchRun_iff {b : List ℕ} {φ : Sentence} {get : ℕ → ℕ} {p : ℕ}
   · intro h
     exact matchRun_complete b.length b le_rfl φ get p h hget
 
-/-- Run-level target test: `1` exactly on the token runs parsing to the target. -/
+/-- Whether a token run denotes the target: the list-level decision runs the full
+block parser, so structured paper-prime leaves are matched exactly like every legacy
+block.  (The *positional* matcher `matchRun` above is scoped to the legacy fragment;
+see the module docstring.) -/
 def runMatches (target : Sentence) (b : List ℕ) : ℕ :=
-  if matchRun (fun i => b.getD i 0) target 0 = b.length + 1 then 1 else 0
+  if parseRpn b.length b = some (target, []) then 1 else 0
 
 lemma runMatches_eq_one_iff (target : Sentence) (b : List ℕ) :
     runMatches target b = 1 ↔ parseRpn b.length b = some (target, []) := by
-  have hget : ∀ i, i < b.length → (fun i => b.getD i 0) (0 + i) = b.getD i 0 :=
-    fun i _ => by simp
-  have hiff := matchRun_iff (b := b) (φ := target)
-    (get := fun i => b.getD i 0) (p := 0) hget
-  rw [Nat.zero_add] at hiff
-  rw [runMatches]
-  split
-  · next h => simp [hiff.mp h]
-  · next h =>
-      simp only [Nat.zero_ne_one, false_iff]
-      exact fun hparse => h (hiff.mpr hparse)
+  by_cases h : parseRpn b.length b = some (target, [])
+  · simp [runMatches, h]
+  · simp [runMatches, h]
 
 /-- On a run the target test agrees with the token-model decoder test at the run's
 contracted code. -/
@@ -472,21 +482,13 @@ lemma runMatches_of_parse {b : List ℕ} {φ target : Sentence}
       (sentenceMatches_eq_one_iff target (Encodable.encode target)).mpr
         (Encodable.encodek target)]
   · have hzero : runMatches target b = 0 := by
-      rw [runMatches]
-      split
-      · next h =>
-          exfalso
-          have hone : runMatches target b = 1 := by rw [runMatches, if_pos h]
-          have hp := (runMatches_eq_one_iff target b).mp hone
-          rw [hb] at hp
-          exact hteq (congrArg Prod.fst (Option.some.inj hp)).symm
-      · rfl
+      rw [runMatches, if_neg fun hp => hteq (by
+        rw [hb] at hp
+        exact (congrArg Prod.fst (Option.some.inj hp)).symm)]
     rw [hzero]
     refine ((sentenceMatches_eq_zero_iff target (Encodable.encode φ)).mpr ?_).symm
     rw [Encodable.encodek]
     simpa using fun h => hteq h.symm
-
-/-! ### The run-level finite quote tables -/
 
 /-- Run-level form of `PrefixPatchCompile.encodedQuoteFromEntries`. -/
 def runQuoteFromEntries : List (Sentence × ℚ) → List ℕ → ℕ
@@ -772,8 +774,34 @@ lemma runMatches_cases (target : Sentence) (b : List ℕ) :
     runMatches target b = 0 ∨ runMatches target b = 1 := by
   rw [runMatches]; split <;> simp
 
-lemma runMatches_segOf (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) (target : Sentence) :
-    runMatches target (segOf get p q) =
+/-- Legacy-fragment list-level match: the list form of the positional matcher.  The
+poly-fueled positional chain below certifies this fragment only — a structured
+paper-prime leaf joins the escape decode on the far side of the `dd:fuel` boundary
+(see the module docstring), so the full-grammar `runMatches` above has no positional
+fuel certificate. -/
+def runMatchesLegacy (target : Sentence) (b : List ℕ) : ℕ :=
+  if matchRun (fun i => b.getD i 0) target 0 = b.length + 1 then 1 else 0
+
+lemma runMatchesLegacy_eq_one_iff (target : Sentence) (b : List ℕ) :
+    runMatchesLegacy target b = 1 ↔ parseRpnLegacy b.length b = some (target, []) := by
+  have hget : ∀ i, i < b.length → (fun i => b.getD i 0) (0 + i) = b.getD i 0 :=
+    fun i _ => by simp
+  have hiff := matchRun_iff (b := b) (φ := target)
+    (get := fun i => b.getD i 0) (p := 0) hget
+  rw [Nat.zero_add] at hiff
+  rw [runMatchesLegacy]
+  split
+  · next h => simp [hiff.mp h]
+  · next h =>
+      simp only [Nat.zero_ne_one, false_iff]
+      exact fun hparse => h (hiff.mpr hparse)
+
+lemma runMatchesLegacy_cases (target : Sentence) (b : List ℕ) :
+    runMatchesLegacy target b = 0 ∨ runMatchesLegacy target b = 1 := by
+  rw [runMatchesLegacy]; split <;> simp
+
+lemma runMatchesLegacy_segOf (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) (target : Sentence) :
+    runMatchesLegacy target (segOf get p q) =
       if matchRun get target p = q + 1 then 1 else 0 := by
   have hget : ∀ i, i < (segOf get p q).length →
       get (p + i) = (segOf get p q).getD i 0 := by
@@ -784,48 +812,62 @@ lemma runMatches_segOf (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) (target : S
   rw [show p + (segOf get p q).length + 1 = q + 1 by
     simp only [segOf_length]; omega] at hiff
   by_cases hm : matchRun get target p = q + 1
-  · rw [if_pos hm, (runMatches_eq_one_iff target _).mpr (hiff.mp hm)]
+  · rw [if_pos hm, (runMatchesLegacy_eq_one_iff target _).mpr (hiff.mp hm)]
   · rw [if_neg hm]
-    rcases runMatches_cases target (segOf get p q) with hz | ho
+    rcases runMatchesLegacy_cases target (segOf get p q) with hz | ho
     · exact hz
-    · exact absurd (hiff.mpr ((runMatches_eq_one_iff target _).mp ho)) hm
+    · exact absurd (hiff.mpr ((runMatchesLegacy_eq_one_iff target _).mp ho)) hm
 
-/-- Positional form of `runQuoteFromEntries`. -/
+/-- Legacy-fragment list-level quote lookup (the list form of the positional table). -/
+def runQuoteFromEntriesLegacy : List (Sentence × ℚ) → List ℕ → ℕ
+  | [], _ => Encodable.encode (0 : ℚ)
+  | (target, q) :: entries, b =>
+      if runMatchesLegacy target b = 0 then runQuoteFromEntriesLegacy entries b
+      else Encodable.encode q
+
+/-- Positional form of `runQuoteFromEntriesLegacy`. -/
 def runQuoteFromEntriesAt : List (Sentence × ℚ) → (ℕ → ℕ) → ℕ → ℕ → ℕ
   | [], _, _, _ => Encodable.encode (0 : ℚ)
   | (target, q) :: entries, get, p, e =>
       if matchRun get target p = e + 1 then Encodable.encode q
       else runQuoteFromEntriesAt entries get p e
 
-lemma runQuoteFromEntries_segOf (entries : List (Sentence × ℚ)) (get : ℕ → ℕ)
+lemma runQuoteFromEntriesLegacy_segOf (entries : List (Sentence × ℚ)) (get : ℕ → ℕ)
     {p q : ℕ} (h : p ≤ q) :
-    runQuoteFromEntries entries (segOf get p q) =
+    runQuoteFromEntriesLegacy entries (segOf get p q) =
       runQuoteFromEntriesAt entries get p q := by
   induction entries with
   | nil => rfl
   | cons entry entries ih =>
       rcases entry with ⟨target, r⟩
-      rw [runQuoteFromEntries, runQuoteFromEntriesAt, runMatches_segOf get h target]
+      rw [runQuoteFromEntriesLegacy, runQuoteFromEntriesAt,
+        runMatchesLegacy_segOf get h target]
       by_cases hm : matchRun get target p = q + 1
       · simp [hm]
       · simp [hm, ih]
 
-/-- Positional form of `runPrefixQuoteFromStates`. -/
+/-- Legacy-fragment list-level prefix quote table. -/
+def runPrefixQuoteFromStatesLegacy : List RationalBeliefState → ℕ → List ℕ → ℕ
+  | [], _, _ => Encodable.encode (0 : ℚ)
+  | state :: _, 0, b => runQuoteFromEntriesLegacy state.entries b
+  | _ :: states, day + 1, b => runPrefixQuoteFromStatesLegacy states day b
+
+/-- Positional form of `runPrefixQuoteFromStatesLegacy`. -/
 def runPrefixQuoteFromStatesAt :
     List RationalBeliefState → ℕ → (ℕ → ℕ) → ℕ → ℕ → ℕ
   | [], _, _, _, _ => Encodable.encode (0 : ℚ)
   | state :: _, 0, get, p, e => runQuoteFromEntriesAt state.entries get p e
   | _ :: states, day + 1, get, p, e => runPrefixQuoteFromStatesAt states day get p e
 
-lemma runPrefixQuoteFromStates_segOf (states : List RationalBeliefState) (day : ℕ)
-    (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) :
-    runPrefixQuoteFromStates states day (segOf get p q) =
+lemma runPrefixQuoteFromStatesLegacy_segOf (states : List RationalBeliefState)
+    (day : ℕ) (get : ℕ → ℕ) {p q : ℕ} (h : p ≤ q) :
+    runPrefixQuoteFromStatesLegacy states day (segOf get p q) =
       runPrefixQuoteFromStatesAt states day get p q := by
   induction states generalizing day with
   | nil => rfl
   | cons state states ih =>
       cases day with
-      | zero => exact runQuoteFromEntries_segOf state.entries get h
+      | zero => exact runQuoteFromEntriesLegacy_segOf state.entries get h
       | succ day => exact ih day
 
 lemma runQuoteFromEntriesAt_polyFueled (entries : List (Sentence × ℚ))

@@ -24,6 +24,7 @@ substrate and the shared proof machinery.
 * `ROI`            — the repeatable return-on-investment lemma (`lem:type3`) and the
                      budgeted-trader machinery its proof needs.
 * `Expectations`   — logically uncertain variables (`def:luv`).
+* `RationalCut`    — generic bounded-cut semantics yielding completed-world LUV values.
 
 The four `Rpn*` modules together discharge `def:ec`'s symbol-metered sentence slots.
 -/
@@ -41,3 +42,4 @@ import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
+import LogicalInduction.Framework.RationalCut

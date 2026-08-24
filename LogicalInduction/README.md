@@ -148,7 +148,7 @@ development assumes it — but it is invisible to a parametric axiom check, so
 asserts it clean *except* for that named axiom. If Foundation proves `𝗜𝚺₁.Δ₁`, that
 assertion starts failing and gets promoted to a plain clean assertion.
 
-## The two modeling boundaries
+## The modeling boundary
 
 1. **Efficient computability is a fuel-clocked interpreter model, not a machine
    complexity class.** Traders and every "polynomial" certificate are metered by
@@ -236,12 +236,31 @@ assertion starts failing and gets promoted to a plain clean assertion.
    inductor over a legitimate neighboring instantiation of the framework, not a
    different kind of theorem. The `thm:ifp` exception above is the one place where the
    class's closure gap is load-bearing rather than cosmetic.
-2. **The logical substrate is propositional.** Sentences are Foundation's
-   propositional formulas; the paper's first-order theory Θ enters through explicit
-   interfaces, instantiated by arithmetic theories for the unconditional endpoints. In
-   particular a logically uncertain variable (LUV) is presented by its family of
-   threshold sentences `⌜X > r⌝`, with its world-value semantics carried as explicit,
-   build-frozen certificate structures rather than derived from first-order syntax.
+2. **Retired — the propositional substrate.** Sentences are still Foundation's
+   propositional formulas, and the paper's first-order theory Θ still enters through
+   explicit interfaces instantiated by arithmetic theories. That is now an ambient
+   representation choice rather than a standing modeling *substitution*, because the one
+   node it was charged at is no longer abstracted. A logically uncertain variable is
+   presented to downstream results by its family of threshold sentences `⌜X > r⌝`, but
+   that family is now produced by a literal first-order object: `PaperLUV` is an actual
+   one-variable arithmetic formula carrying object-level `T`-proofs of unique existence
+   and `[0,1]` membership, its threshold syntax is the paper's own, and its world-value
+   semantics is *derived* through `paperTheoryDP` and the rational cut rather than carried
+   as a build-frozen certificate. `PaperLUVSeq` additionally compiles that literal
+   threshold syntax to the symbol-metered `RpnThresholdCodeSeq`, and the frontend is
+   inhabited by a varying concrete family. See
+   [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
+   `instantiated` accordingly.
+
+   What remains charged to this item is narrow and stated where it bites: the abstract
+   `LUV` carrier still admits threshold families that are not literal paper LUVs, which
+   is why `def:blcp` — a combination sequence over that carrier — stays qualified, and
+   the object-level value of a `PaperLUV` is named by a numerator/positive-denominator
+   pair code rather than by a canonical rational arithmetic inside `ℒₒᵣ`.
+
+   The historical record of this boundary, and of the source-dependent extension that was
+   rejected before the frontend existed, is below and in
+   [`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
 
    The flat atom representation once forced the closed `thm:ccee` endpoint through a
    `1/(n+1)` mesh product. That historical endpoint remains available, but it is no longer
@@ -275,7 +294,8 @@ assertion starts failing and gets promoted to a plain clean assertion.
    as an exactly-reflecting one would. Details, and the rest of the compatibility
    surface, in [`notes/deference-compatibility.md`](notes/deference-compatibility.md).
 
-Both modeling choices are disclosed at every affected statement, not just here.
+The one standing modeling substitution — the fuel model — is disclosed at every affected
+statement, not just here.
 
 ## What is left, and what it is blocked on
 

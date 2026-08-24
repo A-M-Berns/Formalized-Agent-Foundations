@@ -88,6 +88,53 @@ def paperPrimeDecompose : ArithmeticProposition → Sentence
     paperPrimeDecompose (.or φ ψ) = paperPrimeDecompose φ ⋎ paperPrimeDecompose ψ := by
   simp [paperPrimeDecompose]
 
+lemma PCWorld.holds_paperPrimeDecompose_neg (v : PCWorld)
+    (φ : ArithmeticProposition) :
+    v.Holds (paperPrimeDecompose (∼φ)) ↔
+      ¬v.Holds (paperPrimeDecompose φ) := by
+  fun_induction paperPrimeDecompose φ with
+  | case1 =>
+      simp [Semiformula.neg_eq, Semiformula.neg,
+        PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | case2 =>
+      simp [Semiformula.neg_eq, Semiformula.neg,
+        PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  | case3 φ ψ ihφ ihψ =>
+      rw [Semiformula.neg_eq] at ihφ ihψ
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
+      rw [PCWorld.holds_or, PCWorld.holds_and, ihφ, ihψ]
+      tauto
+  | case4 φ ψ ihφ ihψ =>
+      rw [Semiformula.neg_eq] at ihφ ihψ
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
+      rw [PCWorld.holds_or, PCWorld.holds_and, ihφ, ihψ]
+      tauto
+  | case5 arity r t =>
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
+      exact PCWorld.holds_neg v (paperPrimeSentence true (.rel r t))
+  | case6 arity r t =>
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose,
+        PCWorld.holds_neg]
+      tauto
+  | case7 ψ =>
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose]
+      rw [Semiformula.neg_neg]
+      exact PCWorld.holds_neg v (paperPrimeSentence true (.exs ψ))
+  | case8 ψ =>
+      simp only [Semiformula.neg_eq, Semiformula.neg, paperPrimeDecompose,
+        PCWorld.holds_neg]
+      tauto
+
+lemma PCWorld.holds_paperPrimeDecompose_imp (v : PCWorld)
+    (φ ψ : ArithmeticProposition) :
+    v.Holds (paperPrimeDecompose (φ 🡒 ψ)) ↔
+      (v.Holds (paperPrimeDecompose φ) →
+        v.Holds (paperPrimeDecompose ψ)) := by
+  change v.Holds (paperPrimeDecompose (.or (∼φ) ψ)) ↔ _
+  rw [paperPrimeDecompose_or, PCWorld.holds_or,
+    PCWorld.holds_paperPrimeDecompose_neg]
+  tauto
+
 @[simp] lemma sentenceAtomCodes_paperPrimeSentence (positive : Bool) (φ : ArithmeticProposition) :
     sentenceAtomCodes (paperPrimeSentence positive φ) = {paperPrimeCode positive φ} := rfl
 

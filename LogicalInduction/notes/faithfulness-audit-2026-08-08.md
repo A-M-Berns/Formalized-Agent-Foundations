@@ -208,6 +208,18 @@ fields of the bare type. They enter through `ValuesAt`, `WorldValued`,
 `ExactTheoryPresentation`, syntax/emission certificates, or the certified arithmetic LUV
 construction.
 
+> **Partly resolved 2026-08-24, after this audit.** "Only the `dd:luv-arith` class supplies a
+> concrete first-order bridge" no longer holds. The literal frontend (`PaperLUV`,
+> `PaperLUVSeq`, `Witnesses/StructuredPaperRpn.lean`) compiles an *arbitrary* value-defining
+> one-variable arithmetic formula into the abstract `LUV`, deriving both world-valuedness and
+> `RpnThresholdCodeSeq` instead of assuming them, and is inhabited by a varying concrete
+> family. The `def:luv` row is reclassified `instantiated`: the paper's definition is
+> rendered directly by `PaperLUV`, with the world value derived rather than assumed. What
+> this section says about the *carrier* still stands and is now charged where it actually
+> bites — `def:blcp`, which quantifies over the abstract `LUV` type — together with the
+> object-level pair-code value representation recorded in
+> `scripts/coverage-classification.md`.
+
 This abstraction is appropriate for the propositional substrate and most endpoints quantify
 over exactly the world-value behavior the paper uses. It nevertheless admits arbitrary
 threshold families that are not paper LUVs. Only the `dd:luv-arith` class supplies a concrete

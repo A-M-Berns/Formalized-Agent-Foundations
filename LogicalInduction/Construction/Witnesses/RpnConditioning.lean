@@ -61,6 +61,7 @@ Packed as `Nat.pair mode (Nat.pair counter runLen)`.  Modes:
 * `6` — escape payload inside a price run;
 * `2` — price-day slot (the run just completed; the current token is the day);
 * `4` — inside a trade sentence run; `7` — escape payload inside a trade run;
+* `8` / `9` — structured paper-prime payload inside a price / trade run;
 * `3` / `5` — opaque payload after a base-level `1` / `7` tag.
 
 `runLen` counts the tokens of the current sentence run (price *and* trade runs track
@@ -100,33 +101,45 @@ def rpnCondStep (st t : ℕ) : ℕ :=
     else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 1 (c + 1) (r + 1)
     else if c ≤ 1 then rcPack 2 0 (r + 1) else rcPack 1 (c - 1) (r + 1)
   else if m = 6 then
-    if c ≤ 1 then rcPack 2 0 (r + 1) else rcPack 1 (c - 1) (r + 1)
+    if t = 0 then rcPack 8 c (r + 1)
+    else if c ≤ 1 then rcPack 2 0 (r + 1) else rcPack 1 (c - 1) (r + 1)
+  else if m = 8 then
+    if t = 19 then
+      if c ≤ 1 then rcPack 2 0 (r + 1) else rcPack 1 (c - 1) (r + 1)
+    else rcPack 8 c (r + 1)
   else if m = 4 then
     if t = 1 then rcPack 7 c (r + 1)
     else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 4 (c + 1) (r + 1)
     else if c ≤ 1 then rcPack 0 0 0 else rcPack 4 (c - 1) (r + 1)
   else if m = 7 then
-    if c ≤ 1 then rcPack 0 0 0 else rcPack 4 (c - 1) (r + 1)
+    if t = 0 then rcPack 9 c (r + 1)
+    else if c ≤ 1 then rcPack 0 0 0 else rcPack 4 (c - 1) (r + 1)
+  else if m = 9 then
+    if t = 19 then
+      if c ≤ 1 then rcPack 0 0 0 else rcPack 4 (c - 1) (r + 1)
+    else rcPack 9 c (r + 1)
   else rcPack 0 0 0
 
 /-- The automaton only tests the small grammar tags, so it factors through the clamp. -/
 lemma rpnCondStep_clamp (st t : ℕ) :
-    rpnCondStep st (min t 9) = rpnCondStep st t := by
-  by_cases h : t ≤ 9
+    rpnCondStep st (min t 20) = rpnCondStep st t := by
+  by_cases h : t ≤ 20
   · rw [Nat.min_eq_left h]
-  · rw [Nat.min_eq_right (by omega : 9 ≤ t)]
+  · rw [Nat.min_eq_right (by omega : 20 ≤ t)]
     rw [rpnCondStep, rpnCondStep]
     have e0 : ¬ t = 0 := by omega
     have e1 : ¬ t = 1 := by omega
     have e234 : ¬ (t = 2 ∨ t = 3 ∨ t = 4) := by omega
     have e6 : ¬ t = 6 := by omega
     have e7 : ¬ t = 7 := by omega
-    simp only [e0, e1, e234, e6, e7, if_false,
-      show ((9 : ℕ) = 0) = False by simp, show ((9 : ℕ) = 1) = False by simp,
-      show ((9 : ℕ) = 2 ∨ (9 : ℕ) = 3 ∨ (9 : ℕ) = 4) = False by simp,
-      show ((9 : ℕ) = 6) = False by simp, show ((9 : ℕ) = 7) = False by simp]
+    have e19 : ¬ t = 19 := by omega
+    simp only [e0, e1, e234, e6, e7, e19,
+      show ((20 : ℕ) = 0) = False by simp, show ((20 : ℕ) = 1) = False by simp,
+      show ((20 : ℕ) = 2 ∨ (20 : ℕ) = 3 ∨ (20 : ℕ) = 4) = False by simp,
+      show ((20 : ℕ) = 6) = False by simp, show ((20 : ℕ) = 7) = False by simp,
+      show ((20 : ℕ) = 19) = False by simp, if_false]
 
-lemma rcMode_step_le (st t : ℕ) : rcMode (rpnCondStep st t) ≤ 7 := by
+lemma rcMode_step_le (st t : ℕ) : rcMode (rpnCondStep st t) ≤ 9 := by
   rw [rpnCondStep]
   split_ifs <;> simp
 
@@ -151,14 +164,36 @@ that block: the counter drops by one net, hits its minimum only at the block bou
 and the run length grows by the block length.  Price runs (`1`/`6`) and trade runs
 (`4`/`7`) share the walk shape, so one generic lemma serves both. -/
 
-/-- Generic run walk: a sentence-run mode pair `(a, b)` with an arbitrary exit. -/
-lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
+/-- Structured-payload stay: while no terminator arrives, the walk sits in the
+structured mode with unchanged counter and growing run length. -/
+lemma foldl_rpnCondStep_stay {a s : ℕ} {exit : ℕ → ℕ}
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1)) :
+    ∀ (w : List ℕ), (∀ x ∈ w, x ≠ 19) → ∀ c r,
+      List.foldl rpnCondStep (rcPack s (c + 1) r) w =
+        rcPack s (c + 1) (r + w.length)
+  | [], _, c, r => by simp
+  | x :: w, hw, c, r => by
+      rw [List.foldl_cons, hstr, if_neg (hw x (List.mem_cons_self ..)),
+        foldl_rpnCondStep_stay hstr w
+          (fun y hy => hw y (List.mem_cons_of_mem _ hy)) c (r + 1),
+        show r + 1 + w.length = r + (x :: w).length by
+          simp only [List.length_cons]; omega]
+
+/-- Generic run walk: a sentence-run mode triple `(a, b, s)` — run, escape payload,
+structured payload — with an arbitrary exit. -/
+lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1)) :
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1)) :
     ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : List ℕ},
       parseRpn fuel ts = some (φ, rest) →
       ∃ blk, ts = blk ++ rest ∧
@@ -166,7 +201,8 @@ lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
           if c = 0 then exit (r + blk.length) else rcPack a c (r + blk.length)) ∧
         (∀ c r k, k < blk.length →
           rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (blk.take k)) = a ∨
-          rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (blk.take k)) = b) := by
+          rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (blk.take k)) = b ∨
+          rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (blk.take k)) = s) := by
   intro fuel
   induction fuel with
   | zero => intro ts φ rest h; simp [parseRpn] at h
@@ -194,32 +230,87 @@ lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
               match ts' with
               | [] => simp at h
               | c₀ :: ts'' =>
-                  rw [List.head?_cons] at h
-                  simp only [Option.bind_some] at h
-                  cases hdec : Encodable.decode (α := Sentence) c₀ with
-                  | none => rw [hdec] at h; simp at h
-                  | some ψ =>
-                      rw [hdec] at h
-                      simp only [Option.map_some,
-                        List.tail_cons] at h
-                      obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                  cases c₀ with
+                  | zero =>
+                      replace h : parseStructuredPaperPrime ts'' =
+                          some (φ, rest) := h
+                      obtain ⟨w, hspan, hw⟩ := parseStructuredPaperPrime_span h
                       subst h1
-                      refine ⟨[1, c₀], rfl, fun c r => ?_, fun c r k hk => ?_⟩
-                      · rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
-                          hrun, if_pos rfl, hesc]
-                        by_cases hc : c = 0 <;> simp [hc]
-                      · simp only [List.length_cons, List.length_nil] at hk
+                      subst hspan
+                      refine ⟨1 :: 0 :: (w ++ [19]), by simp, fun c r => ?_,
+                        fun c r k hk => ?_⟩
+                      · rw [List.foldl_cons, List.foldl_cons, hrun, if_pos rfl,
+                          hesc, if_pos rfl, List.foldl_append,
+                          foldl_rpnCondStep_stay hstr w hw c (r + 2),
+                          List.foldl_cons, List.foldl_nil, hstr, if_pos rfl]
+                        simp only [List.length_cons, List.length_append,
+                          List.length_nil]
+                        by_cases hc : c = 0
+                        · rw [if_pos hc, if_pos hc]
+                          congr 1
+                          omega
+                        · rw [if_neg hc, if_neg hc]
+                          congr 1
+                          omega
+                      · simp only [List.length_cons, List.length_append,
+                          List.length_nil] at hk
                         match k, hk with
                         | 0, _ =>
-                            simp only [List.take_zero, List.foldl_nil,
-                              rcMode_pack]
+                            simp only [List.take_zero, List.foldl_nil, rcMode_pack]
                             exact Or.inl trivial
                         | 1, _ =>
-                            refine Or.inr ?_
+                            refine Or.inr (Or.inl ?_)
                             show rcMode (List.foldl rpnCondStep
                               (rcPack a (c + 1) r) [1]) = b
                             rw [List.foldl_cons, List.foldl_nil, hrun,
                               if_pos rfl, rcMode_pack]
+                        | (k + 2), hk2 =>
+                            refine Or.inr (Or.inr ?_)
+                            have hkw : k ≤ w.length := by omega
+                            have htk : (1 :: 0 :: (w ++ [19])).take (k + 2) =
+                                1 :: 0 :: w.take k := by
+                              simp only [List.take_succ_cons]
+                              rw [List.take_append]
+                              rw [Nat.sub_eq_zero_of_le hkw, List.take_zero,
+                                List.append_nil]
+                            rw [htk, List.foldl_cons, List.foldl_cons, hrun,
+                              if_pos rfl, hesc, if_pos rfl,
+                              foldl_rpnCondStep_stay hstr (w.take k)
+                                (fun y hy => hw y (List.mem_of_mem_take hy)) c
+                                (r + 2), rcMode_pack]
+                  | succ c₀ =>
+                      cases hdec : Encodable.decode (α := Sentence) (c₀ + 1) with
+                      | none =>
+                          replace h : (Encodable.decode (α := Sentence)
+                              (c₀ + 1)).map (fun ψ => (ψ, ts'')) =
+                            some (φ, rest) := h
+                          rw [hdec] at h
+                          simp at h
+                      | some ψ =>
+                          replace h : (Encodable.decode (α := Sentence)
+                              (c₀ + 1)).map (fun ψ => (ψ, ts'')) =
+                            some (φ, rest) := h
+                          rw [hdec] at h
+                          simp only [Option.map_some] at h
+                          obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                          subst h1
+                          refine ⟨[1, c₀ + 1], rfl, fun c r => ?_,
+                            fun c r k hk => ?_⟩
+                          · rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
+                              hrun, if_pos rfl, hesc, if_neg (by omega)]
+                            by_cases hc : c = 0 <;> simp [hc]
+                          · simp only [List.length_cons, List.length_nil] at hk
+                            match k, hk with
+                            | 0, _ =>
+                                simp only [List.take_zero, List.foldl_nil,
+                                  rcMode_pack]
+                                exact Or.inl trivial
+                            | 1, _ =>
+                                refine Or.inr (Or.inl ?_)
+                                show rcMode (List.foldl rpnCondStep
+                                  (rcPack a (c + 1) r) [1]) = b
+                                rw [List.foldl_cons, List.foldl_nil, hrun,
+                                  if_pos rfl, rcMode_pack]
             · rw [if_neg h1] at h
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   ((parseRpn fuel ts').bind fun p =>
@@ -234,7 +325,9 @@ lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
                       rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r)
                         (blk.take k)) = a ∨
                       rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r)
-                        (blk.take k)) = b) := by
+                        (blk.take k)) = b ∨
+                      rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r)
+                        (blk.take k)) = s) := by
                 intro mk hh ht
                 cases hp : parseRpn fuel ts' with
                 | none => rw [hp] at hh; simp at hh
@@ -315,6 +408,7 @@ lemma foldl_rpnCondStep_run {a b : ℕ} {exit : ℕ → ℕ}
                       simp only [List.take_zero, List.foldl_nil, rcMode_pack]
                       exact Or.inl trivial
 
+set_option maxHeartbeats 1600000 in
 /-- Price-run instance: the walk exits into the day-expect mode `2`. -/
 lemma foldl_rpnCondStep_price_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
     {rest : List ℕ} (h : parseRpn fuel ts = some (φ, rest)) :
@@ -324,9 +418,13 @@ lemma foldl_rpnCondStep_price_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
         else rcPack 1 c (r + blk.length)) ∧
       (∀ c r k, k < blk.length →
         rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 1 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 6) := by
-  refine foldl_rpnCondStep_run (b := 6) (exit := fun r' => rcPack 2 0 r')
-    (fun c r t => ?_) (fun c r t => ?_) fuel ts h
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 6 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 8) := by
+  refine foldl_rpnCondStep_run (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
+    (fun c r t => ?_) (fun c r t => ?_) (fun c r t => ?_) fuel ts h
+  · rw [rpnCondStep]
+    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
   · rw [rpnCondStep]
     simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
     split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
@@ -334,6 +432,7 @@ lemma foldl_rpnCondStep_price_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
     simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
     split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
 
+set_option maxHeartbeats 1600000 in
 /-- Trade-run instance: the walk exits back to base. -/
 lemma foldl_rpnCondStep_trade_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
     {rest : List ℕ} (h : parseRpn fuel ts = some (φ, rest)) :
@@ -342,9 +441,13 @@ lemma foldl_rpnCondStep_trade_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
         if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + blk.length)) ∧
       (∀ c r k, k < blk.length →
         rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 7) := by
-  refine foldl_rpnCondStep_run (b := 7) (exit := fun _ => rcPack 0 0 0)
-    (fun c r t => ?_) (fun c r t => ?_) fuel ts h
+        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 9) := by
+  refine foldl_rpnCondStep_run (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
+    (fun c r t => ?_) (fun c r t => ?_) (fun c r t => ?_) fuel ts h
+  · rw [rpnCondStep]
+    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
   · rw [rpnCondStep]
     simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
     split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
@@ -359,7 +462,8 @@ lemma foldl_rpnCondStep_price_block {b : List ℕ} {φ : Sentence}
     List.foldl rpnCondStep (rcPack 1 1 0) b = rcPack 2 0 b.length ∧
     ∀ k < b.length,
       rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (b.take k)) = 1 ∨
-      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (b.take k)) = 6 := by
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (b.take k)) = 6 ∨
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (b.take k)) = 8 := by
   obtain ⟨blk, hts, hblk, hinv⟩ := foldl_rpnCondStep_price_run b.length b hb
   rw [List.append_nil] at hts
   subst hts
@@ -371,7 +475,8 @@ lemma foldl_rpnCondStep_trade_block {b : List ℕ} {φ : Sentence}
     List.foldl rpnCondStep (rcPack 4 1 0) b = rcPack 0 0 0 ∧
     ∀ k < b.length,
       rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (b.take k)) = 4 ∨
-      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (b.take k)) = 7 := by
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (b.take k)) = 7 ∨
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (b.take k)) = 9 := by
   obtain ⟨blk, hts, hblk, hinv⟩ := foldl_rpnCondStep_trade_run b.length b hb
   rw [List.append_nil] at hts
   subst hts
@@ -641,12 +746,14 @@ def rcModeF (m c t : ℕ) : ℕ :=
     if t = 1 then 6
     else if t = 2 then 1 else if t = 3 then 1 else if t = 4 then 1
     else if c ≤ 1 then 2 else 1
-  else if m = 6 then if c ≤ 1 then 2 else 1
+  else if m = 6 then if t = 0 then 8 else if c ≤ 1 then 2 else 1
+  else if m = 8 then if t = 19 then (if c ≤ 1 then 2 else 1) else 8
   else if m = 4 then
     if t = 1 then 7
     else if t = 2 then 4 else if t = 3 then 4 else if t = 4 then 4
     else if c ≤ 1 then 0 else 4
-  else if m = 7 then if c ≤ 1 then 0 else 4
+  else if m = 7 then if t = 0 then 9 else if c ≤ 1 then 0 else 4
+  else if m = 9 then if t = 19 then (if c ≤ 1 then 0 else 4) else 9
   else 0
 
 def rcCntF (m c t : ℕ) : ℕ :=
@@ -655,35 +762,44 @@ def rcCntF (m c t : ℕ) : ℕ :=
     if t = 1 then c
     else if t = 2 then c + 1 else if t = 3 then c + 1 else if t = 4 then c + 1
     else if c ≤ 1 then 0 else c - 1
-  else if m = 6 then if c ≤ 1 then 0 else c - 1
+  else if m = 6 then if t = 0 then c else if c ≤ 1 then 0 else c - 1
+  else if m = 8 then if t = 19 then (if c ≤ 1 then 0 else c - 1) else c
   else if m = 4 then
     if t = 1 then c
     else if t = 2 then c + 1 else if t = 3 then c + 1 else if t = 4 then c + 1
     else if c ≤ 1 then 0 else c - 1
-  else if m = 7 then if c ≤ 1 then 0 else c - 1
+  else if m = 7 then if t = 0 then c else if c ≤ 1 then 0 else c - 1
+  else if m = 9 then if t = 19 then (if c ≤ 1 then 0 else c - 1) else c
   else 0
 
 def rcLenF (m c r t : ℕ) : ℕ :=
   if m = 0 then 0
   else if m = 1 then r + 1
   else if m = 6 then r + 1
+  else if m = 8 then r + 1
   else if m = 4 then
     if t = 1 then r + 1
     else if t = 2 then r + 1 else if t = 3 then r + 1 else if t = 4 then r + 1
     else if c ≤ 1 then 0 else r + 1
-  else if m = 7 then if c ≤ 1 then 0 else r + 1
+  else if m = 7 then
+    if t = 0 then r + 1 else if c ≤ 1 then 0 else r + 1
+  else if m = 9 then
+    if t = 19 then (if c ≤ 1 then 0 else r + 1) else r + 1
   else 0
 
+set_option maxHeartbeats 2000000 in
 lemma rcMode_step_eq (st t : ℕ) :
     rcMode (rpnCondStep st t) = rcModeF (rcMode st) (rcCnt st) t := by
   rw [rpnCondStep, rcModeF]
   split_ifs <;> simp only [rcMode_pack] <;> omega
 
+set_option maxHeartbeats 2000000 in
 lemma rcCnt_step_eq (st t : ℕ) :
     rcCnt (rpnCondStep st t) = rcCntF (rcMode st) (rcCnt st) t := by
   rw [rpnCondStep, rcCntF]
   split_ifs <;> simp only [rcCnt_pack] <;> omega
 
+set_option maxHeartbeats 2000000 in
 lemma rcLen_step_eq (st t : ℕ) :
     rcLen (rpnCondStep st t) = rcLenF (rcMode st) (rcCnt st) (rcLen st) t := by
   rw [rpnCondStep, rcLenF]
@@ -700,7 +816,7 @@ lemma rpnCondStep_components (st t : ℕ) :
 /-! ## Control bounds (for the polynomially bounded scan state) -/
 
 lemma rcMode_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
-    rcMode (rpnCondControlAt tf n j) ≤ 7
+    rcMode (rpnCondControlAt tf n j) ≤ 9
   | 0 => by simp [rpnCondControlAt]
   | j + 1 => by
       rw [rpnCondControlAt]
@@ -715,16 +831,16 @@ lemma rcCnt_controlAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j,
         (Nat.succ_le_succ (rcCnt_controlAt_le tf n j))
 
 lemma rpnCondControlAt_le (tf : ℕ → ℕ) (n j : ℕ) :
-    rpnCondControlAt tf n j ≤ Nat.pair 7 (Nat.pair (j + 1) j) := by
+    rpnCondControlAt tf n j ≤ Nat.pair 9 (Nat.pair (j + 1) j) := by
   conv_lhs => rw [rcPack_surjective (rpnCondControlAt tf n j)]
   rw [rcPack]
   calc Nat.pair (rcMode (rpnCondControlAt tf n j))
         (Nat.pair (rcCnt (rpnCondControlAt tf n j))
           (rcLen (rpnCondControlAt tf n j))) ≤
-      Nat.pair 7 (Nat.pair (rcCnt (rpnCondControlAt tf n j))
+      Nat.pair 9 (Nat.pair (rcCnt (rpnCondControlAt tf n j))
         (rcLen (rpnCondControlAt tf n j))) :=
         pair_le_pair_left' _ (rcMode_controlAt_le tf n j)
-    _ ≤ Nat.pair 7 (Nat.pair (j + 1) j) :=
+    _ ≤ Nat.pair 9 (Nat.pair (j + 1) j) :=
         pair_le_pair_right' _
           (le_trans (pair_le_pair_left' _ (rcCnt_controlAt_le tf n j))
             (pair_le_pair_right' _ (rcLen_controlAt_le tf n j)))
@@ -785,9 +901,15 @@ lemma rcModeF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
   obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 (PolyFueled.const 4) hm4d
   obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 (PolyFueled.const 4) hm4c
   obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 (PolyFueled.const 7) hm4b
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hle04 (PolyFueled.const 0)
+  obtain ⟨_, hm6⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 8) hle12
+  obtain ⟨_, hm8⟩ := polyFueled_ifEq ht 19 hle12 (PolyFueled.const 8)
+  obtain ⟨_, hm7⟩ := polyFueled_ifEq ht 0 (PolyFueled.const 9) hle04
+  obtain ⟨_, hm9⟩ := polyFueled_ifEq ht 19 hle04 (PolyFueled.const 9)
+  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm9 (PolyFueled.const 0)
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm7 hT9
   obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hle12 hT4
+  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hm8 hT4
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hm6 hT8
   obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
   obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
   exact ⟨code, hT0.of_eq fun z => by rw [rcModeF]⟩
@@ -809,9 +931,13 @@ lemma rcCntF_polyFueled {cm cc ct : Code} {m c t : ℕ → ℕ}
   obtain ⟨_, hm1c⟩ := polyFueled_ifEq ht 3 hsucc hm1d
   obtain ⟨_, hm1b⟩ := polyFueled_ifEq ht 2 hsucc hm1c
   obtain ⟨_, hm1⟩ := polyFueled_ifEq ht 1 hc hm1b
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hleC (PolyFueled.const 0)
+  obtain ⟨_, hm6c⟩ := polyFueled_ifEq ht 0 hc hleC
+  obtain ⟨_, hm8c⟩ := polyFueled_ifEq ht 19 hleC hc
+  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm8c (PolyFueled.const 0)
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm6c hT9
   obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm1 hT7
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hleC hT4
+  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hm8c hT4
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hm6c hT8
   obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hm1 hT6
   obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 hm0 hT1
   exact ⟨code, hT0.of_eq fun z => by rw [rcCntF]⟩
@@ -829,9 +955,13 @@ lemma rcLenF_polyFueled {cm cc cr ct : Code} {m c r t : ℕ → ℕ}
   obtain ⟨_, hm4c⟩ := polyFueled_ifEq ht 3 hsucc hm4d
   obtain ⟨_, hm4b⟩ := polyFueled_ifEq ht 2 hsucc hm4c
   obtain ⟨_, hm4⟩ := polyFueled_ifEq ht 1 hsucc hm4b
-  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hleR (PolyFueled.const 0)
+  obtain ⟨_, hm7r⟩ := polyFueled_ifEq ht 0 hsucc hleR
+  obtain ⟨_, hm9r⟩ := polyFueled_ifEq ht 19 hleR hsucc
+  obtain ⟨_, hT9⟩ := polyFueled_ifEq hm 9 hm9r (PolyFueled.const 0)
+  obtain ⟨_, hT7⟩ := polyFueled_ifEq hm 7 hm7r hT9
   obtain ⟨_, hT4⟩ := polyFueled_ifEq hm 4 hm4 hT7
-  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hsucc hT4
+  obtain ⟨_, hT8⟩ := polyFueled_ifEq hm 8 hsucc hT4
+  obtain ⟨_, hT6⟩ := polyFueled_ifEq hm 6 hsucc hT8
   obtain ⟨_, hT1⟩ := polyFueled_ifEq hm 1 hsucc hT6
   obtain ⟨code, hT0⟩ := polyFueled_ifEq hm 0 (PolyFueled.const 0) hT1
   exact ⟨code, hT0.of_eq fun z => by rw [rcLenF]⟩
@@ -848,7 +978,7 @@ lemma rpnCondScan {s : ℕ → List ℕ} (h : PolySegStream s) :
       rpnCondControlAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
         z.unpair.1 z.unpair.2) := by
   obtain ⟨-, hbig⟩ := h.undigitizeTokens
-  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 8)
+  obtain ⟨ctc, htc⟩ := hbig.clampVal (PolyFueled.const 19)
   -- Step input `⟨n, ⟨j, prev⟩⟩`.
   have hn := PolyFueled.left
   have hj := PolyFueled.left.comp PolyFueled.right
@@ -868,8 +998,8 @@ lemma rpnCondScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   have hbound : IsPolyBounded (fun w : ℕ =>
       rpnCondControlAt tf w.unpair.1 w.unpair.2) := by
     have hmaj : IsPolyBounded (fun w : ℕ =>
-        Nat.pair 7 (Nat.pair (w.unpair.2 + 1) w.unpair.2)) :=
-      ((IsPolyBounded.linear 7).of_le fun _ => by omega).pair
+        Nat.pair 9 (Nat.pair (w.unpair.2 + 1) w.unpair.2)) :=
+      ((IsPolyBounded.linear 9).of_le fun _ => by omega).pair
         (isPolyBounded_snd.add_one.pair isPolyBounded_snd)
     exact hmaj.of_le fun w => rpnCondControlAt_le tf w.unpair.1 w.unpair.2
   refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
@@ -992,7 +1122,8 @@ def rpnTradeCountAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
   | 0 => 0
   | j + 1 =>
       if (rcMode (rpnCondControlAt tf n j) = 4 ∨
-            rcMode (rpnCondControlAt tf n j) = 7) ∧
+            rcMode (rpnCondControlAt tf n j) = 7 ∨
+            rcMode (rpnCondControlAt tf n j) = 9) ∧
           rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
         rpnTradeCountAt tf n j + 1
       else rpnTradeCountAt tf n j
@@ -1023,7 +1154,8 @@ lemma rpnTradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   have hsucc : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.2 + 1) :=
     (had.comp (hprev.pair (PolyFueled.const 1))).of_eq fun z => by
       simp only [Nat.unpair_pair]
-  obtain ⟨_, hA⟩ := polyFueled_ifEq hmz 7 hsucc hprev
+  obtain ⟨_, hA9⟩ := polyFueled_ifEq hmz 9 hsucc hprev
+  obtain ⟨_, hA⟩ := polyFueled_ifEq hmz 7 hsucc hA9
   obtain ⟨_, hB⟩ := polyFueled_ifEq hmz 4 hsucc hA
   obtain ⟨_, hstep⟩ := polyFueled_ifEq hmz1 0 hB hprev
   set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
@@ -1045,8 +1177,11 @@ lemma rpnTradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
     · rw [if_pos hm4, if_pos ⟨Or.inl hm4, hm1⟩]
     · rw [if_neg hm4]
       by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
-      · rw [if_pos hm7, if_pos ⟨Or.inr hm7, hm1⟩]
-      · rw [if_neg hm7, if_neg (by tauto)]
+      · rw [if_pos hm7, if_pos ⟨Or.inr (Or.inl hm7), hm1⟩]
+      · rw [if_neg hm7]
+        by_cases hm9 : rcMode (rpnCondControlAt tf n j) = 9
+        · rw [if_pos hm9, if_pos ⟨Or.inr (Or.inr hm9), hm1⟩]
+        · rw [if_neg hm9, if_neg (by tauto)]
   · rw [if_neg hm1, if_neg (by tauto)]
 
 #print axioms rpnTradeCountScan
@@ -1275,6 +1410,47 @@ run the automaton walks to completion either parses completely or poisons **ever
 extension (`parse_of_priceRunWalk`) — the two cases behind copied-chunk transparency
 on garbage. -/
 
+/-- Split a list at the first occurrence of the reserved terminator. -/
+private lemma exists_first_split {l : List ℕ} (h : (19 : ℕ) ∈ l) :
+    ∃ v t, l = v ++ 19 :: t ∧ (19 : ℕ) ∉ v := by
+  induction l with
+  | nil => cases h
+  | cons x xs ih =>
+      by_cases hx : x = 19
+      · exact ⟨[], xs, by rw [hx]; rfl, by simp⟩
+      · obtain ⟨v, t, rfl, hv⟩ := ih (by
+          rcases List.mem_cons.mp h with h' | h'
+          · exact absurd h'.symm hx
+          · exact h')
+        exact ⟨x :: v, t, rfl, by
+          intro hmem
+          rcases List.mem_cons.mp hmem with h' | h'
+          · exact hx h'.symm
+          · exact hv h'⟩
+
+/-- Two first-terminator splits of one stream agree. -/
+private lemma first19_split_unique {v w xs ys : List ℕ}
+    (hv : ∀ x ∈ v, x ≠ 19) (hw : ∀ x ∈ w, x ≠ 19)
+    (h : v ++ 19 :: xs = w ++ 19 :: ys) : v = w ∧ xs = ys := by
+  induction v generalizing w with
+  | nil =>
+      cases w with
+      | nil => simpa using h
+      | cons b w =>
+          simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
+          exact absurd h.1.symm (hw b (List.mem_cons_self ..))
+  | cons a v ih =>
+      cases w with
+      | nil =>
+          simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
+          exact absurd h.1 (hv a (List.mem_cons_self ..))
+      | cons b w =>
+          simp only [List.cons_append, List.cons.injEq] at h
+          obtain ⟨rfl, h2⟩ := h
+          obtain ⟨rfl, rfl⟩ := ih (fun x hx => hv x (List.mem_cons_of_mem _ hx))
+            (fun x hx => hw x (List.mem_cons_of_mem _ hx)) h2
+          exact ⟨rfl, rfl⟩
+
 /-- Consumed-prefix completeness: a successful parse factors as a complete block
 followed by the remainder. -/
 lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : List ℕ},
@@ -1300,19 +1476,47 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
               match ts' with
               | [] => simp at h
               | c₀ :: ts'' =>
-                  rw [List.head?_cons] at h
-                  simp only [Option.bind_some] at h
-                  cases hdec : Encodable.decode (α := Sentence) c₀ with
-                  | none => rw [hdec] at h; simp at h
-                  | some ψ =>
-                      rw [hdec] at h
-                      simp only [Option.map_some, List.tail_cons] at h
-                      obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                  cases c₀ with
+                  | zero =>
+                      replace h : parseStructuredPaperPrime ts'' =
+                          some (φ, rest) := h
+                      obtain ⟨w, hspan, hw⟩ := parseStructuredPaperPrime_span h
                       subst h1
-                      refine ⟨[1, c₀], rfl, ?_⟩
-                      rw [show ([1, c₀] : List ℕ).length = 1 + 1 from rfl,
-                        parseRpn_cons]
-                      simp [hdec]
+                      subst hspan
+                      refine ⟨1 :: 0 :: (w ++ [19]), by simp, ?_⟩
+                      rw [show (1 :: 0 :: (w ++ [19])).length =
+                        (w.length + 2) + 1 by simp, parseRpn_cons,
+                        if_neg (by norm_num), if_pos rfl]
+                      show parseStructuredPaperPrime (w ++ [19]) = some (φ, [])
+                      have hfirst := parseStructuredPaperPrime_first19 w hw rest
+                      rw [h] at hfirst
+                      rcases hp : parseStructuredPaperPrime (w ++ [19]) with _ | pr
+                      · rw [hp] at hfirst
+                        simp at hfirst
+                      · rw [hp] at hfirst
+                        simp only [Option.map_some] at hfirst
+                        obtain ⟨hφ, -⟩ := Prod.mk.injEq .. ▸ Option.some.inj hfirst
+                        have hrest0 : pr.2 = [] := by
+                          obtain ⟨w', hspan', hw'⟩ :=
+                            parseStructuredPaperPrime_span
+                              (show parseStructuredPaperPrime (w ++ [19]) =
+                                some (pr.1, pr.2) from hp)
+                          exact (first19_split_unique hw hw' hspan').2.symm
+                        rw [show pr = (pr.1, pr.2) from rfl, hrest0, hφ]
+                  | succ c₀ =>
+                      replace h : (Encodable.decode (α := Sentence)
+                          (c₀ + 1)).map (fun ψ => (ψ, ts'')) = some (φ, rest) := h
+                      cases hdec : Encodable.decode (α := Sentence) (c₀ + 1) with
+                      | none => rw [hdec] at h; simp at h
+                      | some ψ =>
+                          rw [hdec] at h
+                          simp only [Option.map_some] at h
+                          obtain ⟨rfl, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
+                          subst h1
+                          refine ⟨[1, c₀ + 1], rfl, ?_⟩
+                          rw [show ([1, c₀ + 1] : List ℕ).length = 1 + 1 from rfl,
+                            parseRpn_cons]
+                          simp [hdec]
             · rw [if_neg h1] at h
               have hbin : ∀ (mk : Sentence → Sentence → Sentence),
                   ((parseRpn fuel ts').bind fun p =>
@@ -1383,6 +1587,7 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
 
 /-! ### Run-step normal forms (for the converse walk argument) -/
 
+set_option maxHeartbeats 1600000 in
 /-- The step inside a price run, in offset-counter form. -/
 lemma rpnCondStep_price (c r t : ℕ) :
     rpnCondStep (rcPack 1 (c + 1) r) t =
@@ -1394,15 +1599,29 @@ lemma rpnCondStep_price (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
+set_option maxHeartbeats 1600000 in
 /-- The step on an escape payload inside a price run. -/
 lemma rpnCondStep_priceEsc (c r t : ℕ) :
     rpnCondStep (rcPack 6 (c + 1) r) t =
-      if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
+      if t = 0 then rcPack 8 (c + 1) (r + 1)
+      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
   rw [rpnCondStep]
   simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
+set_option maxHeartbeats 1600000 in
+/-- The step on a structured paper-prime payload inside a price run. -/
+lemma rpnCondStep_priceStr (c r t : ℕ) :
+    rpnCondStep (rcPack 8 (c + 1) r) t =
+      if t = 19 then (if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1))
+      else rcPack 8 (c + 1) (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
 /-- The step inside a trade run, in offset-counter form. -/
 lemma rpnCondStep_trade (c r t : ℕ) :
     rpnCondStep (rcPack 4 (c + 1) r) t =
@@ -1414,10 +1633,23 @@ lemma rpnCondStep_trade (c r t : ℕ) :
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
     first | omega | (exfalso; assumption)
 
+set_option maxHeartbeats 1600000 in
 /-- The step on an escape payload inside a trade run. -/
 lemma rpnCondStep_tradeEsc (c r t : ℕ) :
     rpnCondStep (rcPack 7 (c + 1) r) t =
-      if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
+      if t = 0 then rcPack 9 (c + 1) (r + 1)
+      else if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step on a structured paper-prime payload inside a trade run. -/
+lemma rpnCondStep_tradeStr (c r t : ℕ) :
+    rpnCondStep (rcPack 9 (c + 1) r) t =
+      if t = 19 then (if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1))
+      else rcPack 9 (c + 1) (r + 1) := by
   rw [rpnCondStep]
   simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
   split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
@@ -1425,7 +1657,7 @@ lemma rpnCondStep_tradeEsc (c r t : ℕ) :
 
 /-- Inside a run the recorded run length grows by exactly one per token. -/
 lemma rcLen_run_step (st t : ℕ)
-    (hm : rcMode st = 1 ∨ rcMode st = 6) :
+    (hm : rcMode st = 1 ∨ rcMode st = 6 ∨ rcMode st = 8) :
     rcLen (rpnCondStep st t) = rcLen st + 1 := by
   rw [rpnCondStep]
   split_ifs <;> simp only [rcLen_pack] <;> omega
@@ -1440,15 +1672,21 @@ disambiguators. -/
 
 /-- One step from a live run state: stay in the run (counter positive, run length
 incremented) or take the exit. -/
-lemma runWalk_step_cases {a b : ℕ} {exit : ℕ → ℕ}
+lemma runWalk_step_cases {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
-    (st t : ℕ) (hm : rcMode st = a ∨ rcMode st = b) (hc : 1 ≤ rcCnt st) :
-    ((rcMode (rpnCondStep st t) = a ∨ rcMode (rpnCondStep st t) = b) ∧
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
+    (st t : ℕ)
+    (hm : rcMode st = a ∨ rcMode st = b ∨ rcMode st = s) (hc : 1 ≤ rcCnt st) :
+    ((rcMode (rpnCondStep st t) = a ∨ rcMode (rpnCondStep st t) = b ∨
+        rcMode (rpnCondStep st t) = s) ∧
       1 ≤ rcCnt (rpnCondStep st t) ∧
       rcLen (rpnCondStep st t) = rcLen st + 1) ∨
     rpnCondStep st t = exit (rcLen st + 1) := by
@@ -1456,10 +1694,10 @@ lemma runWalk_step_cases {a b : ℕ} {exit : ℕ → ℕ}
     ⟨rcMode st, rcCnt st, rcLen st, rcPack_surjective st⟩
   simp only [rcMode_pack, rcCnt_pack, rcLen_pack] at hm hc ⊢
   obtain ⟨c, rfl⟩ : ∃ c, c0 = c + 1 := ⟨c0 - 1, by omega⟩
-  rcases hm with rfl | rfl
+  rcases hm with rfl | rfl | rfl
   · rw [hrun]
     split_ifs with h1 h2 h3
-    · exact Or.inl ⟨Or.inr (by simp), by simp only [rcCnt_pack]; omega,
+    · exact Or.inl ⟨Or.inr (Or.inl (by simp)), by simp only [rcCnt_pack]; omega,
         by simp only [rcLen_pack]⟩
     · exact Or.inl ⟨Or.inl (by simp), by simp only [rcCnt_pack]; omega,
         by simp only [rcLen_pack]⟩
@@ -1467,55 +1705,79 @@ lemma runWalk_step_cases {a b : ℕ} {exit : ℕ → ℕ}
     · exact Or.inl ⟨Or.inl (by simp), by simp only [rcCnt_pack]; omega,
         by simp only [rcLen_pack]⟩
   · rw [hesc]
-    split_ifs with h1
+    split_ifs with h0 h1
+    · exact Or.inl ⟨Or.inr (Or.inr (by simp)), by simp only [rcCnt_pack]; omega,
+        by simp only [rcLen_pack]⟩
     · exact Or.inr rfl
     · exact Or.inl ⟨Or.inl (by simp), by simp only [rcCnt_pack]; omega,
         by simp only [rcLen_pack]⟩
+  · rw [hstr]
+    split_ifs with h19 h1
+    · exact Or.inr rfl
+    · exact Or.inl ⟨Or.inl (by simp), by simp only [rcCnt_pack]; omega,
+        by simp only [rcLen_pack]⟩
+    · exact Or.inl ⟨Or.inr (Or.inr (by simp)), by simp only [rcCnt_pack]; omega,
+        by simp only [rcLen_pack]⟩
 
 /-- Inside a run the counter drops by at most one per token. -/
-lemma rcCnt_runWalk_step_ge {a b : ℕ} {exit : ℕ → ℕ}
+lemma rcCnt_runWalk_step_ge {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
     (hexitCnt : ∀ r', rcCnt (exit r') = 0)
-    (st t : ℕ) (hm : rcMode st = a ∨ rcMode st = b) (hc : 1 ≤ rcCnt st) :
+    (st t : ℕ)
+    (hm : rcMode st = a ∨ rcMode st = b ∨ rcMode st = s) (hc : 1 ≤ rcCnt st) :
     rcCnt st ≤ rcCnt (rpnCondStep st t) + 1 := by
   obtain ⟨m, c0, r0, rfl⟩ : ∃ m c0 r0, st = rcPack m c0 r0 :=
     ⟨rcMode st, rcCnt st, rcLen st, rcPack_surjective st⟩
   simp only [rcMode_pack, rcCnt_pack] at hm hc ⊢
   obtain ⟨c, rfl⟩ : ∃ c, c0 = c + 1 := ⟨c0 - 1, by omega⟩
-  rcases hm with rfl | rfl
+  rcases hm with rfl | rfl | rfl
   · rw [hrun]
     split_ifs with h1 h2 h3 <;>
       first
         | (simp only [rcCnt_pack]; omega)
         | (rw [hexitCnt]; omega)
   · rw [hesc]
-    split_ifs with h1 <;>
+    split_ifs with h0 h1 <;>
+      first
+        | (simp only [rcCnt_pack]; omega)
+        | (rw [hexitCnt]; omega)
+  · rw [hstr]
+    split_ifs with h19 h1 <;>
       first
         | (simp only [rcCnt_pack]; omega)
         | (rw [hexitCnt]; omega)
 
 /-- A strict counter decrement from a run state with counter `≥ 2` lands back in
 run mode `a` (never the exit): the closing token of a proper subtree. -/
-lemma runWalk_step_decrement {a b : ℕ} {exit : ℕ → ℕ}
+lemma runWalk_step_decrement {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
-    (st t : ℕ) (hm : rcMode st = a ∨ rcMode st = b) (h2 : 2 ≤ rcCnt st)
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
+    (st t : ℕ)
+    (hm : rcMode st = a ∨ rcMode st = b ∨ rcMode st = s) (h2 : 2 ≤ rcCnt st)
     (hdec : rcCnt (rpnCondStep st t) < rcCnt st) :
     rpnCondStep st t = rcPack a (rcCnt st - 1) (rcLen st + 1) := by
   obtain ⟨m, c0, r0, rfl⟩ : ∃ m c0 r0, st = rcPack m c0 r0 :=
     ⟨rcMode st, rcCnt st, rcLen st, rcPack_surjective st⟩
   simp only [rcMode_pack, rcCnt_pack, rcLen_pack] at hm h2 hdec ⊢
   obtain ⟨c, rfl⟩ : ∃ c, c0 = c + 1 := ⟨c0 - 1, by omega⟩
-  rcases hm with rfl | rfl
+  rcases hm with rfl | rfl | rfl
   · rw [hrun] at hdec ⊢
     split_ifs at hdec ⊢ with h1 hop hc0
     · simp only [rcCnt_pack] at hdec
@@ -1525,9 +1787,17 @@ lemma runWalk_step_decrement {a b : ℕ} {exit : ℕ → ℕ}
     · omega
     · simp only [Nat.add_sub_cancel]
   · rw [hesc] at hdec ⊢
-    split_ifs at hdec ⊢ with hc0
+    split_ifs at hdec ⊢ with h0 hc0
+    · simp only [rcCnt_pack] at hdec
+      omega
     · omega
     · simp only [Nat.add_sub_cancel]
+  · rw [hstr] at hdec ⊢
+    split_ifs at hdec ⊢ with h19 hc0
+    · omega
+    · simp only [Nat.add_sub_cancel]
+    · simp only [rcCnt_pack] at hdec
+      omega
 
 /-- **The generic converse walk lemma**: a token run the automaton walks from counter
 `c + 1` to its first return at counter `c` — staying strictly inside the run on every
@@ -1536,21 +1806,27 @@ extension (`parseRpn` fails on `u ++ tail` for every fuel and tail).  The only f
 mode of an arity-complete run is an undecodable escape payload, which every extension
 reproduces.  Generic over the run-mode pair `(a, b)` and the exit, mirroring
 `foldl_rpnCondStep_run`. -/
-lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
+lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
     (hexitCnt : ∀ r', rcCnt (exit r') = 0)
-    (hexitMode : ∀ r', rcMode (exit r') ≠ a ∧ rcMode (exit r') ≠ b) :
+    (hexitMode : ∀ r', rcMode (exit r') ≠ a ∧ rcMode (exit r') ≠ b ∧
+      rcMode (exit r') ≠ s) :
     ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → ∀ (c r : ℕ),
     List.foldl rpnCondStep (rcPack a (c + 1) r) u =
       (if c = 0 then exit (r + u.length) else rcPack a c (r + u.length)) →
     (∀ k < u.length,
       (rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (u.take k)) = a ∨
-        rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (u.take k)) = b) ∧
+        rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (u.take k)) = b ∨
+        rcMode (List.foldl rpnCondStep (rcPack a (c + 1) r) (u.take k)) = s) ∧
       c + 1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a (c + 1) r) (u.take k))) →
     (∃ φ, parseRpn u.length u = some (φ, [])) ∨
     (∀ fuel tail, parseRpn fuel (u ++ tail) = none) := by
@@ -1588,7 +1864,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
           have hW1 : List.foldl rpnCondStep (rcPack a (c + 1) r) [t] =
               rpnCondStep (rcPack a (c + 1) r) t := rfl
           by_cases ht1 : t = 1
-          · -- Escape: the run is exactly `[1, payload]`.
+          · -- Escape (`[1, code]`) or structured leaf (`1 :: 0 :: v ++ [19]`).
             subst ht1
             match u' with
             | [] =>
@@ -1603,41 +1879,135 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                   simp only [rcPack, Nat.pair_eq_pair] at h1
                   omega
             | p :: u'' =>
-                have hW2 : List.foldl rpnCondStep (rcPack a (c + 1) r) [1, p] =
-                    (if c = 0 then exit (r + 2) else rcPack a c (r + 2)) := by
-                  rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
-                    hrun, if_pos rfl, hesc]
-                have hu'' : u'' = [] := by
-                  by_contra hne
-                  have h2len : 2 < (1 :: p :: u'').length := by
-                    simp only [List.length_cons]
-                    have := List.length_pos_iff.mpr hne
-                    omega
-                  have := h2 2 h2len
-                  rw [show ((1 : ℕ) :: p :: u'').take 2 = [1, p] from rfl, hW2] at this
-                  by_cases hc : c = 0
-                  · rw [if_pos hc] at this
-                    have hcnt := this.2
-                    rw [hexitCnt] at hcnt
-                    omega
-                  · rw [if_neg hc] at this
-                    simp only [rcMode_pack, rcCnt_pack] at this
-                    omega
-                subst hu''
-                cases hdec : Encodable.decode (α := Sentence) p with
-                | some ψ =>
-                    exact Or.inl ⟨ψ, by
-                      rw [show ([1, p] : List ℕ).length = 1 + 1 from rfl,
-                        parseRpn_cons]
-                      simp [hdec]⟩
-                | none =>
-                    refine Or.inr fun fuel tail => ?_
-                    match fuel with
-                    | 0 => rfl
-                    | fuel + 1 =>
-                        rw [List.cons_append, List.cons_append, parseRpn_cons,
-                          if_neg (by norm_num), if_pos rfl]
-                        simp [hdec]
+                cases p with
+                | succ p =>
+                    have hW2 : List.foldl rpnCondStep (rcPack a (c + 1) r)
+                        [1, p + 1] =
+                        (if c = 0 then exit (r + 2) else rcPack a c (r + 2)) := by
+                      rw [List.foldl_cons, List.foldl_cons, List.foldl_nil,
+                        hrun, if_pos rfl, hesc, if_neg (by omega)]
+                    have hu'' : u'' = [] := by
+                      by_contra hne
+                      have h2len : 2 < (1 :: (p + 1) :: u'').length := by
+                        simp only [List.length_cons]
+                        have := List.length_pos_iff.mpr hne
+                        omega
+                      have := h2 2 h2len
+                      rw [show ((1 : ℕ) :: (p + 1) :: u'').take 2 = [1, p + 1]
+                        from rfl, hW2] at this
+                      by_cases hc : c = 0
+                      · rw [if_pos hc] at this
+                        have hcnt := this.2
+                        rw [hexitCnt] at hcnt
+                        omega
+                      · rw [if_neg hc] at this
+                        simp only [rcMode_pack, rcCnt_pack] at this
+                        omega
+                    subst hu''
+                    cases hdec : Encodable.decode (α := Sentence) (p + 1) with
+                    | some ψ =>
+                        exact Or.inl ⟨ψ, by
+                          rw [show ([1, p + 1] : List ℕ).length = 1 + 1 from rfl,
+                            parseRpn_cons]
+                          simp [hdec]⟩
+                    | none =>
+                        refine Or.inr fun fuel tail => ?_
+                        match fuel with
+                        | 0 => rfl
+                        | fuel + 1 =>
+                            rw [List.cons_append, List.cons_append, parseRpn_cons,
+                              if_neg (by norm_num), if_pos rfl]
+                            simp [hdec]
+                | zero =>
+                    by_cases hmem : (19 : ℕ) ∈ u''
+                    · obtain ⟨v, u''', rfl, hvfree⟩ := exists_first_split hmem
+                      have hvfree' : ∀ x ∈ v, x ≠ 19 := fun x hx heq =>
+                        hvfree (heq ▸ hx)
+                      have hWv : List.foldl rpnCondStep (rcPack a (c + 1) r)
+                          (1 :: 0 :: v) =
+                          rcPack s (c + 1) (r + 2 + v.length) := by
+                        rw [show ((1 : ℕ) :: 0 :: v) = [1, 0] ++ v from rfl,
+                          List.foldl_append, List.foldl_cons, List.foldl_cons,
+                          List.foldl_nil, hrun, if_pos rfl, hesc, if_pos rfl,
+                          foldl_rpnCondStep_stay hstr v hvfree' c (r + 2)]
+                      have hW19 : List.foldl rpnCondStep (rcPack a (c + 1) r)
+                          ((1 :: 0 :: v) ++ [19]) =
+                          (if c = 0 then exit (r + 2 + v.length + 1)
+                            else rcPack a c (r + 2 + v.length + 1)) := by
+                        rw [List.foldl_append, hWv, List.foldl_cons,
+                          List.foldl_nil, hstr, if_pos rfl]
+                      have hu''' : u''' = [] := by
+                        by_contra hne
+                        have hklen : v.length + 3 <
+                            (1 :: 0 :: (v ++ 19 :: u''')).length := by
+                          simp only [List.length_cons, List.length_append]
+                          have := List.length_pos_iff.mpr hne
+                          omega
+                        have hstep := h2 (v.length + 3) hklen
+                        have htk : (1 :: 0 :: (v ++ 19 :: u''')).take
+                            (v.length + 3) = (1 :: 0 :: v) ++ [19] := by
+                          rw [show v.length + 3 = ((v.length + 1) + 1) + 1
+                            by omega, List.take_succ_cons, List.take_succ_cons,
+                            List.take_append,
+                            show v.length + 1 - v.length = 1 by omega,
+                            List.take_of_length_le (by omega)]
+                          rfl
+                        rw [htk, hW19] at hstep
+                        by_cases hc : c = 0
+                        · rw [if_pos hc] at hstep
+                          have hcnt := hstep.2
+                          rw [hexitCnt] at hcnt
+                          omega
+                        · rw [if_neg hc] at hstep
+                          simp only [rcMode_pack, rcCnt_pack] at hstep
+                          omega
+                      subst hu'''
+                      cases hp : parseStructuredPaperPrime (v ++ [19]) with
+                      | some pr =>
+                          refine Or.inl ⟨pr.1, ?_⟩
+                          have hrest : pr.2 = [] := by
+                            obtain ⟨w', hspan, hw'⟩ :=
+                              parseStructuredPaperPrime_span
+                                (show parseStructuredPaperPrime (v ++ [19]) =
+                                  some (pr.1, pr.2) from hp)
+                            exact (first19_split_unique hvfree' hw' hspan).2.symm
+                          rw [show (1 :: 0 :: (v ++ 19 :: [])).length =
+                            (v.length + 2) + 1 by simp, parseRpn_cons,
+                            if_neg (by norm_num), if_pos rfl]
+                          show parseStructuredPaperPrime (v ++ [19]) = _
+                          rw [hp, show pr = (pr.1, pr.2) from rfl, hrest]
+                      | none =>
+                          refine Or.inr fun fuel tail => ?_
+                          match fuel with
+                          | 0 => rfl
+                          | fuel + 1 =>
+                              rw [show (1 :: 0 :: (v ++ 19 :: [])) ++ tail =
+                                1 :: 0 :: (v ++ 19 :: tail) by simp,
+                                parseRpn_cons, if_neg (by norm_num), if_pos rfl]
+                              show parseStructuredPaperPrime (v ++ 19 :: tail) =
+                                none
+                              rw [parseStructuredPaperPrime_first19 v hvfree'
+                                tail, hp]
+                              rfl
+                    · exfalso
+                      have hfree : ∀ x ∈ u'', x ≠ 19 := fun x hx heq =>
+                        hmem (heq ▸ hx)
+                      have hWall : List.foldl rpnCondStep (rcPack a (c + 1) r)
+                          (1 :: 0 :: u'') =
+                          rcPack s (c + 1) (r + 2 + u''.length) := by
+                        rw [show ((1 : ℕ) :: 0 :: u'') = [1, 0] ++ u'' from rfl,
+                          List.foldl_append, List.foldl_cons, List.foldl_cons,
+                          List.foldl_nil, hrun, if_pos rfl, hesc, if_pos rfl,
+                          foldl_rpnCondStep_stay hstr u'' hfree c (r + 2)]
+                      rw [hWall] at h1
+                      by_cases hc : c = 0
+                      · rw [if_pos hc] at h1
+                        have hcnt := congrArg rcCnt h1
+                        rw [rcCnt_pack, hexitCnt] at hcnt
+                        omega
+                      · rw [if_neg hc] at h1
+                        simp only [rcPack, Nat.pair_eq_pair] at h1
+                        omega
           · by_cases htop : t = 2 ∨ t = 3 ∨ t = 4
             · -- Operator: split the tail at the first counter return.
               have hstep1 : rpnCondStep (rcPack a (c + 1) r) t =
@@ -1669,7 +2039,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                 rw [List.take_succ_cons, List.take_of_length_le le_rfl]
               -- Modes and counters strictly inside.
               have hmid : ∀ k < u'.length,
-                  (rcMode (W' k) = a ∨ rcMode (W' k) = b) ∧
+                  (rcMode (W' k) = a ∨ rcMode (W' k) = b ∨ rcMode (W' k) = s) ∧
                     c + 1 ≤ rcCnt (W' k) := fun k hk => by
                 have := h2 (k + 1) (by simp only [List.length_cons]; omega)
                 rwa [hWW' k] at this
@@ -1710,7 +2080,7 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                 | succ k ihk =>
                     intro hk
                     have hk' : k < u'.length := by omega
-                    have hcases := runWalk_step_cases hrun hesc (W' k)
+                    have hcases := runWalk_step_cases hrun hesc hstr (W' k)
                       (u'[k]'hk') (hmid k hk').1
                       (by have := (hmid k hk').2; omega)
                     rw [← hW'succ k hk'] at hcases
@@ -1720,9 +2090,10 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                     · exfalso
                       have hmode := (hmid (k + 1) hk).1
                       rw [hexitEq] at hmode
-                      rcases hmode with h | h
+                      rcases hmode with h | h | h
                       · exact (hexitMode _).1 h
-                      · exact (hexitMode _).2 h
+                      · exact (hexitMode _).2.1 h
+                      · exact (hexitMode _).2.2 h
               -- The state at the first return.
               have hstepk1 : W' k1 =
                   rpnCondStep (W' (k1 - 1)) (u'[k1 - 1]'hk1m1lt) := by
@@ -1733,10 +2104,10 @@ lemma parse_of_runWalk {a b : ℕ} {exit : ℕ → ℕ}
                 rw [← hstepk1]
                 omega
               have hk1state : W' k1 = rcPack a (c + 1) (r + 1 + k1) := by
-                rw [hstepk1, runWalk_step_decrement hrun hesc _ _ hprevmode
+                rw [hstepk1, runWalk_step_decrement hrun hesc hstr _ _ hprevmode
                   (by omega) hdecstep]
                 have hcnteq : rcCnt (W' (k1 - 1)) - 1 = c + 1 := by
-                  have hback := rcCnt_runWalk_step_ge hrun hesc hexitCnt
+                  have hback := rcCnt_runWalk_step_ge hrun hesc hstr hexitCnt
                     (W' (k1 - 1)) (u'[k1 - 1]'hk1m1lt) hprevmode (by omega)
                   rw [← hstepk1] at hback
                   omega
@@ -1924,15 +2295,17 @@ lemma parse_of_priceRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → �
       (if c = 0 then rcPack 2 0 (r + u.length) else rcPack 1 c (r + u.length)) →
     (∀ k < u.length,
       (rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 1 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 6) ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 6 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k)) = 8) ∧
       c + 1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (u.take k))) →
     (∃ φ, parseRpn u.length u = some (φ, [])) ∨
     (∀ fuel tail, parseRpn fuel (u ++ tail) = none) :=
-  parse_of_runWalk (b := 6) (exit := fun r' => rcPack 2 0 r')
+  parse_of_runWalk (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
     (fun c r t => rpnCondStep_price c r t)
     (fun c r t => rpnCondStep_priceEsc c r t)
+    (fun c r t => rpnCondStep_priceStr c r t)
     (fun r' => rcCnt_pack 2 0 r')
-    (fun r' => ⟨by simp, by simp⟩)
+    (fun r' => ⟨by simp, by simp, by simp⟩)
 
 /-- Trade-run instance of the converse walk lemma: exit back to base. -/
 lemma parse_of_tradeRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → ∀ (c r : ℕ),
@@ -1940,15 +2313,17 @@ lemma parse_of_tradeRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → �
       (if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + u.length)) →
     (∀ k < u.length,
       (rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (u.take k)) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (u.take k)) = 7) ∧
+        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (u.take k)) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (u.take k)) = 9) ∧
       c + 1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (u.take k))) →
     (∃ φ, parseRpn u.length u = some (φ, [])) ∨
     (∀ fuel tail, parseRpn fuel (u ++ tail) = none) :=
-  parse_of_runWalk (b := 7) (exit := fun _ => rcPack 0 0 0)
+  parse_of_runWalk (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
     (fun c r t => rpnCondStep_trade c r t)
     (fun c r t => rpnCondStep_tradeEsc c r t)
+    (fun c r t => rpnCondStep_tradeStr c r t)
     (fun r' => rcCnt_pack 0 0 0)
-    (fun r' => ⟨by simp, by simp⟩)
+    (fun r' => ⟨by simp, by simp, by simp⟩)
 
 #print axioms parseRpn_strip
 #print axioms parse_of_runWalk
@@ -2011,9 +2386,11 @@ lemma rpnCondStep_base_other (t : ℕ)
 /-- Any mode outside the walking set falls back to base. -/
 lemma rpnCondStep_fallback (st t : ℕ)
     (h0 : rcMode st ≠ 0) (h1 : rcMode st ≠ 1) (h6 : rcMode st ≠ 6)
-    (h4 : rcMode st ≠ 4) (h7 : rcMode st ≠ 7) :
+    (h4 : rcMode st ≠ 4) (h7 : rcMode st ≠ 7)
+    (h8 : rcMode st ≠ 8) (h9 : rcMode st ≠ 9) :
     rpnCondStep st t = rcPack 0 0 0 := by
-  rw [rpnCondStep, if_neg h0, if_neg h1, if_neg h6, if_neg h4, if_neg h7]
+  rw [rpnCondStep, if_neg h0, if_neg h1, if_neg h6, if_neg h8, if_neg h4,
+    if_neg h7, if_neg h9]
 
 lemma rcLen_step_base (t : ℕ) : rcLen (rpnCondStep (rcPack 0 0 0) t) = 0 := by
   rw [rpnCondStep_base]
@@ -2040,6 +2417,8 @@ lemma rpnConditionRun_from_payload (emit : List ℕ → ℕ → List ℕ)
       (by rcases hm with rfl | rfl <;> simp)
       (by rcases hm with rfl | rfl <;> simp)
       (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
+      (by rcases hm with rfl | rfl <;> simp)
   have hbuf : rpnCondBuf (rcPack m c' r') buf t = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
   rw [rpnConditionRun_cons, hstep, hbuf,
@@ -2055,7 +2434,7 @@ lemma rpnConditionRun_from_day (emit : List ℕ → ℕ → List ℕ)
         emit buf d ++
           (rpnConditionRun emit (rcPack 0 0 0, []) L).2) := by
   have hstep : rpnCondStep (rcPack 2 0 r') d = rcPack 0 0 0 :=
-    rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp)
+    rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp) (by simp) (by simp)
   have hbuf : rpnCondBuf (rcPack 2 0 r') buf d = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
   rw [rpnConditionRun_cons, hstep, hbuf, if_pos (by simp)]
@@ -2100,12 +2479,13 @@ lemma rpnConditionRun_copy_of_ne_two (emit : List ℕ → ℕ → List ℕ)
 lemma rpnCondBufFold_run (st : ℕ) (buf : List ℕ) (ts : List ℕ)
     (h : ∀ k < ts.length,
       rcMode (List.foldl rpnCondStep st (ts.take k)) = 1 ∨
-      rcMode (List.foldl rpnCondStep st (ts.take k)) = 6) :
+      rcMode (List.foldl rpnCondStep st (ts.take k)) = 6 ∨
+      rcMode (List.foldl rpnCondStep st (ts.take k)) = 8) :
     rpnCondBufFold st buf ts = buf ++ ts := by
   induction ts generalizing st buf with
   | nil => simp [rpnCondBufFold]
   | cons t ts ih =>
-      have h0 : rcMode st = 1 ∨ rcMode st = 6 := by
+      have h0 : rcMode st = 1 ∨ rcMode st = 6 ∨ rcMode st = 8 := by
         have := h 0 (by simp)
         simpa using this
       have hbuf : rpnCondBuf st buf t = buf ++ [t] := by
@@ -2136,18 +2516,23 @@ lemma rpnCondBufFold_reset (st : ℕ) (buf : List ℕ) (ts : List ℕ) (hne : ts
 
 /-- While no prefix has exited, the walk from a fresh run entry stays in the run
 modes with positive counter and run length equal to the position. -/
-lemma runWalk_inside {a b : ℕ} {exit : ℕ → ℕ}
+lemma runWalk_inside {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
     (e : ℕ) (hexitModeEq : ∀ r', rcMode (exit r') = e)
     (v : List ℕ) : ∀ j, j ≤ v.length →
     (∀ i, i ≤ j → rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ≠ e) →
     (rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = a ∨
-      rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = b) ∧
+      rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = b ∨
+      rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = s) ∧
     1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) ∧
     rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take j)) = j := by
   intro j
@@ -2165,7 +2550,7 @@ lemma runWalk_inside {a b : ℕ} {exit : ℕ → ℕ}
             (v[j]'hjlt) := by
         rw [htake, List.foldl_append, List.foldl_cons, List.foldl_nil]
       rw [hstep]
-      rcases runWalk_step_cases hrun hesc _ (v[j]'hjlt) hm hc with
+      rcases runWalk_step_cases hrun hesc hstr _ (v[j]'hjlt) hm hc with
         ⟨hm', hc', hl'⟩ | hexitEq
       · exact ⟨hm', hc', by rw [hl', hl]⟩
       · exfalso
@@ -2174,15 +2559,19 @@ lemma runWalk_inside {a b : ℕ} {exit : ℕ → ℕ}
 
 /-- At the first exit position the walk state is exactly the exit, and every earlier
 position is strictly inside. -/
-lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
+lemma runWalk_first_exit {a b s : ℕ} {exit : ℕ → ℕ}
     (hrun : ∀ c r t, rpnCondStep (rcPack a (c + 1) r) t =
       if t = 1 then rcPack b (c + 1) (r + 1)
       else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack a (c + 2) (r + 1)
       else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
     (hesc : ∀ c r t, rpnCondStep (rcPack b (c + 1) r) t =
-      if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      if t = 0 then rcPack s (c + 1) (r + 1)
+      else if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+    (hstr : ∀ c r t, rpnCondStep (rcPack s (c + 1) r) t =
+      if t = 19 then (if c = 0 then exit (r + 1) else rcPack a c (r + 1))
+      else rcPack s (c + 1) (r + 1))
     (e : ℕ) (hexitModeEq : ∀ r', rcMode (exit r') = e)
-    (hea : e ≠ a) (heb : e ≠ b)
+    (hea : e ≠ a) (heb : e ≠ b) (hes : e ≠ s)
     (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.length)
     (hfirst : ∀ i < k₀,
       rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ≠ e)
@@ -2191,7 +2580,8 @@ lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
     List.foldl rpnCondStep (rcPack a 1 0) (v.take k₀) = exit k₀ ∧
     ∀ i < k₀,
       ((rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = a ∨
-        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b) ∧
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b ∨
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = s) ∧
       1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ∧
       rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = i) := by
   have hpos : 1 ≤ k₀ := by
@@ -2202,10 +2592,11 @@ lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
     exact hea hexitAt.symm
   have hinside : ∀ i < k₀,
       ((rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = a ∨
-        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b) ∧
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = b ∨
+        rcMode (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = s) ∧
       1 ≤ rcCnt (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) ∧
       rcLen (List.foldl rpnCondStep (rcPack a 1 0) (v.take i)) = i) := fun i hi =>
-    runWalk_inside hrun hesc e hexitModeEq v i (by omega)
+    runWalk_inside hrun hesc hstr e hexitModeEq v i (by omega)
       (fun i' hi' => hfirst i' (by omega))
   refine ⟨hpos, ?_, hinside⟩
   have hklt : k₀ - 1 < v.length := by omega
@@ -2215,14 +2606,16 @@ lemma runWalk_first_exit {a b : ℕ} {exit : ℕ → ℕ}
     rfl
   obtain ⟨hm, hc, hl⟩ := hinside (k₀ - 1) (by omega)
   rw [htake, List.foldl_append, List.foldl_cons, List.foldl_nil] at hexitAt ⊢
-  rcases runWalk_step_cases hrun hesc _ (v[k₀ - 1]'hklt) hm hc with
+  rcases runWalk_step_cases hrun hesc hstr _ (v[k₀ - 1]'hklt) hm hc with
     ⟨hm', -, -⟩ | hexitEq
   · exfalso
-    rcases hm' with h | h
+    rcases hm' with h | h | h
     · rw [h] at hexitAt
       exact hea hexitAt.symm
     · rw [h] at hexitAt
       exact heb hexitAt.symm
+    · rw [h] at hexitAt
+      exact hes hexitAt.symm
   · rw [hexitEq, hl]
     congr 1
     omega
@@ -2236,13 +2629,15 @@ lemma priceWalk_first_exit (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.lengt
     List.foldl rpnCondStep (rcPack 1 1 0) (v.take k₀) = rcPack 2 0 k₀ ∧
     ∀ i < k₀,
       ((rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 1 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 6) ∧
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 6 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = 8) ∧
       1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) ∧
       rcLen (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) = i) :=
-  runWalk_first_exit (b := 6) (exit := fun r' => rcPack 2 0 r')
+  runWalk_first_exit (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
     (fun c r t => rpnCondStep_price c r t)
     (fun c r t => rpnCondStep_priceEsc c r t)
-    2 (fun r' => rcMode_pack 2 0 r') (by norm_num) (by norm_num)
+    (fun c r t => rpnCondStep_priceStr c r t)
+    2 (fun r' => rcMode_pack 2 0 r') (by norm_num) (by norm_num) (by norm_num)
     v k₀ hk₀ hfirst hexitAt
 
 /-- Trade-run instance of the first-exit localization. -/
@@ -2254,13 +2649,15 @@ lemma tradeWalk_first_exit (v : List ℕ) (k₀ : ℕ) (hk₀ : k₀ ≤ v.lengt
     List.foldl rpnCondStep (rcPack 4 1 0) (v.take k₀) = rcPack 0 0 0 ∧
     ∀ i < k₀,
       ((rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 7) ∧
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = 9) ∧
       1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) ∧
       rcLen (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) = i) :=
-  runWalk_first_exit (b := 7) (exit := fun _ => rcPack 0 0 0)
+  runWalk_first_exit (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
     (fun c r t => rpnCondStep_trade c r t)
     (fun c r t => rpnCondStep_tradeEsc c r t)
-    0 (fun _ => rcMode_pack 0 0 0) (by norm_num) (by norm_num)
+    (fun c r t => rpnCondStep_tradeStr c r t)
+    0 (fun _ => rcMode_pack 0 0 0) (by norm_num) (by norm_num) (by norm_num)
     v k₀ hk₀ hfirst hexitAt
 
 /-- Trade-run instance of the inside invariant (for streams that never exit). -/
@@ -2268,12 +2665,14 @@ lemma tradeWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
     (hmods : ∀ i, i ≤ j →
       rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take i)) ≠ 0) :
     (rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 4 ∨
-      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 7) ∧
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 7 ∨
+      rcMode (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = 9) ∧
     1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) ∧
     rcLen (List.foldl rpnCondStep (rcPack 4 1 0) (v.take j)) = j :=
-  runWalk_inside (b := 7) (exit := fun _ => rcPack 0 0 0)
+  runWalk_inside (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
     (fun c r t => rpnCondStep_trade c r t)
     (fun c r t => rpnCondStep_tradeEsc c r t)
+    (fun c r t => rpnCondStep_tradeStr c r t)
     0 (fun _ => rcMode_pack 0 0 0) v j hj hmods
 
 /-! ### Token-model run equations (per contracted chunk) -/
@@ -2844,7 +3243,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                               omega,
                             List.take_succ_cons, List.foldl_cons,
                             rpnCondStep_fallback _ _ (by simp) (by simp)
-                              (by simp) (by simp) (by simp)] at hmode
+                              (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
                           have hjr2 : j - blk.length - 1 < r2.length := by
                             simp only [List.length_append, List.length_cons]
                               at hj
@@ -2948,7 +3347,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                         | j + 1 =>
                             rw [List.take_succ_cons, List.foldl_cons,
                               rpnCondStep_fallback _ _ (by simp) (by simp)
-                                (by simp) (by simp) (by simp)] at hmode
+                                (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
                             simp only [List.length_cons] at hj hts
                             rcases ih rest' (by omega) j (by omega) hmode with
                               ⟨j'', hj'', hm'', hd''⟩ | hun
@@ -2980,7 +3379,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                           | j + 1 =>
                               rw [List.take_succ_cons, List.foldl_cons,
                                 rpnCondStep_fallback _ _ (by simp) (by simp)
-                                  (by simp) (by simp) (by simp)] at hmode
+                                  (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
                               simp only [List.length_cons] at hj hts
                               rcases ih rest' (by omega) j (by omega) hmode with
                                 ⟨j'', hj'', hm'', hd''⟩ | hun
@@ -3091,7 +3490,8 @@ contracts to `[0, 0]` / `[6, 0]`, which are `Unreadable`). -/
 def rpnTradeRuns (st : ℕ) : List ℕ → ℕ
   | [] => 0
   | t :: ts =>
-      (if (rcMode st = 4 ∨ rcMode st = 7) ∧ rcMode (rpnCondStep st t) = 0
+      (if (rcMode st = 4 ∨ rcMode st = 7 ∨ rcMode st = 9) ∧
+          rcMode (rpnCondStep st t) = 0
         then 1 else 0) + rpnTradeRuns (rpnCondStep st t) ts
 
 /-- Completed trades along a contracted stream, from a given freeze mode. -/
@@ -3119,7 +3519,8 @@ lemma tokTradeRuns_append (m : ℕ) (xs ys : List ℕ) :
 lemma rpnTradeRuns_eq_zero (st : ℕ) (ts : List ℕ)
     (h : ∀ k < ts.length,
       ¬((rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
-          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7 ∨
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 9) ∧
         rcMode (List.foldl rpnCondStep st (ts.take (k + 1))) = 0)) :
     rpnTradeRuns st ts = 0 := by
   induction ts generalizing st with
@@ -3163,7 +3564,8 @@ lemma rpnTradeRuns_trade_block {b : List ℕ} {φ : Sentence}
         rw [List.take_append_of_le_length (by omega)] at this
         omega
     have hmodeInit : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 := by
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 9 := by
       have := hinv init.length (by rw [hlen]; omega)
       rwa [List.take_append_of_le_length le_rfl, List.take_length] at this
     have hstepLast :
@@ -3235,7 +3637,7 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                         show rpnCondStep (rcPack 2 0 blk.length) d = rcPack 0 0 0 from
                           rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
                             (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]),
+                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]),
                         if_neg (by simp [rcMode, rcPack])]
                       omega
                     rw [unRpn_price_chunk_block hblk d r2, hcount]
@@ -3313,6 +3715,8 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                         show rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
                             rcPack 0 0 0 from
                           rpnCondStep_fallback _ _
+                            (by split <;> simp [rcMode, rcPack])
+                            (by split <;> simp [rcMode, rcPack])
                             (by split <;> simp [rcMode, rcPack])
                             (by split <;> simp [rcMode, rcPack])
                             (by split <;> simp [rcMode, rcPack])
@@ -3413,7 +3817,8 @@ def rpnDepthNext (st st' t d : ℕ) : ℕ :=
   else if rcMode st = 2 then d + 1
   else if rcMode st = 3 then d + 1
   else if rcMode st = 5 then d + 1
-  else if (rcMode st = 4 ∨ rcMode st = 7) ∧ rcMode st' = 0 then d.pred
+  else if (rcMode st = 4 ∨ rcMode st = 7 ∨ rcMode st = 9) ∧ rcMode st' = 0
+    then d.pred
   else d
 
 /-- Symbol-level depth along a stream, from a control state and a starting depth. -/
@@ -3446,10 +3851,13 @@ lemma rpnDepthRuns_eq_of_run (st : ℕ) (ts : List ℕ) (d : ℕ)
     (h : ∀ k < ts.length,
       (rcMode (List.foldl rpnCondStep st (ts.take k)) = 1 ∨
         rcMode (List.foldl rpnCondStep st (ts.take k)) = 6 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 8 ∨
         rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
-        rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 7 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 9) ∧
       ¬((rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
-          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 7 ∨
+          rcMode (List.foldl rpnCondStep st (ts.take k)) = 9) ∧
         rcMode (List.foldl rpnCondStep st (ts.take (k + 1))) = 0)) :
     rpnDepthRuns st ts d = d := by
   induction ts generalizing st d with
@@ -3462,7 +3870,7 @@ lemma rpnDepthRuns_eq_of_run (st : ℕ) (ts : List ℕ) (d : ℕ)
         show rpnDepthNext st (rpnCondStep st t) t d = d by
           rw [rpnDepthNext]
           rcases h0 with ⟨hm, hex⟩
-          rcases hm with hm | hm | hm | hm <;>
+          rcases hm with hm | hm | hm | hm | hm | hm <;>
             simp only [hm] <;> norm_num <;> tauto,
         ih (rpnCondStep st t) d (fun k hk => by
           have := h (k + 1) (by simp only [List.length_cons]; omega)
@@ -3503,7 +3911,8 @@ lemma rpnDepthRuns_trade_block {b : List ℕ} {φ : Sentence}
         · omega
         · rintro ⟨-, h0⟩; omega
     have hmodeInit : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 := by
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 9 := by
       have := hinv init.length (by rw [hlen]; omega)
       rwa [List.take_append_of_le_length le_rfl, List.take_length] at this
     have hstepLast :
@@ -3572,7 +3981,7 @@ theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                         rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
                         (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
                         (0 :: (blk ++ d0 :: r2)) =
                         List.foldl rpnCondStep (rcPack 0 0 0) r2 := by
@@ -3689,6 +4098,8 @@ theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                         rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
                           rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
@@ -3856,7 +4267,8 @@ lemma rpnDepthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   obtain ⟨_, hb3⟩ := polyFueled_ifEq htok 3 hpred hb4
   obtain ⟨_, hbase⟩ := polyFueled_ifEq htok 2 hpred hb3
   obtain ⟨_, hexit⟩ := polyFueled_ifEq hmz1 0 hpred hprev
-  obtain ⟨_, hA7⟩ := polyFueled_ifEq hmz 7 hexit hprev
+  obtain ⟨_, hA9⟩ := polyFueled_ifEq hmz 9 hexit hprev
+  obtain ⟨_, hA7⟩ := polyFueled_ifEq hmz 7 hexit hA9
   obtain ⟨_, hA4⟩ := polyFueled_ifEq hmz 4 hexit hA7
   obtain ⟨_, hA5⟩ := polyFueled_ifEq hmz 5 hsucc hA4
   obtain ⟨_, hA3⟩ := polyFueled_ifEq hmz 3 hsucc hA5
@@ -3920,9 +4332,15 @@ lemma rpnDepthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
             by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
             · rw [if_pos hm7]
               by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
-              · rw [if_pos hnext, if_pos ⟨Or.inr hm7, hnext⟩]
+              · rw [if_pos hnext, if_pos ⟨Or.inr (Or.inl hm7), hnext⟩]
               · rw [if_neg hnext, if_neg (by tauto)]
-            · rw [if_neg hm7, if_neg (by tauto)]
+            · rw [if_neg hm7]
+              by_cases hm9 : rcMode (rpnCondControlAt tf n j) = 9
+              · rw [if_pos hm9]
+                by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+                · rw [if_pos hnext, if_pos ⟨Or.inr (Or.inr hm9), hnext⟩]
+                · rw [if_neg hnext, if_neg (by tauto)]
+              · rw [if_neg hm9, if_neg (by tauto)]
 
 #print axioms rpnStructurallyAccepts_agree
 #print axioms rpnDepthScan
@@ -4131,7 +4549,7 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
 def rpnFrameEmitAt (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
     (st : ℕ) (buf : List ℕ) (t : ℕ) : List ℕ :=
   if rcMode st = 0 ∧ t = 6 then []
-  else if rcMode st = 4 ∨ rcMode st = 7 then
+  else if rcMode st = 4 ∨ rcMode st = 7 ∨ rcMode st = 9 then
     (if rcMode (rpnCondStep st t) = 0 then
       rpnFrameEmit second blk ε day bc ibc (buf ++ [t]) else [])
   else [t]
@@ -4189,7 +4607,8 @@ lemma rpnFrameRun_copy_of_modes (second : Bool) (blk : List ℕ) (ε : ℚ)
     (h : ∀ k < ts.length,
       rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 0 ∧
       rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 4 ∧
-      rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 7) :
+      rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 7 ∧
+      rcMode (List.foldl rpnCondStep st (ts.take k)) ≠ 9) :
     rpnFrameRun second blk ε day bc ibc (st, buf) ts =
       ((List.foldl rpnCondStep st ts, rpnCondBufFold st buf ts), ts) := by
   induction ts generalizing st buf with
@@ -4206,12 +4625,13 @@ lemma rpnFrameRun_copy_of_modes (second : Bool) (blk : List ℕ) (ε : ℚ)
       simp [rpnCondBufFold]
 
 /-- Inside a trade run that does not exit, the recorded run length grows by one. -/
-lemma rcLen_trade_run_step (st t : ℕ) (hm : rcMode st = 4 ∨ rcMode st = 7)
+lemma rcLen_trade_run_step (st t : ℕ)
+    (hm : rcMode st = 4 ∨ rcMode st = 7 ∨ rcMode st = 9)
     (hne : rcMode (rpnCondStep st t) ≠ 0) :
     rcLen (rpnCondStep st t) = rcLen st + 1 := by
   rw [rcMode_step_eq] at hne
   rw [rcLen_step_eq]
-  rcases hm with hm | hm <;>
+  rcases hm with hm | hm | hm <;>
     rw [hm] at hne ⊢ <;>
     rw [rcLenF] <;> rw [rcModeF] at hne <;>
     norm_num at hne ⊢ <;>
@@ -4225,7 +4645,8 @@ lemma rpnFrameRun_silent (second : Bool) (blk : List ℕ) (ε : ℚ)
     (day bc ibc : ℕ) (st : ℕ) (buf : List ℕ) (ts : List ℕ)
     (h : ∀ k < ts.length,
       (rcMode (List.foldl rpnCondStep st (ts.take k)) = 4 ∨
-        rcMode (List.foldl rpnCondStep st (ts.take k)) = 7) ∧
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 7 ∨
+        rcMode (List.foldl rpnCondStep st (ts.take k)) = 9) ∧
       rcMode (List.foldl rpnCondStep st (ts.take (k + 1))) ≠ 0) :
     rpnFrameRun second blk ε day bc ibc (st, buf) ts =
       ((List.foldl rpnCondStep st ts, buf ++ ts), []) := by
@@ -4281,7 +4702,8 @@ lemma rpnFrameRun_trade_block (second : Bool) (blkψ : List ℕ) (ε : ℚ)
           ((init ++ [last]).take init.length) := by
       rw [List.take_append_of_le_length le_rfl, List.take_length]
     have hmodeInit : rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 4 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 := by
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 7 ∨
+        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) init) = 9 := by
       rw [hinit]
       exact hinv init.length (by rw [hlen]; omega)
     have hstepLast :
@@ -4296,7 +4718,7 @@ lemma rpnFrameRun_trade_block (second : Bool) (blkψ : List ℕ) (ε : ℚ)
     have hemit : rpnFrameEmitAt second blkψ ε day bc ibc
         (List.foldl rpnCondStep (rcPack 4 1 0) init) ([] ++ init) last =
         rpnFrameEmit second blkψ ε day bc ibc (init ++ [last]) := by
-      rw [rpnFrameEmitAt, if_neg (by rcases hmodeInit with h | h <;> simp [h]),
+      rw [rpnFrameEmitAt, if_neg (by rcases hmodeInit with h | h | h <;> simp [h]),
         if_pos hmodeInit, hstepLast]
       simp
     rw [hemit]
@@ -4308,7 +4730,8 @@ def rpnFrameOutput (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ
     (ts : List ℕ) : List ℕ :=
   (rpnFrameRun second blk ε day bc ibc (rcPack 0 0 0, []) ts).2 ++
     (if rcMode (rpnFrameRun second blk ε day bc ibc (rcPack 0 0 0, []) ts).1.1 = 4 ∨
-        rcMode (rpnFrameRun second blk ε day bc ibc (rcPack 0 0 0, []) ts).1.1 = 7
+        rcMode (rpnFrameRun second blk ε day bc ibc (rcPack 0 0 0, []) ts).1.1 = 7 ∨
+        rcMode (rpnFrameRun second blk ε day bc ibc (rcPack 0 0 0, []) ts).1.1 = 9
       then [6] else [])
 
 /-- The frame run tracks the price pass's control state and buffer. -/
@@ -4400,12 +4823,14 @@ lemma priceWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
     (hmods : ∀ i, i ≤ j →
       rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take i)) ≠ 2) :
     (rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) = 1 ∨
-      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) = 6) ∧
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) = 6 ∨
+      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) = 8) ∧
     1 ≤ rcCnt (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) ∧
     rcLen (List.foldl rpnCondStep (rcPack 1 1 0) (v.take j)) = j :=
-  runWalk_inside (b := 6) (exit := fun r' => rcPack 2 0 r')
+  runWalk_inside (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
     (fun c r t => rpnCondStep_price c r t)
     (fun c r t => rpnCondStep_priceEsc c r t)
+    (fun c r t => rpnCondStep_priceStr c r t)
     2 (fun r' => rcMode_pack 2 0 r') v j hj hmods
 
 /-! ### Splitting the contraction at a chunk boundary
@@ -4480,7 +4905,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                         rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
                         (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
                     have hbase2 : List.foldl rpnCondStep (rcPack 0 0 0) r2 =
                         rcPack 0 0 0 := by
                       rw [List.foldl_cons, rpnCondStep_base_price,
@@ -4650,6 +5075,8 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                         rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
                           rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _
+                        (by split <;> simp [rcMode, rcPack])
+                        (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
                         (by split <;> simp [rcMode, rcPack])
@@ -4872,20 +5299,22 @@ lemma foldl_rpnCondStep_eq_base_of_mode_zero (ts : List ℕ)
 
 -- `split_ifs` over `rcModeF`'s two-level branch cascade generates enough goals to
 -- exceed the default heartbeat budget.
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 4000000 in
 /-- A price-run mode step never returns to base and never enters a trade run. -/
-lemma rcModeF_price_ne {m c t : ℕ} (h : m = 1 ∨ m = 6) :
-    rcModeF m c t ≠ 0 ∧ rcModeF m c t ≠ 4 ∧ rcModeF m c t ≠ 7 := by
-  rcases h with rfl | rfl <;> rw [rcModeF] <;> split_ifs <;>
+lemma rcModeF_price_ne {m c t : ℕ} (h : m = 1 ∨ m = 6 ∨ m = 8) :
+    rcModeF m c t ≠ 0 ∧ rcModeF m c t ≠ 4 ∧ rcModeF m c t ≠ 7 ∧
+      rcModeF m c t ≠ 9 := by
+  rcases h with rfl | rfl | rfl <;> rw [rcModeF] <;> split_ifs <;>
     first
       | exact absurd ‹False› not_false
-      | refine ⟨by omega, by omega, by omega⟩
+      | refine ⟨by omega, by omega, by omega, by omega⟩
 
 /-- Inside a price run the automaton stays in the run or reaches the day slot; it never
 returns to base and never enters a trade run. -/
-lemma rcMode_step_of_price_run {st t : ℕ} (h : rcMode st = 1 ∨ rcMode st = 6) :
+lemma rcMode_step_of_price_run {st t : ℕ}
+    (h : rcMode st = 1 ∨ rcMode st = 6 ∨ rcMode st = 8) :
     rcMode (rpnCondStep st t) ≠ 0 ∧ rcMode (rpnCondStep st t) ≠ 4 ∧
-      rcMode (rpnCondStep st t) ≠ 7 := by
+      rcMode (rpnCondStep st t) ≠ 7 ∧ rcMode (rpnCondStep st t) ≠ 9 := by
   rw [rcMode_step_eq]
   exact rcModeF_price_ne h
 
@@ -4973,7 +5402,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                     have hstD : rpnCondStep (rcPack 2 0 blk.length) d =
                         rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                        (by simp) (by simp)
+                        (by simp) (by simp) (by simp) (by simp)
                     have hCeq : (0 : ℕ) :: (blk ++ d :: r2) =
                         (0 :: (blk ++ [d])) ++ r2 := by simp
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
@@ -5099,7 +5528,9 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
                         (rest.take k)) ≠ 4 ∧
                       rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
-                        (rest.take k)) ≠ 7 := by
+                        (rest.take k)) ≠ 7 ∧
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
+                        (rest.take k)) ≠ 9 := by
                     intro k hk
                     have hmods : ∀ i, i ≤ k →
                         rcMode (List.foldl rpnCondStep (rcPack 1 1 0)
@@ -5112,7 +5543,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                   have hmodeEnd :
                       rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 0 ∧
                       rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 4 ∧
-                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 7 := by
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 7 ∧
+                      rcMode (List.foldl rpnCondStep (rcPack 1 1 0) rest) ≠ 9 := by
                     rcases List.eq_nil_or_concat' rest with hnil | ⟨v, x, hvx⟩
                     · rw [hnil]; simp
                     · have hlen : rest.length = v.length + 1 := by
@@ -5138,7 +5570,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       0 :: rest := by
                     rw [rpnFrameOutput, rpnFrameRun_cons, rpnCondStep_base_price,
                       rpnCondBuf_base, hcopy]
-                    simp [rpnFrameEmitAt, hmodeEnd.2.1, hmodeEnd.2.2]
+                    simp [rpnFrameEmitAt, hmodeEnd.2.1, hmodeEnd.2.2.1,
+                      hmodeEnd.2.2.2]
                   refine ⟨?_, fun hbase => ?_⟩
                   · rw [hout, hun0, conditioningFrameTokenOutput_price_pair]
                     exact Or.inl rfl
@@ -5307,7 +5740,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                             (rest.take (k₀ - 1)) := by rw [hu'eq]
                       have hmodeU' :
                           rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 4 ∨
-                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 7 := by
+                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 7 ∨
+                          rcMode (List.foldl rpnCondStep (rcPack 4 1 0) u') = 9 := by
                         rw [hstateU']
                         exact (hinside (k₀ - 1) (by omega)).1
                       have hstepLast :
@@ -5322,7 +5756,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                           last =
                         rpnFrameEmit second blkψ ε day bc ibc (rest.take k₀) := by
                         rw [rpnFrameEmitAt,
-                          if_neg (by rcases hmodeU' with h | h <;> simp [h]),
+                          if_neg (by rcases hmodeU' with h | h | h <;> simp [h]),
                           if_pos hmodeU', hstepLast, if_pos hk₀mode, hcat]
                         simp
                       have hrun2 : (rpnFrameRun second blkψ ε day bc ibc
@@ -5362,7 +5796,9 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         (rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
                           (rest.take k)) = 4 ∨
                         rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
-                          (rest.take k)) = 7) ∧
+                          (rest.take k)) = 7 ∨
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
+                          (rest.take k)) = 9) ∧
                         rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
                           (rest.take (k + 1))) ≠ 0 := by
                       intro k hk
@@ -5376,7 +5812,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       (rcPack 4 1 0) [] rest hmodes
                     have hmodeEnd :
                         rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 4 ∨
-                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 7 := by
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 7 ∨
+                        rcMode (List.foldl rpnCondStep (rcPack 4 1 0) rest) = 9 := by
                       have hmods : ∀ i, i ≤ rest.length →
                           rcMode (List.foldl rpnCondStep (rcPack 4 1 0)
                             (rest.take i)) ≠ 0 := fun i hi => hex i hi
@@ -5421,7 +5858,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                 | c :: rest' =>
                     have hst2 : rpnCondStep (rcPack 3 0 0) c = rcPack 0 0 0 :=
                       rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                        (by simp) (by simp)
+                        (by simp) (by simp) (by simp) (by simp)
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0) [1, c] =
                         rcPack 0 0 0 := by
                       rw [List.foldl_cons, rpnCondStep_base_one, List.foldl_cons,
@@ -5486,7 +5923,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                   | c :: rest' =>
                       have hst2 : rpnCondStep (rcPack 5 0 0) c = rcPack 0 0 0 :=
                         rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                          (by simp) (by simp)
+                          (by simp) (by simp) (by simp) (by simp)
                       have hstate : List.foldl rpnCondStep (rcPack 0 0 0) [7, c] =
                           rcPack 0 0 0 := by
                         rw [List.foldl_cons, rpnCondStep_base_seven,
@@ -5671,7 +6108,8 @@ lemma rpnFrameSegment_eq (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (
     rpnFrameSegment tf second blkψ ε day bc ibc (Nat.pair n j) =
       if rcMode (rpnCondControlAt tf n j) = 0 ∧ tf (Nat.pair n j) = 6 then []
       else if rcMode (rpnCondControlAt tf n j) = 4 ∨
-          rcMode (rpnCondControlAt tf n j) = 7 then
+          rcMode (rpnCondControlAt tf n j) = 7 ∨
+          rcMode (rpnCondControlAt tf n j) = 9 then
         (if rcMode (rpnCondControlAt tf n (j + 1)) = 0 then
           rpnFrameEmit second blkψ ε day bc ibc
             (rpnCondWindow tf n j ++ [tf (Nat.pair n j)])
@@ -5867,7 +6305,9 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
       (fun z => by simp only [Nat.unpair_pair])⟩
   obtain ⟨_, heq4⟩ := heqTest 4 hmodeZ
   obtain ⟨_, heq7⟩ := heqTest 7 hmodeZ
-  have hseg7 := hExit.ifZero hcopy heq7
+  obtain ⟨_, heq9⟩ := heqTest 9 hmodeZ
+  have hseg9 := hExit.ifZero hcopy heq9
+  have hseg7 := hExit.ifZero hseg9 heq7
   have hseg4 := hExit.ifZero hseg7 heq4
   -- The withheld base-mode trade tag.
   obtain ⟨ctc, htagclamp⟩ := hbig.clampVal (PolyFueled.const 8)
@@ -5881,9 +6321,11 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
   have hmodeEnd := hmodeZ.comp (PolyFueled.id.pair hcnt)
   obtain ⟨_, heq4End⟩ := heqTest 4 hmodeEnd
   obtain ⟨_, heq7End⟩ := heqTest 7 hmodeEnd
+  obtain ⟨_, heq9End⟩ := heqTest 9 hmodeEnd
   have hblock6 : PolySegStream (fun _ : ℕ => tokenBlock 6) :=
     PolySegStream.block (PolyFueled.const 6)
-  have hflush := hblock6.ifZero (hblock6.ifZero hempty heq7End) heq4End
+  have hflush := hblock6.ifZero
+    (hblock6.ifZero (hblock6.ifZero hempty heq9End) heq7End) heq4End
   refine (hassembled.append hflush).of_eq fun n => ?_
   simp only [Nat.unpair_pair]
   have hget : ∀ i, tf (Nat.pair n i) = (undigitize (src n)).getD i 0 := fun i => by
@@ -5936,13 +6378,20 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
           simp [digitize]
       · rw [if_neg (by omega)]
         by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
-        · rw [if_pos (by omega), if_pos (Or.inr hm7)]
+        · rw [if_pos (by omega), if_pos (Or.inr (Or.inl hm7))]
           by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
           · rw [if_pos hnext, if_pos hnext]
           · rw [if_neg hnext, if_neg hnext]
             simp [digitize]
-        · rw [if_neg (by omega), if_neg (by tauto)]
-          simp [digitize]
+        · rw [if_neg (by omega)]
+          by_cases hm9 : rcMode (rpnCondControlAt tf n j) = 9
+          · rw [if_pos (by omega), if_pos (Or.inr (Or.inr hm9))]
+            by_cases hnext : rcMode (rpnCondControlAt tf n (j + 1)) = 0
+            · rw [if_pos hnext, if_pos hnext]
+            · rw [if_neg hnext, if_neg hnext]
+              simp [digitize]
+          · rw [if_neg (by omega), if_neg (by tauto)]
+            simp [digitize]
   · rw [show (Nat.unpair (rpnCondControlAt tf n (undigitize (src n)).length)).1 =
         rcMode (rpnCondControlAt tf n (undigitize (src n)).length) from rfl]
     by_cases hm4 : rcMode (rpnCondControlAt tf n (undigitize (src n)).length) = 4
@@ -5950,10 +6399,15 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
       simp [digitize]
     · rw [if_neg (by omega)]
       by_cases hm7 : rcMode (rpnCondControlAt tf n (undigitize (src n)).length) = 7
-      · rw [if_pos (by omega), if_pos (Or.inr hm7)]
+      · rw [if_pos (by omega), if_pos (Or.inr (Or.inl hm7))]
         simp [digitize]
-      · rw [if_neg (by omega), if_neg (by tauto)]
-        simp [digitize]
+      · rw [if_neg (by omega)]
+        by_cases hm9 : rcMode
+            (rpnCondControlAt tf n (undigitize (src n)).length) = 9
+        · rw [if_pos (by omega), if_pos (Or.inr (Or.inr hm9))]
+          simp [digitize]
+        · rw [if_neg (by omega), if_neg (by tauto)]
+          simp [digitize]
 
 #print axioms rpnFrameOutput_polySegStream
 
