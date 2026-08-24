@@ -3,7 +3,14 @@
 _Scoping pass, 2026-08-24. No strength claim, coverage tier, paper label, or AxiomAudit
 endpoint changes in this PR; see §11._
 
-> **Part III (below, same date) is the productionization pass.** The fork is stood up and
+> **Part IV (below, same date) closes Stage-3 coverage down to the enumeration index.**
+> `TM.exists_singleTape_computesInTime` — Part II's riskiest remaining theorem — landed
+> upstream at 195 lines, confirming it was an exposure problem rather than new simulation
+> mathematics. The chain from `f ∈ FP` to a `TMDesc` computing `f` under an explicit
+> `a·(n+1)^k + a` clock is now proved end to end. Read §IV.0 for the chain and §IV.5 for the
+> exact remaining plan. §III.10's table is superseded by §IV.6.
+>
+> **Part III is the productionization pass.** The fork is stood up and
 > pinned, `DescExec` is a CI-built module, output extraction is closed, and `machineTokens`
 > with `Primrec₂ machineTokens` is landed. Read §III.0 for the layered architecture as
 > built, and §III.2 for the finding that FAF's import surface is 5 files / ~2.2k lines
@@ -1748,3 +1755,214 @@ Still `TM.exists_singleTape_computesInTime` (§III.9), and now unambiguously so:
 that stood between the spike and a working evaluator is done, and coverage is the only thing
 left that is not routine. It is also the only remaining item that must be written against a
 5k-line upstream file rather than in FAF.
+
+---
+
+# Part IV — Stage-3 coverage: the `FP → TMDesc` chain (2026-08-24)
+
+_Fourth pass. Scope: checkpoint and fully validate Part III's tranche, then close the
+coverage bottleneck as far as a coherent checkpoint allows. Stage 2 and general `thm:ifp`
+untouched, per Part I §10–§11._
+
+## IV.0 What this pass settles
+
+Part II named `TM.exists_singleTape_computesInTime` the riskiest remaining theorem and
+guessed 400–800 lines. **The hypothesis that it was an exposure problem rather than new
+mathematics was correct, and it came in at 195 lines.**
+
+The coverage chain is now proved end to end, from a genuine `FP` function down to something
+an enumeration index can carry:
+
+```
+  f ∈ Complexity.FP
+        │  mem_FP_iff_computesInTime_polynomial          (upstream, pre-existing)
+        ▼
+  some TM k computes f within p.eval, at every length
+        │  TM.exists_singleTape_computesInTime           ← fork ac6b509, NEW
+        ▼
+  some TM 1 computes f within singleTapeSimTime k p.eval
+        │  TM.exists_wf_desc_computesInTime              ← fork af8ed55, NEW
+        ▼
+  some well-formed TMDesc computes f within q.eval        ← exists_desc_computesInTime_polynomial
+        │  exists_clock_of_polynomial                    ← FAF bce19a4, NEW
+        ▼
+  … within a * (n + 1) ^ k + a                            ← exists_desc_computesInTime_clock
+        │
+        ▼
+  an index (d, a, k) that machineTokens can run
+```
+
+Every arrow is proved, `sorry`-free, with axiom surface exactly
+`[propext, Classical.choice, Quot.sound]`. **The UTM is not on this path**, and neither is
+`ClockConstructible`.
+
+## IV.1 The single-tape function theorem
+
+```lean
+theorem TM.exists_singleTape_computesInTime {k : ℕ} (M : TM k)
+    {f : List Bool → List Bool} {T : ℕ → ℕ} (h : M.ComputesInTime f T) :
+    ∃ M₁ : TM 1, M₁.ComputesInTime f (NTM.singleTapeSimTime k T)
+```
+
+Identical time bound to the decider version, `16 * (k + 1) * (T n + n + 1) ^ 2`.
+
+**It is a thin wrapper on a strong invariant, not new simulation mathematics.**
+`NTM.SingleTape.Corr.outputEq` is `c1.output = c.output` — *full output-tape equality* — so
+the simulation already transported an arbitrary finite output word; only the public
+theorems projected it onto the verdict cell. Three private lemmas were cell-1 restrictions
+of whole-tape facts, and the whole-tape forms are in one case *simpler*:
+
+| cell-1 (existing) | whole-tape (added) | why the general form is no harder |
+| --- | --- | --- |
+| `writeAndMove_readBack_cell1` | `writeAndMove_readBack_cells` | the write-back writes what is already there, so it is a no-op on *every* cell; at cell 0 `Tape.write` is already structurally a no-op, so the case split replaces the cell-1 case analysis |
+| `haltCorr_cell1` | `haltCorr_cells` | `Corr.outputEq` was always the whole tape |
+| `halts_rev_cell1` | `halts_rev_cells` | same proof, final step swapped |
+
+Transport uses the pre-existing `Tape.hasOutput_congr`, which depends only on `cells`.
+
+Two things that made it cheaper than feared, both worth recording:
+
+* **No `RejectsWithZero` counterpart is needed.** The decider conversion `toTM_decidesInTime`
+  requires that output discipline because `NTM.DecidesInTime` encodes rejection as
+  *non*-acceptance while `TM.DecidesInTime` demands an exact `0`. `ComputesInTime` already
+  pins the whole output tape, so the side condition simply does not arise.
+* **The `k = 0` branch is free.** `pad0_trace_init` already states full output equality, not
+  a verdict-cell fact.
+
+195 added lines, nothing existing modified. Upstream's `scripts/lint_style.py` passes.
+
+## IV.2 The description bridge
+
+```lean
+theorem Complexity.exists_desc_computesInTime_polynomial {f} (hf : f ∈ FP) :
+    ∃ (d : TMDesc) (q : Polynomial ℕ), d.WF ∧ d.toTM.ComputesInTime f q.eval
+```
+
+`FP` quantifies over machines, and a `TM k` is not finite data — bundled state `Type`,
+tapes as functions `ℕ → Γ`. `TMDesc` *is* finite data, and is what an enumeration, a Gödel
+coding, or `DescExec`'s interpreter can range over. The bridge assembles
+`mem_FP_iff_computesInTime_polynomial` (whose bound holds at *every* input length, which is
+what an indexed clock needs — an `=O` witness would not do), the single-tape theorem, and a
+new `TM.descOfTM_computesInTime`.
+
+That last one is genuinely trivial: `descCfg` only relabels the state, carrying input, work
+and output tapes across verbatim, so it is the decider proof with two verdict-cell clauses
+replaced by one `HasOutput`.
+
+## IV.3 The clock normal form
+
+The one arithmetic gap, closed FAF-side because the normal form is FAF's convention:
+
+```lean
+lemma exists_clock_of_polynomial (q : Polynomial ℕ) :
+    ∃ a k : ℕ, ∀ n, q.eval n ≤ a * (n + 1) ^ k + a
+
+lemma exists_desc_computesInTime_clock {f} (hf : f ∈ Complexity.FP) :
+    ∃ (d : TMDesc) (a k : ℕ) (T : ℕ → ℕ),
+      d.toTM.ComputesInTime f T ∧ ∀ n, T n ≤ a * (n + 1) ^ k + a
+```
+
+Take `a` the coefficient sum and `k` the degree; domination holds at every point, so no
+eventually-quantifier enters. **Coverage is now a matter of choosing an index**, not of
+proving anything further about machines.
+
+## IV.4 Import surface
+
+Coverage genuinely needs `FP`, so FAF's slice of the fork grows:
+
+| | files | LOC |
+| --- | ---: | ---: |
+| Part III (`…UTM.Internal.Interp` only) | 5 | 2,180 |
+| Part IV (`+ Classes.P.Description`) | 20 | 11,833 |
+| `UTM.Universal`, for comparison | 44 | 26,461 |
+| the whole library | 987 | 329,048 |
+
+`DescExec` remains the only module in FAF naming a `Complexity.*` declaration.
+
+## IV.5 What remains for trader-level coverage — exact plan
+
+Four steps, all definitional plumbing over facts now proved. No further machine theory.
+
+**1. The paper-facing class.** Derived from the existing token path, not invented:
+
+```lean
+def MachineEfficientTrader (Tr : Trader) : Prop :=
+  ∃ (d : TMDesc) (a k : ℕ) (T : ℕ → ℕ),
+    d.toTM.ComputesInTime (fun x => …) T ∧ (∀ n, T n ≤ a * (n + 1) ^ k + a) ∧
+    ∀ n, Tr.strat n = strategyOfTokens n (unRpn (undigitize (bitsToDigits …)))
+```
+
+The day is unary (`unaryDay`), matching the paper; the decoder is the existing
+`strategyOfTokens ∘ unRpn ∘ undigitize`, not a second one; malformed output keeps the
+established zero-strategy semantics. Keep this *semantic* class separate from enumeration
+membership until coverage is proved — they are proved equal, not defined equal.
+
+**2. The enumeration.** `enumeratedMachineTrader i : Trader` with
+`strat n := strategyOfTokens n (unRpn (undigitize (machineTokens i n)))`, mirroring
+`TraderProgram.trader` exactly.
+
+**3. Soundness.** `MachineEfficientTrader (enumeratedMachineTrader i)` for every `i` —
+witnessed by `machineTokens_steps_le` and `length_machineTokens_le`, which already hold at
+*every* index with no clock certificate verified. Truncation is the argument.
+
+**4. Coverage.** `MachineEfficientTrader Tr → ∃ i, enumeratedMachineTrader i = Tr`. Take
+`(d, a, k)` from the class witness, form `i := (MachineTraderProgram.index ⟨d, a, k⟩)`, and
+show `machineTokens i n` reproduces the trader's token stream. The one lemma still needed is
+
+```lean
+-- evalHalted succeeds when the clock dominates the machine's actual running time
+lemma evalHalted_isSome_of_le {d : TMDesc} {T : ℕ → ℕ} {f} (h : d.toTM.ComputesInTime f T)
+    (x : List Bool) (t : ℕ) (ht : T x.length ≤ t) :
+    ∃ c, evalHalted d t x = some c ∧ codedOutput c = f x
+```
+
+i.e. the *converse* of `runUntilHalt_spec` — the budgeted run finds the halt when the budget
+is big enough. This is an induction mirroring `runUntilHalt_spec`'s, using
+`TM.step`-determinism to line up the executable run with `reachesIn`. **Estimated 80–150
+lines, and it is the only remaining non-plumbing item.** Then `Trader.ext` over strategy
+outputs gives trader equality.
+
+**5. TradingFirm.** `trading_firm_dominance_of_covered` is unchanged; the machine-class
+theorem is its composition with step 4, exactly as `trading_firm_dominance` composes it with
+`exists_enumeratedTrader_eq` today.
+
+## IV.6 Revised Stage-3 status
+
+| tranche | status | LOC | passes |
+| --- | --- | ---: | ---: |
+| complexity theory / universality | UPSTREAM, DONE | 0 | 0 |
+| 4.31 port, function-output UTM wrapper | **DONE** (fork) | 0 | 0 |
+| production `DescExec` + CI target | **DONE** | — | 0 |
+| output extraction, `machineTokens`, `Primrec₂` | **DONE** | — | 0 |
+| polynomial soundness (step + size) | **DONE** | — | 0 |
+| **single-tape reduction for functions** | **DONE** (fork, 195 lines) | 0 | 0 |
+| **`FP → TMDesc` under a clock** | **DONE** (fork + FAF) | 0 | 0 |
+| `evalHalted` converse | remaining | 80–150 | 0.5–1 |
+| trader class + enumeration + soundness | remaining | 200–350 | 1 |
+| coverage + TradingFirm specialization | remaining | 150–250 | 0.5–1 |
+| `LIACompiler` swap + property touch-ups | remaining | 200–400 | 1–2 |
+| **Stage-3 remaining** | | **~0.6–1.2k** | **3–5** |
+
+Part III projected 1.1–2.1k remaining over 5–9 passes; the single-tape theorem landing at
+195 lines rather than 400–800 accounts for most of the reduction. Overall project remains
+**~4–7k**, still dominated by Stage 2 (`PolyFueled → FP`), untouched by every pass so far.
+
+## IV.7 Riskiest remaining theorem
+
+No longer the single-tape reduction — that is done. The remaining risk is the
+`evalHalted` converse of §IV.5 step 4, and it is *low*: it is an induction over the same
+frozen-pair iteration `runUntilHalt_spec` already handles, in FAF, against a deterministic
+machine, with no upstream file involved. Nothing left in Stage 3 requires touching a 5k-line
+upstream proof.
+
+## IV.8 A build-infrastructure note for the next session
+
+Verifying fork changes needs care in a git worktree, because Lake owns `.lake/packages` and
+hand-managing it fights the tool. The pattern that works:
+
+* verify fork changes in a **standalone fork checkout** whose `lakefile.toml` has a `path`
+  require to an already-built Mathlib, with the fork's own `lake-manifest.json` deleted so
+  the path require is not overridden;
+* let Lake own FAF's `.lake` entirely — `lake update complexitylib` after re-pinning, and
+  never interrupt it mid-clone;
+* never `pgrep -f` for a pattern that appears in the watcher's own command line.
