@@ -3,13 +3,34 @@ import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnSplice
 
 /-!
-# Structured Foundation-arithmetic RPN codec
+# Structured Foundation-arithmetic RPN codec and the literal paper LUV frontend
 
 The public leaf framing is
-`[1, 0, polarity] ++ replicate payload.length 1 ++ [0] ++ payload`.
-The formerly invalid sentence code `0` makes the prefix backwards compatible. Unary
-payload length keeps every framing token bounded; the payload is a prefix tree using the
-shared `structuredArithmeticArity`. Foundation Godel codes are built only by contraction.
+
+  `[1, 0, polarity] ++ replicate payload.length 1 ++ [0] ++ payload ++ [19]`.
+
+The formerly invalid sentence code `0` makes the prefix backwards compatible, so the
+extended grammar parses every legacy stream unchanged (`parseRpn_of_legacy`).  The unary
+payload length keeps every framing token bounded, the payload is a prefix tree over the
+arithmetic alphabet `0..18`, and the reserved terminator `19` — which the alphabet never
+contains — closes the block, so the syntax-preserving scanners of the strategy grammar
+recognize the whole leaf as one atom without replaying the Foundation decoder.  Godel
+codes are built by parser contraction and never emitted as tokens.
+
+Contents:
+
+* the encoders `encodeArithmeticTermSymbols` / `encodeArithmeticFormulaSymbols` over the
+  complete Foundation arithmetic syntax, with exact suffix-preserving round trips;
+* the leaf and decomposition blocks `structuredPaperPrimeBlock` /
+  `structuredPaperDecomposeBlock`, contracting to the exact public tag-7 syntax
+  `paperPrimeSentence` / `paperPrimeDecompose`;
+* the symbol-metered family interface `PolyArithmeticFormulaSeq` and the emission
+  liftings, with the emitted-token audit pinning every token to a fixed small constant;
+* negation as a token map, which transports a structural certificate to the negated
+  family without re-deriving its emission;
+* the frontend `PaperLUVSeq`: a structurally certified family of literal paper LUVs
+  compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax.  See the
+  inhabitation disclosure at `PaperLUVSeq`.
 -/
 
 namespace LogicalInduction
@@ -379,7 +400,7 @@ code.  The lifting theorem below adds only fixed tokens and a unary copy of the 
 poly-fueled payload length.  Thus the final tag-7 value is constructed by `parseRpn` and
 never occurs in the emitter's output range. -/
 
-def PolyArithmeticFormulaSeq (φ : ℕ → ArithmeticProposition) : Prop :=
+def PolyArithmeticFormulaSeq {k : ℕ} (φ : ℕ → ArithmeticSemiformula ℕ k) : Prop :=
   PolySegStream (fun n => encodeArithmeticFormulaSymbols (φ n))
 
 lemma structuredPaperPrimeBlock_polySegStream (positive : Bool)
@@ -542,6 +563,262 @@ lemma structuredPaperPrimeBlock_span (positive : Bool) (φ : ArithmeticPropositi
       · omega
       · have := encodeArithmeticFormulaSymbols_lt φ x h'
         omega
+
+/-! ## Negation as a token map
+
+Negation-normal-form negation acts on the payload alphabet by swapping the dual tag
+pairs and fixing every term token, so a structural certificate for a formula family
+transports to its negation without re-deriving the emission. -/
+
+open Nat.Partrec (Code)
+
+/-- Token action of negation-normal-form negation on the formula alphabet. -/
+def negArithTok (t : ℕ) : ℕ :=
+  if t = 9 then 10 else if t = 10 then 9
+  else if t = 11 then 12 else if t = 12 then 11
+  else if t = 13 then 14 else if t = 14 then 13
+  else if t = 15 then 16 else if t = 16 then 15
+  else if t = 17 then 18 else if t = 18 then 17
+  else t
+
+lemma negArithTok_of_lt {x : ℕ} (h : x < 9) : negArithTok x = x := by
+  rw [negArithTok]
+  split_ifs <;> omega
+
+lemma map_negArithTok_term {k : ℕ} (t : ArithmeticSemiterm ℕ k) :
+    (encodeArithmeticTermSymbols t).map negArithTok =
+      encodeArithmeticTermSymbols t := by
+  conv_rhs => rw [← List.map_id (encodeArithmeticTermSymbols t)]
+  exact List.map_congr_left fun x hx =>
+    negArithTok_of_lt (encodeArithmeticTermSymbols_lt t x hx)
+
+lemma encodeArithmeticFormulaSymbols_neg {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
+    encodeArithmeticFormulaSymbols (∼φ) =
+      (encodeArithmeticFormulaSymbols φ).map negArithTok := by
+  induction φ with
+  | verum => rfl
+  | falsum => rfl
+  | rel r v =>
+      rcases r with _ | _ <;>
+        simp [encodeArithmeticFormulaSymbols, negArithTok, map_negArithTok_term]
+  | nrel r v =>
+      rcases r with _ | _ <;>
+        simp [encodeArithmeticFormulaSymbols, negArithTok, map_negArithTok_term]
+  | and φ ψ ihφ ihψ =>
+      show encodeArithmeticFormulaSymbols ((∼φ).or (∼ψ)) = _
+      simp [encodeArithmeticFormulaSymbols, ihφ, ihψ, negArithTok]
+  | or φ ψ ihφ ihψ =>
+      show encodeArithmeticFormulaSymbols ((∼φ).and (∼ψ)) = _
+      simp [encodeArithmeticFormulaSymbols, ihφ, ihψ, negArithTok]
+  | all φ ih =>
+      show encodeArithmeticFormulaSymbols ((∼φ).exs) = _
+      simp [encodeArithmeticFormulaSymbols, ih, negArithTok]
+  | exs φ ih =>
+      show encodeArithmeticFormulaSymbols ((∼φ).all) = _
+      simp [encodeArithmeticFormulaSymbols, ih, negArithTok]
+
+/-- Streams are closed under a poly-fueled token map. -/
+lemma PolySegStream.mapTok {s : ℕ → List ℕ} (h : PolySegStream s)
+    {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
+    PolySegStream (fun n => (s n).map f) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
+  refine ⟨_, cl, fun z => f (tokenFn z), lenFn, hf.comp htok, hlen, fun n => ?_,
+    fun n i hi => ?_⟩
+  · simpa using hslen n
+  · have hilt : i < (s n).length := by rw [hslen n]; exact hi
+    show f (tokenFn (Nat.pair n i)) = ((s n).map f).getD i 0
+    rw [hget n i hi, List.getD_eq_getElem _ _ hilt,
+      List.getD_eq_getElem _ _ (by simpa using hilt), List.getElem_map]
+
+/-- Dispatch on an equality test against a constant. -/
+private lemma polyFueled_ifEqK {cf ca cb : Code} {F A B : ℕ → ℕ}
+    (hF : PolyFueled cf F) (K : ℕ) (hA : PolyFueled ca A) (hB : PolyFueled cb B) :
+    ∃ c, PolyFueled c (fun z => if F z = K then A z else B z) := by
+  obtain ⟨cad, had⟩ := addc_polyFueled
+  have hT : PolyFueled _ (fun z => (F z - K) + (K - F z)) :=
+    (had.comp ((subc_polyFueled.comp (hF.pair (PolyFueled.const K))).pair
+      (subc_polyFueled.comp ((PolyFueled.const K).pair hF)))).of_eq fun z => by
+        simp only [Nat.unpair_pair]
+  refine ⟨_, (ifzSel_polyFueled.comp ((hA.pair hB).pair hT)).of_eq fun z => ?_⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+  by_cases hk : F z = K
+  · rw [if_pos (by omega), if_pos hk]
+  · rw [if_neg (by omega), if_neg hk]
+
+lemma negArithTok_polyFueled {cf : Code} {F : ℕ → ℕ} (hF : PolyFueled cf F) :
+    ∃ c, PolyFueled c (fun z => negArithTok (F z)) := by
+  obtain ⟨_, h18⟩ := polyFueled_ifEqK hF 18 (PolyFueled.const 17) hF
+  obtain ⟨_, h17⟩ := polyFueled_ifEqK hF 17 (PolyFueled.const 18) h18
+  obtain ⟨_, h16⟩ := polyFueled_ifEqK hF 16 (PolyFueled.const 15) h17
+  obtain ⟨_, h15⟩ := polyFueled_ifEqK hF 15 (PolyFueled.const 16) h16
+  obtain ⟨_, h14⟩ := polyFueled_ifEqK hF 14 (PolyFueled.const 13) h15
+  obtain ⟨_, h13⟩ := polyFueled_ifEqK hF 13 (PolyFueled.const 14) h14
+  obtain ⟨_, h12⟩ := polyFueled_ifEqK hF 12 (PolyFueled.const 11) h13
+  obtain ⟨_, h11⟩ := polyFueled_ifEqK hF 11 (PolyFueled.const 12) h12
+  obtain ⟨_, h10⟩ := polyFueled_ifEqK hF 10 (PolyFueled.const 9) h11
+  obtain ⟨c, h9⟩ := polyFueled_ifEqK hF 9 (PolyFueled.const 10) h10
+  exact ⟨c, h9.of_eq fun z => by rw [negArithTok]⟩
+
+/-- The structural certificate is closed under negation. -/
+lemma PolyArithmeticFormulaSeq.neg {k : ℕ} {φ : ℕ → ArithmeticSemiformula ℕ k}
+    (h : PolyArithmeticFormulaSeq φ) :
+    PolyArithmeticFormulaSeq (fun n => ∼(φ n)) := by
+  obtain ⟨cf, hf⟩ := negArithTok_polyFueled (PolyFueled.id)
+  exact (h.mapTok hf).of_eq fun n =>
+    (encodeArithmeticFormulaSymbols_neg (φ n)).symm
+
+/-- Existential closure of a structural certificate: one extra fixed tag. -/
+lemma PolyArithmeticFormulaSeq.exs {k : ℕ}
+    {φ : ℕ → ArithmeticSemiformula ℕ (k + 1)} (h : PolyArithmeticFormulaSeq φ) :
+    PolyArithmeticFormulaSeq (fun n => (φ n).exs) := by
+  have htag : PolySegStream (fun _ : ℕ => ([18] : List ℕ)) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 18)
+  exact (htag.append h).of_eq fun n => by simp [encodeArithmeticFormulaSymbols]
+
+/-! ## The universally quantified decompose bridge
+
+`paperPrimeDecompose` recurses only through the outer Boolean structure, so a
+quantifier-headed proposition decomposes to a single structured leaf inside the
+negation shell.  This is the shape the paper's threshold syntax takes. -/
+
+lemma structuredPaperDecomposeBlock_all (φ : ArithmeticSemiformula ℕ 1) :
+    structuredPaperDecomposeBlock (.all φ) =
+      [2] ++ structuredPaperPrimeBlock true (.exs (∼φ)) ++ [0] := by
+  simp [structuredPaperDecomposeBlock]
+
+lemma structuredPaperDecomposeBlock_all_polySegStream
+    {φ : ℕ → ArithmeticSemiformula ℕ 1} (hφ : PolyArithmeticFormulaSeq φ) :
+    PolySegStream (fun n => structuredPaperDecomposeBlock (.all (φ n))) := by
+  have hpayload : PolyArithmeticFormulaSeq (fun n => (∼(φ n)).exs) := hφ.neg.exs
+  have hprime := structuredPaperPrimeBlock_polySegStream true
+    (fun n => (∼(φ n)).exs) hpayload
+  have hshell : PolySegStream (fun _ : ℕ => ([2] : List ℕ)) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
+  have hclose : PolySegStream (fun _ : ℕ => ([0] : List ℕ)) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 0)
+  exact ((hshell.append hprime).append hclose).of_eq fun n => by
+    rw [structuredPaperDecomposeBlock_all]
+
+/-- **Decompose efficiency lifting at a quantified head**: an efficiently presented
+family of universally quantified arithmetic propositions has an efficient stream of
+exact paper-prime decomposition blocks.  The emitter outputs only the small structured
+block; the tag-7 atom code is built by parser contraction. -/
+lemma structuredPaperDecomposeAll_rpnSentenceCodes
+    (φ : ℕ → ArithmeticSemiformula ℕ 1) (hφ : PolyArithmeticFormulaSeq φ) :
+    RpnSentenceCodes (fun n => paperPrimeDecompose (.all (φ n))) :=
+  ⟨fun n => structuredPaperDecomposeBlock (.all (φ n)),
+    structuredPaperDecomposeBlock_all_polySegStream hφ,
+    fun n => parseRpn_structuredPaperDecomposeBlock_exact (.all (φ n))⟩
+
+/-! ## Numerals
+
+Foundation builds numerals by a left-nested fold of `one` under `add`, so a numeral's
+symbol encoding is two constant-tag runs — exactly the shape the repeat-tag emitter
+produces.  This is the term-level half of the threshold syntax. -/
+
+lemma encodeArithmeticTermSymbols_numeral {k : ℕ} :
+    ∀ v : ℕ, v ≠ 0 →
+      encodeArithmeticTermSymbols
+        ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ k) =
+        List.replicate (v - 1) 7 ++ List.replicate v 6
+  | 1, _ => by rfl
+  | (v + 2), _ => by
+      have hv : v + 1 ≠ 0 := by omega
+      have hrec := encodeArithmeticTermSymbols_numeral (k := k) (v + 1) hv
+      rw [Semiterm.Operator.numeral_succ hv]
+      show (7 : ℕ) :: (encodeArithmeticTermSymbols
+        ((Semiterm.Operator.numeral ℒₒᵣ (v + 1)).const : ArithmeticSemiterm ℕ k) ++
+          encodeArithmeticTermSymbols
+            ((Semiterm.Operator.One.one).const : ArithmeticSemiterm ℕ k)) = _
+      rw [hrec]
+      show (7 : ℕ) :: (List.replicate v 7 ++ List.replicate (v + 1) 6 ++ [6]) = _
+      simp [List.replicate_succ]
+      rw [← List.replicate_succ', List.replicate_succ]
+
+/-- Numerals of a poly-fueled value stream are structurally emittable. -/
+lemma encodeArithmeticTermSymbols_numeral_polySegStream {k : ℕ} {cv : Code}
+    {v : ℕ → ℕ} (hv : PolyFueled cv v) (hne : ∀ n, v n ≠ 0) :
+    PolySegStream (fun n => encodeArithmeticTermSymbols
+      ((Semiterm.Operator.numeral ℒₒᵣ (v n)).const : ArithmeticSemiterm ℕ k)) := by
+  have hpred : PolyFueled _ (fun n => v n - 1) :=
+    (subc_polyFueled.comp (hv.pair (PolyFueled.const 1))).of_eq fun n => by
+      simp only [Nat.unpair_pair]
+  exact ((PolySegStream.repeatTag 7 hpred).append
+    (PolySegStream.repeatTag 6 hv)).of_eq fun n =>
+      (encodeArithmeticTermSymbols_numeral (v n) (hne n)).symm
+
+/-! ## The literal first-order LUV frontend
+
+A single `PaperLUV` carries no efficiency certificate, so the family layer supplies
+one — and supplies it as *structural symbol emission of the threshold bodies*, never as
+a bound on Foundation's Godel codes and never as a caller-provided tag-7 code.  The
+compiler below turns that certificate into the paper's exact threshold sentences. -/
+
+section Frontend
+
+variable {T : ArithmeticTheory} [T.Δ₁]
+
+/-- The body under the paper's threshold quantifier, as a proposition-level formula. -/
+def paperThresholdBody (X : PaperLUV T) (r : ℚ) : ArithmeticSemiformula ℕ 1 :=
+  ((X.formula 🡒 paperRatGtDef r : ArithmeticSemisentence 1) :
+    ArithmeticSemiformula ℕ 1)
+
+lemma paperThresholdFormula_eq_all (X : PaperLUV T) (r : ℚ) :
+    ((X.thresholdFormula r : ArithmeticSentence) : ArithmeticProposition) =
+      .all (paperThresholdBody X r) := by
+  simp only [PaperLUV.thresholdFormula, paperThresholdBody]
+  simp
+  rfl
+
+lemma paperLUV_gt_eq (X : PaperLUV T) (r : ℚ) :
+    X.toLUV.gt r = paperPrimeDecompose (.all (paperThresholdBody X r)) := by
+  rw [PaperLUV.toLUV_gt, paperThresholdFormula_eq_all]
+
+/-- An efficiently presented family of literal paper LUVs: the structural certificate
+is symbol emission of the threshold bodies, never a bound on Foundation codes.
+
+**Disclosed residual (inhabitation).**  No family witness is constructed yet, so the
+compiler below is a conditional result: it converts this certificate into the emission
+certificate, and does not assert that any concrete paper LUV family carries it.  Two
+pieces are missing for a witness, both about the *threshold rational* rather than the
+codec.  The numeral half is settled: `paperRatGtDef r` embeds `r.num.natAbs` and
+`r.den` as Foundation numerals, whose encoding is the two-run pattern of
+`encodeArithmeticTermSymbols_numeral` and is emitted by
+`encodeArithmeticTermSymbols_numeral_polySegStream`.  What remains is the *index*: at
+query `⟨n, ⟨k, i⟩⟩` the threshold is the reduced rational `i / k`, so numerator and
+denominator are `gcd`-normalized, and certifying those as poly-fueled is rational
+normalization work — deliberately out of scope here, and a limit of the fuel calculus
+(`dd:fuel`) rather than of the mathematics.  Until it lands, `PaperLUVSeq` is an
+interface, not an inhabited class. -/
+structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
+  luv : ℕ → PaperLUV T
+  structural : PolyArithmeticFormulaSeq (fun m =>
+    paperThresholdBody (luv m.unpair.1)
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- **The literal first-order threshold compiler**: an efficiently presented paper LUV
+family emits its exact threshold sentences as a poly stream of small structured
+tokens. -/
+lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
+    LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
+  have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.structural
+  exact h.of_eq fun m => (paperLUV_gt_eq _ _).symm
+
+/-- **The literal paper frontend**: an efficiently presented family of literal
+first-order paper LUVs is both semantically valued on every completed world of the
+canonical theorem process and efficiently thresholded in the symbol-metered emission
+calculus. -/
+lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
+    [T.SoundOnHierarchy 𝚺 1] (X : PaperLUVSeq T) :
+    (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
+        ∃ x : ℝ, v.ValuesAt (X.luv n).toLUV x) ∧
+      LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) :=
+  ⟨fun n => PaperLUV.source_valued (X.luv n), X.rpnThresholdCodeSeq⟩
+
+end Frontend
+
+#print axioms PaperLUVSeq.rpnThresholdCodeSeq
+#print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
 
 #print axioms parseArithmeticTermSymbols_encode
 #print axioms parseArithmeticFormulaSymbols_encode
