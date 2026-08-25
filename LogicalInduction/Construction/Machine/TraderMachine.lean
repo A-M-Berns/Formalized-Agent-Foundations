@@ -22,6 +22,7 @@ existentially, so only the polynomial shape matters.
 -/
 import LogicalInduction.Construction.Machine.EvalnRegBound
 import Complexitylib.Models.TuringMachine.Registers.Horner
+import Complexitylib.Models.TuringMachine.Registers.InputLen
 import LogicalInduction.Construction.Machine.DigitBits
 import Mathlib.Tactic.IntervalCases
 
@@ -1124,5 +1125,272 @@ lemma setupVals_spec (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) :
     rw [Function.update_self]
 
 end SetupSpec
+
+section SetupMachine
+variable (lc tc : Nat.Partrec.Code)
+
+/-- The setup: measure the day, compute the clock, run the length program, and derive the
+    number of digits to emit. -/
+noncomputable def setupTM (a k : ℕ) (R : Regs (totalRegs lc tc) n) : TM n :=
+  seqTM (inputLenRegTM (R (selfW lc tc 0))) <|
+  seqTM (polyEvalTM (R (selfW lc tc 0)) (R (selfW lc tc 1)) (R (selfW lc tc 6))
+    (clockPoly a k)) <|
+  seqTM (copyIntoTM (R (selfW lc tc 0)) (R (lcW lc tc (codeLocal lc 0)))) <|
+  seqTM (copyIntoTM (R (selfW lc tc 1)) (R (lcW lc tc (codeLocal lc 1)))) <|
+  seqTM (compiledTM lc ((lcW lc tc).trans R)) <|
+  seqTM (copyIntoTM (R (lcW lc tc (codeLocal lc 2))) (R (selfW lc tc 2))) <|
+  seqTM (copyIntoTM (R (lcW lc tc (codeLocal lc 3))) (R (selfW lc tc 3))) <|
+  seqTM (copyIntoTM (R (selfW lc tc 3)) (R (selfW lc tc 6))) <|
+  seqTM (subIntoTM (R (selfW lc tc 1)) (R (selfW lc tc 6))) <|
+  seqTM (copyIntoTM (R (selfW lc tc 3)) (R (selfW lc tc 7))) <|
+  seqTM (subIntoTM (R (selfW lc tc 6)) (R (selfW lc tc 7))) <|
+  seqTM (setConstTM (R (selfW lc tc 4)) 0) <|
+  seqTM (mulAddIntoTM (R (selfW lc tc 2)) (R (selfW lc tc 7)) (R (selfW lc tc 4)))
+    (setConstTM (R (selfW lc tc 5)) 0)
+
+set_option maxHeartbeats 4000000 in
+lemma setupTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n)
+    (x : List Bool) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
+    (w₀ : Fin n → Tape) (hpark : ∀ i, Parked (w₀ i))
+    (hV : ∀ i, V i = 0) (hB5 : 5 ≤ B) (hsB : s < B)
+    (hNs : x.length ≤ s) (hCs : clockOf a k x.length ≤ s)
+    (hcap : hornerCap a k x.length ≤ B)
+    (hBlc : codeRegBound lc s ≤ B) :
+    (setupTM lc tc a k R).HoareTime
+      (EmitPred ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ (regsWork R w₀ V) [])
+      (EmitPred ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩
+        (regsWork R w₀ (setupVals lc tc a k x.length V)) [])
+      (2 * x.length + opBudget B
+        + ((clockPoly a k).natDegree + 1) * (layerBudget B + 1)
+        + 12 * evalnArithmeticCost B
+        + codeMachineTime lc s (evalnArithmeticCost B) + 30) := by
+  set inp₀ : Tape := ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ with hinp
+  have hinp₀ : Parked inp₀ := parked_init_input x
+  have hpv := parked_regsWork R hpark
+  have hVlt : ∀ k, V k < B := fun k => by rw [hV k]; omega
+  -- stage 1: the day
+  have h1 := inputLenRegTM_hoareTime (R (selfW lc tc 0)) x (regsWork R w₀ V) []
+    (fun i _ => hpv V i) (by rw [regsWork_apply, hV])
+  rw [regsWork_update] at h1
+  set V1 := Function.update V (selfW lc tc 0) x.length with hV1
+  have hv1 : ∀ k, V1 k < B := update_lt V B hVlt (by omega)
+  have r1 : V1 (selfW lc tc 0) = x.length := by rw [hV1, Function.update_self]
+  -- stage 2: the clock
+  have h2 := polyEvalTM_hoareTime (R (selfW lc tc 0)) (R (selfW lc tc 1))
+    (R (selfW lc tc 6)) (R.ne (selfW_ne lc tc 0 1 (by decide)))
+    (R.ne (selfW_ne lc tc 0 6 (by decide))) (R.ne (selfW_ne lc tc 1 6 (by decide)))
+    (clockPoly a k) B (V1 (selfW lc tc 0)) (V1 (selfW lc tc 1)) (V1 (selfW lc tc 6))
+    (by rw [r1]; omega) (hv1 _).le (hv1 _).le
+    (fun j _ => le_trans (by rw [r1]; exact hornerFold_take_le _ _ _) hcap)
+    inp₀ (regsWork R w₀ V1) [] hinp₀ (hpv V1)
+    (by rw [regsWork_apply]) (by rw [regsWork_apply]) (by rw [regsWork_apply])
+  rw [regsWork_update, regsWork_update, r1] at h2
+  set V2 := Function.update (Function.update V1 (selfW lc tc 6)
+    ((clockPoly a k).eval x.length)) (selfW lc tc 1)
+    ((clockPoly a k).eval x.length) with hV2
+  have hCB : (clockPoly a k).eval x.length < B := by
+    rw [clockPoly_eval]; omega
+  have hv2 : ∀ k, V2 k < B :=
+    update_lt _ B (update_lt V1 B hv1 hCB) hCB
+  have r2a : V2 (selfW lc tc 0) = x.length := by
+    rw [hV2, Function.update_of_ne (selfW_ne lc tc 0 1 (by decide)),
+      Function.update_of_ne (selfW_ne lc tc 0 6 (by decide)), r1]
+  have r2b : V2 (selfW lc tc 1) = (clockPoly a k).eval x.length := by
+    rw [hV2, Function.update_self]
+  -- stages 3 and 4: the length program's input and fuel
+  have h3 := copyInto_regsWork R V2 B inp₀ w₀ [] (selfW lc tc 0)
+    (lcW lc tc (codeLocal lc 0)) (Ne.symm (lcW_ne_selfW lc tc _ 0)) hinp₀ hpark
+    (fun k => (hv2 k).le)
+  set V3 := Function.update V2 (lcW lc tc (codeLocal lc 0)) (V2 (selfW lc tc 0)) with hV3
+  have hv3 : ∀ k, V3 k < B := update_lt V2 B hv2 (hv2 _)
+  have h4 := copyInto_regsWork R V3 B inp₀ w₀ [] (selfW lc tc 1)
+    (lcW lc tc (codeLocal lc 1)) (Ne.symm (lcW_ne_selfW lc tc _ 1)) hinp₀ hpark
+    (fun k => (hv3 k).le)
+  set V4 := Function.update V3 (lcW lc tc (codeLocal lc 1)) (V3 (selfW lc tc 1)) with hV4
+  have hv4 : ∀ k, V4 k < B := update_lt V3 B hv3 (hv3 _)
+  have e4in : (fun j => V4 (lcW lc tc j)) (codeLocal lc 0) ≤ s := by
+    show V4 (lcW lc tc (codeLocal lc 0)) ≤ s
+    rw [hV4, Function.update_of_ne (fun e => (by decide : (0 : Fin 16) ≠ 1)
+        ((codeLocal lc).injective ((lcW lc tc).injective e))), hV3,
+      Function.update_self, r2a]
+    exact hNs
+  have e4fuel : (fun j => V4 (lcW lc tc j)) (codeLocal lc 1) ≤ s := by
+    show V4 (lcW lc tc (codeLocal lc 1)) ≤ s
+    rw [hV4, Function.update_self, hV3,
+      Function.update_of_ne (Ne.symm (lcW_ne_selfW lc tc _ 1)), r2b, clockPoly_eval]
+    exact hCs
+  -- stage 5: the length program
+  have h5 := runChildFixed (lcW lc tc) R (compiledTM lc ((lcW lc tc).trans R))
+    (codeVals lc) (codeMachineTime lc s (evalnArithmeticCost B)) w₀ hpark V4
+    (fun Wb hWb => compiledTM_hoareTime lc ((lcW lc tc).trans R)
+      (fun j => V4 (lcW lc tc j)) s B inp₀ Wb [] hinp₀ hWb hBlc (fun k => hv4 _)
+      e4in e4fuel)
+  set V5 := writeWindow (lcW lc tc) V4 (codeVals lc (fun j => V4 (lcW lc tc j)))
+    with hV5
+  have hv5 : ∀ k, V5 k < B := by
+    intro k
+    rw [hV5]
+    exact writeWindow_bounded _ _ _ B hv4
+      (fun j => codeVals_lt lc s B _ hBlc (fun i => hv4 _) e4in e4fuel j) k
+  have e5tag : V5 (lcW lc tc (codeLocal lc 2)) ≤ 1 := by
+    rw [hV5, writeWindow_apply]
+    exact codeVals_tag_le lc _
+  -- stages 6 and 7: the answer out of the block
+  have h6 := copyInto_regsWork R V5 B inp₀ w₀ [] (lcW lc tc (codeLocal lc 2))
+    (selfW lc tc 2) (lcW_ne_selfW lc tc _ 2) hinp₀ hpark (fun k => (hv5 k).le)
+  set V6 := Function.update V5 (selfW lc tc 2) (V5 (lcW lc tc (codeLocal lc 2))) with hV6
+  have hv6 : ∀ k, V6 k < B := update_lt V5 B hv5 (hv5 _)
+  have h7 := copyInto_regsWork R V6 B inp₀ w₀ [] (lcW lc tc (codeLocal lc 3))
+    (selfW lc tc 3) (lcW_ne_selfW lc tc _ 3) hinp₀ hpark (fun k => (hv6 k).le)
+  set V7 := Function.update V6 (selfW lc tc 3) (V6 (lcW lc tc (codeLocal lc 3))) with hV7
+  have hv7 : ∀ k, V7 k < B := update_lt V6 B hv6 (hv6 _)
+  -- stages 8 to 11: the clamp `min lenVal clock`
+  have h8 := copyInto_regsWork R V7 B inp₀ w₀ [] (selfW lc tc 3) (selfW lc tc 6)
+    (selfW_ne lc tc 3 6 (by decide)) hinp₀ hpark (fun k => (hv7 k).le)
+  set V8 := Function.update V7 (selfW lc tc 6) (V7 (selfW lc tc 3)) with hV8
+  have hv8 : ∀ k, V8 k < B := update_lt V7 B hv7 (hv7 _)
+  have h9 := subInto_regsWork R V8 B inp₀ w₀ [] (selfW lc tc 1) (selfW lc tc 6)
+    (selfW_ne lc tc 1 6 (by decide)) hinp₀ hpark (fun k => (hv8 k).le)
+  set V9 := Function.update V8 (selfW lc tc 6) (V8 (selfW lc tc 6) - V8 (selfW lc tc 1))
+    with hV9
+  have hv9 : ∀ k, V9 k < B := update_lt V8 B hv8 (by have := hv8 (selfW lc tc 6); omega)
+  have h10 := copyInto_regsWork R V9 B inp₀ w₀ [] (selfW lc tc 3) (selfW lc tc 7)
+    (selfW_ne lc tc 3 7 (by decide)) hinp₀ hpark (fun k => (hv9 k).le)
+  set V10 := Function.update V9 (selfW lc tc 7) (V9 (selfW lc tc 3)) with hV10
+  have hv10 : ∀ k, V10 k < B := update_lt V9 B hv9 (hv9 _)
+  have h11 := subInto_regsWork R V10 B inp₀ w₀ [] (selfW lc tc 6) (selfW lc tc 7)
+    (selfW_ne lc tc 6 7 (by decide)) hinp₀ hpark (fun k => (hv10 k).le)
+  set V11 := Function.update V10 (selfW lc tc 7)
+    (V10 (selfW lc tc 7) - V10 (selfW lc tc 6)) with hV11
+  have hv11 : ∀ k, V11 k < B :=
+    update_lt V10 B hv10 (by have := hv10 (selfW lc tc 7); omega)
+  -- stages 12 and 13: the count
+  have h12 := setConst_regsWork R V11 B inp₀ w₀ [] (selfW lc tc 4) 0 hinp₀ hpark
+    (fun k => (hv11 k).le) (by omega)
+  set V12 := Function.update V11 (selfW lc tc 4) 0 with hV12
+  have hv12 : ∀ k, V12 k < B := update_lt V11 B hv11 (by omega)
+  have h13 := mulAddInto_regsWork R V12 B inp₀ w₀ [] (selfW lc tc 2) (selfW lc tc 7)
+    (selfW lc tc 4) (selfW_ne lc tc 2 7 (by decide)) (selfW_ne lc tc 2 4 (by decide))
+    (selfW_ne lc tc 7 4 (by decide)) hinp₀ hpark (fun k => (hv12 k).le)
+  set V13 := Function.update V12 (selfW lc tc 4)
+    (V12 (selfW lc tc 4) + V12 (selfW lc tc 2) * V12 (selfW lc tc 7)) with hV13
+  have htag12 : V12 (selfW lc tc 2) ≤ 1 := by
+    rw [hV12, Function.update_of_ne (selfW_ne lc tc 2 4 (by decide)), hV11,
+      Function.update_of_ne (selfW_ne lc tc 2 7 (by decide)), hV10,
+      Function.update_of_ne (selfW_ne lc tc 2 7 (by decide)), hV9,
+      Function.update_of_ne (selfW_ne lc tc 2 6 (by decide)), hV8,
+      Function.update_of_ne (selfW_ne lc tc 2 6 (by decide)), hV7,
+      Function.update_of_ne (selfW_ne lc tc 2 3 (by decide)), hV6,
+      Function.update_self]
+    exact e5tag
+  have hzero12 : V12 (selfW lc tc 4) = 0 := by rw [hV12, Function.update_self]
+  have hv13 : ∀ k, V13 k < B := by
+    refine update_lt V12 B hv12 ?_
+    have h7B := hv12 (selfW lc tc 7)
+    have : V12 (selfW lc tc 2) * V12 (selfW lc tc 7) ≤ V12 (selfW lc tc 7) := by
+      calc V12 (selfW lc tc 2) * V12 (selfW lc tc 7)
+          ≤ 1 * V12 (selfW lc tc 7) := Nat.mul_le_mul_right _ htag12
+        _ = V12 (selfW lc tc 7) := by omega
+    omega
+  -- stage 14: the loop index
+  have h14 := setConst_regsWork R V13 B inp₀ w₀ [] (selfW lc tc 5) 0 hinp₀ hpark
+    (fun k => (hv13 k).le) (by omega)
+  have hfinal : Function.update V13 (selfW lc tc 5) 0
+      = setupVals lc tc a k x.length V := by
+    rw [hV13, hV12, hV11, hV10, hV9, hV8, hV7, hV6, hV5, hV4, hV3, hV2, hV1, setupVals]
+  rw [hfinal] at h14
+  exact (seqEmit hinp₀ (hpv V1) h1 (seqEmit hinp₀ (hpv V2) h2
+    (seqEmit hinp₀ (hpv V3) h3 (seqEmit hinp₀ (hpv V4) h4
+      (seqEmit hinp₀ (hpv V5) h5 (seqEmit hinp₀ (hpv V6) h6
+        (seqEmit hinp₀ (hpv V7) h7 (seqEmit hinp₀ (hpv V8) h8
+          (seqEmit hinp₀ (hpv V9) h9 (seqEmit hinp₀ (hpv V10) h10
+            (seqEmit hinp₀ (hpv V11) h11 (seqEmit hinp₀ (hpv V12) h12
+              (seqEmit hinp₀ (hpv V13) h13 h14))))))))))))).mono_bound (by omega)
+
+
+set_option maxHeartbeats 2000000 in
+/-- The setup keeps every register inside the bound. -/
+lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
+    (hV : ∀ i, V i = 0) (hB5 : 5 ≤ B) (hsB : s < B)
+    (hNs : N ≤ s) (hCs : clockOf a k N ≤ s) (hBlc : codeRegBound lc s ≤ B) :
+    ∀ j, setupVals lc tc a k N V j < B := by
+  have hVlt : ∀ j, V j < B := fun j => by rw [hV j]; omega
+  simp only [setupVals]
+  set V1 := Function.update V (selfW lc tc 0) N with hV1
+  have hv1 : ∀ j, V1 j < B := update_lt V B hVlt (by omega)
+  have r1 : V1 (selfW lc tc 0) = N := by rw [hV1, Function.update_self]
+  set V2 := Function.update (Function.update V1 (selfW lc tc 6)
+    ((clockPoly a k).eval N)) (selfW lc tc 1) ((clockPoly a k).eval N) with hV2
+  have hCB : (clockPoly a k).eval N < B := by rw [clockPoly_eval]; omega
+  have hv2 : ∀ j, V2 j < B := update_lt _ B (update_lt V1 B hv1 hCB) hCB
+  have r2a : V2 (selfW lc tc 0) = N := by
+    rw [hV2, Function.update_of_ne (selfW_ne lc tc 0 1 (by decide)),
+      Function.update_of_ne (selfW_ne lc tc 0 6 (by decide)), r1]
+  have r2b : V2 (selfW lc tc 1) = (clockPoly a k).eval N := by
+    rw [hV2, Function.update_self]
+  set V3 := Function.update V2 (lcW lc tc (codeLocal lc 0)) (V2 (selfW lc tc 0)) with hV3
+  have hv3 : ∀ j, V3 j < B := update_lt V2 B hv2 (hv2 _)
+  set V4 := Function.update V3 (lcW lc tc (codeLocal lc 1)) (V3 (selfW lc tc 1)) with hV4
+  have hv4 : ∀ j, V4 j < B := update_lt V3 B hv3 (hv3 _)
+  have e4in : (fun j => V4 (lcW lc tc j)) (codeLocal lc 0) ≤ s := by
+    show V4 (lcW lc tc (codeLocal lc 0)) ≤ s
+    rw [hV4, Function.update_of_ne (fun e => (by decide : (0 : Fin 16) ≠ 1)
+        ((codeLocal lc).injective ((lcW lc tc).injective e))), hV3,
+      Function.update_self, r2a]
+    exact hNs
+  have e4fuel : (fun j => V4 (lcW lc tc j)) (codeLocal lc 1) ≤ s := by
+    show V4 (lcW lc tc (codeLocal lc 1)) ≤ s
+    rw [hV4, Function.update_self, hV3,
+      Function.update_of_ne (Ne.symm (lcW_ne_selfW lc tc _ 1)), r2b, clockPoly_eval]
+    exact hCs
+  set V5 := writeWindow (lcW lc tc) V4 (codeVals lc (fun j => V4 (lcW lc tc j))) with hV5
+  have hv5 : ∀ j, V5 j < B := by
+    intro j
+    rw [hV5]
+    exact writeWindow_bounded _ _ _ B hv4
+      (fun i => codeVals_lt lc s B _ hBlc (fun i => hv4 _) e4in e4fuel i) j
+  have e5tag : V5 (lcW lc tc (codeLocal lc 2)) ≤ 1 := by
+    rw [hV5, writeWindow_apply]
+    exact codeVals_tag_le lc _
+  set V6 := Function.update V5 (selfW lc tc 2) (V5 (lcW lc tc (codeLocal lc 2))) with hV6
+  have hv6 : ∀ j, V6 j < B := update_lt V5 B hv5 (hv5 _)
+  set V7 := Function.update V6 (selfW lc tc 3) (V6 (lcW lc tc (codeLocal lc 3))) with hV7
+  have hv7 : ∀ j, V7 j < B := update_lt V6 B hv6 (hv6 _)
+  set V8 := Function.update V7 (selfW lc tc 6) (V7 (selfW lc tc 3)) with hV8
+  have hv8 : ∀ j, V8 j < B := update_lt V7 B hv7 (hv7 _)
+  set V9 := Function.update V8 (selfW lc tc 6) (V8 (selfW lc tc 6) - V8 (selfW lc tc 1))
+    with hV9
+  have hv9 : ∀ j, V9 j < B := update_lt V8 B hv8 (by have := hv8 (selfW lc tc 6); omega)
+  set V10 := Function.update V9 (selfW lc tc 7) (V9 (selfW lc tc 3)) with hV10
+  have hv10 : ∀ j, V10 j < B := update_lt V9 B hv9 (hv9 _)
+  set V11 := Function.update V10 (selfW lc tc 7)
+    (V10 (selfW lc tc 7) - V10 (selfW lc tc 6)) with hV11
+  have hv11 : ∀ j, V11 j < B :=
+    update_lt V10 B hv10 (by have := hv10 (selfW lc tc 7); omega)
+  set V12 := Function.update V11 (selfW lc tc 4) 0 with hV12
+  have hv12 : ∀ j, V12 j < B := update_lt V11 B hv11 (by omega)
+  have htag12 : V12 (selfW lc tc 2) ≤ 1 := by
+    rw [hV12, Function.update_of_ne (selfW_ne lc tc 2 4 (by decide)), hV11,
+      Function.update_of_ne (selfW_ne lc tc 2 7 (by decide)), hV10,
+      Function.update_of_ne (selfW_ne lc tc 2 7 (by decide)), hV9,
+      Function.update_of_ne (selfW_ne lc tc 2 6 (by decide)), hV8,
+      Function.update_of_ne (selfW_ne lc tc 2 6 (by decide)), hV7,
+      Function.update_of_ne (selfW_ne lc tc 2 3 (by decide)), hV6,
+      Function.update_self]
+    exact e5tag
+  set V13 := Function.update V12 (selfW lc tc 4)
+    (V12 (selfW lc tc 4) + V12 (selfW lc tc 2) * V12 (selfW lc tc 7)) with hV13
+  have hv13 : ∀ j, V13 j < B := by
+    refine update_lt V12 B hv12 ?_
+    have h7B := hv12 (selfW lc tc 7)
+    have hz : V12 (selfW lc tc 4) = 0 := by rw [hV12, Function.update_self]
+    have hprod : V12 (selfW lc tc 2) * V12 (selfW lc tc 7) ≤ V12 (selfW lc tc 7) := by
+      calc V12 (selfW lc tc 2) * V12 (selfW lc tc 7)
+          ≤ 1 * V12 (selfW lc tc 7) := Nat.mul_le_mul_right _ htag12
+        _ = V12 (selfW lc tc 7) := by omega
+    omega
+  exact update_lt V13 B hv13 (by omega)
+
+end SetupMachine
 
 end LogicalInduction.TraderMachine
