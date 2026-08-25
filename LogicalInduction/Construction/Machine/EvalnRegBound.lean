@@ -1091,4 +1091,579 @@ lemma codeMachineTime_arith_poly (c : Nat.Partrec.Code) :
 
 end MachineTimePoly
 
+/-! ## The compiled machine meets its step bound
+
+The structural timing theorem. The two looping constructors are split off into their own
+lemmas: their block is thirty-three wide, so the statement has to be phrased in the
+`33 + af + ag` world the loop counter lives in — `rw` will not see through `codeRegs` at
+the transparency it matches at — and the induction then reaches them by definitional
+unfolding. -/
+
+section MachineTimeHoare
+variable {af ag : ℕ}
+
+lemma precChildIn_size_le (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (hFg : ChildEncodes ag hag cg Fg)
+    (V₀ : Fin (32 + af + ag) → ℕ) (a f₀ m s : ℕ)
+    (hms : m ≤ s) (hfs : f₀ + m ≤ s) (has : a ≤ s)
+    (h6 : V₀ (precSelf af ag 6) = a) (h9 : V₀ (precSelf af ag 9) = 0)
+    (h12 : V₀ (precSelf af ag 12) = f₀)
+    (h10 : V₀ (precSelf af ag 10) = resultTag (Nat.Partrec.Code.evaln f₀ cf a))
+    (h11 : V₀ (precSelf af ag 11) = resultVal (Nat.Partrec.Code.evaln f₀ cf a)) :
+    ∀ i, i < m →
+      precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i) ⟨0, by omega⟩
+          ≤ s + precWindowBound cf cg s ∧
+      precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i) ⟨1, by omega⟩
+          ≤ s + precWindowBound cf cg s := by
+  intro i hi
+  have hsW : s ≤ precWindowBound cf cg s := Nat.left_le_pair _ _
+  obtain ⟨e6, e9, e12, -, e11⟩ :=
+    precLoopVals_spec haf hag cf cg Fg hFg V₀ a f₀ h6 h9 h12 h10 h11 i
+  have e11' : precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)
+      ≤ max (codeEvalBound cf s) (codeEvalBound cg s) := by
+    rw [e11]; exact precRunG_val_le cf cg a f₀ s i (by omega)
+  constructor
+  · rw [precChildIn_zero, e6, e9]
+    refine le_trans ?_ (Nat.le_add_left _ _)
+    calc Nat.pair a (Nat.pair i
+          (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)))
+        ≤ Nat.pair s (Nat.pair s (max (codeEvalBound cf s) (codeEvalBound cg s))) :=
+          natPair_mono has (natPair_mono (by omega) e11')
+      _ = precWindowBound cf cg s := rfl
+  · rw [precChildIn_one, e12]
+    omega
+
+lemma rfChildIn_size_le (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V₀ : Fin (32 + af) → ℕ) (a m₀ fuel s : ℕ)
+    (has : a ≤ s) (hm₀ : m₀ ≤ s) (hfuel : fuel ≤ s)
+    (h6 : V₀ (rfSelf af 6) = a) (h7 : V₀ (rfSelf af 7) = m₀)
+    (h8 : V₀ (rfSelf af 8) = fuel) (h12 : V₀ (rfSelf af 12) = 1) :
+    ∀ i, i ≤ fuel →
+      rfChildIn af haf (rfLoopVals af haf Ff V₀ i) ⟨0, by omega⟩ ≤ s + rfWindowBound s ∧
+      rfChildIn af haf (rfLoopVals af haf Ff V₀ i) ⟨1, by omega⟩ ≤ s + rfWindowBound s := by
+  intro i hi
+  obtain ⟨e6, e7, e8, -, -⟩ := rfLoopVals_spec haf cf Ff hFf V₀ h12 i
+  constructor
+  · rw [rfChildIn_zero]
+    refine le_trans ?_ (Nat.le_add_left _ _)
+    calc Nat.pair (rfLoopVals af haf Ff V₀ i (rfSelf af 6))
+          (rfLoopVals af haf Ff V₀ i (rfSelf af 7))
+        ≤ Nat.pair s (s + s) :=
+          natPair_mono (by rw [e6, h6]; exact has) (by rw [e7, h7]; omega)
+      _ = rfWindowBound s := rfl
+  · rw [rfChildIn_one, e8, h8]
+    omega
+
+lemma precBlock_hoareTime (cf cg : Nat.Partrec.Code) {n : ℕ}
+    (R : Regs (33 + codeRegs cf + codeRegs cg) n) (Mf Mg : TM n)
+    (V : Fin (33 + codeRegs cf + codeRegs cg) → ℕ) (s B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (hB : codeRegBound (cf.prec cg) s ≤ B) (hV : ∀ k, V k < B)
+    (h0 : V (precMain (codeRegs cf) (codeRegs cg)
+      (precSelf (codeRegs cf) (codeRegs cg) 0)) ≤ s)
+    (h1 : V (precMain (codeRegs cf) (codeRegs cg)
+      (precSelf (codeRegs cf) (codeRegs cg) 1)) ≤ s)
+    (hMf : ∀ (V₂ : Fin (codeRegs cf) → ℕ) (s₂ : ℕ) (Wb : Fin n → Tape),
+      (∀ i, Parked (Wb i)) → codeRegBound cf s₂ ≤ B → (∀ k, V₂ k < B) →
+      V₂ (codeLocal cf 0) ≤ s₂ → V₂ (codeLocal cf 1) ≤ s₂ →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb V₂) ys)
+        (EmitPred inp₀ (regsWork ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb (codeVals cf V₂)) ys)
+        (codeMachineTime cf s₂ (evalnArithmeticCost B)))
+    (hMg : ∀ (V₂ : Fin (codeRegs cg) → ℕ) (s₂ : ℕ) (Wb : Fin n → Tape),
+      (∀ i, Parked (Wb i)) → codeRegBound cg s₂ ≤ B → (∀ k, V₂ k < B) →
+      V₂ (codeLocal cg 0) ≤ s₂ → V₂ (codeLocal cg 1) ≤ s₂ →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb V₂) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb (codeVals cg V₂)) ys)
+        (codeMachineTime cg s₂ (evalnArithmeticCost B))) :
+    (precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      ((precMain (codeRegs cf) (codeRegs cg)).trans R)
+      (R (precLoopIdx (codeRegs cf) (codeRegs cg))) Mf Mg).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precBlockVals (codeRegs cf) (codeRegs cg)
+        (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) (codeVals cg) V)) ys)
+      (codeMachineTime (cf.prec cg) s (evalnArithmeticCost B)) := by
+  simp only [codeRegBound] at hB
+  have hgef := le_codeRegBound cf s
+  have hgeg := le_codeRegBound cg (s + precWindowBound cf cg s)
+  have hB2 : 2 ≤ B := by omega
+  have hWB : precWindowBound cf cg s + 2 ≤ B := by omega
+  have hBf : codeRegBound cf s ≤ B := by omega
+  have hBg : codeRegBound cg (s + precWindowBound cf cg s) ≤ B := by omega
+  -- the block's own view of the register file
+  set V' : Fin (32 + codeRegs cf + codeRegs cg) → ℕ :=
+    fun k => V (precMain (codeRegs cf) (codeRegs cg) k) with hV'def
+  have hV'b : ∀ k, V' k < B := fun k => hV _
+  have h0' : V' (precSelf (codeRegs cf) (codeRegs cg) 0) ≤ s := h0
+  have h1' : V' (precSelf (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
+  have hl : ∀ k, ((precMain (codeRegs cf) (codeRegs cg)).trans R) k
+      ≠ R (precLoopIdx (codeRegs cf) (codeRegs cg)) :=
+    fun k h => precMain_ne_loopIdx k (R.injective h)
+  set l := R (precLoopIdx (codeRegs cf) (codeRegs cg)) with hldef
+  set w₁ := Function.update w₀ l (regTape (V (precLoopIdx (codeRegs cf) (codeRegs cg))))
+    with hw₁
+  have hpark₁ : ∀ i, Parked (w₁ i) := by
+    intro i; rw [hw₁]
+    by_cases hi : i = l
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact hpark i
+  -- the base child
+  have hbaseb : ∀ k, precBaseIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) V' k < B :=
+    fun k => precSetupPre_lt (codeRegs_ge cf) (codeRegs_ge cg) V' B hV'b _
+  have hbase0 : precBaseIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      V' ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
+    rw [precBaseIn_zero]; exact le_trans (Nat.unpair_left_le _) h0'
+  have hbase1 : precBaseIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      V' ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
+    rw [precBaseIn_one]; omega
+  have hFfB := codeVals_lt cf s B _ hBf hbaseb hbase0 hbase1
+  -- the loop's numeric data
+  have hm : (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).2 ≤ s :=
+    le_trans (Nat.unpair_right_le _) h0'
+  have ha : (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).1 ≤ s :=
+    le_trans (Nat.unpair_left_le _) h0'
+  have hSb := precSetupVals_lt (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V' B
+    hV'b hFfB
+  have hOK := precLoopVals_ok (codeRegs_ge cf) (codeRegs_ge cg) cf cg (codeVals cg)
+    (codeVals_encodes cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) V')
+    (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).1
+    (V' (precSelf (codeRegs cf) (codeRegs cg) 1)
+      - (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).2)
+    (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7)) s B hB2
+    (by rw [precSetupVals_m]; exact hm)
+    (by rw [precSetupVals_m]; omega) ha
+    hWB hSb
+    (precSetupVals_a (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (precSetupVals_j (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (precSetupVals_curFuel (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (by rw [precSetupVals_alive, ← precBaseIn_one (codeRegs_ge cf) (codeRegs_ge cg) V',
+          ← precBaseIn_zero (codeRegs_ge cf) (codeRegs_ge cg) V']
+        exact (codeVals_encodes cf (precBaseIn (codeRegs cf) (codeRegs cg)
+          (codeRegs_ge cf) (codeRegs_ge cg) V')).1)
+    (by rw [precSetupVals_acc, ← precBaseIn_one (codeRegs_ge cf) (codeRegs_ge cg) V',
+          ← precBaseIn_zero (codeRegs_ge cf) (codeRegs_ge cg) V']
+        exact (codeVals_encodes cf (precBaseIn (codeRegs cf) (codeRegs cg)
+          (codeRegs_ge cf) (codeRegs_ge cg) V')).2)
+    (fun u hu hu0 hu1 => codeVals_lt cg (s + precWindowBound cf cg s) B u hBg hu hu0 hu1)
+    (fun u => codeVals_tag_le cg u)
+  have hsize := precChildIn_size_le (codeRegs_ge cf) (codeRegs_ge cg) cf cg (codeVals cg)
+    (codeVals_encodes cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) V')
+    (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).1
+    (V' (precSelf (codeRegs cf) (codeRegs cg) 1)
+      - (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).2)
+    (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7)) s
+    (by rw [precSetupVals_m]; exact hm)
+    (by rw [precSetupVals_m]; omega) ha
+    (precSetupVals_a (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (precSetupVals_j (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (precSetupVals_curFuel (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V')
+    (by rw [precSetupVals_alive, ← precBaseIn_one (codeRegs_ge cf) (codeRegs_ge cg) V',
+          ← precBaseIn_zero (codeRegs_ge cf) (codeRegs_ge cg) V']
+        exact (codeVals_encodes cf (precBaseIn (codeRegs cf) (codeRegs cg)
+          (codeRegs_ge cf) (codeRegs_ge cg) V')).1)
+    (by rw [precSetupVals_acc, ← precBaseIn_one (codeRegs_ge cf) (codeRegs_ge cg) V',
+          ← precBaseIn_zero (codeRegs_ge cf) (codeRegs_ge cg) V']
+        exact (codeVals_encodes cf (precBaseIn (codeRegs cf) (codeRegs cg)
+          (codeRegs_ge cf) (codeRegs_ge cg) V')).2)
+  -- the loop's per-level facts, indexed the way `precTM_hoareTime` asks for them
+  have hm7 : precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+      (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7)
+      = (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).2 :=
+    precSetupVals_m (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) V'
+  have hchildb : ∀ i, i < precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7) →
+      ∀ k, precChildIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (precLoopVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+            (codeRegs_ge cg) (codeVals cf) V') i) k < B := by
+    intro i hi k
+    obtain ⟨b, -, o9, o12, op1, op2⟩ := hOK i (Nat.le_of_lt hi)
+    exact precBodyPre_lt (codeRegs_ge cf) (codeRegs_ge cg) _ B hB2 b o9 o12 op1 op2
+      (precRightSub (codeRegs cf) (codeRegs cg) k)
+  have hFgB : ∀ i, i < precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7) →
+      ∀ k, codeVals cg (precChildIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+        (codeRegs_ge cg)
+        (precLoopVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+            (codeRegs_ge cg) (codeVals cf) V') i)) k < B := by
+    intro i hi
+    obtain ⟨s0, s1⟩ := hsize i hi
+    exact codeVals_lt cg (s + precWindowBound cf cg s) B _ hBg (hchildb i hi) s0 s1
+  -- the machine facts
+  have hMfl : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb
+          (precBaseIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) V'))
+          ys)
+        (EmitPred inp₀ (regsWork ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb
+          (codeVals cf (precBaseIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+            (codeRegs_ge cg) V'))) ys)
+        (codeMachineTime cf s (evalnArithmeticCost B)) :=
+    fun Wb hWb => hMf _ s Wb hWb hBf hbaseb hbase0 hbase1
+  have hMgl : ∀ i, i < precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7) →
+      ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb
+          (precChildIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+            (precLoopVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+              (codeVals cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+                (codeRegs_ge cg) (codeVals cf) V') i))) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)) Wb
+          (codeVals cg (precChildIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+            (codeRegs_ge cg)
+            (precLoopVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+              (codeVals cg) (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+                (codeRegs_ge cg) (codeVals cf) V') i)))) ys)
+        (codeMachineTime cg (s + precWindowBound cf cg s) (evalnArithmeticCost B)) := by
+    intro i hi Wb hWb
+    obtain ⟨s0, s1⟩ := hsize i hi
+    exact hMg _ (s + precWindowBound cf cg s) Wb hWb hBg (hchildb i hi) s0 s1
+  have main := precTM_hoareTime (af := codeRegs cf) (ag := codeRegs cg)
+    (codeRegs_ge cf) (codeRegs_ge cg)
+    ((precMain (codeRegs cf) (codeRegs cg)).trans R) l hl
+    Mf Mg
+    (codeVals cf) (codeVals cg) (codeMachineTime cf s (evalnArithmeticCost B))
+    (codeMachineTime cg (s + precWindowBound cf cg s) (evalnArithmeticCost B))
+    V' B inp₀ w₁ ys hinp₀ hpark₁ (V (precLoopIdx (codeRegs cf) (codeRegs cg)))
+    (by rw [hw₁, Function.update_self]) (Nat.le_of_lt (hV _)) hB2 hV'b hFfB hFgB
+    (fun u => codeVals_tag_le cg u) hOK hMfl hMgl
+  rw [regsWork_precMain R w₀ V,
+    regsWork_precMain R w₀ (precBlockVals (codeRegs cf) (codeRegs cg)
+      (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) (codeVals cg) V)]
+  have hpost : (fun k => precBlockVals (codeRegs cf) (codeRegs cg)
+      (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+      (precMain (codeRegs cf) (codeRegs cg) k))
+      = precVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (codeVals cf) (codeVals cg) V' :=
+    funext (fun k => precBlockVals_main (codeRegs_ge cf) (codeRegs_ge cg) _ _ V k)
+  have hpostl : precBlockVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+      (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+      (precLoopIdx (codeRegs cf) (codeRegs cg))
+      = precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (codeVals cf) V' (precSelf (codeRegs cf) (codeRegs cg) 7) :=
+    precBlockVals_loopIdx (codeRegs_ge cf) (codeRegs_ge cg) _ _ V
+  rw [hpost, hpostl]
+  rw [hw₁, Function.update_idem] at main
+  refine main.mono_bound ?_
+  rw [hm7]
+  simp only [codeMachineTime]
+  have hmul : (Nat.unpair (V' (precSelf (codeRegs cf) (codeRegs cg) 0))).2 *
+      ((15 * evalnArithmeticCost B
+        + codeMachineTime cg (s + precWindowBound cf cg s) (evalnArithmeticCost B)
+        + 15) + 2)
+      ≤ s * ((15 * evalnArithmeticCost B
+        + codeMachineTime cg (s + precWindowBound cf cg s) (evalnArithmeticCost B)
+        + 15) + 2) := Nat.mul_le_mul_right _ hm
+  omega
+
+lemma rfBlock_hoareTime (cf : Nat.Partrec.Code) {n : ℕ}
+    (R : Regs (33 + codeRegs cf) n) (Mf : TM n)
+    (V : Fin (33 + codeRegs cf) → ℕ) (s B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (hB : codeRegBound cf.rfind' s ≤ B) (hV : ∀ k, V k < B)
+    (h0 : V (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 0)) ≤ s)
+    (h1 : V (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 1)) ≤ s)
+    (hMf : ∀ (V₂ : Fin (codeRegs cf) → ℕ) (s₂ : ℕ) (Wb : Fin n → Tape),
+      (∀ i, Parked (Wb i)) → codeRegBound cf s₂ ≤ B → (∀ k, V₂ k < B) →
+      V₂ (codeLocal cf 0) ≤ s₂ → V₂ (codeLocal cf 1) ≤ s₂ →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub (codeRegs cf)).trans
+          ((rfMain (codeRegs cf)).trans R)) Wb V₂) ys)
+        (EmitPred inp₀ (regsWork ((rfSub (codeRegs cf)).trans
+          ((rfMain (codeRegs cf)).trans R)) Wb (codeVals cf V₂)) ys)
+        (codeMachineTime cf s₂ (evalnArithmeticCost B))) :
+    (rfindTM (codeRegs cf) (codeRegs_ge cf) ((rfMain (codeRegs cf)).trans R)
+      (R (rfLoopIdx (codeRegs cf))) Mf).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfBlockVals (codeRegs cf) (codeRegs_ge cf)
+        (codeVals cf) V)) ys)
+      (codeMachineTime cf.rfind' s (evalnArithmeticCost B)) := by
+  simp only [codeRegBound] at hB
+  have hgef := le_codeRegBound cf (s + rfWindowBound s)
+  have hB2 : 2 ≤ B := by omega
+  have h2W : 2 * rfWindowBound s + 3 ≤ B := by
+    have h2 : rfWindowBound s ≤ s + rfWindowBound s := Nat.le_add_left _ _
+    omega
+  have hBf : codeRegBound cf (s + rfWindowBound s) ≤ B := by omega
+  set V' : Fin (32 + codeRegs cf) → ℕ := fun k => V (rfMain (codeRegs cf) k) with hV'def
+  have hV'b : ∀ k, V' k < B := fun k => hV _
+  have h0' : V' (rfSelf (codeRegs cf) 0) ≤ s := h0
+  have h1' : V' (rfSelf (codeRegs cf) 1) ≤ s := h1
+  have hl : ∀ k, ((rfMain (codeRegs cf)).trans R) k ≠ R (rfLoopIdx (codeRegs cf)) :=
+    fun k h => rfMain_ne_loopIdx k (R.injective h)
+  set l := R (rfLoopIdx (codeRegs cf)) with hldef
+  set w₁ := Function.update w₀ l (regTape (V (rfLoopIdx (codeRegs cf)))) with hw₁
+  have hpark₁ : ∀ i, Parked (w₁ i) := by
+    intro i; rw [hw₁]
+    by_cases hi : i = l
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact hpark i
+  have hSb := rfSetupVals_lt (codeRegs_ge cf) V' B hB2 hV'b
+  have hfuel : rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1)
+      ≤ s := by rw [rfSetupVals_count]; exact h1'
+  have h8 : rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 8)
+      = rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1) := by
+    rw [rfSetupVals_fuel, rfSetupVals_count]
+  have hOK := rfLoopVals_ok (codeRegs_ge cf) cf (codeVals cf) (codeVals_encodes cf)
+    (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V')
+    (Nat.unpair (V' (rfSelf (codeRegs cf) 0))).1
+    (Nat.unpair (V' (rfSelf (codeRegs cf) 0))).2
+    (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1)) s B hB2
+    (le_trans (Nat.unpair_left_le _) h0') (le_trans (Nat.unpair_right_le _) h0') hfuel
+    h2W hSb
+    (rfSetupVals_a (codeRegs_ge cf) V') (rfSetupVals_m (codeRegs_ge cf) V') h8
+    (rfSetupVals_search (codeRegs_ge cf) V') (rfSetupVals_found (codeRegs_ge cf) V')
+    (rfSetupVals_result (codeRegs_ge cf) V') (rfSetupVals_one (codeRegs_ge cf) V')
+    (fun u hu hu0 hu1 => codeVals_lt cf (s + rfWindowBound s) B u hBf hu hu0 hu1)
+    (fun u => codeVals_tag_le cf u)
+  have hsize := rfChildIn_size_le (codeRegs_ge cf) cf (codeVals cf)
+    (codeVals_encodes cf) (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V')
+    (Nat.unpair (V' (rfSelf (codeRegs cf) 0))).1
+    (Nat.unpair (V' (rfSelf (codeRegs cf) 0))).2
+    (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1)) s
+    (le_trans (Nat.unpair_left_le _) h0') (le_trans (Nat.unpair_right_le _) h0') hfuel
+    (rfSetupVals_a (codeRegs_ge cf) V') (rfSetupVals_m (codeRegs_ge cf) V') h8
+    (rfSetupVals_one (codeRegs_ge cf) V')
+  have hchildb : ∀ i, i < rfSetupVals (codeRegs cf) (codeRegs_ge cf) V'
+      (rfSelf (codeRegs cf) 1) →
+      ∀ k, rfChildIn (codeRegs cf) (codeRegs_ge cf)
+        (rfLoopVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
+          (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V') i) k < B := by
+    intro i hi k
+    obtain ⟨b, op, -, -, -, -⟩ := hOK i (Nat.le_of_lt hi)
+    exact rfPhaseAPre_lt (codeRegs_ge cf) _ B hB2 b op (rfSub (codeRegs cf) k)
+  have hFfB : ∀ i, i < rfSetupVals (codeRegs cf) (codeRegs_ge cf) V'
+      (rfSelf (codeRegs cf) 1) →
+      ∀ k, codeVals cf (rfChildIn (codeRegs cf) (codeRegs_ge cf)
+        (rfLoopVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
+          (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V') i)) k < B := by
+    intro i hi
+    obtain ⟨s0, s1⟩ := hsize i (Nat.le_of_lt hi)
+    exact codeVals_lt cf (s + rfWindowBound s) B _ hBf (hchildb i hi) s0 s1
+  have hMfl : ∀ i, i < rfSetupVals (codeRegs cf) (codeRegs_ge cf) V'
+      (rfSelf (codeRegs cf) 1) →
+      ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub (codeRegs cf)).trans
+          ((rfMain (codeRegs cf)).trans R)) Wb
+          (rfChildIn (codeRegs cf) (codeRegs_ge cf)
+            (rfLoopVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
+              (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V') i))) ys)
+        (EmitPred inp₀ (regsWork ((rfSub (codeRegs cf)).trans
+          ((rfMain (codeRegs cf)).trans R)) Wb
+          (codeVals cf (rfChildIn (codeRegs cf) (codeRegs_ge cf)
+            (rfLoopVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
+              (rfSetupVals (codeRegs cf) (codeRegs_ge cf) V') i)))) ys)
+        (codeMachineTime cf (s + rfWindowBound s) (evalnArithmeticCost B)) := by
+    intro i hi Wb hWb
+    obtain ⟨s0, s1⟩ := hsize i (Nat.le_of_lt hi)
+    exact hMf _ (s + rfWindowBound s) Wb hWb hBf (hchildb i hi) s0 s1
+  have main := rfindTM_hoareTime (af := codeRegs cf) (codeRegs_ge cf)
+    ((rfMain (codeRegs cf)).trans R) l hl Mf (codeVals cf)
+    (codeMachineTime cf (s + rfWindowBound s) (evalnArithmeticCost B)) B V' inp₀ w₁ ys
+    hinp₀ hpark₁ (V (rfLoopIdx (codeRegs cf))) (by rw [hw₁, Function.update_self])
+    (Nat.le_of_lt (hV _)) hB2 hV'b hFfB (fun u => codeVals_tag_le cf u) hOK hMfl
+  rw [regsWork_rfMain R w₀ V,
+    regsWork_rfMain R w₀ (rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) V)]
+  have hpost : (fun k => rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) V
+      (rfMain (codeRegs cf) k))
+      = rfindVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) V' :=
+    funext (fun k => rfBlockVals_main (codeRegs_ge cf) _ V k)
+  have hpostl : rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) V
+      (rfLoopIdx (codeRegs cf))
+      = rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1) :=
+    rfBlockVals_loopIdx (codeRegs_ge cf) _ V
+  rw [hpost, hpostl]
+  rw [hw₁, Function.update_idem] at main
+  refine main.mono_bound ?_
+  simp only [codeMachineTime]
+  have hmul : rfSetupVals (codeRegs cf) (codeRegs_ge cf) V' (rfSelf (codeRegs cf) 1) *
+      ((22 * evalnArithmeticCost B
+        + codeMachineTime cf (s + rfWindowBound s) (evalnArithmeticCost B) + 22) + 2)
+      ≤ s * ((22 * evalnArithmeticCost B
+        + codeMachineTime cf (s + rfWindowBound s) (evalnArithmeticCost B) + 22) + 2) :=
+    Nat.mul_le_mul_right _ hfuel
+  omega
+
+/-- **The compiled machine meets the step bound.** -/
+lemma compiledTM_hoareTime (c : Nat.Partrec.Code) :
+    ∀ {n : ℕ} (R : Regs (codeRegs c) n) (V : Fin (codeRegs c) → ℕ) (s B : ℕ)
+      (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool),
+      Parked inp₀ → (∀ i, Parked (w₀ i)) → codeRegBound c s ≤ B → (∀ k, V k < B) →
+      V (codeLocal c 0) ≤ s → V (codeLocal c 1) ≤ s →
+      (compiledTM c R).HoareTime
+        (EmitPred inp₀ (regsWork R w₀ V) ys)
+        (EmitPred inp₀ (regsWork R w₀ (codeVals c V)) ys)
+        (codeMachineTime c s (evalnArithmeticCost B)) := by
+  induction c with
+  | zero =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV _ _
+      have hgeB := le_codeRegBound Nat.Partrec.Code.zero s
+      exact compileZero_hoareTime R V B inp₀ w₀ ys hinp₀ hpark hV
+  | succ =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV _ _
+      exact compileSucc_hoareTime R V B inp₀ w₀ ys hinp₀ hpark hV
+  | left =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV _ _
+      exact compileProj_hoareTime R 0 V B inp₀ w₀ ys hinp₀ hpark hV
+  | right =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV _ _
+      exact compileProj_hoareTime R 1 V B inp₀ w₀ ys hinp₀ hpark hV
+  | pair cf cg ihf ihg =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+      simp only [codeRegBound] at hB
+      have hgef := le_codeRegBound cf s
+      have hgeg := le_codeRegBound cg s
+      have hB2 : 2 ≤ B := by omega
+      have hBf : codeRegBound cf s ≤ B := by omega
+      have hBg : codeRegBound cg s ≤ B := by omega
+      have hpr : Nat.pair (codeEvalBound cf s) (codeEvalBound cg s) < B := by omega
+      have h0' : V (selfW (codeRegs cf) (codeRegs cg) 0) ≤ s := h0
+      have h1' : V (selfW (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
+      have hL0 : pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V
+          ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
+        rw [pairLeftIn_zero]; exact h0'
+      have hL1 : pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V
+          ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s := by
+        rw [pairLeftIn_one]; exact h1'
+      have hLb : ∀ k, pairLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) V k < B := by
+        intro k
+        simp only [pairLeftIn, Function.update_apply]
+        split_ifs <;> exact hV _
+      have hFfB := codeVals_lt cf s B _ hBf hLb hL0 hL1
+      have hR0 : pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) V
+          ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
+        rw [pairRightIn_zero]; exact h0'
+      have hR1 : pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) V
+          ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
+        rw [pairRightIn_one]; exact h1'
+      have hRb : ∀ k, pairRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) V k < B := by
+        intro k
+        simp only [pairRightIn, Function.update_apply]
+        split_ifs
+        · exact hV _
+        · exact hV _
+        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFfB j) _
+          simp only [Function.update_apply]; split_ifs <;> exact hV _
+      have hFgB := codeVals_lt cg s B _ hBg hRb hR0 hR1
+      have htagF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (leftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
+        rw [pairPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
+      have htagG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (rightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
+        rw [pairPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
+      have hvF : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (leftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 3)
+          ≤ codeEvalBound cf s := by
+        rw [pairPhaseAVec_leftLoc]
+        exact le_trans (codeVals_value_le cf _) (codeEvalBound_mono cf hL1)
+      have hvG : pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (rightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 3)
+          ≤ codeEvalBound cg s := by
+        rw [pairPhaseAVec_rightLoc]
+        exact le_trans (codeVals_value_le cg _) (codeEvalBound_mono cg hR1)
+      rw [compiledTM_pair]
+      exact compilePairTM_hoareTime (codeRegs_ge cf) (codeRegs_ge cg) R _ _
+        (codeVals cf) (codeVals cg) _ _ V B inp₀ w₀ ys hinp₀ hpark hB2 hV hFfB hFgB
+        (fun Wb hWb => ihf _ _ s B inp₀ Wb ys hinp₀ hWb hBf hLb hL0 hL1)
+        (fun Wb hWb => ihg _ _ s B inp₀ Wb ys hinp₀ hWb hBg hRb hR0 hR1)
+        (lt_of_le_of_lt (natPair_mono hvF hvG) hpr) htagF htagG
+  | comp cf cg ihf ihg =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+      simp only [codeRegBound] at hB
+      have hgef := le_codeRegBound cf (s + codeEvalBound cg s)
+      have hgeg := le_codeRegBound cg s
+      have hB2 : 2 ≤ B := by omega
+      have hBf : codeRegBound cf (s + codeEvalBound cg s) ≤ B := by omega
+      have hBg : codeRegBound cg s ≤ B := by omega
+      have h0' : V (selfW (codeRegs cf) (codeRegs cg) 0) ≤ s := h0
+      have h1' : V (selfW (codeRegs cf) (codeRegs cg) 1) ≤ s := h1
+      have hR0 : compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V
+          ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
+        rw [compRightIn_zero]; exact h0'
+      have hR1 : compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V
+          ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cg)⟩ ≤ s := by
+        rw [compRightIn_one]; exact h1'
+      have hRb : ∀ k, compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V k < B := by
+        intro k
+        simp only [compRightIn, Function.update_apply]
+        split_ifs <;> exact hV _
+      have hFgB := codeVals_lt cg s B _ hBg hRb hR0 hR1
+      have hvG : codeVals cg (compRightIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) V)
+          ⟨3, by have := codeRegs_ge cg; omega⟩ ≤ codeEvalBound cg s :=
+        le_trans (codeVals_value_le cg _) (codeEvalBound_mono cg hR1)
+      have hL0 : compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cg) V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
+          ≤ s + codeEvalBound cg s := by
+        rw [compLeftIn_zero]; exact le_trans hvG (Nat.le_add_left _ _)
+      have hL1 : compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cg) V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
+          ≤ s + codeEvalBound cg s := by
+        rw [compLeftIn_one]; exact le_trans h1' (Nat.le_add_right _ _)
+      have hLb : ∀ k, compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cg) V k < B := by
+        intro k
+        simp only [compLeftIn, Function.update_apply]
+        split_ifs
+        · exact hV _
+        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
+          simp only [Function.update_apply]; split_ifs <;> exact hV _
+        · refine writeWindow_bounded _ _ _ B (fun j => ?_) (fun j => hFgB j) _
+          simp only [Function.update_apply]; split_ifs <;> exact hV _
+      have hFfB := codeVals_lt cf (s + codeEvalBound cg s) B _ hBf hLb hL0 hL1
+      have htagF : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (leftLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) 2) ≤ 1 := by
+        rw [compPhaseAVec_leftLoc]; exact codeVals_tag_le cf _
+      have htagG : compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf)
+          (codeRegs_ge cg) (codeVals cf) (codeVals cg) V
+          (rightLoc (codeRegs cf) (codeRegs cg) (codeRegs_ge cg) 2) ≤ 1 := by
+        rw [compPhaseAVec_rightLoc]; exact codeVals_tag_le cg _
+      rw [compiledTM_comp]
+      exact compileCompTM_hoareTime (codeRegs_ge cf) (codeRegs_ge cg) R _ _
+        (codeVals cf) (codeVals cg) _ _ V B inp₀ w₀ ys hinp₀ hpark hV hFfB hFgB
+        (fun Wb hWb => ihf _ _ (s + codeEvalBound cg s) B inp₀ Wb ys hinp₀ hWb hBf
+          hLb hL0 hL1)
+        (fun Wb hWb => ihg _ _ s B inp₀ Wb ys hinp₀ hWb hBg hRb hR0 hR1)
+        htagG htagF
+  | prec cf cg ihf ihg =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+      rw [compiledTM_prec]
+      exact precBlock_hoareTime cf cg R _ _ V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+        (fun V₂ s₂ Wb hWb hb hv hz ho => ihf _ V₂ s₂ B inp₀ Wb ys hinp₀ hWb hb hv hz ho)
+        (fun V₂ s₂ Wb hWb hb hv hz ho => ihg _ V₂ s₂ B inp₀ Wb ys hinp₀ hWb hb hv hz ho)
+  | rfind' cf ihf =>
+      intro n R V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+      rw [compiledTM_rfind']
+      exact rfBlock_hoareTime cf R _ V s B inp₀ w₀ ys hinp₀ hpark hB hV h0 h1
+        (fun V₂ s₂ Wb hWb hb hv hz ho => ihf _ V₂ s₂ B inp₀ Wb ys hinp₀ hWb hb hv hz ho)
+
+end MachineTimeHoare
+
 end LogicalInduction.EvalnCompiler

@@ -6673,21 +6673,52 @@ noncomputable def rfBlockVals (af : ℕ) (haf : 16 ≤ af)
     (rfLoopIdx af)
     (rfSetupVals af haf (fun k => v (rfMain af k)) (rfSelf af 1))
 
+/-- A `prec` node's working block, read out of its thirty-three-wide vector. -/
+lemma precBlockVals_main {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (v : Fin (33 + af + ag) → ℕ) (k : Fin (32 + af + ag)) :
+    precBlockVals af ag haf hag Ff Fg v (precMain af ag k)
+      = precVals af ag haf hag Ff Fg (fun j => v (precMain af ag j)) k := by
+  rw [precBlockVals, Function.update_of_ne (precMain_ne_loopIdx _), writeWindow_apply]
+
+/-- A `prec` node's loop counter, which lives outside the block its body names. -/
+lemma precBlockVals_loopIdx {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (v : Fin (33 + af + ag) → ℕ) :
+    precBlockVals af ag haf hag Ff Fg v (precLoopIdx af ag)
+      = precSetupVals af ag haf hag Ff (fun j => v (precMain af ag j))
+          (precSelf af ag 7) := by
+  rw [precBlockVals, Function.update_self]
+
 /-- A `prec` node's own registers, read out of its thirty-three-wide vector. -/
 lemma precBlockVals_self {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (v : Fin (33 + af + ag) → ℕ) (j : Fin 32) :
     precBlockVals af ag haf hag Ff Fg v (precMain af ag (precSelf af ag j))
       = precVals af ag haf hag Ff Fg (fun k => v (precMain af ag k))
-          (precSelf af ag j) := by
-  rw [precBlockVals, Function.update_of_ne (precMain_ne_loopIdx _), writeWindow_apply]
+          (precSelf af ag j) :=
+  precBlockVals_main haf hag Ff Fg v (precSelf af ag j)
+
+/-- An `rfind'` node's working block, read out of its thirty-three-wide vector. -/
+lemma rfBlockVals_main {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (v : Fin (33 + af) → ℕ) (k : Fin (32 + af)) :
+    rfBlockVals af haf Ff v (rfMain af k)
+      = rfindVals af haf Ff (fun j => v (rfMain af j)) k := by
+  rw [rfBlockVals, Function.update_of_ne (rfMain_ne_loopIdx _), writeWindow_apply]
+
+/-- An `rfind'` node's loop counter, which lives outside the block its body names. -/
+lemma rfBlockVals_loopIdx {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (v : Fin (33 + af) → ℕ) :
+    rfBlockVals af haf Ff v (rfLoopIdx af)
+      = rfSetupVals af haf (fun j => v (rfMain af j)) (rfSelf af 1) := by
+  rw [rfBlockVals, Function.update_self]
 
 /-- An `rfind'` node's own registers, read out of its thirty-three-wide vector. -/
 lemma rfBlockVals_self {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (v : Fin (33 + af) → ℕ) (j : Fin 32) :
     rfBlockVals af haf Ff v (rfMain af (rfSelf af j))
-      = rfindVals af haf Ff (fun k => v (rfMain af k)) (rfSelf af j) := by
-  rw [rfBlockVals, Function.update_of_ne (rfMain_ne_loopIdx _), writeWindow_apply]
+      = rfindVals af haf Ff (fun k => v (rfMain af k)) (rfSelf af j) :=
+  rfBlockVals_main haf Ff v (rfSelf af j)
 
 noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → ℕ) →
     Fin (codeRegs c) → ℕ
@@ -7136,6 +7167,61 @@ lemma compileCodeAt_isSome : ∀ (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n
   | .prec cf cg, R =>
       compileCodeAt_isSome_prec cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
   | .rfind' cf, R => compileCodeAt_isSome_rfind' cf R (compileCodeAt_isSome cf _)
+
+/-- **The compiled machine.** `compileCodeAt` is total, so every code names an actual
+    `TM n` in the register file `codeRegs c` describes. This is the machine the
+    correctness and timing theorems talk about. -/
+noncomputable def compiledTM (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n) : TM n :=
+  (compileCodeAt c R).get (compileCodeAt_isSome c R)
+
+lemma compileCodeAt_eq_some (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n) :
+    compileCodeAt c R = some (compiledTM c R) :=
+  (Option.some_get (compileCodeAt_isSome c R)).symm
+
+/-! The four compound constructors, unfolded: each names its children's compiled machines
+in the subtrees `codeRegs` reserved for them. The four base constructors need no lemma —
+there `compiledTM` reduces to the machine itself. -/
+
+lemma compiledTM_pair (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.pair cg)) n) :
+    compiledTM (cf.pair cg) R
+      = compilePairTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
+          (compiledTM cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R))
+          (compiledTM cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
+  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
+  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
+  rfl
+
+lemma compiledTM_comp (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.comp cg)) n) :
+    compiledTM (cf.comp cg) R
+      = compileCompTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg) R
+          (compiledTM cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R))
+          (compiledTM cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)) := by
+  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
+  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
+  rfl
+
+lemma compiledTM_prec (cf cg : Nat.Partrec.Code) (R : Regs (codeRegs (cf.prec cg)) n) :
+    compiledTM (cf.prec cg) R
+      = precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R)
+          (R (precLoopIdx (codeRegs cf) (codeRegs cg)))
+          (compiledTM cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+            ((precMain (codeRegs cf) (codeRegs cg)).trans R)))
+          (compiledTM cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+            ((precMain (codeRegs cf) (codeRegs cg)).trans R))) := by
+  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
+  rw [compileCodeAt, compileCodeAt_eq_some cf, compileCodeAt_eq_some cg]
+  rfl
+
+lemma compiledTM_rfind' (cf : Nat.Partrec.Code) (R : Regs (codeRegs cf.rfind') n) :
+    compiledTM cf.rfind' R
+      = rfindTM (codeRegs cf) (codeRegs_ge cf)
+          ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf)))
+          (compiledTM cf ((rfSub (codeRegs cf)).trans
+            ((rfMain (codeRegs cf)).trans R))) := by
+  refine Option.some_injective _ ((compileCodeAt_eq_some _ R).symm.trans ?_)
+  rw [compileCodeAt, compileCodeAt_eq_some cf]
+  rfl
 
 /-! ## The compiler is correct
 
