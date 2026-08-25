@@ -29,6 +29,7 @@ namespace LogicalInduction.TraderMachine
 
 open Nat.Partrec (Code)
 open Complexity Complexity.TM
+open LogicalInduction.EvalnCompiler
 
 variable {n m : ℕ}
 
@@ -458,5 +459,318 @@ lemma digitTM_hoareTime (dr : Regs 10 n) (v : Fin 10 → ℕ) (B : ℕ)
         try split_ifs <;> omega)
   exact (seqEmitOut hinp₀ (parked_regsWork dr hpark _) hcl
     (seqEmitOut hinp₀ (parked_regsWork dr hpark _) hfl hem)).mono_bound (by omega)
+
+section Layout
+variable (lc tc : Nat.Partrec.Code)
+
+def totalRegs : ℕ := 32 + codeRegs lc + codeRegs tc
+
+def selfW : Fin 32 ↪ Fin (totalRegs lc tc) := shiftEmb 0 (by rw [totalRegs]; omega)
+def pairW : Fin 8 ↪ Fin (totalRegs lc tc) := shiftEmb 9 (by rw [totalRegs]; omega)
+def digW : Fin 10 ↪ Fin (totalRegs lc tc) := shiftEmb 17 (by rw [totalRegs]; omega)
+def lcW : Fin (codeRegs lc) ↪ Fin (totalRegs lc tc) :=
+  shiftEmb 32 (by rw [totalRegs]; omega)
+def tcW : Fin (codeRegs tc) ↪ Fin (totalRegs lc tc) :=
+  shiftEmb (32 + codeRegs lc) (le_of_eq (by rw [totalRegs]))
+
+lemma pairW_ne (i j : Fin 8) (h : (i : ℕ) ≠ (j : ℕ)) : pairW lc tc i ≠ pairW lc tc j :=
+  amb_ne _ _ i j (by omega)
+
+lemma selfW_ne (i j : Fin 32) (h : (i : ℕ) ≠ (j : ℕ)) : selfW lc tc i ≠ selfW lc tc j :=
+  amb_ne _ _ i j (by omega)
+
+lemma pairW_ne_selfW (i : Fin 8) (j : Fin 32) (h : 9 + (i : ℕ) ≠ (j : ℕ)) :
+    pairW lc tc i ≠ selfW lc tc j := amb_ne _ _ i j (by omega)
+
+lemma digW_ne_selfW (i : Fin 10) (j : Fin 32) (h : 17 + (i : ℕ) ≠ (j : ℕ)) :
+    digW lc tc i ≠ selfW lc tc j := amb_ne _ _ i j (by omega)
+
+lemma digW_ne_pairW (i : Fin 10) (j : Fin 8) : digW lc tc i ≠ pairW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma lcW_ne_selfW (i : Fin (codeRegs lc)) (j : Fin 32) : lcW lc tc i ≠ selfW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma tcW_ne_selfW (i : Fin (codeRegs tc)) (j : Fin 32) : tcW lc tc i ≠ selfW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma lcW_ne_pairW (i : Fin (codeRegs lc)) (j : Fin 8) : lcW lc tc i ≠ pairW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma tcW_ne_pairW (i : Fin (codeRegs tc)) (j : Fin 8) : tcW lc tc i ≠ pairW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma lcW_ne_digW (i : Fin (codeRegs lc)) (j : Fin 10) : lcW lc tc i ≠ digW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma tcW_ne_digW (i : Fin (codeRegs tc)) (j : Fin 10) : tcW lc tc i ≠ digW lc tc j :=
+  amb_ne _ _ i j (by have := j.isLt; omega)
+
+lemma tcW_ne_lcW (i : Fin (codeRegs tc)) (j : Fin (codeRegs lc)) :
+    tcW lc tc i ≠ lcW lc tc j := amb_ne _ _ i j (by have := j.isLt; omega)
+
+end Layout
+
+section Body
+variable (lc tc : Nat.Partrec.Code)
+
+noncomputable def tokenBodyVals (V : Fin (totalRegs lc tc) → ℕ) :
+    Fin (totalRegs lc tc) → ℕ :=
+  let V1 := Function.update V (pairW lc tc 0) (V (selfW lc tc 0))
+  let V2 := Function.update V1 (pairW lc tc 1) (V1 (selfW lc tc 5))
+  let V3 := writeWindow (pairW lc tc) V2 (pairVals (fun j => V2 (pairW lc tc j)))
+  let V4 := Function.update V3 (tcW lc tc (codeLocal tc 0)) (V3 (pairW lc tc 6))
+  let V5 := Function.update V4 (tcW lc tc (codeLocal tc 1)) (V4 (selfW lc tc 1))
+  let V6 := writeWindow (tcW lc tc) V5 (codeVals tc (fun j => V5 (tcW lc tc j)))
+  let V7 := Function.update V6 (digW lc tc 0) (V6 (tcW lc tc (codeLocal tc 3)))
+  let V8 := writeWindow (digW lc tc) V7 (digitVals (fun j => V7 (digW lc tc j)))
+  Function.update V8 (selfW lc tc 5) (V8 (selfW lc tc 5) + 1)
+
+set_option maxHeartbeats 1000000 in
+/-- Every working register below the pairing block, other than the loop index, is left
+    alone by an iteration. -/
+lemma tokenBodyVals_selfW (V : Fin (totalRegs lc tc) → ℕ) (q : Fin 32)
+    (hq : (q : ℕ) < 9) (hq5 : (q : ℕ) ≠ 5) :
+    tokenBodyVals lc tc V (selfW lc tc q) = V (selfW lc tc q) := by
+  simp only [tokenBodyVals]
+  rw [Function.update_of_ne (selfW_ne lc tc q 5 (by simpa using hq5)),
+    writeWindow_of_ne _ _ _ (fun j => digW_ne_selfW lc tc j q (by have := j.isLt; omega)),
+    Function.update_of_ne (Ne.symm (digW_ne_selfW lc tc 0 q (by simp; omega))),
+    writeWindow_of_ne _ _ _ (fun j => tcW_ne_selfW lc tc j q),
+    Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ q)),
+    Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ q)),
+    writeWindow_of_ne _ _ _ (fun j => pairW_ne_selfW lc tc j q (by have := j.isLt; omega)),
+    Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 q (by simp; omega))),
+    Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 q (by simp; omega)))]
+
+set_option maxHeartbeats 1000000 in
+/-- The loop index advances by one. -/
+lemma tokenBodyVals_index (V : Fin (totalRegs lc tc) → ℕ) :
+    tokenBodyVals lc tc V (selfW lc tc 5) = V (selfW lc tc 5) + 1 := by
+  simp only [tokenBodyVals]
+  rw [Function.update_self,
+    writeWindow_of_ne _ _ _ (fun j => digW_ne_selfW lc tc j 5 (by have := j.isLt; simp; omega)),
+    Function.update_of_ne (Ne.symm (digW_ne_selfW lc tc 0 5 (by decide))),
+    writeWindow_of_ne _ _ _ (fun j => tcW_ne_selfW lc tc j 5),
+    Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 5)),
+    Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 5)),
+    writeWindow_of_ne _ _ _ (fun j => pairW_ne_selfW lc tc j 5 (by have := j.isLt; simp; omega)),
+    Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 5 (by decide))),
+    Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 5 (by decide)))]
+
+end Body
+
+
+lemma clampVals_lt (v : Fin 10 → ℕ) (B : ℕ) (hB4 : 4 < B) (hv : ∀ k, v k < B) :
+    ∀ k, clampVals v k < B := by
+  intro k
+  have h0 := hv 0
+  have hk := hv k
+  simp only [clampVals]
+  split_ifs <;> omega
+
+lemma flagVals_lt (u : Fin 10 → ℕ) (B : ℕ) (hB4 : 4 < B) (hu : ∀ k, u k < B) :
+    ∀ k, flagVals u k < B := by
+  intro k
+  have h1 := hu 1
+  have hk := hu k
+  simp only [flagVals]
+  split_ifs <;> omega
+
+/-- The digit block keeps every register inside the bound. -/
+lemma digitVals_lt (v : Fin 10 → ℕ) (B : ℕ) (hB5 : 5 ≤ B) (hv : ∀ k, v k < B) :
+    ∀ k, digitVals v k < B :=
+  flagVals_lt _ B (by omega) (clampVals_lt v B (by omega) hv)
+
+lemma incReg_regsWork (r : Regs m n) (V : Fin m → ℕ) (B : ℕ) (inp₀ : Tape)
+    (w₀ : Fin n → Tape) (ys : List Bool) (q : Fin m)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (incRegTM (r q)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀ (regsWork r w₀ (Function.update V q (V q + 1))) ys)
+      (evalnArithmeticCost B) := by
+  have h := incRegTM_hoareTime (r q) (V q) inp₀ (regsWork r w₀ V) ys hinp₀
+    (fun i _ => parked_regsWork r hpark V i) (regsWork_apply r w₀ V q)
+  rw [regsWork_update] at h
+  exact h.mono_bound (regOpTime_le_arith (V q) B (hv q))
+
+lemma update_lt (V : Fin m → ℕ) (B : ℕ) {q : Fin m} {x : ℕ} (hv : ∀ k, V k < B)
+    (hx : x < B) : ∀ k, Function.update V q x k < B := by
+  intro k
+  simp only [Function.update_apply]
+  split_ifs
+  · exact hx
+  · exact hv k
+
+section BodySpec
+variable (lc tc : Nat.Partrec.Code)
+
+/-- One iteration: pair the day with the index, run the token program on it under the
+    clock, and emit its value as a clamped digit. -/
+noncomputable def tokenBodyTM (R : Regs (totalRegs lc tc) n) : TM n :=
+  seqTM (copyIntoTM (R (selfW lc tc 0)) (R (pairW lc tc 0))) <|
+  seqTM (copyIntoTM (R (selfW lc tc 5)) (R (pairW lc tc 1))) <|
+  seqTM (pairTM ((pairW lc tc).trans R)) <|
+  seqTM (copyIntoTM (R (pairW lc tc 6)) (R (tcW lc tc (codeLocal tc 0)))) <|
+  seqTM (copyIntoTM (R (selfW lc tc 1)) (R (tcW lc tc (codeLocal tc 1)))) <|
+  seqTM (compiledTM tc ((tcW lc tc).trans R)) <|
+  seqTM (copyIntoTM (R (tcW lc tc (codeLocal tc 3))) (R (digW lc tc 0))) <|
+  seqTM (digitTM ((digW lc tc).trans R)) (incRegTM (R (selfW lc tc 5)))
+
+/-- The digit one iteration emits: the token program's value at the paired index, or the
+    canonical `0` when it does not return. -/
+noncomputable def tokenDigit (V : Fin (totalRegs lc tc) → ℕ) : ℕ :=
+  resultVal (Nat.Partrec.Code.evaln (V (selfW lc tc 1)) tc
+    (Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5))))
+
+lemma tcW_local_ne (i j : Fin 16) (h : i ≠ j) :
+    tcW lc tc (codeLocal tc i) ≠ tcW lc tc (codeLocal tc j) :=
+  fun e => h ((codeLocal tc).injective ((tcW lc tc).injective e))
+
+set_option maxHeartbeats 2000000 in
+lemma tokenBodyTM_hoareTime (R : Regs (totalRegs lc tc) n)
+    (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (hB5 : 5 ≤ B) (hsB : s < B) (hV : ∀ k, V k < B)
+    (hBtc : codeRegBound tc s ≤ B)
+    (hpair : Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) ≤ s)
+    (hclock : V (selfW lc tc 1) ≤ s)
+    (hinc : V (selfW lc tc 5) + 1 < B) :
+    (tokenBodyTM lc tc R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (tokenBodyVals lc tc V))
+        (ys ++ digitBits (min (tokenDigit lc tc V) 4)))
+      (25 * evalnArithmeticCost B + codeMachineTime tc s (evalnArithmeticCost B) + 70) := by
+  -- stage 1: the day into the pairing block
+  have h1 := copyInto_regsWork R V B inp₀ w₀ ys (selfW lc tc 0) (pairW lc tc 0)
+    (Ne.symm (pairW_ne_selfW lc tc 0 0 (by decide))) hinp₀ hpark (fun k => (hV k).le)
+  set V1 := Function.update V (pairW lc tc 0) (V (selfW lc tc 0)) with hV1
+  have hv1 : ∀ k, V1 k < B := update_lt V B hV (hV _)
+  -- stage 2: the index into the pairing block
+  have h2 := copyInto_regsWork R V1 B inp₀ w₀ ys (selfW lc tc 5) (pairW lc tc 1)
+    (Ne.symm (pairW_ne_selfW lc tc 1 5 (by decide))) hinp₀ hpark (fun k => (hv1 k).le)
+  set V2 := Function.update V1 (pairW lc tc 1) (V1 (selfW lc tc 5)) with hV2
+  have hv2 : ∀ k, V2 k < B := update_lt V1 B hv1 (hv1 _)
+  -- the two pairing inputs, read back
+  have r2a : V2 (pairW lc tc 0) = V (selfW lc tc 0) := by
+    rw [hV2, Function.update_of_ne (pairW_ne lc tc 0 1 (by decide)), hV1,
+      Function.update_self]
+  have r2b : V2 (pairW lc tc 1) = V (selfW lc tc 5) := by
+    rw [hV2, Function.update_self, hV1,
+      Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 5 (by decide)))]
+  -- stage 3: the pair
+  have h3 := runChildFixed (pairW lc tc) R (pairTM ((pairW lc tc).trans R)) pairVals
+    (evalnArithmeticCost B) w₀ hpark V2
+    (fun Wb hWb => pairTM_hoareTime_arith ((pairW lc tc).trans R)
+      (fun j => V2 (pairW lc tc j)) B inp₀ Wb ys hinp₀ hWb (fun k => (hv2 _).le))
+  set V3 := writeWindow (pairW lc tc) V2 (pairVals (fun j => V2 (pairW lc tc j)))
+    with hV3
+  have hv3 : ∀ k, V3 k < B := by
+    intro k
+    rw [hV3]
+    refine writeWindow_bounded _ _ _ B hv2 (fun j => ?_) k
+    refine pairVals_lt _ B (by omega) (fun i => hv2 _) ?_ j
+    show Nat.pair (V2 (pairW lc tc 0)) (V2 (pairW lc tc 1)) < B
+    rw [r2a, r2b]
+    omega
+  have r3 : V3 (pairW lc tc 6) = Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) := by
+    rw [hV3, writeWindow_apply]
+    have hp6 : pairVals (fun j => V2 (pairW lc tc j)) 6
+        = Nat.pair (V2 (pairW lc tc 0)) (V2 (pairW lc tc 1)) := by simp [pairVals]
+    rw [hp6, r2a, r2b]
+  -- stage 4: the pair into the token program's input register
+  have h4 := copyInto_regsWork R V3 B inp₀ w₀ ys (pairW lc tc 6)
+    (tcW lc tc (codeLocal tc 0)) (Ne.symm (tcW_ne_pairW lc tc _ 6)) hinp₀ hpark
+    (fun k => (hv3 k).le)
+  set V4 := Function.update V3 (tcW lc tc (codeLocal tc 0)) (V3 (pairW lc tc 6)) with hV4
+  have hv4 : ∀ k, V4 k < B := update_lt V3 B hv3 (hv3 _)
+  have r4 : V4 (selfW lc tc 1) = V (selfW lc tc 1) := by
+    rw [hV4, Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 1)), hV3,
+      writeWindow_of_ne _ _ _ (fun j => pairW_ne_selfW lc tc j 1 (by have := j.isLt; simp; omega)),
+      hV2, Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 1 (by decide))), hV1,
+      Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 1 (by decide)))]
+  -- stage 5: the clock into the token program's fuel register
+  have h5 := copyInto_regsWork R V4 B inp₀ w₀ ys (selfW lc tc 1)
+    (tcW lc tc (codeLocal tc 1)) (Ne.symm (tcW_ne_selfW lc tc _ 1)) hinp₀ hpark
+    (fun k => (hv4 k).le)
+  set V5 := Function.update V4 (tcW lc tc (codeLocal tc 1)) (V4 (selfW lc tc 1)) with hV5
+  have hv5 : ∀ k, V5 k < B := update_lt V4 B hv4 (hv4 _)
+  have r5a : V5 (tcW lc tc (codeLocal tc 0))
+      = Nat.pair (V (selfW lc tc 0)) (V (selfW lc tc 5)) := by
+    rw [hV5, Function.update_of_ne (tcW_local_ne lc tc 0 1 (by decide)), hV4,
+      Function.update_self, r3]
+  have r5b : V5 (tcW lc tc (codeLocal tc 1)) = V (selfW lc tc 1) := by
+    rw [hV5, Function.update_self, r4]
+  -- stage 6: the token program
+  have hin0 : (fun j => V5 (tcW lc tc j)) (codeLocal tc 0) ≤ s := by
+    show V5 (tcW lc tc (codeLocal tc 0)) ≤ s
+    rw [r5a]; exact hpair
+  have hin1 : (fun j => V5 (tcW lc tc j)) (codeLocal tc 1) ≤ s := by
+    show V5 (tcW lc tc (codeLocal tc 1)) ≤ s
+    rw [r5b]; exact hclock
+  have h6 := runChildFixed (tcW lc tc) R (compiledTM tc ((tcW lc tc).trans R))
+    (codeVals tc) (codeMachineTime tc s (evalnArithmeticCost B)) w₀ hpark V5
+    (fun Wb hWb => compiledTM_hoareTime tc ((tcW lc tc).trans R)
+      (fun j => V5 (tcW lc tc j)) s B inp₀ Wb ys hinp₀ hWb hBtc (fun k => hv5 _)
+      hin0 hin1)
+  set V6 := writeWindow (tcW lc tc) V5 (codeVals tc (fun j => V5 (tcW lc tc j)))
+    with hV6
+  have hv6 : ∀ k, V6 k < B := by
+    intro k
+    rw [hV6]
+    exact writeWindow_bounded _ _ _ B hv5
+      (fun j => codeVals_lt tc s B _ hBtc (fun i => hv5 _) hin0 hin1 j) k
+  have r6 : V6 (tcW lc tc (codeLocal tc 3)) = tokenDigit lc tc V := by
+    rw [hV6, writeWindow_apply, tokenDigit, ← r5a, ← r5b]
+    exact (codeVals_encodes tc (fun j => V5 (tcW lc tc j))).2
+  -- stage 7: the value into the digit block
+  have h7 := copyInto_regsWork R V6 B inp₀ w₀ ys (tcW lc tc (codeLocal tc 3))
+    (digW lc tc 0) (tcW_ne_digW lc tc _ 0) hinp₀ hpark (fun k => (hv6 k).le)
+  set V7 := Function.update V6 (digW lc tc 0) (V6 (tcW lc tc (codeLocal tc 3))) with hV7
+  have hv7 : ∀ k, V7 k < B := update_lt V6 B hv6 (hv6 _)
+  have r7 : V7 (digW lc tc 0) = tokenDigit lc tc V := by
+    rw [hV7, Function.update_self, r6]
+  -- stage 8: the digit block
+  have h8 := runChildFixed (digW lc tc) R (digitTM ((digW lc tc).trans R)) digitVals
+    (18 * evalnArithmeticCost B + 62) w₀ hpark V7
+    (fun Wb hWb => digitTM_hoareTime ((digW lc tc).trans R) (fun j => V7 (digW lc tc j))
+      B inp₀ Wb ys hinp₀ hWb (by omega) (fun k => (hv7 _).le))
+  rw [r7] at h8
+  set V8 := writeWindow (digW lc tc) V7 (digitVals (fun j => V7 (digW lc tc j))) with hV8
+  have hv8 : ∀ k, V8 k < B := by
+    intro k
+    rw [hV8]
+    exact writeWindow_bounded _ _ _ B hv7
+      (fun j => digitVals_lt _ B hB5 (fun i => hv7 _) j) k
+  have r8 : V8 (selfW lc tc 5) = V (selfW lc tc 5) := by
+    rw [hV8,
+      writeWindow_of_ne _ _ _ (fun j => digW_ne_selfW lc tc j 5 (by have := j.isLt; simp; omega)),
+      hV7, Function.update_of_ne (Ne.symm (digW_ne_selfW lc tc 0 5 (by decide))), hV6,
+      writeWindow_of_ne _ _ _ (fun j => tcW_ne_selfW lc tc j 5), hV5,
+      Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 5)), hV4,
+      Function.update_of_ne (Ne.symm (tcW_ne_selfW lc tc _ 5)), hV3,
+      writeWindow_of_ne _ _ _ (fun j => pairW_ne_selfW lc tc j 5 (by have := j.isLt; simp; omega)),
+      hV2, Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 1 5 (by decide))), hV1,
+      Function.update_of_ne (Ne.symm (pairW_ne_selfW lc tc 0 5 (by decide)))]
+  -- stage 9: advance the index
+  have h9 := incReg_regsWork R V8 B inp₀ w₀ (ys ++ digitBits (min (tokenDigit lc tc V) 4))
+    (selfW lc tc 5) hinp₀ hpark (fun k => (hv8 k).le)
+  rw [r8] at h9
+  have hfinal : Function.update V8 (selfW lc tc 5) (V (selfW lc tc 5) + 1)
+      = tokenBodyVals lc tc V := by
+    rw [← r8, hV8, hV7, hV6, hV5, hV4, hV3, hV2, hV1, tokenBodyVals]
+  rw [hfinal] at h9
+  exact (seqEmitOut hinp₀ (parked_regsWork R hpark V1) h1
+    (seqEmitOut hinp₀ (parked_regsWork R hpark V2) h2
+      (seqEmitOut hinp₀ (parked_regsWork R hpark V3) h3
+        (seqEmitOut hinp₀ (parked_regsWork R hpark V4) h4
+          (seqEmitOut hinp₀ (parked_regsWork R hpark V5) h5
+            (seqEmitOut hinp₀ (parked_regsWork R hpark V6) h6
+              (seqEmitOut hinp₀ (parked_regsWork R hpark V7) h7
+                (seqEmitOut hinp₀ (parked_regsWork R hpark V8) h8
+                  h9)))))))).mono_bound (by omega)
+
+end BodySpec
 
 end LogicalInduction.TraderMachine

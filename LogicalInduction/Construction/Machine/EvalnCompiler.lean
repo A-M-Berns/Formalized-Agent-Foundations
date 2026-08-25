@@ -164,13 +164,13 @@ def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
     instance, and is otherwise identical — a candidate for upstreaming. -/
 lemma runChildFixed {A m : ℕ} (W : Fin m ↪ Fin A) (R : Regs A n) (M : TM n)
     (F : (Fin m → ℕ) → Fin m → ℕ) (t : ℕ)
-    {inp₀ : Tape} {ys : List Bool} (w₀ : Fin n → Tape)
+    {inp₀ : Tape} {ys ys' : List Bool} (w₀ : Fin n → Tape)
     (hpark : ∀ i, Parked (w₀ i)) (V : Fin A → ℕ)
     (hM : ∀ (Wb : Fin n → Tape), (∀ i, Parked (Wb i)) →
       M.HoareTime (EmitPred inp₀ (regsWork (W.trans R) Wb (fun j => V (W j))) ys)
-                  (EmitPred inp₀ (regsWork (W.trans R) Wb (F (fun j => V (W j)))) ys) t) :
+                  (EmitPred inp₀ (regsWork (W.trans R) Wb (F (fun j => V (W j)))) ys') t) :
     M.HoareTime (EmitPred inp₀ (regsWork R w₀ V) ys)
-                (EmitPred inp₀ (regsWork R w₀ (writeWindow W V (F (fun j => V (W j))))) ys)
+                (EmitPred inp₀ (regsWork R w₀ (writeWindow W V (F (fun j => V (W j))))) ys')
                 t := by
   have h := hM (regsWork R w₀ V) (parked_regsWork R hpark V)
   rw [regsWork_restrict R W w₀ V, ← regsWork_window]
@@ -3431,22 +3431,24 @@ end PrecBodyBound
 `forRegTM` driven by a counter register that the block does not name. The body's
 obligation is then exactly its ordinary `regsWork` specification: `regsWork_update_of_ne`
 absorbs the loop's mid-iteration cursor tape into the ambient state, which is what that
-lemma exists for. Generic in the register block — a candidate for upstreaming. -/
+lemma exists for. The output accumulator may grow from one level to the next, which is
+what an emitting loop needs. Generic in the register block — a candidate for
+upstreaming. -/
 
 section RegsLoop
 
 lemma forRegs_hoareTime {A : ℕ} (R : Regs A n) (body : TM n) (l : Fin n)
     (hl : ∀ k, R k ≠ l) (m b : ℕ) (V : ℕ → Fin A → ℕ)
-    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : ℕ → List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hw₀l : w₀ l = regTape m)
     (hbody : ∀ i, i < m → ∀ (w : Fin n → Tape), (∀ j, Parked (w j)) →
-      body.HoareTime (EmitPred inp₀ (regsWork R w (V i)) ys)
-                     (EmitPred inp₀ (regsWork R w (V (i + 1))) ys) b) :
+      body.HoareTime (EmitPred inp₀ (regsWork R w (V i)) (ys i))
+                     (EmitPred inp₀ (regsWork R w (V (i + 1))) (ys (i + 1))) b) :
     (forRegTM body l).HoareTime
-      (EmitPred inp₀ (regsWork R w₀ (V 0)) ys)
-      (EmitPred inp₀ (regsWork R w₀ (V m)) ys)
+      (EmitPred inp₀ (regsWork R w₀ (V 0)) (ys 0))
+      (EmitPred inp₀ (regsWork R w₀ (V m)) (ys m))
       (m * (b + 2) + (m + 2)) := by
-  refine forRegTM_hoareTime body l m inp₀ (fun i => regsWork R w₀ (V i)) (fun _ => ys) b
+  refine forRegTM_hoareTime body l m inp₀ (fun i => regsWork R w₀ (V i)) ys b
     hinp₀ (fun i => by rw [regsWork_of_ne _ _ _ hl]; exact hw₀l)
     (fun i j _ => parked_regsWork R hpark _ j) ?_
   intro i hi
@@ -3516,7 +3518,7 @@ lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
       (m * ((15 * evalnArithmeticCost B + tg + 15) + 2) + (m + 2)) := by
   refine forRegs_hoareTime R (precBodyTM af ag haf hag R Mg) l hl
     m (15 * evalnArithmeticCost B + tg + 15)
-    (precLoopVals af ag haf hag Fg V₀) inp₀ w₀ ys hinp₀ hpark hw₀l ?_
+    (precLoopVals af ag haf hag Fg V₀) inp₀ w₀ (fun _ => ys) hinp₀ hpark hw₀l ?_
   intro i hi w hw
   obtain ⟨hb, halive, hj1, hf1, hp1, hp2⟩ := hOK i hi
   rw [precLoopVals_succ]
@@ -6160,8 +6162,8 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
       (EmitPred inp₀ (regsWork R w₀ (rfLoopVals af haf Ff V₀ t)) ys)
       (t * ((22 * evalnArithmeticCost B + tf + 22) + 2) + (t + 2)) := by
   refine forRegs_hoareTime R (rfBodyTM af haf R Mf) l hl t
-    (22 * evalnArithmeticCost B + tf + 22) (rfLoopVals af haf Ff V₀) inp₀ w₀ ys hinp₀
-    hpark hw₀l ?_
+    (22 * evalnArithmeticCost B + tf + 22) (rfLoopVals af haf Ff V₀) inp₀ w₀
+    (fun _ => ys) hinp₀ hpark hw₀l ?_
   intro i hi w hw
   obtain ⟨hb, hp, hs, hm1, hres, hfound⟩ := hOK i hi
   rw [rfLoopVals_succ]
