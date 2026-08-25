@@ -24,6 +24,7 @@ import LogicalInduction.Construction.Machine.EvalnCompiler
 namespace LogicalInduction.EvalnCompiler
 
 open Nat.Partrec (Code)
+open Complexity Complexity.TM
 
 /-- The value `prec`'s body pairs up before invoking `cg`: `Nat.pair a (Nat.pair j acc)`,
     with `a`, `j` bounded by the node's input and `acc` by either child's answer. -/
@@ -433,5 +434,75 @@ lemma rfLoopVals_ok (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
       exact rfBodyVals_lt haf Ff _ B hB2 b op o9 o7 o11 o10 (hFfB k (by omega)) hFfTag
 
 end RfindLoopBound
+
+/-! ## What a compiled node leaves in its answer registers
+
+The tag is a flag and the value is bounded by `codeEvalBound` — both read off the
+correctness theorem rather than the machine. -/
+
+section AnswerBounds
+
+lemma resultVal_le_codeEvalBound (c : Nat.Partrec.Code) (k n : ℕ) :
+    resultVal (Nat.Partrec.Code.evaln k c n) ≤ codeEvalBound c k := by
+  cases hv : Nat.Partrec.Code.evaln k c n with
+  | none => simp
+  | some x =>
+      simp only [resultVal]
+      exact codeEvaln_result_le c (by rw [hv]; rfl)
+
+lemma codeVals_tag_le (c : Nat.Partrec.Code) (V : Fin (codeRegs c) → ℕ) :
+    codeVals c V ⟨2, by have := codeRegs_ge c; omega⟩ ≤ 1 := by
+  rw [(codeVals_encodes c V).1]
+  exact resultTag_le_one _
+
+lemma codeVals_value_le (c : Nat.Partrec.Code) (V : Fin (codeRegs c) → ℕ) :
+    codeVals c V ⟨3, by have := codeRegs_ge c; omega⟩
+      ≤ codeEvalBound c (V ⟨1, by have := codeRegs_ge c; omega⟩) := by
+  rw [(codeVals_encodes c V).2]
+  exact resultVal_le_codeEvalBound _ _ _
+
+end AnswerBounds
+
+/-! ## The two looping constructors' thirty-three-wide blocks -/
+
+section BlockBounds
+variable {af ag : ℕ}
+
+lemma precBlockVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (v : Fin (33 + af + ag) → ℕ) (B : ℕ) (hv : ∀ k, v k < B)
+    (hinner : ∀ k,
+      precVals af ag haf hag Ff Fg (fun k => v (precMain af ag k)) k < B)
+    (hm : precSetupVals af ag haf hag Ff (fun k => v (precMain af ag k))
+      (precSelf af ag 7) < B) :
+    ∀ k, precBlockVals af ag haf hag Ff Fg v k < B := by
+  intro k
+  simp only [precBlockVals, Function.update_apply]
+  split_ifs with h
+  · exact hm
+  · by_cases hk : ∃ j, precMain af ag j = k
+    · obtain ⟨j, rfl⟩ := hk
+      rw [writeWindow_apply]
+      exact hinner j
+    · rw [writeWindow_of_ne _ _ _ (fun j e => hk ⟨j, e⟩)]
+      exact hv k
+
+lemma rfBlockVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (v : Fin (33 + af) → ℕ) (B : ℕ) (hv : ∀ k, v k < B)
+    (hinner : ∀ k, rfindVals af haf Ff (fun k => v (rfMain af k)) k < B)
+    (ht : rfSetupVals af haf (fun k => v (rfMain af k)) (rfSelf af 1) < B) :
+    ∀ k, rfBlockVals af haf Ff v k < B := by
+  intro k
+  simp only [rfBlockVals, Function.update_apply]
+  split_ifs with h
+  · exact ht
+  · by_cases hk : ∃ j, rfMain af j = k
+    · obtain ⟨j, rfl⟩ := hk
+      rw [writeWindow_apply]
+      exact hinner j
+    · rw [writeWindow_of_ne _ _ _ (fun j e => hk ⟨j, e⟩)]
+      exact hv k
+
+end BlockBounds
 
 end LogicalInduction.EvalnCompiler
