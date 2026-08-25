@@ -497,4 +497,80 @@ def compileLeft (r : CodeRegs n) : TM n := compileProj r 0
 /-- `evaln k right n`, exactly. -/
 def compileRight (r : CodeRegs n) : TM n := compileProj r 1
 
+/-! ## `pair` and `comp`: exact equations and the mask formulas
+
+Both recursive children receive the parent's fuel **undecremented** — `evaln (k+1) cf n`
+and `evaln (k+1) cg n` for `pair`, `evaln (k+1) cg n` then `evaln (k+1) cf x` for `comp`.
+Only `prec` and `rfind'` decrement, and only for their self-calls. -/
+
+lemma evaln_pair_eq (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    Nat.Partrec.Code.evaln k (cf.pair cg) m
+      = if m < k then
+          (Nat.pair <$> Nat.Partrec.Code.evaln k cf m <*> Nat.Partrec.Code.evaln k cg m)
+        else none := by
+  cases k with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff]
+    split_ifs with h <;> simp [h]
+
+lemma evaln_comp_eq (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    Nat.Partrec.Code.evaln k (cf.comp cg) m
+      = if m < k then
+          (Nat.Partrec.Code.evaln k cg m >>= fun x => Nat.Partrec.Code.evaln k cf x)
+        else none := by
+  cases k with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff]
+    split_ifs with h <;> simp [h]
+
+/-! ### The masks
+
+Each says: the compiled machine may run **every** subcomputation unconditionally and
+recover the exact `evaln` answer by multiplying the result registers by a product of
+`0/1` tags. No control flow is needed to suppress a failed branch. -/
+
+@[simp] lemma resultTag_mul_resultVal (o : Option ℕ) :
+    resultTag o * resultVal o = resultVal o := by cases o <;> simp
+
+lemma pair_mask_tag (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    resultTag (Nat.Partrec.Code.evaln k (cf.pair cg) m)
+      = (if m < k then 1 else 0) * resultTag (Nat.Partrec.Code.evaln k cf m)
+          * resultTag (Nat.Partrec.Code.evaln k cg m) := by
+  rw [evaln_pair_eq]
+  cases hF : Nat.Partrec.Code.evaln k cf m <;> cases hG : Nat.Partrec.Code.evaln k cg m <;>
+    split_ifs <;> simp [Seq.seq]
+
+lemma pair_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    resultVal (Nat.Partrec.Code.evaln k (cf.pair cg) m)
+      = (if m < k then 1 else 0) * resultTag (Nat.Partrec.Code.evaln k cf m)
+          * resultTag (Nat.Partrec.Code.evaln k cg m)
+          * Nat.pair (resultVal (Nat.Partrec.Code.evaln k cf m))
+              (resultVal (Nat.Partrec.Code.evaln k cg m)) := by
+  rw [evaln_pair_eq]
+  cases hF : Nat.Partrec.Code.evaln k cf m <;> cases hG : Nat.Partrec.Code.evaln k cg m <;>
+    split_ifs <;> simp [Seq.seq]
+
+/-- **The `comp` mask.** `cf` is applied to `resultVal` of `cg`'s answer — which is `0`
+    when `cg` failed, so the machine may run `cf` on garbage and still be exactly right,
+    because the `cg` tag factor zeroes the product. -/
+lemma comp_mask_tag (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    resultTag (Nat.Partrec.Code.evaln k (cf.comp cg) m)
+      = (if m < k then 1 else 0) * resultTag (Nat.Partrec.Code.evaln k cg m)
+          * resultTag (Nat.Partrec.Code.evaln k cf
+              (resultVal (Nat.Partrec.Code.evaln k cg m))) := by
+  rw [evaln_comp_eq]
+  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
+
+lemma comp_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
+    resultVal (Nat.Partrec.Code.evaln k (cf.comp cg) m)
+      = (if m < k then 1 else 0) * resultTag (Nat.Partrec.Code.evaln k cg m)
+          * resultTag (Nat.Partrec.Code.evaln k cf
+              (resultVal (Nat.Partrec.Code.evaln k cg m)))
+          * resultVal (Nat.Partrec.Code.evaln k cf
+              (resultVal (Nat.Partrec.Code.evaln k cg m))) := by
+  rw [evaln_comp_eq]
+  cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
+
 end LogicalInduction.EvalnCompiler
