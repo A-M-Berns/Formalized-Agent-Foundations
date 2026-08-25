@@ -3775,3 +3775,101 @@ PolyFueled / EfficientlyComputable → FP      open
 Nothing in the architecture moved: the result encoding, ambient arity, size-based
 allocation, `runChild`, mask discipline and fuel convention are all as frozen in Part XV,
 and the pure layer confirms rather than strains them.
+
+---
+
+# Part XVII — Stage 2C1: `prec`'s semantics and body (2026-08-25)
+
+_Seventeenth pass. Scope: `Code.prec` only. The semantic layer, register layout and loop
+body landed; the body Hoare proof, loop, setup and closure did not._
+
+## XVII.0 The level guards are free
+
+The pass's one real discovery, and it shrinks the machine before it is written.
+
+`precRun` re-checks `Nat.pair a j < f + j` at every level. **The machine does not have to.**
+`Nat.pair a ·` is strictly increasing, so the index grows by at least `1` per level while
+the level fuel grows by exactly `1`:
+
+```lean
+pair_lt_pair_succ : Nat.pair a b < Nat.pair a (b + 1)
+pair_add_le       : j ≤ m → Nat.pair a j + (m - j) ≤ Nat.pair a m
+level_guard       : j ≤ m → Nat.pair a m < f + m → Nat.pair a j < f + j
+```
+
+So the outer guard at level `m` implies every level guard beneath it, and the loop body
+needs **no guard test at all** — removing one `pairTM` call and one `ltFlagTM` comparison
+per iteration, roughly twenty stages down to sixteen.
+
+Two smaller simplifications fell out:
+
+* the `m ≤ fuel` side condition of `precRun_eq_evaln` is *implied* by the outer guard,
+  since `m ≤ Nat.pair a m` — so the finish phase has only the standard `input < fuel` test;
+* `evaln_eq_none_of_not_guard`, proved from Mathlib's `evaln_bound` and stated for **any**
+  code, handles the failing-guard branch uniformly.
+
+## XVII.1 The step is `comp`'s shape
+
+```lean
+precRunG_succ_tag : resultTag (precRunG cf cg a f (j+1))
+  = resultTag (precRunG cf cg a f j)
+      * resultTag (evaln (f + (j+1)) cg (Nat.pair a (Nat.pair j (resultVal (precRunG … j)))))
+precRunG_succ_val : … * resultVal (…)
+```
+
+The previous level's result is bound into a child's input — exactly `comp`. So the same
+masking argument applies: `cg` runs unconditionally on `resultVal` of the previous level,
+which is the canonical `0` when that level failed, and the `alive` factor discards the
+answer. **No branch, no early termination, fixed loop length.**
+
+Checked against the definition: **`cf` appears only in the base case.** It is setup-only,
+and the loop body invokes `cg` alone — which is worth stating, because the natural guess is
+that a primitive-recursion loop calls both children per iteration.
+
+## XVII.2 Layout and body
+
+`prec` needs more than sixteen registers of its own, so its node block is **thirty-two**
+wide. The first four keep the standard interface, so a parent reads a `prec` child exactly
+like any other constructor.
+
+```
+0–5  interface + outer guard      6 a   7 m (loop counter)   8 baseFuel
+9 j  10 alive  11 acc  12 curFuel   13–15 temps   16–24 pair/unpair window
+```
+
+The loop counter sits in the node's own block, outside every child subtree, so `forRegTM`
+never touches a child window.
+
+`precBodyTM` is sixteen stages: two `pairTM` calls (building `Nat.pair j acc` then
+`Nat.pair a (that)`), advancing `j` and `curFuel`, a `runChild` on `cg`, and the two mask
+updates. `precBodyVals` is the vector it produces; `precLoopVals` is its `j`-fold iterate.
+
+## XVII.3 What is not proved
+
+`precBody_hoareTime`, and everything after it: the loop, setup, finish and closure.
+
+Stages 1–3 of the body proof were probed and elaborate cleanly, which is the part that
+carried risk — it exercises the `runChild`-on-`pairTM` idiom (a submachine window *inside*
+the node's own block rather than in a child subtree) and the bound threading through a
+`pairTM` output. The remaining thirteen stages are patterns already proved in `pair`'s and
+`comp`'s phase proofs.
+
+## XVII.4 Estimate
+
+| item | estimate |
+| --- | ---: |
+| `precBody_hoareTime` (13 stages remain) | 200–250 |
+| `prec` loop (`forRegTM` + semantic invariant) | 200–300 |
+| `prec` setup (unpair, `baseFuel`, base child, init) | 250–300 |
+| `prec` finish + closure | 150–200 |
+| `rfind'` (machine + closure) | 500–700 |
+| structural `compileCodeAt` correctness | 250–350 |
+| global runtime bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **1.9–2.8k over 4–6 sessions** |
+
+Essentially flat against Part XVI's 1.9–2.7k. The guard elimination genuinely removed work
+from the body, and the semantic layer is done; that was offset by this pass not reaching
+the machine proofs.
+
+`prec` remains the single largest item. Its own four phases are ~800–1050 lines — comparable
+to `pair` and `comp` combined, which took a full session each.
