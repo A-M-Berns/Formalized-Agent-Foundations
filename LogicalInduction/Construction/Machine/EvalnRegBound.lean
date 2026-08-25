@@ -19,6 +19,7 @@ Nothing here assumes an arbitrary bound is closed under `Nat.pair`: every pair t
 forms appears in the definition.
 -/
 import LogicalInduction.Framework.Emission
+import LogicalInduction.Construction.Machine.EvalnCompiler
 
 namespace LogicalInduction.EvalnCompiler
 
@@ -152,5 +153,121 @@ lemma le_codeRegBound (c : Nat.Partrec.Code) (s : ℕ) : s + 2 ≤ codeRegBound 
       have := codeRegBound_mono cf h
       have := ihf
       omega
+
+/-! ## The `prec` loop stays inside the bound
+
+`precRunG`'s value at any level is one of the two children's answers, so the level fuel
+bounds it; the counter and the level fuel are bounded by the setup's `m` and `baseFuel`.
+Together with `precBodyVals_lt` that gives the loop invariant `precTM_hoareTime` asks for. -/
+
+section PrecLoopBound
+variable {af ag : ℕ}
+
+/-- Every level's accumulator is one of the children's answers at a fuel the level bounds. -/
+lemma precRunG_val_le (cf cg : Nat.Partrec.Code) (a f₀ s : ℕ) :
+    ∀ i, f₀ + i ≤ s →
+      resultVal (precRunG cf cg a f₀ i)
+        ≤ max (codeEvalBound cf s) (codeEvalBound cg s)
+  | 0, h => by
+      cases hv : Nat.Partrec.Code.evaln f₀ cf a with
+      | none => simp [precRunG, hv]
+      | some x =>
+          have := codeEvaln_result_le cf (k := f₀) (n := a) (x := x) (by rw [hv]; rfl)
+          simp only [precRunG, hv, resultVal]
+          exact le_trans (le_trans this (codeEvalBound_mono cf (by omega))) (le_max_left _ _)
+  | j + 1, h => by
+      rw [precRunG]
+      cases hp : precRunG cf cg a f₀ j with
+      | none => exact Nat.zero_le _
+      | some i =>
+          show resultVal (Nat.Partrec.Code.evaln (f₀ + (j + 1)) cg
+            (Nat.pair a (Nat.pair j i))) ≤ _
+          cases hv : Nat.Partrec.Code.evaln (f₀ + (j + 1)) cg (Nat.pair a (Nat.pair j i)) with
+          | none => exact Nat.zero_le _
+          | some y =>
+              have hle := codeEvaln_result_le cg (k := f₀ + (j + 1))
+                (n := Nat.pair a (Nat.pair j i)) (x := y) (by rw [hv]; rfl)
+              simp only [resultVal]
+              exact le_trans (le_trans hle (codeEvalBound_mono cg (by omega)))
+                (le_max_right _ _)
+
+/-! ## The `prec` loop invariant -/
+
+/-- **Every level of the `prec` loop satisfies the body's side conditions**, given a bound
+    that dominates the window the body forms. -/
+lemma precLoopVals_ok (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (hFg : ChildEncodes ag hag cg Fg)
+    (V₀ : Fin (32 + af + ag) → ℕ) (a f₀ m s B : ℕ)
+    (hB2 : 2 ≤ B) (hms : m ≤ s) (hfs : f₀ + m ≤ s) (has : a ≤ s)
+    (hWB : precWindowBound cf cg s + 2 ≤ B)
+    (hV₀ : ∀ k, V₀ k < B)
+    (h6 : V₀ (precSelf af ag 6) = a) (h9 : V₀ (precSelf af ag 9) = 0)
+    (h12 : V₀ (precSelf af ag 12) = f₀)
+    (h10 : V₀ (precSelf af ag 10) = resultTag (Nat.Partrec.Code.evaln f₀ cf a))
+    (h11 : V₀ (precSelf af ag 11) = resultVal (Nat.Partrec.Code.evaln f₀ cf a))
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
+    ∀ i, i ≤ m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i) := by
+  have hsW : s ≤ precWindowBound cf cg s := Nat.left_le_pair _ _
+  -- the semantic invariant, specialised and packaged as the five numeric facts
+  have key : ∀ i, i ≤ m →
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 6) = a ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9) = i ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 12) = f₀ + i ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 10) ≤ 1 ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)
+        ≤ max (codeEvalBound cf s) (codeEvalBound cg s) := by
+    intro i hi
+    obtain ⟨e6, e9, e12, e10, e11⟩ :=
+      precLoopVals_spec haf hag cf cg Fg hFg V₀ a f₀ h6 h9 h12 h10 h11 i
+    refine ⟨e6, e9, e12, ?_, ?_⟩
+    · rw [e10]; exact resultTag_le_one _
+    · rw [e11]; exact precRunG_val_le cf cg a f₀ s i (by omega)
+  -- the arithmetic side conditions at level `i`
+  have side : ∀ i, i ≤ m →
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 10) ≤ 1 ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9) + 1 < B ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 12) + 1 < B ∧
+      Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9))
+        (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)) < B ∧
+      Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 6))
+        (Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9))
+          (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11))) < B := by
+    intro i hi
+    obtain ⟨e6, e9, e12, e10, e11⟩ := key i hi
+    have hin : Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9))
+        (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11))
+        ≤ Nat.pair s (max (codeEvalBound cf s) (codeEvalBound cg s)) := by
+      exact natPair_mono (by rw [e9]; omega) e11
+    have hin2 : Nat.pair s (max (codeEvalBound cf s) (codeEvalBound cg s))
+        ≤ precWindowBound cf cg s :=
+      natPair_mono (le_refl _) (Nat.right_le_pair _ _)
+    refine ⟨e10, by rw [e9]; omega, by rw [e12]; omega, by omega, ?_⟩
+    calc Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 6))
+            (Nat.pair (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9))
+              (precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)))
+        ≤ Nat.pair s (Nat.pair s (max (codeEvalBound cf s) (codeEvalBound cg s))) :=
+          natPair_mono (by rw [e6]; exact has)
+            (natPair_mono (by rw [e9]; omega) e11)
+      _ < B := by
+          have : Nat.pair s (Nat.pair s (max (codeEvalBound cf s) (codeEvalBound cg s)))
+              = precWindowBound cf cg s := rfl
+          omega
+  -- the bound itself, by induction
+  intro i
+  induction i with
+  | zero =>
+      intro _
+      obtain ⟨s10, s9, s12, sp1, sp2⟩ := side 0 (Nat.zero_le _)
+      exact ⟨fun k => hV₀ k, s10, s9, s12, sp1, sp2⟩
+  | succ k ih =>
+      intro hk
+      obtain ⟨b, o10, o9, o12, op1, op2⟩ := ih (by omega)
+      obtain ⟨s10, s9, s12, sp1, sp2⟩ := side (k + 1) hk
+      refine ⟨?_, s10, s9, s12, sp1, sp2⟩
+      rw [precLoopVals_succ]
+      exact precBodyVals_lt haf hag Fg _ B hB2 b o10 o9 o12 op1 op2 hFgB hFgTag
+
+end PrecLoopBound
 
 end LogicalInduction.EvalnCompiler
