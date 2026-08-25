@@ -551,4 +551,85 @@ lemma rfBlockVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ
 
 end BlockBounds
 
+/-! ## The two looping constructors keep every register inside the bound -/
+
+section NodeBounds
+variable {af ag : ℕ}
+
+lemma precVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
+    (V : Fin (32 + af + ag) → ℕ) (s B : ℕ)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (h0 : V (precSelf af ag 0) ≤ s) (h1 : V (precSelf af ag 1) ≤ s)
+    (hWB : precWindowBound cf cg s + 2 ≤ B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) →
+      u ⟨0, by omega⟩ ≤ s → u ⟨1, by omega⟩ ≤ s → ∀ k, Ff u k < B)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) →
+      u ⟨0, by omega⟩ ≤ s + precWindowBound cf cg s →
+      u ⟨1, by omega⟩ ≤ s + precWindowBound cf cg s → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
+    ∀ k, precVals af ag haf hag Ff Fg V k < B := by
+  -- the base child's incoming vector
+  have hpre := precSetupPre_lt haf hag V B hV
+  have hb0 : precBaseIn af ag haf hag V ⟨0, by omega⟩ ≤ s := by
+    rw [precBaseIn_zero]
+    exact le_trans (Nat.unpair_left_le _) h0
+  have hb1 : precBaseIn af ag haf hag V ⟨1, by omega⟩ ≤ s := by
+    rw [precBaseIn_one]; omega
+  have hFfB' : ∀ k, Ff (precBaseIn af ag haf hag V) k < B :=
+    hFfB _ (fun k => hpre (precLeftSub af ag k)) hb0 hb1
+  have hS := precSetupVals_lt haf hag Ff V B hV hFfB'
+  -- the loop
+  have hm : (Nat.unpair (V (precSelf af ag 0))).2 ≤ s :=
+    le_trans (Nat.unpair_right_le _) h0
+  have hOK := precLoopVals_ok haf hag cf cg Fg hFg (precSetupVals af ag haf hag Ff V)
+    (Nat.unpair (V (precSelf af ag 0))).1
+    (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
+    (Nat.unpair (V (precSelf af ag 0))).2 s B hB2 hm (by omega)
+    (le_trans (Nat.unpair_left_le _) h0) hWB hS
+    (precSetupVals_a haf hag Ff V) (precSetupVals_j haf hag Ff V)
+    (precSetupVals_curFuel haf hag Ff V)
+    (by
+      rw [precSetupVals_alive]
+      have h := (hFf (precBaseIn af ag haf hag V)).1
+      rw [precBaseIn_zero, precBaseIn_one] at h
+      exact h)
+    (by
+      rw [precSetupVals_acc]
+      have h := (hFf (precBaseIn af ag haf hag V)).2
+      rw [precBaseIn_zero, precBaseIn_one] at h
+      exact h)
+    hFgB hFgTag
+  obtain ⟨hLb, hLalive, -, -, -, -⟩ := hOK _ le_rfl
+  intro k
+  rw [precVals, precSetupVals_m]
+  exact precFinishVals_lt haf hag _ B hB2 hLb hLalive k
+
+lemma rfindVals_lt {af : ℕ} (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V : Fin (32 + af) → ℕ) (s B : ℕ)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (h0 : V (rfSelf af 0) ≤ s) (h1 : V (rfSelf af 1) ≤ s)
+    (h2W : 2 * rfWindowBound s + 3 ≤ B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) →
+      u ⟨0, by omega⟩ ≤ s + rfWindowBound s →
+      u ⟨1, by omega⟩ ≤ s + rfWindowBound s → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1) :
+    ∀ k, rfindVals af haf Ff V k < B := by
+  have hS := rfSetupVals_lt haf V B hB2 hV
+  have hOK := rfLoopVals_ok haf cf Ff hFf (rfSetupVals af haf V)
+    (Nat.unpair (V (rfSelf af 0))).1 (Nat.unpair (V (rfSelf af 0))).2
+    (V (rfSelf af 1)) s B hB2 (le_trans (Nat.unpair_left_le _) h0)
+    (le_trans (Nat.unpair_right_le _) h0) h1 h2W hS
+    (rfSetupVals_a haf V) (rfSetupVals_m haf V) (rfSetupVals_fuel haf V)
+    (rfSetupVals_search haf V) (rfSetupVals_found haf V) (rfSetupVals_result haf V)
+    (rfSetupVals_one haf V) hFfB hFfTag
+  obtain ⟨hLb, -, -, -, -, -⟩ := hOK _ le_rfl
+  intro k
+  rw [rfindVals, rfSetupVals_count]
+  exact rfFinishVals_lt _ B hLb k
+
+end NodeBounds
+
 end LogicalInduction.EvalnCompiler

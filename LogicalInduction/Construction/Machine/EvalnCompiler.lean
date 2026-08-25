@@ -6964,6 +6964,51 @@ lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
       _ < B := by omega
   · exact b5 _
 
+/-- `rfind'`'s setup keeps every register inside the bound. It runs no child. -/
+lemma rfSetupVals_lt {af : ℕ} (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (B : ℕ)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B) :
+    ∀ k, rfSetupVals af haf V k < B := by
+  have hB0 : 0 < B := by omega
+  intro k
+  simp only [rfSetupVals]
+  set U1 := writeWindow (rfUnpairW af) V
+      (unpairVals (fun j => V (rfUnpairW af j)) (V (rfSelf af 0))) with hU1
+  have b1 : ∀ k, U1 k < B := by
+    intro k; rw [hU1]
+    refine writeWindow_bounded _ _ _ B hV (fun j => ?_) k
+    have := unpairVals_bounded (fun j => V (rfUnpairW af j)) (B - 1)
+      (fun i => by have := hV (rfUnpairW af i); omega) (V (rfSelf af 0))
+      (by have := hV (rfSelf af 0); omega) j
+    omega
+  set U2 := Function.update U1 (rfSelf af 6) (U1 (rfSelf af 20)) with hU2
+  have b2 : ∀ k, U2 k < B := by
+    intro k; rw [hU2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  set U3 := Function.update U2 (rfSelf af 7) (U2 (rfSelf af 21)) with hU3
+  have b3 : ∀ k, U3 k < B := by
+    intro k; rw [hU3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+  set U4 := Function.update U3 (rfSelf af 8) (U3 (rfSelf af 1)) with hU4
+  have b4 : ∀ k, U4 k < B := by
+    intro k; rw [hU4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  set U5 := Function.update U4 (rfSelf af 9) 1 with hU5
+  have b5 : ∀ k, U5 k < B := by
+    intro k; rw [hU5]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b4 _
+  set U6 := Function.update U5 (rfSelf af 10) 0 with hU6
+  have b6 : ∀ k, U6 k < B := by
+    intro k; rw [hU6]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b5 _
+  set U7 := Function.update U6 (rfSelf af 11) 0 with hU7
+  have b7 : ∀ k, U7 k < B := by
+    intro k; rw [hU7]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b6 _
+  simp only [Function.update_apply]
+  split_ifs
+  · omega
+  · exact b7 _
+
 lemma rfFinishVals_lt {af : ℕ} (W : Fin (32 + af) → ℕ) (B : ℕ) (hW : ∀ k, W k < B) :
     ∀ k, rfFinishVals af W k < B := by
   intro k
