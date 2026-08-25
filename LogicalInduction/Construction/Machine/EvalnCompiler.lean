@@ -584,9 +584,11 @@ that is structural (`writeWindow_of_ne` on an index range), not a frame argument
 
 /-- Registers a compiled code occupies: its own block plus its children's subtrees.
 
-    Defined *directly* rather than as `16 * codeSize c`, so that
+    Defined *directly* rather than as a multiple of `codeSize c`, so that
     `codeRegs (pair cf cg)` reduces to `16 + codeRegs cf + codeRegs cg`
-    **definitionally**. Without that every recursive call in `compileCodeAt` would need a
+    **definitionally**. A `prec` node is thirty-three wide rather than sixteen: it needs
+    more working registers, and the thirty-third is its loop counter, which must sit
+    *outside* the block its loop body names (`precMain`, `precLoopIdx`). Without that every recursive call in `compileCodeAt` would need a
     transport along an arity equation, and the dependent-type friction would spread
     through the whole assembly. -/
 def codeRegs : Nat.Partrec.Code → ℕ
@@ -1707,56 +1709,6 @@ lemma compileCompTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   exact (seqEmit hinp₀ (parked_regsWork R hpark _) hA hBph).mono_bound (by omega)
 
 end CompCompose
-/-! ## The compiler API
-
-`compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
-`codeRegs c` is the node's own sixteen plus each child's whole subtree. Parent and every
-descendant inhabit the same `TM n`, differing only in which registers they name, so
-ordinary `seqTM` composes them with no lifting between arities.
-
-The result is an `Option`: `none` marks the two fuel-recursive constructors, which are not
-implemented yet. That is deliberate — a placeholder machine returning canonical `none`
-would typecheck and be silently *wrong* for those codes, which is exactly the kind of stub
-this repository's standards exist to catch. `none` here says "not compiled", never
-"compiles to failure". -/
-
-/-- **The compiler.** Structural recursion on `Code`; parent and every descendant inhabit
-    the same ambient `TM n`, differing only in which registers they name. -/
-def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (TM n)
-  | .zero, R => some (compileZero R)
-  | .succ, R => some (compileSucc R)
-  | .left, R => some (compileProj R 0)
-  | .right, R => some (compileProj R 1)
-  | .pair cf cg, R => do
-      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
-      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
-      some (compilePairTM (codeRegs cf) (codeRegs cg)
-        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
-  | .comp cf cg, R => do
-      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
-      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
-      some (compileCompTM (codeRegs cf) (codeRegs cg)
-        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
-  | .prec _ _, _ => none
-  | .rfind' _, _ => none
-
-/-- The compiler succeeds exactly on the fuel-recursion-free fragment. -/
-lemma compileCodeAt_isSome_zero (R : Regs (codeRegs .zero) n) :
-    (compileCodeAt .zero R).isSome := rfl
-
-lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
-    (R : Regs (codeRegs (cf.pair cg)) n)
-    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
-    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
-    (compileCodeAt (cf.pair cg) R).isSome := by
-  rw [compileCodeAt]
-  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
-  | none => rw [hF] at hf; exact absurd hf (by simp)
-  | some Mf =>
-    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
-    | none => rw [hG] at hg; exact absurd hg (by simp)
-    | some Mg => simp
-
 /-! ## `prec`: the exact equation, and the recurrence the machine loop implements
 
 At fuel `k+1` the equation is
@@ -2663,38 +2615,30 @@ def PrecBodyOK (af ag B : ℕ) (V : Fin (32 + af + ag) → ℕ) : Prop :=
 /-- **The `prec` loop.** `m` iterations of `precBodyTM`, off a counter the body's block
     does not name. -/
 lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (R : Regs (33 + af + ag) n) (Mg : TM n)
+    (R : Regs (32 + af + ag) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mg : TM n)
     (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tg B m : ℕ)
     (V₀ : Fin (32 + af + ag) → ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
-    (hw₀l : w₀ (R (precLoopIdx af ag)) = regTape m)
+    (hw₀l : w₀ l = regTape m)
     (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
     (hOK : ∀ i, i < m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i))
     (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
       Mg.HoareTime
-        (EmitPred inp₀
-          (regsWork ((precRightSub af ag).trans ((precMain af ag).trans R)) Wb u) ys)
-        (EmitPred inp₀
-          (regsWork ((precRightSub af ag).trans ((precMain af ag).trans R)) Wb (Fg u)) ys)
-        tg) :
-    (forRegTM (precBodyTM af ag haf hag ((precMain af ag).trans R) Mg)
-        (R (precLoopIdx af ag))).HoareTime
-      (EmitPred inp₀ (regsWork ((precMain af ag).trans R) w₀ V₀) ys)
-      (EmitPred inp₀
-        (regsWork ((precMain af ag).trans R) w₀ (precLoopVals af ag haf hag Fg V₀ m)) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (forRegTM (precBodyTM af ag haf hag R Mg) l).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V₀) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precLoopVals af ag haf hag Fg V₀ m)) ys)
       (m * ((15 * evalnArithmeticCost B + tg + 15) + 2) + (m + 2)) := by
-  refine forRegs_hoareTime ((precMain af ag).trans R)
-    (precBodyTM af ag haf hag ((precMain af ag).trans R) Mg) (R (precLoopIdx af ag))
-    (fun k => by
-      exact fun h => precMain_ne_loopIdx k (R.injective h))
+  refine forRegs_hoareTime R (precBodyTM af ag haf hag R Mg) l hl
     m (15 * evalnArithmeticCost B + tg + 15)
     (precLoopVals af ag haf hag Fg V₀) inp₀ w₀ ys hinp₀ hpark hw₀l ?_
   intro i hi w hw
   obtain ⟨hb, halive, hj1, hf1, hp1, hp2⟩ := hOK i hi
   rw [precLoopVals_succ]
-  exact precBody_hoareTime haf hag ((precMain af ag).trans R) Mg Fg tg
+  exact precBody_hoareTime haf hag R Mg Fg tg
     (precLoopVals af ag haf hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb hFgB hFgTag
     halive hj1 hf1 hp1 hp2 hMg
 
@@ -3001,5 +2945,299 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     seqEmit hinp₀ (hpv V12) h12 h13).mono_bound (by omega)
 
 end PrecSetup
+
+/-! ## `prec`: the finish phase
+
+The outer guard, then the two masks. `alive` has already absorbed `cf`'s tag and every
+level's tag, so this is one masking level shorter than `comp`'s. -/
+
+section PrecFinish
+variable {af ag : ℕ}
+
+def precFinishTM (af ag : ℕ) (R : Regs (32 + af + ag) n) : TM n :=
+  seqTM (ltFlagTM (R (precSelf af ag 0)) (R (precSelf af ag 1))
+          (R (precSelf af ag 5)) (R (precSelf af ag 4))) <|
+  seqTM (clearRegTM (R (precSelf af ag 2))) <|
+  seqTM (mulAddIntoTM (R (precSelf af ag 4)) (R (precSelf af ag 10))
+          (R (precSelf af ag 2))) <|
+  seqTM (clearRegTM (R (precSelf af ag 3)))
+        (mulAddIntoTM (R (precSelf af ag 2)) (R (precSelf af ag 11)) (R (precSelf af ag 3)))
+
+noncomputable def precFinishVals (af ag : ℕ) (W : Fin (32 + af + ag) → ℕ) :
+    Fin (32 + af + ag) → ℕ :=
+  let W1 := Function.update W (precSelf af ag 5) (W (precSelf af ag 1) - W (precSelf af ag 0))
+  let W2 := Function.update W1 (precSelf af ag 4)
+              (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0)
+  let W3 := Function.update W2 (precSelf af ag 2) 0
+  let W4 := Function.update W3 (precSelf af ag 2)
+              (0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10))
+  let W5 := Function.update W4 (precSelf af ag 3) 0
+  Function.update W5 (precSelf af ag 3)
+    (0 + W5 (precSelf af ag 2) * W5 (precSelf af ag 11))
+
+set_option maxHeartbeats 1000000 in
+lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hW : ∀ k, W k < B)
+    (halive : W (precSelf af ag 10) ≤ 1) :
+    (precFinishTM af ag R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ W) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precFinishVals af ag W)) ys)
+      (5 * evalnArithmeticCost B + 4) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, W k ≤ B := fun k => Nat.le_of_lt (hW k)
+  -- S1: the outer guard
+  have h1 := ltFlagTM_hoareTime (R (precSelf af ag 0)) (R (precSelf af ag 1))
+      (R (precSelf af ag 5)) (R (precSelf af ag 4))
+      (Regs.ne R (precSelf_ne_self 0 5 (by decide)))
+      (Regs.ne R (precSelf_ne_self 1 5 (by decide)))
+      (Regs.ne R (precSelf_ne_self 5 4 (by decide)))
+      (W (precSelf af ag 0)) (W (precSelf af ag 1)) (W (precSelf af ag 5))
+      (W (precSelf af ag 4))
+      inp₀ (regsWork R w₀ W) ys hinp₀ (fun i => hpv W i)
+      (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
+      (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
+  rw [regsWork_update, regsWork_update] at h1
+  replace h1 := h1.mono_bound
+    (ltFlagTime_le_arith _ _ _ _ B (hle _) (hle _) (hle _) (hle _))
+  set W2 := Function.update
+      (Function.update W (precSelf af ag 5) (W (precSelf af ag 1) - W (precSelf af ag 0)))
+      (precSelf af ag 4) (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0)
+    with hW2
+  have b2 : ∀ k, W2 k < B := by
+    intro k; rw [hW2]; simp only [Function.update_apply]
+    split_ifs <;> first
+      | (have := hW (precSelf af ag 1); omega)
+      | (have := hW (precSelf af ag 0); omega)
+      | exact hW _
+  have r2_4 : W2 (precSelf af ag 4)
+      = (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0) := by
+    rw [hW2, Function.update_self]
+  have r2_10 : W2 (precSelf af ag 10) = W (precSelf af ag 10) := by
+    rw [hW2, Function.update_of_ne (precSelf_ne_self 10 4 (by decide)),
+      Function.update_of_ne (precSelf_ne_self 10 5 (by decide))]
+  -- S2: clear the tag
+  have h2 := clearRegTM_hoareTime (R (precSelf af ag 2)) (W2 (precSelf af ag 2)) inp₀
+      (regsWork R w₀ W2) ys hinp₀ (fun i _ => hpv W2 i) (regsWork_apply R w₀ W2 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b2 _)))
+  set W3 := Function.update W2 (precSelf af ag 2) 0 with hW3
+  have b3 : ∀ k, W3 k < B := by
+    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
+    · have := hW (precSelf af ag 0); omega
+    · exact b2 _
+  have hflag3 : W3 (precSelf af ag 4) ≤ 1 := by
+    rw [hW3, Function.update_of_ne (precSelf_ne_self 4 2 (by decide)), r2_4]
+    split_ifs <;> omega
+  have r3_10 : W3 (precSelf af ag 10) = W (precSelf af ag 10) := by
+    rw [hW3, Function.update_of_ne (precSelf_ne_self 10 2 (by decide)), r2_10]
+  -- S3: tag := gflag * alive
+  have h3 := mulAddIntoTM_hoareTime (R (precSelf af ag 4)) (R (precSelf af ag 10))
+      (R (precSelf af ag 2))
+      (Regs.ne R (precSelf_ne_self 4 10 (by decide)))
+      (Regs.ne R (precSelf_ne_self 4 2 (by decide)))
+      (Regs.ne R (precSelf_ne_self 10 2 (by decide)))
+      (W3 (precSelf af ag 4)) (W3 (precSelf af ag 10)) 0
+      inp₀ (regsWork R w₀ W3) ys hinp₀ (fun i _ => hpv W3 i)
+      (regsWork_apply R w₀ W3 _) (regsWork_apply R w₀ W3 _)
+      (by rw [regsWork_apply, hW3, Function.update_self])
+  rw [regsWork_update] at h3
+  replace h3 := h3.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)) (by omega))
+  set W4 := Function.update W3 (precSelf af ag 2)
+      (0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10)) with hW4
+  have hmask4 : W4 (precSelf af ag 2) ≤ 1 := by
+    rw [hW4, Function.update_self, r3_10]
+    calc 0 + W3 (precSelf af ag 4) * W (precSelf af ag 10)
+        ≤ 1 * 1 := by simpa using Nat.mul_le_mul hflag3 halive
+      _ = 1 := by norm_num
+  have b4 : ∀ k, W4 k < B := by
+    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
+    · have hb := b3 (precSelf af ag 10)
+      calc 0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10)
+          ≤ 1 * W3 (precSelf af ag 10) := by
+            simpa using Nat.mul_le_mul hflag3 (le_refl (W3 (precSelf af ag 10)))
+        _ < B := by omega
+    · exact b3 _
+  -- S4: clear the value
+  have h4 := clearRegTM_hoareTime (R (precSelf af ag 3)) (W4 (precSelf af ag 3)) inp₀
+      (regsWork R w₀ W4) ys hinp₀ (fun i _ => hpv W4 i) (regsWork_apply R w₀ W4 _)
+  rw [regsWork_update] at h4
+  replace h4 := h4.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b4 _)))
+  set W5 := Function.update W4 (precSelf af ag 3) 0 with hW5
+  have b5 : ∀ k, W5 k < B := by
+    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
+    · have := hW (precSelf af ag 0); omega
+    · exact b4 _
+  -- S5: value := tag * acc
+  have h5 := mulAddIntoTM_hoareTime (R (precSelf af ag 2)) (R (precSelf af ag 11))
+      (R (precSelf af ag 3))
+      (Regs.ne R (precSelf_ne_self 2 11 (by decide)))
+      (Regs.ne R (precSelf_ne_self 2 3 (by decide)))
+      (Regs.ne R (precSelf_ne_self 11 3 (by decide)))
+      (W5 (precSelf af ag 2)) (W5 (precSelf af ag 11)) 0
+      inp₀ (regsWork R w₀ W5) ys hinp₀ (fun i _ => hpv W5 i)
+      (regsWork_apply R w₀ W5 _) (regsWork_apply R w₀ W5 _)
+      (by rw [regsWork_apply, hW5, Function.update_self])
+  rw [regsWork_update] at h5
+  replace h5 := h5.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b5 _)) (Nat.le_of_lt (b5 _)) (by omega))
+  exact (seqEmit hinp₀ (hpv W2) h1 <|
+    seqEmit hinp₀ (hpv W3) h2 <|
+    seqEmit hinp₀ (hpv W4) h3 <|
+    seqEmit hinp₀ (hpv W5) h4 h5).mono_bound (by omega)
+
+end PrecFinish
+
+/-! ## `prec`, assembled
+
+Setup, then the fixed-length loop, then the finish. The loop counter is the ambient
+register `l`, outside the block the three phases name. -/
+
+section PrecCompose
+variable {af ag : ℕ}
+
+def precTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (32 + af + ag) n) (l : Fin n) (Mf Mg : TM n) : TM n :=
+  seqTM (precSetupTM af ag haf hag R l Mf)
+    (seqTM (forRegTM (precBodyTM af ag haf hag R Mg) l) (precFinishTM af ag R))
+
+/-- The register vector the whole `prec` node produces. -/
+noncomputable def precVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
+  precFinishVals af ag
+    (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
+      (precSetupVals af ag haf hag Ff V (precSelf af ag 7)))
+
+set_option maxHeartbeats 1000000 in
+/-- **`prec`, complete.** -/
+lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (32 + af + ag) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf Mg : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
+    (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
+    (hOK : ∀ i, i ≤ precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
+      PrecBodyOK af ag B
+        (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i))
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb (Ff u)) ys) tf)
+    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mg.HoareTime (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (precTM af ag haf hag R l Mf Mg).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀
+        (regsWork R
+          (Function.update w₀ l
+            (regTape (precSetupVals af ag haf hag Ff V (precSelf af ag 7))))
+          (precVals af ag haf hag Ff Fg V)) ys)
+      ((12 * evalnArithmeticCost B + tf + 12) + 1 +
+        ((precSetupVals af ag haf hag Ff V (precSelf af ag 7)) *
+            ((15 * evalnArithmeticCost B + tg + 15) + 2) +
+          ((precSetupVals af ag haf hag Ff V (precSelf af ag 7)) + 2) + 1 +
+          (5 * evalnArithmeticCost B + 4))) := by
+  set S := precSetupVals af ag haf hag Ff V with hS
+  set m := S (precSelf af ag 7) with hm
+  set w₁ := Function.update w₀ l (regTape m) with hw₁
+  have hpark₁ : ∀ i, Parked (w₁ i) := by
+    intro i; rw [hw₁]
+    by_cases hi : i = l
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact hpark i
+  have hsetup := precSetup_hoareTime haf hag R l hl Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark
+    hlz hV hFfB hMf
+  have hloop := precLoop_hoareTime (af := af) (ag := ag) haf hag R l hl Mg Fg tg B m S
+    inp₀ w₁ ys hinp₀ hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFgB hFgTag
+    (fun i hi => hOK i (Nat.le_of_lt hi)) hMg
+  obtain ⟨hLb, hLalive, -, -, -, -⟩ := hOK m le_rfl
+  have hfin := precFinish_hoareTime (af := af) (ag := ag) R
+    (precLoopVals af ag haf hag Fg S m) B inp₀ w₁ ys hinp₀ hpark₁ hLb hLalive
+  exact seqEmit hinp₀ (parked_regsWork R hpark₁ S) hsetup
+    (seqEmit hinp₀ (parked_regsWork R hpark₁ _) hloop hfin)
+
+end PrecCompose
+
+/-! ## The compiler API
+
+`compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
+`codeRegs c` is the node's own sixteen plus each child's whole subtree. Parent and every
+descendant inhabit the same `TM n`, differing only in which registers they name, so
+ordinary `seqTM` composes them with no lifting between arities.
+
+The result is an `Option`: `none` marks the two fuel-recursive constructors, which are not
+implemented yet. That is deliberate — a placeholder machine returning canonical `none`
+would typecheck and be silently *wrong* for those codes, which is exactly the kind of stub
+this repository's standards exist to catch. `none` here says "not compiled", never
+"compiles to failure". -/
+
+/-- **The compiler.** Structural recursion on `Code`; parent and every descendant inhabit
+    the same ambient `TM n`, differing only in which registers they name. -/
+def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (TM n)
+  | .zero, R => some (compileZero R)
+  | .succ, R => some (compileSucc R)
+  | .left, R => some (compileProj R 0)
+  | .right, R => some (compileProj R 1)
+  | .pair cf cg, R => do
+      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
+      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
+      some (compilePairTM (codeRegs cf) (codeRegs cg)
+        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
+  | .comp cf cg, R => do
+      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
+      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
+      some (compileCompTM (codeRegs cf) (codeRegs cg)
+        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
+  | .prec cf cg, R => do
+      let Mf ← compileCodeAt cf
+        ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R))
+      let Mg ← compileCodeAt cg
+        ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+          ((precMain (codeRegs cf) (codeRegs cg)).trans R))
+      some (precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        ((precMain (codeRegs cf) (codeRegs cg)).trans R)
+        (R (precLoopIdx (codeRegs cf) (codeRegs cg))) Mf Mg)
+  | .rfind' _, _ => none
+
+/-- The compiler succeeds on every constructor but `rfind'`. -/
+lemma compileCodeAt_isSome_zero (R : Regs (codeRegs .zero) n) :
+    (compileCodeAt .zero R).isSome := rfl
+
+lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
+    (R : Regs (codeRegs (cf.pair cg)) n)
+    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
+    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
+    (compileCodeAt (cf.pair cg) R).isSome := by
+  rw [compileCodeAt]
+  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
+  | none => rw [hF] at hf; exact absurd hf (by simp)
+  | some Mf =>
+    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
+    | none => rw [hG] at hg; exact absurd hg (by simp)
+    | some Mg => simp
+
+lemma compileCodeAt_isSome_prec (cf cg : Nat.Partrec.Code)
+    (R : Regs (codeRegs (cf.prec cg)) n)
+    (hf : (compileCodeAt cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+      ((precMain (codeRegs cf) (codeRegs cg)).trans R))).isSome)
+    (hg : (compileCodeAt cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+      ((precMain (codeRegs cf) (codeRegs cg)).trans R))).isSome) :
+    (compileCodeAt (cf.prec cg) R).isSome := by
+  rw [compileCodeAt]
+  cases hF : compileCodeAt cf ((precLeftSub (codeRegs cf) (codeRegs cg)).trans
+      ((precMain (codeRegs cf) (codeRegs cg)).trans R)) with
+  | none => rw [hF] at hf; exact absurd hf (by simp)
+  | some Mf =>
+    cases hG : compileCodeAt cg ((precRightSub (codeRegs cf) (codeRegs cg)).trans
+        ((precMain (codeRegs cf) (codeRegs cg)).trans R)) with
+    | none => rw [hG] at hg; exact absurd hg (by simp)
+    | some Mg => simp
 
 end LogicalInduction.EvalnCompiler
