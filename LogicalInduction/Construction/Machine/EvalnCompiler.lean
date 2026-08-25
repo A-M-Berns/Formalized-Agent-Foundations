@@ -3479,7 +3479,8 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf : ℕ)
     (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
-    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hV : ∀ k, V k < B)
     (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
     (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
@@ -3651,13 +3652,13 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs <;> exact b11 _
   -- S13: the loop counter, an ambient register outside the block
   have h13 := copyIntoTM_hoareTime (R (precSelf af ag 7)) l (hl _)
-      (V12 (precSelf af ag 7)) 0
+      (V12 (precSelf af ag 7)) cl
       inp₀ (regsWork R w₀ V12) ys hinp₀ (fun i _ => hpv V12 i)
       (regsWork_apply R w₀ V12 _)
-      (by rw [regsWork_of_ne _ _ _ hl]; exact hlz)
+      (by rw [regsWork_of_ne _ _ _ hl]; exact hlc)
   rw [← regsWork_update_of_ne R w₀ V12 hl] at h13
   replace h13 := h13.mono_bound
-    (copyIntoTime_le_arith _ 0 B (Nat.le_of_lt (b12 _)) (Nat.zero_le _))
+    (copyIntoTime_le_arith _ cl B (Nat.le_of_lt (b12 _)) hclB)
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -4034,7 +4035,8 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
     (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
-    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
     (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
@@ -4069,7 +4071,7 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     · subst hi; rw [Function.update_self]; exact parked_regTape _
     · rw [Function.update_of_ne hi]; exact hpark i
   have hsetup := precSetup_hoareTime haf hag R l hl Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark
-    hlz hV hFfB hMf
+    cl hlc hclB hV hFfB hMf
   have hloop := precLoop_hoareTime (af := af) (ag := ag) haf hag R l hl Mg Fg tg B m S
     inp₀ w₁ ys hinp₀ hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFgB hFgTag
     (fun i hi => hOK i (Nat.le_of_lt hi)) hMg
@@ -5787,7 +5789,8 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
     (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l)
     (V : Fin (32 + af) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
-    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B) :
     (rfSetupTM af haf R l).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
@@ -5893,13 +5896,13 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
     · exact b7 _
   -- S9: the loop counter, an ambient register outside the block
   have h9 := copyIntoTM_hoareTime (R (rfSelf af 1)) l (hl _)
-      (V8 (rfSelf af 1)) 0
+      (V8 (rfSelf af 1)) cl
       inp₀ (regsWork R w₀ V8) ys hinp₀ (fun i _ => hpv V8 i)
       (regsWork_apply R w₀ V8 _)
-      (by rw [regsWork_of_ne _ _ _ hl]; exact hlz)
+      (by rw [regsWork_of_ne _ _ _ hl]; exact hlc)
   rw [← regsWork_update_of_ne R w₀ V8 hl] at h9
   replace h9 := h9.mono_bound
-    (copyIntoTime_le_arith _ 0 B (Nat.le_of_lt (b8 _)) (Nat.zero_le _))
+    (copyIntoTime_le_arith _ cl B (Nat.le_of_lt (b8 _)) hclB)
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -6009,7 +6012,8 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf B : ℕ)
     (V : Fin (32 + af) → ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
-    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
@@ -6037,7 +6041,8 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     by_cases hi : i = l
     · subst hi; rw [Function.update_self]; exact parked_regTape _
     · rw [Function.update_of_ne hi]; exact hpark i
-  have hsetup := rfSetup_hoareTime haf R l hl V B inp₀ w₀ ys hinp₀ hpark hlz hB2 hV
+  have hsetup := rfSetup_hoareTime haf R l hl V B inp₀ w₀ ys hinp₀ hpark cl hlc hclB
+    hB2 hV
   have hloop := rfLoop_hoareTime (af := af) haf R l hl Mf Ff tf B t S inp₀ w₁ ys hinp₀
     hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFfB hFfTag
     (fun i hi => hOK i (Nat.le_of_lt hi)) hMf
