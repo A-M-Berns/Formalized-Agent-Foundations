@@ -572,5 +572,230 @@ lemma comp_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
               (resultVal (Nat.Partrec.Code.evaln k cg m))) := by
   rw [evaln_comp_eq]
   cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
+/-! ## Ambient-arity compilation: size-indexed disjoint register intervals
+
+A compiled machine for `c` uses `16 * codeSize c` registers of an ambient file, laid out as
+disjoint intervals: the node's own sixteen first, then each child's whole subtree. Parent
+and children are all `TM n` for the *same* ambient `n`; only the naming embedding differs,
+so ordinary `seqTM` composes them and no lifting is needed.
+
+Because the intervals are disjoint, a child's execution cannot touch the parent's block —
+that is structural (`writeWindow_of_ne` on an index range), not a frame argument. -/
+
+/-- Registers needed by a compiled code: its own block plus its children's subtrees. -/
+def codeSize : Nat.Partrec.Code → ℕ
+  | .zero => 1
+  | .succ => 1
+  | .left => 1
+  | .right => 1
+  | .pair cf cg => 1 + codeSize cf + codeSize cg
+  | .comp cf cg => 1 + codeSize cf + codeSize cg
+  | .prec cf cg => 1 + codeSize cf + codeSize cg
+  | .rfind' cf => 1 + codeSize cf
+
+lemma codeSize_pos (c : Nat.Partrec.Code) : 1 ≤ codeSize c := by
+  cases c <;> simp [codeSize] <;> omega
+
+/-- The ambient arity of a compiled code. -/
+abbrev codeRegs (c : Nat.Partrec.Code) : ℕ := 16 * codeSize c
+
+lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
+  have := codeSize_pos c; simp only [codeRegs]; omega
+
+/-! ### The three intervals of a binary node
+
+For `pair cf cg` / `comp cf cg`, `codeRegs = 16 + codeRegs cf + codeRegs cg`. -/
+
+lemma binary_arity (cf cg : Nat.Partrec.Code) :
+    codeRegs (cf.pair cg) = 16 + codeRegs cf + codeRegs cg := by
+  simp only [codeRegs, codeSize]; ring
+
+lemma binary_arity_comp (cf cg : Nat.Partrec.Code) :
+    codeRegs (cf.comp cg) = 16 + codeRegs cf + codeRegs cg := by
+  simp only [codeRegs, codeSize]; ring
+
+variable (cf cg : Nat.Partrec.Code)
+
+/-- Self block fits. -/
+lemma selfFits : 0 + 16 ≤ 16 + codeRegs cf + codeRegs cg := by omega
+
+/-- First child's subtree fits. -/
+lemma leftFits : 16 + codeRegs cf ≤ 16 + codeRegs cf + codeRegs cg := by omega
+
+/-- Second child's subtree fits. -/
+lemma rightFits : (16 + codeRegs cf) + codeRegs cg ≤ 16 + codeRegs cf + codeRegs cg := by
+  omega
+
+/-- The first child's *local* sixteen fit. -/
+lemma leftLocalFits : 16 + 16 ≤ 16 + codeRegs cf + codeRegs cg := by
+  have := codeRegs_ge cf; omega
+
+/-- The second child's *local* sixteen fit. -/
+lemma rightLocalFits : (16 + codeRegs cf) + 16 ≤ 16 + codeRegs cf + codeRegs cg := by
+  have := codeRegs_ge cg; omega
+
+/-! ### Windows of a binary node
+
+Ambient arity `16 + af + ag`: the node's own sixteen at offset `0`, the first child's
+subtree at `16`, the second's at `16 + af`. `selfW`/`leftLoc`/`rightLoc` name the three
+*local* sixteen-register blocks; `leftSub`/`rightSub` name the children's whole subtrees,
+which is what a child machine's spec is stated over. -/
+
+section Binary
+variable {af ag : ℕ}
+
+/-- The node's own sixteen registers. -/
+def selfW (af ag : ℕ) : Fin 16 ↪ Fin (16 + af + ag) := shiftEmb 0 (by omega)
+/-- The first child's whole subtree. -/
+def leftSub (af ag : ℕ) : Fin af ↪ Fin (16 + af + ag) := shiftEmb 16 (by omega)
+/-- The second child's whole subtree. -/
+def rightSub (af ag : ℕ) : Fin ag ↪ Fin (16 + af + ag) := shiftEmb (16 + af) (by omega)
+/-- The first child's own sixteen. -/
+def leftLoc (af ag : ℕ) (h : 16 ≤ af) : Fin 16 ↪ Fin (16 + af + ag) :=
+  shiftEmb 16 (by omega)
+/-- The second child's own sixteen. -/
+def rightLoc (af ag : ℕ) (h : 16 ≤ ag) : Fin 16 ↪ Fin (16 + af + ag) :=
+  shiftEmb (16 + af) (by omega)
+
+/-- A child's local block is the first sixteen of its subtree. -/
+lemma leftLoc_eq (h : 16 ≤ af) (j : Fin 16) :
+    leftLoc af ag h j = leftSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [leftLoc, leftSub, shiftEmb_val]
+
+lemma rightLoc_eq (h : 16 ≤ ag) (j : Fin 16) :
+    rightLoc af ag h j = rightSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [rightLoc, rightSub, shiftEmb_val]
+
+/-- `pairTM` occupies registers `6`–`13` of the node's own block. -/
+def pairSlot : Fin 8 ↪ Fin 16 := shiftEmb 6 (by omega)
+
+/-- **The `pair` machine.** Sixteen straight-line stages, three of which are submachine
+    invocations (`Mf`, `Mg`, `pairTM`). No branch, no guard machine: `none` propagates by
+    the arithmetic mask `gflag * tagF * tagG`. -/
+def compilePairTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
+  seqTM (copyIntoTM (R (selfW af ag 0)) (R (leftLoc af ag haf 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1))) <|
+  seqTM Mf <|
+  seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1))) <|
+  seqTM Mg <|
+  seqTM (copyIntoTM (R (leftLoc af ag haf 3)) (R (selfW af ag 6))) <|
+  seqTM (copyIntoTM (R (rightLoc af ag hag 3)) (R (selfW af ag 7))) <|
+  seqTM (pairTM (pairSlot.trans ((selfW af ag).trans R))) <|
+  seqTM (ltFlagTM (R (selfW af ag 0)) (R (selfW af ag 1))
+          (R (selfW af ag 5)) (R (selfW af ag 4))) <|
+  seqTM (clearRegTM (R (selfW af ag 14))) <|
+  seqTM (mulAddIntoTM (R (selfW af ag 4)) (R (leftLoc af ag haf 2))
+          (R (selfW af ag 14))) <|
+  seqTM (clearRegTM (R (selfW af ag 2))) <|
+  seqTM (mulAddIntoTM (R (selfW af ag 14)) (R (rightLoc af ag hag 2))
+          (R (selfW af ag 2))) <|
+  seqTM (clearRegTM (R (selfW af ag 3)))
+        (mulAddIntoTM (R (selfW af ag 2)) (R (selfW af ag 12)) (R (selfW af ag 3)))
+
+end Binary
+
+/-! ### Index disequalities for a binary node
+
+All of them reduce to arithmetic on the three offsets `0`, `16`, `16 + af`. -/
+
+section BinaryNe
+variable {af ag : ℕ}
+
+lemma selfW_ne_selfW (i j : Fin 16) (h : (i : ℕ) ≠ (j : ℕ)) :
+    selfW af ag i ≠ selfW af ag j := by
+  apply amb_ne; simpa using h
+
+lemma selfW_ne_leftLoc (haf : 16 ≤ af) (i j : Fin 16) :
+    selfW af ag i ≠ leftLoc af ag haf j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma selfW_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16) :
+    selfW af ag i ≠ rightLoc af ag hag j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma leftLoc_ne_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16) :
+    leftLoc af ag haf i ≠ rightLoc af ag hag j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+/-- The self block is outside the first child's subtree. -/
+lemma leftSub_ne_selfW (i : Fin af) (j : Fin 16) :
+    leftSub af ag i ≠ selfW af ag j := by
+  apply amb_ne; have := j.isLt; simp; omega
+
+/-- The self block is outside the second child's subtree. -/
+lemma rightSub_ne_selfW (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
+    rightSub af ag i ≠ selfW af ag j := by
+  apply amb_ne; have := j.isLt; simp; omega
+
+/-- The first child's block is outside the second child's subtree. -/
+lemma rightSub_ne_leftLoc (haf : 16 ≤ af) (i : Fin ag) (j : Fin 16) :
+    rightSub af ag i ≠ leftLoc af ag haf j := by
+  apply amb_ne; have := j.isLt; simp; omega
+
+end BinaryNe
+
+/-! ### Semantic closure: the machine's mask arithmetic *is* `evaln`
+
+These are the theorems the machine proofs reduce to. Once a compiled node has computed
+`gflag * tagF * tagG` into its tag register and `tag * Nat.pair valF valG` into its value
+register, correctness is exactly the already-proved mask identity — no case analysis on
+which child failed. -/
+
+lemma pair_encodes (k m tagF valF tagG valG : ℕ) (cf cg : Nat.Partrec.Code)
+    (hFt : tagF = resultTag (Nat.Partrec.Code.evaln k cf m))
+    (hFv : valF = resultVal (Nat.Partrec.Code.evaln k cf m))
+    (hGt : tagG = resultTag (Nat.Partrec.Code.evaln k cg m))
+    (hGv : valG = resultVal (Nat.Partrec.Code.evaln k cg m)) :
+    (if m < k then 1 else 0) * tagF * tagG
+        = resultTag (Nat.Partrec.Code.evaln k (cf.pair cg) m) ∧
+      ((if m < k then 1 else 0) * tagF * tagG) * Nat.pair valF valG
+        = resultVal (Nat.Partrec.Code.evaln k (cf.pair cg) m) := by
+  subst hFt; subst hFv; subst hGt; subst hGv
+  exact ⟨(pair_mask_tag k cf cg m).symm, (pair_mask_val k cf cg m).symm⟩
+
+/-- For `comp` the second factor is `cf` applied to `cg`'s *value* — which is `0` when `cg`
+    failed. The machine runs `cf` on that `0` unconditionally and the `cg` tag factor
+    zeroes the product, so no branch is needed. -/
+lemma comp_encodes (k m tagG valG tagF valF : ℕ) (cf cg : Nat.Partrec.Code)
+    (hGt : tagG = resultTag (Nat.Partrec.Code.evaln k cg m))
+    (hGv : valG = resultVal (Nat.Partrec.Code.evaln k cg m))
+    (hFt : tagF = resultTag (Nat.Partrec.Code.evaln k cf valG))
+    (hFv : valF = resultVal (Nat.Partrec.Code.evaln k cf valG)) :
+    (if m < k then 1 else 0) * tagG * tagF
+        = resultTag (Nat.Partrec.Code.evaln k (cf.comp cg) m) ∧
+      ((if m < k then 1 else 0) * tagG * tagF) * valF
+        = resultVal (Nat.Partrec.Code.evaln k (cf.comp cg) m) := by
+  subst hGt; subst hGv; subst hFt; subst hFv
+  exact ⟨(comp_mask_tag k cf cg m).symm, (comp_mask_val k cf cg m).symm⟩
+
+/-! ### The `comp` machine
+
+Allocation is the same as `pair` — `cf`'s subtree at offset `16`, `cg`'s after it — but
+*execution* order is reversed, because `cg`'s value is `cf`'s input. Allocation and
+execution order are independent; keeping allocation uniform across both constructors keeps
+the interval lemmas shared.
+
+`cf` runs **unconditionally**, even when `cg` returned `none`; in that case it runs on the
+canonical `0` and the `cg` tag factor discards the answer. -/
+def compileCompTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
+  seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1))) <|
+  seqTM Mg <|
+  seqTM (copyIntoTM (R (rightLoc af ag hag 3)) (R (leftLoc af ag haf 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1))) <|
+  seqTM Mf <|
+  seqTM (ltFlagTM (R (selfW af ag 0)) (R (selfW af ag 1))
+          (R (selfW af ag 5)) (R (selfW af ag 4))) <|
+  seqTM (clearRegTM (R (selfW af ag 14))) <|
+  seqTM (mulAddIntoTM (R (selfW af ag 4)) (R (rightLoc af ag hag 2))
+          (R (selfW af ag 14))) <|
+  seqTM (clearRegTM (R (selfW af ag 2))) <|
+  seqTM (mulAddIntoTM (R (selfW af ag 14)) (R (leftLoc af ag haf 2))
+          (R (selfW af ag 2))) <|
+  seqTM (clearRegTM (R (selfW af ag 3)))
+        (mulAddIntoTM (R (selfW af ag 2)) (R (leftLoc af ag haf 3)) (R (selfW af ag 3)))
 
 end LogicalInduction.EvalnCompiler

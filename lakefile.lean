@@ -132,7 +132,7 @@ lean_lib Scratchpad where
 -- Nothing else in this repository may, and neither is imported by `LogicalInduction.lean`
 -- — the same containment discipline `PFR/` ↔ `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "30adf0a48ee9b12dfd519d37f24148007a9640a5"
+  "https://github.com/A-M-Berns/complexitylib" @ "964ce2d3a1acc9923542c066de4d60111778749e"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
