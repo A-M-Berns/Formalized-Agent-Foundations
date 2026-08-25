@@ -42,3 +42,5 @@ import LogicalInduction.Construction.Machine.DescExec
 import LogicalInduction.Construction.MachineTraderEnumeration
 
 import LogicalInduction.Construction.Machine.CodeSteps
+
+import LogicalInduction.Construction.Machine.PairSucc

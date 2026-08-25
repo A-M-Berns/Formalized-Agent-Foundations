@@ -2446,3 +2446,136 @@ with no `Nat.Partrec.Code` anywhere — deliberately, per the brief. The clocked
 simulator that Stage-3 soundness needs uses the same `forRegTM`/`decRegTM` counter idiom, so
 this layer should serve both. Keeping the arithmetic free of interpreter-specific structure
 is the one design constraint worth defending as the layer grows.
+
+---
+
+# Part VIII — Stage 2A: `sqrt` deleted from the route (2026-08-24)
+
+_Eighth pass. Scope: test whether `Nat.unpair` can be implemented extensionally as an
+iterated successor, avoiding integer square root. Stage 3 untouched; no migration._
+
+**The probe succeeded.** `sqrt` is gone from the Stage-2 machine route, and the arithmetic
+substrate estimate drops accordingly. This is the first estimate revision in this project
+that goes *down*.
+
+## VIII.0 The idea, and why it works
+
+Part VII priced an integer-`sqrt` machine at 300–500 Hoare-specified lines, because Mathlib
+defines
+
+```
+Nat.unpair n = let s := sqrt n
+               if n - s * s < s then (n - s * s, s) else (s, n - s * s - s)
+```
+
+But the machine only has to be **extensionally** equal to `Nat.unpair`. It is under no
+obligation to compute it the way Mathlib defines it.
+
+`Nat.pair a b = if a < b then b*b + a else a*a + a + b` enumerates pairs in shells indexed by
+`s = max a b`:
+
+```
+shell s :  (0,s) (1,s) … (s-1,s) (s,0) (s,1) … (s,s)
+indices :   s²    s²+1  …  s²+s-1  s²+s  …        s²+2s = (s+1)²-1
+```
+
+so the *successor* in this enumeration is a four-case comparison with no arithmetic beyond
+`+1`:
+
+```lean
+def pairNext : ℕ × ℕ → ℕ × ℕ
+  | (a, b) =>
+      if a < b then (if a + 1 < b then (a + 1, b) else (b, 0))
+      else if b < a then (a, b + 1)
+      else (0, a + 1)
+```
+
+— step along the ascending leg, turn at the corner, step along the descending leg, open the
+next shell at the diagonal.
+
+## VIII.1 What is proved
+
+`LogicalInduction/Construction/Machine/PairSucc.lean`, **117 lines, no `sorry`**, axioms
+`[propext, Classical.choice, Quot.sound]`:
+
+```lean
+theorem pair_pairNext (a b : ℕ) :
+    Nat.pair (pairNext (a, b)).1 (pairNext (a, b)).2 = Nat.pair a b + 1
+
+theorem pair_pairIter (n : ℕ) : Nat.pair (pairIter n).1 (pairIter n).2 = n
+
+theorem pairIter_eq_unpair (n : ℕ) : pairIter n = Nat.unpair n
+
+theorem pairIter_le (n : ℕ) : (pairIter n).1 ≤ n ∧ (pairIter n).2 ≤ n
+```
+
+The transition proposed in the tranche brief was **correct as written** — all four cases
+check out against Mathlib's actual formula, with the corner case `a + 1 = b ↦ (b, 0)` and the
+diagonal `a = b ↦ (0, a+1)` both exact.
+
+`pairIter_eq_unpair` needs no reasoning about `sqrt` at all: it follows from
+`pair_pairIter` and Mathlib's `Nat.unpair_pair`, i.e. from the fact that `unpair` inverts
+`pair`. That is the whole trick — extensional equality via the inverse, rather than
+operational agreement with the definition.
+
+`pairIter_le` is the sizing lemma the machine layer needs: after `n` steps neither coordinate
+exceeds `n`, so every register stays bounded by the input.
+
+## VIII.2 The revised cost
+
+| operation | Part VII estimate (sqrt route) | Part VIII (successor route) |
+| --- | ---: | ---: |
+| pure `pairNext` arithmetic | — | **117 ✓ done** |
+| zero test / comparison | 150–300 | 150–300 |
+| squaring | 80–150 | 80–150 |
+| **`sqrt`** | **300–500** | **0 — deleted** |
+| `Nat.pair` machine | 250–400 | 250–400 |
+| `Nat.unpair` machine | 300–500 | 200–350 (loop `pairNextTM` `n` times) |
+| frame/composition glue | 200–400 | 200–400 |
+| **arithmetic total** | **1.3–2.3k** | **0.9–1.6k** |
+
+**Roughly 400–700 lines removed**, and one of the two hardest machines (`sqrt`, with its own
+correctness recurrence) disappears entirely. The `unpair` machine also gets simpler: a
+`forRegTM` loop around `pairNextTM`, whose correctness routes through `pairIter_eq_unpair`
+rather than through any arithmetic identity.
+
+Revised Stage-2 total: **2.1–3.6k lines over 4–7 sessions**, down from Part VII's 2.5–4.3k
+over 5–8.
+
+## VIII.3 Runtime shape for the eventual machine
+
+The composition the `unpair` machine will need, all of it now available:
+
+```
+n iterations                       (forRegTM over the input register)
+× poly(n) work per pairNext        (comparison + increment on registers ≤ n, by pairIter_le)
+= poly(n)
+```
+
+`pairIter_le` is what makes the per-iteration cost uniform: without it the registers could in
+principle grow, and the product bound would not close.
+
+## VIII.4 What did not land
+
+The machine layer itself. `pairNextTM`, `compareTM`, `pairTM`, `unpairTM` are **not built** —
+this pass bought the *design* that makes them cheaper, not the machines. Comparison is still
+the next prerequisite, and it gates everything else.
+
+Status:
+
+```
+pure arithmetic
+  pairNext / pairIter / unpair equivalence      ✓ this pass
+  codeEvalSteps_poly                            ✓ Part VI
+
+machine arithmetic
+  inc / dec / clear / loop / add / copy / mulAdd ✓ upstream
+  subIntoTM                                      ✓ Part VII
+  comparison, pairNextTM, pairTM, unpairTM       open
+
+Code compiler                                    open
+PolyFueled / EfficientlyComputable → FP          open
+```
+
+The decisive question this tranche asked — *can `sqrt` be deleted from the Stage-2 compiler
+entirely?* — is **yes**, and the architecture is committed.
