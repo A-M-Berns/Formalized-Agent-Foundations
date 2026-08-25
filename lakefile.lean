@@ -122,12 +122,14 @@ lean_lib Scratchpad where
 -- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
 -- bump and degrade the diff-against-upstream story each time. See the adoption note §5.
 --
--- FAF's own import surface is far narrower than the fork: `Construction/Machine/DescExec`
--- imports only `…UTM.Internal.Interp`, whose closure is 5 files / ~2.2k lines. Nothing
--- else in this repository may name a `Complexity.*` declaration — the same discipline
--- `PFR/` ↔ `ShannonInformation.API` follows.
+-- FAF's own import surface is far narrower than the fork. Exactly two modules may name a
+-- `Complexity.*` declaration, both under `Construction/Machine/`:
+--   * `DescExec` imports `…UTM.Internal.Interp` (a 5-file / ~2.2k-line closure);
+--   * `EvalnCompiler` imports `…Registers.Pairing`, the unary-register arithmetic layer.
+-- Nothing else in this repository may, and neither is imported by `LogicalInduction.lean`
+-- — the same containment discipline `PFR/` ↔ `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "bc796b035cdc9590e2496338aa21c1c6256fb13f"
+  "https://github.com/A-M-Berns/complexitylib" @ "6c6a06138038032135df207415205c896d63867a"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"

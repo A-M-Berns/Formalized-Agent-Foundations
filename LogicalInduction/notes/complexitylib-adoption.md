@@ -3068,3 +3068,195 @@ its budget finishing arithmetic rather than reducing what follows. What did chan
 
 No `Code` constructor probe was attempted: the arithmetic capstones and the cost theorem
 consumed the pass, and §16 makes the probe explicitly optional.
+
+---
+
+# Part XII — Stage 2B: the `Code` compiler begins (2026-08-24)
+
+_Twelfth pass. Scope: result convention, register layout, the shared guard, and the four
+non-recursive constructors. `pair` and `comp` did **not** land._
+
+## XII.0 What `evaln` actually says
+
+Read off Mathlib's definition rather than from memory, as the tranche insisted — and two
+of the tranche's own premises were wrong.
+
+**There is no `const` constructor.** `Nat.Partrec.Code` has exactly eight: `zero`, `succ`,
+`left`, `right`, `pair`, `comp`, `prec`, `rfind'`. `Code.const` is a *derived definition*
+built from `zero`/`succ`, not a case to compile.
+
+**The guard is universal and uniform.** At fuel `0` every code is `none`; at fuel `k + 1`
+*every* constructor begins with the same `guard (n ≤ k)`. Since `n ≤ k ↔ n < k + 1` and
+`n < 0` is false, the single test
+
+```
+n < fuel
+```
+
+is the entire guard, fuel-`0` case included. So the tranche's §4 Route B is not merely
+convenient — it is forced by the shape of the definition. `evaln_zero_eq` and its three
+siblings state each constructor as `if n < k then … else none`, and each compiled machine
+opens with that one test.
+
+Centralizing does *not* mean hoisting out of the recursion: `pair`, `comp`, `prec` and
+`rfind'` all re-guard their own sub-calls, so every compiled machine carries its own copy.
+
+## XII.1 The compiler has no control flow
+
+The tranche expected guarded arms for the `none` case. They are not needed. Each machine
+computes its constructor's answer **unconditionally** and multiplies both result registers
+by the `0/1` guard flag:
+
+```lean
+lemma resultTag_ite : resultTag (if p then o else none) = (if p then 1 else 0) * resultTag o
+lemma resultVal_ite : resultVal (if p then o else none) = (if p then 1 else 0) * resultVal o
+```
+
+This is the same multiplicative mask that removed the branch from `pairTM` in Part XI, and
+it generalizes: `zero`, `succ`, `left` and `right` are each a *straight line* of three to
+five register operations, with no `guardTM` and no `ifTM` anywhere. `OutAcc ys` is carried
+through untouched by construction rather than by proof effort.
+
+The price is that a compiled machine does its work even when the guard fails and the answer
+is discarded. That is bounded work on a bounded tree, so it costs a constant factor in the
+eventual polynomial and nothing in the argument's shape.
+
+## XII.2 The conventions, frozen
+
+**Result.** `tag = 0` is `none`, `tag = 1` is `some`. The value register under `none` is
+**canonically `0`**, not a don't-care — because the postcondition of a compiled machine is
+a *definite* register-value vector, and §XII.4 below shows why definiteness is
+load-bearing.
+
+**Registers.** Sixteen, as `CodeRegs n = Regs 16 n`:
+
+| index | role |
+| ---: | --- |
+| `0` | input `n` |
+| `1` | fuel `k` |
+| `2` | result tag |
+| `3` | result value |
+| `4` | guard flag `[n < k]` |
+| `5` | guard scratch (`k - n`) |
+| `6`–`15` | body scratch — ten registers, enough for `unpairTM` (nine plus an external counter) and `pairTM` (eight) |
+
+**Correctness shape.** Every constructor proves the same predicate:
+
+```lean
+def EncodesEvaln (c : Code) (v u : Fin 16 → ℕ) : Prop :=
+  u 2 = resultTag (evaln (v 1) c (v 0)) ∧ u 3 = resultVal (evaln (v 1) c (v 0))
+```
+
+paired with a `HoareTime` from `regsWork r w₀ v` to `regsWork r w₀ (…Vals v)` at
+`m * evalnArithmeticCost B + (m - 1)` for an `m`-stage machine. Semantics and timing stay
+separate, as §13 asked, and all arithmetic cost cites the Part XI capstone — no new
+asymptotics were derived.
+
+## XII.3 What landed
+
+| constructor | machine | stages | proved |
+| --- | --- | ---: | --- |
+| `zero` | guard; `tag := gflag`; `val := 0` | 3 | ✓ |
+| `succ` | guard; `sc := n+1`; `tag := gflag`; `val := gflag · sc` | 6 | ✓ |
+| `left` | guard; `unpairTM`; `tag := gflag`; `val := gflag · unpair.1` | 5 | ✓ |
+| `right` | same machine, window index `1` | 5 | ✓ |
+
+`left` and `right` share one machine `compileProj r wj` parameterized by the window index,
+so the Hoare proof is written once. `Nat.unpair` is never unfolded: the proof cites
+`unpairTM_hoareTime_arith` and `unpairVals_zero` / `unpairVals_one`.
+
+**`pair` and `comp` did not land.** They are the tranche's headline and I did not reach
+them; see XII.5 for the design they need.
+
+## XII.4 New infrastructure: register sub-windows
+
+`left` runs `unpairTM` — a nine-register machine — inside the sixteen-register compiled
+layout. That needed a way to move a register-indexed state across a window boundary, which
+is now upstream and generic:
+
+```lean
+regsWork_restrict : regsWork r w₀ v = regsWork (shift.trans r) (regsWork r w₀ v) (v ∘ shift)
+regsWork_window   : regsWork (shift.trans r) (regsWork r w₀ v) u
+                      = regsWork r w₀ (writeWindow shift v u)
+```
+
+`restrict` turns the caller's state into the sub-machine's precondition; `window` turns the
+sub-machine's postcondition back. Together they are the whole caller-side interface, and
+they generalize Part XI's `regsWork_update_of_ne` from one register to an arbitrary window.
+
+This is the piece that makes the recursive constructors tractable, and it is why the
+postcondition must stay **definite**: a `forRegTM` loop body — which is what `prec` and
+`rfind'` will be — needs an explicit `w : ℕ → Fin n → Tape` family, which an existential
+postcondition cannot supply. `unpairTM` already demonstrated the pattern with `pairNextTM`
+as its body.
+
+## XII.5 Interface sanity check against `prec` and `rfind'`
+
+Both recurse **on fuel, not on code structure**:
+
+```
+prec cf cg : evaln k (prec cf cg) (pair a y)      -- same code, fuel k
+rfind' cf  : evaln k (rfind' cf)  (pair a (m+1))  -- same code, fuel k
+```
+
+Answering the tranche's six questions:
+
+1. **Same code, smaller fuel** — yes, both.
+2. **Surviving each iteration:** `prec` needs `a`, the index `y`, the running value `i`, and
+   the current fuel; `rfind'` needs `a`, the search index `m`, and the current fuel.
+3. **Nested result slots:** none. The self-recursion is a *chain* of depth ≤ fuel, not a
+   nest, so a fixed number of slots suffices.
+4. **Tag/value convention:** sufficient — each step yields one `Option ℕ`.
+5. **Call/return discipline:** not needed. Because the self-call decreases fuel and fuel is
+   a unary register, the recursion unrolls into a **bounded loop** driven by `forRegTM`.
+6. **`forRegTM` fits** both.
+
+The load-bearing consequence: since the self-call is at the *same* code, `compileCode`
+cannot recurse into itself there — but it does not need to. `prec cf cg` compiles to a loop
+whose *body* uses compiled `cf` and `cg`, both structurally smaller. **So `compileCode`
+remains a plain structural recursion on `Code`**, and the interface holds.
+
+## XII.6 The design `pair` and `comp` need
+
+The one thing this pass did not resolve by construction. `pair cf cg` runs compiled `cf`,
+saves `x`, then runs compiled `cg` — and `cg` will clobber the shared scratch, including
+wherever `x` sits, since every compiled machine uses the same sixteen registers.
+
+The resolution is the window machinery from XII.4: give each nesting level its **own
+sixteen-register block**. Depth `d` occupies registers `16d … 16d+15`; a parent copies its
+input and fuel down into the child's registers `0`/`1`, runs the child through
+`childWindow.trans r`, and reads the answer back out of the child's `2`/`3`. The parent's
+own registers are untouched *by construction* rather than by a frame argument, so no save
+slots and no ordering hazards exist at all.
+
+Register count becomes `16 * (codeDepth c + 1)` — linear in the code's nesting depth, which
+is fine for a fixed code. `comp` is the cheaper of the two (it needs no saved value: `cg`'s
+output becomes `cf`'s input, and the original `n` is dead afterwards).
+
+## XII.7 Status and estimate
+
+```
+Code compiler
+  result/register conventions, shared guard   ✓ this pass
+  zero, succ, left, right                     ✓ this pass
+  register sub-windows (upstream)             ✓ this pass
+  pair, comp                                  open — design fixed, XII.6
+  prec, rfind'                                open — interface validated, XII.5
+PolyFueled / EfficientlyComputable → FP       open
+```
+
+| item | estimate |
+| --- | ---: |
+| per-depth register blocks + `compileCode` recursion | 200–350 |
+| `pair` | 250–400 |
+| `comp` | 200–350 |
+| `prec` (fuel loop) | 400–600 |
+| `rfind'` (fuel loop) | 350–550 |
+| global time bound + `PolyFueled`/`EfficientlyComputable → FP` | 400–700 |
+| **Stage-2 remaining** | **1.8–3.0k over 4–6 sessions** |
+
+Up from Part XI's 1.5–2.6k. The increase is honest rather than a miss: Part XI's estimate
+was made before reading the `evaln` equations, and the per-depth register-block layer is
+real work that had not been costed. What came *down* is risk — the two design questions
+that could have forced a redesign (does `compileCode` recurse structurally? does the
+result convention survive the loop constructors?) are both answered yes.
