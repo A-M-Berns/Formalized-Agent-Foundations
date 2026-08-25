@@ -3657,3 +3657,121 @@ PolyFueled / EfficientlyComputable → FP         open
 Down from Part XIV's 1.7–2.7k. **The non-looping fragment is closed**; the only remaining
 semantic constructors are the two fuel-recursive ones, and their interface was validated in
 Part XII and has not been disturbed since.
+
+---
+
+# Part XVI — Stage 2C: the fuel recursion, factored (2026-08-25)
+
+_Sixteenth pass. Scope: `prec`, `rfind'`, full structural correctness. The **pure recursion
+layer** for both landed; neither machine did._
+
+## XVI.0 The equations, read again
+
+Both loop constructors were re-audited against Mathlib rather than from memory, and the
+fuel discipline is the part worth writing down.
+
+**`prec`**, at fuel `k+1` on input `n`:
+
+```
+guard (n ≤ k)
+n.unpaired fun a n' => n'.casesOn (evaln (k+1) cf a) fun y => do
+  let i ← evaln k (prec cf cg) (Nat.pair a y)
+  evaln (k+1) cg (Nat.pair a (Nat.pair y i))
+```
+
+**Both children run at the parent's own fuel**, and fuel decreases *only* in the self-call.
+Unrolling therefore walks the index down and the fuel down together:
+
+```
+(a, m) at fuel f   needs   (a, m-1) at fuel f-1   …   (a, 0) at fuel f-m
+```
+
+so the base case runs at fuel `f - m`, and level `j` counting *up* from the base runs at
+fuel `f - m + j`. The machine must iterate **upward from the base**, and its loop bound is
+the unpaired index `m`.
+
+**`rfind'`**, at fuel `k+1`:
+
+```
+guard (n ≤ k)
+n.unpaired fun a m => do
+  let x ← evaln (k+1) cf (Nat.pair a m)
+  if x = 0 then pure m else evaln k (rfind' cf) (Nat.pair a (m+1))
+```
+
+The self-call decreases fuel while *increasing* the index, so unrolling walks
+`(f, m) → (f-1, m+1) → …` and the loop bound is the **fuel**, not the input.
+
+**The two constructors iterate in opposite directions.** That is the single most important
+fact for whoever implements them, and it is why one shared loop skeleton will not serve
+both.
+
+## XVI.1 The pure layer
+
+```lean
+def precRun  (cf cg) (a f) : ℕ → Option ℕ        -- structural on the index
+def rfindRun (cf)    (a)   : ℕ → ℕ → Option ℕ    -- structural on the fuel
+
+precRun_eq       : precRun cf cg a f j = evaln (f + j) (cf.prec cg) (Nat.pair a j)
+precRun_eq_evaln : m ≤ fuel → precRun cf cg a (fuel - m) m
+                     = evaln fuel (cf.prec cg) (Nat.pair a m)
+rfindRun_eq      : rfindRun cf a f m = evaln f cf.rfind' (Nat.pair a m)
+rfindRun_succ    : one step, in the form a loop invariant consumes
+```
+
+Neither iterator recurses on `Code` — both are plain structural recursions on a numeral.
+That is what makes them implementable as bounded `forRegTM` loops whose *bodies* invoke the
+compiled structurally-smaller children, and it re-confirms (now against the equations
+rather than by argument) that `compileCodeAt` stays a structural recursion on `Code`.
+
+`precRun_eq_evaln` is the theorem the machine's loop will close against: `m` iterations
+from base fuel `fuel - m` compute the answer at fuel `fuel`. Its `m ≤ fuel` side condition
+is free — when it fails the outer guard `Nat.pair a m < fuel` fails too, and the result is
+canonical `none` regardless.
+
+## XVI.2 Why the machines did not land, and a corrected estimate
+
+I under-estimated `prec` badly in Parts XII–XV, and working through its register
+requirements for the first time is what corrected it. Per loop iteration the body must:
+
+* advance the level fuel and the index;
+* build `Nat.pair j v` — a `pairTM` call;
+* build `Nat.pair a (that)` — a second `pairTM` call;
+* copy that and the level fuel into `cg`'s block, and run `cg`;
+* build `Nat.pair a (j+1)` for that level's guard — a third `pairTM` call;
+* compute the guard and fold three factors into the `alive` mask, then mask the value.
+
+That is roughly twenty stages *inside the loop body*, three of them nested submachine
+calls, under a six-component loop invariant — before the setup (unpair, `fuel - m`, run
+`cf`, initialise) and the final masking. `prec` is closer to 800 lines than the 400–600 I
+had been carrying, and `rfind'` to 500–600.
+
+| item | estimate |
+| --- | ---: |
+| `prec` machine + semantic closure | 700–900 |
+| `rfind'` machine + semantic closure | 500–700 |
+| structural `compileCodeAt` correctness | 250–350 |
+| global runtime bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **1.9–2.7k over 4–5 sessions** |
+
+**This is up from Part XV's 1.3–2.1k.** I have now revised this estimate down twice and up
+once; the honest reading is that the earlier reductions were partly real (retired design
+risk) and partly optimism about work I had not yet costed. The loop constructors are the
+largest single items left in Stage 2, and `prec` alone is comparable to `pair` and `comp`
+combined.
+
+## XVI.3 Status
+
+```
+Code compiler
+  zero, succ, left, right, pair, comp        ✓ Parts XII–XV
+  compileCodeAt API                          ✓ Part XV
+  prec/rfind' exact equations + pure iterators ✓ this pass
+  prec machine, rfind' machine               open
+  structural correctness theorem             open
+PolyFueled / EfficientlyComputable → FP      open
+```
+
+Nothing in the architecture moved: the result encoding, ambient arity, size-based
+allocation, `runChild`, mask discipline and fuel convention are all as frozen in Part XV,
+and the pure layer confirms rather than strains them.
