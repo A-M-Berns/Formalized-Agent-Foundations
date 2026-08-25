@@ -3395,3 +3395,130 @@ PolyFueled / EfficientlyComputable → FP        open
 Essentially flat against Part XII's 1.8–3.0k. The mask lemmas removed real risk from
 `pair`/`comp` (no branching machinery is needed at all), and the indexing layer added an
 equivalent amount of newly-visible work.
+
+---
+
+# Part XIV — Stage 2B: ambient arity works; nested compilation proved (2026-08-25)
+
+_Fourteenth pass. Scope: the indexing decision, then `pair` and `comp`. The indexing
+question is settled and the nested-invocation phase of `pair` is proved; the remaining
+phases are not._
+
+## XIV.0 The previous pass's conclusion was wrong
+
+Part XIII stopped at an "indexing problem": child and parent compiler theorems appeared not
+to compose because they lived at different arities, and I proposed replacing `regsWork`
+with an ℕ-indexed state model. **That was a misanalysis, and the tranche was right to
+push back on it.**
+
+A child's ambient block is `(shiftEmb 16 h).trans R` — a *sub-window of the parent's own
+ambient `R`*. So `regsWork_restrict` applies directly, parent and children are all `TM n`
+for the same ambient `n`, and ordinary `seqTM` composes them. The experiment that settles
+it is three lines:
+
+```lean
+have h := compileZero_hoareTime ((shiftEmb 16 _).trans R) (V ∘ shiftEmb 16 _) B …
+rw [regsWork_restrict R (shiftEmb 16 _) w₀ V, ← regsWork_window]
+exact h
+```
+
+No second state model. `Fin` stayed manageable throughout; nothing needed `fin_cases` on a
+symbolic arity, because every *local* block is a `Regs 16 n` and only the ambient vector
+carries the symbolic index — and that is manipulated by `writeWindow`, not by enumeration.
+
+## XIV.1 The child-call theorem
+
+The interface collapses to one upstream lemma:
+
+```lean
+lemma runChild (W : Fin m ↪ Fin A) (R : Regs A n) (M : TM n) (F) (t B) … :
+    M.HoareTime (EmitPred inp₀ (regsWork R w₀ V) ys)
+                (EmitPred inp₀ (regsWork R w₀ (writeWindow W V (F (V ∘ W)))) ys) t
+```
+
+with `runChild_frame` giving "outside the window is untouched" and `writeWindow_bounded`
+carrying value bounds through. **A caller's registers are preserved structurally**, by
+disjointness of index intervals — no save/restore, no frame argument, no sibling-reuse
+reasoning. That is what §11 of the tranche asked for and it is what the allocation buys.
+
+## XIV.2 Size-based allocation
+
+Depth-based allocation (the tranche's §5 suggestion, and Part XIII's own proposal) is not
+what I built. Size-based interval allocation is simpler and strictly better:
+
+```
+codeSize (pair cf cg) = 1 + codeSize cf + codeSize cg
+ambient arity         = 16 * codeSize c
+self [0,16)   cf subtree [16, 16+af)   cg subtree [16+af, 16+af+ag)
+```
+
+Every block in the whole tree is pairwise disjoint *by construction*. Depth-based needs two
+blocks per depth so siblings do not collide, plus an argument that a finished sibling's
+subtree may be overwritten; intervals need neither. Index disequalities all reduce to
+arithmetic on the three offsets `0`, `16`, `16 + af` (`amb_ne`).
+
+## XIV.3 What is proved
+
+Both machines are defined and both semantic closures are proved:
+
+```lean
+compilePairTM   -- 16 straight-line stages, three of them submachine calls
+compileCompTM   -- 13 stages; cg runs first, its value feeds cf
+pair_encodes    -- gflag * tagF * tagG, and tag * Nat.pair valF valG, are evaln
+comp_encodes    -- gflag * tagG * tagF, and tag * valF,                are evaln
+```
+
+Neither uses a branch or a guard machine, and `comp` runs `cf` unconditionally even when
+`cg` returned `none` — on the canonical `0`, with the `cg` tag factor discarding the
+answer.
+
+And the hard half of `pair`'s machine proof:
+
+```lean
+lemma pairPhaseA_hoareTime :
+    (pairPhaseA af ag haf hag R Mf Mg).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (pairPhaseAVec af ag haf hag Ff Fg V)) ys)
+      (4 * evalnArithmeticCost B + tf + tg + 5)
+```
+
+Both children are fed the parent's *original* input and fuel (undecremented — checked
+against the equation, Part XIII), both run in their own subtrees, the parent's block is
+preserved, and the timing composes. **This is the phase that exercises nested compilation**,
+at full generality in `af`, `ag`, the child machines and their specs.
+
+## XIV.4 What is not
+
+`pair`'s phase B (ten stages: two copies, `pairTM`, the guard, and three
+clear/multiply-accumulate pairs) and all of `comp`'s thirteen. Every one of those stages is
+a *single-register* operation over one ambient vector — the same shape proved twice already
+in `compileSucc` (six stages) and `compileProj` (five). There is no remaining architectural
+question in them; they are the per-stage plumbing tax.
+
+## XIV.5 Status and estimate
+
+```
+Code compiler
+  conventions, guard, zero/succ/left/right      ✓ Part XII
+  pair/comp equations + mask formulas           ✓ Part XIII
+  ambient arity, runChild, size-based blocks    ✓ this pass
+  pair/comp machines + semantic closure         ✓ this pass
+  pair phase A (nested invocation)              ✓ this pass
+  pair phase B, comp machine proof              open — mechanical
+  prec, rfind'                                  open — interface validated
+PolyFueled / EfficientlyComputable → FP         open
+```
+
+| item | estimate |
+| --- | ---: |
+| `pair` phase B | 150–250 |
+| `comp` machine proof | 200–300 |
+| `compileCodeAt` assembly + structural theorem | 150–250 |
+| `prec` | 400–600 |
+| `rfind'` | 350–550 |
+| global bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **1.7–2.7k over 3–5 sessions** |
+
+Down from Part XIII's 2.0–3.1k, and for the first time the reduction is because a
+*structural* risk was retired rather than because work was deferred: there is no longer any
+open design question in the non-looping fragment.

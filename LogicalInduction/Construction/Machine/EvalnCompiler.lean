@@ -798,4 +798,141 @@ def compileCompTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (clearRegTM (R (selfW af ag 3)))
         (mulAddIntoTM (R (selfW af ag 2)) (R (leftLoc af ag haf 3)) (R (selfW af ag 3)))
 
+/-! ### Phase A of `pair`: feed both children and run them
+
+The phase that exercises nested compilation. Both children receive the parent's *original*
+input and fuel (undecremented, per the `evaln` equation), each runs in its own subtree, and
+the parent's own block is preserved — structurally, because the intervals are disjoint. -/
+
+section PhaseA
+variable {af ag : ℕ}
+
+/-- The first child's subtree misses the second child's block. -/
+lemma leftSub_ne_rightLoc (hag : 16 ≤ ag) (i : Fin af) (j : Fin 16) :
+    leftSub af ag i ≠ rightLoc af ag hag j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+def pairPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
+  seqTM (copyIntoTM (R (selfW af ag 0)) (R (leftLoc af ag haf 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1))) <|
+  seqTM Mf <|
+  seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
+  seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1)))
+        Mg
+
+noncomputable def pairPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
+  let V1 := Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0))
+  let V2 := Function.update V1 (leftLoc af ag haf 1) (V (selfW af ag 1))
+  let V3 := writeWindow (leftSub af ag) V2 (Ff (fun j => V2 (leftSub af ag j)))
+  let V4 := Function.update V3 (rightLoc af ag hag 0) (V (selfW af ag 0))
+  let V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1))
+  writeWindow (rightSub af ag) V5 (Fg (fun j => V5 (rightSub af ag j)))
+
+lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (16 + af + ag) n) (Mf Mg : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb (Ff u)) ys) tf)
+    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mg.HoareTime (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (pairPhaseA af ag haf hag R Mf Mg).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (pairPhaseAVec af ag haf hag Ff Fg V)) ys)
+      (4 * evalnArithmeticCost B + tf + tg + 5) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hB k)
+  -- S1
+  have h1 := copyIntoTM_hoareTime (R (selfW af ag 0)) (R (leftLoc af ag haf 0))
+      (Regs.ne R (selfW_ne_leftLoc haf 0 0)) (V (selfW af ag 0)) (V (leftLoc af ag haf 0))
+      inp₀ (regsWork R w₀ V) ys hinp₀ (fun i _ => hpv V i)
+      (regsWork_apply R w₀ V _) (regsWork_apply R w₀ V _)
+  rw [regsWork_update] at h1
+  replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
+  set V1 := Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hB _
+  -- S2
+  have h2 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (leftLoc af ag haf 1))
+      (Regs.ne R (selfW_ne_leftLoc haf 1 1)) (V (selfW af ag 1)) (V1 (leftLoc af ag haf 1))
+      inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
+      (by rw [regsWork_apply, hV1,
+        Function.update_of_ne (selfW_ne_leftLoc haf 1 0)])
+      (regsWork_apply R w₀ V1 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound
+    (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b1 _)))
+  set V2 := Function.update V1 (leftLoc af ag haf 1) (V (selfW af ag 1)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs
+    · exact hB _
+    · exact b1 _
+  -- everything outside the first subtree is still `V`
+  have out2 : ∀ k, (∀ j, leftSub af ag j ≠ k) → V2 k = V k := by
+    intro k hk
+    have e0 : leftLoc af ag haf 0 ≠ k := by
+      rw [leftLoc_eq]; exact hk _
+    have e1 : leftLoc af ag haf 1 ≠ k := by
+      rw [leftLoc_eq]; exact hk _
+    rw [hV2, Function.update_of_ne (Ne.symm e1), hV1, Function.update_of_ne (Ne.symm e0)]
+  -- S3: run cf
+  have h3 := runChild (leftSub af ag) R Mf Ff tf B w₀ hpark V2 b2 hMf
+  set V3 := writeWindow (leftSub af ag) V2 (Ff (fun j => V2 (leftSub af ag j))) with hV3
+  have b3 : ∀ k, V3 k < B := by
+    intro k; rw [hV3]
+    exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB _ (fun i => b2 _) j) k
+  have out3 : ∀ k, (∀ j, leftSub af ag j ≠ k) → V3 k = V k := by
+    intro k hk
+    rw [hV3, runChild_frame _ _ _ hk]; exact out2 k hk
+  -- S4
+  have h4 := copyIntoTM_hoareTime (R (selfW af ag 0)) (R (rightLoc af ag hag 0))
+      (Regs.ne R (selfW_ne_rightLoc hag haf 0 0)) (V (selfW af ag 0))
+      (V3 (rightLoc af ag hag 0))
+      inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
+      (by rw [regsWork_apply, out3 _ (fun j => leftSub_ne_selfW j 0)])
+      (regsWork_apply R w₀ V3 _)
+  rw [regsWork_update] at h4
+  replace h4 := h4.mono_bound
+    (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b3 _)))
+  set V4 := Function.update V3 (rightLoc af ag hag 0) (V (selfW af ag 0)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
+    · exact hB _
+    · exact b3 _
+  -- S5
+  have h5 := copyIntoTM_hoareTime (R (selfW af ag 1)) (R (rightLoc af ag hag 1))
+      (Regs.ne R (selfW_ne_rightLoc hag haf 1 1)) (V (selfW af ag 1))
+      (V4 (rightLoc af ag hag 1))
+      inp₀ (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
+      (by rw [regsWork_apply, hV4,
+        Function.update_of_ne (selfW_ne_rightLoc hag haf 1 0),
+        out3 _ (fun j => leftSub_ne_selfW j 1)])
+      (regsWork_apply R w₀ V4 _)
+  rw [regsWork_update] at h5
+  replace h5 := h5.mono_bound
+    (copyIntoTime_le_arith _ _ B (hle _) (Nat.le_of_lt (b4 _)))
+  set V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1)) with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
+    · exact hB _
+    · exact b4 _
+  -- S6: run cg
+  have h6 := runChild (rightSub af ag) R Mg Fg tg B w₀ hpark V5 b5 hMg
+  exact (seqEmit hinp₀ (hpv V1) h1 <|
+    seqEmit hinp₀ (hpv V2) h2 <|
+    seqEmit hinp₀ (hpv V3) h3 <|
+    seqEmit hinp₀ (hpv V4) h4 <|
+    seqEmit hinp₀ (hpv V5) h5 h6).mono_bound (by omega)
+
+end PhaseA
+
 end LogicalInduction.EvalnCompiler
