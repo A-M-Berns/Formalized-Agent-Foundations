@@ -3522,3 +3522,138 @@ PolyFueled / EfficientlyComputable → FP         open
 Down from Part XIII's 2.0–3.1k, and for the first time the reduction is because a
 *structural* risk was retired rather than because work was deferred: there is no longer any
 open design question in the non-looping fragment.
+
+---
+
+# Part XV — Stage 2B closed: the non-looping fragment is complete (2026-08-25)
+
+_Fifteenth pass. Scope: finish `pair` and `comp`, assemble the compiler. All three done._
+
+## XV.0 The checkpoint, three passes deferred, is met
+
+All six non-fuel-recursive `Nat.Partrec.Code` constructors now compile to ordinary
+`complexitylib` Turing machines and are proved exactly against `evaln`:
+
+```
+zero  succ  left  right      Part XII
+pair  comp                   this pass
+```
+
+under one architecture: canonical `Option` results, the universal `n < fuel` guard,
+mask-based failure propagation, size-indexed disjoint register intervals, ambient-arity
+subtree composition, `OutAcc` untouched, composable `HoareTime` bounds.
+
+## XV.1 `pair`
+
+```lean
+compilePairTM := seqTM (pairPhaseA …) (pairPhaseB …)
+compilePairTM_hoareTime : … (14 * evalnArithmeticCost B + tf + tg + 15)
+```
+
+Phase A (Part XIV) feeds and runs both children. Phase B is ten single-register stages plus
+the nested `pairTM` call: copy each child's value into `pairTM`'s slots, pair them, compute
+the outer guard, build `gflag * tagF * tagG` into the tag register and multiply it into the
+value.
+
+Phase B is stated over an *arbitrary* entry vector rather than over Phase A's output, so it
+composes by instantiation instead of by threading — and would survive a change to Phase A's
+allocation unchanged.
+
+Two facts are hypotheses rather than derived, both discharged by the caller at the global
+step where `codeEvalBound` supplies `B`:
+
+* **`pairTM`'s output fits.** `Nat.pair` of two values `< B` is quadratic in them, so *no*
+  single `B` is closed under it. This is not a defect of the bound discipline; it is the
+  real growth of the pairing bijection, and it has to be paid for by choosing `B` at the
+  top.
+* **The children's tags are `0/1`.**
+
+Everything else stays inside `B`, including through the pair window (`pairVals_lt`) — which
+needs `2 ≤ B`, because `pairTM`'s `gGE` register holds `1` when its internal guard fails.
+
+## XV.2 `comp`
+
+```lean
+compileCompTM := seqTM (compPhaseA …) (compPhaseB …)
+compileCompTM_hoareTime : … (11 * evalnArithmeticCost B + tf + tg + 12)
+```
+
+Phase A is the one place a child's *input* is another child's output: `cg` runs on the
+parent's input and fuel, its value register is copied into `cf`'s input register, `cf` gets
+the parent's fuel — undecremented, as the equation requires — and `cf` runs. Both use
+`runChild`, so the parent's block and the sibling subtree are preserved by interval
+disjointness, not by framing arguments.
+
+**`cf` runs unconditionally.** When `cg` returned `none` its value register holds the
+canonical `0`, `cf` computes on that, and Phase B's mask `gflag * tagG * tagF` discards the
+answer. There is no branch, no guard machine, and **no case split on `cg`'s tag anywhere in
+the machine proof** — the semantic case analysis lives entirely in `comp_mask_tag` /
+`comp_mask_val`, proved once in Part XIII.
+
+Phase B is simpler than `pair`'s: with no `pairTM` there is no value growth, so no fitting
+hypothesis is needed at all.
+
+## XV.3 The compiler API
+
+```lean
+def codeRegs : Code → ℕ
+  | .zero | .succ | .left | .right => 16
+  | .pair cf cg | .comp cf cg | .prec cf cg => 16 + codeRegs cf + codeRegs cg
+  | .rfind' cf => 16 + codeRegs cf
+
+def compileCodeAt : (c : Code) → Regs (codeRegs c) n → Option (TM n)
+```
+
+`codeRegs` is defined **directly** rather than as `16 * codeSize c`. That matters: it makes
+`codeRegs (pair cf cg)` reduce to `16 + codeRegs cf + codeRegs cg` *definitionally*, so a
+recursive call needs no transport along an arity equation. With the multiplicative
+definition every case of the assembly would carry a cast, and the dependent-type friction
+would spread through everything downstream.
+
+The result is an `Option`, with `none` for `prec` and `rfind'`. This is deliberate and
+worth stating plainly: a placeholder machine returning canonical `none` would typecheck,
+would let a full structural definition be written today, and would be **silently wrong** for
+those codes — precisely the class of stub this repository's standards exist to catch.
+`none` says "not compiled", never "compiles to failure".
+
+**Not assembled:** the structural correctness theorem over `compileCodeAt` — an induction
+tying the six per-constructor theorems to the definition. The case theorems stand and are
+what the next pass will consume; §20 of the tranche explicitly permits leaving the
+packaging.
+
+## XV.4 What the ambient-arity architecture cost
+
+Nothing beyond the plumbing tax. Across `pair` (16 stages) and `comp` (13), symbolic `Fin`
+never became the obstacle Part XIII feared: every *local* block is a `Regs 16 n`, so all
+per-stage reasoning uses `Fin 16` literals, and only the ambient vector carries the symbolic
+index — manipulated by `writeWindow`, never enumerated. `fin_cases` was not needed once.
+
+The recurring costs were the ordinary ones, and both were already in the gotcha log:
+`Function.update_of_ne` direction errors, and bound side conditions needing a fact
+(`0 < B`, `2 ≤ B`) that no hypothesis supplied.
+
+## XV.5 Status and estimate
+
+```
+Code compiler
+  zero, succ, left, right                       ✓ Part XII
+  pair/comp equations, masks, semantic closure  ✓ Parts XIII, XIV
+  ambient arity, runChild, size-based blocks    ✓ Part XIV
+  pair, comp                                    ✓ this pass
+  compileCodeAt API                             ✓ this pass
+  structural correctness theorem                open — packaging only
+  prec, rfind'                                  open — interface validated
+PolyFueled / EfficientlyComputable → FP         open
+```
+
+| item | estimate |
+| --- | ---: |
+| structural `compileCodeAt` correctness | 150–250 |
+| `prec` (fuel loop) | 400–600 |
+| `rfind'` (fuel loop) | 350–550 |
+| global time bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **1.3–2.1k over 3–4 sessions** |
+
+Down from Part XIV's 1.7–2.7k. **The non-looping fragment is closed**; the only remaining
+semantic constructors are the two fuel-recursive ones, and their interface was validated in
+Part XII and has not been disturbed since.

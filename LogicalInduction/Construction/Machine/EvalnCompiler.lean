@@ -582,37 +582,29 @@ so ordinary `seqTM` composes them and no lifting is needed.
 Because the intervals are disjoint, a child's execution cannot touch the parent's block —
 that is structural (`writeWindow_of_ne` on an index range), not a frame argument. -/
 
-/-- Registers needed by a compiled code: its own block plus its children's subtrees. -/
-def codeSize : Nat.Partrec.Code → ℕ
-  | .zero => 1
-  | .succ => 1
-  | .left => 1
-  | .right => 1
-  | .pair cf cg => 1 + codeSize cf + codeSize cg
-  | .comp cf cg => 1 + codeSize cf + codeSize cg
-  | .prec cf cg => 1 + codeSize cf + codeSize cg
-  | .rfind' cf => 1 + codeSize cf
+/-- Registers a compiled code occupies: its own block plus its children's subtrees.
 
-lemma codeSize_pos (c : Nat.Partrec.Code) : 1 ≤ codeSize c := by
-  cases c <;> simp [codeSize] <;> omega
-
-/-- The ambient arity of a compiled code. -/
-abbrev codeRegs (c : Nat.Partrec.Code) : ℕ := 16 * codeSize c
+    Defined *directly* rather than as `16 * codeSize c`, so that
+    `codeRegs (pair cf cg)` reduces to `16 + codeRegs cf + codeRegs cg`
+    **definitionally**. Without that every recursive call in `compileCodeAt` would need a
+    transport along an arity equation, and the dependent-type friction would spread
+    through the whole assembly. -/
+def codeRegs : Nat.Partrec.Code → ℕ
+  | .zero => 16
+  | .succ => 16
+  | .left => 16
+  | .right => 16
+  | .pair cf cg => 16 + codeRegs cf + codeRegs cg
+  | .comp cf cg => 16 + codeRegs cf + codeRegs cg
+  | .prec cf cg => 16 + codeRegs cf + codeRegs cg
+  | .rfind' cf => 16 + codeRegs cf
 
 lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
-  have := codeSize_pos c; simp only [codeRegs]; omega
+  cases c <;> simp [codeRegs] <;> omega
 
 /-! ### The three intervals of a binary node
 
 For `pair cf cg` / `comp cf cg`, `codeRegs = 16 + codeRegs cf + codeRegs cg`. -/
-
-lemma binary_arity (cf cg : Nat.Partrec.Code) :
-    codeRegs (cf.pair cg) = 16 + codeRegs cf + codeRegs cg := by
-  simp only [codeRegs, codeSize]; ring
-
-lemma binary_arity_comp (cf cg : Nat.Partrec.Code) :
-    codeRegs (cf.comp cg) = 16 + codeRegs cf + codeRegs cg := by
-  simp only [codeRegs, codeSize]; ring
 
 variable (cf cg : Nat.Partrec.Code)
 
@@ -1715,5 +1707,54 @@ lemma compileCompTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   exact (seqEmit hinp₀ (parked_regsWork R hpark _) hA hBph).mono_bound (by omega)
 
 end CompCompose
+/-! ## The compiler API
+
+`compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
+`codeRegs c` is the node's own sixteen plus each child's whole subtree. Parent and every
+descendant inhabit the same `TM n`, differing only in which registers they name, so
+ordinary `seqTM` composes them with no lifting between arities.
+
+The result is an `Option`: `none` marks the two fuel-recursive constructors, which are not
+implemented yet. That is deliberate — a placeholder machine returning canonical `none`
+would typecheck and be silently *wrong* for those codes, which is exactly the kind of stub
+this repository's standards exist to catch. `none` here says "not compiled", never
+"compiles to failure". -/
+
+/-- **The compiler.** Structural recursion on `Code`; parent and every descendant inhabit
+    the same ambient `TM n`, differing only in which registers they name. -/
+def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (TM n)
+  | .zero, R => some (compileZero R)
+  | .succ, R => some (compileSucc R)
+  | .left, R => some (compileProj R 0)
+  | .right, R => some (compileProj R 1)
+  | .pair cf cg, R => do
+      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
+      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
+      some (compilePairTM (codeRegs cf) (codeRegs cg)
+        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
+  | .comp cf cg, R => do
+      let Mf ← compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)
+      let Mg ← compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)
+      some (compileCompTM (codeRegs cf) (codeRegs cg)
+        (codeRegs_ge cf) (codeRegs_ge cg) R Mf Mg)
+  | .prec _ _, _ => none
+  | .rfind' _, _ => none
+
+/-- The compiler succeeds exactly on the fuel-recursion-free fragment. -/
+lemma compileCodeAt_isSome_zero (R : Regs (codeRegs .zero) n) :
+    (compileCodeAt .zero R).isSome := rfl
+
+lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
+    (R : Regs (codeRegs (cf.pair cg)) n)
+    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
+    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
+    (compileCodeAt (cf.pair cg) R).isSome := by
+  rw [compileCodeAt]
+  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
+  | none => rw [hF] at hf; exact absurd hf (by simp)
+  | some Mf =>
+    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
+    | none => rw [hG] at hg; exact absurd hg (by simp)
+    | some Mg => simp
 
 end LogicalInduction.EvalnCompiler
