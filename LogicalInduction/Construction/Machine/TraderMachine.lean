@@ -1,0 +1,462 @@
+/-
+# The trader machine
+
+Stage 2 item 5: the machine that computes an `EfficientlyComputable` trader's day-`n`
+serialization, so that the trader lands in `Complexity.FP` and hence in
+`MachineEfficientTrader`.
+
+This file builds it out of the fork's register calculus. Three layers:
+
+* **register operations as vector updates** — each of the fork's register machines
+  restated over a `regsWork` state under the common arithmetic budget
+  (`evalnArithmeticCost`), so that a stage of a straight-line register program is one
+  line;
+* **guarded emission** — `guardEmit_hoareTime`, the emitting counterpart of the fork's
+  `guardTM` rule, which is how a data-dependent bit stream is built from fixed words;
+* **the digit block** — ten registers turning a token value into the three bits
+  `bitsToDigits` reads back as its clamp at the terminator `4` (see
+  `Machine/DigitBits.lean` for why clamping is harmless).
+
+Every bound here is deliberately loose: `Complexity.FP` quantifies the degree
+existentially, so only the polynomial shape matters.
+-/
+import LogicalInduction.Construction.Machine.EvalnRegBound
+import Complexitylib.Models.TuringMachine.Registers.Horner
+import LogicalInduction.Construction.Machine.DigitBits
+import Mathlib.Tactic.IntervalCases
+
+namespace LogicalInduction.TraderMachine
+
+open Nat.Partrec (Code)
+open Complexity Complexity.TM
+
+variable {n m : ℕ}
+
+/-- `setConstTM` under the common arithmetic cost. -/
+lemma setConstTime_le_arith (c d B : ℕ) (hc : c ≤ B) (hd : d ≤ B) :
+    (2 * d + 4) + 1 + (c * (2 * c + 5) + 1) ≤ evalnArithmeticCost B := by
+  have h1 : c * (2 * c + 5) ≤ B * (2 * B + 5) := Nat.mul_le_mul hc (by omega)
+  have hX : 1 ≤ (B + 1) * (B + 1) := Nat.one_le_iff_ne_zero.mpr (by positivity)
+  have h3 : (2 * d + 4) + 1 + (c * (2 * c + 5) + 1) ≤ 8 * ((B + 1) * (B + 1)) := by
+    nlinarith
+  have h4 : 8 * ((B + 1) * (B + 1))
+      ≤ 500 * ((B + 1) * (B + 1) * ((B + 1) * (B + 1))) := by nlinarith
+  have h2 : (B + 1) ^ 4 = (B + 1) * (B + 1) * ((B + 1) * (B + 1)) := by ring
+  rw [evalnArithmeticCost, h2]
+  omega
+
+/-! ## Register operations, read as vector updates
+
+Each of the fork's register machines, restated over a `regsWork` state as a
+`Function.update` of the value vector under the common arithmetic budget. Every stage of a
+straight-line register program is then one line. -/
+
+section Ops
+variable (r : Regs m n) (V : Fin m → ℕ) (B : ℕ) (inp₀ : Tape) (w₀ : Fin n → Tape)
+  (ys : List Bool)
+
+lemma update_le {q : Fin m} {x : ℕ} (hv : ∀ k, V k ≤ B) (hx : x ≤ B) :
+    ∀ k, Function.update V q x k ≤ B := by
+  intro k
+  simp only [Function.update_apply]
+  split_ifs
+  · exact hx
+  · exact hv k
+
+lemma setConst_regsWork (q : Fin m) (c : ℕ)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (hv : ∀ k, V k ≤ B) (hc : c ≤ B) :
+    (setConstTM (r q) c).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀ (regsWork r w₀ (Function.update V q c)) ys)
+      (evalnArithmeticCost B) := by
+  have h := setConstTM_hoareTime (r q) c (V q) inp₀ (regsWork r w₀ V) ys hinp₀
+    (parked_regsWork r hpark V) (regsWork_apply r w₀ V q)
+  rw [regsWork_update] at h
+  exact h.mono_bound (setConstTime_le_arith c (V q) B hc (hv q))
+
+lemma copyInto_regsWork (src dst : Fin m) (hne : src ≠ dst)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (copyIntoTM (r src) (r dst)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀ (regsWork r w₀ (Function.update V dst (V src))) ys)
+      (evalnArithmeticCost B) := by
+  have h := copyIntoTM_hoareTime (r src) (r dst) (r.ne hne) (V src) (V dst) inp₀
+    (regsWork r w₀ V) ys hinp₀ (fun i _ => parked_regsWork r hpark V i)
+    (regsWork_apply r w₀ V src) (regsWork_apply r w₀ V dst)
+  rw [regsWork_update] at h
+  exact h.mono_bound (copyIntoTime_le_arith (V src) (V dst) B (hv src) (hv dst))
+
+lemma subInto_regsWork (src dst : Fin m) (hne : src ≠ dst)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (subIntoTM (r src) (r dst)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀ (regsWork r w₀ (Function.update V dst (V dst - V src))) ys)
+      (evalnArithmeticCost B) := by
+  have h := subIntoTM_hoareTime (r src) (r dst) (r.ne hne) (V src) (V dst) inp₀
+    (regsWork r w₀ V) ys hinp₀ (fun i _ => parked_regsWork r hpark V i)
+    (regsWork_apply r w₀ V src) (regsWork_apply r w₀ V dst)
+  rw [regsWork_update] at h
+  exact h.mono_bound (subIntoTime_le_arith (V src) (V dst) B (hv src) (hv dst))
+
+lemma addInto_regsWork (src dst : Fin m) (hne : src ≠ dst)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (addIntoTM (r src) (r dst)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀ (regsWork r w₀ (Function.update V dst (V dst + V src))) ys)
+      (evalnArithmeticCost B) := by
+  have h := addIntoTM_hoareTime (r src) (r dst) (r.ne hne) (V src) (V dst) inp₀
+    (regsWork r w₀ V) ys hinp₀ (fun i _ => parked_regsWork r hpark V i)
+    (regsWork_apply r w₀ V src) (regsWork_apply r w₀ V dst)
+  rw [regsWork_update] at h
+  exact h.mono_bound (addIntoTime_le_arith (V src) (V dst) B (hv src) (hv dst))
+
+lemma mulAddInto_regsWork (src₁ src₂ dst : Fin m)
+    (h₁ : src₁ ≠ src₂) (h₂ : src₁ ≠ dst) (h₃ : src₂ ≠ dst)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (mulAddIntoTM (r src₁) (r src₂) (r dst)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀
+        (regsWork r w₀ (Function.update V dst (V dst + V src₁ * V src₂))) ys)
+      (evalnArithmeticCost B) := by
+  have h := mulAddIntoTM_hoareTime (r src₁) (r src₂) (r dst) (r.ne h₁) (r.ne h₂)
+    (r.ne h₃) (V src₁) (V src₂) (V dst) inp₀ (regsWork r w₀ V) ys hinp₀
+    (fun i _ => parked_regsWork r hpark V i)
+    (regsWork_apply r w₀ V src₁) (regsWork_apply r w₀ V src₂)
+    (regsWork_apply r w₀ V dst)
+  rw [regsWork_update] at h
+  exact h.mono_bound (mulAddTime_le_arith (V src₁) (V src₂) (V dst) B (hv src₁)
+    (hv src₂) (hv dst))
+
+lemma ltFlag_regsWork (ra rb sc flag : Fin m)
+    (h₁ : ra ≠ sc) (h₂ : rb ≠ sc) (h₃ : sc ≠ flag)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hv : ∀ k, V k ≤ B) :
+    (ltFlagTM (r ra) (r rb) (r sc) (r flag)).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ V) ys)
+      (EmitPred inp₀
+        (regsWork r w₀
+          (Function.update (Function.update V sc (V rb - V ra)) flag
+            (if V ra < V rb then 1 else 0))) ys)
+      (evalnArithmeticCost B) := by
+  have h := ltFlagTM_hoareTime (r ra) (r rb) (r sc) (r flag) (r.ne h₁) (r.ne h₂)
+    (r.ne h₃) (V ra) (V rb) (V sc) (V flag) inp₀ (regsWork r w₀ V) ys hinp₀
+    (parked_regsWork r hpark V)
+    (regsWork_apply r w₀ V ra) (regsWork_apply r w₀ V rb)
+    (regsWork_apply r w₀ V sc) (regsWork_apply r w₀ V flag)
+  rw [regsWork_update, regsWork_update] at h
+  exact h.mono_bound (ltFlagTime_le_arith (V ra) (V rb) (V sc) (V flag) B (hv ra)
+    (hv rb) (hv sc) (hv flag))
+
+end Ops
+
+/-! ## Guarded emission -/
+
+/-- `seqEmit` with the output accumulator allowed to grow across the join. -/
+lemma seqEmitOut {tm₁ tm₂ : TM n} {inp₀ : Tape} {w₀ w₁ w₂ : Fin n → Tape}
+    {ys₀ ys₁ ys₂ : List Bool} {b₁ b₂ : ℕ}
+    (hinp₀ : Parked inp₀) (hw₁ : ∀ i, Parked (w₁ i))
+    (h₁ : tm₁.HoareTime (EmitPred inp₀ w₀ ys₀) (EmitPred inp₀ w₁ ys₁) b₁)
+    (h₂ : tm₂.HoareTime (EmitPred inp₀ w₁ ys₁) (EmitPred inp₀ w₂ ys₂) b₂) :
+    (seqTM tm₁ tm₂).HoareTime (EmitPred inp₀ w₀ ys₀) (EmitPred inp₀ w₂ ys₂)
+      (b₁ + 1 + b₂) :=
+  seqTM_hoareTime _ _ h₁ (fun _ _ _ h => emitPred_transition hinp₀ hw₁ ys₁ _ _ _ h) h₂
+
+/-- **Emit a fixed word under a `{0,1}` guard.** The fork's `guardTM` rule keeps the
+    output accumulator fixed; this is the emitting variant, which is what a data-dependent
+    bit stream is built from. -/
+lemma guardEmit_hoareTime (w : List Bool) (flag : Fin n) (f : ℕ) (hf : f ≤ 1)
+    (inp₀ : Tape) (work₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hP₀ : ∀ j, Parked (work₀ j))
+    (hf₀ : work₀ flag = regTape f) :
+    (guardTM (emitBitsTM w) flag).HoareTime
+      (EmitPred inp₀ work₀ ys)
+      (EmitPred inp₀ work₀ (ys ++ if f = 0 then [] else w))
+      (f * (w.length + 2) + (f + 2)) := by
+  have hloop := forRegTM_hoareTime (emitBitsTM w) flag f inp₀
+    (fun _ => work₀) (fun i => if i = 0 then ys else ys ++ w) w.length hinp₀
+    (fun _ => hf₀) (fun _ j _ => hP₀ j)
+    (fun i hi => by
+      have hi0 : i = 0 := by omega
+      subst hi0
+      have hpk : ∀ j, Parked (Function.update work₀ flag
+          (⟨0 + 2, regCells f⟩ : Tape) j) := by
+        intro j
+        by_cases hj : j = flag
+        · subst hj; rw [Function.update_self]; exact parked_regCells (by omega)
+        · rw [Function.update_of_ne hj]; exact hP₀ j
+      have h := emitBitsTM_hoareTime (n := n) w inp₀
+        (Function.update work₀ flag ⟨0 + 2, regCells f⟩) ys hinp₀ hpk
+      simpa using h)
+  rcases Nat.eq_zero_or_pos f with rfl | hpos
+  · simpa [guardTM] using hloop
+  · have hf1 : f = 1 := by omega
+    subst hf1
+    simpa [guardTM] using hloop
+
+
+/-! ## The digit block
+
+Ten registers turn a token value into the three bits `bitsToDigits` reads back as its
+clamp at the terminator `4`: `0` the token, `1` the clamp, `2` a constant, `3` scratch,
+`4`–`8` the five equality flags, `9` scratch. -/
+
+/-- The clamp's final register values: `k := 4`, `t := d - 4`, `g := min d 4`. -/
+def clampVals (v : Fin 10 → ℕ) : Fin 10 → ℕ := fun k =>
+  if (k : ℕ) = 1 then min (v 0) 4
+  else if (k : ℕ) = 2 then 4
+  else if (k : ℕ) = 9 then v 0 - 4
+  else v k
+
+/-- `g := min d 4`, through the identity `min a b = a - (a - b)`. -/
+def clampTM (dr : Regs 10 n) : TM n :=
+  seqTM (setConstTM (dr 2) 4)
+    (seqTM (copyIntoTM (dr 0) (dr 9))
+      (seqTM (subIntoTM (dr 2) (dr 9))
+        (seqTM (copyIntoTM (dr 0) (dr 1)) (subIntoTM (dr 9) (dr 1)))))
+
+lemma clampTM_hoareTime (dr : Regs 10 n) (v : Fin 10 → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB4 : 4 ≤ B)
+    (hv : ∀ k, v k ≤ B) :
+    (clampTM dr).HoareTime
+      (EmitPred inp₀ (regsWork dr w₀ v) ys)
+      (EmitPred inp₀ (regsWork dr w₀ (clampVals v)) ys)
+      (5 * evalnArithmeticCost B + 4) := by
+  have h1 := setConst_regsWork dr v B inp₀ w₀ ys 2 4 hinp₀ hpark hv (by omega)
+  set V1 := Function.update v 2 4 with hV1
+  have hv1 : ∀ k, V1 k ≤ B := update_le v B hv (by omega)
+  have h2 := copyInto_regsWork dr V1 B inp₀ w₀ ys 0 9 (by decide) hinp₀ hpark hv1
+  set V2 := Function.update V1 9 (V1 0) with hV2
+  have hv2 : ∀ k, V2 k ≤ B := update_le V1 B hv1 (hv1 0)
+  have h3 := subInto_regsWork dr V2 B inp₀ w₀ ys 2 9 (by decide) hinp₀ hpark hv2
+  set V3 := Function.update V2 9 (V2 9 - V2 2) with hV3
+  have hv3 : ∀ k, V3 k ≤ B := update_le V2 B hv2 (by have := hv2 9; omega)
+  have h4 := copyInto_regsWork dr V3 B inp₀ w₀ ys 0 1 (by decide) hinp₀ hpark hv3
+  set V4 := Function.update V3 1 (V3 0) with hV4
+  have hv4 : ∀ k, V4 k ≤ B := update_le V3 B hv3 (hv3 0)
+  have h5 := subInto_regsWork dr V4 B inp₀ w₀ ys 9 1 (by decide) hinp₀ hpark hv4
+  set V5 := Function.update V4 1 (V4 1 - V4 9) with hV5
+  have hv5 : ∀ k, V5 k ≤ B := update_le V4 B hv4 (by have := hv4 1; omega)
+  have hfinal : V5 = clampVals v := by
+    funext k
+    fin_cases k <;>
+      simp [clampVals, hV5, hV4, hV3, hV2, hV1, Function.update_apply] <;> omega
+  rw [hfinal] at h5
+  exact (seqEmit hinp₀ (parked_regsWork dr hpark V1) h1
+    (seqEmit hinp₀ (parked_regsWork dr hpark V2) h2
+      (seqEmit hinp₀ (parked_regsWork dr hpark V3) h3
+        (seqEmit hinp₀ (parked_regsWork dr hpark V4) h4 h5)))).mono_bound (by omega)
+
+
+/-- The flag block's final register values: `e_c := [g = c]` for `c = 0..4`, read off the
+    four comparisons `[g < 1] … [g < 4]`. -/
+def flagVals (u : Fin 10 → ℕ) : Fin 10 → ℕ := fun k =>
+  if (k : ℕ) = 2 then 4
+  else if (k : ℕ) = 3 then 4 - u 1
+  else if (k : ℕ) = 4 then (if u 1 < 1 then 1 else 0)
+  else if (k : ℕ) = 5 then (if u 1 < 2 then 1 else 0) - (if u 1 < 1 then 1 else 0)
+  else if (k : ℕ) = 6 then (if u 1 < 3 then 1 else 0) - (if u 1 < 2 then 1 else 0)
+  else if (k : ℕ) = 7 then (if u 1 < 4 then 1 else 0) - (if u 1 < 3 then 1 else 0)
+  else if (k : ℕ) = 8 then 1 - (if u 1 < 4 then 1 else 0)
+  else u k
+
+/-- The five equality flags, from four comparisons and four differences. -/
+def digitFlagsTM (dr : Regs 10 n) : TM n :=
+  seqTM (setConstTM (dr 2) 1) (seqTM (ltFlagTM (dr 1) (dr 2) (dr 3) (dr 4))
+  (seqTM (setConstTM (dr 2) 2) (seqTM (ltFlagTM (dr 1) (dr 2) (dr 3) (dr 5))
+  (seqTM (setConstTM (dr 2) 3) (seqTM (ltFlagTM (dr 1) (dr 2) (dr 3) (dr 6))
+  (seqTM (setConstTM (dr 2) 4) (seqTM (ltFlagTM (dr 1) (dr 2) (dr 3) (dr 7))
+  (seqTM (setConstTM (dr 8) 1)
+  (seqTM (subIntoTM (dr 7) (dr 8)) (seqTM (subIntoTM (dr 6) (dr 7))
+  (seqTM (subIntoTM (dr 5) (dr 6)) (subIntoTM (dr 4) (dr 5)))))))))))))
+
+lemma digitFlagsTM_hoareTime (dr : Regs 10 n) (u : Fin 10 → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB4 : 4 ≤ B)
+    (hu : ∀ k, u k ≤ B) :
+    (digitFlagsTM dr).HoareTime
+      (EmitPred inp₀ (regsWork dr w₀ u) ys)
+      (EmitPred inp₀ (regsWork dr w₀ (flagVals u)) ys)
+      (13 * evalnArithmeticCost B + 12) := by
+  have h1 := setConst_regsWork dr u B inp₀ w₀ ys 2 1 hinp₀ hpark hu (by omega)
+  set W1 := Function.update u 2 1 with hW1
+  have hw1 : ∀ k, W1 k ≤ B := update_le u B hu (by omega)
+  have h2 := ltFlag_regsWork dr W1 B inp₀ w₀ ys 1 2 3 4 (by decide) (by decide) (by decide) hinp₀ hpark hw1
+  set W2 := Function.update (Function.update W1 3 (W1 2 - W1 1)) 4
+    (if W1 1 < W1 2 then 1 else 0) with hW2
+  have hw2 : ∀ k, W2 k ≤ B :=
+    update_le _ B (update_le W1 B hw1 (by have := hw1 2; omega)) (by split_ifs <;> omega)
+  have h3 := setConst_regsWork dr W2 B inp₀ w₀ ys 2 2 hinp₀ hpark hw2 (by omega)
+  set W3 := Function.update W2 2 2 with hW3
+  have hw3 : ∀ k, W3 k ≤ B := update_le W2 B hw2 (by omega)
+  have h4 := ltFlag_regsWork dr W3 B inp₀ w₀ ys 1 2 3 5 (by decide) (by decide) (by decide) hinp₀ hpark hw3
+  set W4 := Function.update (Function.update W3 3 (W3 2 - W3 1)) 5
+    (if W3 1 < W3 2 then 1 else 0) with hW4
+  have hw4 : ∀ k, W4 k ≤ B :=
+    update_le _ B (update_le W3 B hw3 (by have := hw3 2; omega)) (by split_ifs <;> omega)
+  have h5 := setConst_regsWork dr W4 B inp₀ w₀ ys 2 3 hinp₀ hpark hw4 (by omega)
+  set W5 := Function.update W4 2 3 with hW5
+  have hw5 : ∀ k, W5 k ≤ B := update_le W4 B hw4 (by omega)
+  have h6 := ltFlag_regsWork dr W5 B inp₀ w₀ ys 1 2 3 6 (by decide) (by decide) (by decide) hinp₀ hpark hw5
+  set W6 := Function.update (Function.update W5 3 (W5 2 - W5 1)) 6
+    (if W5 1 < W5 2 then 1 else 0) with hW6
+  have hw6 : ∀ k, W6 k ≤ B :=
+    update_le _ B (update_le W5 B hw5 (by have := hw5 2; omega)) (by split_ifs <;> omega)
+  have h7 := setConst_regsWork dr W6 B inp₀ w₀ ys 2 4 hinp₀ hpark hw6 (by omega)
+  set W7 := Function.update W6 2 4 with hW7
+  have hw7 : ∀ k, W7 k ≤ B := update_le W6 B hw6 (by omega)
+  have h8 := ltFlag_regsWork dr W7 B inp₀ w₀ ys 1 2 3 7 (by decide) (by decide) (by decide) hinp₀ hpark hw7
+  set W8 := Function.update (Function.update W7 3 (W7 2 - W7 1)) 7
+    (if W7 1 < W7 2 then 1 else 0) with hW8
+  have hw8 : ∀ k, W8 k ≤ B :=
+    update_le _ B (update_le W7 B hw7 (by have := hw7 2; omega)) (by split_ifs <;> omega)
+  have h9 := setConst_regsWork dr W8 B inp₀ w₀ ys 8 1 hinp₀ hpark hw8 (by omega)
+  set W9 := Function.update W8 8 1 with hW9
+  have hw9 : ∀ k, W9 k ≤ B := update_le W8 B hw8 (by omega)
+  have h10 := subInto_regsWork dr W9 B inp₀ w₀ ys 7 8 (by decide) hinp₀ hpark hw9
+  set W10 := Function.update W9 8 (W9 8 - W9 7) with hW10
+  have hw10 : ∀ k, W10 k ≤ B := update_le W9 B hw9 (by have := hw9 8; omega)
+  have h11 := subInto_regsWork dr W10 B inp₀ w₀ ys 6 7 (by decide) hinp₀ hpark hw10
+  set W11 := Function.update W10 7 (W10 7 - W10 6) with hW11
+  have hw11 : ∀ k, W11 k ≤ B := update_le W10 B hw10 (by have := hw10 7; omega)
+  have h12 := subInto_regsWork dr W11 B inp₀ w₀ ys 5 6 (by decide) hinp₀ hpark hw11
+  set W12 := Function.update W11 6 (W11 6 - W11 5) with hW12
+  have hw12 : ∀ k, W12 k ≤ B := update_le W11 B hw11 (by have := hw11 6; omega)
+  have h13 := subInto_regsWork dr W12 B inp₀ w₀ ys 4 5 (by decide) hinp₀ hpark hw12
+  set W13 := Function.update W12 5 (W12 5 - W12 4) with hW13
+  have hw13 : ∀ k, W13 k ≤ B := update_le W12 B hw12 (by have := hw12 5; omega)
+  have hfinal : W13 = flagVals u := by
+    funext k
+    fin_cases k <;>
+      simp [flagVals, hW13, hW12, hW11, hW10, hW9, hW8, hW7, hW6, hW5, hW4, hW3, hW2, hW1, Function.update_apply] <;> omega
+  rw [hfinal] at h13
+  exact (seqEmit hinp₀ (parked_regsWork dr hpark W1) h1
+    (seqEmit hinp₀ (parked_regsWork dr hpark W2) h2
+    (seqEmit hinp₀ (parked_regsWork dr hpark W3) h3
+    (seqEmit hinp₀ (parked_regsWork dr hpark W4) h4
+    (seqEmit hinp₀ (parked_regsWork dr hpark W5) h5
+    (seqEmit hinp₀ (parked_regsWork dr hpark W6) h6
+    (seqEmit hinp₀ (parked_regsWork dr hpark W7) h7
+    (seqEmit hinp₀ (parked_regsWork dr hpark W8) h8
+    (seqEmit hinp₀ (parked_regsWork dr hpark W9) h9
+    (seqEmit hinp₀ (parked_regsWork dr hpark W10) h10
+    (seqEmit hinp₀ (parked_regsWork dr hpark W11) h11
+    (seqEmit hinp₀ (parked_regsWork dr hpark W12) h12
+    h13)))))))))))).mono_bound (by omega)
+
+
+/-- Emit the clamped digit as three bits: five guards, exactly one of which fires. -/
+def digitEmitTM (dr : Regs 10 n) : TM n :=
+  seqTM (guardTM (emitBitsTM (digitBits 0)) (dr 4))
+  (seqTM (guardTM (emitBitsTM (digitBits 1)) (dr 5))
+  (seqTM (guardTM (emitBitsTM (digitBits 2)) (dr 6))
+  (seqTM (guardTM (emitBitsTM (digitBits 3)) (dr 7))
+         (guardTM (emitBitsTM (digitBits 4)) (dr 8)))))
+
+lemma digitEmitTM_hoareTime (dr : Regs 10 n) (x : Fin 10 → ℕ) (g : ℕ) (hg : g ≤ 4)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
+    (e0 : x 4 = if g = 0 then 1 else 0) (e1 : x 5 = if g = 1 then 1 else 0)
+    (e2 : x 6 = if g = 2 then 1 else 0) (e3 : x 7 = if g = 3 then 1 else 0)
+    (e4 : x 8 = if g = 4 then 1 else 0) :
+    (digitEmitTM dr).HoareTime
+      (EmitPred inp₀ (regsWork dr w₀ x) ys)
+      (EmitPred inp₀ (regsWork dr w₀ x) (ys ++ digitBits g))
+      44 := by
+  have hpx := parked_regsWork dr hpark x
+  have hb : ∀ (c : ℕ) (q : Fin 10) (zs : List Bool), x q = (if g = c then 1 else 0) →
+      (guardTM (emitBitsTM (digitBits c)) (dr q)).HoareTime
+        (EmitPred inp₀ (regsWork dr w₀ x) zs)
+        (EmitPred inp₀ (regsWork dr w₀ x)
+          (zs ++ if g = c then digitBits c else [])) 8 := by
+    intro c q zs hq
+    have hx1 : x q ≤ 1 := by rw [hq]; split_ifs <;> omega
+    have hcase : (if x q = 0 then ([] : List Bool) else digitBits c)
+        = if g = c then digitBits c else [] := by
+      rw [hq]; split_ifs <;> simp_all
+    refine ((guardEmit_hoareTime (digitBits c) (dr q) (x q) hx1
+      inp₀ (regsWork dr w₀ x) zs hinp₀ hpx
+      (regsWork_apply dr w₀ x q)).mono_bound ?_).consequence (fun _ _ _ h => h)
+      (fun _ _ _ h => by rwa [hcase] at h) (le_refl _)
+    simp only [length_digitBits]
+    omega
+  have hchain := seqEmitOut hinp₀ hpx (hb 0 4 ys e0)
+    (seqEmitOut hinp₀ hpx (hb 1 5 _ e1)
+      (seqEmitOut hinp₀ hpx (hb 2 6 _ e2)
+        (seqEmitOut hinp₀ hpx (hb 3 7 _ e3) (hb 4 8 _ e4))))
+  have hword : ((((ys ++ if g = 0 then digitBits 0 else [])
+        ++ if g = 1 then digitBits 1 else [])
+        ++ if g = 2 then digitBits 2 else [])
+        ++ if g = 3 then digitBits 3 else [])
+        ++ (if g = 4 then digitBits 4 else [])
+      = ys ++ digitBits g := by
+    interval_cases g <;> simp
+  rw [hword] at hchain
+  exact hchain.mono_bound (by omega)
+
+
+lemma clampVals_one (v : Fin 10 → ℕ) : clampVals v 1 = min (v 0) 4 := rfl
+
+lemma clampVals_le (v : Fin 10 → ℕ) (B : ℕ) (hB4 : 4 ≤ B) (hv : ∀ k, v k ≤ B) :
+    ∀ k, clampVals v k ≤ B := by
+  intro k
+  simp only [clampVals]
+  split_ifs
+  · have := hv 0; omega
+  · omega
+  · have := hv 0; omega
+  · exact hv k
+
+lemma flagVals_le (u : Fin 10 → ℕ) (B : ℕ) (hB4 : 4 ≤ B) (hu : ∀ k, u k ≤ B) :
+    ∀ k, flagVals u k ≤ B := by
+  intro k
+  simp only [flagVals]
+  split_ifs <;> first | omega | exact hu k
+
+/-- The digit block's final register values. -/
+def digitVals (v : Fin 10 → ℕ) : Fin 10 → ℕ := flagVals (clampVals v)
+
+/-- **The digit block.** Clamp the token at the terminator, compute the five equality
+    flags, and emit the three bits `bitsToDigits` reads back as the clamp. -/
+def digitTM (dr : Regs 10 n) : TM n :=
+  seqTM (clampTM dr) (seqTM (digitFlagsTM dr) (digitEmitTM dr))
+
+lemma digitTM_hoareTime (dr : Regs 10 n) (v : Fin 10 → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB4 : 4 ≤ B)
+    (hv : ∀ k, v k ≤ B) :
+    (digitTM dr).HoareTime
+      (EmitPred inp₀ (regsWork dr w₀ v) ys)
+      (EmitPred inp₀ (regsWork dr w₀ (digitVals v)) (ys ++ digitBits (min (v 0) 4)))
+      (18 * evalnArithmeticCost B + 62) := by
+  have hcl := clampTM_hoareTime dr v B inp₀ w₀ ys hinp₀ hpark hB4 hv
+  have hclv := clampVals_le v B hB4 hv
+  have hfl := digitFlagsTM_hoareTime dr (clampVals v) B inp₀ w₀ ys hinp₀ hpark hB4 hclv
+  have hg4 : min (v 0) 4 ≤ 4 := Nat.min_le_right _ _
+  have hone : clampVals v 1 = min (v 0) 4 := clampVals_one v
+  have hem := digitEmitTM_hoareTime dr (flagVals (clampVals v)) (min (v 0) 4) hg4
+    inp₀ w₀ ys hinp₀ hpark
+    (by show flagVals (clampVals v) 4 = _
+        simp only [flagVals, hone]
+        norm_num
+        try split_ifs <;> omega)
+    (by show flagVals (clampVals v) 5 = _
+        simp only [flagVals, hone]
+        norm_num
+        try split_ifs <;> omega)
+    (by show flagVals (clampVals v) 6 = _
+        simp only [flagVals, hone]
+        norm_num
+        try split_ifs <;> omega)
+    (by show flagVals (clampVals v) 7 = _
+        simp only [flagVals, hone]
+        norm_num
+        try split_ifs <;> omega)
+    (by show flagVals (clampVals v) 8 = _
+        simp only [flagVals, hone]
+        norm_num
+        try split_ifs <;> omega)
+  exact (seqEmitOut hinp₀ (parked_regsWork dr hpark _) hcl
+    (seqEmitOut hinp₀ (parked_regsWork dr hpark _) hfl hem)).mono_bound (by omega)
+
+end LogicalInduction.TraderMachine

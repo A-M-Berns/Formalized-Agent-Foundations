@@ -25,6 +25,9 @@ are in `LogicalInduction/notes/boundary-efficiency-model.md`.
   structural timing theorem `compiledTM_hoareTime`.
 * `Machine/DigitBits.lean` — the bit rendering of a digit stream, and the clamping
   convention `undigitize` licenses.
+* `Machine/TraderMachine.lean` — **Stage 2 item 5**: the register calculus over
+  `regsWork` states, guarded emission, and the digit block, on the way to the machine
+  that computes an `EfficientlyComputable` trader's serialization.
 * `Machine/TimedRespectsProbe.lean` — the Stage-0 de-risk probe (a timed
   `Turing.TM1to0`). A spike: evidence for the decision, not part of the development, and
   deliberately not imported here.
@@ -57,3 +60,4 @@ import LogicalInduction.Construction.Machine.PairSucc
 import LogicalInduction.Construction.Machine.EvalnCompiler
 import LogicalInduction.Construction.Machine.EvalnRegBound
 import LogicalInduction.Construction.Machine.DigitBits
+import LogicalInduction.Construction.Machine.TraderMachine
