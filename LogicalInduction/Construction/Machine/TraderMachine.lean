@@ -23,6 +23,7 @@ existentially, so only the polynomial shape matters.
 import LogicalInduction.Construction.Machine.EvalnRegBound
 import Complexitylib.Models.TuringMachine.Registers.Horner
 import Complexitylib.Models.TuringMachine.Registers.InputLen
+import Complexitylib.Classes.P.NormalForm
 import LogicalInduction.Construction.Machine.DigitBits
 import Mathlib.Tactic.IntervalCases
 
@@ -1582,5 +1583,200 @@ lemma traderTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n) (l : Fin n)
 end Top
 
 end Word
+
+/-! ## Polynomiality, and the machine at its own arity -/
+
+lemma IsPolyBounded.monomial (c e : ℕ) : IsPolyBounded (fun x => c * (x + 1) ^ e) :=
+  ⟨c, e, fun _ => by simp only []; omega⟩
+
+lemma opBudget_poly : IsPolyBounded opBudget := by
+  refine ⟨256, 3, fun x => ?_⟩
+  have h : (x + 2) ≤ 2 * (x + 1) := by omega
+  have h3 : (x + 2) * (x + 2) * (x + 2) ≤ 8 * ((x + 1) ^ 3) := by
+    have : (x + 1) ^ 3 = (x + 1) * (x + 1) * (x + 1) := by ring
+    rw [this]
+    nlinarith
+  rw [opBudget]
+  omega
+
+lemma opBudget_mono : Monotone opBudget := by
+  intro p q hpq
+  simp only [opBudget]
+  have : (p + 2) * (p + 2) * (p + 2) ≤ (q + 2) * (q + 2) * (q + 2) :=
+    Nat.mul_le_mul (Nat.mul_le_mul (by omega) (by omega)) (by omega)
+  omega
+
+lemma layerBudget_poly : IsPolyBounded layerBudget :=
+  ((IsPolyBounded.const_mul opBudget_poly 4).add' (IsPolyBounded.const 3)).of_le
+    (fun x => by rw [layerBudget])
+
+section Poly
+variable (lc tc : Nat.Partrec.Code) (a k : ℕ)
+
+lemma clockOf_poly : IsPolyBounded (clockOf a k) := ⟨a, k, fun _ => by rw [clockOf]⟩
+
+lemma clockOf_mono : Monotone (clockOf a k) := by
+  intro p q hpq
+  simp only [clockOf]
+  have : (p + 1) ^ k ≤ (q + 1) ^ k := Nat.pow_le_pow_left (by omega) k
+  have := Nat.mul_le_mul_left a this
+  omega
+
+lemma hornerCap_poly : IsPolyBounded (hornerCap a k) :=
+  (IsPolyBounded.monomial ((polyCoeffs (clockPoly a k)).sum + 1)
+    (polyCoeffs (clockPoly a k)).length).of_le (fun x => by rw [hornerCap])
+
+lemma hornerCap_mono : Monotone (hornerCap a k) := by
+  intro p q hpq
+  simp only [hornerCap]
+  exact Nat.mul_le_mul_left _ (Nat.pow_le_pow_left (by omega) _)
+
+/-- The size parameter: it dominates the day, the clock, and every paired index the
+    machine forms. -/
+noncomputable def sizeOf' : ℕ → ℕ := fun N => Nat.pair N (clockOf a k N) + clockOf a k N
+
+/-- The register bound: it dominates every register value the machine holds. -/
+noncomputable def boundOf : ℕ → ℕ := fun σ =>
+  codeRegBound lc σ + codeRegBound tc σ + σ + hornerCap a k σ + 5
+
+lemma sizeOf'_poly : IsPolyBounded (sizeOf' a k) :=
+  ((isPolyBounded_id.pair (clockOf_poly a k)).add' (clockOf_poly a k)).of_le
+    (fun x => by rw [sizeOf'])
+
+lemma boundOf_poly : IsPolyBounded (boundOf lc tc a k) :=
+  (((((codeRegBound_poly lc).add' (codeRegBound_poly tc)).add' isPolyBounded_id).add'
+    (hornerCap_poly a k)).add' (IsPolyBounded.const 5)).of_le (fun x => by rw [boundOf])
+
+lemma boundOf_mono : Monotone (boundOf lc tc a k) := by
+  intro p q hpq
+  simp only [boundOf]
+  have h1 := codeRegBound_mono lc hpq
+  have h2 := codeRegBound_mono tc hpq
+  have h3 := hornerCap_mono a k hpq
+  omega
+
+/-- The arithmetic cost at the register bound, as a function of the size parameter. -/
+noncomputable def arithOf : ℕ → ℕ := fun σ => evalnArithmeticCost (boundOf lc tc a k σ)
+
+lemma arithOf_poly : IsPolyBounded (arithOf lc tc a k) :=
+  evalnArithmeticCost_poly.comp (boundOf_poly lc tc a k)
+
+lemma arithOf_mono : Monotone (arithOf lc tc a k) :=
+  evalnArithmeticCost_mono.comp (boundOf_mono lc tc a k)
+
+end Poly
+
+
+/-! ## The machine, instantiated -/
+
+section Final
+variable (lc tc : Nat.Partrec.Code) (a k : ℕ)
+
+/-- The trader machine's register file, with the loop counter one register beyond it. -/
+noncomputable def traderRegs : Regs (totalRegs lc tc) (totalRegs lc tc + 1) :=
+  shiftEmb 0 (by omega)
+
+/-- The loop counter, outside the register file the blocks name. -/
+def traderLoopIdx : Fin (totalRegs lc tc + 1) := ⟨totalRegs lc tc, by omega⟩
+
+lemma traderRegs_ne (q : Fin (totalRegs lc tc)) :
+    traderRegs lc tc q ≠ traderLoopIdx lc tc := by
+  intro h
+  have hv := congrArg Fin.val h
+  simp only [traderRegs, traderLoopIdx, shiftEmb_val] at hv
+  have := q.isLt
+  omega
+
+/-- **The trader machine at its own arity.** -/
+noncomputable def traderMachine : TM (totalRegs lc tc + 1) :=
+  traderTM lc tc a k (traderRegs lc tc) (traderLoopIdx lc tc)
+
+/-- The machine's step bound, as a function of the day. -/
+noncomputable def traderTime : ℕ → ℕ := fun N =>
+  traderCost lc tc a k N (sizeOf' a k N) (boundOf lc tc a k (sizeOf' a k N))
+    (countOf lc a k N)
+
+lemma le_sizeOf' (N : ℕ) : N ≤ sizeOf' a k N :=
+  le_trans (Nat.left_le_pair _ _) (Nat.le_add_right _ _)
+
+lemma sizeOf'_lt_boundOf (σ : ℕ) : σ < boundOf lc tc a k σ := by
+  rw [boundOf]; omega
+
+lemma traderMachine_computesInTime :
+    (traderMachine lc tc a k).ComputesInTime (traderOutput lc tc a k)
+      (traderTime lc tc a k) := by
+  intro x
+  obtain ⟨c', t, ht, hreach, hhalt, hout⟩ :=
+    traderTM_hoareTime lc tc a k (traderRegs lc tc) (traderLoopIdx lc tc)
+      (traderRegs_ne lc tc) x (sizeOf' a k x.length)
+      (boundOf lc tc a k (sizeOf' a k x.length))
+      (by rw [boundOf]; omega)
+      (sizeOf'_lt_boundOf lc tc a k _)
+      (by rw [sizeOf']; omega)
+      (by rw [sizeOf']; omega)
+      (le_trans (hornerCap_mono a k (le_sizeOf' a k x.length)) (by rw [boundOf]; omega))
+      (by rw [boundOf]; omega) (by rw [boundOf]; omega)
+      (Tape.init (x.map Γ.ofBool)) (fun _ => Tape.init []) (Tape.init [])
+      ⟨rfl, fun _ => rfl, rfl⟩
+  exact ⟨c', t, ht, hreach, hhalt, hout.hasOutput⟩
+
+lemma countOf_le_clockOf (N : ℕ) : countOf lc a k N ≤ clockOf a k N := by
+  rw [countOf]
+  have h1 := resultTag_le_one (Nat.Partrec.Code.evaln (clockOf a k N) lc N)
+  rcases Nat.eq_zero_or_pos
+    (resultTag (Nat.Partrec.Code.evaln (clockOf a k N) lc N)) with h | h
+  · rw [h]; omega
+  · have h2 : resultTag (Nat.Partrec.Code.evaln (clockOf a k N) lc N) = 1 := by omega
+    rw [h2]
+    omega
+
+lemma traderTime_poly : IsPolyBounded (traderTime lc tc a k) := by
+  have hs := sizeOf'_poly a k
+  have hB : IsPolyBounded (fun N => boundOf lc tc a k (sizeOf' a k N)) :=
+    (boundOf_poly lc tc a k).comp hs
+  have hA : IsPolyBounded (fun N => arithOf lc tc a k (sizeOf' a k N)) :=
+    (arithOf_poly lc tc a k).comp hs
+  have hop : IsPolyBounded (fun N => opBudget (boundOf lc tc a k (sizeOf' a k N))) :=
+    opBudget_poly.comp hB
+  have hlayer : IsPolyBounded
+      (fun N => ((clockPoly a k).natDegree + 1)
+        * (layerBudget (boundOf lc tc a k (sizeOf' a k N)) + 1)) :=
+    IsPolyBounded.const_mul ((layerBudget_poly.comp hB).add' (IsPolyBounded.const 1))
+      ((clockPoly a k).natDegree + 1)
+  have hlc : IsPolyBounded
+      (fun N => codeMachineTime lc (sizeOf' a k N)
+        (arithOf lc tc a k (sizeOf' a k N))) :=
+    (codeMachineTime_poly lc (arithOf lc tc a k) (arithOf_poly lc tc a k)
+      (arithOf_mono lc tc a k)).comp hs
+  have htc : IsPolyBounded
+      (fun N => codeMachineTime tc (sizeOf' a k N)
+        (arithOf lc tc a k (sizeOf' a k N))) :=
+    (codeMachineTime_poly tc (arithOf lc tc a k) (arithOf_poly lc tc a k)
+      (arithOf_mono lc tc a k)).comp hs
+  have hcount : IsPolyBounded (countOf lc a k) :=
+    (clockOf_poly a k).of_le (countOf_le_clockOf lc a k)
+  have hloop : IsPolyBounded (fun N => countOf lc a k N
+      * (25 * arithOf lc tc a k (sizeOf' a k N)
+        + codeMachineTime tc (sizeOf' a k N) (arithOf lc tc a k (sizeOf' a k N))
+        + 70 + 2)) :=
+    hcount.mul ((((IsPolyBounded.const_mul hA 25).add' htc).add'
+      (IsPolyBounded.const 70)).add' (IsPolyBounded.const 2))
+  refine ((((((IsPolyBounded.const_mul isPolyBounded_id 2).add' hop).add' hlayer).add'
+    (IsPolyBounded.const_mul hA 13)).add' hlc).add' (hloop.add' (hcount.add'
+      (IsPolyBounded.const 40)))).of_le (fun N => ?_)
+  rw [traderTime, traderCost, arithOf]
+  omega
+
+/-- **The trader machine's output function is polynomial-time.** -/
+lemma traderOutput_mem_FP : traderOutput lc tc a k ∈ Complexity.FP := by
+  rw [Complexity.mem_FP_iff_computesInTime_polynomial]
+  obtain ⟨c, e, hce⟩ := traderTime_poly lc tc a k
+  refine ⟨_, traderMachine lc tc a k,
+    Polynomial.C c * (Polynomial.X + 1) ^ e + Polynomial.C c, ?_⟩
+  refine (traderMachine_computesInTime lc tc a k).mono (fun m => ?_)
+  have := hce m
+  simpa using this
+
+end Final
 
 end LogicalInduction.TraderMachine
