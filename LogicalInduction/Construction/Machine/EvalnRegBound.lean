@@ -270,4 +270,165 @@ lemma precLoopVals_ok (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.C
 
 end PrecLoopBound
 
+/-! ## The `rfind'` loop stays inside the bound
+
+The search's three registers are constrained by an invariant the pure iterate carries:
+`searching` and `found` are mutually exclusive flags, and `result` never exceeds the
+current index — because it is only ever written on the single level that hits, and that
+level is also the one that clears `searching`. -/
+
+section RfindLoopBound
+variable {af : ℕ}
+
+/-- The invariant the search state satisfies at every level. -/
+def RfStateOK (st : ℕ × ℕ × ℕ) (m : ℕ) : Prop :=
+  st.1 + st.2.1 ≤ 1 ∧ st.2.2 ≤ m ∧ (st.2.1 = 0 → st.2.2 = 0)
+
+lemma rfLevel_ok (cf : Nat.Partrec.Code) (a : ℕ) (st : ℕ × ℕ × ℕ) (f m : ℕ)
+    (h : RfStateOK st m) : RfStateOK (rfLevel cf a st f m) (m + 1) := by
+  obtain ⟨h1, h2, h3⟩ := h
+  simp only [rfLevel, RfStateOK]
+  set o := Nat.Partrec.Code.evaln f cf (Nat.pair a m) with ho
+  set g : ℕ := if Nat.pair a m < f then 1 else 0 with hg
+  set z : ℕ := if resultVal o = 0 then 1 else 0 with hz
+  have hg1 : g ≤ 1 := by rw [hg]; split_ifs <;> omega
+  have hz1 : z ≤ 1 := by rw [hz]; split_ifs <;> omega
+  have ht1 : resultTag o ≤ 1 := resultTag_le_one o
+  have hlive : st.1 * g * resultTag o ≤ st.1 := by
+    calc st.1 * g * resultTag o ≤ st.1 * 1 * 1 :=
+          Nat.mul_le_mul (Nat.mul_le_mul (le_refl _) hg1) ht1
+      _ = st.1 := by omega
+  have hhit : st.1 * g * resultTag o * z ≤ st.1 * g * resultTag o :=
+    calc st.1 * g * resultTag o * z ≤ st.1 * g * resultTag o * 1 :=
+          Nat.mul_le_mul (le_refl _) hz1
+      _ = st.1 * g * resultTag o := by omega
+  have hnz : st.1 * g * resultTag o * (1 - z) ≤ st.1 * g * resultTag o :=
+    calc st.1 * g * resultTag o * (1 - z) ≤ st.1 * g * resultTag o * 1 :=
+          Nat.mul_le_mul (le_refl _) (by omega)
+      _ = st.1 * g * resultTag o := by omega
+  refine ⟨?_, ?_, ?_⟩
+  · -- the two flags stay mutually exclusive
+    rcases Nat.eq_zero_or_pos z with hz0 | hzp
+    · have : st.1 * g * resultTag o * z = 0 := by rw [hz0]; omega
+      omega
+    · have hz1' : z = 1 := by omega
+      have : st.1 * g * resultTag o * (1 - z) = 0 := by rw [hz1']; omega
+      omega
+  · -- the result never passes the current index
+    rcases Nat.eq_zero_or_pos (st.1 * g * resultTag o * z) with hh0 | hhp
+    · rw [hh0]; omega
+    · have hst1 : 1 ≤ st.1 := by
+        by_contra hc
+        have : st.1 = 0 := by omega
+        rw [this] at hhp; omega
+      have hfo : st.2.1 = 0 := by omega
+      have hr : st.2.2 = 0 := h3 hfo
+      have hh1 : st.1 * g * resultTag o * z ≤ 1 := le_trans hhit (by omega)
+      calc st.2.2 + st.1 * g * resultTag o * z * m ≤ 0 + 1 * m := by
+            rw [hr]; exact Nat.add_le_add (le_refl _) (Nat.mul_le_mul hh1 (le_refl _))
+        _ ≤ m + 1 := by omega
+  · -- `found = 0` forces `result = 0`
+    intro hfo0
+    have hh0 : st.1 * g * resultTag o * z = 0 := by omega
+    have : st.2.1 = 0 := by omega
+    rw [hh0, h3 this]
+    omega
+
+lemma rfIter_ok (cf : Nat.Partrec.Code) (a : ℕ) :
+    ∀ (t : ℕ) (st : ℕ × ℕ × ℕ) (f m : ℕ), RfStateOK st m →
+      RfStateOK (rfIter cf a st f m t) (m + t) := by
+  intro t
+  induction t with
+  | zero => intro st f m h; simpa using h
+  | succ k ih =>
+      intro st f m h
+      rw [rfIter_succ]
+      have := ih (rfLevel cf a st f m) (f - 1) (m + 1) (rfLevel_ok cf a st f m h)
+      have he : m + 1 + k = m + (k + 1) := by omega
+      rwa [he] at this
+
+/-- **Every level of the `rfind'` loop satisfies the body's side conditions**, given a
+    bound that dominates twice the window the body forms. -/
+lemma rfLoopVals_ok (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V₀ : Fin (32 + af) → ℕ) (a m₀ fuel s B : ℕ)
+    (hB2 : 2 ≤ B) (has : a ≤ s) (hm₀ : m₀ ≤ s) (hfuel : fuel ≤ s)
+    (h2W : 2 * rfWindowBound s + 3 ≤ B)
+    (hV₀ : ∀ k, V₀ k < B)
+    (h6 : V₀ (rfSelf af 6) = a) (h7 : V₀ (rfSelf af 7) = m₀)
+    (h8 : V₀ (rfSelf af 8) = fuel) (h9 : V₀ (rfSelf af 9) = 1)
+    (h10 : V₀ (rfSelf af 10) = 0) (h11 : V₀ (rfSelf af 11) = 0)
+    (h12 : V₀ (rfSelf af 12) = 1)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1) :
+    ∀ i, i ≤ fuel → RfBodyOK af B haf (rfLoopVals af haf Ff V₀ i) := by
+  have hsW : s ≤ rfWindowBound s := Nat.left_le_pair _ _
+  have h2sW : s + s ≤ rfWindowBound s := Nat.right_le_pair _ _
+  have hstart : RfStateOK (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+      (V₀ (rfSelf af 7)) := by
+    refine ⟨?_, ?_, ?_⟩
+    · show V₀ (rfSelf af 9) + V₀ (rfSelf af 10) ≤ 1
+      rw [h9, h10]
+    · show V₀ (rfSelf af 11) ≤ V₀ (rfSelf af 7)
+      rw [h11]; omega
+    · intro _
+      show V₀ (rfSelf af 11) = 0
+      exact h11
+  have side : ∀ i, i ≤ fuel →
+      Nat.pair (rfLoopVals af haf Ff V₀ i (rfSelf af 6))
+        (rfLoopVals af haf Ff V₀ i (rfSelf af 7)) < B ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 9) ≤ 1 ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 7) + 1 < B ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 11)
+        + rfLoopVals af haf Ff V₀ i (rfSelf af 7) < B ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 10) + 1 < B := by
+    intro i hi
+    obtain ⟨e6, e7, e8, e12, etriple⟩ :=
+      rfLoopVals_spec haf cf Ff hFf V₀ h12 i
+    have hok := rfIter_ok cf (V₀ (rfSelf af 6)) i
+      (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+      (V₀ (rfSelf af 8)) (V₀ (rfSelf af 7)) hstart
+    have e9 : rfLoopVals af haf Ff V₀ i (rfSelf af 9)
+        = (rfIter cf (V₀ (rfSelf af 6))
+            (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+            (V₀ (rfSelf af 8)) (V₀ (rfSelf af 7)) i).1 :=
+      congrArg (fun p : ℕ × ℕ × ℕ => p.1) etriple
+    have e10 : rfLoopVals af haf Ff V₀ i (rfSelf af 10)
+        = (rfIter cf (V₀ (rfSelf af 6))
+            (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+            (V₀ (rfSelf af 8)) (V₀ (rfSelf af 7)) i).2.1 :=
+      congrArg (fun p : ℕ × ℕ × ℕ => p.2.1) etriple
+    have e11 : rfLoopVals af haf Ff V₀ i (rfSelf af 11)
+        = (rfIter cf (V₀ (rfSelf af 6))
+            (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+            (V₀ (rfSelf af 8)) (V₀ (rfSelf af 7)) i).2.2 :=
+      congrArg (fun p : ℕ × ℕ × ℕ => p.2.2) etriple
+    obtain ⟨k1, k2, -⟩ := hok
+    have hb : V₀ (rfSelf af 7) + i ≤ s + s := by rw [h7]; omega
+    have hm : rfLoopVals af haf Ff V₀ i (rfSelf af 7) ≤ s + s := by
+      rw [e7]; omega
+    have hr : rfLoopVals af haf Ff V₀ i (rfSelf af 11) ≤ s + s := by
+      rw [e11]; omega
+    refine ⟨?_, by rw [e9]; omega, by omega, by omega, by rw [e10]; omega⟩
+    calc Nat.pair (rfLoopVals af haf Ff V₀ i (rfSelf af 6))
+            (rfLoopVals af haf Ff V₀ i (rfSelf af 7))
+        ≤ Nat.pair s (s + s) := natPair_mono (by rw [e6, h6]; exact has) hm
+      _ = rfWindowBound s := rfl
+      _ < B := by omega
+  intro i
+  induction i with
+  | zero =>
+      intro _
+      obtain ⟨sp, s9, s7, s11, s10⟩ := side 0 (Nat.zero_le _)
+      exact ⟨fun k => hV₀ k, sp, s9, s7, s11, s10⟩
+  | succ k ih =>
+      intro hk
+      obtain ⟨b, op, o9, o7, o11, o10⟩ := ih (by omega)
+      obtain ⟨sp, s9, s7, s11, s10⟩ := side (k + 1) hk
+      refine ⟨?_, sp, s9, s7, s11, s10⟩
+      rw [rfLoopVals_succ]
+      exact rfBodyVals_lt haf Ff _ B hB2 b op o9 o7 o11 o10 hFfB hFfTag
+
+end RfindLoopBound
+
 end LogicalInduction.EvalnCompiler
