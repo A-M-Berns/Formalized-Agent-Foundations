@@ -596,7 +596,7 @@ def codeRegs : Nat.Partrec.Code → ℕ
   | .right => 16
   | .pair cf cg => 16 + codeRegs cf + codeRegs cg
   | .comp cf cg => 16 + codeRegs cf + codeRegs cg
-  | .prec cf cg => 16 + codeRegs cf + codeRegs cg
+  | .prec cf cg => 33 + codeRegs cf + codeRegs cg
   | .rfind' cf => 16 + codeRegs cf
 
 lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
@@ -2594,5 +2594,110 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     seqEmit hinp₀ (hpv V15) h15 h16).mono_bound (by omega)
 
 end PrecBodyProof
+
+/-! ## A register-block loop
+
+`forRegTM` driven by a counter register that the block does not name. The body's
+obligation is then exactly its ordinary `regsWork` specification: `regsWork_update_of_ne`
+absorbs the loop's mid-iteration cursor tape into the ambient state, which is what that
+lemma exists for. Generic in the register block — a candidate for upstreaming. -/
+
+section RegsLoop
+
+lemma forRegs_hoareTime {A : ℕ} (R : Regs A n) (body : TM n) (l : Fin n)
+    (hl : ∀ k, R k ≠ l) (m b : ℕ) (V : ℕ → Fin A → ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hw₀l : w₀ l = regTape m)
+    (hbody : ∀ i, i < m → ∀ (w : Fin n → Tape), (∀ j, Parked (w j)) →
+      body.HoareTime (EmitPred inp₀ (regsWork R w (V i)) ys)
+                     (EmitPred inp₀ (regsWork R w (V (i + 1))) ys) b) :
+    (forRegTM body l).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ (V 0)) ys)
+      (EmitPred inp₀ (regsWork R w₀ (V m)) ys)
+      (m * (b + 2) + (m + 2)) := by
+  refine forRegTM_hoareTime body l m inp₀ (fun i => regsWork R w₀ (V i)) (fun _ => ys) b
+    hinp₀ (fun i => by rw [regsWork_of_ne _ _ _ hl]; exact hw₀l)
+    (fun i j _ => parked_regsWork R hpark _ j) ?_
+  intro i hi
+  have hpk : ∀ j, Parked (Function.update w₀ l (⟨i + 2, regCells m⟩ : Tape) j) := by
+    intro j
+    by_cases hj : j = l
+    · subst hj; rw [Function.update_self]; exact parked_regCells (by omega)
+    · rw [Function.update_of_ne hj]; exact hpark j
+  have h := hbody i hi _ hpk
+  rw [regsWork_update_of_ne R w₀ (V i) hl, regsWork_update_of_ne R w₀ (V (i + 1)) hl] at h
+  exact h
+
+end RegsLoop
+
+/-! ## `prec`: the loop
+
+The node's block is thirty-three plus its two subtrees: the extra register is the loop
+counter, and it sits **outside** the thirty-two the body names, so `forRegs_hoareTime`
+applies with no re-indexing. -/
+
+section PrecLoop
+variable {af ag : ℕ}
+
+/-- The thirty-two-plus-subtrees block the body works over. -/
+def precMain (af ag : ℕ) : Fin (32 + af + ag) ↪ Fin (33 + af + ag) := shiftEmb 0 (by omega)
+
+/-- The loop counter, the one register outside that block. -/
+def precLoopIdx (af ag : ℕ) : Fin (33 + af + ag) := ⟨32 + af + ag, by omega⟩
+
+lemma precMain_ne_loopIdx (k : Fin (32 + af + ag)) :
+    precMain af ag k ≠ precLoopIdx af ag := by
+  apply Fin.ne_of_val_ne
+  have := k.isLt
+  simp [precMain, precLoopIdx, shiftEmb_val]
+  omega
+
+/-- The body's side conditions, at one loop state. -/
+def PrecBodyOK (af ag B : ℕ) (V : Fin (32 + af + ag) → ℕ) : Prop :=
+  (∀ k, V k < B) ∧ V (precSelf af ag 10) ≤ 1 ∧
+    V (precSelf af ag 9) + 1 < B ∧ V (precSelf af ag 12) + 1 < B ∧
+    Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B ∧
+    Nat.pair (V (precSelf af ag 6))
+      (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B
+
+/-- **The `prec` loop.** `m` iterations of `precBodyTM`, off a counter the body's block
+    does not name. -/
+lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (33 + af + ag) n) (Mg : TM n)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tg B m : ℕ)
+    (V₀ : Fin (32 + af + ag) → ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hw₀l : w₀ (R (precLoopIdx af ag)) = regTape m)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
+    (hOK : ∀ i, i < m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i))
+    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mg.HoareTime
+        (EmitPred inp₀
+          (regsWork ((precRightSub af ag).trans ((precMain af ag).trans R)) Wb u) ys)
+        (EmitPred inp₀
+          (regsWork ((precRightSub af ag).trans ((precMain af ag).trans R)) Wb (Fg u)) ys)
+        tg) :
+    (forRegTM (precBodyTM af ag haf hag ((precMain af ag).trans R) Mg)
+        (R (precLoopIdx af ag))).HoareTime
+      (EmitPred inp₀ (regsWork ((precMain af ag).trans R) w₀ V₀) ys)
+      (EmitPred inp₀
+        (regsWork ((precMain af ag).trans R) w₀ (precLoopVals af ag haf hag Fg V₀ m)) ys)
+      (m * ((15 * evalnArithmeticCost B + tg + 15) + 2) + (m + 2)) := by
+  refine forRegs_hoareTime ((precMain af ag).trans R)
+    (precBodyTM af ag haf hag ((precMain af ag).trans R) Mg) (R (precLoopIdx af ag))
+    (fun k => by
+      exact fun h => precMain_ne_loopIdx k (R.injective h))
+    m (15 * evalnArithmeticCost B + tg + 15)
+    (precLoopVals af ag haf hag Fg V₀) inp₀ w₀ ys hinp₀ hpark hw₀l ?_
+  intro i hi w hw
+  obtain ⟨hb, halive, hj1, hf1, hp1, hp2⟩ := hOK i hi
+  rw [precLoopVals_succ]
+  exact precBody_hoareTime haf hag ((precMain af ag).trans R) Mg Fg tg
+    (precLoopVals af ag haf hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb hFgB hFgTag
+    halive hj1 hf1 hp1 hp2 hMg
+
+end PrecLoop
 
 end LogicalInduction.EvalnCompiler
