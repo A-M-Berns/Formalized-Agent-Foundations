@@ -117,7 +117,7 @@ lean_lib Scratchpad where
 -- else in this repository may name a `Complexity.*` declaration — the same discipline
 -- `PFR/` ↔ `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "df9c4310606e1847b4c06191bb081ffb4357cf80"
+  "https://github.com/A-M-Berns/complexitylib" @ "3f92900c869b71dc9cacf72fc4172a2f8bff25e2"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"

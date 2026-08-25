@@ -2579,3 +2579,127 @@ PolyFueled / EfficientlyComputable → FP          open
 
 The decisive question this tranche asked — *can `sqrt` be deleted from the Stage-2 compiler
 entirely?* — is **yes**, and the architecture is committed.
+
+---
+
+# Part IX — Stage 2A: the branch problem, and its cheap resolution (2026-08-24)
+
+_Ninth pass. Scope: comparison, `pairNextTM`, `pairTM`, `unpairTM`. Stage 3 untouched; no
+migration._
+
+**The checkpoint did not complete.** Comparison's gating primitive landed; `pairNextTM`,
+`pairTM` and `unpairTM` are not built. But the pass found and resolved an architectural
+problem that would have derailed all three, and the resolution is much cheaper than the
+obvious fix.
+
+## IX.0 The problem: the output tape is doing double duty
+
+complexitylib has a general branch combinator, `ifTM`, with a full Hoare specification
+(`Hoare.lean`, bound `b_test + p_bound + max b_then b_else + 5`). It looked like the obvious
+control-flow primitive for `pairNext`'s four-way case split.
+
+**It cannot be used with the register library.** `ifTM tmTest tmThen tmElse` branches on the
+**output tape's** cell 1: the test machine writes `Γ.one` there, and the branches receive
+`⟨1, out.cells⟩`. But the register arithmetic is all stated over `EmitPred inp₀ work₀ ys`,
+whose third conjunct is
+
+```lean
+def OutAcc (ys : List Bool) (out : Tape) : Prop :=
+  out.head = ys.length + 1 ∧ out.cells 0 = Γ.start ∧
+  (∀ i, (h : i < ys.length) → out.cells (i + 1) = Γ.ofBool ys[i]) ∧
+  (∀ j, ys.length + 1 ≤ j → out.cells j = Γ.blank)
+```
+
+— the output tape is an append-only *emission accumulator*, and every cell past `|ys|` must
+be blank. A test writing `Γ.one` into cell 1 invalidates `OutAcc []` outright. The two
+conventions are incompatible, and no amount of frame plumbing reconciles them.
+
+The obvious fix — write a register-level branch combinator `ifRegTM` in the shape of
+`forRegTM` — would cost 250–400 lines: `forRegTM` itself takes 489 lines to reach its Hoare
+spec.
+
+## IX.1 The resolution: a flag, not a branch
+
+`forRegTM body r` branches on a **work register** — its test phase reads `wHeads r` and
+dispatches, never touching the output tape. So a register holding `0` or `1` *already is* a
+conditional:
+
+```
+forRegTM body flag   runs body once when flag = 1, and skips it when flag = 0
+```
+
+The missing primitive is therefore not a branch combinator but a **flag**, and building one
+needs no new control flow at all:
+
+```lean
+def setOneTM (q : Fin n) : TM n := seqTM (clearRegTM q) (incRegTM q)
+def flagNonzeroTM (src flag : Fin n) : TM n :=
+  seqTM (clearRegTM flag) (forRegTM (setOneTM flag) src)
+
+theorem flagNonzeroTM_hoareTime … :
+    (flagNonzeroTM src flag).HoareTime
+      (EmitPred inp₀ work₀ ys)
+      (EmitPred inp₀ (Function.update work₀ flag (regTape (min v 1))) ys)
+      (2 * d + 4 + 1 + (v * ((2 * 1 + 4 + 1 + (2 * 0 + 4)) + 2) + (v + 2)))
+```
+
+`setOneTM` is idempotent, so looping it `v` times lands on `min v 1`; correctness is a single
+`forRegTM_hoareTime` application with the invariant `flag = min i 1`. **122 lines instead of
+250–400, and no new combinator to maintain.**
+
+Comparison then falls out of this plus `subIntoTM`: `a < b` iff `min (b - a) 1 = 1`.
+
+## IX.2 What this buys the rest of the layer
+
+Every remaining machine needs conditionals, so the pattern now fixed determines all of them:
+
+| machine | shape |
+| --- | --- |
+| `ltFlagTM a b flag` | copy `b`, `subIntoTM a`, `flagNonzeroTM` |
+| `pairNextTM` | three flags, then `forRegTM`-guarded arms for the four cases |
+| `pairTM` | one flag, two guarded arms, `mulAddIntoTM` for the square |
+| `unpairTM` | `forRegTM pairNextTM n`, correctness via `pairIter_eq_unpair` |
+
+None needs `ifTM`, none needs the output tape, and all reuse `forRegTM_hoareTime`.
+
+## IX.3 Status and revised estimate
+
+```
+pure arithmetic
+  pairNext / pairIter / unpair equivalence  ✓ Part VIII
+  codeEvalSteps_poly                        ✓ Part VI
+
+machine arithmetic
+  inc / dec / clear / loop / add / copy / mulAdd  ✓ upstream
+  subIntoTM                                       ✓ Part VII
+  setOneTM, flagNonzeroTM                         ✓ this pass
+  ltFlagTM, pairNextTM, pairTM, unpairTM          open
+
+Code compiler                                     open
+PolyFueled / EfficientlyComputable → FP           open
+```
+
+| item | estimate |
+| --- | ---: |
+| `ltFlagTM` (copy + sub + flag) | 100–150 |
+| `pairNextTM` | 250–400 |
+| `pairTM` | 200–350 |
+| `unpairTM` + loop invariant | 250–400 |
+| **arithmetic remaining** | **0.8–1.3k** |
+
+Stage-2 total remaining: **1.9–3.4k over 4–6 sessions**, essentially unchanged from Part
+VIII's 2.1–3.6k — the flag trick saved roughly the cost of the branch combinator it replaced,
+which is what kept the estimate from rising after a pass that produced only 122 lines.
+
+## IX.4 The cost model, confirmed again
+
+`flagNonzeroTM_hoareTime` took four build cycles: two rounds of `HoareTime.consequence`
+misuse leaving the bound as a metavariable, and two `Function.update_of_ne` direction errors
+(reading `src` out of an update at `flag` needs `src ≠ flag`, not its symm). None was
+conceptual. This is the same ~70-line-per-operation plumbing tax Part VII measured, and it
+does not appear to shrink with familiarity — the errors change, the volume does not.
+
+Worth recording for whoever writes `pairNextTM`: the recurring hazards are (i) state the
+theorem's time bound to match the combinator's output *exactly* rather than reaching for
+`consequence`, and (ii) `Function.update_of_ne h` wants `readIndex ≠ updateIndex`, which is
+`hne` or `hne.symm` depending on which register is being read.
