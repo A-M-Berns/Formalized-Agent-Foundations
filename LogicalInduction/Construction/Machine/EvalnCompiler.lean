@@ -3615,13 +3615,17 @@ def rfPhaseB (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
 def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
   seqTM (rfPhaseA af haf R Mf) (rfPhaseB af haf R)
 
+/-- The level's input pair, `Nat.pair a m`, built in the node's pairing window. -/
+noncomputable def rfPhaseAPair (af : ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  let V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6))
+  let V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7))
+  writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
+
 /-- The state phase A hands the child: the level's input pair in the child's input
     register, the level fuel in its fuel register, and the level guard in `13`. -/
 noncomputable def rfPhaseAPre (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
-  let V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6))
-  let V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7))
-  let V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
+  let V3 := rfPhaseAPair af V
   let V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26))
   let V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8))
   Function.update
@@ -4255,28 +4259,142 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
 
 end RfindPhaseBProof
 
+/-! ### Reading an `rfind'` node's register vector
+
+The same numeric-index mechanism as for a binary node. -/
+
+section RfindReadTools
+variable {af : ℕ}
+
+lemma rfLoc_rfLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (32 + af) → ℕ) (x : ℕ) :
+    Function.update X (rfLoc af haf j) x (rfLoc af haf i)
+      = if (i : ℕ) = (j : ℕ) then x else X (rfLoc af haf i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [rfLoc, shiftEmb_val] using this))]
+
+@[simp] lemma rfSelf_rfLoc_upd (haf : 16 ≤ af) (i : Fin 32) (j : Fin 16)
+    (X : Fin (32 + af) → ℕ) (x : ℕ) :
+    Function.update X (rfLoc af haf j) x (rfSelf af i) = X (rfSelf af i) :=
+  Function.update_of_ne (rfSelf_ne_loc haf i j) x X
+
+/-- The pairing window as a total read-off: slots `20`–`27` of the node's block. -/
+lemma rfPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (rfPairW af) X u (rfSelf af i)
+      = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 28 then u ⟨(i : ℕ) - 20, by omega⟩
+        else X (rfSelf af i) := by
+  by_cases h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 28
+  · rw [dif_pos h]
+    have hid : rfPairW af ⟨(i : ℕ) - 20, by omega⟩ = rfSelf af i := by
+      apply Fin.ext
+      simp [rfPairW, rfSelf, shiftEmb_val]
+      omega
+    rw [← hid, writeWindow_apply]
+  · rw [dif_neg h]
+    refine writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_self t i ?_)
+    have := t.isLt
+    simp at h ⊢
+    omega
+
+lemma rfPairWin_rfLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (32 + af) → ℕ)
+    (u : Fin 8 → ℕ) :
+    writeWindow (rfPairW af) X u (rfLoc af haf j) = X (rfLoc af haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_loc haf t j)
+
+/-- The unpairing window as a total read-off: slots `20`–`28`. -/
+lemma rfUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 9 → ℕ) :
+    writeWindow (rfUnpairW af) X u (rfSelf af i)
+      = if h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 29 then u ⟨(i : ℕ) - 20, by omega⟩
+        else X (rfSelf af i) := by
+  by_cases h : 20 ≤ (i : ℕ) ∧ (i : ℕ) < 29
+  · rw [dif_pos h]
+    have hid : rfUnpairW af ⟨(i : ℕ) - 20, by omega⟩ = rfSelf af i := by
+      apply Fin.ext
+      simp [rfUnpairW, rfSelf, shiftEmb_val]
+      omega
+    rw [← hid, writeWindow_apply]
+  · rw [dif_neg h]
+    refine writeWindow_of_ne _ _ _ (fun t => rfUnpairW_ne_self t i ?_)
+    have := t.isLt
+    simp at h ⊢
+    omega
+
+lemma rfSub_win_rfLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (32 + af) → ℕ)
+    (u : Fin af → ℕ) :
+    writeWindow (rfSub af) X u (rfLoc af haf j)
+      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [rfLoc_eq haf, writeWindow_apply]
+
+end RfindReadTools
+
+/-! ### `rfind'`: what the child sees, and the level guard -/
+
+section RfindPhaseASem
+variable {af : ℕ}
+
+lemma rfPhaseAPair_pairOut (V : Fin (32 + af) → ℕ) :
+    rfPhaseAPair af V (rfSelf af 26)
+      = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
+  simp only [rfPhaseAPair, rfPairWin_selfW_apply, pairVals_apply, rfPairW_zero,
+    rfPairW_one, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseAPair_selfW (V : Fin (32 + af) → ℕ) (i : Fin 32)
+    (h : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28)) :
+    rfPhaseAPair af V (rfSelf af i) = V (rfSelf af i) := by
+  have h20 : (i : ℕ) ≠ 20 := by omega
+  have h21 : (i : ℕ) ≠ 21 := by omega
+  simp only [rfPhaseAPair, rfPairWin_selfW_apply, dif_neg h, rfSelf_update_apply]
+  norm_num [h20, h21]
+
+lemma rfPhaseAPair_rfLoc (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (j : Fin 16) :
+    rfPhaseAPair af V (rfLoc af haf j) = V (rfLoc af haf j) := by
+  simp only [rfPhaseAPair, rfPairWin_rfLoc haf, rfLoc_update_apply haf]
+
+/-- The child's input register: this level's `Nat.pair a m`. -/
+lemma rfPhaseAPre_childIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfPhaseAPre af haf V (rfLoc af haf 0)
+      = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
+  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
+  norm_num
+  exact rfPhaseAPair_pairOut V
+
+/-- The child's fuel register: this level's fuel. -/
+lemma rfPhaseAPre_childIn_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfPhaseAPre af haf V (rfLoc af haf 1) = V (rfSelf af 8) := by
+  simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
+  norm_num
+  exact rfPhaseAPair_selfW V 8 (by norm_num)
+
+/-- The level guard: `Nat.pair a m < fuel`. -/
+lemma rfPhaseAVals_guard_val (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) :
+    rfPhaseAVals af haf Ff V (rfSelf af 13)
+      = if Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < V (rfSelf af 8) then 1 else 0 := by
+  rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t 13)]
+  simp only [rfPhaseAPre, Function.update_self, rfSelf_rfLoc_upd haf,
+    rfPhaseAPair_pairOut, rfPhaseAPair_selfW V 8 (by norm_num)]
+
+end RfindPhaseASem
+
 section RfindPhaseARead
 variable {af : ℕ}
 
 /-- Phase A's pre-state writes the pair window and the guard registers `5` and `13`;
     every other node register is untouched. -/
 lemma rfPhaseAPre_self (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (i : Fin 32)
-    (hw : ∀ t : Fin 8, 20 + (t : ℕ) ≠ (i : ℕ)) (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
+    (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28)) (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
     rfPhaseAPre af haf V (rfSelf af i) = V (rfSelf af i) := by
-  have h20 : (i : ℕ) ≠ 20 := by have := hw 0; simp at this ⊢; omega
-  have h21 : (i : ℕ) ≠ 21 := by have := hw 1; simp at this ⊢; omega
-  simp only [rfPhaseAPre]
-  rw [rfSelf_update_apply, if_neg (by simpa using h13),
-    rfSelf_update_apply, if_neg (by simpa using h5),
-    Function.update_of_ne (rfSelf_ne_loc haf i 1),
-    Function.update_of_ne (rfSelf_ne_loc haf i 0),
-    writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_self t i (hw t)),
-    rfSelf_update_apply, if_neg (by simpa using h21),
-    rfSelf_update_apply, if_neg (by simpa using h20)]
+  simp only [rfPhaseAPre, rfSelf_update_apply, rfSelf_rfLoc_upd haf]
+  norm_num [h5, h13]
+  exact rfPhaseAPair_selfW V i hw
 
 lemma rfPhaseAVals_self (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
-    (V : Fin (32 + af) → ℕ) (i : Fin 32) (hw : ∀ t : Fin 8, 20 + (t : ℕ) ≠ (i : ℕ))
-    (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
+    (V : Fin (32 + af) → ℕ) (i : Fin 32)
+    (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28)) (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
     rfPhaseAVals af haf Ff V (rfSelf af i) = V (rfSelf af i) := by
   rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t i),
     rfPhaseAPre_self haf V i hw h5 h13]
@@ -4285,9 +4403,7 @@ lemma rfPhaseAVals_self (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → 
 lemma rfPhaseAVals_guard (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (V : Fin (32 + af) → ℕ) :
     rfPhaseAVals af haf Ff V (rfSelf af 13) ≤ 1 := by
-  rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t 13)]
-  simp only [rfPhaseAPre]
-  rw [Function.update_self]
+  rw [rfPhaseAVals_guard_val]
   split_ifs <;> omega
 
 /-- Phase A's child registers hold the child's own answer. -/
@@ -4298,32 +4414,37 @@ lemma rfPhaseAVals_child (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af →
           ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
   rw [rfPhaseAVals, rfLoc_eq haf, writeWindow_apply]
 
+/-- The pairing window keeps every register inside the bound. -/
+lemma rfPhaseAPair_lt (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B) :
+    ∀ k, rfPhaseAPair af V k < B := by
+  simp only [rfPhaseAPair]
+  set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+  set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
+    rw [rfPairW_zero, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
+  have hw1 : V2 ((rfPairW af) 1) = V (rfSelf af 7) := by
+    rw [rfPairW_one, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
+  intro k
+  refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
+  refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
+  rw [hw0, hw1]; exact hp
+
 /-- Phase A keeps every register inside the bound. -/
 lemma rfPhaseAVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
     (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
     ∀ k, rfPhaseAVals af haf Ff V k < B := by
+  have b3 := rfPhaseAPair_lt V B hB2 hV hp
   have hpre : ∀ k, rfPhaseAPre af haf V k < B := by
     simp only [rfPhaseAPre]
-    set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
-    have b1 : ∀ k, V1 k < B := by
-      intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
-    set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
-    have b2 : ∀ k, V2 k < B := by
-      intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
-    have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
-      rw [rfPairW_zero, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
-    have hw1 : V2 ((rfPairW af) 1) = V (rfSelf af 7) := by
-      rw [rfPairW_one, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
-    set V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
-      with hV3
-    have b3 : ∀ k, V3 k < B := by
-      intro k; rw [hV3]
-      refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
-      refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
-      rw [hw0, hw1]; exact hp
-    set V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26)) with hV4
+    set V4 := Function.update (rfPhaseAPair af V) (rfLoc af haf 0)
+        (rfPhaseAPair af V (rfSelf af 26)) with hV4
     have b4 : ∀ k, V4 k < B := by
       intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
     set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
@@ -4426,17 +4547,13 @@ lemma rfBody_hoareTime (haf : 16 ≤ af)
   have hA := rfPhaseA_hoareTime haf R Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark hB2 hV hp hFfB hMf
   have hAb := rfPhaseAVals_lt haf Ff V B hB2 hV hp hFfB
   have a9 : rfPhaseAVals af haf Ff V (rfSelf af 9) = V (rfSelf af 9) :=
-    rfPhaseAVals_self haf Ff V 9 (fun t => by have := t.isLt; simp; omega)
-      (by decide) (by decide)
+    rfPhaseAVals_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)
   have a7 : rfPhaseAVals af haf Ff V (rfSelf af 7) = V (rfSelf af 7) :=
-    rfPhaseAVals_self haf Ff V 7 (fun t => by have := t.isLt; simp; omega)
-      (by decide) (by decide)
+    rfPhaseAVals_self haf Ff V 7 (by norm_num) (by norm_num) (by norm_num)
   have a10 : rfPhaseAVals af haf Ff V (rfSelf af 10) = V (rfSelf af 10) :=
-    rfPhaseAVals_self haf Ff V 10 (fun t => by have := t.isLt; simp; omega)
-      (by decide) (by decide)
+    rfPhaseAVals_self haf Ff V 10 (by norm_num) (by norm_num) (by norm_num)
   have a11 : rfPhaseAVals af haf Ff V (rfSelf af 11) = V (rfSelf af 11) :=
-    rfPhaseAVals_self haf Ff V 11 (fun t => by have := t.isLt; simp; omega)
-      (by decide) (by decide)
+    rfPhaseAVals_self haf Ff V 11 (by norm_num) (by norm_num) (by norm_num)
   have atag : rfPhaseAVals af haf Ff V (rfLoc af haf 2) ≤ 1 := by
     rw [rfPhaseAVals_child]
     convert hFfTag (fun i => rfPhaseAPre af haf V (rfSub af i)) using 2
@@ -4448,6 +4565,169 @@ lemma rfBody_hoareTime (haf : 16 ≤ af)
   exact (seqEmit hinp₀ (parked_regsWork R hpark _) hA hB).mono_bound (by omega)
 
 end RfindBodyCompose
+
+/-! ### `rfind'`: one level, semantically
+
+Phase B2's read-offs, then the whole level: the machine's `rfBodyVals` **is** `rfLevel`,
+provided the child's registers really hold `evaln` of the child on the level's input. -/
+
+section RfindLevelSem
+variable {af : ℕ}
+
+lemma rfPhaseB2Vals_result (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 11)
+      = X (rfSelf af 11) + X (rfSelf af 15) * X (rfSelf af 7) := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseB2Vals_found (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 10) = X (rfSelf af 10) + X (rfSelf af 15) := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseB2Vals_search (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 9)
+      = X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14)) := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseB2Vals_m (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 7) = X (rfSelf af 7) + 1 := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseB2Vals_fuel (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 8) = X (rfSelf af 8) - 1 := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+/-- Phase B2 writes only `7`–`11`, `16` and `17`. -/
+lemma rfPhaseB2Vals_of_ne (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (i : Fin 32)
+    (h : ¬ (7 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 11)) (h16 : (i : ℕ) ≠ 16) (h17 : (i : ℕ) ≠ 17) :
+    rfPhaseB2Vals af haf X (rfSelf af i) = X (rfSelf af i) := by
+  have h7 : (i : ℕ) ≠ 7 := by omega
+  have h8 : (i : ℕ) ≠ 8 := by omega
+  have h9 : (i : ℕ) ≠ 9 := by omega
+  have h10 : (i : ℕ) ≠ 10 := by omega
+  have h11 : (i : ℕ) ≠ 11 := by omega
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num [h7, h8, h9, h10, h11, h16, h17]
+
+/-! #### The level -/
+
+/-- The vector the child is run on at this level. -/
+noncomputable def rfChildIn (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    Fin af → ℕ :=
+  fun i => rfPhaseAPre af haf V (rfSub af i)
+
+lemma rfChildIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfChildIn af haf V ⟨0, by omega⟩
+      = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
+  have h : rfSub af ⟨0, by omega⟩ = rfLoc af haf 0 := by
+    apply Fin.ext; simp [rfSub, rfLoc, shiftEmb_val]
+  rw [rfChildIn, h, rfPhaseAPre_childIn_zero]
+
+lemma rfChildIn_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfChildIn af haf V ⟨1, by omega⟩ = V (rfSelf af 8) := by
+  have h : rfSub af ⟨1, by omega⟩ = rfLoc af haf 1 := by
+    apply Fin.ext; simp [rfSub, rfLoc, shiftEmb_val]
+  rw [rfChildIn, h, rfPhaseAPre_childIn_one]
+
+/-- This level's `live` flag: still searching, the guard held, and the child answered. -/
+noncomputable def rfLive (af : ℕ) (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) : ℕ :=
+  V (rfSelf af 9)
+    * (if Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < V (rfSelf af 8) then 1 else 0)
+    * Ff (rfChildIn af haf V) ⟨2, by omega⟩
+
+/-- This level's zero test on the child's value. -/
+noncomputable def rfZero (af : ℕ) (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) : ℕ :=
+  if Ff (rfChildIn af haf V) ⟨3, by omega⟩ < V (rfSelf af 12) then 1 else 0
+
+section
+variable (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ)
+
+private lemma rfA_self (i : Fin 32) (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28))
+    (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
+    rfPhaseAVals af haf Ff V (rfSelf af i) = V (rfSelf af i) :=
+  rfPhaseAVals_self haf Ff V i hw h5 h13
+
+private lemma rfB1_frame (i : Fin 32) (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) < 28))
+    (h5 : (i : ℕ) ≠ 5) (h9 : (i : ℕ) ≠ 9) (h13 : (i : ℕ) ≠ 13) (h14 : (i : ℕ) ≠ 14)
+    (h15 : (i : ℕ) ≠ 15) (h17 : (i : ℕ) ≠ 17) :
+    rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af i) = V (rfSelf af i) := by
+  rw [rfPhaseB1Vals_of_ne haf _ i h5 h9 h14 h15 h17, rfA_self haf Ff V i hw h5 h13]
+
+lemma rfBodyVals_a : rfBodyVals af haf Ff V (rfSelf af 6) = V (rfSelf af 6) := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_of_ne haf _ 6 (by norm_num) (by norm_num) (by norm_num),
+    rfB1_frame haf Ff V 6 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_one : rfBodyVals af haf Ff V (rfSelf af 12) = V (rfSelf af 12) := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_of_ne haf _ 12 (by norm_num) (by norm_num) (by norm_num),
+    rfB1_frame haf Ff V 12 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_m : rfBodyVals af haf Ff V (rfSelf af 7) = V (rfSelf af 7) + 1 := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_m,
+    rfB1_frame haf Ff V 7 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_fuel : rfBodyVals af haf Ff V (rfSelf af 8) = V (rfSelf af 8) - 1 := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_fuel,
+    rfB1_frame haf Ff V 8 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+private lemma rfB1_live :
+    rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 9)
+      = rfLive af haf Ff V := by
+  rw [rfPhaseB1Vals_search, rfLive, rfPhaseAVals_guard_val, rfPhaseAVals_child,
+    rfA_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)]
+  rfl
+
+private lemma rfB1_zero :
+    rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 14)
+      = rfZero af haf Ff V := by
+  rw [rfPhaseB1Vals_zero, rfZero, rfPhaseAVals_child,
+    rfA_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
+  rfl
+
+private lemma rfB1_hit :
+    rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 15)
+      = rfLive af haf Ff V * rfZero af haf Ff V := by
+  rw [rfPhaseB1Vals_hit, ← rfPhaseB1Vals_search haf (rfPhaseAVals af haf Ff V),
+    rfB1_live, ← rfB1_zero]
+  rw [rfPhaseB1Vals_zero, rfPhaseAVals_child,
+    rfA_self haf Ff V 12 (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_search :
+    rfBodyVals af haf Ff V (rfSelf af 9)
+      = rfLive af haf Ff V * (V (rfSelf af 12) - rfZero af haf Ff V) := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_search, rfB1_live, rfB1_zero,
+    rfB1_frame haf Ff V 12 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_found :
+    rfBodyVals af haf Ff V (rfSelf af 10)
+      = V (rfSelf af 10) + rfLive af haf Ff V * rfZero af haf Ff V := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_found, rfB1_hit,
+    rfB1_frame haf Ff V 10 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+lemma rfBodyVals_result :
+    rfBodyVals af haf Ff V (rfSelf af 11)
+      = V (rfSelf af 11)
+          + rfLive af haf Ff V * rfZero af haf Ff V * V (rfSelf af 7) := by
+  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_result, rfB1_hit,
+    rfB1_frame haf Ff V 11 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num),
+    rfB1_frame haf Ff V 7 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) (by norm_num)]
+
+end
+
+end RfindLevelSem
 
 /-! ## `rfind'`: the setup and finish phases
 
