@@ -1757,4 +1757,145 @@ lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
     | none => rw [hG] at hg; exact absurd hg (by simp)
     | some Mg => simp
 
+/-! ## `prec`: the exact equation, and the recurrence the machine loop implements
+
+At fuel `k+1` the equation is
+
+```
+guard (n ≤ k)
+n.unpaired fun a n' => n'.casesOn (evaln (k+1) cf a) fun y => do
+  let i ← evaln k (prec cf cg) (Nat.pair a y)
+  evaln (k+1) cg (Nat.pair a (Nat.pair y i))
+```
+
+so **both children run at the parent's own fuel**, and fuel decreases *only* in the
+self-call. Unrolling the self-call therefore walks `(a, m) → (a, m-1) → … → (a, 0)` while
+the fuel walks `k+1 → k → … → k+1-m`: the base case runs at fuel `fuel - m`, and level `j`
+counting up from it runs at fuel `fuel - m + j`.
+
+That is the whole content of the loop the machine runs, and it is why the machine iterates
+*upward* from the base rather than downward from the input. -/
+
+lemma evaln_prec_zero (k : ℕ) (cf cg : Nat.Partrec.Code) (a : ℕ) :
+    Nat.Partrec.Code.evaln k (cf.prec cg) (Nat.pair a 0)
+      = if Nat.pair a 0 < k then Nat.Partrec.Code.evaln k cf a else none := by
+  cases k with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff, Nat.unpaired, Nat.unpair_pair]
+    split_ifs with h <;> simp [h]
+
+lemma evaln_prec_succ (k : ℕ) (cf cg : Nat.Partrec.Code) (a j : ℕ) :
+    Nat.Partrec.Code.evaln k (cf.prec cg) (Nat.pair a (j + 1))
+      = if Nat.pair a (j + 1) < k then
+          (Nat.Partrec.Code.evaln (k - 1) (cf.prec cg) (Nat.pair a j) >>= fun i =>
+            Nat.Partrec.Code.evaln k cg (Nat.pair a (Nat.pair j i)))
+        else none := by
+  cases k with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff, Nat.unpaired, Nat.unpair_pair]
+    split_ifs with h <;> simp [h]
+
+/-! ### The pure iterator
+
+`precRun cf cg a f j` is the value the machine's loop register holds after `j` iterations,
+when the base case was run at fuel `f`. It is a plain structural recursion on `j` — no
+`Code` recursion — which is exactly what the machine implements. -/
+
+def precRun (cf cg : Nat.Partrec.Code) (a : ℕ) (f : ℕ) : ℕ → Option ℕ
+  | 0 => if Nat.pair a 0 < f then Nat.Partrec.Code.evaln f cf a else none
+  | j + 1 =>
+      if Nat.pair a (j + 1) < f + (j + 1) then
+        (precRun cf cg a f j >>= fun i =>
+          Nat.Partrec.Code.evaln (f + (j + 1)) cg (Nat.pair a (Nat.pair j i)))
+      else none
+
+/-- **The iterator is the semantics.** Running the loop `j` times from base fuel `f`
+    computes `evaln` of `prec` at index `j` and fuel `f + j`. -/
+lemma precRun_eq (cf cg : Nat.Partrec.Code) (a f : ℕ) : ∀ j,
+    precRun cf cg a f j = Nat.Partrec.Code.evaln (f + j) (cf.prec cg) (Nat.pair a j)
+  | 0 => by
+      rw [precRun, evaln_prec_zero, Nat.add_zero]
+  | j + 1 => by
+      rw [precRun, evaln_prec_succ, precRun_eq cf cg a f j,
+        show f + (j + 1) - 1 = f + j from by omega]
+
+/-- Specialised to the machine's actual loop: `m` iterations from base fuel `fuel - m`
+    compute the answer at fuel `fuel`, provided the outer guard holds. -/
+lemma precRun_eq_evaln (cf cg : Nat.Partrec.Code) (a m fuel : ℕ)
+    (hm : m ≤ fuel) :
+    precRun cf cg a (fuel - m) m
+      = Nat.Partrec.Code.evaln fuel (cf.prec cg) (Nat.pair a m) := by
+  rw [precRun_eq]
+  congr 1
+  omega
+
+/-! ## `rfind'`: the exact equation and its pure iterator
+
+At fuel `k+1`:
+
+```
+guard (n ≤ k)
+n.unpaired fun a m => do
+  let x ← evaln (k+1) cf (Nat.pair a m)
+  if x = 0 then pure m else evaln k (rfind' cf) (Nat.pair a (m+1))
+```
+
+so the test child runs at the parent's own fuel, and the self-call *decreases* fuel while
+*increasing* the search index. Unrolling walks `(f, m) → (f-1, m+1) → …`, so a machine loop
+runs at most `f` iterations — the loop bound is the **fuel**, not the input.
+
+Contrast `prec`, whose loop bound is the unpaired index and which walks *upward* in fuel.
+The two loop constructors iterate in opposite directions; that is the main thing to keep
+straight when implementing them. -/
+
+lemma evaln_rfind_eq (k : ℕ) (cf : Nat.Partrec.Code) (a m : ℕ) :
+    Nat.Partrec.Code.evaln k cf.rfind' (Nat.pair a m)
+      = if Nat.pair a m < k then
+          (Nat.Partrec.Code.evaln k cf (Nat.pair a m) >>= fun x =>
+            if x = 0 then some m
+            else Nat.Partrec.Code.evaln (k - 1) cf.rfind' (Nat.pair a (m + 1)))
+        else none := by
+  cases k with
+  | zero => simp [Nat.Partrec.Code.evaln]
+  | succ k =>
+    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff, Nat.unpaired, Nat.unpair_pair]
+    split_ifs with h <;> simp [h]
+
+/-- The search, as a plain structural recursion on fuel — no `Code` recursion. This is what
+    the machine's bounded loop implements. -/
+def rfindRun (cf : Nat.Partrec.Code) (a : ℕ) : ℕ → ℕ → Option ℕ
+  | 0, _ => none
+  | f + 1, m =>
+      if Nat.pair a m < f + 1 then
+        (Nat.Partrec.Code.evaln (f + 1) cf (Nat.pair a m) >>= fun x =>
+          if x = 0 then some m else rfindRun cf a f (m + 1))
+      else none
+
+/-- **The iterator is the semantics.** -/
+lemma rfindRun_eq (cf : Nat.Partrec.Code) (a : ℕ) : ∀ f m,
+    rfindRun cf a f m = Nat.Partrec.Code.evaln f cf.rfind' (Nat.pair a m)
+  | 0, m => by rw [rfindRun, evaln_rfind_eq]; simp
+  | f + 1, m => by
+      rw [rfindRun, evaln_rfind_eq]
+      split_ifs with h
+      · simp only [Nat.add_sub_cancel]
+        congr 1
+        funext x
+        split_ifs
+        · rfl
+        · exact rfindRun_eq cf a f (m + 1)
+      · rfl
+
+/-- One step of the loop, in the form the machine's invariant consumes: the search at
+    `(f+1, m)` either finishes here or continues at `(f, m+1)`. -/
+lemma rfindRun_succ (cf : Nat.Partrec.Code) (a f m : ℕ) :
+    rfindRun cf a (f + 1) m
+      = if Nat.pair a m < f + 1 then
+          (Nat.Partrec.Code.evaln (f + 1) cf (Nat.pair a m) >>= fun x =>
+            if x = 0 then some m else rfindRun cf a f (m + 1))
+        else none := by
+  rw [rfindRun]
+
 end LogicalInduction.EvalnCompiler
