@@ -4622,6 +4622,52 @@ lemma regsWork_rfMain (R : Regs (33 + af) n) (w₀ : Fin n → Tape)
 
 end RfindBridge
 
+/-! ## The register vector a compiled node produces
+
+`codeVals c` mirrors `compileCodeAt c` exactly: one clause per constructor, each the
+constructor's own phase vector with the children's `codeVals` substituted for the abstract
+child semantics the phase specifications are parametric in. For the two looping
+constructors the node's working block is thirty-two wide and the thirty-third register is
+the loop counter, so the clause writes the working block back through `precMain` / `rfMain`
+and sets the counter separately. -/
+
+/-- The node's own interface block, uniformly at offset `0`. -/
+def codeLocal (c : Nat.Partrec.Code) : Fin 16 ↪ Fin (codeRegs c) :=
+  shiftEmb 0 (by have := codeRegs_ge c; omega)
+
+noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → ℕ) →
+    Fin (codeRegs c) → ℕ
+  | .zero, v => zeroVals v
+  | .succ, v => succVals v
+  | .left, v => projVals v 0
+  | .right, v => projVals v 1
+  | .pair cf cg, v =>
+      pairPhaseBVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (pairPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cf) (codeVals cg) v)
+  | .comp cf cg, v =>
+      compPhaseBVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cf) (codeVals cg) v)
+  | .prec cf cg, v =>
+      Function.update
+        (writeWindow (precMain (codeRegs cf) (codeRegs cg)) v
+          (precVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+            (codeVals cf) (codeVals cg)
+            (fun k => v (precMain (codeRegs cf) (codeRegs cg) k))))
+        (precLoopIdx (codeRegs cf) (codeRegs cg))
+        (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+          (codeVals cf) (fun k => v (precMain (codeRegs cf) (codeRegs cg) k))
+          (precSelf (codeRegs cf) (codeRegs cg) 7))
+  | .rfind' cf, v =>
+      Function.update
+        (writeWindow (rfMain (codeRegs cf)) v
+          (rfindVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
+            (fun k => v (rfMain (codeRegs cf) k))))
+        (rfLoopIdx (codeRegs cf))
+        (rfSetupVals (codeRegs cf) (codeRegs_ge cf)
+          (fun k => v (rfMain (codeRegs cf) k)) (rfSelf (codeRegs cf) 1))
+
 /-! ## The compiler API
 
 `compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
