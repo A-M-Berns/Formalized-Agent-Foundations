@@ -844,4 +844,117 @@ lemma codeVals_lt : ∀ (c : Nat.Partrec.Code) (s B : ℕ) (V : Fin (codeRegs c)
 
 end CodeValsBound
 
+/-! ## A concrete step bound for a compiled code
+
+`codeMachineTime c s A` mirrors the per-constructor Hoare bounds, with `A` the common
+arithmetic cost `evalnArithmeticCost B` and `s` a bound on the node's input and fuel. The
+two looping constructors run at most `s` levels — the counter is bounded by the input and
+the fuel respectively — so `s` stands in for the data-dependent level count. -/
+
+section MachineTime
+
+/-- The step bound a compiled node meets, given a common arithmetic cost `A` and a size
+    bound `s` on its input and fuel registers. -/
+def codeMachineTime : Nat.Partrec.Code → ℕ → ℕ → ℕ
+  | .zero, _, A => 3 * A + 2
+  | .succ, _, A => 6 * A + 5
+  | .left, _, A => 5 * A + 4
+  | .right, _, A => 5 * A + 4
+  | .pair cf cg, s, A =>
+      14 * A + codeMachineTime cf s A + codeMachineTime cg s A + 15
+  | .comp cf cg, s, A =>
+      11 * A + codeMachineTime cf (s + codeEvalBound cg s) A
+        + codeMachineTime cg s A + 12
+  | .prec cf cg, s, A =>
+      (12 * A + codeMachineTime cf s A + 12) + 1
+        + (s * ((15 * A + codeMachineTime cg (s + precWindowBound cf cg s) A + 15) + 2)
+          + (s + 2) + 1 + (5 * A + 4))
+  | .rfind' cf, s, A =>
+      (9 * A + 8) + 1
+        + (s * ((22 * A + codeMachineTime cf (s + rfWindowBound s) A + 22) + 2)
+          + (s + 2) + 1 + (2 * A + 1))
+
+lemma codeMachineTime_mono_size (c : Nat.Partrec.Code) (A : ℕ) :
+    Monotone (fun s => codeMachineTime c s A) := by
+  induction c with
+  | zero => exact monotone_const
+  | succ => exact monotone_const
+  | left => exact monotone_const
+  | right => exact monotone_const
+  | pair cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      exact Nat.add_le_add_right (Nat.add_le_add (Nat.add_le_add (le_refl _) (ihf hab))
+        (ihg hab)) 15
+  | comp cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      exact Nat.add_le_add_right
+        (Nat.add_le_add (Nat.add_le_add (le_refl _)
+          (ihf (Nat.add_le_add hab (codeEvalBound_mono cg hab)))) (ihg hab)) 12
+  | prec cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h1 : codeMachineTime cf a A ≤ codeMachineTime cf b A := ihf hab
+      have h2 : codeMachineTime cg (a + precWindowBound cf cg a) A
+          ≤ codeMachineTime cg (b + precWindowBound cf cg b) A :=
+        ihg (Nat.add_le_add hab (precWindowBound_mono cf cg hab))
+      have h3 : a * ((15 * A + codeMachineTime cg (a + precWindowBound cf cg a) A + 15) + 2)
+          ≤ b * ((15 * A + codeMachineTime cg (b + precWindowBound cf cg b) A + 15) + 2) :=
+        Nat.mul_le_mul hab (by omega)
+      omega
+  | rfind' cf ihf =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h2 : codeMachineTime cf (a + rfWindowBound a) A
+          ≤ codeMachineTime cf (b + rfWindowBound b) A :=
+        ihf (Nat.add_le_add hab (rfWindowBound_mono hab))
+      have h3 : a * ((22 * A + codeMachineTime cf (a + rfWindowBound a) A + 22) + 2)
+          ≤ b * ((22 * A + codeMachineTime cf (b + rfWindowBound b) A + 22) + 2) :=
+        Nat.mul_le_mul hab (by omega)
+      omega
+
+lemma codeMachineTime_mono_cost (c : Nat.Partrec.Code) (s : ℕ) :
+    Monotone (fun A => codeMachineTime c s A) := by
+  induction c generalizing s with
+  | zero => intro a b hab; simp only [codeMachineTime]; omega
+  | succ => intro a b hab; simp only [codeMachineTime]; omega
+  | left => intro a b hab; simp only [codeMachineTime]; omega
+  | right => intro a b hab; simp only [codeMachineTime]; omega
+  | pair cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h1 := ihf s hab
+      have h2 := ihg s hab
+      simp only at h1 h2
+      omega
+  | comp cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h1 := ihf (s + codeEvalBound cg s) hab
+      have h2 := ihg s hab
+      simp only at h1 h2
+      omega
+  | prec cf cg ihf ihg =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h1 := ihf s hab
+      have h2 := ihg (s + precWindowBound cf cg s) hab
+      simp only at h1 h2
+      have h3 : s * ((15 * a + codeMachineTime cg (s + precWindowBound cf cg s) a + 15) + 2)
+          ≤ s * ((15 * b + codeMachineTime cg (s + precWindowBound cf cg s) b + 15) + 2) :=
+        Nat.mul_le_mul (le_refl _) (by omega)
+      omega
+  | rfind' cf ihf =>
+      intro a b hab
+      simp only [codeMachineTime]
+      have h2 := ihf (s + rfWindowBound s) hab
+      simp only at h2
+      have h3 : s * ((22 * a + codeMachineTime cf (s + rfWindowBound s) a + 22) + 2)
+          ≤ s * ((22 * b + codeMachineTime cf (s + rfWindowBound s) b + 22) + 2) :=
+        Nat.mul_le_mul (le_refl _) (by omega)
+      omega
+
+end MachineTime
+
 end LogicalInduction.EvalnCompiler
