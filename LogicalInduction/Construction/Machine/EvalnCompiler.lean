@@ -418,6 +418,59 @@ lemma rightVals_encodes (v : Fin 16 → ℕ) :
     simp only [Function.update_apply, afterUnpair_right]
     split_ifs <;> simp_all
 
+/-! ### The base constructors keep every register inside the bound -/
+
+section BaseBound
+
+lemma zeroVals_lt (v : Fin 16 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k < B) :
+    ∀ k, zeroVals v k < B := by
+  intro k
+  have h1 := hv 1
+  have hk := hv k
+  simp only [zeroVals]
+  split_ifs <;> omega
+
+lemma succVals_lt (v : Fin 16 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k < B)
+    (h01 : v 0 + 1 < B) :
+    ∀ k, succVals v k < B := by
+  intro k
+  have h0 := hv 0
+  have h1 := hv 1
+  have hk := hv k
+  simp only [succVals]
+  split_ifs <;> omega
+
+lemma afterGuard_lt (v : Fin 16 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k < B) :
+    ∀ k, afterGuard v k < B := by
+  intro k
+  have h0 := hv 0
+  have h1 := hv 1
+  have hk := hv k
+  simp only [afterGuard, Function.update_apply]
+  split_ifs <;> omega
+
+lemma afterUnpair_lt (v : Fin 16 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k < B) :
+    ∀ k, afterUnpair v k < B := by
+  have hag := afterGuard_lt v B hB2 hv
+  intro k
+  simp only [afterUnpair]
+  refine writeWindow_bounded _ _ _ B hag (fun j => ?_) k
+  have hb := unpairVals_bounded (fun i => afterGuard v (unpairWindow i)) (B - 1)
+    (fun i => by have := hag (unpairWindow i); omega) (v 0)
+    (by have := hv 0; omega) j
+  omega
+
+lemma projVals_lt (v : Fin 16 → ℕ) (wj : Fin 9) (B : ℕ) (hB2 : 2 ≤ B)
+    (hv : ∀ k, v k < B) : ∀ k, projVals v wj k < B := by
+  have hau := afterUnpair_lt v B hB2 hv
+  intro k
+  have hw := hau (unpairWindow wj)
+  have hk := hau k
+  simp only [projVals, Function.update_apply]
+  by_cases hg : v 0 < v 1 <;> simp only [hg, if_true, if_false] <;> split_ifs <;> omega
+
+end BaseBound
+
 lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, v k < B) :
@@ -6650,6 +6703,269 @@ noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → �
         (codeVals cf) (codeVals cg) v
   | .rfind' cf, v =>
       rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
+
+/-! ### The masking phases keep every register inside the bound -/
+
+section PhaseBBound
+variable {af ag : ℕ}
+
+lemma pairPhaseBVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ)
+    (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
+    (hfit : Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) < B)
+    (htagF : W (leftLoc af ag haf 2) ≤ 1) (htagG : W (rightLoc af ag hag 2) ≤ 1) :
+    ∀ k, pairPhaseBVec af ag haf hag W k < B := by
+  have hB0 : 0 < B := by omega
+  intro k
+  simp only [pairPhaseBVec]
+  set W7 := Function.update W (selfW af ag 6) (W (leftLoc af ag haf 3)) with hW7
+  have b7 : ∀ k, W7 k < B := by
+    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs <;> exact hW _
+  set W8 := Function.update W7 (selfW af ag 7) (W7 (rightLoc af ag hag 3)) with hW8
+  have b8 : ∀ k, W8 k < B := by
+    intro k; rw [hW8]; simp only [Function.update_apply]; split_ifs <;> exact b7 _
+  have s0 : W8 ((pairSlot.trans (selfW af ag)) 0) = W (leftLoc af ag haf 3) := by
+    rw [pairTrans_zero, hW8, selfW_update_apply, hW7, selfW_update_apply]; norm_num
+  have s1 : W8 ((pairSlot.trans (selfW af ag)) 1) = W (rightLoc af ag hag 3) := by
+    rw [pairTrans_one, hW8, selfW_update_apply]
+    norm_num
+    rw [hW7, rightLoc_selfW_upd hag haf]
+  set W9 := writeWindow (pairSlot.trans (selfW af ag)) W8
+      (pairVals (fun j => W8 ((pairSlot.trans (selfW af ag)) j))) with hW9
+  have b9 : ∀ k, W9 k < B := by
+    intro k; rw [hW9]
+    refine writeWindow_bounded _ _ _ B b8 (fun j => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b8 _) ?_ j
+    rw [s0, s1]; exact hfit
+  set W10 := Function.update W9 (selfW af ag 5)
+      (W9 (selfW af ag 1) - W9 (selfW af ag 0)) with hW10
+  have b10 : ∀ k, W10 k < B := by
+    intro k; rw [hW10]; simp only [Function.update_apply]; split_ifs
+    · have := b9 (selfW af ag 1); omega
+    · exact b9 _
+  set W11 := Function.update W10 (selfW af ag 4)
+      (if W9 (selfW af ag 0) < W9 (selfW af ag 1) then 1 else 0) with hW11
+  have b11 : ∀ k, W11 k < B := by
+    intro k; rw [hW11]; simp only [Function.update_apply]; split_ifs <;>
+      first | omega | exact b10 _
+  have m11 : W11 (selfW af ag 4) ≤ 1 := by
+    rw [hW11, Function.update_self]; split_ifs <;> omega
+  have r11F : W11 (leftLoc af ag haf 2) = W (leftLoc af ag haf 2) := by
+    rw [hW11, leftLoc_selfW_upd haf, hW10, leftLoc_selfW_upd haf, hW9,
+      pairWin_leftLoc haf, hW8, leftLoc_selfW_upd haf, hW7, leftLoc_selfW_upd haf]
+  have r11G : W11 (rightLoc af ag hag 2) = W (rightLoc af ag hag 2) := by
+    rw [hW11, rightLoc_selfW_upd hag haf, hW10, rightLoc_selfW_upd hag haf, hW9,
+      pairWin_rightLoc hag haf, hW8, rightLoc_selfW_upd hag haf, hW7,
+      rightLoc_selfW_upd hag haf]
+  set W12 := Function.update W11 (selfW af ag 14) 0 with hW12
+  have b12 : ∀ k, W12 k < B := by
+    intro k; rw [hW12]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b11 _
+  set W13 := Function.update W12 (selfW af ag 14)
+      (0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2)) with hW13
+  have m12_4 : W12 (selfW af ag 4) ≤ 1 := by
+    rw [hW12, selfW_update_apply]; norm_num; exact m11
+  have m12_F : W12 (leftLoc af ag haf 2) ≤ 1 := by
+    rw [hW12, leftLoc_selfW_upd haf, r11F]; exact htagF
+  have m13 : W13 (selfW af ag 14) ≤ 1 := by
+    rw [hW13, Function.update_self]
+    calc 0 + W12 (selfW af ag 4) * W12 (leftLoc af ag haf 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul m12_4 m12_F
+      _ = 1 := by norm_num
+  have b13 : ∀ k, W13 k < B := by
+    intro k; rw [hW13]; simp only [Function.update_apply]; split_ifs
+    · have h := m13; rw [hW13, Function.update_self] at h; omega
+    · exact b12 _
+  set W14 := Function.update W13 (selfW af ag 2) 0 with hW14
+  have b14 : ∀ k, W14 k < B := by
+    intro k; rw [hW14]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b13 _
+  have m14_14 : W14 (selfW af ag 14) ≤ 1 := by
+    rw [hW14, selfW_update_apply]; norm_num; exact m13
+  have m14_G : W14 (rightLoc af ag hag 2) ≤ 1 := by
+    rw [hW14, rightLoc_selfW_upd hag haf, hW13, rightLoc_selfW_upd hag haf, hW12,
+      rightLoc_selfW_upd hag haf, r11G]
+    exact htagG
+  set W15 := Function.update W14 (selfW af ag 2)
+      (0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2)) with hW15
+  have m15 : W15 (selfW af ag 2) ≤ 1 := by
+    rw [hW15, Function.update_self]
+    calc 0 + W14 (selfW af ag 14) * W14 (rightLoc af ag hag 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul m14_14 m14_G
+      _ = 1 := by norm_num
+  have b15 : ∀ k, W15 k < B := by
+    intro k; rw [hW15]; simp only [Function.update_apply]; split_ifs
+    · have h := m15; rw [hW15, Function.update_self] at h; omega
+    · exact b14 _
+  set W16 := Function.update W15 (selfW af ag 3) 0 with hW16
+  have b16 : ∀ k, W16 k < B := by
+    intro k; rw [hW16]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b15 _
+  have m16 : W16 (selfW af ag 2) ≤ 1 := by
+    rw [hW16, selfW_update_apply]; norm_num; exact m15
+  simp only [Function.update_apply]
+  split_ifs
+  · have hb := b16 (selfW af ag 12)
+    calc 0 + W16 (selfW af ag 2) * W16 (selfW af ag 12)
+        ≤ 1 * W16 (selfW af ag 12) := by
+          simpa using Nat.mul_le_mul m16 (le_refl (W16 (selfW af ag 12)))
+      _ < B := by omega
+  · exact b16 _
+
+lemma compPhaseBVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ)
+    (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
+    (htagF : W (leftLoc af ag haf 2) ≤ 1) (htagG : W (rightLoc af ag hag 2) ≤ 1) :
+    ∀ k, compPhaseBVec af ag haf hag W k < B := by
+  have hB0 : 0 < B := by omega
+  intro k
+  simp only [compPhaseBVec]
+  set W1 := Function.update W (selfW af ag 5)
+      (W (selfW af ag 1) - W (selfW af ag 0)) with hW1
+  have b1 : ∀ k, W1 k < B := by
+    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs
+    · have := hW (selfW af ag 1); omega
+    · exact hW _
+  set W2 := Function.update W1 (selfW af ag 4)
+      (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0) with hW2
+  have b2 : ∀ k, W2 k < B := by
+    intro k; rw [hW2]; simp only [Function.update_apply]; split_ifs <;>
+      first | omega | exact b1 _
+  have m2 : W2 (selfW af ag 4) ≤ 1 := by
+    rw [hW2, Function.update_self]; split_ifs <;> omega
+  set W3 := Function.update W2 (selfW af ag 14) 0 with hW3
+  have b3 : ∀ k, W3 k < B := by
+    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b2 _
+  have m3_4 : W3 (selfW af ag 4) ≤ 1 := by
+    rw [hW3, selfW_update_apply]; norm_num; exact m2
+  have m3_G : W3 (rightLoc af ag hag 2) ≤ 1 := by
+    rw [hW3, rightLoc_selfW_upd hag haf, hW2, rightLoc_selfW_upd hag haf, hW1,
+      rightLoc_selfW_upd hag haf]
+    exact htagG
+  set W4 := Function.update W3 (selfW af ag 14)
+      (0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2)) with hW4
+  have m4 : W4 (selfW af ag 14) ≤ 1 := by
+    rw [hW4, Function.update_self]
+    calc 0 + W3 (selfW af ag 4) * W3 (rightLoc af ag hag 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul m3_4 m3_G
+      _ = 1 := by norm_num
+  have b4 : ∀ k, W4 k < B := by
+    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
+    · have h := m4; rw [hW4, Function.update_self] at h; omega
+    · exact b3 _
+  set W5 := Function.update W4 (selfW af ag 2) 0 with hW5
+  have b5 : ∀ k, W5 k < B := by
+    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b4 _
+  have m5_14 : W5 (selfW af ag 14) ≤ 1 := by
+    rw [hW5, selfW_update_apply]; norm_num; exact m4
+  have m5_F : W5 (leftLoc af ag haf 2) ≤ 1 := by
+    rw [hW5, leftLoc_selfW_upd haf, hW4, leftLoc_selfW_upd haf, hW3,
+      leftLoc_selfW_upd haf, hW2, leftLoc_selfW_upd haf, hW1, leftLoc_selfW_upd haf]
+    exact htagF
+  set W6 := Function.update W5 (selfW af ag 2)
+      (0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2)) with hW6
+  have m6 : W6 (selfW af ag 2) ≤ 1 := by
+    rw [hW6, Function.update_self]
+    calc 0 + W5 (selfW af ag 14) * W5 (leftLoc af ag haf 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul m5_14 m5_F
+      _ = 1 := by norm_num
+  have b6 : ∀ k, W6 k < B := by
+    intro k; rw [hW6]; simp only [Function.update_apply]; split_ifs
+    · have h := m6; rw [hW6, Function.update_self] at h; omega
+    · exact b5 _
+  set W7 := Function.update W6 (selfW af ag 3) 0 with hW7
+  have b7 : ∀ k, W7 k < B := by
+    intro k; rw [hW7]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b6 _
+  have m7 : W7 (selfW af ag 2) ≤ 1 := by
+    rw [hW7, selfW_update_apply]; norm_num; exact m6
+  simp only [Function.update_apply]
+  split_ifs
+  · have hb := b7 (leftLoc af ag haf 3)
+    calc 0 + W7 (selfW af ag 2) * W7 (leftLoc af ag haf 3)
+        ≤ 1 * W7 (leftLoc af ag haf 3) := by
+          simpa using Nat.mul_le_mul m7 (le_refl (W7 (leftLoc af ag haf 3)))
+      _ < B := by omega
+  · exact b7 _
+
+end PhaseBBound
+
+/-! ### The two looping constructors' finish phases keep every register inside the bound -/
+
+section FinishBound
+
+lemma precFinishVals_lt {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (W : Fin (32 + af + ag) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hW : ∀ k, W k < B)
+    (halive : W (precSelf af ag 10) ≤ 1) :
+    ∀ k, precFinishVals af ag W k < B := by
+  have hB0 : 0 < B := by omega
+  intro k
+  simp only [precFinishVals]
+  set W1 := Function.update W (precSelf af ag 5)
+      (W (precSelf af ag 1) - W (precSelf af ag 0)) with hW1
+  have b1 : ∀ k, W1 k < B := by
+    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs
+    · have := hW (precSelf af ag 1); omega
+    · exact hW _
+  set W2 := Function.update W1 (precSelf af ag 4)
+      (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0) with hW2
+  have b2 : ∀ k, W2 k < B := by
+    intro k; rw [hW2]; simp only [Function.update_apply]; split_ifs <;>
+      first | omega | exact b1 _
+  have m2 : W2 (precSelf af ag 4) ≤ 1 := by
+    rw [hW2, Function.update_self]; split_ifs <;> omega
+  set W3 := Function.update W2 (precSelf af ag 2) 0 with hW3
+  have b3 : ∀ k, W3 k < B := by
+    intro k; rw [hW3]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b2 _
+  have m3_4 : W3 (precSelf af ag 4) ≤ 1 := by
+    rw [hW3, precSelf_update_apply]; norm_num; exact m2
+  have m3_10 : W3 (precSelf af ag 10) ≤ 1 := by
+    rw [hW3, precSelf_update_apply, hW2, precSelf_update_apply, hW1,
+      precSelf_update_apply]
+    norm_num
+    exact halive
+  set W4 := Function.update W3 (precSelf af ag 2)
+      (0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10)) with hW4
+  have m4 : W4 (precSelf af ag 2) ≤ 1 := by
+    rw [hW4, Function.update_self]
+    calc 0 + W3 (precSelf af ag 4) * W3 (precSelf af ag 10) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul m3_4 m3_10
+      _ = 1 := by norm_num
+  have b4 : ∀ k, W4 k < B := by
+    intro k; rw [hW4]; simp only [Function.update_apply]; split_ifs
+    · have h := m4; rw [hW4, Function.update_self] at h; omega
+    · exact b3 _
+  set W5 := Function.update W4 (precSelf af ag 3) 0 with hW5
+  have b5 : ∀ k, W5 k < B := by
+    intro k; rw [hW5]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b4 _
+  have m5 : W5 (precSelf af ag 2) ≤ 1 := by
+    rw [hW5, precSelf_update_apply]; norm_num; exact m4
+  simp only [Function.update_apply]
+  split_ifs
+  · have hb := b5 (precSelf af ag 11)
+    calc 0 + W5 (precSelf af ag 2) * W5 (precSelf af ag 11)
+        ≤ 1 * W5 (precSelf af ag 11) := by
+          simpa using Nat.mul_le_mul m5 (le_refl (W5 (precSelf af ag 11)))
+      _ < B := by omega
+  · exact b5 _
+
+lemma rfFinishVals_lt {af : ℕ} (W : Fin (32 + af) → ℕ) (B : ℕ) (hW : ∀ k, W k < B) :
+    ∀ k, rfFinishVals af W k < B := by
+  intro k
+  simp only [rfFinishVals, Function.update_apply]
+  split_ifs <;> exact hW _
+
+end FinishBound
 
 /-! ## The compiler API
 
