@@ -5180,7 +5180,7 @@ lemma rfFinishVals_val (W : Fin (32 + af) → ℕ) :
 
 /-- **`rfind'`, semantically complete.** Given a child that encodes `evaln`, the node's
     tag and value registers hold the tag and value of `evaln fuel (rfind' cf) inp`. -/
-theorem rfindVals_encodes (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+lemma rfindVals_encodes (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
     (V : Fin (32 + af) → ℕ) :
     rfindVals af haf Ff V (rfSelf af 2)
