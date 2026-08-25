@@ -6125,6 +6125,94 @@ lemma compPhaseBVec_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + 
 
 end CompSemantics
 
+/-! ### `pair` and `comp`, semantically complete -/
+
+section BinaryEncodes
+variable {af ag : ℕ}
+
+/-- **`pair`, semantically complete.** -/
+lemma pairVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
+    (V : Fin (16 + af + ag) → ℕ) :
+    pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.pair cg)
+            (V (selfW af ag 0))) ∧
+      pairPhaseBVec af ag haf hag (pairPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.pair cg)
+            (V (selfW af ag 0))) := by
+  obtain ⟨hft, hfv⟩ := hFf (pairLeftIn af ag haf V)
+  obtain ⟨hgt, hgv⟩ := hFg (pairRightIn af ag haf hag Ff V)
+  rw [pairLeftIn_zero, pairLeftIn_one] at hft hfv
+  rw [pairRightIn_zero, pairRightIn_one] at hgt hgv
+  have rF2 : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))) := by
+    rw [pairPhaseAVec_leftLoc]; exact hft
+  have rF3 : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))) := by
+    rw [pairPhaseAVec_leftLoc]; exact hfv
+  have rG2 : pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+    rw [pairPhaseAVec_rightLoc]; exact hgt
+  have rG3 : pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+    rw [pairPhaseAVec_rightLoc]; exact hgv
+  obtain ⟨ht, hv⟩ := pair_encodes (V (selfW af ag 1)) (V (selfW af ag 0))
+    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf (V (selfW af ag 0))))
+    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
+    cf cg rfl rfl rfl rfl
+  constructor
+  · rw [pairPhaseBVec_tag, pairPhaseAVec_selfW, pairPhaseAVec_selfW, rF2, rG2, ht]
+  · rw [pairPhaseBVec_val, pairPhaseBVec_tag, pairPhaseAVec_selfW, pairPhaseAVec_selfW,
+      rF2, rG2, rF3, rG3]
+    exact hv
+
+/-- **`comp`, semantically complete.** -/
+lemma compVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
+    (V : Fin (16 + af + ag) → ℕ) :
+    compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.comp cg)
+            (V (selfW af ag 0))) ∧
+      compPhaseBVec af ag haf hag (compPhaseAVec af ag haf hag Ff Fg V) (selfW af ag 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) (cf.comp cg)
+            (V (selfW af ag 0))) := by
+  obtain ⟨hgt, hgv⟩ := hFg (compRightIn af ag hag V)
+  rw [compRightIn_zero, compRightIn_one] at hgt hgv
+  obtain ⟨hft, hfv⟩ := hFf (compLeftIn af ag haf hag Fg V)
+  rw [compLeftIn_zero, compLeftIn_one, hgv] at hft hfv
+  have rG2 : compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))) := by
+    rw [compPhaseAVec_rightLoc]; exact hgt
+  have rF2 : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2)
+      = resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
+          (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg
+            (V (selfW af ag 0))))) := by
+    rw [compPhaseAVec_leftLoc]; exact hft
+  have rF3 : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3)
+      = resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
+          (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg
+            (V (selfW af ag 0))))) := by
+    rw [compPhaseAVec_leftLoc]; exact hfv
+  obtain ⟨ht, hv⟩ := comp_encodes (V (selfW af ag 1)) (V (selfW af ag 0))
+    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
+    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))
+    (resultTag (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
+      (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))))
+    (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cf
+      (resultVal (Nat.Partrec.Code.evaln (V (selfW af ag 1)) cg (V (selfW af ag 0))))))
+    cf cg rfl rfl rfl rfl
+  constructor
+  · rw [compPhaseBVec_tag, compPhaseAVec_selfW, compPhaseAVec_selfW, rF2, rG2, ht]
+  · rw [compPhaseBVec_val, compPhaseBVec_tag, compPhaseAVec_selfW, compPhaseAVec_selfW,
+      rF2, rG2, rF3]
+    exact hv
+
+end BinaryEncodes
+
 /-! ## The register vector a compiled node produces
 
 `codeVals c` mirrors `compileCodeAt c` exactly: one clause per constructor, each the
@@ -6137,6 +6225,41 @@ and sets the counter separately. -/
 /-- The node's own interface block, uniformly at offset `0`. -/
 def codeLocal (c : Nat.Partrec.Code) : Fin 16 ↪ Fin (codeRegs c) :=
   shiftEmb 0 (by have := codeRegs_ge c; omega)
+
+/-- A `prec` node's thirty-three-wide vector: its working block written back through
+    `precMain`, with the loop counter set separately. -/
+noncomputable def precBlockVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (v : Fin (33 + af + ag) → ℕ) : Fin (33 + af + ag) → ℕ :=
+  Function.update
+    (writeWindow (precMain af ag) v
+      (precVals af ag haf hag Ff Fg (fun k => v (precMain af ag k))))
+    (precLoopIdx af ag)
+    (precSetupVals af ag haf hag Ff (fun k => v (precMain af ag k)) (precSelf af ag 7))
+
+/-- The same for an `rfind'` node. -/
+noncomputable def rfBlockVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (v : Fin (33 + af) → ℕ) : Fin (33 + af) → ℕ :=
+  Function.update
+    (writeWindow (rfMain af) v (rfindVals af haf Ff (fun k => v (rfMain af k))))
+    (rfLoopIdx af)
+    (rfSetupVals af haf (fun k => v (rfMain af k)) (rfSelf af 1))
+
+/-- A `prec` node's own registers, read out of its thirty-three-wide vector. -/
+lemma precBlockVals_self {af ag : ℕ} (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (v : Fin (33 + af + ag) → ℕ) (j : Fin 32) :
+    precBlockVals af ag haf hag Ff Fg v (precMain af ag (precSelf af ag j))
+      = precVals af ag haf hag Ff Fg (fun k => v (precMain af ag k))
+          (precSelf af ag j) := by
+  rw [precBlockVals, Function.update_of_ne (precMain_ne_loopIdx _), writeWindow_apply]
+
+/-- An `rfind'` node's own registers, read out of its thirty-three-wide vector. -/
+lemma rfBlockVals_self {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (v : Fin (33 + af) → ℕ) (j : Fin 32) :
+    rfBlockVals af haf Ff v (rfMain af (rfSelf af j))
+      = rfindVals af haf Ff (fun k => v (rfMain af k)) (rfSelf af j) := by
+  rw [rfBlockVals, Function.update_of_ne (rfMain_ne_loopIdx _), writeWindow_apply]
 
 noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → ℕ) →
     Fin (codeRegs c) → ℕ
@@ -6153,23 +6276,10 @@ noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → �
         (compPhaseAVec (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
           (codeVals cf) (codeVals cg) v)
   | .prec cf cg, v =>
-      Function.update
-        (writeWindow (precMain (codeRegs cf) (codeRegs cg)) v
-          (precVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
-            (codeVals cf) (codeVals cg)
-            (fun k => v (precMain (codeRegs cf) (codeRegs cg) k))))
-        (precLoopIdx (codeRegs cf) (codeRegs cg))
-        (precSetupVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
-          (codeVals cf) (fun k => v (precMain (codeRegs cf) (codeRegs cg) k))
-          (precSelf (codeRegs cf) (codeRegs cg) 7))
+      precBlockVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+        (codeVals cf) (codeVals cg) v
   | .rfind' cf, v =>
-      Function.update
-        (writeWindow (rfMain (codeRegs cf)) v
-          (rfindVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf)
-            (fun k => v (rfMain (codeRegs cf) k))))
-        (rfLoopIdx (codeRegs cf))
-        (rfSetupVals (codeRegs cf) (codeRegs_ge cf)
-          (fun k => v (rfMain (codeRegs cf) k)) (rfSelf (codeRegs cf) 1))
+      rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
 
 /-! ## The compiler API
 
@@ -6290,5 +6400,68 @@ lemma compileCodeAt_isSome : ∀ (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n
   | .prec cf cg, R =>
       compileCodeAt_isSome_prec cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
   | .rfind' cf, R => compileCodeAt_isSome_rfind' cf R (compileCodeAt_isSome cf _)
+
+/-! ## The compiler is correct
+
+One structural theorem for every `Nat.Partrec.Code`: the register vector a compiled node
+produces holds, in its tag and value registers, the canonical encoding of `evaln`. Every
+constructor's own semantic lemma is parametric in `ChildEncodes` for its children, and the
+induction is what discharges those.
+
+The four base constructors and the two binary ones need no index bookkeeping — a node's
+interface registers sit at offset `0` of its block in every layout, so the two views are
+definitionally equal. The two looping constructors do: their block is thirty-three wide,
+so the vector is written back through `precMain` / `rfMain` with the loop counter set
+separately, and neither `writeWindow` nor `Function.update` reduces on a symbolic index. -/
+
+section Structural
+
+/-- **The compiler is correct.** For every code, its compiled register vector encodes
+    `evaln` in the node's tag and value registers — all eight constructors. -/
+lemma codeVals_encodes : ∀ c : Nat.Partrec.Code,
+    ChildEncodes (codeRegs c) (codeRegs_ge c) c (codeVals c)
+  | .zero => fun v => zeroVals_encodes v
+  | .succ => fun v => succVals_encodes v
+  | .left => fun v => leftVals_encodes v
+  | .right => fun v => rightVals_encodes v
+  | .pair cf cg => fun v =>
+      pairVals_encodes (codeRegs_ge cf) (codeRegs_ge cg) cf cg
+        (codeVals cf) (codeVals cg) (codeVals_encodes cf) (codeVals_encodes cg) v
+  | .comp cf cg => fun v =>
+      compVals_encodes (codeRegs_ge cf) (codeRegs_ge cg) cf cg
+        (codeVals cf) (codeVals cg) (codeVals_encodes cf) (codeVals_encodes cg) v
+  | .prec cf cg => by
+      intro v
+      have h := precVals_encodes (codeRegs_ge cf) (codeRegs_ge cg) cf cg
+        (codeVals cf) (codeVals cg) (codeVals_encodes cf) (codeVals_encodes cg)
+        (fun k => v (precMain (codeRegs cf) (codeRegs cg) k))
+      constructor
+      · show precBlockVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+            (codeVals cf) (codeVals cg) v
+            (precMain (codeRegs cf) (codeRegs cg)
+              (precSelf (codeRegs cf) (codeRegs cg) 2)) = _
+        rw [precBlockVals_self]
+        exact h.1
+      · show precBlockVals (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
+            (codeVals cf) (codeVals cg) v
+            (precMain (codeRegs cf) (codeRegs cg)
+              (precSelf (codeRegs cf) (codeRegs cg) 3)) = _
+        rw [precBlockVals_self]
+        exact h.2
+  | .rfind' cf => by
+      intro v
+      have h := rfindVals_encodes (codeRegs_ge cf) cf (codeVals cf) (codeVals_encodes cf)
+        (fun k => v (rfMain (codeRegs cf) k))
+      constructor
+      · show rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
+            (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 2)) = _
+        rw [rfBlockVals_self]
+        exact h.1
+      · show rfBlockVals (codeRegs cf) (codeRegs_ge cf) (codeVals cf) v
+            (rfMain (codeRegs cf) (rfSelf (codeRegs cf) 3)) = _
+        rw [rfBlockVals_self]
+        exact h.2
+
+end Structural
 
 end LogicalInduction.EvalnCompiler
