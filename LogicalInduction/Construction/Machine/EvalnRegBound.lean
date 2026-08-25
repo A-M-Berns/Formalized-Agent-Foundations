@@ -205,7 +205,8 @@ lemma precLoopVals_ok (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.C
     (h12 : V₀ (precSelf af ag 12) = f₀)
     (h10 : V₀ (precSelf af ag 10) = resultTag (Nat.Partrec.Code.evaln f₀ cf a))
     (h11 : V₀ (precSelf af ag 11) = resultVal (Nat.Partrec.Code.evaln f₀ cf a))
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgB : ∀ i, i < m →
+      ∀ k, Fg (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i)) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
     ∀ i, i ≤ m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i) := by
   have hsW : s ≤ precWindowBound cf cg s := Nat.left_le_pair _ _
@@ -266,7 +267,8 @@ lemma precLoopVals_ok (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.C
       obtain ⟨s10, s9, s12, sp1, sp2⟩ := side (k + 1) hk
       refine ⟨?_, s10, s9, s12, sp1, sp2⟩
       rw [precLoopVals_succ]
-      exact precBodyVals_lt haf hag Fg _ B hB2 b o10 o9 o12 op1 op2 hFgB hFgTag
+      exact precBodyVals_lt haf hag Fg _ B hB2 b o10 o9 o12 op1 op2
+        (hFgB k (by omega)) hFgTag
 
 end PrecLoopBound
 
@@ -359,7 +361,8 @@ lemma rfLoopVals_ok (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
     (h8 : V₀ (rfSelf af 8) = fuel) (h9 : V₀ (rfSelf af 9) = 1)
     (h10 : V₀ (rfSelf af 10) = 0) (h11 : V₀ (rfSelf af 11) = 0)
     (h12 : V₀ (rfSelf af 12) = 1)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfB : ∀ i, i < fuel →
+      ∀ k, Ff (rfChildIn af haf (rfLoopVals af haf Ff V₀ i)) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1) :
     ∀ i, i ≤ fuel → RfBodyOK af B haf (rfLoopVals af haf Ff V₀ i) := by
   have hsW : s ≤ rfWindowBound s := Nat.left_le_pair _ _
@@ -427,7 +430,7 @@ lemma rfLoopVals_ok (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
       obtain ⟨sp, s9, s7, s11, s10⟩ := side (k + 1) hk
       refine ⟨?_, sp, s9, s7, s11, s10⟩
       rw [rfLoopVals_succ]
-      exact rfBodyVals_lt haf Ff _ B hB2 b op o9 o7 o11 o10 hFfB hFfTag
+      exact rfBodyVals_lt haf Ff _ B hB2 b op o9 o7 o11 o10 (hFfB k (by omega)) hFfTag
 
 end RfindLoopBound
 

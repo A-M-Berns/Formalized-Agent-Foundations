@@ -51,6 +51,7 @@ namespace LogicalInduction.EvalnCompiler
 open Complexity Complexity.TM
 
 
+
 variable {n : ℕ}
 
 /-! ## The exact `evaln` equations for the non-recursive constructors -/
@@ -805,20 +806,45 @@ noncomputable def pairPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
   let V5 := Function.update V4 (rightLoc af ag hag 1) (V (selfW af ag 1))
   writeWindow (rightSub af ag) V5 (Fg (fun j => V5 (rightSub af ag j)))
 
+/-- The vector the left child sees: its own subtree, with the parent's input and fuel
+    written into its interface. -/
+noncomputable def pairLeftIn (af ag : ℕ) (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
+    Fin af → ℕ :=
+  fun j =>
+    Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
+      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
+/-- The vector the right child sees. -/
+noncomputable def pairRightIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin ag → ℕ :=
+  fun j =>
+    Function.update
+      (Function.update
+        (writeWindow (leftSub af ag)
+          (Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
+            (leftLoc af ag haf 1) (V (selfW af ag 1)))
+          (Ff (pairLeftIn af ag haf V)))
+        (rightLoc af ag hag 0) (V (selfW af ag 0)))
+      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
 lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb (Ff u)) ys) tf)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (hFfB : ∀ k, Ff (pairLeftIn af ag haf V) k < B)
+    (hFgB : ∀ k, Fg (pairRightIn af ag haf hag Ff V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (pairLeftIn af ag haf V)) ys)
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (Ff (pairLeftIn af ag haf V))) ys) tf)
+    (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (pairRightIn af ag haf hag Ff V)) ys)
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (Fg (pairRightIn af ag haf hag Ff V))) ys) tg) :
     (pairPhaseA af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (pairPhaseAVec af ag haf hag Ff Fg V)) ys)
@@ -859,11 +885,11 @@ lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
       rw [leftLoc_eq]; exact hk _
     rw [hV2, Function.update_of_ne (Ne.symm e1), hV1, Function.update_of_ne (Ne.symm e0)]
   -- S3: run cf
-  have h3 := runChild (leftSub af ag) R Mf Ff tf B w₀ hpark V2 b2 hMf
+  have h3 := runChildFixed (leftSub af ag) R Mf Ff tf w₀ hpark V2 hMf
   set V3 := writeWindow (leftSub af ag) V2 (Ff (fun j => V2 (leftSub af ag j))) with hV3
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
-    exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB _ (fun i => b2 _) j) k
+    exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB j) k
   have out3 : ∀ k, (∀ j, leftSub af ag j ≠ k) → V3 k = V k := by
     intro k hk
     rw [hV3, runChild_frame _ _ _ hk]; exact out2 k hk
@@ -900,7 +926,7 @@ lemma pairPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     · exact hB _
     · exact b4 _
   -- S6: run cg
-  have h6 := runChild (rightSub af ag) R Mg Fg tg B w₀ hpark V5 b5 hMg
+  have h6 := runChildFixed (rightSub af ag) R Mg Fg tg w₀ hpark V5 hMg
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -1439,8 +1465,8 @@ def compilePairTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
 lemma pairPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B) :
+    (hFfB : ∀ k, Ff (pairLeftIn af ag haf V) k < B)
+    (hFgB : ∀ k, Fg (pairRightIn af ag haf hag Ff V) k < B) :
     ∀ k, pairPhaseAVec af ag haf hag Ff Fg V k < B := by
   intro k
   simp only [pairPhaseAVec]
@@ -1457,7 +1483,7 @@ lemma pairPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     · exact b1 _
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
-    exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB _ (fun i => b2 _) j) k
+    exact writeWindow_bounded _ _ _ B b2 (fun j => hFfB j) k
   have b4 : ∀ k, V4 k < B := by
     intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
     · exact hB _
@@ -1466,7 +1492,7 @@ lemma pairPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
     · exact hB _
     · exact b4 _
-  exact writeWindow_bounded _ _ _ B b5 (fun j => hFgB _ (fun i => b5 _) j) k
+  exact writeWindow_bounded _ _ _ B b5 (fun j => hFgB j) k
 
 /-- **`pair`, complete.** Both children run in their own subtrees, their values are paired,
     and the result is masked by `gflag * tagF * tagG`. -/
@@ -1476,14 +1502,20 @@ lemma compilePairTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb (Ff u)) ys) tf)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb (Fg u)) ys) tg)
+    (hFfB : ∀ k, Ff (pairLeftIn af ag haf V) k < B)
+    (hFgB : ∀ k, Fg (pairRightIn af ag haf hag Ff V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (pairLeftIn af ag haf V)) ys)
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (Ff (pairLeftIn af ag haf V))) ys) tf)
+    (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (pairRightIn af ag haf hag Ff V)) ys)
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (Fg (pairRightIn af ag haf hag Ff V))) ys) tg)
     (hfit : Nat.pair (pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 3))
               (pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 3)) < B)
     (htagF : pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2) ≤ 1)
@@ -1530,20 +1562,48 @@ noncomputable def compPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
   let V5 := Function.update V4 (leftLoc af ag haf 1) (V (selfW af ag 1))
   writeWindow (leftSub af ag) V5 (Ff (fun j => V5 (leftSub af ag j)))
 
+/-- The vector the second child sees: the parent's input and fuel. -/
+noncomputable def compRightIn (af ag : ℕ) (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
+    Fin ag → ℕ :=
+  fun j =>
+    Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
+/-- The vector the first child sees: `cg`'s value as its input, the parent's fuel. -/
+noncomputable def compLeftIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin af → ℕ :=
+  fun j =>
+    Function.update
+      (Function.update
+        (writeWindow (rightSub af ag)
+          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+            (rightLoc af ag hag 1) (V (selfW af ag 1)))
+          (Fg (compRightIn af ag hag V)))
+        (leftLoc af ag haf 0)
+        (writeWindow (rightSub af ag)
+          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+            (rightLoc af ag hag 1) (V (selfW af ag 1)))
+          (Fg (compRightIn af ag hag V)) (rightLoc af ag hag 3)))
+      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
 lemma compPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tf tg : ℕ)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb (Ff u)) ys) tf)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (hFfB : ∀ k, Ff (compLeftIn af ag haf hag Fg V) k < B)
+    (hFgB : ∀ k, Fg (compRightIn af ag hag V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (compLeftIn af ag haf hag Fg V)) ys)
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (Ff (compLeftIn af ag haf hag Fg V))) ys) tf)
+    (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (compRightIn af ag hag V)) ys)
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (Fg (compRightIn af ag hag V))) ys) tg) :
     (compPhaseA af ag haf hag R Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (compPhaseAVec af ag haf hag Ff Fg V)) ys)
@@ -1583,11 +1643,11 @@ lemma compPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     have e1 : rightLoc af ag hag 1 ≠ k := by rw [rightLoc_eq]; exact hk _
     rw [hV2, Function.update_of_ne (Ne.symm e1), hV1, Function.update_of_ne (Ne.symm e0)]
   -- S3: run cg
-  have h3 := runChild (rightSub af ag) R Mg Fg tg B w₀ hpark V2 b2 hMg
+  have h3 := runChildFixed (rightSub af ag) R Mg Fg tg w₀ hpark V2 hMg
   set V3 := writeWindow (rightSub af ag) V2 (Fg (fun j => V2 (rightSub af ag j))) with hV3
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
-    exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB _ (fun i => b2 _) j) k
+    exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB j) k
   have out3 : ∀ k, (∀ j, rightSub af ag j ≠ k) → V3 k = V k := by
     intro k hk
     rw [hV3, runChild_frame _ _ _ hk]; exact out2 k hk
@@ -1623,7 +1683,7 @@ lemma compPhaseA_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     · exact hB _
     · exact b4 _
   -- S6: run cf
-  have h6 := runChild (leftSub af ag) R Mf Ff tf B w₀ hpark V5 b5 hMf
+  have h6 := runChildFixed (leftSub af ag) R Mf Ff tf w₀ hpark V5 hMf
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -1849,8 +1909,8 @@ def compileCompTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
 lemma compPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B) :
+    (hFfB : ∀ k, Ff (compLeftIn af ag haf hag Fg V) k < B)
+    (hFgB : ∀ k, Fg (compRightIn af ag hag V) k < B) :
     ∀ k, compPhaseAVec af ag haf hag Ff Fg V k < B := by
   intro k
   simp only [compPhaseAVec]
@@ -1867,7 +1927,7 @@ lemma compPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     · exact b1 _
   have b3 : ∀ k, V3 k < B := by
     intro k; rw [hV3]
-    exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB _ (fun i => b2 _) j) k
+    exact writeWindow_bounded _ _ _ B b2 (fun j => hFgB j) k
   have b4 : ∀ k, V4 k < B := by
     intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs
     · exact b3 _
@@ -1876,7 +1936,7 @@ lemma compPhaseAVec_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
     · exact hB _
     · exact b4 _
-  exact writeWindow_bounded _ _ _ B b5 (fun j => hFfB _ (fun i => b5 _) j) k
+  exact writeWindow_bounded _ _ _ B b5 (fun j => hFfB j) k
 
 /-- **`comp`, complete.** -/
 lemma compileCompTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
@@ -1885,14 +1945,20 @@ lemma compileCompTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (V : Fin (16 + af + ag) → ℕ) (B : ℕ)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb (Ff u)) ys) tf)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb (Fg u)) ys) tg)
+    (hFfB : ∀ k, Ff (compLeftIn af ag haf hag Fg V) k < B)
+    (hFgB : ∀ k, Fg (compRightIn af ag hag V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (compLeftIn af ag haf hag Fg V)) ys)
+        (EmitPred inp₀ (regsWork ((leftSub af ag).trans R) Wb
+          (Ff (compLeftIn af ag haf hag Fg V))) ys) tf)
+    (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (compRightIn af ag hag V)) ys)
+        (EmitPred inp₀ (regsWork ((rightSub af ag).trans R) Wb
+          (Fg (compRightIn af ag hag V))) ys) tg)
     (htagG : compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag 2) ≤ 1)
     (htagF : compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf 2) ≤ 1) :
     (compileCompTM af ag haf hag R Mf Mg).HoareTime
@@ -2615,6 +2681,10 @@ One level of the reconstruction, sixteen stages, as a Hoare specification. -/
 section PrecBodyProof
 variable {af ag : ℕ}
 
+/-- The vector `cg` is run on at this level. -/
+noncomputable def precChildIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin ag → ℕ :=
+  fun i => precBodyPre af ag haf hag V (precRightSub af ag i)
 set_option maxHeartbeats 1000000 in
 /-- **`precBodyTM` Hoare specification.** One level of the reconstruction.
 
@@ -2628,7 +2698,7 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hV : ∀ k, V k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgB : ∀ k, Fg (precChildIn af ag haf hag V) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
     (halive : V (precSelf af ag 10) ≤ 1)
     (hj1 : V (precSelf af ag 9) + 1 < B)
@@ -2636,9 +2706,12 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
     (hp2 : Nat.pair (V (precSelf af ag 6))
              (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (hMg : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (precChildIn af ag haf hag V)) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (Fg (precChildIn af ag haf hag V))) ys) tg) :
     (precBodyTM af ag haf hag R Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (precBodyVals af ag haf hag Fg V)) ys)
@@ -2816,12 +2889,12 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   have b10 : ∀ k, V10 k < B := by
     intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
   -- S11: run cg
-  have h11 := runChild (precRightSub af ag) R Mg Fg tg B w₀ hpark V10 b10 hMg
+  have h11 := runChildFixed (precRightSub af ag) R Mg Fg tg w₀ hpark V10 hMg
   set V11 := writeWindow (precRightSub af ag) V10
       (Fg (fun i => V10 ((precRightSub af ag) i))) with hV11
   have b11 : ∀ k, V11 k < B := by
     intro k; rw [hV11]
-    exact writeWindow_bounded _ _ _ B b10 (fun i => hFgB _ (fun t => b10 _) i) k
+    exact writeWindow_bounded _ _ _ B b10 (fun i => hFgB i) k
   have outR : ∀ (i : Fin 32), V11 (precSelf af ag i) = V10 (precSelf af ag i) := by
     intro i
     rw [hV11, runChild_frame _ _ _ (fun t => precRightSub_ne_self haf t i)]
@@ -3004,10 +3077,6 @@ lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + a
 
 /-! #### The level -/
 
-/-- The vector `cg` is run on at this level. -/
-noncomputable def precChildIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (V : Fin (32 + af + ag) → ℕ) : Fin ag → ℕ :=
-  fun i => precBodyPre af ag haf hag V (precRightSub af ag i)
 
 lemma precChildIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
     precChildIn af ag haf hag V ⟨0, by omega⟩
@@ -3242,7 +3311,7 @@ lemma precBodyVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
     (hp2 : Nat.pair (V (precSelf af ag 6))
       (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgB : ∀ k, Fg (precChildIn af ag haf hag V) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
     ∀ k, precBodyVals af ag haf hag Fg V k < B := by
   have bpre := precBodyPre_lt haf hag V B hB2 hV hj1 hf1 hp1 hp2
@@ -3255,7 +3324,7 @@ lemma precBodyVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
       (Fg (fun i => precBodyPre af ag haf hag V ((precRightSub af ag) i))) with hV11
   have b11 : ∀ k, V11 k < B := by
     intro k; rw [hV11]
-    exact writeWindow_bounded _ _ _ B bpre (fun i => hFgB _ (fun t => bpre _) i) k
+    exact writeWindow_bounded _ _ _ B bpre (fun i => hFgB i) k
   have r11_10 : V11 (precSelf af ag 10) ≤ 1 := by
     rw [hV11, precRightSub_win_selfW haf]; exact halive'
   have r11_tag : V11 (precRightLoc af ag hag 2) ≤ 1 := by
@@ -3378,13 +3447,16 @@ lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hw₀l : w₀ l = regTape m)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgB : ∀ i, i < m →
+      ∀ k, Fg (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i)) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
     (hOK : ∀ i, i < m → PrecBodyOK af ag B (precLoopVals af ag haf hag Fg V₀ i))
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+    (hMg : ∀ i, i < m → ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
       Mg.HoareTime
-        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
-        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i))) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (Fg (precChildIn af ag haf hag (precLoopVals af ag haf hag Fg V₀ i)))) ys) tg) :
     (forRegTM (precBodyTM af ag haf hag R Mg) l).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V₀) ys)
       (EmitPred inp₀ (regsWork R w₀ (precLoopVals af ag haf hag Fg V₀ m)) ys)
@@ -3396,8 +3468,8 @@ lemma precLoop_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   obtain ⟨hb, halive, hj1, hf1, hp1, hp2⟩ := hOK i hi
   rw [precLoopVals_succ]
   exact precBody_hoareTime haf hag R Mg Fg tg
-    (precLoopVals af ag haf hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb hFgB hFgTag
-    halive hj1 hf1 hp1 hp2 hMg
+    (precLoopVals af ag haf hag Fg V₀ i) B inp₀ w ys hinp₀ hw hB2 hb (hFgB i hi) hFgTag
+    halive hj1 hf1 hp1 hp2 (hMg i hi)
 
 end PrecLoop
 
@@ -3494,6 +3566,10 @@ noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
   let U11 := Function.update U10 (precSelf af ag 11) (U10 (precLeftLoc af ag haf 3))
   Function.update U11 (precSelf af ag 12) (U11 (precSelf af ag 8))
 
+/-- The vector `cf` is run on in the setup: the unpaired `a` and the base fuel. -/
+noncomputable def precBaseIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin af → ℕ :=
+  fun i => precSetupPre af ag haf hag V (precLeftSub af ag i)
 set_option maxHeartbeats 1000000 in
 /-- **`precSetupTM` Hoare specification.** -/
 lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
@@ -3504,10 +3580,13 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hV : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb (Ff u)) ys) tf) :
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
+          (precBaseIn af ag haf hag V)) ys)
+        (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
+          (Ff (precBaseIn af ag haf hag V))) ys) tf) :
     (precSetupTM af ag haf hag R l Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
@@ -3619,12 +3698,12 @@ lemma precSetup_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
   have b7 : ∀ k, V7 k < B := by
     intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs <;> exact b6 _
   -- S8: run cf
-  have h8 := runChild (precLeftSub af ag) R Mf Ff tf B w₀ hpark V7 b7 hMf
+  have h8 := runChildFixed (precLeftSub af ag) R Mf Ff tf w₀ hpark V7 hMf
   set V8 := writeWindow (precLeftSub af ag) V7
       (Ff (fun i => V7 (precLeftSub af ag i))) with hV8
   have b8 : ∀ k, V8 k < B := by
     intro k; rw [hV8]
-    exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB _ (fun t => b7 _) i) k
+    exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB i) k
   -- S9: j := 0
   have h9 := clearRegTM_hoareTime (R (precSelf af ag 9)) (V8 (precSelf af ag 9)) inp₀
       (regsWork R w₀ V8) ys hinp₀ (fun i _ => hpv V8 i) (regsWork_apply R w₀ V8 _)
@@ -3870,10 +3949,6 @@ lemma precLoopVals_frame (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 /-! #### The setup -/
 
-/-- The vector `cf` is run on in the setup: the unpaired `a` and the base fuel. -/
-noncomputable def precBaseIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (V : Fin (32 + af + ag) → ℕ) : Fin af → ℕ :=
-  fun i => precSetupPre af ag haf hag V (precLeftSub af ag i)
 
 lemma precSetupPre_a (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
     precSetupPre af ag haf hag V (precSelf af ag 6)
@@ -4060,18 +4135,30 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B)
+    (hFgB : ∀ i, i < precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
+      ∀ k, Fg (precChildIn af ag haf hag
+        (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i)) k < B)
     (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
     (hOK : ∀ i, i ≤ precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
       PrecBodyOK af ag B
         (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i))
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb (Ff u)) ys) tf)
-    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mg.HoareTime (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
+          (precBaseIn af ag haf hag V)) ys)
+        (EmitPred inp₀ (regsWork ((precLeftSub af ag).trans R) Wb
+          (Ff (precBaseIn af ag haf hag V))) ys) tf)
+    (hMg : ∀ i, i < precSetupVals af ag haf hag Ff V (precSelf af ag 7) →
+      ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
+      Mg.HoareTime
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (precChildIn af ag haf hag
+            (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i))) ys)
+        (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb
+          (Fg (precChildIn af ag haf hag
+            (precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V) i)))) ys)
+        tg) :
     (precTM af ag haf hag R l Mf Mg).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
@@ -4216,7 +4303,7 @@ lemma precSetupPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag
 lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
     (hV : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
+    (hFfB : ∀ k, Ff (precBaseIn af ag haf hag V) k < B) :
     ∀ k, precSetupVals af ag haf hag Ff V k < B := by
   have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
   have b7 := precSetupPre_lt haf hag V B hV
@@ -4226,7 +4313,7 @@ lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
       (Ff (fun i => precSetupPre af ag haf hag V (precLeftSub af ag i))) with hU8
   have b8 : ∀ k, U8 k < B := by
     intro k; rw [hU8]
-    exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB _ (fun t => b7 _) i) k
+    exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB i) k
   set U9 := Function.update U8 (precSelf af ag 9) 0 with hU9
   have b9 : ∀ k, U9 k < B := by
     intro k; rw [hU9]; simp only [Function.update_apply]; split_ifs
@@ -4550,6 +4637,10 @@ end RfindBody
 section RfindPhaseAProof
 variable {af : ℕ}
 
+/-- The vector the child is run on at this level. -/
+noncomputable def rfChildIn (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    Fin af → ℕ :=
+  fun i => rfPhaseAPre af haf V (rfSub af i)
 set_option maxHeartbeats 1000000 in
 /-- **`rfPhaseA` Hoare specification.** -/
 lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
@@ -4560,10 +4651,12 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hV : ∀ k, V k < B)
     (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B)
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (rfChildIn af haf V)) ys)
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (Ff (rfChildIn af haf V))) ys) tf) :
     (rfPhaseA af haf R Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (rfPhaseAVals af haf Ff V)) ys)
@@ -4670,7 +4763,7 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
       | (have := b5 (rfSelf af 8); omega)
       | exact b5 _
   -- S7: run cf
-  have h7 := runChild (rfSub af) R Mf Ff tf B w₀ hpark V6 b6 hMf
+  have h7 := runChildFixed (rfSub af) R Mf Ff tf w₀ hpark V6 hMf
   exact (seqEmit hinp₀ (hpv V1) h1 <|
     seqEmit hinp₀ (hpv V2) h2 <|
     seqEmit hinp₀ (hpv V3) h3 <|
@@ -5287,7 +5380,7 @@ lemma rfPhaseAPair_lt (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV 
 lemma rfPhaseAVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
+    (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B) :
     ∀ k, rfPhaseAVals af haf Ff V k < B := by
   have b3 := rfPhaseAPair_lt V B hB2 hV hp
   have hpre : ∀ k, rfPhaseAPre af haf V k < B := by
@@ -5307,7 +5400,7 @@ lemma rfPhaseAVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → �
       | exact b5 _
   intro k
   rw [rfPhaseAVals]
-  exact writeWindow_bounded _ _ _ B hpre (fun i => hFfB _ (fun t => hpre _) i) k
+  exact writeWindow_bounded _ _ _ B hpre (fun i => hFfB i) k
 
 end RfindPhaseARead
 
@@ -5384,11 +5477,13 @@ lemma rfBody_hoareTime (haf : 16 ≤ af)
     (hm1 : V (rfSelf af 7) + 1 < B)
     (hres : V (rfSelf af 11) + V (rfSelf af 7) < B)
     (hfound : V (rfSelf af 10) + 1 < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (hMf : ∀ Wb : Fin n → Tape, (∀ i, Parked (Wb i)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (rfChildIn af haf V)) ys)
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (Ff (rfChildIn af haf V))) ys) tf) :
     (rfBodyTM af haf R Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀ (regsWork R w₀ (rfBodyVals af haf Ff V)) ys)
@@ -5464,10 +5559,6 @@ lemma rfPhaseB2Vals_of_ne (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (i : Fin
 
 /-! #### The level -/
 
-/-- The vector the child is run on at this level. -/
-noncomputable def rfChildIn (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    Fin af → ℕ :=
-  fun i => rfPhaseAPre af haf V (rfSub af i)
 
 lemma rfChildIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfChildIn af haf V ⟨0, by omega⟩
@@ -5730,7 +5821,7 @@ lemma rfBodyVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (hm1 : V (rfSelf af 7) + 1 < B)
     (hres : V (rfSelf af 11) + V (rfSelf af 7) < B)
     (hfound : V (rfSelf af 10) + 1 < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1) :
     ∀ k, rfBodyVals af haf Ff V k < B := by
   have hAb := rfPhaseAVals_lt haf Ff V B hB2 hV hp hFfB
@@ -5997,12 +6088,15 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
     (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
     (hw₀l : w₀ l = regTape t)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfB : ∀ i, i < t → ∀ k, Ff (rfChildIn af haf (rfLoopVals af haf Ff V₀ i)) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
     (hOK : ∀ i, i < t → RfBodyOK af B haf (rfLoopVals af haf Ff V₀ i))
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (hMf : ∀ i, i < t → ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (rfChildIn af haf (rfLoopVals af haf Ff V₀ i))) ys)
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (Ff (rfChildIn af haf (rfLoopVals af haf Ff V₀ i)))) ys) tf) :
     (forRegTM (rfBodyTM af haf R Mf) l).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V₀) ys)
       (EmitPred inp₀ (regsWork R w₀ (rfLoopVals af haf Ff V₀ t)) ys)
@@ -6014,7 +6108,7 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
   obtain ⟨hb, hp, hs, hm1, hres, hfound⟩ := hOK i hi
   rw [rfLoopVals_succ]
   exact rfBody_hoareTime haf R Mf Ff tf (rfLoopVals af haf Ff V₀ i) B inp₀ w ys hinp₀ hw
-    hB2 hb hp hs hm1 hres hfound hFfB hFfTag hMf
+    hB2 hb hp hs hm1 hres hfound (hFfB i hi) hFfTag (hMf i hi)
 
 def rfindTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) (Mf : TM n) :
     TM n :=
@@ -6037,13 +6131,20 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i))
     (cl : ℕ) (hlc : w₀ l = regTape cl) (hclB : cl ≤ B)
     (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfB : ∀ i, i < rfSetupVals af haf V (rfSelf af 1) →
+      ∀ k, Ff (rfChildIn af haf
+        (rfLoopVals af haf Ff (rfSetupVals af haf V) i)) k < B)
     (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
     (hOK : ∀ i, i ≤ rfSetupVals af haf V (rfSelf af 1) →
       RfBodyOK af B haf (rfLoopVals af haf Ff (rfSetupVals af haf V) i))
-    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
-      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
-                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (hMf : ∀ i, i < rfSetupVals af haf V (rfSelf af 1) →
+      ∀ Wb : Fin n → Tape, (∀ j, Parked (Wb j)) →
+      Mf.HoareTime
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (rfChildIn af haf (rfLoopVals af haf Ff (rfSetupVals af haf V) i))) ys)
+        (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb
+          (Ff (rfChildIn af haf
+            (rfLoopVals af haf Ff (rfSetupVals af haf V) i)))) ys) tf) :
     (rfindTM af haf R l Mf).HoareTime
       (EmitPred inp₀ (regsWork R w₀ V) ys)
       (EmitPred inp₀
@@ -6216,26 +6317,7 @@ end RfindBridge
 section PairSemantics
 variable {af ag : ℕ}
 
-/-- The vector the left child sees: its own subtree, with the parent's input and fuel
-    written into its interface. -/
-noncomputable def pairLeftIn (af ag : ℕ) (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
-    Fin af → ℕ :=
-  fun j =>
-    Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
-      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
 
-/-- The vector the right child sees. -/
-noncomputable def pairRightIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin ag → ℕ :=
-  fun j =>
-    Function.update
-      (Function.update
-        (writeWindow (leftSub af ag)
-          (Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
-            (leftLoc af ag haf 1) (V (selfW af ag 1)))
-          (Ff (pairLeftIn af ag haf V)))
-        (rightLoc af ag hag 0) (V (selfW af ag 0)))
-      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
 
 lemma pairLeftIn_zero (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
     pairLeftIn af ag haf V ⟨0, by omega⟩ = V (selfW af ag 0) := by
@@ -6328,29 +6410,7 @@ when `cg` failed. -/
 section CompSemantics
 variable {af ag : ℕ}
 
-/-- The vector the second child sees: the parent's input and fuel. -/
-noncomputable def compRightIn (af ag : ℕ) (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
-    Fin ag → ℕ :=
-  fun j =>
-    Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
 
-/-- The vector the first child sees: `cg`'s value as its input, the parent's fuel. -/
-noncomputable def compLeftIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin af → ℕ :=
-  fun j =>
-    Function.update
-      (Function.update
-        (writeWindow (rightSub af ag)
-          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-            (rightLoc af ag hag 1) (V (selfW af ag 1)))
-          (Fg (compRightIn af ag hag V)))
-        (leftLoc af ag haf 0)
-        (writeWindow (rightSub af ag)
-          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
-            (rightLoc af ag hag 1) (V (selfW af ag 1)))
-          (Fg (compRightIn af ag hag V)) (rightLoc af ag hag 3)))
-      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
 
 lemma compRightIn_zero (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
     compRightIn af ag hag V ⟨0, by omega⟩ = V (selfW af ag 0) := by
