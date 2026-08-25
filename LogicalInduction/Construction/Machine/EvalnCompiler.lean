@@ -3164,6 +3164,70 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 end PrecCompose
 
+/-! ## `prec`: the setup keeps every register inside the bound -/
+
+section PrecSetupBound
+variable {af ag : ℕ}
+
+lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (hV : ∀ k, V k < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
+    ∀ k, precSetupVals af ag haf hag Ff V k < B := by
+  have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
+  intro k
+  simp only [precSetupVals]
+  set U1 := writeWindow (precUnpairW af ag) V
+      (unpairVals (fun j => V (precUnpairW af ag j)) (V (precSelf af ag 0))) with hU1
+  have b1 : ∀ k, U1 k < B := by
+    intro k; rw [hU1]
+    refine writeWindow_bounded _ _ _ B hV (fun j => ?_) k
+    have := unpairVals_bounded (fun j => V (precUnpairW af ag j)) (B - 1)
+      (fun i => by have := hV (precUnpairW af ag i); omega) (V (precSelf af ag 0))
+      (by have := hV (precSelf af ag 0); omega) j
+    omega
+  set U2 := Function.update U1 (precSelf af ag 6) (U1 (precSelf af ag 16)) with hU2
+  have b2 : ∀ k, U2 k < B := by
+    intro k; rw [hU2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  set U3 := Function.update U2 (precSelf af ag 7) (U2 (precSelf af ag 17)) with hU3
+  have b3 : ∀ k, U3 k < B := by
+    intro k; rw [hU3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+  set U4 := Function.update U3 (precSelf af ag 8) (U3 (precSelf af ag 1)) with hU4
+  have b4 : ∀ k, U4 k < B := by
+    intro k; rw [hU4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  set U5 := Function.update U4 (precSelf af ag 8)
+      (U4 (precSelf af ag 8) - U4 (precSelf af ag 7)) with hU5
+  have b5 : ∀ k, U5 k < B := by
+    intro k; rw [hU5]; simp only [Function.update_apply]; split_ifs
+    · have := b4 (precSelf af ag 8); omega
+    · exact b4 _
+  set U6 := Function.update U5 (precLeftLoc af ag haf 0) (U5 (precSelf af ag 6)) with hU6
+  have b6 : ∀ k, U6 k < B := by
+    intro k; rw [hU6]; simp only [Function.update_apply]; split_ifs <;> exact b5 _
+  set U7 := Function.update U6 (precLeftLoc af ag haf 1) (U6 (precSelf af ag 8)) with hU7
+  have b7 : ∀ k, U7 k < B := by
+    intro k; rw [hU7]; simp only [Function.update_apply]; split_ifs <;> exact b6 _
+  set U8 := writeWindow (precLeftSub af ag) U7 (Ff (fun i => U7 (precLeftSub af ag i)))
+    with hU8
+  have b8 : ∀ k, U8 k < B := by
+    intro k; rw [hU8]
+    exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB _ (fun t => b7 _) i) k
+  set U9 := Function.update U8 (precSelf af ag 9) 0 with hU9
+  have b9 : ∀ k, U9 k < B := by
+    intro k; rw [hU9]; simp only [Function.update_apply]; split_ifs
+    · exact hB0
+    · exact b8 _
+  set U10 := Function.update U9 (precSelf af ag 10) (U9 (precLeftLoc af ag haf 2)) with hU10
+  have b10 : ∀ k, U10 k < B := by
+    intro k; rw [hU10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
+  set U11 := Function.update U10 (precSelf af ag 11) (U10 (precLeftLoc af ag haf 3))
+    with hU11
+  have b11 : ∀ k, U11 k < B := by
+    intro k; rw [hU11]; simp only [Function.update_apply]; split_ifs <;> exact b10 _
+  simp only [Function.update_apply]; split_ifs <;> exact b11 _
+
+end PrecSetupBound
+
 /-! ## The compiler API
 
 `compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
