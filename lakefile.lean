@@ -99,7 +99,7 @@ lean_lib Scratchpad where
 -- (see `LogicalInduction/notes/complexitylib-adoption.md`).
 --
 -- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
--- nine commits, every one of them either a mechanical port or purely additive; no
+-- ten commits, every one of them either a mechanical port or purely additive; no
 -- mathematical statement, definition or proof of upstream's is altered:
 --
 --   * a 36-line port to this project's Lean/Mathlib pin (upstream is on 4.30), plus a
@@ -110,7 +110,8 @@ lean_lib Scratchpad where
 --   * `exists_desc_computesInTime_polynomial`, a finite description for every
 --     polynomial-time function;
 --   * generic unary-register arithmetic and control flow: `subIntoTM`, `flagNonzeroTM`,
---     `guardTM`, `ltFlagTM`, and `pairNextTM` with its correctness and runtime bounds.
+--     `guardTM`, `ltFlagTM`, and exact machine implementations of `Nat.pair` /
+--     `Nat.unpair` with correctness and polynomial runtime bounds.
 --
 -- Nothing carries a FAF-specific or `Nat.Partrec.Code` name; all of it is upstreamable and
 -- meant to be upstreamed. The fork retires into a plain upstream `require` once upstream
@@ -126,7 +127,7 @@ lean_lib Scratchpad where
 -- else in this repository may name a `Complexity.*` declaration — the same discipline
 -- `PFR/` ↔ `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "a0d193d38c180a3fdcd5b5c20ba67e092d6b0901"
+  "https://github.com/A-M-Berns/complexitylib" @ "bc796b035cdc9590e2496338aa21c1c6256fb13f"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"

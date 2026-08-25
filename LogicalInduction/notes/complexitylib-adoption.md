@@ -2907,3 +2907,164 @@ Worth fixing properly in the guard: swap *pressure* is `vm_stat`'s swapin/swapou
 not `vm.swapusage`'s high-water allocation. As written the check becomes a permanent
 false positive on any machine that has ever swapped hard, which is every machine that has
 built mathlib.
+
+---
+
+# Part XI — Stage 2A complete: `Nat.pair`, `Nat.unpair`, and one arithmetic cost (2026-08-24)
+
+_Eleventh pass. Scope: `pairTM`, `unpairTM`, common cost polynomial. No `Code` compiler._
+
+**The arithmetic substrate is finished.** Exact ordinary-TM implementations of Mathlib's
+`Nat.pair` and `Nat.unpair` over unary registers, with correctness against the exact
+Mathlib definitions, `HoareTime` specifications, normalized polynomial runtimes, and a
+single polynomial dominating every operation in the directory. Integer square root never
+appeared. `OutAcc` is untouched throughout.
+
+## XI.0 `pairTM` needs no branch at all
+
+The tranche's plan was a two-armed guarded computation: `out := b*b + a` under `[a < b]`,
+`out := a*a + a + b` otherwise. That is not necessary.
+
+`Nat.pair a b = if a < b then b*b + a else a*a + a + b`. Writing `m = max a b`, **both**
+arms are
+
+```
+m*m + a + (if a < b then 0 else b)
+```
+
+— when `a < b` we have `m = b` and the last term vanishes; otherwise `m = a`, so
+`m*m + a + b` is `a*a + a + b`. And over truncated arithmetic `max a b = a + (b - a)`,
+where `b - a` is *exactly what `ltFlagTM` already leaves in its scratch register*. So the
+maximum costs one `addIntoTM` on a value already computed, and the trailing conditional
+term is applied by **multiplying by the `0/1` flag** rather than by guarding an arm:
+
+```lean
+def pairTM (r : PairingRegs n) : TM n :=
+  seqTM (ltFlagTM (r 0) (r 1) (r 2) (r 3)) <|      -- gLT, and b - a in scratch
+  seqTM (copyIntoTM (r 0) (r 4)) <| seqTM (addIntoTM (r 2) (r 4)) <|   -- m := a + (b - a)
+  seqTM (copyIntoTM (r 4) (r 5)) <|                -- mulAddIntoTM needs distinct factors
+  seqTM (clearRegTM (r 6)) <| seqTM (mulAddIntoTM (r 4) (r 5) (r 6)) <|  -- out := m*m
+  seqTM (addIntoTM (r 0) (r 6)) <|                 -- out += a
+  seqTM (setOneTM (r 7)) <| seqTM (subIntoTM (r 3) (r 7))                -- gGE := 1 - gLT
+        (mulAddIntoTM (r 7) (r 1) (r 6))           -- out += gGE * b
+```
+
+Ten straight-line stages, no guarded arm, no `ifTM`, no case split in the machine at all.
+Correctness (`pair_eq_max`) is against the exact Mathlib definition, not via `Nat.unpair`.
+
+Runtime is `500 * (B + 1) ^ 4`. The degree is **quartic, not cubic** — I had estimated
+cubic and was wrong. `mulAddIntoTM` is a loop of `addIntoTM`s, each itself linear in the
+accumulated value, so squaring an `O(B)`-length unary register costs `O(B⁴)`. This is
+inherent to the unary representation and nothing here tries to fix it.
+
+## XI.1 `unpairTM` and the extensional inverse
+
+```lean
+def unpairTM (r : PairRegs n) (ctr : Fin n) : TM n :=
+  seqTM (clearRegTM (r 0)) (seqTM (clearRegTM (r 1)) (forRegTM (pairNextTM r) ctr))
+```
+
+Correctness factors exactly as designed — machine iteration, then pure identity:
+
+```lean
+lemma pair_pairStepIter    : Nat.pair (pairStep^[j] (0,0)).1 (pairStep^[j] (0,0)).2 = j
+lemma unpair_eq_pairStepIter : Nat.unpair j = pairStep^[j] (0, 0)
+```
+
+The second is one line from the first plus `Nat.unpair_pair`. **The machine never evaluates
+`Nat.unpair`'s square-root definition; it computes a function equal to it.** That is the
+whole reason sqrt is absent, and it is now discharged rather than promised.
+
+Two things fell out better than planned:
+
+* **The input is preserved for free.** `forRegTM` uses the *head position* on its fuel
+  register as the counter and never writes that register's cells. So the counter still
+  holds `n` when the loop exits, and `Code.left` / `Code.right` will find it there.
+* **The runtime invariant is Mathlib's own.** I expected to need FAF's `pairIter_le`.
+  Composing `unpair_eq_pairStepIter` with `Nat.unpair_left_le` / `unpair_right_le` gives
+  `a_j, b_j ≤ j` directly, so no FAF-side lemma is used and no new pure fact was needed.
+
+One adapter was required, exactly where §9 predicted an interface mismatch might appear:
+
+```lean
+lemma regsWork_update_of_ne (hi : ∀ k, r k ≠ i) :
+    regsWork r (Function.update w₀ i t) v = Function.update (regsWork r w₀ v) i t
+```
+
+`forRegTM` hands the body a state in which the counter carries the loop cursor rather than
+a register tape; this frames a register-indexed state past that update. Twelve lines, and
+it is the *only* glue between `pairNextTM_hoareTime` and `forRegTM_hoareTime`.
+
+Runtime `500 * (B + 1) ^ 3` — cubic: `n` iterations of a quadratic successor.
+
+## XI.2 One polynomial for the layer
+
+```lean
+def evalnArithmeticCost (B : ℕ) : ℕ := 500 * (B + 1) ^ 4
+```
+
+dominates `incRegTM`, `decRegTM`, `clearRegTM`, `setOneTM`, `addIntoTM`, `subIntoTM`,
+`copyIntoTM`, `mulAddIntoTM`, `flagNonzeroTM`, `ltFlagTM`, `pairNextTM`, `pairTM` and
+`unpairTM` on values bounded by `B`. Primitives get numeric domination lemmas (the compiler
+composes those); the three capstones get `HoareTime` versions at the common bound.
+
+This is the shape §15's global argument wants:
+
+```
+concrete runtime ≤ codeEvalSteps c fuel * evalnArithmeticCost (codeEvalBound c fuel input) + overhead
+```
+
+with both factors polynomial for fixed `c`.
+
+## XI.3 `regsWork` scaled, and was generalized
+
+`regsWork` continued to work exactly as Part X measured — per-stage cost stayed around a
+dozen lines across `pairTM`'s ten stages. It was generalized from `Fin 9` to arbitrary
+arity (`Regs m n`) so `pairTM` (8 registers) and `unpairTM` (9 plus an external counter)
+share it; every existing lemma generalized verbatim.
+
+## XI.4 Failure modes recorded
+
+**`omega` cannot relate `v k` to `v 0` with symbolic `k`.** `guardVals_le` failed on the
+fall-through branch because omega saw `v k` as an atom unrelated to `v 0`, `v 1` even
+though it had derived `k ≤ 1`. `fin_cases k` makes the indices literal and the goals close
+immediately. The Part X lesson generalizes: *when omega reports a counterexample whose atom
+list contains a function application you expected to be resolved, the index is symbolic.*
+
+**Bound expressions must match the combinator's output exactly, argument for argument.**
+`addIntoTM`'s bound is `a * ((2 * (b + a) + 4) + 2) + (a + 2)` where `b` is the
+*destination's current value*; I wrote the S7 bound with `b = m*m` instead of `m*m + a` and
+got a type mismatch several stages later. Same hazard as Part IX's, in a new dress.
+
+## XI.5 Status
+
+```
+machine arithmetic
+  inc / dec / clear / loop / add / copy / mulAdd  ✓ upstream
+  subIntoTM, setOneTM, flagNonzeroTM              ✓ Parts VII, IX
+  guardTM, ltFlagTM, pairNextTM                   ✓ Part X
+  pairTM, unpairTM                                ✓ this pass
+  evalnArithmeticCost                             ✓ this pass
+  ARITHMETIC SUBSTRATE COMPLETE
+
+Code compiler (left/right/pair/comp/prec/rfind')  open
+PolyFueled / EfficientlyComputable → FP           open
+```
+
+| item | estimate |
+| --- | ---: |
+| `left` / `right` / `pair` / `zero` / `succ` | 250–400 |
+| `comp` | 150–300 |
+| `prec` (bounded recursion over a register) | 300–500 |
+| `rfind'` (the unbounded search, clocked) | 300–500 |
+| assembling `evaln` + the global time bound | 300–500 |
+| `PolyFueled` / `EfficientlyComputable → FP` | 200–400 |
+| **Stage-2 remaining** | **1.5–2.6k over 3–5 sessions** |
+
+Essentially flat against Part X's 1.4–2.6k, and that is the honest reading: this pass spent
+its budget finishing arithmetic rather than reducing what follows. What did change is that
+*none* of the remaining work is arithmetic — the next tranche is purely about
+`Nat.Partrec.Code`.
+
+No `Code` constructor probe was attempted: the arithmetic capstones and the cost theorem
+consumed the pass, and §16 makes the probe explicitly optional.
