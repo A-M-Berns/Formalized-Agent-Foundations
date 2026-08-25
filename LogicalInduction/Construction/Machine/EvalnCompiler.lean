@@ -983,6 +983,136 @@ lemma pairVals_lt (v : Fin 8 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k
 
 end PhaseBProof
 
+/-! ## Reading a binary node's register vector
+
+The same mechanism the `rfind'` proofs use: reading one named register out of an update to
+another is a *numeric* index test, so `simp only` plus `norm_num` evaluates a whole stage
+chain instead of a hand-ordered `rw` chain that breaks on any change of unfolding order. -/
+
+section BinaryRead
+variable {af ag : ℕ}
+
+lemma selfW_update_apply (i j : Fin 16) (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (selfW af ag j) x (selfW af ag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (selfW af ag i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (selfW_ne_selfW i j h)]
+
+lemma leftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (leftLoc af ag haf j) x (leftLoc af ag haf i)
+      = if (i : ℕ) = (j : ℕ) then x else X (leftLoc af ag haf i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [leftLoc, shiftEmb_val] using this))]
+
+lemma rightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (rightLoc af ag hag j) x (rightLoc af ag hag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (rightLoc af ag hag i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [rightLoc, shiftEmb_val] using this))]
+
+@[simp] lemma selfW_leftLoc_upd (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (leftLoc af ag haf j) x (selfW af ag i) = X (selfW af ag i) :=
+  Function.update_of_ne (selfW_ne_leftLoc haf i j) x X
+
+@[simp] lemma selfW_rightLoc_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (rightLoc af ag hag j) x (selfW af ag i) = X (selfW af ag i) :=
+  Function.update_of_ne (selfW_ne_rightLoc hag haf i j) x X
+
+@[simp] lemma leftLoc_selfW_upd (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (selfW af ag j) x (leftLoc af ag haf i) = X (leftLoc af ag haf i) :=
+  Function.update_of_ne (Ne.symm (selfW_ne_leftLoc haf j i)) x X
+
+@[simp] lemma rightLoc_selfW_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (selfW af ag j) x (rightLoc af ag hag i)
+      = X (rightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (selfW_ne_rightLoc hag haf j i)) x X
+
+@[simp] lemma leftLoc_rightLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (rightLoc af ag hag j) x (leftLoc af ag haf i)
+      = X (leftLoc af ag haf i) :=
+  Function.update_of_ne (leftLoc_ne_rightLoc haf hag i j) x X
+
+@[simp] lemma rightLoc_leftLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (leftLoc af ag haf j) x (rightLoc af ag hag i)
+      = X (rightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (leftLoc_ne_rightLoc haf hag j i)) x X
+
+/-! ### The two child subtrees, as windows -/
+
+lemma leftSub_win_selfW (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin af → ℕ) :
+    writeWindow (leftSub af ag) X u (selfW af ag i) = X (selfW af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => leftSub_ne_selfW t i)
+
+lemma leftSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin af → ℕ) :
+    writeWindow (leftSub af ag) X u (leftLoc af ag haf j)
+      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [leftLoc_eq haf, writeWindow_apply]
+
+lemma leftSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin af → ℕ) :
+    writeWindow (leftSub af ag) X u (rightLoc af ag hag j) = X (rightLoc af ag hag j) :=
+  writeWindow_of_ne _ _ _ (fun t => leftSub_ne_rightLoc hag t j)
+
+lemma rightSub_win_selfW (haf : 16 ≤ af) (i : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin ag → ℕ) :
+    writeWindow (rightSub af ag) X u (selfW af ag i) = X (selfW af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => rightSub_ne_selfW haf t i)
+
+lemma rightSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin ag → ℕ) :
+    writeWindow (rightSub af ag) X u (rightLoc af ag hag j)
+      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [rightLoc_eq hag, writeWindow_apply]
+
+lemma rightSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin ag → ℕ) :
+    writeWindow (rightSub af ag) X u (leftLoc af ag haf j) = X (leftLoc af ag haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => rightSub_ne_leftLoc haf t j)
+
+/-! ### The pairing window inside the node's own block -/
+
+lemma pairWin_selfW (i : Fin 16) (h : ∀ t : Fin 8, 6 + (t : ℕ) ≠ (i : ℕ))
+    (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag i) = X (selfW af ag i) := by
+  rw [pairAmb_eq]
+  exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_selfW t i (h t))
+
+lemma pairWin_twelve (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag 12) = u 6 := by
+  rw [← pairTrans_six, writeWindow_apply]
+
+lemma pairWin_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag) → ℕ)
+    (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (selfW af ag)) X u (leftLoc af ag haf j)
+      = X (leftLoc af ag haf j) := by
+  rw [pairAmb_eq]
+  exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_leftLoc haf t j)
+
+lemma pairWin_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (selfW af ag)) X u (rightLoc af ag hag j)
+      = X (rightLoc af ag hag j) := by
+  rw [pairAmb_eq]
+  exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_rightLoc hag haf t j)
+
+end BinaryRead
+
 section PhaseBMain
 variable {af ag : ℕ}
 
