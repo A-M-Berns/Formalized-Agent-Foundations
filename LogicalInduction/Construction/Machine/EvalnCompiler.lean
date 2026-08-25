@@ -3412,23 +3412,27 @@ multiplicatively, so there is no branch and the loop has fixed length. -/
 section RfindBody
 variable {af : ℕ}
 
-def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
+def rfPhaseA (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
   seqTM (copyIntoTM (R (rfSelf af 6)) (R (rfSelf af 20))) <|
   seqTM (copyIntoTM (R (rfSelf af 7)) (R (rfSelf af 21))) <|
   seqTM (pairTM ((rfPairW af).trans R)) <|
   seqTM (copyIntoTM (R (rfSelf af 26)) (R (rfLoc af haf 0))) <|
   seqTM (copyIntoTM (R (rfSelf af 8)) (R (rfLoc af haf 1))) <|
   seqTM (ltFlagTM (R (rfSelf af 26)) (R (rfSelf af 8)) (R (rfSelf af 5))
-          (R (rfSelf af 13))) <|
-  seqTM Mf <|
+          (R (rfSelf af 13)))
+        Mf
+
+def rfPhaseB1 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (clearRegTM (R (rfSelf af 17))) <|
   seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 13)) (R (rfSelf af 17))) <|
   seqTM (clearRegTM (R (rfSelf af 9))) <|
   seqTM (mulAddIntoTM (R (rfSelf af 17)) (R (rfLoc af haf 2)) (R (rfSelf af 9))) <|
   seqTM (ltFlagTM (R (rfLoc af haf 3)) (R (rfSelf af 12)) (R (rfSelf af 5))
           (R (rfSelf af 14))) <|
-  seqTM (clearRegTM (R (rfSelf af 15))) <|
-  seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 14)) (R (rfSelf af 15))) <|
+  seqTM (clearRegTM (R (rfSelf af 15)))
+        (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 14)) (R (rfSelf af 15)))
+
+def rfPhaseB2 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (mulAddIntoTM (R (rfSelf af 15)) (R (rfSelf af 7)) (R (rfSelf af 11))) <|
   seqTM (addIntoTM (R (rfSelf af 15)) (R (rfSelf af 10))) <|
   seqTM (copyIntoTM (R (rfSelf af 12)) (R (rfSelf af 16))) <|
@@ -3439,8 +3443,15 @@ def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : T
   seqTM (incRegTM (R (rfSelf af 7)))
         (decRegTM (R (rfSelf af 8)))
 
-/-- The ambient register vector one level produces. -/
-noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
+def rfPhaseB (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
+  seqTM (rfPhaseB1 af haf R) (rfPhaseB2 af haf R)
+
+def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
+  seqTM (rfPhaseA af haf R Mf) (rfPhaseB af haf R)
+
+/-- What phase A leaves: the level's input pair, the child's registers set and run, and
+    the level guard. -/
+noncomputable def rfPhaseAVals (af : ℕ) (haf : 16 ≤ af)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
   let V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6))
   let V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7))
@@ -3450,10 +3461,14 @@ noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
   let V6 := Function.update
               (Function.update V5 (rfSelf af 5) (V5 (rfSelf af 8) - V5 (rfSelf af 26)))
               (rfSelf af 13) (if V5 (rfSelf af 26) < V5 (rfSelf af 8) then 1 else 0)
-  let V7 := writeWindow (rfSub af) V6 (Ff (fun i => V6 (rfSub af i)))
-  let V8 := Function.update V7 (rfSelf af 17) 0
-  let V9 := Function.update V8 (rfSelf af 17)
-              (0 + V8 (rfSelf af 9) * V8 (rfSelf af 13))
+  writeWindow (rfSub af) V6 (Ff (fun i => V6 (rfSub af i)))
+
+/-- What phase B leaves: the guard, the child's tag and the zero test folded into
+    `searching`, `found` and `result`, and the level advanced. -/
+noncomputable def rfPhaseB1Vals (af : ℕ) (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    Fin (32 + af) → ℕ :=
+  let V8 := Function.update W (rfSelf af 17) 0
+  let V9 := Function.update V8 (rfSelf af 17) (0 + V8 (rfSelf af 9) * V8 (rfSelf af 13))
   let V10 := Function.update V9 (rfSelf af 9) 0
   let V11 := Function.update V10 (rfSelf af 9)
                (0 + V10 (rfSelf af 17) * V10 (rfLoc af haf 2))
@@ -3463,8 +3478,12 @@ noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
                (rfSelf af 14)
                (if V11 (rfLoc af haf 3) < V11 (rfSelf af 12) then 1 else 0)
   let V13 := Function.update V12 (rfSelf af 15) 0
-  let V14 := Function.update V13 (rfSelf af 15)
-               (0 + V13 (rfSelf af 9) * V13 (rfSelf af 14))
+  Function.update V13 (rfSelf af 15) (0 + V13 (rfSelf af 9) * V13 (rfSelf af 14))
+
+/-- What phase B2 leaves: the hit folded into `found` and `result`, `searching` narrowed
+    by the zero test, and the level advanced. -/
+noncomputable def rfPhaseB2Vals (af : ℕ) (haf : 16 ≤ af) (V14 : Fin (32 + af) → ℕ) :
+    Fin (32 + af) → ℕ :=
   let V15 := Function.update V14 (rfSelf af 11)
                (V14 (rfSelf af 11) + V14 (rfSelf af 15) * V14 (rfSelf af 7))
   let V16 := Function.update V15 (rfSelf af 10)
@@ -3478,6 +3497,15 @@ noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
   let V21 := Function.update V20 (rfSelf af 9) (V20 (rfSelf af 17))
   let V22 := Function.update V21 (rfSelf af 7) (V21 (rfSelf af 7) + 1)
   Function.update V22 (rfSelf af 8) (V22 (rfSelf af 8) - 1)
+
+noncomputable def rfPhaseBVals (af : ℕ) (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    Fin (32 + af) → ℕ :=
+  rfPhaseB2Vals af haf (rfPhaseB1Vals af haf W)
+
+/-- The ambient register vector one level produces. -/
+noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  rfPhaseBVals af haf (rfPhaseAVals af haf Ff V)
 
 /-- The loop state after `t` levels. -/
 noncomputable def rfLoopVals (af : ℕ) (haf : 16 ≤ af)
@@ -3494,6 +3522,567 @@ lemma rfLoopVals_succ (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → �
   rw [rfLoopVals, rfLoopVals, Function.iterate_succ_apply']
 
 end RfindBody
+
+section RfindPhaseAProof
+variable {af : ℕ}
+
+set_option maxHeartbeats 1000000 in
+/-- **`rfPhaseA` Hoare specification.** -/
+lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (Mf : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf : ℕ)
+    (V : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (rfPhaseA af haf R Mf).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfPhaseAVals af haf Ff V)) ys)
+      (6 * evalnArithmeticCost B + tf + 6) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
+  -- S1: pair slot 0 := a
+  have h1 := copyIntoTM_hoareTime (R (rfSelf af 6)) (R (rfSelf af 20))
+      (Regs.ne R (rfSelf_ne_self 6 20 (by decide)))
+      (V (rfSelf af 6)) (V (rfSelf af 20))
+      inp₀ (regsWork R w₀ V) ys hinp₀ (fun i _ => hpv V i)
+      (regsWork_apply R w₀ V _) (regsWork_apply R w₀ V _)
+  rw [regsWork_update] at h1
+  replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
+  set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+  -- S2: pair slot 1 := m
+  have h2 := copyIntoTM_hoareTime (R (rfSelf af 7)) (R (rfSelf af 21))
+      (Regs.ne R (rfSelf_ne_self 7 21 (by decide)))
+      (V1 (rfSelf af 7)) (V1 (rfSelf af 21))
+      inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
+      (regsWork_apply R w₀ V1 _) (regsWork_apply R w₀ V1 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
+  set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
+    rw [rfPairW_zero, hV2, Function.update_of_ne (rfSelf_ne_self 20 21 (by decide)),
+      hV1, Function.update_self]
+  have hw1 : V2 ((rfPairW af) 1) = V (rfSelf af 7) := by
+    rw [rfPairW_one, hV2, Function.update_self, hV1,
+      Function.update_of_ne (rfSelf_ne_self 7 20 (by decide))]
+  -- S3: pair a m
+  have h3 := runChild (rfPairW af) R (pairTM ((rfPairW af).trans R)) pairVals
+      (evalnArithmeticCost B) B w₀ hpark V2 b2
+      (fun Wb u hpk hu => pairTM_hoareTime_arith _ u B inp₀ Wb ys hinp₀ hpk
+        (fun k => Nat.le_of_lt (hu k)))
+  set V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i))) with hV3
+  have b3 : ∀ k, V3 k < B := by
+    intro k; rw [hV3]
+    refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
+    rw [hw0, hw1]; exact hp
+  have out2 : ∀ (i : Fin 32), (∀ t : Fin 8, 20 + (t : ℕ) ≠ (i : ℕ)) →
+      V3 (rfSelf af i) = V (rfSelf af i) := by
+    intro i hi
+    have h20 : (i : ℕ) ≠ 20 := by have := hi 0; simp at this ⊢; omega
+    have h21 : (i : ℕ) ≠ 21 := by have := hi 1; simp at this ⊢; omega
+    rw [hV3, runChild_frame _ _ _ (fun t => rfPairW_ne_self t i (hi t)),
+      hV2, Function.update_of_ne (rfSelf_ne_self i 21 h21),
+      hV1, Function.update_of_ne (rfSelf_ne_self i 20 h20)]
+  have r3_26 : V3 (rfSelf af 26) = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
+    rw [← rfPairW_six, hV3, writeWindow_apply]
+    simp only [pairVals]
+    simp [hw0, hw1]
+  -- S4: cf.input := that pair
+  have h4 := copyIntoTM_hoareTime (R (rfSelf af 26)) (R (rfLoc af haf 0))
+      (Regs.ne R (rfSelf_ne_loc haf 26 0))
+      (V3 (rfSelf af 26)) (V3 (rfLoc af haf 0))
+      inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
+      (regsWork_apply R w₀ V3 _) (regsWork_apply R w₀ V3 _)
+  rw [regsWork_update] at h4
+  replace h4 := h4.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
+  set V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  -- S5: cf.fuel := curFuel
+  have h5 := copyIntoTM_hoareTime (R (rfSelf af 8)) (R (rfLoc af haf 1))
+      (Regs.ne R (rfSelf_ne_loc haf 8 1))
+      (V4 (rfSelf af 8)) (V4 (rfLoc af haf 1))
+      inp₀ (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
+      (regsWork_apply R w₀ V4 _) (regsWork_apply R w₀ V4 _)
+  rw [regsWork_update] at h5
+  replace h5 := h5.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b4 _)) (Nat.le_of_lt (b4 _)))
+  set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+  -- S6: the level guard
+  have h6 := ltFlagTM_hoareTime (R (rfSelf af 26)) (R (rfSelf af 8)) (R (rfSelf af 5))
+      (R (rfSelf af 13))
+      (Regs.ne R (rfSelf_ne_self 26 5 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 8 5 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 5 13 (by decide)))
+      (V5 (rfSelf af 26)) (V5 (rfSelf af 8)) (V5 (rfSelf af 5)) (V5 (rfSelf af 13))
+      inp₀ (regsWork R w₀ V5) ys hinp₀ (fun i => hpv V5 i)
+      (regsWork_apply R w₀ V5 _) (regsWork_apply R w₀ V5 _)
+      (regsWork_apply R w₀ V5 _) (regsWork_apply R w₀ V5 _)
+  rw [regsWork_update, regsWork_update] at h6
+  replace h6 := h6.mono_bound
+    (ltFlagTime_le_arith _ _ _ _ B (Nat.le_of_lt (b5 _)) (Nat.le_of_lt (b5 _))
+      (Nat.le_of_lt (b5 _)) (Nat.le_of_lt (b5 _)))
+  set V6 := Function.update
+      (Function.update V5 (rfSelf af 5) (V5 (rfSelf af 8) - V5 (rfSelf af 26)))
+      (rfSelf af 13) (if V5 (rfSelf af 26) < V5 (rfSelf af 8) then 1 else 0) with hV6
+  have b6 : ∀ k, V6 k < B := by
+    intro k; rw [hV6]; simp only [Function.update_apply]
+    split_ifs <;> first
+      | omega
+      | (have := b5 (rfSelf af 8); omega)
+      | exact b5 _
+  -- S7: run cf
+  have h7 := runChild (rfSub af) R Mf Ff tf B w₀ hpark V6 b6 hMf
+  exact (seqEmit hinp₀ (hpv V1) h1 <|
+    seqEmit hinp₀ (hpv V2) h2 <|
+    seqEmit hinp₀ (hpv V3) h3 <|
+    seqEmit hinp₀ (hpv V4) h4 <|
+    seqEmit hinp₀ (hpv V5) h5 <|
+    seqEmit hinp₀ (hpv V6) h6 h7).mono_bound (by omega)
+
+end RfindPhaseAProof
+
+
+
+section RfindPhaseBProof
+variable {af : ℕ}
+
+/-- Reading a node register out of an update to a node register: the index comparison is
+    numeric, so `decide` discharges it and a `simp only` evaluates any stage chain. -/
+lemma rfSelf_update_apply (i j : Fin 32) (X : Fin (32 + af) → ℕ) (x : ℕ) :
+    Function.update X (rfSelf af j) x (rfSelf af i)
+      = if (i : ℕ) = (j : ℕ) then x else X (rfSelf af i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (rfSelf_ne_self i j h)]
+
+/-- A child register never collides with a node register. -/
+lemma rfLoc_update_apply (haf : 16 ≤ af) (i : Fin 16) (j : Fin 32)
+    (X : Fin (32 + af) → ℕ) (x : ℕ) :
+    Function.update X (rfSelf af j) x (rfLoc af haf i) = X (rfLoc af haf i) :=
+  Function.update_of_ne (Ne.symm (rfSelf_ne_loc haf j i)) x X
+
+/-- Phase B1's `searching`: the incoming flag, the level guard and the child's tag. -/
+lemma rfPhaseB1Vals_search (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    rfPhaseB1Vals af haf W (rfSelf af 9)
+      = W (rfSelf af 9) * W (rfSelf af 13) * W (rfLoc af haf 2) := by
+  simp only [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf]
+  norm_num
+
+/-- Phase B1's `hit`: that, times the zero test. -/
+lemma rfPhaseB1Vals_hit (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    rfPhaseB1Vals af haf W (rfSelf af 15)
+      = W (rfSelf af 9) * W (rfSelf af 13) * W (rfLoc af haf 2)
+          * (if W (rfLoc af haf 3) < W (rfSelf af 12) then 1 else 0) := by
+  simp only [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf]
+  norm_num
+
+/-- Phase B1's comparison scratch. -/
+lemma rfPhaseB1Vals_scratch (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    rfPhaseB1Vals af haf W (rfSelf af 5) = W (rfSelf af 12) - W (rfLoc af haf 3) := by
+  simp only [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf]
+  norm_num
+
+/-- Phase B1's zero test. -/
+lemma rfPhaseB1Vals_zero (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    rfPhaseB1Vals af haf W (rfSelf af 14)
+      = if W (rfLoc af haf 3) < W (rfSelf af 12) then 1 else 0 := by
+  simp only [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf]
+  norm_num
+
+/-- Phase B1's temp: the incoming flag times the level guard. -/
+lemma rfPhaseB1Vals_temp (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
+    rfPhaseB1Vals af haf W (rfSelf af 17) = W (rfSelf af 9) * W (rfSelf af 13) := by
+  simp only [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf]
+  norm_num
+
+/-- Phase B1 writes only registers `5`, `9`, `14`, `15` and `17` — of any register at
+    all, not merely of the node's own. -/
+lemma rfPhaseB1Vals_frame (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) {k : Fin (32 + af)}
+    (h5 : k ≠ rfSelf af 5) (h9 : k ≠ rfSelf af 9) (h14 : k ≠ rfSelf af 14)
+    (h15 : k ≠ rfSelf af 15) (h17 : k ≠ rfSelf af 17) :
+    rfPhaseB1Vals af haf W k = W k := by
+  simp only [rfPhaseB1Vals, Function.update_of_ne h15, Function.update_of_ne h14,
+    Function.update_of_ne h5, Function.update_of_ne h9, Function.update_of_ne h17]
+
+/-- Phase B1 keeps every register inside the bound. -/
+lemma rfPhaseB1Vals_lt (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B)
+    (hW : ∀ k, W k < B) (hsearch : W (rfSelf af 9) ≤ 1) (hgflag : W (rfSelf af 13) ≤ 1)
+    (htag : W (rfLoc af haf 2) ≤ 1) :
+    ∀ k, rfPhaseB1Vals af haf W k < B := by
+  have hs : rfPhaseB1Vals af haf W (rfSelf af 9) ≤ 1 := by
+    rw [rfPhaseB1Vals_search]
+    calc W (rfSelf af 9) * W (rfSelf af 13) * W (rfLoc af haf 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul (by simpa using Nat.mul_le_mul hsearch hgflag) htag
+      _ = 1 := by norm_num
+  have hh : rfPhaseB1Vals af haf W (rfSelf af 15) ≤ 1 := by
+    rw [rfPhaseB1Vals_hit, ← rfPhaseB1Vals_search haf W]
+    calc rfPhaseB1Vals af haf W (rfSelf af 9)
+            * (if W (rfLoc af haf 3) < W (rfSelf af 12) then 1 else 0)
+        ≤ 1 * 1 := Nat.mul_le_mul hs (by split_ifs <;> omega)
+      _ = 1 := by norm_num
+  intro k
+  by_cases h5 : k = rfSelf af 5
+  · subst h5; rw [rfPhaseB1Vals_scratch]; have := hW (rfSelf af 12); omega
+  by_cases h9 : k = rfSelf af 9
+  · subst h9; omega
+  by_cases h14 : k = rfSelf af 14
+  · subst h14; rw [rfPhaseB1Vals_zero]; split_ifs <;> omega
+  by_cases h15 : k = rfSelf af 15
+  · subst h15; omega
+  by_cases h17 : k = rfSelf af 17
+  · subst h17
+    rw [rfPhaseB1Vals_temp]
+    calc W (rfSelf af 9) * W (rfSelf af 13) ≤ 1 * 1 := Nat.mul_le_mul hsearch hgflag
+      _ < B := by omega
+  · rw [rfPhaseB1Vals_frame haf W h5 h9 h14 h15 h17]; exact hW k
+
+/-- Phase B1 touches only registers `5`, `9`, `14`, `15` and `17`. -/
+lemma rfPhaseB1Vals_of_ne (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin 32)
+    (h5 : (i : ℕ) ≠ 5) (h9 : (i : ℕ) ≠ 9) (h14 : (i : ℕ) ≠ 14) (h15 : (i : ℕ) ≠ 15)
+    (h17 : (i : ℕ) ≠ 17) :
+    rfPhaseB1Vals af haf W (rfSelf af i) = W (rfSelf af i) := by
+  simp [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf, h5, h9, h14, h15, h17]
+
+/-- Phase B1 leaves the child's registers alone. -/
+lemma rfPhaseB1Vals_loc (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin 16) :
+    rfPhaseB1Vals af haf W (rfLoc af haf i) = W (rfLoc af haf i) := by
+  simp only [rfPhaseB1Vals, rfLoc_update_apply haf]
+
+set_option maxHeartbeats 1000000 in
+/-- **`rfPhaseB1` Hoare specification.** The guard, the child's tag and the zero test are
+    reduced to two flags: `searching` and `hit`. -/
+lemma rfPhaseB1_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (W : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hW : ∀ k, W k < B)
+    (hsearch : W (rfSelf af 9) ≤ 1)
+    (hgflag : W (rfSelf af 13) ≤ 1)
+    (htag : W (rfLoc af haf 2) ≤ 1) :
+    (rfPhaseB1 af haf R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ W) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfPhaseB1Vals af haf W)) ys)
+      (7 * evalnArithmeticCost B + 6) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, W k ≤ B := fun k => Nat.le_of_lt (hW k)
+  have hB0 : 0 < B := by omega
+  -- S1: clear the temp
+  have h8 := clearRegTM_hoareTime (R (rfSelf af 17)) (W (rfSelf af 17)) inp₀
+      (regsWork R w₀ W) ys hinp₀ (fun i _ => hpv W i) (regsWork_apply R w₀ W _)
+  rw [regsWork_update] at h8
+  replace h8 := h8.mono_bound (regOpTime_le_arith _ B (hle _))
+  set V8 := Function.update W (rfSelf af 17) 0 with hV8
+  have b8 : ∀ k, V8 k < B := by
+    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact hW _
+  have r8_9 : V8 (rfSelf af 9) = W (rfSelf af 9) := by
+    rw [hV8, rfSelf_update_apply]; norm_num
+  have r8_13 : V8 (rfSelf af 13) = W (rfSelf af 13) := by
+    rw [hV8, rfSelf_update_apply]; norm_num
+  -- S2: temp := searching * guard
+  have h9 := mulAddIntoTM_hoareTime (R (rfSelf af 9)) (R (rfSelf af 13))
+      (R (rfSelf af 17))
+      (Regs.ne R (rfSelf_ne_self 9 13 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 9 17 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 13 17 (by decide)))
+      (V8 (rfSelf af 9)) (V8 (rfSelf af 13)) 0
+      inp₀ (regsWork R w₀ V8) ys hinp₀ (fun i _ => hpv V8 i)
+      (regsWork_apply R w₀ V8 _) (regsWork_apply R w₀ V8 _)
+      (by rw [regsWork_apply, hV8, Function.update_self])
+  rw [regsWork_update] at h9
+  replace h9 := h9.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b8 _)) (Nat.le_of_lt (b8 _)) (by omega))
+  set V9 := Function.update V8 (rfSelf af 17)
+      (0 + V8 (rfSelf af 9) * V8 (rfSelf af 13)) with hV9
+  have m9 : V9 (rfSelf af 17) ≤ 1 := by
+    rw [hV9, Function.update_self, r8_9, r8_13]
+    calc 0 + W (rfSelf af 9) * W (rfSelf af 13) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul hsearch hgflag
+      _ = 1 := by norm_num
+  have b9 : ∀ k, V9 k < B := by
+    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs
+    · have h := m9; rw [hV9, Function.update_self] at h; omega
+    · exact b8 _
+  -- S3: clear searching
+  have h10 := clearRegTM_hoareTime (R (rfSelf af 9)) (V9 (rfSelf af 9)) inp₀
+      (regsWork R w₀ V9) ys hinp₀ (fun i _ => hpv V9 i) (regsWork_apply R w₀ V9 _)
+  rw [regsWork_update] at h10
+  replace h10 := h10.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b9 _)))
+  set V10 := Function.update V9 (rfSelf af 9) 0 with hV10
+  have b10 : ∀ k, V10 k < B := by
+    intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b9 _
+  have r10_17 : V10 (rfSelf af 17) ≤ 1 := by
+    rw [hV10, rfSelf_update_apply]; norm_num; exact m9
+  have r10_L2 : V10 (rfLoc af haf 2) = W (rfLoc af haf 2) := by
+    rw [hV10, rfLoc_update_apply haf, hV9, rfLoc_update_apply haf, hV8,
+      rfLoc_update_apply haf]
+  -- S4: searching := temp * the child's tag
+  have h11 := mulAddIntoTM_hoareTime (R (rfSelf af 17)) (R (rfLoc af haf 2))
+      (R (rfSelf af 9))
+      (Regs.ne R (rfSelf_ne_loc haf 17 2))
+      (Regs.ne R (rfSelf_ne_self 17 9 (by decide)))
+      (Regs.ne R (Ne.symm (rfSelf_ne_loc haf 9 2)))
+      (V10 (rfSelf af 17)) (V10 (rfLoc af haf 2)) 0
+      inp₀ (regsWork R w₀ V10) ys hinp₀ (fun i _ => hpv V10 i)
+      (regsWork_apply R w₀ V10 _) (regsWork_apply R w₀ V10 _)
+      (by rw [regsWork_apply, hV10, Function.update_self])
+  rw [regsWork_update] at h11
+  replace h11 := h11.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b10 _)) (Nat.le_of_lt (b10 _)) (by omega))
+  set V11 := Function.update V10 (rfSelf af 9)
+      (0 + V10 (rfSelf af 17) * V10 (rfLoc af haf 2)) with hV11
+  have m11 : V11 (rfSelf af 9) ≤ 1 := by
+    rw [hV11, Function.update_self, r10_L2]
+    calc 0 + V10 (rfSelf af 17) * W (rfLoc af haf 2) ≤ 1 * 1 := by
+          simpa using Nat.mul_le_mul r10_17 htag
+      _ = 1 := by norm_num
+  have b11 : ∀ k, V11 k < B := by
+    intro k; rw [hV11]; simp only [Function.update_apply]; split_ifs
+    · have h := m11; rw [hV11, Function.update_self] at h; omega
+    · exact b10 _
+  -- S5: the zero test
+  have h12 := ltFlagTM_hoareTime (R (rfLoc af haf 3)) (R (rfSelf af 12)) (R (rfSelf af 5))
+      (R (rfSelf af 14))
+      (Regs.ne R (Ne.symm (rfSelf_ne_loc haf 5 3)))
+      (Regs.ne R (rfSelf_ne_self 12 5 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 5 14 (by decide)))
+      (V11 (rfLoc af haf 3)) (V11 (rfSelf af 12)) (V11 (rfSelf af 5)) (V11 (rfSelf af 14))
+      inp₀ (regsWork R w₀ V11) ys hinp₀ (fun i => hpv V11 i)
+      (regsWork_apply R w₀ V11 _) (regsWork_apply R w₀ V11 _)
+      (regsWork_apply R w₀ V11 _) (regsWork_apply R w₀ V11 _)
+  rw [regsWork_update, regsWork_update] at h12
+  replace h12 := h12.mono_bound
+    (ltFlagTime_le_arith _ _ _ _ B (Nat.le_of_lt (b11 _)) (Nat.le_of_lt (b11 _))
+      (Nat.le_of_lt (b11 _)) (Nat.le_of_lt (b11 _)))
+  set V12 := Function.update
+      (Function.update V11 (rfSelf af 5) (V11 (rfSelf af 12) - V11 (rfLoc af haf 3)))
+      (rfSelf af 14) (if V11 (rfLoc af haf 3) < V11 (rfSelf af 12) then 1 else 0)
+    with hV12
+  have b12 : ∀ k, V12 k < B := by
+    intro k; rw [hV12]; simp only [Function.update_apply]
+    split_ifs <;> first
+      | omega
+      | (have := b11 (rfSelf af 12); omega)
+      | exact b11 _
+  have m12_9 : V12 (rfSelf af 9) ≤ 1 := by
+    rw [hV12, rfSelf_update_apply, rfSelf_update_apply]; norm_num; exact m11
+  have m12_14 : V12 (rfSelf af 14) ≤ 1 := by
+    rw [hV12, Function.update_self]; split_ifs <;> omega
+  -- S6: clear hit
+  have h13 := clearRegTM_hoareTime (R (rfSelf af 15)) (V12 (rfSelf af 15)) inp₀
+      (regsWork R w₀ V12) ys hinp₀ (fun i _ => hpv V12 i) (regsWork_apply R w₀ V12 _)
+  rw [regsWork_update] at h13
+  replace h13 := h13.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b12 _)))
+  set V13 := Function.update V12 (rfSelf af 15) 0 with hV13
+  have b13 : ∀ k, V13 k < B := by
+    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b12 _
+  have m13_9 : V13 (rfSelf af 9) ≤ 1 := by
+    rw [hV13, rfSelf_update_apply]; norm_num; exact m12_9
+  have m13_14 : V13 (rfSelf af 14) ≤ 1 := by
+    rw [hV13, rfSelf_update_apply]; norm_num; exact m12_14
+  -- S7: hit := searching * the zero flag
+  have h14 := mulAddIntoTM_hoareTime (R (rfSelf af 9)) (R (rfSelf af 14))
+      (R (rfSelf af 15))
+      (Regs.ne R (rfSelf_ne_self 9 14 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 9 15 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 14 15 (by decide)))
+      (V13 (rfSelf af 9)) (V13 (rfSelf af 14)) 0
+      inp₀ (regsWork R w₀ V13) ys hinp₀ (fun i _ => hpv V13 i)
+      (regsWork_apply R w₀ V13 _) (regsWork_apply R w₀ V13 _)
+      (by rw [regsWork_apply, hV13, Function.update_self])
+  rw [regsWork_update] at h14
+  replace h14 := h14.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b13 _)) (Nat.le_of_lt (b13 _)) (by omega))
+  exact (seqEmit hinp₀ (hpv V8) h8 <|
+    seqEmit hinp₀ (hpv V9) h9 <|
+    seqEmit hinp₀ (hpv V10) h10 <|
+    seqEmit hinp₀ (hpv V11) h11 <|
+    seqEmit hinp₀ (hpv V12) h12 <|
+    seqEmit hinp₀ (hpv V13) h13 h14).mono_bound (by omega)
+
+set_option maxHeartbeats 1000000 in
+/-- **`rfPhaseB2` Hoare specification.** The hit folds into `found` and `result`,
+    `searching` is narrowed by the zero test, and the level advances. -/
+lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (X : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hX : ∀ k, X k < B)
+    (hhit : X (rfSelf af 15) ≤ 1)
+    (hs9 : X (rfSelf af 9) ≤ 1)
+    (hm1 : X (rfSelf af 7) + 1 < B)
+    (hres : X (rfSelf af 11) + X (rfSelf af 7) < B)
+    (hfound : X (rfSelf af 10) + 1 < B) :
+    (rfPhaseB2 af haf R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ X) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfPhaseB2Vals af haf X)) ys)
+      (9 * evalnArithmeticCost B + 8) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, X k ≤ B := fun k => Nat.le_of_lt (hX k)
+  have hB0 : 0 < B := by omega
+  -- S1: result += hit * m
+  have h15 := mulAddIntoTM_hoareTime (R (rfSelf af 15)) (R (rfSelf af 7))
+      (R (rfSelf af 11))
+      (Regs.ne R (rfSelf_ne_self 15 7 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 15 11 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 7 11 (by decide)))
+      (X (rfSelf af 15)) (X (rfSelf af 7)) (X (rfSelf af 11))
+      inp₀ (regsWork R w₀ X) ys hinp₀ (fun i _ => hpv X i)
+      (regsWork_apply R w₀ X _) (regsWork_apply R w₀ X _) (regsWork_apply R w₀ X _)
+  rw [regsWork_update] at h15
+  replace h15 := h15.mono_bound
+    (mulAddTime_le_arith _ _ _ B (hle _) (hle _) (hle _))
+  set V15 := Function.update X (rfSelf af 11)
+      (X (rfSelf af 11) + X (rfSelf af 15) * X (rfSelf af 7)) with hV15
+  have hmul : X (rfSelf af 15) * X (rfSelf af 7) ≤ X (rfSelf af 7) := by
+    calc X (rfSelf af 15) * X (rfSelf af 7) ≤ 1 * X (rfSelf af 7) :=
+          Nat.mul_le_mul hhit (le_refl _)
+      _ = X (rfSelf af 7) := by norm_num
+  have b15 : ∀ k, V15 k < B := by
+    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact hX _
+  have r15_15 : V15 (rfSelf af 15) = X (rfSelf af 15) := by
+    rw [hV15, rfSelf_update_apply]; norm_num
+  have r15_10 : V15 (rfSelf af 10) = X (rfSelf af 10) := by
+    rw [hV15, rfSelf_update_apply]; norm_num
+  -- S2: found += hit
+  have h16 := addIntoTM_hoareTime (R (rfSelf af 15)) (R (rfSelf af 10))
+      (Regs.ne R (rfSelf_ne_self 15 10 (by decide)))
+      (V15 (rfSelf af 15)) (V15 (rfSelf af 10))
+      inp₀ (regsWork R w₀ V15) ys hinp₀ (fun i _ => hpv V15 i)
+      (regsWork_apply R w₀ V15 _) (regsWork_apply R w₀ V15 _)
+  rw [regsWork_update] at h16
+  replace h16 := h16.mono_bound
+    (addIntoTime_le_arith _ _ B (Nat.le_of_lt (b15 _)) (Nat.le_of_lt (b15 _)))
+  set V16 := Function.update V15 (rfSelf af 10)
+      (V15 (rfSelf af 10) + V15 (rfSelf af 15)) with hV16
+  have b16 : ∀ k, V16 k < B := by
+    intro k; rw [hV16]; simp only [Function.update_apply]; split_ifs
+    · rw [r15_10, r15_15]; omega
+    · exact b15 _
+  -- S3: nz := the constant one
+  have h17 := copyIntoTM_hoareTime (R (rfSelf af 12)) (R (rfSelf af 16))
+      (Regs.ne R (rfSelf_ne_self 12 16 (by decide)))
+      (V16 (rfSelf af 12)) (V16 (rfSelf af 16))
+      inp₀ (regsWork R w₀ V16) ys hinp₀ (fun i _ => hpv V16 i)
+      (regsWork_apply R w₀ V16 _) (regsWork_apply R w₀ V16 _)
+  rw [regsWork_update] at h17
+  replace h17 := h17.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b16 _)) (Nat.le_of_lt (b16 _)))
+  set V17 := Function.update V16 (rfSelf af 16) (V16 (rfSelf af 12)) with hV17
+  have b17 : ∀ k, V17 k < B := by
+    intro k; rw [hV17]; simp only [Function.update_apply]; split_ifs <;> exact b16 _
+  -- S4: nz := one - the zero flag
+  have h18 := subIntoTM_hoareTime (R (rfSelf af 14)) (R (rfSelf af 16))
+      (Regs.ne R (rfSelf_ne_self 14 16 (by decide)))
+      (V17 (rfSelf af 14)) (V17 (rfSelf af 16))
+      inp₀ (regsWork R w₀ V17) ys hinp₀ (fun i _ => hpv V17 i)
+      (regsWork_apply R w₀ V17 _) (regsWork_apply R w₀ V17 _)
+  rw [regsWork_update] at h18
+  replace h18 := h18.mono_bound
+    (subIntoTime_le_arith _ _ B (Nat.le_of_lt (b17 _)) (Nat.le_of_lt (b17 _)))
+  set V18 := Function.update V17 (rfSelf af 16)
+      (V17 (rfSelf af 16) - V17 (rfSelf af 14)) with hV18
+  have b18 : ∀ k, V18 k < B := by
+    intro k; rw [hV18]; simp only [Function.update_apply]; split_ifs
+    · have := b17 (rfSelf af 16); omega
+    · exact b17 _
+  -- S5: clear the temp
+  have h19 := clearRegTM_hoareTime (R (rfSelf af 17)) (V18 (rfSelf af 17)) inp₀
+      (regsWork R w₀ V18) ys hinp₀ (fun i _ => hpv V18 i) (regsWork_apply R w₀ V18 _)
+  rw [regsWork_update] at h19
+  replace h19 := h19.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b18 _)))
+  set V19 := Function.update V18 (rfSelf af 17) 0 with hV19
+  have b19 : ∀ k, V19 k < B := by
+    intro k; rw [hV19]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b18 _
+  have r19_9 : V19 (rfSelf af 9) = X (rfSelf af 9) := by
+    simp [hV19, hV18, hV17, hV16, hV15, rfSelf_update_apply]
+  have m19_9 : V19 (rfSelf af 9) ≤ 1 := by rw [r19_9]; exact hs9
+  -- S6: temp := searching * nz
+  have h20 := mulAddIntoTM_hoareTime (R (rfSelf af 9)) (R (rfSelf af 16))
+      (R (rfSelf af 17))
+      (Regs.ne R (rfSelf_ne_self 9 16 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 9 17 (by decide)))
+      (Regs.ne R (rfSelf_ne_self 16 17 (by decide)))
+      (V19 (rfSelf af 9)) (V19 (rfSelf af 16)) 0
+      inp₀ (regsWork R w₀ V19) ys hinp₀ (fun i _ => hpv V19 i)
+      (regsWork_apply R w₀ V19 _) (regsWork_apply R w₀ V19 _)
+      (by rw [regsWork_apply, hV19, Function.update_self])
+  rw [regsWork_update] at h20
+  replace h20 := h20.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b19 _)) (Nat.le_of_lt (b19 _)) (by omega))
+  set V20 := Function.update V19 (rfSelf af 17)
+      (0 + V19 (rfSelf af 9) * V19 (rfSelf af 16)) with hV20
+  have b20 : ∀ k, V20 k < B := by
+    intro k; rw [hV20]; simp only [Function.update_apply]; split_ifs
+    · have hb := b19 (rfSelf af 16)
+      calc 0 + V19 (rfSelf af 9) * V19 (rfSelf af 16)
+          ≤ 1 * V19 (rfSelf af 16) := by
+            simpa using Nat.mul_le_mul m19_9 (le_refl (V19 (rfSelf af 16)))
+        _ < B := by omega
+    · exact b19 _
+  -- S7: searching := temp
+  have h21 := copyIntoTM_hoareTime (R (rfSelf af 17)) (R (rfSelf af 9))
+      (Regs.ne R (rfSelf_ne_self 17 9 (by decide)))
+      (V20 (rfSelf af 17)) (V20 (rfSelf af 9))
+      inp₀ (regsWork R w₀ V20) ys hinp₀ (fun i _ => hpv V20 i)
+      (regsWork_apply R w₀ V20 _) (regsWork_apply R w₀ V20 _)
+  rw [regsWork_update] at h21
+  replace h21 := h21.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b20 _)) (Nat.le_of_lt (b20 _)))
+  set V21 := Function.update V20 (rfSelf af 9) (V20 (rfSelf af 17)) with hV21
+  have b21 : ∀ k, V21 k < B := by
+    intro k; rw [hV21]; simp only [Function.update_apply]; split_ifs <;> exact b20 _
+  have r21_7 : V21 (rfSelf af 7) = X (rfSelf af 7) := by
+    simp [hV21, hV20, hV19, hV18, hV17, hV16, hV15, rfSelf_update_apply]
+  -- S8: m := m + 1
+  have h22 := incRegTM_hoareTime (R (rfSelf af 7)) (V21 (rfSelf af 7)) inp₀
+      (regsWork R w₀ V21) ys hinp₀ (fun i _ => hpv V21 i) (regsWork_apply R w₀ V21 _)
+  rw [regsWork_update] at h22
+  replace h22 := h22.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b21 _)))
+  set V22 := Function.update V21 (rfSelf af 7) (V21 (rfSelf af 7) + 1) with hV22
+  have b22 : ∀ k, V22 k < B := by
+    intro k; rw [hV22]; simp only [Function.update_apply]; split_ifs
+    · rw [r21_7]; exact hm1
+    · exact b21 _
+  -- S9: curFuel := curFuel - 1
+  have h23 := decRegTM_hoareTime (R (rfSelf af 8)) (V22 (rfSelf af 8)) inp₀
+      (regsWork R w₀ V22) ys hinp₀ (fun i _ => hpv V22 i) (regsWork_apply R w₀ V22 _)
+  rw [regsWork_update] at h23
+  replace h23 := h23.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b22 _)))
+  exact (seqEmit hinp₀ (hpv V15) h15 <|
+    seqEmit hinp₀ (hpv V16) h16 <|
+    seqEmit hinp₀ (hpv V17) h17 <|
+    seqEmit hinp₀ (hpv V18) h18 <|
+    seqEmit hinp₀ (hpv V19) h19 <|
+    seqEmit hinp₀ (hpv V20) h20 <|
+    seqEmit hinp₀ (hpv V21) h21 <|
+    seqEmit hinp₀ (hpv V22) h22 h23).mono_bound (by omega)
+
+end RfindPhaseBProof
 
 /-! ## The compiler API
 
