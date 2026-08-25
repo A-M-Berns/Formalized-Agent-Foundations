@@ -15,11 +15,16 @@ are in `LogicalInduction/notes/boundary-efficiency-model.md`.
   machine descriptions to primitive-recursive bounded execution, and the compiler-facing
   token evaluator `machineTokens` built on it. Read its module docstring for why the
   executable object is a *description* rather than a machine.
-* `Machine/EvalnCompiler.lean` — **Stage 2B**: the compiler from `Nat.Partrec.Code` into
+* `Machine/EvalnCompiler.lean` — **Stage 2**: the compiler from `Nat.Partrec.Code` into
   ordinary `complexitylib` register machines, proved exactly against
-  `Nat.Partrec.Code.evaln`. Non-recursive constructors only so far (`zero`, `succ`,
-  `left`, `right`); read its module docstring for the universal fuel guard and the
-  multiplicative mask that keeps the compiled machines straight-line.
+  `Nat.Partrec.Code.evaln`. All eight constructors; `compiledTM` is the machine and
+  `codeVals_encodes` its correctness. Read its module docstring for the universal fuel
+  guard and the multiplicative mask that keeps the compiled machines straight-line.
+* `Machine/EvalnRegBound.lean` — the compiled machine's quantitative side: the register
+  bound `codeRegBound`, the step bound `codeMachineTime` and its polynomiality, and the
+  structural timing theorem `compiledTM_hoareTime`.
+* `Machine/DigitBits.lean` — the bit rendering of a digit stream, and the clamping
+  convention `undigitize` licenses.
 * `Machine/TimedRespectsProbe.lean` — the Stage-0 de-risk probe (a timed
   `Turing.TM1to0`). A spike: evidence for the decision, not part of the development, and
   deliberately not imported here.
@@ -50,3 +55,5 @@ import LogicalInduction.Construction.Machine.CodeSteps
 
 import LogicalInduction.Construction.Machine.PairSucc
 import LogicalInduction.Construction.Machine.EvalnCompiler
+import LogicalInduction.Construction.Machine.EvalnRegBound
+import LogicalInduction.Construction.Machine.DigitBits
