@@ -1898,4 +1898,171 @@ lemma rfindRun_succ (cf : Nat.Partrec.Code) (a f m : ℕ) :
         else none := by
   rw [rfindRun]
 
+/-! ### `precRun` in register terms
+
+The machine carries `precRun`'s value as a canonical tag/value pair, so the loop needs the
+iterator's tag and value *separately*, each as a product of `0/1` masks. The step case has
+exactly the shape of `comp` — the previous result is bound into a child's input — so the
+same masking argument applies: the child runs unconditionally on `resultVal` of the
+previous level, which is the canonical `0` when that level failed, and the `alive` factor
+discards the answer.
+
+`cf` appears only in the base case: it is setup-only, and the loop body invokes `cg`
+alone. -/
+
+lemma precRun_zero_tag (cf cg : Nat.Partrec.Code) (a f : ℕ) :
+    resultTag (precRun cf cg a f 0)
+      = (if Nat.pair a 0 < f then 1 else 0)
+          * resultTag (Nat.Partrec.Code.evaln f cf a) := by
+  rw [precRun]
+  split_ifs <;> simp
+
+lemma precRun_zero_val (cf cg : Nat.Partrec.Code) (a f : ℕ) :
+    resultVal (precRun cf cg a f 0)
+      = (if Nat.pair a 0 < f then 1 else 0)
+          * resultVal (Nat.Partrec.Code.evaln f cf a) := by
+  rw [precRun]
+  split_ifs <;> simp
+
+/-- **The step mask.** `alive` is the product of the level guard, the previous level's
+    tag, and the child's tag. -/
+lemma precRun_succ_tag (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
+    resultTag (precRun cf cg a f (j + 1))
+      = (if Nat.pair a (j + 1) < f + (j + 1) then 1 else 0)
+          * resultTag (precRun cf cg a f j)
+          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j))))) := by
+  rw [precRun]
+  cases hp : precRun cf cg a f j <;> split_ifs <;> simp [hp]
+
+lemma precRun_succ_val (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
+    resultVal (precRun cf cg a f (j + 1))
+      = (if Nat.pair a (j + 1) < f + (j + 1) then 1 else 0)
+          * resultTag (precRun cf cg a f j)
+          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j)))))
+          * resultVal (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j))))) := by
+  rw [precRun]
+  cases hp : precRun cf cg a f j <;> split_ifs <;> simp [hp]
+
+/-- The tag is always `0` or `1`, which every mask step needs. -/
+lemma resultTag_le_one (o : Option ℕ) : resultTag o ≤ 1 := by
+  cases o <;> simp
+
+/-! ### The level guards are free
+
+`precRun` re-checks a guard at every level. The machine does not have to: `Nat.pair a ·`
+is strictly increasing, so `Nat.pair a j` grows by at least `1` per level while the level
+fuel `f + j` grows by exactly `1`. Hence the outer guard at level `m` implies every level
+guard below it, and the loop body needs **no guard test** — saving a `pairTM` call and a
+comparison per iteration. -/
+
+lemma pair_lt_pair_succ (a b : ℕ) : Nat.pair a b < Nat.pair a (b + 1) := by
+  unfold Nat.pair
+  rcases lt_trichotomy a b with h | h | h
+  · rw [if_pos h, if_pos (by omega)]
+    have : (b + 1) * (b + 1) = b * b + 2 * b + 1 := by ring
+    omega
+  · subst h
+    rw [if_neg (by omega), if_pos (by omega)]
+    have : (a + 1) * (a + 1) = a * a + 2 * a + 1 := by ring
+    omega
+  · rw [if_neg (by omega)]
+    rcases Nat.lt_or_ge a (b + 1) with h2 | h2
+    · rw [if_pos h2]
+      have hb : b + 1 = a := by omega
+      rw [hb]
+      have : a * a + a + b = a * a + a + (a - 1) := by omega
+      omega
+    · rw [if_neg (by omega)]; omega
+
+/-- The index grows at least as fast as the level fuel. -/
+lemma pair_add_le (a : ℕ) : ∀ j m, j ≤ m → Nat.pair a j + (m - j) ≤ Nat.pair a m := by
+  intro j m
+  induction m with
+  | zero => intro h; simp_all
+  | succ m ih =>
+    intro h
+    rcases Nat.lt_or_ge j (m + 1) with hj | hj
+    · have hjm : j ≤ m := by omega
+      have h1 := ih hjm
+      have h2 := pair_lt_pair_succ a m
+      omega
+    · have : j = m + 1 := by omega
+      subst this; simp
+
+/-- **Every level guard is implied by the outer one.** -/
+lemma level_guard (a m f j : ℕ) (hj : j ≤ m) (hout : Nat.pair a m < f + m) :
+    Nat.pair a j < f + j := by
+  have := pair_add_le a j m hj
+  omega
+
+/-! ### The guard-free iterator
+
+Under the outer guard this is what the machine's loop actually computes. -/
+
+def precRunG (cf cg : Nat.Partrec.Code) (a f : ℕ) : ℕ → Option ℕ
+  | 0 => Nat.Partrec.Code.evaln f cf a
+  | j + 1 =>
+      precRunG cf cg a f j >>= fun i =>
+        Nat.Partrec.Code.evaln (f + (j + 1)) cg (Nat.pair a (Nat.pair j i))
+
+lemma precRunG_eq_precRun (cf cg : Nat.Partrec.Code) (a m f : ℕ)
+    (hout : Nat.pair a m < f + m) : ∀ j, j ≤ m →
+    precRunG cf cg a f j = precRun cf cg a f j
+  | 0, _ => by
+      rw [precRunG, precRun, if_pos (by simpa using level_guard a m f 0 (Nat.zero_le _) hout)]
+  | j + 1, hj => by
+      rw [precRunG, precRun, if_pos (level_guard a m f (j + 1) hj hout),
+        precRunG_eq_precRun cf cg a m f hout j (by omega)]
+
+/-! ### The guard-free step masks, and closure against `evaln`
+
+These are what the machine's body and finish phases target: the body proves the two mask
+identities, and the finish phase applies `precRunG_eq_evaln`. -/
+
+lemma precRunG_succ_tag (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
+    resultTag (precRunG cf cg a f (j + 1))
+      = resultTag (precRunG cf cg a f j)
+          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRunG cf cg a f j))))) := by
+  rw [precRunG]
+  cases hp : precRunG cf cg a f j <;> simp [hp]
+
+lemma precRunG_succ_val (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
+    resultVal (precRunG cf cg a f (j + 1))
+      = resultTag (precRunG cf cg a f j)
+          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRunG cf cg a f j)))))
+          * resultVal (Nat.Partrec.Code.evaln (f + (j + 1)) cg
+              (Nat.pair a (Nat.pair j (resultVal (precRunG cf cg a f j))))) := by
+  rw [precRunG]
+  cases hp : precRunG cf cg a f j <;> simp [hp]
+
+@[simp] lemma precRunG_zero (cf cg : Nat.Partrec.Code) (a f : ℕ) :
+    precRunG cf cg a f 0 = Nat.Partrec.Code.evaln f cf a := rfl
+
+/-- **The machine's closure theorem.** The loop computes `precRunG` from base fuel
+    `fuel - m`; under the outer guard that is exactly `evaln`.
+
+    The side condition `m ≤ fuel` needed by `precRun_eq_evaln` is *implied* by the outer
+    guard, since `m ≤ Nat.pair a m`. So the finish phase has only the outer guard to
+    check — the same `input < fuel` test every other constructor already uses. -/
+lemma precRunG_eq_evaln (cf cg : Nat.Partrec.Code) (a m fuel : ℕ)
+    (hout : Nat.pair a m < fuel) :
+    precRunG cf cg a (fuel - m) m
+      = Nat.Partrec.Code.evaln fuel (cf.prec cg) (Nat.pair a m) := by
+  have hm : m ≤ fuel := le_trans (Nat.right_le_pair a m) (Nat.le_of_lt hout)
+  rw [precRunG_eq_precRun cf cg a m (fuel - m) (by omega) m le_rfl,
+    precRun_eq_evaln cf cg a m fuel hm]
+
+/-- When the outer guard fails, both sides are canonical `none` — the only top-level case
+    split the whole construction needs. -/
+lemma evaln_eq_none_of_not_guard (k : ℕ) (c : Nat.Partrec.Code) (m : ℕ)
+    (hout : ¬ m < k) : Nat.Partrec.Code.evaln k c m = none := by
+  cases h : Nat.Partrec.Code.evaln k c m with
+  | none => rfl
+  | some x => exact absurd (Nat.Partrec.Code.evaln_bound h) hout
+
 end LogicalInduction.EvalnCompiler
