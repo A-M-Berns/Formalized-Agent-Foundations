@@ -28,7 +28,9 @@ def codeEvalBound : Nat.Partrec.Code → ℕ → ℕ
   | .prec cf cg, k => max (codeEvalBound cf k) (codeEvalBound cg k)
   | .rfind' _, k => k
 
-private lemma natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
+/-- `Nat.pair` is monotone in both arguments. Public because the machine-side register
+bound (`Construction/Machine/EvalnRegBound.lean`) needs it too. -/
+lemma natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
     Nat.pair a c ≤ Nat.pair b d := by
   calc
     Nat.pair a c ≤ Nat.pair b c := by

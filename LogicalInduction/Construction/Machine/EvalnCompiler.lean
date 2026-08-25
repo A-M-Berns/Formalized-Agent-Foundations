@@ -3117,6 +3117,171 @@ lemma precLoopVals_spec (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec
 
 end PrecLoopSem
 
+/-! ### `prec`: the level keeps every register inside the bound
+
+The `b`-chains inside `precBody_hoareTime` bound the *intermediate* states, each feeding
+the next stage's cost. These are the composite facts about the level's output vector, which
+is what the loop invariant needs. -/
+
+section PrecBodyBound
+variable {af ag : ℕ}
+
+lemma precBodyPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hj1 : V (precSelf af ag 9) + 1 < B) (hf1 : V (precSelf af ag 12) + 1 < B)
+    (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
+    (hp2 : Nat.pair (V (precSelf af ag 6))
+      (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B) :
+    ∀ k, precBodyPre af ag haf hag V k < B := by
+  intro k
+  simp only [precBodyPre]
+  set V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9)) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+  set V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  have hw0 : V2 ((precPairW af ag) 0) = V (precSelf af ag 9) := by
+    rw [precPairW_zero, hV2, precSelf_update_apply, hV1, precSelf_update_apply]; norm_num
+  have hw1 : V2 ((precPairW af ag) 1) = V (precSelf af ag 11) := by
+    rw [precPairW_one, hV2, precSelf_update_apply, hV1, precSelf_update_apply]; norm_num
+  set V3 := writeWindow (precPairW af ag) V2
+      (pairVals (fun i => V2 ((precPairW af ag) i))) with hV3
+  have b3 : ∀ k, V3 k < B := by
+    intro k; rw [hV3]
+    refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
+    rw [hw0, hw1]; exact hp1
+  have r3_22 : V3 (precSelf af ag 22)
+      = Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) := by
+    rw [← precPairW_six, hV3, writeWindow_apply]
+    simp only [pairVals]
+    simp [hw0, hw1]
+  set V4 := Function.update V3 (precSelf af ag 17) (V3 (precSelf af ag 22)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  set V5 := Function.update V4 (precSelf af ag 16) (V4 (precSelf af ag 6)) with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+  have r5_w0 : V5 ((precPairW af ag) 0) = V (precSelf af ag 6) := by
+    rw [precPairW_zero, hV5, Function.update_self, hV4,
+      Function.update_of_ne (precSelf_ne_self 6 17 (by decide)), hV3,
+      writeWindow_of_ne _ _ _ (fun t => precPairW_ne_self t 6 (by
+        have := t.isLt; simp; omega)),
+      hV2, Function.update_of_ne (precSelf_ne_self 6 17 (by decide)),
+      hV1, Function.update_of_ne (precSelf_ne_self 6 16 (by decide))]
+  have r5_w1 : V5 ((precPairW af ag) 1)
+      = Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) := by
+    rw [precPairW_one, hV5,
+      Function.update_of_ne (precSelf_ne_self 17 16 (by decide)),
+      hV4, Function.update_self, r3_22]
+  set V6 := writeWindow (precPairW af ag) V5
+      (pairVals (fun i => V5 ((precPairW af ag) i))) with hV6
+  have b6 : ∀ k, V6 k < B := by
+    intro k; rw [hV6]
+    refine writeWindow_bounded _ _ _ B b5 (fun i => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b5 _) ?_ i
+    rw [r5_w0, r5_w1]; exact hp2
+  have out6 : ∀ (i : Fin 32), (∀ t : Fin 8, 16 + (t : ℕ) ≠ (i : ℕ)) →
+      V6 (precSelf af ag i) = V (precSelf af ag i) := by
+    intro i hi
+    have h16 : (i : ℕ) ≠ 16 := by have := hi 0; simp at this ⊢; omega
+    have h17 : (i : ℕ) ≠ 17 := by have := hi 1; simp at this ⊢; omega
+    rw [hV6, writeWindow_of_ne _ _ _ (fun t => precPairW_ne_self t i (hi t)),
+      hV5, Function.update_of_ne (precSelf_ne_self i 16 h16),
+      hV4, Function.update_of_ne (precSelf_ne_self i 17 h17),
+      hV3, writeWindow_of_ne _ _ _ (fun t => precPairW_ne_self t i (hi t)),
+      hV2, Function.update_of_ne (precSelf_ne_self i 17 h17),
+      hV1, Function.update_of_ne (precSelf_ne_self i 16 h16)]
+  set V7 := Function.update V6 (precSelf af ag 9) (V6 (precSelf af ag 9) + 1) with hV7
+  have b7 : ∀ k, V7 k < B := by
+    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
+    · rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1
+    · exact b6 _
+  set V8 := Function.update V7 (precSelf af ag 12) (V7 (precSelf af ag 12) + 1) with hV8
+  have b8 : ∀ k, V8 k < B := by
+    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
+    · rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
+        out6 12 (by intro t; have := t.isLt; simp; omega)]
+      exact hf1
+    · exact b7 _
+  set V9 := Function.update V8 (precRightLoc af ag hag 0) (V8 (precSelf af ag 22))
+    with hV9
+  have b9 : ∀ k, V9 k < B := by
+    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs <;> exact b8 _
+  simp only [Function.update_apply]
+  split_ifs <;> exact b9 _
+
+lemma precBodyVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (halive : V (precSelf af ag 10) ≤ 1)
+    (hj1 : V (precSelf af ag 9) + 1 < B) (hf1 : V (precSelf af ag 12) + 1 < B)
+    (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
+    (hp2 : Nat.pair (V (precSelf af ag 6))
+      (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1) :
+    ∀ k, precBodyVals af ag haf hag Fg V k < B := by
+  have bpre := precBodyPre_lt haf hag V B hB2 hV hj1 hf1 hp1 hp2
+  have halive' : precBodyPre af ag haf hag V (precSelf af ag 10) ≤ 1 := by
+    rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
+    exact halive
+  intro k
+  simp only [precBodyVals]
+  set V11 := writeWindow (precRightSub af ag) (precBodyPre af ag haf hag V)
+      (Fg (fun i => precBodyPre af ag haf hag V ((precRightSub af ag) i))) with hV11
+  have b11 : ∀ k, V11 k < B := by
+    intro k; rw [hV11]
+    exact writeWindow_bounded _ _ _ B bpre (fun i => hFgB _ (fun t => bpre _) i) k
+  have r11_10 : V11 (precSelf af ag 10) ≤ 1 := by
+    rw [hV11, precRightSub_win_selfW haf]; exact halive'
+  have r11_tag : V11 (precRightLoc af ag hag 2) ≤ 1 := by
+    rw [hV11, precRightSub_win_rightLoc hag]
+    exact hFgTag _
+  set V12 := Function.update V11 (precSelf af ag 13) 0 with hV12
+  have b12 : ∀ k, V12 k < B := by
+    intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b11 _
+  have r12_10 : V12 (precSelf af ag 10) ≤ 1 := by
+    rw [hV12, precSelf_update_apply]; norm_num; exact r11_10
+  have r12_tag : V12 (precRightLoc af ag hag 2) ≤ 1 := by
+    rw [hV12, precRightLoc_self_upd hag haf]; exact r11_tag
+  set V13 := Function.update V12 (precSelf af ag 13)
+      (0 + V12 (precSelf af ag 10) * V12 (precRightLoc af ag hag 2)) with hV13
+  have m13 : V13 (precSelf af ag 13) ≤ 1 := by
+    rw [hV13, Function.update_self]
+    calc 0 + V12 (precSelf af ag 10) * V12 (precRightLoc af ag hag 2)
+        ≤ 1 * 1 := by simpa using Nat.mul_le_mul r12_10 r12_tag
+      _ = 1 := by norm_num
+  have b13 : ∀ k, V13 k < B := by
+    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
+    · have h := m13; rw [hV13, Function.update_self] at h; omega
+    · exact b12 _
+  set V14 := Function.update V13 (precSelf af ag 10) (V13 (precSelf af ag 13)) with hV14
+  have b14 : ∀ k, V14 k < B := by
+    intro k; rw [hV14]; simp only [Function.update_apply]; split_ifs <;> exact b13 _
+  have m14 : V14 (precSelf af ag 10) ≤ 1 := by
+    rw [hV14, Function.update_self]; exact m13
+  set V15 := Function.update V14 (precSelf af ag 11) 0 with hV15
+  have b15 : ∀ k, V15 k < B := by
+    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b14 _
+  have m15 : V15 (precSelf af ag 10) ≤ 1 := by
+    rw [hV15, precSelf_update_apply]; norm_num; exact m14
+  simp only [Function.update_apply]
+  split_ifs
+  · have hb := b15 (precRightLoc af ag hag 3)
+    calc 0 + V15 (precSelf af ag 10) * V15 (precRightLoc af ag hag 3)
+        ≤ 1 * V15 (precRightLoc af ag hag 3) := by
+          simpa using Nat.mul_le_mul m15 (le_refl (V15 (precRightLoc af ag hag 3)))
+      _ < B := by omega
+  · exact b15 _
+
+end PrecBodyBound
+
 /-! ## A register-block loop
 
 `forRegTM` driven by a counter register that the block does not name. The body's
@@ -5465,6 +5630,124 @@ lemma rfLoopVals_spec (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
     · rw [rfBodyVals_isLevel haf cf Ff hFf _ e12, e6, e7, e8, etriple, rfIter_succ']
 
 end RfindClose
+
+/-! ### `rfind'`: the level keeps every register inside the bound -/
+
+section RfindBodyBound
+variable {af : ℕ}
+
+lemma rfPhaseB2Vals_nz (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 16)
+      = X (rfSelf af 12) - X (rfSelf af 14) := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+lemma rfPhaseB2Vals_temp (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) :
+    rfPhaseB2Vals af haf X (rfSelf af 17)
+      = X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14)) := by
+  simp only [rfPhaseB2Vals, rfSelf_update_apply]
+  norm_num
+
+/-- Phase B2 writes only `7`–`11`, `16` and `17` — of any register at all. -/
+lemma rfPhaseB2Vals_frame (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) {k : Fin (32 + af)}
+    (h7 : k ≠ rfSelf af 7) (h8 : k ≠ rfSelf af 8) (h9 : k ≠ rfSelf af 9)
+    (h10 : k ≠ rfSelf af 10) (h11 : k ≠ rfSelf af 11) (h16 : k ≠ rfSelf af 16)
+    (h17 : k ≠ rfSelf af 17) :
+    rfPhaseB2Vals af haf X k = X k := by
+  simp only [rfPhaseB2Vals, Function.update_of_ne h8, Function.update_of_ne h7,
+    Function.update_of_ne h9, Function.update_of_ne h17, Function.update_of_ne h16,
+    Function.update_of_ne h10, Function.update_of_ne h11]
+
+lemma rfPhaseB2Vals_lt (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (B : ℕ)
+    (hX : ∀ k, X k < B)
+    (hhit : X (rfSelf af 15) ≤ 1) (hs9 : X (rfSelf af 9) ≤ 1)
+    (hm1 : X (rfSelf af 7) + 1 < B)
+    (hres : X (rfSelf af 11) + X (rfSelf af 7) < B)
+    (hfound : X (rfSelf af 10) + 1 < B) :
+    ∀ k, rfPhaseB2Vals af haf X k < B := by
+  have hmul : X (rfSelf af 15) * X (rfSelf af 7) ≤ X (rfSelf af 7) := by
+    calc X (rfSelf af 15) * X (rfSelf af 7) ≤ 1 * X (rfSelf af 7) :=
+          Nat.mul_le_mul hhit (le_refl _)
+      _ = X (rfSelf af 7) := by norm_num
+  intro k
+  by_cases h7 : k = rfSelf af 7
+  · subst h7; rw [rfPhaseB2Vals_m]; exact hm1
+  by_cases h8 : k = rfSelf af 8
+  · subst h8; rw [rfPhaseB2Vals_fuel]; have := hX (rfSelf af 8); omega
+  by_cases h9 : k = rfSelf af 9
+  · subst h9
+    rw [rfPhaseB2Vals_search]
+    have hb := hX (rfSelf af 12)
+    calc X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14))
+        ≤ 1 * (X (rfSelf af 12) - X (rfSelf af 14)) :=
+          Nat.mul_le_mul hs9 (le_refl _)
+      _ < B := by omega
+  by_cases h10 : k = rfSelf af 10
+  · subst h10; rw [rfPhaseB2Vals_found]; omega
+  by_cases h11 : k = rfSelf af 11
+  · subst h11; rw [rfPhaseB2Vals_result]; omega
+  by_cases h16 : k = rfSelf af 16
+  · subst h16; rw [rfPhaseB2Vals_nz]; have := hX (rfSelf af 12); omega
+  by_cases h17 : k = rfSelf af 17
+  · subst h17
+    rw [rfPhaseB2Vals_temp]
+    have hb := hX (rfSelf af 12)
+    calc X (rfSelf af 9) * (X (rfSelf af 12) - X (rfSelf af 14))
+        ≤ 1 * (X (rfSelf af 12) - X (rfSelf af 14)) :=
+          Nat.mul_le_mul hs9 (le_refl _)
+      _ < B := by omega
+  · rw [rfPhaseB2Vals_frame haf X h7 h8 h9 h10 h11 h16 h17]; exact hX k
+
+/-- **The level keeps every register inside the bound.** -/
+lemma rfBodyVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
+    (hsearch : V (rfSelf af 9) ≤ 1)
+    (hm1 : V (rfSelf af 7) + 1 < B)
+    (hres : V (rfSelf af 11) + V (rfSelf af 7) < B)
+    (hfound : V (rfSelf af 10) + 1 < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1) :
+    ∀ k, rfBodyVals af haf Ff V k < B := by
+  have hAb := rfPhaseAVals_lt haf Ff V B hB2 hV hp hFfB
+  have a9 : rfPhaseAVals af haf Ff V (rfSelf af 9) = V (rfSelf af 9) :=
+    rfPhaseAVals_self haf Ff V 9 (by norm_num) (by norm_num) (by norm_num)
+  have a7 : rfPhaseAVals af haf Ff V (rfSelf af 7) = V (rfSelf af 7) :=
+    rfPhaseAVals_self haf Ff V 7 (by norm_num) (by norm_num) (by norm_num)
+  have a10 : rfPhaseAVals af haf Ff V (rfSelf af 10) = V (rfSelf af 10) :=
+    rfPhaseAVals_self haf Ff V 10 (by norm_num) (by norm_num) (by norm_num)
+  have a11 : rfPhaseAVals af haf Ff V (rfSelf af 11) = V (rfSelf af 11) :=
+    rfPhaseAVals_self haf Ff V 11 (by norm_num) (by norm_num) (by norm_num)
+  have atag : rfPhaseAVals af haf Ff V (rfLoc af haf 2) ≤ 1 := by
+    rw [rfPhaseAVals_child]
+    convert hFfTag (fun i => rfPhaseAPre af haf V (rfSub af i)) using 2
+    apply Fin.ext
+    simp
+  have hB1b := rfPhaseB1Vals_lt haf (rfPhaseAVals af haf Ff V) B hB2 hAb
+    (by rw [a9]; exact hsearch) (rfPhaseAVals_guard haf Ff V) atag
+  have f7 : rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 7)
+      = V (rfSelf af 7) := by
+    rw [rfPhaseB1Vals_frame haf _ (rfSelf_ne_self 7 5 (by decide))
+      (rfSelf_ne_self 7 9 (by decide)) (rfSelf_ne_self 7 14 (by decide))
+      (rfSelf_ne_self 7 15 (by decide)) (rfSelf_ne_self 7 17 (by decide)), a7]
+  have f10 : rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 10)
+      = V (rfSelf af 10) := by
+    rw [rfPhaseB1Vals_frame haf _ (rfSelf_ne_self 10 5 (by decide))
+      (rfSelf_ne_self 10 9 (by decide)) (rfSelf_ne_self 10 14 (by decide))
+      (rfSelf_ne_self 10 15 (by decide)) (rfSelf_ne_self 10 17 (by decide)), a10]
+  have f11 : rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V) (rfSelf af 11)
+      = V (rfSelf af 11) := by
+    rw [rfPhaseB1Vals_frame haf _ (rfSelf_ne_self 11 5 (by decide))
+      (rfSelf_ne_self 11 9 (by decide)) (rfSelf_ne_self 11 14 (by decide))
+      (rfSelf_ne_self 11 15 (by decide)) (rfSelf_ne_self 11 17 (by decide)), a11]
+  exact rfPhaseB2Vals_lt haf (rfPhaseB1Vals af haf (rfPhaseAVals af haf Ff V)) B hB1b
+    (rfPhaseB1Vals_hit_le_one haf _ (by rw [a9]; exact hsearch)
+      (rfPhaseAVals_guard haf Ff V) atag)
+    (rfPhaseB1Vals_search_le_one haf _ (by rw [a9]; exact hsearch)
+      (rfPhaseAVals_guard haf Ff V) atag)
+    (by rw [f7]; exact hm1) (by rw [f11, f7]; exact hres) (by rw [f10]; exact hfound)
+
+end RfindBodyBound
 
 /-! ## `rfind'`: the setup and finish phases
 
