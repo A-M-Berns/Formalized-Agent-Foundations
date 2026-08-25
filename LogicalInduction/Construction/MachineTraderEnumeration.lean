@@ -10,12 +10,14 @@ together with a total effective enumeration of it and the **coverage** theorem t
 **What this replaces, and what it does not.** `LogicalInduction.EfficientlyComputable`
 (`Framework/Criterion.lean`) renders `def:ec` through a fuel-clocked `Nat.Partrec.Code.evaln`
 interpreter — a disclosed type-`(c)` substitution, not a machine complexity class.
-`MachineEfficientTrader` below is the machine class the paper actually asks for. **Neither
-supersedes the other yet:** `PolyFueled` and `EfficientlyComputable` remain the internal
-certification technology every concrete property proof uses, and the inclusion
-`PolyFueled → Complexity.FP` is Stage 2 and is not started. What this file establishes is
-that the *construction's* trader universe — what `TradingFirm` enumerates and dominates —
-can be the genuine machine class.
+`MachineEfficientTrader` below is the machine class the paper actually asks for.
+`PolyFueled` and `EfficientlyComputable` remain the internal certification technology every
+concrete property proof uses, and `Construction/MachineEfficiency.lean` now proves the
+inclusion `EfficientlyComputable Tr → MachineEfficientTrader Tr`: everything the fuel
+calculus certifies is machine-efficient. The converse is not proved, so neither class
+supersedes the other. What this file establishes is that the *construction's* trader
+universe — what `TradingFirm` enumerates and dominates — can be the genuine machine
+class.
 
 **Unary days.** The paper measures a trader's runtime as polynomial in the day `n`, with `n`
 written in unary. `unaryDay n = List.replicate n true` has length exactly `n`, so a machine

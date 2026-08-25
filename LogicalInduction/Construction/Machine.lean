@@ -32,11 +32,18 @@ are in `LogicalInduction/notes/boundary-efficiency-model.md`.
   `Turing.TM1to0`). A spike: evidence for the decision, not part of the development, and
   deliberately not imported here.
 
-**This directory is not part of the formalization's trust surface.** Nothing in it carries
-a paper node, nothing is imported by `LogicalInduction.lean`, and no theorem relates
-`MachinePolyEC` — or `DescExec`'s evaluator — to `LogicalInduction.EfficientlyComputable`.
-That inclusion is Stage 2 and is not started. No strength claim in the repository changes
-until Stage 3 completes.
+**This directory is not part of the formalization's trust surface.** Nothing in it is
+imported by `LogicalInduction.lean`, and no theorem relates `MachinePolyEC` — the counted
+machine of `Basic`/`Closure`/`Pairing` — to anything else here.
+
+What *has* landed is the other inclusion, through `complexitylib`'s ordinary Turing
+machines: `Construction/MachineEfficiency.lean` proves
+`EfficientlyComputable Tr → MachineEfficientTrader Tr`, so every trader certified in the
+fuel calculus is a genuine machine-polynomial-time trader. Read that file's docstring for
+the chain and for what the inclusion does and does not settle. **No strength claim in the
+repository changes**: the inclusion runs fuel ⟹ machine, the `dd:fuel` model card's open
+lower-calibration item is the converse, and `thm:li` is still stated over
+`EfficientlyComputable`. Re-basing it on the machine class is Stage 3.
 
 It *is* compiled by CI, through the `MachineExec` default target in `lakefile.lean`: built
 and axiom-checked, but load-bearing for nothing.

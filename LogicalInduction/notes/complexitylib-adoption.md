@@ -4235,3 +4235,122 @@ induction.
 
 This is why item 4 is larger than the goal's framing suggests: it is not plumbing on top of
 the existing timing theorems, it is a restatement of them.
+
+---
+
+# Part XXIII — Stage 2 is closed (2026-08-25)
+
+_Seventh pass. Scope: items 4 and 5 of the Stage-2 work order — the concrete polynomial
+runtime, and the `Complexity.FP` transport. Stage 3 untouched, as instructed._
+
+**Stage 2 is closed.** `LogicalInduction/Construction/MachineEfficiency.lean`:
+
+```lean
+theorem EfficientlyComputable.toMachine {Tr : Trader} (h : EfficientlyComputable Tr) :
+    MachineEfficientTrader Tr
+```
+
+Axiom-clean (`propext`, `Classical.choice`, `Quot.sound`), no `sorry` anywhere on the
+chain, full build and all gates green.
+
+## XXIII.1 Item 4: the register bound and the timing theorem
+
+Part XXII's blocker was discharged as it predicted: `runChildFixed` replaces `runChild`'s
+over-quantified child hypothesis with the single instance the machine actually uses, and the
+six composite theorems were restated at the vectors the semantic layer already names. With
+that, three things landed in `EvalnRegBound.lean`:
+
+* `codeRegBound c s` — a bound on **every** register a compiled node holds, not just its
+  answer. It carries each `Nat.pair` the machine forms explicitly (`precWindowBound`,
+  `rfWindowBound`), because no useful `B` is closed under pairing; `codeVals_lt` proves the
+  compiled vector stays inside it, for all eight constructors.
+* `codeMachineTime c s A` — the step bound, mirroring each constructor's Hoare bound with
+  the size parameter `s` standing in for the two data-dependent level counts (the `prec`
+  counter is bounded by the input, the `rfind'` counter by the fuel). Monotone in both
+  arguments; `codeMachineTime_arith_poly` makes it polynomial in `s` for each fixed code.
+* `compiledTM_hoareTime` — the structural theorem: the compiled machine meets that bound,
+  at the real arithmetic cost `evalnArithmeticCost (codeRegBound c s)`.
+
+Two loop invariants had to be restated *conditionally* (`∀ u, bounded → input ≤ s' →
+fuel ≤ s' → …`) rather than per-level: in per-level form the caller must know the level's
+bound before it can supply the hypothesis that proves it, which is circular. The
+conditional form is both satisfiable and non-circular, with the per-level instance derived
+inside the induction from what it has already established.
+
+One friction worth recording. `rw` matches at `instances` transparency, so it will not see
+through `codeRegs (cf.prec cg)` to `33 + codeRegs cf + codeRegs cg`; the two looping
+constructors' assembly therefore lives in its own lemma, phrased in the `33 + af + ag`
+world the loop counter inhabits, and the induction reaches it by `exact` (which does check
+definitional equality). That is `precBlock_hoareTime` / `rfBlock_hoareTime`.
+
+## XXIII.2 Item 5: the trader machine
+
+The transport needed an actual machine, built in the fork's register calculus.
+`TraderMachine.lean` is ~1,100 lines in four layers.
+
+**Register operations as vector updates.** Each fork register machine restated over a
+`regsWork` state as a `Function.update` of the value vector under the common arithmetic
+budget. A stage of a straight-line register program is then one line, and the whole
+development is a chain of `set`s with a `funext` at the end. This is what made the rest
+tractable; without it each stage costs five lines of `regsWork_update` plumbing.
+
+**Guarded emission.** The fork's `guardTM` rule keeps the output accumulator fixed.
+`guardEmit_hoareTime` is the emitting counterpart: a `{0,1}` register decides whether a
+fixed word is appended. That single rule is how a *data-dependent* bit stream is built out
+of fixed-word emitters — no branching, in keeping with the frozen architecture.
+`runChildFixed` and `forRegs_hoareTime` were generalized the same way, to let the
+accumulator grow across a child call and across a loop level.
+
+**The digit block.** Ten registers turn a token value into three bits. The token values are
+arbitrary naturals and do not fit in three bits — they do not have to: `undigitizeStep`
+tests a digit only against `4`, so every value from `4` up is the same block terminator, and
+`undigitize_map_min_four` (in `DigitBits.lean`) says clamping at `4` leaves the token
+stream, hence the trader, alone. So the block computes `min d 4` by `a - (a - b)`, derives
+five equality flags from four comparisons and four differences, and fires exactly one of
+five guarded three-bit emitters.
+
+**The machine.** Thirty-two working registers, then the length program's block, then the
+token program's; the loop counter sits one register beyond all of them, because `forRegTM`
+consumes its counter and `forRegs_hoareTime` needs it outside the block. The setup measures
+the day with `inputLenRegTM`, evaluates the clock polynomial with `polyEvalTM`, runs the
+length program, and derives the digit count as the tag masking the length clamped to the
+clock — the mask is what makes the `none` case emit nothing without a branch. Each
+iteration pairs the day with the index, runs the token program, and emits one clamped
+digit.
+
+**Polynomiality.** Every budget in sight is loose on purpose: `FP` quantifies the degree
+existentially. The size parameter is `Nat.pair N C + C` — it dominates the day, the clock,
+and every paired index the loop forms — and the register bound is a polynomial in it. The
+one place this needed care is `polyEvalTM`'s Horner-prefix obligation, which is not implied
+by the polynomial's value at the point: the prefixes are bounded by
+`hornerFold_take_le`, and `hornerCap` carries that bound into the register bound.
+
+`mem_FP_iff_computesInTime_polynomial` then turns the `IsPolyBounded` step bound into `FP`
+membership directly, without touching the `=O` layer.
+
+## XXIII.3 What this settles, and what it does not
+
+It settles the **inclusion**: nothing certified in the fuel model is outside the machine
+model. Every exploiting trader the property tail constructs is thereby a genuine
+machine-polynomial-time trader — the direction the property tail consumes.
+
+It settles nothing about the converse, and per `notes/boundary-efficiency-model.md`
+("What the deliverable must NOT say") it licenses **no** model-card edit and **no** strength
+upgrade. `thm:li` is still stated over `EfficientlyComputable`; `dd:fuel`'s
+lower-calibration item is still open; the disclosure in `LogicalInduction/README.md` stands
+as written. What changed is the staging language in
+`Construction/Machine.lean` and `Construction/MachineTraderEnumeration.lean`, which said the
+inclusion was "not started".
+
+## XXIII.4 What Stage 3 now needs
+
+Unchanged from §V.4 and §V.6, minus the dependency that blocked it:
+
+| item | LOC | note |
+| --- | ---: | --- |
+| Stage 3 soundness (clocked simulator, §V.3) | 0.6–1.2k | independent of this pass |
+| Stage 3 `TradingFirm` migration (§V.4) | 0.3–0.6k | was blocked on Stage 2; now unblocked |
+| `LIACompiler` swap + property touch-ups | 0.2–0.4k | follows the migration |
+
+With the transport in hand, route (a) of §V.4 is the clean one: `enumeratedTrader_ec` can be
+restated at the machine class and the fuel branch retired, rather than the two coexisting.
