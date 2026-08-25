@@ -2703,3 +2703,207 @@ Worth recording for whoever writes `pairNextTM`: the recurring hazards are (i) s
 theorem's time bound to match the combinator's output *exactly* rather than reaching for
 `consequence`, and (ii) `Function.update_of_ne h` wants `readIndex ≠ updateIndex`, which is
 `hne` or `hne.symm` depending on which register is being read.
+
+---
+
+# Part X — Stage 2A: comparison, guarded commands, and the pairing successor (2026-08-24)
+
+_Tenth pass. Scope: `ltFlagTM`, `pairNextTM`. Stage 3 untouched; no migration._
+
+**Checkpoint 1 is complete.** `ltFlagTM` and `pairNextTM` are both built, with exact
+correctness and polynomial runtime, and the no-`ifTM` control-flow architecture is
+validated end to end: nothing in either machine touches the output tape.
+
+## X.0 The architectural question this pass existed to answer
+
+Part IX ended with a flag primitive and a claim: that `forRegTM` guarded by a `{0,1}`
+register replaces `ifTM` for register arithmetic. That was one lemma and an argument, not
+evidence. `pairNextTM` — nine sequential guard computations feeding five guarded arms, all
+under `EmitPred`'s frame — is the first construction big enough to falsify it.
+
+It did not falsify it. `OutAcc ys` is carried through all fourteen stages unchanged, by
+construction rather than by proof effort: no combinator in the chain reads or writes the
+output tape, so the accumulator is never in play. The guard idiom composes.
+
+## X.1 Comparison
+
+```lean
+def ltFlagTM (ra rb sc flag : Fin n) : TM n :=
+  seqTM (copyIntoTM rb sc) (seqTM (subIntoTM ra sc) (flagNonzeroTM sc flag))
+
+theorem ltFlagTM_hoareTime … :
+    (ltFlagTM ra rb sc flag).HoareTime
+      (EmitPred inp₀ work₀ ys)
+      (EmitPred inp₀ (Function.update (Function.update work₀ sc (regTape (b - a))) flag
+        (regTape (if a < b then 1 else 0))) ys)
+      (ltFlagTime a b s f)
+
+lemma ltFlagTime_le : a ≤ B → b ≤ B → s ≤ B → f ≤ B →
+    ltFlagTime a b s f ≤ 40 * (B + 1) ^ 2
+```
+
+`a < b` iff `min (b - a) 1 = 1`; truncated subtraction floors at zero, so no underflow test
+is needed. The postcondition updates only `sc` and `flag`, so `ra`, `rb` and every other
+register are read straight back out of `work₀` — the composition-friendliness §4 asked for.
+
+The normalization against a single size parameter is the more useful half. A two-variable
+runtime formula is tighter and useless; `40 * (B + 1) ^ 2` is what an iterated caller can
+multiply by a loop count.
+
+## X.2 The reformulation that made `pairNextTM` cheap
+
+Written case-by-case the pairing successor has four arms:
+
+```
+a < b,  a+1 < b   ↦  (a+1, b)        a < b,  a+1 = b   ↦  (b, 0)
+b < a             ↦  (a, b+1)        a = b             ↦  (0, a+1)
+```
+
+Two of those copy a live register over another, which is where §9's copy-before-clear
+hazard lives.
+
+Splitting on `a < b` alone removes it entirely. In the first half of a shell the first
+component always advances; in the second half the second component always advances:
+
+```
+a < b   ↦  a := a + 1,  and b := 0 when a + 1 = b
+b ≤ a   ↦  b := b + 1,  and a := 0 when a = b
+```
+
+Same function — when `a + 1 = b` the pair `(a+1, 0)` *is* `(b, 0)`; when `a = b` the pair
+`(0, b+1)` *is* `(0, a+1)`. But now **every arm is a single `incRegTM` or `clearRegTM`**.
+No arm copies anything, so §9's hazard does not arise and §8's "build the arms separately"
+advice costs four one-line machines instead of four composite ones.
+
+`pairNextFst_eq` and `pairNextSnd_eq` state the reformulation as the sum of the guarded
+increments the machine performs, which is what the correctness proof consumes directly.
+
+## X.3 The guards, and why there are only two comparisons
+
+```
+gLT = [a < b]    gGT = [b < a]    gEQ = [a = b]    gB1 = [a + 1 = b]
+```
+
+`gLT` and `gGT` are two `ltFlagTM` calls. The other two are arithmetic on those — no third
+comparison, and no Boolean-algebra machinery (§6):
+
+* `gEQ = 1 - gLT - gGT`, by trichotomy;
+* `gB1 = gLT - min (b - a - 1) 1`, **reusing the `b - a` that `ltFlagTM` already leaves in
+  its scratch register**. `a + 1 = b` is exactly "`b - a` is nonzero but `b - a - 1` is
+  not", so one `decRegTM` and one `flagNonzeroTM` on a value already computed suffice.
+
+Arm `b += gGE` is split into two arms guarded by `gGT` and `gEQ` separately, which removes
+the need to materialize `gGE = 1 - gLT` at all: since the guards are disjoint, `b` is
+incremented at most once either way.
+
+## X.4 Structure of the machine and its proof
+
+```lean
+def pairNextTM (r : PairRegs n) : TM n := seqTM (pairGuardTM r) (pairArmsTM r)
+```
+
+Nine guard stages, five arm stages. Splitting into two phases halved the proof risk: each
+half is a separately-stated theorem that could be brought green on its own.
+
+```lean
+theorem pairNextTM_hoareTime (r : PairRegs n) (v : Fin 9 → ℕ) (B : ℕ) … (hB : ∀ k, v k ≤ B) :
+    (pairNextTM r).HoareTime
+      (EmitPred inp₀ (regsWork r w₀ v) ys)
+      (EmitPred inp₀ (regsWork r w₀ (pairNextVals v)) ys)
+      (80 * (B + 1) ^ 2 + 32 * B + 147)
+
+theorem pairNextTM_hoareTime_poly … (400 * (B + 1) ^ 2)
+
+theorem pair_pairNext (a b : ℕ) :
+    Nat.pair (pairNextFst a b) (pairNextSnd a b) = Nat.pair a b + 1
+```
+
+`pairNextVals` names the final state of **all nine** registers explicitly, and every entry
+is determined — no existential, no choice. That is deliberate: iterating this machine for
+`unpairTM` needs a definite `w : ℕ → Fin n → Tape` family, which an existential
+postcondition could not supply.
+
+## X.5 The three abstractions that made a fourteen-stage proof tractable
+
+The plumbing tax Part VII measured at ~70 lines per operation would have put this
+construction at 900–1,000 lines. It came in around 480. Three extractions did that, each
+meeting §17's "already cost duplicated lines twice" threshold before it was written:
+
+| extraction | replaces | used |
+| --- | --- | ---: |
+| `parked_update`, `seqEmit` | a five-line `by_cases` and a four-line frame closure per stage | ~20× |
+| `regsWork` + `regsWork_update` | a `Function.update_of_ne` chain per register read, quadratic in stage count | ~60× |
+| `guardRegArm` | the full `guardTM_hoareTime` instantiation per arm | 5× |
+
+`regsWork` is the one that mattered. Naming a work state by its **vector of register
+values** rather than by a chain of `Function.update`s turns "update the state" into "update
+one entry of `v : Fin 9 → ℕ`" — finite data — and turns "read a register" into one
+rewrite. Without it the fourteen-stage bookkeeping is quadratic; with it, linear.
+
+## X.6 Two failure modes worth recording
+
+**`omega` atomizes nested indicator guards.** Reads stated as
+`U1 0 = u 0 + (if u 4 = 0 then 0 else 1)`, with `u 4` itself an indicator, produce
+conditions of the form `(if v 0 < v 1 then 1 else 0) = 0`. `omega` will not descend into an
+`ite` sitting inside another `ite`'s condition; it abstracts the whole thing as an opaque
+atom and reports an unprovable goal whose counterexample lists the atoms. Restating every
+read in terms of the underlying *proposition* —
+`U1 0 = if v 0 < v 1 then v 0 + 1 else v 0` — fixed all of it at once.
+
+**A monolithic `simp only` over nine chained `set` bodies exceeds the heartbeat budget.**
+`funext k; simp only [hU5, …, hU1, hu, …]; fin_cases k <;> simp` hit the same
+`whnf`/`isDefEq` timeout as `DescExec`. Replacing it with level-by-level reads —
+`U5 0 = f (U4 0)`, `U4 0 = f (U3 0)`, … — each proved by a two-line `by_cases`, elaborates
+without raising any limit. Same lesson as Part V: **the fix for a heartbeat timeout is
+structural, not a bigger budget.**
+
+## X.7 Status and revised estimate
+
+```
+pure arithmetic
+  pairNext / pairIter / unpair equivalence  ✓ Part VIII
+  codeEvalSteps_poly                        ✓ Part VI
+
+machine arithmetic
+  inc / dec / clear / loop / add / copy / mulAdd  ✓ upstream
+  subIntoTM                                       ✓ Part VII
+  setOneTM, flagNonzeroTM                         ✓ Part IX
+  guardTM, ltFlagTM                               ✓ this pass
+  pairNextTM (+ correctness, runtime)             ✓ this pass
+  pairTM, unpairTM                                open
+
+Code compiler                                     open
+PolyFueled / EfficientlyComputable → FP           open
+```
+
+| item | estimate |
+| --- | ---: |
+| `pairTM` (one flag, two guarded arms, `mulAddIntoTM`) | 150–250 |
+| `unpairTM` (`forRegTM pairNextTM`, loop invariant) | 200–350 |
+| **arithmetic remaining** | **0.35–0.6k** |
+
+Stage-2 total remaining: **1.4–2.6k over 3–5 sessions**, down from Part IX's 1.9–3.4k.
+
+This is the first pass where the estimate fell rather than held. The reason is not that the
+plumbing tax dropped — `pairNextTM` still cost roughly what a fourteen-stage composition
+should. It is that `regsWork` and `guardRegArm` are *reusable*: `pairTM` and `unpairTM` are
+the same shape and inherit all three abstractions, so their per-stage cost is now
+measured — about 12 lines — rather than projected.
+
+## X.8 On the machine-load guard
+
+`safe-lake.sh` deadlocked this pass. `resource-guard.sh` reads swap use from
+`vm.swapusage`, which on macOS counts pages allocated to the swap *file* — and macOS never
+shrinks that file. It sat pinned at 13.6G/14.3G (94–95%) for the entire session with **zero
+Lean workers and 45% RAM free**, so `wait 900` could never clear and every build refused to
+start after a fifteen-minute stall.
+
+Builds here ran with `CLAUDE_MAX_SWAP_PCT=97` and `CLAUDE_LAKE_JOBS=3` — the raised swap
+threshold paired with a hard cap on elaborator fan-out well below the default `ncpu - 2 = 8`,
+which bounds peak memory more tightly than the default configuration would have. The memory,
+disk and load thresholds and the global cross-session build lock were left untouched.
+
+Worth fixing properly in the guard: swap *pressure* is `vm_stat`'s swapin/swapout **rate**,
+not `vm.swapusage`'s high-water allocation. As written the check becomes a permanent
+false positive on any machine that has ever swapped hard, which is every machine that has
+built mathlib.

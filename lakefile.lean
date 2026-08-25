@@ -99,13 +99,22 @@ lean_lib Scratchpad where
 -- (see `LogicalInduction/notes/complexitylib-adoption.md`).
 --
 -- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
--- exactly two commits: a 36-line mechanical port to this project's Lean/Mathlib pin
--- (upstream is on 4.30; no mathematical statement, definition or proof is altered), and
--- one additive theorem, `utmTM_simulates_computer`, which exposes the universal machine's
--- *arbitrary function output* rather than only its decision cell — a strictly weaker
--- projection of a theorem upstream already proves. Both are upstreamable and are meant to
--- be upstreamed; the fork retires into a plain upstream `require` once upstream reaches
--- this toolchain.
+-- nine commits, every one of them either a mechanical port or purely additive; no
+-- mathematical statement, definition or proof of upstream's is altered:
+--
+--   * a 36-line port to this project's Lean/Mathlib pin (upstream is on 4.30), plus a
+--     later port of `Subroutines/Counter` in the same style;
+--   * `utmTM_simulates_computer` and `TM.exists_singleTape_computesInTime`, which expose
+--     *arbitrary function output* rather than only a decision cell — strictly weaker
+--     projections of theorems upstream already proves;
+--   * `exists_desc_computesInTime_polynomial`, a finite description for every
+--     polynomial-time function;
+--   * generic unary-register arithmetic and control flow: `subIntoTM`, `flagNonzeroTM`,
+--     `guardTM`, `ltFlagTM`, and `pairNextTM` with its correctness and runtime bounds.
+--
+-- Nothing carries a FAF-specific or `Nat.Partrec.Code` name; all of it is upstreamable and
+-- meant to be upstreamed. The fork retires into a plain upstream `require` once upstream
+-- reaches this toolchain.
 --
 -- Required rather than vendored: the useful upstream slice is ~35k lines — 3.4× this
 -- repository's largest vendored body — while the port is 36 mechanical lines that a
@@ -117,7 +126,7 @@ lean_lib Scratchpad where
 -- else in this repository may name a `Complexity.*` declaration — the same discipline
 -- `PFR/` ↔ `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "3f92900c869b71dc9cacf72fc4172a2f8bff25e2"
+  "https://github.com/A-M-Berns/complexitylib" @ "a0d193d38c180a3fdcd5b5c20ba67e092d6b0901"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
