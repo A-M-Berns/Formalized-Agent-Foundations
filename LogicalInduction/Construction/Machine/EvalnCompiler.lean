@@ -3449,19 +3449,24 @@ def rfPhaseB (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
 def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
   seqTM (rfPhaseA af haf R Mf) (rfPhaseB af haf R)
 
-/-- What phase A leaves: the level's input pair, the child's registers set and run, and
-    the level guard. -/
-noncomputable def rfPhaseAVals (af : ℕ) (haf : 16 ≤ af)
-    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+/-- The state phase A hands the child: the level's input pair in the child's input
+    register, the level fuel in its fuel register, and the level guard in `13`. -/
+noncomputable def rfPhaseAPre (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    Fin (32 + af) → ℕ :=
   let V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6))
   let V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7))
   let V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
   let V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26))
   let V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8))
-  let V6 := Function.update
-              (Function.update V5 (rfSelf af 5) (V5 (rfSelf af 8) - V5 (rfSelf af 26)))
-              (rfSelf af 13) (if V5 (rfSelf af 26) < V5 (rfSelf af 8) then 1 else 0)
-  writeWindow (rfSub af) V6 (Ff (fun i => V6 (rfSub af i)))
+  Function.update
+    (Function.update V5 (rfSelf af 5) (V5 (rfSelf af 8) - V5 (rfSelf af 26)))
+    (rfSelf af 13) (if V5 (rfSelf af 26) < V5 (rfSelf af 8) then 1 else 0)
+
+/-- What phase A leaves: that state, with the child run on it. -/
+noncomputable def rfPhaseAVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  writeWindow (rfSub af) (rfPhaseAPre af haf V)
+    (Ff (fun i => rfPhaseAPre af haf V (rfSub af i)))
 
 /-- What phase B leaves: the guard, the child's tag and the zero test folded into
     `searching`, `found` and `result`, and the level advanced. -/
@@ -4083,6 +4088,200 @@ lemma rfPhaseB2_hoareTime (haf : 16 ≤ af)
     seqEmit hinp₀ (hpv V22) h22 h23).mono_bound (by omega)
 
 end RfindPhaseBProof
+
+section RfindPhaseARead
+variable {af : ℕ}
+
+/-- Phase A's pre-state writes the pair window and the guard registers `5` and `13`;
+    every other node register is untouched. -/
+lemma rfPhaseAPre_self (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (i : Fin 32)
+    (hw : ∀ t : Fin 8, 20 + (t : ℕ) ≠ (i : ℕ)) (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
+    rfPhaseAPre af haf V (rfSelf af i) = V (rfSelf af i) := by
+  have h20 : (i : ℕ) ≠ 20 := by have := hw 0; simp at this ⊢; omega
+  have h21 : (i : ℕ) ≠ 21 := by have := hw 1; simp at this ⊢; omega
+  simp only [rfPhaseAPre]
+  rw [rfSelf_update_apply, if_neg (by simpa using h13),
+    rfSelf_update_apply, if_neg (by simpa using h5),
+    Function.update_of_ne (rfSelf_ne_loc haf i 1),
+    Function.update_of_ne (rfSelf_ne_loc haf i 0),
+    writeWindow_of_ne _ _ _ (fun t => rfPairW_ne_self t i (hw t)),
+    rfSelf_update_apply, if_neg (by simpa using h21),
+    rfSelf_update_apply, if_neg (by simpa using h20)]
+
+lemma rfPhaseAVals_self (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) (i : Fin 32) (hw : ∀ t : Fin 8, 20 + (t : ℕ) ≠ (i : ℕ))
+    (h5 : (i : ℕ) ≠ 5) (h13 : (i : ℕ) ≠ 13) :
+    rfPhaseAVals af haf Ff V (rfSelf af i) = V (rfSelf af i) := by
+  rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t i),
+    rfPhaseAPre_self haf V i hw h5 h13]
+
+/-- Phase A's level guard is a flag. -/
+lemma rfPhaseAVals_guard (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) :
+    rfPhaseAVals af haf Ff V (rfSelf af 13) ≤ 1 := by
+  rw [rfPhaseAVals, writeWindow_of_ne _ _ _ (fun t => rfSub_ne_self t 13)]
+  simp only [rfPhaseAPre]
+  rw [Function.update_self]
+  split_ifs <;> omega
+
+/-- Phase A's child registers hold the child's own answer. -/
+lemma rfPhaseAVals_child (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) (j : Fin 16) :
+    rfPhaseAVals af haf Ff V (rfLoc af haf j)
+      = Ff (fun i => rfPhaseAPre af haf V (rfSub af i))
+          ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [rfPhaseAVals, rfLoc_eq haf, writeWindow_apply]
+
+/-- Phase A keeps every register inside the bound. -/
+lemma rfPhaseAVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
+    ∀ k, rfPhaseAVals af haf Ff V k < B := by
+  have hpre : ∀ k, rfPhaseAPre af haf V k < B := by
+    simp only [rfPhaseAPre]
+    set V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6)) with hV1
+    have b1 : ∀ k, V1 k < B := by
+      intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+    set V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7)) with hV2
+    have b2 : ∀ k, V2 k < B := by
+      intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+    have hw0 : V2 ((rfPairW af) 0) = V (rfSelf af 6) := by
+      rw [rfPairW_zero, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
+    have hw1 : V2 ((rfPairW af) 1) = V (rfSelf af 7) := by
+      rw [rfPairW_one, hV2, rfSelf_update_apply, hV1, rfSelf_update_apply]; norm_num
+    set V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
+      with hV3
+    have b3 : ∀ k, V3 k < B := by
+      intro k; rw [hV3]
+      refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
+      refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
+      rw [hw0, hw1]; exact hp
+    set V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26)) with hV4
+    have b4 : ∀ k, V4 k < B := by
+      intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+    set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
+    have b5 : ∀ k, V5 k < B := by
+      intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+    intro k
+    simp only [Function.update_apply]
+    split_ifs <;> first
+      | omega
+      | (have := b5 (rfSelf af 8); omega)
+      | exact b5 _
+  intro k
+  rw [rfPhaseAVals]
+  exact writeWindow_bounded _ _ _ B hpre (fun i => hFfB _ (fun t => hpre _) i) k
+
+end RfindPhaseARead
+
+section RfindBodyCompose
+variable {af : ℕ}
+
+lemma rfPhaseB1Vals_search_le_one (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ)
+    (hsearch : W (rfSelf af 9) ≤ 1) (hgflag : W (rfSelf af 13) ≤ 1)
+    (htag : W (rfLoc af haf 2) ≤ 1) :
+    rfPhaseB1Vals af haf W (rfSelf af 9) ≤ 1 := by
+  rw [rfPhaseB1Vals_search]
+  calc W (rfSelf af 9) * W (rfSelf af 13) * W (rfLoc af haf 2) ≤ 1 * 1 := by
+        simpa using Nat.mul_le_mul (by simpa using Nat.mul_le_mul hsearch hgflag) htag
+    _ = 1 := by norm_num
+
+lemma rfPhaseB1Vals_hit_le_one (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ)
+    (hsearch : W (rfSelf af 9) ≤ 1) (hgflag : W (rfSelf af 13) ≤ 1)
+    (htag : W (rfLoc af haf 2) ≤ 1) :
+    rfPhaseB1Vals af haf W (rfSelf af 15) ≤ 1 := by
+  rw [rfPhaseB1Vals_hit, ← rfPhaseB1Vals_search haf W]
+  calc rfPhaseB1Vals af haf W (rfSelf af 9)
+          * (if W (rfLoc af haf 3) < W (rfSelf af 12) then 1 else 0)
+      ≤ 1 * 1 :=
+        Nat.mul_le_mul (rfPhaseB1Vals_search_le_one haf W hsearch hgflag htag)
+          (by split_ifs <;> omega)
+    _ = 1 := by norm_num
+
+/-- **`rfPhaseB` Hoare specification.** -/
+lemma rfPhaseB_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (W : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hW : ∀ k, W k < B)
+    (hsearch : W (rfSelf af 9) ≤ 1)
+    (hgflag : W (rfSelf af 13) ≤ 1)
+    (htag : W (rfLoc af haf 2) ≤ 1)
+    (hm1 : W (rfSelf af 7) + 1 < B)
+    (hres : W (rfSelf af 11) + W (rfSelf af 7) < B)
+    (hfound : W (rfSelf af 10) + 1 < B) :
+    (rfPhaseB af haf R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ W) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfPhaseBVals af haf W)) ys)
+      (16 * evalnArithmeticCost B + 15) := by
+  have h1 := rfPhaseB1_hoareTime haf R W B inp₀ w₀ ys hinp₀ hpark hB2 hW hsearch hgflag htag
+  have hb := rfPhaseB1Vals_lt haf W B hB2 hW hsearch hgflag htag
+  have f7 : rfPhaseB1Vals af haf W (rfSelf af 7) = W (rfSelf af 7) :=
+    rfPhaseB1Vals_frame haf W (rfSelf_ne_self 7 5 (by decide))
+      (rfSelf_ne_self 7 9 (by decide)) (rfSelf_ne_self 7 14 (by decide))
+      (rfSelf_ne_self 7 15 (by decide)) (rfSelf_ne_self 7 17 (by decide))
+  have f10 : rfPhaseB1Vals af haf W (rfSelf af 10) = W (rfSelf af 10) :=
+    rfPhaseB1Vals_frame haf W (rfSelf_ne_self 10 5 (by decide))
+      (rfSelf_ne_self 10 9 (by decide)) (rfSelf_ne_self 10 14 (by decide))
+      (rfSelf_ne_self 10 15 (by decide)) (rfSelf_ne_self 10 17 (by decide))
+  have f11 : rfPhaseB1Vals af haf W (rfSelf af 11) = W (rfSelf af 11) :=
+    rfPhaseB1Vals_frame haf W (rfSelf_ne_self 11 5 (by decide))
+      (rfSelf_ne_self 11 9 (by decide)) (rfSelf_ne_self 11 14 (by decide))
+      (rfSelf_ne_self 11 15 (by decide)) (rfSelf_ne_self 11 17 (by decide))
+  have h2 := rfPhaseB2_hoareTime haf R (rfPhaseB1Vals af haf W) B inp₀ w₀ ys hinp₀ hpark
+    hB2 hb (rfPhaseB1Vals_hit_le_one haf W hsearch hgflag htag)
+    (rfPhaseB1Vals_search_le_one haf W hsearch hgflag htag)
+    (by rw [f7]; exact hm1) (by rw [f11, f7]; exact hres) (by rw [f10]; exact hfound)
+  exact (seqEmit hinp₀ (parked_regsWork R hpark _) h1 h2).mono_bound (by omega)
+
+/-- **`rfBodyTM` Hoare specification.** One level of the search. -/
+lemma rfBody_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (Mf : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf : ℕ)
+    (V : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
+    (hsearch : V (rfSelf af 9) ≤ 1)
+    (hm1 : V (rfSelf af 7) + 1 < B)
+    (hres : V (rfSelf af 11) + V (rfSelf af 7) < B)
+    (hfound : V (rfSelf af 10) + 1 < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (rfBodyTM af haf R Mf).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfBodyVals af haf Ff V)) ys)
+      (22 * evalnArithmeticCost B + tf + 22) := by
+  have hA := rfPhaseA_hoareTime haf R Mf Ff tf V B inp₀ w₀ ys hinp₀ hpark hB2 hV hp hFfB hMf
+  have hAb := rfPhaseAVals_lt haf Ff V B hB2 hV hp hFfB
+  have a9 : rfPhaseAVals af haf Ff V (rfSelf af 9) = V (rfSelf af 9) :=
+    rfPhaseAVals_self haf Ff V 9 (fun t => by have := t.isLt; simp; omega)
+      (by decide) (by decide)
+  have a7 : rfPhaseAVals af haf Ff V (rfSelf af 7) = V (rfSelf af 7) :=
+    rfPhaseAVals_self haf Ff V 7 (fun t => by have := t.isLt; simp; omega)
+      (by decide) (by decide)
+  have a10 : rfPhaseAVals af haf Ff V (rfSelf af 10) = V (rfSelf af 10) :=
+    rfPhaseAVals_self haf Ff V 10 (fun t => by have := t.isLt; simp; omega)
+      (by decide) (by decide)
+  have a11 : rfPhaseAVals af haf Ff V (rfSelf af 11) = V (rfSelf af 11) :=
+    rfPhaseAVals_self haf Ff V 11 (fun t => by have := t.isLt; simp; omega)
+      (by decide) (by decide)
+  have atag : rfPhaseAVals af haf Ff V (rfLoc af haf 2) ≤ 1 := by
+    rw [rfPhaseAVals_child]
+    convert hFfTag (fun i => rfPhaseAPre af haf V (rfSub af i)) using 2
+    apply Fin.ext
+    simp
+  have hB := rfPhaseB_hoareTime haf R (rfPhaseAVals af haf Ff V) B inp₀ w₀ ys hinp₀ hpark
+    hB2 hAb (by rw [a9]; exact hsearch) (rfPhaseAVals_guard haf Ff V) atag
+    (by rw [a7]; exact hm1) (by rw [a11, a7]; exact hres) (by rw [a10]; exact hfound)
+  exact (seqEmit hinp₀ (parked_regsWork R hpark _) hA hB).mono_bound (by omega)
+
+end RfindBodyCompose
 
 /-! ## The compiler API
 
