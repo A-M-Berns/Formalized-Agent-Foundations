@@ -3873,3 +3873,115 @@ the machine proofs.
 
 `prec` remains the single largest item. Its own four phases are ~800–1050 lines — comparable
 to `pair` and `comp` combined, which took a full session each.
+
+---
+
+# Part XVIII — Stage 2C: `prec` and `rfind'` compiled; the compiler is total (2026-08-25)
+
+_Eighteenth pass. Scope: finish `prec`, build `rfind'` end to end, and close
+`compileCodeAt` over all eight constructors. Everything below is green with no `sorry`._
+
+## XVIII.0 The loop counter must live outside the block
+
+The one structural discovery, and it is what unblocked both remaining constructors.
+
+`forRegTM`'s Hoare rule specifies its body against the loop register's *mid-iteration
+cursor* tape `⟨i+2, regCells v⟩`, not a `regTape`. A `regsWork R w₀ V` state cannot carry
+that: `regsWork` writes a `regTape` at every register `R` names. So a body written over the
+same block as its own counter cannot be specified at all in this idiom.
+
+The fix is in complexitylib already, and its docstring says so:
+
+```
+regsWork_update_of_ne : (∀ k, r k ≠ i) →
+  regsWork r (Function.update w₀ i t) v = Function.update (regsWork r w₀ v) i t
+  -- "what lets a machine over `r` run inside a loop whose counter lives in a register
+  --  `r` does not name"
+```
+
+So the counter goes **outside** the block, and the body's obligation becomes its ordinary
+`regsWork` specification with the ambient family adjusted. That is `forRegs_hoareTime`, a
+generic register-block loop rule (a candidate for upstreaming). It costs one extra register
+per looping node: `codeRegs (prec cf cg) = 33 + …`, `codeRegs (rfind' cf) = 33 + …`, with
+the thirty-third addressed by `precLoopIdx` / `rfLoopIdx` and the working block by
+`precMain` / `rfMain`. `regsWork_precMain` / `regsWork_rfMain` bridge the parent's
+thirty-three-wide view and the node's thirty-two-wide working view.
+
+Putting the counter at the *end* is what makes the bridge cheap: the working block is
+`shiftEmb 0`, so every existing index lemma is reused verbatim, with no re-indexing of the
+sixteen-stage body proof.
+
+## XVIII.1 `prec`, complete
+
+`precBody_hoareTime` (sixteen stages), then the loop, setup, finish and assembly:
+
+* `precLoop_hoareTime` — `m` iterations off the outside counter, with the per-level side
+  conditions bundled as `PrecBodyOK`;
+* `precSetup_hoareTime` — unpair, `baseFuel := fuel - m`, run `cf`, seed `j`, `alive`,
+  `acc`, `curFuel`, copy `m` to the counter (twelve stages), with `precSetupVals_lt`;
+* `precFinish_hoareTime` — the outer guard and two masks, one level shorter than `comp`'s
+  because `alive` has already absorbed `cf`'s tag and every level's;
+* `precTM_hoareTime` — the three composed.
+
+## XVIII.2 `rfind'`
+
+The level guards here are **not** free, unlike `prec`: `Nat.pair a (m+t)` grows while the
+level fuel `k+1-t` shrinks, so a guard can fail part-way down and the machine must test it.
+
+The semantic layer is `rfLevel` / `rfIter`, and `rfIter_spec` says running the loop for
+exactly `fuel` levels computes `evaln fuel (rfind' cf)` in both components, with the
+incoming `searching` flag multiplying the whole answer:
+
+```lean
+(rfIter cf a (s, fo, r) f m f).2.1 = fo + s * resultTag (evaln f cf.rfind' (Nat.pair a m))
+(rfIter cf a (s, fo, r) f m f).2.2 = r  + s * resultVal (evaln f cf.rfind' (Nat.pair a m))
+```
+
+Three registers carry the search — `searching`, `found`, `result` — and the guard, the
+child's tag and the zero test all enter multiplicatively, so there is still no branch and
+the loop has fixed length `fuel`. The body is twenty-three stages, split
+`rfPhaseA` (7) / `rfPhaseB1` (7) / `rfPhaseB2` (9); the split is not cosmetic — the
+monolithic sixteen-plus-stage proof timed out at four million heartbeats.
+
+## XVIII.3 A tactic that paid for itself
+
+```lean
+lemma rfSelf_update_apply (i j : Fin 32) (X x) :
+    Function.update X (rfSelf af j) x (rfSelf af i)
+      = if (i : ℕ) = (j : ℕ) then x else X (rfSelf af i)
+```
+
+Reading a node register out of an update to a node register becomes a *numeric* test, so
+`simp only [thisVals, rfSelf_update_apply, rfLoc_update_apply]` followed by `norm_num`
+evaluates an entire stage chain automatically. Before this, each read-off was a hand-ordered
+`rw` chain of eight `Function.update_of_ne`s that broke whenever the unfolding order
+changed. `prec`'s read-offs should be migrated to it.
+
+## XVIII.4 The compiler is total
+
+`compileCodeAt` now returns `some` on all eight constructors, and
+`compileCodeAt_isSome` proves it by structural induction. No self-interpreter, no call
+stack: the recursion is on the `Code` term, and parent and every descendant inhabit the
+same `TM n`, differing only in which registers they name.
+
+## XVIII.5 What is not proved
+
+The **semantic** tie-up. Every phase specification is parametric in the child's semantics
+`Ff` / `Fg`; nothing yet instantiates those with `evaln`. Concretely:
+
+* a uniform `codeVals c` and the structural correctness induction (`EncodesEvaln`);
+* discharging `PrecBodyOK` and `RfBodyOK` at every loop state, which needs the global size
+  bound `B` from `codeEvalBound` — so Stage C and Stage D are entangled and should land
+  together;
+* the runtime bound and the `Complexity.FP` transport.
+
+## XVIII.6 Estimate
+
+| item | estimate |
+| --- | ---: |
+| `codeVals` + structural correctness + loop invariants | 600–900 |
+| global runtime bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **1.0–1.6k over 2–3 sessions** |
+
+Down from Part XVII's 1.9–2.8k: the machine layer is finished, and what is left is
+semantics and arithmetic rather than register bookkeeping.
