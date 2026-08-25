@@ -2165,6 +2165,27 @@ lemma precPairW_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i : Fin 8) (j :
     precPairW af ag i ≠ precRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
+/-- A child's local block is the first sixteen of its subtree. -/
+lemma precRightLoc_eq (hag : 16 ≤ ag) (j : Fin 16) :
+    precRightLoc af ag hag j
+      = precRightSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [precRightLoc, precRightSub, shiftEmb_val]
+
+lemma precLeftLoc_eq (haf : 16 ≤ af) (j : Fin 16) :
+    precLeftLoc af ag haf j
+      = precLeftSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [precLeftLoc, precLeftSub, shiftEmb_val]
+
+/-- The pair window's slots, as node-block indices. -/
+lemma precPairW_zero : (precPairW af ag) 0 = precSelf af ag 16 := by
+  apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
+
+lemma precPairW_one : (precPairW af ag) 1 = precSelf af ag 17 := by
+  apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
+
+lemma precPairW_six : (precPairW af ag) 6 = precSelf af ag 22 := by
+  apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
+
 end PrecLayout
 
 /-! ## `prec`: the loop body
@@ -2243,5 +2264,335 @@ lemma precLoopVals_succ (haf : 16 ≤ af) (hag : 16 ≤ ag)
   rw [precLoopVals, precLoopVals, Function.iterate_succ_apply']
 
 end PrecBody
+
+/-! ## `prec`: the loop body, verified
+
+One level of the reconstruction, sixteen stages, as a Hoare specification. -/
+
+section PrecBodyProof
+variable {af ag : ℕ}
+
+set_option maxHeartbeats 1000000 in
+/-- **`precBodyTM` Hoare specification.** One level of the reconstruction.
+
+    The two `pairTM` outputs are bounded by explicit semantic hypotheses rather than by any
+    closure property of `B`: `Nat.pair` of two values below `B` is not below `B`, so the
+    caller supplies the bound (at the global step, from `codeEvalBound`). -/
+lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (R : Regs (32 + af + ag) n) (Mg : TM n)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (tg : ℕ)
+    (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hV : ∀ k, V k < B)
+    (hFgB : ∀ u : Fin ag → ℕ, (∀ k, u k < B) → ∀ k, Fg u k < B)
+    (hFgTag : ∀ u : Fin ag → ℕ, Fg u ⟨2, by omega⟩ ≤ 1)
+    (halive : V (precSelf af ag 10) ≤ 1)
+    (hj1 : V (precSelf af ag 9) + 1 < B)
+    (hf1 : V (precSelf af ag 12) + 1 < B)
+    (hp1 : Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) < B)
+    (hp2 : Nat.pair (V (precSelf af ag 6))
+             (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) < B)
+    (hMg : ∀ (Wb : Fin n → Tape) (u : Fin ag → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mg.HoareTime (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((precRightSub af ag).trans R) Wb (Fg u)) ys) tg) :
+    (precBodyTM af ag haf hag R Mg).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀ (regsWork R w₀ (precBodyVals af ag haf hag Fg V)) ys)
+      (15 * evalnArithmeticCost B + tg + 15) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
+  -- S1: pair slot 0 := j
+  have h1 := copyIntoTM_hoareTime (R (precSelf af ag 9)) (R (precSelf af ag 16))
+      (Regs.ne R (precSelf_ne_self 9 16 (by decide)))
+      (V (precSelf af ag 9)) (V (precSelf af ag 16))
+      inp₀ (regsWork R w₀ V) ys hinp₀ (fun i _ => hpv V i)
+      (regsWork_apply R w₀ V _) (regsWork_apply R w₀ V _)
+  rw [regsWork_update] at h1
+  replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
+  set V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9)) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]; simp only [Function.update_apply]; split_ifs <;> exact hV _
+  -- S2: pair slot 1 := acc
+  have h2 := copyIntoTM_hoareTime (R (precSelf af ag 11)) (R (precSelf af ag 17))
+      (Regs.ne R (precSelf_ne_self 11 17 (by decide)))
+      (V1 (precSelf af ag 11)) (V1 (precSelf af ag 17))
+      inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
+      (regsWork_apply R w₀ V1 _) (regsWork_apply R w₀ V1 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
+  set V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  -- reads of the pair window at entry to S3
+  have hw0 : V2 ((precPairW af ag) 0) = V (precSelf af ag 9) := by
+    rw [show (precPairW af ag) 0 = precSelf af ag 16 from by
+      apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]]
+    rw [hV2, Function.update_of_ne (precSelf_ne_self 16 17 (by decide)), hV1,
+      Function.update_self]
+  have hw1 : V2 ((precPairW af ag) 1) = V (precSelf af ag 11) := by
+    rw [show (precPairW af ag) 1 = precSelf af ag 17 from by
+      apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]]
+    rw [hV2, Function.update_self, hV1,
+      Function.update_of_ne (precSelf_ne_self 11 16 (by decide))]
+  -- S3: pair j acc
+  have h3 := runChild (precPairW af ag) R (pairTM ((precPairW af ag).trans R)) pairVals
+      (evalnArithmeticCost B) B w₀ hpark V2 b2
+      (fun Wb u hp hu => pairTM_hoareTime_arith _ u B inp₀ Wb ys hinp₀ hp
+        (fun k => Nat.le_of_lt (hu k)))
+  set V3 := writeWindow (precPairW af ag) V2
+      (pairVals (fun i => V2 ((precPairW af ag) i))) with hV3
+  have b3 : ∀ k, V3 k < B := by
+    intro k; rw [hV3]
+    refine writeWindow_bounded _ _ _ B b2 (fun i => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
+    rw [hw0, hw1]; exact hp1
+  have r3_22 : V3 (precSelf af ag 22)
+      = Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) := by
+    rw [← precPairW_six, hV3, writeWindow_apply]
+    simp only [pairVals]
+    simp [hw0, hw1]
+  have r3_17 : V3 (precSelf af ag 17) = V (precSelf af ag 11) := by
+    rw [← precPairW_one, hV3, writeWindow_apply]
+    simp only [pairVals]
+    simp [hw1]
+  have out3 : ∀ (i : Fin 32), (∀ t : Fin 8, 16 + (t : ℕ) ≠ (i : ℕ)) →
+      V3 (precSelf af ag i) = V (precSelf af ag i) := by
+    intro i hi
+    have h16 : (i : ℕ) ≠ 16 := by have := hi 0; simp at this ⊢; omega
+    have h17 : (i : ℕ) ≠ 17 := by have := hi 1; simp at this ⊢; omega
+    rw [hV3, runChild_frame _ _ _ (fun t => precPairW_ne_self t i (hi t)),
+      hV2, Function.update_of_ne (precSelf_ne_self i 17 h17),
+      hV1, Function.update_of_ne (precSelf_ne_self i 16 h16)]
+  -- S4: pair slot 1 := that
+  have h4 := copyIntoTM_hoareTime (R (precSelf af ag 22)) (R (precSelf af ag 17))
+      (Regs.ne R (precSelf_ne_self 22 17 (by decide)))
+      (V3 (precSelf af ag 22)) (V3 (precSelf af ag 17))
+      inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
+      (regsWork_apply R w₀ V3 _) (regsWork_apply R w₀ V3 _)
+  rw [regsWork_update] at h4
+  replace h4 := h4.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
+  set V4 := Function.update V3 (precSelf af ag 17) (V3 (precSelf af ag 22)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  -- S5: pair slot 0 := a
+  have h5 := copyIntoTM_hoareTime (R (precSelf af ag 6)) (R (precSelf af ag 16))
+      (Regs.ne R (precSelf_ne_self 6 16 (by decide)))
+      (V4 (precSelf af ag 6)) (V4 (precSelf af ag 16))
+      inp₀ (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i)
+      (regsWork_apply R w₀ V4 _) (regsWork_apply R w₀ V4 _)
+  rw [regsWork_update] at h5
+  replace h5 := h5.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b4 _)) (Nat.le_of_lt (b4 _)))
+  set V5 := Function.update V4 (precSelf af ag 16) (V4 (precSelf af ag 6)) with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+  have r5_w0 : V5 ((precPairW af ag) 0) = V (precSelf af ag 6) := by
+    rw [precPairW_zero, hV5, Function.update_self, hV4,
+      Function.update_of_ne (precSelf_ne_self 6 17 (by decide))]
+    exact out3 6 (by intro t; have := t.isLt; simp; omega)
+  have r5_w1 : V5 ((precPairW af ag) 1)
+      = Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)) := by
+    rw [precPairW_one, hV5, Function.update_of_ne (precSelf_ne_self 17 16 (by decide)),
+      hV4, Function.update_self, r3_22]
+  -- S6: pair a (pair j acc)
+  have h6 := runChild (precPairW af ag) R (pairTM ((precPairW af ag).trans R)) pairVals
+      (evalnArithmeticCost B) B w₀ hpark V5 b5
+      (fun Wb u hp hu => pairTM_hoareTime_arith _ u B inp₀ Wb ys hinp₀ hp
+        (fun k => Nat.le_of_lt (hu k)))
+  set V6 := writeWindow (precPairW af ag) V5
+      (pairVals (fun i => V5 ((precPairW af ag) i))) with hV6
+  have b6 : ∀ k, V6 k < B := by
+    intro k; rw [hV6]
+    refine writeWindow_bounded _ _ _ B b5 (fun i => ?_) k
+    refine pairVals_lt _ B hB2 (fun i => b5 _) ?_ i
+    rw [r5_w0, r5_w1]; exact hp2
+  have r6_22 : V6 (precSelf af ag 22)
+      = Nat.pair (V (precSelf af ag 6))
+          (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
+    rw [← precPairW_six, hV6, writeWindow_apply]
+    simp only [pairVals]
+    simp [r5_w0, r5_w1]
+  have out6 : ∀ (i : Fin 32), (∀ t : Fin 8, 16 + (t : ℕ) ≠ (i : ℕ)) →
+      V6 (precSelf af ag i) = V (precSelf af ag i) := by
+    intro i hi
+    have h16 : (i : ℕ) ≠ 16 := by have := hi 0; simp at this ⊢; omega
+    have h17 : (i : ℕ) ≠ 17 := by have := hi 1; simp at this ⊢; omega
+    rw [hV6, runChild_frame _ _ _ (fun t => precPairW_ne_self t i (hi t)),
+      hV5, Function.update_of_ne (precSelf_ne_self i 16 h16),
+      hV4, Function.update_of_ne (precSelf_ne_self i 17 h17)]
+    exact out3 i hi
+  -- S7: j := j + 1
+  have h7 := incRegTM_hoareTime (R (precSelf af ag 9)) (V6 (precSelf af ag 9)) inp₀
+      (regsWork R w₀ V6) ys hinp₀ (fun i _ => hpv V6 i) (regsWork_apply R w₀ V6 _)
+  rw [regsWork_update] at h7
+  replace h7 := h7.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b6 _)))
+  set V7 := Function.update V6 (precSelf af ag 9) (V6 (precSelf af ag 9) + 1) with hV7
+  have b7 : ∀ k, V7 k < B := by
+    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
+    · rw [out6 9 (by intro t; have := t.isLt; simp; omega)]; exact hj1
+    · exact b6 _
+  -- S8: curFuel := curFuel + 1
+  have h8 := incRegTM_hoareTime (R (precSelf af ag 12)) (V7 (precSelf af ag 12)) inp₀
+      (regsWork R w₀ V7) ys hinp₀ (fun i _ => hpv V7 i) (regsWork_apply R w₀ V7 _)
+  rw [regsWork_update] at h8
+  replace h8 := h8.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b7 _)))
+  set V8 := Function.update V7 (precSelf af ag 12) (V7 (precSelf af ag 12) + 1) with hV8
+  have b8 : ∀ k, V8 k < B := by
+    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
+    · rw [hV7, Function.update_of_ne (precSelf_ne_self 12 9 (by decide)),
+        out6 12 (by intro t; have := t.isLt; simp; omega)]
+      exact hf1
+    · exact b7 _
+  -- S9: cg.input := the reconstructed pair
+  have h9 := copyIntoTM_hoareTime (R (precSelf af ag 22)) (R (precRightLoc af ag hag 0))
+      (Regs.ne R (precSelf_ne_rightLoc hag haf 22 0))
+      (V8 (precSelf af ag 22)) (V8 (precRightLoc af ag hag 0))
+      inp₀ (regsWork R w₀ V8) ys hinp₀ (fun i _ => hpv V8 i)
+      (regsWork_apply R w₀ V8 _) (regsWork_apply R w₀ V8 _)
+  rw [regsWork_update] at h9
+  replace h9 := h9.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b8 _)) (Nat.le_of_lt (b8 _)))
+  set V9 := Function.update V8 (precRightLoc af ag hag 0) (V8 (precSelf af ag 22))
+    with hV9
+  have b9 : ∀ k, V9 k < B := by
+    intro k; rw [hV9]; simp only [Function.update_apply]; split_ifs <;> exact b8 _
+  -- S10: cg.fuel := curFuel
+  have h10 := copyIntoTM_hoareTime (R (precSelf af ag 12)) (R (precRightLoc af ag hag 1))
+      (Regs.ne R (precSelf_ne_rightLoc hag haf 12 1))
+      (V9 (precSelf af ag 12)) (V9 (precRightLoc af ag hag 1))
+      inp₀ (regsWork R w₀ V9) ys hinp₀ (fun i _ => hpv V9 i)
+      (regsWork_apply R w₀ V9 _) (regsWork_apply R w₀ V9 _)
+  rw [regsWork_update] at h10
+  replace h10 := h10.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b9 _)) (Nat.le_of_lt (b9 _)))
+  set V10 := Function.update V9 (precRightLoc af ag hag 1) (V9 (precSelf af ag 12))
+    with hV10
+  have b10 : ∀ k, V10 k < B := by
+    intro k; rw [hV10]; simp only [Function.update_apply]; split_ifs <;> exact b9 _
+  -- S11: run cg
+  have h11 := runChild (precRightSub af ag) R Mg Fg tg B w₀ hpark V10 b10 hMg
+  set V11 := writeWindow (precRightSub af ag) V10
+      (Fg (fun i => V10 ((precRightSub af ag) i))) with hV11
+  have b11 : ∀ k, V11 k < B := by
+    intro k; rw [hV11]
+    exact writeWindow_bounded _ _ _ B b10 (fun i => hFgB _ (fun t => b10 _) i) k
+  have outR : ∀ (i : Fin 32), V11 (precSelf af ag i) = V10 (precSelf af ag i) := by
+    intro i
+    rw [hV11, runChild_frame _ _ _ (fun t => precRightSub_ne_self haf t i)]
+  have r11_tag : V11 (precRightLoc af ag hag 2)
+      = Fg (fun i => V10 ((precRightSub af ag) i)) ⟨2, by omega⟩ := by
+    rw [precRightLoc_eq, hV11, writeWindow_apply]
+    congr 1
+  have r11_val : V11 (precRightLoc af ag hag 3)
+      = Fg (fun i => V10 ((precRightSub af ag) i)) ⟨3, by omega⟩ := by
+    rw [precRightLoc_eq, hV11, writeWindow_apply]
+    congr 1
+  have hAlive11 : V11 (precSelf af ag 10) ≤ 1 := by
+    rw [outR 10, hV10, Function.update_of_ne (precSelf_ne_rightLoc hag haf 10 1),
+      hV9, Function.update_of_ne (precSelf_ne_rightLoc hag haf 10 0),
+      hV8, Function.update_of_ne (precSelf_ne_self 10 12 (by decide)),
+      hV7, Function.update_of_ne (precSelf_ne_self 10 9 (by decide)),
+      out6 10 (by intro t; have := t.isLt; simp; omega)]
+    exact halive
+  have hTag11 : V11 (precRightLoc af ag hag 2) ≤ 1 := by
+    rw [r11_tag]; exact hFgTag _
+  -- S12: clear the mask temp
+  have h12 := clearRegTM_hoareTime (R (precSelf af ag 13)) (V11 (precSelf af ag 13)) inp₀
+      (regsWork R w₀ V11) ys hinp₀ (fun i _ => hpv V11 i) (regsWork_apply R w₀ V11 _)
+  rw [regsWork_update] at h12
+  replace h12 := h12.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b11 _)))
+  set V12 := Function.update V11 (precSelf af ag 13) 0 with hV12
+  have b12 : ∀ k, V12 k < B := by
+    intro k; rw [hV12]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b11 _
+  have hAlive12 : V12 (precSelf af ag 10) ≤ 1 := by
+    rw [hV12, Function.update_of_ne (precSelf_ne_self 10 13 (by decide))]; exact hAlive11
+  have hTag12 : V12 (precRightLoc af ag hag 2) ≤ 1 := by
+    rw [hV12, Function.update_of_ne (Ne.symm (precSelf_ne_rightLoc hag haf 13 2))]
+    exact hTag11
+  -- S13: temp := alive * cg.tag
+  have h13 := mulAddIntoTM_hoareTime (R (precSelf af ag 10)) (R (precRightLoc af ag hag 2))
+      (R (precSelf af ag 13))
+      (Regs.ne R (precSelf_ne_rightLoc hag haf 10 2))
+      (Regs.ne R (precSelf_ne_self 10 13 (by decide)))
+      (Regs.ne R (Ne.symm (precSelf_ne_rightLoc hag haf 13 2)))
+      (V12 (precSelf af ag 10)) (V12 (precRightLoc af ag hag 2)) 0
+      inp₀ (regsWork R w₀ V12) ys hinp₀ (fun i _ => hpv V12 i)
+      (regsWork_apply R w₀ V12 _) (regsWork_apply R w₀ V12 _)
+      (by rw [regsWork_apply, hV12, Function.update_self])
+  rw [regsWork_update] at h13
+  replace h13 := h13.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b12 _)) (Nat.le_of_lt (b12 _)) (by omega))
+  set V13 := Function.update V12 (precSelf af ag 13)
+      (0 + V12 (precSelf af ag 10) * V12 (precRightLoc af ag hag 2)) with hV13
+  have hMask13 : V13 (precSelf af ag 13) ≤ 1 := by
+    rw [hV13, Function.update_self]
+    calc 0 + V12 (precSelf af ag 10) * V12 (precRightLoc af ag hag 2)
+        ≤ 1 * 1 := by simpa using Nat.mul_le_mul hAlive12 hTag12
+      _ = 1 := by norm_num
+  have b13 : ∀ k, V13 k < B := by
+    intro k; rw [hV13]; simp only [Function.update_apply]; split_ifs
+    · have h := hMask13; rw [hV13, Function.update_self] at h; omega
+    · exact b12 _
+  -- S14: alive := temp
+  have h14 := copyIntoTM_hoareTime (R (precSelf af ag 13)) (R (precSelf af ag 10))
+      (Regs.ne R (precSelf_ne_self 13 10 (by decide)))
+      (V13 (precSelf af ag 13)) (V13 (precSelf af ag 10))
+      inp₀ (regsWork R w₀ V13) ys hinp₀ (fun i _ => hpv V13 i)
+      (regsWork_apply R w₀ V13 _) (regsWork_apply R w₀ V13 _)
+  rw [regsWork_update] at h14
+  replace h14 := h14.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b13 _)) (Nat.le_of_lt (b13 _)))
+  set V14 := Function.update V13 (precSelf af ag 10) (V13 (precSelf af ag 13)) with hV14
+  have b14 : ∀ k, V14 k < B := by
+    intro k; rw [hV14]; simp only [Function.update_apply]; split_ifs <;> exact b13 _
+  have hAlive14 : V14 (precSelf af ag 10) ≤ 1 := by
+    rw [hV14, Function.update_self]; exact hMask13
+  -- S15: clear acc
+  have h15 := clearRegTM_hoareTime (R (precSelf af ag 11)) (V14 (precSelf af ag 11)) inp₀
+      (regsWork R w₀ V14) ys hinp₀ (fun i _ => hpv V14 i) (regsWork_apply R w₀ V14 _)
+  rw [regsWork_update] at h15
+  replace h15 := h15.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b14 _)))
+  set V15 := Function.update V14 (precSelf af ag 11) 0 with hV15
+  have b15 : ∀ k, V15 k < B := by
+    intro k; rw [hV15]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b14 _
+  have hAlive15 : V15 (precSelf af ag 10) ≤ 1 := by
+    rw [hV15, Function.update_of_ne (precSelf_ne_self 10 11 (by decide))]; exact hAlive14
+  -- S16: acc := alive * cg.value
+  have h16 := mulAddIntoTM_hoareTime (R (precSelf af ag 10)) (R (precRightLoc af ag hag 3))
+      (R (precSelf af ag 11))
+      (Regs.ne R (precSelf_ne_rightLoc hag haf 10 3))
+      (Regs.ne R (precSelf_ne_self 10 11 (by decide)))
+      (Regs.ne R (Ne.symm (precSelf_ne_rightLoc hag haf 11 3)))
+      (V15 (precSelf af ag 10)) (V15 (precRightLoc af ag hag 3)) 0
+      inp₀ (regsWork R w₀ V15) ys hinp₀ (fun i _ => hpv V15 i)
+      (regsWork_apply R w₀ V15 _) (regsWork_apply R w₀ V15 _)
+      (by rw [regsWork_apply, hV15, Function.update_self])
+  rw [regsWork_update] at h16
+  replace h16 := h16.mono_bound
+    (mulAddTime_le_arith _ _ 0 B (Nat.le_of_lt (b15 _)) (Nat.le_of_lt (b15 _)) (by omega))
+  exact (seqEmit hinp₀ (hpv V1) h1 <|
+    seqEmit hinp₀ (hpv V2) h2 <|
+    seqEmit hinp₀ (hpv V3) h3 <|
+    seqEmit hinp₀ (hpv V4) h4 <|
+    seqEmit hinp₀ (hpv V5) h5 <|
+    seqEmit hinp₀ (hpv V6) h6 <|
+    seqEmit hinp₀ (hpv V7) h7 <|
+    seqEmit hinp₀ (hpv V8) h8 <|
+    seqEmit hinp₀ (hpv V9) h9 <|
+    seqEmit hinp₀ (hpv V10) h10 <|
+    seqEmit hinp₀ (hpv V11) h11 <|
+    seqEmit hinp₀ (hpv V12) h12 <|
+    seqEmit hinp₀ (hpv V13) h13 <|
+    seqEmit hinp₀ (hpv V14) h14 <|
+    seqEmit hinp₀ (hpv V15) h15 h16).mono_bound (by omega)
+
+end PrecBodyProof
 
 end LogicalInduction.EvalnCompiler
