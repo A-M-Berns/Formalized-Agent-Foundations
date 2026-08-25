@@ -31,6 +31,7 @@ namespace LogicalInduction.TraderMachine
 open Nat.Partrec (Code)
 open Complexity Complexity.TM
 open LogicalInduction.EvalnCompiler
+open LogicalInduction.MachineExec
 
 variable {n m : ℕ}
 
@@ -1392,5 +1393,194 @@ lemma setupVals_lt (a k N : ℕ) (V : Fin (totalRegs lc tc) → ℕ) (s B : ℕ)
   exact update_lt V13 B hv13 (by omega)
 
 end SetupMachine
+
+/-! ## The word the machine emits -/
+
+section Word
+variable (lc tc : Nat.Partrec.Code)
+
+lemma resultVal_eq_getD (o : Option ℕ) : resultVal o = o.getD 0 := by
+  cases o <;> rfl
+
+lemma ofFn_val_eq_map_range (m : ℕ) (f : ℕ → ℕ) :
+    List.ofFn (fun i : Fin m => f i) = (List.range m).map f := by
+  refine List.ext_getElem (by simp) (fun i h1 h2 => ?_)
+  simp
+
+/-- The digit stream `clockedTokens` produces, as a map over the count the machine
+    computes. -/
+lemma clockedTokens_eq_map_range (C N : ℕ) :
+    clockedTokens lc tc C N
+      = (List.range (resultTag (Nat.Partrec.Code.evaln C lc N)
+          * min (resultVal (Nat.Partrec.Code.evaln C lc N)) C)).map
+        (fun i => resultVal (Nat.Partrec.Code.evaln C tc (Nat.pair N i))) := by
+  rw [clockedTokens]
+  cases h : Nat.Partrec.Code.evaln C lc N with
+  | none => simp [resultTag]
+  | some len =>
+      simp only [resultTag_some, resultVal_some, one_mul]
+      rw [← ofFn_val_eq_map_range]
+      congr 1
+      funext i
+      rw [resultVal_eq_getD]
+
+
+/-- The output word after `i` iterations, in closed form. -/
+lemma tokenLoopYs_eq (V₀ : Fin (totalRegs lc tc) → ℕ) (ys : List Bool) (N C : ℕ)
+    (h0 : V₀ (selfW lc tc 0) = N) (h1 : V₀ (selfW lc tc 1) = C)
+    (h5 : V₀ (selfW lc tc 5) = 0) :
+    ∀ i, tokenLoopYs lc tc V₀ ys i
+      = ys ++ digitsToBits ((List.range i).map
+          (fun j => min (resultVal (Nat.Partrec.Code.evaln C tc (Nat.pair N j))) 4))
+  | 0 => by simp [tokenLoopYs, digitsToBits]
+  | i + 1 => by
+      have hdig : tokenDigit lc tc (tokenLoopVals lc tc V₀ i)
+          = resultVal (Nat.Partrec.Code.evaln C tc (Nat.pair N i)) := by
+        rw [tokenDigit, tokenLoopVals_selfW lc tc V₀ 0 (by decide) (by decide),
+          tokenLoopVals_selfW lc tc V₀ 1 (by decide) (by decide),
+          tokenLoopVals_index, h0, h1, h5]
+        norm_num
+      rw [tokenLoopYs, tokenLoopYs_eq V₀ ys N C h0 h1 h5 i, hdig, List.range_succ]
+      simp [digitsToBits]
+
+/-- The word the machine emits, as a function of its input. -/
+noncomputable def traderOutput (a k : ℕ) (x : List Bool) : List Bool :=
+  digitsToBits (List.map (fun d => min d 4)
+    (clockedTokens lc tc (clockOf a k x.length) x.length))
+
+/-- Reading the emitted word back recovers the clamped digit stream. -/
+lemma bitsToDigits_traderOutput (a k : ℕ) (x : List Bool) :
+    bitsToDigits (traderOutput lc tc a k x)
+      = List.map (fun d => min d 4)
+        (clockedTokens lc tc (clockOf a k x.length) x.length) := by
+  refine bitsToDigits_digitsToBits _ (fun d hd => ?_)
+  obtain ⟨e, -, rfl⟩ := List.mem_map.mp hd
+  omega
+
+
+/-! ## The trader machine -/
+
+section Top
+variable {n : ℕ}
+
+lemma regsWork_zero {m : ℕ} (R : Regs m n) :
+    regsWork R (fun _ => regTape 0) (fun _ => 0) = fun _ => regTape 0 := by
+  funext j
+  by_cases h : ∃ q, R q = j
+  · obtain ⟨q, rfl⟩ := h
+    rw [regsWork_apply]
+  · rw [regsWork_of_ne _ _ _ (fun q e => h ⟨q, e⟩)]
+
+/-- **The trader machine.** Measure the day, compute the clock, run the length program,
+    then emit one clamped digit per token the token program returns. -/
+noncomputable def traderTM (a k : ℕ) (R : Regs (totalRegs lc tc) n) (l : Fin n) : TM n :=
+  seqTM bumpTM <|
+  seqTM (setupTM lc tc a k R) <|
+  seqTM (copyIntoTM (R (selfW lc tc 4)) l) (forRegTM (tokenBodyTM lc tc R) l)
+
+/-- A loose step bound for the trader machine. -/
+noncomputable def traderCost (a k N s B count : ℕ) : ℕ :=
+  2 * N + opBudget B + ((clockPoly a k).natDegree + 1) * (layerBudget B + 1)
+    + 13 * evalnArithmeticCost B + codeMachineTime lc s (evalnArithmeticCost B)
+    + count * (25 * evalnArithmeticCost B + codeMachineTime tc s (evalnArithmeticCost B)
+      + 70 + 2) + count + 40
+
+set_option maxHeartbeats 8000000 in
+lemma traderTM_hoareTime (a k : ℕ) (R : Regs (totalRegs lc tc) n) (l : Fin n)
+    (hl : ∀ q, R q ≠ l) (x : List Bool) (s B : ℕ)
+    (hB5 : 5 ≤ B) (hsB : s < B)
+    (hps : Nat.pair x.length (clockOf a k x.length) ≤ s)
+    (hCs : clockOf a k x.length ≤ s)
+    (hcap : hornerCap a k x.length ≤ B)
+    (hBlc : codeRegBound lc s ≤ B) (hBtc : codeRegBound tc s ≤ B) :
+    (traderTM lc tc a k R l).HoareTime
+      (fun inp work out => inp = Tape.init (x.map Γ.ofBool) ∧
+        (∀ i, work i = Tape.init []) ∧ out = Tape.init [])
+      (fun _ _ out => OutAcc (traderOutput lc tc a k x) out)
+      (traderCost lc tc a k x.length s B (countOf lc a k x.length)) := by
+  set inp₀ : Tape := ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ with hinp
+  have hinp₀ : Parked inp₀ := parked_init_input x
+  set Z : Fin n → Tape := fun _ => regTape 0 with hZdef
+  have hparkZ : ∀ i, Parked (Z i) := fun i => parked_regTape 0
+  have hNs : x.length ≤ s := le_trans (Nat.left_le_pair _ _) hps
+  -- the entry adapter
+  have hbump : (bumpTM (n := n)).HoareTime
+      (fun inp work out => inp = Tape.init (x.map Γ.ofBool) ∧
+        (∀ i, work i = Tape.init []) ∧ out = Tape.init [])
+      (EmitPred inp₀ Z []) 1 := by
+    refine (bumpTM_hoareTime (n := n) x).consequence (fun _ _ _ h => h)
+      (fun inp work out h => ?_) (le_refl 1)
+    obtain ⟨hi, hw, ho⟩ := h
+    exact ⟨hi, funext (fun i => (hw i).eq_regT), ho⟩
+  have hZ : regsWork R Z (fun _ => 0) = Z := regsWork_zero R
+  rw [← hZ] at hbump
+  -- the setup
+  have hsetup := setupTM_hoareTime lc tc a k R x (fun _ => 0) s B Z hparkZ
+    (fun _ => rfl) hB5 hsB hNs hCs hcap hBlc
+  set V₀ := setupVals lc tc a k x.length (fun _ : Fin (totalRegs lc tc) => 0) with hV₀
+  obtain ⟨e0, e1, e4, e5⟩ := setupVals_spec lc tc a k x.length
+    (fun _ : Fin (totalRegs lc tc) => 0)
+  rw [← hV₀] at e0 e1 e4 e5
+  have hV₀lt : ∀ j, V₀ j < B :=
+    setupVals_lt lc tc a k x.length _ s B (fun _ => rfl) hB5 hsB hNs hCs hBlc
+  have hcountC : countOf lc a k x.length ≤ clockOf a k x.length := by
+    rw [countOf]
+    rcases Nat.eq_zero_or_pos (resultTag
+      (Nat.Partrec.Code.evaln (clockOf a k x.length) lc x.length)) with h | h
+    · rw [h]; omega
+    · have h1 : resultTag (Nat.Partrec.Code.evaln (clockOf a k x.length) lc x.length) = 1 := by
+        have := resultTag_le_one
+          (Nat.Partrec.Code.evaln (clockOf a k x.length) lc x.length)
+        omega
+      rw [h1]
+      omega
+  -- the loop counter
+  have hpZ := parked_regsWork R hparkZ
+  have hcopy := copyIntoTM_hoareTime (R (selfW lc tc 4)) l (hl _)
+    (V₀ (selfW lc tc 4)) 0 inp₀ (regsWork R Z V₀) [] hinp₀ (fun i _ => hpZ V₀ i)
+    (regsWork_apply R Z V₀ _) (by rw [regsWork_of_ne _ _ _ hl])
+  rw [e4] at hcopy
+  replace hcopy := hcopy.mono_bound
+    (copyIntoTime_le_arith (countOf lc a k x.length) 0 B
+      (by rw [← e4]; exact (hV₀lt _).le) (by omega))
+  set w₁ : Fin n → Tape :=
+    Function.update Z l (regTape (countOf lc a k x.length)) with hw₁
+  have hpark₁ : ∀ i, Parked (w₁ i) := by
+    intro i
+    rw [hw₁]
+    by_cases hi : i = l
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact hparkZ i
+  have hcopy₁ : (copyIntoTM (R (selfW lc tc 4)) l).HoareTime
+      (EmitPred inp₀ (regsWork R Z V₀) [])
+      (EmitPred inp₀ (regsWork R w₁ V₀) []) (evalnArithmeticCost B) := by
+    rw [hw₁, regsWork_update_of_ne R Z V₀ hl]
+    exact hcopy
+  -- the loop
+  have hloop := tokenLoop_hoareTime lc tc R l hl V₀ s B (countOf lc a k x.length)
+    inp₀ w₁ [] hinp₀ hpark₁ (by rw [hw₁, Function.update_self]) hB5 hsB hBtc hV₀lt
+    (by rw [e5])
+    (by rw [e0]
+        exact le_trans (natPair_mono (le_refl _) hcountC) hps)
+    (by rw [e1]; exact hCs)
+    (by omega)
+  -- the emitted word
+  have hword : tokenLoopYs lc tc V₀ [] (countOf lc a k x.length)
+      = traderOutput lc tc a k x := by
+    rw [tokenLoopYs_eq lc tc V₀ [] x.length (clockOf a k x.length) e0 e1 e5,
+      traderOutput, clockedTokens_eq_map_range, List.map_map]
+    rfl
+  rw [hword] at hloop
+  have hrest := seqEmitOut hinp₀ (hpZ V₀) hsetup
+    (seqEmitOut hinp₀ (parked_regsWork R hpark₁ V₀) hcopy₁ hloop)
+  refine ((seqTM_hoareTime bumpTM _ hbump
+    (fun _ _ _ h => emitPred_transition hinp₀ (hpZ (fun _ => 0)) [] _ _ _ h)
+    hrest).consequence (fun _ _ _ h => h) (fun _ _ out h => h.2.2) ?_)
+  rw [traderCost]
+  omega
+
+end Top
+
+end Word
 
 end LogicalInduction.TraderMachine
