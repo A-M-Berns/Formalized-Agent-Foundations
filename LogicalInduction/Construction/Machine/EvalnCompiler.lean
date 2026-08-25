@@ -4729,6 +4729,93 @@ end
 
 end RfindLevelSem
 
+/-! ### `rfind'`, semantically complete
+
+The child's registers hold `evaln` of the child; the loop state after `i` levels is
+`rfIter` at level `i`; and after `fuel` levels `rfIter_spec` turns that into
+`evaln fuel (rfind' cf)`. -/
+
+section RfindClose
+variable {af : ℕ}
+
+/-- The hypothesis the structural induction supplies for a child: its interface registers
+    really hold `evaln` of the child, on whatever input they are given. -/
+def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) : Prop :=
+  ∀ u : Fin af → ℕ,
+    Ff u ⟨2, by omega⟩
+        = resultTag (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩)) ∧
+      Ff u ⟨3, by omega⟩
+        = resultVal (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩))
+
+/-- The iterate, unfolded from the *right*: the last level runs at fuel `f - t` on index
+    `m + t`. -/
+lemma rfIter_succ' (cf : Nat.Partrec.Code) (a : ℕ) :
+    ∀ (t : ℕ) (st : ℕ × ℕ × ℕ) (f m : ℕ),
+      rfIter cf a st f m (t + 1) = rfLevel cf a (rfIter cf a st f m t) (f - t) (m + t) := by
+  intro t
+  induction t with
+  | zero => intro st f m; simp [rfIter_succ]
+  | succ k ih =>
+    intro st f m
+    rw [rfIter_succ, ih (rfLevel cf a st f m) (f - 1) (m + 1), ← rfIter_succ]
+    congr 1
+    · omega
+    · omega
+
+/-- **One level.** The machine's level is `rfLevel`, given a child that encodes `evaln`. -/
+lemma rfBodyVals_isLevel (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V : Fin (32 + af) → ℕ) (h12 : V (rfSelf af 12) = 1) :
+    (rfBodyVals af haf Ff V (rfSelf af 9), rfBodyVals af haf Ff V (rfSelf af 10),
+      rfBodyVals af haf Ff V (rfSelf af 11))
+      = rfLevel cf (V (rfSelf af 6))
+          (V (rfSelf af 9), V (rfSelf af 10), V (rfSelf af 11))
+          (V (rfSelf af 8)) (V (rfSelf af 7)) := by
+  obtain ⟨htag, hval⟩ := hFf (rfChildIn af haf V)
+  rw [rfChildIn_zero, rfChildIn_one] at htag hval
+  have hlive : rfLive af haf Ff V
+      = V (rfSelf af 9)
+        * (if Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < V (rfSelf af 8) then 1 else 0)
+        * resultTag (Nat.Partrec.Code.evaln (V (rfSelf af 8)) cf
+            (Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)))) := by
+    rw [rfLive, htag]
+  have hzero : rfZero af haf Ff V
+      = (if resultVal (Nat.Partrec.Code.evaln (V (rfSelf af 8)) cf
+            (Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)))) = 0 then 1 else 0) := by
+    rw [rfZero, hval, h12]
+    split_ifs with h1 h2 h2 <;> omega
+  rw [rfBodyVals_search, rfBodyVals_found, rfBodyVals_result, hlive, hzero, h12]
+  simp only [rfLevel]
+
+/-- **The loop invariant.** -/
+lemma rfLoopVals_spec (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V₀ : Fin (32 + af) → ℕ) (h12 : V₀ (rfSelf af 12) = 1) (i : ℕ) :
+    rfLoopVals af haf Ff V₀ i (rfSelf af 6) = V₀ (rfSelf af 6) ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 7) = V₀ (rfSelf af 7) + i ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 8) = V₀ (rfSelf af 8) - i ∧
+      rfLoopVals af haf Ff V₀ i (rfSelf af 12) = 1 ∧
+      (rfLoopVals af haf Ff V₀ i (rfSelf af 9),
+        rfLoopVals af haf Ff V₀ i (rfSelf af 10),
+        rfLoopVals af haf Ff V₀ i (rfSelf af 11))
+        = rfIter cf (V₀ (rfSelf af 6))
+            (V₀ (rfSelf af 9), V₀ (rfSelf af 10), V₀ (rfSelf af 11))
+            (V₀ (rfSelf af 8)) (V₀ (rfSelf af 7)) i := by
+  induction i with
+  | zero => simp [h12]
+  | succ k ih =>
+    obtain ⟨e6, e7, e8, e12, etriple⟩ := ih
+    rw [rfLoopVals_succ]
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · rw [rfBodyVals_a, e6]
+    · rw [rfBodyVals_m, e7]; omega
+    · rw [rfBodyVals_fuel, e8]; omega
+    · rw [rfBodyVals_one, e12]
+    · rw [rfBodyVals_isLevel haf cf Ff hFf _ e12, e6, e7, e8, etriple, rfIter_succ']
+
+end RfindClose
+
 /-! ## `rfind'`: the setup and finish phases
 
 Setup unpairs the input into `a` and `m`, seeds the search state — `searching := 1`,
@@ -5028,6 +5115,102 @@ lemma rfindTM_hoareTime (haf : 16 ≤ af)
     (seqEmit hinp₀ (parked_regsWork R hpark₁ _) hloop hfin)
 
 end RfindCompose
+
+/-! ### `rfind'`: the setup and finish, read off -/
+
+section RfindCloseTwo
+variable {af : ℕ}
+
+lemma rfSetupVals_inp (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 0) = V (rfSelf af 0) := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+  norm_num
+
+lemma rfSetupVals_count (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 1) = V (rfSelf af 1) := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+  norm_num
+
+lemma rfSetupVals_a (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 6) = (Nat.unpair (V (rfSelf af 0))).1 := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+  norm_num
+  exact unpairVals_zero _ _
+
+lemma rfSetupVals_m (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 7) = (Nat.unpair (V (rfSelf af 0))).2 := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+  norm_num
+  exact unpairVals_one _ _
+
+lemma rfSetupVals_fuel (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 8) = V (rfSelf af 1) := by
+  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
+  norm_num
+
+lemma rfSetupVals_search (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 9) = 1 := by
+  simp only [rfSetupVals, rfSelf_update_apply]
+  norm_num
+
+lemma rfSetupVals_found (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 10) = 0 := by
+  simp only [rfSetupVals, rfSelf_update_apply]
+  norm_num
+
+lemma rfSetupVals_result (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 11) = 0 := by
+  simp only [rfSetupVals, rfSelf_update_apply]
+  norm_num
+
+lemma rfSetupVals_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    rfSetupVals af haf V (rfSelf af 12) = 1 := by
+  simp only [rfSetupVals, rfSelf_update_apply]
+  norm_num
+
+lemma rfFinishVals_tag (W : Fin (32 + af) → ℕ) :
+    rfFinishVals af W (rfSelf af 2) = W (rfSelf af 10) := by
+  simp only [rfFinishVals, rfSelf_update_apply]
+  norm_num
+
+lemma rfFinishVals_val (W : Fin (32 + af) → ℕ) :
+    rfFinishVals af W (rfSelf af 3) = W (rfSelf af 11) := by
+  simp only [rfFinishVals, rfSelf_update_apply]
+  norm_num
+
+/-- **`rfind'`, semantically complete.** Given a child that encodes `evaln`, the node's
+    tag and value registers hold the tag and value of `evaln fuel (rfind' cf) inp`. -/
+theorem rfindVals_encodes (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (hFf : ChildEncodes af haf cf Ff)
+    (V : Fin (32 + af) → ℕ) :
+    rfindVals af haf Ff V (rfSelf af 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (rfSelf af 1)) cf.rfind'
+            (V (rfSelf af 0))) ∧
+      rfindVals af haf Ff V (rfSelf af 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (rfSelf af 1)) cf.rfind'
+            (V (rfSelf af 0))) := by
+  have hS12 := rfSetupVals_one haf V
+  obtain ⟨-, -, -, -, htriple⟩ :=
+    rfLoopVals_spec haf cf Ff hFf (rfSetupVals af haf V) hS12
+      (rfSetupVals af haf V (rfSelf af 1))
+  rw [rfSetupVals_a, rfSetupVals_search, rfSetupVals_found, rfSetupVals_result,
+    rfSetupVals_fuel, rfSetupVals_m, rfSetupVals_count] at htriple
+  have hspec := rfIter_spec cf (Nat.unpair (V (rfSelf af 0))).1 (V (rfSelf af 1))
+    (Nat.unpair (V (rfSelf af 0))).2 1 0 0
+  rw [Nat.pair_unpair] at hspec
+  constructor
+  · rw [rfindVals, rfFinishVals_tag]
+    have h10 := congrArg (fun p : ℕ × ℕ × ℕ => p.2.1) htriple
+    simp only at h10
+    rw [rfSetupVals_count, h10, hspec.1]
+    omega
+  · rw [rfindVals, rfFinishVals_val]
+    have h11 := congrArg (fun p : ℕ × ℕ × ℕ => p.2.2) htriple
+    simp only at h11
+    rw [rfSetupVals_count, h11, hspec.2]
+    omega
+
+end RfindCloseTwo
 
 section RfindBridge
 variable {af : ℕ}
