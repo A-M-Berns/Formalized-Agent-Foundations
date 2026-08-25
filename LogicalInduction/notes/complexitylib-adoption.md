@@ -4121,3 +4121,46 @@ sixteen-stage read-off a two-line `simp only` + `norm_num`.
 child. All eight constructors now have their per-node semantic lemma or (for the four base
 constructors) had one already; the induction is the glue. After that, Stage D's runtime
 bound and Stage E's `Complexity.FP` transport.
+
+---
+
+# Part XXI — The compiler is correct (2026-08-25)
+
+_Stage 2, item 3. `codeVals_encodes`: for every `c : Nat.Partrec.Code`, the compiled
+register vector holds the canonical encoding of `evaln` in the node's tag and value
+registers._
+
+```lean
+lemma codeVals_encodes : ∀ c : Nat.Partrec.Code,
+    ChildEncodes (codeRegs c) (codeRegs_ge c) c (codeVals c)
+```
+
+The induction is thin, because Part XX put every constructor's semantics behind a
+`ChildEncodes` hypothesis: each case applies that constructor's own lemma to the two
+induction hypotheses. `pair` and `comp` needed their assembled lemmas
+(`pairVals_encodes`, `compVals_encodes`) — the read-offs from Part XIX plus the
+`pair_encodes` / `comp_encodes` mask identities.
+
+## XXI.1 The one friction: index forms
+
+A node's interface registers sit at offset `0` of its block in every layout, so for six of
+the eight constructors `⟨2, _⟩` and `selfW … 2` are *definitionally* equal and the case is
+`exact`. The two looping constructors are not: their block is thirty-three wide, the
+vector is written back through `precMain` / `rfMain`, and neither `writeWindow` (a `dif`
+on `∃ j, shift j = k`) nor `Function.update` (a `Decidable` equality on a symbolic `Fin`)
+reduces. So those reads need real rewriting — and `rw` then fails on the arity, because
+`codeRegs (cf.prec cg)` and `33 + codeRegs cf + codeRegs cg` are defeq but not
+syntactically equal, and unification at `instances` transparency will not bridge them.
+
+The fix is to name the block vector — `precBlockVals` / `rfBlockVals`, stated over
+variables `af ag`, with `codeRegs` nowhere in sight — and prove the read-off there
+(`precBlockVals_self`, `rfBlockVals_self`). The main proof then reaches it with a `show`,
+which *does* accept a definitional change. This is the third time in this development that
+naming an intermediate has been the difference between a two-line proof and an
+unmaintainable one.
+
+## XXI.2 Where Stage 2 stands
+
+Items 1–3 of the five are done: `prec`, `rfind'`, and the compiler's structural
+correctness. Items 4 (concrete polynomial runtime) and 5 (the `Complexity.FP` transport)
+remain, and they are larger than the machine work was. See Part XXII for the sizing.
