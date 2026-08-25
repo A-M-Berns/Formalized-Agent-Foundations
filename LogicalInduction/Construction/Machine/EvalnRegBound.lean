@@ -19,6 +19,7 @@ Nothing here assumes an arbitrary bound is closed under `Nat.pair`: every pair t
 forms appears in the definition.
 -/
 import LogicalInduction.Framework.Emission
+import LogicalInduction.Construction.Machine.CodeSteps
 import LogicalInduction.Construction.Machine.EvalnCompiler
 
 namespace LogicalInduction.EvalnCompiler
@@ -956,5 +957,138 @@ lemma codeMachineTime_mono_cost (c : Nat.Partrec.Code) (s : ℕ) :
       omega
 
 end MachineTime
+
+/-! ## The step bound is polynomial for each fixed code -/
+
+section MachineTimePoly
+
+lemma IsPolyBounded.const (c : ℕ) : IsPolyBounded (fun _ : ℕ => c) :=
+  ⟨c, 0, fun _ => by simp⟩
+
+lemma IsPolyBounded.const_mul {A : ℕ → ℕ} (h : IsPolyBounded A) (c : ℕ) :
+    IsPolyBounded (fun n => c * A n) := by
+  obtain ⟨a, k, hk⟩ := h
+  refine ⟨c * a + c, k, fun n => ?_⟩
+  calc c * A n ≤ c * (a * (n + 1) ^ k + a) := Nat.mul_le_mul_left c (hk n)
+    _ = c * a * (n + 1) ^ k + c * a := by ring
+    _ ≤ (c * a + c) * (n + 1) ^ k + (c * a + c) :=
+        Nat.add_le_add (Nat.mul_le_mul_right _ (by omega)) (by omega)
+
+lemma isPolyBounded_id : IsPolyBounded (fun n : ℕ => n) :=
+  (IsPolyBounded.linear 0).of_le (fun _ => by omega)
+
+lemma evalnArithmeticCost_poly : IsPolyBounded evalnArithmeticCost :=
+  ⟨500, 4, fun n => by simp [evalnArithmeticCost]⟩
+
+lemma evalnArithmeticCost_mono : Monotone evalnArithmeticCost := by
+  intro a b hab
+  simp only [evalnArithmeticCost]
+  exact Nat.mul_le_mul_left _ (Nat.pow_le_pow_left (by omega) 4)
+
+/-- The common arithmetic cost at a fixed code's register bound: polynomial and monotone,
+    which is everything the step bound's induction needs of it. -/
+lemma arith_codeRegBound_poly (c : Nat.Partrec.Code) :
+    IsPolyBounded (fun s => evalnArithmeticCost (codeRegBound c s)) :=
+  evalnArithmeticCost_poly.comp (codeRegBound_poly c)
+
+lemma arith_codeRegBound_mono (c : Nat.Partrec.Code) :
+    Monotone (fun s => evalnArithmeticCost (codeRegBound c s)) :=
+  evalnArithmeticCost_mono.comp (codeRegBound_mono c)
+
+/-- **The step bound is polynomial in the size parameter, for each fixed code.** -/
+lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPolyBounded A →
+    Monotone A → IsPolyBounded (fun s => codeMachineTime c s (A s))
+  | .zero, A, hA, _ => ((IsPolyBounded.const_mul hA 3).add' (IsPolyBounded.const 2)).of_le
+      (fun s => by simp only [codeMachineTime]; omega)
+  | .succ, A, hA, _ => ((IsPolyBounded.const_mul hA 6).add' (IsPolyBounded.const 5)).of_le
+      (fun s => by simp only [codeMachineTime]; omega)
+  | .left, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 4)).of_le
+      (fun s => by simp only [codeMachineTime]; omega)
+  | .right, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 4)).of_le
+      (fun s => by simp only [codeMachineTime]; omega)
+  | .pair cf cg, A, hA, hmA => by
+      have hf := codeMachineTime_poly cf A hA hmA
+      have hg := codeMachineTime_poly cg A hA hmA
+      exact ((((IsPolyBounded.const_mul hA 14).add' hf).add' hg).add'
+        (IsPolyBounded.const 15)).of_le (fun s => by simp only [codeMachineTime]; omega)
+  | .comp cf cg, A, hA, hmA => by
+      have hshift : IsPolyBounded (fun s => s + codeEvalBound cg s) :=
+        isPolyBounded_id.add' (codeEvalBound_poly cg)
+      have hf : IsPolyBounded
+          (fun s => codeMachineTime cf (s + codeEvalBound cg s)
+            (A (s + codeEvalBound cg s))) :=
+        (codeMachineTime_poly cf A hA hmA).comp hshift
+      have hg := codeMachineTime_poly cg A hA hmA
+      refine ((((IsPolyBounded.const_mul hA 11).add' hf).add' hg).add'
+        (IsPolyBounded.const 12)).of_le (fun s => ?_)
+      simp only [codeMachineTime]
+      have : codeMachineTime cf (s + codeEvalBound cg s) (A s)
+          ≤ codeMachineTime cf (s + codeEvalBound cg s) (A (s + codeEvalBound cg s)) :=
+        codeMachineTime_mono_cost cf _ (hmA (Nat.le_add_right _ _))
+      omega
+  | .prec cf cg, A, hA, hmA => by
+      have hshift : IsPolyBounded (fun s => s + precWindowBound cf cg s) :=
+        isPolyBounded_id.add' (precWindowBound_poly cf cg)
+      have hf := codeMachineTime_poly cf A hA hmA
+      have hg : IsPolyBounded
+          (fun s => codeMachineTime cg (s + precWindowBound cf cg s)
+            (A (s + precWindowBound cf cg s))) :=
+        (codeMachineTime_poly cg A hA hmA).comp hshift
+      have hloop : IsPolyBounded (fun s => s *
+          ((15 * A (s + precWindowBound cf cg s)
+            + codeMachineTime cg (s + precWindowBound cf cg s)
+                (A (s + precWindowBound cf cg s)) + 15) + 2)) :=
+        isPolyBounded_id.mul
+          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 15).add' hg).add' (IsPolyBounded.const 17))
+      refine ((((((IsPolyBounded.const_mul hA 12).add' hf).add' (IsPolyBounded.const 13)).add'
+        hloop).add' isPolyBounded_id).add'
+        ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 7))).of_le (fun s => ?_)
+      simp only [codeMachineTime]
+      have hc : codeMachineTime cg (s + precWindowBound cf cg s) (A s)
+          ≤ codeMachineTime cg (s + precWindowBound cf cg s)
+              (A (s + precWindowBound cf cg s)) :=
+        codeMachineTime_mono_cost cg _ (hmA (Nat.le_add_right _ _))
+      have hA' : A s ≤ A (s + precWindowBound cf cg s) := hmA (Nat.le_add_right _ _)
+      have hmul : s * ((15 * A s + codeMachineTime cg (s + precWindowBound cf cg s) (A s)
+            + 15) + 2)
+          ≤ s * ((15 * A (s + precWindowBound cf cg s)
+            + codeMachineTime cg (s + precWindowBound cf cg s)
+                (A (s + precWindowBound cf cg s)) + 15) + 2) :=
+        Nat.mul_le_mul (le_refl _) (by omega)
+      omega
+  | .rfind' cf, A, hA, hmA => by
+      have hshift : IsPolyBounded (fun s => s + rfWindowBound s) :=
+        isPolyBounded_id.add' rfWindowBound_poly
+      have hf : IsPolyBounded
+          (fun s => codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s))) :=
+        (codeMachineTime_poly cf A hA hmA).comp hshift
+      have hloop : IsPolyBounded (fun s => s *
+          ((22 * A (s + rfWindowBound s)
+            + codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s))
+              + 22) + 2)) :=
+        isPolyBounded_id.mul
+          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 22).add' hf).add' (IsPolyBounded.const 24))
+      refine (((((IsPolyBounded.const_mul hA 9).add' (IsPolyBounded.const 9)).add' hloop).add'
+        isPolyBounded_id).add'
+        ((IsPolyBounded.const_mul hA 2).add' (IsPolyBounded.const 4))).of_le (fun s => ?_)
+      simp only [codeMachineTime]
+      have hc : codeMachineTime cf (s + rfWindowBound s) (A s)
+          ≤ codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s)) :=
+        codeMachineTime_mono_cost cf _ (hmA (Nat.le_add_right _ _))
+      have hA' : A s ≤ A (s + rfWindowBound s) := hmA (Nat.le_add_right _ _)
+      have hmul : s * ((22 * A s + codeMachineTime cf (s + rfWindowBound s) (A s) + 22) + 2)
+          ≤ s * ((22 * A (s + rfWindowBound s)
+            + codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s))
+              + 22) + 2) :=
+        Nat.mul_le_mul (le_refl _) (by omega)
+      omega
+
+/-- **The compiled machine's step bound is polynomial in the size parameter, for each
+    fixed code.** -/
+lemma codeMachineTime_arith_poly (c : Nat.Partrec.Code) :
+    IsPolyBounded (fun s => codeMachineTime c s (evalnArithmeticCost (codeRegBound c s))) :=
+  codeMachineTime_poly c _ (arith_codeRegBound_poly c) (arith_codeRegBound_mono c)
+
+end MachineTimePoly
 
 end LogicalInduction.EvalnCompiler
