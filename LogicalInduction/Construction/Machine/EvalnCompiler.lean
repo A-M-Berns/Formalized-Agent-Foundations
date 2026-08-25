@@ -153,6 +153,28 @@ def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
       Ff u ⟨3, by omega⟩
         = resultVal (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩))
 
+/-- **Running a child on the one vector it is actually given.**
+
+    complexitylib's `runChild` asks for the child's specification at *every* bounded
+    register vector, even though it instantiates that specification at a single one. That
+    over-quantification is not dischargeable here: at `F := codeVals cf` the boundedness
+    premise `∀ k, u k < B → ∀ k, F u k < B` is false for any usable `B` (take
+    `cf = pair succ succ`, `u 0 = B - 2`, `u 1 = B - 1`). This variant asks only for the
+    instance, and is otherwise identical — a candidate for upstreaming. -/
+lemma runChildFixed {A m : ℕ} (W : Fin m ↪ Fin A) (R : Regs A n) (M : TM n)
+    (F : (Fin m → ℕ) → Fin m → ℕ) (t : ℕ)
+    {inp₀ : Tape} {ys : List Bool} (w₀ : Fin n → Tape)
+    (hpark : ∀ i, Parked (w₀ i)) (V : Fin A → ℕ)
+    (hM : ∀ (Wb : Fin n → Tape), (∀ i, Parked (Wb i)) →
+      M.HoareTime (EmitPred inp₀ (regsWork (W.trans R) Wb (fun j => V (W j))) ys)
+                  (EmitPred inp₀ (regsWork (W.trans R) Wb (F (fun j => V (W j)))) ys) t) :
+    M.HoareTime (EmitPred inp₀ (regsWork R w₀ V) ys)
+                (EmitPred inp₀ (regsWork R w₀ (writeWindow W V (F (fun j => V (W j))))) ys)
+                t := by
+  have h := hM (regsWork R w₀ V) (parked_regsWork R hpark V)
+  rw [regsWork_restrict R W w₀ V, ← regsWork_window]
+  exact h
+
 /-! ### `Code.zero` -/
 
 /-- `evaln k zero n`. Three straight-line stages: compute the guard flag, copy it into the
