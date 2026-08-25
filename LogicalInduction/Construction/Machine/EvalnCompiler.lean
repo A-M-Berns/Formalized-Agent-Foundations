@@ -3318,6 +3318,183 @@ lemma rfIter_spec (cf : Nat.Partrec.Code) (a : ℕ) :
 
 end RfindPure
 
+/-! ## `rfind'`: register layout
+
+Like `prec`, an `rfind'` node is thirty-three registers wide plus its child's subtree: the
+thirty-third is the loop counter, which must sit outside the block the body names.
+
+```
+0–5  interface + outer guard      6 a   7 m   8 curFuel
+9 searching  10 found  11 result  12 the constant 1
+13 guard flag  14 zero flag  15 hit  16 nz  17–19 temps  20–28 pair/unpair window
+```
+-/
+
+section RfindLayout
+variable {af : ℕ}
+
+/-- The node's own thirty-two registers. -/
+def rfSelf (af : ℕ) : Fin 32 ↪ Fin (32 + af) := shiftEmb 0 (by omega)
+/-- `cf`'s whole subtree. -/
+def rfSub (af : ℕ) : Fin af ↪ Fin (32 + af) := shiftEmb 32 (by omega)
+/-- `cf`'s own sixteen. -/
+def rfLoc (af : ℕ) (h : 16 ≤ af) : Fin 16 ↪ Fin (32 + af) := shiftEmb 32 (by omega)
+/-- The pairing window, at offset `20`. -/
+def rfPairW (af : ℕ) : Fin 8 ↪ Fin (32 + af) := shiftEmb 20 (by omega)
+/-- The unpairing window, same offset, nine wide. -/
+def rfUnpairW (af : ℕ) : Fin 9 ↪ Fin (32 + af) := shiftEmb 20 (by omega)
+/-- The thirty-two-plus-subtree block the body works over. -/
+def rfMain (af : ℕ) : Fin (32 + af) ↪ Fin (33 + af) := shiftEmb 0 (by omega)
+/-- The loop counter, the one register outside that block. -/
+def rfLoopIdx (af : ℕ) : Fin (33 + af) := ⟨32 + af, by omega⟩
+
+lemma rfSelf_ne_self (i j : Fin 32) (h : (i : ℕ) ≠ (j : ℕ)) :
+    rfSelf af i ≠ rfSelf af j := by
+  apply amb_ne; simpa using h
+
+lemma rfSelf_ne_loc (haf : 16 ≤ af) (i : Fin 32) (j : Fin 16) :
+    rfSelf af i ≠ rfLoc af haf j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma rfSub_ne_self (i : Fin af) (j : Fin 32) : rfSub af i ≠ rfSelf af j := by
+  apply amb_ne; have := j.isLt; simp; omega
+
+lemma rfPairW_ne_self (i : Fin 8) (j : Fin 32) (h : 20 + (i : ℕ) ≠ (j : ℕ)) :
+    rfPairW af i ≠ rfSelf af j := by
+  apply amb_ne; simpa using h
+
+lemma rfUnpairW_ne_self (i : Fin 9) (j : Fin 32) (h : 20 + (i : ℕ) ≠ (j : ℕ)) :
+    rfUnpairW af i ≠ rfSelf af j := by
+  apply amb_ne; simpa using h
+
+lemma rfPairW_ne_loc (haf : 16 ≤ af) (i : Fin 8) (j : Fin 16) :
+    rfPairW af i ≠ rfLoc af haf j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma rfUnpairW_ne_loc (haf : 16 ≤ af) (i : Fin 9) (j : Fin 16) :
+    rfUnpairW af i ≠ rfLoc af haf j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+/-- A child's local block is the first sixteen of its subtree. -/
+lemma rfLoc_eq (haf : 16 ≤ af) (j : Fin 16) :
+    rfLoc af haf j = rfSub af ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  apply Fin.ext; simp [rfLoc, rfSub, shiftEmb_val]
+
+lemma rfPairW_zero : (rfPairW af) 0 = rfSelf af 20 := by
+  apply Fin.ext; simp [rfPairW, rfSelf, shiftEmb_val]
+
+lemma rfPairW_one : (rfPairW af) 1 = rfSelf af 21 := by
+  apply Fin.ext; simp [rfPairW, rfSelf, shiftEmb_val]
+
+lemma rfPairW_six : (rfPairW af) 6 = rfSelf af 26 := by
+  apply Fin.ext; simp [rfPairW, rfSelf, shiftEmb_val]
+
+lemma rfUnpairW_zero : (rfUnpairW af) 0 = rfSelf af 20 := by
+  apply Fin.ext; simp [rfUnpairW, rfSelf, shiftEmb_val]
+
+lemma rfUnpairW_one : (rfUnpairW af) 1 = rfSelf af 21 := by
+  apply Fin.ext; simp [rfUnpairW, rfSelf, shiftEmb_val]
+
+lemma rfMain_ne_loopIdx (k : Fin (32 + af)) : rfMain af k ≠ rfLoopIdx af := by
+  apply Fin.ne_of_val_ne
+  have := k.isLt
+  simp [rfMain, rfLoopIdx, shiftEmb_val]
+  omega
+
+end RfindLayout
+
+/-! ## `rfind'`: the loop body
+
+One level of the search: build `Nat.pair a m`, test the level guard, run `cf`, then fold
+the guard, the child's tag and the zero test into `searching`, `found` and `result` — all
+multiplicatively, so there is no branch and the loop has fixed length. -/
+
+section RfindBody
+variable {af : ℕ}
+
+def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
+  seqTM (copyIntoTM (R (rfSelf af 6)) (R (rfSelf af 20))) <|
+  seqTM (copyIntoTM (R (rfSelf af 7)) (R (rfSelf af 21))) <|
+  seqTM (pairTM ((rfPairW af).trans R)) <|
+  seqTM (copyIntoTM (R (rfSelf af 26)) (R (rfLoc af haf 0))) <|
+  seqTM (copyIntoTM (R (rfSelf af 8)) (R (rfLoc af haf 1))) <|
+  seqTM (ltFlagTM (R (rfSelf af 26)) (R (rfSelf af 8)) (R (rfSelf af 5))
+          (R (rfSelf af 13))) <|
+  seqTM Mf <|
+  seqTM (clearRegTM (R (rfSelf af 17))) <|
+  seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 13)) (R (rfSelf af 17))) <|
+  seqTM (clearRegTM (R (rfSelf af 9))) <|
+  seqTM (mulAddIntoTM (R (rfSelf af 17)) (R (rfLoc af haf 2)) (R (rfSelf af 9))) <|
+  seqTM (ltFlagTM (R (rfLoc af haf 3)) (R (rfSelf af 12)) (R (rfSelf af 5))
+          (R (rfSelf af 14))) <|
+  seqTM (clearRegTM (R (rfSelf af 15))) <|
+  seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 14)) (R (rfSelf af 15))) <|
+  seqTM (mulAddIntoTM (R (rfSelf af 15)) (R (rfSelf af 7)) (R (rfSelf af 11))) <|
+  seqTM (addIntoTM (R (rfSelf af 15)) (R (rfSelf af 10))) <|
+  seqTM (copyIntoTM (R (rfSelf af 12)) (R (rfSelf af 16))) <|
+  seqTM (subIntoTM (R (rfSelf af 14)) (R (rfSelf af 16))) <|
+  seqTM (clearRegTM (R (rfSelf af 17))) <|
+  seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 16)) (R (rfSelf af 17))) <|
+  seqTM (copyIntoTM (R (rfSelf af 17)) (R (rfSelf af 9))) <|
+  seqTM (incRegTM (R (rfSelf af 7)))
+        (decRegTM (R (rfSelf af 8)))
+
+/-- The ambient register vector one level produces. -/
+noncomputable def rfBodyVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  let V1 := Function.update V (rfSelf af 20) (V (rfSelf af 6))
+  let V2 := Function.update V1 (rfSelf af 21) (V1 (rfSelf af 7))
+  let V3 := writeWindow (rfPairW af) V2 (pairVals (fun i => V2 ((rfPairW af) i)))
+  let V4 := Function.update V3 (rfLoc af haf 0) (V3 (rfSelf af 26))
+  let V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8))
+  let V6 := Function.update
+              (Function.update V5 (rfSelf af 5) (V5 (rfSelf af 8) - V5 (rfSelf af 26)))
+              (rfSelf af 13) (if V5 (rfSelf af 26) < V5 (rfSelf af 8) then 1 else 0)
+  let V7 := writeWindow (rfSub af) V6 (Ff (fun i => V6 (rfSub af i)))
+  let V8 := Function.update V7 (rfSelf af 17) 0
+  let V9 := Function.update V8 (rfSelf af 17)
+              (0 + V8 (rfSelf af 9) * V8 (rfSelf af 13))
+  let V10 := Function.update V9 (rfSelf af 9) 0
+  let V11 := Function.update V10 (rfSelf af 9)
+               (0 + V10 (rfSelf af 17) * V10 (rfLoc af haf 2))
+  let V12 := Function.update
+               (Function.update V11 (rfSelf af 5)
+                 (V11 (rfSelf af 12) - V11 (rfLoc af haf 3)))
+               (rfSelf af 14)
+               (if V11 (rfLoc af haf 3) < V11 (rfSelf af 12) then 1 else 0)
+  let V13 := Function.update V12 (rfSelf af 15) 0
+  let V14 := Function.update V13 (rfSelf af 15)
+               (0 + V13 (rfSelf af 9) * V13 (rfSelf af 14))
+  let V15 := Function.update V14 (rfSelf af 11)
+               (V14 (rfSelf af 11) + V14 (rfSelf af 15) * V14 (rfSelf af 7))
+  let V16 := Function.update V15 (rfSelf af 10)
+               (V15 (rfSelf af 10) + V15 (rfSelf af 15))
+  let V17 := Function.update V16 (rfSelf af 16) (V16 (rfSelf af 12))
+  let V18 := Function.update V17 (rfSelf af 16)
+               (V17 (rfSelf af 16) - V17 (rfSelf af 14))
+  let V19 := Function.update V18 (rfSelf af 17) 0
+  let V20 := Function.update V19 (rfSelf af 17)
+               (0 + V19 (rfSelf af 9) * V19 (rfSelf af 16))
+  let V21 := Function.update V20 (rfSelf af 9) (V20 (rfSelf af 17))
+  let V22 := Function.update V21 (rfSelf af 7) (V21 (rfSelf af 7) + 1)
+  Function.update V22 (rfSelf af 8) (V22 (rfSelf af 8) - 1)
+
+/-- The loop state after `t` levels. -/
+noncomputable def rfLoopVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V₀ : Fin (32 + af) → ℕ) (t : ℕ) :
+    Fin (32 + af) → ℕ :=
+  (rfBodyVals af haf Ff)^[t] V₀
+
+@[simp] lemma rfLoopVals_zero (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V₀ : Fin (32 + af) → ℕ) : rfLoopVals af haf Ff V₀ 0 = V₀ := rfl
+
+lemma rfLoopVals_succ (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+    (V₀ : Fin (32 + af) → ℕ) (t : ℕ) :
+    rfLoopVals af haf Ff V₀ (t + 1) = rfBodyVals af haf Ff (rfLoopVals af haf Ff V₀ t) := by
+  rw [rfLoopVals, rfLoopVals, Function.iterate_succ_apply']
+
+end RfindBody
+
 /-! ## The compiler API
 
 `compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
