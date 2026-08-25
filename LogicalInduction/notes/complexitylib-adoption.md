@@ -4164,3 +4164,74 @@ unmaintainable one.
 Items 1–3 of the five are done: `prec`, `rfind'`, and the compiler's structural
 correctness. Items 4 (concrete polynomial runtime) and 5 (the `Complexity.FP` transport)
 remain, and they are larger than the machine work was. See Part XXII for the sizing.
+
+---
+
+# Part XXII — Stage 2 item 4: the register bound, and a hypothesis that cannot be discharged (2026-08-25)
+
+## XXII.1 The bound
+
+`codeEvalBound` bounds a *successful call's returned value*. The compiled machine needs
+more, because two registers exceed any node's own answer by construction:
+
+* `prec`'s body forms `Nat.pair a (Nat.pair j acc)` before invoking `cg`, while
+  `codeEvalBound (prec cf cg) k` is only `max (codeEvalBound cf k) (codeEvalBound cg k)`;
+* `rfind'`'s body forms `Nat.pair a m` with `m` advancing one per level, so `m` reaches
+  `m₀ + fuel` — past the input.
+
+`codeRegBound c s` (`Construction/Machine/EvalnRegBound.lean`) is the machine's own bound,
+with `s` a common bound on the node's input and fuel registers. Every pair the machine
+forms appears in the definition, so nothing here assumes an arbitrary bound is closed under
+`Nat.pair`. It is monotone (`codeRegBound_mono`) and polynomial per fixed code
+(`codeRegBound_poly`), and both loops are shown to stay inside it:
+
+```lean
+precLoopVals_ok : ∀ i ≤ m, PrecBodyOK af ag B (precLoopVals … i)
+rfLoopVals_ok   : ∀ i ≤ fuel, RfBodyOK af B haf (rfLoopVals … i)
+```
+
+Those rest on two new pure facts — `precRunG_val_le` (a level's accumulator is one of the
+children's answers at a fuel the level bounds) and `rfIter_ok` (`searching` and `found` are
+mutually exclusive flags and `result` never passes the current index, because the single
+level that writes `result` is the one that clears `searching`).
+
+One re-entrancy fix landed with it: `precSetup_hoareTime` / `rfSetup_hoareTime` assumed the
+loop counter *starts at zero*. A looping child is re-invoked once per level of its parent's
+loop, and after the first level its counter still holds the previous `m`. The hypothesis is
+now "holds some value `≤ B`", which is what re-entrancy actually needs.
+
+## XXII.2 The blocker: `hFfB` is not satisfiable
+
+Every composite Hoare theorem carries
+
+```lean
+(hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+```
+
+and the structural timing induction must discharge it at `Ff := codeVals cf`. **It cannot
+be.** Take `cf = pair succ succ` and any `B ≥ 3`; choose `u 0 = B - 2`, `u 1 = B - 1`, all
+other components `0`. Then `∀ k, u k < B`, but by `codeVals_encodes` the value register is
+
+```
+resultVal (evaln (B-1) (pair succ succ) (B-2)) = Nat.pair (B-1) (B-1) = (B-1)² + (B-1) ≥ B.
+```
+
+So the hypothesis is false for that `Ff` at *every* usable `B`. Nothing already proved is
+wrong — the theorems are true conditionally — but they are stated in a form the induction
+cannot feed.
+
+The cause is that `hFfB` quantifies over *all* bounded child vectors, whereas the machine
+only ever runs a child on **one** vector: the one the parent's phase A writes, whose input
+and fuel registers are the parent's own. The same over-quantification appears in `hMf` /
+`hMg`, and it comes from `runChild`, whose hypothesis is `∀ Wb u, … → (∀ k, u k < B) → …`
+even though it instantiates `u` at a single value.
+
+**The fix** is specialization, not weakening: give `runChild` a variant whose hypothesis is
+the single instance it uses (generic, and a candidate for upstreaming), then restate the six
+composite theorems' child hypotheses at `pairLeftIn` / `pairRightIn` / `compRightIn` /
+`compLeftIn` / `precChildIn` / `precBaseIn` / `rfChildIn` — the vectors Part XIX–XX already
+name. The theorems get *stronger* (fewer hypotheses to satisfy) and become usable by the
+induction.
+
+This is why item 4 is larger than the goal's framing suggests: it is not plumbing on top of
+the existing timing theorems, it is a restatement of them.
