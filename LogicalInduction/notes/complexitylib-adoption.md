@@ -3985,3 +3985,53 @@ The **semantic** tie-up. Every phase specification is parametric in the child's 
 
 Down from Part XVII's 1.9–2.8k: the machine layer is finished, and what is left is
 semantics and arithmetic rather than register bookkeeping.
+
+---
+
+# Part XIX — Stage 2C: the semantic layer begins (2026-08-25)
+
+_Same session as Part XVIII, after the machine layer closed. Scope: the vocabulary the
+structural correctness induction will be stated in._
+
+## XIX.1 `codeVals`
+
+`codeVals c` mirrors `compileCodeAt c` clause for clause: each constructor's own phase
+vector with the children's `codeVals` substituted for the abstract child semantics the
+phase specifications are parametric in. For `prec` and `rfind'` the clause writes the
+thirty-two-wide working block back through `precMain` / `rfMain` and sets the loop counter
+separately, since those nodes are thirty-three wide.
+
+`codeLocal c : Fin 16 ↪ Fin (codeRegs c)` is the node's own interface block, uniformly at
+offset `0` — the same for all eight constructors, which is what lets `EncodesEvaln` be
+stated once.
+
+## XIX.2 The read-off toolkit
+
+Reading one named register out of an update to another is a *numeric* index test:
+
+```lean
+selfW_update_apply (i j : Fin 16) :
+  Function.update X (selfW af ag j) x (selfW af ag i)
+    = if (i : ℕ) = (j : ℕ) then x else X (selfW af ag i)
+pairVals_apply     -- `pairTM`'s output vector, index test numeric
+pairWin_selfW_apply -- the pairing window as a total read-off, slots 6–13
+```
+
+so `simp only [thisVals, …_update_apply, …]; norm_num` evaluates an entire stage chain.
+The `Fin.mk`-shaped indices that come out of window lemmas are exactly why the *numeric*
+form matters: a `Fin`-literal simp lemma does not fire on `⟨6, _⟩`.
+
+With that, `pair` and `comp` have their full semantic read-offs — what each child sees
+(`pairLeftIn` / `pairRightIn`, `compRightIn` / `compLeftIn`, with their interface entries
+identified) and what the node leaves (`…PhaseBVec_tag` / `_val`, each exactly the shape
+`pair_encodes` / `comp_encodes` consume).
+
+## XIX.3 What is not proved
+
+`codeVals_encodes`. For `pair` and `comp` every ingredient is now in place; for `prec` and
+`rfind'` the missing piece is the **loop invariant** — that the machine's loop state after
+`i` iterations is `precRunG` / `rfIter` at level `i`. That cannot be proved standalone: the
+level-`i` statement mentions the child's answer on the level-`i` input, so it needs the
+structural induction hypothesis and must be proved inside it. The same induction needs the
+global size bound `B` to discharge `PrecBodyOK` / `RfBodyOK` at every level, so Stage C and
+Stage D stay entangled.
