@@ -3228,6 +3228,96 @@ lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 end PrecSetupBound
 
+/-! ## `rfind'`: the exact equation, and the search the machine loop implements
+
+At fuel `k+1`,
+
+```
+guard (n ≤ k)
+n.unpaired fun a m => do
+  let x ← evaln (k+1) cf (Nat.pair a m)
+  if x = 0 then pure m else evaln k (rfind' cf) (Nat.pair a (m+1))
+```
+
+so the fuel decreases by one per level while the index `m` increases by one. Unlike
+`prec`, the level guards are **not** free here: `Nat.pair a (m+t)` grows while the level
+fuel `k+1-t` shrinks, so a guard can fail part-way down and the machine must test it.
+
+The machine carries three registers — `searching`, `found`, `result` — and one level is
+`rfLevel`: the guard, the child's tag, and the zero test enter multiplicatively, so there
+is still no branch. `rfIter` is the fixed-length iterate, and `rfIter_spec` says the loop
+run for `fuel` levels computes `evaln fuel (rfind' cf)` in both components. -/
+
+section RfindPure
+
+lemma evaln_rfind'_zero (cf : Nat.Partrec.Code) (m : ℕ) :
+    Nat.Partrec.Code.evaln 0 cf.rfind' m = Option.none := by
+  simp [Nat.Partrec.Code.evaln]
+
+lemma evaln_rfind'_succ (k : ℕ) (cf : Nat.Partrec.Code) (a m : ℕ) :
+    Nat.Partrec.Code.evaln (k + 1) cf.rfind' (Nat.pair a m)
+      = if Nat.pair a m < k + 1 then
+          (Nat.Partrec.Code.evaln (k + 1) cf (Nat.pair a m)).bind fun x =>
+            if x = 0 then some m
+            else Nat.Partrec.Code.evaln k cf.rfind' (Nat.pair a (m + 1))
+        else Option.none := by
+  simp only [Nat.Partrec.Code.evaln, Nat.unpaired, Nat.unpair_pair, Nat.lt_succ_iff]
+  split_ifs with h <;> simp [h, Option.bind]
+
+/-- One level of the search, as the machine performs it: guard, child tag, and zero test
+    all enter multiplicatively. The triple is `(searching, found, result)`. -/
+def rfLevel (cf : Nat.Partrec.Code) (a : ℕ) (st : ℕ × ℕ × ℕ) (f m : ℕ) : ℕ × ℕ × ℕ :=
+  let o := Nat.Partrec.Code.evaln f cf (Nat.pair a m)
+  let live := st.1 * (if Nat.pair a m < f then 1 else 0) * resultTag o
+  let z := if resultVal o = 0 then 1 else 0
+  let hit := live * z
+  (live * (1 - z), st.2.1 + hit, st.2.2 + hit * m)
+
+/-- The fixed-length iterate: `t` levels, starting at fuel `f` and index `m`. -/
+def rfIter (cf : Nat.Partrec.Code) (a : ℕ) : ℕ × ℕ × ℕ → ℕ → ℕ → ℕ → ℕ × ℕ × ℕ
+  | st, _, _, 0 => st
+  | st, f, m, t + 1 => rfIter cf a (rfLevel cf a st f m) (f - 1) (m + 1) t
+
+@[simp] lemma rfIter_zero (cf a st f m) : rfIter cf a st f m 0 = st := rfl
+
+lemma rfIter_succ (cf a st f m t) :
+    rfIter cf a st f m (t + 1) = rfIter cf a (rfLevel cf a st f m) (f - 1) (m + 1) t := rfl
+
+/-- **The search is `evaln`.** Running the loop for exactly `f` levels computes
+    `evaln f (rfind' cf) (Nat.pair a m)` in both components, with the incoming
+    `searching` flag multiplying the whole answer. -/
+lemma rfIter_spec (cf : Nat.Partrec.Code) (a : ℕ) :
+    ∀ (f m s fo r : ℕ),
+      (rfIter cf a (s, fo, r) f m f).2.1
+          = fo + s * resultTag (Nat.Partrec.Code.evaln f cf.rfind' (Nat.pair a m)) ∧
+        (rfIter cf a (s, fo, r) f m f).2.2
+          = r + s * resultVal (Nat.Partrec.Code.evaln f cf.rfind' (Nat.pair a m)) := by
+  intro f
+  induction f with
+  | zero => intro m s fo r; simp [evaln_rfind'_zero]
+  | succ k ih =>
+    intro m s fo r
+    rw [rfIter_succ]
+    have hstep := ih (m + 1) ((rfLevel cf a (s, fo, r) (k + 1) m).1)
+      ((rfLevel cf a (s, fo, r) (k + 1) m).2.1)
+      ((rfLevel cf a (s, fo, r) (k + 1) m).2.2)
+    simp only [Nat.add_sub_cancel] at hstep ⊢
+    rw [hstep.1, hstep.2, evaln_rfind'_succ]
+    simp only [rfLevel]
+    by_cases hg : Nat.pair a m < k + 1
+    · simp only [hg, if_true]
+      cases hoe : Nat.Partrec.Code.evaln (k + 1) cf (Nat.pair a m) with
+      | none => simp
+      | some x =>
+        by_cases hx : x = 0
+        · subst hx; simp
+        · simp only [resultTag_some, resultVal_some, hx, if_false, mul_one,
+            Option.bind_some]
+          cases Nat.Partrec.Code.evaln k cf.rfind' (Nat.pair a (m + 1)) <;> simp
+    · simp [hg]
+
+end RfindPure
+
 /-! ## The compiler API
 
 `compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
