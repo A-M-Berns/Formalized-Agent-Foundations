@@ -599,7 +599,7 @@ def codeRegs : Nat.Partrec.Code → ℕ
   | .pair cf cg => 16 + codeRegs cf + codeRegs cg
   | .comp cf cg => 16 + codeRegs cf + codeRegs cg
   | .prec cf cg => 33 + codeRegs cf + codeRegs cg
-  | .rfind' cf => 16 + codeRegs cf
+  | .rfind' cf => 33 + codeRegs cf
 
 lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
   cases c <;> simp [codeRegs] <;> omega
@@ -4283,6 +4283,345 @@ lemma rfBody_hoareTime (haf : 16 ≤ af)
 
 end RfindBodyCompose
 
+/-! ## `rfind'`: the setup and finish phases
+
+Setup unpairs the input into `a` and `m`, seeds the search state — `searching := 1`,
+`found := 0`, `result := 0` — installs the constant `1`, and copies the fuel into the loop
+counter. Finish reads the two answer registers out. -/
+
+section RfindSetup
+variable {af : ℕ}
+
+def rfSetupTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) : TM n :=
+  seqTM (unpairTM ((rfUnpairW af).trans R) (R (rfSelf af 0))) <|
+  seqTM (copyIntoTM (R (rfSelf af 20)) (R (rfSelf af 6))) <|
+  seqTM (copyIntoTM (R (rfSelf af 21)) (R (rfSelf af 7))) <|
+  seqTM (copyIntoTM (R (rfSelf af 1)) (R (rfSelf af 8))) <|
+  seqTM (setOneTM (R (rfSelf af 9))) <|
+  seqTM (clearRegTM (R (rfSelf af 10))) <|
+  seqTM (clearRegTM (R (rfSelf af 11))) <|
+  seqTM (setOneTM (R (rfSelf af 12)))
+        (copyIntoTM (R (rfSelf af 1)) l)
+
+noncomputable def rfSetupVals (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
+    Fin (32 + af) → ℕ :=
+  let U1 := writeWindow (rfUnpairW af) V
+              (unpairVals (fun j => V (rfUnpairW af j)) (V (rfSelf af 0)))
+  let U2 := Function.update U1 (rfSelf af 6) (U1 (rfSelf af 20))
+  let U3 := Function.update U2 (rfSelf af 7) (U2 (rfSelf af 21))
+  let U4 := Function.update U3 (rfSelf af 8) (U3 (rfSelf af 1))
+  let U5 := Function.update U4 (rfSelf af 9) 1
+  let U6 := Function.update U5 (rfSelf af 10) 0
+  let U7 := Function.update U6 (rfSelf af 11) 0
+  Function.update U7 (rfSelf af 12) 1
+
+set_option maxHeartbeats 1000000 in
+/-- **`rfSetupTM` Hoare specification.** -/
+lemma rfSetup_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l)
+    (V : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B) :
+    (rfSetupTM af haf R l).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀
+        (regsWork R
+          (Function.update w₀ l (regTape (rfSetupVals af haf V (rfSelf af 1))))
+          (rfSetupVals af haf V)) ys)
+      (9 * evalnArithmeticCost B + 8) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, V k ≤ B := fun k => Nat.le_of_lt (hV k)
+  have hB0 : 0 < B := by omega
+  -- S1: unpair the input
+  have h1 := unpairTM_hoareTime_arith ((rfUnpairW af).trans R) (R (rfSelf af 0))
+      (fun k h => rfUnpairW_ne_self k 0 (by have := k.isLt; omega) (R.injective h))
+      (fun j => V (rfUnpairW af j)) (V (rfSelf af 0)) B inp₀
+      (regsWork R w₀ V) ys hinp₀ (hpv V)
+      (regsWork_apply R w₀ V _) (hle _) (fun k => hle _)
+  rw [← regsWork_restrict, regsWork_window] at h1
+  set V1 := writeWindow (rfUnpairW af) V
+      (unpairVals (fun j => V (rfUnpairW af j)) (V (rfSelf af 0))) with hV1
+  have b1 : ∀ k, V1 k < B := by
+    intro k; rw [hV1]
+    refine writeWindow_bounded _ _ _ B hV (fun j => ?_) k
+    have := unpairVals_bounded (fun j => V (rfUnpairW af j)) (B - 1)
+      (fun i => by have := hV (rfUnpairW af i); omega) (V (rfSelf af 0))
+      (by have := hV (rfSelf af 0); omega) j
+    omega
+  -- S2: a := the left component
+  have h2 := copyIntoTM_hoareTime (R (rfSelf af 20)) (R (rfSelf af 6))
+      (Regs.ne R (rfSelf_ne_self 20 6 (by decide)))
+      (V1 (rfSelf af 20)) (V1 (rfSelf af 6))
+      inp₀ (regsWork R w₀ V1) ys hinp₀ (fun i _ => hpv V1 i)
+      (regsWork_apply R w₀ V1 _) (regsWork_apply R w₀ V1 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
+  set V2 := Function.update V1 (rfSelf af 6) (V1 (rfSelf af 20)) with hV2
+  have b2 : ∀ k, V2 k < B := by
+    intro k; rw [hV2]; simp only [Function.update_apply]; split_ifs <;> exact b1 _
+  -- S3: m := the right component
+  have h3 := copyIntoTM_hoareTime (R (rfSelf af 21)) (R (rfSelf af 7))
+      (Regs.ne R (rfSelf_ne_self 21 7 (by decide)))
+      (V2 (rfSelf af 21)) (V2 (rfSelf af 7))
+      inp₀ (regsWork R w₀ V2) ys hinp₀ (fun i _ => hpv V2 i)
+      (regsWork_apply R w₀ V2 _) (regsWork_apply R w₀ V2 _)
+  rw [regsWork_update] at h3
+  replace h3 := h3.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b2 _)) (Nat.le_of_lt (b2 _)))
+  set V3 := Function.update V2 (rfSelf af 7) (V2 (rfSelf af 21)) with hV3
+  have b3 : ∀ k, V3 k < B := by
+    intro k; rw [hV3]; simp only [Function.update_apply]; split_ifs <;> exact b2 _
+  -- S4: curFuel := fuel
+  have h4 := copyIntoTM_hoareTime (R (rfSelf af 1)) (R (rfSelf af 8))
+      (Regs.ne R (rfSelf_ne_self 1 8 (by decide)))
+      (V3 (rfSelf af 1)) (V3 (rfSelf af 8))
+      inp₀ (regsWork R w₀ V3) ys hinp₀ (fun i _ => hpv V3 i)
+      (regsWork_apply R w₀ V3 _) (regsWork_apply R w₀ V3 _)
+  rw [regsWork_update] at h4
+  replace h4 := h4.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b3 _)) (Nat.le_of_lt (b3 _)))
+  set V4 := Function.update V3 (rfSelf af 8) (V3 (rfSelf af 1)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  -- S5: searching := 1
+  have h5 := setOneTM_hoareTime (R (rfSelf af 9)) (V4 (rfSelf af 9)) inp₀
+      (regsWork R w₀ V4) ys hinp₀ (fun i _ => hpv V4 i) (regsWork_apply R w₀ V4 _)
+  rw [regsWork_update] at h5
+  replace h5 := h5.mono_bound (setOneTime_le_arith _ B (Nat.le_of_lt (b4 _)))
+  set V5 := Function.update V4 (rfSelf af 9) 1 with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b4 _
+  -- S6: found := 0
+  have h6 := clearRegTM_hoareTime (R (rfSelf af 10)) (V5 (rfSelf af 10)) inp₀
+      (regsWork R w₀ V5) ys hinp₀ (fun i _ => hpv V5 i) (regsWork_apply R w₀ V5 _)
+  rw [regsWork_update] at h6
+  replace h6 := h6.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b5 _)))
+  set V6 := Function.update V5 (rfSelf af 10) 0 with hV6
+  have b6 : ∀ k, V6 k < B := by
+    intro k; rw [hV6]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b5 _
+  -- S7: result := 0
+  have h7 := clearRegTM_hoareTime (R (rfSelf af 11)) (V6 (rfSelf af 11)) inp₀
+      (regsWork R w₀ V6) ys hinp₀ (fun i _ => hpv V6 i) (regsWork_apply R w₀ V6 _)
+  rw [regsWork_update] at h7
+  replace h7 := h7.mono_bound (regOpTime_le_arith _ B (Nat.le_of_lt (b6 _)))
+  set V7 := Function.update V6 (rfSelf af 11) 0 with hV7
+  have b7 : ∀ k, V7 k < B := by
+    intro k; rw [hV7]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b6 _
+  -- S8: the constant one
+  have h8 := setOneTM_hoareTime (R (rfSelf af 12)) (V7 (rfSelf af 12)) inp₀
+      (regsWork R w₀ V7) ys hinp₀ (fun i _ => hpv V7 i) (regsWork_apply R w₀ V7 _)
+  rw [regsWork_update] at h8
+  replace h8 := h8.mono_bound (setOneTime_le_arith _ B (Nat.le_of_lt (b7 _)))
+  set V8 := Function.update V7 (rfSelf af 12) 1 with hV8
+  have b8 : ∀ k, V8 k < B := by
+    intro k; rw [hV8]; simp only [Function.update_apply]; split_ifs
+    · omega
+    · exact b7 _
+  -- S9: the loop counter, an ambient register outside the block
+  have h9 := copyIntoTM_hoareTime (R (rfSelf af 1)) l (hl _)
+      (V8 (rfSelf af 1)) 0
+      inp₀ (regsWork R w₀ V8) ys hinp₀ (fun i _ => hpv V8 i)
+      (regsWork_apply R w₀ V8 _)
+      (by rw [regsWork_of_ne _ _ _ hl]; exact hlz)
+  rw [← regsWork_update_of_ne R w₀ V8 hl] at h9
+  replace h9 := h9.mono_bound
+    (copyIntoTime_le_arith _ 0 B (Nat.le_of_lt (b8 _)) (Nat.zero_le _))
+  exact (seqEmit hinp₀ (hpv V1) h1 <|
+    seqEmit hinp₀ (hpv V2) h2 <|
+    seqEmit hinp₀ (hpv V3) h3 <|
+    seqEmit hinp₀ (hpv V4) h4 <|
+    seqEmit hinp₀ (hpv V5) h5 <|
+    seqEmit hinp₀ (hpv V6) h6 <|
+    seqEmit hinp₀ (hpv V7) h7 <|
+    seqEmit hinp₀ (hpv V8) h8 h9).mono_bound (by omega)
+
+/-! ### The finish -/
+
+def rfFinishTM (af : ℕ) (R : Regs (32 + af) n) : TM n :=
+  seqTM (copyIntoTM (R (rfSelf af 10)) (R (rfSelf af 2)))
+        (copyIntoTM (R (rfSelf af 11)) (R (rfSelf af 3)))
+
+noncomputable def rfFinishVals (af : ℕ) (W : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  let W1 := Function.update W (rfSelf af 2) (W (rfSelf af 10))
+  Function.update W1 (rfSelf af 3) (W1 (rfSelf af 11))
+
+lemma rfFinish_hoareTime (R : Regs (32 + af) n) (W : Fin (32 + af) → ℕ) (B : ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hW : ∀ k, W k < B) :
+    (rfFinishTM af R).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ W) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfFinishVals af W)) ys)
+      (2 * evalnArithmeticCost B + 1) := by
+  have hpv := parked_regsWork R hpark
+  have hle : ∀ k, W k ≤ B := fun k => Nat.le_of_lt (hW k)
+  have h1 := copyIntoTM_hoareTime (R (rfSelf af 10)) (R (rfSelf af 2))
+      (Regs.ne R (rfSelf_ne_self 10 2 (by decide)))
+      (W (rfSelf af 10)) (W (rfSelf af 2))
+      inp₀ (regsWork R w₀ W) ys hinp₀ (fun i _ => hpv W i)
+      (regsWork_apply R w₀ W _) (regsWork_apply R w₀ W _)
+  rw [regsWork_update] at h1
+  replace h1 := h1.mono_bound (copyIntoTime_le_arith _ _ B (hle _) (hle _))
+  set W1 := Function.update W (rfSelf af 2) (W (rfSelf af 10)) with hW1
+  have b1 : ∀ k, W1 k < B := by
+    intro k; rw [hW1]; simp only [Function.update_apply]; split_ifs <;> exact hW _
+  have h2 := copyIntoTM_hoareTime (R (rfSelf af 11)) (R (rfSelf af 3))
+      (Regs.ne R (rfSelf_ne_self 11 3 (by decide)))
+      (W1 (rfSelf af 11)) (W1 (rfSelf af 3))
+      inp₀ (regsWork R w₀ W1) ys hinp₀ (fun i _ => hpv W1 i)
+      (regsWork_apply R w₀ W1 _) (regsWork_apply R w₀ W1 _)
+  rw [regsWork_update] at h2
+  replace h2 := h2.mono_bound
+    (copyIntoTime_le_arith _ _ B (Nat.le_of_lt (b1 _)) (Nat.le_of_lt (b1 _)))
+  exact (seqEmit hinp₀ (hpv W1) h1 h2).mono_bound (by omega)
+
+end RfindSetup
+
+/-! ## `rfind'`, assembled
+
+Setup, then a fixed-length loop of `fuel` levels off a counter outside the block, then the
+finish. -/
+
+section RfindCompose
+variable {af : ℕ}
+
+/-- The body's side conditions, at one loop state. -/
+def RfBodyOK (af B : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) : Prop :=
+  (∀ k, V k < B) ∧ Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B ∧
+    V (rfSelf af 9) ≤ 1 ∧ V (rfSelf af 7) + 1 < B ∧
+    V (rfSelf af 11) + V (rfSelf af 7) < B ∧ V (rfSelf af 10) + 1 < B
+
+/-- **The `rfind'` loop.** -/
+lemma rfLoop_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf B t : ℕ)
+    (V₀ : Fin (32 + af) → ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hB2 : 2 ≤ B)
+    (hw₀l : w₀ l = regTape t)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
+    (hOK : ∀ i, i < t → RfBodyOK af B haf (rfLoopVals af haf Ff V₀ i))
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (forRegTM (rfBodyTM af haf R Mf) l).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V₀) ys)
+      (EmitPred inp₀ (regsWork R w₀ (rfLoopVals af haf Ff V₀ t)) ys)
+      (t * ((22 * evalnArithmeticCost B + tf + 22) + 2) + (t + 2)) := by
+  refine forRegs_hoareTime R (rfBodyTM af haf R Mf) l hl t
+    (22 * evalnArithmeticCost B + tf + 22) (rfLoopVals af haf Ff V₀) inp₀ w₀ ys hinp₀
+    hpark hw₀l ?_
+  intro i hi w hw
+  obtain ⟨hb, hp, hs, hm1, hres, hfound⟩ := hOK i hi
+  rw [rfLoopVals_succ]
+  exact rfBody_hoareTime haf R Mf Ff tf (rfLoopVals af haf Ff V₀ i) B inp₀ w ys hinp₀ hw
+    hB2 hb hp hs hm1 hres hfound hFfB hFfTag hMf
+
+def rfindTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) (Mf : TM n) :
+    TM n :=
+  seqTM (rfSetupTM af haf R l)
+    (seqTM (forRegTM (rfBodyTM af haf R Mf) l) (rfFinishTM af R))
+
+/-- The register vector the whole `rfind'` node produces. -/
+noncomputable def rfindVals (af : ℕ) (haf : 16 ≤ af)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
+  rfFinishVals af
+    (rfLoopVals af haf Ff (rfSetupVals af haf V) (rfSetupVals af haf V (rfSelf af 1)))
+
+set_option maxHeartbeats 1000000 in
+/-- **`rfind'`, complete.** -/
+lemma rfindTM_hoareTime (haf : 16 ≤ af)
+    (R : Regs (32 + af) n) (l : Fin n) (hl : ∀ k, R k ≠ l) (Mf : TM n)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (tf B : ℕ)
+    (V : Fin (32 + af) → ℕ)
+    (inp₀ : Tape) (w₀ : Fin n → Tape) (ys : List Bool)
+    (hinp₀ : Parked inp₀) (hpark : ∀ i, Parked (w₀ i)) (hlz : w₀ l = regTape 0)
+    (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B)
+    (hFfTag : ∀ u : Fin af → ℕ, Ff u ⟨2, by omega⟩ ≤ 1)
+    (hOK : ∀ i, i ≤ rfSetupVals af haf V (rfSelf af 1) →
+      RfBodyOK af B haf (rfLoopVals af haf Ff (rfSetupVals af haf V) i))
+    (hMf : ∀ (Wb : Fin n → Tape) (u : Fin af → ℕ), (∀ i, Parked (Wb i)) → (∀ k, u k < B) →
+      Mf.HoareTime (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb u) ys)
+                   (EmitPred inp₀ (regsWork ((rfSub af).trans R) Wb (Ff u)) ys) tf) :
+    (rfindTM af haf R l Mf).HoareTime
+      (EmitPred inp₀ (regsWork R w₀ V) ys)
+      (EmitPred inp₀
+        (regsWork R
+          (Function.update w₀ l (regTape (rfSetupVals af haf V (rfSelf af 1))))
+          (rfindVals af haf Ff V)) ys)
+      ((9 * evalnArithmeticCost B + 8) + 1 +
+        ((rfSetupVals af haf V (rfSelf af 1)) *
+            ((22 * evalnArithmeticCost B + tf + 22) + 2) +
+          ((rfSetupVals af haf V (rfSelf af 1)) + 2) + 1 +
+          (2 * evalnArithmeticCost B + 1))) := by
+  set S := rfSetupVals af haf V with hS
+  set t := S (rfSelf af 1) with ht
+  set w₁ := Function.update w₀ l (regTape t) with hw₁
+  have hpark₁ : ∀ i, Parked (w₁ i) := by
+    intro i; rw [hw₁]
+    by_cases hi : i = l
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact hpark i
+  have hsetup := rfSetup_hoareTime haf R l hl V B inp₀ w₀ ys hinp₀ hpark hlz hB2 hV
+  have hloop := rfLoop_hoareTime (af := af) haf R l hl Mf Ff tf B t S inp₀ w₁ ys hinp₀
+    hpark₁ hB2 (by rw [hw₁, Function.update_self]) hFfB hFfTag
+    (fun i hi => hOK i (Nat.le_of_lt hi)) hMf
+  obtain ⟨hLb, -, -, -, -, -⟩ := hOK t le_rfl
+  have hfin := rfFinish_hoareTime (af := af) R (rfLoopVals af haf Ff S t) B inp₀ w₁ ys
+    hinp₀ hpark₁ hLb
+  exact seqEmit hinp₀ (parked_regsWork R hpark₁ S) hsetup
+    (seqEmit hinp₀ (parked_regsWork R hpark₁ _) hloop hfin)
+
+end RfindCompose
+
+section RfindBridge
+variable {af : ℕ}
+
+/-- **The block boundary**, as for `prec`: the parent's thirty-three-wide view and the
+    node's thirty-two-wide working view agree, with the loop counter's value moving from
+    the vector into the ambient tape family. -/
+lemma regsWork_rfMain (R : Regs (33 + af) n) (w₀ : Fin n → Tape)
+    (W : Fin (33 + af) → ℕ) :
+    regsWork R w₀ W
+      = regsWork ((rfMain af).trans R)
+          (Function.update w₀ (R (rfLoopIdx af)) (regTape (W (rfLoopIdx af))))
+          (fun k => W (rfMain af k)) := by
+  have hmain : ∀ k : Fin (32 + af), (rfMain af k : ℕ) = (k : ℕ) := by
+    intro k; simp [rfMain, shiftEmb_val]
+  have hne : ∀ k : Fin (32 + af), ((rfMain af).trans R) k ≠ R (rfLoopIdx af) := by
+    intro k h
+    exact rfMain_ne_loopIdx k (R.injective h)
+  funext j
+  by_cases h : ∃ k : Fin (33 + af), R k = j
+  · obtain ⟨k, rfl⟩ := h
+    rw [regsWork_apply]
+    by_cases hk : (k : ℕ) = 32 + af
+    · have hkl : k = rfLoopIdx af := Fin.ext (by simpa [rfLoopIdx] using hk)
+      subst hkl
+      rw [regsWork_of_ne _ _ _ hne, Function.update_self]
+    · have hlt : (k : ℕ) < 32 + af := by have := k.isLt; omega
+      have hid : rfMain af ⟨(k : ℕ), hlt⟩ = k := Fin.ext (by rw [hmain])
+      have hk' : ((rfMain af).trans R) ⟨(k : ℕ), hlt⟩ = R k := by
+        show R (rfMain af ⟨(k : ℕ), hlt⟩) = R k
+        rw [hid]
+      rw [← hk', regsWork_apply, hid]
+  · have h' : ∀ k : Fin (32 + af), ((rfMain af).trans R) k ≠ j :=
+      fun k e => h ⟨rfMain af k, e⟩
+    have hjl : j ≠ R (rfLoopIdx af) := fun e => h ⟨rfLoopIdx af, e.symm⟩
+    rw [regsWork_of_ne _ _ _ (fun k e => h ⟨k, e⟩), regsWork_of_ne _ _ _ h',
+      Function.update_of_ne hjl]
+
+end RfindBridge
+
 /-! ## The compiler API
 
 `compileCodeAt c R` compiles `c` into the ambient register file named by `R`, whose arity
@@ -4323,9 +4662,13 @@ def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (T
       some (precTM (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
         ((precMain (codeRegs cf) (codeRegs cg)).trans R)
         (R (precLoopIdx (codeRegs cf) (codeRegs cg))) Mf Mg)
-  | .rfind' _, _ => none
+  | .rfind' cf, R => do
+      let Mf ← compileCodeAt cf
+        ((rfSub (codeRegs cf)).trans ((rfMain (codeRegs cf)).trans R))
+      some (rfindTM (codeRegs cf) (codeRegs_ge cf)
+        ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf))) Mf)
 
-/-- The compiler succeeds on every constructor but `rfind'`. -/
+/-- The per-constructor success lemmas. -/
 lemma compileCodeAt_isSome_zero (R : Regs (codeRegs .zero) n) :
     (compileCodeAt .zero R).isSome := rfl
 
@@ -4334,6 +4677,19 @@ lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
     (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
     (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
     (compileCodeAt (cf.pair cg) R).isSome := by
+  rw [compileCodeAt]
+  cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
+  | none => rw [hF] at hf; exact absurd hf (by simp)
+  | some Mf =>
+    cases hG : compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R) with
+    | none => rw [hG] at hg; exact absurd hg (by simp)
+    | some Mg => simp
+
+lemma compileCodeAt_isSome_comp (cf cg : Nat.Partrec.Code)
+    (R : Regs (codeRegs (cf.comp cg)) n)
+    (hf : (compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R)).isSome)
+    (hg : (compileCodeAt cg ((rightSub (codeRegs cf) (codeRegs cg)).trans R)).isSome) :
+    (compileCodeAt (cf.comp cg) R).isSome := by
   rw [compileCodeAt]
   cases hF : compileCodeAt cf ((leftSub (codeRegs cf) (codeRegs cg)).trans R) with
   | none => rw [hF] at hf; exact absurd hf (by simp)
@@ -4358,5 +4714,32 @@ lemma compileCodeAt_isSome_prec (cf cg : Nat.Partrec.Code)
         ((precMain (codeRegs cf) (codeRegs cg)).trans R)) with
     | none => rw [hG] at hg; exact absurd hg (by simp)
     | some Mg => simp
+
+lemma compileCodeAt_isSome_rfind' (cf : Nat.Partrec.Code)
+    (R : Regs (codeRegs cf.rfind') n)
+    (hf : (compileCodeAt cf ((rfSub (codeRegs cf)).trans
+      ((rfMain (codeRegs cf)).trans R))).isSome) :
+    (compileCodeAt cf.rfind' R).isSome := by
+  rw [compileCodeAt]
+  cases hF : compileCodeAt cf ((rfSub (codeRegs cf)).trans
+      ((rfMain (codeRegs cf)).trans R)) with
+  | none => rw [hF] at hf; exact absurd hf (by simp)
+  | some Mf => simp
+
+/-- **The compiler is total.** Every `Nat.Partrec.Code` compiles into the register file
+    its `codeRegs` names — all eight constructors, `prec` and `rfind'` included. -/
+lemma compileCodeAt_isSome : ∀ (c : Nat.Partrec.Code) (R : Regs (codeRegs c) n),
+    (compileCodeAt c R).isSome
+  | .zero, _ => rfl
+  | .succ, _ => rfl
+  | .left, _ => rfl
+  | .right, _ => rfl
+  | .pair cf cg, R =>
+      compileCodeAt_isSome_pair cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
+  | .comp cf cg, R =>
+      compileCodeAt_isSome_comp cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
+  | .prec cf cg, R =>
+      compileCodeAt_isSome_prec cf cg R (compileCodeAt_isSome cf _) (compileCodeAt_isSome cg _)
+  | .rfind' cf, R => compileCodeAt_isSome_rfind' cf R (compileCodeAt_isSome cf _)
 
 end LogicalInduction.EvalnCompiler
