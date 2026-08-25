@@ -3260,3 +3260,138 @@ was made before reading the `evaln` equations, and the per-depth register-block 
 real work that had not been costed. What came *down* is risk — the two design questions
 that could have forced a redesign (does `compileCode` recurse structurally? does the
 result convention survive the loop constructors?) are both answered yes.
+
+---
+
+# Part XIII — Stage 2B: the mask architecture, proved (2026-08-24)
+
+_Thirteenth pass. Scope: `codeDepth`/block allocation, `pair`, `comp`. The **semantic**
+layer for `pair` and `comp` landed; the **machine** layer did not._
+
+## XIII.0 The decisive result
+
+Part XII conjectured (§17 of that tranche) that every constructor subcomputation could run
+*unconditionally*, with semantic dependency implemented by result masks rather than
+control-flow suppression. That is now a theorem rather than a hope:
+
+```lean
+lemma pair_mask_tag : resultTag (evaln k (cf.pair cg) m)
+  = [m < k] * resultTag (evaln k cf m) * resultTag (evaln k cg m)
+lemma pair_mask_val : resultVal (evaln k (cf.pair cg) m)
+  = [m < k] * resultTag (evaln k cf m) * resultTag (evaln k cg m)
+      * Nat.pair (resultVal (evaln k cf m)) (resultVal (evaln k cg m))
+
+lemma comp_mask_tag : resultTag (evaln k (cf.comp cg) m)
+  = [m < k] * resultTag (evaln k cg m)
+      * resultTag (evaln k cf (resultVal (evaln k cg m)))
+lemma comp_mask_val : … * resultVal (evaln k cf (resultVal (evaln k cg m)))
+```
+
+The `comp` mask is the interesting one. `cf` is applied to `resultVal` of `cg`'s answer,
+which is `0` *exactly* when `cg` failed — so the machine may run `cf` on garbage input and
+still be exactly right, because the `cg` tag factor zeroes the product. **This is what the
+canonical `none`-value convention buys**, and it retroactively justifies calling that
+convention load-bearing rather than cosmetic in Part XII.
+
+Consequence: `pair` and `comp` need no branch, no guarded arm and no `ifTM` — only
+arithmetic masks. The same should hold inside the `prec` and `rfind'` loop bodies.
+
+## XIII.1 Fuel, checked rather than assumed
+
+The tranche's §18 asked specifically. From the definition:
+
+```
+| k + 1, pair cf cg => guard (n ≤ k); Nat.pair <$> evaln (k+1) cf n <*> evaln (k+1) cg n
+| k + 1, comp cf cg => guard (n ≤ k); let x ← evaln (k+1) cg n; evaln (k+1) cf x
+```
+
+**Both children receive the parent's fuel undecremented.** No `fuel - 1` anywhere. Only
+`prec` and `rfind'` decrement, and only for their *self*-calls. So the parent's fuel
+register can be copied to a child verbatim, and stays pristine.
+
+## XIII.2 New upstream plumbing
+
+```lean
+regsWork_restrict / regsWork_window / writeWindow   -- Part XII, sub-windows
+shiftEmb / shiftEmb_disj / shiftEmb_trans_disj      -- this pass, offset sub-tuples
+```
+
+`shiftEmb o` names the `m` registers starting at offset `o` of a tuple of `M`. Composed
+with a `Regs M n` it yields a `Regs m n`, so the *existing* `Regs 16 n`-based constructor
+machines can be instantiated at any offset of a larger register file **without being
+rewritten** — which was the point. Block disjointness reduces to arithmetic on offsets.
+
+## XIII.3 Why the machine layer did not land: the indexing problem
+
+The composition theorem for `pair` needs the two children's specs as hypotheses. Each child
+occupies its own block, and — because a child may itself be a `pair` — the *size* of a
+child's block depends on its code. So the ambient register file has arity `16 * size c`,
+and a child's spec is stated over a different arity than its parent's.
+
+That forces a choice, and both options are real infrastructure work that should be decided
+at the *start* of a session rather than the end of one:
+
+**(a) Arity-polymorphic `Fin` indexing.** State everything over one ambient `Regs N n` with
+`N` symbolic, indexing registers as `R ⟨base + i, _⟩`. Every index carries a proof
+obligation, and the final register-vector identification can no longer use `fin_cases`
+(which needs a literal arity) — it becomes pointwise reasoning with `omega` on indices.
+Workable, but it taxes every line of a ~300-line proof.
+
+**(b) A ℕ-indexed register state.** Replace `regsWork (r : Regs m n) (v : Fin m → ℕ)` with a
+variant taking `v : ℕ → ℕ` and a register naming function defined on an initial segment.
+This removes `Fin` arithmetic from the compiler entirely. It is the cleaner answer and is
+what I would build first next pass, but it means adding a second state abstraction upstream
+alongside `regsWork` and relating the two.
+
+I chose to stop at this decision point rather than commit to one under time pressure and
+half-build it — the tranche's Stop A is exactly this situation ("the whole point is to pay
+this cost once"), and §26 warns against leaving partial work uncommitted.
+
+**Nothing about the architecture is in doubt.** The masks are proved, the fuel is checked,
+the window and offset plumbing is green and pushed. What remains for `pair`/`comp` is
+mechanical composition once the indexing scheme is fixed.
+
+## XIII.4 A note on `codeDepth`
+
+I did not define it, and on reflection **size-based allocation is better than depth-based**
+for this compiler. With blocks allocated as disjoint intervals — `size (pair cf cg) =
+1 + size cf + size cg`, child blocks at `base + 1` and `base + 1 + size cf` — every block in
+the whole tree is pairwise disjoint by construction, and no sequential-reuse argument is
+needed. Depth-based allocation needs two blocks per depth (so siblings do not collide) plus
+an argument that a completed sibling's subtree may be overwritten; interval allocation needs
+neither. Registers are `16 * size c` rather than `16 * (depth c + 1)` — larger, and
+irrelevant, since `c` is fixed (XIII.5).
+
+## XIII.5 Machine size versus runtime complexity
+
+Worth stating where the allocator will live: the register count `16 * size c` is a function
+of the *code*, which is fixed before the machine exists. It contributes a code-dependent
+constant to the eventual bound and must never enter the runtime variable. There is no
+obligation of the form `size c ≤ poly(input)` and no such thing should be attempted.
+
+## XIII.6 Status
+
+```
+Code compiler
+  conventions, guard, zero/succ/left/right     ✓ Part XII
+  pair/comp exact equations + mask formulas    ✓ this pass
+  register sub-windows, offset sub-tuples      ✓ Parts XII–XIII (upstream)
+  block allocator + pair/comp machines         open — blocked on the indexing choice
+  prec, rfind'                                 open — interface validated Part XII
+PolyFueled / EfficientlyComputable → FP        open
+```
+
+| item | estimate |
+| --- | ---: |
+| ℕ-indexed register state (option b) | 200–300 |
+| interval block allocator + `compileCode` | 150–250 |
+| `pair` machine | 250–350 |
+| `comp` machine | 200–300 |
+| `prec` | 400–600 |
+| `rfind'` | 350–550 |
+| global bound + FP transport | 400–700 |
+| **Stage-2 remaining** | **2.0–3.1k over 4–6 sessions** |
+
+Essentially flat against Part XII's 1.8–3.0k. The mask lemmas removed real risk from
+`pair`/`comp` (no branching machinery is needed at all), and the indexing layer added an
+equivalent amount of newly-visible work.
