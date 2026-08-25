@@ -4035,3 +4035,89 @@ level-`i` statement mentions the child's answer on the level-`i` input, so it ne
 structural induction hypothesis and must be proved inside it. The same induction needs the
 global size bound `B` to discharge `PrecBodyOK` / `RfBodyOK` at every level, so Stage C and
 Stage D stay entangled.
+
+---
+
+# Part XX — `prec` and `rfind'` are finished (2026-08-25)
+
+_Twentieth pass. Scope: the semantic completion of the two looping constructors. Their
+machines and Hoare specifications landed in Part XVIII; what was missing was the tie from
+the register vectors to `evaln`, and that is what this pass proves._
+
+## XX.1 The shape that makes it self-contained
+
+The obstacle recorded at the end of Part XIX was that a loop invariant "mentions the
+child's answer on the level-`i` input, so it needs the structural induction hypothesis."
+That is true, but the hypothesis can be *named* rather than waited for:
+
+```lean
+def ChildEncodes (m : ℕ) (hm : 16 ≤ m) (c : Nat.Partrec.Code)
+    (F : (Fin m → ℕ) → Fin m → ℕ) : Prop :=
+  ∀ u, F u ⟨2, _⟩ = resultTag (evaln (u ⟨1, _⟩) c (u ⟨0, _⟩)) ∧
+       F u ⟨3, _⟩ = resultVal (evaln (u ⟨1, _⟩) c (u ⟨0, _⟩))
+```
+
+This is exactly what the structural induction will supply for a child, and taking it as a
+hypothesis makes both constructors provable now, standalone. It also decouples the
+semantic layer from the size bound `B` entirely: `precVals` and `rfindVals` are pure
+functions of register vectors, so their correctness needs no bound at all. Only the
+*timing* theorems need `B`. Part XIX's "Stage C and Stage D stay entangled" was too
+pessimistic — the entanglement is only in the runtime half.
+
+## XX.2 `rfind'`
+
+```lean
+lemma rfindVals_encodes (haf) (cf) (Ff) (hFf : ChildEncodes af haf cf Ff) (V) :
+    rfindVals af haf Ff V (rfSelf af 2) = resultTag (evaln (V (rfSelf af 1)) cf.rfind' (V (rfSelf af 0))) ∧
+    rfindVals af haf Ff V (rfSelf af 3) = resultVal (evaln (V (rfSelf af 1)) cf.rfind' (V (rfSelf af 0)))
+```
+
+Three steps: `rfBodyVals_isLevel` (the machine's level **is** `rfLevel`), `rfLoopVals_spec`
+(the state after `i` levels is `rfIter` at `i`, by induction on `i`), then `rfIter_spec`
+from Part XVIII turns `fuel` levels into `evaln fuel (rfind' cf)`. The outer guard needs no
+separate treatment: it is level `0`'s own guard, already inside the loop.
+
+One lemma was needed that the pure layer did not have — `rfIter_succ'`, the iterate
+unfolded from the *right*, since the machine's induction adds a level at the end while
+`rfIter`'s definition peels one off the front.
+
+## XX.3 `prec`
+
+```lean
+lemma precVals_encodes (haf) (hag) (cf cg) (Ff) (Fg)
+    (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg) (V) : …
+```
+
+Same three steps — `precBodyVals_isLevel`, `precLoopVals_spec`, then `precRunG_eq_evaln` —
+plus one thing `rfind'` did not need: the **outer guard is separate** here, because
+`precRunG_eq_evaln` presupposes it. So the finish splits on `V 0 < V 1`, with
+`evaln_eq_none_of_not_guard` covering the failing branch, and the two sides meet because
+the guard flag multiplies the answer in exactly the way the mask identities predict.
+
+The base case is `cf`, run in the setup at fuel `fuel - m` on `a` — which is `precRunG`'s
+own base case, so the invariant's `i = 0` case is `hFf` applied to `precBaseIn`.
+
+## XX.4 Two refactors this needed
+
+Both constructors' vector definitions were split at the point where the child runs, so the
+child's input vector is nameable:
+
+* `rfPhaseAPair` / `rfPhaseAPre` — the level's `Nat.pair a m`, then the state handed to `cf`;
+* `precBodyPre` — the state handed to `cg` (input, level fuel, counter already advanced);
+* `precSetupPre` — the state handed to `cf` in the setup.
+
+The splits are definitional, so every Hoare proof kept working untouched. Without them the
+read-off lemmas have to quote thirty-line update chains in their statements, which is how
+the first attempt at `rfPhaseAVals_guard_val` went — and it was unmaintainable on sight.
+
+The second refactor is the numeric-index read-off mechanism from Part XIX, extended to
+`prec`'s layout (`precSelf_update_apply`, `precPairWin_selfW_apply`,
+`precUnpairWin_selfW_apply`, and the `leftLoc`/`rightLoc` pairs). It is what makes a
+sixteen-stage read-off a two-line `simp only` + `norm_num`.
+
+## XX.5 What is left
+
+`codeVals_encodes` — the structural induction that discharges `ChildEncodes` for each
+child. All eight constructors now have their per-node semantic lemma or (for the four base
+constructors) had one already; the induction is the glue. After that, Stage D's runtime
+bound and Stage E's `Complexity.FP` transport.

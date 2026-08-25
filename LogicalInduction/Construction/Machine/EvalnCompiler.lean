@@ -50,6 +50,7 @@ namespace LogicalInduction.EvalnCompiler
 
 open Complexity Complexity.TM
 
+
 variable {n : ℕ}
 
 /-! ## The exact `evaln` equations for the non-recursive constructors -/
@@ -141,6 +142,16 @@ abbrev CodeRegs (n : ℕ) := Regs 16 n
 def EncodesEvaln (c : Nat.Partrec.Code) (v u : Fin 16 → ℕ) : Prop :=
   u 2 = resultTag (Nat.Partrec.Code.evaln (v 1) c (v 0)) ∧
   u 3 = resultVal (Nat.Partrec.Code.evaln (v 1) c (v 0))
+
+/-- The hypothesis the structural induction supplies for a child: its interface registers
+    really hold `evaln` of the child, on whatever input they are given. -/
+def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) : Prop :=
+  ∀ u : Fin af → ℕ,
+    Ff u ⟨2, by omega⟩
+        = resultTag (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩)) ∧
+      Ff u ⟨3, by omega⟩
+        = resultVal (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩))
 
 /-! ### `Code.zero` -/
 
@@ -2294,6 +2305,20 @@ lemma precLeftLoc_eq (haf : 16 ≤ af) (j : Fin 16) :
       = precLeftSub af ag ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
   apply Fin.ext; simp [precLeftLoc, precLeftSub, shiftEmb_val]
 
+lemma precUnpairW_ne_self (i : Fin 9) (j : Fin 32) (h : 16 + (i : ℕ) ≠ (j : ℕ)) :
+    precUnpairW af ag i ≠ precSelf af ag j := by
+  apply amb_ne; simpa using h
+
+lemma precUnpairW_ne_leftLoc (haf : 16 ≤ af) (i : Fin 9) (j : Fin 16) :
+    precUnpairW af ag i ≠ precLeftLoc af ag haf j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma precUnpairW_zero : (precUnpairW af ag) 0 = precSelf af ag 16 := by
+  apply Fin.ext; simp [precUnpairW, precSelf, shiftEmb_val]
+
+lemma precUnpairW_one : (precUnpairW af ag) 1 = precSelf af ag 17 := by
+  apply Fin.ext; simp [precUnpairW, precSelf, shiftEmb_val]
+
 /-- The pair window's slots, as node-block indices. -/
 lemma precPairW_zero : (precPairW af ag) 0 = precSelf af ag 16 := by
   apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
@@ -2305,6 +2330,177 @@ lemma precPairW_six : (precPairW af ag) 6 = precSelf af ag 22 := by
   apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
 
 end PrecLayout
+
+/-! ### Reading a `prec` node's register vector
+
+The same numeric-index mechanism as for a binary node and for `rfind'`. -/
+
+section PrecReadTools
+variable {af ag : ℕ}
+
+lemma precUnpairW_ne_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (i : Fin 9) (j : Fin 16) :
+    precUnpairW af ag i ≠ precRightLoc af ag hag j := by
+  apply amb_ne; have := i.isLt; simp; omega
+
+lemma precSelf_update_apply (i j : Fin 32) (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precSelf af ag j) x (precSelf af ag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (precSelf af ag i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (precSelf_ne_self i j h)]
+
+lemma precLeftLoc_update_apply (haf : 16 ≤ af) (i j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precLeftLoc af ag haf j) x (precLeftLoc af ag haf i)
+      = if (i : ℕ) = (j : ℕ) then x else X (precLeftLoc af ag haf i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [precLeftLoc, shiftEmb_val] using this))]
+
+lemma precRightLoc_update_apply (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precRightLoc af ag hag j) x (precRightLoc af ag hag i)
+      = if (i : ℕ) = (j : ℕ) then x else X (precRightLoc af ag hag i) := by
+  by_cases h : (i : ℕ) = (j : ℕ)
+  · rw [if_pos h, Fin.ext h, Function.update_self]
+  · rw [if_neg h, Function.update_of_ne (fun e => h (by
+      have := congrArg (Fin.val) e
+      simpa [precRightLoc, shiftEmb_val] using this))]
+
+@[simp] lemma precSelf_leftLoc_upd (haf : 16 ≤ af) (i : Fin 32) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precLeftLoc af ag haf j) x (precSelf af ag i)
+      = X (precSelf af ag i) :=
+  Function.update_of_ne (precSelf_ne_leftLoc haf i j) x X
+
+@[simp] lemma precSelf_rightLoc_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i : Fin 32)
+    (j : Fin 16) (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precRightLoc af ag hag j) x (precSelf af ag i)
+      = X (precSelf af ag i) :=
+  Function.update_of_ne (precSelf_ne_rightLoc hag haf i j) x X
+
+@[simp] lemma precLeftLoc_self_upd (haf : 16 ≤ af) (i : Fin 16) (j : Fin 32)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precSelf af ag j) x (precLeftLoc af ag haf i)
+      = X (precLeftLoc af ag haf i) :=
+  Function.update_of_ne (Ne.symm (precSelf_ne_leftLoc haf j i)) x X
+
+@[simp] lemma precRightLoc_self_upd (hag : 16 ≤ ag) (haf : 16 ≤ af) (i : Fin 16)
+    (j : Fin 32) (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precSelf af ag j) x (precRightLoc af ag hag i)
+      = X (precRightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (precSelf_ne_rightLoc hag haf j i)) x X
+
+@[simp] lemma precLeftLoc_rightLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precRightLoc af ag hag j) x (precLeftLoc af ag haf i)
+      = X (precLeftLoc af ag haf i) :=
+  Function.update_of_ne (precLeftLoc_ne_rightLoc haf hag i j) x X
+
+@[simp] lemma precRightLoc_leftLoc_upd (haf : 16 ≤ af) (hag : 16 ≤ ag) (i j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (x : ℕ) :
+    Function.update X (precLeftLoc af ag haf j) x (precRightLoc af ag hag i)
+      = X (precRightLoc af ag hag i) :=
+  Function.update_of_ne (Ne.symm (precLeftLoc_ne_rightLoc haf hag j i)) x X
+
+/-! #### Windows -/
+
+lemma precPairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (precPairW af ag) X u (precSelf af ag i)
+      = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 24 then u ⟨(i : ℕ) - 16, by omega⟩
+        else X (precSelf af ag i) := by
+  by_cases h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 24
+  · rw [dif_pos h]
+    have hid : precPairW af ag ⟨(i : ℕ) - 16, by omega⟩ = precSelf af ag i := by
+      apply Fin.ext
+      simp [precPairW, precSelf, shiftEmb_val]
+      omega
+    rw [← hid, writeWindow_apply]
+  · rw [dif_neg h]
+    refine writeWindow_of_ne _ _ _ (fun t => precPairW_ne_self t i ?_)
+    have := t.isLt
+    simp at h ⊢
+    omega
+
+lemma precUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
+    (u : Fin 9 → ℕ) :
+    writeWindow (precUnpairW af ag) X u (precSelf af ag i)
+      = if h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 25 then u ⟨(i : ℕ) - 16, by omega⟩
+        else X (precSelf af ag i) := by
+  by_cases h : 16 ≤ (i : ℕ) ∧ (i : ℕ) < 25
+  · rw [dif_pos h]
+    have hid : precUnpairW af ag ⟨(i : ℕ) - 16, by omega⟩ = precSelf af ag i := by
+      apply Fin.ext
+      simp [precUnpairW, precSelf, shiftEmb_val]
+      omega
+    rw [← hid, writeWindow_apply]
+  · rw [dif_neg h]
+    refine writeWindow_of_ne _ _ _ (fun t => precUnpairW_ne_self t i ?_)
+    have := t.isLt
+    simp at h ⊢
+    omega
+
+@[simp] lemma precPairWin_leftLoc (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (precPairW af ag) X u (precLeftLoc af ag haf j)
+      = X (precLeftLoc af ag haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => precPairW_ne_leftLoc haf t j)
+
+@[simp] lemma precPairWin_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (precPairW af ag) X u (precRightLoc af ag hag j)
+      = X (precRightLoc af ag hag j) :=
+  writeWindow_of_ne _ _ _ (fun t => precPairW_ne_rightLoc hag haf t j)
+
+@[simp] lemma precUnpairWin_leftLoc (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin 9 → ℕ) :
+    writeWindow (precUnpairW af ag) X u (precLeftLoc af ag haf j)
+      = X (precLeftLoc af ag haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => precUnpairW_ne_leftLoc haf t j)
+
+@[simp] lemma precUnpairWin_rightLoc (hag : 16 ≤ ag) (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin 9 → ℕ) :
+    writeWindow (precUnpairW af ag) X u (precRightLoc af ag hag j)
+      = X (precRightLoc af ag hag j) :=
+  writeWindow_of_ne _ _ _ (fun t => precUnpairW_ne_rightLoc hag haf t j)
+
+@[simp] lemma precLeftSub_win_selfW (i : Fin 32) (X : Fin (32 + af + ag) → ℕ)
+    (u : Fin af → ℕ) :
+    writeWindow (precLeftSub af ag) X u (precSelf af ag i) = X (precSelf af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => precLeftSub_ne_self t i)
+
+lemma precLeftSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin af → ℕ) :
+    writeWindow (precLeftSub af ag) X u (precLeftLoc af ag haf j)
+      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [precLeftLoc_eq haf, writeWindow_apply]
+
+@[simp] lemma precLeftSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin af → ℕ) :
+    writeWindow (precLeftSub af ag) X u (precRightLoc af ag hag j)
+      = X (precRightLoc af ag hag j) :=
+  writeWindow_of_ne _ _ _ (fun t => precLeftSub_ne_rightLoc hag t j)
+
+@[simp] lemma precRightSub_win_selfW (haf : 16 ≤ af) (i : Fin 32)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin ag → ℕ) :
+    writeWindow (precRightSub af ag) X u (precSelf af ag i) = X (precSelf af ag i) :=
+  writeWindow_of_ne _ _ _ (fun t => precRightSub_ne_self haf t i)
+
+lemma precRightSub_win_rightLoc (hag : 16 ≤ ag) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin ag → ℕ) :
+    writeWindow (precRightSub af ag) X u (precRightLoc af ag hag j)
+      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  rw [precRightLoc_eq hag, writeWindow_apply]
+
+@[simp] lemma precRightSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16)
+    (X : Fin (32 + af + ag) → ℕ) (u : Fin ag → ℕ) :
+    writeWindow (precRightSub af ag) X u (precLeftLoc af ag haf j)
+      = X (precLeftLoc af ag haf j) :=
+  writeWindow_of_ne _ _ _ (fun t => precRightSub_ne_leftLoc haf t j)
+
+end PrecReadTools
 
 /-! ## `prec`: the loop body
 
@@ -2339,10 +2535,11 @@ def precBodyTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
         (mulAddIntoTM (R (precSelf af ag 10)) (R (precRightLoc af ag hag 3))
           (R (precSelf af ag 11)))
 
-/-- The ambient register vector one iteration produces. -/
-noncomputable def precBodyVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) :
-    Fin (32 + af + ag) → ℕ :=
+/-- The state one iteration hands `cg`: the reconstructed input `Nat.pair a (Nat.pair j
+    acc)` in `cg`'s input register, the level fuel in its fuel register, and the level
+    counter and fuel already advanced. -/
+noncomputable def precBodyPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
   let V1 := Function.update V (precSelf af ag 16) (V (precSelf af ag 9))
   let V2 := Function.update V1 (precSelf af ag 17) (V1 (precSelf af ag 11))
   let V3 := writeWindow (precPairW af ag) V2
@@ -2354,7 +2551,13 @@ noncomputable def precBodyVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   let V7 := Function.update V6 (precSelf af ag 9) (V6 (precSelf af ag 9) + 1)
   let V8 := Function.update V7 (precSelf af ag 12) (V7 (precSelf af ag 12) + 1)
   let V9 := Function.update V8 (precRightLoc af ag hag 0) (V8 (precSelf af ag 22))
-  let V10 := Function.update V9 (precRightLoc af ag hag 1) (V9 (precSelf af ag 12))
+  Function.update V9 (precRightLoc af ag hag 1) (V9 (precSelf af ag 12))
+
+/-- The ambient register vector one iteration produces. -/
+noncomputable def precBodyVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) :
+    Fin (32 + af + ag) → ℕ :=
+  let V10 := precBodyPre af ag haf hag V
   let V11 := writeWindow (precRightSub af ag) V10
                (Fg (fun i => V10 ((precRightSub af ag) i)))
   let V12 := Function.update V11 (precSelf af ag 13) 0
@@ -2713,6 +2916,207 @@ lemma precBody_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 end PrecBodyProof
 
+/-! ### `prec`: one level, semantically
+
+`cf` is setup-only; the body invokes `cg` alone, on `Nat.pair a (Nat.pair j acc)` at fuel
+`curFuel + 1`, and folds its answer into `alive` and `acc` multiplicatively. -/
+
+section PrecLevelSem
+variable {af ag : ℕ}
+
+lemma precBodyPre_pairOut (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precBodyPre af ag haf hag V (precSelf af ag 22)
+      = Nat.pair (V (precSelf af ag 6))
+          (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
+  simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
+    precPairWin_selfW_apply, pairVals_apply, precPairW_zero, precPairW_one]
+  norm_num
+
+lemma precBodyPre_childIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precBodyPre af ag haf hag V (precRightLoc af ag hag 0)
+      = Nat.pair (V (precSelf af ag 6))
+          (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
+  have h := precBodyPre_pairOut haf hag V
+  simp only [precBodyPre, precRightLoc_update_apply hag, precRightLoc_self_upd hag haf,
+    precPairWin_rightLoc hag haf] at h ⊢
+  norm_num at h ⊢
+  simp only [precSelf_update_apply, precPairWin_selfW_apply, pairVals_apply,
+    precPairW_zero, precPairW_one] at h ⊢
+  norm_num at h ⊢
+
+lemma precBodyPre_childIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precBodyPre af ag haf hag V (precRightLoc af ag hag 1)
+      = V (precSelf af ag 12) + 1 := by
+  simp only [precBodyPre, precRightLoc_update_apply hag, precRightLoc_self_upd hag haf,
+    precPairWin_rightLoc hag haf]
+  norm_num
+  simp only [precSelf_update_apply, precPairWin_selfW_apply,
+    precSelf_rightLoc_upd hag haf, precPairW_zero, precPairW_one]
+  norm_num
+
+/-- The counter and the level fuel are advanced before `cg` runs. -/
+lemma precBodyPre_j (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precBodyPre af ag haf hag V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
+  simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
+    precPairWin_selfW_apply]
+  norm_num
+
+lemma precBodyPre_fuel (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precBodyPre af ag haf hag V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
+  simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
+    precPairWin_selfW_apply]
+  norm_num
+
+/-- Every other node register in `0`–`15` is untouched by the pre-state. -/
+lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
+    (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : (i : ℕ) ≠ 9)
+    (h12 : (i : ℕ) ≠ 12) :
+    precBodyPre af ag haf hag V (precSelf af ag i) = V (precSelf af ag i) := by
+  simp only [precBodyPre, precSelf_update_apply, precSelf_rightLoc_upd hag haf,
+    precPairWin_selfW_apply, dif_neg hw]
+  have h16 : (i : ℕ) ≠ 16 := by omega
+  have h17 : (i : ℕ) ≠ 17 := by omega
+  norm_num [h9, h12, h16, h17]
+
+/-! #### The level -/
+
+/-- The vector `cg` is run on at this level. -/
+noncomputable def precChildIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin ag → ℕ :=
+  fun i => precBodyPre af ag haf hag V (precRightSub af ag i)
+
+lemma precChildIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precChildIn af ag haf hag V ⟨0, by omega⟩
+      = Nat.pair (V (precSelf af ag 6))
+          (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))) := by
+  have h : precRightSub af ag ⟨0, by omega⟩ = precRightLoc af ag hag 0 := by
+    apply Fin.ext; simp [precRightSub, precRightLoc, shiftEmb_val]
+  rw [precChildIn, h, precBodyPre_childIn_zero]
+
+lemma precChildIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precChildIn af ag haf hag V ⟨1, by omega⟩ = V (precSelf af ag 12) + 1 := by
+  have h : precRightSub af ag ⟨1, by omega⟩ = precRightLoc af ag hag 1 := by
+    apply Fin.ext; simp [precRightSub, precRightLoc, shiftEmb_val]
+  rw [precChildIn, h, precBodyPre_childIn_one]
+
+section
+variable (haf : 16 ≤ af) (hag : 16 ≤ ag) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+  (V : Fin (32 + af + ag) → ℕ)
+
+lemma precBodyVals_a :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 6) = V (precSelf af ag 6) := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+  norm_num
+  exact precBodyPre_self haf hag V 6 (by norm_num) (by norm_num) (by norm_num)
+
+lemma precBodyVals_j :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 9) = V (precSelf af ag 9) + 1 := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+  norm_num
+  exact precBodyPre_j haf hag V
+
+lemma precBodyVals_fuel :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 12) = V (precSelf af ag 12) + 1 := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+  norm_num
+  exact precBodyPre_fuel haf hag V
+
+lemma precBodyVals_alive :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 10)
+      = V (precSelf af ag 10)
+          * Fg (precChildIn af ag haf hag V) ⟨2, by omega⟩ := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf,
+    precRightLoc_self_upd hag haf, precRightSub_win_rightLoc hag]
+  norm_num
+  rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
+  rfl
+
+lemma precBodyVals_acc :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 11)
+      = V (precSelf af ag 10)
+          * Fg (precChildIn af ag haf hag V) ⟨2, by omega⟩
+          * Fg (precChildIn af ag haf hag V) ⟨3, by omega⟩ := by
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf,
+    precRightLoc_self_upd hag haf, precRightSub_win_rightLoc hag]
+  norm_num
+  rw [precBodyPre_self haf hag V 10 (by norm_num) (by norm_num) (by norm_num)]
+  rfl
+
+end
+
+end PrecLevelSem
+
+/-! ### `prec`: the loop invariant
+
+After `i` iterations the machine's `alive` and `acc` registers hold the tag and value of
+`precRunG` at level `i`, the counter holds `i`, and the level fuel holds `baseFuel + i`. -/
+
+section PrecLoopSem
+variable {af ag : ℕ}
+
+/-- **One level.** -/
+lemma precBodyVals_isLevel (haf : 16 ≤ af) (hag : 16 ≤ ag) (cg : Nat.Partrec.Code)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (hFg : ChildEncodes ag hag cg Fg)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precBodyVals af ag haf hag Fg V (precSelf af ag 10)
+        = V (precSelf af ag 10)
+          * resultTag (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
+              (Nat.pair (V (precSelf af ag 6))
+                (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))))) ∧
+      precBodyVals af ag haf hag Fg V (precSelf af ag 11)
+        = V (precSelf af ag 10)
+          * resultTag (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
+              (Nat.pair (V (precSelf af ag 6))
+                (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11)))))
+          * resultVal (Nat.Partrec.Code.evaln (V (precSelf af ag 12) + 1) cg
+              (Nat.pair (V (precSelf af ag 6))
+                (Nat.pair (V (precSelf af ag 9)) (V (precSelf af ag 11))))) := by
+  obtain ⟨htag, hval⟩ := hFg (precChildIn af ag haf hag V)
+  rw [precChildIn_zero, precChildIn_one] at htag hval
+  refine ⟨?_, ?_⟩
+  · rw [precBodyVals_alive, htag]
+  · rw [precBodyVals_acc, htag, hval]
+
+/-- **The loop invariant.** -/
+lemma precLoopVals_spec (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (hFg : ChildEncodes ag hag cg Fg)
+    (V₀ : Fin (32 + af + ag) → ℕ) (a f₀ : ℕ)
+    (h6 : V₀ (precSelf af ag 6) = a)
+    (h9 : V₀ (precSelf af ag 9) = 0)
+    (h12 : V₀ (precSelf af ag 12) = f₀)
+    (h10 : V₀ (precSelf af ag 10)
+      = resultTag (Nat.Partrec.Code.evaln f₀ cf a))
+    (h11 : V₀ (precSelf af ag 11)
+      = resultVal (Nat.Partrec.Code.evaln f₀ cf a))
+    (i : ℕ) :
+    precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 6) = a ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 9) = i ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 12) = f₀ + i ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 10)
+        = resultTag (precRunG cf cg a f₀ i) ∧
+      precLoopVals af ag haf hag Fg V₀ i (precSelf af ag 11)
+        = resultVal (precRunG cf cg a f₀ i) := by
+  induction i with
+  | zero => exact ⟨h6, h9, by simpa using h12, by simpa [precRunG] using h10,
+      by simpa [precRunG] using h11⟩
+  | succ k ih =>
+    obtain ⟨e6, e9, e12, e10, e11⟩ := ih
+    obtain ⟨ha, hc⟩ := precBodyVals_isLevel haf hag cg Fg hFg
+      (precLoopVals af ag haf hag Fg V₀ k)
+    rw [e6, e9, e12, e10, e11] at ha hc
+    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    · rw [precLoopVals_succ, precBodyVals_a, e6]
+    · rw [precLoopVals_succ, precBodyVals_j, e9]
+    · rw [precLoopVals_succ, precBodyVals_fuel, e12]; omega
+    · rw [precLoopVals_succ, ha, precRunG_succ_tag,
+        show f₀ + (k + 1) = f₀ + k + 1 from (Nat.add_assoc f₀ k 1).symm]
+    · rw [precLoopVals_succ, hc, precRunG_succ_val,
+        show f₀ + (k + 1) = f₀ + k + 1 from (Nat.add_assoc f₀ k 1).symm]
+
+end PrecLoopSem
+
 /-! ## A register-block loop
 
 `forRegTM` driven by a counter register that the block does not name. The body's
@@ -2861,20 +3265,6 @@ register outside the block. -/
 section PrecSetup
 variable {af ag : ℕ}
 
-lemma precUnpairW_ne_self (i : Fin 9) (j : Fin 32) (h : 16 + (i : ℕ) ≠ (j : ℕ)) :
-    precUnpairW af ag i ≠ precSelf af ag j := by
-  apply amb_ne; simpa using h
-
-lemma precUnpairW_ne_leftLoc (haf : 16 ≤ af) (i : Fin 9) (j : Fin 16) :
-    precUnpairW af ag i ≠ precLeftLoc af ag haf j := by
-  apply amb_ne; have := i.isLt; simp; omega
-
-lemma precUnpairW_zero : (precUnpairW af ag) 0 = precSelf af ag 16 := by
-  apply Fin.ext; simp [precUnpairW, precSelf, shiftEmb_val]
-
-lemma precUnpairW_one : (precUnpairW af ag) 1 = precSelf af ag 17 := by
-  apply Fin.ext; simp [precUnpairW, precSelf, shiftEmb_val]
-
 def precSetupTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (l : Fin n) (Mf : TM n) : TM n :=
   seqTM (unpairTM ((precUnpairW af ag).trans R) (R (precSelf af ag 0))) <|
@@ -2891,11 +3281,10 @@ def precSetupTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (copyIntoTM (R (precSelf af ag 8)) (R (precSelf af ag 12)))
         (copyIntoTM (R (precSelf af ag 7)) l)
 
-/-- The register vector the setup produces. The loop counter is *not* part of it: it lives
-    outside the block, and the last stage writes it into the ambient tape family. -/
-noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) :
-    Fin (32 + af + ag) → ℕ :=
+/-- The state the setup hands `cf`: the unpaired `a` in `cf`'s input register and the base
+    fuel `fuel - m` in its fuel register. -/
+noncomputable def precSetupPre (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin (32 + af + ag) → ℕ :=
   let U1 := writeWindow (precUnpairW af ag) V
               (unpairVals (fun j => V (precUnpairW af ag j)) (V (precSelf af ag 0)))
   let U2 := Function.update U1 (precSelf af ag 6) (U1 (precSelf af ag 16))
@@ -2904,7 +3293,14 @@ noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag
   let U5 := Function.update U4 (precSelf af ag 8)
               (U4 (precSelf af ag 8) - U4 (precSelf af ag 7))
   let U6 := Function.update U5 (precLeftLoc af ag haf 0) (U5 (precSelf af ag 6))
-  let U7 := Function.update U6 (precLeftLoc af ag haf 1) (U6 (precSelf af ag 8))
+  Function.update U6 (precLeftLoc af ag haf 1) (U6 (precSelf af ag 8))
+
+/-- The register vector the setup produces. The loop counter is *not* part of it: it lives
+    outside the block, and the last stage writes it into the ambient tape family. -/
+noncomputable def precSetupVals (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) :
+    Fin (32 + af + ag) → ℕ :=
+  let U7 := precSetupPre af ag haf hag V
   let U8 := writeWindow (precLeftSub af ag) U7 (Ff (fun i => U7 (precLeftSub af ag i)))
   let U9 := Function.update U8 (precSelf af ag 9) 0
   let U10 := Function.update U9 (precSelf af ag 10) (U9 (precLeftLoc af ag haf 2))
@@ -3255,6 +3651,196 @@ lemma precFinish_hoareTime (R : Regs (32 + af + ag) n) (W : Fin (32 + af + ag) �
 
 end PrecFinish
 
+/-! ### `prec`: the setup and finish, read off, and the node's semantics -/
+
+section PrecCloseSem
+variable {af ag : ℕ}
+
+/-- The body writes the pair window, `9`–`13`, and `cg`'s subtree; nothing else. -/
+lemma precBodyVals_self (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (32 + af + ag) → ℕ) (i : Fin 32)
+    (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 13)) :
+    precBodyVals af ag haf hag Fg V (precSelf af ag i) = V (precSelf af ag i) := by
+  have e9 : (i : ℕ) ≠ 9 := by omega
+  have e10 : (i : ℕ) ≠ 10 := by omega
+  have e11 : (i : ℕ) ≠ 11 := by omega
+  have e12 : (i : ℕ) ≠ 12 := by omega
+  have e13 : (i : ℕ) ≠ 13 := by omega
+  simp only [precBodyVals, precSelf_update_apply, precRightSub_win_selfW haf]
+  norm_num [e10, e11, e13]
+  exact precBodyPre_self haf hag V i hw e9 e12
+
+lemma precLoopVals_frame (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V₀ : Fin (32 + af + ag) → ℕ) (i : Fin 32)
+    (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 24)) (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 13)) :
+    ∀ t, precLoopVals af ag haf hag Fg V₀ t (precSelf af ag i)
+      = V₀ (precSelf af ag i) := by
+  intro t
+  induction t with
+  | zero => rfl
+  | succ k ih => rw [precLoopVals_succ, precBodyVals_self haf hag Fg _ i hw h9, ih]
+
+/-! #### The setup -/
+
+/-- The vector `cf` is run on in the setup: the unpaired `a` and the base fuel. -/
+noncomputable def precBaseIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) : Fin af → ℕ :=
+  fun i => precSetupPre af ag haf hag V (precLeftSub af ag i)
+
+lemma precSetupPre_a (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf hag V (precSelf af ag 6)
+      = (Nat.unpair (V (precSelf af ag 0))).1 := by
+  simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
+    precUnpairWin_selfW_apply]
+  norm_num
+  exact unpairVals_zero _ _
+
+lemma precSetupPre_m (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf hag V (precSelf af ag 7)
+      = (Nat.unpair (V (precSelf af ag 0))).2 := by
+  simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
+    precUnpairWin_selfW_apply]
+  norm_num
+  exact unpairVals_one _ _
+
+lemma precSetupPre_base (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf hag V (precSelf af ag 8)
+      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
+  simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
+    precUnpairWin_selfW_apply]
+  norm_num
+  rw [unpairVals_one]
+
+lemma precSetupPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
+    (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 25)) (h6 : (i : ℕ) ≠ 6)
+    (h7 : (i : ℕ) ≠ 7) (h8 : (i : ℕ) ≠ 8) :
+    precSetupPre af ag haf hag V (precSelf af ag i) = V (precSelf af ag i) := by
+  simp only [precSetupPre, precSelf_update_apply, precSelf_leftLoc_upd haf,
+    precUnpairWin_selfW_apply, dif_neg hw]
+  norm_num [h6, h7, h8]
+
+lemma precSetupPre_childIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf hag V (precLeftLoc af ag haf 0)
+      = (Nat.unpair (V (precSelf af ag 0))).1 := by
+  have h := precSetupPre_a haf hag V
+  simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
+    precUnpairWin_leftLoc haf] at h ⊢
+  norm_num at h ⊢
+  simp only [precSelf_update_apply, precUnpairWin_selfW_apply] at h ⊢
+  norm_num at h ⊢
+  exact h
+
+lemma precSetupPre_childIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precSetupPre af ag haf hag V (precLeftLoc af ag haf 1)
+      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
+  have h := precSetupPre_base haf hag V
+  simp only [precSetupPre, precLeftLoc_update_apply haf, precLeftLoc_self_upd haf,
+    precUnpairWin_leftLoc haf] at h ⊢
+  norm_num at h ⊢
+  simp only [precSelf_update_apply, precUnpairWin_selfW_apply] at h ⊢
+  norm_num at h ⊢
+  exact h
+
+lemma precBaseIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precBaseIn af ag haf hag V ⟨0, by omega⟩
+      = (Nat.unpair (V (precSelf af ag 0))).1 := by
+  have h : precLeftSub af ag ⟨0, by omega⟩ = precLeftLoc af ag haf 0 := by
+    apply Fin.ext; simp [precLeftSub, precLeftLoc, shiftEmb_val]
+  rw [precBaseIn, h, precSetupPre_childIn_zero]
+
+lemma precBaseIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
+    precBaseIn af ag haf hag V ⟨1, by omega⟩
+      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
+  have h : precLeftSub af ag ⟨1, by omega⟩ = precLeftLoc af ag haf 1 := by
+    apply Fin.ext; simp [precLeftSub, precLeftLoc, shiftEmb_val]
+  rw [precBaseIn, h, precSetupPre_childIn_one]
+
+section
+variable (haf : 16 ≤ af) (hag : 16 ≤ ag) (Ff : (Fin af → ℕ) → Fin af → ℕ)
+  (V : Fin (32 + af + ag) → ℕ)
+
+lemma precSetupVals_self (i : Fin 32) (hw : ¬ (16 ≤ (i : ℕ) ∧ (i : ℕ) < 25))
+    (h6 : (i : ℕ) ≠ 6) (h7 : (i : ℕ) ≠ 7) (h8 : (i : ℕ) ≠ 8)
+    (h9 : ¬ (9 ≤ (i : ℕ) ∧ (i : ℕ) ≤ 12)) :
+    precSetupVals af ag haf hag Ff V (precSelf af ag i) = V (precSelf af ag i) := by
+  have e9 : (i : ℕ) ≠ 9 := by omega
+  have e10 : (i : ℕ) ≠ 10 := by omega
+  have e11 : (i : ℕ) ≠ 11 := by omega
+  have e12 : (i : ℕ) ≠ 12 := by omega
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  norm_num [e9, e10, e11, e12]
+  exact precSetupPre_self haf hag V i hw h6 h7 h8
+
+lemma precSetupVals_a :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 6)
+      = (Nat.unpair (V (precSelf af ag 0))).1 := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  norm_num
+  exact precSetupPre_a haf hag V
+
+lemma precSetupVals_m :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 7)
+      = (Nat.unpair (V (precSelf af ag 0))).2 := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  norm_num
+  exact precSetupPre_m haf hag V
+
+lemma precSetupVals_base :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 8)
+      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  norm_num
+  exact precSetupPre_base haf hag V
+
+lemma precSetupVals_j : precSetupVals af ag haf hag Ff V (precSelf af ag 9) = 0 := by
+  simp only [precSetupVals, precSelf_update_apply]
+  norm_num
+
+lemma precSetupVals_curFuel :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 12)
+      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
+  norm_num
+  exact precSetupPre_base haf hag V
+
+lemma precSetupVals_alive :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 10)
+      = Ff (precBaseIn af ag haf hag V) ⟨2, by omega⟩ := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftLoc_self_upd haf,
+    precLeftSub_win_leftLoc haf]
+  norm_num
+  rfl
+
+lemma precSetupVals_acc :
+    precSetupVals af ag haf hag Ff V (precSelf af ag 11)
+      = Ff (precBaseIn af ag haf hag V) ⟨3, by omega⟩ := by
+  simp only [precSetupVals, precSelf_update_apply, precLeftLoc_self_upd haf,
+    precLeftSub_win_leftLoc haf]
+  norm_num
+  rfl
+
+end
+
+/-! #### The finish -/
+
+lemma precFinishVals_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (32 + af + ag) → ℕ) :
+    precFinishVals af ag W (precSelf af ag 2)
+      = (if W (precSelf af ag 0) < W (precSelf af ag 1) then 1 else 0)
+          * W (precSelf af ag 10) := by
+  simp only [precFinishVals, precSelf_update_apply]
+  norm_num
+
+lemma precFinishVals_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (32 + af + ag) → ℕ) :
+    precFinishVals af ag W (precSelf af ag 3)
+      = precFinishVals af ag W (precSelf af ag 2) * W (precSelf af ag 11) := by
+  rw [precFinishVals_tag haf hag]
+  simp only [precFinishVals, precSelf_update_apply]
+  norm_num
+
+end PrecCloseSem
+
 /-! ## `prec`, assembled
 
 Setup, then the fixed-length loop, then the finish. The loop counter is the ambient
@@ -3330,19 +3916,85 @@ lemma precTM_hoareTime (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 end PrecCompose
 
+/-! ### `prec`, semantically complete -/
+
+section PrecEncodes
+variable {af ag : ℕ}
+
+/-- **`prec`, semantically complete.** Given children that encode `evaln`, the node's tag
+    and value registers hold the tag and value of `evaln fuel (prec cf cg) inp`. -/
+lemma precVals_encodes (haf : 16 ≤ af) (hag : 16 ≤ ag) (cf cg : Nat.Partrec.Code)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (hFf : ChildEncodes af haf cf Ff) (hFg : ChildEncodes ag hag cg Fg)
+    (V : Fin (32 + af + ag) → ℕ) :
+    precVals af ag haf hag Ff Fg V (precSelf af ag 2)
+        = resultTag (Nat.Partrec.Code.evaln (V (precSelf af ag 1)) (cf.prec cg)
+            (V (precSelf af ag 0))) ∧
+      precVals af ag haf hag Ff Fg V (precSelf af ag 3)
+        = resultVal (Nat.Partrec.Code.evaln (V (precSelf af ag 1)) (cf.prec cg)
+            (V (precSelf af ag 0))) := by
+  have hpair : Nat.pair (Nat.unpair (V (precSelf af ag 0))).1
+      (Nat.unpair (V (precSelf af ag 0))).2 = V (precSelf af ag 0) := Nat.pair_unpair _
+  obtain ⟨hbt, hbv⟩ := hFf (precBaseIn af ag haf hag V)
+  rw [precBaseIn_zero, precBaseIn_one] at hbt hbv
+  obtain ⟨-, -, -, hL10, hL11⟩ :=
+    precLoopVals_spec haf hag cf cg Fg hFg (precSetupVals af ag haf hag Ff V)
+      (Nat.unpair (V (precSelf af ag 0))).1
+      (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
+      (precSetupVals_a haf hag Ff V) (precSetupVals_j haf hag Ff V)
+      (precSetupVals_curFuel haf hag Ff V)
+      (by rw [precSetupVals_alive, hbt]) (by rw [precSetupVals_acc, hbv])
+      (Nat.unpair (V (precSelf af ag 0))).2
+  have hL0 : precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
+      (Nat.unpair (V (precSelf af ag 0))).2 (precSelf af ag 0) = V (precSelf af ag 0) := by
+    rw [precLoopVals_frame haf hag Fg _ 0 (by norm_num) (by norm_num),
+      precSetupVals_self haf hag Ff V 0 (by norm_num) (by norm_num) (by norm_num)
+        (by norm_num) (by norm_num)]
+  have hL1 : precLoopVals af ag haf hag Fg (precSetupVals af ag haf hag Ff V)
+      (Nat.unpair (V (precSelf af ag 0))).2 (precSelf af ag 1) = V (precSelf af ag 1) := by
+    rw [precLoopVals_frame haf hag Fg _ 1 (by norm_num) (by norm_num),
+      precSetupVals_self haf hag Ff V 1 (by norm_num) (by norm_num) (by norm_num)
+        (by norm_num) (by norm_num)]
+  have htag : precVals af ag haf hag Ff Fg V (precSelf af ag 2)
+      = (if V (precSelf af ag 0) < V (precSelf af ag 1) then 1 else 0)
+          * resultTag (precRunG cf cg (Nat.unpair (V (precSelf af ag 0))).1
+              (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
+              (Nat.unpair (V (precSelf af ag 0))).2) := by
+    rw [precVals, precSetupVals_m, precFinishVals_tag haf hag, hL0, hL1, hL10]
+  have hval : precVals af ag haf hag Ff Fg V (precSelf af ag 3)
+      = precVals af ag haf hag Ff Fg V (precSelf af ag 2)
+          * resultVal (precRunG cf cg (Nat.unpair (V (precSelf af ag 0))).1
+              (V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2)
+              (Nat.unpair (V (precSelf af ag 0))).2) := by
+    rw [precVals, precSetupVals_m, precFinishVals_val haf hag, hL11]
+  by_cases hg : V (precSelf af ag 0) < V (precSelf af ag 1)
+  · have hout : Nat.pair (Nat.unpair (V (precSelf af ag 0))).1
+        (Nat.unpair (V (precSelf af ag 0))).2 < V (precSelf af ag 1) := by
+      rw [hpair]; exact hg
+    have heq := precRunG_eq_evaln cf cg (Nat.unpair (V (precSelf af ag 0))).1
+      (Nat.unpair (V (precSelf af ag 0))).2 (V (precSelf af ag 1)) hout
+    rw [hpair] at heq
+    refine ⟨?_, ?_⟩
+    · rw [htag, if_pos hg, heq]; omega
+    · rw [hval, htag, if_pos hg, heq]; simp
+  · have hnone := evaln_eq_none_of_not_guard (V (precSelf af ag 1)) (cf.prec cg)
+      (V (precSelf af ag 0)) hg
+    refine ⟨?_, ?_⟩
+    · rw [htag, if_neg hg, hnone]; simp
+    · rw [hval, htag, if_neg hg, hnone]; simp
+
+end PrecEncodes
+
 /-! ## `prec`: the setup keeps every register inside the bound -/
 
 section PrecSetupBound
 variable {af ag : ℕ}
 
-lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
-    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
-    (hV : ∀ k, V k < B)
-    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
-    ∀ k, precSetupVals af ag haf hag Ff V k < B := by
+lemma precSetupPre_lt (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ)
+    (B : ℕ) (hV : ∀ k, V k < B) : ∀ k, precSetupPre af ag haf hag V k < B := by
   have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
   intro k
-  simp only [precSetupVals]
+  simp only [precSetupPre]
   set U1 := writeWindow (precUnpairW af ag) V
       (unpairVals (fun j => V (precUnpairW af ag j)) (V (precSelf af ag 0))) with hU1
   have b1 : ∀ k, U1 k < B := by
@@ -3370,11 +4022,19 @@ lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
   set U6 := Function.update U5 (precLeftLoc af ag haf 0) (U5 (precSelf af ag 6)) with hU6
   have b6 : ∀ k, U6 k < B := by
     intro k; rw [hU6]; simp only [Function.update_apply]; split_ifs <;> exact b5 _
-  set U7 := Function.update U6 (precLeftLoc af ag haf 1) (U6 (precSelf af ag 8)) with hU7
-  have b7 : ∀ k, U7 k < B := by
-    intro k; rw [hU7]; simp only [Function.update_apply]; split_ifs <;> exact b6 _
-  set U8 := writeWindow (precLeftSub af ag) U7 (Ff (fun i => U7 (precLeftSub af ag i)))
-    with hU8
+  simp only [Function.update_apply]; split_ifs <;> exact b6 _
+
+lemma precSetupVals_lt (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (32 + af + ag) → ℕ) (B : ℕ)
+    (hV : ∀ k, V k < B)
+    (hFfB : ∀ u : Fin af → ℕ, (∀ k, u k < B) → ∀ k, Ff u k < B) :
+    ∀ k, precSetupVals af ag haf hag Ff V k < B := by
+  have hB0 : 0 < B := Nat.lt_of_le_of_lt (Nat.zero_le _) (hV (precSelf af ag 0))
+  have b7 := precSetupPre_lt haf hag V B hV
+  intro k
+  simp only [precSetupVals]
+  set U8 := writeWindow (precLeftSub af ag) (precSetupPre af ag haf hag V)
+      (Ff (fun i => precSetupPre af ag haf hag V (precLeftSub af ag i))) with hU8
   have b8 : ∀ k, U8 k < B := by
     intro k; rw [hU8]
     exact writeWindow_bounded _ _ _ B b7 (fun i => hFfB _ (fun t => b7 _) i) k
@@ -4737,16 +5397,6 @@ The child's registers hold `evaln` of the child; the loop state after `i` levels
 
 section RfindClose
 variable {af : ℕ}
-
-/-- The hypothesis the structural induction supplies for a child: its interface registers
-    really hold `evaln` of the child, on whatever input they are given. -/
-def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
-    (Ff : (Fin af → ℕ) → Fin af → ℕ) : Prop :=
-  ∀ u : Fin af → ℕ,
-    Ff u ⟨2, by omega⟩
-        = resultTag (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩)) ∧
-      Ff u ⟨3, by omega⟩
-        = resultVal (Nat.Partrec.Code.evaln (u ⟨1, by omega⟩) cf (u ⟨0, by omega⟩))
 
 /-- The iterate, unfolded from the *right*: the last level runs at fuel `f - t` on index
     `m + t`. -/
