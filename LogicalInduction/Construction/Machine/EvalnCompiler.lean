@@ -5429,28 +5429,33 @@ lemma rfPhaseAPair_lt (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV 
   refine pairVals_lt _ B hB2 (fun i => b2 _) ?_ i
   rw [hw0, hw1]; exact hp
 
+/-- The state phase A hands the child keeps every register inside the bound. -/
+lemma rfPhaseAPre_lt (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B)
+    (hV : ∀ k, V k < B)
+    (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B) :
+    ∀ k, rfPhaseAPre af haf V k < B := by
+  have b3 := rfPhaseAPair_lt V B hB2 hV hp
+  simp only [rfPhaseAPre]
+  set V4 := Function.update (rfPhaseAPair af V) (rfLoc af haf 0)
+      (rfPhaseAPair af V (rfSelf af 26)) with hV4
+  have b4 : ∀ k, V4 k < B := by
+    intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
+  set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
+  have b5 : ∀ k, V5 k < B := by
+    intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
+  intro k
+  simp only [Function.update_apply]
+  split_ifs <;> first
+    | omega
+    | (have := b5 (rfSelf af 8); omega)
+    | exact b5 _
 /-- Phase A keeps every register inside the bound. -/
 lemma rfPhaseAVals_lt (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → Fin af → ℕ)
     (V : Fin (32 + af) → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hV : ∀ k, V k < B)
     (hp : Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) < B)
     (hFfB : ∀ k, Ff (rfChildIn af haf V) k < B) :
     ∀ k, rfPhaseAVals af haf Ff V k < B := by
-  have b3 := rfPhaseAPair_lt V B hB2 hV hp
-  have hpre : ∀ k, rfPhaseAPre af haf V k < B := by
-    simp only [rfPhaseAPre]
-    set V4 := Function.update (rfPhaseAPair af V) (rfLoc af haf 0)
-        (rfPhaseAPair af V (rfSelf af 26)) with hV4
-    have b4 : ∀ k, V4 k < B := by
-      intro k; rw [hV4]; simp only [Function.update_apply]; split_ifs <;> exact b3 _
-    set V5 := Function.update V4 (rfLoc af haf 1) (V4 (rfSelf af 8)) with hV5
-    have b5 : ∀ k, V5 k < B := by
-      intro k; rw [hV5]; simp only [Function.update_apply]; split_ifs <;> exact b4 _
-    intro k
-    simp only [Function.update_apply]
-    split_ifs <;> first
-      | omega
-      | (have := b5 (rfSelf af 8); omega)
-      | exact b5 _
+  have hpre := rfPhaseAPre_lt haf V B hB2 hV hp
   intro k
   rw [rfPhaseAVals]
   exact writeWindow_bounded _ _ _ B hpre (fun i => hFfB i) k
