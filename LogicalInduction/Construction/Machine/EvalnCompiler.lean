@@ -1087,11 +1087,47 @@ lemma rightSub_win_leftLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (16 + af + ag
 
 /-! ### The pairing window inside the node's own block -/
 
+/-- `pairTM`'s output vector, with the index test numeric so a `simp only` can evaluate
+    it at an index that arrives as a `Fin.mk`. -/
+lemma pairVals_apply (v : Fin 8 → ℕ) (k : Fin 8) :
+    pairVals v k =
+      if (k : ℕ) = 2 then v 1 - v 0
+      else if (k : ℕ) = 3 then (if v 0 < v 1 then 1 else 0)
+      else if (k : ℕ) = 4 then v 0 + (v 1 - v 0)
+      else if (k : ℕ) = 5 then v 0 + (v 1 - v 0)
+      else if (k : ℕ) = 6 then Nat.pair (v 0) (v 1)
+      else if (k : ℕ) = 7 then 1 - (if v 0 < v 1 then 1 else 0)
+      else v k := by
+  simp only [pairVals, Fin.ext_iff]
+  norm_num
+
+/-- `pairTM`'s output slot. -/
+lemma pairVals_six (v : Fin 8 → ℕ) : pairVals v 6 = Nat.pair (v 0) (v 1) := by
+  simp [pairVals]
+
 lemma pairWin_selfW (i : Fin 16) (h : ∀ t : Fin 8, 6 + (t : ℕ) ≠ (i : ℕ))
     (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
     writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag i) = X (selfW af ag i) := by
   rw [pairAmb_eq]
   exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_selfW t i (h t))
+
+/-- The pairing window as a total read-off: slots `6`–`13` of the node's block. -/
+lemma pairWin_selfW_apply (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
+    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag i)
+      = if h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14 then u ⟨(i : ℕ) - 6, by omega⟩
+        else X (selfW af ag i) := by
+  by_cases h : 6 ≤ (i : ℕ) ∧ (i : ℕ) < 14
+  · rw [dif_pos h]
+    have hid : (pairSlot.trans (selfW af ag)) ⟨(i : ℕ) - 6, by omega⟩ = selfW af ag i := by
+      apply Fin.ext
+      simp [pairSlot, selfW, shiftEmb_val]
+      omega
+    rw [← hid, writeWindow_apply]
+  · rw [dif_neg h, pairAmb_eq]
+    refine writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_selfW t i ?_)
+    have := t.isLt
+    simp at h ⊢
+    omega
 
 lemma pairWin_twelve (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
     writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag 12) = u 6 := by
@@ -4751,6 +4787,230 @@ lemma regsWork_rfMain (R : Regs (33 + af) n) (w₀ : Fin n → Tape)
       Function.update_of_ne hjl]
 
 end RfindBridge
+
+/-! ## `pair`: what the children see, and what the node leaves -/
+
+section PairSemantics
+variable {af ag : ℕ}
+
+/-- The vector the left child sees: its own subtree, with the parent's input and fuel
+    written into its interface. -/
+noncomputable def pairLeftIn (af ag : ℕ) (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
+    Fin af → ℕ :=
+  fun j =>
+    Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
+      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
+
+/-- The vector the right child sees. -/
+noncomputable def pairRightIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin ag → ℕ :=
+  fun j =>
+    Function.update
+      (Function.update
+        (writeWindow (leftSub af ag)
+          (Function.update (Function.update V (leftLoc af ag haf 0) (V (selfW af ag 0)))
+            (leftLoc af ag haf 1) (V (selfW af ag 1)))
+          (Ff (pairLeftIn af ag haf V)))
+        (rightLoc af ag hag 0) (V (selfW af ag 0)))
+      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
+
+lemma pairLeftIn_zero (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
+    pairLeftIn af ag haf V ⟨0, by omega⟩ = V (selfW af ag 0) := by
+  have h : leftSub af ag ⟨0, by omega⟩ = leftLoc af ag haf 0 := by
+    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+  simp only [pairLeftIn, h]
+  rw [leftLoc_update_apply haf]
+  norm_num
+
+lemma pairLeftIn_one (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
+    pairLeftIn af ag haf V ⟨1, by omega⟩ = V (selfW af ag 1) := by
+  have h : leftSub af ag ⟨1, by omega⟩ = leftLoc af ag haf 1 := by
+    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+  simp only [pairLeftIn, h]
+  rw [leftLoc_update_apply haf]
+  norm_num
+
+lemma pairRightIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) :
+    pairRightIn af ag haf hag Ff V ⟨0, by omega⟩ = V (selfW af ag 0) := by
+  have h : rightSub af ag ⟨0, by omega⟩ = rightLoc af ag hag 0 := by
+    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+  simp only [pairRightIn, h]
+  rw [rightLoc_update_apply hag]
+  norm_num
+
+lemma pairRightIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (V : Fin (16 + af + ag) → ℕ) :
+    pairRightIn af ag haf hag Ff V ⟨1, by omega⟩ = V (selfW af ag 1) := by
+  have h : rightSub af ag ⟨1, by omega⟩ = rightLoc af ag hag 1 := by
+    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+  simp only [pairRightIn, h]
+  rw [rightLoc_update_apply hag]
+  norm_num
+
+/-! ### Phase A's read-offs -/
+
+lemma pairPhaseAVec_selfW (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (i : Fin 16) :
+    pairPhaseAVec af ag haf hag Ff Fg V (selfW af ag i) = V (selfW af ag i) := by
+  simp only [pairPhaseAVec, rightSub_win_selfW haf, leftSub_win_selfW,
+    selfW_leftLoc_upd haf, selfW_rightLoc_upd hag haf]
+
+lemma pairPhaseAVec_leftLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
+    pairPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf j)
+      = Ff (pairLeftIn af ag haf V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  simp only [pairPhaseAVec, rightSub_win_leftLoc haf, leftLoc_rightLoc_upd haf hag,
+    leftSub_win_leftLoc haf]
+  rfl
+
+lemma pairPhaseAVec_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
+    pairPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag j)
+      = Fg (pairRightIn af ag haf hag Ff V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  simp only [pairPhaseAVec, rightSub_win_rightLoc hag]
+  rfl
+
+/-! ### Phase B's read-offs -/
+
+lemma pairPhaseBVec_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
+    pairPhaseBVec af ag haf hag W (selfW af ag 2)
+      = (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0)
+          * W (leftLoc af ag haf 2) * W (rightLoc af ag hag 2) := by
+  simp only [pairPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
+    rightLoc_selfW_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
+    pairWin_selfW_apply]
+  norm_num
+
+lemma pairPhaseBVec_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
+    pairPhaseBVec af ag haf hag W (selfW af ag 3)
+      = pairPhaseBVec af ag haf hag W (selfW af ag 2)
+          * Nat.pair (W (leftLoc af ag haf 3)) (W (rightLoc af ag hag 3)) := by
+  rw [pairPhaseBVec_tag]
+  simp only [pairPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
+    rightLoc_selfW_upd hag haf, pairWin_leftLoc haf, pairWin_rightLoc hag haf,
+    pairWin_twelve, pairWin_selfW_apply, pairVals_apply, pairTrans_zero, pairTrans_one]
+  norm_num
+
+end PairSemantics
+
+/-! ## `comp`: what the children see, and what the node leaves
+
+`cg` runs on the parent's input; `cf` runs on `cg`'s *value*, which is the canonical `0`
+when `cg` failed. -/
+
+section CompSemantics
+variable {af ag : ℕ}
+
+/-- The vector the second child sees: the parent's input and fuel. -/
+noncomputable def compRightIn (af ag : ℕ) (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
+    Fin ag → ℕ :=
+  fun j =>
+    Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+      (rightLoc af ag hag 1) (V (selfW af ag 1)) (rightSub af ag j)
+
+/-- The vector the first child sees: `cg`'s value as its input, the parent's fuel. -/
+noncomputable def compLeftIn (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) : Fin af → ℕ :=
+  fun j =>
+    Function.update
+      (Function.update
+        (writeWindow (rightSub af ag)
+          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+            (rightLoc af ag hag 1) (V (selfW af ag 1)))
+          (Fg (compRightIn af ag hag V)))
+        (leftLoc af ag haf 0)
+        (writeWindow (rightSub af ag)
+          (Function.update (Function.update V (rightLoc af ag hag 0) (V (selfW af ag 0)))
+            (rightLoc af ag hag 1) (V (selfW af ag 1)))
+          (Fg (compRightIn af ag hag V)) (rightLoc af ag hag 3)))
+      (leftLoc af ag haf 1) (V (selfW af ag 1)) (leftSub af ag j)
+
+lemma compRightIn_zero (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
+    compRightIn af ag hag V ⟨0, by omega⟩ = V (selfW af ag 0) := by
+  have h : rightSub af ag ⟨0, by omega⟩ = rightLoc af ag hag 0 := by
+    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+  simp only [compRightIn, h]
+  rw [rightLoc_update_apply hag]
+  norm_num
+
+lemma compRightIn_one (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
+    compRightIn af ag hag V ⟨1, by omega⟩ = V (selfW af ag 1) := by
+  have h : rightSub af ag ⟨1, by omega⟩ = rightLoc af ag hag 1 := by
+    apply Fin.ext; simp [rightSub, rightLoc, shiftEmb_val]
+  simp only [compRightIn, h]
+  rw [rightLoc_update_apply hag]
+  norm_num
+
+lemma compLeftIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) :
+    compLeftIn af ag haf hag Fg V ⟨0, by omega⟩
+      = Fg (compRightIn af ag hag V) ⟨3, by omega⟩ := by
+  have h : leftSub af ag ⟨0, by omega⟩ = leftLoc af ag haf 0 := by
+    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+  simp only [compLeftIn, h]
+  rw [leftLoc_update_apply haf]
+  norm_num
+  rw [rightSub_win_rightLoc hag]
+  congr 1
+
+lemma compLeftIn_one (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Fg : (Fin ag → ℕ) → Fin ag → ℕ) (V : Fin (16 + af + ag) → ℕ) :
+    compLeftIn af ag haf hag Fg V ⟨1, by omega⟩ = V (selfW af ag 1) := by
+  have h : leftSub af ag ⟨1, by omega⟩ = leftLoc af ag haf 1 := by
+    apply Fin.ext; simp [leftSub, leftLoc, shiftEmb_val]
+  simp only [compLeftIn, h]
+  rw [leftLoc_update_apply haf]
+  norm_num
+
+/-! ### Phase A's read-offs -/
+
+lemma compPhaseAVec_selfW (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (i : Fin 16) :
+    compPhaseAVec af ag haf hag Ff Fg V (selfW af ag i) = V (selfW af ag i) := by
+  simp only [compPhaseAVec, leftSub_win_selfW, rightSub_win_selfW haf,
+    selfW_leftLoc_upd haf, selfW_rightLoc_upd hag haf]
+
+lemma compPhaseAVec_rightLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
+    compPhaseAVec af ag haf hag Ff Fg V (rightLoc af ag hag j)
+      = Fg (compRightIn af ag hag V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  simp only [compPhaseAVec, leftSub_win_rightLoc hag, rightLoc_leftLoc_upd haf hag,
+    rightSub_win_rightLoc hag]
+  rfl
+
+lemma compPhaseAVec_leftLoc (haf : 16 ≤ af) (hag : 16 ≤ ag)
+    (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
+    (V : Fin (16 + af + ag) → ℕ) (j : Fin 16) :
+    compPhaseAVec af ag haf hag Ff Fg V (leftLoc af ag haf j)
+      = Ff (compLeftIn af ag haf hag Fg V) ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
+  simp only [compPhaseAVec, leftSub_win_leftLoc haf]
+  rfl
+
+/-! ### Phase B's read-offs -/
+
+lemma compPhaseBVec_tag (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
+    compPhaseBVec af ag haf hag W (selfW af ag 2)
+      = (if W (selfW af ag 0) < W (selfW af ag 1) then 1 else 0)
+          * W (rightLoc af ag hag 2) * W (leftLoc af ag haf 2) := by
+  simp only [compPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
+    rightLoc_selfW_upd hag haf]
+  norm_num
+
+lemma compPhaseBVec_val (haf : 16 ≤ af) (hag : 16 ≤ ag) (W : Fin (16 + af + ag) → ℕ) :
+    compPhaseBVec af ag haf hag W (selfW af ag 3)
+      = compPhaseBVec af ag haf hag W (selfW af ag 2) * W (leftLoc af ag haf 3) := by
+  rw [compPhaseBVec_tag]
+  simp only [compPhaseBVec, selfW_update_apply, leftLoc_selfW_upd haf,
+    rightLoc_selfW_upd hag haf]
+  norm_num
+
+end CompSemantics
 
 /-! ## The register vector a compiled node produces
 
