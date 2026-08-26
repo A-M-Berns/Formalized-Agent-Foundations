@@ -1618,6 +1618,22 @@ lemma blockWF_unaryBlock (u : List Bool) : BlockWF (unaryBlock u) := by
   rw [unaryBlock, Increment.unaryToDigits_eq]
   exact blockWF_run _ (Increment.unaryDigits_lt u.length)
 
+@[simp] lemma length_digitsToBits (ds : List ℕ) :
+    (digitsToBits ds).length = 3 * ds.length := by
+  induction ds with
+  | nil => simp [digitsToBits]
+  | cons d ds ih =>
+      rw [digitsToBits_cons, List.length_append, length_digitBits, ih, List.length_cons]
+      omega
+
+/-- The emitted block is logarithmic in the value, hence certainly linear in the unary
+word it came from. -/
+lemma length_unaryBlock_le (u : List Bool) : (unaryBlock u).length ≤ 3 * u.length + 3 := by
+  rw [unaryBlock, List.length_append, length_digitBits, Increment.unaryToDigits_eq,
+    length_digitsToBits]
+  have := Increment.unaryDigits_length u.length
+  omega
+
 @[simp] lemma decodeBits_unaryBlock (u : List Bool) :
     decodeBits (unaryBlock u) = [u.length] := by
   rw [unaryBlock, Increment.unaryToDigits_eq, decodeBits_run _ (Increment.unaryDigits_lt u.length),
