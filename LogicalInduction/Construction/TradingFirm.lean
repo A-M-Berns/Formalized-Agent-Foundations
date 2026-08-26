@@ -1019,15 +1019,21 @@ theorem trading_firm_dominance_of_covered
     apply (le_div_iff₀ hweight).2
     linarith
 
-/-- **Trading Firm Dominance** (`lem:tfdom`): an exploiting efficiently computable
-trader makes the firm exploit — the enumeration covers the whole class.
+/-- **Trading Firm Dominance** (`lem:tfdom`): an exploiting machine-efficient trader makes
+the firm exploit — the enumeration covers the whole class.
+
+The class is `MachineEfficientTrader`: ordinary machine polynomial time, through
+`Complexity.FP`. Every trader the fuel calculus certifies is one of these
+(`EfficientlyComputable.toMachine`), so the fuel-certified corollary is immediate; it is
+stated as `trading_firm_dominance_of_ec` in `Construction/MachineEfficiency.lean`, where
+that inclusion is in scope.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : EfficientlyComputable Tr)
+    (Tr : Trader) (hTr : MachineEfficientTrader Tr)
     (hEx : Tr.Exploits P DP) :
     (tradingFirmTrader DP Q).Exploits P DP :=
   trading_firm_dominance_of_covered DP P hP Q hQ Tr

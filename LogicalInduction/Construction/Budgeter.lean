@@ -8,7 +8,7 @@ expressible feature.  This is deliberately distinct from a static `Trader`; the 
 is load-bearing because the bankruptcy test is discontinuous in past prices.
 -/
 import LogicalInduction.Construction.MarketMaker
-import LogicalInduction.Construction.TraderEnumeration
+import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Framework.ROI
 
 namespace LogicalInduction

@@ -30,6 +30,7 @@ see `LogicalInduction/README.md` for the standing disclosure.
 -/
 import LogicalInduction.Construction.Machine.TraderMachine
 import LogicalInduction.Construction.MachineTraderEnumeration
+import LogicalInduction.Construction.TradingFirm
 
 namespace LogicalInduction
 
@@ -52,5 +53,19 @@ theorem EfficientlyComputable.toMachine {Tr : Trader} (h : EfficientlyComputable
   rw [strategyOfOutput, bitsToDigits_traderOutput, length_unaryDay,
     undigitize_map_min_four]
   rfl
+
+/-- The fuel-certified corollary of Trading Firm Dominance. The primary statement is
+`trading_firm_dominance`, over the machine class; this is the instance the fuel calculus's
+certificates feed.
+Paper node: `lem:tfdom` -/
+theorem trading_firm_dominance_of_ec
+    (DP : DeductiveProcess) (P : History)
+    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
+    (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
+    (Tr : Trader) (hTr : EfficientlyComputable Tr)
+    (hEx : Tr.Exploits P DP) :
+    (tradingFirmTrader DP Q).Exploits P DP :=
+  trading_firm_dominance DP P hP Q hQ Tr hTr.toMachine hEx
 
 end LogicalInduction

@@ -119,10 +119,13 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
 
--- Single-class collapse: `EfficientlyComputable` is the symbol-metered `def:ec`;
--- the enumeration's single RPN decode covers the whole class.
+-- The canonical trader universe is `MachineEfficientTrader` — ordinary machine
+-- polynomial time, through `Complexity.FP`. The enumeration is sound and covers the whole
+-- class, and the fuel calculus's certificates land inside it.
 #assert_axioms_clean
-  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_ec
+  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_machineEfficient
+  enumeratedOutput_mem_FP EfficientlyComputable.toMachine
+  lia_no_machine_trader_exploits
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` -/
 

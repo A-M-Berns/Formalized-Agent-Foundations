@@ -31,11 +31,11 @@ is introduced, and malformed output inherits the established zero-strategy fallb
 
 **The semantic class and the enumeration are kept apart.** `MachineEfficientTrader` is not
 defined as "occurs in the enumeration"; that every member of the class *does* occur is the
-content of `exists_enumeratedMachineTrader_eq`.
+content of `exists_enumeratedTrader_eq`.
 
-**Both halves are proved here.** Coverage is `exists_enumeratedMachineTrader_eq`; soundness
+**Both halves are proved here.** Coverage is `exists_enumeratedTrader_eq`; soundness
 — that every index denotes a member of the class — is
-`enumeratedMachineTrader_machineEfficient`, and it is a real theorem rather than the `rfl`
+`enumeratedTrader_machineEfficient`, and it is a real theorem rather than the `rfl`
 it is in the fuel setting, because a bogus index's trader is the described machine's
 *truncated* behaviour and an `FP` witness for a truncation needs a clocked simulator.
 `Machine/ClockedSim.lean` builds one: the description an index names is fixed, so the
@@ -47,7 +47,7 @@ the `theorem`s here carry `def:ec` because they are what that node's machine rea
 for.
 -/
 import LogicalInduction.Construction.Machine.ClockedSim
-import LogicalInduction.Construction.TraderEnumeration
+import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction
 
@@ -80,12 +80,12 @@ that dominates. -/
 /-- The trader denoted by enumeration index `i`: run the described machine on the unary day
 under the indexed clock, and decode. Total by construction — `machineTokens` falls back to
 `[]` on timeout and `strategyOfTokens` to the zero strategy on malformed input. -/
-def enumeratedMachineTrader (i : ℕ) : Trader where
+def enumeratedTrader (i : ℕ) : Trader where
   strat n := strategyOfTokens n (unRpn (undigitize (machineTokens i n)))
 
 /-- The enumeration's day-`n` strategy, unfolded. -/
-lemma enumeratedMachineTrader_strat (i n : ℕ) :
-    (enumeratedMachineTrader i).strat n
+lemma enumeratedTrader_strat (i n : ℕ) :
+    (enumeratedTrader i).strat n
       = strategyOfTokens n (unRpn (undigitize (machineTokens i n))) := rfl
 
 /-! ## The function an index computes
@@ -124,7 +124,8 @@ in `FP` — not merely Lean-computable, and not through a meta-level evaluation.
 
 The witness is the clocked simulator for the fixed description the index names: it measures
 the day, evaluates the index's own clock polynomial into a unary register, and runs the
-description one step per clock mark, blanking the output when the clock is exhausted. -/
+description one step per clock mark, blanking the output when the clock is exhausted.
+Paper node: `def:ec` -/
 lemma enumeratedOutput_mem_FP (i : ℕ) : enumeratedOutput i ∈ Complexity.FP := by
   have heq : (fun x => clockedOutput (progDesc i) ((progClockPoly i).eval x.length) x)
       = enumeratedOutput i := by
@@ -135,13 +136,13 @@ lemma enumeratedOutput_mem_FP (i : ℕ) : enumeratedOutput i ∈ Complexity.FP :
   exact clockedOutput_mem_FP (progDesc i) (progClockPoly i)
 
 /-- **Enumeration soundness** (`def:ec`): every index denotes a trader in the machine class.
-Together with `exists_enumeratedMachineTrader_eq` this makes the enumeration an enumeration
+Together with `exists_enumeratedTrader_eq` this makes the enumeration an enumeration
 *of* the machine-efficient traders, not merely one that covers them.
 Paper node: `def:ec` -/
-theorem enumeratedMachineTrader_machineEfficient (i : ℕ) :
-    MachineEfficientTrader (enumeratedMachineTrader i) := by
+theorem enumeratedTrader_machineEfficient (i : ℕ) :
+    MachineEfficientTrader (enumeratedTrader i) := by
   refine ⟨enumeratedOutput i, enumeratedOutput_mem_FP i, fun n => ?_⟩
-  rw [enumeratedMachineTrader_strat, strategyOfOutput, bitsToDigits_enumeratedOutput]
+  rw [enumeratedTrader_strat, strategyOfOutput, bitsToDigits_enumeratedOutput]
 
 /-! ## Coverage
 
@@ -160,8 +161,8 @@ which is the one step of slack the budgeted evaluator needs in order to observe 
 `machineTokens_eq_of_computesInTime` then says the index emits exactly the witness's output
 word on every unary day.
 Paper node: `def:ec` -/
-theorem exists_enumeratedMachineTrader_eq (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
-    ∃ i : ℕ, enumeratedMachineTrader i = Tr := by
+theorem exists_enumeratedTrader_eq (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
+    ∃ i : ℕ, enumeratedTrader i = Tr := by
   obtain ⟨F, hF, hstrat⟩ := hTr
   obtain ⟨d, a, k, T, hd, hak⟩ := exists_desc_computesInTime_clock hF
   refine ⟨MachineTraderProgram.index ⟨d, a + 1, k⟩, Trader.ext (funext fun n => ?_)⟩
@@ -170,7 +171,7 @@ theorem exists_enumeratedMachineTrader_eq (Tr : Trader) (hTr : MachineEfficientT
     refine machineTokens_eq_of_computesInTime (T := T) ?_ n ?_
     · rw [progDesc_index]; exact hd
     · rw [progClock_index, length_unaryDay]; exact lt_clock_succ (hak n)
-  rw [enumeratedMachineTrader_strat, htok, ← hstrat n, strategyOfOutput]
+  rw [enumeratedTrader_strat, htok, ← hstrat n, strategyOfOutput]
 
 
 end LogicalInduction
