@@ -522,6 +522,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnFreeze.freezeStreamRewriter_of_flatPass
   RpnFreeze.parseStructuredPaperPrime_shape
   RpnFreeze.spellings_sound
+  RpnFreeze.spellings_complete
+  RpnFreeze.parseRpnLegacy_iff_mem_spellings
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
@@ -542,8 +544,11 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- legacy spellings of a target, and `spellings_sound` proves each member parses.  Under the
 -- two side conditions (`BotFree`, and the target outside the reserved `atom (pair 7 _)`
 -- shape) deciding "does this run denote ψ" is membership in that list, so NO streaming
--- automaton has to be proved to agree with `parseRpn`.  Exhaustiveness of the list is the
--- open half; nothing here asserts it.
+-- automaton has to be proved to agree with `parseRpn`.  Both directions are now proved
+-- (`parseRpnLegacy_iff_mem_spellings`), with `BotFree` load-bearing for exhaustiveness.
+-- SCOPE: that characterization is for `parseRpnLegacy`.  The freeze parses with the full
+-- `parseRpn`, and the bridge between them — needing a `NoReserved` side condition — is not
+-- proved.  Nothing here asserts the full-grammar form.
 #assert_axioms_clean
   FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP

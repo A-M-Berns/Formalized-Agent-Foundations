@@ -350,6 +350,79 @@ lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
   subst hb₂
   exact ⟨b₁, r₁, φ₁, φ₂, hb₁, hmk.symm, hpb₁, hpb₂⟩
 
+/-- **Inversion of a complete legacy block parse at its head token.**
+
+The six alternatives are the grammar's six branches, each carrying the sub-blocks the parse
+consumed.  This is the inversion the spelling characterization below runs on; it belongs
+beside `parseRpn_bin_inv`, and would move to `Framework/RpnSentence.lean` with it. -/
+lemma parseRpnLegacy_block_inv {b : List ℕ} {ψ : Sentence}
+    (h : parseRpnLegacy b.length b = some (ψ, [])) :
+    (b = [0] ∧ ψ = ⊥) ∨
+    (∃ c, b = [1, c] ∧ (Encodable.decode c : Option Sentence) = some ψ) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 2 :: (b₁ ++ b₂) ∧ ψ = φ₁ 🡒 φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 3 :: (b₁ ++ b₂) ∧ ψ = φ₁ ⋏ φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 4 :: (b₁ ++ b₂) ∧ ψ = φ₁ ⋎ φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ a, b = [a + 5] ∧ ψ = LO.Propositional.Formula.atom a) := by
+  cases b with
+  | nil => simp [parseRpnLegacy] at h
+  | cons t rest =>
+      rw [List.length_cons, parseRpnLegacy_cons] at h
+      by_cases h0 : t = 0
+      · subst h0
+        rw [if_pos rfl] at h
+        obtain ⟨h1, h2⟩ := Prod.mk.inj (Option.some.inj h)
+        subst h2
+        exact Or.inl ⟨rfl, h1.symm⟩
+      rw [if_neg h0] at h
+      by_cases h1 : t = 1
+      · subst h1
+        rw [if_pos rfl] at h
+        cases rest with
+        | nil => simp at h
+        | cons c tail =>
+            simp only [List.head?_cons, Option.bind_some, List.tail_cons] at h
+            cases hd : (Encodable.decode c : Option Sentence) with
+            | none => rw [hd] at h; simp at h
+            | some φ =>
+                rw [hd] at h
+                simp only [Option.map_some] at h
+                obtain ⟨hφ, ht⟩ := Prod.mk.inj (Option.some.inj h)
+                subst ht
+                subst hφ
+                exact Or.inr (Or.inl ⟨c, rfl, hd⟩)
+      rw [if_neg h1] at h
+      by_cases h2 : t = 2
+      · subst h2
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inl ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩))
+      rw [if_neg h2] at h
+      by_cases h3 : t = 3
+      · subst h3
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inr (Or.inl
+          ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩)))
+      rw [if_neg h3] at h
+      by_cases h4 : t = 4
+      · subst h4
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
+          ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩))))
+      rw [if_neg h4] at h
+      obtain ⟨hφ, ht⟩ := Prod.mk.inj (Option.some.inj h)
+      subst ht
+      refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨t - 5, ?_, hφ.symm⟩))))
+      congr 1
+      omega
+
 /-! ### The spelling set: why the lookup needs no automaton
 
 A run matcher looks like it should be a streaming automaton agreeing with `parseRpn`.  Under
@@ -371,15 +444,26 @@ explicit list — `2 ^ (nodes of ψ)` fixed token lists, `spellings ψ` below.  
 this run denote `ψ`" is then membership in a finite list of constants, not the execution of
 a parser, and no automaton has to be proved to agree with `parseRpn`.
 
-`spellings_sound` is the direction that makes the list non-vacuous: every member really does
-parse.  The converse — that the list is *exhaustive* — is the remaining obligation, and it is
-a structural induction over `ψ` using `parseRpn_bin_inv`, not an automaton agreement. -/
+Both directions are proved: `spellings_sound` (every member parses) and
+`spellings_complete` (every complete parse is a member), packaged as
+`parseRpnLegacy_iff_mem_spellings`.  Completeness is where `BotFree` is load-bearing —
+without it a node has infinitely many escape codes and no finite list can be exhaustive.
+
+**Scope: this is the legacy grammar.**  `parseRpnLegacy_iff_mem_spellings` characterizes
+`parseRpnLegacy`, not `parseRpn`, because the block machinery it runs on
+(`parseRpn_bin_body`, `parseRpn_bin_inv`) is legacy-scoped.  The freeze parses with the full
+`parseRpn`, so a bridge is still owed: the two grammars differ only at the escape tag, where
+`parseRpn` may take the structured branch, and `parseStructuredPaperPrime_shape` says that
+branch always denotes a reserved atom.  Closing that is the remaining grammar-level step and
+it needs a `NoReserved` side condition; nothing here asserts it. -/
 
 /-- The complete legacy spellings of a target, as a finite explicit list of token lists.
 
 Each node contributes two alternatives: the canonical escape, and the structural spelling.
-The `⊥` case is a placeholder — `⊥` has infinitely many escape codes, which is exactly what
-`BotFree` rules out. -/
+The `⊥` case is a placeholder: `⊥` has infinitely many escape codes
+(`decode_falsum_noncanonical`), so `[[0]]` is *not* exhaustive there.  `spellings_sound`
+holds unconditionally, but `spellings_complete` is conditional on `BotFree`, which is exactly
+what rules that case out. -/
 def spellings : Sentence → List (List ℕ)
   | ⊥ => [[0]]
   | .atom a =>
@@ -394,15 +478,12 @@ def spellings : Sentence → List (List ℕ)
       [1, Encodable.encode (φ ⋎ χ)] ::
         (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 4 :: (s₁ ++ s₂)
 
-/-- The canonical escape spelling parses, for any target. -/
+/-- The canonical escape spelling parses, for any target.  This is the `rest = []`,
+`c = ⌜ψ⌝` case of `parseRpnLegacy_escape'` (`Framework/RpnSentence.lean`). -/
 lemma parseRpnLegacy_escape_canonical (ψ : Sentence) :
     parseRpnLegacy [1, Encodable.encode ψ].length [1, Encodable.encode ψ]
-      = some (ψ, []) := by
-  show (if (1 : ℕ) = 0 then _ else _) = _
-  rw [if_neg (by omega)]
-  show (if (1 : ℕ) = 1 then _ else _) = _
-  rw [if_pos rfl]
-  simp [Encodable.encodek]
+      = some (ψ, []) :=
+  parseRpnLegacy_escape' (Encodable.encodek ψ) [] (by simp)
 
 /-- **Every listed spelling really parses.**  This is what makes the finite list a
 description of the target rather than an optimistic guess.
@@ -483,6 +564,93 @@ lemma spellings_sound : ∀ (ψ : Sentence), ∀ b ∈ spellings ψ,
         show (if (4 : ℕ) = 4 then _ else _) = _
         rw [if_pos rfl]
         exact parseRpn_bin_body LO.Propositional.Formula.or (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+
+/-- **The spelling list is exhaustive.**  Every complete legacy parse of a `⊥`-free target
+is one of the finitely many listed spellings.
+
+`BotFree` is doing the whole of the work at the escape leaf: without it a node has
+infinitely many escape codes (`decode_falsum_noncanonical`), and no finite list can be
+exhaustive.  It is a **side condition on the frozen table**, in the same family as
+`FreezeStep.RunOracle.R_length_le` and the reserved-atom exclusion — not a hypothesis on the
+freeze itself.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpnLegacy_block_inv`,
+`decode_eq_some_iff_of_botFree`.
+Paper node: `app:ifp` -/
+lemma spellings_complete : ∀ (ψ : Sentence), BotFree ψ → ∀ b : List ℕ,
+    parseRpnLegacy b.length b = some (ψ, []) → b ∈ spellings ψ := by
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum => exact fun hbf => absurd hbf id
+  | hatom a =>
+      intro hbf b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain rfl := LO.Propositional.Formula.atom.inj hψ
+        simp [spellings]
+  | himp φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_imp φ χ).mp hbf).1
+      have hbχ := ((botFree_imp φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.imp.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hand φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_and φ χ).mp hbf).1
+      have hbχ := ((botFree_and φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.and.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hor φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_or φ χ).mp hbf).1
+      have hbχ := ((botFree_or φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.or.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+
+/-- **The characterization.**  For a `⊥`-free target, a run denotes it exactly when the run
+is one of the finitely many listed spellings.  This is what replaces an automaton: the
+decision is membership in a list of constants.
+Paper node: `app:ifp` -/
+theorem parseRpnLegacy_iff_mem_spellings {ψ : Sentence} (hbf : BotFree ψ) (b : List ℕ) :
+    parseRpnLegacy b.length b = some (ψ, []) ↔ b ∈ spellings ψ :=
+  ⟨spellings_complete ψ hbf b, spellings_sound ψ b⟩
 
 /-- **Matcher soundness**: a successful positional match certifies that the tokens it
 consumed form a complete self-delimiting block parsing to the target. -/
