@@ -570,9 +570,16 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- SIDE CONDITIONS, all on the table and all collected in `CanonicalCodes.lean`: every table
 -- sentence `Recognizable` (= `BotFree` + `NoReserved`), and `TablePresentation.lookup_eq`.
 -- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
--- STILL NOT SUPPLIED: concrete computable markets.  `machine_lic_iff_of_finiteSupportPerturbation`
--- also wants `ComputableMarket P`, `ComputableMarket P'` and tail agreement; no such pair is
--- constructed, so the corrected `thm:ifp` is not yet exhibited non-vacuous end to end.
+-- The market pair is now supplied too: `computableMarket_twoPoint` builds two honest
+-- `ComputableMarket`s (rational table plus a `Nat.Partrec.Code` on the PAIRED input, so day
+-- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
+-- and `machine_lic_iff_twoPoint` is the corrected `thm:ifp` at that pair with NO remaining
+-- hypotheses.  So the theorem's antecedent is satisfiable: it is non-vacuous.
+-- WHAT THAT DOES NOT SAY: neither side of the iff is known to hold at this pair.  These
+-- markets price almost everything at zero and are very likely exploitable, in which case the
+-- equivalence is true but carries no information *here*.  Making an instance informative
+-- means perturbing a market already known to be an inductor (`liaHistory`), which is not
+-- done.
 #assert_axioms_clean
   FreezeOracle.decodeBits_oracleOf
   FreezeOracle.oracleOf_mem_FP
@@ -582,6 +589,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.machineFiniteSupportPatch_pair
   FreezeOracle.exampleS_nonempty
   FreezeOracle.machine_lic_iff_example
+  FreezeOracle.computableMarket_twoPoint
+  FreezeOracle.twoPointHistory_ne_at
+  FreezeOracle.machine_lic_iff_twoPoint
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean

@@ -503,6 +503,152 @@ lemma machine_lic_iff_example (q q' : ℚ) (P P' : History) (DP : DeductiveProce
     (machineFiniteSupportPatch_example q P hexact)
     (machineFiniteSupportPatch_example q' P' hexact')
 
+/-! ## A concrete computable market pair
+
+`machine_lic_iff_example` still carries `ComputableMarket` hypotheses, so it says nothing
+until a pair is exhibited.  This section builds one: two markets that price everything at
+zero except the single coordinate `(0, atom 0)`, which one prices at `q` and the other at
+`q'`.  They are computable in the sense `def:marketprocess` asks for — a rational table with
+a `Nat.Partrec.Code` computing it on the *paired* input, so day `0` gets no free
+special-casing — and they differ exactly on `exampleS`. -/
+
+/-- The rational quote table: `q` at the frozen coordinate, zero everywhere else. -/
+def twoPointQuote (q : ℚ) : ℕ → ℕ → ℚ := fun n c =>
+  if n = 0 ∧ c = Encodable.encode (LO.Propositional.Formula.atom 0 : Sentence) then q
+  else 0
+
+/-- The market it presents. -/
+def twoPointHistory (q : ℚ) : History := fun n φ => (twoPointQuote q n (Encodable.encode φ) : ℝ)
+
+lemma twoPointQuote_mem_Icc {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n c : ℕ) :
+    0 ≤ twoPointQuote q n c ∧ twoPointQuote q n c ≤ 1 := by
+  rw [twoPointQuote]
+  split_ifs
+  · exact ⟨h0, h1⟩
+  · exact ⟨le_refl 0, by norm_num⟩
+
+lemma twoPointHistory_mem_Icc {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n : ℕ) (φ : Sentence) :
+    0 ≤ twoPointHistory q n φ ∧ twoPointHistory q n φ ≤ 1 := by
+  obtain ⟨ha, hb⟩ := twoPointQuote_mem_Icc h0 h1 n (Encodable.encode φ)
+  constructor
+  · show (0 : ℝ) ≤ ((twoPointQuote q n (Encodable.encode φ) : ℚ) : ℝ)
+    exact_mod_cast ha
+  · show ((twoPointQuote q n (Encodable.encode φ) : ℚ) : ℝ) ≤ 1
+    exact_mod_cast hb
+
+/-- **The table is computable**, as a function of the paired input. -/
+lemma computable_twoPointQuote (q : ℚ) :
+    Computable (fun z : ℕ => twoPointQuote q z.unpair.1 z.unpair.2) := by
+  have h1 : Computable (fun z : ℕ => decide (z.unpair.1 = 0)) :=
+    (Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const 0)).decide.to_comp
+  have h2 : Computable (fun z : ℕ =>
+      decide (z.unpair.2
+        = Encodable.encode (LO.Propositional.Formula.atom 0 : Sentence))) :=
+    (Primrec.eq.comp (Primrec.snd.comp Primrec.unpair) (Primrec.const _)).decide.to_comp
+  refine (Computable.cond h1
+    (Computable.cond h2 (Computable.const q) (Computable.const 0))
+    (Computable.const 0)).of_eq (fun z => ?_)
+  rw [twoPointQuote]
+  by_cases ha : z.unpair.1 = 0
+  · by_cases hb : z.unpair.2
+        = Encodable.encode (LO.Propositional.Formula.atom 0 : Sentence)
+    · simp [ha, hb]
+    · simp [ha, hb]
+  · simp [ha]
+
+/-- **Both markets are honest `ComputableMarket`s.**
+
+Kind `N+` non-vacuity witness.  Provenance: (a) `computable_twoPointQuote`;
+(b) `Nat.Partrec.Code.exists_code`.
+Paper node: `app:ifp` -/
+theorem computableMarket_twoPoint (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
+    ComputableMarket (twoPointHistory q) := by
+  refine ⟨twoPointHistory_mem_Icc h0 h1, ?_⟩
+  have hcomp : Computable (fun z : ℕ =>
+      Encodable.encode (twoPointQuote q z.unpair.1 z.unpair.2)) :=
+    Computable.encode.comp (computable_twoPointQuote q)
+  have hpart : Nat.Partrec (fun z : ℕ =>
+      Part.some (Encodable.encode (twoPointQuote q z.unpair.1 z.unpair.2))) :=
+    Partrec.nat_iff.mp hcomp.partrec
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp hpart
+  refine ⟨twoPointQuote q, code, fun n φ => rfl, fun z => ?_⟩
+  rw [hcode]
+  simp
+
+/-- Off the frozen coordinate the two markets agree. -/
+lemma twoPointHistory_agree (q q' : ℚ) :
+    ∀ d φ, (d, φ) ∉ exampleS → twoPointHistory q d φ = twoPointHistory q' d φ := by
+  intro d φ hmem
+  have hne : ¬(d = 0 ∧ φ = (LO.Propositional.Formula.atom 0 : Sentence)) := by
+    intro hc
+    exact hmem (by simp [exampleS, hc.1, hc.2])
+  have hq : ∀ r : ℚ, twoPointQuote r d (Encodable.encode φ) = 0 := by
+    intro r
+    rw [twoPointQuote, if_neg]
+    intro hc
+    exact hne ⟨hc.1, Encodable.encode_injective hc.2⟩
+  rw [twoPointHistory, twoPointHistory, hq, hq]
+
+/-- On the frozen coordinate the market really is at its table value. -/
+lemma twoPointHistory_exact (q : ℚ) :
+    ∀ d φ, (d, φ) ∈ exampleS →
+      twoPointHistory q d φ = ((exampleQuote q d φ : ℚ) : ℝ) := by
+  intro d φ hmem
+  simp only [exampleS, Finset.mem_singleton, Prod.ext_iff] at hmem
+  obtain ⟨rfl, rfl⟩ := hmem
+  rw [twoPointHistory, twoPointQuote, if_pos ⟨rfl, rfl⟩]
+  rfl
+
+/-- **The two markets genuinely differ.**  Without this the pair would establish nothing —
+the same degenerate route as the empty table, by a different door. -/
+lemma twoPointHistory_ne {q q' : ℚ} (h : q ≠ q') :
+    twoPointHistory q ≠ twoPointHistory q' := by
+  intro hc
+  have := congrFun (congrFun hc 0) (LO.Propositional.Formula.atom 0 : Sentence)
+  rw [twoPointHistory, twoPointHistory, twoPointQuote, twoPointQuote,
+    if_pos ⟨rfl, rfl⟩, if_pos ⟨rfl, rfl⟩] at this
+  exact h (by exact_mod_cast this)
+
+/-- The disagreement, at the coordinate itself.
+
+Kind `N+` non-vacuity witness.
+Paper node: `app:ifp` -/
+lemma twoPointHistory_ne_at :
+    twoPointHistory (1 / 2) 0 (LO.Propositional.Formula.atom 0 : Sentence)
+      ≠ twoPointHistory (1 / 3) 0 (LO.Propositional.Formula.atom 0 : Sentence) := by
+  rw [twoPointHistory, twoPointHistory, twoPointQuote, twoPointQuote,
+    if_pos ⟨rfl, rfl⟩, if_pos ⟨rfl, rfl⟩]
+  norm_num
+
+/-- The pair is a finite-support perturbation in this file's own sense, and its support is
+exactly `exampleS`: they agree off it (`twoPointHistory_agree`) and differ on it
+(`twoPointHistory_ne_at`). -/
+lemma twoPointHistory_finiteSupportPerturbation (q q' : ℚ) :
+    FiniteSupportPerturbation (twoPointHistory q) (twoPointHistory q') :=
+  ⟨exampleS, twoPointHistory_agree q q'⟩
+
+/-- **The corrected `thm:ifp`, at a concrete pair of genuinely different computable
+markets.**
+
+Every hypothesis is discharged: both markets are `ComputableMarket`s with real
+`Nat.Partrec.Code` tables, they agree off `exampleS`, they *disagree* on it
+(`twoPointHistory_ne_at`), and each carries a `MachineFiniteSupportPatch` built from the
+run-level lookup.  Nothing is assumed.
+
+Kind `N+` non-vacuity witness.
+Paper node: `app:ifp` -/
+theorem machine_lic_iff_twoPoint (DP : DeductiveProcess) :
+    IsMachineLogicalInductor (twoPointHistory (1 / 2)) DP
+      ↔ IsMachineLogicalInductor (twoPointHistory (1 / 3)) DP :=
+  machine_lic_iff_example (1 / 2) (1 / 3) _ _ DP
+    (computableMarket_twoPoint (1 / 2) (by norm_num) (by norm_num))
+    (computableMarket_twoPoint (1 / 3) (by norm_num) (by norm_num))
+    (twoPointHistory_agree _ _)
+    (twoPointHistory_exact _) (twoPointHistory_exact _)
+
+#print axioms LogicalInduction.FreezeOracle.computableMarket_twoPoint
+#print axioms LogicalInduction.FreezeOracle.twoPointHistory_ne_at
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_twoPoint
 #print axioms LogicalInduction.FreezeOracle.machine_lic_iff_example
 #print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch_ofTable
 #print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch_example
