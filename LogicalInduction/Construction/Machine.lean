@@ -66,6 +66,7 @@ import LogicalInduction.Construction.Machine.CodeSteps
 import LogicalInduction.Construction.Machine.PairSucc
 import LogicalInduction.Construction.Machine.EvalnCompiler
 import LogicalInduction.Construction.Machine.EvalnRegBound
+import LogicalInduction.Construction.Machine.ClockedSim
 import LogicalInduction.Construction.Machine.DigitBits
 import LogicalInduction.Construction.Machine.TraderMachine
 import LogicalInduction.Construction.MachineEfficiency
