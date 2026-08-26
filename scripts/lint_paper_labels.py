@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the repo-wide declaration-keyword rules (CLAUDE.md, "Working conventions";
-originally set out in LogicalInduction/notes/consolidation.md rules 1-2):
+"""Enforce the repo-wide declaration-keyword rules (CLAUDE.md, "Working conventions"):
 
 * every `theorem` in a paper library carries a docstring naming its paper label;
 * `private theorem` does not occur (private statements are not paper statements —

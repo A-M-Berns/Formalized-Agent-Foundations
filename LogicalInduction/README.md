@@ -298,10 +298,6 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    the object-level value of a `PaperLUV` is named by a numerator/positive-denominator
    pair code rather than by a canonical rational arithmetic inside `ℒₒᵣ`.
 
-   The historical record of this boundary, and of the source-dependent extension that was
-   rejected before the frontend existed, is below and in
-   [`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
-
    The flat atom representation once forced the closed `thm:ccee` endpoint through a
    `1/(n+1)` mesh product. That historical endpoint remains available, but it is no longer
    the endpoint of record. `Construction/Witnesses/SemanticLiftedCCEE.lean` constructs one
@@ -331,8 +327,7 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    `hCcee : Approx Exw Eew` — two abstract real sequences related by `≈ₙ`, with no LUV
    structure, no deductive process, and no slack term crossing the boundary. The mesh
    endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
-   as an exactly-reflecting one would. Details, and the rest of the compatibility
-   surface, in [`notes/deference-compatibility.md`](notes/deference-compatibility.md).
+   as an exactly-reflecting one would.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected
@@ -408,48 +403,18 @@ refuted and replaced.
   **uninhabited**, because the fuel calculus does not close over the escape-leaf decode: the
   `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
 
-## Closing the boundaries
-
-The efficiency-model boundary has a scoped feasibility note, written against the
-installed toolchain rather than against hypothetical APIs.
-
-**Former Boundary 1 — the efficiency model.** Closed, by exactly the two-model
-architecture this section used to propose: efficiency is defined at a genuine machine class
-(`Complexity.FP`, from a pinned Lean-4.31 compatibility fork of `complexitylib`), the
-trading firm enumerates that class through a finite `TMDesc`-plus-clock enumeration that is
-both sound and covering, and the fuel calculus is kept as the certification tool through
-the inclusion `EfficientlyComputable.toMachine`. The inclusion is a real compiler from
-`Nat.Partrec.Code.evaln` to register machines with concrete bounds, not a simulation axiom;
-the converse is not claimed. The staged history is in
-[`notes/complexitylib-adoption.md`](notes/complexitylib-adoption.md), and the original
-diagnosis in [`notes/boundary-efficiency-model.md`](notes/boundary-efficiency-model.md).
-
-What remains from that programme is not the efficiency model but the two machine-class
-*transport* theorems named above — conditioning and the corrected finite-support
-perturbation — each of which asks for `Complexity.FP` closure under a specific trader
-translation.
-
-**Former Boundary 2 — the propositional substrate.** The historical diagnosis and the
-rejected source-dependent extension remain documented in
-[`notes/boundary-propositional-substrate.md`](notes/boundary-propositional-substrate.md).
-The fixed language lift plus entailment-gated registry closes the endpoint without a
-global first-order migration; see [`notes/semantic-source-repair.md`](notes/semantic-source-repair.md).
-
 ## Faithfulness
 
-The current statement surface was checked by a fresh, current-state adversarial audit.
-Its findings are a snapshot of the final signatures and verified obstructions, without
-the superseded diagnoses or repair history of earlier passes:
-[`notes/faithfulness-audit-2026-08-08.md`](notes/faithfulness-audit-2026-08-08.md).
-Two of its findings have since been closed rather than merely disclosed: `thm:wubexp`
-(B1) and exact `thm:ccee`. The historical audit carries dated resolution banners.
-The process surfaced five errata in the paper itself, recorded with repairs in
-[`notes/paper-errata.md`](notes/paper-errata.md).
+Every paper-facing statement carries the paper's own `\label` in a `Paper node:` docstring
+line, checked in both directions by `scripts/check-paper-nodes.sh`: every cited label exists
+in the committed TeX, and every audited endpoint carries a label. `scripts/check_endpoint_coverage.py`
+records each node's strength, `AxiomAudit.lean` asserts axiom cleanliness at every canonical
+endpoint, and `docs/trust-surface.html` renders the node-by-node correspondence for a human
+read-through.
 
-`brouwer_fixed_point`, used by the market maker, was proved from scratch via Sperner's
-lemma (Mathlib has no Brouwer theorem); its proof body was autoformalized by Harmonic's
-Aristotle and kernel-revalidated here. Its statement and axiom report are audited
-surface; the generated proof interior has not had a human line-by-line read.
+The formalization surfaced five defects in the paper itself, recorded with their repairs in
+[`notes/paper-errata.md`](notes/paper-errata.md). One of them is not a repairable slip: the
+printed closure under finite perturbations is **false**, and is refuted here.
 
 ## Layout
 

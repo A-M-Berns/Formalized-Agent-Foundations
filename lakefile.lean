@@ -96,7 +96,7 @@ lean_lib Scratchpad where
 -- Foundation's.
 -- Pinned Lean-4.31 compatibility fork of SamuelSchlesinger/complexitylib (Apache-2.0),
 -- the complexity-theory substrate for the machine-efficiency recalibration of `dd:fuel`
--- (see `LogicalInduction/notes/complexitylib-adoption.md`).
+-- the complexity substrate for the machine reading of `def:ec`.
 --
 -- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
 -- twenty commits, every one of them either a mechanical port or purely additive; no
@@ -130,7 +130,7 @@ lean_lib Scratchpad where
 -- Required rather than vendored: the useful upstream slice is ~35k lines — 3.4× this
 -- repository's largest vendored body — while the port is 36 mechanical lines that a
 -- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
--- bump and degrade the diff-against-upstream story each time. See the adoption note §5.
+-- bump and degrade the diff-against-upstream story each time.
 --
 -- FAF's own import surface is far narrower than the fork. Since the machine reading of
 -- `def:ec` became the paper-facing class, `Complexity.FP` is named at the criterion itself

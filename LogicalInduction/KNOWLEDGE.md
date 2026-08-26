@@ -8,9 +8,8 @@ newest last. Cross-reference finding IDs (RN-Fxx) where an entry originated from
 first; entries here are deltas and harness-run curation only.
 
 - Trust surface and strength claims: `LogicalInduction/README.md`
-- Current statement-level audit: `notes/faithfulness-audit-2026-08-08.md`
-- Efficiency-model boundary program (Stages 0–4): `notes/boundary-efficiency-model.md`
-- Tactic-level gotcha log: `notes/consolidation.md` (wave-gotchas section)
+- Recorded defects in the source paper: `notes/paper-errata.md`
+- Tactic-level gotcha log: `notes/lean-gotchas.md`
 - `dd:*` design-decision glossary and naming conventions: `LogicalInduction.lean`
 - `dd:fuel` model card: `Framework/Computable.lean` ("### `dd:fuel` model card")
 
@@ -210,12 +209,12 @@ README and at their statement sites.)
 
 ## Paper errata
 
-(None beyond what `notes/faithfulness-audit-2026-08-08.md` records.)
+(None beyond what `notes/paper-errata.md` records.)
 
 ## Pitfalls
 
 - `Nat.sqrt` whnf loops in deep `Primrec`/`PolyFueled` work — scoped
-  `attribute [local irreducible] Nat.sqrt` (see `notes/consolidation.md`).
+  `attribute [local irreducible] Nat.sqrt` (see `notes/lean-gotchas.md`).
 - `lake env lean` auto-binds implicits and elaborates against possibly stale upstream
   oleans — it is not a gate for signature changes; only `lake build` of the relevant
   target is.
@@ -248,7 +247,7 @@ README and at their statement sites.)
 - `lint_paper_labels.py` requires every `theorem` to carry a paper label — Machine/
   results must stay `lemma` (no paper nodes there until Stage 3); promoting for
   emphasis breaks the gate.
-- The 2026-07-29 survey section of `notes/boundary-efficiency-model.md` cites Mathlib
+- Mathlib
   facts from the *previous* pin (old line numbers, `FinEncoding`-based signature). Only
   the Stage-0 re-survey and later sections are current for Mathlib file/line facts.
 - `codeEvalBound c k` is polynomial in the fuel *per fixed code* (degree grows with the
