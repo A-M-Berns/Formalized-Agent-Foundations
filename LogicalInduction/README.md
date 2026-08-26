@@ -155,25 +155,18 @@ validity scan is a correctness obligation, not a cost one — `Encodable Bool` s
 string to `[]` (the sentence becomes `⊤`) rather than truncating it, and a position-local
 emitter would silently disagree with the enumeration on every malformed index.
 
-## One upstream gap
+## Instantiating the arithmetic-theory family
 
 The theorems that quantify over an arithmetic theory — the quotation family (`thm:ref`,
 `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`) and the
 computation family (`thm:halts`, `thm:pac`, …) — are stated parametrically:
-`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. As stated they are
-axiom-clean, and the paper's own hypothesis is the same ("Θ represents computations").
+`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. That is the paper's own
+hypothesis ("Θ represents computations"), and the endpoints are axiom-clean as stated.
 
-But *instantiating* them at a concrete theory currently costs one upstream axiom:
-Foundation provides `Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` only as `axiom
-ISigma1_delta1Definable` / `axiom PA_delta1Definable`, marked *TODO: Prove* in
-Foundation's own source. So a concrete instance of, say, `thm:st` over `𝗜𝚺₁` reports that
-axiom, even though the parametric endpoint does not.
-
-This is an upstream gap rather than a modeling choice here, and nothing in this
-development assumes it — but it is invisible to a parametric axiom check, so
-`AxiomAudit.lean` now pins it explicitly: it builds one concrete instantiation and
-asserts it clean *except* for that named axiom. If Foundation proves `𝗜𝚺₁.Δ₁`, that
-assertion starts failing and gets promoted to a plain clean assertion.
+They are also axiom-clean when *instantiated*. Foundation proves `Δ₁`-definability of `𝗜𝚺₁`
+and `𝗣𝗔` outright at the pinned revision (`InductionSchemeDelta1.lean`, whose header records
+that it discharges the two `axiom`s that previously stood in `Examples.lean`), so a concrete
+instance over `𝗜𝚺₁` reports the same three axioms as everything else here.
 
 ## The modeling boundary
 
@@ -345,18 +338,13 @@ The fuel model is no longer a modeling substitution: `def:ec` is the machine cla
 fuel certificate is proved to imply membership in it. What is disclosed at the affected
 statements is now the *residue* — the two machine-class transport theorems named above.
 
-## What is left, and what it is blocked on
+## The two closure statements
 
-The `thm:ccee` qualification is closed by the fixed language-lift construction above, and
-the efficiency-model boundary is closed by the machine-class migration. What remains is two
-closure statements that sit at the fuel class for a specific, named reason.
-
-**The two closure statements, and why they are not the efficiency boundary (2).**
-
-Both are theorems whose *conclusion* is the criterion, so the machine ⟸ fuel bridge does not
-reach them: their proofs transport an arbitrary trader backwards across a market change and
-certify the transported trader. They stay at the fuel class, with nothing weakened and no
-proved content withdrawn.
+`thm:scon` and `thm:ifp` are the two theorems whose *conclusion* is itself the criterion, so
+the machine ⟸ fuel bridge never reached them: their proofs transport an arbitrary trader
+backwards across a market change and must certify the transported trader. Both are now
+settled, and they settled differently — one strengthened to the machine class, the other
+refuted and replaced.
 
 * **`thm:scon` — closure under conditioning.** *Strengthened paper theorem.* Complete at
   the machine quantifier in all three forms — abstract compiler, gated translator and

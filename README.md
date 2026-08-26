@@ -94,7 +94,9 @@ further set in *Cartesian Frames*
 ([`CartesianFrames/notes/paper-errata.md`](CartesianFrames/notes/paper-errata.md)) —
 including two printed proofs that establish less than their statements require, a false
 "equivalently" in a definition, and a footnote asserting an isomorphism that does not
-exist. Every affected statement is nonetheless true, and is proved here.
+exist. Most of those affected statements are nonetheless true and are proved here — but not
+all: *Logical Induction*'s closure under finite perturbations is **false as printed**, and is
+formally refuted here, with a corrected replacement proved in its place.
 
 ## Building
 
