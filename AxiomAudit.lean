@@ -579,11 +579,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
 -- and `machine_lic_iff_twoPoint` is the corrected `thm:ifp` at that pair with NO remaining
 -- hypotheses.  So the theorem's antecedent is satisfiable: it is non-vacuous.
--- WHAT THAT DOES NOT SAY: neither side of the iff is known to hold at this pair.  These
--- markets price almost everything at zero and are very likely exploitable, in which case the
--- equivalence is true but carries no information *here*.  Making an instance informative
--- means perturbing a market already known to be an inductor (`liaHistory`), which is not
--- done.
+-- That pair is non-vacuous but not informative on its own: those markets price almost
+-- everything at zero and are very likely exploitable, so the equivalence may hold there
+-- because both sides are false.  The informative instance is in
+-- Construction/Witnesses/LIAPerturbation.lean; see that block.
 #assert_axioms_clean
   FreezeOracle.decodeBits_oracleOf
   FreezeOracle.oracleOf_mem_FP
@@ -598,6 +597,22 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.machine_lic_iff_twoPoint
   FreezeOracle.machineFiniteSupportPatch_ofRecognizable
   FreezeOracle.machine_lic_iff_of_recognizableSupport
+
+-- Construction/Witnesses/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
+-- `liaHistory DP` is a machine logical inductor; `liaPerturbed` moves ONE price, at the
+-- `Recognizable` coordinate `(0, atom 0)`, and `machineLogicalInductor_liaPerturbed` derives
+-- that the result is still one.  Nothing else in the repo derives that: the perturbed market
+-- is not the output of any construction, so its inductor-hood is exactly what the theorem
+-- buys.  `computableMarket_liaPerturbed` rebuilds the market program (the code is combined at
+-- the `Nat.Partrec` level, since `ComputableMarket` hands over a code rather than a
+-- `Computable` function), and `liaPerturbed_ne` proves the price change NONZERO, so this is
+-- not the degenerate `P = P'` route by a third door.
+-- It remains conditional on the same two hypotheses `Construction/LIA.lean` carries: the LIA
+-- market program and a computable deductive process.  Nothing here discharges those.
+#assert_axioms_clean
+  LIAPerturbation.computableMarket_liaPerturbed
+  LIAPerturbation.machineLogicalInductor_liaPerturbed
+  LIAPerturbation.exists_informative_liaPerturbation
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean

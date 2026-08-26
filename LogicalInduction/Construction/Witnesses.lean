@@ -35,6 +35,7 @@ import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Construction.Witnesses.RpnConditioning
 import LogicalInduction.Construction.Witnesses.FreezeOracle
+import LogicalInduction.Construction.Witnesses.LIAPerturbation
 import LogicalInduction.Construction.Witnesses.FreezeStep
 import LogicalInduction.Construction.Witnesses.RpnFreeze
 import LogicalInduction.Construction.Witnesses.StrictSeparators

@@ -89,11 +89,15 @@ Three things that remain true, and are not softened by the above:
 * `Recognizable` is representation residue, not mathematics.  The unrestricted statement is
   true and unproved here; `FreezeOracle`'s boundary note gives the two missing `FP`
   primitives it stands for.
-* `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of genuinely different
-  computable markets, so the theorem's antecedent *is* satisfiable — it is non-vacuous.  It
-  is not yet *informative*: neither side of that equivalence is known to hold at that pair,
-  and making an instance informative means perturbing a market already known to be an
-  inductor.
+* The theorem is non-vacuous *and* informative.
+  `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of genuinely different
+  computable markets, so the antecedent is satisfiable; and
+  `LIAPerturbation.machineLogicalInductor_liaPerturbed` puts it to work — `liaHistory DP` is
+  a machine logical inductor, and moving one price at a `Recognizable` coordinate yields a
+  market that still is, *by this theorem and nothing else*.  The price change is proved
+  nonzero (`LIAPerturbation.liaPerturbed_ne`).  That instance inherits `Construction/LIA.lean`'s
+  own two hypotheses — the LIA market program and a computable deductive process — which
+  nothing here discharges.
 
 **What this file does about it.**  We keep the theorem to what is actually provable:
 `EfficientPrefixPatch` states the missing closure fact for the concrete syntax
@@ -1312,10 +1316,10 @@ markets or perturbations, and it is representation residue rather than mathemati
 unrestricted theorem is true and unprovable here, for the two missing `Complexity.FP`
 primitives that `FreezeOracle`'s boundary note names.
 
-Non-vacuity, in two clauses: `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete
-pair of genuinely different computable markets, so the antecedent is satisfiable; but
-neither side of that equivalence is known to hold there, so the instance is not yet
-*informative*.
+Non-vacuity and content: `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of
+genuinely different computable markets, so the antecedent is satisfiable, and
+`LIAPerturbation.machineLogicalInductor_liaPerturbed` derives that a one-price perturbation
+of the constructed inductor is still an inductor — which no other result here gives.
 
 `machineFiniteSupportPatch_of_rewriter` below reduces the certificate to one named
 `Complexity.FP` fact, `FreezeStreamRewriter`, which `FreezeOracle` then discharges from a
