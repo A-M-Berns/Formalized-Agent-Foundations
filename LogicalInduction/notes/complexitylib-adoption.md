@@ -4354,3 +4354,135 @@ Unchanged from §V.4 and §V.6, minus the dependency that blocked it:
 
 With the transport in hand, route (a) of §V.4 is the clean one: `enumeratedTrader_ec` can be
 restated at the machine class and the fuel branch retired, rather than the two coexisting.
+
+---
+
+# Part XXIV — Stage 3 is closed: the machine class is canonical (2026-08-25)
+
+_Eighth pass. Scope: enumeration soundness, the canonical-enumeration migration, the
+effective construction, and the criterion. Stage 2 untouched._
+
+**Stage 3 is closed.** The Logical Induction construction now enumerates ordinary
+machine-polynomial-time traders, end to end, and the paper-facing capstone is stated at that
+class:
+
+```lean
+theorem LIA_isMachineLogicalInductor (DP) (hDP : ComputableDeductiveProcess DP) :
+    IsMachineLogicalInductor (liaHistory DP) DP
+
+theorem exists_machine_logical_inductor (DP) (hDP) :
+    ∃ P : History, IsMachineLogicalInductor P DP
+```
+
+Axiom-clean, no `sorry`, full build and all gates green.
+
+## XXIV.1 Soundness: the missing half
+
+§V.3 diagnosed the missing theorem and priced it at 0.6–1.2k lines through
+`UTM.ClockedUtm`. The route taken is different and cheaper, and the reason is worth
+recording: **an index names a *fixed* description**, so no interpreter is needed. The
+simulator's control states are the described machine's own states, and one of its
+transitions performs one transition of the described machine while advancing a unary clock
+head by one cell:
+
+```lean
+def simδ ... | Sum.inl q =>
+  if wHeads 1 ≠ Γ.one then timeout
+  else if q = (d.toTM).qhalt then halt
+  else let r := (d.toTM).δ q iHead (fun _ => wHeads 0) oHead; ...
+```
+
+Three phases, in `Machine/ClockedSim.lean`: a `pre` transition that walks the shared heads
+back to cell 0 (the combinators deliver tapes parked at cell 1, and the described machine's
+first transition is the one that reads `▷` — this is where that offset is paid back); the
+simulation; and a `rewind`/`wipe` pair that blanks output cell 1 on timeout, which is all
+`HasOutput []` asks for.
+
+Two details decided the design:
+
+* **The clock check comes before the halt check.** `runUntilHalt` reports a halt only when
+  the budget *strictly* exceeds the running time — `stepFrozen` spends one iteration
+  noticing that `codedStep` returned `none` — so a machine halting exactly at step `V` must
+  read as a timeout. Checking the clock first makes the simulator agree with the evaluator
+  at every index, including that boundary. `runUntilHalt_spec` and `evalHalted_spec` were
+  strengthened from `s ≤ t` to `s < t` to say what the evaluator actually delivers.
+* **The scratch tapes must be parked, the simulated ones need not be.** The simulation step
+  needs only the clock and scratch reads; the input, work and output tapes are handled by
+  the described machine's own transition. The phase transitions idle them, so they arrive
+  transformed by `transitionInput`/`transitionTape` — identities on their cells, which is
+  all the output invariants need.
+
+`Complexity.mem_FP_iff_computesInTime_polynomial` then turns the step bound into `FP`
+membership directly: the bound is assembled as an actual `Polynomial ℕ`
+(`clockedTimePoly`), so no `=O` reasoning is needed anywhere.
+
+## XXIV.2 The migration
+
+`enumeratedTrader` **is** the finite-description enumeration. The fuel emulator that used to
+carry that name is deleted: coverage now comes from `EfficientlyComputable.toMachine`
+composed with `exists_enumeratedTrader_eq`, so nothing needed it. `TraderEnumeration.lean`
+is gone; `LIACompiler`'s dead `traderProgram*_prim`/`clockedTokens_prim`/`codeAt_prim`
+helpers went with it.
+
+`TradingFirm`'s ~1000-line analytic argument was not touched — it is enumeration-agnostic
+except for its coverage input, exactly as designed, and the migration was one hypothesis on
+`trading_firm_dominance`. The main `LogicalInduction` library now depends on `complexitylib`,
+which is the point.
+
+**The effective construction moved with it.** `LIACompiler.enumeratedTraderTrades_prim` is
+reproved on `MachineExec.primrec_machineTokens`, so the LIA compiler runs the same budgeted
+execution the soundness proof reasons about. There is one simulator all the way down; no
+old-enumeration/new-enumeration split survives.
+
+## XXIV.3 The criterion, and what it cost
+
+Forcing `IsLogicalInductor.noExploit` to the machine class in place does not work, and the
+reason is structural rather than incidental. For a theorem of the shape `LI(P) → property(P)`
+the bridge machine-LI ⟹ fuel-LI is enough, and every property-tail theorem transfers
+untouched. For a *closure* theorem — `LI(P) → LI(P')` — it is not, because the proof
+transports an arbitrary trader backwards across the market change and certifies the
+transported trader. Those certificates (`ConditioningTraderCompiler.translate_ec`,
+`EfficientPrefixPatch.preserves_ec`) live in the fuel calculus, and `thm:scon`'s are
+*inhabited*. Restating those at the machine class would have replaced proved content with
+unproved hypotheses.
+
+So the architecture is two-level, with the machine reading primary:
+
+```text
+IsMachineLogicalInductor   def:lic at the paper's quantifier   ← the construction proves this
+        │ instance, via EfficientlyComputable.toMachine
+        ▼
+IsLogicalInductor          fuel-class compatibility predicate  ← the property tail consumes this
+```
+
+Nothing is weakened: `LIA_is_logical_inductor` is now *derived* from the machine capstone,
+and `exists_computable_beliefSequence_logical_inductor` — the paper's main theorem in full
+belief-sequence form — carries the machine conjunct.
+
+What remains is two specific machine-class *transport* theorems, neither of which is a
+converse inclusion:
+
+| wanted | shape |
+| --- | --- |
+| machine `thm:scon` | `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)` |
+| machine corrected `thm:ifp` | the same for a finite-*support* perturbation |
+
+Each asks for `Complexity.FP` closure under a specific transformation of the strategy
+serialization — an `FP`-level parser and emitter, on the scale of Stage 2 item 5. The
+unrestricted finite-day `thm:ifp` is *not* on that list: it is separately under revision as
+overgeneral (arbitrary finite-day perturbations can encode unbounded computational advice),
+and its intended endpoint is a corrected finite-support theorem plus a formal counterexample
+to the published statement, not a machine-strength restoration of it.
+
+## XXIV.4 Where the efficiency model lives now
+
+`Framework/Machine/` and `Framework/MachineEfficiency.lean`. The compiler chain defines the
+paper's reading of `def:ec`, so it belongs beside `EfficientlyComputable` rather than in the
+§5 construction directory; `Construction/Machine/` keeps the executable side (`DescExec`,
+`ClockedSim`) and the retired counted-machine spike.
+
+`dd:fuel` is closed as a modeling substitution. The label now marks a *sufficient
+certification device*: the class the construction quantifies over is
+`MachineEfficientTrader`, and the fuel certificate implies membership in it. The model
+card's lower calibration — machine ⟹ fuel — remains open, costs nothing paper-facing, and is
+not claimed.
