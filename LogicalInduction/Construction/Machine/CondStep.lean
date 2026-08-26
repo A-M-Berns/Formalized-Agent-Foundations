@@ -1,0 +1,707 @@
+/-
+# The conditioning automaton as a polynomial-time transduction
+
+`Construction/Witnesses/RpnConditioning.lean` builds the price rewrite of `thm:scon` as a
+token-level transducer, `rpnConditionRun`, and certifies it in the `dd:fuel` model.  This
+file is the same transducer in the machine model: a client of
+`Framework/Machine/TokenFold.lean`'s block fold, so that the rewrite is an honest
+`Complexity.FP` function of the trader's serialized stream.
+
+The three pieces, in the order they are built:
+
+* **The state.**  Mode, open-subtree counter and run length are unary words, so that the
+  automaton's tests are length comparisons; the buffered sentence run is carried as its own
+  digit bits, so that the emitter can splice it without re-rendering it.  That choice is why
+  the client reads token *blocks* rather than token values: a raw machine word may carry a
+  non-canonical run, and copying it is then not a function of the value.
+
+* **The step.**  `rcModeW`/`rcCntW`/`rcLenW` mirror the scalar decomposition
+  `rcModeF`/`rcCntF`/`rcLenF` branch for branch, so both the agreement proofs and the
+  membership proofs are uniform rather than bespoke — one `simp only` each for the former,
+  a nest of two branch combinators for the latter.  `rpnCondStep_clamp` is what lets the
+  token arrive as `min t 20` marks rather than an unbounded numeral.
+
+* **The emitter.**  Its syntactic scaffolding is three fixed token lists, hence constant
+  words; the buffered run is already in the state; and the condition block comes from an
+  oracle indexed by unary days, called at `min D n`.
+
+**The clamp is a disclosed gap, not a hidden one.**  `condEmitR` draws the condition block
+at `min D n` rather than at `D`, because a word-level emitter cannot call an oracle at an
+unbounded day.  `decodeBits_condPass` therefore states the pass against `clampedEmit`.  The
+guarded rewrite `rpnGuardedConditionTokens` emits the ordinary output only when every price
+day is within the trading day — exactly the condition under which the two emitters agree —
+so closing the gap is the guard pass's job, and it is recorded here rather than glossed.
+
+Everything here is construction infrastructure rather than a paper statement, so the
+declarations are `lemma`s and carry no `Paper node:` line; the fuel-model counterparts in
+`RpnConditioning.lean` (`rpnGuardedConditionRun_polySegStream` and its neighbours) are
+`lemma`s for the same reason.
+-/
+import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Framework.Machine.TokenFold
+
+namespace LogicalInduction.CondStep
+
+open Complexity Complexity.Cobham LogicalInduction.FPFold LogicalInduction.TokenFold
+open LogicalInduction.RpnConditioning
+
+
+open Complexity Complexity.Cobham LogicalInduction.FPFold LogicalInduction.TokenFold
+open LogicalInduction.RpnConditioning
+
+/-- A natural number as a unary word. -/
+abbrev uw (k : ℕ) : List Bool := List.replicate k true
+
+@[simp] lemma length_uw (k : ℕ) : (uw k).length = k := by simp [uw]
+
+/-! ## The three scalar components, on words -/
+
+/-- `rcModeF` on unary words. -/
+def rcModeW (mW cW tW : List Bool) : List Bool :=
+  if mW.length = 0 then
+    if tW.length = 0 then uw 1 else if tW.length = 1 then uw 3
+    else if tW.length = 6 then uw 4
+    else if tW.length = 7 then uw 5 else uw 0
+  else if mW.length = 1 then
+    if tW.length = 1 then uw 6
+    else if tW.length = 2 then uw 1
+    else if tW.length = 3 then uw 1
+    else if tW.length = 4 then uw 1
+    else if cW.length ≤ 1 then uw 2 else uw 1
+  else if mW.length = 6 then
+    if tW.length = 0 then uw 8 else if cW.length ≤ 1 then uw 2 else uw 1
+  else if mW.length = 8 then
+    if tW.length = 19 then (if cW.length ≤ 1 then uw 2 else uw 1) else uw 8
+  else if mW.length = 4 then
+    if tW.length = 1 then uw 7
+    else if tW.length = 2 then uw 4
+    else if tW.length = 3 then uw 4
+    else if tW.length = 4 then uw 4
+    else if cW.length ≤ 1 then uw 0 else uw 4
+  else if mW.length = 7 then
+    if tW.length = 0 then uw 9 else if cW.length ≤ 1 then uw 0 else uw 4
+  else if mW.length = 9 then
+    if tW.length = 19 then (if cW.length ≤ 1 then uw 0 else uw 4) else uw 9
+  else uw 0
+
+/-- `rcCntF` on unary words: the counter is carried, incremented by a mark, or
+decremented by a `tail`. -/
+def rcCntW (mW cW tW : List Bool) : List Bool :=
+  if mW.length = 0 then
+    (if tW.length = 0 then uw 1 else if tW.length = 6 then uw 1 else uw 0)
+  else if mW.length = 1 then
+    if tW.length = 1 then cW
+    else if tW.length = 2 then cW ++ [true]
+    else if tW.length = 3 then cW ++ [true]
+    else if tW.length = 4 then cW ++ [true]
+    else if cW.length ≤ 1 then uw 0 else cW.tail
+  else if mW.length = 6 then
+    if tW.length = 0 then cW else if cW.length ≤ 1 then uw 0 else cW.tail
+  else if mW.length = 8 then
+    if tW.length = 19 then (if cW.length ≤ 1 then uw 0 else cW.tail) else cW
+  else if mW.length = 4 then
+    if tW.length = 1 then cW
+    else if tW.length = 2 then cW ++ [true]
+    else if tW.length = 3 then cW ++ [true]
+    else if tW.length = 4 then cW ++ [true]
+    else if cW.length ≤ 1 then uw 0 else cW.tail
+  else if mW.length = 7 then
+    if tW.length = 0 then cW else if cW.length ≤ 1 then uw 0 else cW.tail
+  else if mW.length = 9 then
+    if tW.length = 19 then (if cW.length ≤ 1 then uw 0 else cW.tail) else cW
+  else uw 0
+
+/-- `rcLenF` on unary words. -/
+def rcLenW (mW cW rW tW : List Bool) : List Bool :=
+  if mW.length = 0 then uw 0
+  else if mW.length = 1 then rW ++ [true]
+  else if mW.length = 6 then rW ++ [true]
+  else if mW.length = 8 then rW ++ [true]
+  else if mW.length = 4 then
+    if tW.length = 1 then rW ++ [true]
+    else if tW.length = 2 then rW ++ [true]
+    else if tW.length = 3 then rW ++ [true]
+    else if tW.length = 4 then rW ++ [true]
+    else if cW.length ≤ 1 then uw 0 else rW ++ [true]
+  else if mW.length = 7 then
+    if tW.length = 0 then rW ++ [true] else if cW.length ≤ 1 then uw 0 else rW ++ [true]
+  else if mW.length = 9 then
+    if tW.length = 19 then (if cW.length ≤ 1 then uw 0 else rW ++ [true])
+    else rW ++ [true]
+  else uw 0
+
+/-! ### Agreement with the scalar components -/
+
+lemma length_rcModeW (mW cW tW : List Bool) :
+    (rcModeW mW cW tW).length = rcModeF mW.length cW.length tW.length := by
+  rw [rcModeW, rcModeF]
+  simp only [apply_ite List.length, length_uw]
+
+lemma length_rcCntW (mW cW tW : List Bool) :
+    (rcCntW mW cW tW).length = rcCntF mW.length cW.length tW.length := by
+  rw [rcCntW, rcCntF]
+  simp only [apply_ite List.length, length_uw, List.length_append, List.length_cons,
+    List.length_nil, List.length_tail]
+
+lemma length_rcLenW (mW cW rW tW : List Bool) :
+    (rcLenW mW cW rW tW).length = rcLenF mW.length cW.length rW.length tW.length := by
+  rw [rcLenW, rcLenF]
+  simp only [apply_ite List.length, length_uw, List.length_append, List.length_cons,
+    List.length_nil]
+
+/-! ### Membership
+
+Both branch shapes the automaton uses — "this counter or token equals the numeral `k`" and
+"this counter is at most `k`" — are `selectHead` against a constant unary word.  With those
+two the three functions above are mechanical nests. -/
+
+private lemma ifEqLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (A z).length = k then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_eqLen_mem_FP hA (constFn_mem_FP (uw k)) hX hY
+  simp only [length_uw] at h
+  exact h
+
+private lemma ifLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (A z).length ≤ k then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_leFlag_mem_FP (constFn_mem_FP (uw k)) hA hX hY
+  simp only [length_uw] at h
+  exact h
+
+lemma rcModeW_mem_FP {M C T : List Bool → List Bool}
+    (hM : M ∈ FP) (hC : C ∈ FP) (hT : T ∈ FP) :
+    (fun z => rcModeW (M z) (C z) (T z)) ∈ FP := by
+  have hu : ∀ k : ℕ, (fun _ : List Bool => uw k) ∈ FP := fun k => constFn_mem_FP (uw k)
+  refine ifEqLen_mem_FP hM 0
+    (ifEqLen_mem_FP hT 0 (hu 1) (ifEqLen_mem_FP hT 1 (hu 3)
+      (ifEqLen_mem_FP hT 6 (hu 4) (ifEqLen_mem_FP hT 7 (hu 5) (hu 0))))) ?_
+  refine ifEqLen_mem_FP hM 1
+    (ifEqLen_mem_FP hT 1 (hu 6) (ifEqLen_mem_FP hT 2 (hu 1)
+      (ifEqLen_mem_FP hT 3 (hu 1) (ifEqLen_mem_FP hT 4 (hu 1)
+        (ifLeLen_mem_FP hC 1 (hu 2) (hu 1)))))) ?_
+  refine ifEqLen_mem_FP hM 6
+    (ifEqLen_mem_FP hT 0 (hu 8) (ifLeLen_mem_FP hC 1 (hu 2) (hu 1))) ?_
+  refine ifEqLen_mem_FP hM 8
+    (ifEqLen_mem_FP hT 19 (ifLeLen_mem_FP hC 1 (hu 2) (hu 1)) (hu 8)) ?_
+  refine ifEqLen_mem_FP hM 4
+    (ifEqLen_mem_FP hT 1 (hu 7) (ifEqLen_mem_FP hT 2 (hu 4)
+      (ifEqLen_mem_FP hT 3 (hu 4) (ifEqLen_mem_FP hT 4 (hu 4)
+        (ifLeLen_mem_FP hC 1 (hu 0) (hu 4)))))) ?_
+  refine ifEqLen_mem_FP hM 7
+    (ifEqLen_mem_FP hT 0 (hu 9) (ifLeLen_mem_FP hC 1 (hu 0) (hu 4))) ?_
+  exact ifEqLen_mem_FP hM 9
+    (ifEqLen_mem_FP hT 19 (ifLeLen_mem_FP hC 1 (hu 0) (hu 4)) (hu 9)) (hu 0)
+
+lemma rcCntW_mem_FP {M C T : List Bool → List Bool}
+    (hM : M ∈ FP) (hC : C ∈ FP) (hT : T ∈ FP) :
+    (fun z => rcCntW (M z) (C z) (T z)) ∈ FP := by
+  have hu : ∀ k : ℕ, (fun _ : List Bool => uw k) ∈ FP := fun k => constFn_mem_FP (uw k)
+  have hsucc : (fun z => C z ++ [true]) ∈ FP :=
+    appendFn_mem_FP hC (constFn_mem_FP [true])
+  have hpred : (fun z => (C z).tail) ∈ FP := tail_mem_FP hC
+  have hdec : ∀ X : List Bool → List Bool, X ∈ FP →
+      (fun z => if (C z).length ≤ 1 then uw 0 else (C z).tail) ∈ FP :=
+    fun _ _ => ifLeLen_mem_FP hC 1 (hu 0) hpred
+  refine ifEqLen_mem_FP hM 0
+    (ifEqLen_mem_FP hT 0 (hu 1) (ifEqLen_mem_FP hT 6 (hu 1) (hu 0))) ?_
+  refine ifEqLen_mem_FP hM 1
+    (ifEqLen_mem_FP hT 1 hC (ifEqLen_mem_FP hT 2 hsucc
+      (ifEqLen_mem_FP hT 3 hsucc (ifEqLen_mem_FP hT 4 hsucc
+        (ifLeLen_mem_FP hC 1 (hu 0) hpred))))) ?_
+  refine ifEqLen_mem_FP hM 6
+    (ifEqLen_mem_FP hT 0 hC (ifLeLen_mem_FP hC 1 (hu 0) hpred)) ?_
+  refine ifEqLen_mem_FP hM 8
+    (ifEqLen_mem_FP hT 19 (ifLeLen_mem_FP hC 1 (hu 0) hpred) hC) ?_
+  refine ifEqLen_mem_FP hM 4
+    (ifEqLen_mem_FP hT 1 hC (ifEqLen_mem_FP hT 2 hsucc
+      (ifEqLen_mem_FP hT 3 hsucc (ifEqLen_mem_FP hT 4 hsucc
+        (ifLeLen_mem_FP hC 1 (hu 0) hpred))))) ?_
+  refine ifEqLen_mem_FP hM 7
+    (ifEqLen_mem_FP hT 0 hC (ifLeLen_mem_FP hC 1 (hu 0) hpred)) ?_
+  exact ifEqLen_mem_FP hM 9
+    (ifEqLen_mem_FP hT 19 (ifLeLen_mem_FP hC 1 (hu 0) hpred) hC) (hu 0)
+
+lemma rcLenW_mem_FP {M C R T : List Bool → List Bool}
+    (hM : M ∈ FP) (hC : C ∈ FP) (hR : R ∈ FP) (hT : T ∈ FP) :
+    (fun z => rcLenW (M z) (C z) (R z) (T z)) ∈ FP := by
+  have hu : ∀ k : ℕ, (fun _ : List Bool => uw k) ∈ FP := fun k => constFn_mem_FP (uw k)
+  have hsucc : (fun z => R z ++ [true]) ∈ FP :=
+    appendFn_mem_FP hR (constFn_mem_FP [true])
+  refine ifEqLen_mem_FP hM 0 (hu 0) ?_
+  refine ifEqLen_mem_FP hM 1 hsucc ?_
+  refine ifEqLen_mem_FP hM 6 hsucc ?_
+  refine ifEqLen_mem_FP hM 8 hsucc ?_
+  refine ifEqLen_mem_FP hM 4
+    (ifEqLen_mem_FP hT 1 hsucc (ifEqLen_mem_FP hT 2 hsucc
+      (ifEqLen_mem_FP hT 3 hsucc (ifEqLen_mem_FP hT 4 hsucc
+        (ifLeLen_mem_FP hC 1 (hu 0) hsucc))))) ?_
+  refine ifEqLen_mem_FP hM 7
+    (ifEqLen_mem_FP hT 0 hsucc (ifLeLen_mem_FP hC 1 (hu 0) hsucc)) ?_
+  exact ifEqLen_mem_FP hM 9
+    (ifEqLen_mem_FP hT 19 (ifLeLen_mem_FP hC 1 (hu 0) hsucc) hsucc) (hu 0)
+
+/-! ### The clamp, on the scalar components
+
+`rpnCondStep_clamp` says the automaton tests only the small grammar tags; the three
+components inherit that, which is what lets the word step carry the token as `min t 20`
+marks instead of an unbounded numeral. -/
+
+lemma rcModeF_clamp (m c t : ℕ) : rcModeF m c (min t 20) = rcModeF m c t := by
+  have h := congrArg rcMode (rpnCondStep_clamp (rcPack m c 0) t)
+  rwa [rcMode_step_eq, rcMode_step_eq, rcMode_pack, rcCnt_pack] at h
+
+lemma rcCntF_clamp (m c t : ℕ) : rcCntF m c (min t 20) = rcCntF m c t := by
+  have h := congrArg rcCnt (rpnCondStep_clamp (rcPack m c 0) t)
+  rwa [rcCnt_step_eq, rcCnt_step_eq, rcMode_pack, rcCnt_pack] at h
+
+lemma rcLenF_clamp (m c r t : ℕ) : rcLenF m c r (min t 20) = rcLenF m c r t := by
+  have h := congrArg rcLen (rpnCondStep_clamp (rcPack m c r) t)
+  rwa [rcLen_step_eq, rcLen_step_eq, rcMode_pack, rcCnt_pack, rcLen_pack] at h
+
+/-! ## The client state
+
+Mode, open-subtree counter and run length are unary words; the buffered sentence run is its
+own digit bits, so that the emitter can splice it without re-rendering it. -/
+
+def condSt (mW cW rW bufW : List Bool) : List Bool := pair (pair mW cW) (pair rW bufW)
+
+def csMode (st : List Bool) : List Bool := fstBlock (fstBlock st)
+def csCnt (st : List Bool) : List Bool := sndBlock (fstBlock st)
+def csLen (st : List Bool) : List Bool := fstBlock (sndBlock st)
+def csBuf (st : List Bool) : List Bool := sndBlock (sndBlock st)
+
+@[simp] lemma csMode_condSt (m c r b : List Bool) : csMode (condSt m c r b) = m := by
+  simp [csMode, condSt]
+@[simp] lemma csCnt_condSt (m c r b : List Bool) : csCnt (condSt m c r b) = c := by
+  simp [csCnt, condSt]
+@[simp] lemma csLen_condSt (m c r b : List Bool) : csLen (condSt m c r b) = r := by
+  simp [csLen, condSt]
+@[simp] lemma csBuf_condSt (m c r b : List Bool) : csBuf (condSt m c r b) = b := by
+  simp [csBuf, condSt]
+
+/-- The automaton state a client state denotes. -/
+def csPack (st : List Bool) : ℕ :=
+  rcPack (csMode st).length (csCnt st).length (csLen st).length
+
+/-- The buffered run a client state denotes. -/
+def csTokens (st : List Bool) : List ℕ := decodeBits (csBuf st)
+
+/-! ## The step, on words -/
+
+def csModeStep (cli tw : List Bool) : List Bool := rcModeW (csMode cli) (csCnt cli) tw
+def csCntStep (cli tw : List Bool) : List Bool := rcCntW (csMode cli) (csCnt cli) tw
+def csLenStep (cli tw : List Bool) : List Bool :=
+  rcLenW (csMode cli) (csCnt cli) (csLen cli) tw
+
+/-- The buffer is the current sentence run: reset whenever the run length returns to zero,
+extended by the incoming block otherwise.  The block is spliced *verbatim*, which is why the
+client reads blocks rather than values. -/
+def csBufStep (cli tw tok : List Bool) : List Bool :=
+  if (csLenStep cli tw).length = 0 then [] else csBuf cli ++ tok ++ digitBits 4
+
+def condStepOf (cli tw tok : List Bool) : List Bool :=
+  condSt (csModeStep cli tw) (csCntStep cli tw) (csLenStep cli tw) (csBufStep cli tw tok)
+
+private def cvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+private def cvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
+
+/-- The incoming token, clamped to the automaton's test window and rendered in unary. -/
+def clampTok (v : List Bool) : List Bool :=
+  List.replicate (min (digitVal (bitsToDigits (cvTok v))) 20) true
+
+/-- The price pass's word-level step. -/
+def condStepW (v : List Bool) : List Bool :=
+  condStepOf (cvCli v) (clampTok v) (cvTok v)
+
+/-- Its block-level reading, which is what `TokenFold.runFold` folds. -/
+def condStepR (cli : List Bool) (cur : List ℕ) : List Bool :=
+  condStepOf cli (List.replicate (min (digitVal cur) 20) true) (digitsToBits cur)
+
+/-- The word step reads a well-formed block exactly as `condStepR` does — by definition, so
+`runFold_mem_FP`'s hypothesis is discharged without a side condition on the client. -/
+lemma condStepW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    condStepW (pair W (pair cli (digitsToBits cur))) = condStepR cli cur := by
+  rw [condStepW, condStepR, clampTok]
+  simp only [cvCli, cvTok, sndBlock_pair, fstBlock_pair,
+    bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
+
+/-! ### Agreement with the paper-level automaton -/
+
+lemma csPack_condStepR (cli : List Bool) (cur : List ℕ) :
+    csPack (condStepR cli cur) = rpnCondStep (csPack cli) (digitVal cur) := by
+  rw [condStepR, condStepOf, csPack, csMode_condSt, csCnt_condSt, csLen_condSt,
+    csModeStep, csCntStep, csLenStep, length_rcModeW, length_rcCntW, length_rcLenW,
+    List.length_replicate, rcModeF_clamp, rcCntF_clamp, rcLenF_clamp,
+    rpnCondStep_components, csPack]
+  simp [rcMode_pack, rcCnt_pack, rcLen_pack]
+
+lemma csTokens_condStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4)
+    (hwf : BlockWF (csBuf cli)) :
+    csTokens (condStepR cli cur)
+      = rpnCondBuf (csPack cli) (csTokens cli) (digitVal cur) := by
+  obtain ⟨bd, hbd, hbd8, hbdc⟩ := hwf
+  have hcond : (csLenStep cli (List.replicate (min (digitVal cur) 20) true)).length
+      = rcLen (rpnCondStep (csPack cli) (digitVal cur)) := by
+    rw [csLenStep, length_rcLenW, List.length_replicate, rcLenF_clamp, rcLen_step_eq, csPack]
+    simp [rcMode_pack, rcCnt_pack, rcLen_pack]
+  rw [csTokens, decodeBits, condStepR, condStepOf, csBuf_condSt, csBufStep, rpnCondBuf,
+    hcond]
+  by_cases h : rcLen (rpnCondStep (csPack cli) (digitVal cur)) = 0
+  · rw [if_pos h, if_pos h]
+    simp [bitsToDigits, undigitize]
+  · have hterm : bitsToDigits (digitBits 4) = [4] := by
+      have h4 := bitsToDigits_digitBits 4 (by norm_num) []
+      rw [List.append_nil] at h4
+      rw [h4]
+      rfl
+    rw [if_neg h, if_neg h, hbd, List.append_assoc,
+      bitsToDigits_append_digitsToBits bd hbd8,
+      bitsToDigits_append_digitsToBits cur
+        (fun d hd => lt_trans (hcur d hd) (by norm_num)),
+      hterm, undigitize_append_of_complete bd _ hbdc,
+      (undigitize_run_terminator cur hcur).1, csTokens, decodeBits, hbd,
+      bitsToDigits_digitsToBits bd hbd8]
+
+lemma bufWF_condStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4)
+    (hwf : BlockWF (csBuf cli)) : BlockWF (csBuf (condStepR cli cur)) := by
+  obtain ⟨bd, hbd, hbd8, hbdc⟩ := hwf
+  rw [condStepR, condStepOf, csBuf_condSt, csBufStep]
+  by_cases h : (csLenStep cli (List.replicate (min (digitVal cur) 20) true)).length = 0
+  · rw [if_pos h]; exact BlockWF.nil
+  · rw [if_neg h]
+    refine ⟨bd ++ (cur ++ [4]), ?_, ?_, ?_⟩
+    · rw [digitsToBits_append, digitsToBits_append, hbd, List.append_assoc]
+      rfl
+    · intro d hd
+      rcases List.mem_append.mp hd with hd | hd
+      · exact hbd8 d hd
+      · rcases List.mem_append.mp hd with hd | hd
+        · exact lt_trans (hcur d hd) (by norm_num)
+        · simp at hd; omega
+    · rw [blockSplit_append_of_complete bd _ hbdc]
+      exact (undigitize_run_terminator cur hcur).2
+
+/-! ### Membership and the state bound -/
+
+lemma rcModeF_le (m c t : ℕ) : rcModeF m c t ≤ 9 := by
+  have h := rcMode_step_le (rcPack m c 0) t
+  rwa [rcMode_step_eq, rcMode_pack, rcCnt_pack] at h
+
+lemma rcCntF_le (m c t : ℕ) : rcCntF m c t ≤ c + 1 := by
+  have h := rcCnt_step_le (rcPack m c 0) t
+  rwa [rcCnt_step_eq, rcMode_pack, rcCnt_pack] at h
+
+lemma rcLenF_le (m c r t : ℕ) : rcLenF m c r t ≤ r + 1 := by
+  have h := rcLen_step_le (rcPack m c r) t
+  rwa [rcLen_step_eq, rcMode_pack, rcCnt_pack, rcLen_pack] at h
+
+lemma condStepW_mem_FP : condStepW ∈ FP := by
+  have hcli : cvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : cvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hclamp : clampTok ∈ FP := by
+    have h := LEUnary.unaryOfDigitsLE_le_mem_FP htok (constFn_mem_FP (uw 20))
+    simp only [length_uw] at h
+    exact h
+  have hff : (fun v => fstBlock (cvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (cvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hm : (fun v => csMode (cvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hc : (fun v => csCnt (cvCli v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
+  have hr : (fun v => csLen (cvCli v)) ∈ FP := mem_FP_comp hsf fstBlock_mem_FP
+  have hb : (fun v => csBuf (cvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hmode : (fun v => csModeStep (cvCli v) (clampTok v)) ∈ FP :=
+    rcModeW_mem_FP hm hc hclamp
+  have hcnt : (fun v => csCntStep (cvCli v) (clampTok v)) ∈ FP :=
+    rcCntW_mem_FP hm hc hclamp
+  have hlen : (fun v => csLenStep (cvCli v) (clampTok v)) ∈ FP :=
+    rcLenW_mem_FP hm hc hr hclamp
+  have hbuf : (fun v => csBufStep (cvCli v) (clampTok v) (cvTok v)) ∈ FP :=
+    ifEqLen_mem_FP hlen 0 (constFn_mem_FP [])
+      (appendFn_mem_FP (appendFn_mem_FP hb htok) (constFn_mem_FP (digitBits 4)))
+  exact pairFn_mem_FP (pairFn_mem_FP hmode hcnt) (pairFn_mem_FP hlen hbuf)
+
+lemma condStepW_length_le (W cli tok : List Bool) :
+    (condStepW (pair W (pair cli tok))).length ≤ cli.length + tok.length + 51 := by
+  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
+  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
+  have hm : (csModeStep cli (clampTok (pair W (pair cli tok)))).length ≤ 9 := by
+    rw [csModeStep, length_rcModeW]; exact rcModeF_le _ _ _
+  have hc : (csCntStep cli (clampTok (pair W (pair cli tok)))).length
+      ≤ (csCnt cli).length + 1 := by
+    rw [csCntStep, length_rcCntW]; exact rcCntF_le _ _ _
+  have hr : (csLenStep cli (clampTok (pair W (pair cli tok)))).length
+      ≤ (csLen cli).length + 1 := by
+    rw [csLenStep, length_rcLenW]; exact rcLenF_le _ _ _ _
+  have hb : (csBufStep cli (clampTok (pair W (pair cli tok))) tok).length
+      ≤ (csBuf cli).length + tok.length + 3 := by
+    rw [csBufStep]
+    split_ifs
+    · simp
+    · simp only [List.length_append, length_digitBits]
+      omega
+  have H1 : 2 * (csMode cli).length + (csCnt cli).length ≤ (fstBlock cli).length :=
+    two_fstBlock_add_sndBlock_le (fstBlock cli)
+  have H2 : 2 * (csLen cli).length + (csBuf cli).length ≤ (sndBlock cli).length :=
+    two_fstBlock_add_sndBlock_le (sndBlock cli)
+  have H3 : 2 * (fstBlock cli).length + (sndBlock cli).length ≤ cli.length :=
+    two_fstBlock_add_sndBlock_le cli
+  rw [condStepW, hcli, htok, condStepOf, condSt, pair_length, pair_length, pair_length]
+  omega
+
+/-! ## The emitter
+
+At a price-day position the rewrite splices the conditional price expression around the
+buffered run; everywhere else it copies the token through.  Its syntactic scaffolding is
+three fixed token lists — constant words — and the only data it needs beyond the state are
+the incoming block and the condition block `blocks D`, which arrives from an oracle indexed
+by unary days. -/
+
+def emitConstA : List ℕ :=
+  [1, Encodable.encode (-1 : ℚ), 1, Encodable.encode (-1 : ℚ),
+   1, Encodable.encode (1 : ℚ), 3, 1, Encodable.encode (-1 : ℚ), 0, 3]
+
+def emitConstB (ε : ℚ) : List ℕ :=
+  [1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0]
+
+def emitConstC : List ℕ := [3, 5, 3, 3, 3, 4, 3, 8]
+
+lemma rpnConditionEmit_eq (blk : List ℕ) (ε : ℚ) (buf : List ℕ) (D : ℕ) :
+    rpnConditionEmit blk ε buf D
+      = [D] ++ emitConstA ++ buf ++ blk ++ [D] ++ emitConstB ε ++ blk
+          ++ [D] ++ emitConstC := by
+  rw [rpnConditionEmit, emitConstA, emitConstB, emitConstC]
+  simp
+
+/-- The incoming token, re-emitted as its own complete block. -/
+def dayBits (tok : List Bool) : List Bool := tok ++ digitBits 4
+
+/-- The price rewrite, on words. -/
+def condEmitOf (ε : ℚ) (blkW bufW tok : List Bool) : List Bool :=
+  dayBits tok ++ tokBits emitConstA ++ bufW ++ blkW
+    ++ dayBits tok ++ tokBits (emitConstB ε) ++ blkW
+    ++ dayBits tok ++ tokBits emitConstC
+
+private def cvW (v : List Bool) : List Bool := fstBlock v
+
+/-- The day the oracle is called at: the incoming token, clamped by the trading day.  The
+clamp is not optional — an unbounded day would name an unbounded block — and on the guarded
+path, where every price day is within the trading day, it is invisible. -/
+def dayClamp (v : List Bool) : List Bool :=
+  List.replicate (min (digitVal (bitsToDigits (cvTok v))) (cvW v).length) true
+
+/-- The price pass's word-level emitter. -/
+def condEmitW (ε : ℚ) (B : List Bool → List Bool) (v : List Bool) : List Bool :=
+  if (csMode (cvCli v)).length = 2 then
+    condEmitOf ε (B (dayClamp v)) (csBuf (cvCli v)) (cvTok v)
+  else dayBits (cvTok v)
+
+/-- Its block-level reading. -/
+def condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (cli : List Bool) (cur : List ℕ) : List Bool :=
+  if (csMode cli).length = 2 then
+    condEmitOf ε (B (unaryDay (min (digitVal cur) n))) (csBuf cli) (digitsToBits cur)
+  else dayBits (digitsToBits cur)
+
+lemma condEmitW_eq (ε : ℚ) (B : List Bool → List Bool) (W cli : List Bool)
+    (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    condEmitW ε B (pair W (pair cli (digitsToBits cur)))
+      = condEmitR ε B W.length cli cur := by
+  rw [condEmitW, condEmitR, dayClamp]
+  simp only [cvCli, cvTok, cvW, sndBlock_pair, fstBlock_pair,
+    bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
+  rfl
+
+/-! ### What the emitter emits -/
+
+lemma blockWF_condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) (cli : List Bool)
+    (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli))
+    (hB : ∀ d, BlockWF (B (unaryDay d))) : BlockWF (condEmitR ε B n cli cur) := by
+  have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
+  rw [condEmitR]
+  split_ifs
+  · exact ((((((((hday.append (blockWF_tokBits _)).append hwf).append (hB _)).append hday).append
+      (blockWF_tokBits _)).append (hB _)).append hday).append (blockWF_tokBits _))
+  · exact hday
+
+lemma decodeBits_condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) (cli : List Bool)
+    (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli))
+    (hB : ∀ d, BlockWF (B (unaryDay d))) :
+    decodeBits (condEmitR ε B n cli cur)
+      = if rcMode (csPack cli) = 2 then
+          rpnConditionEmit (decodeBits (B (unaryDay (min (digitVal cur) n)))) ε
+            (csTokens cli) (digitVal cur)
+        else [digitVal cur] := by
+  have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
+  have hdayd : decodeBits (dayBits (digitsToBits cur)) = [digitVal cur] :=
+    decodeBits_run cur hcur
+  have hmode : rcMode (csPack cli) = (csMode cli).length := by
+    rw [csPack, rcMode_pack]
+  rw [condEmitR, hmode]
+  split_ifs
+  · rw [condEmitOf, rpnConditionEmit_eq]
+    rw [decodeBits_append (((((((hday.append (blockWF_tokBits _)).append hwf).append
+        (hB _)).append hday).append (blockWF_tokBits _)).append (hB _)).append hday)
+        (blockWF_tokBits _),
+      decodeBits_append ((((((hday.append (blockWF_tokBits _)).append hwf).append
+        (hB _)).append hday).append (blockWF_tokBits _)).append (hB _)) hday,
+      decodeBits_append (((((hday.append (blockWF_tokBits _)).append hwf).append
+        (hB _)).append hday).append (blockWF_tokBits _)) (hB _),
+      decodeBits_append ((((hday.append (blockWF_tokBits _)).append hwf).append
+        (hB _)).append hday) (blockWF_tokBits _),
+      decodeBits_append (((hday.append (blockWF_tokBits _)).append hwf).append (hB _)) hday,
+      decodeBits_append ((hday.append (blockWF_tokBits _)).append hwf) (hB _),
+      decodeBits_append (hday.append (blockWF_tokBits _)) hwf,
+      decodeBits_append hday (blockWF_tokBits _),
+      hdayd, decodeBits_tokBits, decodeBits_tokBits, decodeBits_tokBits, csTokens]
+  · exact hdayd
+
+/-! ### Membership and the emission bound -/
+
+lemma condEmitW_mem_FP (ε : ℚ) {B : List Bool → List Bool} (hB : B ∈ FP) :
+    condEmitW ε B ∈ FP := by
+  have hW : cvW ∈ FP := fstBlock_mem_FP
+  have hcli : cvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : cvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hff : (fun v => fstBlock (cvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (cvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hm : (fun v => csMode (cvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hbuf : (fun v => csBuf (cvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hclamp : dayClamp ∈ FP := LEUnary.unaryOfDigitsLE_le_mem_FP htok hW
+  have hblk : (fun v => B (dayClamp v)) ∈ FP := mem_FP_comp hclamp hB
+  have hday : (fun v => dayBits (cvTok v)) ∈ FP :=
+    appendFn_mem_FP htok (constFn_mem_FP (digitBits 4))
+  refine ifEqLen_mem_FP hm 2 ?_ hday
+  exact appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP
+    (appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP
+      (appendFn_mem_FP hday (constFn_mem_FP (tokBits emitConstA))) hbuf) hblk) hday)
+        (constFn_mem_FP (tokBits (emitConstB ε)))) hblk) hday)
+    (constFn_mem_FP (tokBits emitConstC))
+
+/-- The scaffolding constant: the fixed part of one emission. -/
+def emitConstLen (ε : ℚ) : ℕ :=
+  9 + (tokBits emitConstA).length + (tokBits (emitConstB ε)).length
+    + (tokBits emitConstC).length
+
+lemma condEmitW_length_le (ε : ℚ) {B : List Bool → List Bool} {pB : Polynomial ℕ}
+    (hBlen : ∀ w, (B w).length ≤ pB.eval w.length) (W cli tok : List Bool) :
+    (condEmitW ε B (pair W (pair cli tok))).length
+      ≤ (2 * pB + Polynomial.C (emitConstLen ε)).eval W.length
+        + 3 * (cli.length + tok.length) := by
+  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
+  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
+  have hW : cvW (pair W (pair cli tok)) = W := by simp [cvW]
+  have hclamp : (dayClamp (pair W (pair cli tok))).length ≤ W.length := by
+    rw [dayClamp, hW, List.length_replicate]
+    omega
+  have hblk : (B (dayClamp (pair W (pair cli tok)))).length ≤ pB.eval W.length :=
+    le_trans (hBlen _) (polynomial_eval_mono_nat pB hclamp)
+  have hbuf : (csBuf cli).length ≤ cli.length :=
+    le_trans (sndBlock_length_le _) (sndBlock_length_le _)
+  simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C,
+    Polynomial.eval_ofNat, emitConstLen]
+  rw [condEmitW, hcli, htok]
+  split_ifs
+  · rw [condEmitOf, dayBits]
+    simp only [List.length_append, length_digitBits]
+    omega
+  · rw [dayBits]
+    simp only [List.length_append, length_digitBits]
+    omega
+
+/-! ## The price pass, decoded
+
+The three pieces fit: folding `condStepR`/`condEmitR` over the blocks of a stream and
+decoding the result is the paper-level price rewrite over the tokens that stream denotes.
+
+The emitter is the *clamped* one — the condition block is drawn at `min D n` rather than at
+`D` — because a word-level emitter cannot call an oracle at an unbounded day.  On the
+guarded path the two agree, since the guard is exactly that every price day is within the
+trading day; closing that gap is the guard pass's job. -/
+
+/-- The price emitter with its oracle clamped to the trading day. -/
+def clampedEmit (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) : List ℕ → ℕ → List ℕ :=
+  fun buf D => rpnConditionEmit (decodeBits (B (unaryDay (min D n)))) ε buf D
+
+lemma decodeBits_runFold_condition (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) :
+    ∀ (rs : List (List ℕ)) (cli out : List Bool),
+      (∀ r ∈ rs, ∀ d ∈ r, d < 4) → BlockWF (csBuf cli) → BlockWF out →
+      decodeBits (runFold condStepR (condEmitR ε B n) cli out rs).2
+        = decodeBits out
+          ++ (rpnConditionRun (clampedEmit ε B n) (csPack cli, csTokens cli)
+                (rs.map digitVal)).2
+  | [], cli, out, _, _, _ => by
+      rw [runFold, List.map_nil, rpnConditionRun_nil]
+      simp
+  | r :: rs, cli, out, hrs, hbuf, hout => by
+      have hr : ∀ d ∈ r, d < 4 := hrs r (List.mem_cons_self ..)
+      have hrest : ∀ q ∈ rs, ∀ d ∈ q, d < 4 :=
+        fun q hq => hrs q (List.mem_cons_of_mem _ hq)
+      have hbuf' : BlockWF (csBuf (condStepR cli r)) := bufWF_condStepR cli r hr hbuf
+      have hemit : BlockWF (condEmitR ε B n cli r) :=
+        blockWF_condEmitR ε B n cli r hr hbuf hB
+      rw [runFold, decodeBits_runFold_condition ε B n hB rs _ _ hrest hbuf'
+          (hout.append hemit),
+        decodeBits_append hout hemit, csPack_condStepR, csTokens_condStepR cli r hr hbuf,
+        decodeBits_condEmitR ε B n cli r hr hbuf hB, List.map_cons]
+      rw [show (csPack cli, csTokens cli) = ((csPack cli, csTokens cli).1,
+            (csPack cli, csTokens cli).2) from rfl, rpnConditionRun]
+      simp only [List.append_assoc]
+      congr 1
+
+/-! ## The price pass -/
+
+/-- The initial client state: base mode, both counters zero, empty buffer. -/
+def condInit : List Bool := condSt [] [] [] []
+
+@[simp] lemma csPack_condInit : csPack condInit = rcPack 0 0 0 := by
+  simp [csPack, condInit]
+
+@[simp] lemma csTokens_condInit : csTokens condInit = [] := by
+  simp [csTokens, condInit]
+
+@[simp] lemma csBuf_condInit : csBuf condInit = [] := by simp [condInit]
+
+/-- **The price pass is polynomial time.**  `Wf` carries the trading day (the machine's own
+input, through `FPFold.mem_FP_withInput`), `Sf` the trader's serialized stream, and `B` the
+condition-block oracle. -/
+lemma condPass_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
+    (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    (fun z => (runFold condStepR (condEmitR ε B (Wf z).length) condInit []
+        (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP := by
+  obtain ⟨pB, hBlen⟩ := output_length_poly_of_mem_FP hB
+  exact runFold_mem_FP (STEPr := fun _ => condStepR)
+    (EMITr := fun W => condEmitR ε B W.length)
+    (c := 51) (k := 3) (qQ := 2 * pB + Polynomial.C (emitConstLen ε))
+    condStepW_mem_FP (condEmitW_mem_FP ε hB) hWf hSf
+    condStepW_length_le (condEmitW_length_le ε hBlen)
+    (fun W cli cur h => condStepW_eq W cli cur h)
+    (fun W cli cur h => condEmitW_eq ε B W cli cur h) condInit []
+
+/-- **And it computes the price rewrite.**  Decoding the pass's output word gives the
+paper-level `rpnConditionRun` over the tokens the input stream denotes. -/
+lemma decodeBits_condPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (rs : List (List ℕ))
+    (hrs : ∀ r ∈ rs, ∀ d ∈ r, d < 4) :
+    decodeBits (runFold condStepR (condEmitR ε B n) condInit [] rs).2
+      = (rpnConditionRun (clampedEmit ε B n) (rcPack 0 0 0, []) (rs.map digitVal)).2 := by
+  have h := decodeBits_runFold_condition ε B n hB rs condInit [] hrs
+    (by simpa using BlockWF.nil) BlockWF.nil
+  simpa using h
+
+/-- The same, read against the trader's own token stream: the pass computes the price
+rewrite of `undigitize (bitsToDigits ·)`, which is exactly what `strategyOfOutput` decodes. -/
+lemma decodeBits_condPass_stream (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (ds : List ℕ) :
+    decodeBits (runFold condStepR (condEmitR ε B n) condInit [] (blockSplit ds).1).2
+      = (rpnConditionRun (clampedEmit ε B n) (rcPack 0 0 0, []) (undigitize ds)).2 := by
+  rw [decodeBits_condPass ε B n hB _ (fun r hr => (blockSplit_digits_lt ds).1 r hr),
+    ← undigitize_eq_blockSplit]
+
+
+#print axioms LogicalInduction.CondStep.csPack_condStepR
+#print axioms LogicalInduction.CondStep.csTokens_condStepR
+#print axioms LogicalInduction.CondStep.condPass_mem_FP
+#print axioms LogicalInduction.CondStep.decodeBits_condPass_stream
+
+end LogicalInduction.CondStep

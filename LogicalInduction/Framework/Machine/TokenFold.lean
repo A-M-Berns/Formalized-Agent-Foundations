@@ -183,6 +183,50 @@ lemma sndBlock_length_le (z : List Bool) : (sndBlock z).length ≤ z.length := b
   | none => simp
   | some p => exact unpair?_length_le z p hz
 
+/-- The suffix decoder ignores a leading doubled bit. -/
+private lemma sndBlock_cons_cons (b : Bool) (z : List Bool) (h : b = false ∨ b = true) :
+    sndBlock (b :: b :: z) = sndBlock z := by
+  rw [sndBlock, sndBlock]
+  cases b <;>
+    · rw [Complexity.unpair?]
+      cases hz : Complexity.unpair? z with
+      | none => simp
+      | some p => simp
+
+/-- **The packed-word budget.**  Unpairing never costs more than the word it unpacks, and
+the doubling in `pair`'s framing is charged to the first component.  This is what keeps a
+client whose state is a nest of `pair`s on an *additive* per-step bound: bounding each
+projection separately by the whole word gives a multiplier, and a multiplicative per-step
+bound compounds to `k ^ L`, which is not polynomial.
+
+Proof kind: `P` proved.  Provenance: (b) `Complexity.unpair?`, `Cobham.fstBlock`. -/
+lemma two_fstBlock_add_sndBlock_le : ∀ z : List Bool,
+    2 * (fstBlock z).length + (sndBlock z).length ≤ z.length
+  | [] => by simp [fstBlock, sndBlock, Complexity.unpair?]
+  | [_] => by simp [fstBlock, sndBlock, Complexity.unpair?]
+  | false :: true :: y => by
+      rw [show fstBlock (false :: true :: y) = [] from rfl,
+        show sndBlock (false :: true :: y) = y by rw [sndBlock, Complexity.unpair?]]
+      simp
+      omega
+  | true :: false :: y => by
+      rw [show fstBlock (true :: false :: y) = [] from rfl,
+        show sndBlock (true :: false :: y) = [] by
+          rw [sndBlock, show Complexity.unpair? (true :: false :: y) = none from rfl]]
+      simp
+  | false :: false :: z => by
+      rw [show fstBlock (false :: false :: z) = false :: fstBlock z from rfl,
+        sndBlock_cons_cons false z (Or.inl rfl)]
+      have := two_fstBlock_add_sndBlock_le z
+      simp only [List.length_cons]
+      omega
+  | true :: true :: z => by
+      rw [show fstBlock (true :: true :: z) = true :: fstBlock z from rfl,
+        sndBlock_cons_cons true z (Or.inr rfl)]
+      have := two_fstBlock_add_sndBlock_le z
+      simp only [List.length_cons]
+      omega
+
 lemma fstBlock_length_le : ∀ z : List Bool, (fstBlock z).length ≤ z.length
   | [] => by simp [fstBlock]
   | [_] => by simp [fstBlock]
@@ -1311,7 +1355,7 @@ def natFold (STEPn EMITn : List Bool → ℕ → List Bool) :
   | cli, out, t :: ts =>
       natFold STEPn EMITn (STEPn cli t) (out ++ EMITn cli t) ts
 
-private lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)) (cur : List ℕ),
+lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)) (cur : List ℕ),
     (List.foldl blockStep (bs, cur) ds).1 = bs ++ (List.foldl blockStep ([], cur) ds).1 ∧
       (List.foldl blockStep (bs, cur) ds).2 = (List.foldl blockStep ([], cur) ds).2
   | [], bs, cur => by simp
@@ -1328,20 +1372,194 @@ private lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)
         obtain ⟨h1', h2'⟩ := foldl_blockStep_append ds [cur] []
         exact ⟨by rw [h1, h1', List.append_assoc], by rw [h2, h2']⟩
 
-/-- **A value-reading client realizes the token-level fold.**  If the client's step and
-emitter depend on the token block only through the value `undigitize` reads off it, the
-tokenizer's output is the token-level fold's output. -/
-lemma tkFold_natFold {STEP EMIT : List Bool → List Bool}
-    {STEPn EMITn : List Bool → ℕ → List Bool} (W : List Bool)
-    (hS : ∀ cli tok : List Bool,
-      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
-    (hE : ∀ cli tok : List Bool,
-      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok))) :
+/-! ### Reading a concatenation back
+
+A rewriter that splices words together needs to know that the reading `undigitize` performs
+distributes over the splice.  It does, provided each piece ends on a block boundary — which
+is the discipline every emitter here follows. -/
+
+/-- A run of payload digits splits into no completed block and itself. -/
+lemma blockSplit_of_digits_lt_four : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+    blockSplit cur = ([], cur) := by
+  suffices h : ∀ (cur acc : List ℕ), (∀ d ∈ cur, d < 4) →
+      List.foldl blockStep (([] : List (List ℕ)), acc) cur = ([], acc ++ cur) by
+    intro cur hcur
+    have := h cur [] hcur
+    simpa [blockSplit] using this
+  intro cur
+  induction cur with
+  | nil => intro acc _; simp
+  | cons d ds ih =>
+      intro acc hcur
+      rw [List.foldl_cons,
+        show blockStep (([] : List (List ℕ)), acc) d = ([], acc ++ [d]) from
+          if_pos (hcur d (List.mem_cons_self ..)),
+        ih (acc ++ [d]) (fun e he => hcur e (List.mem_cons_of_mem _ he)),
+        List.append_assoc]
+      rfl
+
+/-- A payload run followed by a terminator is one complete block, and `undigitize` reads it
+as that block's value. -/
+lemma undigitize_run_terminator (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    undigitize (cur ++ [4]) = [digitVal cur] ∧ (blockSplit (cur ++ [4])).2 = [] := by
+  have hb : blockSplit (cur ++ [4]) = ([cur], []) := by
+    rw [blockSplit_snoc, blockSplit_of_digits_lt_four cur hcur,
+      show blockStep (([] : List (List ℕ)), cur) 4 = ([] ++ [cur], []) from if_neg (by omega)]
+    rfl
+  exact ⟨by rw [undigitize_eq_blockSplit, hb]; rfl, by rw [hb]⟩
+
+/-- Splitting a concatenation whose left part ends on a block boundary. -/
+lemma blockSplit_append_of_complete (a b : List ℕ) (ha : (blockSplit a).2 = []) :
+    blockSplit (a ++ b) = ((blockSplit a).1 ++ (blockSplit b).1, (blockSplit b).2) := by
+  rw [blockSplit, List.foldl_append, ← blockSplit]
+  conv_lhs => rw [show blockSplit a = ((blockSplit a).1, (blockSplit a).2) from rfl, ha]
+  obtain ⟨h1, h2⟩ := foldl_blockStep_append b (blockSplit a).1 []
+  rw [show (List.foldl blockStep ((blockSplit a).1, ([] : List ℕ)) b)
+      = ((List.foldl blockStep ((blockSplit a).1, ([] : List ℕ)) b).1,
+         (List.foldl blockStep ((blockSplit a).1, ([] : List ℕ)) b).2) from rfl, h1, h2]
+  rfl
+
+/-- `undigitize` distributes over a concatenation whose left part ends on a block
+boundary. -/
+lemma undigitize_append_of_complete (a b : List ℕ) (ha : (blockSplit a).2 = []) :
+    undigitize (a ++ b) = undigitize a ++ undigitize b := by
+  rw [undigitize_eq_blockSplit, undigitize_eq_blockSplit, undigitize_eq_blockSplit,
+    blockSplit_append_of_complete a b ha, List.map_append]
+
+/-- Reading resumes cleanly after a whole number of digit groups. -/
+lemma bitsToDigits_append_digitsToBits : ∀ (da : List ℕ), (∀ d ∈ da, d < 8) →
+    ∀ b : List Bool, bitsToDigits (digitsToBits da ++ b) = da ++ bitsToDigits b
+  | [], _, b => by simp [digitsToBits]
+  | d :: da, h, b => by
+      rw [digitsToBits_cons, List.append_assoc,
+        bitsToDigits_digitBits d (h d (List.mem_cons_self ..)),
+        bitsToDigits_append_digitsToBits da
+          (fun e he => h e (List.mem_cons_of_mem _ he)) b]
+      rfl
+
+/-! ### Block-complete words
+
+A rewriter splices words; `decodeBits` is how the machine's reader sees the splice, and
+`BlockWF` is the discipline — every piece a whole number of complete blocks — under which
+the splice decodes piecewise.  Both the buffered run and every emitted fragment keep it. -/
+
+/-- The token stream a word carries, as `MachineEfficientTrader` reads it. -/
+def decodeBits (w : List Bool) : List ℕ := undigitize (bitsToDigits w)
+
+/-- The word carries a whole number of complete digit blocks. -/
+def BlockWF (w : List Bool) : Prop :=
+  ∃ ds : List ℕ, w = digitsToBits ds ∧ (∀ d ∈ ds, d < 8) ∧ (blockSplit ds).2 = []
+
+lemma BlockWF.nil : BlockWF [] := ⟨[], rfl, by simp, by simp [blockSplit]⟩
+
+lemma BlockWF.append {a b : List Bool} (ha : BlockWF a) (hb : BlockWF b) :
+    BlockWF (a ++ b) := by
+  obtain ⟨da, rfl, ha8, hac⟩ := ha
+  obtain ⟨db, rfl, hb8, hbc⟩ := hb
+  refine ⟨da ++ db, (digitsToBits_append da db).symm, ?_, ?_⟩
+  · intro d hd
+    rcases List.mem_append.mp hd with hd | hd
+    · exact ha8 d hd
+    · exact hb8 d hd
+  · rw [blockSplit_append_of_complete da db hac, hbc]
+
+lemma decodeBits_append {a b : List Bool} (ha : BlockWF a) (hb : BlockWF b) :
+    decodeBits (a ++ b) = decodeBits a ++ decodeBits b := by
+  obtain ⟨da, rfl, ha8, hac⟩ := ha
+  obtain ⟨db, rfl, hb8, -⟩ := hb
+  rw [decodeBits, decodeBits, decodeBits, ← digitsToBits_append,
+    bitsToDigits_digitsToBits (da ++ db) (by
+      intro d hd
+      rcases List.mem_append.mp hd with hd | hd
+      · exact ha8 d hd
+      · exact hb8 d hd),
+    bitsToDigits_digitsToBits da ha8, bitsToDigits_digitsToBits db hb8,
+    undigitize_append_of_complete da db hac]
+
+@[simp] lemma decodeBits_nil : decodeBits [] = [] := by
+  rw [decodeBits, bitsToDigits_of_length_lt_three [] (by simp)]
+  simp [undigitize]
+
+/-- A payload run with its terminator: one complete block, carrying its own value. -/
+lemma blockWF_run (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    BlockWF (digitsToBits cur ++ digitBits 4) := by
+  refine ⟨cur ++ [4], ?_, ?_, (undigitize_run_terminator cur hcur).2⟩
+  · rw [digitsToBits_append]; rfl
+  · intro d hd
+    rcases List.mem_append.mp hd with hd | hd
+    · exact lt_trans (hcur d hd) (by norm_num)
+    · simp at hd; omega
+
+lemma decodeBits_run (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    decodeBits (digitsToBits cur ++ digitBits 4) = [digitVal cur] := by
+  have hterm : bitsToDigits (digitBits 4) = [4] := by
+    have h4 := bitsToDigits_digitBits 4 (by norm_num) []
+    rw [List.append_nil] at h4
+    rw [h4]; rfl
+  rw [decodeBits, bitsToDigits_append_digitsToBits cur
+      (fun d hd => lt_trans (hcur d hd) (by norm_num)), hterm,
+    (undigitize_run_terminator cur hcur).1]
+
+/-! ### Constant token words
+
+A fixed token list — the emitter's syntactic scaffolding — is a constant word, and needs no
+numeral to be evaluated: the round-trip goes through `undigitize_digitize`. -/
+
+/-- A fixed token list, rendered as constant digit bits. -/
+def tokBits (ts : List ℕ) : List Bool := digitsToBits (digitize ts)
+
+lemma mem_digitize_lt_eight (ts : List ℕ) : ∀ d ∈ digitize ts, d < 8 := by
+  intro d hd
+  rw [digitize, List.mem_flatMap] at hd
+  obtain ⟨t, -, hd⟩ := hd
+  rw [tokenBlock, List.mem_append] at hd
+  rcases hd with hd | hd
+  · exact lt_trans (natDigits4_lt t d hd) (by norm_num)
+  · simp at hd; omega
+
+lemma blockSplit_digitize (ts : List ℕ) : (blockSplit (digitize ts)).2 = [] := by
+  induction ts with
+  | nil => simp [digitize, blockSplit]
+  | cons t ts ih =>
+      rw [digitize, List.flatMap_cons, ← digitize, tokenBlock,
+        blockSplit_append_of_complete _ _ (undigitize_run_terminator _ (natDigits4_lt t)).2,
+        ih]
+
+lemma blockWF_tokBits (ts : List ℕ) : BlockWF (tokBits ts) :=
+  ⟨digitize ts, rfl, mem_digitize_lt_eight ts, blockSplit_digitize ts⟩
+
+@[simp] lemma decodeBits_tokBits (ts : List ℕ) : decodeBits (tokBits ts) = ts := by
+  rw [decodeBits, tokBits, bitsToDigits_digitsToBits _ (mem_digitize_lt_eight ts),
+    undigitize_digitize]
+
+/-- The fold at the granularity the tokenizer actually delivers: one step per *block*
+`undigitize` reads, with the block as its digit run.  `natFold` is this with `digitVal`
+applied; a client that must copy a token's digits rather than only read its value — a
+buffering rewriter, say — needs this one, because a raw stream may carry a non-canonical
+run and the copy is then not a function of the value. -/
+def runFold (STEPr EMITr : List Bool → List ℕ → List Bool) :
+    List Bool → List Bool → List (List ℕ) → List Bool × List Bool
+  | cli, out, [] => (cli, out)
+  | cli, out, r :: rs => runFold STEPr EMITr (STEPr cli r) (out ++ EMITr cli r) rs
+
+/-- **The tokenizer realizes the block-level fold.**
+
+The hypotheses are demanded only at *well-formed* token blocks — words of the form
+`digitsToBits cur` with `cur` a run of digits below four — which is all the tokenizer ever
+builds, and is what makes them satisfiable by definition: a client defines `STEPr cli cur`
+to be whatever its word step computes at `digitsToBits cur`.
+
+Proof kind: `P` proved.  Provenance: (a) `tkFold`, `foldl_blockStep_append`. -/
+lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
+    {STEPr EMITr : List Bool → List ℕ → List Bool} (W : List Bool)
+    (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPr cli cur)
+    (hE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITr cli cur) :
     ∀ (ds cur : List ℕ) (cli out : List Bool), (∀ d ∈ cur, d < 4) →
       (tkFold STEP EMIT W (digitsToBits cur) cli out ds).2.2
-        = (natFold STEPn EMITn cli out
-            ((List.foldl blockStep ([], cur) ds).1.map digitVal)).2
-  | [], cur, cli, out, _ => by simp [tkFold, natFold]
+        = (runFold STEPr EMITr cli out (List.foldl blockStep ([], cur) ds).1).2
+  | [], cur, cli, out, _ => by simp [tkFold, runFold]
   | d :: ds, cur, cli, out, hcur => by
       rw [tkFold, List.foldl_cons]
       by_cases h : d < 4
@@ -1349,40 +1567,95 @@ lemma tkFold_natFold {STEP EMIT : List Bool → List Bool}
               from if_pos h,
           show digitsToBits cur ++ digitBits d = digitsToBits (cur ++ [d]) by
             rw [digitsToBits_append]; rfl,
-          tkFold_natFold W hS hE ds (cur ++ [d]) cli out (by
+          tkFold_runFold W hS hE ds (cur ++ [d]) cli out (by
             intro e he
             rcases List.mem_append.mp he with he | he
             · exact hcur e he
             · simp at he; omega)]
       · rw [if_neg h, show blockStep (([] : List (List ℕ)), cur) d = ([cur], [])
               from if_neg h,
-          hS cli (digitsToBits cur), hE cli (digitsToBits cur),
-          bitsToDigits_digitsToBits cur (fun e he => lt_trans (hcur e he) (by norm_num)),
+          hS cli cur hcur, hE cli cur hcur,
           (foldl_blockStep_append ds [cur] []).1]
         rw [show ([cur] ++ (List.foldl blockStep ([], []) ds).1)
-            = cur :: (List.foldl blockStep ([], []) ds).1 from rfl, List.map_cons, natFold]
-        exact tkFold_natFold W hS hE ds [] _ _ (by simp)
+            = cur :: (List.foldl blockStep ([], []) ds).1 from rfl, runFold]
+        exact tkFold_runFold W hS hE ds [] _ _ (by simp)
+
+/-- The block-level fold read against `blockSplit`: what the tokenizer emits on a digit
+stream is what the block-level fold emits on the blocks that stream splits into. -/
+lemma tkFold_blockSplit {STEP EMIT : List Bool → List Bool}
+    {STEPr EMITr : List Bool → List ℕ → List Bool} (W : List Bool)
+    (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPr cli cur)
+    (hE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITr cli cur)
+    (ds : List ℕ) (cli out : List Bool) :
+    (tkFold STEP EMIT W [] cli out ds).2.2
+      = (runFold STEPr EMITr cli out (blockSplit ds).1).2 := by
+  have h := tkFold_runFold W hS hE ds [] cli out (by simp)
+  rw [show (digitsToBits [] : List Bool) = [] from rfl] at h
+  rw [h, blockSplit]
+
+/-- The value-level fold is the block-level fold composed with `digitVal`. -/
+lemma runFold_natFold (STEPn EMITn : List Bool → ℕ → List Bool) :
+    ∀ (rs : List (List ℕ)) (cli out : List Bool),
+      runFold (fun cli r => STEPn cli (digitVal r)) (fun cli r => EMITn cli (digitVal r))
+          cli out rs
+        = natFold STEPn EMITn cli out (rs.map digitVal)
+  | [], cli, out => rfl
+  | r :: rs, cli, out => by
+      rw [runFold, List.map_cons, natFold, runFold_natFold STEPn EMITn rs]
 
 /-- The same, read against `undigitize`: what the tokenizer emits on a digit stream is what
 the token-level fold emits on the tokens that stream denotes. -/
 lemma tkFold_undigitize {STEP EMIT : List Bool → List Bool}
     {STEPn EMITn : List Bool → ℕ → List Bool} (W : List Bool)
-    (hS : ∀ cli tok : List Bool,
-      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
-    (hE : ∀ cli tok : List Bool,
-      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok)))
+    (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPn cli (digitVal cur))
+    (hE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITn cli (digitVal cur))
     (ds : List ℕ) (cli out : List Bool) :
     (tkFold STEP EMIT W [] cli out ds).2.2
       = (natFold STEPn EMITn cli out (undigitize ds)).2 := by
-  have h := tkFold_natFold W hS hE ds [] cli out (by simp)
-  rw [show (digitsToBits [] : List Bool) = [] from rfl] at h
-  rw [h, undigitize_eq_blockSplit, blockSplit]
+  rw [tkFold_blockSplit (STEPr := fun cli r => STEPn cli (digitVal r))
+      (EMITr := fun cli r => EMITn cli (digitVal r)) W hS hE ds cli out,
+    runFold_natFold, undigitize_eq_blockSplit]
+
+/-- **The client interface, at block granularity.**  A step and an emitter that read each
+token block, with the two per-step length bounds, compute the block-level fold in
+polynomial time — over exactly the blocks `MachineEfficientTrader`'s decoding splits its
+input into.
+
+Proof kind: `C` composition.  Provenance: (a) `tkFold_mem_FP`, `tkFold_blockSplit`. -/
+lemma runFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
+    {STEPr EMITr : List Bool → List Bool → List ℕ → List Bool} {c k : ℕ}
+    {qQ : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ W cli tok : List Bool,
+      (STEP (pair W (pair cli tok))).length ≤ cli.length + tok.length + c)
+    (hEbnd : ∀ W cli tok : List Bool,
+      (EMIT (pair W (pair cli tok))).length
+        ≤ qQ.eval W.length + k * (cli.length + tok.length))
+    (hS : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPr W cli cur)
+    (hE : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITr W cli cur)
+    (cli₀ out₀ : List Bool) :
+    (fun z => (runFold (STEPr (Wf z)) (EMITr (Wf z)) cli₀ out₀
+      (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP := by
+  have h := tkFold_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀
+  have heq : (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2)
+      = fun z => (runFold (STEPr (Wf z)) (EMITr (Wf z)) cli₀ out₀
+          (blockSplit (bitsToDigits (Sf z))).1).2 := by
+    funext z
+    exact tkFold_blockSplit (Wf z) (fun cli cur h => hS (Wf z) cli cur h)
+      (fun cli cur h => hE (Wf z) cli cur h) _ cli₀ out₀
+  rwa [heq] at h
 
 /-- **The client interface.**  A step and an emitter that read each token by the value
 `undigitize` gives it, with the two per-step length bounds, compute the token-level fold in
 polynomial time — over exactly the token stream `MachineEfficientTrader` decodes.
 
-Proof kind: `C` composition.  Provenance: (a) `tkFold_mem_FP`, `tkFold_undigitize`. -/
+Proof kind: `C` composition.  Provenance: (a) `runFold_mem_FP`, `runFold_natFold`. -/
 lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
     {STEPn EMITn : List Bool → ℕ → List Bool} {c k : ℕ} {qQ : Polynomial ℕ}
     (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
@@ -1391,19 +1664,22 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
     (hEbnd : ∀ W cli tok : List Bool,
       (EMIT (pair W (pair cli tok))).length
         ≤ qQ.eval W.length + k * (cli.length + tok.length))
-    (hS : ∀ W cli tok : List Bool,
-      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
-    (hE : ∀ W cli tok : List Bool,
-      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok)))
+    (hS : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPn cli (digitVal cur))
+    (hE : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITn cli (digitVal cur))
     (cli₀ out₀ : List Bool) :
     (fun z => (natFold STEPn EMITn cli₀ out₀
       (undigitize (bitsToDigits (Sf z)))).2) ∈ FP := by
-  have h := tkFold_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀
-  have heq : (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2)
+  have h := runFold_mem_FP (STEPr := fun _ cli r => STEPn cli (digitVal r))
+    (EMITr := fun _ cli r => EMITn cli (digitVal r))
+    hSTEP hEMIT hW hSf hSbnd hEbnd hS hE cli₀ out₀
+  have heq : (fun z => (runFold (fun cli r => STEPn cli (digitVal r))
+        (fun cli r => EMITn cli (digitVal r)) cli₀ out₀
+        (blockSplit (bitsToDigits (Sf z))).1).2)
       = fun z => (natFold STEPn EMITn cli₀ out₀ (undigitize (bitsToDigits (Sf z)))).2 := by
     funext z
-    exact tkFold_undigitize (Wf z) (fun cli tok => hS (Wf z) cli tok)
-      (fun cli tok => hE (Wf z) cli tok) _ cli₀ out₀
+    rw [runFold_natFold, undigitize_eq_blockSplit]
   rwa [heq] at h
 
 #print axioms LogicalInduction.TokenFold.dgFold_cli
@@ -1414,6 +1690,8 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
 #print axioms LogicalInduction.TokenFold.tkFold_out
 #print axioms LogicalInduction.TokenFold.tkFold_mem_FP
 #print axioms LogicalInduction.TokenFold.tkFold_undigitize
+#print axioms LogicalInduction.TokenFold.tkFold_blockSplit
+#print axioms LogicalInduction.TokenFold.runFold_mem_FP
 #print axioms LogicalInduction.TokenFold.natFold_mem_FP
 
 end LogicalInduction.TokenFold

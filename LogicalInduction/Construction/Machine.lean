@@ -50,4 +50,5 @@ import LogicalInduction.Framework.Machine.DigitBits
 import LogicalInduction.Framework.Machine.TraderMachine
 import LogicalInduction.Framework.Machine.FPFold
 import LogicalInduction.Framework.Machine.TokenFold
+import LogicalInduction.Construction.Machine.CondStep
 import LogicalInduction.Framework.MachineEfficiency
