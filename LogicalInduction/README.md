@@ -194,14 +194,18 @@ assertion starts failing and gets promoted to a plain clean assertion.
    compatibility predicate; every machine logical inductor is one, so the whole property
    tail transfers unchanged.
 
-   **What this leaves.** Two statements whose *conclusion* is itself the criterion still
-   sit at the fuel class, because they transport an arbitrary trader backwards across a
-   market change and certify the transported trader in the fuel calculus:
+   **What this leaves.** The two statements whose *conclusion* is itself the criterion —
+   they transport an arbitrary trader backwards across a market change, so restating them
+   needs the machine class closed under the same trader translations. Both transports are
+   now proved:
 
-   * **closure under conditioning** (`thm:scon`) — needs
-     `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`,
-     a direct `Complexity.FP` transport theorem for the strategy serialization. Nothing is
-     weakened meanwhile: the existing fuel-level theorem and its witnesses are unchanged.
+   * **closure under conditioning** (`thm:scon`) — **complete at the machine quantifier**,
+     in all three forms. `conditionedTranslation_preserves_machine` and
+     `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
+     under the same hypothesis on the condition as their fuel counterparts; the endpoints
+     are `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+     `lic_conditioned_eventual_machine`. The fuel theorem and its witnesses are untouched
+     beside them.
    * **closure under finite perturbations** (`thm:ifp`) — no longer a boundary of this
      kind, because the published unrestricted statement is **false** and `not_overgeneral_ifp`
      proves it so: arbitrary finite-day perturbations really can encode unbounded
@@ -352,11 +356,15 @@ reach them: their proofs transport an arbitrary trader backwards across a market
 certify the transported trader. They stay at the fuel class, with nothing weakened and no
 proved content withdrawn.
 
-* **`thm:scon` — closure under conditioning.** The fuel-level theorem and its concrete
-  witnesses (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`)
-  are unchanged and inhabited. The machine-level statement wants one new theorem:
-  `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`, a
-  direct `Complexity.FP` closure result for the strategy serialization.
+* **`thm:scon` — closure under conditioning.** *Strengthened paper theorem.* Complete at
+  the machine quantifier in all three forms — abstract compiler, gated translator and
+  finite-zero translator. The `Complexity.FP` transports
+  (`conditionedTranslation_preserves_machine`,
+  `eventualConditionedTranslation_preserves_machine`) carry the same `RpnSentenceCodes`
+  hypothesis on the condition as the fuel counterparts, so nothing is weakened and the
+  trader hypothesis is strictly stronger. The fuel-level theorem and its concrete witnesses
+  (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`) are
+  unchanged and inhabited beside them.
 * **`thm:ifp` — closure under finite perturbations.** Three carriers, in three of the four
   categories this repo distinguishes.
   * *Formal counterexample*: **the published unrestricted finite-day statement is false**,

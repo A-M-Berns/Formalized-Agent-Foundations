@@ -63,24 +63,27 @@ theorems are stated against it, and every one of them transfers to a machine log
 inductor immediately through the instance below, because a machine logical inductor *is* a
 fuel-class one. Nothing in the property tail is weaker for it.
 
-The one place the bridge does not suffice is a theorem whose *conclusion* is itself the
+The place the bridge does not suffice is a theorem whose *conclusion* is itself the
 criterion — closure under conditioning (`thm:scon`) and the finite-perturbation statement
 (`thm:ifp`). Those transport an arbitrary trader backwards across a market change, so
 restating them at the machine class needs the machine class to be closed under the same
 trader translations: a direct `Complexity.FP` transport theorem for the strategy
-serialization.
+serialization. Both transport theorems now exist.
 
-* `thm:ifp` — the *corrected* finite-support statement is now proved at both classes
+* `thm:scon` — **complete at the machine quantifier**, in all three forms.
+  `CondStep.conditionedTranslation_preserves_machine` and
+  `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
+  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts;
+  `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+  `lic_conditioned_eventual_machine` are the endpoints. The fuel endpoints and their
+  witnesses are untouched beside them.
+* `thm:ifp` — the *corrected* finite-support statement is proved at both classes
   (`machine_lic_iff_of_finiteSupportPerturbation`, `Properties/FinitePerturbations.lean`),
-  with the freeze certificate `MachineFiniteSupportPatch` as its remaining obligation. The
-  patch structures are uninhabited at both classes, so this buys a correct statement rather
-  than a witness.
-* `thm:scon` — still at the fuel class, with no hypothesis weakened and no proved content
-  withdrawn. Its correctness core is now class-agnostic
-  (`RpnConditioning.strategyOfTokens_rpnConditionOutput`), so the machine version needs
-  only its own emission certificate.
-
-Both missing transport theorems are named in `LogicalInduction/README.md`.
+  and the published unrestricted statement is **refuted** (`not_overgeneral_ifp`). The
+  freeze certificate `MachineFiniteSupportPatch` remains the open obligation, reduced to a
+  single run-level table lookup (`FreezeStep.RunOracle`). The patch structures are
+  uninhabited at both classes, so the corrected theorem buys a correct statement rather than
+  a witness.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 

@@ -2601,7 +2601,7 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> Fixed form adjoins one ψ, growing form a whole computable process; the conclusion is the criterion for the <em>conditioned</em> history over the union process — the paper&#x27;s ℙ‾|ψ. No joint-consistency premise: the degenerate branch covers unsatisfiable stages.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> growing-form <code>hjoint</code> deleted — derived by propositional compactness (<code>Framework/Compactness.lean</code>) or vacuous by the degenerate branch</footer>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> growing-form <code>hjoint</code> deleted — derived by propositional compactness (<code>Framework/Compactness.lean</code>) or vacuous by the degenerate branch. Now also <strong>complete at the paper&#x27;s own quantifier</strong>: <code>lic_conditioned_machine</code>, <code>lic_conditioned_gated_machine</code> and <code>lic_conditioned_eventual_machine</code> conclude <code>IsMachineLogicalInductor</code>, carried by the <code>Complexity.FP</code> transports <code>conditionedTranslation_preserves_machine</code> and <code>eventualConditionedTranslation_preserves_machine</code> under the same <code>RpnSentenceCodes</code> hypothesis on the condition as the fuel counterparts. The fuel endpoints and their inhabited witnesses are unchanged beside them, so this is a strengthening, not a replacement</footer>
 </article>
 <h2 class="sec" id="sec-Expectations">Expectations</h2>
 
@@ -10769,4 +10769,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: ad0f421ad2543409d2df2581569e01fa3237ff9c7b87533beb106430a2687dcd -->
+<!-- trust-surface-sources: 09fb198affe09f835e8e2295cb5cd750acec984bdab4973a515331ba9cbd8cb8 -->
