@@ -56,7 +56,12 @@ unresolved, and its published proof remains invalid.
 
 The freeze itself is not duplicated: `EF.freezeOn` takes a per-coordinate selector, and
 `EF.freezeBefore_eq_freezeOn` identifies the day-cutoff freeze as its `day < cutoff`
-instance.
+instance.  Two recursions nonetheless remain in the source, which is technical debt with a
+scheduled demolition: `freezeBefore` should be *defined* as that instance and its own
+lemmas re-derived, retiring the second recursion.  The demolition is deferred to the
+commit that lands the `Complexity.FP` freeze certificate, because the twenty
+`simp [freezeBefore]` sites that must move are in `Construction/Witnesses/RpnFreeze.lean`
+and `BoundedEvaluation.lean`, which that work rewrites anyway.
 
 One thing the corrected theorem does **not** buy: an inhabitant.  Both
 `FiniteSupportPatch` and `MachineFiniteSupportPatch` are uninhabited in this repo, exactly
