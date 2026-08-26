@@ -32,6 +32,9 @@ upstreaming; it is kept here for the same reason as `runChildFixed` and
 import LogicalInduction.Construction.Machine.DescExec
 import Complexitylib.Models.TuringMachine.Registers
 import Complexitylib.Models.TuringMachine.Registers.Emit
+import Complexitylib.Models.TuringMachine.Registers.Horner
+import Complexitylib.Models.TuringMachine.Registers.InputLen
+import Complexitylib.Classes.P.NormalForm
 
 namespace LogicalInduction.MachineExec
 
@@ -604,6 +607,151 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
         refine ⟨fun i hi => absurd hi (by simp), ?_⟩
         show Function.update outT.cells 1 Γ.blank (0 + 1) = Γ.blank
         simp
+
+/-! ### The clock preparation -/
+
+/-- The Horner-prefix cap `polyEvalTM` asks for, at the input length. -/
+noncomputable def prepCap (p : Polynomial ℕ) (N : ℕ) : ℕ :=
+  ((polyCoeffs p).sum + 1) * (N + 1) ^ (polyCoeffs p).length + N
+
+/-- Measure the input length into register `2`, then evaluate the clock polynomial there,
+    leaving the clock in register `1`. -/
+noncomputable def prepTM (p : Polynomial ℕ) : TM 4 :=
+  seqTM (inputLenRegTM 2) (polyEvalTM 2 1 3 p)
+
+lemma prepTM_hoareTime (p : Polynomial ℕ) (x : List Bool) :
+    (prepTM p).HoareTime
+      (EmitPred ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ (fun _ => regTape 0) [])
+      (EmitPred ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩
+        (simWork (regTape 0) (regTape (p.eval x.length)) (regTape x.length)
+          (regTape (p.eval x.length))) [])
+      (2 * x.length + 4 + 1 +
+        (opBudget (prepCap p x.length) + 1 +
+          ((p.natDegree + 1) * (layerBudget (prepCap p x.length) + 1) + 1))) := by
+  set N := x.length with hN
+  set M := prepCap p N with hM
+  set inp₀ : Tape := ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ with hinp
+  have hinp₀ : Parked inp₀ := parked_init_input x
+  have hlen := inputLenRegTM_hoareTime (n := 4) 2 x (fun _ => regTape 0) []
+    (fun i _ => parked_regTape 0) rfl
+  set W1 : Fin 4 → Tape := Function.update (fun _ => regTape 0) 2 (regTape N) with hW1
+  have hW1p : ∀ i, Parked (W1 i) := by
+    intro i
+    rw [hW1]
+    by_cases hi : i = 2
+    · subst hi; rw [Function.update_self]; exact parked_regTape _
+    · rw [Function.update_of_ne hi]; exact parked_regTape 0
+  have hpoly := polyEvalTM_hoareTime (n := 4) 2 1 3 (by decide) (by decide) (by decide)
+    p M N 0 0 (by rw [hM, prepCap]; omega) (by omega) (by omega)
+    (fun k _ => le_trans (hornerFold_take_le N _ _) (by rw [hM, prepCap]; omega))
+    inp₀ W1 [] hinp₀ hW1p
+    (by rw [hW1, Function.update_self])
+    (by rw [hW1, Function.update_of_ne (by decide : (1 : Fin 4) ≠ 2)])
+    (by rw [hW1, Function.update_of_ne (by decide : (3 : Fin 4) ≠ 2)])
+  have hfin : Function.update (Function.update W1 3 (regTape (p.eval N))) 1
+      (regTape (p.eval N))
+      = simWork (regTape 0) (regTape (p.eval N)) (regTape N) (regTape (p.eval N)) := by
+    funext i
+    fin_cases i
+    · show Function.update (Function.update W1 3 (regTape (p.eval N))) 1
+          (regTape (p.eval N)) 0 = regTape 0
+      rw [Function.update_of_ne (by decide : (0 : Fin 4) ≠ 1),
+        Function.update_of_ne (by decide : (0 : Fin 4) ≠ 3), hW1,
+        Function.update_of_ne (by decide : (0 : Fin 4) ≠ 2)]
+    · show Function.update (Function.update W1 3 (regTape (p.eval N))) 1
+          (regTape (p.eval N)) 1 = regTape (p.eval N)
+      rw [Function.update_self]
+    · show Function.update (Function.update W1 3 (regTape (p.eval N))) 1
+          (regTape (p.eval N)) 2 = regTape N
+      rw [Function.update_of_ne (by decide : (2 : Fin 4) ≠ 1),
+        Function.update_of_ne (by decide : (2 : Fin 4) ≠ 3), hW1, Function.update_self]
+    · show Function.update (Function.update W1 3 (regTape (p.eval N))) 1
+          (regTape (p.eval N)) 3 = regTape (p.eval N)
+      rw [Function.update_of_ne (by decide : (3 : Fin 4) ≠ 1), Function.update_self]
+  rw [hfin] at hpoly
+  exact seqTM_hoareTime _ _ hlen
+    (fun _ _ _ h => emitPred_transition hinp₀ hW1p [] _ _ _ h) hpoly
+
+
+/-! ### The whole machine -/
+
+/-- **The clocked machine for a fixed description.** Bump, build the clock, simulate. -/
+noncomputable def clockedTM (d : TMDesc) (p : Polynomial ℕ) : TM 4 :=
+  seqTM bumpTM (seqTM (prepTM p) (simTM d))
+
+/-- Its step bound. -/
+noncomputable def clockedTime (p : Polynomial ℕ) (N : ℕ) : ℕ :=
+  1 + 1 + ((2 * N + 4 + 1 +
+    (opBudget (prepCap p N) + 1 +
+      ((p.natDegree + 1) * (layerBudget (prepCap p N) + 1) + 1))) + 1 +
+    (2 * p.eval N + 6))
+
+lemma clockedTM_computesInTime (d : TMDesc) (p : Polynomial ℕ) :
+    (clockedTM d p).ComputesInTime
+      (fun x => clockedOutput d (p.eval x.length) x) (clockedTime p) := by
+  intro x
+  set N := x.length with hN
+  set inp₀ : Tape := ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ with hinp
+  have hinp₀ : Parked inp₀ := parked_init_input x
+  have hZp : ∀ i : Fin 4, Parked ((fun _ => regTape 0) i) := fun _ => parked_regTape 0
+  have hbump : (bumpTM (n := 4)).HoareTime
+      (fun inp work out => inp = Tape.init (x.map Γ.ofBool) ∧
+        (∀ i, work i = Tape.init []) ∧ out = Tape.init [])
+      (EmitPred inp₀ (fun _ => regTape 0) []) 1 := by
+    refine (bumpTM_hoareTime (n := 4) x).consequence (fun _ _ _ h => h)
+      (fun inp work out h => ?_) (le_refl 1)
+    obtain ⟨hi, hw, ho⟩ := h
+    exact ⟨hi, funext (fun i => (hw i).eq_regT), ho⟩
+  have hWp : ∀ i : Fin 4, Parked
+      (simWork (regTape 0) (regTape (p.eval N)) (regTape N) (regTape (p.eval N)) i) := by
+    intro i
+    fin_cases i <;> exact parked_regTape _
+  have hsim := simTM_hoareTime d x (p.eval N) (regTape N) (regTape (p.eval N))
+    ((parked_regTape N).2 1 le_rfl) ((parked_regTape (p.eval N)).2 1 le_rfl)
+  have hrest := seqTM_hoareTime _ _ (prepTM_hoareTime p x)
+    (fun _ _ _ h => emitPred_transition hinp₀ hWp [] _ _ _ h) hsim
+  have htotal := seqTM_hoareTime _ _ hbump
+    (fun _ _ _ h => emitPred_transition hinp₀ hZp [] _ _ _ h) hrest
+  obtain ⟨c', t, ht, hreach, hhalt, hpost⟩ := htotal (Tape.init (x.map Γ.ofBool))
+    (fun _ => Tape.init []) (Tape.init []) ⟨rfl, fun _ => rfl, rfl⟩
+  exact ⟨c', t, ht, hreach, hhalt, hpost⟩
+
+/-! ### The bound is a polynomial -/
+
+open Polynomial in
+/-- The Horner cap, as a polynomial. -/
+noncomputable def prepCapPoly (p : Polynomial ℕ) : Polynomial ℕ :=
+  C ((polyCoeffs p).sum + 1) * (X + 1) ^ (polyCoeffs p).length + X
+
+open Polynomial in
+lemma prepCapPoly_eval (p : Polynomial ℕ) (N : ℕ) :
+    (prepCapPoly p).eval N = prepCap p N := by
+  simp only [prepCapPoly, prepCap, eval_add, eval_mul, eval_pow, eval_C, eval_X,
+    eval_one]
+
+open Polynomial in
+/-- The whole step bound, as a polynomial. -/
+noncomputable def clockedTimePoly (p : Polynomial ℕ) : Polynomial ℕ :=
+  let q := prepCapPoly p
+  let ob := C 32 * (q + 2) ^ 3
+  let lb := C 4 * ob + 3
+  2 + ((2 * X + 4 + 1 + (ob + 1 + (C (p.natDegree + 1) * (lb + 1) + 1))) + 1 +
+    (2 * p + 6))
+
+open Polynomial in
+lemma clockedTimePoly_eval (p : Polynomial ℕ) (N : ℕ) :
+    (clockedTimePoly p).eval N = clockedTime p N := by
+  simp only [clockedTimePoly, clockedTime, opBudget, layerBudget, eval_add, eval_mul,
+    eval_pow, eval_C, eval_X, eval_ofNat, eval_one, prepCapPoly_eval]
+  ring
+
+/-- **The clocked truncation of a fixed description is polynomial-time.** -/
+lemma clockedOutput_mem_FP (d : TMDesc) (p : Polynomial ℕ) :
+    (fun x => clockedOutput d (p.eval x.length) x) ∈ Complexity.FP := by
+  rw [Complexity.mem_FP_iff_computesInTime_polynomial]
+  refine ⟨4, clockedTM d p, clockedTimePoly p, ?_⟩
+  refine (clockedTM_computesInTime d p).mono (fun m => ?_)
+  rw [clockedTimePoly_eval]
 
 end LogicalInduction.MachineExec
 
