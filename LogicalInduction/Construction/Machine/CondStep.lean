@@ -25,6 +25,15 @@ The three pieces, in the order they are built:
   words; the buffered run is already in the state; and the condition block comes from an
   oracle indexed by unary days, called at `min D n`.
 
+* **The count and the codes.**  `rpnTradeRuns` runs on the same automaton, so the trade-run
+  count is a fourth client; the frame budget's two codes are then arithmetic on lengths.
+
+* **The acceptance test.**  `rpnAcceptsRuns` asks two questions of the *finished* run, so
+  that client reads `runFold`'s final state rather than its output and emits nothing.  Its
+  state wraps the automaton's with one more unary counter, the parser depth — and the depth
+  goes *first* in the pair, because `pair` doubles its first component and the cond-state is
+  the one that grows with the token.
+
 * **The guard.**  `rpnGuardedConditionTokens` emits the rewrite only when every price-day
   token is within the trading day.  That test is a second fold over the *same* automaton —
   `condStepR` again, so there is one word-level automaton, not two — whose emitter drops a
@@ -406,44 +415,49 @@ lemma rcLenF_le (m c r t : ℕ) : rcLenF m c r t ≤ r + 1 := by
   have h := rcLen_step_le (rcPack m c r) t
   rwa [rcLen_step_eq, rcMode_pack, rcCnt_pack, rcLen_pack] at h
 
-lemma condStepW_mem_FP : condStepW ∈ FP := by
-  have hcli : cvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+/-- The clamped token is polynomial time.  Every client below needs it. -/
+lemma clampTok_mem_FP : clampTok ∈ FP := by
   have htok : cvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-  have hclamp : clampTok ∈ FP := by
-    have h := LEUnary.unaryOfDigitsLE_le_mem_FP htok (constFn_mem_FP (uw 20))
-    simp only [length_uw] at h
-    exact h
-  have hff : (fun v => fstBlock (cvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
-  have hsf : (fun v => sndBlock (cvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
-  have hm : (fun v => csMode (cvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
-  have hc : (fun v => csCnt (cvCli v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
-  have hr : (fun v => csLen (cvCli v)) ∈ FP := mem_FP_comp hsf fstBlock_mem_FP
-  have hb : (fun v => csBuf (cvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
-  have hmode : (fun v => csModeStep (cvCli v) (clampTok v)) ∈ FP :=
-    rcModeW_mem_FP hm hc hclamp
-  have hcnt : (fun v => csCntStep (cvCli v) (clampTok v)) ∈ FP :=
-    rcCntW_mem_FP hm hc hclamp
-  have hlen : (fun v => csLenStep (cvCli v) (clampTok v)) ∈ FP :=
-    rcLenW_mem_FP hm hc hr hclamp
-  have hbuf : (fun v => csBufStep (cvCli v) (clampTok v) (cvTok v)) ∈ FP :=
-    ifEqLen_mem_FP hlen 0 (constFn_mem_FP [])
-      (appendFn_mem_FP (appendFn_mem_FP hb htok) (constFn_mem_FP (digitBits 4)))
-  exact pairFn_mem_FP (pairFn_mem_FP hmode hcnt) (pairFn_mem_FP hlen hbuf)
+  have h := LEUnary.unaryOfDigitsLE_le_mem_FP htok (constFn_mem_FP (uw 20))
+  simp only [length_uw] at h
+  exact h
 
-lemma condStepW_length_le (W cli tok : List Bool) :
-    (condStepW (pair W (pair cli tok))).length ≤ cli.length + tok.length + 51 := by
-  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
-  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
-  have hm : (csModeStep cli (clampTok (pair W (pair cli tok)))).length ≤ 9 := by
+lemma cvCli_mem_FP : cvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+lemma cvTok_mem_FP : cvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+/-- The step is polynomial time at the level of `condStepOf`, so that a client wrapping the
+state can reuse it. -/
+lemma condStepOf_mem_FP {C TW T : List Bool → List Bool}
+    (hC : C ∈ FP) (hTW : TW ∈ FP) (hT : T ∈ FP) :
+    (fun v => condStepOf (C v) (TW v) (T v)) ∈ FP := by
+  have hff : (fun v => fstBlock (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
+  have hm : (fun v => csMode (C v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hc : (fun v => csCnt (C v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
+  have hr : (fun v => csLen (C v)) ∈ FP := mem_FP_comp hsf fstBlock_mem_FP
+  have hb : (fun v => csBuf (C v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hlen : (fun v => csLenStep (C v) (TW v)) ∈ FP := rcLenW_mem_FP hm hc hr hTW
+  have hbuf : (fun v => csBufStep (C v) (TW v) (T v)) ∈ FP :=
+    ifEqLen_mem_FP hlen 0 (constFn_mem_FP [])
+      (appendFn_mem_FP (appendFn_mem_FP hb hT) (constFn_mem_FP (digitBits 4)))
+  exact pairFn_mem_FP (pairFn_mem_FP (rcModeW_mem_FP hm hc hTW) (rcCntW_mem_FP hm hc hTW))
+    (pairFn_mem_FP hlen hbuf)
+
+lemma condStepW_mem_FP : condStepW ∈ FP :=
+  condStepOf_mem_FP cvCli_mem_FP clampTok_mem_FP cvTok_mem_FP
+
+/-- The step's length bound, at the level of `condStepOf` so that a client wrapping the
+state can reuse it.  The bound is *additive* in `cli` and in `tok`, and both coefficients
+are load-bearing: `pair`'s framing doubles its first component, so a multiplier on either
+would compound to `k ^ L` over the fold. -/
+lemma condStepOf_length_le (cli tw tok : List Bool) :
+    (condStepOf cli tw tok).length ≤ cli.length + tok.length + 51 := by
+  have hm : (csModeStep cli tw).length ≤ 9 := by
     rw [csModeStep, length_rcModeW]; exact rcModeF_le _ _ _
-  have hc : (csCntStep cli (clampTok (pair W (pair cli tok)))).length
-      ≤ (csCnt cli).length + 1 := by
+  have hc : (csCntStep cli tw).length ≤ (csCnt cli).length + 1 := by
     rw [csCntStep, length_rcCntW]; exact rcCntF_le _ _ _
-  have hr : (csLenStep cli (clampTok (pair W (pair cli tok)))).length
-      ≤ (csLen cli).length + 1 := by
+  have hr : (csLenStep cli tw).length ≤ (csLen cli).length + 1 := by
     rw [csLenStep, length_rcLenW]; exact rcLenF_le _ _ _ _
-  have hb : (csBufStep cli (clampTok (pair W (pair cli tok))) tok).length
-      ≤ (csBuf cli).length + tok.length + 3 := by
+  have hb : (csBufStep cli tw tok).length ≤ (csBuf cli).length + tok.length + 3 := by
     rw [csBufStep]
     split_ifs
     · simp
@@ -455,8 +469,15 @@ lemma condStepW_length_le (W cli tok : List Bool) :
     two_fstBlock_add_sndBlock_le (sndBlock cli)
   have H3 : 2 * (fstBlock cli).length + (sndBlock cli).length ≤ cli.length :=
     two_fstBlock_add_sndBlock_le cli
-  rw [condStepW, hcli, htok, condStepOf, condSt, pair_length, pair_length, pair_length]
+  rw [condStepOf, condSt, pair_length, pair_length, pair_length]
   omega
+
+lemma condStepW_length_le (W cli tok : List Bool) :
+    (condStepW (pair W (pair cli tok))).length ≤ cli.length + tok.length + 51 := by
+  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
+  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
+  rw [condStepW, hcli, htok]
+  exact condStepOf_length_le cli _ tok
 
 /-! ## The emitter
 
@@ -1251,6 +1272,226 @@ lemma decodeBits_invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
               (undigitize (bitsToDigits (Sf z)))))] := by
   rw [invBudgetW, decodeBits_invBudgetCodeW, countW_length ε B Wf Sf hB z]
 
+/-! ## The acceptance test
+
+`rpnAcceptsRuns` asks two questions of the *finished* run — did the automaton return to
+base, and did the parser depth return to zero — so this client reads `runFold`'s final
+client state rather than its output, and emits nothing at all.  Its state wraps
+`condStepR`'s with one more unary counter, the depth.
+
+**Component order in the packed state is load-bearing.**  `pair` doubles its first
+component, and the cond-state is the one that grows with the incoming token (its buffer
+splices the block in).  Putting it second keeps the step's bound additive in `tok`; putting
+it first would give coefficient two there, and a coefficient-two bound on `tok` compounds
+across the fold exactly as one on `cli` does.  So the depth goes first. -/
+
+/-- The parser depth's update, `rpnDepthNext` on words.  Written to mirror it branch for
+branch; `depthNextW_eq_nested` is the same function as a nest of single comparisons, which
+is the form the membership proof needs. -/
+def depthNextW (cs tw dW : List Bool) : List Bool :=
+  if (csMode cs).length = 0 then
+    (if tw.length = 2 then dW.tail
+     else if tw.length = 3 then dW.tail
+     else if tw.length = 4 then dW.tail
+     else if tw.length = 8 then dW.tail
+     else dW)
+  else if (csMode cs).length = 2 then dW ++ [true]
+  else if (csMode cs).length = 3 then dW ++ [true]
+  else if (csMode cs).length = 5 then dW ++ [true]
+  else if ((csMode cs).length = 4 ∨ (csMode cs).length = 7 ∨ (csMode cs).length = 9)
+      ∧ (csModeStep cs tw).length = 0 then dW.tail
+  else dW
+
+lemma length_depthNextW (cs dW : List Bool) (cur : List ℕ) :
+    (depthNextW cs (List.replicate (min (digitVal cur) 20) true) dW).length
+      = rpnDepthNext (csPack cs) (rpnCondStep (csPack cs) (digitVal cur)) (digitVal cur)
+          dW.length := by
+  have hm : (csMode cs).length = rcMode (csPack cs) := by rw [csPack, rcMode_pack]
+  have hstep := length_csModeStep cs cur
+  have e2 : (min (digitVal cur) 20 = 2) ↔ (digitVal cur = 2) := by omega
+  have e3 : (min (digitVal cur) 20 = 3) ↔ (digitVal cur = 3) := by omega
+  have e4 : (min (digitVal cur) 20 = 4) ↔ (digitVal cur = 4) := by omega
+  have e8 : (min (digitVal cur) 20 = 8) ↔ (digitVal cur = 8) := by omega
+  rw [depthNextW, rpnDepthNext, parserDepthNext, hm, hstep]
+  simp only [apply_ite List.length, List.length_tail, List.length_append,
+    List.length_cons, List.length_nil, List.length_replicate, e2, e3, e4, e8,
+    if_true, Nat.pred_eq_sub_one]
+
+private lemma ifMode479_mem_FP {A B X Y : List Bool → List Bool}
+    (hA : A ∈ FP) (hB : B ∈ FP) (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if ((A z).length = 4 ∨ (A z).length = 7 ∨ (A z).length = 9)
+        ∧ (B z).length = 0 then X z else Y z) ∈ FP := by
+  have h := ifEqLen_mem_FP hA 4 (ifEqLen_mem_FP hB 0 hX hY)
+    (ifEqLen_mem_FP hA 7 (ifEqLen_mem_FP hB 0 hX hY)
+      (ifEqLen_mem_FP hA 9 (ifEqLen_mem_FP hB 0 hX hY) hY))
+  have heq : (fun z => if (A z).length = 4 then (if (B z).length = 0 then X z else Y z)
+        else if (A z).length = 7 then (if (B z).length = 0 then X z else Y z)
+        else if (A z).length = 9 then (if (B z).length = 0 then X z else Y z) else Y z)
+      = fun z => if ((A z).length = 4 ∨ (A z).length = 7 ∨ (A z).length = 9)
+          ∧ (B z).length = 0 then X z else Y z := by
+    funext z
+    split_ifs <;> tauto
+  rwa [heq] at h
+
+lemma depthNextW_length_le (cs tw dW : List Bool) :
+    (depthNextW cs tw dW).length ≤ dW.length + 1 := by
+  rw [depthNextW]
+  split_ifs <;> simp <;> omega
+
+lemma depthNextW_mem_FP {C TW D : List Bool → List Bool}
+    (hC : C ∈ FP) (hTW : TW ∈ FP) (hD : D ∈ FP) :
+    (fun v => depthNextW (C v) (TW v) (D v)) ∈ FP := by
+  have hff : (fun v => fstBlock (C v)) ∈ FP := mem_FP_comp hC fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (C v)) ∈ FP := mem_FP_comp hC sndBlock_mem_FP
+  have hm : (fun v => csMode (C v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hc : (fun v => csCnt (C v)) ∈ FP := mem_FP_comp hff sndBlock_mem_FP
+  have hstep : (fun v => csModeStep (C v) (TW v)) ∈ FP := rcModeW_mem_FP hm hc hTW
+  have hpred : (fun v => (D v).tail) ∈ FP := tail_mem_FP hD
+  have hsucc : (fun v => D v ++ [true]) ∈ FP := appendFn_mem_FP hD (constFn_mem_FP [true])
+  exact ifEqLen_mem_FP hm 0
+    (ifEqLen_mem_FP hTW 2 hpred (ifEqLen_mem_FP hTW 3 hpred
+      (ifEqLen_mem_FP hTW 4 hpred (ifEqLen_mem_FP hTW 8 hpred hD))))
+    (ifEqLen_mem_FP hm 2 hsucc (ifEqLen_mem_FP hm 3 hsucc (ifEqLen_mem_FP hm 5 hsucc
+      (ifMode479_mem_FP hm hstep hpred hD))))
+
+/-! ### The acceptance client -/
+
+/-- The acceptance client's state: the parser depth, then the conditioning automaton's. -/
+def acceptSt (dW cs : List Bool) : List Bool := pair dW cs
+
+def asDepth (st : List Bool) : List Bool := fstBlock st
+def asCond (st : List Bool) : List Bool := sndBlock st
+
+@[simp] lemma asDepth_acceptSt (d c : List Bool) : asDepth (acceptSt d c) = d := by
+  simp [asDepth, acceptSt]
+@[simp] lemma asCond_acceptSt (d c : List Bool) : asCond (acceptSt d c) = c := by
+  simp [asCond, acceptSt]
+
+def acceptStepOf (cli tw tok : List Bool) : List Bool :=
+  acceptSt (depthNextW (asCond cli) tw (asDepth cli)) (condStepOf (asCond cli) tw tok)
+
+/-- The acceptance pass's word-level step. -/
+def acceptStepW (v : List Bool) : List Bool :=
+  acceptStepOf (cvCli v) (clampTok v) (cvTok v)
+
+/-- Its block-level reading. -/
+def acceptStepR (cli : List Bool) (cur : List ℕ) : List Bool :=
+  acceptStepOf cli (List.replicate (min (digitVal cur) 20) true) (digitsToBits cur)
+
+lemma acceptStepW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    acceptStepW (pair W (pair cli (digitsToBits cur))) = acceptStepR cli cur := by
+  rw [acceptStepW, acceptStepR, clampTok_pair W cli cur hcur]
+  simp only [cvCli, cvTok, sndBlock_pair, fstBlock_pair]
+
+lemma acceptStepW_mem_FP : acceptStepW ∈ FP := by
+  have hcond : (fun v => asCond (cvCli v)) ∈ FP :=
+    mem_FP_comp cvCli_mem_FP sndBlock_mem_FP
+  have hdep : (fun v => asDepth (cvCli v)) ∈ FP :=
+    mem_FP_comp cvCli_mem_FP fstBlock_mem_FP
+  exact pairFn_mem_FP (depthNextW_mem_FP hcond clampTok_mem_FP hdep)
+    (condStepOf_mem_FP hcond clampTok_mem_FP cvTok_mem_FP)
+
+lemma acceptStepW_length_le (W cli tok : List Bool) :
+    (acceptStepW (pair W (pair cli tok))).length ≤ cli.length + tok.length + 55 := by
+  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
+  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
+  have hd := depthNextW_length_le (asCond cli) (clampTok (pair W (pair cli tok)))
+    (asDepth cli)
+  have hc := condStepOf_length_le (asCond cli) (clampTok (pair W (pair cli tok))) tok
+  have H : 2 * (asDepth cli).length + (asCond cli).length ≤ cli.length :=
+    two_fstBlock_add_sndBlock_le cli
+  rw [acceptStepW, hcli, htok, acceptStepOf, acceptSt, pair_length]
+  omega
+
+/-- The automaton state and the parser depth a client state denotes. -/
+def asPack (st : List Bool) : ℕ := csPack (asCond st)
+def asDepthVal (st : List Bool) : ℕ := (asDepth st).length
+
+lemma acceptStepR_spec (cli : List Bool) (cur : List ℕ) :
+    asPack (acceptStepR cli cur) = rpnCondStep (asPack cli) (digitVal cur) ∧
+      asDepthVal (acceptStepR cli cur)
+        = rpnDepthNext (asPack cli) (rpnCondStep (asPack cli) (digitVal cur))
+            (digitVal cur) (asDepthVal cli) := by
+  refine ⟨?_, ?_⟩
+  · rw [asPack, acceptStepR, acceptStepOf, asCond_acceptSt,
+      show condStepOf (asCond cli) (List.replicate (min (digitVal cur) 20) true)
+          (digitsToBits cur) = condStepR (asCond cli) cur from rfl,
+      csPack_condStepR, asPack]
+  · rw [asDepthVal, acceptStepR, acceptStepOf, asDepth_acceptSt, length_depthNextW,
+      asPack, asDepthVal]
+
+/-- The finished run's automaton state and depth. -/
+lemma acceptFold_spec : ∀ (rs : List (List ℕ)) (cli out : List Bool),
+    asPack (runFold acceptStepR (fun _ _ => []) cli out rs).1
+        = (rs.map digitVal).foldl rpnCondStep (asPack cli) ∧
+      asDepthVal (runFold acceptStepR (fun _ _ => []) cli out rs).1
+        = rpnDepthRuns (asPack cli) (rs.map digitVal) (asDepthVal cli)
+  | [], cli, out => by rw [runFold, List.map_nil, rpnDepthRuns]; exact ⟨rfl, rfl⟩
+  | r :: rs, cli, out => by
+      obtain ⟨h1, h2⟩ := acceptStepR_spec cli r
+      obtain ⟨i1, i2⟩ := acceptFold_spec rs (acceptStepR cli r) (out ++ [])
+      rw [runFold, List.map_cons, List.foldl_cons, rpnDepthRuns]
+      exact ⟨by rw [i1, h1], by rw [i2, h1, h2]⟩
+
+/-- The initial acceptance state: base mode, empty counters, zero depth. -/
+def acceptInit : List Bool := acceptSt [] condInit
+
+@[simp] lemma asPack_acceptInit : asPack acceptInit = rcPack 0 0 0 := by
+  simp [asPack, acceptInit]
+
+@[simp] lemma asDepthVal_acceptInit : asDepthVal acceptInit = 0 := by
+  simp [asDepthVal, acceptInit]
+
+/-- The acceptance flag, read off the finished state: one mark iff the automaton returned
+to base and the parser depth returned to zero. -/
+def acceptsOf (st : List Bool) : List Bool :=
+  if (csMode (asCond st)).length = 0 then
+    (if (asDepth st).length = 0 then [true] else [])
+  else []
+
+lemma length_acceptsOf (st : List Bool) :
+    (acceptsOf st).length =
+      (if rcMode (asPack st) = 0 then (if asDepthVal st = 0 then 1 else 0) else 0) := by
+  have hm : (csMode (asCond st)).length = rcMode (asPack st) := by
+    rw [asPack, csPack, rcMode_pack]
+  rw [acceptsOf, hm, asDepthVal]
+  split_ifs <;> simp
+
+/-- **The acceptance pass**: the structural acceptance test of `rpnAcceptsRuns`, as a word
+whose length is the test's value. -/
+def acceptsW (Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
+  acceptsOf (runFold acceptStepR (fun _ _ => []) acceptInit []
+    (blockSplit (bitsToDigits (Sf z))).1).1
+
+lemma length_acceptsW (Sf : List Bool → List Bool) (z : List Bool) :
+    (acceptsW Sf z).length = rpnAcceptsRuns (undigitize (bitsToDigits (Sf z))) := by
+  obtain ⟨h1, h2⟩ := acceptFold_spec (blockSplit (bitsToDigits (Sf z))).1 acceptInit []
+  rw [acceptsW, length_acceptsOf, h1, h2, asPack_acceptInit, asDepthVal_acceptInit,
+    rpnAcceptsRuns, ← undigitize_eq_blockSplit]
+
+lemma acceptsW_mem_FP {Wf Sf : List Bool → List Bool} (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    acceptsW Sf ∈ FP := by
+  have hfold : (fun z => (runFold acceptStepR (fun _ _ => []) acceptInit []
+      (blockSplit (bitsToDigits (Sf z))).1).1) ∈ FP :=
+    runFold_cli_mem_FP (STEPr := fun _ => acceptStepR) (EMITr := fun _ _ _ => [])
+      (c := 55) (k := 0) (qQ := Polynomial.C 0)
+      acceptStepW_mem_FP (constFn_mem_FP []) hWf hSf
+      acceptStepW_length_le (fun W cli tok => by simp)
+      (fun W cli cur h => acceptStepW_eq W cli cur h) (fun W cli cur _ => rfl)
+      acceptInit []
+  have hcond : (fun z => asCond ((runFold acceptStepR (fun _ _ => []) acceptInit []
+      (blockSplit (bitsToDigits (Sf z))).1).1)) ∈ FP :=
+    mem_FP_comp hfold sndBlock_mem_FP
+  have hmode : (fun z => csMode (asCond ((runFold acceptStepR (fun _ _ => []) acceptInit []
+      (blockSplit (bitsToDigits (Sf z))).1).1))) ∈ FP :=
+    mem_FP_comp (mem_FP_comp hcond fstBlock_mem_FP) fstBlock_mem_FP
+  have hdep : (fun z => asDepth ((runFold acceptStepR (fun _ _ => []) acceptInit []
+      (blockSplit (bitsToDigits (Sf z))).1).1)) ∈ FP :=
+    mem_FP_comp hfold fstBlock_mem_FP
+  exact ifEqLen_mem_FP hmode 0
+    (ifEqLen_mem_FP hdep 0 (constFn_mem_FP [true]) (constFn_mem_FP []))
+    (constFn_mem_FP [])
+
 #print axioms LogicalInduction.CondStep.csPack_condStepR
 #print axioms LogicalInduction.CondStep.csTokens_condStepR
 #print axioms LogicalInduction.CondStep.condPass_mem_FP
@@ -1262,5 +1503,7 @@ lemma decodeBits_invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
 #print axioms LogicalInduction.CondStep.budgetW_mem_FP
 #print axioms LogicalInduction.CondStep.decodeBits_budgetW
 #print axioms LogicalInduction.CondStep.decodeBits_invBudgetW
+#print axioms LogicalInduction.CondStep.length_acceptsW
+#print axioms LogicalInduction.CondStep.acceptsW_mem_FP
 
 end LogicalInduction.CondStep

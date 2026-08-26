@@ -1044,6 +1044,11 @@ def tkSt (ph tok cli out : List Bool) : List Bool := pair ph (pair tok (pair cli
 /-- The output component of a tokenizer state. -/
 def outOf (st : List Bool) : List Bool := sndBlock (sndBlock (sndBlock st))
 
+/-- The client-state component of a tokenizer state.  A client that computes a *value*
+rather than a stream — an acceptance test, a counter read at the end — needs this rather
+than `outOf`. -/
+def cliOf (st : List Bool) : List Bool := fstBlock (sndBlock (sndBlock st))
+
 private def wpar (v : List Bool) : List Bool := fstBlock v
 private def sst (v : List Bool) : List Bool := sndBlock v
 private def phv (v : List Bool) : List Bool := fstBlock (sst v)
@@ -1093,38 +1098,58 @@ well-formedness hypothesis appears; the client sees each token as its raw digit-
 
 Proof kind: `P` proved.  Provenance: (a) `tkStep_three`, `foldlBits_append`,
 `bitsToDigits_cons3`. -/
-lemma tkFold_out (STEP EMIT : List Bool → List Bool) (W : List Bool) :
+lemma tkFold_cli_out (STEP EMIT : List Bool → List Bool) (W : List Bool) :
     ∀ (w tok cli out : List Bool),
+    cliOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
+        (tkSt (pair [] []) tok cli out) w)
+      = (tkFold STEP EMIT W tok cli out (bitsToDigits w)).2.1 ∧
     outOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
         (tkSt (pair [] []) tok cli out) w)
       = (tkFold STEP EMIT W tok cli out (bitsToDigits w)).2.2
   | [], tok, cli, out => by
-      rw [foldlBits_nil, bitsToDigits_of_length_lt_three [] (by simp),
-        tkFold]
-      simp [outOf, tkSt]
+      rw [foldlBits_nil, bitsToDigits_of_length_lt_three [] (by simp), tkFold]
+      exact ⟨by simp [cliOf, tkSt], by simp [outOf, tkSt]⟩
   | [b0], tok, cli, out => by
       rw [bitsToDigits_of_length_lt_three [b0] (by simp), tkFold,
         show ([b0] : List Bool) = [] ++ [b0] from rfl,
         foldlBits_append_singleton, foldlBits_nil]
       cases b0 <;>
-        simp [tkStep, tkSt, outOf, sst, phv, p0v, p1v, tokv, cliv, outv,
-          selectHead_true]
+        exact ⟨by simp [tkStep, tkSt, cliOf, sst, phv, p0v, p1v, tokv, cliv, outv,
+                 selectHead_true],
+               by simp [tkStep, tkSt, outOf, sst, phv, p0v, p1v, tokv, cliv, outv,
+                 selectHead_true]⟩
   | [b0, b1], tok, cli, out => by
       rw [bitsToDigits_of_length_lt_three [b0, b1] (by simp), tkFold,
         show ([b0, b1] : List Bool) = [b0] ++ [b1] from rfl,
         foldlBits_append_singleton]
       cases b0 <;> cases b1 <;>
-        simp [foldlBits, tkStep, tkSt, outOf, sst, phv, p0v, p1v, tokv, cliv, outv,
-          selectHead_true, selectHead_false, selectHead_emptyFlag_cons]
+        exact ⟨by simp [foldlBits, tkStep, tkSt, cliOf, sst, phv, p0v, p1v, tokv, cliv,
+                 outv, selectHead_true, selectHead_false, selectHead_emptyFlag_cons],
+               by simp [foldlBits, tkStep, tkSt, outOf, sst, phv, p0v, p1v, tokv, cliv,
+                 outv, selectHead_true, selectHead_false, selectHead_emptyFlag_cons]⟩
   | b0 :: b1 :: b2 :: rest, tok, cli, out => by
       rw [bitsToDigits_cons3, tkFold,
         show (b0 :: b1 :: b2 :: rest) = [b0, b1, b2] ++ rest from rfl,
         foldlBits_append, tkStep_three]
       by_cases hd : 4 * b2n b0 + 2 * b2n b1 + b2n b2 < 4
-      · rw [if_pos hd, if_pos hd, tkFold_out STEP EMIT W rest _ _ _]
-      · rw [if_neg hd, if_neg hd, tkFold_out STEP EMIT W rest _ _ _]
+      · rw [if_pos hd, if_pos hd]
+        exact tkFold_cli_out STEP EMIT W rest _ _ _
+      · rw [if_neg hd, if_neg hd]
+        exact tkFold_cli_out STEP EMIT W rest _ _ _
 
+lemma tkFold_out (STEP EMIT : List Bool → List Bool) (W : List Bool)
+    (w tok cli out : List Bool) :
+    outOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
+        (tkSt (pair [] []) tok cli out) w)
+      = (tkFold STEP EMIT W tok cli out (bitsToDigits w)).2.2 :=
+  (tkFold_cli_out STEP EMIT W w tok cli out).2
 
+lemma tkFold_cli (STEP EMIT : List Bool → List Bool) (W : List Bool)
+    (w tok cli out : List Bool) :
+    cliOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
+        (tkSt (pair [] []) tok cli out) w)
+      = (tkFold STEP EMIT W tok cli out (bitsToDigits w)).2.1 :=
+  (tkFold_cli_out STEP EMIT W w tok cli out).1
 
 private lemma tkStep_bound {STEP EMIT : List Bool → List Bool} {c Q k : ℕ}
     {W : List Bool}
@@ -1287,6 +1312,41 @@ private lemma tkFold_arith (a b t cl o L n Q Qn C0 O0 K k : ℕ)
       _ = O0 + (L * Q + L * (k * C0) + L * (k * (K * L))) := by ring
   nlinarith [h1, h2, h3, h4, hoexp, hsum, ha, hb]
 
+/-- The engine step, shared by the two projections below: the bit fold itself is in `FP`
+once the client's two length hypotheses hold. -/
+lemma tkFoldBits_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
+    {qQ : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ W cli tok : List Bool,
+      (STEP (pair W (pair cli tok))).length ≤ cli.length + tok.length + c)
+    (hEbnd : ∀ W cli tok : List Bool,
+      (EMIT (pair W (pair cli tok))).length
+        ≤ qQ.eval W.length + k * (cli.length + tok.length))
+    (cli₀ out₀ : List Bool) :
+    (fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
+      (tkSt (pair [] []) [] cli₀ out₀) (Sf z)) ∈ FP := by
+  classical
+  set p : Polynomial ℕ := Polynomial.C (16 + 2 * cli₀.length + out₀.length)
+      + Polynomial.C (2 * (3 + c)) * Polynomial.X
+      + Polynomial.X * qQ
+      + Polynomial.C (k * cli₀.length) * Polynomial.X
+      + Polynomial.C (k * (3 + c)) * (Polynomial.X * Polynomial.X) with hp
+  refine foldlBits_mem_FP (tkStep_mem_FP hSTEP hEMIT false)
+    (tkStep_mem_FP hSTEP hEMIT true) hW hSf (tkSt (pair [] []) [] cli₀ out₀) p
+    (fun z u hu => ?_)
+  obtain ⟨p0', p1', tok', cli', out', hst, h0', h1', hsum, hout⟩ :=
+    tkRun_bound (c := c) (Q := qQ.eval (Wf z).length) (W := Wf z)
+      (fun cli tok => hSbnd (Wf z) cli tok)
+      (fun cli tok => hEbnd (Wf z) cli tok) u [] [] [] cli₀ out₀ (by simp) (by simp)
+  rw [hst, tkSt, pair_length, pair_length, pair_length, pair_length]
+  have hQ : qQ.eval (Wf z).length ≤ qQ.eval ((Wf z).length + (Sf z).length) :=
+    polynomial_eval_mono_nat qQ (by omega)
+  have hL : u.length ≤ (Wf z).length + (Sf z).length := by omega
+  simp only [hp, Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_X,
+    Polynomial.eval_C]
+  simp only [List.length_nil] at hsum hout
+  exact tkFold_arith _ _ _ _ _ _ _ _ _ _ _ _ _ h0' h1' hsum hout hL hQ
+
 /-- **The generic tokenizing transduction is polynomial time.**
 
 The two hypotheses are the client's whole obligation, and both are per-step inequalities
@@ -1311,30 +1371,7 @@ lemma tkFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
         ≤ qQ.eval W.length + k * (cli.length + tok.length))
     (cli₀ out₀ : List Bool) :
     (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2) ∈ FP := by
-  classical
-  set p : Polynomial ℕ := Polynomial.C (16 + 2 * cli₀.length + out₀.length)
-      + Polynomial.C (2 * (3 + c)) * Polynomial.X
-      + Polynomial.X * qQ
-      + Polynomial.C (k * cli₀.length) * Polynomial.X
-      + Polynomial.C (k * (3 + c)) * (Polynomial.X * Polynomial.X) with hp
-  have hfold : (fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
-      (tkSt (pair [] []) [] cli₀ out₀) (Sf z)) ∈ FP := by
-    refine foldlBits_mem_FP (tkStep_mem_FP hSTEP hEMIT false)
-      (tkStep_mem_FP hSTEP hEMIT true) hW hSf (tkSt (pair [] []) [] cli₀ out₀) p
-      (fun z u hu => ?_)
-    obtain ⟨p0', p1', tok', cli', out', hst, h0', h1', hsum, hout⟩ :=
-      tkRun_bound (c := c) (Q := qQ.eval (Wf z).length) (W := Wf z)
-        (fun cli tok => hSbnd (Wf z) cli tok)
-        (fun cli tok => hEbnd (Wf z) cli tok) u [] [] [] cli₀ out₀ (by simp) (by simp)
-    rw [hst, tkSt, pair_length, pair_length, pair_length, pair_length]
-    have hQ : qQ.eval (Wf z).length ≤ qQ.eval ((Wf z).length + (Sf z).length) :=
-      polynomial_eval_mono_nat qQ (by omega)
-    have hL : u.length ≤ (Wf z).length + (Sf z).length := by omega
-    simp only [hp, Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_X,
-      Polynomial.eval_C]
-    simp only [List.length_nil] at hsum hout
-    exact tkFold_arith _ _ _ _ _ _ _ _ _ _ _ _ _ h0' h1' hsum hout hL hQ
-  have hcomp := mem_FP_comp hfold
+  have hcomp := mem_FP_comp (tkFoldBits_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀)
     (mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) sndBlock_mem_FP)
   have heq : ((sndBlock ∘ sndBlock ∘ sndBlock) ∘
         fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
@@ -1342,6 +1379,28 @@ lemma tkFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
       = fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2 := by
     funext z
     exact tkFold_out STEP EMIT (Wf z) (Sf z) [] cli₀ out₀
+  rwa [heq] at hcomp
+
+/-- The same for the fold's **final client state**, which is what a client computing a
+value rather than a stream reads. -/
+lemma tkFold_cli_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
+    {qQ : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ W cli tok : List Bool,
+      (STEP (pair W (pair cli tok))).length ≤ cli.length + tok.length + c)
+    (hEbnd : ∀ W cli tok : List Bool,
+      (EMIT (pair W (pair cli tok))).length
+        ≤ qQ.eval W.length + k * (cli.length + tok.length))
+    (cli₀ out₀ : List Bool) :
+    (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.1) ∈ FP := by
+  have hcomp := mem_FP_comp (tkFoldBits_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀)
+    (mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) fstBlock_mem_FP)
+  have heq : ((fstBlock ∘ sndBlock ∘ sndBlock) ∘
+        fun z => foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) (Wf z)
+          (tkSt (pair [] []) [] cli₀ out₀) (Sf z))
+      = fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.1 := by
+    funext z
+    exact tkFold_cli STEP EMIT (Wf z) (Sf z) [] cli₀ out₀
   rwa [heq] at hcomp
 
 
@@ -1589,6 +1648,8 @@ lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
     (hE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
       EMIT (pair W (pair cli (digitsToBits cur))) = EMITr cli cur) :
     ∀ (ds cur : List ℕ) (cli out : List Bool), (∀ d ∈ cur, d < 4) →
+      (tkFold STEP EMIT W (digitsToBits cur) cli out ds).2.1
+          = (runFold STEPr EMITr cli out (List.foldl blockStep ([], cur) ds).1).1 ∧
       (tkFold STEP EMIT W (digitsToBits cur) cli out ds).2.2
         = (runFold STEPr EMITr cli out (List.foldl blockStep ([], cur) ds).1).2
   | [], cur, cli, out, _ => by simp [tkFold, runFold]
@@ -1598,12 +1659,12 @@ lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
       · rw [if_pos h, show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d])
               from if_pos h,
           show digitsToBits cur ++ digitBits d = digitsToBits (cur ++ [d]) by
-            rw [digitsToBits_append]; rfl,
-          tkFold_runFold W hS hE ds (cur ++ [d]) cli out (by
-            intro e he
-            rcases List.mem_append.mp he with he | he
-            · exact hcur e he
-            · simp at he; omega)]
+            rw [digitsToBits_append]; rfl]
+        exact tkFold_runFold W hS hE ds (cur ++ [d]) cli out (by
+          intro e he
+          rcases List.mem_append.mp he with he | he
+          · exact hcur e he
+          · simp at he; omega)
       · rw [if_neg h, show blockStep (([] : List (List ℕ)), cur) d = ([cur], [])
               from if_neg h,
           hS cli cur hcur, hE cli cur hcur,
@@ -1612,8 +1673,25 @@ lemma tkFold_runFold {STEP EMIT : List Bool → List Bool}
             = cur :: (List.foldl blockStep ([], []) ds).1 from rfl, runFold]
         exact tkFold_runFold W hS hE ds [] _ _ (by simp)
 
-/-- The block-level fold read against `blockSplit`: what the tokenizer emits on a digit
-stream is what the block-level fold emits on the blocks that stream splits into. -/
+/-- The block-level fold read against `blockSplit`: what the tokenizer computes on a digit
+stream — both its final client state and its output — is what the block-level fold computes
+on the blocks that stream splits into. -/
+lemma tkFold_blockSplit_cli_out {STEP EMIT : List Bool → List Bool}
+    {STEPr EMITr : List Bool → List ℕ → List Bool} (W : List Bool)
+    (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPr cli cur)
+    (hE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITr cli cur)
+    (ds : List ℕ) (cli out : List Bool) :
+    (tkFold STEP EMIT W [] cli out ds).2.1
+        = (runFold STEPr EMITr cli out (blockSplit ds).1).1 ∧
+    (tkFold STEP EMIT W [] cli out ds).2.2
+      = (runFold STEPr EMITr cli out (blockSplit ds).1).2 := by
+  have h := tkFold_runFold W hS hE ds [] cli out (by simp)
+  rw [show (digitsToBits [] : List Bool) = [] from rfl] at h
+  rw [blockSplit]
+  exact h
+
 lemma tkFold_blockSplit {STEP EMIT : List Bool → List Bool}
     {STEPr EMITr : List Bool → List ℕ → List Bool} (W : List Bool)
     (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
@@ -1622,10 +1700,8 @@ lemma tkFold_blockSplit {STEP EMIT : List Bool → List Bool}
       EMIT (pair W (pair cli (digitsToBits cur))) = EMITr cli cur)
     (ds : List ℕ) (cli out : List Bool) :
     (tkFold STEP EMIT W [] cli out ds).2.2
-      = (runFold STEPr EMITr cli out (blockSplit ds).1).2 := by
-  have h := tkFold_runFold W hS hE ds [] cli out (by simp)
-  rw [show (digitsToBits [] : List Bool) = [] from rfl] at h
-  rw [h, blockSplit]
+      = (runFold STEPr EMITr cli out (blockSplit ds).1).2 :=
+  (tkFold_blockSplit_cli_out W hS hE ds cli out).2
 
 /-- The value-level fold is the block-level fold composed with `digitVal`. -/
 lemma runFold_natFold (STEPn EMITn : List Bool → ℕ → List Bool) :
@@ -1683,6 +1759,36 @@ lemma runFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
       (fun cli cur h => hE (Wf z) cli cur h) _ cli₀ out₀
   rwa [heq] at h
 
+/-- **The client interface, for a value.**  The same, projecting the fold's final client
+state rather than its output — what an acceptance test or an end-read counter needs.
+
+Proof kind: `C` composition.  Provenance: (a) `tkFold_cli_mem_FP`,
+`tkFold_blockSplit_cli_out`. -/
+lemma runFold_cli_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
+    {STEPr EMITr : List Bool → List Bool → List ℕ → List Bool} {c k : ℕ}
+    {qQ : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ W cli tok : List Bool,
+      (STEP (pair W (pair cli tok))).length ≤ cli.length + tok.length + c)
+    (hEbnd : ∀ W cli tok : List Bool,
+      (EMIT (pair W (pair cli tok))).length
+        ≤ qQ.eval W.length + k * (cli.length + tok.length))
+    (hS : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      STEP (pair W (pair cli (digitsToBits cur))) = STEPr W cli cur)
+    (hE : ∀ (W cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      EMIT (pair W (pair cli (digitsToBits cur))) = EMITr W cli cur)
+    (cli₀ out₀ : List Bool) :
+    (fun z => (runFold (STEPr (Wf z)) (EMITr (Wf z)) cli₀ out₀
+      (blockSplit (bitsToDigits (Sf z))).1).1) ∈ FP := by
+  have h := tkFold_cli_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀
+  have heq : (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.1)
+      = fun z => (runFold (STEPr (Wf z)) (EMITr (Wf z)) cli₀ out₀
+          (blockSplit (bitsToDigits (Sf z))).1).1 := by
+    funext z
+    exact (tkFold_blockSplit_cli_out (Wf z) (fun cli cur h => hS (Wf z) cli cur h)
+      (fun cli cur h => hE (Wf z) cli cur h) _ cli₀ out₀).1
+  rwa [heq] at h
+
 /-- **The client interface.**  A step and an emitter that read each token by the value
 `undigitize` gives it, with the two per-step length bounds, compute the token-level fold in
 polynomial time — over exactly the token stream `MachineEfficientTrader` decodes.
@@ -1724,6 +1830,7 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
 #print axioms LogicalInduction.TokenFold.tkFold_undigitize
 #print axioms LogicalInduction.TokenFold.tkFold_blockSplit
 #print axioms LogicalInduction.TokenFold.runFold_mem_FP
+#print axioms LogicalInduction.TokenFold.runFold_cli_mem_FP
 #print axioms LogicalInduction.TokenFold.natFold_mem_FP
 
 end LogicalInduction.TokenFold
