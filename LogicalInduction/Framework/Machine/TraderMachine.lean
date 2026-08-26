@@ -32,7 +32,6 @@ namespace LogicalInduction.TraderMachine
 open Nat.Partrec (Code)
 open Complexity Complexity.TM
 open LogicalInduction.EvalnCompiler
-open LogicalInduction.MachineExec
 
 variable {n m : ℕ}
 
@@ -244,7 +243,7 @@ lemma clampTM_hoareTime (dr : Regs 10 n) (v : Fin 10 → ℕ) (B : ℕ)
   have hfinal : V5 = clampVals v := by
     funext k
     fin_cases k <;>
-      simp [clampVals, hV5, hV4, hV3, hV2, hV1, Function.update_apply] <;> omega
+      simp [clampVals, hV5, hV4, hV3, hV2, hV1] <;> omega
   rw [hfinal] at h5
   exact (seqEmit hinp₀ (parked_regsWork dr hpark V1) h1
     (seqEmit hinp₀ (parked_regsWork dr hpark V2) h2

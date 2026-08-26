@@ -12,12 +12,10 @@ value from `4` up is the same block terminator, and `undigitize_map_min_four` sa
 at `4` leaves the token stream — hence the trader — alone. Clamping is therefore what the
 machine emits, and this file is where that convention is fixed and justified.
 -/
-import LogicalInduction.Construction.Machine.DescExec
 import LogicalInduction.Framework.Criterion
 import Mathlib.Tactic.IntervalCases
 
 namespace LogicalInduction
-open LogicalInduction.MachineExec
 
 /-- The three bits `bitsToDigits` reads back as the digit `d`, most significant first. -/
 def digitBits (d : ℕ) : List Bool :=

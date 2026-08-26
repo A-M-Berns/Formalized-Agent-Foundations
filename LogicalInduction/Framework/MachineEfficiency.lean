@@ -33,7 +33,6 @@ import LogicalInduction.Framework.Machine.TraderMachine
 namespace LogicalInduction
 
 open LogicalInduction.TraderMachine
-open LogicalInduction.MachineExec
 
 /-- **Every fuel-efficient trader is machine-efficient.** Given the two codes and the
 polynomial clock `EfficientlyComputable` names, `traderMachine` computes the trader's
