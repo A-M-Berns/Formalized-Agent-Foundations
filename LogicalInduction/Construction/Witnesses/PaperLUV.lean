@@ -237,7 +237,9 @@ lemma rationalCutAt [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     exact (v.holds_paperPrimeDecompose_imp _ _).mp himp' hs
 
 /-- Every completed public world of the canonical first-order theorem process assigns a
-real value to the abstract LUV compiled from a literal paper LUV. -/
+real value to the abstract LUV compiled from a literal paper LUV.  This is what makes the
+frontend's world value *derived* rather than assumed.
+Paper node: `def:luv` -/
 lemma source_valued [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (X : PaperLUV T) :
     ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →

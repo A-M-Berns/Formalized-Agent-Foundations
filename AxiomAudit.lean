@@ -224,6 +224,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
   lic_conditioned_machine lic_conditioned_gated_machine lic_conditioned_eventual_machine
   isLogicalInductor_of_stage_unsatisfiable
+  isMachineLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
   lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
 
@@ -480,8 +481,11 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.lic_conditioned_eventualOfFloor
   ConditioningCompile.lic_conditioned_eventualOfFloor_machine
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
+  ConditioningCompile.lic_conditioned_eventual_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
+  ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
+  ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
@@ -623,6 +627,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
   lic_conditioned_growing_unconditional
+  lic_conditioned_fixed_machine_unconditional
+  lic_conditioned_growing_machine_unconditional
 
 -- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax, the mesh-softmax
 -- operational witness it constructs (`lem:mesh`), and the four expectation endpoints
@@ -633,6 +639,21 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- non-degenerate index-varying sequence.
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
   ordinaryLUVCombinationSyntax
+
+-- Construction/Witnesses/PaperLUV.lean, StructuredPaperRpn.lean — the literal
+-- first-order frontend.  `PaperLUV` renders `def:luv` as an actual
+-- `ArithmeticSemisentence 1` with object-level `T`-proofs of unique existence and
+-- unit-interval membership; `toLUV` compiles it into the abstract threshold carrier and
+-- `source_valued` *derives* the world value.  `PaperLUVCombination` states `def:blcp`
+-- over that frontend rather than over the abstract carrier, and `boundedSequence`
+-- discharges the bounded-combination-sequence interface the expectation theorems consume.
+-- Both are inhabited by the genuinely varying `1/(n+1)` family, not a constant stand-in.
+#assert_axioms_clean
+  PaperLUV.toLUV PaperLUV.source_valued
+  PaperLUVSeq.rpnThresholdCodeSeq PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
+  unitFracPaperLUVSeq unitFracPaperLUVSeq_frontend
+  PaperLUVCombination.boundedSequence
+  unitFracPaperLUVCombination unitFracPaperLUVBoundedSequence
 #assert_axioms_clean
   LUVCombination.BoundedSequence.mesh_independence_ofSyntax
   LUVCombination.BoundedSequence.exppolymax_ofSyntax
@@ -912,6 +933,12 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   sentence sentence_codes width width_codes width_pos width_tendsto_zero diagonal_reflected lower_affine upper_affine
 #assert_fields ParameterizedDiagonalQuoteCode
   toBooleanQuoteCode body represents_fixedpoint
+#assert_fields PaperLUV
+  formula unique unit
+#assert_fields PaperLUVSeq
+  luv structural
+#assert_fields PaperLUVCombination
+  luvs termCount const coefficient termCount_poly const_poly coefficient_poly const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields PatientSettlementClock
   active active_codes antitone active_through_envelope eventually_inactive settled_of_inactive
 #assert_fields PolyMachineCodes
@@ -1050,7 +1077,7 @@ rule, and they stay inventoried and axiom-checked regardless:
   Cooperates.arithmeticLift ProvablyDefects.arithmeticLift modalAgent_behavioral
 -- MA-INVENTORY-END
 
-/-! ## Concrete arithmetic instantiation — the one upstream gap
+/-! ## Concrete arithmetic instantiation
 
 Everything above is asserted of the endpoints **as stated**, and the arithmetic-quotation
 family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:er`,
@@ -1058,16 +1085,13 @@ family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:e
 `(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. Those endpoints are
 axiom-clean, but only because the theory data are *hypotheses*.
 
-Instantiating them at a concrete theory is a different claim, and it currently costs one
-upstream axiom: Foundation supplies `Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` only as
-`axiom ISigma1_delta1Definable` / `axiom PA_delta1Definable`
-(`Foundation/FirstOrder/Incompleteness/Examples.lean`, marked *TODO: Prove*). That is an
-upstream gap, not a modeling choice of this development, and it is invisible to the
-parametric assertions above — so it is pinned here instead, at a concrete instantiation,
-where a regression would fail the build.
-
-If Foundation later proves `𝗜𝚺₁.Δ₁`, this block starts failing (the `except` axiom
-becomes unused) and should be promoted to `#assert_axioms_clean`. -/
+Instantiating them at a concrete theory is a different claim, and it is pinned here so that
+a regression would fail the build. At the pinned Foundation revision it costs nothing:
+`Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` is *proved* — `ISigma1_delta1Definable` and
+`PA_delta1Definable` are instances discharged in
+`Foundation/FirstOrder/Incompleteness/InductionSchemeDelta1.lean`, which replaced the two
+`axiom`s that formerly sat in `Examples.lean`. The instantiation below is therefore
+asserted under ordinary `#assert_axioms_clean`. -/
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
 /-- `thm:ceu` at the concrete theory `𝗜𝚺₁`. -/
@@ -1075,8 +1099,7 @@ noncomputable def concreteArithmeticInstantiation :=
   @LogicalInduction.lic_no_expected_net_update_closed 𝗜𝚺₁ inferInstance inferInstance
     inferInstance
 
-open LO.FirstOrder.Arithmetic in
-#assert_axioms_clean_except ISigma1_delta1Definable concreteArithmeticInstantiation
+#assert_axioms_clean concreteArithmeticInstantiation
 
 /-! ## Cartesian Frames — endpoint inventory
 

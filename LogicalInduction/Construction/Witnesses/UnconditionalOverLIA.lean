@@ -176,6 +176,45 @@ theorem lic_conditioned_growing_unconditional
     (liaHistory (theoremDP T)) (theoremDP T) extra
     base more (theoremMarketComputation T)
 
+/-- **Fixed-sentence `thm:scon` over the constructed `LIA`, at the paper's own
+quantifier**: conditioning on any single sentence `ψ` yields a market no trader in ordinary
+machine polynomial time exploits, with no remaining premise.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_machine_unconditional
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (ψ : Sentence) :
+    IsMachineLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
+      ((theoremDP T).adjoinSentence ψ) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
+    (liaHistory (theoremDP T)) (theoremDP T)
+    base (theoremMarketComputation T) ψ
+
+/-- **Growing finite-prefix `thm:scon` over the constructed `LIA`, at the paper's own
+quantifier**, with no remaining premise.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_machine_unconditional
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (extra : DeductiveProcess)
+    (more : CompactConditioningProcessComputation extra) :
+    IsMachineLogicalInductor
+      (conditionedHistory (liaHistory (theoremDP T))
+        (fun n => deductiveStageCondition (extra.D n)))
+      ((theoremDP T).union extra) := by
+  let base : DeductiveProcessComputation (theoremDP T) :=
+    (theoremDP_computable T).nonemptyComputation.some
+  haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
+    LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
+  exact ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
+    (liaHistory (theoremDP T)) (theoremDP T) extra
+    base more (theoremMarketComputation T)
+
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_domination_dovetailSemimeasure_unconditional
 #print axioms lic_domination_everyLowerSemicomputable_unconditional
@@ -183,5 +222,7 @@ theorem lic_conditioned_growing_unconditional
 #print axioms lic_conditioned_ofCompiler_unconditional
 #print axioms lic_conditioned_fixed_unconditional
 #print axioms lic_conditioned_growing_unconditional
+#print axioms lic_conditioned_fixed_machine_unconditional
+#print axioms lic_conditioned_growing_machine_unconditional
 
 end LogicalInduction

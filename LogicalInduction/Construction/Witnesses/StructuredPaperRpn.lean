@@ -997,7 +997,8 @@ Foundation codes, a caller-provided tag-7 code, or a semantic handle.  Everythin
 threshold syntax adds on top (the implication shell, the fixed comparison template, and
 the reduced numerals of the query rational) is discharged internally.
 
-Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`. -/
+Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`.
+Paper node: `def:luv` -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv : ℕ → PaperLUV T
   structural : PolyArithmeticFormulaSeq (fun n =>
@@ -1016,6 +1017,10 @@ def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T where
   luv _ := X
   structural := PolySegStream.constList _
 
+/-- The literal threshold syntax of a paper-LUV family is emittable in the symbol-metered
+calculus, so the abstract LUVs it compiles to carry the threshold-code certificate the
+expectation layer consumes.
+Paper node: `def:ec` -/
 lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
     LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
   have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.thresholdBody_structural
@@ -1109,7 +1114,8 @@ lemma unitFrac_polyArithmeticFormulaSeq :
   simp
 
 /-- **Non-vacuity** (`N+`): a genuinely varying family of literal paper LUVs, with
-values `1/(n+1)`, carrying the structural certificate. -/
+values `1/(n+1)`, carrying the structural certificate.
+Paper node: `def:luv` -/
 def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
   luv n := unitFracPaperLUV T n
   structural := unitFrac_polyArithmeticFormulaSeq
@@ -1117,7 +1123,8 @@ def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : P
 /-- **The literal paper frontend**: an efficiently presented family of literal
 first-order paper LUVs is both semantically valued on every completed world of the
 canonical theorem process and efficiently thresholded in the symbol-metered emission
-calculus. -/
+calculus.
+Paper node: `def:luv` -/
 lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] (X : PaperLUVSeq T) :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
@@ -1128,12 +1135,120 @@ lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
 /-- **The frontend on a concrete family**: the literal `1/(n+1)` LUVs are valued on every
 completed world of the canonical theorem process and efficiently thresholded, so the
 frontend's two conclusions hold of an actual first-order family rather than only of a
-hypothetical one. -/
+hypothetical one.
+Paper node: `def:luv` -/
 lemma unitFracPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
         ∃ x : ℝ, v.ValuesAt ((unitFracPaperLUVSeq T).luv n).toLUV x) ∧
       LUV.RpnThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
   (unitFracPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+
+/-! ### `def:blcp` over literal paper LUVs
+
+`LUVCombination.BoundedSequence` (`Properties/ExpectationProperties.lean`) states the
+paper's bounded LUV-combination sequence over the abstract threshold carrier `LUV`, which
+admits families that are not the definable quantities of `def:luv`.  The layer below states
+the same node over `PaperLUV`: the combination's shares are literal first-order paper LUVs,
+and the abstract carrier is reached only through `toLUV`. -/
+
+/-- A LUV-combination sequence whose shares are literal paper LUVs, together with the
+paper's efficiency data for its constants and coefficients.  The fields other than `luvs`
+are exactly those of `LUVCombinationSyntax`; `luvs` replaces its abstract `luv : ℕ → LUV`
+with a structurally certified family of `PaperLUV`s.
+Paper node: `def:blcp` -/
+structure PaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] where
+  /-- The literal paper LUVs; the share at `⟨n,j⟩` is `luvs.luv (Nat.pair n j)`. -/
+  luvs : PaperLUVSeq T
+  /-- Number of shares in member `n`. -/
+  termCount : ℕ → ℕ
+  /-- Trailing constant feature of member `n`. -/
+  const : ℕ → EF
+  /-- Coefficient of the share at `⟨n,j⟩`. -/
+  coefficient : ℕ → EF
+  /-- The term count is polynomially computable. -/
+  termCount_poly : ∃ c, PolyFueled c termCount
+  /-- The constants are polynomially emittable. -/
+  const_poly : RpnSpliceStream (fun n => (const n).serialize)
+  /-- The coefficients are polynomially emittable. -/
+  coefficient_poly : RpnSpliceStream (fun z => (coefficient z).serialize)
+  /-- Constants read only prices of days already seen. -/
+  const_rank : ∀ n, (const n).rank ≤ n
+  /-- Coefficients read only prices of days already seen. -/
+  coefficient_rank : ∀ n j, j < termCount n → (coefficient (Nat.pair n j)).rank ≤ n
+  /-- Constants are closed: no free variable. -/
+  const_closed : ∀ n ρ V, (const n).denoteWith ρ V = (const n).denote V
+  /-- Coefficients are closed: no free variable. -/
+  coefficient_closed : ∀ z ρ V, (coefficient z).denoteWith ρ V = (coefficient z).denote V
+
+namespace PaperLUVCombination
+
+/-- The combination sequence a paper-LUV presentation denotes, in the abstract carrier. -/
+def combination (D : PaperLUVCombination T) : ℕ → LUVCombination := fun n =>
+  { const := D.const n
+    terms := (List.range (D.termCount n)).map (fun j =>
+      (D.coefficient (Nat.pair n j), (D.luvs.luv (Nat.pair n j)).toLUV)) }
+
+/-- The compact combination syntax of the denoted sequence.  Its threshold-code
+certificate is the paper family's own structural one, so no code is assumed of the shares
+beyond what their defining formulas supply. -/
+def toSyntax (D : PaperLUVCombination T) : LUVCombinationSyntax D.combination where
+  termCount := D.termCount
+  coefficient := D.coefficient
+  luv z := (D.luvs.luv z).toLUV
+  termCount_poly := D.termCount_poly
+  const_poly := D.const_poly
+  coefficient_poly := D.coefficient_poly
+  threshold_poly := D.luvs.rpnThresholdCodeSeq
+  terms_eq _ := rfl
+  const_rank := D.const_rank
+  coefficient_rank := D.coefficient_rank
+  const_closed := D.const_closed
+  coefficient_closed := D.coefficient_closed
+
+/-- **`def:blcp` at the paper's own LUVs.**  A polynomially presented combination sequence
+over literal first-order paper LUVs, with one uniform `L¹` bound, is a bounded
+LUV-combination sequence in the sense the expectation theorems consume.  Kind `C`;
+hypotheses `(a)`.
+Paper node: `def:blcp` -/
+noncomputable def boundedSequence (D : PaperLUVCombination T) {P : History}
+    (hB : ∃ B : ℝ, ∀ n, (D.combination n).l1Norm P ≤ B) :
+    LUVCombination.BoundedSequence D.combination P where
+  poly := D.toSyntax.polySequence
+  bounded := hB
+
+end PaperLUVCombination
+
+/-- The single-share combination sequence `1 · X_n + 0` over the `1/(n+1)` paper LUVs.
+Its shares genuinely vary with `n`.
+Paper node: `def:blcp` -/
+def unitFracPaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+    PaperLUVCombination T where
+  luvs := unitFracPaperLUVSeq T
+  termCount _ := 1
+  const _ := .const 0
+  coefficient _ := .const 1
+  termCount_poly := ⟨_, PolyFueled.const 1⟩
+  const_poly := RpnSpliceStream.serialize_const 0
+  coefficient_poly := RpnSpliceStream.serialize_const 1
+  const_rank n := Nat.zero_le n
+  coefficient_rank n _ _ := Nat.zero_le n
+  const_closed _ _ _ := by simp
+  coefficient_closed _ _ _ := by simp
+
+/-- **Non-vacuity** (`N+`) for `def:blcp` at the paper's own LUVs: the `1/(n+1)` family
+presents a bounded combination sequence over every market, with `L¹` bound `1`.
+Kind `N+`; hypotheses `(a)`.
+Paper node: `def:blcp` -/
+noncomputable def unitFracPaperLUVBoundedSequence
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (P : History) :
+    LUVCombination.BoundedSequence (unitFracPaperLUVCombination T).combination P :=
+  (unitFracPaperLUVCombination T).boundedSequence
+    ⟨1, fun n => by
+      simp [PaperLUVCombination.combination, unitFracPaperLUVCombination,
+        LUVCombination.l1Norm, LUVCombination.shareNorm]⟩
+
+#print axioms PaperLUVCombination.boundedSequence
+#print axioms unitFracPaperLUVBoundedSequence
 
 end Frontend
 
