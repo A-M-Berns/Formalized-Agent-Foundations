@@ -1532,6 +1532,38 @@ lemma blockWF_tokBits (ts : List ℕ) : BlockWF (tokBits ts) :=
   rw [decodeBits, tokBits, bitsToDigits_digitsToBits _ (mem_digitize_lt_eight ts),
     undigitize_digitize]
 
+/-! ## Unary numerals and emitted values
+
+A value the machine knows only as a *length* — a counter, a product of counters — reaches
+the stream as one complete token block.  `unaryBlock` is that emission, and `uMul` is the
+one arithmetic operation on lengths that is not just `++`. -/
+
+/-- The product of two unary numerals.  `Cobham.mulLenFn_mem_FP` emits `false` marks; the
+content is irrelevant, the length is the number. -/
+def uMul (a b : List Bool) : List Bool := List.replicate (a.length * b.length) false
+
+@[simp] lemma length_uMul (a b : List Bool) : (uMul a b).length = a.length * b.length := by
+  simp [uMul]
+
+lemma uMul_mem_FP {A B : List Bool → List Bool} (hA : A ∈ FP) (hB : B ∈ FP) :
+    (fun z => uMul (A z) (B z)) ∈ FP := mulLenFn_mem_FP hA hB
+
+/-- A value known as a length, emitted as one complete token block. -/
+def unaryBlock (u : List Bool) : List Bool := Increment.unaryToDigits u ++ digitBits 4
+
+lemma unaryBlock_mem_FP {U : List Bool → List Bool} (hU : U ∈ FP) :
+    (fun z => unaryBlock (U z)) ∈ FP :=
+  appendFn_mem_FP (Increment.unaryToDigits_mem_FP hU) (constFn_mem_FP (digitBits 4))
+
+lemma blockWF_unaryBlock (u : List Bool) : BlockWF (unaryBlock u) := by
+  rw [unaryBlock, Increment.unaryToDigits_eq]
+  exact blockWF_run _ (Increment.unaryDigits_lt u.length)
+
+@[simp] lemma decodeBits_unaryBlock (u : List Bool) :
+    decodeBits (unaryBlock u) = [u.length] := by
+  rw [unaryBlock, Increment.unaryToDigits_eq, decodeBits_run _ (Increment.unaryDigits_lt u.length),
+    Increment.unaryDigits_val]
+
 /-- The fold at the granularity the tokenizer actually delivers: one step per *block*
 `undigitize` reads, with the block as its digit run.  `natFold` is this with `digitVal`
 applied; a client that must copy a token's digits rather than only read its value — a
