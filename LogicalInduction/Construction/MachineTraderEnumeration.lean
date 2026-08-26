@@ -33,20 +33,20 @@ is introduced, and malformed output inherits the established zero-strategy fallb
 defined as "occurs in the enumeration"; that every member of the class *does* occur is the
 content of `exists_enumeratedMachineTrader_eq`.
 
-**Soundness is not proved here, and the reason is structural.** The converse — that every
-index denotes a member of the class — is `rfl`-shaped in the fuel setting but a real theorem
-at a machine class, because a bogus index's trader is the machine's *truncated* behaviour and
-exhibiting an `FP` witness for a truncation requires a clocked simulator. complexitylib has
-one (`UTM.ClockedUtm`, with both halt and timeout branches proved), but reaching it means
-importing `UTM.ClockConstructible` and the counter subroutines, which are outside the closure
-this file otherwise uses. `notes/complexitylib-adoption.md` §V.3 records the diagnosis and its
-cost. Nothing downstream needs it: `TradingFirm` consumes coverage alone.
+**Both halves are proved here.** Coverage is `exists_enumeratedMachineTrader_eq`; soundness
+— that every index denotes a member of the class — is
+`enumeratedMachineTrader_machineEfficient`, and it is a real theorem rather than the `rfl`
+it is in the fuel setting, because a bogus index's trader is the described machine's
+*truncated* behaviour and an `FP` witness for a truncation needs a clocked simulator.
+`Machine/ClockedSim.lean` builds one: the description an index names is fixed, so the
+simulator's control states are the described machine's own and one transition performs one
+described step under a unary clock.
 
 **No paper node.** Declarations use `lemma`/`theorem` per `scripts/lint_paper_labels.py`;
 the `theorem`s here carry `def:ec` because they are what that node's machine reading asks
 for.
 -/
-import LogicalInduction.Construction.Machine.DescExec
+import LogicalInduction.Construction.Machine.ClockedSim
 import LogicalInduction.Construction.TraderEnumeration
 
 namespace LogicalInduction
@@ -96,7 +96,8 @@ below is the half of the connection that *is* available, and it is what makes th
 soundness proof a matter of the `FP` membership alone. -/
 
 /-- The function an index computes: the described machine's output word on its input, or the
-empty word if the indexed clock runs out. -/
+empty word if the indexed clock runs out. This is the function
+`enumeratedOutput_mem_FP` places in `Complexity.FP`. -/
 def enumeratedOutput (i : ℕ) (x : List Bool) : List Bool :=
   match evalHalted (progDesc i) (progClock i x.length) x with
   | none => []
@@ -111,17 +112,43 @@ lemma bitsToDigits_enumeratedOutput (i n : ℕ) :
   | some c => rfl
 
 
+
+/-! ## Soundness
+
+Every index denotes a machine-efficient trader. The index's clock is a `Polynomial ℕ` in the
+normal form `Complexity.FP` asks for, and `Machine/ClockedSim.lean`'s simulator computes the
+truncated run within an explicit polynomial, so the function an index computes is genuinely
+in `FP` — not merely Lean-computable, and not through a meta-level evaluation. -/
+
+/-- The function an index computes is polynomial-time.
+
+The witness is the clocked simulator for the fixed description the index names: it measures
+the day, evaluates the index's own clock polynomial into a unary register, and runs the
+description one step per clock mark, blanking the output when the clock is exhausted. -/
+lemma enumeratedOutput_mem_FP (i : ℕ) : enumeratedOutput i ∈ Complexity.FP := by
+  have heq : (fun x => clockedOutput (progDesc i) ((progClockPoly i).eval x.length) x)
+      = enumeratedOutput i := by
+    funext x
+    rw [progClockPoly_eval, clockedOutput, enumeratedOutput]
+    rfl
+  rw [← heq]
+  exact clockedOutput_mem_FP (progDesc i) (progClockPoly i)
+
+/-- **Enumeration soundness** (`def:ec`): every index denotes a trader in the machine class.
+Together with `exists_enumeratedMachineTrader_eq` this makes the enumeration an enumeration
+*of* the machine-efficient traders, not merely one that covers them.
+Paper node: `def:ec` -/
+theorem enumeratedMachineTrader_machineEfficient (i : ℕ) :
+    MachineEfficientTrader (enumeratedMachineTrader i) := by
+  refine ⟨enumeratedOutput i, enumeratedOutput_mem_FP i, fun n => ?_⟩
+  rw [enumeratedMachineTrader_strat, strategyOfOutput, bitsToDigits_enumeratedOutput]
+
 /-! ## Coverage
 
-The central Stage-3 theorem, and the one `TradingFirm` consumes.
+The other half, and the one `TradingFirm` consumes.
 
-Note which half of the usual soundness/coverage pair this is.
 `Construction/TradingFirm.lean` takes `hcov : ∃ j, enumeratedTrader j = Tr` and nothing else,
-so coverage is exactly what makes the dominance proof quantify over the machine class.
-Soundness — that *every* index denotes a machine-efficient trader — is a separate quality
-claim, and at a machine class it is a real theorem rather than the `rfl` it is in the fuel
-setting. It needs a clocked simulator, and is not available here; see
-`notes/complexitylib-adoption.md` §V.3 for the diagnosis and its cost. -/
+so coverage is exactly what makes the dominance proof quantify over the machine class. -/
 
 /-- **Enumeration coverage.** Every machine-efficient trader occurs at some index, as an
 exact equality of traders — not merely eventual agreement.

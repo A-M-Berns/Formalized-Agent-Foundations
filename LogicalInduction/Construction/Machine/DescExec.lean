@@ -1173,6 +1173,14 @@ def progDeg (j : ℕ) : ℕ := (Nat.unpair j).2
 shared with `IsPolyBounded` and `EfficientlyComputable`. -/
 def progClock (j n : ℕ) : ℕ := progCoeff j * (n + 1) ^ progDeg j + progCoeff j
 
+/-- The same clock as a `Polynomial ℕ`, which is the form `Complexity.FP`'s normal form
+asks for. -/
+noncomputable def progClockPoly (j : ℕ) : Polynomial ℕ :=
+  Polynomial.C (progCoeff j) * (Polynomial.X + 1) ^ progDeg j + Polynomial.C (progCoeff j)
+
+lemma progClockPoly_eval (j n : ℕ) : (progClockPoly j).eval n = progClock j n := by
+  simp [progClockPoly, progClock]
+
 /-- The finite data an index decodes to. Index bookkeeping for the eventual coverage
 argument; `machineTokens` uses the projections above directly. There is no certificate
 field — the clock is a *claim*, never checked. -/
