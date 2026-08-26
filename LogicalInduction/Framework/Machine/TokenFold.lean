@@ -752,6 +752,70 @@ lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
           rw [natDigits4, digitVal_cons, ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
           omega
 
+/-! ### Base-4 representation is unique up to trailing zeros
+
+A token's value does not determine its digit run — `[1]` and `[1, 0]` are both the token
+`1`, which is why a client reads blocks rather than words.  It determines it *up to trailing
+zeros*, and that is what lets a token test compare against a fixed numeral: the run must
+begin with the numeral's canonical digits and continue with nothing but zeros.  Both halves
+are constant-word tests (`eqConstFn_mem_FP`, and a value-zero clamp). -/
+
+/-- `digitVal` splits over concatenation, the tail shifted by the head's width. -/
+lemma digitVal_append : ∀ (a b : List ℕ),
+    digitVal (a ++ b) = digitVal a + 4 ^ a.length * digitVal b
+  | [], b => by simp
+  | (d :: a), b => by
+      rw [List.cons_append, digitVal_cons, digitVal_cons, digitVal_append a b,
+        List.length_cons, pow_succ]
+      ring
+
+@[simp] lemma digitVal_replicate_zero (m : ℕ) : digitVal (List.replicate m 0) = 0 := by
+  induction m with
+  | zero => simp
+  | succ m ih => rw [List.replicate_succ, digitVal_cons, ih]
+
+/-- **Every digit run is its value's canonical run, zero-padded.**
+
+Proof kind: `P` proved.  Provenance: (b) `natDigits4`, `Nat.div_add_mod`. -/
+lemma exists_zero_pad_of_digitVal : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+    ∃ m : ℕ, cur = natDigits4 (digitVal cur) ++ List.replicate m 0
+  | [], _ => ⟨0, by simp [natDigits4]⟩
+  | (d :: ds), hcur => by
+      have hd : d < 4 := hcur d (List.mem_cons_self ..)
+      have hds : ∀ e ∈ ds, e < 4 := fun e he => hcur e (List.mem_cons_of_mem _ he)
+      obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal ds hds
+      rw [digitVal_cons]
+      cases hV : d + 4 * digitVal ds with
+      | zero =>
+          have hd0 : d = 0 := by omega
+          have hw0 : digitVal ds = 0 := by omega
+          refine ⟨m + 1, ?_⟩
+          rw [hd0, natDigits4, List.nil_append, List.replicate_succ]
+          congr 1
+          rw [hm, hw0, natDigits4, List.nil_append]
+      | succ v =>
+          have hmod : (v + 1) % 4 = d := by omega
+          have hdiv : (v + 1) / 4 = digitVal ds := by omega
+          refine ⟨m, ?_⟩
+          rw [natDigits4, hmod, hdiv, List.cons_append]
+          congr 1
+
+/-- **A digit run has a given value exactly when it is that value's canonical run followed
+by zeros.**  This is the shape a fixed-numeral token test checks.
+
+Proof kind: `C` composition.  Provenance: (a) `exists_zero_pad_of_digitVal`,
+`digitVal_append`, `digitVal_natDigits4`.
+-/
+lemma digitVal_eq_iff_zero_padded (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (K : ℕ) :
+    digitVal cur = K ↔ ∃ m : ℕ, cur = natDigits4 K ++ List.replicate m 0 := by
+  constructor
+  · intro h
+    obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal cur hcur
+    exact ⟨m, by rw [hm, h]⟩
+  · rintro ⟨m, rfl⟩
+    rw [digitVal_append, digitVal_natDigits4, digitVal_replicate_zero]
+    omega
+
 /-- The value the guard reads back from a token's own digit block. -/
 lemma digitVal_bitsToDigits_digitsToBits_natDigits4 (t : ℕ) :
     digitVal (bitsToDigits (digitsToBits (natDigits4 t))) = t := by
@@ -1908,6 +1972,7 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
   rwa [heq] at h
 
 #print axioms LogicalInduction.TokenFold.eqConstFn_mem_FP
+#print axioms LogicalInduction.TokenFold.LEUnary.digitVal_eq_iff_zero_padded
 #print axioms LogicalInduction.TokenFold.dgFold_cli
 #print axioms LogicalInduction.TokenFold.dgFold_mem_FP
 #print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP

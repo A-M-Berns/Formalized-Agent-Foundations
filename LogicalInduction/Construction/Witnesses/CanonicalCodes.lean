@@ -69,6 +69,63 @@ def BotFree : Sentence → Prop
 @[simp] lemma botFree_or (φ ψ : Sentence) :
     BotFree (φ ⋎ ψ) ↔ BotFree φ ∧ BotFree ψ := Iff.rfl
 
+/-! ## The reserved atom shape -/
+
+/-- A sentence no subformula of which is a **reserved atom** `atom (Nat.pair 7 _)`.
+
+Tag `7` is the atom payload the structured paper-prime leaf builds
+(`parseStructuredPaperPrime`), and it is the *only* sentence shape that leaf can denote
+(`RpnFreeze.parseStructuredPaperPrime_shape`).  So a target satisfying this is never denoted
+by a structured block, and a run matcher may reject one on its two-token tag alone. -/
+def NoReserved : Sentence → Prop
+  | ⊥ => True
+  | .atom a => ∀ pol fc : ℕ, a ≠ Nat.pair 7 (Nat.pair pol fc)
+  | φ 🡒 ψ => NoReserved φ ∧ NoReserved ψ
+  | φ ⋏ ψ => NoReserved φ ∧ NoReserved ψ
+  | φ ⋎ ψ => NoReserved φ ∧ NoReserved ψ
+
+@[simp] lemma noReserved_falsum : NoReserved (⊥ : Sentence) := trivial
+@[simp] lemma noReserved_atom (a : ℕ) :
+    NoReserved (Formula.atom a) ↔ ∀ pol fc : ℕ, a ≠ Nat.pair 7 (Nat.pair pol fc) := Iff.rfl
+@[simp] lemma noReserved_imp (φ ψ : Sentence) :
+    NoReserved (φ 🡒 ψ) ↔ NoReserved φ ∧ NoReserved ψ := Iff.rfl
+@[simp] lemma noReserved_and (φ ψ : Sentence) :
+    NoReserved (φ ⋏ ψ) ↔ NoReserved φ ∧ NoReserved ψ := Iff.rfl
+@[simp] lemma noReserved_or (φ ψ : Sentence) :
+    NoReserved (φ ⋎ ψ) ↔ NoReserved φ ∧ NoReserved ψ := Iff.rfl
+
+/-! ## The recognition side conditions, in one place
+
+The freeze's run-level lookup carries side conditions rather than machinery, and they are
+easier to audit collected than scattered.  There are **three**, in two families:
+
+*On each sentence of the frozen quote table* — bundled as `Recognizable` below:
+
+1. `BotFree ψ` — no `⊥` subformula.  Without it the escape leaf admits infinitely many
+   codes (`decode_falsum_noncanonical`), so no finite spelling list is exhaustive and the
+   decision reduces to `Nat.unpair` / integer square root.
+2. `NoReserved ψ` — no reserved-atom subformula.  Without it a structured block may denote
+   the target, and the structured payload admits non-canonical spellings that no fixed word
+   comparison catches.
+
+*On the table as a whole*:
+
+3. The constant output bound `FreezeStep.RunOracle.R_length_le` — the emitted quote block
+   fits in a fixed budget.  This is the paper's own finiteness (`app:ifp`) reappearing as
+   the condition that makes `TokenFold.runFold_mem_FP`'s emission budget close.
+
+Conditions 1 and 2 are what make a target's complete spellings a *finite explicit list*
+(`RpnFreeze.spellings`); condition 3 is what makes emitting the answer polynomial.  None of
+them is a restriction on the freeze, the trader, or the market — all three are properties of
+the table being frozen. -/
+
+/-- The per-sentence recognition conditions on a frozen table entry. -/
+structure Recognizable (ψ : Sentence) : Prop where
+  /-- No `⊥` subformula: the escape leaf has a unique code. -/
+  botFree : BotFree ψ
+  /-- No reserved-atom subformula: the structured leaf cannot denote it. -/
+  noReserved : NoReserved ψ
+
 /-! ## Injectivity of the decoder on `⊥`-free targets -/
 
 /-- **The ruling.**  Off the `⊥` fiber the Foundation decoder is injective: a code

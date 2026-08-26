@@ -449,13 +449,14 @@ Both directions are proved: `spellings_sound` (every member parses) and
 `parseRpnLegacy_iff_mem_spellings`.  Completeness is where `BotFree` is load-bearing —
 without it a node has infinitely many escape codes and no finite list can be exhaustive.
 
-**Scope: this is the legacy grammar.**  `parseRpnLegacy_iff_mem_spellings` characterizes
-`parseRpnLegacy`, not `parseRpn`, because the block machinery it runs on
-(`parseRpn_bin_body`, `parseRpn_bin_inv`) is legacy-scoped.  The freeze parses with the full
-`parseRpn`, so a bridge is still owed: the two grammars differ only at the escape tag, where
-`parseRpn` may take the structured branch, and `parseStructuredPaperPrime_shape` says that
-branch always denotes a reserved atom.  Closing that is the remaining grammar-level step and
-it needs a `NoReserved` side condition; nothing here asserts it. -/
+`parseRpnLegacy_iff_mem_spellings` is stated for the legacy grammar, because the block
+machinery it runs on (`parseRpn_bin_body`, `parseRpn_bin_inv`) is legacy-scoped.  The freeze
+parses with the full `parseRpn`, and `parseRpn_iff_mem_spellings` below is that form; the
+bridge between them is in "The grammar bridge" and costs one `NoReserved` side condition.
+
+Both characterizations are about *recognition only*.  Turning "membership in this list of
+constants" into a `Complexity.FP` test is separate work: it needs a token's value compared
+against a fixed numeral, for which `TokenFold.eqConstFn_mem_FP` is the primitive. -/
 
 /-- The complete legacy spellings of a target, as a finite explicit list of token lists.
 
@@ -651,6 +652,114 @@ Paper node: `app:ifp` -/
 theorem parseRpnLegacy_iff_mem_spellings {ψ : Sentence} (hbf : BotFree ψ) (b : List ℕ) :
     parseRpnLegacy b.length b = some (ψ, []) ↔ b ∈ spellings ψ :=
   ⟨spellings_complete ψ hbf b, spellings_sound ψ b⟩
+
+/-! ### The grammar bridge
+
+`parseRpnLegacy_iff_mem_spellings` is about the legacy grammar; the freeze parses with the
+full `parseRpn`.  The two differ only at the escape tag, and each direction is cheap:
+
+* legacy to full is **unconditional** and already proved upstream
+  (`parseRpn_of_legacy`, `Framework/RpnSentence.lean`): a legacy escape succeeds only on a
+  decodable payload, and code `0` never decodes, so the structured dispatch cannot fire;
+* full to legacy needs `NoReserved`, and only there — the structured branch always denotes a
+  reserved atom (`parseStructuredPaperPrime_shape`), so on a target with no reserved-atom
+  subformula that branch is unreachable and the two grammars run in lockstep. -/
+
+/-- The binary step of the grammar bridge, shared by the three connectives. -/
+private lemma bridgeBin {fuel : ℕ} {rest' : List ℕ} {φ : Sentence} {rest : List ℕ}
+    (ih : ∀ (ts : List ℕ) {φ' : Sentence} {r : List ℕ},
+      parseRpn fuel ts = some (φ', r) → NoReserved φ' →
+      parseRpnLegacy fuel ts = some (φ', r))
+    (mk : Sentence → Sentence → Sentence)
+    (hmkNR : ∀ a b : Sentence, NoReserved (mk a b) ↔ NoReserved a ∧ NoReserved b)
+    (h : ((parseRpn fuel rest').bind fun p =>
+          (parseRpn fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, rest))
+    (hnr : NoReserved φ) :
+    ((parseRpnLegacy fuel rest').bind fun p =>
+      (parseRpnLegacy fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, rest) := by
+  rcases hp : parseRpn fuel rest' with _ | ⟨φ₁, r₁⟩
+  · rw [hp] at h; simp at h
+  rw [hp] at h
+  simp only [Option.bind_some] at h
+  rcases hq : parseRpn fuel r₁ with _ | ⟨φ₂, r₂⟩
+  · rw [hq] at h; simp at h
+  rw [hq] at h
+  simp only [Option.bind_some, Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨hmkEq, hrestEq⟩ := h
+  subst hrestEq
+  subst hmkEq
+  obtain ⟨hn₁, hn₂⟩ := (hmkNR φ₁ φ₂).mp hnr
+  rw [ih rest' hp hn₁]
+  simp only [Option.bind_some]
+  rw [ih r₁ hq hn₂]
+  rfl
+
+/-- **The full grammar collapses to the legacy one on reserved-atom-free targets.**
+
+A forward induction on fuel: at every escape the structured dispatch would force the parsed
+sentence to be a reserved atom, which `NoReserved` forbids, so the legacy escape is taken;
+every other branch is syntactically identical in the two grammars.
+
+Proof kind: `P` proved.  Provenance: (a) `parseStructuredPaperPrime_shape`, `bridgeBin`;
+(b) `parseRpn_cons`, `parseRpnLegacy_cons`.
+Paper node: `app:ifp` -/
+lemma parseRpn_imp_parseRpnLegacy : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
+    {rest : List ℕ}, parseRpn fuel ts = some (φ, rest) → NoReserved φ →
+    parseRpnLegacy fuel ts = some (φ, rest) := by
+  intro fuel
+  induction fuel with
+  | zero => intro ts φ rest h _; simp at h
+  | succ fuel ih =>
+      intro ts φ rest h hnr
+      cases ts with
+      | nil => simp at h
+      | cons t rest' =>
+          rw [parseRpn_cons] at h
+          rw [parseRpnLegacy_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0] at h ⊢; exact h
+          rw [if_neg h0] at h ⊢
+          by_cases h1 : t = 1
+          · rw [if_pos h1] at h ⊢
+            cases rest' with
+            | nil => simp at h
+            | cons c tail =>
+                cases c with
+                | zero =>
+                    obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
+                    subst hshape
+                    exact absurd rfl (hnr pol fc)
+                | succ c' => simpa using h
+          rw [if_neg h1] at h ⊢
+          by_cases h2 : t = 2
+          · rw [if_pos h2] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.imp noReserved_imp h hnr
+          rw [if_neg h2] at h ⊢
+          by_cases h3 : t = 3
+          · rw [if_pos h3] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.and noReserved_and h hnr
+          rw [if_neg h3] at h ⊢
+          by_cases h4 : t = 4
+          · rw [if_pos h4] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.or noReserved_or h hnr
+          rw [if_neg h4] at h ⊢
+          exact h
+
+/-- **The characterization, at the grammar the freeze actually parses with.**
+
+A run denotes a `Recognizable` target under the full `parseRpn` exactly when it is one of
+the finitely many listed spellings.  This is the form the run-level lookup consumes: the
+decision is membership in a list of constants, with no parser to execute and no automaton to
+prove correct.
+Paper node: `app:ifp` -/
+theorem parseRpn_iff_mem_spellings {ψ : Sentence} (hrec : Recognizable ψ) (b : List ℕ) :
+    parseRpn b.length b = some (ψ, []) ↔ b ∈ spellings ψ := by
+  constructor
+  · intro h
+    exact spellings_complete ψ hrec.botFree b
+      (parseRpn_imp_parseRpnLegacy b.length b h hrec.noReserved)
+  · intro h
+    exact parseRpn_of_legacy (spellings_sound ψ b h)
 
 /-- **Matcher soundness**: a successful positional match certifies that the tokens it
 consumed form a complete self-delimiting block parsing to the target. -/

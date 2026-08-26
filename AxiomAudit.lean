@@ -524,6 +524,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnFreeze.spellings_sound
   RpnFreeze.spellings_complete
   RpnFreeze.parseRpnLegacy_iff_mem_spellings
+  RpnFreeze.parseRpn_imp_parseRpnLegacy
+  RpnFreeze.parseRpn_iff_mem_spellings
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
@@ -546,9 +548,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- shape) deciding "does this run denote ψ" is membership in that list, so NO streaming
 -- automaton has to be proved to agree with `parseRpn`.  Both directions are now proved
 -- (`parseRpnLegacy_iff_mem_spellings`), with `BotFree` load-bearing for exhaustiveness.
--- SCOPE: that characterization is for `parseRpnLegacy`.  The freeze parses with the full
--- `parseRpn`, and the bridge between them — needing a `NoReserved` side condition — is not
--- proved.  Nothing here asserts the full-grammar form.
+-- The full-grammar form `parseRpn_iff_mem_spellings` is now proved too, bridged by
+-- `parseRpn_imp_parseRpnLegacy` (costing the `NoReserved` side condition) and the upstream
+-- `parseRpn_of_legacy`.  All of this is RECOGNITION only: turning "membership in a list of
+-- constants" into a `Complexity.FP` test, and thence into a `FreezeStep.RunOracle`, is not
+-- done.  No `RunOracle` instance exists, so no patch structure is inhabited.
+-- The table side conditions are collected in `CanonicalCodes.lean`'s "The recognition side
+-- conditions, in one place": `Recognizable` (= `BotFree` + `NoReserved`) per sentence, plus
+-- the constant output bound on the table as a whole.
 #assert_axioms_clean
   FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP
