@@ -475,7 +475,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- ceiling above therefore binds exactly when the frozen table contains a sentence with a
 -- `⊥` subformula.  It is still the *only* narrowing: no `MachineFiniteSupportPatch`,
 -- `FiniteSupportPatch` or `EfficientPrefixPatch` inhabitant exists at any table.
+-- The freeze's token model is now selector-indexed
+-- (`EF.strategyOfTokens_freezeTokenRunOn_trades`, Properties/FinitePerturbations.lean), so
+-- the finite-support freeze has a token model, and `MachineEfficientTrader.freezeOn`
+-- reduces `MachineFiniteSupportPatch.preserves_ec` to the single named `FP` fact
+-- `FreezeStreamRewriter`.  That fact has NO instance, so no patch structure is inhabited;
+-- the reduction narrows the obligation and discharges nothing.
 #assert_axioms_clean
+  EF.strategyOfTokens_freezeTokenRunOn_trades
+  MachineEfficientTrader.freezeOn
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
   RpnFreeze.unRpn_rpnFreezeRun

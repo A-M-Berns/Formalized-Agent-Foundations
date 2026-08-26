@@ -653,38 +653,42 @@ lemma freezeTokens_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
 lemma freezeTokens_single (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ)
     (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
     freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext,
-    h0, h1, h6, h7]
+  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn, EF.freezeTokenNext, h0, h1, h6, h7]
 
 lemma freezeTokens_one (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ) :
     freezeTokens quoteCode cutoff [t] = [t] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit]
+  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn]
 
 lemma freezeTokens_payload (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t c : ℕ)
     (ht : t = 1 ∨ t = 7) (L : List ℕ) :
     freezeTokens quoteCode cutoff (t :: c :: L) =
       t :: c :: freezeTokens quoteCode cutoff L := by
   rcases ht with rfl | rfl <;>
-    simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+    simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
 lemma freezeTokens_price (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ)
     (L : List ℕ) :
     freezeTokens quoteCode cutoff (0 :: fc :: d :: L) =
       0 :: fc :: d :: (freezeBody quoteCode cutoff fc d ++
         freezeTokens quoteCode cutoff L) := by
-  simp only [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit,
-    EF.freezeTokenNext, freezeBody]
+  simp only [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn, EF.freezeTokenNext, freezeBody]
   by_cases hd : d < cutoff <;> simp [hd]
 
 lemma freezeTokens_pricePair (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ) :
     freezeTokens quoteCode cutoff [0, fc] = [0, fc] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
 lemma freezeTokens_trade (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ)
     (L : List ℕ) :
     freezeTokens quoteCode cutoff (6 :: fc :: L) =
       6 :: fc :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
+    EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
 /-- **The symbol-level freeze emitter**: at a price-day slot before the cutoff, retain
 the day and splice the constant quote of the buffered sentence run under the
