@@ -1,393 +1,180 @@
 /-
 # The finite-support freeze as a polynomial-time transduction
 
-`Properties/FinitePerturbations.lean` builds the selector-indexed freeze as a token-level
-transducer, `EF.freezeTokenRunOn`, and `FreezeStreamRewriter` there names the one
-`Complexity.FP` fact the machine-class patch still needs.  This file is that transducer in
-the machine model: a client of `Framework/Machine/TokenFold.lean`'s block fold, so that the
-freeze is an honest `Complexity.FP` function of the trader's serialized stream.
+`Properties/FinitePerturbations.lean` names the one `Complexity.FP` fact the machine-class
+patch still needs (`FreezeStreamRewriter`), and `RpnFreeze.freezeStreamRewriter_of_flatPass`
+reduces it to a pass over the **flat** stream — the one a machine actually holds, since
+contracting would mean re-encoding each parsed sentence.  This file is that pass.
 
-The freeze automaton is much smaller than the conditioning one
-(`Construction/Machine/CondStep.lean`, the parallel client): its state is a mode and the
-buffered sentence-code block, with no counter and no run length, and the buffer is
-*replaced* at a price frame rather than extended, so the state bound is trivially additive.
+It is a client of `Framework/Machine/TokenFold.lean`'s block fold, and it reuses the
+conditioning track's automaton wholesale: `CondStep.condStepR` *is* `rpnConditionRun`'s
+state machine, and `condStepW_mem_FP`, `condStepW_length_le`, `csPack_condStepR`,
+`csTokens_condStepR` and `bufWF_condStepR` are all emitter-generic.  Only
+`CondStep.condPass_mem_FP` bundles a particular emitter.  So the freeze contributes exactly
+one thing — its emitter — and everything else here is plumbing that emitter into the fold.
 
-* **The state.**  The mode is a unary word, so the automaton's tests are length
-  comparisons; the pending sentence code is carried as its own digit bits, so the emitter
-  can hand it to the quote oracle without re-rendering it.  That choice is why the client
-  reads token *blocks* rather than token values: a raw machine word may carry a
-  non-canonical run, and copying it is then not a function of the value.
+## The one hole, and why it is the right shape
 
-* **The step.**  `frModeW` mirrors the scalar `frModeF` branch for branch, and
-  `frModeF_clamp` is what lets the token arrive as `min t 8` marks rather than an unbounded
-  numeral — the automaton only ever tests `0`, `1`, `6`, `7`.
+`RunOracle` is the emitter's lookup: given the incoming day's token block and the buffered
+sentence run's bits, it returns the bits of `[1, quote, 8]` when the coordinate is selected
+and nothing when it is not.  It has **no instance** in this repo.  Building one is the
+run-level table lookup — deciding whether a buffered run denotes a table sentence — and that
+is a separate development; see `RpnFreeze.matchRun` for the token-model half and
+`RpnFreeze.matchRun_eq_matchRunCanon` for the falsum ruling that removes the square root
+from it.
 
-* **The emitter.**  Everywhere except a price-day slot it copies the token through.  At a
-  price-day slot it appends the frozen suffix, which comes from a `QuoteOracle`: given the
-  day and the buffered code block, the bits of `[1, quote, 8]` when the coordinate is
-  selected and nothing when it is not.
+## The constant output bound is the paper's erratum, not a convenience
 
-## Two disclosed boundaries, both named rather than buried
+`RunOracle.R_length_le` asks the oracle's *output* to be bounded by a constant.
+`TokenFold.runFold_mem_FP`'s emission budget is `qQ.eval W.length + k * (cli.length +
+tok.length)`: polynomial in the parameter block but only **linear** in the state.  The
+oracle is indexed by the buffered sentence code, which lives in the state, so an output that
+grew with it would not merely miss the bound once — it would compound.  For a **finite**
+quote table the constant bound is free (finitely many entries, hence finitely many quote
+codes); for an arbitrary market it is false.  That is `app:ifp`'s own sentence — "only
+finitely many constants are needed, and can be hard-coded" — arriving as the side condition
+that makes a complexity budget close.
 
-**The clamp.**  `frEmitR` calls the oracle at `min D n` rather than at `D`, because a
-word-level emitter cannot call an oracle at an unbounded day.  So this pass computes the
-freeze whose selector and quote table are *composed with that clamp*
-(`clampSel`, `clampQuote`), and `decodeBits_freezePass` states exactly that.  Discharging
-the clamp — showing the two agree on the streams a day-`n` strategy actually emits — is a
-guard obligation, not something this file assumes away.
+## Why the freeze needs no day clamp, where the conditioning pass does
 
-**The constant output bound.**  `QuoteOracle.Q_length_le` asks the oracle's *output* to be
-bounded by a constant.  That is not a convenience: `TokenFold.runFold_mem_FP`'s emission
-budget is `qQ.eval W.length + k * (cli.length + tok.length)`, polynomial in the parameter
-block but only *linear* in the state, and an emitted numeral that grew with the buffered
-sentence code would blow it.  For a **finite** quote table the bound holds for free — the
-table has finitely many entries, so finitely many quote codes — and for an arbitrary market
-it fails.  This is the paper's erratum (`app:ifp`) reappearing as a complexity side
-condition: hard-coding the constants is legitimate exactly when there are finitely many.
-
-`QuoteOracle` has **no instance** in this repo; building one for a finite table is the
-lookup obligation (`RpnFreeze.matchRun`, and the structured paper-prime leaf).
-
-## Which stream this pass runs on — read this before citing it
-
-`EF.freezeTokenRunOn` is the **contracted** automaton: a price frame reaches it as
-`[0, code, day]`, one token per sentence.  So the pass below rewrites a contracted stream,
-and that is *not* the stream a machine holds — a machine holds the flat RPN stream, whose
-price frame is `0 :: run :: day`, and contracting it would mean re-encoding each parsed
-sentence.  Discharging `FreezeStreamRewriter` therefore needs the **flat** pass, whose
-automaton is `CondStep.condStepR` and whose emitter is the run-level lookup;
-`RpnFreeze.freezeStreamRewriter_of_flatPass` is the reduction, and
-`RpnFreeze.unRpn_rpnFreezeRunOn` the commutation that licenses it.
-
-What this file settles is that the freeze *shape* — a mode automaton with a buffered code
-block and an oracle-fed splice — fits inside `runFold_mem_FP`'s budget, with the two
-per-step bounds discharged and the constant-output condition identified.  It does not by
-itself inhabit `FreezeStreamRewriter`.
+`CondStep.condEmitR` draws its condition block at `min D n`, because that block's size grows
+with the day and a word-level emitter cannot call an oracle at an unbounded day; it discloses
+the resulting gap.  The freeze has no such problem: its oracle returns a *bounded* word by
+the paragraph above, so it can be handed the day's raw token block instead of a unary day,
+and the emission stays polynomial.  `flatEmitR` therefore computes
+`RpnFreeze.freezeEmitOn selRun quoteRun` exactly, with no clamp and no gap to close later.
 
 Everything here is construction infrastructure rather than a paper statement, so the
-declarations are `lemma`s and carry no `Paper node:` line.
+declarations are `lemma`s.
 -/
-import LogicalInduction.Properties.FinitePerturbations
-import LogicalInduction.Framework.Machine.TokenFold
+import LogicalInduction.Construction.Machine.CondStep
+import LogicalInduction.Construction.Witnesses.RpnFreeze
 
 namespace LogicalInduction.FreezeStep
 
 open Complexity Complexity.Cobham LogicalInduction.FPFold LogicalInduction.TokenFold
+open LogicalInduction.CondStep LogicalInduction.RpnConditioning
 
-/-- A natural number as a unary word. -/
-abbrev uw (k : ℕ) : List Bool := List.replicate k true
+private def gvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+private def gvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
 
-@[simp] lemma length_uw (k : ℕ) : (uw k).length = k := by simp [uw]
+/-! ## The lookup oracle -/
 
-/-- "This length equals the numeral `k`" as a `selectHead` against a constant unary word.
+/-- **The run-level lookup**, as an interface.
 
-`CondStep` carries the same four-line helper privately; when the two machine clients are
-merged it belongs in `TokenFold` once. -/
-private lemma ifEqLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
-    (hX : X ∈ FP) (hY : Y ∈ FP) :
-    (fun z => if (A z).length = k then X z else Y z) ∈ FP := by
-  have h := selectHeadFn_eqLen_mem_FP hA (constFn_mem_FP (uw k)) hX hY
-  simp only [length_uw] at h
-  exact h
+Given the incoming day's token block and the buffered sentence run's bits, `R` returns the
+bits of `[1, quote, 8]` when the price coordinate is selected and nothing when it is not.
+`R_length_le` is the finite-table condition in complexity clothing; see this file's header
+for why it is load-bearing rather than convenient.
 
-/-! ## The mode component -/
-
-/-- `EF.freezeTokenNext`'s mode component, as a scalar function. -/
-def frModeF (m t : ℕ) : ℕ :=
-  if m = 0 then
-    (if t = 0 then 1 else if t = 1 then 3 else if t = 6 then 4 else if t = 7 then 5 else 0)
-  else if m = 1 then 2 else 0
-
-/-- The same on unary words. -/
-def frModeW (mW tW : List Bool) : List Bool :=
-  if mW.length = 0 then
-    (if tW.length = 0 then uw 1
-     else if tW.length = 1 then uw 3
-     else if tW.length = 6 then uw 4
-     else if tW.length = 7 then uw 5 else uw 0)
-  else if mW.length = 1 then uw 2 else uw 0
-
-lemma length_frModeW (mW tW : List Bool) :
-    (frModeW mW tW).length = frModeF mW.length tW.length := by
-  rw [frModeW, frModeF]
-  simp only [apply_ite List.length, length_uw]
-
-lemma frModeF_eq (m c t : ℕ) : frModeF m t = (EF.freezeTokenNext (m, c) t).1 := by
-  match m with
-  | 0 => simp only [frModeF, EF.freezeTokenNext]; norm_num; split_ifs <;> rfl
-  | 1 => simp [frModeF, EF.freezeTokenNext]
-  | (k + 2) => simp [frModeF, EF.freezeTokenNext]
-
-lemma freezeTokenNext_snd (m c t : ℕ) :
-    (EF.freezeTokenNext (m, c) t).2 = if m = 1 then t else 0 := by
-  match m with
-  | 0 => simp only [EF.freezeTokenNext]; norm_num; split_ifs <;> rfl
-  | 1 => simp [EF.freezeTokenNext]
-  | (k + 2) => simp [EF.freezeTokenNext]
-
-/-- The automaton only tests `0`, `1`, `6`, `7`, so the token may arrive clamped at `8`. -/
-lemma frModeF_clamp (m t : ℕ) : frModeF m (min t 8) = frModeF m t := by
-  rcases le_or_gt 8 t with h | h
-  · rw [min_eq_right h, frModeF, frModeF]
-    have h0 : t ≠ 0 := by omega
-    have h1 : t ≠ 1 := by omega
-    have h6 : t ≠ 6 := by omega
-    have h7 : t ≠ 7 := by omega
-    simp [h0, h1, h6, h7]
-  · rw [min_eq_left (le_of_lt h)]
-
-lemma frModeF_le (m t : ℕ) : frModeF m t ≤ 5 := by
-  rw [frModeF]; split_ifs <;> omega
-
-lemma frModeW_mem_FP {M T : List Bool → List Bool} (hM : M ∈ FP) (hT : T ∈ FP) :
-    (fun z => frModeW (M z) (T z)) ∈ FP := by
-  have hu : ∀ k : ℕ, (fun _ : List Bool => uw k) ∈ FP := fun k => constFn_mem_FP (uw k)
-  refine ifEqLen_mem_FP hM 0
-    (ifEqLen_mem_FP hT 0 (hu 1) (ifEqLen_mem_FP hT 1 (hu 3)
-      (ifEqLen_mem_FP hT 6 (hu 4) (ifEqLen_mem_FP hT 7 (hu 5) (hu 0))))) ?_
-  exact ifEqLen_mem_FP hM 1 (hu 2) (hu 0)
-
-/-! ## The client state -/
-
-/-- The client state: the mode as unary marks, the pending sentence code as its own
-complete digit block. -/
-def frSt (mW bufW : List Bool) : List Bool := pair mW bufW
-
-def frMode (st : List Bool) : List Bool := fstBlock st
-def frBuf (st : List Bool) : List Bool := sndBlock st
-
-@[simp] lemma frMode_frSt (m b : List Bool) : frMode (frSt m b) = m := by
-  simp [frMode, frSt]
-@[simp] lemma frBuf_frSt (m b : List Bool) : frBuf (frSt m b) = b := by
-  simp [frBuf, frSt]
-
-/-- The pending sentence code a client state denotes. -/
-def frCode (st : List Bool) : ℕ := (decodeBits (frBuf st)).headD 0
-
-/-- The automaton state a client state denotes. -/
-def frPack (st : List Bool) : EF.FreezeTokenState := ((frMode st).length, frCode st)
-
-/-! ## The step, on words -/
-
-def frModeStep (cli tw : List Bool) : List Bool := frModeW (frMode cli) tw
-
-/-- The buffer is the pending sentence code: set from the incoming block at the slot right
-after a price tag, cleared everywhere else.  The block is stored *verbatim*, which is why
-the client reads blocks rather than values. -/
-def frBufStep (cli tok : List Bool) : List Bool :=
-  if (frMode cli).length = 1 then tok ++ digitBits 4 else []
-
-def frStepOf (cli tw tok : List Bool) : List Bool :=
-  frSt (frModeStep cli tw) (frBufStep cli tok)
-
-private def fvW (v : List Bool) : List Bool := fstBlock v
-private def fvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def fvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
-
-/-- The incoming token, clamped to the automaton's test window and rendered in unary. -/
-def clampTok (v : List Bool) : List Bool :=
-  List.replicate (min (digitVal (bitsToDigits (fvTok v))) 8) true
-
-/-- The freeze pass's word-level step. -/
-def frStepW (v : List Bool) : List Bool := frStepOf (fvCli v) (clampTok v) (fvTok v)
-
-/-- Its block-level reading, which is what `TokenFold.runFold` folds. -/
-def frStepR (cli : List Bool) (cur : List ℕ) : List Bool :=
-  frStepOf cli (List.replicate (min (digitVal cur) 8) true) (digitsToBits cur)
-
-lemma frStepW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
-    frStepW (pair W (pair cli (digitsToBits cur))) = frStepR cli cur := by
-  rw [frStepW, frStepR, clampTok]
-  simp only [fvCli, fvTok, sndBlock_pair, fstBlock_pair,
-    bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
-
-/-! ### Agreement with the token-level automaton -/
-
-/-- **The word step realizes the automaton.**  Both components: the mode, through the
-clamped token, and the pending sentence code, which is the buffered block's own value.
-
-Proof kind: `P` proved.  Provenance: (a) `length_frModeW`, `frModeF_clamp`,
-`TokenFold.decodeBits_run`.
-Paper node: `app:ifp` -/
-lemma frPack_frStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
-    frPack (frStepR cli cur) = EF.freezeTokenNext (frPack cli) (digitVal cur) := by
-  have hmode : (frMode (frStepR cli cur)).length
-      = (EF.freezeTokenNext (frPack cli) (digitVal cur)).1 := by
-    rw [frStepR, frStepOf, frMode_frSt, frModeStep, length_frModeW,
-      List.length_replicate, frModeF_clamp, frModeF_eq (c := frCode cli), frPack]
-  have hcode : frCode (frStepR cli cur)
-      = (EF.freezeTokenNext (frPack cli) (digitVal cur)).2 := by
-    rw [frStepR, frStepOf, frCode, frBuf_frSt, frBufStep, frPack, freezeTokenNext_snd]
-    split_ifs with h
-    · rw [decodeBits_run cur hcur]
-      rfl
-    · simp
-  rw [frPack, hmode, hcode]
-
-lemma bufWF_frStepR (cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
-    BlockWF (frBuf (frStepR cli cur)) := by
-  rw [frStepR, frStepOf, frBuf_frSt, frBufStep]
-  split_ifs
-  · exact blockWF_run cur hcur
-  · exact BlockWF.nil
-
-/-! ### Membership and the state bound -/
-
-lemma frStepW_mem_FP : frStepW ∈ FP := by
-  have hcli : fvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-  have htok : fvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-  have hclamp : clampTok ∈ FP := by
-    have h := LEUnary.unaryOfDigitsLE_le_mem_FP htok (constFn_mem_FP (uw 8))
-    simp only [length_uw] at h
-    exact h
-  have hm : (fun v => frMode (fvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
-  have hmode : (fun v => frModeStep (fvCli v) (clampTok v)) ∈ FP :=
-    frModeW_mem_FP hm hclamp
-  have hbuf : (fun v => frBufStep (fvCli v) (fvTok v)) ∈ FP :=
-    ifEqLen_mem_FP hm 1
-      (appendFn_mem_FP htok (constFn_mem_FP (digitBits 4))) (constFn_mem_FP [])
-  exact pairFn_mem_FP hmode hbuf
-
-/-- The state bound is additive, and does not even need the old state: the freeze buffer is
-*replaced* at a price frame rather than extended, so one step's state is bounded by the
-incoming block plus a constant. -/
-lemma frStepW_length_le (W cli tok : List Bool) :
-    (frStepW (pair W (pair cli tok))).length ≤ cli.length + tok.length + 15 := by
-  have hcli : fvCli (pair W (pair cli tok)) = cli := by simp [fvCli]
-  have htok : fvTok (pair W (pair cli tok)) = tok := by simp [fvTok]
-  have hm : (frModeStep cli (clampTok (pair W (pair cli tok)))).length ≤ 5 := by
-    rw [frModeStep, length_frModeW]; exact frModeF_le _ _
-  have hb : (frBufStep cli tok).length ≤ tok.length + 3 := by
-    rw [frBufStep]
-    split_ifs
-    · simp
-    · simp
-  rw [frStepW, hcli, htok, frStepOf, frSt, pair_length]
-  omega
+**No instance of this structure exists in the repo.** -/
+structure RunOracle (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ) where
+  /-- The oracle. -/
+  R : List Bool → List Bool
+  /-- It is polynomial time. -/
+  R_FP : R ∈ FP
+  /-- Its output is a whole number of complete blocks, so splices decode piecewise. -/
+  R_wf : ∀ tokW bufW : List Bool, BlockWF (R (pair tokW bufW))
+  /-- The constant output budget: the quote table is finite. -/
+  R_len : ℕ
+  /-- The constant bound itself. -/
+  R_length_le : ∀ v : List Bool, (R v).length ≤ R_len
+  /-- And it emits the freeze suffix. -/
+  R_spec : ∀ tokW bufW : List Bool,
+    decodeBits (R (pair tokW bufW))
+      = if selRun (decodeBits bufW) (digitVal (bitsToDigits tokW)) then
+          [1, quoteRun (decodeBits bufW) (digitVal (bitsToDigits tokW)), 8] else []
 
 /-! ## The emitter -/
 
-/-- The incoming token, re-emitted as its own complete block. -/
-def dayBits (tok : List Bool) : List Bool := tok ++ digitBits 4
+/-- The freeze pass's word-level emitter: copy the token through, and at a price-day slot
+append the oracle's suffix. -/
+def flatEmitW (R : List Bool → List Bool) (v : List Bool) : List Bool :=
+  if (csMode (gvCli v)).length = 2 then
+    dayBits (gvTok v) ++ R (pair (gvTok v) (csBuf (gvCli v)))
+  else dayBits (gvTok v)
 
-/-- The day the oracle is called at: the incoming token, clamped by the trading day. -/
-def dayClamp (v : List Bool) : List Bool :=
-  List.replicate (min (digitVal (bitsToDigits (fvTok v))) (fvW v).length) true
-
-/-- **The quote oracle**: the frozen suffix at a selected price coordinate.
-
-Given the day and the buffered sentence-code block, it returns the bits of `[1, quote, 8]`
-when the coordinate is selected and nothing when it is not.  `Q_length_le` is the
-finite-table condition in complexity clothing — see this file's header. -/
-structure QuoteOracle (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) where
-  /-- The oracle. -/
-  Q : List Bool → List Bool
-  /-- It is polynomial time. -/
-  Q_FP : Q ∈ FP
-  /-- Its output is a whole number of complete blocks, so splices decode piecewise. -/
-  Q_wf : ∀ (d : ℕ) (bufW : List Bool), BlockWF (Q (pair (unaryDay d) bufW))
-  /-- The constant output budget: the quote table is finite. -/
-  Q_len : ℕ
-  /-- The constant bound itself. -/
-  Q_length_le : ∀ v : List Bool, (Q v).length ≤ Q_len
-  /-- And it emits the freeze suffix. -/
-  Q_spec : ∀ (d : ℕ) (bufW : List Bool),
-    decodeBits (Q (pair (unaryDay d) bufW))
-      = if selCode d ((decodeBits bufW).headD 0) then
-          [1, quoteCode d ((decodeBits bufW).headD 0), 8] else []
-
-/-- The freeze pass's word-level emitter. -/
-def frEmitW (Q : List Bool → List Bool) (v : List Bool) : List Bool :=
-  if (frMode (fvCli v)).length = 2 then
-    dayBits (fvTok v) ++ Q (pair (dayClamp v) (frBuf (fvCli v)))
-  else dayBits (fvTok v)
-
-/-- Its block-level reading. -/
-def frEmitR (Q : List Bool → List Bool) (n : ℕ) (cli : List Bool) (cur : List ℕ) :
-    List Bool :=
-  if (frMode cli).length = 2 then
-    dayBits (digitsToBits cur) ++ Q (pair (unaryDay (min (digitVal cur) n)) (frBuf cli))
+/-- Its block-level reading, which is what `TokenFold.runFold` folds. -/
+def flatEmitR (R : List Bool → List Bool) (cli : List Bool) (cur : List ℕ) : List Bool :=
+  if (csMode cli).length = 2 then
+    dayBits (digitsToBits cur) ++ R (pair (digitsToBits cur) (csBuf cli))
   else dayBits (digitsToBits cur)
 
-lemma frEmitW_eq (Q : List Bool → List Bool) (W cli : List Bool) (cur : List ℕ)
-    (hcur : ∀ d ∈ cur, d < 4) :
-    frEmitW Q (pair W (pair cli (digitsToBits cur))) = frEmitR Q W.length cli cur := by
-  rw [frEmitW, frEmitR, dayClamp]
-  simp only [fvCli, fvTok, fvW, sndBlock_pair, fstBlock_pair,
-    bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
-  rfl
+/-- The word emitter reads a well-formed block exactly as `flatEmitR` does — by definition,
+so `runFold_mem_FP`'s hypothesis carries no side condition on the client.  Note it does not
+depend on the parameter block at all: the freeze needs no day clamp. -/
+lemma flatEmitW_eq (R : List Bool → List Bool) (W cli : List Bool) (cur : List ℕ) :
+    flatEmitW R (pair W (pair cli (digitsToBits cur))) = flatEmitR R cli cur := by
+  rw [flatEmitW, flatEmitR]
+  simp only [gvCli, gvTok, sndBlock_pair, fstBlock_pair]
 
-/-! ### The clamped selector and quote table
+/-! ### What the emitter emits -/
 
-A word-level emitter cannot call an oracle at an unbounded day, so the pass computes the
-freeze whose *selector and quote table are composed with the clamp*.  Nothing else changes:
-the day token the emitter copies through is still the unclamped one, exactly as
-`EF.freezeTokenEmitOn` emits it. -/
-
-/-- The selector, read at the clamped day. -/
-def clampSel (selCode : ℕ → ℕ → Bool) (n : ℕ) : ℕ → ℕ → Bool :=
-  fun D c => selCode (min D n) c
-
-/-- The quote table, read at the clamped day. -/
-def clampQuote (quoteCode : ℕ → ℕ → ℕ) (n : ℕ) : ℕ → ℕ → ℕ :=
-  fun D c => quoteCode (min D n) c
-
-lemma blockWF_frEmitR {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) (n : ℕ) (cli : List Bool) (cur : List ℕ)
-    (hcur : ∀ d ∈ cur, d < 4) : BlockWF (frEmitR E.Q n cli cur) := by
+lemma blockWF_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) (cli : List Bool) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) : BlockWF (flatEmitR E.R cli cur) := by
   have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
-  rw [frEmitR]
+  rw [flatEmitR]
   split_ifs
-  · exact hday.append (E.Q_wf _ _)
+  · exact hday.append (E.R_wf _ _)
   · exact hday
 
-lemma decodeBits_frEmitR {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) (n : ℕ) (cli : List Bool) (cur : List ℕ)
+/-- **The emitter computes the symbol-level freeze emission**, unclamped.
+
+Proof kind: `C` composition.  Provenance: (a) `TokenFold.decodeBits_run`,
+`TokenFold.decodeBits_append`, `RunOracle.R_spec`.
+Paper node: `app:ifp` -/
+lemma decodeBits_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) (cli : List Bool) (cur : List ℕ)
     (hcur : ∀ d ∈ cur, d < 4) :
-    decodeBits (frEmitR E.Q n cli cur)
-      = EF.freezeTokenEmitOn (clampSel selCode n) (clampQuote quoteCode n)
-          (frPack cli) (digitVal cur) := by
+    decodeBits (flatEmitR E.R cli cur)
+      = if rcMode (csPack cli) = 2 then
+          RpnFreeze.freezeEmitOn selRun quoteRun (csTokens cli) (digitVal cur)
+        else [digitVal cur] := by
   have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
   have hdayd : decodeBits (dayBits (digitsToBits cur)) = [digitVal cur] :=
     decodeBits_run cur hcur
-  have hmode : (frPack cli).1 = (frMode cli).length := rfl
-  have hcode : (frPack cli).2 = (decodeBits (frBuf cli)).headD 0 := rfl
-  rw [frEmitR, EF.freezeTokenEmitOn, hmode, hcode, clampSel, clampQuote]
-  by_cases h2 : (frMode cli).length = 2
-  · rw [if_pos h2, decodeBits_append hday (E.Q_wf _ _), hdayd, E.Q_spec]
-    by_cases hs : selCode (min (digitVal cur) n) ((decodeBits (frBuf cli)).headD 0) = true
-    · rw [if_pos hs, if_pos ⟨h2, hs⟩]
-      rfl
-    · rw [if_neg hs, if_neg (fun h => hs h.2)]
-      simp
-  · rw [if_neg h2, if_neg (fun h => h2 h.1)]
-    exact hdayd
+  have hmode : rcMode (csPack cli) = (csMode cli).length := by
+    rw [csPack, rcMode_pack]
+  have hval : digitVal (bitsToDigits (digitsToBits cur)) = digitVal cur := by
+    rw [bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
+  rw [flatEmitR, hmode]
+  split_ifs
+  · rw [decodeBits_append hday (E.R_wf _ _), hdayd, E.R_spec, hval,
+      RpnFreeze.freezeEmitOn, csTokens]
+    split_ifs <;> simp
+  · exact hdayd
 
 /-! ### Membership and the emission bound -/
 
-lemma frEmitW_mem_FP {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) : frEmitW E.Q ∈ FP := by
-  have hW : fvW ∈ FP := fstBlock_mem_FP
-  have hcli : fvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-  have htok : fvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
-  have hm : (fun v => frMode (fvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
-  have hbuf : (fun v => frBuf (fvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
-  have hclamp : dayClamp ∈ FP := LEUnary.unaryOfDigitsLE_le_mem_FP htok hW
-  have hq : (fun v => E.Q (pair (dayClamp v) (frBuf (fvCli v)))) ∈ FP :=
-    mem_FP_comp (pairFn_mem_FP hclamp hbuf) E.Q_FP
-  have hday : (fun v => dayBits (fvTok v)) ∈ FP :=
+lemma flatEmitW_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) : flatEmitW E.R ∈ FP := by
+  have hcli : gvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : gvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hff : (fun v => fstBlock (gvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (gvCli v)) ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hm : (fun v => csMode (gvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hbuf : (fun v => csBuf (gvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hr : (fun v => E.R (pair (gvTok v) (csBuf (gvCli v)))) ∈ FP :=
+    mem_FP_comp (pairFn_mem_FP htok hbuf) E.R_FP
+  have hday : (fun v => dayBits (gvTok v)) ∈ FP :=
     appendFn_mem_FP htok (constFn_mem_FP (digitBits 4))
-  exact ifEqLen_mem_FP hm 2 (appendFn_mem_FP hday hq) hday
+  have h := selectHeadFn_eqLen_mem_FP hm (constFn_mem_FP (uw 2))
+    (appendFn_mem_FP hday hr) hday
+  simp only [length_uw] at h
+  exact h
 
-lemma frEmitW_length_le {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) (W cli tok : List Bool) :
-    (frEmitW E.Q (pair W (pair cli tok))).length
-      ≤ (Polynomial.C (E.Q_len + 3)).eval W.length + 1 * (cli.length + tok.length) := by
-  have hcli : fvCli (pair W (pair cli tok)) = cli := by simp [fvCli]
-  have htok : fvTok (pair W (pair cli tok)) = tok := by simp [fvTok]
-  have hq := E.Q_length_le (pair (dayClamp (pair W (pair cli tok))) (frBuf cli))
+/-- The emission bound is polynomial in the parameter block and **linear** in the state —
+which is all `runFold_mem_FP` allows, and is exactly what `R_length_le` buys. -/
+lemma flatEmitW_length_le {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) (W cli tok : List Bool) :
+    (flatEmitW E.R (pair W (pair cli tok))).length
+      ≤ (Polynomial.C (E.R_len + 3)).eval W.length + 1 * (cli.length + tok.length) := by
+  have hcli : gvCli (pair W (pair cli tok)) = cli := by simp [gvCli]
+  have htok : gvTok (pair W (pair cli tok)) = tok := by simp [gvTok]
+  have hr := E.R_length_le (pair tok (csBuf cli))
   simp only [Polynomial.eval_C]
-  rw [frEmitW, hcli, htok]
+  rw [flatEmitW, hcli, htok]
   split_ifs
   · rw [dayBits]
     simp only [List.length_append, length_digitBits]
@@ -398,73 +185,93 @@ lemma frEmitW_length_le {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → �
 
 /-! ## The freeze pass, decoded -/
 
-/-- The initial client state: base mode, empty buffer. -/
-def frInit : List Bool := frSt [] []
-
-@[simp] lemma frPack_frInit : frPack frInit = (0, 0) := by
-  simp [frPack, frInit, frCode]
-
-@[simp] lemma frBuf_frInit : frBuf frInit = [] := by simp [frInit]
-
-lemma decodeBits_runFold_freeze {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) (n : ℕ) :
+lemma decodeBits_runFold_freeze {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) :
     ∀ (rs : List (List ℕ)) (cli out : List Bool),
-      (∀ r ∈ rs, ∀ d ∈ r, d < 4) → BlockWF out →
-      decodeBits (runFold frStepR (frEmitR E.Q n) cli out rs).2
+      (∀ r ∈ rs, ∀ d ∈ r, d < 4) → BlockWF (csBuf cli) → BlockWF out →
+      decodeBits (runFold condStepR (flatEmitR E.R) cli out rs).2
         = decodeBits out
-          ++ (EF.freezeTokenRunOn (clampSel selCode n) (clampQuote quoteCode n)
-                (frPack cli) (rs.map digitVal)).2
-  | [], cli, out, _, _ => by
-      rw [runFold, List.map_nil]
-      simp [EF.freezeTokenRunOn]
-  | r :: rs, cli, out, hrs, hout => by
+          ++ (rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun)
+                (csPack cli, csTokens cli) (rs.map digitVal)).2
+  | [], cli, out, _, _, _ => by
+      rw [runFold, List.map_nil, rpnConditionRun_nil]
+      simp
+  | r :: rs, cli, out, hrs, hbuf, hout => by
       have hr : ∀ d ∈ r, d < 4 := hrs r (List.mem_cons_self ..)
       have hrest : ∀ q ∈ rs, ∀ d ∈ q, d < 4 :=
         fun q hq => hrs q (List.mem_cons_of_mem _ hq)
-      have hemit : BlockWF (frEmitR E.Q n cli r) := blockWF_frEmitR E n cli r hr
-      rw [runFold, decodeBits_runFold_freeze E n rs _ _ hrest (hout.append hemit),
-        decodeBits_append hout hemit, frPack_frStepR cli r hr,
-        decodeBits_frEmitR E n cli r hr, List.map_cons, EF.freezeTokenRunOn]
+      have hbuf' : BlockWF (csBuf (condStepR cli r)) := bufWF_condStepR cli r hr hbuf
+      have hemit : BlockWF (flatEmitR E.R cli r) := blockWF_flatEmitR E cli r hr
+      rw [runFold, decodeBits_runFold_freeze E rs _ _ hrest hbuf' (hout.append hemit),
+        decodeBits_append hout hemit, csPack_condStepR, csTokens_condStepR cli r hr hbuf,
+        decodeBits_flatEmitR E cli r hr, List.map_cons]
+      rw [show (csPack cli, csTokens cli) = ((csPack cli, csTokens cli).1,
+            (csPack cli, csTokens cli).2) from rfl, rpnConditionRun]
       simp only [List.append_assoc]
 
-/-- **The freeze pass is polynomial time.**  `Wf` carries the trading day (the machine's own
-input, through `FPFold.mem_FP_withInput`), `Sf` the trader's serialized stream, and `E` the
-quote oracle.
+/-- **The freeze pass is polynomial time.**  `Sf` is the trader's serialized stream and `E`
+the run-level lookup.  There is no parameter block: unlike the conditioning pass, the freeze
+emitter needs nothing but the token and the state.
 
 Kind `C`; hypotheses `(a)` except `E`, which has no instance.
 Paper node: `app:ifp` -/
-lemma freezePass_mem_FP {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) {Wf Sf : List Bool → List Bool}
-    (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
-    (fun z => (runFold frStepR (frEmitR E.Q (Wf z).length) frInit []
+lemma freezePass_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
+    (fun z => (runFold condStepR (flatEmitR E.R) condInit []
         (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP :=
-  runFold_mem_FP (STEPr := fun _ => frStepR)
-    (EMITr := fun W => frEmitR E.Q W.length)
-    (c := 15) (k := 1) (qQ := Polynomial.C (E.Q_len + 3))
-    frStepW_mem_FP (frEmitW_mem_FP E) hWf hSf
-    frStepW_length_le (frEmitW_length_le E)
-    (fun W cli cur h => frStepW_eq W cli cur h)
-    (fun W cli cur h => frEmitW_eq E.Q W cli cur h) frInit []
+  runFold_mem_FP (STEPr := fun _ => condStepR) (EMITr := fun _ => flatEmitR E.R)
+    (c := 51) (k := 1) (qQ := Polynomial.C (E.R_len + 3))
+    condStepW_mem_FP (flatEmitW_mem_FP E) (constFn_mem_FP []) hSf
+    condStepW_length_le (flatEmitW_length_le E)
+    (fun W cli cur h => condStepW_eq W cli cur h)
+    (fun W cli cur _ => flatEmitW_eq E.R W cli cur) condInit []
 
-/-- **And it computes the freeze.**  Decoding the pass's output word gives the token-level
-`EF.freezeTokenRunOn` over the tokens the input stream denotes — with the selector and quote
-table read at the clamped day, which is the disclosed boundary described in the header.
+/-- **And it computes the symbol-level freeze**, on every stream, well-formed or garbage —
+with no clamp, so this is `rpnConditionRun (freezeEmitOn selRun quoteRun)` itself rather than
+a clamped stand-in.
 
-Kind `C`; hypotheses `(a)` except `E`; the clamp is a type-`(c)` substitution, disclosed
-here, at `clampSel`/`clampQuote` and in this file's header.
+Kind `C`; hypotheses `(a)` except `E`.
 Paper node: `app:ifp` -/
-lemma decodeBits_freezePass {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
-    (E : QuoteOracle selCode quoteCode) (n : ℕ) (ds : List ℕ) :
-    decodeBits (runFold frStepR (frEmitR E.Q n) frInit [] (blockSplit ds).1).2
-      = (EF.freezeTokenRunOn (clampSel selCode n) (clampQuote quoteCode n) (0, 0)
+lemma decodeBits_freezePass {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
+    (E : RunOracle selRun quoteRun) (ds : List ℕ) :
+    decodeBits (runFold condStepR (flatEmitR E.R) condInit [] (blockSplit ds).1).2
+      = (rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun) (rcPack 0 0 0, [])
           (undigitize ds)).2 := by
-  have h := decodeBits_runFold_freeze E n (blockSplit ds).1 frInit []
-    (fun r hr => (blockSplit_digits_lt ds).1 r hr) BlockWF.nil
-  rw [frPack_frInit] at h
+  have h := decodeBits_runFold_freeze E (blockSplit ds).1 condInit []
+    (fun r hr => (blockSplit_digits_lt ds).1 r hr) (by simpa using BlockWF.nil) BlockWF.nil
+  rw [csPack_condInit, csTokens_condInit] at h
   simpa [← undigitize_eq_blockSplit] using h
 
-#print axioms LogicalInduction.FreezeStep.frPack_frStepR
+/-! ## The end-to-end reduction -/
+
+/-- **`FreezeStreamRewriter` follows from the run-level lookup, and from nothing else.**
+
+Every link between the lookup and `MachineFiniteSupportPatch` is now proved: this lemma to
+`FreezeStreamRewriter`, `RpnFreeze.freezeStreamRewriter_of_flatPass` and
+`RpnFreeze.unRpn_rpnFreezeRunOn` across the contraction,
+`MachineEfficientTrader.freezeOn` to `preserves_ec`, and
+`machineFiniteSupportPatch_of_rewriter` to the patch.  `RunOracle` has no instance, so the
+patch is still uninhabited; what has changed is that the obligation is now a single
+statement about a table lookup rather than a chain.
+
+Kind `C`; hypotheses `(a)` except `E`.
+Paper node: `app:ifp` -/
+lemma freezeStreamRewriter_of_runOracle {selRun : List ℕ → ℕ → Bool}
+    {quoteRun : List ℕ → ℕ → ℕ} (E : RunOracle selRun quoteRun)
+    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ)) :
+    FreezeStreamRewriter selCode quoteCode := by
+  refine RpnFreeze.freezeStreamRewriter_of_flatPass selRun quoteRun selCode quoteCode
+    hsel hq ?_
+  intro F hF
+  exact ⟨_, freezePass_mem_FP E hF, fun x => decodeBits_freezePass E _⟩
+
+#print axioms LogicalInduction.FreezeStep.decodeBits_flatEmitR
 #print axioms LogicalInduction.FreezeStep.freezePass_mem_FP
 #print axioms LogicalInduction.FreezeStep.decodeBits_freezePass
+#print axioms LogicalInduction.FreezeStep.freezeStreamRewriter_of_runOracle
 
 end LogicalInduction.FreezeStep

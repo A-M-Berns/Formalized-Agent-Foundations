@@ -127,6 +127,56 @@ lemma segOf_split (get : ℕ → ℕ) {p r q : ℕ} (h₁ : p ≤ r) (h₂ : r �
   congr 1
   omega
 
+/-! ### The structured paper-prime leaf denotes only reserved atoms
+
+The second ambiguity source, independent of the `⊥` fiber that `CanonicalCodes.lean`
+settles: a structured leaf `[1, 0, …]` admits non-canonical payload spellings, so a run
+matcher cannot recognize it by comparing against a fixed word.  It does not have to.  The
+structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 7 _)`, so a
+target outside that shape is never denoted by a structured block and the matcher may reject
+the block on its two-token tag alone — no replay of the structured parser, and no decode.
+
+This is what makes "a table avoiding the reserved atom shape needs no structured
+recognition" a proved side condition rather than a plausible one. -/
+
+/-- **Every structured paper-prime leaf denotes a reserved atom.**
+
+Proof kind: `P` proved.  Provenance: (b) `parseStructuredPaperPrime`.
+Paper node: `app:ifp` -/
+lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence} {r : List ℕ},
+    parseStructuredPaperPrime payload = some (φ, r) →
+      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc)) := by
+  intro payload φ r h
+  cases payload with
+  | nil => exfalso; revert h; simp [parseStructuredPaperPrime]
+  | cons pol framed =>
+      simp only [parseStructuredPaperPrime] at h
+      split_ifs at h with hp
+      cases hb : readStructuredLength framed with
+      | none => rw [hb] at h; exfalso; revert h; simp
+      | some p =>
+          rw [hb] at h
+          simp only [Option.bind_some] at h
+          rcases hpa : parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            _ | ⟨formulaCode, tail⟩
+          · rw [hpa] at h; exfalso; revert h; simp
+          · rw [hpa] at h
+            cases tail with
+            | nil =>
+                split_ifs at h with hle h19
+                exact ⟨pol, formulaCode, (congrArg Prod.fst (Option.some.inj h)).symm⟩
+            | cons a b => exfalso; revert h; simp
+
+/-- **A target outside the reserved atom shape is never denoted by a structured leaf.** -/
+lemma parseStructuredPaperPrime_ne_of_not_reserved {payload : List ℕ} {ψ : Sentence}
+    {r : List ℕ}
+    (hψ : ∀ pol fc : ℕ,
+      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc))) :
+    parseStructuredPaperPrime payload ≠ some (ψ, r) := by
+  intro h
+  obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
+  exact hψ pol fc hshape
+
 /-- The constant-depth positional run matcher. -/
 def matchRun (get : ℕ → ℕ) : Sentence → ℕ → ℕ
   | ⊥, p =>

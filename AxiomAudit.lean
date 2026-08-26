@@ -484,8 +484,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- Narrowed once more: `RpnFreeze.unRpn_rpnFreezeRunOn` carries the pass across the
 -- contraction and `RpnFreeze.freezeStreamRewriter_of_flatPass` reduces
 -- `FreezeStreamRewriter` to an `FP` pass over the FLAT stream, whose automaton is
--- `CondStep.condStepR` and whose emitter is the run-level table lookup.  Still no
--- instance at any link.
+-- `CondStep.condStepR` and whose emitter is the run-level table lookup.  That flat pass is
+-- now built (`FreezeStep`), so the ONLY remaining link is `FreezeStep.RunOracle` — the
+-- lookup itself.  Still no instance.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
   MachineEfficientTrader.freezeOn
@@ -494,6 +495,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnFreeze.unRpn_rpnFreezeRun
   RpnFreeze.unRpn_rpnFreezeRunOn
   RpnFreeze.freezeStreamRewriter_of_flatPass
+  RpnFreeze.parseStructuredPaperPrime_shape
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
@@ -501,16 +503,20 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   decode_and_noncanonical
 
 -- Construction/Witnesses/FreezeStep.lean — the freeze transducer as a `Complexity.FP`
--- client of `TokenFold.runFold`.  `freezePass_mem_FP` is an unconditional membership
--- result; `decodeBits_freezePass` says what the pass computes, and it is the *contracted*
--- token automaton `EF.freezeTokenRunOn`, with the selector and quote table read at the
--- CLAMPED day (`clampSel`/`clampQuote`) because a word-level emitter cannot call an oracle
--- at an unbounded day.  Both are conditioned on a `FreezeStep.QuoteOracle`, which has NO
--- instance: building one for a finite table is the run-level lookup obligation.
+-- client of `TokenFold.runFold`, over the FLAT stream (the one a machine holds), reusing
+-- `CondStep.condStepR` as its automaton.  `decodeBits_freezePass` says the pass computes
+-- `rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun)` exactly — no day clamp, since
+-- the freeze oracle's output is bounded by a constant where the conditioning oracle's is
+-- not.  `freezeStreamRewriter_of_runOracle` closes the chain to `FreezeStreamRewriter`.
+-- ALL of it is conditioned on a `FreezeStep.RunOracle`, which has NO instance: building one
+-- is the run-level table lookup, and nothing here discharges it.  So
+-- `MachineFiniteSupportPatch` remains uninhabited; what changed is that the obligation is
+-- now one statement about a lookup rather than a chain.
 #assert_axioms_clean
-  FreezeStep.frPack_frStepR
+  FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP
   FreezeStep.decodeBits_freezePass
+  FreezeStep.freezeStreamRewriter_of_runOracle
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
