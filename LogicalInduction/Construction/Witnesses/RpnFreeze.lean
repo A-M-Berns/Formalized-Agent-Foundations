@@ -350,6 +350,140 @@ lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
   subst hb₂
   exact ⟨b₁, r₁, φ₁, φ₂, hb₁, hmk.symm, hpb₁, hpb₂⟩
 
+/-! ### The spelling set: why the lookup needs no automaton
+
+A run matcher looks like it should be a streaming automaton agreeing with `parseRpn`.  Under
+the two side conditions it is not, and the difference is the whole shape of the remaining
+obligation.
+
+Fix a target `ψ`.  A complete parse of `ψ` chooses, at each node, either the structural
+spelling (grammar tag plus the sub-blocks) or the two-token escape `[1, c]` with
+`decode c = some ψ'`.  The escape is where the alternatives could be infinite — and the two
+side conditions close exactly that:
+
+* `decode_eq_some_iff_of_botFree` (`CanonicalCodes.lean`) makes the escape payload the
+  *unique* canonical code `⌜ψ'⌝`, whenever `ψ'` has no `⊥` subformula;
+* `parseStructuredPaperPrime_shape` above excludes the structured spelling, whenever `ψ'`
+  is not a reserved atom `atom (Nat.pair 7 _)`.
+
+So every node has exactly **two** spellings, and the complete spellings of `ψ` are a finite
+explicit list — `2 ^ (nodes of ψ)` fixed token lists, `spellings ψ` below.  Deciding "does
+this run denote `ψ`" is then membership in a finite list of constants, not the execution of
+a parser, and no automaton has to be proved to agree with `parseRpn`.
+
+`spellings_sound` is the direction that makes the list non-vacuous: every member really does
+parse.  The converse — that the list is *exhaustive* — is the remaining obligation, and it is
+a structural induction over `ψ` using `parseRpn_bin_inv`, not an automaton agreement. -/
+
+/-- The complete legacy spellings of a target, as a finite explicit list of token lists.
+
+Each node contributes two alternatives: the canonical escape, and the structural spelling.
+The `⊥` case is a placeholder — `⊥` has infinitely many escape codes, which is exactly what
+`BotFree` rules out. -/
+def spellings : Sentence → List (List ℕ)
+  | ⊥ => [[0]]
+  | .atom a =>
+      [[a + 5], [1, Encodable.encode (LO.Propositional.Formula.atom a : Sentence)]]
+  | φ 🡒 χ =>
+      [1, Encodable.encode (φ 🡒 χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 2 :: (s₁ ++ s₂)
+  | φ ⋏ χ =>
+      [1, Encodable.encode (φ ⋏ χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 3 :: (s₁ ++ s₂)
+  | φ ⋎ χ =>
+      [1, Encodable.encode (φ ⋎ χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 4 :: (s₁ ++ s₂)
+
+/-- The canonical escape spelling parses, for any target. -/
+lemma parseRpnLegacy_escape_canonical (ψ : Sentence) :
+    parseRpnLegacy [1, Encodable.encode ψ].length [1, Encodable.encode ψ]
+      = some (ψ, []) := by
+  show (if (1 : ℕ) = 0 then _ else _) = _
+  rw [if_neg (by omega)]
+  show (if (1 : ℕ) = 1 then _ else _) = _
+  rw [if_pos rfl]
+  simp [Encodable.encodek]
+
+/-- **Every listed spelling really parses.**  This is what makes the finite list a
+description of the target rather than an optimistic guess.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpn_bin_body`,
+`parseRpnLegacy_escape_canonical`.
+Paper node: `app:ifp` -/
+lemma spellings_sound : ∀ (ψ : Sentence), ∀ b ∈ spellings ψ,
+    parseRpnLegacy b.length b = some (ψ, []) := by
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum =>
+      intro b hb
+      simp only [spellings, List.mem_singleton] at hb
+      subst hb
+      rfl
+  | hatom a =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.not_mem_nil, or_false] at hb
+      rcases hb with rfl | rfl
+      · show (if a + 5 = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 3 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 4 then _ else _) = _
+        rw [if_neg (by omega)]
+        simp
+      · exact parseRpnLegacy_escape_canonical _
+  | himp φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (2 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (2 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 2 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.imp (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+  | hand φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (3 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (3 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 3 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.and (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+  | hor φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (4 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (4 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 3 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 4 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.or (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+
 /-- **Matcher soundness**: a successful positional match certifies that the tokens it
 consumed form a complete self-delimiting block parsing to the target. -/
 lemma matchRun_sound : ∀ (φ : Sentence) (get : ℕ → ℕ) (p q : ℕ),

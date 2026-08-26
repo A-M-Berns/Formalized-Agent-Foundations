@@ -323,6 +323,77 @@ lemma tail_mem_FP {A : List Bool → List Bool} (hA : A ∈ FP) :
     (fun z => (A z).tail) ∈ FP :=
   mem_FP_of_cobham (Cobham.tailFn (cobham_of_mem_FP hA))
 
+/-! ### Branching on a length, and on a whole constant word
+
+`ifEqLen_mem_FP` and `ifLeLen_mem_FP` are the two shapes every small-numeral comparison
+factors through; both machine clients carried private copies of them until now.
+
+`eqConstFn_mem_FP` is the piece neither the fork nor this file had: deciding a word against
+a **fixed** constant.  `Complexity.selectHead` branches on one bit, so equality against a
+constant of length `k` is a nest of `k` such branches over iterated tails — constant depth,
+because the constant is fixed at elaboration time.  It is what a token test needs when the
+value compared against is too large to reach through a clamp: a `k`-bit numeral cannot be
+named by a unary word, but its *digit bits* are a constant word. -/
+
+/-- Branch on `|A z| = k` for a fixed `k`. -/
+lemma ifEqLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (A z).length = k then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_eqLen_mem_FP hA
+    (constFn_mem_FP (List.replicate k true)) hX hY
+  simpa using h
+
+/-- Branch on `|A z| ≤ k` for a fixed `k`. -/
+lemma ifLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (A z).length ≤ k then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_leFlag_mem_FP (constFn_mem_FP (List.replicate k true)) hA hX hY
+  simpa using h
+
+/-- **Branching on equality with a fixed word.**
+
+`selectHead` gives nothing on the empty word, so each level guards with `emptyFlag` first
+and only then reads the leading bit; the recursion is on the constant, so its depth is a
+literal rather than data.
+
+Proof kind: `P` proved.  Provenance: (b) `Complexity.selectHeadFn_mem_FP`,
+`Cobham.emptyFlag_mem_FP`, `tail_mem_FP`, `selectHeadFn_eqLen_mem_FP`. -/
+lemma eqConstFn_mem_FP : ∀ (c : List Bool) {A X Y : List Bool → List Bool},
+    A ∈ FP → X ∈ FP → Y ∈ FP → (fun z => if A z = c then X z else Y z) ∈ FP
+  | [], A, X, Y, hA, hX, hY => by
+      have h := ifEqLen_mem_FP hA 0 hX hY
+      have heq : (fun z => if (A z).length = 0 then X z else Y z)
+          = fun z => if A z = [] then X z else Y z := by
+        funext z
+        by_cases hz : A z = []
+        · rw [if_pos hz, if_pos (by rw [hz]; rfl)]
+        · rw [if_neg hz, if_neg (by simpa using hz)]
+      rwa [heq] at h
+  | (b :: cs), A, X, Y, hA, hX, hY => by
+      have hT : (fun z => (A z).tail) ∈ FP := tail_mem_FP hA
+      have hrec : (fun z => if (A z).tail = cs then X z else Y z) ∈ FP :=
+        eqConstFn_mem_FP cs hT hX hY
+      have hbranch : (fun z => selectHead (A z)
+            (if b then (if (A z).tail = cs then X z else Y z) else Y z)
+            (if b then Y z else (if (A z).tail = cs then X z else Y z))) ∈ FP := by
+        cases b
+        · simpa using selectHeadFn_mem_FP hA hY hrec
+        · simpa using selectHeadFn_mem_FP hA hrec hY
+      have h := selectHeadFn_mem_FP (emptyFlag_mem_FP hA) hY hbranch
+      have heq : (fun z => selectHead (emptyFlag (A z)) (Y z)
+            (selectHead (A z)
+              (if b then (if (A z).tail = cs then X z else Y z) else Y z)
+              (if b then Y z else (if (A z).tail = cs then X z else Y z))))
+          = fun z => if A z = b :: cs then X z else Y z := by
+        funext z
+        cases hz : A z with
+        | nil =>
+            rw [selectHead_emptyFlag_nil, if_neg (by simp)]
+        | cons a t =>
+            rw [selectHead_emptyFlag_cons, selectHead]
+            cases a <;> cases b <;> simp [List.cons.injEq]
+      rwa [heq] at h
+
 /-! ## The digit-level fold -/
 
 /-- The packed digit-fold state: a two-slot phase and the client state. -/
@@ -1836,6 +1907,7 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
     rw [runFold_natFold, undigitize_eq_blockSplit]
   rwa [heq] at h
 
+#print axioms LogicalInduction.TokenFold.eqConstFn_mem_FP
 #print axioms LogicalInduction.TokenFold.dgFold_cli
 #print axioms LogicalInduction.TokenFold.dgFold_mem_FP
 #print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP

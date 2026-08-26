@@ -169,22 +169,9 @@ lemma length_rcLenW (mW cW rW tW : List Bool) :
 /-! ### Membership
 
 Both branch shapes the automaton uses — "this counter or token equals the numeral `k`" and
-"this counter is at most `k`" — are `selectHead` against a constant unary word.  With those
-two the three functions above are mechanical nests. -/
-
-private lemma ifEqLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
-    (hX : X ∈ FP) (hY : Y ∈ FP) :
-    (fun z => if (A z).length = k then X z else Y z) ∈ FP := by
-  have h := selectHeadFn_eqLen_mem_FP hA (constFn_mem_FP (uw k)) hX hY
-  simp only [length_uw] at h
-  exact h
-
-private lemma ifLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
-    (hX : X ∈ FP) (hY : Y ∈ FP) :
-    (fun z => if (A z).length ≤ k then X z else Y z) ∈ FP := by
-  have h := selectHeadFn_leFlag_mem_FP (constFn_mem_FP (uw k)) hA hX hY
-  simp only [length_uw] at h
-  exact h
+"this counter is at most `k`" — are `selectHead` against a constant unary word.  Both live
+in `TokenFold` as `ifEqLen_mem_FP` and `ifLeLen_mem_FP`, shared with the freeze client;
+with them the three functions above are mechanical nests. -/
 
 lemma rcModeW_mem_FP {M C T : List Bool → List Bool}
     (hM : M ∈ FP) (hC : C ∈ FP) (hT : T ∈ FP) :

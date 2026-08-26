@@ -521,6 +521,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnFreeze.unRpn_rpnFreezeRunOn
   RpnFreeze.freezeStreamRewriter_of_flatPass
   RpnFreeze.parseStructuredPaperPrime_shape
+  RpnFreeze.spellings_sound
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
@@ -537,6 +538,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- is the run-level table lookup, and nothing here discharges it.  So
 -- `MachineFiniteSupportPatch` remains uninhabited; what changed is that the obligation is
 -- now one statement about a lookup rather than a chain.
+-- The lookup's shape is settled too: `RpnFreeze.spellings` is the FINITE list of complete
+-- legacy spellings of a target, and `spellings_sound` proves each member parses.  Under the
+-- two side conditions (`BotFree`, and the target outside the reserved `atom (pair 7 _)`
+-- shape) deciding "does this run denote ψ" is membership in that list, so NO streaming
+-- automaton has to be proved to agree with `parseRpn`.  Exhaustiveness of the list is the
+-- open half; nothing here asserts it.
 #assert_axioms_clean
   FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP
