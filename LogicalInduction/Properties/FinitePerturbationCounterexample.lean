@@ -408,6 +408,208 @@ lemma dichotomy_sched_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
     Dichotomy P' DP q.sentence (sched P' DP q.sentence j) :=
   dichotomy_of_paradoxQuote q hagree (one_le_sched P' DP q.sentence j)
 
+/-! ## The advice atoms
+
+`P' 0` is defined by decoding its argument, so the two advice families must be injective
+with disjoint ranges — that, and nothing more, is what the construction needs of them.
+
+Freshness with respect to the deductive process is **not** required here, which is worth
+saying explicitly because it is the first thing one expects to need.  `ComputableMarket`
+imposes no coherence between a market and its process; `DP` is untouched by the
+perturbation; the exploitation bookkeeping quantifies over worlds consistent with `DP.D n`
+and never reads `P' 0` at a process atom; and `χ`'s reflection is transported across
+`hagree`, which constrains only days `≥ 1`.  Even a hypothetical collision `sa n = χ m`
+would be harmless, since nothing reads `P' 0 (χ m)`.
+
+Tags `6`/`7` are nevertheless chosen disjoint from every tag this repo's processes emit —
+computation claims `0`–`3` (`ComputationClaimKind.godelCode`), quotation claims `4`
+(`quotationClaimCode`), quoted products `5` (`productTag`) — so the advice layer is inert
+everywhere, not merely where the proof happens to look.
+-/
+
+/-- The schedule-gate advice atom for day `n`, on the fresh tag `6`. -/
+def schedAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 6 n)
+
+/-- The sign advice atom for day `n`, on the fresh tag `7`. -/
+def signAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 7 n)
+
+@[simp] lemma schedAtom_inj {m n : ℕ} : schedAtom m = schedAtom n ↔ m = n := by
+  simp [schedAtom, Nat.pair_eq_pair]
+
+@[simp] lemma signAtom_inj {m n : ℕ} : signAtom m = signAtom n ↔ m = n := by
+  simp [signAtom, Nat.pair_eq_pair]
+
+@[simp] lemma schedAtom_ne_signAtom (m n : ℕ) : schedAtom m ≠ signAtom n := by
+  simp [schedAtom, signAtom, Nat.pair_eq_pair]
+
+lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 6 n + 5] := rfl
+
+lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 7 n + 5] := rfl
+
+/-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
+lemma rpnSentenceCodes_schedAtom : RpnSentenceCodes schedAtom := by
+  obtain ⟨c, hc⟩ := ((PolyFueled.const 6).pair PolyFueled.id).addConst 5
+  exact RpnSentenceCodes.ofCanonical
+    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+      (fun n => (rpn_schedAtom n).symm))
+
+/-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
+lemma rpnSentenceCodes_signAtom : RpnSentenceCodes signAtom := by
+  obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
+  exact RpnSentenceCodes.ofCanonical
+    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+      (fun n => (rpn_signAtom n).symm))
+
+/-! ## The perturbed market
+
+`P'` republishes day `0` as the advice table and leaves every later day alone.  Nothing
+below needs the advice bits to be *correct* — that is the next section's job — so the
+day-`0` row is taken as two arbitrary bit families and the agreement, lookup and range
+laws are proved once and for all.
+
+The row is defined by a decidable-in-principle case split on which advice family the
+argument belongs to, using only the injectivity and disjointness of `schedAtom`/`signAtom`.
+It is a `Classical` definition rather than an executable one; `ComputableMarket` asks for a
+rational quote table and a `Nat.Partrec.Code`, not for the history to be a computable Lean
+function, so nothing is lost.
+-/
+
+/-- The day-`0` advice row over a base valuation. -/
+noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valuation :=
+  fun φ =>
+    if h : ∃ n, φ = schedAtom n then gate h.choose
+    else if h : ∃ n, φ = signAtom n then sign h.choose
+    else base φ
+
+@[simp] lemma adviceRow_schedAtom (base : Valuation) (gate sign : ℕ → ℝ) (n : ℕ) :
+    adviceRow base gate sign (schedAtom n) = gate n := by
+  have hex : ∃ m, schedAtom n = schedAtom m := ⟨n, rfl⟩
+  rw [adviceRow, dif_pos hex]
+  congr 1
+  exact (schedAtom_inj.mp hex.choose_spec).symm
+
+@[simp] lemma adviceRow_signAtom (base : Valuation) (gate sign : ℕ → ℝ) (n : ℕ) :
+    adviceRow base gate sign (signAtom n) = sign n := by
+  have hno : ¬ ∃ m, signAtom n = schedAtom m := by
+    rintro ⟨m, hm⟩
+    exact schedAtom_ne_signAtom m n hm.symm
+  have hex : ∃ m, signAtom n = signAtom m := ⟨n, rfl⟩
+  rw [adviceRow, dif_neg hno, dif_pos hex]
+  congr 1
+  exact (signAtom_inj.mp hex.choose_spec).symm
+
+/-- Kind `P`; hypotheses `(a)`. -/
+lemma adviceRow_mem_Icc {base : Valuation} {gate sign : ℕ → ℝ}
+    (hbase : ∀ φ, 0 ≤ base φ ∧ base φ ≤ 1)
+    (hgate : ∀ n, 0 ≤ gate n ∧ gate n ≤ 1)
+    (hsign : ∀ n, 0 ≤ sign n ∧ sign n ≤ 1) (φ : Sentence) :
+    0 ≤ adviceRow base gate sign φ ∧ adviceRow base gate sign φ ≤ 1 := by
+  rw [adviceRow]
+  split_ifs
+  · exact hgate _
+  · exact hsign _
+  · exact hbase φ
+
+/-- The market `P` with day `0` replaced by the advice row. -/
+noncomputable def advicePerturb (P : History) (gate sign : ℕ → ℝ) : History :=
+  fun n => if n = 0 then adviceRow (P 0) gate sign else P n
+
+/-- **The perturbation is confined to day `0`** — the `hagree` hypothesis of the refutation,
+at `N = 1`.
+Kind `P`. -/
+lemma advicePerturb_agree (P : History) (gate sign : ℕ → ℝ) :
+    ∀ n, 1 ≤ n → ∀ φ, P n φ = advicePerturb P gate sign n φ := by
+  intro n hn φ
+  rw [advicePerturb, if_neg (by omega)]
+
+@[simp] lemma advicePerturb_zero_schedAtom (P : History) (gate sign : ℕ → ℝ) (n : ℕ) :
+    advicePerturb P gate sign 0 (schedAtom n) = gate n := by
+  rw [advicePerturb, if_pos rfl, adviceRow_schedAtom]
+
+@[simp] lemma advicePerturb_zero_signAtom (P : History) (gate sign : ℕ → ℝ) (n : ℕ) :
+    advicePerturb P gate sign 0 (signAtom n) = sign n := by
+  rw [advicePerturb, if_pos rfl, adviceRow_signAtom]
+
+/-- Kind `C`; hypotheses `(a)`. -/
+lemma advicePerturb_mem_Icc {P : History} {gate sign : ℕ → ℝ}
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hgate : ∀ n, 0 ≤ gate n ∧ gate n ≤ 1)
+    (hsign : ∀ n, 0 ≤ sign n ∧ sign n ≤ 1) (n : ℕ) (φ : Sentence) :
+    0 ≤ advicePerturb P gate sign n φ ∧ advicePerturb P gate sign n φ ≤ 1 := by
+  rw [advicePerturb]
+  split_ifs
+  · exact adviceRow_mem_Icc (hP 0) hgate hsign φ
+  · exact hP n φ
+
+/-! ### The advice bits
+
+Both bits are computed from `P`, never from `P'`.  For the sign bit that is forced: day
+`0`'s own price of `χ 0` is one of the things the perturbation overwrites, so a sign bit
+required to be correct about `P' 0 (χ 0)` would be self-referential.  It never arises,
+because `sched j ≥ 1` — day `0` is not scheduled.  For the gate bit it is `sched_congr`
+that licenses it, and that is what keeps the day-`0` row a function of `P` alone.
+-/
+
+/-- The schedule gate bit for day `n`. -/
+noncomputable def gateBit (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (n : ℕ) :
+    ℝ := if ∃ j, sched P DP χ j = n then 1 else 0
+
+/-- The advice sign bit for day `n`. -/
+noncomputable def signBit (P : History) (χ : ℕ → Sentence) (n : ℕ) : ℝ :=
+  if P n (χ n) < 1 / 2 then 1 else 0
+
+lemma gateBit_mem_Icc (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (n : ℕ) :
+    0 ≤ gateBit P DP χ n ∧ gateBit P DP χ n ≤ 1 := by
+  rw [gateBit]; split_ifs <;> norm_num
+
+lemma signBit_mem_Icc (P : History) (χ : ℕ → Sentence) (n : ℕ) :
+    0 ≤ signBit P χ n ∧ signBit P χ n ≤ 1 := by
+  rw [signBit]; split_ifs <;> norm_num
+
+/-- The perturbed market of the counterexample. -/
+noncomputable def advicePerturbed (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) :
+    History := advicePerturb P (gateBit P DP χ) (signBit P χ)
+
+lemma advicePerturbed_agree (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) :
+    ∀ n, 1 ≤ n → ∀ φ, P n φ = advicePerturbed P DP χ n φ :=
+  advicePerturb_agree P _ _
+
+lemma advicePerturbed_mem_Icc {P : History} (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) (φ : Sentence) :
+    0 ≤ advicePerturbed P DP χ n φ ∧ advicePerturbed P DP χ n φ ≤ 1 :=
+  advicePerturb_mem_Icc hP (gateBit_mem_Icc P DP χ) (signBit_mem_Icc P χ) n φ
+
+/-- **Gate closed off schedule** — the `hgateOff` conjunct.
+Kind `C`; hypotheses `(a)`. -/
+lemma advicePerturbed_schedAtom_off (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (i : ℕ) (hi : ∀ j, sched (advicePerturbed P DP χ) DP χ j ≠ i) :
+    advicePerturbed P DP χ 0 (schedAtom i) = 0 := by
+  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, if_neg]
+  rintro ⟨j, hj⟩
+  exact hi j ((sched_congr (advicePerturbed_agree P DP χ) j).symm.trans hj)
+
+/-- **Gate open on schedule** — the `hgateOn` conjunct.
+Kind `C`; hypotheses `(a)`. -/
+lemma advicePerturbed_schedAtom_on (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (j : ℕ) :
+    advicePerturbed P DP χ 0 (schedAtom (sched (advicePerturbed P DP χ) DP χ j)) = 1 := by
+  rw [advicePerturbed, advicePerturb_zero_schedAtom, gateBit, if_pos]
+  exact ⟨j, sched_congr (advicePerturbed_agree P DP χ) j⟩
+
+/-- **The published sign bit is the market's own** — the `hsign` conjunct, at the scheduled
+days, which are the only ones the trader reads.
+Kind `C`; hypotheses `(a)`. -/
+lemma advicePerturbed_signAtom_on (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (j : ℕ) :
+    advicePerturbed P DP χ 0 (signAtom (sched (advicePerturbed P DP χ) DP χ j))
+      = if advicePerturbed P DP χ (sched (advicePerturbed P DP χ) DP χ j)
+            (χ (sched (advicePerturbed P DP χ) DP χ j)) < 1 / 2 then 1 else 0 := by
+  set P' := advicePerturbed P DP χ with hP'
+  set m := sched P' DP χ j with hm
+  rw [hP', advicePerturbed, advicePerturb_zero_signAtom, signBit,
+    advicePerturbed_agree P DP χ m (one_le_sched P' DP χ j) (χ m)]
+  rfl
+
 /-! ## The advice trader
 
 An `EF` coefficient can carry a number but cannot name a sentence, so the traded sentence
@@ -469,11 +671,12 @@ day's strategy value is the round value the bookkeeping expects — this is `hva
 Kind `C`; hypotheses `(a)`. -/
 lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
     (DP : DeductiveProcess) (hgateOn : ∀ j, V 0 (sa (sched V DP χ j)) = 1)
-    (hsign : ∀ n, V 0 (si n) = if V n (χ n) < 1 / 2 then 1 else 0)
+    (hsign : ∀ j, V 0 (si (sched V DP χ j))
+      = if V (sched V DP χ j) (χ (sched V DP χ j)) < 1 / 2 then 1 else 0)
     (v : PCWorld) (j : ℕ) :
     ((adviceTrader sa si χ).strat (sched V DP χ j)).value V v.payout
       = roundValue V χ v (sched V DP χ j) := by
-  rw [adviceTrader_value, hgateOn j, hsign, roundValue, signCoeff]
+  rw [adviceTrader_value, hgateOn j, hsign j, roundValue, signCoeff]
   by_cases h : V (sched V DP χ j) (χ (sched V DP χ j)) < 1 / 2
   · rw [if_pos h, if_pos h]; ring
   · rw [if_neg h, if_neg h]; ring
@@ -561,44 +764,53 @@ theorem exists_advice_perturbation :
         (Tr.strat i).value P' v.payout = 0) ∧
       (∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
         = roundValue P' χ v (sched P' DP χ j)) := by
-  obtain ⟨P, P', DP, sa, si, χ, hLI, hP', hagree, hworld, hsa, hsi, hχ, hdicho,
-      hgateOff, hgateOn, hsign⟩ :
-      ∃ (P P' : History) (DP : DeductiveProcess) (sa si χ : ℕ → Sentence),
-        IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
-        (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧
+  obtain ⟨P, DP, χ, hLI, hworld, hχ, hdicho, hcomp⟩ :
+      ∃ (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence),
+        IsMachineLogicalInductor P DP ∧
         (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
-        RpnSentenceCodes sa ∧ RpnSentenceCodes si ∧ RpnSentenceCodes χ ∧
-        (∀ m, 1 ≤ m → Dichotomy P' DP χ m) ∧
-        (∀ i, (∀ j, sched P' DP χ j ≠ i) → P' 0 (sa i) = 0) ∧
-        (∀ j, P' 0 (sa (sched P' DP χ j)) = 1) ∧
-        (∀ n, P' 0 (si n) = if P' n (χ n) < 1 / 2 then 1 else 0) := by
-    -- TODO(thm:ifp): need the perturbed market.  Take `P := liaHistory (theoremDP T)`
-    -- (`LIA_isMachineLogicalInductor`, `theoremDP_hworld`) and `χ` the canonical diagonal
-    -- at `p = 1/2` (`theoremDiagonalQuoteCode`, whose `sentence_codes` field is the
-    -- `RpnSentenceCodes χ` needed here, and whose `diagonal_reflected` gives the last
-    -- conjunct through `dichotomy_of_paradoxQuote`).
-    -- TODO(thm:ifp): need `sa`, `si` as fresh atom families.  Computation claims carry
-    -- tags `0`–`3` (`ComputationClaimKind.godelCode`), quotation claims tag `4`
-    -- (`quotationClaimCode`) and quoted products tag `5` (`productTag`), so tags `6`/`7`
-    -- name atoms no process in this repo emits; `Construction/Witnesses/ProductDefinition.lean`
-    -- (`eventAtom_atomCodes_ne_productTag`) is the template for that freshness proof.
-    -- Their `RpnSentenceCodes` follow from `RpnSentenceCodes.ofPolySentenceCodes`.
-    -- TODO(thm:ifp): need `ComputableMarket P'` for `P' := Function.update P 0 (advice
-    -- table)`.  The day-`0` row is decidable by search: the sign bit compares two
-    -- rationals from `P`'s own quote table, and the schedule bit runs `settleStage`,
-    -- which is `Nat.find` over a predicate decided by the primitive-recursive
-    -- finite-stage entailment checker `stageEntails` and terminating by
-    -- `DeductiveProcess.stageEntails_complete_of_semantic`
-    -- (`Construction/Witnesses/FiniteEntailment.lean`); assemble with `Nat.rfindOpt` and
-    -- `Partrec.of_eq_tot` as in `liaEntries_computable` (`Construction/LIACompiler.lean`).
-    -- `sched_congr` and `settleStage_congr` above are what make that search a function of
-    -- `P` alone, so the day-`0` row does not refer to itself.
+        RpnSentenceCodes χ ∧
+        (∀ m, 1 ≤ m → Dichotomy (advicePerturbed P DP χ) DP χ m) ∧
+        ComputableMarket (advicePerturbed P DP χ) := by
+    -- TODO(thm:ifp): need the concrete witness.  `P := liaHistory (theoremDP T)` with
+    -- `LIA_isMachineLogicalInductor` and `theoremDP_hworld`; `χ` the canonical `p = 1/2`
+    -- diagonal `(theoremDiagonalQuoteCode T (1/2)).toBooleanQuoteCode.sentence`, whose
+    -- `sentence_codes` field is `RpnSentenceCodes χ` and whose `diagonal_reflected` gives
+    -- the dichotomy through `dichotomy_of_paradoxQuote` applied to
+    -- `paradoxResistanceQuoteOfDiagonal … (theoremMarketComputation T) (1/2) …`.
+    -- Note the `MarketComputation` must be the one for the **unperturbed** `P`: `χ n`
+    -- asserts a fact about `P`'s own quote program, and `dichotomy_of_paradoxQuote`
+    -- transports it to `P'` across `advicePerturbed_agree`.
+    --
+    -- **Blocked here by module layering, not by mathematics.**  `theoremDP` and the whole
+    -- quotation layer live in `Construction/Witnesses/ComputationDP.lean`, which imports
+    -- `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties` → this
+    -- file.  Naming them here is an import cycle.  This existential (and only it) belongs
+    -- in a module downstream of `ComputationDP`, exactly as
+    -- `lic_paradox_resistance_ofDiagonal_unconditional` does.
+    --
+    -- TODO(thm:ifp): need `ComputableMarket (advicePerturbed P DP χ)`.  All three
+    -- ingredients are import-safe from here (`Construction/Witnesses/FiniteEntailment.lean`
+    -- imports only `LIACompiler` and `Framework/Compactness`):
+    --   * `sentencePrimcodable` (`Construction/LIACompiler.lean:225`) for decoding a
+    --     sentence code and recognising the tag-`6`/`7` advice atoms;
+    --   * `settleStage` is `Nat.find` over `SettledAt`, which `stageEntails` decides
+    --     (`stageEntails_primrec`) and `DeductiveProcess.stageEntails_complete_of_semantic`
+    --     shows is eventually true, so `Nat.rfindOpt` + `Partrec.of_eq_tot` computes it in
+    --     the `liaEntries_computable` style — the totality side condition is a plain
+    --     existence statement, so the compactness proof of `exists_stage_entails` suffices
+    --     and no constructive stage bound is needed;
+    --   * `sched` is strictly monotone with `sched 0 = 1`, so `∃ j, sched j = n` is the
+    --     bounded search `∃ j ≤ n, sched j = n`.
     sorry
-  exact ⟨P, P', DP, χ, adviceTrader sa si χ, hLI, hP', hagree,
-    adviceTrader_efficient hsa hsi hχ, hworld,
-    fun j => hdicho _ (one_le_sched P' DP χ j),
-    fun v i hi => adviceTrader_value_off_sched sa si χ P' DP hgateOff v i hi,
-    fun v j => adviceTrader_value_on_sched sa si χ P' DP hgateOn hsign v j⟩
+  exact ⟨P, advicePerturbed P DP χ, DP, χ, adviceTrader schedAtom signAtom χ,
+    hLI, hcomp, advicePerturbed_agree P DP χ,
+    adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom hχ,
+    hworld,
+    fun j => hdicho _ (one_le_sched _ DP χ j),
+    fun v i hi => adviceTrader_value_off_sched schedAtom signAtom χ _ DP
+      (advicePerturbed_schedAtom_off P DP χ) v i hi,
+    fun v j => adviceTrader_value_on_sched schedAtom signAtom χ _ DP
+      (advicePerturbed_schedAtom_on P DP χ) (advicePerturbed_signAtom_on P DP χ) v j⟩
 
 /-- **The unrestricted finite-day perturbation statement is false** — the negation of the
 paper's `thm:ifp` as printed, at the paper's own quantifier.
@@ -618,5 +830,6 @@ theorem not_overgeneral_ifp :
 
 end FinitePerturbationCounterexample
 end LogicalInduction
+
 
 
