@@ -202,16 +202,15 @@ assertion starts failing and gets promoted to a plain clean assertion.
      `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`,
      a direct `Complexity.FP` transport theorem for the strategy serialization. Nothing is
      weakened meanwhile: the existing fuel-level theorem and its witnesses are unchanged.
-   * **closure under finite perturbations** (`thm:ifp`) — the same shape, and separately
-     under revision: the published unrestricted finite-day statement is overgeneral, since
-     arbitrary finite-day perturbations can encode unbounded computational advice. The
-     corrected finite-*support* theorem is now proved at **both** classes
-     (`lic_iff_of_finiteSupportPerturbation`, `machine_lic_iff_of_finiteSupportPerturbation`),
-     and the refutation of the unrestricted statement is under construction
-     (`Properties/FinitePerturbationCounterexample.lean`). None of the three patch
-     interfaces — `EfficientPrefixPatch`, `FiniteSupportPatch`, `MachineFiniteSupportPatch` —
-     has **any inhabitant anywhere in this repo**, so no endpoint here has an exhibited
-     witness for its own hypothesis.
+   * **closure under finite perturbations** (`thm:ifp`) — no longer a boundary of this
+     kind, because the published unrestricted statement is **false** and `not_overgeneral_ifp`
+     proves it so: arbitrary finite-day perturbations really can encode unbounded
+     computational advice, and the theorem does not survive it. The corrected
+     finite-*support* theorem is proved at **both** classes
+     (`lic_iff_of_finiteSupportPerturbation`, `machine_lic_iff_of_finiteSupportPerturbation`).
+     None of the three patch interfaces — `EfficientPrefixPatch`, `FiniteSupportPatch`,
+     `MachineFiniteSupportPatch` — has **any inhabitant anywhere in this repo**, so no
+     restricted endpoint here has an exhibited witness for its own hypothesis.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -360,8 +359,15 @@ proved content withdrawn.
   direct `Complexity.FP` closure result for the strategy serialization.
 * **`thm:ifp` — closure under finite perturbations.** Three carriers, in three of the four
   categories this repo distinguishes.
-  * *Exact paper theorem*: none. The published unrestricted finite-day statement is not
-    proved here and its published proof is invalid (erratum PE1).
+  * *Formal counterexample*: **the published unrestricted finite-day statement is false**,
+    and `not_overgeneral_ifp` (`Construction/Witnesses/FinitePerturbationWitness.lean`)
+    proves it false — kernel-checked, axiom-clean, at the paper's own quantifier and with no
+    theory parameter. The constructed `LIA`, perturbed on day `0` only, publishes the
+    diagonal sign bits as advice-atom prices; an efficient trader reads them through
+    historical price features and never computes them. A single changed pricing day is an
+    infinite computable function, and that is enough to smuggle across the gap between
+    *computable* and *efficiently computable*. Its published proof is separately invalid
+    (erratum PE1).
   * *Corrected paper theorem*: `lic_iff_of_finiteSupportPerturbation` and
     `machine_lic_iff_of_finiteSupportPerturbation` quantify over perturbations that move
     only finitely many `(day, sentence)` price coordinates — the case in which the
@@ -369,10 +375,9 @@ proved content withdrawn.
     **strictly stronger** than the paper's tail agreement
     (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
     other), so this is a proper restriction, not a restatement.
-  * *Formal counterexample*: `Properties/FinitePerturbationCounterexample.lean` reduces the
-    negation of the unrestricted statement to one construction — a day-`0` advice tape
-    read through historical price features — with the settlement, scheduling, margin and
-    exploitation bookkeeping proved and the construction itself still a `sorry`.
+  * *Exact paper theorem*: none, and there cannot be one — see the counterexample above.
+    `Properties/FinitePerturbationCounterexample.lean` holds the abstract reduction;
+    `Construction/Witnesses/FinitePerturbationWitness.lean` closes it over `LIA`.
   * The fuel-class carrier `lic_iff_of_finitePerturbation` keeps the paper's own
     hypothesis shape.
 
