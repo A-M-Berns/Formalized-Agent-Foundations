@@ -216,9 +216,10 @@ assertion starts failing and gets promoted to a plain clean assertion.
      (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for markets whose frozen
      coordinates come from a finite entry table meeting three stated conditions, witnessed
      at a table with a real row. The fuel-class certificates `EfficientPrefixPatch` and
-     `FiniteSupportPatch` remain uninhabited. No concrete pair of computable markets is
-     constructed either way, so the corrected theorem is not yet exhibited non-vacuous end
-     to end.
+     `FiniteSupportPatch` remain uninhabited. A concrete pair of computable markets differing exactly on that
+     table now exists (`machine_lic_iff_twoPoint`), so the corrected theorem's antecedent is
+     **satisfiable** — non-vacuous, though not yet *informative*: neither side of the
+     equivalence is known to hold at that pair.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -399,12 +400,15 @@ proved content withdrawn.
   `Recognizable` per sentence and a `TablePresentation`, witnessed at a table with a real
   row rather than the degenerate empty one. The fuel-class certificates
   `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited**, because the fuel
-  calculus does not close over the escape-leaf decode the lookup needs. And **no concrete
-  pair of computable markets is constructed**, so the corrected theorem is still not
-  exhibited non-vacuous end to end: the freeze certificate is discharged, the market pair
-  is not. (An earlier version of the errata ledger claimed non-vacuity citing a declaration
-  that does not exist; corrected there. The standard that catches this is the reason the
-  distinction above is drawn so finely.)
+  calculus does not close over the escape-leaf decode the lookup needs. A concrete pair of computable
+  markets differing exactly on that table exists (`machine_lic_iff_twoPoint`, closed but for
+  the deductive process), so every hypothesis of the corrected theorem is discharged
+  simultaneously at a real instance: the antecedent is **satisfiable**. That is
+  non-vacuity, not informativeness — those markets price everything at zero but one
+  coordinate and are very likely exploitable, in which case the equivalence holds and says
+  nothing *at that instance*. Both halves of this sentence are load-bearing. (An earlier
+  version of the errata ledger claimed non-vacuity citing a declaration that does not exist;
+  corrected there. That is why the distinction is drawn this finely.)
 
 ## Closing the boundaries
 

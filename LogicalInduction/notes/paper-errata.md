@@ -153,9 +153,16 @@ quote is a parameter, so the two markets can genuinely differ on `S` — the deg
 assumed, is now *derived*, because the emitted suffix is one of finitely many constant
 words.
 
-**What is still not established.** No concrete pair of computable markets is constructed,
-so `machine_lic_iff_of_finiteSupportPerturbation` is not exhibited non-vacuous end to end:
-the freeze certificate is discharged, the market pair is not. And the fuel-class
+**The antecedent is satisfiable.** `machine_lic_iff_twoPoint` is closed but for the
+deductive process: a concrete pair of computable markets, proved to differ exactly on the
+frozen coordinate, discharging every hypothesis at once. So the corrected theorem is
+non-vacuous.
+
+**What is still not established.** Non-vacuous is not informative. Those markets price
+everything at zero but one coordinate and are very likely exploitable, in which case the
+equivalence is true and carries no information at that instance. An informative instance
+would perturb a market already known to be an inductor — `liaHistory DP` — at a single
+coordinate; that is a further ~150-200 lines, not started. And the fuel-class
 certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited** — the
 fuel calculus does not close over the escape-leaf decode the lookup needs, which is
 precisely the `dd:fuel` inverse-operation ceiling.

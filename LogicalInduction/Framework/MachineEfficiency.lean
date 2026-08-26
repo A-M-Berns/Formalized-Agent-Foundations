@@ -82,8 +82,9 @@ serialization. Both transport theorems now exist.
   and the published unrestricted statement is **refuted** (`not_overgeneral_ifp`). The
   freeze certificate `MachineFiniteSupportPatch` is **inhabited**
   (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for tables meeting three stated
-  conditions; its fuel-class counterparts are not. No concrete pair of computable markets is
-  constructed, so the corrected theorem is not yet exhibited non-vacuous end to end.
+  conditions; its fuel-class counterparts are not. A concrete computable market pair
+  discharges every hypothesis at once (`machine_lic_iff_twoPoint`), so the antecedent is
+  satisfiable — non-vacuous, though neither side of the equivalence is known to hold there.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 
