@@ -925,7 +925,7 @@ real machine reaches its decoding, in at most the budgeted number of steps, and 
 halted there. The step bound `s ≤ t` is the fact the polynomial-soundness argument uses. -/
 lemma runUntilHalt_spec (d : TMDesc) :
     ∀ (t : ℕ) (c c' : CodedCfg), runUntilHalt d t c = some c' →
-      ∃ s ≤ t, (d.toTM).reachesIn s (CodedCfg.decode d c) (CodedCfg.decode d c') ∧
+      ∃ s < t, (d.toTM).reachesIn s (CodedCfg.decode d c) (CodedCfg.decode d c') ∧
         (d.toTM).halted (CodedCfg.decode d c')
   | 0, c, c', h => by
       rw [runUntilHalt] at h; simp at h
@@ -942,7 +942,7 @@ lemma runUntilHalt_spec (d : TMDesc) :
           rw [hs] at h
           simp only [stepFrozen_frozen, if_pos, Option.some.injEq] at h
           subst h
-          exact ⟨0, Nat.zero_le _, .zero, halted_of_codedStep_none hs⟩
+          exact ⟨0, Nat.succ_pos t, .zero, halted_of_codedStep_none hs⟩
       | some c₁ =>
           rw [hs] at h
           obtain ⟨s, hst, hreach, hhalt⟩ :=
@@ -1094,7 +1094,7 @@ lemma length_codedOutput_le {d : TMDesc} {t : ℕ} {x : List Bool} {c : CodedCfg
 fact, and correctness of extraction against upstream's `Tape.HasOutput`, together. -/
 lemma evalHalted_spec {d : TMDesc} {t : ℕ} {x : List Bool} {c : CodedCfg}
     (h : evalHalted d t x = some c) :
-    ∃ s ≤ t, (d.toTM).reachesIn s ((d.toTM).initCfg x) (CodedCfg.decode d c) ∧
+    ∃ s < t, (d.toTM).reachesIn s ((d.toTM).initCfg x) (CodedCfg.decode d c) ∧
       (d.toTM).halted (CodedCfg.decode d c) ∧
       (CodedCfg.decode d c).output.HasOutput (codedOutput c) := by
   obtain ⟨s, hst, hreach, hhalt⟩ := runUntilHalt_spec d t _ c h
@@ -1264,7 +1264,7 @@ that output is the machine's genuine halted output in upstream's sense. No truth
 the clock claim is assumed, and none is needed: this holds at every index. -/
 lemma machineTokens_steps_le (j n : ℕ) :
     machineTokens j n = [] ∨
-      ∃ c : CodedCfg, ∃ s ≤ progClock j n,
+      ∃ c : CodedCfg, ∃ s < progClock j n,
         ((progDesc j).toTM).reachesIn s (((progDesc j).toTM).initCfg (unaryDay n))
             (CodedCfg.decode (progDesc j) c) ∧
           ((progDesc j).toTM).halted (CodedCfg.decode (progDesc j) c) ∧
