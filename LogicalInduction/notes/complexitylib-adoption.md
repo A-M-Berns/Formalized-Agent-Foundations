@@ -828,6 +828,12 @@ reason, with a tractable `LIA` instance newly in reach." That is real progress a
 doing — but it is not the clean fix the brief hoped for, and the difference should be
 reflected in the plan.
 
+> **Superseded (2026-08-26).** This prediction was too pessimistic in one direction and
+> beside the point in another. The machine-class certificate is now *inhabited*, and the
+> public corrected theorem needs no certificate at all — it compiles one from the market's
+> own computability. And the framing was wrong: the published unrestricted `thm:ifp` is not
+> a theorem awaiting a certificate, it is **false**, and is now refuted. See Part XXV.
+
 ---
 
 ## 11. Strength claims — unchanged
@@ -4511,3 +4517,60 @@ certification device*: the class the construction quantifies over is
 `MachineEfficientTrader`, and the fuel certificate implies membership in it. The model
 card's lower calibration — machine ⟹ fuel — remains open, costs nothing paper-facing, and is
 not claimed.
+
+---
+
+# Part XXV — the perturbation branch closes (2026-08-26)
+
+Stage 3 left two statements whose *conclusion* is the criterion sitting at the fuel class,
+because restating them needs the machine class closed under a trader translation. Both are
+now resolved, and they resolved differently.
+
+## XXV.1 `thm:scon` — closed at the machine quantifier
+
+`conditionedTranslation_preserves_machine` and
+`eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports, under
+the *same* `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts — so
+nothing is weakened and the trader hypothesis is strictly stronger. The endpoints
+`lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+`lic_conditioned_eventual_machine` conclude `IsMachineLogicalInductor`. The fuel endpoints
+and their inhabited witnesses are untouched beside them: this is a strengthening, not a
+replacement.
+
+The transduction is six `Complexity.FP` passes over one word-level automaton — price, guard,
+count, budget rendering, acceptance, frame — built on a fold combinator (`TokenFold`) that
+did not exist before this branch. Two disclosed clamps were introduced and then *discharged*
+rather than left standing: the conditioning emitter draws its block at `min D n`, and the
+guard pass is what makes that exact.
+
+## XXV.2 `thm:ifp` — the published statement is false
+
+Not a formalization gap. `not_overgeneral_ifp` refutes the unrestricted finite-day statement
+at the paper's own quantifier, closed but for the deductive process. The mechanism is that a
+single changed pricing day is an infinite computable function: `def:marketprocess` bounds
+neither its runtime nor its output size, so one perturbed day can publish advice that an
+efficient trader reads through historical price features without ever computing it. The
+diagonal price family the repo already had (`ParadoxResistanceQuote`) supplies a sequence on
+which knowing one bit is worth a certain `1/2` per settled round.
+
+The corrected theorem is finite *support*: `machine_lic_iff_of_recognizableSupport`, taking
+two computable markets and a perturbation and nothing else. Its one residual hypothesis is a
+condition on the syntax of the finitely many moved sentences, standing for two `FP`
+primitives this toolkit lacks — integer square root and a structured-payload parser — both
+proved necessary rather than convenient.
+
+## XXV.3 What the port cost
+
+The FP closure kit (`mem_FP_comp`, `mem_FP_pairWithInput`, the whole `Cobham` subtree, the
+binary-arithmetic subroutines) had never been type-checked on this pin; Stage 3 needed none
+of it, and both transports run through it. Eight mechanical commits in the fork cleared it,
+of which seven additive `rfl` simp lemmas carry most of the work. The pin moved
+`964ce2d → 1b0d107`.
+
+## XXV.4 The `dd:fuel` ledger, final
+
+The fuel class is a certification device throughout. Every machine-facing endpoint in this
+branch takes machine hypotheses; none falls back to `IsLogicalInductor`. The fuel-class
+freeze certificates remain uninhabited, and the reason is now attributed rather than open:
+the fuel calculus does not close over the escape-leaf decode — the inverse-operation ceiling
+this note predicted, binding exactly where it was predicted to.
