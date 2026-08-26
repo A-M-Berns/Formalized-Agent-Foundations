@@ -106,6 +106,14 @@ top of the inclusion.
   `EfficientPrefixPatch.preserves_ec`, which is uninhabited so far — no proof that it
   cannot be inhabited by fuel-model means is claimed.
 
+> **Confirmed (2026-08-26).** This prediction held. The machine-class freeze certificate is
+> inhabited, and the public corrected theorem compiles one rather than asking for it; the
+> fuel-class certificates are still uninhabited, and the obstruction is exactly the
+> inverse-operation ceiling named above — the escape-leaf decode reduces to `unpair` /
+> integer square root, which `BigDigits` does not close over. The "no class-level refutation
+> of the converse" wording also stands: machine ⟹ fuel remains undischarged, not disproved,
+> and nothing paper-facing depends on it.
+
 **Honest total: 8–15 months of focused work, ~8,000–13,000 lines. Research-scale.**
 
 **Single riskiest step:** the timed simulation chain's global stack/tape-size

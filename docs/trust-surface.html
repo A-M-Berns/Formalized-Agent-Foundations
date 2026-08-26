@@ -2009,7 +2009,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">machine_lic_iff_of_finiteSupportPerturbation</code><span class="ep-file">LogicalInduction/Properties/FinitePerturbations.lean</span></div><pre class="sig">theorem machine_lic_iff_of_finiteSupportPerturbation
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="6">1 / 6</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">machine_lic_iff_of_finiteSupportPerturbation</code><span class="ep-file">LogicalInduction/Properties/FinitePerturbations.lean</span></div><pre class="sig">theorem machine_lic_iff_of_finiteSupportPerturbation
     (P P&#x27; : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
     (hPcomp : ComputableMarket P) (hP&#x27;comp : ComputableMarket P&#x27;)
     (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P&#x27; d φ)
@@ -2028,7 +2028,18 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     IsLogicalInductor P DP ↔ IsLogicalInductor P&#x27; DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FreezeOracle.machine_lic_iff_of_recognizableSupport</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FreezeOracle.lean</span></div><pre class="sig">theorem machine_lic_iff_of_recognizableSupport (P P&#x27; : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP&#x27;comp : ComputableMarket P&#x27;)
     (hpert : RecognizableSupportPerturbation P P&#x27;) :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P&#x27; DP</pre></div>
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P&#x27; DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">LIAPerturbation.machineLogicalInductor_liaPerturbed</code><span class="ep-file">LogicalInduction/Construction/Witnesses/LIAPerturbation.lean</span></div><pre class="sig">theorem machineLogicalInductor_liaPerturbed (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP)
+    (hmarket : ComputableMarket (liaHistory DP)) (r : ℚ) (h0 : 0 ≤ r) (h1 : r ≤ 1) :
+    IsMachineLogicalInductor (liaPerturbed DP r) DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">LIAPerturbation.exists_informative_liaPerturbation</code><span class="ep-file">LogicalInduction/Construction/Witnesses/LIAPerturbation.lean</span></div><pre class="sig">theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP)
+    (hmarket : ComputableMarket (liaHistory DP)) :
+    ∃ P&#x27; : History,
+      ComputableMarket P&#x27; ∧
+      IsMachineLogicalInductor P&#x27; DP ∧
+      P&#x27; 0 (LO.Propositional.Formula.atom 0 : Sentence)
+        ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) ∧
+      (∀ d φ, (d, φ) ∉ exampleS → liaHistory DP d φ = P&#x27; d φ)</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The published unrestricted theorem is FALSE, and <code>not_overgeneral_ifp</code> proves it false — closed but for the deductive process and axiom-clean, at the paper&#x27;s own quantifier: the constructed LIA, perturbed on day 0 only, publishes diagonal sign bits as advice-atom prices, and an efficient trader reads them through historical price features without ever computing them. A single changed pricing day is an infinite computable function, which is enough to carry unbounded advice. The corrected theorem is <code>machine_lic_iff_of_recognizableSupport</code>: two computable markets differing on only finitely many (day, sentence) coordinates — strictly stronger than the paper&#x27;s tail agreement, and exactly the case where the appendix&#x27;s constant table really is finite. Its one residual hypothesis is a condition on the syntax of the moved sentences, not on any market, standing for two FP primitives this toolkit lacks. A concrete market pair makes it non-vacuous, though not yet informative. The fuel-class carrier is retained for compatibility only.</div>
@@ -10772,4 +10783,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 381fca20d186165c8f4f4d0d6c07a1c8fb4b18d51f6bcfafb92be2dcc8b3ec82 -->
+<!-- trust-surface-sources: bf2bacfdec8b972cab8c866b315b906cd9ab0263c178a0daf7e2a6827b20c9b9 -->
