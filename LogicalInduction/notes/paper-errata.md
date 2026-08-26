@@ -91,10 +91,10 @@ Two things must be said plainly about that theorem, and are said at the statemen
    tail agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — the
    day-`0` huge-numeral market above agrees with `LIA` from day `1` and is not finitely
    supported. So this is a *corrected* theorem, a proper restriction of `thm:ifp`, not a
-   restatement of it. The published unrestricted theorem is still unresolved and its
-   published proof is still invalid.
-2. **Its machine certificate is now inhabited; its fuel certificates are not, and the
-   theorem is still not exhibited non-vacuous end to end.** See the 2026-08-26 update
+   restatement of it. The published unrestricted theorem is **false** — refuted by
+   `not_overgeneral_ifp` — and its published proof is separately invalid.
+2. **It needs no caller-supplied certificate, and it is non-vacuous and informative;
+   its fuel-class certificates remain uninhabited.** See the 2026-08-26 update
    below for the precise state. Nothing here should be described as non-vacuous without
    reading it — that is the failure the 2026-08-02 correction above exists to catch.
 

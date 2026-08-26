@@ -51,8 +51,9 @@ finite and the appendix's own justification is literally valid.  That hypothesis
 **strictly stronger** than the paper's `∀ n ≥ N, pt_n = pt'_n`
 (`FiniteSupportPerturbation.tail_agree` proves one direction; the day-`0` huge-numeral
 market below refutes the other), so the corrected theorem is a proper restriction of
-`thm:ifp`, not a restatement of it.  The published unrestricted theorem remains
-unresolved, and its published proof remains invalid.
+`thm:ifp`, not a restatement of it.  The published unrestricted theorem is **false** —
+`FinitePerturbationCounterexample.not_overgeneral_ifp` refutes it — and its published proof
+is separately invalid.
 
 The freeze itself is not duplicated, at any layer.  `EF.freezeOn` takes a per-coordinate
 selector and is the only freeze recursion in the source; `EF.freezeBefore`,
@@ -1221,8 +1222,9 @@ huge-numeral market in this file's header agrees with `LIA` from day `1` and is 
 finitely supported.  What this repairs is the appendix's efficiency step, which is valid
 exactly when the constant table is finite: `quote` is read only at the finitely many
 coordinates in `S`, so "hard-code the constants" is literally true here and false in
-general.  `lic_iff_of_finitePerturbation` below keeps the paper's own hypothesis shape and
-its unresolved qualification; neither theorem reaches the unrestricted node.
+general.  `lic_iff_of_finitePerturbation` below keeps the paper's own hypothesis shape, as a
+compatibility carrier; neither theorem reaches the unrestricted node, which is refuted
+rather than open.
 
 Kind `C`; hypotheses `(a)` except `preserves_ec`, which is the appendix's own obligation.
 Paper node: `thm:ifp` -/
