@@ -2009,7 +2009,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_iff_of_finiteSupportPerturbation</code><span class="ep-file">LogicalInduction/Properties/FinitePerturbations.lean</span></div><pre class="sig">theorem lic_iff_of_finiteSupportPerturbation
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="4">1 / 4</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_iff_of_finiteSupportPerturbation</code><span class="ep-file">LogicalInduction/Properties/FinitePerturbations.lean</span></div><pre class="sig">theorem lic_iff_of_finiteSupportPerturbation
     (P P&#x27; : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
     (hPcomp : ComputableMarket P) (hP&#x27;comp : ComputableMarket P&#x27;)
     (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P&#x27; d φ)
@@ -2025,7 +2025,10 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     (htail : ∀ day, cutoff ≤ day → ∀ φ, P day φ = P&#x27; day φ)
     (patchP : EfficientPrefixPatch P cutoff)
     (patchP&#x27; : EfficientPrefixPatch P&#x27; cutoff) :
-    IsLogicalInductor P DP ↔ IsLogicalInductor P&#x27; DP</pre></div>
+    IsLogicalInductor P DP ↔ IsLogicalInductor P&#x27; DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">FreezeOracle.machine_lic_iff_of_recognizableSupport</code><span class="ep-file">LogicalInduction/Construction/Witnesses/FreezeOracle.lean</span></div><pre class="sig">theorem machine_lic_iff_of_recognizableSupport (P P&#x27; : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP&#x27;comp : ComputableMarket P&#x27;)
+    (hpert : RecognizableSupportPerturbation P P&#x27;) :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P&#x27; DP</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The published unrestricted theorem is FALSE, and <code>not_overgeneral_ifp</code> proves it false — kernel-checked and axiom-clean, at the paper&#x27;s own quantifier: the constructed LIA, perturbed on day 0 only, publishes the diagonal sign bits as advice-atom prices, and an efficient trader reads them through historical price features without ever computing them. A single changed pricing day is an infinite computable function, which is enough to smuggle the gap between computable and efficiently computable. The remaining carriers are restricted: <code>lic_iff_of_finiteSupportPerturbation</code> (and its machine twin) quantify over perturbations moving only finitely many (day, sentence) coordinates — strictly stronger than the paper&#x27;s tail agreement, and exactly the case where the appendix&#x27;s constant table really is finite; <code>lic_iff_of_finitePerturbation</code> keeps the paper&#x27;s own hypothesis shape. <code>MachineFiniteSupportPatch</code> is now inhabited — a finite entry table satisfying <code>Recognizable</code> per sentence plus a <code>TablePresentation</code>, witnessed at a table with a real row, not the degenerate empty one. The fuel-class certificates remain uninhabited, since the fuel calculus does not close over the escape-leaf decode. A concrete computable market pair now discharges every hypothesis at once, so the corrected theorem&#x27;s antecedent is satisfiable — non-vacuous, though not yet informative, since neither side of the equivalence is known to hold at that pair.</div>
@@ -10769,4 +10772,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 374037ff04d8472ede540f7d7fcacfcee1bcb99abd45e671d7156f30f4f029c7 -->
+<!-- trust-surface-sources: feb658c0ab5c64331f3513af5e79a0b0a94cd7efcfe9163b8a74b2fa8da2d809 -->

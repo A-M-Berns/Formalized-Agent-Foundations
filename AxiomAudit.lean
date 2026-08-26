@@ -485,33 +485,31 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
--- model: the run-level quote lookup and the symbol-level freeze transducer, as the third
--- instance of the emitter-generic run rewriter.
--- PARTIAL, and the listed endpoints do NOT close the boundary:
--- `EfficientPrefixPatch.preserves_ec` still has no LIA inhabitant at the collapsed
--- class, because the emitted segment's fuel certificate needs a `BigDigits` decode
--- test on exponentially large escape codes (the inverse-operation ceiling of the digit
--- model).  `thm:ifp` is therefore covered only by `lic_iff_of_finitePerturbation` at the
--- efficiently-patchable restriction, never by an LIA-level discharge of the patch.
--- NARROWED: `decode_eq_some_iff_of_botFree` (Construction/Witnesses/CanonicalCodes.lean)
--- proves Foundation's decoder injective off the `⊥` fiber, and
--- `RpnFreeze.matchRun_eq_matchRunCanon` turns the matcher into constant comparisons on a
--- `⊥`-free target; `decode_and_noncanonical` is the converse witness.  The `unpair`
--- ceiling above therefore binds exactly when the frozen table contains a sentence with a
--- `⊥` subformula.  It is still the *only* narrowing: no `MachineFiniteSupportPatch`,
--- `FiniteSupportPatch` or `EfficientPrefixPatch` inhabitant exists at any table.
--- The freeze's token model is now selector-indexed
--- (`EF.strategyOfTokens_freezeTokenRunOn_trades`, Properties/FinitePerturbations.lean), so
--- the finite-support freeze has a token model, and `MachineEfficientTrader.freezeOn`
--- reduces `MachineFiniteSupportPatch.preserves_ec` to the single named `FP` fact
--- `FreezeStreamRewriter`.  That fact has NO instance, so no patch structure is inhabited;
--- the reduction narrows the obligation and discharges nothing.
--- Narrowed once more: `RpnFreeze.unRpn_rpnFreezeRunOn` carries the pass across the
--- contraction and `RpnFreeze.freezeStreamRewriter_of_flatPass` reduces
--- `FreezeStreamRewriter` to an `FP` pass over the FLAT stream, whose automaton is
--- `CondStep.condStepR` and whose emitter is the run-level table lookup.  That flat pass is
--- now built (`FreezeStep`), so the ONLY remaining link is `FreezeStep.RunOracle` — the
--- lookup itself.  Still no instance.
+-- model, the run-level quote lookup, and the spelling characterization the lookup rests on.
+--
+-- MACHINE CLASS: closed.  `RpnFreeze.parseRpn_iff_mem_spellings` says a run denotes a
+-- target exactly when it is one of the target's finitely many complete spellings, so the
+-- lookup is membership in a list of constants rather than a parser; `FreezeStep` runs the
+-- resulting transducer through `TokenFold.runFold_mem_FP`; `FreezeOracle` supplies the
+-- lookup for any finite table and compiles the patch from the market's own certificate.
+-- The public statement is `FreezeOracle.machine_lic_iff_of_recognizableSupport`: finite
+-- support, computability of both markets, and a syntactic `Recognizable` condition on the
+-- finitely many sentences whose price moves — no patch hypothesis.
+--
+-- FUEL CLASS: still open, and this is a true negative.  `EfficientPrefixPatch` and
+-- `FiniteSupportPatch` remain uninhabited: the emitted segment's fuel certificate needs a
+-- `BigDigits` decode test on exponentially large escape codes, and the digit model is not
+-- closed under that inverse operation (`dd:fuel`).  `lic_iff_of_finitePerturbation` is
+-- therefore still the only fuel-class coverage of `thm:ifp`.
+--
+-- THE `⊥` NARROWING, which is what makes the machine class work:
+-- `decode_eq_some_iff_of_botFree` (CanonicalCodes.lean) proves Foundation's decoder
+-- injective off the `⊥` fiber and `RpnFreeze.matchRun_eq_matchRunCanon` turns the matcher
+-- into constant comparisons on a `⊥`-free target; `decode_and_noncanonical` is the converse
+-- witness, so the restriction is necessary and not an artifact.  `BotFree` in `Recognizable`
+-- is exactly this, and it stands in for integer square root in `Complexity.FP`; `NoReserved`
+-- stands in for a structured-payload parser.  Both are conditions on SYNTAX, not on markets
+-- or perturbations: the unrestricted theorem is true and unproved here.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
   MachineEfficientTrader.freezeOn
@@ -567,9 +565,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- market whose frozen table is presented by a recognizable entry list, and
 -- `machineFiniteSupportPatch_example` / `_pair` do so at a table with a REAL row
 -- (`exampleS_nonempty`), so the degenerate empty-table discharge is not what is happening.
--- SIDE CONDITIONS, all on the table and all collected in `CanonicalCodes.lean`: every table
--- sentence `Recognizable` (= `BotFree` + `NoReserved`), and `TablePresentation.lookup_eq`.
+-- SIDE CONDITIONS: `TablePresentation` is no longer one of them.  `entriesOf` reads the
+-- entry list off `S` and the market's own quote table, so
+-- `machineFiniteSupportPatch_ofRecognizable` needs only `ComputableMarket` plus
+-- `Recognizable` per table sentence, and the public
+-- `machine_lic_iff_of_recognizableSupport` carries NO patch hypothesis at all.
 -- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
+-- The one surviving condition, `Recognizable`, is representation residue rather than
+-- mathematics; the boundary note in the file names the two `Complexity.FP` primitives it
+-- stands in for (integer square root, and a structured-payload parser).
 -- The market pair is now supplied too: `computableMarket_twoPoint` builds two honest
 -- `ComputableMarket`s (rational table plus a `Nat.Partrec.Code` on the PAIRED input, so day
 -- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
@@ -592,6 +596,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.computableMarket_twoPoint
   FreezeOracle.twoPointHistory_ne_at
   FreezeOracle.machine_lic_iff_twoPoint
+  FreezeOracle.machineFiniteSupportPatch_ofRecognizable
+  FreezeOracle.machine_lic_iff_of_recognizableSupport
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean

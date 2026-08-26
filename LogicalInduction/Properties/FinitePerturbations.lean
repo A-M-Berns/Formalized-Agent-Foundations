@@ -68,17 +68,32 @@ has — and `EF.strategyOfTokens_freezeTokenRunOn_trades` transports the decoded
 across it, given the bridge `hsel` from `selCode` to the sentence-level `sel` that
 `EF.freezeOn` reads.  `EF.freezeTokenRun` and its laws are the `day < cutoff` instance,
 where the bridge is discharged by `rfl` because the day-cutoff selector ignores the
-sentence slot.  This is the token model the finite-support freeze needs; what it does
-*not* yet supply is a `Complexity.FP` certificate for the transducer, which is the
-remaining obligation on `MachineFiniteSupportPatch`.
+sentence slot.  This is the token model the finite-support freeze needs, and the
+`Complexity.FP` certificate for the transducer is supplied by
+`Construction/Witnesses/FreezeStep.lean`.
 
-One thing the corrected theorem does **not** buy: an inhabitant.  Both
-`MachineFiniteSupportPatch` **is** inhabited (`FreezeOracle.machineFiniteSupportPatch_ofTable`),
-for markets whose frozen coordinates come from a finite entry table meeting three
-conditions.  `FiniteSupportPatch` and `EfficientPrefixPatch` — the fuel-class certificates —
-remain uninhabited, because the fuel calculus does not close over the escape-leaf decode.
-And no concrete pair of computable markets is constructed either way, so the corrected
-theorem is not yet exhibited non-vacuous end to end.
+**Where the corrected theorem now stands.**  `MachineFiniteSupportPatch` is inhabited, and
+not by a caller-supplied witness: `FreezeOracle.machineFiniteSupportPatch_ofRecognizable`
+compiles it from the market's own computability certificate and the coordinate set alone.
+So the patch is no longer a hypothesis of the public statement —
+`FreezeOracle.machine_lic_iff_of_recognizableSupport` asks for finite support, computability
+of both markets, and a **syntactic** condition on the finitely many sentences whose price
+moves (`Recognizable`), and nothing else.
+
+Three things that remain true, and are not softened by the above:
+
+* `FiniteSupportPatch` and `EfficientPrefixPatch` — the *fuel-class* certificates — are
+  still uninhabited, because the fuel calculus does not close over the escape-leaf decode
+  (`dd:fuel`; see `Construction/Witnesses/RpnFreeze.lean`).  Only the machine-class
+  certificate is discharged.
+* `Recognizable` is representation residue, not mathematics.  The unrestricted statement is
+  true and unproved here; `FreezeOracle`'s boundary note gives the two missing `FP`
+  primitives it stands for.
+* `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of genuinely different
+  computable markets, so the theorem's antecedent *is* satisfiable — it is non-vacuous.  It
+  is not yet *informative*: neither side of that equivalence is known to hold at that pair,
+  and making an instance informative means perturbing a market already known to be an
+  inductor.
 
 **What this file does about it.**  We keep the theorem to what is actually provable:
 `EfficientPrefixPatch` states the missing closure fact for the concrete syntax
@@ -1282,20 +1297,25 @@ lemma freezeOn_value_gap_on_selected_day
 version whose obligation is dischargeable: `Nat.unpair` is polynomial time, so the
 escape-leaf decode that blocks the fuel model is available here.
 
-**This structure is inhabited**, unlike `EfficientPrefixPatch` and `FiniteSupportPatch`:
-`FreezeOracle.machineFiniteSupportPatch_ofTable`
-(`Construction/Witnesses/FreezeOracle.lean`) builds one for any market whose frozen
-coordinates are presented by a finite entry table, subject to three conditions on that
-table — `BotFree` and `NoReserved` per table sentence (bundled as `Recognizable`), and a
-`TablePresentation` naming exactly the coordinates of `S` with their quotes. The
-conditions live together in `Construction/Witnesses/CanonicalCodes.lean`.
-`machineFiniteSupportPatch_example` is a witness at a table with a real row, and the quote
-is a parameter, so the two markets can genuinely differ on `S` — the degenerate `S = ∅`
-route is not what inhabits it.
+**This structure is implementation machinery, not a hypothesis.**  It is inhabited —
+unlike `EfficientPrefixPatch` and `FiniteSupportPatch`, which are fuel-class and remain
+uninhabited — and it is inhabited *without a caller-supplied witness*:
+`FreezeOracle.machineFiniteSupportPatch_ofRecognizable` compiles one from the market's own
+`ComputableMarket` certificate and the coordinate set alone.  So the public corrected
+theorem does not mention it.  Read this structure as the compiler's interface; read
+`FreezeOracle.machine_lic_iff_of_recognizableSupport` as the statement.
 
-What that does **not** yet establish: no concrete pair of computable markets is
-constructed, so `machine_lic_iff_of_finiteSupportPerturbation` is not exhibited
-non-vacuous end to end. The freeze certificate is discharged; the market pair is not.
+The one condition that survives into the public statement is `Recognizable` — `BotFree` and
+`NoReserved` on each of the finitely many sentences whose price moves, collected in
+`Construction/Witnesses/CanonicalCodes.lean`.  It is a condition on **syntax**, not on
+markets or perturbations, and it is representation residue rather than mathematics: the
+unrestricted theorem is true and unprovable here, for the two missing `Complexity.FP`
+primitives that `FreezeOracle`'s boundary note names.
+
+Non-vacuity, in two clauses: `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete
+pair of genuinely different computable markets, so the antecedent is satisfiable; but
+neither side of that equivalence is known to hold there, so the instance is not yet
+*informative*.
 
 `machineFiniteSupportPatch_of_rewriter` below reduces the certificate to one named
 `Complexity.FP` fact, `FreezeStreamRewriter`, which `FreezeOracle` then discharges from a
@@ -1307,27 +1327,24 @@ structure MachineFiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence))
   preserves_ec : ∀ Tr : Trader, MachineEfficientTrader Tr →
     MachineEfficientTrader (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
 
-/-! ### The remaining obligation, named
+/-! ### The efficiency step, isolated
 
-Everything between the token model and `MachineFiniteSupportPatch` is discharged below.
-What is left is a *single* `Complexity.FP` statement — exhibit the freeze transducer as a
-polynomial-time rewrite of the machine's own output word — and `FreezeStreamRewriter` is
-that statement.  It is deliberately phrased over the **contracted** stream `unRpn` reads,
-because that is the granularity `strategyOfTokens` parses; discharging it means running
-`EF.freezeTokenRunOn` through `TokenFold.runFold_mem_FP` and commuting the result with
-`unRpn` (`RpnFreeze.unRpn_rpnFreezeRun` is the day-cutoff precedent).
+`FreezeStreamRewriter` isolates the one `Complexity.FP` fact the machine-class patch turns
+on: exhibit the freeze transducer as a polynomial-time rewrite of the machine's own output
+word.  It is deliberately phrased over the **contracted** stream `unRpn` reads, because that
+is the granularity `strategyOfTokens` parses.
 
-No instance of `FreezeStreamRewriter` exists in this repo.  It is not a weaker hypothesis
-smuggled in: it says exactly "the transducer is polynomial time", with no reference to the
-market, the trader, or exploitation.
+It is not a hypothesis of anything public.  `RpnFreeze.freezeStreamRewriter_of_flatPass`
+carries it to the *flat* stream — the one a machine actually holds — and
+`FreezeStep.freezeStreamRewriter_of_runOracle` discharges it from the run-level lookup,
+which `FreezeOracle.runOracleOf` supplies for any finite table.  It survives as the seam
+between the economic argument and the compiler, which is why it is still named. -/
 
-`RpnFreeze.freezeStreamRewriter_of_flatPass` reduces it one step further, to an `FP` pass
-over the *flat* stream — the one a machine actually holds — leaving the run-level table
-lookup as the only open link.  Still no instance at any link. -/
+/-- **The `Complexity.FP` step the machine-class patch turns on.**  Every polynomial-time
+output word can be rewritten, in polynomial time, into one whose contracted token stream is
+the freeze transducer's output on the original's.
 
-/-- **The one `Complexity.FP` fact the machine-class patch still needs.**  Every
-polynomial-time output word can be rewritten, in polynomial time, into one whose contracted
-token stream is the freeze transducer's output on the original's. -/
+Discharged by `FreezeStep.freezeStreamRewriter_of_runOracle`. -/
 def FreezeStreamRewriter (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) : Prop :=
   ∀ F : List Bool → List Bool, F ∈ Complexity.FP →
     ∃ G : List Bool → List Bool, G ∈ Complexity.FP ∧ ∀ x : List Bool,

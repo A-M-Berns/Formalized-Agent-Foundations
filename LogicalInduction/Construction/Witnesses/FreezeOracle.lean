@@ -503,6 +503,146 @@ lemma machine_lic_iff_example (q q' : ℚ) (P P' : History) (DP : DeductiveProce
     (machineFiniteSupportPatch_example q P hexact)
     (machineFiniteSupportPatch_example q' P' hexact')
 
+/-! ## The patch, compiled from the market alone
+
+Nothing above needs a caller-supplied presentation: for a finite coordinate set the entry
+list is *canonical*, read straight off `S` and the market's own rational table.  So the
+patch hypothesis of `machine_lic_iff_of_finiteSupportPerturbation` is not a real hypothesis
+— it is compiler residue, and this section removes it.
+
+What does **not** dissolve is `Recognizable`.  See the boundary note at the end of this
+section for exactly what forces it. -/
+
+/-- The canonical entry list for a finite coordinate set and a code-level quote table. -/
+noncomputable def entriesOf (S : Finset (ℕ × Sentence)) (mq : ℕ → ℕ → ℚ) :
+    List TableEntry :=
+  S.toList.map fun p => ⟨p.1, p.2, mq p.1 (Encodable.encode p.2)⟩
+
+lemma tableLookupOn_map : ∀ (l : List (ℕ × Sentence)) (mq : ℕ → ℕ → ℚ)
+    (φ : Sentence) (D : ℕ),
+    tableLookupOn (l.map fun p => ⟨p.1, p.2, mq p.1 (Encodable.encode p.2)⟩) φ D
+      = if (D, φ) ∈ l then some (mq D (Encodable.encode φ)) else none
+  | [], mq, φ, D => by rw [List.map_nil, tableLookupOn]; simp
+  | (p :: l), mq, φ, D => by
+      rw [List.map_cons, tableLookupOn, tableLookupOn_map l mq φ D]
+      by_cases hc : p.1 = D ∧ p.2 = φ
+      · have hp : p = (D, φ) := Prod.ext hc.1 hc.2
+        rw [if_pos hc, if_pos (by rw [hp]; exact List.mem_cons_self ..), hc.1, hc.2]
+      · rw [if_neg hc]
+        by_cases hm : (D, φ) ∈ l
+        · rw [if_pos hm, if_pos (List.mem_cons_of_mem _ hm)]
+        · rw [if_neg hm, if_neg (by
+            intro hcons
+            rcases List.mem_cons.mp hcons with h | h
+            · exact hc ⟨congrArg Prod.fst h.symm, congrArg Prod.snd h.symm⟩
+            · exact hm h)]
+
+lemma tablePresentation_entriesOf (S : Finset (ℕ × Sentence)) (mq : ℕ → ℕ → ℚ)
+    (hrec : ∀ p ∈ S, Recognizable p.2) :
+    TablePresentation S (fun d φ => mq d (Encodable.encode φ)) (entriesOf S mq) where
+  recognizable := by
+    intro e he
+    rw [entriesOf, List.mem_map] at he
+    obtain ⟨q, hq, rfl⟩ := he
+    exact hrec q (Finset.mem_toList.mp hq)
+  lookup_eq := by
+    intro D φ
+    rw [entriesOf, tableLookupOn_map]
+    simp only [Finset.mem_toList]
+
+/-- **The patch, built from the market's own computability certificate.**
+
+No presentation is supplied by the caller: the entry list is `entriesOf`, read off `S` and
+the market's rational table.  `Classical.choice` enters only to name that table, which
+`ComputableMarket` asserts to exist.
+
+Kind `C`; hypotheses `(a)` except `hrec`, the syntactic side condition on `S`.
+Paper node: `app:ifp` -/
+noncomputable def machineFiniteSupportPatch_ofRecognizable (P : History)
+    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
+    (hrec : ∀ p ∈ S, Recognizable p.2) :
+    MachineFiniteSupportPatch P S :=
+  let mc := hP.nonemptyComputation.some
+  machineFiniteSupportPatch_ofTable P S (fun d φ => mc.quote d (Encodable.encode φ))
+    (fun d φ _ => mc.quote_exact d φ) (entriesOf S mc.quote)
+    (tablePresentation_entriesOf S mc.quote hrec)
+
+/-- `P` and `P'` differ on only finitely many price coordinates, and every sentence
+involved is syntactically recognizable.
+
+This is the public hypothesis of the corrected theorem.  Its two halves are of different
+kinds and should be read that way: finite support is a **mathematical** condition on the
+perturbation, while `Recognizable` is a **representation** condition on the sentences,
+forced by FAF's RPN syntax and not by the mathematics. -/
+def RecognizableSupportPerturbation (P P' : History) : Prop :=
+  ∃ S : Finset (ℕ × Sentence),
+    (∀ p ∈ S, Recognizable p.2) ∧ ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
+
+lemma RecognizableSupportPerturbation.toFiniteSupport {P P' : History}
+    (h : RecognizableSupportPerturbation P P') : FiniteSupportPerturbation P P' := by
+  obtain ⟨S, -, hagree⟩ := h
+  exact ⟨S, hagree⟩
+
+/-- **The corrected `thm:ifp`, with no patch hypothesis.**
+
+Finite support, computability of both markets, and a syntactic condition on the finitely
+many sentences involved — nothing else.  The `MachineFiniteSupportPatch` both markets need
+is *compiled* here rather than assumed, from `S` and their own quote tables.
+
+Kind `C`; hypotheses `(a)` except the `Recognizable` half of `hpert`, which is disclosed
+representation residue rather than mathematical content.
+Paper node: `thm:ifp` -/
+theorem machine_lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : RecognizableSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+  obtain ⟨S, hrec, hagree⟩ := hpert
+  exact machine_lic_iff_of_finiteSupportPerturbation P P' DP S hPcomp hP'comp hagree
+    (machineFiniteSupportPatch_ofRecognizable P S hPcomp hrec)
+    (machineFiniteSupportPatch_ofRecognizable P' S hP'comp hrec)
+
+/-! ### The boundary: exactly what `Recognizable` is standing in for
+
+`machine_lic_iff_of_recognizableSupport` is the strongest statement proved here.  The
+mathematically natural one would drop `Recognizable` entirely:
+
+```
+FiniteSupportPerturbation P P' → ComputableMarket P → ComputableMarket P' →
+  (IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP)
+```
+
+That statement is, as far as this development can tell, **true** — and it is *not* provable
+here.  The gap is not mathematical.  For any finite `S` the freeze rewrite really is
+polynomial time; what is missing is a proof of that inside this repo's `Complexity.FP`
+toolkit.  Each half of `Recognizable` stands for one missing primitive:
+
+* **`BotFree` stands for integer square root.**  A price leaf may be spelled with the
+  two-token escape `[1, c]`, meaning `Encodable.decode c`, and Foundation's `Formula.ofNat`
+  discards the payload at tag `0`, so `⊥` has infinitely many codes
+  (`decode_falsum_noncanonical`).  Deciding "does this code denote `⊥`" is deciding whether
+  `c - 1` is a perfect square, i.e. integer square root — polynomial time in the bit width,
+  but not available in the `FP` toolkit here.  On `⊥`-free targets the same test is a
+  comparison against a fixed numeral (`decode_eq_some_iff_of_botFree`), which is why the
+  restriction buys the whole construction.
+
+* **`NoReserved` stands for a structured-payload parser.**  A leaf may also be spelled with
+  the structured paper-prime block `[1, 0, …]`, whose payload admits spellings no fixed word
+  comparison catches.  That block denotes *only* reserved atoms `atom (Nat.pair 7 _)`
+  (`parseStructuredPaperPrime_shape`), so excluding those targets makes the branch
+  unreachable.  Covering them instead would mean running `parseStructuredArithmeticFormula`
+  inside `FP`.
+
+Neither is a restriction on markets, traders, or perturbations: both are conditions on the
+**syntax** of the finitely many sentences whose price moves.  Read against the
+classification the file header asks for — finite support is condition (i), a mathematical
+property of the perturbation; `Recognizable` is condition (ii), residue of FAF's RPN
+representation.  A table of ordinary propositional sentences over ordinary atoms satisfies
+it; `machineFiniteSupportPatch_example` is such a table.
+
+The patch hypothesis itself was residue of the *third* kind — neither mathematics nor
+representation, but a compiler artifact — and it is gone: `entriesOf` reads the table off
+`S` and the market's own certificate, so no caller supplies anything. -/
+
 /-! ## A concrete computable market pair
 
 `machine_lic_iff_example` still carries `ComputableMarket` hypotheses, so it says nothing
@@ -646,6 +786,8 @@ theorem machine_lic_iff_twoPoint (DP : DeductiveProcess) :
     (twoPointHistory_agree _ _)
     (twoPointHistory_exact _) (twoPointHistory_exact _)
 
+#print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch_ofRecognizable
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_of_recognizableSupport
 #print axioms LogicalInduction.FreezeOracle.computableMarket_twoPoint
 #print axioms LogicalInduction.FreezeOracle.twoPointHistory_ne_at
 #print axioms LogicalInduction.FreezeOracle.machine_lic_iff_twoPoint

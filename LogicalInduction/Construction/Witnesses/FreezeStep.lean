@@ -13,15 +13,19 @@ state machine, and `condStepW_mem_FP`, `condStepW_length_le`, `csPack_condStepR`
 `CondStep.condPass_mem_FP` bundles a particular emitter.  So the freeze contributes exactly
 one thing — its emitter — and everything else here is plumbing that emitter into the fold.
 
-## The one hole, and why it is the right shape
+## The emitter's lookup
 
 `RunOracle` is the emitter's lookup: given the incoming day's token block and the buffered
 sentence run's bits, it returns the bits of `[1, quote, 8]` when the coordinate is selected
-and nothing when it is not.  It has **no instance** in this repo.  Building one is the
-run-level table lookup — deciding whether a buffered run denotes a table sentence — and that
-is a separate development; see `RpnFreeze.matchRun` for the token-model half and
-`RpnFreeze.matchRun_eq_matchRunCanon` for the falsum ruling that removes the square root
-from it.
+and nothing when it is not.  `Construction/Witnesses/FreezeOracle.lean` builds one for any
+finite table (`runOracleOf`), so this is an interface rather than an open obligation.
+
+Deciding whether a buffered run denotes a table sentence is what that construction does, and
+`RpnFreeze.parseRpn_iff_mem_spellings` is why it can: under two syntactic side conditions on
+the target, the complete spellings of a sentence are a *finite explicit list*, so the
+decision is membership in a list of constants rather than the execution of a parser.  The
+falsum half of those conditions is `RpnFreeze.matchRun_eq_matchRunCanon`'s ruling, which is
+what keeps integer square root out of the lookup.
 
 ## The constant output bound is the paper's erratum, not a convenience
 
@@ -217,7 +221,7 @@ lemma decodeBits_runFold_freeze {selRun : List ℕ → ℕ → Bool} {quoteRun :
 the run-level lookup.  There is no parameter block: unlike the conditioning pass, the freeze
 emitter needs nothing but the token and the state.
 
-Kind `C`; hypotheses `(a)` except `E`, which has no instance.
+Kind `C`; hypotheses `(a)`.
 Paper node: `app:ifp` -/
 lemma freezePass_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
     (E : RunOracle selRun quoteRun) {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
@@ -250,13 +254,15 @@ lemma decodeBits_freezePass {selRun : List ℕ → ℕ → Bool} {quoteRun : Lis
 
 /-- **`FreezeStreamRewriter` follows from the run-level lookup, and from nothing else.**
 
-Every link between the lookup and `MachineFiniteSupportPatch` is now proved: this lemma to
+Every link between the lookup and `MachineFiniteSupportPatch` is proved: this lemma to
 `FreezeStreamRewriter`, `RpnFreeze.freezeStreamRewriter_of_flatPass` and
 `RpnFreeze.unRpn_rpnFreezeRunOn` across the contraction,
 `MachineEfficientTrader.freezeOn` to `preserves_ec`, and
-`machineFiniteSupportPatch_of_rewriter` to the patch.  `RunOracle` has no instance, so the
-patch is still uninhabited; what has changed is that the obligation is now a single
-statement about a table lookup rather than a chain.
+`machineFiniteSupportPatch_of_rewriter` to the patch.  `FreezeOracle.runOracleOf` closes it
+at this end, so the chain runs from a finite table to an inhabited patch.
+
+The fuel-class certificates `FiniteSupportPatch` and `EfficientPrefixPatch` are a separate
+matter and remain uninhabited (`dd:fuel`); nothing here bears on them.
 
 Kind `C`; hypotheses `(a)` except `E`.
 Paper node: `app:ifp` -/
