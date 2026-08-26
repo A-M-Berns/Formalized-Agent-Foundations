@@ -9,17 +9,29 @@ conditioning block, freezing a price leaf — therefore means running a token-le
 transducer on a *bit* word, in polynomial time.
 
 `Machine/FPFold.lean` supplies the engine (`foldlBits_mem_FP`: a left fold whose step is
-`FP` and whose state stays polynomially bounded).  This file supplies the two pieces a
-client of that engine still has to build, and neither is a new combinator:
+`FP` and whose state stays polynomially bounded).  This file supplies the pieces a client
+of that engine still has to build, and none of them is a new combinator:
+
+* **`dgFold`** — the three-bit digit fold.  Every reader of this stream consumes it three
+  bits at a time, so `dgStep` does that once and for all: a two-slot phase fills, the third
+  bit completes a digit, and the client is handed it as `digitSlots` — three separately
+  *headable* one-bit words, because `Complexity.FP` has `selectHead` but no `tail`.
+  `dgFold_cli` proves the realization on every bit word and `dgFold_mem_FP` places it in
+  `FP` from one per-digit length hypothesis.  The two clients below are instances.
 
 * **`LEUnary`** — the endianness residual.  `FPFold.unaryOfBits_le_mem_FP` reads its value
   big-endian through `Nat.fromBits`, while the stream carries token values as
   `undigitize`'s little-endian base-four digit runs.  `unaryOfDigitsLE_le_mem_FP` is the
-  matching primitive: a three-phase shift register (`leStep`) that folds a token's own
-  digit-bit block into `min value cap` marks, with `cap` a length already in hand.  The
+  matching primitive: `leDigit`, a digit-fold client that folds a token's own digit-bit
+  block into `min value cap` marks, with `cap` a length already in hand.  The
   guard is not optional — a `k`-bit value denotes up to `4 ^ k` marks — and it is exactly
   what the clients have: a day read out of a day-`n` stream is `≤ n`, and every token test
   the conditioning automaton makes factors through a small clamp.
+
+* **`Increment`** — the second client, and the converse direction: a value known only as a
+  *length* rendered back into the stream as base-four digits, one carry-propagating
+  increment per mark.  The run it builds is deliberately not the canonical `natDigits4`
+  one; `undigitize` reads a token's value, and `unaryToDigits_val` is that value.
 
 * **`TokenFold`** — the tokenizer itself.  `tkStep` is one bit of the digit/token parser:
   a two-slot phase fills, a complete digit either extends the current token block or (its
@@ -44,6 +56,7 @@ tracks.
 -/
 import LogicalInduction.Framework.Machine.FPFold
 import LogicalInduction.Framework.DigitArith
+import Complexitylib.Classes.P.Cobham
 
 namespace LogicalInduction.TokenFold
 
@@ -63,12 +76,14 @@ lemma foldlBits_append (A B : List Bool → List Bool) (W : List Bool) :
       rw [List.cons_append, foldlBits_cons, foldlBits_cons,
         foldlBits_append A B W _ xs ys]
 
-namespace LEUnary
-
-/-! ## Little-endian base-four values
+/-! ## Digits: values, bits, and slots
 
 The value a digit run denotes is `Framework/DigitArith.lean`'s `digitVal`, the same
-little-endian base-four reading `undigitize` performs; nothing new is defined here. -/
+little-endian base-four reading `undigitize` performs; nothing new is defined here.  What
+is new is `digitSlots`, the shape a *client* of the digit fold below can branch on.
+
+Proof kind: `P` throughout.  Provenance: (b) `Machine/DigitBits.lean`,
+`Framework/DigitArith.lean`. -/
 
 @[simp] private lemma digitVal_cons (d : ℕ) (ds : List ℕ) :
     digitVal (d :: ds) = d + 4 * digitVal ds := rfl
@@ -90,41 +105,34 @@ lemma bitsToDigits_of_length_lt_three (w : List Bool) (h : w.length < 3) :
   rw [bitsToDigits, Nat.div_eq_of_lt h]
   simp
 
-/-! ## The step function -/
+lemma mem_bitsToDigits_lt_eight (w : List Bool) : ∀ d ∈ bitsToDigits w, d < 8 := by
+  intro d hd
+  obtain ⟨i, -, rfl⟩ := List.mem_map.mp (by rwa [bitsToDigits] at hd)
+  rw [digitAt]
+  have h : ∀ b : Bool, b2n b ≤ 1 := by intro b; cases b <;> simp [b2n]
+  have h0 := h ((w[3 * i]?).getD false)
+  have h1 := h ((w[3 * i + 1]?).getD false)
+  have h2 := h ((w[3 * i + 2]?).getD false)
+  omega
 
-private def capw (v : List Bool) : List Bool := fstBlock v
-private def stw (v : List Bool) : List Bool := sndBlock v
-private def phw (v : List Bool) : List Bool := fstBlock (stw v)
-private def accw (v : List Bool) : List Bool := fstBlock (sndBlock (stw v))
-private def poww (v : List Bool) : List Bool := sndBlock (sndBlock (stw v))
-private def ph0 (v : List Bool) : List Bool := fstBlock (phw v)
-private def ph1 (v : List Bool) : List Bool := sndBlock (phw v)
+@[simp] lemma digitsToBits_nil : digitsToBits [] = [] := rfl
 
-/-- The packed fold state: phase pair, accumulator, place value. -/
-def mkSt (p0 p1 acc pow : List Bool) : List Bool :=
-  pair (pair p0 p1) (pair acc pow)
+@[simp] lemma digitsToBits_cons (d : ℕ) (ds : List ℕ) :
+    digitsToBits (d :: ds) = digitBits d ++ digitsToBits ds := rfl
 
-private def repPow : ℕ → List Bool → List Bool
-  | 0, _ => []
-  | k + 1, v => poww v ++ repPow k v
+lemma digitsToBits_append (a b : List ℕ) :
+    digitsToBits (a ++ b) = digitsToBits a ++ digitsToBits b := by
+  simp [digitsToBits, List.flatMap_append]
 
-private def mulSel (b : Bool) (v : List Bool) : List Bool :=
-  selectHead (ph0 v)
-    (selectHead (ph1 v) (repPow (if b then 7 else 6) v) (repPow (if b then 5 else 4) v))
-    (selectHead (ph1 v) (repPow (if b then 3 else 2) v) (repPow (if b then 1 else 0) v))
+/-- A digit handed to a client as three separately-headable one-bit slots.  This is the
+shape a client can branch on: `Complexity.FP` has `selectHead` but no `tail`, so a flat
+three-bit word would be unusable past its first bit. -/
+def digitSlots (d : ℕ) : List Bool :=
+  pair [(d / 4) % 2 == 1] (pair [(d / 2) % 2 == 1] [d % 2 == 1])
 
-private def flush (b : Bool) (v : List Bool) : List Bool :=
-  mkSt [] []
-    (List.take (capw v).length (accw v ++ mulSel b v))
-    (List.take (capw v ++ [true]).length (repPow 4 v))
-
-/-- One bit of the guarded little-endian expansion. -/
-def leStep (b : Bool) (v : List Bool) : List Bool :=
-  selectHead (emptyFlag (ph0 v))
-    (mkSt [b] [] (accw v) (poww v))
-    (selectHead (emptyFlag (ph1 v))
-      (mkSt (ph0 v) [b] (accw v) (poww v))
-      (flush b v))
+lemma digitSlots_of_bits (b0 b1 b2 : Bool) :
+    digitSlots (4 * b2n b0 + 2 * b2n b1 + b2n b2) = pair [b0] (pair [b1] [b2]) := by
+  cases b0 <;> cases b1 <;> cases b2 <;> rfl
 
 /-! ### Selection helpers -/
 
@@ -142,43 +150,324 @@ lemma selectHead_singleton (b : Bool) (x y : List Bool) :
   · simpa using selectHead_false x y
   · simpa using selectHead_true x y
 
+/-! ### Length bounds on the block projections
 
+The clamp inside `FPFold.foldlBits_mem_FP` has to be discharged on malformed words, where
+`fstBlock`/`sndBlock` are the partial decoders rather than projections.  Both are still
+non-expanding, which is all a client's length hypothesis needs; the fork proves neither. -/
 
-private def rep : ℕ → List Bool → List Bool
-  | 0, _ => []
-  | k + 1, p => p ++ rep k p
+lemma unpair?_length_le : ∀ (z : List Bool) (p : List Bool × List Bool),
+    Complexity.unpair? z = some p → p.2.length ≤ z.length
+  | [], _, h => by simp [Complexity.unpair?] at h
+  | false :: true :: y, p, h => by
+      rw [Complexity.unpair?] at h
+      cases h
+      simp
+      omega
+  | false :: false :: z, p, h => by
+      rw [Complexity.unpair?] at h
+      obtain ⟨q, hq, rfl⟩ := Option.map_eq_some_iff.mp h
+      have := unpair?_length_le z q hq
+      simpa using by omega
+  | true :: true :: z, p, h => by
+      rw [Complexity.unpair?] at h
+      obtain ⟨q, hq, rfl⟩ := Option.map_eq_some_iff.mp h
+      have := unpair?_length_le z q hq
+      simpa using by omega
+  | [_], _, h => by simp [Complexity.unpair?] at h
+  | true :: false :: _, _, h => by simp [Complexity.unpair?] at h
 
-private lemma repPow_eq : ∀ (k : ℕ) (v : List Bool), repPow k v = rep k (poww v)
-  | 0, _ => rfl
-  | k + 1, v => by rw [repPow, rep, repPow_eq k v]
+lemma sndBlock_length_le (z : List Bool) : (sndBlock z).length ≤ z.length := by
+  rw [sndBlock]
+  cases hz : Complexity.unpair? z with
+  | none => simp
+  | some p => exact unpair?_length_le z p hz
 
-lemma foldl_three (W acc pow : List Bool) (b0 b1 b2 : Bool) :
-    foldlBits (leStep false) (leStep true) W (mkSt [] [] acc pow) [b0, b1, b2]
-      = mkSt [] []
-          (List.take W.length (acc ++ rep (4 * b2n b0 + 2 * b2n b1 + b2n b2) pow))
-          (List.take (W.length + 1) (rep 4 pow)) := by
+lemma fstBlock_length_le : ∀ z : List Bool, (fstBlock z).length ≤ z.length
+  | [] => by simp [fstBlock]
+  | [_] => by simp [fstBlock]
+  | false :: false :: z => by
+      rw [fstBlock]
+      have := fstBlock_length_le z
+      simp only [List.length_cons]
+      omega
+  | true :: true :: z => by
+      rw [fstBlock]
+      have := fstBlock_length_le z
+      simp only [List.length_cons]
+      omega
+  | false :: true :: _ => by simp [fstBlock]
+  | true :: false :: _ => by simp [fstBlock]
+
+/-! ### Comparing lengths
+
+Every client of the folds below has to test a small number against a token value or a
+counter, and all of those tests factor through "is this word at least as long as that one".
+`Complexity.FP` has `takeLen` but no `drop`, so the flag has to come from the Cobham
+algebra, where the fork proves `dropFn`; `CobhamFP_eq_FP` carries it back.
+
+Proof kind: `C` composition.  Provenance: (b) `Cobham.dropFn`, `Cobham.tailFn`,
+`CobhamFP_subset_FP`, `FP_subset_CobhamFP`, `Cobham.selectHead_emptyFlag_nil/_cons`. -/
+
+lemma mem_FP_of_cobham {f : List Bool → List Bool}
+    (h : Cobham fun v : Fin 1 → List Bool => f (v 0)) : f ∈ FP :=
+  CobhamFP_subset_FP h
+
+lemma cobham_of_mem_FP {f : List Bool → List Bool} (h : f ∈ FP) :
+    Cobham fun v : Fin 1 → List Bool => f (v 0) :=
+  FP_subset_CobhamFP h
+
+/-- Dropping a prefix at the width of another word is polynomial time.  The fork proves it
+in the Cobham algebra (`Cobham.dropFn`) but exposes no `FP` form; this is that form, and it
+is the primitive the length comparisons below are built from. -/
+lemma dropLenFn_mem_FP {A B : List Bool → List Bool} (hA : A ∈ FP) (hB : B ∈ FP) :
+    (fun z => (B z).drop (A z).length) ∈ FP :=
+  mem_FP_of_cobham (Cobham.dropFn (cobham_of_mem_FP hA) (cobham_of_mem_FP hB))
+
+/-- A flag word whose head is `true` exactly when `|b| ≤ |a|`. -/
+def leFlag (a b : List Bool) : List Bool := emptyFlag (b.drop a.length)
+
+lemma selectHead_leFlag (a b x y : List Bool) :
+    selectHead (leFlag a b) x y = if b.length ≤ a.length then x else y := by
+  rw [leFlag]
+  by_cases h : b.length ≤ a.length
+  · rw [if_pos h, List.drop_eq_nil_of_le h]
+    exact selectHead_emptyFlag_nil x y
+  · rw [if_neg h]
+    obtain ⟨c, cs, hc⟩ : ∃ c cs, b.drop a.length = c :: cs := by
+      cases hd : b.drop a.length with
+      | nil =>
+          exact absurd (List.drop_eq_nil_iff.mp hd) h
+      | cons c cs => exact ⟨c, cs, rfl⟩
+    rw [hc]
+    exact selectHead_emptyFlag_cons c cs x y
+
+lemma leFlag_mem_FP {A B : List Bool → List Bool} (hA : A ∈ FP) (hB : B ∈ FP) :
+    (fun z => leFlag (A z) (B z)) ∈ FP :=
+  emptyFlag_mem_FP (dropLenFn_mem_FP hA hB)
+
+/-- Branch on `|b| ≤ |a|`. -/
+lemma selectHeadFn_leFlag_mem_FP {A B X Y : List Bool → List Bool}
+    (hA : A ∈ FP) (hB : B ∈ FP) (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (B z).length ≤ (A z).length then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_mem_FP (leFlag_mem_FP hA hB) hX hY
+  have heq : (fun z => selectHead (leFlag (A z) (B z)) (X z) (Y z))
+      = fun z => if (B z).length ≤ (A z).length then X z else Y z := by
+    funext z
+    exact selectHead_leFlag (A z) (B z) (X z) (Y z)
+  rwa [heq] at h
+
+/-- Branch on `|a| = |b|`, the test every small-numeral comparison factors through. -/
+lemma selectHeadFn_eqLen_mem_FP {A B X Y : List Bool → List Bool}
+    (hA : A ∈ FP) (hB : B ∈ FP) (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if (A z).length = (B z).length then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_leFlag_mem_FP hA hB
+    (selectHeadFn_leFlag_mem_FP hB hA hX hY) hY
+  have heq : (fun z => if (B z).length ≤ (A z).length then
+        (if (A z).length ≤ (B z).length then X z else Y z) else Y z)
+      = fun z => if (A z).length = (B z).length then X z else Y z := by
+    funext z
+    by_cases h1 : (B z).length ≤ (A z).length
+    · by_cases h2 : (A z).length ≤ (B z).length
+      · rw [if_pos h1, if_pos h2, if_pos (by omega)]
+      · rw [if_pos h1, if_neg h2, if_neg (by omega)]
+    · rw [if_neg h1, if_neg (by omega)]
+  rwa [heq] at h
+
+/-- The `tail` of a member of the class: the unary predecessor. -/
+lemma tail_mem_FP {A : List Bool → List Bool} (hA : A ∈ FP) :
+    (fun z => (A z).tail) ∈ FP :=
+  mem_FP_of_cobham (Cobham.tailFn (cobham_of_mem_FP hA))
+
+/-! ## The digit-level fold -/
+
+/-- The packed digit-fold state: a two-slot phase and the client state. -/
+def dgSt (ph cli : List Bool) : List Bool := pair ph cli
+
+private def dW (v : List Bool) : List Bool := fstBlock v
+private def dst (v : List Bool) : List Bool := sndBlock v
+private def dph (v : List Bool) : List Bool := fstBlock (dst v)
+private def dp0 (v : List Bool) : List Bool := fstBlock (dph v)
+private def dp1 (v : List Bool) : List Bool := sndBlock (dph v)
+private def dcli (v : List Bool) : List Bool := sndBlock (dst v)
+
+/-- One bit of a three-bit digit fold: two slots fill, the third completes the digit and
+hands the client its three bits. -/
+def dgStep (STEP : List Bool → List Bool) (b : Bool) (v : List Bool) : List Bool :=
+  selectHead (emptyFlag (dp0 v))
+    (dgSt (pair [b] []) (dcli v))
+    (selectHead (emptyFlag (dp1 v))
+      (dgSt (pair (dp0 v) [b]) (dcli v))
+      (dgSt (pair [] [])
+        (STEP (pair (dW v) (pair (dcli v) (pair (dp0 v) (pair (dp1 v) [b])))))))
+
+/-- The digit-level model `dgStep` realizes. -/
+def dgFold (STEP : List Bool → List Bool) (W : List Bool) :
+    List Bool → List ℕ → List Bool
+  | cli, [] => cli
+  | cli, d :: ds => dgFold STEP W (STEP (pair W (pair cli (digitSlots d)))) ds
+
+private lemma dgStep_three (STEP : List Bool → List Bool) (W cli : List Bool)
+    (b0 b1 b2 : Bool) :
+    foldlBits (dgStep STEP false) (dgStep STEP true) W (dgSt (pair [] []) cli) [b0, b1, b2]
+      = dgSt (pair [] [])
+          (STEP (pair W (pair cli (digitSlots (4 * b2n b0 + 2 * b2n b1 + b2n b2))))) := by
   cases b0 <;> cases b1 <;> cases b2 <;>
-    simp [foldlBits, leStep, flush, mulSel, mkSt, capw, stw, phw, accw, poww, ph0, ph1,
-      repPow_eq, selectHead_singleton, selectHead_emptyFlag_cons,
-      b2n, rep]
+    simp [foldlBits, dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli,
+      selectHead_true, selectHead_emptyFlag_cons, b2n, digitSlots]
 
+lemma dgFold_cli (STEP : List Bool → List Bool) (W : List Bool) :
+    ∀ (w cli : List Bool),
+      sndBlock (foldlBits (dgStep STEP false) (dgStep STEP true) W
+          (dgSt (pair [] []) cli) w)
+        = dgFold STEP W cli (bitsToDigits w)
+  | [], cli => by
+      rw [foldlBits_nil, bitsToDigits_of_length_lt_three [] (by simp), dgFold]
+      simp [dgSt]
+  | [b0], cli => by
+      rw [bitsToDigits_of_length_lt_three [b0] (by simp), dgFold,
+        show ([b0] : List Bool) = [] ++ [b0] from rfl,
+        foldlBits_append_singleton, foldlBits_nil]
+      cases b0 <;>
+        simp [dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli, selectHead_true]
+  | [b0, b1], cli => by
+      rw [bitsToDigits_of_length_lt_three [b0, b1] (by simp), dgFold,
+        show ([b0, b1] : List Bool) = [b0] ++ [b1] from rfl,
+        foldlBits_append_singleton]
+      cases b0 <;> cases b1 <;>
+        simp [foldlBits, dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli,
+          selectHead_true, selectHead_emptyFlag_cons]
+  | b0 :: b1 :: b2 :: rest, cli => by
+      rw [bitsToDigits_cons3, dgFold,
+        show (b0 :: b1 :: b2 :: rest) = [b0, b1, b2] ++ rest from rfl,
+        foldlBits_append, dgStep_three, dgFold_cli STEP W rest _]
 
+/-! ### The state bound -/
 
-private lemma rep_replicate (k p : ℕ) :
-    rep k (List.replicate p true) = List.replicate (k * p) true := by
-  induction k with
-  | zero => simp [rep]
-  | succ k ih => rw [rep, ih, ← List.replicate_add]; ring_nf
+private def DgBnd (m : ℕ) (st : List Bool) : Prop :=
+  ∃ p0 p1 cli, st = dgSt (pair p0 p1) cli ∧
+    p0.length ≤ 1 ∧ p1.length ≤ 1 ∧ cli.length ≤ m
 
-private lemma step_spec (W : List Bool) (m p : ℕ) (b0 b1 b2 : Bool) :
-    foldlBits (leStep false) (leStep true) W
-        (mkSt [] [] (List.replicate m true) (List.replicate p true)) [b0, b1, b2]
-      = mkSt [] []
-          (List.replicate (min (m + (4 * b2n b0 + 2 * b2n b1 + b2n b2) * p) W.length) true)
-          (List.replicate (min (4 * p) (W.length + 1)) true) := by
-  rw [foldl_three, rep_replicate, rep_replicate, ← List.replicate_add,
-    List.take_replicate, List.take_replicate]
-  rw [Nat.min_comm W.length, Nat.min_comm (W.length + 1)]
+private lemma DgBnd.step {STEP : List Bool → List Bool} {Q c m : ℕ} {W : List Bool}
+    (hS : ∀ (cli : List Bool) (b0 b1 b2 : Bool),
+      (STEP (pair W (pair cli (pair [b0] (pair [b1] [b2]))))).length ≤ Q + cli.length + c)
+    {st : List Bool} (h : DgBnd m st) (b : Bool) :
+    DgBnd (m + Q + c) (dgStep STEP b (pair W st)) := by
+  obtain ⟨p0, p1, cli, rfl, h0, h1, hm⟩ := h
+  match p0, h0 with
+  | [], _ =>
+      refine ⟨[b], [], cli, ?_, by simp, by simp, by omega⟩
+      simp [dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli, selectHead_true]
+  | [x], _ =>
+      match p1, h1 with
+      | [], _ =>
+          refine ⟨[x], [b], cli, ?_, by simp, by simp, by omega⟩
+          cases x <;>
+            simp [dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli,
+              selectHead_true, selectHead_emptyFlag_cons]
+      | [y], _ =>
+          refine ⟨[], [], STEP (pair W (pair cli (pair [x] (pair [y] [b])))), ?_,
+            by simp, by simp, ?_⟩
+          · cases x <;> cases y <;>
+              simp [dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli,
+                selectHead_emptyFlag_cons]
+          · have hb := hS cli x y b
+            omega
+
+private lemma DgBnd.fold {STEP : List Bool → List Bool} {Q c : ℕ} {W : List Bool}
+    (hS : ∀ (cli : List Bool) (b0 b1 b2 : Bool),
+      (STEP (pair W (pair cli (pair [b0] (pair [b1] [b2]))))).length ≤ Q + cli.length + c) :
+    ∀ (u st : List Bool) (m : ℕ), DgBnd m st →
+      DgBnd (m + u.length * (Q + c))
+        (foldlBits (dgStep STEP false) (dgStep STEP true) W st u)
+  | [], st, m, h => by simpa using h
+  | b :: bs, st, m, h => by
+      rw [foldlBits_cons]
+      have hstep : DgBnd (m + Q + c)
+          ((bif b then dgStep STEP true else dgStep STEP false) (pair W st)) := by
+        cases b
+        · exact h.step hS false
+        · exact h.step hS true
+      have := DgBnd.fold hS bs _ (m + Q + c) hstep
+      obtain ⟨p0, p1, cli, hst, h0, h1, hm⟩ := this
+      refine ⟨p0, p1, cli, hst, h0, h1, ?_⟩
+      simp only [List.length_cons]
+      nlinarith [hm]
+
+private lemma DgBnd.length_le {m : ℕ} {st : List Bool} (h : DgBnd m st) :
+    st.length ≤ 12 + m := by
+  obtain ⟨p0, p1, cli, rfl, h0, h1, hm⟩ := h
+  simp only [dgSt, pair_length]
+  omega
+
+/-! ### Membership -/
+
+private lemma dW_mem_FP : dW ∈ FP := fstBlock_mem_FP
+private lemma dst_mem_FP : dst ∈ FP := sndBlock_mem_FP
+private lemma dph_mem_FP : dph ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+private lemma dp0_mem_FP : dp0 ∈ FP := mem_FP_comp dph_mem_FP fstBlock_mem_FP
+private lemma dp1_mem_FP : dp1 ∈ FP := mem_FP_comp dph_mem_FP sndBlock_mem_FP
+private lemma dcli_mem_FP : dcli ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+
+lemma dgStep_mem_FP {STEP : List Bool → List Bool} (hSTEP : STEP ∈ FP) (b : Bool) :
+    dgStep STEP b ∈ FP :=
+  selectHeadFn_mem_FP (emptyFlag_mem_FP dp0_mem_FP)
+    (pairFn_mem_FP (constFn_mem_FP (pair [b] [])) dcli_mem_FP)
+    (selectHeadFn_mem_FP (emptyFlag_mem_FP dp1_mem_FP)
+      (pairFn_mem_FP (pairFn_mem_FP dp0_mem_FP (constFn_mem_FP [b])) dcli_mem_FP)
+      (pairFn_mem_FP (constFn_mem_FP (pair [] []))
+        (mem_FP_comp
+          (pairFn_mem_FP dW_mem_FP
+            (pairFn_mem_FP dcli_mem_FP
+              (pairFn_mem_FP dp0_mem_FP
+                (pairFn_mem_FP dp1_mem_FP (constFn_mem_FP [b])))))
+          hSTEP)))
+
+lemma dgFold_mem_FP {STEP Wf Sf : List Bool → List Bool} {c : ℕ} {qP : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ (W cli : List Bool) (b0 b1 b2 : Bool),
+      (STEP (pair W (pair cli (pair [b0] (pair [b1] [b2]))))).length
+        ≤ qP.eval W.length + cli.length + c)
+    (cli₀ : List Bool) :
+    (fun z => dgFold STEP (Wf z) cli₀ (bitsToDigits (Sf z))) ∈ FP := by
+  set p : Polynomial ℕ := Polynomial.C (12 + cli₀.length)
+      + Polynomial.X * qP + Polynomial.C c * Polynomial.X with hp
+  have hfold : (fun z => foldlBits (dgStep STEP false) (dgStep STEP true) (Wf z)
+      (dgSt (pair [] []) cli₀) (Sf z)) ∈ FP := by
+    refine foldlBits_mem_FP (dgStep_mem_FP hSTEP false) (dgStep_mem_FP hSTEP true)
+      hW hSf (dgSt (pair [] []) cli₀) p (fun z u hu => ?_)
+    have hb := (DgBnd.fold (Q := qP.eval (Wf z).length) (c := c)
+      (fun cli b0 b1 b2 => hSbnd (Wf z) cli b0 b1 b2) u (dgSt (pair [] []) cli₀) cli₀.length
+      ⟨[], [], cli₀, rfl, by simp, by simp, le_rfl⟩).length_le
+    have hQ : qP.eval (Wf z).length ≤ qP.eval ((Wf z).length + (Sf z).length) :=
+      polynomial_eval_mono_nat qP (by omega)
+    have hL : u.length ≤ (Wf z).length + (Sf z).length := by omega
+    simp only [hp, Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_X,
+      Polynomial.eval_C]
+    have hprod : u.length * (qP.eval (Wf z).length + c)
+        ≤ ((Wf z).length + (Sf z).length) * qP.eval ((Wf z).length + (Sf z).length)
+          + c * ((Wf z).length + (Sf z).length) := by
+      have h1 : u.length * qP.eval (Wf z).length
+          ≤ ((Wf z).length + (Sf z).length) * qP.eval ((Wf z).length + (Sf z).length) :=
+        Nat.mul_le_mul hL hQ
+      have h2 : u.length * c ≤ ((Wf z).length + (Sf z).length) * c :=
+        Nat.mul_le_mul_right _ hL
+      nlinarith [h1, h2]
+    omega
+  have hcomp := mem_FP_comp hfold sndBlock_mem_FP
+  have heq : (sndBlock ∘ fun z => foldlBits (dgStep STEP false) (dgStep STEP true) (Wf z)
+        (dgSt (pair [] []) cli₀) (Sf z))
+      = fun z => dgFold STEP (Wf z) cli₀ (bitsToDigits (Sf z)) := by
+    funext z
+    exact dgFold_cli STEP (Wf z) (Sf z) cli₀
+  rwa [heq] at hcomp
+
+/-! ## The guarded little-endian expansion
+
+The first client of the digit fold, and the endianness residual named in the file header:
+a token block read little-endian base four into `min value cap` unary marks. -/
+
+namespace LEUnary
 
 /-- The value the clamped accumulator holds after a digit list. -/
 def leAccVal (cap : ℕ) : ℕ → ℕ → List ℕ → ℕ
@@ -223,175 +512,120 @@ lemma leAccVal_spec (cap : ℕ) : ∀ (ds : List ℕ) (m p : ℕ), m ≤ cap →
               omega
             rw [min_eq_right hL, min_eq_right hR]
 
+private def leCap (v : List Bool) : List Bool := fstBlock v
+private def leCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+private def leAcc (v : List Bool) : List Bool := fstBlock (leCli v)
+private def lePow (v : List Bool) : List Bool := sndBlock (leCli v)
+private def leSlots (v : List Bool) : List Bool := sndBlock (sndBlock v)
+private def leB0 (v : List Bool) : List Bool := fstBlock (leSlots v)
+private def leB1 (v : List Bool) : List Bool := fstBlock (sndBlock (leSlots v))
+private def leB2 (v : List Bool) : List Bool := sndBlock (sndBlock (leSlots v))
 
+private def rep : ℕ → List Bool → List Bool
+  | 0, _ => []
+  | k + 1, p => p ++ rep k p
 
-lemma foldl_acc (W : List Bool) : ∀ (w : List Bool) (m p : ℕ),
-    fstBlock (sndBlock (foldlBits (leStep false) (leStep true) W
-        (mkSt [] [] (List.replicate m true) (List.replicate p true)) w))
-      = List.replicate (leAccVal W.length m p (bitsToDigits w)) true
-  | [], m, p => by
-      rw [foldlBits_nil, mkSt, sndBlock_pair, fstBlock_pair,
-        bitsToDigits_of_length_lt_three [] (by simp), leAccVal]
-  | [b0], m, p => by
-      rw [bitsToDigits_of_length_lt_three [b0] (by simp), leAccVal,
-        show ([b0] : List Bool) = [] ++ [b0] from rfl,
-        foldlBits_append_singleton, foldlBits_nil]
-      cases b0 <;>
-        simp [leStep, mkSt, stw, phw, accw, poww, ph0, ph1,
-          selectHead_true]
-  | [b0, b1], m, p => by
-      rw [bitsToDigits_of_length_lt_three [b0, b1] (by simp), leAccVal,
-        show ([b0, b1] : List Bool) = [b0] ++ [b1] from rfl,
-        foldlBits_append_singleton]
-      cases b0 <;> cases b1 <;>
-        simp [foldlBits, leStep, mkSt, stw, phw, accw, poww, ph0, ph1,
-          selectHead_true, selectHead_emptyFlag_cons]
-  | b0 :: b1 :: b2 :: rest, m, p => by
-      rw [bitsToDigits_cons3, leAccVal,
-        show (b0 :: b1 :: b2 :: rest) = [b0, b1, b2] ++ rest from rfl,
-        foldlBits_append, step_spec, foldl_acc W rest _ _]
+private lemma rep_replicate (k p : ℕ) :
+    rep k (List.replicate p true) = List.replicate (k * p) true := by
+  induction k with
+  | zero => simp [rep]
+  | succ k ih => rw [rep, ih, ← List.replicate_add]; ring_nf
 
-/-- **The guarded little-endian expansion computes the clamped value.**  Starting empty,
-with place value one, the register holds `min value cap` after the whole word — on every
-word, a trailing partial digit contributing nothing, exactly as `bitsToDigits` drops it.
+private def repPow (k : ℕ) (v : List Bool) : List Bool := rep k (lePow v)
 
-Proof kind: `C` composition.  Provenance: (a) `foldl_acc`, `leAccVal_spec`. -/
-lemma foldl_acc_init (W w : List Bool) :
-    fstBlock (sndBlock (foldlBits (leStep false) (leStep true) W
-        (mkSt [] [] [] [true]) w))
-      = List.replicate (min (digitVal (bitsToDigits w)) W.length) true := by
-  have h := foldl_acc W w 0 1
-  rw [show (List.replicate 0 true : List Bool) = [] from rfl,
-    show (List.replicate 1 true : List Bool) = [true] from rfl] at h
-  rw [h, leAccVal_spec W.length (bitsToDigits w) 0 1 (Nat.zero_le _)]
-  simp
+private def mulSel (v : List Bool) : List Bool :=
+  selectHead (leB0 v)
+    (selectHead (leB1 v)
+      (selectHead (leB2 v) (repPow 7 v) (repPow 6 v))
+      (selectHead (leB2 v) (repPow 5 v) (repPow 4 v)))
+    (selectHead (leB1 v)
+      (selectHead (leB2 v) (repPow 3 v) (repPow 2 v))
+      (selectHead (leB2 v) (repPow 1 v) (repPow 0 v)))
 
+/-- One digit of the guarded expansion: fold it into the accumulator at the current place
+value, then advance the place value, both truncated against the guard. -/
+def leDigit (v : List Bool) : List Bool :=
+  pair (List.take (leCap v).length (leAcc v ++ mulSel v))
+    (List.take (leCap v ++ [true]).length (repPow 4 v))
 
+private lemma leDigit_spec (W : List Bool) (m p d : ℕ) (hd : d < 8) :
+    leDigit (pair W (pair (pair (List.replicate m true) (List.replicate p true))
+        (digitSlots d)))
+      = pair (List.replicate (min (m + d * p) W.length) true)
+          (List.replicate (min (4 * p) (W.length + 1)) true) := by
+  interval_cases d <;>
+    simp [leDigit, leCap, leCli, leAcc, lePow, leSlots, leB0, leB1, leB2, mulSel,
+      repPow, digitSlots, selectHead_true, selectHead_false, rep,
+      List.take_replicate] <;>
+    (congr 2 <;> omega)
 
-/-- The reachable-state invariant: a two-slot phase, an all-`true` accumulator clamped at
-the guard, and an all-`true` place value clamped one past it. -/
-private def StBnd (W st : List Bool) : Prop :=
-  ∃ (p0 p1 : List Bool) (m p : ℕ),
-    st = mkSt p0 p1 (List.replicate m true) (List.replicate p true) ∧
-      p0.length ≤ 1 ∧ p1.length ≤ 1 ∧ m ≤ W.length ∧ p ≤ W.length + 1
+/-- The place value after a digit list, clamped one past the guard. -/
+def lePowVal (cap : ℕ) : ℕ → List ℕ → ℕ
+  | p, [] => p
+  | p, _ :: ds => lePowVal cap (min (4 * p) (cap + 1)) ds
 
-private lemma StBnd.step {W st : List Bool} (h : StBnd W st) (b : Bool) :
-    StBnd W (leStep b (pair W st)) := by
-  obtain ⟨p0, p1, m, p, rfl, h0, h1, hm, hp⟩ := h
-  match p0, h0 with
-  | [], _ =>
-      refine ⟨[b], [], m, p, ?_, by simp, by simp, hm, hp⟩
-      simp [leStep, mkSt, stw, phw, accw, poww, ph0, ph1,
-        selectHead_true]
-  | [x], _ =>
-      match p1, h1 with
-      | [], _ =>
-          refine ⟨[x], [b], m, p, ?_, by simp, by simp, hm, hp⟩
-          cases x <;>
-            simp [leStep, mkSt, stw, phw, accw, poww, ph0, ph1,
-              selectHead_true, selectHead_emptyFlag_cons]
-      | [y], _ =>
-          refine ⟨[], [], min (m + (4 * b2n x + 2 * b2n y + b2n b) * p) W.length,
-            min (4 * p) (W.length + 1), ?_, by simp, by simp,
-            min_le_right _ _, min_le_right _ _⟩
-          have hflush : leStep b (pair W (mkSt [x] [y] (List.replicate m true)
-              (List.replicate p true)))
-              = flush b (pair W (mkSt [x] [y] (List.replicate m true)
-                  (List.replicate p true))) := by
-            cases x <;> cases y <;>
-              simp [leStep, mkSt, stw, phw, accw, poww, ph0, ph1,
-                selectHead_emptyFlag_cons]
-          rw [hflush]
-          cases x <;> cases y <;> cases b <;>
-            simp [flush, mkSt, capw, stw, phw, accw, poww, ph0, ph1, mulSel,
-              repPow_eq, selectHead_true, selectHead_false, rep, b2n,
-              List.take_replicate] <;>
-            (congr 3 <;> omega)
+lemma dgFold_leDigit (W : List Bool) : ∀ (ds : List ℕ) (m p : ℕ), (∀ d ∈ ds, d < 8) →
+    dgFold leDigit W (pair (List.replicate m true) (List.replicate p true)) ds
+      = pair (List.replicate (leAccVal W.length m p ds) true)
+          (List.replicate (lePowVal W.length p ds) true)
+  | [], m, p, _ => by rw [dgFold, leAccVal, lePowVal]
+  | d :: ds, m, p, hds => by
+      rw [dgFold, leDigit_spec W m p d (hds d (List.mem_cons_self ..)),
+        dgFold_leDigit W ds _ _ (fun e he => hds e (List.mem_cons_of_mem _ he)),
+        leAccVal, lePowVal]
 
-private lemma StBnd.fold (W : List Bool) : ∀ (w st : List Bool), StBnd W st →
-    StBnd W (foldlBits (leStep false) (leStep true) W st w)
-  | [], st, h => h
-  | b :: bs, st, h => by
-      rw [foldlBits_cons]
-      refine StBnd.fold W bs _ ?_
-      cases b
-      · exact h.step false
-      · exact h.step true
+private lemma leDigit_mem_FP : leDigit ∈ FP := by
+  have hcap : leCap ∈ FP := fstBlock_mem_FP
+  have hcli : leCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have hacc : leAcc ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hpow : lePow ∈ FP := mem_FP_comp hcli sndBlock_mem_FP
+  have hslots : leSlots ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hb0 : leB0 ∈ FP := mem_FP_comp hslots fstBlock_mem_FP
+  have hb1 : leB1 ∈ FP := mem_FP_comp (mem_FP_comp hslots sndBlock_mem_FP) fstBlock_mem_FP
+  have hb2 : leB2 ∈ FP := mem_FP_comp (mem_FP_comp hslots sndBlock_mem_FP) sndBlock_mem_FP
+  have hrep : ∀ k : ℕ, repPow k ∈ FP := by
+    intro k
+    induction k with
+    | zero => exact constFn_mem_FP []
+    | succ k ih => exact appendFn_mem_FP hpow ih
+  have hmul : mulSel ∈ FP :=
+    selectHeadFn_mem_FP hb0
+      (selectHeadFn_mem_FP hb1
+        (selectHeadFn_mem_FP hb2 (hrep 7) (hrep 6))
+        (selectHeadFn_mem_FP hb2 (hrep 5) (hrep 4)))
+      (selectHeadFn_mem_FP hb1
+        (selectHeadFn_mem_FP hb2 (hrep 3) (hrep 2))
+        (selectHeadFn_mem_FP hb2 (hrep 1) (hrep 0)))
+  exact pairFn_mem_FP (takeLenFn_mem_FP hcap (appendFn_mem_FP hacc hmul))
+    (takeLenFn_mem_FP (appendFn_mem_FP hcap (constFn_mem_FP [true])) (hrep 4))
 
-private lemma StBnd.length_le {W st : List Bool} (h : StBnd W st) :
-    st.length ≤ 3 * W.length + 15 := by
-  obtain ⟨p0, p1, m, p, rfl, h0, h1, hm, hp⟩ := h
-  simp only [mkSt, pair_length, List.length_replicate]
+private lemma leDigit_length_le (W cli : List Bool) (b0 b1 b2 : Bool) :
+    (leDigit (pair W (pair cli (pair [b0] (pair [b1] [b2]))))).length
+      ≤ (3 * Polynomial.X + 3 : Polynomial ℕ).eval W.length + cli.length := by
+  have hcap : leCap (pair W (pair cli (pair [b0] (pair [b1] [b2])))) = W := by simp [leCap]
+  simp only [leDigit, hcap, pair_length, List.length_take, List.length_append,
+    List.length_cons, List.length_nil, Polynomial.eval_add, Polynomial.eval_mul,
+    Polynomial.eval_X, Polynomial.eval_ofNat]
   omega
 
-
-
-private lemma capw_mem_FP : capw ∈ FP := fstBlock_mem_FP
-private lemma stw_mem_FP : stw ∈ FP := sndBlock_mem_FP
-private lemma phw_mem_FP : phw ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
-private lemma accw_mem_FP : accw ∈ FP :=
-  mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) fstBlock_mem_FP
-private lemma poww_mem_FP : poww ∈ FP :=
-  mem_FP_comp (mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP) sndBlock_mem_FP
-private lemma ph0_mem_FP : ph0 ∈ FP := mem_FP_comp phw_mem_FP fstBlock_mem_FP
-private lemma ph1_mem_FP : ph1 ∈ FP := mem_FP_comp phw_mem_FP sndBlock_mem_FP
-
-private lemma repPow_mem_FP : ∀ k : ℕ, repPow k ∈ FP
-  | 0 => constFn_mem_FP []
-  | k + 1 => appendFn_mem_FP poww_mem_FP (repPow_mem_FP k)
-
-private lemma mulSel_mem_FP (b : Bool) : mulSel b ∈ FP :=
-  selectHeadFn_mem_FP ph0_mem_FP
-    (selectHeadFn_mem_FP ph1_mem_FP (repPow_mem_FP _) (repPow_mem_FP _))
-    (selectHeadFn_mem_FP ph1_mem_FP (repPow_mem_FP _) (repPow_mem_FP _))
-
-private lemma flush_mem_FP (b : Bool) : flush b ∈ FP :=
-  pairFn_mem_FP (constFn_mem_FP (pair [] []))
-    (pairFn_mem_FP
-      (takeLenFn_mem_FP capw_mem_FP (appendFn_mem_FP accw_mem_FP (mulSel_mem_FP b)))
-      (takeLenFn_mem_FP (appendFn_mem_FP capw_mem_FP (constFn_mem_FP [true]))
-        (repPow_mem_FP 4)))
-
-lemma leStep_mem_FP (b : Bool) : leStep b ∈ FP :=
-  selectHeadFn_mem_FP (emptyFlag_mem_FP ph0_mem_FP)
-    (pairFn_mem_FP (constFn_mem_FP (pair [b] []))
-      (pairFn_mem_FP accw_mem_FP poww_mem_FP))
-    (selectHeadFn_mem_FP (emptyFlag_mem_FP ph1_mem_FP)
-      (pairFn_mem_FP (pairFn_mem_FP ph0_mem_FP (constFn_mem_FP [b]))
-        (pairFn_mem_FP accw_mem_FP poww_mem_FP))
-      (flush_mem_FP b))
-
-
-
-/-- **The guarded little-endian expansion is polynomial time.**  `V z` is a token's own
-digit-bit block, read little-endian base four the way `undigitize` reads it; `C z` is a word
-whose *length* is the guard.  This is `FPFold.unaryOfBits_le_mem_FP` in the endianness the
-token stream actually uses, and, like it, the clamp is what makes the claim true at all.
-
-Proof kind: `C` composition.  Provenance: (b) `FPFold.foldlBits_mem_FP`; (a)
-`leStep_mem_FP`, `foldl_acc_init`, `StBnd.fold`. -/
+/-- **The guarded little-endian expansion is polynomial time**, as a digit-fold client. -/
 lemma unaryOfDigitsLE_le_mem_FP {V C : List Bool → List Bool} (hV : V ∈ FP) (hC : C ∈ FP) :
     (fun z => List.replicate (min (digitVal (bitsToDigits (V z))) (C z).length) true) ∈ FP := by
-  have hinit : ∀ W : List Bool, StBnd W (mkSt [] [] [] [true]) := by
-    intro W
-    exact ⟨[], [], 0, 1, rfl, by simp, by simp, Nat.zero_le _, by omega⟩
-  have hfold : (fun z => foldlBits (leStep false) (leStep true) (C z)
-      (mkSt [] [] [] [true]) (V z)) ∈ FP := by
-    refine foldlBits_mem_FP (leStep_mem_FP false) (leStep_mem_FP true) hC hV
-      (mkSt [] [] [] [true]) (3 * Polynomial.X + 15) (fun z u _ => ?_)
-    have hb := (StBnd.fold (C z) u _ (hinit (C z))).length_le
-    simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_X,
-      Polynomial.eval_ofNat]
-    omega
-  have hcomp := mem_FP_comp hfold (mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP)
-  have heq : ((fstBlock ∘ sndBlock) ∘ fun z => foldlBits (leStep false) (leStep true) (C z)
-        (mkSt [] [] [] [true]) (V z))
+  have hfold : (fun z => dgFold leDigit (C z) (pair [] [true]) (bitsToDigits (V z))) ∈ FP :=
+    dgFold_mem_FP (c := 0) (qP := 3 * Polynomial.X + 3) leDigit_mem_FP hC hV
+      (fun W cli b0 b1 b2 => by simpa using leDigit_length_le W cli b0 b1 b2) (pair [] [true])
+  have hcomp := mem_FP_comp hfold fstBlock_mem_FP
+  have heq : (fstBlock ∘ fun z => dgFold leDigit (C z) (pair [] [true]) (bitsToDigits (V z)))
       = fun z => List.replicate (min (digitVal (bitsToDigits (V z))) (C z).length) true := by
     funext z
-    exact foldl_acc_init (C z) (V z)
+    have hrun := dgFold_leDigit (C z) (bitsToDigits (V z)) 0 1
+      (mem_bitsToDigits_lt_eight (V z))
+    rw [show (List.replicate 0 true : List Bool) = [] from rfl,
+      show (List.replicate 1 true : List Bool) = [true] from rfl] at hrun
+    simp only [Function.comp_apply, hrun, fstBlock_pair]
+    rw [leAccVal_spec (C z).length (bitsToDigits (V z)) 0 1 (Nat.zero_le _)]
+    simp
   rwa [heq] at hcomp
-
-
 
 lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
   intro n
@@ -409,9 +643,349 @@ lemma digitVal_bitsToDigits_digitsToBits_natDigits4 (t : ℕ) :
   rw [bitsToDigits_digitsToBits _ (fun d hd => lt_trans (natDigits4_lt t d hd) (by norm_num)),
     digitVal_natDigits4]
 
-
-
 end LEUnary
+
+/-! ## The unary counter
+
+The second client of the digit fold, and what the budget codes need: a value known only
+as a *length* has to reach the stream as base-four digits.  One carry-propagating
+increment per mark does it, and the run it builds need not be the canonical `natDigits4`
+one — `undigitize` reads a token's value, and that is what `unaryToDigits_val` fixes. -/
+
+namespace Increment
+
+private def icCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+private def icDone (v : List Bool) : List Bool := fstBlock (icCli v)
+private def icOut (v : List Bool) : List Bool := sndBlock (icCli v)
+private def icSlots (v : List Bool) : List Bool := sndBlock (sndBlock v)
+private def icB0 (v : List Bool) : List Bool := fstBlock (icSlots v)
+private def icB1 (v : List Bool) : List Bool := fstBlock (sndBlock (icSlots v))
+private def icB2 (v : List Bool) : List Bool := sndBlock (sndBlock (icSlots v))
+
+/-- One digit of the little-endian carry increment: once the carry is resolved every
+further digit is copied; before that a digit below three is raised and resolves it, and a
+digit of three (or, on a malformed word, above) becomes zero and passes the carry on.
+
+The resolved flag is re-emitted as the literal `[true]` rather than copied, so that the
+client state's length is bounded by `|cli| + O(1)` on *every* word and not merely on the
+reachable ones — the additive form is what keeps `dgFold_mem_FP`'s bound polynomial. -/
+def incDigit (v : List Bool) : List Bool :=
+  selectHead (emptyFlag (icDone v))
+    (selectHead (icB0 v)
+      (pair [] (icOut v ++ [false, false, false]))
+      (selectHead (icB1 v)
+        (selectHead (icB2 v)
+          (pair [] (icOut v ++ [false, false, false]))
+          (pair [true] (icOut v ++ [false, true, true])))
+        (selectHead (icB2 v)
+          (pair [true] (icOut v ++ [false, true, false]))
+          (pair [true] (icOut v ++ [false, false, true])))))
+    (pair [true] (icOut v ++ (icB0 v ++ icB1 v ++ icB2 v)))
+
+/-- The digit-level model: the carry flag and the rewritten run. -/
+def incRun : List ℕ → Bool × List ℕ
+  | [] => (false, [])
+  | d :: ds =>
+      if d < 3 then (true, (d + 1) :: ds)
+      else ((incRun ds).1, 0 :: (incRun ds).2)
+
+/-- Once the carry is resolved the fold copies the rest of the run through. -/
+private lemma dgFold_incDigit_done (W : List Bool) : ∀ (ds : List ℕ) (out : List Bool),
+    (∀ d ∈ ds, d < 8) →
+    dgFold incDigit W (pair [true] out) ds = pair [true] (out ++ digitsToBits ds)
+  | [], out, _ => by rw [dgFold]; simp
+  | d :: ds, out, hds => by
+      rw [dgFold]
+      have hd : d < 8 := hds d (List.mem_cons_self ..)
+      have hstep : incDigit (pair W (pair (pair [true] out) (digitSlots d)))
+          = pair [true] (out ++ digitBits d) := by
+        interval_cases d <;>
+          simp [incDigit, icCli, icDone, icOut, icSlots, icB0, icB1, icB2, digitSlots,
+            digitBits, selectHead_true, selectHead_false, selectHead_emptyFlag_cons]
+      rw [hstep, dgFold_incDigit_done W ds _ (fun e he => hds e (List.mem_cons_of_mem _ he)),
+        digitsToBits_cons, List.append_assoc]
+
+/-- Before the carry is resolved the fold realizes `incRun`. -/
+private lemma dgFold_incDigit_carry (W : List Bool) : ∀ (ds : List ℕ) (out : List Bool),
+    (∀ d ∈ ds, d < 8) →
+    dgFold incDigit W (pair [] out) ds
+      = pair (if (incRun ds).1 then [true] else [])
+          (out ++ digitsToBits (incRun ds).2)
+  | [], out, _ => by rw [dgFold, incRun]; simp
+  | d :: ds, out, hds => by
+      rw [dgFold, incRun]
+      have hd : d < 8 := hds d (List.mem_cons_self ..)
+      have htail : ∀ e ∈ ds, e < 8 := fun e he => hds e (List.mem_cons_of_mem _ he)
+      by_cases hlt : d < 3
+      · have hstep : incDigit (pair W (pair (pair [] out) (digitSlots d)))
+            = pair [true] (out ++ digitBits (d + 1)) := by
+          interval_cases d <;>
+            simp [incDigit, icCli, icDone, icOut, icSlots, icB0, icB1, icB2, digitSlots,
+              digitBits, selectHead_true, selectHead_false]
+        rw [hstep, dgFold_incDigit_done W ds _ htail, if_pos hlt]
+        simp only [digitsToBits_cons, List.append_assoc, if_true]
+      · have hge : 3 ≤ d := by omega
+        have hstep : incDigit (pair W (pair (pair [] out) (digitSlots d)))
+            = pair [] (out ++ digitBits 0) := by
+          interval_cases d <;>
+            simp [incDigit, icCli, icDone, icOut, icSlots, icB0, icB1, icB2, digitSlots,
+              digitBits, selectHead_true, selectHead_false]
+        rw [hstep, dgFold_incDigit_carry W ds _ htail, if_neg hlt]
+        simp only [digitsToBits_cons, List.append_assoc]
+
+/-! ### What the increment computes -/
+
+/-- The run the increment produces, with any carry left at the top discharged. -/
+def incDigits (ds : List ℕ) : List ℕ :=
+  if (incRun ds).1 then (incRun ds).2 else (incRun ds).2 ++ [1]
+
+lemma incRun_length : ∀ ds : List ℕ, (incRun ds).2.length = ds.length
+  | [] => rfl
+  | d :: ds => by
+      rw [incRun]
+      by_cases h : d < 3
+      · simp [h]
+      · simp [h, incRun_length ds]
+
+lemma incRun_digits_lt : ∀ (ds : List ℕ), (∀ d ∈ ds, d < 4) →
+    ∀ e ∈ (incRun ds).2, e < 4
+  | [], _ => by simp [incRun]
+  | d :: ds, hds => by
+      rw [incRun]
+      have hd : d < 4 := hds d (List.mem_cons_self ..)
+      have htail : ∀ e ∈ ds, e < 4 := fun e he => hds e (List.mem_cons_of_mem _ he)
+      by_cases h : d < 3
+      · simp only [if_pos h]
+        intro e he
+        rcases List.mem_cons.mp he with rfl | he
+        · omega
+        · exact htail e he
+      · simp only [if_neg h]
+        intro e he
+        rcases List.mem_cons.mp he with rfl | he
+        · omega
+        · exact incRun_digits_lt ds htail e he
+
+lemma incRun_spec : ∀ (ds : List ℕ), (∀ d ∈ ds, d < 4) →
+    ((incRun ds).1 = true → digitVal (incRun ds).2 = digitVal ds + 1) ∧
+      ((incRun ds).1 = false → digitVal (incRun ds).2 + 4 ^ ds.length = digitVal ds + 1)
+  | [], _ => by
+      refine ⟨by simp [incRun], fun _ => ?_⟩
+      simp [incRun]
+  | d :: ds, hds => by
+      have hd : d < 4 := hds d (List.mem_cons_self ..)
+      have htail : ∀ e ∈ ds, e < 4 := fun e he => hds e (List.mem_cons_of_mem _ he)
+      obtain ⟨ih1, ih2⟩ := incRun_spec ds htail
+      rw [incRun]
+      by_cases h : d < 3
+      · simp only [if_pos h]
+        exact ⟨fun _ => by simp; omega, fun hf => by simp at hf⟩
+      · simp only [if_neg h]
+        have hd3 : d = 3 := by omega
+        refine ⟨fun hf => ?_, fun hf => ?_⟩
+        · have := ih1 hf
+          simp only [digitVal_cons, this, hd3]
+          omega
+        · have := ih2 hf
+          simp only [digitVal_cons, List.length_cons, pow_succ, hd3]
+          omega
+
+lemma incDigits_digits_lt (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
+    ∀ e ∈ incDigits ds, e < 4 := by
+  rw [incDigits]
+  by_cases h : (incRun ds).1
+  · simpa [h] using incRun_digits_lt ds hds
+  · simp only [if_neg h]
+    intro e he
+    rcases List.mem_append.mp he with he | he
+    · exact incRun_digits_lt ds hds e he
+    · simp at he; omega
+
+lemma incDigits_val (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
+    digitVal (incDigits ds) = digitVal ds + 1 := by
+  obtain ⟨h1, h2⟩ := incRun_spec ds hds
+  rw [incDigits]
+  by_cases h : (incRun ds).1
+  · rw [if_pos h]
+    exact h1 h
+  · rw [if_neg h, digitVal_append_singleton, incRun_length]
+    have := h2 (by simpa using h)
+    omega
+
+lemma incDigits_length (ds : List ℕ) : (incDigits ds).length ≤ ds.length + 1 := by
+  rw [incDigits]
+  by_cases h : (incRun ds).1
+  · rw [if_pos h, incRun_length]; omega
+  · rw [if_neg h]; simp [incRun_length]
+
+/-! ### The increment as a word function -/
+
+private def icState (v : List Bool) : List Bool :=
+  dgFold incDigit [] (pair [] []) (bitsToDigits (sndBlock v))
+
+/-- One mark of the unary counter: increment the digit word held in the fold state,
+discharging at the top any carry the run did not absorb. -/
+def incStep (v : List Bool) : List Bool :=
+  selectHead (emptyFlag (fstBlock (icState v)))
+    (sndBlock (icState v) ++ digitBits 1)
+    (sndBlock (icState v))
+
+lemma incStep_spec (ds : List ℕ) (hds : ∀ d ∈ ds, d < 4) :
+    incStep (pair [] (digitsToBits ds)) = digitsToBits (incDigits ds) := by
+  have hlt8 : ∀ d ∈ ds, d < 8 := fun d hd => lt_trans (hds d hd) (by norm_num)
+  have hst : icState (pair [] (digitsToBits ds))
+      = pair (if (incRun ds).1 then [true] else []) (digitsToBits (incRun ds).2) := by
+    rw [icState, sndBlock_pair, bitsToDigits_digitsToBits ds hlt8,
+      dgFold_incDigit_carry [] ds [] hlt8]
+    simp
+  rw [incStep, hst, incDigits]
+  by_cases h : (incRun ds).1
+  · rw [if_pos h, if_pos h, fstBlock_pair, sndBlock_pair]
+    exact selectHead_emptyFlag_cons true [] _ _
+  · rw [if_neg h, if_neg h, fstBlock_pair, sndBlock_pair,
+      selectHead_emptyFlag_nil, digitsToBits_append]
+    rfl
+
+/-! ### The unary counter -/
+
+/-- The digit run denoting `n`, as the increment builds it. -/
+def unaryDigits : ℕ → List ℕ
+  | 0 => []
+  | n + 1 => incDigits (unaryDigits n)
+
+lemma unaryDigits_lt : ∀ (n : ℕ), ∀ d ∈ unaryDigits n, d < 4
+  | 0 => by simp [unaryDigits]
+  | n + 1 => incDigits_digits_lt _ (unaryDigits_lt n)
+
+lemma unaryDigits_val : ∀ n : ℕ, digitVal (unaryDigits n) = n
+  | 0 => rfl
+  | n + 1 => by rw [unaryDigits, incDigits_val _ (unaryDigits_lt n), unaryDigits_val n]
+
+lemma unaryDigits_length : ∀ n : ℕ, (unaryDigits n).length ≤ n
+  | 0 => by simp [unaryDigits]
+  | n + 1 => le_trans (incDigits_length _) (by have := unaryDigits_length n; omega)
+
+/-- **Render a unary count as a little-endian base-four digit block.**  The run is not the
+canonical `natDigits4` one and does not need to be: `undigitize` reads a token's value, and
+`unaryToDigits_val` is that value. -/
+def unaryToDigits (u : List Bool) : List Bool := foldlBits incStep incStep [] [] u
+
+lemma unaryToDigits_eq (u : List Bool) :
+    unaryToDigits u = digitsToBits (unaryDigits u.length) := by
+  induction u using List.reverseRecOn with
+  | nil => rfl
+  | append_singleton bs b ih =>
+      rw [unaryToDigits, foldlBits_append_singleton]
+      have hb : (bif b then incStep else incStep) = incStep := by cases b <;> rfl
+      rw [hb, show foldlBits incStep incStep [] [] bs = unaryToDigits bs from rfl, ih,
+        incStep_spec _ (unaryDigits_lt bs.length)]
+      simp [unaryDigits, List.length_append]
+
+lemma unaryToDigits_val (u : List Bool) :
+    digitVal (bitsToDigits (unaryToDigits u)) = u.length := by
+  rw [unaryToDigits_eq,
+    bitsToDigits_digitsToBits _
+      (fun d hd => lt_trans (unaryDigits_lt u.length d hd) (by norm_num)),
+    unaryDigits_val]
+
+lemma unaryToDigits_digits_lt (u : List Bool) :
+    ∀ d ∈ bitsToDigits (unaryToDigits u), d < 4 := by
+  rw [unaryToDigits_eq,
+    bitsToDigits_digitsToBits _
+      (fun d hd => lt_trans (unaryDigits_lt u.length d hd) (by norm_num))]
+  exact unaryDigits_lt u.length
+
+/-! ### Membership -/
+
+private lemma icCli_mem_FP : icCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+private lemma icDone_mem_FP : icDone ∈ FP := mem_FP_comp icCli_mem_FP fstBlock_mem_FP
+private lemma icOut_mem_FP : icOut ∈ FP := mem_FP_comp icCli_mem_FP sndBlock_mem_FP
+private lemma icSlots_mem_FP : icSlots ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+private lemma icB0_mem_FP : icB0 ∈ FP := mem_FP_comp icSlots_mem_FP fstBlock_mem_FP
+private lemma icB1_mem_FP : icB1 ∈ FP :=
+  mem_FP_comp (mem_FP_comp icSlots_mem_FP sndBlock_mem_FP) fstBlock_mem_FP
+private lemma icB2_mem_FP : icB2 ∈ FP :=
+  mem_FP_comp (mem_FP_comp icSlots_mem_FP sndBlock_mem_FP) sndBlock_mem_FP
+
+private lemma incDigit_mem_FP : incDigit ∈ FP := by
+  have hout3 : ∀ w : List Bool, (fun v => icOut v ++ w) ∈ FP :=
+    fun w => appendFn_mem_FP icOut_mem_FP (constFn_mem_FP w)
+  have hcarry : ∀ (w : List Bool) (d : List Bool),
+      (fun v => pair d (icOut v ++ w)) ∈ FP :=
+    fun w d => pairFn_mem_FP (constFn_mem_FP d) (hout3 w)
+  exact selectHeadFn_mem_FP (emptyFlag_mem_FP icDone_mem_FP)
+    (selectHeadFn_mem_FP icB0_mem_FP
+      (hcarry [false, false, false] [])
+      (selectHeadFn_mem_FP icB1_mem_FP
+        (selectHeadFn_mem_FP icB2_mem_FP
+          (hcarry [false, false, false] [])
+          (hcarry [false, true, true] [true]))
+        (selectHeadFn_mem_FP icB2_mem_FP
+          (hcarry [false, true, false] [true])
+          (hcarry [false, false, true] [true]))))
+    (pairFn_mem_FP (constFn_mem_FP [true])
+      (appendFn_mem_FP icOut_mem_FP
+        (appendFn_mem_FP (appendFn_mem_FP icB0_mem_FP icB1_mem_FP) icB2_mem_FP)))
+
+private lemma incDigit_length_le (W cli : List Bool) (b0 b1 b2 : Bool) :
+    (incDigit (pair W (pair cli (pair [b0] (pair [b1] [b2]))))).length
+      ≤ (0 : Polynomial ℕ).eval W.length + cli.length + 7 := by
+  have hcli : icCli (pair W (pair cli (pair [b0] (pair [b1] [b2])))) = cli := by simp [icCli]
+  have hslots : icSlots (pair W (pair cli (pair [b0] (pair [b1] [b2]))))
+      = pair [b0] (pair [b1] [b2]) := by simp [icSlots]
+  have hsnd := sndBlock_length_le cli
+  have hbound : ∀ (d w : List Bool), d.length ≤ 1 → w.length ≤ 3 →
+      (pair d (sndBlock cli ++ w)).length ≤ cli.length + 7 := by
+    intro d w hd hw
+    simp only [pair_length, List.length_append]
+    omega
+  simp only [incDigit, hcli, hslots, icDone, icOut, icB0, icB1, icB2, Polynomial.eval_zero,
+    Nat.zero_add, fstBlock_pair, sndBlock_pair]
+  refine le_trans (selectHead_length_le _ _ _) ?_
+  refine max_le ?_ ?_
+  · refine le_trans (selectHead_length_le _ _ _) (max_le ?_ ?_)
+    · exact hbound [] _ (by simp) (by simp)
+    · refine le_trans (selectHead_length_le _ _ _) (max_le ?_ ?_) <;>
+        refine le_trans (selectHead_length_le _ _ _) (max_le ?_ ?_) <;>
+        first
+          | exact hbound [] _ (by simp) (by simp)
+          | exact hbound [true] _ (by simp) (by simp)
+  · exact hbound [true] _ (by simp) (by simp)
+
+private lemma icState_mem_FP : icState ∈ FP :=
+  dgFold_mem_FP (c := 7) (qP := 0) incDigit_mem_FP (constFn_mem_FP []) sndBlock_mem_FP
+    incDigit_length_le (pair [] [])
+
+lemma incStep_mem_FP : incStep ∈ FP :=
+  selectHeadFn_mem_FP (emptyFlag_mem_FP (mem_FP_comp icState_mem_FP fstBlock_mem_FP))
+    (appendFn_mem_FP (mem_FP_comp icState_mem_FP sndBlock_mem_FP)
+      (constFn_mem_FP (digitBits 1)))
+    (mem_FP_comp icState_mem_FP sndBlock_mem_FP)
+
+/-- **Rendering a unary count as base-four digit bits is polynomial time.** -/
+lemma unaryToDigits_mem_FP {U : List Bool → List Bool} (hU : U ∈ FP) :
+    (fun z => unaryToDigits (U z)) ∈ FP := by
+  have h := foldlBits_mem_FP (A := incStep) (B := incStep) (W := fun _ => [])
+    (S := U) incStep_mem_FP incStep_mem_FP (constFn_mem_FP []) hU []
+    (3 * Polynomial.X) (fun z u _ => ?_)
+  · exact h
+  · have : foldlBits incStep incStep [] [] u = digitsToBits (unaryDigits u.length) :=
+      unaryToDigits_eq u
+    rw [this, digitsToBits, List.length_flatMap]
+    have hlen : ((unaryDigits u.length).map fun d => (digitBits d).length).sum
+        = 3 * (unaryDigits u.length).length := by
+      rw [show ((unaryDigits u.length).map fun d => (digitBits d).length)
+          = List.replicate (unaryDigits u.length).length 3 from ?_]
+      · simp [List.sum_replicate]; omega
+      · rw [List.eq_replicate_iff]
+        exact ⟨by simp, by intro b hb; obtain ⟨d, -, rfl⟩ := List.mem_map.mp hb; rfl⟩
+      
+    rw [hlen]
+    have := unaryDigits_length u.length
+    simp only [Polynomial.eval_mul, Polynomial.eval_X, Polynomial.eval_ofNat]
+    omega
+
+end Increment
 
 open LEUnary
 
@@ -727,8 +1301,119 @@ lemma tkFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
   rwa [heq] at hcomp
 
 
+/-! ## The token-level model -/
+
+/-- The fold a tokenizing client is really running: one step per token of
+`undigitize`, with the token as a number. -/
+def natFold (STEPn EMITn : List Bool → ℕ → List Bool) :
+    List Bool → List Bool → List ℕ → List Bool × List Bool
+  | cli, out, [] => (cli, out)
+  | cli, out, t :: ts =>
+      natFold STEPn EMITn (STEPn cli t) (out ++ EMITn cli t) ts
+
+private lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)) (cur : List ℕ),
+    (List.foldl blockStep (bs, cur) ds).1 = bs ++ (List.foldl blockStep ([], cur) ds).1 ∧
+      (List.foldl blockStep (bs, cur) ds).2 = (List.foldl blockStep ([], cur) ds).2
+  | [], bs, cur => by simp
+  | d :: ds, bs, cur => by
+      by_cases h : d < 4
+      · rw [List.foldl_cons, List.foldl_cons,
+          show blockStep (bs, cur) d = (bs, cur ++ [d]) from if_pos h,
+          show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d]) from if_pos h]
+        exact foldl_blockStep_append ds bs (cur ++ [d])
+      · rw [List.foldl_cons, List.foldl_cons,
+          show blockStep (bs, cur) d = (bs ++ [cur], []) from if_neg h,
+          show blockStep (([] : List (List ℕ)), cur) d = ([cur], []) from if_neg h]
+        obtain ⟨h1, h2⟩ := foldl_blockStep_append ds (bs ++ [cur]) []
+        obtain ⟨h1', h2'⟩ := foldl_blockStep_append ds [cur] []
+        exact ⟨by rw [h1, h1', List.append_assoc], by rw [h2, h2']⟩
+
+/-- **A value-reading client realizes the token-level fold.**  If the client's step and
+emitter depend on the token block only through the value `undigitize` reads off it, the
+tokenizer's output is the token-level fold's output. -/
+lemma tkFold_natFold {STEP EMIT : List Bool → List Bool}
+    {STEPn EMITn : List Bool → ℕ → List Bool} (W : List Bool)
+    (hS : ∀ cli tok : List Bool,
+      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
+    (hE : ∀ cli tok : List Bool,
+      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok))) :
+    ∀ (ds cur : List ℕ) (cli out : List Bool), (∀ d ∈ cur, d < 4) →
+      (tkFold STEP EMIT W (digitsToBits cur) cli out ds).2.2
+        = (natFold STEPn EMITn cli out
+            ((List.foldl blockStep ([], cur) ds).1.map digitVal)).2
+  | [], cur, cli, out, _ => by simp [tkFold, natFold]
+  | d :: ds, cur, cli, out, hcur => by
+      rw [tkFold, List.foldl_cons]
+      by_cases h : d < 4
+      · rw [if_pos h, show blockStep (([] : List (List ℕ)), cur) d = ([], cur ++ [d])
+              from if_pos h,
+          show digitsToBits cur ++ digitBits d = digitsToBits (cur ++ [d]) by
+            rw [digitsToBits_append]; rfl,
+          tkFold_natFold W hS hE ds (cur ++ [d]) cli out (by
+            intro e he
+            rcases List.mem_append.mp he with he | he
+            · exact hcur e he
+            · simp at he; omega)]
+      · rw [if_neg h, show blockStep (([] : List (List ℕ)), cur) d = ([cur], [])
+              from if_neg h,
+          hS cli (digitsToBits cur), hE cli (digitsToBits cur),
+          bitsToDigits_digitsToBits cur (fun e he => lt_trans (hcur e he) (by norm_num)),
+          (foldl_blockStep_append ds [cur] []).1]
+        rw [show ([cur] ++ (List.foldl blockStep ([], []) ds).1)
+            = cur :: (List.foldl blockStep ([], []) ds).1 from rfl, List.map_cons, natFold]
+        exact tkFold_natFold W hS hE ds [] _ _ (by simp)
+
+/-- The same, read against `undigitize`: what the tokenizer emits on a digit stream is what
+the token-level fold emits on the tokens that stream denotes. -/
+lemma tkFold_undigitize {STEP EMIT : List Bool → List Bool}
+    {STEPn EMITn : List Bool → ℕ → List Bool} (W : List Bool)
+    (hS : ∀ cli tok : List Bool,
+      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
+    (hE : ∀ cli tok : List Bool,
+      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok)))
+    (ds : List ℕ) (cli out : List Bool) :
+    (tkFold STEP EMIT W [] cli out ds).2.2
+      = (natFold STEPn EMITn cli out (undigitize ds)).2 := by
+  have h := tkFold_natFold W hS hE ds [] cli out (by simp)
+  rw [show (digitsToBits [] : List Bool) = [] from rfl] at h
+  rw [h, undigitize_eq_blockSplit, blockSplit]
+
+/-- **The client interface.**  A step and an emitter that read each token by the value
+`undigitize` gives it, with the two per-step length bounds, compute the token-level fold in
+polynomial time — over exactly the token stream `MachineEfficientTrader` decodes.
+
+Proof kind: `C` composition.  Provenance: (a) `tkFold_mem_FP`, `tkFold_undigitize`. -/
+lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
+    {STEPn EMITn : List Bool → ℕ → List Bool} {c k : ℕ} {qQ : Polynomial ℕ}
+    (hSTEP : STEP ∈ FP) (hEMIT : EMIT ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
+    (hSbnd : ∀ W cli tok : List Bool,
+      (STEP (pair W (pair cli tok))).length ≤ cli.length + tok.length + c)
+    (hEbnd : ∀ W cli tok : List Bool,
+      (EMIT (pair W (pair cli tok))).length
+        ≤ qQ.eval W.length + k * (cli.length + tok.length))
+    (hS : ∀ W cli tok : List Bool,
+      STEP (pair W (pair cli tok)) = STEPn cli (digitVal (bitsToDigits tok)))
+    (hE : ∀ W cli tok : List Bool,
+      EMIT (pair W (pair cli tok)) = EMITn cli (digitVal (bitsToDigits tok)))
+    (cli₀ out₀ : List Bool) :
+    (fun z => (natFold STEPn EMITn cli₀ out₀
+      (undigitize (bitsToDigits (Sf z)))).2) ∈ FP := by
+  have h := tkFold_mem_FP hSTEP hEMIT hW hSf hSbnd hEbnd cli₀ out₀
+  have heq : (fun z => (tkFold STEP EMIT (Wf z) [] cli₀ out₀ (bitsToDigits (Sf z))).2.2)
+      = fun z => (natFold STEPn EMITn cli₀ out₀ (undigitize (bitsToDigits (Sf z)))).2 := by
+    funext z
+    exact tkFold_undigitize (Wf z) (fun cli tok => hS (Wf z) cli tok)
+      (fun cli tok => hE (Wf z) cli tok) _ cli₀ out₀
+  rwa [heq] at h
+
+#print axioms LogicalInduction.TokenFold.dgFold_cli
+#print axioms LogicalInduction.TokenFold.dgFold_mem_FP
 #print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP
+#print axioms LogicalInduction.TokenFold.Increment.unaryToDigits_val
+#print axioms LogicalInduction.TokenFold.Increment.unaryToDigits_mem_FP
 #print axioms LogicalInduction.TokenFold.tkFold_out
 #print axioms LogicalInduction.TokenFold.tkFold_mem_FP
+#print axioms LogicalInduction.TokenFold.tkFold_undigitize
+#print axioms LogicalInduction.TokenFold.natFold_mem_FP
 
 end LogicalInduction.TokenFold
