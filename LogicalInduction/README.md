@@ -212,9 +212,13 @@ assertion starts failing and gets promoted to a plain clean assertion.
      computational advice, and the theorem does not survive it. The corrected
      finite-*support* theorem is proved at **both** classes
      (`lic_iff_of_finiteSupportPerturbation`, `machine_lic_iff_of_finiteSupportPerturbation`).
-     None of the three patch interfaces — `EfficientPrefixPatch`, `FiniteSupportPatch`,
-     `MachineFiniteSupportPatch` — has **any inhabitant anywhere in this repo**, so no
-     restricted endpoint here has an exhibited witness for its own hypothesis.
+     `MachineFiniteSupportPatch` is now **inhabited**
+     (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for markets whose frozen
+     coordinates come from a finite entry table meeting three stated conditions, witnessed
+     at a table with a real row. The fuel-class certificates `EfficientPrefixPatch` and
+     `FiniteSupportPatch` remain uninhabited. No concrete pair of computable markets is
+     constructed either way, so the corrected theorem is not yet exhibited non-vacuous end
+     to end.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -389,12 +393,18 @@ proved content withdrawn.
   * The fuel-class carrier `lic_iff_of_finitePerturbation` keeps the paper's own
     hypothesis shape.
 
-  Stated plainly because it is the sharpest disclosure on this page: **none of
-  `EfficientPrefixPatch`, `FiniteSupportPatch` or `MachineFiniteSupportPatch` has an
-  inhabitant anywhere in the repo**, so no carrier here has an exhibited witness for its
-  hypothesis, and none of them may be described as non-vacuous. (An earlier version of the
-  errata ledger did so, citing a declaration that does not exist; corrected there.)
-  Correcting the *argument* is not the same as building the *compiler*.
+  Stated plainly, because this is the disclosure that has moved and it is easy to overstate:
+  `MachineFiniteSupportPatch` **is inhabited** — `FreezeOracle.machineFiniteSupportPatch_ofTable`,
+  for a market whose frozen coordinates are presented by a finite entry table satisfying
+  `Recognizable` per sentence and a `TablePresentation`, witnessed at a table with a real
+  row rather than the degenerate empty one. The fuel-class certificates
+  `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited**, because the fuel
+  calculus does not close over the escape-leaf decode the lookup needs. And **no concrete
+  pair of computable markets is constructed**, so the corrected theorem is still not
+  exhibited non-vacuous end to end: the freeze certificate is discharged, the market pair
+  is not. (An earlier version of the errata ledger claimed non-vacuity citing a declaration
+  that does not exist; corrected there. The standard that catches this is the reason the
+  distinction above is drawn so finely.)
 
 ## Closing the boundaries
 

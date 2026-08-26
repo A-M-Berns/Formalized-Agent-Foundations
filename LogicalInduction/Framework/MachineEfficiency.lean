@@ -80,10 +80,10 @@ serialization. Both transport theorems now exist.
 * `thm:ifp` — the *corrected* finite-support statement is proved at both classes
   (`machine_lic_iff_of_finiteSupportPerturbation`, `Properties/FinitePerturbations.lean`),
   and the published unrestricted statement is **refuted** (`not_overgeneral_ifp`). The
-  freeze certificate `MachineFiniteSupportPatch` remains the open obligation, reduced to a
-  single run-level table lookup (`FreezeStep.RunOracle`). The patch structures are
-  uninhabited at both classes, so the corrected theorem buys a correct statement rather than
-  a witness.
+  freeze certificate `MachineFiniteSupportPatch` is **inhabited**
+  (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for tables meeting three stated
+  conditions; its fuel-class counterparts are not. No concrete pair of computable markets is
+  constructed, so the corrected theorem is not yet exhibited non-vacuous end to end.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 

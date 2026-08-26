@@ -73,9 +73,12 @@ sentence slot.  This is the token model the finite-support freeze needs; what it
 remaining obligation on `MachineFiniteSupportPatch`.
 
 One thing the corrected theorem does **not** buy: an inhabitant.  Both
-`FiniteSupportPatch` and `MachineFiniteSupportPatch` are uninhabited in this repo, exactly
-as `EfficientPrefixPatch` is.  Finite support makes the argument sound in principle;
-discharging the certificate is a separate `Complexity.FP` transport result.
+`MachineFiniteSupportPatch` **is** inhabited (`FreezeOracle.machineFiniteSupportPatch_ofTable`),
+for markets whose frozen coordinates come from a finite entry table meeting three
+conditions.  `FiniteSupportPatch` and `EfficientPrefixPatch` — the fuel-class certificates —
+remain uninhabited, because the fuel calculus does not close over the escape-leaf decode.
+And no concrete pair of computable markets is constructed either way, so the corrected
+theorem is not yet exhibited non-vacuous end to end.
 
 **What this file does about it.**  We keep the theorem to what is actually provable:
 `EfficientPrefixPatch` states the missing closure fact for the concrete syntax
@@ -1179,8 +1182,9 @@ end Trader
 /-- The efficiency certificate for the **finite-support** freeze.  Unlike
 `EfficientPrefixPatch`, the quote table here is genuinely finite: `quote` is only read at
 the finitely many coordinates in `S`, so the paper's "hard-code the constants" step is
-literally valid.  It is nevertheless **uninhabited in this repo**: soundness of the
-argument is not the same as having built the compiler.
+literally valid.  It is nevertheless **uninhabited in this repo** — the fuel calculus does
+not close over the escape-leaf decode the lookup needs.  Its machine counterpart
+`MachineFiniteSupportPatch` *is* inhabited; see there.
 Paper node: `app:ifp` -/
 structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
   quote : ℕ → Sentence → ℚ
@@ -1278,15 +1282,24 @@ lemma freezeOn_value_gap_on_selected_day
 version whose obligation is dischargeable: `Nat.unpair` is polynomial time, so the
 escape-leaf decode that blocks the fuel model is available here.
 
-Like `EfficientPrefixPatch`, this structure has **no inhabitant anywhere in the repo**.
-Finite support makes the appendix's argument sound *in principle* — the constant table is
-genuinely finite — but discharging the certificate is a separate `Complexity.FP` transport
-result that is not proved here.  Do not read the corrected theorem as non-vacuous.
+**This structure is inhabited**, unlike `EfficientPrefixPatch` and `FiniteSupportPatch`:
+`FreezeOracle.machineFiniteSupportPatch_ofTable`
+(`Construction/Witnesses/FreezeOracle.lean`) builds one for any market whose frozen
+coordinates are presented by a finite entry table, subject to three conditions on that
+table — `BotFree` and `NoReserved` per table sentence (bundled as `Recognizable`), and a
+`TablePresentation` naming exactly the coordinates of `S` with their quotes. The
+conditions live together in `Construction/Witnesses/CanonicalCodes.lean`.
+`machineFiniteSupportPatch_example` is a witness at a table with a real row, and the quote
+is a parameter, so the two markets can genuinely differ on `S` — the degenerate `S = ∅`
+route is not what inhabits it.
 
-`machineFiniteSupportPatch_of_rewriter` below reduces the whole certificate to one named
-`Complexity.FP` fact, `FreezeStreamRewriter`.  That is a *narrowing of the obligation, not
-a discharge of it*: `FreezeStreamRewriter` has no instance either, so the reduction
-produces no inhabitant and this structure remains uninhabited.
+What that does **not** yet establish: no concrete pair of computable markets is
+constructed, so `machine_lic_iff_of_finiteSupportPerturbation` is not exhibited
+non-vacuous end to end. The freeze certificate is discharged; the market pair is not.
+
+`machineFiniteSupportPatch_of_rewriter` below reduces the certificate to one named
+`Complexity.FP` fact, `FreezeStreamRewriter`, which `FreezeOracle` then discharges from a
+`RunOracle`.
 Paper node: `app:ifp` -/
 structure MachineFiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
   quote : ℕ → Sentence → ℚ

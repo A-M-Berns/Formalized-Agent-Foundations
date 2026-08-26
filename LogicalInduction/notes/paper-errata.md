@@ -93,11 +93,10 @@ Two things must be said plainly about that theorem, and are said at the statemen
    supported. So this is a *corrected* theorem, a proper restriction of `thm:ifp`, not a
    restatement of it. The published unrestricted theorem is still unresolved and its
    published proof is still invalid.
-2. **It has no inhabitant either.** `FiniteSupportPatch` and `MachineFiniteSupportPatch`
-   join `EfficientPrefixPatch` at zero inhabitants repo-wide. Finite support makes the
-   argument *sound in principle*; discharging the certificate is a separate
-   `Complexity.FP` transport result. Nothing here should be described as non-vacuous —
-   that is the failure the 2026-08-02 correction above exists to catch.
+2. **Its machine certificate is now inhabited; its fuel certificates are not, and the
+   theorem is still not exhibited non-vacuous end to end.** See the 2026-08-26 update
+   below for the precise state. Nothing here should be described as non-vacuous without
+   reading it — that is the failure the 2026-08-02 correction above exists to catch.
 
 ### The unrestricted statement, settled (2026-08-26): it is false
 
@@ -144,8 +143,25 @@ while leaving the unrestricted statement open.
 
 ### The restricted theorems still have no witness (and what stands in the way, 2026-08-26)
 
-`EfficientPrefixPatch`, `FiniteSupportPatch` and `MachineFiniteSupportPatch` all remain
-**uninhabited**. Two things sharpened this round without changing that verdict:
+**`MachineFiniteSupportPatch` is now inhabited**
+(`FreezeOracle.machineFiniteSupportPatch_ofTable`), for a market whose frozen coordinates
+are presented by a finite entry table subject to three conditions: `BotFree` and
+`NoReserved` per table sentence (bundled as `Recognizable`) and a `TablePresentation`
+naming exactly the coordinates of `S`. The witness is at a table with a real row, and the
+quote is a parameter, so the two markets can genuinely differ on `S` — the degenerate
+`S = ∅` route is not what inhabits it. The complexity budget `R_length_le`, previously
+assumed, is now *derived*, because the emitted suffix is one of finitely many constant
+words.
+
+**What is still not established.** No concrete pair of computable markets is constructed,
+so `machine_lic_iff_of_finiteSupportPerturbation` is not exhibited non-vacuous end to end:
+the freeze certificate is discharged, the market pair is not. And the fuel-class
+certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited** — the
+fuel calculus does not close over the escape-leaf decode the lookup needs, which is
+precisely the `dd:fuel` inverse-operation ceiling.
+
+Two things sharpened the route to this, and are recorded because they are what made it
+reachable:
 
 * **The escape-leaf keystone is narrower than recorded.** `RpnFreeze.lean` said the freeze
   matcher cannot compare against a fixed numeral because `Formula.ofNat` ignores the payload
