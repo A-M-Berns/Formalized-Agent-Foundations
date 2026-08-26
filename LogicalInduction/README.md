@@ -205,11 +205,13 @@ assertion starts failing and gets promoted to a plain clean assertion.
    * **closure under finite perturbations** (`thm:ifp`) — the same shape, and separately
      under revision: the published unrestricted finite-day statement is overgeneral, since
      arbitrary finite-day perturbations can encode unbounded computational advice. The
-     intended endpoint is a corrected finite-*support* theorem together with a formal
-     counterexample to the unrestricted one, not a machine-strength restoration of the
-     published statement. Its restricting interface `EfficientPrefixPatch` still has **no
-     inhabitant anywhere in this repo**, so that endpoint has no exhibited witness for its
-     own hypothesis.
+     corrected finite-*support* theorem is now proved at **both** classes
+     (`lic_iff_of_finiteSupportPerturbation`, `machine_lic_iff_of_finiteSupportPerturbation`),
+     and the refutation of the unrestricted statement is under construction
+     (`Properties/FinitePerturbationCounterexample.lean`). None of the three patch
+     interfaces — `EfficientPrefixPatch`, `FiniteSupportPatch`, `MachineFiniteSupportPatch` —
+     has **any inhabitant anywhere in this repo**, so no endpoint here has an exhibited
+     witness for its own hypothesis.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -356,17 +358,30 @@ proved content withdrawn.
   are unchanged and inhabited. The machine-level statement wants one new theorem:
   `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`, a
   direct `Complexity.FP` closure result for the strategy serialization.
-* **`thm:ifp` — closure under finite perturbations.** Same shape, and separately under
-  revision. The published unrestricted finite-day statement is overgeneral: arbitrary
-  finite-day perturbations can encode unbounded computational advice, so the intended
-  endpoint is a corrected finite-*support* theorem together with a formal counterexample to
-  the unrestricted one — not a machine-strength restoration of the published statement.
-  Meanwhile, stated plainly because it is the sharpest disclosure on this page:
-  `EfficientPrefixPatch` has **no inhabitant anywhere in the repo**, so
-  `lic_iff_of_finitePerturbation` has no exhibited witness for its hypothesis, and the
-  restricted statement must not be described as non-vacuous. (An earlier version of the
-  errata ledger did so, citing a declaration that does not exist; corrected there.) The
-  paper's own proof of `thm:ifp` is separately invalid — see erratum PE1.
+* **`thm:ifp` — closure under finite perturbations.** Three carriers, in three of the four
+  categories this repo distinguishes.
+  * *Exact paper theorem*: none. The published unrestricted finite-day statement is not
+    proved here and its published proof is invalid (erratum PE1).
+  * *Corrected paper theorem*: `lic_iff_of_finiteSupportPerturbation` and
+    `machine_lic_iff_of_finiteSupportPerturbation` quantify over perturbations that move
+    only finitely many `(day, sentence)` price coordinates — the case in which the
+    appendix's "hard-code the constants" step is literally valid. That hypothesis is
+    **strictly stronger** than the paper's tail agreement
+    (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
+    other), so this is a proper restriction, not a restatement.
+  * *Formal counterexample*: `Properties/FinitePerturbationCounterexample.lean` reduces the
+    negation of the unrestricted statement to one construction — a day-`0` advice tape
+    read through historical price features — with the settlement, scheduling, margin and
+    exploitation bookkeeping proved and the construction itself still a `sorry`.
+  * The fuel-class carrier `lic_iff_of_finitePerturbation` keeps the paper's own
+    hypothesis shape.
+
+  Stated plainly because it is the sharpest disclosure on this page: **none of
+  `EfficientPrefixPatch`, `FiniteSupportPatch` or `MachineFiniteSupportPatch` has an
+  inhabitant anywhere in the repo**, so no carrier here has an exhibited witness for its
+  hypothesis, and none of them may be described as non-vacuous. (An earlier version of the
+  errata ledger did so, citing a declaration that does not exist; corrected there.)
+  Correcting the *argument* is not the same as building the *compiler*.
 
 ## Closing the boundaries
 
