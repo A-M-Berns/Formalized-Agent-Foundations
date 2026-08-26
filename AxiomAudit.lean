@@ -538,10 +538,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun)` exactly — no day clamp, since
 -- the freeze oracle's output is bounded by a constant where the conditioning oracle's is
 -- not.  `freezeStreamRewriter_of_runOracle` closes the chain to `FreezeStreamRewriter`.
--- ALL of it is conditioned on a `FreezeStep.RunOracle`, which has NO instance: building one
--- is the run-level table lookup, and nothing here discharges it.  So
--- `MachineFiniteSupportPatch` remains uninhabited; what changed is that the obligation is
--- now one statement about a lookup rather than a chain.
+-- ALL of it is conditioned on a `FreezeStep.RunOracle`.  That structure is now INHABITED
+-- (`FreezeOracle.runOracleOf`), so the chain closes; see the FreezeOracle block below for
+-- what the inhabitant assumes and what it still does not supply.
 -- The lookup's shape is settled too: `RpnFreeze.spellings` is the FINITE list of complete
 -- legacy spellings of a target, and `spellings_sound` proves each member parses.  Under the
 -- two side conditions (`BotFree`, and the target outside the reserved `atom (pair 7 _)`
@@ -561,6 +560,28 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeStep.freezePass_mem_FP
   FreezeStep.decodeBits_freezePass
   FreezeStep.freezeStreamRewriter_of_runOracle
+
+-- Construction/Witnesses/FreezeOracle.lean — the run-level lookup, and with it a
+-- `FreezeStep.RunOracle` for any finite table (`runOracleOf`).  This CLOSES the freeze
+-- chain: `machineFiniteSupportPatch_ofTable` inhabits `MachineFiniteSupportPatch` for any
+-- market whose frozen table is presented by a recognizable entry list, and
+-- `machineFiniteSupportPatch_example` / `_pair` do so at a table with a REAL row
+-- (`exampleS_nonempty`), so the degenerate empty-table discharge is not what is happening.
+-- SIDE CONDITIONS, all on the table and all collected in `CanonicalCodes.lean`: every table
+-- sentence `Recognizable` (= `BotFree` + `NoReserved`), and `TablePresentation.lookup_eq`.
+-- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
+-- STILL NOT SUPPLIED: concrete computable markets.  `machine_lic_iff_of_finiteSupportPerturbation`
+-- also wants `ComputableMarket P`, `ComputableMarket P'` and tail agreement; no such pair is
+-- constructed, so the corrected `thm:ifp` is not yet exhibited non-vacuous end to end.
+#assert_axioms_clean
+  FreezeOracle.decodeBits_oracleOf
+  FreezeOracle.oracleOf_mem_FP
+  FreezeOracle.runOracleOf
+  FreezeOracle.machineFiniteSupportPatch_ofTable
+  FreezeOracle.machineFiniteSupportPatch_example
+  FreezeOracle.machineFiniteSupportPatch_pair
+  FreezeOracle.exampleS_nonempty
+  FreezeOracle.machine_lic_iff_example
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean

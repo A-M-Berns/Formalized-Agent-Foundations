@@ -1167,20 +1167,22 @@ lemma unRpn_freezeOn_rewrite_chunk (selRun : List ℕ → ℕ → Bool)
     (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, selRun b D = selCode D (Encodable.encode φ))
     (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
-      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ))
     {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, []))
     (D : ℕ) (rest : List ℕ) :
     unRpn (0 :: b ++ freezeEmitOn selRun quoteRun b D ++ rest) =
       0 :: Encodable.encode φ :: D ::
         (freezeBodyOn selCode quoteCode (Encodable.encode φ) D ++ unRpn rest) := by
-  rw [freezeEmitOn, freezeBodyOn, hsel b φ hb D]
+  have hs := hsel b φ hb D
+  rw [freezeEmitOn, freezeBodyOn, hs]
   by_cases hd : selCode D (Encodable.encode φ) = true
-  · rw [if_pos hd, if_pos hd]
+  · have hsel' : selRun b D = true := by rw [hs]; exact hd
+    rw [if_pos hd, if_pos hd]
     have hshape : 0 :: b ++ [D, 1, quoteRun b D, 8] ++ rest =
         0 :: (b ++ D :: 1 :: quoteRun b D :: 8 :: rest) := by simp
     rw [hshape, unRpn_price_chunk_block hb,
       unRpn_payload_chunk 1 _ (Or.inl rfl), unRpn_single_chunk 8 (by norm_num),
-      hq b φ hb D]
+      hq b φ hb D hsel']
     simp
   · rw [if_neg hd, if_neg hd]
     have hshape : 0 :: b ++ [D] ++ rest = 0 :: (b ++ D :: rest) := by simp
@@ -1200,7 +1202,7 @@ theorem unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : Li
     (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, selRun b D = selCode D (Encodable.encode φ))
     (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
-      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ)) :
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ)) :
     ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     unRpn ((rpnConditionRun (freezeEmitOn selRun quoteRun) (rcPack 0 0 0, []) ts).2) =
       freezeTokensOn selCode quoteCode (unRpn ts) :=
@@ -1284,8 +1286,8 @@ lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
       0 :: Encodable.encode φ :: D ::
         (freezeBody quoteCode cutoff (Encodable.encode φ) D ++ unRpn rest) := by
   rw [freezeBody_eq, freezeEmit]
-  exact unRpn_freezeOn_rewrite_chunk _ quoteRun _ quoteCode (fun _ _ _ _ => rfl) hq hb
-    D rest
+  exact unRpn_freezeOn_rewrite_chunk _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
+    (fun b' φ' hb' D' _ => hq b' φ' hb' D') hb D rest
 
 /-- **Whole-stream contraction exactness for the freeze pass**: on every input stream —
 well-formed or garbage — the contraction of the symbol-level freeze transducer's output
@@ -1298,7 +1300,8 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
     ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     unRpn ((rpnConditionRun (freezeEmit quoteRun cutoff) (rcPack 0 0 0, []) ts).2) =
       freezeTokens quoteCode cutoff (unRpn ts) :=
-  unRpn_rpnFreezeRunOn _ quoteRun _ quoteCode (fun _ _ _ _ => rfl) hq
+  unRpn_rpnFreezeRunOn _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
+    (fun b' φ' hb' D' _ => hq b' φ' hb' D')
 
 /-! ### The machine-class obligation, moved to the flat stream
 
@@ -1323,7 +1326,7 @@ lemma freezeStreamRewriter_of_flatPass (selRun : List ℕ → ℕ → Bool)
     (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, selRun b D = selCode D (Encodable.encode φ))
     (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
-      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ))
     (hflat : ∀ F : List Bool → List Bool, F ∈ Complexity.FP →
       ∃ G : List Bool → List Bool, G ∈ Complexity.FP ∧ ∀ x : List Bool,
         undigitize (bitsToDigits (G x))

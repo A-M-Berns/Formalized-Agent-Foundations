@@ -79,11 +79,17 @@ structure RunOracle (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ �
   R_len : ℕ
   /-- The constant bound itself. -/
   R_length_le : ∀ v : List Bool, (R v).length ≤ R_len
-  /-- And it emits the freeze suffix. -/
-  R_spec : ∀ tokW bufW : List Bool,
-    decodeBits (R (pair tokW bufW))
-      = if selRun (decodeBits bufW) (digitVal (bitsToDigits tokW)) then
-          [1, quoteRun (decodeBits bufW) (digitVal (bitsToDigits tokW)), 8] else []
+  /-- And it emits the freeze suffix, on every **well-formed** day block.
+
+  The restriction to `digitsToBits cur` with `cur` a run of digits below four is not a
+  convenience: a token's value is recoverable from its block, but *not* from an arbitrary
+  word — `bitsToDigits` of a malformed word can carry a terminator digit, and no
+  fixed-numeral test agrees with `digitVal` there.  It is also exactly how `flatEmitR`
+  calls the oracle, since `runFold` only ever hands it a block. -/
+  R_spec : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) → ∀ bufW : List Bool,
+    decodeBits (R (pair (digitsToBits cur) bufW))
+      = if selRun (decodeBits bufW) (digitVal cur) then
+          [1, quoteRun (decodeBits bufW) (digitVal cur), 8] else []
 
 /-! ## The emitter -/
 
@@ -136,11 +142,9 @@ lemma decodeBits_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List
     decodeBits_run cur hcur
   have hmode : rcMode (csPack cli) = (csMode cli).length := by
     rw [csPack, rcMode_pack]
-  have hval : digitVal (bitsToDigits (digitsToBits cur)) = digitVal cur := by
-    rw [bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
   rw [flatEmitR, hmode]
   split_ifs
-  · rw [decodeBits_append hday (E.R_wf _ _), hdayd, E.R_spec, hval,
+  · rw [decodeBits_append hday (E.R_wf _ _), hdayd, E.R_spec cur hcur,
       RpnFreeze.freezeEmitOn, csTokens]
     split_ifs <;> simp
   · exact hdayd
@@ -262,7 +266,7 @@ lemma freezeStreamRewriter_of_runOracle {selRun : List ℕ → ℕ → Bool}
     (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, selRun b D = selCode D (Encodable.encode φ))
     (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
-      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ)) :
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ)) :
     FreezeStreamRewriter selCode quoteCode := by
   refine RpnFreeze.freezeStreamRewriter_of_flatPass selRun quoteRun selCode quoteCode
     hsel hq ?_

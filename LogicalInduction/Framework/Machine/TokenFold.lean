@@ -1822,6 +1822,118 @@ lemma foldl_mstep_zero_iff (ts l : List ℕ) :
   have h := foldl_mstep_iff ts l 0 (Nat.zero_le _)
   rwa [List.drop_zero] at h
 
+/-! ### The matcher as a word-level client
+
+The dispatch is on the counter's length, one level per target token, with a fixed-numeral
+test at each.  `ts` is a parameter rather than a literal, so the nest is built by recursion
+on it (`matchNest`) rather than written out; that is the only difference from
+`CondStep.rcModeW_mem_FP`'s shape. -/
+
+/-- The scalar dispatch nest, mirroring `matchNest` exactly. -/
+def mstepAux (fail : ℕ) : List ℕ → ℕ → ℕ → ℕ → ℕ
+  | [], _, _, _ => fail
+  | (k :: ks), base, i, t =>
+      if i = base then (if k = t then base + 1 else fail)
+      else mstepAux fail ks (base + 1) i t
+
+/-- The nest computes the indexed lookup it is meant to. -/
+lemma mstepAux_spec (fail : ℕ) : ∀ (ks : List ℕ) (base i t : ℕ),
+    mstepAux fail ks base i t
+      = if base ≤ i ∧ i - base < ks.length then
+          (if ks.getD (i - base) 0 = t then i + 1 else fail) else fail
+  | [], base, i, t => by rw [mstepAux, if_neg (by simp)]
+  | (k :: ks), base, i, t => by
+      rw [mstepAux]
+      by_cases hib : i = base
+      · subst hib
+        have hcond : i ≤ i ∧ i - i < (k :: ks).length := ⟨le_refl _, by simp⟩
+        rw [if_pos rfl]
+        rw [if_pos hcond]
+        simp
+      · rw [if_neg hib, mstepAux_spec fail ks (base + 1) i t]
+        by_cases hle : base ≤ i
+        · have hlt : base + 1 ≤ i := by omega
+          have hshift : (k :: ks).getD (i - base) 0 = ks.getD (i - (base + 1)) 0 := by
+            have hpos : i - base = (i - (base + 1)) + 1 := by omega
+            rw [hpos]
+            rfl
+          by_cases hlen : i - (base + 1) < ks.length
+          · have hc1 : base + 1 ≤ i ∧ i - (base + 1) < ks.length := ⟨hlt, hlen⟩
+            have hc2 : base ≤ i ∧ i - base < (k :: ks).length := by
+              refine ⟨hle, ?_⟩
+              simp only [List.length_cons]
+              omega
+            rw [if_pos hc1, if_pos hc2, hshift]
+          · have hn1 : ¬(base + 1 ≤ i ∧ i - (base + 1) < ks.length) := by
+              rintro ⟨-, h⟩; exact hlen h
+            have hn2 : ¬(base ≤ i ∧ i - base < (k :: ks).length) := by
+              rintro ⟨-, h⟩
+              simp only [List.length_cons] at h
+              omega
+            rw [if_neg hn1, if_neg hn2]
+        · have hn1 : ¬(base + 1 ≤ i ∧ i - (base + 1) < ks.length) := by
+            rintro ⟨h, -⟩; omega
+          have hn2 : ¬(base ≤ i ∧ i - base < (k :: ks).length) := by
+            rintro ⟨h, -⟩; omega
+          rw [if_neg hn1, if_neg hn2]
+
+/-- At base zero the nest is `mstep`. -/
+lemma mstepAux_zero (ts : List ℕ) (i t : ℕ) :
+    mstepAux (ts.length + 1) ts 0 i t = mstep ts i t := by
+  rw [mstepAux_spec, mstep]
+  by_cases h : i < ts.length
+  · rw [if_pos ⟨Nat.zero_le _, by omega⟩, if_pos h]
+    simp
+  · rw [if_neg (by omega), if_neg h]
+
+/-- The word-level dispatch nest. -/
+def matchNest (fail : ℕ) : List ℕ → ℕ → List Bool → List Bool → List Bool
+  | [], _, _, _ => List.replicate fail true
+  | (k :: ks), base, cli, tok =>
+      if cli.length = base then
+        (if NumEqBits k tok then List.replicate (base + 1) true
+         else List.replicate fail true)
+      else matchNest fail ks (base + 1) cli tok
+
+lemma length_matchNest (fail : ℕ) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    ∀ (ks : List ℕ) (base : ℕ) (cli : List Bool),
+      (matchNest fail ks base cli (digitsToBits cur)).length
+        = mstepAux fail ks base cli.length (digitVal cur)
+  | [], base, cli => by rw [matchNest, mstepAux, List.length_replicate]
+  | (k :: ks), base, cli => by
+      rw [matchNest, mstepAux]
+      by_cases hb : cli.length = base
+      · rw [if_pos hb, if_pos hb]
+        by_cases hm : NumEqBits k (digitsToBits cur)
+        · rw [if_pos hm, if_pos ((numEqBits_spec k cur hcur).mp hm).symm,
+            List.length_replicate]
+        · rw [if_neg hm,
+            if_neg (fun hc => hm ((numEqBits_spec k cur hcur).mpr hc.symm)),
+            List.length_replicate]
+      · rw [if_neg hb, if_neg hb]
+        exact length_matchNest fail cur hcur ks (base + 1) cli
+
+lemma length_matchNest_le (fail : ℕ) : ∀ (ks : List ℕ) (base : ℕ) (cli tok : List Bool),
+    base + ks.length ≤ fail → (matchNest fail ks base cli tok).length ≤ fail
+  | [], base, cli, tok, _ => by rw [matchNest, List.length_replicate]
+  | (k :: ks), base, cli, tok, hb => by
+      rw [matchNest]
+      split_ifs
+      · rw [List.length_replicate]; simp at hb; omega
+      · rw [List.length_replicate]
+      · exact length_matchNest_le fail ks (base + 1) cli tok (by simp at hb; omega)
+
+lemma matchNest_mem_FP (fail : ℕ) : ∀ (ks : List ℕ) (base : ℕ)
+    {C T : List Bool → List Bool}, C ∈ FP → T ∈ FP →
+    (fun z => matchNest fail ks base (C z) (T z)) ∈ FP
+  | [], base, C, T, _, _ => constFn_mem_FP _
+  | (k :: ks), base, C, T, hC, hT => by
+      have hrec := matchNest_mem_FP fail ks (base + 1) hC hT
+      have hleaf : (fun z => if NumEqBits k (T z) then
+            List.replicate (base + 1) true else List.replicate fail true) ∈ FP :=
+        ifNumEq_mem_FP hT k (constFn_mem_FP _) (constFn_mem_FP _)
+      exact ifEqLen_mem_FP hC base hleaf hrec
+
 /-! ### Block-complete words
 
 A rewriter splices words; `decodeBits` is how the machine's reader sees the splice, and
@@ -2167,6 +2279,119 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
 #print axioms LogicalInduction.TokenFold.numEqBits_spec
 #print axioms LogicalInduction.TokenFold.ifNumEq_mem_FP
 #print axioms LogicalInduction.TokenFold.foldl_mstep_zero_iff
+/-! ## Deciding a token stream against a fixed list, in `FP`
+
+The pieces fit: `matchNest` is the step, `foldl_mstep_zero_iff` is its correctness, and
+`runFold_cli_mem_FP` runs it over exactly the blocks `MachineEfficientTrader`'s decoding
+splits its input into.  `ifMatch_mem_FP` is the consumer-facing form — branch on whether a
+word's token stream *is* one particular fixed list — and it is what a run matcher calls once
+per candidate spelling. -/
+
+private def mvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+private def mvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
+
+/-- The matcher's word-level step. -/
+def matchStepW (ts : List ℕ) (v : List Bool) : List Bool :=
+  matchNest (ts.length + 1) ts 0 (mvCli v) (mvTok v)
+
+/-- Its block-level reading. -/
+def matchStepR (ts : List ℕ) (cli : List Bool) (cur : List ℕ) : List Bool :=
+  matchNest (ts.length + 1) ts 0 cli (digitsToBits cur)
+
+lemma matchStepW_eq (ts : List ℕ) (W cli : List Bool) (cur : List ℕ) :
+    matchStepW ts (pair W (pair cli (digitsToBits cur))) = matchStepR ts cli cur := by
+  rw [matchStepW, matchStepR]
+  simp only [mvCli, mvTok, sndBlock_pair, fstBlock_pair]
+
+/-- Every state the nest produces is a unary word. -/
+lemma matchNest_replicate (fail : ℕ) : ∀ (ks : List ℕ) (base : ℕ) (cli tok : List Bool),
+    matchNest fail ks base cli tok
+      = List.replicate (matchNest fail ks base cli tok).length true
+  | [], base, cli, tok => by rw [matchNest]; simp
+  | (k :: ks), base, cli, tok => by
+      rw [matchNest]
+      split_ifs
+      · simp
+      · simp
+      · exact matchNest_replicate fail ks (base + 1) cli tok
+
+lemma matchStepR_replicate (ts : List ℕ) (i : ℕ) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) :
+    matchStepR ts (List.replicate i true) cur
+      = List.replicate (mstep ts i (digitVal cur)) true := by
+  rw [matchStepR, matchNest_replicate,
+    length_matchNest (ts.length + 1) cur hcur ts 0 (List.replicate i true),
+    List.length_replicate, mstepAux_zero]
+
+lemma matchStepW_mem_FP (ts : List ℕ) : matchStepW ts ∈ FP := by
+  have hcli : mvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : mvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  exact matchNest_mem_FP (ts.length + 1) ts 0 hcli htok
+
+lemma matchStepW_length_le (ts : List ℕ) (W cli tok : List Bool) :
+    (matchStepW ts (pair W (pair cli tok))).length ≤ cli.length + tok.length
+      + (ts.length + 1) := by
+  have h := length_matchNest_le (ts.length + 1) ts 0 (mvCli (pair W (pair cli tok)))
+    (mvTok (pair W (pair cli tok))) (by omega)
+  rw [matchStepW]
+  omega
+
+/-- **The fold's client state is the matcher's counter.** -/
+lemma matchFold_cli (ts : List ℕ) : ∀ (rs : List (List ℕ)) (i : ℕ) (out : List Bool),
+    (∀ r ∈ rs, ∀ d ∈ r, d < 4) →
+    (runFold (matchStepR ts) (fun _ _ => []) (List.replicate i true) out rs).1
+      = List.replicate (List.foldl (mstep ts) i (rs.map digitVal)) true
+  | [], i, out, _ => by simp [runFold]
+  | (r :: rs), i, out, hrs => by
+      have hr : ∀ d ∈ r, d < 4 := hrs r (List.mem_cons_self ..)
+      have hrest : ∀ q ∈ rs, ∀ d ∈ q, d < 4 :=
+        fun q hq => hrs q (List.mem_cons_of_mem _ hq)
+      rw [runFold, matchStepR_replicate ts i r hr,
+        matchFold_cli ts rs (mstep ts i (digitVal r)) _ hrest, List.map_cons,
+        List.foldl_cons]
+
+/-- The matcher, run over a word's blocks. -/
+def matchPass (ts : List ℕ) (w : List Bool) : List Bool :=
+  (runFold (matchStepR ts) (fun _ _ => []) [] [] (blockSplit (bitsToDigits w)).1).1
+
+/-- **The pass decides the question**: the counter reaches the target's length exactly when
+the word's token stream is the target.
+
+Proof kind: `C` composition.  Provenance: (a) `matchFold_cli`, `foldl_mstep_zero_iff`;
+(b) `undigitize_eq_blockSplit`. -/
+lemma matchPass_iff (ts : List ℕ) (w : List Bool) :
+    (matchPass ts w).length = ts.length ↔ decodeBits w = ts := by
+  have h := matchFold_cli ts (blockSplit (bitsToDigits w)).1 0 []
+    (fun r hr => (blockSplit_digits_lt (bitsToDigits w)).1 r hr)
+  rw [show (List.replicate 0 true : List Bool) = [] from rfl] at h
+  simp only [matchPass]
+  rw [h, List.length_replicate, foldl_mstep_zero_iff, decodeBits,
+    undigitize_eq_blockSplit]
+
+lemma matchPass_mem_FP (ts : List ℕ) {Sf : List Bool → List Bool} (hSf : Sf ∈ FP) :
+    (fun z => matchPass ts (Sf z)) ∈ FP :=
+  runFold_cli_mem_FP (STEPr := fun _ => matchStepR ts) (EMITr := fun _ _ _ => [])
+    (c := ts.length + 1) (k := 0) (qQ := 0)
+    (matchStepW_mem_FP ts) (constFn_mem_FP []) (constFn_mem_FP []) hSf
+    (matchStepW_length_le ts) (fun _ _ _ => by simp)
+    (fun W cli cur _ => matchStepW_eq ts W cli cur) (fun _ _ _ _ => rfl) [] []
+
+/-- **Branching on "this word's token stream is exactly `ts`" is polynomial time.**
+
+Proof kind: `C` composition.  Provenance: (a) `matchPass_iff`, `matchPass_mem_FP`;
+(b) `ifEqLen_mem_FP`. -/
+lemma ifMatch_mem_FP (ts : List ℕ) {A X Y : List Bool → List Bool} (hA : A ∈ FP)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if decodeBits (A z) = ts then X z else Y z) ∈ FP := by
+  have h := ifEqLen_mem_FP (matchPass_mem_FP ts hA) ts.length hX hY
+  have heq : (fun z => if (matchPass ts (A z)).length = ts.length then X z else Y z)
+      = fun z => if decodeBits (A z) = ts then X z else Y z := by
+    funext z
+    by_cases hm : decodeBits (A z) = ts
+    · rw [if_pos ((matchPass_iff ts (A z)).mpr hm), if_pos hm]
+    · rw [if_neg (fun hc => hm ((matchPass_iff ts (A z)).mp hc)), if_neg hm]
+  rwa [heq] at h
+
 #print axioms LogicalInduction.TokenFold.dgFold_cli
 #print axioms LogicalInduction.TokenFold.dgFold_mem_FP
 #print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP
