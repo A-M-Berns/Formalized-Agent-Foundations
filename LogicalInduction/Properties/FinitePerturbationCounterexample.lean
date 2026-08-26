@@ -1,6 +1,7 @@
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.MachineEfficiency
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Introspection
 
 /-!
 # A refutation of the unrestricted finite-day perturbation theorem
@@ -71,14 +72,14 @@ lemma exists_settled {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentenc
 /-- A chosen settlement stage for day `m`; `0` on days with no dichotomy. -/
 noncomputable def settleStage (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (m : ℕ) : ℕ :=
-  if h : ∃ k, SettledAt V DP χ m k then h.choose else 0
+  if h : ∃ k, SettledAt V DP χ m k then Nat.find h else 0
 
 /-- Kind `P`; hypotheses `(a)`. -/
 lemma settleStage_spec {V : History} {DP : DeductiveProcess} {χ : ℕ → Sentence} {m : ℕ}
     (h : Dichotomy V DP χ m) : SettledAt V DP χ m (settleStage V DP χ m) := by
   have hex : ∃ k, SettledAt V DP χ m k := exists_settled h
   rw [settleStage, dif_pos hex]
-  exact hex.choose_spec
+  exact Nat.find_spec hex
 
 /-! ## The sparse schedule
 
@@ -336,6 +337,176 @@ lemma exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ →
     have := hB hmem
     linarith
 
+/-! ## Transport across the day-`0` perturbation
+
+The schedule and its settlement stages are defined against the *perturbed* market `P'`,
+but they only ever inspect days `≥ 1`, where `P'` agrees with `P`.  So they are the very
+same objects computed from `P` alone.  That is what removes the apparent circularity in
+the construction: the day-`0` advice table publishes bits about a schedule that does not
+depend on day `0`.
+
+`settleStage` is the *least* settling stage rather than an arbitrary one, which is both
+what makes this transport a two-line `Nat.find_mono` and what keeps the schedule within
+reach of a search-based computable quote table.
+-/
+
+/-- Settlement is insensitive to a day-`0` perturbation, on days `≥ 1`.
+Kind `P`; hypotheses `(a)`. -/
+lemma settledAt_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → Sentence}
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) {m : ℕ} (hm : 1 ≤ m) (k : ℕ) :
+    SettledAt P DP χ m k ↔ SettledAt P' DP χ m k := by
+  simp only [SettledAt, hagree m hm]
+
+/-- The chosen settlement stage transports too, discharged by minimality rather than by
+rewriting under a dependent motive.
+Kind `C`; hypotheses `(a)`, `(b)` `Nat.find_mono`. -/
+lemma settleStage_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → Sentence}
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) {m : ℕ} (hm : 1 ≤ m) :
+    settleStage P DP χ m = settleStage P' DP χ m := by
+  by_cases hex : ∃ k, SettledAt P DP χ m k
+  · have hex' : ∃ k, SettledAt P' DP χ m k :=
+      hex.imp (fun k hk => (settledAt_congr hagree hm k).1 hk)
+    rw [settleStage, settleStage, dif_pos hex, dif_pos hex']
+    exact le_antisymm
+      (Nat.find_mono (fun k hk => (settledAt_congr hagree hm k).2 hk))
+      (Nat.find_mono (fun k hk => (settledAt_congr hagree hm k).1 hk))
+  · have hex' : ¬ ∃ k, SettledAt P' DP χ m k :=
+      fun h => hex (h.imp (fun k hk => (settledAt_congr hagree hm k).2 hk))
+    rw [settleStage, settleStage, dif_neg hex, dif_neg hex']
+
+/-- The schedule is insensitive to the day-`0` perturbation: no circularity.
+Kind `C`; hypotheses `(a)`. -/
+lemma sched_congr {P P' : History} {DP : DeductiveProcess} {χ : ℕ → Sentence}
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) (j : ℕ) :
+    sched P DP χ j = sched P' DP χ j := by
+  induction j with
+  | zero => rfl
+  | succ j ih =>
+      show max (sched P DP χ j) (settleStage P DP χ (sched P DP χ j)) + 1
+        = max (sched P' DP χ j) (settleStage P' DP χ (sched P' DP χ j)) + 1
+      rw [ih, settleStage_congr hagree (one_le_sched P' DP χ j)]
+
+/-- **The repo's diagonal plugs in.**  A `ParadoxResistanceQuote` at threshold `1/2` is
+exactly the dichotomy this development runs on (`thm:lp` supplies it), and it survives the
+day-`0` perturbation on every day `≥ 1`.
+Kind `C`; hypotheses `(a)`, `(b)` `ParadoxResistanceQuote.diagonal_reflected`. -/
+lemma dichotomy_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
+    (q : ParadoxResistanceQuote P DP (1 / 2))
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) {m : ℕ} (hm : 1 ≤ m) :
+    Dichotomy P' DP q.sentence m := by
+  intro v hv
+  have hcast : (((1 : ℚ) / 2 : ℚ) : ℝ) = 1 / 2 := by norm_num
+  rw [← hagree m hm, ← hcast]
+  exact q.diagonal_reflected m v hv
+
+/-- Every scheduled day carries the dichotomy, which is the hypothesis the exploitation
+bookkeeping consumes.
+Kind `C`; hypotheses `(a)`. -/
+lemma dichotomy_sched_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
+    (q : ParadoxResistanceQuote P DP (1 / 2))
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) (j : ℕ) :
+    Dichotomy P' DP q.sentence (sched P' DP q.sentence j) :=
+  dichotomy_of_paradoxQuote q hagree (one_le_sched P' DP q.sentence j)
+
+/-! ## The advice trader
+
+An `EF` coefficient can carry a number but cannot name a sentence, so the traded sentence
+is always `χ n`, emitted by the trader itself; the two day-`0` advice prices only gate
+*whether* to trade and with *which* sign.  `EF` has no subtraction, so `2 * b - 1` is
+spelled `add (mul (const 2) (price (si n) 0)) (const (-1))`.
+
+Every price leaf sits on day `0`, so the coefficient has rank `0` and is legal on every
+day (`EF.rank_price` puts no constraint on the sentence).
+-/
+
+/-- The day-`n` coefficient: the schedule gate `sa n` times the advice sign `si n`, both
+read off day `0`. -/
+def adviceCoefficient (sa si : ℕ → Sentence) (n : ℕ) : EF :=
+  .mul (.price (sa n) 0) (.add (.mul (.const 2) (.price (si n) 0)) (.const (-1)))
+
+@[simp] lemma adviceCoefficient_denote (sa si : ℕ → Sentence) (n : ℕ) (V : History) :
+    (adviceCoefficient sa si n).denote V = V 0 (sa n) * (2 * V 0 (si n) - 1) := by
+  show (adviceCoefficient sa si n).denoteWith [] V = _
+  simp only [adviceCoefficient, EF.denoteWith_mul, EF.denoteWith_add, EF.denoteWith_const,
+    EF.denoteWith_price]
+  push_cast
+  ring
+
+/-- The advice trader: a single unit position in `χ n` on day `n`, gated and signed by the
+two day-`0` advice prices. -/
+def adviceTrader (sa si χ : ℕ → Sentence) : Trader where
+  strat n :=
+    { trades := [(adviceCoefficient sa si n, χ n)]
+      rank_le := by
+        intro p hp
+        rw [List.mem_singleton] at hp
+        subst hp
+        show (adviceCoefficient sa si n).rank ≤ n
+        simp [adviceCoefficient] }
+
+@[simp] lemma adviceTrader_trades (sa si χ : ℕ → Sentence) (n : ℕ) :
+    ((adviceTrader sa si χ).strat n).trades = [(adviceCoefficient sa si n, χ n)] := rfl
+
+/-- Kind `P`; hypotheses `(a)`. -/
+lemma adviceTrader_value (sa si χ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ) :
+    ((adviceTrader sa si χ).strat n).value V v.payout
+      = V 0 (sa n) * (2 * V 0 (si n) - 1) * (v.payout (χ n) - V n (χ n)) := by
+  simp only [Strategy.value, adviceTrader_trades, List.map_cons, List.map_nil,
+    List.sum_cons, List.sum_nil, adviceCoefficient_denote]
+  ring
+
+/-- Off schedule the gate is closed, so the trader holds nothing — this is `hzero`.
+Kind `C`; hypotheses `(a)`. -/
+lemma adviceTrader_value_off_sched (sa si χ : ℕ → Sentence) (V : History)
+    (DP : DeductiveProcess) (hgateOff : ∀ i, (∀ j, sched V DP χ j ≠ i) → V 0 (sa i) = 0)
+    (v : PCWorld) (i : ℕ) (hi : ∀ j, sched V DP χ j ≠ i) :
+    ((adviceTrader sa si χ).strat i).value V v.payout = 0 := by
+  rw [adviceTrader_value, hgateOff i hi]
+  ring
+
+/-- On schedule the gate is open and the published sign bit is exactly `signCoeff`, so the
+day's strategy value is the round value the bookkeeping expects — this is `hval`.
+Kind `C`; hypotheses `(a)`. -/
+lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
+    (DP : DeductiveProcess) (hgateOn : ∀ j, V 0 (sa (sched V DP χ j)) = 1)
+    (hsign : ∀ n, V 0 (si n) = if V n (χ n) < 1 / 2 then 1 else 0)
+    (v : PCWorld) (j : ℕ) :
+    ((adviceTrader sa si χ).strat (sched V DP χ j)).value V v.payout
+      = roundValue V χ v (sched V DP χ j) := by
+  rw [adviceTrader_value, hgateOn j, hsign, roundValue, signCoeff]
+  by_cases h : V (sched V DP χ j) (χ (sched V DP χ j)) < 1 / 2
+  · rw [if_pos h, if_pos h]; ring
+  · rw [if_neg h, if_neg h]; ring
+
+/-- **The advice trader is machine-efficient**, given `RpnSentenceCodes` certificates for
+the two advice-atom families and for the traded diagonal.
+
+Route note: the coefficient carries *price* leaves, which is the whole point of the
+construction, so the price-free entry points
+(`EfficientlyComputable.ofSingleTradeBlocks` / `ofTradeBlocks`, both of which demand
+`EF.priceFree`) do not apply.  The general splice capstone `RpnSpliceStream.ec` does, with
+`RpnSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
+corresponding advice-atom code stream.
+Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
+lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
+    (hsa : RpnSentenceCodes sa) (hsi : RpnSentenceCodes si) (hχ : RpnSentenceCodes χ) :
+    MachineEfficientTrader (adviceTrader sa si χ) := by
+  have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
+  have hgate : RpnSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
+    RpnSpliceStream.serialize_price hsa PolyFueled.id hday
+  have hsign : RpnSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
+    RpnSpliceStream.serialize_price hsi PolyFueled.id hday
+  have hcoef : RpnSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
+    RpnSpliceStream.serialize_mul hgate
+      (RpnSpliceStream.serialize_add
+        (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const 2) hsign)
+        (RpnSpliceStream.serialize_const (-1)))
+  have htrade : RpnSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
+    RpnSpliceStream.tradeSlot hχ PolyFueled.id
+  refine EfficientlyComputable.toMachine
+    (RpnSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
+  simp [adviceTrader, serializeTrades]
+
 /-! ## Assembly
 
 What remains is the *construction* of the perturbed market and the advice-reading trader.
@@ -390,21 +561,44 @@ theorem exists_advice_perturbation :
         (Tr.strat i).value P' v.payout = 0) ∧
       (∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
         = roundValue P' χ v (sched P' DP χ j)) := by
-  -- TODO(thm:ifp): need the perturbed market `P'` (day `0` republished as advice atom
-  -- prices, days `≥ 1` equal to `P`) together with `ComputableMarket P'` — a rational
-  -- quote table whose day-`0` row searches for the settlement stage of `χ n` by
-  -- `Nat.rfindOpt`, terminating by `DeductiveProcess.exists_stage_entails`, in the style
-  -- of `liaEntries_computable`.  The decidable finite-stage entailment test that search
-  -- needs already exists: `stageEntails` with `stageEntails_primrec` and
-  -- `DeductiveProcess.stageEntails_complete_of_semantic`
-  -- (`Construction/Witnesses/FiniteEntailment.lean`).
-  -- TODO(thm:ifp): need the advice trader together with `MachineEfficientTrader Tr`, via
-  -- `EfficientlyComputable.ofTokenEmitter` / `ec_of_rawEmission` and
-  -- `EfficientlyComputable.toMachine`, with the `PolySequence` certificate carrying both
-  -- `coefficient_rank ≤ n` and the `RpnSentenceCodes` for `χ`.
-  -- TODO(thm:ifp): need `Dichotomy P' DP χ m` for every `m ≥ 1`, i.e. transport of
-  -- `ParadoxResistanceQuote.diagonal_reflected` at `p = 1/2` across `hagree`.
-  sorry
+  obtain ⟨P, P', DP, sa, si, χ, hLI, hP', hagree, hworld, hsa, hsi, hχ, hdicho,
+      hgateOff, hgateOn, hsign⟩ :
+      ∃ (P P' : History) (DP : DeductiveProcess) (sa si χ : ℕ → Sentence),
+        IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
+        (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧
+        (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
+        RpnSentenceCodes sa ∧ RpnSentenceCodes si ∧ RpnSentenceCodes χ ∧
+        (∀ m, 1 ≤ m → Dichotomy P' DP χ m) ∧
+        (∀ i, (∀ j, sched P' DP χ j ≠ i) → P' 0 (sa i) = 0) ∧
+        (∀ j, P' 0 (sa (sched P' DP χ j)) = 1) ∧
+        (∀ n, P' 0 (si n) = if P' n (χ n) < 1 / 2 then 1 else 0) := by
+    -- TODO(thm:ifp): need the perturbed market.  Take `P := liaHistory (theoremDP T)`
+    -- (`LIA_isMachineLogicalInductor`, `theoremDP_hworld`) and `χ` the canonical diagonal
+    -- at `p = 1/2` (`theoremDiagonalQuoteCode`, whose `sentence_codes` field is the
+    -- `RpnSentenceCodes χ` needed here, and whose `diagonal_reflected` gives the last
+    -- conjunct through `dichotomy_of_paradoxQuote`).
+    -- TODO(thm:ifp): need `sa`, `si` as fresh atom families.  Computation claims carry
+    -- tags `0`–`3` (`ComputationClaimKind.godelCode`), quotation claims tag `4`
+    -- (`quotationClaimCode`) and quoted products tag `5` (`productTag`), so tags `6`/`7`
+    -- name atoms no process in this repo emits; `Construction/Witnesses/ProductDefinition.lean`
+    -- (`eventAtom_atomCodes_ne_productTag`) is the template for that freshness proof.
+    -- Their `RpnSentenceCodes` follow from `RpnSentenceCodes.ofPolySentenceCodes`.
+    -- TODO(thm:ifp): need `ComputableMarket P'` for `P' := Function.update P 0 (advice
+    -- table)`.  The day-`0` row is decidable by search: the sign bit compares two
+    -- rationals from `P`'s own quote table, and the schedule bit runs `settleStage`,
+    -- which is `Nat.find` over a predicate decided by the primitive-recursive
+    -- finite-stage entailment checker `stageEntails` and terminating by
+    -- `DeductiveProcess.stageEntails_complete_of_semantic`
+    -- (`Construction/Witnesses/FiniteEntailment.lean`); assemble with `Nat.rfindOpt` and
+    -- `Partrec.of_eq_tot` as in `liaEntries_computable` (`Construction/LIACompiler.lean`).
+    -- `sched_congr` and `settleStage_congr` above are what make that search a function of
+    -- `P` alone, so the day-`0` row does not refer to itself.
+    sorry
+  exact ⟨P, P', DP, χ, adviceTrader sa si χ, hLI, hP', hagree,
+    adviceTrader_efficient hsa hsi hχ, hworld,
+    fun j => hdicho _ (one_le_sched P' DP χ j),
+    fun v i hi => adviceTrader_value_off_sched sa si χ P' DP hgateOff v i hi,
+    fun v j => adviceTrader_value_on_sched sa si χ P' DP hgateOn hsign v j⟩
 
 /-- **The unrestricted finite-day perturbation statement is false** — the negation of the
 paper's `thm:ifp` as printed, at the paper's own quantifier.
@@ -424,4 +618,5 @@ theorem not_overgeneral_ifp :
 
 end FinitePerturbationCounterexample
 end LogicalInduction
+
 
