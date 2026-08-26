@@ -555,6 +555,39 @@ lemma blockWF_condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) (cli 
       (blockWF_tokBits _)).append (hB _)).append hday).append (blockWF_tokBits _))
   · exact hday
 
+/-- The conditional-price expansion, decoded.  Factored out of the mode branch so that both
+price emitters — the gated one and the finite-zero one — share it. -/
+lemma blockWF_condEmitOf (ε : ℚ) (blkW bufW : List Bool) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) (hblk : BlockWF blkW) (hbuf : BlockWF bufW) :
+    BlockWF (condEmitOf ε blkW bufW (digitsToBits cur)) := by
+  have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
+  exact ((((((hday.append (blockWF_tokBits _)).append hbuf).append hblk).append
+    hday).append (blockWF_tokBits _)).append hblk).append hday |>.append
+    (blockWF_tokBits _)
+
+lemma decodeBits_condEmitOf (ε : ℚ) (blkW bufW : List Bool) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) (hblk : BlockWF blkW) (hbuf : BlockWF bufW) :
+    decodeBits (condEmitOf ε blkW bufW (digitsToBits cur))
+      = rpnConditionEmit (decodeBits blkW) ε (decodeBits bufW) (digitVal cur) := by
+  have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
+  have hdayd : decodeBits (dayBits (digitsToBits cur)) = [digitVal cur] :=
+    decodeBits_run cur hcur
+  rw [condEmitOf, rpnConditionEmit_eq,
+    decodeBits_append (((((((hday.append (blockWF_tokBits _)).append hbuf).append
+        hblk).append hday).append (blockWF_tokBits _)).append hblk).append hday)
+        (blockWF_tokBits _),
+    decodeBits_append ((((((hday.append (blockWF_tokBits _)).append hbuf).append
+      hblk).append hday).append (blockWF_tokBits _)).append hblk) hday,
+    decodeBits_append (((((hday.append (blockWF_tokBits _)).append hbuf).append
+      hblk).append hday).append (blockWF_tokBits _)) hblk,
+    decodeBits_append ((((hday.append (blockWF_tokBits _)).append hbuf).append
+      hblk).append hday) (blockWF_tokBits _),
+    decodeBits_append (((hday.append (blockWF_tokBits _)).append hbuf).append hblk) hday,
+    decodeBits_append ((hday.append (blockWF_tokBits _)).append hbuf) hblk,
+    decodeBits_append (hday.append (blockWF_tokBits _)) hbuf,
+    decodeBits_append hday (blockWF_tokBits _),
+    hdayd, decodeBits_tokBits, decodeBits_tokBits, decodeBits_tokBits]
+
 lemma decodeBits_condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) (cli : List Bool)
     (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli))
     (hB : ∀ d, BlockWF (B (unaryDay d))) :
@@ -563,29 +596,12 @@ lemma decodeBits_condEmitR (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) (c
           rpnConditionEmit (decodeBits (B (unaryDay (min (digitVal cur) n)))) ε
             (csTokens cli) (digitVal cur)
         else [digitVal cur] := by
-  have hday : BlockWF (dayBits (digitsToBits cur)) := blockWF_run cur hcur
-  have hdayd : decodeBits (dayBits (digitsToBits cur)) = [digitVal cur] :=
-    decodeBits_run cur hcur
   have hmode : rcMode (csPack cli) = (csMode cli).length := by
     rw [csPack, rcMode_pack]
   rw [condEmitR, hmode]
   split_ifs
-  · rw [condEmitOf, rpnConditionEmit_eq]
-    rw [decodeBits_append (((((((hday.append (blockWF_tokBits _)).append hwf).append
-        (hB _)).append hday).append (blockWF_tokBits _)).append (hB _)).append hday)
-        (blockWF_tokBits _),
-      decodeBits_append ((((((hday.append (blockWF_tokBits _)).append hwf).append
-        (hB _)).append hday).append (blockWF_tokBits _)).append (hB _)) hday,
-      decodeBits_append (((((hday.append (blockWF_tokBits _)).append hwf).append
-        (hB _)).append hday).append (blockWF_tokBits _)) (hB _),
-      decodeBits_append ((((hday.append (blockWF_tokBits _)).append hwf).append
-        (hB _)).append hday) (blockWF_tokBits _),
-      decodeBits_append (((hday.append (blockWF_tokBits _)).append hwf).append (hB _)) hday,
-      decodeBits_append ((hday.append (blockWF_tokBits _)).append hwf) (hB _),
-      decodeBits_append (hday.append (blockWF_tokBits _)) hwf,
-      decodeBits_append hday (blockWF_tokBits _),
-      hdayd, decodeBits_tokBits, decodeBits_tokBits, decodeBits_tokBits, csTokens]
-  · exact hdayd
+  · rw [decodeBits_condEmitOf ε _ _ cur hcur (hB _) hwf, csTokens]
+  · exact decodeBits_run cur hcur
 
 /-! ### Membership and the emission bound -/
 
@@ -654,14 +670,23 @@ trading day; closing that gap is the guard pass's job. -/
 def clampedEmit (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) : List ℕ → ℕ → List ℕ :=
   fun buf D => rpnConditionEmit (decodeBits (B (unaryDay (min D n)))) ε buf D
 
-lemma decodeBits_runFold_condition (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
-    (hB : ∀ d, BlockWF (B (unaryDay d))) :
+/-- **The price pass computes its token-level rewrite**, for *any* emitter that is
+block-complete and decodes to a price-day rewrite.  The gated emitter and the finite-zero
+one are the two instances; the fold is the same either way. -/
+lemma decodeBits_runFold_emit {E : List Bool → List ℕ → List Bool}
+    {emit : List ℕ → ℕ → List ℕ}
+    (hwf : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      BlockWF (csBuf cli) → BlockWF (E cli cur))
+    (hdec : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      BlockWF (csBuf cli) →
+      decodeBits (E cli cur)
+        = if rcMode (csPack cli) = 2 then emit (csTokens cli) (digitVal cur)
+          else [digitVal cur]) :
     ∀ (rs : List (List ℕ)) (cli out : List Bool),
       (∀ r ∈ rs, ∀ d ∈ r, d < 4) → BlockWF (csBuf cli) → BlockWF out →
-      decodeBits (runFold condStepR (condEmitR ε B n) cli out rs).2
+      decodeBits (runFold condStepR E cli out rs).2
         = decodeBits out
-          ++ (rpnConditionRun (clampedEmit ε B n) (csPack cli, csTokens cli)
-                (rs.map digitVal)).2
+          ++ (rpnConditionRun emit (csPack cli, csTokens cli) (rs.map digitVal)).2
   | [], cli, out, _, _, _ => by
       rw [runFold, List.map_nil, rpnConditionRun_nil]
       simp
@@ -670,16 +695,26 @@ lemma decodeBits_runFold_condition (ε : ℚ) (B : List Bool → List Bool) (n :
       have hrest : ∀ q ∈ rs, ∀ d ∈ q, d < 4 :=
         fun q hq => hrs q (List.mem_cons_of_mem _ hq)
       have hbuf' : BlockWF (csBuf (condStepR cli r)) := bufWF_condStepR cli r hr hbuf
-      have hemit : BlockWF (condEmitR ε B n cli r) :=
-        blockWF_condEmitR ε B n cli r hr hbuf hB
-      rw [runFold, decodeBits_runFold_condition ε B n hB rs _ _ hrest hbuf'
+      have hemit : BlockWF (E cli r) := hwf cli r hr hbuf
+      rw [runFold, decodeBits_runFold_emit hwf hdec rs _ _ hrest hbuf'
           (hout.append hemit),
         decodeBits_append hout hemit, csPack_condStepR, csTokens_condStepR cli r hr hbuf,
-        decodeBits_condEmitR ε B n cli r hr hbuf hB, List.map_cons]
+        hdec cli r hr hbuf, List.map_cons]
       rw [show (csPack cli, csTokens cli) = ((csPack cli, csTokens cli).1,
             (csPack cli, csTokens cli).2) from rfl, rpnConditionRun]
       simp only [List.append_assoc]
-      congr 1
+
+lemma decodeBits_runFold_condition (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) :
+    ∀ (rs : List (List ℕ)) (cli out : List Bool),
+      (∀ r ∈ rs, ∀ d ∈ r, d < 4) → BlockWF (csBuf cli) → BlockWF out →
+      decodeBits (runFold condStepR (condEmitR ε B n) cli out rs).2
+        = decodeBits out
+          ++ (rpnConditionRun (clampedEmit ε B n) (csPack cli, csTokens cli)
+                (rs.map digitVal)).2 :=
+  decodeBits_runFold_emit
+    (fun cli cur hcur hbuf => blockWF_condEmitR ε B n cli cur hcur hbuf hB)
+    (fun cli cur hcur hbuf => decodeBits_condEmitR ε B n cli cur hcur hbuf hB)
 
 /-! ## The price pass -/
 
@@ -943,28 +978,42 @@ lemma guardedPassW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
   selectHeadFn_mem_FP (emptyFlag_mem_FP (guardPass_mem_FP hWf hSf))
     (condPass_mem_FP ε hB hWf hSf) (constFn_mem_FP [])
 
-/-- **And it computes the guarded rewrite** — with the true emitter, not the clamped one.
-The clamp survives only inside the accepted branch, where `min D n = D`. -/
-lemma decodeBits_guardedPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
-    (hB : ∀ d, BlockWF (B (unaryDay d))) (ds : List ℕ) :
+/-- **The guarded price pass computes `rpnGuardedConditionTokens`**, for any emitter with a
+token-level model that agrees with the true one on days within the guard.  This is where the
+oracle clamp is discharged: on an accepted stream the emitter is only ever called at
+`D ≤ n`, so the *clamped* model `emitC` and the true `emitT` coincide. -/
+lemma decodeBits_guardedOf {E : List Bool → List ℕ → List Bool}
+    {emitC emitT : List ℕ → ℕ → List ℕ} (n : ℕ)
+    (hwf : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      BlockWF (csBuf cli) → BlockWF (E cli cur))
+    (hdecE : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+      BlockWF (csBuf cli) →
+      decodeBits (E cli cur)
+        = if rcMode (csPack cli) = 2 then emitC (csTokens cli) (digitVal cur)
+          else [digitVal cur])
+    (hagree : ∀ (buf : List ℕ) (D : ℕ), D ≤ n → emitC buf D = emitT buf D)
+    (ds : List ℕ) :
     decodeBits (selectHead
         (emptyFlag (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2)
-        (runFold condStepR (condEmitR ε B n) condInit [] (blockSplit ds).1).2 [])
-      = rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) n (undigitize ds) := by
+        (runFold condStepR E condInit [] (blockSplit ds).1).2 [])
+      = rpnGuardedConditionTokens emitT n (undigitize ds) := by
   have hmap : (blockSplit ds).1.map digitVal = undigitize ds :=
     (undigitize_eq_blockSplit ds).symm
+  have hpass : decodeBits (runFold condStepR E condInit [] (blockSplit ds).1).2
+      = (rpnConditionRun emitC (rcPack 0 0 0, []) (undigitize ds)).2 := by
+    have h := decodeBits_runFold_emit hwf hdecE (blockSplit ds).1 condInit []
+      (fun r hr => (blockSplit_digits_lt ds).1 r hr) (by simpa using BlockWF.nil)
+      BlockWF.nil
+    rw [csPack_condInit, csTokens_condInit, hmap] at h
+    simpa using h
   by_cases hg : (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 = []
   · have hzero : guardMarks n (rcPack 0 0 0) (undigitize ds) = 0 := by
       rw [← hmap]
       exact (guardOut_eq_nil_iff n _).mp hg
-    rw [hg, selectHead_emptyFlag_nil, decodeBits_condPass_stream ε B n hB ds,
-      rpnGuardedConditionTokens,
+    rw [hg, selectHead_emptyFlag_nil, hpass, rpnGuardedConditionTokens,
       if_pos ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mp hzero)]
     exact congrArg Prod.snd
-      (rpnConditionRun_congr_of_guard n
-        (fun buf D hD => by
-          rw [clampedEmit, rpnPriceEmit, blocksOf, Nat.min_eq_left hD])
-        (undigitize ds) (rcPack 0 0 0) [] hzero)
+      (rpnConditionRun_congr_of_guard n hagree (undigitize ds) (rcPack 0 0 0) [] hzero)
   · obtain ⟨b, bs, hbs⟩ : ∃ b bs,
         (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 = b :: bs := by
       cases hc : (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 with
@@ -977,6 +1026,19 @@ lemma decodeBits_guardedPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
     rw [hbs, selectHead_emptyFlag_cons, decodeBits_nil, rpnGuardedConditionTokens,
       if_neg (fun hc => hne
         ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mpr hc))]
+
+lemma decodeBits_guardedPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (ds : List ℕ) :
+    decodeBits (selectHead
+        (emptyFlag (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2)
+        (runFold condStepR (condEmitR ε B n) condInit [] (blockSplit ds).1).2 [])
+      = rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) n (undigitize ds) :=
+  decodeBits_guardedOf (emitC := clampedEmit ε B n)
+    (emitT := rpnPriceEmit (blocksOf B) ε) n
+    (fun cli cur hcur hbuf => blockWF_condEmitR ε B n cli cur hcur hbuf hB)
+    (fun cli cur hcur hbuf => decodeBits_condEmitR ε B n cli cur hcur hbuf hB)
+    (fun buf D hD => by
+      simp only [clampedEmit, rpnPriceEmit, blocksOf, Nat.min_eq_left hD]) ds
 
 /-- **The guarded price pass, end to end.**  Decoding the pass's output word gives exactly
 `rpnGuardedConditionTokens` over the token stream `strategyOfOutput` reads off `Sf z`, with
@@ -1219,17 +1281,41 @@ lemma blockWF_invBudgetCodeW (nW cntW : List Bool) : BlockWF (invBudgetCodeW nW 
 frame budget's two codes.  Composing the passes reproduces exactly that: the count runs over
 the guarded pass's own output word, and the codes are rendered from it. -/
 
-/-- The trade-run count of the priced stream, as a unary word. -/
-def countW (ε : ℚ) (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
+/-- The trade-run count of an arbitrary *priced* stream `Pr`.  Everything downstream of the
+price pass — the count, the budget codes, the acceptance test and the frame join — depends
+on the price rewrite only through this word, which is why the finite-zero variant reuses all
+of it and replaces only the emitter. -/
+def countOf (Pr : List Bool → List Bool) (z : List Bool) : List Bool :=
   (runFold condStepR countEmitR condInit []
-    (blockSplit (bitsToDigits (guardedPassW ε B Wf Sf z))).1).2
+    (blockSplit (bitsToDigits (Pr z))).1).2
 
-/-- The frame budget's code, and its inverse's, at the day and count of the passes. -/
-def budgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
-  budgetCodeW (Wf z) (countW ε B Wf Sf z)
+/-- The frame budget's code, and its inverse's, at a day and a priced stream. -/
+def budgetOf (Wf Pr : List Bool → List Bool) (z : List Bool) : List Bool :=
+  budgetCodeW (Wf z) (countOf Pr z)
 
-def invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
-  invBudgetCodeW (Wf z) (countW ε B Wf Sf z)
+def invBudgetOf (Wf Pr : List Bool → List Bool) (z : List Bool) : List Bool :=
+  invBudgetCodeW (Wf z) (countOf Pr z)
+
+lemma decodeBits_budgetOf (Wf Pr : List Bool → List Bool) (z : List Bool) :
+    decodeBits (budgetOf Wf Pr z)
+      = [frameBudgetCode (Wf z).length
+          (rpnTradeRuns (rcPack 0 0 0) (decodeBits (Pr z)))] := by
+  rw [budgetOf, decodeBits_budgetCodeW, countOf, countOut_length_stream, ← decodeBits]
+
+lemma decodeBits_invBudgetOf (Wf Pr : List Bool → List Bool) (z : List Bool) :
+    decodeBits (invBudgetOf Wf Pr z)
+      = [frameInverseBudgetCode (Wf z).length
+          (rpnTradeRuns (rcPack 0 0 0) (decodeBits (Pr z)))] := by
+  rw [invBudgetOf, decodeBits_invBudgetCodeW, countOf, countOut_length_stream, ← decodeBits]
+
+def countW (ε : ℚ) (B Wf Sf : List Bool → List Bool) : List Bool → List Bool :=
+  countOf (guardedPassW ε B Wf Sf)
+
+def budgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool) : List Bool → List Bool :=
+  budgetOf Wf (guardedPassW ε B Wf Sf)
+
+def invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool) : List Bool → List Bool :=
+  invBudgetOf Wf (guardedPassW ε B Wf Sf)
 
 lemma countW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
     (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) : countW ε B Wf Sf ∈ FP :=
@@ -1250,7 +1336,8 @@ lemma countW_length (ε : ℚ) (B Wf Sf : List Bool → List Bool)
       = rpnTradeRuns (rcPack 0 0 0)
           (rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) (Wf z).length
             (undigitize (bitsToDigits (Sf z)))) := by
-  rw [countW, countOut_length_stream, ← decodeBits, decodeBits_guardedPassW ε B Wf Sf hB z]
+  rw [countW, countOf, countOut_length_stream, ← decodeBits,
+    decodeBits_guardedPassW ε B Wf Sf hB z]
 
 /-- **And the codes are the paper's**, at that count.
 These are the two budget arguments `rpnConditionOutput` hands the frame pass. -/
@@ -1261,7 +1348,7 @@ lemma decodeBits_budgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
           (rpnTradeRuns (rcPack 0 0 0)
             (rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) (Wf z).length
               (undigitize (bitsToDigits (Sf z)))))] := by
-  rw [budgetW, decodeBits_budgetCodeW, countW_length ε B Wf Sf hB z]
+  rw [budgetW, decodeBits_budgetOf, decodeBits_guardedPassW ε B Wf Sf hB z]
 
 lemma decodeBits_invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
     (hB : ∀ d, BlockWF (B (unaryDay d))) (z : List Bool) :
@@ -1270,7 +1357,7 @@ lemma decodeBits_invBudgetW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
           (rpnTradeRuns (rcPack 0 0 0)
             (rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) (Wf z).length
               (undigitize (bitsToDigits (Sf z)))))] := by
-  rw [invBudgetW, decodeBits_invBudgetCodeW, countW_length ε B Wf Sf hB z]
+  rw [invBudgetW, decodeBits_invBudgetOf, decodeBits_guardedPassW ε B Wf Sf hB z]
 
 /-! ## The acceptance test
 
@@ -2094,14 +2181,53 @@ lemma decodeBits_safeFrameW (ε : ℚ) (W Src acc : List Bool) {bc ibc : ℕ}
 codes, and the gated two-leg frame join over the priced stream.  All four are built above;
 this is the assembly. -/
 
-def condOutputW (ε : ℚ) (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
+/-- The frame join over an arbitrary *priced* stream `Pr`.  The gated conditioning rewrite
+and the finite-zero one differ only in `Pr`, so this one definition carries both. -/
+def condOutputOf (ε : ℚ) (B Wf Pr : List Bool → List Bool) (z : List Bool) : List Bool :=
   safeFrameW ε
-    (frameParams (Wf z) (B (Wf z)) (budgetW ε B Wf Sf z) (invBudgetW ε B Wf Sf z))
-    (guardedPassW ε B Wf Sf z)
-    (acceptsW (guardedPassW ε B Wf Sf) z)
+    (frameParams (Wf z) (B (Wf z)) (budgetOf Wf Pr z) (invBudgetOf Wf Pr z))
+    (Pr z) (acceptsW Pr z)
 
-/-- **The conditioning transduction computes `rpnConditionOutput`.**  Decoding the word the
-four passes produce gives exactly the token-level transduction whose correctness is
+def condOutputW (ε : ℚ) (B Wf Sf : List Bool → List Bool) : List Bool → List Bool :=
+  condOutputOf ε B Wf (guardedPassW ε B Wf Sf)
+
+/-- **The frame join computes what `rpnConditionOutput` and `rpnZeroAwareOutput` both ask
+for**: the gated two-leg join at the day, the condition block, and the two budget codes of
+the priced stream.  Which price rewrite produced that stream is invisible here. -/
+lemma decodeBits_condOutputOf (ε : ℚ) (B Wf Pr : List Bool → List Bool)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (z : List Bool)
+    (hWz : Wf z = unaryDay (Wf z).length) :
+    decodeBits (condOutputOf ε B Wf Pr z)
+      = rpnSafeSeparatedFrameRuns (blocksOf B (Wf z).length) ε (Wf z).length
+          (frameBudgetCode (Wf z).length
+            (rpnTradeRuns (rcPack 0 0 0) (decodeBits (Pr z))))
+          (frameInverseBudgetCode (Wf z).length
+            (rpnTradeRuns (rcPack 0 0 0) (decodeBits (Pr z))))
+          (decodeBits (Pr z)) := by
+  obtain ⟨n, hWn⟩ : ∃ n, Wf z = unaryDay n := ⟨(Wf z).length, hWz⟩
+  set P := frameParams (Wf z) (B (Wf z)) (budgetOf Wf Pr z) (invBudgetOf Wf Pr z) with hP
+  have hblkW : fpBlk P = B (Wf z) := by rw [hP, fpBlk_frameParams]
+  have hdayW : fpDay P = Wf z := by rw [hP, fpDay_frameParams]
+  have hbcW : fpBc P = budgetOf Wf Pr z := by rw [hP, fpBc_frameParams]
+  have hibcW : fpIbc P = invBudgetOf Wf Pr z := by rw [hP, fpIbc_frameParams]
+  have hblk : BlockWF (fpBlk P) := by
+    rw [hblkW, hWn]
+    exact hB n
+  have hbc : BlockWF (fpBc P) := by
+    rw [hbcW, budgetOf]; exact blockWF_budgetCodeW _ _
+  have hibc : BlockWF (fpIbc P) := by
+    rw [hibcW, invBudgetOf]; exact blockWF_invBudgetCodeW _ _
+  have hblkv : decodeBits (fpBlk P) = blocksOf B (Wf z).length := by
+    rw [hblkW, hWn, blocksOf, length_unaryDay]
+  have hbcv := hbcW ▸ decodeBits_budgetOf Wf Pr z
+  have hibcv := hibcW ▸ decodeBits_invBudgetOf Wf Pr z
+  have hacc := length_acceptsW Pr z
+  rw [condOutputOf, ← hP,
+    decodeBits_safeFrameW ε P _ _ hblk hbc hibc hbcv hibcv hacc, hblkv, hdayW]
+  rfl
+
+/-- **The gated conditioning transduction computes `rpnConditionOutput`.**  Decoding the
+word the four passes produce gives exactly the token-level transduction whose correctness is
 `RpnConditioning.strategyOfTokens_rpnConditionOutput`. -/
 lemma decodeBits_condOutputW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
     (hB : ∀ d, BlockWF (B (unaryDay d))) (z : List Bool)
@@ -2109,31 +2235,7 @@ lemma decodeBits_condOutputW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
     decodeBits (condOutputW ε B Wf Sf z)
       = rpnConditionOutput (blocksOf B) ε (Wf z).length
           (undigitize (bitsToDigits (Sf z))) := by
-  obtain ⟨n, hWn⟩ : ∃ n, Wf z = unaryDay n := ⟨(Wf z).length, hWz⟩
-  have hlen : (Wf z).length = n := by rw [hWn]; simp
-  set P := frameParams (Wf z) (B (Wf z)) (budgetW ε B Wf Sf z) (invBudgetW ε B Wf Sf z)
-    with hP
-  have hblkW : fpBlk P = B (Wf z) := by rw [hP, fpBlk_frameParams]
-  have hdayW : fpDay P = Wf z := by rw [hP, fpDay_frameParams]
-  have hbcW : fpBc P = budgetW ε B Wf Sf z := by rw [hP, fpBc_frameParams]
-  have hibcW : fpIbc P = invBudgetW ε B Wf Sf z := by rw [hP, fpIbc_frameParams]
-  have hblk : BlockWF (fpBlk P) := by
-    rw [hblkW, hWn]
-    exact hB n
-  have hbc : BlockWF (fpBc P) := by
-    rw [hbcW, budgetW]; exact blockWF_budgetCodeW _ _
-  have hibc : BlockWF (fpIbc P) := by
-    rw [hibcW, invBudgetW]; exact blockWF_invBudgetCodeW _ _
-  have hblkv : decodeBits (fpBlk P) = blocksOf B (Wf z).length := by
-    rw [hblkW, hWn, blocksOf, length_unaryDay]
-  have hbcv := hbcW ▸ decodeBits_budgetW ε B Wf Sf hB z
-  have hibcv := hibcW ▸ decodeBits_invBudgetW ε B Wf Sf hB z
-  have hacc := length_acceptsW (guardedPassW ε B Wf Sf) z
-  rw [condOutputW, ← hP,
-    decodeBits_safeFrameW ε P _ _ hblk hbc hibc hbcv hibcv hacc,
-    hblkv, hdayW, rpnConditionOutput,
-    show undigitize (bitsToDigits (guardedPassW ε B Wf Sf z))
-      = decodeBits (guardedPassW ε B Wf Sf z) from rfl,
+  rw [condOutputW, decodeBits_condOutputOf ε B Wf _ hB z hWz, rpnConditionOutput,
     decodeBits_guardedPassW ε B Wf Sf hB z]
 
 /-! ### The frame emitter's length
@@ -2364,14 +2466,27 @@ lemma safeFrameW_mem_FP (ε : ℚ) {Wf Sf Acc : List Bool → List Bool}
       (frameLegW_mem_FP true ε hWf hSf))
 
 /-- **The conditioning transduction is polynomial time.** -/
-lemma condOutputW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
-    (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) : condOutputW ε B Wf Sf ∈ FP := by
-  have hguard : guardedPassW ε B Wf Sf ∈ FP := guardedPassW_mem_FP ε hB hWf hSf
-  have hparams : (fun z => frameParams (Wf z) (B (Wf z)) (budgetW ε B Wf Sf z)
-      (invBudgetW ε B Wf Sf z)) ∈ FP :=
+lemma countOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
+    countOf Pr ∈ FP := countPass_mem_FP hWf hPr
+
+lemma budgetOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
+    budgetOf Wf Pr ∈ FP := budgetCodeW_mem_FP hWf (countOf_mem_FP hWf hPr)
+
+lemma invBudgetOf_mem_FP {Wf Pr : List Bool → List Bool} (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) :
+    invBudgetOf Wf Pr ∈ FP := invBudgetCodeW_mem_FP hWf (countOf_mem_FP hWf hPr)
+
+/-- **The frame join is polynomial time over any polynomial-time priced stream.** -/
+lemma condOutputOf_mem_FP (ε : ℚ) {B Wf Pr : List Bool → List Bool}
+    (hB : B ∈ FP) (hWf : Wf ∈ FP) (hPr : Pr ∈ FP) : condOutputOf ε B Wf Pr ∈ FP := by
+  have hparams : (fun z => frameParams (Wf z) (B (Wf z)) (budgetOf Wf Pr z)
+      (invBudgetOf Wf Pr z)) ∈ FP :=
     pairFn_mem_FP hWf (pairFn_mem_FP (mem_FP_comp hWf hB)
-      (pairFn_mem_FP (budgetW_mem_FP ε hB hWf hSf) (invBudgetW_mem_FP ε hB hWf hSf)))
-  exact safeFrameW_mem_FP ε hparams hguard (acceptsW_mem_FP hWf hguard)
+      (pairFn_mem_FP (budgetOf_mem_FP hWf hPr) (invBudgetOf_mem_FP hWf hPr)))
+  exact safeFrameW_mem_FP ε hparams hPr (acceptsW_mem_FP hWf hPr)
+
+lemma condOutputW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
+    (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) : condOutputW ε B Wf Sf ∈ FP :=
+  condOutputOf_mem_FP ε hB hWf (guardedPassW_mem_FP ε hB hWf hSf)
 
 /-! ## The machine reading of an efficient sentence sequence
 
@@ -2458,6 +2573,330 @@ theorem conditionedTranslation_preserves_machine
   refine strategyOfTokens_rpnConditionOutput (blocksOf B) ψ hBparse ε T n _ ?_
   exact hFspec n
 
+/-! ## The finite-zero price rewrite
+
+`rpnZeroAwareEmit` replaces the conditional-price expansion by the fixed run
+`[D, 1, ⌜1⌝, 8]` on the finitely many days where the condition's price is exactly zero.
+Everything else in the pipeline is untouched: the guard, the count, the budget codes, the
+acceptance test and the frame join all take the priced stream as input, so only the emitter
+is new. -/
+
+/-- Membership in a *fixed* finite set is a polynomial-time test of an `FP` word. -/
+lemma ifMemFinset_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP)
+    (S : Finset (List Bool)) (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if A z ∈ S then X z else Y z) ∈ FP := by
+  have hflag : (fun z => if A z ∈ S then ([true] : List Bool) else []) ∈ FP :=
+    mem_FP_comp hA (Complexity.ite_mem_finset_mem_FP (fun _ => [true]) S)
+  have h := selectHeadFn_mem_FP (emptyFlag_mem_FP hflag) hY hX
+  have heq : (fun z => selectHead (emptyFlag (if A z ∈ S then [true] else [])) (Y z) (X z))
+      = fun z => if A z ∈ S then X z else Y z := by
+    funext z
+    by_cases hc : A z ∈ S
+    · rw [if_pos hc, if_pos hc, selectHead_emptyFlag_cons]
+    · rw [if_neg hc, if_neg hc, selectHead_emptyFlag_nil]
+  rwa [heq] at h
+
+lemma unaryDay_injective : Function.Injective unaryDay := by
+  intro a b h
+  have := congrArg List.length h
+  simpa using this
+
+/-- **The zero-day test may be clamped at the cutoff, and the clamp separates.**  Every zero
+day is *strictly* below the cutoff, so `min D cutoff` lands on `D` when `D` is a zero day and
+on `cutoff — which is not one` otherwise.  Clamping at `cutoff - 1` or admitting `cutoff`
+itself into `zeroDays` would collapse the two cases and make the test accept days it must
+reject. -/
+lemma mem_zeroDays_clamp (zeroDays : Finset ℕ) (cutoff : ℕ)
+    (hlt : ∀ d ∈ zeroDays, d < cutoff) (D : ℕ) :
+    min D cutoff ∈ zeroDays ↔ D ∈ zeroDays := by
+  by_cases h : D < cutoff
+  · rw [Nat.min_eq_left (le_of_lt h)]
+  · rw [Nat.min_eq_right (by omega)]
+    constructor
+    · intro hc; exact absurd (hlt cutoff hc) (by omega)
+    · intro hD; exact absurd (hlt D hD) (by omega)
+
+/-- The incoming day clamped at the cutoff: the word the zero-day test reads. -/
+def zeroTokW (cutoff : ℕ) (v : List Bool) : List Bool :=
+  List.replicate (min (digitVal (bitsToDigits (cvTok v))) cutoff) true
+
+lemma zeroTokW_mem_FP (cutoff : ℕ) : zeroTokW cutoff ∈ FP := by
+  have h := LEUnary.unaryOfDigitsLE_le_mem_FP cvTok_mem_FP (constFn_mem_FP (uw cutoff))
+  simp only [length_uw] at h
+  exact h
+
+/-- The finite-zero price emitter, on words. -/
+def zeroEmitW (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ) (B : List Bool → List Bool)
+    (v : List Bool) : List Bool :=
+  if (csMode (cvCli v)).length = 2 then
+    (if zeroTokW cutoff v ∈ zeroDays.image unaryDay then
+      dayBits (cvTok v) ++ tokBits [1, Encodable.encode (1 : ℚ), 8]
+     else condEmitOf ε (B (dayClamp v)) (csBuf (cvCli v)) (cvTok v))
+  else dayBits (cvTok v)
+
+/-- Its block-level reading. -/
+def zeroEmitR (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ) (B : List Bool → List Bool)
+    (n : ℕ) (cli : List Bool) (cur : List ℕ) : List Bool :=
+  if (csMode cli).length = 2 then
+    (if List.replicate (min (digitVal cur) cutoff) true ∈ zeroDays.image unaryDay then
+      dayBits (digitsToBits cur) ++ tokBits [1, Encodable.encode (1 : ℚ), 8]
+     else condEmitOf ε (B (unaryDay (min (digitVal cur) n))) (csBuf cli) (digitsToBits cur))
+  else dayBits (digitsToBits cur)
+
+lemma zeroEmitW_eq (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ) (B : List Bool → List Bool)
+    (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    zeroEmitW zeroDays cutoff ε B (pair W (pair cli (digitsToBits cur)))
+      = zeroEmitR zeroDays cutoff ε B W.length cli cur := by
+  have hd : bitsToDigits (digitsToBits cur) = cur :=
+    bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))
+  rw [zeroEmitW, zeroEmitR, zeroTokW, dayClamp]
+  simp only [cvW, cvCli, cvTok, sndBlock_pair, fstBlock_pair, hd]
+  rfl
+
+lemma mem_image_unaryDay (S : Finset ℕ) (k : ℕ) :
+    List.replicate k true ∈ S.image unaryDay ↔ k ∈ S := by
+  rw [Finset.mem_image]
+  constructor
+  · rintro ⟨d, hd, he⟩
+    have hdk : d = k := unaryDay_injective (by rw [he]; rfl)
+    exact hdk ▸ hd
+  · intro hk
+    exact ⟨k, hk, rfl⟩
+
+/-- The finite-zero price emitter with its condition-block oracle clamped to the trading
+day, exactly as `clampedEmit` is for the gated rewrite. -/
+def clampedZeroEmit (zeroDays : Finset ℕ) (ε : ℚ) (B : List Bool → List Bool) (n : ℕ) :
+    List ℕ → ℕ → List ℕ :=
+  fun buf D => if D ∈ zeroDays then [D, 1, Encodable.encode (1 : ℚ), 8]
+    else rpnConditionEmit (blocksOf B (min D n)) ε buf D
+
+lemma blockWF_zeroEmitR (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B : List Bool → List Bool) (n : ℕ) (cli : List Bool) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli))
+    (hB : ∀ d, BlockWF (B (unaryDay d))) :
+    BlockWF (zeroEmitR zeroDays cutoff ε B n cli cur) := by
+  rw [zeroEmitR]
+  split_ifs
+  · exact (blockWF_run cur hcur).append (blockWF_tokBits _)
+  · exact blockWF_condEmitOf ε _ _ cur hcur (hB _) hwf
+  · exact blockWF_run cur hcur
+
+lemma decodeBits_zeroEmitR (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B : List Bool → List Bool) (n : ℕ) (cli : List Bool) (cur : List ℕ)
+    (hcur : ∀ d ∈ cur, d < 4) (hwf : BlockWF (csBuf cli))
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (hlt : ∀ d ∈ zeroDays, d < cutoff) :
+    decodeBits (zeroEmitR zeroDays cutoff ε B n cli cur)
+      = if rcMode (csPack cli) = 2 then
+          clampedZeroEmit zeroDays ε B n (csTokens cli) (digitVal cur)
+        else [digitVal cur] := by
+  have hmode : rcMode (csPack cli) = (csMode cli).length := by rw [csPack, rcMode_pack]
+  have hzero : (List.replicate (min (digitVal cur) cutoff) true
+      ∈ zeroDays.image unaryDay) ↔ digitVal cur ∈ zeroDays := by
+    rw [mem_image_unaryDay, mem_zeroDays_clamp zeroDays cutoff hlt]
+  rw [zeroEmitR, hmode, clampedZeroEmit]
+  by_cases h2 : (csMode cli).length = 2
+  · rw [if_pos h2, if_pos h2]
+    by_cases hz : digitVal cur ∈ zeroDays
+    · rw [if_pos (hzero.mpr hz), if_pos hz, dayBits,
+        decodeBits_append (blockWF_run cur hcur) (blockWF_tokBits _),
+        decodeBits_run cur hcur, decodeBits_tokBits]
+      rfl
+    · rw [if_neg (fun hc => hz (hzero.mp hc)), if_neg hz,
+        decodeBits_condEmitOf ε _ _ cur hcur (hB _) hwf, csTokens, blocksOf]
+  · rw [if_neg h2, if_neg h2]
+    exact decodeBits_run cur hcur
+
+lemma zeroEmitW_mem_FP (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    {B : List Bool → List Bool} (hB : B ∈ FP) : zeroEmitW zeroDays cutoff ε B ∈ FP := by
+  have hW : cvW ∈ FP := fstBlock_mem_FP
+  have hff : (fun v => fstBlock (cvCli v)) ∈ FP :=
+    mem_FP_comp cvCli_mem_FP fstBlock_mem_FP
+  have hsf : (fun v => sndBlock (cvCli v)) ∈ FP :=
+    mem_FP_comp cvCli_mem_FP sndBlock_mem_FP
+  have hm : (fun v => csMode (cvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hbuf : (fun v => csBuf (cvCli v)) ∈ FP := mem_FP_comp hsf sndBlock_mem_FP
+  have hclamp : dayClamp ∈ FP :=
+    LEUnary.unaryOfDigitsLE_le_mem_FP cvTok_mem_FP hW
+  have hday : (fun v => dayBits (cvTok v)) ∈ FP :=
+    appendFn_mem_FP cvTok_mem_FP (constFn_mem_FP (digitBits 4))
+  have hcond : (fun v => condEmitOf ε (B (dayClamp v)) (csBuf (cvCli v)) (cvTok v)) ∈ FP :=
+    appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP
+      (appendFn_mem_FP (appendFn_mem_FP (appendFn_mem_FP
+        (appendFn_mem_FP hday (constFn_mem_FP (tokBits emitConstA))) hbuf)
+          (mem_FP_comp hclamp hB)) hday)
+        (constFn_mem_FP (tokBits (emitConstB ε)))) (mem_FP_comp hclamp hB)) hday)
+      (constFn_mem_FP (tokBits emitConstC))
+  exact ifEqLen_mem_FP hm 2
+    (ifMemFinset_mem_FP (zeroTokW_mem_FP cutoff) (zeroDays.image unaryDay)
+      (appendFn_mem_FP hday (constFn_mem_FP (tokBits [1, Encodable.encode (1 : ℚ), 8])))
+      hcond)
+    hday
+
+/-- The zero branch emits a *constant* plus the copied day, so it adds nothing to the
+state-dependence of the bound: the multiplier on `cli` and `tok` is the gated emitter's. -/
+def zeroEmitConstLen (ε : ℚ) : ℕ :=
+  emitConstLen ε + (tokBits [1, Encodable.encode (1 : ℚ), 8]).length + 3
+
+lemma zeroEmitW_length_le (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    {B : List Bool → List Bool} {pB : Polynomial ℕ}
+    (hBlen : ∀ w, (B w).length ≤ pB.eval w.length) (W cli tok : List Bool) :
+    (zeroEmitW zeroDays cutoff ε B (pair W (pair cli tok))).length
+      ≤ (2 * pB + Polynomial.C (zeroEmitConstLen ε)).eval W.length
+        + 3 * (cli.length + tok.length) := by
+  have hcli : cvCli (pair W (pair cli tok)) = cli := by simp [cvCli]
+  have htok : cvTok (pair W (pair cli tok)) = tok := by simp [cvTok]
+  have hW : cvW (pair W (pair cli tok)) = W := by simp [cvW]
+  have hclamp : (dayClamp (pair W (pair cli tok))).length ≤ W.length := by
+    rw [dayClamp, hW, List.length_replicate]
+    omega
+  have hblk : (B (dayClamp (pair W (pair cli tok)))).length ≤ pB.eval W.length :=
+    le_trans (hBlen _) (polynomial_eval_mono_nat pB hclamp)
+  have hbuf : (csBuf cli).length ≤ cli.length :=
+    le_trans (sndBlock_length_le _) (sndBlock_length_le _)
+  simp only [Polynomial.eval_add, Polynomial.eval_mul, Polynomial.eval_C,
+    Polynomial.eval_ofNat, zeroEmitConstLen, emitConstLen]
+  rw [zeroEmitW, hcli, htok]
+  split_ifs
+  · rw [dayBits]
+    simp only [List.length_append, length_digitBits]
+    omega
+  · rw [condEmitOf, dayBits]
+    simp only [List.length_append, length_digitBits]
+    omega
+  · rw [dayBits]
+    simp only [List.length_append, length_digitBits]
+    omega
+
+/-! ### The finite-zero pipeline
+
+The guard, the count, the budget codes, the acceptance test and the frame join are the same
+functions as in the gated case; only the price emitter differs, so only the price pass and
+its guarded wrapper are restated here. -/
+
+def zeroGuardedPassW (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
+  selectHead
+    (emptyFlag (runFold condStepR (guardEmitR (Wf z).length) condInit []
+      (blockSplit (bitsToDigits (Sf z))).1).2)
+    (runFold condStepR (zeroEmitR zeroDays cutoff ε B (Wf z).length) condInit []
+      (blockSplit (bitsToDigits (Sf z))).1).2
+    []
+
+lemma zeroPass_mem_FP (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    {B Wf Sf : List Bool → List Bool} (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    (fun z => (runFold condStepR (zeroEmitR zeroDays cutoff ε B (Wf z).length) condInit []
+        (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP := by
+  obtain ⟨pB, hBlen⟩ := output_length_poly_of_mem_FP hB
+  exact runFold_mem_FP (STEPr := fun _ => condStepR)
+    (EMITr := fun W => zeroEmitR zeroDays cutoff ε B W.length)
+    (c := 51) (k := 3) (qQ := 2 * pB + Polynomial.C (zeroEmitConstLen ε))
+    condStepW_mem_FP (zeroEmitW_mem_FP zeroDays cutoff ε hB) hWf hSf
+    condStepW_length_le (zeroEmitW_length_le zeroDays cutoff ε hBlen)
+    (fun W cli cur h => condStepW_eq W cli cur h)
+    (fun W cli cur h => zeroEmitW_eq zeroDays cutoff ε B W cli cur h) condInit []
+
+lemma zeroGuardedPassW_mem_FP (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    {B Wf Sf : List Bool → List Bool} (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    zeroGuardedPassW zeroDays cutoff ε B Wf Sf ∈ FP :=
+  selectHeadFn_mem_FP (emptyFlag_mem_FP (guardPass_mem_FP hWf hSf))
+    (zeroPass_mem_FP zeroDays cutoff ε hB hWf hSf) (constFn_mem_FP [])
+
+lemma decodeBits_zeroGuardedPassW (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B Wf Sf : List Bool → List Bool) (hB : ∀ d, BlockWF (B (unaryDay d)))
+    (hlt : ∀ d ∈ zeroDays, d < cutoff) (z : List Bool) :
+    decodeBits (zeroGuardedPassW zeroDays cutoff ε B Wf Sf z)
+      = rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays (blocksOf B) ε)
+          (Wf z).length (undigitize (bitsToDigits (Sf z))) :=
+  decodeBits_guardedOf (emitC := clampedZeroEmit zeroDays ε B (Wf z).length)
+    (emitT := rpnZeroAwareEmit zeroDays (blocksOf B) ε) (Wf z).length
+    (fun cli cur hcur hbuf =>
+      blockWF_zeroEmitR zeroDays cutoff ε B (Wf z).length cli cur hcur hbuf hB)
+    (fun cli cur hcur hbuf =>
+      decodeBits_zeroEmitR zeroDays cutoff ε B (Wf z).length cli cur hcur hbuf hB hlt)
+    (fun buf D hD => by
+      simp only [clampedZeroEmit, rpnZeroAwareEmit, Nat.min_eq_left hD])
+    (bitsToDigits (Sf z))
+
+/-- The finite-zero conditioning transduction. -/
+def zeroCondOutputW (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B Wf Sf : List Bool → List Bool) : List Bool → List Bool :=
+  condOutputOf ε B Wf (zeroGuardedPassW zeroDays cutoff ε B Wf Sf)
+
+lemma zeroCondOutputW_mem_FP (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    {B Wf Sf : List Bool → List Bool} (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    zeroCondOutputW zeroDays cutoff ε B Wf Sf ∈ FP :=
+  condOutputOf_mem_FP ε hB hWf (zeroGuardedPassW_mem_FP zeroDays cutoff ε hB hWf hSf)
+
+/-- **The finite-zero conditioning transduction computes `rpnZeroAwareOutput`.** -/
+lemma decodeBits_zeroCondOutputW (zeroDays : Finset ℕ) (cutoff : ℕ) (ε : ℚ)
+    (B Wf Sf : List Bool → List Bool) (hB : ∀ d, BlockWF (B (unaryDay d)))
+    (hlt : ∀ d ∈ zeroDays, d < cutoff) (z : List Bool)
+    (hWz : Wf z = unaryDay (Wf z).length) :
+    decodeBits (zeroCondOutputW zeroDays cutoff ε B Wf Sf z)
+      = rpnZeroAwareOutput zeroDays (blocksOf B) ε (Wf z).length
+          (undigitize (bitsToDigits (Sf z))) := by
+  rw [zeroCondOutputW, decodeBits_condOutputOf ε B Wf _ hB z hWz, rpnZeroAwareOutput,
+    decodeBits_zeroGuardedPassW zeroDays cutoff ε B Wf Sf hB hlt z]
+
+/-! ## The finite-zero transport theorem
+
+The eventual translation silences the trader below the floor's cutoff and applies the
+finite-zero conditional contract above it.  At the word level the silencing is a single
+length comparison against a fixed numeral — and it must compare the *right* way round: the
+gate fires when the day reaches the cutoff, not when it is bounded by it. -/
+
+private lemma ifConstLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (k : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if k ≤ (A z).length then X z else Y z) ∈ FP := by
+  have h := selectHeadFn_leFlag_mem_FP hA (constFn_mem_FP (uw k)) hX hY
+  simp only [length_uw] at h
+  exact h
+
+/-- **Closure under conditioning at the paper's own trader class, finite-zero form**: the
+eventual conditioned translation of a machine-efficient trader is machine-efficient.
+
+As with the gated form, the `ψ` hypothesis is `RpnSentenceCodes`, the same one the fuel
+counterpart `eventualConditionedTranslation_preserves_ecRpn` takes, and the trader
+hypothesis is the machine class.
+Paper node: `thm:scon` -/
+theorem eventualConditionedTranslation_preserves_machine
+    {P : History} {ψ : ℕ → Sentence}
+    (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
+    (T : Trader) (hT : MachineEfficientTrader T) :
+    MachineEfficientTrader (T.eventualConditionedTranslation F) := by
+  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_rpn hψ
+  obtain ⟨G, hG, hGspec⟩ := hT
+  refine ⟨fun x =>
+    (if F.cutoff ≤ (sndBlock (pair (G x) x)).length then
+      zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock fstBlock (pair (G x) x)
+     else []),
+    mem_FP_withInput hG
+      (ifConstLeLen_mem_FP sndBlock_mem_FP F.cutoff
+        (zeroCondOutputW_mem_FP F.zeroDays F.cutoff F.epsilon hB sndBlock_mem_FP
+          fstBlock_mem_FP) (constFn_mem_FP [])), fun n => ?_⟩
+  dsimp only
+  have hsnd : sndBlock (pair (G (unaryDay n)) (unaryDay n)) = unaryDay n := by simp
+  by_cases hn : F.cutoff ≤ n
+  · have hcond : F.cutoff ≤ (sndBlock (pair (G (unaryDay n)) (unaryDay n))).length := by
+      rw [hsnd, length_unaryDay]; exact hn
+    rw [if_pos hcond]
+    have hdec := decodeBits_zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock
+      fstBlock hBwf F.zeroDays_lt (pair (G (unaryDay n)) (unaryDay n))
+      (by simp [unaryDay])
+    simp only [sndBlock_pair, fstBlock_pair, length_unaryDay] at hdec
+    show strategyOfTokens n (unRpn (decodeBits
+      (zeroCondOutputW F.zeroDays F.cutoff F.epsilon B sndBlock fstBlock
+        (pair (G (unaryDay n)) (unaryDay n))))) = _
+    rw [hdec, T.eventualConditionedTranslation_strat_of_le F hn]
+    exact strategyOfTokens_rpnZeroAwareOutput F.zeroDays (blocksOf B) ψ hBparse F.epsilon
+      T n _ (hGspec n)
+  · have hcond : ¬ F.cutoff ≤ (sndBlock (pair (G (unaryDay n)) (unaryDay n))).length := by
+      rw [hsnd, length_unaryDay]; exact hn
+    rw [if_neg hcond, T.eventualConditionedTranslation_strat_of_lt F (by omega)]
+    simp [strategyOfOutput, strategyOfTokens, deserializeTrades, unRpn, unRpnTokens,
+      EF.streamReadFrom, EF.streamInitial, Trader.zero, undigitize, bitsToDigits]
+    rfl
+
 #print axioms LogicalInduction.CondStep.csPack_condStepR
 #print axioms LogicalInduction.CondStep.csTokens_condStepR
 #print axioms LogicalInduction.CondStep.condPass_mem_FP
@@ -2474,6 +2913,10 @@ theorem conditionedTranslation_preserves_machine
 #print axioms LogicalInduction.CondStep.decodeBits_condOutputW
 #print axioms LogicalInduction.CondStep.condOutputW_mem_FP
 #print axioms LogicalInduction.CondStep.machineSentenceBlocks_of_rpn
+#print axioms LogicalInduction.CondStep.mem_zeroDays_clamp
+#print axioms LogicalInduction.CondStep.decodeBits_zeroCondOutputW
+#print axioms LogicalInduction.CondStep.zeroCondOutputW_mem_FP
 #print axioms LogicalInduction.CondStep.conditionedTranslation_preserves_machine
+#print axioms LogicalInduction.CondStep.eventualConditionedTranslation_preserves_machine
 
 end LogicalInduction.CondStep

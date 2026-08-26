@@ -222,7 +222,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- report is covered transitively by the `thm:scon` endpoints below.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
-  lic_conditioned_machine lic_conditioned_gated_machine
+  lic_conditioned_machine lic_conditioned_gated_machine lic_conditioned_eventual_machine
   isLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
   lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
@@ -451,23 +451,26 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnConditioning.strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
   RpnConditioning.conditionedTranslation_preserves_ecRpn
   RpnConditioning.eventualConditionedTranslation_preserves_ecRpn
+  RpnConditioning.strategyOfTokens_rpnConditionOutput
+  RpnConditioning.strategyOfTokens_rpnZeroAwareOutput
 
 -- Construction/Machine/CondStep.lean — the conditioning transduction in the machine model:
 -- the same token-level automaton as the fuel realization, driven as a `Complexity.FP` client
 -- of `TokenFold.runFold`, and the transport theorem the machine criterion needs.
--- `conditionedTranslation_preserves_machine` takes the *same* `RpnSentenceCodes` hypothesis
--- on the condition sequence as its fuel counterpart, so nothing about `ψ` is weakened; its
--- trader hypothesis is the machine class, so it is strictly stronger there.
+-- Both transport theorems take the *same* `RpnSentenceCodes` hypothesis on the condition
+-- sequence as their fuel counterparts, so nothing about `ψ` is weakened; their trader
+-- hypothesis is the machine class, so they are strictly stronger there.
 #assert_axioms_clean
   CondStep.conditionedTranslation_preserves_machine
+  CondStep.eventualConditionedTranslation_preserves_machine
 
 -- Construction/Machine/CondEndpoints.lean — the `thm:scon` packaging: operational witnesses
 -- and criterion-level closure, over both realizations.  The block moved here unchanged from
 -- `RpnConditioning.lean`; only the machine endpoint is new.
--- The eventual witness carries NO machine field: its translation is the zero-aware rewrite,
--- whose emitter has no machine realization yet, and a field no constructor can discharge is
--- a `sorry` one indirection away.  `lic_conditioned_eventual` therefore stands at the fuel
--- class only, and `lic_conditioned_eventual_machine` does not yet exist.
+-- All three witnesses carry both certificates; the eventual one's machine field arrived
+-- with its emitter (the finite-zero price rewrite, whose zero-day test is a fixed-finite-set
+-- dispatch clamped at the floor's cutoff).  `thm:scon` stands at the paper's own quantifier
+-- in all three forms.
 #assert_axioms_clean
   ConditioningCompile.eventualConditioningOperationalWitness
   ConditioningCompile.gatedConditioningOperationalWitness
@@ -475,6 +478,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.lic_conditioned_gated_ofMarketComputation
   ConditioningCompile.lic_conditioned_gated_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_eventualOfFloor
+  ConditioningCompile.lic_conditioned_eventualOfFloor_machine
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
@@ -788,7 +792,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields EventualConditioningFloor
   cutoff zeroDays zeroDays_lt epsilon epsilon_pos zero_exact positive_floor
 #assert_fields EventualConditioningOperationalWitness
-  floor conditioned_computable translation_ec
+  floor conditioned_computable translation_ec translation_machine
 #assert_fields ExpectedFutureExpectationQuote
   source_codes quote_codes reflected affine
 #assert_fields FeedbackTruth.FeedbackTruthComputation

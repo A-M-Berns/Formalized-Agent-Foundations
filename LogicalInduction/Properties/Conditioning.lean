@@ -2143,12 +2143,6 @@ eventual denominator floor is known.  `floor.zeroDays` records the exact finite 
 exceptions; unlike a general finite-market patch, the associated compiler needs only a
 finite day-membership test and the fixed constant `1`.
 
-**No machine-class field, deliberately.**  Its translation is
-`eventualConditionedTranslation`, whose price rewrite is the zero-aware emitter
-`RpnConditioning.rpnZeroAwareEmit` rather than the gated one, and that emitter has no
-machine realization yet (`Construction/Machine/CondStep.lean` realizes the gated rewrite).
-A field that no constructor can discharge is a `sorry` one indirection away, so the field is
-absent rather than unfilled; add it in the same commit as its emitter.
 Paper node: `thm:scon` -/
 structure EventualConditioningOperationalWitness
     (P : History) (DP extra : DeductiveProcess)
@@ -2157,6 +2151,11 @@ structure EventualConditioningOperationalWitness
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
   translation_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (T.eventualConditionedTranslation floor)
+  /-- The same at the paper's own quantifier.  Its realization is the finite-zero price
+  emitter of `Construction/Machine/CondStep.lean`, whose zero-day test is a fixed-finite-set
+  dispatch clamped at the floor's cutoff. -/
+  translation_machine : ∀ T, MachineEfficientTrader T →
+    MachineEfficientTrader (T.eventualConditionedTranslation floor)
 
 /-- Assemble a `ConditioningTraderCompiler` from the concrete gated translator.  Both of
 the compiler's economic fields are discharged by the lemmas above; only executable
@@ -2370,6 +2369,21 @@ theorem lic_conditioned_eventual
       (T.eventualConditionedTranslation W.floor)
       (W.translation_ec T hTec) (W.exploits_base hTexp)
 
+/-- Closure under conditioning through the prefix-safe finite-zero compiler, at the paper's
+own quantifier.  This completes `thm:scon` at the machine class in all three forms.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_machine
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra)
+    (W : EventualConditioningOperationalWitness P DP extra C) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) where
+  marketComputable := W.conditioned_computable
+  processComputable := C.combined_computable
+  noExploit T hTm hTexp :=
+    IsMachineLogicalInductor.noExploit (P := P) (DP := DP)
+      (T.eventualConditionedTranslation W.floor)
+      (W.translation_machine T hTm) (W.exploits_base hTexp)
+
 #print axioms conditionalQuote_mem_Icc
 #print axioms EF.conditionPrices_denote
 #print axioms conditioningGateVal_mul_excess_le
@@ -2391,5 +2405,6 @@ theorem lic_conditioned_eventual
 #print axioms lic_conditioned_eventual
 #print axioms lic_conditioned_machine
 #print axioms lic_conditioned_gated_machine
+#print axioms lic_conditioned_eventual_machine
 
 end LogicalInduction

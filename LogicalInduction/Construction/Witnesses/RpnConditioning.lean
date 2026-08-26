@@ -6973,6 +6973,122 @@ theorem strategyOfTokens_rpnConditionOutput
 
 #print axioms strategyOfTokens_rpnConditionOutput
 
+def rpnZeroAwareOutput (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ)
+    (ts : List ℕ) : List ℕ :=
+  rpnSafeSeparatedFrameRuns (blocks n) ε n
+    (frameBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)))
+    (frameInverseBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)))
+    (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)
+
+/-- **The zero-aware conditioning transduction is correct on any stream.**  The same
+statement as `strategyOfTokens_rpnConditionOutput` for the finite-zero price rewrite: the
+transduced stream decodes to the except-zero gated contract over the trader's day-`n`
+strategy.  No efficiency class appears, so this is the shared core of every
+class-preservation endpoint for the eventual form of `thm:scon`.
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_rpnZeroAwareOutput
+    (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
+    (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
+    (hsrc : strategyOfTokens n (unRpn src) = T.strat n) :
+    strategyOfTokens n (unRpn (rpnZeroAwareOutput zeroDays blocks ε n src)) =
+      (T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
+        (conditioningBudget n) := by
+  set ts : List ℕ := rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n src with hts
+  set tfP : ℕ → ℕ := fun w => ts.getD w.unpair.2 0 with htfP
+  set lenP : ℕ → ℕ := fun _ => ts.length with hlenP
+  set tokP : ℕ → ℕ := fun w => (unRpn ts).getD w.unpair.2 0 with htokP
+  set lenT : ℕ → ℕ := fun _ => (unRpn ts).length with hlenT
+  have hvts : vpre tfP n (lenP n) = ts := by
+    rw [vpre, htfP, hlenP]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  have hvL : vpre tokP n (lenT n) = unRpn ts := by
+    rw [vpre, htokP, hlenT]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
+  have hout : rpnZeroAwareOutput zeroDays blocks ε n src =
+      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _ ts hvts,
+      rpnZeroAwareOutput, ← hts, hq, ← frameBudgetCode_exact,
+      ← frameInverseBudgetCode_exact, rpnTradeCountAt_eq_runs, hvts]
+  rw [hout]
+  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+    tfP tokP lenP lenT (blocks n) (hblocks n) ε q n ts hvts hvL
+  refine strategy_ext_trades ?_
+  rw [hjoin]
+  have hprice : (strategyOfTokens n (unRpn ts)).trades =
+      (T.strat n).trades.map fun trade =>
+        (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
+    rw [hts, strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades zeroDays blocks ψ
+      hblocks ε n src, hsrc]
+  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
+  rw [hframes]
+  by_cases hempty : (T.strat n).trades = []
+  · rw [hprice, hempty]
+    simp [Strategy.separatedExceptZeroConditionalContract]
+    exact hempty
+  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+      rw [hprice]
+      simpa using hempty
+    have hdecodePriced :=
+      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+        n (unRpn ts) hpricedNe
+    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+    have hreadyTokens :
+        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+            (some EF.streamInitial) =
+          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+        unRpn ts from hvL]
+      exact hreadyPriced
+    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
+      calc
+        frameTradeCount tokP lenT n =
+            (strategyOfTokens n (unRpn ts)).trades.length :=
+          frameTradeCount_eq_length_of_read tokP lenT n
+            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+    have hnotUnread : ¬ Unreadable (unRpn ts) := by
+      intro hU
+      rw [hU.deserializeTrades_eq_none] at hdecodePriced
+      simp at hdecodePriced
+    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+      have hlenEq : ts.length = lenP n := rfl
+      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+        (by rw [hlenEq]; exact hvts) hvL
+      rcases this with h | hU
+      · rw [← h, hlenEq]
+      · exact absurd hU hnotUnread
+    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
+    rw [hprice, hq, hcountSym, hcountTok,
+      frameBudget_eq n (T.strat n).trades.length hpos]
+    simp only [List.map_map]
+    change
+      ((T.strat n).trades.map fun p =>
+        frameLeg false (ψ n) ε
+          (Strategy.localConditioningBudget (conditioningBudget n)
+            (T.strat n).trades.length) n
+          (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) ++
+        ((T.strat n).trades.map fun p =>
+          frameLeg true (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) =
+        ((T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
+          (conditioningBudget n)).trades
+    simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+      frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+    rfl
+
+#print axioms strategyOfTokens_rpnZeroAwareOutput
+
 /-! ### The class-preservation endpoints
 
 The assembly: the source certificate gives the clocked digit stream of the RPN-expanded

@@ -13,12 +13,11 @@ that the audit inventory's references still resolve.  What is new is the machine
 material at the end: the machine field on the witness structures and the machine-class
 endpoints.
 
-**The eventual witness carries no machine field**, deliberately.  Its translation is
-`eventualConditionedTranslation`, whose price rewrite is the zero-aware emitter
-`rpnZeroAwareEmit` rather than the gated one, and that emitter has no machine realization
-yet.  A field no constructor can discharge is a `sorry` one indirection away, so it is
-absent rather than unfilled; `Properties/Conditioning.lean` records the same at the
-structure.
+All three witnesses now carry both certificates.  The eventual one's machine field arrived
+with its emitter: `CondStep.eventualConditionedTranslation_preserves_machine`, whose price
+rewrite is the finite-zero emitter and whose zero-day test is a fixed-finite-set dispatch
+clamped at the floor's cutoff.  `thm:scon` therefore stands at the paper's own quantifier in
+all three forms — the abstract compiler, the gated translator, and the finite-zero one.
 -/
 import LogicalInduction.Construction.Machine.CondStep
 
@@ -50,6 +49,9 @@ noncomputable def eventualConditioningOperationalWitness
     (conditionedMarketComputation market C.condition C.condition_codes).toComputable
   translation_ec := fun T hT =>
     eventualConditionedTranslation_preserves_ecRpn floor
+      C.condition_codes T hT
+  translation_machine := fun T hT =>
+    CondStep.eventualConditionedTranslation_preserves_machine floor
       C.condition_codes T hT
 
 /-- Construct the complete gated-conditioning operational witness from a named rational
@@ -125,6 +127,16 @@ theorem lic_conditioned_eventualOfFloor
     (floor : EventualConditioningFloor P C.condition) :
     IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
   LogicalInduction.lic_conditioned_eventual P DP extra C
+    (eventualConditioningOperationalWitness C market floor)
+
+/-- **The same at the paper's own quantifier.**
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventualOfFloor_machine
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (floor : EventualConditioningFloor P C.condition) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  LogicalInduction.lic_conditioned_eventual_machine P DP extra C
     (eventualConditioningOperationalWitness C market floor)
 
 /-- Closure under conditioning from joint consistency of the base stages with the whole
@@ -242,6 +254,7 @@ theorem lic_conditioned_gated_ofComputationsAndMarket
 #print axioms lic_conditioned_gated_ofMarketComputation
 #print axioms lic_conditioned_gated_machine_ofMarketComputation
 #print axioms lic_conditioned_eventualOfFloor
+#print axioms lic_conditioned_eventualOfFloor_machine
 #print axioms lic_conditioned_eventual_ofMarketComputation
 #print axioms lic_conditioned_fixed_ofComputationAndMarket
 #print axioms lic_conditioned_growing_ofComputationsAndMarket
