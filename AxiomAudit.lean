@@ -222,6 +222,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- report is covered transitively by the `thm:scon` endpoints below.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
+  lic_conditioned_machine lic_conditioned_gated_machine
   isLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
   lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
@@ -433,9 +434,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/RpnConditioning.lean — the conditioning translation in the RPN
 -- symbol model: the run-aware price transducer and its master commutation, guard honesty,
--- the frame pass and its gated two-leg join, the two `def:ec → def:ec` translation
--- endpoints, and the `thm:scon` packaging (operational witnesses + criterion-level
--- closure of the conditioned market).
+-- the frame pass and its gated two-leg join, and the two `def:ec → def:ec` translation
+-- endpoints.  The `thm:scon` packaging that used to close this block now lives in
+-- `Construction/Machine/CondEndpoints.lean`, listed below: criterion endpoints sit above
+-- both the fuel and the machine realization rather than inside either.
 #assert_axioms_clean
   RpnConditioning.rpnGuardedConditionRun_polySegStream
   RpnConditioning.rpnGuardedZeroAwareConditionRun_polySegStream
@@ -449,10 +451,29 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnConditioning.strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
   RpnConditioning.conditionedTranslation_preserves_ecRpn
   RpnConditioning.eventualConditionedTranslation_preserves_ecRpn
+
+-- Construction/Machine/CondStep.lean — the conditioning transduction in the machine model:
+-- the same token-level automaton as the fuel realization, driven as a `Complexity.FP` client
+-- of `TokenFold.runFold`, and the transport theorem the machine criterion needs.
+-- `conditionedTranslation_preserves_machine` takes the *same* `RpnSentenceCodes` hypothesis
+-- on the condition sequence as its fuel counterpart, so nothing about `ψ` is weakened; its
+-- trader hypothesis is the machine class, so it is strictly stronger there.
+#assert_axioms_clean
+  CondStep.conditionedTranslation_preserves_machine
+
+-- Construction/Machine/CondEndpoints.lean — the `thm:scon` packaging: operational witnesses
+-- and criterion-level closure, over both realizations.  The block moved here unchanged from
+-- `RpnConditioning.lean`; only the machine endpoint is new.
+-- The eventual witness carries NO machine field: its translation is the zero-aware rewrite,
+-- whose emitter has no machine realization yet, and a field no constructor can discharge is
+-- a `sorry` one indirection away.  `lic_conditioned_eventual` therefore stands at the fuel
+-- class only, and `lic_conditioned_eventual_machine` does not yet exist.
+#assert_axioms_clean
   ConditioningCompile.eventualConditioningOperationalWitness
   ConditioningCompile.gatedConditioningOperationalWitness
   ConditioningCompile.denominatorPatchedGatedConditioningOperationalWitness
   ConditioningCompile.lic_conditioned_gated_ofMarketComputation
+  ConditioningCompile.lic_conditioned_gated_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_eventualOfFloor
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
@@ -740,7 +761,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields ConditioningPresentation
   condition condition_codes holds_condition combined_computable
 #assert_fields ConditioningTraderCompiler
-  conditioned_computable translate translate_ec tracks_on_condition preserves_floor
+  conditioned_computable translate translate_ec translate_machine tracks_on_condition
+  preserves_floor
 #assert_fields ContinuousSemimeasure
   mass nonneg root_le_one children_le
 #assert_fields CurrentExpectationQuote
@@ -774,7 +796,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields FuturePriceQuote
   sentence_codes quote_codes reflected affine
 #assert_fields GatedConditioningOperationalWitness
-  epsilon_pos denominator_floor conditioned_computable translation_ec
+  epsilon_pos denominator_floor conditioned_computable translation_ec translation_machine
 #assert_fields GeneratedRatFeature
   rank_le polyTok closed denote
 #assert_fields InconsistentTheoryClaims
