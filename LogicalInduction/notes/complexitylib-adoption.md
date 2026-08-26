@@ -2221,7 +2221,7 @@ nothing so far suggests it is needed.
 ## VI.2 The theorem §13 asked us to test — and it holds
 
 The brief's §13 asked whether fixed-code `evaln` has a structural polynomial time bound, and
-said to test rather than assume. It does, and `LogicalInduction/Construction/Machine/CodeSteps.lean`
+said to test rather than assume. It does, and `LogicalInduction/Framework/Machine/CodeSteps.lean`
 proves it:
 
 ```lean
@@ -4179,7 +4179,7 @@ more, because two registers exceed any node's own answer by construction:
 * `rfind'`'s body forms `Nat.pair a m` with `m` advancing one per level, so `m` reaches
   `m₀ + fuel` — past the input.
 
-`codeRegBound c s` (`Construction/Machine/EvalnRegBound.lean`) is the machine's own bound,
+`codeRegBound c s` (`Framework/Machine/EvalnRegBound.lean`) is the machine's own bound,
 with `s` a common bound on the node's input and fuel registers. Every pair the machine
 forms appears in the definition, so nothing here assumes an arbitrary bound is closed under
 `Nat.pair`. It is monotone (`codeRegBound_mono`) and polynomial per fixed code
@@ -4243,7 +4243,7 @@ the existing timing theorems, it is a restatement of them.
 _Seventh pass. Scope: items 4 and 5 of the Stage-2 work order — the concrete polynomial
 runtime, and the `Complexity.FP` transport. Stage 3 untouched, as instructed._
 
-**Stage 2 is closed.** `LogicalInduction/Construction/MachineEfficiency.lean`:
+**Stage 2 is closed.** `LogicalInduction/Framework/MachineEfficiency.lean`:
 
 ```lean
 theorem EfficientlyComputable.toMachine {Tr : Trader} (h : EfficientlyComputable Tr) :

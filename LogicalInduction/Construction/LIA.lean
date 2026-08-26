@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.TradingFirm
-import LogicalInduction.Construction.MachineEfficiency
+import LogicalInduction.Framework.MachineEfficiency
 
 /-!
 # The logical-induction algorithm
@@ -125,19 +125,28 @@ partial-recursive presentation of `liaHistory` is supplied, every semantic field
 logical-inductor criterion is already discharged.  It takes that presentation as a
 hypothesis, so it is deliberately *not* the paper-facing `LIA_is_logical_inductor`:
 assuming the market is computable is not the same as exhibiting the program. -/
+lemma lia_isMachineLogicalInductor_of_computableMarket (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP)
+    (hmarket : ComputableMarket (liaHistory DP)) :
+    IsMachineLogicalInductor (liaHistory DP) DP where
+  marketComputable := hmarket
+  processComputable := hDP
+  noExploit := lia_no_machine_trader_exploits DP
+
+/-- The same assembly at the fuel-class compatibility predicate, by the bridge. -/
 lemma lia_isLogicalInductor_of_computableMarket (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP)
     (hmarket : ComputableMarket (liaHistory DP)) :
-    IsLogicalInductor (liaHistory DP) DP where
-  marketComputable := hmarket
-  processComputable := hDP
-  noExploit := lia_no_efficient_trader_exploits DP
+    IsLogicalInductor (liaHistory DP) DP :=
+  @IsMachineLogicalInductor.toIsLogicalInductor _ _
+    (lia_isMachineLogicalInductor_of_computableMarket DP hDP hmarket)
 
 #print axioms liaStates_eq_marketMakerStates
 #print axioms tradingFirmTrader_liaQuote_eq_liaTrader
 #print axioms liaTrader_not_exploited
 #print axioms lia_no_machine_trader_exploits
 #print axioms lia_no_efficient_trader_exploits
+#print axioms lia_isMachineLogicalInductor_of_computableMarket
 #print axioms lia_isLogicalInductor_of_computableMarket
 
 end LogicalInduction

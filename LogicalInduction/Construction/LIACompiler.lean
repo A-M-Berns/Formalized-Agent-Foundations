@@ -7747,14 +7747,31 @@ def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
   computable := liaEncodedQuoteNatAtFuel_computable process
 
 /-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
-over every computable deductive process.
+over every computable deductive process, **at the paper's own quantifier** — no trader in
+ordinary machine polynomial time exploits it.
+Paper node: `thm:lia` -/
+theorem LIA_isMachineLogicalInductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    IsMachineLogicalInductor (liaHistory DP) DP := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact lia_isMachineLogicalInductor_of_compiler process
+    (liaBoundedEvaluatorCompiler process)
+
+/-- `thm:lia` at the fuel-class compatibility predicate, by the bridge. This is the form the
+property tail consumes.
 Paper node: `thm:lia` -/
 theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    IsLogicalInductor (liaHistory DP) DP := by
-  obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact lia_isLogicalInductor_of_compiler process
-    (liaBoundedEvaluatorCompiler process)
+    IsLogicalInductor (liaHistory DP) DP :=
+  @IsMachineLogicalInductor.toIsLogicalInductor _ _ (LIA_isMachineLogicalInductor DP hDP)
+
+/-- `thm:li` at the paper's own quantifier: every computable deductive process admits a
+market no machine-polynomial-time trader exploits.
+Paper node: `thm:li` -/
+theorem exists_machine_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ P : History, IsMachineLogicalInductor P DP :=
+  ⟨liaHistory DP, LIA_isMachineLogicalInductor DP hDP⟩
 
 /-- `thm:li`: every computable deductive process admits a logical inductor.
 Paper node: `thm:li` -/
@@ -7768,8 +7785,11 @@ theorem exists_logical_inductor (DP : DeductiveProcess)
 (`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the recursive
 rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
-* `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a logical
-  inductor.  This class bundles the paper's *computable exact-rational market* certificate
+* `IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
+  logical inductor **at the paper's own quantifier**: no trader in ordinary machine
+  polynomial time exploits it.  The fuel-class reading follows by
+  `IsMachineLogicalInductor.toIsLogicalInductor`.  This class bundles the paper's
+  *computable exact-rational market* certificate
   (`marketComputable : ComputableMarket` — one fixed program computes the rational quote table),
   the computable deductive process, and the no-exploitation criterion;
 * **one program emits the belief states themselves**: a single `Nat.Partrec.Code` that on input
@@ -7784,8 +7804,8 @@ rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
 `exists_logical_inductor` above is the projection to the bare existence statement.
 
-Proof kind `C` (composition).  Provenance: the criterion conjunct is `LIA_is_logical_inductor`
-(a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
+Proof kind `C` (composition).  Provenance: the criterion conjunct is
+`LIA_isMachineLogicalInductor` (a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
 recursive bounded evaluator `liaEncodedEntriesAtFuel` over its fuel clock, pinned to the
 semantic states by `liaEncodedEntriesAtFuel_sound`; the support/range/cast conjuncts are
 `RationalBeliefState` facts (a).
@@ -7793,14 +7813,14 @@ Paper node: `thm:li` -/
 theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
-      IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+      IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
         (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
           Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
         (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) := by
   obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
+  exact ⟨liaStates DP, LIA_isMachineLogicalInductor DP hDP,
     exists_liaEntries_code process,
     fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
     fun n φ => (liaStates DP n).quote_mem_Icc φ,

@@ -118,6 +118,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
+  exists_machine_logical_inductor LIA_isMachineLogicalInductor
 
 -- The canonical trader universe is `MachineEfficientTrader` — ordinary machine
 -- polynomial time, through `Complexity.FP`. The enumeration is sound and covers the whole

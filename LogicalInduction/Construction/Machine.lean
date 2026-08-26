@@ -37,7 +37,7 @@ imported by `LogicalInduction.lean`, and no theorem relates `MachinePolyEC` — 
 machine of `Basic`/`Closure`/`Pairing` — to anything else here.
 
 What *has* landed is the other inclusion, through `complexitylib`'s ordinary Turing
-machines: `Construction/MachineEfficiency.lean` proves
+machines: `Framework/MachineEfficiency.lean` proves
 `EfficientlyComputable Tr → MachineEfficientTrader Tr`, so every trader certified in the
 fuel calculus is a genuine machine-polynomial-time trader. Read that file's docstring for
 the chain and for what the inclusion does and does not settle. **No strength claim in the
@@ -61,12 +61,12 @@ import LogicalInduction.Construction.Machine.DescExec
 
 import LogicalInduction.Construction.MachineTraderEnumeration
 
-import LogicalInduction.Construction.Machine.CodeSteps
+import LogicalInduction.Framework.Machine.CodeSteps
 
 import LogicalInduction.Construction.Machine.PairSucc
-import LogicalInduction.Construction.Machine.EvalnCompiler
-import LogicalInduction.Construction.Machine.EvalnRegBound
+import LogicalInduction.Framework.Machine.EvalnCompiler
+import LogicalInduction.Framework.Machine.EvalnRegBound
 import LogicalInduction.Construction.Machine.ClockedSim
-import LogicalInduction.Construction.Machine.DigitBits
-import LogicalInduction.Construction.Machine.TraderMachine
-import LogicalInduction.Construction.MachineEfficiency
+import LogicalInduction.Framework.Machine.DigitBits
+import LogicalInduction.Framework.Machine.TraderMachine
+import LogicalInduction.Framework.MachineEfficiency

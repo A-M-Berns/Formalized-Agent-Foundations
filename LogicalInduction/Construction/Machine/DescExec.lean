@@ -70,6 +70,7 @@ that reason (`scripts/lint_paper_labels.py`).
 import Complexitylib.Models.TuringMachine.UTM.Internal.Interp
 import Complexitylib.Classes.P.Description
 import Mathlib.Computability.Primrec.List
+import LogicalInduction.Framework.Criterion
 
 open Complexity
 
@@ -1226,33 +1227,6 @@ lemma progClock_index (d : TMDesc) (a k n : ℕ) :
   cases p
   rw [machineProgramAt, progDesc_index, progCoeff_index, progDeg_index]
 
-/-- The paper-faithful unary rendering of day `n`. -/
-def unaryDay (n : ℕ) : List Bool := List.replicate n true
-
-@[simp] lemma length_unaryDay (n : ℕ) : (unaryDay n).length = n := by simp [unaryDay]
-
-/-- `Bool` as `0`/`1`. -/
-def b2n (b : Bool) : ℕ := if b then 1 else 0
-
-/-- One digit of the output stream: three bits, most significant first. -/
-def digitAt (l : List Bool) (i : ℕ) : ℕ :=
-  4 * b2n ((l[3 * i]?).getD false)
-    + 2 * b2n ((l[3 * i + 1]?).getD false)
-    + b2n ((l[3 * i + 2]?).getD false)
-
-/-- Read a machine's output bitstring as a digit stream, three bits per digit, most
-significant first; a trailing partial group is dropped.
-
-An adapter is unavoidable — the machine speaks `List Bool` and the digit layer speaks
-`List ℕ` — and this is the minimal one. It needs no validity side condition: groups with
-value `≥ 4` are exactly what `undigitizeStep` already treats as block terminators, so *every*
-bitstring denotes some digit stream, and malformed cases are absorbed downstream by
-`strategyOfTokens`. -/
-def bitsToDigits (l : List Bool) : List ℕ :=
-  (List.range (l.length / 3)).map (digitAt l)
-
-@[simp] lemma length_bitsToDigits (l : List Bool) :
-    (bitsToDigits l).length = l.length / 3 := by simp [bitsToDigits]
 
 /-- Read a finished run into a digit stream; the timeout fallback lives here, on
 `Option CodedCfg`, so its `Primrec` proof stays at that small domain. -/

@@ -20,11 +20,11 @@ This file builds it out of the fork's register calculus. Three layers:
 Every bound here is deliberately loose: `Complexity.FP` quantifies the degree
 existentially, so only the polynomial shape matters.
 -/
-import LogicalInduction.Construction.Machine.EvalnRegBound
+import LogicalInduction.Framework.Machine.EvalnRegBound
 import Complexitylib.Models.TuringMachine.Registers.Horner
 import Complexitylib.Models.TuringMachine.Registers.InputLen
 import Complexitylib.Classes.P.NormalForm
-import LogicalInduction.Construction.Machine.DigitBits
+import LogicalInduction.Framework.Machine.DigitBits
 import Mathlib.Tactic.IntervalCases
 
 namespace LogicalInduction.TraderMachine

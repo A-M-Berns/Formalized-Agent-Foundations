@@ -12,7 +12,7 @@ together with a total effective enumeration of it and the **coverage** theorem t
 interpreter — a disclosed type-`(c)` substitution, not a machine complexity class.
 `MachineEfficientTrader` below is the machine class the paper actually asks for.
 `PolyFueled` and `EfficientlyComputable` remain the internal certification technology every
-concrete property proof uses, and `Construction/MachineEfficiency.lean` now proves the
+concrete property proof uses, and `Framework/MachineEfficiency.lean` now proves the
 inclusion `EfficientlyComputable Tr → MachineEfficientTrader Tr`: everything the fuel
 calculus certifies is machine-efficient. The converse is not proved, so neither class
 supersedes the other. What this file establishes is that the *construction's* trader
@@ -52,24 +52,6 @@ import LogicalInduction.Framework.Computable
 namespace LogicalInduction
 
 open LogicalInduction.MachineExec
-
-/-! ## The paper-facing machine class -/
-
-/-- Decode a machine's finite output word into the day-`n` strategy, through the existing
-token pipeline. This is the only place the machine's output convention meets the trader
-serialization, and it introduces no new parser. -/
-def strategyOfOutput (n : ℕ) (w : List Bool) : Strategy n :=
-  strategyOfTokens n (unRpn (undigitize (bitsToDigits w)))
-
-/-- **The genuine polynomial-time trader class** (`def:ec`, machine reading). A trader is
-machine-efficient when some honestly polynomial-time function of the *unary* day emits its
-day-`n` strategy through the standard token decoding.
-
-Contrast `EfficientlyComputable`, which asks for a fuel-clocked `Nat.Partrec.Code` pair; this
-asks for membership in `Complexity.FP`, an ordinary multi-tape Turing-machine time class. -/
-def MachineEfficientTrader (Tr : Trader) : Prop :=
-  ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
-    ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
 
 /-! ## The enumeration
 

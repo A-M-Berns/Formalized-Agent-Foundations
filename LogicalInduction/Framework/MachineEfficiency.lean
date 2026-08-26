@@ -28,9 +28,7 @@ the fuel model is outside the machine model, so a theorem quantifying over
 (`Framework/Computable.lean`) still governs what `EfficientlyComputable` itself means;
 see `LogicalInduction/README.md` for the standing disclosure.
 -/
-import LogicalInduction.Construction.Machine.TraderMachine
-import LogicalInduction.Construction.MachineTraderEnumeration
-import LogicalInduction.Construction.TradingFirm
+import LogicalInduction.Framework.Machine.TraderMachine
 
 namespace LogicalInduction
 
@@ -54,18 +52,50 @@ theorem EfficientlyComputable.toMachine {Tr : Trader} (h : EfficientlyComputable
     undigitize_map_min_four]
   rfl
 
-/-- The fuel-certified corollary of Trading Firm Dominance. The primary statement is
-`trading_firm_dominance`, over the machine class; this is the instance the fuel calculus's
-certificates feed.
-Paper node: `lem:tfdom` -/
-theorem trading_firm_dominance_of_ec
-    (DP : DeductiveProcess) (P : History)
-    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
-    (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : EfficientlyComputable Tr)
-    (hEx : Tr.Exploits P DP) :
-    (tradingFirmTrader DP Q).Exploits P DP :=
-  trading_firm_dominance DP P hP Q hQ Tr hTr.toMachine hEx
+/-! ## The paper-faithful criterion
+
+`IsMachineLogicalInductor` states `def:lic` at the paper's own quantifier: no trader in
+ordinary machine polynomial time exploits the market. It is the criterion the LIA
+construction proves, and the primary one.
+
+`IsLogicalInductor` (`Framework/Criterion.lean`) states the same shape over the
+fuel-certified class. It is kept as a **compatibility predicate**: the property tail's
+theorems are stated against it, and every one of them transfers to a machine logical
+inductor immediately through the instance below, because a machine logical inductor *is* a
+fuel-class one. Nothing in the property tail is weaker for it.
+
+The one place the bridge does not suffice is a theorem whose *conclusion* is itself the
+criterion — closure under conditioning (`thm:scon`) and the finite-perturbation statement
+(`thm:ifp`). Those transport an arbitrary trader backwards across a market change, so
+restating them at the machine class needs the machine class to be closed under the same
+trader translations: a direct `Complexity.FP` transport theorem for the strategy
+serialization, which is not proved here. They are left at the fuel class, with no
+hypothesis weakened and no proved content withdrawn, and the missing transport theorems are
+named in `LogicalInduction/README.md`.
+
+The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
+
+/-- **The Logical Induction Criterion at the paper's own quantifier** (`def:lic`): no
+trader in ordinary machine polynomial time exploits the market. This is the criterion the
+construction proves; `IsLogicalInductor` is its fuel-class compatibility reading, reached by
+the instance below.
+Paper node: `def:lic` -/
+class IsMachineLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
+  /-- Markets are computable rational pricing sequences in the paper's definition. -/
+  marketComputable : ComputableMarket P
+  /-- Deductive processes are computable nested finite-set sequences in the paper's
+  definition. -/
+  processComputable : ComputableDeductiveProcess DP
+  /-- No machine-efficient trader exploits `P`. -/
+  noExploit : ∀ Tr : Trader, MachineEfficientTrader Tr → ¬ Tr.Exploits P DP
+
+/-- **Every machine logical inductor is a logical inductor in the fuel-class reading**,
+because every fuel certificate is a machine-efficiency certificate. This is what carries the
+whole property tail over to the machine criterion unchanged. -/
+instance IsMachineLogicalInductor.toIsLogicalInductor {P : History} {DP : DeductiveProcess}
+    [hLI : IsMachineLogicalInductor P DP] : IsLogicalInductor P DP where
+  marketComputable := hLI.marketComputable
+  processComputable := hLI.processComputable
+  noExploit := fun Tr h => hLI.noExploit Tr h.toMachine
 
 end LogicalInduction

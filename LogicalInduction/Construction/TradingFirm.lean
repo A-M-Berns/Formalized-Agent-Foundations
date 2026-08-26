@@ -7,6 +7,7 @@ sufficiently large budgets reproduce the raw gated trader.  This file makes the 
 cutoff used by that compression executable from the expressible-feature syntax.
 -/
 import LogicalInduction.Construction.Budgeter
+import LogicalInduction.Framework.MachineEfficiency
 import LogicalInduction.Properties.FinitePerturbations
 
 namespace LogicalInduction
@@ -1025,7 +1026,7 @@ the firm exploit — the enumeration covers the whole class.
 The class is `MachineEfficientTrader`: ordinary machine polynomial time, through
 `Complexity.FP`. Every trader the fuel calculus certifies is one of these
 (`EfficientlyComputable.toMachine`), so the fuel-certified corollary is immediate; it is
-stated as `trading_firm_dominance_of_ec` in `Construction/MachineEfficiency.lean`, where
+stated as `trading_firm_dominance_of_ec` in `Framework/MachineEfficiency.lean`, where
 that inclusion is in scope.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
@@ -1038,6 +1039,20 @@ theorem trading_firm_dominance
     (tradingFirmTrader DP Q).Exploits P DP :=
   trading_firm_dominance_of_covered DP P hP Q hQ Tr
     (exists_enumeratedTrader_eq Tr hTr) hEx
+
+/-- The fuel-certified corollary of Trading Firm Dominance. The primary statement is
+`trading_firm_dominance`, over the machine class; this is the instance the fuel calculus's
+certificates feed.
+Paper node: `lem:tfdom` -/
+theorem trading_firm_dominance_of_ec
+    (DP : DeductiveProcess) (P : History)
+    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
+    (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
+    (Tr : Trader) (hTr : EfficientlyComputable Tr)
+    (hEx : Tr.Exploits P DP) :
+    (tradingFirmTrader DP Q).Exploits P DP :=
+  trading_firm_dominance DP P hP Q hQ Tr hTr.toMachine hEx
 
 #print axioms tradingFirmWeight_tail_hasSum
 #print axioms tradingFirmComponentAt_value_hasSum

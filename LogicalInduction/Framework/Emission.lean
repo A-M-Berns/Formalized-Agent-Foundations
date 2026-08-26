@@ -29,7 +29,7 @@ def codeEvalBound : Nat.Partrec.Code → ℕ → ℕ
   | .rfind' _, k => k
 
 /-- `Nat.pair` is monotone in both arguments. Public because the machine-side register
-bound (`Construction/Machine/EvalnRegBound.lean`) needs it too. -/
+bound (`Framework/Machine/EvalnRegBound.lean`) needs it too. -/
 lemma natPair_mono {a b c d : ℕ} (hab : a ≤ b) (hcd : c ≤ d) :
     Nat.pair a c ≤ Nat.pair b d := by
   calc

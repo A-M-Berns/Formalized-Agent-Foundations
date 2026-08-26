@@ -19,8 +19,8 @@ Nothing here assumes an arbitrary bound is closed under `Nat.pair`: every pair t
 forms appears in the definition.
 -/
 import LogicalInduction.Framework.Emission
-import LogicalInduction.Construction.Machine.CodeSteps
-import LogicalInduction.Construction.Machine.EvalnCompiler
+import LogicalInduction.Framework.Machine.CodeSteps
+import LogicalInduction.Framework.Machine.EvalnCompiler
 
 namespace LogicalInduction.EvalnCompiler
 
