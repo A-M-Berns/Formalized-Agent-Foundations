@@ -481,17 +481,36 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- reduces `MachineFiniteSupportPatch.preserves_ec` to the single named `FP` fact
 -- `FreezeStreamRewriter`.  That fact has NO instance, so no patch structure is inhabited;
 -- the reduction narrows the obligation and discharges nothing.
+-- Narrowed once more: `RpnFreeze.unRpn_rpnFreezeRunOn` carries the pass across the
+-- contraction and `RpnFreeze.freezeStreamRewriter_of_flatPass` reduces
+-- `FreezeStreamRewriter` to an `FP` pass over the FLAT stream, whose automaton is
+-- `CondStep.condStepR` and whose emitter is the run-level table lookup.  Still no
+-- instance at any link.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
   MachineEfficientTrader.freezeOn
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
   RpnFreeze.unRpn_rpnFreezeRun
+  RpnFreeze.unRpn_rpnFreezeRunOn
+  RpnFreeze.freezeStreamRewriter_of_flatPass
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
   decode_falsum_noncanonical
   decode_and_noncanonical
+
+-- Construction/Witnesses/FreezeStep.lean — the freeze transducer as a `Complexity.FP`
+-- client of `TokenFold.runFold`.  `freezePass_mem_FP` is an unconditional membership
+-- result; `decodeBits_freezePass` says what the pass computes, and it is the *contracted*
+-- token automaton `EF.freezeTokenRunOn`, with the selector and quote table read at the
+-- CLAMPED day (`clampSel`/`clampQuote`) because a word-level emitter cannot call an oracle
+-- at an unbounded day.  Both are conditioned on a `FreezeStep.QuoteOracle`, which has NO
+-- instance: building one for a finite table is the run-level lookup obligation.
+#assert_axioms_clean
+  FreezeStep.frPack_frStepR
+  FreezeStep.freezePass_mem_FP
+  FreezeStep.decodeBits_freezePass
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean

@@ -637,77 +637,83 @@ lemma runPrefixQuoteFromStates_exact (states : List RationalBeliefState) (day : 
           exact runQuoteFromEntries_exact state.entries hb
       | succ day => exact ih day
 
-/-! ### The symbol-level freeze transducer -/
+/-! ### The symbol-level freeze transducer
 
-/-- The token-model prefix freeze, as a whole-stream rewrite. -/
-def freezeTokens (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (L : List ℕ) : List ℕ :=
-  (EF.freezeTokenRun quoteCode cutoff (0, 0) L).2
+The transducer is selector-indexed, matching `EF.freezeTokenRunOn`.  At the flat grammar
+the selector and the quote table are read **from the buffered sentence run** — `selRun`,
+`quoteRun` — because the run is what the transducer has; `hsel`/`hq` bridge them to the
+code-level pair the token model uses, exactly as `runQuoteFromEntries_exact` supplies.
+The day-cutoff forms at the end are instances. -/
+
+/-- The token-model freeze, as a whole-stream rewrite. -/
+def freezeTokensOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (L : List ℕ) :
+    List ℕ :=
+  (EF.freezeTokenRunOn selCode quoteCode (0, 0) L).2
 
 /-- The body the token-model freeze splices at a completed price leaf. -/
-def freezeBody (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) : List ℕ :=
-  if d < cutoff then [1, quoteCode d fc, 8] else []
+def freezeBodyOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc d : ℕ) : List ℕ :=
+  if selCode d fc then [1, quoteCode d fc, 8] else []
 
-lemma freezeTokens_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
-    freezeTokens quoteCode cutoff [] = [] := rfl
+lemma freezeTokensOn_nil (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) :
+    freezeTokensOn selCode quoteCode [] = [] := rfl
 
-lemma freezeTokens_single (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ)
+lemma freezeTokensOn_single (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t : ℕ)
     (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
-    freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn, EF.freezeTokenNext, h0, h1, h6, h7]
+    freezeTokensOn selCode quoteCode (t :: L)
+      = t :: freezeTokensOn selCode quoteCode L := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext,
+    h0, h1, h6, h7]
 
-lemma freezeTokens_one (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ) :
-    freezeTokens quoteCode cutoff [t] = [t] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn]
+lemma freezeTokensOn_one (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t : ℕ) :
+    freezeTokensOn selCode quoteCode [t] = [t] := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn]
 
-lemma freezeTokens_payload (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t c : ℕ)
+lemma freezeTokensOn_payload (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t c : ℕ)
     (ht : t = 1 ∨ t = 7) (L : List ℕ) :
-    freezeTokens quoteCode cutoff (t :: c :: L) =
-      t :: c :: freezeTokens quoteCode cutoff L := by
+    freezeTokensOn selCode quoteCode (t :: c :: L)
+      = t :: c :: freezeTokensOn selCode quoteCode L := by
   rcases ht with rfl | rfl <;>
-    simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn, EF.freezeTokenNext]
+    simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
-lemma freezeTokens_price (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ)
+lemma freezeTokensOn_price (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc d : ℕ)
     (L : List ℕ) :
-    freezeTokens quoteCode cutoff (0 :: fc :: d :: L) =
-      0 :: fc :: d :: (freezeBody quoteCode cutoff fc d ++
-        freezeTokens quoteCode cutoff L) := by
-  simp only [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn, EF.freezeTokenNext, freezeBody]
-  by_cases hd : d < cutoff <;> simp [hd]
+    freezeTokensOn selCode quoteCode (0 :: fc :: d :: L) =
+      0 :: fc :: d :: (freezeBodyOn selCode quoteCode fc d ++
+        freezeTokensOn selCode quoteCode L) := by
+  simp only [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn,
+    EF.freezeTokenNext, freezeBodyOn]
+  by_cases hd : selCode d fc = true <;> simp [hd]
 
-lemma freezeTokens_pricePair (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ) :
-    freezeTokens quoteCode cutoff [0, fc] = [0, fc] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn, EF.freezeTokenNext]
+lemma freezeTokensOn_pricePair (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (fc : ℕ) : freezeTokensOn selCode quoteCode [0, fc] = [0, fc] := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
-lemma freezeTokens_trade (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ)
+lemma freezeTokensOn_trade (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc : ℕ)
     (L : List ℕ) :
-    freezeTokens quoteCode cutoff (6 :: fc :: L) =
-      6 :: fc :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenRunOn, EF.freezeTokenEmit,
-    EF.freezeTokenEmitOn, EF.freezeTokenNext]
+    freezeTokensOn selCode quoteCode (6 :: fc :: L)
+      = 6 :: fc :: freezeTokensOn selCode quoteCode L := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
 
-/-- **The symbol-level freeze emitter**: at a price-day slot before the cutoff, retain
-the day and splice the constant quote of the buffered sentence run under the
-administrative binding. -/
-def freezeEmit (quoteRun : List ℕ → ℕ → ℕ) (cutoff : ℕ) : List ℕ → ℕ → List ℕ :=
-  fun buf D => if D < cutoff then [D, 1, quoteRun buf D, 8] else [D]
+/-- **The symbol-level freeze emitter**: at a selected price-day slot, retain the day and
+splice the constant quote of the buffered sentence run under the administrative binding. -/
+def freezeEmitOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ) :
+    List ℕ → ℕ → List ℕ :=
+  fun buf D => if selRun buf D then [D, 1, quoteRun buf D, 8] else [D]
 
 /-- **The rewritten price chunk contracts to the token-model freeze.** -/
-lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
-    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+lemma unRpn_freezeOn_rewrite_chunk (selRun : List ℕ → ℕ → Bool)
+    (quoteRun : List ℕ → ℕ → ℕ) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
     (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
     {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, []))
     (D : ℕ) (rest : List ℕ) :
-    unRpn (0 :: b ++ freezeEmit quoteRun cutoff b D ++ rest) =
+    unRpn (0 :: b ++ freezeEmitOn selRun quoteRun b D ++ rest) =
       0 :: Encodable.encode φ :: D ::
-        (freezeBody quoteCode cutoff (Encodable.encode φ) D ++ unRpn rest) := by
-  rw [freezeEmit, freezeBody]
-  by_cases hd : D < cutoff
+        (freezeBodyOn selCode quoteCode (Encodable.encode φ) D ++ unRpn rest) := by
+  rw [freezeEmitOn, freezeBodyOn, hsel b φ hb D]
+  by_cases hd : selCode D (Encodable.encode φ) = true
   · rw [if_pos hd, if_pos hd]
     have hshape : 0 :: b ++ [D, 1, quoteRun b D, 8] ++ rest =
         0 :: (b ++ D :: 1 :: quoteRun b D :: 8 :: rest) := by simp
@@ -720,6 +726,106 @@ lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
     rw [hshape, unRpn_price_chunk_block hb]
     simp
 
+/-- **Whole-stream contraction exactness for the selector-indexed freeze pass**: on every
+input stream — well-formed or garbage — the contraction of the symbol-level freeze
+transducer's output is the token-model freeze of the contraction.
+
+This is the bridge the machine-class certificate needs: the transducer runs on the *flat*
+stream a machine actually holds, while `EF.freezeTokenRunOn` — and hence
+`FreezeStreamRewriter` — is stated on the contracted one.
+Paper node: `app:ifp` -/
+theorem unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ)
+    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ)) :
+    ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun (freezeEmitOn selRun quoteRun) (rcPack 0 0 0, []) ts).2) =
+      freezeTokensOn selCode quoteCode (unRpn ts) :=
+  unRpn_rpnConditionRun_of (freezeEmitOn selRun quoteRun)
+    (freezeTokensOn selCode quoteCode) (freezeBodyOn selCode quoteCode)
+    (freezeTokensOn_nil selCode quoteCode)
+    (fun t L h0 h1 h6 h7 => freezeTokensOn_single selCode quoteCode t L h0 h1 h6 h7)
+    (freezeTokensOn_one selCode quoteCode)
+    (fun t c L ht => freezeTokensOn_payload selCode quoteCode t c ht L)
+    (freezeTokensOn_price selCode quoteCode)
+    (freezeTokensOn_pricePair selCode quoteCode)
+    (freezeTokensOn_trade selCode quoteCode)
+    (fun _ _ hb D rest => unRpn_freezeOn_rewrite_chunk selRun quoteRun selCode quoteCode
+      hsel hq hb D rest)
+
+/-! ### The day-cutoff instances -/
+
+/-- The token-model prefix freeze, as a whole-stream rewrite. -/
+def freezeTokens (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (L : List ℕ) : List ℕ :=
+  freezeTokensOn (fun d _ => decide (d < cutoff)) quoteCode L
+
+/-- The body the token-model freeze splices at a completed price leaf. -/
+def freezeBody (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) : List ℕ :=
+  if d < cutoff then [1, quoteCode d fc, 8] else []
+
+lemma freezeBody_eq (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) :
+    freezeBody quoteCode cutoff fc d
+      = freezeBodyOn (fun d _ => decide (d < cutoff)) quoteCode fc d := by
+  simp only [freezeBody, freezeBodyOn, decide_eq_true_eq]
+
+lemma freezeTokens_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
+    freezeTokens quoteCode cutoff [] = [] := rfl
+
+lemma freezeTokens_single (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ)
+    (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
+    freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_single _ quoteCode t L h0 h1 h6 h7
+
+lemma freezeTokens_one (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ) :
+    freezeTokens quoteCode cutoff [t] = [t] :=
+  freezeTokensOn_one _ quoteCode t
+
+lemma freezeTokens_payload (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t c : ℕ)
+    (ht : t = 1 ∨ t = 7) (L : List ℕ) :
+    freezeTokens quoteCode cutoff (t :: c :: L) =
+      t :: c :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_payload _ quoteCode t c ht L
+
+lemma freezeTokens_price (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ)
+    (L : List ℕ) :
+    freezeTokens quoteCode cutoff (0 :: fc :: d :: L) =
+      0 :: fc :: d :: (freezeBody quoteCode cutoff fc d ++
+        freezeTokens quoteCode cutoff L) := by
+  rw [freezeBody_eq]
+  exact freezeTokensOn_price _ quoteCode fc d L
+
+lemma freezeTokens_pricePair (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ) :
+    freezeTokens quoteCode cutoff [0, fc] = [0, fc] :=
+  freezeTokensOn_pricePair _ quoteCode fc
+
+lemma freezeTokens_trade (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ)
+    (L : List ℕ) :
+    freezeTokens quoteCode cutoff (6 :: fc :: L) =
+      6 :: fc :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_trade _ quoteCode fc L
+
+/-- **The symbol-level freeze emitter**: at a price-day slot before the cutoff, retain
+the day and splice the constant quote of the buffered sentence run under the
+administrative binding. -/
+def freezeEmit (quoteRun : List ℕ → ℕ → ℕ) (cutoff : ℕ) : List ℕ → ℕ → List ℕ :=
+  freezeEmitOn (fun _ D => decide (D < cutoff)) quoteRun
+
+/-- **The rewritten price chunk contracts to the token-model freeze.** -/
+lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
+    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
+    {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, []))
+    (D : ℕ) (rest : List ℕ) :
+    unRpn (0 :: b ++ freezeEmit quoteRun cutoff b D ++ rest) =
+      0 :: Encodable.encode φ :: D ::
+        (freezeBody quoteCode cutoff (Encodable.encode φ) D ++ unRpn rest) := by
+  rw [freezeBody_eq, freezeEmit]
+  exact unRpn_freezeOn_rewrite_chunk _ quoteRun _ quoteCode (fun _ _ _ _ => rfl) hq hb
+    D rest
+
 /-- **Whole-stream contraction exactness for the freeze pass**: on every input stream —
 well-formed or garbage — the contraction of the symbol-level freeze transducer's output
 is the token-model prefix freeze of the contraction.
@@ -731,17 +837,43 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
     ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     unRpn ((rpnConditionRun (freezeEmit quoteRun cutoff) (rcPack 0 0 0, []) ts).2) =
       freezeTokens quoteCode cutoff (unRpn ts) :=
-  unRpn_rpnConditionRun_of (freezeEmit quoteRun cutoff)
-    (freezeTokens quoteCode cutoff) (freezeBody quoteCode cutoff)
-    (freezeTokens_nil quoteCode cutoff)
-    (fun t L h0 h1 h6 h7 => freezeTokens_single quoteCode cutoff t L h0 h1 h6 h7)
-    (freezeTokens_one quoteCode cutoff)
-    (fun t c L ht => freezeTokens_payload quoteCode cutoff t c ht L)
-    (freezeTokens_price quoteCode cutoff)
-    (freezeTokens_pricePair quoteCode cutoff)
-    (freezeTokens_trade quoteCode cutoff)
-    (fun _ _ hb D rest => unRpn_freeze_rewrite_chunk quoteRun quoteCode cutoff hq hb
-      D rest)
+  unRpn_rpnFreezeRunOn _ quoteRun _ quoteCode (fun _ _ _ _ => rfl) hq
+
+/-! ### The machine-class obligation, moved to the flat stream
+
+`FreezeStreamRewriter` (`Properties/FinitePerturbations.lean`) is stated on the
+*contracted* stream, because that is what `strategyOfTokens` parses.  A machine never holds
+the contracted stream — computing `unRpn` would mean re-encoding each parsed sentence — so
+the pass it can actually run is the flat-grammar one, and `unRpn_rpnFreezeRunOn` is what
+carries it across.  The lemma below is that carry, once. -/
+
+/-- **`FreezeStreamRewriter` reduces to a flat-stream pass.**  A polynomial-time rewrite of
+the machine's own output word that computes the *symbol-level* freeze transducer discharges
+the contracted-stream obligation, because contraction commutes with the pass.
+
+What remains after this is a single `Complexity.FP` statement about
+`rpnConditionRun (freezeEmitOn selRun quoteRun)` — the flat automaton with a freeze
+emitter — and its emitter is the run-level table lookup.
+
+Kind `C`; hypotheses `(a)` except `hflat`, which is the residual obligation.
+Paper node: `app:ifp` -/
+lemma freezeStreamRewriter_of_flatPass (selRun : List ℕ → ℕ → Bool)
+    (quoteRun : List ℕ → ℕ → ℕ) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
+    (hflat : ∀ F : List Bool → List Bool, F ∈ Complexity.FP →
+      ∃ G : List Bool → List Bool, G ∈ Complexity.FP ∧ ∀ x : List Bool,
+        undigitize (bitsToDigits (G x))
+          = (rpnConditionRun (freezeEmitOn selRun quoteRun) (rcPack 0 0 0, [])
+              (undigitize (bitsToDigits (F x)))).2) :
+    FreezeStreamRewriter selCode quoteCode := by
+  intro F hF
+  obtain ⟨G, hG, hGspec⟩ := hflat F hF
+  refine ⟨G, hG, fun x => ?_⟩
+  rw [hGspec x]
+  exact unRpn_rpnFreezeRunOn selRun quoteRun selCode quoteCode hsel hq _ _ le_rfl
 
 /-! ### The poly-fueled side
 

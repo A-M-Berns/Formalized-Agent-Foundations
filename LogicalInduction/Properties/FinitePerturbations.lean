@@ -1306,7 +1306,11 @@ because that is the granularity `strategyOfTokens` parses; discharging it means 
 
 No instance of `FreezeStreamRewriter` exists in this repo.  It is not a weaker hypothesis
 smuggled in: it says exactly "the transducer is polynomial time", with no reference to the
-market, the trader, or exploitation. -/
+market, the trader, or exploitation.
+
+`RpnFreeze.freezeStreamRewriter_of_flatPass` reduces it one step further, to an `FP` pass
+over the *flat* stream — the one a machine actually holds — leaving the run-level table
+lookup as the only open link.  Still no instance at any link. -/
 
 /-- **The one `Complexity.FP` fact the machine-class patch still needs.**  Every
 polynomial-time output word can be rewritten, in polynomial time, into one whose contracted
