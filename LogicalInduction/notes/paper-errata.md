@@ -141,58 +141,49 @@ The finite-support theorem is a *third* outcome, and it settles neither of these
 repairs the appendix's argument on the restricted domain where that argument is valid,
 while leaving the unrestricted statement open.
 
-### The restricted theorems still have no witness (and what stands in the way, 2026-08-26)
+### Where the corrected theorem stands (2026-08-26)
 
-**`MachineFiniteSupportPatch` is now inhabited**
-(`FreezeOracle.machineFiniteSupportPatch_ofTable`), for a market whose frozen coordinates
-are presented by a finite entry table subject to three conditions: `BotFree` and
-`NoReserved` per table sentence (bundled as `Recognizable`) and a `TablePresentation`
-naming exactly the coordinates of `S`. The witness is at a table with a real row, and the
-quote is a parameter, so the two markets can genuinely differ on `S` — the degenerate
-`S = ∅` route is not what inhabits it. The complexity budget `R_length_le`, previously
-assumed, is now *derived*, because the emitted suffix is one of finitely many constant
-words.
+**The corrected theorem needs no caller-supplied certificate.**
+`FreezeOracle.machine_lic_iff_of_recognizableSupport` takes two `ComputableMarket`s and a
+perturbation with finite, `Recognizable` support, and nothing else: the freeze certificate
+is *compiled* from the market's own computability certificate. The earlier
+`MachineFiniteSupportPatch` survives as implementation machinery, not as the statement.
 
-**The antecedent is satisfiable.** `machine_lic_iff_twoPoint` is closed but for the
-deductive process: a concrete pair of computable markets, proved to differ exactly on the
-frozen coordinate, discharging every hypothesis at once. So the corrected theorem is
-non-vacuous.
+**The one residual hypothesis is representation, not mathematics.** `Recognizable ψ` —
+`BotFree ψ` and `NoReserved ψ` — constrains the *syntax* of the finitely many sentences
+whose price moves. It constrains no market, trader or perturbation. Each half stands for
+exactly one `Complexity.FP` primitive this toolkit lacks:
 
-**What is still not established.** Non-vacuous is not informative. Those markets price
-everything at zero but one coordinate and are very likely exploitable, in which case the
-equivalence is true and carries no information at that instance. An informative instance
-would perturb a market already known to be an inductor — `liaHistory DP` — at a single
-coordinate; that is a further ~150-200 lines, not started. And the fuel-class
-certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited** — the
-fuel calculus does not close over the escape-leaf decode the lookup needs, which is
-precisely the `dd:fuel` inverse-operation ceiling.
+* `BotFree` for **integer square root** — Foundation's `Formula.ofNat` discards the payload
+  at tag `0`, so `⊥` has infinitely many escape codes and deciding whether a code denotes
+  `⊥` is deciding whether it is a perfect square. Polynomial time mathematically.
+* `NoReserved` for a **structured-payload parser** — the structured block admits payload
+  spellings no fixed word comparison catches. It denotes only reserved atoms, so excluding
+  those makes the branch unreachable.
 
-Two things sharpened the route to this, and are recorded because they are what made it
-reachable:
+Neither half has slack: every position in a term is escape-able, so `BotFree` must be
+hereditary, and a structured spelling at any subterm breaks completeness, so `NoReserved`
+must be too. `decode_and_noncanonical` proves the first restriction *necessary* rather than
+an artifact of the approach. So the unrestricted finite-support statement is, as far as this
+development can tell, **true** — and unprovable here for want of two primitives rather than
+for want of a theorem.
 
-* **The escape-leaf keystone is narrower than recorded.** `RpnFreeze.lean` said the freeze
-  matcher cannot compare against a fixed numeral because `Formula.ofNat` ignores the payload
-  at tag `0`, so `decode` is not injective and the test reduces to `Nat.unpair` / integer
-  square root. True, but tags `1`–`4` *are* injective given injective sub-decodes, so the
-  decoder is injective on exactly the **falsum-free** sentences
-  (`decode_eq_some_iff_of_botFree`, `Construction/Witnesses/CanonicalCodes.lean`), and there
-  the whole test is a constant comparison (`sentenceMatches_of_botFree`). The restriction is
-  necessary rather than a proof artifact — `decode_falsum_noncanonical` and
-  `decode_and_noncanonical` exhibit the ambiguity and its propagation. So square root is
-  forced **iff** the frozen quote table contains a `⊥` subformula. It is not known whether
-  `LIA`'s table is `⊥`-free; its entries are populated dynamically.
-* **The remaining obstruction is the FP transport, not the square root.** Three pieces, none
-  built: a selector-indexed token model for `EF.freezeOn` (the existing exactness chain is
-  keyed to `freezeBefore`/`cutoff`); an FP certification of the freeze transducer through
-  `Framework/Machine/FPFold.lean`, including the polynomial state bound on malformed inputs;
-  and the run-level decision `runMatches` as an FP function, where the *structured
-  paper-prime leaf* is a second, independent ambiguity source that the `⊥` result does not
-  touch.
+**Non-vacuous, not informative.** `machine_lic_iff_twoPoint` is closed but for the deductive
+process: a concrete pair of computable markets, proved to differ at the frozen coordinate,
+discharging every hypothesis at once. But those markets price everything at zero except one
+coordinate and are very likely exploitable, in which case the equivalence holds and carries
+no information at that instance. An informative instance would perturb a market already
+known to be an inductor — `liaHistory DP` — at a single coordinate.
 
-One degenerate discharge is available and is deliberately **not** taken: `S = ∅` makes the
-freeze the identity and inhabits the structure trivially, but it also forces `P = P'`. That
-is exactly the degenerate non-vacuity this repository's audit standard rejects, and it is
-recorded here so that nobody later mistakes it for a discharge.
+**The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
+`FiniteSupportPatch` have no inhabitant, and the reason is now attributed rather than open:
+the fuel calculus does not close over the escape-leaf decode the lookup needs — the
+`dd:fuel` inverse-operation ceiling, binding exactly where it was predicted to.
+
+One degenerate discharge is available and deliberately **not** taken: `S = ∅` makes the
+freeze the identity and inhabits the certificate trivially, but forces `P = P'`. That is the
+degenerate non-vacuity this repository's audit standard rejects, recorded here so nobody
+later mistakes it for a discharge.
 
 The precise verdict documentation should now use:
 

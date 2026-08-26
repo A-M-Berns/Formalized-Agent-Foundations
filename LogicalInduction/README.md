@@ -207,19 +207,16 @@ assertion starts failing and gets promoted to a plain clean assertion.
      `lic_conditioned_eventual_machine`. The fuel theorem and its witnesses are untouched
      beside them.
    * **closure under finite perturbations** (`thm:ifp`) — no longer a boundary of this
-     kind, because the published unrestricted statement is **false** and `not_overgeneral_ifp`
-     proves it so: arbitrary finite-day perturbations really can encode unbounded
-     computational advice, and the theorem does not survive it. The corrected
-     finite-*support* theorem is proved at **both** classes
-     (`lic_iff_of_finiteSupportPerturbation`, `machine_lic_iff_of_finiteSupportPerturbation`).
-     `MachineFiniteSupportPatch` is now **inhabited**
-     (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for markets whose frozen
-     coordinates come from a finite entry table meeting three stated conditions, witnessed
-     at a table with a real row. The fuel-class certificates `EfficientPrefixPatch` and
-     `FiniteSupportPatch` remain uninhabited. A concrete pair of computable markets differing exactly on that
-     table now exists (`machine_lic_iff_twoPoint`), so the corrected theorem's antecedent is
-     **satisfiable** — non-vacuous, though not yet *informative*: neither side of the
-     equivalence is known to hold at that pair.
+     kind, and for a stronger reason than the transport being built: the published
+     unrestricted statement is **false**, and `not_overgeneral_ifp` proves it so. A single
+     changed pricing day is an infinite computable function, so it can carry unbounded
+     computational advice to an efficient trader. The corrected finite-*support* theorem is
+     proved at both classes, and its machine form
+     (`machine_lic_iff_of_recognizableSupport`) asks only for two computable markets and a
+     perturbation — the freeze certificate is compiled from the market's own certificate
+     rather than supplied. One residual hypothesis remains, `Recognizable`, and it is a
+     condition on syntax rather than on markets; see the `thm:ifp` entry below for what it
+     stands for.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -370,45 +367,55 @@ proved content withdrawn.
   trader hypothesis is strictly stronger. The fuel-level theorem and its concrete witnesses
   (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`) are
   unchanged and inhabited beside them.
-* **`thm:ifp` — closure under finite perturbations.** Three carriers, in three of the four
-  categories this repo distinguishes.
-  * *Formal counterexample*: **the published unrestricted finite-day statement is false**,
-    and `not_overgeneral_ifp` (`Construction/Witnesses/FinitePerturbationWitness.lean`)
-    proves it false — kernel-checked, axiom-clean, at the paper's own quantifier and with no
-    theory parameter. The constructed `LIA`, perturbed on day `0` only, publishes the
-    diagonal sign bits as advice-atom prices; an efficient trader reads them through
-    historical price features and never computes them. A single changed pricing day is an
-    infinite computable function, and that is enough to smuggle across the gap between
-    *computable* and *efficiently computable*. Its published proof is separately invalid
-    (erratum PE1).
-  * *Corrected paper theorem*: `lic_iff_of_finiteSupportPerturbation` and
-    `machine_lic_iff_of_finiteSupportPerturbation` quantify over perturbations that move
-    only finitely many `(day, sentence)` price coordinates — the case in which the
-    appendix's "hard-code the constants" step is literally valid. That hypothesis is
-    **strictly stronger** than the paper's tail agreement
-    (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
-    other), so this is a proper restriction, not a restatement.
-  * *Exact paper theorem*: none, and there cannot be one — see the counterexample above.
-    `Properties/FinitePerturbationCounterexample.lean` holds the abstract reduction;
-    `Construction/Witnesses/FinitePerturbationWitness.lean` closes it over `LIA`.
-  * The fuel-class carrier `lic_iff_of_finitePerturbation` keeps the paper's own
-    hypothesis shape.
+* **`thm:ifp` — closure under finite perturbations.** All four categories are represented,
+  and the published statement is in the first only as a refutation.
 
-  Stated plainly, because this is the disclosure that has moved and it is easy to overstate:
-  `MachineFiniteSupportPatch` **is inhabited** — `FreezeOracle.machineFiniteSupportPatch_ofTable`,
-  for a market whose frozen coordinates are presented by a finite entry table satisfying
-  `Recognizable` per sentence and a `TablePresentation`, witnessed at a table with a real
-  row rather than the degenerate empty one. The fuel-class certificates
-  `EfficientPrefixPatch` and `FiniteSupportPatch` remain **uninhabited**, because the fuel
-  calculus does not close over the escape-leaf decode the lookup needs. A concrete pair of computable
-  markets differing exactly on that table exists (`machine_lic_iff_twoPoint`, closed but for
-  the deductive process), so every hypothesis of the corrected theorem is discharged
-  simultaneously at a real instance: the antecedent is **satisfiable**. That is
-  non-vacuity, not informativeness — those markets price everything at zero but one
-  coordinate and are very likely exploitable, in which case the equivalence holds and says
-  nothing *at that instance*. Both halves of this sentence are load-bearing. (An earlier
-  version of the errata ledger claimed non-vacuity citing a declaration that does not exist;
-  corrected there. That is why the distinction is drawn this finely.)
+  * *Exact paper theorem* — **refuted**. `not_overgeneral_ifp`
+    (`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the unrestricted
+    finite-day statement **false** at the paper's own quantifier: closed but for the
+    deductive process, `sorry`-free, `[propext, Classical.choice, Quot.sound]`.
+  * *Corrected theorem* — `machine_lic_iff_of_recognizableSupport` (`FreezeOracle`):
+    two computable markets differing on only finitely many `(day, sentence)` price
+    coordinates satisfy the criterion together. Finite support is the natural repair,
+    because it is exactly the case in which the appendix's "hard-code the constants" step
+    is literally valid. It is **strictly stronger** than the paper's tail agreement
+    (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
+    other), so this is a proper restriction, not a restatement. `Properties/FinitePerturbations.lean`
+    holds the class-agnostic form and its fuel-class twin.
+  * *Compatibility* — `lic_iff_of_finitePerturbation` keeps the paper's own hypothesis
+    shape and its explicit prefix-patch premises. It is retained so the repo's coverage of
+    the paper's quantifier is legible; it is **not** the corrected paper-facing theorem.
+  * *Auxiliary* — the freeze compiler and run-oracle machinery (`FreezeStep`,
+    `FreezeOracle`, `RpnFreeze`, `CanonicalCodes`) are implementation, not statements.
+
+  **Why the paper's proof fails.** The paper has finitely many changed *days*, not finitely
+  many changed `(day, sentence)` constants. A single day is an infinite pricing function, so
+  it can carry unbounded computational advice — which is exactly what the counterexample
+  makes an efficient trader read, through historical price features, without ever computing
+  it.
+
+  **The one residual hypothesis, and what it is.** The corrected theorem asks that the
+  finitely many sentences whose price moves be `Recognizable` — `BotFree` and `NoReserved`.
+  That is a condition on *syntax*, not on markets, traders or perturbations: representation
+  residue, not mathematics. Each half stands for one `Complexity.FP` primitive this toolkit
+  lacks — integer square root for `BotFree` (Foundation's `ofNat` discards the payload at
+  tag `0`, so deciding whether a code denotes `⊥` is deciding whether it is a perfect
+  square) and a structured-payload parser for `NoReserved`. Both are polynomial time
+  mathematically. Neither half has slack: `decode_and_noncanonical` proves the first
+  necessary, and a structured spelling at any subterm breaks completeness. So the
+  unrestricted finite-support statement is, as far as this development can tell, **true** —
+  and unprovable here for want of two primitives rather than for want of a theorem.
+
+  **Witnesses.** `machine_lic_iff_twoPoint` is closed but for the deductive process: a
+  concrete pair of computable markets, proved to differ at the frozen coordinate, discharging
+  every hypothesis at once. So the corrected theorem is **non-vacuous**. It is not yet
+  *informative*: those markets price everything at zero but one coordinate and are very
+  likely exploitable, in which case the equivalence holds and says nothing at that instance.
+  Both halves of that sentence are load-bearing — an earlier errata entry claimed
+  non-vacuity citing a declaration that did not exist, which is why the distinction is drawn
+  this finely. The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch`
+  remain **uninhabited**, because the fuel calculus does not close over the escape-leaf
+  decode: the `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
 
 ## Closing the boundaries
 
