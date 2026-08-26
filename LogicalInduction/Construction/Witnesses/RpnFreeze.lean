@@ -52,6 +52,14 @@ for an exponentially large `c`; since Foundation's `Formula.ofNat` ignores the p
 tag `0`, `decode` is not injective, so the test reduces to `Nat.unpair` / integer square
 root, which `BigDigits` does not close over.
 
+**Narrowed (`matchRun_eq_matchRunCanon`, below).**  That decode ambiguity is caused
+*entirely* by `⊥`: `CanonicalCodes.lean` proves Foundation's decoder injective on every
+sentence with no `⊥` subformula, and exhibits the two codes that break it at `⊥`.  So on
+a `⊥`-free target the escape test is a comparison against a fixed numeral, `matchRun`
+agrees with the constant-comparison matcher `matchRunCanon`, and **no square root is
+needed at all**.  The disclosure below therefore binds exactly when the frozen quote table
+contains a sentence with a `⊥` subformula.
+
 That gap is a limitation of the fuel model (`dd:fuel`), not of the mathematics: in the
 intended complexity model the claim holds, since `unpair` on poly-bit inputs is
 poly-time.  Closing it inside the fuel calculus — a `BigDigits.sqrt` — is blocked
@@ -67,6 +75,7 @@ under their *inverses* (`sqrt`, `unpair`, division by a large divisor).
 
 Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:lia`.
 -/
+import LogicalInduction.Construction.Witnesses.CanonicalCodes
 import LogicalInduction.Construction.Witnesses.RpnConditioning
 
 namespace LogicalInduction
@@ -154,6 +163,103 @@ lemma matchRun_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p =
     matchRun get φ p =
       if sentenceMatches φ (get (p + 1)) = 1 then p + 3 else 0 := by
   cases φ <;> simp only [matchRun, h] <;> rfl
+
+/-! ### The canonical-code matcher
+
+`matchRun`'s escape test `sentenceMatches ψ c` is the decoder-faithful one, and it reads
+`Nat.unpair` at every node — the recorded obstruction to certifying the matcher at the
+symbol-metered emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
+by `⊥`: off the `⊥` fiber Foundation's decoder is injective.  So on a `⊥`-free target the
+matcher below — whose only tests are comparisons of a stream token against a **fixed
+numeral** — is the same function.  `matchRunCanon` is not an alternative semantics; it is
+`matchRun` with the square root removed, and `matchRun_eq_matchRunCanon` says so. -/
+
+/-- `matchRun` with every escape test replaced by a comparison against the target's
+canonical code.  Every test is a comparison against a constant. -/
+def matchRunCanon (get : ℕ → ℕ) : Sentence → ℕ → ℕ
+  | ⊥, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (⊥ : Sentence) then p + 3 else 0)
+      else if get p = 0 then p + 2 else 0
+  | .atom a, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) then p + 3 else 0)
+      else if get p = a + 5 then p + 2 else 0
+  | φ 🡒 ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ 🡒 ψ) then p + 3 else 0)
+      else if get p = 2 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+  | φ ⋏ ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ ⋏ ψ) then p + 3 else 0)
+      else if get p = 3 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+  | φ ⋎ ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ ⋎ ψ) then p + 3 else 0)
+      else if get p = 4 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+
+/-- Escape form of the canonical matcher, uniform in the target. -/
+lemma matchRunCanon_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p = 1) :
+    matchRunCanon get φ p =
+      if get (p + 1) = Encodable.encode φ then p + 3 else 0 := by
+  cases φ <;> simp only [matchRunCanon, h] <;> rfl
+
+/-- **The square root is not needed on a `⊥`-free target.**  The decoder-faithful
+positional matcher and the constant-comparison matcher are the same function whenever the
+target sentence has no `⊥` subformula — and every recursive call is on a subformula, hence
+also `⊥`-free.
+
+This narrows the disclosure in this file's header and in `matchRun_polyFueled`'s scope
+warning: `Nat.unpair` is forced **iff** the frozen table contains a sentence with a `⊥`
+subformula (`decode_and_noncanonical` is the converse witness).
+
+Proof kind: `P` proved.  Provenance: (a) `sentenceMatches_of_botFree`,
+`matchRun_escape`, `matchRunCanon_escape`.
+Paper node: `app:ifp` -/
+lemma matchRun_eq_matchRunCanon (get : ℕ → ℕ) :
+    ∀ (φ : Sentence), BotFree φ → ∀ p : ℕ,
+      matchRun get φ p = matchRunCanon get φ p := by
+  intro φ
+  induction φ using LO.Propositional.Formula.rec' with
+  | hfalsum => exact fun h => absurd h id
+  | hatom a =>
+      intro _ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ (by simp)]
+        by_cases hc : get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) <;>
+          simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp]
+  | himp φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_imp φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ 🡒 ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
+  | hand φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_and φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ ⋏ ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
+  | hor φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_or φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ ⋎ ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
 
 /-- Two complete self-delimiting blocks parse in sequence under any binary shell. -/
 lemma parseRpn_bin_body {b₁ b₂ : List ℕ} {φ ψ : Sentence}
@@ -686,9 +792,13 @@ that decision reduces to `Nat.unpair` (integer square root).  The `BigDigits` AP
 provide it, and cannot without either a new axiom or `TC⁰` division machinery: closure
 requires a poly-bounded digit carry, and square root's carry is the partial remainder,
 which is `Θ(len)` digits wide — the digit model is closed under the forward big-value
-operations and open under their inverses.  This is therefore a permanently disclosed
+operations and open under their inverses.  This is therefore a disclosed
 boundary: `EfficientPrefixPatch.preserves_ec` has no LIA inhabitant at the collapsed
-class, and this lemma is the token-model half of the certificate only. -/
+class, and this lemma is the token-model half of the certificate only.
+
+**Scope of the boundary.**  `matchRun_eq_matchRunCanon` above shows the escape decision
+needs `unpair` only when the *target* has a `⊥` subformula; on a `⊥`-free target every
+test in the matcher is a comparison against a fixed numeral. -/
 lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
     (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (target : Sentence) :
     ∀ {cp : Code} {P : ℕ → ℕ}, PolyFueled cp P →

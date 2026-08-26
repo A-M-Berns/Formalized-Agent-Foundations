@@ -468,10 +468,22 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- test on exponentially large escape codes (the inverse-operation ceiling of the digit
 -- model).  `thm:ifp` is therefore covered only by `lic_iff_of_finitePerturbation` at the
 -- efficiently-patchable restriction, never by an LIA-level discharge of the patch.
+-- NARROWED: `decode_eq_some_iff_of_botFree` (Construction/Witnesses/CanonicalCodes.lean)
+-- proves Foundation's decoder injective off the `⊥` fiber, and
+-- `RpnFreeze.matchRun_eq_matchRunCanon` turns the matcher into constant comparisons on a
+-- `⊥`-free target; `decode_and_noncanonical` is the converse witness.  The `unpair`
+-- ceiling above therefore binds exactly when the frozen table contains a sentence with a
+-- `⊥` subformula.  It is still the *only* narrowing: no `MachineFiniteSupportPatch`,
+-- `FiniteSupportPatch` or `EfficientPrefixPatch` inhabitant exists at any table.
 #assert_axioms_clean
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
   RpnFreeze.unRpn_rpnFreezeRun
+  RpnFreeze.matchRun_eq_matchRunCanon
+  decode_eq_some_iff_of_botFree
+  sentenceMatches_of_botFree
+  decode_falsum_noncanonical
+  decode_and_noncanonical
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
