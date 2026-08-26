@@ -34,8 +34,13 @@ def MachineSentenceCodes (φ : ℕ → Sentence) : Prop :=
 /-- **Every fuel-metered efficient sentence sequence is machine-metered.** The block
 stream's digitization is again a `PolySegStream`, hence a clocked code pair, and
 `traderMachine` compiles that pair into polynomial time; the emitted word undigitizes back
-to the original block, so the parse is unchanged. -/
-theorem RpnSentenceCodes.toMachine {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+to the original block, so the parse is unchanged.  The converse is neither needed nor
+claimed.
+
+A `lemma`, not a `theorem`: it is supporting infrastructure for the machine reading of
+`thm:scon`, not itself a paper claim.  Promote it to a labelled endpoint if and when a
+paper-facing theorem is stated directly in terms of it. -/
+lemma RpnSentenceCodes.toMachine {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
     MachineSentenceCodes φ := by
   obtain ⟨s, hs, hp⟩ := h
   obtain ⟨lc, tc, a, k, hclk⟩ := PolySegStream.clockedTokens_certificate hs.digitizeStream

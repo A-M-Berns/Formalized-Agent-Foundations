@@ -41,6 +41,28 @@ following the belief-sequence definition) and *deliberately* generalizes the pro
 to arbitrary markets.  Finite support is exactly what would rescue the hard-coding step, so
 the gap is a genuine cost of that generalization, not an oversight about `LIA`.
 
+## The correction
+
+Finite support is exactly what rescues the hard-coding step, so this file also proves the
+**corrected** theorem, at both classes: `lic_iff_of_finiteSupportPerturbation` and
+`machine_lic_iff_of_finiteSupportPerturbation` quantify over perturbations that move only
+finitely many `(day, sentence)` price *coordinates*, where the constant table really is
+finite and the appendix's own justification is literally valid.  That hypothesis is
+**strictly stronger** than the paper's `∀ n ≥ N, pt_n = pt'_n`
+(`FiniteSupportPerturbation.tail_agree` proves one direction; the day-`0` huge-numeral
+market below refutes the other), so the corrected theorem is a proper restriction of
+`thm:ifp`, not a restatement of it.  The published unrestricted theorem remains
+unresolved, and its published proof remains invalid.
+
+The freeze itself is not duplicated: `EF.freezeOn` takes a per-coordinate selector, and
+`EF.freezeBefore_eq_freezeOn` identifies the day-cutoff freeze as its `day < cutoff`
+instance.
+
+One thing the corrected theorem does **not** buy: an inhabitant.  Both
+`FiniteSupportPatch` and `MachineFiniteSupportPatch` are uninhabited in this repo, exactly
+as `EfficientPrefixPatch` is.  Finite support makes the argument sound in principle;
+discharging the certificate is a separate `Complexity.FP` transport result.
+
 **What this file does about it.**  We keep the theorem to what is actually provable:
 `EfficientPrefixPatch` states the missing closure fact for the concrete syntax
 transformation, and `lic_iff_of_finitePerturbation` takes it as a hypothesis for each
@@ -56,6 +78,7 @@ whenever this theorem is cited as the paper's.
 -/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.MachineEfficiency
 
 namespace LogicalInduction
 
@@ -781,6 +804,408 @@ theorem lic_iff_of_finitePerturbation
             (Tr.freezeBeforeErrorBound patchP.quote cutoff P P') hdiff
         exact hLI'.noExploit frozen hfrozenEC hfrozenExploits }
 
+/-! ## The public predicate -/
+
+/-- `P` and `P'` differ on only finitely many `(day, sentence)` price coordinates. -/
+def FiniteSupportPerturbation (P P' : History) : Prop :=
+  ∃ S : Finset (ℕ × Sentence), ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
+
+/-- Finite support is *strictly stronger* than the paper's tail-agreement hypothesis. -/
+lemma FiniteSupportPerturbation.tail_agree {P P' : History}
+    (h : FiniteSupportPerturbation P P') :
+    ∃ N : ℕ, ∀ d, N ≤ d → ∀ φ, P d φ = P' d φ := by
+  obtain ⟨S, hS⟩ := h
+  refine ⟨(S.image Prod.fst).sup id + 1, ?_⟩
+  intro d hd φ
+  refine hS d φ (fun hmem => ?_)
+  have : d ≤ (S.image Prod.fst).sup id :=
+    Finset.le_sup (f := id) (Finset.mem_image.2 ⟨(d, φ), hmem, rfl⟩)
+  omega
+
+namespace EF
+
+/-! ## The selector-indexed freeze (generalizes `EF.freezeBefore`) -/
+
+/-- Freeze exactly the price leaves whose coordinate is selected.  With
+`sel = fun d _ => decide (d < cutoff)` this is `EF.freezeBefore`; with
+`sel = fun d φ => decide ((d, φ) ∈ S)` it is the finite-support freeze. -/
+def freezeOn (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool) : EF → EF
+  | .price φ day =>
+      if sel day φ then .letE (.price φ day) (.const (quote day φ)) else .price φ day
+  | .const q => .const q
+  | .add a b => .add (a.freezeOn quote sel) (b.freezeOn quote sel)
+  | .mul a b => .mul (a.freezeOn quote sel) (b.freezeOn quote sel)
+  | .max a b => .max (a.freezeOn quote sel) (b.freezeOn quote sel)
+  | .safeRecip a => .safeRecip (a.freezeOn quote sel)
+  | .var i => .var i
+  | .letE value body =>
+      .letE (value.freezeOn quote sel) (body.freezeOn quote sel)
+
+/-- The existing day-cutoff freeze is the `day < cutoff` instance: no duplication. -/
+lemma freezeBefore_eq_freezeOn (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+    e.freezeBefore quote cutoff = e.freezeOn quote (fun d _ => decide (d < cutoff)) := by
+  induction e with
+  | price φ day => simp only [freezeBefore, freezeOn, decide_eq_true_eq]
+  | const q => rfl
+  | add a b iha ihb => simp [freezeBefore, freezeOn, iha, ihb]
+  | mul a b iha ihb => simp [freezeBefore, freezeOn, iha, ihb]
+  | max a b iha ihb => simp [freezeBefore, freezeOn, iha, ihb]
+  | safeRecip a iha => simp [freezeBefore, freezeOn, iha]
+  | var i => rfl
+  | letE value body ihv ihb => simp [freezeBefore, freezeOn, ihv, ihb]
+
+@[simp] lemma freezeOn_rank (e : EF) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).rank = e.rank := by
+  induction e with
+  | price φ day => simp only [freezeOn]; split <;> simp
+  | const q => simp [freezeOn]
+  | add a b iha ihb => simp [freezeOn, iha, ihb]
+  | mul a b iha ihb => simp [freezeOn, iha, ihb]
+  | max a b iha ihb => simp [freezeOn, iha, ihb]
+  | safeRecip a iha => simp [freezeOn, iha]
+  | var i => simp [freezeOn]
+  | letE value body ihv ihb => simp [freezeOn, ihv, ihb]
+
+lemma freezeOn_rank_le (e : EF) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).rank ≤ e.rank := by
+  rw [freezeOn_rank]
+
+lemma freezeOn_cost_le (e : EF) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) : (e.freezeOn quote sel).cost ≤ 3 * e.cost := by
+  induction e with
+  | price φ day => simp only [freezeOn]; split <;> simp [cost]
+  | const q => norm_num [freezeOn, cost]
+  | add a b iha ihb => simp only [freezeOn, cost]; omega
+  | mul a b iha ihb => simp only [freezeOn, cost]; omega
+  | max a b iha ihb => simp only [freezeOn, cost]; omega
+  | safeRecip a iha => simp only [freezeOn, cost]; omega
+  | var i => norm_num [freezeOn, cost]
+  | letE value body ihv ihb => simp only [freezeOn, cost]; omega
+
+/-- **Exact denotational transport.**  Every selected leaf reads its frozen constant,
+which is the `P`-price; every unselected leaf reads the `P'`-price, which *is* the
+`P`-price.  So the frozen feature against `P'` denotes exactly what the original feature
+denoted against `P` — no error term, and no constraint on the day. -/
+lemma freezeOn_denoteWith (e : EF) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (P P' : History)
+    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
+    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ) :
+    ∀ ρ : List ℝ, (e.freezeOn quote sel).denoteWith ρ P' = e.denoteWith ρ P := by
+  induction e with
+  | price φ day =>
+      intro ρ
+      simp only [freezeOn]
+      cases hsel : sel day φ with
+      | true => simp [hsel, hin day φ hsel]
+      | false => simp [hsel, hout day φ hsel]
+  | const q => intro ρ; rfl
+  | add a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
+  | mul a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
+  | max a b iha ihb => intro ρ; simp [freezeOn, iha ρ, ihb ρ]
+  | safeRecip a iha => intro ρ; simp [freezeOn, iha ρ]
+  | var i => intro ρ; rfl
+  | letE value body ihv ihb =>
+      intro ρ
+      simp only [freezeOn, denoteWith_letE]
+      rw [ihv ρ, ihb]
+
+lemma freezeOn_denote (e : EF) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (P P' : History)
+    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
+    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ) :
+    (e.freezeOn quote sel).denote P' = e.denote P :=
+  e.freezeOn_denoteWith quote sel P P' hin hout []
+
+end EF
+
+namespace Strategy
+
+def freezeOn {day : ℕ} (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
+    (T : Strategy day) : Strategy day where
+  trades := T.trades.map fun p => (p.1.freezeOn quote sel, p.2)
+  rank_le := by
+    intro p hp
+    simp only [List.mem_map] at hp
+    obtain ⟨q, hq, rfl⟩ := hp
+    exact (q.1.freezeOn_rank_le quote sel).trans (T.rank_le q hq)
+
+/-- **The settlement term is the obstruction to exact transport at strategy level.**
+`Strategy.value` contains `- V day p.2`, which is *not* a syntactic leaf and so cannot be
+frozen.  Exact equality therefore needs the whole day-`day` fiber to be unselected. -/
+lemma freezeOn_value {day : ℕ} (T : Strategy day) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (P P' : History) (w : Valuation)
+    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
+    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ)
+    (hday : ∀ φ, sel day φ = false) :
+    (T.freezeOn quote sel).value P' w = T.value P w := by
+  simp only [Strategy.value, freezeOn, List.map_map]
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro p hp
+  simp only [Function.comp_apply]
+  rw [p.1.freezeOn_denote quote sel P P' hin hout]
+  rw [← hout day p.2 (hday p.2)]
+
+end Strategy
+
+namespace Trader
+
+def freezeOn (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool) (Tr : Trader) :
+    Trader where
+  strat day := (Tr.strat day).freezeOn quote sel
+
+/-- The finite set of days on which the perturbation is felt. -/
+def freezeDays (S : Finset (ℕ × Sentence)) : Finset ℕ := S.image Prod.fst
+
+noncomputable def freezeOnErrorBound (Tr : Trader) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (D : Finset ℕ) (P P' : History) : ℝ :=
+  ∑ day ∈ D, ((Tr.strat day).magnitude P +
+    ((Tr.freezeOn quote sel).strat day).magnitude P')
+
+/-- Net worths differ by at most an explicit bound supported on the finitely many
+*affected days*.  Every unaffected day cancels exactly. -/
+lemma freezeOn_netWorth_difference_le (Tr : Trader) (quote : ℕ → Sentence → ℚ)
+    (sel : ℕ → Sentence → Bool) (D : Finset ℕ) (P P' : History)
+    (hin : ∀ d φ, sel d φ = true → P d φ = (quote d φ : ℝ))
+    (hout : ∀ d φ, sel d φ = false → P d φ = P' d φ)
+    (hD : ∀ d, d ∉ D → ∀ φ, sel d φ = false)
+    (hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1)
+    (hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1)
+    (v : PCWorld) (n : ℕ) :
+    |Tr.netWorth P v n - (Tr.freezeOn quote sel).netWorth P' v n| ≤
+      Tr.freezeOnErrorBound quote sel D P P' := by
+  classical
+  let g : ℕ → ℝ := fun day ↦
+    (Tr.strat day).magnitude P + ((Tr.freezeOn quote sel).strat day).magnitude P'
+  have hw : ∀ φ, v.payout φ = 0 ∨ v.payout φ = 1 := by
+    intro φ
+    by_cases hφ : v.Holds φ
+    · exact Or.inr (by simp [PCWorld.payout, hφ])
+    · exact Or.inl (by simp [PCWorld.payout, hφ])
+  have hterm : ∀ day,
+      |(Tr.strat day).value P v.payout -
+          ((Tr.freezeOn quote sel).strat day).value P' v.payout| ≤
+        if day ∈ D then g day else 0 := by
+    intro day
+    by_cases hday : day ∈ D
+    · rw [if_pos hday]
+      exact (abs_sub _ _).trans (add_le_add
+        (Strategy.abs_value_le_magnitude (Tr.strat day) P v.payout hw (hP day))
+        (Strategy.abs_value_le_magnitude
+          ((Tr.freezeOn quote sel).strat day) P' v.payout hw (hP' day)))
+    · rw [if_neg hday]
+      have heq := (Tr.strat day).freezeOn_value quote sel P P' v.payout hin hout
+        (hD day hday)
+      change |(Tr.strat day).value P v.payout -
+        ((Tr.strat day).freezeOn quote sel).value P' v.payout| ≤ 0
+      rw [heq]
+      simp
+  have hg : ∀ day, 0 ≤ g day := fun day ↦
+    add_nonneg (Strategy.magnitude_nonneg _ _) (Strategy.magnitude_nonneg _ _)
+  calc
+    |Tr.netWorth P v n - (Tr.freezeOn quote sel).netWorth P' v n| =
+        |∑ day ∈ Finset.range (n + 1),
+          ((Tr.strat day).value P v.payout -
+            ((Tr.freezeOn quote sel).strat day).value P' v.payout)| := by
+          simp only [Trader.netWorth]
+          rw [Finset.sum_sub_distrib]
+    _ ≤ ∑ day ∈ Finset.range (n + 1),
+          |(Tr.strat day).value P v.payout -
+            ((Tr.freezeOn quote sel).strat day).value P' v.payout| :=
+          Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ day ∈ Finset.range (n + 1), if day ∈ D then g day else 0 :=
+          Finset.sum_le_sum (fun day _ ↦ hterm day)
+    _ = ∑ day ∈ (Finset.range (n + 1)).filter (fun day ↦ day ∈ D), g day := by
+          rw [Finset.sum_filter]
+    _ ≤ ∑ day ∈ D, g day := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg
+          · intro day hday
+            simp only [Finset.mem_filter] at hday
+            exact hday.2
+          · intro day _ _
+            exact hg day
+    _ = Tr.freezeOnErrorBound quote sel D P P' := rfl
+
+end Trader
+
+/-! ## The corrected theorem -/
+
+/-- The efficiency certificate for the **finite-support** freeze.  Unlike
+`EfficientPrefixPatch`, the quote table here is genuinely finite: `quote` is only read at
+the finitely many coordinates in `S`, so the paper's "hard-code the constants" step is
+literally valid.  It is nevertheless **uninhabited in this repo**: soundness of the
+argument is not the same as having built the compiler.
+Paper node: `app:ifp` -/
+structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
+  quote : ℕ → Sentence → ℚ
+  quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
+  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
+    EfficientlyComputable (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
+
+/-- **Closure under finite-support perturbations** — the *corrected* `thm:ifp`, at the
+fuel class.
+
+**This is not the paper's `thm:ifp`.**  Its hypothesis is **strictly stronger**: finite
+support of the price difference implies the paper's tail agreement
+(`FiniteSupportPerturbation.tail_agree`) and is not implied by it — the day-`0`
+huge-numeral market in this file's header agrees with `LIA` from day `1` and is not
+finitely supported.  What this repairs is the appendix's efficiency step, which is valid
+exactly when the constant table is finite: `quote` is read only at the finitely many
+coordinates in `S`, so "hard-code the constants" is literally true here and false in
+general.  `lic_iff_of_finitePerturbation` below keeps the paper's own hypothesis shape and
+its unresolved qualification; neither theorem reaches the unrestricted node.
+
+Kind `C`; hypotheses `(a)` except `preserves_ec`, which is the appendix's own obligation.
+Paper node: `thm:ifp` -/
+theorem lic_iff_of_finiteSupportPerturbation
+    (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
+    (patchP : FiniteSupportPatch P S) (patchP' : FiniteSupportPatch P' S) :
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
+  classical
+  have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
+  have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc
+  set sel : ℕ → Sentence → Bool := fun d φ => decide ((d, φ) ∈ S) with hsel
+  have hselF : ∀ d φ, sel d φ = false ↔ (d, φ) ∉ S := by
+    intro d φ; simp [hsel]
+  have hselT : ∀ d φ, sel d φ = true ↔ (d, φ) ∈ S := by
+    intro d φ; simp [hsel]
+  set D : Finset ℕ := Trader.freezeDays S with hD
+  have hDays : ∀ d, d ∉ D → ∀ φ, sel d φ = false := by
+    intro d hd φ
+    rw [hselF]
+    intro hmem
+    refine hd ?_
+    rw [hD, Trader.freezeDays, Finset.mem_image]
+    exact ⟨(d, φ), hmem, rfl⟩
+  constructor
+  · intro hLI
+    exact {
+      marketComputable := hP'comp
+      processComputable := hLI.processComputable
+      noExploit := by
+        intro Tr hTr hExploits
+        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+            |Tr.netWorth P' v n - (Tr.freezeOn patchP'.quote sel).netWorth P v n| ≤
+              Tr.freezeOnErrorBound patchP'.quote sel D P' P := by
+          intro n v _
+          exact Tr.freezeOn_netWorth_difference_le patchP'.quote sel D P' P
+            (fun d φ h => patchP'.quote_exact d φ ((hselT d φ).1 h))
+            (fun d φ h => (hagree d φ ((hselF d φ).1 h)).symm)
+            hDays hP' hP v n
+        exact hLI.noExploit _ (patchP'.preserves_ec Tr hTr)
+          (hExploits.of_boundedDifference _ hdiff) }
+  · intro hLI'
+    exact {
+      marketComputable := hPcomp
+      processComputable := hLI'.processComputable
+      noExploit := by
+        intro Tr hTr hExploits
+        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+            |Tr.netWorth P v n - (Tr.freezeOn patchP.quote sel).netWorth P' v n| ≤
+              Tr.freezeOnErrorBound patchP.quote sel D P P' := by
+          intro n v _
+          exact Tr.freezeOn_netWorth_difference_le patchP.quote sel D P P'
+            (fun d φ h => patchP.quote_exact d φ ((hselT d φ).1 h))
+            (fun d φ h => hagree d φ ((hselF d φ).1 h))
+            hDays hP hP' v n
+        exact hLI'.noExploit _ (patchP.preserves_ec Tr hTr)
+          (hExploits.of_boundedDifference _ hdiff) }
+
+/-! ## Refutation of the exact-net-worth claim -/
+
+/-- The settlement term `- V day φ` in `Strategy.value` is not syntax, so the frozen
+strategy's value on an *affected* day differs from the original's by exactly
+`coefficient * (P' day φ - P day φ)`.  Concretely, with a single unit trade the
+discrepancy is the price gap itself. -/
+lemma freezeOn_value_gap_on_selected_day
+    (day : ℕ) (φ : Sentence) (P P' : History) (w : Valuation)
+    (quote : ℕ → Sentence → ℚ) (sel : ℕ → Sentence → Bool)
+    (T : Strategy day) (hT : T.trades = [(EF.const 1, φ)]) :
+    (T.freezeOn quote sel).value P' w - T.value P w = P day φ - P' day φ := by
+  simp [Strategy.value, Strategy.freezeOn, hT, EF.freezeOn, EF.denote, EF.denoteWith]
+
+/-! ## The same theorem at the machine class (the recommended home) -/
+
+/-- The machine-class efficiency certificate for the finite-support freeze.  This is the
+version whose obligation is dischargeable: `Nat.unpair` is polynomial time, so the
+escape-leaf decode that blocks the fuel model is available here.
+
+Like `EfficientPrefixPatch`, this structure has **no inhabitant anywhere in the repo**.
+Finite support makes the appendix's argument sound *in principle* — the constant table is
+genuinely finite — but discharging the certificate is a separate `Complexity.FP` transport
+result that is not proved here.  Do not read the corrected theorem as non-vacuous.
+Paper node: `app:ifp` -/
+structure MachineFiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
+  quote : ℕ → Sentence → ℚ
+  quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
+  preserves_ec : ∀ Tr : Trader, MachineEfficientTrader Tr →
+    MachineEfficientTrader (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
+
+/-- **Closure under finite-support perturbations, at the paper's own quantifier.**  The
+same corrected statement as `lic_iff_of_finiteSupportPerturbation`, over
+`MachineEfficientTrader` rather than the fuel-certified class, and it is the primary one:
+the whole economic argument is class-agnostic, so only the freeze certificate changes.
+Read that theorem's docstring for what "corrected" means here — the hypothesis is strictly
+stronger than the paper's, and this is not the unrestricted `thm:ifp`.
+
+Kind `C`; hypotheses `(a)` except `preserves_ec`.
+Paper node: `thm:ifp` -/
+theorem machine_lic_iff_of_finiteSupportPerturbation
+    (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
+    (patchP : MachineFiniteSupportPatch P S) (patchP' : MachineFiniteSupportPatch P' S) :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+  classical
+  have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
+  have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc
+  set sel : ℕ → Sentence → Bool := fun d φ => decide ((d, φ) ∈ S) with hsel
+  have hselF : ∀ d φ, sel d φ = false ↔ (d, φ) ∉ S := by intro d φ; simp [hsel]
+  have hselT : ∀ d φ, sel d φ = true ↔ (d, φ) ∈ S := by intro d φ; simp [hsel]
+  set D : Finset ℕ := Trader.freezeDays S with hD
+  have hDays : ∀ d, d ∉ D → ∀ φ, sel d φ = false := by
+    intro d hd φ
+    rw [hselF]
+    intro hmem
+    refine hd ?_
+    rw [hD, Trader.freezeDays, Finset.mem_image]
+    exact ⟨(d, φ), hmem, rfl⟩
+  constructor
+  · intro hLI
+    exact {
+      marketComputable := hP'comp
+      processComputable := hLI.processComputable
+      noExploit := by
+        intro Tr hTr hExploits
+        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+            |Tr.netWorth P' v n - (Tr.freezeOn patchP'.quote sel).netWorth P v n| ≤
+              Tr.freezeOnErrorBound patchP'.quote sel D P' P := by
+          intro n v _
+          exact Tr.freezeOn_netWorth_difference_le patchP'.quote sel D P' P
+            (fun d φ h => patchP'.quote_exact d φ ((hselT d φ).1 h))
+            (fun d φ h => (hagree d φ ((hselF d φ).1 h)).symm)
+            hDays hP' hP v n
+        exact hLI.noExploit _ (patchP'.preserves_ec Tr hTr)
+          (hExploits.of_boundedDifference _ hdiff) }
+  · intro hLI'
+    exact {
+      marketComputable := hPcomp
+      processComputable := hLI'.processComputable
+      noExploit := by
+        intro Tr hTr hExploits
+        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
+            |Tr.netWorth P v n - (Tr.freezeOn patchP.quote sel).netWorth P' v n| ≤
+              Tr.freezeOnErrorBound patchP.quote sel D P P' := by
+          intro n v _
+          exact Tr.freezeOn_netWorth_difference_le patchP.quote sel D P P'
+            (fun d φ h => patchP.quote_exact d φ ((hselT d φ).1 h))
+            (fun d φ h => hagree d φ ((hselF d φ).1 h))
+            hDays hP hP' v n
+        exact hLI'.noExploit _ (patchP.preserves_ec Tr hTr)
+          (hExploits.of_boundedDifference _ hdiff) }
+
 end LogicalInduction
 
 #print axioms LogicalInduction.EF.freezeBefore_denote
@@ -788,3 +1213,8 @@ end LogicalInduction
 #print axioms LogicalInduction.Trader.freezeBefore_netWorth_difference_le
 #print axioms LogicalInduction.Trader.Exploits.of_boundedDifference
 #print axioms LogicalInduction.lic_iff_of_finitePerturbation
+#print axioms LogicalInduction.FiniteSupportPerturbation.tail_agree
+#print axioms LogicalInduction.EF.freezeBefore_eq_freezeOn
+#print axioms LogicalInduction.Trader.freezeOn_netWorth_difference_le
+#print axioms LogicalInduction.lic_iff_of_finiteSupportPerturbation
+#print axioms LogicalInduction.machine_lic_iff_of_finiteSupportPerturbation

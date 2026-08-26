@@ -71,6 +71,30 @@ output may be numerically larger than its raw fuel, but `codeEvaln_result_le` to
 `codeEvalBound_poly` bounds a fixed program's output by a code-dependent polynomial in that
 fuel. That is the output-size obstruction used here.
 
+### The corrected theorem (2026-08-26)
+
+Finite support is exactly what rescues the hard-coding step, and the repository now proves
+that case. `FiniteSupportPerturbation P P'` says the two markets differ on only finitely
+many `(day, sentence)` price *coordinates*; the freeze then reads its quote table at
+finitely many places, so the appendix's "hard-code the constants" justification is
+literally valid. `lic_iff_of_finiteSupportPerturbation` and
+`machine_lic_iff_of_finiteSupportPerturbation` (the latter at the paper's own quantifier,
+`MachineEfficientTrader`) carry it.
+
+Two things must be said plainly about that theorem, and are said at the statement:
+
+1. **Its hypothesis is strictly stronger than the paper's.** Finite support implies
+   tail agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — the
+   day-`0` huge-numeral market above agrees with `LIA` from day `1` and is not finitely
+   supported. So this is a *corrected* theorem, a proper restriction of `thm:ifp`, not a
+   restatement of it. The published unrestricted theorem is still unresolved and its
+   published proof is still invalid.
+2. **It has no inhabitant either.** `FiniteSupportPatch` and `MachineFiniteSupportPatch`
+   join `EfficientPrefixPatch` at zero inhabitants repo-wide. Finite support makes the
+   argument *sound in principle*; discharging the certificate is a separate
+   `Complexity.FP` transport result. Nothing here should be described as non-vacuous —
+   that is the failure the 2026-08-02 correction above exists to catch.
+
 ### Stretch goal: settle the unrestricted statement
 
 It is a research-level stretch goal to formalize one of the following:
@@ -87,6 +111,10 @@ features, potentially obtaining computational information unavailable to traders
 unmodified prefix. Formal success requires the full separation result—one tail-equivalent
 market satisfying the LIC and the other admitting an efficient exploiter—not merely another
 proof that `EfficientPrefixPatch` can be uninhabited.
+
+The finite-support theorem is a *third* outcome, and it settles neither of these: it
+repairs the appendix's argument on the restricted domain where that argument is valid,
+while leaving the unrestricted statement open.
 
 Until one of these alternatives is formalized, documentation should use the precise verdict:
 

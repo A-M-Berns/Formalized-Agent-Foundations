@@ -224,6 +224,7 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
   isLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
+  lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
 
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -713,6 +714,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   f lt code fueled
 #assert_fields EfficientPrefixPatch
   quote quote_exact preserves_ec
+#assert_fields FiniteSupportPatch
+  quote quote_exact preserves_ec
 #assert_fields EfficientRepeatedEnumeration
   sequence sequence_poly repeats sound covers
 #assert_fields EventualConditioningFloor
@@ -737,6 +740,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
+#assert_fields MachineFiniteSupportPatch
+  quote quote_exact preserves_ec
 #assert_fields LUV
   gt
 #assert_fields LUVCombination
