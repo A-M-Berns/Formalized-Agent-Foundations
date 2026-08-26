@@ -48,4 +48,5 @@ import LogicalInduction.Framework.Machine.EvalnRegBound
 import LogicalInduction.Construction.Machine.ClockedSim
 import LogicalInduction.Framework.Machine.DigitBits
 import LogicalInduction.Framework.Machine.TraderMachine
+import LogicalInduction.Framework.Machine.FPFold
 import LogicalInduction.Framework.MachineEfficiency

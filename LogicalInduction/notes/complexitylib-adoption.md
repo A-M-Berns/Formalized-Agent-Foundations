@@ -405,6 +405,15 @@ need them, and `Cobham/**` in particular now looks load-bearing rather than opti
 certifying a streaming transduction in `FP`, against ~1,500–3,000 lines of bespoke Turing
 machine per client otherwise.
 
+**Trap in the binary-arithmetic library, recorded because the name misleads.**
+`binaryMulAddTM` is the obviously-named multiply and is **repeated addition**:
+`binaryMulAddLoopTime` is a `binaryForLoopTime … rightValue 0 rightValue`, linear in the
+*value* of the right operand and so exponential in bit width. It is canonical-binary in
+representation, which makes its space bound look right. The genuine polynomial multiplier
+is `binaryShiftMulTM` — `binaryShiftMulTime lhs rhs = 33 * w² + 170 * w + 58` for
+`w = lhs.size + rhs.size`, fully framed. Anyone reaching for "the multiply in
+complexitylib" must take `binaryShiftMulTM`.
+
 **Answer to the crucial question.** The good news: the *irreducible core* is genuinely
 small — **`FP` and its closure is 1,496 lines and compiles on 4.31 today**. The bad news:
 **Stage 3 does not stay small.** Universal simulation drags in the single-tape reduction,
