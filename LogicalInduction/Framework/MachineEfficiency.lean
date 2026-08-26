@@ -68,9 +68,19 @@ criterion — closure under conditioning (`thm:scon`) and the finite-perturbatio
 (`thm:ifp`). Those transport an arbitrary trader backwards across a market change, so
 restating them at the machine class needs the machine class to be closed under the same
 trader translations: a direct `Complexity.FP` transport theorem for the strategy
-serialization, which is not proved here. They are left at the fuel class, with no
-hypothesis weakened and no proved content withdrawn, and the missing transport theorems are
-named in `LogicalInduction/README.md`.
+serialization.
+
+* `thm:ifp` — the *corrected* finite-support statement is now proved at both classes
+  (`machine_lic_iff_of_finiteSupportPerturbation`, `Properties/FinitePerturbations.lean`),
+  with the freeze certificate `MachineFiniteSupportPatch` as its remaining obligation. The
+  patch structures are uninhabited at both classes, so this buys a correct statement rather
+  than a witness.
+* `thm:scon` — still at the fuel class, with no hypothesis weakened and no proved content
+  withdrawn. Its correctness core is now class-agnostic
+  (`RpnConditioning.strategyOfTokens_rpnConditionOutput`), so the machine version needs
+  only its own emission certificate.
+
+Both missing transport theorems are named in `LogicalInduction/README.md`.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 

@@ -1976,14 +1976,22 @@ def MachineEfficientTrader (Tr : Trader) : Prop :=
   ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
     ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
 
-/-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
-`DP` if no efficiently computable trader exploits it.  Efficiency is the symbol-metered
-class `EfficientlyComputable` above: the `dd:fuel` rendering of the paper's `def:ec` — a
-fuel-clocked interpreter model, a disclosed type-`(c)` substitution, **not** a machine
-complexity class.  Its calibration facts and the open lower-calibration question live in
-the `dd:fuel` model card (`Framework/Computable.lean`, "### `dd:fuel` model card"); read
-that before reading `noExploit` as the paper's quantifier.  This is the hypothesis the
-entire property tail is conditioned on (`[IsLogicalInductor P DP]`).
+/-- `def:lic`, in the fuel-certified reading.  The market `P` satisfies the **Logical
+Induction Criterion** relative to `DP` if no efficiently computable trader exploits it,
+where efficiency is the symbol-metered class `EfficientlyComputable` above.
+
+**This is the compatibility reading, not the paper's quantifier.**  The paper's own
+quantifier is ordinary machine polynomial time, and `IsMachineLogicalInductor`
+(`Framework/MachineEfficiency.lean`) states it; that is the criterion the construction
+proves.  `dd:fuel` is now a *sufficient certification device* for the machine class rather
+than a substitution for it — every fuel certificate is a machine-efficiency certificate
+(`EfficientlyComputable.toMachine`), so a machine logical inductor is one of these, and the
+whole property tail transfers unchanged through that instance.  The converse inclusion is
+neither proved nor claimed; the `dd:fuel` model card (`Framework/Computable.lean`,
+"### `dd:fuel` model card") records what is and is not settled.
+
+This is the hypothesis the entire property tail is conditioned on
+(`[IsLogicalInductor P DP]`), which is why it is kept rather than retired.
 Token-model and digit-model no-exploitation follow through the emission constructors
 `EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
 (`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/RpnEmission.lean`).

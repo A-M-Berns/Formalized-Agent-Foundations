@@ -99,7 +99,7 @@ lean_lib Scratchpad where
 -- (see `LogicalInduction/notes/complexitylib-adoption.md`).
 --
 -- A *compatibility pin*, not a conceptual fork. `faf/v4.31` is upstream `b673821` plus
--- twelve commits, every one of them either a mechanical port or purely additive; no
+-- twenty commits, every one of them either a mechanical port or purely additive; no
 -- mathematical statement, definition or proof of upstream's is altered:
 --
 --   * a 36-line port to this project's Lean/Mathlib pin (upstream is on 4.30), plus a
@@ -114,7 +114,14 @@ lean_lib Scratchpad where
 --     `Nat.unpair` with correctness and polynomial runtime bounds;
 --   * register-tuple plumbing — `regsWork` sub-windows (`regsWork_restrict`,
 --     `regsWork_window`) and offset sub-tuples (`shiftEmb`), which let a machine written
---     against a small fixed tuple run at any offset of a larger register file.
+--     against a small fixed tuple run at any offset of a larger register file;
+--   * a second mechanical port wave unblocking `Classes/P/{Composition,PairWithInput}`
+--     (`mem_FP_comp`, `mem_FP_pairWithInput`), the whole `Classes/P/Cobham` subtree
+--     (`CobhamFP_eq_FP`, `iterate_mem_FP`, `recFoldClamp_mem_FP` and the string kit), and
+--     the binary-arithmetic subroutine library. Stage 3 needed none of these and so never
+--     built them; the machine readings of `thm:scon` and `thm:ifp` do. Seven additive
+--     `rfl` simp lemmas (`Γ.ofBool`/`Γw.ofBool` equations, `seqTM_qstart`/`_qhalt`,
+--     `phase1Wrap_initCfg`) carry most of it — the rest is `simpa` drift.
 --
 -- Nothing carries a FAF-specific or `Nat.Partrec.Code` name; all of it is upstreamable and
 -- meant to be upstreamed. The fork retires into a plain upstream `require` once upstream
@@ -125,14 +132,19 @@ lean_lib Scratchpad where
 -- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
 -- bump and degrade the diff-against-upstream story each time. See the adoption note §5.
 --
--- FAF's own import surface is far narrower than the fork. Exactly two modules may name a
--- `Complexity.*` declaration, both under `Construction/Machine/`:
---   * `DescExec` imports `…UTM.Internal.Interp` (a 5-file / ~2.2k-line closure);
---   * `EvalnCompiler` imports `…Registers.Pairing`, the unary-register arithmetic layer.
--- Nothing else in this repository may, and neither is imported by `LogicalInduction.lean`
--- — the same containment discipline `PFR/` ↔ `ShannonInformation.API` follows.
+-- FAF's own import surface is far narrower than the fork. Since the machine reading of
+-- `def:ec` became the paper-facing class, `Complexity.FP` is named at the criterion itself
+-- (`Framework/Criterion.lean`), so the containment is no longer "two modules under
+-- `Construction/Machine/`". It is still narrow, and the *deep* imports remain exactly two:
+--   * `Construction/Machine/DescExec` imports `…UTM.Internal.Interp` (a 5-file /
+--     ~2.2k-line closure);
+--   * `Framework/Machine/EvalnCompiler` imports `…Registers.Pairing`, the unary-register
+--     arithmetic layer.
+-- Everything else naming a `Complexity.*` declaration reaches only `Classes/P/Defs` and
+-- its immediate neighbours. The same containment discipline `PFR/` ↔
+-- `ShannonInformation.API` follows.
 require complexitylib from git
-  "https://github.com/A-M-Berns/complexitylib" @ "964ce2d3a1acc9923542c066de4d60111778749e"
+  "https://github.com/A-M-Berns/complexitylib" @ "1b0d107587653d16d5f5d4fd99b282adfcbbf3c1"
 
 require Foundation from git
   "https://github.com/FormalizedFormalLogic/Foundation" @ "41d20b5158e9331e9b8dd86e16dbf488cc688bdb"
