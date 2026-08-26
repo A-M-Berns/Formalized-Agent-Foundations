@@ -1589,22 +1589,33 @@ big-divisor `div`), whose carries exceed the poly-bounded-state requirement of
 machine.  The full statement of that ceiling is in the docstrings of
 `Construction/Witnesses/RpnFreeze.lean`.
 
-Direction of risk, stated precisely:
+**Upper calibration — PROVED.**  `EfficientlyComputable.toMachine`
+(`Framework/MachineEfficiency.lean`) shows every trader this class certifies is
+`MachineEfficientTrader`: ordinary machine polynomial time, through `Complexity.FP`.  The
+witness is a real compiler — `Nat.Partrec.Code.evaln` into a `complexitylib` register
+machine, with concrete register and step bounds — not a simulation axiom.  So the fuel
+model is a *sufficient certification device* for the paper's class, and no longer a
+substitution for it.
 
-* For the **property tail** the substitution is conservative.  Each exploiting trader is
-  explicitly constructed and certified *inside* `EfficientlyComputable`, so `noExploit`
-  applies to it whatever the class's relation to the paper's is.
-* For **`thm:li`** the substitution weakens the theorem.  `LIA_is_logical_inductor` defeats
-  the fuel-metered class only; if that class is a strict subclass of the paper's e.c.
-  traders, the paper's `thm:li` is strictly stronger than the Lean one.
+Direction of risk, stated precisely, now that the machine class exists:
 
-Closing this needs a bridge theorem: an `evaln`-fuel ↔ TM-step polynomial simulation
-against a machine class.  Mathlib does define one (`Turing.TM2ComputableInPolyTime`), but
-it carries no theory to build on — no composition, pairing, or closure results, no link to
-`Partrec`/`Primrec`, and no timed simulation lemmas, since every simulation in Mathlib is
-stated through the step-count-discarding `Turing.Respects`.  The bridge therefore requires
-first developing that missing theory; `LogicalInduction/notes/boundary-efficiency-model.md` is the
-plan of record. -/
+* For the **property tail** the fuel certificate is exactly what is wanted.  Each
+  exploiting trader is explicitly constructed and certified *inside*
+  `EfficientlyComputable`, and the criterion's no-exploitation field applies to it — at the
+  machine reading through `.toMachine`, at the fuel reading directly.
+* For **`thm:li`** the fuel model no longer weakens anything.  The construction proves
+  `LIA_isMachineLogicalInductor`, i.e. `def:lic` at the paper's own quantifier, and
+  `exists_machine_logical_inductor` is the existence theorem at that quantifier.  The
+  fuel-class `IsLogicalInductor` is kept as a compatibility predicate and follows.
+
+**What the open lower calibration does and does not cost.**  Nothing paper-facing depends
+on it: the construction quantifies over the machine class directly.  It is still wanted for
+two *closure* statements whose conclusion is itself the criterion — `thm:scon` and
+`thm:ifp` — because those transport an arbitrary trader backwards across a market change
+and certify the transported trader in the fuel calculus.  Restating them at the machine
+class needs machine-class closure under those trader translations, which is a direct
+`Complexity.FP` transport theorem for the strategy serialization rather than a converse
+inclusion; it is named as remaining work in `LogicalInduction/README.md`. -/
 
 /-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites
 (`def:ec` separation substrate). -/

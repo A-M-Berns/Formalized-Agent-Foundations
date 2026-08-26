@@ -576,6 +576,14 @@ lemma LIABoundedEvaluatorCompiler.toComputableMarket
 /-- Exact criterion assembly from the bounded evaluator compiler: no semantic premise
 beyond `compiler` is missing.  `Construction/LIACompiler.lean` instantiates `compiler`,
 which is what makes `LIA_is_logical_inductor` unconditional. -/
+lemma lia_isMachineLogicalInductor_of_compiler
+    {DP : DeductiveProcess} (process : DeductiveProcessComputation DP)
+    (compiler : LIABoundedEvaluatorCompiler process) :
+    IsMachineLogicalInductor (liaHistory DP) DP :=
+  lia_isMachineLogicalInductor_of_computableMarket DP process.toComputable
+    compiler.toComputableMarket
+
+/-- The same, at the fuel-class compatibility predicate. -/
 lemma lia_isLogicalInductor_of_compiler
     {DP : DeductiveProcess} (process : DeductiveProcessComputation DP)
     (compiler : LIABoundedEvaluatorCompiler process) :
@@ -589,6 +597,7 @@ lemma lia_isLogicalInductor_of_compiler
 #print axioms liaEncodedQuote_clock
 #print axioms LIABoundedEvaluatorCompiler.quote_computable
 #print axioms LIABoundedEvaluatorCompiler.toComputableMarket
+#print axioms lia_isMachineLogicalInductor_of_compiler
 #print axioms lia_isLogicalInductor_of_compiler
 
 end LogicalInduction

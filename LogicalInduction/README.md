@@ -74,10 +74,37 @@ sense:
 * `exists_computable_beliefSequence_logical_inductor` — there is a computable sequence
   of explicit finite-support rational belief states (one program emits the day-`n`
   association list) whose induced pricing satisfies the logical induction criterion.
-* `LIA_is_logical_inductor` — the concrete recursively-constructed rational market
+* `LIA_isMachineLogicalInductor` — the concrete recursively-constructed rational market
   built here (the paper's §5 algorithm: market maker via a from-scratch Sperner/Brouwer
   fixed point, budgeter, trading firm over a universal trader enumeration) satisfies
-  the criterion.
+  the criterion **at the paper's own quantifier**: no trader in ordinary machine
+  polynomial time exploits it. `LIA_is_logical_inductor` is the same statement at the
+  fuel-class compatibility predicate, and follows.
+* `exists_machine_logical_inductor` — the bare existence statement at that quantifier.
+
+The chain the criterion's efficiency side runs along, all of it proved and axiom-clean:
+
+```text
+EfficientlyComputable Tr                     fuel certificate (how traders are built)
+      │  EfficientlyComputable.toMachine     evaln → complexitylib TM, concrete bounds
+      ▼
+MachineEfficientTrader Tr                    def:ec: Complexity.FP on the unary day
+      │  exists_enumeratedTrader_eq          exact coverage
+      ▼
+∃ i, enumeratedTrader i = Tr                 finite TMDesc + polynomial clock
+      │  trading_firm_dominance
+      ▼
+(tradingFirmTrader DP Q).Exploits P DP       lem:tfdom
+      │  lia_no_machine_trader_exploits
+      ▼
+LIA_isMachineLogicalInductor                 thm:lia at the machine class
+
+and, in the other direction,
+∀ i, MachineEfficientTrader (enumeratedTrader i)     enumeratedTrader_machineEfficient
+```
+
+so the enumeration is an enumeration *of* machine-efficient traders, not merely one that
+covers them.
 
 The §4 property tail — convergence, coherence, provability induction, persistence,
 preemptive learning, calibration, unbiasedness, pseudorandomness, logical
@@ -150,26 +177,39 @@ assertion starts failing and gets promoted to a plain clean assertion.
 
 ## The modeling boundary
 
-1. **Efficient computability is a fuel-clocked interpreter model, not a machine
-   complexity class.** Traders and every "polynomial" certificate are metered by
-   Mathlib's clocked interpreter `Nat.Partrec.Code.evaln` under a polynomial fuel
-   bound. The model card (`Framework/Computable.lean`) proves its calibration facts
-   and states the open question plainly: there is no theorem that every
-   polynomial-time trader in the paper's sense lands in this class. Precisely: the
-   existence theorem defeats this class rather than the paper's, and is weaker than the
-   paper's `thm:li` if the inclusion fails. For the property tail the choice is
-   conservative wherever a theorem's exploiting trader is constructed and certified
-   inside the class — which is everywhere except **closure under finite perturbations**
-   (`thm:ifp`), whose transported trader needs a fuel-class closure property the digit
-   calculus's toolkit does not provide (the inverse-operation ceiling; a structural
-   obstruction — no class-level refutation is proved, and the model card's *open*
-   wording is authoritative), so that
-   endpoint stays restricted to efficiently patchable market prefixes and has no
-   instantiation over the constructed inductor. Sharper than that, and worth stating
-   because it is easy to read past: the restricting interface `EfficientPrefixPatch` has
-   **no inhabitant anywhere in this repo**, so that endpoint currently has no exhibited
-   witness for its own hypothesis. It is the one place on this page where a theorem is
-   stated but not yet shown to be about anything.
+1. **Efficient computability is now the machine class; the fuel model is a certification
+   device.** `def:ec` is `MachineEfficientTrader` — a trader is efficient when some
+   `Complexity.FP` function of the *unary* day emits its day-`n` strategy. The
+   construction enumerates that class (`enumeratedTrader`, sound and covering), the
+   Trading Firm dominates it (`trading_firm_dominance`), and the capstone is
+   `LIA_isMachineLogicalInductor` / `exists_machine_logical_inductor`: `def:lic` and
+   `thm:li` at the paper's own quantifier.
+
+   The fuel-clocked class `EfficientlyComputable` survives as the *certification
+   technology* every concrete exploiting trader is built with, and
+   `EfficientlyComputable.toMachine` proves those certificates imply genuine machine
+   efficiency, through a real `evaln` → Turing-machine compiler with concrete register and
+   step bounds. The converse is neither proved nor claimed, and nothing paper-facing needs
+   it. `IsLogicalInductor` — the criterion over the fuel class — is kept as a
+   compatibility predicate; every machine logical inductor is one, so the whole property
+   tail transfers unchanged.
+
+   **What this leaves.** Two statements whose *conclusion* is itself the criterion still
+   sit at the fuel class, because they transport an arbitrary trader backwards across a
+   market change and certify the transported trader in the fuel calculus:
+
+   * **closure under conditioning** (`thm:scon`) — needs
+     `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`,
+     a direct `Complexity.FP` transport theorem for the strategy serialization. Nothing is
+     weakened meanwhile: the existing fuel-level theorem and its witnesses are unchanged.
+   * **closure under finite perturbations** (`thm:ifp`) — the same shape, and separately
+     under revision: the published unrestricted finite-day statement is overgeneral, since
+     arbitrary finite-day perturbations can encode unbounded computational advice. The
+     intended endpoint is a corrected finite-*support* theorem together with a formal
+     counterexample to the unrestricted one, not a machine-strength restoration of the
+     published statement. Its restricting interface `EfficientPrefixPatch` still has **no
+     inhabitant anywhere in this repo**, so that endpoint has no exhibited witness for its
+     own hypothesis.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -294,44 +334,60 @@ assertion starts failing and gets promoted to a plain clean assertion.
    as an exactly-reflecting one would. Details, and the rest of the compatibility
    surface, in [`notes/deference-compatibility.md`](notes/deference-compatibility.md).
 
-The one standing modeling substitution — the fuel model — is disclosed at every affected
-statement, not just here.
+The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
+fuel certificate is proved to imply membership in it. What is disclosed at the affected
+statements is now the *residue* — the two machine-class transport theorems named above.
 
 ## What is left, and what it is blocked on
 
-The `thm:ccee` qualification is closed by the fixed language-lift construction above.
-The remaining qualified theorem node is attributable to the efficiency-model boundary.
+The `thm:ccee` qualification is closed by the fixed language-lift construction above, and
+the efficiency-model boundary is closed by the machine-class migration. What remains is two
+closure statements that sit at the fuel class for a specific, named reason.
 
-**Attributable to a disclosed modeling boundary (1).**
+**The two closure statements, and why they are not the efficiency boundary (2).**
 
-* **`thm:ifp` — the fuel class.** The transported trader needs a closure property the
-  digit calculus's toolkit does not provide (the inverse-operation ceiling: the emitted
-  freeze stream's certificate needs a decode test on exponentially large codes, which no
-  combinator in the calculus closes under — a structural obstruction, not a proved
-  class-level refutation; the model card's *open* wording is authoritative). Closing
-  boundary 1 closes this and nothing smaller does. Stated
-  plainly, because it is the sharpest disclosure on this page: `EfficientPrefixPatch` has
-  **no inhabitant anywhere in the repo**, so `lic_iff_of_finitePerturbation` currently has
-  no exhibited witness for its hypothesis — the restricted statement must not be described
-  as non-vacuous until one is built. (An earlier version of the errata ledger did so, citing
-  a declaration that does not exist; corrected there.) The paper's own proof of `thm:ifp` is
-  separately invalid — see erratum PE1.
+Both are theorems whose *conclusion* is the criterion, so the machine ⟸ fuel bridge does not
+reach them: their proofs transport an arbitrary trader backwards across a market change and
+certify the transported trader. They stay at the fuel class, with nothing weakened and no
+proved content withdrawn.
+
+* **`thm:scon` — closure under conditioning.** The fuel-level theorem and its concrete
+  witnesses (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`)
+  are unchanged and inhabited. The machine-level statement wants one new theorem:
+  `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`, a
+  direct `Complexity.FP` closure result for the strategy serialization.
+* **`thm:ifp` — closure under finite perturbations.** Same shape, and separately under
+  revision. The published unrestricted finite-day statement is overgeneral: arbitrary
+  finite-day perturbations can encode unbounded computational advice, so the intended
+  endpoint is a corrected finite-*support* theorem together with a formal counterexample to
+  the unrestricted one — not a machine-strength restoration of the published statement.
+  Meanwhile, stated plainly because it is the sharpest disclosure on this page:
+  `EfficientPrefixPatch` has **no inhabitant anywhere in the repo**, so
+  `lic_iff_of_finitePerturbation` has no exhibited witness for its hypothesis, and the
+  restricted statement must not be described as non-vacuous. (An earlier version of the
+  errata ledger did so, citing a declaration that does not exist; corrected there.) The
+  paper's own proof of `thm:ifp` is separately invalid — see erratum PE1.
 
 ## Closing the boundaries
 
 The efficiency-model boundary has a scoped feasibility note, written against the
 installed toolchain rather than against hypothetical APIs.
 
-**Boundary 1 — the efficiency model.** The realistic route is a two-model architecture:
-define efficiency at a genuine machine class, let the trading firm enumerate it via
-poly-overhead universal simulation, and keep the fuel calculus as the certification tool
-through the easy inclusion (fuel-poly ⟹ machine-poly). A direct bridge theorem for the
-current class is judged unlikely — the fuel model lacks cheap poly-bit random-access
-state. Closing it would free `thm:ifp`, the one endpoint whose restricting interface has
-no inhabitant, and would retire the calibration caveat that qualifies every efficiency
-certificate on this page. The staged plan, the two places Mathlib stops short (no timed
-simulation theory; `FinTM2` not enumerable as-is), and the effort estimate are in
-[`notes/boundary-efficiency-model.md`](notes/boundary-efficiency-model.md).
+**Former Boundary 1 — the efficiency model.** Closed, by exactly the two-model
+architecture this section used to propose: efficiency is defined at a genuine machine class
+(`Complexity.FP`, from a pinned Lean-4.31 compatibility fork of `complexitylib`), the
+trading firm enumerates that class through a finite `TMDesc`-plus-clock enumeration that is
+both sound and covering, and the fuel calculus is kept as the certification tool through
+the inclusion `EfficientlyComputable.toMachine`. The inclusion is a real compiler from
+`Nat.Partrec.Code.evaln` to register machines with concrete bounds, not a simulation axiom;
+the converse is not claimed. The staged history is in
+[`notes/complexitylib-adoption.md`](notes/complexitylib-adoption.md), and the original
+diagnosis in [`notes/boundary-efficiency-model.md`](notes/boundary-efficiency-model.md).
+
+What remains from that programme is not the efficiency model but the two machine-class
+*transport* theorems named above — conditioning and the corrected finite-support
+perturbation — each of which asks for `Complexity.FP` closure under a specific trader
+translation.
 
 **Former Boundary 2 — the propositional substrate.** The historical diagnosis and the
 rejected source-dependent extension remain documented in

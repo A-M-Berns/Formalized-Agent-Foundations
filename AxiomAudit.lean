@@ -118,11 +118,15 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 
 #assert_axioms_clean exists_logical_inductor LIA_is_logical_inductor
   exists_computable_beliefSequence_logical_inductor
+  exists_machine_logical_inductor LIA_isMachineLogicalInductor
 
--- Single-class collapse: `EfficientlyComputable` is the symbol-metered `def:ec`;
--- the enumeration's single RPN decode covers the whole class.
+-- The canonical trader universe is `MachineEfficientTrader` — ordinary machine
+-- polynomial time, through `Complexity.FP`. The enumeration is sound and covers the whole
+-- class, and the fuel calculus's certificates land inside it.
 #assert_axioms_clean
-  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_ec
+  trading_firm_dominance exists_enumeratedTrader_eq enumeratedTrader_machineEfficient
+  enumeratedOutput_mem_FP EfficientlyComputable.toMachine
+  lia_no_machine_trader_exploits
 
 /-! ## Property tail, conditional on `[IsLogicalInductor P DP]` -/
 
@@ -278,9 +282,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ComputableLUV.exppolymax_arith ComputableLUV.wubexp_arith
   ComputableLUV.expcoh_arith ComputableLUV.perexpkno_arith
 
--- dd:fuel model card (`def:ec`): the fuel model's own trust facts — upper calibration
--- (poly-fueled ⟹ primrec), the runtime-gcd inhabitation witness, the size-based
--- separation (2^n is not poly-fueled), and the two-sided EF.cost ↔ token-length seam.
+-- dd:fuel model card (`def:ec`): the fuel certificate's own trust facts — poly-fueled ⟹
+-- primrec, the runtime-gcd inhabitation witness, the size-based separation (2^n is not
+-- poly-fueled), and the two-sided EF.cost ↔ token-length seam.  The certificate's
+-- relation to the paper's class is `EfficientlyComputable.toMachine`, audited above.
 #assert_axioms_clean
   PolyFueled.primrec gcdc_polyFueled not_polyFueled_two_pow
   EF.cost_le_serialize_length EF.serialize_length_le_cost

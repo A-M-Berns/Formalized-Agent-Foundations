@@ -737,14 +737,18 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">IsLogicalInductor</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">IsLogicalInductor</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Markets are computable rational pricing sequences in the paper&#x27;s definition. -/
   marketComputable : ComputableMarket P
   /-- Deductive processes are computable nested finite-set sequences in the paper&#x27;s
   definition. -/
   processComputable : ComputableDeductiveProcess DP
-  /-- No efficiently computable trader exploits `P`. -/
-  noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP</pre></div>
+  /-- No efficiently computable trader exploits `P`, in the fuel-certified reading. The
+  paper&#x27;s own quantifier is the machine class: `IsMachineLogicalInductor` in
+  `Framework/MachineEfficiency.lean` is that criterion, and it implies this one. -/
+  noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lia_no_machine_trader_exploits</code><span class="ep-file">LogicalInduction/Construction/LIA.lean</span></div><pre class="sig">lemma lia_no_machine_trader_exploits (DP : DeductiveProcess)
+    (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
+    ¬ Tr.Exploits (liaHistory DP) DP</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The class bundles the criterion (<code>noExploit</code>, quantified over <code>EfficientlyComputable</code> traders) with two facts the paper leaves ambient: the market and the process are computable. <code>P n φ</code> is the paper&#x27;s ℙₙ(φ).</div>
@@ -796,7 +800,10 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="20">1 / 20</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">EfficientlyComputable</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">def EfficientlyComputable (Tr : Trader) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">PolyFueled.primrec</code><span class="ep-file">LogicalInduction/Framework/Computable.lean</span></div><pre class="sig">lemma PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="24">1 / 24</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">EfficientlyComputable</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">def EfficientlyComputable (Tr : Trader) : Prop</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">exists_enumeratedTrader_eq</code><span class="ep-file">LogicalInduction/Construction/MachineTraderEnumeration.lean</span></div><pre class="sig">theorem exists_enumeratedTrader_eq (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
+    ∃ i : ℕ, enumeratedTrader i = Tr</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">enumeratedTrader_machineEfficient</code><span class="ep-file">LogicalInduction/Construction/MachineTraderEnumeration.lean</span></div><pre class="sig">theorem enumeratedTrader_machineEfficient (i : ℕ) :
+    MachineEfficientTrader (enumeratedTrader i)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">enumeratedOutput_mem_FP</code><span class="ep-file">LogicalInduction/Construction/MachineTraderEnumeration.lean</span></div><pre class="sig">lemma enumeratedOutput_mem_FP (i : ℕ) : enumeratedOutput i ∈ Complexity.FP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">EfficientlyComputable.toMachine</code><span class="ep-file">LogicalInduction/Framework/MachineEfficiency.lean</span></div><pre class="sig">theorem EfficientlyComputable.toMachine {Tr : Trader} (h : EfficientlyComputable Tr) :
+    MachineEfficientTrader Tr</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">PolyFueled.primrec</code><span class="ep-file">LogicalInduction/Framework/Computable.lean</span></div><pre class="sig">lemma PolyFueled.primrec {c : Nat.Partrec.Code} {f : ℕ → ℕ}
     (h : PolyFueled c f) : Primrec f</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">gcdc_polyFueled</code><span class="ep-file">LogicalInduction/Framework/Computable.lean</span></div><pre class="sig">lemma gcdc_polyFueled : ∃ c, PolyFueled c (fun m =&gt; Nat.gcd m.unpair.1 m.unpair.2)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">not_polyFueled_two_pow</code><span class="ep-file">LogicalInduction/Framework/Computable.lean</span></div><pre class="sig">theorem not_polyFueled_two_pow (c : Nat.Partrec.Code) :
     ¬ PolyFueled c (fun n =&gt; 2 ^ n)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">EF.cost_le_serialize_length</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">lemma cost_le_serialize_length (e : EF) : e.cost ≤ (serialize e).length</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">EF.serialize_length_le_cost</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">lemma serialize_length_le_cost (e : EF) : (serialize e).length ≤ 3 * e.cost</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">Strategy.serializeTrades_length_le_cost</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">lemma serializeTrades_length_le_cost {n : ℕ} (T : Strategy n) :
     (serializeTrades T.trades).length ≤ 3 * T.cost</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">undigitize_digitize</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">lemma undigitize_digitize (ts : List ℕ) : undigitize (digitize ts) = ts</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">digitize_injective</code><span class="ep-file">LogicalInduction/Framework/Criterion.lean</span></div><pre class="sig">lemma digitize_injective : Function.Injective digitize</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">PolySegStream.digitizeStream</code><span class="ep-file">LogicalInduction/Framework/Computable.lean</span></div><pre class="sig">lemma PolySegStream.digitizeStream {s : ℕ → List ℕ} (h : PolySegStream s) :
@@ -873,7 +880,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     LUV.RpnThresholdCodeSeq (meshProductLUV q X)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productLUV_rpnThresholdCodeSeq</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV</pre></div>
     </section>
   </div>
-  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The paper&#x27;s “computable in O(poly(n))” becomes: two fixed programs under one polynomial fuel clock emit the day-n strategy&#x27;s serialized symbol stream. This is the <code>dd:fuel</code> substitution itself — the one place the model is chosen; everything downstream inherits it.</div>
+  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The paper&#x27;s “computable in O(poly(n))” is rendered as <code>MachineEfficientTrader</code>: some <code>Complexity.FP</code> function of the unary day emits the day-n strategy&#x27;s serialized symbol stream. The fuel-clocked <code>EfficientlyComputable</code> is the certification device that feeds it — <code>EfficientlyComputable.toMachine</code> compiles an <code>evaln</code> certificate into a real polynomial-time machine — and is no longer a substitution for the class.</div>
   <footer class="audit-note"><span class="audit-tag">What to check</span> this row <strong>is</strong> the <code>dd:fuel</code> substitution: a symbol-metered clocked interpreter, not a complexity class; lower calibration (paper-e.c. ⊆ this class) is open</footer>
 </article>
 <h2 class="sec" id="sec-Traders">Traders</h2>
@@ -979,17 +986,19 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">exists_computable_beliefSequence_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">exists_computable_beliefSequence_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
-      IsLogicalInductor (fun n =&gt; (𝔹 n).toValuation) DP ∧
+      IsMachineLogicalInductor (fun n =&gt; (𝔹 n).toValuation) DP ∧
         (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
           Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
         (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ))</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">exists_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem exists_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    ∃ P : History, IsLogicalInductor P DP</pre></div>
+    ∃ P : History, IsLogicalInductor P DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">exists_machine_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem exists_machine_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ P : History, IsMachineLogicalInductor P DP</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The conjunction mirrors def:belseq: one program emits the day-n finite association list (<code>code</code> clause), supports are finite, quotes are rational in [0,1], and the induced valuation satisfies the criterion.</div>
@@ -4171,16 +4180,14 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="3">1 / 3</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">trading_firm_dominance</code><span class="ep-file">LogicalInduction/Construction/TradingFirm.lean</span></div><pre class="sig">theorem trading_firm_dominance
+      <div class="ep-slide"><div class="ep-head"><code class="ep-name">trading_firm_dominance</code><span class="ep-file">LogicalInduction/Construction/TradingFirm.lean</span></div><pre class="sig">theorem trading_firm_dominance
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
     (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : EfficientlyComputable Tr)
+    (Tr : Trader) (hTr : MachineEfficientTrader Tr)
     (hEx : Tr.Exploits P DP) :
-    (tradingFirmTrader DP Q).Exploits P DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">exists_enumeratedTrader_eq</code><span class="ep-file">LogicalInduction/Construction/TraderEnumeration.lean</span></div><pre class="sig">lemma exists_enumeratedTrader_eq (Tr : Trader) (hTr : EfficientlyComputable Tr) :
-    ∃ j : ℕ, enumeratedTrader j = Tr</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">enumeratedTrader_ec</code><span class="ep-file">LogicalInduction/Construction/TraderEnumeration.lean</span></div><pre class="sig">lemma enumeratedTrader_ec (j : ℕ) :
-    EfficientlyComputable (enumeratedTrader j)</pre></div>
+    (tradingFirmTrader DP Q).Exploits P DP</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> No inductor hypothesis: any rational [0,1]-market (<code>hP</code>, with <code>Q</code>/<code>hQ</code> naming its rational quotes) exploited by <em>some</em> e.c. trader is exploited by the firm. The enumeration covering the whole class is <code>exists_enumeratedTrader_eq</code>.</div>
@@ -4233,9 +4240,11 @@ lemma Accepted.halts {e : ℕ} {w : List Bool} (h : Accepted e w) :
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-slide"><div class="ep-head"><code class="ep-name">LIA_is_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem LIA_is_logical_inductor (DP : DeductiveProcess)
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">LIA_is_logical_inductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    IsLogicalInductor (liaHistory DP) DP</pre></div>
+    IsLogicalInductor (liaHistory DP) DP</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">LIA_isMachineLogicalInductor</code><span class="ep-file">LogicalInduction/Construction/LIACompiler.lean</span></div><pre class="sig">theorem LIA_isMachineLogicalInductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    IsMachineLogicalInductor (liaHistory DP) DP</pre></div>
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> One hypothesis — the deductive process is computable — and the conclusion instantiates the criterion at the constructed market <code>liaHistory DP</code>. This is the paper&#x27;s main theorem in its constructive form.</div>
@@ -10709,4 +10718,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 62e2d6fbab673a3c3e069cbb4e8b5adb381fdadb4fc6d080b40433e455df97a7 -->
+<!-- trust-surface-sources: 69b109bf8f505500518b5dc92cce725ac58649bf12f63ee97e8a7ac6436679b6 -->

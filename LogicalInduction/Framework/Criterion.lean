@@ -31,6 +31,7 @@ import Mathlib.Order.Bounds.Basic
 import Mathlib.Computability.PartrecCode
 import Mathlib.Data.Rat.Encodable
 import Foundation.Propositional.Boolean.Basic
+import Complexitylib.Classes.P.Defs
 
 namespace LogicalInduction
 
@@ -1914,6 +1915,67 @@ def EfficientlyComputable (Tr : Trader) : Prop :=
 
 end
 
+/-! ### The machine class (`def:ec`, machine reading)
+
+`EfficientlyComputable` above renders `def:ec` through a fuel-clocked interpreter — a
+sufficient certification device, and a disclosed modeling choice. The paper's own reading is
+ordinary polynomial time, and this is it: a trader is efficient when some `Complexity.FP`
+function of the *unary* day emits its day-`n` strategy through the standard token decoding.
+
+Unary days matter: `unaryDay n` has length exactly `n`, so a machine polynomial in its input
+length is polynomial in the day, which is the paper's meter. A binary rendering would
+silently strengthen the class.
+
+The output is a finite bit word rather than a giant numeral, read back three bits per digit.
+No new parser is introduced: the decoding is `strategyOfTokens ∘ unRpn ∘ undigitize`, exactly
+as in the fuel reading, with `bitsToDigits` the one adapter between the machine's `List Bool`
+and the digit layer's `List ℕ`. -/
+
+/-- The paper-faithful unary rendering of day `n`. -/
+def unaryDay (n : ℕ) : List Bool := List.replicate n true
+
+@[simp] lemma length_unaryDay (n : ℕ) : (unaryDay n).length = n := by simp [unaryDay]
+
+/-- `Bool` as `0`/`1`. -/
+def b2n (b : Bool) : ℕ := if b then 1 else 0
+
+/-- One digit of the output stream: three bits, most significant first. -/
+def digitAt (l : List Bool) (i : ℕ) : ℕ :=
+  4 * b2n ((l[3 * i]?).getD false)
+    + 2 * b2n ((l[3 * i + 1]?).getD false)
+    + b2n ((l[3 * i + 2]?).getD false)
+
+/-- Read a machine's output bitstring as a digit stream, three bits per digit, most
+significant first; a trailing partial group is dropped.
+
+It needs no validity side condition: groups with value `≥ 4` are exactly what
+`undigitizeStep` already treats as block terminators, so *every* bitstring denotes some
+digit stream, and malformed cases are absorbed downstream by `strategyOfTokens`. -/
+def bitsToDigits (l : List Bool) : List ℕ :=
+  (List.range (l.length / 3)).map (digitAt l)
+
+@[simp] lemma length_bitsToDigits (l : List Bool) :
+    (bitsToDigits l).length = l.length / 3 := by simp [bitsToDigits]
+
+/-- Decode a machine's finite output word into the day-`n` strategy, through the existing
+token pipeline. This is the only place the machine's output convention meets the trader
+serialization, and it introduces no new parser. -/
+def strategyOfOutput (n : ℕ) (w : List Bool) : Strategy n :=
+  strategyOfTokens n (unRpn (undigitize (bitsToDigits w)))
+
+/-- **The polynomial-time trader class** (`def:ec`, machine reading). A trader is
+machine-efficient when some honestly polynomial-time function of the *unary* day emits its
+day-`n` strategy through the standard token decoding.
+
+This is the class the Logical Induction construction enumerates and dominates. Contrast
+`EfficientlyComputable`, which asks for a fuel-clocked `Nat.Partrec.Code` pair; every trader
+that certifies is one of these (`EfficientlyComputable.toMachine`, in
+`Framework/MachineEfficiency.lean`), and the converse is neither needed nor claimed.
+Paper node: `def:ec` -/
+def MachineEfficientTrader (Tr : Trader) : Prop :=
+  ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
+    ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
+
 /-- `def:lic`. The market `P` satisfies the **Logical Induction Criterion** relative to
 `DP` if no efficiently computable trader exploits it.  Efficiency is the symbol-metered
 class `EfficientlyComputable` above: the `dd:fuel` rendering of the paper's `def:ec` — a
@@ -1932,7 +1994,9 @@ class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Deductive processes are computable nested finite-set sequences in the paper's
   definition. -/
   processComputable : ComputableDeductiveProcess DP
-  /-- No efficiently computable trader exploits `P`. -/
+  /-- No efficiently computable trader exploits `P`, in the fuel-certified reading. The
+  paper's own quantifier is the machine class: `IsMachineLogicalInductor` in
+  `Framework/MachineEfficiency.lean` is that criterion, and it implies this one. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
 
 /-- The pricing range carried by every logical inductor's computable-market certificate. -/

@@ -1,0 +1,78 @@
+--- /private/tmp/claude-501/-Users-anson/19165699-21a2-4e79-b4fd-83a1d4cd6f10/scratchpad/complexitylib/Complexitylib/Models/TuringMachine/UTM/Universal.lean	2026-08-24 11:56:18
++++ /private/tmp/claude-501/-Users-anson/19165699-21a2-4e79-b4fd-83a1d4cd6f10/scratchpad/port/Complexitylib/Models/TuringMachine/UTM/Universal.lean	2026-08-24 14:38:30
+@@ -118,6 +118,75 @@
+     exact TM.descOfTM_decidesInTime M₁ hM₁
+   exact utmTM_simulates_decider hterm hdec' x
+ 
++/-! ## Arbitrary function output
++
++`utmTM_simulates_decider` above projects the simulated machine's output tape onto its
++verdict cell, but `utmTM_hoareTime` is stronger than that: its postcondition already pins
++the whole simulated output *region* — the first blank position `m` of the simulated
++machine's output tape, together with agreement of the universal machine's output tape
++with it on every cell `1 … m + 1`. That is exactly the data of `Tape.HasOutput`, so the
++decider theorem is a weakening of what is already proved.
++
++The multi-tape analogue of `utmTM_universal` is deliberately not stated: it would need a
++function-shaped counterpart of `TM.exists_singleTape_decidesInTime`, which does not
++currently exist — though the single-tape correspondence invariant does already carry full
++output-tape equality (`NTM.SingleTape.Corr.outputEq`), so only its verdict-cell
++consequence is exposed rather than its full strength. -/
++
++/-- The first blank on a tape holding output word `y` sits exactly at `y.length + 1`.
++
++This is the uniqueness fact identifying the frontier `m` of `utmTM_hoareTime`'s
++postcondition with the length of the simulated machine's output word. -/
++private theorem length_eq_of_hasOutput {t : Tape} {y : List Bool} {m : ℕ}
++    (hy : t.HasOutput y)
++    (hblank : t.cells (m + 1) = Γ.blank)
++    (hne : ∀ j, j < m → t.cells (j + 1) ≠ Γ.blank) :
++    m = y.length := by
++  rcases Nat.lt_trichotomy m y.length with hlt | heq | hgt
++  · -- `m < |y|`: cell `m + 1` carries a bit of `y`, so it is not blank.
++    exact absurd (hy.1 m hlt ▸ hblank) (Γ.ofBool_ne_blank _)
++  · exact heq
++  · -- `|y| < m`: cell `|y| + 1` is blank, contradicting blank-freeness below `m`.
++    exact absurd hy.2 (hne y.length hgt)
++
++/-- **Universal simulation of function computation** (the function-shaped companion of
++`utmTM_simulates_decider`, at the identical time bound). If the machine described by `α`
++computes `f` within `T`, the universal machine reads `pair α x` and halts within
++`utmTime α (T |x|) |x|` steps with `f x` on its output tape.
++
++`utmTime` is linear in the simulated machine's running time, with all other dependence on
++the description alone. -/
++theorem utmTM_simulates_computer {α : List Bool} (hterm : TerminatedRegion α)
++    {f : List Bool → List Bool} {T : ℕ → ℕ}
++    (hcomp : (decodeDesc α).toTM.ComputesInTime f T) (x : List Bool) :
++    ∃ c' t, t ≤ utmTime α (T x.length) x.length ∧
++      utmTM.reachesIn t (utmTM.initCfg (pair α x)) c' ∧
++      utmTM.halted c' ∧
++      c'.output.HasOutput (f x) := by
++  obtain ⟨mcF, t₀, ht₀, hrun, hhalt, hout⟩ := hcomp x
++  have hht := utmTM_hoareTime α x hterm t₀ mcF hrun hhalt
++  obtain ⟨c', t, ht, hreach, hhalt', hpost⟩ :=
++    hht (Tape.init ((pair α x).map Γ.ofBool)) (fun _ => Tape.init [])
++      (Tape.init []) ⟨rfl, fun _ => rfl, rfl⟩
++  obtain ⟨m, -, hblank, hne, hagree⟩ := hpost
++  -- the postcondition's frontier is exactly the length of the output word
++  obtain rfl : m = (f x).length := length_eq_of_hasOutput hout hblank hne
++  refine ⟨c', t, ?_, hreach, hhalt', ?_, ?_⟩
++  · calc t ≤ 4 * (pair α x).length + 4 * (groupPairs α).length + 24 + 1 +
++        ((t₀ + 1) * utmStepTime α + 1 + (2 * t₀ + 9)) := ht
++      _ ≤ utmTime α (T x.length) x.length := by
++        unfold utmTime
++        rw [pair_length]
++        have hmul : (t₀ + 1) * utmStepTime α
++            ≤ (T x.length + 1) * utmStepTime α :=
++          Nat.mul_le_mul_right _ (by omega)
++        omega
++  · intro i hi
++    rw [hagree i (Nat.le_of_lt hi)]
++    exact hout.1 i hi
++  · rw [hagree (f x).length (le_refl _)]
++    exact hout.2
++
+ end TM.UTMBody
+ 
+ end Complexity

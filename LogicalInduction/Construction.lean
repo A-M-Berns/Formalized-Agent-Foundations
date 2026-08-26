@@ -18,7 +18,7 @@ satisfies the logical-induction criterion. Paper nodes hosted here:
 
 -/
 import LogicalInduction.Construction.MarketMaker
-import LogicalInduction.Construction.TraderEnumeration
+import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Construction.Budgeter
 import LogicalInduction.Construction.TradingFirm
 import LogicalInduction.Construction.LIA

@@ -2828,110 +2828,6 @@ private lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
       · simp_all
       · split <;> simp_all
 
-/-- The token-indexed bounded emulator is primitive recursive uniformly in its two programs,
-clock, and day. -/
-private lemma clockedTokens_prim : Primrec fun
-    p : ((Nat.Partrec.Code × Nat.Partrec.Code) × ℕ) × ℕ =>
-      clockedTokens p.1.1.1 p.1.1.2 p.1.2 p.2 := by
-  let P := ((Nat.Partrec.Code × Nat.Partrec.Code) × ℕ) × ℕ
-  have hLengthCode : Primrec fun p : P => p.1.1.1 :=
-    Primrec.fst.comp (Primrec.fst.comp Primrec.fst)
-  have hTokenCode : Primrec fun p : P => p.1.1.2 :=
-    Primrec.snd.comp (Primrec.fst.comp Primrec.fst)
-  have hClock : Primrec fun p : P => p.1.2 :=
-    Primrec.snd.comp Primrec.fst
-  have hDay : Primrec fun p : P => p.2 := Primrec.snd
-  have hLengthEval : Primrec fun p : P =>
-      Nat.Partrec.Code.evaln p.1.2 p.1.1.1 p.2 :=
-    Nat.Partrec.Code.primrec_evaln.comp
-      ((hClock.pair hLengthCode).pair hDay)
-  have hTokenEval : Primrec₂ fun (p : P) i =>
-      Nat.Partrec.Code.evaln p.1.2 p.1.1.2 (Nat.pair p.2 i) := by
-    exact (Nat.Partrec.Code.primrec_evaln.comp
-      (((hClock.comp Primrec.fst).pair
-        (hTokenCode.comp Primrec.fst)).pair
-        (Primrec₂.natPair.comp
-          (hDay.comp Primrec.fst) Primrec.snd))).to₂
-  have hToken : Primrec₂ fun (p : P) i =>
-      (Nat.Partrec.Code.evaln p.1.2 p.1.1.2 (Nat.pair p.2 i)).getD 0 :=
-    Primrec.option_getD.comp₂ hTokenEval (Primrec₂.const 0)
-  have hSome : Primrec₂ fun (p : P) length =>
-      (List.range (min length p.1.2)).map fun i =>
-        (Nat.Partrec.Code.evaln p.1.2 p.1.1.2 (Nat.pair p.2 i)).getD 0 := by
-    let Y := P × ℕ
-    have hRange : Primrec fun y : Y => List.range (min y.2 y.1.1.2) :=
-      Primrec.list_range.comp
-        (Primrec.nat_min.comp Primrec.snd (hClock.comp Primrec.fst))
-    have hMapToken : Primrec₂ fun (y : Y) i =>
-        (Nat.Partrec.Code.evaln y.1.1.2 y.1.1.1.2
-          (Nat.pair y.1.2 i)).getD 0 :=
-      hToken.comp₂ (Primrec.fst.comp₂ Primrec₂.left) Primrec₂.right
-    exact (Primrec.list_map hRange hMapToken).to₂
-  exact (Primrec.option_casesOn hLengthEval (Primrec.const []) hSome).of_eq fun p => by
-    unfold clockedTokens
-    cases h : Nat.Partrec.Code.evaln p.1.2 p.1.1.1 p.2 with
-    | none => simp
-    | some length =>
-        simp only []
-        apply List.ext_getElem
-        · simp
-        · intro i hi₁ hi₂
-          simp only [List.getElem_map, List.getElem_range, List.getElem_ofFn]
-
-private lemma codeAt_prim : Primrec codeAt := by
-  exact (Primrec.option_getD.comp Primrec.decode
-    (Primrec.const Nat.Partrec.Code.zero)).of_eq fun i => by rfl
-
-private lemma traderProgramLengthCode_prim : Primrec fun j =>
-    (traderProgramAt j).lengthCode := by
-  have houter : Primrec Nat.unpair := Primrec.unpair
-  have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
-    Primrec.unpair.comp (Primrec.fst.comp houter)
-  have hinner : Primrec fun j : ℕ => j.unpair.1.unpair.1.unpair :=
-    Primrec.unpair.comp (Primrec.fst.comp hmiddle)
-  exact (codeAt_prim.comp (Primrec.fst.comp hinner)).of_eq fun j => by
-    rfl
-
-private lemma traderProgramTokenCode_prim : Primrec fun j =>
-    (traderProgramAt j).tokenCode := by
-  have houter : Primrec Nat.unpair := Primrec.unpair
-  have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
-    Primrec.unpair.comp (Primrec.fst.comp houter)
-  have hinner : Primrec fun j : ℕ => j.unpair.1.unpair.1.unpair :=
-    Primrec.unpair.comp (Primrec.fst.comp hmiddle)
-  exact (codeAt_prim.comp (Primrec.snd.comp hinner)).of_eq fun j => by
-    rfl
-
-private lemma traderProgramCoefficient_prim : Primrec fun j =>
-    (traderProgramAt j).coefficient := by
-  have houter : Primrec Nat.unpair := Primrec.unpair
-  have hmiddle : Primrec fun j : ℕ => j.unpair.1.unpair :=
-    Primrec.unpair.comp (Primrec.fst.comp houter)
-  exact (Primrec.snd.comp hmiddle).of_eq fun j => by rfl
-
-private lemma traderProgramDegree_prim : Primrec fun j =>
-    (traderProgramAt j).degree := by
-  exact (Primrec.snd.comp Primrec.unpair).of_eq fun j => by rfl
-
-private lemma traderProgramClock_prim : Primrec₂ fun j n =>
-    (traderProgramAt j).clock n := by
-  let P := ℕ × ℕ
-  have hcoefficient : Primrec fun p : P => (traderProgramAt p.1).coefficient :=
-    traderProgramCoefficient_prim.comp Primrec.fst
-  have hdegree : Primrec fun p : P => (traderProgramAt p.1).degree :=
-    traderProgramDegree_prim.comp Primrec.fst
-  have hbase : Primrec fun p : P => p.2 + 1 :=
-    Primrec.nat_add.comp Primrec.snd (Primrec.const 1)
-  have hpow₂ : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) :=
-    Primrec₂.unpaired'.mp Nat.Primrec.pow
-  have hpow : Primrec fun p : P => (p.2 + 1) ^ (traderProgramAt p.1).degree :=
-    hpow₂.comp hbase hdegree
-  have hmul : Primrec fun p : P =>
-      (traderProgramAt p.1).coefficient *
-        (p.2 + 1) ^ (traderProgramAt p.1).degree :=
-    Primrec.nat_mul.comp hcoefficient hpow
-  exact (Primrec.nat_add.comp hmul hcoefficient).to₂.of_eq fun j n => by
-    rfl
 
 /-- The one-digit undigitizer transition is primitive recursive. -/
 private lemma undigitizeStep_prim : Primrec₂ undigitizeStep := by
@@ -3901,24 +3797,17 @@ lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes
 
 end RpnDecodePrimrec
 
+/-- The canonical enumeration's day strategies are primitive recursive.
+
+The token producer is `MachineExec.machineTokens` — the budgeted execution of the finite
+description an index names — so the effective construction runs the same machine the
+enumeration's soundness proof reasons about, not a second simulator. -/
 private lemma enumeratedTraderTrades_prim : Primrec₂ fun j n =>
     ((enumeratedTrader j).strat n).trades := by
   let P := ℕ × ℕ
-  have hj : Primrec fun p : P => p.1 := Primrec.fst
   have hn : Primrec fun p : P => p.2 := Primrec.snd
-  have hlengthCode : Primrec fun p : P => (traderProgramAt p.1).lengthCode :=
-    traderProgramLengthCode_prim.comp hj
-  have htokenCode : Primrec fun p : P => (traderProgramAt p.1).tokenCode :=
-    traderProgramTokenCode_prim.comp hj
-  have hclock : Primrec fun p : P => (traderProgramAt p.1).clock p.2 :=
-    traderProgramClock_prim.comp hj hn
-  have hinput : Primrec fun p : P =>
-      ((((traderProgramAt p.1).lengthCode,
-        (traderProgramAt p.1).tokenCode),
-        (traderProgramAt p.1).clock p.2), p.2) :=
-    ((hlengthCode.pair htokenCode).pair hclock).pair hn
-  have htoks : Primrec fun p : P => (traderProgramAt p.1).tokens p.2 :=
-    (clockedTokens_prim.comp hinput).of_eq fun p => by rfl
+  have htoks : Primrec fun p : P => MachineExec.machineTokens p.1 p.2 :=
+    MachineExec.primrec_machineTokens
   exact ((strategyOfTokensTrades_prim.comp hn
     (unRpn_prim.comp (undigitize_prim.comp htoks))).to₂).of_eq fun j n => rfl
 
@@ -7858,14 +7747,31 @@ def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
   computable := liaEncodedQuoteNatAtFuel_computable process
 
 /-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
-over every computable deductive process.
+over every computable deductive process, **at the paper's own quantifier** — no trader in
+ordinary machine polynomial time exploits it.
+Paper node: `thm:lia` -/
+theorem LIA_isMachineLogicalInductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    IsMachineLogicalInductor (liaHistory DP) DP := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact lia_isMachineLogicalInductor_of_compiler process
+    (liaBoundedEvaluatorCompiler process)
+
+/-- `thm:lia` at the fuel-class compatibility predicate, by the bridge. This is the form the
+property tail consumes.
 Paper node: `thm:lia` -/
 theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    IsLogicalInductor (liaHistory DP) DP := by
-  obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact lia_isLogicalInductor_of_compiler process
-    (liaBoundedEvaluatorCompiler process)
+    IsLogicalInductor (liaHistory DP) DP :=
+  @IsMachineLogicalInductor.toIsLogicalInductor _ _ (LIA_isMachineLogicalInductor DP hDP)
+
+/-- `thm:li` at the paper's own quantifier: every computable deductive process admits a
+market no machine-polynomial-time trader exploits.
+Paper node: `thm:li` -/
+theorem exists_machine_logical_inductor (DP : DeductiveProcess)
+    (hDP : ComputableDeductiveProcess DP) :
+    ∃ P : History, IsMachineLogicalInductor P DP :=
+  ⟨liaHistory DP, LIA_isMachineLogicalInductor DP hDP⟩
 
 /-- `thm:li`: every computable deductive process admits a logical inductor.
 Paper node: `thm:li` -/
@@ -7879,8 +7785,11 @@ theorem exists_logical_inductor (DP : DeductiveProcess)
 (`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the recursive
 rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
-* `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a logical
-  inductor.  This class bundles the paper's *computable exact-rational market* certificate
+* `IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
+  logical inductor **at the paper's own quantifier**: no trader in ordinary machine
+  polynomial time exploits it.  The fuel-class reading follows by
+  `IsMachineLogicalInductor.toIsLogicalInductor`.  This class bundles the paper's
+  *computable exact-rational market* certificate
   (`marketComputable : ComputableMarket` — one fixed program computes the rational quote table),
   the computable deductive process, and the no-exploitation criterion;
 * **one program emits the belief states themselves**: a single `Nat.Partrec.Code` that on input
@@ -7895,8 +7804,8 @@ rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
 `exists_logical_inductor` above is the projection to the bare existence statement.
 
-Proof kind `C` (composition).  Provenance: the criterion conjunct is `LIA_is_logical_inductor`
-(a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
+Proof kind `C` (composition).  Provenance: the criterion conjunct is
+`LIA_isMachineLogicalInductor` (a); the emission conjunct is `exists_liaEntries_code` (a) — minimization of the primitive
 recursive bounded evaluator `liaEncodedEntriesAtFuel` over its fuel clock, pinned to the
 semantic states by `liaEncodedEntriesAtFuel_sound`; the support/range/cast conjuncts are
 `RationalBeliefState` facts (a).
@@ -7904,14 +7813,14 @@ Paper node: `thm:li` -/
 theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
-      IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+      IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
         (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
           Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
         (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) := by
   obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
+  exact ⟨liaStates DP, LIA_isMachineLogicalInductor DP hDP,
     exists_liaEntries_code process,
     fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
     fun n φ => (liaStates DP n).quote_mem_Icc φ,
