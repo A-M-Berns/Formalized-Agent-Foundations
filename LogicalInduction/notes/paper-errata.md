@@ -142,6 +142,35 @@ The finite-support theorem is a *third* outcome, and it settles neither of these
 repairs the appendix's argument on the restricted domain where that argument is valid,
 while leaving the unrestricted statement open.
 
+### The restricted theorems still have no witness (and what stands in the way, 2026-08-26)
+
+`EfficientPrefixPatch`, `FiniteSupportPatch` and `MachineFiniteSupportPatch` all remain
+**uninhabited**. Two things sharpened this round without changing that verdict:
+
+* **The escape-leaf keystone is narrower than recorded.** `RpnFreeze.lean` said the freeze
+  matcher cannot compare against a fixed numeral because `Formula.ofNat` ignores the payload
+  at tag `0`, so `decode` is not injective and the test reduces to `Nat.unpair` / integer
+  square root. True, but tags `1`–`4` *are* injective given injective sub-decodes, so the
+  decoder is injective on exactly the **falsum-free** sentences
+  (`decode_eq_some_iff_of_botFree`, `Construction/Witnesses/CanonicalCodes.lean`), and there
+  the whole test is a constant comparison (`sentenceMatches_of_botFree`). The restriction is
+  necessary rather than a proof artifact — `decode_falsum_noncanonical` and
+  `decode_and_noncanonical` exhibit the ambiguity and its propagation. So square root is
+  forced **iff** the frozen quote table contains a `⊥` subformula. It is not known whether
+  `LIA`'s table is `⊥`-free; its entries are populated dynamically.
+* **The remaining obstruction is the FP transport, not the square root.** Three pieces, none
+  built: a selector-indexed token model for `EF.freezeOn` (the existing exactness chain is
+  keyed to `freezeBefore`/`cutoff`); an FP certification of the freeze transducer through
+  `Framework/Machine/FPFold.lean`, including the polynomial state bound on malformed inputs;
+  and the run-level decision `runMatches` as an FP function, where the *structured
+  paper-prime leaf* is a second, independent ambiguity source that the `⊥` result does not
+  touch.
+
+One degenerate discharge is available and is deliberately **not** taken: `S = ∅` makes the
+freeze the identity and inhabits the structure trivially, but it also forces `P = P'`. That
+is exactly the degenerate non-vacuity this repository's audit standard rejects, and it is
+recorded here so that nobody later mistakes it for a discharge.
+
 The precise verdict documentation should now use:
 
 > The published unrestricted finite-perturbation theorem is **false**, and the repository
