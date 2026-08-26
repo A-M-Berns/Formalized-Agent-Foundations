@@ -282,9 +282,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   ComputableLUV.exppolymax_arith ComputableLUV.wubexp_arith
   ComputableLUV.expcoh_arith ComputableLUV.perexpkno_arith
 
--- dd:fuel model card (`def:ec`): the fuel model's own trust facts — upper calibration
--- (poly-fueled ⟹ primrec), the runtime-gcd inhabitation witness, the size-based
--- separation (2^n is not poly-fueled), and the two-sided EF.cost ↔ token-length seam.
+-- dd:fuel model card (`def:ec`): the fuel certificate's own trust facts — poly-fueled ⟹
+-- primrec, the runtime-gcd inhabitation witness, the size-based separation (2^n is not
+-- poly-fueled), and the two-sided EF.cost ↔ token-length seam.  The certificate's
+-- relation to the paper's class is `EfficientlyComputable.toMachine`, audited above.
 #assert_axioms_clean
   PolyFueled.primrec gcdc_polyFueled not_polyFueled_two_pow
   EF.cost_le_serialize_length EF.serialize_length_le_cost
