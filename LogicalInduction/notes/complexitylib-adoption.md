@@ -381,13 +381,29 @@ Per-area detail for the Stage-3 slice:
 | --- | --- | --- | ---: | --- | --- |
 | `Models/TuringMachine.lean` | 2 & 3 | `TM`, `Tape`, `reachesIn`, `ComputesInTime` | 906 | low (clean) | **yes** |
 | `Classes/{Time,Space}`, `Asymptotics` | 2 & 3 | `DTIME`, `=O` | ~590 | low (4 edits, done) | **yes** |
-| `Classes/P/Defs` + closure kit | 2 & 3 | `FP`, `mem_FP_comp`, `ite_mem_finset_mem_FP` | ~1,500 | low (builds today) | **yes** |
+| `Classes/P/Defs` + closure kit | 2 & 3 | `FP`, `mem_FP_comp`, `ite_mem_finset_mem_FP` | ~1,500 | low (**partly wrong — see the correction below**) | **yes** |
 | `TuringMachine/Combinators`, `Composition` | 2 & 3 | seq/if/loop, output bounds, `Hoare` | ~12,600 | medium (`Hoare`, `Lift`) | **yes** |
 | `TuringMachine/Subroutines` | 3 (via UTM) | counters, pairing, emit | ~27,700 (partly in closure) | **medium-high** (`Counter`, `PairEmit`) | yes, unavoidable |
 | `TuringMachine/SingleTape` | 3 | multi→single reduction; `Corr.outputEq` | 6,676 | **high** (5,344-LOC `Correctness`) | yes, unavoidable |
 | `TuringMachine/UTM/**` | 3 only | `TMDesc`, `utmTM`, universality | 23,681 | medium | yes for Stage 3 |
 | `Classes/P/Cobham/**` | — | machine-independent bridge | 34,140 | medium | **no** (§1.5) |
 | `Models/RandomAccessMachine`, `Circuits/`, `SAT/`, `Classes/PPoly` | — | not reachable from our seeds | ~140,000 | — | **no** |
+
+**Correction (2026-08-26).** The "builds today" verdict on the closure kit row above was
+wrong, and the Cobham "no" was premature. Measured directly on this pin:
+`Classes/P/Defs`, `NormalForm`, `Description`, `FinsetDomain` and `UnaryLength` build;
+**`Classes/P/Composition` (`mem_FP_comp`) and `Classes/P/PairWithInput`
+(`mem_FP_pairWithInput`) do not**, and neither does any of `Classes/P/Cobham/**` or
+`TuringMachine/Subroutines/Binary*`. All of it funnels through the same three files and
+the same taxonomy this note records in §II.2 — `Γ.ofBool true` no longer reducing to
+`Γ.one` inside `simpa`, in `Subroutines/Internal.lean`; a structure projection no longer
+reducing in `Lift.lean`; the same in `PairEmit/Internal.lean`. Because Lake halts
+dependents, the observed error count is a floor, not a total. Stage 3 did not need these
+modules, so the gap went unmeasured; the machine readings of `thm:scon` and `thm:ifp` do
+need them, and `Cobham/**` in particular now looks load-bearing rather than optional —
+`CobhamFP_eq_FP` plus `iterate_mem_FP`/`recFoldClamp_mem_FP` is the cheap route to
+certifying a streaming transduction in `FP`, against ~1,500–3,000 lines of bespoke Turing
+machine per client otherwise.
 
 **Answer to the crucial question.** The good news: the *irreducible core* is genuinely
 small — **`FP` and its closure is 1,496 lines and compiles on 4.31 today**. The bad news:
