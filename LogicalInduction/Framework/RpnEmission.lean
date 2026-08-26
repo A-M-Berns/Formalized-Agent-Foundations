@@ -105,6 +105,41 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
 
 /-! ## The symbol-metered realization bridges -/
 
+/-- A length/token emission under one polynomial clock *is* the clocked token stream.
+This is the step shared by every raw-emission certificate below. -/
+lemma clockedTokens_eq_of_emission (raw : ℕ → List ℕ)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
+      some (raw n).length)
+    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
+    (htoken : ∀ n i, i < (raw n).length →
+      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
+        some ((raw n).getD i 0)) :
+    ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
+  intro n
+  unfold clockedTokens
+  rw [hlength n]
+  simp only []
+  rw [min_eq_left (hsize n)]
+  apply List.ext_getElem
+  · simp
+  · intro i hleft hright
+    simp only [List.getElem_ofFn]
+    rw [htoken n i hright, Option.getD_some]
+    exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
+
+/-- A trader whose day-`n` decode is a clocked token stream is efficiently computable. -/
+lemma ec_of_rawClocked (Tr : Trader) (raw : ℕ → List ℕ)
+    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
+    (hclock : ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n)
+    (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
+    EfficientlyComputable Tr := by
+  refine ⟨lengthCode, tokenCode, a, k, congrArg Trader.mk (funext fun n => ?_)⟩
+  change strategyOfTokens n (unRpn (undigitize
+    (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n))) = Tr.strat n
+  rw [hclock n]
+  exact hstrategy n
+
 /-- Exact digit emitters instantiate the symbol-metered bounded-emulator definition. -/
 lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
@@ -115,36 +150,19 @@ lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
       evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
         some ((raw n).getD i 0))
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputable Tr := by
-  refine ⟨lengthCode, tokenCode, a, k, ?_⟩
-  have hstrat :
-      (clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a)).strat =
-        Tr.strat := by
-    funext n
-    change strategyOfTokens n (unRpn (undigitize
-      (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n))) = Tr.strat n
-    have htoks :
-        clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
-      unfold clockedTokens
-      rw [hlength n]
-      simp only []
-      rw [min_eq_left (hsize n)]
-      apply List.ext_getElem
-      · simp
-      · intro i hleft hright
-        simp only [List.getElem_ofFn]
-        rw [htoken n i hright, Option.getD_some]
-        exact List.getD_eq_get (raw n) 0 ⟨i, hright⟩
-    rw [htoks]
-    exact hstrategy n
-  exact congrArg Trader.mk hstrat
+    EfficientlyComputable Tr :=
+  ec_of_rawClocked Tr raw lengthCode tokenCode a k
+    (clockedTokens_eq_of_emission raw lengthCode tokenCode a k hlength hsize htoken)
+    hstrategy
 
-/-- Any `PolySegStream` whose contracted undigitized decode is the target trader
-realizes an `EfficientlyComputable` certificate. -/
-lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
-    (h : PolySegStream raw)
-    (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputable Tr := by
+/-- **A polynomial segment stream is a clocked emission of itself.** Its poly-fueled
+length and token codes, run under one polynomial day clock dominating both fuel bounds and
+the stream length, produce the stream on the nose. This is the certificate the trader
+compiler consumes, in both the fuel model (`ec_of_rawSegStream`) and the machine model
+(`RpnSentenceCodes.toMachine`, `Framework/Machine/SentenceCodes.lean`). -/
+lemma PolySegStream.clockedTokens_certificate {raw : ℕ → List ℕ} (h : PolySegStream raw) :
+    ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
+      ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
   obtain ⟨ct, cl, tokenFn, lenFn, htokf, hlenf, hlens, hspec⟩ := h
   have hlenRaw : PolyFueled cl (fun n => (raw n).length) :=
     hlenf.of_eq (fun n => (hlens n).symm)
@@ -156,8 +174,8 @@ lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
       ⟨a₀, k₀, fun _ => le_rfl⟩).comp
       ((IsPolyBounded.linear 0).pair hlenBounded)
   obtain ⟨A, K, hAK⟩ := (hblBounded.max hbcbound).max hlenBounded
-  refine ec_of_rawEmission Tr raw cl ct A K (fun n => ?_) (fun n => ?_)
-    (fun n i hi => ?_) hstrategy
+  refine ⟨cl, ct, A, K, clockedTokens_eq_of_emission raw cl ct A K
+    (fun n => ?_) (fun n => ?_) (fun n i hi => ?_)⟩
   · exact evaln_mono
       ((le_max_left _ _).trans ((le_max_left _ _).trans (hAK n))) (hfl n)
   · exact (le_max_right _ _).trans (hAK n)
@@ -171,6 +189,15 @@ lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     have key := hfc (Nat.pair n i)
     rw [hspec n i (by rw [← hlens n]; exact hi)] at key
     exact evaln_mono hbc key
+
+/-- Any `PolySegStream` whose contracted undigitized decode is the target trader
+realizes an `EfficientlyComputable` certificate. -/
+lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
+    (h : PolySegStream raw)
+    (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
+    EfficientlyComputable Tr := by
+  obtain ⟨lc, tc, a, k, hclock⟩ := h.clockedTokens_certificate
+  exact ec_of_rawClocked Tr raw lc tc a k hclock hstrategy
 
 #print axioms escExpand_eq_flatMap
 #print axioms PolySegStream.escModeScan
