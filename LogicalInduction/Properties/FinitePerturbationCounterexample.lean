@@ -498,6 +498,15 @@ noncomputable def adviceRow (base : Valuation) (gate sign : ℕ → ℝ) : Valua
   congr 1
   exact (signAtom_inj.mp hex.choose_spec).symm
 
+/-- Away from both advice families the row is the base valuation.  This is the branch a
+day-`0` quote program falls through to.
+Kind `P`. -/
+lemma adviceRow_of_not_advice (base : Valuation) (gate sign : ℕ → ℝ) (φ : Sentence)
+    (h6 : ∀ n, φ ≠ schedAtom n) (h7 : ∀ n, φ ≠ signAtom n) :
+    adviceRow base gate sign φ = base φ := by
+  rw [adviceRow, dif_neg (fun h => (h6 h.choose) h.choose_spec),
+    dif_neg (fun h => (h7 h.choose) h.choose_spec)]
+
 /-- Kind `P`; hypotheses `(a)`. -/
 lemma adviceRow_mem_Icc {base : Valuation} {gate sign : ℕ → ℝ}
     (hbase : ∀ φ, 0 ≤ base φ ∧ base φ ≤ 1)
@@ -712,9 +721,11 @@ lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
 
 /-! ## Assembly
 
-What remains is the *construction* of the perturbed market and the advice-reading trader.
-Both are recorded as explicit obligations rather than assumed: the conditional refutation
-below is unconditional given them, and the witness lemma is the single `sorry`.
+The reduction below is unconditional and complete: given a machine logical inductor, a
+computable market agreeing with it from day `1` on, a machine-efficient trader with the
+two interface laws, and the scheduled-day dichotomy, the unrestricted finite-perturbation
+statement is false.  Every one of those inputs is supplied by this file except the
+concrete witness, which lives downstream (see the closing section).
 -/
 
 /-- **The refutation, modulo the advice construction.**  Given a machine logical inductor
@@ -745,88 +756,20 @@ theorem not_overgeneral_ifp_of_advice
   exact hLI'.noExploit Tr hTr
     (exploits Tr P' DP χ hdicho hP'.1 hworld hzero hval)
 
-/-- The advice construction itself.  `P'` perturbs day `0` of a machine logical inductor
-`P` by publishing, as the prices of disjoint advice atoms, the schedule bit and the sign
-bit `[P n (χ n) < 1/2]` of the repo's diagonal family `χ`; `Tr` is the trader whose day-`n`
-coefficient is the rank-`0` expression `price (schedAtom n) 0 * (2 * price (signAtom n) 0
-- 1)` and whose traded sentence is `χ n`.
+/-! ## Where the witness lives
 
-**Not proved.**  This is the whole remaining content of the counterexample, and it is the
-only `sorry` in this development.  Nothing here may be read as refuting the paper's
-`thm:ifp` until it is discharged. -/
-theorem exists_advice_perturbation :
-    ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
-      IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
-      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ MachineEfficientTrader Tr ∧
-      (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
-      (∀ j, Dichotomy P' DP χ (sched P' DP χ j)) ∧
-      (∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
-        (Tr.strat i).value P' v.payout = 0) ∧
-      (∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
-        = roundValue P' χ v (sched P' DP χ j)) := by
-  obtain ⟨P, DP, χ, hLI, hworld, hχ, hdicho, hcomp⟩ :
-      ∃ (P : History) (DP : DeductiveProcess) (χ : ℕ → Sentence),
-        IsMachineLogicalInductor P DP ∧
-        (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
-        RpnSentenceCodes χ ∧
-        (∀ m, 1 ≤ m → Dichotomy (advicePerturbed P DP χ) DP χ m) ∧
-        ComputableMarket (advicePerturbed P DP χ) := by
-    -- TODO(thm:ifp): need the concrete witness.  `P := liaHistory (theoremDP T)` with
-    -- `LIA_isMachineLogicalInductor` and `theoremDP_hworld`; `χ` the canonical `p = 1/2`
-    -- diagonal `(theoremDiagonalQuoteCode T (1/2)).toBooleanQuoteCode.sentence`, whose
-    -- `sentence_codes` field is `RpnSentenceCodes χ` and whose `diagonal_reflected` gives
-    -- the dichotomy through `dichotomy_of_paradoxQuote` applied to
-    -- `paradoxResistanceQuoteOfDiagonal … (theoremMarketComputation T) (1/2) …`.
-    -- Note the `MarketComputation` must be the one for the **unperturbed** `P`: `χ n`
-    -- asserts a fact about `P`'s own quote program, and `dichotomy_of_paradoxQuote`
-    -- transports it to `P'` across `advicePerturbed_agree`.
-    --
-    -- **Blocked here by module layering, not by mathematics.**  `theoremDP` and the whole
-    -- quotation layer live in `Construction/Witnesses/ComputationDP.lean`, which imports
-    -- `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties` → this
-    -- file.  Naming them here is an import cycle.  This existential (and only it) belongs
-    -- in a module downstream of `ComputationDP`, exactly as
-    -- `lic_paradox_resistance_ofDiagonal_unconditional` does.
-    --
-    -- TODO(thm:ifp): need `ComputableMarket (advicePerturbed P DP χ)`.  All three
-    -- ingredients are import-safe from here (`Construction/Witnesses/FiniteEntailment.lean`
-    -- imports only `LIACompiler` and `Framework/Compactness`):
-    --   * `sentencePrimcodable` (`Construction/LIACompiler.lean:225`) for decoding a
-    --     sentence code and recognising the tag-`6`/`7` advice atoms;
-    --   * `settleStage` is `Nat.find` over `SettledAt`, which `stageEntails` decides
-    --     (`stageEntails_primrec`) and `DeductiveProcess.stageEntails_complete_of_semantic`
-    --     shows is eventually true, so `Nat.rfindOpt` + `Partrec.of_eq_tot` computes it in
-    --     the `liaEntries_computable` style — the totality side condition is a plain
-    --     existence statement, so the compactness proof of `exists_stage_entails` suffices
-    --     and no constructive stage bound is needed;
-    --   * `sched` is strictly monotone with `sched 0 = 1`, so `∃ j, sched j = n` is the
-    --     bounded search `∃ j ≤ n, sched j = n`.
-    sorry
-  exact ⟨P, advicePerturbed P DP χ, DP, χ, adviceTrader schedAtom signAtom χ,
-    hLI, hcomp, advicePerturbed_agree P DP χ,
-    adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom hχ,
-    hworld,
-    fun j => hdicho _ (one_le_sched _ DP χ j),
-    fun v i hi => adviceTrader_value_off_sched schedAtom signAtom χ _ DP
-      (advicePerturbed_schedAtom_off P DP χ) v i hi,
-    fun v j => adviceTrader_value_on_sched schedAtom signAtom χ _ DP
-      (advicePerturbed_schedAtom_on P DP χ) (advicePerturbed_signAtom_on P DP χ) v j⟩
+The concrete existential this reduction consumes — a machine logical inductor with a
+`p = 1/2` paradox-resistance diagonal, together with the computability of its perturbed
+market — cannot be stated in this module.  `theoremDP` and the whole quotation layer live
+in `Construction/Witnesses/ComputationDP.lean`, which reaches this file through
+`ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so naming them
+here is an import cycle.
 
-/-- **The unrestricted finite-day perturbation statement is false** — the negation of the
-paper's `thm:ifp` as printed, at the paper's own quantifier.
-
-**Depends on `sorryAx`** through `exists_advice_perturbation`.  The reduction below is
-kernel-checked; the witness is not built.  Refutes rather than renders, so no
-`Paper node:` line.
-Kind `C` on `exists_advice_perturbation`; hypotheses `(a)`. -/
-theorem not_overgeneral_ifp :
-    ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
-        IsMachineLogicalInductor P DP → ComputableMarket P' →
-        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP := by
-  obtain ⟨P, P', DP, χ, Tr, hLI, hP', hagree, hTr, hworld, hdicho, hzero, hval⟩ :=
-    exists_advice_perturbation
-  exact not_overgeneral_ifp_of_advice P P' DP χ Tr hLI hP' hagree hTr hworld hdicho
-    hzero hval
+The witness and the closed refutation therefore live downstream, in
+`Construction/Witnesses/FinitePerturbationWitness.lean` — the same split
+`lic_paradox_resistance_ofDiagonal` and `lic_paradox_resistance_ofDiagonal_unconditional`
+already use.  Everything in this file is abstract and unconditional.
+-/
 
 end FinitePerturbationCounterexample
 end LogicalInduction
