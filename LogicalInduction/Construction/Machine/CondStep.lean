@@ -25,12 +25,20 @@ The three pieces, in the order they are built:
   words; the buffered run is already in the state; and the condition block comes from an
   oracle indexed by unary days, called at `min D n`.
 
-**The clamp is a disclosed gap, not a hidden one.**  `condEmitR` draws the condition block
-at `min D n` rather than at `D`, because a word-level emitter cannot call an oracle at an
-unbounded day.  `decodeBits_condPass` therefore states the pass against `clampedEmit`.  The
-guarded rewrite `rpnGuardedConditionTokens` emits the ordinary output only when every price
-day is within the trading day — exactly the condition under which the two emitters agree —
-so closing the gap is the guard pass's job, and it is recorded here rather than glossed.
+* **The guard.**  `rpnGuardedConditionTokens` emits the rewrite only when every price-day
+  token is within the trading day.  That test is a second fold over the *same* automaton —
+  `condStepR` again, so there is one word-level automaton, not two — whose emitter drops a
+  mark at each violating position, and the guard holds exactly when the pass emits nothing.
+
+**The clamp, and how it is discharged.**  `condEmitR` draws the condition block at
+`min D n` rather than at `D`, because a word-level emitter cannot call an oracle at an
+unbounded day; unclamped the claim would be *false*, not merely unproved, since a `k`-bit
+day names up to `4 ^ k` marks.  `decodeBits_condPass` therefore states the price pass
+against `clampedEmit`.  `rpnConditionRun_congr_of_guard` closes it: on a stream the guard
+accepts, both emitters are called only at days `D ≤ n`, where `min D n = D`, so
+`decodeBits_guardedPassW` states the guarded pass against the *true* emitter
+`rpnPriceEmit`.  The fuel-model certificate `rpnGuardedConditionRun_polySegStream_of` reads
+its emitted segment at the same clamped day for the same reason.
 
 Everything here is construction infrastructure rather than a paper statement, so the
 declarations are `lemma`s and carry no `Paper node:` line; the fuel-model counterparts in
@@ -303,8 +311,10 @@ def csBufStep (cli tw tok : List Bool) : List Bool :=
 def condStepOf (cli tw tok : List Bool) : List Bool :=
   condSt (csModeStep cli tw) (csCntStep cli tw) (csLenStep cli tw) (csBufStep cli tw tok)
 
-private def cvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
-private def cvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
+/-- The client state slot of a step argument `pair W (pair cli tok)`. -/
+def cvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
+/-- The token-block slot of a step argument. -/
+def cvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
 
 /-- The incoming token, clamped to the automaton's test window and rendered in unary. -/
 def clampTok (v : List Bool) : List Bool :=
@@ -481,7 +491,8 @@ def condEmitOf (ε : ℚ) (blkW bufW tok : List Bool) : List Bool :=
     ++ dayBits tok ++ tokBits (emitConstB ε) ++ blkW
     ++ dayBits tok ++ tokBits emitConstC
 
-private def cvW (v : List Bool) : List Bool := fstBlock v
+/-- The parameter slot of a step argument: the trading day, in unary. -/
+def cvW (v : List Bool) : List Bool := fstBlock v
 
 /-- The day the oracle is called at: the incoming token, clamped by the trading day.  The
 clamp is not optional — an unbounded day would name an unbounded block — and on the guarded
@@ -699,9 +710,270 @@ lemma decodeBits_condPass_stream (ε : ℚ) (B : List Bool → List Bool) (n : �
     ← undigitize_eq_blockSplit]
 
 
+/-! ## The day guard
+
+`rpnGuardedConditionTokens` emits the rewrite only when every price-day token is within the
+trading day, and the empty stream otherwise.  That test is a second fold over the same
+automaton — the state is `condStepR` again, so there is one word-level automaton, not two —
+whose emitter drops a single mark at each violating position.  The guard holds exactly when
+the pass emits nothing.
+
+This is also what closes the clamp gap left by the price pass: `condEmitR` draws its
+condition block at `min D n`, and on a stream the guard accepts, `min D n = D`. -/
+
+/-- The number of price-day positions whose day token exceeds `n`.  Zero is exactly the
+guard `rpnGuardedConditionTokens` tests.
+
+This is the list-level form of `RpnConditioning.rpnBigDayFlagAt`, which the fuel model
+scans positionally; the two characterizations (`guardMarks_eq_zero_iff` here,
+`rpnBigDayFlagAt_eq_zero_iff` there) land on the same predicate.  A count rather than a
+flag, because the fold's emitter accumulates a word and its length is what the count is. -/
+def guardMarks (n : ℕ) : ℕ → List ℕ → ℕ
+  | _, [] => 0
+  | st, t :: ts =>
+      (if rcMode st = 2 ∧ n < t then 1 else 0) + guardMarks n (rpnCondStep st t) ts
+
+private lemma take_succ_foldl (st t : ℕ) (ts : List ℕ) (k : ℕ) :
+    (((t :: ts).take (k + 1)).foldl rpnCondStep st)
+      = (ts.take k).foldl rpnCondStep (rpnCondStep st t) := by
+  rw [List.take_succ_cons, List.foldl_cons]
+
+/-- The counter is zero exactly on the positional guard `rpnGuardedConditionTokens` uses. -/
+lemma guardMarks_eq_zero_iff (n : ℕ) : ∀ (ts : List ℕ) (st : ℕ),
+    guardMarks n st ts = 0 ↔
+      ∀ j < ts.length, rcMode ((ts.take j).foldl rpnCondStep st) = 2 → ts.getD j 0 ≤ n
+  | [], st => by simp [guardMarks]
+  | t :: ts, st => by
+      have ih := guardMarks_eq_zero_iff n ts (rpnCondStep st t)
+      rw [guardMarks]
+      constructor
+      · rintro h j hj hm
+        have hA : ¬ (rcMode st = 2 ∧ n < t) := by
+          by_contra hc
+          rw [if_pos hc] at h
+          omega
+        have hB : ∀ k < ts.length,
+            rcMode ((ts.take k).foldl rpnCondStep (rpnCondStep st t)) = 2 →
+              ts.getD k 0 ≤ n := by
+          rw [if_neg hA, Nat.zero_add] at h
+          exact ih.mp h
+        cases j with
+        | zero =>
+            simp only [List.take_zero, List.foldl_nil, List.getD_cons_zero] at hm ⊢
+            by_contra hlt
+            exact hA ⟨hm, by omega⟩
+        | succ k =>
+            rw [take_succ_foldl] at hm
+            simp only [List.length_cons] at hj
+            simpa using hB k (by omega) hm
+      · intro h
+        have hA : ¬ (rcMode st = 2 ∧ n < t) := by
+          rintro ⟨hm, hlt⟩
+          have := h 0 (by simp) (by simpa using hm)
+          simp only [List.getD_cons_zero] at this
+          omega
+        rw [if_neg hA, Nat.zero_add]
+        refine ih.mpr ?_
+        intro k hk hmk
+        have := h (k + 1) (by simp; omega) (by rw [take_succ_foldl]; exact hmk)
+        simpa using this
+
+/-- **Emitters that agree on days within the guard give the same rewrite.**  This is the
+closure of the clamp gap: on a stream the guard accepts, the clamped emitter and the true
+one are called only at days `D ≤ n`, where `min D n = D`. -/
+lemma rpnConditionRun_congr_of_guard (n : ℕ) {emit₁ emit₂ : List ℕ → ℕ → List ℕ}
+    (h : ∀ (buf : List ℕ) (D : ℕ), D ≤ n → emit₁ buf D = emit₂ buf D) :
+    ∀ (ts : List ℕ) (st : ℕ) (buf : List ℕ), guardMarks n st ts = 0 →
+      rpnConditionRun emit₁ (st, buf) ts = rpnConditionRun emit₂ (st, buf) ts
+  | [], st, buf, _ => rfl
+  | t :: ts, st, buf, hg => by
+      rw [guardMarks] at hg
+      have hA : ¬ (rcMode st = 2 ∧ n < t) := by
+        by_contra hc
+        rw [if_pos hc] at hg
+        omega
+      have hB : guardMarks n (rpnCondStep st t) ts = 0 := by
+        rw [if_neg hA, Nat.zero_add] at hg
+        exact hg
+      rw [rpnConditionRun, rpnConditionRun,
+        rpnConditionRun_congr_of_guard n h ts (rpnCondStep st t) (rpnCondBuf st buf t) hB]
+      by_cases hm : rcMode st = 2
+      · rw [if_pos hm, if_pos hm, h buf t (by omega)]
+      · rw [if_neg hm, if_neg hm]
+
+/-! ### The guard emitter -/
+
+/-- The day, clamped one *past* the trading day.  Clamping at `n` could not distinguish
+`D = n` from `D > n`; clamping at `n + 1` makes `D ≤ n` a length comparison. -/
+def dayClampSucc (v : List Bool) : List Bool :=
+  List.replicate (min (digitVal (bitsToDigits (cvTok v))) (cvW v ++ [true]).length) true
+
+/-- The guard pass's word-level emitter: one mark per violating price day. -/
+def guardEmitW (v : List Bool) : List Bool :=
+  if (csMode (cvCli v)).length = 2 then
+    (if (dayClampSucc v).length ≤ (cvW v).length then [] else [true])
+  else []
+
+/-- Its block-level reading. -/
+def guardEmitR (n : ℕ) (cli : List Bool) (cur : List ℕ) : List Bool :=
+  if (csMode cli).length = 2 then (if digitVal cur ≤ n then [] else [true]) else []
+
+lemma guardEmitW_eq (W cli : List Bool) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    guardEmitW (pair W (pair cli (digitsToBits cur))) = guardEmitR W.length cli cur := by
+  have hlen : (dayClampSucc (pair W (pair cli (digitsToBits cur)))).length
+      = min (digitVal cur) (W.length + 1) := by
+    rw [dayClampSucc, List.length_replicate]
+    simp only [cvTok, cvW, sndBlock_pair, fstBlock_pair, List.length_append,
+      List.length_cons, List.length_nil,
+      bitsToDigits_digitsToBits cur (fun d hd => lt_trans (hcur d hd) (by norm_num))]
+  rw [guardEmitW, guardEmitR, hlen]
+  simp only [cvCli, cvW, sndBlock_pair, fstBlock_pair]
+  by_cases hm : (csMode cli).length = 2
+  · rw [if_pos hm, if_pos hm]
+    by_cases h : digitVal cur ≤ W.length
+    · rw [if_pos h,
+        if_pos (by omega : min (digitVal cur) (W.length + 1) ≤ W.length)]
+    · rw [if_neg h,
+        if_neg (by omega : ¬ (min (digitVal cur) (W.length + 1) ≤ W.length))]
+  · rw [if_neg hm, if_neg hm]
+
+lemma guardEmitW_mem_FP : guardEmitW ∈ FP := by
+  have hW : cvW ∈ FP := fstBlock_mem_FP
+  have hcli : cvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
+  have htok : cvTok ∈ FP := mem_FP_comp sndBlock_mem_FP sndBlock_mem_FP
+  have hff : (fun v => fstBlock (cvCli v)) ∈ FP := mem_FP_comp hcli fstBlock_mem_FP
+  have hm : (fun v => csMode (cvCli v)) ∈ FP := mem_FP_comp hff fstBlock_mem_FP
+  have hsucc : dayClampSucc ∈ FP :=
+    LEUnary.unaryOfDigitsLE_le_mem_FP htok
+      (appendFn_mem_FP hW (constFn_mem_FP [true]))
+  exact ifEqLen_mem_FP hm 2
+    (selectHeadFn_leFlag_mem_FP hW hsucc (constFn_mem_FP []) (constFn_mem_FP [true]))
+    (constFn_mem_FP [])
+
+lemma guardEmitW_length_le (W cli tok : List Bool) :
+    (guardEmitW (pair W (pair cli tok))).length
+      ≤ (Polynomial.C 1 : Polynomial ℕ).eval W.length + 0 * (cli.length + tok.length) := by
+  simp only [Polynomial.eval_C, Nat.zero_mul, Nat.add_zero]
+  rw [guardEmitW]
+  split_ifs <;> simp
+
+/-! ### What the guard pass counts -/
+
+lemma guardOut_length (n : ℕ) : ∀ (rs : List (List ℕ)) (cli out : List Bool),
+    (runFold condStepR (guardEmitR n) cli out rs).2.length
+      = out.length + guardMarks n (csPack cli) (rs.map digitVal)
+  | [], cli, out => by rw [runFold, List.map_nil, guardMarks]; simp
+  | r :: rs, cli, out => by
+      have hmode : rcMode (csPack cli) = (csMode cli).length := by rw [csPack, rcMode_pack]
+      rw [runFold, guardOut_length n rs (condStepR cli r) (out ++ guardEmitR n cli r),
+        csPack_condStepR, List.map_cons, guardMarks, List.length_append, hmode]
+      rw [guardEmitR]
+      by_cases hm : (csMode cli).length = 2
+      · rw [if_pos hm]
+        by_cases hd : digitVal r ≤ n
+        · rw [if_pos hd, if_neg (by omega)]
+          simp
+        · rw [if_neg hd, if_pos ⟨hm, by omega⟩]
+          simp
+          omega
+      · rw [if_neg hm, if_neg (by tauto)]
+        simp
+
+lemma guardOut_eq_nil_iff (n : ℕ) (rs : List (List ℕ)) :
+    (runFold condStepR (guardEmitR n) condInit [] rs).2 = []
+      ↔ guardMarks n (rcPack 0 0 0) (rs.map digitVal) = 0 := by
+  rw [← List.length_eq_zero_iff, guardOut_length n rs condInit [], csPack_condInit]
+  simp
+
+/-! ## The guarded price pass
+
+The two folds run over the same blocks; the guard's output is empty exactly when the
+rewrite is the one `rpnGuardedConditionTokens` asks for, and `selectHead` picks between
+them.  The clamped emitter disappears here: on an accepted stream the congruence lemma
+above replaces it by the true one. -/
+
+/-- The condition-block sequence an oracle denotes. -/
+def blocksOf (B : List Bool → List Bool) (d : ℕ) : List ℕ := decodeBits (B (unaryDay d))
+
+/-- **The guard pass is polynomial time.** -/
+lemma guardPass_mem_FP {Wf Sf : List Bool → List Bool} (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    (fun z => (runFold condStepR (guardEmitR (Wf z).length) condInit []
+        (blockSplit (bitsToDigits (Sf z))).1).2) ∈ FP :=
+  runFold_mem_FP (STEPr := fun _ => condStepR) (EMITr := fun W => guardEmitR W.length)
+    (c := 51) (k := 0) (qQ := Polynomial.C 1)
+    condStepW_mem_FP guardEmitW_mem_FP hWf hSf
+    condStepW_length_le guardEmitW_length_le
+    (fun W cli cur h => condStepW_eq W cli cur h)
+    (fun W cli cur h => guardEmitW_eq W cli cur h) condInit []
+
+/-- The guarded price pass, on words. -/
+def guardedPassW (ε : ℚ) (B Wf Sf : List Bool → List Bool) (z : List Bool) : List Bool :=
+  selectHead
+    (emptyFlag (runFold condStepR (guardEmitR (Wf z).length) condInit []
+      (blockSplit (bitsToDigits (Sf z))).1).2)
+    (runFold condStepR (condEmitR ε B (Wf z).length) condInit []
+      (blockSplit (bitsToDigits (Sf z))).1).2
+    []
+
+/-- **The guarded price pass is polynomial time.** -/
+lemma guardedPassW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
+    (hB : B ∈ FP) (hWf : Wf ∈ FP) (hSf : Sf ∈ FP) :
+    guardedPassW ε B Wf Sf ∈ FP :=
+  selectHeadFn_mem_FP (emptyFlag_mem_FP (guardPass_mem_FP hWf hSf))
+    (condPass_mem_FP ε hB hWf hSf) (constFn_mem_FP [])
+
+/-- **And it computes the guarded rewrite** — with the true emitter, not the clamped one.
+The clamp survives only inside the accepted branch, where `min D n = D`. -/
+lemma decodeBits_guardedPass (ε : ℚ) (B : List Bool → List Bool) (n : ℕ)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (ds : List ℕ) :
+    decodeBits (selectHead
+        (emptyFlag (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2)
+        (runFold condStepR (condEmitR ε B n) condInit [] (blockSplit ds).1).2 [])
+      = rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) n (undigitize ds) := by
+  have hmap : (blockSplit ds).1.map digitVal = undigitize ds :=
+    (undigitize_eq_blockSplit ds).symm
+  by_cases hg : (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 = []
+  · have hzero : guardMarks n (rcPack 0 0 0) (undigitize ds) = 0 := by
+      rw [← hmap]
+      exact (guardOut_eq_nil_iff n _).mp hg
+    rw [hg, selectHead_emptyFlag_nil, decodeBits_condPass_stream ε B n hB ds,
+      rpnGuardedConditionTokens,
+      if_pos ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mp hzero)]
+    exact congrArg Prod.snd
+      (rpnConditionRun_congr_of_guard n
+        (fun buf D hD => by
+          rw [clampedEmit, rpnPriceEmit, blocksOf, Nat.min_eq_left hD])
+        (undigitize ds) (rcPack 0 0 0) [] hzero)
+  · obtain ⟨b, bs, hbs⟩ : ∃ b bs,
+        (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 = b :: bs := by
+      cases hc : (runFold condStepR (guardEmitR n) condInit [] (blockSplit ds).1).2 with
+      | nil => exact absurd hc hg
+      | cons b bs => exact ⟨b, bs, rfl⟩
+    have hne : guardMarks n (rcPack 0 0 0) (undigitize ds) ≠ 0 := by
+      rw [← hmap]
+      intro hc
+      exact hg ((guardOut_eq_nil_iff n _).mpr hc)
+    rw [hbs, selectHead_emptyFlag_cons, decodeBits_nil, rpnGuardedConditionTokens,
+      if_neg (fun hc => hne
+        ((guardMarks_eq_zero_iff n (undigitize ds) (rcPack 0 0 0)).mpr hc))]
+
+/-- **The guarded price pass, end to end.**  Decoding the pass's output word gives exactly
+`rpnGuardedConditionTokens` over the token stream `strategyOfOutput` reads off `Sf z`, with
+the trading day taken from `Wf z`.  This is the first of the four passes of
+`rpnConditionOutput`, and the only one whose emitter needed a clamp. -/
+lemma decodeBits_guardedPassW (ε : ℚ) (B Wf Sf : List Bool → List Bool)
+    (hB : ∀ d, BlockWF (B (unaryDay d))) (z : List Bool) :
+    decodeBits (guardedPassW ε B Wf Sf z)
+      = rpnGuardedConditionTokens (rpnPriceEmit (blocksOf B) ε) (Wf z).length
+          (undigitize (bitsToDigits (Sf z))) :=
+  decodeBits_guardedPass ε B (Wf z).length hB (bitsToDigits (Sf z))
+
 #print axioms LogicalInduction.CondStep.csPack_condStepR
 #print axioms LogicalInduction.CondStep.csTokens_condStepR
 #print axioms LogicalInduction.CondStep.condPass_mem_FP
 #print axioms LogicalInduction.CondStep.decodeBits_condPass_stream
+#print axioms LogicalInduction.CondStep.guardMarks_eq_zero_iff
+#print axioms LogicalInduction.CondStep.guardedPassW_mem_FP
+#print axioms LogicalInduction.CondStep.decodeBits_guardedPassW
 
 end LogicalInduction.CondStep
