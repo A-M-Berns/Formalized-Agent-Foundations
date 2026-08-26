@@ -406,16 +406,19 @@ proved content withdrawn.
   unrestricted finite-support statement is, as far as this development can tell, **true** —
   and unprovable here for want of two primitives rather than for want of a theorem.
 
-  **Witnesses.** `machine_lic_iff_twoPoint` is closed but for the deductive process: a
-  concrete pair of computable markets, proved to differ at the frozen coordinate, discharging
-  every hypothesis at once. So the corrected theorem is **non-vacuous**. It is not yet
-  *informative*: those markets price everything at zero but one coordinate and are very
-  likely exploitable, in which case the equivalence holds and says nothing at that instance.
-  Both halves of that sentence are load-bearing — an earlier errata entry claimed
-  non-vacuity citing a declaration that did not exist, which is why the distinction is drawn
-  this finely. The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch`
-  remain **uninhabited**, because the fuel calculus does not close over the escape-leaf
-  decode: the `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
+  **Witnesses.** `machine_lic_iff_twoPoint` is closed but for the deductive process — a
+  concrete pair of computable markets, proved to differ at the frozen coordinate,
+  discharging every hypothesis at once — so the corrected theorem is **non-vacuous**. It is
+  also **informative**: `LIAPerturbation.machineLogicalInductor_liaPerturbed` applies it to
+  the constructed `LIA` with one price moved and *derives* that the perturbed market is
+  itself a machine logical inductor. That market is not the output of any construction here,
+  so its inductor-hood is exactly what the theorem buys. It inherits `Construction/LIA.lean`'s
+  own two hypotheses — LIA's market program and a computable deductive process — which are
+  pre-existing and unchanged.
+
+  The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain
+  **uninhabited**, because the fuel calculus does not close over the escape-leaf decode: the
+  `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
 
 ## Closing the boundaries
 

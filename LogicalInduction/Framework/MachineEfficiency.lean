@@ -84,7 +84,8 @@ serialization. Both transport theorems now exist.
   (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for tables meeting three stated
   conditions; its fuel-class counterparts are not. A concrete computable market pair
   discharges every hypothesis at once (`machine_lic_iff_twoPoint`), so the antecedent is
-  satisfiable — non-vacuous, though neither side of the equivalence is known to hold there.
+  satisfiable, and `LIAPerturbation.machineLogicalInductor_liaPerturbed` makes it
+  informative: the theorem derives a machine logical inductor no construction here produces.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 

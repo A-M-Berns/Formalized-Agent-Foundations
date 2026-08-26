@@ -168,12 +168,17 @@ an artifact of the approach. So the unrestricted finite-support statement is, as
 development can tell, **true** — and unprovable here for want of two primitives rather than
 for want of a theorem.
 
-**Non-vacuous, not informative.** `machine_lic_iff_twoPoint` is closed but for the deductive
-process: a concrete pair of computable markets, proved to differ at the frozen coordinate,
-discharging every hypothesis at once. But those markets price everything at zero except one
-coordinate and are very likely exploitable, in which case the equivalence holds and carries
-no information at that instance. An informative instance would perturb a market already
-known to be an inductor — `liaHistory DP` — at a single coordinate.
+**Non-vacuous, and informative.** `machine_lic_iff_twoPoint` is closed but for the
+deductive process: a concrete pair of computable markets, proved to differ at the frozen
+coordinate, discharging every hypothesis at once — so the antecedent is satisfiable. Those
+particular markets are uninformative (they price everything at zero but one coordinate and
+are very likely exploitable, so the equivalence may hold because both sides fail), which is
+why the stronger instance matters: `LIAPerturbation.machineLogicalInductor_liaPerturbed`
+applies the corrected theorem to the constructed `LIA` with one price moved, and *derives*
+that the perturbed market is a machine logical inductor. That market is not the output of
+any construction in this repo, so its inductor-hood is exactly what the theorem buys. It
+inherits `Construction/LIA.lean`'s own two hypotheses — LIA's market program and a
+computable deductive process — which are pre-existing and unchanged.
 
 **The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
 `FiniteSupportPatch` have no inhabitant, and the reason is now attributed rather than open:

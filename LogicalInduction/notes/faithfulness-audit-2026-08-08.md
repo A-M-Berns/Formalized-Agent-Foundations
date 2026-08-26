@@ -129,15 +129,17 @@ The rest of A1's verdict has moved too, and the parts move in different directio
 * It carries one residual hypothesis, `Recognizable`, which is a condition on the *syntax*
   of the moved sentences — representation residue standing for two absent `Complexity.FP`
   primitives, both proved necessary rather than convenient.
-* `machine_lic_iff_twoPoint` gives it a non-vacuity witness, which A1 said did not exist.
-  It is **not** an informative one: neither side of the equivalence is known to hold there.
+* `machine_lic_iff_twoPoint` gives it a non-vacuity witness, which A1 said did not exist,
+  and `LIAPerturbation.machineLogicalInductor_liaPerturbed` gives it an **informative** one:
+  the corrected theorem derives a machine logical inductor no construction here produces.
 * The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch` are still
   uninhabited, exactly as A1 said, and the reason is now attributed to the `dd:fuel`
   inverse-operation ceiling rather than left open.
 
 A1's instruction — do not cite the node without stating its qualification — stands. The
 qualification to state has changed: it is no longer "no witness exists" but "the published
-statement is false; the corrected one is proved, non-vacuous, and not yet informative".
+statement is false; the corrected one is proved, non-vacuous, informative, and carries one
+residual syntactic side condition".
 
 ### B1 — `thm:wubexp` still strengthens combination-level determination, and local prose oversells it
 
