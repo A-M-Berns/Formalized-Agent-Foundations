@@ -206,7 +206,7 @@ lemma half_le_roundValue {m k k' : ℕ} (h : SettledAt V DP χ m k) (hk : k ≤ 
   · have hH : ¬ v.Holds (χ m) := fun hH => hlt (hset.1 hH)
     have hpay : v.payout (χ m) = 0 := by simp [PCWorld.payout, hH]
     simp only [roundValue, signCoeff, if_neg hlt, hpay]
-    push_neg at hlt
+    push Not at hlt
     linarith
 
 /-- **The bounded downside.**  An unsettled position is worth at least `-1`.
@@ -221,8 +221,207 @@ lemma neg_one_le_roundValue (hV : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) (v : 
   simp only [roundValue, signCoeff]
   by_cases hlt : V m (χ m) < 1 / 2
   · rw [if_pos hlt]; rcases hpay with hp | hp <;> rw [hp] <;> linarith
-  · rw [if_neg hlt]; push_neg at hlt
+  · rw [if_neg hlt]; push Not at hlt
     rcases hpay with hp | hp <;> rw [hp] <;> linarith
+
+/-! ## Exploitation bookkeeping
+
+The trader's net worth on day `n` is exactly the sum of its open rounds' values, of which
+all but the last have settled.  So `netWorth ≥ (#settled)/2 − 1`: bounded below by `−3/2`
+uniformly, and unbounded above along the schedule.  That is `def:exploitation`.
+
+`hzero` and `hval` are the interface to the trader's *construction*: it trades nothing off
+schedule, and on day `sched j` it holds exactly the advice-signed unit position in
+`χ (sched j)`.
+-/
+
+/-- Off-schedule days contribute nothing, so net worth collapses to the open rounds.
+Kind `P`; hypotheses `(a)`, `(b)` `Finset.sum_subset` / `Finset.sum_image`. -/
+lemma netWorth_eq_sum (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (v : PCWorld)
+    (hzero : ∀ i, (∀ j, sched V DP χ j ≠ i) → (Tr.strat i).value V v.payout = 0)
+    (hval : ∀ j, (Tr.strat (sched V DP χ j)).value V v.payout
+      = roundValue V χ v (sched V DP χ j))
+    (n : ℕ) :
+    Tr.netWorth V v n
+      = ∑ j ∈ Finset.range (roundCount V DP χ n), roundValue V χ v (sched V DP χ j) := by
+  classical
+  have hsub : (Finset.range (roundCount V DP χ n)).image (sched V DP χ)
+      ⊆ Finset.range (n + 1) := by
+    intro i hi
+    simp only [Finset.mem_image, Finset.mem_range] at hi ⊢
+    obtain ⟨j, hj, rfl⟩ := hi
+    have := (roundCount_spec V DP χ n j).2 hj
+    omega
+  have hvanish : ∀ i ∈ Finset.range (n + 1),
+      i ∉ (Finset.range (roundCount V DP χ n)).image (sched V DP χ) →
+        (Tr.strat i).value V v.payout = 0 := by
+    intro i hin hi
+    simp only [Finset.mem_range] at hin
+    refine hzero i (fun j hj => hi ?_)
+    simp only [Finset.mem_image, Finset.mem_range]
+    exact ⟨j, (roundCount_spec V DP χ n j).1 (by omega), hj⟩
+  have hsum := Finset.sum_subset hsub hvanish
+  simp only [Trader.netWorth]
+  rw [← hsum, Finset.sum_image (fun a _ b _ h => (sched_strictMono V DP χ).injective h)]
+  exact Finset.sum_congr rfl (fun j _ => hval j)
+
+/-- **Net worth `≥ (#settled)/2 − 1`.**  At most the newest round is unsettled, by
+sparseness, so all earlier rounds contribute `≥ 1/2` and the newest `≥ −1`.
+Kind `P`; hypotheses `(a)`. -/
+lemma netWorth_ge (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (hdicho : ∀ j, Dichotomy V DP χ (sched V DP χ j))
+    (hV : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (v : PCWorld) (n : ℕ) (hv : v.ConsistentWith (DP.D n))
+    (hzero : ∀ i, (∀ j, sched V DP χ j ≠ i) → (Tr.strat i).value V v.payout = 0)
+    (hval : ∀ j, (Tr.strat (sched V DP χ j)).value V v.payout
+      = roundValue V χ v (sched V DP χ j)) :
+    ((roundCount V DP χ n : ℝ) - 1) / 2 - 1 ≤ Tr.netWorth V v n := by
+  rw [netWorth_eq_sum Tr V DP χ v hzero hval n]
+  rcases Nat.eq_zero_or_pos (roundCount V DP χ n) with h0 | hpos
+  · rw [h0]
+    simp only [Finset.range_zero, Finset.sum_empty, Nat.cast_zero]
+    norm_num
+  · obtain ⟨d, hd⟩ : ∃ d, roundCount V DP χ n = d + 1 := ⟨roundCount V DP χ n - 1, by omega⟩
+    have hsettled : ∀ j ∈ Finset.range d,
+        (1 : ℝ) / 2 ≤ roundValue V χ v (sched V DP χ j) := by
+      intro j hj
+      simp only [Finset.mem_range] at hj
+      have hopen : sched V DP χ (j + 1) ≤ n :=
+        (roundCount_spec V DP χ n (j + 1)).2 (by omega)
+      have hstage : settleStage V DP χ (sched V DP χ j) ≤ n :=
+        le_of_lt (lt_of_lt_of_le (settleStage_sched_lt V DP χ j) hopen)
+      exact half_le_roundValue (settleStage_spec (hdicho j)) hstage v hv
+    have hlow : (d : ℝ) * (1 / 2)
+        ≤ ∑ j ∈ Finset.range d, roundValue V χ v (sched V DP χ j) := by
+      calc (d : ℝ) * (1 / 2)
+          = ∑ _j ∈ Finset.range d, (1 / 2 : ℝ) := by
+            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+        _ ≤ _ := Finset.sum_le_sum hsettled
+    have hlast : (-1 : ℝ) ≤ roundValue V χ v (sched V DP χ d) :=
+      neg_one_le_roundValue hV v _
+    rw [hd, Finset.sum_range_succ]
+    push_cast
+    linarith
+
+/-- **The trader exploits `V`** (`def:exploitation`): plausible assessments bounded below
+by `−3/2`, unbounded above along the schedule.
+Kind `C`; hypotheses `(a)`. -/
+lemma exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
+    (hdicho : ∀ j, Dichotomy V DP χ (sched V DP χ j))
+    (hV : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hzero : ∀ (v : PCWorld) i, (∀ j, sched V DP χ j ≠ i) →
+      (Tr.strat i).value V v.payout = 0)
+    (hval : ∀ (v : PCWorld) j, (Tr.strat (sched V DP χ j)).value V v.payout
+      = roundValue V χ v (sched V DP χ j)) :
+    Tr.Exploits V DP := by
+  have hbound : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ((roundCount V DP χ n : ℝ) - 1) / 2 - 1 ≤ Tr.netWorth V v n :=
+    fun n v hv => netWorth_ge Tr V DP χ hdicho hV v n hv (hzero v) (hval v)
+  refine ⟨⟨-(3 / 2), ?_⟩, ?_⟩
+  · rintro x ⟨n, v, hv, rfl⟩
+    have hc : (0 : ℝ) ≤ (roundCount V DP χ n : ℝ) := Nat.cast_nonneg _
+    have := hbound n v hv
+    linarith
+  · rintro ⟨B, hB⟩
+    obtain ⟨J, hJ⟩ := exists_nat_gt (2 * (B + 1))
+    obtain ⟨v, hv⟩ := hworld (sched V DP χ (J + 1))
+    have hcount : (J : ℝ) + 2 ≤ (roundCount V DP χ (sched V DP χ (J + 1)) : ℝ) := by
+      have := le_roundCount_sched V DP χ J
+      exact_mod_cast this
+    have hge := hbound (sched V DP χ (J + 1)) v hv
+    have hmem : Tr.netWorth V v (sched V DP χ (J + 1))
+        ∈ Tr.plausibleAssessments V DP := ⟨_, v, hv, rfl⟩
+    have := hB hmem
+    linarith
+
+/-! ## Assembly
+
+What remains is the *construction* of the perturbed market and the advice-reading trader.
+Both are recorded as explicit obligations rather than assumed: the conditional refutation
+below is unconditional given them, and the witness lemma is the single `sorry`.
+-/
+
+/-- **The refutation, modulo the advice construction.**  Given a machine logical inductor
+`P`, a computable market `P'` agreeing with it from day `1` on, and a machine-efficient
+trader whose day-`n` position is the advice-signed unit position in `χ n` on schedule and
+empty off it, the unrestricted finite-perturbation statement is false.
+
+Refutes, rather than renders, the paper's `thm:ifp`: it carries no `Paper node:` line and
+is not an inventory endpoint.
+Kind `C`; hypotheses `(a)`. -/
+theorem not_overgeneral_ifp_of_advice
+    (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader)
+    (hLI : IsMachineLogicalInductor P DP)
+    (hP' : ComputableMarket P')
+    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ)
+    (hTr : MachineEfficientTrader Tr)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hdicho : ∀ j, Dichotomy P' DP χ (sched P' DP χ j))
+    (hzero : ∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
+      (Tr.strat i).value P' v.payout = 0)
+    (hval : ∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
+      = roundValue P' χ v (sched P' DP χ j)) :
+    ¬ ∀ (Q Q' : History) (DQ : DeductiveProcess) (N : ℕ),
+        IsMachineLogicalInductor Q DQ → ComputableMarket Q' →
+        (∀ n, N ≤ n → ∀ φ, Q n φ = Q' n φ) → IsMachineLogicalInductor Q' DQ := by
+  intro hifp
+  have hLI' : IsMachineLogicalInductor P' DP := hifp P P' DP 1 hLI hP' hagree
+  exact hLI'.noExploit Tr hTr
+    (exploits Tr P' DP χ hdicho hP'.1 hworld hzero hval)
+
+/-- The advice construction itself.  `P'` perturbs day `0` of a machine logical inductor
+`P` by publishing, as the prices of disjoint advice atoms, the schedule bit and the sign
+bit `[P n (χ n) < 1/2]` of the repo's diagonal family `χ`; `Tr` is the trader whose day-`n`
+coefficient is the rank-`0` expression `price (schedAtom n) 0 * (2 * price (signAtom n) 0
+- 1)` and whose traded sentence is `χ n`.
+
+**Not proved.**  This is the whole remaining content of the counterexample, and it is the
+only `sorry` in this development.  Nothing here may be read as refuting the paper's
+`thm:ifp` until it is discharged. -/
+theorem exists_advice_perturbation :
+    ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
+      IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
+      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ MachineEfficientTrader Tr ∧
+      (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
+      (∀ j, Dichotomy P' DP χ (sched P' DP χ j)) ∧
+      (∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
+        (Tr.strat i).value P' v.payout = 0) ∧
+      (∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
+        = roundValue P' χ v (sched P' DP χ j)) := by
+  -- TODO(thm:ifp): need the perturbed market `P'` (day `0` republished as advice atom
+  -- prices, days `≥ 1` equal to `P`) together with `ComputableMarket P'` — a rational
+  -- quote table whose day-`0` row searches for the settlement stage of `χ n` by
+  -- `Nat.rfindOpt`, terminating by `DeductiveProcess.exists_stage_entails`, in the style
+  -- of `liaEntries_computable`.  The decidable finite-stage entailment test that search
+  -- needs already exists: `stageEntails` with `stageEntails_primrec` and
+  -- `DeductiveProcess.stageEntails_complete_of_semantic`
+  -- (`Construction/Witnesses/FiniteEntailment.lean`).
+  -- TODO(thm:ifp): need the advice trader together with `MachineEfficientTrader Tr`, via
+  -- `EfficientlyComputable.ofTokenEmitter` / `ec_of_rawEmission` and
+  -- `EfficientlyComputable.toMachine`, with the `PolySequence` certificate carrying both
+  -- `coefficient_rank ≤ n` and the `RpnSentenceCodes` for `χ`.
+  -- TODO(thm:ifp): need `Dichotomy P' DP χ m` for every `m ≥ 1`, i.e. transport of
+  -- `ParadoxResistanceQuote.diagonal_reflected` at `p = 1/2` across `hagree`.
+  sorry
+
+/-- **The unrestricted finite-day perturbation statement is false** — the negation of the
+paper's `thm:ifp` as printed, at the paper's own quantifier.
+
+**Depends on `sorryAx`** through `exists_advice_perturbation`.  The reduction below is
+kernel-checked; the witness is not built.  Refutes rather than renders, so no
+`Paper node:` line.
+Kind `C` on `exists_advice_perturbation`; hypotheses `(a)`. -/
+theorem not_overgeneral_ifp :
+    ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
+        IsMachineLogicalInductor P DP → ComputableMarket P' →
+        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP := by
+  obtain ⟨P, P', DP, χ, Tr, hLI, hP', hagree, hTr, hworld, hdicho, hzero, hval⟩ :=
+    exists_advice_perturbation
+  exact not_overgeneral_ifp_of_advice P P' DP χ Tr hLI hP' hagree hTr hworld hdicho
+    hzero hval
 
 end FinitePerturbationCounterexample
 end LogicalInduction
+
