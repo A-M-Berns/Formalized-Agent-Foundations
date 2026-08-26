@@ -880,7 +880,7 @@ def acceptsWithin (c : Nat.Partrec.Code) (fuel x : ℕ) : Bool</pre></div><div c
     LUV.RpnThresholdCodeSeq (meshProductLUV q X)</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">productLUV_rpnThresholdCodeSeq</code><span class="ep-file">LogicalInduction/Construction/Witnesses/ProductDefinition.lean</span></div><pre class="sig">lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV</pre></div>
     </section>
   </div>
-  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The paper&#x27;s “computable in O(poly(n))” becomes: two fixed programs under one polynomial fuel clock emit the day-n strategy&#x27;s serialized symbol stream. This is the <code>dd:fuel</code> substitution itself — the one place the model is chosen; everything downstream inherits it.</div>
+  <div class="reading-note"><span class="reading-tag">How the panes line up</span> The paper&#x27;s “computable in O(poly(n))” is rendered as <code>MachineEfficientTrader</code>: some <code>Complexity.FP</code> function of the unary day emits the day-n strategy&#x27;s serialized symbol stream. The fuel-clocked <code>EfficientlyComputable</code> is the certification device that feeds it — <code>EfficientlyComputable.toMachine</code> compiles an <code>evaln</code> certificate into a real polynomial-time machine — and is no longer a substitution for the class.</div>
   <footer class="audit-note"><span class="audit-tag">What to check</span> this row <strong>is</strong> the <code>dd:fuel</code> substitution: a symbol-metered clocked interpreter, not a complexity class; lower calibration (paper-e.c. ⊆ this class) is open</footer>
 </article>
 <h2 class="sec" id="sec-Traders">Traders</h2>
@@ -10718,4 +10718,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: 4f3ed097a91f9377e2b54376b5ed55d37fb301f7ecb81824f9f2f5c62eb353cc -->
+<!-- trust-surface-sources: fa2ae391a97347b5b5afe690928af78b697d7fabb428c44c88da190e1280f70d -->

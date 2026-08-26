@@ -25,9 +25,16 @@ Core vocabulary, repo name → paper name (labels are the paper's own `\label`s)
 * `EF` — an expressible feature (`def:valfeature`/`def:tf`).
 * `Trader`, `AffineCombination` — traders and their affine buy combinations
   (`def:trader`, `def:tradestrat`).
-* `EfficientlyComputable` / `PolyFueled` — `def:ec`, in the disclosed fuel-clocked
-  interpreter model (`dd:fuel`), not an abstract complexity class.
-* `IsLogicalInductor` — the logical induction criterion (`def:lic`).
+* `MachineEfficientTrader` — `def:ec` at the paper's own quantifier: ordinary machine
+  polynomial time, through `Complexity.FP`. This is the class the construction enumerates
+  and dominates.
+* `EfficientlyComputable` / `PolyFueled` — the fuel-clocked interpreter certificates
+  (`dd:fuel`). Internal certification technology: every certificate implies membership in
+  the machine class (`EfficientlyComputable.toMachine`).
+* `IsMachineLogicalInductor` — the logical induction criterion at the machine class
+  (`def:lic`), and what the construction proves.
+* `IsLogicalInductor` — the same criterion over the fuel class, kept as a compatibility
+  predicate; every machine logical inductor is one.
 * `LUV` — a logically uncertain variable (`def:luv`).
 * `LIA` — the paper's logical induction algorithm (`def:lia`).
 
@@ -37,13 +44,15 @@ A `dd:` label marks a place where the formalization makes a *choice* the paper d
 force, and every affected statement cites the label rather than restating the choice. The
 list is exhaustive; a label appearing nowhere below is not in use.
 
-* **`dd:fuel`** — efficient computability (`def:ec`) is rendered as a *fuel-clocked
-  interpreter* class: a trader is efficient when a `Nat.Partrec.Code` program emits its
-  trade stream within a polynomial fuel bound on Mathlib's `evaln`. This is a modeling
-  substitution, not a machine complexity class; the model card in
-  `Framework/Computable.lean` proves its calibration facts and states plainly that
-  "every polynomial-time trader in the paper's sense is in this class" is open. It is the
-  single load-bearing substitution of the project.
+* **`dd:fuel`** — a trader's efficiency *certificate* is a fuel-clocked interpreter
+  bound: a `Nat.Partrec.Code` program emitting its trade stream within a polynomial fuel
+  bound on Mathlib's `evaln` (`EfficientlyComputable` / `PolyFueled`). This is no longer a
+  substitution for the paper's class. `def:ec` itself is `MachineEfficientTrader` —
+  ordinary machine polynomial time via `Complexity.FP` — the construction enumerates and
+  dominates *that*, and `EfficientlyComputable.toMachine` proves every fuel certificate
+  lands inside it. The label now marks a *sufficient certification device*, and what
+  remains open is only its converse (the model card's lower calibration), which nothing
+  paper-facing depends on.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can
