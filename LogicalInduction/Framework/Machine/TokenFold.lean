@@ -577,6 +577,93 @@ lemma dgFold_mem_FP {STEP Wf Sf : List Bool → List Bool} {c : ℕ} {qP : Polyn
     exact dgFold_cli STEP (Wf z) (Sf z) cli₀
   rwa [heq] at hcomp
 
+/-! ## Base-4 numerals: canonical runs, and uniqueness up to trailing zeros
+
+These are general facts about `digitVal` and `natDigits4`, used both by the guarded
+little-endian expansion below and by the token tests that compare a block's value
+against a fixed numeral.  They sit at the file top level rather than inside `LEUnary`,
+which is about one particular client of them. -/
+
+lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+      cases n with
+      | zero => simp [natDigits4]
+      | succ m =>
+          rw [natDigits4, digitVal_cons, ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
+          omega
+
+/-! ### Base-4 representation is unique up to trailing zeros
+
+A token's value does not determine its digit run — `[1]` and `[1, 0]` are both the token
+`1`, which is why a client reads blocks rather than words.  It determines it *up to trailing
+zeros*, and that is what lets a token test compare against a fixed numeral: the run must
+begin with the numeral's canonical digits and continue with nothing but zeros.  Both halves
+are constant-word tests (`eqConstFn_mem_FP`, and a value-zero clamp). -/
+
+/-- `digitVal` splits over concatenation, the tail shifted by the head's width. -/
+lemma digitVal_append : ∀ (a b : List ℕ),
+    digitVal (a ++ b) = digitVal a + 4 ^ a.length * digitVal b
+  | [], b => by simp
+  | (d :: a), b => by
+      rw [List.cons_append, digitVal_cons, digitVal_cons, digitVal_append a b,
+        List.length_cons, pow_succ]
+      ring
+
+@[simp] lemma digitVal_replicate_zero (m : ℕ) : digitVal (List.replicate m 0) = 0 := by
+  induction m with
+  | zero => simp
+  | succ m ih => rw [List.replicate_succ, digitVal_cons, ih]
+
+/-- **Every digit run is its value's canonical run, zero-padded.**
+
+Proof kind: `P` proved.  Provenance: (b) `natDigits4`, `Nat.div_add_mod`. -/
+lemma exists_zero_pad_of_digitVal : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) →
+    ∃ m : ℕ, cur = natDigits4 (digitVal cur) ++ List.replicate m 0
+  | [], _ => ⟨0, by simp [natDigits4]⟩
+  | (d :: ds), hcur => by
+      have hd : d < 4 := hcur d (List.mem_cons_self ..)
+      have hds : ∀ e ∈ ds, e < 4 := fun e he => hcur e (List.mem_cons_of_mem _ he)
+      obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal ds hds
+      rw [digitVal_cons]
+      cases hV : d + 4 * digitVal ds with
+      | zero =>
+          have hd0 : d = 0 := by omega
+          have hw0 : digitVal ds = 0 := by omega
+          refine ⟨m + 1, ?_⟩
+          rw [hd0, natDigits4, List.nil_append, List.replicate_succ]
+          congr 1
+          rw [hm, hw0, natDigits4, List.nil_append]
+      | succ v =>
+          have hmod : (v + 1) % 4 = d := by omega
+          have hdiv : (v + 1) / 4 = digitVal ds := by omega
+          refine ⟨m, ?_⟩
+          rw [natDigits4, hmod, hdiv, List.cons_append]
+          congr 1
+
+/-- **A digit run has a given value exactly when it is that value's canonical run followed
+by zeros.**  This is the shape a fixed-numeral token test checks.
+
+Proof kind: `C` composition.  Provenance: (a) `exists_zero_pad_of_digitVal`,
+`digitVal_append`, `digitVal_natDigits4`.
+-/
+lemma digitVal_eq_iff_zero_padded (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (K : ℕ) :
+    digitVal cur = K ↔ ∃ m : ℕ, cur = natDigits4 K ++ List.replicate m 0 := by
+  constructor
+  · intro h
+    obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal cur hcur
+    exact ⟨m, by rw [hm, h]⟩
+  · rintro ⟨m, rfl⟩
+    rw [digitVal_append, digitVal_natDigits4, digitVal_replicate_zero]
+    omega
+
+/-- The value the guard reads back from a token's own digit block. -/
+lemma digitVal_bitsToDigits_digitsToBits_natDigits4 (t : ℕ) :
+    digitVal (bitsToDigits (digitsToBits (natDigits4 t))) = t := by
+  rw [bitsToDigits_digitsToBits _ (fun d hd => lt_trans (natDigits4_lt t d hd) (by norm_num)),
+    digitVal_natDigits4]
+
 /-! ## The guarded little-endian expansion
 
 The first client of the digit fold, and the endianness residual named in the file header:
@@ -741,86 +828,6 @@ lemma unaryOfDigitsLE_le_mem_FP {V C : List Bool → List Bool} (hV : V ∈ FP) 
     rw [leAccVal_spec (C z).length (bitsToDigits (V z)) 0 1 (Nat.zero_le _)]
     simp
   rwa [heq] at hcomp
-
-lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
-  intro n
-  induction n using Nat.strong_induction_on with
-  | _ n ih =>
-      cases n with
-      | zero => simp [natDigits4]
-      | succ m =>
-          rw [natDigits4, digitVal_cons, ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
-          omega
-
-/-! ### Base-4 representation is unique up to trailing zeros
-
-A token's value does not determine its digit run — `[1]` and `[1, 0]` are both the token
-`1`, which is why a client reads blocks rather than words.  It determines it *up to trailing
-zeros*, and that is what lets a token test compare against a fixed numeral: the run must
-begin with the numeral's canonical digits and continue with nothing but zeros.  Both halves
-are constant-word tests (`eqConstFn_mem_FP`, and a value-zero clamp). -/
-
-/-- `digitVal` splits over concatenation, the tail shifted by the head's width. -/
-lemma digitVal_append : ∀ (a b : List ℕ),
-    digitVal (a ++ b) = digitVal a + 4 ^ a.length * digitVal b
-  | [], b => by simp
-  | (d :: a), b => by
-      rw [List.cons_append, digitVal_cons, digitVal_cons, digitVal_append a b,
-        List.length_cons, pow_succ]
-      ring
-
-@[simp] lemma digitVal_replicate_zero (m : ℕ) : digitVal (List.replicate m 0) = 0 := by
-  induction m with
-  | zero => simp
-  | succ m ih => rw [List.replicate_succ, digitVal_cons, ih]
-
-/-- **Every digit run is its value's canonical run, zero-padded.**
-
-Proof kind: `P` proved.  Provenance: (b) `natDigits4`, `Nat.div_add_mod`. -/
-lemma exists_zero_pad_of_digitVal : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) →
-    ∃ m : ℕ, cur = natDigits4 (digitVal cur) ++ List.replicate m 0
-  | [], _ => ⟨0, by simp [natDigits4]⟩
-  | (d :: ds), hcur => by
-      have hd : d < 4 := hcur d (List.mem_cons_self ..)
-      have hds : ∀ e ∈ ds, e < 4 := fun e he => hcur e (List.mem_cons_of_mem _ he)
-      obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal ds hds
-      rw [digitVal_cons]
-      cases hV : d + 4 * digitVal ds with
-      | zero =>
-          have hd0 : d = 0 := by omega
-          have hw0 : digitVal ds = 0 := by omega
-          refine ⟨m + 1, ?_⟩
-          rw [hd0, natDigits4, List.nil_append, List.replicate_succ]
-          congr 1
-          rw [hm, hw0, natDigits4, List.nil_append]
-      | succ v =>
-          have hmod : (v + 1) % 4 = d := by omega
-          have hdiv : (v + 1) / 4 = digitVal ds := by omega
-          refine ⟨m, ?_⟩
-          rw [natDigits4, hmod, hdiv, List.cons_append]
-          congr 1
-
-/-- **A digit run has a given value exactly when it is that value's canonical run followed
-by zeros.**  This is the shape a fixed-numeral token test checks.
-
-Proof kind: `C` composition.  Provenance: (a) `exists_zero_pad_of_digitVal`,
-`digitVal_append`, `digitVal_natDigits4`.
--/
-lemma digitVal_eq_iff_zero_padded (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (K : ℕ) :
-    digitVal cur = K ↔ ∃ m : ℕ, cur = natDigits4 K ++ List.replicate m 0 := by
-  constructor
-  · intro h
-    obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal cur hcur
-    exact ⟨m, by rw [hm, h]⟩
-  · rintro ⟨m, rfl⟩
-    rw [digitVal_append, digitVal_natDigits4, digitVal_replicate_zero]
-    omega
-
-/-- The value the guard reads back from a token's own digit block. -/
-lemma digitVal_bitsToDigits_digitsToBits_natDigits4 (t : ℕ) :
-    digitVal (bitsToDigits (digitsToBits (natDigits4 t))) = t := by
-  rw [bitsToDigits_digitsToBits _ (fun d hd => lt_trans (natDigits4_lt t d hd) (by norm_num)),
-    digitVal_natDigits4]
 
 end LEUnary
 
@@ -1631,6 +1638,190 @@ lemma bitsToDigits_append_digitsToBits : ∀ (da : List ℕ), (∀ d ∈ da, d <
           (fun e he => h e (List.mem_cons_of_mem _ he)) b]
       rfl
 
+/-! ## Testing a token's value against a fixed numeral
+
+A token's value is not determined by its digit block as a *word* — `[1]` and `[1, 0]` are the
+same token — so a client cannot decide the value by comparing the block against a constant.
+`digitVal_eq_iff_zero_padded` says what it may do instead: check that the block *begins*
+with the numeral's canonical digits, which is a constant-word comparison
+(`eqConstFn_mem_FP`), and that everything after has value zero, which is the guarded
+expansion read at cap one.  Both are `FP`, and together they decide the value exactly.
+
+This is the test a run matcher makes at every token, and the reason it can compare against
+numerals too large for a clamp: a `k`-bit value cannot be named by a unary word, but its
+digit bits are a constant word. -/
+
+/-- The canonical digit bits of a fixed numeral. -/
+def numBits (K : ℕ) : List Bool := digitsToBits (natDigits4 K)
+
+/-- Decide a block's value against a fixed numeral, reading only the block's bits. -/
+def NumEqBits (K : ℕ) (w : List Bool) : Prop :=
+  w.take (numBits K).length = numBits K ∧
+    digitVal (bitsToDigits (w.drop (numBits K).length)) = 0
+
+instance (K : ℕ) (w : List Bool) : Decidable (NumEqBits K w) :=
+  inferInstanceAs (Decidable (_ ∧ _))
+
+/-- **The test decides the value**, on every well-formed block.
+
+Proof kind: `P` proved.  Provenance: (a) `digitVal_eq_iff_zero_padded`, `digitVal_append`;
+(b) `bitsToDigits_append_digitsToBits`, `bitsToDigits_digitsToBits`. -/
+lemma numEqBits_spec (K : ℕ) (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) :
+    NumEqBits K (digitsToBits cur) ↔ digitVal cur = K := by
+  have hcur8 : ∀ d ∈ cur, d < 8 := fun d hd => lt_trans (hcur d hd) (by norm_num)
+  have hK8 : ∀ d ∈ natDigits4 K, d < 8 :=
+    fun d hd => lt_trans (natDigits4_lt K d hd) (by norm_num)
+  constructor
+  · rintro ⟨htake, hzero⟩
+    have hsplit : digitsToBits cur
+        = numBits K ++ (digitsToBits cur).drop (numBits K).length := by
+      conv_lhs => rw [← List.take_append_drop (numBits K).length (digitsToBits cur)]
+      rw [htake]
+    have hcur' : cur = natDigits4 K
+        ++ bitsToDigits ((digitsToBits cur).drop (numBits K).length) := by
+      conv_lhs => rw [← bitsToDigits_digitsToBits cur hcur8]
+      conv_lhs => rw [hsplit]
+      exact bitsToDigits_append_digitsToBits (natDigits4 K) hK8 _
+    rw [hcur', digitVal_append, digitVal_natDigits4, hzero]
+    omega
+  · intro hval
+    obtain ⟨m, rfl⟩ := (digitVal_eq_iff_zero_padded cur hcur K).mp hval
+    have hbits : digitsToBits (natDigits4 K ++ List.replicate m 0)
+        = numBits K ++ digitsToBits (List.replicate m 0) := by
+      rw [numBits, digitsToBits_append]
+    refine ⟨?_, ?_⟩
+    · rw [hbits]
+      simp
+    · rw [hbits]
+      have hdrop : (numBits K ++ digitsToBits (List.replicate m 0)).drop
+          (numBits K).length = digitsToBits (List.replicate m 0) := by simp
+      rw [hdrop, bitsToDigits_digitsToBits _ (by
+        intro d hd
+        rw [List.eq_of_mem_replicate hd]
+        norm_num), digitVal_replicate_zero]
+
+/-- **Branching on a token's value against a fixed numeral is polynomial time.**
+
+Proof kind: `C` composition.  Provenance: (b) `eqConstFn_mem_FP`, `takeLenFn_mem_FP`,
+`dropLenFn_mem_FP`, `LEUnary.unaryOfDigitsLE_le_mem_FP`, `ifEqLen_mem_FP`. -/
+lemma ifNumEq_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ FP) (K : ℕ)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => if NumEqBits K (A z) then X z else Y z) ∈ FP := by
+  have hcap : (fun _ : List Bool => List.replicate (numBits K).length true) ∈ FP :=
+    constFn_mem_FP _
+  have htake : (fun z => (A z).take (numBits K).length) ∈ FP := by
+    have h := takeLenFn_mem_FP hcap hA
+    simpa using h
+  have hdrop : (fun z => (A z).drop (numBits K).length) ∈ FP := by
+    have h := dropLenFn_mem_FP hcap hA
+    simpa using h
+  have hclamp := LEUnary.unaryOfDigitsLE_le_mem_FP hdrop (constFn_mem_FP [true])
+  have hzero : (fun z =>
+      if digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0 then X z else Y z)
+      ∈ FP := by
+    have h := ifEqLen_mem_FP hclamp 0 hX hY
+    have heq : (fun z => if (List.replicate
+          (min (digitVal (bitsToDigits ((A z).drop (numBits K).length)))
+            ([true] : List Bool).length) true).length = 0 then X z else Y z)
+        = fun z =>
+          if digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0 then X z else Y z := by
+      funext z
+      simp only [List.length_replicate, List.length_singleton]
+      by_cases hv : digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0
+      · rw [if_pos (by omega), if_pos hv]
+      · rw [if_neg (by omega), if_neg hv]
+    rwa [heq] at h
+  have h := eqConstFn_mem_FP (numBits K) htake hzero hY
+  have heq : (fun z => if (A z).take (numBits K).length = numBits K then
+        (if digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0 then X z else Y z)
+      else Y z)
+      = fun z => if NumEqBits K (A z) then X z else Y z := by
+    funext z
+    simp only [NumEqBits]
+    by_cases h1 : (A z).take (numBits K).length = numBits K
+    · by_cases h2 : digitVal (bitsToDigits ((A z).drop (numBits K).length)) = 0
+      · rw [if_pos h1, if_pos h2, if_pos (And.intro h1 h2)]
+      · rw [if_pos h1, if_neg h2, if_neg (fun hc => h2 hc.2)]
+    · rw [if_neg h1, if_neg (fun hc => h1 hc.1)]
+  rwa [heq] at h
+
+/-! ## Matching a token stream against a fixed list
+
+The run matcher's remaining question is whether a buffered stream *is* one particular fixed
+token list.  Block boundaries are data, so this is a fold rather than a comparison — but the
+state it needs is only a counter bounded by the target's length, and each step is a single
+fixed-numeral test (`ifNumEq_mem_FP`).  This section is that fold's arithmetic, independent
+of `FP`; the word-level client is built on it. -/
+
+/-- One step of the prefix matcher: at counter `i`, consume `t` and either advance or fail.
+`ts.length + 1` is the absorbing failure value. -/
+def mstep (ts : List ℕ) (i t : ℕ) : ℕ :=
+  if i < ts.length then (if ts.getD i 0 = t then i + 1 else ts.length + 1)
+  else ts.length + 1
+
+@[simp] lemma mstep_fail (ts : List ℕ) (t : ℕ) :
+    mstep ts (ts.length + 1) t = ts.length + 1 := by
+  rw [mstep, if_neg (by omega)]
+
+lemma mstep_le (ts : List ℕ) (i t : ℕ) (hi : i ≤ ts.length) :
+    mstep ts i t ≤ ts.length + 1 := by
+  rw [mstep]
+  split_ifs <;> omega
+
+/-- Failure is absorbing. -/
+lemma foldl_mstep_fail (ts : List ℕ) : ∀ l : List ℕ,
+    List.foldl (mstep ts) (ts.length + 1) l = ts.length + 1
+  | [] => rfl
+  | t :: l => by
+      rw [List.foldl_cons, mstep_fail]
+      exact foldl_mstep_fail ts l
+
+/-- **The counter reaches the target's length exactly on the remaining target.**
+
+This is the fold-correctness statement the run matcher rests on, and the reason a counter
+suffices: a wrong token sends the state to the absorbing failure value, a short stream stops
+below the target's length, and a long one overshoots.
+
+Proof kind: `P` proved.  Provenance: (a) `foldl_mstep_fail`. -/
+lemma foldl_mstep_iff (ts : List ℕ) : ∀ (l : List ℕ) (i : ℕ), i ≤ ts.length →
+    (List.foldl (mstep ts) i l = ts.length ↔ l = ts.drop i)
+  | [], i, hi => by
+      rw [List.foldl_nil]
+      constructor
+      · intro h
+        rw [h, List.drop_length]
+      · intro h
+        have hlen := congrArg List.length h
+        simp only [List.length_nil, List.length_drop] at hlen
+        omega
+  | (t :: l), i, hi => by
+      rw [List.foldl_cons, mstep]
+      by_cases hlt : i < ts.length
+      · rw [if_pos hlt]
+        have hdrop : ts.drop i = ts.getD i 0 :: ts.drop (i + 1) := by
+          rw [List.drop_eq_getElem_cons hlt, List.getD_eq_getElem _ _ hlt]
+        by_cases hmatch : ts.getD i 0 = t
+        · rw [if_pos hmatch, foldl_mstep_iff ts l (i + 1) (by omega), hdrop, hmatch]
+          simp
+        · rw [if_neg hmatch, foldl_mstep_fail, hdrop]
+          constructor
+          · intro h; omega
+          · intro h
+            exact absurd (List.cons.inj h).1.symm hmatch
+      · rw [if_neg hlt, foldl_mstep_fail]
+        have hi' : i = ts.length := by omega
+        rw [hi', List.drop_length]
+        constructor
+        · intro h; omega
+        · intro h; exact absurd h (by simp)
+
+/-- The matcher, run from the start: the counter ends at the target's length exactly when
+the stream is the target. -/
+lemma foldl_mstep_zero_iff (ts l : List ℕ) :
+    List.foldl (mstep ts) 0 l = ts.length ↔ l = ts := by
+  have h := foldl_mstep_iff ts l 0 (Nat.zero_le _)
+  rwa [List.drop_zero] at h
+
 /-! ### Block-complete words
 
 A rewriter splices words; `decodeBits` is how the machine's reader sees the splice, and
@@ -1972,7 +2163,10 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
   rwa [heq] at h
 
 #print axioms LogicalInduction.TokenFold.eqConstFn_mem_FP
-#print axioms LogicalInduction.TokenFold.LEUnary.digitVal_eq_iff_zero_padded
+#print axioms LogicalInduction.TokenFold.digitVal_eq_iff_zero_padded
+#print axioms LogicalInduction.TokenFold.numEqBits_spec
+#print axioms LogicalInduction.TokenFold.ifNumEq_mem_FP
+#print axioms LogicalInduction.TokenFold.foldl_mstep_zero_iff
 #print axioms LogicalInduction.TokenFold.dgFold_cli
 #print axioms LogicalInduction.TokenFold.dgFold_mem_FP
 #print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP
