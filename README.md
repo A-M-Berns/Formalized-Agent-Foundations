@@ -19,11 +19,20 @@ them. The first governs the trust surface; the second is expressed through a cur
 consumer surface. Faithfulness comes first, and the API never hides a modeling boundary
 or replaces paper-legible statements with unnecessary abstraction.
 
+Five things get called "a boundary" and they are not the same thing, so the READMEs keep
+them apart. A **modeling substitution** is a weaker or different object standing in for the
+one the paper means — the dangerous kind, and the kind that gets disclosed at the statement.
+A **representation interface** is a choice of how to present a faithful object, which
+restricts *who can supply the input* without changing what is proved. A **paper erratum** is
+a defect in the source. A **strengthening** is where the Lean statement is stronger than the
+printed one. And **certification technology** is internal machinery whose only job is to
+discharge a hypothesis. Only the first is a debt against faithfulness.
+
 ## What's here
 
 | Paper<img width="520" height="1"> | Directory | Status |
 |---|---|---|
-| Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Complete; two disclosed modeling substitutions |
+| Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Complete; one printed theorem refuted, one modeling substitution |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | Complete at the GL level; Thm 4.6 unformalized |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Complete |
 | Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete; Conjecture 1 stated, unproved |
