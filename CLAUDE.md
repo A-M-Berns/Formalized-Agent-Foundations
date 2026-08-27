@@ -220,8 +220,7 @@ arithmetic, has formalized nothing we didn't already assume.
    Lean's type system, say so in the session report — do not quietly route around it.
    A stop-and-report ("Foundation doesn't expose X", "Mathlib lacks Y"), stated
    self-containedly at the site, is a *success*, not a failure. The current verified
-   obstructions live in `LogicalInduction/README.md` ("Planned future work") and
-   `LogicalInduction/README.md`.
+   obstructions live in `LogicalInduction/README.md`.
 
 ### Human read-through
 

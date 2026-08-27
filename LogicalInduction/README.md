@@ -61,10 +61,10 @@ we have rounded against ourselves.
 **Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
 standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
 (`AxiomAudit.lean` enumerates the public surface and fails compilation on any
-regression), and every paper-label citation is verified two-way by script. One
-qualification to that, stated up front because it is easy to miss: see *One upstream
-gap* below. The two declared modeling choices, and the planned future work that would
-tighten them further, are described after it.
+regression), and every paper-label citation is verified two-way by script. That holds when
+the arithmetic-theory family is *instantiated* as well as parametrically. The one standing
+modeling substitution, and the representation interfaces that are not substitutions, are
+described under *The modeling boundary* below.
 
 ## The main theorem
 
