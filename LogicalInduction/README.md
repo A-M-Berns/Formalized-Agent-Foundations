@@ -292,11 +292,12 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
    `instantiated` accordingly.
 
-   What remains charged to this item is narrow and stated where it bites: the abstract
-   `LUV` carrier still admits threshold families that are not literal paper LUVs, which
-   is why `def:blcp` — a combination sequence over that carrier — stays qualified, and
-   the object-level value of a `PaperLUV` is named by a numerator/positive-denominator
-   pair code rather than by a canonical rational arithmetic inside `ℒₒᵣ`.
+   `def:blcp` is closed the same way: `PaperLUVCombination` reaches the abstract carrier
+   only through `PaperLUV.toLUV`, and its bounded-sequence certificate comes from the paper
+   family's own structural data rather than from anything assumed of the shares. What
+   remains charged to this item is narrow and stated where it bites: the object-level value
+   of a `PaperLUV` is named by a numerator/positive-denominator pair code rather than by a
+   canonical rational arithmetic inside `ℒₒᵣ`.
 
    The flat atom representation once forced the closed `thm:ccee` endpoint through a
    `1/(n+1)` mesh product. That historical endpoint remains available, but it is no longer
