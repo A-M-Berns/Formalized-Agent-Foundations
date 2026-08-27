@@ -1026,8 +1026,7 @@ the firm exploit — the enumeration covers the whole class.
 The class is `MachineEfficientTrader`: ordinary machine polynomial time, through
 `Complexity.FP`. Every trader the fuel calculus certifies is one of these
 (`EfficientlyComputable.toMachine`), so the fuel-certified corollary is immediate; it is
-stated as `trading_firm_dominance_of_ec` in `Framework/MachineEfficiency.lean`, where
-that inclusion is in scope.
+stated as `trading_firm_dominance_of_ec`, immediately below.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
     (DP : DeductiveProcess) (P : History)

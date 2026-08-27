@@ -11,6 +11,7 @@ Each entry states the published claim, the defect, and what this repository does
 | PE3 | `app:prandaff` — decidability of `Settled(n,m)` | claim false as written; repairable |
 | PE4 | `app:prandaff` — patience argument | unstated monotonicity assumption |
 | PE5 | `def:seqprand` vs. `thm:prand` | sign inconsistency |
+| PE6 | `thm:ref` / `app:ref` — Introspection | printed hypotheses too weak for the printed proof |
 
 ---
 
@@ -266,3 +267,73 @@ The repository centers the other way —
 (`Properties/Pseudorandomness.lean`) — which is the orientation the exploiting-trader
 argument needs and which makes the paper's advertised conclusion come out right. Disclosed
 in that definition's docstring.
+
+---
+
+## PE6 — Introspection's printed hypotheses do not license its printed proof (`thm:ref`, `app:ref`)
+
+**The theorem is not false.** Its printed hypotheses are insufficient to run its own printed
+proof. That is a different defect from PE1 and should not be read as the same one.
+
+### Published statement
+
+> Let `⟨φ⟩` be an e.c. sequence of sentences, and `⟨a⟩`, `⟨b⟩` be **ℙ-generable** sequences
+> of probabilities. Then, for any e.c. sequence of positive rationals `⟨δ⟩ → 0`, there
+> exists a sequence of positive rationals `⟨ε⟩ → 0` such that for all `n`: (1) if
+> `ℙₙ(φₙ) ∈ (aₙ+δₙ, bₙ−δₙ)` then `ℙₙ(⌜⌜aₙ⌝ < ⌜ℙ⌝_⌜n⌝(⌜φₙ⌝) < ⌜bₙ⌝⌝) > 1−εₙ`; (2) if
+> `ℙₙ(φₙ) ∉ (aₙ−δₙ, bₙ+δₙ)` then that same price is `< εₙ`.
+
+(`1609.03543v5-main.tex:1969–1981`, proved in `app:ref`, tex:5310.) Note that `⟨φ⟩` and
+`⟨δ⟩` are required **e.c.**, while `⟨a⟩` and `⟨b⟩` are required only ℙ-generable.
+
+### Defect
+
+`app:ref` sets `ψₙ := ⌜⌜aₙ⌝ < ⌜ℙ⌝_⌜n⌝(⌜φₙ⌝) < ⌜bₙ⌝⌝` and applies `thm:affprovind` to the
+combination `ctsind_{δₙ}(aₙ < ℙₙ(φₙ) < bₙ) · (1 − ψₙ)`, and to its counterpart for the
+second statement.
+
+`thm:affprovind` quantifies over `BCS` (`def:bap`): bounded **ℙ-generable** ℝ-combination
+sequences. By `def:ece`, ℙ-generable means there is an **e.c.** `EF`-combination progression
+whose value at `ℙ` is the combination; and by `def:affcomsen` an `EF`-combination
+`c + f₁φ₁ + ⋯ + f_kφ_k` names its **sentences** as well as its features. So the appendix's
+application requires the sequence `⟨ψ⟩` to be efficiently writable.
+
+The *coefficient* `ctsind_{δₙ}(aₙ < ℙₙ(φₙ) < bₙ)` is a feature, and ℙ-generability of
+`⟨a⟩`, `⟨b⟩` is exactly what makes it e.c. The *sentence* `ψₙ` is not. As printed it
+contains the numerals `⌜aₙ⌝` and `⌜bₙ⌝`, so writing it requires producing those numerals
+from `n`. `def:ece` supplies an e.c. **feature expression** whose *value at the market* is
+`aₙ`; it supplies no program producing the numeral. Recovering the numeral means evaluating
+that expression against the market's prices, and `def:marketprocess` bounds neither the
+runtime of the market program nor the size of the rationals it returns — the same
+unboundedness PE1 turns into a counterexample. So `aₙ` is obtainable computably but not in
+time polynomial in `n`, `⟨ψ⟩` is not e.c., and `thm:affprovind` does not apply.
+
+The omission reads as an oversight rather than a subtlety: the same statement is careful to
+demand e.c. of `⟨φ⟩` and `⟨δ⟩`, which it needs for exactly this reason.
+
+### What the repository does about it
+
+The Lean development does **not** inherit the gap, and does not need the missing
+hypothesis, because of `dd:quote-code`. The introspection target sentence is not a literal
+formula containing numerals for `aₙ` and `bₙ`; it is a *code-indexed quote atom*,
+`BooleanQuoteCode.sentence n = quoteAtom ⟪code, n⟫`, whose emission cost is a pairing with
+`n` and is therefore independent of `a` and `b` altogether
+(`BooleanQuoteCode.sentence_poly`). What the construction needs of `a` and `b` is only that
+the interval predicate `aₙ < ℙₙ(φₙ) < bₙ` be **decidable**, so the deductive process can
+enter the corresponding quote claim — and decidability, unlike efficiency, does follow from
+ℙ-generability once a market program is in hand (`PGenerableRat.computable`, which
+dovetails the feature's evaluation against the market's quote program).
+
+So the paper's route needs `⟨a⟩`, `⟨b⟩` efficiently writable; this development's route needs
+them only computable, which the printed hypotheses do give. `thm:ref` is therefore
+formalized at the paper's own hypothesis strength over the constructed inductor, and the
+defect above is confined to the printed proof.
+
+One accounting note, recorded so the ledger does not overstate the endpoint's
+requirements: the displayed `lic_introspection_closed`
+(`Construction/Witnesses/QuoteCodeOfMarket.lean`) currently carries `PolyRatCodes a` and
+`PolyRatCodes b` on top of the ℙ-generability it already assumes. Those two hypotheses are
+**stronger than the proof uses** — they are consumed only as `PolyRatCodes.computable`, and
+the same computability is derivable from the endpoint's own `GeneratedRatFeature`
+hypotheses. They should be read as a redundancy in the signature, not as a disclosed
+narrowing of the paper's class.
