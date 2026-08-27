@@ -313,7 +313,7 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    gives a finite theorem stage, and an executable finite entailment checker lets the fixed
    universal registry discover that stage. `RpnThresholdCodeSeq` supplies the mesh-query
    emitter needed by exact semantic multiplication. Thus
-   `lic_no_expected_net_update_conditional_closed_exact` has the same caller source class as
+   `lic_no_expected_net_update_conditional_exact_canonical` has the same caller source class as
    the former mesh endpoint, constructs the deferred weight and right quotation internally,
    and instantiates the conditional trader theorem with slack identically zero.
 

@@ -25,7 +25,7 @@ criterion give an exact conclusion as soon as the product exists syntactically. 
 `lic_no_expected_net_update_conditional_closed`, because the inductor here is `LIA` over the
 *extended* process — a different inductor — and conservativity of completed-world truth does
 not carry prices across.  The same caveat applies to the zero-slack endpoint
-`lic_no_expected_net_update_conditional_closed_exact`
+`lic_no_expected_net_update_conditional_exact_canonical`
 (`Construction/Witnesses/SemanticLiftedCCEE.lean`), which buys exactness over
 `liaHistory (canonicalCCEEDP T)` rather than over `liaHistory (theoremDP T)`.  A reader who
 needs a statement about the latter market must use the mesh endpoint.
@@ -1084,7 +1084,7 @@ slack; `weight_valued` (a) `RationalQuoteCode.reflected` through the lifted pres
 `weight_generable_extended` (c) — modeling substitutions disclosed at the statement, in
 `LogicalInduction/README.md`, and in `scripts/coverage-classification.md`.
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_exact_closed
+theorem lic_no_expected_net_update_conditional_exact_productExtension
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
@@ -1178,10 +1178,10 @@ generability premise empties it, and neither is jointly unsatisfiable with the p
 premises.
 
 This says nothing about the base inductor either; it witnesses that
-`lic_no_expected_net_update_conditional_exact_closed` has instances, not that its
+`lic_no_expected_net_update_conditional_exact_productExtension` has instances, not that its
 conclusion transfers to `liaHistory (theoremDP T)`.
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+theorem lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
     (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]
     (f : DeferralFunction) :
     ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -1211,7 +1211,7 @@ theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
 #print axioms eventAtom_atomCodes_ne_productTag
 #print axioms QuotationTheoryPresentation.mono
 #print axioms exactProductDP_hworld
-#print axioms lic_no_expected_net_update_conditional_exact_closed
-#print axioms lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+#print axioms lic_no_expected_net_update_conditional_exact_productExtension
+#print axioms lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
 
 end LogicalInduction

@@ -167,7 +167,7 @@ topical blocks stay the place where each endpoint is explained. -/
   AffineCombination.PolySequence.affine_provind_theory_le
   AffineCombination.PolySequence.affine_provind_theory_eq lic_learning_pseudorandom_frequency
   lic_learning_pseudorandom_frequency_above lic_learning_pseudorandom_frequency_below
-  lic_no_expected_net_update_conditional_closed_exact lic_expected_future_expectations_closed
+  lic_no_expected_net_update_conditional_exact_canonical lic_expected_future_expectations_closed
   lic_no_expected_net_update_closed lic_limitingBelief_tendsto lic_price_convergesTo
   lic_does_not_anticipate_halting_unconditional
   lic_domination_universalSemimeasure_ofIndependentAtoms lic_domination_universalSemimeasure
@@ -852,7 +852,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   liftedRpnSemanticHandle_valuesAt
   liftedRpnSource_factor_eventually
   canonicalRationalQuote_factor_eventually
-  lic_no_expected_net_update_conditional_closed_exact
+  lic_no_expected_net_update_conditional_exact_canonical
 
 -- Construction/Witnesses/ProductDefinition.lean — the exact-reflection route for the quoted
 -- product.  Fresh product atoms are defined by the deductive process itself (a definitional
@@ -861,9 +861,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 --
 -- This historical diagnostic does **not** carry the `thm:ccee` row, and is inventoried so
 -- its axiom cleanliness is gated. The endpoint of record is now the fixed-language
--- construction `lic_no_expected_net_update_conditional_closed_exact` above.
+-- construction `lic_no_expected_net_update_conditional_exact_canonical` above.
 --
--- The route reaches a closed statement, `lic_no_expected_net_update_conditional_exact_closed`:
+-- The route reaches a closed statement, `lic_no_expected_net_update_conditional_exact_productExtension`:
 -- exact reflection over the constructed `LIA` on `theoremDP T ∪ productDefDP`, with `hworld`,
 -- `source_valued`, `weight_valued` and `right_reflected` all discharged, and a jointly
 -- satisfiable premise set exhibited by `..._nonvacuous`.  Its role is **diagnostic**, not
@@ -888,8 +888,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_no_expected_net_update_conditional_exact
   QuotationTheoryPresentation.mono
   exactProductDP_hworld
-  lic_no_expected_net_update_conditional_exact_closed
-  lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+  lic_no_expected_net_update_conditional_exact_productExtension
+  lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
 
 -- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).

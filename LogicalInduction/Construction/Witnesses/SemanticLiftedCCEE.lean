@@ -403,7 +403,7 @@ admitted by finite semantic consequence; the weight and right-hand quotation are
 internally.  The sole LIA process is `canonicalCCEEDP T`, fixed before `X`, `f`, and `w`.
 
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_closed_exact
+theorem lic_no_expected_net_update_conditional_exact_canonical
     (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
     [T.SoundOnHierarchy SigmaSymbol.sigma 1]
     (f : DeferralFunction)
@@ -460,6 +460,6 @@ theorem lic_no_expected_net_update_conditional_closed_exact
 
 #print axioms liftedCCEEBaseWorld_hworld
 #print axioms canonicalCCEEDP_hworld
-#print axioms lic_no_expected_net_update_conditional_closed_exact
+#print axioms lic_no_expected_net_update_conditional_exact_canonical
 
 end LogicalInduction

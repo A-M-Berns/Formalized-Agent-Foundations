@@ -1,7 +1,7 @@
 # Exact CCEE: fixed lifted-source architecture
 
 This note describes the canonical exact rendering of `thm:ccee`. The endpoint is
-`lic_no_expected_net_update_conditional_closed_exact` in `SemanticLiftedCCEE.lean`.
+`lic_no_expected_net_update_conditional_exact_canonical` in `SemanticLiftedCCEE.lean`.
 
 ## Final construction
 

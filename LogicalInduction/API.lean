@@ -135,7 +135,7 @@ when the whole development is wanted.
   per-day reflection slack, and the mesh reading realizes the quoted product on a finite
   mesh of threshold atoms, reflecting it only to within `1/(n+1)`.  Statements that use
   that reading carry the slack explicitly in the `slack` field.  The closed exact endpoint
-  `lic_no_expected_net_update_conditional_closed_exact`
+  `lic_no_expected_net_update_conditional_exact_canonical`
   (`Construction/Witnesses/SemanticLiftedCCEE.lean`) instantiates `slack` at the constant
   `0` over an arbitrary threshold-certified source family, so exactness is available — but
   the two are incomparable rather than one superseding the other: the mesh endpoint speaks
