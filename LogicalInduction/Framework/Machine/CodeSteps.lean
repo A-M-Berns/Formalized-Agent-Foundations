@@ -1,8 +1,7 @@
 /-
 # Fixed-code `evaln` runs in polynomially many interpreter steps
 
-Stage 2 of the efficiency-model program (`LogicalInduction/notes/complexitylib-adoption.md`
-Part VI). This file establishes the *time* half of the calibration, as a fact about
+This file establishes the *time* half of the fuel-model calibration, as a fact about
 `Nat.Partrec.Code.evaln` alone — no machine, no tape, no complexity class.
 
 **What the calibration needs, and why this is the load-bearing half.**
@@ -22,16 +21,15 @@ codeEvalSteps_poly : ∀ c, IsPolyBounded (codeEvalSteps c)
 For a **fixed** code, the interpreter's work is polynomial in its fuel. The exponent depends
 on `c` — specifically on how deeply `prec`/`rfind'` nest, since those are the clauses that
 recurse on the *same* code with one less fuel while `pair`/`comp` recurse on structurally
-smaller codes at unchanged fuel. That is exactly the shape the adoption note's Route B time
-analysis needs, and proving it here means the remaining Stage-2 work is machine construction
-against a settled bound rather than an open question.
+smaller codes at unchanged fuel. This is the bound the compiled machine's step count is
+measured against, so the machine construction downstream works against a settled bound.
 
 **Why this is stated over fuel rather than over the day.** `PolyFueled c f` supplies a
 polynomial fuel bound `b` in the numeric day `n`, and `EfficientlyComputable` supplies the
 explicit clock `a * (n + 1) ^ k + a`. Composing either with `codeEvalSteps_poly` gives a
 polynomial step count in `n` — and since the paper presents the day in **unary**, polynomial
-in `n` *is* polynomial in the input length. That is the whole content of the historical
-`dd:fuel` calibration worry, and it is why the worry dissolves rather than being repaired.
+in `n` *is* polynomial in the input length. That is what makes the fuel calculus a sound
+*certification device* for the machine class rather than a substitution for it.
 
 **Not a paper node.** Nothing here renders a result of arXiv:1609.03543.
 -/

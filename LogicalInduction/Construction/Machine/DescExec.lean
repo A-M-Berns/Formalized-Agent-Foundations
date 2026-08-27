@@ -1,8 +1,7 @@
 /-
 # Executable bounded execution of `complexitylib` machine descriptions
 
-Stage 3 of the efficiency-model program (`LogicalInduction/notes/complexitylib-adoption.md`).
-This is the **FAF-specific executable bridge** from finite `complexitylib` descriptions to
+The **FAF-specific executable bridge** from finite `complexitylib` machine descriptions to
 primitive-recursive bounded execution. The complexity theory it stands on — the machine
 model, its time measure, `FP`, and the correctness of the description interpreter — is
 upstream, in the pinned `complexitylib` compatibility fork (see `lakefile.lean`).

@@ -1,9 +1,8 @@
 # Lean traps met in this development
 
-Tactic- and toolchain-level traps that cost real time here, kept because they recur and
-because none of them is discoverable from an error message. Mathematical pitfalls specific
-to this formalization live in `LogicalInduction/KNOWLEDGE.md`'s pitfalls section; this file
-is the tooling half.
+Traps that cost real time here, kept because they recur and because none of them is
+discoverable from an error message. This is the single home for them: `KNOWLEDGE.md` carries
+the settled design decisions and the correspondence table, and points here for pitfalls.
 
 ## Tooling and toolchain
 
@@ -66,3 +65,25 @@ is the tooling half.
 - **Degenerate instantiations prove nothing.** `MachinePolyEC` over `Fin 0` holds for every
   `f`, and an empty freeze table (`S = ∅`) inhabits any freeze certificate while forcing
   `P = P'`. Neither is evidence that a machine statement has content.
+
+## Definitional shapes that fight `simp`
+
+- **Prefer `match j with | none => a | some _ => b` to `fun j => if j = none then a else b`.**
+  The `ite` form defeats `simp` on the projections — `(if none = none then [] else …) = []`
+  is left open as a split — while the match form makes both projections `rfl`.
+- **`Option.none_bind` does not exist** in the installed Mathlib; `none.bind f = none` is
+  definitional, so close it with `rfl` after rewriting.
+- **Doc comments on `example` are legal** in this toolchain. Do not refactor away from them
+  on the assumption that they error.
+
+## Auditing names
+
+- **`rg -r` is the *replace* flag, not recursive.** `rg -rn "foo"` rewrites every match to
+  `n` in the displayed output, which once made `EfficientPrefixPatch.preserves_ec` display
+  as a dangling name. Use `rg -n --fixed-strings` when auditing declaration names.
+- **`lint_paper_labels.py` requires every `theorem` to carry a paper label.** A supporting
+  result promoted from `lemma` to `theorem` for emphasis breaks the gate.
+- **`lakefile.lean` sets `autoImplicit := false` package-wide, but `lake env lean` does not
+  apply package `leanOptions`.** Auto-implicit over-generalization is therefore a per-file
+  scratch-checking hazard that a real `lake build` would have caught — one more reason the
+  entry above says `lake env lean` is not a gate.

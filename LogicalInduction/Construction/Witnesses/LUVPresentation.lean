@@ -83,10 +83,10 @@ theorem threshold_holds_iff {DP : DeductiveProcess} {T : ArithmeticTheory}
 
 /-! ## Deriving `ExactTheoryPresentation` -/
 
-/-- **F7 item 3, the payoff.**  For any LUV-combination sequence all of whose LUVs are
-`dd:luv-arith` LUVs, the `ExactTheoryPresentation` interface — previously a raw hypothesis — is a
-**theorem**, derived from the certified threshold arithmetic and the process-reveals-provable
-premise. -/
+/-- **`ExactTheoryPresentation` is derived, not assumed.**  For any LUV-combination
+sequence all of whose LUVs are `dd:luv-arith` LUVs, the interface is constructed from the
+certified threshold arithmetic and the process-reveals-provable premise, so no caller
+supplies it. -/
 noncomputable def exactTheoryPresentation_ofArithmetic
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]

@@ -1,10 +1,9 @@
 /-
 # Compiling `Nat.Partrec.Code` to ordinary Turing machines
 
-Stage 2B of the efficiency-model program (`LogicalInduction/notes/complexitylib-adoption.md`
-Part XII). The arithmetic substrate is complete upstream; this file starts the compiler
-from `Nat.Partrec.Code` into `complexitylib` register machines, proved **exactly** against
-`Nat.Partrec.Code.evaln` — not against the unclocked `eval`.
+The arithmetic substrate is upstream, in the pinned `complexitylib` fork; this file is the
+compiler from `Nat.Partrec.Code` into `complexitylib` register machines, proved **exactly**
+against `Nat.Partrec.Code.evaln` — not against the unclocked `eval`.
 
 ## What `evaln` actually says
 
@@ -18,8 +17,8 @@ n < fuel
 ```
 
 is the whole guard, uniformly, including the fuel-`0` case. That is why the guard is
-centralized here (Route B of the tranche's choice) rather than repeated per constructor:
-`evaln_zero_eq` and its siblings state each constructor as `if n < k then … else none`.
+centralized here rather than repeated per constructor: `evaln_zero_eq` and its siblings
+state each constructor as `if n < k then … else none`.
 
 The recursive constructors re-check the guard on their own sub-calls, so centralizing it
 does *not* mean hoisting it out of the recursion — each compiled machine begins with it.
@@ -34,14 +33,18 @@ output-tape test is incompatible with the `OutAcc` emission convention — out o
 compiler entirely. `OutAcc ys` is carried through every machine here unchanged.
 
 The cost is that a compiled machine does its work even when the guard fails and the answer
-is discarded. That is bounded work, and `codeEvalSteps` already bounds the whole code
-tree, so it does not threaten the eventual polynomial bound.
+is discarded. That is bounded work, and `codeEvalSteps` (`Framework/Machine/CodeSteps.lean`)
+bounds the whole code tree, so it does not threaten the polynomial bound.
 
-## Status
+## Coverage
 
-Non-recursive constructors only: `zero`, `succ`, `left`, `right`. `pair` and `comp` are
-**not** in this file yet; see Part XII of the note for the register-window design they
-need and why it is a separate pass.
+**All eight constructors.** `zero`, `succ`, `left` and `right` compile to straight-line
+machines directly; `pair`, `comp`, `prec` and `rfind'` compile through the register-window
+layout (`codeRegs`, `codeLocal`), which gives each child its own register block and lets a
+node address its children uniformly. `compileCodeAt` is total on every code
+(`compileCodeAt_isSome`), and `codeVals_encodes` proves the compiled machine's answer
+registers hold `evaln`'s tag and value for every `c`. The register and step bounds are in
+`Framework/Machine/EvalnRegBound.lean`.
 -/
 import Complexitylib.Models.TuringMachine.Registers.Pairing
 import Mathlib.Computability.PartrecCode

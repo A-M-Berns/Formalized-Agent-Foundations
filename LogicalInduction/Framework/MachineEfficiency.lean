@@ -1,10 +1,10 @@
 /-
 # The fuel-clocked class is inside the machine class
 
-Stage 2's endpoint (`LogicalInduction/notes/complexitylib-adoption.md`): every
-`EfficientlyComputable` trader — the `dd:fuel` rendering of `def:ec`, a fuel-clocked
-`Nat.Partrec.Code` pair under a polynomial day clock — is a `MachineEfficientTrader`, a
-member of the class defined through ordinary machine polynomial time (`Complexity.FP`).
+Every `EfficientlyComputable` trader — a fuel-clocked `Nat.Partrec.Code` pair under a
+polynomial day clock (`dd:fuel`) — is a `MachineEfficientTrader`, a member of the class
+defined through ordinary machine polynomial time (`Complexity.FP`). This is what makes the
+fuel calculus a *certification device* for `def:ec` rather than a substitution for it.
 
 The chain, and where each link lives:
 

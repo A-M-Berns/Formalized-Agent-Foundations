@@ -64,12 +64,16 @@ lean_lib APITests where
 lean_lib AxiomAudit where
   srcDir := "."
 
--- The counted-step machine (Stage 1) and the executable description bridge (Stage 3) of
--- the efficiency-model program. A default target so CI compiles it, but deliberately *not*
--- imported by `LogicalInduction.lean`: nothing here carries a paper node, and no strength
--- claim depends on it. `DescExec` is the only module in this repository that names a
--- `Complexity.*` declaration; its import surface is `…UTM.Internal.Interp`, a 5-file /
--- ~2.2k-line closure of the pinned fork, not the whole library.
+-- The executable machine side: the description bridge, the clocked simulator, and the
+-- conditioning transduction. An aggregator target so `lake build` exercises the whole
+-- directory as a unit, including the modules `LogicalInduction.lean` does not reach.
+-- Most of it *is* reachable from `LogicalInduction.lean` — `Construction.lean` imports
+-- `MachineTraderEnumeration`, which imports `Machine.ClockedSim`, which imports
+-- `Machine.DescExec` — because the enumeration's soundness half rests on it.
+-- `DescExec` is the only module in this repository that names a `Complexity.*`
+-- declaration outside the criterion itself; its import surface is
+-- `…UTM.Internal.Interp`, a 5-file / ~2.2k-line closure of the pinned fork, not the
+-- whole library.
 @[default_target]
 lean_lib MachineExec where
   srcDir := "."
@@ -118,8 +122,8 @@ lean_lib Scratchpad where
 --   * a second mechanical port wave unblocking `Classes/P/{Composition,PairWithInput}`
 --     (`mem_FP_comp`, `mem_FP_pairWithInput`), the whole `Classes/P/Cobham` subtree
 --     (`CobhamFP_eq_FP`, `iterate_mem_FP`, `recFoldClamp_mem_FP` and the string kit), and
---     the binary-arithmetic subroutine library. Stage 3 needed none of these and so never
---     built them; the machine readings of `thm:scon` and `thm:ifp` do. Seven additive
+--     the binary-arithmetic subroutine library, which the machine readings of `thm:scon`
+--     and `thm:ifp` need. Seven additive
 --     `rfl` simp lemmas (`Γ.ofBool`/`Γw.ofBool` equations, `seqTM_qstart`/`_qhalt`,
 --     `phase1Wrap_initCfg`) carry most of it — the rest is `simpa` drift.
 --

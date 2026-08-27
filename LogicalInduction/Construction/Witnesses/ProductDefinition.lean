@@ -18,16 +18,17 @@ schema entered stagewise by an extra process.  Nothing in the first-order theory
 the paper's `Θ` contains the product term natively, and a fresh-atom definitional extension
 is the propositional counterpart.
 
-**What this file is for.**  It is the *obstruction-closure demonstration* for the `thm:ccee`
-substrate boundary — evidence that the mesh endpoint's slack is an artifact of the
-propositional substrate rather than of logical induction, since the same trader and the same
-criterion give an exact conclusion as soon as the product exists syntactically.  It is **not**
-a rendering of `thm:ccee`, and nothing here supersedes
-`lic_no_expected_net_update_conditional_closed`, which remains the `thm:ccee` endpoint of
-record: the inductor here is `LIA` over the *extended* process, a different inductor, and
-conservativity of completed-world truth does not carry prices across.  A cross-family
-adjudication on 2026-08-11 ruled on exactly this point; see the resolution section of
-`LogicalInduction/notes/boundary-propositional-substrate.md`.
+**What this file is for.**  It shows that the mesh endpoint's slack is an artifact of the
+propositional substrate rather than of logical induction: the same trader and the same
+criterion give an exact conclusion as soon as the product exists syntactically.  It is
+**not** a rendering of `thm:ccee` and does not supersede
+`lic_no_expected_net_update_conditional_closed`, because the inductor here is `LIA` over the
+*extended* process — a different inductor — and conservativity of completed-world truth does
+not carry prices across.  The same caveat applies to the zero-slack endpoint
+`lic_no_expected_net_update_conditional_closed_exact`
+(`Construction/Witnesses/SemanticLiftedCCEE.lean`), which buys exactness over
+`liaHistory (canonicalCCEEDP T)` rather than over `liaHistory (theoremDP T)`.  A reader who
+needs a statement about the latter market must use the mesh endpoint.
 
 ## The schema
 
@@ -953,10 +954,9 @@ Two further costs of the demonstration, stated plainly rather than buried:
   to `PolyRatCodes` would remove it, at the cost of dropping the paper's own worked example
   for this theorem (tex:2077) — a strictly worse trade, and not taken.
 
-The cross-family adjudication of 2026-08-11 (`LogicalInduction/notes/boundary-propositional-substrate.md`,
-resolution section) rejected reading this section as `thm:ccee` at an instance, for exactly
-the price-transport reason above, and ranked the renderings mesh > this > weight-narrowing.
-The framing here is the ruled one. -/
+Reading this section as `thm:ccee` at an instance is therefore wrong, for exactly the
+price-transport reason above; the renderings rank mesh > this > weight-narrowing, and the
+framing above is the ranked one. -/
 
 /-- Stages of the union constrain the base process in particular. -/
 lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
