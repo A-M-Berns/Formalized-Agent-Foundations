@@ -273,7 +273,7 @@ rational market program the proof runs on are read off the inductor instance its
 premise beyond `IsMachineLogicalInductor`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_fixed_machine_ofComputationAndMarket
+theorem lic_conditioned_fixed_machine
     (P : History) (DP : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
     (ψ : Sentence) :
     IsMachineLogicalInductor
@@ -313,7 +313,7 @@ process, which no instance supplies.  For a non-degenerate `more` — nonempty, 
 growing stages — see `growingCompactConditioningProcessComputation`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
-theorem lic_conditioned_growing_machine_ofComputationsAndMarket
+theorem lic_conditioned_growing_machine_ofProcessComputation
     (P : History) (DP extra : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
     (more : CompactConditioningProcessComputation extra) :
     IsMachineLogicalInductor
@@ -367,8 +367,8 @@ theorem lic_conditioned_gated_ofComputationsAndMarket
 #print axioms lic_conditioned_eventual_machine_ofMarketComputation
 #print axioms lic_conditioned_fixed_ofComputationAndMarket
 #print axioms lic_conditioned_growing_ofComputationsAndMarket
-#print axioms lic_conditioned_fixed_machine_ofComputationAndMarket
-#print axioms lic_conditioned_growing_machine_ofComputationsAndMarket
+#print axioms lic_conditioned_fixed_machine
+#print axioms lic_conditioned_growing_machine_ofProcessComputation
 #print axioms lic_conditioned_gated_ofComputationsAndMarket
 
 end ConditioningCompile

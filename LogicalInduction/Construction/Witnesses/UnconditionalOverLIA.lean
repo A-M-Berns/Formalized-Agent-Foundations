@@ -189,7 +189,7 @@ theorem lic_conditioned_fixed_machine_unconditional
       ((theoremDP T).adjoinSentence ψ) := by
   haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
     LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
-  exact ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
+  exact ConditioningCompile.lic_conditioned_fixed_machine
     (liaHistory (theoremDP T)) (theoremDP T) ψ
 
 /-- **Growing finite-prefix `thm:scon` over the constructed `LIA`, at the paper's own
@@ -206,7 +206,7 @@ theorem lic_conditioned_growing_machine_unconditional
       ((theoremDP T).union extra) := by
   haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
     LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
-  exact ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
+  exact ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
     (liaHistory (theoremDP T)) (theoremDP T) extra more
 
 /-- **The growing form of `thm:scon` doing visible work.**  Instantiated at

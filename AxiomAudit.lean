@@ -197,8 +197,8 @@ topical blocks stay the place where each endpoint is explained. -/
   lic_provind AffineCombination.BoundedCombinationSequence.recunbiasedaff
   AffineCombination.recurringunbiasedness
   LUVCombination.BoundedSequence.recurringunbiasednessexp lic_introspection_closed
-  lic_introspection ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
-  ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
+  lic_introspection ConditioningCompile.lic_conditioned_fixed_machine
+  ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
   lic_conditioned_fixed_machine_unconditional lic_conditioned_growing_machine_unconditional
   AffineCombination.simcal AffineCombination.sentenceAffine_polySequence
   calibrationIndicator_pgenerable lic_self_trust_closed
@@ -520,9 +520,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/ConditioningPresentation.lean — the conditioning presentation
 -- (condition sentences plus their codes) built from the process computations.
+-- The compact interface's two witnesses: the degenerate one (empty adjoined process,
+-- inhabitation only) and the growing one, which is what carries the content burden.
 #assert_axioms_clean
   conditioningPresentationOfComputations fixedConditioningPresentation
   lic_conditioned_gated_ofComputations
+  growingConditionProcessComputation growingCompactConditioningProcessComputation
+  growingConditionProcess_ssubset
+  deductiveStageCondition_growing_ne deductiveStageCondition_growing_ne_top
 
 -- Construction/Witnesses/ConditioningCompiler.lean — the eventual price floor the
 -- conditioning translation needs.  (The `def:ec`-preserving translations themselves are
@@ -593,8 +598,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.lic_conditioned_eventual_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
-  ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
-  ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
+  ConditioningCompile.lic_conditioned_fixed_machine
+  ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
@@ -746,6 +751,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_conditioned_growing_unconditional
   lic_conditioned_fixed_machine_unconditional
   lic_conditioned_growing_machine_unconditional
+  exists_growing_conditioned_machine_inductor
 
 -- Construction/Witnesses/LUVSyntax.lean — LUV-combination syntax, the mesh-softmax
 -- operational witness it constructs (`lem:mesh`), and the four expectation endpoints
