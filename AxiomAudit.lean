@@ -2,11 +2,30 @@
 # Axiom audit — the checked public-surface inventory
 
 A standalone build target, deliberately outside the `LogicalInduction` library: the
-library carries the mathematics, this target carries the check. This file is the endpoint
-inventory: every declaration listed below is public trust surface — the table of contents
-for the human statement read-through. Anything *not* listed here is internal and may be
-renamed, moved, or inlined freely; changes to a listed statement are surface changes and
-must be flagged.
+library carries the mathematics, this target carries the check. Anything *not* listed here
+is internal and may be renamed, moved, or inlined freely; changes to a listed statement are
+surface changes and must be flagged.
+
+**Two kinds of listing, and they are not the same claim.** In the `LogicalInduction`
+section:
+
+  * the **public canonical endpoint inventory** — the block delimited by
+    `LI-CANONICAL-BEGIN` / `LI-CANONICAL-END`, which names exactly the endpoints of
+    `scripts/coverage-classification.md`'s *endpoints* table. This is the table of contents
+    for the human statement read-through, and it is what `docs/trust-surface.html` renders
+    with full signatures.
+  * **internal axiom regression assertions** — every other `#assert_axioms_clean` block.
+    These are under the build gate and stay there; they are construction machinery,
+    compatibility carriers and supporting lemmas, not the public read-through set. Wanting a
+    regression guard on a declaration is not a reason to publish it.
+
+Carrying a `Paper node:` label is a third, weaker thing again: it is *provenance*, not
+publication. `thm:scon` has 54 axiom-checked carriers and 4 canonical endpoints. The other
+50 are real, checked, and deliberately not shown.
+
+`scripts/check_endpoint_coverage.py` enforces that the canonical block and the endpoints
+table name exactly the same declarations, so the three artifacts cannot drift apart the way
+they had by 2026-08.
 
 The build fails if any listed endpoint acquires an axiom beyond `propext`,
 `Classical.choice`, `Quot.sound` (in particular `sorryAx`), or ceases to exist.
@@ -113,6 +132,83 @@ elab "#assert_fields " struct:ident fields:ident* : command => do
 namespace LogicalInduction
 
 open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
+
+/-! ## Public canonical endpoint inventory
+
+**This block is the trust surface a reader is asked to read.** It names exactly the
+canonical endpoints of `scripts/coverage-classification.md`'s *endpoints* table — the
+declarations `docs/trust-surface.html` renders with full signatures, one small curated set
+per paper node, the paper's own printed form first.
+
+Every *other* `#assert_axioms_clean` block below is an **internal axiom regression
+assertion**: still under the build gate, so nothing lost its guard and build coverage is
+unchanged, but not public trust surface. Being worth freezing is not a reason to put a
+declaration in front of a reader. `thm:scon` has 54 axiom-checked carriers and 4 canonical
+endpoints; `def:ec` has 24 and 3.
+
+The delimiters are machine-read: `scripts/check_endpoint_coverage.py` fails the run unless
+the name set here equals the endpoints table's, spelling included — so the two cannot drift,
+and a curated node cannot silently fall back to an arbitrary carrier (which is exactly what
+happened to `thm:ifp`, whose refutation and corrected theorem were both invisible).
+
+Names are repeated from the topical blocks below on purpose: this list is a *view*, and the
+topical blocks stay the place where each endpoint is explained. -/
+
+-- LI-CANONICAL-BEGIN
+#assert_axioms_clean
+  AffineCombination AffineCombination.BoundedCombinationSequence LUVCombination.BoundedSequence
+  PaperLUVCombination.boundedSequence unitFracPaperLUVBoundedSequence DeductiveProcess
+  DeductiveProcessComputation DeferralFunction MachineEfficientTrader EfficientlyComputable
+  EfficientlyComputable.toMachine GeneratedRatFeature PGenerableWeighting liaStates liaHistory
+  IsMachineLogicalInductor IsLogicalInductor PaperLUV LUV unitFracPaperLUVSeq Trader Strategy
+  LUVCombination.BoundedSequence.mesh_independence_ofSyntax trading_firm_dominance
+  AffineCombination.PolySequence.affcoh AffineCombination.BoundedCombinationSequence.affpolymax
+  AffineCombination.PolySequence.affine_provind_theory_ge
+  AffineCombination.PolySequence.affine_provind_theory_le
+  AffineCombination.PolySequence.affine_provind_theory_eq lic_learning_pseudorandom_frequency
+  lic_learning_pseudorandom_frequency_above lic_learning_pseudorandom_frequency_below
+  lic_no_expected_net_update_conditional_closed_exact lic_expected_future_expectations_closed
+  lic_no_expected_net_update_closed lic_limitingBelief_tendsto lic_price_convergesTo
+  lic_does_not_anticipate_halting_unconditional
+  lic_domination_universalSemimeasure_ofIndependentAtoms lic_domination_universalSemimeasure
+  LUV.expect_converges lic_expectation_indicator lic_expectations_of_probabilities_closed
+  lic_iterated_expectations_closed LUVCombination.BoundedSequence.expcoh_ofSyntax
+  LUVCombination.BoundedSequence.exppolymax_ofSyntax lic_expect_combination_provind_ge
+  lic_expect_combination_provind_le lic_expect_combination_provind_eq
+  lia_learns_halting_patterns_unconditional
+  FinitePerturbationCounterexample.not_overgeneral_ifp
+  FreezeOracle.machine_lic_iff_of_recognizableSupport
+  LIAPerturbation.machineLogicalInductor_liaPerturbed
+  lic_disbelief_inconsistent_theories_unconditional lic_limitCoherence
+  lic_learning_exclusive_exhaustive exists_computable_beliefSequence_logical_inductor
+  exists_machine_logical_inductor LIA_isMachineLogicalInductor LIA_is_logical_inductor
+  lic_linearity_of_expectation_seq lic_learns_provable_nonhalting_patterns_unconditional
+  lic_paradox_resistance_ofDiagonal_unconditional lic_nonDogmatism lic_nonDogmatism_dual
+  UPrefix.lic_occamBounds_ofUniversalPrefix lic_uniform_nonDogmatism_ofCE
+  lic_uniform_nonDogmatism lic_belief_finitistic_consistency_unconditional
+  lic_belief_stronger_theory_consistency_unconditional AffineCombination.PolySequence.peraffkno
+  LUVCombination.BoundedSequence.perexpkno_ofSyntax lic_persistence_of_knowledge
+  lic_learning_varied_pseudorandom lic_learning_varied_pseudorandom_above
+  lic_learning_varied_pseudorandom_below
+  AffineCombination.BoundedCombinationSequence.prandaff_above
+  AffineCombination.BoundedCombinationSequence.prandaff_below
+  AffineCombination.BoundedCombinationSequence.prandaff LUVCombination.BoundedSequence.prandexp
+  LUVCombination.BoundedSequence.prandexp_below LUVCombination.BoundedSequence.prandexp_eq
+  lic_provind AffineCombination.BoundedCombinationSequence.recunbiasedaff
+  AffineCombination.recurringunbiasedness
+  LUVCombination.BoundedSequence.recurringunbiasednessexp lic_introspection_closed
+  lic_introspection ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
+  ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
+  lic_conditioned_fixed_machine_unconditional lic_conditioned_growing_machine_unconditional
+  AffineCombination.simcal AffineCombination.sentenceAffine_polySequence
+  calibrationIndicator_pgenerable lic_self_trust_closed
+  lic_strict_domination_universalSemimeasure_ofAtomCodes
+  lic_strict_domination_universalSemimeasure lic_preemptive_learning
+  FeedbackTruth.lic_wub_ofComputation FeedbackTruth.lic_wub_ofComputation_unconditional
+  FeedbackTruth.boundedCombination_wubaff_ofComputation
+  FeedbackTruth.boundedCombination_wubaff_ofComputation_unconditional
+  FeedbackTruth.luv_wubexp_ofComputation FeedbackTruth.luv_wubexp_ofComputation_unconditional
+-- LI-CANONICAL-END
 
 /-! ## Existence (`thm:li`) -/
 
@@ -227,6 +323,18 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
   isMachineLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
   lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
+
+-- Construction/Witnesses/FinitePerturbationWitness.lean — the REFUTATION of `thm:ifp`.
+-- The paper's printed statement is false; `not_overgeneral_ifp` proves its negation at the
+-- paper's own quantifier, with no theory parameter (`_ofTheory` is the same over any Σ₁-sound
+-- Δ₁ theory extending `𝗜𝚺₁`), from the constructed `LIA` and a day-`0` advice tape.  It is a
+-- canonical endpoint — the reader of `thm:ifp` must meet it first — and is therefore in the
+-- LI-CANONICAL block above as well; the three carriers listed immediately above are the
+-- compatibility renderings of the CORRECTED statement and are internal, two of them with
+-- patch hypotheses that are uninhabited (see the RpnFreeze note below).  `notes/paper-errata.md`
+-- PE1 is the ledger.
+#assert_axioms_clean
+  FinitePerturbationCounterexample.not_overgeneral_ifp
 
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -408,6 +516,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   kleene_recursively_inseparable no_ce_null_prefix_family
   separatorClass_mass_tendsto_zero strictSeparatorPresentationOfKleene
   ordinaryAtom_code_computable
+  lic_strict_domination_universalSemimeasure_ofAtomCodes
 
 -- Construction/Witnesses/ConditioningPresentation.lean — the conditioning presentation
 -- (condition sentences plus their codes) built from the process computations.
@@ -513,7 +622,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- witness, so the restriction is necessary and not an artifact.  `BotFree` in `Recognizable`
 -- is exactly this, and it stands in for integer square root in `Complexity.FP`; `NoReserved`
 -- stands in for a structured-payload parser.  Both are conditions on SYNTAX, not on markets
--- or perturbations: the unrestricted theorem is true and unproved here.
+-- or perturbations.
+--
+-- CAREFUL, two different "unrestricted" statements meet here.  The finite-SUPPORT statement
+-- WITHOUT the `Recognizable` condition — same two computable markets, differing on finitely
+-- many `(day, sentence)` coordinates, no syntactic side condition — is believed true and is
+-- unproved here; that is what the previous sentence's `BotFree`/`NoReserved` residue costs.
+-- The PAPER's unrestricted statement, tail agreement past some day `N`, is a different and
+-- STRONGER claim, and it is FALSE: `FinitePerturbationCounterexample.not_overgeneral_ifp`
+-- refutes it (PE1).  Do not read the first as retracting the second.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
   MachineEfficientTrader.freezeOn
@@ -901,6 +1018,13 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   atom realizable
 #assert_fields IntrospectionIntervalQuote
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
+-- Both criteria are frozen. `IsMachineLogicalInductor` is `def:lic` at the paper's own
+-- quantifier and is what the construction proves; `IsLogicalInductor` is the fuel-class
+-- compatibility reading reached from it by `IsMachineLogicalInductor.toIsLogicalInductor`,
+-- and is what the §4 tail is conditioned on. Freezing only the second left the canonical
+-- criterion's premise set unguarded.
+#assert_fields IsMachineLogicalInductor
+  marketComputable processComputable noExploit
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
 #assert_fields MachineFiniteSupportPatch

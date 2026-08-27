@@ -56,6 +56,14 @@ def calibrationIndicator (φ : ℕ → Sentence) (a b : ℚ)
     (δ : ℕ → ℚ) (n : ℕ) : EF :=
   efMin (calibrationLower φ a δ n) (calibrationUpper φ b δ n)
 
+/-- The calibration indicator is a ℙ-generable weighting, from the paper's own data.
+
+tex:1188 *asserts* that `ctsInd[δ](a < x < b)` is an expressible `[0,1]`-feature; this
+proves it, from the `thm:simcal` hypotheses "`⟨φ⟩` is an e.c. sequence" and "`⟨δ⟩` is an
+e.c. sequence of positive rationals".  It is the second discharge (with
+`AffineCombination.sentenceAffine_polySequence`) that takes `AffineCombination.simcal`'s
+argument list back to the paper's.
+Paper node: `thm:simcal` -/
 lemma calibrationIndicator_pgenerable
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
     (hφ : RpnSentenceCodes φ) (hδ : PolyPositiveWidths δ) :

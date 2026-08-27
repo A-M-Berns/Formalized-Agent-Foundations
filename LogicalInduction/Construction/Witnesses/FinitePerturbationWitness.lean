@@ -19,8 +19,9 @@ cannot be named there.  It is the same split `lic_paradox_resistance_ofDiagonal`
 The market fed to `paradoxResistanceQuoteOfDiagonal` is the **unperturbed** one
 (`theoremMarketComputation`): `χ n` asserts a fact about that quote program, and
 `advicePerturbed_agree` carries the reflection to the perturbed market on every day `≥ 1`.
-Nothing here carries a `Paper node:` line — this refutes `thm:ifp` rather than rendering
-it.
+`not_overgeneral_ifp` carries `Paper node: thm:ifp` and is a canonical trust-surface
+endpoint: a refutation belongs to the node it refutes, and is audited exactly like any
+other endpoint.
 -/
 
 namespace LogicalInduction
@@ -702,8 +703,14 @@ theorem exists_advice_perturbation :
 /-- **The unrestricted finite-day perturbation statement is false** — the negation of the
 paper's `thm:ifp` as printed, at the paper's own quantifier, with no theory parameter.
 
-Fully proved and axiom-clean.  Refutes rather than renders, so no `Paper node:` line.
-Kind `C`; hypotheses `(a)`. -/
+Fully proved and axiom-clean.  This declaration *refutes* rather than renders `thm:ifp`,
+and it carries the node so that the refutation is on the checked gates and on the
+read-through page: `thm:ifp` is the one node whose printed statement is false, and the
+canonical public view of it must lead with this theorem and with the corrected
+replacement `FreezeOracle.machine_lic_iff_of_recognizableSupport`.  See
+`notes/paper-errata.md` PE1.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
 theorem not_overgeneral_ifp :
     ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
         IsMachineLogicalInductor P DP → ComputableMarket P' →

@@ -28,7 +28,12 @@ def sentenceAffine (φ : ℕ → Sentence) (n : ℕ) : AffineCombination where
     (sentenceAffine φ n).magnitude P = 1 := by
   simp [sentenceAffine, magnitude]
 
-/-- A polynomial sentence-code progression induces a legal one-share affine sequence. -/
+/-- A polynomial sentence-code progression induces a legal one-share affine sequence.
+
+This is one of the two discharges that make `thm:simcal`'s endpoint reach the paper's own
+hypothesis set: `AffineCombination.simcal` takes `PolySequence (sentenceAffine φ)` as an
+argument, and this constructs it from the paper's "`⟨φ⟩` is an e.c. sequence".
+Paper node: `thm:simcal` -/
 noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     PolySequence (sentenceAffine φ) := by
   exact {

@@ -13,7 +13,10 @@ dominance theorem.
 
 namespace LogicalInduction
 
-/-- The recursive rational states of the logical-induction algorithm. -/
+/-- The recursive rational states of the logical-induction algorithm: day `n` is the
+market maker's fixed point against the trading firm run on the history of days `< n`.
+This is the paper's `LIA` recursion itself.
+Paper node: `def:lia` -/
 noncomputable def liaStates (DP : DeductiveProcess) : ℕ → RationalBeliefState
   | n =>
       let past := List.ofFn fun i : Fin n => liaStates DP i
@@ -26,7 +29,9 @@ decreasing_by exact i.isLt
 noncomputable def liaQuote (DP : DeductiveProcess) : ℕ → Sentence → ℚ :=
   fun n => (liaStates DP n).quote
 
-/-- The real-valued history obtained by casting the exact rational quotes. -/
+/-- The real-valued history obtained by casting the exact rational quotes — the market
+`LIA` induces, and the market every `_unconditional` endpoint below is stated over.
+Paper node: `def:lia` -/
 noncomputable def liaHistory (DP : DeductiveProcess) : History :=
   fun n => (liaStates DP n).toValuation
 
