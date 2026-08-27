@@ -11,11 +11,15 @@ sum of the market's prices** on `X`'s threshold sentences,
 `𝔼ₙ(X) = (1/n) · ∑_{i<n} Pₙ(⌜X > i/n⌝)`. So once a LUV is presented by its threshold
 sentences, `𝔼ₙ(X)` is a genuine `ℕ → ℝ` derived from `P : History`.
 
-Modeling note (`def:luv`, disclosed type-`(c)`): the paper's LUVs are *first-order* — a
-formula `X(ν)` free in one variable, over a theory `Θ` that represents computations — whereas
-our `Sentence = Formula ℕ` is propositional. We model a `[0,1]`-LUV faithfully **by its
-observable content for the market**: the family of threshold sentences `X.gt r = ⌜X > r⌝ ∈
-Sentence`. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
+Modeling note (`def:luv`): the paper's LUVs are *first-order* — a formula `X(ν)` free in
+one variable, over a theory `Θ` that represents computations. The node itself is closed by a
+literal such object: `PaperLUV` (`Construction/Witnesses/PaperLUV.lean`) is an actual
+one-variable arithmetic formula carrying object-level `T`-proofs, and it is the canonical
+endpoint for `def:luv`. The `LUV` carrier *here* is the convenience layer it compiles into,
+which presents a `[0,1]`-LUV by its **observable content for the market**: the family of
+threshold sentences `X.gt r = ⌜X > r⌝ ∈ Sentence`. Downstream results are stated against the
+carrier and so apply to more families than the paper's; `PaperLUV` is what shows the paper's
+own objects are among them. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
 coherence conditions on that family; we carry only what a given theorem needs, as explicit
 hypotheses, rather than reconstructing the first-order syntax.
 -/
@@ -177,8 +181,9 @@ end LUV
 The paper's "`Θ` represents computations, so every consistent world assigns each LUV its
 true value" becomes, in our threshold presentation, a coherence condition relating a world
 to a value: `v` affirms every threshold strictly below `x` and denies every one strictly
-above. **Disclosed type-`(c)`**: this is the market-observable content of "`v` believes
-`X = x`", not a first-order reconstruction. -/
+above. This is the market-observable content of "`v` believes `X = x`" rather than a
+first-order reconstruction — the literal reconstruction is `PaperLUV`, which derives its
+world-value semantics instead of assuming it. -/
 
 /-- The p.c. world `v` **values** the `[0,1]`-LUV `X` at `x`: threshold coherence around
 `x`. -/
