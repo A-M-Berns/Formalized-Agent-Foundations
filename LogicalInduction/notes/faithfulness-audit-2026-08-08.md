@@ -112,6 +112,35 @@ qualified endpoint into a full formalization.
 **Required status:** qualified and presently without a non-vacuity witness. Do not cite it
 as `thm:ifp` without that sentence.
 
+**Update (2026-08-26) — this finding is superseded, and in an unexpected direction.** A1
+recorded that the unrestricted paper theorem "is not proved". It is now *refuted*:
+`not_overgeneral_ifp` (`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the
+published unrestricted finite-day statement **false** at the paper-facing machine criterion
+— closed but for the deductive process, `sorry`-free, `[propext, Classical.choice,
+Quot.sound]`. So the gap A1 described was not a formalization shortfall to be closed but a
+true statement about a false theorem.
+
+The rest of A1's verdict has moved too, and the parts move in different directions:
+
+* A **corrected** theorem exists, `FreezeOracle.machine_lic_iff_of_recognizableSupport`,
+  over perturbations moving only finitely many `(day, sentence)` coordinates. It takes two
+  `ComputableMarket`s and the perturbation and nothing else; the freeze certificate is
+  compiled, not caller-supplied.
+* It carries one residual hypothesis, `Recognizable`, which is a condition on the *syntax*
+  of the moved sentences — representation residue standing for two absent `Complexity.FP`
+  primitives, both proved necessary rather than convenient.
+* `machine_lic_iff_twoPoint` gives it a non-vacuity witness, which A1 said did not exist,
+  and `LIAPerturbation.machineLogicalInductor_liaPerturbed` gives it an **informative** one:
+  the corrected theorem derives a machine logical inductor no construction here produces.
+* The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch` are still
+  uninhabited, exactly as A1 said, and the reason is now attributed to the `dd:fuel`
+  inverse-operation ceiling rather than left open.
+
+A1's instruction — do not cite the node without stating its qualification — stands. The
+qualification to state has changed: it is no longer "no witness exists" but "the published
+statement is false; the corrected one is proved, non-vacuous, informative, and carries one
+residual syntactic side condition".
+
 ### B1 — `thm:wubexp` still strengthens combination-level determination, and local prose oversells it
 
 > **Resolved 2026-08-11, after this audit.** Both parts are closed and the node is
@@ -290,7 +319,9 @@ analytic conclusion as the paper.
 2. ~~For `thm:wubexp`, construct a feedback bridge from a deadline-bounded computation of
    the combination truth plus the existing vanishing mesh error, without
    `ExactTheoryPresentation`.~~ Done 2026-08-11, by exactly this route; see B1.
-3. Keep `thm:ifp` visibly qualified until an `EfficientPrefixPatch` inhabitant exists; do
+3. *(Superseded 2026-08-26 — see the update under A1. `thm:ifp` stays qualified, but
+   because the published statement is refuted rather than because a witness is missing.)*
+   Keep `thm:ifp` visibly qualified until an `EfficientPrefixPatch` inhabitant exists; do
    not treat the paper erratum as a proof of the restricted premise.
 4. Treat the exact `thm:ccee` definitional-extension endpoint as infrastructure, not the
    paper-facing closed endpoint, until the extended-process inductor/weight circle is closed.

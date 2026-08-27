@@ -2341,7 +2341,7 @@ lemma freezeTokenRun_polySegStream {source : ℕ → List ℕ}
         ((freezeControlNat tokenFn z).unpair.1,
           (freezeControlNat tokenFn z).unpair.2) (tokenFn z)) :=
     hsegmentRaw.of_eq (fun z => by
-      simp only [EF.freezeTokenEmit]
+      simp only [EF.freezeTokenEmit_eq]
       by_cases hm : (freezeControlNat tokenFn z).unpair.1 = 2
       · by_cases hd : tokenFn z < cutoff
         · have hgap : cutoff - tokenFn z ≠ 0 := by omega
@@ -2397,7 +2397,8 @@ lemma freezeBefore_preserves_ec
       (strategyOfTokens n
         (EF.freezeTokenRun quoteCode cutoff (0, 0) (raw n)).2).trades =
         ((Tr.freezeBefore quote cutoff).strat n).trades := by
-    simpa [Trader.freezeBefore, Strategy.freezeBefore] using hcomm
+    simpa [Trader.freezeBefore, Trader.freezeOn, Strategy.freezeBefore,
+      Strategy.freezeOn, EF.freezeBefore] using hcomm
   cases hleft : strategyOfTokens n
       (EF.freezeTokenRun quoteCode cutoff (0, 0) (raw n)).2 with
   | mk leftTrades leftRank =>

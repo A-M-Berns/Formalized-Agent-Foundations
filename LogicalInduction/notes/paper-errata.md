@@ -9,9 +9,13 @@ faithfulness and completeness of this repository.
 
 ## PE1 — Closure under Finite Perturbations (`thm:ifp`)
 
-**Status:** the published proof has a genuine efficiency gap. The unrestricted theorem is
-not formalized, and its truth under the paper's definitions remains unsettled. The repository
-proves a qualified theorem for efficiently presentable finite prefixes.
+**Status: the published theorem is FALSE, and the repository now proves it false.**
+`FinitePerturbationCounterexample.not_overgeneral_ifp`
+(`Construction/Witnesses/FinitePerturbationWitness.lean`) is a kernel-checked, axiom-clean
+refutation of the unrestricted statement at the paper's own quantifier, with no theory
+parameter. The published *proof* is separately invalid, for the independent reason recorded
+below; the repository additionally proves a corrected finite-*support* theorem, which is the
+restricted case in which the published proof's own justification is sound.
 
 ### Published statement and proof
 
@@ -71,28 +75,128 @@ output may be numerically larger than its raw fuel, but `codeEvaln_result_le` to
 `codeEvalBound_poly` bounds a fixed program's output by a code-dependent polynomial in that
 fuel. That is the output-size obstruction used here.
 
-### Stretch goal: settle the unrestricted statement
+### The corrected theorem (2026-08-26)
 
-It is a research-level stretch goal to formalize one of the following:
+Finite support is exactly what rescues the hard-coding step, and the repository now proves
+that case. `FiniteSupportPerturbation P P'` says the two markets differ on only finitely
+many `(day, sentence)` price *coordinates*; the freeze then reads its quote table at
+finitely many places, so the appendix's "hard-code the constants" justification is
+literally valid. `lic_iff_of_finiteSupportPerturbation` and
+`machine_lic_iff_of_finiteSupportPerturbation` (the latter at the paper's own quantifier,
+`MachineEfficientTrader`) carry it.
 
-1. **The unrestricted theorem:** prove `thm:ifp` for arbitrary computable markets using a
-   transport argument that does not require efficient access to the changed prefixes; or
-2. **More likely, its negation:** construct computable markets `P` and `P'` and a computable
-   deductive process `DP` such that the markets agree from some finite cutoff onward, while
-   `P` is a logical inductor over `DP` and `P'` is not.
+Two things must be said plainly about that theorem, and are said at the statement:
 
-A promising counterexample route is to use one changed early pricing as a slow-computable
-advice table. Later efficiently generated traders can query that table through old-day price
-features, potentially obtaining computational information unavailable to traders facing the
-unmodified prefix. Formal success requires the full separation result—one tail-equivalent
-market satisfying the LIC and the other admitting an efficient exploiter—not merely another
-proof that `EfficientPrefixPatch` can be uninhabited.
+1. **Its hypothesis is strictly stronger than the paper's.** Finite support implies
+   tail agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — the
+   day-`0` huge-numeral market above agrees with `LIA` from day `1` and is not finitely
+   supported. So this is a *corrected* theorem, a proper restriction of `thm:ifp`, not a
+   restatement of it. The published unrestricted theorem is **false** — refuted by
+   `not_overgeneral_ifp` — and its published proof is separately invalid.
+2. **It needs no caller-supplied certificate, and it is non-vacuous and informative;
+   its fuel-class certificates remain uninhabited.** See the 2026-08-26 update
+   below for the precise state. Nothing here should be described as non-vacuous without
+   reading it — that is the failure the 2026-08-02 correction above exists to catch.
 
-Until one of these alternatives is formalized, documentation should use the precise verdict:
+### The unrestricted statement, settled (2026-08-26): it is false
 
-> The published proof of unrestricted finite-perturbation closure is invalid; the
-> unrestricted theorem is unresolved, and the repository proves the efficiently patchable
-> case.
+What was a research-level stretch goal is now a theorem. Alternative 2 below is the one that
+held.
+
+1. ~~**The unrestricted theorem:** prove `thm:ifp` for arbitrary computable markets using a
+   transport argument that does not require efficient access to the changed prefixes~~ —
+   impossible, by the counterexample.
+2. **Its negation** — *proved*: `not_overgeneral_ifp`. The construction is exactly the
+   advice-tape route this ledger anticipated below, made precise:
+
+   * `P` is the constructed `LIA` over the `𝗜𝚺₁` theorem process, a genuine machine logical
+     inductor (`LIA_isMachineLogicalInductor`).
+   * `χ` is the repo's diagonal price family: in every world consistent with the completed
+     theory, `χ n` holds exactly when `P n (χ n) < 1/2`. So a trader knowing only that one
+     bit earns a *certain* `≥ 1/2` on day `n` once the day has settled — buy below the
+     threshold, where the sentence is true; short at or above it, where it is false.
+   * `P'` changes **day `0` only**, publishing the sign and schedule bits as the prices of
+     advice atoms at otherwise unused tags. It is a legal `ComputableMarket`: the day-`0`
+     row is a total computable search, terminating by propositional compactness
+     (`DeductiveProcess.exists_stage_entails`).
+   * The exploiting trader is genuinely `MachineEfficientTrader`. It never computes the
+     bits: its day-`n` coefficient is the rank-`0` feature
+     `price (schedAtom n) 0 * (2 * price (signAtom n) 0 - 1)`, so the *market* supplies the
+     advice at valuation time. A sparse schedule lets each round settle before the next
+     opens, bounding downside by `1` while the settled rounds accumulate `≥ 1/2` each.
+
+**The mechanism, stated plainly.** A single changed pricing day is an infinite computable
+function, and `def:marketprocess` puts no bound on its runtime or output size. That is
+enough for one day to act as persistent historical advice, handing an efficient trader
+information it could not compute for itself. The gap between *computable* and *efficiently
+computable* is exactly what the perturbation smuggles across, and no amount of care in the
+appendix's transport argument can close it — the theorem, not merely its proof, is wrong.
+
+The earlier note that formal success "requires the full separation result — one
+tail-equivalent market satisfying the LIC and the other admitting an efficient exploiter —
+not merely another proof that `EfficientPrefixPatch` can be uninhabited" was the right bar,
+and it is the bar that has been met.
+
+The finite-support theorem is a *third* outcome, and it settles neither of these: it
+repairs the appendix's argument on the restricted domain where that argument is valid,
+while leaving the unrestricted statement open.
+
+### Where the corrected theorem stands (2026-08-26)
+
+**The corrected theorem needs no caller-supplied certificate.**
+`FreezeOracle.machine_lic_iff_of_recognizableSupport` takes two `ComputableMarket`s and a
+perturbation with finite, `Recognizable` support, and nothing else: the freeze certificate
+is *compiled* from the market's own computability certificate. The earlier
+`MachineFiniteSupportPatch` survives as implementation machinery, not as the statement.
+
+**The one residual hypothesis is representation, not mathematics.** `Recognizable ψ` —
+`BotFree ψ` and `NoReserved ψ` — constrains the *syntax* of the finitely many sentences
+whose price moves. It constrains no market, trader or perturbation. Each half stands for
+exactly one `Complexity.FP` primitive this toolkit lacks:
+
+* `BotFree` for **integer square root** — Foundation's `Formula.ofNat` discards the payload
+  at tag `0`, so `⊥` has infinitely many escape codes and deciding whether a code denotes
+  `⊥` is deciding whether it is a perfect square. Polynomial time mathematically.
+* `NoReserved` for a **structured-payload parser** — the structured block admits payload
+  spellings no fixed word comparison catches. It denotes only reserved atoms, so excluding
+  those makes the branch unreachable.
+
+Neither half has slack: every position in a term is escape-able, so `BotFree` must be
+hereditary, and a structured spelling at any subterm breaks completeness, so `NoReserved`
+must be too. `decode_and_noncanonical` proves the first restriction *necessary* rather than
+an artifact of the approach. So the unrestricted finite-support statement is, as far as this
+development can tell, **true** — and unprovable here for want of two primitives rather than
+for want of a theorem.
+
+**Non-vacuous, and informative.** `machine_lic_iff_twoPoint` is closed but for the
+deductive process: a concrete pair of computable markets, proved to differ at the frozen
+coordinate, discharging every hypothesis at once — so the antecedent is satisfiable. Those
+particular markets are uninformative (they price everything at zero but one coordinate and
+are very likely exploitable, so the equivalence may hold because both sides fail), which is
+why the stronger instance matters: `LIAPerturbation.machineLogicalInductor_liaPerturbed`
+applies the corrected theorem to the constructed `LIA` with one price moved, and *derives*
+that the perturbed market is a machine logical inductor. That market is not the output of
+any construction in this repo, so its inductor-hood is exactly what the theorem buys. It
+inherits `Construction/LIA.lean`'s own two hypotheses — LIA's market program and a
+computable deductive process — which are pre-existing and unchanged.
+
+**The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
+`FiniteSupportPatch` have no inhabitant, and the reason is now attributed rather than open:
+the fuel calculus does not close over the escape-leaf decode the lookup needs — the
+`dd:fuel` inverse-operation ceiling, binding exactly where it was predicted to.
+
+One degenerate discharge is available and deliberately **not** taken: `S = ∅` makes the
+freeze the identity and inhabits the certificate trivially, but forces `P = P'`. That is the
+degenerate non-vacuity this repository's audit standard rejects, recorded here so nobody
+later mistakes it for a discharge.
+
+The precise verdict documentation should now use:
+
+> The published unrestricted finite-perturbation theorem is **false**, and the repository
+> proves it false. Its published proof is separately invalid. The repository proves a
+> corrected finite-*support* theorem — the restricted case in which the published proof's
+> own justification is sound — and the efficiently patchable case at the paper's own
+> hypothesis shape. Neither restricted theorem has an inhabited patch certificate.
 
 ## PE2 — Swapped good-feedback hypothesis in the expectation unbiasedness pair (`thm:recurringunbiasednessexp`, `thm:wubexp`)
 

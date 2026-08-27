@@ -381,13 +381,38 @@ Per-area detail for the Stage-3 slice:
 | --- | --- | --- | ---: | --- | --- |
 | `Models/TuringMachine.lean` | 2 & 3 | `TM`, `Tape`, `reachesIn`, `ComputesInTime` | 906 | low (clean) | **yes** |
 | `Classes/{Time,Space}`, `Asymptotics` | 2 & 3 | `DTIME`, `=O` | ~590 | low (4 edits, done) | **yes** |
-| `Classes/P/Defs` + closure kit | 2 & 3 | `FP`, `mem_FP_comp`, `ite_mem_finset_mem_FP` | ~1,500 | low (builds today) | **yes** |
+| `Classes/P/Defs` + closure kit | 2 & 3 | `FP`, `mem_FP_comp`, `ite_mem_finset_mem_FP` | ~1,500 | low (**partly wrong — see the correction below**) | **yes** |
 | `TuringMachine/Combinators`, `Composition` | 2 & 3 | seq/if/loop, output bounds, `Hoare` | ~12,600 | medium (`Hoare`, `Lift`) | **yes** |
 | `TuringMachine/Subroutines` | 3 (via UTM) | counters, pairing, emit | ~27,700 (partly in closure) | **medium-high** (`Counter`, `PairEmit`) | yes, unavoidable |
 | `TuringMachine/SingleTape` | 3 | multi→single reduction; `Corr.outputEq` | 6,676 | **high** (5,344-LOC `Correctness`) | yes, unavoidable |
 | `TuringMachine/UTM/**` | 3 only | `TMDesc`, `utmTM`, universality | 23,681 | medium | yes for Stage 3 |
 | `Classes/P/Cobham/**` | — | machine-independent bridge | 34,140 | medium | **no** (§1.5) |
 | `Models/RandomAccessMachine`, `Circuits/`, `SAT/`, `Classes/PPoly` | — | not reachable from our seeds | ~140,000 | — | **no** |
+
+**Correction (2026-08-26).** The "builds today" verdict on the closure kit row above was
+wrong, and the Cobham "no" was premature. Measured directly on this pin:
+`Classes/P/Defs`, `NormalForm`, `Description`, `FinsetDomain` and `UnaryLength` build;
+**`Classes/P/Composition` (`mem_FP_comp`) and `Classes/P/PairWithInput`
+(`mem_FP_pairWithInput`) do not**, and neither does any of `Classes/P/Cobham/**` or
+`TuringMachine/Subroutines/Binary*`. All of it funnels through the same three files and
+the same taxonomy this note records in §II.2 — `Γ.ofBool true` no longer reducing to
+`Γ.one` inside `simpa`, in `Subroutines/Internal.lean`; a structure projection no longer
+reducing in `Lift.lean`; the same in `PairEmit/Internal.lean`. Because Lake halts
+dependents, the observed error count is a floor, not a total. Stage 3 did not need these
+modules, so the gap went unmeasured; the machine readings of `thm:scon` and `thm:ifp` do
+need them, and `Cobham/**` in particular now looks load-bearing rather than optional —
+`CobhamFP_eq_FP` plus `iterate_mem_FP`/`recFoldClamp_mem_FP` is the cheap route to
+certifying a streaming transduction in `FP`, against ~1,500–3,000 lines of bespoke Turing
+machine per client otherwise.
+
+**Trap in the binary-arithmetic library, recorded because the name misleads.**
+`binaryMulAddTM` is the obviously-named multiply and is **repeated addition**:
+`binaryMulAddLoopTime` is a `binaryForLoopTime … rightValue 0 rightValue`, linear in the
+*value* of the right operand and so exponential in bit width. It is canonical-binary in
+representation, which makes its space bound look right. The genuine polynomial multiplier
+is `binaryShiftMulTM` — `binaryShiftMulTime lhs rhs = 33 * w² + 170 * w + 58` for
+`w = lhs.size + rhs.size`, fully framed. Anyone reaching for "the multiply in
+complexitylib" must take `binaryShiftMulTM`.
 
 **Answer to the crucial question.** The good news: the *irreducible core* is genuinely
 small — **`FP` and its closure is 1,496 lines and compiles on 4.31 today**. The bad news:
@@ -802,6 +827,12 @@ obstruction" to "uninhabited in general for a *sharper and more honestly attribu
 reason, with a tractable `LIA` instance newly in reach." That is real progress and worth
 doing — but it is not the clean fix the brief hoped for, and the difference should be
 reflected in the plan.
+
+> **Superseded (2026-08-26).** This prediction was too pessimistic in one direction and
+> beside the point in another. The machine-class certificate is now *inhabited*, and the
+> public corrected theorem needs no certificate at all — it compiles one from the market's
+> own computability. And the framing was wrong: the published unrestricted `thm:ifp` is not
+> a theorem awaiting a certificate, it is **false**, and is now refuted. See Part XXV.
 
 ---
 
@@ -4486,3 +4517,60 @@ certification device*: the class the construction quantifies over is
 `MachineEfficientTrader`, and the fuel certificate implies membership in it. The model
 card's lower calibration — machine ⟹ fuel — remains open, costs nothing paper-facing, and is
 not claimed.
+
+---
+
+# Part XXV — the perturbation branch closes (2026-08-26)
+
+Stage 3 left two statements whose *conclusion* is the criterion sitting at the fuel class,
+because restating them needs the machine class closed under a trader translation. Both are
+now resolved, and they resolved differently.
+
+## XXV.1 `thm:scon` — closed at the machine quantifier
+
+`conditionedTranslation_preserves_machine` and
+`eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports, under
+the *same* `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts — so
+nothing is weakened and the trader hypothesis is strictly stronger. The endpoints
+`lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+`lic_conditioned_eventual_machine` conclude `IsMachineLogicalInductor`. The fuel endpoints
+and their inhabited witnesses are untouched beside them: this is a strengthening, not a
+replacement.
+
+The transduction is six `Complexity.FP` passes over one word-level automaton — price, guard,
+count, budget rendering, acceptance, frame — built on a fold combinator (`TokenFold`) that
+did not exist before this branch. Two disclosed clamps were introduced and then *discharged*
+rather than left standing: the conditioning emitter draws its block at `min D n`, and the
+guard pass is what makes that exact.
+
+## XXV.2 `thm:ifp` — the published statement is false
+
+Not a formalization gap. `not_overgeneral_ifp` refutes the unrestricted finite-day statement
+at the paper's own quantifier, closed but for the deductive process. The mechanism is that a
+single changed pricing day is an infinite computable function: `def:marketprocess` bounds
+neither its runtime nor its output size, so one perturbed day can publish advice that an
+efficient trader reads through historical price features without ever computing it. The
+diagonal price family the repo already had (`ParadoxResistanceQuote`) supplies a sequence on
+which knowing one bit is worth a certain `1/2` per settled round.
+
+The corrected theorem is finite *support*: `machine_lic_iff_of_recognizableSupport`, taking
+two computable markets and a perturbation and nothing else. Its one residual hypothesis is a
+condition on the syntax of the finitely many moved sentences, standing for two `FP`
+primitives this toolkit lacks — integer square root and a structured-payload parser — both
+proved necessary rather than convenient.
+
+## XXV.3 What the port cost
+
+The FP closure kit (`mem_FP_comp`, `mem_FP_pairWithInput`, the whole `Cobham` subtree, the
+binary-arithmetic subroutines) had never been type-checked on this pin; Stage 3 needed none
+of it, and both transports run through it. Eight mechanical commits in the fork cleared it,
+of which seven additive `rfl` simp lemmas carry most of the work. The pin moved
+`964ce2d → 1b0d107`.
+
+## XXV.4 The `dd:fuel` ledger, final
+
+The fuel class is a certification device throughout. Every machine-facing endpoint in this
+branch takes machine hypotheses; none falls back to `IsLogicalInductor`. The fuel-class
+freeze certificates remain uninhabited, and the reason is now attributed rather than open:
+the fuel calculus does not close over the escape-leaf decode — the inverse-operation ceiling
+this note predicted, binding exactly where it was predicted to.

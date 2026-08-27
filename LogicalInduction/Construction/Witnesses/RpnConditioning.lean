@@ -6820,6 +6820,275 @@ lemma rpnGuardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
 #print axioms unRpn_rpnZeroAwareConditionRun
 #print axioms rpnGuardedZeroAwareConditionRun_polySegStream
 
+/-! ### The class-agnostic conditioning transduction
+
+The two conditioning passes compose into a single list-level transduction,
+`rpnConditionOutput`, carrying a day's source token stream to that day's conditioned
+stream without mentioning any efficiency class.  Its correctness on an arbitrary stream
+(`strategyOfTokens_rpnConditionOutput`) is the whole mathematical content of closure
+under conditioning; a class-preservation endpoint adds only the emission certificates
+that place the transduction inside the class. -/
+
+/-- Structural acceptance read off a stream directly (the list-level form of
+`rpnStructurallyAccepts`). -/
+def rpnAcceptsRuns (ts : List ℕ) : ℕ :=
+  if rcMode (ts.foldl rpnCondStep (rcPack 0 0 0)) = 0 then
+    (if rpnDepthRuns (rcPack 0 0 0) ts 0 = 0 then 1 else 0)
+  else 0
+
+/-- The position-indexed acceptance test is the list-level one over the position view. -/
+lemma rpnStructurallyAccepts_eq_runs (tf lenF : ℕ → ℕ) (n : ℕ) :
+    rpnStructurallyAccepts tf lenF n = rpnAcceptsRuns (vpre tf n (lenF n)) := by
+  rw [rpnStructurallyAccepts, rpnAcceptsRuns, rpnCondControlAt_eq_foldl,
+    rpnDepthAt_eq_runs]
+
+/-- The gated two-leg join read off a stream directly (the list-level form of
+`rpnSafeSeparatedFrameOutput`). -/
+def rpnSafeSeparatedFrameRuns (blkψ : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
+    (ts : List ℕ) : List ℕ :=
+  if rpnAcceptsRuns ts = 0 then rpnFrameOutput false blkψ ε day bc ibc ts
+  else rpnFrameOutput false blkψ ε day bc ibc ts ++
+    rpnFrameOutput true blkψ ε day bc ibc ts
+
+/-- The position-indexed gated join is the list-level one over the position view. -/
+lemma rpnSafeSeparatedFrameOutput_eq_runs (tf lenF : ℕ → ℕ) (blkψ : List ℕ) (ε : ℚ)
+    (day bc ibc : ℕ) (ts : List ℕ) (hts : vpre tf day (lenF day) = ts) :
+    rpnSafeSeparatedFrameOutput tf lenF blkψ ε day bc ibc ts =
+      rpnSafeSeparatedFrameRuns blkψ ε day bc ibc ts := by
+  rw [rpnSafeSeparatedFrameOutput, rpnSafeSeparatedFrameRuns,
+    rpnStructurallyAccepts_eq_runs, hts]
+
+/-- **The conditioning transduction**: the guarded price pass followed by the gated
+two-leg frame pass, whose budget is set by the priced stream's own trade-run count. -/
+def rpnConditionOutput (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ) (ts : List ℕ) : List ℕ :=
+  rpnSafeSeparatedFrameRuns (blocks n) ε n
+    (frameBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts)))
+    (frameInverseBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts)))
+    (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts)
+
+/-- **The conditioning transduction is correct on any stream**: whenever a day-`n`
+source token stream decodes to the trader's day-`n` strategy, the transduced stream
+decodes to the conditioned trader's day-`n` strategy.  No efficiency class appears, so
+this is the shared core of every class-preservation endpoint for `thm:scon`.
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_rpnConditionOutput
+    (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
+    (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
+    (hsrc : strategyOfTokens n (unRpn src) = T.strat n) :
+    strategyOfTokens n (unRpn (rpnConditionOutput blocks ε n src)) =
+      (T.conditionedTranslation ψ ε).strat n := by
+  set ts : List ℕ := rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n src with hts
+  set tfP : ℕ → ℕ := fun w => ts.getD w.unpair.2 0 with htfP
+  set lenP : ℕ → ℕ := fun _ => ts.length with hlenP
+  set tokP : ℕ → ℕ := fun w => (unRpn ts).getD w.unpair.2 0 with htokP
+  set lenT : ℕ → ℕ := fun _ => (unRpn ts).length with hlenT
+  have hvts : vpre tfP n (lenP n) = ts := by
+    rw [vpre, htfP, hlenP]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  have hvL : vpre tokP n (lenT n) = unRpn ts := by
+    rw [vpre, htokP, hlenT]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
+  have hout : rpnConditionOutput blocks ε n src =
+      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _ ts hvts,
+      rpnConditionOutput, ← hts, hq, ← frameBudgetCode_exact,
+      ← frameInverseBudgetCode_exact, rpnTradeCountAt_eq_runs, hvts]
+  rw [hout]
+  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+    tfP tokP lenP lenT (blocks n) (hblocks n) ε q n ts hvts hvL
+  refine strategy_ext_trades ?_
+  rw [hjoin]
+  have hprice : (strategyOfTokens n (unRpn ts)).trades =
+      (T.strat n).trades.map fun trade =>
+        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
+    rw [hts, strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ
+      hblocks ε n src, hsrc]
+  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
+  rw [hframes]
+  by_cases hempty : (T.strat n).trades = []
+  · rw [hprice, hempty]
+    simp [Trader.conditionedTranslation,
+      Strategy.separatedLocallyGatedConditionalContract]
+    exact hempty
+  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+      rw [hprice]
+      simpa using hempty
+    have hdecodePriced :=
+      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+        n (unRpn ts) hpricedNe
+    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+    have hreadyTokens :
+        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+            (some EF.streamInitial) =
+          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+        unRpn ts from hvL]
+      exact hreadyPriced
+    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
+      calc
+        frameTradeCount tokP lenT n =
+            (strategyOfTokens n (unRpn ts)).trades.length :=
+          frameTradeCount_eq_length_of_read tokP lenT n
+            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+    have hnotUnread : ¬ Unreadable (unRpn ts) := by
+      intro hU
+      rw [hU.deserializeTrades_eq_none] at hdecodePriced
+      simp at hdecodePriced
+    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+      have hlenEq : ts.length = lenP n := rfl
+      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+        (by rw [hlenEq]; exact hvts) hvL
+      rcases this with h | hU
+      · rw [← h, hlenEq]
+      · exact absurd hU hnotUnread
+    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
+    rw [hprice, hq, hcountSym, hcountTok,
+      frameBudget_eq n (T.strat n).trades.length hpos]
+    simp only [List.map_map]
+    change
+      ((T.strat n).trades.map fun p =>
+        frameLeg false (ψ n) ε
+          (Strategy.localConditioningBudget (conditioningBudget n)
+            (T.strat n).trades.length) n
+          (p.1.retainedConditionPrices ψ ε, p.2)) ++
+        ((T.strat n).trades.map fun p =>
+          frameLeg true (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPrices ψ ε, p.2)) =
+        ((T.conditionedTranslation ψ ε).strat n).trades
+    simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
+      frameLeg_retained_eq_locallyGatedSecondLeg]
+    rfl
+
+#print axioms strategyOfTokens_rpnConditionOutput
+
+def rpnZeroAwareOutput (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ)
+    (ts : List ℕ) : List ℕ :=
+  rpnSafeSeparatedFrameRuns (blocks n) ε n
+    (frameBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)))
+    (frameInverseBudgetCode n (rpnTradeRuns (rcPack 0 0 0)
+      (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)))
+    (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n ts)
+
+/-- **The zero-aware conditioning transduction is correct on any stream.**  The same
+statement as `strategyOfTokens_rpnConditionOutput` for the finite-zero price rewrite: the
+transduced stream decodes to the except-zero gated contract over the trader's day-`n`
+strategy.  No efficiency class appears, so this is the shared core of every
+class-preservation endpoint for the eventual form of `thm:scon`.
+Paper node: `thm:scon` -/
+theorem strategyOfTokens_rpnZeroAwareOutput
+    (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+    (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
+    (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
+    (hsrc : strategyOfTokens n (unRpn src) = T.strat n) :
+    strategyOfTokens n (unRpn (rpnZeroAwareOutput zeroDays blocks ε n src)) =
+      (T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
+        (conditioningBudget n) := by
+  set ts : List ℕ := rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n src with hts
+  set tfP : ℕ → ℕ := fun w => ts.getD w.unpair.2 0 with htfP
+  set lenP : ℕ → ℕ := fun _ => ts.length with hlenP
+  set tokP : ℕ → ℕ := fun w => (unRpn ts).getD w.unpair.2 0 with htokP
+  set lenT : ℕ → ℕ := fun _ => (unRpn ts).length with hlenT
+  have hvts : vpre tfP n (lenP n) = ts := by
+    rw [vpre, htfP, hlenP]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  have hvL : vpre tokP n (lenT n) = unRpn ts := by
+    rw [vpre, htokP, hlenT]
+    simp only [Nat.unpair_pair]
+    exact (list_eq_rangeMap_getD _).symm
+  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
+  have hout : rpnZeroAwareOutput zeroDays blocks ε n src =
+      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
+        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+    rw [rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _ ts hvts,
+      rpnZeroAwareOutput, ← hts, hq, ← frameBudgetCode_exact,
+      ← frameInverseBudgetCode_exact, rpnTradeCountAt_eq_runs, hvts]
+  rw [hout]
+  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+    tfP tokP lenP lenT (blocks n) (hblocks n) ε q n ts hvts hvL
+  refine strategy_ext_trades ?_
+  rw [hjoin]
+  have hprice : (strategyOfTokens n (unRpn ts)).trades =
+      (T.strat n).trades.map fun trade =>
+        (trade.1.retainedConditionPricesExceptZero zeroDays ψ ε, trade.2) := by
+    rw [hts, strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades zeroDays blocks ψ
+      hblocks ε n src, hsrc]
+  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
+    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
+  rw [hframes]
+  by_cases hempty : (T.strat n).trades = []
+  · rw [hprice, hempty]
+    simp [Strategy.separatedExceptZeroConditionalContract]
+    exact hempty
+  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+      rw [hprice]
+      simpa using hempty
+    have hdecodePriced :=
+      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
+        n (unRpn ts) hpricedNe
+    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+    have hreadyTokens :
+        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+            (some EF.streamInitial) =
+          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+        unRpn ts from hvL]
+      exact hreadyPriced
+    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
+      calc
+        frameTradeCount tokP lenT n =
+            (strategyOfTokens n (unRpn ts)).trades.length :=
+          frameTradeCount_eq_length_of_read tokP lenT n
+            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
+    have hnotUnread : ¬ Unreadable (unRpn ts) := by
+      intro hU
+      rw [hU.deserializeTrades_eq_none] at hdecodePriced
+      simp at hdecodePriced
+    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+      have hlenEq : ts.length = lenP n := rfl
+      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+        (by rw [hlenEq]; exact hvts) hvL
+      rcases this with h | hU
+      · rw [← h, hlenEq]
+      · exact absurd hU hnotUnread
+    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
+    rw [hprice, hq, hcountSym, hcountTok,
+      frameBudget_eq n (T.strat n).trades.length hpos]
+    simp only [List.map_map]
+    change
+      ((T.strat n).trades.map fun p =>
+        frameLeg false (ψ n) ε
+          (Strategy.localConditioningBudget (conditioningBudget n)
+            (T.strat n).trades.length) n
+          (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) ++
+        ((T.strat n).trades.map fun p =>
+          frameLeg true (ψ n) ε
+            (Strategy.localConditioningBudget (conditioningBudget n)
+              (T.strat n).trades.length) n
+            (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) =
+        ((T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
+          (conditioningBudget n)).trades
+    simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
+      frameLeg_exceptZero_eq_locallyGatedSecondLeg]
+    rfl
+
+#print axioms strategyOfTokens_rpnZeroAwareOutput
+
 /-! ### The class-preservation endpoints
 
 The assembly: the source certificate gives the clocked digit stream of the RPN-expanded
@@ -6869,103 +7138,23 @@ theorem conditionedTranslation_preserves_ecRpn
     rpnSafeSeparatedFrameOutput_polySegStream hpriced hblocksPoly hbF hiF ε
   apply ec_of_rawSegStream (T.conditionedTranslation ψ ε) hframed
   intro n
-  -- Abbreviations for the contracted priced stream.
-  set ts : List ℕ := undigitize (priced n) with hts
-  set tokP : ℕ → ℕ := fun w => (unRpn (undigitize (priced w.unpair.1))).getD
-    w.unpair.2 0 with htokP
-  set lenT : ℕ → ℕ := fun m => (unRpn (undigitize (priced m))).length with hlenT
-  have hvts : vpre tfP n (lenP n) = ts := by
-    rw [vpre, hts, htfP, hlenP]
+  have hraw : undigitize (priced n) =
+      rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (source n)) :=
+    undigitize_digitize _
+  have hvts : vpre tfP n (lenP n) = undigitize (priced n) := by
+    rw [vpre, htfP, hlenP]
     simp only [Nat.unpair_pair]
     exact (list_eq_rangeMap_getD _).symm
-  have hvL : vpre tokP n (lenT n) = unRpn ts := by
-    rw [vpre, hts, htokP, hlenT]
-    simp only [Nat.unpair_pair]
-    exact (list_eq_rangeMap_getD _).symm
-  set q : ℚ := frameBudget n (rpnTradeCountAt tfP n (lenP n)) with hq
   have hundig : undigitize (framed n) =
-      rpnSafeSeparatedFrameOutput tfP lenP (blocks n) ε n
-        (Encodable.encode q) (Encodable.encode q⁻¹) ts := by
+      rpnConditionOutput blocks ε n (undigitize (source n)) := by
     show undigitize (digitize _) = _
-    rw [undigitize_digitize, frameBudgetCode_exact, frameInverseBudgetCode_exact]
+    rw [undigitize_digitize,
+      rpnSafeSeparatedFrameOutput_eq_runs tfP lenP (blocks n) ε n _ _
+        (undigitize (priced n)) hvts,
+      rpnConditionOutput, ← hraw, rpnTradeCountAt_eq_runs, hvts]
   rw [hundig]
-  have hjoin := strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
-    tfP tokP lenP lenT (blocks n) (hblocksParse n) ε q n ts hvts hvL
-  refine strategy_ext_trades ?_
-  rw [hjoin]
-  -- The price pass: the contraction of the priced stream is the token-model rewrite.
-  have horig : strategyOfTokens n (unRpn (undigitize (source n))) = T.strat n :=
-    congrFun (congrArg Trader.strat hcert) n
-  have hprice : (strategyOfTokens n (unRpn ts)).trades =
-      (T.strat n).trades.map fun trade =>
-        (trade.1.retainedConditionPrices ψ ε, trade.2) := by
-    have hraw : ts =
-        rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (source n)) := by
-      rw [hts]
-      exact undigitize_digitize _
-    rw [hraw, strategyOfTokens_rpnGuardedConditionTokens_trades blocks ψ
-      hblocksParse ε n (undigitize (source n)), horig]
-  have hframes := strategyOfTokens_safeSeparatedFrameTokenOutput_trades
-    tokP lenT (ψ n) ε q n (unRpn ts) hvL.symm
-  rw [hframes]
-  by_cases hempty : (T.strat n).trades = []
-  · rw [hprice, hempty]
-    simp [Trader.conditionedTranslation,
-      Strategy.separatedLocallyGatedConditionalContract]
-    exact hempty
-  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
-      rw [hprice]
-      simpa using hempty
-    have hdecodePriced :=
-      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-        n (unRpn ts) hpricedNe
-    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
-    have hreadyTokens :
-        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
-            (some EF.streamInitial) =
-          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
-      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
-        unRpn ts from hvL]
-      exact hreadyPriced
-    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
-      calc
-        frameTradeCount tokP lenT n =
-            (strategyOfTokens n (unRpn ts)).trades.length :=
-          frameTradeCount_eq_length_of_read tokP lenT n
-            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
-        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-    -- the symbol-side trade-run count is exact against the token-side count
-    have hnotUnread : ¬ Unreadable (unRpn ts) := by
-      intro hU
-      rw [hU.deserializeTrades_eq_none] at hdecodePriced
-      simp at hdecodePriced
-    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
-      have hlenEq : ts.length = lenP n := rfl
-      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
-        (by rw [hlenEq]; exact hvts) hvL
-      rcases this with h | hU
-      · rw [← h, hlenEq]
-      · exact absurd hU hnotUnread
-    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
-    rw [hprice, hq, hcountSym, hcountTok,
-      frameBudget_eq n (T.strat n).trades.length hpos]
-    simp only [List.map_map]
-    change
-      ((T.strat n).trades.map fun p =>
-        frameLeg false (ψ n) ε
-          (Strategy.localConditioningBudget (conditioningBudget n)
-            (T.strat n).trades.length) n
-          (p.1.retainedConditionPrices ψ ε, p.2)) ++
-        ((T.strat n).trades.map fun p =>
-          frameLeg true (ψ n) ε
-            (Strategy.localConditioningBudget (conditioningBudget n)
-              (T.strat n).trades.length) n
-            (p.1.retainedConditionPrices ψ ε, p.2)) =
-        ((T.conditionedTranslation ψ ε).strat n).trades
-    simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
-      frameLeg_retained_eq_locallyGatedSecondLeg]
-    rfl
+  exact strategyOfTokens_rpnConditionOutput blocks ψ hblocksParse ε T n
+    (undigitize (source n)) (congrFun (congrArg Trader.strat hcert) n)
 
 #print axioms conditionedTranslation_preserves_ecRpn
 
@@ -7135,213 +7324,5 @@ theorem eventualConditionedTranslation_preserves_ecRpn
 #print axioms eventualConditionedTranslation_preserves_ecRpn
 
 end RpnConditioning
-
-namespace ConditioningCompile
-
-open RpnConditioning
-
-/-! ## `thm:scon` packaging: operational witnesses and the paper-facing endpoints
-
-The two symbol-metered translation certificates discharge the operational witness
-structures of `Properties/Conditioning.lean`, closing the criterion level: conditioning a
-logical inductor on a computable presentation yields a logical inductor of the
-conditioned market. -/
-
-/-! ### Public operational witness constructors -/
-
-/-- Construct the complete prefix-safe operational witness from an exact rational market
-and a finite-zero floor certificate.
-Paper node: `thm:scon` -/
-noncomputable def eventualConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (floor : EventualConditioningFloor P C.condition) :
-    EventualConditioningOperationalWitness P DP extra C where
-  floor := floor
-  conditioned_computable :=
-    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
-  translation_ec := fun T hT =>
-    eventualConditionedTranslation_preserves_ecRpn floor
-      C.condition_codes T hT
-
-/-- Construct the complete gated-conditioning operational witness from a named rational
-base-market computation and an actual positive denominator floor.
-Paper node: `thm:scon` -/
-noncomputable def gatedConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
-    GatedConditioningOperationalWitness P DP extra C ε where
-  epsilon_pos := hε
-  denominator_floor := hfloor
-  conditioned_computable :=
-    (conditionedMarketComputation market C.condition C.condition_codes).toComputable
-  translation_ec := fun T hT =>
-    conditionedTranslation_preserves_ecRpn C.condition
-      C.condition_codes ε T hT
-
-/-- The paper's finite-prefix denominator repair supplies the floor and the exact rational
-market computation required by the operational witness.  Transporting logical induction
-from `P` to the patched history is a separate step, behind the qualified
-finite-perturbation theorem and its two `EfficientPrefixPatch` certificates.
-Paper node: `thm:scon` -/
-noncomputable def denominatorPatchedGatedConditioningOperationalWitness
-    {P : History} {DP extra : DeductiveProcess}
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (cutoff : ℕ) (ε : ℚ) (hε : 0 < (ε : ℝ)) (hεone : (ε : ℝ) ≤ 1)
-    (htail : ∀ day, cutoff ≤ day → (ε : ℝ) ≤ P day (C.condition day)) :
-    GatedConditioningOperationalWitness
-      (denominatorPatchedHistory P C.condition cutoff) DP extra C ε :=
-  gatedConditioningOperationalWitness C
-    (denominatorPatchedMarketComputation market C.condition C.condition_codes cutoff)
-    ε hε (denominatorPatchedHistory_floor P C.condition cutoff hεone htail)
-
-/-! ### The paper-facing `thm:scon` endpoints -/
-
-/-- Closure under conditioning through the concrete gated translator.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_gated_ofMarketComputation
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d)) :
-    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
-  LogicalInduction.lic_conditioned_gated P DP extra C
-    (gatedConditioningOperationalWitness C market ε hε hfloor)
-
-/-- Closure under conditioning through the prefix-safe finite-zero compiler.  This does
-not modify the base history and therefore does not depend on unrestricted
-finite-perturbation closure.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_eventualOfFloor
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (floor : EventualConditioningFloor P C.condition) :
-    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
-  LogicalInduction.lic_conditioned_eventual P DP extra C
-    (eventualConditioningOperationalWitness C market floor)
-
-/-- Closure under conditioning from joint consistency of the base stages with the whole
-condition sequence, plus concrete computability data.  The proof stays on the original
-market: the finite exceptional prefix is handled by the zero-aware compiler.
-
-`hjoint` is **repo-side**, not a premise of the paper's `thm:scon`; it is what the analytic
-price-floor argument consumes, and it confines this constructor to the
-consistent-conditioning case.  The degenerate case (some stage of the union process has no
-propositionally consistent world) is handled separately by
-`isLogicalInductor_of_stage_unsatisfiable`.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_eventual_ofMarketComputation
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
-    (hjoint : ∀ n, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
-    IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
-  lic_conditioned_eventualOfFloor P DP extra C market
-    (eventualConditioningFloorOfJointConsistency
-      P DP market C.condition C.condition_codes hjoint)
-
-/-- Fixed-sentence form of Closure Under Conditioning, with **no** consistency hypothesis —
-the paper's `thm:scon` statement exactly.  The two branches are the paper's two cases: where
-`Θ ∪ {ψ}` stays satisfiable at every stage the analytic price-floor argument runs, and where
-some stage of `Θ ∪ {ψ}` is already unsatisfiable the criterion holds vacuously (no plausible
-world remains to assess a trader's net worth, so nothing exploits — the paper's remark that
-conditional prices go to `1` where the denominator vanishes).
-Kind `C` (composition of the two branches); hypotheses `(a)`.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_fixed_ofComputationAndMarket
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
-    (ψ : Sentence) :
-    IsLogicalInductor
-      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
-  let C := fixedConditioningPresentation base ψ
-  by_cases hjoint : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds ψ
-  · have hjointC : ∀ n, ∃ v : PCWorld,
-        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-      intro n
-      obtain ⟨v, hv, hψ⟩ := hjoint n
-      exact ⟨v, hv, fun _ => hψ⟩
-    have hresult :=
-      lic_conditioned_eventual_ofMarketComputation
-        P DP (fixedConditionProcess ψ) C market hjointC
-    simpa [C, fixedConditioningPresentation,
-      DeductiveProcess.adjoinSentence] using hresult
-  · push_neg at hjoint
-    obtain ⟨N, hN⟩ := hjoint
-    refine isLogicalInductor_of_stage_unsatisfiable _ _
-      ((conditionedMarketComputation market (fun _ => ψ)
-        (C.condition_codes)).toComputable)
-      C.combined_computable (N := N) ?_
-    intro v hv
-    rw [DeductiveProcess.adjoinSentence,
-      PCWorld.consistentWith_union_iff] at hv
-    exact hN v hv.1 (hv.2 ψ (by simp [fixedConditionProcess]))
-
-/-- Growing finite-prefix form of Closure Under Conditioning, with **no** consistency
-hypothesis — the paper's `thm:scon` statement exactly.  As in the fixed-sentence form, the
-two branches are the paper's two cases.  Where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is
-satisfiable, propositional compactness (`DeductiveProcess.exists_consistentWithTheory`)
-produces a *single* world consistent with the whole growing theory, which is exactly what
-the analytic price-floor argument consumes.  Where some stage is already unsatisfiable the
-criterion holds vacuously.
-Kind `C` (composition of the two branches); hypotheses `(a)`.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_growing_ofComputationsAndMarket
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP)
-    (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P) :
-    IsLogicalInductor
-      (conditionedHistory P
-        (fun n => deductiveStageCondition (extra.D n)))
-      (DP.union extra) := by
-  let C := conditioningPresentationOfComputations base more
-  by_cases hsat : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union extra).D n)
-  · obtain ⟨w, hw⟩ := (DP.union extra).exists_consistentWithTheory hsat
-    have hjointC : ∀ n, ∃ v : PCWorld,
-        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
-      intro n
-      refine ⟨w, ((PCWorld.consistentWith_union_iff w DP extra n).mp (hw n)).1, fun i => ?_⟩
-      exact (C.holds_condition i w).2
-        ((PCWorld.consistentWith_union_iff w DP extra i).mp (hw i)).2
-    exact lic_conditioned_eventual_ofMarketComputation
-      P DP extra C market hjointC
-  · push_neg at hsat
-    obtain ⟨N, hN⟩ := hsat
-    exact isLogicalInductor_of_stage_unsatisfiable _ _
-      ((conditionedMarketComputation market C.condition
-        C.condition_codes).toComputable)
-      C.combined_computable (N := N) hN
-
-/-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
-market/trader compiler are both assembled from their named computations.
-Paper node: `thm:scon` -/
-theorem lic_conditioned_gated_ofComputationsAndMarket
-    (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP)
-    (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P) (ε : ℚ) (hε : 0 < (ε : ℝ))
-    (hfloor : ∀ d, (ε : ℝ) ≤
-      P d (deductiveStageCondition (extra.D d))) :
-    IsLogicalInductor
-      (conditionedHistory P (fun n => deductiveStageCondition (extra.D n)))
-      (DP.union extra) :=
-  lic_conditioned_gated_ofMarketComputation P DP extra
-    (conditioningPresentationOfComputations base more) market ε hε hfloor
-
-#print axioms eventualConditioningOperationalWitness
-#print axioms gatedConditioningOperationalWitness
-#print axioms denominatorPatchedGatedConditioningOperationalWitness
-#print axioms lic_conditioned_gated_ofMarketComputation
-#print axioms lic_conditioned_eventualOfFloor
-#print axioms lic_conditioned_eventual_ofMarketComputation
-#print axioms lic_conditioned_fixed_ofComputationAndMarket
-#print axioms lic_conditioned_growing_ofComputationsAndMarket
-#print axioms lic_conditioned_gated_ofComputationsAndMarket
-
-end ConditioningCompile
-
 
 end LogicalInduction

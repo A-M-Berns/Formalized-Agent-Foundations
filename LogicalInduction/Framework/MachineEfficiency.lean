@@ -63,14 +63,29 @@ theorems are stated against it, and every one of them transfers to a machine log
 inductor immediately through the instance below, because a machine logical inductor *is* a
 fuel-class one. Nothing in the property tail is weaker for it.
 
-The one place the bridge does not suffice is a theorem whose *conclusion* is itself the
+The place the bridge does not suffice is a theorem whose *conclusion* is itself the
 criterion — closure under conditioning (`thm:scon`) and the finite-perturbation statement
 (`thm:ifp`). Those transport an arbitrary trader backwards across a market change, so
 restating them at the machine class needs the machine class to be closed under the same
 trader translations: a direct `Complexity.FP` transport theorem for the strategy
-serialization, which is not proved here. They are left at the fuel class, with no
-hypothesis weakened and no proved content withdrawn, and the missing transport theorems are
-named in `LogicalInduction/README.md`.
+serialization. Both transport theorems now exist.
+
+* `thm:scon` — **complete at the machine quantifier**, in all three forms.
+  `CondStep.conditionedTranslation_preserves_machine` and
+  `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
+  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts;
+  `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+  `lic_conditioned_eventual_machine` are the endpoints. The fuel endpoints and their
+  witnesses are untouched beside them.
+* `thm:ifp` — the *corrected* finite-support statement is proved at both classes
+  (`machine_lic_iff_of_finiteSupportPerturbation`, `Properties/FinitePerturbations.lean`),
+  and the published unrestricted statement is **refuted** (`not_overgeneral_ifp`). The
+  freeze certificate `MachineFiniteSupportPatch` is **inhabited**
+  (`FreezeOracle.machineFiniteSupportPatch_ofTable`) for tables meeting three stated
+  conditions; its fuel-class counterparts are not. A concrete computable market pair
+  discharges every hypothesis at once (`machine_lic_iff_twoPoint`), so the antecedent is
+  satisfiable, and `LIAPerturbation.machineLogicalInductor_liaPerturbed` makes it
+  informative: the theorem derives a machine logical inductor no construction here produces.
 
 The converse inclusion, machine ⟹ fuel, is neither needed nor claimed. -/
 

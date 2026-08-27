@@ -46,6 +46,9 @@ Modules, by the paper subsection they render:
 
 §4.6 Non-Dogmatism
 * `Properties.FinitePerturbations` — `thm:ifp` (closure under finite perturbations).
+* `Properties.FinitePerturbationCounterexample` — the refutation of the *unrestricted*
+  `thm:ifp`, modulo its advice construction.  Refutes a paper statement rather than
+  rendering one, so it carries no `Paper node:` annotation.
 * `Properties.NonDogmatism` — `thm:nd`, both directions, in finite-stage and limit form.
 * `Properties.UniformNonDogmatism` — `thm:obu`.
 * `Properties.OccamBounds` — `thm:ob`, over a Kraft-weighted sentence ladder.
@@ -86,6 +89,7 @@ import LogicalInduction.Properties.Conditioning
 import LogicalInduction.Properties.Relationships
 import LogicalInduction.Properties.LimitCoherence
 import LogicalInduction.Properties.FinitePerturbations
+import LogicalInduction.Properties.FinitePerturbationCounterexample
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.ExpectationConvergence

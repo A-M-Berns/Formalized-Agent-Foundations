@@ -194,22 +194,29 @@ assertion starts failing and gets promoted to a plain clean assertion.
    compatibility predicate; every machine logical inductor is one, so the whole property
    tail transfers unchanged.
 
-   **What this leaves.** Two statements whose *conclusion* is itself the criterion still
-   sit at the fuel class, because they transport an arbitrary trader backwards across a
-   market change and certify the transported trader in the fuel calculus:
+   **What this leaves.** The two statements whose *conclusion* is itself the criterion —
+   they transport an arbitrary trader backwards across a market change, so restating them
+   needs the machine class closed under the same trader translations. Both transports are
+   now proved:
 
-   * **closure under conditioning** (`thm:scon`) — needs
-     `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`,
-     a direct `Complexity.FP` transport theorem for the strategy serialization. Nothing is
-     weakened meanwhile: the existing fuel-level theorem and its witnesses are unchanged.
-   * **closure under finite perturbations** (`thm:ifp`) — the same shape, and separately
-     under revision: the published unrestricted finite-day statement is overgeneral, since
-     arbitrary finite-day perturbations can encode unbounded computational advice. The
-     intended endpoint is a corrected finite-*support* theorem together with a formal
-     counterexample to the unrestricted one, not a machine-strength restoration of the
-     published statement. Its restricting interface `EfficientPrefixPatch` still has **no
-     inhabitant anywhere in this repo**, so that endpoint has no exhibited witness for its
-     own hypothesis.
+   * **closure under conditioning** (`thm:scon`) — **complete at the machine quantifier**,
+     in all three forms. `conditionedTranslation_preserves_machine` and
+     `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
+     under the same hypothesis on the condition as their fuel counterparts; the endpoints
+     are `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+     `lic_conditioned_eventual_machine`. The fuel theorem and its witnesses are untouched
+     beside them.
+   * **closure under finite perturbations** (`thm:ifp`) — no longer a boundary of this
+     kind, and for a stronger reason than the transport being built: the published
+     unrestricted statement is **false**, and `not_overgeneral_ifp` proves it so. A single
+     changed pricing day is an infinite computable function, so it can carry unbounded
+     computational advice to an efficient trader. The corrected finite-*support* theorem is
+     proved at both classes, and its machine form
+     (`machine_lic_iff_of_recognizableSupport`) asks only for two computable markets and a
+     perturbation — the freeze certificate is compiled from the market's own certificate
+     rather than supplied. One residual hypothesis remains, `Recognizable`, and it is a
+     condition on syntax rather than on markets; see the `thm:ifp` entry below for what it
+     stands for.
 
    One thing this boundary is *not*, and it is worth saying plainly because the word
    "substitution" invites the opposite reading: choosing an efficiency notion is a
@@ -351,22 +358,67 @@ reach them: their proofs transport an arbitrary trader backwards across a market
 certify the transported trader. They stay at the fuel class, with nothing weakened and no
 proved content withdrawn.
 
-* **`thm:scon` — closure under conditioning.** The fuel-level theorem and its concrete
-  witnesses (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`)
-  are unchanged and inhabited. The machine-level statement wants one new theorem:
-  `MachineEfficientTrader Tr → MachineEfficientTrader (conditioning translation of Tr)`, a
-  direct `Complexity.FP` closure result for the strategy serialization.
-* **`thm:ifp` — closure under finite perturbations.** Same shape, and separately under
-  revision. The published unrestricted finite-day statement is overgeneral: arbitrary
-  finite-day perturbations can encode unbounded computational advice, so the intended
-  endpoint is a corrected finite-*support* theorem together with a formal counterexample to
-  the unrestricted one — not a machine-strength restoration of the published statement.
-  Meanwhile, stated plainly because it is the sharpest disclosure on this page:
-  `EfficientPrefixPatch` has **no inhabitant anywhere in the repo**, so
-  `lic_iff_of_finitePerturbation` has no exhibited witness for its hypothesis, and the
-  restricted statement must not be described as non-vacuous. (An earlier version of the
-  errata ledger did so, citing a declaration that does not exist; corrected there.) The
-  paper's own proof of `thm:ifp` is separately invalid — see erratum PE1.
+* **`thm:scon` — closure under conditioning.** *Strengthened paper theorem.* Complete at
+  the machine quantifier in all three forms — abstract compiler, gated translator and
+  finite-zero translator. The `Complexity.FP` transports
+  (`conditionedTranslation_preserves_machine`,
+  `eventualConditionedTranslation_preserves_machine`) carry the same `RpnSentenceCodes`
+  hypothesis on the condition as the fuel counterparts, so nothing is weakened and the
+  trader hypothesis is strictly stronger. The fuel-level theorem and its concrete witnesses
+  (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`) are
+  unchanged and inhabited beside them.
+* **`thm:ifp` — closure under finite perturbations.** All four categories are represented,
+  and the published statement is in the first only as a refutation.
+
+  * *Exact paper theorem* — **refuted**. `not_overgeneral_ifp`
+    (`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the unrestricted
+    finite-day statement **false** at the paper's own quantifier: closed but for the
+    deductive process, `sorry`-free, `[propext, Classical.choice, Quot.sound]`.
+  * *Corrected theorem* — `machine_lic_iff_of_recognizableSupport` (`FreezeOracle`):
+    two computable markets differing on only finitely many `(day, sentence)` price
+    coordinates satisfy the criterion together. Finite support is the natural repair,
+    because it is exactly the case in which the appendix's "hard-code the constants" step
+    is literally valid. It is **strictly stronger** than the paper's tail agreement
+    (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
+    other), so this is a proper restriction, not a restatement. `Properties/FinitePerturbations.lean`
+    holds the class-agnostic form and its fuel-class twin.
+  * *Compatibility* — `lic_iff_of_finitePerturbation` keeps the paper's own hypothesis
+    shape and its explicit prefix-patch premises. It is retained so the repo's coverage of
+    the paper's quantifier is legible; it is **not** the corrected paper-facing theorem.
+  * *Auxiliary* — the freeze compiler and run-oracle machinery (`FreezeStep`,
+    `FreezeOracle`, `RpnFreeze`, `CanonicalCodes`) are implementation, not statements.
+
+  **Why the paper's proof fails.** The paper has finitely many changed *days*, not finitely
+  many changed `(day, sentence)` constants. A single day is an infinite pricing function, so
+  it can carry unbounded computational advice — which is exactly what the counterexample
+  makes an efficient trader read, through historical price features, without ever computing
+  it.
+
+  **The one residual hypothesis, and what it is.** The corrected theorem asks that the
+  finitely many sentences whose price moves be `Recognizable` — `BotFree` and `NoReserved`.
+  That is a condition on *syntax*, not on markets, traders or perturbations: representation
+  residue, not mathematics. Each half stands for one `Complexity.FP` primitive this toolkit
+  lacks — integer square root for `BotFree` (Foundation's `ofNat` discards the payload at
+  tag `0`, so deciding whether a code denotes `⊥` is deciding whether it is a perfect
+  square) and a structured-payload parser for `NoReserved`. Both are polynomial time
+  mathematically. Neither half has slack: `decode_and_noncanonical` proves the first
+  necessary, and a structured spelling at any subterm breaks completeness. So the
+  unrestricted finite-support statement is, as far as this development can tell, **true** —
+  and unprovable here for want of two primitives rather than for want of a theorem.
+
+  **Witnesses.** `machine_lic_iff_twoPoint` is closed but for the deductive process — a
+  concrete pair of computable markets, proved to differ at the frozen coordinate,
+  discharging every hypothesis at once — so the corrected theorem is **non-vacuous**. It is
+  also **informative**: `LIAPerturbation.machineLogicalInductor_liaPerturbed` applies it to
+  the constructed `LIA` with one price moved and *derives* that the perturbed market is
+  itself a machine logical inductor. That market is not the output of any construction here,
+  so its inductor-hood is exactly what the theorem buys. It inherits `Construction/LIA.lean`'s
+  own two hypotheses — LIA's market program and a computable deductive process — which are
+  pre-existing and unchanged.
+
+  The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain
+  **uninhabited**, because the fuel calculus does not close over the escape-leaf decode: the
+  `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
 
 ## Closing the boundaries
 

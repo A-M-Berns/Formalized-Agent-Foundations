@@ -2107,6 +2107,11 @@ structure ConditioningTraderCompiler
   translate : Trader → Trader
   translate_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (translate T)
+  /-- The same at the paper's own quantifier, ordinary machine polynomial time.  This is a
+  field beside `translate_ec` rather than a second structure: the two readings of `def:ec`
+  are two certificates about the *same* compiler, and neither implies the other. -/
+  translate_machine : ∀ T, MachineEfficientTrader T →
+    MachineEfficientTrader (translate T)
   tracks_on_condition : ∀ T n (v : PCWorld),
     v.ConsistentWith ((DP.union extra).D n) →
       T.netWorth (conditionedHistory P C.condition) v n ≤
@@ -2129,11 +2134,15 @@ structure GatedConditioningOperationalWitness
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
   translation_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (T.conditionedTranslation C.condition ε)
+  /-- The same at the paper's own quantifier. -/
+  translation_machine : ∀ T, MachineEfficientTrader T →
+    MachineEfficientTrader (T.conditionedTranslation C.condition ε)
 
 /-- Operational target for conditioning directly against the original market once only an
 eventual denominator floor is known.  `floor.zeroDays` records the exact finite zero-price
 exceptions; unlike a general finite-market patch, the associated compiler needs only a
 finite day-membership test and the fixed constant `1`.
+
 Paper node: `thm:scon` -/
 structure EventualConditioningOperationalWitness
     (P : History) (DP extra : DeductiveProcess)
@@ -2142,6 +2151,11 @@ structure EventualConditioningOperationalWitness
   conditioned_computable : ComputableMarket (conditionedHistory P C.condition)
   translation_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (T.eventualConditionedTranslation floor)
+  /-- The same at the paper's own quantifier.  Its realization is the finite-zero price
+  emitter of `Construction/Machine/CondStep.lean`, whose zero-day test is a fixed-finite-set
+  dispatch clamped at the floor's cutoff. -/
+  translation_machine : ∀ T, MachineEfficientTrader T →
+    MachineEfficientTrader (T.eventualConditionedTranslation floor)
 
 /-- Assemble a `ConditioningTraderCompiler` from the concrete gated translator.  Both of
 the compiler's economic fields are discharged by the lemmas above; only executable
@@ -2154,6 +2168,7 @@ def GatedConditioningOperationalWitness.toCompiler
   conditioned_computable := W.conditioned_computable
   translate := fun T => T.conditionedTranslation C.condition ε
   translate_ec := W.translation_ec
+  translate_machine := W.translation_machine
   tracks_on_condition := fun T n v hv =>
     C.conditionedTranslation_tracks P W.epsilon_pos W.denominator_floor T n v hv
   preserves_floor := fun T hfloor =>
@@ -2307,6 +2322,37 @@ theorem lic_conditioned_gated
     IsLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
   lic_conditioned P DP extra C W.toCompiler
 
+/-- **Criterion-level Closure Under Conditioning at the paper's own quantifier**: no trader
+in ordinary machine polynomial time exploits the conditioned market either.
+
+The economics is untouched — `exploits_base` is the same lemma the fuel-class endpoint uses,
+and `tracks_on_condition` and `preserves_floor` are reused verbatim.  Only the class the
+compiler's certificate is stated at changes, which is why the compiler carries both
+certificates as fields.  The fuel-class endpoint `lic_conditioned` is *not* derivable from
+this one, nor this from it, so both stand.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_machine
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra)
+    (compiler : ConditioningTraderCompiler P DP extra C) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) where
+  marketComputable := compiler.conditioned_computable
+  processComputable := C.combined_computable
+  noExploit T hTm hTexp :=
+    IsMachineLogicalInductor.noExploit (P := P) (DP := DP)
+      (compiler.translate T) (compiler.translate_machine T hTm)
+      (compiler.exploits_base hTexp)
+
+/-- Closure under conditioning through the concrete gated translator, at the paper's own
+quantifier.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_gated_machine
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) {ε : ℚ}
+    (W : GatedConditioningOperationalWitness P DP extra C ε) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_machine P DP extra C W.toCompiler
+
 /-- Closure under conditioning through the prefix-safe finite-zero compiler.  This theorem
 does not modify the base history and therefore does not depend on unrestricted
 finite-perturbation closure.
@@ -2322,6 +2368,21 @@ theorem lic_conditioned_eventual
     IsLogicalInductor.noExploit (P := P) (DP := DP)
       (T.eventualConditionedTranslation W.floor)
       (W.translation_ec T hTec) (W.exploits_base hTexp)
+
+/-- Closure under conditioning through the prefix-safe finite-zero compiler, at the paper's
+own quantifier.  This completes `thm:scon` at the machine class in all three forms.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_machine
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra)
+    (W : EventualConditioningOperationalWitness P DP extra C) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) where
+  marketComputable := W.conditioned_computable
+  processComputable := C.combined_computable
+  noExploit T hTm hTexp :=
+    IsMachineLogicalInductor.noExploit (P := P) (DP := DP)
+      (T.eventualConditionedTranslation W.floor)
+      (W.translation_machine T hTm) (W.exploits_base hTexp)
 
 #print axioms conditionalQuote_mem_Icc
 #print axioms EF.conditionPrices_denote
@@ -2342,5 +2403,8 @@ theorem lic_conditioned_eventual
 #print axioms lic_conditioned
 #print axioms lic_conditioned_gated
 #print axioms lic_conditioned_eventual
+#print axioms lic_conditioned_machine
+#print axioms lic_conditioned_gated_machine
+#print axioms lic_conditioned_eventual_machine
 
 end LogicalInduction

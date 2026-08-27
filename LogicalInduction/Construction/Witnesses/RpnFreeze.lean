@@ -52,6 +52,14 @@ for an exponentially large `c`; since Foundation's `Formula.ofNat` ignores the p
 tag `0`, `decode` is not injective, so the test reduces to `Nat.unpair` / integer square
 root, which `BigDigits` does not close over.
 
+**Narrowed (`matchRun_eq_matchRunCanon`, below).**  That decode ambiguity is caused
+*entirely* by `⊥`: `CanonicalCodes.lean` proves Foundation's decoder injective on every
+sentence with no `⊥` subformula, and exhibits the two codes that break it at `⊥`.  So on
+a `⊥`-free target the escape test is a comparison against a fixed numeral, `matchRun`
+agrees with the constant-comparison matcher `matchRunCanon`, and **no square root is
+needed at all**.  The disclosure below therefore binds exactly when the frozen quote table
+contains a sentence with a `⊥` subformula.
+
 That gap is a limitation of the fuel model (`dd:fuel`), not of the mathematics: in the
 intended complexity model the claim holds, since `unpair` on poly-bit inputs is
 poly-time.  Closing it inside the fuel calculus — a `BigDigits.sqrt` — is blocked
@@ -67,6 +75,7 @@ under their *inverses* (`sqrt`, `unpair`, division by a large divisor).
 
 Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:lia`.
 -/
+import LogicalInduction.Construction.Witnesses.CanonicalCodes
 import LogicalInduction.Construction.Witnesses.RpnConditioning
 
 namespace LogicalInduction
@@ -118,6 +127,56 @@ lemma segOf_split (get : ℕ → ℕ) {p r q : ℕ} (h₁ : p ≤ r) (h₂ : r �
   congr 1
   omega
 
+/-! ### The structured paper-prime leaf denotes only reserved atoms
+
+The second ambiguity source, independent of the `⊥` fiber that `CanonicalCodes.lean`
+settles: a structured leaf `[1, 0, …]` admits non-canonical payload spellings, so a run
+matcher cannot recognize it by comparing against a fixed word.  It does not have to.  The
+structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 7 _)`, so a
+target outside that shape is never denoted by a structured block and the matcher may reject
+the block on its two-token tag alone — no replay of the structured parser, and no decode.
+
+This is what makes "a table avoiding the reserved atom shape needs no structured
+recognition" a proved side condition rather than a plausible one. -/
+
+/-- **Every structured paper-prime leaf denotes a reserved atom.**
+
+Proof kind: `P` proved.  Provenance: (b) `parseStructuredPaperPrime`.
+Paper node: `app:ifp` -/
+lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence} {r : List ℕ},
+    parseStructuredPaperPrime payload = some (φ, r) →
+      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc)) := by
+  intro payload φ r h
+  cases payload with
+  | nil => exfalso; revert h; simp [parseStructuredPaperPrime]
+  | cons pol framed =>
+      simp only [parseStructuredPaperPrime] at h
+      split_ifs at h with hp
+      cases hb : readStructuredLength framed with
+      | none => rw [hb] at h; exfalso; revert h; simp
+      | some p =>
+          rw [hb] at h
+          simp only [Option.bind_some] at h
+          rcases hpa : parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
+            _ | ⟨formulaCode, tail⟩
+          · rw [hpa] at h; exfalso; revert h; simp
+          · rw [hpa] at h
+            cases tail with
+            | nil =>
+                split_ifs at h with hle h19
+                exact ⟨pol, formulaCode, (congrArg Prod.fst (Option.some.inj h)).symm⟩
+            | cons a b => exfalso; revert h; simp
+
+/-- **A target outside the reserved atom shape is never denoted by a structured leaf.** -/
+lemma parseStructuredPaperPrime_ne_of_not_reserved {payload : List ℕ} {ψ : Sentence}
+    {r : List ℕ}
+    (hψ : ∀ pol fc : ℕ,
+      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc))) :
+    parseStructuredPaperPrime payload ≠ some (ψ, r) := by
+  intro h
+  obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
+  exact hψ pol fc hshape
+
 /-- The constant-depth positional run matcher. -/
 def matchRun (get : ℕ → ℕ) : Sentence → ℕ → ℕ
   | ⊥, p =>
@@ -154,6 +213,103 @@ lemma matchRun_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p =
     matchRun get φ p =
       if sentenceMatches φ (get (p + 1)) = 1 then p + 3 else 0 := by
   cases φ <;> simp only [matchRun, h] <;> rfl
+
+/-! ### The canonical-code matcher
+
+`matchRun`'s escape test `sentenceMatches ψ c` is the decoder-faithful one, and it reads
+`Nat.unpair` at every node — the recorded obstruction to certifying the matcher at the
+symbol-metered emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
+by `⊥`: off the `⊥` fiber Foundation's decoder is injective.  So on a `⊥`-free target the
+matcher below — whose only tests are comparisons of a stream token against a **fixed
+numeral** — is the same function.  `matchRunCanon` is not an alternative semantics; it is
+`matchRun` with the square root removed, and `matchRun_eq_matchRunCanon` says so. -/
+
+/-- `matchRun` with every escape test replaced by a comparison against the target's
+canonical code.  Every test is a comparison against a constant. -/
+def matchRunCanon (get : ℕ → ℕ) : Sentence → ℕ → ℕ
+  | ⊥, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (⊥ : Sentence) then p + 3 else 0)
+      else if get p = 0 then p + 2 else 0
+  | .atom a, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) then p + 3 else 0)
+      else if get p = a + 5 then p + 2 else 0
+  | φ 🡒 ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ 🡒 ψ) then p + 3 else 0)
+      else if get p = 2 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+  | φ ⋏ ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ ⋏ ψ) then p + 3 else 0)
+      else if get p = 3 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+  | φ ⋎ ψ, p =>
+      if get p = 1 then
+        (if get (p + 1) = Encodable.encode (φ ⋎ ψ) then p + 3 else 0)
+      else if get p = 4 then
+        (if matchRunCanon get φ (p + 1) = 0 then 0
+          else matchRunCanon get ψ (matchRunCanon get φ (p + 1) - 1))
+      else 0
+
+/-- Escape form of the canonical matcher, uniform in the target. -/
+lemma matchRunCanon_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p = 1) :
+    matchRunCanon get φ p =
+      if get (p + 1) = Encodable.encode φ then p + 3 else 0 := by
+  cases φ <;> simp only [matchRunCanon, h] <;> rfl
+
+/-- **The square root is not needed on a `⊥`-free target.**  The decoder-faithful
+positional matcher and the constant-comparison matcher are the same function whenever the
+target sentence has no `⊥` subformula — and every recursive call is on a subformula, hence
+also `⊥`-free.
+
+This narrows the disclosure in this file's header and in `matchRun_polyFueled`'s scope
+warning: `Nat.unpair` is forced **iff** the frozen table contains a sentence with a `⊥`
+subformula (`decode_and_noncanonical` is the converse witness).
+
+Proof kind: `P` proved.  Provenance: (a) `sentenceMatches_of_botFree`,
+`matchRun_escape`, `matchRunCanon_escape`.
+Paper node: `app:ifp` -/
+lemma matchRun_eq_matchRunCanon (get : ℕ → ℕ) :
+    ∀ (φ : Sentence), BotFree φ → ∀ p : ℕ,
+      matchRun get φ p = matchRunCanon get φ p := by
+  intro φ
+  induction φ using LO.Propositional.Formula.rec' with
+  | hfalsum => exact fun h => absurd h id
+  | hatom a =>
+      intro _ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ (by simp)]
+        by_cases hc : get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) <;>
+          simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp]
+  | himp φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_imp φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ 🡒 ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
+  | hand φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_and φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ ⋏ ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
+  | hor φ ψ ihφ ihψ =>
+      rintro ⟨hbφ, hbψ⟩ p
+      by_cases hp : get p = 1
+      · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
+          sentenceMatches_of_botFree _ ((botFree_or φ ψ).mpr ⟨hbφ, hbψ⟩)]
+        by_cases hc : get (p + 1) = Encodable.encode (φ ⋎ ψ) <;> simp [hc]
+      · simp only [matchRun, matchRunCanon, if_neg hp, ihφ hbφ, ihψ hbψ]
 
 /-- Two complete self-delimiting blocks parse in sequence under any binary shell. -/
 lemma parseRpn_bin_body {b₁ b₂ : List ℕ} {φ ψ : Sentence}
@@ -193,6 +349,417 @@ lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
   rw [List.append_nil] at hb₂
   subst hb₂
   exact ⟨b₁, r₁, φ₁, φ₂, hb₁, hmk.symm, hpb₁, hpb₂⟩
+
+/-- **Inversion of a complete legacy block parse at its head token.**
+
+The six alternatives are the grammar's six branches, each carrying the sub-blocks the parse
+consumed.  This is the inversion the spelling characterization below runs on; it belongs
+beside `parseRpn_bin_inv`, and would move to `Framework/RpnSentence.lean` with it. -/
+lemma parseRpnLegacy_block_inv {b : List ℕ} {ψ : Sentence}
+    (h : parseRpnLegacy b.length b = some (ψ, [])) :
+    (b = [0] ∧ ψ = ⊥) ∨
+    (∃ c, b = [1, c] ∧ (Encodable.decode c : Option Sentence) = some ψ) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 2 :: (b₁ ++ b₂) ∧ ψ = φ₁ 🡒 φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 3 :: (b₁ ++ b₂) ∧ ψ = φ₁ ⋏ φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ b₁ b₂ φ₁ φ₂, b = 4 :: (b₁ ++ b₂) ∧ ψ = φ₁ ⋎ φ₂ ∧
+      parseRpnLegacy b₁.length b₁ = some (φ₁, []) ∧
+      parseRpnLegacy b₂.length b₂ = some (φ₂, [])) ∨
+    (∃ a, b = [a + 5] ∧ ψ = LO.Propositional.Formula.atom a) := by
+  cases b with
+  | nil => simp [parseRpnLegacy] at h
+  | cons t rest =>
+      rw [List.length_cons, parseRpnLegacy_cons] at h
+      by_cases h0 : t = 0
+      · subst h0
+        rw [if_pos rfl] at h
+        obtain ⟨h1, h2⟩ := Prod.mk.inj (Option.some.inj h)
+        subst h2
+        exact Or.inl ⟨rfl, h1.symm⟩
+      rw [if_neg h0] at h
+      by_cases h1 : t = 1
+      · subst h1
+        rw [if_pos rfl] at h
+        cases rest with
+        | nil => simp at h
+        | cons c tail =>
+            simp only [List.head?_cons, Option.bind_some, List.tail_cons] at h
+            cases hd : (Encodable.decode c : Option Sentence) with
+            | none => rw [hd] at h; simp at h
+            | some φ =>
+                rw [hd] at h
+                simp only [Option.map_some] at h
+                obtain ⟨hφ, ht⟩ := Prod.mk.inj (Option.some.inj h)
+                subst ht
+                subst hφ
+                exact Or.inr (Or.inl ⟨c, rfl, hd⟩)
+      rw [if_neg h1] at h
+      by_cases h2 : t = 2
+      · subst h2
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inl ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩))
+      rw [if_neg h2] at h
+      by_cases h3 : t = 3
+      · subst h3
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inr (Or.inl
+          ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩)))
+      rw [if_neg h3] at h
+      by_cases h4 : t = 4
+      · subst h4
+        rw [if_pos rfl] at h
+        obtain ⟨b₁, b₂, φ₁, φ₂, hsplit, hmk, hp₁, hp₂⟩ := parseRpn_bin_inv h
+        exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inl
+          ⟨b₁, b₂, φ₁, φ₂, by rw [hsplit], hmk, hp₁, hp₂⟩))))
+      rw [if_neg h4] at h
+      obtain ⟨hφ, ht⟩ := Prod.mk.inj (Option.some.inj h)
+      subst ht
+      refine Or.inr (Or.inr (Or.inr (Or.inr (Or.inr ⟨t - 5, ?_, hφ.symm⟩))))
+      congr 1
+      omega
+
+/-! ### The spelling set: why the lookup needs no automaton
+
+A run matcher looks like it should be a streaming automaton agreeing with `parseRpn`.  Under
+the two side conditions it is not, and the difference is the whole shape of the remaining
+obligation.
+
+Fix a target `ψ`.  A complete parse of `ψ` chooses, at each node, either the structural
+spelling (grammar tag plus the sub-blocks) or the two-token escape `[1, c]` with
+`decode c = some ψ'`.  The escape is where the alternatives could be infinite — and the two
+side conditions close exactly that:
+
+* `decode_eq_some_iff_of_botFree` (`CanonicalCodes.lean`) makes the escape payload the
+  *unique* canonical code `⌜ψ'⌝`, whenever `ψ'` has no `⊥` subformula;
+* `parseStructuredPaperPrime_shape` above excludes the structured spelling, whenever `ψ'`
+  is not a reserved atom `atom (Nat.pair 7 _)`.
+
+So every node has exactly **two** spellings, and the complete spellings of `ψ` are a finite
+explicit list — `2 ^ (nodes of ψ)` fixed token lists, `spellings ψ` below.  Deciding "does
+this run denote `ψ`" is then membership in a finite list of constants, not the execution of
+a parser, and no automaton has to be proved to agree with `parseRpn`.
+
+Both directions are proved: `spellings_sound` (every member parses) and
+`spellings_complete` (every complete parse is a member), packaged as
+`parseRpnLegacy_iff_mem_spellings`.  Completeness is where `BotFree` is load-bearing —
+without it a node has infinitely many escape codes and no finite list can be exhaustive.
+
+`parseRpnLegacy_iff_mem_spellings` is stated for the legacy grammar, because the block
+machinery it runs on (`parseRpn_bin_body`, `parseRpn_bin_inv`) is legacy-scoped.  The freeze
+parses with the full `parseRpn`, and `parseRpn_iff_mem_spellings` below is that form; the
+bridge between them is in "The grammar bridge" and costs one `NoReserved` side condition.
+
+Both characterizations are about *recognition only*.  Turning "membership in this list of
+constants" into a `Complexity.FP` test is separate work: it needs a token's value compared
+against a fixed numeral, for which `TokenFold.eqConstFn_mem_FP` is the primitive. -/
+
+/-- The complete legacy spellings of a target, as a finite explicit list of token lists.
+
+Each node contributes two alternatives: the canonical escape, and the structural spelling.
+The `⊥` case is a placeholder: `⊥` has infinitely many escape codes
+(`decode_falsum_noncanonical`), so `[[0]]` is *not* exhaustive there.  `spellings_sound`
+holds unconditionally, but `spellings_complete` is conditional on `BotFree`, which is exactly
+what rules that case out. -/
+def spellings : Sentence → List (List ℕ)
+  | ⊥ => [[0]]
+  | .atom a =>
+      [[a + 5], [1, Encodable.encode (LO.Propositional.Formula.atom a : Sentence)]]
+  | φ 🡒 χ =>
+      [1, Encodable.encode (φ 🡒 χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 2 :: (s₁ ++ s₂)
+  | φ ⋏ χ =>
+      [1, Encodable.encode (φ ⋏ χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 3 :: (s₁ ++ s₂)
+  | φ ⋎ χ =>
+      [1, Encodable.encode (φ ⋎ χ)] ::
+        (spellings φ).flatMap fun s₁ => (spellings χ).map fun s₂ => 4 :: (s₁ ++ s₂)
+
+/-- The canonical escape spelling parses, for any target.  This is the `rest = []`,
+`c = ⌜ψ⌝` case of `parseRpnLegacy_escape'` (`Framework/RpnSentence.lean`). -/
+lemma parseRpnLegacy_escape_canonical (ψ : Sentence) :
+    parseRpnLegacy [1, Encodable.encode ψ].length [1, Encodable.encode ψ]
+      = some (ψ, []) :=
+  parseRpnLegacy_escape' (Encodable.encodek ψ) [] (by simp)
+
+/-- **Every listed spelling really parses.**  This is what makes the finite list a
+description of the target rather than an optimistic guess.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpn_bin_body`,
+`parseRpnLegacy_escape_canonical`.
+Paper node: `app:ifp` -/
+lemma spellings_sound : ∀ (ψ : Sentence), ∀ b ∈ spellings ψ,
+    parseRpnLegacy b.length b = some (ψ, []) := by
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum =>
+      intro b hb
+      simp only [spellings, List.mem_singleton] at hb
+      subst hb
+      rfl
+  | hatom a =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.not_mem_nil, or_false] at hb
+      rcases hb with rfl | rfl
+      · show (if a + 5 = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 3 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if a + 5 = 4 then _ else _) = _
+        rw [if_neg (by omega)]
+        simp
+      · exact parseRpnLegacy_escape_canonical _
+  | himp φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (2 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (2 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 2 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.imp (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+  | hand φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (3 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (3 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 3 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.and (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+  | hor φ χ ihφ ihχ =>
+      intro b hb
+      simp only [spellings, List.mem_cons, List.mem_flatMap, List.mem_map] at hb
+      rcases hb with rfl | ⟨s₁, hs₁, s₂, hs₂, rfl⟩
+      · exact parseRpnLegacy_escape_canonical _
+      · have hlen : (4 :: (s₁ ++ s₂)).length = (s₁ ++ s₂).length + 1 := by simp
+        rw [hlen]
+        show (if (4 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 3 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 4 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.or (ihφ s₁ hs₁) (ihχ s₂ hs₂) le_rfl
+
+/-- **The spelling list is exhaustive.**  Every complete legacy parse of a `⊥`-free target
+is one of the finitely many listed spellings.
+
+`BotFree` is doing the whole of the work at the escape leaf: without it a node has
+infinitely many escape codes (`decode_falsum_noncanonical`), and no finite list can be
+exhaustive.  It is a **side condition on the frozen table**, in the same family as
+`FreezeStep.RunOracle.R_length_le` and the reserved-atom exclusion — not a hypothesis on the
+freeze itself.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpnLegacy_block_inv`,
+`decode_eq_some_iff_of_botFree`.
+Paper node: `app:ifp` -/
+lemma spellings_complete : ∀ (ψ : Sentence), BotFree ψ → ∀ b : List ℕ,
+    parseRpnLegacy b.length b = some (ψ, []) → b ∈ spellings ψ := by
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum => exact fun hbf => absurd hbf id
+  | hatom a =>
+      intro hbf b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain rfl := LO.Propositional.Formula.atom.inj hψ
+        simp [spellings]
+  | himp φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_imp φ χ).mp hbf).1
+      have hbχ := ((botFree_imp φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.imp.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hand φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_and φ χ).mp hbf).1
+      have hbχ := ((botFree_and φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.and.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hor φ χ ihφ ihχ =>
+      intro hbf b hb
+      have hbφ := ((botFree_or φ χ).mp hbf).1
+      have hbχ := ((botFree_or φ χ).mp hbf).2
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · rw [(decode_eq_some_iff_of_botFree _ hbf c).mp hd]
+        simp [spellings]
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.or.inj hψ
+        refine List.mem_cons_of_mem _ (List.mem_flatMap.mpr ⟨b₁, ihφ hbφ b₁ hp₁, ?_⟩)
+        exact List.mem_map.mpr ⟨b₂, ihχ hbχ b₂ hp₂, rfl⟩
+      · exact absurd hψ (by simp)
+
+/-- **The characterization.**  For a `⊥`-free target, a run denotes it exactly when the run
+is one of the finitely many listed spellings.  This is what replaces an automaton: the
+decision is membership in a list of constants.
+Paper node: `app:ifp` -/
+theorem parseRpnLegacy_iff_mem_spellings {ψ : Sentence} (hbf : BotFree ψ) (b : List ℕ) :
+    parseRpnLegacy b.length b = some (ψ, []) ↔ b ∈ spellings ψ :=
+  ⟨spellings_complete ψ hbf b, spellings_sound ψ b⟩
+
+/-! ### The grammar bridge
+
+`parseRpnLegacy_iff_mem_spellings` is about the legacy grammar; the freeze parses with the
+full `parseRpn`.  The two differ only at the escape tag, and each direction is cheap:
+
+* legacy to full is **unconditional** and already proved upstream
+  (`parseRpn_of_legacy`, `Framework/RpnSentence.lean`): a legacy escape succeeds only on a
+  decodable payload, and code `0` never decodes, so the structured dispatch cannot fire;
+* full to legacy needs `NoReserved`, and only there — the structured branch always denotes a
+  reserved atom (`parseStructuredPaperPrime_shape`), so on a target with no reserved-atom
+  subformula that branch is unreachable and the two grammars run in lockstep. -/
+
+/-- The binary step of the grammar bridge, shared by the three connectives. -/
+private lemma bridgeBin {fuel : ℕ} {rest' : List ℕ} {φ : Sentence} {rest : List ℕ}
+    (ih : ∀ (ts : List ℕ) {φ' : Sentence} {r : List ℕ},
+      parseRpn fuel ts = some (φ', r) → NoReserved φ' →
+      parseRpnLegacy fuel ts = some (φ', r))
+    (mk : Sentence → Sentence → Sentence)
+    (hmkNR : ∀ a b : Sentence, NoReserved (mk a b) ↔ NoReserved a ∧ NoReserved b)
+    (h : ((parseRpn fuel rest').bind fun p =>
+          (parseRpn fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, rest))
+    (hnr : NoReserved φ) :
+    ((parseRpnLegacy fuel rest').bind fun p =>
+      (parseRpnLegacy fuel p.2).bind fun q => some (mk p.1 q.1, q.2)) = some (φ, rest) := by
+  rcases hp : parseRpn fuel rest' with _ | ⟨φ₁, r₁⟩
+  · rw [hp] at h; simp at h
+  rw [hp] at h
+  simp only [Option.bind_some] at h
+  rcases hq : parseRpn fuel r₁ with _ | ⟨φ₂, r₂⟩
+  · rw [hq] at h; simp at h
+  rw [hq] at h
+  simp only [Option.bind_some, Option.some.injEq, Prod.mk.injEq] at h
+  obtain ⟨hmkEq, hrestEq⟩ := h
+  subst hrestEq
+  subst hmkEq
+  obtain ⟨hn₁, hn₂⟩ := (hmkNR φ₁ φ₂).mp hnr
+  rw [ih rest' hp hn₁]
+  simp only [Option.bind_some]
+  rw [ih r₁ hq hn₂]
+  rfl
+
+/-- **The full grammar collapses to the legacy one on reserved-atom-free targets.**
+
+A forward induction on fuel: at every escape the structured dispatch would force the parsed
+sentence to be a reserved atom, which `NoReserved` forbids, so the legacy escape is taken;
+every other branch is syntactically identical in the two grammars.
+
+Proof kind: `P` proved.  Provenance: (a) `parseStructuredPaperPrime_shape`, `bridgeBin`;
+(b) `parseRpn_cons`, `parseRpnLegacy_cons`.
+Paper node: `app:ifp` -/
+lemma parseRpn_imp_parseRpnLegacy : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
+    {rest : List ℕ}, parseRpn fuel ts = some (φ, rest) → NoReserved φ →
+    parseRpnLegacy fuel ts = some (φ, rest) := by
+  intro fuel
+  induction fuel with
+  | zero => intro ts φ rest h _; simp at h
+  | succ fuel ih =>
+      intro ts φ rest h hnr
+      cases ts with
+      | nil => simp at h
+      | cons t rest' =>
+          rw [parseRpn_cons] at h
+          rw [parseRpnLegacy_cons]
+          by_cases h0 : t = 0
+          · rw [if_pos h0] at h ⊢; exact h
+          rw [if_neg h0] at h ⊢
+          by_cases h1 : t = 1
+          · rw [if_pos h1] at h ⊢
+            cases rest' with
+            | nil => simp at h
+            | cons c tail =>
+                cases c with
+                | zero =>
+                    obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
+                    subst hshape
+                    exact absurd rfl (hnr pol fc)
+                | succ c' => simpa using h
+          rw [if_neg h1] at h ⊢
+          by_cases h2 : t = 2
+          · rw [if_pos h2] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.imp noReserved_imp h hnr
+          rw [if_neg h2] at h ⊢
+          by_cases h3 : t = 3
+          · rw [if_pos h3] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.and noReserved_and h hnr
+          rw [if_neg h3] at h ⊢
+          by_cases h4 : t = 4
+          · rw [if_pos h4] at h ⊢
+            exact bridgeBin ih LO.Propositional.Formula.or noReserved_or h hnr
+          rw [if_neg h4] at h ⊢
+          exact h
+
+/-- **The characterization, at the grammar the freeze actually parses with.**
+
+A run denotes a `Recognizable` target under the full `parseRpn` exactly when it is one of
+the finitely many listed spellings.  This is the form the run-level lookup consumes: the
+decision is membership in a list of constants, with no parser to execute and no automaton to
+prove correct.
+Paper node: `app:ifp` -/
+theorem parseRpn_iff_mem_spellings {ψ : Sentence} (hrec : Recognizable ψ) (b : List ℕ) :
+    parseRpn b.length b = some (ψ, []) ↔ b ∈ spellings ψ := by
+  constructor
+  · intro h
+    exact spellings_complete ψ hrec.botFree b
+      (parseRpn_imp_parseRpnLegacy b.length b h hrec.noReserved)
+  · intro h
+    exact parseRpn_of_legacy (spellings_sound ψ b h)
 
 /-- **Matcher soundness**: a successful positional match certifies that the tokens it
 consumed form a complete self-delimiting block parsing to the target. -/
@@ -531,60 +1098,182 @@ lemma runPrefixQuoteFromStates_exact (states : List RationalBeliefState) (day : 
           exact runQuoteFromEntries_exact state.entries hb
       | succ day => exact ih day
 
-/-! ### The symbol-level freeze transducer -/
+/-! ### The symbol-level freeze transducer
+
+The transducer is selector-indexed, matching `EF.freezeTokenRunOn`.  At the flat grammar
+the selector and the quote table are read **from the buffered sentence run** — `selRun`,
+`quoteRun` — because the run is what the transducer has; `hsel`/`hq` bridge them to the
+code-level pair the token model uses, exactly as `runQuoteFromEntries_exact` supplies.
+The day-cutoff forms at the end are instances. -/
+
+/-- The token-model freeze, as a whole-stream rewrite. -/
+def freezeTokensOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (L : List ℕ) :
+    List ℕ :=
+  (EF.freezeTokenRunOn selCode quoteCode (0, 0) L).2
+
+/-- The body the token-model freeze splices at a completed price leaf. -/
+def freezeBodyOn (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc d : ℕ) : List ℕ :=
+  if selCode d fc then [1, quoteCode d fc, 8] else []
+
+lemma freezeTokensOn_nil (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) :
+    freezeTokensOn selCode quoteCode [] = [] := rfl
+
+lemma freezeTokensOn_single (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t : ℕ)
+    (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
+    freezeTokensOn selCode quoteCode (t :: L)
+      = t :: freezeTokensOn selCode quoteCode L := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext,
+    h0, h1, h6, h7]
+
+lemma freezeTokensOn_one (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t : ℕ) :
+    freezeTokensOn selCode quoteCode [t] = [t] := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn]
+
+lemma freezeTokensOn_payload (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (t c : ℕ)
+    (ht : t = 1 ∨ t = 7) (L : List ℕ) :
+    freezeTokensOn selCode quoteCode (t :: c :: L)
+      = t :: c :: freezeTokensOn selCode quoteCode L := by
+  rcases ht with rfl | rfl <;>
+    simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
+
+lemma freezeTokensOn_price (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc d : ℕ)
+    (L : List ℕ) :
+    freezeTokensOn selCode quoteCode (0 :: fc :: d :: L) =
+      0 :: fc :: d :: (freezeBodyOn selCode quoteCode fc d ++
+        freezeTokensOn selCode quoteCode L) := by
+  simp only [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn,
+    EF.freezeTokenNext, freezeBodyOn]
+  by_cases hd : selCode d fc = true <;> simp [hd]
+
+lemma freezeTokensOn_pricePair (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (fc : ℕ) : freezeTokensOn selCode quoteCode [0, fc] = [0, fc] := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
+
+lemma freezeTokensOn_trade (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ) (fc : ℕ)
+    (L : List ℕ) :
+    freezeTokensOn selCode quoteCode (6 :: fc :: L)
+      = 6 :: fc :: freezeTokensOn selCode quoteCode L := by
+  simp [freezeTokensOn, EF.freezeTokenRunOn, EF.freezeTokenEmitOn, EF.freezeTokenNext]
+
+/-- **The symbol-level freeze emitter**: at a selected price-day slot, retain the day and
+splice the constant quote of the buffered sentence run under the administrative binding. -/
+def freezeEmitOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ) :
+    List ℕ → ℕ → List ℕ :=
+  fun buf D => if selRun buf D then [D, 1, quoteRun buf D, 8] else [D]
+
+/-- **The rewritten price chunk contracts to the token-model freeze.** -/
+lemma unRpn_freezeOn_rewrite_chunk (selRun : List ℕ → ℕ → Bool)
+    (quoteRun : List ℕ → ℕ → ℕ) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ))
+    {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, []))
+    (D : ℕ) (rest : List ℕ) :
+    unRpn (0 :: b ++ freezeEmitOn selRun quoteRun b D ++ rest) =
+      0 :: Encodable.encode φ :: D ::
+        (freezeBodyOn selCode quoteCode (Encodable.encode φ) D ++ unRpn rest) := by
+  have hs := hsel b φ hb D
+  rw [freezeEmitOn, freezeBodyOn, hs]
+  by_cases hd : selCode D (Encodable.encode φ) = true
+  · have hsel' : selRun b D = true := by rw [hs]; exact hd
+    rw [if_pos hd, if_pos hd]
+    have hshape : 0 :: b ++ [D, 1, quoteRun b D, 8] ++ rest =
+        0 :: (b ++ D :: 1 :: quoteRun b D :: 8 :: rest) := by simp
+    rw [hshape, unRpn_price_chunk_block hb,
+      unRpn_payload_chunk 1 _ (Or.inl rfl), unRpn_single_chunk 8 (by norm_num),
+      hq b φ hb D hsel']
+    simp
+  · rw [if_neg hd, if_neg hd]
+    have hshape : 0 :: b ++ [D] ++ rest = 0 :: (b ++ D :: rest) := by simp
+    rw [hshape, unRpn_price_chunk_block hb]
+    simp
+
+/-- **Whole-stream contraction exactness for the selector-indexed freeze pass**: on every
+input stream — well-formed or garbage — the contraction of the symbol-level freeze
+transducer's output is the token-model freeze of the contraction.
+
+This is the bridge the machine-class certificate needs: the transducer runs on the *flat*
+stream a machine actually holds, while `EF.freezeTokenRunOn` — and hence
+`FreezeStreamRewriter` — is stated on the contracted one.
+Paper node: `app:ifp` -/
+theorem unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ)
+    (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ)) :
+    ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+    unRpn ((rpnConditionRun (freezeEmitOn selRun quoteRun) (rcPack 0 0 0, []) ts).2) =
+      freezeTokensOn selCode quoteCode (unRpn ts) :=
+  unRpn_rpnConditionRun_of (freezeEmitOn selRun quoteRun)
+    (freezeTokensOn selCode quoteCode) (freezeBodyOn selCode quoteCode)
+    (freezeTokensOn_nil selCode quoteCode)
+    (fun t L h0 h1 h6 h7 => freezeTokensOn_single selCode quoteCode t L h0 h1 h6 h7)
+    (freezeTokensOn_one selCode quoteCode)
+    (fun t c L ht => freezeTokensOn_payload selCode quoteCode t c ht L)
+    (freezeTokensOn_price selCode quoteCode)
+    (freezeTokensOn_pricePair selCode quoteCode)
+    (freezeTokensOn_trade selCode quoteCode)
+    (fun _ _ hb D rest => unRpn_freezeOn_rewrite_chunk selRun quoteRun selCode quoteCode
+      hsel hq hb D rest)
+
+/-! ### The day-cutoff instances -/
 
 /-- The token-model prefix freeze, as a whole-stream rewrite. -/
 def freezeTokens (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (L : List ℕ) : List ℕ :=
-  (EF.freezeTokenRun quoteCode cutoff (0, 0) L).2
+  freezeTokensOn (fun d _ => decide (d < cutoff)) quoteCode L
 
 /-- The body the token-model freeze splices at a completed price leaf. -/
 def freezeBody (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) : List ℕ :=
   if d < cutoff then [1, quoteCode d fc, 8] else []
+
+lemma freezeBody_eq (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) :
+    freezeBody quoteCode cutoff fc d
+      = freezeBodyOn (fun d _ => decide (d < cutoff)) quoteCode fc d := by
+  simp only [freezeBody, freezeBodyOn, decide_eq_true_eq]
 
 lemma freezeTokens_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
     freezeTokens quoteCode cutoff [] = [] := rfl
 
 lemma freezeTokens_single (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ)
     (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
-    freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext,
-    h0, h1, h6, h7]
+    freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_single _ quoteCode t L h0 h1 h6 h7
 
 lemma freezeTokens_one (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ) :
-    freezeTokens quoteCode cutoff [t] = [t] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit]
+    freezeTokens quoteCode cutoff [t] = [t] :=
+  freezeTokensOn_one _ quoteCode t
 
 lemma freezeTokens_payload (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t c : ℕ)
     (ht : t = 1 ∨ t = 7) (L : List ℕ) :
     freezeTokens quoteCode cutoff (t :: c :: L) =
-      t :: c :: freezeTokens quoteCode cutoff L := by
-  rcases ht with rfl | rfl <;>
-    simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+      t :: c :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_payload _ quoteCode t c ht L
 
 lemma freezeTokens_price (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ)
     (L : List ℕ) :
     freezeTokens quoteCode cutoff (0 :: fc :: d :: L) =
       0 :: fc :: d :: (freezeBody quoteCode cutoff fc d ++
         freezeTokens quoteCode cutoff L) := by
-  simp only [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit,
-    EF.freezeTokenNext, freezeBody]
-  by_cases hd : d < cutoff <;> simp [hd]
+  rw [freezeBody_eq]
+  exact freezeTokensOn_price _ quoteCode fc d L
 
 lemma freezeTokens_pricePair (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ) :
-    freezeTokens quoteCode cutoff [0, fc] = [0, fc] := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+    freezeTokens quoteCode cutoff [0, fc] = [0, fc] :=
+  freezeTokensOn_pricePair _ quoteCode fc
 
 lemma freezeTokens_trade (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ)
     (L : List ℕ) :
     freezeTokens quoteCode cutoff (6 :: fc :: L) =
-      6 :: fc :: freezeTokens quoteCode cutoff L := by
-  simp [freezeTokens, EF.freezeTokenRun, EF.freezeTokenEmit, EF.freezeTokenNext]
+      6 :: fc :: freezeTokens quoteCode cutoff L :=
+  freezeTokensOn_trade _ quoteCode fc L
 
 /-- **The symbol-level freeze emitter**: at a price-day slot before the cutoff, retain
 the day and splice the constant quote of the buffered sentence run under the
 administrative binding. -/
 def freezeEmit (quoteRun : List ℕ → ℕ → ℕ) (cutoff : ℕ) : List ℕ → ℕ → List ℕ :=
-  fun buf D => if D < cutoff then [D, 1, quoteRun buf D, 8] else [D]
+  freezeEmitOn (fun _ D => decide (D < cutoff)) quoteRun
 
 /-- **The rewritten price chunk contracts to the token-model freeze.** -/
 lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
@@ -596,19 +1285,9 @@ lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
     unRpn (0 :: b ++ freezeEmit quoteRun cutoff b D ++ rest) =
       0 :: Encodable.encode φ :: D ::
         (freezeBody quoteCode cutoff (Encodable.encode φ) D ++ unRpn rest) := by
-  rw [freezeEmit, freezeBody]
-  by_cases hd : D < cutoff
-  · rw [if_pos hd, if_pos hd]
-    have hshape : 0 :: b ++ [D, 1, quoteRun b D, 8] ++ rest =
-        0 :: (b ++ D :: 1 :: quoteRun b D :: 8 :: rest) := by simp
-    rw [hshape, unRpn_price_chunk_block hb,
-      unRpn_payload_chunk 1 _ (Or.inl rfl), unRpn_single_chunk 8 (by norm_num),
-      hq b φ hb D]
-    simp
-  · rw [if_neg hd, if_neg hd]
-    have hshape : 0 :: b ++ [D] ++ rest = 0 :: (b ++ D :: rest) := by simp
-    rw [hshape, unRpn_price_chunk_block hb]
-    simp
+  rw [freezeBody_eq, freezeEmit]
+  exact unRpn_freezeOn_rewrite_chunk _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
+    (fun b' φ' hb' D' _ => hq b' φ' hb' D') hb D rest
 
 /-- **Whole-stream contraction exactness for the freeze pass**: on every input stream —
 well-formed or garbage — the contraction of the symbol-level freeze transducer's output
@@ -621,17 +1300,44 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
     ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     unRpn ((rpnConditionRun (freezeEmit quoteRun cutoff) (rcPack 0 0 0, []) ts).2) =
       freezeTokens quoteCode cutoff (unRpn ts) :=
-  unRpn_rpnConditionRun_of (freezeEmit quoteRun cutoff)
-    (freezeTokens quoteCode cutoff) (freezeBody quoteCode cutoff)
-    (freezeTokens_nil quoteCode cutoff)
-    (fun t L h0 h1 h6 h7 => freezeTokens_single quoteCode cutoff t L h0 h1 h6 h7)
-    (freezeTokens_one quoteCode cutoff)
-    (fun t c L ht => freezeTokens_payload quoteCode cutoff t c ht L)
-    (freezeTokens_price quoteCode cutoff)
-    (freezeTokens_pricePair quoteCode cutoff)
-    (freezeTokens_trade quoteCode cutoff)
-    (fun _ _ hb D rest => unRpn_freeze_rewrite_chunk quoteRun quoteCode cutoff hq hb
-      D rest)
+  unRpn_rpnFreezeRunOn _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
+    (fun b' φ' hb' D' _ => hq b' φ' hb' D')
+
+/-! ### The machine-class obligation, moved to the flat stream
+
+`FreezeStreamRewriter` (`Properties/FinitePerturbations.lean`) is stated on the
+*contracted* stream, because that is what `strategyOfTokens` parses.  A machine never holds
+the contracted stream — computing `unRpn` would mean re-encoding each parsed sentence — so
+the pass it can actually run is the flat-grammar one, and `unRpn_rpnFreezeRunOn` is what
+carries it across.  The lemma below is that carry, once. -/
+
+/-- **`FreezeStreamRewriter` reduces to a flat-stream pass.**  A polynomial-time rewrite of
+the machine's own output word that computes the *symbol-level* freeze transducer discharges
+the contracted-stream obligation, because contraction commutes with the pass.
+
+What remains after this is a single `Complexity.FP` statement about
+`rpnConditionRun (freezeEmitOn selRun quoteRun)` — the flat automaton with a freeze
+emitter — and its emitter is the run-level table lookup.
+
+Kind `C`; hypotheses `(a)` except `hflat`, which is the residual obligation.
+Paper node: `app:ifp` -/
+lemma freezeStreamRewriter_of_flatPass (selRun : List ℕ → ℕ → Bool)
+    (quoteRun : List ℕ → ℕ → ℕ) (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+    (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = selCode D (Encodable.encode φ))
+    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
+      ∀ D, selRun b D = true → quoteRun b D = quoteCode D (Encodable.encode φ))
+    (hflat : ∀ F : List Bool → List Bool, F ∈ Complexity.FP →
+      ∃ G : List Bool → List Bool, G ∈ Complexity.FP ∧ ∀ x : List Bool,
+        undigitize (bitsToDigits (G x))
+          = (rpnConditionRun (freezeEmitOn selRun quoteRun) (rcPack 0 0 0, [])
+              (undigitize (bitsToDigits (F x)))).2) :
+    FreezeStreamRewriter selCode quoteCode := by
+  intro F hF
+  obtain ⟨G, hG, hGspec⟩ := hflat F hF
+  refine ⟨G, hG, fun x => ?_⟩
+  rw [hGspec x]
+  exact unRpn_rpnFreezeRunOn selRun quoteRun selCode quoteCode hsel hq _ _ le_rfl
 
 /-! ### The poly-fueled side
 
@@ -686,9 +1392,13 @@ that decision reduces to `Nat.unpair` (integer square root).  The `BigDigits` AP
 provide it, and cannot without either a new axiom or `TC⁰` division machinery: closure
 requires a poly-bounded digit carry, and square root's carry is the partial remainder,
 which is `Θ(len)` digits wide — the digit model is closed under the forward big-value
-operations and open under their inverses.  This is therefore a permanently disclosed
+operations and open under their inverses.  This is therefore a disclosed
 boundary: `EfficientPrefixPatch.preserves_ec` has no LIA inhabitant at the collapsed
-class, and this lemma is the token-model half of the certificate only. -/
+class, and this lemma is the token-model half of the certificate only.
+
+**Scope of the boundary.**  `matchRun_eq_matchRunCanon` above shows the escape decision
+needs `unpair` only when the *target* has a `⊥` subformula; on a `⊥`-free target every
+test in the matcher is a comparison against a fixed numeral. -/
 lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
     (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (target : Sentence) :
     ∀ {cp : Code} {P : ℕ → ℕ}, PolyFueled cp P →

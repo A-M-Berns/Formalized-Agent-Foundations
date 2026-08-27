@@ -424,6 +424,34 @@ Systemic findings, all repaired in this wave:
   still whole-value (incl. thm:st)" paragraph corrected to the three-node metacomputation
   family.
 
+## Lean traps found in the FP-transport waves (2026-08-26)
+
+- **Mirror-and-push beats `split_ifs` for automaton agreement.** Word-level mirrors of a
+  scalar branch cascade (`rcModeW` against `rcModeF`) prove agreement in one
+  `simp only [apply_ite List.length, length_uw]`: pushing `.length` through the cascade
+  makes both sides syntactically identical. The source's own ℕ-level analogues
+  (`rcMode_step_eq` and neighbours) use `split_ifs <;> omega` under
+  `set_option maxHeartbeats 2000000`; copying that shape times out at 200000 on the word
+  level. Shorter *and* cheaper.
+- **Check how a per-step bound compounds, not only that it holds.** A multiplicative
+  per-step state bound compounds to `k^L` over a fold and is not polynomial. This caught
+  three would-be-wrong lemmas in one session: an emitter copying its incoming flag rather
+  than re-emitting a literal; a nested-pair state bounded projection-by-projection
+  (`5|cli|` per step) instead of through `two_fstBlock_add_sndBlock_le`; and a fold
+  hypothesis quantified over all token words rather than the slot shape.
+- **Try to instantiate an interface hypothesis before publishing it.** Every interface
+  correction this session — the emitter multiplier `k`, the slot-shaped bound, the
+  `W`-dependent block functions, block-rather-than-value granularity — came from a client
+  failing to discharge a hypothesis that looked reasonable in the abstract.
+- **`Complexity.FP` has `selectHead` but no `tail`.** A digit handed over as a flat
+  three-bit word can be branched on once and no further; hand it over as three separately
+  headable one-bit slots.
+- **`lake env lean` against a just-edited module silently uses the stale olean.** Rebuild
+  the module target explicitly, not the library target, before scratch-checking against it.
+- **A witness-file edit blocks everyone downstream of it in a shared worktree.** Parallel
+  agents in one tree will see each other's syntax errors; poll and do unaffected work
+  rather than assuming your own edit broke something.
+
 ## Consolidation backlog (accumulated during the 2026-08-11 agent waves)
 
 - `LUVPresentation.lean:86` carries a `**F7 item 3, the payoff.**` work-package tag and a

@@ -222,8 +222,10 @@ open ConditioningCompile FeedbackTruth FeedbackEmission PrefixPatchCompile
 -- report is covered transitively by the `thm:scon` endpoints below.
 #assert_axioms_clean
   lic_conditioned lic_conditioned_gated lic_conditioned_eventual
+  lic_conditioned_machine lic_conditioned_gated_machine lic_conditioned_eventual_machine
   isLogicalInductor_of_stage_unsatisfiable
   lic_iff_of_finitePerturbation
+  lic_iff_of_finiteSupportPerturbation machine_lic_iff_of_finiteSupportPerturbation
 
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
@@ -432,9 +434,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/RpnConditioning.lean — the conditioning translation in the RPN
 -- symbol model: the run-aware price transducer and its master commutation, guard honesty,
--- the frame pass and its gated two-leg join, the two `def:ec → def:ec` translation
--- endpoints, and the `thm:scon` packaging (operational witnesses + criterion-level
--- closure of the conditioned market).
+-- the frame pass and its gated two-leg join, and the two `def:ec → def:ec` translation
+-- endpoints.  The `thm:scon` packaging that used to close this block now lives in
+-- `Construction/Machine/CondEndpoints.lean`, listed below: criterion endpoints sit above
+-- both the fuel and the machine realization rather than inside either.
 #assert_axioms_clean
   RpnConditioning.rpnGuardedConditionRun_polySegStream
   RpnConditioning.rpnGuardedZeroAwareConditionRun_polySegStream
@@ -448,29 +451,168 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnConditioning.strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
   RpnConditioning.conditionedTranslation_preserves_ecRpn
   RpnConditioning.eventualConditionedTranslation_preserves_ecRpn
+  RpnConditioning.strategyOfTokens_rpnConditionOutput
+  RpnConditioning.strategyOfTokens_rpnZeroAwareOutput
+
+-- Construction/Machine/CondStep.lean — the conditioning transduction in the machine model:
+-- the same token-level automaton as the fuel realization, driven as a `Complexity.FP` client
+-- of `TokenFold.runFold`, and the transport theorem the machine criterion needs.
+-- Both transport theorems take the *same* `RpnSentenceCodes` hypothesis on the condition
+-- sequence as their fuel counterparts, so nothing about `ψ` is weakened; their trader
+-- hypothesis is the machine class, so they are strictly stronger there.
+#assert_axioms_clean
+  CondStep.conditionedTranslation_preserves_machine
+  CondStep.eventualConditionedTranslation_preserves_machine
+
+-- Construction/Machine/CondEndpoints.lean — the `thm:scon` packaging: operational witnesses
+-- and criterion-level closure, over both realizations.  The block moved here unchanged from
+-- `RpnConditioning.lean`; only the machine endpoint is new.
+-- All three witnesses carry both certificates; the eventual one's machine field arrived
+-- with its emitter (the finite-zero price rewrite, whose zero-day test is a fixed-finite-set
+-- dispatch clamped at the floor's cutoff).  `thm:scon` stands at the paper's own quantifier
+-- in all three forms.
+#assert_axioms_clean
   ConditioningCompile.eventualConditioningOperationalWitness
   ConditioningCompile.gatedConditioningOperationalWitness
   ConditioningCompile.denominatorPatchedGatedConditioningOperationalWitness
   ConditioningCompile.lic_conditioned_gated_ofMarketComputation
+  ConditioningCompile.lic_conditioned_gated_machine_ofMarketComputation
   ConditioningCompile.lic_conditioned_eventualOfFloor
+  ConditioningCompile.lic_conditioned_eventualOfFloor_machine
   ConditioningCompile.lic_conditioned_eventual_ofMarketComputation
   ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
--- model: the run-level quote lookup and the symbol-level freeze transducer, as the third
--- instance of the emitter-generic run rewriter.
--- PARTIAL, and the listed endpoints do NOT close the boundary:
--- `EfficientPrefixPatch.preserves_ec` still has no LIA inhabitant at the collapsed
--- class, because the emitted segment's fuel certificate needs a `BigDigits` decode
--- test on exponentially large escape codes (the inverse-operation ceiling of the digit
--- model).  `thm:ifp` is therefore covered only by `lic_iff_of_finitePerturbation` at the
--- efficiently-patchable restriction, never by an LIA-level discharge of the patch.
+-- model, the run-level quote lookup, and the spelling characterization the lookup rests on.
+--
+-- MACHINE CLASS: closed.  `RpnFreeze.parseRpn_iff_mem_spellings` says a run denotes a
+-- target exactly when it is one of the target's finitely many complete spellings, so the
+-- lookup is membership in a list of constants rather than a parser; `FreezeStep` runs the
+-- resulting transducer through `TokenFold.runFold_mem_FP`; `FreezeOracle` supplies the
+-- lookup for any finite table and compiles the patch from the market's own certificate.
+-- The public statement is `FreezeOracle.machine_lic_iff_of_recognizableSupport`: finite
+-- support, computability of both markets, and a syntactic `Recognizable` condition on the
+-- finitely many sentences whose price moves — no patch hypothesis.
+--
+-- FUEL CLASS: still open, and this is a true negative.  `EfficientPrefixPatch` and
+-- `FiniteSupportPatch` remain uninhabited: the emitted segment's fuel certificate needs a
+-- `BigDigits` decode test on exponentially large escape codes, and the digit model is not
+-- closed under that inverse operation (`dd:fuel`).  `lic_iff_of_finitePerturbation` is
+-- therefore still the only fuel-class coverage of `thm:ifp`.
+--
+-- THE `⊥` NARROWING, which is what makes the machine class work:
+-- `decode_eq_some_iff_of_botFree` (CanonicalCodes.lean) proves Foundation's decoder
+-- injective off the `⊥` fiber and `RpnFreeze.matchRun_eq_matchRunCanon` turns the matcher
+-- into constant comparisons on a `⊥`-free target; `decode_and_noncanonical` is the converse
+-- witness, so the restriction is necessary and not an artifact.  `BotFree` in `Recognizable`
+-- is exactly this, and it stands in for integer square root in `Complexity.FP`; `NoReserved`
+-- stands in for a structured-payload parser.  Both are conditions on SYNTAX, not on markets
+-- or perturbations: the unrestricted theorem is true and unproved here.
 #assert_axioms_clean
+  EF.strategyOfTokens_freezeTokenRunOn_trades
+  MachineEfficientTrader.freezeOn
   RpnFreeze.matchRun_iff
   RpnFreeze.runPrefixQuoteFromStates_exact
   RpnFreeze.unRpn_rpnFreezeRun
+  RpnFreeze.unRpn_rpnFreezeRunOn
+  RpnFreeze.freezeStreamRewriter_of_flatPass
+  RpnFreeze.parseStructuredPaperPrime_shape
+  RpnFreeze.spellings_sound
+  RpnFreeze.spellings_complete
+  RpnFreeze.parseRpnLegacy_iff_mem_spellings
+  RpnFreeze.parseRpn_imp_parseRpnLegacy
+  RpnFreeze.parseRpn_iff_mem_spellings
+  RpnFreeze.matchRun_eq_matchRunCanon
+  decode_eq_some_iff_of_botFree
+  sentenceMatches_of_botFree
+  decode_falsum_noncanonical
+  decode_and_noncanonical
+
+-- Construction/Witnesses/FreezeStep.lean — the freeze transducer as a `Complexity.FP`
+-- client of `TokenFold.runFold`, over the FLAT stream (the one a machine holds), reusing
+-- `CondStep.condStepR` as its automaton.  `decodeBits_freezePass` says the pass computes
+-- `rpnConditionRun (RpnFreeze.freezeEmitOn selRun quoteRun)` exactly — no day clamp, since
+-- the freeze oracle's output is bounded by a constant where the conditioning oracle's is
+-- not.  `freezeStreamRewriter_of_runOracle` closes the chain to `FreezeStreamRewriter`.
+-- ALL of it is conditioned on a `FreezeStep.RunOracle`.  That structure is now INHABITED
+-- (`FreezeOracle.runOracleOf`), so the chain closes; see the FreezeOracle block below for
+-- what the inhabitant assumes and what it still does not supply.
+-- The lookup's shape is settled too: `RpnFreeze.spellings` is the FINITE list of complete
+-- legacy spellings of a target, and `spellings_sound` proves each member parses.  Under the
+-- two side conditions (`BotFree`, and the target outside the reserved `atom (pair 7 _)`
+-- shape) deciding "does this run denote ψ" is membership in that list, so NO streaming
+-- automaton has to be proved to agree with `parseRpn`.  Both directions are now proved
+-- (`parseRpnLegacy_iff_mem_spellings`), with `BotFree` load-bearing for exhaustiveness.
+-- The full-grammar form `parseRpn_iff_mem_spellings` is now proved too, bridged by
+-- `parseRpn_imp_parseRpnLegacy` (costing the `NoReserved` side condition) and the upstream
+-- `parseRpn_of_legacy`.  All of this is RECOGNITION only: turning "membership in a list of
+-- constants" into a `Complexity.FP` test, and thence into a `FreezeStep.RunOracle`, is not
+-- done.  No `RunOracle` instance exists, so no patch structure is inhabited.
+-- The table side conditions are collected in `CanonicalCodes.lean`'s "The recognition side
+-- conditions, in one place": `Recognizable` (= `BotFree` + `NoReserved`) per sentence, plus
+-- the constant output bound on the table as a whole.
+#assert_axioms_clean
+  FreezeStep.decodeBits_flatEmitR
+  FreezeStep.freezePass_mem_FP
+  FreezeStep.decodeBits_freezePass
+  FreezeStep.freezeStreamRewriter_of_runOracle
+
+-- Construction/Witnesses/FreezeOracle.lean — the run-level lookup, and with it a
+-- `FreezeStep.RunOracle` for any finite table (`runOracleOf`).  This CLOSES the freeze
+-- chain: `machineFiniteSupportPatch_ofTable` inhabits `MachineFiniteSupportPatch` for any
+-- market whose frozen table is presented by a recognizable entry list, and
+-- `machineFiniteSupportPatch_example` / `_pair` do so at a table with a REAL row
+-- (`exampleS_nonempty`), so the degenerate empty-table discharge is not what is happening.
+-- SIDE CONDITIONS: `TablePresentation` is no longer one of them.  `entriesOf` reads the
+-- entry list off `S` and the market's own quote table, so
+-- `machineFiniteSupportPatch_ofRecognizable` needs only `ComputableMarket` plus
+-- `Recognizable` per table sentence, and the public
+-- `machine_lic_iff_of_recognizableSupport` carries NO patch hypothesis at all.
+-- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
+-- The one surviving condition, `Recognizable`, is representation residue rather than
+-- mathematics; the boundary note in the file names the two `Complexity.FP` primitives it
+-- stands in for (integer square root, and a structured-payload parser).
+-- The market pair is now supplied too: `computableMarket_twoPoint` builds two honest
+-- `ComputableMarket`s (rational table plus a `Nat.Partrec.Code` on the PAIRED input, so day
+-- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
+-- and `machine_lic_iff_twoPoint` is the corrected `thm:ifp` at that pair with NO remaining
+-- hypotheses.  So the theorem's antecedent is satisfiable: it is non-vacuous.
+-- That pair is non-vacuous but not informative on its own: those markets price almost
+-- everything at zero and are very likely exploitable, so the equivalence may hold there
+-- because both sides are false.  The informative instance is in
+-- Construction/Witnesses/LIAPerturbation.lean; see that block.
+#assert_axioms_clean
+  FreezeOracle.decodeBits_oracleOf
+  FreezeOracle.oracleOf_mem_FP
+  FreezeOracle.runOracleOf
+  FreezeOracle.machineFiniteSupportPatch_ofTable
+  FreezeOracle.machineFiniteSupportPatch_example
+  FreezeOracle.machineFiniteSupportPatch_pair
+  FreezeOracle.exampleS_nonempty
+  FreezeOracle.machine_lic_iff_example
+  FreezeOracle.computableMarket_twoPoint
+  FreezeOracle.twoPointHistory_ne_at
+  FreezeOracle.machine_lic_iff_twoPoint
+  FreezeOracle.machineFiniteSupportPatch_ofRecognizable
+  FreezeOracle.machine_lic_iff_of_recognizableSupport
+
+-- Construction/Witnesses/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
+-- `liaHistory DP` is a machine logical inductor; `liaPerturbed` moves ONE price, at the
+-- `Recognizable` coordinate `(0, atom 0)`, and `machineLogicalInductor_liaPerturbed` derives
+-- that the result is still one.  Nothing else in the repo derives that: the perturbed market
+-- is not the output of any construction, so its inductor-hood is exactly what the theorem
+-- buys.  `computableMarket_liaPerturbed` rebuilds the market program (the code is combined at
+-- the `Nat.Partrec` level, since `ComputableMarket` hands over a code rather than a
+-- `Computable` function), and `liaPerturbed_ne` proves the price change NONZERO, so this is
+-- not the degenerate `P = P'` route by a third door.
+-- It remains conditional on the same two hypotheses `Construction/LIA.lean` carries: the LIA
+-- market program and a computable deductive process.  Nothing here discharges those.
+#assert_axioms_clean
+  LIAPerturbation.computableMarket_liaPerturbed
+  LIAPerturbation.machineLogicalInductor_liaPerturbed
+  LIAPerturbation.exists_informative_liaPerturbation
 
 -- Construction/Witnesses/UnconditionalOverLIA.lean
 #assert_axioms_clean
@@ -694,7 +836,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields ConditioningPresentation
   condition condition_codes holds_condition combined_computable
 #assert_fields ConditioningTraderCompiler
-  conditioned_computable translate translate_ec tracks_on_condition preserves_floor
+  conditioned_computable translate translate_ec translate_machine tracks_on_condition
+  preserves_floor
 #assert_fields ContinuousSemimeasure
   mass nonneg root_le_one children_le
 #assert_fields CurrentExpectationQuote
@@ -713,12 +856,14 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   f lt code fueled
 #assert_fields EfficientPrefixPatch
   quote quote_exact preserves_ec
+#assert_fields FiniteSupportPatch
+  quote quote_exact preserves_ec
 #assert_fields EfficientRepeatedEnumeration
   sequence sequence_poly repeats sound covers
 #assert_fields EventualConditioningFloor
   cutoff zeroDays zeroDays_lt epsilon epsilon_pos zero_exact positive_floor
 #assert_fields EventualConditioningOperationalWitness
-  floor conditioned_computable translation_ec
+  floor conditioned_computable translation_ec translation_machine
 #assert_fields ExpectedFutureExpectationQuote
   source_codes quote_codes reflected affine
 #assert_fields FeedbackTruth.FeedbackTruthComputation
@@ -726,7 +871,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields FuturePriceQuote
   sentence_codes quote_codes reflected affine
 #assert_fields GatedConditioningOperationalWitness
-  epsilon_pos denominator_floor conditioned_computable translation_ec
+  epsilon_pos denominator_floor conditioned_computable translation_ec translation_machine
 #assert_fields GeneratedRatFeature
   rank_le polyTok closed denote
 #assert_fields InconsistentTheoryClaims
@@ -737,6 +882,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
 #assert_fields IsLogicalInductor
   marketComputable processComputable noExploit
+#assert_fields MachineFiniteSupportPatch
+  quote quote_exact preserves_ec
 #assert_fields LUV
   gt
 #assert_fields LUVCombination

@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Construction.Machine.CondEndpoints
 import LogicalInduction.Construction.Witnesses.StrictSeparators
 import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 

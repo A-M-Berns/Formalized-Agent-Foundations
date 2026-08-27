@@ -34,6 +34,9 @@ import LogicalInduction.Construction.Witnesses.LUVExpectationCertified
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Construction.Witnesses.FreezeOracle
+import LogicalInduction.Construction.Witnesses.LIAPerturbation
+import LogicalInduction.Construction.Witnesses.FreezeStep
 import LogicalInduction.Construction.Witnesses.RpnFreeze
 import LogicalInduction.Construction.Witnesses.StrictSeparators
 import LogicalInduction.Construction.Witnesses.SemanticPrime
@@ -54,3 +57,4 @@ import LogicalInduction.Construction.Witnesses.PaperTheoryDP
 import LogicalInduction.Construction.Witnesses.PaperCutLawDP
 import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
+import LogicalInduction.Construction.Witnesses.FinitePerturbationWitness
