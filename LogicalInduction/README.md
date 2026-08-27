@@ -22,11 +22,11 @@ build-audited. How strong each one is, over those 53 theorem and lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 39 | proved as the paper states it, on the paper's own hypotheses |
-| **strengthened** | 8 | the Lean statement is stronger than the printed one |
+| **exact** | 33 | proved as the paper states it, on the paper's own hypotheses |
+| **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
+| **qualified** | 10 | proved with an explicitly named representation interface or class restriction retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -43,25 +43,38 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
-them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 10 of
+them at exact or strengthened, 8 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
 **Two caveats on those counts, because both are easy to miss.** First, every tier is
-relative to the disclosed model — propositional sentences and fuel-clocked efficiency
-(see *The modeling boundary*); "paper strength" means the paper's statement is
-reached *within that model*, not that the model equivalence is proved. Second, the computation
-family (`thm:halts`, `thm:loops`, `thm:pac`, `thm:pazfc`, `thm:dontwait`) still meters its
-machine and input sequences by the **whole-value** class `PolyMachineCodes`/`PolyNatCodes`
-rather than the symbol-metered `RpnSentenceCodes`; those are the paper's own e.c.
-`⟨m⟩`/`⟨x⟩` sequences and the family is tiered uniformly on that basis. The whole quotation
-family, and the horizon `f` of the metacomputation nodes, are at the paper's own class.
+relative to the disclosed model — propositional sentences, and machine polynomial time as
+the trader class with the fuel calculus as its certificate (see *The modeling boundary*);
+"exact" means the paper's statement is reached *within that model*, not that the model
+equivalence is proved.
 
-These numbers come from a signature-level re-derivation: 35 of the 53 nodes were
-re-derived from their elaborated final signatures against the paper text in a dedicated
-adversarial pass, which corrected 11 rows downward; the remainder carry classifications
-from earlier passes, two of which that pass then corrected by propagation. Rows that have
+Second, and this is what most of the `qualified` count is: ten nodes take a **whole-value**
+efficiency hypothesis where the paper asks only for efficient computability. `PolyFueled`
+bundles `IsPolyBounded f` — a bound on the function's *output value* — so `PolyNatCodes`,
+`PolyMachineCodes`, `PolyRatCodes` and their relatives admit only sequences whose values
+grow polynomially, while the paper's e.c. is polynomial *time*: poly time to write an object
+bounds its **symbols**, permitting values up to exponential. `δₙ = 2^(−n)` is excluded by
+`PolyRatCodes`; `not_polyFueled_two_pow` proves the restriction strict. The symbol-metered
+classes exist for sentences (`RpnSentenceCodes`) but not for naturals, machine codes or
+rationals, and building a symbol-metered rational class would retire four of the ten
+qualifications at once — the largest single piece of work this classification identifies.
+
+The remaining three qualified nodes are the §4.10 consistency family (`thm:pac`,
+`thm:pazfc`, `thm:incons`), whose rows say exactly what is and is not formalized. In
+particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
+distinctive second-theory parameter is absent, and the kernel accepts
+`@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl`.
+
+These numbers are recomputed from the classification ledger by
+`scripts/check_endpoint_coverage.py`, which fails the build if any figure here drifts from
+it — in both directions, so a count cannot be lost by rewording the sentence that carries
+it. Rows that have
 since moved were re-derived again from the merged signatures. Where a count is uncertain
 we have rounded against ourselves.
 

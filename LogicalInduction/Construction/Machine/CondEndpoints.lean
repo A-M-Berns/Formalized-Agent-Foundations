@@ -267,15 +267,19 @@ theorem lic_conditioned_growing_ofComputationsAndMarket
 logical inductor on a single sentence `ψ` yields a machine logical inductor over `Θ ∪ {ψ}`,
 with **no** consistency hypothesis.  The two branches are the paper's own: where `Θ ∪ {ψ}`
 stays satisfiable at every stage the analytic price-floor argument runs, and where some
-stage is already unsatisfiable the criterion holds vacuously.
+stage is already unsatisfiable the criterion holds vacuously.  The stage program and the
+rational market program the proof runs on are read off the inductor instance itself
+(`processComputable`, `marketComputable`), so the statement carries no computability
+premise beyond `IsMachineLogicalInductor`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_machine_ofComputationAndMarket
-    (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP) (market : MarketComputation P)
+    (P : History) (DP : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
     (ψ : Sentence) :
     IsMachineLogicalInductor
       (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+  obtain ⟨base⟩ := hLI.processComputable.nonemptyComputation
+  obtain ⟨market⟩ := hLI.marketComputable.nonemptyComputation
   let C := fixedConditioningPresentation base ψ
   by_cases hjoint : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds ψ
   · have hjointC : ∀ n, ∃ v : PCWorld,
@@ -303,18 +307,21 @@ theorem lic_conditioned_fixed_machine_ofComputationAndMarket
 consistency hypothesis.  As in the fixed-sentence form the two branches are the paper's
 own; where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is satisfiable, propositional compactness
 (`DeductiveProcess.exists_consistentWithTheory`) produces the single world the price-floor
-argument consumes.
+argument consumes.  The base stage program and the rational market program are read off the
+inductor instance itself, so the only computability premise is the one about the *adjoined*
+process, which no instance supplies.  For a non-degenerate `more` — nonempty, strictly
+growing stages — see `growingCompactConditioningProcessComputation`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_machine_ofComputationsAndMarket
-    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
-    (base : DeductiveProcessComputation DP)
-    (more : CompactConditioningProcessComputation extra)
-    (market : MarketComputation P) :
+    (P : History) (DP extra : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
+    (more : CompactConditioningProcessComputation extra) :
     IsMachineLogicalInductor
       (conditionedHistory P
         (fun n => deductiveStageCondition (extra.D n)))
       (DP.union extra) := by
+  obtain ⟨base⟩ := hLI.processComputable.nonemptyComputation
+  obtain ⟨market⟩ := hLI.marketComputable.nonemptyComputation
   let C := conditioningPresentationOfComputations base more
   by_cases hsat : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union extra).D n)
   · obtain ⟨w, hw⟩ := (DP.union extra).exists_consistentWithTheory hsat

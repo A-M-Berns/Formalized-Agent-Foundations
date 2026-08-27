@@ -187,13 +187,10 @@ theorem lic_conditioned_fixed_machine_unconditional
     IsMachineLogicalInductor
       (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
       ((theoremDP T).adjoinSentence ψ) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
   haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
     LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
   exact ConditioningCompile.lic_conditioned_fixed_machine_ofComputationAndMarket
-    (liaHistory (theoremDP T)) (theoremDP T)
-    base (theoremMarketComputation T) ψ
+    (liaHistory (theoremDP T)) (theoremDP T) ψ
 
 /-- **Growing finite-prefix `thm:scon` over the constructed `LIA`, at the paper's own
 quantifier**, with no remaining premise.
@@ -207,13 +204,35 @@ theorem lic_conditioned_growing_machine_unconditional
       (conditionedHistory (liaHistory (theoremDP T))
         (fun n => deductiveStageCondition (extra.D n)))
       ((theoremDP T).union extra) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
   haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
     LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
   exact ConditioningCompile.lic_conditioned_growing_machine_ofComputationsAndMarket
-    (liaHistory (theoremDP T)) (theoremDP T) extra
-    base more (theoremMarketComputation T)
+    (liaHistory (theoremDP T)) (theoremDP T) extra more
+
+/-- **The growing form of `thm:scon` doing visible work.**  Instantiated at
+`growingConditionProcess`, whose stages are nonempty and *strictly grow*, so the adjoined
+condition is a real sentence — never the empty conjunction `⊤` — and it changes as the
+stages advance.  The degenerate inhabitant of the compact interface
+(`compactConditioningProcessComputation_nonempty`, with `extra.D n = ∅`) is deliberately
+**not** used here: it would make `DP.union extra = DP` and the conclusion a restatement of
+the unconditioned theorem.
+
+Kind `N+` non-vacuity witness.
+Paper node: `thm:scon` -/
+theorem exists_growing_conditioned_machine_inductor
+    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    ∃ extra : DeductiveProcess,
+      extra.D 0 ⊂ extra.D 1 ∧
+      (∀ n, deductiveStageCondition (extra.D n) ≠ ⊤) ∧
+      deductiveStageCondition (extra.D 0) ≠ deductiveStageCondition (extra.D 1) ∧
+      IsMachineLogicalInductor
+        (conditionedHistory (liaHistory (theoremDP T))
+          (fun n => deductiveStageCondition (extra.D n)))
+        ((theoremDP T).union extra) :=
+  ⟨growingConditionProcess, growingConditionProcess_ssubset,
+    deductiveStageCondition_growing_ne_top, deductiveStageCondition_growing_ne,
+    lic_conditioned_growing_machine_unconditional T growingConditionProcess
+      growingCompactConditioningProcessComputation⟩
 
 #print axioms lic_domination_universalSemimeasure_unconditional
 #print axioms lic_domination_dovetailSemimeasure_unconditional
@@ -224,5 +243,6 @@ theorem lic_conditioned_growing_machine_unconditional
 #print axioms lic_conditioned_growing_unconditional
 #print axioms lic_conditioned_fixed_machine_unconditional
 #print axioms lic_conditioned_growing_machine_unconditional
+#print axioms exists_growing_conditioned_machine_inductor
 
 end LogicalInduction

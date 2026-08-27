@@ -151,9 +151,14 @@ structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
   condition_codes : RpnSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
 
-/-- `N+` witness: the compact operational interface is inhabited by the constantly empty
-deductive process.  Its stage program and empty-conjunction program are both literal
-constant programs. -/
+/-- **Inhabitation only, and degenerate.**  The compact operational interface is inhabited by
+the constantly empty deductive process, whose stage program and empty-conjunction program
+are both literal constant programs.  This says the interface's fields are satisfiable and
+nothing more: at `extra.D n = ∅` the adjoined condition is the empty conjunction `⊤` and
+`DP.union extra = DP`, so instantiating the growing form of `thm:scon` here restates the
+unconditioned theorem.  It is **not** evidence that the growing endpoint has content; the
+witness that carries that burden is `growingCompactConditioningProcessComputation` below,
+put to work in `exists_growing_conditioned_machine_inductor`. -/
 lemma compactConditioningProcessComputation_nonempty :
     ∃ extra : DeductiveProcess,
       Nonempty (CompactConditioningProcessComputation extra) := by
@@ -180,6 +185,159 @@ noncomputable def conditioningPresentationOfComputations
   condition_codes := more.condition_codes
   holds_condition n v := v.holds_deductiveStageCondition (extra.D n)
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
+
+/-! ### A genuinely growing extra process
+
+`compactConditioningProcessComputation_nonempty` above shows only that the interface is
+*inhabited*: its witness has `extra.D n = ∅` at every stage, so the adjoined condition is
+the empty conjunction `⊤` and `DP.union extra = DP`.  That witness is therefore no evidence
+that the growing form of `thm:scon` says anything, and it is not cited as such.
+
+The process below is the honest one.  It reveals `atom 0` on day `0` and adds `atom 1` from
+day `1` on, so its stages are nonempty, they *strictly grow*, and the condition sequence
+`n ↦ ⋀ (extra.D n)` genuinely changes with `n`: `atom 0` at day `0` and a two-conjunct
+conjunction thereafter.  Its condition-code certificate is a two-way dispatch of constant
+sentence-block streams, which is what keeps this witness cheap.
+
+It is an *eventually constant* growing process, and deliberately so.  An unboundedly growing
+one — say `extra.D n = {atom 0, …, atom (n-1)}` — is not reachable at this cost: the
+`n`-conjunct condition has code exponential in its symbol count, so the whole-value
+interface `PolySentenceCodes` is unavailable by construction, and the symbol-metered route
+`RpnSentenceCodes.ofCanonical` needs a variable-width *conjunction* block combinator
+(`RpnSentenceCodes.bigOr` is the disjunction analogue, and `Finset.conj` is `conj₂` of the
+`toList`, which has no `⊤` terminator to close the chain on) together with an emitter for
+the `Finset.toList` order.  Neither exists here.
+-/
+
+/-- The atoms adjoined by `growingConditionProcess`. -/
+def growingConditionAtom (i : ℕ) : Sentence := LO.Propositional.Formula.atom i
+
+lemma growingConditionAtom_zero_ne_one :
+    growingConditionAtom 0 ≠ growingConditionAtom 1 := by
+  simp [growingConditionAtom]
+
+/-- A strictly growing extra deductive process: `{atom 0}` on day `0`, `{atom 0, atom 1}`
+from day `1` on. -/
+def growingConditionProcess : DeductiveProcess where
+  D := fun n =>
+    if n = 0 then {growingConditionAtom 0}
+    else {growingConditionAtom 0, growingConditionAtom 1}
+  mono := by
+    intro n
+    cases n with
+    | zero => simp
+    | succ m => simp
+
+@[simp] lemma growingConditionProcess_zero :
+    growingConditionProcess.D 0 = {growingConditionAtom 0} := rfl
+
+@[simp] lemma growingConditionProcess_succ (n : ℕ) :
+    growingConditionProcess.D (n + 1) =
+      {growingConditionAtom 0, growingConditionAtom 1} := rfl
+
+/-- The stages strictly grow: the adjoined theory is not constant. -/
+lemma growingConditionProcess_ssubset :
+    growingConditionProcess.D 0 ⊂ growingConditionProcess.D 1 := by
+  rw [growingConditionProcess_zero, show (1 : ℕ) = 0 + 1 from rfl,
+    growingConditionProcess_succ]
+  refine Finset.ssubset_iff_of_subset (by simp) |>.mpr ⟨growingConditionAtom 1, by simp, ?_⟩
+  simp [Ne.symm growingConditionAtom_zero_ne_one]
+
+lemma growingConditionProcess_nonempty (n : ℕ) :
+    (growingConditionProcess.D n).Nonempty := by
+  cases n <;> simp
+
+private lemma growingConditionProcess_primrec :
+    Primrec fun n : ℕ => Encodable.encode (growingConditionProcess.D n) := by
+  classical
+  have h : Primrec fun n : ℕ =>
+      if n = 0 then Encodable.encode ({growingConditionAtom 0} : Finset Sentence)
+      else Encodable.encode
+        ({growingConditionAtom 0, growingConditionAtom 1} : Finset Sentence) :=
+    Primrec.ite (Primrec.eq.comp Primrec.id (Primrec.const 0))
+      (Primrec.const _) (Primrec.const _)
+  exact h.of_eq fun n => by
+    cases n with
+    | zero => simp
+    | succ m => simp
+
+private lemma exists_growingConditionProcessCode :
+    ∃ code : Nat.Partrec.Code, ∀ n,
+      Encodable.encode (growingConditionProcess.D n) ∈ code.eval n := by
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp growingConditionProcess_primrec))
+  exact ⟨code, fun n => by rw [hcode]; exact Part.mem_some_iff.mpr rfl⟩
+
+/-- The strictly growing process is computable, by a two-way dispatch between two constant
+stage codes. -/
+noncomputable def growingConditionProcessComputation :
+    DeductiveProcessComputation growingConditionProcess :=
+  ⟨exists_growingConditionProcessCode.choose,
+    exists_growingConditionProcessCode.choose_spec⟩
+
+private lemma growingConditionProcess_condition_codes :
+    RpnSentenceCodes fun n => deductiveStageCondition (growingConditionProcess.D n) :=
+  (RpnSentenceCodes.ifZero
+      (RpnSentenceCodes.const
+        (deductiveStageCondition ({growingConditionAtom 0} : Finset Sentence)))
+      (RpnSentenceCodes.const (deductiveStageCondition
+        ({growingConditionAtom 0, growingConditionAtom 1} : Finset Sentence)))
+      PolyFueled.id).of_eq (fun n => by
+    cases n with
+    | zero => simp
+    | succ m => simp)
+
+/-- **`N+` witness with content.**  The compact conditioning interface is inhabited by a
+process whose stages are nonempty and strictly growing, so the growing form of `thm:scon`
+instantiated here adjoins a real, changing condition rather than the empty conjunction. -/
+noncomputable def growingCompactConditioningProcessComputation :
+    CompactConditioningProcessComputation growingConditionProcess where
+  toDeductiveProcessComputation := growingConditionProcessComputation
+  condition_codes := growingConditionProcess_condition_codes
+
+/-- The day-`0` condition is the atom itself. -/
+lemma deductiveStageCondition_growing_zero :
+    deductiveStageCondition (growingConditionProcess.D 0) = growingConditionAtom 0 := by
+  simp [deductiveStageCondition, Finset.conj]
+
+/-- From day `1` on the condition is a genuine two-conjunct conjunction.  The conjuncts are
+`atom 0` and `atom 1` in whatever order `Finset.toList` produces; only the shape matters
+here. -/
+lemma deductiveStageCondition_growing_succ (n : ℕ) :
+    ∃ x y : Sentence,
+      deductiveStageCondition (growingConditionProcess.D (n + 1)) = x ⋏ y := by
+  classical
+  have hcard : (growingConditionProcess.D (n + 1)).card = 2 := by
+    rw [growingConditionProcess_succ,
+      Finset.card_insert_of_notMem (by simp [growingConditionAtom_zero_ne_one]),
+      Finset.card_singleton]
+  have hlen : (growingConditionProcess.D (n + 1)).toList.length = 2 := by
+    rw [Finset.length_toList, hcard]
+  obtain ⟨x, y, hxy⟩ := List.length_eq_two.mp hlen
+  exact ⟨x, y, by rw [deductiveStageCondition, Finset.conj, hxy]; rfl⟩
+
+/-- **No stage's condition is the empty conjunction.**  This is the property the degenerate
+inhabitant fails: at `extra.D n = ∅` every condition is `⊤`, and conditioning on `⊤` is not
+conditioning. -/
+lemma deductiveStageCondition_growing_ne_top (n : ℕ) :
+    deductiveStageCondition (growingConditionProcess.D n) ≠ ⊤ := by
+  cases n with
+  | zero => rw [deductiveStageCondition_growing_zero]; simp [growingConditionAtom]
+  | succ m =>
+      obtain ⟨x, y, hxy⟩ := deductiveStageCondition_growing_succ m
+      rw [hxy]
+      simp
+
+/-- **The condition sequence genuinely changes with the stage.**  Day `0` names a single
+atom; every later day names a two-conjunct conjunction.  Together with
+`deductiveStageCondition_growing_ne_top` this is what makes the growing form of `thm:scon`
+say something about *growing* conditioning when instantiated here. -/
+lemma deductiveStageCondition_growing_ne :
+    deductiveStageCondition (growingConditionProcess.D 0) ≠
+      deductiveStageCondition (growingConditionProcess.D 1) := by
+  obtain ⟨x, y, hxy⟩ := deductiveStageCondition_growing_succ 0
+  rw [deductiveStageCondition_growing_zero, show (1 : ℕ) = 0 + 1 from rfl, hxy]
+  simp [growingConditionAtom]
 
 /-! ### Fixed-condition presentation -/
 
@@ -236,6 +394,11 @@ theorem lic_conditioned_gated_ofComputations
 #print axioms compactConditioningProcessComputation_nonempty
 #print axioms conditioningPresentationOfComputations
 #print axioms fixedConditioningPresentation
+#print axioms growingConditionProcessComputation
+#print axioms growingCompactConditioningProcessComputation
+#print axioms growingConditionProcess_ssubset
+#print axioms deductiveStageCondition_growing_ne
+#print axioms deductiveStageCondition_growing_ne_top
 #print axioms lic_conditioned_gated_ofComputations
 
 end LogicalInduction

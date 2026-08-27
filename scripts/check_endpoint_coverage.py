@@ -32,6 +32,14 @@ The checks, all fail-closed:
      assertion, checked by the build but not public trust surface.
   F. strength tiers are drawn from the declared vocabulary, and the secondary axis from
      its own.
+  G. **the README's headline counts are the ledger's**: every number in
+     `LogicalInduction/README.md`'s strength table and its surrounding prose — the
+     theorem/lemma total, each per-status count, the definition-node split, the
+     instantiated sub-count and its split — is recomputed from the strength table and
+     compared. These were hand-entered, and one recently stood twelve nodes wrong while
+     still adding up, because nothing recomputed the total from the rows. A number that
+     disagrees fails; a sentence that no longer matches its pattern also fails, so a check
+     cannot be silently lost by rewording.
 
 Run from the repo root. Exit status is nonzero on any violation.
 """
@@ -45,6 +53,7 @@ from pathlib import Path
 LIB = Path("LogicalInduction")
 AUDIT = Path("AxiomAudit.lean")
 CLASSIFICATION = Path("scripts/coverage-classification.md")
+README = Path("LogicalInduction/README.md")
 
 STATUSES = {"exact", "strengthened", "corrected", "refuted", "qualified"}
 AXES = {"universal", "instantiated", "n/a"}
@@ -270,6 +279,84 @@ def excluded(lab: str) -> bool:
     return lab.startswith(EXCLUDE_PREFIXES) or lab in EXCLUDE_LABELS
 
 
+# ----------------------------------------------------------------------------
+# G. the README's headline counts, re-derived from the ledger
+# ----------------------------------------------------------------------------
+
+def tally(strength: dict[str, dict]) -> dict[str, dict[str, int]]:
+    """Ledger counts, split the way the README reports them.
+
+    'thm' — theorem and lemma nodes; 'def' — definition nodes (`def:` labels), which the
+    README deliberately keeps out of the main table; 'inst' — the theorem/lemma nodes
+    additionally instantiated over the constructed inductor.
+    """
+    out = {"thm": {}, "def": {}, "inst": {}}
+    for lab, row in strength.items():
+        kind = "def" if lab.startswith("def:") else "thm"
+        out[kind][row["status"]] = out[kind].get(row["status"], 0) + 1
+        if kind == "thm" and row["axis"] == "instantiated":
+            out["inst"][row["status"]] = out["inst"].get(row["status"], 0) + 1
+    return out
+
+
+def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
+    """Every headline number in `LogicalInduction/README.md` must equal the ledger's.
+
+    The README's numbers were hand-entered, and hand-entered numbers drift: one recently
+    stood twelve nodes wrong and happened to still add up, because nothing recomputed the
+    total from the rows. So each is re-derived here from the strength table and compared.
+
+    Fail-closed in both directions. A number that disagrees fails; a sentence that no
+    longer matches its pattern *also* fails, rather than silently dropping a check —
+    reword freely, but keep the number in a shape this can find, or update the pattern in
+    the same commit.
+    """
+    text = re.sub(r"\s+", " ", (root / README).read_text(encoding="utf-8"))
+    counts = tally(strength)
+    n_thm = sum(counts["thm"].values())
+    n_def = sum(counts["def"].values())
+    n_inst = sum(counts["inst"].values())
+    errs: list[str] = []
+
+    def one(pattern: str, what: str, expected: list[int]) -> None:
+        m = re.search(pattern, text)
+        if not m:
+            errs.append(
+                f"README-count check: FAIL — {README} no longer states {what} in a "
+                f"recognizable form (pattern {pattern!r}). Keep the number greppable or "
+                "update this pattern in the same commit; a count nothing checks is how "
+                "the last wrong one survived.")
+            return
+        got = [int(g) for g in m.groups()]
+        if got != expected:
+            errs.append(
+                f"README-count check: FAIL — {README} says {what} = "
+                f"{', '.join(map(str, got))}, but {CLASSIFICATION} yields "
+                f"{', '.join(map(str, expected))}")
+
+    # the two totals, stated twice each in the prose
+    one(r"lemma of the paper — (\d+) of them —", "the theorem/lemma node total", [n_thm])
+    one(r"over those (\d+) theorem and lemma nodes", "the strength-table denominator",
+        [n_thm])
+    # the status table itself
+    for status in sorted(STATUSES):
+        one(rf"\|\s*\*\*{status}\*\*\s*\|\s*(\d+)\s*\|",
+            f"the {status} count", [counts["thm"].get(status, 0)])
+    # definitions, kept out of that table
+    one(r"paper's (\d+) \*definition\* nodes are classified separately "
+        r"\((\d+) exact, (\d+) qualified\)",
+        "the definition-node split",
+        [n_def, counts["def"].get("exact", 0), counts["def"].get("qualified", 0)])
+    # the instantiated sub-count and its own split
+    one(r"Of the (\d+), \*\*(\d+) are also instantiated", "the instantiated sub-count",
+        [n_thm, n_inst])
+    one(r"(\d+) of them at exact or strengthened, (\d+) at qualified",
+        "the instantiated split",
+        [counts["inst"].get("exact", 0) + counts["inst"].get("strengthened", 0),
+         counts["inst"].get("qualified", 0)])
+    return errs
+
+
 def main() -> int:
     root = Path(".")
     inv = inventory_members(root)
@@ -361,6 +448,11 @@ def main() -> int:
                   f"(allowed: {sorted(AXES)})")
             fail = True
 
+    # --- G. the README's headline counts match the ledger ---------------------
+    for err in check_readme_counts(root, strength):
+        print(err)
+        fail = True
+
     if fail:
         print("  The curated mapping fails closed by design: the page is generated from")
         print(f"  {CLASSIFICATION}'s endpoints table and nothing else, so a name that")
@@ -368,16 +460,20 @@ def main() -> int:
         return 1
 
     n_excl = len({lab for lab in used if excluded(lab)})
-    counts: dict[str, int] = {}
-    for row in strength.values():
-        counts[row["status"]] = counts.get(row["status"], 0) + 1
+    counts = tally(strength)
+
+    def fmt(d: dict[str, int]) -> str:
+        return ", ".join(f"{k}={v}" for k, v in sorted(d.items()))
+
     print(
         f"endpoint-coverage check: OK "
         f"({len(covered)} labels have an inventory endpoint; "
         f"{n_excl} excluded appendix/internal; 0 uncovered; "
         f"{len(curated)} canonical endpoints over {len(endpoints)} nodes, all resolving, "
         f"on-label and axiom-checked; "
-        f"status: {', '.join(f'{k}={v}' for k, v in sorted(counts.items()))})"
+        f"{sum(counts['thm'].values())} theorem/lemma nodes: {fmt(counts['thm'])}; "
+        f"{sum(counts['def'].values())} definition nodes: {fmt(counts['def'])}; "
+        f"README headline counts match)"
     )
     return 0
 

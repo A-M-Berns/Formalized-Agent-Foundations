@@ -1065,6 +1065,19 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   luvs termCount const coefficient termCount_poly const_poly coefficient_poly const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields PatientSettlementClock
   active active_codes antitone active_through_envelope eventually_inactive settled_of_inactive
+-- Metering note (2026-08-27 audit).  Both of these are **whole-value** classes: `code_poly`
+-- is `PolyFueled code v`, and `PolyFueled` bundles `IsPolyBounded` of the *output value*
+-- alongside the fuel bound, so what is polynomial is the Gödel number, not the symbol
+-- count.  `def:ec` meters the time to write an object out (tex:753-755, and explicitly at
+-- tex:1931-1933), which admits objects of exponential magnitude, so these are strictly
+-- narrower than the paper's class and are charged at each row that takes one rather than
+-- once at `def:ec` — see `scripts/coverage-classification.md`'s disclosure section.  The
+-- same holds of `PolyRatCodes`, `PolySentenceCodes` and `PolyThresholdCode(Seq)`, and of
+-- the structures carrying them as fields (`PolyPositiveWidths`, `BoundedComputation`,
+-- `SemidecidableComputation`, `IntrospectionIntervalQuote`, `DUSApproximationPresentation`,
+-- `DUSThresholdEmission`, `PrefixMachinePresentation`, `SelfTrustQuote`,
+-- `ParadoxResistanceQuote`, `PatientSettlementClock`) — which is why several of those rows
+-- are `qualified` on a hypothesis invisible in the elaborated signature.
 #assert_fields PolyMachineCodes
   code code_poly
 #assert_fields PolyNatCodes
