@@ -57,8 +57,10 @@ kernel-checked and axiom-clean; `not_overgeneral_ifp_ofTheory` is the same resul
 Σ₁-sound Δ₁ theory extending `𝗜𝚺₁`. The abstract reduction it rests on,
 `not_overgeneral_ifp_of_advice`, lives in `Properties/FinitePerturbationCounterexample.lean`.
 
-Neither declaration carries a `Paper node:` line: they refute a paper statement rather
-than render one.
+Both closed forms carry `Paper node: \`thm:ifp\``. A refutation belongs to the node it
+refutes: the label records that the declaration is part of this formalization's account of
+that node, not that it repeats the printed statement. `not_overgeneral_ifp` is a canonical
+trust-surface endpoint and is audited exactly like any other.
 
 ### Counterexample mechanism
 
@@ -329,11 +331,7 @@ them only computable, which the printed hypotheses do give. `thm:ref` is therefo
 formalized at the paper's own hypothesis strength over the constructed inductor, and the
 defect above is confined to the printed proof.
 
-One accounting note, recorded so the ledger does not overstate the endpoint's
-requirements: the displayed `lic_introspection_closed`
-(`Construction/Witnesses/QuoteCodeOfMarket.lean`) currently carries `PolyRatCodes a` and
-`PolyRatCodes b` on top of the ℙ-generability it already assumes. Those two hypotheses are
-**stronger than the proof uses** — they are consumed only as `PolyRatCodes.computable`, and
-the same computability is derivable from the endpoint's own `GeneratedRatFeature`
-hypotheses. They should be read as a redundancy in the signature, not as a disclosed
-narrowing of the paper's class.
+`lic_introspection_closed` (`Construction/Witnesses/QuoteCodeOfMarket.lean`) carries
+exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on the interval
+bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
+`GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
