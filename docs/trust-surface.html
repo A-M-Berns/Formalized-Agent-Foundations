@@ -304,7 +304,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 <a class="nav-item" href="#thm-loops" data-node="thm-loops"><span class="dot exact"></span>thm:loops</a>
 <a class="nav-item" href="#thm-dontwait" data-node="thm-dontwait"><span class="dot strengthened"></span>thm:dontwait</a>
 <div class="nav-sec">Introspection</div>
-<a class="nav-item" href="#thm-ref" data-node="thm-ref"><span class="dot qualified"></span>thm:ref</a>
+<a class="nav-item" href="#thm-ref" data-node="thm-ref"><span class="dot exact"></span>thm:ref</a>
 <a class="nav-item" href="#thm-lp" data-node="thm-lp"><span class="dot strengthened"></span>thm:lp</a>
 <a class="nav-item" href="#thm-epr" data-node="thm-epr"><span class="dot exact"></span>thm:epr</a>
 <a class="nav-item" href="#thm-er" data-node="thm-er"><span class="dot exact"></span>thm:er</a>
@@ -712,7 +712,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
 
     <h3>Status — is the paper's printed statement right, and do we prove it?</h3>
     <div class="legend">
-      <span class="tier exact">exact</span><span class="count">50 — the printed statement, proved, on the paper's own hypotheses</span>
+      <span class="tier exact">exact</span><span class="count">51 — the printed statement, proved, on the paper's own hypotheses</span>
     </div>
     <div class="legend">
       <span class="tier strengthened">strengthened</span><span class="count">8 — the printed statement and more: a weaker hypothesis, a stronger conclusion, or a datum the paper assumes and we construct</span>
@@ -724,7 +724,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
       <span class="tier refuted">refuted</span><span class="count">1 — the printed statement is <b>false</b>, and its negation is proved here</span>
     </div>
     <div class="legend">
-      <span class="tier qualified">qualified</span><span class="count">5 — falls short: a restricted class, a retained interface, or the intended subject matter abstracted to a placeholder; the note says which</span>
+      <span class="tier qualified">qualified</span><span class="count">4 — falls short: a restricted class, a retained interface, or the intended subject matter abstracted to a placeholder; the note says which</span>
     </div>
     <p>The secondary <span class="axis">universal</span> / <span class="axis">instantiated</span>
     badge says <em>which inductors</em> — every one, or the constructed LIA with its obligations
@@ -2644,7 +2644,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <label class="check"><input type="checkbox" data-node="thm-ref" aria-label="mark thm:ref read"></label>
     <span class="node-label">thm:ref</span>
     <span class="node-title">Introspection</span>
-    <span class="tier qualified">qualified</span><span class="axis">instantiated</span>
+    <span class="tier exact">exact</span><span class="axis">instantiated</span>
   </header>
   <div class="panes">
     <section class="paper-pane">
@@ -2659,9 +2659,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     </section>
     <section class="lean-pane">
       <div class="pane-tag">Lean · statement only (proof body is kernel-checked)</div>
-      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_introspection_closed</code><span class="ep-role">(quote constructed; adds <code>PolyRatCodes</code> on <code>ā</code>, <code>b̄</code>)</span><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_introspection_closed
+      <div class="ep-nav"><button class="ep-prev" aria-label="previous endpoint">&#8249;</button><span class="ep-count" data-total="2">1 / 2</span><button class="ep-next" aria-label="next endpoint">&#8250;</button><span class="ep-nav-hint">inventory endpoints for this node</span></div><div class="ep-slide"><div class="ep-head"><code class="ep-name">lic_introspection_closed</code><span class="ep-role">(quote constructed from the market program)</span><span class="ep-file">LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean</span></div><pre class="sig">theorem lic_introspection_closed
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
-    (ha : PolyRatCodes a) (hb : PolyRatCodes b)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -2675,11 +2674,11 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
         (((a n : ℝ) + δ n &lt; liaHistory (theoremDP T) n (φ n) ∧
             liaHistory (theoremDP T) n (φ n) &lt; (b n : ℝ) - δ n) →
           1 - (ε n : ℝ) &lt; liaHistory (theoremDP T) n
-            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n)) ∧
+            ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n)) ∧
         ((¬ ((a n : ℝ) - δ n &lt; liaHistory (theoremDP T) n (φ n) ∧
               liaHistory (theoremDP T) n (φ n) &lt; (b n : ℝ) + δ n)) →
           liaHistory (theoremDP T) n
-            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) &lt; (ε n : ℝ))</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_introspection</code><span class="ep-role">(no code restriction; quote as interface)</span><span class="ep-file">LogicalInduction/Properties/Introspection.lean</span></div><pre class="sig">theorem lic_introspection
+            ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n) &lt; (ε n : ℝ))</pre></div><div class="ep-slide hidden"><div class="ep-head"><code class="ep-name">lic_introspection</code><span class="ep-role">(quote as caller interface)</span><span class="ep-file">LogicalInduction/Properties/Introspection.lean</span></div><pre class="sig">theorem lic_introspection
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ)
     (q : IntrospectionIntervalQuote P DP φ a b δ)
@@ -2697,7 +2696,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     </section>
   </div>
   <div class="reading-note"><span class="reading-tag">How the panes line up</span> The interval sentence ⌜aₙ &lt; ℙₙ(φₙ) &lt; bₙ⌝ is constructed from the market&#x27;s exact rational quote; a,b enter as generated features (the paper&#x27;s ℙ‾-generable bounds), δ as the e.c. vanishing width; ε‾ is the paper&#x27;s ‘accuracy’ sequence, existentially produced. <strong>A restriction the paper does not state:</strong> the closed endpoint additionally requires <code>PolyRatCodes a</code> and <code>PolyRatCodes b</code>, and a ℙ-generable probability sequence is in general <em>not</em> an e.c. rational sequence — its values are market prices. It is, though, what the paper&#x27;s own proof needs: <code>app:ref</code> forms ψₙ containing the numerals aₙ, bₙ and applies <code>thm:affprovind</code> to an affine combination over ⟨ψ⟩, which requires ⟨ψ⟩ to be e.c. The universal <code>lic_introspection</code> carries no such restriction and is shown second, taking the interval quote as a caller interface instead.</div>
-  <footer class="audit-note"><span class="audit-tag">What to check</span> unconditional over <code>LIA</code> at <code>RpnSentenceCodes</code>, with the interval quote constructed from the market&#x27;s exact rational quote. <strong>The restriction, which the previous prose omitted:</strong> over and above the paper&#x27;s ℙ-generability of <code>ā</code> and <code>b̄</code> (tex:1969-1971), <code>lic_introspection_closed</code> requires <code>ha : PolyRatCodes a</code> and <code>hb : PolyRatCodes b</code>, consumed by <code>theoremIntervalQuoteCode</code>. A ℙ-generable sequence of probabilities is in general <strong>not</strong> an efficiently computable rational sequence — its values are market prices — so this is a genuine narrowing of the paper&#x27;s class. It is, however, a narrowing the paper&#x27;s <em>own proof</em> needs and does not state: <code>app:ref</code> forms <code>ψₙ := ⌜⌜aₙ⌝ &lt; ⌜ℙ⌝_⌜n⌝(⌜φₙ⌝) &lt; ⌜bₙ⌝⌝</code> and applies <code>thm:affprovind</code> to an affine combination over <code>⟨ψ⟩</code>, which requires <code>⟨ψ⟩</code> to be e.c., which requires the numerals <code>aₙ</code>, <code>bₙ</code> to be efficiently writable. We judge the printed hypothesis set incomplete rather than the Lean statement wrong, and disclose rather than assert an erratum. The universal <code>lic_introspection</code> carries no such restriction and is shown second; it takes the interval quote as a caller interface instead</footer>
+  <footer class="audit-note"><span class="audit-tag">What to check</span> unconditional over <code>LIA</code> at <code>RpnSentenceCodes</code>, with the interval quote constructed from the market&#x27;s exact rational quote. Its hypotheses are exactly the paper&#x27;s (tex:1969-1981): ℙ-generable interval bounds via their market-generated feature presentations, an e.c. sentence sequence, the vanishing width, and the range side conditions. Two <code>PolyRatCodes</code> hypotheses formerly stood on <code>ā</code> and <code>b̄</code>; they were <strong>redundant</strong> — consumed only as <code>.computable</code>, which <code>PGenerableRat.computable</code> supplies from the <code>MarketComputation</code> already in scope, the route <code>thm:st</code> already took — and have been removed. <strong>PE6</strong> records the separate fact that the paper&#x27;s <em>own proof</em> needs more than the paper states: <code>app:ref</code> applies <code>thm:affprovind</code> to a combination over sentences containing <code>⌜aₙ⌝</code>, <code>⌜bₙ⌝</code>, which requires those numerals efficiently writable, whereas ℙ-generability gives a feature whose value at the market is the bound. This formalization escapes that gap rather than inheriting it: the quoted sentence is a code-indexed atom (<code>dd:quote-code</code>), so its emission cost does not depend on the bounds</footer>
 </article>
 
 <article class="node" id="thm-lp">
@@ -9444,4 +9443,4 @@ Corollary 5.10 gives us a simple characterization of the structure of the polar.
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=87 factored-space-models=50 condensation=39 -->
 
-<!-- trust-surface-sources: f8ebef4728ad3a14bdf5ca7d31f4cad1f536b6c0be8e28d882eee55b6e2a3e4c -->
+<!-- trust-surface-sources: 4e744bd429c74fa6f47a2985b33eef45b6c0d674fd8982ec7682d5cf3a3c89c9 -->

@@ -902,12 +902,29 @@ set_option maxHeartbeats 1000000 in
 /-- The interval quote code for `thm:ref`: one Boolean decider names the fact
 `a n < Pₙ(φ n) < b n`, computed from the market program's exact rational quote.  This is
 the introspection target sentence, constructed with no caller-supplied truth relation.
+
+**The bounds are only ℙ-generable** (`def:ece`), exactly as the paper states them.  What the
+decider needs of `a` and `b` is *computability*, not efficiency, and computability is
+recovered from the feature presentation itself: `PGenerableRat.computable` dovetails the
+feature's evaluation against the market's own quote program.  This is the same route
+`theoremConfidenceQuoteCode` takes for `thm:st`.  Nothing here asks for an efficiently
+writable numeral, because the quoted sentence is a *code-indexed atom* (`dd:quote-code`)
+rather than a formula spelling `a n` and `b n` out — see the `thm:ref` entry of
+`notes/paper-errata.md` for why the paper's own proof does need the stronger property.
 Paper node: `thm:ref` -/
 noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
-    (a b : ℕ → ℚ) (ha : PolyRatCodes a) (hb : PolyRatCodes b) :
+    (a b : ℕ → ℚ)
+    (lowerFeature : ℕ → EF)
+    (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
+    (upperFeature : ℕ → EF)
+    (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature) :
     BooleanQuoteCode T (fun n ↦
       (a n : ℝ) < liaHistory (theoremDP T) n (φ n) ∧
         liaHistory (theoremDP T) n (φ n) < (b n : ℝ)) := by
+  have ha : Computable a :=
+    PGenerableRat.computable (theoremMarketComputation T) ⟨lowerFeature, hlower⟩
+  have hb : Computable b :=
+    PGenerableRat.computable (theoremMarketComputation T) ⟨upperFeature, hupper⟩
   refine BooleanQuoteCode.ofComputable ?_
   rw [ComputablePred.computable_iff]
   refine ⟨fun n =>
@@ -921,10 +938,10 @@ noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSen
     have hleB : Primrec fun z : ℚ × ℚ => decide (z.1 ≤ z.2) := ratLE_prim.decide
     have h1 : Computable fun n => decide
         ((theoremMarketComputation T).quote n (Encodable.encode (φ n)) ≤ a n) :=
-      (hleB.to_comp.comp (hq.pair ha.computable) : _)
+      (hleB.to_comp.comp (hq.pair ha) : _)
     have h2 : Computable fun n => decide
         (b n ≤ (theoremMarketComputation T).quote n (Encodable.encode (φ n))) :=
-      (hleB.to_comp.comp (hb.computable.pair hq) : _)
+      (hleB.to_comp.comp (hb.pair hq) : _)
     have hn1 := (Primrec.dom_bool Bool.not).to_comp.comp h1
     have hn2 := (Primrec.dom_bool Bool.not).to_comp.comp h2
     exact ((Primrec.dom_bool₂ Bool.and).to_comp.comp hn1 hn2 : _)
@@ -934,13 +951,14 @@ noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSen
       decide_eq_false_iff_not, not_le, Rat.cast_lt]
 
 /-- **`thm:ref` (introspection), closed form over the constructed `LIA`** — the interval
-quote is constructed from the market program; the remaining hypotheses are the paper's
-own (`a`/`b` e.c. interval bounds and their market-generated feature presentations, the
-vanishing width, and the range side conditions).
+quote is constructed from the market program; the remaining hypotheses are exactly the
+paper's own — the interval bounds' market-generated feature presentations (`def:ece`
+ℙ-generability, *not* efficient writability), the vanishing width, and the range side
+conditions.  See `notes/paper-errata.md` PE6 for why the paper's own proof needs more than
+it states, and why this route does not.
 Paper node: `thm:ref` -/
 theorem lic_introspection_closed
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
-    (ha : PolyRatCodes a) (hb : PolyRatCodes b)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -954,15 +972,15 @@ theorem lic_introspection_closed
         (((a n : ℝ) + δ n < liaHistory (theoremDP T) n (φ n) ∧
             liaHistory (theoremDP T) n (φ n) < (b n : ℝ) - δ n) →
           1 - (ε n : ℝ) < liaHistory (theoremDP T) n
-            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n)) ∧
+            ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n)) ∧
         ((¬ ((a n : ℝ) - δ n < liaHistory (theoremDP T) n (φ n) ∧
               liaHistory (theoremDP T) n (φ n) < (b n : ℝ) + δ n)) →
           liaHistory (theoremDP T) n
-            ((theoremIntervalQuoteCode T φ hφ a b ha hb).sentence n) < (ε n : ℝ)) :=
+            ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
     hφ a b δ lowerFeature hlower
     upperFeature hupper hδ hδpos hδzero hab
-    (theoremIntervalQuoteCode T φ hφ a b ha hb)
+    (theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper)
 
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
