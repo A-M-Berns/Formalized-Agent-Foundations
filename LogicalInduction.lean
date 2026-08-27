@@ -2,8 +2,8 @@
 # Logical Induction (Garrabrant et al., arXiv:1609.03543) — Lean 4 formalization
 
 The root roll-up: importing this file brings in the whole formalization. Start here, then
-read `LogicalInduction/README.md` for what is proved, the two declared modeling
-boundaries, and the faithfulness record; `AxiomAudit.lean` is the checked inventory of
+read `LogicalInduction/README.md` for what is proved, the declared modeling boundary,
+and the faithfulness record; `AxiomAudit.lean` is the checked inventory of
 every public endpoint. The library follows the paper's own sectioning — `Framework` is
 §2–3 (sentences, markets, features, traders, exploitation, the criterion, efficient
 computability, expectations, and the shared asymptotic vocabulary), `Properties` is the

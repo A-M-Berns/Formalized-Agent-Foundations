@@ -18,32 +18,39 @@ finite-perturbation boundaries.
 
 The existence theorem is proved in the paper's full sense, and every named theorem and
 lemma of the paper — 53 of them — is formalized, named after its paper label, and
-build-audited. How strong each one is:
+build-audited. How strong each one is, over those 53 theorem and lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **paper strength** | 51 | proved exactly as the paper states it — for every logical inductor, on the paper's own hypotheses |
-| **qualified** | 2 | proved with an explicitly named representation interface or class restriction retained |
+| **exact** | 39 | proved as the paper states it, on the paper's own hypotheses |
+| **strengthened** | 8 | the Lean statement is stronger than the printed one |
+| **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
+| **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
+| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
 
-Each qualified node says in one line which premise it retains and why. The per-node
-table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
+The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
+not mixed into the table above.
+
+Each non-exact node says in one line what it retains, strengthens, corrects or refutes. The
+per-node table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
 machine-checked against the endpoint inventory so a node cannot ship without a strength
-call. A browsable guide to the whole trust surface —
-every paper statement rendered beside the Lean endpoint that carries it — is generated
-from the repository at [`docs/trust-surface.html`](../docs/trust-surface.html)
-(`python3 scripts/gen-trust-surface.py` to regenerate). That guide covers **all three**
-formalized papers, one section each; only this paper's section carries per-node tiers,
-reading notes and audit notes, because only this paper has the strength classification
-they are read from. The others are correspondence views, and say so.
+call, and so that a name shown on the trust surface must resolve, carry the node it is
+listed under, and be axiom-checked. A browsable guide — every paper statement rendered
+beside the Lean endpoint that carries it — is generated from the repository at
+[`docs/trust-surface.html`](../docs/trust-surface.html) (`python3 scripts/gen-trust-surface.py`
+to regenerate). That guide covers every formalized paper, one section each; only this
+paper's section carries per-node tiers, reading notes and audit notes, because only this
+paper has the strength classification they are read from. The others are correspondence
+views, and say so.
 
-Of the 51, **20 are also instantiated over the concrete inductor constructed here** at
-full paper strength, so they hold of a specific algorithm rather than a hypothetical
-one. The paper states no such theorems; that is a strengthening, not a different degree
-of faithfulness.
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
+them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
+than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
+different degree of faithfulness.
 
 **Two caveats on those counts, because both are easy to miss.** First, every tier is
 relative to the disclosed model — propositional sentences and fuel-clocked efficiency
-(see *The two modeling boundaries*); "paper strength" means the paper's statement is
+(see *The modeling boundary*); "paper strength" means the paper's statement is
 reached *within that model*, not that the model equivalence is proved. Second, the computation
 family (`thm:halts`, `thm:loops`, `thm:pac`, `thm:pazfc`, `thm:dontwait`) still meters its
 machine and input sequences by the **whole-value** class `PolyMachineCodes`/`PolyNatCodes`
@@ -413,7 +420,7 @@ records each node's strength, `AxiomAudit.lean` asserts axiom cleanliness at eve
 endpoint, and `docs/trust-surface.html` renders the node-by-node correspondence for a human
 read-through.
 
-The formalization surfaced five defects in the paper itself, recorded with their repairs in
+The formalization surfaced six defects in the paper itself, recorded with their repairs in
 [`notes/paper-errata.md`](notes/paper-errata.md). One of them is not a repairable slip: the
 printed closure under finite perturbations is **false**, and is refuted here.
 

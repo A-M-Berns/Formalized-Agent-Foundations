@@ -99,7 +99,7 @@ rather than finite range — the generality *Condensation* is stated at
 
 Along the way the project has also produced some free-standing artifacts: a from-scratch
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized
-sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
+sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and six recorded
 errata in the *Logical Induction* paper itself
 ([`LogicalInduction/notes/paper-errata.md`](LogicalInduction/notes/paper-errata.md)), and a
 further set in *Cartesian Frames*

@@ -116,9 +116,10 @@ consolidation candidate, recorded here so it is not mistaken for load-bearing.
 
 ## Intentional deviations from the paper
 
-The standing modeling choices are the `dd:*` labels in `LogicalInduction.lean`, with the
-type-`(c)` substitutions and their justifications in `LogicalInduction/README.md`. Entries
-there are not audit findings unless the justification itself is wrong.
+The standing modeling choices are the `dd:*` labels in `LogicalInduction.lean`. Which
+boundary, if any, a given paper node carries is recorded in that node's own row in
+`scripts/coverage-classification.md`; `LogicalInduction/README.md` explains the categories.
+Entries there are not audit findings unless the justification itself is wrong.
 
 ## Paper errata
 

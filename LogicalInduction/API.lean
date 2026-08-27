@@ -142,8 +142,13 @@ when the whole development is wanted.
   about the market `liaHistory (theoremDP T)`, the exact one about
   `liaHistory (canonicalCCEEDP T)` over a renamed and registry-closed process.  Choose by
   which market the client needs to reason about, not by which has less slack.
-* **The propositional substrate.**  LUVs are presented by rational threshold families
-  over a propositional language, not by first-order terms.
+* **The LUV carrier is a threshold presentation.**  The `LUV` objects a client meets are
+  rational threshold families over the propositional language, not first-order terms. This
+  is a *representation interface*, not a modeling substitution: the paper's literal
+  first-order object exists as `PaperLUV` — an actual one-variable arithmetic formula
+  carrying object-level proofs — and is the canonical endpoint for `def:luv`. It compiles
+  into the carrier, so results stated against the carrier apply to more families than the
+  paper's, `PaperLUV` being what shows the paper's own are among them.
 
 `LogicalInduction/README.md` is the authoritative disclosure record and `AxiomAudit.lean`
 the checked endpoint inventory; the `dd:fuel` model card in `Framework/Computable.lean`
