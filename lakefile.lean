@@ -80,6 +80,24 @@ lean_lib MachineExec where
 lean_lib Scratchpad where
   srcDir := "."
 
+-- Palomar registry entries: one `Palomar.<Entry>.Challenge` / `.Solution` pair per
+-- planned registry submission, plus a never-submitted `Palomar.SmokeTest` pair that
+-- validates the Comparator harness. See `Palomar/README.md` for the layout, the
+-- module-name scheme, and the exact Comparator invocation.
+--
+-- Deliberately **not** a `@[default_target]`: these are stubs, and a stub that broke
+-- `lake build` would make every unrelated CI run red. Build them explicitly —
+-- `lake build Palomar` for all of them, or `lake build Palomar.SmokeTest.Solution`
+-- for one module. Comparator needs the oleans present, so a real run is
+-- `lake build Palomar.<Entry>.Challenge Palomar.<Entry>.Solution` first.
+--
+-- A challenge module's import closure is restricted to Lean core / Mathlib / Tau Ceti
+-- / CSLib by Palomar policy; `scripts/check_palomar_wiring.py` is what enforces it,
+-- not this stanza.
+lean_lib Palomar where
+  srcDir := "."
+  globs := #[.submodules `Palomar]
+
 -- Upstream Foundation, pinned by commit. The Matrix-rename patch this project once
 -- carried on a fork (PR #835: `vecMap`/`vecForall_iff`/`vecExists_iff`, avoiding Mathlib
 -- name clashes that blocked co-importing matrix/analysis theory) is included upstream
