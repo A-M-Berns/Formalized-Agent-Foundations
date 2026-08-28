@@ -4,6 +4,13 @@ on:
   push:
     branches: [main, logical-induction, cartesian-frames-formalization, finite-factored-sets, factored-space-models, condensation]
   pull_request:
+  # Nightly, so `main` is re-verified against a fresh toolchain download and a
+  # cold-ish cache even on days nothing lands. The two second-opinion gates at the
+  # end of the build job run on this and on push, never on a pull request; see the
+  # comment above them.
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -29,6 +36,13 @@ jobs:
       # reader's own tests gate the run before the checkers that trust it.
       - name: Test paper-node readers
         run: python3 scripts/test_paper_nodes.py
+
+      # Blocking, and it runs on pull requests too even though the gates it guards
+      # do not: it needs neither toolchain nor network, and its scope assertion is
+      # what stops a new `lean_lib` from arriving unclassified — which is a change
+      # a pull request makes and a nightly run would only notice afterwards.
+      - name: Lean gates self-test and scope check
+        run: python3 scripts/lean_gates.py --self-test
 
       # Blocking: the theorem/lemma sweep has landed and the linter is clean
       # (CLAUDE.md "Working conventions"). Every `theorem` in LogicalInduction/ must
@@ -126,3 +140,39 @@ jobs:
       # writing the same checkout concurrently. Re-run rather than editing the ledger.
       - name: Check Condensation sorry ledger (post-build; reads the built oleans)
         run: python3 scripts/check_sorry_ledger.py
+
+      # ---------------------------------------------------------------------
+      # Two second opinions on the compiled environment. Not on pull requests:
+      # replay's wall time does not belong in the review path, and a pull
+      # request is already protected by the build, the node checkers, the
+      # enumerated inventory in AxiomAudit.lean and the sorry ledger. These run
+      # on push to a listed branch, on the nightly schedule, and on manual
+      # dispatch.
+      #
+      # WHY BOTH, AND WHY BESIDE PALOMAR. Palomar runs Comparator + NanoDa — an
+      # independent Rust type checker — over *registration commits*: the deep
+      # verification of a frozen snapshot. These gates are the everyday coverage
+      # of `main` BETWEEN those freezes. Neither replaces the other. Palomar
+      # answers "is this snapshot sound, by an independent implementation";
+      # these answer "did anything land on main today that the kernel would not
+      # accept, or that carries an axiom nobody declared".
+      #
+      # WHY BOTH OF THESE, given AxiomAudit.lean. The inventory reaches the
+      # names someone typed into `#assert_axioms_clean`; the blanket audit
+      # reaches every declaration under each audited root, and sees what no grep
+      # can — `native_decide`, whose axiom is minted during compilation and
+      # appears in no source file. And every axiom check, this one included,
+      # *reads* the environment `lake build` produced; replay re-derives it, so
+      # a declaration that entered without the kernel checking it is caught
+      # there and nowhere else. Scope and exclusions: scripts/lean_gates.py.
+      - name: Kernel replay (post-build; replays the built oleans)
+        if: github.event_name != 'pull_request'
+        env:
+          # The default of one worker per core is what makes a Mathlib-sized
+          # replay swap on a two-core runner.
+          LEAN_NUM_THREADS: 4
+        run: python3 scripts/lean_gates.py --replay
+
+      - name: Blanket axiom audit (post-build; reads the built oleans)
+        if: github.event_name != 'pull_request'
+        run: python3 scripts/lean_gates.py --audit

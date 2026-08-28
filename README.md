@@ -121,7 +121,24 @@ python3 scripts/check_endpoint_coverage.py   # every annotated label has an inve
 python3 scripts/lint_paper_labels.py         # every paper-facing theorem carries a label
 python3 scripts/check_trust_surface.py       # docs/trust-surface.html is not stale
 python3 scripts/check_paper_wiring.py        # every registered paper is fully wired up
+python3 scripts/lean_gates.py --self-test    # the two gates below, and their scope classification
 ```
+
+Two further gates read the *compiled* environment and so need a build. They do not run on
+pull requests — they run on push to a listed branch and on a nightly schedule:
+
+```sh
+python3 scripts/lean_gates.py --replay   # replay every built module through the kernel
+python3 scripts/lean_gates.py --audit    # every declaration, against the standard three axioms
+```
+
+They are second opinions, not replacements. `AxiomAudit.lean` is an *enumerated* inventory
+and says so; the blanket audit asks the same question of every declaration under each
+audited root, and catches what no `grep` can — `native_decide` mints its axiom during
+compilation and appears in no source file. And every axiom check reads the environment
+`lake build` produced; kernel replay re-derives it, so a declaration that entered the
+environment without the kernel checking it is caught there and nowhere else. Which
+libraries are covered, which are not, and why, is in `scripts/lean_gates.py`.
 
 Budget a few hours for the first build: Mathlib arrives prebuilt from the cache, but the
 Foundation dependency (~580 modules) and this repo (~110 modules, some with heavy
