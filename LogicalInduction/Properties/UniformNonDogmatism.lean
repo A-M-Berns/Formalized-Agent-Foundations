@@ -344,19 +344,19 @@ lemma obuBuySig_spliceStream_comp
     (hj : PolyFueled cj jf)
     (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
     (hd : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (1 / δf m))) :
-    RpnSpliceStream (fun m ↦
+    BigSpliceStream (fun m ↦
       (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) :=
-  RpnSpliceStream.serialize_clip01 (RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_add (RpnSpliceStream.serialize_const_comp ha)
-      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1))
-        (RpnSpliceStream.serialize_price hφ hj hj)))
-    (RpnSpliceStream.serialize_const_comp hd))
+  BigSpliceStream.serialize_clip01 (BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_add (BigSpliceStream.serialize_const_comp ha)
+      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1))
+        (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) hj hj)))
+    (BigSpliceStream.serialize_const_comp hd))
 
 /-- Spliced arm-update block. -/
 lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
-    RpnSpliceStream
+    BigSpliceStream
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
-  have hbuy : RpnSpliceStream (fun x ↦
+  have hbuy : BigSpliceStream (fun x ↦
       (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
@@ -367,25 +367,25 @@ lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes �
           (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
         (encode_thrRecip_polyFueled
           (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
-  exact (RpnSpliceStream.serialize_oneMinus hbuy).append
-    (RpnSpliceStream.tag 3 (by norm_num))
+  exact (BigSpliceStream.serialize_oneMinus hbuy).append
+    (BigSpliceStream.tag 3 (by norm_num))
 
 /-- Spliced coefficient chunk (`obuCoef` + the ladder `add` tag): the arm blocks are
 variable-length once sentence slots carry blocks, so this uses `concatVar` rather than the
 fixed-width `blocks` combinator. -/
 lemma obuChunkSeg_spliceStream
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
-    RpnSpliceStream (fun m ↦
+    BigSpliceStream (fun m ↦
       (obuCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
-  have segA : RpnSpliceStream (fun m ↦
+  have segA : BigSpliceStream (fun m ↦
       (EF.const (((m.unpair.2 + 1 : ℕ) : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
+    BigSpliceStream.serialize_const_comp
       (encode_ratCast_polyFueled PolyFueled.right)
-  have segB : RpnSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
-    RpnSpliceStream.payload 1 (Or.inl rfl)
+  have segB : BigSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
+    BigSpliceStream.payload 1 (Or.inl rfl)
       (PolyFueled.const (Encodable.encode ((1 : ℚ))))
   have segC := (obuArmBlock_spliceStream φ hφ).concatVar PolyFueled.left
-  have segD : RpnSpliceStream (fun m ↦
+  have segD : BigSpliceStream (fun m ↦
       (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
@@ -394,11 +394,11 @@ lemma obuChunkSeg_spliceStream
         PolyFueled.left
         (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
         (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left)
-  have segE : RpnSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
-    ((RpnSpliceStream.tag 3 (by norm_num)).append
-      (RpnSpliceStream.tag 3 (by norm_num))).append
-        (RpnSpliceStream.tag 2 (by norm_num))
-  refine RpnSpliceStream.of_eq
+  have segE : BigSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
+    ((BigSpliceStream.tag 3 (by norm_num)).append
+      (BigSpliceStream.tag 3 (by norm_num))).append
+        (BigSpliceStream.tag 2 (by norm_num))
+  refine BigSpliceStream.of_eq
     ((((segA.append segB).append segC).append segD).append segE) (fun m ↦ ?_)
   rw [serialize_obuCoef, serialize_armChain_obuBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
@@ -409,12 +409,12 @@ Paper node: `def:ec` -/
 lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     EfficientlyComputable (obuTrader φ) := by
   have segChunks := (obuChunkSeg_spliceStream φ hφ).concatVar PolyFueled.id
-  have seg1 : RpnSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
-    RpnSpliceStream.payload 1 (Or.inl rfl)
+  have seg1 : BigSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
+    BigSpliceStream.payload 1 (Or.inl rfl)
       (PolyFueled.const (Encodable.encode ((0 : ℚ))))
-  have seg3 := RpnSpliceStream.tradeSlot hφ PolyFueled.id
-  refine RpnSpliceStream.ec _
-    (RpnSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
+  have seg3 := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.id
+  refine BigSpliceStream.ec _
+    (BigSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
   intro n
   show _ = serializeTrades ((obuTrader φ).strat n).trades
   rw [show ((obuTrader φ).strat n).trades = [(obuLadderEF φ n n, φ n)] from rfl,

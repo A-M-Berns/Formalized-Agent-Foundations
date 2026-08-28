@@ -1168,9 +1168,9 @@ structure PaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] where
   /-- The term count is polynomially computable. -/
   termCount_poly : ∃ c, PolyFueled c termCount
   /-- The constants are polynomially emittable. -/
-  const_poly : RpnSpliceStream (fun n => (const n).serialize)
+  const_poly : BigSpliceStream (fun n => (const n).serialize)
   /-- The coefficients are polynomially emittable. -/
-  coefficient_poly : RpnSpliceStream (fun z => (coefficient z).serialize)
+  coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
   /-- Constants read only prices of days already seen. -/
   const_rank : ∀ n, (const n).rank ≤ n
   /-- Coefficients read only prices of days already seen. -/
@@ -1228,8 +1228,8 @@ def unitFracPaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ �
   const _ := .const 0
   coefficient _ := .const 1
   termCount_poly := ⟨_, PolyFueled.const 1⟩
-  const_poly := RpnSpliceStream.serialize_const 0
-  coefficient_poly := RpnSpliceStream.serialize_const 1
+  const_poly := BigSpliceStream.serialize_const 0
+  coefficient_poly := BigSpliceStream.serialize_const 1
   const_rank n := Nat.zero_le n
   coefficient_rank n _ _ := Nat.zero_le n
   const_closed _ _ _ := by simp

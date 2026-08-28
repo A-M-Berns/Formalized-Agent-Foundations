@@ -631,7 +631,7 @@ theorem lic_introspection_ofCode_unconditional
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
-    (hδ : PolyRatCodes δ)
+    (hδ : DigitRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -657,7 +657,7 @@ constructed internally.
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
+    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     (fun n => liaHistory (theoremDP T) n
@@ -732,7 +732,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF)
     (hp : GeneratedRatFeature (liaHistory (theoremDP T)) p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)

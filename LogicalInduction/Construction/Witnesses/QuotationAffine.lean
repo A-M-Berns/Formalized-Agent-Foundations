@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
+import LogicalInduction.Framework.WriteOut
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Properties.Introspection
 import Foundation.FirstOrder.Bootstrapping.FixedPoint
@@ -354,8 +355,8 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
     sentence := fun z ↦
       (X z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
     termCount_poly := ⟨_, PolyFueled.id.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const_comp
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
     sentence_poly := hsentence.of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
@@ -446,8 +447,8 @@ noncomputable def numericQuoteAffine_polySequence
     sentence := base.sentence
     termCount_poly := base.termCount_poly
     const_poly := hH.polySeg
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
       base.coefficient_poly
     sentence_poly := base.sentence_poly
     terms_eq := by
@@ -528,7 +529,7 @@ lemma currentPriceFeature_generated (φ : ℕ → Sentence)
     (hφ : RpnSentenceCodes φ) :
     PGenerableWeighting (currentPriceFeature φ) := by
   exact {
-    polySeg := (RpnSpliceStream.serialize_price hφ PolyFueled.id
+    polySeg := (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.id
       PolyFueled.id).of_eq (fun n ↦ by simp [currentPriceFeature])
     rank_le := by intro n; simp [currentPriceFeature]
     closed := by intro n ρ V; simp [currentPriceFeature]
@@ -579,7 +580,7 @@ lemma currentExpectationFeature_generated (X : ℕ → LUV)
       (Nat.Partrec.Code.id.pair Nat.Partrec.Code.id)
       (fun n : ℕ ↦ Nat.pair n n) := PolyFueled.id.pair PolyFueled.id
   exact {
-    polySeg := RpnSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp hdiag)
+    polySeg := BigSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp hdiag)
       (fun n ↦ by simp [currentExpectationFeature])
     rank_le := by
       intro n
@@ -696,10 +697,10 @@ noncomputable def gatedComplementAffine_polySequence
     coefficient := fun z ↦ EF.mul (EF.const (-scale)) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const scale) hH.polySeg
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-scale))
+    const_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const scale) hH.polySeg
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-scale))
       (hH.polySeg.comp PolyFueled.left)
     sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
@@ -735,9 +736,9 @@ noncomputable def gatedAffirmativeAffine_polySequence
     coefficient := fun z ↦ EF.mul (EF.const scale) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const scale)
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const scale)
       (hH.polySeg.comp PolyFueled.left)
     sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
@@ -838,7 +839,7 @@ namespace PGenerableWeighting
 lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.mul (A n) (B n)) where
-  polySeg := RpnSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -851,7 +852,7 @@ lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
 lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.add (A n) (B n)) where
-  polySeg := RpnSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -866,7 +867,7 @@ end PGenerableWeighting
 lemma GeneratedRatFeature.toWeighting
     {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
     (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
-  polySeg := h.polyTok
+  polySeg := BigSpliceStream.ofRpnSpliceStream h.polyTok
   rank_le := h.rank_le
   closed := h.closed
 
@@ -911,16 +912,16 @@ def ctsIndFeature (δ : ℕ → ℚ) (x y : ℕ → EF) (n : ℕ) : EF :=
     (EF.const (1 / δ n)))
 
 lemma ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (hx : PGenerableWeighting x) (hy : PGenerableWeighting y) :
     PGenerableWeighting (ctsIndFeature δ x y) := by
-  have hinv : RpnSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
-    RpnSpliceStream.serialize_const_comp hδinv
-  have hnegY := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const (-1)) hy.polySeg
+  have hinv : BigSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
+    BigSpliceStream.serialize_const_write hδinv.toBigDigits
+  have hnegY := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const (-1)) hy.polySeg
   exact {
-    polySeg := RpnSpliceStream.serialize_clip01
-      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_add hx.polySeg hnegY) hinv)
+    polySeg := BigSpliceStream.serialize_clip01
+      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_add hx.polySeg hnegY) hinv)
     rank_le := by
       intro n
       simp only [ctsIndFeature, clip01_rank, EF.rank]
@@ -1179,7 +1180,7 @@ noncomputable def AffineCombination.PolySequence.add
   have hqueryB : PolyFueled _ (fun z : ℕ ↦
       Nat.pair z.unpair.1 (z.unpair.2 - hA.termCount z.unpair.1)) :=
     hn.pair hoffset
-  have hcoeff := RpnSpliceStream.ifZero hA.coefficient_poly
+  have hcoeff := BigSpliceStream.ifZero hA.coefficient_poly
     (hB.coefficient_poly.comp hqueryB) htest
   have hsentence : RpnSentenceCodes (fun z ↦
       if z.unpair.2 < hA.termCount z.unpair.1 then hA.sentence z
@@ -1204,8 +1205,8 @@ noncomputable def AffineCombination.PolySequence.add
         (z.unpair.2 - hA.termCount z.unpair.1))
     termCount_poly := ⟨cadd.comp (cA.pair cB),
       (hadd.comp (hcA.pair hcB)).of_eq (fun n ↦ by simp)⟩
-    const_poly := RpnSpliceStream.serialize_add hA.const_poly hB.const_poly
-    coefficient_poly := RpnSpliceStream.of_eq hcoeff (fun z ↦ by
+    const_poly := BigSpliceStream.serialize_add hA.const_poly hB.const_poly
+    coefficient_poly := BigSpliceStream.of_eq hcoeff (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos hjlt, if_pos (by omega)]
       · rw [if_neg hjlt, if_neg (by omega)])
@@ -1258,8 +1259,8 @@ noncomputable def AffineCombination.PolySequence.scaleFeature
   coefficient := fun z ↦ EF.mul (W z.unpair.1) (hA.coefficient z)
   sentence := hA.sentence
   termCount_poly := hA.termCount_poly
-  const_poly := RpnSpliceStream.serialize_mul hW.polySeg hA.const_poly
-  coefficient_poly := RpnSpliceStream.serialize_mul
+  const_poly := BigSpliceStream.serialize_mul hW.polySeg hA.const_poly
+  coefficient_poly := BigSpliceStream.serialize_mul
     (hW.polySeg.comp PolyFueled.left) hA.coefficient_poly
   sentence_poly := hA.sentence_poly
   terms_eq := by
@@ -1495,7 +1496,7 @@ the flat term index stays a plain `range` and the block/offset inverse is divisi
 remainder rather than an inverse prefix-sum. -/
 noncomputable def PolySequence.blockSum
     {Bs : ℕ → AffineCombination} (hB : PolySequence Bs)
-    {coeff : ℕ → EF} (hcoeff : RpnSpliceStream fun z => (coeff z).serialize)
+    {coeff : ℕ → EF} (hcoeff : BigSpliceStream fun z => (coeff z).serialize)
     (hcoeffClosed : ∀ z ρ V, (coeff z).denoteWith ρ V = (coeff z).denote V)
     (hcoeffRank : ∀ m k, (coeff (Nat.pair m k)).rank ≤ m)
     {cnt width : ℕ → ℕ}
@@ -1560,25 +1561,25 @@ noncomputable def PolySequence.blockSum
       coefficient_rank := ?_
       const_closed := ?_
       coefficient_closed := ?_ }
-  · refine RpnSpliceStream.of_eq
-      ((((hcoeff.append hB.const_poly).append (RpnSpliceStream.tag 3 (by norm_num))).concatVar
-        hcntPF).append ((RpnSpliceStream.serialize_const 0).append
-          (RpnSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
+  · refine BigSpliceStream.of_eq
+      ((((hcoeff.append hB.const_poly).append (BigSpliceStream.tag 3 (by norm_num))).concatVar
+        hcntPF).append ((BigSpliceStream.serialize_const 0).append
+          (BigSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
     rw [AffineCombination.blockSum, foldr_addMul_serialize]
     simp [List.append_assoc]
-  · have hif : RpnSpliceStream (fun z ↦
+  · have hif : BigSpliceStream (fun z ↦
         (if z.unpair.2 % width z.unpair.1 <
             hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
           hB.coefficient (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
             (z.unpair.2 % width z.unpair.1))
         else EF.const 0).serialize) := by
-      refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero (hB.coefficient_poly.comp hq)
-        (RpnSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
+      refine BigSpliceStream.of_eq (BigSpliceStream.ifZero (hB.coefficient_poly.comp hq)
+        (BigSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
       by_cases hlt : z.unpair.2 % width z.unpair.1 <
           hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
       · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
       · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
-    exact RpnSpliceStream.serialize_mul (hcoeff.comp hkey) hif
+    exact BigSpliceStream.serialize_mul (hcoeff.comp hkey) hif
   · refine (RpnSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
@@ -1786,27 +1787,27 @@ lemma selectorFeature_rank {g : ℕ → EF} {m k : ℕ}
 
 /-- Uniform emission of the selector weights. -/
 lemma selectorFeature_polySeg {g : ℕ → EF}
-    (hg : RpnSpliceStream fun z ↦ (g z).serialize) :
-    RpnSpliceStream fun z ↦ (selectorFeature g z).serialize := by
+    (hg : BigSpliceStream fun z ↦ (g z).serialize) :
+    BigSpliceStream fun z ↦ (selectorFeature g z).serialize := by
   have hidx : PolyFueled _ (fun q : ℕ ↦ Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hfactor : RpnSpliceStream fun q ↦
+  have hfactor : BigSpliceStream fun q ↦
       (selectorFactor g (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize := by
-    refine RpnSpliceStream.of_eq
-      ((((RpnSpliceStream.serialize_const 1).append
-        (RpnSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
-        ((RpnSpliceStream.tag 3 (by norm_num)).append
-          (RpnSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
+    refine BigSpliceStream.of_eq
+      ((((BigSpliceStream.serialize_const 1).append
+        (BigSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
+        ((BigSpliceStream.tag 3 (by norm_num)).append
+          (BigSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
     rw [selectorFactor_serialize]
     simp [List.append_assoc]
-  have hprod : RpnSpliceStream fun z ↦ (selectorProd g z).serialize := by
-    refine RpnSpliceStream.of_eq
+  have hprod : BigSpliceStream fun z ↦ (selectorProd g z).serialize := by
+    refine BigSpliceStream.of_eq
       (((hfactor.concatVar PolyFueled.right).append
-        ((RpnSpliceStream.serialize_const 1).append
-          (RpnSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
+        ((BigSpliceStream.serialize_const 1).append
+          (BigSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
     rw [selectorProd, foldr_mul_serialize]
     simp [List.append_assoc]
-  exact RpnSpliceStream.serialize_mul hg hprod
+  exact BigSpliceStream.serialize_mul hg hprod
 
 lemma list_sum_range {M : Type*} [AddCommMonoid M] (n : ℕ) (F : ℕ → M) :
     ((List.range n).map F).sum = ∑ j ∈ Finset.range n, F j := by
@@ -1834,26 +1835,26 @@ state that refinement, and it is exactly what a fibre gate needs in order to be 
 day-`m` affine coefficient.
 Paper node: `def:ece` -/
 structure PairedWeighting (A : ℕ → EF) : Prop where
-  polySeg : RpnSpliceStream fun z ↦ (A z).serialize
+  polySeg : BigSpliceStream fun z ↦ (A z).serialize
   rank_le : ∀ z, (A z).rank ≤ z.unpair.1
   closed : ∀ z ρ V, (A z).denoteWith ρ V = (A z).denote V
 
 namespace PairedWeighting
 
-lemma ofRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) :
+lemma ofRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) :
     PairedWeighting (fun z ↦ EF.const (q z)) where
-  polySeg := RpnSpliceStream.serialize_const_comp hq
+  polySeg := BigSpliceStream.serialize_const_write hq.toBigDigits
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma const (q : ℚ) : PairedWeighting (fun _ ↦ EF.const q) where
-  polySeg := RpnSpliceStream.serialize_const q
+  polySeg := BigSpliceStream.serialize_const q
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.mul (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1862,7 +1863,7 @@ lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.add (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1871,7 +1872,7 @@ lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma max {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.max (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_max hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_max hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1885,7 +1886,7 @@ lemma clip01 {A : ℕ → EF} (hA : PairedWeighting A) :
       (PairedWeighting.const 1)).max ((PairedWeighting.const (-1)).mul hA)))))
   exact h
 
-lemma ctsInd {δ : ℕ → ℚ} (hδinv : PolyRatCodes (fun z ↦ 1 / δ z))
+lemma ctsInd {δ : ℕ → ℚ} (hδinv : DigitRatCodes (fun z ↦ 1 / δ z))
     {x y : ℕ → EF} (hx : PairedWeighting x) (hy : PairedWeighting y) :
     PairedWeighting (ctsIndFeature δ x y) :=
   PairedWeighting.clip01
@@ -2002,8 +2003,8 @@ lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
 lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
     PairedWeighting (matchFeat f a degree) :=
   PairedWeighting.ofRatCodes
-    (ratNatCast_codes_of_polyFueled
-      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree)))
+    (DigitRatCodes.ofPolyRatCodes (ratNatCast_codes_of_polyFueled
+      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree))))
 
 lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History) :
@@ -2043,13 +2044,13 @@ lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 
   simp
 
 lemma gateBase_paired (f : DeferralFunction) (a degree : ℕ) {δ : ℚ}
-    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
+    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
     PairedWeighting (gateBase f a degree δ d) :=
   (matchFeat_paired f a degree).mul
     (PairedWeighting.ctsInd hδinv hd (PairedWeighting.const δ))
 
 lemma gateCoeff_paired (f : DeferralFunction) (a degree : ℕ) {δ C : ℚ}
-    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ))
     (hB : AffineCombination.PolySequence Bs)
     (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
@@ -2101,8 +2102,7 @@ lemma fibre_price_eventually_small
       |(Bs (Nat.pair m k)).price P m| < 2 * (δ : ℝ) := by
   have hCR : (0 : ℝ) < (C : ℝ) := by exact_mod_cast hC
   have hδR : (0 : ℝ) < (δ : ℝ) := by exact_mod_cast hδ
-  have hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ) :=
-    ⟨_, PolyFueled.const (Encodable.encode (1 / δ))⟩
+  have hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ) := DigitRatCodes.const (1 / δ)
   have hnorm : (0 : ℝ) < ((1 / (2 * C) : ℚ) : ℝ) := by
     have : (0 : ℚ) < 1 / (2 * C) := by positivity
     exact_mod_cast this
@@ -2450,27 +2450,27 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
       Nat.pair z.unpair.1 (Nat.pair (high z.unpair.1)
         (z.unpair.2 - low z.unpair.1))) :=
     hn.pair (hhi.pair hoffset')
-  have hInvLow : RpnSpliceStream (fun z ↦
+  have hInvLow : BigSpliceStream (fun z ↦
       (EF.const (1 / (low z.unpair.1 : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
+    BigSpliceStream.serialize_const_comp
       ⟨cinv.comp (clow.comp Nat.Partrec.Code.left),
         hinv.comp (hlow.comp PolyFueled.left)⟩
-  have hInvHighNeg : RpnSpliceStream (fun z ↦
+  have hInvHighNeg : BigSpliceStream (fun z ↦
       (EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    have hinvHigh : RpnSpliceStream (fun z ↦
+    have hinvHigh : BigSpliceStream (fun z ↦
         (EF.const (1 / (high z.unpair.1 : ℚ))).serialize) :=
-      RpnSpliceStream.serialize_const_comp
+      BigSpliceStream.serialize_const_comp
         ⟨cinv.comp (chigh.comp Nat.Partrec.Code.left),
           hinv.comp (hhigh.comp PolyFueled.left)⟩
-    exact RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) hinvHigh
-  have hcoeff : RpnSpliceStream (fun z ↦
+    exact BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) hinvHigh
+  have hcoeff : BigSpliceStream (fun z ↦
       (if z.unpair.2 < low z.unpair.1 then
         EF.const (1 / (low z.unpair.1 : ℚ))
       else EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    refine RpnSpliceStream.of_eq
-      (RpnSpliceStream.ifZero hInvLow hInvHighNeg htest') ?_
+    refine BigSpliceStream.of_eq
+      (BigSpliceStream.ifZero hInvLow hInvHighNeg htest') ?_
     intro z
     by_cases hlt : z.unpair.2 < low z.unpair.1
     · rw [if_pos hlt, if_pos (by omega)]
@@ -2501,7 +2501,7 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))
     termCount_poly := ⟨cadd.comp (clow.pair chigh), hcount'⟩
-    const_poly := RpnSpliceStream.serialize_const 0
+    const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := hcoeff
     sentence_poly := hsentence
     terms_eq := by
@@ -2751,7 +2751,7 @@ noncomputable def featureConstantAffine_polySequence
   sentence := fun _ ↦ ⊥
   termCount_poly := ⟨Nat.Partrec.Code.const 0, PolyFueled.const 0⟩
   const_poly := hH.polySeg
-  coefficient_poly := RpnSpliceStream.serialize_const 0
+  coefficient_poly := BigSpliceStream.serialize_const 0
   sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
     ⟨Nat.Partrec.Code.const (Encodable.encode (⊥ : Sentence)), PolyFueled.const _⟩
   terms_eq := by intro n; simp [featureConstantAffine]
@@ -2845,8 +2845,8 @@ noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
       (X w.unpair.1.unpair.2).gt ((w.unpair.2 : ℚ) /
         ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
     termCount_poly := ⟨_, PolyFueled.left.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const_comp
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp hm.succ_comp⟩
     sentence_poly := hsentence.of_eq (fun w ↦ by simp)
     terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
@@ -2893,7 +2893,7 @@ lemma pairedPriceFeature_denote (φ : ℕ → Sentence) (P : History) (m k : ℕ
 
 lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     PairedWeighting (pairedPriceFeature φ) where
-  polySeg := (RpnSpliceStream.serialize_price hφ PolyFueled.right
+  polySeg := (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.right
     PolyFueled.left).of_eq (fun z ↦ by simp [pairedPriceFeature])
   rank_le := by intro z; simp [pairedPriceFeature]
   closed := by intro z ρ V; simp [pairedPriceFeature]
@@ -3456,7 +3456,7 @@ noncomputable def introspectionIntervalQuoteOfCode
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -3871,7 +3871,7 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     [T.SoundOnHierarchy 𝚺 1] (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
-    (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
+    (hwidthInv : DigitRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     ParadoxResistanceQuote P DP p := by
@@ -4427,7 +4427,7 @@ noncomputable def selfTrustQuoteOfRepresentation
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
@@ -4450,8 +4450,8 @@ noncomputable def selfTrustQuoteOfRepresentation
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
   let δp : ℕ → ℚ := fun z ↦ δ (min z.unpair.2 z.unpair.1)
-  have hδpInv : PolyRatCodes (fun z ↦ 1 / δp z) :=
-    hδinv.reindex PairedWeighting.clampedSource_polyFueled
+  have hδpInv : DigitRatCodes (fun z ↦ 1 / δp z) :=
+    hδinv.comp (Classical.choose_spec PairedWeighting.clampedSource_polyFueled)
   have hδpPos : ∀ z, 0 < δp z := fun z ↦ delta_pos _
   let pF : ℕ → EF := fun z ↦ pFeature (min z.unpair.2 z.unpair.1)
   have hpF : PairedWeighting pF :=
@@ -4533,8 +4533,8 @@ noncomputable def selfTrustQuoteOfRepresentation
   let hpOrig : PGenerableWeighting pOrig := hp.toWeighting
   let pNeg : ℕ → EF := fun n ↦ EF.mul (EF.const (-1)) (pOrig n)
   have hpNeg : PGenerableWeighting pNeg := {
-    polySeg := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
+    polySeg := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
       hpOrig.polySeg
     rank_le := by intro n; simp [pNeg, EF.rank, hpOrig.rank_le n]
     closed := by intro n ρ V; simp [pNeg, EF.denoteWith, hpOrig.closed n ρ V]
@@ -4705,7 +4705,7 @@ theorem lic_self_trust_ofRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
@@ -4770,7 +4770,7 @@ theorem lic_introspection_ofCode
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : PolyRatCodes δ)
+    (hδ : DigitRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -4803,7 +4803,7 @@ theorem lic_paradox_resistance_ofDiagonal
     (P : History) [IsLogicalInductor P DP]
     (market : MarketComputation P)
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
+    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

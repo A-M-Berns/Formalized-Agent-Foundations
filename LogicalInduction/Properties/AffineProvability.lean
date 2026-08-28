@@ -39,22 +39,22 @@ lemma PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
 lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     EfficientlyComputable (h.buyBelowTrader start low δ) := by
-  have hentry : RpnSpliceStream (fun n =>
+  have hentry : BigSpliceStream (fun n =>
       (gateFeature start (gradualEntry As low δ) n).serialize) :=
-    RpnSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
-  have hcoeff : RpnSpliceStream (fun z =>
+    BigSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
+  have hcoeff : BigSpliceStream (fun z =>
       (EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
         (h.coefficient z)).serialize) :=
-    RpnSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
-  have hframe := RpnSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
-  have hone : RpnSpliceStream (fun z => serializeTrades
+    BigSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
+  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes h.sentence_poly) PolyFueled.id
+  have hone : BigSpliceStream (fun z => serializeTrades
       [(EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
           (h.coefficient z), h.sentence z)]) := by
-    refine RpnSpliceStream.of_eq (hcoeff.append hframe) ?_
+    refine BigSpliceStream.of_eq (hcoeff.append hframe) ?_
     intro z
     simp [serializeTrades]
-  refine RpnSpliceStream.ec _ (RpnSpliceStream.of_eq
-    (RpnSpliceStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
+  refine BigSpliceStream.ec _ (BigSpliceStream.of_eq
+    (BigSpliceStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
   intro n
   rw [h.buyBelowTrader_trades start low δ, serializeTrades_map_singleton]
   simp only [Nat.unpair_pair]

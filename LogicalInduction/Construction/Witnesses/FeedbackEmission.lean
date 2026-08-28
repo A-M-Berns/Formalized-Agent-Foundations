@@ -250,7 +250,7 @@ lemma scheduledDeferral_polyFueled (f : DeferralFunction) (a degree : ℕ) :
 lemma scheduledReturnFeature_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) :
-    RpnSpliceStream (fun z ↦ (scheduledReturnFeature As f a degree z).serialize) := by
+    BigSpliceStream (fun z ↦ (scheduledReturnFeature As f a degree z).serialize) := by
   obtain ⟨cvalue, hvalue⟩ := scheduledValue_polyFueled f a degree
   have hcur : PolyFueled cvalue (fun z ↦
       scheduledDeferral f a degree z.unpair.1 z.unpair.2) :=
@@ -263,42 +263,42 @@ lemma scheduledReturnFeature_polySeg
     (hvalue.comp hnextInput).of_eq (fun z => by simp [scheduledDeferral])
   have hfuture := hpoly.priceFeature_polySeg.comp (hcur.pair hnext)
   have hpresent := hpoly.priceFeature_polySeg.comp (hcur.pair hcur)
-  have hneg : RpnSpliceStream (fun _ ↦ (EF.const (-1)).serialize) :=
-    RpnSpliceStream.serialize_const (-1)
+  have hneg : BigSpliceStream (fun _ ↦ (EF.const (-1)).serialize) :=
+    BigSpliceStream.serialize_const (-1)
   simpa [scheduledReturnFeature] using
-    RpnSpliceStream.serialize_add hfuture
-      (RpnSpliceStream.serialize_mul hneg hpresent)
+    BigSpliceStream.serialize_add hfuture
+      (BigSpliceStream.serialize_mul hneg hpresent)
 
 lemma scheduledFactorFeature_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
-    RpnSpliceStream (fun z ↦ (scheduledFactorFeature As W f a degree δ z).serialize) := by
+    BigSpliceStream (fun z ↦ (scheduledFactorFeature As W f a degree δ z).serialize) := by
   obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
   have hweight := hW.polySeg.comp hvalue
-  have hone : RpnSpliceStream (fun _ ↦ (EF.const 1).serialize) :=
-    RpnSpliceStream.serialize_const 1
-  have hdelta : RpnSpliceStream (fun _ ↦ (EF.const δ).serialize) :=
-    RpnSpliceStream.serialize_const δ
+  have hone : BigSpliceStream (fun _ ↦ (EF.const 1).serialize) :=
+    BigSpliceStream.serialize_const 1
+  have hdelta : BigSpliceStream (fun _ ↦ (EF.const δ).serialize) :=
+    BigSpliceStream.serialize_const δ
   have hreturn := scheduledReturnFeature_polySeg hpoly f a degree
-  simpa [scheduledFactorFeature] using RpnSpliceStream.serialize_add hone
-    (RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_mul hdelta hweight) hreturn)
+  simpa [scheduledFactorFeature] using BigSpliceStream.serialize_add hone
+    (BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_mul hdelta hweight) hreturn)
 
 lemma scheduledWealthFeature_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
-    RpnSpliceStream (fun z ↦ (scheduledWealthFeature As W f a degree δ z).serialize) := by
+    BigSpliceStream (fun z ↦ (scheduledWealthFeature As W f a degree δ z).serialize) := by
   have hfactor := scheduledFactorFeature_polySeg hpoly hW f a degree δ
   have hcanonical : PolyFueled _ (fun q : ℕ ↦
       Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hblocks := RpnSpliceStream.concatVar (hfactor.comp hcanonical) PolyFueled.right
-  have hone : RpnSpliceStream (fun _ ↦ (EF.const 1).serialize) :=
-    RpnSpliceStream.serialize_const 1
-  have htags := RpnSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right
-  refine RpnSpliceStream.of_eq ((hblocks.append hone).append htags) ?_
+  have hblocks := BigSpliceStream.concatVar (hfactor.comp hcanonical) PolyFueled.right
+  have hone : BigSpliceStream (fun _ ↦ (EF.const 1).serialize) :=
+    BigSpliceStream.serialize_const 1
+  have htags := BigSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right
+  refine BigSpliceStream.of_eq ((hblocks.append hone).append htags) ?_
   intro z
   unfold scheduledWealthFeature
   rw [ROIBudget.serialize_prodFeatures]
@@ -309,14 +309,14 @@ lemma scheduledBetaFeature_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
-    RpnSpliceStream (fun z ↦ (scheduledBetaFeature As W f a degree δ z).serialize) := by
+    BigSpliceStream (fun z ↦ (scheduledBetaFeature As W f a degree δ z).serialize) := by
   obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
-  have hdelta : RpnSpliceStream (fun _ ↦ (EF.const δ).serialize) :=
-    RpnSpliceStream.serialize_const δ
+  have hdelta : BigSpliceStream (fun _ ↦ (EF.const δ).serialize) :=
+    BigSpliceStream.serialize_const δ
   have hwealth := scheduledWealthFeature_polySeg hpoly hW f a degree δ
   have hweight := hW.polySeg.comp hvalue
-  simpa [scheduledBetaFeature] using RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_mul hdelta hwealth) hweight
+  simpa [scheduledBetaFeature] using BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_mul hdelta hwealth) hweight
 
 /-! ### Conditional affine-term blocks and their flattened index -/
 
@@ -383,7 +383,7 @@ lemma scheduledTermCoefficient_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
-    RpnSpliceStream (fun q ↦
+    BigSpliceStream (fun q ↦
       (scheduledTermCoefficient hpoly W f a degree δ q).serialize) := by
   obtain ⟨cmatch, hmatch⟩ := scheduledMatch_polyFueled f a degree
   obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
@@ -391,12 +391,12 @@ lemma scheduledTermCoefficient_polySeg
   have hcanonical := hblockValue.pair PolyFueled.right
   have hcoefficient := hpoly.coefficient_poly.comp hcanonical
   have hbeta := (scheduledBetaFeature_polySeg hpoly hW f a degree δ).comp PolyFueled.left
-  have hbase := RpnSpliceStream.serialize_mul hbeta hcoefficient
-  have hneg : RpnSpliceStream (fun _ ↦ (EF.const (-1)).serialize) :=
-    RpnSpliceStream.serialize_const (-1)
-  have hclosing := RpnSpliceStream.serialize_mul hneg hbase
-  refine RpnSpliceStream.of_eq
-    (RpnSpliceStream.ifZero hclosing hbase (hmatch.comp PolyFueled.left)) ?_
+  have hbase := BigSpliceStream.serialize_mul hbeta hcoefficient
+  have hneg : BigSpliceStream (fun _ ↦ (EF.const (-1)).serialize) :=
+    BigSpliceStream.serialize_const (-1)
+  have hclosing := BigSpliceStream.serialize_mul hneg hbase
+  refine BigSpliceStream.of_eq
+    (BigSpliceStream.ifZero hclosing hbase (hmatch.comp PolyFueled.left)) ?_
   intro q
   rcases scheduledMatch_zero_or_one f a degree q.unpair.1 with hopen | hopen
   · simp [scheduledTermCoefficient, hopen]
@@ -586,7 +586,7 @@ lemma scheduledTradeCoefficient_polySeg
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) :
-    RpnSpliceStream (fun z ↦
+    BigSpliceStream (fun z ↦
       (scheduledTradeCoefficient hpoly W f a degree δ z).serialize) := by
   obtain ⟨cmember, hmember⟩ := scheduledTradeMember_polyFueled hpoly f a degree
   obtain ⟨coffset, hoffset⟩ := scheduledTradeOffset_polyFueled hpoly f a degree

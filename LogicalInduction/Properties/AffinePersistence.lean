@@ -226,15 +226,15 @@ def persistencePortfolio {As : ℕ → AffineCombination} (h : PolySequence As)
 
 lemma persistenceEntry_serialize (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    RpnSpliceStream (fun z =>
+    BigSpliceStream (fun z =>
       (persistenceEntry As start low δ z.unpair.1 z.unpair.2).serialize) := by
   have hprice := h.priceFeature_polySeg.comp (PolyFueled.right.pair PolyFueled.left)
-  have hbuy := RpnSpliceStream.serialize_buyIndF hprice low δ
-  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
-    RpnSpliceStream.serialize_const 0
+  have hbuy := BigSpliceStream.serialize_buyIndF hprice low δ
+  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
+    BigSpliceStream.serialize_const 0
   have htest := subc_polyFueled.comp
     (PolyFueled.right.pair (PolyFueled.const start))
-  refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero hzero hbuy htest) ?_
+  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hbuy htest) ?_
   intro z
   simp only [Nat.unpair_pair]
   by_cases hs : start < z.unpair.2
@@ -271,23 +271,23 @@ lemma persistenceEntrySum_serialize (As : ℕ → AffineCombination)
 
 lemma persistenceEntrySum_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    RpnSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
-  have hentries := RpnSpliceStream.concatVar
+    BigSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
+  have hentries := BigSpliceStream.concatVar
     (persistenceEntry_serialize As h start low δ) PolyFueled.id.succ_comp
-  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
-    RpnSpliceStream.serialize_const 0
-  have htags := RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine RpnSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
+  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
+    BigSpliceStream.serialize_const 0
+  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
+  refine BigSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
   intro k
   rw [persistenceEntrySum_serialize]
   simp only [Nat.unpair_pair]
 
 lemma persistenceNorm_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    RpnSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
-  refine RpnSpliceStream.of_eq
+    BigSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
+  refine BigSpliceStream.of_eq
     ((persistenceEntrySum_polySeg As h start low δ).append
-      (RpnSpliceStream.tag 5 (by norm_num))) ?_
+      (BigSpliceStream.tag 5 (by norm_num))) ?_
   intro k
   simp [persistenceNorm, EF.serialize]
 
@@ -325,15 +325,15 @@ lemma persistenceRawConst_serialize (As : ℕ → AffineCombination)
 
 lemma persistenceRawConst_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    RpnSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
-  have hblock := RpnSpliceStream.serialize_mul
+    BigSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
+  have hblock := BigSpliceStream.serialize_mul
     (persistenceEntry_serialize As h start low δ)
     (h.const_poly.comp PolyFueled.right)
-  have hblocks := RpnSpliceStream.concatVar hblock PolyFueled.id.succ_comp
-  have hzero : RpnSpliceStream (fun _ => (EF.const 0).serialize) :=
-    RpnSpliceStream.serialize_const 0
-  have htags := RpnSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine RpnSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
+  have hblocks := BigSpliceStream.concatVar hblock PolyFueled.id.succ_comp
+  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
+    BigSpliceStream.serialize_const 0
+  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
+  refine BigSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
   intro k
   rw [persistenceRawConst_serialize]
   simp only [Nat.unpair_pair]
@@ -542,14 +542,14 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
     (PolyFueled.left.pair memberPF)
   have hcoeff := h.coefficient_poly.comp canonicalPF
   have hnorm := (persistenceNorm_polySeg As h start low δ).comp PolyFueled.left
-  have hcoefficient := RpnSpliceStream.serialize_mul hnorm
-    (RpnSpliceStream.serialize_mul hentry hcoeff)
+  have hcoefficient := BigSpliceStream.serialize_mul hnorm
+    (BigSpliceStream.serialize_mul hentry hcoeff)
   refine
     { termCount := persistenceTermCount h
       coefficient := persistenceCoefficient h start low δ
       sentence := persistenceSentence h
       termCount_poly := ⟨ccount, hcount⟩
-      const_poly := RpnSpliceStream.serialize_mul
+      const_poly := BigSpliceStream.serialize_mul
         (persistenceNorm_polySeg As h start low δ)
         (persistenceRawConst_polySeg As h start low δ)
       coefficient_poly := ?_
@@ -723,8 +723,8 @@ def PolySequence.addConst {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := h.coefficient
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := RpnSpliceStream.serialize_add h.const_poly
-    (RpnSpliceStream.serialize_const q)
+  const_poly := BigSpliceStream.serialize_add h.const_poly
+    (BigSpliceStream.serialize_const q)
   coefficient_poly := h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := h.terms_eq

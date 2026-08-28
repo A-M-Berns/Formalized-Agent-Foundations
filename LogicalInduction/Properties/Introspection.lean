@@ -154,7 +154,7 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
   lower_generated : GeneratedRatFeature P a lower_feature
   upper_feature : ℕ → EF
   upper_generated : GeneratedRatFeature P b upper_feature
-  inverse_width_codes : PolyRatCodes (fun n ↦ 1 / δ n)
+  inverse_width_codes : DigitRatCodes (fun n ↦ 1 / δ n)
   width_pos : ∀ n, 0 < δ n
   width_tendsto_zero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0)
   probability_bounds : ∀ n,

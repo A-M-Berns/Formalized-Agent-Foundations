@@ -696,27 +696,27 @@ the two advice-atom families and for the traded diagonal.
 Route note: the coefficient carries *price* leaves, which is the whole point of the
 construction, so the price-free entry points
 (`EfficientlyComputable.ofSingleTradeBlocks` / `ofTradeBlocks`, both of which demand
-`EF.priceFree`) do not apply.  The general splice capstone `RpnSpliceStream.ec` does, with
-`RpnSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
+`EF.priceFree`) do not apply.  The general splice capstone `BigSpliceStream.ec` does, with
+`BigSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
 corresponding advice-atom code stream.
 Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
 lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
     (hsa : RpnSentenceCodes sa) (hsi : RpnSentenceCodes si) (hχ : RpnSentenceCodes χ) :
     MachineEfficientTrader (adviceTrader sa si χ) := by
   have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
-  have hgate : RpnSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
-    RpnSpliceStream.serialize_price hsa PolyFueled.id hday
-  have hsign : RpnSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
-    RpnSpliceStream.serialize_price hsi PolyFueled.id hday
-  have hcoef : RpnSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
-    RpnSpliceStream.serialize_mul hgate
-      (RpnSpliceStream.serialize_add
-        (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const 2) hsign)
-        (RpnSpliceStream.serialize_const (-1)))
-  have htrade : RpnSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
-    RpnSpliceStream.tradeSlot hχ PolyFueled.id
+  have hgate : BigSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
+    BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hsa) PolyFueled.id hday
+  have hsign : BigSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
+    BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hsi) PolyFueled.id hday
+  have hcoef : BigSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
+    BigSpliceStream.serialize_mul hgate
+      (BigSpliceStream.serialize_add
+        (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const 2) hsign)
+        (BigSpliceStream.serialize_const (-1)))
+  have htrade : BigSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
+    BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hχ) PolyFueled.id
   refine EfficientlyComputable.toMachine
-    (RpnSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
+    (BigSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
   simp [adviceTrader, serializeTrades]
 
 /-! ## Assembly

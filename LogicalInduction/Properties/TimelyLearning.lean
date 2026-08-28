@@ -41,8 +41,8 @@ noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : Rpn
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const 1
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceAffine]
     const_rank := by intro n; simp [sentenceAffine]
@@ -99,10 +99,10 @@ noncomputable def sentenceMinusProbability_polySequence
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
-      (RpnSpliceStream.serialize_const_comp hp)
-    coefficient_poly := RpnSpliceStream.serialize_const 1
+    const_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
+      (BigSpliceStream.serialize_const_comp hp)
+    coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusProbability]
     const_rank := by intro n; simp [sentenceMinusProbability, EF.rank]

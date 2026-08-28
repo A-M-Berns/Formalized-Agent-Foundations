@@ -47,8 +47,8 @@ noncomputable def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCod
   coefficient := fun z => .const (1 / (z.unpair.1 : ℚ))
   sentence := fun z => X.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ))
   termCount_poly := ⟨Nat.Partrec.Code.id, PolyFueled.id⟩
-  const_poly := RpnSpliceStream.serialize_const 0
-  coefficient_poly := RpnSpliceStream.serialize_const_comp
+  const_poly := BigSpliceStream.serialize_const 0
+  coefficient_poly := BigSpliceStream.serialize_const_comp
     ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
   sentence_poly := hcode
   terms_eq := by intro n; simp [expectAffine]
@@ -145,13 +145,13 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
   have htest := subc_polyFueled.comp
     (PolyFueled.left.succ_comp.pair PolyFueled.right)
-  have hInvSeg : RpnSpliceStream
+  have hInvSeg : BigSpliceStream
       (fun z => (EF.const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
+    BigSpliceStream.serialize_const_comp
       ⟨cinv.comp (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left),
         hinv.comp PolyFueled.left.succ_comp⟩
-  have hNegSeg : RpnSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
-    RpnSpliceStream.serialize_const (-1)
+  have hNegSeg : BigSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
+    BigSpliceStream.serialize_const (-1)
   have hthr : RpnSentenceCodes (fun z => (Y z.unpair.1).gt
       ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))) :=
     (hY.comp (PolyFueled.left.pair
@@ -165,9 +165,9 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
       then (Y z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
       else φ z.unpair.1
     termCount_poly := ⟨_, PolyFueled.id.succ_comp.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.of_eq
-      (RpnSpliceStream.ifZero hNegSeg hInvSeg htest) (by
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.of_eq
+      (BigSpliceStream.ifZero hNegSeg hInvSeg htest) (by
         intro z
         simp only [Nat.unpair_pair]
         by_cases hj : z.unpair.2 < z.unpair.1 + 1
@@ -222,21 +222,21 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
   have hidxZ := hn.pair (subc_polyFueled.comp (hj.pair h2n))
   have htestX := subc_polyFueled.comp (hj.succ_comp.pair hn)
   have htestY := subc_polyFueled.comp (hj.succ_comp.pair h2n)
-  have hInv : RpnSpliceStream (fun z => (EF.const (1 / (z.unpair.1 : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
+  have hInv : BigSpliceStream (fun z => (EF.const (1 / (z.unpair.1 : ℚ))).serialize) :=
+    BigSpliceStream.serialize_const_comp
       ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
-  have hcoeff (q : ℚ) : RpnSpliceStream (fun z =>
+  have hcoeff (q : ℚ) : BigSpliceStream (fun z =>
       (EF.mul (EF.const q) (EF.const (1 / (z.unpair.1 : ℚ)))).serialize) :=
-    RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const q) hInv
-  have hcoeffAll : RpnSpliceStream (fun z =>
+    BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const q) hInv
+  have hcoeffAll : BigSpliceStream (fun z =>
       (if z.unpair.2 < z.unpair.1 then
         EF.mul (EF.const a) (EF.const (1 / (z.unpair.1 : ℚ)))
       else if z.unpair.2 < z.unpair.1 * 2 then
         EF.mul (EF.const b) (EF.const (1 / (z.unpair.1 : ℚ)))
       else EF.mul (EF.const (-1)) (EF.const (1 / (z.unpair.1 : ℚ)))).serialize) := by
-    refine RpnSpliceStream.of_eq
-      (RpnSpliceStream.ifZero (hcoeff a)
-        (RpnSpliceStream.ifZero (hcoeff b) (hcoeff (-1)) htestY) htestX) ?_
+    refine BigSpliceStream.of_eq
+      (BigSpliceStream.ifZero (hcoeff a)
+        (BigSpliceStream.ifZero (hcoeff b) (hcoeff (-1)) htestY) htestX) ?_
     intro z
     simp only [Nat.unpair_pair]
     by_cases hx : z.unpair.2 < z.unpair.1
@@ -278,7 +278,7 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
         Y.gt (((z.unpair.2 - z.unpair.1 : ℕ) : ℚ) / (z.unpair.1 : ℚ))
       else Z.gt (((z.unpair.2 - z.unpair.1 * 2 : ℕ) : ℚ) / (z.unpair.1 : ℚ))
     termCount_poly := ⟨cmul3, hmul3⟩
-    const_poly := RpnSpliceStream.serialize_const 0
+    const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := hcoeffAll
     sentence_poly := hsAll
     terms_eq := by

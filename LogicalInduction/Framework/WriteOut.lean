@@ -157,6 +157,12 @@ lemma ec_of_bigTokenStream (Tr : Trader) {t : ℕ → List ℕ} (h : BigTokenStr
 exponential in the day — the halting claim about an `n`-bit machine, say — reaches the
 stream as a two-token escape block whose payload is written out digit by digit. -/
 
+/-- A written-out token stream is primitive recursive: its digit stream is
+(`PolySegStream.primrec`) and `undigitize` is. -/
+lemma BigTokenStream.primrec {t : ℕ → List ℕ} (h : BigTokenStream t) : Primrec t := by
+  obtain ⟨ds, hds, _, heq⟩ := h
+  exact (undigitize_prim.comp hds.primrec).of_eq heq
+
 /-- **The paper's 𝓔𝓒 sentence-sequence class, write-out metered.**  A written-out stream
 of self-delimiting sentence blocks parsing to the sequence, each block consumed exactly.
 Contrast `RpnSentenceCodes`, which additionally bounds every emitted token's *value* by a
@@ -361,13 +367,78 @@ lemma serialize_max {A B : ℕ → EF}
     BigSpliceStream (fun z => (EF.max (A z) (B z)).serialize) :=
   ((hA.append hB).append (tag 4 (by norm_num))).of_eq (fun z => by simp [EF.serialize])
 
+/-- A *fixed* rational constant, lifted from the value-bounded stream: a constant costs
+the same to write on every day, so no write-out generality is needed to emit it. -/
+lemma serialize_const (q : ℚ) :
+    BigSpliceStream (fun _ : ℕ => (EF.const q).serialize) :=
+  ofRpnSpliceStream (RpnSpliceStream.serialize_const q)
+
+/-- A value-bounded payload leaf, lifted.  `bigPayload` is the counterpart that admits
+an exponentially-named datum; this one is for leaves that really are polynomial. -/
+lemma payload (t : ℕ) (ht : t = 1 ∨ t = 7)
+    {c : Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
+    BigSpliceStream (fun z => [t, f z]) :=
+  ofRpnSpliceStream (RpnSpliceStream.payload t ht hf)
+
+/-- A rational constant with a poly-fueled code — the value-bounded case, kept so that a
+consumer still holding a `PolyRatCodes` certificate need not convert it. -/
+lemma serialize_const_comp {q : ℕ → ℚ}
+    (hq : ∃ c, PolyFueled c (fun z => Encodable.encode (q z))) :
+    BigSpliceStream (fun z => (EF.const (q z)).serialize) :=
+  ofRpnSpliceStream (RpnSpliceStream.serialize_const_comp hq)
+
 /-- **A written-out rational constant.**  The emitter knows `⌜q z⌝` only through its
 digits, so `q z` may need exponentially many bits to name — `2⁻ᶻ` is the motivating
-case.  `RpnSpliceStream.serialize_const_comp` is the value-bounded counterpart. -/
+case, and `DigitRatCodes.toBigDigits` is where the hypothesis comes from.
+`serialize_const_comp` is the value-bounded counterpart. -/
 lemma serialize_const_write {q : ℕ → ℚ}
     (hq : BigDigits (fun z => Encodable.encode (q z))) :
     BigSpliceStream (fun z => (EF.const (q z)).serialize) :=
   (bigPayload 1 (Or.inl rfl) hq).of_eq (fun z => by simp [EF.serialize])
+
+lemma serialize_var {f : ℕ → ℕ} {cf : Code} (hf : PolyFueled cf f) :
+    BigSpliceStream (fun z => (EF.var (f z)).serialize) :=
+  ofRpnSpliceStream (RpnSpliceStream.serialize_var hf)
+
+lemma serialize_safeRecip {A : ℕ → EF}
+    (hA : BigSpliceStream (fun z => (A z).serialize)) :
+    BigSpliceStream (fun z => (EF.safeRecip (A z)).serialize) :=
+  (hA.append (tag 5 (by norm_num))).of_eq (fun z => by simp [EF.serialize])
+
+lemma serialize_letE {X Body : ℕ → EF}
+    (hX : BigSpliceStream (fun z => (X z).serialize))
+    (hBody : BigSpliceStream (fun z => (Body z).serialize)) :
+    BigSpliceStream (fun z => (EF.letE (X z) (Body z)).serialize) :=
+  ((hX.append hBody).append (tag 8 (by norm_num))).of_eq
+    (fun z => by simp [EF.serialize])
+
+/-- A replicated close/operator tag as a spliceable stream. -/
+lemma repeatTag (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) {ccnt : Code}
+    {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    BigSpliceStream (fun n => List.replicate (cnt n) t) :=
+  ofRpnSpliceStream (RpnSpliceStream.repeatTag t ht hcnt)
+
+/-- **A written-out varying price leaf**: sentence slot from a written-out block stream,
+day from a poly-fueled index. -/
+lemma serialize_price {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) {cs cd : Code}
+    {sf df : ℕ → ℕ} (hs : PolyFueled cs sf) (hd : PolyFueled cd df) :
+    BigSpliceStream (fun z => (EF.price (φ (sf z)) (df z)).serialize) := by
+  obtain ⟨s, hstream, hp⟩ := hφ
+  refine ⟨fun z => 0 :: s (sf z) ++ [df z], ?_, fun z => ?_⟩
+  · have h0 : BigTokenStream (fun _ : ℕ => [0]) :=
+      BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream (PolyTokenStream.const 0))
+    have hdSeg : BigTokenStream (fun z : ℕ => [df z]) :=
+      BigTokenStream.ofPolySegStream
+        (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hd))
+    exact ((h0.append (hstream.comp hs)).append hdSeg).of_eq fun z => by simp
+  · have hcontract := UnRpnContractsTo.priceChunk (hp (sf z)) (df z)
+    exact fun rest => by simpa [EF.serialize] using hcontract rest
+
+/-- A transparent whole-serialization for price-free features. -/
+lemma ofPriceFree {A : ℕ → EF} (h : BigTokenStream (fun z => (A z).serialize))
+    (hfree : ∀ z, (A z).priceFree) :
+    BigSpliceStream (fun z => (A z).serialize) :=
+  ofTransparent h (fun z => EF.serialize_unRpnTransparent (A z) (hfree z))
 
 end BigSpliceStream
 

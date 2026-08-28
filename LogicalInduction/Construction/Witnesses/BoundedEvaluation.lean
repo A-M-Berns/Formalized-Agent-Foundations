@@ -1442,8 +1442,8 @@ exactly what a `Nat.Partrec.Code` quote code consumes. -/
 
 /-- A feature progression emitted as an RPN-spliceable serialization stream is primitive
 recursive as a whole-value function. -/
-lemma RpnSpliceStream.feature_primrec {feature : ℕ → EF}
-    (h : RpnSpliceStream fun n => (feature n).serialize) : Primrec feature := by
+lemma BigSpliceStream.feature_primrec {feature : ℕ → EF}
+    (h : BigSpliceStream fun n => (feature n).serialize) : Primrec feature := by
   obtain ⟨s, hs, hcontract⟩ := h
   have htokens : Primrec fun n => (feature n).serialize := by
     refine (unRpn_prim.comp hs.primrec).of_eq fun n => ?_
@@ -1458,7 +1458,7 @@ market-dependent thresholds: `def:ece` hands over only a feature stream, and emi
 `⌜… > q n⌝` requires a program computing `q n`.
 
 Proof kind `C` (composition).  Provenance: the parse step is
-`RpnSpliceStream.feature_primrec` (a); the evaluation step is minimization of
+`BigSpliceStream.feature_primrec` (a); the evaluation step is minimization of
 `MarketComputation.denoteRatComp` over the interpreter clock, pinned by
 `EF.denoteRatWithAtFuel_sound`/`_complete` and
 `MarketComputation.exists_fuel_quoteAtFuel_list` (a); the bridge from `EF.denote` to
@@ -1467,7 +1467,8 @@ Paper node: `def:ece` -/
 lemma PGenerableRat.computable {P : History} (market : MarketComputation P) {q : ℕ → ℚ}
     (h : PGenerableRat P q) : Computable q := by
   obtain ⟨feature, hfeature⟩ := h
-  have hfp : Primrec feature := RpnSpliceStream.feature_primrec hfeature.polyTok
+  have hfp : Primrec feature :=
+    BigSpliceStream.feature_primrec (BigSpliceStream.ofRpnSpliceStream hfeature.polyTok)
   have hval : ∀ n, (feature n).denoteRat
       (fun day φ => market.quote day (Encodable.encode φ)) = q n := by
     intro n

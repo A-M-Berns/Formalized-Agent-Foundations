@@ -2829,39 +2829,6 @@ private lemma strategyOfTokensTrades_prim : Primrec₂ fun n tokens =>
       · split <;> simp_all
 
 
-/-- The one-digit undigitizer transition is primitive recursive. -/
-private lemma undigitizeStep_prim : Primrec₂ undigitizeStep := by
-  let S := List ℕ × ℕ × ℕ
-  have hout : Primrec fun z : S × ℕ => z.1.1 := Primrec.fst.comp Primrec.fst
-  have hacc : Primrec fun z : S × ℕ => z.1.2.1 :=
-    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
-  have hpow : Primrec fun z : S × ℕ => z.1.2.2 :=
-    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
-  have hd : Primrec fun z : S × ℕ => z.2 := Primrec.snd
-  have hlt : PrimrecPred fun z : S × ℕ => z.2 < 4 :=
-    PrimrecRel.comp Primrec.nat_lt hd (Primrec.const 4)
-  have hthen : Primrec fun z : S × ℕ =>
-      ((z.1.1, z.1.2.1 + z.2 * z.1.2.2, 4 * z.1.2.2) : S) :=
-    hout.pair ((Primrec.nat_add.comp hacc (Primrec.nat_mul.comp hd hpow)).pair
-      (Primrec.nat_mul.comp (Primrec.const 4) hpow))
-  have helse : Primrec fun z : S × ℕ => ((z.1.1 ++ [z.1.2.1], 0, 1) : S) :=
-    (Primrec.list_append.comp hout
-      (Primrec.list_cons.comp hacc (Primrec.const []))).pair
-      ((Primrec.const 0).pair (Primrec.const 1))
-  exact (Primrec.ite hlt hthen helse).to₂.of_eq fun s d => by
-    rcases s with ⟨out, acc, pow⟩
-    unfold undigitizeStep
-    by_cases h : d < 4 <;> simp [h]
-
-/-- The streaming undigitizer is primitive recursive. -/
-private lemma undigitize_prim : Primrec undigitize := by
-  have hstep : Primrec₂ fun (_ : List ℕ) (p : (List ℕ × ℕ × ℕ) × ℕ) =>
-      undigitizeStep p.1 p.2 :=
-    (undigitizeStep_prim.comp (Primrec.fst.comp Primrec.snd)
-      (Primrec.snd.comp Primrec.snd)).to₂
-  exact (Primrec.fst.comp (Primrec.list_foldl Primrec.id
-    (Primrec.const (([], 0, 1) : List ℕ × ℕ × ℕ)) hstep)).of_eq fun ds => by rfl
-
 section RpnDecodePrimrec
 
 open Nat.Partrec (Code)

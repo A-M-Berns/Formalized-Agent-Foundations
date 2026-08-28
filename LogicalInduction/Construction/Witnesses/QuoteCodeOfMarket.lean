@@ -361,6 +361,14 @@ lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computabl
   exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
     (Computable.const 0)).of_eq fun n => by simp
 
+/-- A write-out rational sequence is computable: reassemble the Gödel code from its own
+digits (`BigDigits.primrec`) and decode.  This is what lets the market clock accept the
+wider write-out class in place of a poly-fueled value. -/
+lemma DigitRatCodes.computable {q : ℕ → ℚ} (h : DigitRatCodes q) : Computable q :=
+  (Computable.option_getD
+    (Computable.decode.comp h.toBigDigits.primrec.to_comp)
+    (Computable.const 0)).of_eq fun n => by simp
+
 /-- `ratCtsInd` is computable in its packed arguments, from the public rational
 primitives (`min a b = a + b - max a b` avoids any Boolean branch). -/
 lemma ratCtsInd_computable :
@@ -872,7 +880,7 @@ deferred-day price against the target probability,
 
 The threshold `p` is P-generable (`def:ece`), exactly as in the paper: the emitter recovers
 a program for `p` from the feature presentation by parsing the emitted serialization
-(`RpnSpliceStream.feature_primrec`) and evaluating it against this market
+(`BigSpliceStream.feature_primrec`) and evaluating it against this market
 (`PGenerableRat.computable`).
 
 What the quote code needs of the tolerance `δ` is *computability*, not efficiency: the
@@ -969,7 +977,7 @@ theorem lic_introspection_closed
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
-    (hδ : PolyRatCodes δ)
+    (hδ : DigitRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1) :
@@ -1007,7 +1015,7 @@ theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV
           (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n).expect
@@ -1224,8 +1232,8 @@ noncomputable def ordinaryLUVCombinationSyntax (code : ℕ) :
   coefficient _ := .const 1
   luv z := arithmeticThresholdLUV code z
   termCount_poly := ⟨_, PolyFueled.const 1⟩
-  const_poly := RpnSpliceStream.serialize_const 0
-  coefficient_poly := RpnSpliceStream.serialize_const 1
+  const_poly := BigSpliceStream.serialize_const 0
+  coefficient_poly := BigSpliceStream.serialize_const 1
   threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
     (arithmeticThresholdLUV_polyThresholdCodeSeq code)
   terms_eq n := by simp [ordinaryLUVCombinationSeq]

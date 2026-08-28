@@ -374,7 +374,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
   let cidx := Classical.choose hidx
   have hcidx := Classical.choose_spec hidx
   let hconst := h.const_poly.comp (PolyFueled.const i)
-  let hconstGated := RpnSpliceStream.gateFeature hconst i
+  let hconstGated := BigSpliceStream.gateFeature hconst i
   let hcoeff := h.coefficient_poly.comp hcidx
   exact {
     termCount := fun n => if n < i then 0 else h.termCount i
@@ -382,7 +382,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
     sentence := fun z => h.sentence (idx z)
     termCount_poly := polyFueled_if_lt_const i 0 (h.termCount i)
     const_poly := by
-      refine RpnSpliceStream.of_eq hconstGated ?_
+      refine BigSpliceStream.of_eq hconstGated ?_
       intro n
       by_cases hin : i ≤ n
       · simp [AffineCombination.eventualMember, hin, gateFeature]

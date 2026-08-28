@@ -74,9 +74,10 @@ noncomputable def sentenceMinusFeature_polySequence
     coefficient := fun _ ↦ EF.const 1
     sentence := fun z ↦ φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1)) hp.polyTok
-    coefficient_poly := RpnSpliceStream.serialize_const 1
+    const_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
+      (BigSpliceStream.ofRpnSpliceStream hp.polyTok)
+    coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusFeature]
     const_rank := by
@@ -852,7 +853,7 @@ structure FeedbackTraderEmission
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
   tradeCount_poly : ∃ c, PolyFueled c tradeCount
-  coefficient_poly : RpnSpliceStream (fun z ↦ (coefficient z).serialize)
+  coefficient_poly : BigSpliceStream (fun z ↦ (coefficient z).serialize)
   sentence_poly : RpnSentenceCodes sentence
   trades_eq : ∀ n,
     ((feedbackTrader hpoly hW hstrict δ).strat n).trades =
@@ -891,14 +892,14 @@ lemma feedbackTrader_ec
     (emit : FeedbackTraderEmission hpoly hW hstrict δ) :
     EfficientlyComputable (feedbackTrader hpoly hW hstrict δ) := by
   obtain ⟨ccount, hcount⟩ := emit.tradeCount_poly
-  have hframe := RpnSpliceStream.tradeSlot emit.sentence_poly PolyFueled.id
-  have hone : RpnSpliceStream (fun z ↦
+  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes emit.sentence_poly) PolyFueled.id
+  have hone : BigSpliceStream (fun z ↦
       serializeTrades [(emit.coefficient z, emit.sentence z)]) := by
-    refine RpnSpliceStream.of_eq (emit.coefficient_poly.append hframe) ?_
+    refine BigSpliceStream.of_eq (emit.coefficient_poly.append hframe) ?_
     intro z
     simp [serializeTrades]
-  refine RpnSpliceStream.ec _ (RpnSpliceStream.of_eq
-    (RpnSpliceStream.concatVar hone hcount) ?_)
+  refine BigSpliceStream.ec _ (BigSpliceStream.of_eq
+    (BigSpliceStream.concatVar hone hcount) ?_)
   intro n
   rw [emit.trades_eq, serializeTrades_map_singleton]
 
@@ -2046,13 +2047,13 @@ lemma PatientSettlementClock.occupancy_polySeg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth err f) :
-    RpnSpliceStream (fun z ↦
+    BigSpliceStream (fun z ↦
       (patientOccupancy clock z.unpair.2 z.unpair.1).serialize) := by
-  exact RpnSpliceStream.serialize_const_comp clock.active_codes
+  exact BigSpliceStream.serialize_const_comp clock.active_codes
 
 lemma patientUnderpriceAttempt_polySeg {As : ℕ → AffineCombination}
     (hpoly : AffineCombination.PolySequence As) (low width : ℚ) :
-    RpnSpliceStream (fun n ↦ (patientUnderpriceAttempt As low width n).serialize) :=
+    BigSpliceStream (fun n ↦ (patientUnderpriceAttempt As low width n).serialize) :=
   hpoly.gradualEntry_polySeg low width
 
 lemma patientUnderpriceWeight_polySeg
@@ -2060,12 +2061,12 @@ lemma patientUnderpriceWeight_polySeg
     {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) :
-    RpnSpliceStream (fun n ↦ (patientUnderpriceWeight clock low width n).serialize) := by
+    BigSpliceStream (fun n ↦ (patientUnderpriceWeight clock low width n).serialize) := by
   have hattempt := patientUnderpriceAttempt_polySeg hpoly low width
   have hweight := ROIBudget.fractionalSharedFeatureWeight_polySeg
     (patientOccupancy clock) (patientUnderpriceAttempt As low width)
       hattempt clock.occupancy_polySeg
-  exact RpnSpliceStream.serialize_mul hweight hattempt
+  exact BigSpliceStream.serialize_mul hweight hattempt
 
 @[simp] theorem patientOccupancy_denote
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}

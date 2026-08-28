@@ -317,30 +317,30 @@ noncomputable def sequencePoly
   have hquery : PolyFueled _ (fun z : ℕ =>
       Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2) :=
     (hsource.comp PolyFueled.left).pair PolyFueled.right
-  have hcoeffPoly : RpnSpliceStream (fun z => (coeff z).serialize) := by
+  have hcoeffPoly : BigSpliceStream (fun z => (coeff z).serialize) := by
     simpa only [coeff] using hA.coefficient_poly.comp hquery
   have hsentencePoly : RpnSentenceCodes sentence :=
     (hA.sentence_poly.comp hquery).of_eq (fun z => rfl)
-  have hrawConst : RpnSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
-    RpnSpliceStream.payload 1 (Or.inl rfl) htruth
-  have hminusRaw : RpnSpliceStream (fun m =>
+  have hrawConst : BigSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
+    BigSpliceStream.payload 1 (Or.inl rfl) htruth
+  have hminusRaw : BigSpliceStream (fun m =>
       (EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) :=
-    ((RpnSpliceStream.serialize_const (-1)).append hrawConst).append
-      (RpnSpliceStream.tag 3 (by norm_num))
-  have hactiveRaw : RpnSpliceStream (fun m =>
+    ((BigSpliceStream.serialize_const (-1)).append hrawConst).append
+      (BigSpliceStream.tag 3 (by norm_num))
+  have hactiveRaw : BigSpliceStream (fun m =>
       (As (sourceIndex f fa fd m)).const.serialize ++
         ((EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) ++ [2]) :=
     ((hA.const_poly.comp hsource).append hminusRaw).append
-      (RpnSpliceStream.tag 2 (by norm_num))
-  have hconstIf := RpnSpliceStream.ifZero
-    (RpnSpliceStream.serialize_const 0) hactiveRaw hflag
+      (BigSpliceStream.tag 2 (by norm_num))
+  have hconstIf := BigSpliceStream.ifZero
+    (BigSpliceStream.serialize_const 0) hactiveRaw hflag
   exact {
     termCount := count
     coefficient := coeff
     sentence := sentence
     termCount_poly := hcountPoly
     const_poly := by
-      refine RpnSpliceStream.of_eq hconstIf ?_
+      refine BigSpliceStream.of_eq hconstIf ?_
       intro m
       by_cases hm : feedbackFlag f fa fd m = 0
       · simp [sequence, hm]

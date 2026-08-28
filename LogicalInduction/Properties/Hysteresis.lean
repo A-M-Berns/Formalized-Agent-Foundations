@@ -24,6 +24,7 @@ position change and `B₊/B₋` for the positive/negative variation, buys happen
 `B₋ → ∞`, which each full swing forces (`h = 1` below `a`, `h = 0` above `b`, fact 3).
 -/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -516,6 +517,31 @@ lemma RpnSpliceStream.serialize_clip01 {e : ℕ → EF}
     RpnSpliceStream (fun n => (clip01 (e n)).serialize) :=
   RpnSpliceStream.serialize_max (RpnSpliceStream.serialize_const 0)
     (RpnSpliceStream.serialize_efMin (RpnSpliceStream.serialize_const 1) he)
+
+/-- Write-out streams of `oneMinus` families. -/
+lemma BigSpliceStream.serialize_oneMinus {e : ℕ → EF}
+    (he : BigSpliceStream (fun n => (e n).serialize)) :
+    BigSpliceStream (fun n => (oneMinus (e n)).serialize) :=
+  BigSpliceStream.serialize_add (BigSpliceStream.serialize_const 1)
+    (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) he)
+
+/-- Write-out streams of `efMin` families: the same max/negate composition as the
+value-bounded mirror, so an exponentially-named operand costs nothing extra. -/
+lemma BigSpliceStream.serialize_efMin {e f : ℕ → EF}
+    (he : BigSpliceStream (fun n => (e n).serialize))
+    (hf : BigSpliceStream (fun n => (f n).serialize)) :
+    BigSpliceStream (fun n => (efMin (e n) (f n)).serialize) :=
+  BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1))
+    (BigSpliceStream.serialize_max
+      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) he)
+      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) hf))
+
+/-- Write-out streams of `clip01` families. -/
+lemma BigSpliceStream.serialize_clip01 {e : ℕ → EF}
+    (he : BigSpliceStream (fun n => (e n).serialize)) :
+    BigSpliceStream (fun n => (clip01 (e n)).serialize) :=
+  BigSpliceStream.serialize_max (BigSpliceStream.serialize_const 0)
+    (BigSpliceStream.serialize_efMin (BigSpliceStream.serialize_const 1) he)
 
 /-- Token streams of `oneMinus` families. -/
 lemma PolyTokenStream.serialize_oneMinus {e : ℕ → EF}

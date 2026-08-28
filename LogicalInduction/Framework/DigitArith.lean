@@ -516,6 +516,36 @@ lemma of_eq {x x' : ℕ → ℕ} (h : BigDigits x) (he : ∀ m, x m = x' m) :
     BigDigits x' := by
   rwa [funext he] at h
 
+/-- A write-out digit family is primitive recursive.  The value itself may be exponential,
+but it is recoverable from its own digits: `x m = ∑_{j < len4 (x m)} dig4 (x m) j * 4 ^ j`,
+accumulated by primitive recursion on the digit index.  This is what lets a consumer that
+needs `Computable x` — a market clock, say — accept a write-out certificate in place of a
+poly-fueled value. -/
+lemma primrec {x : ℕ → ℕ} (h : BigDigits x) : Primrec x := by
+  obtain ⟨cl, cd, hl, hd⟩ := h
+  have hlp : Primrec fun m => len4 (x m) := hl.primrec
+  have hdp : Primrec fun z : ℕ => dig4 (x z.unpair.1) z.unpair.2 := hd.primrec
+  have hpow : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) := Primrec₂.unpaired'.mp Nat.Primrec.pow
+  have hdig : Primrec₂ fun (m k : ℕ) => dig4 (x m) k :=
+    (hdp.comp (Primrec₂.natPair.comp Primrec.fst Primrec.snd)).to₂.of_eq
+      (fun m k => by simp)
+  have hstep : Primrec fun p : ℕ × ℕ × ℕ => p.2.2 + dig4 (x p.1) p.2.1 * 4 ^ p.2.1 :=
+    Primrec.nat_add.comp (Primrec.snd.comp Primrec.snd)
+      (Primrec.nat_mul.comp
+        (hdig.comp Primrec.fst (Primrec.fst.comp Primrec.snd))
+        (hpow.comp (Primrec.const 4) (Primrec.fst.comp Primrec.snd)))
+  refine (Primrec.nat_rec' hlp (Primrec.const 0) hstep.to₂).of_eq fun m => ?_
+  have key : ∀ k : ℕ,
+      (Nat.rec 0 (fun k acc => acc + dig4 (x m) k * 4 ^ k) k : ℕ)
+        = ∑ j ∈ Finset.range k, dig4 (x m) j * 4 ^ j := by
+    intro k
+    induction k with
+    | zero => simp
+    | succ k ih => rw [Finset.sum_range_succ, ← ih]
+  show (Nat.rec 0 (fun k acc => acc + dig4 (x m) k * 4 ^ k) (len4 (x m)) : ℕ) = x m
+  rw [key, ← mod_pow_eq_sum_dig4]
+  exact Nat.mod_eq_of_lt (lt_four_pow_len4 _)
+
 /-- Polynomial *values* have digit access — the degenerate case, where the value itself
 and not merely its digits is poly-fueled. -/
 lemma of_polyFueled {c : Code} {x : ℕ → ℕ} (h : PolyFueled c x) : BigDigits x := by
@@ -933,6 +963,39 @@ lemma digitVal_append_singleton (b : List ℕ) (d : ℕ) :
 lemma blockSplit_snoc (ds : List ℕ) (d : ℕ) :
     blockSplit (ds ++ [d]) = blockStep (blockSplit ds) d := by
   rw [blockSplit, List.foldl_append, List.foldl_cons, List.foldl_nil, blockSplit]
+
+/-- The one-digit undigitizer transition is primitive recursive. -/
+lemma undigitizeStep_prim : Primrec₂ undigitizeStep := by
+  let S := List ℕ × ℕ × ℕ
+  have hout : Primrec fun z : S × ℕ => z.1.1 := Primrec.fst.comp Primrec.fst
+  have hacc : Primrec fun z : S × ℕ => z.1.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hpow : Primrec fun z : S × ℕ => z.1.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
+  have hd : Primrec fun z : S × ℕ => z.2 := Primrec.snd
+  have hlt : PrimrecPred fun z : S × ℕ => z.2 < 4 :=
+    PrimrecRel.comp Primrec.nat_lt hd (Primrec.const 4)
+  have hthen : Primrec fun z : S × ℕ =>
+      ((z.1.1, z.1.2.1 + z.2 * z.1.2.2, 4 * z.1.2.2) : S) :=
+    hout.pair ((Primrec.nat_add.comp hacc (Primrec.nat_mul.comp hd hpow)).pair
+      (Primrec.nat_mul.comp (Primrec.const 4) hpow))
+  have helse : Primrec fun z : S × ℕ => ((z.1.1 ++ [z.1.2.1], 0, 1) : S) :=
+    (Primrec.list_append.comp hout
+      (Primrec.list_cons.comp hacc (Primrec.const []))).pair
+      ((Primrec.const 0).pair (Primrec.const 1))
+  exact (Primrec.ite hlt hthen helse).to₂.of_eq fun s d => by
+    rcases s with ⟨out, acc, pow⟩
+    unfold undigitizeStep
+    by_cases h : d < 4 <;> simp [h]
+
+/-- The streaming undigitizer is primitive recursive. -/
+lemma undigitize_prim : Primrec undigitize := by
+  have hstep : Primrec₂ fun (_ : List ℕ) (p : (List ℕ × ℕ × ℕ) × ℕ) =>
+      undigitizeStep p.1 p.2 :=
+    (undigitizeStep_prim.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact (Primrec.fst.comp (Primrec.list_foldl Primrec.id
+    (Primrec.const (([], 0, 1) : List ℕ × ℕ × ℕ)) hstep)).of_eq fun ds => by rfl
 
 /-- The undigitize fold tracks the block split: accumulator = value of the current
 block, place = `4 ^` its digit count. -/
