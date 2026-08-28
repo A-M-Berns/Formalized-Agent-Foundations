@@ -989,7 +989,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields CurrentPriceExpectationQuote
   sentence_codes quote_codes reflected affine
 #assert_fields DUSApproximationPresentation
-  approximation approximation_codes nonneg le_mass tendsto
+  approximation nonneg le_mass tendsto
 #assert_fields DUSThresholdEmission
   threshold_sum_codes inverse_width_codes
 #assert_fields DeductiveProcess
@@ -1023,7 +1023,9 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields IndependentBitAtoms
   atom realizable
 #assert_fields IntrospectionIntervalQuote
-  source_codes lower_feature lower_generated upper_feature upper_generated width_codes inverse_width_codes width_pos width_tendsto_zero probability_bounds quote quote_codes reflected inside_affine outside_affine
+  source_codes lower_feature lower_generated upper_feature upper_generated
+  inverse_width_codes width_pos width_tendsto_zero probability_bounds quote
+  quote_codes reflected inside_affine outside_affine
 -- Both criteria are frozen. `IsMachineLogicalInductor` is `def:lic` at the paper's own
 -- quantifier and is what the construction proves; `IsLogicalInductor` is the fuel-class
 -- compatibility reading reached from it by `IsMachineLogicalInductor.toIsLogicalInductor`,
@@ -1060,7 +1062,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields PairedWeighting
   polySeg rank_le closed
 #assert_fields ParadoxResistanceQuote
-  sentence sentence_codes width width_codes width_pos width_tendsto_zero diagonal_reflected lower_affine upper_affine
+  sentence sentence_codes width width_pos width_tendsto_zero diagonal_reflected
+  lower_affine upper_affine
 #assert_fields ParameterizedDiagonalQuoteCode
   toBooleanQuoteCode body represents_fixedpoint
 #assert_fields PaperLUV
@@ -1089,7 +1092,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields PolyNatCodes
   code code_poly
 #assert_fields PrefixMachinePresentation
-  sentence sentence_codes approximation approximation_codes approximation_nonneg approximation_le approximation_tendsto kraft covers
+  sentence sentence_codes approximation approximation_nonneg approximation_le
+  approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
 #assert_fields QuotationTheoryPresentation
@@ -1101,7 +1105,8 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields RepresentedSemidecidableClaims
   sentence sentence_poly provable_of_true
 #assert_fields SelfTrustQuote
-  delta_pos probability_mem sentence_codes delta_codes probability_generable product_codes confidence_codes confidence_reflected product_reflected affine
+  delta_pos probability_mem sentence_codes probability_generable product_codes
+  confidence_codes confidence_reflected product_reflected affine
 #assert_fields SemidecidableComputation
   machine input input_poly truth_iff
 #assert_fields SettlementChecker

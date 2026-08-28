@@ -365,8 +365,6 @@ structure DUSApproximationPresentation {DP : DeductiveProcess}
     (M : LowerSemicomputableContinuousSemimeasure)
     (B : BitPrefixSentences DP) where
   approximation : ℕ → ℕ → ℚ
-  approximation_codes : PolyRatCodes
-    (fun z ↦ approximation z.unpair.1 z.unpair.2)
   nonneg : ∀ n i, 0 ≤ approximation n i
   le_mass : ∀ n i,
     ((approximation n i : ℚ) : ℝ) ≤ M.mass (B.enumeration i)

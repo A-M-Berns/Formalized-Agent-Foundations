@@ -1459,7 +1459,7 @@ theorem simcal
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
-    (hδ : PolyPositiveWidths δ)
+    (hδpos : ∀ n, 0 < (δ n : ℝ))
     (hpoly : PolySequence (sentenceAffine φ))
     (htruth : TheoryTruth φ DP truth)
     (hWgen : PGenerableWeighting (calibrationIndicator φ a b δ))
@@ -1478,7 +1478,7 @@ theorem simcal
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness φ hpoly hWgen
     htruth hdiv hworld
-  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδ
+  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 
 end AffineCombination

@@ -378,7 +378,6 @@ noncomputable def cxQuote :
     ParadoxResistanceQuote (liaHistory (theoremDP T)) (theoremDP T) (1 / 2) :=
   paradoxResistanceQuoteOfDiagonal (quotationPresentation T)
     (theoremMarketComputation T) (1 / 2) (fun n : ℕ => 1 / ((n : ℚ) + 1))
-    harmonicWeight_polyRatCodes
     (PolyRatCodes.inv_of_pos harmonicWeight_polyRatCodes (fun n => by positivity))
     (fun n => by positivity)
     (by

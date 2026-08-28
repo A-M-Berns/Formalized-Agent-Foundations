@@ -32,12 +32,18 @@ structure PGenerableWeighting (W : ℕ → EF) : Prop where
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
 /-- Operational certificate for the paper's efficiently computable positive calibration
-widths.  The inverse-code field records closure under rational inversion in the fuel model;
-semantically it adds nothing beyond positivity and computability of `δ`. -/
+widths: exactly tex:1193-1195's "`⟨δ⟩` is an e.c. sequence of positive rationals", and
+nothing more.  Efficient codeability of the reciprocal `1/δ` is *derived* from these two
+(`PolyRatCodes.inv_of_pos`, `PolyPositiveWidths.inverse_codes`), never assumed. -/
 structure PolyPositiveWidths (δ : ℕ → ℚ) : Prop where
   codes : PolyRatCodes δ
-  inverse_codes : PolyRatCodes (fun n => 1 / δ n)
   positive : ∀ n, 0 < (δ n : ℝ)
+
+/-- The reciprocal widths are efficiently codeable, *derived* from the paper's two
+hypotheses rather than assumed alongside them. -/
+lemma PolyPositiveWidths.inverse_codes {δ : ℕ → ℚ} (h : PolyPositiveWidths δ) :
+    PolyRatCodes (fun n => 1 / δ n) :=
+  h.codes.inv_of_pos (fun n => by exact_mod_cast h.positive n)
 
 /-- Lower continuous indicator `ctsInd[δₙ](a < Pₙ(φₙ))`. -/
 def calibrationLower (φ : ℕ → Sentence) (a : ℚ) (δ : ℕ → ℚ) (n : ℕ) : EF :=
@@ -689,7 +695,7 @@ exists, and every global limit belongs to the interval. -/
 theorem simcal_of_recurring_unbiasedness
     (P : History) (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
-    (hδ : PolyPositiveWidths δ)
+    (hδpos : ∀ n, 0 < (δ n : ℝ))
     (htruth : ∀ n, truth n = 0 ∨ truth n = 1)
     (hdiv : DivergentWeighting (calibrationIndicator φ a b δ) P)
     (hbias : HasLimitPoint
@@ -718,7 +724,7 @@ theorem simcal_of_recurring_unbiasedness
       weightedAverage w market n ∈ Icc (a : ℝ) (b : ℝ) := by
     filter_upwards [hdenpos] with n hn
     apply weightedAverage_mem_Icc_of_support hw0 (fun i hi => ?_) hn
-    have hs := calibrationIndicator_pos_imp φ a b δ hδ.positive P i hi
+    have hs := calibrationIndicator_pos_imp φ a b δ hδpos P i hi
     exact ⟨hs.1.le, hs.2.le⟩
   constructor
   · exact calibration_limitPoint_transfer w market truth (a : ℝ) (b : ℝ)
@@ -3493,7 +3499,7 @@ lemma simcal_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
-    (hδ : PolyPositiveWidths δ)
+    (hδpos : ∀ n, 0 < (δ n : ℝ))
     (hpoly : PolySequence (sentenceAffine φ))
     (htruth : TheoryTruth φ DP truth)
     (hWgen : PGenerableWeighting (calibrationIndicator φ a b δ))
@@ -3516,7 +3522,7 @@ lemma simcal_of_historicalVerifiers
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness_of_historicalVerifiers φ hpoly hWgen
     htruth hdiv hworld hverify hverifyNeg
-  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδ
+  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 
 end AffineCombination

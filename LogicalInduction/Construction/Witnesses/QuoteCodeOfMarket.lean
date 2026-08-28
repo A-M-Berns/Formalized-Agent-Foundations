@@ -874,10 +874,16 @@ The threshold `p` is P-generable (`def:ece`), exactly as in the paper: the emitt
 a program for `p` from the feature presentation by parsing the emitted serialization
 (`RpnSpliceStream.feature_primrec`) and evaluating it against this market
 (`PGenerableRat.computable`).
+
+What the quote code needs of the tolerance `δ` is *computability*, not efficiency: the
+quoted value is a code-indexed atom, so nothing here spells `δ n` out under a polynomial
+clock.  The hypothesis is therefore `Computable δ`, which `PolyRatCodes.computable`
+supplies at the call sites that do carry the efficiency certificate for other reasons.
+This is the same narrowing the sibling `thm:ref` code (`theoremIntervalQuoteCode`) makes.
 Paper node: `thm:st` -/
 noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (δ p : ℕ → ℚ)
-    (hδ : PolyRatCodes δ) (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
+    (hδ : Computable δ) (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
   have hquote : Computable fun n =>
@@ -886,7 +892,7 @@ noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
       hφ.primrec.to_comp : _)
   have hval : Computable fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n) :=
-    (ratCtsInd_computable.comp (hδ.computable.pair
+    (ratCtsInd_computable.comp (hδ.pair
       (hquote.pair (hp.computable (theoremMarketComputation T)))) : _)
   RationalQuoteCode.ofComputable T hval (fun _ => ratCtsInd_mem_Icc _ _ _)
 
@@ -1003,24 +1009,26 @@ theorem lic_self_trust_closed
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
-    (fun n ↦ (indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n).expect
+    (fun n ↦ (indicatorProductLUV
+          (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n).expect
         (liaHistory (theoremDP T)) n) ≳ₙ
       fun n ↦ (p n : ℝ) *
-        ((theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv n).expect
+        ((theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).luv n).expect
           (liaHistory (theoremDP T)) n := by
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f φ δ p
-    (fun n => indicatorProductLUV (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n)
-    (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).luv
+    (fun n => indicatorProductLUV
+      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n)
+    (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).luv
     delta_pos probability_mem hφ hδ
     hp.choose hp.choose_spec
     (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
-    (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp).poly
+    (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (quotationPresentation T)
-      (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) n v hv
+      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) n v hv
     rwa [← theoremConfidence_value_cast T f φ δ p n] at h
   · have h := indicatorProductLUV_valuesAt (quotationPresentation T)
-      (theoremConfidenceQuoteCode T f φ hφ δ p hδ hp) φ n v hv
+      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n v hv
     rwa [← theoremConfidence_value_cast T f φ δ p n] at h
 
 /-! ## Part F — the weighted conditional (`thm:ccee`), general-source closed form

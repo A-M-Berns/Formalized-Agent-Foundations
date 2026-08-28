@@ -1598,9 +1598,6 @@ noncomputable def dusApproximationPresentation {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) (hB : ∀ i, B.enumeration i = dusString i) :
     DUSApproximationPresentation lowerSemicomputable B where
   approximation := fun n i ↦ dusApprox (Nat.pair n i)
-  approximation_codes := by
-    obtain ⟨c, hc⟩ := dusApprox_polyRatCodes
-    exact ⟨c, hc.of_eq (fun z ↦ by simp only [Nat.pair_unpair])⟩
   nonneg := fun _ _ ↦ dusApprox_nonneg _
   le_mass := fun n i ↦ by
     rw [hB i]

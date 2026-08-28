@@ -756,6 +756,41 @@ lemma natPair {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
 lemma succ {x : ℕ → ℕ} (hx : BigDigits x) : BigDigits (fun m => x m + 1) :=
   hx.add (const 1)
 
+/-- **Closure under a poly-fueled two-way branch.**  Digit access commutes with the
+selection: the length and every digit of the selected value are the `ifzSel` choice
+between the two arms' certificates, with the test evaluated at the day component of the
+paired input.  This is the digit-level mirror of `PolySegStream.ifZero`, and the selector
+the rational write-out class uses for the numerator's sign. -/
+lemma ifZero {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y)
+    {ct : Code} {tf : ℕ → ℕ} (ht : PolyFueled ct tf) :
+    BigDigits (fun m => if tf m = 0 then x m else y m) := by
+  obtain ⟨clx, cdx, hlx, hdx⟩ := hx
+  obtain ⟨cly, cdy, hly, hdy⟩ := hy
+  have hlen : PolyFueled _ (fun m => len4 (if tf m = 0 then x m else y m)) :=
+    (ifzSel_polyFueled.comp ((hlx.pair hly).pair ht)).of_eq (fun m => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      by_cases h : tf m = 0 <;> simp [h])
+  have hdig : PolyFueled _ (fun z =>
+      dig4 (if tf z.unpair.1 = 0 then x z.unpair.1 else y z.unpair.1) z.unpair.2) :=
+    (ifzSel_polyFueled.comp ((hdx.pair hdy).pair (ht.comp PolyFueled.left))).of_eq
+      (fun z => by
+        simp only [Nat.unpair_pair, ifzSelFn]
+        by_cases h : tf z.unpair.1 = 0 <;> simp [h])
+  exact ⟨_, _, hlen, hdig⟩
+
+/-- The parity of a big value is poly-fueled: it is the parity of its lowest base-4
+digit, which the digit certificate supplies directly.  The rational write-out class reads
+the numerator's sign off this bit, so the sign needs no field of its own. -/
+lemma mod_two {x : ℕ → ℕ} (hx : BigDigits x) : ∃ c, PolyFueled c (fun m => x m % 2) := by
+  obtain ⟨cl, cd, hl, hd⟩ := hx
+  obtain ⟨cm, hm⟩ := divmodc_polyFueled 2 (by norm_num)
+  have hlow : PolyFueled _ (fun m => dig4 (x m) 0) :=
+    (hd.comp (PolyFueled.id.pair (PolyFueled.const 0))).of_eq
+      (fun m => by simp only [Nat.unpair_pair])
+  refine ⟨_, (PolyFueled.right.comp (hm.comp hlow)).of_eq (fun m => ?_)⟩
+  simp only [Nat.unpair_pair, dig4, pow_zero, Nat.div_one]
+  omega
+
 /-- One clamped accumulation step: clamping accumulator and place value at `M` loses
 nothing about the clamped total. -/
 lemma min_clamp_step (a p d M : ℕ) :

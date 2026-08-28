@@ -43,3 +43,5 @@ import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
 import LogicalInduction.Framework.RationalCut
+import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Machine.WriteOutMachine

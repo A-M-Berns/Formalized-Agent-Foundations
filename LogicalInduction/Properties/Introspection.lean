@@ -154,7 +154,6 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
   lower_generated : GeneratedRatFeature P a lower_feature
   upper_feature : ℕ → EF
   upper_generated : GeneratedRatFeature P b upper_feature
-  width_codes : PolyRatCodes δ
   inverse_width_codes : PolyRatCodes (fun n ↦ 1 / δ n)
   width_pos : ∀ n, 0 < δ n
   width_tendsto_zero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0)
@@ -313,7 +312,6 @@ structure ParadoxResistanceQuote (P : History) (DP : DeductiveProcess)
   sentence : ℕ → Sentence
   sentence_codes : RpnSentenceCodes sentence
   width : ℕ → ℚ
-  width_codes : PolyRatCodes width
   width_pos : ∀ n, 0 < width n
   width_tendsto_zero : Tendsto (fun n => (width n : ℝ)) atTop (𝓝 0)
   diagonal_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →

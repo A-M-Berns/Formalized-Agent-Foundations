@@ -3456,7 +3456,7 @@ noncomputable def introspectionIntervalQuoteOfCode
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -3518,7 +3518,6 @@ noncomputable def introspectionIntervalQuoteOfCode
     lower_generated := hlower
     upper_feature := upperFeature
     upper_generated := hupper
-    width_codes := hδ
     inverse_width_codes := hδinv
     width_pos := hδpos
     width_tendsto_zero := hδzero
@@ -3872,7 +3871,6 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     [T.SoundOnHierarchy 𝚺 1] (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
-    (hwidth : PolyRatCodes width)
     (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
@@ -3913,7 +3911,6 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     sentence := quote.sentence
     sentence_codes := hquote
     width := width
-    width_codes := hwidth
     width_pos := hwidthPos
     width_tendsto_zero := hwidthZero
     diagonal_reflected := by
@@ -4429,7 +4426,7 @@ noncomputable def selfTrustQuoteOfRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : RpnSentenceCodes φ)
     (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
@@ -4554,7 +4551,6 @@ noncomputable def selfTrustQuoteOfRepresentation
     delta_pos := delta_pos
     probability_mem := probability_mem
     sentence_codes := hφ
-    delta_codes := hδ
     probability_generable := ⟨pFeature, hp⟩
     product_codes := hA
     confidence_codes := hB
@@ -4725,7 +4721,7 @@ theorem lic_self_trust_ofRepresentation
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
     (selfTrustQuoteOfRepresentation f φ δ p A B delta_pos
-      probability_mem hφ hδ (hδ.inv_of_pos delta_pos) pFeature hp hA hB
+      probability_mem hφ (hδ.inv_of_pos delta_pos) pFeature hp hA hB
       confidence_reflected product_reflected hworld)
 
 /-! ## Direct same-day consumers -/
@@ -4794,7 +4790,7 @@ theorem lic_introspection_ofCode
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let package := introspectionIntervalQuoteOfCode Q φ hφ a b δ
-    lowerFeature hlower upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
+    lowerFeature hlower upperFeature hupper (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
   exact lic_introspection P DP φ a b δ package hworld
 
 /-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
@@ -4814,7 +4810,7 @@ theorem lic_paradox_resistance_ofDiagonal
     (fun n => P n
       ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) := by
-  let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth
+  let package := paradoxResistanceQuoteOfDiagonal Q market p width
     (hwidth.inv_of_pos hwidthPos) hwidthPos hwidthZero
   exact lic_paradox_resistance P DP p hp0 hp1 package hworld
 

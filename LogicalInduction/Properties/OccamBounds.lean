@@ -37,8 +37,6 @@ structure PrefixMachinePresentation (κ : Sentence → ℕ) where
   sentence : ℕ → Sentence
   sentence_codes : PolySentenceCodes sentence
   approximation : ℕ → ℕ → ℚ
-  approximation_codes : PolyRatCodes
-    (fun z ↦ approximation z.unpair.1 z.unpair.2)
   approximation_nonneg : ∀ n i, 0 ≤ approximation n i
   approximation_le : ∀ n i,
     ((approximation n i : ℚ) : ℝ) ≤ prefixWeight κ (sentence i)

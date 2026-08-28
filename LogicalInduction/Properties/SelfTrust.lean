@@ -174,7 +174,6 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   delta_pos : ∀ n, 0 < δ n
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
   sentence_codes : RpnSentenceCodes φ
-  delta_codes : PolyRatCodes δ
   probability_generable : PGenerableRat P p
   product_codes : LUV.RpnThresholdCodeSeq A
   confidence_codes : LUV.RpnThresholdCodeSeq B

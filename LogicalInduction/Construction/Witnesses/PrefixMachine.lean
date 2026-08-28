@@ -2134,9 +2134,6 @@ def prefixMachinePresentation : PrefixMachinePresentation prefixKappa where
   sentence := prefixSentenceEnum
   sentence_codes := prefixSentenceEnum_polySentenceCodes
   approximation := fun _ i => prefixApprox i
-  approximation_codes := by
-    obtain ⟨c, hc⟩ := prefixApprox_polyRatCodes
-    exact ⟨_, hc.comp PolyFueled.right⟩
   approximation_nonneg := fun _ i => (prefixApprox_pos i).le
   approximation_le := fun n i => (prefixApprox_eq i).le
   approximation_tendsto := fun i => by
