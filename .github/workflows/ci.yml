@@ -165,14 +165,18 @@ jobs:
       # *reads* the environment `lake build` produced; replay re-derives it, so
       # a declaration that entered without the kernel checking it is caught
       # there and nowhere else. Scope and exclusions: scripts/lean_gates.py.
-      - name: Kernel replay (post-build; replays the built oleans)
+      - name: Blanket axiom audit (post-build; reads the built oleans)
         if: github.event_name != 'pull_request'
+        run: python3 scripts/lean_gates.py --audit
+
+      # `!cancelled()` rather than the default `success()`: these two gates answer
+      # different questions, and a run where the audit found something must still
+      # say whether the kernel accepted everything. Hiding the second verdict
+      # behind the first would make one red gate look like one problem.
+      - name: Kernel replay (post-build; replays the built oleans)
+        if: ${{ !cancelled() && github.event_name != 'pull_request' }}
         env:
           # The default of one worker per core is what makes a Mathlib-sized
           # replay swap on a two-core runner.
           LEAN_NUM_THREADS: 4
         run: python3 scripts/lean_gates.py --replay
-
-      - name: Blanket axiom audit (post-build; reads the built oleans)
-        if: github.event_name != 'pull_request'
-        run: python3 scripts/lean_gates.py --audit

@@ -118,6 +118,31 @@ PARTIAL = {
                         "imports are compiled",
 }
 
+# Committed modules that `lake build` does not compile, each with the reason it is
+# not a finding. This list is what stops "the build did not produce it" from being
+# an excuse: a module that is neither built nor named here fails the gate, and a
+# module named here that *is* built fails it too, so an entry cannot outlive the
+# situation it describes.
+#
+# The first two say of themselves that they are spikes. The third does not, and is
+# recorded as debt rather than as scratch: it is machine-reading content that
+# `Framework/RpnEmission.lean` points at in prose and that no module imports, so
+# nothing compiles it and no gate here or elsewhere has ever looked at it.
+UNBUILT = {
+    "LogicalInduction.Construction.Machine.TimedRespectsProbe":
+        "scratch — a Stage-0 de-risk spike; the file's own header says it is not part "
+        "of the formalization, is imported by nothing, and carries no paper node",
+    "LogicalInduction.Framework.FirstOrderSubstrateProbe":
+        "scratch — a read-only feasibility probe for a scoping note; the file's own "
+        "header says it is not part of the build and is excluded from AxiomAudit",
+    "LogicalInduction.Framework.Machine.SentenceCodes":
+        "DEBT, not scratch — it claims to be content (`RpnSentenceCodes.toMachine`, "
+        "cited from Framework/RpnEmission.lean) and nothing imports it, so nothing "
+        "compiles it. Wiring it in, or retiring it, is a decision for the "
+        "LogicalInduction line rather than for this gate; recorded here so it stops "
+        "being invisible",
+}
+
 # Every library deliberately out of scope, and why. A library is excluded only
 # when a reason survives being written down.
 EXCLUDED = {
@@ -136,6 +161,10 @@ REPLAYING = re.compile(r"^replaying (\S+)$", re.M)
 LEAN_LIB = re.compile(r"^lean_lib\s+(\w+)", re.M)
 DEFAULT_TARGET = re.compile(r"@\[default_target\]\s*\nlean_lib\s+(\w+)", re.M)
 MACHINE_EXEC_ROOTS = re.compile(r"lean_lib\s+MachineExec\b.*?roots\s*:=\s*#\[`([\w.]+)\]", re.S)
+# `globs := #[.submodules `X]` builds X's submodules and *not* `X.lean`;
+# `.andSubmodules` builds both. A library with no `globs` builds its root module.
+SUBMODULES_ONLY = re.compile(
+    r"lean_lib\s+(\w+)\b[^\n]*\n(?:(?!lean_lib)[\s\S])*?globs\s*:=\s*#\[\s*\.submodules\b")
 
 
 # --------------------------------------------------------------------------- scope
@@ -179,6 +208,15 @@ def assert_scope(lakefile: str) -> list[str]:
     if "Scratchpad" in targets:
         problems.append("Scratchpad is now a `@[default_target]`, so it is built and the "
                         "reason it is excluded no longer holds")
+    for module in sorted(UNBUILT):
+        if not (ROOT / (module.replace(".", "/") + ".lean")).is_file():
+            problems.append(f"UNBUILT names {module!r} and no such source file exists — "
+                            "a stale entry reads as a reviewed decision")
+        elif not any(module == root or module.startswith(root + ".") for root in AUDITED):
+            problems.append(f"UNBUILT names {module!r}, which is under no audited root, "
+                            "so recording it excuses nothing")
+        elif not UNBUILT[module].strip():
+            problems.append(f"UNBUILT names {module!r} with no reason")
     machine = MACHINE_EXEC_ROOTS.search(lakefile)
     if "MachineExec" in declared:
         if not machine:
@@ -212,16 +250,27 @@ def modules_of(root: str) -> list[str]:
     return built_modules(root) if root in PARTIAL else source_modules(root)
 
 
-def source_modules(root: str) -> list[str]:
-    """Every committed module of a library: `<Root>.lean` if present, plus `<Root>/**`."""
+def builds_root_module(lakefile: str, root: str) -> bool:
+    """Does `lake build` compile `<Root>.lean` itself, or only its submodules?"""
+    return root not in set(SUBMODULES_ONLY.findall(lakefile))
+
+
+def source_modules(root: str, lakefile: str | None = None) -> list[str]:
+    """Every committed module of a library that `lake build` is expected to compile.
+
+    Two exclusions, both about what the build actually does rather than what the
+    tree contains: a `globs := #[.submodules …]` library's root module is not
+    compiled, and the modules named in `UNBUILT` are compiled by nothing."""
+    if lakefile is None:
+        lakefile = LAKEFILE.read_text()
     modules: list[str] = []
-    if (ROOT / f"{root}.lean").is_file():
+    if (ROOT / f"{root}.lean").is_file() and builds_root_module(lakefile, root):
         modules.append(root)
     directory = ROOT / root
     if directory.is_dir():
         modules += [".".join(p.relative_to(ROOT).with_suffix("").parts)
                     for p in directory.rglob("*.lean")]
-    return sorted(set(modules))
+    return sorted(set(modules) - set(UNBUILT))
 
 
 def audited_roots() -> list[str]:
@@ -361,8 +410,14 @@ def run_replay() -> int:
             print(f"    {module}")
     for lib, why in sorted(EXCLUDED.items()):
         print(f"  (not replayed) {lib}: {why.splitlines()[0]}")
+    for module, why in sorted(UNBUILT.items()):
+        print(f"  (not built, so not replayed) {module}: {why}")
 
     problems = replay_verdict(proc.returncode, output, expected)
+    resurrected = [m for m in UNBUILT if m in set(REPLAYING.findall(output))]
+    if resurrected:
+        problems.append(f"{resurrected} are recorded in UNBUILT as modules the build does "
+                        "not compile, and the build compiled them. Remove the entries")
     if problems:
         report_failure("KERNEL REPLAY", problems,
                        "leanchecker output", output.splitlines()[-40:])
@@ -428,6 +483,17 @@ def report_failure(label: str, problems: list[str],
 
 
 # ------------------------------------------------------------------------ self-test
+
+def with_unbuilt(entries: dict[str, str], act):
+    """Run `act` with `UNBUILT` temporarily replaced, so its guards are testable."""
+    global UNBUILT
+    saved = UNBUILT
+    UNBUILT = entries
+    try:
+        return act()
+    finally:
+        UNBUILT = saved
+
 
 def self_test() -> int:
     """Null inputs first: every way these gates can check nothing is a failure.
@@ -515,6 +581,25 @@ def self_test() -> int:
         # The live tree, so the gates cannot pass by having stopped matching.
         ("every audited root has committed modules",
          [r for r in audited_roots() if not source_modules(r)], []),
+        ("every unbuilt module carries a reason",
+         all(why.strip() for why in UNBUILT.values()), True),
+        ("an unbuilt entry naming no source file is caught",
+         with_unbuilt({"LogicalInduction.NoSuchModule": "invented"},
+                      lambda: bool(assert_scope(lakefile))), True),
+        ("an unbuilt entry under no audited root is caught",
+         with_unbuilt({"Scratchpad": "under an excluded library"},
+                      lambda: bool(assert_scope(lakefile))), True),
+        ("an unbuilt entry with no reason is caught",
+         with_unbuilt({"LogicalInduction.Framework.Machine.SentenceCodes": "  "},
+                      lambda: bool(assert_scope(lakefile))), True),
+        ("a `.submodules` library's root module is not expected",
+         "ShannonInformation" in source_modules("ShannonInformation"), False),
+        ("an `.andSubmodules` library's root module is expected",
+         "Condensation" in source_modules("Condensation"), True),
+        ("a plain library's root module is expected",
+         "CartesianFrames" in source_modules("CartesianFrames"), True),
+        ("a module recorded as unbuilt is not expected",
+         [m for m in UNBUILT if m in source_modules("LogicalInduction")], []),
         ("module names are derived from paths, not guessed",
          "CartesianFrames.Basic" in source_modules("CartesianFrames"), True),
         ("a library with a root module file includes it",
