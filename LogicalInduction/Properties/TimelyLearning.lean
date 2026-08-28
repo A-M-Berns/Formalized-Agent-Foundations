@@ -92,7 +92,7 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
 the Appendix proof of `thm:perkno`. -/
 noncomputable def sentenceMinusProbability_polySequence
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p) :
+    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p) :
     PolySequence (sentenceMinusProbability φ p) := by
   exact {
     termCount := fun _ => 1
@@ -101,7 +101,7 @@ noncomputable def sentenceMinusProbability_polySequence
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
     const_poly := BigSpliceStream.serialize_mul
       (BigSpliceStream.serialize_const (-1))
-      (BigSpliceStream.serialize_const_comp hp)
+      (BigSpliceStream.serialize_const_write hp.toBigDigits)
     coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusProbability]
@@ -175,7 +175,7 @@ uniformly from that side.
 Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -205,7 +205,7 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
@@ -236,7 +236,7 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
@@ -321,7 +321,7 @@ target sequence pointwise.
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
