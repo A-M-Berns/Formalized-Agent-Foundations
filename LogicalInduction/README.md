@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 33 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 37 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 10 | proved with an explicitly named representation interface or class restriction retained |
+| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 10 of
-them at exact or strengthened, 8 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 12 of
+them at exact or strengthened, 6 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -60,18 +60,28 @@ the trader class with the fuel calculus as its certificate (see *The modeling bo
 "exact" means the paper's statement is reached *within that model*, not that the model
 equivalence is proved.
 
-Second, and this is what most of the `qualified` count is: ten nodes take a **whole-value**
+Second, the remaining `qualified` count is still dominated by one cause: a **whole-value**
 efficiency hypothesis where the paper asks only for efficient computability. `PolyFueled`
-bundles `IsPolyBounded f` — a bound on the function's *output value* — so `PolyNatCodes`,
-`PolyMachineCodes`, `PolyRatCodes` and their relatives admit only sequences whose values
-grow polynomially, while the paper's e.c. is polynomial *time*: poly time to write an object
-bounds its **symbols**, permitting values up to exponential. `δₙ = 2^(−n)` is excluded by
-`PolyRatCodes`; `not_polyFueled_two_pow` proves the restriction strict. The symbol-metered
-classes exist for sentences (`RpnSentenceCodes`) but not for naturals, machine codes or
-rationals, and building a symbol-metered rational class would retire four of the ten
-qualifications at once — the largest single piece of work this classification identifies.
+bundles `IsPolyBounded f` — a bound on the function's *output value* — so `PolyNatCodes` and
+`PolyMachineCodes` admit only sequences whose values grow polynomially, while the paper's
+e.c. is polynomial *time*: poly time to write an object bounds its **symbols**, permitting
+values up to exponential. `not_polyFueled_two_pow` proves that restriction strict.
 
-The remaining three qualified nodes are the §4.10 consistency family (`thm:pac`,
+The symbol-metered *write-out* classes now exist — `BigDigits` for naturals, `DigitRatCodes`
+for rationals, `DigitMachineCodes` for machine codes, and `BigSpliceStream` for the emission
+surface they are consumed on — and `bigDigits_two_pow_not_polyFueled`,
+`bigTokenStream_not_polySegStream` and `digitRatCodes_two_pow_inv_not_polyRatCodes` witness
+that each strictly contains its value-bounded predecessor. Building the rational one retired
+exactly the four rows this classification predicted it would: `thm:ref`, `thm:st`,
+`thm:perkno` and `thm:simcal` now take the paper's own class, so `δₙ = 2^(−n)` and
+`pₙ = 1 − 2^(−n)` are admissible data.
+
+Three nodes still carry it. `thm:halts`, `thm:loops` and `thm:dontwait` take the
+`PolyMachineCodes`/`PolyNatCodes` pair, where the mismatch is sharpest — tex:1931-1933 asks
+for poly time to *write out* `⟨m⟩`, and a length-`n` bitstring has value `2^n`. The classes
+they need are built; the migration of those three statements is not done.
+
+The other three qualified nodes are the §4.10 consistency family (`thm:pac`,
 `thm:pazfc`, `thm:incons`), whose rows say exactly what is and is not formalized. In
 particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
 distinctive second-theory parameter is absent, and the kernel accepts
