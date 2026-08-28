@@ -235,7 +235,8 @@ def growingConditionProcess : DeductiveProcess where
     growingConditionProcess.D (n + 1) =
       {growingConditionAtom 0, growingConditionAtom 1} := rfl
 
-/-- The stages strictly grow: the adjoined theory is not constant. -/
+/-- The stages strictly grow: the adjoined theory is not constant. 
+Paper node: `thm:scon` -/
 lemma growingConditionProcess_ssubset :
     growingConditionProcess.D 0 ⊂ growingConditionProcess.D 1 := by
   rw [growingConditionProcess_zero, show (1 : ℕ) = 0 + 1 from rfl,
@@ -269,7 +270,8 @@ private lemma exists_growingConditionProcessCode :
   exact ⟨code, fun n => by rw [hcode]; exact Part.mem_some_iff.mpr rfl⟩
 
 /-- The strictly growing process is computable, by a two-way dispatch between two constant
-stage codes. -/
+stage codes. 
+Paper node: `thm:scon` -/
 noncomputable def growingConditionProcessComputation :
     DeductiveProcessComputation growingConditionProcess :=
   ⟨exists_growingConditionProcessCode.choose,
@@ -289,7 +291,8 @@ private lemma growingConditionProcess_condition_codes :
 
 /-- **`N+` witness with content.**  The compact conditioning interface is inhabited by a
 process whose stages are nonempty and strictly growing, so the growing form of `thm:scon`
-instantiated here adjoins a real, changing condition rather than the empty conjunction. -/
+instantiated here adjoins a real, changing condition rather than the empty conjunction. 
+Paper node: `thm:scon` -/
 noncomputable def growingCompactConditioningProcessComputation :
     CompactConditioningProcessComputation growingConditionProcess where
   toDeductiveProcessComputation := growingConditionProcessComputation
@@ -318,7 +321,8 @@ lemma deductiveStageCondition_growing_succ (n : ℕ) :
 
 /-- **No stage's condition is the empty conjunction.**  This is the property the degenerate
 inhabitant fails: at `extra.D n = ∅` every condition is `⊤`, and conditioning on `⊤` is not
-conditioning. -/
+conditioning. 
+Paper node: `thm:scon` -/
 lemma deductiveStageCondition_growing_ne_top (n : ℕ) :
     deductiveStageCondition (growingConditionProcess.D n) ≠ ⊤ := by
   cases n with
@@ -331,7 +335,8 @@ lemma deductiveStageCondition_growing_ne_top (n : ℕ) :
 /-- **The condition sequence genuinely changes with the stage.**  Day `0` names a single
 atom; every later day names a two-conjunct conjunction.  Together with
 `deductiveStageCondition_growing_ne_top` this is what makes the growing form of `thm:scon`
-say something about *growing* conditioning when instantiated here. -/
+say something about *growing* conditioning when instantiated here. 
+Paper node: `thm:scon` -/
 lemma deductiveStageCondition_growing_ne :
     deductiveStageCondition (growingConditionProcess.D 0) ≠
       deductiveStageCondition (growingConditionProcess.D 1) := by

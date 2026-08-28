@@ -335,8 +335,8 @@ def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
                 f"{', '.join(map(str, expected))}")
 
     # the two totals, stated twice each in the prose
-    one(r"lemma of the paper — (\d+) of them —", "the theorem/lemma node total", [n_thm])
-    one(r"over those (\d+) theorem and lemma nodes", "the strength-table denominator",
+    one(r"(\d+) of the paper\'s labelled\s+results are carried as annotated nodes", "the theorem/lemma node total", [n_thm])
+    one(r"over the (\d+) annotated theorem and\s+lemma nodes", "the strength-table denominator",
         [n_thm])
     # the status table itself
     for status in sorted(STATUSES):
@@ -354,6 +354,57 @@ def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
         "the instantiated split",
         [counts["inst"].get("exact", 0) + counts["inst"].get("strengthened", 0),
          counts["inst"].get("qualified", 0)])
+    return errs
+
+
+# Labelled paper results that are deliberately not carried as annotated nodes.
+# Each is formalized in the development but cited from a module header rather than a
+# `Paper node:` line, because it is appendix construction machinery rather than a
+# statement the trust surface renders.  Adding a label here is a disclosure, not a
+# dismissal: it must stay true that the result is worked somewhere in the library.
+UNANNOTATED_PAPER_RESULTS = {
+    "lem:fpl":           "MarketMaker.lean — fixed_point_lemma",
+    "lem:mm":            "MarketMaker.lean — MarketMaker inexploitability",
+    "lem:budgeter":      "Budgeter.lean — budgeter_props",
+    "prop:enumeration":  "TradingFirm.lean — the trader enumeration",
+    "lem:type3":         "ROI.lean — type-3 return-on-investment bound",
+    "lem:type2":         "ROI.lean — type-2 return-on-investment bound",
+    "lem:conluvapprox":  "ExpectationConvergence.lean — LUV approximation",
+    "lem:limexpapprox":  "ExpectationProperties.lean — limiting-expectation approximation",
+}
+
+# `restatable` is also used for definitions and for the §1 desiderata, which are not
+# theorem-like results and are not expected to carry a node.
+_NON_RESULT_PREFIXES = ("des:", "def:")
+
+TEX = Path("LogicalInduction/notes/1609.03543v5-main.tex")
+_TEX_ENV = re.compile(
+    r"\\begin\{(?:restatable|theorem|lemma|proposition|corollary)\}"
+    r"(?:\[[^\]]*\]|\{[^}]*\}|\s)*"
+    r"\\label\{([^}]+)\}")
+
+
+def check_paper_results_covered(root: Path, used: set[str]) -> list[str]:
+    """Paper -> annotation.  Every other check runs annotation -> paper, so an
+    unformalized paper result would otherwise be invisible to the whole gate suite."""
+    tex = (root / TEX).read_text(encoding="utf-8")
+    errs: list[str] = []
+    labels = {m.group(1) for m in _TEX_ENV.finditer(tex)}
+    for lab in sorted(labels):
+        if lab.startswith(_NON_RESULT_PREFIXES):
+            continue
+        if lab in used or lab in UNANNOTATED_PAPER_RESULTS:
+            continue
+        errs.append(f"UNCARRIED PAPER RESULT: `{lab}` is a labelled theorem-like "
+                    f"environment in the paper but is carried by no `Paper node:` line "
+                    f"and is not listed in UNANNOTATED_PAPER_RESULTS")
+    for lab in sorted(UNANNOTATED_PAPER_RESULTS):
+        if lab not in labels:
+            errs.append(f"STALE EXCUSE: `{lab}` is listed in UNANNOTATED_PAPER_RESULTS "
+                        f"but is not a labelled theorem-like environment in the paper")
+        if lab in used:
+            errs.append(f"STALE EXCUSE: `{lab}` is listed in UNANNOTATED_PAPER_RESULTS "
+                        f"but is now carried by a `Paper node:` line — remove the excuse")
     return errs
 
 
@@ -450,6 +501,11 @@ def main() -> int:
 
     # --- G. the README's headline counts match the ledger ---------------------
     for err in check_readme_counts(root, strength):
+        print(err)
+        fail = True
+
+    # --- H. every labelled paper result is carried, or explicitly excused ------
+    for err in check_paper_results_covered(root, used):
         print(err)
         fail = True
 

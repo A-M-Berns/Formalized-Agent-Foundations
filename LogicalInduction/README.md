@@ -16,9 +16,15 @@ imports, but is not thereby designated as supported API. Import
 high-level efficiency certificates and the unchanged `dd:fuel`, propositional-LUV, and
 finite-perturbation boundaries.
 
-The existence theorem is proved in the paper's full sense, and every named theorem and
-lemma of the paper — 53 of them — is formalized, named after its paper label, and
-build-audited. How strong each one is, over those 53 theorem and lemma nodes:
+The existence theorem is proved in the paper's full sense. 53 of the paper's labelled
+results are carried as annotated nodes — named after the paper's own label, build-audited,
+and rendered on the trust surface. Eight further labelled appendix lemmas
+(`lem:fpl`, `lem:mm`, `lem:budgeter`, `prop:enumeration`, `lem:type2`, `lem:type3`,
+`lem:conluvapprox`, `lem:limexpapprox`) are also formalized, but as construction machinery
+cited from their module headers rather than as annotated nodes; they are listed and gated in
+`scripts/check_endpoint_coverage.py`, which fails if a labelled paper result is neither
+carried nor explicitly excused. How strong each node is, over the 53 annotated theorem and
+lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
