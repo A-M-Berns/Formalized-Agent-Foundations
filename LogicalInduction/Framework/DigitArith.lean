@@ -221,6 +221,12 @@ lemma len4_mul_le (x y : ℕ) : len4 (x * y) ≤ len4 x + len4 y := by
     _ ≤ 4 ^ len4 x * 4 ^ len4 y :=
         Nat.mul_le_mul (lt_four_pow_len4 x) (lt_four_pow_len4 y)
 
+/-- `len4` is primitive recursive.  Obtained from `len4_polyFueled` rather than proved
+again: a poly-fueled function is in particular primitive recursive. -/
+lemma len4_primrec : Primrec len4 := by
+  obtain ⟨_, h⟩ := len4_polyFueled
+  exact h.primrec
+
 /-! ### Multiplication columns
 
 Schoolbook column convolution.  `conv4 x y p` is the raw column-`p` product sum;
@@ -1691,6 +1697,7 @@ lemma DigitSentenceCodes.comp {φ : ℕ → Sentence} (h : DigitSentenceCodes φ
 #print axioms PolySegStream.freezeModeScan
 #print axioms PolySegStream.dayClampTokens
 
+#print axioms len4_primrec
 #print axioms PolySegStream.undigitizeTokens
 #print axioms BigDigits.add
 #print axioms BigDigits.mul

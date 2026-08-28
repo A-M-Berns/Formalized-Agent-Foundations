@@ -12,14 +12,16 @@ finite-string enumeration is the total decode-with-empty enumeration induced by 
 `List Bool` encoding, and the presentation's efficient-naming field is discharged by an
 explicit emitter (`ordinaryBitPrefixSentences`).
 
-**Why the naming field is symbol-metered.**  The whole-value form of that field
+**Why the naming field is write-out metered.**  The whole-value form of that field
 (`PolySentenceCodes`) is *unsatisfiable* here, and that is proved rather than asserted:
 `not_polySentenceCodes_bitPrefixSentence` shows a `⋏` node costs two nested `Nat.pair`s
 while a `List Bool` cons costs one, so along the all-ones strings the prefix sentence's code
 (`≥ 2 ^ 4 ^ m`) outruns every polynomial in its own enumeration index (`≤ 5 ^ 2 ^ m`).  The
-repo's symbol-metered interface `BigSentenceCodes` (`Framework/RpnSplice.lean`) meters the
+repo's **write-out** class `BigSentenceCodes` (`Framework/WriteOut.lean`) meters the
 *canonical Polish run* instead, which for the length-`m` prefix conjunction is `Θ(m)` tiny
-tokens — so the field becomes dischargeable without changing the sentences named.
+tokens — so the field becomes dischargeable without changing the sentences named.  (The
+per-token-value-metered class is `RpnSentenceCodes`, in `Framework/RpnSplice.lean`; it is
+not what this field takes.)
 
 **The emitter** (`BitChain`).  A stock `List Bool` code is a chain of `Nat.pair`s; walking it
 is cheap in the `dd:fuel` model because `PolyFueled` meters fuel and output in the input
@@ -111,19 +113,19 @@ lemma independentBitAtoms_nonempty :
     ∃ DP : DeductiveProcess, Nonempty (IndependentBitAtoms DP) :=
   ⟨emptyBitDeductiveProcess, ⟨ordinaryIndependentBitAtoms⟩⟩
 
-/-! ### Why the naming field is symbol-metered: the whole-value premise is unsatisfiable
+/-! ### Why the naming field is write-out metered: the whole-value premise is unsatisfiable
 
 The non-vacuity guard, run in the negative direction: a *whole-value* naming certificate
 (`PolySentenceCodes`) for the prefix conjunctions has **no inhabitant**, for any atom family.
 `PolyFueled` bundles `IsPolyBounded` of the computed function itself, so it suffices to
 refute the output bound.  This is what forces `BitPrefixSentences.prefix_codes` to meter
-symbols; the emitter discharging the symbol-metered form is built below.
+symbols; the emitter discharging the write-out form is built below.
 
 `Nat.pair x y ≥ y * y` makes the conjunction code grow with exponent `4 ^ m` in the prefix
 length `m`, whereas the stock `List Bool` code — the enumeration index the bound is measured
 against — grows only with exponent `2 ^ m`.  The gap doubles the exponent per bit, so no
-polynomial covers it.  This is exactly the whole-value/symbol-metered mismatch documented at
-`BigSentenceCodes` (`Framework/RpnSplice.lean`), which meters symbols instead of the pair-code
+polynomial covers it.  This is exactly the whole-value/write-out mismatch documented at
+`BigSentenceCodes` (`Framework/WriteOut.lean`), which meters symbols instead of the pair-code
 value and is the interface a repair should use. -/
 
 private lemma sq_le_pair (x y : ℕ) : y * y ≤ Nat.pair x y := by
@@ -235,7 +237,8 @@ lemma not_isPolyBounded_bitPrefixSentence_codes (atom : ℕ → Sentence) :
 
 /-- **The whole-value naming certificate has no inhabitant.**  Consequently
 `BitPrefixSentences.prefix_codes` cannot be metered in the pair-code value, which is why it
-is stated with the symbol-metered `BigSentenceCodes`; `ordinaryBitPrefixCodes` below
+is stated with the write-out `BigSentenceCodes` (`Framework/WriteOut.lean`);
+`ordinaryBitPrefixCodes` below
 discharges that form for exactly the same sentences.
 Paper node: `thm:dus` -/
 lemma not_polySentenceCodes_bitPrefixSentence (atom : ℕ → Sentence) :
@@ -244,7 +247,7 @@ lemma not_polySentenceCodes_bitPrefixSentence (atom : ℕ → Sentence) :
   obtain ⟨b, -, hpoly, -⟩ := hc
   exact not_isPolyBounded_bitPrefixSentence_codes atom hpoly
 
-/-! ### The symbol-metered emitter
+/-! ### The write-out emitter
 
 A stock `List Bool` code is a chain of `Nat.pair`s: `encode (b :: l) = pair ⌜b⌝ ⌜l⌝ + 1`.
 `BitChain` walks that chain with two `prec` scans — one for its length, one for a *global*
@@ -655,7 +658,7 @@ lemma ordinaryBitPrefixCodes :
       bitPrefixSentence ordinaryIndependentBitAtoms.atom (bitStringEnumeration i)) :=
   BitChain.bigSentenceCodes_bitPrefixSentence
 
-/-- Construct the complete prefix presentation from independent atoms and a symbol-metered
+/-- Construct the complete prefix presentation from independent atoms and a write-out
 naming certificate for the actual literal conjunctions.
 Paper node: `thm:dus` -/
 def bitPrefixSentencesOfIndependentAtoms

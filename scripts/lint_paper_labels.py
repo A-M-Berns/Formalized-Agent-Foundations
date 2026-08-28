@@ -66,7 +66,48 @@ CD_LABEL = re.compile(
 FSM_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary)\s+(?:[0-9]+|[A-Z])\.[0-9]+"
 )
-DECL = re.compile(r"^\s*(?:@\[[^\]]*\]\s*)*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
+# A declaration's `theorem` keyword can be preceded by any number of attribute blocks
+# and modifiers, in any order (`private @[simp] theorem`, `@[simp] private theorem`,
+# `noncomputable protected theorem`, …), and an attribute block may be split across
+# lines.  `logical_lines` below rejoins those continuations first, so the matcher only
+# has to accept an arbitrary prefix on a single (logical) line.
+MODIFIER = (r"(?:@\[[^\]]*\]"
+            r"|(?:private|protected|nonrec|noncomputable|scoped)\b)\s*")
+DECL = re.compile(rf"^\s*(?P<mods>(?:{MODIFIER})*)theorem\s+(?P<name>[\w.]+)")
+MODIFIERS_ONLY = re.compile(rf"^\s*(?:{MODIFIER})*\s*$")
+JOINABLE = re.compile(r"^\s*(?:@\[|private\b|protected\b|nonrec\b|noncomputable\b|scoped\b)")
+PRIVATE = re.compile(r"(?:^|\s)private\s")
+
+
+def logical_lines(lines, depths):
+    """`(start_index, text)` per declaration-carrying logical line.
+
+    Two continuations are folded in, both of which otherwise let a `theorem` slip past
+    the matcher entirely: an attribute block whose `]` lands on a later line, and an
+    attribute/modifier prefix sitting alone on the line above the keyword.  Only lines
+    that begin with an attribute or a modifier are ever joined, and never across a
+    block comment, so ordinary code is untouched.  The reported line number is the
+    first line of the group, which is where a reader looks for the declaration.
+    """
+    out = []
+    i, n = 0, len(lines)
+    while i < n:
+        start, text = i, lines[i]
+        if depths[i] == 0 and JOINABLE.match(text):
+            # (a) attribute block left open by an unbalanced `[`
+            while text.count("[") > text.count("]") and i + 1 < n and depths[i + 1] == 0:
+                i += 1
+                text = text.rstrip() + " " + lines[i].lstrip()
+            # (b) nothing but attributes/modifiers on this line — the keyword follows
+            while MODIFIERS_ONLY.match(text) and i + 1 < n and depths[i + 1] == 0:
+                i += 1
+                text = text.rstrip() + " " + lines[i].lstrip()
+                while text.count("[") > text.count("]") and i + 1 < n and depths[i + 1] == 0:
+                    i += 1
+                    text = text.rstrip() + " " + lines[i].lstrip()
+        out.append((start, text))
+        i += 1
+    return out
 
 def block_depth_after(line, depth):
     """Nestable-comment depth after scanning `line`, given `depth` at its start."""
@@ -95,16 +136,17 @@ paths = [(path, label) for library, label in libraries.items()
          for path in library.rglob("*.lean")]
 for path, label in sorted(paths, key=lambda entry: entry[0]):
     lines = path.read_text().splitlines()
-    depth = 0
-    for i, line in enumerate(lines):
-        at_start = depth
+    depths, depth = [], 0
+    for line in lines:
+        depths.append(depth)  # depth at the *start* of the line
         depth = block_depth_after(line, depth)
-        if at_start > 0:  # line begins inside a block comment / docstring — prose, not a decl
+    for i, line in logical_lines(lines, depths):
+        if depths[i] > 0:  # line begins inside a block comment / docstring — prose, not a decl
             continue
         m = DECL.match(line)
         if not m:
             continue
-        if m.group("private"):
+        if PRIVATE.search(" " + m.group("mods")):
             violations.append(f"{path}:{i + 1}: private theorem {m.group('name')} (use private lemma)")
             continue
         j = i - 1

@@ -30,7 +30,8 @@ Contents:
   family without re-deriving its emission;
 * the frontend `PaperLUVSeq`: a structurally certified family of literal paper LUVs
   compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, inhabited by
-  the varying `1/(n+1)` family `unitFracPaperLUVSeq`.
+  the varying `1/(n+1)` family `unitFracPaperLUVSeq` — with the unary-numeral metering
+  restriction disclosed at `PolyArithmeticFormulaSeq` and `PaperLUVSeq`.
 
 ## Compatibility with the shared grammar
 
@@ -438,7 +439,29 @@ lemma parseRpn_encodePaperThreshold {T : ArithmeticTheory} [T.Δ₁]
 This predicate deliberately certifies the structural payload, not Foundation's Godel
 code.  The lifting theorem below adds only fixed tokens and a unary copy of the already
 poly-fueled payload length.  Thus the final tag-7 value is constructed by `parseRpn` and
-never occurs in the emitter's output range. -/
+never occurs in the emitter's output range.
+
+**Disclosure — what is metered, and which paper LUVs that excludes.**
+`PolyArithmeticFormulaSeq φ` asks that the *symbol list*
+`encodeArithmeticFormulaSymbols (φ n)` be a `PolySegStream`: polynomially many tokens,
+each of polynomially bounded value.  Foundation builds a numeral as a left-nested fold of
+`one` under `add`, and `encodeArithmeticTermSymbols_numeral` below computes the cost
+exactly — `encodeArithmeticTermSymbols` of the numeral `v` is
+`List.replicate (v - 1) 7 ++ List.replicate v 6`, i.e. `2 * v - 1` symbols.  **Numerals
+are metered in unary.**  Consequently a defining formula that names a constant of
+superpolynomial magnitude has no certificate: the stream length is not
+`IsPolyBounded`, which `encodeArithmeticTermSymbols_numeral` together with
+`not_isPolyBounded_two_pow` refutes at the numeral `2 ^ n`.
+
+Concretely: the `1/(n+1)` family `unitFracPaperLUVSeq` **is** admissible, since its
+numerals are `n + 1`; the same threshold written with the numeral `2 ^ n` — the
+paper-natural `X > 2⁻ⁿ` — is **not**.  Both are `def:luv`-admissible data for the paper,
+so this is a genuine restriction on the paper's own quantifier range, not merely a
+repo-side presentation choice.  It is disclosed in `LogicalInduction/README.md` and
+charged per row in `scripts/coverage-classification.md`.  The faithful repair is
+identified and **not** done: a write-out arithmetic-formula meter that names numerals in
+*binary* — the `Code.sourceNat` pattern applied to `ArithmeticSemiformula`, as
+`DigitMachineCodes` did for machine source. -/
 
 def PolyArithmeticFormulaSeq {k : ℕ} (φ : ℕ → ArithmeticSemiformula ℕ k) : Prop :=
   PolySegStream (fun n => encodeArithmeticFormulaSymbols (φ n))
@@ -998,6 +1021,18 @@ threshold syntax adds on top (the implication shell, the fixed comparison templa
 the reduced numerals of the query rational) is discharged internally.
 
 Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`.
+
+**Disclosure — this field is a restriction on `def:luv` data.**  `structural` is
+`PolyArithmeticFormulaSeq`, which meters the defining formula's *symbol list* with
+Foundation's numerals spelled in **unary** (`encodeArithmeticTermSymbols_numeral`: the
+numeral `v` costs `2 * v - 1` symbols).  A `PaperLUV` whose defining formula names a
+constant of superpolynomial magnitude therefore admits no `PaperLUVSeq` — the excluded
+family `X > 2⁻ⁿ`, written with the numeral `2 ^ n`, is refuted by
+`encodeArithmeticTermSymbols_numeral` plus `not_isPolyBounded_two_pow`, while the
+`1/(n+1)` family is admissible.  `PaperLUV` itself carries no such field; only the
+sequence wrapper does, and this wrapper is the repo's only route from a literal
+first-order paper LUV into `LUV.RpnThresholdCodeSeq`.  See the *Symbol-metered family
+interface* section above for the identified, not-yet-built binary-numeral repair.
 Paper node: `def:luv` -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv : ℕ → PaperLUV T
@@ -1124,6 +1159,10 @@ def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : P
 first-order paper LUVs is both semantically valued on every completed world of the
 canonical theorem process and efficiently thresholded in the symbol-metered emission
 calculus.
+
+This is a statement about `PaperLUVSeq`, **not** about every `PaperLUV` sequence: the
+`structural` field is an extra hypothesis `PaperLUV` does not carry, and it excludes
+defining formulas naming superpolynomial constants (see `PaperLUVSeq`).
 Paper node: `def:luv` -/
 lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] (X : PaperLUVSeq T) :

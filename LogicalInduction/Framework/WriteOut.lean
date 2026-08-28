@@ -568,17 +568,25 @@ qualifies.
 `Nat.Partrec.Code`, exactly as elsewhere in this development; what is chosen here is how a
 machine is *named*.  The name is `Code.sourceNat` (`Framework/CodeSource.lean`): the postfix
 tag stream of the syntax tree read base-16, whose symbol count is linear in the tree
-(`len4_sourceNat_le`) and which is efficiently decodable (`ofSource_sourceNat`, with
-`ofSource_primrec`).  That is what tex:1931-1933 asks of `⟨m⟩` — the source must be writable
-in time polynomial in the day.
+(`len4_sourceNat_le`).  That is what tex:1931-1933 asks of `⟨m⟩` — the source must be
+writable in time polynomial in the day.
+
+Decoding is by the total primitive recursive `ofSource` (`ofSource_primrec`), which inverts
+the naming map (`ofSource_sourceNat`).  Its cost is metered in peel steps, one per base-4
+digit of the name — exactly `len4 n` of them (`ofSource_peelSteps`), hence at most `2 * size`
+for a machine name (`sourceNat_peelSteps_le`): **linear in the source length**.  That is the
+whole cost claim; no `PolyFueled` or `Complexity.FP` certificate is proved for `ofSource`.
 
 Mathlib's `Encodable.encode` on `Nat.Partrec.Code` fails this and is deliberately **not** the
 naming map.  `encodeCode` is `2 * (2 * Nat.pair (encode cf) (encode cg)) + 4` at every
-`pair`/`comp`/`prec` node, so the code value *squares* per node: the family
-`nest 0 = zero`, `nest (n+1) = pair (nest n) zero` has `2n + 1` syntax nodes and base-4
-`encode` digit counts `0, 2, 4, 8, 16, 33, 67, 134, …` — doubly exponential in the day.  Under
+`pair`/`comp`/`prec` node, so the code *value* squares per node.  For the family
+`nest 0 = zero`, `nest (n+1) = pair (nest n) zero` — `2n + 1` syntax nodes — the encoded
+**value** is therefore doubly exponential in the day, and its base-4 **digit count**, which
+merely doubles per node, is `0, 2, 4, 8, 16, 33, 67, 134, …`: exponential in the day and in
+the tree size, against the *linear* `sourceNat` source length (`len4_sourceNat_le`).  Under
 `encode`-naming that paper-admissible family would be excluded from this class; under
-`sourceNat` it is admitted, and `digitMachineCodes_nest` is the witness.
+`sourceNat` it is admitted (`Nat.Partrec.Code.bigDigits_sourceNat_nest`), and
+`digitMachineCodes_nest_not_polyMachineCodes` is the witness that the admission is strict.
 Paper node: `def:ec` -/
 def DigitMachineCodes (m : ℕ → Nat.Partrec.Code) : Prop :=
   BigDigits (fun n => Nat.Partrec.Code.sourceNat (m n))

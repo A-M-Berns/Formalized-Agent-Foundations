@@ -227,18 +227,21 @@ lemma thresholdFailureSchema_spec (m : ℕ) :
   codeOfREPred_spec L.thresholdPred_compl_re (x := m)
 
 section Provability
-variable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable {T : ArithmeticTheory} [𝗥₀ ⪯ T]
 
-/-- **Provable decidedness (positive).**  For a Σ₁-sound theory, a true threshold is provable. -/
+/-- **Provable decidedness (positive).**  In any theory interpreting `𝗥₀`, a true threshold
+is provable — this is Σ₁ *completeness* (`re_complete_mp`), so no soundness assumption on
+`T` is involved. -/
 lemma threshold_provable (i : ℕ) (r : ℚ) (h : r < L.value i) :
     T ⊢ L.thresholdSchema/[‘↑(thresholdCode i r)’] :=
-  (re_complete L.thresholdPred_re).mp ((L.thresholdPred_code_iff i r).mpr h)
+  re_complete_mp L.thresholdPred_re ((L.thresholdPred_code_iff i r).mpr h)
 
 /-- **Provable decidedness (negative).**  A false threshold is refuted through the
-complementary schema. -/
+complementary schema, again by Σ₁ completeness alone. -/
 lemma threshold_refutable (i : ℕ) (r : ℚ) (h : ¬ r < L.value i) :
     T ⊢ L.thresholdFailureSchema/[‘↑(thresholdCode i r)’] :=
-  (re_complete L.thresholdPred_compl_re).mp (fun hp => h ((L.thresholdPred_code_iff i r).mp hp))
+  re_complete_mp L.thresholdPred_compl_re
+    (fun hp => h ((L.thresholdPred_code_iff i r).mp hp))
 
 end Provability
 

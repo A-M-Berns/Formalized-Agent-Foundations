@@ -242,9 +242,9 @@ lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
 /-- **Timely-membership form of the sequence statement**: for an efficiently computable
 sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
 the price `Pₙ(φₙ) → 1`. Same constant buy trader as the fixed case, now indexed by the
-sequence; e.c. directly in the symbol-metered class from the `𝓔𝓒`-sequence
-hypothesis (`BigSentenceCodes`), which admits arbitrarily deep and skewed sentence
-sequences.
+sequence; e.c. directly in the **write-out** class from the `𝓔𝓒`-sequence
+hypothesis (`BigSentenceCodes`, `Framework/WriteOut.lean`), which admits arbitrarily deep
+and skewed sentence sequences.
 
 **This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need
 *not* be in `D n` — theorems may be proved arbitrarily later than their indices. The

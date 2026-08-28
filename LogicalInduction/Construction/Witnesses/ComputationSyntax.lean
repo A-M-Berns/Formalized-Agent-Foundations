@@ -31,6 +31,30 @@ namespace LogicalInduction
 
 open LO.FirstOrder LO.FirstOrder.Arithmetic
 
+/-! ## Foundation bridge: soundness-free Σ₁ completeness
+
+This file is the development's only importer of `Foundation.FirstOrder.Arithmetic.R0.Representation`
+and sits upstream of every other consumer of weak representation, so the shared bridge
+lemma lives here. -/
+
+/-- Weak representation of an r.e. predicate, **positive direction only**.
+
+Foundation's `re_complete` is an `Iff` stated under `[T.SoundOnHierarchy 𝚺 1]`, but only its
+`.mpr` direction (`T ⊢ … → A x`) consumes soundness: the forward direction is
+`sigma_one_completeness`, which needs nothing beyond `[𝗥₀ ⪯ T]`.  Every call site in this
+development that only pushes a *true* r.e. fact into `T` should use this lemma, so that the
+soundness instance does not propagate through the syntax layer.
+
+Kind `C` (composition).  Provenance: (b) Foundation citation —
+`sigma_one_completeness` (`R0/Basic.lean:143`) and `codeOfREPred_spec`
+(`R0/Representation.lean:247`); the proof is `re_complete`'s own forward branch with the
+soundness instance dropped. -/
+lemma re_complete_mp {T : ArithmeticTheory} [𝗥₀ ⪯ T] {A : ℕ → Prop} (hp : REPred A) {x : ℕ} :
+    A x → T ⊢ (codeOfREPred A)/[‘↑x’] := fun h =>
+  sigma_one_completeness (by simp [codeOfREPred, codeOfPartrec'])
+    (by simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using
+      (codeOfREPred_spec hp (x := x)).mpr h)
+
 /-! ## Universal arithmetic computation predicates -/
 
 /-- Decode the left component as a repository program — from its **source** encoding
@@ -411,8 +435,10 @@ structure ComputationTheoryPresentation
 /-! ## Operational predicate presentations -/
 
 /-- A semidecidable predicate reduced to one fixed repository machine on polynomially
-named inputs.
-Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
+named inputs.  It is consumed only by the inconsistent-theory interface
+(`inconsistentTheoryClaimsOfComputation`), so it renders `thm:incons` alone; the halting
+families of `thm:halts`/`thm:loops` name their machines and inputs directly.
+Paper node: `thm:incons` -/
 structure SemidecidableComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
@@ -512,8 +538,11 @@ lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
   BigDigits.const (Nat.Partrec.Code.sourceNat c)
 
 /-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
-step budget being an arbitrary computable `f` named by its program.
-Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
+step budget being an arbitrary computable `f` named by its program.  It is consumed only by
+the decidable-claims interface (`representedDecidableClaimsOfComputation`), which serves the
+two finite-consistency theorems; `thm:dontwait` names its bounded family directly through
+`representedBoundedHaltingClaims`.
+Paper node: `thm:pac`, `thm:pazfc` -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
@@ -586,7 +615,7 @@ noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < 
 Paper node: `thm:pac` -/
 noncomputable def representedDecidableClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     {truth : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
     (C : BoundedComputation truth) :
     RepresentedDecidableClaims DP truth where
@@ -597,12 +626,12 @@ noncomputable def representedDecidableClaimsOfComputation
       (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly C.horizon.program
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
-    apply (re_complete (T := T) universalBoundedHalts_re).mp
+    apply re_complete_mp (T := T) universalBoundedHalts_re
     exact (universalBoundedHalts_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
       ((C.truth_iff n).mp hn)
   disprovable_of_false n hn := by
     apply Q.boundedFailure_refutes
-    apply (re_complete (T := T) universalBoundedFailure_re).mp
+    apply re_complete_mp (T := T) universalBoundedFailure_re
     exact (universalBoundedFailure_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
       (fun hb => hn ((C.truth_iff n).mpr hb))
 
@@ -610,7 +639,7 @@ noncomputable def representedDecidableClaimsOfComputation
 Paper node: `thm:incons` -/
 noncomputable def inconsistentTheoryClaimsOfComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     {inconsistent : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
     (C : SemidecidableComputation inconsistent) :
     InconsistentTheoryClaims DP inconsistent where
@@ -624,18 +653,18 @@ noncomputable def inconsistentTheoryClaimsOfComputation
     haltingClaimInput_digits (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly
   inconsistency_provable n hn := by
     apply Q.inconsistency_enters
-    apply (re_complete (T := T) universalCodeHalts_re).mp
+    apply re_complete_mp (T := T) universalCodeHalts_re
     simpa using (C.truth_iff n).mp hn
   consistency_disprovable n hn := by
     apply Q.inconsistency_refutesConsistency
-    apply (re_complete (T := T) universalCodeHalts_re).mp
+    apply re_complete_mp (T := T) universalCodeHalts_re
     simpa using (C.truth_iff n).mp hn
 
 /-! ## Sequence-specialized constructors -/
 
 noncomputable def representedHaltingClaims
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
@@ -646,14 +675,14 @@ noncomputable def representedHaltingClaims
     haltingClaimSentence_digits (haltingClaimInput_digits hm hi)
   provable_of_true n hn := by
     apply Q.halting_enters
-    apply (re_complete (T := T) universalCodeHalts_re).mp
+    apply re_complete_mp (T := T) universalCodeHalts_re
     simpa using hn
 
 /-- The `thm:dontwait` claim family: `⌜qₙ⌝ halts on ⌜yₙ⌝ within ⌜f⌝(⌜n⌝) steps`, with the
 horizon term deferred so that no growth bound on `f` is needed. -/
 noncomputable def representedBoundedHaltingClaims
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
@@ -666,11 +695,11 @@ noncomputable def representedBoundedHaltingClaims
     (boundedHaltingClaimInput_digits hm hi hh.program)
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
-    apply (re_complete (T := T) universalBoundedHalts_re).mp
+    apply re_complete_mp (T := T) universalBoundedHalts_re
     exact (universalBoundedHalts_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
   disprovable_of_false n hn := by
     apply Q.boundedFailure_refutes
-    apply (re_complete (T := T) universalBoundedFailure_re).mp
+    apply re_complete_mp (T := T) universalBoundedFailure_re
     exact (universalBoundedFailure_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
 
 /-! ## Direct paper-facing consumers -/
@@ -681,7 +710,7 @@ the claim by its program (`ComputableHorizon`) and left unevaluated — the pape
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
@@ -697,7 +726,7 @@ supplied finite-consistency predicate differs.
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (strongerConsistentWithin : ℕ → Prop)
@@ -713,7 +742,7 @@ theorem lic_belief_stronger_theory_consistency_ofComputation
 Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
@@ -730,7 +759,7 @@ theorem lic_disbelief_inconsistent_theories_ofComputation
 Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -746,7 +775,7 @@ theorem lic_learns_halting_patterns_ofComputation
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -765,7 +794,7 @@ bounding its growth — which is the paper's "let `f` be any computable function
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
@@ -785,11 +814,11 @@ theorem lic_does_not_anticipate_halting_ofComputation
 /-- `N+`: the positive path fires for the repository's everywhere-zero program. -/
 lemma computationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T) :
     ∃ k, haltingClaimSentence (haltingClaimInput Nat.Partrec.Code.zero 0) ∈ DP.D k := by
   apply Q.halting_enters
-  apply (re_complete (T := T) universalCodeHalts_re).mp
+  apply re_complete_mp (T := T) universalCodeHalts_re
   rw [universalCodeHalts_claimInput]
   rw [CodeHalts]
   rw [Part.dom_iff_mem]
@@ -800,12 +829,12 @@ lemma computationRepresentation_positive_path
 (zero interpreter fuel) and exercises the separate complementary-schema/refutation path. -/
 lemma computationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : ComputationTheoryPresentation DP T) :
     ∃ k, (∼boundedHaltingClaimSentence
       (boundedHaltingClaimInput Nat.Partrec.Code.zero 0 Nat.Partrec.Code.zero 0)) ∈ DP.D k := by
   apply Q.boundedFailure_refutes
-  apply (re_complete (T := T) universalBoundedFailure_re).mp
+  apply re_complete_mp (T := T) universalBoundedFailure_re
   refine (universalBoundedFailure_claimInput _ _ _ _ 0 ?_).mpr ?_
   · exact Part.mem_some 0
   · simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]

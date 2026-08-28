@@ -116,16 +116,6 @@ lemma semanticPrimeCode_injective :
   simp only [semanticPrimeCode, Nat.pair_eq_pair] at h
   exact Prod.ext h.2.1 h.2.2
 
-/-- A semantic handle has a whole-value emission certificate whenever its input does.
-Unlike a first-order numeral, the schema itself is a fixed token and the varying input is
-not expanded into the public formula. -/
-lemma semanticPrimeSentence_poly (schema : ℕ) {input : ℕ → ℕ}
-    (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => semanticPrimeSentence schema (input n)) := by
-  let hpayload := (PolyFueled.const semanticPrimeTag).pair
-    ((PolyFueled.const schema).pair hinput.code_poly)
-  refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
-
 /-- A paper-facing LUV source has a syntax-bearing threshold schema, not merely an erased
 family of propositional thresholds. -/
 structure PresentedLUVSeq where

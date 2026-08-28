@@ -11,9 +11,14 @@ syntax (arXiv:1609.03543, §4.11).
 The **source encoding** here is the postfix (reverse-Polish) tag stream of the code's
 syntax tree — one tag per node, drawn from `1..8` — read as a base-`16` numeral,
 most-significant tag first (`sourceNat`).  Since `16 = 4 ^ 2`, its base-4 digit count is
-at most `2 * c.size`: **linear in the syntax tree** (`len4_sourceNat_le`).  It is also
-efficiently decodable: `ofSource` is primitive recursive (`ofSource_primrec`) and inverts
-it (`ofSource_sourceNat`).
+at most `2 * c.size`: **linear in the syntax tree** (`len4_sourceNat_le`).
+
+Decoding is by `ofSource`, a *total* primitive recursive function (`ofSource_primrec`)
+inverting `sourceNat` (`ofSource_sourceNat`).  Its cost is metered in peel steps, one per
+base-4 digit of the name: `ofSource n` takes exactly `len4 n` steps (`ofSource_peelSteps`),
+so decoding a machine name takes at most `2 * c.size` steps (`sourceNat_peelSteps_le`) —
+**linear in the source length**.  That is the whole cost claim made here; no `PolyFueled`
+or `Complexity.FP` certificate is proved for `ofSource`.
 
 Mathlib's `Encodable.encode : Nat.Partrec.Code → ℕ` fails this.  `encodeCode` emits
 `2 * (2 * Nat.pair (encode cf) (encode cg)) + 4` at every `pair`/`comp`/`prec` node, and
@@ -23,7 +28,9 @@ spine — the base-4 digit counts of `Encodable.encode (nest n)` are
 
     0, 2, 4, 8, 16, 33, 67, 134, …
 
-doubly exponential in the syntax tree.  `Encodable.encode` is therefore not used for
+i.e. the encoded *value* is doubly exponential in `n` (and so in the tree size `2 * n + 1`),
+and its digit count — the length actually written down — is *exponential* in the tree size.
+`sourceNat`'s digit count is linear in it.  `Encodable.encode` is therefore not used for
 naming; `sourceNat` is.
 -/
 
@@ -243,6 +250,17 @@ lemma len4_sourceNat_le (c : Code) : len4 c.sourceNat ≤ 2 * c.size := by
   calc c.sourceNat < 16 ^ c.size := sourceNat_lt c
     _ = 4 ^ (2 * c.size) := by rw [pow_mul]; norm_num
 
+/-- The tag stream fits inside the base-4 length of the encoding: `16 ^ (size - 1) ≤
+sourceNat` forces `2 * (size - 1) < len4 sourceNat`, and `size ≥ 1` closes the gap.  This
+is what makes `len4 n` enough fuel for the decoder. -/
+lemma size_le_len4_sourceNat (c : Code) : c.size ≤ len4 c.sourceNat := by
+  have hpos : 0 < c.size := size_pos c
+  have hpow : (4 : ℕ) ^ (2 * (c.size - 1)) ≤ c.sourceNat := by
+    calc (4 : ℕ) ^ (2 * (c.size - 1)) = 16 ^ (c.size - 1) := by rw [pow_mul]; norm_num
+      _ ≤ c.sourceNat := pow_pred_le_sourceNat c
+  have := (lt_len4_iff c.sourceNat (2 * (c.size - 1))).mpr hpow
+  omega
+
 lemma size_le_sourceNat (c : Code) : c.size ≤ c.sourceNat := by
   refine le_trans ?_ (pow_pred_le_sourceNat c)
   have hpos : 0 < c.size := size_pos c
@@ -355,15 +373,28 @@ lemma peelIter_ofDigits (f : ℕ) (L : List ℕ) (hd : ∀ d ∈ L, d < 16) (hf 
     map_range_reverse_getD _ f (by simpa using hf)]
   simp
 
-/-- Total decoder: garbage decodes to `Nat.Partrec.Code.zero`. -/
+/-- Total decoder: garbage decodes to `Nat.Partrec.Code.zero`.  The fuel is the base-4
+digit count of the name, which dominates its base-16 digit count — one peel step per
+base-4 digit, not per unit of the value. -/
 def ofSource (n : ℕ) : Code :=
-  ((peelIter n n).2.foldl sourceStep []).headD Code.zero
+  ((peelIter (len4 n) n).2.foldl sourceStep []).headD Code.zero
+
+/-- **Decoding cost.**  The decoder takes exactly `len4 n` peel steps on the name `n` —
+one per base-4 digit. -/
+lemma ofSource_peelSteps (n : ℕ) : ((peelIter (len4 n) n).2).length = len4 n := by
+  rw [peelIter_snd]; simp
+
+/-- **Decoding cost for a machine name.**  Decoding `c.sourceNat` takes at most `2 * c.size`
+peel steps: linear in the syntax tree. -/
+lemma sourceNat_peelSteps_le (c : Code) :
+    ((peelIter (len4 c.sourceNat) c.sourceNat).2).length ≤ 2 * c.size := by
+  rw [ofSource_peelSteps]; exact len4_sourceNat_le c
 
 /-- **Roundtrip.** -/
 lemma ofSource_sourceNat (c : Code) : ofSource c.sourceNat = c := by
   have hlt : ∀ d ∈ sourceTags c, d < 16 := fun d hd => (sourceTags_lt_16 c d hd).2
-  have hlen : (sourceTags c).length ≤ c.sourceNat := by
-    rw [sourceTags_length]; exact size_le_sourceNat c
+  have hlen : (sourceTags c).length ≤ len4 c.sourceNat := by
+    rw [sourceTags_length]; exact size_le_len4_sourceNat c
   rw [ofSource, sourceNat, peelIter_ofDigits _ _ hlt (by rwa [← sourceNat]),
     List.foldl_append, foldl_sourceStep_replicate, sourceStep_tags]
   simp
@@ -439,12 +470,12 @@ lemma sourceStep_primrec : _root_.Primrec₂ sourceStep := by
   exact main.of_eq (fun _ => rfl)
 
 lemma ofSource_primrec : _root_.Primrec ofSource := by
-  have hpeel : _root_.Primrec (fun n : ℕ => (peelIter n n).2) :=
+  have hpeel : _root_.Primrec (fun n : ℕ => (peelIter (len4 n) n).2) :=
     _root_.Primrec.snd.comp
-      (peelIter_primrec.comp (_root_.Primrec.pair _root_.Primrec.id _root_.Primrec.id))
+      (peelIter_primrec.comp (_root_.Primrec.pair len4_primrec _root_.Primrec.id))
   have hstep : _root_.Primrec₂ (fun (_ : ℕ) (q : List Code × ℕ) => sourceStep q.1 q.2) :=
     (_root_.Primrec.comp sourceStep_primrec _root_.Primrec.snd).to₂
-  have hfold : _root_.Primrec (fun n : ℕ => (peelIter n n).2.foldl sourceStep []) :=
+  have hfold : _root_.Primrec (fun n : ℕ => (peelIter (len4 n) n).2.foldl sourceStep []) :=
     (_root_.Primrec.list_foldl hpeel (_root_.Primrec.const ([] : List Code))
       hstep).of_eq (fun _ => rfl)
   have hhd : ∀ (l : List Code) (d : Code), l.headD d = l.head?.getD d := by
@@ -604,6 +635,7 @@ end Nat.Partrec.Code
 #print axioms Nat.Partrec.Code.sourceNat_pos
 #print axioms Nat.Partrec.Code.len4_sourceNat_le
 #print axioms Nat.Partrec.Code.size_le_sourceNat
+#print axioms Nat.Partrec.Code.size_le_len4_sourceNat
 #print axioms Nat.Partrec.Code.sourceStep
 #print axioms Nat.Partrec.Code.sourceStep_pad
 #print axioms Nat.Partrec.Code.foldl_sourceStep_replicate
@@ -617,6 +649,8 @@ end Nat.Partrec.Code
 #print axioms Nat.Partrec.Code.map_range_reverse_getD
 #print axioms Nat.Partrec.Code.peelIter_ofDigits
 #print axioms Nat.Partrec.Code.ofSource
+#print axioms Nat.Partrec.Code.ofSource_peelSteps
+#print axioms Nat.Partrec.Code.sourceNat_peelSteps_le
 #print axioms Nat.Partrec.Code.ofSource_sourceNat
 #print axioms Nat.Partrec.Code.sourceNat_injective
 #print axioms Nat.Partrec.Code.peelStep_primrec

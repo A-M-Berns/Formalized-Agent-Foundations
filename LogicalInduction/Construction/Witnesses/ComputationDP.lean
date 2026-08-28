@@ -49,7 +49,7 @@ open Classical in
 extending `𝗜𝚺₁` is recursively enumerable.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
 lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSemisentence 1) :
+    (φ : ArithmeticSemisentence 1) :
     REPred (fun z : ℕ => T ⊢ φ/[↑z]) := by
   have hsig : 𝚺₁-Predicate fun b : ℕ ↦
       Bootstrapping.Provable T (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
@@ -103,7 +103,7 @@ def eventFires (e : ℕ) : Prop :=
 
 /-- Substitution commutes with negation, so the tag-1 obligation is provability of a schema
 instance and hence r.e. -/
-lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     REPred (eventFires T) := by
   have key : eventFires T = fun e =>
       (e.unpair.1 = 0 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
@@ -138,7 +138,7 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
         (((htag 6).and (hsub _)).or ((htag 7).and (hsub _))))))))
 
 /-- A partial-recursive semi-decider for `eventFires`: `code.eval e` halts iff `e` fires. -/
-lemma exists_eventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_eventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ eventFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (eventFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -173,12 +173,12 @@ lemma theoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
 /-- The constructed deductive process enumerating the `T`-provable computation literals. -/
-noncomputable def theoremDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess where
+noncomputable def theoremDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] : DeductiveProcess where
   D := theoremStage (exists_eventCode T).choose
   mono := theoremStage_mono _
 
 /-- Coverage: every fired event's atom eventually appears in a stage. -/
-lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     {e : ℕ} (he : eventFires T e) :
     ∃ k, eventAtom e ∈ (theoremDP T).D k := by
   classical
@@ -465,7 +465,7 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
 
 /-- The provability deductive process is computable: one fixed partial-recursive program
 emits the encoded stage `D n` on input `n`. -/
-lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     ComputableDeductiveProcess (theoremDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim (exists_eventCode T).choose)))
@@ -477,7 +477,7 @@ lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
 
 /-- **The constructed computation presentation.**  All six enters/refutes obligations are
 discharged by coverage of the provability enumeration. -/
-noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     ComputationTheoryPresentation (theoremDP T) T where
   theory_deltaOne := inferInstance
   process := (theoremDP_computable T).nonemptyComputation.some
@@ -512,7 +512,7 @@ inhabits `QuotationTheoryPresentation`.  Together with the proved `theoremDP_hwo
 supplies the two hypotheses shared by the introspection, self-trust, expectation, and
 paradox-resistance endpoints.
 Paper node: `thm:ref` -/
-noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     QuotationTheoryPresentation (theoremDP T) T where
   toComputationTheoryPresentation := theoremPresentation T
   theory_sigmaOne := inferInstance
@@ -850,9 +850,16 @@ theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
 
 `thm:halts`, `thm:loops` and `thm:dontwait` are stated over a *sequence* of machines, and the
 point of the write-out classes is that the sequence may genuinely grow.  The three `example`s
-below apply each endpoint the way a downstream caller would: at concrete data, with every
-hypothesis the caller can discharge actually discharged.  They are not restatements — each
-one forces the class hypotheses to be inhabited at a family with growing source. -/
+below apply each endpoint the way a downstream caller would: at concrete data, at a family
+with growing source, with every class hypothesis actually discharged.  They are not
+restatements.
+
+Two of the three leave nothing to the caller.  The `thm:loops` example is the exception: it
+still takes `hloops`, the object-level refutation premise, because that premise cannot be
+discharged for an *arbitrary* `T`.  Its fully discharged form is
+`thm_loops_applied_at_loopsTheory` below, stated at the concrete witness theory
+`loopsTheory`; read the disclosure at `loopsTheory` for what that witness does and does not
+establish. -/
 
 /-- **`thm:halts`, applied.**  The machine family is `Nat.Partrec.Code.nest`, whose source
 grows linearly in the day and whose source *number* is exponential (so the whole-value class
@@ -888,13 +895,15 @@ example [𝗥₀ ⪯ T] :
 
 /-- **`thm:loops`, applied.**  Same growing machine family as `thm:halts`, same inputs, both
 class hypotheses discharged — but `hloops` remains a hypothesis of the `example`, because it
-is object-level `T`-refutability of a Π₁ fact and there is no route to it *for an arbitrary
-`T`*: the representation interface FFL supplies is positive (`re_complete`), and
-Σ₁-soundness makes a true Π₁ sentence *unprovable*, never *refutable*.  What the example
-establishes is that everything else in the signature is inhabitable at a genuinely varying
-family.  `hloops` itself is separately shown inhabitable — at a specific, true, `Δ₁` theory —
-by `loopsTheory_refutes` and `thm_loops_applied_at_loopsTheory` below; read the disclosure at
-`loopsTheory` for what that witness does and does not establish. -/
+is object-level `T`-refutability of a Π₁ fact and, *with the installed substrate*, there is
+no route to it for an arbitrary `T`.  The obstruction is representational: the only bridges
+FFL gives to `T ⊢ …` for a `codeOfREPred` schema are positive (`re_complete`,
+`re_complete_mp`), and the schema itself is picked by `Classical.epsilon`, so its shape is
+unreachable and no `T` can be *shown* to refute a particular false instance.  What the
+example establishes is that everything else in the signature is inhabitable at a genuinely
+varying family.  `hloops` itself is separately shown inhabitable — at a specific, true, `Δ₁`
+theory — by `loopsTheory_refutes` and `thm_loops_applied_at_loopsTheory` below; read the
+disclosure at `loopsTheory` for what that witness does and does not establish. -/
 example [𝗥₀ ⪯ T]
     (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
       ↑(haltingClaimInput (Nat.Partrec.Code.nest n) (2 ^ n))])) :
@@ -917,16 +926,26 @@ example [𝗥₀ ⪯ T]
 endpoint is discharged at concrete data in the client section above; this one is not, and
 this section supplies its witness.
 
-The witness is a theory, not a derivation, and that is forced rather than chosen.  FFL's
-representation interface for r.e. predicates is *positive only*: `re_complete` is the single
-lemma in `LO.FirstOrder.Arithmetic` concluding `T ⊢ …` from an r.e. fact, and its
-contrapositive yields **unprovability** of the schema instance, never refutability of it.
-Nor is that a gap in FFL: a uniform negative representation principle for `REPred`s is
-outright false, by FFL's own `incomplete_of_REPred_not_ComputablePred_Nat'` — it would make
-the complement of every r.e. predicate r.e., and `UniversalCodeHalts` is the halting set.
-So no natural theory (`𝗜𝚺₁`, `𝗣𝗔`, `𝗭𝗙𝗖`) can be *exhibited* here, and the honest witness
-puts the Π₁ sentence into the theory as an axiom — the same device FFL uses for `T.Con` and
-`T.Incon`. -/
+The witness is a theory, not a derivation, and that is forced **by the installed substrate**,
+not by mathematics.  Two arguments that look like they force it do not, and are recorded here
+so nobody re-derives them:
+
+* Σ₁-soundness does *not* forbid `T ⊢ ∼σ` for a false Σ₁ instance `σ`.  Refuting a false Σ₁
+  sentence is proving a true Π₁ sentence, which `𝗜𝚺₁` and `𝗣𝗔` do routinely.
+* FFL's `incomplete_of_REPred_not_ComputablePred_Nat'` refutes only the *uniform* negative
+  representation principle — that some `T` refutes *every* false instance.  It says nothing
+  about any single instance, and a natural arithmetization of "`rfind' succ` diverges" is
+  refutable in `𝗜𝚺₁` by a one-line induction.
+
+What actually blocks a natural `T` here is *opacity of the schema*.
+`universalHaltingSchema := codeOfREPred UniversalCodeHalts` is chosen by `Classical.epsilon`
+(`R0/Representation.lean:232-247`), so nothing about the chosen formula is provable beyond
+its defining spec `codeOfREPred_spec`, which is a statement about standard-model truth.  The
+only lemmas taking that spec to `T ⊢ …` are positive (`re_complete`, `re_complete_mp`), so
+there is no handle by which any `T` could be *shown* to refute a particular false instance.
+Hence no natural theory (`𝗜𝚺₁`, `𝗣𝗔`, `𝗭𝗙𝗖`) can be exhibited here *with this substrate*,
+and the honest witness puts the Π₁ sentence into the theory as an axiom — the same device
+FFL uses for `T.Con` and `T.Incon`. -/
 
 /-- Truth of a halting-schema instance in the standard model.  The `re_complete` route runs
 `ℕ ⊧ σ/[↑z] → T ⊢ σ/[↑z]` through Σ₁-completeness; this is the semantic half alone, which is
@@ -962,20 +981,27 @@ every axiom is true in `ℕ`, Σ₁-soundness and consistency come from `ℕ↓[
 rather than from an unproved assumption.
 
 *Disclosed weakness.*  `T ⊢ ∼σ` holds here **by axiom fiat**: `loopsTheory_refutes` is
-`Entailment.by_axm`, not arithmetic reasoning.  This is the strongest witness available in
-this development, and the obstruction is not tedium.  FFL represents r.e. predicates
-*positively* (`re_complete`), so `T ⊢ σ/[↑z]` is available exactly when the run halts; the
-negative direction would need `T` to refute a true Π₁ sentence, which for a Σ₁-sound `T` is
-possible only if `T` proves it, and a uniform such principle is refuted outright by
-`incomplete_of_REPred_not_ComputablePred_Nat'`.  Consequently no natural theory can be put
-in this slot, and the witness cannot be strengthened to one.
+`Entailment.by_axm`, not arithmetic reasoning.  This is the strongest witness available
+*with the installed substrate*, and the obstruction is representational, not mathematical.
+It is emphatically **not** that refuting `σ` is impossible for a natural theory: `∼σ` is a
+true Π₁ sentence, Σ₁-soundness does not forbid proving one, and `𝗜𝚺₁` would refute a natural
+arithmetization of this particular non-halting fact by induction.  The obstruction is that
+`universalHaltingSchema` is `codeOfREPred UniversalCodeHalts`, whose formula FFL picks by
+`Classical.epsilon`: its shape is unreachable from the API, the only property of it that can
+be cited is `codeOfREPred_spec` (standard-model truth), and the only lemmas carrying that to
+`T ⊢ …` are the positive ones.  So there is no handle by which *any* concrete `T` could be
+shown to refute this instance, and the witness cannot be strengthened to a natural theory
+without changing the substrate.
 
-*The honest strengthening,* if this premise is ever to be discharged for a natural `T`, is
-one of: (i) a `halting_fails` field on `ComputationTheoryPresentation`, the exact analogue of
-its existing `boundedFailure_refutes` — available there only because *bounded* failure is
-itself r.e., and unavailable here because unbounded failure is not; or (ii) a Π₁-reflection
-hypothesis on `T`, which is a genuine strengthening of the endpoint's hypotheses and would
-have to be stated as such.
+*The honest strengthenings,* if this premise is ever to be discharged for a natural `T`, are:
+(i) a `halting_fails` field on `ComputationTheoryPresentation`, the exact analogue of its
+existing `boundedFailure_refutes` — available there only because *bounded* failure is itself
+r.e., and unavailable here because unbounded failure is not; (ii) a Π₁-reflection hypothesis
+on `T`, which is a genuine strengthening of the endpoint's hypotheses and would have to be
+stated as such; or (iii) replacing `codeOfREPred` for this schema by a hand-rolled Δ₀/Σ₁
+halting formula carrying its own representability lemma, which restores the shape of the
+formula to the API and would also address the other places in this development where
+`Classical.epsilon`-chosen schemas are opaque.
 
 Kind `N+`, provenance: (a) the `Δ₁`, `⪯`, soundness, consistency and non-halting facts are
 derived in-project; (b) `𝗜𝚺₁.Δ₁`, `Theory.Δ₁.insert`, `WeakerThan.ofSubset` and the

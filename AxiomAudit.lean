@@ -807,11 +807,20 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- endpoint's `≈ₙ 0` conclusion is the semantically correct one.
 -- `thm_loops_applied_at_loopsTheory` applies the endpoint with every instance and every
 -- hypothesis discharged.  **The refutation holds by axiom fiat, not by arithmetic
--- reasoning** — the disclosure at `loopsTheory` records why no natural theory can occupy
--- that slot (Foundation's representation of an r.e. predicate is positive-only, and a
--- uniform negative principle is refuted by `incomplete_of_REPred_not_ComputablePred_Nat'`),
--- and names the two honest strengthenings: a `halting_fails` field on
--- `ComputationTheoryPresentation`, or a Π₁-reflection hypothesis on `T`.
+-- reasoning** — the disclosure at `loopsTheory` records why the slot is **unreachable with
+-- the installed substrate**, which is a weaker and more accurate claim than the one this
+-- note carried before (2026-08-28 audit, R3-F01/R3-F12).  What is *not* true is that no
+-- natural theory could refute a false halting instance: refuting a false Σ₁ sentence is
+-- proving a true Π₁ one, which Σ₁-soundness permits, and the uniform
+-- `incomplete_of_REPred_not_ComputablePred_Nat'` constrains no single instance — `𝗜𝚺₁`
+-- would refute a natural arithmetization of `rfind' succ` diverging by trivial induction.
+-- The actual obstruction is representational: `universalHaltingSchema` is
+-- `codeOfREPred UniversalCodeHalts`, and Foundation picks that formula by `Classical.epsilon`
+-- (`R0/Representation.lean:232-247`), so its *shape* is unreachable from the API and nothing
+-- about it can be proved beyond its defining spec.  The disclosure names three honest
+-- strengthenings: a `halting_fails` field on `ComputationTheoryPresentation`, a Π₁-reflection
+-- hypothesis on `T`, or a hand-rolled Δ₀/Σ₁ halting formula carrying its own representability
+-- lemma.
 -- `loopsTheory_refutes` is deliberately *not* inventoried: it is the internal
 -- premise-discharge step (`Entailment.by_axm`), not a paper claim, so it carries no
 -- `Paper node` line and is covered transitively by the applied endpoint below.
@@ -1178,6 +1187,45 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- `digitMachineCodes_nest_not_polyMachineCodes` — so they carry no paper annotation and are
 -- not trust surface.  The paper's machine-naming class, `DigitMachineCodes`, carries the
 -- `def:ec` line in their place.
+--
+-- Accounting correction (2026-08-28 audit, R3-F07/R3-F08).  `PolyNatCodes` is named in one
+-- place beyond those foils: it is a *hypothesis* of `quotationClaimSentence_poly`
+-- (`Construction/Witnesses/QuotationAffine.lean:67`), which is the one remaining internal
+-- helper taking it.  (`semanticPrimeSentence_poly` was the second; it had no callers and was
+-- deleted in the same change.)  That hypothesis bounds a **caller-chosen index sequence**,
+-- never the paper's `⟨x⟩`, so it levies no charge on a paper-facing statement — but the
+-- retirement note above should not be read as saying the class occurs nowhere else.
+-- Framework/CodeSource.lean, Framework/WriteOut.lean — the machine-naming map that
+-- `DigitMachineCodes` is built on (2026-08-28 audit, R3-F24).  `DigitMachineCodes` carries
+-- the `Paper node: def:ec` line for machine names, and it is worth exactly what `sourceNat`
+-- and `ofSource` are worth: the linearity bound `len4_sourceNat_le` (`len4 c.sourceNat ≤
+-- 2 * c.size`) is what makes the name writable in time polynomial in the day, and the
+-- decoder is what makes the name a name rather than a hash.  Those guarantees were
+-- axiom-checked only by `#print axioms` inside their own file, with no block here.
+--
+-- The decoder's cost is now stated, not assumed (R3-F02/F06/F13).  `ofSource` previously
+-- peeled one digit per unit of the name's *value* — primitive recursive and correct, and
+-- 18158869 peel steps on a 7-node code — while the docstrings called it "efficiently
+-- decodable".  It now peels `len4 n` digits: `ofSource_peelSteps` gives the exact step
+-- count and `sourceNat_peelSteps_le` bounds it by `2 * c.size`.  `size_le_len4_sourceNat`
+-- is the fuel-adequacy side condition that makes the roundtrip go through, and
+-- `len4_primrec` (Framework/DigitArith.lean) is what keeps `ofSource` primitive recursive
+-- once its fuel is a digit count.  No `PolyFueled`/`Complexity.FP` certificate is claimed
+-- for `ofSource`, and none is inventoried here.
+--
+-- Only `DigitMachineCodes` is listed: the inventory contract is fail-closed both ways —
+-- `scripts/check-paper-nodes.sh` requires every inventoried member to carry a `Paper node`
+-- annotation — and the supporting declarations are internal, so annotating them to make
+-- them listable would be exactly the over-broad labelling this same audit trimmed
+-- elsewhere.  They remain axiom-checked by the `#print axioms` block at the foot of
+-- `Framework/CodeSource.lean`, which covers, in that file, `sourceNat`,
+-- `pow_pred_le_sourceNat`, `len4_sourceNat_le`, `size_le_len4_sourceNat`, `ofSource`,
+-- `ofSource_peelSteps`, `sourceNat_peelSteps_le`, `ofSource_sourceNat` and
+-- `ofSource_primrec`, and by the block in `Framework/DigitArith.lean` for `len4_primrec`.
+-- A future change that widens the inventory contract should pull them in here.
+#assert_axioms_clean
+  DigitMachineCodes
+
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_nonneg approximation_le
   approximation_tendsto kraft covers

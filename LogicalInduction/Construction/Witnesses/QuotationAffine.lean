@@ -221,7 +221,7 @@ lemma reflected
 /-- Build a Boolean quote code from any decidable predicate: pick a total `{0,1}`-valued
 decider, name it by its `Code`, and discharge completeness from FFL weak representation of
 the folded universal fibers. -/
-noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T]
     {truth : ℕ → Prop} (htruth : ComputablePred truth) : BooleanQuoteCode T truth := by
   classical
   -- `.choose` (not `obtain`) since the goal is data: `∃` cannot eliminate into `Type`.
@@ -246,9 +246,9 @@ noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOn
     simp only [quoteNeg, hval, Part.mem_some_iff, htr]
     cases f input <;> simp
   refine ⟨Encodable.encode c, fun input htrue => ?_, fun input hfalse => ?_⟩
-  · refine (re_complete (T := T) universalQuotePos_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+  · refine re_complete_mp (T := T) universalQuotePos_re (x := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hpos input).mpr htrue
-  · refine (re_complete (T := T) universalQuoteNeg_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+  · refine re_complete_mp (T := T) universalQuoteNeg_re (x := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hneg input).mpr hfalse
 
 end BooleanQuoteCode
@@ -3781,15 +3781,15 @@ parameterized fixed point.  No caller-supplied truth relation occurs in this con
 Paper node: `thm:lp` -/
 noncomputable def parameterizedDiagonalQuoteCodeOfMarket
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) :
+    [𝗥₀ ⪯ T] (p : ℚ) :
     ParameterizedDiagonalQuoteCode T (diagonalPriceTruth market p) where
   toBooleanQuoteCode := {
     code := Encodable.encode (diagonalPriceDecisionCode market p)
     pos_complete := fun n hn =>
-      (re_complete universalQuotePos_re).mp <| by
+      re_complete_mp universalQuotePos_re <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuotePos_iff market p n).mpr hn
     neg_complete := fun n hn =>
-      (re_complete universalQuoteNeg_re).mp <| by
+      re_complete_mp universalQuoteNeg_re <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuoteNeg_iff market p n).mpr hn
   }
   body := diagonalPriceBody market p
@@ -3797,7 +3797,7 @@ noncomputable def parameterizedDiagonalQuoteCodeOfMarket
 
 lemma parameterizedDiagonalQuoteCodeOfMarket_sentence
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     (parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n =
       quoteAtom
         (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n) :=
@@ -3809,7 +3809,7 @@ arithmetic fixed point and the public atom, derived here rather than assumed.
 Paper node: `thm:lp` -/
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     ((parameterizedFixedpoint
           (parameterizedDiagonalQuoteCodeOfMarket market T p).body).Evalb ![n]) ↔
       P n
@@ -3829,7 +3829,7 @@ lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
 
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_price_iff
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     diagonalPriceTruth market p n ↔
       P n
         ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) <
@@ -3852,7 +3852,7 @@ its decision code, and its FFL fixed point are all built internally, so there is
 caller-supplied self-reference premise. -/
 noncomputable def paradoxResistanceQuoteOfDiagonal
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [T.SoundOnHierarchy 𝚺 1] (Q : QuotationTheoryPresentation DP T)
+    (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
     (hwidthInv : DigitRatCodes (fun n ↦ 1 / width n))
@@ -4782,7 +4782,7 @@ diagonal atom are constructed from `market`; no semantic diagonal premise is acc
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (market : MarketComputation P)
@@ -4802,20 +4802,20 @@ theorem lic_paradox_resistance_ofDiagonal
 
 /-- A concrete FFL-backed Boolean quote whose represented predicate is always true. -/
 noncomputable def trueBooleanQuoteCode
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [𝗥₀ ⪯ T] :
     BooleanQuoteCode T (fun _ ↦ True) :=
   BooleanQuoteCode.ofComputable (ComputablePred.const True)
 
 /-- A concrete FFL-backed Boolean quote whose represented predicate is always false. -/
 noncomputable def falseBooleanQuoteCode
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [𝗥₀ ⪯ T] :
     BooleanQuoteCode T (fun _ ↦ False) :=
   BooleanQuoteCode.ofComputable (ComputablePred.const False)
 
 /-- `N+`: the positive arithmetic quotation schema reaches the public process. -/
 lemma quotationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (trueBooleanQuoteCode T).sentence n ∈ DP.D k := by
   let q := trueBooleanQuoteCode T
@@ -4825,7 +4825,7 @@ lemma quotationRepresentation_positive_path
 literal, exercising the separate negative quotation path. -/
 lemma quotationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (∼(falseBooleanQuoteCode T).sentence n) ∈ DP.D k := by
   let q := falseBooleanQuoteCode T

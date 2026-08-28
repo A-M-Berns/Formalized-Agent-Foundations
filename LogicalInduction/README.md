@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 30 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 25 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 6 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 14 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
+| **qualified** | 19 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -76,13 +76,27 @@ thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
 `lic_expected_future_expectations_ofRepresentation_unconditional`,
 `lic_no_expected_net_update_ofRepresentation_unconditional`, its `_conditional_` sibling,
 and `lic_self_trust_ofRepresentation_unconditional` still take `RpnThresholdCodeSeq`,
-which is symbol-metered rather than write-out. That is not a further restriction for the
-paper's own first-order LUVs: `PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
-(`Construction/Witnesses/StructuredPaperRpn.lean:1128`) proves every literal `PaperLUV`
-sequence lands in the class, so the paper's data is admissible. What is not established is
-whether some write-out-nameable threshold family falls outside it; the containment is
-charged once at `def:ec` with the other symbol-metered classes and not re-levied per
-row. Four of those containments are **proved
+which is symbol-metered rather than write-out. **That is a restriction on the paper's own
+first-order LUVs, and an earlier edition of this file denied it.** The denial rested on
+`PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
+(`Construction/Witnesses/StructuredPaperRpn.lean`), which does not say what was claimed
+for it: it takes a `PaperLUVSeq`, and that structure bundles a field `PaperLUV` itself
+does not carry — `structural : PolyArithmeticFormulaSeq`, a `PolySegStream` certificate on
+the defining formula's *symbol list*. Foundation spells numerals in **unary**
+(`encodeArithmeticTermSymbols_numeral`: the numeral `v` costs `2v − 1` symbols), so that
+field excludes every literal paper LUV whose defining formula names a constant of
+superpolynomial magnitude: `X > 2⁻ⁿ` written with the numeral `2ⁿ` is refuted by
+`encodeArithmeticTermSymbols_numeral` together with `not_isPolyBounded_two_pow`, while the
+`1/(n+1)` family `unitFracPaperLUVSeq` is admissible. `PaperLUVSeq` is the repo's only
+route from a literal first-order paper LUV into `LUV.RpnThresholdCodeSeq`, so nothing else
+covers the excluded family. This is the same defect class as the whole-value classes
+retired above — an encoding that expands relative to what the paper writes — and it is now
+charged **per row** in `scripts/coverage-classification.md` rather than absorbed into the
+one-off `def:ec` charge. The faithful repair is identified and not done: a write-out
+arithmetic-formula meter naming numerals in binary, i.e. the `Code.sourceNat` pattern
+applied to `ArithmeticSemiformula`.
+
+Of the write-out/value-metered class pairs listed above, four containments are **proved
 strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
 `bigTokenStream_not_polySegStream` (`BigTokenStream` over `PolySegStream`),
 `digitRatCodes_two_pow_inv_not_polyRatCodes` (`DigitRatCodes` over `PolyRatCodes`) and
@@ -402,7 +416,9 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    semantics is *derived* through `paperTheoryDP` and the rational cut rather than carried
    as a build-frozen certificate. `PaperLUVSeq` additionally compiles that literal
    threshold syntax to the symbol-metered `RpnThresholdCodeSeq`, and the frontend is
-   inhabited by a varying concrete family. See
+   inhabited by a varying concrete family — subject to the unary-numeral restriction
+   disclosed above: `PaperLUVSeq.structural` admits `1/(n+1)` but not a defining formula
+   naming `2ⁿ`. See
    [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
    `instantiated` accordingly.
 
