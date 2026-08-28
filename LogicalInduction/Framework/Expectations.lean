@@ -26,6 +26,7 @@ hypotheses, rather than reconstructing the first-order syntax.
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.RpnSplice
+import LogicalInduction.Framework.WriteOut
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 namespace LogicalInduction
@@ -44,16 +45,70 @@ compact codes consumed by the token-emission model. -/
 closed feature progression. This is the propositional/token-model rendering of the
 paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
 nodes are legal only underneath the shared `letE` emitter and cannot be free inputs.
+
+The emission field is **write-out metered** (`BigSpliceStream`): the feature progression
+costs polynomially many *symbols* per day, with no bound on any single token's numeric
+value. That is what admits a constant leaf `EF.const (q n)` whose payload token is
+literally `⌜q n⌝` — for the paper's own `δ n = 2⁻ⁿ` an exponential value, and so outside
+the value-metered `RpnSpliceStream` (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
+`PGenerableRat.ofDigitRatCodes` is the constructor that uses the width;
+`pGenerableRat_two_pow_inv` is the witness that it is a real one.
 Paper node: `def:ece` -/
 structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
     (feature : ℕ → EF) : Prop where
   rank_le : ∀ n, (feature n).rank ≤ n
-  polyTok : RpnSpliceStream (fun n => (feature n).serialize)
+  polyTok : BigSpliceStream (fun n => (feature n).serialize)
   closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
   denote : ∀ n, (feature n).denote P = (q n : ℝ)
 
 def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
   ∃ feature : ℕ → EF, GeneratedRatFeature P q feature
+
+/-- A rational sequence viewed as a closed constant feature on each day. -/
+def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
+  EF.const (q n)
+
+/-- **The write-out constructor for `def:ece`.**  A rational sequence whose numerator and
+denominator are reachable digit by digit generates itself at any market, through
+`ratCodeFeature`: the day-`n` serialization is the single payload chunk `[1, ⌜q n⌝]`,
+emitted by `BigSpliceStream.serialize_const_write`, whose payload token is written out
+digit by digit and so may be exponential in `n`.
+Kind: `P` proved; provenance: (a) derived in-project. -/
+lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : DigitRatCodes q) :
+    GeneratedRatFeature P q (ratCodeFeature q) where
+  rank_le := fun n => by simp [ratCodeFeature, EF.rank]
+  polyTok := BigSpliceStream.serialize_const_write hq.toBigDigits
+  closed := fun n ρ V => by simp [ratCodeFeature]
+  denote := fun n => by simp [ratCodeFeature]
+
+/-- **The write-out constructor for `def:ece`.**  Digit access to a rational sequence makes
+it ℙ‾-generable at any market.
+
+This is the general constructor; `PGenerableRat.ofPolyRatCodes`
+(`Construction/Witnesses/ProductDefinition.lean`) is the value-bounded corollary, kept only
+for callers already holding a `PolyRatCodes` certificate.  The width is not cosmetic: the
+paper's `δ n = 2⁻ⁿ` satisfies this and refutes `PolyRatCodes`
+(`digitRatCodes_two_pow_inv_not_polyRatCodes`).
+Kind: `C` composition; provenance: (a) derived in-project. -/
+lemma PGenerableRat.ofDigitRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) (P : History) :
+    PGenerableRat P q :=
+  ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+
+/-- **Non-vacuity for the widened `def:ece` (kind `N+`).**  The paper's own tolerance
+sequence `δ n = 2⁻ⁿ` is ℙ‾-generable at every market, and its Gödel codes are *not*
+value-bounded — so this witness is admitted by `PGenerableRat.ofDigitRatCodes` and by no
+route through `PGenerableRat.ofPolyRatCodes`.  It is the concrete content of widening
+`GeneratedRatFeature.polyTok` from `RpnSpliceStream` to `BigSpliceStream`. -/
+lemma pGenerableRat_two_pow_inv (P : History) :
+    PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) ∧
+      ¬ PolyRatCodes (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
+  ⟨PGenerableRat.ofDigitRatCodes digitRatCodes_two_pow_inv P,
+    digitRatCodes_two_pow_inv_not_polyRatCodes.2⟩
+
+example (P : History) : PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
+  (pGenerableRat_two_pow_inv P).1
+
+#print axioms pGenerableRat_two_pow_inv
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a

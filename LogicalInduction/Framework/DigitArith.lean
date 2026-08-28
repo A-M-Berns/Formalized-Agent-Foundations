@@ -18,7 +18,6 @@ elementary base-4 carry arithmetic; the implementation layer runs the carry loop
 Paper node: `def:ec` (digit model), `thm:scon` (conditioning translation residual).
 -/
 import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
 

@@ -32,6 +32,43 @@ structure PGenerableWeighting (W : ℕ → EF) : Prop where
   rank_le : ∀ n, (W n).rank ≤ n
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
+/-! ### `def:fuz` against `def:ece`
+
+The two renderings carry the **same** emission data — both meter the feature
+serialization by `BigSpliceStream`, both cap the rank at the day, both demand closure — and
+differ only in `GeneratedRatFeature`'s extra `denote` clause tying the feature's value at
+the market to a rational sequence.  The lemmas below make that relation a theorem rather
+than a remark, in both directions. -/
+
+/-- The `def:ece` data forgets its denotation clause to `def:fuz` data. -/
+lemma GeneratedRatFeature.toWeighting {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
+    (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
+  polySeg := h.polyTok
+  rank_le := h.rank_le
+  closed := h.closed
+
+/-- Conversely, `def:fuz` data plus a denotation is `def:ece` data. -/
+lemma PGenerableWeighting.toGeneratedRatFeature {P : History} {q : ℕ → ℚ} {W : ℕ → EF}
+    (h : PGenerableWeighting W) (hq : ∀ n, (W n).denote P = (q n : ℝ)) :
+    GeneratedRatFeature P q W where
+  rank_le := h.rank_le
+  polyTok := h.polySeg
+  closed := h.closed
+  denote := hq
+
+/-- **`def:fuz` is `def:ece` minus the denotation clause**, exactly.  The
+`def:fuz` / `def:ece` annotations themselves sit on `PGenerableWeighting` and
+`GeneratedRatFeature`; this is the bridge between them. -/
+lemma pGenerableWeighting_iff {P : History} {q : ℕ → ℚ} {W : ℕ → EF} :
+    GeneratedRatFeature P q W ↔
+      PGenerableWeighting W ∧ ∀ n, (W n).denote P = (q n : ℝ) :=
+  ⟨fun h => ⟨h.toWeighting, h.denote⟩, fun h => h.1.toGeneratedRatFeature h.2⟩
+
+example {P : History} {q : ℕ → ℚ} {W : ℕ → EF} (h : GeneratedRatFeature P q W) :
+    PGenerableWeighting W := (pGenerableWeighting_iff.mp h).1
+
+#print axioms pGenerableWeighting_iff
+
 /-- Operational certificate for the paper's efficiently computable positive calibration
 widths: exactly tex:1193-1195's "`⟨δ⟩` is an e.c. sequence of positive rationals", and
 nothing more.  Efficient codeability of the reciprocal `1/δ` is *derived* from these two

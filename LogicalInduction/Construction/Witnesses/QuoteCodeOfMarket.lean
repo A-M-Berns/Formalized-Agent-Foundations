@@ -1007,7 +1007,8 @@ threshold data remain.
 The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
 a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
 e.c. rational sequence is the constant-feature special case — supply
-`⟨ratCodeFeature p, ratCodeFeature_generated _ p hp⟩` for `hp : PolyRatCodes p`.
+`PGenerableRat.ofDigitRatCodes hp _` for `hp : DigitRatCodes p`, the paper's own
+write-out class (`PGenerableRat.ofPolyRatCodes` is the value-bounded corollary).
 
 The tolerance sequence `δ` carries exactly the paper's hypotheses: efficiently codeable
 and positive.  Efficient codeability of the reciprocal `1/δ` is *derived* from those two

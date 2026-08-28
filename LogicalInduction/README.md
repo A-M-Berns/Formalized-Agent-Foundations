@@ -71,9 +71,15 @@ write an object bounds its **symbols**, permitting values up to exponential.
 The symbol-metered *write-out* classes exist for every kind of datum the property tail
 consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
 machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
-the emission surface they are consumed on — and `bigDigits_two_pow_not_polyFueled`,
-`bigTokenStream_not_polySegStream` and `digitRatCodes_two_pow_inv_not_polyRatCodes` witness
-that each strictly contains its value-bounded predecessor. Building the rational one retired
+the emission surface they are consumed on. Four of those containments are **proved
+strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
+`bigTokenStream_not_polySegStream` (`BigTokenStream` over `PolySegStream`),
+`digitRatCodes_two_pow_inv_not_polyRatCodes` (`DigitRatCodes` over `PolyRatCodes`) and
+`bigSpliceStream_two_pow_inv_not_rpnSpliceStream` (`BigSpliceStream` over
+`RpnSpliceStream`, at the constant feature for `δₙ = 2^(−n)`). The remaining pair —
+`BigSentenceCodes` over `RpnSentenceCodes` — is an inclusion with **no strictness proof**;
+what is established for it is that its write-out constructor `ofDigitSentenceCodes` has no
+value-bounded counterpart. Building the rational one retired
 exactly the four rows this classification predicted it would: `thm:ref`, `thm:st`,
 `thm:perkno` and `thm:simcal` now take the paper's own class, so `δₙ = 2^(−n)` and
 `pₙ = 1 − 2^(−n)` are admissible data.

@@ -167,7 +167,10 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
 The confidence threshold `p` enters as a **P-generable** rational sequence (`def:ece`),
 matching the paper's `thm:st`: `p` may vary continuously with the market's own prices, and
 the trader carries it as a feature *expression* rather than as a day-`n` numeral.  The
-paper's e.c. rational sequences are the special case `ratCodeFeature`.
+paper's e.c. rational sequences are the special case `ratCodeFeature`, and `def:ece`'s
+emission field is **write-out** metered, so that special case reaches the paper's own
+class: `PGenerableRat.ofDigitRatCodes` admits `p n = 1 − 2⁻ⁿ` and every other sequence
+whose codes are exponential but polynomially writable (`pGenerableRat_two_pow_inv`).
 Paper node: `thm:st` -/
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)

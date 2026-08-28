@@ -165,8 +165,15 @@ lemma BigTokenStream.primrec {t : ℕ → List ℕ} (h : BigTokenStream t) : Pri
 
 /-- **The paper's 𝓔𝓒 sentence-sequence class, write-out metered.**  A written-out stream
 of self-delimiting sentence blocks parsing to the sequence, each block consumed exactly.
-Contrast `RpnSentenceCodes`, which additionally bounds every emitted token's *value* by a
-polynomial in the day, and so excludes sentences with exponential codes.
+Contrast `RpnSentenceCodes`, which additionally bounds every emitted *token's* value by a
+polynomial in the day.  That is **not** a bound on the sentences' Gödel codes:
+`RpnSentenceCodes.ofCanonical` admits a family whose codes are exponential, provided each
+sentence is spelled as a polynomially long run of small Polish symbols.  What the token
+bound excludes is a family whose block needs a single *unbounded* token — the escape block
+`[1, ⌜φ n⌝]` of `ofPolySentenceCodes` at an exponential `⌜φ n⌝`, which only
+`ofDigitSentenceCodes` can emit.  No separation of the two sentence classes is proved here;
+the proved separations are at `BigDigits`, `BigTokenStream` and `DigitRatCodes` (see
+`## Strictness` below).
 Paper node: `def:ec` -/
 def BigSentenceCodes (φ : ℕ → Sentence) : Prop :=
   ∃ s : ℕ → List ℕ, BigTokenStream s ∧
@@ -678,10 +685,22 @@ end DigitRatCodes
 
 /-! ## Strictness
 
-The write-out classes are not a relabeling: each strictly contains its value-bounded
-predecessor, and the separating families are the paper's own — an `n`-bit natural and the
-tolerance sequence `δ n = 2⁻ⁿ`.  `not_polyFueled_two_pow` is the repo's size-based
-separation of `PolyFueled`, and everything below reduces to it. -/
+The write-out classes are not a relabeling.  Three separations are **proved** below, and
+the separating families are the paper's own — an `n`-bit natural and the tolerance
+sequence `δ n = 2⁻ⁿ`:
+
+* `bigDigits_two_pow_not_polyFueled` — `BigDigits` over `∃ c, PolyFueled c v`;
+* `bigTokenStream_not_polySegStream` — `BigTokenStream` over `PolySegStream`;
+* `digitRatCodes_two_pow_inv_not_polyRatCodes` — `DigitRatCodes` over `PolyRatCodes`.
+
+* `bigSpliceStream_two_pow_inv_not_rpnSpliceStream` — `BigSpliceStream` over
+  `RpnSpliceStream`, at the constant feature for `δ n = 2⁻ⁿ`.
+
+`not_polyFueled_two_pow` is the repo's size-based separation of `PolyFueled`, and all four
+reduce to it.  The remaining pair — `BigSentenceCodes` over `RpnSentenceCodes` — is an
+inclusion here (`BigSentenceCodes.ofRpnSentenceCodes`) with **no strictness proof**; do not
+describe it as strict.  What is established for it is that its write-out constructor
+`ofDigitSentenceCodes` has no value-bounded counterpart. -/
 
 /-- The base-4 length of `2 ^ n` is `n / 2 + 1`. -/
 lemma len4_two_pow (n : ℕ) : len4 (2 ^ n) = n / 2 + 1 := by
@@ -799,6 +818,75 @@ lemma digitRatCodes_two_pow_inv_not_polyRatCodes :
   refine not_polyFueled_two_pow _ ((PolyFueled.right.comp hc).of_eq (fun n => ?_))
   rw [encode_rat_inv_natCast ((by positivity)), Nat.unpair_pair]
 
+/-! ### The emission-surface separation
+
+`serialize_const_write` has no value-bounded counterpart, and the reason is visible one
+level down: a constant leaf serializes to the single payload chunk `[1, ⌜q n⌝]`, and
+`unRpn` copies a tag-`1` payload token **verbatim**, so any `RpnSpliceStream` certificate
+for that family has `⌜q n⌝` sitting in its emitted stream as one token — which a
+`PolySegStream`'s per-token emitter would have to produce at polynomial value. -/
+
+/-- **A run contracting to a bare payload chunk is one.**  `unRpn` rewrites a tag-`1`
+frame to itself and consumes nothing around it, so a run whose whole contraction is
+`[1, c]` carries `c` as its own second token. -/
+private lemma unRpn_eq_payload_getD {ts : List ℕ} {c : ℕ} (h : unRpn ts = [1, c]) :
+    2 ≤ ts.length ∧ ts.getD 1 0 = c := by
+  match ts with
+  | [] => simp [unRpn, unRpnTokens] at h
+  | [t] =>
+      simp only [unRpn, List.length_cons] at h
+      rw [unRpnTokens] at h
+      split_ifs at h with h0 h6 h1 h7
+      · split at h
+        · simp at h
+        · split at h <;> simp at h
+      · split at h <;> simp at h
+      · simp at h
+      · simp at h
+      · simp only [List.cons.injEq] at h
+        exact absurd h.1 h1
+  | t :: c' :: r =>
+      refine ⟨by simp, ?_⟩
+      simp only [unRpn, List.length_cons] at h
+      rw [unRpnTokens] at h
+      split_ifs at h with h0 h6 h1 h7
+      · split at h
+        · simp at h
+        · split at h <;> simp at h
+      · split at h <;> simp at h
+      · simp only [List.cons.injEq] at h
+        simpa using h.2.1
+      · simp only [List.cons.injEq] at h
+        exact absurd h.1 (by omega)
+      · simp only [List.cons.injEq] at h
+        exact absurd h.1 h1
+
+/-- **The emission-surface separation.**  The constant-feature stream for the paper's
+`δ n = 2⁻ⁿ` is a `BigSpliceStream` (`serialize_const_write`) and is **not** an
+`RpnSpliceStream`: `unRpn` copies the tag-`1` payload verbatim, so a value-metered
+certificate would hand `PolySegStream`'s per-token emitter a poly-fueled program for
+`⌜2⁻ⁿ⌝ = ⟪2, 2ⁿ⟫`, which `digitRatCodes_two_pow_inv_not_polyRatCodes` refutes.
+
+This is what makes `GeneratedRatFeature.polyTok : BigSpliceStream` a genuine widening of
+the `RpnSpliceStream` field it replaced, rather than a restatement.
+Kind: `P` proved; provenance: (a) derived in-project. -/
+lemma bigSpliceStream_two_pow_inv_not_rpnSpliceStream :
+    BigSpliceStream (fun n => (EF.const ((((2 ^ n : ℕ) : ℚ))⁻¹)).serialize) ∧
+      ¬ RpnSpliceStream (fun n => (EF.const ((((2 ^ n : ℕ) : ℚ))⁻¹)).serialize) := by
+  refine ⟨BigSpliceStream.serialize_const_write
+    digitRatCodes_two_pow_inv.toBigDigits, ?_⟩
+  rintro ⟨s, ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩, hc⟩
+  refine digitRatCodes_two_pow_inv_not_polyRatCodes.2
+    ⟨_, (htok.comp (PolyFueled.id.pair (PolyFueled.const 1))).of_eq (fun z => ?_)⟩
+  have hu : unRpn (s z) = [1, Encodable.encode ((((2 ^ z : ℕ) : ℚ))⁻¹)] := by
+    simpa [EF.serialize, unRpn_nil] using (hc z).unRpn_eq
+  obtain ⟨hlen2, hval⟩ := unRpn_eq_payload_getD hu
+  have h1 : (1 : ℕ) < lenFn z := by rw [← hslen z]; omega
+  exact (hget z 1 h1).trans hval
+
+example : ¬ RpnSpliceStream (fun n => (EF.const ((((2 ^ n : ℕ) : ℚ))⁻¹)).serialize) :=
+  bigSpliceStream_two_pow_inv_not_rpnSpliceStream.2
+
 #print axioms BigTokenStream.ofBigDigits
 #print axioms BigTokenStream.concatVar
 #print axioms ec_of_bigTokenStream
@@ -810,6 +898,7 @@ lemma digitRatCodes_two_pow_inv_not_polyRatCodes :
 #print axioms bigDigits_two_pow_not_polyFueled
 #print axioms bigTokenStream_not_polySegStream
 #print axioms digitRatCodes_two_pow_inv_not_polyRatCodes
+#print axioms bigSpliceStream_two_pow_inv_not_rpnSpliceStream
 
 end LogicalInduction
 

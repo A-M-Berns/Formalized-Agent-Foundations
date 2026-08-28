@@ -1162,11 +1162,15 @@ lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / 
   have := h 0 1
   norm_num at this
 
-/-- Every efficiently codeable rational sequence is `def:pgen` against **every** market,
-through its constant feature. -/
+/-- Every **value-bounded** rational code sequence is `def:pgen` against every market —
+the derived corollary of the general write-out constructor
+`PGenerableRat.ofDigitRatCodes`, kept for callers who already hold a `PolyRatCodes`
+certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
+(`digitRatCodes_two_pow_inv_not_polyRatCodes`), which the general constructor admits
+(`pGenerableRat_two_pow_inv`). -/
 lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
     PGenerableRat P q :=
-  ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+  PGenerableRat.ofDigitRatCodes (DigitRatCodes.ofPolyRatCodes hq) P
 
 /-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
 satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`

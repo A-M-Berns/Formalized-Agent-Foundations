@@ -864,24 +864,6 @@ lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
 
 end PGenerableWeighting
 
-lemma GeneratedRatFeature.toWeighting
-    {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
-    (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
-  polySeg := BigSpliceStream.ofRpnSpliceStream h.polyTok
-  rank_le := h.rank_le
-  closed := h.closed
-
-/-- A polynomial rational code sequence, viewed as a closed constant feature on each day. -/
-def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
-  EF.const (q n)
-
-lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ)
-    (hq : PolyRatCodes q) : GeneratedRatFeature P q (ratCodeFeature q) where
-  rank_le := by intro n; simp [ratCodeFeature]
-  polyTok := RpnSpliceStream.serialize_const_comp hq
-  closed := by intro n ρ V; simp [ratCodeFeature]
-  denote := by intro n; simp [ratCodeFeature]
-
 /-- Polynomial rational codes remain polynomial after a polynomially fueled reindexing. -/
 lemma PolyRatCodes.reindex {q : ℕ → ℚ} (hq : PolyRatCodes q)
     {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :

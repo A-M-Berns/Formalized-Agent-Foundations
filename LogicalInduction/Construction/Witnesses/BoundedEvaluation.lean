@@ -1470,7 +1470,7 @@ lemma PGenerableRat.computable {P : History} (market : MarketComputation P) {q :
     (h : PGenerableRat P q) : Computable q := by
   obtain ⟨feature, hfeature⟩ := h
   have hfp : Primrec feature :=
-    BigSpliceStream.feature_primrec (BigSpliceStream.ofRpnSpliceStream hfeature.polyTok)
+    BigSpliceStream.feature_primrec hfeature.polyTok
   have hval : ∀ n, (feature n).denoteRat
       (fun day φ => market.quote day (Encodable.encode φ)) = q n := by
     intro n

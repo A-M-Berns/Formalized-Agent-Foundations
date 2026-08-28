@@ -36,7 +36,7 @@ def constantRatFeature (q : ℚ) (_n : ℕ) : EF := EF.const q
 lemma constantRatFeature_generated (P : History) (q : ℚ) :
     GeneratedRatFeature P (fun _ ↦ q) (constantRatFeature q) where
   rank_le := by intro n; simp [constantRatFeature]
-  polyTok := RpnSpliceStream.serialize_const q
+  polyTok := BigSpliceStream.serialize_const q
   closed := by intro n ρ V; simp [constantRatFeature]
   denote := by intro n; simp [constantRatFeature]
 
@@ -77,7 +77,7 @@ noncomputable def sentenceMinusFeature_polySequence
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
     const_poly := BigSpliceStream.serialize_mul
       (BigSpliceStream.serialize_const (-1))
-      (BigSpliceStream.ofRpnSpliceStream hp.polyTok)
+      hp.polyTok
     coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusFeature]
