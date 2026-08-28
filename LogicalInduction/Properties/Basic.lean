@@ -31,12 +31,12 @@ when `feat ≥ 0` at trade time, and the `≥ ε²/2` lower bound on frequently-
 noncomputable def buySignal (feat : EF) (ε : ℚ) : EF :=
   .max (.const 0) (.add feat (.const (-ε/2)))
 
-@[simp] theorem buySignal_denote (feat : EF) (ε : ℚ) (P : History) :
+@[simp] lemma buySignal_denote (feat : EF) (ε : ℚ) (P : History) :
     (buySignal feat ε).denote P = max 0 (feat.denote P + (-(ε:ℝ)/2)) := by
   simp only [buySignal, EF.denote_max, EF.denote_add, EF.denote_const, Pi.add_apply]
   push_cast; ring_nf
 
-@[simp] theorem buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
+@[simp] lemma buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
   simp [buySignal]
 
 lemma buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :

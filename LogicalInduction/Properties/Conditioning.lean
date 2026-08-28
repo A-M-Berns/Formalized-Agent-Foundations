@@ -289,7 +289,7 @@ def retainedConditionPrices (ψ : ℕ → Sentence) (ε : ℚ) : EF → EF
   | .letE x body => .letE (x.retainedConditionPrices ψ ε)
       (body.retainedConditionPrices ψ ε)
 
-@[simp] theorem retainedConditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
+@[simp] lemma retainedConditionPrices_rank (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
     (e.retainedConditionPrices ψ ε).rank = e.rank := by
   induction e with
   | price φ day => simp [retainedConditionPrices, conditionalPriceEF,
@@ -368,7 +368,7 @@ def retainedConditionPricesExceptZero
       .letE (x.retainedConditionPricesExceptZero zeroDays ψ ε)
         (body.retainedConditionPricesExceptZero zeroDays ψ ε)
 
-@[simp] theorem retainedConditionPricesExceptZero_rank
+@[simp] lemma retainedConditionPricesExceptZero_rank
     (e : EF) (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ) :
     (e.retainedConditionPricesExceptZero zeroDays ψ ε).rank = e.rank := by
   induction e with
@@ -452,7 +452,7 @@ lemma absVal_denote (e : EF) (P : History) :
   push_cast
   rw [neg_one_mul, abs_eq_max_neg]
 
-@[simp] theorem absVal_rank (e : EF) :
+@[simp] lemma absVal_rank (e : EF) :
     (absVal e).rank = e.rank := by
   simp [absVal, EF.rank]
 
@@ -468,7 +468,7 @@ lemma conditioningTolerance_denote
     EF.denote_safeRecip, Pi.mul_apply]
   rw [div_eq_mul_inv]
 
-@[simp] theorem conditioningTolerance_rank (magnitude : EF) (τ : ℚ) :
+@[simp] lemma conditioningTolerance_rank (magnitude : EF) (τ : ℚ) :
     (conditioningTolerance magnitude τ).rank = magnitude.rank := by
   simp [conditioningTolerance, EF.rank]
 
@@ -497,7 +497,7 @@ lemma conditioningCapGate_denote
   · rw [inv_div]
     ring
 
-@[simp] theorem conditioningCapGate_rank (ratio magnitude : EF) (τ : ℚ) :
+@[simp] lemma conditioningCapGate_rank (ratio magnitude : EF) (τ : ℚ) :
   (conditioningCapGate ratio magnitude τ).rank =
       Nat.max ratio.rank magnitude.rank := by
   simp [conditioningCapGate, EF.rank, Nat.max_comm]
@@ -1626,12 +1626,12 @@ lemma conditionedTranslation_netWorth_lower
 def after (cutoff : ℕ) (T : Trader) : Trader where
   strat n := if cutoff ≤ n then T.strat n else Trader.zero.strat n
 
-@[simp] theorem after_strat_of_le (T : Trader) {cutoff n : ℕ}
+@[simp] lemma after_strat_of_le (T : Trader) {cutoff n : ℕ}
     (h : cutoff ≤ n) :
     (T.after cutoff).strat n = T.strat n := by
   simp [after, h]
 
-@[simp] theorem after_strat_of_lt (T : Trader) {cutoff n : ℕ}
+@[simp] lemma after_strat_of_lt (T : Trader) {cutoff n : ℕ}
     (h : n < cutoff) :
     (T.after cutoff).strat n = Trader.zero.strat n := by
   simp [after, Nat.not_le_of_lt h]
@@ -1700,7 +1700,7 @@ def eventualConditionedTranslation
         F.zeroDays ψ F.epsilon (conditioningBudget n)
     else Trader.zero.strat n
 
-@[simp] theorem eventualConditionedTranslation_strat_of_le
+@[simp] lemma eventualConditionedTranslation_strat_of_le
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (T : Trader) {n : ℕ}
     (hn : F.cutoff ≤ n) :
@@ -1709,7 +1709,7 @@ def eventualConditionedTranslation
         F.zeroDays ψ F.epsilon (conditioningBudget n) := by
   simp [eventualConditionedTranslation, hn]
 
-@[simp] theorem eventualConditionedTranslation_strat_of_lt
+@[simp] lemma eventualConditionedTranslation_strat_of_lt
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (T : Trader) {n : ℕ}
     (hn : n < F.cutoff) :
@@ -1778,7 +1778,7 @@ def union (DP extra : DeductiveProcess) : DeductiveProcess where
     exact hφ.elim (fun h ↦ Or.inl (DP.mono n h))
       (fun h ↦ Or.inr (extra.mono n h))
 
-@[simp] theorem union_stage (DP extra : DeductiveProcess) (n : ℕ) :
+@[simp] lemma union_stage (DP extra : DeductiveProcess) (n : ℕ) :
     (DP.union extra).D n = DP.D n ∪ extra.D n := rfl
 
 end DeductiveProcess

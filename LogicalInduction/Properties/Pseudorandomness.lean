@@ -47,20 +47,20 @@ def sentenceMinusFeature (φ : ℕ → Sentence) (pFeature : ℕ → EF) (n : �
   const := EF.mul (EF.const (-1)) (pFeature n)
   terms := [(EF.const 1, φ n)]
 
-@[simp] theorem sentenceMinusFeature_value (φ : ℕ → Sentence)
+@[simp] lemma sentenceMinusFeature_value (φ : ℕ → Sentence)
     (pFeature : ℕ → EF) (n : ℕ) (V : History) (v : Valuation) :
     (sentenceMinusFeature φ pFeature n).value V v =
       v (φ n) - (pFeature n).denote V := by
   simp [sentenceMinusFeature, value]
   ring
 
-@[simp] theorem sentenceMinusFeature_price (φ : ℕ → Sentence)
+@[simp] lemma sentenceMinusFeature_price (φ : ℕ → Sentence)
     (pFeature : ℕ → EF) (P : History) (n m : ℕ) :
     (sentenceMinusFeature φ pFeature n).price P m =
       P m (φ n) - (pFeature n).denote P := by
   simp [price]
 
-@[simp] theorem sentenceMinusFeature_magnitude (φ : ℕ → Sentence)
+@[simp] lemma sentenceMinusFeature_magnitude (φ : ℕ → Sentence)
     (pFeature : ℕ → EF) (P : History) (n : ℕ) :
     (sentenceMinusFeature φ pFeature n).magnitude P = 1 := by
   simp [sentenceMinusFeature, magnitude]
@@ -495,7 +495,7 @@ def feedbackReturnFeature (As : ℕ → AffineCombination)
   EF.add ((As (f k)).priceFeature (f (k + 1)))
     (EF.mul (EF.const (-1)) ((As (f k)).priceFeature (f k)))
 
-@[simp] theorem feedbackReturnFeature_denote
+@[simp] lemma feedbackReturnFeature_denote
     (As : ℕ → AffineCombination) (f : DeferralFunction)
     (P : History) (k : ℕ) :
     (feedbackReturnFeature As f k).denote P =
@@ -609,7 +609,7 @@ lemma feedbackBetaFeature_closed {As : ℕ → AffineCombination}
     Pi.mul_apply, EF.denote_const]
   rw [feedbackWealthFeature_closed hpoly hW f δ k ρ P, hW.closed (f k) ρ P]
 
-@[simp] theorem feedbackFactorFeature_denote
+@[simp] lemma feedbackFactorFeature_denote
     (As : ℕ → AffineCombination) (W : ℕ → EF) (f : DeferralFunction)
     (δ : ℚ) (P : History) (k : ℕ) :
     (feedbackFactorFeature As W f δ k).denote P =
@@ -2069,7 +2069,7 @@ lemma patientUnderpriceWeight_polySeg
       hattempt clock.occupancy_polySeg
   exact BigSpliceStream.serialize_mul hweight hattempt
 
-@[simp] theorem patientOccupancy_denote
+@[simp] lemma patientOccupancy_denote
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth err f) (i n : ℕ) (V : History) :

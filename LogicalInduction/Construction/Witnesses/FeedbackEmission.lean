@@ -421,7 +421,7 @@ def scheduledTradeBlock
     (scheduledTermCoefficient hpoly W f a degree δ (Nat.pair z j),
       scheduledTermSentence hpoly f a degree (Nat.pair z j)))
 
-@[simp] theorem scheduledTradeBlock_length
+@[simp] lemma scheduledTradeBlock_length
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (W : ℕ → EF) (f : DeferralFunction) (a degree : ℕ) (δ : ℚ)
     (z : ℕ) :

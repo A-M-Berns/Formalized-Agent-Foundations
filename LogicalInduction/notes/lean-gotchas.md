@@ -87,3 +87,46 @@ the settled design decisions and the correspondence table, and points here for p
   apply package `leanOptions`.** Auto-implicit over-generalization is therefore a per-file
   scratch-checking hazard that a real `lake build` would have caught — one more reason the
   entry above says `lake env lean` is not a gate.
+
+## Traps recorded in the 2026-08-28 write-out / source-encoding round
+
+- **A failed elaboration makes `#print axioms` report `sorryAx` on *downstream* declarations
+  in the same file.** Check the error list and `grep -rn sorry` before treating a build-log
+  `sorryAx` as genuine.
+- **`unRpn`/`unRpnTokens` case analysis:** `simp only [unRpn, List.length_cons] at h` *first*,
+  then `rw [unRpnTokens] at h`; never `simp only [..., unRpnTokens]` (unfolds the recursive
+  tail; `split_ifs` explodes). Match `[] / [t] / t :: c' :: r`.
+- **`have h : PolyFueled _ f := …` fails with "don't know how to synthesize placeholder for
+  c"** — the have-type elaborates before its proof. Write `∃ c : Code, PolyFueled c f` and
+  `refine ⟨_, proof⟩`, or `obtain ⟨c, h⟩ : ∃ c, PolyFueled c f := by refine ⟨_, (…).of_eq (fun z => ?_)⟩`.
+- **Inside `namespace Nat.Partrec.Code`, bare `Primrec.const/pair/comp` resolve to
+  `Nat.Primrec.*`.** Write `_root_.Primrec`, `_root_.Primrec2`, `_root_.PrimrecPred`,
+  `_root_.Computable`; `open _root_.Primrec` collides with `Code`'s constructors.
+- **Foundation name traps:** `Semantics.Not.models_not` (a class field, `@[simp]`);
+  `Entailment.by_axm h` takes only the membership proof; `WeakerThan.trans` needs explicit
+  `(S := …) (T := …)`; `ISigma1.Delta1` needs
+  `import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1` explicitly, and the
+  failure is a bare "failed to synthesize Theory.Delta1 ISigma1".
+- **Don't `rw [thyName]` to unfold a theory built as `insert σ 𝗜𝚺₁`**; use
+  `inferInstanceAs (Theory.Delta1 (insert σ 𝗜𝚺₁))` and state provability lemmas at the
+  unfolded sentence. `[ℕ ⊧* T] → T.SoundOn F` (`Arithmetic/Basic/Model.lean:99`) gives
+  `SoundOnHierarchy 𝚺 1` *and* `Consistent` for free once every axiom is true in ℕ.
+- **`split_ifs <;> omega` is unsafe when a guard is decidably false on literals** — it leaves
+  `h : False ⊢ 5 = 1`. Discharge guards explicitly: `rw [if_neg (by omega), …, if_pos (by decide)]`.
+  `simp_all` loops on `1 = 2*(n+1)`.
+- **`pow_mul : a ^ (m * n) = (a ^ m) ^ n`** — to turn `4 ^ (k * 2)` into `16 ^ k`, `rw [mul_comm, pow_mul]`.
+- **Mathlib `Nat.Partrec.Code.eval` halting proofs:** `(Code.eval Code.zero x).Dom` is `trivial`,
+  not `simp [Code.eval]`; divergence of `rfind' succ`: `rw [CodeHalts, Part.dom_iff_mem] at h;
+  obtain ⟨v, hv⟩ := h; simp only [Code.eval, Nat.unpaired, Part.mem_map_iff, Nat.mem_rfind] at hv;
+  obtain ⟨a, ⟨h1, -⟩, -⟩ := hv; simp at h1`.
+- **`Nat.ofDigits_lt_base_pow_length` / `Nat.ofDigits_div_pow_eq_ofDigits_drop`** are not
+  reachable through `Framework/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
+- **The `models_haltingSchema_iff` transport** is exactly
+  `simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using (codeOfREPred_spec hp (x := z))`;
+  that triple is required. Reuse it for other `codeOfREPred` schemas.
+- **Shell/monitoring:** `grep --include=*.lean` fails under this zsh unless quoted (a false
+  "no references" negative); `safe-lake.sh … | grep | tail` emits nothing until exit — tee
+  to a log; `pgrep -f safe-lake` in an `until` loop matches its own wrapper. A full
+  `LogicalInduction` build from a stale-Framework state is ~35 min (2945 jobs).
+- **Glyphs:** never retype `𝗜𝚺₁` (U+1D5DC U+1D6BA) in generated prose edits; copy it. A
+  mistyped glyph passes every gate.

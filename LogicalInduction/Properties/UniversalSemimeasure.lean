@@ -1168,12 +1168,12 @@ lemma dusShares_gt_half_of_signal_eq_one
   rw [dusShares, dusSharesEF, EF.denote_mul, Pi.mul_apply, hsig, mul_one]
   exact hrem
 
-@[simp] theorem dusPrefix_pair {DP : DeductiveProcess}
+@[simp] lemma dusPrefix_pair {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) (m i : ℕ) :
     dusPrefix B (Nat.pair m i) = B.enumeration i := by
   rw [dusPrefix, Nat.unpair_pair]
 
-@[simp] theorem dusSentence_pair {DP : DeductiveProcess}
+@[simp] lemma dusSentence_pair {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) (m i : ℕ) :
     dusSentence B (Nat.pair m i) = B.prefixSentence (B.enumeration i) := by
   simp [dusSentence]

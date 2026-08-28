@@ -259,7 +259,7 @@ end BooleanQuoteCode
 def decodedQuotationRat (z : ℕ) : ℚ :=
   (Encodable.decode (α := ℚ) z).getD 0
 
-@[simp] theorem decodedQuotationRat_encode (r : ℚ) :
+@[simp] lemma decodedQuotationRat_encode (r : ℚ) :
     decodedQuotationRat (Encodable.encode r) = r := by
   simp [decodedQuotationRat]
 
@@ -646,7 +646,7 @@ def gatedAffirmativeAffine (scale : ℚ) (H : ℕ → EF)
   const := EF.const 0
   terms := [(EF.mul (EF.const scale) (H n), quote n)]
 
-@[simp] theorem gatedComplementAffine_price (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_price (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n m : ℕ) :
     (gatedComplementAffine scale H quote n).price P m =
       (scale : ℝ) * (H n).denote P * (1 - P m (quote n)) := by
@@ -654,33 +654,33 @@ def gatedAffirmativeAffine (scale : ℚ) (H : ℕ → EF)
     AffineCombination.value]
   ring
 
-@[simp] theorem gatedComplementAffine_value (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_value (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (w : Valuation) (n : ℕ) :
     (gatedComplementAffine scale H quote n).value P w =
       (scale : ℝ) * (H n).denote P * (1 - w (quote n)) := by
   simp [gatedComplementAffine, AffineCombination.value]
   ring
 
-@[simp] theorem gatedComplementAffine_magnitude (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_magnitude (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n : ℕ) :
     (gatedComplementAffine scale H quote n).magnitude P =
       |(scale : ℝ) * (H n).denote P| := by
   simp [gatedComplementAffine, AffineCombination.magnitude, abs_mul]
 
-@[simp] theorem gatedAffirmativeAffine_price (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_price (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n m : ℕ) :
     (gatedAffirmativeAffine scale H quote n).price P m =
       (scale : ℝ) * (H n).denote P * P m (quote n) := by
   simp [gatedAffirmativeAffine, AffineCombination.price,
     AffineCombination.value]
 
-@[simp] theorem gatedAffirmativeAffine_value (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_value (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (w : Valuation) (n : ℕ) :
     (gatedAffirmativeAffine scale H quote n).value P w =
       (scale : ℝ) * (H n).denote P * w (quote n) := by
   simp [gatedAffirmativeAffine, AffineCombination.value]
 
-@[simp] theorem gatedAffirmativeAffine_magnitude (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_magnitude (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n : ℕ) :
     (gatedAffirmativeAffine scale H quote n).magnitude P =
       |(scale : ℝ) * (H n).denote P| := by
@@ -2744,22 +2744,22 @@ noncomputable def featureConstantAffine_polySequence
   const_closed := hH.closed
   coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
 
-@[simp] theorem featureConstantAffine_value
+@[simp] lemma featureConstantAffine_value
     (H : ℕ → EF) (P : History) (v : Valuation) (n : ℕ) :
     (featureConstantAffine H n).value P v = (H n).denote P := by
   simp [featureConstantAffine, AffineCombination.value]
 
-@[simp] theorem featureConstantAffine_price
+@[simp] lemma featureConstantAffine_price
     (H : ℕ → EF) (P : History) (n m : ℕ) :
     (featureConstantAffine H n).price P m = (H n).denote P := by
   simp [AffineCombination.price]
 
-@[simp] theorem AffineCombination.sentenceAffine_value
+@[simp] lemma AffineCombination.sentenceAffine_value
     (φ : ℕ → Sentence) (P : History) (v : Valuation) (n : ℕ) :
     (AffineCombination.sentenceAffine φ n).value P v = v (φ n) := by
   simp [AffineCombination.sentenceAffine, AffineCombination.value]
 
-@[simp] theorem featureConstantAffine_magnitude
+@[simp] lemma featureConstantAffine_magnitude
     (H : ℕ → EF) (P : History) (n : ℕ) :
     (featureConstantAffine H n).magnitude P = 0 := by
   simp [featureConstantAffine, AffineCombination.magnitude]

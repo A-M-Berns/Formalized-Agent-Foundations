@@ -74,7 +74,9 @@ serialization. Both transport theorems now exist.
 * `thm:scon` — **complete at the machine quantifier**, in all three forms.
   `CondStep.conditionedTranslation_preserves_machine` and
   `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
-  under the same `BigSentenceCodes` hypothesis on the condition as their fuel counterparts;
+  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts
+  (`RpnSentenceCodes`, not `BigSentenceCodes`: the conditioning compiler destructures a
+  `PolySegStream` out of the hypothesis, which the write-out class does not supply);
   `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
   `lic_conditioned_eventual_machine` are the endpoints. The fuel endpoints and their
   witnesses are untouched beside them.

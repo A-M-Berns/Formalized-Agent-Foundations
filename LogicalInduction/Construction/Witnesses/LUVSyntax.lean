@@ -340,7 +340,7 @@ private lemma triangularGaps_take (G : ℕ → AffineCombination) (m i : ℕ)
       (List.range i).map (fun j ↦ G (triangularIndex m j)) := by
   rw [triangularGaps, ← List.map_take, List.take_range, Nat.min_eq_left hi]
 
-@[simp] private theorem take_map_triangular_range (G : ℕ → AffineCombination)
+@[simp] private lemma take_map_triangular_range (G : ℕ → AffineCombination)
     (m i : ℕ) (hi : i ≤ m) :
     ((List.range m).map (fun j ↦ G (triangularIndex m j))).take i =
       (List.range i).map (fun j ↦ G (triangularIndex m j)) := by
@@ -416,7 +416,7 @@ private lemma softmaxRemainder_append
       simp only [List.cons_append, softmaxRemainder]
       exact ih _
 
-@[simp] theorem softmaxRemainder_triangular_prefix
+@[simp] lemma softmaxRemainder_triangular_prefix
     (G : ℕ → AffineCombination) (m i : ℕ) (threshold pad : ℚ) :
     softmaxRemainder ((List.range i).map (fun j ↦ G (triangularIndex m j)))
         m threshold pad (.const 1) =

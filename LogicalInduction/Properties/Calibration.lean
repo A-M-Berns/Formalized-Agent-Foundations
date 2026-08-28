@@ -184,7 +184,7 @@ lemma calibrationIndicator_pos_imp
 noncomputable def prefixSum (x : ℕ → ℝ) (n : ℕ) : ℝ :=
   ∑ i ∈ Finset.range (n + 1), x i
 
-@[simp] theorem prefixSum_zero (x : ℕ → ℝ) : prefixSum x 0 = x 0 := by
+@[simp] lemma prefixSum_zero (x : ℕ → ℝ) : prefixSum x 0 = x 0 := by
   simp [prefixSum]
 
 lemma prefixSum_succ (x : ℕ → ℝ) (n : ℕ) :
@@ -1297,7 +1297,7 @@ lemma mem_allBitLists : ∀ (n : ℕ) (l : List Bool), l ∈ allBitLists n ↔ l
 /-- The finite world denoted by a bit list (missing entries read `false`). -/
 def bitsToFin (B : ℕ) (l : List Bool) : BoolPCWorld.FiniteWorld B := fun a => l.getD a false
 
-@[simp] theorem bitsToFin_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
+@[simp] lemma bitsToFin_ofFn {B : ℕ} (u : BoolPCWorld.FiniteWorld B) :
     bitsToFin B (List.ofFn u) = u := by
   funext a
   rw [bitsToFin, List.getD_eq_getElem _ _ (by simp [a.isLt])]
@@ -1354,7 +1354,7 @@ instance : Std.Total sentenceCodeLE :=
 /-- The stage's sentences, in the canonical order of its own encoding. -/
 def stageSort (stage : Finset Sentence) : List Sentence := stage.sort sentenceCodeLE
 
-@[simp] theorem mem_stageSort (stage : Finset Sentence) (φ : Sentence) :
+@[simp] lemma mem_stageSort (stage : Finset Sentence) (φ : Sentence) :
     φ ∈ stageSort stage ↔ φ ∈ stage := Finset.mem_sort _
 
 /-- Every sentence of the stage is satisfied by the world a bit list denotes.
@@ -2157,7 +2157,7 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
       sentence_poly := biasRunTradeSentence_poly h
       trades_eq := biasRunTrader_trades_eq h hW rate }
 
-@[simp] theorem biasRunTrader_before {As : ℕ → AffineCombination}
+@[simp] lemma biasRunTrader_before {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (k n : ℕ) (hnk : n < k) :
     ((biasRunTrader h hW rate k).strat n).trades = [] := by

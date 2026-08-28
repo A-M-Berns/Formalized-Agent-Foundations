@@ -35,6 +35,7 @@ Paper node: `def:ec`
 -/
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Machine.TokenFold
+import LogicalInduction.Framework.CodeSource
 
 namespace LogicalInduction
 
@@ -558,11 +559,29 @@ codes and rationals do: the former because the class is about the *code* of a ma
 latter because a flat `BigDigits` on `⌜q n⌝` would make the reciprocal a bignum `unpair`,
 hence a bignum `Nat.sqrt`, which the digit calculus provably does not close under. -/
 
-/-- **The write-out class for machine codes.**  Poly-fueled digit access to the code — no
-polynomial bound on the code itself, so a machine whose description grows linearly in the
-day (an `O(n)`-symbol source, the paper's own example) qualifies. -/
+/-- **The write-out class for machine codes.**  Poly-fueled digit access to the machine's
+*source* number — no polynomial bound on that number itself, so a machine whose description
+grows linearly in the day (an `O(n)`-symbol source, the paper's own example at tex:1931-1933)
+qualifies.
+
+**Representation choice** (disclosed, in the same spirit as RPN for sentences).  Machines are
+`Nat.Partrec.Code`, exactly as elsewhere in this development; what is chosen here is how a
+machine is *named*.  The name is `Code.sourceNat` (`Framework/CodeSource.lean`): the postfix
+tag stream of the syntax tree read base-16, whose symbol count is linear in the tree
+(`len4_sourceNat_le`) and which is efficiently decodable (`ofSource_sourceNat`, with
+`ofSource_primrec`).  That is what tex:1931-1933 asks of `⟨m⟩` — the source must be writable
+in time polynomial in the day.
+
+Mathlib's `Encodable.encode` on `Nat.Partrec.Code` fails this and is deliberately **not** the
+naming map.  `encodeCode` is `2 * (2 * Nat.pair (encode cf) (encode cg)) + 4` at every
+`pair`/`comp`/`prec` node, so the code value *squares* per node: the family
+`nest 0 = zero`, `nest (n+1) = pair (nest n) zero` has `2n + 1` syntax nodes and base-4
+`encode` digit counts `0, 2, 4, 8, 16, 33, 67, 134, …` — doubly exponential in the day.  Under
+`encode`-naming that paper-admissible family would be excluded from this class; under
+`sourceNat` it is admitted, and `digitMachineCodes_nest` is the witness.
+Paper node: `def:ec` -/
 def DigitMachineCodes (m : ℕ → Nat.Partrec.Code) : Prop :=
-  BigDigits (fun n => Encodable.encode (m n))
+  BigDigits (fun n => Nat.Partrec.Code.sourceNat (m n))
 
 /-- **The write-out class for rationals**, carried as *separate digit runs* for the
 numerator and the denominator rather than as one run for `⌜q n⌝`.

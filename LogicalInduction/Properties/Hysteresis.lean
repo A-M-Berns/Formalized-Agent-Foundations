@@ -42,30 +42,30 @@ def efMin (e f : EF) : EF :=
 /-- Clip to `[0,1]`: `max 0 (min 1 e)`. -/
 def clip01 (e : EF) : EF := .max (.const 0) (efMin (.const 1) e)
 
-@[simp] theorem oneMinus_denote (e : EF) (V : History) :
+@[simp] lemma oneMinus_denote (e : EF) (V : History) :
     (oneMinus e).denote V = 1 - e.denote V := by
   simp only [oneMinus, EF.denote_add, EF.denote_mul, EF.denote_const, Pi.add_apply,
     Pi.mul_apply]
   push_cast; ring
 
-@[simp] theorem efMin_denote (e f : EF) (V : History) :
+@[simp] lemma efMin_denote (e f : EF) (V : History) :
     (efMin e f).denote V = min (e.denote V) (f.denote V) := by
   simp only [efMin, EF.denote_mul, EF.denote_max, EF.denote_const, Pi.mul_apply]
   push_cast
   rw [neg_one_mul, neg_one_mul, neg_one_mul, max_neg_neg, neg_neg]
 
-@[simp] theorem clip01_denote (e : EF) (V : History) :
+@[simp] lemma clip01_denote (e : EF) (V : History) :
     (clip01 e).denote V = max 0 (min 1 (e.denote V)) := by
   simp only [clip01, EF.denote_max, efMin_denote, EF.denote_const]
   push_cast; rfl
 
-@[simp] theorem oneMinus_rank (e : EF) : (oneMinus e).rank = e.rank := by
+@[simp] lemma oneMinus_rank (e : EF) : (oneMinus e).rank = e.rank := by
   simp [oneMinus, EF.rank]
 
-@[simp] theorem efMin_rank (e f : EF) : (efMin e f).rank = Max.max e.rank f.rank := by
+@[simp] lemma efMin_rank (e f : EF) : (efMin e f).rank = Max.max e.rank f.rank := by
   simp [efMin, EF.rank]
 
-@[simp] theorem clip01_rank (e : EF) : (clip01 e).rank = e.rank := by
+@[simp] lemma clip01_rank (e : EF) : (clip01 e).rank = e.rank := by
   simp [clip01, EF.rank]
 
 /-! ### Real-side clip facts -/
@@ -111,11 +111,11 @@ lemma sellIndEF_denote (φ : Sentence) (b δ : ℚ) (n : ℕ) (V : History) :
     EF.denote_price, Pi.mul_apply, Pi.add_apply]
   push_cast; ring_nf
 
-@[simp] theorem buyIndEF_rank (φ : Sentence) (a δ : ℚ) (n : ℕ) :
+@[simp] lemma buyIndEF_rank (φ : Sentence) (a δ : ℚ) (n : ℕ) :
     (buyIndEF φ a δ n).rank = n := by
   simp [buyIndEF, EF.rank]
 
-@[simp] theorem sellIndEF_rank (φ : Sentence) (b δ : ℚ) (n : ℕ) :
+@[simp] lemma sellIndEF_rank (φ : Sentence) (b δ : ℚ) (n : ℕ) :
     (sellIndEF φ b δ n).rank = n := by
   simp [sellIndEF, EF.rank]
 
@@ -291,7 +291,7 @@ def hystTrader (φ : Sentence) (a b δ : ℚ) : Trader where
 noncomputable def hystDelta (φ : Sentence) (a b δ : ℚ) (P : History) (i : ℕ) : ℝ :=
   hystH φ a b δ P (i + 1) - hystH φ a b δ P i
 
-@[simp] theorem hystTradeEF_denote (φ a b δ) (P : History) (n : ℕ) :
+@[simp] lemma hystTradeEF_denote (φ a b δ) (P : History) (n : ℕ) :
     (hystTradeEF φ a b δ n).denote P = hystDelta φ a b δ P n := by
   simp only [hystTradeEF, EF.denote_add, EF.denote_mul, EF.denote_const, Pi.add_apply,
     Pi.mul_apply, hystDelta, hystH]
@@ -718,10 +718,10 @@ lemma sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
     Pi.mul_apply, Pi.add_apply]
   push_cast; ring_nf
 
-@[simp] theorem buyIndF_rank (e : EF) (a δ : ℚ) : (buyIndF e a δ).rank = e.rank := by
+@[simp] lemma buyIndF_rank (e : EF) (a δ : ℚ) : (buyIndF e a δ).rank = e.rank := by
   simp [buyIndF, EF.rank]
 
-@[simp] theorem sellIndF_rank (e : EF) (b δ : ℚ) : (sellIndF e b δ).rank = e.rank := by
+@[simp] lemma sellIndF_rank (e : EF) (b δ : ℚ) : (sellIndF e b δ).rank = e.rank := by
   simp [sellIndF, EF.rank]
 
 section SignalFacts

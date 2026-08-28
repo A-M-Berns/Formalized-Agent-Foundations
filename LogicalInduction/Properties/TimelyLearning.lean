@@ -21,11 +21,11 @@ def sentenceAffine (φ : ℕ → Sentence) (n : ℕ) : AffineCombination where
   const := .const 0
   terms := [(.const 1, φ n)]
 
-@[simp] theorem sentenceAffine_price (φ : ℕ → Sentence) (P : History) (n m : ℕ) :
+@[simp] lemma sentenceAffine_price (φ : ℕ → Sentence) (P : History) (n m : ℕ) :
     (sentenceAffine φ n).price P m = P m (φ n) := by
   simp [sentenceAffine, price, value]
 
-@[simp] theorem sentenceAffine_magnitude (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_magnitude (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     (sentenceAffine φ n).magnitude P = 1 := by
   simp [sentenceAffine, magnitude]
 
@@ -73,18 +73,18 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
   const := .mul (.const (-1)) (.const (p n))
   terms := [(.const 1, φ n)]
 
-@[simp] theorem sentenceMinusProbability_value (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_value (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (n : ℕ) (V : History) (w : Valuation) :
     (sentenceMinusProbability φ p n).value V w = w (φ n) - (p n : ℝ) := by
   simp [sentenceMinusProbability, value]
   ring
 
-@[simp] theorem sentenceMinusProbability_price (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_price (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (P : History) (n m : ℕ) :
     (sentenceMinusProbability φ p n).price P m = P m (φ n) - (p n : ℝ) := by
   simp [price]
 
-@[simp] theorem sentenceMinusProbability_magnitude (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_magnitude (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (P : History) (n : ℕ) :
     (sentenceMinusProbability φ p n).magnitude P = 1 := by
   simp [sentenceMinusProbability, magnitude]
@@ -120,12 +120,12 @@ lemma sentenceMinusProbability_bounded (φ : ℕ → Sentence) (p : ℕ → ℚ)
   rw [sentenceMinusProbability_price, abs_le]
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2, (hp n).1, (hp n).2]
 
-@[simp] theorem sentenceAffine_futureHigh (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_futureHigh (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     affineFutureHigh (sentenceAffine φ) P n =
       sSup (Set.range (fun j => P (n + j) (φ n))) := by
   simp [affineFutureHigh]
 
-@[simp] theorem sentenceAffine_futureLow (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_futureLow (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     affineFutureLow (sentenceAffine φ) P n =
       sInf (Set.range (fun j => P (n + j) (φ n))) := by
   simp [affineFutureLow]

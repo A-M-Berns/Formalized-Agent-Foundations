@@ -33,16 +33,19 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## Universal arithmetic computation predicates -/
 
-/-- Decode the left component as a repository program and run it on the right component. -/
+/-- Decode the left component as a repository program — from its **source** encoding
+(`Code.ofSource`, `Framework/CodeSource.lean`), not from `Encodable.encode` — and run it on
+the right component.  The decoding happens *inside* the represented computation, so the
+schema instance names the source and the machine is recovered by the arithmetic. -/
 def UniversalCodeHalts (z : ℕ) : Prop :=
-  ((Denumerable.ofNat Nat.Partrec.Code z.unpair.1).eval z.unpair.2).Dom
+  ((Nat.Partrec.Code.ofSource z.unpair.1).eval z.unpair.2).Dom
 
 /-- The universal unbounded halting predicate is recursively enumerable. -/
 lemma universalCodeHalts_re : REPred UniversalCodeHalts := by
   apply Partrec.dom_re
   exact Nat.Partrec.Code.eval_part.comp
-    ((Computable.ofNat Nat.Partrec.Code).comp
-      (Primrec.fst.comp Primrec.unpair).to_comp)
+    (Nat.Partrec.Code.ofSource_primrec.comp
+      (Primrec.fst.comp Primrec.unpair)).to_comp
     (Primrec.snd.comp Primrec.unpair).to_comp
 
 /-! ### Bounded halting with a deferred horizon
@@ -60,14 +63,14 @@ needs, and for a total `f` — the paper's setting — exactly one of them fires
 
 /-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its machine. -/
 def boundedClaimMachine (z : ℕ) : Nat.Partrec.Code :=
-  Denumerable.ofNat Nat.Partrec.Code z.unpair.1.unpair.1
+  Nat.Partrec.Code.ofSource z.unpair.1.unpair.1
 
 /-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its machine input. -/
 def boundedClaimInput (z : ℕ) : ℕ := z.unpair.1.unpair.2
 
 /-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its horizon program `⌜f⌝`. -/
 def boundedClaimHorizon (z : ℕ) : Nat.Partrec.Code :=
-  Denumerable.ofNat Nat.Partrec.Code z.unpair.2.unpair.1
+  Nat.Partrec.Code.ofSource z.unpair.2.unpair.1
 
 /-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into the day the horizon
 program is applied to.  It is *not* evaluated in the name. -/
@@ -92,12 +95,12 @@ private lemma universalBoundedRun_re (b : Bool) :
     REPred (fun z : ℕ => ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
       (Nat.Partrec.Code.evaln m (boundedClaimMachine z) (boundedClaimInput z)).isSome = b) := by
   have hmachP : Primrec boundedClaimMachine :=
-    (Primrec.ofNat Nat.Partrec.Code).comp
+    Nat.Partrec.Code.ofSource_primrec.comp
       (Primrec.fst.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.unpair)))
   have hinputP : Primrec boundedClaimInput :=
     Primrec.snd.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.unpair))
   have hhorP : Primrec boundedClaimHorizon :=
-    (Primrec.ofNat Nat.Partrec.Code).comp
+    Nat.Partrec.Code.ofSource_primrec.comp
       (Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair)))
   have hdayP : Primrec boundedClaimDay :=
     Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
@@ -251,20 +254,23 @@ noncomputable def inconsistencyClaimSentence (z : ℕ) : Sentence :=
 noncomputable def consistencyClaimSentence (z : ℕ) : Sentence :=
   computationClaimSentence (consistencyClaim z)
 
-/-- Pair a repository machine code and input without running the machine. -/
+/-- Pair a repository machine's **source** number and its input without running the machine.
+The name is `Code.sourceNat`, linear in the machine's syntax tree — see the representation
+note at `DigitMachineCodes`. -/
 def haltingClaimInput (machine : Nat.Partrec.Code) (input : ℕ) : ℕ :=
-  Nat.pair (Encodable.encode machine) input
+  Nat.pair (Nat.Partrec.Code.sourceNat machine) input
 
 /-- Pair a repository machine code, an input, and the **unevaluated** horizon term
 `⌜f⌝(⌜day⌝)`.  Nothing is run: `horizon` is the program `⌜f⌝` and `day` is the numeral. -/
 def boundedHaltingClaimInput (machine : Nat.Partrec.Code) (input : ℕ)
     (horizon : Nat.Partrec.Code) (day : ℕ) : ℕ :=
-  Nat.pair (Nat.pair (Encodable.encode machine) input)
-    (Nat.pair (Encodable.encode horizon) day)
+  Nat.pair (Nat.pair (Nat.Partrec.Code.sourceNat machine) input)
+    (Nat.pair (Nat.Partrec.Code.sourceNat horizon) day)
 
-@[simp] theorem universalCodeHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ) :
+@[simp] lemma universalCodeHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ) :
     UniversalCodeHalts (haltingClaimInput machine input) ↔ CodeHalts machine input := by
-  simp [UniversalCodeHalts, haltingClaimInput, CodeHalts]
+  simp [UniversalCodeHalts, haltingClaimInput, CodeHalts,
+    Nat.Partrec.Code.ofSource_sourceNat]
 
 /-- The four projections invert the packing. -/
 lemma boundedClaimInput_decode (machine : Nat.Partrec.Code) (input : ℕ)
@@ -275,7 +281,7 @@ lemma boundedClaimInput_decode (machine : Nat.Partrec.Code) (input : ℕ)
       boundedClaimDay (boundedHaltingClaimInput machine input horizon day) = day := by
   refine ⟨?_, ?_, ?_, ?_⟩ <;>
     simp [boundedClaimMachine, boundedClaimInput, boundedClaimHorizon, boundedClaimDay,
-      boundedHaltingClaimInput]
+      boundedHaltingClaimInput, Nat.Partrec.Code.ofSource_sourceNat]
 
 /-- The deferred claim is true exactly when the machine halts within the horizon
 program's *actual* value on the day. -/
@@ -302,16 +308,26 @@ lemma universalBoundedFailure_claimInput (machine : Nat.Partrec.Code) (input : �
     rwa [Part.mem_unique hmem hsteps] at hrun
   · exact fun h => ⟨steps, hsteps, h⟩
 
-/-! ## Honest polynomial naming -/
+/-! ## The whole-value naming classes — strictness foils, not the paper's class
 
-/-- Polynomial code for a sequence of repository machines.
-Paper node: `def:ec` -/
+Neither structure below renders `def:ec`.  Both bound the *numeric value* of the name, which
+is what a poly-time writer of the name's **symbols** does not bound: `def:ec` meters the time
+to write an object out (tex:753-755, explicitly at tex:1931-1933), so a name of `poly n`
+symbols and magnitude up to `2^poly(n)` is admissible.  They are retained only as the foils
+that make the write-out classes provably wider — `not_polyNatCodes_ack`,
+`bigDigits_two_pow_not_polyNatCodes`, `digitMachineCodes_nest_not_polyMachineCodes` — and
+carry no `Paper node` line for that reason.  The paper's class for machine names is
+`DigitMachineCodes` (`Framework/WriteOut.lean`); for naturals it is `BigDigits`. -/
+
+/-- Whole-value polynomial naming of a machine sequence: the machine's *source* number
+`Code.sourceNat` is itself poly-fueled, not merely its digits.  A strictness foil for
+`DigitMachineCodes`; see the section note. -/
 structure PolyMachineCodes (machines : ℕ → Nat.Partrec.Code) where
   code : Nat.Partrec.Code
-  code_poly : PolyFueled code (fun n => Encodable.encode (machines n))
+  code_poly : PolyFueled code (fun n => Nat.Partrec.Code.sourceNat (machines n))
 
-/-- Polynomial code for a natural-number sequence.
-Paper node: `def:ec` -/
+/-- Whole-value polynomial naming of a natural-number sequence.  A strictness foil for
+`BigDigits`; see the section note. -/
 structure PolyNatCodes (values : ℕ → ℕ) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code values
@@ -328,7 +344,7 @@ lemma computationClaimSentence_digits
     ((BigDigits.const (Encodable.encode schema)).natPair hinput)
   exact ((BigDigits.const 1).natPair hclaim).succ.of_eq (fun _ => rfl)
 
-def haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
+lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
     BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
   (hm.natPair hi).of_eq (fun _ => rfl)
@@ -336,13 +352,13 @@ def haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ
 /-- The deferred-horizon claim name is write-out in the day for **every** computable
 horizon: `⌜f⌝` enters as a constant and the day enters unevaluated.  No hypothesis on `f`
 appears — this is the whole point of the deferred schema. -/
-def boundedHaltingClaimInput_digits
+lemma boundedHaltingClaimInput_digits
     {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (horizon : Nat.Partrec.Code) :
     BigDigits (fun n => boundedHaltingClaimInput (machines n) (inputs n) horizon n) :=
   ((hm.natPair hi).natPair
-    ((BigDigits.const (Encodable.encode horizon)).natPair
+    ((BigDigits.const (Nat.Partrec.Code.sourceNat horizon)).natPair
       (BigDigits.of_polyFueled PolyFueled.id))).of_eq (fun _ => rfl)
 
 lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
@@ -448,27 +464,52 @@ lemma bigDigits_two_pow_not_polyNatCodes :
     BigDigits (fun n => 2 ^ n) ∧ ¬ Nonempty (PolyNatCodes (fun n => 2 ^ n)) :=
   ⟨bigDigits_two_pow, fun ⟨h⟩ => not_polyFueled_two_pow h.code h.code_poly⟩
 
-/-- A machine sequence whose Gödel value is exactly `2ⁿ`.  `Nat.Partrec.Code` is
-`Denumerable`, so every natural names a machine and this is well defined; the point is not
-that the machine computes anything interesting, but that its *description* costs `n` digits
-while its *code* is exponential. -/
-noncomputable def twoPowMachine (n : ℕ) : Nat.Partrec.Code :=
-  Denumerable.ofNat Nat.Partrec.Code (2 ^ n)
-
-@[simp] lemma encode_twoPowMachine (n : ℕ) :
-    Encodable.encode (twoPowMachine n) = 2 ^ n :=
-  Denumerable.encode_ofNat _
-
-/-- **Machine strictness.**  `twoPowMachine` has polynomially many digits and an exponential
-Gödel value, so `DigitMachineCodes` accepts it and `PolyMachineCodes` rejects it.  This is the
-`thm:halts`/`thm:loops`/`thm:dontwait` analogue of
-`digitRatCodes_two_pow_inv_not_polyRatCodes`. -/
-lemma digitMachineCodes_twoPowMachine_not_polyMachineCodes :
-    DigitMachineCodes twoPowMachine ∧ ¬ Nonempty (PolyMachineCodes twoPowMachine) := by
-  refine ⟨bigDigits_two_pow.of_eq (fun n => (encode_twoPowMachine n).symm), ?_⟩
+/-- **Machine strictness, at the paper's own example.**  `Nat.Partrec.Code.nest` — the
+family `nest 0 = zero`, `nest (n+1) = pair (nest n) zero` — is a *real* machine sequence
+whose source is `2n + 1` symbols long, so a poly-time writer emits it (tex:1931-1933) and
+`DigitMachineCodes` accepts it (`bigDigits_sourceNat_nest`).  Its source *number*
+`Code.sourceNat (nest n)` is at least `2 ^ n`, so the whole-value class rejects it.  This is
+the `thm:halts`/`thm:loops`/`thm:dontwait` analogue of
+`digitRatCodes_two_pow_inv_not_polyRatCodes`, and it is the same family that the erratum note
+at `DigitMachineCodes` records as *doubly* exponential under Mathlib's `Encodable.encode` —
+which is why `encode` is not the naming map. -/
+lemma digitMachineCodes_nest_not_polyMachineCodes :
+    DigitMachineCodes Nat.Partrec.Code.nest ∧
+      ¬ Nonempty (PolyMachineCodes Nat.Partrec.Code.nest) := by
+  refine ⟨Nat.Partrec.Code.bigDigits_sourceNat_nest, ?_⟩
   rintro ⟨h⟩
-  exact not_polyFueled_two_pow h.code
-    (h.code_poly.of_eq (fun n => encode_twoPowMachine n))
+  obtain ⟨_, _, hf, _⟩ := h.code_poly
+  exact not_isPolyBounded_two_pow
+    (hf.of_le (fun n => Nat.Partrec.Code.two_pow_le_sourceNat_nest n))
+
+/-- **Every `nest` machine halts on every input.**  `nest 0 = zero` returns `0`, and
+`nest (n+1) = pair (nest n) zero` pairs two convergent runs.  This is what makes
+`Nat.Partrec.Code.nest` usable as a `thm:halts` instance and not merely as a class witness:
+the family has genuinely growing source *and* a discharged halting hypothesis. -/
+lemma codeHalts_nest (n x : ℕ) : CodeHalts (Nat.Partrec.Code.nest n) x := by
+  induction n with
+  | zero => trivial
+  | succ n ih =>
+      simpa [CodeHalts, Nat.Partrec.Code.nest, Nat.Partrec.Code.eval, Seq.seq] using
+        ⟨ih, trivial⟩
+
+/-- **A machine that halts on nothing.**  `rfind'` searches for a zero of its argument;
+`succ` never returns `0`, so the search never terminates. -/
+def neverHaltMachine : Nat.Partrec.Code := .rfind' .succ
+
+lemma not_codeHalts_neverHaltMachine (x : ℕ) : ¬ CodeHalts neverHaltMachine x := by
+  intro h
+  rw [CodeHalts, Part.dom_iff_mem] at h
+  obtain ⟨v, hv⟩ := h
+  simp only [neverHaltMachine, Nat.Partrec.Code.eval, Nat.unpaired, Part.mem_map_iff,
+    Nat.mem_rfind] at hv
+  obtain ⟨a, ⟨h1, -⟩, -⟩ := hv
+  simp at h1
+
+/-- A constant machine sequence is write-out named for free. -/
+lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
+    DigitMachineCodes (fun _ => c) :=
+  BigDigits.const (Nat.Partrec.Code.sourceNat c)
 
 /-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
 step budget being an arbitrary computable `f` named by its program.
@@ -553,7 +594,7 @@ noncomputable def representedDecidableClaimsOfComputation
     (boundedHaltingClaimInput C.machine (C.input n) C.horizon.program n)
   sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <| boundedHaltingClaimSentence_digits <|
     boundedHaltingClaimInput_digits
-      (BigDigits.const (Encodable.encode C.machine)) C.input_poly C.horizon.program
+      (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly C.horizon.program
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
     apply (re_complete (T := T) universalBoundedHalts_re).mp
@@ -578,9 +619,9 @@ noncomputable def inconsistentTheoryClaimsOfComputation
   consistencySentence n := consistencyClaimSentence
     (haltingClaimInput C.machine (C.input n))
   inconsistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| inconsistencyClaimSentence_digits <|
-    haltingClaimInput_digits (BigDigits.const (Encodable.encode C.machine)) C.input_poly
+    haltingClaimInput_digits (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly
   consistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| consistencyClaimSentence_digits <|
-    haltingClaimInput_digits (BigDigits.const (Encodable.encode C.machine)) C.input_poly
+    haltingClaimInput_digits (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly
   inconsistency_provable n hn := by
     apply Q.inconsistency_enters
     apply (re_complete (T := T) universalCodeHalts_re).mp
@@ -777,7 +818,7 @@ lemma computationRepresentation_negative_path
 #print axioms ComputableHorizon.ackermann
 #print axioms not_polyNatCodes_ack
 #print axioms bigDigits_two_pow_not_polyNatCodes
-#print axioms digitMachineCodes_twoPowMachine_not_polyMachineCodes
+#print axioms digitMachineCodes_nest_not_polyMachineCodes
 #print axioms ComputationClaim.godelCode_injective
 #print axioms computationClaimSentence_digits
 #print axioms representedDecidableClaimsOfComputation

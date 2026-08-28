@@ -2355,10 +2355,10 @@ def segPrefix (lenFn : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
   | 0 => 0
   | k + 1 => segPrefix lenFn n k + lenFn (Nat.pair n k)
 
-@[simp] theorem segPrefix_zero (lenFn : ℕ → ℕ) (n : ℕ) :
+@[simp] lemma segPrefix_zero (lenFn : ℕ → ℕ) (n : ℕ) :
     segPrefix lenFn n 0 = 0 := rfl
 
-@[simp] theorem segPrefix_succ (lenFn : ℕ → ℕ) (n k : ℕ) :
+@[simp] lemma segPrefix_succ (lenFn : ℕ → ℕ) (n k : ℕ) :
     segPrefix lenFn n (k + 1) = segPrefix lenFn n k + lenFn (Nat.pair n k) := rfl
 
 lemma segPrefix_mono (lenFn : ℕ → ℕ) (n : ℕ) : Monotone (segPrefix lenFn n) := by

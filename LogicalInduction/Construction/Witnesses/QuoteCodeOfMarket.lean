@@ -754,11 +754,11 @@ lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
 section
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
 
-/-- The canonical quote code of the constructed `LIA` market's own prices along an
-efficiently codeable sentence sequence.  No caller-supplied semantic relation: the value
+/-- The canonical quote code of the constructed `LIA` market's own prices along a
+write-out codeable sentence sequence (`def:ec`).  No caller-supplied semantic relation: the value
 program is the market program, and range comes from its certificate.
 Paper node: `thm:epr` -/
-noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote n (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -770,14 +770,13 @@ noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : RpnSenten
 For every efficiently codeable sentence sequence, the market's price agrees asymptotically
 with its own expectation of the *constructed* quoted-price LUV.  The quote object is
 `theoremPriceQuoteCode`; its exactness is the market certificate's `quote_exact`, so the
-only remaining hypotheses are the sequence and its `def:ec` symbol-metered codes.
+only remaining hypotheses are the sequence and its `def:ec` write-out codes.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_closed
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n => ((theoremPriceQuoteCode T φ hφ).luv n).expect (liaHistory (theoremDP T)) n :=
-  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ
-    (BigSentenceCodes.ofRpnSentenceCodes hφ)
+  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
     (theoremPriceQuoteCode T φ hφ)
     (fun n => (theoremMarketComputation T).quote_exact n (φ n))
 
@@ -796,7 +795,7 @@ noncomputable def theoremExpectationQuoteCode (X : ℕ → LUV)
 price of the day-`n` sentence.  No caller-supplied semantic relation.
 Paper node: `thm:ceu` -/
 noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote (f.f n) (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -806,18 +805,18 @@ noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
 
 /-- **`thm:ceu` (no expected net update), closed form over the constructed `LIA`** — no
 reflection hypotheses.  The quoted future-price LUV is constructed from the market
-program itself; only the sentence sequence, its `def:ec` symbol-metered codes, and the
+program itself; only the sentence sequence, its `def:ec` write-out codes, and the
 deferral function remain.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_closed
     (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n ↦ ((theoremFutureQuoteCode T f φ hφ).luv n).expect
         (liaHistory (theoremDP T)) n :=
   lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f φ
     ((theoremFutureQuoteCode T f φ hφ).luv)
-    (BigSentenceCodes.ofRpnSentenceCodes hφ)
+    hφ
     (theoremFutureQuoteCode T f φ hφ).poly
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -928,7 +927,7 @@ writable numeral, because the quoted sentence is a *code-indexed atom* (`dd:quot
 rather than a formula spelling `a n` and `b n` out — see the `thm:ref` entry of
 `notes/paper-errata.md` for why the paper's own proof does need the stronger property.
 Paper node: `thm:ref` -/
-noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
@@ -974,7 +973,7 @@ conditions.  See `notes/paper-errata.md` PE6 for why the paper's own proof needs
 it states, and why this route does not.
 Paper node: `thm:ref` -/
 theorem lic_introspection_closed
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -994,7 +993,7 @@ theorem lic_introspection_closed
           liaHistory (theoremDP T) n
             ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
-    (BigSentenceCodes.ofRpnSentenceCodes hφ) a b δ lowerFeature hlower
+    hφ a b δ lowerFeature hlower
     upperFeature hupper hδ hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper)
 
@@ -1021,25 +1020,32 @@ theorem lic_self_trust_closed
     (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV
-          (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n).expect
+          (theoremConfidenceQuoteCode T f φ hφ δ p
+              hδ.computable hp) φ n).expect
         (liaHistory (theoremDP T)) n) ≳ₙ
       fun n ↦ (p n : ℝ) *
-        ((theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).luv n).expect
+        ((theoremConfidenceQuoteCode T f φ hφ δ p
+            hδ.computable hp).luv n).expect
           (liaHistory (theoremDP T)) n := by
   refine lic_self_trust_ofRepresentation_unconditional (T := T) f φ δ p
     (fun n => indicatorProductLUV
-      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n)
-    (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).luv
+      (theoremConfidenceQuoteCode T f φ hφ δ p
+          hδ.computable hp) φ n)
+    (theoremConfidenceQuoteCode T f φ hφ δ p
+        hδ.computable hp).luv
     delta_pos probability_mem (BigSentenceCodes.ofRpnSentenceCodes hφ) hδ
     hp.choose hp.choose_spec
     (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
-    (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).poly
+    (theoremConfidenceQuoteCode T f φ hφ δ p
+        hδ.computable hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (quotationPresentation T)
-      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) n v hv
+      (theoremConfidenceQuoteCode T f φ hφ δ p
+          hδ.computable hp) n v hv
     rwa [← theoremConfidence_value_cast T f φ δ p n] at h
   · have h := indicatorProductLUV_valuesAt (quotationPresentation T)
-      (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n v hv
+      (theoremConfidenceQuoteCode T f φ hφ δ p
+          hδ.computable hp) φ n v hv
     rwa [← theoremConfidence_value_cast T f φ δ p n] at h
 
 /-! ## Part F — the weighted conditional (`thm:ccee`), general-source closed form

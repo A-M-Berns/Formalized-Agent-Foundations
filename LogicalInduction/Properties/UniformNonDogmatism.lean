@@ -24,7 +24,7 @@ def RepeatsEveryMember (φ : ℕ → Sentence) : Prop :=
 def obuBuySig (φ : ℕ → Sentence) (j i : ℕ) : EF :=
   ndBuySig (φ i) j i
 
-@[simp] theorem obuBuySig_rank (φ : ℕ → Sentence) (j i : ℕ) :
+@[simp] lemma obuBuySig_rank (φ : ℕ → Sentence) (j i : ℕ) :
     (obuBuySig φ j i).rank = i := ndBuySig_rank (φ i) j i
 
 lemma obuBuySig_denote_pad (φ : ℕ → Sentence) (P : History)
@@ -132,7 +132,7 @@ def obuTrader (φ : ℕ → Sentence) : Trader where
       subst hp
       exact obuLadderEF_rank φ n n }
 
-@[simp] theorem obuTrader_value (φ : ℕ → Sentence) (P : History)
+@[simp] lemma obuTrader_value (φ : ℕ → Sentence) (P : History)
     (w : Valuation) (n : ℕ) :
     ((obuTrader φ).strat n).value P w =
       (obuLadderEF φ n n).denote P * (w (φ n) - P n (φ n)) := by

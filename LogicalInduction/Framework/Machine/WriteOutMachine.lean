@@ -6,14 +6,14 @@
 notion the way `MachineEfficientTrader` states `def:ec` — a `Complexity.FP` function of
 the *unary* day emits the word, and `TokenFold.decodeBits` reads the tokens back.
 
-The bridge is `BigSentenceCodes.toMachine` with the decoder factored out.  Every
+The bridge is `BigTokenStream.toMachine` with the decoder factored out.  Every
 write-out class in this development is "some `BigTokenStream` whose decode satisfies …",
 so stating the bridge at the token stream — rather than parameterizing it by a decoder —
 gives each class its machine reading by composing with its own decoder, whatever shape
 that decoder has (`parseRpn` for sentences, `UnRpnContractsTo` for splice streams).
 `MachineSentenceCodes` for a written-out sentence sequence is the worked instance.
 
-The converse is neither needed nor claimed, here or in `BigSentenceCodes.toMachine`.
+The converse is neither needed nor claimed, here or in `RpnSentenceCodes.toMachine`.
 -/
 import LogicalInduction.Framework.WriteOut
 import LogicalInduction.Framework.Machine.SentenceCodes
@@ -48,7 +48,7 @@ lemma BigTokenStream.toMachine {t : ℕ → List ℕ} (h : BigTokenStream t) :
   exact hu d
 
 /-- **A written-out sentence sequence is machine-metered.**  The `parseRpn` instance of
-the bridge, and the write-out counterpart of `BigSentenceCodes.toMachine`: unlike that
+the bridge, and the write-out counterpart of `RpnSentenceCodes.toMachine`: unlike that
 inclusion, this one admits sequences whose Gödel codes grow exponentially in the day. -/
 lemma BigSentenceCodes.toMachine {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
     MachineSentenceCodes φ := by

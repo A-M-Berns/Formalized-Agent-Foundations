@@ -3786,6 +3786,8 @@ lemma BigSentenceCodes.exists_code {φ : ℕ → Sentence} (h : BigSentenceCodes
 #print axioms unRpn_prim
 #print axioms RpnSentenceCodes.primrec
 #print axioms RpnSentenceCodes.exists_code
+#print axioms BigSentenceCodes.primrec
+#print axioms BigSentenceCodes.exists_code
 
 end RpnDecodePrimrec
 
@@ -3886,14 +3888,14 @@ private lemma tradingFirmWeight_prim : Primrec₂ tradingFirmWeight := by
 def sentenceDedup (l : List Sentence) : List Sentence :=
   l.foldr (fun φ acc => if φ ∈ acc then acc else φ :: acc) []
 
-@[simp] theorem sentenceDedup_nil : sentenceDedup [] = [] := by rfl
+@[simp] lemma sentenceDedup_nil : sentenceDedup [] = [] := by rfl
 
-@[simp] theorem sentenceDedup_cons (a : Sentence) (l : List Sentence) :
+@[simp] lemma sentenceDedup_cons (a : Sentence) (l : List Sentence) :
     sentenceDedup (a :: l) =
       if a ∈ sentenceDedup l then sentenceDedup l else a :: sentenceDedup l := by
   rfl
 
-@[simp] theorem mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
+@[simp] lemma mem_sentenceDedup : ∀ (l : List Sentence) (φ : Sentence),
     φ ∈ sentenceDedup l ↔ φ ∈ l := by
   intro l
   induction l with
@@ -5473,7 +5475,7 @@ lemma sentenceAtomOccurrences_prim :
     simp [formulaAtomOccurrencesDecoded,
       LO.Propositional.Formula.ofNat_toNat]
 
-@[simp] theorem mem_sentenceAtomOccurrences :
+@[simp] lemma mem_sentenceAtomOccurrences :
     ∀ (φ : Sentence) (a : ℕ),
       a ∈ sentenceAtomOccurrences φ ↔ a ∈ φ.atoms := by
   intro φ
@@ -5499,14 +5501,14 @@ compiler to inspect the quotient representation of `Finset`. -/
 private def natDedup (l : List ℕ) : List ℕ :=
   l.foldr (fun a acc => if a ∈ acc then acc else a :: acc) []
 
-@[simp] private theorem natDedup_nil : natDedup [] = [] := by rfl
+@[simp] private lemma natDedup_nil : natDedup [] = [] := by rfl
 
-@[simp] private theorem natDedup_cons (a : ℕ) (l : List ℕ) :
+@[simp] private lemma natDedup_cons (a : ℕ) (l : List ℕ) :
     natDedup (a :: l) =
       if a ∈ natDedup l then natDedup l else a :: natDedup l := by
   rfl
 
-@[simp] private theorem mem_natDedup : ∀ (l : List ℕ) (a : ℕ),
+@[simp] private lemma mem_natDedup : ∀ (l : List ℕ) (a : ℕ),
     a ∈ natDedup l ↔ a ∈ l := by
   intro l
   induction l with
@@ -5620,7 +5622,7 @@ private lemma sentenceListAtomOccurrences_prim :
   exact Primrec.list_flatMap Primrec.id
     (sentenceAtomOccurrences_prim.comp₂ Primrec₂.right)
 
-@[simp] private theorem mem_sentenceListAtomOccurrences
+@[simp] private lemma mem_sentenceListAtomOccurrences
     (sentences : List Sentence) (a : ℕ) :
     a ∈ sentenceListAtomOccurrences sentences ↔
       ∃ φ ∈ sentences, a ∈ φ.atoms := by
@@ -5635,7 +5637,7 @@ private lemma tradeListAtomOccurrences_prim :
     (sentenceAtomOccurrences_prim.comp₂
       (Primrec.snd.comp₂ Primrec₂.right))
 
-@[simp] private theorem mem_tradeListAtomOccurrences
+@[simp] private lemma mem_tradeListAtomOccurrences
     (trades : List (EF × Sentence)) (a : ℕ) :
     a ∈ tradeListAtomOccurrences trades ↔
       a ∈ tradeListSentenceAtoms trades := by
@@ -5658,7 +5660,7 @@ private lemma stageAtomOccurrences_prim : Primrec₂ stageAtomOccurrences := by
     (supportSentenceList_prim.comp
       (decodedStageTable_prim.comp Primrec.fst Primrec.snd))).to₂
 
-@[simp] private theorem mem_stageAtomOccurrences
+@[simp] private lemma mem_stageAtomOccurrences
     (stages : List (Finset Sentence)) (n a : ℕ) :
     a ∈ stageAtomOccurrences stages n ↔
       a ∈ (decodedStageTable stages n).biUnion Sentence.atoms := by
@@ -5681,7 +5683,7 @@ private lemma firmPrefixAtomOccurrences_prim :
   exact (Primrec.list_flatMap hrange
     (tradeListAtomOccurrences_prim.comp₂ htrades)).to₂
 
-@[simp] private theorem mem_firmPrefixAtomOccurrences (j n a : ℕ) :
+@[simp] private lemma mem_firmPrefixAtomOccurrences (j n a : ℕ) :
     a ∈ firmPrefixAtomOccurrences j n ↔
       a ∈ (Finset.range (n + 1)).biUnion fun i =>
         tradeListSentenceAtoms ((firmRawTrader j).strat i).trades := by

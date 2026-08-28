@@ -47,14 +47,14 @@ order.  `List.conj` makes the empty prefix the true sentence `⊤`. -/
 def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
   (List.ofFn fun k : Fin σ.length ↦ bitPrefixLiteral atom k (σ.get k)).conj
 
-@[simp] theorem PCWorld.holds_bitPrefixLiteral
+@[simp] lemma PCWorld.holds_bitPrefixLiteral
     (v : PCWorld) (atom : ℕ → Sentence) (k : ℕ) (b : Bool) :
     v.Holds (bitPrefixLiteral atom k b) ↔ (v.Holds (atom k) ↔ b = true) := by
   cases b <;>
     simp [bitPrefixLiteral, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
 
 /-- Exact Boolean semantics of the literal conjunction, including the empty prefix. -/
-@[simp] theorem PCWorld.holds_bitPrefixSentence
+@[simp] lemma PCWorld.holds_bitPrefixSentence
     (v : PCWorld) (atom : ℕ → Sentence) (σ : List Bool) :
     v.Holds (bitPrefixSentence atom σ) ↔
       ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true) := by
@@ -637,8 +637,8 @@ lemma prefixRun_polySegStream : PolySegStream prefixRun := by
     simp only [Nat.unpair_pair]
   · rw [if_neg h, if_neg h]
 
-/-- **The prefix-conjunction sequence is symbol-metered efficiently computable.** -/
-lemma rpnSentenceCodes_bitPrefixSentence :
+/-- **The prefix-conjunction sequence is write-out metered efficiently computable.** -/
+lemma bigSentenceCodes_bitPrefixSentence :
     BigSentenceCodes (fun i => bitPrefixSentence Formula.atom (bitStringEnumeration i)) :=
   BigSentenceCodes.ofCanonical
     (BigTokenStream.ofPolySegStream
@@ -646,14 +646,14 @@ lemma rpnSentenceCodes_bitPrefixSentence :
 
 end BitChain
 
-/-- **The concrete prefix conjunctions are efficiently nameable** (`dd:ec`, symbol-metered):
+/-- **The concrete prefix conjunctions are efficiently nameable** (`dd:ec`, write-out metered):
 the canonical Polish run of the length-`m` prefix conjunction is `3m + 3` tokens at worst,
 emitted by walking the enumeration index's own `Nat.pair` chain.
 Paper node: `thm:dus` -/
 lemma ordinaryBitPrefixCodes :
     BigSentenceCodes (fun i ↦
       bitPrefixSentence ordinaryIndependentBitAtoms.atom (bitStringEnumeration i)) :=
-  BitChain.rpnSentenceCodes_bitPrefixSentence
+  BitChain.bigSentenceCodes_bitPrefixSentence
 
 /-- Construct the complete prefix presentation from independent atoms and a symbol-metered
 naming certificate for the actual literal conjunctions.

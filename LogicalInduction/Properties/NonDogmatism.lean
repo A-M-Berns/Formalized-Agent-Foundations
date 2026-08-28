@@ -39,7 +39,7 @@ def twoPowChain : ℕ → EF
   | 0 => EF.const 2
   | (k + 1) => EF.mul (twoPowChain k) (EF.const 2)
 
-@[simp] theorem twoPowChain_denote (P : History) : ∀ k,
+@[simp] lemma twoPowChain_denote (P : History) : ∀ k,
     (twoPowChain k).denote P = 2 ^ (k + 1)
   | 0 => by norm_num [twoPowChain]
   | (k + 1) => by
@@ -47,7 +47,7 @@ def twoPowChain : ℕ → EF
       simp only [twoPowChain, EF.denote_mul, Pi.mul_apply, ih, EF.denote_const]
       norm_num [pow_succ]
 
-@[simp] theorem twoPowChain_rank : ∀ k, (twoPowChain k).rank = 0
+@[simp] lemma twoPowChain_rank : ∀ k, (twoPowChain k).rank = 0
   | 0 => rfl
   | (k + 1) => by rw [twoPowChain, EF.rank, twoPowChain_rank k]; rfl
 
@@ -83,7 +83,7 @@ def ndTrader (φ : Sentence) : Trader where
                rank_le := by intro p hp; simp only [List.mem_singleton] at hp
                              subst hp; exact ndBeta_rank φ n }
 
-@[simp] theorem ndTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ) (n : ℕ) :
+@[simp] lemma ndTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ) (n : ℕ) :
     ((ndTrader φ).strat n).value V w = (ndBeta φ n).denote V * (w φ - V n φ) := by
   simp [ndTrader, Strategy.value]
 
@@ -526,7 +526,7 @@ def ndLadderTrader (φ : Sentence) : Trader where
                  subst hp
                  exact ndLadderEF_rank φ n n }
 
-@[simp] theorem ndLadderTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ)
+@[simp] lemma ndLadderTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ)
     (n : ℕ) : ((ndLadderTrader φ).strat n).value V w
       = (ndLadderEF φ n n).denote V * (w φ - V n φ) := by
   simp [ndLadderTrader, Strategy.value]
@@ -1097,7 +1097,7 @@ def ndSellLadderTrader (φ : Sentence) : Trader where
                  subst hp
                  exact ndSellLadderEF_rank φ n n }
 
-@[simp] theorem ndSellLadderTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ)
+@[simp] lemma ndSellLadderTrader_value (φ : Sentence) (V : History) (w : Sentence → ℝ)
     (n : ℕ) : ((ndSellLadderTrader φ).strat n).value V w
       = (ndSellLadderEF φ n n).denote V * (w φ - V n φ) := by
   simp [ndSellLadderTrader, Strategy.value]

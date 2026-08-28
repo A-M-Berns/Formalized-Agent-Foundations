@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 40 | proved as the paper states it, on the paper's own hypotheses |
-| **strengthened** | 7 | the Lean statement is stronger than the printed one |
+| **exact** | 30 | proved as the paper states it, on the paper's own hypotheses |
+| **strengthened** | 6 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
+| **qualified** | 14 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
-them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 4 of
+them at exact or strengthened, 14 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -68,10 +68,21 @@ whose values grow polynomially, while the paper's e.c. is polynomial *time*: pol
 write an object bounds its **symbols**, permitting values up to exponential.
 `not_polyFueled_two_pow` proves that restriction strict.
 
-The symbol-metered *write-out* classes exist for every kind of datum the property tail
+The *write-out* classes exist for most kinds of datum the property tail
 consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
 machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
-the emission surface they are consumed on. Four of those containments are **proved
+the emission surface they are consumed on. **One kind has no write-out class: LUV
+thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
+`lic_expected_future_expectations_ofRepresentation_unconditional`,
+`lic_no_expected_net_update_ofRepresentation_unconditional`, its `_conditional_` sibling,
+and `lic_self_trust_ofRepresentation_unconditional` still take `RpnThresholdCodeSeq`,
+which is symbol-metered rather than write-out. That is not a further restriction for the
+paper's own first-order LUVs: `PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
+(`Construction/Witnesses/StructuredPaperRpn.lean:1128`) proves every literal `PaperLUV`
+sequence lands in the class, so the paper's data is admissible. What is not established is
+whether some write-out-nameable threshold family falls outside it; the containment is
+charged once at `def:ec` with the other symbol-metered classes and not re-levied per
+row. Four of those containments are **proved
 strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
 `bigTokenStream_not_polySegStream` (`BigTokenStream` over `PolySegStream`),
 `digitRatCodes_two_pow_inv_not_polyRatCodes` (`DigitRatCodes` over `PolyRatCodes`) and
@@ -90,12 +101,21 @@ sharpest — tex:1931-1933 asks for poly time to *write out* `⟨m⟩`, and a le
 has value `2^n` — and now take `DigitMachineCodes`/`BigDigits`. The migration is proved
 strict in both coordinates: `bigDigits_two_pow_not_polyNatCodes` exhibits `xₙ = 2ⁿ`, the
 paper's own `⟨x⟩` shape, as admissible for `BigDigits` and refuted for `PolyNatCodes`, and
-`digitMachineCodes_twoPowMachine_not_polyMachineCodes` does the same for a machine sequence
-whose description costs `n` digits while its Gödel code is exponential. The same change
+`digitMachineCodes_nest_not_polyMachineCodes` does the same for `Nat.Partrec.Code.nest`,
+a machine sequence whose source is `2n + 1` symbols long while its source number is at
+least `2^n`. Machines are named by `Code.sourceNat`, linear in the syntax tree; Mathlib's
+`Encodable.encode` squares per node and is deliberately not the naming map. The same change
 carried `BoundedComputation.input_poly` and `SemidecidableComputation.input_poly` to
 `BigDigits`, which removes a smaller restriction from the §4.10 rows without touching what
 actually qualifies them. `PolyMachineCodes` is now named only inside the witness that
-refutes it, and no paper-facing endpoint takes a whole-value class.
+refutes it, and no paper-facing endpoint takes a whole-value class **on a datum the paper
+quantifies over as e.c.** One paper-facing endpoint still takes one on a repo-side object:
+`lic_domination_universalSemimeasure_ofIndependentAtoms` (`thm:dus`) takes a
+`DUSThresholdEmission`, whose `threshold_sum_codes` and `inverse_width_codes` fields are
+whole-value `PolyRatCodes` (`Properties/UniversalSemimeasure.lean:405-407`). It constrains
+the repo's own rational approximation table, which the paper never quantifies over and
+which the repo constructs and proves the certificate for (`dusThresholdEmission`), so it
+does not lower that row — the `thm:dus` row states this and the test it passes.
 
 Widening a hypothesis strengthens the theorem that takes it, so the same change strengthened
 several rows already classified `exact`: `lic_provind`, `lic_persistence_of_knowledge`,
@@ -104,11 +124,21 @@ families whose Gödel codes grow exponentially while their emitted symbol count 
 polynomial. Their status is unchanged — the narrower class was already inside the paper's —
 and their rows record the widening.
 
-The remaining three qualified nodes are the §4.10 consistency family (`thm:pac`,
+Three of the qualified nodes are the §4.10 consistency family (`thm:pac`,
 `thm:pazfc`, `thm:incons`), whose rows say exactly what is and is not formalized. In
 particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
 distinctive second-theory parameter is absent, and the kernel accepts
 `@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl`.
+
+The other eleven — `thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`,
+`thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`, `thm:dontwait` — are qualified for a
+single shared reason, and it is a correction to what this file used to claim: their
+canonical endpoints carry `[T.SoundOnHierarchy 𝚺 1]`, a **stronger** hypothesis than the
+paper's. See *Instantiating the arithmetic-theory family* below, and the *Σ₁-soundness
+premise* section of the classification ledger for the endpoint-by-endpoint blast radius
+(19 of the 105 canonical endpoints) and for where the load-bearing use actually sits. The
+universal layer of each of those nodes is free of the instance and remains at paper
+strength; what is charged is the closed, over-`LIA` form that the trust surface shows.
 
 These numbers are recomputed from the classification ledger by
 `scripts/check_endpoint_coverage.py`, which fails the build if any figure here drifts from
@@ -219,8 +249,33 @@ emitter would silently disagree with the enumeration on every malformed index.
 The theorems that quantify over an arithmetic theory — the quotation family (`thm:ref`,
 `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`) and the
 computation family (`thm:halts`, `thm:pac`, …) — are stated parametrically:
-`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. That is the paper's own
-hypothesis ("Θ represents computations"), and the endpoints are axiom-clean as stated.
+`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. The endpoints are
+axiom-clean as stated.
+
+**That last instance is stronger than the paper's hypothesis, and this file used to say
+otherwise.** The paper's standing assumption for §4.8 onward is that Θ is consistent,
+computably enumerable, and *represents computations* — the representability theorem for
+computable functions (tex:600-606, imposed for §4.8–§4.12 at tex:993-997). That implies
+consistency but does not make Θ true in ℕ, and the paper says so in as many words at
+tex:2673: "If we assumed further that Θ were sound as a theory of the natural numbers,
+this would allow us to solve the halting problem…". Σ₁-soundness is that further
+assumption. The paper's own proofs of `thm:halts`, `thm:loops` and `thm:dontwait`
+(tex:4495-4520) use Σ₁-completeness and consistency only.
+
+It enters because a decidable claim about a computation is represented here by an r.e.
+Σ₁ schema (design note, `Construction/Witnesses/ComputationSyntax.lean:23-27`), reached
+through Foundation's weak-representation lemma `re_complete`, which is *stated* under the
+soundness instance; and because the stage world of the constructed process is built from
+the standard model, so `theoremDP_hworld` keeps the positive and negative atom fibers
+mutually exclusive by passing through truth — the `.mpr`, provable ⇒ true, direction. That
+is the whole load-bearing use; every other `re_complete` call in the development uses the
+`.mp` direction, which is only Σ₁-completeness. The eleven nodes this demotes to
+`qualified`, and the endpoint-by-endpoint blast radius, are in the *Σ₁-soundness premise*
+section of [`scripts/coverage-classification.md`](../scripts/coverage-classification.md).
+
+Removing it — building the stage world from a model of Θ, so that fiber exclusivity comes
+from Θ refuting false claims plus consistency, as the paper's own argument does — is under
+investigation. Nothing here promises it.
 
 They are also axiom-clean when *instantiated*. Foundation proves `Δ₁`-definability of `𝗜𝚺₁`
 and `𝗣𝗔` outright at the pinned revision (`InductionSchemeDelta1.lean`, whose header records

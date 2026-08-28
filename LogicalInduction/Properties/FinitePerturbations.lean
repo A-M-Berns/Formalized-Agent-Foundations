@@ -262,7 +262,7 @@ lemma freezeBefore_eq_freezeOn (e : EF) (quote : ℕ → Sentence → ℚ) (cuto
       .letE (v.freezeBefore quote cutoff) (b.freezeBefore quote cutoff) := rfl
 
 /-- The retained dead leaf makes the administrative freeze rank-preserving. -/
-@[simp] theorem freezeBefore_rank (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
+@[simp] lemma freezeBefore_rank (e : EF) (quote : ℕ → Sentence → ℚ) (cutoff : ℕ) :
     (e.freezeBefore quote cutoff).rank = e.rank :=
   e.freezeOn_rank quote _
 
@@ -324,7 +324,7 @@ def freezeTokenControlAt (tokenFn : ℕ → ℕ) (n : ℕ) : ℕ → FreezeToken
   | j + 1 => freezeTokenNext (freezeTokenControlAt tokenFn n j)
       (tokenFn (Nat.pair n j))
 
-@[simp] theorem freezeTokenRunOn_nil (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
+@[simp] lemma freezeTokenRunOn_nil (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
     (state : FreezeTokenState) :
     freezeTokenRunOn selCode quoteCode state [] = (state, []) := rfl
 
@@ -561,7 +561,7 @@ lemma streamReadFrom_freezeTokenEmitOn
                       | succ mode => simp [freezeTokenEmitOn, freezeTokenNext, freezeStreamStateOn,
                           EF.streamReadFrom, EF.streamStep]
 
-@[simp] theorem streamReadFrom_none (tokens : List ℕ) :
+@[simp] lemma streamReadFrom_none (tokens : List ℕ) :
     EF.streamReadFrom tokens none = none := by
   induction tokens with
   | nil => rfl
@@ -739,7 +739,7 @@ lemma freezeTokenEmit_eq (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
       else [token] := by
   simp only [freezeTokenEmit, freezeTokenEmitOn, decide_eq_true_eq]
 
-@[simp] theorem freezeTokenRun_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
+@[simp] lemma freezeTokenRun_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
     (state : FreezeTokenState) :
     freezeTokenRun quoteCode cutoff state [] = (state, []) := rfl
 

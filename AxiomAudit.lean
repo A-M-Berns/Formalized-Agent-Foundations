@@ -800,6 +800,25 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_learns_provable_nonhalting_patterns_ofComputation
   lic_does_not_anticipate_halting_ofComputation
 
+-- Construction/Witnesses/ComputationDP.lean — the N+ witness for `thm:loops`'s refutation
+-- premise `hloops`, which had none (2026-08-28 audit, R2-F17).  `loopsTheory` is `𝗜𝚺₁` plus
+-- one *true* Π₁ axiom: it is `Δ₁`, Σ₁-sound and consistent (all three fall out of every
+-- axiom being true in `ℕ`), and the machines it speaks of provably never halt, so the
+-- endpoint's `≈ₙ 0` conclusion is the semantically correct one.
+-- `thm_loops_applied_at_loopsTheory` applies the endpoint with every instance and every
+-- hypothesis discharged.  **The refutation holds by axiom fiat, not by arithmetic
+-- reasoning** — the disclosure at `loopsTheory` records why no natural theory can occupy
+-- that slot (Foundation's representation of an r.e. predicate is positive-only, and a
+-- uniform negative principle is refuted by `incomplete_of_REPred_not_ComputablePred_Nat'`),
+-- and names the two honest strengthenings: a `halting_fails` field on
+-- `ComputationTheoryPresentation`, or a Π₁-reflection hypothesis on `T`.
+-- `loopsTheory_refutes` is deliberately *not* inventoried: it is the internal
+-- premise-discharge step (`Entailment.by_axm`), not a paper claim, so it carries no
+-- `Paper node` line and is covered transitively by the applied endpoint below.
+#assert_axioms_clean
+  loopsTheory
+  thm_loops_applied_at_loopsTheory
+
 -- Construction/Witnesses/QuoteCodeOfMarket.lean — constructed rational quote codes:
 -- the first *discharge* of the `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
 -- `thm:epr` over the constructed LIA with no reflection hypotheses at all.
@@ -949,18 +968,24 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio future_coherent
 #assert_fields AffineQuotePortfolio
   family poly scale scale_pos current_price bounded magnitude_le_one
--- Tier-2 field change (2026-07-30): `prefix_codes` moved from the whole-value
--- `PolySentenceCodes` to the symbol-metered `RpnSentenceCodes`.  `#assert_fields` freezes
--- field *names* only, so the type change is recorded here explicitly; it is what makes the
--- structure inhabitable (`ordinaryBitPrefixSentences`).
+-- Tier-2 field change (2026-07-30, superseded 2026-08-28): `prefix_codes` moved from the
+-- whole-value `PolySentenceCodes` to the symbol-metered `RpnSentenceCodes`, and then to the
+-- write-out class `BigSentenceCodes` in the migration recorded in the WRITE-OUT FIELD
+-- MIGRATION block below.  `#assert_fields` freezes field *names* only, so the type change is
+-- recorded here explicitly; it is what makes the structure inhabitable
+-- (`ordinaryBitPrefixSentences`).
 #assert_fields BitPrefixSentences
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
 #assert_fields BooleanQuoteCode
   code pos_complete neg_complete
--- The step budget is now a `ComputableHorizon` (the paper's arbitrary computable `f`, named
--- by its program) in place of the former `steps_poly : PolyNatCodes steps`, which restricted
--- `f` to polynomial time.  `#assert_fields` freezes field *names* only, so the class change
--- is recorded here explicitly.
+-- Two Tier-2 field changes, neither visible to `#assert_fields` (which freezes field *names*
+-- only), so both are recorded here explicitly:
+--   * the step budget is now a `ComputableHorizon` (the paper's arbitrary computable `f`,
+--     named by its program) in place of the former `steps_poly : PolyNatCodes steps`, which
+--     restricted `f` to polynomial time;
+--   * `input_poly` is now `BigDigits input`, the write-out class, in place of the
+--     whole-value `PolyNatCodes input` — see the WRITE-OUT FIELD MIGRATION block below.
+-- The same `input_poly` change applies to `SemidecidableComputation`.
 #assert_fields BoundedComputation
   machine input input_poly steps horizon truth_iff
 #assert_fields CEEnumeration
@@ -1082,15 +1107,77 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- narrower than the paper's class and are charged at each row that takes one rather than
 -- once at `def:ec` — see `scripts/coverage-classification.md`'s disclosure section.  The
 -- same holds of `PolyRatCodes`, `PolySentenceCodes` and `PolyThresholdCode(Seq)`, and of
--- the structures carrying them as fields (`PolyPositiveWidths`, `BoundedComputation`,
--- `SemidecidableComputation`, `IntrospectionIntervalQuote`, `DUSApproximationPresentation`,
--- `DUSThresholdEmission`, `PrefixMachinePresentation`, `SelfTrustQuote`,
--- `ParadoxResistanceQuote`, `PatientSettlementClock`) — which is why several of those rows
--- are `qualified` on a hypothesis invisible in the elaborated signature.
-#assert_fields PolyMachineCodes
-  code code_poly
-#assert_fields PolyNatCodes
-  code code_poly
+-- the structures still carrying them as fields (`PolyPositiveWidths`,
+-- `DUSApproximationPresentation`, `DUSThresholdEmission`, `PrefixMachinePresentation`,
+-- `PatientSettlementClock`) — which is why several of those rows are `qualified` on a
+-- hypothesis invisible in the elaborated signature.
+--
+-- Correction (2026-08-28 audit, R2-F13/F06).  `BoundedComputation`,
+-- `SemidecidableComputation`, `IntrospectionIntervalQuote`, `SelfTrustQuote` and
+-- `ParadoxResistanceQuote` were listed above as whole-value carriers and are **no longer**.
+-- Field by field, as of this commit: `BoundedComputation.input_poly` and
+-- `SemidecidableComputation.input_poly` are `BigDigits`; `IntrospectionIntervalQuote`
+-- carries `BigSentenceCodes` (`source_codes`, `quote_codes`) and `DigitRatCodes`
+-- (`inverse_width_codes`); `ParadoxResistanceQuote.sentence_codes` and
+-- `SelfTrustQuote.sentence_codes` are `BigSentenceCodes`.  `SelfTrustQuote`'s two remaining
+-- threshold fields (`product_codes`, `confidence_codes`) are `LUV.RpnThresholdCodeSeq` —
+-- symbol-metered, not whole-value, and not `PolyThresholdCodeSeq` as the paragraph above
+-- implied.  The migrated fields are enumerated in the block below.
+--
+-- ## WRITE-OUT FIELD MIGRATION (2026-08-27/28)
+--
+-- Every field below moved from a whole-value or symbol-metered class to a **write-out**
+-- class, in which the object's numeric magnitude is unrestricted and only the number of
+-- symbols a poly-time writer must emit is bounded.  This is what `def:ec` actually meters
+-- (tex:753-755, explicitly at tex:1931-1933).  `#assert_fields` freezes field *names* only,
+-- so each type change is recorded here; each is a **widening** of the structure's
+-- hypothesis, hence a strengthening of every theorem taking that structure.
+--
+--   `PolySentenceCodes`/`RpnSentenceCodes` → `BigSentenceCodes`:
+--     `PolyTradeEmulatable.sentence_poly`, `AffineCombination.PolySequence.sentence_poly`,
+--     `RepresentedSemidecidableClaims.sentence_poly` (hence
+--     `RepresentedDecidableClaims`), `InconsistentTheoryClaims.inconsistency_poly` and
+--     `.consistency_poly`, `BitPrefixSentences.prefix_codes`,
+--     `CurrentPriceExpectationQuote.sentence_codes`,
+--     `IntrospectionIntervalQuote.source_codes` and `.quote_codes`,
+--     `ParadoxResistanceQuote.sentence_codes`, `FuturePriceQuote.sentence_codes`,
+--     `SelfTrustQuote.sentence_codes`, `EfficientRepeatedEnumeration.sequence_poly`,
+--     `FeedbackTraderEmission.sentence_poly`.
+--   `PolyNatCodes` → `BigDigits`:
+--     `SemidecidableComputation.input_poly`, `BoundedComputation.input_poly`.
+--   `RpnSpliceStream` → `BigSpliceStream`:
+--     `GeneratedRatFeature.polyTok`.
+--
+-- Not migrated, deliberately: the conditioning compiler destructures a `PolySegStream` out
+-- of its condition hypothesis, so `ConditioningPresentation.condition_codes`,
+-- `CompactConditioningProcessComputation.condition_codes` and the `thm:scon` machine
+-- transports (`CondStep.conditionedTranslation_preserves_machine`,
+-- `eventualConditionedTranslation_preserves_machine`) remain at `RpnSentenceCodes`.
+-- `lic_self_trust_closed` (`thm:st`) likewise remains at `RpnSentenceCodes φ`: its
+-- `product_codes` obligation is `LUV.RpnThresholdCodeSeq (indicatorProductLUV … φ)`,
+-- discharged by `indicatorProductLUV_rpnThresholdCodeSeq`, which needs `φ`'s codes at
+-- symbol-metered strength.  There is no write-out threshold class — `LUV.BigThresholdCodeSeq`
+-- does not exist — so widening `thm:st` is a `RpnThresholdCodeSeq` migration, not a
+-- sentence-class one.  `theoremConfidenceQuoteCode` is held at `RpnSentenceCodes` for the
+-- same reason: widening the *def* alone is sound but unusable, and would have put two
+-- `BigSentenceCodes.ofRpnSentenceCodes` wrappers inside `lic_self_trust_closed`'s printed
+-- statement for no gain in reach.
+--
+-- Widened in this change (2026-08-28 audit, R2-F11), each having consumed its sentence-codes
+-- hypothesis only through `.primrec`, which `BigSentenceCodes.primrec` supplies:
+-- `theoremPriceQuoteCode` and `lic_expectations_of_probabilities_closed` (`thm:epr`),
+-- `theoremFutureQuoteCode` and `lic_no_expected_net_update_closed` (`thm:ceu`),
+-- `theoremIntervalQuoteCode` and `lic_introspection_closed` (`thm:ref`).  Those three closed
+-- paper endpoints now admit sentence families whose Gödel codes are exponential while their
+-- emitted symbol count stays polynomial.
+-- Retired from the Tier-2 freeze (2026-08-28 audit, R2-F15/F18).  `PolyMachineCodes` and
+-- `PolyNatCodes` were inventoried under a `Paper node: def:ec` line they did not earn: both
+-- bound the *numeric value* of a name, which is precisely what `def:ec`'s write-out metering
+-- does not bound.  They are now what they always were — strictness foils, named only inside
+-- `not_polyNatCodes_ack`, `bigDigits_two_pow_not_polyNatCodes` and
+-- `digitMachineCodes_nest_not_polyMachineCodes` — so they carry no paper annotation and are
+-- not trust surface.  The paper's machine-naming class, `DigitMachineCodes`, carries the
+-- `def:ec` line in their place.
 #assert_fields PrefixMachinePresentation
   sentence sentence_codes approximation approximation_nonneg approximation_le
   approximation_tendsto kraft covers

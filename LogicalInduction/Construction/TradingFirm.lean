@@ -153,7 +153,7 @@ def absBound {n : ℕ} (T : Strategy n) : ℚ :=
 def tradeListAbsBound (trades : List (EF × Sentence)) : ℚ :=
   (trades.map fun p => p.1.absBound).sum
 
-@[simp] theorem tradeListAbsBound_strategy {n : ℕ} (T : Strategy n) :
+@[simp] lemma tradeListAbsBound_strategy {n : ℕ} (T : Strategy n) :
     tradeListAbsBound T.trades = T.absBound := by
   rfl
 
@@ -217,10 +217,10 @@ namespace Trader
 def gate (start : ℕ) (Tr : Trader) : Trader where
   strat n := if start ≤ n then Tr.strat n else Trader.zero.strat n
 
-@[simp] theorem gate_strat_of_le (Tr : Trader) {start n : ℕ} (h : start ≤ n) :
+@[simp] lemma gate_strat_of_le (Tr : Trader) {start n : ℕ} (h : start ≤ n) :
     (Tr.gate start).strat n = Tr.strat n := by simp [gate, h]
 
-@[simp] theorem gate_strat_of_lt (Tr : Trader) {start n : ℕ} (h : n < start) :
+@[simp] lemma gate_strat_of_lt (Tr : Trader) {start n : ℕ} (h : n < start) :
     (Tr.gate start).strat n = Trader.zero.strat n := by
   simp [gate, Nat.not_le_of_lt h]
 
@@ -298,11 +298,11 @@ def tradingFirmTotalBoundTradeLists (n : ℕ) : ℚ :=
 def tradingFirmCutoffTradeLists (n : ℕ) : ℕ :=
   ⌈tradingFirmTotalBoundTradeLists n⌉₊ + 1
 
-@[simp] theorem tradingFirmTotalBoundTradeLists_eq (n : ℕ) :
+@[simp] lemma tradingFirmTotalBoundTradeLists_eq (n : ℕ) :
     tradingFirmTotalBoundTradeLists n = tradingFirmTotalBound n := by
   rfl
 
-@[simp] theorem tradingFirmCutoffTradeLists_eq (n : ℕ) :
+@[simp] lemma tradingFirmCutoffTradeLists_eq (n : ℕ) :
     tradingFirmCutoffTradeLists n = tradingFirmCutoff n := by
   rfl
 

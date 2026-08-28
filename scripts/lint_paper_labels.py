@@ -66,7 +66,7 @@ CD_LABEL = re.compile(
 FSM_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary)\s+(?:[0-9]+|[A-Z])\.[0-9]+"
 )
-DECL = re.compile(r"^\s*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
+DECL = re.compile(r"^\s*(?:@\[[^\]]*\]\s*)*(?P<private>private\s+)?(?:protected\s+)?theorem\s+(?P<name>[\w.]+)")
 
 def block_depth_after(line, depth):
     """Nestable-comment depth after scanning `line`, given `depth` at its start."""

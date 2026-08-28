@@ -86,21 +86,21 @@ noncomputable def denoteWith : EF → List ℝ → History → ℝ
 
 noncomputable def denote (e : EF) (V : History) : ℝ := e.denoteWith [] V
 
-@[simp] theorem denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
     (price φ n).denoteWith ρ V = V n φ := rfl
-@[simp] theorem denoteWith_const (q : ℚ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_const (q : ℚ) (ρ : List ℝ) (V : History) :
     (const q).denoteWith ρ V = (q : ℝ) := rfl
-@[simp] theorem denoteWith_add (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_add (a b : EF) (ρ : List ℝ) (V : History) :
     (add a b).denoteWith ρ V = a.denoteWith ρ V + b.denoteWith ρ V := rfl
-@[simp] theorem denoteWith_mul (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_mul (a b : EF) (ρ : List ℝ) (V : History) :
     (mul a b).denoteWith ρ V = a.denoteWith ρ V * b.denoteWith ρ V := rfl
-@[simp] theorem denoteWith_max (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_max (a b : EF) (ρ : List ℝ) (V : History) :
     (max a b).denoteWith ρ V = Max.max (a.denoteWith ρ V) (b.denoteWith ρ V) := rfl
-@[simp] theorem denoteWith_safeRecip (a : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_safeRecip (a : EF) (ρ : List ℝ) (V : History) :
     (safeRecip a).denoteWith ρ V = (Max.max 1 (a.denoteWith ρ V))⁻¹ := rfl
-@[simp] theorem denoteWith_var (i : ℕ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_var (i : ℕ) (ρ : List ℝ) (V : History) :
     (var i).denoteWith ρ V = ρ.getD i 0 := rfl
-@[simp] theorem denoteWith_letE (x body : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_letE (x body : EF) (ρ : List ℝ) (V : History) :
     (letE x body).denoteWith ρ V = body.denoteWith (x.denoteWith ρ V :: ρ) V := rfl
 
 /-- Exact rational evaluation of an expressible feature against a rational price table.
@@ -184,33 +184,33 @@ def rank : EF → ℕ
   | var _       => 0
   | letE x body => Nat.max x.rank body.rank
 
-@[simp] theorem rank_price (φ : Sentence) (n : ℕ) : (price φ n).rank = n := rfl
-@[simp] theorem rank_const (q : ℚ) : (const q).rank = 0 := rfl
-@[simp] theorem rank_add (a b : EF) : (add a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_mul (a b : EF) : (mul a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_max (a b : EF) : (max a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_safeRecip (a : EF) : (safeRecip a).rank = a.rank := rfl
-@[simp] theorem rank_var (i : ℕ) : (var i).rank = 0 := rfl
-@[simp] theorem rank_letE (x body : EF) : (letE x body).rank = Nat.max x.rank body.rank := rfl
+@[simp] lemma rank_price (φ : Sentence) (n : ℕ) : (price φ n).rank = n := rfl
+@[simp] lemma rank_const (q : ℚ) : (const q).rank = 0 := rfl
+@[simp] lemma rank_add (a b : EF) : (add a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_mul (a b : EF) : (mul a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_max (a b : EF) : (max a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_safeRecip (a : EF) : (safeRecip a).rank = a.rank := rfl
+@[simp] lemma rank_var (i : ℕ) : (var i).rank = 0 := rfl
+@[simp] lemma rank_letE (x body : EF) : (letE x body).rank = Nat.max x.rank body.rank := rfl
 
 /-! ### `denote` is a ring map on the nose (all `rfl`), packaged for `simp`. -/
 
 @[simp] theorem denote_price (φ : Sentence) (n : ℕ) :
     (price φ n).denote = fun V => V n φ := rfl
 
-@[simp] theorem denote_const (q : ℚ) :
+@[simp] lemma denote_const (q : ℚ) :
     (const q).denote = fun _ => (q : ℝ) := rfl
 
-@[simp] theorem denote_add (a b : EF) : (add a b).denote = a.denote + b.denote := by
+@[simp] lemma denote_add (a b : EF) : (add a b).denote = a.denote + b.denote := by
   funext V; simp [denote, denoteWith, Pi.add_apply]
 
-@[simp] theorem denote_mul (a b : EF) : (mul a b).denote = a.denote * b.denote := by
+@[simp] lemma denote_mul (a b : EF) : (mul a b).denote = a.denote * b.denote := by
   funext V; simp [denote, denoteWith, Pi.mul_apply]
 
-@[simp] theorem denote_max (a b : EF) (V : History) :
+@[simp] lemma denote_max (a b : EF) (V : History) :
     (max a b).denote V = Max.max (a.denote V) (b.denote V) := rfl
 
-@[simp] theorem denote_safeRecip (a : EF) (V : History) :
+@[simp] lemma denote_safeRecip (a : EF) (V : History) :
     (safeRecip a).denote V = (Max.max 1 (a.denote V))⁻¹ := rfl
 
 /-! ### Continuity (`def:tf`), proved for the whole DSL — this is what breaks the
@@ -658,7 +658,7 @@ def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
     Option EF.StreamState :=
   tokens.foldl EF.streamStep state
 
-@[simp] theorem EF.streamReadFrom_append (left right : List ℕ)
+@[simp] lemma EF.streamReadFrom_append (left right : List ℕ)
     (state : Option EF.StreamState) :
     EF.streamReadFrom (left ++ right) state =
       EF.streamReadFrom right (EF.streamReadFrom left state) := by
@@ -2023,7 +2023,7 @@ identically `0`, its plausible assessments lie in `{0}`, and it does **not** exp
 /-- The trader that never trades. -/
 def Trader.zero : Trader := ⟨fun _ => ⟨[], by simp⟩⟩
 
-@[simp] theorem Trader.zero_netWorth (V : History) (v : PCWorld) (n : ℕ) :
+@[simp] lemma Trader.zero_netWorth (V : History) (v : PCWorld) (n : ℕ) :
     Trader.zero.netWorth V v n = 0 := by
   simp [Trader.netWorth, Trader.zero, Strategy.value]
 

@@ -24,6 +24,12 @@ name does not say what the object is.
 |---|---|---|
 | `def:ec`, §3.3 (`sec:efc`, tex:749) | `MachineEfficientTrader` (`Framework/Criterion.lean`) | The paper's own quantifier: ordinary machine polynomial time via `Complexity.FP`, over the **unary** day. This is the class the construction enumerates and dominates. |
 | `def:ec`, certification | `EfficientlyComputable` / `PolyFueled` (`Framework/Computable.lean`) | Fuel-clocked `Nat.Partrec.Code` certificates (`dd:fuel`). A *sufficient* route into the machine class (`EfficientlyComputable.toMachine`), not a definition of it. Fuel meters the **value** `n`, not its bit length, which is sound only because the day is unary. |
+| `def:ec`, e.c. machine sequence (tex:1931) | `DigitMachineCodes` (`Framework/WriteOut.lean`) = `BigDigits (Code.sourceNat ∘ m)` | Machines are `Nat.Partrec.Code`, **named by `Code.sourceNat`** (`Framework/CodeSource.lean`): the postfix tag stream (1=zero … 8=rfind', 0 = pad, never emitted) read base-16. Linear in the syntax tree (`len4_sourceNat_le : len4 c.sourceNat ≤ 2 * c.size`), total primitive-recursive decoder `ofSource` with `ofSource_sourceNat`. `Encodable.encode` is **not** used for naming anywhere on the claim-name path (see intentional deviations). `UniversalCodeHalts z := ((Code.ofSource z.unpair.1).eval z.unpair.2).Dom` decodes the source *inside* the represented computation. |
+| `def:ec`, e.c. bitstrings / naturals | `BigDigits` (`Framework/DigitArith.lean`) | Two `PolyFueled` programs (base-4 length, digit access). `PolyFueled` bounds the *output value* too, so `len4 (x m)` is polynomially bounded: a `BigDigits` family is writable in poly fuel. A length-`n` bitstring has `~n/2` base-4 digits. Refuting `BigDigits` for a family reduces to a superpolynomial base-4 length (`not_polyFueled_two_pow` shape). |
+| `def:ec`, e.c. sentences / rationals / emission | `BigSentenceCodes`, `DigitRatCodes`, `BigTokenStream`/`BigSpliceStream` (`Framework/WriteOut.lean`) | The write-out ladder. Value-bounded predecessors: `PolyNatCodes`/`PolyMachineCodes` (whole value; kept only as strictness foils, no `Paper node`) and `RpnSentenceCodes`/`RpnThresholdCodeSeq` (per-token value). `RpnSentenceCodes` is *not* purely symbol-metered: `PolySegStream` bounds every emitted token's value, so a single atom with exponential index is excluded by `Rpn` and admitted by `Big`. **There is no write-out class for LUV thresholds**: `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) is the only one, and it is not a restriction on the paper's first-order LUVs (`StructuredPaperRpn.lean` splices Gödel codes out of small tokens: `PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`). |
+| `def:ece` / `def:fuz` | `GeneratedRatFeature` (`Framework/Expectations.lean`) / `PGenerableWeighting` (`Properties/Calibration.lean`) | Both emission fields are `BigSpliceStream`; that shared meter is what makes `pGenerableWeighting_iff` (def:fuz = def:ece minus the denotation clause) statable — keep them at the same meter. General `PGenerableRat` constructor: `PGenerableRat.ofDigitRatCodes`; `ofPolyRatCodes` (`ProductDefinition.lean`) is the derived value-bounded corollary. `ratCodeFeature`/`ratCodeFeature_generated` live in `Expectations.lean` at `DigitRatCodes` strength. A constant leaf `EF.const q` serializes to `[1, encode q]` — one token whose value *is* the code — which is why the old `RpnSpliceStream` field silently excluded the paper's `2⁻ⁿ`. |
+| §4.9 nodes (`thm:halts`/`loops`/`dontwait`), endpoint stack | `lic_learns_halting_patterns` (`Properties/MetaLearning.lean`) → `*_ofComputation` (`ComputationSyntax.lean`) → `*_unconditional` (`ComputationDP.lean`) | Three layers, all present: generic (no theory hypotheses, arbitrary `P`/`DP`), syntax layer (`[IsLogicalInductor P DP]` + `ComputationTheoryPresentation`), canonical instantiation over `liaHistory (theoremDP T)`. An auditor who sees only the canonical row wrongly concludes no arbitrary-inductor endpoint exists. `⌜f⌝(⌜n⌝)` → `boundedHaltingClaimInput m x hh.program n`, with `⌜f⌝` a constant and `n` unevaluated. `CodeHaltsWithin` meters by `evaln` fuel, not Turing steps — harmless at `thm:dontwait`, live if a positive bounded-runtime result is ever stated. |
+| Foundation `re_complete` | `Foundation/FirstOrder/Arithmetic/R0/Representation.lean:260` | An **iff** stated under `[T.SoundOnHierarchy 𝚺 1]`; only `.mpr` (provable ⇒ true-in-ℕ) uses soundness. `.mp` is `sigma_one_completeness` (`R0/Basic.lean:143`, `[𝗥₀ ⪯ T]` only) — a soundness-free `re_complete_mp` compiles in six lines. `Entailment.Consistent T` is derived from the soundness instance (`Basic/Hierarchy.lean:481`), so every `inferInstance` for consistency silently routes through it. The transport `models_haltingSchema_iff` (`ComputationDP.lean`) lifts `codeOfREPred_spec` to standard-model truth of a schema instance. |
 | `def:lic` | `IsMachineLogicalInductor` (`Framework/MachineEfficiency.lean`) | The criterion the construction proves. `IsLogicalInductor` is the same criterion over the fuel class, kept as the compatibility predicate the §4 tail is stated against. |
 
 - `def:ec` is paper **§3.3**, not §2.2 — §2 is Notation, §3 is the Criterion.
@@ -110,6 +116,87 @@ name does not say what the object is.
   `MachineEfficientTrader` is not defined as "occurs in the enumeration"; that every member
   does occur is the content of `exists_enumeratedTrader_eq`.
 
+**Renames landed 2026-08-28 (grepping old names finds nothing).** `buySeq_ec_rpn` →
+`buySeq_ec_big` (`buySeq_ec` is a *different* lemma); `rpnSentenceCodes_bitPrefixSentence` →
+`bigSentenceCodes_bitPrefixSentence`; `digitMachineCodes_twoPowMachine_not_polyMachineCodes` →
+`digitMachineCodes_nest_not_polyMachineCodes` with the witness changed to
+`Nat.Partrec.Code.nest`; `ratCodeFeature`/`toWeighting` moved up into `Framework`/`Properties`.
+
+**Σ₁-soundness: where it is load-bearing, and why the model route does not remove it
+(scoped 2026-08-28).** `provabilityWorld` (`ComputationDP.lean`) is already a *provability*
+world (`T ⊢ …`), not standard-model truth — only `luvWorld`
+(`LUVDeductiveProcess.lean`) is literal ℕ-truth. Soundness is consumed at exactly two sites:
+`theoremDP_hworld` tags 3/7 and `luvWorld_consistent`, and for one reason: complementary
+claims are two *independent* `codeOfREPred` Σ₁ schemas
+(`universalBoundedHaltingSchema`/`universalBoundedFailureSchema`, `universalQuotePos`/`Neg`)
+whose exclusivity is a standard-model fact only (`universalBoundedSchemas_exclusive` is
+stated with `Evalb` in ℕ). Tag 1 fires on `T ⊢ ∼schema` and is discharged from consistency
+alone — the pattern the other tags do not follow. A model-of-`T` or Lindenbaum world does
+**not** help: the residual obligation `M ⊨ failure → M ⊭ halts` needs `T ⊢ ∼(σ ⋏ τ)`, and if
+some consistent `T` proved both schemas at one `z` the stage would contain `atom` and
+`∼atom`, so `hworld` would be *false*. The faithful fix (fire negatives on `T ⊢ ∼σ`, as tag 1
+does) needs strong representability — Foundation's `code_uniq` is in a commented-out block
+(`Representation.lean:115-162`), `codeOfREPred` picks its formula by `Classical.epsilon` so
+its shape is unreachable, and the bounded claim is Σ₁ (deferred horizon), not Δ₀. Foundation
+also has no first-order Lindenbaum lemma. Recorded as a verified obstruction; the cheap
+alternative (a bespoke "`T` never proves both schemas" hypothesis) is a new type-`(c)`
+substitution and was not taken. Unscoped idea for a future pass: minimization-trick functional
+graph formulas (`γ := θ ⋏ ∀z<y ∼θ[z]`, uniqueness provable in `𝗜𝚺₁` without inspecting `θ`)
+plus a Δ₁ evaluator via Bootstrapping's internal-model definability. The model route *is*
+already used where it works: `paperPrimeWorld` (`PaperFirstOrder.lean`) via
+`Theory.small_satisfiable_of_consistent`, soundness-free because `.nrel` maps to the negation
+of the *same* atom. Propagation budget for any change here: `SoundOnHierarchy` on 187
+signature lines in 25 files (~120–150 declarations, almost all inheritance);
+`provable_instances_re` and its cone carry the instance unused.
+
+**Charging rule for the Σ₁-soundness demotions (2026-08-28).** A row is `qualified` iff *no*
+canonical endpoint of that label renders the printed statement on the paper's own hypotheses.
+19 of 105 canonical endpoints need the instance. `thm:scon`/`wub`/`wubaff`/`wubexp` were
+deliberately **not** demoted because each also curates a universal `_ofComputation` endpoint
+with no theory premise that *is* the printed theorem; reversing that is four cells
+(exact 26 / qualified 17 / strengthened 5). Blast-radius method: `#check @name` over the
+`LI-CANONICAL-BEGIN/END` names in one scratch file and read the *elaborated* signatures —
+grepping is useless (100+ hits, mostly witnesses).
+
+**`thm:loops`'s `hloops` witness is by axiom fiat, and no natural theory can do better.**
+`ComputationTheoryPresentation` has `boundedFailure_refutes` but no `halting_fails`, and the
+asymmetry is forced: bounded failure is r.e. with its own complementary schema; unbounded
+non-halting is Π₁. Foundation's `re_complete` is positive-only, and a uniform negative
+principle is refuted by Foundation's own `incomplete_of_REPred_not_ComputablePred_Nat'`
+(`UniversalCodeHalts` is the halting set). The witness `loopsTheory := insert σ 𝗜𝚺₁` is
+consistent, Σ₁-sound, `Δ₁`, and discharges every instance (`Theory.Delta1.insert`,
+`WeakerThan.ofSubset`, and `[ℕ ⊧* T] → T.SoundOn` gives soundness *and* consistency free).
+Do not spend prover time looking for a natural `T` discharging `hloops`.
+
+**Widening a sentence-codes hypothesis.** A hypothesis used only via `.primrec`/`.exists_code`
+can be widened `RpnSentenceCodes → BigSentenceCodes` (both classes have them). Consumers that
+*block* widening: `.comp`/`.and`/`.bigOr` on the symbol-metered class, and anything
+destructuring a `PolySegStream` (the conditioning compiler, `LUV.RpnThresholdCodeSeq`
+producers: `QuoteCodeOfMarket`, `ProductDefinition`, `SemanticSource`, `SemanticJoint`,
+`StructuredPaperRpn`). Never sweep the rename globally; widen the affine/trader lane and wrap
+with `BigSentenceCodes.ofRpnSentenceCodes` at each Rpn-producer → Big-consumer site.
+`thm:st` is pinned at `Rpn` one level down (no `LUV.BigThresholdCodeSeq` exists).
+`EfficientRepeatedEnumeration.ofRpn` keeps its `Rpn` argument and wraps internally.
+
+**Strictness ledger (never reprove).** `not_polyFueled_two_pow`, `bigDigits_two_pow_not_polyFueled`,
+`bigTokenStream_not_polySegStream`, `digitRatCodes_two_pow_inv_not_polyRatCodes`,
+`bigSpliceStream_two_pow_inv_not_rpnSpliceStream`, `bigDigits_two_pow_not_polyNatCodes`,
+`digitMachineCodes_nest_not_polyMachineCodes`, `not_polyNatCodes_ack`,
+`not_polySentenceCodes_bitPrefixSentence`. `BigSentenceCodes ⊇ RpnSentenceCodes` has **no**
+strictness proof (the canonical Polish route already admits exponential codes; only an
+unbounded single token separates) — never describe it as strict. `BigDigits.primrec` and
+`BigSentenceCodes.primrec` legitimately reassemble the whole value (`Primrec` has no time
+budget); that is not a leak unless the result is used as a `PolyFueled`/`FP` certificate.
+
+**`ofSource` design.** Peels `n` base-16 digits from `n` itself with no zero-guard; safe
+because tag 0 is a no-op pad (`sourceStep_pad`). The roundtrip needs
+`size_le_sourceNat`; linearity is an *inequality* (`len4 ≤ 2·size`) with the matching lower
+bound `pow_pred_le_sourceNat`.
+
+**`ofDigits_div_pow_mod`** (`Framework/CodeSource.lean`) duplicates `ofDigits_digit`
+(`PrefixMachine.lean`, downstream, cannot import upward); the Framework one is more general.
+Delete PrefixMachine's if the dependency direction ever permits.
+
 **Known dead weight.** `PolyEF` (`Framework/Computable.lean:258`) is a dead-end layer:
 consumed only by other `PolyEF` lemmas, never converted to any emission class. It is a
 consolidation candidate, recorded here so it is not mistaken for load-bearing.
@@ -121,6 +208,25 @@ boundary, if any, a given paper node carries is recorded in that node's own row 
 `scripts/coverage-classification.md`; `LogicalInduction/README.md` explains the categories.
 Entries there are not audit findings unless the justification itself is wrong.
 
+- **Machine naming is not Mathlib's `Encodable.encode`** (R2-F16, 2026-08-28). `encodeCode`
+  emits `2*(2*Nat.pair (encode cf) (encode cg))+4` per `pair`/`comp`/`prec` node, so the value
+  *squares* per node: for `nest 0 = zero, nest (n+1) = pair (nest n) zero` (`2n+1` nodes) the
+  base-4 digit counts are exactly `0, 2, 4, 8, 16, 33, 67, 134` (`#eval`-verified). The paper
+  admits `nest` (poly time to write the source); `BigDigits ∘ encode` excluded it. Machines are
+  therefore named by the linear `Code.sourceNat`. This is a representation choice of the same
+  kind as RPN for sentences, disclosed at `DigitMachineCodes` and `sourceNat`; the user's
+  ruling is that it classifies `exact`, with no obligation to formalize that all reasonable
+  programming languages are polynomially equivalent.
+- **Σ₁-soundness is stronger than the paper's hypothesis, and the rows say so** (R2-F02,
+  2026-08-28). The paper assumes Θ consistent, c.e., and *represents computations*
+  (tex:600-606, tex:993-997) and treats soundness as a *further* assumption (tex:2673);
+  its §4.9 proofs use Σ₁-completeness and consistency only. `[T.SoundOnHierarchy 𝚺 1]` on the
+  instantiated endpoints is a strengthening, not a rendering. `README.md` and the axis legend
+  asserted the opposite until this date — do not restore that claim. Removal is a verified
+  obstruction (see design decisions), not a promise.
+- **The `dd:fuel` charge is levied once at `def:ec`** (classification legend "Global model
+  disclosure"); a downstream row not repeating the caveat is not a defect.
+
 ## Paper errata
 
 `notes/paper-errata.md` is the ledger. The one a reader must know before using §4.6: the
@@ -130,4 +236,11 @@ the corrected finite-support theorem
 
 ## Pitfalls
 
-See `notes/lean-gotchas.md`.
+See `notes/lean-gotchas.md`. Harness-process pitfalls that are not Lean traps: when auditing a
+class-swap round, grep docstrings separately from code (a rename can rewrite prose where the
+code did not change; no gate catches it); `#assert_fields` freezes field *names* only, so a
+field-type widening passes silently — record it in the comment above the freeze; the
+`lint_paper_labels.py` `DECL` regex must admit attribute prefixes or `@[simp] private theorem`
+slips through (fixed 2026-08-28); size a field widening by grepping the *field*, not the
+structure; and `check-paper-nodes.sh` requires every inventoried declaration to carry a
+`Paper node:` line, so internal helpers stay out of the inventory with the reason recorded.

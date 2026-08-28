@@ -260,7 +260,7 @@ lemma sequence_eq_at
   rw [sequence, feedbackFlag_at f hstrict hspec k, if_neg one_ne_zero,
     sourceIndex_at f hstrict hspec k, feedbackIndex_at f hstrict hspec k]
 
-@[simp] theorem sequence_price_at
+@[simp] lemma sequence_price_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
@@ -273,7 +273,7 @@ lemma sequence_eq_at
   simp [AffineCombination.price, AffineCombination.value]
   ring
 
-@[simp] theorem sequence_magnitude
+@[simp] lemma sequence_magnitude
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (fa fd m : ℕ) (P : History) :

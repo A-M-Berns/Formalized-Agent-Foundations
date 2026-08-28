@@ -126,12 +126,6 @@ lemma semanticPrimeSentence_poly (schema : ℕ) {input : ℕ → ℕ}
     ((PolyFueled.const schema).pair hinput.code_poly)
   refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
 
-/-- Hence semantic handles are efficient sentence sequences in the symbol-metered API. -/
-lemma semanticPrimeSentence_rpn (schema : ℕ) {input : ℕ → ℕ}
-    (hinput : PolyNatCodes input) :
-    BigSentenceCodes (fun n => semanticPrimeSentence schema (input n)) :=
-  BigSentenceCodes.ofPolySentenceCodes (semanticPrimeSentence_poly schema hinput)
-
 /-- A paper-facing LUV source has a syntax-bearing threshold schema, not merely an erased
 family of propositional thresholds. -/
 structure PresentedLUVSeq where

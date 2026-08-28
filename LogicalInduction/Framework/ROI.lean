@@ -685,7 +685,7 @@ lemma Trader.netWorth_eq_ratCast (Tr : Trader)
   intro d hd
   exact (Tr.strat d).value_eq_ratCast P Q hQ v.payout wQ hw
 
-@[simp] theorem serializeTrades_append (xs ys : List (EF × Sentence)) :
+@[simp] lemma serializeTrades_append (xs ys : List (EF × Sentence)) :
     serializeTrades (xs ++ ys) = serializeTrades xs ++ serializeTrades ys := by
   induction xs with
   | nil => rfl

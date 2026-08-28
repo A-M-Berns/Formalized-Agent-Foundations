@@ -32,7 +32,7 @@ def toPCWorld (v : BoolPCWorld) : PCWorld := fun a => v a = true
 noncomputable def ofPCWorld (v : PCWorld) : BoolPCWorld := fun a =>
   @decide (v a) (Classical.propDecidable _)
 
-@[simp] theorem ofPCWorld_toPCWorld (v : PCWorld) :
+@[simp] lemma ofPCWorld_toPCWorld (v : PCWorld) :
     (ofPCWorld v).toPCWorld = v := by
   funext a
   apply propext
@@ -107,7 +107,7 @@ lemma eval_toBoolPCWorld_restrict (v : BoolPCWorld) (B : ℕ) (φ : Sentence)
 def FiniteWorld.payoutRat {B : ℕ} (u : FiniteWorld B) (φ : Sentence) : ℚ :=
   if eval u.toBoolPCWorld φ then 1 else 0
 
-@[simp] theorem eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
+@[simp] lemma eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
     eval v φ = true ↔ v.toPCWorld.Holds φ := by
   induction φ with
   | atom a => simp [eval, toPCWorld, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
@@ -174,7 +174,7 @@ lemma isClopen_holds (φ : Sentence) :
   exact ⟨isClosed_singleton.preimage (continuous_eval φ),
     (continuous_eval φ).isOpen_preimage _ (isOpen_discrete _)⟩
 
-@[simp] theorem payout_toPCWorld (v : BoolPCWorld) (φ : Sentence) :
+@[simp] lemma payout_toPCWorld (v : BoolPCWorld) (φ : Sentence) :
     v.toPCWorld.payout φ = if eval v φ = true then 1 else 0 := by
   rw [PCWorld.payout]
   by_cases h : eval v φ = true
@@ -346,10 +346,10 @@ def empty : AffineCombination where
 def eventualMember (As : ℕ → AffineCombination) (i n : ℕ) : AffineCombination :=
   if i ≤ n then As i else empty
 
-@[simp] theorem eventualMember_eq (As : ℕ → AffineCombination) (i n : ℕ) (h : i ≤ n) :
+@[simp] lemma eventualMember_eq (As : ℕ → AffineCombination) (i n : ℕ) (h : i ≤ n) :
     eventualMember As i n = As i := by simp [eventualMember, h]
 
-@[simp] theorem eventualMember_eq_empty (As : ℕ → AffineCombination) (i n : ℕ)
+@[simp] lemma eventualMember_eq_empty (As : ℕ → AffineCombination) (i n : ℕ)
     (h : ¬i ≤ n) : eventualMember As i n = empty := by simp [eventualMember, h]
 
 /-- A fixed threshold between two fixed natural outputs is polynomially fueled. -/

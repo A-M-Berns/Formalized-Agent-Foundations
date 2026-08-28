@@ -23,7 +23,7 @@ open LO.Propositional
 the code-canonical `Finset` order, and the empty conjunction is `⊤`. -/
 noncomputable def deductiveStageCondition (stage : Finset Sentence) : Sentence := stage.conj
 
-@[simp] theorem PCWorld.holds_deductiveStageCondition
+@[simp] lemma PCWorld.holds_deductiveStageCondition
     (v : PCWorld) (stage : Finset Sentence) :
     v.Holds (deductiveStageCondition stage) ↔ v.ConsistentWith stage := by
   have hlist (l : List Sentence) :

@@ -506,10 +506,10 @@ lemma PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
   intro z
   simp only [Nat.unpair_pair, gradualOccupancy]
 
-@[simp] theorem gradualRemaining_zero (A : AffineCombination) (buyDay : ℕ)
+@[simp] lemma gradualRemaining_zero (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) : A.gradualRemaining buyDay high δ 0 = .const 1 := rfl
 
-@[simp] theorem gradualRemaining_succ (A : AffineCombination) (buyDay : ℕ)
+@[simp] lemma gradualRemaining_succ (A : AffineCombination) (buyDay : ℕ)
     (high δ : ℚ) (t : ℕ) :
     A.gradualRemaining buyDay high δ (t + 1) =
       .mul (A.gradualRemaining buyDay high δ t)
@@ -823,7 +823,7 @@ noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombin
       sentence_poly := hsentenceBlocks
       trades_eq := h.gradualFamily_trades_eq low high δ }
 
-@[simp] theorem gradualTrader_strat_buyDay (A : AffineCombination) (entry : EF)
+@[simp] lemma gradualTrader_strat_buyDay (A : AffineCombination) (entry : EF)
     (buyDay : ℕ) (high δ : ℚ) (hentry : entry.rank ≤ buyDay)
     (hconst : A.const.rank ≤ buyDay) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     (A.gradualTrader entry buyDay high δ hentry hconst hterms).strat buyDay =

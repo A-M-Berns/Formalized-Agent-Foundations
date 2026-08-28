@@ -550,7 +550,7 @@ lemma absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
   simp only [absFeature, EF.denoteWith, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul]
   rw [abs_eq_max_neg]
 
-@[simp] theorem absFeature_rank (e : EF) : (absFeature e).rank = e.rank := by
+@[simp] lemma absFeature_rank (e : EF) : (absFeature e).rank = e.rank := by
   simp [absFeature, EF.rank]
 
 /-- Share magnitude reified as an expressible feature. -/
@@ -674,7 +674,7 @@ def buy (A : AffineCombination) (n : ℕ)
   trades := A.terms
   rank_le := hrank
 
-@[simp] theorem buy_trades (A : AffineCombination) (n : ℕ)
+@[simp] lemma buy_trades (A : AffineCombination) (n : ℕ)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.buy n hrank).trades = A.terms := rfl
 
@@ -941,7 +941,7 @@ def roundTrip (A : AffineCombination) (buyDay sellDay : ℕ) (hopen : buyDay < s
           (fun p hp => (hrank p hp).trans (Nat.le_of_lt hopen)))
       · exact emptyStrategy n
 
-@[simp] theorem roundTrip_strat_open (A : AffineCombination) (buyDay sellDay : ℕ)
+@[simp] lemma roundTrip_strat_open (A : AffineCombination) (buyDay sellDay : ℕ)
     (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     (A.roundTrip buyDay sellDay hopen hrank).strat buyDay = A.buy buyDay hrank := by
   simp [roundTrip]

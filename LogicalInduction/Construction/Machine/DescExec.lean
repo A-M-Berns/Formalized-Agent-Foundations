@@ -99,9 +99,9 @@ def decode (t : CodedTape) : Tape where
   head := t.head
   cells := fun i => if i = 0 then Γ.start else (t.cells[i - 1]?).getD Γ.blank
 
-@[simp] theorem decode_head (t : CodedTape) : t.decode.head = t.head := rfl
+@[simp] lemma decode_head (t : CodedTape) : t.decode.head = t.head := rfl
 
-@[simp] theorem decode_cells_zero (t : CodedTape) : t.decode.cells 0 = Γ.start := rfl
+@[simp] lemma decode_cells_zero (t : CodedTape) : t.decode.cells 0 = Γ.start := rfl
 
 lemma decode_cells_succ (t : CodedTape) (i : ℕ) :
     t.decode.cells (i + 1) = (t.cells[i]?).getD Γ.blank := by
@@ -149,7 +149,7 @@ def read (t : CodedTape) : Γ :=
 def writeAndMove (t : CodedTape) (s : Γ) (d : Dir3) : CodedTape :=
   (t.write s).move d
 
-@[simp] theorem decode_read (t : CodedTape) : t.decode.read = t.read := rfl
+@[simp] lemma decode_read (t : CodedTape) : t.decode.read = t.read := rfl
 
 lemma decode_move (t : CodedTape) (d : Dir3) :
     (t.move d).decode = t.decode.move d := by
