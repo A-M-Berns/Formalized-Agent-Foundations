@@ -91,16 +91,16 @@ is run.
 
 ## Entries
 
-| Directory | Paper | Source | Library it draws on |
-|---|---|---|---|
-| `FiniteFactoredSets/` | Temporal Inference with Finite Factored Sets | arXiv:2109.11513 | `FiniteFactoredSets` |
-| `FactoredSpaces/` | Factored Space Models | arXiv:2412.02579 | `FactoredSpaces` |
-| `CartesianFrames/` | Cartesian Frames | arXiv:2109.10996 | `CartesianFrames` |
-| `Condensation/` | Condensation: A Theory of Concepts | OpenReview `HwKFJ3odui` | `Condensation` |
-| `ModalAgents/` | Robust Cooperation in the Prisoner's Dilemma | arXiv:1401.5577 | `ModalAgents` |
-| `LogicalInductionFuel/` | Logical Induction | arXiv:1609.03543 | `LogicalInduction` |
-| `LogicalInductionMachine/` | Logical Induction | arXiv:1609.03543 | `MachineExec` |
-| `SmokeTest/` | — harness check, never submitted — | — | Mathlib only |
+| Directory | Paper | Source | Library it draws on | State |
+|---|---|---|---|---|
+| `CartesianFrames/` | Cartesian Frames | arXiv:2109.10996 | `CartesianFrames` | **Written** — Theorem 24, passes Comparator |
+| `FiniteFactoredSets/` | Temporal Inference with Finite Factored Sets | arXiv:2109.11513 | `FiniteFactoredSets` | stub |
+| `FactoredSpaces/` | Factored Space Models | arXiv:2412.02579 | `FactoredSpaces` | stub |
+| `Condensation/` | Condensation: A Theory of Concepts | OpenReview `HwKFJ3odui` | `Condensation` | stub |
+| `ModalAgents/` | Robust Cooperation in the Prisoner's Dilemma | arXiv:1401.5577 | `ModalAgents` | stub |
+| `LogicalInductionFuel/` | Logical Induction | arXiv:1609.03543 | `LogicalInduction` | stub |
+| `LogicalInductionMachine/` | Logical Induction | arXiv:1609.03543 | `MachineExec` | placeholder, deferred |
+| `SmokeTest/` | — harness check, never submitted — | — | Mathlib only | harness |
 
 `LogicalInductionMachine/` is a **placeholder**: the entry is deferred, and its
 scaffolding exists so the decision to defer is visible rather than implicit.
@@ -182,11 +182,10 @@ ignored, and the field may be absent. Palomar always writes a separate protected
 configuration with NanoDa enabled." So setting it is safe and omitting it is safe — the
 only thing that cares is a local Comparator run.
 
-`SmokeTest/comparator.json` therefore sets `"enable_nanoda": false`, because it exists
-to be run. The seven entry skeletons carry only the four required keys; **add
-`"enable_nanoda": false` before running one locally**, or use a Comparator new enough
-to default it. `scripts/check_palomar_wiring.py` permits the key and does not require
-it.
+So any config meant to be *run* sets `"enable_nanoda": false` — `SmokeTest/` and
+`CartesianFrames/` both do. The remaining stubs carry only the four required keys; add
+the field when you write one, or a local run will fail before it type-checks anything.
+`scripts/check_palomar_wiring.py` permits the key and does not require it.
 
 ### Verified transcript
 

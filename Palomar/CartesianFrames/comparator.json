@@ -2,11 +2,12 @@
   "challenge_module": "Palomar.CartesianFrames.Challenge",
   "solution_module": "Palomar.CartesianFrames.Solution",
   "theorem_names": [
-    "TODO.fill_in_challenge_theorem_names"
+    "Palomar.CartesianFrames.Frame.subagent_iff_exists_multSubagent_addSubagent"
   ],
   "permitted_axioms": [
     "propext",
     "Quot.sound",
     "Classical.choice"
-  ]
+  ],
+  "enable_nanoda": false
 }
