@@ -60,7 +60,7 @@ which works with arbitrary sets.
 ## Provenance
 
 Formalized by Anson Berns from the arXiv v1 text. The proof supplied in the companion
-Solution module is a transport of the development in the Formalized Agent Foundations
+Solution module is a transport of the `CartesianFrames` development in this same
 repository, which formalizes all sixty numbered nodes of this paper; the accompanying
 `formalization.yaml` records the details.
 -/

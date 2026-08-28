@@ -33,13 +33,12 @@ sources:
       supporting definitions are restated in the Challenge because a challenge may not
       import the development that proves them.
 
-related_formalizations:
-  - id: "https://github.com/A-M-Berns/Formalized-Agent-Foundations"
-    relationship: "builds-on"
-    note: >-
-      The Solution transports the proof from this repository's `CartesianFrames`
-      library, which formalizes all sixty numbered nodes of the paper including both
-      appendices. The Challenge is independent of it by construction.
+# None known. This is deliberately empty rather than self-referential: the Solution
+# transports from the `CartesianFrames` library in *this same repository*, which makes
+# this an ordinary submission and not a thin wrapper (CONTRIBUTING.md §6.5). The
+# `repository` key is omitted for the same reason — this repository is the substantive
+# development, which is the default.
+related_formalizations: []
 
 # PROPOSED — verified to exist in the PalomarSubmission taxonomy snapshots, but not
 # settled. TODO(Anson): confirm or replace. Classify the mathematics, not the tooling.
@@ -106,7 +105,8 @@ fidelity:
     imposed, and the existential in the conclusion ranges over frames in that same
     universe.
 
-    The Challenge restates the nine definitions it needs rather than importing them,
+    The Challenge restates the nine definitions it needs rather than importing them
+    from the `CartesianFrames` library in this same repository,
     because Palomar restricts a challenge's import closure to Lean core, Mathlib, Tau
     Ceti and CSLib. Each restatement was checked against the upstream library by
     proving an `Iff` between the two renderings of every relation the theorem mentions
