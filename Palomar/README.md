@@ -13,9 +13,21 @@ working triple that exists only to validate the harness and must never be submit
 
 One registry entry is **one Comparator configuration**: a `Challenge.lean` /
 `Solution.lean` / `comparator.json` triple. The challenge states the compared results
-with `sorry`; the solution discharges them. One repository at one commit can carry many
-entries, which is why this directory has one subdirectory per planned submission rather
-than a single triple at the repository root.
+with `sorry`; the solution discharges them.
+
+One repository at one commit can carry many entries, and this is explicitly how Palomar
+expects it to work — CONTRIBUTING.md §2:
+
+> One submission and one Palomar entry correspond to exactly one Comparator
+> configuration. If a repository/commit contains twelve different configuration files,
+> submit it twelve times with twelve different paths. Those become twelve entries
+> sharing a repository and commit but retaining distinct path and declaration
+> information.
+
+So each entry below is submitted separately, naming its own `comparator.json` path. Per
+§6.2 the metadata path is selected the same way — it "may point anywhere inside the
+repository, but its basename must be exactly `formalization.yaml`" — which is why each
+entry carries its own rather than the repository sharing one at the root.
 
 The rule that shapes everything else: **a challenge's transitive import closure may
 contain only Lean core, Mathlib, Tau Ceti and CSLib.** It may not reach a module of
@@ -162,8 +174,13 @@ and is accepted by the Lean kernel.
 Comparator v4.31.0 parses `enable_nanoda` as a **non-optional** `Bool` — omitting it
 fails before any mathematics is checked, with
 `uncaught exception: Comparator.Config.enable_nanoda: Bool expected`. Every config in
-Comparator's own test suite sets it. Palomar, by contrast, treats the key as optional
-and ignores it (the registry enables NanoDa separately).
+Comparator's own test suite sets it.
+
+Palomar accepts the key but overrides it. CONTRIBUTING.md §2.3: it "is accepted for
+Comparator compatibility but is intentionally non-authoritative. Its submitted value is
+ignored, and the field may be absent. Palomar always writes a separate protected
+configuration with NanoDa enabled." So setting it is safe and omitting it is safe — the
+only thing that cares is a local Comparator run.
 
 `SmokeTest/comparator.json` therefore sets `"enable_nanoda": false`, because it exists
 to be run. The seven entry skeletons carry only the four required keys; **add

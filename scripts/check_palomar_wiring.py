@@ -69,8 +69,16 @@ WARN_BYTES, WARN_LINES = 32 * 1024, 300
 # `allowed-challenge-repositories.json` admits under the Mathlib root
 # (`include_pinned_manifest_closure: true`), plus the two qualified roots.
 CORE_ROOTS = {"Init", "Lean", "Std", "Lake"}
+#
+# This list is Mathlib's manifest at the pinned revision — plausible,
+# LeanSearchClient, importGraph, proofwidgets, aesop, Qq, batteries, Cli — expanded to
+# the module roots those packages actually expose. It deliberately excludes doc-gen4,
+# BibtexQuery, MD4Lean, UnicodeBasic and leansqlite: those reach this repository through
+# doc-gen4, not through Mathlib, so they are *not* in the closure Palomar admits.
 MATHLIB_CLOSURE_ROOTS = {
-    "Mathlib", "Batteries", "Aesop", "Qq", "ProofWidgets", "Plausible",
+    "Mathlib", "Cache",              # mathlib
+    "Batteries", "BatteriesRecycling",
+    "Aesop", "Qq", "ProofWidgets", "Plausible",
     "ImportGraph", "LeanSearchClient", "Cli",
 }
 QUALIFIED_ROOTS = {"TauCeti", "Cslib", "CSLib"}
