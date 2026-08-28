@@ -77,6 +77,7 @@ Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:l
 -/
 import LogicalInduction.Construction.Witnesses.CanonicalCodes
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 

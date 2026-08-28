@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.SemanticPrime
 import LogicalInduction.Construction.Witnesses.ProductDefinition
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # The unrestricted semantic-source obstruction
@@ -12,7 +13,7 @@ records the obstruction: no non-vacuous fixed process can wrap every such source
 in all completed worlds.
 
 This is a representation-boundary result, not a parser limitation.  In particular,
-`RpnSentenceCodes.primrec` and `RpnSentenceCodes.exists_code` already provide the canonical
+`BigSentenceCodes.primrec` and `BigSentenceCodes.exists_code` already provide the canonical
 total sentence emitter required downstream.
 -/
 
@@ -200,7 +201,7 @@ lemma semanticValuedDiagonalLUVSeq_source_valued (DP : DeductiveProcess) :
     semanticValuedDiagonalLUVSeq_valuesAt DP n v hv⟩
 
 private lemma semanticValuedDiagonalProp_neg_rpn :
-    RpnSentenceCodes (fun m => ∼semanticValuedDiagonalProp m.unpair.1) := by
+    BigSentenceCodes (fun m => ∼semanticValuedDiagonalProp m.unpair.1) := by
   have hn := PolyFueled.left
   have hschema := (PolyFueled.const 0).pair hn
   have hinput := hn.pair (PolyFueled.const (Encodable.encode (0 : ℚ)))
@@ -208,7 +209,7 @@ private lemma semanticValuedDiagonalProp_neg_rpn :
     ((PolyFueled.const semanticPrimeTag).pair (hschema.pair hinput))).succ_comp
   have hneg := ((PolyFueled.const 2).pair
     (hatom.pair (PolyFueled.const 1))).succ_comp
-  refine RpnSentenceCodes.ofPolySentenceCodes ⟨_, hneg.of_eq (fun m => ?_)⟩
+  refine BigSentenceCodes.ofPolySentenceCodes ⟨_, hneg.of_eq (fun m => ?_)⟩
   simp only [semanticValuedDiagonalProp, semanticPrimeSentence, semanticPrimeCode,
     semanticSourceSchema, encode_negAtom]
   have hpair00 : Nat.pair 0 0 = 0 := natPair_zero_zero
@@ -232,8 +233,8 @@ lemma semanticValuedDiagonalMeshSelector_polyFueled :
 lemma semanticValuedDiagonalLUVSeq_rpnThresholdCodeSeq :
     LUV.RpnThresholdCodeSeq semanticValuedDiagonalLUVSeq := by
   obtain ⟨c, hc⟩ := semanticValuedDiagonalMeshSelector_polyFueled
-  have h := RpnSentenceCodes.ifZero semanticValuedDiagonalProp_neg_rpn
-    (RpnSentenceCodes.const (⊥ : Sentence)) hc
+  have h := BigSentenceCodes.ifZero semanticValuedDiagonalProp_neg_rpn
+    (BigSentenceCodes.const (⊥ : Sentence)) hc
   refine h.of_eq (fun m => ?_)
   rw [semanticValuedDiagonalLUVSeq_gt]
   have hnonneg : ¬ ((m.unpair.2.unpair.2 : ℚ) /

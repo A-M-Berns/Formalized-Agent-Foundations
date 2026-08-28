@@ -20,6 +20,7 @@ learning conclusion.
 import LogicalInduction.Properties.Calibration
 import LogicalInduction.Properties.SelfTrust
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -66,7 +67,7 @@ def sentenceMinusFeature (φ : ℕ → Sentence) (pFeature : ℕ → EF) (n : �
 
 noncomputable def sentenceMinusFeature_polySequence
     (φ : ℕ → Sentence) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) {P : History} {p : ℕ → ℚ}
+    (hφ : BigSentenceCodes φ) {P : History} {p : ℕ → ℚ}
     (hp : GeneratedRatFeature P p pFeature) :
     PolySequence (sentenceMinusFeature φ pFeature) := by
   exact {
@@ -854,7 +855,7 @@ structure FeedbackTraderEmission
   sentence : ℕ → Sentence
   tradeCount_poly : ∃ c, PolyFueled c tradeCount
   coefficient_poly : BigSpliceStream (fun z ↦ (coefficient z).serialize)
-  sentence_poly : RpnSentenceCodes sentence
+  sentence_poly : BigSentenceCodes sentence
   trades_eq : ∀ n,
     ((feedbackTrader hpoly hW hstrict δ).strat n).trades =
       (List.range (tradeCount n)).map (fun j ↦
@@ -892,7 +893,7 @@ lemma feedbackTrader_ec
     (emit : FeedbackTraderEmission hpoly hW hstrict δ) :
     EfficientlyComputable (feedbackTrader hpoly hW hstrict δ) := by
   obtain ⟨ccount, hcount⟩ := emit.tradeCount_poly
-  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes emit.sentence_poly) PolyFueled.id
+  have hframe := BigSpliceStream.tradeSlot emit.sentence_poly PolyFueled.id
   have hone : BigSpliceStream (fun z ↦
       serializeTrades [(emit.coefficient z, emit.sentence z)]) := by
     refine BigSpliceStream.of_eq (emit.coefficient_poly.append hframe) ?_
@@ -1908,7 +1909,7 @@ computational hypotheses as in the affine theorem, specialized to `sentenceAffin
 Paper node: `thm:wub` -/
 theorem lic_wub
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
@@ -2777,7 +2778,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2814,7 +2815,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2851,7 +2852,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2901,7 +2902,7 @@ budget.
 Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
-    (hφ : RpnSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
+    (hφ : BigSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
   clock : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
     PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ
@@ -2941,7 +2942,7 @@ the market's pointwise probability lower bound suffices; otherwise a rational
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2981,7 +2982,7 @@ bound suffices; otherwise the proof learns a rational
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3021,7 +3022,7 @@ The proof is the paper's rational squeeze, with explicit endpoint cases.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnSplice
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Structured Foundation-arithmetic RPN codec and the literal paper LUV frontend
@@ -463,7 +464,7 @@ lemma structuredPaperPrimeBlock_polySegStream (positive : Bool)
 
 lemma structuredPaperPrime_rpnSentenceCodes (positive : Bool)
     (φ : ℕ → ArithmeticProposition) (hφ : PolyArithmeticFormulaSeq φ) :
-    RpnSentenceCodes (fun n => paperPrimeSentence positive (φ n)) := by
+    BigSentenceCodes (fun n => paperPrimeSentence positive (φ n)) := by
   refine ⟨fun n => structuredPaperPrimeBlock positive (φ n),
     structuredPaperPrimeBlock_polySegStream positive φ hφ, fun n => ?_⟩
   simpa using parseRpn_structuredPaperPrimeBlock positive (φ n) []
@@ -745,7 +746,7 @@ exact paper-prime decomposition blocks.  The emitter outputs only the small stru
 block; the tag-7 atom code is built by parser contraction. -/
 lemma structuredPaperDecomposeAll_rpnSentenceCodes
     (φ : ℕ → ArithmeticSemiformula ℕ 1) (hφ : PolyArithmeticFormulaSeq φ) :
-    RpnSentenceCodes (fun n => paperPrimeDecompose (.all (φ n))) :=
+    BigSentenceCodes (fun n => paperPrimeDecompose (.all (φ n))) :=
   ⟨fun n => structuredPaperDecomposeBlock (.all (φ n)),
     structuredPaperDecomposeBlock_all_polySegStream hφ,
     fun n => parseRpn_structuredPaperDecomposeBlock_exact (.all (φ n))⟩

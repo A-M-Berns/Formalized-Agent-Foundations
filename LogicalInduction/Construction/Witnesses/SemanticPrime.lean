@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Compact semantic-prime names
@@ -128,8 +129,8 @@ lemma semanticPrimeSentence_poly (schema : ℕ) {input : ℕ → ℕ}
 /-- Hence semantic handles are efficient sentence sequences in the symbol-metered API. -/
 lemma semanticPrimeSentence_rpn (schema : ℕ) {input : ℕ → ℕ}
     (hinput : PolyNatCodes input) :
-    RpnSentenceCodes (fun n => semanticPrimeSentence schema (input n)) :=
-  RpnSentenceCodes.ofPolySentenceCodes (semanticPrimeSentence_poly schema hinput)
+    BigSentenceCodes (fun n => semanticPrimeSentence schema (input n)) :=
+  BigSentenceCodes.ofPolySentenceCodes (semanticPrimeSentence_poly schema hinput)
 
 /-- A paper-facing LUV source has a syntax-bearing threshold schema, not merely an erased
 family of propositional thresholds. -/

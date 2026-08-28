@@ -13,6 +13,7 @@ Theorems here: `thm:affcoh` (`PolySequence.affcoh`), the completed-theory forms 
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.TimelyLearning
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -886,7 +887,7 @@ completed-theory theorems. Individual proofs may appear arbitrarily later than t
 sequence indices.
 Paper node: `thm:provind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
@@ -906,7 +907,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
 whose negations are completed-theory theorems.
 Paper node: `thm:provind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
@@ -929,7 +930,7 @@ process; they need not be present by their own index.
 Paper node: `thm:provind` -/
 theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
-    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ)
+    (hφ : BigSentenceCodes φ) (hψ : BigSentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

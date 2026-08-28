@@ -10,6 +10,7 @@ prefix complexity with a fixed coding constant.
 -/
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.LimitCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -65,7 +66,7 @@ conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, w
 enumeration/code fields record the paper's efficient list of all finite strings.
 
 `prefix_codes` is the paper's efficient naming of the prefix sentences, metered in
-**symbols** (`RpnSentenceCodes`, `dd:ec`) rather than in the whole pair-code value.  That
+**symbols** (`BigSentenceCodes`, `dd:ec`) rather than in the whole pair-code value.  That
 choice is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against an
 enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form of this field is *unsatisfiable*
 (`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
@@ -77,7 +78,7 @@ structure BitPrefixSentences (DP : DeductiveProcess) where
   prefixSentence : List Bool → Sentence
   enumeration : ℕ → List Bool
   enumeration_covers : ∀ σ, ∃ i, enumeration i = σ
-  prefix_codes : RpnSentenceCodes (fun i ↦ prefixSentence (enumeration i))
+  prefix_codes : BigSentenceCodes (fun i ↦ prefixSentence (enumeration i))
   holds_prefix : ∀ (v : PCWorld) (σ : List Bool), v.Holds (prefixSentence σ) ↔
     ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true)
   realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
@@ -579,7 +580,7 @@ lemma dusSignal_rpnSpliceStream
     exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by simp [dusEmitBase])⟩
   have hidx : PolyFueled _ (fun x ↦ (nf x).unpair.2) :=
     PolyFueled.right.comp hn
-  have hprice := BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes B.prefix_codes) hidx hn
+  have hprice := BigSpliceStream.serialize_price B.prefix_codes hidx hn
   have hsum : BigSpliceStream (fun x ↦
       (EF.const (dusBase A (kf x) (nf x) +
         dusBase A (kf x) (nf x))).serialize) :=
@@ -621,7 +622,7 @@ lemma dusCostEF_rpnSpliceStream
   have hsignal := dusSignal_rpnSpliceStream A emit PolyFueled.left PolyFueled.right
   have hidx : PolyFueled _ (fun z ↦ z.unpair.2.unpair.2) :=
     PolyFueled.right.comp PolyFueled.right
-  have hprice := BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes B.prefix_codes) hidx PolyFueled.right
+  have hprice := BigSpliceStream.serialize_price B.prefix_codes hidx PolyFueled.right
   exact BigSpliceStream.serialize_mul hsignal hprice
 
 /-- All earlier purchases remain charged to the one unit of cash. -/
@@ -1907,7 +1908,7 @@ lemma dusTrader_rpnSpliceStream
     PolyFueled.right.comp hday
   have hframe : BigSpliceStream (fun q ↦
       [6, Encodable.encode (dusSentence B q.unpair.1)]) :=
-    (BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes B.prefix_codes) hidx).of_eq
+    (BigSpliceStream.tradeSlot B.prefix_codes hidx).of_eq
       (fun q ↦ by simp [dusSentence, dusPrefix])
   have hlive : BigSpliceStream (fun q ↦ serializeTrades [
       (EF.mul (EF.const (dusDiagonalWeight q.unpair.2))

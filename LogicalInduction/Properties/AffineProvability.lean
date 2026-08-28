@@ -7,6 +7,7 @@ bundle's diagonal market price cannot stay below `c`. `affine_tendsto_zero` is t
 two-sided form obtained by applying it to the family and its negation.
 -/
 import LogicalInduction.Properties.AffinePreemptiveLearning
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -46,7 +47,7 @@ lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
       (EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
         (h.coefficient z)).serialize) :=
     BigSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
-  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes h.sentence_poly) PolyFueled.id
+  have hframe := BigSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
   have hone : BigSpliceStream (fun z => serializeTrades
       [(EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
           (h.coefficient z), h.sentence z)]) := by

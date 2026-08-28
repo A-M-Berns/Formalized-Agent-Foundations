@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.LUVArithmetic
 import LogicalInduction.Construction.Witnesses.LUVSyntax
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Rational quote codes built from the market program
@@ -272,7 +273,7 @@ lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
 set_option maxHeartbeats 1000000 in
 /-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes come
 from the LUV sequence's symbol-metered block stream, via the whole-value naming program
-`RpnSentenceCodes.primrec` extracts from it; each cell quote from the market program, the
+`BigSentenceCodes.primrec` extracts from it; each cell quote from the market program, the
 bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`.  Only
 *computability* of the codes is used — never a polynomial bound on their values — which is
 why the symbol-metered class (`def:ec`) suffices here. -/
@@ -282,7 +283,7 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
     Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2 := by
   have hcX : Primrec fun m : ℕ => Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
-    RpnSentenceCodes.primrec hX
+    BigSentenceCodes.primrec hX
   -- The threshold-code function of `⟨⟨idx, day⟩, i⟩`.
   have hpack : Computable fun z : (ℕ × ℕ) × ℕ =>
       Nat.pair z.1.1 (Nat.pair (z.1.2 + 1) z.2) :=
@@ -463,17 +464,17 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
       exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
 
 /-- The indicator product's threshold family is 𝓔𝓒 (`def:ec`): the `⋏`-shell is emitted
-as a **token** — `RpnSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
+as a **token** — `BigSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
 the quotation-atom block — rather than as a `Nat.pair` around the two Gödel values, so the
 family is metered by symbol count and never by the code's magnitude.  The quotation side is
 the quote's own threshold stream `q.poly`, read at the paired index on the nose (mesh
 thresholds are nonnegative, so the `⊤` branch is never emitted).
 Paper node: `def:ec`, `thm:st` -/
 lemma indicatorProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ) :
+    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
     LUV.RpnThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
-  have hφAt : RpnSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
-  have hquote : RpnSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
+  have hφAt : BigSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
+  have hquote : BigSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) := q.poly
   refine (hφAt.and hquote).of_eq (fun m => ?_)
   have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
@@ -687,7 +688,7 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
           mul_le_mul hx1 hnum (abs_nonneg _) zero_le_one
       _ = 1 := one_mul 1
 
-/-- The mesh product's threshold family is 𝓔𝓒 (`def:ec`): a `RpnSentenceCodes.bigOr` of
+/-- The mesh product's threshold family is 𝓔𝓒 (`def:ec`): a `BigSentenceCodes.bigOr` of
 `⋏`-shells over the quote's own threshold blocks and the source's, at thresholds
 `j/(n+1)` and `i(n+1)/(k(j+1))` whose components are poly-fueled products of the index
 parts.  The width varies with the index, which is why this is a variable-width block
@@ -707,7 +708,7 @@ lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ →
   have hi : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.2.unpair.2) :=
     PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left)
   have hj : PolyFueled _ (fun z : ℕ => z.unpair.2) := PolyFueled.right
-  have hquote : RpnSentenceCodes (fun z : ℕ =>
+  have hquote : BigSentenceCodes (fun z : ℕ =>
       (q.luv z.unpair.1.unpair.1).gt
         ((z.unpair.2 : ℚ) / ((z.unpair.1.unpair.1 + 1 : ℕ) : ℚ))) :=
     (q.poly.comp (hn.pair (hn.succ_comp.pair hj))).of_eq (fun z => by simp)
@@ -717,12 +718,12 @@ lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ →
   have hden : PolyFueled _ (fun z : ℕ =>
       z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1)) :=
     (hmul.comp (hk.pair hj.succ_comp)).of_eq (fun z => by simp)
-  have hsource : RpnSentenceCodes (fun z : ℕ =>
+  have hsource : BigSentenceCodes (fun z : ℕ =>
       (X z.unpair.1.unpair.1).gt
         (((z.unpair.1.unpair.2.unpair.2 * (z.unpair.1.unpair.1 + 1) : ℕ) : ℚ) /
           ((z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1) : ℕ) : ℚ))) :=
     (hX.comp (hn.pair (hden.pair hnum))).of_eq (fun z => by simp)
-  refine (RpnSentenceCodes.bigOr (D := fun m j =>
+  refine (BigSentenceCodes.bigOr (D := fun m j =>
       (q.luv m.unpair.1).gt ((j : ℚ) / ((m.unpair.1 + 1 : ℕ) : ℚ)) ⋏
         (X m.unpair.1).gt
           (((m.unpair.2.unpair.2 * (m.unpair.1 + 1) : ℕ) : ℚ) /
@@ -757,7 +758,7 @@ variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarch
 efficiently codeable sentence sequence.  No caller-supplied semantic relation: the value
 program is the market program, and range comes from its certificate.
 Paper node: `thm:epr` -/
-noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+noncomputable def theoremPriceQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote n (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -772,7 +773,7 @@ with its own expectation of the *constructed* quoted-price LUV.  The quote objec
 only remaining hypotheses are the sequence and its `def:ec` symbol-metered codes.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_closed
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n => ((theoremPriceQuoteCode T φ hφ).luv n).expect (liaHistory (theoremDP T)) n :=
   lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
@@ -794,7 +795,7 @@ noncomputable def theoremExpectationQuoteCode (X : ℕ → LUV)
 price of the day-`n` sentence.  No caller-supplied semantic relation.
 Paper node: `thm:ceu` -/
 noncomputable def theoremFutureQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (theoremMarketComputation T).quote (f.f n) (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -809,7 +810,7 @@ deferral function remain.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_closed
     (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n ↦ ((theoremFutureQuoteCode T f φ hφ).luv n).expect
         (liaHistory (theoremDP T)) n :=
@@ -890,7 +891,7 @@ supplies at the call sites that do carry the efficiency certificate for other re
 This is the same narrowing the sibling `thm:ref` code (`theoremIntervalQuoteCode`) makes.
 Paper node: `thm:st` -/
 noncomputable def theoremConfidenceQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (δ p : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (δ p : ℕ → ℚ)
     (hδ : Computable δ) (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((theoremMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
@@ -926,7 +927,7 @@ writable numeral, because the quoted sentence is a *code-indexed atom* (`dd:quot
 rather than a formula spelling `a n` and `b n` out — see the `thm:ref` entry of
 `notes/paper-errata.md` for why the paper's own proof does need the stronger property.
 Paper node: `thm:ref` -/
-noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+noncomputable def theoremIntervalQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
@@ -972,7 +973,7 @@ conditions.  See `notes/paper-errata.md` PE6 for why the paper's own proof needs
 it states, and why this route does not.
 Paper node: `thm:ref` -/
 theorem lic_introspection_closed
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -1015,7 +1016,7 @@ theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (hp : PGenerableRat (liaHistory (theoremDP T)) p) :
     (fun n ↦ (indicatorProductLUV
           (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n).expect

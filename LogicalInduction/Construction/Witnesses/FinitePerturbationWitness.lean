@@ -2,6 +2,7 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.ProductDefinition
 import LogicalInduction.Construction.Witnesses.FiniteEntailment
 import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # The concrete witness for the finite-perturbation counterexample
@@ -388,7 +389,7 @@ noncomputable def cxQuote :
 
 /-- The Boolean quotation code behind that diagonal.  Naming it separately is what makes
 the sentence family's *whole-value* code available (`BooleanQuoteCode.sentence_poly`); the
-`ParadoxResistanceQuote` above carries only the symbol-metered `RpnSentenceCodes`, which
+`ParadoxResistanceQuote` above carries only the symbol-metered `BigSentenceCodes`, which
 the day-`0` quote program cannot use. -/
 noncomputable def cxQuoteCode := (theoremDiagonalQuoteCode T (1 / 2)).toBooleanQuoteCode
 
@@ -659,7 +660,7 @@ theorem exists_advice_perturbation_ofTheory :
     computableMarket_cxPerturbed T,
     advicePerturbed_agree _ _ _,
     adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom
-      (RpnSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
+      (BigSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
     fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩,
     fun j => dichotomy_of_paradoxQuote (cxQuote T) (advicePerturbed_agree _ _ _)
       (one_le_sched _ _ _ j),

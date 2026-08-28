@@ -11,6 +11,7 @@ fields mention only sentence emission and eventual theoremhood/refutability; the
 mention market prices or any desired asymptotic conclusion.
 -/
 import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -22,7 +23,7 @@ process.  This is the exact propositional boundary used for halting and inconsis
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
-  sentence_poly : RpnSentenceCodes sentence
+  sentence_poly : BigSentenceCodes sentence
   provable_of_true : ∀ n, truth n → ∃ k, sentence n ∈ DP.D k
 
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
@@ -50,8 +51,8 @@ Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
   consistencySentence : ℕ → Sentence
-  inconsistency_poly : RpnSentenceCodes inconsistencySentence
-  consistency_poly : RpnSentenceCodes consistencySentence
+  inconsistency_poly : BigSentenceCodes inconsistencySentence
+  consistency_poly : BigSentenceCodes consistencySentence
   inconsistency_provable : ∀ n, inconsistent n →
     ∃ k, inconsistencySentence n ∈ DP.D k
   consistency_disprovable : ∀ n, inconsistent n →

@@ -358,7 +358,7 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
     const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
-    sentence_poly := hsentence.of_eq (fun z ↦ by simp)
+    sentence_poly := (BigSentenceCodes.ofRpnSentenceCodes hsentence).of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     const_rank := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -526,10 +526,10 @@ def currentPriceFeature (φ : ℕ → Sentence) (n : ℕ) : EF :=
   EF.price (φ n) n
 
 lemma currentPriceFeature_generated (φ : ℕ → Sentence)
-    (hφ : RpnSentenceCodes φ) :
+    (hφ : BigSentenceCodes φ) :
     PGenerableWeighting (currentPriceFeature φ) := by
   exact {
-    polySeg := (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.id
+    polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.id
       PolyFueled.id).of_eq (fun n ↦ by simp [currentPriceFeature])
     rank_le := by intro n; simp [currentPriceFeature]
     closed := by intro n ρ V; simp [currentPriceFeature]
@@ -537,7 +537,7 @@ lemma currentPriceFeature_generated (φ : ℕ → Sentence)
 
 noncomputable def currentPriceNumericTarget
     {P : History} {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ)) :
     NumericQuoteTarget P (fun n ↦ (value n : ℝ)) where
@@ -554,7 +554,7 @@ current rational price and the literal price-feature/threshold affine mesh. -/
 noncomputable def currentPriceExpectationQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
@@ -702,7 +702,7 @@ noncomputable def gatedComplementAffine_polySequence
     coefficient_poly := BigSpliceStream.serialize_mul
       (BigSpliceStream.serialize_const (-scale))
       (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedComplementAffine]
     const_rank := by
@@ -740,7 +740,7 @@ noncomputable def gatedAffirmativeAffine_polySequence
     coefficient_poly := BigSpliceStream.serialize_mul
       (BigSpliceStream.serialize_const scale)
       (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedAffirmativeAffine]
     const_rank := by intro n; simp [gatedAffirmativeAffine]
@@ -1182,11 +1182,11 @@ noncomputable def AffineCombination.PolySequence.add
     hn.pair hoffset
   have hcoeff := BigSpliceStream.ifZero hA.coefficient_poly
     (hB.coefficient_poly.comp hqueryB) htest
-  have hsentence : RpnSentenceCodes (fun z ↦
+  have hsentence : BigSentenceCodes (fun z ↦
       if z.unpair.2 < hA.termCount z.unpair.1 then hA.sentence z
       else hB.sentence (Nat.pair z.unpair.1
         (z.unpair.2 - hA.termCount z.unpair.1))) :=
-    (RpnSentenceCodes.ifZero hA.sentence_poly
+    (BigSentenceCodes.ifZero hA.sentence_poly
       (hB.sentence_poly.comp hqueryB) htest).of_eq (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos (by omega : (z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0),
@@ -1505,7 +1505,7 @@ noncomputable def PolySequence.blockSum
     (hBconstRank : ∀ m k, (Bs (Nat.pair m k)).const.rank ≤ m)
     (hBcoeffRank : ∀ m k o, o < hB.termCount (Nat.pair m k) →
       (hB.coefficient (Nat.pair (Nat.pair m k) o)).rank ≤ m)
-    (pad : Sentence) (hpad : RpnSentenceCodes fun _ : ℕ => pad) :
+    (pad : Sentence) (hpad : BigSentenceCodes fun _ : ℕ => pad) :
     PolySequence (AffineCombination.blockSum Bs coeff cnt width pad) := by
   have hcntPF := Classical.choose_spec hcnt
   have hwidthPF := Classical.choose_spec hwidth
@@ -1580,7 +1580,7 @@ noncomputable def PolySequence.blockSum
       · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
       · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
     exact BigSpliceStream.serialize_mul (hcoeff.comp hkey) hif
-  · refine (RpnSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
+  · refine (BigSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
     · rw [if_pos (show _ = 0 from by omega), if_pos hlt]
@@ -2475,13 +2475,15 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
     by_cases hlt : z.unpair.2 < low z.unpair.1
     · rw [if_pos hlt, if_pos (by omega)]
     · rw [if_neg hlt, if_neg (by omega)]
-  have hsentence : RpnSentenceCodes (fun z ↦
+  have hsentence : BigSentenceCodes (fun z ↦
       if z.unpair.2 < low z.unpair.1 then
         (X z.unpair.1).gt ((z.unpair.2 : ℚ) / (low z.unpair.1 : ℚ))
       else (X z.unpair.1).gt
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))) := by
-    refine (RpnSentenceCodes.ifZero (hX.comp hqueryLow) (hX.comp hqueryHigh)
+    refine (BigSentenceCodes.ifZero
+      (BigSentenceCodes.ofRpnSentenceCodes (hX.comp hqueryLow))
+      (BigSentenceCodes.ofRpnSentenceCodes (hX.comp hqueryHigh))
       htest').of_eq (fun z ↦ ?_)
     simp only [Nat.unpair_pair]
     by_cases hlt : z.unpair.2 < low z.unpair.1
@@ -2752,7 +2754,7 @@ noncomputable def featureConstantAffine_polySequence
   termCount_poly := ⟨Nat.Partrec.Code.const 0, PolyFueled.const 0⟩
   const_poly := hH.polySeg
   coefficient_poly := BigSpliceStream.serialize_const 0
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+  sentence_poly := BigSentenceCodes.ofPolySentenceCodes
     ⟨Nat.Partrec.Code.const (Encodable.encode (⊥ : Sentence)), PolyFueled.const _⟩
   terms_eq := by intro n; simp [featureConstantAffine]
   const_rank := hH.rank_le
@@ -2848,7 +2850,7 @@ noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
     const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp hm.succ_comp⟩
-    sentence_poly := hsentence.of_eq (fun w ↦ by simp)
+    sentence_poly := (BigSentenceCodes.ofRpnSentenceCodes hsentence).of_eq (fun w ↦ by simp)
     terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
     const_rank := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
     coefficient_rank := by intro z j hj; simp [EF.rank]
@@ -2891,9 +2893,9 @@ lemma pairedPriceFeature_denote (φ : ℕ → Sentence) (P : History) (m k : ℕ
     (pairedPriceFeature φ (Nat.pair m k)).denote P = P m (φ k) := by
   simp [pairedPriceFeature]
 
-lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     PairedWeighting (pairedPriceFeature φ) where
-  polySeg := (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.right
+  polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.right
     PolyFueled.left).of_eq (fun z ↦ by simp [pairedPriceFeature])
   rank_le := by intro z; simp [pairedPriceFeature]
   closed := by intro z ρ V; simp [pairedPriceFeature]
@@ -3232,7 +3234,7 @@ lemma selfTrust_deferred_tendsto_zero
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (p : ℕ → ℚ) (hp : ∀ m, 0 ≤ p m ∧ p m ≤ 1)
     (pF : ℕ → EF) (hpF : PairedWeighting pF)
     (hpFmem : ∀ z, 0 ≤ (pF z).denote P ∧ (pF z).denote P ≤ 1)
@@ -3254,7 +3256,7 @@ lemma selfTrust_deferred_tendsto_zero
   have hpNeg : PairedWeighting pNeg := (PairedWeighting.const (-1)).mul hpF
   have hGNeg : PairedWeighting GNeg := (PairedWeighting.const (-1)).mul hG
   have hpG : PairedWeighting pG := hpF.mul hG
-  have hφ' : RpnSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
+  have hφ' : BigSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
   set Bs : ℕ → AffineCombination := fun z ↦
     ((((pairedExpectationBlocks A z).add
         ((pairedExpectationBlocks B z).scale (pNeg z))).add
@@ -3450,7 +3452,7 @@ concrete one-share portfolios; the outward sum is normalized by `1/2`. -/
 noncomputable def introspectionIntervalQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)
@@ -3523,7 +3525,7 @@ noncomputable def introspectionIntervalQuoteOfCode
     width_tendsto_zero := hδzero
     probability_bounds := hab
     quote := q.sentence
-    quote_codes := RpnSentenceCodes.ofPolySentenceCodes q.sentence_poly
+    quote_codes := BigSentenceCodes.ofPolySentenceCodes q.sentence_poly
     reflected := by
       intro n v hv
       exact q.reflected Q n v hv
@@ -3882,8 +3884,8 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
   let pFeature : ℕ → EF := AffineCombination.constantRatFeature p
   let lower : ℕ → EF := ctsIndFeature width pFeature price
   let upper : ℕ → EF := ctsIndFeature width price pFeature
-  have hquote : RpnSentenceCodes quote.sentence :=
-    RpnSentenceCodes.ofPolySentenceCodes quote.sentence_poly
+  have hquote : BigSentenceCodes quote.sentence :=
+    BigSentenceCodes.ofPolySentenceCodes quote.sentence_poly
   have hprice : PGenerableWeighting price :=
     currentPriceFeature_generated quote.sentence hquote
   have hpFeature : PGenerableWeighting pFeature :=
@@ -4188,7 +4190,7 @@ noncomputable def futurePriceQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     [IsLogicalInductor P DP]
@@ -4426,7 +4428,7 @@ noncomputable def selfTrustQuoteOfRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ)
+    (hφ : BigSentenceCodes φ)
     (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
@@ -4659,7 +4661,7 @@ theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -4705,7 +4707,7 @@ theorem lic_self_trust_ofRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A)
     (hB : LUV.RpnThresholdCodeSeq B)
@@ -4732,7 +4734,7 @@ theorem lic_expectations_of_probabilities_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -4764,7 +4766,7 @@ theorem lic_introspection_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)

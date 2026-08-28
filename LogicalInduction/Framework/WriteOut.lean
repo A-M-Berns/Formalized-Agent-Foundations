@@ -180,6 +180,21 @@ lemma ofRpnSentenceCodes {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨s, BigTokenStream.ofPolySegStream hs, hp⟩
 
+/-- A written-out canonical Polish stream instantiates the class.  The write-out mirror of
+`RpnSentenceCodes.ofCanonical`: the symbol count is polynomial, and now individual symbols
+may carry exponential values. -/
+lemma ofCanonical {φ : ℕ → Sentence}
+    (h : BigTokenStream fun n => rpn (φ n)) : BigSentenceCodes φ :=
+  ⟨_, h, fun n => by
+    simpa using parseRpn_rpn (φ n) [] (le_refl (rpn (φ n)).length)⟩
+
+/-- A value-bounded code sequence, in one step.  Composition of `ofRpnSentenceCodes` with
+`RpnSentenceCodes.ofPolySentenceCodes`; kept so a consumer holding the old certificate need
+not name both adapters. -/
+lemma ofPolySentenceCodes {φ : ℕ → Sentence} (h : PolySentenceCodes φ) :
+    BigSentenceCodes φ :=
+  ofRpnSentenceCodes (RpnSentenceCodes.ofPolySentenceCodes h)
+
 /-- **The point of the layer.**  Poly-fueled *digit* access to the sequence's Gödel codes
 — `DigitSentenceCodes`, which places no bound on the codes themselves — certifies the
 sentence sequence, by the two-token escape block.  `RpnSentenceCodes.ofPolySentenceCodes`
@@ -442,6 +457,45 @@ lemma ofPriceFree {A : ℕ → EF} (h : BigTokenStream (fun z => (A z).serialize
 
 end BigSpliceStream
 
+/-- Write-out mirror of `RpnSentenceCodes.modDispatch`: a `k`-way dispatch on `z % k`
+between finitely many written-out sentence families.  Same induction as the value-bounded
+version, with `BigSentenceCodes.ifZero` doing the branching. -/
+lemma BigSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → Sentence}
+    (hφ : ∀ j < k, BigSentenceCodes (φ j)) :
+    BigSentenceCodes (fun z => φ (z.unpair.2 % k) z.unpair.1) := by
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled k hk
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hrem : PolyFueled _ (fun z : ℕ => z.unpair.2 % k) :=
+    (PolyFueled.right.comp (hdm.comp PolyFueled.right)).of_eq (fun z => by
+      simp)
+  have hleft := PolyFueled.left
+  have H : ∀ m, m ≤ k → BigSentenceCodes (fun z =>
+      if z.unpair.2 % k < m then φ (z.unpair.2 % k) z.unpair.1
+      else φ 0 z.unpair.1) := by
+    intro m
+    induction m with
+    | zero =>
+        intro _
+        exact ((hφ 0 hk).comp hleft).of_eq (fun z => by simp)
+    | succ m ih =>
+        intro hm
+        have hmk : m < k := hm
+        have htest : PolyFueled _ (fun z : ℕ =>
+            (z.unpair.2 % k - m) + (m - z.unpair.2 % k)) :=
+          (hadd.comp ((subc_polyFueled.comp (hrem.pair (PolyFueled.const m))).pair
+            (subc_polyFueled.comp ((PolyFueled.const m).pair hrem)))).of_eq
+            (fun z => by simp)
+        refine (BigSentenceCodes.ifZero ((hφ m hmk).comp hleft)
+          (ih (le_of_lt hm)) htest).of_eq (fun z => ?_)
+        by_cases heq : z.unpair.2 % k = m
+        · rw [if_pos (by omega), if_pos (by omega), heq]
+        · rw [if_neg (by omega)]
+          by_cases hlt : z.unpair.2 % k < m + 1
+          · rw [if_pos hlt, if_pos (by omega)]
+          · rw [if_neg hlt, if_neg (by omega)]
+  exact (H k le_rfl).of_eq (fun z => by
+    rw [if_pos (Nat.mod_lt z.unpair.2 hk)])
+
 /-- **The write-out realization theorem**: a trader whose per-day trade serialization is
 written-out spliceable is efficiently computable.  The mirror of `RpnSpliceStream.ec`,
 with no polynomial bound on any emitted token's value.
@@ -468,6 +522,27 @@ lemma BigSpliceStream.ec (Tr : Trader)
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
           rw [dif_pos rank_le]
+
+/-- Write-out mirror of `EfficientlyComputable.ofSingleTradeBlocks`: a trader whose day-`n`
+strategy is the single trade `(f n, φ n)`, with a price-free coefficient stream and a
+*written-out* sentence family, is efficiently computable.  The value-bounded entry point
+cannot take an exponentially-named sentence; this one can.
+Paper node: `def:ec` -/
+lemma EfficientlyComputable.ofSingleTradeBlocksBig (Tr : Trader) (f : ℕ → EF)
+    (φ : ℕ → Sentence)
+    (hf : PolySegStream fun n => (f n).serialize)
+    (hfree : ∀ n, (f n).priceFree)
+    (hφ : BigSentenceCodes φ)
+    (hTr : ∀ n, (Tr.strat n).trades = [(f n, φ n)]) :
+    EfficientlyComputable Tr := by
+  have hfB : BigSpliceStream (fun n => (f n).serialize) :=
+    BigSpliceStream.ofPriceFree (BigTokenStream.ofPolySegStream hf) hfree
+  have hslot : BigSpliceStream (fun n => [6, Encodable.encode (φ n)]) :=
+    (BigSpliceStream.tradeSlot hφ PolyFueled.id).of_eq (fun _ => rfl)
+  refine BigSpliceStream.ec Tr ((hfB.append hslot).of_eq (fun n => ?_))
+  rw [hTr n]
+  simp [serializeTrades]
+
 
 /-! ## The write-out sequence classes for values
 

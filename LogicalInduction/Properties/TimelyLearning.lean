@@ -8,6 +8,7 @@ premise is not silently widened to an arbitrary Lean function.
 -/
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Framework.Expectations
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -34,7 +35,7 @@ This is one of the two discharges that make `thm:simcal`'s endpoint reach the pa
 hypothesis set: `AffineCombination.simcal` takes `PolySequence (sentenceAffine φ)` as an
 argument, and this constructs it from the paper's "`⟨φ⟩` is an e.c. sequence".
 Paper node: `thm:simcal` -/
-noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     PolySequence (sentenceAffine φ) := by
   exact {
     termCount := fun _ => 1
@@ -60,7 +61,7 @@ lemma sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2]
 
 /-- The one-share sentence family as an exact paper `BCS` witness. -/
-noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (P : History) : BoundedCombinationSequence (sentenceAffine φ) P where
   poly := sentenceAffine_polySequence φ hφ
   bounded := ⟨1, fun n => by simp [l1Norm, sentenceAffine, magnitude]⟩
@@ -92,7 +93,7 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
 the Appendix proof of `thm:perkno`. -/
 noncomputable def sentenceMinusProbability_polySequence
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p) :
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p) :
     PolySequence (sentenceMinusProbability φ p) := by
   exact {
     termCount := fun _ => 1
@@ -175,7 +176,7 @@ uniformly from that side.
 Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -205,7 +206,7 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
@@ -236,7 +237,7 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
@@ -321,7 +322,7 @@ target sequence pointwise.
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
@@ -351,7 +352,7 @@ The price range is carried by `IsLogicalInductor`; plausible-world existence rem
 explicit deductive-process hypothesis.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => P n (φ n)) atTop =
         liminf (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) atTop ∧

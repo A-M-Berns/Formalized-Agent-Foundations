@@ -291,7 +291,7 @@ structure PolySequence (As : ℕ → AffineCombination) where
   termCount_poly : ∃ c, PolyFueled c termCount
   const_poly : BigSpliceStream (fun n => (As n).const.serialize)
   coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
-  sentence_poly : RpnSentenceCodes sentence
+  sentence_poly : BigSentenceCodes sentence
   terms_eq : ∀ n,
     (As n).terms = (List.range (termCount n)).map (fun j =>
       (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
@@ -360,7 +360,7 @@ lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
   have hcanonical := hmember.pair hterm
   have hcoeff := h.coefficient_poly.comp hcanonical
   have hprice := BigSpliceStream.serialize_price
-    (BigSentenceCodes.ofRpnSentenceCodes h.sentence_poly) hcanonical hday
+    h.sentence_poly hcanonical hday
   have hblock : BigSpliceStream (fun q =>
       (h.coefficient (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize ++
         (EF.price (h.sentence (Nat.pair q.unpair.1.unpair.1 q.unpair.2))

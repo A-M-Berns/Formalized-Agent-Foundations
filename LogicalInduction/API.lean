@@ -8,6 +8,7 @@ The recommended import for research that builds on the logical-induction framewo
 
 ```lean
 import LogicalInduction.API
+import LogicalInduction.Framework.WriteOut
 ```
 
 It gives the paper's criterion at the paper's own quantifier, the §4 property tail, and
@@ -39,7 +40,7 @@ Everything else in this file's efficiency vocabulary exists to serve those two.
   `MachineEfficientTrader`.  So a fuel certificate is a *sufficient* route into the
   paper's class.  The converse is not proved and is not claimed; nothing paper-facing
   depends on it.  The high-level constructors clients actually use —
-  `RpnSentenceCodes`, `BigSpliceStream.ec`,
+  `BigSentenceCodes`, `BigSpliceStream.ec`,
   `EfficientlyComputable.ofSingleTradeBlocks` / `.ofTradeBlocks` — build these
   certificates.
 * `IsLogicalInductor` is the **compatibility predicate**: the same criterion stated over

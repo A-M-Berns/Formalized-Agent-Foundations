@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.SemanticSource
 import LogicalInduction.Construction.Witnesses.SemanticProduct
 import LogicalInduction.Construction.Witnesses.SemanticQuote
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Joint semantic-source/product stress tests
@@ -66,8 +67,8 @@ lemma semanticFreshIncreasingLUVSeq_fresh :
 lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
     LUV.RpnThresholdCodeSeq semanticFreshIncreasingLUVSeq := by
   obtain ⟨c, hc⟩ := semanticValuedDiagonalMeshSelector_polyFueled
-  have h := RpnSentenceCodes.ifZero (RpnSentenceCodes.const (⊥ : Sentence))
-    (RpnSentenceCodes.const (⊤ : Sentence)) hc
+  have h := BigSentenceCodes.ifZero (BigSentenceCodes.const (⊥ : Sentence))
+    (BigSentenceCodes.const (⊤ : Sentence)) hc
   refine h.of_eq (fun m => ?_)
   rw [semanticFreshIncreasingLUVSeq_gt]
   by_cases hk0 : m.unpair.2.unpair.1 = 0

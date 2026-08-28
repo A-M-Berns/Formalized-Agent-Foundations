@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Framework.Emission
 import LogicalInduction.Properties
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Representation witnesses for the efficient-computability side conditions
@@ -441,7 +442,7 @@ The bounded universal-emulator extension below removes this stronger clock assum
 arbitrary computable/c.e. source programs.
 Paper node: `def:ec` -/
 def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
-    (hsource : RpnSentenceCodes source) :
+    (hsource : BigSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
   sequence_poly := hsource.comp PolyFueled.left
@@ -528,7 +529,7 @@ Paper node: `def:ec`, `thm:obu` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
-  sequence_poly := RpnSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
+  sequence_poly := BigSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
   repeats := by
     intro i N
     -- `ceRepeatSeq h i` is some `source i'`; that member recurs at arbitrarily large fuel.

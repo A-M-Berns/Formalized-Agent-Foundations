@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Diagnosing the `thm:ccee` product slack: exact reflection under a definitional extension
@@ -48,7 +49,7 @@ factors pins `productAtom n r` to exactly `x·c > r`, in both directions — i.e
 
 Indexing the factors by `⟨k,i⟩` rather than by an encoded rational is what makes the
 process's own emitter *derivable* from the two families' `def:ec` certificates
-(`LUV.RpnThresholdCodeSeq`, via `RpnSentenceCodes.primrec`) instead of an extra
+(`LUV.RpnThresholdCodeSeq`, via `BigSentenceCodes.primrec`) instead of an extra
 caller-facing datum: the schema's threshold queries land on exactly the packed index
 `⟨n,⟨k,i⟩⟩` that certificate is stated at.
 
@@ -708,7 +709,7 @@ product is reachable here at all.  And because the schema's two factors are inde
 `def:ec`'s block interface already indexes thresholds, the process's own emitter is
 *derived* from `LUV.RpnThresholdCodeSeq X` and `LUV.RpnThresholdCodeSeq W` — the very
 premises the mesh endpoint already carries — rather than assumed as a new caller-facing
-certificate.  `RpnSentenceCodes.primrec` turns the `∃`-shaped block certificate into the
+certificate.  `BigSentenceCodes.primrec` turns the `∃`-shaped block certificate into the
 whole-value naming program a process definition consumes. -/
 
 section
@@ -750,11 +751,11 @@ lemma productDefSentence_computable {X W : ℕ → LUV}
   -- The two threshold emitters, derived from the `def:ec` block certificates.
   have heX : Primrec fun e : ℕ => Encodable.encode
       ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)) := by
-    have h := (RpnSentenceCodes.primrec hX).comp (Primrec₂.natPair.comp hn hzs)
+    have h := (BigSentenceCodes.primrec hX).comp (Primrec₂.natPair.comp hn hzs)
     simpa only [Nat.unpair_pair, meshIndexRat] using h
   have heW : Primrec fun e : ℕ => Encodable.encode
       ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)) := by
-    have h := (RpnSentenceCodes.primrec hW).comp (Primrec₂.natPair.comp hn hzt)
+    have h := (BigSentenceCodes.primrec hW).comp (Primrec₂.natPair.comp hn hzt)
     simpa only [Nat.unpair_pair, meshIndexRat] using h
   -- The fresh product atom's code.
   have heP : Primrec fun e : ℕ =>

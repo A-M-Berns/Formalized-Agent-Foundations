@@ -3,6 +3,7 @@ import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # The provability deductive process and the unconditional `LIA` endpoints
@@ -549,7 +550,7 @@ Paper node: `thm:halts` -/
 theorem lia_learns_halting_patterns_unconditional
     (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
     (fun n => liaHistory (theoremDP T) n
       ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
@@ -600,7 +601,7 @@ noncomputable def theoremDiagonalQuoteCode (p : ℚ) :
 /-- `thm:epr`, unconditional over `LIA`.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_ofCode_unconditional
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, liaHistory (theoremDP T) n (φ n) = (value n : ℝ)) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
@@ -626,7 +627,7 @@ theorem lic_iterated_expectations_ofCode_unconditional
 /-- `thm:ref` (introspection), unconditional over `LIA`.
 Paper node: `thm:ref` -/
 theorem lic_introspection_ofCode_unconditional
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
@@ -689,7 +690,7 @@ Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       v.ValuesAt (Y n) (liaHistory (theoremDP T) (f n) (φ n))) :
     (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
@@ -732,7 +733,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF)
     (hp : GeneratedRatFeature (liaHistory (theoremDP T)) p pFeature)
     (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
@@ -806,7 +807,7 @@ theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
       ↑(haltingClaimInput (machines n) (inputs n))])) :
     (fun n => liaHistory (theoremDP T) n
@@ -822,7 +823,7 @@ arbitrary computable `f` — no growth bound — which is the paper's own quanti
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
     (fun n => liaHistory (theoremDP T) n

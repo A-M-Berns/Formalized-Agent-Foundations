@@ -7,6 +7,7 @@ the exclusive–exhaustive families of `thm:lex` proper.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -301,7 +302,7 @@ def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ
 sentence sequences. -/
 noncomputable def exclusiveExhaustive_polySequence
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
+    (hφ : ∀ j < k, BigSentenceCodes (φ j)) :
     AffineCombination.PolySequence (exclusiveExhaustiveAffine k φ) := by
   exact {
     termCount := fun _ => k
@@ -310,7 +311,7 @@ noncomputable def exclusiveExhaustive_polySequence
     termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
     const_poly := BigSpliceStream.serialize_const (-(1 / (k : ℚ)))
     coefficient_poly := BigSpliceStream.serialize_const (1 / (k : ℚ))
-    sentence_poly := RpnSentenceCodes.modDispatch hk hφ
+    sentence_poly := BigSentenceCodes.modDispatch hk hφ
     terms_eq := by
       intro n
       rw [exclusiveExhaustiveAffine]
@@ -358,7 +359,7 @@ Paper node: `thm:lex` -/
 theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, RpnSentenceCodes (φ j))
+    (hφ : ∀ j < k, BigSentenceCodes (φ j))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :

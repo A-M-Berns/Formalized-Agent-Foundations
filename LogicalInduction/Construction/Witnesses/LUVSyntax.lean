@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Properties.ExpectationProperties
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete syntax for polynomial LUV-combination sequences
@@ -221,8 +222,9 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     coefficient_poly := BigSpliceStream.of_eq
       (BigSpliceStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
         simp [meshCoefficient])
-    sentence_poly := (hthreshold.comp hquery).of_eq (fun z ↦ by
-      simp [meshSentence])
+    sentence_poly :=
+      (BigSentenceCodes.ofRpnSentenceCodes (hthreshold.comp hquery)).of_eq (fun z ↦ by
+        simp [meshSentence])
     terms_eq := ?_
     const_rank := S.const_rank
     coefficient_rank := ?_
@@ -982,7 +984,9 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     termCount_poly := ⟨_, hcountPF⟩
     const_poly := S.const_poly.comp hsourcePF
     coefficient_poly := BigSpliceStream.serialize_mul hcoeffSource hinvPrecision
-    sentence_poly := (hthreshold.comp hthresholdQuery).of_eq (fun z ↦ by simp)
+    sentence_poly :=
+      (BigSentenceCodes.ofRpnSentenceCodes (hthreshold.comp hthresholdQuery)).of_eq
+        (fun z ↦ by simp)
     terms_eq := ?_
     const_rank := ?_
     coefficient_rank := ?_

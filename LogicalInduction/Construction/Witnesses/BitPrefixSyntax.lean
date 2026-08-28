@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Properties.UniversalSemimeasure
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete Boolean-prefix syntax for `thm:dus`
@@ -16,7 +17,7 @@ explicit emitter (`ordinaryBitPrefixSentences`).
 `not_polySentenceCodes_bitPrefixSentence` shows a `⋏` node costs two nested `Nat.pair`s
 while a `List Bool` cons costs one, so along the all-ones strings the prefix sentence's code
 (`≥ 2 ^ 4 ^ m`) outruns every polynomial in its own enumeration index (`≤ 5 ^ 2 ^ m`).  The
-repo's symbol-metered interface `RpnSentenceCodes` (`Framework/RpnSplice.lean`) meters the
+repo's symbol-metered interface `BigSentenceCodes` (`Framework/RpnSplice.lean`) meters the
 *canonical Polish run* instead, which for the length-`m` prefix conjunction is `Θ(m)` tiny
 tokens — so the field becomes dischargeable without changing the sentences named.
 
@@ -122,7 +123,7 @@ symbols; the emitter discharging the symbol-metered form is built below.
 length `m`, whereas the stock `List Bool` code — the enumeration index the bound is measured
 against — grows only with exponent `2 ^ m`.  The gap doubles the exponent per bit, so no
 polynomial covers it.  This is exactly the whole-value/symbol-metered mismatch documented at
-`RpnSentenceCodes` (`Framework/RpnSplice.lean`), which meters symbols instead of the pair-code
+`BigSentenceCodes` (`Framework/RpnSplice.lean`), which meters symbols instead of the pair-code
 value and is the interface a repair should use. -/
 
 private lemma sq_le_pair (x y : ℕ) : y * y ≤ Nat.pair x y := by
@@ -234,7 +235,7 @@ lemma not_isPolyBounded_bitPrefixSentence_codes (atom : ℕ → Sentence) :
 
 /-- **The whole-value naming certificate has no inhabitant.**  Consequently
 `BitPrefixSentences.prefix_codes` cannot be metered in the pair-code value, which is why it
-is stated with the symbol-metered `RpnSentenceCodes`; `ordinaryBitPrefixCodes` below
+is stated with the symbol-metered `BigSentenceCodes`; `ordinaryBitPrefixCodes` below
 discharges that form for exactly the same sentences.
 Paper node: `thm:dus` -/
 lemma not_polySentenceCodes_bitPrefixSentence (atom : ℕ → Sentence) :
@@ -638,9 +639,10 @@ lemma prefixRun_polySegStream : PolySegStream prefixRun := by
 
 /-- **The prefix-conjunction sequence is symbol-metered efficiently computable.** -/
 lemma rpnSentenceCodes_bitPrefixSentence :
-    RpnSentenceCodes (fun i => bitPrefixSentence Formula.atom (bitStringEnumeration i)) :=
-  RpnSentenceCodes.ofCanonical
-    (prefixRun_polySegStream.of_eq (fun i => prefixRun_eq i))
+    BigSentenceCodes (fun i => bitPrefixSentence Formula.atom (bitStringEnumeration i)) :=
+  BigSentenceCodes.ofCanonical
+    (BigTokenStream.ofPolySegStream
+      (prefixRun_polySegStream.of_eq (fun i => prefixRun_eq i)))
 
 end BitChain
 
@@ -649,7 +651,7 @@ the canonical Polish run of the length-`m` prefix conjunction is `3m + 3` tokens
 emitted by walking the enumeration index's own `Nat.pair` chain.
 Paper node: `thm:dus` -/
 lemma ordinaryBitPrefixCodes :
-    RpnSentenceCodes (fun i ↦
+    BigSentenceCodes (fun i ↦
       bitPrefixSentence ordinaryIndependentBitAtoms.atom (bitStringEnumeration i)) :=
   BitChain.rpnSentenceCodes_bitPrefixSentence
 
@@ -658,7 +660,7 @@ naming certificate for the actual literal conjunctions.
 Paper node: `thm:dus` -/
 def bitPrefixSentencesOfIndependentAtoms
     {DP : DeductiveProcess} (I : IndependentBitAtoms DP)
-    (C : RpnSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i))) :
+    (C : BigSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i))) :
     BitPrefixSentences DP where
   atom := I.atom
   prefixSentence := bitPrefixSentence I.atom
@@ -684,7 +686,7 @@ Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_ofIndependentAtoms
     {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP)
-    (C : RpnSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i)))
+    (C : BigSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i)))
     {M : LowerSemicomputableContinuousSemimeasure}
     (A : DUSApproximationPresentation M
       (bitPrefixSentencesOfIndependentAtoms I C))

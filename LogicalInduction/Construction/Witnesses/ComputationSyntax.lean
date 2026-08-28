@@ -4,6 +4,7 @@ import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.Syntax.Predicate.Rew
 import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
 import Mathlib.Computability.Ackermann
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete computation syntax and arithmetic-theory representation
@@ -315,46 +316,50 @@ structure PolyNatCodes (values : ℕ → ℕ) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code values
 
-lemma computationClaimSentence_poly
+/-- The claim name is assembled from the machine code, the schema and the input by
+`Nat.pair` and `+1` alone — nothing reads the value back — so digit access to the parts
+gives digit access to the whole.  This is the write-out rendering of the paper's e.c.
+requirement: polynomially many digits, value free to be exponential. -/
+lemma computationClaimSentence_digits
     (kind : ComputationClaimKind) (schema : ArithmeticSemisentence 1)
-    {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => computationClaimSentence ⟨kind, schema, input n⟩) := by
-  let hclaim := (PolyFueled.const kind.godelCode).pair
-    ((PolyFueled.const (Encodable.encode schema)).pair hinput.code_poly)
-  refine ⟨_, (((PolyFueled.const 1).pair hclaim).succ_comp).of_eq (fun n => ?_)⟩
-  rfl
+    {input : ℕ → ℕ} (hinput : BigDigits input) :
+    DigitSentenceCodes (fun n => computationClaimSentence ⟨kind, schema, input n⟩) := by
+  have hclaim := (BigDigits.const kind.godelCode).natPair
+    ((BigDigits.const (Encodable.encode schema)).natPair hinput)
+  exact ((BigDigits.const 1).natPair hclaim).succ.of_eq (fun _ => rfl)
 
-def haltingClaimInput_poly {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs) :
-    PolyNatCodes (fun n => haltingClaimInput (machines n) (inputs n)) :=
-  ⟨_, (hm.code_poly.pair hi.code_poly).of_eq (fun _ => rfl)⟩
+def haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
+    BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
+  (hm.natPair hi).of_eq (fun _ => rfl)
 
-/-- The deferred-horizon claim name is polynomial in the day for **every** computable
+/-- The deferred-horizon claim name is write-out in the day for **every** computable
 horizon: `⌜f⌝` enters as a constant and the day enters unevaluated.  No hypothesis on `f`
 appears — this is the whole point of the deferred schema. -/
-def boundedHaltingClaimInput_poly
+def boundedHaltingClaimInput_digits
     {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (horizon : Nat.Partrec.Code) :
-    PolyNatCodes (fun n => boundedHaltingClaimInput (machines n) (inputs n) horizon n) :=
-  ⟨_, ((hm.code_poly.pair hi.code_poly).pair
-    ((PolyFueled.const (Encodable.encode horizon)).pair PolyFueled.id)).of_eq (fun _ => rfl)⟩
+    BigDigits (fun n => boundedHaltingClaimInput (machines n) (inputs n) horizon n) :=
+  ((hm.natPair hi).natPair
+    ((BigDigits.const (Encodable.encode horizon)).natPair
+      (BigDigits.of_polyFueled PolyFueled.id))).of_eq (fun _ => rfl)
 
-lemma haltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => haltingClaimSentence (input n)) :=
-  computationClaimSentence_poly .halting universalHaltingSchema hinput
+lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
+    DigitSentenceCodes (fun n => haltingClaimSentence (input n)) :=
+  computationClaimSentence_digits .halting universalHaltingSchema hinput
 
-lemma boundedHaltingClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
-  computationClaimSentence_poly .boundedHalting universalBoundedHaltingSchema hinput
+lemma boundedHaltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
+    DigitSentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
+  computationClaimSentence_digits .boundedHalting universalBoundedHaltingSchema hinput
 
-lemma inconsistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => inconsistencyClaimSentence (input n)) :=
-  computationClaimSentence_poly .inconsistency universalHaltingSchema hinput
+lemma inconsistencyClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
+    DigitSentenceCodes (fun n => inconsistencyClaimSentence (input n)) :=
+  computationClaimSentence_digits .inconsistency universalHaltingSchema hinput
 
-lemma consistencyClaimSentence_poly {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => consistencyClaimSentence (input n)) :=
-  computationClaimSentence_poly .consistency (∼universalHaltingSchema) hinput
+lemma consistencyClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
+    DigitSentenceCodes (fun n => consistencyClaimSentence (input n)) :=
+  computationClaimSentence_digits .consistency (∼universalHaltingSchema) hinput
 
 /-! ## The narrow background-theory translation premise -/
 
@@ -395,7 +400,7 @@ Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm
 structure SemidecidableComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
-  input_poly : PolyNatCodes input
+  input_poly : BigDigits input
   truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
 
 /-- The paper's `f` — an arbitrary computable step budget, presented by the program `⌜f⌝`
@@ -428,13 +433,50 @@ lemma not_polyNatCodes_ack : ¬Nonempty (PolyNatCodes (fun n => _root_.ack n n))
   rintro ⟨⟨_, hpoly⟩⟩
   exact _root_.not_primrec_ack_self hpoly.primrec
 
+/-! ### Strictness of the write-out machine/input classes
+
+The paper's `⟨m⟩` and `⟨x⟩` are objects a polynomial-time machine can *write down*
+(tex:1931-1933).  A poly-time writer emits polynomially many **symbols**, so it can name an
+`n`-bit object, whose numeric value is `2^n`.  The two witnesses below show that this is a
+real gap and not a bookkeeping preference: the same sequence is admissible for the write-out
+class and provably inadmissible for the whole-value one. -/
+
+/-- **Input strictness.**  `xₙ = 2ⁿ` is an `n`-bit string — the paper's own `⟨x⟩` shape — so a
+poly-time writer emits it, and `BigDigits` accepts it.  Its numeric *value* is exponential, so
+`PolyNatCodes` rejects it. -/
+lemma bigDigits_two_pow_not_polyNatCodes :
+    BigDigits (fun n => 2 ^ n) ∧ ¬ Nonempty (PolyNatCodes (fun n => 2 ^ n)) :=
+  ⟨bigDigits_two_pow, fun ⟨h⟩ => not_polyFueled_two_pow h.code h.code_poly⟩
+
+/-- A machine sequence whose Gödel value is exactly `2ⁿ`.  `Nat.Partrec.Code` is
+`Denumerable`, so every natural names a machine and this is well defined; the point is not
+that the machine computes anything interesting, but that its *description* costs `n` digits
+while its *code* is exponential. -/
+noncomputable def twoPowMachine (n : ℕ) : Nat.Partrec.Code :=
+  Denumerable.ofNat Nat.Partrec.Code (2 ^ n)
+
+@[simp] lemma encode_twoPowMachine (n : ℕ) :
+    Encodable.encode (twoPowMachine n) = 2 ^ n :=
+  Denumerable.encode_ofNat _
+
+/-- **Machine strictness.**  `twoPowMachine` has polynomially many digits and an exponential
+Gödel value, so `DigitMachineCodes` accepts it and `PolyMachineCodes` rejects it.  This is the
+`thm:halts`/`thm:loops`/`thm:dontwait` analogue of
+`digitRatCodes_two_pow_inv_not_polyRatCodes`. -/
+lemma digitMachineCodes_twoPowMachine_not_polyMachineCodes :
+    DigitMachineCodes twoPowMachine ∧ ¬ Nonempty (PolyMachineCodes twoPowMachine) := by
+  refine ⟨bigDigits_two_pow.of_eq (fun n => (encode_twoPowMachine n).symm), ?_⟩
+  rintro ⟨h⟩
+  exact not_polyFueled_two_pow h.code
+    (h.code_poly.of_eq (fun n => encode_twoPowMachine n))
+
 /-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
 step budget being an arbitrary computable `f` named by its program.
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
   input : ℕ → ℕ
-  input_poly : PolyNatCodes input
+  input_poly : BigDigits input
   steps : ℕ → ℕ
   horizon : ComputableHorizon steps
   truth_iff : ∀ n, truth n ↔ CodeHaltsWithin machine (input n) (steps n)
@@ -474,7 +516,7 @@ noncomputable def ordinarySemidecidableComputation :
     SemidecidableComputation (fun n => 0 < n) where
   machine := positiveHaltMachine
   input n := n
-  input_poly := ⟨_, PolyFueled.id⟩
+  input_poly := BigDigits.of_polyFueled PolyFueled.id
   truth_iff n := (positiveHaltMachine_halts_iff n).symm
 
 /-- **N+.** The bounded-computation premise is inhabited, with a genuinely index-varying
@@ -486,7 +528,7 @@ Paper node: `thm:pac`, `thm:pazfc` -/
 noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
   machine := Nat.Partrec.Code.zero
   input _ := 0
-  input_poly := ⟨_, PolyFueled.const 0⟩
+  input_poly := BigDigits.const 0
   steps n := n
   horizon := .of Computable.id
   truth_iff n := by
@@ -509,9 +551,9 @@ noncomputable def representedDecidableClaimsOfComputation
     RepresentedDecidableClaims DP truth where
   sentence n := boundedHaltingClaimSentence
     (boundedHaltingClaimInput C.machine (C.input n) C.horizon.program n)
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly <|
-    boundedHaltingClaimInput_poly
-      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly C.horizon.program
+  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <| boundedHaltingClaimSentence_digits <|
+    boundedHaltingClaimInput_digits
+      (BigDigits.const (Encodable.encode C.machine)) C.input_poly C.horizon.program
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
     apply (re_complete (T := T) universalBoundedHalts_re).mp
@@ -535,12 +577,10 @@ noncomputable def inconsistentTheoryClaimsOfComputation
     (haltingClaimInput C.machine (C.input n))
   consistencySentence n := consistencyClaimSentence
     (haltingClaimInput C.machine (C.input n))
-  inconsistency_poly := RpnSentenceCodes.ofPolySentenceCodes <| inconsistencyClaimSentence_poly <|
-    haltingClaimInput_poly
-      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
-  consistency_poly := RpnSentenceCodes.ofPolySentenceCodes <| consistencyClaimSentence_poly <|
-    haltingClaimInput_poly
-      ⟨_, PolyFueled.const (Encodable.encode C.machine)⟩ C.input_poly
+  inconsistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| inconsistencyClaimSentence_digits <|
+    haltingClaimInput_digits (BigDigits.const (Encodable.encode C.machine)) C.input_poly
+  consistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| consistencyClaimSentence_digits <|
+    haltingClaimInput_digits (BigDigits.const (Encodable.encode C.machine)) C.input_poly
   inconsistency_provable n hn := by
     apply Q.inconsistency_enters
     apply (re_complete (T := T) universalCodeHalts_re).mp
@@ -557,11 +597,12 @@ noncomputable def representedHaltingClaims
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T)
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs) :
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
     RepresentedSemidecidableClaims DP
       (fun n => CodeHalts (machines n) (inputs n)) where
   sentence n := haltingClaimSentence (haltingClaimInput (machines n) (inputs n))
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| haltingClaimSentence_poly (haltingClaimInput_poly hm hi)
+  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <|
+    haltingClaimSentence_digits (haltingClaimInput_digits hm hi)
   provable_of_true n hn := by
     apply Q.halting_enters
     apply (re_complete (T := T) universalCodeHalts_re).mp
@@ -574,14 +615,14 @@ noncomputable def representedBoundedHaltingClaims
     [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     (Q : ComputationTheoryPresentation DP T)
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons) :
     RepresentedDecidableClaims DP
       (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)) where
   sentence n := boundedHaltingClaimSentence
     (boundedHaltingClaimInput (machines n) (inputs n) hh.program n)
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes <| boundedHaltingClaimSentence_poly
-    (boundedHaltingClaimInput_poly hm hi hh.program)
+  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <| boundedHaltingClaimSentence_digits
+    (boundedHaltingClaimInput_digits hm hi hh.program)
   provable_of_true n hn := by
     apply Q.boundedHalting_enters
     apply (re_complete (T := T) universalBoundedHalts_re).mp
@@ -652,7 +693,7 @@ theorem lic_learns_halting_patterns_ofComputation
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n ((representedHaltingClaims Q machines inputs hm hi).sentence n)) ≈ₙ
@@ -668,7 +709,7 @@ theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
       ↑(haltingClaimInput (machines n) (inputs n))]))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -687,7 +728,7 @@ theorem lic_does_not_anticipate_halting_ofComputation
     (Q : ComputationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
+    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -735,8 +776,10 @@ lemma computationRepresentation_negative_path
 #print axioms universalBoundedSchemas_exclusive
 #print axioms ComputableHorizon.ackermann
 #print axioms not_polyNatCodes_ack
+#print axioms bigDigits_two_pow_not_polyNatCodes
+#print axioms digitMachineCodes_twoPowMachine_not_polyMachineCodes
 #print axioms ComputationClaim.godelCode_injective
-#print axioms computationClaimSentence_poly
+#print axioms computationClaimSentence_digits
 #print axioms representedDecidableClaimsOfComputation
 #print axioms inconsistentTheoryClaimsOfComputation
 #print axioms representedHaltingClaims

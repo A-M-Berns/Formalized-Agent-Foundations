@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.LIAComputation
 import LogicalInduction.Framework.RpnComputation
 import Mathlib.Data.Rat.Denumerable
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete compiler for the bounded LIA evaluator
@@ -3752,6 +3753,30 @@ lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
 Used where a *value* code is genuinely required (market quote tables keyed by sentence
 code), as opposed to symbol-metered emission. -/
 lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
+    ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
+  obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))
+  exact ⟨c, fun n => by rw [hc]; exact Part.mem_some _⟩
+
+/-- The write-out mirror of `RpnSentenceCodes.primrec`: a written-out sentence stream is
+primitive recursive, via `BigTokenStream.primrec`.  Primitive recursion carries no time
+budget, so reassembling an exponentially-named code here is legitimate — this is the route
+by which a market quote table keyed by sentence code accepts write-out data. -/
+lemma BigSentenceCodes.primrec {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
+    Primrec fun n => Encodable.encode (φ n) := by
+  obtain ⟨s, hs, hp⟩ := h
+  have hsp : Primrec s := hs.primrec
+  have hparse : Primrec fun n => parseRpnC (s n).length (s n) :=
+    parseRpnC_prim.comp (Primrec.list_length.comp hsp) hsp
+  have hmap : Primrec fun n =>
+      (parseRpnC (s n).length (s n)).map Prod.fst :=
+    Primrec.option_map hparse (Primrec.fst.comp Primrec.snd).to₂
+  refine ((Primrec.option_getD.comp hmap (Primrec.const 0)).of_eq fun n => ?_)
+  rw [parseRpnC_eq, hp n]
+  rfl
+
+/-- The whole-value naming program extracted from a written-out sentence sequence. -/
+lemma BigSentenceCodes.exists_code {φ : ℕ → Sentence} (h : BigSentenceCodes φ) :
     ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
   obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp h.primrec))

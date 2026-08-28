@@ -2,6 +2,7 @@ import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.MachineEfficiency
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.Introspection
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # A refutation of the unrestricted finite-day perturbation theorem
@@ -447,17 +448,19 @@ lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 6 n + 5] := rfl
 lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 7 n + 5] := rfl
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_schedAtom : RpnSentenceCodes schedAtom := by
+lemma rpnSentenceCodes_schedAtom : BigSentenceCodes schedAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 6).pair PolyFueled.id).addConst 5
-  exact RpnSentenceCodes.ofCanonical
-    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+  exact BigSentenceCodes.ofCanonical
+    ((BigTokenStream.ofPolySegStream
+      (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
       (fun n => (rpn_schedAtom n).symm))
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_signAtom : RpnSentenceCodes signAtom := by
+lemma rpnSentenceCodes_signAtom : BigSentenceCodes signAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
-  exact RpnSentenceCodes.ofCanonical
-    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+  exact BigSentenceCodes.ofCanonical
+    ((BigTokenStream.ofPolySegStream
+      (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
       (fun n => (rpn_signAtom n).symm))
 
 /-! ## The perturbed market
@@ -690,7 +693,7 @@ lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
   · rw [if_pos h, if_pos h]; ring
   · rw [if_neg h, if_neg h]; ring
 
-/-- **The advice trader is machine-efficient**, given `RpnSentenceCodes` certificates for
+/-- **The advice trader is machine-efficient**, given `BigSentenceCodes` certificates for
 the two advice-atom families and for the traded diagonal.
 
 Route note: the coefficient carries *price* leaves, which is the whole point of the
@@ -701,20 +704,20 @@ construction, so the price-free entry points
 corresponding advice-atom code stream.
 Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
 lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
-    (hsa : RpnSentenceCodes sa) (hsi : RpnSentenceCodes si) (hχ : RpnSentenceCodes χ) :
+    (hsa : BigSentenceCodes sa) (hsi : BigSentenceCodes si) (hχ : BigSentenceCodes χ) :
     MachineEfficientTrader (adviceTrader sa si χ) := by
   have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
   have hgate : BigSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
-    BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hsa) PolyFueled.id hday
+    BigSpliceStream.serialize_price hsa PolyFueled.id hday
   have hsign : BigSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
-    BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hsi) PolyFueled.id hday
+    BigSpliceStream.serialize_price hsi PolyFueled.id hday
   have hcoef : BigSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
     BigSpliceStream.serialize_mul hgate
       (BigSpliceStream.serialize_add
         (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const 2) hsign)
         (BigSpliceStream.serialize_const (-1)))
   have htrade : BigSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
-    BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hχ) PolyFueled.id
+    BigSpliceStream.tradeSlot hχ PolyFueled.id
   refine EfficientlyComputable.toMachine
     (BigSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
   simp [adviceTrader, serializeTrades]
