@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 37 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 40 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 6 | proved with an explicitly named representation interface or class restriction retained |
+| **qualified** | 3 | proved with an explicitly named representation interface or class restriction retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 12 of
-them at exact or strengthened, 6 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
+them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -60,28 +60,45 @@ the trader class with the fuel calculus as its certificate (see *The modeling bo
 "exact" means the paper's statement is reached *within that model*, not that the model
 equivalence is proved.
 
-Second, the remaining `qualified` count is still dominated by one cause: a **whole-value**
-efficiency hypothesis where the paper asks only for efficient computability. `PolyFueled`
-bundles `IsPolyBounded f` — a bound on the function's *output value* — so `PolyNatCodes` and
-`PolyMachineCodes` admit only sequences whose values grow polynomially, while the paper's
-e.c. is polynomial *time*: poly time to write an object bounds its **symbols**, permitting
-values up to exponential. `not_polyFueled_two_pow` proves that restriction strict.
+Second, the cause that used to dominate the `qualified` count — a **whole-value**
+efficiency hypothesis where the paper asks only for efficient computability — is now gone
+from the paper-facing surface. `PolyFueled` bundles `IsPolyBounded f`, a bound on the
+function's *output value*, so `PolyNatCodes` and `PolyMachineCodes` admit only sequences
+whose values grow polynomially, while the paper's e.c. is polynomial *time*: poly time to
+write an object bounds its **symbols**, permitting values up to exponential.
+`not_polyFueled_two_pow` proves that restriction strict.
 
-The symbol-metered *write-out* classes now exist — `BigDigits` for naturals, `DigitRatCodes`
-for rationals, `DigitMachineCodes` for machine codes, and `BigSpliceStream` for the emission
-surface they are consumed on — and `bigDigits_two_pow_not_polyFueled`,
+The symbol-metered *write-out* classes exist for every kind of datum the property tail
+consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
+machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
+the emission surface they are consumed on — and `bigDigits_two_pow_not_polyFueled`,
 `bigTokenStream_not_polySegStream` and `digitRatCodes_two_pow_inv_not_polyRatCodes` witness
 that each strictly contains its value-bounded predecessor. Building the rational one retired
 exactly the four rows this classification predicted it would: `thm:ref`, `thm:st`,
 `thm:perkno` and `thm:simcal` now take the paper's own class, so `δₙ = 2^(−n)` and
 `pₙ = 1 − 2^(−n)` are admissible data.
 
-Three nodes still carry it. `thm:halts`, `thm:loops` and `thm:dontwait` take the
-`PolyMachineCodes`/`PolyNatCodes` pair, where the mismatch is sharpest — tex:1931-1933 asks
-for poly time to *write out* `⟨m⟩`, and a length-`n` bitstring has value `2^n`. The classes
-they need are built; the migration of those three statements is not done.
+The machine and input classes then retired the last three. `thm:halts`, `thm:loops` and
+`thm:dontwait` took the `PolyMachineCodes`/`PolyNatCodes` pair, where the mismatch was
+sharpest — tex:1931-1933 asks for poly time to *write out* `⟨m⟩`, and a length-`n` bitstring
+has value `2^n` — and now take `DigitMachineCodes`/`BigDigits`. The migration is proved
+strict in both coordinates: `bigDigits_two_pow_not_polyNatCodes` exhibits `xₙ = 2ⁿ`, the
+paper's own `⟨x⟩` shape, as admissible for `BigDigits` and refuted for `PolyNatCodes`, and
+`digitMachineCodes_twoPowMachine_not_polyMachineCodes` does the same for a machine sequence
+whose description costs `n` digits while its Gödel code is exponential. The same change
+carried `BoundedComputation.input_poly` and `SemidecidableComputation.input_poly` to
+`BigDigits`, which removes a smaller restriction from the §4.10 rows without touching what
+actually qualifies them. `PolyMachineCodes` is now named only inside the witness that
+refutes it, and no paper-facing endpoint takes a whole-value class.
 
-The other three qualified nodes are the §4.10 consistency family (`thm:pac`,
+Widening a hypothesis strengthens the theorem that takes it, so the same change strengthened
+several rows already classified `exact`: `lic_provind`, `lic_persistence_of_knowledge`,
+`sentenceAffine_polySequence` and the rest of the affine/trader lane now accept sentence
+families whose Gödel codes grow exponentially while their emitted symbol count stays
+polynomial. Their status is unchanged — the narrower class was already inside the paper's —
+and their rows record the widening.
+
+The remaining three qualified nodes are the §4.10 consistency family (`thm:pac`,
 `thm:pazfc`, `thm:incons`), whose rows say exactly what is and is not formalized. In
 particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
 distinctive second-theory parameter is absent, and the kernel accepts

@@ -14,6 +14,7 @@ Knowledge (`thm:perkno`, `app:perkno`), which lives in `Properties.TimelyLearnin
 -/
 import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Properties.Coherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -560,7 +561,7 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
       const_closed := ?_
       coefficient_closed := ?_ }
   · simpa [persistenceCoefficient] using hcoefficient
-  · exact RpnSentenceCodes.of_eq (h.sentence_poly.comp canonicalPF)
+  · exact BigSentenceCodes.of_eq (h.sentence_poly.comp canonicalPF)
       (fun z => by simp [persistenceSentence])
   · intro k
     simp only [persistencePortfolio, EF.rank, persistenceNorm]

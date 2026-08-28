@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.BoundedEvaluation
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete feedback-trader emission for `thm:wubaff`
@@ -405,7 +406,7 @@ lemma scheduledTermCoefficient_polySeg
 lemma scheduledTermSentence_polyFueled
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) :
-    RpnSentenceCodes (scheduledTermSentence hpoly f a degree) := by
+    BigSentenceCodes (scheduledTermSentence hpoly f a degree) := by
   obtain ⟨cvalue, hvalue⟩ := scheduledDeferral_polyFueled f a degree
   have hcanonical := (hvalue.comp PolyFueled.left).pair PolyFueled.right
   exact (hpoly.sentence_poly.comp hcanonical).of_eq (fun q => by
@@ -597,7 +598,7 @@ lemma scheduledTradeCoefficient_polySeg
 lemma scheduledTradeSentence_polyFueled
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) :
-    RpnSentenceCodes (scheduledTradeSentence hpoly f a degree) := by
+    BigSentenceCodes (scheduledTradeSentence hpoly f a degree) := by
   obtain ⟨cmember, hmember⟩ := scheduledTradeMember_polyFueled hpoly f a degree
   obtain ⟨coffset, hoffset⟩ := scheduledTradeOffset_polyFueled hpoly f a degree
   have hcanonical := (PolyFueled.left.pair hmember).pair hoffset

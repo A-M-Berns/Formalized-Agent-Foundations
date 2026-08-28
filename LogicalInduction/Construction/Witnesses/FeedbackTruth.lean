@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.QuotationAffine
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete delayed feedback truth for `thm:wubaff` and `thm:wubexp`
@@ -319,7 +320,7 @@ noncomputable def sequencePoly
     (hsource.comp PolyFueled.left).pair PolyFueled.right
   have hcoeffPoly : BigSpliceStream (fun z => (coeff z).serialize) := by
     simpa only [coeff] using hA.coefficient_poly.comp hquery
-  have hsentencePoly : RpnSentenceCodes sentence :=
+  have hsentencePoly : BigSentenceCodes sentence :=
     (hA.sentence_poly.comp hquery).of_eq (fun z => rfl)
   have hrawConst : BigSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
     BigSpliceStream.payload 1 (Or.inl rfl) htruth
@@ -641,7 +642,7 @@ completed-theory truth stream, weighting, schedule, and deadline-bounded truth p
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)

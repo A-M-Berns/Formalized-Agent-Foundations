@@ -3322,7 +3322,8 @@ lemma exists_eventual_condition_price_floor
       funext (AffineCombination.sentenceAffine_futureHigh ψ P)
     rw [hfutureEq] at hfutureLiminfAffine
     exact hfutureLiminfAffine
-  have hpreemptive := lic_preemptive_learning P DP ψ hψ hworld
+  have hpreemptive := lic_preemptive_learning P DP ψ
+    (BigSentenceCodes.ofRpnSentenceCodes hψ) hworld
   have hdiagLiminf : lower ≤ liminf (fun n => P n (ψ n)) atTop := by
     rw [hpreemptive.1]
     exact hfutureLiminf

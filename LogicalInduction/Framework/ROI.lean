@@ -17,6 +17,7 @@ import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Computable
 import Mathlib.Algebra.BigOperators.Fin
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -100,7 +101,7 @@ structure PolyTradeEmulatable (Ts : ℕ → Trader) where
   sentence : ℕ → Sentence
   tradeCount_poly : ∃ c, PolyFueled c tradeCount
   coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
-  sentence_poly : RpnSentenceCodes sentence
+  sentence_poly : BigSentenceCodes sentence
   trades_eq : ∀ k n,
     ((Ts k).strat n).trades =
       (List.range (tradeCount (Nat.pair k n))).map (fun j =>
@@ -713,7 +714,7 @@ lemma PolyTradeEmulatable.polySeg {Ts : ℕ → Trader} (h : PolyTradeEmulatable
     BigSpliceStream (fun z =>
       serializeTrades ((Ts z.unpair.1).strat z.unpair.2).trades) := by
   obtain ⟨ccount, hcount⟩ := h.tradeCount_poly
-  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes h.sentence_poly) PolyFueled.id
+  have hframe := BigSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
   have hone : BigSpliceStream (fun z =>
       serializeTrades [(h.coefficient z, h.sentence z)]) := by
     refine BigSpliceStream.of_eq (h.coefficient_poly.append hframe) ?_
@@ -1343,7 +1344,7 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
   have hβ := (sharedFeatureWeight_polySeg active α hαseg hactive).comp hmember
   have hcoeff := hTs.coefficient_poly.comp hcanonical
   have hscaled := BigSpliceStream.serialize_mul hβ hcoeff
-  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hTs.sentence_poly) hcanonical
+  have hframe := BigSpliceStream.tradeSlot hTs.sentence_poly hcanonical
   have hone : BigSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2
@@ -2004,7 +2005,7 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
   have hβ := (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg).comp hmember
   have hcoeff := hTs.coefficient_poly.comp hcanonical
   have hscaled := BigSpliceStream.serialize_mul hβ hcoeff
-  have hframe := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hTs.sentence_poly) hcanonical
+  have hframe := BigSpliceStream.tradeSlot hTs.sentence_poly hcanonical
   have hone : BigSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2

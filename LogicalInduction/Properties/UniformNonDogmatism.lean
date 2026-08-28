@@ -9,6 +9,7 @@ while a single rung firing already yields profit `j − 1`.
 -/
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.AffinePersistence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -337,9 +338,9 @@ lemma serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
       simp [List.append_assoc]
 
 /-- Spliced varying-sentence buy-signal emitter: the sentence slot draws blocks from
-an `RpnSentenceCodes` certificate, admitting deep enumerations. -/
+an `BigSentenceCodes` certificate, admitting deep enumerations. -/
 lemma obuBuySig_spliceStream_comp
-    {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
+    {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ)
     {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
     (hj : PolyFueled cj jf)
     (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
@@ -349,11 +350,11 @@ lemma obuBuySig_spliceStream_comp
   BigSpliceStream.serialize_clip01 (BigSpliceStream.serialize_mul
     (BigSpliceStream.serialize_add (BigSpliceStream.serialize_const_comp ha)
       (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1))
-        (BigSpliceStream.serialize_price (BigSentenceCodes.ofRpnSentenceCodes hφ) hj hj)))
+        (BigSpliceStream.serialize_price hφ hj hj)))
     (BigSpliceStream.serialize_const_comp hd))
 
 /-- Spliced arm-update block. -/
-lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     BigSpliceStream
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
   have hbuy : BigSpliceStream (fun x ↦
@@ -374,7 +375,7 @@ lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : RpnSentenceCodes �
 variable-length once sentence slots carry blocks, so this uses `concatVar` rather than the
 fixed-width `blocks` combinator. -/
 lemma obuChunkSeg_spliceStream
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     BigSpliceStream (fun m ↦
       (obuCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
   have segA : BigSpliceStream (fun m ↦
@@ -406,13 +407,13 @@ lemma obuChunkSeg_spliceStream
 /-- The varying-sentence scale ladder is efficiently computable in the symbol-metered
 class, from an 𝓔𝓒 enumeration certificate.
 Paper node: `def:ec` -/
-lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     EfficientlyComputable (obuTrader φ) := by
   have segChunks := (obuChunkSeg_spliceStream φ hφ).concatVar PolyFueled.id
   have seg1 : BigSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
     BigSpliceStream.payload 1 (Or.inl rfl)
       (PolyFueled.const (Encodable.encode ((0 : ℚ))))
-  have seg3 := BigSpliceStream.tradeSlot (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.id
+  have seg3 := BigSpliceStream.tradeSlot hφ PolyFueled.id
   refine BigSpliceStream.ec _
     (BigSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
   intro n
@@ -452,7 +453,7 @@ a propositional world satisfying the entire enumerated theory.
 Paper node: `thm:obu` -/
 theorem lic_uniform_nonDogmatism_repeating
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hrepeat : RepeatsEveryMember φ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i)) :
@@ -485,7 +486,7 @@ purely syntactic: it contains neither prices nor a non-dogmatism conclusion.
 Paper node: `thm:obu` -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
-  sequence_poly : RpnSentenceCodes sequence
+  sequence_poly : BigSentenceCodes sequence
   repeats : RepeatsEveryMember sequence
   sound : ∀ j, ∃ i, sequence j = source i
   covers : ∀ i, ∃ j, sequence j = source i

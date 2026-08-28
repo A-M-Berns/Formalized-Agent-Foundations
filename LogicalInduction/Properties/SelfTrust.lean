@@ -29,6 +29,7 @@ from the preemptive-learning transport proved here.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -121,7 +122,7 @@ structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
 Paper node: `thm:ceu` -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  sentence_codes : RpnSentenceCodes φ
+  sentence_codes : BigSentenceCodes φ
   quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P (f n) (φ n))
@@ -173,7 +174,7 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (A B : ℕ → LUV) where
   delta_pos : ∀ n, 0 < δ n
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
-  sentence_codes : RpnSentenceCodes φ
+  sentence_codes : BigSentenceCodes φ
   probability_generable : PGenerableRat P p
   product_codes : LUV.RpnThresholdCodeSeq A
   confidence_codes : LUV.RpnThresholdCodeSeq B

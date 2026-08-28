@@ -22,6 +22,7 @@ Paper node: `thm:scon` (digit-model residual of the conditioning translation).
 -/
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Framework.DigitArith
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 

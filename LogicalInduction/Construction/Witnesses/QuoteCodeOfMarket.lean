@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.LUVArithmetic
 import LogicalInduction.Construction.Witnesses.LUVSyntax
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Rational quote codes built from the market program
@@ -775,7 +776,8 @@ theorem lic_expectations_of_probabilities_closed
     (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
     (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
       fun n => ((theoremPriceQuoteCode T φ hφ).luv n).expect (liaHistory (theoremDP T)) n :=
-  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
+  lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ
+    (BigSentenceCodes.ofRpnSentenceCodes hφ)
     (theoremPriceQuoteCode T φ hφ)
     (fun n => (theoremMarketComputation T).quote_exact n (φ n))
 
@@ -815,7 +817,7 @@ theorem lic_no_expected_net_update_closed
         (liaHistory (theoremDP T)) n :=
   lic_no_expected_net_update_ofRepresentation_unconditional (T := T) f φ
     ((theoremFutureQuoteCode T f φ hφ).luv)
-    hφ
+    (BigSentenceCodes.ofRpnSentenceCodes hφ)
     (theoremFutureQuoteCode T f φ hφ).poly
     (fun n v hv => by
       have h := RationalQuoteCode.reflected (quotationPresentation T)
@@ -992,7 +994,7 @@ theorem lic_introspection_closed
           liaHistory (theoremDP T) n
             ((theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
-    hφ a b δ lowerFeature hlower
+    (BigSentenceCodes.ofRpnSentenceCodes hφ) a b δ lowerFeature hlower
     upperFeature hupper hδ hδpos hδzero hab
     (theoremIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper)
 
@@ -1027,7 +1029,7 @@ theorem lic_self_trust_closed
     (fun n => indicatorProductLUV
       (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp) φ n)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).luv
-    delta_pos probability_mem hφ hδ
+    delta_pos probability_mem (BigSentenceCodes.ofRpnSentenceCodes hφ) hδ
     hp.choose hp.choose_spec
     (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
     (theoremConfidenceQuoteCode T f φ hφ δ p hδ.computable hp).poly

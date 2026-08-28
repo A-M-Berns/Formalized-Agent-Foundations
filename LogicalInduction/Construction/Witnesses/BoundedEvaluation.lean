@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Framework.Emission
 import LogicalInduction.Properties
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Representation witnesses for the efficient-computability side conditions
@@ -444,7 +445,8 @@ def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
     (hsource : RpnSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
-  sequence_poly := hsource.comp PolyFueled.left
+  sequence_poly :=
+    (BigSentenceCodes.ofRpnSentenceCodes hsource).comp PolyFueled.left
   repeats := triangularRepeat_repeats source
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
@@ -528,7 +530,7 @@ Paper node: `def:ec`, `thm:obu` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
-  sequence_poly := RpnSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
+  sequence_poly := BigSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
   repeats := by
     intro i N
     -- `ceRepeatSeq h i` is some `source i'`; that member recurs at arbitrarily large fuel.

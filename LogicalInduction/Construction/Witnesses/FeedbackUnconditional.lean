@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Construction.Witnesses.FeedbackTruth
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Feedback and LUV unbiasedness over the constructed `LIA`
@@ -40,7 +41,7 @@ are all constructed.  The caller supplies the paper's efficiently coded sentence
 completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation_unconditional
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ (theoremDP T) truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W (liaHistory (theoremDP T)))

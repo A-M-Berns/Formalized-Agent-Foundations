@@ -4,6 +4,7 @@
 Fixed-sentence and `𝓔𝓒`-sequence forms.
 -/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -221,9 +222,9 @@ lemma buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
 /-- Symbol-class certificate for the sequence buy trader: the coefficient is a
 price-free constant, so the 𝓔𝓒 sentence stream is the only varying slot.
 Paper node: `def:ec` -/
-lemma buySeq_ec_rpn (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+lemma buySeq_ec_rpn (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     EfficientlyComputable (buySeq φ) :=
-  EfficientlyComputable.ofSingleTradeBlocks _ (fun _ => .const 1) φ
+  EfficientlyComputable.ofSingleTradeBlocksBig _ (fun _ => .const 1) φ
     (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
     (fun _ => trivial) hφ (fun _ => rfl)
 
@@ -241,7 +242,7 @@ lemma buySeq_ec (φ : ℕ → Sentence) {cφ : Nat.Partrec.Code}
 sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
 the price `Pₙ(φₙ) → 1`. Same constant buy trader as the fixed case, now indexed by the
 sequence; e.c. directly in the symbol-metered class from the `𝓔𝓒`-sequence
-hypothesis (`RpnSentenceCodes`), which admits arbitrarily deep and skewed sentence
+hypothesis (`BigSentenceCodes`), which admits arbitrarily deep and skewed sentence
 sequences.
 
 **This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need
@@ -250,7 +251,7 @@ faithful sequence form is `lic_provind` (`AffineCoherence.lean`), which assumes 
 `∀ n, ∃ k, φ n ∈ D k`. This fragment is retained for its simpler trader and hypotheses.
 Paper node: `thm:provind` -/
 theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hded : ∀ n, φ n ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n (φ n)) 1 := by

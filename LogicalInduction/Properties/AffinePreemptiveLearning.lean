@@ -16,6 +16,7 @@ import LogicalInduction.Framework.ROI
 import LogicalInduction.Properties.Coherence
 import LogicalInduction.Framework.Expectations
 import Mathlib.Topology.Order.LiminfLimsup
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -804,7 +805,7 @@ noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombin
   have hj := PolyFueled.right
   have hcanonical := hk.pair hj
   have hcoeff := h.gradualCoefficient_polySeg low high δ
-  have hsentenceBlocks : RpnSentenceCodes (gradualSentence h) := by
+  have hsentenceBlocks : BigSentenceCodes (gradualSentence h) := by
     have := h.sentence_poly.comp hcanonical
     exact this.of_eq (fun z => rfl)
   have hzero : ∀ k n, n < k →

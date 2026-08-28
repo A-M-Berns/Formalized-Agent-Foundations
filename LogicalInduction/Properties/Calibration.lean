@@ -73,10 +73,10 @@ argument list back to the paper's.
 Paper node: `thm:simcal` -/
 lemma calibrationIndicator_pgenerable
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
+    (hφ : BigSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
     PGenerableWeighting (calibrationIndicator φ a b δ) := by
   have hprice := BigSpliceStream.serialize_price
-    (BigSentenceCodes.ofRpnSentenceCodes hφ) PolyFueled.id PolyFueled.id
+    hφ PolyFueled.id PolyFueled.id
   have hinv : BigSpliceStream (fun n => (EF.const (1 / δ n)).serialize) :=
     BigSpliceStream.serialize_const_write hδ.inverse_codes.toBigDigits
   have hlowerRaw := BigSpliceStream.serialize_mul
@@ -2079,7 +2079,7 @@ lemma biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
 
 lemma biasRunTradeSentence_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    RpnSentenceCodes (biasRunTradeSentence h) := by
+    BigSentenceCodes (biasRunTradeSentence h) := by
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
   exact (h.sentence_poly.comp (hn.pair hj)).of_eq (fun _ => rfl)

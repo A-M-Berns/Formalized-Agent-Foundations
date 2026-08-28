@@ -7,6 +7,7 @@ indicators, linearity of expectation, and expectation provability induction (in 
 and `=` forms).
 -/
 import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -50,7 +51,7 @@ noncomputable def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCod
   const_poly := BigSpliceStream.serialize_const 0
   coefficient_poly := BigSpliceStream.serialize_const_comp
     ⟨cinv.comp Nat.Partrec.Code.left, hinv.comp PolyFueled.left⟩
-  sentence_poly := hcode
+  sentence_poly := BigSentenceCodes.ofRpnSentenceCodes hcode
   terms_eq := by intro n; simp [expectAffine]
   const_rank := by intro n; simp [expectAffine]
   coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -139,7 +140,7 @@ lemma indicatorAffineSeq_value (Y : ℕ → LUV) (φ : ℕ → Sentence) (P : Hi
   indicatorAffine_value _ _ P w (n + 1)
 
 noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ → Sentence)
-    (hY : LUV.RpnThresholdCodeSeq Y) (hφ : RpnSentenceCodes φ) :
+    (hY : LUV.RpnThresholdCodeSeq Y) (hφ : BigSentenceCodes φ) :
     AffineCombination.PolySequence (indicatorAffineSeq Y φ) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -152,11 +153,11 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
         hinv.comp PolyFueled.left.succ_comp⟩
   have hNegSeg : BigSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
     BigSpliceStream.serialize_const (-1)
-  have hthr : RpnSentenceCodes (fun z => (Y z.unpair.1).gt
+  have hthr : BigSentenceCodes (fun z => (Y z.unpair.1).gt
       ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))) :=
-    (hY.comp (PolyFueled.left.pair
-      (PolyFueled.left.succ_comp.pair PolyFueled.right))).of_eq (fun z => by simp)
-  have hsen : RpnSentenceCodes (fun z => φ z.unpair.1) := hφ.comp PolyFueled.left
+    (BigSentenceCodes.ofRpnSentenceCodes (hY.comp (PolyFueled.left.pair
+      (PolyFueled.left.succ_comp.pair PolyFueled.right)))).of_eq (fun z => by simp)
+  have hsen : BigSentenceCodes (fun z => φ z.unpair.1) := hφ.comp PolyFueled.left
   exact {
     termCount := fun n => n + 2
     coefficient := fun z => if z.unpair.2 < z.unpair.1 + 1
@@ -173,7 +174,7 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
         by_cases hj : z.unpair.2 < z.unpair.1 + 1
         · rw [if_pos hj, if_neg (by omega)]
         · rw [if_neg hj, if_pos (by omega)])
-    sentence_poly := (RpnSentenceCodes.ifZero hsen hthr htest).of_eq (by
+    sentence_poly := (BigSentenceCodes.ifZero hsen hthr htest).of_eq (by
       intro z
       simp only [Nat.unpair_pair]
       by_cases hj : z.unpair.2 < z.unpair.1 + 1
@@ -248,14 +249,15 @@ noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
   have hsX := hX
   have hsY := hY.comp hidxY
   have hsZ := hZ.comp hidxZ
-  have hsAll : RpnSentenceCodes (fun z =>
+  have hsAll : BigSentenceCodes (fun z =>
       if z.unpair.2 < z.unpair.1 then
         X.gt ((z.unpair.2 : ℚ) / (z.unpair.1 : ℚ))
       else if z.unpair.2 < z.unpair.1 * 2 then
         Y.gt (((z.unpair.2 - z.unpair.1 : ℕ) : ℚ) / (z.unpair.1 : ℚ))
       else Z.gt (((z.unpair.2 - z.unpair.1 * 2 : ℕ) : ℚ) / (z.unpair.1 : ℚ))) := by
-    refine (RpnSentenceCodes.ifZero hsX
-      (RpnSentenceCodes.ifZero hsY hsZ htestY) htestX).of_eq (fun z => ?_)
+    refine (BigSentenceCodes.ifZero (BigSentenceCodes.ofRpnSentenceCodes hsX)
+      (BigSentenceCodes.ifZero (BigSentenceCodes.ofRpnSentenceCodes hsY)
+        (BigSentenceCodes.ofRpnSentenceCodes hsZ) htestY) htestX).of_eq (fun z => ?_)
     simp only [Nat.unpair_pair]
     by_cases hx : z.unpair.2 < z.unpair.1
     · rw [if_pos (show z.unpair.2 + 1 - z.unpair.1 = 0 from by omega), if_pos hx]
@@ -390,7 +392,7 @@ The sequence — not a fixed sentence — is the paper's statement (tex:1719); t
 case is the instance `φ n = φ`, `Y n = Y`.
 Paper node: `thm:ei` -/
 theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (Y : ℕ → LUV) (hcode : LUV.RpnThresholdCodeSeq Y)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : ∀ n, (Y n).IsIndicator (φ n) DP) :
