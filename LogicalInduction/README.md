@@ -151,8 +151,13 @@ canonical endpoints carry `[T.SoundOnHierarchy 𝚺 1]`, a **stronger** hypothes
 paper's. See *Instantiating the arithmetic-theory family* below, and the *Σ₁-soundness
 premise* section of the classification ledger for the endpoint-by-endpoint blast radius
 (19 of the 105 canonical endpoints) and for where the load-bearing use actually sits. The
-universal layer of each of those nodes is free of the instance and remains at paper
-strength; what is charged is the closed, over-`LIA` form that the trust surface shows.
+universal layer of each of those nodes is free of the instance, but that is not uniformly
+the paper's theorem: for the quotation family the universal endpoints take the paper's own
+premises, whereas for `thm:halts`, `thm:loops` and `thm:dontwait` the theory-free
+endpoints take `Represented*Claims` interfaces — the *result* of the paper's
+representability step handed in as data — so they are useful generic theorems but not the
+printed theorem under the paper's `Θ represents computations` hypothesis. What is charged
+in every case is the closed, over-`LIA` form that the trust surface shows.
 
 These numbers are recomputed from the classification ledger by
 `scripts/check_endpoint_coverage.py`, which fails the build if any figure here drifts from
