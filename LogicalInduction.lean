@@ -53,6 +53,24 @@ list is exhaustive; a label appearing nowhere below is not in use.
   lands inside it. The label now marks a *sufficient certification device*, and what
   remains open is only its converse (the model card's lower calibration), which nothing
   paper-facing depends on.
+* **`dd:nnf`** — sentences and LUV defining formulas are Foundation's
+  **negation-normal-form** `Semiformula`s: the constructors are
+  `verum/falsum/rel/nrel/and/or/all/exs`, negation is a meta-level involution, `A 🡒 B` is
+  notation for `∼A ⋎ B`, and `A 🡘 B` is notation for `(A 🡒 B) ⋏ (B 🡒 A)`. The paper's
+  language (tex:560) has `⟺` as a *primitive* connective. The consequence — and the reason
+  this is a labelled choice rather than a presentation detail — is that in **every
+  symbol-metered class in this development** a biconditional costs `3 + 2|A| + 2|B|` tokens,
+  both sides duplicated, a factor of two per nesting level. So a family the paper's `def:ec`
+  writer emits in `O(n)` characters can be `2ⁿ` tokens here and fall outside the class. That
+  is witnessed rather than asserted: `iffChain_not_polyArithmeticFormulaSeq`
+  (`Construction/Witnesses/StructuredPaperRpn.lean`) refutes membership for the left-nested
+  chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`. Nothing else is affected — `¬`, `∧`, `∨`, `⟹`, `∀`, `∃`
+  and numerals named compactly in `ℒₒᵣ` all cost what the paper's writer pays. Like
+  `dd:fuel`, this is charged **once, globally** — here, in `LogicalInduction/README.md`, and
+  in `scripts/coverage-classification.md` — and never per row. The repair is identified and
+  not taken: a compact formula *source* language carrying `iff`/`imp`/`neg` as primitives,
+  metered at the source and decoded into NNF only for semantics, on the `Code.sourceNat`
+  pattern this development already uses for programs.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can

@@ -26,7 +26,7 @@ name does not say what the object is.
 | `def:ec`, certification | `EfficientlyComputable` / `PolyFueled` (`Framework/Computable.lean`) | Fuel-clocked `Nat.Partrec.Code` certificates (`dd:fuel`). A *sufficient* route into the machine class (`EfficientlyComputable.toMachine`), not a definition of it. Fuel meters the **value** `n`, not its bit length, which is sound only because the day is unary. |
 | `def:ec`, e.c. machine sequence (tex:1931) | `DigitMachineCodes` (`Framework/WriteOut.lean`) = `BigDigits (Code.sourceNat ∘ m)` | Machines are `Nat.Partrec.Code`, **named by `Code.sourceNat`** (`Framework/CodeSource.lean`): the postfix tag stream (1=zero … 8=rfind', 0 = pad, never emitted) read base-16. Linear in the syntax tree (`len4_sourceNat_le : len4 c.sourceNat ≤ 2 * c.size`), total primitive-recursive decoder `ofSource` with `ofSource_sourceNat`. `Encodable.encode` is **not** used for naming anywhere on the claim-name path (see intentional deviations). `UniversalCodeHalts z := ((Code.ofSource z.unpair.1).eval z.unpair.2).Dom` decodes the source *inside* the represented computation. |
 | `def:ec`, e.c. bitstrings / naturals | `BigDigits` (`Framework/DigitArith.lean`) | Two `PolyFueled` programs (base-4 length, digit access). `PolyFueled` bounds the *output value* too, so `len4 (x m)` is polynomially bounded: a `BigDigits` family is writable in poly fuel. A length-`n` bitstring has `~n/2` base-4 digits. Refuting `BigDigits` for a family reduces to a superpolynomial base-4 length (`not_polyFueled_two_pow` shape). |
-| `def:ec`, e.c. sentences / rationals / emission | `BigSentenceCodes`, `DigitRatCodes`, `BigTokenStream`/`BigSpliceStream` (`Framework/WriteOut.lean`) | The write-out ladder. Value-bounded predecessors: `PolyNatCodes`/`PolyMachineCodes` (whole value; kept only as strictness foils, no `Paper node`) and `RpnSentenceCodes`/`RpnThresholdCodeSeq` (per-token value). `RpnSentenceCodes` is *not* purely symbol-metered: `PolySegStream` bounds every emitted token's value, so a single atom with exponential index is excluded by `Rpn` and admitted by `Big`. **There is no write-out class for LUV thresholds**: `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) is the only one. `StructuredPaperRpn.lean` splices Gödel codes out of small tokens (`PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`), **but only for `PaperLUVSeq`, whose `structural : PolyArithmeticFormulaSeq` field meters Foundation's numerals in UNARY** (`numeral v` costs `2v−1` symbols, `encodeArithmeticTermSymbols_numeral`): a paper LUV whose formula names a superpolynomial constant (`X > 2⁻ⁿ` with the numeral `2ⁿ`) is excluded (R3-F19, compiled refutation via `not_isPolyBounded_two_pow`). `unitFracPaperLUVSeq` (`1/(n+1)`) is admissible. The round-1 'cleared suspicion' was wrong in exactly this way; the faithful repair is a write-out arithmetic-formula meter naming numerals in binary — the `Code.sourceNat` pattern applied to `ArithmeticSemiformula` — identified, not done. |
+| `def:ec`, e.c. sentences / rationals / emission | `BigSentenceCodes`, `DigitRatCodes`, `BigTokenStream`/`BigSpliceStream` (`Framework/WriteOut.lean`) | The write-out ladder. Value-bounded predecessors: `PolyNatCodes`/`PolyMachineCodes` (whole value; kept only as strictness foils, no `Paper node`) and `RpnSentenceCodes`/`RpnThresholdCodeSeq` (per-token value). `RpnSentenceCodes` is *not* purely symbol-metered: `PolySegStream` bounds every emitted token's value, so a single atom with exponential index is excluded by `Rpn` and admitted by `Big`. **There is no write-out class for LUV thresholds**, and none is needed: `LUV.RpnThresholdCodeSeq` (`Framework/Expectations.lean`) is the only one, and `StructuredPaperRpn.lean` splices Gödel codes out of small tokens (`PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`). **Corrected 2026-08-29 (R4-F01, reversing R3-F19):** `PaperLUVSeq.structural : PolyArithmeticFormulaSeq` meters one token per ℒₒᵣ node — the paper's own symbol count. Foundation's `Operator.numeral` is unary — a Foundation artifact; the paper never fixes a numeral notation (it writes numerals positionally, tex:614, tex:757). That artifact does not narrow the class, because the *value* is nameable compactly inside ℒₒᵣ: large values are named by compact terms (Horner `binNumeral`, O(log v) nodes) or by definitions (tex:614: writing ⌜f(3)⌝ 'merely requires writing out the definition of γ_f' — e.g. Foundation's Δ₀ `exponentialDef`), and those renderings are admissible. Witnesses: `unitFracPaperLUVSeq` (`1/(n+1)`), `dyadicPaperLUVSeq` (`2⁻ⁿ`). On numerals the class is fine. **The class is NOT coextensive with def:ec on connectives (R4-F04, blind audit, verified):** the paper's language has `⟺` primitive (tex:560); Foundation's NNF `Semiformula` has none and `a 🡘 b = (a 🡒 b) ⋏ (b 🡒 a)` duplicates both sides (`3 + 2|a| + 2|b|` tokens), so a left-nested `⟺` chain is O(n) in the paper and ≥ 2ⁿ tokens here — `iffChain_not_polyArithmeticFormulaSeq`. `→` and `¬` are linear. Ruling 2026-08-29: disclosed as an object-language substrate substitution `dd:nnf`, charged once globally (like `dd:fuel`), not per row; the faithful repair is a compact formula SOURCE language with `iff`/`imp`/`neg` primitives decoded to NNF for semantics (the `Code.sourceNat` pattern applied to formulas — the correct target of that idea; a binary-numeral source node was rejected as a permissive widening). Identified, not done. |
 | `def:ece` / `def:fuz` | `GeneratedRatFeature` (`Framework/Expectations.lean`) / `PGenerableWeighting` (`Properties/Calibration.lean`) | Both emission fields are `BigSpliceStream`; that shared meter is what makes `pGenerableWeighting_iff` (def:fuz = def:ece minus the denotation clause) statable — keep them at the same meter. General `PGenerableRat` constructor: `PGenerableRat.ofDigitRatCodes`; `ofPolyRatCodes` (`ProductDefinition.lean`) is the derived value-bounded corollary. `ratCodeFeature`/`ratCodeFeature_generated` live in `Expectations.lean` at `DigitRatCodes` strength. A constant leaf `EF.const q` serializes to `[1, encode q]` — one token whose value *is* the code — which is why the old `RpnSpliceStream` field silently excluded the paper's `2⁻ⁿ`. |
 | §4.9 nodes (`thm:halts`/`loops`/`dontwait`), endpoint stack | `lic_learns_halting_patterns` (`Properties/MetaLearning.lean`) → `*_ofComputation` (`ComputationSyntax.lean`) → `*_unconditional` (`ComputationDP.lean`) | Three layers, all present: generic (no theory hypotheses, arbitrary `P`/`DP`), syntax layer (`[IsLogicalInductor P DP]` + `ComputationTheoryPresentation`), canonical instantiation over `liaHistory (theoremDP T)`. An auditor who sees only the canonical row wrongly concludes no arbitrary-inductor endpoint exists. `⌜f⌝(⌜n⌝)` → `boundedHaltingClaimInput m x hh.program n`, with `⌜f⌝` a constant and `n` unevaluated. `CodeHaltsWithin` meters by `evaln` fuel, not Turing steps — harmless at `thm:dontwait`, live if a positive bounded-runtime result is ever stated. |
 | Foundation `re_complete` | `Foundation/FirstOrder/Arithmetic/R0/Representation.lean:260` | An **iff** stated under `[T.SoundOnHierarchy 𝚺 1]`; only `.mpr` (provable ⇒ true-in-ℕ) uses soundness. `.mp` is `sigma_one_completeness` (`R0/Basic.lean:143`, `[𝗥₀ ⪯ T]` only) — a soundness-free `re_complete_mp` compiles in six lines. `Entailment.Consistent T` is derived from the soundness instance (`Basic/Hierarchy.lean:481`), so every `inferInstance` for consistency silently routes through it. The transport `models_haltingSchema_iff` (`ComputationDP.lean`) lifts `codeOfREPred_spec` to standard-model truth of a schema instance. |
@@ -179,8 +179,7 @@ that `universalHaltingSchema := codeOfREPred UniversalCodeHalts` is chosen by
 `Classical.epsilon` (`R0/Representation.lean:232-247`), so the formula's shape is unreachable
 from Foundation's API and the only bridges to `T ⊢` are positive. Three honest
 strengthenings: a `halting_fails` field; Π₁-reflection on `T`; or a hand-rolled halting
-formula with its own representability lemma (which would also address the LUV-frontend
-numeral problem below). Do not spend prover time on it *with the installed substrate*.
+formula with its own representability lemma . Do not spend prover time on it *with the installed substrate*.
 
 **Widening a sentence-codes hypothesis.** A hypothesis used only via `.primrec`/`.exists_code`
 can be widened `RpnSentenceCodes → BigSentenceCodes` (both classes have them). Consumers that
@@ -269,6 +268,40 @@ Internal supporting lemmas therefore cannot be inventoried; they are named in th
 block note and axiom-checked by `#print axioms` blocks (`DigitMachineCodes` / `CodeSource`
 supports, R3-F24). `SemidecidableComputation` serves only `thm:incons`,
 `BoundedComputation` only `thm:pac`/`thm:pazfc`; the §4.9 nodes never pass through them.
+
+**`PolySegStream` on the arithmetic-formula codec is a LENGTH condition.** Its per-token
+value clause is vacuous along the `PaperLUVSeq` route because the emitted-token audit pins
+every token to a constant (`encodeArithmeticFormulaSymbols_lt`: payload `< 19`;
+`structuredPaperPrimeBlock_span`: framing `0/1/19`), so `PolyArithmeticFormulaSeq` equals
+write-out there. The Gödel code is built by parser contraction and never emitted. The
+residual `dd:fuel` charge is separate and levied at def:ec only.
+
+**Compact numerals in ℒₒᵣ.** `binNumeral : ℕ → Semiterm.Const ℒₒᵣ` (Horner over `0/1/+/·`,
+`StructuredPaperRpn.lean` §Compact numerals) has `binNumeralEnc_length_le : ≤ 6·log₂ v + 1`
+tokens and `binNumeral_val` (value `v` in every model of `𝗣𝗔⁻`). Define compact numerals as
+`Semiterm.Const` operators, not raw terms, so `!!d` and the `Rew`-normal form behave like
+the unary numeral code. `invFormula`/`invPaperLUV` is the shared `1/d` template (unique/unit
+proved once); `unitFracPaperLUV` and `dyadicPaperLUV` are instances. A poly-fueled count of
+a repeated fixed-width token block is `PolySegStream.blocks` — the combinator that makes a
+superpolynomial VALUE emittable when its NAME is a repeating pattern.
+
+**`PaperLUVSeq` is not on the consumer API** (`API.lean` imports `Properties` + `FreezeOracle`,
+nothing reaches `StructuredPaperRpn`), so witness-consumption demos for that layer are
+in-file `example`s; exposing the first-order frontend is an `API.lean` decision to take
+deliberately.
+
+**Open infrastructure (not reach):** a general substitution lemma `PolyArithmeticFormulaSeq
+(fun n => ψ/[t n])` for a fixed template `ψ` and poly-fueled term family `t` is NOT proved;
+the obstruction is `Rew.subst` under a quantifier becoming `Rew.q` with a `bShift` the encoder
+has no commutation lemma for. New denominators cost one `enc_*` lemma via `invFormula` instead.
+
+**Two different 'source language' ideas — do not conflate.** A binary-numeral source node
+was REJECTED (it admits strings the paper's def:ec writer cannot produce in poly time — a
+permissive widening; numerals are already compactly nameable inside ℒₒᵣ via `binNumeral`).
+The `iff`/`imp`/`neg` formula-source language is the CORRECT identified-not-done repair for
+`dd:nnf`: `⟺` is one of the paper's primitives, so restoring it costs no permissiveness.
+New route: `PaperLUV.rpnThresholdCodes` takes a single literal paper LUV into the
+non-sequence `LUV.RpnThresholdCodes` that `LUV.expect_converges` (thm:ec) requires.
 
 **Known dead weight.** `PolyEF` (`Framework/Computable.lean:258`) is a dead-end layer:
 consumed only by other `PolyEF` lemmas, never converted to any emission class. It is a

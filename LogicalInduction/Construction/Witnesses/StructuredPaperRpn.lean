@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnSplice
+import LogicalInduction.Properties.ExpectationConvergence
 
 /-!
 # Structured Foundation-arithmetic RPN codec and the literal paper LUV frontend
@@ -30,8 +31,17 @@ Contents:
   family without re-deriving its emission;
 * the frontend `PaperLUVSeq`: a structurally certified family of literal paper LUVs
   compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, inhabited by
-  the varying `1/(n+1)` family `unitFracPaperLUVSeq` — with the unary-numeral metering
-  restriction disclosed at `PolyArithmeticFormulaSeq` and `PaperLUVSeq`.
+  the varying `1/(n+1)` family `unitFracPaperLUVSeq` and by the superpolynomially small
+  `2⁻ⁿ` family `dyadicPaperLUVSeq`, whose denominator is named by the compact numeral
+  `binNumeral`, with `PaperLUV.rpnThresholdCodes` the single-LUV route into
+  `LUV.RpnThresholdCodes` (the hypothesis of `LUV.expect_converges`, `thm:ec`);
+* the two recorded boundaries of the metering:
+  `unaryRendering_two_pow_not_polyArithmeticFormulaSeq`, an artifact of Foundation's *unary*
+  `Operator.numeral` and not a narrowing of `def:ec` (the value is nameable compactly inside
+  `ℒₒᵣ`), and `iffChain_not_polyArithmeticFormulaSeq`, a genuine gap: Foundation's
+  `Semiformula` is negation-normal-form and has no `⟺` constructor, so a paper-`def:ec`
+  family nesting `⟺` to depth `Ω(n)` is excluded here.  That gap is the disclosed
+  object-language substitution `dd:nnf`.
 
 ## Compatibility with the shared grammar
 
@@ -441,27 +451,51 @@ code.  The lifting theorem below adds only fixed tokens and a unary copy of the 
 poly-fueled payload length.  Thus the final tag-7 value is constructed by `parseRpn` and
 never occurs in the emitter's output range.
 
-**Disclosure — what is metered, and which paper LUVs that excludes.**
-`PolyArithmeticFormulaSeq φ` asks that the *symbol list*
-`encodeArithmeticFormulaSymbols (φ n)` be a `PolySegStream`: polynomially many tokens,
-each of polynomially bounded value.  Foundation builds a numeral as a left-nested fold of
-`one` under `add`, and `encodeArithmeticTermSymbols_numeral` below computes the cost
-exactly — `encodeArithmeticTermSymbols` of the numeral `v` is
-`List.replicate (v - 1) 7 ++ List.replicate v 6`, i.e. `2 * v - 1` symbols.  **Numerals
-are metered in unary.**  Consequently a defining formula that names a constant of
-superpolynomial magnitude has no certificate: the stream length is not
-`IsPolyBounded`, which `encodeArithmeticTermSymbols_numeral` together with
-`not_isPolyBounded_two_pow` refutes at the numeral `2 ^ n`.
+**What is metered.**  `PolyArithmeticFormulaSeq φ` asks that the *symbol list*
+`encodeArithmeticFormulaSymbols (φ n)` be a `PolySegStream`: polynomially many tokens, each
+of polynomially bounded value.  The serializer emits **one token per node of the Foundation
+formula**, so the metered quantity is that formula's own symbol count.  Nothing here is
+expanded: Godel codes are never emitted, and no numeral is rewritten into a larger object
+than the author wrote.
 
-Concretely: the `1/(n+1)` family `unitFracPaperLUVSeq` **is** admissible, since its
-numerals are `n + 1`; the same threshold written with the numeral `2 ^ n` — the
-paper-natural `X > 2⁻ⁿ` — is **not**.  Both are `def:luv`-admissible data for the paper,
-so this is a genuine restriction on the paper's own quantifier range, not merely a
-repo-side presentation choice.  It is disclosed in `LogicalInduction/README.md` and
-charged per row in `scripts/coverage-classification.md`.  The faithful repair is
-identified and **not** done: a write-out arithmetic-formula meter that names numerals in
-*binary* — the `Code.sourceNat` pattern applied to `ArithmeticSemiformula`, as
-`DigitMachineCodes` did for machine source. -/
+**How this compares with `def:ec`.**  `def:ec` (tex:753) asks for a polynomial-time writer of
+the formula *as the paper writes it*.  For the paper's `¬`, `∧`, `∨`, `⟹`, `∀` and `∃`, and
+for numerals named compactly in `ℒₒᵣ`, the count here **equals** the paper's symbol count.
+For `⟺` it does **not**.  Foundation's `Semiformula` is a negation-normal-form datatype whose
+constructors are `verum/falsum/rel/nrel/and/or/all/exs`; it has no biconditional constructor,
+so `a 🡘 b` is notation for `(a 🡒 b) ⋏ (b 🡒 a)` and costs `3 + 2|a| + 2|b|` symbols
+(`encodeArithmeticFormulaSymbols_iff`) — both sides duplicated, a factor of two per nesting
+level.  The paper's language has `⟺` as a *primitive* connective (tex:560), so a family
+nesting `⟺` to depth `Ω(n)` is `def:ec`-writable in `O(n)` characters and yet has no
+certificate here: `iffChain_not_polyArithmeticFormulaSeq`.  The class is therefore **not
+coextensive with `def:ec`** — it is strictly finer, on `⟺` alone.  Implication is unaffected,
+since negation is a linear token map (`encodeArithmeticFormulaSymbols_neg`), so `🡒` costs
+`1 + |a| + |b|`.
+
+This is the object-language substrate substitution `dd:nnf`: sentences and LUV formulas are
+Foundation NNF `Semiformula`s.  It is disclosed **once, globally** — in the `dd:*` glossary in
+`LogicalInduction.lean`, in `LogicalInduction/README.md`, and in
+`scripts/coverage-classification.md` — like `dd:fuel`, and is not charged per row.  The
+faithful repair is identified and **not done**: a compact formula *source* language carrying
+`iff`/`imp`/`neg` as primitives, metered at the source and decoded into NNF for semantics —
+the `Code.sourceNat` pattern this development already uses for programs.  (A binary-numeral
+source language was considered for a different purpose and rejected as a permissive widening
+past `def:ec`; that objection does not transfer, because `⟺` *is* a paper primitive and a
+source language would only restore parity with it.)
+
+**Naming large values.**  A term's cost is the cost of the *name*, not of the value it
+denotes.  Foundation's `Semiterm.Operator.numeral` is unary
+(`encodeArithmeticTermSymbols_numeral`: the numeral `v` costs `2 * v - 1` symbols).  That is
+an artifact of Foundation's default numeral, not something the paper imposes: the paper fixes
+no numeral notation and writes numerals positionally (tex:614, tex:757).  The compact name is
+available inside `ℒₒᵣ` — the `Compact numerals` section above supplies it: `binNumeral v` is
+the Horner term for `v`, `O(log v)` nodes (`binNumeralEnc_length_le`), with the same value in
+every model of `𝗣𝗔⁻` (`binNumeral_val`).  So on numerals the class is **not** narrower than
+`def:ec`; `unaryRendering_two_pow_not_polyArithmeticFormulaSeq` documents the artifact.
+
+**Reach.**  Two inhabited families bracket the class: `unitFracPaperLUVSeq` at `1/(n+1)` and
+`dyadicPaperLUVSeq` at `2⁻ⁿ`, the paper-natural superpolynomially small value, reached by
+naming `2 ^ n` with `binNumeral`. -/
 
 def PolyArithmeticFormulaSeq {k : ℕ} (φ : ℕ → ArithmeticSemiformula ℕ k) : Prop :=
   PolySegStream (fun n => encodeArithmeticFormulaSymbols (φ n))
@@ -810,6 +844,180 @@ lemma encodeArithmeticTermSymbols_numeral_polySegStream {k : ℕ} {cv : Code}
     (PolySegStream.repeatTag 6 hv)).of_eq fun n =>
       (encodeArithmeticTermSymbols_numeral (v n) (hne n)).symm
 
+/-! ## Compact numerals
+
+Foundation's `Semiterm.Operator.numeral` is unary, so naming a large value with it costs
+symbols linear in the value.  That is the cost model of the paper's own `ℒₒᵣ`, and the
+paper does not pay it: it names large values by *compact terms* or by definitions
+(tex:614, "writing `⌜f(3)⌝` does not involve computing `f(3)`").  `binNumeral` is the
+compact naming a paper author has in `ℒₒᵣ` itself — Horner form over `0`/`1`/`+`/`*`,
+`O(log v)` nodes for the value `v` — with the same value in every model of `𝗣𝗔⁻`. -/
+
+/-- Horner-form ("binary") numeral: the value `v` named by `O(log v)` `ℒₒᵣ` nodes,
+`2k ↦ (1+1) * k` and `2k+1 ↦ (1+1) * k + 1`. -/
+def binNumeral : ℕ → Semiterm.Const ℒₒᵣ
+  | 0 => Semiterm.Operator.Zero.zero
+  | 1 => Semiterm.Operator.One.one
+  | v + 2 =>
+      if (v + 2) % 2 = 0 then
+        Semiterm.Operator.Mul.mul.comp
+          ![Semiterm.Operator.Add.add.comp
+              ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+            binNumeral ((v + 2) / 2)]
+      else
+        Semiterm.Operator.Add.add.comp
+          ![Semiterm.Operator.Mul.mul.comp
+              ![Semiterm.Operator.Add.add.comp
+                  ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+                binNumeral ((v + 2) / 2)],
+            Semiterm.Operator.One.one]
+termination_by n => n
+decreasing_by all_goals exact Nat.div_lt_self (by omega) (by omega)
+
+/-- The symbol list of `binNumeral`, read off the same recursion. -/
+def binNumeralEnc : ℕ → List ℕ
+  | 0 => [5]
+  | 1 => [6]
+  | v + 2 =>
+      if (v + 2) % 2 = 0 then [8, 7, 6, 6] ++ binNumeralEnc ((v + 2) / 2)
+      else [7, 8, 7, 6, 6] ++ binNumeralEnc ((v + 2) / 2) ++ [6]
+termination_by n => n
+decreasing_by all_goals exact Nat.div_lt_self (by omega) (by omega)
+
+lemma encodeArithmeticTermSymbols_binNumeral {k : ℕ} :
+    ∀ v : ℕ, encodeArithmeticTermSymbols
+      ((binNumeral v).const : ArithmeticSemiterm ℕ k) = binNumeralEnc v := by
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    match v with
+    | 0 => rw [binNumeral, binNumeralEnc]; rfl
+    | 1 => rw [binNumeral, binNumeralEnc]; rfl
+    | (w + 2) =>
+        have hlt : (w + 2) / 2 < w + 2 := Nat.div_lt_self (by omega) (by omega)
+        have hrec := ih _ hlt
+        rw [binNumeral, binNumeralEnc]
+        split <;> rename_i hpar
+        · show (8 : ℕ) :: (encodeArithmeticTermSymbols
+            ((Semiterm.Operator.Add.add.comp
+              ![Semiterm.Operator.One.one, Semiterm.Operator.One.one] :
+                Semiterm.Const ℒₒᵣ).const : ArithmeticSemiterm ℕ k) ++
+            encodeArithmeticTermSymbols
+              ((binNumeral ((w + 2) / 2)).const : ArithmeticSemiterm ℕ k)) = _
+          rw [hrec]
+          rfl
+        · show (7 : ℕ) :: (encodeArithmeticTermSymbols
+            ((Semiterm.Operator.Mul.mul.comp
+              ![Semiterm.Operator.Add.add.comp
+                  ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+                binNumeral ((w + 2) / 2)] : Semiterm.Const ℒₒᵣ).const :
+                  ArithmeticSemiterm ℕ k) ++
+            encodeArithmeticTermSymbols
+              ((Semiterm.Operator.One.one : Semiterm.Const ℒₒᵣ).const :
+                ArithmeticSemiterm ℕ k)) = _
+          show (7 : ℕ) :: ((8 : ℕ) :: (encodeArithmeticTermSymbols
+            ((Semiterm.Operator.Add.add.comp
+              ![Semiterm.Operator.One.one, Semiterm.Operator.One.one] :
+                Semiterm.Const ℒₒᵣ).const : ArithmeticSemiterm ℕ k) ++
+            encodeArithmeticTermSymbols
+              ((binNumeral ((w + 2) / 2)).const : ArithmeticSemiterm ℕ k)) ++ [6]) = _
+          rw [hrec]
+          rfl
+
+private lemma flatMap_range_const (c : List ℕ) :
+    ∀ n : ℕ, (List.range n).flatMap (fun _ : ℕ => c) = (List.replicate n c).flatten := by
+  intro n
+  induction n with
+  | zero => simp
+  | succ n ih =>
+      rw [List.range_succ, List.flatMap_append, ih, List.replicate_succ',
+        List.flatten_append]
+      simp
+
+/-- **The compact numeral is logarithmic.**  Each halving contributes at most six
+symbols, so naming `v` costs `O(log v)` — against `2 * v - 1` for the unary numeral
+(`encodeArithmeticTermSymbols_numeral`). -/
+lemma binNumeralEnc_length_le : ∀ v : ℕ,
+    (binNumeralEnc v).length ≤ 6 * Nat.log 2 v + 1 := by
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    match v with
+    | 0 => rw [binNumeralEnc]; simp
+    | 1 => rw [binNumeralEnc]; simp
+    | (w + 2) =>
+        have hlt : (w + 2) / 2 < w + 2 := Nat.div_lt_self (by omega) (by omega)
+        have hrec := ih _ hlt
+        have hlog : Nat.log 2 ((w + 2) / 2) + 1 = Nat.log 2 (w + 2) := by
+          rw [Nat.log_div_base]
+          have : 0 < Nat.log 2 (w + 2) :=
+            Nat.log_pos (by norm_num) (by omega)
+          omega
+        rw [binNumeralEnc]
+        split <;> simp only [List.length_append, List.length_cons,
+          List.length_nil] <;> omega
+
+/-- At `2 ^ n` the compact numeral is a run of `n` copies of the doubling block. -/
+lemma binNumeralEnc_two_pow : ∀ n : ℕ,
+    binNumeralEnc (2 ^ n) = (List.replicate n [8, 7, 6, 6]).flatten ++ [6] := by
+  intro n
+  induction n with
+  | zero => rw [pow_zero, binNumeralEnc]; simp
+  | succ n ih =>
+      have hge : 2 ≤ 2 ^ (n + 1) := by
+        calc (2:ℕ) = 2 ^ 1 := by norm_num
+        _ ≤ 2 ^ (n + 1) := Nat.pow_le_pow_right (by norm_num) (by omega)
+      have h2 : 2 ^ (n + 1) = (2 ^ (n + 1) - 2) + 2 := by omega
+      have hdiv : (2 ^ (n + 1)) / 2 = 2 ^ n := by
+        rw [pow_succ]; omega
+      rw [h2, binNumeralEnc, if_pos (by omega), ← h2, hdiv, ih,
+        List.replicate_succ, List.flatten_cons]
+      simp
+
+/-- **The doubling family is structurally emittable.**  The compact numerals of `2 ^ n`
+are `n` repetitions of a fixed four-token block followed by `1`, which the repeating-block
+emitter produces with a poly-fueled count — even though the *values* `2 ^ n` are
+superpolynomial. -/
+lemma binNumeralEnc_two_pow_polySegStream :
+    PolySegStream (fun n => binNumeralEnc (2 ^ n)) := by
+  have hb : PolyTokenStream (fun _ : ℕ => [8, 7, 6, 6]) :=
+    (PolyTokenStream.const 8).append <| (PolyTokenStream.const 7).append <|
+      (PolyTokenStream.const 6).append (PolyTokenStream.const 6)
+  have hblocks := PolySegStream.blocks hb 4 (fun _ => rfl) (by omega) PolyFueled.id
+  refine (hblocks.append
+    (PolySegStream.ofTokenStream (PolyTokenStream.const 6))).of_eq fun n => ?_
+  rw [binNumeralEnc_two_pow, flatMap_range_const]
+
+/-- **The compact numeral names its value.**  In every model of `𝗣𝗔⁻` the Horner term
+`binNumeral v` evaluates to `v`, so it is interchangeable with Foundation's unary numeral
+wherever only the value matters. -/
+lemma binNumeral_val {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻] :
+    ∀ v : ℕ, (binNumeral v).val (![] : Fin 0 → M) = (v : M) := by
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    match v with
+    | 0 => rw [binNumeral]; simp
+    | 1 => rw [binNumeral]; simp
+    | (w + 2) =>
+        have hlt : (w + 2) / 2 < w + 2 := Nat.div_lt_self (by omega) (by omega)
+        have hrec := ih _ hlt
+        have hd : (w + 2) / 2 = w / 2 + 1 := by omega
+        rw [hd] at hrec
+        rw [binNumeral]
+        split <;> rename_i hpar <;>
+          simp [Semiterm.Operator.val_comp, Matrix.fun_eq_vec_two, hrec]
+        · have hcast : (w : M) = 2 * ((w / 2 : ℕ) : M) := by
+            have hw : w = 2 * (w / 2) := by omega
+            calc (w : M) = ((2 * (w / 2) : ℕ) : M) := by rw [← hw]
+              _ = 2 * ((w / 2 : ℕ) : M) := by push_cast; ring
+          rw [hcast]; ring
+        · have hcast : (w : M) = 2 * ((w / 2 : ℕ) : M) + 1 := by
+            have hw : w = 2 * (w / 2) + 1 := by omega
+            calc (w : M) = ((2 * (w / 2) + 1 : ℕ) : M) := by rw [← hw]
+              _ = 2 * ((w / 2 : ℕ) : M) + 1 := by push_cast; ring
+          rw [hcast]; ring
+
 /-! ## The literal first-order LUV frontend
 
 A single `PaperLUV` carries no efficiency certificate, so the family layer supplies
@@ -1020,19 +1228,18 @@ Foundation codes, a caller-provided tag-7 code, or a semantic handle.  Everythin
 threshold syntax adds on top (the implication shell, the fixed comparison template, and
 the reduced numerals of the query rational) is discharged internally.
 
-Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`.
-
-**Disclosure — this field is a restriction on `def:luv` data.**  `structural` is
-`PolyArithmeticFormulaSeq`, which meters the defining formula's *symbol list* with
-Foundation's numerals spelled in **unary** (`encodeArithmeticTermSymbols_numeral`: the
-numeral `v` costs `2 * v - 1` symbols).  A `PaperLUV` whose defining formula names a
-constant of superpolynomial magnitude therefore admits no `PaperLUVSeq` — the excluded
-family `X > 2⁻ⁿ`, written with the numeral `2 ^ n`, is refuted by
-`encodeArithmeticTermSymbols_numeral` plus `not_isPolyBounded_two_pow`, while the
-`1/(n+1)` family is admissible.  `PaperLUV` itself carries no such field; only the
-sequence wrapper does, and this wrapper is the repo's only route from a literal
-first-order paper LUV into `LUV.RpnThresholdCodeSeq`.  See the *Symbol-metered family
-interface* section above for the identified, not-yet-built binary-numeral repair.
+`structural` meters the defining formula's symbol list — one token per node of the
+Foundation formula.  On the paper's `¬/∧/∨/⟹/∀/∃`, and on numerals named compactly in `ℒₒᵣ`,
+that equals the paper's own symbol count under `def:ec`; on `⟺` it does not, because the NNF
+substrate has no biconditional constructor and duplicates both sides at every nesting level
+(`dd:nnf`, witnessed by `iffChain_not_polyArithmeticFormulaSeq`).  Large values are reached
+by *naming* them compactly: the class is inhabited both by `unitFracPaperLUVSeq` at `1/(n+1)`
+and by `dyadicPaperLUVSeq` at `2⁻ⁿ`, whose denominator `2 ^ n` is named in `O(n)` symbols by
+`binNumeral`; the same `2⁻ⁿ` spelled with Foundation's *unary* numeral has no certificate
+(`unaryRendering_two_pow_not_polyArithmeticFormulaSeq`), which is an artifact of that numeral
+rather than a restriction the paper imposes.  `PaperLUV` itself carries no such field; only
+the sequence wrapper does, and this wrapper is the route from a literal first-order paper LUV
+into `LUV.RpnThresholdCodeSeq`, with `PaperLUV.rpnThresholdCodes` its single-LUV corollary.
 Paper node: `def:luv` -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv : ℕ → PaperLUV T
@@ -1061,15 +1268,89 @@ lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
   have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.thresholdBody_structural
   exact h.of_eq fun m => (paperLUV_gt_eq _ _).symm
 
-/-! ### A concrete family
+/-- **The single-LUV route.**  A *single* literal paper LUV carries the non-sequence
+threshold-code certificate `LUV.RpnThresholdCodes`, which is what the whole-LUV endpoints
+take as a hypothesis (`LUV.expect_converges`, `thm:ec`).  It is the constant family
+(`PaperLUVSeq.const`) reindexed along the poly-fueled map `m ↦ ⟨0, m⟩`, which turns the
+sequence's `⟨n, ⟨k, i⟩⟩` convention into the single-LUV `⟨k, i⟩` one.  No efficiency
+hypothesis is needed: a constant formula family is trivially symbol-metered, so this holds of
+*every* `PaperLUV`.  Kind `C`; hypotheses `(a)`.
+Paper node: `def:ec` -/
+lemma PaperLUV.rpnThresholdCodes (X : PaperLUV T) : X.toLUV.RpnThresholdCodes := by
+  have h : RpnSentenceCodes (fun m => (((PaperLUVSeq.const X).luv m.unpair.1).toLUV).gt
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
+    (PaperLUVSeq.const X).rpnThresholdCodeSeq
+  have hf : PolyFueled _ (fun m : ℕ => Nat.pair 0 m) :=
+    (PolyFueled.const 0).pair PolyFueled.id
+  show RpnSentenceCodes _
+  exact (h.comp hf).of_eq fun m => by simp [PaperLUVSeq.const]
 
-The interface is inhabited by a genuinely varying family: the LUVs of value `1/(n+1)`,
-whose defining formulas grow with `n` and whose uniqueness and unit-interval facts are
-discharged in any theory extending `𝗜𝚺₁` by completeness over its models. -/
+/-! ### Concrete families
 
-/-- The value `1/(n+1)`: the code of that fraction, with the denominator named once. -/
+The interface is inhabited by genuinely varying families.  Both are reciprocals `1/v` of a
+denominator named by a single closed term, so one template and one pair of model arguments
+serve them: `invFormula` is the template and `invPaperLUV` discharges uniqueness and
+unit-interval membership from the denominator term's *value* alone, in any theory extending
+`𝗜𝚺₁`, by completeness over its models.  The two instances differ only in how that value is
+named — `unitFracPaperLUVSeq` has value `1/(n+1)` with a unary numeral, `dyadicPaperLUVSeq`
+has value `2⁻ⁿ` with the compact numeral of `2 ^ n`. -/
+
+/-- The reciprocal template: the pair code of `1 / d`, with the denominator named once by
+the closed term `d`. -/
+def invFormula (d : Semiterm.Const ℒₒᵣ) : ArithmeticSemisentence 1 :=
+  “q. ∃ b, !!d = b ∧ !pairDef q 1 b”
+
+/-- **The reciprocal paper LUV.**  A closed `ℒₒᵣ` term of positive standard value `v` names
+the literal paper LUV of value `1/v`; uniqueness and unit-interval membership are derived in
+`T` by completeness from the term's value and nothing else.  That is what makes the *naming*
+of the denominator — unary numeral or compact term — a free choice at this layer.
+Kind `C`; hypotheses `(a)`.
+Paper node: `def:luv` -/
+def invPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (d : Semiterm.Const ℒₒᵣ) (v : ℕ) (hv : 0 < v)
+    (hval : ∀ (M : Type) [ORingStructure M] [_i : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻],
+      Semiterm.Operator.val (M := M) ![] d = (v : M)) :
+    PaperLUV T where
+  formula := invFormula d
+  unique := by
+    apply LO.FirstOrder.Arithmetic.complete T
+    intro (M : Type) _ hM
+    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    simp [models_iff, invFormula, pairDef, hval M]
+    rcases Nat.lt_or_ge 1 v with h1 | h1
+    · simp [h1, Nat.not_le.mpr h1]
+    · simp [Nat.not_lt.mpr h1, h1]
+  unit := by
+    apply LO.FirstOrder.Arithmetic.complete T
+    intro (M : Type) _ hM
+    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    simp [models_iff, invFormula, pairDef, paperRatUnitDef, hval M]
+    have hv1 : 1 ≤ v := hv
+    intro x hx
+    refine ⟨1, (v : M), ?_, ?_, ?_⟩
+    · rcases hx with ⟨h1, rfl⟩ | ⟨h1, rfl⟩
+      · exact Or.inl ⟨by exact_mod_cast h1, rfl⟩
+      · have hv2 : v = 1 := by omega
+        subst hv2
+        exact Or.inr ⟨by simp, by push_cast; ring⟩
+    · exact_mod_cast hv
+    · exact_mod_cast hv1
+
+/-- The value `1/(n+1)`: the code of that fraction, with the denominator named once by the
+unary numeral `n + 1`. -/
 def unitFracFormula (n : ℕ) : ArithmeticSemisentence 1 :=
-  “q. ∃ b, !!(Semiterm.Operator.numeral ℒₒᵣ (n + 1)) = b ∧ !pairDef q 1 b”
+  invFormula (Semiterm.Operator.numeral ℒₒᵣ (n + 1))
+
+/-- The value `2⁻ⁿ`: the same code, with the denominator named once by the *compact*
+numeral of `2 ^ n`.  The value is superpolynomially small; the name is `O(n)` symbols. -/
+def dyadicFormula (n : ℕ) : ArithmeticSemisentence 1 :=
+  invFormula (binNumeral (2 ^ n))
 
 private def unitFracPost : List ℕ :=
   [3, 0, 16, 15, 13, 6, 3, 0, 11, 3, 2, 0, 7, 8, 3, 0, 3, 0, 6, 15, 16, 11, 3, 0,
@@ -1088,51 +1369,71 @@ private lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
   have h := encodeArithmeticTermSymbols_numeral (k := k) v hv
   simpa [Semiterm.Operator.const, Semiterm.Operator.operator] using h
 
+/-- The compact-numeral encoding in the same normal form. -/
+private lemma binNumeral_norm (k v : ℕ) :
+    encodeArithmeticTermSymbols
+      (((Rew.subst ![]) (Rew.emb (binNumeral v).term)) : ArithmeticSemiterm ℕ k) =
+      binNumeralEnc v := by
+  have h := encodeArithmeticTermSymbols_binNumeral (k := k) v
+  simpa [Semiterm.Operator.const, Semiterm.Operator.operator] using h
+
+/-- The reciprocal template is a fixed frame around the denominator's own symbols: with a
+unary numeral the frame encloses that numeral's `2 * v - 1` symbols. -/
+private lemma enc_invFormula_numeral (v : ℕ) (hv : v ≠ 0) :
+    encodeArithmeticFormulaSymbols
+      ((invFormula (Semiterm.Operator.numeral ℒₒᵣ v) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1) =
+      [18, 15, 11] ++ (List.replicate (v - 1) 7 ++ List.replicate v 6) ++
+        unitFracPost := by
+  rw [invFormula]
+  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
+    encodeStructuredNat, unitFracPost,
+    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
+    Semiformula.Operator.le_def, Semiterm.Operator.operator,
+    Semiterm.Operator.const, oringMul_term, oringAdd_term,
+    oringNumOne_term, Matrix.fun_eq_vec_two,
+    emb_subst_nil_comm, encNumeral_norm _ v hv]
+
+/-- The same frame around the compact numeral's symbols. -/
+private lemma enc_invFormula_binNumeral (v : ℕ) :
+    encodeArithmeticFormulaSymbols
+      ((invFormula (binNumeral v) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1) =
+      [18, 15, 11] ++ binNumeralEnc v ++ unitFracPost := by
+  rw [invFormula]
+  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
+    encodeStructuredNat, unitFracPost,
+    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
+    Semiformula.Operator.le_def, Semiterm.Operator.operator,
+    Semiterm.Operator.const, oringMul_term, oringAdd_term,
+    oringNumOne_term, Matrix.fun_eq_vec_two,
+    emb_subst_nil_comm, binNumeral_norm _ v]
+
 private lemma enc_unitFracFormula (n : ℕ) :
     encodeArithmeticFormulaSymbols
       ((unitFracFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
       [18, 15, 11] ++ (List.replicate n 7 ++ List.replicate (n + 1) 6) ++
         unitFracPost := by
   rw [unitFracFormula]
-  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
-    encodeStructuredNat, unitFracPost,
-    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
-    Semiformula.Operator.le_def, Semiterm.Operator.operator,
-    Semiterm.Operator.const, oringMul_term, oringAdd_term,
-    oringNumZero_term, oringNumOne_term, Matrix.fun_eq_vec_two,
-    emb_subst_nil_comm, encNumeral_norm _ (n + 1) (by omega)]
+  simpa using enc_invFormula_numeral (n + 1) (by omega)
+
+private lemma enc_dyadicFormula (n : ℕ) :
+    encodeArithmeticFormulaSymbols
+      ((dyadicFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
+      [18, 15, 11] ++ binNumeralEnc (2 ^ n) ++ unitFracPost :=
+  enc_invFormula_binNumeral (2 ^ n)
 
 /-- The literal paper LUV of value `1/(n+1)`. -/
 def unitFracPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (n : ℕ) :
-    PaperLUV T where
-  formula := unitFracFormula n
-  unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
-    intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
-    simp [models_iff, unitFracFormula, pairDef, numeral_eq_natCast]
-    rcases Nat.eq_zero_or_pos n with rfl | hn
-    · simp
-    · simp [hn, hn.ne']
-  unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
-    intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
-    simp [models_iff, unitFracFormula, pairDef, paperRatUnitDef,
-      numeral_eq_natCast]
-    intro x hx
-    refine ⟨1, (n : M) + 1, ?_, ?_, ?_⟩
-    · rcases hx with ⟨hn, rfl⟩ | ⟨rfl, rfl⟩
-      · exact Or.inl ⟨by simpa using hn, rfl⟩
-      · exact Or.inr ⟨by simp, by simp⟩
-    · simp
-    · simp
+    PaperLUV T :=
+  invPaperLUV T (Semiterm.Operator.numeral ℒₒᵣ (n + 1)) (n + 1) (by omega)
+    (fun M _ _ => by simp [numeral_eq_natCast])
+
+/-- The literal paper LUV of value `2⁻ⁿ`. -/
+def dyadicPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (n : ℕ) :
+    PaperLUV T :=
+  invPaperLUV T (binNumeral (2 ^ n)) (2 ^ n) (by positivity)
+    (fun M _ _ => binNumeral_val (M := M) (2 ^ n))
 
 /-- The defining formulas of the `1/(n+1)` family are structurally emittable. -/
 lemma unitFrac_polyArithmeticFormulaSeq :
@@ -1161,8 +1462,10 @@ canonical theorem process and efficiently thresholded in the symbol-metered emis
 calculus.
 
 This is a statement about `PaperLUVSeq`, **not** about every `PaperLUV` sequence: the
-`structural` field is an extra hypothesis `PaperLUV` does not carry, and it excludes
-defining formulas naming superpolynomial constants (see `PaperLUVSeq`).
+`structural` field is an extra hypothesis `PaperLUV` does not carry.  It is the paper's own
+`def:ec` condition on the defining formula — polynomially many `ℒₒᵣ` symbols written out —
+and it is inhabited at both ends of the range the paper uses, by
+`unitFracPaperLUVSeq_frontend` at `1/(n+1)` and `dyadicPaperLUVSeq_frontend` at `2⁻ⁿ`.
 Paper node: `def:luv` -/
 lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
     [T.SoundOnHierarchy 𝚺 1] (X : PaperLUVSeq T) :
@@ -1181,6 +1484,164 @@ lemma unitFracPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 
         ∃ x : ℝ, v.ValuesAt ((unitFracPaperLUVSeq T).luv n).toLUV x) ∧
       LUV.RpnThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
   (unitFracPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+
+/-- The defining formulas of the `2⁻ⁿ` family are structurally emittable: the compact
+numeral of `2 ^ n` is `n` copies of the doubling block, so the whole formula is a fixed
+frame around a poly-fueled repeating run. -/
+lemma dyadic_polyArithmeticFormulaSeq :
+    PolyArithmeticFormulaSeq (fun n =>
+      ((dyadicFormula n : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) := by
+  refine ((PolySegStream.constList [18, 15, 11]).append
+    (binNumeralEnc_two_pow_polySegStream.append
+      (PolySegStream.constList unitFracPost))).of_eq fun n => ?_
+  rw [enc_dyadicFormula n]
+  simp
+
+/-- **Non-vacuity** (`N+`) at a superpolynomially small value: the family of literal paper
+LUVs of value `2⁻ⁿ` carries the structural certificate.  This is the value the paper writes
+as `X > 2⁻ⁿ`; it is admissible here because the class meters the *formula string*, and the
+compact numeral names `2 ^ n` in `O(n)` symbols.  Kind `N+`; hypotheses `(a)`.
+Paper node: `def:luv` -/
+def dyadicPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
+  luv n := dyadicPaperLUV T n
+  structural := dyadic_polyArithmeticFormulaSeq
+
+/-- **The frontend at `2⁻ⁿ`**: the literal paper LUVs of value `2⁻ⁿ` are valued on every
+completed world of the canonical theorem process and efficiently thresholded.  Together with
+`unitFracPaperLUVSeq_frontend` this shows the class is not confined to values of polynomial
+denominator.
+Paper node: `def:luv` -/
+lemma dyadicPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
+        ∃ x : ℝ, v.ValuesAt ((dyadicPaperLUVSeq T).luv n).toLUV x) ∧
+      LUV.RpnThresholdCodeSeq (fun n => ((dyadicPaperLUVSeq T).luv n).toLUV) :=
+  (dyadicPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+
+/-- **A Foundation numeral artifact, not a narrowing of the class.**  The *same* value `2⁻ⁿ`
+has an admissible rendering — `dyadicPaperLUVSeq`, whose denominator is the compact numeral
+`binNumeral (2 ^ n)` — and an inadmissible one: spell the denominator with Foundation's
+*unary* `Semiterm.Operator.numeral` and the formula string itself is `2 ^ n` symbols long,
+which no polynomial bounds.
+
+The unary cost is an artifact of Foundation's default numeral, **not** a property of the
+paper: the paper fixes no numeral notation and writes numerals positionally (tex:614,
+tex:757).  What matters for faithfulness is that the *value* is nameable compactly inside
+`ℒₒᵣ` — `binNumeral v` has `O(log v)` nodes — so on numerals this class is not narrower than
+`def:ec`, and this lemma documents that artifact rather than a gap.  (The one genuine gap is
+`⟺`; see `iffChain_not_polyArithmeticFormulaSeq` and `dd:nnf`.)  Kind `P`; hypotheses `(a)`.
+Paper node: `def:ec` -/
+lemma unaryRendering_two_pow_not_polyArithmeticFormulaSeq :
+    ¬ PolyArithmeticFormulaSeq (fun n =>
+      ((invFormula (Semiterm.Operator.numeral ℒₒᵣ (2 ^ n)) :
+        ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)) := by
+  rintro ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩
+  obtain ⟨b, hrun, hpb, hbb⟩ := hl
+  refine not_isPolyBounded_two_pow (hpb.of_le fun n => ?_)
+  have h : (encodeArithmeticFormulaSymbols
+      ((invFormula (Semiterm.Operator.numeral ℒₒᵣ (2 ^ n)) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)).length = lenFn n := hlen n
+  rw [enc_invFormula_numeral (2 ^ n) (by positivity)] at h
+  have hp : 1 ≤ 2 ^ n := Nat.one_le_two_pow
+  simp only [List.length_append, List.length_replicate, List.length_cons,
+    List.length_nil, unitFracPost] at h
+  omega
+
+/-! ### The `⟺` gap (`dd:nnf`)
+
+The metering above is one token per node of the *Foundation* formula, and Foundation's
+`Semiformula` is a negation-normal-form datatype: `verum/falsum/rel/nrel/and/or/all/exs`.
+There is no biconditional constructor, so `a 🡘 b` is notation for `(a 🡒 b) ⋏ (b 🡒 a)` and
+**duplicates both sides**.  The paper's language has `⟺` as a primitive connective (tex:560),
+so the paper's `def:ec` writer emits a left-nested `⟺` chain in `O(n)` characters while the
+same object costs `≥ 2 ^ n` nodes here.  The class is therefore *not* coextensive with
+`def:ec`: strictly finer, on `⟺` alone.  This is the object-language substrate substitution
+`dd:nnf`, disclosed once and globally rather than charged per row; the identified (and not
+taken) repair is a compact formula *source* language with `iff`/`imp`/`neg` primitives,
+decoded into NNF for semantics, on the `Code.sourceNat` pattern. -/
+
+/-- The biconditional shell in symbol form.  Unlike `🡒`, which is a linear token map on its
+antecedent (`encodeArithmeticFormulaSymbols_imp`), `🡘` charges **both** sides **twice**. -/
+lemma encodeArithmeticFormulaSymbols_iff {k : ℕ} (a b : ArithmeticSemiformula ℕ k) :
+    (encodeArithmeticFormulaSymbols (a 🡘 b)).length =
+      3 + 2 * (encodeArithmeticFormulaSymbols a).length
+        + 2 * (encodeArithmeticFormulaSymbols b).length := by
+  show (encodeArithmeticFormulaSymbols ((a 🡒 b) ⋏ (b 🡒 a))).length = _
+  rw [show ((a 🡒 b) ⋏ (b 🡒 a)) = Semiformula.and (a 🡒 b) (b 🡒 a) from rfl,
+    encodeArithmeticFormulaSymbols, encodeArithmeticFormulaSymbols_imp,
+    encodeArithmeticFormulaSymbols_imp]
+  simp
+  omega
+
+/-- The atom the biconditional chain is built from: `x₀ = 0`. -/
+def iffChainAtom : ArithmeticSemiformula ℕ 1 :=
+  Semiformula.rel Language.ORing.Rel.eq ![.bvar 0, .func Language.ORing.Func.zero ![]]
+
+/-- The left-nested biconditional chain `(⋯((A ⟺ A) ⟺ A) ⋯ ⟺ A)`, `n` levels deep, over the
+fixed atom `A = iffChainAtom`.  In the paper's own language — where `⟺` is a primitive
+connective (tex:560) — writing this out is `O(n)` characters, so it is exactly the kind of
+family `def:ec` (tex:753) asks a polynomial-time writer to produce. -/
+def iffChain : ℕ → ArithmeticSemiformula ℕ 1
+  | 0 => iffChainAtom
+  | n + 1 => iffChain n 🡘 iffChainAtom
+
+/-- Each `⟺` level at least doubles the NNF node count, so the chain is exponential. -/
+lemma two_pow_le_encode_iffChain :
+    ∀ n, 2 ^ n ≤ (encodeArithmeticFormulaSymbols (iffChain n)).length
+  | 0 => by
+      have hne : encodeArithmeticFormulaSymbols (iffChain 0) ≠ [] := by
+        rw [iffChain, iffChainAtom]
+        simp [encodeArithmeticFormulaSymbols]
+      have h1 := List.length_pos_of_ne_nil hne
+      simp only [pow_zero]
+      omega
+  | n + 1 => by
+      have ih := two_pow_le_encode_iffChain n
+      rw [iffChain, encodeArithmeticFormulaSymbols_iff]
+      have : 2 ^ (n + 1) = 2 * 2 ^ n := by ring
+      omega
+
+/-- **The `⟺` gap, witnessed** (`dd:nnf`).  `iffChain` is `def:ec`-writable in the paper's
+language — `O(n)` characters, `⟺` being one of the paper's primitive connectives (tex:560) —
+and yet has **no** certificate in this class, because the NNF substrate expands each `⟺` into
+a conjunction of two implications and so doubles per nesting level.
+
+This is the honest strictness statement for `def:ec`'s rendering here: the symbol-metered
+class is *not* coextensive with the paper's efficiency condition on formulas.  It is finer on
+`⟺` and only on `⟺` — `¬`, `∧`, `∨`, `⟹`, `∀`, `∃` and compactly named numerals all cost
+what the paper's writer pays.  The gap is disclosed globally as `dd:nnf`, on the footing of
+`dd:fuel`, and is not charged to any individual row; the repair — a compact formula source
+language with `iff`/`imp`/`neg` primitives decoded into NNF for semantics, the
+`Code.sourceNat` pattern — is identified and not done.  Kind `P`; hypotheses `(a)`.
+Paper node: `def:ec` -/
+lemma iffChain_not_polyArithmeticFormulaSeq :
+    ¬ PolyArithmeticFormulaSeq iffChain := by
+  rintro ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩
+  obtain ⟨b, hrun, hpb, hbb⟩ := hl
+  exact not_isPolyBounded_two_pow (hpb.of_le fun n => by
+    rw [← hlen n]; exact two_pow_le_encode_iffChain n)
+
+/-- A client consuming the witness: the expectation-of-indicators endpoint (`thm:ei`) takes
+the threshold-code class as a hypothesis, and the `2⁻ⁿ` family discharges it outright. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hY : ∀ n, (((dyadicPaperLUVSeq T).luv n).toLUV).IsIndicator (φ n) DP) :
+    AsympEq (fun n => (((dyadicPaperLUVSeq T).luv n).toLUV).expect P n)
+      (fun n => P n (φ n)) :=
+  lic_expectation_indicator P DP φ hφ _ (dyadicPaperLUVSeq T).rpnThresholdCodeSeq
+    hcons hY
+
+/-- A client of the single-LUV route: `thm:ec` applied at a *literal* paper LUV, the
+`2⁻ⁿ`-valued one, with both representation hypotheses discharged from the frontend —
+the threshold-code class by `PaperLUV.rpnThresholdCodes` and the world value by
+`PaperLUV.source_valued`.  Only the paper's own consistency premise remains. -/
+example (P : History) [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [IsLogicalInductor P (paperTheoryDP T)] (n : ℕ)
+    (hcons : ∀ k, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D k)) :
+    ∃ L : ℝ, ConvergesTo ((dyadicPaperLUV T n).toLUV.expectSeq P) L :=
+  LUV.expect_converges P (paperTheoryDP T) _ (dyadicPaperLUV T n).rpnThresholdCodes
+    hcons (PaperLUV.source_valued _)
 
 /-! ### `def:blcp` over literal paper LUVs
 
@@ -1291,8 +1752,16 @@ noncomputable def unitFracPaperLUVBoundedSequence
 
 end Frontend
 
+#print axioms invPaperLUV
 #print axioms unitFracPaperLUVSeq
 #print axioms unitFracPaperLUVSeq_frontend
+#print axioms dyadicPaperLUVSeq
+#print axioms dyadicPaperLUVSeq_frontend
+#print axioms unaryRendering_two_pow_not_polyArithmeticFormulaSeq
+#print axioms iffChain_not_polyArithmeticFormulaSeq
+#print axioms PaperLUV.rpnThresholdCodes
+#print axioms binNumeral_val
+#print axioms binNumeralEnc_length_le
 #print axioms PaperLUVSeq.rpnThresholdCodeSeq
 #print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
 

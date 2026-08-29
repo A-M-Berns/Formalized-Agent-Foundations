@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 25 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 30 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 6 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 19 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
+| **qualified** | 14 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -71,30 +71,57 @@ write an object bounds its **symbols**, permitting values up to exponential.
 The *write-out* classes exist for most kinds of datum the property tail
 consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
 machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
-the emission surface they are consumed on. **One kind has no write-out class: LUV
+the emission surface they are consumed on. **One kind is metered differently: LUV
 thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
 `lic_expected_future_expectations_ofRepresentation_unconditional`,
 `lic_no_expected_net_update_ofRepresentation_unconditional`, its `_conditional_` sibling,
-and `lic_self_trust_ofRepresentation_unconditional` still take `RpnThresholdCodeSeq`,
-which is symbol-metered rather than write-out. **That is a restriction on the paper's own
-first-order LUVs, and an earlier edition of this file denied it.** The denial rested on
+and `lic_self_trust_ofRepresentation_unconditional` take `RpnThresholdCodeSeq`, which is
+`RpnSentenceCodes` on the threshold family rather than one of the write-out classes.
+**That is not a restriction on the paper's own first-order LUVs**, and this file has now
+been wrong about it in both directions.
+
+The route from a literal paper LUV into the class is
 `PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
-(`Construction/Witnesses/StructuredPaperRpn.lean`), which does not say what was claimed
-for it: it takes a `PaperLUVSeq`, and that structure bundles a field `PaperLUV` itself
-does not carry — `structural : PolyArithmeticFormulaSeq`, a `PolySegStream` certificate on
-the defining formula's *symbol list*. Foundation spells numerals in **unary**
-(`encodeArithmeticTermSymbols_numeral`: the numeral `v` costs `2v − 1` symbols), so that
-field excludes every literal paper LUV whose defining formula names a constant of
-superpolynomial magnitude: `X > 2⁻ⁿ` written with the numeral `2ⁿ` is refuted by
-`encodeArithmeticTermSymbols_numeral` together with `not_isPolyBounded_two_pow`, while the
-`1/(n+1)` family `unitFracPaperLUVSeq` is admissible. `PaperLUVSeq` is the repo's only
-route from a literal first-order paper LUV into `LUV.RpnThresholdCodeSeq`, so nothing else
-covers the excluded family. This is the same defect class as the whole-value classes
-retired above — an encoding that expands relative to what the paper writes — and it is now
-charged **per row** in `scripts/coverage-classification.md` rather than absorbed into the
-one-off `def:ec` charge. The faithful repair is identified and not done: a write-out
-arithmetic-formula meter naming numerals in binary, i.e. the `Code.sourceNat` pattern
-applied to `ArithmeticSemiformula`.
+(`Construction/Witnesses/StructuredPaperRpn.lean`). It quantifies over `PaperLUVSeq`, not
+over `ℕ → PaperLUV`: that structure bundles a field `PaperLUV` itself does not carry —
+`structural : PolyArithmeticFormulaSeq`, a `PolySegStream` certificate on the defining
+formula's *symbol list*. An earlier edition of this file overlooked the field and claimed
+the residue cost the paper nothing; the field is real and is stated here.
+
+What the field asks for is the paper's own `def:ec` condition, on the paper's connectives.
+It meters the formula string, one token per node of the Foundation formula, and along this
+route every emitted token is a fixed small constant (`encodeArithmeticFormulaSymbols_lt`,
+`structuredPaperPrimeBlock_span`), so the class is polynomial *length* — write-out — and
+never expands a Gödel code or a numeral beyond what the author wrote. Large values are named
+compactly, as the paper names them (tex:614): `binNumeral v` is the Horner `ℒₒᵣ` term for `v`
+in `O(log v)` nodes (`binNumeralEnc_length_le`, `binNumeral_val`), and `dyadicPaperLUVSeq` is
+the family of literal paper LUVs of value **`2⁻ⁿ`** built on it, with
+`dyadicPaperLUVSeq_frontend` giving both frontend conclusions. It stands beside
+`unitFracPaperLUVSeq` at `1/(n+1)`; the two share the template `invFormula`/`invPaperLUV` and
+differ only in the denominator's name. `PaperLUV.rpnThresholdCodes` is the single-LUV route
+into the non-sequence `LUV.RpnThresholdCodes`, the hypothesis `thm:ec`
+(`LUV.expect_converges`) takes.
+
+Two boundaries of that metering are recorded as named refutations, and they are of different
+kinds. The first is an **artifact**: the same value spelled with Foundation's *unary*
+`Operator.numeral` has no certificate
+(`unaryRendering_two_pow_not_polyArithmeticFormulaSeq`). The paper fixes no numeral notation
+— it writes numerals positionally (tex:614, tex:757) — and the value is nameable compactly
+inside `ℒₒᵣ`, so the class is not narrowed on numerals.
+
+The second is a **real gap, and it is disclosed as `dd:nnf`.** Foundation's `Semiformula` is
+a negation-normal-form datatype with no `⟺` constructor: `A 🡘 B` is notation for
+`(A 🡒 B) ⋏ (B 🡒 A)` and costs `3 + 2|A| + 2|B|` tokens
+(`encodeArithmeticFormulaSymbols_iff`), duplicating both sides at every nesting level. The
+paper's language has `⟺` as a **primitive** connective (tex:560), so the left-nested chain
+`Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A` is `O(n)` characters for the paper's `def:ec` writer and `≥ 2ⁿ`
+tokens here, hence outside the class (`iffChain_not_polyArithmeticFormulaSeq`). **The
+symbol-metered class is therefore not coextensive with `def:ec`** — strictly finer, on `⟺`
+and only on `⟺`. Like `dd:fuel`, this object-language substitution is levied **once,
+globally**, not per row, so no row's status turns on it; the identified and untaken repair is
+a compact formula *source* language with `iff`/`imp`/`neg` primitives decoded into NNF for
+semantics (the `Code.sourceNat` pattern). The residual `dd:fuel` substitution is likewise
+levied once at `def:ec` and is not re-levied here.
 
 Of the write-out/value-metered class pairs listed above, four containments are **proved
 strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
@@ -421,9 +448,12 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    semantics is *derived* through `paperTheoryDP` and the rational cut rather than carried
    as a build-frozen certificate. `PaperLUVSeq` additionally compiles that literal
    threshold syntax to the symbol-metered `RpnThresholdCodeSeq`, and the frontend is
-   inhabited by a varying concrete family — subject to the unary-numeral restriction
-   disclosed above: `PaperLUVSeq.structural` admits `1/(n+1)` but not a defining formula
-   naming `2ⁿ`. See
+   inhabited by varying concrete families at both ends of the range the paper writes:
+   `unitFracPaperLUVSeq` at `1/(n+1)` and `dyadicPaperLUVSeq` at `2⁻ⁿ`, the latter naming
+   its denominator by the compact `ℒₒᵣ` term `binNumeral (2 ^ n)`; `PaperLUV.rpnThresholdCodes`
+   is the single-LUV route into the non-sequence `LUV.RpnThresholdCodes`. What remains charged
+   here is not this item but the global `dd:nnf` substitution disclosed above and in item 3
+   below. See
    [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
    `instantiated` accordingly.
 
@@ -464,6 +494,37 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    structure, no deductive process, and no slack term crossing the boundary. The mesh
    endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
    as an exactly-reflecting one would.
+
+3. **Standing — the NNF object language (`dd:nnf`).** Sentences and LUV defining formulas
+   are Foundation's **negation-normal-form** `Semiformula`s
+   (`verum/falsum/rel/nrel/and/or/all/exs`). The paper's language has `⟺` as a *primitive*
+   connective (tex:560, "includes the basic logical connectives ¬, ∧, ∨, ⟹, ⟺"); here
+   `A 🡘 B` is notation for `(A 🡒 B) ⋏ (B 🡒 A)` and costs `3 + 2|A| + 2|B|` tokens
+   (`encodeArithmeticFormulaSymbols_iff`), duplicating both sides at every nesting level.
+
+   The consequence is real and is witnessed, not asserted: the left-nested chain `Φ₀ = A`,
+   `Φₖ₊₁ = Φₖ ⟺ A` is `O(n)` characters for the paper's `def:ec` writer and `≥ 2ⁿ` tokens
+   here, so it has **no** certificate in any symbol-metered class of this development
+   (`iffChain_not_polyArithmeticFormulaSeq`, with `iffChain` and
+   `two_pow_le_encode_iffChain`, in
+   `Construction/Witnesses/StructuredPaperRpn.lean`). The symbol-metered class is therefore
+   **not coextensive with `def:ec`**: it is strictly finer, on `⟺` and only on `⟺` — `¬`,
+   `∧`, `∨`, `⟹`, `∀`, `∃` and numerals named compactly in `ℒₒᵣ` all cost what the paper's
+   writer pays, implication because negation is a linear token map
+   (`encodeArithmeticFormulaSymbols_neg`).
+
+   Like the fuel model was, this is charged **once, globally** — here, in the `dd:*` glossary
+   in `LogicalInduction.lean`, and in `scripts/coverage-classification.md` — and **not per
+   row**: no row's status turns on it. That is a deliberate judgment call, flagged as one;
+   lowering every symbol-metered row would spread a single substrate fact across the table
+   without adding information.
+
+   The repair is **identified and not done**: a compact formula *source* language carrying
+   `iff`/`imp`/`neg` as primitives, metered at the source and decoded into NNF only for
+   semantics — the `Code.sourceNat` pattern this development already uses for programs. It is
+   distinct from the binary-numeral source language considered and rejected in
+   `scripts/coverage-classification.md`, which would have been a permissive widening past
+   `def:ec`; an `iff` primitive only restores parity with a connective the paper already has.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected

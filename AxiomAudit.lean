@@ -770,11 +770,39 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `source_valued` *derives* the world value.  `PaperLUVCombination` states `def:blcp`
 -- over that frontend rather than over the abstract carrier, and `boundedSequence`
 -- discharges the bounded-combination-sequence interface the expectation theorems consume.
--- Both are inhabited by the genuinely varying `1/(n+1)` family, not a constant stand-in.
+-- Both are inhabited by genuinely varying families, not constant stand-ins:
+-- `invPaperLUV` builds the literal paper LUV of value `1/v` from any closed `ℒₒᵣ` term of
+-- value `v`, and its two instances are `unitFracPaperLUVSeq` at `1/(n+1)` (denominator a
+-- unary numeral) and `dyadicPaperLUVSeq` at `2⁻ⁿ` (denominator the compact numeral of
+-- `2 ^ n`, `O(n)` symbols).  The second is what shows the symbol-metered class reaches the
+-- superpolynomially small values the paper writes.
+-- `PaperLUV.rpnThresholdCodes` is the single-LUV route out of the frontend: the constant
+-- family reindexed along `m ↦ ⟨0, m⟩`, giving the non-sequence `LUV.RpnThresholdCodes` that
+-- the whole-LUV endpoints take as a hypothesis (`LUV.expect_converges`, `thm:ec`), with no
+-- efficiency side condition, since a constant formula family is trivially symbol-metered.
+-- Two boundaries of the metering are recorded as named refutations.
+-- `unaryRendering_two_pow_not_polyArithmeticFormulaSeq` is an artifact of Foundation's
+-- *unary* `Semiterm.Operator.numeral`, not a narrowing of `def:ec`: the paper fixes no
+-- numeral notation (tex:614, tex:757) and the value is nameable compactly inside `ℒₒᵣ`.  The
+-- compact numeral machinery it rests on (`binNumeral`, `binNumeralEnc_length_le`,
+-- `binNumeral_val`, `binNumeralEnc_two_pow_polySegStream`) and the shared template
+-- `invFormula` are internal.
+-- `iffChain_not_polyArithmeticFormulaSeq` is a genuine gap, and the honest strictness
+-- statement for `def:ec`'s rendering here: Foundation's `Semiformula` is negation-normal-form
+-- and has no `⟺` constructor, so `A 🡘 B` duplicates both sides
+-- (`encodeArithmeticFormulaSymbols_iff`) and the paper-linear left-nested chain `iffChain`
+-- (`two_pow_le_encode_iffChain`, both internal) is `2ⁿ` tokens here.  The symbol-metered class
+-- is therefore *not* coextensive with `def:ec`; the gap is the object-language substitution
+-- `dd:nnf`, disclosed once and globally like `dd:fuel` and charged to no row.
 #assert_axioms_clean
   PaperLUV.toLUV PaperLUV.source_valued
   PaperLUVSeq.rpnThresholdCodeSeq PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
+  PaperLUV.rpnThresholdCodes
+  invPaperLUV
   unitFracPaperLUVSeq unitFracPaperLUVSeq_frontend
+  dyadicPaperLUVSeq dyadicPaperLUVSeq_frontend
+  unaryRendering_two_pow_not_polyArithmeticFormulaSeq
+  iffChain_not_polyArithmeticFormulaSeq
   PaperLUVCombination.boundedSequence
   unitFracPaperLUVCombination unitFracPaperLUVBoundedSequence
 #assert_axioms_clean

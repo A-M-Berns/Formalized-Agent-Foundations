@@ -130,3 +130,26 @@ the settled design decisions and the correspondence table, and points here for p
   `LogicalInduction` build from a stale-Framework state is ~35 min (2945 jobs).
 - **Glyphs:** never retype `𝗜𝚺₁` (U+1D5DC U+1D6BA) in generated prose edits; copy it. A
   mistyped glyph passes every gate.
+- **Foundation `Semiterm.Operator` arithmetic:** `(Add.add.comp ![a,b]).const` whnf-reduces
+  to `Semiterm.func … ![a.const, b.const]`, so an encoder lemma can be bridged with `show … = _`.
+  A well-founded-recursive `def` (e.g. `binNumeral`) does NOT unfold by `rfl` at a literal —
+  `rw [binNumeral]; rfl`. `Matrix.fun_eq_vec_two` loops inside `simp only` (fine in full `simp`).
+  In a strong-induction step `simp` normalizes `(w+2)/2` to `w/2+1` in the goal but not the IH —
+  rewrite the IH first. `(List.range (n+1)).flatMap (fun _ => c)` induction: route through
+  `(List.replicate n c).flatten`, since `rw [ih]` rewrites both sides.
+- **Extracting `IsPolyBounded` from a `PolySegStream`:** `rintro ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩;
+  obtain ⟨b, hrun, hpb, hbb⟩ := hl`; `hlen n` comes back beta-unreduced — restate it with an
+  explicit type ascription before `rw`. `PolySegStream.constList` is declared late in
+  `StructuredPaperRpn.lean` (Frontend section); term-level sections must use
+  `PolySegStream.ofTokenStream (PolyTokenStream.const t)`.
+- **`check-paper-nodes.sh` matches inventory members by SHORT name** (everything after the last
+  dot), so `PaperLUV.toLUV` is satisfied by any annotated `toLUV` anywhere — a check that can
+  pass for the wrong reason.
+- **`safe-lake.sh build X 2>&1 | tee log | tail -40` reports `tail`'s exit status**, so a failed
+  build looks like exit 0 (and a background-task notice says so too). Redirect
+  (`> log 2>&1; echo EXIT=$?`) and grep the log for `^error`.
+- **`LUV.RpnThresholdCodes`/`RpnThresholdCodeSeq` are `def`s**, so `h.comp` dot-notation fails;
+  ascribe to the unfolded `RpnSentenceCodes _` first. The index shift Seq→single is reindexing
+  along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); `RpnThresholdCodes.constSeq`
+  goes the OPPOSITE way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
+  near the END of the file — client examples at concrete LUVs must be placed after them.
