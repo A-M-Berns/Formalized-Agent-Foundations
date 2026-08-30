@@ -27,10 +27,11 @@ unconditionally (`diracAt_rhs_trivial`); what is exhibited there is a discrimina
 * `infFS` is **outside** it: the coordinate factorization of `ℕ → Bool`, whose basis is
   infinite.  Up to the bijection `𝒫(ℕ) ≃ (ℕ → Bool)` this is the factored set §7.2 uses
   when it says it does *not* expect the fundamental theorem to generalize past finite
-  dimension — `S = 𝒫(ℕ)`, `b_n` the partition by membership of `n`.  The paper's two §7.2
-  examples are out of scope by the ruling in `KNOWLEDGE.md`, so nothing here claims a node
-  for them; `infFS` lands as the witness that the conjecture's `Finite F.B` hypothesis
-  excludes something, and that it excludes it for a reason.
+  dimension — `S = 𝒫(ℕ)`, `b_n` the partition by membership of `n`.  It is the `F` of both
+  §7.2 examples: Example 3 is out of scope by the ruling in `KNOWLEDGE.md` and nothing here
+  claims a node for it, while Example 4 is in scope (since 2026-08-30) and carried below —
+  `infFS` doubles as the witness that the conjecture's `Finite F.B` hypothesis excludes
+  something, and that it excludes it for a reason.
 
 What `infFS` shows concretely is that `[Finite F.B]` is load-bearing rather than inherited,
 in two independent places.
@@ -53,8 +54,9 @@ factors the paper's Definition 37 product is not the elementary product it is wr
 and every §5 statement that consumes Definition 37 stops meaning what it says — which is
 exactly why the conjecture is stated at finite dimension.
 
-Nothing in this file is a paper endpoint: no statement here is annotated, and everything is
-a `lemma`, `def` or `example`.
+The Example 4 declarations (`infFS`, `finSupp`, `finSupp_ne_top`, `orthogonal_finSupp_self`)
+are paper endpoints and are annotated; everything else in this file is an unannotated
+witness — a `lemma`, `def` or `example` citing the paper in prose.
 -/
 
 namespace FiniteFactoredSets
@@ -379,10 +381,13 @@ example :
 `memFactor n` is the partition of `ℕ → Bool` by the `n`-th bit.  Under the bijection
 `𝒫(ℕ) ≃ (ℕ → Bool)` sending a set to its indicator, this is the factored set §7.2 discusses
 when it says it does *not* expect the fundamental theorem to survive past finite dimension:
-carrier `𝒫(ℕ)`, and one factor per natural number recording whether `n` belongs.  The
-paper's two §7.2 examples are out of scope by the ruling in `KNOWLEDGE.md`, so no node is
-claimed for this; it is here only to show that Conjecture 1's `Finite F.B` hypothesis
-excludes something, and that it excludes it for a reason. -/
+carrier `𝒫(ℕ)`, and one factor per natural number recording whether `n` belongs.  It is the
+`F` of both §7.2 examples.  Example 3 (the fundamental-theorem counterexample) is out of
+scope by the ruling in `KNOWLEDGE.md` and no node is claimed for it here; Example 4 — which
+is about Definition 17's history at infinite dimension, not about the fundamental theorem —
+is carried below (`finSupp`, `orthogonal_finSupp_self`).  Independently of either, `infFS`
+shows that Conjecture 1's `Finite F.B` hypothesis excludes something, and that it excludes
+it for a reason. -/
 
 /-- The partition of `ℕ → Bool` by the `n`-th bit — the paper's `b_n`, "does `n` belong?",
 transported along `𝒫(ℕ) ≃ (ℕ → Bool)`. -/
@@ -416,7 +421,11 @@ lemma infBasis_existsUnique (g : infBasis → (ℕ → Bool)) :
     exact hs' ⟨memFactor n, ⟨n, rfl⟩⟩
 
 /-- A factored set of infinite dimension: Definition 11 does not ask for finiteness, so
-this is a legitimate inhabitant, and it is what Conjecture 1's hypothesis rules out. -/
+this is a legitimate inhabitant, and it is what Conjecture 1's hypothesis rules out.  This
+is the `F = (S, B)` of the paper's Example 4 (and of its out-of-scope Example 3), with
+`S = 𝒫(ℕ)` read as `ℕ → Bool` and `B = {b_n | n ∈ ℕ}`.
+
+Paper node: Example 4 (§7.2). -/
 def infFS : FactoredSet (ℕ → Bool) :=
   ⟨infBasis, (isFactorization_iff_existsUnique infBasis_nontrivial).2 infBasis_existsUnique⟩
 
@@ -425,8 +434,9 @@ lemma infFS_B : infFS.B = infBasis := rfl
 lemma infFS_B_infinite : infFS.B.Infinite :=
   Set.infinite_range_of_injective memFactor_injective
 
-/-- So `infFS` is outside Conjecture 1's scope — and outside §3's, since every §3–§4
-statement carries `[Finite F.B]`.  `FactoredSet.history_isLeast` genuinely fails here: every
+/-- So `infFS` is outside Conjecture 1's scope — and outside the reach of the §3–§4
+*results* that carry `[Finite F.B]` (the definitions, and e.g. Propositions 10, 11 and 24,
+carry none and run on it).  `FactoredSet.history_isLeast` genuinely fails here: every
 cofinite subset of `B` generates the "eventually equal" partition, so the intersection of
 all generating subsets generates nothing.  That is proved below, at
 `not_isLeast_history_evEq`. -/
@@ -540,7 +550,82 @@ lemma not_isLeast_history_evEq :
     ¬ IsLeast {C | C ⊆ infFS.B ∧ infFS.Generates C evEq} (infFS.history evEq) :=
   fun h => not_generates_history_evEq h.1.2
 
+/-! ### Example 4: a two-block partition orthogonal to itself
+
+§7.2.2 asks how orthogonality should be defined at infinite dimension and lists three
+options.  The second — "define the history of `X` to be the intersection of all `C ⊆ B`
+such that `C ⊢^F X`, and leave the definitions of orthogonality and time alone" — is
+*exactly* Definitions 17 and 18 of this library read on an arbitrary factored set, since
+`FactoredSet.history` is that intersection and `Orthogonal` is disjointness of histories.
+Example 4 is the paper's illustration of that option's "unintuitive behavior": on the
+`𝒫(ℕ)` factored set, `Z = {finite subsets, infinite subsets}` "is orthogonal to itself
+according to the second option, in spite of having more than one part".  Both halves of
+that sentence are proved here: `orthogonal_finSupp_self` and `finSupp_ne_top`.  The
+mechanism is the same as for `evEq` above — dropping any single coordinate from `B` still
+generates `Z`, so `h^F(Z)` is empty. -/
+
+/-- Example 4's partition `Z`: under `𝒫(ℕ) ≃ (ℕ → Bool)`, `s ≈ t` when `s` and `t` are both
+finitely supported or both not — the paper's `{{s | |s| < ∞}, {s | |s| = ∞}}`.
+
+Paper node: Example 4 (§7.2). -/
+def finSupp : Setoid (ℕ → Bool) := Setoid.comap (fun s => {n | s n = true}.Finite) ⊥
+
+lemma finSupp_rel_iff (s t : ℕ → Bool) :
+    finSupp s t ↔ ({n | s n = true}.Finite ↔ {n | t n = true}.Finite) :=
+  ⟨fun h => Iff.of_eq h, fun h => propext h⟩
+
+/-- `Z` has more than one part: the empty set and `ℕ` lie in different blocks.
+
+Paper node: Example 4 (§7.2). -/
+theorem finSupp_ne_top : finSupp ≠ ⊤ := by
+  intro h
+  have hrel : finSupp (fun _ => false) (fun _ => true) := by rw [h]; trivial
+  rw [finSupp_rel_iff] at hrel
+  have hfin : {n : ℕ | (fun _ : ℕ => (true : Bool)) n = true}.Finite :=
+    hrel.1 (Set.finite_empty.subset fun n hn => by simp at hn)
+  rw [show {n : ℕ | (fun _ : ℕ => (true : Bool)) n = true} = (Set.univ : Set ℕ) from by
+    ext n; simp] at hfin
+  exact Set.infinite_univ hfin
+
+/-- Dropping one coordinate from `B` still generates `Z`: the chimera along `B \ {b_m}`
+agrees with `s` away from `m`, and finiteness of support is insensitive to one coordinate. -/
+private lemma generates_sdiff_singleton_finSupp (m : ℕ) :
+    infFS.Generates (infFS.B \ {memFactor m}) finSupp := by
+  rw [infFS.generates_iff_rel]
+  intro s t
+  have hagree : ∀ n, n ≠ m → infFS.chimera (infFS.B \ {memFactor m}) s t n = s n :=
+    fun n hnm => infFS.chimera_rel_of_mem s t ⟨n, rfl⟩
+      ⟨⟨n, rfl⟩, fun hc => hnm (memFactor_injective (Set.mem_singleton_iff.1 hc))⟩
+  rw [finSupp_rel_iff]
+  constructor
+  · intro h
+    refine (h.union (Set.finite_singleton m)).subset fun n hn => ?_
+    by_cases hnm : n = m
+    · exact Or.inr hnm
+    · exact Or.inl (show infFS.chimera _ s t n = true by rw [hagree n hnm]; exact hn)
+  · intro h
+    refine (h.union (Set.finite_singleton m)).subset fun n hn => ?_
+    by_cases hnm : n = m
+    · exact Or.inr hnm
+    · exact Or.inl (show s n = true by rw [← hagree n hnm]; exact hn)
+
+/-- Definition 17's intersection collapses on `Z`: no factor survives in `h^F(Z)`. -/
+lemma history_finSupp : infFS.history finSupp = ∅ := by
+  refine Set.eq_empty_of_forall_notMem fun b hb => ?_
+  obtain ⟨m, rfl⟩ := infFS.history_subset finSupp hb
+  exact (infFS.history_subset_of_generates Set.sdiff_subset
+    (generates_sdiff_singleton_finSupp m) hb).2 rfl
+
+/-- **Example 4's claim**: `Z` is orthogonal to itself under Definition 18 read with
+Definition 17's history (the paper's "second option"), despite having more than one part
+(`finSupp_ne_top`).
+
+Paper node: Example 4 (§7.2). -/
+theorem orthogonal_finSupp_self : infFS.Orthogonal finSupp finSupp := by
+  rw [orthogonal_def, history_finSupp, Set.empty_inter]
+
 -- A sample of the axiom profile; the full inventory is gated in `AxiomAudit.lean`.
+#print axioms orthogonal_finSupp_self
 #print axioms orthogonalGiven_natFactor_boolFactor_top
 #print axioms rich_isDistribution
 #print axioms not_isDistribution_diracAt_infFS

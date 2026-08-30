@@ -305,6 +305,13 @@ and take `Val(X)` empty, where generation depends on `J` alone —
   `{i₀}` generates, so `H(X | Ω) = {i₀}`, whereas the union `⋃_{x ∈ Val(X)} H(x | Ω)`
   runs over the empty `Val(X)` and is `∅`.
 
+The binder is exact for Lemma 4.9 and slightly stronger than exact for Lemmas 4.7 and A.2:
+with `Val(X)` empty and *at most one* empty factor `i₀`, the generating family is
+`{J | i₀ ∈ J}` (or every `J`, with no empty factor), which is `∩`-closed with a least
+element, so both lemmas hold there.  `[Nonempty α]` is kept because the exact condition is
+a statement about the factors, not one the paper's statement has a slot for; Theorem 6.2,
+whose exact condition *is* expressible, carries it (`Nonempty α ∨ Nonempty β`).
+
 The paper allows both `Val(X)` and the factors `Ω_i` to be empty (erratum E2), so the two
 cases the `[Nonempty α]` API excludes are handled here directly from `Generates`, which
 lets Lemmas 4.8 and 4.12 be stated with no hypothesis on the value spaces at all.

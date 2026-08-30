@@ -285,9 +285,15 @@ is the per-`φ₀` fact and does **not** establish the relation-level claim.
   classical `if`); keep it inside an `∃`-lemma to avoid a noncomputable definition.
 - The `Type u` bound on Definitions 18/19's set existentials is WLOG, but only the
   *additive* half is certified in-library (by Claims 41/42, whose witnesses are `D`'s
-  own carriers).  The multiplicative half holds by an unformalized collapse and
-  cardinality argument.  Do not re-assert "WLOG by Claims 41–44"; that sentence was an
-  audit finding.
+  own carriers).  The multiplicative half holds by an unformalized argument, two
+  routes: (a) quotient the carriers by outcome-equivalence in the order `X`, `Z`, `Y`
+  (quotienting `Y` first does *not* give a `u`-small type: `Y/~` embeds into
+  `X × Z → W`, small only once `X`, `Z` have been replaced by `X/~ ↪ Agent(Ĉ)` and
+  `Z/~ ↪ Env(D̂)`); or (b) large-`◁ₓ` ⟹ `C ◁ D ∧ C ◁* D` (both size-free) ⟹ Lean's
+  Claim 60 forward direction ⟹ `u`-small `◁ₓ`, since that direction's witnesses are
+  `C.Agent`, `C ⟶ D`, `D.Env`.  `exists_image_univ_curry` plays no role in either (an
+  earlier note said it did).  Do not re-assert "WLOG by Claims 41–44"; that sentence was
+  an audit finding.
 
 ### Toolchain
 

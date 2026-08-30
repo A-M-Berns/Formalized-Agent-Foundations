@@ -20,9 +20,9 @@ always inhabited (`partitionSectionsOut`): the paper takes for granted that a pa
 has choice functions, and over an arbitrary `Setoid` that is choice, via `Quotient.out`.
 
 *Idempotence.*  Claim 35 asserts frame *equality*; committing changes the agent's
-*type* (from `A` to `↥B`, then to `↥(Subtype.val ⁻¹' B)`), so equality is not even
-stateable and the four idempotence declarations give the canonical isomorphism instead
-(`dd:eq-to-iso`).  An `≅` is data, not a proposition, so those four are `def`s rather
+*type* (from `A` to `↥B`, then to `↥(Subtype.val ⁻¹' B)`), so the equality — stateable,
+since both sides are `Frame W`s — is false under this encoding, and the four idempotence
+declarations give the canonical isomorphism instead (`dd:eq-to-iso`).  An `≅` is data, not a proposition, so those four are `def`s rather
 than `theorem`s — the same shape as the library's other `dd:eq-to-iso` site,
 `botOfUnivIsoBot`.  Only the Commit/Assume half of Claim 35 is formalized: its
 External/Internal half is

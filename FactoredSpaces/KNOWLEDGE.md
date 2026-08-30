@@ -180,7 +180,11 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
   instance bundle would otherwise demand `omit` on ~50 declarations).
 
 * **Prop 5.8(1)'s missing step (E7) is `factorizesOverDAG_of_isIMapDAG`** (PerfectMap.lean),
-  stated for the weaker `IsIMapDAG` (K–F Thm 3.1's honest generality). Its chain rule needs
+  stated for `IsIMapDAG`. Note the direction: `IsIMapDAG` quantifies over *arbitrary*
+  (overlapping) triples, so it is a **stronger** hypothesis than Koller–Friedman's I-map
+  (pairwise-disjoint triples) and the lemma is correspondingly *weaker* than K–F Thm 3.1 —
+  enough for E7, because its only consumer supplies the paper's perfect map (Definition 5.7,
+  also over overlapping triples, E17). Do not reuse it as K–F 3.1. Its chain rule needs
   no linear order: `Digraph.depth` (strictly increasing along edges) + `Finset.strongInductionOn`
   over ancestrally closed sets (`Digraph.AncClosed`) removing a max-depth node; the
   zero-probability branch needs no separate argument (the IH already yields `∏ = 0`). Its
@@ -245,10 +249,17 @@ Paper notation ↔ Lean names (namespace `FactoredSpaces`).
     counterpart (checked in full) — do not re-raise either.
   * `[Nonempty α] [Nonempty β]` are dropped from `condIndepVar_of_structIndepGiven` and
     Prop 6.6 (`structIndepGiven_of_open`) — derived inside from `P.nonempty_carrier` /
-    `Q.nonempty_carrier` (R2-F20). They REMAIN on Theorem 6.2's iff, `generates_iff`,
+    `Q.nonempty_carrier` (R2-F20). They REMAIN on `generates_iff`,
     `Generates.inter`, `generates_history`, `history_mono_of_derived` where they are
     load-bearing (verified by delete-and-rebuild; the empty-factor counterexample of E12
-    kills the binder-free forms). `[DecidableEq I]` is needed to *state* the §6 endpoints
+    kills the binder-free forms). Theorem 6.2's iff carries `Nonempty α ∨ Nonempty β`
+    instead (2026-08-30): delete-and-rebuild tests only the binder-free form, and the
+    printed statement is *true* with exactly one value space empty (`Ω` is then empty, both
+    sides hold), so the pair of instance binders over-excluded. The mathematics lives in
+    `structIndepGiven_iff_forall_condIndepVar_of_nonempty`, to which the paper-node
+    statement reduces whenever `Ω` is inhabited. The same delete-one-at-a-time test shows
+    `[Nonempty α]` on 4.7/A.2 is slightly stronger than their exact failure set (README
+    discloses this); it stays because the exact condition is about the factors. `[DecidableEq I]` is needed to *state* the §6 endpoints
     (`Distr (Pt Ω)` needs `Pi.fintype`); `[∀ v, DecidableEq (Val v)]` is needed to state
     Props 5.5/5.6 (`DecidableEq (bnIndex G Val)`), idle only on Prop 5.8(1) (fixed, R2-F31).
   * The Prop 5.6 block moved out of `BayesNet.lean`: `mem_history_nodeVar_iff` is now the

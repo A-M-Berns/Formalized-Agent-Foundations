@@ -59,7 +59,7 @@ since the block is elaborated under `open FiniteFactoredSets in`).  There is no
 bare-suffix matching — `foo` in the inventory never covers `A.B.foo` in the library.
 
 4. **Exact scope coverage** — `FiniteFactoredSets/notes/scope-manifest.json` records the
-   ruling (Examples 3 and 4 out of scope) and the nine nodes rendered by Mathlib
+   ruling (Example 3 out of scope) and the nine nodes rendered by Mathlib
    vocabulary with no carrier of ours; the checker requires that (numbered nodes in the
    TeX) − out_of_scope − mathlib_rendered equal the annotated node set, in both
    directions.  Removing the only carrier of an in-scope node, or annotating a node the
