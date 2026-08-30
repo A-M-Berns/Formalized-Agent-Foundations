@@ -20,8 +20,10 @@ is on the derivation's **Gödel number** `d` instead: `BProv T φ k` is "some `d
 `T`-derivation of `φ`".  This is a disclosed modelling substitution, `dd:proofcode`
 (glossary in `LogicalInduction.lean`).  It changes which *finite* search each day names; it
 does not change the family's shape, its decidability, or the fact that every instance is
-true exactly when `T` is consistent — `conWithin_of_consistent` below is proved from
-consistency alone, with no size relation assumed.
+true when `T` is consistent — `conWithin_of_consistent` below is proved from consistency
+alone, with no size relation assumed.  (Only that direction holds instance-wise: an
+inconsistent `T` still satisfies `conWithin T k` for every `k` below its least
+inconsistency-proof code; consistency is characterized by *all* instances, not each.)
 
 ## Why bounded *provability*, not bounded *consistency*
 
@@ -58,7 +60,10 @@ variable (T : ArithmeticTheory) [T.Δ₁]
 
 /-- **Bounded provability** (`dd:proofcode`).  Some derivation with Gödel number below `k`
 proves the sentence coded by `φcode` in `T`.  The paper's measure is the derivation's
-symbol count; see the module docstring. -/
+symbol count; see the module docstring.  The bound is *exclusive* (`d < k`) where the
+paper's `ν` or fewer symbols is inclusive — with the measure already replaced by
+`dd:proofcode` this is absorbed by shifting the horizon, but each fixed-horizon family
+reads as the paper's bound `k - 1`. -/
 def BProv (φcode k : ℕ) : Prop := ∃ d < k, Bootstrapping.Proof (V := ℕ) T d φcode
 
 /-- `BProv` at a single packed argument `⟨φcode, k⟩`, spelled with Foundation's own

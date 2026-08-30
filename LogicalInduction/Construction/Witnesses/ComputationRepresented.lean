@@ -1639,9 +1639,13 @@ derivability to represent and no way for a sequence of theories to enter one sen
 argument.  For a deduction family the deduction theorem collapses the day's theory to a single
 sentence code: `Θ′ₙ` is inconsistent exactly when `Θ₀ ⊢ ∼σₙ`, i.e. exactly when `⌜∼σₙ⌝` is
 `Θ₀`-provable (`provableCode_neg_iff_not_consistent_adjoin`).  So the day-`n` claim is the
-universal provability schema of `Θ₀` at the compact name of `⌜∼σₙ⌝`, and it genuinely names
-the day's theory — the extensionality test is a theorem
-(`inconsistencyArgClaimSentence_ne_of_arg_ne`), not a hope.  The general e.c.-sequence-of-
+universal provability schema of `Θ₀` at the compact name of `⌜∼σₙ⌝`, and **for a consistent
+base `Θ₀`** it genuinely names the day's theory — the extensionality test is a theorem
+(`inconsistencyArgClaimSentence_ne_of_arg_ne`, via `inconsistencySchema_mentions_zero`,
+whose hypothesis is exactly `Entailment.Consistent Θ₀`; over an inconsistent base
+`ProvableCode Θ₀` is extensionally constant and the schema may ignore its argument — the
+endpoint's conclusion still holds there, but the family may collapse to one sentence).
+Every exhibited witness has a consistent base.  The general e.c.-sequence-of-
 theories rendering is deferred; the restriction is recorded at the endpoint and in the
 README, never silently.
 
