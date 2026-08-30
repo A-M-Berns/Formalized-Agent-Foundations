@@ -154,7 +154,7 @@ the folded universal fibers (`BooleanQuoteCode.ofComputable`).  The `threshold_p
 obligation is the Part-A emitter.
 Paper node: `thm:epr` -/
 noncomputable def RationalQuoteCode.ofComputable (T : ArithmeticTheory) [𝗥₀ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {value : ℕ → ℚ} (hvalue : Computable value)
+    {value : ℕ → ℚ} (hvalue : Computable value)
     (hmem : ∀ n, 0 ≤ value n ∧ value n ≤ 1) : RationalQuoteCode T value :=
   let b : BooleanQuoteCode T (fun input =>
       decodedQuotationRat input.unpair.2 < value input.unpair.1) :=

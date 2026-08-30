@@ -21,10 +21,13 @@ computation schemas into stages of a computable deductive process.  It contains 
 sentence sequences, prices, markets, or asymptotic conclusions.
 
 FFL's `re_complete` gives weak (positive) representation of every r.e. predicate.  A false
-decidable claim is not in general refutable merely from weak representation, so bounded
-failure is represented by its own complementary r.e. schema.  The presentation translates
-a proof of that schema into the negated market literal.  This is the precise residual
-translation required by the propositional public language.
+decidable claim is *not* refutable from weak representation, so every refutation field of
+`ComputationTheoryPresentation` consumes the literal negation `T ⊢ ∼σ` of the same sentence
+`σ` its positive partner consumes — never a second, independent r.e. schema.  Supplying
+those negative literals is the job of the paper's own representability premise
+(`Framework/RepresentsComputations.lean`), exercised in `ComputationRepresented.lean`; the
+bounded-halting *claim families* of `thm:pac`, `thm:pazfc` and `thm:dontwait` therefore live
+there, over `paperTheoryDP`, rather than here.
 -/
 
 namespace LogicalInduction
@@ -106,14 +109,9 @@ def UniversalBoundedHalts (z : ℕ) : Prop :=
   ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
     CodeHaltsWithin (boundedClaimMachine z) (boundedClaimInput z) m
 
-/-- The complementary claim: the horizon term converges and the bounded run fails. -/
-def UniversalBoundedFailure (z : ℕ) : Prop :=
-  ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
-    ¬CodeHaltsWithin (boundedClaimMachine z) (boundedClaimInput z) m
-
-/-- Both deferred-horizon claims are recursively enumerable: semi-decide by running the
+/-- The deferred-horizon claim is recursively enumerable: semi-decide by running the
 horizon program to convergence and then testing the (decidable) clocked run against `b`.
-Unlike the evaluated-horizon schema neither is *computable*, because the horizon term may
+Unlike the evaluated-horizon schema it is not *computable*, because the horizon term may
 diverge — but r.e. is all that FFL's `re_complete` consumes. -/
 private lemma universalBoundedRun_re (b : Bool) :
     REPred (fun z : ℕ => ∃ m ∈ (boundedClaimHorizon z).eval (boundedClaimDay z),
@@ -155,17 +153,6 @@ private lemma universalBoundedRun_re (b : Bool) :
 lemma universalBoundedHalts_re : REPred UniversalBoundedHalts :=
   (universalBoundedRun_re true).of_eq fun _ => Iff.rfl
 
-lemma universalBoundedFailure_re : REPred UniversalBoundedFailure :=
-  (universalBoundedRun_re false).of_eq fun _ => by
-    simp only [UniversalBoundedFailure, CodeHaltsWithin, Bool.not_eq_true]
-
-/-- Determinism of the horizon program makes the two deferred claims mutually exclusive. -/
-lemma universalBoundedClaims_exclusive (z : ℕ) :
-    ¬(UniversalBoundedHalts z ∧ UniversalBoundedFailure z) := by
-  rintro ⟨⟨m, hm, hpos⟩, ⟨m', hm', hneg⟩⟩
-  cases Part.mem_unique hm hm'
-  exact hneg hpos
-
 /-- FFL's quoted arithmetic schema for universal unbounded halting. -/
 noncomputable def universalHaltingSchema : ArithmeticSemisentence 1 :=
   codeOfREPred UniversalCodeHalts
@@ -173,10 +160,6 @@ noncomputable def universalHaltingSchema : ArithmeticSemisentence 1 :=
 /-- FFL's quoted arithmetic schema for bounded halting at a deferred horizon. -/
 noncomputable def universalBoundedHaltingSchema : ArithmeticSemisentence 1 :=
   codeOfREPred UniversalBoundedHalts
-
-/-- The complementary FFL schema certifying failure of a bounded run. -/
-noncomputable def universalBoundedFailureSchema : ArithmeticSemisentence 1 :=
-  codeOfREPred UniversalBoundedFailure
 
 /-- The unbounded schema has exactly the intended standard-model meaning. -/
 lemma universalHaltingSchema_spec (z : ℕ) :
@@ -187,18 +170,6 @@ lemma universalHaltingSchema_spec (z : ℕ) :
 lemma universalBoundedHaltingSchema_spec (z : ℕ) :
     universalBoundedHaltingSchema.Evalb ![z] ↔ UniversalBoundedHalts z :=
   codeOfREPred_spec universalBoundedHalts_re (x := z)
-
-/-- The failure schema has exactly the intended standard-model meaning. -/
-lemma universalBoundedFailureSchema_spec (z : ℕ) :
-    universalBoundedFailureSchema.Evalb ![z] ↔ UniversalBoundedFailure z :=
-  codeOfREPred_spec universalBoundedFailure_re (x := z)
-
-/-- The two bounded schemas never both hold: the horizon term has at most one value. -/
-lemma universalBoundedSchemas_exclusive (z : ℕ) :
-    ¬(universalBoundedHaltingSchema.Evalb ![z] ∧
-      universalBoundedFailureSchema.Evalb ![z]) := by
-  rw [universalBoundedHaltingSchema_spec, universalBoundedFailureSchema_spec]
-  exact universalBoundedClaims_exclusive z
 
 /-! ## Concrete compact Gödel names -/
 
@@ -320,18 +291,6 @@ lemma universalBoundedHalts_claimInput (machine : Nat.Partrec.Code) (input : ℕ
     rwa [Part.mem_unique hmem hsteps] at hrun
   · exact fun h => ⟨steps, hsteps, h⟩
 
-/-- The complementary reading of the same claim input. -/
-lemma universalBoundedFailure_claimInput (machine : Nat.Partrec.Code) (input : ℕ)
-    (horizon : Nat.Partrec.Code) (day steps : ℕ) (hsteps : steps ∈ horizon.eval day) :
-    UniversalBoundedFailure (boundedHaltingClaimInput machine input horizon day) ↔
-      ¬CodeHaltsWithin machine input steps := by
-  obtain ⟨hm, hi, hh, hd⟩ := boundedClaimInput_decode machine input horizon day
-  simp only [UniversalBoundedFailure, hm, hi, hh, hd]
-  constructor
-  · rintro ⟨m, hmem, hrun⟩
-    rwa [Part.mem_unique hmem hsteps] at hrun
-  · exact fun h => ⟨steps, hsteps, h⟩
-
 /-! ## The whole-value naming classes — strictness foils, not the paper's class
 
 Neither structure below renders `def:ec`.  Both bound the *numeric value* of the name, which
@@ -368,6 +327,20 @@ lemma computationClaimSentence_digits
     ((BigDigits.const (Encodable.encode schema)).natPair hinput)
   exact ((BigDigits.const 1).natPair hclaim).succ.of_eq (fun _ => rfl)
 
+/-- Write-out access to the packed `⟨⌜mₙ⌝, xₙ⟩` machine/input name.
+
+**Who uses this.**  Two lanes, for two different reasons.  `thm:incons`
+(`inconsistentTheoryClaimsOfComputation` below) still runs on the tag-keyed atom over
+`theoremDP`, where this is the claim *name*.  And since the R5-F08 repair it is again live
+for `thm:halts`/`thm:loops`: those endpoints are stated over `paperTheoryDP` at the fixed
+`universalHaltingSchema`, and the pair is written *into the sentence* as the compact numeral
+`binNumeral (haltingClaimInput (machines n) (inputs n))`, whose symbol run this certificate
+is what supplies (`representedHaltingClaims`, `ComputationRepresented.lean`).  So `hm` and
+`hi` are load-bearing on the `def:ec` obligation there, not merely on a computability step.
+
+The superseded reading — machine and input hidden *inside* a `codeOfREPred` schema, with
+`hm`/`hi` consumed only by an r.e.-ness step — was extensional and named no machine; see the
+header of `ComputationRepresented.lean`. -/
 lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
     BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
@@ -385,6 +358,15 @@ lemma boundedHaltingClaimInput_digits
     ((BigDigits.const (Nat.Partrec.Code.sourceNat horizon)).natPair
       (BigDigits.of_polyFueled PolyFueled.id))).of_eq (fun _ => rfl)
 
+/-- **No consumer as of the `thm:halts`/`thm:loops` migration.**  This was the claim-sentence
+generator for the unbounded halting lane over `theoremDP`; that lane is now stated over
+`paperTheoryDP` at the day-indexed schema, whose sentences are emitted by
+`schemaDayClaimSentence_bigSentenceCodes` (`ComputationRepresented.lean`) instead.  Retained
+rather than deleted, pending a consolidation ruling.  `boundedHaltingClaimSentence_digits`
+below is orphaned the same way, by the earlier bounded-lane migration; the two
+`thm:incons` generators (`inconsistencyClaimSentence_digits`,
+`consistencyClaimSentence_digits`) are still live, at
+`inconsistentTheoryClaimsOfComputation`. -/
 lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
     DigitSentenceCodes (fun n => haltingClaimSentence (input n)) :=
   computationClaimSentence_digits .halting universalHaltingSchema hinput
@@ -406,8 +388,13 @@ lemma consistencyClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits 
 /-- A recursively presented arithmetic theory whose proofs of the fixed universal
 computation schemas are translated into the corresponding public propositional literals.
 
-The separate bounded-failure field is necessary because FFL supplies weak positive
-representation of r.e. predicates, not strong refutation of false r.e. formulas.
+Every field pair is a *literal complement over one sentence*: the refutation fields consume
+`T ⊢ ∼σ` for the same `σ` the positive field consumes, never a second, independent r.e.
+schema.  That is what lets the constructed process
+(`ComputationDP.theoremPresentation`) keep a consistent world at every stage from
+consistency of `T` alone.  The bounded lane's *supply* of those negative literals is the
+paper's representability premise, not weak Σ₁-representation: see
+`ComputationRepresented.lean`.
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
@@ -416,6 +403,14 @@ structure ComputationTheoryPresentation
   halting_enters : ∀ z : ℕ,
     T ⊢ universalHaltingSchema/[↑z] →
       ∃ k, haltingClaimSentence z ∈ DP.D k
+  /-- **No consumer as of the `thm:halts`/`thm:loops` migration.**  The only endpoint that
+  read this field was the `theoremDP` form of `thm:loops`; that endpoint is now stated over
+  `paperTheoryDP` at the day-indexed halting schema
+  (`Construction/Witnesses/ComputationRepresented.lean`) and gets its negative literal from
+  its own `hloops` premise instead.  The field is still *discharged* — by
+  `theoremPresentation` in `ComputationDP.lean` and by `ProductDefinition.lean` — and is
+  still frozen in `AxiomAudit.lean`'s `#assert_fields` block, so nothing is broken; it is
+  retained deliberately, pending a consolidation ruling on whether the field stays. -/
   halting_refutes : ∀ z : ℕ,
     T ⊢ ∼(universalHaltingSchema/[↑z]) →
       ∃ k, (∼haltingClaimSentence z) ∈ DP.D k
@@ -423,7 +418,7 @@ structure ComputationTheoryPresentation
     T ⊢ universalBoundedHaltingSchema/[↑z] →
       ∃ k, boundedHaltingClaimSentence z ∈ DP.D k
   boundedFailure_refutes : ∀ z : ℕ,
-    T ⊢ universalBoundedFailureSchema/[↑z] →
+    T ⊢ ∼(universalBoundedHaltingSchema/[↑z]) →
       ∃ k, (∼boundedHaltingClaimSentence z) ∈ DP.D k
   inconsistency_enters : ∀ z : ℕ,
     T ⊢ universalHaltingSchema/[↑z] →
@@ -532,6 +527,33 @@ lemma not_codeHalts_neverHaltMachine (x : ℕ) : ¬ CodeHalts neverHaltMachine x
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv
   simp at h1
 
+/-- **The universal halting schema is not argument-insensitive.**
+
+`universalHaltingSchema` is picked by `Classical.epsilon`, so its *shape* is unreachable from
+the API — but its defining spec is not nothing.  Because `UniversalCodeHalts` is itself
+non-constant (`Code.zero` halts on `0`, `neverHaltMachine` does not), the chosen formula
+cannot be one that ignores its argument.
+
+This is the side condition of the substitution-injectivity lemma that the syntactic
+separation of claim sentences in `ComputationRepresented.lean` would need: the missing piece
+there is the general lemma `t ≠ t' → σ/[t] ≠ σ/[t']` for a `σ` mentioning `#0`, not the
+hypothesis that this particular `σ` mentions `#0`.
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
+`codeOfREPred_spec` through `universalHaltingSchema_spec`. -/
+lemma universalHaltingSchema_not_argument_insensitive :
+    ¬ ∀ z z' : ℕ, universalHaltingSchema.Evalb ![z] ↔ universalHaltingSchema.Evalb ![z'] := by
+  intro h
+  have hz : universalHaltingSchema.Evalb ![haltingClaimInput Nat.Partrec.Code.zero 0] :=
+    (universalHaltingSchema_spec _).mpr
+      ((universalCodeHalts_claimInput Nat.Partrec.Code.zero 0).mpr trivial)
+  have hz' : ¬ universalHaltingSchema.Evalb ![haltingClaimInput neverHaltMachine 0] := by
+    intro hx
+    exact not_codeHalts_neverHaltMachine 0
+      ((universalCodeHalts_claimInput neverHaltMachine 0).mp
+        ((universalHaltingSchema_spec _).mp hx))
+  exact hz' ((h _ _).mp hz)
+
 /-- A constant machine sequence is write-out named for free. -/
 lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
     DigitMachineCodes (fun _ => c) :=
@@ -539,9 +561,11 @@ lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
 
 /-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
 step budget being an arbitrary computable `f` named by its program.  It is consumed only by
-the decidable-claims interface (`representedDecidableClaimsOfComputation`), which serves the
-two finite-consistency theorems; `thm:dontwait` names its bounded family directly through
-`representedBoundedHaltingClaims`.
+the decidable-claims interface (`representedDecidableClaimsOfComputation`,
+`ComputationRepresented.lean`), which serves the two finite-consistency theorems;
+`thm:dontwait` names its bounded family directly through `representedBoundedHaltingClaims`
+there.  Both go through the paper's representability premise, so both literals of a bounded
+claim come from one sentence.
 Paper node: `thm:pac`, `thm:pazfc` -/
 structure BoundedComputation (truth : ℕ → Prop) where
   machine : Nat.Partrec.Code
@@ -606,34 +630,31 @@ noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < 
     | zero => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
     | succ k => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
 
+/-- **N+.** The bounded-computation premise inhabited by a computation whose truth predicate
+holds on **every** day: `Code.zero` on input `0` finishes within `n + 1` interpreter steps for
+all `n`.
+
+`ordinaryBoundedComputation` above has a genuinely varying predicate but fails at day `0`, so
+it cannot be handed to the `thm:pac`/`thm:pazfc` endpoints, whose `hconsistent : ∀ n, truth n`
+demands an everywhere-true predicate.  This witness is what makes the pair
+`(C, hconsistent)` *jointly* inhabited rather than only separately satisfiable; the endpoints
+are applied at it in `ComputationRepresented.lean`.  Kind `N+`, provenance (a): every field is
+discharged in-project.
+Paper node: `thm:pac`, `thm:pazfc` -/
+noncomputable def alwaysBoundedComputation : BoundedComputation (fun _ => True) where
+  machine := Nat.Partrec.Code.zero
+  input _ := 0
+  input_poly := BigDigits.const 0
+  steps n := n + 1
+  horizon := .of Computable.succ
+  truth_iff n := by simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
+
 #print axioms ordinarySemidecidableComputation
 #print axioms ordinaryBoundedComputation
+#print axioms alwaysBoundedComputation
+#print axioms universalHaltingSchema_not_argument_insensitive
 
 /-! ## Constructors for the three MetaLearning boundaries -/
-
-/-- Constructor for the decidable-claims boundary from a concrete computation.
-Paper node: `thm:pac` -/
-noncomputable def representedDecidableClaimsOfComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    {truth : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
-    (C : BoundedComputation truth) :
-    RepresentedDecidableClaims DP truth where
-  sentence n := boundedHaltingClaimSentence
-    (boundedHaltingClaimInput C.machine (C.input n) C.horizon.program n)
-  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <| boundedHaltingClaimSentence_digits <|
-    boundedHaltingClaimInput_digits
-      (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly C.horizon.program
-  provable_of_true n hn := by
-    apply Q.boundedHalting_enters
-    apply re_complete_mp (T := T) universalBoundedHalts_re
-    exact (universalBoundedHalts_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
-      ((C.truth_iff n).mp hn)
-  disprovable_of_false n hn := by
-    apply Q.boundedFailure_refutes
-    apply re_complete_mp (T := T) universalBoundedFailure_re
-    exact (universalBoundedFailure_claimInput _ _ _ _ _ (C.horizon.program_spec n)).mpr
-      (fun hb => hn ((C.truth_iff n).mpr hb))
 
 /-- Constructor for the inconsistent-theory-claims boundary from a concrete computation.
 Paper node: `thm:incons` -/
@@ -660,83 +681,7 @@ noncomputable def inconsistentTheoryClaimsOfComputation
     apply re_complete_mp (T := T) universalCodeHalts_re
     simpa using (C.truth_iff n).mp hn
 
-/-! ## Sequence-specialized constructors -/
-
-noncomputable def representedHaltingClaims
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
-    RepresentedSemidecidableClaims DP
-      (fun n => CodeHalts (machines n) (inputs n)) where
-  sentence n := haltingClaimSentence (haltingClaimInput (machines n) (inputs n))
-  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <|
-    haltingClaimSentence_digits (haltingClaimInput_digits hm hi)
-  provable_of_true n hn := by
-    apply Q.halting_enters
-    apply re_complete_mp (T := T) universalCodeHalts_re
-    simpa using hn
-
-/-- The `thm:dontwait` claim family: `⌜qₙ⌝ halts on ⌜yₙ⌝ within ⌜f⌝(⌜n⌝) steps`, with the
-horizon term deferred so that no growth bound on `f` is needed. -/
-noncomputable def representedBoundedHaltingClaims
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hh : ComputableHorizon horizons) :
-    RepresentedDecidableClaims DP
-      (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)) where
-  sentence n := boundedHaltingClaimSentence
-    (boundedHaltingClaimInput (machines n) (inputs n) hh.program n)
-  sentence_poly := BigSentenceCodes.ofDigitSentenceCodes <| boundedHaltingClaimSentence_digits
-    (boundedHaltingClaimInput_digits hm hi hh.program)
-  provable_of_true n hn := by
-    apply Q.boundedHalting_enters
-    apply re_complete_mp (T := T) universalBoundedHalts_re
-    exact (universalBoundedHalts_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
-  disprovable_of_false n hn := by
-    apply Q.boundedFailure_refutes
-    apply re_complete_mp (T := T) universalBoundedFailure_re
-    exact (universalBoundedFailure_claimInput _ _ _ _ _ (hh.program_spec n)).mpr hn
-
 /-! ## Direct paper-facing consumers -/
-
-/-- Finitistic-consistency belief, with the representation boundary discharged by a
-concrete computation.  The horizon `f` of `C` is an arbitrary computable function, named in
-the claim by its program (`ComputableHorizon`) and left unevaluated — the paper's class.
-Paper node: `thm:pac` -/
-theorem lic_belief_finitistic_consistency_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
-    (hconsistent : ∀ n, consistentWithin n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n ((representedDecidableClaimsOfComputation Q C).sentence n)) ≈ₙ
-      fun _ => 1 :=
-  lic_belief_finitistic_consistency P DP consistentWithin
-    (representedDecidableClaimsOfComputation Q C) hconsistent hworld
-
-/-- Same statement and same arbitrary-computable-horizon class as `thm:pac`; only the
-supplied finite-consistency predicate differs.
-Paper node: `thm:pazfc` -/
-theorem lic_belief_stronger_theory_consistency_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (strongerConsistentWithin : ℕ → Prop)
-    (C : BoundedComputation strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n ((representedDecidableClaimsOfComputation Q C).sentence n)) ≈ₙ
-      fun _ => 1 :=
-  lic_belief_stronger_theory_consistency P DP strongerConsistentWithin
-    (representedDecidableClaimsOfComputation Q C) hconsistent hworld
 
 /--
 Paper node: `thm:incons` -/
@@ -755,60 +700,6 @@ theorem lic_disbelief_inconsistent_theories_ofComputation
   lic_disbelief_inconsistent_theories P DP inconsistent
     (inconsistentTheoryClaimsOfComputation Q C) hall hworld
 
-/--
-Paper node: `thm:halts` -/
-theorem lic_learns_halting_patterns_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n ((representedHaltingClaims Q machines inputs hm hi).sentence n)) ≈ₙ
-      fun _ => 1 :=
-  lic_learns_halting_patterns P DP machines inputs
-    (representedHaltingClaims Q machines inputs hm hi) hhalts hworld
-
-/--
-Paper node: `thm:loops` -/
-theorem lic_learns_provable_nonhalting_patterns_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
-      ↑(haltingClaimInput (machines n) (inputs n))]))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n ((representedHaltingClaims Q machines inputs hm hi).sentence n)) ≈ₙ
-      fun _ => 0 :=
-  lic_learns_provable_nonhalting_patterns P DP machines inputs
-    (representedHaltingClaims Q machines inputs hm hi)
-    (fun n => Q.halting_refutes _ (hloops n)) hworld
-
-/-- The horizon sequence is arbitrary computable — `hh` names its program rather than
-bounding its growth — which is the paper's "let `f` be any computable function".
-Paper node: `thm:dontwait` -/
-theorem lic_does_not_anticipate_halting_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hh : ComputableHorizon horizons)
-    (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n
-      ((representedBoundedHaltingClaims Q machines inputs horizons hm hi hh).sentence n))
-        ≈ₙ fun _ => 0 :=
-  lic_does_not_anticipate_halting P DP machines inputs horizons
-    (representedBoundedHaltingClaims Q machines inputs horizons hm hi hh)
-    hnever hworld
-
 /-! ## Positive and negative path witnesses -/
 
 /-- `N+`: the positive path fires for the repository's everywhere-zero program. -/
@@ -825,42 +716,17 @@ lemma computationRepresentation_positive_path
   refine ⟨0, Nat.Partrec.Code.evaln_sound (k := 1) ?_⟩
   simp [Nat.Partrec.Code.evaln]
 
-/-- `N+`: the everywhere-zero program as horizon supplies a concrete false bounded claim
-(zero interpreter fuel) and exercises the separate complementary-schema/refutation path. -/
-lemma computationRepresentation_negative_path
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T) :
-    ∃ k, (∼boundedHaltingClaimSentence
-      (boundedHaltingClaimInput Nat.Partrec.Code.zero 0 Nat.Partrec.Code.zero 0)) ∈ DP.D k := by
-  apply Q.boundedFailure_refutes
-  apply re_complete_mp (T := T) universalBoundedFailure_re
-  refine (universalBoundedFailure_claimInput _ _ _ _ 0 ?_).mpr ?_
-  · exact Part.mem_some 0
-  · simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
-
 #print axioms universalCodeHalts_re
 #print axioms universalBoundedHalts_re
-#print axioms universalBoundedFailure_re
 #print axioms universalHaltingSchema_spec
-#print axioms universalBoundedSchemas_exclusive
 #print axioms ComputableHorizon.ackermann
 #print axioms not_polyNatCodes_ack
 #print axioms bigDigits_two_pow_not_polyNatCodes
 #print axioms digitMachineCodes_nest_not_polyMachineCodes
 #print axioms ComputationClaim.godelCode_injective
 #print axioms computationClaimSentence_digits
-#print axioms representedDecidableClaimsOfComputation
 #print axioms inconsistentTheoryClaimsOfComputation
-#print axioms representedHaltingClaims
-#print axioms representedBoundedHaltingClaims
-#print axioms lic_belief_finitistic_consistency_ofComputation
-#print axioms lic_belief_stronger_theory_consistency_ofComputation
 #print axioms lic_disbelief_inconsistent_theories_ofComputation
-#print axioms lic_learns_halting_patterns_ofComputation
-#print axioms lic_learns_provable_nonhalting_patterns_ofComputation
-#print axioms lic_does_not_anticipate_halting_ofComputation
 #print axioms computationRepresentation_positive_path
-#print axioms computationRepresentation_negative_path
 
 end LogicalInduction

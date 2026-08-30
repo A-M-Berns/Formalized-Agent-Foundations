@@ -1703,7 +1703,10 @@ def rpn : Sentence → List ℕ
 
 The formerly invalid escape prefix `[1, 0]` introduces an exact paper-prime atom.  Its
 payload is a small-token prefix tree.  Tags `0`--`2` encode naturals in binary; tags
-`3`--`8` encode arithmetic terms; and tags `9`--`18` encode arithmetic formulas.  The
+`3`--`8` encode arithmetic terms; and tags `9`--`18` together with `20`--`22`
+encode arithmetic formulas: `9`--`18` are Foundation's negation-normal-form
+constructors, and `20` (`¬`), `21` (`⟹`), `22` (`⟺`) are the paper's remaining
+primitive connectives (tex:560), contracted into normal form by the parser.  The
 numeric parser below deliberately constructs Foundation's established Godel code only
 inside contraction.  In particular, the emitted stream never contains that code as a
 token. -/
@@ -1711,9 +1714,9 @@ token. -/
 /-- Arity of one node in the shared structured arithmetic payload grammar. -/
 public def structuredArithmeticArity (t : ℕ) : Option ℕ :=
   if t = 0 then some 0
-  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 then some 1
+  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 ∨ t = 20 then some 1
   else if t = 5 ∨ t = 6 ∨ t = 9 ∨ t = 10 then some 0
-  else if t ≤ 16 then some 2
+  else if t ≤ 16 ∨ t = 21 ∨ t = 22 then some 2
   else none
 
 public def arithmeticVec2Code (a b : ℕ) : ℕ :=
@@ -1725,6 +1728,41 @@ public def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
 public def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
   Nat.pair (if negative then 1 else 0)
     (Nat.pair 2 (Nat.pair symbol (arithmeticVec2Code a b))) + 1
+
+/-- Negation as a map on Foundation's arithmetic formula codes.  Foundation's
+`Semiformula` is a negation-normal-form datatype, so `∼` is not a constructor: it is the
+De Morgan involution that swaps the constructor tags `0↔1` (`rel`/`nrel`), `2↔3`
+(`verum`/`falsum`), `4↔5` (`and`/`or`) and `6↔7` (`all`/`exs`), recursing into the
+subcodes at the last two pairs.  This is the numeric mirror of that involution, used by
+the structured parser to realize the paper's primitive `¬`, `⟹` and `⟺` (tex:560)
+without those connectives ever being emitted as codes.
+
+*Proof kind:* `Def`.  Its correctness against Foundation's `∼` is
+`negFormulaCode_spec`. -/
+public def negFormulaCode (n : ℕ) : ℕ :=
+  match n with
+  | 0 => 0
+  | e + 1 =>
+      let a := e.unpair.1
+      let c := e.unpair.2
+      if a = 0 then Nat.pair 1 c + 1
+      else if a = 1 then Nat.pair 0 c + 1
+      else if a = 2 then Nat.pair 3 0 + 1
+      else if a = 3 then Nat.pair 2 0 + 1
+      else if a = 4 then
+        Nat.pair 5 (Nat.pair (negFormulaCode c.unpair.1) (negFormulaCode c.unpair.2)) + 1
+      else if a = 5 then
+        Nat.pair 4 (Nat.pair (negFormulaCode c.unpair.1) (negFormulaCode c.unpair.2)) + 1
+      else if a = 6 then Nat.pair 7 (negFormulaCode c) + 1
+      else if a = 7 then Nat.pair 6 (negFormulaCode c) + 1
+      else 0
+decreasing_by
+  all_goals
+    simp_wf
+    first
+      | exact le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
+      | exact le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
+      | exact Nat.unpair_right_le _
 
 /- Numeric mirror of the structural arithmetic codec.  The three mutually recursive
 parsers return an exact Foundation code and the untouched suffix. -/
@@ -1776,6 +1814,19 @@ mutual
         else if t = 17 ∨ t = 18 then
           (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
             (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
+        else if t = 20 then
+          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+            (negFormulaCode p.1, p.2)
+        else if t = 21 then
+          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+              (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
+        else if t = 22 then
+          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+              (Nat.pair 4
+                (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
+                  (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
         else none
 end
 
@@ -1788,7 +1839,8 @@ def readStructuredLength : List ℕ → Option (ℕ × List ℕ)
 
 /-- Parse the tail of a `[1, 0, ...]` structured paper-prime escape.  After polarity,
 `L` copies of `1` and a terminating `0` delimit exactly `L` payload symbols.  Token
-`19`, which is outside the arithmetic codec alphabet `0..18`, closes the atomic block
+`19`, the one value reserved out of the arithmetic codec alphabet
+`0..18, 20..22`, closes the atomic block
 for syntax-preserving streaming scanners. -/
 def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
   | polarity :: framed =>

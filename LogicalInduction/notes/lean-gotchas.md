@@ -153,3 +153,75 @@ the settled design decisions and the correspondence table, and points here for p
   along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); `RpnThresholdCodes.constSeq`
   goes the OPPOSITE way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
   near the END of the file — client examples at concrete LUVs must be placed after them.
+- **Adding a tag to `parseStructuredArithmeticFormula` (Framework/Criterion.lean) has FOUR obligatory
+  downstream repairs:** `parseStructuredArithmeticFormula_consumed_lt` and `_suffix`
+  (Framework/RpnSentence.lean; both end in a `simp at h` closing the no-branch case),
+  `structuredFormulaGCore` + `_spec` (Framework/RpnComputation.lean, the memoized mirror), and
+  `structuredFormulaG_prim` (Construction/LIACompiler.lean). Criterion.lean is upstream of the
+  whole library: `lake env lean` downstream fails with "object file … does not exist" until a
+  full ~35–45 min build replaces the oleans.
+- **`simp only [..., parseStructuredArithmeticFormula]` does not reduce the parser's literal tag
+  if-chain**; a `rw` between that simp and the closing `rfl` fires inside an unreduced dead branch
+  and corrupts the goal (symptom: huge `rfl failed` dump with `if True then …`). State per-tag
+  equation lemmas `parse_tagNN … := rfl` and `rw` those first (`ArithSource.parse_tag20/21/22`).
+- **Foundation has no `Semiformula.Evalm`.** Use `Semiformula.Eval b f φ` / `Evalf`/`Evalb`;
+  `eval_all`/`eval_ex` are `of_eq rfl`, so finish with `forall_congr'`/`exists_congr`, not simp.
+- **Foundation tokens:** biconditional `🡘`, implication `🡒`, universal `∀⁰`; `⭤`/`➝`/`∀'` do not parse.
+  External ∀-instantiation is `LO.FirstOrder.Theory.Proof.specialize … ⨀`; there is NO external
+  ∃-introduction for `T ⊢` (`Bootstrapping…ex_intro!` is the internal predicate). `T ⊢ n̄ ≠ m̄` is
+  `weakening h (Entailment.by_axm (R0.Ω₃ n m hnm))`. Nested substitution normalizes with
+  `simp only [Semiformula.subst, ← TransitiveRewriting.comp_app, Rew.subst_comp_subst]` + `congrArg`
+  (`congr`/`ext` dead-end).
+- **`Semiformula.Evalbm` does not exist** (it appears once in Foundation source and misleads); use
+  `Semiformula.Evalb (M := M) ![x] φ`. `paperPrimeDecompose (.all φ)` is not rfl-reducible —
+  `simp only [paperPrimeDecompose]` then `rfl`. `↑(Semiformula.rel R v)` under `Rew.emb` does not
+  compute by rfl (vector becomes `fun i => Rew.emb (v i)`); evaluate encoders with
+  `simp [<def>, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols, encodeStructuredNat, Matrix.fun_eq_vec_two]`.
+- **In `parseStructuredPaperPrime` contraction proofs the `simp only [List.cons_append]` after
+  `rw [parseStructuredPaperPrime.eq_def]` is load-bearing** even though the linter says unused;
+  deleting it breaks the following `rw [if_pos hbool]`.
+- **`mulc_polyFueled W` multiplies on the RIGHT** (`fun n => n * W`); build `2n+1` as
+  `hm.succ_comp.of_eq (by ring_nf)`. Repeated fixed blocks: `PolySegStream.blocks hb W (fun _ => rfl) (by omega) hcnt`
+  producing `(List.range (cnt n)).flatMap (fun j => blk ⟨n,j⟩)` — state the token identity in that form.
+- **NEVER `git commit --amend` in a checkout shared with a concurrently committing agent**; HEAD can
+  move between commit and amend and the amend rewrites the OTHER agent's commit. New commit, always.
+- **Foundation `Struc L` has no `Structure.Eq`**: `T ⊢ ↑y = ↑y` is not semantically valid and
+  `Theory.Proof.complete` cannot prove it; use the equality axiom
+  `weakening h (Entailment.by_axm (R0.equal _ Theory.eqAxiom.refl))` + `specialize`
+  (`numeral_eq_refl_prov`). `Theory.Proof.complete` needs explicit universes `.{0, 0}`.
+- **`∀⁰ φ` vs `Semiformula.all φ`** are defeq but not syntactically equal — state equation lemmas
+  at `Semiformula.all/exs`; `Rewriting.emb X` vs `Rewriting.app Rew.emb X` likewise (trailing `rfl`).
+- **After editing an upstream module, `lake env lean` downstream reports spurious "unknown
+  identifier"** for the new declarations — rebuild just that module first
+  (`safe-lake.sh build LogicalInduction.Framework.RepresentsComputations`).
+- **Vacuous-quantifier introduction is not in Foundation's `Theory.Proof` API** (`specialize` only
+  eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Completeness/CounterModel.lean:253)
+  → `provable_iff_of_realize_iff`; write the model lambda as `fun M _ _ => by …` so `[Nonempty M]` is
+  introduced. In `∀ n, T ⊢ ∼(σ/[↑n])` the binder infers as a closed TERM, not ℕ — spell `∀ n : ℕ`.
+  `ArithmeticTerm` takes a type argument; closed terms are `(‘↑n’ : ArithmeticSemiterm Empty 0)`.
+- **`paperPrimeDecompose` contracts to one prime only at an `.exs` head** (and its `.all` negation);
+  `∼` on `Formula` is `imp _ falsum`, so commutation with ⋏/⋎ is false syntactically —
+  `PCWorld.holds_paperPrimeDecompose_neg` is semantic for that reason.
+- **`binNumeral` is base-4 uniform Horner** (`digitTerm d = (1+1)*bit(d/2)+bit(d%2)`), two constant-width
+  runs driven by `len4`/`dig4` (`dig4_succ` IS the Horner step) — base-2 Horner branches on parity and
+  `PolySegStream.blocks` needs a constant block width. `binNumeralEnc_length_le` is `8·log₂v+7`.
+- **`provable_subst_iff_of_val T φ t v hval : T ⊢ φ/[t.const] ↔ T ⊢ φ/[↑v]`** (RepresentsComputations.lean):
+  completeness out, `Theory.Proof.sound` back; needs only `𝗣𝗔⁻ ⪯ T` (Foundation derives it from
+  `[𝗜𝚺₁ ⪯ T]`, Schemata.lean:404); state `hval` over `M : Type` to match `Arithmetic.complete.{0}`.
+  `Structure.numeral_eq_numeral` lands on `ORingStructure.numeral`; bridge with `numeral_eq_natCast`.
+- **`𝗣𝗔⁻`/`⊧*` are PARSE errors ("expected token") without `import …PeanoMinus.Basic`/`.Schemata`.**
+- **Atom-equality → formula-equality chain:** `paperPrimeSentence_injective` (explicit `(a₁ := (true, φ))`),
+  `Semiformula.exs.injEq`, `Rewriting.emb_injective`; strip `∼` first with `simpa using congrArg (∼·)`.
+- **Probing a goal by a scratch file that imports the file being edited sees the stale olean**; insert
+  `trace_state; sorry` in the real file and run `safe-lake.sh env lean` on it instead.
+- **`Nat.pow_le_iff_le_log` does not exist** — `Nat.le_log_iff_pow_le`. `omega` treats `2^2` as an atom.
+  `simp` with `Matrix.fun_eq_vec_two` loops on nested `Operator.comp ![…]` defs — prove operator-value
+  steps on opaque `s t : Semiterm.Const` and use `simp only`.
+- **Collapsing a def into an instance of a general one is defeq-safe but simp-unsafe** (downstream
+  `simp [thatDef]` halts at the new intermediate); keep the direct body + a `rfl` bridge.
+- **The emission certificate for a substituted term must be arity-quantified**
+  (`henc : ∀ l, PolySegStream (fun n => encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))`)
+  because the ∀/∃ cases re-enter at depth l+1 under `Rew.q`. `‘↑n’` is definitionally
+  `(Operator.numeral ℒₒᵣ n).const`, so numeral instantiation needs no transport.
+- **Gate calibration under contention:** a warm `safe-lake.sh build LogicalInduction` ran ~2h with three
+  agents sharing the 24 GB machine (swap 95%); `safe-lake.sh env lean` is 3–5 s.

@@ -94,7 +94,9 @@ route every emitted token is a fixed small constant (`encodeArithmeticFormulaSym
 `structuredPaperPrimeBlock_span`), so the class is polynomial *length* — write-out — and
 never expands a Gödel code or a numeral beyond what the author wrote. Large values are named
 compactly, as the paper names them (tex:614): `binNumeral v` is the Horner `ℒₒᵣ` term for `v`
-in `O(log v)` nodes (`binNumeralEnc_length_le`, `binNumeral_val`), and `dyadicPaperLUVSeq` is
+in `O(log v)` nodes (`binNumeralEnc_length_le`, `binNumeral_val`) — the same term that names
+the machine/input argument of the computational-knowledge claims below — and
+`dyadicPaperLUVSeq` is
 the family of literal paper LUVs of value **`2⁻ⁿ`** built on it, with
 `dyadicPaperLUVSeq_frontend` giving both frontend conclusions. It stands beside
 `unitFracPaperLUVSeq` at `1/(n+1)`; the two share the template `invFormula`/`invPaperLUV` and
@@ -109,19 +111,26 @@ kinds. The first is an **artifact**: the same value spelled with Foundation's *u
 — it writes numerals positionally (tex:614, tex:757) — and the value is nameable compactly
 inside `ℒₒᵣ`, so the class is not narrowed on numerals.
 
-The second is a **real gap, and it is disclosed as `dd:nnf`.** Foundation's `Semiformula` is
-a negation-normal-form datatype with no `⟺` constructor: `A 🡘 B` is notation for
-`(A 🡒 B) ⋏ (B 🡒 A)` and costs `3 + 2|A| + 2|B|` tokens
-(`encodeArithmeticFormulaSymbols_iff`), duplicating both sides at every nesting level. The
-paper's language has `⟺` as a **primitive** connective (tex:560), so the left-nested chain
-`Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A` is `O(n)` characters for the paper's `def:ec` writer and `≥ 2ⁿ`
-tokens here, hence outside the class (`iffChain_not_polyArithmeticFormulaSeq`). **The
-symbol-metered class is therefore not coextensive with `def:ec`** — strictly finer, on `⟺`
-and only on `⟺`. Like `dd:fuel`, this object-language substitution is levied **once,
-globally**, not per row, so no row's status turns on it; the identified and untaken repair is
-a compact formula *source* language with `iff`/`imp`/`neg` primitives decoded into NNF for
-semantics (the `Code.sourceNat` pattern). The residual `dd:fuel` substitution is likewise
-levied once at `def:ec` and is not re-levied here.
+The second concerns the **connectives**, and it is settled by where the metering sits.
+Foundation's `Semiformula` is a negation-normal-form datatype with no `⟺` constructor, so
+metering the normal form would charge `3 + 2|A| + 2|B|` tokens for `A 🡘 B`
+(`encodeArithmeticFormulaSymbols_iff`) while the paper's language has `⟺` as a **primitive**
+(tex:560). Nothing here meters the normal form. `PaperLUVSeq` carries each LUV's defining
+formula as the paper writes it — `source : ℕ → ArithSource 1` over the primitive connectives
+`¬ ∧ ∨ ⟹ ⟺ ∀ ∃`, a proof `compiles` that it denotes the LUV's Foundation formula, and
+`def:ec`'s condition on that writing, `structural : PolyArithmeticSourceSeq` — one emitted
+token per **source** node, with normal-form expansion done inside the parser (tags
+`20`/`21`/`22`) and never charged. The normal-form-metered `PolyArithmeticFormulaSeq` is
+kept as a **strictness foil**: it embeds (`PolyArithmeticFormulaSeq.toSource`) and the
+inclusion is strict, witnessed by the left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`, which is
+certified in the paper's class at `5n + 4` emitted tokens
+(`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) and refuted
+in the foil at `≥ 2ⁿ` (`iffChain_not_polyArithmeticFormulaSeq`,
+`two_pow_le_encode_iffChain`). `iffPaperLUVSeq` carries that family all the way to a literal
+paper LUV family, with `iffPaperLUVSeq_frontend` giving both frontend conclusions, so
+`PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved rather than asserted. That
+two-layer architecture is what `dd:nnf` labels; it is not a charge. The residual `dd:fuel`
+substitution is levied once at `def:ec` and is not re-levied here.
 
 Of the write-out/value-metered class pairs listed above, four containments are **proved
 strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
@@ -173,11 +182,18 @@ distinctive second-theory parameter is absent, and the kernel accepts
 
 The other eleven — `thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`,
 `thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`, `thm:dontwait` — are qualified for a
-single shared reason, and it is a correction to what this file used to claim: their
-canonical endpoints carry `[T.SoundOnHierarchy 𝚺 1]`, a **stronger** hypothesis than the
-paper's. See *Instantiating the arithmetic-theory family* below, and the *Σ₁-soundness
-premise* section of the classification ledger for the endpoint-by-endpoint blast radius
-(19 of the 105 canonical endpoints) and for where the load-bearing use actually sits. The
+theory-hypothesis reason rather than a mathematical one. Eight of them carry
+`[T.SoundOnHierarchy 𝚺 1]` at their canonical endpoint, a **stronger** hypothesis than the
+paper's. Three no longer do — `thm:dontwait`, `thm:halts` and `thm:loops` — being stated
+over `paperTheoryDP`; what holds each of those at `qualified` is the single disclosed
+residual `[𝗜𝚺₁ ⪯ Θ]` —
+by ruling a real theory-strength hypothesis beyond the paper's "computably enumerable",
+not a representation choice. (An extensionality defect found in those three claim families
+by the 2026-08-30 audit was repaired the same day; see *Instantiating the arithmetic-theory
+family* below.) See *Instantiating the arithmetic-theory family* below, and
+the *Σ₁-soundness premise* section of the classification ledger for the
+endpoint-by-endpoint blast radius (12 of the 105 canonical endpoints) and for where the
+load-bearing use actually sits. The
 universal layer of each of those nodes is free of the instance, but that is not uniformly
 the paper's theorem: for the quotation family the universal endpoints take the paper's own
 premises, whereas for `thm:halts`, `thm:loops` and `thm:dontwait` the theory-free
@@ -292,36 +308,125 @@ emitter would silently disagree with the enumeration on every malformed index.
 
 ## Instantiating the arithmetic-theory family
 
-The theorems that quantify over an arithmetic theory — the quotation family (`thm:ref`,
-`thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`) and the
-computation family (`thm:halts`, `thm:pac`, …) — are stated parametrically:
-`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. The endpoints are
-axiom-clean as stated.
+The theorems that quantify over an arithmetic theory come in two shapes now, and the
+difference is the paper's own standing hypothesis on Θ.
 
-**That last instance is stronger than the paper's hypothesis, and this file used to say
-otherwise.** The paper's standing assumption for §4.8 onward is that Θ is consistent,
-computably enumerable, and *represents computations* — the representability theorem for
-computable functions (tex:600-606, imposed for §4.8–§4.12 at tex:993-997). That implies
-consistency but does not make Θ true in ℕ, and the paper says so in as many words at
-tex:2673: "If we assumed further that Θ were sound as a theory of the natural numbers,
-this would allow us to solve the halting problem…". Σ₁-soundness is that further
-assumption. The paper's own proofs of `thm:halts`, `thm:loops` and `thm:dontwait`
-(tex:4495-4520) use Σ₁-completeness and consistency only.
+**The paper's premise, as a class.** `RepresentsComputations T`
+(`Framework/RepresentsComputations.lean`) is the Lean rendering of the paper's §2
+assumption that *Θ represents computations* (tex:600-606, imposed for §4.8–§4.12 at
+tex:993-997): for every total computable `f : ℕ → ℕ` there is a two-variable Θ-formula
+`γ_f` with
 
-It enters because a decidable claim about a computation is represented here by an r.e.
-Σ₁ schema (design note, `Construction/Witnesses/ComputationSyntax.lean:23-27`), reached
-through Foundation's weak-representation lemma `re_complete`, which is *stated* under the
-soundness instance; and because the stage world of the constructed process is built from
-the standard model, so `theoremDP_hworld` keeps the positive and negative atom fibers
-mutually exclusive by passing through truth — the `.mpr`, provable ⇒ true, direction. That
-is the whole load-bearing use; every other `re_complete` call in the development uses the
-`.mp` direction, which is only Σ₁-completeness. The eleven nodes this demotes to
-`qualified`, and the endpoint-by-endpoint blast radius, are in the *Σ₁-soundness premise*
-section of [`scripts/coverage-classification.md`](../scripts/coverage-classification.md).
+    y = f n  ↔  Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ).
 
-Removing it — building the stage world from a model of Θ, so that fiber exclusivity comes
-from Θ refuting false claims plus consistency, as the paper's own argument does — is under
-investigation. Nothing here promises it.
+It is a condition on what Θ *derives*, with no reference to truth in ℕ; the paper notes at
+tex:604 that it already forces Θ consistent, and `RepresentsComputations.consistent` is
+that observation. It supplies both literals over one sentence — `represents_proves` and
+`represents_refutes` / `represents_refutes_all`, which need `[𝗥₀ ⪯ T]` for the numeral
+apparatus and no semantic hypothesis at all. It is non-vacuous:
+`representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
+proves it for any theory `U` with `[𝗣𝗔⁻ ⪯ U]` that is true in `ℕ`, and the instances are
+registered at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`. Not at `𝗥₀`: Foundation's `code_uniq` is stated for
+`𝗥₀` only inside a commented-out block, and `𝗥₀` has no trichotomy axiom, so the `rfind`
+case of single-valuedness is unavailable there — `𝗣𝗔⁻` is the weakest theory in
+Foundation's hierarchy for which the argument closes. Note the asymmetry, which is
+deliberate: **verifying** the premise for a particular theory uses that theory's truth in
+`ℕ` (through Gödel completeness and soundness), while **consuming** it never does. No
+endpoint carries a semantic hypothesis on `T`; the concrete instances pay for themselves.
+
+**Endpoints stated at that premise, with no soundness.** `thm:dontwait`
+(`lic_does_not_anticipate_halting_unconditional`), `thm:pac`
+(`lic_belief_finitistic_consistency_unconditional`) and `thm:pazfc`
+(`lic_belief_stronger_theory_consistency_unconditional`) are stated over
+`liaHistory (paperTheoryDP T)` under `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [RepresentsComputations T]`.
+Their claim family (`Construction/Witnesses/ComputationRepresented.lean`) is named the
+paper's own way, `⌜f⌝(⌜n⌝)` for a *total* decider, so the positive literal and its literal
+negation come from one sentence and the stage world is consistent by `Entailment.Consistent
+Θ` alone (`paperTheoryDP_nonvacuous`), which representability already gives. The LUV
+threshold lane went the same way: `ArithmeticLUVPresentation` now carries
+`[RepresentsComputations T]` and takes `threshold_enters` / `threshold_refutes` over one
+schema and its negation, so `luvWorld` is the provability world and
+`ComputableLUV.luvWorld_consistent` runs on consistency.
+
+`thm:halts` (`lia_learns_halting_patterns_unconditional`) and `thm:loops`
+(`lic_learns_provable_nonhalting_patterns_unconditional`) are now in this list too, and ask
+for even less: they are stated over `liaHistory (paperTheoryDP T)` under
+`[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [Entailment.Consistent T]`, taking `Entailment.Consistent`
+rather than `RepresentsComputations`, because this lane needs no *represented* negative
+literal — `thm:halts`'s positive literal is Σ₁-completeness alone (`re_complete_mp`) and
+`thm:loops`'s negative one is its own `hloops` premise, which the paper (`app:loops`) also
+assumes outright. Their day-`n` claim is the *fixed* universal r.e. schema
+`universalHaltingSchema` at the compact name of `⟨⌜mₙ⌝, xₙ⟩`, and `thm:loops`'s `hloops` is
+the literal negation of that same sentence, so both endpoints speak about a claim that names
+the machine.
+
+So five paper-facing endpoints — `thm:halts`, `thm:loops`, `thm:dontwait`, `thm:pac`,
+`thm:pazfc` — plus the LUV threshold lane now carry no soundness instance at all.
+
+**The computational-knowledge endpoints name their machines.** `thm:halts`, `thm:loops`,
+`thm:dontwait`, `thm:pac` and `thm:pazfc` are stated over `paperTheoryDP`, the paper's own
+`Θ`-complete deductive process, with **no semantic hypothesis on `T`**. What each day-`n`
+claim is *about* is fixed by an argument written into the sentence — the machine's source
+number and its input, packed and spelled by the compact Horner term `binNumeral`, whose
+`O(log v)` symbol run is emitted digit by digit from the paper's own write-out certificates
+`DigitMachineCodes` and `BigDigits`, which is what makes those two hypotheses load-bearing
+on `def:ec`. What is *represented* is universal and fixed once per theorem: the r.e.
+`universalHaltingSchema` on the unbounded lane, and one `γ` per horizon program for the
+total `universalRunValue f` on the bounded lane — the paper's `⌜f⌝`.
+
+This replaces a rendering (through 2026-08-30, found by a blind audit that day, R5-F08/F09)
+that hid the machine sequence *inside* a `codeOfREPred` schema or inside the represented
+decider. Both constructions see their data only up to extensional equality, and each
+endpoint's own hypothesis pinned that extension to a constant — all halt, never halt,
+everywhere consistent — so the claim family was the same sentence family for every
+admissible machine sequence and the write-out hypotheses did no work. The standing test
+against that failure mode is now proved in-repo rather than assumed:
+`haltingArgClaimSentence_ne_of_halts_ne` and `representedClaimSentence_ne_of_runValue_ne`
+show that data differing in halting behaviour receive different claim sentences. Any future
+represented claim family should carry the same witness. **The LUV threshold lane was never
+affected** — `thresholdValue` is non-constant under that lane's hypotheses, and it was
+audited clean.
+
+**Where Σ₁-soundness remains, and why.** It remains at `theoremDP_hworld`'s **tag 7**, the
+quotation lane, and reaches every endpoint over `theoremDP T` through it — the quotation
+family (`thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`,
+`thm:ccee`), `thm:incons`, and the three `FeedbackTruth`
+`_unconditional` endpoints: twelve of the 105 canonical endpoints, counted from the
+elaborated signatures. The soundness direction used is `re_complete`'s `.mpr` — provable ⇒
+true — which keeps the positive and negative atom fibers of the constructed stage world
+mutually exclusive. The reason it cannot simply be replaced there is **architectural**, and
+it has two parts. `RepresentsComputations` supplies γ *existentially*, one per total
+computable function, with no computable map from a quote code to `⌜γ⌝`; the universal quote
+evaluation is partial, so γ has to be produced per decider rather than once for a universal
+schema. That in turn forces the atom naming a quote to be the paper-prime of the represented
+claim, carried by a schema-free process — and in this development the paper-prime atom layer
+(`PaperFirstOrder.lean`) and its emission (`ArithmeticSource.lean`) sit strictly *downstream*
+of `Construction/Witnesses/QuotationAffine.lean`. Closing it is therefore an import-layer
+reorganization, not a local edit. It is the next tranche of this work, and nothing here
+promises it.
+
+**The residual `[𝗜𝚺₁ ⪯ Θ]`, disclosed in the same breath.** The migrated endpoints still
+carry `[𝗜𝚺₁ ⪯ T]` where the paper assumes only that Θ is computably enumerable. It is
+needed for exactly one thing: provability of the claim family is shown r.e. through
+Foundation's *internal* arithmetization (`provable_instances_re`, over the `Bootstrapping`
+provability predicate at `V = ℕ`), and that apparatus is stated over `𝗜𝚺₁`. This is a real
+theory-strength hypothesis beyond the paper's, not a representation choice, so it is
+charged the way the soundness instance is: a row whose only shown endpoint carries it stays
+`qualified` on that single named residual. `thm:dontwait`, `thm:halts` and `thm:loops` are
+exactly those rows.
+
+**And `[T.Δ₁]`, one notch below.** Every endpoint over an arithmetic theory also asks for a
+`Δ₁`-definable *axiom set* (`Theory.Δ₁`), where the paper asks only that Θ be computably
+enumerable. The two are not the same condition on `T` as presented: a c.e. axiom set need not be
+`Δ₁`. They are the same condition on the *theory*: by Craig's trick every c.e. theory has a
+deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization, and every statement
+here is about `T ⊢ ·`, which such a re-axiomatization preserves. That step is not formalized;
+`[T.Δ₁]` is charged once here as representation infrastructure for enumerating `T`'s theorems,
+and does not by itself lower a row.
+
+The nodes this still demotes, and the endpoint-by-endpoint blast radius, are in the
+*Σ₁-soundness premise* section of
+[`scripts/coverage-classification.md`](../scripts/coverage-classification.md).
 
 They are also axiom-clean when *instantiated*. Foundation proves `Δ₁`-definability of `𝗜𝚺₁`
 and `𝗣𝗔` outright at the pinned revision (`InductionSchemeDelta1.lean`, whose header records
@@ -451,9 +556,9 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    inhabited by varying concrete families at both ends of the range the paper writes:
    `unitFracPaperLUVSeq` at `1/(n+1)` and `dyadicPaperLUVSeq` at `2⁻ⁿ`, the latter naming
    its denominator by the compact `ℒₒᵣ` term `binNumeral (2 ^ n)`; `PaperLUV.rpnThresholdCodes`
-   is the single-LUV route into the non-sequence `LUV.RpnThresholdCodes`. What remains charged
-   here is not this item but the global `dd:nnf` substitution disclosed above and in item 3
-   below. See
+   is the single-LUV route into the non-sequence `LUV.RpnThresholdCodes`. Nothing remains
+   charged to this item; `dd:nnf`, listed as item 3 below, is no longer a substitution
+   either. See
    [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
    `instantiated` accordingly.
 
@@ -495,36 +600,30 @@ instance over `𝗜𝚺₁` reports the same three axioms as everything else her
    endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
    as an exactly-reflecting one would.
 
-3. **Standing — the NNF object language (`dd:nnf`).** Sentences and LUV defining formulas
-   are Foundation's **negation-normal-form** `Semiformula`s
-   (`verum/falsum/rel/nrel/and/or/all/exs`). The paper's language has `⟺` as a *primitive*
-   connective (tex:560, "includes the basic logical connectives ¬, ∧, ∨, ⟹, ⟺"); here
-   `A 🡘 B` is notation for `(A 🡒 B) ⋏ (B 🡒 A)` and costs `3 + 2|A| + 2|B|` tokens
-   (`encodeArithmeticFormulaSymbols_iff`), duplicating both sides at every nesting level.
+3. **Retired — the object language (`dd:nnf`).** The *semantic* object language is still
+   Foundation's negation-normal-form `Semiformula` (`verum/falsum/rel/nrel/and/or/all/exs`),
+   but *writing* is no longer metered there. The paper's language has `⟺` as a primitive
+   connective (tex:560, "includes the basic logical connectives ¬, ∧, ∨, ⟹, ⟺"), and formula
+   families are metered on a matching **source** language: `ArithSource k`
+   (`Construction/Witnesses/ArithmeticSource.lean`) carries those primitives plus atomic
+   leaves, `ArithSource.compile` gives it its meaning (`eval_compile` is the semantic
+   bridge), and `def:ec`'s condition is `PolyArithmeticSourceSeq` — one emitted token per
+   node of the formula **as the paper writes it**. Normal-form expansion happens inside
+   `parseStructuredArithmeticFormula` (source tags `20` = `¬`, `21` = `⟹`, `22` = `⟺`) and
+   is never charged to the emitter. So nothing pays twice for a biconditional, and the
+   substitution this item used to disclose is gone.
 
-   The consequence is real and is witnessed, not asserted: the left-nested chain `Φ₀ = A`,
-   `Φₖ₊₁ = Φₖ ⟺ A` is `O(n)` characters for the paper's `def:ec` writer and `≥ 2ⁿ` tokens
-   here, so it has **no** certificate in any symbol-metered class of this development
-   (`iffChain_not_polyArithmeticFormulaSeq`, with `iffChain` and
-   `two_pow_le_encode_iffChain`, in
-   `Construction/Witnesses/StructuredPaperRpn.lean`). The symbol-metered class is therefore
-   **not coextensive with `def:ec`**: it is strictly finer, on `⟺` and only on `⟺` — `¬`,
-   `∧`, `∨`, `⟹`, `∀`, `∃` and numerals named compactly in `ℒₒᵣ` all cost what the paper's
-   writer pays, implication because negation is a linear token map
-   (`encodeArithmeticFormulaSymbols_neg`).
-
-   Like the fuel model was, this is charged **once, globally** — here, in the `dd:*` glossary
-   in `LogicalInduction.lean`, and in `scripts/coverage-classification.md` — and **not per
-   row**: no row's status turns on it. That is a deliberate judgment call, flagged as one;
-   lowering every symbol-metered row would spread a single substrate fact across the table
-   without adding information.
-
-   The repair is **identified and not done**: a compact formula *source* language carrying
-   `iff`/`imp`/`neg` as primitives, metered at the source and decoded into NNF only for
-   semantics — the `Code.sourceNat` pattern this development already uses for programs. It is
-   distinct from the binary-numeral source language considered and rejected in
-   `scripts/coverage-classification.md`, which would have been a permissive widening past
-   `def:ec`; an `iff` primitive only restores parity with a connective the paper already has.
+   What the label now marks is the two-layer architecture and one deliberate retention: the
+   normal-form-metered class `PolyArithmeticFormulaSeq` is kept as a **strictness foil**. It
+   embeds (`PolyArithmeticFormulaSeq.toSource`), and the inclusion is strict, proved at the
+   left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`: `5n + 4` source tokens
+   (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) against
+   `≥ 2ⁿ` normal-form tokens (`iffChain_not_polyArithmeticFormulaSeq`,
+   `two_pow_le_encode_iffChain`). `iffPaperLUVSeq` carries that family to a literal paper LUV
+   family whose `n`-th defining formula is `O(n)` characters to write, with
+   `iffPaperLUVSeq_frontend` reaching `LUV.RpnThresholdCodeSeq`. So
+   `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted, and the
+   symbol-metered class the statements use is the paper's own condition on its own syntax.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected

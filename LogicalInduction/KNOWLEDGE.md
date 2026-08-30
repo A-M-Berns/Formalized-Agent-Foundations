@@ -149,7 +149,8 @@ already used where it works: `paperPrimeWorld` (`PaperFirstOrder.lean`) via
 `Theory.small_satisfiable_of_consistent`, soundness-free because `.nrel` maps to the negation
 of the *same* atom. After R3-F14 the instance is charged ONLY at `theoremDP_hworld`, `luvWorld_consistent`,
 `luvThresholdDP_hworld`, `quotation_presentation_nonvacuous`, `loopsTheory_soundOnSigma1`
-and the `_unconditional` instantiations (8 declarations); 43 declarations across 5 files
+and the `_unconditional` instantiations (8 LOAD-BEARING declarations; `grep SoundOnHierarchy` still finds ~148 signature lines in 23
+files, almost all inherited-removable — size by occurrences, not by the 8); 43 declarations across 5 files
 dropped it via `re_complete_mp` (`ComputationSyntax.lean`, `[𝗥₀ ⪯ T]` only — the only
 importer of Foundation's `R0.Representation`). Calibration: the grep-based '187 signature
 lines' estimate over-counted ~4×, and the predicted `[Entailment.Consistent T]` breakage did
@@ -290,10 +291,11 @@ nothing reaches `StructuredPaperRpn`), so witness-consumption demos for that lay
 in-file `example`s; exposing the first-order frontend is an `API.lean` decision to take
 deliberately.
 
-**Open infrastructure (not reach):** a general substitution lemma `PolyArithmeticFormulaSeq
-(fun n => ψ/[t n])` for a fixed template `ψ` and poly-fueled term family `t` is NOT proved;
-the obstruction is `Rew.subst` under a quantifier becoming `Rew.q` with a `bShift` the encoder
-has no commutation lemma for. New denominators cost one `enc_*` lemma via `invFormula` instead.
+**Substitution lemma (CORRECTED 2026-08-30):** `polyArithmeticFormulaSeq_subst_arg` IS proved
+(`SubstEmission.lean`) for an arbitrary closed-term stream `τ : ℕ → Semiterm.Const ℒₒᵣ` with an
+arity-quantified emission certificate; the feared `bShift`/`Rew.q` obstruction is discharged by
+Foundation's `@[simp] Rew.const : ω c = c` for closed operator constants. The earlier entry claiming
+it was blocked was wrong and cost time.
 
 **Two different 'source language' ideas — do not conflate.** A binary-numeral source node
 was REJECTED (it admits strings the paper's def:ec writer cannot produce in poly time — a
@@ -302,6 +304,171 @@ The `iff`/`imp`/`neg` formula-source language is the CORRECT identified-not-done
 `dd:nnf`: `⟺` is one of the paper's primitives, so restoring it costs no permissiveness.
 New route: `PaperLUV.rpnThresholdCodes` takes a single literal paper LUV into the
 non-sequence `LUV.RpnThresholdCodes` that `LUV.expect_converges` (thm:ec) requires.
+
+**`[𝗜𝚺₁ ⪯ T]` on the arithmetic-theory endpoints is a SECOND strengthening beyond the paper
+(R5-F01, 2026-08-29).** It exists only because `provable_instances_re` (`ComputationDP.lean:47`)
+proves r.e.-ness of `{φ | T ⊢ φ}` through Foundation's internal `Bootstrapping.Provable` +
+`definability` + `internalize_provability`, which need `𝗜𝚺₁`. CORRECTION 2026-08-30: on the r.e. lane the binder is UNUSED — instance-free restatements of
+`provable_instances_re`, `paperTheoremFires_re`, `exists_paperTheoremCode` compile axiom-clean, because the
+proofs instantiate `V := ℕ` and `internalize_provability`/`Provable.sound` need `ℕ ⊧* 𝗜𝚺₁`, not `𝗜𝚺₁ ⪯ T`.
+Removal = targeted binder deletion + import-ordered propagation; the instance IS load-bearing at
+`PaperLUV.lean:91` (arithmetic inside `T`) and `QuotationTheoryPresentation.theory_sigmaOne` (thm:lp's
+diagonal). A derivation-enumeration codec is NOT needed (it would require an `Encodable` for Foundation's
+`Derivation2`, absent — an upstream project). Disclose beside the Σ₁-soundness charge until removed; `[T.Δ₁]` (= the
+paper's c.e. axiomatization) is representation infrastructure and stays.
+
+**Part II plan (tranche 5) — `RepresentsComputations T` renders tex:600-606 directly** (for every
+total computable `f`, `∃ γ, ∀ n y, y = f n ↔ T ⊢ ∀⁰ (γ/[n̄,#0] 🡘 “#0 = ȳ”)`). The negative
+literal `T ⊢ ∼γ/[z̄,1̄]` from the representation at value 0 compiles under `[𝗥₀ ⪯ T]` alone
+(`R0.Ω₃` gives `T ⊢ 0̄ ≠ 1̄`; `Theory.Proof.specialize` for ∀-instantiation; Foundation has NO
+external ∃-introduction for `T ⊢`). Under Style 1 the composite `n ↦ evalWithin(m,x,f n)` is one
+total function, so the deferred-horizon compound and the whole `UniversalBoundedFailure` apparatus
+are deleted, not ported. Architectural risk: an existentially given `γ` has no source text, so the
+structured emitter cannot write it symbol-by-symbol and `theoremDP`'s fixed-schema c.e. route
+breaks — exits: `paperTheoryDP` (enumerates all provable propositions), or keep the fixed
+`codeOfREPred` schema with a Style-2 negative field that IS the paper's tex:4515 premise instance.
+Concrete instantiation: revive Foundation's commented `codeAux_uniq`/`code_uniq` (stated for every
+model of `𝗥₀`) + `models_code` + completeness ⇒ `RepresentsComputations 𝗥₀` ⇒ `𝗜𝚺₁`, `𝗣𝗔` —
+a DIFFERENT object from the ruled-out `codeOfREPred` strong representability.
+
+**The paper's formula source language** (`Construction/Witnesses/ArithmeticSource.lean`, tranche 5):
+`ArithSource k` (leaf/and/or/all/exs/not/imp/iff), `compile` into Foundation NNF (`not/imp/iff` by
+`∼/🡒/🡘`, rfl), `ofNNF := .leaf` (compile ∘ ofNNF = id and sourceTokens ∘ ofNNF =
+encodeArithmeticFormulaSymbols, both rfl), `SourceEval` with a genuine metalevel `↔` at `iff`
+(spelling it `(→)∧(→)` would trivialize the correctness theorem), `eval_compile`, tags 20/21/22
+for not/imp/iff (19 stays the reserved terminator; the conditioning automaton clamps at 20 so they
+are opaque payload), roundtrip `parseStructuredArithmeticFormula_sourceTokens`, and the
+source-metered class `PolyArithmeticSourceSeq` — the paper's def:ec class on formulas.
+`PolyArithmeticFormulaSeq` remains as the strictness foil (`PolyArithmeticFormulaSeq.toSource`
+embeds it). `negFormulaCode` (De Morgan involution on Foundation formula codes) lives in
+`Framework/Criterion.lean`, its spec in `ArithmeticSource.lean`, its `Primrec` proof privately in
+`LIACompiler.lean`. The Gödel code of an n-deep `iff` source is ~2^(2^n) and is never emitted —
+the same trade as `Code.sourceNat`; no value-metered class may ever sit on this path.
+`parseStructuredArithmeticFormula_consumed_lt` now concludes `x ≠ 19` (was `< 19`).
+
+**Literal-LUV frontend lives in `ArithmeticSource.lean`** (moved from `StructuredPaperRpn.lean`,
+tranche 5; import direction forces it — `ArithmeticSource` imports `StructuredPaperRpn` for the
+encoders and round trips). `PaperLUVSeq = ⟨luv, source : ℕ → ArithSource 1, compiles, structural :
+PolyArithmeticSourceSeq source⟩`; threshold body is a source `imp` node (`paperThresholdSource`),
+which deleted the whole `negArithTok` token-map lane. `RpnThresholdCodeSeq` unchanged (Option 1).
+Capstone `iffPaperLUVSeq`/`iffPaperLUVSeq_frontend`: formula `invFormula (numeral 1) ⋏ iffChain (2n+1)`
+(odd chain is valid by parity ⇒ no-op conjunct; `invPaperLUVWith` is a SIBLING of `invPaperLUV`,
+not a generalization — the latter's formula must stay literally `invFormula d` for the numeral
+encoding lemmas). The family is constant in VALUE (1) and varies in written size — it witnesses
+the metering class, not value variation (`unitFrac`/`dyadic` do that). Strictness ledger addition:
+`iffChain_not_polyArithmeticFormulaSeq` now reads as `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq`.
+
+**`RepresentsComputations T`** (`Framework/RepresentsComputations.lean`, tranche 5 Part II) renders
+tex:600-606 verbatim: `∀ f, Computable f → ∃ γ, ∀ n y, y = f n ↔ T ⊢ ∀⁰ (γ/[n̄,#0] 🡘 “#0 = ȳ”)`.
+Derived: `represents_proves`, `represents_refutes` (negative literal at a substituted instance),
+`represents_refutes_all` (∀-form), `RepresentsComputations.consistent` (the paper's line-604 remark —
+no separate consistency carry needed), `reprBody`/`reprAll`/`reprAllSchema` (the claim family IS
+the numeral-instance family of ONE fixed schema, so `provable_instances_re` enumerates it even
+though γ is existential). Instantiated at `𝗣𝗔⁻`, `𝗜𝚺₁`, `𝗣𝗔` (`R0Representability.lean`,
+`representsComputations_of_peanoMinus` via a local restatement of Foundation's commented
+`code_uniq` + `models_code` + completeness) — NOT at `𝗥₀` (no trichotomy ⇒ the `rfind` case of
+single-valuedness fails). Wrong belief corrected: existentially supplied formulas block neither
+c.e.-ness (`provable_instances_re` takes φ as a parameter) nor emission (`PolySegStream.constList`
+accepts any fixed list) — opacity only blocks uniformity over a FAMILY of formulas. Represented
+claims are carried by `paperTheoryDP` (every provable proposition; no fixed schema); choose the
+day-n claim at value 0 (`∀⁰(γ(n̄,ν) ↔ ν = 0̄)`) so `paperPrimeDecompose` yields literal
+complements with no double negation. LUV lane migrated: `thresholdSchema T := reprAllSchema
+(thresholdGamma T) 0`, `luvWorld` is the provability world, `luvWorld_consistent` from consistency;
+`truthWorld` is the standard-truth world still used by `gridDP`. Two spellings of the soundness
+instance coexist (`𝚺 1` and `SigmaSymbol.sigma 1`) — grep `SoundOnHierarchy` alone.
+
+**Part II outcome (tranche 5).** Tag 3 (bounded claims) closes from consistency: the represented
+claim family's def:ec certificate is built on the SOURCE language (`SubstEmission.lean`:
+`reprBodySource = .iff (.leaf γ(n̄,ν)) (.leaf (ν = 0̄))`, wrapped `.exs (.not …)`, emitted by
+`structuredPaperSourcePrimeBlock true`; the bridge to `representedClaimSentence` is rfl), and
+`thm:dontwait`/`thm:pac`/`thm:pazfc` live in `ComputationRepresented.lean` over `paperTheoryDP T`
+under `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [RepresentsComputations T]` — no soundness.
+`paperTheoryDP_nonvacuous` was ALWAYS soundness-free (needs only `[Entailment.Consistent T]`).
+Retired: the whole `UniversalBoundedFailure` apparatus. Dead-but-inhabited surface for a
+consolidation pass: `UniversalBoundedHalts`, `universalBoundedHaltingSchema`, `theoremDP` tags 2/3,
+`ComputationTheoryPresentation.boundedHalting_enters/boundedFailure_refutes` (no consumer now).
+**Tag 7 (quotation) is the remaining Σ₁-soundness site, and it is an import-layer problem, not a
+proof gap:** `RepresentsComputations` gives one γ per TOTAL function; the universal quote evaluation
+is partial and fuel-totalizing it would impose a poly-time bound `BooleanQuoteCode.ofComputable`
+must not take, so γ is per-decider, the quote atom must be the paper-prime of the represented claim,
+and the carrying process schema-free — but `PaperFirstOrder.lean` (`paperPrimeSentence`) and
+`ArithmeticSource.lean` (emission) both sit DOWNSTREAM of `QuotationAffine.lean` (via ComputationDP
+→ QuoteCodeOfMarket → SemanticPrime → SemanticSource). The move-modules route (a) is SUPERSEDED (2026-08-30): the 'strong representability unavailable'
+obstruction is stale — tranche 5 revived `code_uniq` locally (`R0Representability.lean:101`, models of
+`𝗣𝗔⁻`). Route (c): replace `universalQuotePos`/`universalQuoteNeg` by ONE Foundation `code` formula for
+`universalComputation` (`Nat.ArithPart₁.exists_code`), `pos := code/[z̄,1̄]`, `neg := code/[z̄,0̄]`; then
+`T ⊢ ∼(pos ⋏ neg)` from `code_uniq` + `Arithmetic.complete` + `R0.Ω₃ 1 0` + weakening under `[𝗣𝗔⁻ ⪯ T]`,
+and tag 7 closes from consistency like tags 1/3. No module moves, no endpoint statement changes, and the
+diagonal (`thm:lp`, `diagonalPriceDecisionPart_partrec` needs the schema to be a CONSTANT) survives —
+route (a) would have lost `thm:lp`, because a per-decider γ is `Classical.choose`-obtained and not
+computable in the decider. The only two soundness consumptions in the library are `ComputationDP.lean:308,310`
+(`re_complete … .mpr`); the instance appears 91× under two spellings. Supply side is tiny: every
+`pos_complete`/`neg_complete` funnels through `BooleanQuoteCode.ofComputable` and
+`RationalQuoteCode.ofComputable`. Numeral cost is NOT the obstruction (`PolyFueled` is polynomial
+in the stream INDEX, and `RpnThresholdCodeSeq` is pair-indexed).
+
+**Instantiation asymmetry of `RepresentsComputations`.** `representsComputations_of_peanoMinus`
+takes `[𝗣𝗔⁻ ⪯ U]` AND `[ℕ↓[ℒₒᵣ] ⊧* U]` — standard-model truth VERIFIES the premise for the
+registered instances (`𝗣𝗔⁻`, `𝗜𝚺₁`, `𝗣𝗔`) and is used by no consumer. A Σ₁-unsound theory such as
+`𝗣𝗔 + ¬Con(𝗣𝗔)` satisfies the paper's assumption but is not witnessed here (a syntactic proof of
+representability without the standard model would be needed — a Foundation-upstream item).
+`check-paper-nodes.sh` blocks inventorying the 36 unannotated interface/supporting lemmas; they are
+covered transitively by the annotated endpoints (same ruling as R3-F24). `dd:nnf` now names an
+architecture, not a substitution.
+
+**Public atom tag inventory** (scattered `*Tag` defs): 0–3 computation claims, 4 quotation
+(`quotationClaimCode`), 5 `productTag`, 6 `semanticPrimeTag`, 7 `paperPrimeTag`, 8 `oldLanguageTag`.
+Every "atoms are fresh for tag X" lemma is a case split over this table (`ProductDefinition.lean:194`,
+`SemanticProduct.lean:286`, `OldLanguageLift.lean:108`, `PaperTheoryDP.lean:301`). Cutting two import
+edges (`PaperFirstOrder.lean:1 → SemanticSource`, used only by `paperPrimeDecompose_semanticPrimeFresh`;
+`PaperTheoryDP.lean:2 → ComputationDP`, used only by the 'Joint compatibility' section :300-419)
+collapses the QuotationAffine reordering to 8 modules — recorded in case route (a) is ever needed.
+
+**A formula-metered atom CAN carry a machine/input pair — as a compact numeral (CORRECTED
+2026-08-30).** The constraint is on the substituted term's TOKEN RUN (must be a `PolySegStream`),
+not on its VALUE: Foundation's unary `numeral` costs its value, but `binNumeral` (now base-4 uniform
+Horner, two constant-width runs driven by `len4`/`dig4`) costs O(log v), so a `BigDigits` value
+stream is admissible — `polySegStream_binNumeralEnc (hv : BigDigits v)`. This is exactly how R5-F08
+was fixed: `haltingArgClaimSentence machines inputs n := universalHaltingSchema/[binNumeral
+(haltingClaimInput (mₙ) (xₙ))]` and, for the bounded lane, ONE γ per horizon program for the
+universal decider `universalRunValue steps` at `binNumeral (boundedArg machines inputs n)`; value
+transfer by `provable_subst_iff_of_val` (completeness both ways, needs only `𝗣𝗔⁻ ⪯ T`).
+`hm`/`hi` are load-bearing (deleting them breaks the `BigDigits` certificate). Anti-vacuity:
+`haltingArgClaimSentence_ne_of_halts_ne`, `representedClaimSentence_ne_of_runValue_ne`. Why base 4:
+`PolySegStream.blocks` needs a constant block width; base-2 Horner branches on parity.
+
+**EXTENSIONALITY TRAP (R5-F08/F09, blind audit 2026-08-30 — the worst find of the run).** Foundation's
+`codeOfREPred (A : ℕ → Prop)` and `RepresentsComputations.repr f` depend only on the EXTENSION of the
+predicate/function. A claim family built as `codeOfREPred (fun n => P (mₙ) (xₙ))` or `repr
+(boundedRunValue …)` collapses to one fixed sentence family as soon as an endpoint hypothesis pins the
+extension (`∀ n, halts` ⇒ `fun _ => True` by funext+propext; `hnever` ⇒ const 0; `hconsistent` ⇒
+const 1) — the sentence then names NO machine and the e.c. hypotheses `hm`/`hi` are provably decorative.
+The tranche-5 `paperTheoryDP` migration of thm:dontwait/pac/pazfc (and Part II/H's halts/loops) did
+exactly this and shipped five vacuous renderings that two rounds of fixers and the orchestrator called
+improvements. The paper's sentence names the machine (`⌜m⌝`, `⌜f⌝(⌜n⌝)`, tex:606/1931). Correct design:
+represent the UNIVERSAL evaluator once (one γ per horizon `f`, or the fixed universal r.e. halting
+schema) and write the pair `Nat.pair (sourceNat mₙ) xₙ` into the sentence as a compact
+`binNumeral` (O(|source|) tokens — what `BigDigits` bounds), emitted digit-by-digit from the
+`BigDigits` certificate. Standing test for any represented claim family: substitute two sequences with
+the same extension but different programs — if the sentences coincide, the rendering is extensional.
+
+**After the R5-F08 fix (blind re-test 2026-08-30).** Machine dependence of the §4.9/§4.10 sentences is
+DEFINITIONAL (`binNumeral (haltingClaimInput (mₙ) (xₙ))` substituted into a fixed schema; `binNumeral`
+and `sourceNat` injective), and `hm`/`hi` are the only route to `sentence_poly` — but the two
+anti-vacuity lemmas (`haltingArgClaimSentence_ne_of_halts_ne`, `representedClaimSentence_ne_of_runValue_ne`)
+separate sentences only when BEHAVIOUR differs; the full "same extension, different program ⇒ different
+sentence" statement is true but unprovable with the installed substrate: it needs a syntactic
+substitution-injectivity/occurrence lemma (σ mentions `#0` ⇒ `σ/[t] ≠ σ/[t']` for `t ≠ t'`), absent from
+Foundation (`Foundation/FirstOrder/Syntax` has no `subst_injective`). Queued as tranche-7 infrastructure
+(local proof by induction on formulas; upstream candidate). Argument-INsensitivity of the opaque schema IS
+refutable from `universalHaltingSchema_spec` (non-constant `UniversalCodeHalts`).
+`[T.Δ₁]` (a Δ₁ axiom SET) is strictly stronger than the paper's "c.e." — Craig's trick gives a deductively
+equivalent Δ₁ axiomatization, so every `T ⊢`-statement transfers, but that is not formalized; disclosed
+2026-08-30 as representation infrastructure (global charge, judgment call). Day indexing is ℕ from 0 while
+the paper's is ℕ⁺: `ordinaryBoundedComputation`'s predicate `0 < n` is false at day 0 and cannot witness
+`hconsistent`; a witness must hold on every day. `thm:pac` and `thm:pazfc` are the same theorem by `rfl`
+at every layer (the §4.10 `Con(Θ)` project is what separates them). thm:dontwait's γ represents the
+COMPOSITE decider `universalRunValue f` (⌜g⌝(⟨⟨m,x⟩,n⟩) ≠ 0), not `f` alone — no new hypothesis.
 
 **Known dead weight.** `PolyEF` (`Framework/Computable.lean:258`) is a dead-end layer:
 consumed only by other `PolyEF` lemmas, never converted to any emission class. It is a

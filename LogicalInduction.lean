@@ -53,24 +53,26 @@ list is exhaustive; a label appearing nowhere below is not in use.
   lands inside it. The label now marks a *sufficient certification device*, and what
   remains open is only its converse (the model card's lower calibration), which nothing
   paper-facing depends on.
-* **`dd:nnf`** — sentences and LUV defining formulas are Foundation's
-  **negation-normal-form** `Semiformula`s: the constructors are
-  `verum/falsum/rel/nrel/and/or/all/exs`, negation is a meta-level involution, `A 🡒 B` is
-  notation for `∼A ⋎ B`, and `A 🡘 B` is notation for `(A 🡒 B) ⋏ (B 🡒 A)`. The paper's
-  language (tex:560) has `⟺` as a *primitive* connective. The consequence — and the reason
-  this is a labelled choice rather than a presentation detail — is that in **every
-  symbol-metered class in this development** a biconditional costs `3 + 2|A| + 2|B|` tokens,
-  both sides duplicated, a factor of two per nesting level. So a family the paper's `def:ec`
-  writer emits in `O(n)` characters can be `2ⁿ` tokens here and fall outside the class. That
-  is witnessed rather than asserted: `iffChain_not_polyArithmeticFormulaSeq`
-  (`Construction/Witnesses/StructuredPaperRpn.lean`) refutes membership for the left-nested
-  chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`. Nothing else is affected — `¬`, `∧`, `∨`, `⟹`, `∀`, `∃`
-  and numerals named compactly in `ℒₒᵣ` all cost what the paper's writer pays. Like
-  `dd:fuel`, this is charged **once, globally** — here, in `LogicalInduction/README.md`, and
-  in `scripts/coverage-classification.md` — and never per row. The repair is identified and
-  not taken: a compact formula *source* language carrying `iff`/`imp`/`neg` as primitives,
-  metered at the source and decoded into NNF only for semantics, on the `Code.sourceNat`
-  pattern this development already uses for programs.
+* **`dd:nnf`** — the *semantic* object language is Foundation's
+  **negation-normal-form** `Semiformula` (constructors `verum/falsum/rel/nrel/and/or/all/exs`,
+  negation a meta-level involution, `A 🡒 B` notation for `∼A ⋎ B`, `A 🡘 B` notation for
+  `(A 🡒 B) ⋏ (B 🡒 A)`), but *writing* is metered on a **source** language, not on that
+  normal form. `ArithSource k` (`Construction/Witnesses/ArithmeticSource.lean`) carries the
+  paper's own primitive connectives (tex:560) — `¬`, `∧`, `∨`, `⟹`, `⟺`, `∀`, `∃`, plus
+  atomic leaves — `compile : ArithSource k → ArithmeticSemiformula ℕ k` gives it its
+  meaning (`eval_compile`), and `def:ec`'s condition is `PolyArithmeticSourceSeq`: one
+  emitted token per node of the formula **as the paper writes it**. Normal-form expansion
+  happens inside the parser (tags `20`/`21`/`22`) and is never charged. So this label no
+  longer marks a substitution: nothing pays twice for a `⟺`. What it marks is the
+  two-layer architecture, and the fact that the normal-form-metered class
+  `PolyArithmeticFormulaSeq` is retained as a **strictness foil** rather than deleted: it
+  embeds (`PolyArithmeticFormulaSeq.toSource`) and the inclusion is *strict*, witnessed at
+  the left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`, which costs `5n + 4` source tokens
+  (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) and
+  `≥ 2ⁿ` normal-form tokens (`iffChain_not_polyArithmeticFormulaSeq`,
+  `two_pow_le_encode_iffChain`). That family is carried all the way to a literal paper LUV
+  family (`iffPaperLUVSeq`, `iffPaperLUVSeq_frontend`), so
+  `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can

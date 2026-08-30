@@ -763,8 +763,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 #assert_axioms_clean LUVCombinationSyntax.meshSoftmaxOperationalWitness
   ordinaryLUVCombinationSyntax
 
--- Construction/Witnesses/PaperLUV.lean, StructuredPaperRpn.lean — the literal
--- first-order frontend.  `PaperLUV` renders `def:luv` as an actual
+-- Construction/Witnesses/PaperLUV.lean, StructuredPaperRpn.lean, ArithmeticSource.lean —
+-- the literal first-order frontend.  `PaperLUV` renders `def:luv` as an actual
 -- `ArithmeticSemisentence 1` with object-level `T`-proofs of unique existence and
 -- unit-interval membership; `toLUV` compiles it into the abstract threshold carrier and
 -- `source_valued` *derives* the world value.  `PaperLUVCombination` states `def:blcp`
@@ -780,20 +780,35 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- family reindexed along `m ↦ ⟨0, m⟩`, giving the non-sequence `LUV.RpnThresholdCodes` that
 -- the whole-LUV endpoints take as a hypothesis (`LUV.expect_converges`, `thm:ec`), with no
 -- efficiency side condition, since a constant formula family is trivially symbol-metered.
--- Two boundaries of the metering are recorded as named refutations.
--- `unaryRendering_two_pow_not_polyArithmeticFormulaSeq` is an artifact of Foundation's
+-- The metering is on the paper's **source**.  `PaperLUVSeq` carries each LUV's defining
+-- formula as the paper writes it (`source : ℕ → ArithSource 1`, over the primitive
+-- connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and quantifiers `∀ ∃` of tex:571-577), a proof that it denotes the LUV's Foundation
+-- formula (`compiles`), and `def:ec`'s condition on that writing (`structural`, i.e.
+-- `PolyArithmeticSourceSeq`).  Normal-form expansion happens inside
+-- `parseStructuredArithmeticFormula` (tags `20`/`21`/`22`), never on the emitted stream.
+-- Two boundaries are recorded as named refutations, and they are of different kinds.
+-- `unaryRendering_two_pow_not_polyArithmeticFormulaSeq` (with its source-class twin
+-- `unaryRendering_two_pow_not_polyArithmeticSourceSeq`) is an artifact of Foundation's
 -- *unary* `Semiterm.Operator.numeral`, not a narrowing of `def:ec`: the paper fixes no
--- numeral notation (tex:614, tex:757) and the value is nameable compactly inside `ℒₒᵣ`.  The
--- compact numeral machinery it rests on (`binNumeral`, `binNumeralEnc_length_le`,
+-- numeral notation (underline convention, tex:564) and the value is nameable compactly inside `ℒₒᵣ`.
+-- The compact numeral machinery it rests on (`binNumeral`, `binNumeralEnc_length_le`,
 -- `binNumeral_val`, `binNumeralEnc_two_pow_polySegStream`) and the shared template
--- `invFormula` are internal.
--- `iffChain_not_polyArithmeticFormulaSeq` is a genuine gap, and the honest strictness
--- statement for `def:ec`'s rendering here: Foundation's `Semiformula` is negation-normal-form
--- and has no `⟺` constructor, so `A 🡘 B` duplicates both sides
--- (`encodeArithmeticFormulaSymbols_iff`) and the paper-linear left-nested chain `iffChain`
--- (`two_pow_le_encode_iffChain`, both internal) is `2ⁿ` tokens here.  The symbol-metered class
--- is therefore *not* coextensive with `def:ec`; the gap is the object-language substitution
--- `dd:nnf`, disclosed once and globally like `dd:fuel` and charged to no row.
+-- `invFormula` are internal — though `binNumeral` is no longer only a foil-avoidance
+-- device: since the R5-F08 repair it is how the represented claim families below spell the
+-- argument that names the machine (`polySegStream_binNumeralEnc`).
+-- `iffChain_not_polyArithmeticFormulaSeq` is no longer a disclosure: it is the **strictness
+-- separation** between the normal-form-metered foil `PolyArithmeticFormulaSeq` and the
+-- paper's class `PolyArithmeticSourceSeq`.  Foundation's `Semiformula` has no `⟺`
+-- constructor, so `A 🡘 B` duplicates both sides (`encodeArithmeticFormulaSymbols_iff`) and
+-- the paper-linear left-nested chain `iffChain` costs `≥ 2ⁿ` tokens in the foil
+-- (`two_pow_le_encode_iffChain`, both internal) — while the *same* family is certified in
+-- the paper's class at `5n + 4` emitted tokens
+-- (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`).
+-- `iffPaperLUVSeq` is that family carried all the way to `LUV.RpnThresholdCodeSeq`
+-- (`iffPaperLUVSeq_frontend`): a literal paper LUV family whose `n`-th defining formula is
+-- `O(n)` characters to write and whose Foundation normal form has `≥ 2ⁿ` nodes.  With
+-- `PolyArithmeticFormulaSeq.toSource` for the inclusion, `PolyArithmeticFormulaSeq ⊊
+-- PolyArithmeticSourceSeq` is proved, not asserted.
 #assert_axioms_clean
   PaperLUV.toLUV PaperLUV.source_valued
   PaperLUVSeq.rpnThresholdCodeSeq PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
@@ -801,7 +816,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   invPaperLUV
   unitFracPaperLUVSeq unitFracPaperLUVSeq_frontend
   dyadicPaperLUVSeq dyadicPaperLUVSeq_frontend
+  iffPaperLUVSeq iffPaperLUVSeq_frontend
   unaryRendering_two_pow_not_polyArithmeticFormulaSeq
+  unaryRendering_two_pow_not_polyArithmeticSourceSeq
   iffChain_not_polyArithmeticFormulaSeq
   PaperLUVCombination.boundedSequence
   unitFracPaperLUVCombination unitFracPaperLUVBoundedSequence
@@ -815,24 +832,189 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- claims built from a bounded computation, discharging the meta-learning interfaces.
 -- `ordinarySemidecidableComputation` / `ordinaryBoundedComputation` are the constructed
 -- non-vacuity witnesses for the two operational premises, over an index-varying truth
--- predicate.
+-- predicate.  The *bounded* lane that used to live here — the represented decidable
+-- claims and the three `_ofComputation` endpoints over them — moved to
+-- `ComputationRepresented.lean` when it was restated at the paper's representability
+-- premise; the names are unchanged and are audited under that heading below.  The
+-- **unbounded halting lane** has now moved the same way and for the same reason:
+-- `representedHaltingClaims`, `lic_learns_halting_patterns_ofComputation` and
+-- `lic_learns_provable_nonhalting_patterns_ofComputation` are stated over `paperTheoryDP`
+-- at the day-indexed halting schema, and are listed under that heading below rather than
+-- here.  What remains in this file is the claim-name syntax (`computationClaimSentence`
+-- and its digit lemmas), the two operational non-vacuity witnesses, and the `thm:incons`
+-- lane, which still runs on the tag-keyed atom over `theoremDP`.
 #assert_axioms_clean
   ordinarySemidecidableComputation
-  ordinaryBoundedComputation
-  representedDecidableClaimsOfComputation
+  ordinaryBoundedComputation alwaysBoundedComputation
   inconsistentTheoryClaimsOfComputation
+  lic_disbelief_inconsistent_theories_ofComputation
+
+-- Framework/RepresentsComputations.lean — the paper's representability premise.
+-- `RepresentsComputations T` is the Lean rendering of the paper's standing §2 assumption
+-- that `Θ` *represents computations* (tex:600-606): for every total computable `f` there
+-- is a two-variable formula `γ_f` with `y = f n ↔ T ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ)`.  It is a
+-- condition on what `T` *derives*, with no reference to truth in the standard model, and
+-- it is the interface that replaces Σ₁-soundness wherever the paper's own argument needs
+-- only the paper's own premise.  `represents_refutes` / `represents_refutes_all` are the
+-- negative literals that weak Σ₁-representation cannot supply; they consume `[𝗥₀ ⪯ T]`
+-- only, and no semantic hypothesis.  `reprAllSchema_subst` is what keeps the claim family
+-- enumerable by the *fixed*-schema machinery even though `γ` is supplied existentially.
+-- NOT YET INVENTORIED.  `scripts/check-paper-nodes.sh` requires every name in an
+-- `#assert_axioms_clean` block to carry a `Paper node:` docstring line, and none of this
+-- file's declarations does yet — the class and its two literals
+-- (`RepresentsComputations`, `represents_proves`, `represents_refutes`,
+-- `represents_refutes_all`, `reprAllSchema_subst`, `RepresentsComputations.consistent`,
+-- `numeral_ne_prov`, `numeral_eq_refl_prov`, `subst_subst_two`, `subst_iff_numeral`) are
+-- all axiom-clean (`[propext, Classical.choice, Quot.sound]`; `numeral_ne_prov` is
+-- `[propext, Quot.sound]`) but are inventoried only transitively, through the endpoints
+-- below that consume them.  Annotating them (`thm:pac` / `thm:pazfc` / `thm:dontwait`, as
+-- `ComputationTheoryPresentation` is annotated) is what unblocks a block here, and the
+-- same applies to a `#assert_fields RepresentsComputations` freeze of its single field
+-- `repr`.
+
+-- Construction/Witnesses/R0Representability.lean — the concrete instantiation, i.e. the
+-- non-vacuity of `RepresentsComputations`: it holds for every theory extending `𝗣𝗔⁻` that
+-- is true in `ℕ`, with instances registered at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`.  Note the
+-- asymmetry: standard-model truth is used to **verify** the premise for these particular
+-- theories (Gödel completeness plus soundness) and by no *consumer* of the class, which is
+-- why no endpoint inherits a semantic hypothesis from it.  It does **not** hold by this
+-- argument at `𝗥₀`: Foundation's
+-- `code_uniq` is stated for `𝗥₀` in a commented-out block, but `𝗥₀` has no trichotomy
+-- axiom, so the `rfind` case of single-valuedness is unavailable there.  `𝗣𝗔⁻` is the
+-- weakest theory in Foundation's hierarchy for which the argument closes.  Not inventoried
+-- for the same reason as the block above: `representsComputations_of_peanoMinus` and the
+-- three registered instances carry no `Paper node:` line yet.
+
+-- Construction/Witnesses/SubstEmission.lean — numeral-substitution emission, and the
+-- `def:ec` certificate for the represented claim family on the paper's SOURCE language.
+-- `⟺` is a primitive of the paper's syntax (tex:560) and only a duplicating macro in
+-- Foundation's negation normal form, so the body `γ(n̄,ν) ⟺ ν = 0̄` is metered as ONE `iff`
+-- node over two leaves.  Nothing is assumed about `γ`: it may be `Classical.choice`-obtained.
+-- This discharges what was previously the `hpoly` hypothesis of `representedBoundedClaims`.
+-- Since the R5-F08 repair the *live* certificate path is the argument-term family — the
+-- claim's argument is a closed term (a compact `binNumeral`), not a unary numeral — so what
+-- the endpoints consume is `polyArithmeticFormulaSeq_subst_arg`, `schemaArgBody`,
+-- `reprArgBodySource`, `reprArgClaimSource`, `schemaArgSource`, their `compile_*` and
+-- `*_polyArithmeticSourceSeq` companions, and `bigSentenceCodes_reprArgClaim` /
+-- `bigSentenceCodes_schemaArgClaim`.  The numeral-substitution family
+-- (`polyArithmeticFormulaSeq_subst_numeral`, `compile_reprBodySource`,
+-- `compile_reprClaimSource`, `reprBodySource_polyArithmeticSourceSeq`,
+-- `reprClaimSource_polyArithmeticSourceSeq`, `rpnSentenceCodes_reprClaim`,
+-- `bigSentenceCodes_reprClaim`) and the day-numeral schema family (`schemaDayBody`,
+-- `schemaDaySource` and their companions) are retained — `schemaDayBody_eq_arg` records
+-- that the day form is the argument form at the day numeral — but are no longer consumed by
+-- any claim family.
+-- Not inventoried yet, for the annotation reason recorded above: none of them carries a
+-- `Paper node:` line.  They are covered transitively by the `ComputationRepresented.lean`
+-- endpoints below.
+
+-- Construction/Witnesses/ComputationRepresented.lean — the bounded *and* unbounded lanes
+-- at the premise, with the machine named in the sentence.
+--
+-- **The design (R5-F08/F09 repair, 2026-08-30).**  What is *represented* here is a
+-- UNIVERSAL object, fixed once per theorem and mentioning no machine sequence: the total
+-- computable `universalRunValue steps` on the bounded lane — it decodes a packed
+-- `⟨⟨source, input⟩, day⟩` argument, so `RepresentsComputations` supplies ONE `γ` per
+-- horizon program, which is the paper's `⌜f⌝` (tex:600-606) — and the fixed r.e.
+-- `universalHaltingSchema = codeOfREPred UniversalCodeHalts` on the unbounded lane.  The
+-- machine and its input enter the *sentence*, as the argument written into that fixed
+-- object and spelled by the compact Horner term `binNumeral` (`O(log v)` `ℒₒᵣ` nodes):
+-- `binNumeral (haltingClaimInput (machines n) (inputs n))` on the unbounded lane and
+-- `binNumeral (boundedArg machines inputs n)` on the bounded one.  That is what makes the
+-- claim family depend on the machine sequence at all, and it is what
+-- `hm : DigitMachineCodes machines` and `hi : BigDigits inputs` are consumed by — the
+-- argument's symbol run is emitted digit by digit from those write-out certificates
+-- (`boundedArg_digits`, `polySegStream_binNumeral_const`), so the two hypotheses are
+-- load-bearing on the `def:ec` obligation rather than decorative.  Provability is
+-- insensitive to the numeral spelling (`provable_subst_iff_of_val`, Gödel completeness in
+-- both directions, needing only the `𝗣𝗔⁻ ⪯ T` that `[𝗜𝚺₁ ⪯ T]` already gives), so only the
+-- emission cost changes.
+--
+-- This replaces a rendering (through 2026-08-30) that built the family from
+-- `codeOfREPred (fun n => CodeHalts (machines n) (inputs n))`, or from
+-- `RepresentsComputations.repr` of a decider that mentioned the sequence.  Both see their
+-- data only up to EXTENSIONAL equality, and each endpoint's own hypothesis pinned that
+-- extension to a constant, so the family was literally one sentence family for every
+-- admissible machine sequence.  The standing test against that failure mode is now proved
+-- in-file rather than assumed: `haltingArgClaimSentence_ne_of_halts_ne` (unbounded) and
+-- `representedClaimSentence_ne_of_runValue_ne` (bounded) show that data differing in
+-- halting behaviour receive DIFFERENT claim sentences.  Neither carries a `Paper node:`
+-- line — they are anti-vacuity witnesses, not paper claims — so neither is inventoried as
+-- an endpoint; they are named here because they are the test any future represented claim
+-- family has to pass.
+-- The bounded-halting claim family is stated as the paper states it (`⌜f⌝(⌜n⌝)`), carried
+-- by `paperTheoryDP` (which enumerates every `T`-provable proposition and therefore needs
+-- no fixed schema).  Both public literals come from the *same* sentence: the positive one
+-- and its literal negation, supplied by the representability premise.  The `thm:pac`,
+-- `thm:pazfc` and `thm:dontwait` claim families live here, and no semantic hypothesis on
+-- `T` remains at any of the three `_unconditional` endpoints — `hworld` is
+-- `paperTheoryDP_nonvacuous`, which runs on `Entailment.Consistent T`, itself derived from
+-- `RepresentsComputations`.
+-- The supporting layer of this file — `paperPrimeDecompose_all` / `_exs` /
+-- `_reprAllTerm` / `_neg_reprAllTerm`, `paperTheoryDP_covers_representedClaim(_neg)`,
+-- `representedClaimSentence`, `representedClaimSentence_bigSentenceCodes`,
+-- `provable_subst_binNumeral_iff`, `provable_reprAllTerm_binNumeral_iff` and its negated
+-- form, `boundedArg`, `boundedArg_digits`, `universalRunValue`,
+-- `universalRunValue_boundedArg`, `universalRunValue_computable`,
+-- `representedBoundedClaims`, `exists_reprAll_of_representsComputations`,
+-- `representedBoundedHaltingClaims`, and the two anti-vacuity witnesses above — is
+-- axiom-clean but carries no `Paper node:` line, so it is covered transitively by the
+-- endpoints named here rather than listed.
+--
+-- The **unbounded** halting lane (`thm:halts`, `thm:loops`) lives here too, and takes
+-- `[Entailment.Consistent T]` rather than `[RepresentsComputations T]`: the positive
+-- literal is Σ₁-completeness alone (`re_complete_mp`), and the negative literal is
+-- `thm:loops`'s own `hloops` hypothesis, so representability is not needed.  The day-`n`
+-- claim is `haltingArgClaimSentence machines inputs n`, the fixed universal schema at the
+-- compact name of `⟨⌜mₙ⌝, xₙ⟩`, and `hloops` is stated at its bare arithmetic instance
+-- `haltingArgClaimInstance machines inputs n` — the literal negation of the very sentence
+-- whose atom the conclusion is about.  The public atom is a vacuous `∃⁰` wrapper whose
+-- invisibility is proved rather than assumed (`provable_schemaArgClaim_iff`,
+-- `provable_neg_schemaArgClaim_iff`).
+-- Supporting declarations of this lane — `schemaArgClaim`, `schemaArgClaimSentence`,
+-- `schemaArgClaimSentence_bigSentenceCodes`, `paperPrimeDecompose_schemaArgClaim(_neg)`,
+-- `provable_iff_of_realize_iff`, `paperTheoryDP_covers_schemaArgClaim(_neg)`,
+-- `haltingArgClaimSentence`, `haltingArgClaimInstance`, `haltingArgClaimInstance_true_iff`
+-- — are axiom-clean and carry no `Paper node:` line, so they are covered transitively here
+-- rather than listed.
+#assert_axioms_clean
+  DigitMachineCodes.computable ComputableHorizon.computable
+  representedDecidableClaimsOfComputation
   lic_belief_finitistic_consistency_ofComputation
   lic_belief_stronger_theory_consistency_ofComputation
-  lic_disbelief_inconsistent_theories_ofComputation
+  lic_does_not_anticipate_halting_ofComputation
+  lic_belief_finitistic_consistency_unconditional
+  lic_belief_stronger_theory_consistency_unconditional
+  lic_does_not_anticipate_halting_unconditional
   lic_learns_halting_patterns_ofComputation
   lic_learns_provable_nonhalting_patterns_ofComputation
-  lic_does_not_anticipate_halting_ofComputation
 
--- Construction/Witnesses/ComputationDP.lean — the N+ witness for `thm:loops`'s refutation
+-- Construction/Witnesses/LUVArithmetic.lean, LUVDeductiveProcess.lean — the LUV threshold
+-- lane, migrated off soundness.  Both threshold literals are now taken over ONE sentence
+-- (`thresholdSchema` and its literal negation) at the representability premise, so the LUV
+-- provability world `luvWorld` is consistent by `Entailment.Consistent T` rather than by a
+-- semantic argument.
+-- Not inventoried yet, again for want of `Paper node:` lines:
+-- `ComputableLUV.thresholdValue_computable`, `.thresholdGamma_spec`,
+-- `.thresholdSchema_subst`, `.threshold_provable`, `.threshold_refutable`,
+-- `.luvWorld_consistent`, `.luvThresholdDP_hworld`.  The `ArithmeticLUVPresentation`
+-- freeze below is the Tier-2 record of this lane's field surface.
+
+-- Construction/Witnesses/ComputationRepresented.lean — the N+ witness for `thm:loops`'s
+-- refutation
 -- premise `hloops`, which had none (2026-08-28 audit, R2-F17).  `loopsTheory` is `𝗜𝚺₁` plus
--- one *true* Π₁ axiom: it is `Δ₁`, Σ₁-sound and consistent (all three fall out of every
--- axiom being true in `ℕ`), and the machines it speaks of provably never halt, so the
--- endpoint's `≈ₙ 0` conclusion is the semantically correct one.
+-- one *true* Π₁ axiom.  That axiom is the literal negation of the endpoint's own claim
+-- sentence at the witness family:
+-- `loopsWitnessSentence = ∼(haltingArgClaimInstance (fun _ => neverHaltMachine) (fun _ => 0) 0)`.
+-- It is a *single* sentence rather than the `∀`-closure the previous rendering needed,
+-- because the witness machine family is constant — the machine, not the day, is what left
+-- the schema — so `loopsTheory_refutes` is plain `Entailment.by_axm` with no specialization
+-- step.  The theory is `Δ₁` and consistent (both
+-- fall out of every axiom being true in `ℕ`), and the machines it speaks of provably never
+-- halt, so the endpoint's `≈ₙ 0` conclusion is the semantically correct one.  It is also
+-- Σ₁-sound, but that is now only a record of the witness's quality:
+-- `lic_learns_provable_nonhalting_patterns_unconditional` takes no soundness instance any
+-- more, so `loopsTheory_soundOnSigma1` is consumed by nothing the endpoint asks for.
 -- `thm_loops_applied_at_loopsTheory` applies the endpoint with every instance and every
 -- hypothesis discharged.  **The refutation holds by axiom fiat, not by arithmetic
 -- reasoning** — the disclosure at `loopsTheory` records why the slot is **unreachable with
@@ -842,13 +1024,21 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- proving a true Π₁ one, which Σ₁-soundness permits, and the uniform
 -- `incomplete_of_REPred_not_ComputablePred_Nat'` constrains no single instance — `𝗜𝚺₁`
 -- would refute a natural arithmetization of `rfind' succ` diverging by trivial induction.
--- The actual obstruction is representational: `universalHaltingSchema` is
--- `codeOfREPred UniversalCodeHalts`, and Foundation picks that formula by `Classical.epsilon`
+-- The actual obstruction is representational, and the R5-F08 repair does not touch it: the
+-- endpoint's schema is `universalHaltingSchema = codeOfREPred UniversalCodeHalts`, and
+-- Foundation picks that formula by `Classical.epsilon`
 -- (`R0/Representation.lean:232-247`), so its *shape* is unreachable from the API and nothing
--- about it can be proved beyond its defining spec.  The disclosure names three honest
--- strengthenings: a `halting_fails` field on `ComputationTheoryPresentation`, a Π₁-reflection
--- hypothesis on `T`, or a hand-rolled Δ₀/Σ₁ halting formula carrying its own representability
--- lemma.
+-- about it can be proved beyond its defining spec, which is a statement about standard-model
+-- truth; the only lemmas carrying that to `T ⊢ …` are the positive ones.  The disclosure at
+-- `loopsTheory` names two honest strengthenings — a Π₁-reflection hypothesis on `T`, or a
+-- hand-rolled Δ₀/Σ₁ halting formula carrying its own representability lemma; a
+-- `halting_fails` field on `ComputationTheoryPresentation` would be a third.
+-- The *bounded* half of that gap is now closed by the paper's own premise rather
+-- than by any of them: `boundedFailure_refutes` takes the literal negation of the
+-- bounded-halting sentence, supplied by `RepresentsComputations`, so the retired
+-- `universalBoundedFailureSchema` apparatus is gone and `theoremDP_hworld`'s tag-3 case
+-- closes from consistency.  The *unbounded* half — `thm:loops`'s `hloops`, a Π₁ refutation
+-- of a non-halting instance — is not, and is what `loopsTheory` still witnesses by axiom.
 -- `loopsTheory_refutes` is deliberately *not* inventoried: it is the internal
 -- premise-discharge step (`Entailment.by_axm`), not a paper claim, so it carries no
 -- `Paper node` line and is covered transitively by the applied endpoint below.
@@ -953,11 +1143,19 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_no_expected_net_update_conditional_exact_productExtension
   lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
 
--- Construction/Witnesses/ComputationDP.lean — unconditional-over-LIA capstones
+-- Unconditional-over-LIA capstones
 -- (parity with the paradox-resistance and conditioning `_unconditional` endpoints above).
 -- The quotation family below discharges market/inductor/presentation/hworld; the
 -- reflection data (`RationalQuoteCode`, `*_reflected`) stays a caller hypothesis here,
 -- discharged where needed by `RationalQuoteCode.ofComputable` (QuoteCodeOfMarket.lean).
+-- What `ComputationDP.lean` still owns is the presentation (`theoremPresentation`), the
+-- quotation lane over `theoremDP` and `thm:incons`.  The halting lane is **not** here any
+-- more: `lia_learns_halting_patterns_unconditional` and
+-- `lic_learns_provable_nonhalting_patterns_unconditional` are stated in
+-- `ComputationRepresented.lean` over `paperTheoryDP T` under
+-- `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [Entailment.Consistent T]`, with no soundness instance, as
+-- `thm:pac` / `thm:pazfc` / `thm:dontwait` beside them already were.  They are listed here
+-- because this block is the capstone roll-up, not because of where they live.
 #assert_axioms_clean
   lia_learns_halting_patterns_unconditional
   lic_expectations_of_probabilities_ofCode_unconditional
@@ -1005,6 +1203,17 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio future_coherent
 #assert_fields AffineQuotePortfolio
   family poly scale scale_pos current_price bounded magnitude_le_one
+-- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- `ArithmeticLUVPresentation` now carries an `[RepresentsComputations T]` instance binder,
+-- and its two fields are the two literals over ONE sentence:
+--     threshold_enters  : T ⊢ (L.thresholdSchema T)/[code]      → …
+--     threshold_refutes : T ⊢ ∼((L.thresholdSchema T)/[code])   → …
+-- Previously `threshold_refutes` consumed a *second*, complementary r.e. schema
+-- (`L.thresholdFailureSchema`, now retired), which is why the LUV world needed
+-- Σ₁-soundness.  See `LUVArithmetic.lean`, "The threshold schema, at the paper's
+-- representability premise".
+#assert_fields ArithmeticLUVPresentation
+  threshold_enters threshold_refutes
 -- Tier-2 field change (2026-07-30, superseded 2026-08-28): `prefix_codes` moved from the
 -- whole-value `PolySentenceCodes` to the symbol-metered `RpnSentenceCodes`, and then to the
 -- write-out class `BigSentenceCodes` in the migration recorded in the WRITE-OUT FIELD
@@ -1035,6 +1244,15 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toAffineQuotePortfolio theory_coherent
 #assert_fields ComputableHorizon
   program program_spec
+-- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- `ComputationTheoryPresentation.boundedFailure_refutes` now consumes the LITERAL
+-- NEGATION of the sentence its positive partner consumes:
+--     boundedHalting_enters  : T ⊢ universalBoundedHaltingSchema/[↑z]    → …
+--     boundedFailure_refutes : T ⊢ ∼(universalBoundedHaltingSchema/[↑z]) → …
+-- Previously it consumed a *second*, independent r.e. schema
+-- (`universalBoundedFailureSchema`, now retired), which is why `theoremDP_hworld`'s
+-- tag-3 case needed Σ₁-soundness; it now closes from `Entailment.Consistent T` exactly
+-- like tag 1.  Field NAMES are unchanged, so the block below still passes.
 #assert_fields ComputationTheoryPresentation
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
 #assert_fields ConditionalExpectationQuote
@@ -1130,8 +1348,16 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   toBooleanQuoteCode body represents_fixedpoint
 #assert_fields PaperLUV
   formula unique unit
+-- Field-type record (Part I, 2026-08-29).  `structural` changed class: it was
+-- `PolyArithmeticFormulaSeq` of the LUVs' Foundation normal forms and is now
+-- `PolyArithmeticSourceSeq` of the new `source` field — the paper's own writing of each
+-- defining formula, metered one token per *source* node (`def:ec`, tex:753, over the
+-- primitive connectives of tex:560).  `compiles` is the bridge: `compile (source n)` is
+-- the LUV's Foundation formula, so nothing about the denoted object changed, only what is
+-- charged for writing it.  `#assert_fields` freezes names, not types; this note is the
+-- freeze on the type.
 #assert_fields PaperLUVSeq
-  luv structural
+  luv source compiles structural
 #assert_fields PaperLUVCombination
   luvs termCount const coefficient termCount_poly const_poly coefficient_poly const_rank coefficient_rank const_closed coefficient_closed
 #assert_fields PatientSettlementClock

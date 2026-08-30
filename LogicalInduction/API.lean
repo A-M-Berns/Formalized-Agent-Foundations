@@ -110,6 +110,42 @@ compilers (`Framework/Machine/`), token and bit folds, RPN parsing internals, th
 freeze and conditioning stream compilers, and the trader implementations inside the
 property proofs.
 
+The **arithmetic-theory layer** is likewise not in this import, and that is deliberate:
+the criterion and the §4 tail name no theory, and a client that does not instantiate over
+one should not have to elaborate the arithmetization.  When a client does, three imports
+are the interface, in this order:
+
+* `LogicalInduction.Framework.RepresentsComputations` — the class
+  `RepresentsComputations T`, the Lean rendering of the paper's standing §2 assumption
+  that Θ *represents computations* (arXiv:1609.03543v5, tex:600-606).  This is the
+  hypothesis a client supplies about its own theory.  It is proof-theoretic — a condition
+  on what `T` derives, with no reference to truth in ℕ — and it yields both literals over
+  one sentence (`represents_proves`, `represents_refutes`, `represents_refutes_all`) plus
+  consistency (`RepresentsComputations.consistent`, the paper's tex:604 observation).
+  A client supplies it once and pays for it once: the endpoints below apply it to a
+  *universal decider* (`universalRunValue f`, which reads the machine, its input and the
+  day out of a packed argument), so one `γ` per horizon program serves every machine
+  sequence, and the machine is named inside the claim sentence by its argument rather than
+  by the represented function.
+* `LogicalInduction.Construction.Witnesses.R0Representability` —
+  `representsComputations_of_peanoMinus` and the registered instances at `𝗣𝗔⁻`, `𝗜𝚺₁` and
+  `𝗣𝗔`.  A client instantiating at one of those needs no assumption of its own.  (That
+  *verification* uses the theory's truth in `ℕ`; consuming the class never does, so no
+  endpoint inherits a semantic hypothesis from it.)
+* `LogicalInduction.Construction.Witnesses.ComputationRepresented` — the endpoints stated
+  at that premise (`thm:dontwait`, `thm:pac`, `thm:pazfc`), over
+  `liaHistory (paperTheoryDP T)` with no soundness instance — together with `thm:halts` and
+  `thm:loops`, which live in the same file over the same process but need only
+  `[Entailment.Consistent T]`, their claim being the fixed universal halting schema at the
+  same kind of machine-naming argument.
+
+The *source language* behind the `def:ec` metering of formula families (`ArithSource`,
+`PolyArithmeticSourceSeq`, `PaperLUVSeq`, in
+`LogicalInduction.Construction.Witnesses.ArithmeticSource`) is construction machinery, not
+interface: clients consume its conclusions (`LUV.RpnThresholdCodeSeq`, the completed-world
+`source_valued`), not its emitters.  Import it only to build a new literal paper LUV
+family.
+
 For the §5 existence endpoints (`LIA`, `LIA_isMachineLogicalInductor`,
 `exists_logical_inductor`) import `LogicalInduction.Construction.LIACompiler`.  For the
 `thm:ifp` refutation witness and the informative `LIA` perturbation import
@@ -149,7 +185,10 @@ when the whole development is wanted.
   first-order object exists as `PaperLUV` — an actual one-variable arithmetic formula
   carrying object-level proofs — and is the canonical endpoint for `def:luv`. It compiles
   into the carrier, so results stated against the carrier apply to more families than the
-  paper's, `PaperLUV` being what shows the paper's own are among them.
+  paper's, `PaperLUV` being what shows the paper's own are among them.  Where a *sequence*
+  of paper LUVs must carry `def:ec`, the certificate is on the paper's own writing of the
+  defining formula (`PaperLUVSeq.structural : PolyArithmeticSourceSeq`, over the primitive
+  connectives of tex:560), not on Foundation's negation normal form.
 
 `LogicalInduction/README.md` is the authoritative disclosure record and `AxiomAudit.lean`
 the checked endpoint inventory; the `dd:fuel` model card in `Framework/Computable.lean`

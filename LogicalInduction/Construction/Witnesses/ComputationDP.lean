@@ -94,7 +94,7 @@ def eventFires (e : ℕ) : Prop :=
   | 0 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
   | 1 => T ⊢ ∼(universalHaltingSchema/[↑e.unpair.2])
   | 2 => T ⊢ universalBoundedHaltingSchema/[↑e.unpair.2]
-  | 3 => T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]
+  | 3 => T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])
   | 4 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
   | 5 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
   | 6 => T ⊢ universalQuotePos/[↑e.unpair.2]
@@ -109,7 +109,7 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
       (e.unpair.1 = 0 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 1 ∧ T ⊢ ∼(universalHaltingSchema/[↑e.unpair.2])) ∨
       (e.unpair.1 = 2 ∧ T ⊢ universalBoundedHaltingSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 3 ∧ T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]) ∨
+      (e.unpair.1 = 3 ∧ T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])) ∨
       (e.unpair.1 = 4 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 5 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 6 ∧ T ⊢ universalQuotePos/[↑e.unpair.2]) ∨
@@ -132,8 +132,13 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     have h := hsub (∼universalHaltingSchema)
     simp only [LogicalConnective.HomClass.map_neg] at h
     exact h
+  have hnegbounded :
+      REPred (fun e : ℕ => T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])) := by
+    have h := hsub (∼universalBoundedHaltingSchema)
+    simp only [LogicalConnective.HomClass.map_neg] at h
+    exact h
   refine ((htag 0).and (hsub _)).or (((htag 1).and hnegsub).or
-    (((htag 2).and (hsub _)).or (((htag 3).and (hsub _)).or
+    (((htag 2).and (hsub _)).or (((htag 3).and hnegbounded).or
       (((htag 4).and (hsub _)).or (((htag 5).and (hsub _)).or
         (((htag 6).and (hsub _)).or ((htag 7).and (hsub _))))))))
 
@@ -196,9 +201,10 @@ lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 /-! ## Non-vacuity: a consistent world for every stage
 
 The world reads each atom's `kind` code off its Gödel name and believes it iff the
-corresponding schema instance is `T`-provable (consistency atoms are disbelieved).  Because
-`T` is consistent and Σ₁-sound, no stage ever contains both a literal and its negation, so
-this fixed world is consistent with every stage. -/
+corresponding schema instance is `T`-provable (consistency atoms are disbelieved).  Every
+refutation tag fires on the *literal negation* of the sentence its positive partner fires
+on, so **consistency of `T` alone** keeps this fixed world consistent with every stage; no
+semantic hypothesis on `T` appears. -/
 
 /-- The provability world: an atom is believed iff its claim kind is a "positive" kind and
 the associated halting schema instance is `T`-provable. -/
@@ -277,14 +283,12 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_atom,
       provabilityWorld_boundedHalting] using hfires
-  · -- tag 3: ∼bounded halting, via Σ₁-soundness and determinism of the horizon term
+  · -- tag 3: ∼bounded halting, ruled out by consistency of `T`
     simp only [eventFires, h] at hfires
     simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_not,
       holds_atom, provabilityWorld_boundedHalting]
     intro hbh
-    exact universalBoundedClaims_exclusive e.unpair.2
-      ⟨(re_complete (T := T) universalBoundedHalts_re).mpr hbh,
-        (re_complete (T := T) universalBoundedFailure_re).mpr hfires⟩
+    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hbh, hfires])
   · -- tag 4: positive inconsistency
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, inconsistencyClaimSentence, computationClaimSentence, holds_atom,
@@ -543,33 +547,6 @@ theorem quotation_presentation_nonvacuous
   ⟨theoremDP T, quotationPresentation T,
     fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩⟩
 
-/-- For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the constructed
-provability deductive process learns every halting pattern.  The deductive process is
-constructed and proved computable and the market non-vacuity `hworld` is proved, so no
-hypothesis remains beyond the theory instances and the (true) hypothesis that the machines
-halt.
-
-`hm` and `hi` are the paper's own e.c. classes, metered by *write-out*: tex:1931-1933 asks
-that the source of `mₙ` be writable in time polynomial in `n`, and a poly-time writer emits
-polynomially many symbols, so an `n`-digit description with an exponential Gödel code is
-admissible and `⟨x⟩` is a sequence of bitstrings.  Strictly wider than the whole-value pair
-this once took — see `digitMachineCodes_nest_not_polyMachineCodes` and
-`bigDigits_two_pow_not_polyNatCodes`.
-Paper node: `thm:halts` -/
-theorem lia_learns_halting_patterns_unconditional
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
-  lic_learns_halting_patterns_ofComputation (theoremPresentation T) (liaHistory (theoremDP T))
-    machines inputs hm hi hhalts
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
 /-! ## Unconditional self-reference and quotation endpoints over the constructed `LIA`
 
 Because `quotationPresentation` inhabits `QuotationTheoryPresentation` over the constructed
@@ -761,40 +738,12 @@ theorem lic_self_trust_ofRepresentation_unconditional
 
 /-! ## Unconditional meta-learning siblings over the constructed `LIA`
 
-The other five `_ofComputation` meta-learning endpoints instantiate over `liaHistory
-(theoremDP T)` exactly like `lia_learns_halting_patterns_unconditional`, reusing
-`theoremPresentation` + `theoremDP_hworld`. Only the caller's concrete computation and the
-(true) hypothesis about it remain. -/
-
-/-- `thm:pac`, unconditional over `LIA`, at the paper's horizon class: `C`'s step budget is
-any computable `f`, named by its program and evaluated by the arithmetic schema rather than
-by the sentence emitter.
-Paper node: `thm:pac` -/
-theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
-    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
-    (hconsistent : ∀ n, consistentWithin n) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI := theoremLIA T
-  lic_belief_finitistic_consistency_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) consistentWithin C hconsistent
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:pazfc`, unconditional over `LIA`, at the same arbitrary-computable-horizon class
-as `thm:pac`.
-Paper node: `thm:pazfc` -/
-theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
-    (strongerConsistentWithin : ℕ → Prop)
-    (C : BoundedComputation strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI := theoremLIA T
-  lic_belief_stronger_theory_consistency_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) strongerConsistentWithin C hconsistent
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+The remaining `_ofComputation` meta-learning endpoint instantiates over `liaHistory
+(theoremDP T)`, reusing `theoremPresentation` + `theoremDP_hworld`. Only the caller's
+concrete computation and the (true) hypothesis about it remain.  The halting lane —
+`thm:halts`, `thm:loops` and their clients, together with the `loopsTheory` witness for
+`thm:loops`'s refutation premise — is stated over the paper's own theorem process instead,
+and lives in `ComputationRepresented.lean`; the names are unchanged. -/
 
 /-- `thm:incons`, unconditional over `LIA`.
 Paper node: `thm:incons` -/
@@ -812,275 +761,15 @@ theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
     (liaHistory (theoremDP T)) inconsistent C hall
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:loops`, unconditional over `LIA`.  `hm` and `hi` are the write-out metered classes
-shared with `thm:halts`, strictly wider than the whole-value pair they replaced.
-Paper node: `thm:loops` -/
-theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
-      ↑(haltingClaimInput (machines n) (inputs n))])) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
-        ≈ₙ fun _ => 0 :=
-  haveI := theoremLIA T
-  lic_learns_provable_nonhalting_patterns_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) machines inputs hm hi hloops
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:dontwait`, unconditional over `LIA`.  `hh` supplies the horizon program for an
-arbitrary computable `f` — no growth bound — which is the paper's own quantifier, and `hm`
-and `hi` are the write-out metered machine/input classes, which is the paper's e.c. sequence
-of bitstrings `⟨y⟩` (tex:1946-1952).  The three are independent hypotheses of one signature.
-Paper node: `thm:dontwait` -/
-theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
-    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (hh : ComputableHorizon horizons)
-    (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedBoundedHaltingClaims (theoremPresentation T) machines inputs horizons hm hi hh).sentence n))
-        ≈ₙ fun _ => 0 :=
-  haveI := theoremLIA T
-  lic_does_not_anticipate_halting_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) machines inputs horizons hm hi hh hnever
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-! ## Client applications of the three halting endpoints
-
-`thm:halts`, `thm:loops` and `thm:dontwait` are stated over a *sequence* of machines, and the
-point of the write-out classes is that the sequence may genuinely grow.  The three `example`s
-below apply each endpoint the way a downstream caller would: at concrete data, at a family
-with growing source, with every class hypothesis actually discharged.  They are not
-restatements.
-
-Two of the three leave nothing to the caller.  The `thm:loops` example is the exception: it
-still takes `hloops`, the object-level refutation premise, because that premise cannot be
-discharged for an *arbitrary* `T`.  Its fully discharged form is
-`thm_loops_applied_at_loopsTheory` below, stated at the concrete witness theory
-`loopsTheory`; read the disclosure at `loopsTheory` for what that witness does and does not
-establish. -/
-
-/-- **`thm:halts`, applied.**  The machine family is `Nat.Partrec.Code.nest`, whose source
-grows linearly in the day and whose source *number* is exponential (so the whole-value class
-excludes it, `digitMachineCodes_nest_not_polyMachineCodes`), and whose halting hypothesis is
-*proved* rather than assumed (`codeHalts_nest`).  The inputs are the paper's own `⟨x⟩` shape,
-the `n`-bit string `2 ^ n`.  Nothing is left for the caller. -/
-example [𝗥₀ ⪯ T] :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T)
-          Nat.Partrec.Code.nest (fun n => 2 ^ n)
-          Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
-        ≈ₙ fun _ => 1 :=
-  lia_learns_halting_patterns_unconditional T
-    Nat.Partrec.Code.nest (fun n => 2 ^ n)
-    Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow
-    (fun n => codeHalts_nest n (2 ^ n))
-
-/-- **`thm:dontwait`, applied.**  A machine that provably halts on nothing
-(`neverHaltMachine`), the paper's `⟨y⟩` bitstring inputs `2 ^ n`, and the identity horizon
-supplied through `ComputableHorizon.of`.  The non-halting hypothesis is proved, not assumed. -/
-example [𝗥₀ ⪯ T] :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedBoundedHaltingClaims (theoremPresentation T)
-          (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
-          (digitMachineCodes_const neverHaltMachine) bigDigits_two_pow
-          (ComputableHorizon.of Computable.id)).sentence n))
-        ≈ₙ fun _ => 0 :=
-  lic_does_not_anticipate_halting_unconditional T
-    (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
-    (digitMachineCodes_const neverHaltMachine) bigDigits_two_pow
-    (ComputableHorizon.of Computable.id)
-    (fun n => not_codeHalts_neverHaltMachine (2 ^ n))
-
-/-- **`thm:loops`, applied.**  Same growing machine family as `thm:halts`, same inputs, both
-class hypotheses discharged — but `hloops` remains a hypothesis of the `example`, because it
-is object-level `T`-refutability of a Π₁ fact and, *with the installed substrate*, there is
-no route to it for an arbitrary `T`.  The obstruction is representational: the only bridges
-FFL gives to `T ⊢ …` for a `codeOfREPred` schema are positive (`re_complete`,
-`re_complete_mp`), and the schema itself is picked by `Classical.epsilon`, so its shape is
-unreachable and no `T` can be *shown* to refute a particular false instance.  What the
-example establishes is that everything else in the signature is inhabitable at a genuinely
-varying family.  `hloops` itself is separately shown inhabitable — at a specific, true, `Δ₁`
-theory — by `loopsTheory_refutes` and `thm_loops_applied_at_loopsTheory` below; read the
-disclosure at `loopsTheory` for what that witness does and does not establish. -/
-example [𝗥₀ ⪯ T]
-    (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
-      ↑(haltingClaimInput (Nat.Partrec.Code.nest n) (2 ^ n))])) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T)
-          Nat.Partrec.Code.nest (fun n => 2 ^ n)
-          Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
-        ≈ₙ fun _ => 0 :=
-  lic_learns_provable_nonhalting_patterns_unconditional T
-    Nat.Partrec.Code.nest (fun n => 2 ^ n)
-    Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow hloops
-
-/-! ## N+ for `thm:loops`'s refutation premise
-
-`lic_learns_provable_nonhalting_patterns_unconditional` carries the premise
-
-  `hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[↑(haltingClaimInput (machines n) (inputs n))])`
-
-— object-level `T`-**refutability** of the halting schema.  Every other premise of that
-endpoint is discharged at concrete data in the client section above; this one is not, and
-this section supplies its witness.
-
-The witness is a theory, not a derivation, and that is forced **by the installed substrate**,
-not by mathematics.  Two arguments that look like they force it do not, and are recorded here
-so nobody re-derives them:
-
-* Σ₁-soundness does *not* forbid `T ⊢ ∼σ` for a false Σ₁ instance `σ`.  Refuting a false Σ₁
-  sentence is proving a true Π₁ sentence, which `𝗜𝚺₁` and `𝗣𝗔` do routinely.
-* FFL's `incomplete_of_REPred_not_ComputablePred_Nat'` refutes only the *uniform* negative
-  representation principle — that some `T` refutes *every* false instance.  It says nothing
-  about any single instance, and a natural arithmetization of "`rfind' succ` diverges" is
-  refutable in `𝗜𝚺₁` by a one-line induction.
-
-What actually blocks a natural `T` here is *opacity of the schema*.
-`universalHaltingSchema := codeOfREPred UniversalCodeHalts` is chosen by `Classical.epsilon`
-(`R0/Representation.lean:232-247`), so nothing about the chosen formula is provable beyond
-its defining spec `codeOfREPred_spec`, which is a statement about standard-model truth.  The
-only lemmas taking that spec to `T ⊢ …` are positive (`re_complete`, `re_complete_mp`), so
-there is no handle by which any `T` could be *shown* to refute a particular false instance.
-Hence no natural theory (`𝗜𝚺₁`, `𝗣𝗔`, `𝗭𝗙𝗖`) can be exhibited here *with this substrate*,
-and the honest witness puts the Π₁ sentence into the theory as an axiom — the same device
-FFL uses for `T.Con` and `T.Incon`. -/
-
-/-- Truth of a halting-schema instance in the standard model.  The `re_complete` route runs
-`ℕ ⊧ σ/[↑z] → T ⊢ σ/[↑z]` through Σ₁-completeness; this is the semantic half alone, which is
-what an axiom witness needs (and it is an `Iff`, so it also gives *falsity* of an instance
-naming a non-halting run). -/
-lemma models_haltingSchema_iff (z : ℕ) :
-    ℕ↓[ℒₒᵣ] ⊧ (universalHaltingSchema/[↑z] : ArithmeticSentence) ↔ UniversalCodeHalts z := by
-  simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton]
-    using (universalHaltingSchema_spec z)
-
-/-- The one Π₁ sentence the witness theory adds: `neverHaltMachine` does not halt on `0`,
-spelled as a refutation of the halting schema at that claim's input. -/
-noncomputable def loopsWitnessSentence : ArithmeticSentence :=
-  ∼(universalHaltingSchema/[↑(haltingClaimInput neverHaltMachine 0)])
-
-/-- The added axiom is **true**, not merely consistent: `neverHaltMachine` provably halts on
-nothing (`not_codeHalts_neverHaltMachine`). -/
-lemma models_loopsWitnessSentence : ℕ↓[ℒₒᵣ] ⊧ loopsWitnessSentence := by
-  rw [loopsWitnessSentence, Semantics.Not.models_not, models_haltingSchema_iff,
-    universalCodeHalts_claimInput]
-  exact not_codeHalts_neverHaltMachine 0
-
-/-- **The witness theory for `thm:loops`'s refutation premise.**  `𝗜𝚺₁` together with one
-true Π₁ axiom: "`neverHaltMachine` does not halt on `0`".
-
-*What this establishes.*  The premise set of
-`lic_learns_provable_nonhalting_patterns_unconditional` is inhabited by a theory that is
-`Δ₁`-axiomatized, extends `𝗜𝚺₁` (hence `𝗥₀`), is Σ₁-sound, and is consistent — all four
-instance arguments of the endpoint are *discharged*, not assumed — and by a machine family
-whose non-halting is *proved* (`not_codeHalts_neverHaltMachine`), so the endpoint's
-`≈ₙ fun _ => 0` conclusion is semantically correct rather than vacuously satisfied.  Since
-every axiom is true in `ℕ`, Σ₁-soundness and consistency come from `ℕ↓[ℒₒᵣ] ⊧* loopsTheory`
-rather than from an unproved assumption.
-
-*Disclosed weakness.*  `T ⊢ ∼σ` holds here **by axiom fiat**: `loopsTheory_refutes` is
-`Entailment.by_axm`, not arithmetic reasoning.  This is the strongest witness available
-*with the installed substrate*, and the obstruction is representational, not mathematical.
-It is emphatically **not** that refuting `σ` is impossible for a natural theory: `∼σ` is a
-true Π₁ sentence, Σ₁-soundness does not forbid proving one, and `𝗜𝚺₁` would refute a natural
-arithmetization of this particular non-halting fact by induction.  The obstruction is that
-`universalHaltingSchema` is `codeOfREPred UniversalCodeHalts`, whose formula FFL picks by
-`Classical.epsilon`: its shape is unreachable from the API, the only property of it that can
-be cited is `codeOfREPred_spec` (standard-model truth), and the only lemmas carrying that to
-`T ⊢ …` are the positive ones.  So there is no handle by which *any* concrete `T` could be
-shown to refute this instance, and the witness cannot be strengthened to a natural theory
-without changing the substrate.
-
-*The honest strengthenings,* if this premise is ever to be discharged for a natural `T`, are:
-(i) a `halting_fails` field on `ComputationTheoryPresentation`, the exact analogue of its
-existing `boundedFailure_refutes` — available there only because *bounded* failure is itself
-r.e., and unavailable here because unbounded failure is not; (ii) a Π₁-reflection hypothesis
-on `T`, which is a genuine strengthening of the endpoint's hypotheses and would have to be
-stated as such; or (iii) replacing `codeOfREPred` for this schema by a hand-rolled Δ₀/Σ₁
-halting formula carrying its own representability lemma, which restores the shape of the
-formula to the API and would also address the other places in this development where
-`Classical.epsilon`-chosen schemas are opaque.
-
-Kind `N+`, provenance: (a) the `Δ₁`, `⪯`, soundness, consistency and non-halting facts are
-derived in-project; (b) `𝗜𝚺₁.Δ₁`, `Theory.Δ₁.insert`, `WeakerThan.ofSubset` and the
-`ℕ ⊧* T → T.SoundOn F` instance are FFL citations; (c) **the refutation premise itself** —
-the sentence is an axiom of the witness theory rather than a consequence of arithmetic.
-Paper node: `thm:loops` -/
-noncomputable def loopsTheory : ArithmeticTheory := insert loopsWitnessSentence 𝗜𝚺₁
-
-/-- Every axiom of `loopsTheory` is true in the standard model.  Σ₁-soundness and
-consistency both follow from this, so neither is assumed. -/
-instance models_loopsTheory : ℕ↓[ℒₒᵣ] ⊧* loopsTheory :=
-  Semantics.ModelsSet.insert_iff.mpr ⟨models_loopsWitnessSentence, inferInstance⟩
-
-noncomputable instance loopsTheory_delta1 : loopsTheory.Δ₁ :=
-  inferInstanceAs (LO.FirstOrder.Theory.Δ₁ (insert loopsWitnessSentence 𝗜𝚺₁))
-
-instance loopsTheory_isigma1 : (𝗜𝚺₁ : ArithmeticTheory) ⪯ loopsTheory :=
-  Entailment.WeakerThan.ofSubset (Set.subset_insert _ _)
-
-instance loopsTheory_r0 : (𝗥₀ : ArithmeticTheory) ⪯ loopsTheory :=
-  Entailment.WeakerThan.trans (𝓢 := (𝗥₀ : ArithmeticTheory)) (𝓣 := (𝗜𝚺₁ : ArithmeticTheory))
-    inferInstance loopsTheory_isigma1
-
-/-- The witness theory is Σ₁-sound — from truth in `ℕ`, not by assumption. -/
-lemma loopsTheory_soundOnSigma1 : loopsTheory.SoundOnHierarchy 𝚺 1 := inferInstance
-
-/-- The witness theory is **consistent**, so the premise set is not inhabited by a theory
-that proves everything. -/
-lemma loopsTheory_consistent : Entailment.Consistent loopsTheory := inferInstance
-
-/-- `loopsTheory` provably does not halt on the constant family — the endpoint's
-`≈ₙ fun _ => 0` conclusion is therefore the semantically correct one. -/
-lemma loopsWitness_never_halts (n : ℕ) :
-    ¬ CodeHalts ((fun _ => neverHaltMachine) n) ((fun _ => 0) n) :=
-  not_codeHalts_neverHaltMachine 0
-
-/-- **The refutation premise, discharged.**  By axiom membership — see the disclosure at
-`loopsTheory`. -/
-lemma loopsTheory_refutes (n : ℕ) :
-    loopsTheory ⊢ ∼(universalHaltingSchema/[
-      ↑(haltingClaimInput ((fun _ => neverHaltMachine) n) ((fun _ => 0) n))]) :=
-  Entailment.by_axm (Set.mem_insert _ _)
-
-/-- **`thm:loops`, applied with nothing left to the caller.**  Every hypothesis and every
-instance argument of `lic_learns_provable_nonhalting_patterns_unconditional` is discharged:
-the write-out classes at the constant family, and the refutation premise at `loopsTheory`.
-The machine family is constant here — the growth of the machine/input sequence is exercised
-separately by the `thm:halts` and `thm:dontwait` clients above — because a varying family
-would require a `Δ₁` definability proof for an infinite axiom set, whereas what this witness
-exists to show is that the refutation premise is inhabitable at all.
-Paper node: `thm:loops` -/
-lemma thm_loops_applied_at_loopsTheory :
-    (fun n => liaHistory (theoremDP loopsTheory) n
-      ((representedHaltingClaims (theoremPresentation loopsTheory)
-          (fun _ => neverHaltMachine) (fun _ => 0)
-          (digitMachineCodes_const neverHaltMachine) (BigDigits.const 0)).sentence n))
-        ≈ₙ fun _ => 0 :=
-  lic_learns_provable_nonhalting_patterns_unconditional loopsTheory
-    (fun _ => neverHaltMachine) (fun _ => 0)
-    (digitMachineCodes_const neverHaltMachine) (BigDigits.const 0) loopsTheory_refutes
-
 #print axioms provable_instances_re
 #print axioms theoremDP_covers
 #print axioms theoremDP_hworld
 #print axioms theoremPresentation
 #print axioms quotationPresentation
 #print axioms quotation_presentation_nonvacuous
-#print axioms lia_learns_halting_patterns_unconditional
 #print axioms lic_introspection_ofCode_unconditional
 #print axioms lic_paradox_resistance_ofDiagonal_unconditional
 #print axioms lic_self_trust_ofRepresentation_unconditional
 #print axioms lic_expectations_of_probabilities_ofCode_unconditional
-#print axioms models_haltingSchema_iff
-#print axioms models_loopsWitnessSentence
-#print axioms loopsTheory
-#print axioms loopsTheory_soundOnSigma1
-#print axioms loopsTheory_consistent
-#print axioms loopsWitness_never_halts
-#print axioms loopsTheory_refutes
-#print axioms thm_loops_applied_at_loopsTheory
 
 end LogicalInduction

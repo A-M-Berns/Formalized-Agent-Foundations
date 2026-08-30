@@ -1,4 +1,5 @@
 import LogicalInduction.Framework.Expectations
+import LogicalInduction.Framework.RepresentsComputations
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
 
 /-!
@@ -208,40 +209,83 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
           < L.num i * r.den + 1 * (r.num.natAbs * L.den i + 1) := by omega
       exact_mod_cast this
 
-/-! ### FFL threshold schemas and their spec -/
+/-! ### The threshold schema, at the paper's representability premise
 
-/-- FFL's arithmetic schema quoting "`r < X_i`" (positive threshold). -/
-noncomputable def thresholdSchema : ArithmeticSemisentence 1 :=
-  codeOfREPred L.ThresholdPred
+The threshold predicate is *decidable*, so its `{0,1}` indicator is a total computable
+function and the paper's standing assumption on `Θ` (`RepresentsComputations`, §2 lines
+600–606) supplies a formula whose value graph `Θ` both proves and refutes.  Both public
+literals therefore come from **one** sentence.
 
-/-- The complementary schema quoting "`¬ (r < X_i)`", i.e. `X_i ≤ r`. -/
-noncomputable def thresholdFailureSchema : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun m => ¬ L.ThresholdPred m)
+The superseded design named the positive threshold by `codeOfREPred ThresholdPred` and the
+negative by a *second*, complementary r.e. schema.  Weak Σ₁-representation gives nothing
+negative about the first schema, so keeping the two apart in a completed world required
+Σ₁-soundness of `Θ` — an assumption the paper never makes. -/
 
-lemma thresholdSchema_spec (m : ℕ) :
-    L.thresholdSchema.Evalb ![m] ↔ L.ThresholdPred m :=
-  codeOfREPred_spec L.thresholdPred_re (x := m)
+/-- The total `{0,1}` decider behind the threshold predicate: `0` exactly when the
+threshold holds.  Decidability of `ThresholdPred` is what makes this total, which is what
+`RepresentsComputations` quantifies over. -/
+def thresholdValue (m : ℕ) : ℕ := if L.ThresholdPred m then 0 else 1
 
-lemma thresholdFailureSchema_spec (m : ℕ) :
-    L.thresholdFailureSchema.Evalb ![m] ↔ ¬ L.ThresholdPred m :=
-  codeOfREPred_spec L.thresholdPred_compl_re (x := m)
+@[simp] lemma thresholdValue_eq_zero_iff (m : ℕ) :
+    L.thresholdValue m = 0 ↔ L.ThresholdPred m := by
+  unfold thresholdValue; split <;> simp_all
+
+@[simp] lemma thresholdValue_eq_one_iff (m : ℕ) :
+    L.thresholdValue m = 1 ↔ ¬ L.ThresholdPred m := by
+  unfold thresholdValue; split <;> simp_all
+
+attribute [local irreducible] Nat.sqrt in
+lemma thresholdValue_computable : Computable L.thresholdValue := by
+  have hdec : Computable fun m : ℕ => decide (L.ThresholdPred m) :=
+    (ComputablePred.computable_iff.mp L.thresholdPred_computable).choose_spec.1.of_eq
+      fun m => by
+        have := (ComputablePred.computable_iff.mp L.thresholdPred_computable).choose_spec.2
+        simp [this]
+  exact (Computable.cond hdec (Computable.const 0) (Computable.const 1)).of_eq fun m => by
+    unfold thresholdValue
+    by_cases h : L.ThresholdPred m <;> simp [h]
+
+/-- The two-variable formula the paper's premise supplies for the threshold decider. -/
+noncomputable def thresholdGamma (T : ArithmeticTheory) [RepresentsComputations T] :
+    ArithmeticSemisentence 2 :=
+  (@RepresentsComputations.repr T _ L.thresholdValue L.thresholdValue_computable).choose
+
+lemma thresholdGamma_spec (T : ArithmeticTheory) [RepresentsComputations T] (m y : ℕ) :
+    y = L.thresholdValue m ↔ T ⊢ reprAll (L.thresholdGamma T) y m :=
+  (@RepresentsComputations.repr T _ L.thresholdValue L.thresholdValue_computable).choose_spec m y
+
+/-- The one-variable arithmetic schema quoting "`r < X_i`": its numeral instance at a
+threshold code says the decider's value there is `0`.  There is no complementary schema —
+the failure literal is the *negation of this one*. -/
+noncomputable def thresholdSchema (T : ArithmeticTheory) [RepresentsComputations T] :
+    ArithmeticSemisentence 1 :=
+  reprAllSchema (L.thresholdGamma T) 0
+
+lemma thresholdSchema_subst (T : ArithmeticTheory) [RepresentsComputations T] (m : ℕ) :
+    ((L.thresholdSchema T)/[‘↑m’] : ArithmeticSentence) = reprAll (L.thresholdGamma T) 0 m :=
+  reprAllSchema_subst _ _ m
 
 section Provability
-variable {T : ArithmeticTheory} [𝗥₀ ⪯ T]
+variable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [RepresentsComputations T]
 
-/-- **Provable decidedness (positive).**  In any theory interpreting `𝗥₀`, a true threshold
-is provable — this is Σ₁ *completeness* (`re_complete_mp`), so no soundness assumption on
-`T` is involved. -/
+/-- **Provable decidedness (positive).**  A true threshold is provable — directly from the
+paper's representability premise at the decider's value `0`. -/
 lemma threshold_provable (i : ℕ) (r : ℚ) (h : r < L.value i) :
-    T ⊢ L.thresholdSchema/[‘↑(thresholdCode i r)’] :=
-  re_complete_mp L.thresholdPred_re ((L.thresholdPred_code_iff i r).mpr h)
+    T ⊢ (L.thresholdSchema T)/[‘↑(thresholdCode i r)’] := by
+  rw [L.thresholdSchema_subst T]
+  exact (L.thresholdGamma_spec T _ 0).mp
+    ((L.thresholdValue_eq_zero_iff _).mpr ((L.thresholdPred_code_iff i r).mpr h)).symm
 
-/-- **Provable decidedness (negative).**  A false threshold is refuted through the
-complementary schema, again by Σ₁ completeness alone. -/
+/-- **Provable decidedness (negative).**  A false threshold is refuted — the *literal
+negation of the same sentence*, from the representation at the decider's value `1`
+(`represents_refutes_all`).  This is the step that replaces Σ₁-soundness. -/
 lemma threshold_refutable (i : ℕ) (r : ℚ) (h : ¬ r < L.value i) :
-    T ⊢ L.thresholdFailureSchema/[‘↑(thresholdCode i r)’] :=
-  re_complete_mp L.thresholdPred_compl_re
-    (fun hp => h ((L.thresholdPred_code_iff i r).mp hp))
+    T ⊢ ∼((L.thresholdSchema T)/[‘↑(thresholdCode i r)’]) := by
+  rw [L.thresholdSchema_subst T]
+  refine represents_refutes_all T _ _ ?_
+  exact (L.thresholdGamma_spec T _ 1).mp
+    ((L.thresholdValue_eq_one_iff _).mpr
+      (fun hp => h ((L.thresholdPred_code_iff i r).mp hp))).symm
 
 end Provability
 

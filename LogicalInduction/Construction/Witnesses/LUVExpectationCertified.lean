@@ -28,7 +28,7 @@ sole premise.
 
 namespace LogicalInduction
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic Filter Topology
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment Filter Topology
 
 /-- **Combination-level expectation provability induction, `≤` form, at the paper's premise.**
 
@@ -316,9 +316,11 @@ noncomputable def gridDP : DeductiveProcess where
   mono := L.gridStage_mono
 
 attribute [local irreducible] Nat.sqrt in
-/-- The standard-truth world is consistent with every scheduled stage. -/
-lemma luvWorld_consistent_gridStage (n : ℕ) :
-    (L.luvWorld).ConsistentWith ((L.gridDP).D n) := by
+/-- The standard-truth world is consistent with every scheduled stage.  The scheduled
+process publishes literals by actual threshold truth, so this is the truth world, not the
+provability world `luvWorld` that the full enumerator `luvThresholdDP` uses. -/
+lemma truthWorld_consistent_gridStage (n : ℕ) :
+    (L.truthWorld).ConsistentWith ((L.gridDP).D n) := by
   intro φ hφ
   rw [show (L.gridDP).D n = L.gridStage n from rfl, mem_gridStage] at hφ
   obtain ⟨i, m, j, _, _, _, rfl⟩ := hφ
@@ -329,7 +331,7 @@ lemma luvWorld_consistent_gridStage (n : ℕ) :
 
 /-- `hcons` for the scheduled process. -/
 lemma gridDP_hcons (n : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.gridDP).D n) :=
-  ⟨L.luvWorld, L.luvWorld_consistent_gridStage n⟩
+  ⟨L.truthWorld, L.truthWorld_consistent_gridStage n⟩
 
 attribute [local irreducible] Nat.sqrt in
 /-- **Grid coherence from stage membership.**  A world consistent with stage `m` reads each grid
@@ -431,7 +433,7 @@ discharged from arithmetic over `luvThresholdDP`, the process that reveals every
 threshold, and the mesh-softmax operational witness derived from the sequence's compact syntax.
 Paper node: `thm:exppolymax` -/
 theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] [Entailment.Consistent T]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P) (S : LUVCombinationSyntax As) :
@@ -463,7 +465,7 @@ Kind `C`; provenance: `hAs`, `h`, `hdet`, `hshare`, `hWgen`, `hWdiv`, `hstrict`,
 (a); `C` (a), in the `dd:fuel` efficiency model.
 Paper node: `thm:wubexp` -/
 theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] [Entailment.Consistent T]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
@@ -487,7 +489,8 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
 `expcoh`/`perexpkno` need the **completed-world** values (`WorldValued`, all thresholds), which
 the full provability enumerator `luvThresholdDP` supplies. -/
 section Combined
-variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+  [Entailment.Consistent T]
 
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for
 a `dd:luv-arith` LUV-combination sequence, with the `WorldValued` representation hypothesis

@@ -25,7 +25,7 @@ variable (T : ArithmeticTheory)
 def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
   Bootstrapping.Provable T formulaCode
 
-lemma paperTheoremFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoremFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     REPred (paperTheoremFires T) := by
   apply re_iff_sigma1.mpr
   change 𝚺₁-Predicate fun formulaCode : ℕ => Bootstrapping.Provable T formulaCode
@@ -49,7 +49,7 @@ lemma paperTheoremSentence_prim : Primrec paperTheoremSentence := by
     (Primrec.const (⊥ : Sentence))).of_eq fun _ => rfl
 
 /-- A partial-recursive semi-decider for the universal theorem events. -/
-lemma exists_paperTheoremCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_paperTheoremCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     ∃ code : Nat.Partrec.Code,
       ∀ formulaCode, (code.eval formulaCode).Dom ↔ paperTheoremFires T formulaCode := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (paperTheoremFires_re T)
@@ -121,12 +121,12 @@ lemma paperTheoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
 
 /-- The fixed public process enumerating decompositions of all `T`-provable first-order
 propositions. -/
-noncomputable def paperTheoryDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def paperTheoryDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     DeductiveProcess where
   D := paperTheoremStage (exists_paperTheoremCode T).choose
   mono := paperTheoremStage_mono _
 
-lemma paperTheoryDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma paperTheoryDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     {formulaCode : ℕ} (hfire : paperTheoremFires T formulaCode) :
     ∃ k, paperTheoremSentence formulaCode ∈ (paperTheoryDP T).D k := by
   classical
@@ -142,16 +142,14 @@ lemma paperTheoryDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
   exact evaln_isSome_mono (le_max_right formulaCode fuel)
     (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)
 
-lemma paperTheoryDP_covers_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticProposition)
+lemma paperTheoryDP_covers_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T] (φ : ArithmeticProposition)
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
   simpa using paperTheoryDP_covers T (formulaCode := Encodable.encode φ) hφ
 
 /-- Ordinary object-level provability is the public interface to the fixed theorem
 process; encoded provability remains only an implementation detail of its enumerator. -/
-lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
+lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T] (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
   have hquote : Bootstrapping.Provable T (⌜φ⌝ : ℕ) :=
     Bootstrapping.provable_iff_provable.mpr hφ
@@ -163,8 +161,7 @@ lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-- Every completed public world of `paperTheoryDP T` holds the prime decomposition of
 each ordinary theorem of `T`. -/
-lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (v : PCWorld)
+lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T] (v : PCWorld)
     (hv : v.ConsistentWithTheory (paperTheoryDP T))
     (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
     v.Holds (paperPrimeDecompose φ) := by
@@ -223,7 +220,7 @@ lemma paperTheoremStage_encode_prim (c : Nat.Partrec.Code) :
   exact Primrec.encode.comp
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
-lemma paperTheoryDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoryDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
     ComputableDeductiveProcess (paperTheoryDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec
@@ -241,8 +238,7 @@ lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
   rcases hwf.sound with ⟨φ, hφ⟩
   exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
 
-lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {formulaCode : ℕ}
+lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T] {formulaCode : ℕ}
     (hfire : paperTheoremFires T formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode ∧
       Bootstrapping.Provable T (Encodable.encode φ) := by
@@ -257,7 +253,6 @@ lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 /-- Every first-order model of `T` induces a completed public world for the fixed theorem
 process. -/
 lemma paperTheoryDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperPrimeWorld M f).ConsistentWithTheory (paperTheoryDP T) := by
@@ -274,8 +269,7 @@ lemma paperTheoryDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     paperPrimeWorld_holds_decompose M f]
   exact provable_proposition_evalf_of_model T hT f hprov
 
-lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {k : ℕ} {sentence : Sentence}
+lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T] {k : ℕ} {sentence : Sentence}
     (hsentence : sentence ∈ (paperTheoryDP T).D k) {a : ℕ}
     (ha : a ∈ sentenceAtomCodes sentence) : a.unpair.1 = paperPrimeTag := by
   simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
@@ -292,8 +286,7 @@ lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 /-- Completeness turns the already-proved consistency of the arithmetic base into an
 explicit completed world.  Thus the universal theorem stream is not merely syntactically
 computable; it is non-vacuous. -/
-lemma paperTheoryDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoryDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
     LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
@@ -370,17 +363,15 @@ lemma paperTheoryExtensionWorld_holds_paper_iff
 
 /-- The paper theorem stream is added before any source, market, weight, or deferral is
 chosen. -/
-noncomputable def theoremPaperDP [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess :=
+noncomputable def theoremPaperDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] : DeductiveProcess :=
   (theoremDP T).union (paperTheoryDP T)
 
-noncomputable def theoremPaperDPComputation [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcessComputation (theoremPaperDP T) :=
+noncomputable def theoremPaperDPComputation [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+    DeductiveProcessComputation (theoremPaperDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     (paperTheoryDP_computable T).nonemptyComputation.some
 
-lemma theoremPaperDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
+lemma theoremPaperDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperTheoryExtensionWorld T M f).ConsistentWithTheory (theoremPaperDP T) := by
@@ -406,8 +397,7 @@ lemma theoremPaperDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
       paperPrimeWorld_holds_decompose M f]
     exact provable_proposition_evalf_of_model T hT f hprov
 
-lemma theoremPaperDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma theoremPaperDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     ∃ v : PCWorld, v.ConsistentWithTheory (theoremPaperDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
     LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance

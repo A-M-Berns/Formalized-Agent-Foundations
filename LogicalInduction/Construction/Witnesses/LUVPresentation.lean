@@ -50,21 +50,23 @@ mirroring `ComputationTheoryPresentation`.  It says the deductive process reveal
 first-order threshold schemas into the public propositional threshold atoms.
 Paper node: `def:luv` -/
 structure _root_.LogicalInduction.ArithmeticLUVPresentation
-    (L : ComputableLUV) (DP : DeductiveProcess) (T : ArithmeticTheory) where
+    (L : ComputableLUV) (DP : DeductiveProcess) (T : ArithmeticTheory)
+    [RepresentsComputations T] where
   threshold_enters : ∀ (i : ℕ) (r : ℚ),
-    T ⊢ L.thresholdSchema/[‘↑(thresholdCode i r)’] →
+    T ⊢ (L.thresholdSchema T)/[‘↑(thresholdCode i r)’] →
       ∃ k, thresholdSentence i r ∈ DP.D k
   threshold_refutes : ∀ (i : ℕ) (r : ℚ),
-    T ⊢ L.thresholdFailureSchema/[‘↑(thresholdCode i r)’] →
+    T ⊢ ∼((L.thresholdSchema T)/[‘↑(thresholdCode i r)’]) →
       ∃ k, (∼ thresholdSentence i r) ∈ DP.D k
 
 variable {L}
 
-/-- **The world-value collapse.**  For a Σ₁-sound theory whose provable thresholds the process
-reveals, every consistent world holds `⌜X_i > r⌝` exactly when `r` is below the standard rational
-value — the decidable-threshold discharge of `def:luv`'s world value. -/
+/-- **The world-value collapse.**  For a theory representing computations whose provable
+thresholds the process reveals, every consistent world holds `⌜X_i > r⌝` exactly when `r` is
+below the standard rational value — the decidable-threshold discharge of `def:luv`'s world
+value.  Both directions run on the paper's own premise: no soundness assumption. -/
 theorem threshold_holds_iff {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [RepresentsComputations T]
     (pres : ArithmeticLUVPresentation L DP T) {v : PCWorld}
     (hv : v.ConsistentWithTheory DP) (i : ℕ) (r : ℚ) :
     v.Holds (thresholdSentence i r) ↔ (r : ℝ) < (L.value i : ℝ) := by
@@ -89,7 +91,7 @@ certified threshold arithmetic and the process-reveals-provable premise, so no c
 supplies it. -/
 noncomputable def exactTheoryPresentation_ofArithmetic
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [RepresentsComputations T]
     (pres : ArithmeticLUVPresentation L DP T)
     (As : ℕ → LUVCombination)
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i) :
@@ -109,7 +111,7 @@ noncomputable def exactTheoryPresentation_ofArithmetic
 /-- `WorldValued` is likewise derived (through `ExactTheoryPresentation`). -/
 lemma worldValued_ofArithmetic
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [RepresentsComputations T]
     (pres : ArithmeticLUVPresentation L DP T)
     (As : ℕ → LUVCombination)
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i) :
@@ -120,7 +122,7 @@ lemma worldValued_ofArithmetic
 rational value. -/
 lemma valuesAt_ofArithmetic
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [RepresentsComputations T]
     (pres : ArithmeticLUVPresentation L DP T)
     {v : PCWorld} (hv : v.ConsistentWithTheory DP) (i : ℕ) :
     v.ValuesAt (toLUV i) (L.value i : ℝ) := by

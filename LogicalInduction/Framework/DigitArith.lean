@@ -37,6 +37,32 @@ lemma dig4_lt (t j : ℕ) : dig4 t j < 4 := Nat.mod_lt _ (by norm_num)
 
 lemma dig4_le (t j : ℕ) : dig4 t j ≤ 3 := by have := dig4_lt t j; omega
 
+/-- The least significant digit is the residue. -/
+lemma dig4_zero (t : ℕ) : dig4 t 0 = t % 4 := by simp [dig4]
+
+/-- A value below the base is its own single digit. -/
+lemma dig4_of_lt_four {t : ℕ} (h : t < 4) : dig4 t 0 = t := by
+  rw [dig4_zero]; exact Nat.mod_eq_of_lt h
+
+/-- **Peeling the least significant digit.**  The higher digits of `t` are the digits of
+`t / 4`.  This is the step relation a base-4 Horner recursion runs on, and the reason a
+Horner naming of `t` is emittable from `BigDigits`-style digit access without any base
+conversion. -/
+lemma dig4_succ (t j : ℕ) : dig4 t (j + 1) = dig4 (t / 4) j := by
+  have h : (4 : ℕ) ^ (j + 1) = 4 * 4 ^ j := by ring
+  rw [dig4, dig4, h, ← Nat.div_div_eq_div_mul]
+
+/-- The digit-count recursion, in the `t / 4` form `len4_succ` states for `t = m + 1`. -/
+lemma len4_div_four {t : ℕ} (ht : 0 < t) : len4 t = len4 (t / 4) + 1 := by
+  obtain ⟨m, rfl⟩ : ∃ m, t = m + 1 := ⟨t - 1, by omega⟩
+  exact len4_succ m
+
+lemma len4_pos {t : ℕ} (ht : 0 < t) : 0 < len4 t := by
+  rw [len4_div_four ht]; omega
+
+lemma len4_eq_one {t : ℕ} (h0 : 0 < t) (h : t < 4) : len4 t = 1 := by
+  rw [len4_div_four h0, Nat.div_eq_of_lt h, len4_zero]
+
 lemma dig4_eq_zero_of_le {t j : ℕ} (h : len4 t ≤ j) : dig4 t j = 0 := by
   have ht : t < 4 ^ j := by
     by_contra hcon

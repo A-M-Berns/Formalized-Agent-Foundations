@@ -3056,6 +3056,111 @@ private lemma parseStructuredArithmeticTerm_prim :
   exact h2.to₂.of_eq fun fuel ts => by
     rw [structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
 
+/-- Memoized mirror of `negFormulaCode`: the recursive calls are replaced by lookups at
+strictly smaller indices, so the whole map is a single strong recursion. -/
+private def negFormulaGCore (n : ℕ) (look : ℕ → ℕ) : ℕ :=
+  match n with
+  | 0 => 0
+  | e + 1 =>
+      if e.unpair.1 = 0 then Nat.pair 1 e.unpair.2 + 1
+      else if e.unpair.1 = 1 then Nat.pair 0 e.unpair.2 + 1
+      else if e.unpair.1 = 2 then Nat.pair 3 0 + 1
+      else if e.unpair.1 = 3 then Nat.pair 2 0 + 1
+      else if e.unpair.1 = 4 then
+        Nat.pair 5 (Nat.pair (look e.unpair.2.unpair.1) (look e.unpair.2.unpair.2)) + 1
+      else if e.unpair.1 = 5 then
+        Nat.pair 4 (Nat.pair (look e.unpair.2.unpair.1) (look e.unpair.2.unpair.2)) + 1
+      else if e.unpair.1 = 6 then Nat.pair 7 (look e.unpair.2) + 1
+      else if e.unpair.1 = 7 then Nat.pair 6 (look e.unpair.2) + 1
+      else 0
+
+private lemma negFormulaGCore_spec (n : ℕ) (look : ℕ → ℕ)
+    (hlook : ∀ i, i < n → look i = negFormulaCode i) :
+    negFormulaGCore n look = negFormulaCode n := by
+  rcases n with _ | e
+  · rw [negFormulaCode]
+    rfl
+  have hc : e.unpair.2 ≤ e := Nat.unpair_right_le e
+  have h1 : e.unpair.2.unpair.1 < e + 1 :=
+    Nat.lt_succ_of_le (le_trans (Nat.unpair_left_le _) hc)
+  have h2 : e.unpair.2.unpair.2 < e + 1 :=
+    Nat.lt_succ_of_le (le_trans (Nat.unpair_right_le _) hc)
+  have h3 : e.unpair.2 < e + 1 := Nat.lt_succ_of_le hc
+  rw [negFormulaGCore, negFormulaCode]
+  simp only [hlook _ h1, hlook _ h2, hlook _ h3]
+
+private def negFormulaG (prev : List ℕ) : Option ℕ :=
+  some (negFormulaGCore prev.length fun i => (prev[i]?).getD 0)
+
+private lemma negFormulaG_spec (n : ℕ) :
+    negFormulaG ((List.range n).map negFormulaCode) = some (negFormulaCode n) := by
+  rw [negFormulaG,
+    show ((List.range n).map negFormulaCode).length = n from by simp]
+  congr 1
+  refine negFormulaGCore_spec n _ fun i hi => ?_
+  have hib : i < ((List.range n).map negFormulaCode).length := by simpa using hi
+  rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
+    List.getElem_range]
+
+private lemma negFormulaG_prim : Primrec negFormulaG := by
+  have hlen : Primrec fun prev : List ℕ => prev.length := Primrec.list_length
+  have ha : Primrec fun x : List ℕ × ℕ => x.2.unpair.1 :=
+    Primrec.fst.comp (Primrec.unpair.comp Primrec.snd)
+  have hc : Primrec fun x : List ℕ × ℕ => x.2.unpair.2 :=
+    Primrec.snd.comp (Primrec.unpair.comp Primrec.snd)
+  have hlookOf : ∀ {i : List ℕ × ℕ → ℕ}, Primrec i →
+      Primrec fun x : List ℕ × ℕ => ((x.1[i x]?).getD 0) := fun hi =>
+    Primrec.option_getD.comp
+      (Primrec.list_getElem?.comp Primrec.fst hi) (Primrec.const 0)
+  have hl1 := hlookOf (Primrec.fst.comp (Primrec.unpair.comp hc))
+  have hl2 := hlookOf (Primrec.snd.comp (Primrec.unpair.comp hc))
+  have hl3 := hlookOf hc
+  have heqa : ∀ k : ℕ, PrimrecPred fun x : List ℕ × ℕ => x.2.unpair.1 = k := fun k =>
+    PrimrecRel.comp Primrec.eq ha (Primrec.const k)
+  have hswap (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
+      Nat.pair tag x.2.unpair.2 + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag) hc)
+  have hbin (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
+      Nat.pair tag (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
+        ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag)
+      (Primrec₂.natPair.comp hl1 hl2))
+  have hq (tag : ℕ) : Primrec fun x : List ℕ × ℕ =>
+      Nat.pair tag ((x.1[x.2.unpair.2]?).getD 0) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const tag) hl3)
+  have hbody : Primrec fun x : List ℕ × ℕ =>
+      if x.2.unpair.1 = 0 then Nat.pair 1 x.2.unpair.2 + 1
+      else if x.2.unpair.1 = 1 then Nat.pair 0 x.2.unpair.2 + 1
+      else if x.2.unpair.1 = 2 then Nat.pair 3 0 + 1
+      else if x.2.unpair.1 = 3 then Nat.pair 2 0 + 1
+      else if x.2.unpair.1 = 4 then
+        Nat.pair 5 (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
+          ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1
+      else if x.2.unpair.1 = 5 then
+        Nat.pair 4 (Nat.pair ((x.1[x.2.unpair.2.unpair.1]?).getD 0)
+          ((x.1[x.2.unpair.2.unpair.2]?).getD 0)) + 1
+      else if x.2.unpair.1 = 6 then Nat.pair 7 ((x.1[x.2.unpair.2]?).getD 0) + 1
+      else if x.2.unpair.1 = 7 then Nat.pair 6 ((x.1[x.2.unpair.2]?).getD 0) + 1
+      else 0 := by
+    exact Primrec.ite (heqa 0) (hswap 1) <| Primrec.ite (heqa 1) (hswap 0) <|
+      Primrec.ite (heqa 2) (Primrec.const _) <|
+        Primrec.ite (heqa 3) (Primrec.const _) <|
+          Primrec.ite (heqa 4) (hbin 5) <| Primrec.ite (heqa 5) (hbin 4) <|
+            Primrec.ite (heqa 6) (hq 7) <|
+              Primrec.ite (heqa 7) (hq 6) (Primrec.const 0)
+  refine (Primrec.option_some.comp
+    (Primrec.nat_casesOn hlen (Primrec.const 0) hbody.to₂)).of_eq fun prev => ?_
+  rw [negFormulaG]
+  rcases hn : prev.length with _ | e
+  · simp [negFormulaGCore]
+  simp [negFormulaGCore, hn]
+
+private lemma negFormulaCode_prim : Primrec negFormulaCode := by
+  have hF : Primrec₂ (fun (_ : Unit) => negFormulaCode) :=
+    Primrec.nat_strong_rec _ (negFormulaG_prim.comp Primrec.snd).to₂
+      fun _ n => negFormulaG_spec n
+  exact hF.comp (Primrec.const ()) Primrec.id
+
 private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
   have hfuel : Primrec fun prev : List (Option (ℕ × List ℕ)) =>
       prev.length.unpair.1 :=
@@ -3163,6 +3268,54 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
       ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
         (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2) :=
     Primrec.option_map hlook1 hquantOut.to₂
+  have hnegOut : Primrec fun y : PCtx × (ℕ × List ℕ) =>
+      (negFormulaCode y.2.1, y.2.2) :=
+    (negFormulaCode_prim.comp (Primrec.fst.comp Primrec.snd)).pair
+      (Primrec.snd.comp Primrec.snd)
+  have hneg : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
+        (negFormulaCode p.1, p.2) :=
+    Primrec.option_map hlook1 hnegOut.to₂
+  have hnegP : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      negFormulaCode z.1.2.1 :=
+    negFormulaCode_prim.comp (Primrec.fst.comp (Primrec.snd.comp Primrec.fst))
+  have hnegQ : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      negFormulaCode z.2.1 :=
+    negFormulaCode_prim.comp (Primrec.fst.comp Primrec.snd)
+  have hPfst : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      z.1.2.1 := Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hQfst : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      z.2.1 := Primrec.fst.comp Primrec.snd
+  have himpCode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
+      (Primrec₂.natPair.comp hnegP hQfst))
+  have hconvCode : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      Nat.pair 5 (Nat.pair (negFormulaCode z.2.1) z.1.2.1) + 1 :=
+    Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 5)
+      (Primrec₂.natPair.comp hnegQ hPfst))
+  have himpOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      (Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1, z.2.2) :=
+    himpCode.pair (Primrec.snd.comp Primrec.snd)
+  have himp : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+          (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2) :=
+    Primrec.option_bind hlook1 (Primrec.option_map hlook2 himpOut.to₂).to₂
+  have hiffOut : Primrec fun z : (PCtx × (ℕ × List ℕ)) × (ℕ × List ℕ) =>
+      (Nat.pair 4
+        (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode z.1.2.1) z.2.1) + 1)
+          (Nat.pair 5 (Nat.pair (negFormulaCode z.2.1) z.1.2.1) + 1)) + 1, z.2.2) :=
+    (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 4)
+      (Primrec₂.natPair.comp himpCode hconvCode))).pair
+      (Primrec.snd.comp Primrec.snd)
+  have hiff : Primrec fun x : PCtx =>
+      ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+          (Nat.pair 4
+            (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
+              (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2) :=
+    Primrec.option_bind hlook1 (Primrec.option_map hlook2 hiffOut.to₂).to₂
   have heqt : ∀ k : ℕ, PrimrecPred fun x : PCtx => x.2.1 = k := fun k =>
     PrimrecRel.comp Primrec.eq ht (Primrec.const k)
   have hbody : Primrec fun x : PCtx =>
@@ -3180,11 +3333,26 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
       else if x.2.1 = 17 ∨ x.2.1 = 18 then
         ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
           (Nat.pair (if x.2.1 = 17 then 6 else 7) p.1 + 1, p.2)
+      else if x.2.1 = 20 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).map fun p =>
+          (negFormulaCode p.1, p.2)
+      else if x.2.1 = 21 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+            (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
+      else if x.2.1 = 22 then
+        ((x.1.1[Nat.pair x.1.2 (Encodable.encode x.2.2)]?).getD none).bind fun p =>
+          ((x.1.1[Nat.pair x.1.2 (Encodable.encode p.2)]?).getD none).map fun q =>
+            (Nat.pair 4
+              (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
+                (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
       else none := by
     exact Primrec.ite (heqt 9) (hconst 2) <| Primrec.ite (heqt 10) (hconst 3) <|
       Primrec.ite ((heqt 11).or ((heqt 12).or ((heqt 13).or (heqt 14)))) hrel <|
         Primrec.ite ((heqt 15).or (heqt 16)) hbin <|
-          Primrec.ite ((heqt 17).or (heqt 18)) hquant (Primrec.const none)
+          Primrec.ite ((heqt 17).or (heqt 18)) hquant <|
+            Primrec.ite (heqt 20) hneg <| Primrec.ite (heqt 21) himp <|
+              Primrec.ite (heqt 22) hiff (Primrec.const none)
   have hinner : Primrec fun p : List (Option (ℕ × List ℕ)) × ℕ =>
       match Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with
       | [] => (none : Option (ℕ × List ℕ))
@@ -3205,6 +3373,21 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
             ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
               fun (q : ℕ × List ℕ) =>
               (Nat.pair (if t = 17 then 6 else 7) q.1 + 1, q.2)
+          else if t = 20 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).map
+              fun (q : ℕ × List ℕ) => (negFormulaCode q.1, q.2)
+          else if t = 21 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
+              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
+                fun (r : ℕ × List ℕ) =>
+                (Nat.pair 5 (Nat.pair (negFormulaCode q.1) r.1) + 1, r.2)
+          else if t = 22 then
+            ((p.1[Nat.pair p.2 (Encodable.encode rest)]?).getD none).bind fun q =>
+              ((p.1[Nat.pair p.2 (Encodable.encode q.2)]?).getD none).map
+                fun (r : ℕ × List ℕ) =>
+                (Nat.pair 4
+                  (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode q.1) r.1) + 1)
+                    (Nat.pair 5 (Nat.pair (negFormulaCode r.1) q.1) + 1)) + 1, r.2)
           else none :=
     (Primrec.list_casesOn hts0 (Primrec.const none) hbody.to₂).of_eq fun p => by
       rcases Denumerable.ofNat (List ℕ) p.1.length.unpair.2 with _ | ⟨t, rest⟩ <;> rfl
