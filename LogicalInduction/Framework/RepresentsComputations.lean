@@ -27,6 +27,7 @@ import Foundation.FirstOrder.Arithmetic.Schemata
 import Foundation.Meta.ClProver
 import Mathlib.Computability.Partrec
 import Mathlib.Tactic.FinCases
+import LogicalInduction.Framework.SubstOccurrence
 
 namespace LogicalInduction
 
@@ -45,7 +46,17 @@ already implies `T` is consistent (line 604; see `RepresentsComputations.consist
 
 Note what this is *not*: it is a condition on `T`'s derivations, with no reference to
 truth in the standard model.  It is strictly weaker in kind than Σ₁-soundness, which is
-what this development previously assumed and which the paper never assumes. -/
+what this development previously assumed and which the paper never assumes.
+
+*Index-shift strengthening (disclosed).*  The quantifier here is over `f : ℕ → ℕ` and the
+biconditional is asserted at **every** `y : ℕ`, including `y = 0`, where the paper's is over
+`f : ℕ⁺ → ℕ⁺` and `n, y ∈ ℕ⁺`.  Day indexing throughout this development is `ℕ` from `0`
+(the paper's is `ℕ⁺`), so this is the same inessential index shift applied to the premise
+rather than to the conclusion: it asks `T` for slightly more than the paper does, and is
+therefore a strengthening of the hypothesis on `T`, not a weakening of any theorem taking
+it.  It is realized: the committed instances (`Construction/Witnesses/R0Representability.lean`,
+at `𝗣𝗔⁻`, `𝗜𝚺₁`, `𝗣𝗔`) satisfy the `ℕ`-indexed form, so no endpoint's premise set is
+narrowed by the shift. -/
 class RepresentsComputations (T : ArithmeticTheory) : Prop where
   repr : ∀ f : ℕ → ℕ, Computable f → ∃ γ : ArithmeticSemisentence 2,
     ∀ n y : ℕ, y = f n ↔
@@ -200,6 +211,42 @@ lemma reprAllSchema_subst (γ : ArithmeticSemisentence 2) (y z : ℕ) :
     fin_cases i <;> simp
   · simp
 
+/-- **The representation spec forces the representing formula to mention its argument slot,
+as soon as the represented function is non-constant.**
+
+If `γ` did not mention `#0`, substituting two different day numerals into it would give the
+*same* formula, hence the same sentence `reprAll γ y z = reprAll γ y z'`, and the
+representation biconditional read at `y = g z` would then force `g z = g z'`.
+
+This is the general discharge of the occurrence side condition that
+`representedClaimSentence_ne_of_const_ne`, `conClaimSentence_ne_of_day_ne` and the rest of
+the syntactic-separation family take as a hypothesis.  It applies to **any** representing
+formula obtained from `RepresentsComputations`, at any two arguments where the represented
+function differs; the hypothesis is exactly that non-constancy, and it cannot be dropped —
+for a constant `g` (a horizon that is constantly `0` makes `conRunValue` constant, for
+instance) a `γ` ignoring `#0` really does represent `g` correctly.
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
+`Semiformula.rew_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`). -/
+lemma mentions_zero_of_repr_ne {T : ArithmeticTheory} {g : ℕ → ℕ}
+    (γ : ArithmeticSemisentence 2)
+    (hγ : ∀ z y : ℕ, y = g z ↔ T ⊢ reprAll γ y z)
+    {z z' : ℕ} (h : g z ≠ g z') :
+    γ.Mentions 0 := by
+  by_contra hmem
+  refine h ?_
+  have hsub : (Semiformula.subst γ ![‘↑z’, #0] : ArithmeticSemisentence 1)
+      = Semiformula.subst γ ![‘↑z'’, #0] := by
+    simp only [Semiformula.subst]
+    refine Semiformula.rew_eq_of_not_mentions (k := 0) hmem ?_ (fun x => x.elim)
+    intro x hx
+    fin_cases x
+    · simp at hx
+    · simp
+  have hall : reprAll γ (g z) z = reprAll γ (g z) z' := by
+    simp only [reprAll, reprBody, hsub]
+  exact (hγ z' (g z)).mpr (hall ▸ (hγ z (g z)).mp rfl)
+
 /-! ## Naming the argument by an arbitrary closed term
 
 The paper writes the represented instance as `⌜f⌝(⌜n⌝)` (tex:606): a *name* for the
@@ -309,5 +356,6 @@ lemma RepresentsComputations.consistent (T : ArithmeticTheory) [h : RepresentsCo
 
 #print axioms reprAllSchema_subst_term
 #print axioms provable_subst_iff_of_val
+#print axioms mentions_zero_of_repr_ne
 
 end LogicalInduction

@@ -86,6 +86,17 @@ list is exhaustive; a label appearing nowhere below is not in use.
   the world-value and threshold-emission obligations are *proved* rather than assumed.
   Endpoints suffixed `_arith` are the paper's statement restricted to this class, and are
   where the general layer's representation hypotheses get discharged.
+* **`dd:proofcode`** — §4.10's finite proof searches are metered by the **Gödel number of
+  the derivation**, not by the paper's symbol count. `Con(Θ′)(ν)` is read as "no
+  `Θ′`-derivation of `⊥` has code below `ν`" (`Framework/BoundedConsistency.lean`).
+  Foundation's internal derivations expose no size function — `Semiformula.bv` measures a
+  formula, not a derivation — so no symbol measure is available to state the paper's own
+  bound. This is a disclosed type-`(c)` substitution: it changes *which* finite search each
+  day names, and nothing else. The family's decidability, its `def:ec` emission and the
+  truth of every instance are proved from consistency alone
+  (`conWithin_of_consistent`), with no relation between the two measures assumed. Retired
+  by the queued Foundation symbol-measure work (tranche 9a), after which the same
+  statements hold with `ν` a symbol bound.
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable

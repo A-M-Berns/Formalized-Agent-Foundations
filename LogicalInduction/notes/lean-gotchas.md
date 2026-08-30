@@ -241,3 +241,13 @@ the settled design decisions and the correspondence table, and points here for p
   writes its output only at the end — never run two concurrently.
 - **The session scratchpad can be shared with a concurrent agent in the same worktree** — prefix
   scratch outputs uniquely; generic names (`census.out`, `build.log`) get clobbered.
+
+## Docstring-boundary splices silently delete the next declaration's docstring
+
+Splicing a replacement theorem by cutting from the START of its docstring to the NEXT
+`theorem` line deletes the FOLLOWING theorem's docstring. `lake build` stays green
+(docstrings are not compiled); `lint_paper_labels.py`, `check-paper-nodes.sh`,
+`check_endpoint_coverage.py` and `check_paper_wiring.py` all fail — the last two with a
+confusing "carries Paper node(s) none" curation error pointing at the wrong problem.
+Always run the four checkers after a docstring-boundary edit, and cut to the start of
+the next *docstring*, not the next declaration keyword. (Observed T8/i.)

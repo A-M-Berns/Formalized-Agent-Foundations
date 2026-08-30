@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 40 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 42 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 3 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
+| **qualified** | 1 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
-them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 17 of
+them at exact or strengthened, 1 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -155,9 +155,10 @@ paper's own `⟨x⟩` shape, as admissible for `BigDigits` and refuted for `Poly
 a machine sequence whose source is `2n + 1` symbols long while its source number is at
 least `2^n`. Machines are named by `Code.sourceNat`, linear in the syntax tree; Mathlib's
 `Encodable.encode` squares per node and is deliberately not the naming map. The same change
-carried `BoundedComputation.input_poly` and `SemidecidableComputation.input_poly` to
-`BigDigits`, which removes a smaller restriction from the §4.10 rows without touching what
-actually qualifies them. `PolyMachineCodes` is now named only inside the witness that
+carried the `input_poly` fields of the §4.10 presentation structures to `BigDigits`,
+removing a smaller restriction from those rows without touching what actually qualified
+them; both structures (`BoundedComputation`, `SemidecidableComputation`) were themselves
+retired in tranche 8, when the two nodes moved onto arithmetized subject matter. `PolyMachineCodes` is now named only inside the witness that
 refutes it, and no paper-facing endpoint takes a whole-value class **on a datum the paper
 quantifies over as e.c.** One paper-facing endpoint still takes one on a repo-side object:
 `lic_domination_universalSemimeasure_ofIndependentAtoms` (`thm:dus`) takes a
@@ -174,16 +175,46 @@ families whose Gödel codes grow exponentially while their emitted symbol count 
 polynomial. Their status is unchanged — the narrower class was already inside the paper's —
 and their rows record the widening.
 
-**All three remaining qualified nodes are the §4.10 consistency family** (`thm:pac`,
-`thm:pazfc`, `thm:incons`), and they are qualified for a mathematical reason, not a
-theory-hypothesis one: the paper's subject matter there is `Con(Γ)` and a real sequence of
-inconsistent theories, and what is priced here is an arbitrary decidable or semidecidable
-predicate presented by a machine. Their rows say exactly what is and is not formalized. In
-particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
-distinctive second-theory parameter is absent, and the kernel accepts
-`@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl`.
-Closing the gap is a queued project — the `Con` schema, plus a genuine inconsistent-theory
-sequence.
+**The one remaining qualified node is `thm:incons`**, and it is qualified on two disclosed
+charges, neither of them a theory-hypothesis one. `thm:incons` is stated for the **deduction family**
+`Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base theory, rather than for an arbitrary efficiently
+computable sequence of recursively axiomatizable theories: Foundation's derivability
+predicate takes its theory as a meta parameter, so there is no uniform-in-theory-code
+derivability to represent. The deduction theorem makes the day's theory nameable by the
+single code `⌜∼σₙ⌝`, which the day's sentence writes out, so the claim genuinely names the
+day's theory; the restriction on *which* theory sequences are covered is the disclosed part,
+and its row says exactly what is and is not formalized. A **second** charge is disclosed on
+the same row: the `def:ec` premise `hσ : BigDigits (deductionFamilyArg σ)` meters the day's
+theory name by the base-4 digit count of a formula's *Gödel code*, not by its source length —
+Foundation's encoding pairs at every node, so that count is `~2^depth`, and the premise admits
+only `O(log n)`-depth families, excluding paper-admissible short-source/deep-parse ones. It is
+neither `dd:fuel` nor `dd:proofcode` but the ordinary write-out class applied to the wrong
+quantity, and being an over-strong *hypothesis* it narrows which theory sequences the endpoint
+covers rather than weakening its conclusion; the faithful repair is to state the premise on
+`PolyArithmeticSourceSeq`, and it is queued with the 9-series. The paper's own subject matter
+is exhibited — the in-file example runs at base theory `𝗜𝚺₁` with `σₙ := ⊥`, so every day's
+theory `𝗜𝚺₁ ∪ {⊥}` is actually inconsistent — and a genuinely day-varying witness,
+`alternatingInconsistentAxiom n := if n % 2 = 0 then ⊥ else ⊥ ⋏ ⊥`, sits beside it with its
+emission certificate and a fully applied endpoint, exercising day separation at days `0` and
+`1`. That family takes two values, not unboundedly many: an unbounded-length family is blocked
+on a missing `BigDigits` combinator, signposted at the witness.
+
+Its two §4.10 neighbours **left that list in tranche 8**. `thm:pac` and `thm:pazfc` are one
+construction at two theories. Both endpoints price the arithmetized finite-consistency family
+of a theory `Θ′`, rendered as the value-`0` sentence of a `Θ`-formula representing `Θ′`'s
+bounded-provability decider (`Framework/BoundedConsistency.lean`, metered by derivation code —
+`dd:proofcode`). `lic_belief_finitistic_consistency_unconditional` is the diagonal `Θ′ = Θ`,
+where the consistency needed for the claims' truth is already implied by `Θ`'s representing
+computations; `lic_belief_stronger_theory_consistency_unconditional` takes `Θ′` as a second
+parameter with consistency as the paper's own explicit premise, and is witnessed at
+`Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔`. No hypothesis relates `Θ` and `Θ′` in either statement: the paper
+assumes of `Θ′` only that it is a stronger consistent recursively axiomatizable theory
+(tex:1881-1886) and states no containment, so the Lean hypotheses **match** the paper's rather
+than generalizing them; what makes the result interesting is the informal case where `Θ` cannot
+prove `Con(Θ′)`, which the `𝗜𝚺₁`/`𝗣𝗔` witness carries concretely. Both are `exact` modulo the disclosed `dd:proofcode` metering substitution. The
+`@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl` identity
+that the kernel once accepted has been deleted and is false: the second endpoint's abstract
+layer no longer exists, and the two nodes differ in which theory is metered.
 
 The eleven arithmetic-theory nodes that used to sit beside them — `thm:ref`, `thm:lp`,
 `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`,
@@ -317,7 +348,8 @@ computations*: for every total computable `f : ℕ → ℕ` there is a two-varia
     y = f n  ↔  Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ),
 
 imposed for §4.8–§4.12 at tex:993-997. `RepresentsComputations T`
-(`Framework/RepresentsComputations.lean`) is that condition verbatim. It is a condition on
+(`Framework/RepresentsComputations.lean`) is that condition verbatim modulo the disclosed ℕ⁺→ℕ index shift (see the premise
+list below). It is a condition on
 what Θ *derives*, with no reference to truth in ℕ; the paper notes at tex:604 that it
 already forces Θ consistent, and `RepresentsComputations.consistent` is that observation.
 
@@ -357,6 +389,37 @@ being the value-`1` and value-`0` fibers of one Foundation `code` formula
 `Θ ⊢ ∼(pos ⋏ neg)` is a theorem of Θ (`universalQuote_exclusive_prov`, from `code_uniq`
 plus Gödel completeness) rather than a fact about ℕ.
 
+**§4.10 belief in finitistic consistency.**
+`lic_belief_finitistic_consistency_unconditional` (`thm:pac`) is stated at the paper's own
+subject matter: for any computable horizon `f`, the constructed inductor's day-`n` price
+of the arithmetized claim "no `Θ`-derivation of `⊥` has code below `f(n)`" tends to `1`.
+The claim family is built from one representing formula per horizon — the formula
+`RepresentsComputations` returns for the universal bounded-provability decider — with
+`⌜⊥⌝` and the day written into the sentence as a compact numeral, so the family names the
+theory and the day. That it does not collapse to a constant is a **theorem**, not a side
+condition: `mentions_zero_of_repr_ne` derives `γ.Mentions 0` from the representation spec alone
+whenever the represented decider is non-constant, and the Con lane discharges it at
+`conGamma_mentions_zero`, with `conGamma_mentions_zero_of_bProv` and
+`conGamma_mentions_zero_of_horizon_unbounded` as usable sufficient conditions and
+`conGamma_mentions_zero_ackermann` fully discharged at the paper's own illustration. The only
+boundary is degenerate and disclosed at the endpoints: at an eventually bounded horizon (in the
+limit, constantly `0`) the decider is constant, and there a `γ` ignoring its argument does
+represent it. It assumes no consistency hypothesis: consistency comes from the paper's
+own representability premise, and the truth of every day's claim is derived from it. The
+one disclosed substitution is `dd:proofcode` — the finite search is metered by the
+derivation's Gödel number rather than the paper's symbol count, Foundation exposing no
+symbol measure on internal derivations. `lic_belief_stronger_theory_consistency_unconditional`
+(`thm:pazfc`) is the same construction at a second theory: it takes `Θ′` as a parameter with
+the paper's own `Entailment.Consistent Θ′` as its premise, represents `Θ′`'s bounded-provability
+decider **in `Θ`**, and is witnessed at `Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔` with horizon `fun n => ack n n` —
+an inductor over a theory that cannot prove `Con(𝗣𝗔)` coming to believe every finite
+consistency statement about it. `lic_disbelief_inconsistent_theories_unconditional`
+(`thm:incons`) prices the paper's inconsistent-theory family, at the **deduction family**
+`Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base: the day's sentence is the universal provability schema
+of `Θ₀` at the compact numeral `⌜∼σₙ⌝`, the premise `∀ n, ¬Consistent (σ n ∷ Θ₀)` is the
+paper's own, and the two disclosed parts are the restriction to deduction families and the
+code-metered `def:ec` premise (see *The one remaining qualified node* above).
+
 **The premise is inhabited, and the instances are registered.**
 `representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
 proves the class for any theory `U` with `[𝗣𝗔⁻ ⪯ U]` that is true in `ℕ`, and instances are
@@ -387,8 +450,10 @@ three are representation infrastructure rather than theory strength:
   metatheoretic, through the representability biconditional, and needs no arithmetic inside
   Θ; ours is object-level so the stage-world proof stays constructive. **Whether this is
   charged globally or against each row is pending a ruling**, and no row's status turns on
-  it today. (`lic_disbelief_inconsistent_theories_unconditional` additionally carries a
-  redundant `[𝗥₀ ⪯ T]` beside it; cleanup queued. `RepresentsComputations` also quantifies
+  it today. (`lic_disbelief_inconsistent_theories_unconditional` used to carry a redundant
+  `[𝗥₀ ⪯ T]` beside it; that binder was dropped in tranche 8 and the proof elaborates
+  unchanged, reaching `𝗥₀` through Foundation's `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T`, so no
+  canonical endpoint carries it. `RepresentsComputations` also quantifies
   over `f : ℕ → ℕ` where the paper writes `ℕ⁺ → ℕ⁺` — an at-least-as-strong hypothesis.)
 * `[T.Δ₁]` — a `Δ₁`-definable *axiom set*, where the paper asks only that Θ be computably
   enumerable. The two are not the same condition on `T` as presented: a c.e. axiom set need
@@ -505,11 +570,15 @@ the per-row accounting.
    (`indicatorProductLUV_rpnThresholdCodeSeq`), so the closed endpoint now sits at the
    symbol-metered class like the rest.
 
-   The metacomputation family is a genuinely different defect, and a syntactic one: the
-   paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas `BoundedComputation` carries the
-   *evaluated* horizon `steps n` inside the claim's input, which is why its value must be
-   polynomially bounded. Restoring the paper's reading means an unevaluated-term claim
-   schema, not a better bound.
+   The retired `BoundedComputation` carrier was a genuinely different defect, and a
+   syntactic one: the paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas that structure
+   carried the *evaluated* horizon `steps n` inside the claim's input, which is why its
+   value had to be polynomially bounded. The fix was not a better bound but a different
+   claim schema, and that is what tranche 8 landed: `thm:pac` and `thm:pazfc` both sit on
+   the arithmetized `Con(Θ′)` family of item 4 below, where the horizon is named by its
+   *program* and evaluated inside the represented decider, and the structure — together
+   with `SemidecidableComputation`, the corresponding carrier for `thm:incons` — has been
+   deleted.
 
    Worth noting: the paper itself is explicit (remark after `def:ec`) that its
    framework is not wedded to polynomial time — any efficiency class with suitable
@@ -604,6 +673,22 @@ the per-row accounting.
    `iffPaperLUVSeq_frontend` reaching `LUV.RpnThresholdCodeSeq`. So
    `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted, and the
    symbol-metered class the statements use is the paper's own condition on its own syntax.
+
+4. **Live — the proof-search measure (`dd:proofcode`).** §4.10's finite proof searches are
+   metered by the **Gödel number of the derivation**, not by the paper's symbol count:
+   `Con(Θ′)(ν)` is read as "no `Θ′`-derivation of `⊥` has code below `ν`"
+   (`Framework/BoundedConsistency.lean`). Foundation's internal derivations expose no size
+   function — `Semiformula.bv` measures a formula, not a derivation — so no symbol measure is
+   available to state the paper's own bound. This is a disclosed type-`(c)` substitution: it
+   changes *which* finite search each day names, and nothing else. The family's decidability,
+   its `def:ec` emission and the truth of every instance are proved from consistency alone
+   (`conWithin_of_consistent`), with no relation between the two measures assumed. **Queued
+   for retirement** by the Foundation symbol-measure work (tranche 9a), after which the same
+   statements hold with `ν` a symbol bound. It is the one thing standing between `thm:pac`
+   and `thm:pazfc` and an unqualified `exact`, and it is charged globally, as `dd:fuel` is,
+   rather than against those rows. It does not reach `thm:incons`, whose sentence is the
+   *unbounded* existential over proofs: nothing is metered there, so the substitution does
+   not arise.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected

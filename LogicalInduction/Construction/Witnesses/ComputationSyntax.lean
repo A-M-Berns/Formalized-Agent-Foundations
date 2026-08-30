@@ -430,17 +430,6 @@ structure ComputationTheoryPresentation
 
 /-! ## Operational predicate presentations -/
 
-/-- A semidecidable predicate reduced to one fixed repository machine on polynomially
-named inputs.  It is consumed only by the inconsistent-theory interface
-(`inconsistentTheoryClaimsOfComputation`), so it renders `thm:incons` alone; the halting
-families of `thm:halts`/`thm:loops` name their machines and inputs directly.
-Paper node: `thm:incons` -/
-structure SemidecidableComputation (truth : ℕ → Prop) where
-  machine : Nat.Partrec.Code
-  input : ℕ → ℕ
-  input_poly : BigDigits input
-  truth_iff : ∀ n, truth n ↔ CodeHalts machine (input n)
-
 /-- The paper's `f` — an arbitrary computable step budget, presented by the program `⌜f⌝`
 that computes it.  The program is a *constant* in the day-indexed claim name, so no
 efficiency hypothesis on `f` is needed anywhere; `ComputableHorizon.of` shows every
@@ -585,146 +574,7 @@ lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
     DigitMachineCodes (fun _ => c) :=
   BigDigits.const (Nat.Partrec.Code.sourceNat c)
 
-/-- A decidable predicate reduced to a bounded run of one fixed repository machine, the
-step budget being an arbitrary computable `f` named by its program.  It is consumed only by
-the decidable-claims interface (`representedDecidableClaimsOfComputation`,
-`ComputationRepresented.lean`), which serves the two finite-consistency theorems;
-`thm:dontwait` names its bounded family directly through `representedBoundedHaltingClaims`
-there.  Both go through the paper's representability premise, so both literals of a bounded
-claim come from one sentence.
-Paper node: `thm:pac`, `thm:pazfc` -/
-structure BoundedComputation (truth : ℕ → Prop) where
-  machine : Nat.Partrec.Code
-  input : ℕ → ℕ
-  input_poly : BigDigits input
-  steps : ℕ → ℕ
-  horizon : ComputableHorizon steps
-  truth_iff : ∀ n, truth n ↔ CodeHaltsWithin machine (input n) (steps n)
-
-/-! ## Non-vacuity witnesses for the operational presentations -/
-
-/-- Halting on exactly the positive inputs, as a partial function. -/
-private def positiveHaltPartial : ℕ →. ℕ := fun n => Part.assert (0 < n) fun _ => Part.some 0
-
-private lemma positiveHaltPartial_partrec : Nat.Partrec positiveHaltPartial := by
-  rw [← Partrec.nat_iff]
-  have hdec : PrimrecPred fun n : ℕ => 0 < n :=
-    Primrec.nat_lt.comp (Primrec.const 0) Primrec.id
-  obtain ⟨_, hp⟩ := hdec
-  have hre : REPred fun n : ℕ => 0 < n :=
-    ComputablePred.to_re (ComputablePred.computable_iff.mpr ⟨_, hp.to_comp, by funext n; simp⟩)
-  refine (hre.map (Computable.const (0 : ℕ)).to₂).of_eq (fun n => Part.ext fun x => ?_)
-  simp [positiveHaltPartial, Part.mem_assert_iff, eq_comm]
-
-/-- A repository machine halting on exactly the positive inputs.  Existence of a code for a
-partial recursive function is `Nat.Partrec.Code.exists_code`; the machine itself is not a
-closed term, which is why the definition is `noncomputable`. -/
-noncomputable def positiveHaltMachine : Nat.Partrec.Code :=
-  (Nat.Partrec.Code.exists_code.mp positiveHaltPartial_partrec).choose
-
-lemma positiveHaltMachine_halts_iff (n : ℕ) : CodeHalts positiveHaltMachine n ↔ 0 < n := by
-  have hspec : positiveHaltMachine.eval = positiveHaltPartial :=
-    (Nat.Partrec.Code.exists_code.mp positiveHaltPartial_partrec).choose_spec
-  simp [CodeHalts, hspec, positiveHaltPartial, Part.assert]
-
-/-- **N+.** The semidecidable-computation premise is inhabited, with a genuinely
-index-varying truth predicate: the machine halts on input `n` exactly when `n` is
-positive, so `truth` is neither identically true nor identically false.  Kind `N+`,
-provenance (a): every field is discharged in-project, with no operational hypothesis.
-Paper node: `thm:incons` -/
-noncomputable def ordinarySemidecidableComputation :
-    SemidecidableComputation (fun n => 0 < n) where
-  machine := positiveHaltMachine
-  input n := n
-  input_poly := BigDigits.of_polyFueled PolyFueled.id
-  truth_iff n := (positiveHaltMachine_halts_iff n).symm
-
-/-- **N+.** The bounded-computation premise is inhabited, with a genuinely index-varying
-truth predicate: `Code.zero` on input `0` finishes within `n` interpreter steps exactly
-when `n` is positive (a zero clock always fails).  The horizon is the identity `f n = n`,
-named by a program via `ComputableHorizon.of`.  Kind `N+`, provenance (a): every field is
-discharged in-project, with no operational hypothesis.
-Paper node: `thm:pac`, `thm:pazfc` -/
-noncomputable def ordinaryBoundedComputation : BoundedComputation (fun n => 0 < n) where
-  machine := Nat.Partrec.Code.zero
-  input _ := 0
-  input_poly := BigDigits.const 0
-  steps n := n
-  horizon := .of Computable.id
-  truth_iff n := by
-    cases n with
-    | zero => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
-    | succ k => simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
-
-/-- **N+.** The bounded-computation premise inhabited by a computation whose truth predicate
-holds on **every** day: `Code.zero` on input `0` finishes within `n + 1` interpreter steps for
-all `n`.
-
-`ordinaryBoundedComputation` above has a genuinely varying predicate but fails at day `0`, so
-it cannot be handed to the `thm:pac`/`thm:pazfc` endpoints, whose `hconsistent : ∀ n, truth n`
-demands an everywhere-true predicate.  This witness is what makes the pair
-`(C, hconsistent)` *jointly* inhabited rather than only separately satisfiable; the endpoints
-are applied at it in `ComputationRepresented.lean`.  Kind `N+`, provenance (a): every field is
-discharged in-project.
-Paper node: `thm:pac`, `thm:pazfc` -/
-noncomputable def alwaysBoundedComputation : BoundedComputation (fun _ => True) where
-  machine := Nat.Partrec.Code.zero
-  input _ := 0
-  input_poly := BigDigits.const 0
-  steps n := n + 1
-  horizon := .of Computable.succ
-  truth_iff n := by simp [CodeHaltsWithin, Nat.Partrec.Code.evaln]
-
-#print axioms ordinarySemidecidableComputation
-#print axioms ordinaryBoundedComputation
-#print axioms alwaysBoundedComputation
 #print axioms universalHaltingSchema_not_argument_insensitive
-
-/-! ## Constructors for the three MetaLearning boundaries -/
-
-/-- Constructor for the inconsistent-theory-claims boundary from a concrete computation.
-Paper node: `thm:incons` -/
-noncomputable def inconsistentTheoryClaimsOfComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    {inconsistent : ℕ → Prop} (Q : ComputationTheoryPresentation DP T)
-    (C : SemidecidableComputation inconsistent) :
-    InconsistentTheoryClaims DP inconsistent where
-  inconsistencySentence n := inconsistencyClaimSentence
-    (haltingClaimInput C.machine (C.input n))
-  consistencySentence n := consistencyClaimSentence
-    (haltingClaimInput C.machine (C.input n))
-  inconsistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| inconsistencyClaimSentence_digits <|
-    haltingClaimInput_digits (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly
-  consistency_poly := BigSentenceCodes.ofDigitSentenceCodes <| consistencyClaimSentence_digits <|
-    haltingClaimInput_digits (BigDigits.const (Nat.Partrec.Code.sourceNat C.machine)) C.input_poly
-  inconsistency_provable n hn := by
-    apply Q.inconsistency_enters
-    apply re_complete_mp (T := T) universalCodeHalts_re
-    simpa using (C.truth_iff n).mp hn
-  consistency_disprovable n hn := by
-    apply Q.inconsistency_refutesConsistency
-    apply re_complete_mp (T := T) universalCodeHalts_re
-    simpa using (C.truth_iff n).mp hn
-
-/-! ## Direct paper-facing consumers -/
-
-/--
-Paper node: `thm:incons` -/
-theorem lic_disbelief_inconsistent_theories_ofComputation
-    {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
-    (Q : ComputationTheoryPresentation DP T)
-    (P : History) [IsLogicalInductor P DP]
-    (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
-    (hall : ∀ n, inconsistent n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    ((fun n => P n ((inconsistentTheoryClaimsOfComputation Q C).inconsistencySentence n))
-        ≈ₙ fun _ => 1) ∧
-      ((fun n => P n ((inconsistentTheoryClaimsOfComputation Q C).consistencySentence n))
-        ≈ₙ fun _ => 0) :=
-  lic_disbelief_inconsistent_theories P DP inconsistent
-    (inconsistentTheoryClaimsOfComputation Q C) hall hworld
 
 /-! ## Positive and negative path witnesses -/
 
@@ -751,8 +601,6 @@ lemma computationRepresentation_positive_path
 #print axioms digitMachineCodes_nest_not_polyMachineCodes
 #print axioms ComputationClaim.godelCode_injective
 #print axioms computationClaimSentence_digits
-#print axioms inconsistentTheoryClaimsOfComputation
-#print axioms lic_disbelief_inconsistent_theories_ofComputation
 #print axioms computationRepresentation_positive_path
 
 end LogicalInduction

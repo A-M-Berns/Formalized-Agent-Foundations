@@ -1,6 +1,8 @@
 import LogicalInduction.Construction.Witnesses.PaperTheoryDP
 import LogicalInduction.Construction.Witnesses.SubstEmission
+import LogicalInduction.Construction.Witnesses.R0Representability
 import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.BoundedConsistency
 
 /-!
 # Computation claims that name their machine, at the paper's representability premise
@@ -367,9 +369,14 @@ mentions its first argument, distinct closed argument terms give distinct claim 
 no hypothesis on the represented run.
 
 The occurrence side condition is stated rather than discharged here, because `γ` is supplied
-existentially by `RepresentsComputations` and is not a fixed object of this file; it follows
-from the representation specification at any two arguments with different run values (a
-`γ` ignoring `#0` would make `reprAll γ y z` independent of `z`).
+existentially by `RepresentsComputations` and is not a fixed object of this file.  It **is**
+derivable from the representation specification alone whenever the represented function is
+non-constant — that is `mentions_zero_of_repr_ne`
+(`Framework/RepresentsComputations.lean`) — and only then: for a constant decider a `γ`
+ignoring `#0` represents it correctly.  Consumers on a lane whose decider is provably
+non-constant should discharge it (see `conGamma_mentions_zero` and its sufficient
+conditions below); the hypothesis stays here because this lemma is stated for an arbitrary
+`γ`.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
 `Semiformula.eq_of_rew_eq_of_mentions` (`Framework/SubstOccurrence.lean`),
@@ -530,24 +537,216 @@ noncomputable def representedBoundedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
   representedBoundedClaims T hm hi _
     (exists_reprAll_of_representsComputations T hh.computable).choose_spec
 
-/-- Constructor for the decidable-claims boundary from a concrete bounded computation, at
-the paper's representability premise.  `C.truth_iff` transports the represented bounded-run
-family onto the caller's truth predicate.  `C`'s machine is fixed, so the constant machine
-sequence is named by `digitMachineCodes_const`; the sentence still names it, and the day
-still enters the argument through the horizon slot.
-Paper node: `thm:pac` -/
-noncomputable def representedDecidableClaimsOfComputation [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [RepresentsComputations T]
-    {truth : ℕ → Prop} (C : BoundedComputation truth) :
-    RepresentedDecidableClaims (paperTheoryDP T) truth :=
-  let R := representedBoundedClaims T (machines := fun _ => C.machine) (inputs := C.input)
-    (steps := C.steps) (digitMachineCodes_const C.machine) C.input_poly _
-    (exists_reprAll_of_representsComputations T C.horizon.computable).choose_spec
-  { sentence := R.sentence
-    sentence_poly := R.sentence_poly
-    provable_of_true := fun n hn => R.provable_of_true n ((C.truth_iff n).mp hn)
-    disprovable_of_false := fun n hn =>
-      R.disprovable_of_false n fun hb => hn ((C.truth_iff n).mpr hb) }
+/-! ## §4.10: the arithmetized finite-consistency family
+
+`thm:pac` and `thm:pazfc` are about one specific claim family — the paper's
+`Con(Θ′)(⌜f⌝(⌜n⌝))`, "no proof of `⊥` from `⌜Θ′⌝` within `f(n)`" (tex:1855-1866) — and this
+section builds it.  The family is parametric in **two** theories: the represent*ing* theory
+`T`, whose provable propositions the market enumerates (the paper's `Θ`), and the *metered*
+theory `T'`, whose finite proof searches the claims are about (the paper's `Θ′`).  `thm:pac`
+is the diagonal `T' = T`; `thm:pazfc` is a genuinely different, stronger `T'`.
+
+The design is the bounded lane's, with the extensionality trap taken seriously.  What is
+represented is the **universal bounded-provability decider at the horizon**,
+`conRunValue T' f` (`Framework/BoundedConsistency.lean`): it takes a packed
+`⟨sentence code, day⟩`, evaluates `f` at the day *inside*, and decides whether the coded
+sentence has a `T'`-derivation with Gödel number below `f(day)`.  Its extension varies with
+`T'`'s theorems, so the `γ` `RepresentsComputations T` returns for it genuinely names the
+metered theory; one `γ` serves every day at that horizon.  `⊥` then enters the *sentence*,
+as the first component of the compact argument `binNumeral ⟨⌜⊥⌝, n⟩`.
+
+Representing the *consistency* predicate directly would have been the trap: for a
+consistent `T'`, `fun n => conWithin T' (f n)` is extensionally `True` and its indicator is
+the constant `0`, so a representing `γ` would name nothing at all (`R5-F08`,
+`KNOWLEDGE.md`).
+
+Two disclosures at this boundary.  The finite search is metered by the derivation's Gödel
+number rather than the paper's symbol count (`dd:proofcode`, glossary in
+`LogicalInduction.lean`).  And the propositional rendering of `Con` is a *negated* atom:
+the paper's `Con(Θ)(ν)` is `∀ν' (γ(⟨⌜⊥⌝,n⟩, ν') ⟺ ν' = 0̄)`, a universal sentence, whose
+paper-prime decomposition is the negation of the prime `∃`-sentence
+`representedClaimSentence`.  That is the paper's own decomposition, not a choice made here.
+-/
+
+/-- The day-`n` argument of the Con family: `⟨⌜⊥⌝, n⟩`, the paper's `⌜⊥⌝` paired with the
+day whose horizon value bounds the search. -/
+noncomputable def conClaimArg (n : ℕ) : ℕ := Nat.pair ⌜(⊥ : ArithmeticSentence)⌝ n
+
+/-- The argument is write-out emittable: a constant paired with the day.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from `BigDigits.const` and
+`BigDigits.natPair`. -/
+lemma conClaimArg_digits : BigDigits conClaimArg :=
+  (BigDigits.const _).natPair (BigDigits.of_polyFueled PolyFueled.id)
+
+/-- **The paper's `Con(Θ′)(⌜f⌝(⌜n⌝))`, as a propositional claim.**  The value-`0` sentence
+of the representing formula `γ` at the compact name of `⟨⌜⊥⌝, n⟩`, decomposed the paper's
+way: a universal sentence is not prime, so the atom is its `∃` negation and the claim is
+that atom's negation. -/
+noncomputable def conClaimSentence (γ : ArithmeticSemisentence 2) (n : ℕ) : Sentence :=
+  ∼representedClaimSentence γ (binNumeral (conClaimArg n))
+
+/-- The Con family is `def:ec` emittable: the negation tag over the claim atom, whose own
+argument run is the compact numeral of `⟨⌜⊥⌝, n⟩`.
+
+Kind `C` (composition).  Provenance: (a) derived in-project. -/
+lemma conClaimSentence_bigSentenceCodes (γ : ArithmeticSemisentence 2) :
+    BigSentenceCodes (conClaimSentence γ) :=
+  BigSentenceCodes.neg
+    (representedClaimSentence_bigSentenceCodes γ _
+      (polySegStream_binNumeral_const conClaimArg_digits))
+
+/-- **The Con family names the day.**  Distinct days give distinct claims, with no
+hypothesis on `T`'s theorems, because `Nat.pair` and `binNumeral` are injective.
+
+The occurrence side condition `γ.Mentions 0` is stated rather than discharged *here*, because
+this lemma is about an arbitrary `γ`.  It **is** derivable from the representation spec for
+the Con lane's own `γ` as soon as `conRunValue T' horizons` is non-constant —
+`conGamma_mentions_zero` below, with `conGamma_mentions_zero_of_bProv` and
+`conGamma_mentions_zero_of_horizon_unbounded` as usable sufficient conditions, and
+`conGamma_mentions_zero_ackermann` as a fully discharged instance.
+
+The degenerate end is real and is exactly what the non-constancy hypothesis excludes: at a
+horizon that is constantly `0`, `conRunValue T' horizons` is the constant `0` function,
+which a `γ` ignoring its first argument does represent, and the whole day-indexed sentence
+family may then collapse to one sentence.  Earlier prose here (and at
+`representedClaimSentence_ne_of_const_ne`) claimed the side condition could *never* be
+discharged from the spec; that was wrong — the counterexample bounds the claim to constant
+deciders only.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from
+`representedClaimSentence_ne_of_arg_ne`. -/
+lemma conClaimSentence_ne_of_day_ne (γ : ArithmeticSemisentence 2) (hγ : γ.Mentions 0)
+    {m n : ℕ} (h : m ≠ n) : conClaimSentence γ m ≠ conClaimSentence γ n := by
+  simp only [conClaimSentence, ne_eq, LO.Propositional.Formula.neg_inj]
+  refine representedClaimSentence_ne_of_arg_ne γ hγ (fun hpair => h ?_)
+  simpa [conClaimArg] using congrArg (fun z : ℕ => z.unpair.2) hpair
+
+/-- **One `γ` per horizon and metered theory**, for the universal bounded-provability
+decider.  This is the paper's `⌜f⌝`: `RepresentsComputations` supplies a representing
+formula for any total computable function, and `conRunValue T' f` is total computable
+exactly when `f` is.
+
+The two theories are independent.  `T` is the theory that *represents* — the one the
+market's deductive process enumerates, the paper's `Θ` — and `T'` is the theory whose
+finite proof searches are *metered*, the paper's `Θ′`.  Nothing here relates them:
+`conRunValue T' f` is a total computable function of naturals whatever `T'` is, and `T`
+represents every such function.  `thm:pac` is the diagonal `T' = T`; `thm:pazfc` is the
+general case. -/
+lemma exists_reprAll_conRunValue (T' : ArithmeticTheory) [T'.Δ₁] [RepresentsComputations T]
+    {horizons : ℕ → ℕ} (hh : Computable horizons) :
+    ∃ γ : ArithmeticSemisentence 2,
+      ∀ z y : ℕ, y = conRunValue T' horizons z ↔ T ⊢ reprAll γ y z :=
+  RepresentsComputations.repr _ (conRunValue_computable T' hh)
+
+/-- The `T`-formula representing `T'`'s bounded-provability decider at a horizon. -/
+noncomputable def conGamma (T' : ArithmeticTheory) [T'.Δ₁] [RepresentsComputations T]
+    {horizons : ℕ → ℕ} (hh : ComputableHorizon horizons) : ArithmeticSemisentence 2 :=
+  (exists_reprAll_conRunValue T T' hh.computable).choose
+
+lemma conGamma_spec (T' : ArithmeticTheory) [T'.Δ₁] [RepresentsComputations T]
+    {horizons : ℕ → ℕ} (hh : ComputableHorizon horizons) (z y : ℕ) :
+    y = conRunValue T' horizons z ↔ T ⊢ reprAll (conGamma T T' hh) y z :=
+  (exists_reprAll_conRunValue T T' hh.computable).choose_spec z y
+
+/-! ### The occurrence side condition on the Con lane, discharged
+
+`conClaimSentence_ne_of_day_ne` — the statement that the day-indexed Con family does not
+collapse to a single sentence — takes `(conGamma T T' hh).Mentions 0` as a side condition,
+because `conGamma` is supplied existentially and its shape is unreachable.  That condition
+is **not** a permanent boundary: the representation specification forces it as soon as the
+represented decider takes two different values (`mentions_zero_of_repr_ne`), and the three
+lemmas below take that from progressively more usable hypotheses, ending at a concrete
+instance with nothing left to the caller.
+
+The degenerate end is the only thing the hypothesis excludes.  At a horizon constantly `0`
+the decider `conRunValue T' horizons` is constantly `0`, a `γ` ignoring its first argument
+represents it correctly, and the day family may genuinely collapse.  Every horizon that is
+unbounded — the paper's own illustration, `Ack`, among them — is on the other side of the
+line. -/
+
+/-- **The Con lane's occurrence side condition, from non-constancy of the decider.**  If the
+universal bounded-provability decider takes different values at two packed arguments, its
+representing formula must mention the argument slot.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from `mentions_zero_of_repr_ne`
+and `conGamma_spec`. -/
+lemma conGamma_mentions_zero (T' : ArithmeticTheory) [T'.Δ₁] [RepresentsComputations T]
+    {horizons : ℕ → ℕ} (hh : ComputableHorizon horizons) {z z' : ℕ}
+    (h : conRunValue T' horizons z ≠ conRunValue T' horizons z') :
+    (conGamma T T' hh).Mentions 0 :=
+  mentions_zero_of_repr_ne _ (conGamma_spec T T' hh) h
+
+/-- **A usable sufficient condition: one derivation under one day's horizon.**  If some
+sentence code has a `T'`-derivation with Gödel number below `horizons n`, the decider is `1`
+there and `0` at `⌜⊥⌝` on the same day (consistency of `T'`), so it is non-constant.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from
+`conRunValue_pair_eq_one_iff` and `conRunValue_bot_eq_zero`. -/
+lemma conGamma_mentions_zero_of_bProv (T' : ArithmeticTheory) [T'.Δ₁]
+    [RepresentsComputations T] {horizons : ℕ → ℕ} (hh : ComputableHorizon horizons)
+    (hcons : Entailment.Consistent T') {φcode n : ℕ}
+    (hp : BProv T' φcode (horizons n)) :
+    (conGamma T T' hh).Mentions 0 := by
+  refine conGamma_mentions_zero T T' hh (z := Nat.pair φcode n)
+    (z' := Nat.pair ⌜(⊥ : ArithmeticSentence)⌝ n) ?_
+  rw [conRunValue_bot_eq_zero T' hcons n,
+    (conRunValue_pair_eq_one_iff T' horizons φcode n).mpr hp]
+  exact _root_.one_ne_zero
+
+/-- **The condition every interesting horizon satisfies.**  `⊤` is `T'`-provable, so it has
+*some* derivation code; an unbounded horizon eventually exceeds it, and the previous lemma
+applies.  This is the form a caller can actually discharge: it asks nothing of `T'` beyond
+the consistency the endpoint already assumes, and nothing of the horizon beyond
+unboundedness.
+
+Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citation —
+`Bootstrapping.provable_iff_provable` (through `provableCode_quote_verum`). -/
+lemma conGamma_mentions_zero_of_horizon_unbounded (T' : ArithmeticTheory) [T'.Δ₁]
+    [RepresentsComputations T] {horizons : ℕ → ℕ} (hh : ComputableHorizon horizons)
+    (hcons : Entailment.Consistent T') (hub : ∀ k : ℕ, ∃ n, k < horizons n) :
+    (conGamma T T' hh).Mentions 0 := by
+  obtain ⟨d, hd⟩ : ∃ d : ℕ, Bootstrapping.Proof (V := ℕ) T' d ⌜(⊤ : ArithmeticSentence)⌝ :=
+    provableCode_quote_verum T'
+  obtain ⟨n, hn⟩ := hub d
+  exact conGamma_mentions_zero_of_bProv T T' hh hcons
+    (φcode := ⌜(⊤ : ArithmeticSentence)⌝) (n := n) ⟨d, hn, hd⟩
+
+/-- **The §4.10 claim family.**  Day `n` claims that `T'` proves no contradiction with a
+derivation code below `horizons n`; the claim is *true* on every day, by consistency of
+`T'` alone (`conWithin_of_consistent`), and hence `T`-provable through the representation.
+
+`T` is the represent*ing* theory — the paper's `Θ`, whose provable propositions the market
+enumerates — and `T'` the metered one, the paper's `Θ′`.  `thm:pac` instantiates this at
+the diagonal `T' = T`, where the consistency argument is supplied by
+`RepresentsComputations.consistent`; `thm:pazfc` at a genuinely different `T'`, where it is
+the paper's own explicit premise on `Θ′`.
+
+The negative field is unreachable: its hypothesis contradicts `hcons`.  The paper's proof
+likewise uses only the positive literal ("each statement is computable and true, and `Θ`
+represents computations, so each is provable"; tex:4472).
+
+Note what is *not* assumed: no relation whatever between `T` and `T'`.  That **matches** the
+paper, which asks only that `Θ′` be "a stronger consistent recursively axiomatizable theory"
+(tex:1881-1886) and states no containment hypothesis; and it matches the argument, which
+needs only that `T` represent a computable function, that function's totality and
+computability being facts about `T'`'s derivation codes rather than about `T`.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from `RepresentsComputations`
+and `conWithin_of_consistent`; (c) modelling substitution `dd:proofcode` on the measure of
+the finite search. -/
+noncomputable def representedConClaims (T' : ArithmeticTheory) [T.Δ₁] [T'.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [RepresentsComputations T] (hcons : Entailment.Consistent T') {horizons : ℕ → ℕ}
+    (hh : ComputableHorizon horizons) :
+    RepresentedDecidableClaims (paperTheoryDP T) (fun n => conWithin T' (horizons n)) where
+  sentence n := conClaimSentence (conGamma T T' hh) n
+  sentence_poly := conClaimSentence_bigSentenceCodes _
+  provable_of_true n _ := by
+    refine paperTheoryDP_covers_representedClaim_neg T _ _ ?_
+    refine (provable_reprAllTerm_binNumeral_iff T _ _).mpr ?_
+    refine (conGamma_spec T T' hh _ 0).mp ?_
+    exact (conRunValue_bot_eq_zero T' hcons n).symm
+  disprovable_of_false n hn := absurd (conWithin_of_consistent T' hcons (horizons n)) hn
 
 /-! ## The paper-facing endpoints, over the paper's own deductive process
 
@@ -575,51 +774,6 @@ private noncomputable abbrev paperLIA [T.Δ₁] :
 section Endpoints
 
 variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [RepresentsComputations T]
-
-/-- Finitistic-consistency belief, with the representation boundary discharged by a
-concrete computation and named through the paper's own `⌜f⌝(⌜n⌝)`.  The horizon `f` of `C`
-is an arbitrary computable function, named in the claim by its program
-(`ComputableHorizon`) and left unevaluated — the paper's class.
-*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
-disclosure in `LogicalInduction/README.md`),
-which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
-Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
-deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
-r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
-`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
-Paper node: `thm:pac` -/
-theorem lic_belief_finitistic_consistency_ofComputation
-    (P : History) [IsLogicalInductor P (paperTheoryDP T)]
-    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
-    (hconsistent : ∀ n, consistentWithin n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n)) :
-    (fun n => P n ((representedDecidableClaimsOfComputation T C).sentence n)) ≈ₙ
-      fun _ => 1 :=
-  lic_belief_finitistic_consistency P (paperTheoryDP T) consistentWithin
-    (representedDecidableClaimsOfComputation T C) hconsistent hworld
-
-/-- Same statement and same arbitrary-computable-horizon class as `thm:pac`; only the
-supplied finite-consistency predicate differs.
-*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
-disclosure in `LogicalInduction/README.md`),
-which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
-Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
-deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
-r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
-`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
-Paper node: `thm:pazfc` -/
-theorem lic_belief_stronger_theory_consistency_ofComputation
-    (P : History) [IsLogicalInductor P (paperTheoryDP T)]
-    (strongerConsistentWithin : ℕ → Prop)
-    (C : BoundedComputation strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n)) :
-    (fun n => P n ((representedDecidableClaimsOfComputation T C).sentence n)) ≈ₙ
-      fun _ => 1 :=
-  lic_belief_stronger_theory_consistency P (paperTheoryDP T) strongerConsistentWithin
-    (representedDecidableClaimsOfComputation T C) hconsistent hworld
 
 /-- The horizon sequence is arbitrary computable — `hh` names its program rather than
 bounding its growth — which is the paper's "let `f` be any computable function".
@@ -650,47 +804,109 @@ theorem lic_does_not_anticipate_halting_ofComputation
 Nothing remains but the caller's own computation and the (true) hypothesis about it: no
 market, no inductor, no presentation, no `hworld`, and no semantic assumption on `T`. -/
 
-/-- `thm:pac`, unconditional over `LIA`, at the paper's horizon class: `C`'s step budget is
-any computable `f`, named by its program and evaluated by the arithmetic schema rather than
-by the sentence emitter.
-*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+/-- **Belief in Finitistic Consistency** (`thm:pac`), unconditional over `LIA`, at the
+paper's own subject matter.
+
+The day-`n` claim is this development's rendering of the paper's `Con(Θ)(⌜f⌝(⌜n⌝))`: the
+value-`0` sentence of the formula `γ` representing the universal bounded-provability decider
+`conRunValue T f`, at the compact name of the argument `⟨⌜⊥⌝, n⟩`.  Read out, it says that no
+`T`-derivation of `⊥` has Gödel number below `f(n)`.
+
+*It is a paraphrase, in two disclosed respects, and is not asserted to BE the paper's
+sentence.*  What `γ` represents is the **composite** decider `conRunValue T f` — the paper's
+`⌜f⌝(⌜n⌝)` read as `⌜g⌝(⟨⌜⊥⌝, n⟩) = 0̄` for that composite `g` — rather than `f` alone; this
+is the module header's standing disclosure and costs no extra hypothesis, since
+`RepresentsComputations` represents any total computable function.  And the finite search is
+metered by the derivation's Gödel number rather than by the paper's symbol count
+(`dd:proofcode`).
+
+The horizon is an arbitrary computable function, named by its program and evaluated *inside*
+the represented decider; both ends of that range are live.  It may grow as fast as `Ack` (the
+paper's own illustration, witnessed below).  It may also be *degenerate*: at a horizon
+constantly `0` the represented decider is constant, `conGamma`'s occurrence side condition
+fails to be derivable, and the day-indexed sentence family may collapse to a single sentence
+— the conclusion stays true, but names one claim rather than a genuine family.  Day
+separation for the non-degenerate case is `conClaimSentence_ne_of_day_ne` together with
+`conGamma_mentions_zero` (discharged for an unbounded horizon by
+`conGamma_mentions_zero_of_horizon_unbounded`, and at `Ack` by
+`conGamma_mentions_zero_ackermann`).
+
+Nothing is left to the caller but the horizon.  There is no consistency hypothesis — the
+consistency of `T` comes from `RepresentsComputations` — and no truth hypothesis: the truth
+of every day's claim is `conWithin_of_consistent`, proved from that consistency alone.
+
+*Residual hypotheses (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
 disclosure in `LogicalInduction/README.md`),
 which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
 Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
 deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
-r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
-`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
+formalized here.  The finite proof search is metered by the derivation's Gödel number
+rather than by the paper's symbol count (`dd:proofcode`).
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional
-    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
-    (hconsistent : ∀ n, consistentWithin n) :
+    (horizons : ℕ → ℕ) (hh : ComputableHorizon horizons) :
     (fun n => liaHistory (paperTheoryDP T) n
-      ((representedDecidableClaimsOfComputation T C).sentence n)) ≈ₙ fun _ => 1 :=
+      (conClaimSentence (conGamma T T hh) n)) ≈ₙ fun _ => 1 :=
   haveI := paperLIA T
-  lic_belief_finitistic_consistency_ofComputation T (liaHistory (paperTheoryDP T))
-    consistentWithin C hconsistent (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
+  lic_belief_finitistic_consistency (liaHistory (paperTheoryDP T)) (paperTheoryDP T)
+    (fun n => conWithin T (horizons n))
+    (representedConClaims T T (RepresentsComputations.consistent T)
+      hh).toRepresentedSemidecidableClaims
+    (fun n => conWithin_of_consistent T (RepresentsComputations.consistent T) (horizons n))
+    (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
 
-/-- `thm:pazfc`, unconditional over `LIA`, at the same arbitrary-computable-horizon class
-as `thm:pac`.
-*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+/-- **Belief in the Consistency of a Stronger Theory** (`thm:pazfc`), unconditional over
+`LIA`, at the paper's own subject matter.
+
+The market is `Θ`'s: `paperTheoryDP T` enumerates the propositions `T` proves, and the
+inductor is trained on that process alone.  The *claims*, however, are about a second
+theory `T'` — the paper's `Θ′`, "a stronger consistent recursively axiomatizable theory,
+such as `𝗣𝗔 + Con(𝗣𝗔)` or `ZFC`" (tex:1881-1886).  Day `n` renders the arithmetized
+`Con(Θ′)(⌜f⌝(⌜n⌝))`: no `T'`-derivation of `⊥` has Gödel number below `f(n)`, written as
+the value-`0` sentence of the `T`-formula representing `T'`'s bounded-provability decider.
+So the inductor, which can prove nothing about `T'` from its own theory, nevertheless comes
+to believe every finite consistency statement about it.
+
+*A paraphrase, in the same two disclosed respects as `thm:pac`*: `γ` represents the
+**composite** decider `conRunValue T' f`, not `f` alone (the module header's standing
+disclosure), and the search is metered by the derivation's Gödel number rather than by the
+paper's symbol count (`dd:proofcode`).  The horizon ranges over *all* computable functions,
+not only fast-growing ones: `Ack` is the witness below, and a degenerate horizon (constantly
+`0`) makes the represented decider constant, so the day family may then collapse to a single
+sentence.  Day separation in the non-degenerate case is `conClaimSentence_ne_of_day_ne` with
+`conGamma_mentions_zero_of_horizon_unbounded`.
+
+`hcons` is the paper's own premise on `Θ′` and is what makes each day's claim *true*; the
+representability of `T` then carries truth to `T`-provability, and no soundness assumption
+appears anywhere.
+
+*The hypotheses are the paper's.*  tex:1881-1886 assumes of `Θ′` only that it is a stronger
+consistent recursively axiomatizable theory — there is **no** `Θ ⊆ Θ′` hypothesis in the
+paper — and no hypothesis relating `T` and `T'` is stated here either, because none is used:
+the argument needs only that `T` represents computable functions and that `T'` is consistent.
+What makes the theorem *interesting* is the informal case where `Θ` cannot prove `Con(Θ′)`,
+and the `𝗜𝚺₁`/`𝗣𝗔` witness below carries that concretely.
+
+*Residual hypotheses (disclosed).*  `[T.Δ₁]`, `[T'.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
 disclosure in `LogicalInduction/README.md`),
-which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+which assumes only that `Θ` is consistent, c.e. and represents computations, and that `Θ′`
+is consistent and recursively axiomatizable: it asks for a
 Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
 deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
-r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
-`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
+formalized here.  The finite proof search is metered by the derivation's Gödel number
+rather than by the paper's symbol count (`dd:proofcode`).
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional
-    (strongerConsistentWithin : ℕ → Prop)
-    (C : BoundedComputation strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n) :
+    (T' : ArithmeticTheory) [T'.Δ₁] (hcons : Entailment.Consistent T')
+    (horizons : ℕ → ℕ) (hh : ComputableHorizon horizons) :
     (fun n => liaHistory (paperTheoryDP T) n
-      ((representedDecidableClaimsOfComputation T C).sentence n)) ≈ₙ fun _ => 1 :=
+      (conClaimSentence (conGamma T T' hh) n)) ≈ₙ fun _ => 1 :=
   haveI := paperLIA T
-  lic_belief_stronger_theory_consistency_ofComputation T (liaHistory (paperTheoryDP T))
-    strongerConsistentWithin C hconsistent (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
+  lic_belief_finitistic_consistency (liaHistory (paperTheoryDP T)) (paperTheoryDP T)
+    (fun n => conWithin T' (horizons n))
+    (representedConClaims T T' hcons hh).toRepresentedSemidecidableClaims
+    (fun n => conWithin_of_consistent T' hcons (horizons n))
+    (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
 
 /-- `thm:dontwait`, unconditional over `LIA`.  `hh` supplies the horizon program for an
 arbitrary computable `f` — no growth bound — which is the paper's own quantifier, and `hm`
@@ -734,33 +950,55 @@ example :
     (ComputableHorizon.of Computable.id)
     (fun n => not_codeHalts_neverHaltMachine (2 ^ n))
 
-/-- **`thm:pac` and `thm:pazfc`, applied.**  The bounded computation is
-`alwaysBoundedComputation` — `Code.zero` on input `0` within `n + 1` interpreter steps — whose
-truth predicate holds on every day.  So `hconsistent` is *proved*, not assumed: the premise
-pair `(C, hconsistent)` of both endpoints is jointly inhabited, and nothing is left to the
-caller beyond the theory instances.
+/-- **`thm:pac`, applied.**  The horizon is Ackermann's function on the diagonal — the
+paper's own illustration is `Con(PA)(⌜Ack(10,10)⌝)` (tex:1859) — and the theory is `𝗜𝚺₁`,
+for which all three instances are discharged in the repository
+(`Construction/Witnesses/R0Representability.lean`).  Nothing is assumed: this is a
+belief-in-consistency statement about a named theory, with the consistency claim itself
+arithmetized.
 
-Two things this example does not hide.  First, `thm:pac` and `thm:pazfc` are, at every layer
-of this development, the **same theorem**: `lic_belief_finitistic_consistency_unconditional`
-and `lic_belief_stronger_theory_consistency_unconditional` have literally the same statement
-once the supplied predicate is fixed, and each is `rfl`-interchangeable with the other (as the
-`example` below records).  The paper's distinction between them is the *choice* of
-consistency predicate, which this layer takes as given data.  Second, that choice is where
-the remaining work is: rendering the paper's `Con(Θ)(⌜f⌝(⌜n⌝))` as an arithmetized
-consistency statement about a specific theory is the queued §4.10 project, and is not started
-here. -/
+This is the first endpoint of the development whose subject matter is a `Con(Θ)` family
+rather than a caller-supplied bounded computation. -/
 example :
-    (fun n => liaHistory (paperTheoryDP T) n
-      ((representedDecidableClaimsOfComputation T alwaysBoundedComputation).sentence n))
-        ≈ₙ fun _ => 1 :=
-  lic_belief_finitistic_consistency_unconditional T (fun _ => True)
-    alwaysBoundedComputation (fun _ => trivial)
+    (fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+      (conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
+  lic_belief_finitistic_consistency_unconditional 𝗜𝚺₁ _ ComputableHorizon.ackermann
 
-/-- `thm:pac` and `thm:pazfc` are the same statement at this layer — literally `rfl`. -/
-example (truth : ℕ → Prop) (C : BoundedComputation truth) (h : ∀ n, truth n) :
-    lic_belief_finitistic_consistency_unconditional T truth C h
-      = lic_belief_stronger_theory_consistency_unconditional T truth C h :=
-  rfl
+/-- **`thm:pazfc`, applied — the paper's own illustration.**  The inductor is trained on
+`𝗜𝚺₁`, and the claims are the finite consistency statements of `𝗣𝗔`, a strictly stronger
+theory: `𝗜𝚺₁ ⊬ Con(𝗣𝗔)`, yet the `𝗜𝚺₁`-trained inductor's belief in `Con(𝗣𝗔)(⌜Ack(n,n)⌝)`
+converges to `1`.
+
+Both theories are named, and nothing is left to the caller: `𝗜𝚺₁`'s three instances are
+discharged in the repository (`Construction/Witnesses/R0Representability.lean`), `𝗣𝗔.Δ₁` is
+Foundation's, and `Entailment.Consistent 𝗣𝗔` is Foundation's instance too, obtained from
+soundness at the standard model (`Schemata.lean`).  That semantic route lives *inside this
+witness only* — the endpoint above takes consistency as a hypothesis, exactly as the paper
+does, and no soundness assumption reaches the trust surface. -/
+example :
+    (fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+      (conClaimSentence (conGamma 𝗜𝚺₁ 𝗣𝗔 ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
+  lic_belief_stronger_theory_consistency_unconditional 𝗜𝚺₁ 𝗣𝗔 inferInstance _
+    ComputableHorizon.ackermann
+
+/-- **The occurrence side condition, fully discharged at the paper's own illustration.**  The
+diagonal Ackermann horizon is unbounded (`lt_ack_right`), so `conGamma 𝗜𝚺₁ 𝗜𝚺₁ ack` mentions
+its argument slot with nothing left to the caller.
+
+Kind `C` (composition).  Provenance: (a) derived in-project; (b) Mathlib citation —
+`lt_ack_right`. -/
+lemma conGamma_mentions_zero_ackermann :
+    (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann).Mentions 0 :=
+  conGamma_mentions_zero_of_horizon_unbounded 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann
+    (RepresentsComputations.consistent 𝗜𝚺₁) fun k => ⟨k, _root_.lt_ack_right k k⟩
+
+/-- **The `thm:pac` family does not collapse: two concrete days, two different sentences.**
+Applied at the same theory and horizon as the `thm:pac` witness above, with the occurrence
+side condition discharged rather than assumed. -/
+example :
+    conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) 0
+      ≠ conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) 1 :=
+  conClaimSentence_ne_of_day_ne _ conGamma_mentions_zero_ackermann (by decide)
 
 end Endpoints
 
@@ -1381,12 +1619,347 @@ theorem thm_loops_applied_at_loopsTheory :
 
 end Halting
 
+/-! ## §4.10: disbelief in inconsistent theories, at the paper's process
+
+`thm:incons` (tex:1893-1903) says: for an e.c. sequence `⟨Θ′⟩` of recursively axiomatizable
+**inconsistent** theories, `ℙₙ(⌜⌜Θ′ₙ⌝ is inconsistent⌝) ≈ₙ 1`, and hence
+`ℙₙ(⌜⌜Θ′ₙ⌝ is consistent⌝) ≈ₙ 0`.
+
+**What the sentence is.**  The paper's `⌜Θ′⌝ is inconsistent` is the negation of the universal
+generalization of `Con(Θ′)(ν)` (tex:1863-1866) — the unbounded `∃` over proofs of `⊥` from
+`⌜Θ′⌝`.  It is therefore Σ₁, not decidable, so this lane is the *halting* lane's shape, not
+the bounded lane's: one fixed r.e. schema, with the day's data in the argument.  No horizon
+appears and `dd:proofcode` is not in play — the existential is over all proofs either way.
+
+**Which theories.**  *Disclosed paraphrase.*  The theory sequence is the **deduction family**
+`Θ′ₙ := Θ₀ ∪ {σₙ}` over a fixed `Δ₁` base theory `Θ₀`, not an arbitrary e.c. sequence of
+theories.  Foundation's derivability predicate takes its theory as a *meta* parameter
+(`Derivation T` is `(construction T).Fixpoint`), so there is no uniform-in-theory-code
+derivability to represent and no way for a sequence of theories to enter one sentence as an
+argument.  For a deduction family the deduction theorem collapses the day's theory to a single
+sentence code: `Θ′ₙ` is inconsistent exactly when `Θ₀ ⊢ ∼σₙ`, i.e. exactly when `⌜∼σₙ⌝` is
+`Θ₀`-provable (`provableCode_neg_iff_not_consistent_adjoin`).  So the day-`n` claim is the
+universal provability schema of `Θ₀` at the compact name of `⌜∼σₙ⌝`, and it genuinely names
+the day's theory — the extensionality test is a theorem
+(`inconsistencyArgClaimSentence_ne_of_arg_ne`), not a hope.  The general e.c.-sequence-of-
+theories rendering is deferred; the restriction is recorded at the endpoint and in the
+README, never silently.
+
+**The `def:ec` premise.**  What the day-`n` sentence writes out is the code of `∼σₙ` — the
+name of `Θ′ₙ` under the deduction-theorem reduction — so that is the sequence the write-out
+class is stated on (`hσ : BigDigits (deductionFamilyArg σ)`).  It is the exact analogue of
+`hm`/`hi` on the halting lane, and it is load-bearing: it is the only route to
+`inconsistency_poly`.
+
+**One family, not two.**  `consistencySentence` is the syntactic negation of
+`inconsistencySentence`, as the paper defines it; the second conjunct costs no second
+representation premise. -/
+
+section Inconsistency
+
+/-- **The universal provability schema of a base theory.**  Foundation's r.e. formula for
+"the sentence with code `z` is `T'`-provable".  At `z = ⌜∼σ⌝` its standard-model content is
+exactly "`T' ∪ {σ}` is inconsistent", so one schema per base theory serves every day and every
+adjoined axiom, and the day's theory enters only through the *argument*.
+
+Representing "`T'` is inconsistent" directly would have been the extensionality trap (`R5-F08`,
+`KNOWLEDGE.md`): under the theorem's own hypothesis that predicate is constantly `True`, and a
+schema built from it would name nothing. -/
+noncomputable def inconsistencySchema (T' : ArithmeticTheory) [T'.Δ₁] :
+    ArithmeticSemisentence 1 :=
+  codeOfREPred (ProvableCode T')
+
+/-- The schema has exactly the intended standard-model meaning. -/
+lemma inconsistencySchema_spec (T' : ArithmeticTheory) [T'.Δ₁] (z : ℕ) :
+    (inconsistencySchema T').Evalb ![z] ↔ ProvableCode T' z :=
+  codeOfREPred_spec (provableCode_re T') (x := z)
+
+/-- **The schema is not argument-insensitive.**  Its shape is unreachable (`codeOfREPred` is
+picked by `Classical.epsilon`), but its defining spec is not nothing: a consistent `T'` proves
+`⊤` and not `⊥`, so the chosen formula cannot be one that ignores its argument.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from `provableCode_quote_verum` and
+`not_provableCode_quote_falsum`. -/
+lemma inconsistencySchema_not_argument_insensitive (T' : ArithmeticTheory) [T'.Δ₁]
+    (hcon : Entailment.Consistent T') :
+    ¬ ∀ z z' : ℕ,
+      (inconsistencySchema T').Evalb ![z] ↔ (inconsistencySchema T').Evalb ![z'] := by
+  intro h
+  have hz : (inconsistencySchema T').Evalb ![(⌜(⊤ : ArithmeticSentence)⌝ : ℕ)] :=
+    (inconsistencySchema_spec T' _).mpr (provableCode_quote_verum T')
+  have hz' : ¬ (inconsistencySchema T').Evalb ![(⌜(⊥ : ArithmeticSentence)⌝ : ℕ)] := fun hx =>
+    not_provableCode_quote_falsum T' hcon ((inconsistencySchema_spec T' _).mp hx)
+  exact hz' ((h _ _).mp hz)
+
+/-- **The schema mentions its argument**, the occurrence form of the previous lemma and the
+side condition of substitution injectivity.
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
+`Semiformula.subst_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`),
+`Semiformula.eval_substs`. -/
+lemma inconsistencySchema_mentions_zero (T' : ArithmeticTheory) [T'.Δ₁]
+    (hcon : Entailment.Consistent T') :
+    (inconsistencySchema T' : ArithmeticSemisentence 1).Mentions 0 := by
+  by_contra hmem
+  refine inconsistencySchema_not_argument_insensitive T' hcon fun z z' => ?_
+  have key : ∀ w : ℕ,
+      Semiformula.Evalb (M := ℕ) (![] : Fin 0 → ℕ)
+          ((inconsistencySchema T')/[(‘↑w’ : Semiterm ℒₒᵣ Empty 0)])
+        ↔ (inconsistencySchema T').Evalb ![w] := by
+    intro w
+    simp [Semiformula.eval_substs, Matrix.constant_eq_singleton]
+  have hsub := Semiformula.subst_eq_of_not_mentions hmem
+    (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
+  rw [← key z, ← key z', hsub]
+
+/-- **The day-`n` name of the theory `Θ′ₙ = Θ₀ ∪ {σₙ}`**: the code of `∼σₙ`.  Under the
+deduction theorem this single code determines whether `Θ′ₙ` is inconsistent, and it is what the
+day-`n` claim sentence writes out.
+
+*Metering disclosure — `BigDigits (deductionFamilyArg σ)` is STRONGER than the paper's
+`def:ec`, not equal to it.*  `BigDigits` bounds the base-4 **digit count** of the natural
+number it is applied to, which is the right meter when that number is the *written form* of
+the object (a bitstring input; a machine named by the linear `Code.sourceNat` — the doctrine
+is stated at `DigitMachineCodes`, `Framework/WriteOut.lean`, and for formulas at the header
+of `Construction/Witnesses/ArithmeticSource.lean`).  Here the number is a **Gödel code of a
+formula**, and Foundation's encoding pairs at every node, so the code value is roughly
+doubly exponential and its digit count roughly `2 ^ depth` — the same failure mode that made
+`Encodable.encode` unusable as a machine-naming map.  The class therefore admits only
+families of `O(log n)` formula depth (a `binNumeral`-spelled family is the intended shape)
+and **excludes** paper-admissible families whose *source text* is short but whose parse tree
+is deep — the `iffChain`-style families that `PolyArithmeticSourceSeq` was introduced for.
+
+This is a live over-strength hypothesis on `thm:incons`, disclosed rather than repaired here:
+the faithful repair is to meter the day's theory name on the source language
+(`PolyArithmeticSourceSeq`, `ArithmeticSource.lean`) instead of on the Gödel code, which is
+queued as source-metered re-rendering work and deliberately not attempted in this round.
+Being a strengthening of a *hypothesis*, it narrows which theory sequences the endpoint
+covers; it does not weaken the conclusion at those it does cover. -/
+noncomputable def deductionFamilyArg (σ : ℕ → ArithmeticSentence) (n : ℕ) : ℕ := ⌜∼(σ n)⌝
+
+/-- **The paper's “`⌜Θ′ₙ⌝` is inconsistent”**: the base theory's provability schema at the
+compact name of `⌜∼σₙ⌝`. -/
+noncomputable def inconsistencyArgClaimSentence (T' : ArithmeticTheory) [T'.Δ₁]
+    (σ : ℕ → ArithmeticSentence) (n : ℕ) : Sentence :=
+  schemaArgClaimSentence (inconsistencySchema T') (binNumeral (deductionFamilyArg σ n))
+
+/-- The bare arithmetic sentence under the claim atom, for callers that need it. -/
+noncomputable def inconsistencyArgClaimInstance (T' : ArithmeticTheory) [T'.Δ₁]
+    (σ : ℕ → ArithmeticSentence) (n : ℕ) : ArithmeticSentence :=
+  (inconsistencySchema T')/[(binNumeral (deductionFamilyArg σ n)).const]
+
+/-- **The standing extensionality test, proved.**  Days whose adjoined axioms have distinct
+negation *codes* — not merely distinct consistency behaviour — get distinct claim sentences,
+with no hypothesis on the day's theories beyond consistency of the base.  This is what makes
+`hσ` and the sequence `σ` load-bearing rather than decorative.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from
+`schemaArgClaimSentence_ne_of_const_ne`, `inconsistencySchema_mentions_zero`,
+`binNumeral_const_ne`. -/
+lemma inconsistencyArgClaimSentence_ne_of_arg_ne (T' : ArithmeticTheory) [T'.Δ₁]
+    (hcon : Entailment.Consistent T') (σ σ' : ℕ → ArithmeticSentence) (n n' : ℕ)
+    (h : deductionFamilyArg σ n ≠ deductionFamilyArg σ' n') :
+    inconsistencyArgClaimSentence T' σ n ≠ inconsistencyArgClaimSentence T' σ' n' :=
+  schemaArgClaimSentence_ne_of_const_ne _ (inconsistencySchema_mentions_zero T' hcon) _ _
+    (binNumeral_const_ne _ _ h)
+
+/-- **The `thm:incons` claim family, over the paper's own deductive process.**
+
+The positive obligation is Σ₁-completeness at the universal schema (`re_complete_mp`, which
+needs `[𝗣𝗔⁻ ⪯ T]` and nothing else); the `def:ec` obligation is discharged at the compact
+argument name, and that is what `hσ` is consumed by.  No semantic hypothesis on `T`, no
+hypothesis relating `T` to `T'`, and no consistency hypothesis on `T'` — an inconsistent base
+theory makes every day's claim true, which the endpoint's conclusion tracks correctly.
+
+Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citations —
+`codeOfREPred` and `sigma_one_completeness` (through `re_complete_mp`),
+`Bootstrapping.provable_iff_provable` and `Entailment.deduction_iff` (through
+`provableCode_neg_iff_not_consistent_adjoin`); (c) modelling substitution — the deduction-family
+paraphrase of the paper's arbitrary e.c. theory sequence, disclosed in the section header. -/
+noncomputable def representedInconsistentTheoryClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    (T' : ArithmeticTheory) [T'.Δ₁] (σ : ℕ → ArithmeticSentence)
+    (hσ : BigDigits (deductionFamilyArg σ)) :
+    InconsistentTheoryClaims (paperTheoryDP T)
+      (fun n => ¬Entailment.Consistent (σ n ∷ T')) where
+  inconsistencySentence := inconsistencyArgClaimSentence T' σ
+  inconsistency_poly :=
+    schemaArgClaimSentence_bigSentenceCodes (inconsistencySchema T') _
+      (polySegStream_binNumeral_const hσ)
+  inconsistency_provable n hn := by
+    refine paperTheoryDP_covers_schemaArgClaim T (inconsistencySchema T') _ ?_
+    refine (provable_subst_binNumeral_iff T (inconsistencySchema T') _).mpr ?_
+    exact re_complete_mp (T := T) (provableCode_re T')
+      ((provableCode_neg_iff_not_consistent_adjoin T' (σ n)).mpr hn)
+
+/-- **Disbelief in Inconsistent Theories** (`thm:incons`), unconditional over `LIA`.  Both of
+the paper's conjuncts: belief in the day-`n` inconsistency sentence tends to `1`, and belief in
+its negation — the paper's consistency sentence — tends to `0`.
+
+`hinc` is the paper's own premise, that each `Θ′ₙ` is inconsistent, stated at the theory
+`σₙ ∷ Θ₀` itself rather than at any provability surrogate.
+
+*Modelling substitution (disclosed).*  The theory sequence is the deduction family
+`Θ′ₙ = Θ₀ ∪ {σₙ}` rather than an arbitrary e.c. sequence of recursively axiomatizable
+theories; see the section header for the Foundation obstruction that forces it and for why the
+day's theory is nevertheless genuinely named in the sentence.
+*Over-strength `def:ec` hypothesis (disclosed).*  `hσ` meters the day's theory name by the
+base-4 digit count of a formula's **Gödel code**, not by the length of its source text.
+Foundation's formula encoding pairs at every node, so that digit count is roughly
+`2 ^ depth`: the class admits only `O(log n)`-depth (e.g. `binNumeral`-spelled) families and
+excludes paper-admissible families that are short to write but deep to parse.  The paper's
+`def:ec` meters the writing (tex:753-755, tex:1931-1933); the faithful repair is to state
+this premise on the source language (`PolyArithmeticSourceSeq`,
+`Construction/Witnesses/ArithmeticSource.lean`) and is queued, not done.  Full statement of
+the boundary at `deductionFamilyArg`.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]`, `[T'.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings
+beyond the paper (see the global disclosure in `LogicalInduction/README.md`), which assumes
+only that the theories are consistent (for `Θ`), c.e. and represent computations: they ask for
+a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.
+Paper node: `thm:incons` -/
+theorem lic_disbelief_inconsistent_theories_unconditional [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (T' : ArithmeticTheory) [T'.Δ₁]
+    (σ : ℕ → ArithmeticSentence) (hσ : BigDigits (deductionFamilyArg σ))
+    (hinc : ∀ n, ¬Entailment.Consistent (σ n ∷ T')) :
+    ((fun n => liaHistory (paperTheoryDP T) n
+        ((representedInconsistentTheoryClaims T T' σ hσ).inconsistencySentence n))
+          ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (paperTheoryDP T) n
+        ((representedInconsistentTheoryClaims T T' σ hσ).consistencySentence n))
+          ≈ₙ fun _ => 0) :=
+  haveI := paperLIA T
+  lic_disbelief_inconsistent_theories (liaHistory (paperTheoryDP T)) (paperTheoryDP T) _
+    (representedInconsistentTheoryClaims T T' σ hσ) hinc
+    (paperTheoryDP_hworld_stages T inferInstance)
+
+/-- **`thm:incons`, applied with nothing left to the caller.**  The market is over `𝗜𝚺₁`, the
+base theory of the deduction family is `𝗜𝚺₁`, and the adjoined axiom is `⊥`, so every day's
+theory `𝗜𝚺₁ ∪ {⊥}` is **actually inconsistent** — `hinc` is discharged by the deduction bridge,
+the write-out class by `BigDigits.const`, and every instance argument by Foundation's own
+`𝗜𝚺₁` instances.  This replaces the superseded `0 < n` stand-in, whose predicate was not even
+a statement about a theory.
+
+This witness is constant in the day; the day-varying one is
+`thm_incons_applied_alternating` below. -/
+example :
+    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥)
+          (BigDigits.const _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥)
+          (BigDigits.const _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
+  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥) (BigDigits.const _)
+    (fun _ => by rw [not_consistent_adjoin_iff]; simp)
+
+/-! ### A day-varying `thm:incons` witness, and what is still missing
+
+The constant witness above leaves the day-separation theorem
+`inconsistencyArgClaimSentence_ne_of_arg_ne` unexercised: its hypothesis is that two days'
+axiom codes differ, and at a constant family they never do.  The family below is genuinely
+day-varying — it alternates between two refutable axioms — so the separation theorem fires
+at two concrete days with nothing assumed.
+
+*What this witness does and does not establish.*  It shows that the endpoint's premise set
+admits a family whose day-`n` theory really changes with `n`, and that the rendering assigns
+those days distinct sentences.  It does **not** exhibit a family with *unboundedly many*
+distinct theories: this one takes two values.  A family of unbounded description length — the
+natural candidate being `σₙ := “binNumeral n ≠ binNumeral n”`, refutable on every day, whose
+*source text* is `O(log n)` symbols — cannot be admitted, because `hσ` meters the Gödel
+**code** rather than the source (the boundary stated at `deductionFamilyArg`), and the
+required certificate is not reachable from the digit calculus as it stands:
+
+  -- TODO(thm:incons): need `BigDigits (fun n => ⌜∼(binNumeral-spelled σ n)⌝)`.
+  -- Blocked on a missing combinator, not on size: for such a σ the code's base-4 digit
+  -- count is polynomial (bit length `Θ(√n)`), so the statement is true.  What is absent is
+  -- closure of `BigDigits` under an UNBOUNDED-DEPTH `Nat.pair` nesting.  Foundation's
+  -- `Semiformula.toNat`/`Semiterm.toNat` pair at every constructor node, so `⌜∼σₙ⌝` is a
+  -- `Nat.pair`-shell iterated `Θ(log n)` times over the Horner recursion of `binNumeral`;
+  -- every `BigDigits` closure in `Framework/DigitArith.lean` (`const`, `natPair`, `succ`,
+  -- `add`, `mul`, `ifZero`, `comp`) composes only a CONSTANT number of times, and
+  -- `PolyFueled.prec` cannot iterate because its `IsPolyBounded` state hypothesis forbids a
+  -- bignum-valued state.  The missing lemma is a `BigDigits.precBig`: poly-fueled digit
+  -- access to `F k` uniformly in `(k, j)` for a pairing-shell recurrence
+  -- `F (k+1) = shell (F k)`, together with the base-4 digit theory of `Nat.pair` at
+  -- unbounded nesting that it rests on.  `BigDigits.ofBase16Digits`
+  -- (`Framework/CodeSource.lean`) — the tool that made `bigDigits_sourceNat_nest`
+  -- tractable — does not apply, because `Nat.pair` is not digit concatenation.
+  -- The faithful repair is the other one: meter this premise on the source language
+  -- (`PolyArithmeticSourceSeq`), where the family is admissible by
+  -- `polySegStream_binNumeralEnc` and no code-digit theory is needed at all. -/
+
+/-- The day-varying adjoined axiom: `⊥` on even days, `⊥ ⋏ ⊥` on odd ones.  Both are refutable
+in every theory, so every day's theory is actually inconsistent; their Gödel codes differ, so
+the claim sentences do too. -/
+noncomputable def alternatingInconsistentAxiom (n : ℕ) : ArithmeticSentence :=
+  if n % 2 = 0 then ⊥ else ⊥ ⋏ ⊥
+
+/-- The write-out premise at the alternating family: a two-way dispatch on a poly-fueled
+parity test between two constant codes.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from `BigDigits.ifZero`,
+`BigDigits.const`, `BigDigits.mod_two`. -/
+lemma alternatingInconsistentAxiom_digits :
+    BigDigits (deductionFamilyArg alternatingInconsistentAxiom) := by
+  obtain ⟨c, hc⟩ := (BigDigits.of_polyFueled PolyFueled.id).mod_two
+  refine (BigDigits.ifZero (BigDigits.const ⌜∼(⊥ : ArithmeticSentence)⌝)
+    (BigDigits.const ⌜∼((⊥ : ArithmeticSentence) ⋏ ⊥)⌝) hc).of_eq fun n => ?_
+  by_cases h : n % 2 = 0 <;>
+    simp [deductionFamilyArg, alternatingInconsistentAxiom, h]
+
+/-- Every day's theory really is inconsistent, by the deduction bridge. -/
+lemma alternatingInconsistentAxiom_inconsistent (T' : ArithmeticTheory) (n : ℕ) :
+    ¬Entailment.Consistent (alternatingInconsistentAxiom n ∷ T') := by
+  rw [not_consistent_adjoin_iff]
+  by_cases h : n % 2 = 0
+  · simp [alternatingInconsistentAxiom, h]
+  · simp only [alternatingInconsistentAxiom, if_neg h]
+    cl_prover
+
+/-- Distinct adjoined axioms have distinct names: the day's theory code is the Gödel code of
+`∼σₙ`, and Foundation's quote at `ℕ` is `Encodable.encode`, which is injective.
+
+Kind `C` (composition).  Provenance: (b) Foundation citations —
+`LO.FirstOrder.Sentence.quote_def` (`rfl`), `Semiformula.quote_inj_iff`,
+`Rewriting.emb_injective`. -/
+lemma deductionFamilyArg_ne_of_ne {σ : ℕ → ArithmeticSentence} {m n : ℕ}
+    (h : σ m ≠ σ n) : deductionFamilyArg σ m ≠ deductionFamilyArg σ n := by
+  intro hq
+  refine h ?_
+  have hq' : (⌜(Rewriting.emb (∼(σ m)) : ArithmeticSemiformula ℕ 0)⌝ : ℕ)
+      = ⌜(Rewriting.emb (∼(σ n)) : ArithmeticSemiformula ℕ 0)⌝ := hq
+  simpa using Rewriting.emb_injective (Semiformula.quote_inj_iff.mp hq')
+
+/-- **`thm:incons`, applied at a day-varying family with nothing left to the caller.**  Every
+hypothesis and every instance argument is discharged: the write-out premise at
+`alternatingInconsistentAxiom_digits`, the inconsistency of each day's theory at
+`alternatingInconsistentAxiom_inconsistent`, and the theory instances by Foundation's own
+`𝗜𝚺₁` instances.  Unlike the constant witness above, the day-`n` theory really changes with
+`n`, so the day-separation theorem below applies non-trivially.
+Paper node: `thm:incons` -/
+theorem thm_incons_applied_alternating :
+    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ alternatingInconsistentAxiom
+          alternatingInconsistentAxiom_digits).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ alternatingInconsistentAxiom
+          alternatingInconsistentAxiom_digits).consistencySentence n)) ≈ₙ fun _ => 0) :=
+  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ 𝗜𝚺₁ alternatingInconsistentAxiom
+    alternatingInconsistentAxiom_digits (alternatingInconsistentAxiom_inconsistent 𝗜𝚺₁)
+
+/-- **The day-separation theorem, applied.**  Days `0` and `1` of the alternating family get
+different claim sentences — no hypothesis, no behavioural side condition. -/
+example :
+    inconsistencyArgClaimSentence 𝗜𝚺₁ alternatingInconsistentAxiom 0
+      ≠ inconsistencyArgClaimSentence 𝗜𝚺₁ alternatingInconsistentAxiom 1 :=
+  inconsistencyArgClaimSentence_ne_of_arg_ne 𝗜𝚺₁ (RepresentsComputations.consistent 𝗜𝚺₁)
+    _ _ 0 1 (deductionFamilyArg_ne_of_ne (by simp [alternatingInconsistentAxiom]))
+
+end Inconsistency
+
 #print axioms representedClaimSentence_bigSentenceCodes
 #print axioms representedBoundedClaims
 #print axioms representedBoundedHaltingClaims
-#print axioms representedDecidableClaimsOfComputation
-#print axioms lic_belief_finitistic_consistency_ofComputation
-#print axioms lic_belief_stronger_theory_consistency_ofComputation
 #print axioms lic_does_not_anticipate_halting_ofComputation
 #print axioms lic_belief_finitistic_consistency_unconditional
 #print axioms lic_belief_stronger_theory_consistency_unconditional
@@ -1419,5 +1992,29 @@ end Halting
 #print axioms loopsWitness_never_halts
 #print axioms loopsTheory_refutes
 #print axioms thm_loops_applied_at_loopsTheory
+#print axioms conClaimArg_digits
+#print axioms conClaimSentence_bigSentenceCodes
+#print axioms conClaimSentence_ne_of_day_ne
+#print axioms conGamma
+#print axioms conGamma_spec
+#print axioms conGamma_mentions_zero
+#print axioms conGamma_mentions_zero_of_bProv
+#print axioms conGamma_mentions_zero_of_horizon_unbounded
+#print axioms conGamma_mentions_zero_ackermann
+#print axioms representedConClaims
+#print axioms inconsistencySchema
+#print axioms inconsistencySchema_spec
+#print axioms inconsistencySchema_not_argument_insensitive
+#print axioms inconsistencySchema_mentions_zero
+#print axioms deductionFamilyArg
+#print axioms deductionFamilyArg_ne_of_ne
+#print axioms inconsistencyArgClaimSentence
+#print axioms inconsistencyArgClaimInstance
+#print axioms inconsistencyArgClaimSentence_ne_of_arg_ne
+#print axioms representedInconsistentTheoryClaims
+#print axioms lic_disbelief_inconsistent_theories_unconditional
+#print axioms alternatingInconsistentAxiom_digits
+#print axioms alternatingInconsistentAxiom_inconsistent
+#print axioms thm_incons_applied_alternating
 
 end LogicalInduction

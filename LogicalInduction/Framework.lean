@@ -21,6 +21,9 @@ substrate and the shared proof machinery.
 * `RepresentsComputations` — the paper's standing assumption on the first-order background
                      theory `Θ` (§2, "Representing computations"), and the two literals it
                      yields over a represented value graph.
+* `BoundedConsistency` — bounded provability over Foundation's internal derivations, its
+                     computable decider, and the paper's finite-consistency predicate
+                     `Con(Θ)(ν)` (§4.10, `dd:proofcode`).
 * `Compactness`    — propositional compactness over Cantor space: per-stage satisfiability
                      of a deductive process yields one world consistent with every stage.
 * `Affine`         — trade magnitude/net-worth bounds and affine combinations (buy orders).
@@ -42,6 +45,7 @@ import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnComputation
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.BoundedConsistency
 import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine

@@ -742,30 +742,13 @@ theorem lic_self_trust_ofRepresentation_unconditional
     confidence_reflected product_reflected
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-! ## Unconditional meta-learning siblings over the constructed `LIA`
+/-! ## The meta-learning lane lives over the paper's own theorem process
 
-The remaining `_ofComputation` meta-learning endpoint instantiates over `liaHistory
-(theoremDP T)`, reusing `theoremPresentation` + `theoremDP_hworld`. Only the caller's
-concrete computation and the (true) hypothesis about it remain.  The halting lane —
-`thm:halts`, `thm:loops` and their clients, together with the `loopsTheory` witness for
-`thm:loops`'s refutation premise — is stated over the paper's own theorem process instead,
-and lives in `ComputationRepresented.lean`; the names are unchanged. -/
-
-/-- `thm:incons`, unconditional over `LIA`.
-Paper node: `thm:incons` -/
-theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
-    (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
-    (hall : ∀ n, inconsistent n) :
-    ((fun n => liaHistory (theoremDP T) n
-        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).inconsistencySentence n))
-          ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (theoremDP T) n
-        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).consistencySentence n))
-          ≈ₙ fun _ => 0) :=
-  haveI := theoremLIA T
-  lic_disbelief_inconsistent_theories_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) inconsistent C hall
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+Every §4.9–4.10 meta-learning endpoint — `thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`,
+`thm:dontwait` and `thm:incons` — is stated over `paperTheoryDP` in
+`ComputationRepresented.lean`, together with the `loopsTheory` witness for `thm:loops`'s
+refutation premise and the `𝗜𝚺₁ ∪ {⊥}` deduction-family witness for `thm:incons`.  Nothing of
+that lane remains here. -/
 
 #print axioms provable_instances_re
 #print axioms theoremDP_covers

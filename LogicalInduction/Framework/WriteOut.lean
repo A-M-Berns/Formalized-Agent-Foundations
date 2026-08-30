@@ -260,6 +260,27 @@ lemma and {φ ψ : ℕ → Sentence} (hφ : BigSentenceCodes φ) (hψ : BigSente
     (hpb z)]
   rfl
 
+/-- Negation of a written-out sentence stream: the fixed `🡒` tag in front of the block and
+a constant `⊥` block, which the prefix parser consumes in order.  Foundation spells `∼φ`
+as `φ 🡒 ⊥` definitionally, and `rpn` tags an implication with `2`, so this is `and`'s
+argument at tag `2` with `const ⊥` as the second stream. -/
+lemma neg {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
+    BigSentenceCodes (fun z => ∼(φ z)) := by
+  obtain ⟨a, ha, hpa⟩ := hφ
+  obtain ⟨b, hb, hpb⟩ := BigSentenceCodes.const (⊥ : Sentence)
+  have h2 : BigTokenStream (fun _ : ℕ => [2]) :=
+    BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream (PolyTokenStream.const 2))
+  refine ⟨fun z => 2 :: (a z ++ b z),
+    ((h2.append ha).append hb).of_eq (fun z => by simp), fun z => ?_⟩
+  have hlen : (2 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by simp
+  rw [hlen, parseRpn_cons]
+  rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [parseRpn_block_head (hpa z) (b z) (by omega)]
+  simp only [Option.bind_some]
+  rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
+    (hpb z)]
+  rfl
+
 end BigSentenceCodes
 
 /-! ## The write-out splice class
