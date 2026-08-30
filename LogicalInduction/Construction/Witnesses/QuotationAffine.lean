@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
 import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Properties.Introspection
 import Foundation.FirstOrder.Bootstrapping.FixedPoint
@@ -142,18 +143,57 @@ lemma universalComputation_partrec : Nat.Partrec universalComputation := by
     ((Computable.ofNat Nat.Partrec.Code).comp (Primrec.fst.comp Primrec.unpair).to_comp)
     (Primrec.snd.comp Primrec.unpair).to_comp)
 
-/-- The fixed positive universal quotation schema; the selector `code` is folded into the
-numeral `⟨code, input⟩`. -/
-noncomputable def universalQuotePos : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => quotePos z.unpair.1 z.unpair.2)
-/-- The fixed negative universal quotation schema. -/
-noncomputable def universalQuoteNeg : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => quoteNeg z.unpair.1 z.unpair.2)
+/-- The universal computation as the one-argument *vector* partial function that
+Foundation's `Nat.ArithPart₁.exists_code` codes. -/
+lemma universalComputation_vector_partrec :
+    Partrec (fun v : List.Vector ℕ 1 => universalComputation (v.get 0)) :=
+  (Partrec.nat_iff.mpr universalComputation_partrec).comp
+    (Primrec.to_comp <| Primrec.vector_get.comp Primrec.id (Primrec.const (0 : Fin 1)))
 
-lemma universalQuotePos_re : REPred (fun z : ℕ => quotePos z.unpair.1 z.unpair.2) :=
-  REPred.of_eq (repred_mem universalComputation_partrec 1) (fun _ => Iff.rfl)
-lemma universalQuoteNeg_re : REPred (fun z : ℕ => quoteNeg z.unpair.1 z.unpair.2) :=
-  REPred.of_eq (repred_mem universalComputation_partrec 0) (fun _ => Iff.rfl)
+/-- **One** arithmetic code formula for the whole universal quote evaluation.
+
+The positive and negative quotation schemas are the value-`1` and value-`0` fibers of this
+single formula (`valueSchema`), not two independent r.e. schemas.  That is what makes their
+exclusivity provable *in the theory* (`universalQuote_exclusive_prov`) rather than merely
+true in `ℕ`, and it is why the quotation family carries no Σ₁-soundness hypothesis. -/
+noncomputable def universalQuoteCode : Nat.ArithPart₁.Code 1 :=
+  (Nat.ArithPart₁.exists_code
+    (Nat.ArithPart₁.of_partrec
+      (Nat.Partrec'.of_part universalComputation_vector_partrec))).choose
+
+lemma universalQuoteCode_spec :
+    universalQuoteCode.eval (fun v : List.Vector ℕ 1 => universalComputation (v.get 0)) :=
+  (Nat.ArithPart₁.exists_code
+    (Nat.ArithPart₁.of_partrec
+      (Nat.Partrec'.of_part universalComputation_vector_partrec))).choose_spec
+
+/-- The fixed positive universal quotation schema — the value-`1` fiber of
+`universalQuoteCode`; the selector `code` is folded into the numeral `⟨code, input⟩`. -/
+noncomputable def universalQuotePos : ArithmeticSemisentence 1 :=
+  valueSchema universalQuoteCode 1
+/-- The fixed negative universal quotation schema — the value-`0` fiber of the *same*
+code formula. -/
+noncomputable def universalQuoteNeg : ArithmeticSemisentence 1 :=
+  valueSchema universalQuoteCode 0
+
+/-- Σ₁-completeness supplies the positive literal; `[𝗥₀ ⪯ T]` only. -/
+lemma universalQuotePos_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] {w : ℕ}
+    (h : quotePos w.unpair.1 w.unpair.2) :
+    T ⊢ (universalQuotePos/[‘↑w’] : ArithmeticSentence) :=
+  valueSchema_prov T universalQuoteCode_spec (by simpa [universalComputation, quotePos, quoteNeg] using h)
+
+/-- Σ₁-completeness supplies the negative literal too; `[𝗥₀ ⪯ T]` only. -/
+lemma universalQuoteNeg_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] {w : ℕ}
+    (h : quoteNeg w.unpair.1 w.unpair.2) :
+    T ⊢ (universalQuoteNeg/[‘↑w’] : ArithmeticSentence) :=
+  valueSchema_prov T universalQuoteCode_spec (by simpa [universalComputation, quotePos, quoteNeg] using h)
+
+/-- **Exclusivity is a theorem of `T`.**  The two quotation schemas are the value fibers of
+one code formula, so `𝗣𝗔⁻` already refutes their conjunction — no appeal to the standard
+model, and hence no Σ₁-soundness, is needed anywhere downstream. -/
+lemma universalQuote_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (w : ℕ) :
+    T ⊢ ∼((universalQuotePos/[‘↑w’] : ArithmeticSentence) ⋏ universalQuoteNeg/[‘↑w’]) :=
+  valueSchema_exclusive_prov T universalQuoteCode (by decide) w
 
 /-- The public quotation literal for a folded selector/input pair `w = ⟨code, input⟩`. -/
 noncomputable def quoteAtom (w : ℕ) : Sentence :=
@@ -171,7 +211,6 @@ Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
-  theory_sigmaOne : 𝗜𝚺₁ ⪯ T
   quote_positive_enters : ∀ (code input : ℕ),
     T ⊢ universalQuotePos/[↑(Nat.pair code input)] →
       ∃ k, quoteAtom (Nat.pair code input) ∈ DP.D k
@@ -246,9 +285,9 @@ noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T]
     simp only [quoteNeg, hval, Part.mem_some_iff, htr]
     cases f input <;> simp
   refine ⟨Encodable.encode c, fun input htrue => ?_, fun input hfalse => ?_⟩
-  · refine re_complete_mp (T := T) universalQuotePos_re (x := Nat.pair (Encodable.encode c) input) ?_
+  · refine universalQuotePos_prov T (w := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hpos input).mpr htrue
-  · refine re_complete_mp (T := T) universalQuoteNeg_re (x := Nat.pair (Encodable.encode c) input) ?_
+  · refine universalQuoteNeg_prov T (w := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hneg input).mpr hfalse
 
 end BooleanQuoteCode
@@ -3568,15 +3607,13 @@ structure ParameterizedDiagonalQuoteCode
   represents_fixedpoint : ∀ (z : ℕ), (parameterizedFixedpoint body).Evalb ![z] ↔ truth z
 
 /-- The genuine parameterized fixed point carried by a diagonal quote satisfies FFL's
-uniform diagonal law inside the presented arithmetic theory: a genuine self-referential
+uniform diagonal law inside the ambient arithmetic theory: a genuine self-referential
 arithmetic sentence, not a stipulated relation, backs the quoted decision. -/
 lemma ParameterizedDiagonalQuoteCode.diagonal_law
-    {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
-    (Q : QuotationTheoryPresentation DP T)
+    {T : ArithmeticTheory} [𝗜𝚺₁ ⪯ T] {truth : ℕ → Prop}
     (q : ParameterizedDiagonalQuoteCode T truth) :
     T ⊢ ∀⁰ (parameterizedFixedpoint q.body 🡘
       q.body/[⌜parameterizedFixedpoint q.body⌝, #0]) := by
-  letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
   simpa using parameterized_diagonal₁ (T := T) q.body
 
 /-! ## A public diagonal atom derived from the computable market -/
@@ -3786,10 +3823,10 @@ noncomputable def parameterizedDiagonalQuoteCodeOfMarket
   toBooleanQuoteCode := {
     code := Encodable.encode (diagonalPriceDecisionCode market p)
     pos_complete := fun n hn =>
-      re_complete_mp universalQuotePos_re <| by
+      universalQuotePos_prov T <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuotePos_iff market p n).mpr hn
     neg_complete := fun n hn =>
-      re_complete_mp universalQuoteNeg_re <| by
+      universalQuoteNeg_prov T <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuoteNeg_iff market p n).mpr hn
   }
   body := diagonalPriceBody market p
@@ -3851,7 +3888,7 @@ lemma parameterizedDiagonalQuoteCodeOfMarket_public_price_iff
 its decision code, and its FFL fixed point are all built internally, so there is no
 caller-supplied self-reference premise. -/
 noncomputable def paradoxResistanceQuoteOfDiagonal
-    {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
+    {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory} [𝗜𝚺₁ ⪯ T]
     (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
@@ -3859,7 +3896,6 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     ParadoxResistanceQuote P DP p := by
-  letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
   let q := parameterizedDiagonalQuoteCodeOfMarket market T p
   let quote := q.toBooleanQuoteCode
   let price : ℕ → EF := currentPriceFeature quote.sentence
@@ -4782,7 +4818,7 @@ diagonal atom are constructed from `market`; no semantic diagonal premise is acc
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T]
+    [𝗥₀ ⪯ T] [𝗜𝚺₁ ⪯ T]
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (market : MarketComputation P)

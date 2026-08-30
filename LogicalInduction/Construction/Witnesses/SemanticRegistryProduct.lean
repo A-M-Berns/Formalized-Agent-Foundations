@@ -797,22 +797,22 @@ lemma semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
 
 /-- Canonical theorem/source/exact-product process, fixed from `T` alone. -/
 noncomputable def theoremSemanticRegistryProductDP
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     DeductiveProcess :=
   semanticRegistryClosureDP
     ((theoremDP_computable T).nonemptyComputation.some)
 
 noncomputable def theoremSemanticRegistryProductDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremSemanticRegistryProductDP T) :=
   semanticRegistryClosureDPComputation
     ((theoremDP_computable T).nonemptyComputation.some)
 
 lemma theoremSemanticRegistryProductDP_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (semanticRegistryProductExtensionWorld
       ((theoremDP_computable T).nonemptyComputation.some)
       (semanticSourceExtensionWorld (provabilityWorld T))).ConsistentWithTheory
@@ -824,25 +824,25 @@ lemma theoremSemanticRegistryProductDP_hworld
 /-! ## Quotation-aware fixed substrate -/
 
 noncomputable def theoremQuoteSemanticRegistryProductDP
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] : DeductiveProcess :=
   semanticRegistryClosureDP (theoremQuoteBaseDPComputation T)
 
 noncomputable def theoremQuoteSemanticRegistryProductDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremQuoteSemanticRegistryProductDP T) :=
   semanticRegistryClosureDPComputation (theoremQuoteBaseDPComputation T)
 
 private noncomputable abbrev theoremQuoteRegistryWorld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : PCWorld :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] : PCWorld :=
   semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
     (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))
 
 lemma theoremQuoteRegistryWorld_quoteLeaf
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (code input : ℕ) :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (code input : ℕ) :
     (theoremQuoteRegistryWorld T).Holds (semanticQuoteLeaf code input) ↔
       (theoremQuoteCertifiedProductWorld T).Holds (semanticQuoteLeaf code input) := by
   change (semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
@@ -859,8 +859,8 @@ lemma theoremQuoteRegistryWorld_quoteLeaf
   simp [semanticSourceExtensionWorld, semanticPrimeCode, semanticQuoteSchema]
 
 lemma theoremQuoteRegistryWorld_quoteAtom
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (w : ℕ) :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (w : ℕ) :
     (theoremQuoteRegistryWorld T).Holds (quoteAtom w) ↔
       (theoremQuoteCertifiedProductWorld T).Holds (quoteAtom w) := by
   change semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
@@ -874,8 +874,8 @@ lemma theoremQuoteRegistryWorld_quoteAtom
   · simp [quotationClaimCode, semanticPrimeTag]
 
 lemma theoremQuoteRegistryWorld_consistent_quote
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (theoremQuoteRegistryWorld T).ConsistentWithTheory semanticQuoteDP := by
   intro k φ hφ
   obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
@@ -896,8 +896,8 @@ lemma theoremQuoteRegistryWorld_consistent_quote
           ((theoremQuoteRegistryWorld_quoteLeaf T _ _).mp hleaf)))
 
 lemma theoremQuoteCertifiedProductWorld_consistent_base
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (theoremQuoteCertifiedProductWorld T).ConsistentWithTheory
       (theoremQuoteBaseDP T) := by
   intro k φ hφ
@@ -907,8 +907,8 @@ lemma theoremQuoteCertifiedProductWorld_consistent_base
   · exact theoremQuoteCertifiedProductWorld_consistent_quote T k φ hquote
 
 lemma theoremQuoteRegistryWorld_consistent_theorem
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (theoremQuoteRegistryWorld T).ConsistentWithTheory (theoremDP T) := by
   intro k φ hφ
   have hfresh := theoremDP_semanticPrimeFresh T k φ hφ
@@ -922,8 +922,8 @@ lemma theoremQuoteRegistryWorld_consistent_theorem
 /-- Joint non-vacuity of theorem, quotation, certified source interpretation, and
 registry-guarded exact products, all fixed before the eventual source and market. -/
 lemma theoremQuoteSemanticRegistryProductDP_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (theoremQuoteRegistryWorld T).ConsistentWithTheory
       (theoremQuoteSemanticRegistryProductDP T) := by
   intro k φ hφ
@@ -1095,24 +1095,24 @@ lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
       (by simpa [semanticHandleLUVSeq_gt] using (hcthr _).2 hct)
 
 private lemma theoremQuoteRegistry_consistent_base
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
     v.ConsistentWithTheory (theoremQuoteBaseDP T) :=
   PCWorld.consistentWithTheory_union_left
     (PCWorld.consistentWithTheory_union_left hv)
 
 private lemma theoremQuoteRegistry_consistent_source
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
     v.ConsistentWithTheory semanticSourceDP :=
   PCWorld.consistentWithTheory_union_right
     (PCWorld.consistentWithTheory_union_left hv)
 
 private lemma theoremQuoteRegistry_consistent_product
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
     v.ConsistentWithTheory
       (semanticRegistryProductDP (theoremQuoteBaseDPComputation T)) :=
@@ -1121,8 +1121,8 @@ private lemma theoremQuoteRegistry_consistent_product
 /-- Exact CCEE after all three LUV families have entered through the executable certified
 source registry.  Source valuedness and exact left multiplication are internal. -/
 lemma lic_no_expected_net_update_conditional_registryCertified
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     {P : History} [IsLogicalInductor P (theoremQuoteSemanticRegistryProductDP T)]
     (f : DeferralFunction)
     (X W Z' : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
@@ -1160,16 +1160,16 @@ lemma lic_no_expected_net_update_conditional_registryCertified
         (right_value n v (theoremQuoteRegistry_consistent_base hv))
 
 private noncomputable abbrev theoremQuoteSemanticRegistryProductLIA
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     IsLogicalInductor (liaHistory (theoremQuoteSemanticRegistryProductDP T))
       (theoremQuoteSemanticRegistryProductDP T) :=
   LIA_is_logical_inductor _
     (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
 
 lemma lic_no_expected_net_update_conditional_registryCertified_closed
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction)
     (X W Z' : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -1192,15 +1192,15 @@ lemma lic_no_expected_net_update_conditional_registryCertified_closed
     f X W Z' w weight_mem weight_generable weight_value right_value
 
 noncomputable def theoremQuoteRegistryMarketComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     MarketComputation (liaHistory (theoremQuoteSemanticRegistryProductDP T)) :=
   liaMarketComputation (theoremQuoteSemanticRegistryProductDP T)
     (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
 
 noncomputable def registryDeferredWeightQuoteCode
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
@@ -1209,8 +1209,8 @@ noncomputable def registryDeferredWeightQuoteCode
     f w hw weight_mem
 
 noncomputable def registryConditionalExpectationQuoteCode
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction) (X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T))
     (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (theoremQuoteSemanticRegistryProductDP T)) w)
@@ -1222,8 +1222,8 @@ noncomputable def registryConditionalExpectationQuoteCode
     f X.toPresented.toLUV X.toPresented.threshold_codes w hw weight_mem
 
 private lemma theoremQuoteRegistry_consistent_theoremDP
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
     v.ConsistentWithTheory (theoremDP T) :=
   PCWorld.consistentWithTheory_union_left (theoremQuoteRegistry_consistent_base hv)
@@ -1231,8 +1231,8 @@ private lemma theoremQuoteRegistry_consistent_theoremDP
 /-- The right-hand deferred weighted-expectation quotation is now constructed internally;
 only admission of the deferred weight as an exact product factor remains explicit. -/
 lemma lic_no_expected_net_update_conditional_registry_rightClosed
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction)
     (X W : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -1273,15 +1273,15 @@ lemma lic_no_expected_net_update_conditional_registry_rightClosed
         X.toPresented.toLUV n (f n)] at h
 
 private lemma theoremQuoteRegistry_consistent_quoteDP
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (theoremQuoteSemanticRegistryProductDP T)) :
     v.ConsistentWithTheory semanticQuoteDP :=
   PCWorld.consistentWithTheory_union_right (theoremQuoteRegistry_consistent_base hv)
 
 lemma certifiedSource_factor_eventually
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (limit : ℕ) :
     ∃ fuel, semanticFactorPrefixValidAtFuel (theoremQuoteBaseDPComputation T)
       X.thresholdSchema limit fuel = true := by
@@ -1291,8 +1291,8 @@ lemma certifiedSource_factor_eventually
     simp [semanticFactorPrefixValidAtFuel, X.thresholdSchema_source, hfuel]⟩
 
 lemma rationalQuote_factor_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
     ∃ fuel, semanticFactorPrefixValidAtFuel (theoremQuoteBaseDPComputation T)
       (semanticQuoteSchema q.code) limit fuel = true := by
@@ -1303,8 +1303,8 @@ lemma rationalQuote_factor_eventually
   simpa only [semanticQuoteSchema] using hfuel
 
 lemma rationalQuote_semanticHandle_valuesAt
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (n : ℕ) (v : PCWorld)
     (htheorem : v.ConsistentWithTheory (theoremDP T))
     (hquote : v.ConsistentWithTheory semanticQuoteDP) :
@@ -1329,8 +1329,8 @@ lemma rationalQuote_semanticHandle_valuesAt
 weight factor and the right conditional-expectation quotation are constructed internally;
 the deductive process is fixed from `T` before `X`, `f`, or `w`. -/
 lemma lic_no_expected_net_update_conditional_certifiedSource_closed
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction)
     (X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)

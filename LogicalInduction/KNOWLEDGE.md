@@ -387,25 +387,23 @@ under `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [RepresentsComputations T]`
 Retired: the whole `UniversalBoundedFailure` apparatus. Dead-but-inhabited surface for a
 consolidation pass: `UniversalBoundedHalts`, `universalBoundedHaltingSchema`, `theoremDP` tags 2/3,
 `ComputationTheoryPresentation.boundedHalting_enters/boundedFailure_refutes` (no consumer now).
-**Tag 7 (quotation) is the remaining Σ₁-soundness site, and it is an import-layer problem, not a
-proof gap:** `RepresentsComputations` gives one γ per TOTAL function; the universal quote evaluation
-is partial and fuel-totalizing it would impose a poly-time bound `BooleanQuoteCode.ofComputable`
-must not take, so γ is per-decider, the quote atom must be the paper-prime of the represented claim,
-and the carrying process schema-free — but `PaperFirstOrder.lean` (`paperPrimeSentence`) and
-`ArithmeticSource.lean` (emission) both sit DOWNSTREAM of `QuotationAffine.lean` (via ComputationDP
-→ QuoteCodeOfMarket → SemanticPrime → SemanticSource). The move-modules route (a) is SUPERSEDED (2026-08-30): the 'strong representability unavailable'
-obstruction is stale — tranche 5 revived `code_uniq` locally (`R0Representability.lean:101`, models of
-`𝗣𝗔⁻`). Route (c): replace `universalQuotePos`/`universalQuoteNeg` by ONE Foundation `code` formula for
-`universalComputation` (`Nat.ArithPart₁.exists_code`), `pos := code/[z̄,1̄]`, `neg := code/[z̄,0̄]`; then
-`T ⊢ ∼(pos ⋏ neg)` from `code_uniq` + `Arithmetic.complete` + `R0.Ω₃ 1 0` + weakening under `[𝗣𝗔⁻ ⪯ T]`,
-and tag 7 closes from consistency like tags 1/3. No module moves, no endpoint statement changes, and the
-diagonal (`thm:lp`, `diagonalPriceDecisionPart_partrec` needs the schema to be a CONSTANT) survives —
-route (a) would have lost `thm:lp`, because a per-decider γ is `Classical.choose`-obtained and not
-computable in the decider. The only two soundness consumptions in the library are `ComputationDP.lean:308,310`
-(`re_complete … .mpr`); the instance appears 91× under two spellings. Supply side is tiny: every
-`pos_complete`/`neg_complete` funnels through `BooleanQuoteCode.ofComputable` and
-`RationalQuoteCode.ofComputable`. Numeral cost is NOT the obstruction (`PolyFueled` is polynomial
-in the stream INDEX, and `RpnThresholdCodeSeq` is pair-indexed).
+**Tag 7 (quotation) CLOSED — tranche 6, 2026-08-30 — and the earlier 'architectural obstruction'
+diagnosis was WRONG, not superseded.** The universal quote evaluation never needed a
+`RepresentsComputations` γ (per-decider ⇒ paper-prime atom ⇒ import reorganization — every step
+after the first was unnecessary). It has a Foundation `code` formula (`Nat.ArithPart₁.exists_code`,
+which takes a PARTIAL `Nat.Partrec'`), and ONE such formula carries both literals as two value fibers:
+`Framework/QuoteRepresentability.lean` `valueSchema c y := (code c)/[‘↑y’, #0]`,
+`universalQuotePos := valueSchema universalQuoteCode 1`, `universalQuoteNeg := … 0`;
+`valueSchema_prov` (`[𝗥₀ ⪯ T]`, both literals by Σ₁-completeness — the negative is now as cheap as the
+positive) and `valueSchema_exclusive_prov` (`[𝗣𝗔⁻ ⪯ T]`, proved semantically in one shot:
+`Arithmetic.complete` + `code_uniq` + `numeral_inj_iff`). `theoremDP_hworld` tag 7 closes from
+`Entailment.Consistent` like tags 1/3; 87 inherited binders became `[Entailment.Consistent T]` with
+zero proof breakage; `thm:lp` survived because the schemas are still compile-time constants.
+**Σ₁-soundness is on 0 of 105 canonical endpoints**; the only `SoundOnHierarchy` left is
+`loopsTheory_soundOnSigma1` (concrete witness theory). General lesson: when two schemas must be
+provably exclusive, reach for ONE `code` formula read at two values, never for two `codeOfREPred`s
+or a `RepresentsComputations` γ. `QuoteRepresentability.lean` now owns the single copy of
+`codeAux_uniq`/`code_uniq`. The R2-F02 'Σ₁-soundness is a live strengthening' entry is HISTORICAL.
 
 **Instantiation asymmetry of `RepresentsComputations`.** `representsComputations_of_peanoMinus`
 takes `[𝗣𝗔⁻ ⪯ U]` AND `[ℕ↓[ℒₒᵣ] ⊧* U]` — standard-model truth VERIFIES the premise for the
@@ -469,6 +467,83 @@ the paper's is ℕ⁺: `ordinaryBoundedComputation`'s predicate `0 < n` is false
 `hconsistent`; a witness must hold on every day. `thm:pac` and `thm:pazfc` are the same theorem by `rfl`
 at every layer (the §4.10 `Con(Θ)` project is what separates them). thm:dontwait's γ represents the
 COMPOSITE decider `universalRunValue f` (⌜g⌝(⟨⟨m,x⟩,n⟩) ≠ 0), not `f` alone — no new hypothesis.
+
+**Tranche 7 (2026-08-30).** `[𝗜𝚺₁ ⪯ T]` deleted at `provable_instances_re` and propagated (94/105
+endpoints free): the r.e. lane never needed it — `internalize_provability`/`Provable.sound` are
+instantiated at `V := ℕ`, so the side condition is `ℕ ⊧* 𝗜𝚺₁`, and `definability` needs only `T.Δ₁`.
+Represented lane and `theoremDP_hworld` now read `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`
+(`𝗥₀` is strictly too weak for `provable_subst_binNumeral_iff`; `𝗜𝚺₁ ⪯ T` gives `𝗣𝗔⁻`/`𝗥₀` by
+instance search but `𝗥₀ ⪯ T` does NOT give `𝗣𝗔⁻ ⪯ T`). Genuine survivors: `unitFracPaperLUV*`
+(rational-cut arithmetic INSIDE `T`), `thm:lp` (Foundation's `parameterized_diagonal₁` lives at
+`𝗜𝚺₁`); the seven closed quotation rows carried it only through the field
+`QuotationTheoryPresentation.theory_sigmaOne` (two consumers, both on the diagonal) — moved to a
+binder on those two lemmas in T7/D. **Substitution injectivity is now in the repo:**
+`Framework/SubstOccurrence.lean` (`Semiformula.Mentions`, `rew_eq_of_not_mentions`,
+`eq_of_rew_eq_of_mentions`, `subst_injective_of_mentions`, Foundation-only imports; the
+occurrence-restricted refinement of `rew_eq_of_funEqOn`); `universalHaltingSchema_mentions_zero`;
+and the FULL anti-extensionality test is a theorem: `haltingArgClaimSentence_ne_of_source_ne`
+(distinct `sourceNat` ⇒ distinct sentence, no behavioural hypothesis, invocable inside one family);
+bounded lane `representedClaimSentence_ne_of_arg_ne` takes `γ.Mentions 0` as a hypothesis (γ is
+existential). Foundation has `Semiterm.bv` but no formula occurrence notion and no
+`bShift_injective` (derive via `Rew.map_inj (Fin.succ_injective n) Function.injective_id`).
+`Scratchpad.lean` at the repo root is TRACKED — never use it as scratch.
+
+**Ruling (Anson, 2026-08-30): `thm:lp`'s `[𝗜𝚺₁ ⪯ T]` is representation infrastructure.** The paper
+invokes "the diagonal lemma" for any theory representing computations; Foundation's
+`parameterized_diagonal₁` is stated at `𝗜𝚺₁`, so the instance is the ambient theory of a borrowed
+lemma, not a strengthening of the theorem's premise. Charged once globally beside `[T.Δ₁]`
+(Craig's trick) — neither lowers a row. With Σ₁-soundness gone and the r.e.-lane `𝗜𝚺₁` deleted,
+the eleven quotation/computation rows classify `exact`; the remaining qualified rows are the §4.10
+three (`thm:pac`, `thm:pazfc`, `thm:incons`).
+
+**§4.10 substrate map (tranche 8 scoping, 2026-08-30; all names #check-verified).** Paper `Con(Θ′)(ν)`
+(tex:1855-1866) ↔ `¬∃ d < ν, Bootstrapping.Proof T d ⌜(⊥ : ArithmeticSentence)⌝` at `V := ℕ`
+(`Bootstrapping/Syntax/Proof/Basic.lean:465`); `⌜Θ′⌝` ↔ `⌜U.Δ₁ch.val⌝ : ℕ` (`Theory.lean:13,18`);
+soundness bridge `Bootstrapping.provable_of_standard_proof` (`RosserProvability.lean:52`; at `V := ℕ`
+bridge `↑n` with `Nat.cast_id`/`simpa`, set `maxHeartbeats`). A COMPUTABLE bounded-derivability decider
+needs no proof checker: `Proof.definable'` gives both polarities, so `∃ d < k, Proof T d ⌜⊥⌝` and its
+negation are `𝚺₁-Predicate` by `definability`, then `re_iff_sigma1` + `ComputablePred.computable_iff_re_compl_re`
+(compiled). Measure = derivation Gödel number, not symbols (no size function on internal derivations;
+`Semiformula.bv` is the only template) → proposed `dd:proofcode`. TRAP: represent bounded PROVABILITY
+(φcode in the argument), never bounded consistency — constantly 1 for every consistent Θ′, so the γ would
+not name the theory. Put the DAY in the argument; evaluate `f` inside (f may be Ackermann). `thm:incons`
+needs uniform-in-theory-code derivability, which Foundation lacks (`Derivation T` takes `T` as a META
+parameter via `(construction T).Fixpoint`); the honest restriction is the deduction-theorem family
+`Θ′ₙ := Θ₀ ∪ {σₙ}` (`Theory.Δ₁.insert`), inconsistent ⟺ `Θ₀ ⊢ ∼σₙ`, uniform in `⌜σₙ⌝` — disclosed
+paraphrase; decorative naming is rejected. `inconsistencyClaim`/`consistencyClaim` are two DISTINCT tagged
+atoms where the paper uses one sentence and its negation (tex:1863-1866) — collapse via
+`paperPrimeDecompose`. `RestrictedProvability.lean` has no olean in this checkout and is not needed.
+
+**T7/D (2026-08-30): `QuotationTheoryPresentation.theory_sigmaOne` retired** (fields now
+`toComputationTheoryPresentation quote_positive_enters quote_negative_refutes`); the diagonal's two
+consumers take an ordinary `[𝗜𝚺₁ ⪯ T]`. The seven closed quotation endpoints read
+`[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`; `lic_introspection_closed` instantiates at `𝗣𝗔⁻` itself
+(no `𝗜𝚺₁` exists in that elaboration) — a genuine widening. Census (elaborated `#check` over the 105
+canonical names): `SoundOnHierarchy` 0; `𝗜𝚺₁ ⪯` exactly 3 — `unitFracPaperLUVSeq`,
+`unitFracPaperLUVBoundedSequence` (arithmetic inside `T`), `thm:lp` (`parameterized_diagonal₁`; prints
+a redundant `𝗣𝗔⁻` too — `omit` cannot drop a referenced section variable). TRAP: `𝗜𝚺₁ ⪯ T` is spelled
+`[ISigma 1 ⪯ T]` across the semantic-lifted lane (64 sites) — grep BOTH spellings (likewise
+`PeanoMinus`/`R0`). Foundation registers the weakening chain as instances (`𝗣𝗔 ⪯ T → 𝗣𝗔⁻ ⪯ T`,
+`𝗜𝚺₁ ⪯ T → 𝗣𝗔⁻ ⪯ T`, `𝗣𝗔⁻ ⪯ T → 𝗥₀ ⪯ T`): state the single strongest binder a proof spends.
+`FinitePerturbationWitness.lean:36` keeps `𝗜𝚺₁` (its `cxQuote` runs the diagonal). Touching
+`SemanticQuote.lean` costs ~1h per rebuild (SemanticRegistryProduct/SemanticLiftedCCEE at
+`maxHeartbeats 2000000`, silent for ~20 min).
+
+**Round-6 blind audit (2026-08-30): structure verified; one real residual found.** Census: soundness
+0/105; `𝗜𝚺₁ ⪯` 3/105; `[T.Δ₁]` 23; `[𝗣𝗔⁻ ⪯ T]` 18; `[RepresentsComputations T]` 3;
+`[Entailment.Consistent T]` 14 (grep the elaborated signatures, never the word "Consistent" — it
+matches `PCWorld.ConsistentWith*` and inflates to ~60). **`[𝗣𝗔⁻ ⪯ T]` is a genuine strengthening
+beyond the paper**: representability yields `Θ ⊬ n̄ = m̄` but never `Θ ⊢ n̄ ≠ m̄` (Ω₃); Robinson's R
+represents all computable functions without containing 𝗣𝗔⁻. It is load-bearing for exactly two
+things — `provable_subst_iff_of_val` (the compact `binNumeral` spelling def:ec forces) and
+`code_uniq`'s `rfind` case (object-level tag-7 exclusivity; the PAPER's exclusivity is
+metatheoretic via the representability biconditional's ← direction and needs no Θ-arithmetic; ours
+is object-level to keep the stage-world proof constructive without soundness). Never write that
+𝗣𝗔⁻/𝗥₀ is "presupposed by representability". Also: `RepresentsComputations` is over `f : ℕ → ℕ`
+where the paper is ℕ⁺→ℕ⁺ (at-least-as-strong; disclosed); `valueSchema`'s `code c` carries the
+VALUE at `#0` and the ARGUMENT at `#1` — opposite of the `reprAll` convention (hence `swapArgs`);
+the canonical surface runs THREE markets (`theoremDP` 42, `paperTheoryDP` 5, `canonicalCCEEDP` 3)
+while the paper fixes one 𝕡 — the union `theoremPaperDP` exists unused; a consolidation question.
 
 **Known dead weight.** `PolyEF` (`Framework/Computable.lean:258`) is a dead-end layer:
 consumed only by other `PolyEF` lemmas, never converted to any emission class. It is a

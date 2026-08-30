@@ -33,7 +33,11 @@ open LO.Propositional
 open Filter Topology
 open Classical
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+-- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
+-- (`paradoxResistanceQuoteOfDiagonal`), which reaches Foundation's `parameterized_diagonal₁`.
+-- It is not inherited from `QuotationTheoryPresentation`, which no longer carries it.
+-- `𝗣𝗔⁻ ⪯ T` and `𝗥₀ ⪯ T` follow by instance (`Foundation`'s `Arithmetic/Schemata.lean`).
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Entailment.Consistent T]
 
 /-! ## Computability of the schedule
 

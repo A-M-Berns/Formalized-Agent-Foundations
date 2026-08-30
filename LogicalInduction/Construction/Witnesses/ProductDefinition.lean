@@ -234,8 +234,8 @@ lemma RationalQuoteCode.productAtomFresh {T : ArithmeticTheory} {value : ℕ →
 constructed provability process is an image of `eventAtom`.  This is the side condition
 `productDefDP_union_consistentWithTheory` takes on the base process, discharged rather than
 assumed. -/
-lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) :
+lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁]
+    [Entailment.Consistent T] (k : ℕ) :
     ∀ φ ∈ (theoremDP T).D k, ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ productTag := by
   classical
   intro φ hφ
@@ -980,13 +980,12 @@ noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
   inconsistency_enters z h := (Q.inconsistency_enters z h).imp fun k hk => hsub k hk
   inconsistency_refutesConsistency z h :=
     (Q.inconsistency_refutesConsistency z h).imp fun k hk => hsub k hk
-  theory_sigmaOne := Q.theory_sigmaOne
   quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
   quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
 
 section ExactClosed
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 variable (f : DeferralFunction) (w : ℕ → ℚ)
   (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
   (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
@@ -1186,7 +1185,7 @@ This says nothing about the base inductor either; it witnesses that
 conclusion transfers to `liaHistory (theoremDP T)`.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (f : DeferralFunction) :
     ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
       (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) (X : ℕ → LUV),

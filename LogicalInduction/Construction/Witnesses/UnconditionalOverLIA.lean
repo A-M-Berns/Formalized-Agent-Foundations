@@ -122,7 +122,7 @@ theorem lic_strict_domination_universalSemimeasure_unconditional :
 fixed and growing forms below construct the repaired compiler internally.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_ofCompiler_unconditional
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁]
     (extra : DeductiveProcess)
     (C : ConditioningPresentation (theoremDP T) extra)
     (compiler : ConditioningTraderCompiler (liaHistory (theoremDP T)) (theoremDP T) extra C) :
@@ -139,7 +139,7 @@ sentence `ψ` yields a logical inductor over `Θ ∪ {ψ}`, including the degene
 `isLogicalInductor_of_stage_unsatisfiable`).
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_unconditional
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁]
     (ψ : Sentence) :
     IsLogicalInductor
       (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
@@ -161,7 +161,7 @@ argument needs) and the degenerate case by `isLogicalInductor_of_stage_unsatisfi
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_unconditional
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁]
     (extra : DeductiveProcess)
     (more : CompactConditioningProcessComputation extra) :
     IsLogicalInductor
@@ -182,7 +182,7 @@ machine polynomial time exploits, with no remaining premise.
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_fixed_machine_unconditional
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁]
     (ψ : Sentence) :
     IsMachineLogicalInductor
       (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
@@ -197,7 +197,7 @@ quantifier**, with no remaining premise.
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_machine_unconditional
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁]
     (extra : DeductiveProcess)
     (more : CompactConditioningProcessComputation extra) :
     IsMachineLogicalInductor
@@ -220,7 +220,7 @@ the unconditioned theorem.
 Kind `N+` non-vacuity witness.
 Paper node: `thm:scon` -/
 theorem exists_growing_conditioned_machine_inductor
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+    (T : ArithmeticTheory) [T.Δ₁] :
     ∃ extra : DeductiveProcess,
       extra.D 0 ⊂ extra.D 1 ∧
       (∀ n, deductiveStageCondition (extra.D n) ≠ ⊤) ∧

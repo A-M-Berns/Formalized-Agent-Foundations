@@ -433,7 +433,7 @@ discharged from arithmetic over `luvThresholdDP`, the process that reveals every
 threshold, and the mesh-softmax operational witness derived from the sequence's compact syntax.
 Paper node: `thm:exppolymax` -/
 theorem exppolymax_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] [Entailment.Consistent T]
+    [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T] [Entailment.Consistent T]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P) (S : LUVCombinationSyntax As) :
@@ -465,7 +465,7 @@ Kind `C`; provenance: `hAs`, `h`, `hdet`, `hshare`, `hWgen`, `hWdiv`, `hstrict`,
 (a); `C` (a), in the `dd:fuel` efficiency model.
 Paper node: `thm:wubexp` -/
 theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] [Entailment.Consistent T]
+    [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T] [Entailment.Consistent T]
     [IsLogicalInductor P (L.luvThresholdDP T)]
     (hAs : ∀ n, ∀ p ∈ (As n).terms, ∃ i, p.2 = toLUV i)
     (h : LUVCombination.BoundedSequence As P)
@@ -489,7 +489,7 @@ theorem wubexp_arith {As : ℕ → LUVCombination} {P : History} {T : Arithmetic
 `expcoh`/`perexpkno` need the **completed-world** values (`WorldValued`, all thresholds), which
 the full provability enumerator `luvThresholdDP` supplies. -/
 section Combined
-variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+variable (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
   [Entailment.Consistent T]
 
 /-- **Certified `thm:expcoh`.**  Completed/limiting/diagonal expectation coherence for

@@ -129,7 +129,7 @@ noncomputable def increasingQuoteCode (T : ArithmeticTheory)
 completed world, even together with the ordinary theorem process.  This forces explicit
 factor-schema ownership in the repaired architecture. -/
 lemma theorem_quote_product_not_jointly_satisfiable
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗥₀ ⪯ T] :
     ¬∃ v : PCWorld,
       v.ConsistentWithTheory (theoremDP T) ∧
       v.ConsistentWithTheory semanticQuoteDP ∧

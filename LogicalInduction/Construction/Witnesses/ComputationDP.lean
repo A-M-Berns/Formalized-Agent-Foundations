@@ -48,7 +48,7 @@ open Classical in
 /-- For a fixed schema `φ`, provability of its numerical instances in a Δ₁, Σ₁-sound theory
 extending `𝗜𝚺₁` is recursively enumerable.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
-lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
     (φ : ArithmeticSemisentence 1) :
     REPred (fun z : ℕ => T ⊢ φ/[↑z]) := by
   have hsig : 𝚺₁-Predicate fun b : ℕ ↦
@@ -103,7 +103,7 @@ def eventFires (e : ℕ) : Prop :=
 
 /-- Substitution commutes with negation, so the tag-1 obligation is provability of a schema
 instance and hence r.e. -/
-lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+lemma eventFires_re [T.Δ₁] :
     REPred (eventFires T) := by
   have key : eventFires T = fun e =>
       (e.unpair.1 = 0 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
@@ -143,7 +143,7 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
         (((htag 6).and (hsub _)).or ((htag 7).and (hsub _))))))))
 
 /-- A partial-recursive semi-decider for `eventFires`: `code.eval e` halts iff `e` fires. -/
-lemma exists_eventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+lemma exists_eventCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ eventFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (eventFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -178,12 +178,12 @@ lemma theoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
 /-- The constructed deductive process enumerating the `T`-provable computation literals. -/
-noncomputable def theoremDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] : DeductiveProcess where
+noncomputable def theoremDP [T.Δ₁] : DeductiveProcess where
   D := theoremStage (exists_eventCode T).choose
   mono := theoremStage_mono _
 
 /-- Coverage: every fired event's atom eventually appears in a stage. -/
-lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma theoremDP_covers [T.Δ₁]
     {e : ℕ} (he : eventFires T e) :
     ∃ k, eventAtom e ∈ (theoremDP T).D k := by
   classical
@@ -256,7 +256,7 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
   simp [provabilityWorld, quotationClaimCode, ComputationClaimKind.godelCode, Nat.unpair_pair]
 
 /-- **Non-vacuity (`hworld`).** The provability world is consistent with every stage. -/
-lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (n : ℕ) :
+lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (n : ℕ) :
     (provabilityWorld T).ConsistentWith ((theoremDP T).D n) := by
   classical
   intro φ hφ
@@ -299,16 +299,16 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_atom,
       provabilityWorld_quote] using hfires
-  · -- tag 7: ∼quotation, ruled out by determinism (positive/negative fibers are exclusive)
+  · -- tag 7: ∼quotation, ruled out by consistency — the positive and negative quotation
+    -- schemas are the value-`1` and value-`0` fibers of ONE code formula, and `T` itself
+    -- refutes their conjunction (`universalQuote_exclusive_prov`); no soundness is used.
     simp only [eventFires, h] at hfires
     simp only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_not,
       holds_atom, provabilityWorld_quote]
     intro hpos
-    have hp : quotePos e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuotePos_re (x := e.unpair.2)).mpr hpos
-    have hn : quoteNeg e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuoteNeg_re (x := e.unpair.2)).mpr hfires
-    exact quotePos_quoteNeg_exclusive _ _ ⟨hp, hn⟩
+    have hexc := universalQuote_exclusive_prov T e.unpair.2
+    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+      (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
     show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
@@ -469,7 +469,7 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
 
 /-- The provability deductive process is computable: one fixed partial-recursive program
 emits the encoded stage `D n` on input `n`. -/
-lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+lemma theoremDP_computable [T.Δ₁] :
     ComputableDeductiveProcess (theoremDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim (exists_eventCode T).choose)))
@@ -481,7 +481,7 @@ lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
 
 /-- **The constructed computation presentation.**  All six enters/refutes obligations are
 discharged by coverage of the provability enumeration. -/
-noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+noncomputable def theoremPresentation [T.Δ₁] :
     ComputationTheoryPresentation (theoremDP T) T where
   theory_deltaOne := inferInstance
   process := (theoremDP_computable T).nonemptyComputation.some
@@ -516,10 +516,9 @@ inhabits `QuotationTheoryPresentation`.  Together with the proved `theoremDP_hwo
 supplies the two hypotheses shared by the introspection, self-trust, expectation, and
 paradox-resistance endpoints.
 Paper node: `thm:ref` -/
-noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+noncomputable def quotationPresentation [T.Δ₁] :
     QuotationTheoryPresentation (theoremDP T) T where
   toComputationTheoryPresentation := theoremPresentation T
-  theory_sigmaOne := inferInstance
   quote_positive_enters code input h := by
     have : eventFires T (Nat.pair 6 (Nat.pair code input)) := by
       simp only [eventFires, Nat.unpair_pair]; exact h
@@ -541,7 +540,7 @@ numeral, so their positive and negative fibers are mutually exclusive and no sta
 forced to contain a literal together with its negation.
 Paper node: `thm:ref` -/
 theorem quotation_presentation_nonvacuous
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ (DP : DeductiveProcess) (_ : QuotationTheoryPresentation DP T),
       ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) :=
   ⟨theoremDP T, quotationPresentation T,
@@ -555,7 +554,7 @@ computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity
 `liaHistory (theoremDP T)` with no market, inductor, presentation, or `hworld` hypothesis
 remaining — only the caller's own quoted decision and its reflection data. -/
 
-variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 /-- The constructed inductor instance for the provability process, reused (inlined) by every
 unconditional quotation endpoint below. -/
@@ -641,8 +640,15 @@ theorem lic_introspection_ofCode_unconditional
 /-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
 its self-referential public atom, and the matching FFL parameterized fixed point are all
 constructed internally.
+`𝗜𝚺₁ ⪯ T` is the one genuinely load-bearing arithmetic strengthening left on this lane: the
+diagonal reaches Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`.  It is
+carried *alongside* the section's `[𝗣𝗔⁻ ⪯ T]` rather than in place of it — `𝗜𝚺₁ ⪯ T` does
+imply `𝗣𝗔⁻ ⪯ T` by instance (Foundation, `Arithmetic/Schemata.lean`), so the pair is
+redundant, but `omit [𝗣𝗔⁻ ⪯ T]` is rejected here: the proof term references the section
+instance directly (through `theoremLIA`/`theoremDP_hworld`), and Lean refuses to omit a
+referenced section variable.
 Paper node: `thm:lp` -/
-theorem lic_paradox_resistance_ofDiagonal_unconditional
+theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
     (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
     (hwidthPos : ∀ n, 0 < width n)

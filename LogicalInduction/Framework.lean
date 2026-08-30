@@ -42,6 +42,7 @@ import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnComputation
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI

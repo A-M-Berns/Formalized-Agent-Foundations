@@ -136,11 +136,11 @@ lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP :=
 /-- Canonical theorem/quotation base, fixed from the arithmetic theory alone.  It lives
 here so all downstream source and product registries share one quotation namespace. -/
 noncomputable def theoremQuoteBaseDP
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T] : DeductiveProcess :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] : DeductiveProcess :=
   (theoremDP T).union semanticQuoteDP
 
 noncomputable def theoremQuoteBaseDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] :
     DeductiveProcessComputation (theoremQuoteBaseDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     semanticQuoteDP_computable.nonemptyComputation.some

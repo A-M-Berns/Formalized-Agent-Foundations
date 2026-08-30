@@ -927,8 +927,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- (`boundedArg_digits`, `polySegStream_binNumeral_const`), so the two hypotheses are
 -- load-bearing on the `def:ec` obligation rather than decorative.  Provability is
 -- insensitive to the numeral spelling (`provable_subst_iff_of_val`, Gödel completeness in
--- both directions, needing only the `𝗣𝗔⁻ ⪯ T` that `[𝗜𝚺₁ ⪯ T]` already gives), so only the
--- emission cost changes.
+-- both directions, needing only `𝗣𝗔⁻ ⪯ T`, which those endpoints now carry as their own
+-- binder), so only the emission cost changes.
 --
 -- This replaces a rendering (through 2026-08-30) that built the family from
 -- `codeOfREPred (fun n => CodeHalts (machines n) (inputs n))`, or from
@@ -936,7 +936,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- data only up to EXTENSIONAL equality, and each endpoint's own hypothesis pinned that
 -- extension to a constant, so the family was literally one sentence family for every
 -- admissible machine sequence.  The standing test against that failure mode is now proved
--- in-file rather than assumed: `haltingArgClaimSentence_ne_of_halts_ne` (unbounded) and
+-- in-file rather than assumed, and since tranche 7 in its FULL syntactic form:
+-- `haltingArgClaimSentence_ne_of_source_ne` separates two claim families by their machines'
+-- source numbers ALONE, whatever those machines do, via the substitution-occurrence
+-- machinery of `LogicalInduction/Framework/SubstOccurrence.lean` (`Semiformula.Mentions`,
+-- `eq_of_rew_eq_of_mentions`) and the side condition
+-- `universalHaltingSchema_mentions_zero`; `representedClaimSentence_ne_of_const_ne` is the
+-- bounded-lane analogue, with the occurrence side condition on the existentially supplied
+-- `γ` stated as a hypothesis.  The older behavioural pair
+-- `haltingArgClaimSentence_ne_of_halts_ne` (unbounded) and
 -- `representedClaimSentence_ne_of_runValue_ne` (bounded) show that data differing in
 -- halting behaviour receive DIFFERENT claim sentences.  Neither carries a `Paper node:`
 -- line — they are anti-vacuity witnesses, not paper claims — so neither is inventoried as
@@ -1037,7 +1045,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- than by any of them: `boundedFailure_refutes` takes the literal negation of the
 -- bounded-halting sentence, supplied by `RepresentsComputations`, so the retired
 -- `universalBoundedFailureSchema` apparatus is gone and `theoremDP_hworld`'s tag-3 case
--- closes from consistency.  The *unbounded* half — `thm:loops`'s `hloops`, a Π₁ refutation
+-- closes from consistency; tag 7 closes the same way as of 2026-08-30 (one `code` formula,
+-- two value fibers — see the `BooleanQuoteCode` block below).  The *unbounded* half — `thm:loops`'s `hloops`, a Π₁ refutation
 -- of a non-halting instance — is not, and is what `loopsTheory` still witnesses by axiom.
 -- `loopsTheory_refutes` is deliberately *not* inventoried: it is the internal
 -- premise-discharge step (`Entailment.by_axm`), not a paper claim, so it carries no
@@ -1153,7 +1162,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- more: `lia_learns_halting_patterns_unconditional` and
 -- `lic_learns_provable_nonhalting_patterns_unconditional` are stated in
 -- `ComputationRepresented.lean` over `paperTheoryDP T` under
--- `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [Entailment.Consistent T]`, with no soundness instance, as
+-- `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`, with no soundness instance and, since
+-- tranche 7, no `[𝗜𝚺₁ ⪯ T]` either, as
 -- `thm:pac` / `thm:pazfc` / `thm:dontwait` beside them already were.  They are listed here
 -- because this block is the capstone roll-up, not because of where they live.
 #assert_axioms_clean
@@ -1222,6 +1232,23 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- (`ordinaryBitPrefixSentences`).
 #assert_fields BitPrefixSentences
   atom prefixSentence enumeration enumeration_covers prefix_codes holds_prefix realizable
+-- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- The `pos_complete`/`neg_complete` fields of `BooleanQuoteCode` and `RationalQuoteCode`,
+-- and `quote_positive_enters`/`quote_negative_refutes` of `QuotationTheoryPresentation`,
+-- still read `T ⊢ universalQuotePos/[…]` / `T ⊢ universalQuoteNeg/[…]` — but those two
+-- schemas are no longer two *independent* `codeOfREPred` Σ₁ formulas.  As of 2026-08-30
+-- they are the value-`1` and value-`0` fibers of ONE Foundation `code` formula for the
+-- universal quote evaluation (`universalQuoteCode`; `valueSchema`,
+-- `Framework/QuoteRepresentability.lean`).  Field names and the printed field types are
+-- unchanged, so the freezes below still pass, but the *content* is strictly different:
+-- `T ⊢ ∼(pos/[w̄] ⋏ neg/[w̄])` is now provable (`universalQuote_exclusive_prov`, from the
+-- locally revived `code_uniq` plus Gödel completeness under `𝗣𝗔⁻ ⪯ T`), where before the
+-- fibers were separated only by truth in `ℕ`.  That is what retired `[T.SoundOnHierarchy
+-- 𝚺 1]` from `theoremDP_hworld`'s tag 7 and from every endpoint downstream of it.
+-- `quoteSchemas_exclusive_prov` is spelled `universalQuote_exclusive_prov` here and is
+-- **not** inventoried: it is an internal exclusivity step, not a paper claim, so it carries
+-- no `Paper node` line (`check-paper-nodes.sh` requires one of every inventoried name) and
+-- is covered transitively by the quotation endpoints below.
 #assert_fields BooleanQuoteCode
   code pos_complete neg_complete
 -- Two Tier-2 field changes, neither visible to `#assert_fields` (which freezes field *names*
@@ -1252,7 +1279,12 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- Previously it consumed a *second*, independent r.e. schema
 -- (`universalBoundedFailureSchema`, now retired), which is why `theoremDP_hworld`'s
 -- tag-3 case needed Σ₁-soundness; it now closes from `Entailment.Consistent T` exactly
--- like tag 1.  Field NAMES are unchanged, so the block below still passes.
+-- like tag 1.  Tag 7 (¬quotation) followed on 2026-08-30 by the same principle applied to
+-- the quotation schemas — one `code` formula, two value fibers — so `theoremDP_hworld` now
+-- reads `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` (tranche 7 replaced `[𝗜𝚺₁ ⪯ T]` with
+-- the `𝗣𝗔⁻` the tag-7 case actually spends) and NO declaration in
+-- `LogicalInduction/` carries a `SoundOnHierarchy` instance binder any more.
+-- Field NAMES are unchanged, so the block below still passes.
 #assert_fields ComputationTheoryPresentation
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
 #assert_fields ConditionalExpectationQuote
@@ -1485,8 +1517,21 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   approximation_tendsto kraft covers
 #assert_fields PrefixNegationCompiler
   overhead complexity_neg_le
+-- FIELD REMOVAL (tranche 7).  `QuotationTheoryPresentation` no longer carries
+-- `theory_sigmaOne : 𝗜𝚺₁ ⪯ T`.  This is a loud Tier-2 freeze change: the field is gone from
+-- the block below, and every inhabitant (`quotationPresentation`,
+-- `ProductDefinition`'s stage-extension transport) drops the corresponding
+-- `theory_sigmaOne := …` line.  The field was never a hypothesis of the quotation
+-- presentation's own content — its only two consumers were on the `thm:lp` diagonal path,
+-- `ParameterizedDiagonalQuoteCode.diagonal_law` and `paradoxResistanceQuoteOfDiagonal`,
+-- each of which opened it with `letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne` in order to reach
+-- Foundation's `parameterized_diagonal₁`.  Those two now take an ordinary `[𝗜𝚺₁ ⪯ T]`
+-- instance binder, so `thm:lp` still charges `𝗜𝚺₁` (legitimately, at the one step that
+-- spends it) while the seven closed quotation endpoints, which merely *inherited* the field,
+-- no longer charge it at all.  `diagonal_law` additionally lost its `(Q : …)` and `{DP}`
+-- arguments, which became unused once the `letI` was gone; it has no callers in the library.
 #assert_fields QuotationTheoryPresentation
-  toComputationTheoryPresentation theory_sigmaOne quote_positive_enters quote_negative_refutes
+  toComputationTheoryPresentation quote_positive_enters quote_negative_refutes
 #assert_fields RationalQuoteCode
   code value_mem pos_complete neg_complete threshold_poly
 #assert_fields RepresentedDecidableClaims
@@ -1619,8 +1664,53 @@ rule, and they stay inventoried and axiom-checked regardless:
 Everything above is asserted of the endpoints **as stated**, and the arithmetic-quotation
 family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:er`,
 `thm:lp`, `thm:halts`, …) is stated parametrically over an arithmetic theory:
-`(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]`. Those endpoints are
-axiom-clean, but only because the theory data are *hypotheses*.
+`(T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T]` plus, per lane, `[𝗣𝗔⁻ ⪯ T]` or
+`[𝗜𝚺₁ ⪯ T]` — the consistency binder having replaced `[T.SoundOnHierarchy 𝚺 1]` on
+2026-08-30, when the quotation schemas became value fibers of one `code` formula, and the
+`𝗜𝚺₁` binder having been *deleted* in tranche 7 everywhere it was unused.
+
+**The census, and how it is taken.** Both figures below are measured by elaborating a
+generated file of `#check @name`, one line per name in the `LI-CANONICAL-BEGIN` …
+`LI-CANONICAL-END` block above, and grepping the *printed* binder lists — never by reading
+docstrings, and never by grepping the sources, which is how the `[ISigma 1 ⪯ T]` spelling in
+the semantic-lifted lane stayed invisible for two tranches.
+
+  * `[T.SoundOnHierarchy 𝚺 1]` — **0 of 105**. Down from 16, in three migrations; the last
+    (2026-08-30) removed twelve at once, all of which reached the instance through
+    `theoremDP_hworld`'s tag 7. The paper treats soundness as a further assumption it
+    explicitly declines (tex:2673), and nothing here takes it. The only surviving occurrence
+    of the name anywhere in `LogicalInduction/` is `loopsTheory_soundOnSigma1`, a fact about
+    one concrete theory used as a non-vacuity witness for `thm:loops`'s `hloops`.
+  * `𝗣𝗔⁻ ⪯ ·` — **17 of 105**, and `𝗥₀ ⪯ ·` — **1** (`thm:incons`, redundantly, beside the
+    stronger `𝗣𝗔⁻` it also carries; cleanup queued).  `T.Δ₁` — **23 of 105**.  Note that
+    `𝗣𝗔⁻` is **not** implied by "Θ represents computations", though an earlier edition of the
+    classification ledger said it was: the paper's premise gives `Θ ⊬ n̄ = m̄` for `n ≠ m` but
+    never `Θ ⊢ n̄ ≠ m̄`, and Robinson's R represents every computable function without
+    containing `𝗣𝗔⁻`.  It is a genuine, small strengthening, spent on the compact-`binNumeral`
+    value transfer that `def:ec` forces and on `code_uniq`'s `rfind` case — the object-level
+    fiber exclusivity that replaced Σ₁-soundness at tag 7.  Disclosed globally in
+    `scripts/coverage-classification.md`; its charging (global vs per row) is pending a ruling.
+  * `𝗜𝚺₁ ⪯ ·` (either spelling) — **3 of 105**, in each case because a proof step spends it,
+    and in each case the substrate's own indexing rather than a theory-strength assumption
+    the statement needs: `unitFracPaperLUVSeq` and `unitFracPaperLUVBoundedSequence`, the two
+    literal-`PaperLUV` frontends, whose `threshold_provable_of_neg` / `rationalCutAt` /
+    `source_valued` steps prove rational-cut arithmetic *inside* `T`; and
+    `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`), whose diagonal is
+    Foundation's `parameterized_diagonal₁`, stated over `𝗜𝚺₁`.  That endpoint prints
+    `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]`: the pair is redundant (`𝗜𝚺₁ ⪯ T`
+    implies `𝗣𝗔⁻ ⪯ T` by instance) but not removable, because its proof term references the
+    section's `𝗣𝗔⁻` instance and Lean rejects `omit` on a referenced section variable.
+
+The tranche-7/D step that closed the last eight was deleting `theory_sigmaOne` from
+`QuotationTheoryPresentation` (see the FIELD REMOVAL note above): the seven closed quotation
+endpoints (`thm:ref`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`)
+inherited `𝗜𝚺₁` from that field and from no step of their own, and now all seven read
+`[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`.  `thm:ccee` additionally required migrating the
+semantic-lifted lane (`SemanticQuote`, `SemanticQuoteFactor`, `OldLanguageLift`,
+`SemanticRegistryProduct`, `SemanticLiftedCCEE`), where the same binder was spelled
+`[ISigma 1 ⪯ T]` rather than `[𝗜𝚺₁ ⪯ T]` and so was invisible to the earlier tranches' greps;
+all 64 of those sites are now `[𝗣𝗔⁻ ⪯ T]`.  Those endpoints are axiom-clean, but only because
+the theory data are *hypotheses*.
 
 Instantiating them at a concrete theory is a different claim, and it is pinned here so that
 a regression would fail the build. At the pinned Foundation revision it costs nothing:
@@ -1637,6 +1727,46 @@ noncomputable def concreteArithmeticInstantiation :=
     inferInstance
 
 #assert_axioms_clean concreteArithmeticInstantiation
+
+/-! ### No Σ₁-soundness is asked for at a concrete theory (2026-08-30)
+
+`thm:ref` elaborates exactly three instance arguments — `[T.Δ₁]`, `[𝗣𝗔⁻ ⪯ T]` and
+`[Entailment.Consistent T]` — and `thm:lp` exactly four, those three plus the `[𝗜𝚺₁ ⪯ T]` its
+diagonal genuinely spends.  Both would fail to typecheck as written if
+`[T.SoundOnHierarchy 𝚺 1]` were still in either binder list; the arity is also the live
+regression test for tranche 7's `𝗜𝚺₁` deletion, since restoring the binder on `thm:ref` would
+give it a fourth argument.  The corresponding `grep` is
+`grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which now finds prose
+only. -/
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+/-- `thm:ref` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
+example := @LogicalInduction.lic_introspection_closed 𝗜𝚺₁ inferInstance inferInstance inferInstance
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+/-- `thm:lp` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
+example :=
+  @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
+    inferInstance inferInstance inferInstance inferInstance
+
+/-! ### `thm:ref` below `𝗜𝚺₁` (tranche 7/D)
+
+The two examples below are the positive witness that tranche 7/D's deletion of
+`QuotationTheoryPresentation.theory_sigmaOne` actually widened the closed quotation lane, not
+merely renamed a binder.  `lic_introspection_closed` now instantiates at `𝗣𝗔⁻` itself —
+a theory that proves **no** induction, so `𝗜𝚺₁ ⪯ 𝗣𝗔⁻` is false and no `𝗜𝚺₁` instance is
+available anywhere in the elaboration.  Before the field was removed this did not typecheck.
+The `𝗣𝗔` instantiation is the same statement at the theory the paper actually cares about. -/
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+/-- `thm:ref` at `𝗣𝗔⁻`, with no `𝗜𝚺₁ ⪯ ·` instance in scope. -/
+example :=
+  @LogicalInduction.lic_introspection_closed 𝗣𝗔⁻ inferInstance inferInstance inferInstance
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
+/-- `thm:ref` at the concrete theory `𝗣𝗔`. -/
+example :=
+  @LogicalInduction.lic_introspection_closed 𝗣𝗔 inferInstance inferInstance inferInstance
 
 /-! ## Cartesian Frames — endpoint inventory
 

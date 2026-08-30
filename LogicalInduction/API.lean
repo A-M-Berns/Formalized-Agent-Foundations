@@ -139,6 +139,16 @@ are the interface, in this order:
   `[Entailment.Consistent T]`, their claim being the fixed universal halting schema at the
   same kind of machine-naming argument.
 
+Besides the paper's own premise a client supplies `[T.Δ₁]`, a `Δ₁`-definable axiom set —
+representation infrastructure, since Craig's trick re-axiomatizes any c.e. theory and every
+statement here is about `T ⊢ ·` — and `[𝗣𝗔⁻ ⪯ T]`, which is a **genuine, if small,
+strengthening**: it is *not* implied by "represents computations" (Robinson's R represents
+every computable function without containing `𝗣𝗔⁻`), and is spent on the compact-numeral
+value transfer and on object-level schema exclusivity.  Both are disclosed in
+`LogicalInduction/README.md`.  `[𝗜𝚺₁ ⪯ T]` is needed by only three endpoints — `thm:lp`,
+whose diagonal is Foundation's `parameterized_diagonal₁`, and the two literal-`PaperLUV`
+frontends.  No endpoint asks for Σ₁-soundness.
+
 The *source language* behind the `def:ec` metering of formula families (`ArithSource`,
 `PolyArithmeticSourceSeq`, `PaperLUVSeq`, in
 `LogicalInduction.Construction.Witnesses.ArithmeticSource`) is construction machinery, not

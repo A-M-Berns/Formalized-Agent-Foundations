@@ -41,22 +41,31 @@ decorative.  The standing test, recorded in `KNOWLEDGE.md`: substitute two seque
 same extension but different programs — if the sentences coincide, the rendering is
 extensional and wrong.
 
-## What is, and is not, proved about that test here
+## The test is proved here
 
-Under the current rendering the sentence's dependence on the machine is **definitional**, not
-a theorem of this file.  The day-`n` sentence is a fixed object — `universalHaltingSchema`, or
-the `γ` representing `universalRunValue f` — at the argument term
-`binNumeral (haltingClaimInput ⌜mₙ⌝ xₙ)`; `Code.sourceNat` and `binNumeral` are injective, so
-two sequences with the same extension but different programs give literally *different
-argument terms* inside the sentence.  What is missing is only the last step, from different
-arguments to different sentences: `σ/[t] ≠ σ/[t']` for `t ≠ t'` requires a
-substitution-injectivity / occurrence lemma for `σ` (it is false for a `σ` that does not
-mention `#0`), and Foundation exposes none.  The side condition does hold here —
-`universalHaltingSchema_not_argument_insensitive` proves the universal schema is not
-argument-insensitive — so the full syntactic separation is true; supplying the missing lemma
-is **queued infrastructure**, not a defect of the rendering.
+The day-`n` sentence is a fixed object — `universalHaltingSchema`, or the `γ` representing
+`universalRunValue f` — at the argument term `binNumeral (haltingClaimInput ⌜mₙ⌝ xₙ)`, so two
+sequences with the same extension but different programs give literally *different argument
+terms* inside the sentence.  The step from different arguments to different sentences —
+`σ/[t] ≠ σ/[t']` for `t ≠ t'`, false for a `σ` that does not mention `#0` — is now available:
+`Framework/SubstOccurrence.lean` supplies the missing occurrence notion
+(`Semiformula.Mentions`) and the two transport lemmas (`rew_eq_of_not_mentions`,
+`eq_of_rew_eq_of_mentions`) that Foundation does not expose, and
+`universalHaltingSchema_mentions_zero` (`ComputationSyntax.lean`) discharges the side
+condition for the fixed halting schema, from
+`universalHaltingSchema_not_argument_insensitive`.
 
-The two `_ne_of_` lemmas below therefore prove something weaker and different: *behavioural*
+So the **full** syntactic separation is a theorem of this file:
+`haltingArgClaimSentence_ne_of_source_ne` separates two claim families by their machines'
+*source numbers alone*, whatever those machines do, and
+`haltingArgClaimSentence_ne_of_claimInput_ne` by the whole argument.  Unlike the behavioural
+lemmas, these can be invoked inside a single claim family, because no endpoint hypothesis
+constrains the machine names.  On the bounded lane `representedClaimSentence_ne_of_const_ne`
+and `representedClaimSentence_ne_of_arg_ne` are the same statement, with the occurrence side
+condition `γ.Mentions 0` stated as a hypothesis rather than discharged, because `γ` is
+supplied existentially by `RepresentsComputations` and is not a fixed object here.
+
+The older `_ne_of_` lemmas remain and prove something weaker and different: *behavioural*
 separation.  `haltingArgClaimSentence_ne_of_halts_ne` and
 `representedClaimSentence_ne_of_runValue_ne` separate arguments on which the represented run
 *disagrees*.  No endpoint can invoke them within one claim family, because each endpoint's own
@@ -97,11 +106,12 @@ compact-numeral run for `t`, whatever `γ` is (`SubstEmission.lean`).
 
 ## Residual hypothesis
 
-`[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper, which assumes only that `Θ` is consistent,
-c.e., and represents computations.  It is needed here for exactly one thing — `paperTheoryDP`
-is proved computable through Foundation's internal provability predicate, which needs `𝗜𝚺₁`
-— and is scheduled for removal when that is re-proved from c.e.-ness alone.  It is disclosed
-at each of the five endpoints.
+`[T.Δ₁]` is the strengthening beyond the paper, which assumes only that `Θ` is consistent,
+c.e., and represents computations; it is disclosed at each endpoint.  The `[𝗜𝚺₁ ⪯ T]` that
+accompanied it through tranche 6 has been **deleted** (tranche 7).  It was never used:
+`paperTheoryDP`'s computability goes through Foundation's internal provability predicate
+instantiated at `V := ℕ`, so the side condition discharged is `ℕ ⊧* 𝗜𝚺₁`, which holds
+outright, not `𝗜𝚺₁ ⪯ T`.  Nothing on this lane assumes `T` proves any induction.
 -/
 
 namespace LogicalInduction
@@ -177,7 +187,7 @@ lemma representedClaimSentence_bigSentenceCodes (γ : ArithmeticSemisentence 2)
 variable (T : ArithmeticTheory)
 
 /-- The theorem process publishes the claim atom when `T` refutes the value-`0` sentence. -/
-lemma paperTheoryDP_covers_representedClaim [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma paperTheoryDP_covers_representedClaim [T.Δ₁]
     (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ ∼(reprAllTerm γ 0 t)) :
     ∃ k, representedClaimSentence γ t ∈ (paperTheoryDP T).D k := by
@@ -186,7 +196,7 @@ lemma paperTheoryDP_covers_representedClaim [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-- The theorem process publishes the negated claim atom when `T` proves the value-`0`
 sentence. -/
-lemma paperTheoryDP_covers_representedClaim_neg [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma paperTheoryDP_covers_representedClaim_neg [T.Δ₁]
     (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ reprAllTerm γ 0 t) :
     ∃ k, (∼representedClaimSentence γ t) ∈ (paperTheoryDP T).D k := by
@@ -198,8 +208,8 @@ lemma paperTheoryDP_covers_representedClaim_neg [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 Every literal below is derived at Foundation's unary numeral — that is the form
 `RepresentsComputations` and `re_complete_mp` speak — and then carried to the compact
 spelling by one value-transfer step.  The transfer is Gödel completeness in both directions
-and adds no hypothesis on `T`: `𝗣𝗔⁻ ⪯ T` follows from the `[𝗜𝚺₁ ⪯ T]` every endpoint here
-already carries. -/
+and adds no hypothesis on `T` beyond the `[𝗣𝗔⁻ ⪯ T]` the endpoints here carry
+explicitly. -/
 
 /-- **The compact and unary spellings of an argument are interprovable.**  Instance of
 `provable_subst_iff_of_val` at `binNumeral_val`.
@@ -337,6 +347,60 @@ lemma universalRunValue_computable {steps : ℕ → ℕ} (hs : Computable steps)
     cases (Nat.Partrec.Code.evaln (steps z.unpair.2)
       (Nat.Partrec.Code.ofSource z.unpair.1.unpair.1) z.unpair.1.unpair.2).isSome <;> simp
 
+/-- The compact argument name is injective as a term-in-context: two distinct values give
+distinct `binNumeral` constants even after they are lifted into a one-variable context. -/
+lemma binNumeral_const_ne (v v' : ℕ) (h : v ≠ v') :
+    ((binNumeral v).const : ArithmeticSemiterm Empty 1)
+      ≠ ((binNumeral v').const : ArithmeticSemiterm Empty 1) := by
+  intro hconst
+  refine h ?_
+  have hval : ∀ w : ℕ, Semiterm.val (![0] : Fin 1 → ℕ) Empty.elim
+      ((binNumeral w).const : ArithmeticSemiterm Empty 1) = w := by
+    intro w
+    simpa using binNumeral_val (M := ℕ) w
+  have := congrArg (Semiterm.val (![0] : Fin 1 → ℕ) Empty.elim) hconst
+  rwa [hval, hval] at this
+
+/-- **Syntactic separation of represented claims at distinct arguments.**  The bounded-lane
+analogue of `schemaArgClaimSentence_ne_of_const_ne`: if the representing formula `γ` really
+mentions its first argument, distinct closed argument terms give distinct claim atoms, with
+no hypothesis on the represented run.
+
+The occurrence side condition is stated rather than discharged here, because `γ` is supplied
+existentially by `RepresentsComputations` and is not a fixed object of this file; it follows
+from the representation specification at any two arguments with different run values (a
+`γ` ignoring `#0` would make `reprAll γ y z` independent of `z`).
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
+`Semiformula.eq_of_rew_eq_of_mentions` (`Framework/SubstOccurrence.lean`),
+`paperPrimeSentence_injective`, `Rewriting.emb_injective`. -/
+lemma representedClaimSentence_ne_of_const_ne (γ : ArithmeticSemisentence 2)
+    (hγ : γ.Mentions 0) (t t' : Semiterm.Const ℒₒᵣ)
+    (h : (t.const : ArithmeticSemiterm Empty 1) ≠ (t'.const : ArithmeticSemiterm Empty 1)) :
+    representedClaimSentence γ t ≠ representedClaimSentence γ t' := by
+  intro heq
+  refine h ?_
+  have hpair := paperPrimeSentence_injective
+    (a₁ := (true, Semiformula.exs (∼(Rewriting.emb (reprBodyTerm γ 0 t) :
+      ArithmeticSemiformula ℕ 1))))
+    (a₂ := (true, Semiformula.exs (∼(Rewriting.emb (reprBodyTerm γ 0 t') :
+      ArithmeticSemiformula ℕ 1))))
+    heq
+  have hexs := congrArg Prod.snd hpair
+  simp only [Semiformula.exs.injEq, Semiformula.neg_inj] at hexs
+  have hbody : reprBodyTerm γ 0 t = reprBodyTerm γ 0 t' := Rewriting.emb_injective hexs
+  rw [reprBodyTerm, reprBodyTerm, Semiformula.iff_eq, Semiformula.iff_eq] at hbody
+  simp only [Semiformula.and_inj, Semiformula.or_inj, Semiformula.neg_inj] at hbody
+  have hrew : (Rew.subst ![(t.const : ArithmeticSemiterm Empty 1), #0]) ▹ γ
+      = (Rew.subst ![(t'.const : ArithmeticSemiterm Empty 1), #0]) ▹ γ := hbody.1.1
+  simpa using Semiformula.eq_of_rew_eq_of_mentions (k := (0 : Fin 2)) (by simpa using hγ) hrew
+
+/-- The bounded-lane anti-extensionality corollary at the compact argument name. -/
+lemma representedClaimSentence_ne_of_arg_ne (γ : ArithmeticSemisentence 2)
+    (hγ : γ.Mentions 0) {v v' : ℕ} (h : v ≠ v') :
+    representedClaimSentence γ (binNumeral v) ≠ representedClaimSentence γ (binNumeral v') :=
+  representedClaimSentence_ne_of_const_ne γ hγ _ _ (binNumeral_const_ne _ _ h)
+
 /-- **Behavioural separation on the `thm:dontwait`/`thm:pac`/`thm:pazfc` lane.**
 
 If the represented decider takes different values at two arguments, the two claim sentences
@@ -409,7 +473,7 @@ Kind `C` (composition).  Provenance: (a) derived in-project from
 `RepresentsComputations`; the deductive process is `paperTheoryDP`, which is soundness-free.
 This is the `thm:dontwait` claim family; the paper node itself is carried by the endpoint
 that consumes it, not by this constructor. -/
-noncomputable def representedBoundedClaims [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T]
+noncomputable def representedBoundedClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {machines : ℕ → Nat.Partrec.Code} {inputs steps : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (γ : ArithmeticSemisentence 2)
@@ -456,7 +520,7 @@ through `⌜f⌝` as the paper writes it and applied to the compact name of `⟨
 `hm` and `hi` are the paper's write-out classes, and are what the argument's symbol run is
 emitted from; `hh` names an arbitrary computable horizon by its program, with no growth
 bound. -/
-noncomputable def representedBoundedHaltingClaims [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T]
+noncomputable def representedBoundedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [RepresentsComputations T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
@@ -472,7 +536,7 @@ family onto the caller's truth predicate.  `C`'s machine is fixed, so the consta
 sequence is named by `digitMachineCodes_const`; the sentence still names it, and the day
 still enters the argument through the horizon slot.
 Paper node: `thm:pac` -/
-noncomputable def representedDecidableClaimsOfComputation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T]
+noncomputable def representedDecidableClaimsOfComputation [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [RepresentsComputations T]
     {truth : ℕ → Prop} (C : BoundedComputation truth) :
     RepresentedDecidableClaims (paperTheoryDP T) truth :=
@@ -497,32 +561,33 @@ semantic hypothesis on `T`, no presentation argument, and no `hworld` argument. 
 Shared by the bounded endpoints below — which get consistency from the representability
 premise (`RepresentsComputations.consistent`) — and by the halting endpoints, which assume
 it directly. -/
-private lemma paperTheoryDP_hworld_stages [T.Δ₁] [𝗜𝚺₁ ⪯ T] (hcon : Entailment.Consistent T) :
+private lemma paperTheoryDP_hworld_stages [T.Δ₁] (hcon : Entailment.Consistent T) :
     ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n) := by
   haveI := hcon
   obtain ⟨v, hv⟩ := paperTheoryDP_nonvacuous T
   exact fun n => ⟨v, hv n⟩
 
 /-- The constructed inductor over the paper's theorem process. -/
-private noncomputable abbrev paperLIA [T.Δ₁] [𝗜𝚺₁ ⪯ T] :
+private noncomputable abbrev paperLIA [T.Δ₁] :
     IsLogicalInductor (liaHistory (paperTheoryDP T)) (paperTheoryDP T) :=
   LIA_is_logical_inductor (paperTheoryDP T) (paperTheoryDP_computable T)
 
 section Endpoints
 
-variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [RepresentsComputations T]
+variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [RepresentsComputations T]
 
 /-- Finitistic-consistency belief, with the representation boundary discharged by a
 concrete computation and named through the paper's own `⌜f⌝(⌜n⌝)`.  The horizon `f` of `C`
 is an arbitrary computable function, named in the claim by its program
 (`ComputableHorizon`) and left unevaluated — the paper's class.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_ofComputation
     (P : History) [IsLogicalInductor P (paperTheoryDP T)]
@@ -536,13 +601,14 @@ theorem lic_belief_finitistic_consistency_ofComputation
 
 /-- Same statement and same arbitrary-computable-horizon class as `thm:pac`; only the
 supplied finite-consistency predicate differs.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_ofComputation
     (P : History) [IsLogicalInductor P (paperTheoryDP T)]
@@ -557,13 +623,14 @@ theorem lic_belief_stronger_theory_consistency_ofComputation
 
 /-- The horizon sequence is arbitrary computable — `hh` names its program rather than
 bounding its growth — which is the paper's "let `f` be any computable function".
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
     (P : History) [IsLogicalInductor P (paperTheoryDP T)]
@@ -586,13 +653,14 @@ market, no inductor, no presentation, no `hworld`, and no semantic assumption on
 /-- `thm:pac`, unconditional over `LIA`, at the paper's horizon class: `C`'s step budget is
 any computable `f`, named by its program and evaluated by the arithmetic schema rather than
 by the sentence emitter.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional
     (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
@@ -605,13 +673,14 @@ theorem lic_belief_finitistic_consistency_unconditional
 
 /-- `thm:pazfc`, unconditional over `LIA`, at the same arbitrary-computable-horizon class
 as `thm:pac`.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional
     (strongerConsistentWithin : ℕ → Prop)
@@ -627,13 +696,14 @@ theorem lic_belief_stronger_theory_consistency_unconditional
 arbitrary computable `f` — no growth bound — which is the paper's own quantifier, and `hm`
 and `hi` are the write-out metered machine/input classes, which is the paper's e.c. sequence
 of bitstrings `⟨y⟩` (tex:1946-1952).  The three are independent hypotheses of one signature.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
@@ -814,7 +884,7 @@ lemma provable_neg_schemaArgClaim_iff (T : ArithmeticTheory) (σ : ArithmeticSem
     simp [schemaArgClaim, schemaArgBody, Semiformula.eval_substs]
 
 /-- The theorem process publishes the claim atom when `T` proves the argument instance. -/
-lemma paperTheoryDP_covers_schemaArgClaim [T.Δ₁] [𝗜𝚺₁ ⪯ T] (σ : ArithmeticSemisentence 1)
+lemma paperTheoryDP_covers_schemaArgClaim [T.Δ₁] (σ : ArithmeticSemisentence 1)
     (t : Semiterm.Const ℒₒᵣ) (h : T ⊢ (σ/[t.const] : ArithmeticSentence)) :
     ∃ k, schemaArgClaimSentence σ t ∈ (paperTheoryDP T).D k := by
   have := paperTheoryDP_covers_outer_provable T _ ((provable_schemaArgClaim_iff T σ t).mpr h)
@@ -822,7 +892,7 @@ lemma paperTheoryDP_covers_schemaArgClaim [T.Δ₁] [𝗜𝚺₁ ⪯ T] (σ : Ar
 
 /-- The theorem process publishes the negated claim atom when `T` refutes the argument
 instance. -/
-lemma paperTheoryDP_covers_schemaArgClaim_neg [T.Δ₁] [𝗜𝚺₁ ⪯ T]
+lemma paperTheoryDP_covers_schemaArgClaim_neg [T.Δ₁]
     (σ : ArithmeticSemisentence 1) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ ∼(σ/[t.const] : ArithmeticSentence)) :
     ∃ k, (∼schemaArgClaimSentence σ t) ∈ (paperTheoryDP T).D k := by
@@ -836,9 +906,9 @@ lemma paperTheoryDP_covers_schemaArgClaim_neg [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 universal halting schema at the compact name of `⟨⌜mₙ⌝, xₙ⟩`.
 
 This is the declaration the whole R5-F08 repair turns on.  It depends on `machines` and
-`inputs` through the *argument*, not through the schema, so distinct machines give distinct
-sentences whenever they differ in halting behaviour
-(`haltingArgClaimSentence_ne_of_halts_ne`). -/
+`inputs` through the *argument*, not through the schema, so distinct machine source numbers
+give distinct sentences outright (`haltingArgClaimSentence_ne_of_source_ne`), and a fortiori
+distinct halting behaviour does (`haltingArgClaimSentence_ne_of_halts_ne`). -/
 noncomputable def haltingArgClaimSentence (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (n : ℕ) : Sentence :=
   schemaArgClaimSentence universalHaltingSchema
@@ -887,15 +957,10 @@ a single claim family: `thm:halts`'s `hhalts` and `thm:loops`'s `hloops` both fo
 halting behaviour from varying with the day.  What it separates is two families that behave
 differently.
 
-Machine dependence of the sentence is not proved here because it is **definitional**: the
-day-`n` sentence is `universalHaltingSchema` at the argument term
-`binNumeral (haltingClaimInput ⌜mₙ⌝ xₙ)`, and `Code.sourceNat` and `binNumeral` are injective,
-so different programs give different argument terms.  The remaining step — from `t ≠ t'` to
-`σ/[t] ≠ σ/[t']` — needs a substitution-injectivity/occurrence lemma for `σ` that Foundation
-does not expose (queued infrastructure).  Its side condition, that `σ` actually mentions its
-argument, *is* discharged for this schema by
-`universalHaltingSchema_not_argument_insensitive`, so the full syntactic separation is true —
-merely unavailable at the current substrate.
+Machine dependence of the sentence is proved separately, and more strongly, by
+`haltingArgClaimSentence_ne_of_source_ne`: distinct machine source numbers give distinct
+sentences whatever the machines do.  That is the standing extensionality test; this lemma is
+the behavioural companion to it, not a substitute for it.
 
 The superseded rendering failed the extensionality test outright: its sentence family was
 built from `codeOfREPred (fun n => CodeHalts (machines n) (inputs n))`, which sees only the
@@ -944,6 +1009,68 @@ lemma haltingArgClaimSentence_ne_of_halts_ne
       simpa using hval
   exact h' ((key machines' inputs' n').mp (hbody ▸ (key machines inputs n).mpr h))
 
+/-- **Syntactic separation of schema claims at distinct arguments.**  If the fixed schema
+`σ` really mentions its argument, then distinct closed argument terms give distinct claim
+atoms — no behavioural hypothesis at all.  This is the general form of the standing
+extensionality test recorded in `KNOWLEDGE.md`.
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
+`Semiformula.eq_of_rew_eq_of_mentions` (`Framework/SubstOccurrence.lean`),
+`paperPrimeSentence_injective`, `Rewriting.emb_injective`. -/
+lemma schemaArgClaimSentence_ne_of_const_ne (σ : ArithmeticSemisentence 1)
+    (hσ : σ.Mentions 0) (t t' : Semiterm.Const ℒₒᵣ)
+    (h : (t.const : ArithmeticSemiterm Empty 1) ≠ (t'.const : ArithmeticSemiterm Empty 1)) :
+    schemaArgClaimSentence σ t ≠ schemaArgClaimSentence σ t' := by
+  intro heq
+  refine h ?_
+  have hpair := paperPrimeSentence_injective
+    (a₁ := (true, Semiformula.exs (Rewriting.emb (schemaArgBody σ t) :
+      ArithmeticSemiformula ℕ 1)))
+    (a₂ := (true, Semiformula.exs (Rewriting.emb (schemaArgBody σ t') :
+      ArithmeticSemiformula ℕ 1)))
+    heq
+  have hexs := congrArg Prod.snd hpair
+  simp only [Semiformula.exs.injEq] at hexs
+  have hbody : schemaArgBody σ t = schemaArgBody σ t' := Rewriting.emb_injective hexs
+  have hrew : (Rew.subst ![(t.const : ArithmeticSemiterm Empty 1)]) ▹ σ
+      = (Rew.subst ![(t'.const : ArithmeticSemiterm Empty 1)]) ▹ σ := hbody
+  simpa using Semiformula.eq_of_rew_eq_of_mentions (k := (0 : Fin 1)) (by simpa using hσ) hrew
+
+/-- **The standing extensionality test, proved.**  Two `(machine, input)` pairs with
+distinct *names* — not merely distinct halting behaviour — get distinct claim sentences.
+
+This is the test recorded in `KNOWLEDGE.md`: substitute two sequences with the same
+extension but different programs; if the sentences coincided, the rendering would be
+extensional.  They do not coincide.  Unlike `haltingArgClaimSentence_ne_of_halts_ne` this
+*can* be invoked inside a single claim family, because no endpoint hypothesis constrains
+the machine names.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from
+`schemaArgClaimSentence_ne_of_const_ne`, `universalHaltingSchema_mentions_zero`,
+`binNumeral_const_ne`. -/
+lemma haltingArgClaimSentence_ne_of_claimInput_ne
+    (machines machines' : ℕ → Nat.Partrec.Code) (inputs inputs' : ℕ → ℕ) (n n' : ℕ)
+    (h : haltingClaimInput (machines n) (inputs n)
+      ≠ haltingClaimInput (machines' n') (inputs' n')) :
+    haltingArgClaimSentence machines inputs n
+      ≠ haltingArgClaimSentence machines' inputs' n' :=
+  schemaArgClaimSentence_ne_of_const_ne _ universalHaltingSchema_mentions_zero _ _
+    (binNumeral_const_ne _ _ h)
+
+/-- **The claim sentence names the program, not its behaviour.**  Distinct machine *source
+numbers* on the two days give distinct claim sentences, whatever the machines do.
+
+Kind `C` (composition).  Provenance: (a) derived in-project. -/
+lemma haltingArgClaimSentence_ne_of_source_ne
+    (machines machines' : ℕ → Nat.Partrec.Code) (inputs inputs' : ℕ → ℕ) (n n' : ℕ)
+    (h : Nat.Partrec.Code.sourceNat (machines n)
+      ≠ Nat.Partrec.Code.sourceNat (machines' n')) :
+    haltingArgClaimSentence machines inputs n
+      ≠ haltingArgClaimSentence machines' inputs' n' := by
+  refine haltingArgClaimSentence_ne_of_claimInput_ne _ _ _ _ _ _ ?_
+  intro he
+  exact h (Nat.pair_eq_pair.mp he).1
+
 /-- **The `thm:halts`/`thm:loops` claim family, over the paper's own deductive process.**
 
 The positive obligation is discharged by Σ₁-completeness at the *universal* schema; the
@@ -953,7 +1080,7 @@ the compact argument name, and that is what `hm` and `hi` are consumed by.
 Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citation —
 `codeOfREPred` and `sigma_one_completeness` (through `re_complete_mp`).  The paper nodes are
 carried by the endpoints that consume it, not by this constructor. -/
-noncomputable def representedHaltingClaims [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T]
+noncomputable def representedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
     RepresentedSemidecidableClaims (paperTheoryDP T)
@@ -972,7 +1099,7 @@ noncomputable def representedHaltingClaims [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥�
 
 section HaltingEndpoints
 
-variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T]
+variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
 
 /-- **Learning of Halting Patterns** over the paper's theorem process.  `hm` and `hi` are the
 paper's own e.c. classes, metered by *write-out*: tex:1931-1933 asks that the source of `mₙ`
@@ -980,13 +1107,14 @@ be writable in time polynomial in `n`, and a poly-time writer emits polynomially
 symbols, so an `n`-digit description with an exponential Gödel code is admissible and `⟨x⟩`
 is a sequence of bitstrings.  Strictly wider than the whole-value pair this once took — see
 `digitMachineCodes_nest_not_polyMachineCodes` and `bigDigits_two_pow_not_polyNatCodes`.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_ofComputation
     (P : History) [IsLogicalInductor P (paperTheoryDP T)]
@@ -1002,13 +1130,14 @@ theorem lic_learns_halting_patterns_ofComputation
 /-- **Learning of Provable Non-Halting Patterns** over the paper's theorem process.  `hloops`
 is the paper's premise, literal object-level `T`-refutability of the day instance — not a
 deductive-process emission surrogate, and not stated at the vacuous wrapper.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (P : History) [IsLogicalInductor P (paperTheoryDP T)]
@@ -1029,13 +1158,14 @@ variable [Entailment.Consistent T]
 proved computable (`paperTheoryDP_computable`), and its market non-vacuity follows from
 consistency of `T` alone, so nothing remains beyond the theory instances and the (true)
 hypothesis that the machines halt.  In particular there is no soundness instance.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:halts` -/
 theorem lia_learns_halting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -1050,13 +1180,14 @@ theorem lia_learns_halting_patterns_unconditional
 /-- `thm:loops`, unconditional over `LIA`.  `hm` and `hi` are the write-out metered classes
 shared with `thm:halts`; `hloops` is the object-level refutation premise, which cannot be
 discharged for an arbitrary `T` — see `loopsTheory` below for its witness.
-*Residual hypothesis (disclosed).*  `[𝗜𝚺₁ ⪯ T]` is a strengthening beyond the paper,
-which assumes only that `Θ` is consistent, c.e. and represents computations; it is needed
-solely so that provability in `T` is recursively enumerable through Foundation's internal
-provability predicate, and is scheduled for removal.  `[T.Δ₁]` is the second strengthening:
-it asks for a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e.
-theory has a deductively equivalent Δ₁ axiomatization, so the theorems transfer; that
-reduction is not formalized here.
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
+disclosure in `LogicalInduction/README.md`),
+which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
+Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
+deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
+formalized here.  The `[𝗜𝚺₁ ⪯ T]` this endpoint used to carry is **gone** (tranche 7): the
+r.e.-ness of provability in `T` runs through Foundation's internal provability predicate at
+`V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
@@ -1268,6 +1399,12 @@ end Halting
 #print axioms universalRunValue_boundedArg
 #print axioms boundedArg_digits
 #print axioms haltingArgClaimInstance_true_iff
+#print axioms schemaArgClaimSentence_ne_of_const_ne
+#print axioms binNumeral_const_ne
+#print axioms haltingArgClaimSentence_ne_of_claimInput_ne
+#print axioms haltingArgClaimSentence_ne_of_source_ne
+#print axioms representedClaimSentence_ne_of_const_ne
+#print axioms representedClaimSentence_ne_of_arg_ne
 #print axioms haltingArgClaimSentence_ne_of_halts_ne
 #print axioms representedClaimSentence_ne_of_runValue_ne
 #print axioms representedHaltingClaims

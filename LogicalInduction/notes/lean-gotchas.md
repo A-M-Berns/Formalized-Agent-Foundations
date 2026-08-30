@@ -225,3 +225,19 @@ the settled design decisions and the correspondence table, and points here for p
   `(Operator.numeral ℒₒᵣ n).const`, so numeral instantiation needs no transport.
 - **Gate calibration under contention:** a warm `safe-lake.sh build LogicalInduction` ran ~2h with three
   agents sharing the 24 GB machine (swap 95%); `safe-lake.sh env lean` is 3–5 s.
+- **`Semiformula.subst φ ![t]` vs the `φ/[t]` notation are not interchangeable for `rw`** (the
+  notation expands to `Rewriting.subst`); state transport lemmas in the consumer's spelling.
+  `𝗣𝗔⁻ ⪯ 𝗜𝚺₁` is an inferable Foundation instance (`WeakerThan.trans (𝓣 := 𝗜𝚺₁)`).
+- **`scripts/check_trust_surface.py` is a gate**: `gen-trust-surface.py`'s editorial notes are a SECOND
+  copy of the per-node commentary — retiring a claim only in `coverage-classification.md` leaves stale
+  assertions on the published page. Regenerate last (`latex2mathml` is installed).
+- **Census splitter:** elaborated `#check` output prints some declarations as `@Name : …` and dotted
+  names by last component — the naive `^Name : ` regex loses ~1/3 of blocks and mis-attributes them;
+  match `^@?ident : ` and re-anchor by suffix. Never grep the word "Consistent" (matches
+  `PCWorld.ConsistentWith*`; 14 → ~60).
+- **`safe-lake.sh` has two give-up paths that look like hangs and are neither a red build**: lock
+  timeout after 1800s, and `resource-guard wait 900` exiting "STILL LOADED" (disk floor 15GB free —
+  disk does not recover on its own). `lake env lean` takes the same lock. `gen-trust-surface.py`
+  writes its output only at the end — never run two concurrently.
+- **The session scratchpad can be shared with a concurrent agent in the same worktree** — prefix
+  scratch outputs uniquely; generic names (`census.out`, `build.log`) get clobbered.

@@ -752,7 +752,7 @@ lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
     (Nat.Partrec.Code.evaln_sound (Option.mem_def.mpr (hf n)))
 
 section
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 /-- The canonical quote code of the constructed `LIA` market's own prices along a
 write-out codeable sentence sequence (`def:ec`).  No caller-supplied semantic relation: the value

@@ -472,7 +472,7 @@ lemma semanticQuoteFactorPrefixValidAtFuel_downward {DP : DeductiveProcess}
   exact hzsFuel zs hsmem
 
 lemma rationalQuote_semanticQuoteFactorDownward_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value)
     (n zr zs : ℕ) :
     ∃ fuel, semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
@@ -546,7 +546,7 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually
 /-- The quotation-factor completeness argument works in any fixed computable base which
 contains the canonical theorem/quotation stages. -/
 lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
     (hsub : ∀ k phi, phi ∈ (theoremQuoteBaseDP T).D k → phi ∈ DP.D k)
     {value : ℕ → ℚ} (q : RationalQuoteCode T value)
@@ -617,7 +617,7 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
 
 set_option maxHeartbeats 2000000 in
 lemma rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
     (hsub : ∀ k phi, phi ∈ (theoremQuoteBaseDP T).D k → phi ∈ DP.D k)
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
@@ -659,7 +659,7 @@ lemma rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess
 
 set_option maxHeartbeats 2000000 in
 lemma rationalQuote_semanticQuoteFactorPrefix_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
     ∃ fuel, semanticQuoteFactorPrefixValidAtFuel (theoremQuoteBaseDPComputation T)
       (semanticQuoteSchema q.code) limit fuel = true := by

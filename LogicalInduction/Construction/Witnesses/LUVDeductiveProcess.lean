@@ -43,7 +43,7 @@ def luvEventFires [RepresentsComputations T] (e : ℕ) : Prop :=
   (e.unpair.1 = 0 ∧ T ⊢ (L.thresholdSchema T)/[↑e.unpair.2]) ∨
     (e.unpair.1 = 1 ∧ T ⊢ ∼((L.thresholdSchema T)/[↑e.unpair.2]))
 
-lemma luvEventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+lemma luvEventFires_re [T.Δ₁] [RepresentsComputations T] :
     REPred (L.luvEventFires T) := by
   have htag : ∀ k : ℕ, REPred (fun e : ℕ => e.unpair.1 = k) := by
     intro k
@@ -59,7 +59,7 @@ lemma luvEventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] 
   exact ((htag 0).and hpos).or ((htag 1).and hneg)
 
 /-- A partial-recursive semi-decider for `luvEventFires`. -/
-lemma exists_luvEventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+lemma exists_luvEventCode [T.Δ₁] [RepresentsComputations T] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ L.luvEventFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (L.luvEventFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -70,12 +70,12 @@ lemma exists_luvEventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations 
 
 open Classical in
 /-- Fuel-`k` dovetailer of the fired threshold atoms. -/
-noncomputable def luvStage [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] (k : ℕ) : Finset Sentence :=
+noncomputable def luvStage [T.Δ₁] [RepresentsComputations T] (k : ℕ) : Finset Sentence :=
   ((Finset.range (k + 1)).filter
       (fun e => (Nat.Partrec.Code.evaln k (L.exists_luvEventCode T).choose e).isSome = true)).image
     (luvEventAtom)
 
-lemma luvStage_mono [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] (k : ℕ) :
+lemma luvStage_mono [T.Δ₁] [RepresentsComputations T] (k : ℕ) :
     L.luvStage T k ⊆ L.luvStage T (k + 1) := by
   classical
   intro φ hφ
@@ -84,13 +84,13 @@ lemma luvStage_mono [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] (k 
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
 /-- The concrete deductive process enumerating the `Θ`-provable LUV threshold literals. -/
-noncomputable def luvThresholdDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+noncomputable def luvThresholdDP [T.Δ₁] [RepresentsComputations T] :
     DeductiveProcess where
   D := L.luvStage T
   mono := L.luvStage_mono T
 
 /-- Coverage: every fired threshold event's atom eventually appears. -/
-lemma luvThresholdDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+lemma luvThresholdDP_covers [T.Δ₁] [RepresentsComputations T]
     {e : ℕ} (he : L.luvEventFires T e) :
     ∃ k, luvEventAtom e ∈ (L.luvThresholdDP T).D k := by
   classical
@@ -117,7 +117,7 @@ noncomputable def luvWorld [RepresentsComputations T] : PCWorld :=
 /-- The world believing each threshold atom exactly at its true value (`ThresholdPred`). -/
 noncomputable def truthWorld : PCWorld := fun m => L.ThresholdPred m
 
-lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     [Entailment.Consistent T]
     (k : ℕ) : (L.luvWorld T).ConsistentWith ((L.luvThresholdDP T).D k) := by
   classical
@@ -140,13 +140,13 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Represe
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
       (by cl_prover [hpos', hprov])
 
-lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     [Entailment.Consistent T] :
     (L.luvWorld T).ConsistentWithTheory (L.luvThresholdDP T) :=
   fun k => L.luvWorld_consistent T k
 
 /-- **`hworld` non-vacuity.** Every stage of the constructed process has a consistent world. -/
-lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     [Entailment.Consistent T]
     (n : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.luvThresholdDP T).D n) :=
   ⟨L.luvWorld T, L.luvWorld_consistent T n⟩
@@ -155,7 +155,7 @@ lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Repre
 
 /-- **F7 non-vacuity payoff.**  The `ArithmeticLUVPresentation` premise of `LUVPresentation.lean`
 is *satisfiable*: the constructed process reveals exactly the `Θ`-provable threshold literals. -/
-noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T] :
     ArithmeticLUVPresentation L (L.luvThresholdDP T) T where
   threshold_enters i r hprov := by
     have he : L.luvEventFires T (Nat.pair 0 (thresholdCode i r)) :=
@@ -192,7 +192,7 @@ lemma luvEventAtom_prim : Primrec (fun e : ℕ => luvEventAtom e) := by
   · simp [luvEventAtom, h, encode_atom]
   · simp [luvEventAtom, h, encode_negAtom]
 
-lemma luvStage_eq_toFinset [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T]
+lemma luvStage_eq_toFinset [T.Δ₁] [RepresentsComputations T]
     (c : Nat.Partrec.Code) (k : ℕ) :
     ((Finset.range (k + 1)).filter
         (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom =
@@ -212,7 +212,7 @@ lemma luvStage_eq_toFinset [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations
       exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
     · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
 
-lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+lemma luvStage_encode_prim [T.Δ₁] [RepresentsComputations T] :
     Primrec (fun k => Encodable.encode (L.luvStage T k)) := by
   set c := (L.exists_luvEventCode T).choose with hc
   have hevaln : Primrec (fun p : ℕ × ℕ => (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
@@ -247,7 +247,7 @@ lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations
 
 /-- **The scheduled provability process is computable.**  One fixed partial-recursive program
 emits the encoded stage `D k` on input `k`. -/
-lemma luvThresholdDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [RepresentsComputations T] :
+lemma luvThresholdDP_computable [T.Δ₁] [RepresentsComputations T] :
     ComputableDeductiveProcess (L.luvThresholdDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (L.luvStage_encode_prim T)))

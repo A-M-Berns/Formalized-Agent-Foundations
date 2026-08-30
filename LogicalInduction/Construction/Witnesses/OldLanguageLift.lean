@@ -134,7 +134,7 @@ lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
       simp [sentenceAtomCodes_quoteAtom _ a ha, oldLanguageTag] at hc
   · simp at ha
 
-lemma theoremDP_oldLanguageFresh (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
+lemma theoremDP_oldLanguageFresh (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (k : ℕ) (phi : Sentence) (hphi : phi ∈ (theoremDP T).D k) :
     ∀ a ∈ sentenceAtomCodes phi, a.unpair.1 ≠ oldLanguageTag := by
   simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,

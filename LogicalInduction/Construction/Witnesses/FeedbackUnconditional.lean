@@ -29,7 +29,7 @@ namespace FeedbackTruth
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic
 open AffineCombination
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 private noncomputable abbrev feedbackLIA :
     IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=

@@ -5,6 +5,7 @@ import Foundation.Syntax.Predicate.Rew
 import Foundation.FirstOrder.Bootstrapping.Syntax.Theory
 import Mathlib.Computability.Ackermann
 import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.SubstOccurrence
 
 /-!
 # Concrete computation syntax and arithmetic-theory representation
@@ -553,6 +554,31 @@ lemma universalHaltingSchema_not_argument_insensitive :
       ((universalCodeHalts_claimInput neverHaltMachine 0).mp
         ((universalHaltingSchema_spec _).mp hx))
   exact hz' ((h _ _).mp hz)
+
+/-- **The universal halting schema mentions its argument.**  The occurrence form of
+`universalHaltingSchema_not_argument_insensitive`: a formula that does not mention `#0` has
+the *same* instance at every closed term (`Semiformula.subst_eq_of_not_mentions`), so it
+would have the same truth value at every argument.  This is the side condition of
+substitution injectivity, and with it the syntactic separation of claim sentences in
+`ComputationRepresented.lean` is a theorem rather than queued infrastructure.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from
+`universalHaltingSchema_not_argument_insensitive`; (b) Foundation citations —
+`Semiformula.subst_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`),
+`Semiformula.eval_substs`. -/
+lemma universalHaltingSchema_mentions_zero :
+    (universalHaltingSchema : ArithmeticSemisentence 1).Mentions 0 := by
+  by_contra hmem
+  refine universalHaltingSchema_not_argument_insensitive fun z z' => ?_
+  have key : ∀ w : ℕ,
+      Semiformula.Evalb (M := ℕ) (![] : Fin 0 → ℕ)
+          (universalHaltingSchema/[(‘↑w’ : Semiterm ℒₒᵣ Empty 0)])
+        ↔ universalHaltingSchema.Evalb ![w] := by
+    intro w
+    simp [Semiformula.eval_substs, Matrix.constant_eq_singleton]
+  have hsub := Semiformula.subst_eq_of_not_mentions hmem
+    (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
+  rw [← key z, ← key z', hsub]
 
 /-- A constant machine sequence is write-out named for free. -/
 lemma digitMachineCodes_const (c : Nat.Partrec.Code) :

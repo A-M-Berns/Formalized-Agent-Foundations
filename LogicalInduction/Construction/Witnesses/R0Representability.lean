@@ -14,7 +14,7 @@ demands.  The two halves of the class's `Iff` are proved by opposite routes:
 * `→` (`y = f n` implies provability): the biconditional
   `∀ν (code c (ν, n̄) ↔ ν = ȳ)` is *valid in every model of `𝗣𝗔⁻`* — `←` of the inner
   `Iff` by Σ₁-completeness (`bold_sigma_one_completeness'`, which needs only `𝗥₀`), `→` by
-  single-valuedness of `code c` in every model (`code_uniq` below).  Gödel completeness
+  single-valuedness of `code c` in every model (`code_uniq`).  Gödel completeness
   (`Arithmetic.complete`) then turns validity into a `𝗣𝗔⁻`-proof, and `𝗣𝗔⁻ ⪯ U` transports
   it to `U`.
 * `←` (provability implies `y = f n`): soundness of `U` at the standard model, which is
@@ -40,6 +40,9 @@ through the theory's own numeral apparatus rather than through `ℕ` — which i
 endpoint inherits a semantic hypothesis from this file, and the instances are used only to
 show the premise set is inhabited at all.
 
+The single-valuedness lemmas `codeAux_uniq`/`code_uniq` that the `→` direction rests on
+live in `Framework/QuoteRepresentability.lean`, which the quotation layer also cites.
+
 **Why `𝗣𝗔⁻` and not `𝗥₀`.**  Foundation states `code_uniq` for models of `𝗥₀`, but leaves
 it commented out, and it does not go through there: the `rfind` case compares two putative
 witnesses `z`, `z'` and needs them to be comparable.  `𝗥₀ = Ω₁–Ω₄` has no trichotomy axiom
@@ -48,7 +51,7 @@ witnesses `z`, `z'` and needs them to be comparable.  `𝗥₀ = Ω₁–Ω₄` 
 theory to `𝗣𝗔⁻` — whose models carry a `LinearOrder` — is what makes the `wlog z < z'`
 step legitimate.  Everything else in the argument needs only `𝗥₀`.
 -/
-import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.QuoteRepresentability
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
 import Foundation.FirstOrder.Arithmetic.Induction
@@ -56,71 +59,6 @@ import Foundation.FirstOrder.Arithmetic.Induction
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
-
-section Uniq
-
-open Nat.ArithPart₁
-
-variable {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
-
-/-- Single-valuedness of `codeAux c` in every model of `𝗣𝗔⁻`.
-
-This is Foundation's commented-out `codeAux_uniq`
-(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), restated over
-`𝗣𝗔⁻` rather than `𝗥₀` and reproved.  The change of ambient theory is exactly what the
-`rfind` case needs: the `wlog z < z'` step requires `<` to be linear on `M`, which `𝗥₀`
-does not provide (see the file header).
-
-Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
-`codeAux`, `PeanoMinus`'s `LinearOrder` on models. -/
-private lemma codeAux_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
-    Semiformula.Evalf (M := M) (z :> v) (codeAux c) →
-    Semiformula.Evalf (M := M) (z' :> v) (codeAux c) → z = z' := by
-  induction c generalizing z z' <;> simp [codeAux]
-  case zero => rintro rfl rfl; rfl
-  case one  => rintro rfl rfl; rfl
-  case add  => rintro rfl rfl; rfl
-  case mul  => rintro rfl rfl; rfl
-  case proj => rintro rfl rfl; rfl
-  case equal i j =>
-    by_cases hv : v i = v j <;> simp [hv]
-    · rintro rfl rfl; rfl
-    · rintro rfl rfl; rfl
-  case lt i j =>
-    rintro (⟨h₁, rfl⟩ | ⟨h₁, rfl⟩) (⟨h₂, rfl⟩ | ⟨h₂, rfl⟩) <;>
-      first
-        | rfl
-        | exact absurd h₁ (not_lt.mpr h₂)
-        | exact absurd h₂ (not_lt.mpr h₁)
-  case comp m n c d ihc ihd =>
-    simp [Semiformula.eval_rew, Function.comp_def, Matrix.empty_eq, Matrix.comp_vecCons']
-    intro w₁ hc₁ hd₁ w₂ hc₂ hd₂
-    have : w₁ = w₂ := funext fun i => ihd i (hd₁ i) (hd₂ i)
-    rcases this with rfl
-    exact ihc hc₁ hc₂
-  case rfind c ih =>
-    simp [Semiformula.eval_rew, Function.comp_def, Matrix.empty_eq, Matrix.comp_vecCons']
-    intro h₁ hm₁ h₂ hm₂
-    by_contra hz
-    wlog h : z < z' with Hz
-    case inr =>
-      have : z' < z := lt_of_le_of_ne (not_lt.mp h) (Ne.symm hz)
-      exact Hz (k := k) c ih h₂ hm₂ h₁ hm₁ (Ne.symm hz) this
-    have : ∃ x, x ≠ 0 ∧ (Semiformula.Evalf (M := M) (x :> z :> fun i => v i)) (codeAux c) := hm₂ z h
-    rcases this with ⟨x, xz, hx⟩
-    exact xz (ih hx h₁)
-
-/-- Single-valuedness of `code c` in every model of `𝗣𝗔⁻` — Foundation's commented-out
-`code_uniq`, restated over `𝗣𝗔⁻`.
-
-Kind `C` (composition) over `codeAux_uniq`. -/
-private lemma code_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
-    Semiformula.Evalb (M := M) (z :> v) (code c) →
-    Semiformula.Evalb (M := M) (z' :> v) (code c) → z = z' := by
-  simp [code, Semiformula.eval_rew, Matrix.empty_eq, Function.comp_def]
-  exact codeAux_uniq
-
-end Uniq
 
 section Representation
 

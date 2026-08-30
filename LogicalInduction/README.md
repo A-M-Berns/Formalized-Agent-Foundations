@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 30 | proved as the paper states it, on the paper's own hypotheses |
-| **strengthened** | 6 | the Lean statement is stronger than the printed one |
+| **exact** | 40 | proved as the paper states it, on the paper's own hypotheses |
+| **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 14 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
+| **qualified** | 3 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 4 of
-them at exact or strengthened, 14 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 15 of
+them at exact or strengthened, 3 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -174,33 +174,31 @@ families whose Gödel codes grow exponentially while their emitted symbol count 
 polynomial. Their status is unchanged — the narrower class was already inside the paper's —
 and their rows record the widening.
 
-Three of the qualified nodes are the §4.10 consistency family (`thm:pac`,
-`thm:pazfc`, `thm:incons`), whose rows say exactly what is and is not formalized. In
+**All three remaining qualified nodes are the §4.10 consistency family** (`thm:pac`,
+`thm:pazfc`, `thm:incons`), and they are qualified for a mathematical reason, not a
+theory-hypothesis one: the paper's subject matter there is `Con(Γ)` and a real sequence of
+inconsistent theories, and what is priced here is an arbitrary decidable or semidecidable
+predicate presented by a machine. Their rows say exactly what is and is not formalized. In
 particular `thm:pazfc` is **not** a qualified rendering of the paper's theorem: its
 distinctive second-theory parameter is absent, and the kernel accepts
 `@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl`.
+Closing the gap is a queued project — the `Con` schema, plus a genuine inconsistent-theory
+sequence.
 
-The other eleven — `thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`,
-`thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`, `thm:dontwait` — are qualified for a
-theory-hypothesis reason rather than a mathematical one. Eight of them carry
-`[T.SoundOnHierarchy 𝚺 1]` at their canonical endpoint, a **stronger** hypothesis than the
-paper's. Three no longer do — `thm:dontwait`, `thm:halts` and `thm:loops` — being stated
-over `paperTheoryDP`; what holds each of those at `qualified` is the single disclosed
-residual `[𝗜𝚺₁ ⪯ Θ]` —
-by ruling a real theory-strength hypothesis beyond the paper's "computably enumerable",
-not a representation choice. (An extensionality defect found in those three claim families
-by the 2026-08-30 audit was repaired the same day; see *Instantiating the arithmetic-theory
-family* below.) See *Instantiating the arithmetic-theory family* below, and
-the *Σ₁-soundness premise* section of the classification ledger for the
-endpoint-by-endpoint blast radius (12 of the 105 canonical endpoints) and for where the
-load-bearing use actually sits. The
-universal layer of each of those nodes is free of the instance, but that is not uniformly
-the paper's theorem: for the quotation family the universal endpoints take the paper's own
-premises, whereas for `thm:halts`, `thm:loops` and `thm:dontwait` the theory-free
-endpoints take `Represented*Claims` interfaces — the *result* of the paper's
-representability step handed in as data — so they are useful generic theorems but not the
-printed theorem under the paper's `Θ represents computations` hypothesis. What is charged
-in every case is the closed, over-`LIA` form that the trust surface shows.
+The eleven arithmetic-theory nodes that used to sit beside them — `thm:ref`, `thm:lp`,
+`thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`,
+`thm:dontwait` — no longer are. They were qualified for a theory-hypothesis reason, and
+that reason is gone in both of its parts: **no canonical endpoint carries
+`[T.SoundOnHierarchy 𝚺 1]`** (0 of 105, the quotation lane having been the last holdout),
+and the residual `[𝗜𝚺₁ ⪯ Θ]` that then held them was deleted everywhere it was merely
+inherited — it survives on exactly three of the 105 endpoints, where the substrate's Gödel
+fixed point and rational-cut arithmetic are indexed at `𝗜𝚺₁`, and is disclosed there as
+representation infrastructure alongside `[T.Δ₁]`. What each shown endpoint asks for now is
+the paper's own standing assumption on Θ. `thm:lp` lands at `strengthened` rather than
+`exact`, because it *constructs* the paradoxical sequence the paper merely posits. The
+per-node residual disclosures, and the rulings behind them, are in the
+*Arithmetic-theory hypotheses* section of the classification ledger; the construction they
+describe is in *Instantiating the arithmetic-theory family* below.
 
 These numbers are recomputed from the classification ledger by
 `scripts/check_endpoint_coverage.py`, which fails the build if any figure here drifts from
@@ -308,130 +306,112 @@ emitter would silently disagree with the enumeration on every malformed index.
 
 ## Instantiating the arithmetic-theory family
 
-The theorems that quantify over an arithmetic theory come in two shapes now, and the
-difference is the paper's own standing hypothesis on Θ.
+The paper's §2 Notation fixes a single standing assumption on the background theory Θ, and
+this development's arithmetic-theory family is stated at it and nothing more. The path from
+that assumption to a property theorem has four steps, and each is a named object here.
 
-**The paper's premise, as a class.** `RepresentsComputations T`
-(`Framework/RepresentsComputations.lean`) is the Lean rendering of the paper's §2
-assumption that *Θ represents computations* (tex:600-606, imposed for §4.8–§4.12 at
-tex:993-997): for every total computable `f : ℕ → ℕ` there is a two-variable Θ-formula
+**1. The paper's premise, as a class.** tex:600-606 assumes that Θ *represents
+computations*: for every total computable `f : ℕ → ℕ` there is a two-variable Θ-formula
 `γ_f` with
 
-    y = f n  ↔  Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ).
+    y = f n  ↔  Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ),
 
-It is a condition on what Θ *derives*, with no reference to truth in ℕ; the paper notes at
-tex:604 that it already forces Θ consistent, and `RepresentsComputations.consistent` is
-that observation. It supplies both literals over one sentence — `represents_proves` and
-`represents_refutes` / `represents_refutes_all`, which need `[𝗥₀ ⪯ T]` for the numeral
-apparatus and no semantic hypothesis at all. It is non-vacuous:
+imposed for §4.8–§4.12 at tex:993-997. `RepresentsComputations T`
+(`Framework/RepresentsComputations.lean`) is that condition verbatim. It is a condition on
+what Θ *derives*, with no reference to truth in ℕ; the paper notes at tex:604 that it
+already forces Θ consistent, and `RepresentsComputations.consistent` is that observation.
+
+**2. Both literals, from one sentence.** `represents_proves` and
+`represents_refutes` / `represents_refutes_all` deliver the positive claim and its literal
+negation from that class alone — no semantic hypothesis, only the `[𝗥₀ ⪯ T]` numeral
+apparatus, which the premise itself supplies in substance. On the unbounded halting lane
+less is needed still: the positive literal is Σ₁-completeness alone (`re_complete_mp`).
+
+**3. A computable deductive process over Θ.** `paperTheoryDP T` enumerates Θ's theorems,
+and its stage worlds are non-vacuous from consistency (`paperTheoryDP_nonvacuous`). What
+each day-`n` claim is *about* is fixed by an argument written into the sentence — the
+machine's source number and its input, packed and spelled by the compact Horner term
+`binNumeral`, whose `O(log v)` symbol run is emitted digit by digit from the paper's own
+write-out certificates `DigitMachineCodes` and `BigDigits`, which is what makes those two
+hypotheses load-bearing on `def:ec`. What is *represented* is universal and fixed once per
+theorem: the r.e. `universalHaltingSchema` on the unbounded lane, and one `γ` per horizon
+program for the total `universalRunValue f` on the bounded lane — the paper's `⌜f⌝`. That
+the family genuinely separates its data is proved, not assumed:
+`haltingArgClaimSentence_ne_of_halts_ne` and `representedClaimSentence_ne_of_runValue_ne`
+show that data differing in halting behaviour receive different claim sentences. Any future
+represented claim family should carry the same witness.
+
+**4. The property theorem over `LIA`.** `lia_learns_halting_patterns_unconditional`
+(`thm:halts`), `lic_learns_provable_nonhalting_patterns_unconditional` (`thm:loops`),
+`lic_does_not_anticipate_halting_unconditional` (`thm:dontwait`),
+`lic_belief_finitistic_consistency_unconditional` (`thm:pac`) and
+`lic_belief_stronger_theory_consistency_unconditional` (`thm:pazfc`) are stated over
+`liaHistory (paperTheoryDP T)`. The bounded lane takes `[RepresentsComputations T]`; the
+unbounded lane takes only `[Entailment.Consistent T]`, needing no *represented* negative
+literal — `thm:loops`'s negative literal is its own `hloops` premise, which the paper
+(`app:loops`) also assumes outright. The quotation family (`thm:ref`, `thm:lp`, `thm:st`,
+`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) reaches its closed forms over
+`theoremDP T` under `[Entailment.Consistent T]` in the same way, its two quotation schemas
+being the value-`1` and value-`0` fibers of one Foundation `code` formula
+(`universalQuoteCode`, `Framework/QuoteRepresentability.lean`), so that
+`Θ ⊢ ∼(pos ⋏ neg)` is a theorem of Θ (`universalQuote_exclusive_prov`, from `code_uniq`
+plus Gödel completeness) rather than a fact about ℕ.
+
+**The premise is inhabited, and the instances are registered.**
 `representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
-proves it for any theory `U` with `[𝗣𝗔⁻ ⪯ U]` that is true in `ℕ`, and the instances are
-registered at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`. Not at `𝗥₀`: Foundation's `code_uniq` is stated for
-`𝗥₀` only inside a commented-out block, and `𝗥₀` has no trichotomy axiom, so the `rfind`
+proves the class for any theory `U` with `[𝗣𝗔⁻ ⪯ U]` that is true in `ℕ`, and instances are
+registered at **`𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`**. Not at `𝗥₀`: Foundation's `code_uniq` is stated
+for `𝗥₀` only inside a commented-out block, and `𝗥₀` has no trichotomy axiom, so the `rfind`
 case of single-valuedness is unavailable there — `𝗣𝗔⁻` is the weakest theory in
 Foundation's hierarchy for which the argument closes. Note the asymmetry, which is
 deliberate: **verifying** the premise for a particular theory uses that theory's truth in
 `ℕ` (through Gödel completeness and soundness), while **consuming** it never does. No
 endpoint carries a semantic hypothesis on `T`; the concrete instances pay for themselves.
+`AxiomAudit.lean` pins concrete instantiations at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔` so that a
+regression would fail the build, and they are axiom-clean: Foundation proves
+`Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` outright at the pinned revision
+(`InductionSchemeDelta1.lean`), so a concrete instance reports the same three axioms as
+everything else here.
 
-**Endpoints stated at that premise, with no soundness.** `thm:dontwait`
-(`lic_does_not_anticipate_halting_unconditional`), `thm:pac`
-(`lic_belief_finitistic_consistency_unconditional`) and `thm:pazfc`
-(`lic_belief_stronger_theory_consistency_unconditional`) are stated over
-`liaHistory (paperTheoryDP T)` under `[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [RepresentsComputations T]`.
-Their claim family (`Construction/Witnesses/ComputationRepresented.lean`) is named the
-paper's own way, `⌜f⌝(⌜n⌝)` for a *total* decider, so the positive literal and its literal
-negation come from one sentence and the stage world is consistent by `Entailment.Consistent
-Θ` alone (`paperTheoryDP_nonvacuous`), which representability already gives. The LUV
-threshold lane went the same way: `ArithmeticLUVPresentation` now carries
-`[RepresentsComputations T]` and takes `threshold_enters` / `threshold_refutes` over one
-schema and its negation, so `luvWorld` is the provability world and
-`ComputableLUV.luvWorld_consistent` runs on consistency.
+**The residuals, named once.** Beyond the paper's own premise three binders appear, and all
+three are representation infrastructure rather than theory strength:
 
-`thm:halts` (`lia_learns_halting_patterns_unconditional`) and `thm:loops`
-(`lic_learns_provable_nonhalting_patterns_unconditional`) are now in this list too, and ask
-for even less: they are stated over `liaHistory (paperTheoryDP T)` under
-`[T.Δ₁] [𝗜𝚺₁ ⪯ T] [𝗥₀ ⪯ T] [Entailment.Consistent T]`, taking `Entailment.Consistent`
-rather than `RepresentsComputations`, because this lane needs no *represented* negative
-literal — `thm:halts`'s positive literal is Σ₁-completeness alone (`re_complete_mp`) and
-`thm:loops`'s negative one is its own `hloops` premise, which the paper (`app:loops`) also
-assumes outright. Their day-`n` claim is the *fixed* universal r.e. schema
-`universalHaltingSchema` at the compact name of `⟨⌜mₙ⌝, xₙ⟩`, and `thm:loops`'s `hloops` is
-the literal negation of that same sentence, so both endpoints speak about a claim that names
-the machine.
+* `[𝗣𝗔⁻ ⪯ T]`, on **17** of the 105 canonical endpoints — a finite set of ordered-semiring
+  axioms, and the one item on this list that is a **genuine strengthening** rather than
+  infrastructure. It is *not* implied by "Θ represents computations": the paper's premise
+  yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄`, and Robinson's **R** represents
+  every computable function without containing `𝗣𝗔⁻`. Two steps spend it — the compact
+  `binNumeral` value transfer `def:ec` forces (`provable_subst_iff_of_val`), and
+  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at tag 7 and is the
+  price of not assuming Σ₁-soundness there. The paper's own exclusivity argument is
+  metatheoretic, through the representability biconditional, and needs no arithmetic inside
+  Θ; ours is object-level so the stage-world proof stays constructive. **Whether this is
+  charged globally or against each row is pending a ruling**, and no row's status turns on
+  it today. (`lic_disbelief_inconsistent_theories_unconditional` additionally carries a
+  redundant `[𝗥₀ ⪯ T]` beside it; cleanup queued. `RepresentsComputations` also quantifies
+  over `f : ℕ → ℕ` where the paper writes `ℕ⁺ → ℕ⁺` — an at-least-as-strong hypothesis.)
+* `[T.Δ₁]` — a `Δ₁`-definable *axiom set*, where the paper asks only that Θ be computably
+  enumerable. The two are not the same condition on `T` as presented: a c.e. axiom set need
+  not be `Δ₁`. They are the same condition on the *theory*: by Craig's trick every c.e.
+  theory has a deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization, and
+  every statement here is about `T ⊢ ·`, which such a re-axiomatization preserves. That step
+  is not formalized; `[T.Δ₁]` is charged once, here, and does not lower a row.
+* `[𝗜𝚺₁ ⪯ T]` — on **three** of the 105 canonical endpoints and no others.
+  `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`) builds its paradoxical
+  sequence through Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`;
+  `unitFracPaperLUVSeq` and `unitFracPaperLUVBoundedSequence` prove rational-cut arithmetic
+  inside `T`. Both are places where the substrate's apparatus is indexed at `𝗜𝚺₁`, so this
+  is charged with `[T.Δ₁]` and not against a row.
 
-So five paper-facing endpoints — `thm:halts`, `thm:loops`, `thm:dontwait`, `thm:pac`,
-`thm:pazfc` — plus the LUV threshold lane now carry no soundness instance at all.
-
-**The computational-knowledge endpoints name their machines.** `thm:halts`, `thm:loops`,
-`thm:dontwait`, `thm:pac` and `thm:pazfc` are stated over `paperTheoryDP`, the paper's own
-`Θ`-complete deductive process, with **no semantic hypothesis on `T`**. What each day-`n`
-claim is *about* is fixed by an argument written into the sentence — the machine's source
-number and its input, packed and spelled by the compact Horner term `binNumeral`, whose
-`O(log v)` symbol run is emitted digit by digit from the paper's own write-out certificates
-`DigitMachineCodes` and `BigDigits`, which is what makes those two hypotheses load-bearing
-on `def:ec`. What is *represented* is universal and fixed once per theorem: the r.e.
-`universalHaltingSchema` on the unbounded lane, and one `γ` per horizon program for the
-total `universalRunValue f` on the bounded lane — the paper's `⌜f⌝`.
-
-This replaces a rendering (through 2026-08-30, found by a blind audit that day, R5-F08/F09)
-that hid the machine sequence *inside* a `codeOfREPred` schema or inside the represented
-decider. Both constructions see their data only up to extensional equality, and each
-endpoint's own hypothesis pinned that extension to a constant — all halt, never halt,
-everywhere consistent — so the claim family was the same sentence family for every
-admissible machine sequence and the write-out hypotheses did no work. The standing test
-against that failure mode is now proved in-repo rather than assumed:
-`haltingArgClaimSentence_ne_of_halts_ne` and `representedClaimSentence_ne_of_runValue_ne`
-show that data differing in halting behaviour receive different claim sentences. Any future
-represented claim family should carry the same witness. **The LUV threshold lane was never
-affected** — `thresholdValue` is non-constant under that lane's hypotheses, and it was
-audited clean.
-
-**Where Σ₁-soundness remains, and why.** It remains at `theoremDP_hworld`'s **tag 7**, the
-quotation lane, and reaches every endpoint over `theoremDP T` through it — the quotation
-family (`thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`,
-`thm:ccee`), `thm:incons`, and the three `FeedbackTruth`
-`_unconditional` endpoints: twelve of the 105 canonical endpoints, counted from the
-elaborated signatures. The soundness direction used is `re_complete`'s `.mpr` — provable ⇒
-true — which keeps the positive and negative atom fibers of the constructed stage world
-mutually exclusive. The reason it cannot simply be replaced there is **architectural**, and
-it has two parts. `RepresentsComputations` supplies γ *existentially*, one per total
-computable function, with no computable map from a quote code to `⌜γ⌝`; the universal quote
-evaluation is partial, so γ has to be produced per decider rather than once for a universal
-schema. That in turn forces the atom naming a quote to be the paper-prime of the represented
-claim, carried by a schema-free process — and in this development the paper-prime atom layer
-(`PaperFirstOrder.lean`) and its emission (`ArithmeticSource.lean`) sit strictly *downstream*
-of `Construction/Witnesses/QuotationAffine.lean`. Closing it is therefore an import-layer
-reorganization, not a local edit. It is the next tranche of this work, and nothing here
-promises it.
-
-**The residual `[𝗜𝚺₁ ⪯ Θ]`, disclosed in the same breath.** The migrated endpoints still
-carry `[𝗜𝚺₁ ⪯ T]` where the paper assumes only that Θ is computably enumerable. It is
-needed for exactly one thing: provability of the claim family is shown r.e. through
-Foundation's *internal* arithmetization (`provable_instances_re`, over the `Bootstrapping`
-provability predicate at `V = ℕ`), and that apparatus is stated over `𝗜𝚺₁`. This is a real
-theory-strength hypothesis beyond the paper's, not a representation choice, so it is
-charged the way the soundness instance is: a row whose only shown endpoint carries it stays
-`qualified` on that single named residual. `thm:dontwait`, `thm:halts` and `thm:loops` are
-exactly those rows.
-
-**And `[T.Δ₁]`, one notch below.** Every endpoint over an arithmetic theory also asks for a
-`Δ₁`-definable *axiom set* (`Theory.Δ₁`), where the paper asks only that Θ be computably
-enumerable. The two are not the same condition on `T` as presented: a c.e. axiom set need not be
-`Δ₁`. They are the same condition on the *theory*: by Craig's trick every c.e. theory has a
-deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization, and every statement
-here is about `T ⊢ ·`, which such a re-axiomatization preserves. That step is not formalized;
-`[T.Δ₁]` is charged once here as representation infrastructure for enumerating `T`'s theorems,
-and does not by itself lower a row.
-
-The nodes this still demotes, and the endpoint-by-endpoint blast radius, are in the
-*Σ₁-soundness premise* section of
-[`scripts/coverage-classification.md`](../scripts/coverage-classification.md).
-
-They are also axiom-clean when *instantiated*. Foundation proves `Δ₁`-definability of `𝗜𝚺₁`
-and `𝗣𝗔` outright at the pinned revision (`InductionSchemeDelta1.lean`, whose header records
-that it discharges the two `axiom`s that previously stood in `Examples.lean`), so a concrete
-instance over `𝗜𝚺₁` reports the same three axioms as everything else here.
+**Σ₁-soundness is gone from the whole development.** No declaration in `LogicalInduction/`
+carries a `SoundOnHierarchy` instance binder, and **0 of the 105** canonical endpoints name
+one — the paper treats soundness as a *further* assumption it explicitly declines
+(tex:2673), and nothing here takes it. The only surviving occurrence of the name is
+`loopsTheory_soundOnSigma1`, a fact about one concrete theory used as a non-vacuity witness
+for `thm:loops`'s `hloops`. How the last consumption was retired is recorded in the
+*Arithmetic-theory hypotheses* section of
+[`scripts/coverage-classification.md`](../scripts/coverage-classification.md), together with
+the per-row accounting.
 
 ## The modeling boundary
 
