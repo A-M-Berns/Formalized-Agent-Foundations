@@ -28,11 +28,11 @@ lemma nodes:
 
 | | count | what it means |
 |---|---:|---|
-| **exact** | 42 | proved as the paper states it, on the paper's own hypotheses |
+| **exact** | 43 | proved as the paper states it, on the paper's own hypotheses |
 | **strengthened** | 7 | the Lean statement is stronger than the printed one |
 | **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
 | **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 1 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained |
+| **qualified** | 0 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained — **none remain** |
 
 The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
 not mixed into the table above.
@@ -49,8 +49,8 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 17 of
-them at exact or strengthened, 1 at qualified — so they hold of a specific algorithm rather
+Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 18 of
+them at exact or strengthened, 0 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
 
@@ -175,40 +175,58 @@ families whose Gödel codes grow exponentially while their emitted symbol count 
 polynomial. Their status is unchanged — the narrower class was already inside the paper's —
 and their rows record the widening.
 
-**The one remaining qualified node is `thm:incons`**, and it is qualified on **one** disclosed
-charge, which is not a theory-hypothesis one. `thm:incons` is stated for the **deduction family**
-`Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base theory, rather than for an arbitrary efficiently
-computable sequence of recursively axiomatizable theories: Foundation's derivability
-predicate takes its theory as a meta parameter, so there is no uniform-in-theory-code
-derivability to represent. The deduction theorem makes the day's theory nameable by the
-single written name `ArithSource.sourceNat sₙ` of the day's adjoined axiom, which the day's
-sentence writes out, so the claim genuinely names the day's theory; the restriction on
-*which* theory sequences are covered is the disclosed part, and its row says exactly what is
-and is not formalized. That charge is backed by a **verified obstruction**
-rather than by a queued repair: Foundation's fixpoint blueprint for `Derivation` cannot host
-satisfaction over coded formulas, so full uniformity in the theory code is a truth-predicate
-project, and a *middle* rendering — uniformity over a coded family of Δ₁ axiomatizations — is
-an optional upstream item, pending a ruling.
+**No node is `qualified` any more.** The last one was `thm:incons`, and tranche 10 moved it to
+`exact`. It is now stated for an arbitrary **machine-enumerated** recursively axiomatized theory
+sequence: `lic_disbelief_inconsistent_theories_unconditional` takes a machine family
+`m : ℕ → Nat.Partrec.Code`, `hm : DigitMachineCodes m` — `def:ec` on the *naming* of the
+sequence, which is what tex:1905's "efficiently named" and tex:1931's "write out the source code
+specifying `mₙ`" ask for, the runtime of an individual `mₙ` being immaterial — and the paper's own
+inconsistency premise `hinc : ∀ n, ¬Consistent (theoryOf (m n))`, stated at the day's *theory*
+itself. `Θ′ₙ = theoryOf (mₙ)` is freestanding: no base theory, no relation to the market's `Θ`, no
+`Δ₁` hypothesis of its own, and possibly **infinitely axiomatized**. Both conjuncts of the paper's
+display are concluded.
 
-The **second** charge this node used to carry is **retired**. Its `def:ec`
-premise was `hσ : BigDigits (deductionFamilyArg σ)`, metering the day's theory name by the
-base-4 digit count of a formula's *Gödel code*; it is now stated on the **written source** of
-the day's adjoined axiom (`hs : PolyArithmeticSourceSeq s`, with `hcompile` saying that
-writing denotes `σₙ`), one token per symbol the writer writes. The Gödel code is recovered
-inside the represented predicate by `negSourceFormulaCode`, which is computable and is all
-`codeOfREPred` consumes — the paper asks only for recursive enumerability there. The paper's
-own subject matter is exhibited — the in-file example runs at base theory `𝗜𝚺₁` with the
-one-token source `falsumSource`, so every day's theory `𝗜𝚺₁ ∪ {⊥}` is actually inconsistent —
-and beside it sits the payoff of the re-metering: `deepInconsistentSource n`, whose day-`n`
-axiom is `5n + 7` written tokens and `≥ 2^n` nodes once compiled, is `def:ec`-admissible on
-the nose, inconsistent on every day, fully applied at `thm_incons_applied_deep`, and distinct
-on *every* day, with `inconsistencyArgClaimSentence_deep_ne` separating the claim sentences of
-every pair of distinct days. No code-metered premise could admit that family. The two-valued
-`alternatingInconsistentAxiom` witness is strictly subsumed and has been deleted, and the
-signpost for a missing `BigDigits` combinator is withdrawn — the family it was blocking is
-admitted by the source route, with no code-digit theory needed.
+The **deduction-family charge that held this node is retired**, not restated in another form. The
+previous rendering priced `Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base, because Foundation's
+`Derivation T` takes `T` as a *meta* parameter and there is no uniform-in-theory-code derivability
+predicate to represent. That **verified obstruction still stands verbatim** — full uniformity in a
+theory code is a truth-predicate project, not a tranche — and the new rendering sidesteps it
+rather than contradicting it: it never forms an internal uniform derivability predicate at all. It
+quantifies over coded machines *externally*, at `V := ℕ`, and buys the uniformity from
+**compactness**. An inconsistency is always witnessed by finitely many axioms (Foundation's proof
+object carries its own axiom list), a finite list of *written* axioms splices into one written
+conjunction at token level (`combineSourceNats`), and refuting that conjunction is a question of
+pure logic — so the represented predicate,
+`MachineTheoryInconsistent z := ∃ w, ProvableCode ∅ (negWindowCode z w)`, runs over the **empty
+theory** and mentions no base theory anywhere.
 
-Its two §4.10 neighbours **have since left that list**. `thm:pac` and `thm:pazfc` are one
+Its `def:ec` premise moved with it. The Gödel-code-metered `hσ : BigDigits (deductionFamilyArg σ)`
+was retired in tranche 9-pre for `PolyArithmeticSourceSeq` on the written source of the day's
+adjoined axiom; in tranche 10 there is no adjoined axiom to meter, and the premise is
+`DigitMachineCodes m` on the **machine's** own written source — `binNumeral ((m n).sourceNat)`,
+the tag stream read base-16, whose base-4 digit count is linear in the source. Nothing about the
+day's axioms is metered: they are produced *inside* the machine, and the spliced window is parsed
+*inside* the represented predicate, where the paper asks only for recursive enumerability.
+Anti-extensionality came out unconditional as well — `inconsistencySchema_mentions_zero` needs no
+hypothesis now, where the deduction-family version needed `Consistent Θ₀`, because the machine
+that keeps writing `⊥` presents an inconsistent theory and the machine that never writes presents
+the empty one.
+
+Non-vacuity is discharged by the construction at two witnesses the old rendering could not state.
+`thm_incons_applied_deep` runs at `mₙ = dayMachine (comp deepSourceCode left) n`, whose day-`n`
+theory is the single axiom `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥` — `5n + 7` symbols as the paper writes it,
+`≥ 2^n` nodes in normal form, Gödel code doubly exponential in that, while the *machine's* source
+stays `O(n)` — so it exercises the metering gap, with
+`inconsistencyArgClaimSentence_deep_ne` separating the claim sentences of every pair of distinct
+days. `thm_incons_applied_infinite` runs at `mₙ = dayMachine deepSourceCode n`, which writes a
+different axiom on every input, so `theoryOf (mₙ)` is **infinite**
+(`infinite_theoryOf_infiniteDayMachine`) — genuinely recursively axiomatized rather than finitely
+axiomatized, which is what the paper's own examples `𝗣𝗔` (tex:1859) and `𝗭𝗙𝗖` (tex:1889) are, and
+which a deduction family adjoining one sentence can never be. Both are fully applied with nothing
+left to the caller. What reading a machine as a theory *does* require is a convention, and it is
+stated rather than left implicit: `dd:machinetheory`, under *The modeling boundary* below.
+
+Its two §4.10 neighbours left the `qualified` column earlier. `thm:pac` and `thm:pazfc` are one
 construction at two theories. Both endpoints price the arithmetized finite-consistency family
 of a theory `Θ′`, rendered as the value-`0` sentence of a `Θ`-formula representing `Θ′`'s
 bounded-provability decider (`Framework/BoundedConsistency.lean`, metered in **symbols** by
@@ -423,12 +441,15 @@ the paper's own `Entailment.Consistent Θ′` as its premise, represents `Θ′`
 decider **in `Θ`**, and is witnessed at `Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔` with horizon `fun n => ack n n` —
 an inductor over a theory that cannot prove `Con(𝗣𝗔)` coming to believe every finite
 consistency statement about it. `lic_disbelief_inconsistent_theories_unconditional`
-(`thm:incons`) prices the paper's inconsistent-theory family, at the **deduction family**
-`Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base: the day's sentence is the universal provability schema
-of `Θ₀`, read at written names, at the compact numeral `binNumeral (sₙ.sourceNat)`, the premise
-`∀ n, ¬Consistent (σ n ∷ Θ₀)` is the paper's own, its `def:ec` premise is stated on the written
-source of the day's adjoined axiom, and the one disclosed part is the restriction to deduction
-families (see *The one remaining qualified node* above).
+(`thm:incons`) prices the paper's inconsistent-theory family at the paper's own generality: an
+arbitrary **machine-enumerated** recursively axiomatized sequence `Θ′ₙ = theoryOf (mₙ)`, with no
+base theory, no `Δ₁` hypothesis of its own, and possibly infinitely axiomatized. The day's
+sentence is one universal schema, `codeOfREPred MachineTheoryInconsistent`, whose represented
+predicate refutes a spliced finite window of the day's written axioms over the **empty** theory,
+at the compact numeral `binNumeral ((m n).sourceNat)`; the premise
+`∀ n, ¬Consistent (theoryOf (m n))` is the paper's own, and its `def:ec` premise is
+`DigitMachineCodes m`, on the machine's own written source. Nothing is disclosed against it
+beyond the presentation convention `dd:machinetheory` (see *The modeling boundary* below).
 
 **The premise is inhabited, and the instances are registered.**
 `representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
@@ -717,6 +738,40 @@ the per-row accounting.
    appears anywhere in the development. `thm:pac` and `thm:pazfc` are `exact` with nothing
    charged against them. Nothing is metered at `thm:incons`, whose sentence is the *unbounded*
    existential over proofs, so no convention arises there.
+
+5. **Convention, not substitution — presenting a theory by a machine (`dd:machinetheory`).** The
+   paper says only that `thm:incons`'s day-`n` theory is recursively axiomatizable and
+   efficiently named; reading a machine *as* a theory requires fixing a convention, and ours is
+   stated rather than left implicit. `theoryOf m`
+   (`Construction/Witnesses/ComputationRepresented.lean`) reads the machine's outputs as
+   `ArithSource.sourceNat` names of axiom *sources*: an output contributes the sentence its
+   named source writes, and **anything else contributes nothing**; and the budget-`b` window at
+   inputs `is` is `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, so a
+   diverging *or inadmissible* output contributes the inert `⊤`. **Admission is decided, not
+   assumed.** `AdmissibleName` (`Construction/Witnesses/SourceWindow.lean`) admits a number only
+   if it is literally the name of its own decoded run *and* that run is the complete emitted run
+   of one `ArithSource 0` whose compiled form is a sentence — the second test run by the
+   recognizer `sourceRun` (`Construction/Witnesses/SourceRecognizer.lean`), which, unlike the
+   numeric formula parser, tracks binder depth and rejects the free-variable tag. **The gate is
+   load-bearing, not hygiene.** Ungated, the splice is unsound in three independent ways: a
+   number that is no name decodes like a shorter one (`tokensOfNat` stops at the first
+   sentinel), two *incomplete* runs concatenate into one complete run, and a genuine source may
+   compile to a formula with free variables, which `∅` refutes without its being a sentence of
+   any theory — each of which lets a machine presenting the **empty** theory satisfy the
+   represented predicate. Gated, `machineTheoryInconsistent_iff` proves
+   `MachineTheoryInconsistent m.sourceNat ↔ ¬Entailment.Consistent (theoryOf m)`, so the day-`n`
+   sentence says exactly what the convention claims, in both directions. **How far the
+   convention reaches.** What is *proved* is the per-sentence half: `theoryOf_const_ofNNF` gives
+   `theoryOf (Code.const ⌜written σ⌝) = {σ}`, so every one-axiom theory is presented exactly,
+   `ArithSource.ofNNF` writing every sentence, and the paper never defines
+   "recursively axiomatizable" beyond the phrase. What is **not formalized** is the *uniform*
+   half of surjectivity — that for every r.e. set of sentences there is a *single* machine
+   enumerating their names — which would need `encodeArithmeticFormulaSymbols` certified
+   primitive recursive at the level of Foundation formula codes. The endpoint does not consume
+   it: `hinc` is stated at `theoryOf (m n)` for the machine the caller supplies. The convention
+   is disclosed because a different one would give a coextensive class of theories but a
+   different represented predicate, hence a different schema. The glossary entry is in
+   `LogicalInduction.lean`.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected

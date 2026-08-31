@@ -16,15 +16,18 @@ grammar of `Framework/Criterion.lean`, giving
   `negSourceFormulaCode_computable`.
 
 The negation is taken on the compiled Foundation formula, not on the source — the source
-language's `not` constructor is never used here — so that the deduction bridge
-`provableCode_neg_iff_not_consistent_adjoin` applies at the compiled formula unchanged.
+language's `not` constructor is never used here — so that the refutation the `thm:incons`
+checker needs (`provable_neg_listConj_of_not_consistent`, `Framework/BoundedConsistency.lean`)
+applies at the compiled formula unchanged.
 
 **Why this exists.**  A predicate of *source names* that is r.e. can be represented in
-arithmetic by `codeOfREPred`, and the resulting schema can then be instantiated at the
-short numeral naming the day's written axiom.  That is the route by which `thm:incons`
-meters its `def:ec` premise on the written source rather than on a Godel code; without
-`negSourceFormulaCode_computable` the schema would have to take the code itself as its
-argument, and the code's digit count is exponential in the parse depth.
+arithmetic by `codeOfREPred`.  `thm:incons` uses this to check a day-theory's finite axiom
+window without ever handling a Godel code on the emission side: the machine emits the
+*writings* of its axioms, those writings splice into one writing
+(`Construction/Witnesses/SourceWindow.lean`), and the code of the formula that writing
+denotes is recovered here, inside the represented predicate, where the paper asks only for
+recursive enumerability and the code's size is free.  Handing a code to the schema instead
+would be fatal: a formula code's digit count is exponential in the parse depth.
 
 Nothing here is efficient and nothing here needs to be: the decoder runs *inside* the
 represented predicate, where the paper asks only for recursive enumerability.  The
@@ -126,8 +129,15 @@ lemma tokensOfNat_primrec : Primrec tokensOfNat := by
 `v` is read as a token run, the run is parsed by the structured arithmetic grammar — which
 performs all normal-form expansion of `¬`, `⟹` and `⟺` off the written stream — and the
 resulting formula code is negated by `negFormulaCode`.  A name that is not a complete
-well-formed run gets the code `0`, which is not the code of any formula (Foundation's
-`Semiformula.toNat` is always a successor), so junk names are never provable. -/
+well-formed run gets the code `0`, which is provable in no theory — internal derivations
+carry the well-formedness of their sequents and internal formulas are positive numbers, so
+`not_provableCode_zero` (`Framework/BoundedConsistency.lean`) rules it out.
+
+That fallback is a totality convention, not a soundness guarantee, and **nothing in
+`thm:incons` relies on it**: the day-window gate (`AdmissibleName`,
+`Construction/Witnesses/SourceWindow.lean`) admits only runs that
+`SourceRecognizer.sourceRun` certifies to be the emitted run of a genuine sentence-valued
+`ArithSource`, so the spliced run reaching this decoder always parses completely. -/
 def negSourceFormulaCode (v : ℕ) : ℕ :=
   match parseStructuredArithmeticFormula (tokensOfNat v).length 0 (tokensOfNat v) with
   | some (c, []) => negFormulaCode c

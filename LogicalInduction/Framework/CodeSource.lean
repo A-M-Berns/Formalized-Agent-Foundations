@@ -321,6 +321,67 @@ lemma tokenListNat_injective {ts us : List ℕ} (hts : ∀ t ∈ ts, t < 63)
     List.getD_eq_getElem _ _ h₁, List.getD_eq_getElem _ _ h₂] at hi
   exact hi
 
+/-- **The naming map is primitive recursive.**  Mathlib has no `Primrec` fact about
+`Nat.ofDigits` (verified absent), so this goes through the `foldr` form directly, in the
+shape `Primrec.list_foldr` accepts.  Consumed by `combineSourceNats_primrec`, which names
+a spliced day-window run. -/
+lemma tokenListNat_primrec : Primrec tokenListNat := by
+  have hfold : ∀ l : List ℕ,
+      Nat.ofDigits 64 l = l.foldr (fun d r => d + 64 * r) 0 := by
+    intro l
+    induction l with
+    | nil => rfl
+    | cons d l ih => rw [Nat.ofDigits_cons, ih]; rfl
+  have hlist : Primrec fun ts : List ℕ => ts ++ [63] :=
+    Primrec.list_append.comp Primrec.id (Primrec.const [63])
+  have hstep : Primrec₂ fun (_ : List ℕ) (p : ℕ × ℕ) => p.1 + 64 * p.2 :=
+    show Primrec fun x : List ℕ × (ℕ × ℕ) => x.2.1 + 64 * x.2.2 from
+      Primrec.nat_add.comp (Primrec.fst.comp Primrec.snd)
+        (Primrec.nat_mul.comp (Primrec.const 64) (Primrec.snd.comp Primrec.snd))
+  exact (Primrec.list_foldr hlist (Primrec.const 0) hstep).of_eq fun ts => by
+    rw [tokenListNat, hfold]
+
+
+/-- **The base-16 twin of `BigDigits.ofTokenListNat`**: a segment stream whose tokens are
+all below `16` names a numeral with poly-fueled base-4 digit access.
+
+Unlike the base-64 token-run map there is no sentinel here — `Code.sourceTags` never emits
+the tag `0`, so the leading digit of a source numeral is already nonzero and nothing is
+lost to truncation.  All this lemma does is clamp the stream's emitter to `0` outside the
+emitted range (via `ifzSel` on `lenFn n - i`) and hand the result to
+`BigDigits.ofBase16Digits`.
+
+Kind C (composition).  Provenance: (a) derived in-project from `BigDigits.ofBase16Digits`
+and the `PolySegStream` interface, following `BigDigits.ofTokenListNat` verbatim modulo
+the base and the missing sentinel. -/
+lemma BigDigits.ofBase16PolySegStream {L : ℕ → List ℕ} (h : PolySegStream L)
+    (hlt : ∀ n, ∀ d ∈ L n, d < 16) : BigDigits (fun n => Nat.ofDigits 16 (L n)) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
+  have hlenL : PolyFueled _ (fun n => (L n).length) :=
+    hlen.of_eq (fun n => (hslen n).symm)
+  have hlenN : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1) := hlen.comp PolyFueled.left
+  have ha : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1 - z.unpair.2) :=
+    (subc_polyFueled.comp (hlenN.pair PolyFueled.right)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hdig : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD z.unpair.2 0) :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair htok).pair ha)).of_eq (fun z => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      have hlz : (L z.unpair.1).length = lenFn z.unpair.1 := hslen _
+      rcases lt_or_ge z.unpair.2 (lenFn z.unpair.1) with hj | hj
+      · rw [if_neg (by omega)]
+        have hg := hget z.unpair.1 z.unpair.2 hj
+        rwa [Nat.pair_unpair] at hg
+      · rw [if_pos (by omega)]
+        exact (List.getD_eq_default _ _ (by omega)).symm)
+  have hbound : ∀ n j, (L n).getD j 0 < 16 := by
+    intro n j
+    rcases lt_or_ge j (L n).length with hj | hj
+    · rw [List.getD_eq_getElem _ _ hj]
+      exact hlt n _ ((L n).getElem_mem hj)
+    · rw [List.getD_eq_default _ _ hj]
+      norm_num
+  exact BigDigits.ofBase16Digits hlenL hdig hbound
+
 /-- **The delivery interface**: an efficiently emitted token run is efficiently *named*.
 This is the write-out bridge the paper's `def:ec` needs for objects presented by source
 text rather than by Godel code. -/
@@ -855,6 +916,8 @@ end Nat.Partrec.Code
 #print axioms LogicalInduction.ofDigits_div_pow_mod
 #print axioms LogicalInduction.dig4_ofDigits_sixteen
 #print axioms LogicalInduction.BigDigits.ofBase16Digits
+#print axioms LogicalInduction.BigDigits.ofBase16PolySegStream
+#print axioms LogicalInduction.tokenListNat_primrec
 #print axioms Nat.Partrec.Code.sourceTags
 #print axioms Nat.Partrec.Code.size
 #print axioms Nat.Partrec.Code.sourceTags_ne_nil

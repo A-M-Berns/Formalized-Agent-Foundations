@@ -111,6 +111,34 @@ list is exhaustive; a label appearing nowhere below is not in use.
   hypotheses are quantitative in the measure. *(This entry replaces the retired
   `dd:proofcode`, which disclosed the Gödel-number measure that used to stand in for the
   paper's symbol count.)*
+* **`dd:machinetheory`** — a day's theory in `thm:incons` is presented by a **machine that
+  enumerates the written sources of its axioms** (`theoryOf`,
+  `Construction/Witnesses/ComputationRepresented.lean`), and reading a machine as a theory
+  requires fixing a convention. Ours: **an output contributes the sentence a written source
+  names, and anything else contributes nothing.** Concretely, an output `v` is admitted only
+  if it is literally the name of its own decoded token run *and* that run is the complete
+  emitted run of one `ArithSource 0` whose compiled form is a sentence (`AdmissibleName`,
+  `Construction/Witnesses/SourceWindow.lean`, deciding source-hood with the depth-tracking,
+  free-variable-rejecting recognizer `sourceRun`,
+  `Construction/Witnesses/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
+  `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, a diverging or
+  inadmissible output contributing the inert `⊤`. The gate is not hygiene: without it the
+  token splice is unsound, and `MachineTheoryInconsistent` holds of machines presenting the
+  *empty* theory (R11). With it, `machineTheoryInconsistent_iff` proves the represented
+  predicate **equivalent** to the convention's claim — the day-`n` sentence says exactly
+  "`theoryOf (mₙ)` is inconsistent", in both directions.
+  This is a **convention, not a modelling substitution** — the same status `dd:symbolcount`
+  has — and the paper never defines "recursively axiomatizable" beyond the phrase (tex:940,
+  1855, 1882, 1894). What is proved of its reach: every one-axiom theory is presented
+  exactly (`theoryOf_const_ofNNF`), `ArithSource.ofNNF` writing every sentence. What is *not*
+  formalized: the uniform half — that every r.e. set of sentences is `theoryOf m` for a
+  single `m` — which would need `encodeArithmeticFormulaSymbols` certified primitive
+  recursive, and which the endpoint does not consume (`hinc` is stated at the caller's own
+  machine). Any other convention gives a coextensive class of theories but a different
+  represented predicate, hence a different schema — which is why it is stated here rather
+  than left implicit. Note what the convention does *not* do: it fixes no base theory, bounds
+  no number of axioms, and asks no computability of the day's theory beyond the machine that
+  presents it.
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable

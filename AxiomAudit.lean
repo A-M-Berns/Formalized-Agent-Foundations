@@ -1068,41 +1068,154 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- its argument represents it correctly — bounds the claim to constant deciders only.  Every
 -- unbounded horizon, the paper's own `Ack` included, is on the other side.
 --
--- The **§4.10 `thm:incons` lane** likewise: `inconsistencySchema`,
--- `provableCode_negSource_re`, `inconsistencySchema_spec`,
--- `negSourceFormulaCode_sourceNat_of_sentence`,
+-- The **§4.10 `thm:incons` lane** likewise.  As of tranche 10 that lane is stated at the
+-- paper's own subject matter — an arbitrary e.c. sequence of **recursively axiomatizable**
+-- theories — and the deduction-family paraphrase is **retired**, not paraphrased differently.
+-- `theoryOf m` is the theory whose axioms are the sentences whose written sources the machine
+-- `m` enumerates; the endpoint's premises are the paper's own two and no others,
+-- `hm : DigitMachineCodes m` (`def:ec` on the *naming*, the same write-out class `thm:halts`
+-- uses for machines) and `hinc : ∀ n, ¬Consistent (theoryOf (m n))`.  Gone from the signature:
+-- the base theory `T'`, its `[T'.Δ₁]` instance, the adjoined-axiom sequence `σ`, its source
+-- `s`, the emission premise `hs` and the compilation bridge `hcompile`.
+--
+-- The uniformity is bought by **compactness**, not by an internal uniform-in-theory
+-- derivability predicate — which Foundation cannot host, and that obstruction (9b) still
+-- stands verbatim; this design sidesteps it rather than contradicting it.  Inconsistency is
+-- always witnessed by finitely many axioms (`exists_inconsistent_list`, from the axiom list
+-- Foundation's own proof object carries), a finite list of written axioms splices into one
+-- written conjunction (`combineTokens`/`combineSourceNats`,
+-- `Construction/Witnesses/SourceWindow.lean`), and refuting that conjunction is a question of
+-- pure logic — so the represented predicate `MachineTheoryInconsistent` runs over the **empty
+-- theory** (`Theory.Δ₁.empty`) and mentions no base theory at all.  It is r.e. because its
+-- matrix is decidable (`proofPacked_computable ∅`), by `Partrec.rfind`/`Partrec.dom_re`;
+-- Mathlib has no r.e.-projection lemma and none is used.
+--
+-- The supporting layer, none of it annotated.  **Two coverage classes, distinguished** — the
+-- note here used to claim all of it was "covered transitively by the endpoint", which was
+-- false by construction for half of it (R11-B1/B2):
+--
+--  (i) declarations the endpoint's own proof term *uses* really are covered transitively by
+--      `lic_disbelief_inconsistent_theories_unconditional` below;
+-- (ii) the day-machine write-out layer and the two applied witnesses are **not**: the
+--      endpoint is universally quantified over `m`, so its proof term names no machine
+--      family and no transitive check can reach a downstream application.  They are covered
+--      instead by asserting the two applied witnesses directly — their *statements* name
+--      `deepDayMachine` / `infiniteDayMachine` / `digitMachineCodes_dayMachine`, so the whole
+--      `DayMachine.lean` layer is genuinely transitive through them — in the dedicated
+--      `#assert_axioms_clean` block below.  The precedent is
+--      `#assert_axioms_clean loopsTheory thm_loops_applied_at_loopsTheory` on the `thm:loops`
+--      lane.  The same block asserts `machineTheoryInconsistent_iff`, the R11 faithfulness
+--      bridge, which likewise no endpoint's proof term reaches.
+--
+-- Everything in both classes is additionally axiom-checked by the `#print axioms` blocks at
+-- the feet of `ComputationRepresented.lean`, `SourceWindow.lean`, `SourceRecognizer.lean` and
+-- `DayMachine.lean`.
+--
+-- Covered transitively by the endpoint:
+-- `theoryOf`, `mem_theoryOf`, `not_consistent_of_refutable_mem`, `exists_window`,
+-- `negSourceFormulaCode_sourceNat_of_sentence`, `negWindowCode_eq_quote`,
+-- `MachineTheoryInconsistent`, `machineTheoryInconsistent_re`, `inconsistencySchema`,
+-- `inconsistencySchema_spec`, `machineTheoryInconsistent_of_not_consistent`,
+-- `not_machineTheoryInconsistent_of_diverges`, `evaln_neverHaltMachine`, `falsumSource` and
+-- its two lemmas, `not_consistent_theoryOf_falsumMachine`,
 -- `inconsistencySchema_not_argument_insensitive`, `inconsistencySchema_mentions_zero`,
--- `deductionFamilyArg`, `inconsistencyArgClaimSentence`, `inconsistencyArgClaimInstance`,
--- `inconsistencyArgClaimSentence_ne_of_arg_ne`, `representedInconsistentTheoryClaims`, and
--- the witnesses (`falsumSource` and its two lemmas; `deepInconsistentSource`,
--- `deepInconsistentAxiom`, `compile_deepInconsistentSource`,
+-- `machineArg`, `inconsistencyArgClaimSentence`, `inconsistencyArgClaimInstance`,
+-- `inconsistencyArgClaimSentence_ne_of_arg_ne`, `representedInconsistentTheoryClaims`; the
+-- shared substrate `listConj`, `consistent_empty`, `exists_inconsistent_list`,
+-- `provable_neg_listConj_of_not_consistent`, `provable_listConj`, `not_provableCode_zero`
+-- (`Framework/BoundedConsistency.lean`), the gated token splice
+-- (`Construction/Witnesses/SourceWindow.lean`) and the source recognizer it gates on
+-- (`Construction/Witnesses/SourceRecognizer.lean`).
+--
+-- **Downstream of the endpoint, hence covered through the block asserted below rather than
+-- through the endpoint** — the R11 converse chain
+-- (`exists_source_of_sourceRun`, `exists_source_of_admissibleName`, `exists_source_gateName`,
+-- `exists_sources_axiomWindow`, `not_consistent_theoryOf_of_machineTheoryInconsistent`, all
+-- reached by `machineTheoryInconsistent_iff`, and
+-- `ArithSource.compile_eq_of_sourceTokens_eq`, reached by both it and
+-- `theoryOf_const_ofNNF`); and the
+-- day-machine write-out layer (`Construction/Witnesses/DayMachine.lean`, whose
+-- `BigDigits.ofBase16PolySegStream` is re-homed to `Framework/CodeSource.lean` beside its
+-- base-64 twin) and the two applied witnesses
+-- (`deepInconsistentSource`, `deepInconsistentAxiom`, `compile_deepInconsistentSource`,
 -- `deepInconsistentSource_polyArithmeticSourceSeq`,
--- `sourceTokens_deepInconsistentSource_length`, `deepInconsistentSource_sourceNat_ne`,
--- `deepInconsistentAxiom_inconsistent`, `thm_incons_applied_deep`,
--- `inconsistencyArgClaimSentence_deep_ne`) — none annotated, all covered transitively by
--- `lic_disbelief_inconsistent_theories_unconditional` below, which is added to this block in
--- the same change (it was previously audited only in the capstone roll-up).
+-- `sourceTokens_deepInconsistentSource_length`, `primrec_deepInconsistentSourceNat`,
+-- `deepSourceCode`, `deepSourceCode_eval`, `provable_neg_deepInconsistentAxiom`,
+-- `deepDayMachine`, `deepDayMachine_eval`, `deepInconsistentAxiom_mem_theoryOf`,
+-- `not_consistent_theoryOf_deepDayMachine`, `thm_incons_applied_deep`,
+-- `inconsistencyArgClaimSentence_deep_ne`, `infiniteDayMachine`, `infiniteDayMachine_eval`,
+-- `deepInconsistentAxiom_mem_theoryOf_infinite`, `deepInconsistentAxiom_injective`,
+-- `infinite_theoryOf_infiniteDayMachine`, `not_consistent_theoryOf_infiniteDayMachine`,
+-- `thm_incons_applied_infinite`).
 --
--- **One charge now stands on that row**, stated at the declarations: the deduction-family
--- paraphrase `Θ′ₙ = Θ₀ ∪ {σₙ}`.  The second charge — the over-strength `def:ec` premise
--- `hσ : BigDigits (deductionFamilyArg σ)`, which metered a formula's **Gödel code** — is
--- **retired** (tranche 9-pre): the premise is now `hs : PolyArithmeticSourceSeq s` on the
--- day's *written source*, the paper's own meter, with the code recovered inside the
--- represented predicate by `negSourceFormulaCode` where only recursive enumerability is
--- asked.  See the WRITE-OUT FIELD MIGRATION block below for the full accounting.
+-- **No charge stands on that row.**  Both former charges are retired: the over-strength
+-- `def:ec` premise `hσ : BigDigits (deductionFamilyArg σ)`, which metered a formula's Gödel
+-- code (tranche 9-pre — see the WRITE-OUT FIELD MIGRATION block below), and now the
+-- deduction-family paraphrase itself.  What remains is the global `[T.Δ₁]` / `[𝗣𝗔⁻ ⪯ T]`
+-- disclosure on the **market's** theory, which is charged once globally and not against this
+-- node, plus the stated presentation convention `dd:machinetheory` (what it means for a
+-- machine to present a theory), which is a convention rather than a substitution — as
+-- `dd:symbolcount` is — and is disclosed at the section header and in the glossary.
 --
--- Retired with it: `alternatingInconsistentAxiom`, `alternatingInconsistentAxiom_digits`,
--- `alternatingInconsistentAxiom_inconsistent`, `thm_incons_applied_alternating` and
--- `deductionFamilyArg_ne_of_ne` (R7).  Those existed only because the code-metered class
--- could not admit an unboundedly day-varying family, so the best available witness took two
--- values and separation was exercised at two days.  `thm_incons_applied_deep` takes a
--- different value on **every** day — `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥`, `5n + 7` symbols written,
--- `≥ 2 ^ n` nodes compiled — and `inconsistencyArgClaimSentence_deep_ne` separates every
--- pair of distinct days, so the two-valued witness is strictly subsumed and is not kept.
--- `deductionFamilyArg_ne_of_ne` (sentence inequality → code inequality, by quote
--- injectivity) is replaced by `ArithSource.sourceNat_ne_of_sourceTokens_ne`, which needs no
--- quotation argument at all: distinct *writings* have distinct names by injectivity of the
--- base-64 naming map.
+-- **R11 window repair (the sentence now matches the convention exactly).**  The audit found
+-- the ungated window *unsound* against `dd:machinetheory`, in three independent ways:
+-- `tokensOfNat` stops at the first sentinel, so numbers that are no name at all decode like
+-- shorter names; the token splice is list surgery, so two *incomplete* runs concatenate into
+-- one complete refutable run; and a genuine source may compile to a formula with free
+-- variables, which pure logic can refute without it being a sentence of any theory.  Each
+-- made `MachineTheoryInconsistent` hold of machines whose `theoryOf` is *empty*.  The repair
+-- is a per-entry gate (`AdmissibleName`, `gateName`,
+-- `Construction/Witnesses/SourceWindow.lean`): a number is admitted only if it is literally
+-- the name of its own decoded run and that run is the complete emitted run of one
+-- `ArithSource 0` whose compiled form is a sentence, certified by the new depth-tracking,
+-- free-variable-rejecting recognizer `sourceRun`
+-- (`Construction/Witnesses/SourceRecognizer.lean`, with `exists_source_of_sourceRun` its
+-- soundness and `sourceRun_sourceTokens` its completeness).  **The endpoint's signature is
+-- unchanged** and no premise moved; what changed is that the day-`n` sentence's content now
+-- *equals* the convention's claim rather than being implied by it —
+-- `machineTheoryInconsistent_iff` proves both directions, where before only
+-- `machineTheoryInconsistent_of_not_consistent` held and its converse was false.  The
+-- surjectivity justification is likewise scoped to what is proved: `theoryOf_const_ofNNF`
+-- realizes every one-axiom theory exactly; the *uniform* enumeration half is stated as not
+-- formalized, and is not consumed by the endpoint.
+--
+-- The anti-extensionality lemma **got stronger in the same change**:
+-- `inconsistencySchema_mentions_zero` now has **no hypothesis at all**, where the
+-- deduction-family version required `Entailment.Consistent Θ₀` (over an inconsistent base the
+-- old provability predicate was extensionally constant and the schema could ignore its
+-- argument).  The new represented predicate is non-constant outright — the machine that keeps
+-- writing `⊥` presents an inconsistent theory, the machine that never writes presents the
+-- empty one — so `inconsistencyArgClaimSentence_ne_of_arg_ne` is unconditional too.
+--
+-- Retired with the paraphrase, in collapsed form (no ₙ-suffixed layer, no parallel lane):
+-- `deductionFamilyArg`, `falsumSource_polyArithmeticSourceSeq`, `provableCode_negSource_re`,
+-- `deepInconsistentSource_sourceNat_ne`, `deepInconsistentAxiom_inconsistent`, and the
+-- one-line `⊥`-adjunction `example`.  `provableCode_neg_iff_not_consistent_adjoin`
+-- (`Framework/BoundedConsistency.lean`) loses its consumer on this lane and is kept only as
+-- the deduction-theorem bridge it was; `deepInconsistentSource_sourceNat_ne` is replaced by
+-- `dayMachine_sourceNat_ne`, which separates days by the *machine's* source rather than the
+-- axiom's, because that is what the day-`n` sentence now writes out.  Earlier retirements on
+-- this lane, recorded here for continuity: `alternatingInconsistentAxiom` and its family, and
+-- `deductionFamilyArg_ne_of_ne` (R7).
+--
+-- What the new rendering buys that the old could not state: `thm_incons_applied_infinite`
+-- exhibits day-theories with **infinitely many** axioms (`infinite_theoryOf_infiniteDayMachine`
+-- — a deduction family adjoins one sentence and can never do this), each axiom having
+-- `≥ 2 ^ k` nodes in normal form, all named by machine sources of `O(n)` symbols.
+-- `thm_incons_applied_deep` keeps the finite analogue of the retired witness and is the one
+-- that exercises the metering gap: the day machine's source is short, its single axiom is
+-- `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥`, and nothing about that axiom is metered because the paper
+-- meters only the naming (tex:1931: "the runtime of an individual `mₙ` is immaterial").
+--
+-- Asserted here because the endpoint below cannot reach any of them: it is universally
+-- quantified over `m`, so its proof term names no machine family and no transitive check
+-- touches a downstream application, and `machineTheoryInconsistent_iff`'s new half is
+-- consumed by nothing the endpoint proves.  The two witnesses carry the whole
+-- `DayMachine.lean` layer with them, by naming it in their statements.
+#assert_axioms_clean
+  machineTheoryInconsistent_iff theoryOf_const_ofNNF
+  thm_incons_applied_deep thm_incons_applied_infinite
+
 #assert_axioms_clean
   DigitMachineCodes.computable ComputableHorizon.computable
   lic_does_not_anticipate_halting_ofComputation

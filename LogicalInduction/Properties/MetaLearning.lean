@@ -121,7 +121,8 @@ without dissolving the bundle's index — and it should not be: what makes `thm:
 theorem about *theories* rather than about an arbitrary emitted sentence family lives
 entirely in the witnesses (`representedInconsistentTheoryClaims` and the applied endpoints
 in `Construction/Witnesses/ComputationRepresented.lean`), where `inconsistent n` is
-instantiated at `¬Entailment.Consistent (σ n ∷ Θ₀)` and discharged.
+instantiated at `¬Entailment.Consistent (theoryOf (m n))` — the freestanding day-theory
+enumerated by the day's machine, with no base theory anywhere — and discharged.
 Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]

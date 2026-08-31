@@ -324,22 +324,132 @@ lemma not_consistent_adjoin_iff (σ : ArithmeticSentence) :
   rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot,
     Entailment.deduction_iff, ← LO.Entailment.N!_iff_CO!]
 
-/-- **The inconsistency of the day-`n` theory, read off one sentence code.**  Combining the
-two bridges: `Θ₀ ∪ {σ}` is inconsistent exactly when `⌜∼σ⌝` is internally `Θ₀`-provable. -/
-lemma provableCode_neg_iff_not_consistent_adjoin (σ : ArithmeticSentence) :
-    ProvableCode T ⌜∼σ⌝ ↔ ¬Entailment.Consistent (σ ∷ T) := by
-  rw [provableCode_quote_iff, not_consistent_adjoin_iff]
-
 /-- `⊤` is provable in every theory, so the provability predicate is not constantly false. -/
 lemma provableCode_quote_verum : ProvableCode T ⌜(⊤ : ArithmeticSentence)⌝ := by
   simp
 
-/-- `⊥` is not provable in a consistent theory, so the provability predicate is not
-constantly true.  With the previous lemma this is what makes the `thm:incons` schema
-genuinely argument-sensitive. -/
-lemma not_provableCode_quote_falsum (hcon : Entailment.Consistent T) :
-    ¬ ProvableCode T ⌜(⊥ : ArithmeticSentence)⌝ := by
-  simpa using Entailment.Consistent.not_bot hcon
+/-- **The code `0` is provable in no theory.**  Internal derivations carry the
+well-formedness of their own sequents (`Bootstrapping.Derivation.isFormulaSet`), and an
+internal formula is a *positive* number (`IsSemiformula.pos`), so the number `0` — the value
+every partial decoder in this development returns on input it cannot read — is never a
+provable code.
+
+Kind `C` (composition).  Provenance: (b) Foundation citations —
+`Bootstrapping.Derivation.isFormulaSet`, `Bootstrapping.IsFormulaSet.singleton`,
+`Bootstrapping.IsSemiformula.pos`. -/
+lemma not_provableCode_zero : ¬ ProvableCode T 0 := by
+  rintro ⟨d, hfst, hd⟩
+  have hset : Bootstrapping.IsFormulaSet ℒₒᵣ (fstIdx d) := hd.isFormulaSet
+  rw [hfst] at hset
+  exact absurd (Bootstrapping.IsFormulaSet.singleton.mp hset).pos (_root_.lt_irrefl 0)
+
+/-! ## Finite axiom windows, and the sentence that names one
+
+The paper's `Θ′` is an arbitrary recursively axiomatized theory (tex:1894), so nothing
+bounds the *number* of its axioms.  What bounds the work is that inconsistency is always
+witnessed by **finitely many** of them: Foundation's `Theory.Proof` carries its own axiom
+list as a field (`FirstOrder/Basic/Calculus.lean`), so the finite window falls out of the
+proof object with no induction, and a finite list of sentences collapses to a single
+sentence by conjunction.
+
+That pair of facts is what lets **one** fixed r.e. predicate over *pure logic* — no base
+theory at all, `Theory.Δ₁.empty` — serve every recursively axiomatized theory at once:
+what the predicate has to check is always a finite conjunction of the theory's own written
+axioms.  It is the substrate of `thm:incons`'s uniform rendering in
+`Construction/Witnesses/ComputationRepresented.lean`. -/
+
+/-- The conjunction of a finite list of sentences, right-nested onto `⊤`.
+
+*Proof kind:* `Def`. -/
+def listConj (l : List ArithmeticSentence) : ArithmeticSentence := l.foldr (· ⋏ ·) ⊤
+
+@[simp] lemma listConj_nil : listConj [] = ⊤ := rfl
+
+@[simp] lemma listConj_cons (σ : ArithmeticSentence) (l : List ArithmeticSentence) :
+    listConj (σ :: l) = σ ⋏ listConj l := rfl
+
+/-- **Pure logic is consistent.**  The day-window checker refutes its window in the empty
+theory, so this is what keeps that predicate from being constantly true — and hence what
+makes the `thm:incons` schema argument-sensitive with no hypothesis at all.
+
+Kind `C` (composition).  Provenance: (b) Foundation citation —
+`ArithmeticTheory.consistent_of_sound`. -/
+lemma consistent_empty : Entailment.Consistent (∅ : ArithmeticTheory) :=
+  ArithmeticTheory.consistent_of_sound ∅ (Eq ⊥) rfl
+
+/-- **Compactness, in the form a machine-enumerated theory needs.**  An inconsistent theory
+has an inconsistent finite sublist of its own axioms.  There is no induction here: a
+Foundation proof of `⊥` *is* a finite axiom list together with a derivation that does not
+mention the theory, so the same derivation re-packs against the list.
+
+Kind `P` (proved).  Provenance: (b) Foundation citations — `Theory.Proof` (its `axioms`,
+`axioms_mem`, `derivation` fields), `Entailment.not_consistent_iff_inconsistent`,
+`Entailment.inconsistent_iff_provable_bot`. -/
+lemma exists_inconsistent_list {S : ArithmeticTheory} (h : ¬Entailment.Consistent S) :
+    ∃ l : List ArithmeticSentence, (∀ ψ ∈ l, ψ ∈ S) ∧
+      ¬Entailment.Consistent {φ : ArithmeticSentence | φ ∈ l} := by
+  rw [Entailment.not_consistent_iff_inconsistent,
+    Entailment.inconsistent_iff_provable_bot] at h
+  rcases h with ⟨d⟩
+  refine ⟨d.axioms, d.axioms_mem, ?_⟩
+  rw [Entailment.not_consistent_iff_inconsistent,
+    Entailment.inconsistent_iff_provable_bot]
+  exact ⟨⟨d.axioms, by simp, d.derivation⟩⟩
+
+private lemma setOf_mem_nil :
+    {φ : ArithmeticSentence | φ ∈ ([] : List ArithmeticSentence)} = (∅ : ArithmeticTheory) := by
+  ext φ; simp
+
+private lemma setOf_mem_cons (σ : ArithmeticSentence) (l : List ArithmeticSentence) :
+    {φ : ArithmeticSentence | φ ∈ σ :: l} = insert σ {φ : ArithmeticSentence | φ ∈ l} := by
+  ext φ; simp
+
+/-- The deduction theorem, iterated along a finite axiom list: what a finite theory proves,
+pure logic proves from the conjunction of that theory. -/
+private lemma provable_listConj_imply :
+    ∀ (l : List ArithmeticSentence) (ψ : ArithmeticSentence),
+      {φ : ArithmeticSentence | φ ∈ l} ⊢ ψ → (∅ : ArithmeticTheory) ⊢ listConj l 🡒 ψ := by
+  intro l
+  induction l with
+  | nil =>
+      intro ψ h
+      rw [setOf_mem_nil] at h
+      have taut : (∅ : ArithmeticTheory) ⊢ ψ 🡒 (⊤ : ArithmeticSentence) 🡒 ψ := by cl_prover
+      exact taut ⨀ h
+  | cons σ t ih =>
+      intro ψ h
+      rw [setOf_mem_cons] at h
+      have h2 := ih (σ 🡒 ψ) (Entailment.deduction_iff.mp h)
+      have taut : (∅ : ArithmeticTheory) ⊢
+          (listConj t 🡒 σ 🡒 ψ) 🡒 ((σ ⋏ listConj t) 🡒 ψ) := by cl_prover
+      simpa using taut ⨀ h2
+
+/-- **An inconsistent finite window is refuted by pure logic.**  This is the step that
+removes the base theory from `thm:incons`: whatever the day's theory is, the finitely many
+axioms that make it inconsistent are refutable in `∅`, so the represented predicate never
+has to mention a theory.
+
+Kind `C` (composition).  Provenance: (a) `provable_listConj_imply` derived in-project;
+(b) Foundation citations — `Entailment.not_consistent_iff_inconsistent`,
+`Entailment.inconsistent_iff_provable_bot`, `Entailment.N!_iff_CO!`. -/
+lemma provable_neg_listConj_of_not_consistent {l : List ArithmeticSentence}
+    (h : ¬Entailment.Consistent {φ : ArithmeticSentence | φ ∈ l}) :
+    (∅ : ArithmeticTheory) ⊢ ∼listConj l := by
+  rw [Entailment.not_consistent_iff_inconsistent,
+    Entailment.inconsistent_iff_provable_bot] at h
+  rw [LO.Entailment.N!_iff_CO!]
+  exact provable_listConj_imply l ⊥ h
+
+omit [T.Δ₁] in
+/-- Conversely, a theory proving every member of a list proves their conjunction — the
+non-refutability half, used to show the day-window predicate is not constantly true. -/
+lemma provable_listConj {l : List ArithmeticSentence} (h : ∀ φ ∈ l, T ⊢ φ) :
+    T ⊢ listConj l := by
+  induction l with
+  | nil => simpa using (by cl_prover : T ⊢ (⊤ : ArithmeticSentence))
+  | cons σ t ih =>
+      rw [listConj_cons]
+      exact Entailment.K!_intro (h σ (by simp)) (ih fun φ hφ => h φ (by simp [hφ]))
 
 -- The symbol-measure computability layer, printed here so the §4.10 substrate's axiom
 -- accounting is in one place.
@@ -356,6 +466,14 @@ lemma not_provableCode_quote_falsum (hcon : Entailment.Consistent T) :
 #print axioms conRunValue_computable
 #print axioms conRunValue_bot_eq_zero
 #print axioms provableCode_re
+#print axioms not_provableCode_zero
 #print axioms not_consistent_adjoin_iff
+#print axioms consistent_empty
+#print axioms exists_inconsistent_list
+#print axioms listConj
+#print axioms listConj_nil
+#print axioms listConj_cons
+#print axioms provable_neg_listConj_of_not_consistent
+#print axioms provable_listConj
 
 end LogicalInduction

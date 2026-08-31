@@ -3,7 +3,8 @@ import LogicalInduction.Construction.Witnesses.SubstEmission
 import LogicalInduction.Construction.Witnesses.R0Representability
 import LogicalInduction.Framework.RepresentsComputations
 import LogicalInduction.Framework.BoundedConsistency
-import LogicalInduction.Construction.Witnesses.SourceNumbering
+import LogicalInduction.Construction.Witnesses.SourceWindow
+import LogicalInduction.Construction.Witnesses.DayMachine
 
 /-!
 # Computation claims that name their machine, at the paper's representability premise
@@ -1635,40 +1636,78 @@ end Halting
 generalization of `Con(Θ′)(ν)` (tex:1863-1866) — the unbounded `∃` over proofs of `⊥` from
 `⌜Θ′⌝`.  It is therefore Σ₁, not decidable, so this lane is the *halting* lane's shape, not
 the bounded lane's: one fixed r.e. schema, with the day's data in the argument.  No horizon
-appears and no symbol measure is in play — the existential is over all proofs either way,
-so the counting convention of `dd:symbolcount` does not reach this node.
+appears and no symbol measure is in play — the existential is over all proofs either way, so
+the counting convention of `dd:symbolcount` does not reach this node.
 
-**Which theories.**  *Disclosed paraphrase.*  The theory sequence is the **deduction family**
-`Θ′ₙ := Θ₀ ∪ {σₙ}` over a fixed `Δ₁` base theory `Θ₀`, not an arbitrary e.c. sequence of
-theories.  Foundation's derivability predicate takes its theory as a *meta* parameter
-(`Derivation T` is `(construction T).Fixpoint`), so there is no uniform-in-theory-code
-derivability to represent and no way for a sequence of theories to enter one sentence as an
-argument.  For a deduction family the deduction theorem collapses the day's theory to a single
-sentence code: `Θ′ₙ` is inconsistent exactly when `Θ₀ ⊢ ∼σₙ`, i.e. exactly when `⌜∼σₙ⌝` is
-`Θ₀`-provable (`provableCode_neg_iff_not_consistent_adjoin`).  So the day-`n` claim is the
-universal provability schema of `Θ₀` at the compact name of `⌜∼σₙ⌝`, and **for a consistent
-base `Θ₀`** it genuinely names the day's theory — the extensionality test is a theorem
-(`inconsistencyArgClaimSentence_ne_of_arg_ne`, via `inconsistencySchema_mentions_zero`,
-whose hypothesis is exactly `Entailment.Consistent Θ₀`; over an inconsistent base
-`ProvableCode Θ₀` is extensionally constant and the schema may ignore its argument — the
-endpoint's conclusion still holds there, but the family may collapse to one sentence).
-Every exhibited witness has a consistent base.  The general e.c.-sequence-of-
-theories rendering is deferred; the restriction is recorded at the endpoint and in the
-README, never silently.
+**Which theories: the paper's own.**  `Θ′ₙ` is `theoryOf (mₙ)`, the theory whose axioms are
+enumerated by an arbitrary partial recursive machine — that is, an arbitrary recursively
+axiomatized theory.  There is **no base theory**: the day's theory is freestanding, is neither
+required to extend nor to be extended by the market's theory `T`, may be infinitely
+axiomatized (`thm_incons_applied_infinite` below exhibits a day-theory with infinitely many
+axioms), and carries no `Δ₁` hypothesis of its own.  The premises are exactly the paper's two:
+that the sequence is efficiently *named* (`hm`, on the machines' written sources — tex:1905,
+tex:1931) and that each named theory is inconsistent (`hinc`).
 
-**The `def:ec` premise.**  The day's adjoined axiom is presented by its **source text**
-(`sₙ : ArithSource 0`, `Construction/Witnesses/ArithmeticSource.lean`), and the premise is
-`hs : PolyArithmeticSourceSeq s` — the paper's own meter, one token per symbol the writer
-writes (tex:753-755, tex:1931-1933).  What the day-`n` sentence writes out is the numeral
-naming that run (`ArithSource.sourceNat`), whose base-`4` digit count is linear in it.  The
-Godel code of the formula the run denotes never reaches the stream: it is recovered *inside*
-the represented predicate by `negSourceFormulaCode`, where the paper asks only for recursive
-enumerability and the code's size is free.  This is the exact analogue of `hm`/`hi` on the
-halting lane, where a machine is likewise named by its source and not by `Encodable.encode`
-(`Framework/CodeSource.lean`), and it is load-bearing: it is the only route to
-`inconsistency_poly`.  The class is genuinely wider for being stated this way —
-`deepInconsistentSource` below is `O(n)` symbols to write and `2 ^ Ω(n)` nodes to parse, and
-no hypothesis on the digit count of *codes* can admit it.
+**How one fixed sentence speaks of an arbitrary theory: compactness.**  Foundation's
+derivability predicate takes its theory as a *meta* parameter (`Derivation T` is
+`(construction T).Fixpoint`), so there is no uniform-in-theory-code derivability predicate to
+represent, and building one would need a truth predicate over coded formulas, which Foundation
+does not have.  This rendering never forms one.  It quantifies over coded machines
+**externally**, at `V := ℕ`, and uses the fact that inconsistency is always witnessed by
+*finitely many* axioms (`exists_inconsistent_list`, `Framework/BoundedConsistency.lean`;
+Foundation's proof object carries its own axiom list, so no induction is needed).  A finite
+list of written axioms splices into a single written conjunction (`combineSourceNats`,
+`Construction/Witnesses/SourceWindow.lean`), and refuting that conjunction is a question of
+**pure logic** — the empty theory, `Theory.Δ₁.empty`.  So the represented predicate is
+`MachineTheoryInconsistent`: *some finite window of the machine's output, conjoined, is
+refutable in `∅`*.  One r.e. predicate, no base theory, every recursively axiomatized theory
+in range, and the day's theory entering only through the **argument**.
+
+**The `def:ec` premise.**  The day's theory is named by the numeral naming its machine's
+written source (`Nat.Partrec.Code.sourceNat`, `Framework/CodeSource.lean`), and the premise is
+`hm : DigitMachineCodes m` — the standing write-out class for machine sequences, the same one
+`thm:halts` uses.  This is the paper's own reading: "it must be possible to write out the
+source code specifying `mₙ` in time polynomial in `n`.  The runtime of an individual `mₙ` is
+immaterial" (tex:1931); for theories, tex:1905 asks that they be "efficiently named".  Nothing
+about the axioms themselves is metered: the day's axiom sources are produced *inside* the
+machine, and the spliced window is parsed *inside* the represented predicate, where the paper
+asks only for recursive enumerability.  `thm_incons_applied_deep` exercises exactly that gap —
+a short machine source whose single axiom has `2 ^ Ω(n)` nodes in normal form.
+
+**Presentation convention (`dd:machinetheory`).**  Reading a machine as a presentation of a
+theory requires fixing a convention, and the choice is stated rather than hidden: `m`'s outputs
+are `ArithSource.sourceNat` names of axiom **sources**; an output that is not the name of a
+written *sentence* contributes nothing to `theoryOf m`; and the budget-`b` window at inputs
+`is` is `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, a diverging *or
+inadmissible* output contributing the inert `⊤`.  Any other convention gives a coextensive
+class of theories but a different represented predicate, and hence a different schema.
+
+**The gate is load-bearing, not hygiene.**  "Names no sentence" has to be *decided*, because
+the window is a computation, and deciding it is what `AdmissibleName`
+(`Construction/Witnesses/SourceWindow.lean`) does: a number is admitted only if it is
+literally the name of its own decoded run and that run is the complete emitted run of one
+`ArithSource 0` whose compiled form is a sentence (`sourceRun`,
+`Construction/Witnesses/SourceRecognizer.lean` — a recognizer that, unlike the numeric
+formula parser, tracks binder depth and rejects free variables).  Without it the splice is
+unsound in three independent ways: a number that is no name decodes like a shorter one
+(`tokensOfNat` stops at the first sentinel), two *incomplete* runs concatenate into one
+complete run, and a genuine source may compile to a formula with free variables, which is
+refutable without being a sentence of any theory.  Each makes a machine presenting the
+*empty* theory satisfy the predicate.  With the gate,
+`machineTheoryInconsistent_iff` holds: the sentence says exactly what the convention claims.
+
+**How far the convention reaches.**  What is *proved* is that every one-axiom theory is
+presented, exactly — `theoryOf_const_ofNNF` shows `theoryOf (Code.const ⌜written σ⌝) = {σ}` —
+and hence that the convention is not restrictive in what a single day's axiom may be:
+`ArithSource.ofNNF` writes every sentence.  What is **not formalized** is the uniform half of
+surjectivity: that for every r.e. set of sentences there is a *single* machine enumerating
+their names.  That would need `encodeArithmeticFormulaSymbols` to be certified primitive
+recursive at the level of Foundation formula codes, which this development does not do (the
+emission side is metered instead, at `PolyArithmeticSourceSeq.bigDigits_sourceNat`).  The
+endpoint does not consume it: `hinc` is stated at `theoryOf (m n)` for the machine the caller
+supplies, so no enumeration theorem is needed to apply the theorem — the witnesses
+`thm_incons_applied_deep` and `thm_incons_applied_infinite` construct their machines directly,
+the second with infinitely many axioms per day.
 
 **One family, not two.**  `consistencySentence` is the syntactic negation of
 `inconsistencySentence`, as the paper defines it; the second conjunct costs no second
@@ -1676,241 +1715,310 @@ representation premise. -/
 
 section Inconsistency
 
-/-- **The universal provability schema of a base theory, read at written names.**
-Foundation's r.e. formula for "the base theory refutes the formula *written down* by `z`".
-At `z = (s : ArithSource 0).sourceNat` its standard-model content is exactly
-"`T' ∪ {compile s}` is inconsistent", so one schema per base theory serves every day and
-every adjoined axiom, and the day's theory enters only through the *argument*.
+/-! ### The theory a machine presents -/
 
-The decoding step `negSourceFormulaCode` is what lets the argument be the day's **source
-text** rather than its Godel code; it is computable (`negSourceFormulaCode_computable`),
-which is all `codeOfREPred` consumes.  Note the negation is taken on the *compiled* formula,
-not on the source, so the deduction bridge `provableCode_neg_iff_not_consistent_adjoin`
-applies at `compile (s n)` unchanged.
+/-- **The theory enumerated by `m`.**  Its axioms are the sentences whose *written sources* `m`
+outputs; an output that names no written sentence contributes nothing.  As a set this asks no
+computability of `m` at all, and nothing bounds the number of axioms.
 
-Representing "`T'` is inconsistent" directly would have been the extensionality trap: under
-the theorem's own hypothesis that predicate is constantly `True`, and a
-schema built from it would name nothing. -/
-noncomputable def inconsistencySchema (T' : ArithmeticTheory) [T'.Δ₁] :
-    ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => ProvableCode T' (negSourceFormulaCode z))
+Every one-axiom theory is presented exactly (`theoryOf_const_ofNNF`); the uniform enumeration
+half of surjectivity onto the recursively axiomatized theories is *not* formalized, and the
+endpoint does not consume it — see the "How far the convention reaches" paragraph in the
+section header, which states precisely what is and is not proved.
 
-/-- The predicate the schema represents is r.e. — provability composed with a computable
-decoder.
+*Proof kind:* `Def`.  Reading a machine as a theory presentation is the convention
+`dd:machinetheory`; see the section header. -/
+def theoryOf (m : Nat.Partrec.Code) : ArithmeticTheory :=
+  {σ : ArithmeticSentence | ∃ (b i : ℕ) (s : ArithSource 0),
+      Nat.Partrec.Code.evaln b m i = some s.sourceNat ∧
+      ArithSource.compile s = (↑σ : ArithmeticSemiformula ℕ 0)}
 
-Kind `C` (composition).  Provenance: (a) `negSourceFormulaCode_computable` derived
-in-project; (b) Foundation citations — `provableCode_re`, `REPred.comp`. -/
-lemma provableCode_negSource_re (T' : ArithmeticTheory) [T'.Δ₁] :
-    REPred (fun z => ProvableCode T' (negSourceFormulaCode z)) :=
-  REPred.comp negSourceFormulaCode_computable (provableCode_re T')
+/-- Membership in `theoryOf`, in the form the witnesses use. -/
+lemma mem_theoryOf {m : Nat.Partrec.Code} {σ : ArithmeticSentence} {b i : ℕ}
+    {s : ArithSource 0} (hev : Nat.Partrec.Code.evaln b m i = some s.sourceNat)
+    (hc : ArithSource.compile s = (↑σ : ArithmeticSemiformula ℕ 0)) : σ ∈ theoryOf m :=
+  ⟨b, i, s, hev, hc⟩
 
-/-- The schema has exactly the intended standard-model meaning. -/
-lemma inconsistencySchema_spec (T' : ArithmeticTheory) [T'.Δ₁] (z : ℕ) :
-    (inconsistencySchema T').Evalb ![z] ↔ ProvableCode T' (negSourceFormulaCode z) :=
-  codeOfREPred_spec (provableCode_negSource_re T') (x := z)
+/-- A theory with a logically refutable axiom is inconsistent — the cheapest route from a
+machine's output to the endpoint's `hinc`.
+
+Kind `C` (composition).  Provenance: (b) Foundation citations — `Entailment.by_axm`,
+`Entailment.weakening!`, `Entailment.inconsistent_iff_provable_bot`, `Entailment.N!_iff_CO!`. -/
+lemma not_consistent_of_refutable_mem {S : ArithmeticTheory} {σ : ArithmeticSentence}
+    (hmem : σ ∈ S) (href : (∅ : ArithmeticTheory) ⊢ ∼σ) : ¬Entailment.Consistent S := by
+  rw [Entailment.not_consistent_iff_inconsistent, Entailment.inconsistent_iff_provable_bot]
+  exact (LO.Entailment.N!_iff_CO!.mp
+    (Entailment.wk! (Set.empty_subset S) href)) ⨀ Entailment.by_axm hmem
+
+/-- **The finite window, found.**  Any finite list of `m`'s axioms is emitted together in a
+single budget-`b` run at some list of inputs, and — at that budget or any larger one — the
+window's spliced writing denotes exactly the conjunction of the list.  This is the step that
+turns the paper's premise into something one fixed r.e. predicate can check: the budget is
+taken as the maximum over the list, so `Nat.Partrec.Code.evaln_mono` upgrades every earlier
+output at once.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from `conjSource` and
+`ArithSource.compile`; (b) Mathlib citation — `Nat.Partrec.Code.evaln_mono`. -/
+lemma exists_window (m : Nat.Partrec.Code) :
+    ∀ l : List ArithmeticSentence, (∀ σ ∈ l, σ ∈ theoryOf m) →
+      ∃ (b : ℕ) (is : List ℕ) (ss : List (ArithSource 0)),
+        (∀ b', b ≤ b' →
+            is.map
+                (fun i => gateName ((Nat.Partrec.Code.evaln b' m i).getD verumSourceNat))
+              = ss.map ArithSource.sourceNat) ∧
+        ArithSource.compile (conjSource ss)
+          = (↑(listConj l) : ArithmeticSemiformula ℕ 0) := by
+  intro l
+  induction l with
+  | nil =>
+      intro _
+      exact ⟨0, [], [], by simp, by simp [conjSource, ArithSource.compile]⟩
+  | cons σ t ih =>
+      intro hmem
+      obtain ⟨b₀, i₀, s₀, hev, hcomp⟩ := hmem σ (by simp)
+      obtain ⟨b₁, is, ss, hmap, hc⟩ := ih (fun τ hτ => hmem τ (by simp [hτ]))
+      refine ⟨max b₀ b₁, i₀ :: is, s₀ :: ss, ?_, ?_⟩
+      · intro b' hb'
+        have h0 : Nat.Partrec.Code.evaln b' m i₀ = some s₀.sourceNat :=
+          Nat.Partrec.Code.evaln_mono (le_trans (le_max_left _ _) hb') hev
+        simp [h0, gateName_sourceNat hcomp, hmap b' (le_trans (le_max_right _ _) hb')]
+      · simp only [conjSource, ArithSource.compile, hcomp, hc, listConj_cons]
+        simp
+
+/-! ### The represented predicate -/
 
 /-- **The name of a source that writes a sentence names that sentence's negation.**  The
-bridge between the emission side, which sees only written runs, and the deduction side,
-which speaks of sentences.
+bridge between the emission side, which sees only written runs, and the deduction side, which
+speaks of sentences.
 
-Kind `C` (composition).  Provenance: (a) `negSourceFormulaCode_sourceNat` derived
-in-project; (b) Foundation citations — `Semiformula.encode_emb`,
-`Semiformula.quote_eq_encode`. -/
+Kind `C` (composition).  Provenance: (a) `negSourceFormulaCode_sourceNat` derived in-project;
+(b) Foundation citations — `Semiformula.encode_emb`, `Semiformula.quote_eq_encode`. -/
 lemma negSourceFormulaCode_sourceNat_of_sentence (s : ArithSource 0) (φ : ArithmeticSentence)
     (h : ArithSource.compile s = (↑φ : ArithmeticSemiformula ℕ 0)) :
     negSourceFormulaCode s.sourceNat = ⌜∼φ⌝ := by
   rw [negSourceFormulaCode_sourceNat, h]
   simp [LO.FirstOrder.Sentence.quote_eq_encode]
 
-/-- **The schema is not argument-insensitive.**  Its shape is unreachable (`codeOfREPred` is
-picked by `Classical.epsilon`), but its defining spec is not nothing: a consistent `T'` refutes
-the written formula `⊥` and does not refute the written formula `⊤`, so the chosen formula
-cannot be one that ignores its argument.
+/-- **The day-window code, at a window that writes a list of sentences.**  The bridge between
+the machine side, which emits numbers, and the deduction side, which speaks of sentences. -/
+lemma negWindowCode_eq_quote {z w : ℕ} {ss : List (ArithSource 0)}
+    {l : List ArithmeticSentence}
+    (hw : axiomWindow z w = ss.map ArithSource.sourceNat)
+    (hc : ArithSource.compile (conjSource ss)
+      = (↑(listConj l) : ArithmeticSemiformula ℕ 0)) :
+    negWindowCode z w = ⌜∼listConj l⌝ := by
+  rw [negWindowCode, hw, combineSourceNats_map_sourceNat,
+    negSourceFormulaCode_sourceNat_of_sentence (conjSource ss) (listConj l) hc]
 
-Kind `P` (proved).  Provenance: (a) derived in-project from
-`negSourceFormulaCode_sourceNat_of_sentence`, `provableCode_quote_iff` and
-`not_provableCode_quote_falsum`. -/
-lemma inconsistencySchema_not_argument_insensitive (T' : ArithmeticTheory) [T'.Δ₁]
-    (hcon : Entailment.Consistent T') :
-    ¬ ∀ z z' : ℕ,
-      (inconsistencySchema T').Evalb ![z] ↔ (inconsistencySchema T').Evalb ![z'] := by
-  intro h
-  have hbot : negSourceFormulaCode
-      (ArithSource.leaf (⊥ : ArithmeticSemiformula ℕ 0)).sourceNat =
-        ⌜∼(⊥ : ArithmeticSentence)⌝ :=
-    negSourceFormulaCode_sourceNat_of_sentence _ ⊥ (by simp [ArithSource.compile])
-  have htop : negSourceFormulaCode
-      (ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0)).sourceNat =
-        ⌜∼(⊤ : ArithmeticSentence)⌝ :=
-    negSourceFormulaCode_sourceNat_of_sentence _ ⊤ (by simp [ArithSource.compile])
-  have hz : (inconsistencySchema T').Evalb
-      ![(ArithSource.leaf (⊥ : ArithmeticSemiformula ℕ 0)).sourceNat] := by
-    refine (inconsistencySchema_spec T' _).mpr ?_
-    rw [hbot, provableCode_quote_iff]
-    cl_prover
-  have hz' : ¬ (inconsistencySchema T').Evalb
-      ![(ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0)).sourceNat] := by
-    intro hx
-    have hprov := (inconsistencySchema_spec T' _).mp hx
-    rw [htop, provableCode_quote_iff] at hprov
-    exact not_provableCode_quote_falsum T' hcon
-      ((provableCode_quote_iff T' (⊥ : ArithmeticSentence)).mpr (by simpa using hprov))
-  exact hz' ((h _ _).mp hz)
+/-- **What `thm:incons`'s sentence represents**: the machine written down by `z` emits, in some
+finite window, axioms whose conjunction **pure logic** refutes.  It mentions no base theory at
+all, and — because the window admits only names of written *sentences* — it is *equivalent* to
+the presented theory being inconsistent, not merely implied by it: compactness gives the
+forward direction (`machineTheoryInconsistent_of_not_consistent`), the gate gives the converse
+(`not_consistent_theoryOf_of_machineTheoryInconsistent`), and `machineTheoryInconsistent_iff`
+packages the two.
 
-/-- **The schema mentions its argument**, the occurrence form of the previous lemma and the
-side condition of substitution injectivity.
+*Proof kind:* `Def`. -/
+def MachineTheoryInconsistent (z : ℕ) : Prop :=
+  ∃ w, ProvableCode (∅ : ArithmeticTheory) (negWindowCode z w)
 
-Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
-`Semiformula.subst_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`),
-`Semiformula.eval_substs`. -/
-lemma inconsistencySchema_mentions_zero (T' : ArithmeticTheory) [T'.Δ₁]
-    (hcon : Entailment.Consistent T') :
-    (inconsistencySchema T' : ArithmeticSemisentence 1).Mentions 0 := by
-  by_contra hmem
-  refine inconsistencySchema_not_argument_insensitive T' hcon fun z z' => ?_
-  have key : ∀ w : ℕ,
-      Semiformula.Evalb (M := ℕ) (![] : Fin 0 → ℕ)
-          ((inconsistencySchema T')/[(‘↑w’ : Semiterm ℒₒᵣ Empty 0)])
-        ↔ (inconsistencySchema T').Evalb ![w] := by
-    intro w
-    simp [Semiformula.eval_substs]
-  have hsub := Semiformula.subst_eq_of_not_mentions hmem
-    (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
-  rw [← key z, ← key z', hsub]
+/-- **The predicate is r.e.**  Not by an r.e.-projection theorem — Mathlib has none — but
+because the matrix is *decidable*: `Bootstrapping.Proof` is `𝚫₁`, so `ProofPacked ∅` is a
+`ComputablePred` (`proofPacked_computable`), and an existential over a decidable matrix is r.e.
+by `Partrec.rfind` and `Partrec.dom_re`.
 
-/-- **The day-`n` name of the theory `Θ′ₙ = Θ₀ ∪ {σₙ}`**: the numeral naming the day's
-adjoined axiom **as the paper writes it**.
+Kind `C` (composition).  Provenance: (a) `negWindowCode_computable`, `proofPacked_computable`
+derived in-project; (b) Mathlib citations — `ComputablePred.computable_iff`, `Partrec.rfind`,
+`Partrec.dom_re`, `Nat.rfind_dom`. -/
+lemma machineTheoryInconsistent_re : REPred MachineTheoryInconsistent := by
+  obtain ⟨g, hg, hgspec⟩ := ComputablePred.computable_iff.mp
+    (proofPacked_computable (∅ : ArithmeticTheory))
+  have key : ∀ z : ℕ, MachineTheoryInconsistent z ↔
+      ∃ u : ℕ, g (Nat.pair u.unpair.1 (negWindowCode z u.unpair.2)) = true := by
+    intro z
+    constructor
+    · rintro ⟨w, d, hd⟩
+      refine ⟨Nat.pair d w, ?_⟩
+      have hpk : ProofPacked (∅ : ArithmeticTheory) (Nat.pair d (negWindowCode z w)) := by
+        rw [proofPacked_pair_iff]; exact hd
+      rw [hgspec] at hpk
+      simpa using hpk
+    · rintro ⟨u, hu⟩
+      refine ⟨u.unpair.2, u.unpair.1, ?_⟩
+      have hpk : ProofPacked (∅ : ArithmeticTheory)
+          (Nat.pair u.unpair.1 (negWindowCode z u.unpair.2)) := by
+        rw [hgspec]; exact hu
+      rw [proofPacked_pair_iff] at hpk
+      exact hpk
+  have hF : Computable₂ fun z u : ℕ => g (Nat.pair u.unpair.1 (negWindowCode z u.unpair.2)) :=
+    hg.comp (Primrec₂.natPair.to_comp.comp
+      (Primrec.fst.to_comp.comp (Primrec.unpair.to_comp.comp Computable.snd))
+      (negWindowCode_computable.comp Computable.fst
+        (Primrec.snd.to_comp.comp (Primrec.unpair.to_comp.comp Computable.snd))))
+  refine ((Partrec.rfind hF.partrec₂).dom_re).of_eq fun z => ?_
+  simp [Nat.rfind_dom, key z]
 
-`def:ec` (tex:753) meters a trader by the symbols it emits, and what this sentence emits is
-the day's source run — one token per symbol of `sₙ`, read as a base-`64` numeral by
-`ArithSource.sourceNat`, whose base-`4` digit count is `3 * (sourceTokens sₙ).length + 3`.
-The Godel code of the formula that run denotes is **not** written out and is not metered:
-Foundation's `Semiformula.toNat` pairs at every node, so that code is doubly exponential in
-the parse tree, and metering it would restrict the theorem to families of `O(log n)` parse
-depth while excluding paper-admissible ones — `iffChain`-style writings that are short to
-write and deep to parse.  Naming by source, not by code, is the same doctrine the halting
-lane applies to machines (`DigitMachineCodes`, `Framework/WriteOut.lean`; the calibration is
-at `Code.sourceNat` versus `Encodable.encode`, `Framework/CodeSource.lean`). -/
-def deductionFamilyArg (s : ℕ → ArithSource 0) (n : ℕ) : ℕ := (s n).sourceNat
+/-- **The universal inconsistency schema.**  Foundation's r.e. formula for
+`MachineTheoryInconsistent`: one schema for the whole theorem, with the day's theory entering
+only through the argument.  Note what does *not* appear — no base theory, no `Δ₁` hypothesis on
+the day's theory, no relation to the market's theory. -/
+noncomputable def inconsistencySchema : ArithmeticSemisentence 1 :=
+  codeOfREPred MachineTheoryInconsistent
 
-/-- **The paper's “`⌜Θ′ₙ⌝` is inconsistent”**: the base theory's provability schema at the
-name of the day's written axiom. -/
-noncomputable def inconsistencyArgClaimSentence (T' : ArithmeticTheory) [T'.Δ₁]
-    (s : ℕ → ArithSource 0) (n : ℕ) : Sentence :=
-  schemaArgClaimSentence (inconsistencySchema T') (binNumeral (deductionFamilyArg s n))
+/-- The schema has exactly the intended standard-model meaning. -/
+lemma inconsistencySchema_spec (z : ℕ) :
+    inconsistencySchema.Evalb ![z] ↔ MachineTheoryInconsistent z :=
+  codeOfREPred_spec machineTheoryInconsistent_re (x := z)
 
-/-- The bare arithmetic sentence under the claim atom, for callers that need it. -/
-noncomputable def inconsistencyArgClaimInstance (T' : ArithmeticTheory) [T'.Δ₁]
-    (s : ℕ → ArithSource 0) (n : ℕ) : ArithmeticSentence :=
-  (inconsistencySchema T')/[(binNumeral (deductionFamilyArg s n)).const]
+/-! ### The truth obligation, and its converse witness -/
 
-/-- **The standing extensionality test, proved.**  Days whose adjoined axioms are *written
-differently* — not merely days whose theories behave differently — get distinct claim
-sentences, with no hypothesis on the day's theories beyond consistency of the base.  This is
-what makes `s` load-bearing rather than decorative.
+/-- **The paper's premise, delivered to the schema.**  If the theory a machine presents is
+inconsistent then the machine's *name* satisfies the represented predicate.  The chain is:
+compactness gives a finite inconsistent sublist of the day's axioms
+(`exists_inconsistent_list`); a common budget and input list emit all of them at once
+(`exists_window`); their spliced writing names their conjunction
+(`combineSourceNats_map_sourceNat`); pure logic refutes that conjunction
+(`provable_neg_listConj_of_not_consistent`); and that arithmetizes by
+`Bootstrapping.provable_iff_provable`.
 
-The hypothesis is about written text rather than about Gödel codes, and
-`ArithSource.sourceNat_ne_of_sourceTokens_ne` reduces it further to the token runs
-differing — an inequality one can read off a length count, with no quote-injectivity
-argument anywhere.
+Kind `C` (composition).  Provenance: (a) derived in-project throughout; (b) Foundation
+citations — `Theory.Proof`, `Entailment.deduction_iff`,
+`Bootstrapping.provable_iff_provable`. -/
+lemma machineTheoryInconsistent_of_not_consistent {m : Nat.Partrec.Code}
+    (h : ¬Entailment.Consistent (theoryOf m)) :
+    MachineTheoryInconsistent m.sourceNat := by
+  obtain ⟨l, hmem, hinc⟩ := exists_inconsistent_list h
+  obtain ⟨b, is, ss, hmap, hc⟩ := exists_window m l hmem
+  refine ⟨Nat.pair b (Encodable.encode is), ?_⟩
+  have hw : axiomWindow m.sourceNat (Nat.pair b (Encodable.encode is))
+      = ss.map ArithSource.sourceNat := by
+    rw [axiomWindow]
+    simp only [Nat.unpair_pair, Nat.Partrec.Code.ofSource_sourceNat, Denumerable.ofNat_encode]
+    exact hmap b le_rfl
+  rw [negWindowCode_eq_quote hw hc, provableCode_quote_iff]
+  exact provable_neg_listConj_of_not_consistent hinc
 
-Kind `C` (composition).  Provenance: (a) derived in-project from
-`schemaArgClaimSentence_ne_of_const_ne`, `inconsistencySchema_mentions_zero`,
-`binNumeral_const_ne`. -/
-lemma inconsistencyArgClaimSentence_ne_of_arg_ne (T' : ArithmeticTheory) [T'.Δ₁]
-    (hcon : Entailment.Consistent T') (s s' : ℕ → ArithSource 0) (n n' : ℕ)
-    (h : deductionFamilyArg s n ≠ deductionFamilyArg s' n') :
-    inconsistencyArgClaimSentence T' s n ≠ inconsistencyArgClaimSentence T' s' n' :=
-  schemaArgClaimSentence_ne_of_const_ne _ (inconsistencySchema_mentions_zero T' hcon) _ _
-    (binNumeral_const_ne _ _ h)
+/-- The sentences a window's sources denote, as a list, together with where each one comes
+from: either it is the inert `⊤` or it is an axiom of the presented theory. -/
+private lemma exists_listConj_of_window_sources {m : Nat.Partrec.Code} {b : ℕ}
+    {ss : List (ArithSource 0)}
+    (hall : ∀ s ∈ ss, ∃ σ : ArithmeticSentence,
+      ArithSource.compile s = (↑σ : ArithmeticSemiformula ℕ 0) ∧
+        (σ = ⊤ ∨ ∃ i, Nat.Partrec.Code.evaln b m i = some (ArithSource.sourceNat s))) :
+    ∃ l : List ArithmeticSentence,
+      ArithSource.compile (conjSource ss) = (↑(listConj l) : ArithmeticSemiformula ℕ 0) ∧
+        ∀ σ ∈ l, σ = ⊤ ∨ σ ∈ theoryOf m := by
+  induction ss with
+  | nil => exact ⟨[], by simp [conjSource], by simp⟩
+  | cons s ss ih =>
+      obtain ⟨σ, hc, hor⟩ := hall s (by simp)
+      obtain ⟨l, hcl, hml⟩ := ih fun t ht => hall t (by simp [ht])
+      refine ⟨σ :: l, ?_, ?_⟩
+      · simp only [conjSource, ArithSource.compile, hc, hcl, listConj_cons]
+        simp
+      · intro τ hτ
+        rcases List.mem_cons.mp hτ with heq | hτ'
+        · subst heq
+          rcases hor with hσ | ⟨i, hi⟩
+          · exact Or.inl hσ
+          · exact Or.inr (mem_theoryOf hi hc)
+        · exact hml τ hτ'
 
-/-- **The `thm:incons` claim family, over the paper's own deductive process.**
+/-- **The converse: a refutable window means an inconsistent theory.**  This is what makes
+the represented sentence *say* the convention's inconsistency claim rather than merely follow
+from it.  The gate (`AdmissibleName`, `Construction/Witnesses/SourceWindow.lean`) is what
+buys it: at *every* argument `w`, the window is literally a list of names of written
+sentences (`exists_sources_axiomWindow`), each of which the machine emitted — the inert `⊤`
+filler excepted, which any theory proves.  So a window that pure logic refutes is a finite
+subset of `theoryOf m`, padded with `⊤`s, that pure logic refutes.
 
-The positive obligation is Σ₁-completeness at the universal schema (`re_complete_mp`, which
-needs `[𝗣𝗔⁻ ⪯ T]` and nothing else); the `def:ec` obligation is discharged at the numeral
-naming the day's *written* axiom, and that is what `hs` is consumed by.  No semantic
-hypothesis on `T`, no hypothesis relating `T` to `T'`, and no consistency hypothesis on `T'` —
-an inconsistent base theory makes every day's claim true, which the endpoint's conclusion
-tracks correctly.
+Ungated, this direction is **false**, not merely unproved: two incomplete runs splice into
+one complete refutable run, and non-names decode like names, so a machine presenting the
+empty theory could satisfy the predicate.  That is the R11 window-leak repair.
 
-`hcompile` says the source `sₙ` writes the sentence `σₙ`, in the sense of
-`ArithSource.compile` and its semantics theorem `ArithSource.eval_compile`; it is the same
-(source, compiles) pairing `PaperLUVSeq` uses for LUV defining formulas, and every witness
-below discharges it by `simp`.
+Kind `P` (proved).  Provenance: (a) `exists_sources_axiomWindow`,
+`exists_listConj_of_window_sources`, `negWindowCode_eq_quote` derived in-project;
+(b) Foundation citations — `Bootstrapping.provable_iff_provable`, `Entailment.by_axm`,
+`Entailment.wk!`, `Entailment.N!_iff_CO!`. -/
+lemma not_consistent_theoryOf_of_machineTheoryInconsistent {m : Nat.Partrec.Code}
+    (h : MachineTheoryInconsistent m.sourceNat) :
+    ¬Entailment.Consistent (theoryOf m) := by
+  obtain ⟨w, hw⟩ := h
+  obtain ⟨ss, hmap, hall⟩ := exists_sources_axiomWindow m.sourceNat w
+  rw [Nat.Partrec.Code.ofSource_sourceNat] at hall
+  obtain ⟨l, hc, hml⟩ := exists_listConj_of_window_sources hall
+  rw [negWindowCode_eq_quote hmap hc, provableCode_quote_iff] at hw
+  have hprov : theoryOf m ⊢ listConj l :=
+    provable_listConj (theoryOf m) fun φ hφ => by
+      rcases hml φ hφ with hφ' | hφ'
+      · rw [hφ']; cl_prover
+      · exact Entailment.by_axm hφ'
+  intro hcons
+  exact hcons.not_bot
+    ((LO.Entailment.N!_iff_CO!.mp (Entailment.wk! (Set.empty_subset _) hw)) ⨀ hprov)
 
-Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citations —
-`codeOfREPred` and `sigma_one_completeness` (through `re_complete_mp`),
-`Bootstrapping.provable_iff_provable` and `Entailment.deduction_iff` (through
-`provableCode_neg_iff_not_consistent_adjoin`); (c) modelling substitution — the deduction-family
-paraphrase of the paper's arbitrary e.c. theory sequence, disclosed in the section header. -/
-noncomputable def representedInconsistentTheoryClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    (T' : ArithmeticTheory) [T'.Δ₁] (σ : ℕ → ArithmeticSentence) (s : ℕ → ArithSource 0)
-    (hs : PolyArithmeticSourceSeq s)
-    (hcompile : ∀ n, ArithSource.compile (s n) = (↑(σ n) : ArithmeticSemiformula ℕ 0)) :
-    InconsistentTheoryClaims (paperTheoryDP T)
-      (fun n => ¬Entailment.Consistent (σ n ∷ T')) where
-  inconsistencySentence := inconsistencyArgClaimSentence T' s
-  inconsistency_poly :=
-    schemaArgClaimSentence_bigSentenceCodes (inconsistencySchema T') _
-      (polySegStream_binNumeral_const hs.bigDigits_sourceNat)
-  inconsistency_provable n hn := by
-    refine paperTheoryDP_covers_schemaArgClaim T (inconsistencySchema T') _ ?_
-    refine (provable_subst_binNumeral_iff T (inconsistencySchema T') _).mpr ?_
-    refine re_complete_mp (T := T) (provableCode_negSource_re T') ?_
-    rw [show deductionFamilyArg s n = (s n).sourceNat from rfl,
-      negSourceFormulaCode_sourceNat_of_sentence (s n) (σ n) (hcompile n)]
-    exact (provableCode_neg_iff_not_consistent_adjoin T' (σ n)).mpr hn
+/-- **The represented predicate is exactly the convention's inconsistency claim.**  Both
+directions, at every machine: no gap between what `thm:incons`'s day-`n` sentence says and
+what `hinc` supplies.  This is the faithfulness bridge for the node — it is what licenses
+reading `inconsistencySentence n` as the paper's "`⌜Θ′ₙ⌝` is inconsistent" rather than as
+some broader emitted-stream property — so it is inventoried and axiom-checked with the
+node's endpoints.
 
-/-- **Disbelief in Inconsistent Theories** (`thm:incons`), unconditional over `LIA`.  Both of
-the paper's conjuncts: belief in the day-`n` inconsistency sentence tends to `1`, and belief in
-its negation — the paper's consistency sentence — tends to `0`.
-
-`hinc` is the paper's own premise, that each `Θ′ₙ` is inconsistent, stated at the theory
-`σₙ ∷ Θ₀` itself rather than at any provability surrogate.  `hs` is the paper's `def:ec`
-condition, stated on the **writing** of the day's adjoined axiom, and `hcompile` says that
-writing denotes `σₙ`.
-
-*Modelling substitution (disclosed).*  The theory sequence is the deduction family
-`Θ′ₙ = Θ₀ ∪ {σₙ}` rather than an arbitrary e.c. sequence of recursively axiomatizable
-theories; see the section header for the Foundation obstruction that forces it and for why the
-day's theory is nevertheless genuinely named in the sentence.  This is the single remaining
-qualification on this node, and it **stands**: the obstruction is verified, not queued.
-Foundation's fixpoint blueprint for `Derivation` cannot host satisfaction over coded
-formulas, so full uniformity in the theory code is a truth-predicate project rather than a
-repair to this development.  A *middle* rendering — uniformity over a coded family of `Δ₁`
-axiomatizations, short of full uniformity — remains possible as an optional **upstream**
-item; it is pending a user ruling and is not scheduled here.  (Any earlier note that a later
-tranche would retire this charge is withdrawn.)
-*Residual hypothesis (disclosed).*  `[T.Δ₁]`, `[T'.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings
-beyond the paper (see the global disclosure in `LogicalInduction/README.md`), which assumes
-only that the theories are consistent (for `Θ`), c.e. and represent computations: they ask for
-a Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
-deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.
+Kind `C` (composition) of `machineTheoryInconsistent_of_not_consistent` (compactness) and
+`not_consistent_theoryOf_of_machineTheoryInconsistent` (the gate).
 Paper node: `thm:incons` -/
-theorem lic_disbelief_inconsistent_theories_unconditional [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] (T' : ArithmeticTheory) [T'.Δ₁]
-    (σ : ℕ → ArithmeticSentence) (s : ℕ → ArithSource 0)
-    (hs : PolyArithmeticSourceSeq s)
-    (hcompile : ∀ n, ArithSource.compile (s n) = (↑(σ n) : ArithmeticSemiformula ℕ 0))
-    (hinc : ∀ n, ¬Entailment.Consistent (σ n ∷ T')) :
-    ((fun n => liaHistory (paperTheoryDP T) n
-        ((representedInconsistentTheoryClaims T T' σ s hs hcompile).inconsistencySentence n))
-          ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (paperTheoryDP T) n
-        ((representedInconsistentTheoryClaims T T' σ s hs hcompile).consistencySentence n))
-          ≈ₙ fun _ => 0) :=
-  haveI := paperLIA T
-  lic_disbelief_inconsistent_theories (liaHistory (paperTheoryDP T)) (paperTheoryDP T) _
-    (representedInconsistentTheoryClaims T T' σ s hs hcompile) hinc
-    (paperTheoryDP_hworld_stages T inferInstance)
+lemma machineTheoryInconsistent_iff (m : Nat.Partrec.Code) :
+    MachineTheoryInconsistent m.sourceNat ↔ ¬Entailment.Consistent (theoryOf m) :=
+  ⟨not_consistent_theoryOf_of_machineTheoryInconsistent,
+    machineTheoryInconsistent_of_not_consistent⟩
 
-/-! ### Witnesses
+private lemma compile_conjSource_replicate_verum (k : ℕ) :
+    ArithSource.compile
+        (conjSource (List.replicate k (ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0))))
+      = (↑(listConj (List.replicate k (⊤ : ArithmeticSentence)))
+          : ArithmeticSemiformula ℕ 0) := by
+  induction k with
+  | zero => simp [conjSource, ArithSource.compile]
+  | succ k ih => simp [List.replicate_succ, conjSource, ArithSource.compile, ih]
 
-The first inhabits the premise set at all; the second is the family the source-metered
-`def:ec` premise exists for. -/
+/-- **A machine that never outputs presents the empty theory, and the predicate knows it.**
+Every window is then a conjunction of `⊤`s, which pure logic proves rather than refutes.  This
+is the negative half of the schema's argument-sensitivity — and, unlike the deduction-family
+rendering this replaces, it needs **no consistency hypothesis on anything**: the represented
+predicate is non-constant outright.
 
-/-- The paper's shortest inconsistent adjunction, written out: the one-token source `⊥`. -/
+Kind `P` (proved).  Provenance: (a) derived in-project from `consistent_empty` and
+`provable_listConj`. -/
+lemma not_machineTheoryInconsistent_of_diverges {m : Nat.Partrec.Code}
+    (h : ∀ b i, Nat.Partrec.Code.evaln b m i = none) :
+    ¬ MachineTheoryInconsistent m.sourceNat := by
+  rintro ⟨w, hw⟩
+  have hwin : axiomWindow m.sourceNat w
+      = (List.replicate (Denumerable.ofNat (List ℕ) w.unpair.2).length
+          (ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0))).map ArithSource.sourceNat := by
+    rw [axiomWindow, List.map_replicate]
+    simp only [Nat.Partrec.Code.ofSource_sourceNat, h, Option.getD_none,
+      gateName_verumSourceNat]
+    exact List.map_const'
+  rw [negWindowCode_eq_quote hwin (compile_conjSource_replicate_verum _),
+    provableCode_quote_iff] at hw
+  have hprov : (∅ : ArithmeticTheory) ⊢
+      listConj (List.replicate (Denumerable.ofNat (List ℕ) w.unpair.2).length
+        (⊤ : ArithmeticSentence)) :=
+    provable_listConj ∅ (fun φ hφ => by
+      rw [List.eq_of_mem_replicate hφ]; cl_prover)
+  exact consistent_empty.not_bot ((LO.Entailment.N!_iff_CO!.mp hw) ⨀ hprov)
+
+/-- The never-halting machine never emits, at any budget: `evaln` is sound for `eval`. -/
+lemma evaln_neverHaltMachine (b i : ℕ) :
+    Nat.Partrec.Code.evaln b neverHaltMachine i = none := by
+  rcases hv : Nat.Partrec.Code.evaln b neverHaltMachine i with _ | v
+  · rfl
+  · exact absurd (Part.dom_iff_mem.mpr ⟨v, Nat.Partrec.Code.evaln_sound hv⟩)
+      (not_codeHalts_neverHaltMachine i)
+
+/-- The one-token source `⊥`: the shortest inconsistent axiom there is, used to inhabit the
+positive half of the schema's argument-sensitivity. -/
 def falsumSource : ArithSource 0 := ArithSource.leaf (⊥ : ArithmeticSemiformula ℕ 0)
 
 @[simp] lemma compile_falsumSource :
@@ -1918,59 +2026,236 @@ def falsumSource : ArithSource 0 := ArithSource.leaf (⊥ : ArithmeticSemiformul
       (↑(⊥ : ArithmeticSentence) : ArithmeticSemiformula ℕ 0) := by
   simp [falsumSource, ArithSource.compile]
 
-lemma falsumSource_polyArithmeticSourceSeq :
-    PolyArithmeticSourceSeq (fun _ : ℕ => falsumSource) :=
-  PolyArithmeticSourceSeq.leaf (PolySegStream.constList _)
+/-- A machine that outputs a constant reaches that output at some budget. -/
+private lemma exists_evaln_const (v i : ℕ) :
+    ∃ b, Nat.Partrec.Code.evaln b (Nat.Partrec.Code.const v) i = some v := by
+  have hv : v ∈ Nat.Partrec.Code.eval (Nat.Partrec.Code.const v) i := by simp
+  obtain ⟨k, hk⟩ := Nat.Partrec.Code.evaln_complete.mp hv
+  exact ⟨k, hk⟩
 
-/-- **`thm:incons`, applied with nothing left to the caller.**  The market is over `𝗜𝚺₁`, the
-base theory of the deduction family is `𝗜𝚺₁`, and the adjoined axiom is `⊥`, so every day's
-theory `𝗜𝚺₁ ∪ {⊥}` is **actually inconsistent** — `hinc` is discharged by the deduction bridge,
-the `def:ec` premise by the constant source run, and every instance argument by Foundation's
-own `𝗜𝚺₁` instances.
+/-- The machine that keeps writing `⊥` presents an inconsistent theory. -/
+lemma not_consistent_theoryOf_falsumMachine :
+    ¬Entailment.Consistent (theoryOf (Nat.Partrec.Code.const falsumSource.sourceNat)) := by
+  obtain ⟨b, hb⟩ := exists_evaln_const falsumSource.sourceNat 0
+  exact not_consistent_of_refutable_mem (mem_theoryOf hb compile_falsumSource) (by cl_prover)
 
-This witness is constant in the day; the day-varying one is `thm_incons_applied_deep`. -/
-example :
-    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
-        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥) (fun _ => falsumSource)
-          falsumSource_polyArithmeticSourceSeq
-          (fun _ => compile_falsumSource)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
-        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥) (fun _ => falsumSource)
-          falsumSource_polyArithmeticSourceSeq
-          (fun _ => compile_falsumSource)).consistencySentence n)) ≈ₙ fun _ => 0) :=
-  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ 𝗜𝚺₁ (fun _ => ⊥)
-    (fun _ => falsumSource) falsumSource_polyArithmeticSourceSeq
-    (fun _ => compile_falsumSource)
-    (fun _ => by rw [not_consistent_adjoin_iff]; simp)
+/-- **Every one-axiom theory is presented, exactly.**  The machine that keeps writing the name
+of `σ`'s own written source presents `{σ}` and nothing else — so the presentation convention
+`dd:machinetheory` reaches every singleton theory, with no slack in either direction.
 
-/-! ### The unboundedly day-varying witness
+The `⊇` half is the naming round trip; the `⊆` half is where the convention earns its keep:
+a machine's output is a *number*, and two different sources may share a written run
+(`leaf (φ ⋏ ψ)` and `and (leaf φ) (leaf ψ)` do), but sources with equal runs compile to equal
+formulas (`ArithSource.compile_eq_of_sourceTokens_eq`), so a run names at most one sentence.
 
-What the source-metered premise buys, in one family.  The day-`n` adjoined axiom is
+This is the *proved* part of the surjectivity claim at `theoryOf`; see the disclosure there
+for what is not proved.
+
+Kind `P` (proved).  Provenance: (a) `ArithSource.sourceNat_ne_of_sourceTokens_ne`,
+`ArithSource.compile_eq_of_sourceTokens_eq` derived in-project; (b) Mathlib/Foundation
+citations — `Nat.Partrec.Code.evaln_sound`, `Rewriting.emb_injective`.
+Paper node: `thm:incons` -/
+lemma theoryOf_const_ofNNF (σ : ArithmeticSentence) :
+    theoryOf (Nat.Partrec.Code.const
+        (ArithSource.ofNNF (↑σ : ArithmeticSemiformula ℕ 0)).sourceNat) = {σ} := by
+  ext τ
+  constructor
+  · rintro ⟨b, i, s, hev, hc⟩
+    have hmem := Nat.Partrec.Code.evaln_sound hev
+    have hval : ArithSource.sourceNat s
+        = (ArithSource.ofNNF (↑σ : ArithmeticSemiformula ℕ 0)).sourceNat := by
+      simpa using hmem
+    have htok : ArithSource.sourceTokens s
+        = ArithSource.sourceTokens (ArithSource.ofNNF (↑σ : ArithmeticSemiformula ℕ 0)) := by
+      by_contra hne
+      exact ArithSource.sourceNat_ne_of_sourceTokens_ne hne hval
+    have hcs := ArithSource.compile_eq_of_sourceTokens_eq htok
+    rw [hc, ArithSource.compile_ofNNF] at hcs
+    exact Rewriting.emb_injective hcs
+  · rintro rfl
+    obtain ⟨b, hb⟩ :=
+      exists_evaln_const (ArithSource.ofNNF (↑τ : ArithmeticSemiformula ℕ 0)).sourceNat 0
+    exact mem_theoryOf hb (ArithSource.compile_ofNNF _)
+
+/-- **The schema is not argument-insensitive** — with no hypothesis at all.  Its shape is
+unreachable (`codeOfREPred` is picked by `Classical.epsilon`), but its defining spec is not
+nothing: the machine that keeps writing `⊥` presents an inconsistent theory, and the machine
+that never writes anything presents the empty one.
+
+This is strictly stronger than the deduction-family rendering it replaces, whose corresponding
+lemma had to assume the base theory consistent.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from
+`machineTheoryInconsistent_of_not_consistent` and
+`not_machineTheoryInconsistent_of_diverges`. -/
+lemma inconsistencySchema_not_argument_insensitive :
+    ¬ ∀ z z' : ℕ, inconsistencySchema.Evalb ![z] ↔ inconsistencySchema.Evalb ![z'] := by
+  intro h
+  have hz : inconsistencySchema.Evalb
+      ![(Nat.Partrec.Code.const falsumSource.sourceNat).sourceNat] :=
+    (inconsistencySchema_spec _).mpr
+      (machineTheoryInconsistent_of_not_consistent not_consistent_theoryOf_falsumMachine)
+  have hz' : ¬ inconsistencySchema.Evalb ![neverHaltMachine.sourceNat] := fun hx =>
+    not_machineTheoryInconsistent_of_diverges evaln_neverHaltMachine
+      ((inconsistencySchema_spec _).mp hx)
+  exact hz' ((h _ _).mp hz)
+
+/-- **The schema mentions its argument**, the occurrence form of the previous lemma and the
+side condition of substitution injectivity — again with no hypothesis.
+
+Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
+`Semiformula.subst_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`),
+`Semiformula.eval_substs`. -/
+lemma inconsistencySchema_mentions_zero :
+    (inconsistencySchema : ArithmeticSemisentence 1).Mentions 0 := by
+  by_contra hmem
+  refine inconsistencySchema_not_argument_insensitive fun z z' => ?_
+  have key : ∀ w : ℕ,
+      Semiformula.Evalb (M := ℕ) (![] : Fin 0 → ℕ)
+          (inconsistencySchema/[(‘↑w’ : Semiterm ℒₒᵣ Empty 0)])
+        ↔ inconsistencySchema.Evalb ![w] := by
+    intro w
+    simp [Semiformula.eval_substs]
+  have hsub := Semiformula.subst_eq_of_not_mentions hmem
+    (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
+  rw [← key z, ← key z', hsub]
+
+/-! ### The claim family and the endpoint -/
+
+/-- **The day-`n` name of the theory `Θ′ₙ`**: the numeral naming the day's machine **as it is
+written**.
+
+`def:ec` (tex:753, tex:1931) meters a trader by the symbols it emits, and what this sentence
+emits is the day machine's source run, read as a base-`16` numeral by
+`Nat.Partrec.Code.sourceNat` (`Framework/CodeSource.lean`).  The theory's axioms are not
+written out and are not metered — the machine produces them, and the paper is explicit that
+"the runtime of an individual `mₙ` is immaterial".  This is the same naming doctrine the
+halting lane applies to machines (`DigitMachineCodes`, `Framework/WriteOut.lean`), and it is
+what admits day-theories whose axioms are astronomically large, or infinitely many. -/
+def machineArg (m : ℕ → Nat.Partrec.Code) (n : ℕ) : ℕ := (m n).sourceNat
+
+/-- **The paper's “`⌜Θ′ₙ⌝` is inconsistent”**: the universal inconsistency schema at the
+compact name of the day's machine. -/
+noncomputable def inconsistencyArgClaimSentence (m : ℕ → Nat.Partrec.Code) (n : ℕ) :
+    Sentence :=
+  schemaArgClaimSentence inconsistencySchema (binNumeral (machineArg m n))
+
+/-- The bare arithmetic sentence under the claim atom, for callers that need it. -/
+noncomputable def inconsistencyArgClaimInstance (m : ℕ → Nat.Partrec.Code) (n : ℕ) :
+    ArithmeticSentence :=
+  inconsistencySchema/[(binNumeral (machineArg m n)).const]
+
+/-- **The standing extensionality test, proved with no hypothesis.**  Days whose theories are
+*presented differently* — not merely days whose theories behave differently — get distinct
+claim sentences.  This is what makes `m` load-bearing rather than decorative, and it is
+unconditional here because `inconsistencySchema_mentions_zero` is.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from
+`schemaArgClaimSentence_ne_of_const_ne`, `inconsistencySchema_mentions_zero`,
+`binNumeral_const_ne`. -/
+lemma inconsistencyArgClaimSentence_ne_of_arg_ne (m m' : ℕ → Nat.Partrec.Code) (n n' : ℕ)
+    (h : machineArg m n ≠ machineArg m' n') :
+    inconsistencyArgClaimSentence m n ≠ inconsistencyArgClaimSentence m' n' :=
+  schemaArgClaimSentence_ne_of_const_ne _ inconsistencySchema_mentions_zero _ _
+    (binNumeral_const_ne _ _ h)
+
+/-- **The `thm:incons` claim family, over the paper's own deductive process.**
+
+The positive obligation is Σ₁-completeness at the universal schema (`re_complete_mp`, which
+needs `[𝗣𝗔⁻ ⪯ T]` and nothing else); the `def:ec` obligation is discharged at the numeral naming
+the day's machine, and that is what `hm` is consumed by.  No semantic hypothesis on `T`, no
+hypothesis relating `T` to the day's theories, and no hypothesis on the day's theories beyond
+the paper's own — that they are inconsistent.
+
+Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citations —
+`codeOfREPred` and `sigma_one_completeness` (through `re_complete_mp`),
+`Theory.Proof` / `Entailment.deduction_iff` / `Bootstrapping.provable_iff_provable` (through
+`machineTheoryInconsistent_of_not_consistent`). -/
+noncomputable def representedInconsistentTheoryClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m) :
+    InconsistentTheoryClaims (paperTheoryDP T)
+      (fun n => ¬Entailment.Consistent (theoryOf (m n))) where
+  inconsistencySentence := inconsistencyArgClaimSentence m
+  inconsistency_poly :=
+    schemaArgClaimSentence_bigSentenceCodes inconsistencySchema _
+      (polySegStream_binNumeral_const hm)
+  inconsistency_provable n hn := by
+    refine paperTheoryDP_covers_schemaArgClaim T inconsistencySchema _ ?_
+    refine (provable_subst_binNumeral_iff T inconsistencySchema _).mpr ?_
+    exact re_complete_mp (T := T) machineTheoryInconsistent_re
+      (machineTheoryInconsistent_of_not_consistent hn)
+
+/-- **Disbelief in Inconsistent Theories** (`thm:incons`), unconditional over `LIA`.  Both of
+the paper's conjuncts: belief in the day-`n` inconsistency sentence tends to `1`, and belief in
+its negation — the paper's consistency sentence — tends to `0`.
+
+The premises are the paper's own two, and no others.  `hm` is `def:ec` on the *naming* of the
+theory sequence, stated on the machines' written sources; `hinc` is the paper's premise that
+each `Θ′ₙ` is inconsistent, stated at the theory `theoryOf (mₙ)` itself rather than at any
+provability surrogate.  The day's theories are arbitrary recursively axiomatized theories:
+freestanding, possibly infinitely axiomatized, unrelated to `T`, and carrying no `Δ₁`
+hypothesis.
+
+*Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are strengthenings beyond the
+paper on the **market's** theory only (see the global disclosure in
+`LogicalInduction/README.md`), which assumes only that `Θ` is consistent, c.e. and represents
+computations: they ask for a `Δ₁` axiom set where the paper assumes only c.e.  By Craig's trick
+every c.e. theory has a deductively equivalent `Δ₁` axiomatization, so the theorems transfer;
+that reduction is not formalized here.
+
+*Paper defect (recorded in `LogicalInduction/notes/paper-errata.md`).*  The paper's proof
+(tex:4487-4491) argues "provable in `𝗣𝗔`, and `Θ` can represent computable functions, therefore
+provable in `Θ`".  Representability of computable functions does not give `𝗣𝗔 ⊢ ψ ⇒ Θ ⊢ ψ`;
+Σ₁-completeness does, and the paper never states it.  This development takes the
+Σ₁-completeness route (`re_complete_mp`, `[𝗣𝗔⁻ ⪯ T]`), i.e. it is correct where the printed
+proof is loose.
+Paper node: `thm:incons` -/
+theorem lic_disbelief_inconsistent_theories_unconditional [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m)
+    (hinc : ∀ n, ¬Entailment.Consistent (theoryOf (m n))) :
+    ((fun n => liaHistory (paperTheoryDP T) n
+        ((representedInconsistentTheoryClaims T m hm).inconsistencySentence n))
+          ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (paperTheoryDP T) n
+        ((representedInconsistentTheoryClaims T m hm).consistencySentence n))
+          ≈ₙ fun _ => 0) :=
+  haveI := paperLIA T
+  lic_disbelief_inconsistent_theories (liaHistory (paperTheoryDP T)) (paperTheoryDP T) _
+    (representedInconsistentTheoryClaims T m hm) hinc
+    (paperTheoryDP_hworld_stages T inferInstance)
+
+/-! ### Witnesses
+
+Both are day-varying, both discharge every hypothesis and every instance argument, and both
+exercise a capability the retired deduction-family rendering could not state.  They share one
+fixed program, `deepSourceCode`, which writes the source of the day's axiom; the day number
+reaches it through `dayMachine` (`Construction/Witnesses/DayMachine.lean`), which carries the
+day inside the machine's own source and therefore discharges `def:ec` by
+`digitMachineCodes_dayMachine`.
+
+The day-`k` axiom is the paper-written
 
     (∀x. A(x) ⟺ A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥
 
-with `n` biconditionals.  Written out it is `5n + 7` symbols — `⟺` is one of the paper's own
-primitive connectives (tex:560) — so it is `def:ec`-admissible on the nose.  Compiled into
-Foundation's negation normal form it has `≥ 2 ^ n` nodes (`two_pow_le_encode_iffChain`), and
-its Gödel code is doubly exponential in *that*; so no hypothesis bounding the digit count of
-`⌜∼σₙ⌝` can admit this family, and the previous, code-metered rendering of this theorem could
-not state it.  Every day's theory is genuinely inconsistent (the second conjunct is `⊥`), the
-days are pairwise distinct *as written*, and hence — by the extensionality test — the claim
-sentences are pairwise distinct too.  Unlike a two-valued alternation this family takes
-unboundedly many values, so the endpoint is exercised at a sequence of theories that really
-does grow. -/
+with `k` biconditionals: `5k + 7` symbols to write, `≥ 2 ^ k` nodes in Foundation's normal
+form (`two_pow_le_encode_iffChain`), and a Gödel code doubly exponential in *that*.  None of
+that is metered here — only the day machine's source is — which is exactly the width the
+`def:ec` premise is supposed to have. -/
 
-/-- The day's adjoined axiom, as the paper writes it. -/
-def deepInconsistentSource (n : ℕ) : ArithSource 0 :=
-  .and (.all (iffChainSource n)) (.leaf (⊥ : ArithmeticSemiformula ℕ 0))
+/-- The day-`k` axiom, as the paper writes it: `k` biconditionals under a quantifier,
+conjoined with `⊥`.  `⟺` is one of the paper's own primitive connectives (tex:560), so the
+writing is `5k + 7` symbols. -/
+def deepInconsistentSource (k : ℕ) : ArithSource 0 :=
+  .and (.all (iffChainSource k)) (.leaf (⊥ : ArithmeticSemiformula ℕ 0))
 
-/-- The sentence that writing denotes. -/
-noncomputable def deepInconsistentAxiom (n : ℕ) : ArithmeticSentence :=
-  Semiformula.all (iffChain n) ⋏ ⊥
+/-- The sentence that writing denotes.  In Foundation's negation normal form it has `≥ 2 ^ k`
+nodes (`two_pow_le_encode_iffChain`), and its Gödel code is doubly exponential in that. -/
+noncomputable def deepInconsistentAxiom (k : ℕ) : ArithmeticSentence :=
+  Semiformula.all (iffChain k) ⋏ ⊥
 
-lemma compile_deepInconsistentSource (n : ℕ) :
-    ArithSource.compile (deepInconsistentSource n) =
-      (↑(deepInconsistentAxiom n) : ArithmeticSemiformula ℕ 0) := by
+lemma compile_deepInconsistentSource (k : ℕ) :
+    ArithSource.compile (deepInconsistentSource k) =
+      (↑(deepInconsistentAxiom k) : ArithmeticSemiformula ℕ 0) := by
   have hall (ψ : ArithmeticSemisentence 1) :
       (Rewriting.emb (Semiformula.all ψ) : ArithmeticSemiformula ℕ 0)
         = Semiformula.all (Rewriting.emb ψ) := by
@@ -1980,8 +2265,10 @@ lemma compile_deepInconsistentSource (n : ℕ) :
   simp [deepInconsistentSource, deepInconsistentAxiom, ArithSource.compile,
     compile_iffChainSource, hall]
 
-/-- **The `def:ec` premise, discharged at the paper's meter.**  A repeated tag run, a repeated
-atom block, one quantifier and one conjunction.
+/-- **The paper's meter on the day's axiom, discharged.**  A repeated tag run, a repeated atom
+block, one quantifier and one conjunction.  Nothing in the endpoint consumes this — the
+`def:ec` premise is on the *machine's* source — but it is what makes the day's axiom a thing
+the paper would let a trader write, and it is what supplies the primitive recursion below.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from
 `iffChainSource_polyArithmeticSourceSeq` and the `PolyArithmeticSourceSeq` closure lemmas. -/
@@ -1992,56 +2279,160 @@ lemma deepInconsistentSource_polyArithmeticSourceSeq :
     (PolyArithmeticSourceSeq.leaf (PolySegStream.constList _))
 
 /-- The written run grows by five tokens a day. -/
-lemma sourceTokens_deepInconsistentSource_length (n : ℕ) :
-    (ArithSource.sourceTokens (deepInconsistentSource n)).length = 5 * n + 7 := by
+lemma sourceTokens_deepInconsistentSource_length (k : ℕ) :
+    (ArithSource.sourceTokens (deepInconsistentSource k)).length = 5 * k + 7 := by
   have hbot : encodeArithmeticFormulaSymbols (⊥ : ArithmeticSemiformula ℕ 0) = [10] := rfl
   simp [deepInconsistentSource, ArithSource.sourceTokens,
     sourceTokens_iffChainSource_length, hbot]
 
-/-- **The days are pairwise distinct as written** — a length count, with no appeal to Gödel
-codes and no injectivity of quotation. -/
-lemma deepInconsistentSource_sourceNat_ne {m n : ℕ} (h : m ≠ n) :
-    (deepInconsistentSource m).sourceNat ≠ (deepInconsistentSource n).sourceNat := by
-  refine ArithSource.sourceNat_ne_of_sourceTokens_ne fun he => h ?_
-  have hlen := congrArg List.length he
-  rw [sourceTokens_deepInconsistentSource_length,
-    sourceTokens_deepInconsistentSource_length] at hlen
-  omega
+/-- The day's axiom source is primitive recursive in the day: its emitted run is a
+`PolySegStream` (`deepInconsistentSource_polyArithmeticSourceSeq`) and the naming map is
+primitive recursive (`tokenListNat_primrec`). -/
+lemma primrec_deepInconsistentSourceNat :
+    Primrec fun k => (deepInconsistentSource k).sourceNat :=
+  tokenListNat_primrec.comp
+    (deepInconsistentSource_polyArithmeticSourceSeq.primrec)
 
-/-- Every day's theory really is inconsistent: the day's axiom has `⊥` as a conjunct. -/
-lemma deepInconsistentAxiom_inconsistent (T' : ArithmeticTheory) (n : ℕ) :
-    ¬Entailment.Consistent (deepInconsistentAxiom n ∷ T') := by
-  rw [not_consistent_adjoin_iff, deepInconsistentAxiom]
-  cl_prover
+/-- **The one fixed program the witnesses share**: on input `k` it writes the source of the
+day-`k` axiom.  Its own source is a fixed finite string, so every `dayMachine` built over it is
+`def:ec`-admissible. -/
+noncomputable def deepSourceCode : Nat.Partrec.Code :=
+  (Nat.Partrec.Code.exists_code.mp
+    (Partrec.nat_iff.mp primrec_deepInconsistentSourceNat.to_comp.partrec)).choose
+
+lemma deepSourceCode_eval (k : ℕ) :
+    deepSourceCode.eval k = Part.some (deepInconsistentSource k).sourceNat := by
+  rw [deepSourceCode,
+    (Nat.Partrec.Code.exists_code.mp
+      (Partrec.nat_iff.mp primrec_deepInconsistentSourceNat.to_comp.partrec)).choose_spec]
+  rfl
+
+/-- The evaluation reaches the output at some budget. -/
+private lemma exists_evaln_of_eval_some {c : Nat.Partrec.Code} {i v : ℕ}
+    (h : c.eval i = Part.some v) : ∃ b, Nat.Partrec.Code.evaln b c i = some v := by
+  have hv : v ∈ c.eval i := by rw [h]; exact Part.mem_some v
+  obtain ⟨k, hk⟩ := Nat.Partrec.Code.evaln_complete.mp hv
+  exact ⟨k, hk⟩
+
+/-- Every day's axiom is refuted by pure logic: it has `⊥` as a conjunct. -/
+lemma provable_neg_deepInconsistentAxiom (k : ℕ) :
+    (∅ : ArithmeticTheory) ⊢ ∼deepInconsistentAxiom k := by
+  rw [deepInconsistentAxiom]; cl_prover
+
+/-! #### Witness (i): one huge axiom a day -/
+
+/-- The day-`n` machine of the first witness: on every input it writes the source of the day's
+single axiom. -/
+noncomputable def deepDayMachine (n : ℕ) : Nat.Partrec.Code :=
+  dayMachine (.comp deepSourceCode .left) n
+
+lemma deepDayMachine_eval (n i : ℕ) :
+    (deepDayMachine n).eval i = Part.some (deepInconsistentSource n).sourceNat := by
+  rw [deepDayMachine, dayMachine_eval]
+  simp [Nat.Partrec.Code.eval, deepSourceCode_eval]
+
+/-- The day's axiom really is one of the day's theory's axioms. -/
+lemma deepInconsistentAxiom_mem_theoryOf (n : ℕ) :
+    deepInconsistentAxiom n ∈ theoryOf (deepDayMachine n) := by
+  obtain ⟨b, hb⟩ := exists_evaln_of_eval_some (deepDayMachine_eval n 0)
+  exact mem_theoryOf hb (compile_deepInconsistentSource n)
+
+/-- …so every day's theory is genuinely inconsistent. -/
+lemma not_consistent_theoryOf_deepDayMachine (n : ℕ) :
+    ¬Entailment.Consistent (theoryOf (deepDayMachine n)) :=
+  not_consistent_of_refutable_mem (deepInconsistentAxiom_mem_theoryOf n)
+    (provable_neg_deepInconsistentAxiom n)
 
 /-- **`thm:incons`, applied at an unboundedly day-varying family with nothing left to the
-caller.**  Every hypothesis and every instance argument is discharged: the `def:ec` premise at
-`deepInconsistentSource_polyArithmeticSourceSeq`, the compilation bridge at
-`compile_deepInconsistentSource`, the inconsistency of each day's theory at
-`deepInconsistentAxiom_inconsistent`, and the theory instances by Foundation's own `𝗜𝚺₁`
+caller.**  Every hypothesis and every instance argument is discharged: the `def:ec` premise by
+`digitMachineCodes_dayMachine`, the inconsistency of each day's theory by
+`not_consistent_theoryOf_deepDayMachine`, and the theory instances by Foundation's own `𝗜𝚺₁`
 instances.  The day-`n` theory takes a different value for every `n`, and the day-separation
-theorem below fires at every pair of distinct days.
+lemma below fires at every pair of distinct days.
 Paper node: `thm:incons` -/
 theorem thm_incons_applied_deep :
     ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
-        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ deepInconsistentAxiom
-          deepInconsistentSource deepInconsistentSource_polyArithmeticSourceSeq
-          compile_deepInconsistentSource).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
+          (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
       ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
-        ((representedInconsistentTheoryClaims 𝗜𝚺₁ 𝗜𝚺₁ deepInconsistentAxiom
-          deepInconsistentSource deepInconsistentSource_polyArithmeticSourceSeq
-          compile_deepInconsistentSource).consistencySentence n)) ≈ₙ fun _ => 0) :=
-  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ 𝗜𝚺₁ deepInconsistentAxiom
-    deepInconsistentSource deepInconsistentSource_polyArithmeticSourceSeq
-    compile_deepInconsistentSource (deepInconsistentAxiom_inconsistent 𝗜𝚺₁)
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
+          (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
+  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ deepDayMachine
+    (digitMachineCodes_dayMachine _) not_consistent_theoryOf_deepDayMachine
 
 /-- **The day-separation theorem, applied at every pair of distinct days** — no hypothesis and
 no behavioural side condition. -/
-lemma inconsistencyArgClaimSentence_deep_ne {m n : ℕ} (h : m ≠ n) :
-    inconsistencyArgClaimSentence 𝗜𝚺₁ deepInconsistentSource m
-      ≠ inconsistencyArgClaimSentence 𝗜𝚺₁ deepInconsistentSource n :=
-  inconsistencyArgClaimSentence_ne_of_arg_ne 𝗜𝚺₁ (RepresentsComputations.consistent 𝗜𝚺₁)
-    _ _ m n (deepInconsistentSource_sourceNat_ne h)
+lemma inconsistencyArgClaimSentence_deep_ne {a b : ℕ} (h : a ≠ b) :
+    inconsistencyArgClaimSentence deepDayMachine a
+      ≠ inconsistencyArgClaimSentence deepDayMachine b :=
+  inconsistencyArgClaimSentence_ne_of_arg_ne _ _ a b (dayMachine_sourceNat_ne _ h)
+
+/-! #### Witness (ii): infinitely many axioms a day
+
+This is the payoff the deduction-family rendering could not express at all.  A family
+`Θ′ₙ = Θ₀ ∪ {σₙ}` adjoins **one** sentence, so it can exhibit neither an infinite axiom set nor
+a theory inconsistent for a reason that is spread across its axioms.  Here the day-`n` machine
+writes a *different* axiom on every input, so `theoryOf (mₙ)` is infinite
+(`infinite_theoryOf_infiniteDayMachine`) — genuinely recursively axiomatized rather than
+finitely axiomatized — while still being inconsistent, and the day machine's source is still
+`O(n)` symbols. -/
+
+/-- The day-`n` machine of the second witness: on input `i` it writes the source of the
+`⟨n, i⟩`-th axiom, so the day's theory has one axiom per input. -/
+noncomputable def infiniteDayMachine (n : ℕ) : Nat.Partrec.Code := dayMachine deepSourceCode n
+
+lemma infiniteDayMachine_eval (n i : ℕ) :
+    (infiniteDayMachine n).eval i
+      = Part.some (deepInconsistentSource (Nat.pair n i)).sourceNat := by
+  rw [infiniteDayMachine, dayMachine_eval, deepSourceCode_eval]
+
+lemma deepInconsistentAxiom_mem_theoryOf_infinite (n i : ℕ) :
+    deepInconsistentAxiom (Nat.pair n i) ∈ theoryOf (infiniteDayMachine n) := by
+  obtain ⟨b, hb⟩ := exists_evaln_of_eval_some (infiniteDayMachine_eval n i)
+  exact mem_theoryOf hb (compile_deepInconsistentSource _)
+
+/-- The day's axioms are pairwise distinct **as sentences**: distinct chain heights give
+distinct normal forms (`iffChain_injective`), and `Nat.pair` is injective in its second
+argument. -/
+lemma deepInconsistentAxiom_injective : Function.Injective deepInconsistentAxiom := by
+  intro a b h
+  rw [deepInconsistentAxiom, deepInconsistentAxiom] at h
+  exact iffChain_injective (by simpa using h)
+
+/-- **Every day's theory is infinitely axiomatized.**  The paper's `Θ′ₙ` is only required to be
+*recursively* axiomatizable, and this is the witness that the rendering really admits that:
+`𝗣𝗔` and `𝗭𝗙𝗖`, the paper's own examples (tex:1859, tex:1889), are schema-generated and
+infinite. -/
+lemma infinite_theoryOf_infiniteDayMachine (n : ℕ) :
+    (theoryOf (infiniteDayMachine n)).Infinite :=
+  Set.infinite_of_injective_forall_mem
+    (f := fun i : ℕ => deepInconsistentAxiom (Nat.pair n i))
+    (fun i j hij => by
+      have h := deepInconsistentAxiom_injective hij
+      simpa using congrArg (fun z : ℕ => z.unpair.2) h)
+    (fun i => deepInconsistentAxiom_mem_theoryOf_infinite n i)
+
+/-- …and inconsistent all the same. -/
+lemma not_consistent_theoryOf_infiniteDayMachine (n : ℕ) :
+    ¬Entailment.Consistent (theoryOf (infiniteDayMachine n)) :=
+  not_consistent_of_refutable_mem (deepInconsistentAxiom_mem_theoryOf_infinite n 0)
+    (provable_neg_deepInconsistentAxiom _)
+
+/-- **`thm:incons`, applied at a family of infinitely axiomatized day-theories, with nothing
+left to the caller.**  Each `Θ′ₙ` here has infinitely many axioms
+(`infinite_theoryOf_infiniteDayMachine`), each of which is astronomically large in normal form,
+and the whole sequence is named by machine sources of `O(n)` symbols.  The deduction-family
+rendering this replaces could not state such a family at all.
+Paper node: `thm:incons` -/
+theorem thm_incons_applied_infinite :
+    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
+          (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+        ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
+          (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
+  lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ infiniteDayMachine
+    (digitMachineCodes_dayMachine _) not_consistent_theoryOf_infiniteDayMachine
 
 end Inconsistency
 
@@ -2093,29 +2484,54 @@ end Inconsistency
 #print axioms conGamma_mentions_zero_of_horizon_unbounded
 #print axioms conGamma_mentions_zero_ackermann
 #print axioms representedConClaims
+#print axioms theoryOf
+#print axioms mem_theoryOf
+#print axioms not_consistent_of_refutable_mem
+#print axioms exists_window
+#print axioms negSourceFormulaCode_sourceNat_of_sentence
+#print axioms negWindowCode_eq_quote
+#print axioms MachineTheoryInconsistent
+#print axioms machineTheoryInconsistent_re
 #print axioms inconsistencySchema
 #print axioms inconsistencySchema_spec
+#print axioms machineTheoryInconsistent_of_not_consistent
+#print axioms not_consistent_theoryOf_of_machineTheoryInconsistent
+#print axioms machineTheoryInconsistent_iff
+#print axioms not_machineTheoryInconsistent_of_diverges
+#print axioms evaln_neverHaltMachine
+#print axioms falsumSource
+#print axioms compile_falsumSource
+#print axioms not_consistent_theoryOf_falsumMachine
+#print axioms theoryOf_const_ofNNF
 #print axioms inconsistencySchema_not_argument_insensitive
 #print axioms inconsistencySchema_mentions_zero
-#print axioms provableCode_negSource_re
-#print axioms negSourceFormulaCode_sourceNat_of_sentence
-#print axioms deductionFamilyArg
+#print axioms machineArg
 #print axioms inconsistencyArgClaimSentence
 #print axioms inconsistencyArgClaimInstance
 #print axioms inconsistencyArgClaimSentence_ne_of_arg_ne
 #print axioms representedInconsistentTheoryClaims
 #print axioms lic_disbelief_inconsistent_theories_unconditional
-#print axioms falsumSource
-#print axioms compile_falsumSource
-#print axioms falsumSource_polyArithmeticSourceSeq
 #print axioms deepInconsistentSource
 #print axioms deepInconsistentAxiom
 #print axioms compile_deepInconsistentSource
 #print axioms deepInconsistentSource_polyArithmeticSourceSeq
 #print axioms sourceTokens_deepInconsistentSource_length
-#print axioms deepInconsistentSource_sourceNat_ne
-#print axioms deepInconsistentAxiom_inconsistent
+#print axioms primrec_deepInconsistentSourceNat
+#print axioms deepSourceCode
+#print axioms deepSourceCode_eval
+#print axioms provable_neg_deepInconsistentAxiom
+#print axioms deepDayMachine
+#print axioms deepDayMachine_eval
+#print axioms deepInconsistentAxiom_mem_theoryOf
+#print axioms not_consistent_theoryOf_deepDayMachine
 #print axioms thm_incons_applied_deep
 #print axioms inconsistencyArgClaimSentence_deep_ne
+#print axioms infiniteDayMachine
+#print axioms infiniteDayMachine_eval
+#print axioms deepInconsistentAxiom_mem_theoryOf_infinite
+#print axioms deepInconsistentAxiom_injective
+#print axioms infinite_theoryOf_infiniteDayMachine
+#print axioms not_consistent_theoryOf_infiniteDayMachine
+#print axioms thm_incons_applied_infinite
 
 end LogicalInduction

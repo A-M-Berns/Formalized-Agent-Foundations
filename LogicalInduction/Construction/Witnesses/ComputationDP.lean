@@ -13,9 +13,12 @@ import LogicalInduction.Framework.WriteOut
 The `_ofComputation` endpoints of `ComputationSyntax.lean` are conditional on a
 `ComputationTheoryPresentation DP T`: a computable deductive process whose stages track the
 `T`-provable instances of the fixed universal computation schemas.  This file constructs
-such a process for a fixed Σ₁-sound `T ⊇ 𝗜𝚺₁`, discharging both the presentation and the
-market non-vacuity hypothesis `hworld`, which is *proved* from consistency and Σ₁-soundness
-of `T` rather than assumed.  Instantiated at the constructed `LIA` inductor, this leaves the
+such a process for a fixed `Δ₁` theory `T` interpreting `𝗣𝗔⁻`, discharging both the
+presentation and the market non-vacuity hypothesis `hworld`, which is *proved* from
+consistency of `T` rather than assumed — Σ₁-soundness was the earlier premise and is
+**gone**, along with the `𝗜𝚺₁` containment: the positive direction the endpoints need is
+Σ₁-completeness (`re_complete_mp`), not soundness.  Instantiated at the constructed `LIA`
+inductor, this leaves the
 computational-knowledge endpoints (`thm:halts`, `thm:pac`, `thm:pazfc`, `thm:incons`,
 `thm:loops`, `thm:dontwait`) with no market, inductor, presentation, or `hworld` hypothesis.
 

@@ -303,6 +303,25 @@ lemma parseStructuredArithmeticFormula_sourceTokens {k : ℕ} (s : ArithSource k
             Option.map_some, negFormulaCode_spec, negFormulaCode_spec]
           rfl
 
+/-- **The emitted run determines what the source denotes.**  `sourceTokens` is *not*
+injective — `leaf (φ ⋏ ψ)` and `and (leaf φ) (leaf ψ)` emit the same run — but the parser
+reads one code off a run, so two sources with the same run compile to the same formula.
+This is what makes a written name unambiguous as a *name of a sentence*, which is all the
+`thm:incons` convention `dd:machinetheory` needs of it.
+
+*Proof kind:* `C` (composition).  *Provenance:* (a)
+`parseStructuredArithmeticFormula_sourceTokens` derived in-project; (b) Mathlib citation —
+`Encodable.encode_injective`. -/
+lemma compile_eq_of_sourceTokens_eq {k : ℕ} {s s' : ArithSource k}
+    (h : sourceTokens s = sourceTokens s') : compile s = compile s' := by
+  have h1 := parseStructuredArithmeticFormula_sourceTokens s []
+    (fuel := (sourceTokens s).length) (depth := 0) le_rfl
+  have h2 := parseStructuredArithmeticFormula_sourceTokens s' []
+    (fuel := (sourceTokens s').length) (depth := 0) le_rfl
+  rw [h] at h1
+  rw [h1] at h2
+  exact Encodable.encode_injective (by simpa using Option.some.inj h2)
+
 /-! ## Alphabet -/
 
 /-- The source alphabet avoids the reserved block terminator `19`. -/
@@ -1350,6 +1369,21 @@ lemma two_pow_le_encode_iffChain : ∀ n : ℕ,
       have : 2 ^ (n + 1) = 2 * 2 ^ n := by ring
       omega
 
+/-- **The chain is injective**: each `⟺` level strictly lengthens the normal form, so
+distinct chain heights are distinct formulas.  What the `thm:incons` witnesses need in order
+to exhibit a genuinely *infinite* day-theory, where the axioms are separated as sentences and
+not merely as written sources.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from
+`encode_iffChain_length_succ`; (b) Mathlib citation — `strictMono_nat_of_lt_succ`. -/
+lemma iffChain_injective : Function.Injective iffChain := by
+  have hmono : StrictMono fun n : ℕ => (encodeArithmeticFormulaSymbols
+      ((iffChain n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)).length := by
+    refine strictMono_nat_of_lt_succ fun n => ?_
+    rw [encode_iffChain_length_succ n]
+    omega
+  exact fun a b h => hmono.injective (by rw [h])
+
 /-- **The separation, negative half.**  `iffChain` is `def:ec`-writable in the paper's
 language — `O(n)` characters, `⟺` being one of the paper's primitive connectives
 (tex:560) — and yet has **no** certificate in the normal-form-metered class, because the
@@ -1742,6 +1776,7 @@ end Frontend
 #print axioms iffChainSource_polyArithmeticSourceSeq
 #print axioms sourceTokens_iffChainSource_length
 #print axioms compile_iffChainSource
+#print axioms iffChain_injective
 #print axioms iffChain_not_polyArithmeticFormulaSeq
 #print axioms unaryRendering_two_pow_not_polyArithmeticFormulaSeq
 #print axioms unaryRendering_two_pow_not_polyArithmeticSourceSeq
@@ -1754,5 +1789,6 @@ end Frontend
 #print axioms negFormulaCode_spec
 #print axioms ArithSource.eval_compile
 #print axioms ArithSource.parseStructuredArithmeticFormula_sourceTokens
+#print axioms ArithSource.compile_eq_of_sourceTokens_eq
 
 end LogicalInduction
