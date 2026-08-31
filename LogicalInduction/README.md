@@ -504,31 +504,58 @@ regression would fail the build, and they are axiom-clean: Foundation proves
 (`InductionSchemeDelta1.lean`), so a concrete instance reports the same three axioms as
 everything else here.
 
-**The residuals, named once.** Beyond the paper's own premise three binders appear, and all
-three are representation infrastructure rather than theory strength:
+**The residuals, named once.** This is their single narrative home; the classification
+ledger's rows point here rather than restating them. Beyond the paper's own premise three
+binders appear. Two of them — `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` — are **charged globally by the
+user's ruling of 2026-08-31**, and no more: they are disclosed here, and no row's status
+turns on either. The third is representation infrastructure of the substrate:
 
 * `[𝗣𝗔⁻ ⪯ T]`, on **16** of the 105 canonical endpoints — a finite set of ordered-semiring
   axioms, and the one item on this list that is a **genuine strengthening** rather than
-  infrastructure. It is *not* implied by "Θ represents computations": the paper's premise
-  yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄`, and Robinson's **R** represents
-  every computable function without containing `𝗣𝗔⁻`. Two steps spend it — the compact
-  `binNumeral` value transfer `def:ec` forces (`provable_subst_iff_of_val`), and
-  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at tag 5 and is the
-  price of not assuming Σ₁-soundness there. The paper's own exclusivity argument is
+  infrastructure. **It is charged globally, by the user's ruling of 2026-08-31**: disclosed
+  once, here, alongside `[T.Δ₁]`, levied against no row, and re-argued in no per-row entry
+  of the classification ledger. It is *not* implied by "Θ represents computations": the
+  paper's premise yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄` — that is `𝗥₀`'s
+  Ω₃ — and Robinson's **R** represents every computable function without containing
+  `𝗣𝗔⁻`; three independent blind audits confirmed that gap. Two steps spend it. The first is
+  the compact `binNumeral` value transfer `def:ec` forces
+  (`provable_subst_iff_of_val`): Foundation's unary numeral costs its own value in symbols,
+  which no write-out certificate can pay, so the compact spelling is forced, and moving
+  provability across it is Gödel completeness over models of `𝗣𝗔⁻`. The second is
+  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at the quotation
+  tag, and is what let **Σ₁-soundness be deleted from all 105 endpoints**: one small
+  *syntactic* assumption on Θ bought the removal of every *semantic* hypothesis, which is
+  the trade this disclosure records. The paper's own exclusivity argument is
   metatheoretic, through the representability biconditional, and needs no arithmetic inside
-  Θ; ours is object-level so the stage-world proof stays constructive. **Whether this is
-  charged globally or against each row is pending a ruling**, and no row's status turns on
-  it today. (`lic_disbelief_inconsistent_theories_unconditional` used to carry a redundant
+  Θ; ours is object-level so the stage-world proof stays constructive. The paper is not
+  innocent of the assumption either: the printed proof of `thm:incons` (app:incons,
+  tex:4487-4491) cites representability at exactly the point where Σ₁-completeness of Θ is
+  what the step needs — arithmetical strength beyond its own stated premises, of the kind
+  this binder supplies, `[𝗣𝗔⁻ ⪯ T]` yielding `𝗥₀ ⪯ T` and with it Σ₁-completeness. The
+  erratum is recorded in `notes/paper-errata.md`. Nor is the binder an invention of ours — Foundation's
+  `code_uniq` was *originally* stated at `𝗣𝗔⁻`, the `𝗥₀` text being dead code, so reviving
+  the commented-out block restores the `𝗣𝗔⁻` statement. And every theory in the paper's
+  intended range satisfies it: `𝗜𝚺₁`, `𝗣𝗔`, `𝗣𝗔 + Con(𝗣𝗔)`, and the arithmetic of ZFC.
+  (`lic_disbelief_inconsistent_theories_unconditional` used to carry a redundant
   `[𝗥₀ ⪯ T]` beside it; that binder was dropped and the proof elaborates
   unchanged, reaching `𝗥₀` through Foundation's `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T`, so no
   canonical endpoint carries it. `RepresentsComputations` also quantifies
   over `f : ℕ → ℕ` where the paper writes `ℕ⁺ → ℕ⁺` — an at-least-as-strong hypothesis.)
 * `[T.Δ₁]` — a `Δ₁`-definable *axiom set*, where the paper asks only that Θ be computably
-  enumerable. The two are not the same condition on `T` as presented: a c.e. axiom set need
-  not be `Δ₁`. They are the same condition on the *theory*: by Craig's trick every c.e.
-  theory has a deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization, and
-  every statement here is about `T ⊢ ·`, which such a re-axiomatization preserves. That step
-  is not formalized; `[T.Δ₁]` is charged once, here, and does not lower a row.
+  enumerable. **Charged globally, by the same ruling of 2026-08-31**, and likewise re-argued
+  in no per-row entry. The two are not the same condition on `T` as presented: a c.e. axiom
+  set need not be `Δ₁`. They are the same condition on the *theory*: by Craig's trick every
+  c.e. theory has a deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization,
+  and every statement here is about `T ⊢ ·`, which such a re-axiomatization preserves. That
+  transfer step **is not formalized** here, and is the honest residual. Two further facts
+  place the charge: the paper never defines "recursively axiomatizable" and fixes no
+  presentation of Θ (tex:600-606), the phrase being used informally throughout §4; and the
+  paper's own arithmetized sentences are presentation-relative in exactly the same way —
+  `Con(Θ′)(ν)`, the halting claims and “`⌈Θ′ₙ⌉` is inconsistent” all depend on how the axiom
+  set is written down, both for their symbol counts and for their provability, so fixing a
+  presentation is a precondition of the paper's own §4.10 material rather than an extra ask.
+  What consumes `[T.Δ₁]` is the enumeration of `T`'s theorems, never a step of a paper
+  proof; it does not lower a row.
 * `[𝗜𝚺₁ ⪯ T]` — on **three** of the 105 canonical endpoints and no others.
   `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`) builds its paradoxical
   sequence through Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`;
