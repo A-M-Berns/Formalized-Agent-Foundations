@@ -17,6 +17,16 @@ The checks, all fail-closed:
 
   A. coverage: every non-excluded annotated label has at least one declaration in the
      `AxiomAudit.lean` inventory (Tier-1 `#assert_axioms_clean` or Tier-2 `#assert_fields`).
+  A2. **per-declaration coverage**: every *declaration* carrying a `Paper node:` line is
+     itself named in some `#assert_axioms_clean` block. Check A is per-*label*, and a
+     label is satisfied by one carrier: a second annotated declaration for an
+     already-covered label used to pass every checker while sitting in no inventory and
+     under no axiom gate. That is how two applied `thm:incons` witnesses reached the
+     surface unasserted (found by the R11 blind audit, closed here). This is the
+     per-declaration rule the Cartesian Frames / ModalAgents / Finite Factored Sets
+     checkers get from `paper_nodes.run_node_check`; LI's inventory is many small blocks
+     rather than one marker-delimited block, so the rule is implemented here over the
+     same `paper_nodes` scanner.
   B. curation completeness: the endpoints table and the strength table classify exactly the
      non-excluded annotated labels — no missing label, no stale row, in either table.
   C. **curation resolves**: every canonical endpoint name resolves to a declaration under
@@ -46,9 +56,13 @@ Run from the repo root. Exit status is nonzero on any violation.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import paper_nodes  # noqa: E402 - path fixed up just above
 
 LIB = Path("LogicalInduction")
 AUDIT = Path("AxiomAudit.lean")
@@ -280,6 +294,147 @@ def excluded(lab: str) -> bool:
 
 
 # ----------------------------------------------------------------------------
+# A2. per-declaration inventory coverage
+#
+# Check A asks whether each annotated *label* has an endpoint. This asks the stricter
+# question, of each annotated *declaration*: is this very name inside an
+# `#assert_axioms_clean` block, hence under the axiom gate `lake build AxiomAudit`
+# enforces? `#assert_fields` deliberately does NOT count: it freezes a structure's field
+# names and checks no axioms, so a Tier-2 freeze alone leaves a declaration ungated.
+#
+# The scan is `paper_nodes`', not this file's own `declarations()`: the latter finds a
+# docstring by walking back to the nearest `/--`, which happily crosses a `/-! … -/`
+# section header and attributes an earlier declaration's `Paper node:` line to an
+# unrelated lemma. `paper_nodes.scan` tokenizes comments properly and
+# `paper_nodes.following_declaration` accumulates continuation lines, so a multi-line
+# signature is not missed either.
+# ----------------------------------------------------------------------------
+
+# Annotated declarations deliberately outside the axiom gate. The default posture is "no
+# exemption": an annotated declaration that is not asserted should be asserted, since
+# adding a name to an internal `#assert_axioms_clean` block costs one line and disturbs
+# no count (labels, not declarations, drive the README/classification tallies). Add an
+# entry only for a declaration an assertion genuinely cannot reach — e.g. a `private`
+# declaration, which `#assert_axioms_clean` cannot name from `AxiomAudit.lean` — with a
+# one-line reason. Every entry is itself checked: it must name a real annotated carrier
+# that really is uninventoried, so an exemption cannot outlive its cause.
+PER_DECLARATION_EXEMPTIONS: dict[str, str] = {
+    # e.g. "LogicalInduction.Foo.bar": "private; `#assert_axioms_clean` cannot name it",
+}
+
+
+def annotated_carriers(root: Path = Path(".")) -> list[tuple[str, str, str, int]]:
+    """Every `Paper node:`-annotated declaration under `LogicalInduction/`.
+
+    Returns `(qualified name, keyword, file, line)`, one entry per annotated docstring
+    that introduces a named declaration.
+    """
+    out: list[tuple[str, str, str, int]] = []
+    for path in sorted((root / LIB).rglob("*.lean")):
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        code, docs = paper_nodes.scan(text)
+        prefixes = paper_nodes.namespace_prefixes(code, len(lines))
+        for _start, end, body in docs:
+            if not any("Paper node:" in bl or "Paper nodes:" in bl
+                       for bl in body.splitlines()):
+                continue
+            decl_line, keyword, name = paper_nodes.following_declaration(
+                code, end, len(lines))
+            if keyword is None or not name:
+                # DANGLING / ANONYMOUS carriers are reported by check-paper-nodes.sh's
+                # own label pass; nothing to gate here.
+                continue
+            if name.startswith("_root_."):
+                qualified = name[len("_root_."):]
+            else:
+                prefix = prefixes.get(decl_line, "")
+                qualified = f"{prefix}.{name}" if prefix else name
+            out.append((qualified, keyword, str(path), decl_line))
+    return out
+
+
+def tier1_entries(root: Path = Path(".")) -> list[str]:
+    """Names listed in the LogicalInduction section's `#assert_axioms_clean` blocks.
+
+    Spelled as written in `AxiomAudit.lean` — that file sits inside `namespace
+    LogicalInduction` and `open`s several sub-namespaces, so entries are relative names
+    resolved by `_resolve_entry` below, not fully qualified ones.
+    """
+    entries: list[str] = []
+    mode = None
+    for line in (root / AUDIT).read_text(encoding="utf-8").splitlines():
+        if line.startswith("end LogicalInduction"):
+            break
+        if line.startswith("#assert_axioms_clean"):
+            mode = "ax"
+            rest = re.sub(r"^#assert_axioms_clean(_except)?\b", "", line)
+            entries += re.findall(r"[A-Za-z_][A-Za-z0-9_.'₀₁₂₃₄₅₆₇₈₉]*", rest)
+            continue
+        if mode == "ax" and re.match(r"^  [A-Za-z]", line):
+            entries += re.findall(r"[A-Za-z_][A-Za-z0-9_.'₀₁₂₃₄₅₆₇₈₉]*", line)
+            continue
+        mode = None
+    return entries
+
+
+def _resolve_entry(entry: str, pool: set[str]) -> str | None:
+    """The declaration an inventory entry names, or None if it names none uniquely.
+
+    Exact match, then the `LogicalInduction.`-qualified form, then a *unique* dotted
+    suffix — the last is what an `open`ed namespace in `AxiomAudit.lean` needs
+    (`lic_wubaff_ofFeedbackTruth` for `LogicalInduction.FeedbackEmission.…`). An
+    ambiguous suffix resolves to nothing, so a listed name never launders coverage onto a
+    same-short-named declaration in another namespace.
+    """
+    if entry in pool:
+        return entry
+    qualified = "LogicalInduction." + entry
+    if qualified in pool:
+        return qualified
+    hits = [name for name in pool if name.endswith("." + entry)]
+    return hits[0] if len(hits) == 1 else None
+
+
+def check_per_declaration_coverage(root: Path) -> tuple[list[str], int, int]:
+    """(violations, carriers checked, exemptions used)."""
+    carriers = annotated_carriers(root)
+    names = {name for name, _kw, _f, _ln in carriers}
+    covered = {hit for entry in tier1_entries(root)
+               if (hit := _resolve_entry(entry, names)) is not None}
+    errs: list[str] = []
+    used = 0
+    for name, keyword, path, line in sorted(carriers):
+        if name in covered:
+            if name in PER_DECLARATION_EXEMPTIONS:
+                errs.append(
+                    f"per-declaration coverage check: FAIL — stale exemption: {name!r} is "
+                    f"listed in PER_DECLARATION_EXEMPTIONS but is now named in an "
+                    f"`#assert_axioms_clean` block; remove the exemption")
+            continue
+        if name in PER_DECLARATION_EXEMPTIONS:
+            used += 1
+            continue
+        errs.append(
+            f"{path}:{line}: UNINVENTORIED CARRIER: the `{keyword}` {name!r} carries a "
+            f"`Paper node:` annotation but is named in no `#assert_axioms_clean` block "
+            f"of {AUDIT}, so no axiom gate covers it")
+    for name in sorted(PER_DECLARATION_EXEMPTIONS):
+        if name not in names:
+            errs.append(
+                f"per-declaration coverage check: FAIL — stale exemption: {name!r} is "
+                f"listed in PER_DECLARATION_EXEMPTIONS but carries no `Paper node:` "
+                f"annotation under {LIB}/")
+    if errs and any("UNINVENTORIED CARRIER" in e for e in errs):
+        errs.append(
+            "  Add each name to the `#assert_axioms_clean` block for its file in "
+            f"{AUDIT} (an annotated declaration is claimed as paper-facing, so it belongs "
+            "under the axiom gate). Only if an assertion is genuinely impossible, add it "
+            "to PER_DECLARATION_EXEMPTIONS with a one-line reason.")
+    return errs, len(carriers), used
+
+
+# ----------------------------------------------------------------------------
 # G. the README's headline counts, re-derived from the ledger
 # ----------------------------------------------------------------------------
 
@@ -437,6 +592,12 @@ def main() -> int:
     all_decls = declarations(root)
     fail = False
 
+    # --- A2. every annotated declaration is itself axiom-gated ----------------
+    perdecl_errs, n_carriers, n_exempt = check_per_declaration_coverage(root)
+    for err in perdecl_errs:
+        print(err)
+        fail = True
+
     # --- B. both tables classify exactly the tracked labels -------------------
     for what, table in (("endpoints", endpoints), ("strength", strength)):
         missing = sorted(tracked - table.keys())
@@ -530,6 +691,11 @@ def main() -> int:
         f"{sum(counts['thm'].values())} theorem/lemma nodes: {fmt(counts['thm'])}; "
         f"{sum(counts['def'].values())} definition nodes: {fmt(counts['def'])}; "
         f"README headline counts match)"
+    )
+    print(
+        f"per-declaration coverage check: OK "
+        f"({n_carriers} annotated declarations, every one named in an "
+        f"`#assert_axioms_clean` block; {n_exempt} exempt)"
     )
     return 0
 

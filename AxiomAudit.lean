@@ -1411,6 +1411,226 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_does_not_anticipate_halting_unconditional
 
 
+/-! ## Per-declaration axiom coverage
+
+`scripts/check_endpoint_coverage.py` requires that **every** declaration under
+`LogicalInduction/` carrying a `Paper node:` docstring line is named in some
+`#assert_axioms_clean` block here.  The blocks above are grouped by paper node and carry
+the tier notes; the blocks below close that rule for everything else — construction
+machinery, emission certificates, applied witnesses and boundary structures that cite a
+paper node as provenance without being that node's headline endpoint.
+
+They are internal axiom regression assertions, not public trust surface: the public
+canonical endpoint inventory is the `LI-CANONICAL` block alone.  They add no paper node,
+so the tallies in `scripts/coverage-classification.md` and `LogicalInduction/README.md`,
+which are per-*label*, are unchanged by anything here.  The reverse gate used to be
+per-label too, and that was the hole: one asserted carrier satisfied a label, so a second
+annotated declaration for the same label passed every checker while sitting under no
+axiom gate.  A `#assert_fields` freeze does not close it either — it checks field names,
+not axioms.  Grouped by defining file. -/
+
+-- LogicalInduction/Framework/Affine.lean
+#assert_axioms_clean
+  AffineCombination.PolySequence
+
+-- LogicalInduction/Framework/Criterion.lean
+#assert_axioms_clean
+  EfficientlyComputableDigit MarketComputation clockedTrader
+
+-- LogicalInduction/Framework/Expectations.lean
+#assert_axioms_clean
+  LUV.RpnThresholdCodeSeq LUV.RpnThresholdCodes
+
+-- LogicalInduction/Framework/RpnEmission.lean
+#assert_axioms_clean
+  EfficientlyComputable.ofDigitEmitter EfficientlyComputable.ofSingleTradeBlocks
+  EfficientlyComputable.ofTokenEmitter IsLogicalInductor.noExploitDigit
+  IsLogicalInductor.noExploitTok RpnSpliceStream.ec
+
+-- LogicalInduction/Framework/RpnSplice.lean
+#assert_axioms_clean
+  RpnSentenceCodes RpnSentenceCodes.bigOr
+
+-- LogicalInduction/Framework/WriteOut.lean
+#assert_axioms_clean
+  BigSentenceCodes BigSpliceStream.ec BigTokenStream DigitRatCodes
+  EfficientlyComputable.ofSingleTradeBlocksBig ec_of_bigTokenStream
+
+-- LogicalInduction/Construction/TradingFirm.lean
+#assert_axioms_clean
+  trading_firm_dominance_of_ec
+
+-- LogicalInduction/Construction/Witnesses/ArithmeticSource.lean
+#assert_axioms_clean
+  PaperLUVCombination PaperLUVSeq iffChainSource_polyArithmeticSourceSeq iffPaperLUV
+  invPaperLUVWith
+
+-- LogicalInduction/Construction/Witnesses/BoundedEvaluation.lean
+#assert_axioms_clean
+  CEEnumeration SettlementChecker
+
+-- LogicalInduction/Construction/Witnesses/ComputationDP.lean
+#assert_axioms_clean
+  liaMarketComputation quotationPresentation quotation_presentation_nonvacuous
+
+-- LogicalInduction/Construction/Witnesses/ComputationSyntax.lean
+#assert_axioms_clean
+  ComputableHorizon ComputationTheoryPresentation
+
+-- LogicalInduction/Construction/Witnesses/ConditioningPresentation.lean
+#assert_axioms_clean
+  CompactConditioningProcessComputation
+
+-- LogicalInduction/Construction/Witnesses/FeedbackTruth.lean
+#assert_axioms_clean
+  FeedbackTruth.FeedbackTruthComputation
+
+-- LogicalInduction/Construction/Witnesses/FinitePerturbationWitness.lean
+#assert_axioms_clean
+  FinitePerturbationCounterexample.exists_advice_perturbation
+  FinitePerturbationCounterexample.exists_advice_perturbation_ofTheory
+  FinitePerturbationCounterexample.not_overgeneral_ifp_ofTheory
+
+-- LogicalInduction/Construction/Witnesses/HistoricalMaturity.lean
+#assert_axioms_clean
+  AffineCombination.ApproxDeterminedViaTheory.lic_prandaff
+  AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above
+  AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_below
+  AffineCombination.DeterminedViaTheory.lic_prandaff
+  AffineCombination.DeterminedViaTheory.lic_prandaff_above
+  AffineCombination.DeterminedViaTheory.lic_prandaff_below
+
+-- LogicalInduction/Construction/Witnesses/LUVArithmetic.lean
+#assert_axioms_clean
+  ComputableLUV ComputableLUV.toLUV ComputableLUV.toLUV_polyThresholdCodes
+
+-- LogicalInduction/Construction/Witnesses/LUVPresentation.lean
+#assert_axioms_clean
+  ArithmeticLUVPresentation
+
+-- LogicalInduction/Construction/Witnesses/LUVSyntax.lean
+#assert_axioms_clean
+  LUVCombinationSyntax
+
+-- LogicalInduction/Construction/Witnesses/PrefixMachine.lean
+#assert_axioms_clean
+  approx_polyRat_of_sentence dcStep natCode prefixApprox prefixKappa prefixKraft_of_code
+  prefixMachinePresentation prefixSentenceEnum prefixThresholdEmission sentCode
+  sentencePoly_of_invalidBit validCode
+
+-- LogicalInduction/Construction/Witnesses/ProductDefinition.lean
+#assert_axioms_clean
+  exactProductDP exactWeightLUV productAtom_mesh_encode_polyFueled productDefDP
+  productExtensionWorld_consistentWithTheory productExtensionWorld_holds_schema
+
+-- LogicalInduction/Construction/Witnesses/QuotationAffine.lean
+#assert_axioms_clean
+  BooleanQuoteCode PairedWeighting ParameterizedDiagonalQuoteCode
+  QuotationTheoryPresentation RationalQuoteCode
+
+-- LogicalInduction/Construction/Witnesses/QuoteCodeOfMarket.lean
+#assert_axioms_clean
+  conditionalExpectationQuoteCode deferredWeightQuoteCode ordinaryLUVCombinationSeq
+  quoteAtom_mesh_encode_polyFueled
+
+-- LogicalInduction/Construction/Witnesses/RpnConditioning.lean
+#assert_axioms_clean
+  RpnConditioning.depthMode_unRpn_agree RpnConditioning.frameAgree_unRpn_rpnFrameOutput
+  RpnConditioning.frameContract_rpnFrameOutput
+  RpnConditioning.frameJoint_unRpn_rpnFrameOutput RpnConditioning.rpnFrameEmit_contractsTo
+  RpnConditioning.rpnFrameOutput_polySegStream
+  RpnConditioning.rpnGuardedConditionRun_polySegStream_of
+  RpnConditioning.strategyOfTokens_unRpn_rpnFrameOutput_trades
+  RpnConditioning.strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
+  RpnConditioning.tradeRuns_unRpn_agree RpnConditioning.unRpn_rpnConditionRun_of
+  RpnConditioning.unRpn_split
+
+-- LogicalInduction/Construction/Witnesses/StrictSeparators.lean
+#assert_axioms_clean
+  exists_pos_mass_of_ce_nested
+
+-- LogicalInduction/Construction/Witnesses/UniversalDovetailer.lean
+#assert_axioms_clean
+  Dovetail.dovetailMass Dovetail.dovetailMass_eq_mass Dovetail.dusApprox
+  Dovetail.lowerSemicomputable Dovetail.rawVal Dovetail.trim_tendsto_of_exact
+  Dovetail.universalApprox Dovetail.universalMass
+
+-- LogicalInduction/Construction/Witnesses/UniversalPrefix.lean
+#assert_axioms_clean
+  UPrefix.UHalt UPrefix.kappaStage UPrefix.kappaU UPrefix.uCode UPrefix.uMinLen
+  UPrefix.uSel
+
+-- LogicalInduction/Properties/Conditioning.lean
+#assert_axioms_clean
+  ConditioningPresentation ConditioningTraderCompiler EventualConditioningFloor
+  EventualConditioningOperationalWitness GatedConditioningOperationalWitness
+  Trader.conditionedTranslation_exploits_base
+  Trader.eventualConditionedTranslation_exploits_base
+
+-- LogicalInduction/Properties/ExpectationProperties.lean
+#assert_axioms_clean
+  LUVCombination LUVCombination.ExactTheoryPresentation
+  LUVCombination.MeshSoftmaxOperationalWitness LUVCombination.PolySequence
+
+-- LogicalInduction/Properties/FinitePerturbationCounterexample.lean
+#assert_axioms_clean
+  FinitePerturbationCounterexample.not_overgeneral_ifp_of_advice
+
+-- LogicalInduction/Properties/FinitePerturbations.lean
+#assert_axioms_clean
+  EfficientPrefixPatch FiniteSupportPatch MachineFiniteSupportPatch
+  machineFiniteSupportPatch_of_rewriter
+
+-- LogicalInduction/Properties/Introspection.lean
+#assert_axioms_clean
+  CompletedAffineQuoteApprox CompletedAffineQuoteEq CurrentExpectationQuote
+  CurrentPriceExpectationQuote IntrospectionIntervalQuote ParadoxResistanceQuote
+
+-- LogicalInduction/Properties/LimitCoherence.lean
+#assert_axioms_clean
+  gaifmanMeasure_sentence gaifmanWorldMeasure_sentence lic_gaifmanMeasure_supported
+  lic_gaifmanWorldMeasure_supported lic_limitingBelief_gaifman
+
+-- LogicalInduction/Properties/MetaLearning.lean
+#assert_axioms_clean
+  InconsistentTheoryClaims RepresentedDecidableClaims RepresentedSemidecidableClaims
+
+-- LogicalInduction/Properties/OccamBounds.lean
+#assert_axioms_clean
+  OccamThresholdEmission PrefixMachinePresentation PrefixNegationCompiler
+
+-- LogicalInduction/Properties/ProvabilityInduction.lean
+#assert_axioms_clean
+  buySeq_ec_big
+
+-- LogicalInduction/Properties/Pseudorandomness.lean
+#assert_axioms_clean
+  AffineCombination.FeedbackTraderEmission AffineCombination.FeedbackTraderEmissionFamily
+  AffineCombination.FeedbackTraderEmissionSigns AffineCombination.FeedbackTruthSequence
+  PatientSettlementClock PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
+  lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
+  lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
+  lic_learning_pseudorandom_frequency_of_historicalVerifiers
+  lic_learning_varied_pseudorandom_above_of_historicalVerifiers
+  lic_learning_varied_pseudorandom_below_of_historicalVerifiers
+  lic_learning_varied_pseudorandom_of_historicalVerifiers
+
+-- LogicalInduction/Properties/SelfTrust.lean
+#assert_axioms_clean
+  AffineQuoteEq AffineQuoteGE AffineQuotePortfolio ConditionalExpectationQuote
+  ExpectedFutureExpectationQuote FuturePriceQuote SelfTrustQuote
+
+-- LogicalInduction/Properties/UniformNonDogmatism.lean
+#assert_axioms_clean
+  EfficientRepeatedEnumeration obuTrader_ec
+
+-- LogicalInduction/Properties/UniversalSemimeasure.lean
+#assert_axioms_clean
+  BitPrefixSentences ContinuousSemimeasure DUSApproximationPresentation
+  DUSThresholdEmission IndependentBitAtoms LowerSemicomputableContinuousSemimeasure
+  StrictSeparatorPresentation UniversalContinuousSemimeasure
+
+
 open AffineCombination LUVCombination in
 /-! ## Tier-2 boundary structures — field (hypothesis) surface
 
