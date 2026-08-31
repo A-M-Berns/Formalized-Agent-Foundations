@@ -29,10 +29,14 @@ The standing choices (each also documented in `CartesianFrames/README.md`):
   "isomorphism of categories", so Claim 46 is rendered as an `Equivalence` together
   with the strict involution `(C*)* = C`.
 
-* `dd:eq-to-iso` — where the paper asserts a literal *equality* of frames that
-  Lean's subtype/quotient encoding makes unstateable (e.g. Claim 35's idempotence:
-  committing changes the agent's *type*), the declaration states the canonical
-  *isomorphism* instead — one rung below equality and only the forced rung.  An `≅`
+* `dd:eq-to-iso` — where the paper asserts a literal *equality* of frames that is
+  *false* under Lean's subtype/quotient encoding (e.g. Claim 35's idempotence:
+  committing changes the agent's *type*, so `(C.commit B).commit _ = C.commit B` is a
+  well-typed equation of `Frame W`s whose two sides have different `Agent` types), the
+  declaration states the canonical *isomorphism* instead — one rung below equality.  At
+  the Claim 35 sites that rung is forced by the encoding; at the `⊥ = ⊥_W` site
+  (`botOfUnivIsoBot`) it is a consequence of `instBot` taking `Agent := W` rather than
+  `↥Set.univ`, the paper's own literal shape.  An `≅`
   is data rather than a proposition, so such a site is a `def`, not a `theorem`.
   Each affected site carries this tag; biextensional-equivalence corollaries follow
   via Claim 8/40 where downstream wants them.

@@ -371,7 +371,7 @@ example (h : ∀ P : Distr (Pt Bits), Factorizes P →
     (0 : Fin 3) ∉ history (bg (Ω := Bits) 1) (Set.univ : Set (Pt Bits)) := by
   have hfib : fiber (fun _ : Pt Bits => ()) () = (Set.univ : Set (Pt Bits)) :=
     Set.eq_univ_iff_forall.2 fun _ => rfl
-  have hd := structIndepGiven_of_forall_condIndepVar h ()
+  have hd := structIndepGiven_of_forall_condIndepVar (Or.inl inferInstance) h ()
   rw [hfib] at hd
   refine Finset.disjoint_left.1 hd ((mem_history_iff_exists_ne _ 0).2 ?_)
   exact ⟨pt true false false, pt false false false, by decide, by decide⟩

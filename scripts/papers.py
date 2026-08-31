@@ -119,7 +119,7 @@ PAPERS = {
         "readme": "FiniteFactoredSets/README.md",
         "knowledge": "FiniteFactoredSets/KNOWLEDGE.md",
         "errata": "FiniteFactoredSets/notes/paper-errata.md",
-        # Complete for its ruled scope (§2–§7; Examples 3 and 4 out of scope, Conjecture 1
+        # Complete for its ruled scope (§2–§7; Example 3 out of scope, Conjecture 1
         # stated and deliberately unproved), and the consumer surface is the whole of it
         # rather than an incremental slice (root CLAUDE.md, "Consumer readiness is part of
         # paper completion").

@@ -1,7 +1,7 @@
 {
   "paper": "Garrabrant, Temporal Inference with Finite Factored Sets (arXiv:2109.11513)",
-  "ruling": "Anson, 2026-08-16: 96 of 98 numbered nodes in scope; Examples 3 and 4 (infinite factored sets on P(N)) out; Conjecture 1 stated as a Prop and deliberately unproved.",
-  "out_of_scope": ["Example 3", "Example 4"],
+  "ruling": "Anson, 2026-08-16: Examples 3 and 4 (infinite factored sets on P(N)) out; Conjecture 1 stated as a Prop and deliberately unproved. Amended by Anson, 2026-08-30: Example 4 brought into scope (it is about Definition 17 at infinite dimension, not about the fundamental theorem, and is carried by InfiniteExamples.finSupp / orthogonal_finSupp_self); 97 of 98 numbered nodes in scope, Example 3 alone out.",
+  "out_of_scope": ["Example 3"],
   "mathlib_rendered": [
     "Definition 1", "Definition 2", "Definition 5", "Definition 6", "Definition 7",
     "Definition 9", "Definition 29", "Definition 30", "Definition 39"

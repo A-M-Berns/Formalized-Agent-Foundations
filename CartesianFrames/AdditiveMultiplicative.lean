@@ -16,11 +16,14 @@ X, Y, Z" as existentials over `Type u` (`dd:universe`).  A priori this bounds th
 witnesses' size.  For the additive bound the restriction is certified here, by
 Claims 41/42: Claim 42's currying witnesses are built from `D`'s own carriers, which
 live in `u`.  Claims 43/44 do *not* certify the multiplicative bound — their witnesses
-carry the given `X` and `Y` — but it holds without loss of generality all the same, by
-a collapse/cardinality argument (quotient the given carriers by outcome-equivalence;
-the quotients inject into collapse-carrier data, hence are `u`-small, and the image
-condition is restored by `exists_image_univ_curry`).  That argument is recorded in
-`KNOWLEDGE.md`; it is not formalized.
+carry the given `X` and `Y` — but it holds without loss of generality all the same.
+Two routes, neither formalized: (a) quotient the carriers by outcome-equivalence in the
+order `X`, then `Z`, then `Y` — `X/~` injects into `Agent(Ĉ)` and `Z/~` into `Env(D̂)`,
+after which `Y/~` injects into `(X/~ × Z/~) → W`, so all three are `u`-small, and each
+replacement preserves both `≃ᵇ`s because the connecting morphisms are identities on the
+other component; or (b) a large-set `C ◁ₓ D` gives `C ◁ D` and `C ◁* D`, both size-free,
+and Lean's Claim 60 (`multSubagentSubEnv_iff_multSubagent`) rebuilds a `u`-small `◁ₓ`
+from those.  Both are recorded in `KNOWLEDGE.md`.
 
 **Paper erratum (Claim 43).** The printed proof chooses "some `b ∈ B` (it does not
 matter which)" when defining `h₃`, silently assuming `Agent(D)` is nonempty.  The
