@@ -383,7 +383,7 @@ lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
 /-- A compact varying threshold presentation emits the literal diagonal expectation
 mesh uniformly; no opaque serialized affine object is decoded. -/
 noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
-    (hcode : LUV.RpnThresholdCodeSeq X) :
+    (hcode : LUV.BigThresholdCodeSeq X) :
     AffineCombination.PolySequence (expectAffineSeq X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -398,7 +398,7 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
     const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
-    sentence_poly := (BigSentenceCodes.ofRpnSentenceCodes hsentence).of_eq (fun z ↦ by simp)
+    sentence_poly := hsentence.of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     const_rank := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -480,7 +480,7 @@ noncomputable def numericQuoteAffine_polySequence
     (H : ℕ → EF) (Y : ℕ → LUV)
     (hH : PGenerableWeighting H) (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteAffine H Y) := by
-  let base := LUV.expectAffineSeq_polySequence Y hY
+  let base := LUV.expectAffineSeq_polySequence Y hY.toBig
   exact {
     termCount := base.termCount
     coefficient := fun z ↦ EF.mul (EF.const (-1)) (base.coefficient z)
@@ -615,7 +615,7 @@ def currentExpectationFeature (X : ℕ → LUV) (n : ℕ) : EF :=
 lemma currentExpectationFeature_generated (X : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) :
     PGenerableWeighting (currentExpectationFeature X) := by
-  let hmesh := LUV.expectAffineSeq_polySequence X hX
+  let hmesh := LUV.expectAffineSeq_polySequence X hX.toBig
   have hdiag : PolyFueled
       (Nat.Partrec.Code.id.pair Nat.Partrec.Code.id)
       (fun n : ℕ ↦ Nat.pair n n) := PolyFueled.id.pair PolyFueled.id
@@ -1169,6 +1169,18 @@ lemma LUV.RpnThresholdCodeSeq.reindex
     {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X)
     {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
     LUV.RpnThresholdCodeSeq (fun n ↦ X (index n)) := by
+  obtain ⟨ci, hi⟩ := hindex
+  have hquery : PolyFueled _ (fun z : ℕ ↦
+      Nat.pair (index z.unpair.1) z.unpair.2) :=
+    (hi.comp PolyFueled.left).pair PolyFueled.right
+  exact (hX.comp hquery).of_eq (fun z ↦ by simp)
+
+/-- The write-out threshold interface reindexes along a poly-fueled index map, exactly as
+the token-metered one does: only the paired query index is recomputed. -/
+lemma LUV.BigThresholdCodeSeq.reindex
+    {X : ℕ → LUV} (hX : LUV.BigThresholdCodeSeq X)
+    {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
+    LUV.BigThresholdCodeSeq (fun n ↦ X (index n)) := by
   obtain ⟨ci, hi⟩ := hindex
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (index z.unpair.1) z.unpair.2) :=
@@ -2439,7 +2451,7 @@ def LUV.crossPrecisionAffine (X : ℕ → LUV) (low high : ℕ → ℕ)
 
 noncomputable def LUV.crossPrecisionAffine_polySequence
     (X : ℕ → LUV) (low high : ℕ → ℕ)
-    (hX : LUV.RpnThresholdCodeSeq X)
+    (hX : LUV.BigThresholdCodeSeq X)
     (hlow : ∃ c, PolyFueled c low) (hhigh : ∃ c, PolyFueled c high) :
     AffineCombination.PolySequence (LUV.crossPrecisionAffine X low high) := by
   let clow := Classical.choose hlow
@@ -2504,8 +2516,8 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))) := by
     refine (BigSentenceCodes.ifZero
-      (BigSentenceCodes.ofRpnSentenceCodes (hX.comp hqueryLow))
-      (BigSentenceCodes.ofRpnSentenceCodes (hX.comp hqueryHigh))
+      (hX.comp hqueryLow)
+      (hX.comp hqueryHigh)
       htest').of_eq (fun z ↦ ?_)
     simp only [Nat.unpair_pair]
     by_cases hlt : z.unpair.2 < low z.unpair.1
@@ -2657,12 +2669,12 @@ lemma crossPrecision_deferred_tendsto_zero
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.BigThresholdCodeSeq X)
     (hvalued : ∀ k (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X k) x)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
     Tendsto (fun n ↦ (X n).expectApprox (P (f n)) (n + 1) -
       (X n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
-  have hX' : LUV.RpnThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
+  have hX' : LUV.BigThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
     hX.reindex ⟨_, PolyFueled.right⟩
   have hB : AffineCombination.PolySequence (crossPrecisionBlocks X) :=
     LUV.crossPrecisionAffine_polySequence (fun z ↦ X z.unpair.2)
@@ -2741,8 +2753,8 @@ noncomputable def LUV.expectDifferenceAffine_polySequence
     (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (LUV.expectDifferenceAffine X Y) :=
-  (LUV.expectAffineSeq_polySequence X hX).add
-    (LUV.expectAffineSeq_polySequence Y hY).neg
+  (LUV.expectAffineSeq_polySequence X hX.toBig).add
+    (LUV.expectAffineSeq_polySequence Y hY.toBig).neg
 
 lemma LUV.expectDifferenceAffine_priceAt
     (X Y : ℕ → LUV) (P : History) (n m : ℕ) :
@@ -2853,7 +2865,7 @@ lemma pairedExpectationBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
 /-- The paired mesh family is emitted uniformly from the varying threshold presentation:
 the evaluation day fixes the precision and the source index selects the LUV. -/
 noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.BigThresholdCodeSeq X) :
     AffineCombination.PolySequence (pairedExpectationBlocks X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -2872,7 +2884,7 @@ noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
     const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp hm.succ_comp⟩
-    sentence_poly := (BigSentenceCodes.ofRpnSentenceCodes hsentence).of_eq (fun w ↦ by simp)
+    sentence_poly := hsentence.of_eq (fun w ↦ by simp)
     terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
     const_rank := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
     coefficient_rank := by intro z j hj; simp [EF.rank]
@@ -2893,7 +2905,7 @@ lemma pairedExpectationFeature_denote (X : ℕ → LUV) (P : History) (m k : ℕ
   simp [pairedExpectationBlocks_price, LUV.expect]
 
 lemma pairedExpectationFeature_paired (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.BigThresholdCodeSeq X) :
     PairedWeighting (pairedExpectationFeature X) := by
   let hmesh := pairedExpectationBlocks_polySequence X hX
   exact {
@@ -2976,7 +2988,7 @@ noncomputable def numericQuoteBlocks_polySequence
     (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteBlocks H Y) :=
   (featureConstantAffine_polySequence H hH.toPGenerable).add
-    (pairedExpectationBlocks_polySequence Y hY).neg
+    (pairedExpectationBlocks_polySequence Y hY.toBig).neg
 
 /-- **Deferred numeric quote without injectivity.**  If every completed world assigns the
 paired target `H ⟨f k, k⟩` to the quote LUV `Y k`, then the deferred market reading of
@@ -3065,7 +3077,7 @@ lemma conditional_deferred_tendsto_zero
     (PairedWeighting.const (-1)).mul (PairedWeighting.ofPGenerableFst hW)
   have htargetP :
       PairedWeighting (fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)) :=
-    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX)
+    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX.toBig)
   set Wneg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (W z.unpair.1) with hWnegDef
   set target : ℕ → EF := fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)
     with htargetDef
@@ -3074,8 +3086,8 @@ lemma conditional_deferred_tendsto_zero
       ((pairedExpectationBlocks X z).scale (Wneg z))).add
       (numericQuoteBlocks target Z' z) with hBsDef
   have hB : AffineCombination.PolySequence Bs :=
-    ((pairedExpectationBlocks_polySequence Z hZ).add
-      ((pairedExpectationBlocks_polySequence X hX).scaleFeature Wneg
+    ((pairedExpectationBlocks_polySequence Z hZ.toBig).add
+      ((pairedExpectationBlocks_polySequence X hX.toBig).scaleFeature Wneg
         hWnegP.toPGenerable)).add
       (numericQuoteBlocks_polySequence target htargetP Z' hZ')
   -- denotations of the two derived features
@@ -3263,7 +3275,7 @@ lemma selfTrust_deferred_tendsto_zero
     (hpDenote : ∀ m k, k ≤ m → (pF (Nat.pair m k)).denote P = (p k : ℝ))
     (G : ℕ → EF) (hG : PairedWeighting G)
     (hGmem : ∀ z, 0 ≤ (G z).denote P ∧ (G z).denote P ≤ 1)
-    (A B : ℕ → LUV) (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
+    (A B : ℕ → LUV) (hA : LUV.BigThresholdCodeSeq A) (hB : LUV.BigThresholdCodeSeq B)
     (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
       v.ValuesAt (B k) ((G (Nat.pair m k)).denote P) ∧
         v.ValuesAt (A k) (v.payout (φ k) * (G (Nat.pair m k)).denote P))
@@ -4141,7 +4153,7 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
       atTop (𝓝 0) := by
     have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
       (DeferralFibre.pairedExpectationFeature X)
-      (DeferralFibre.pairedExpectationFeature_paired X hX) hHmem Y hY
+      (DeferralFibre.pairedExpectationFeature_paired X hX.toBig) hHmem Y hY
       (fun m k hfk v hv ↦ by
         rw [DeferralFibre.pairedExpectationFeature_denote, ← hfk]
         exact reflected k v hv) hP
@@ -4149,9 +4161,9 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
     rw [DeferralFibre.pairedExpectationFeature_denote]
     rfl
   have hcrossX0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    X hX source_valued hP
+    X hX.toBig source_valued hP
   have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY quote_valued hP
+    Y hY.toBig quote_valued hP
   let raw := LUV.expectDifferenceAffine X Y
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4245,13 +4257,13 @@ noncomputable def futurePriceQuoteOfRepresentation
     rw [DeferralFibre.pairedPriceFeature_denote]
     rfl
   have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY quote_valued hP
+    Y hY.toBig quote_valued hP
   let sentenceFamily := AffineCombination.sentenceAffine φ
   let quoteFamily := LUV.expectAffineSeq Y
   let raw : ℕ → AffineCombination := fun n ↦
     (sentenceFamily n).add (quoteFamily n).neg
   let hsentence := AffineCombination.sentenceAffine_polySequence φ hφ
-  let hquote := LUV.expectAffineSeq_polySequence Y hY
+  let hquote := LUV.expectAffineSeq_polySequence Y hY.toBig
   let hraw := hsentence.add hquote.neg
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4366,9 +4378,9 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
   have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f hspec
     X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem slack slack_tendsto hsemantic hP
   have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z hZ Zvalued hP
+    Z hZ.toBig Zvalued hP
   have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z' hZ' Z'valued hP
+    Z' hZ'.toBig Z'valued hP
   let raw := LUV.expectDifferenceAffine Z Z'
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4450,8 +4462,8 @@ noncomputable def selfTrustQuoteOfRepresentation
     (hφ : BigSentenceCodes φ)
     (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A)
-    (hB : LUV.RpnThresholdCodeSeq B)
+    (hA : LUV.BigThresholdCodeSeq A)
+    (hB : LUV.BigThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
@@ -4728,8 +4740,8 @@ theorem lic_self_trust_ofRepresentation
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
     (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A)
-    (hB : LUV.RpnThresholdCodeSeq B)
+    (hA : LUV.BigThresholdCodeSeq A)
+    (hB : LUV.BigThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))

@@ -103,8 +103,14 @@ combinations.  The deadline-bounded truth program `C` is the paper's explicit op
 input; `hdet` (`def:affthmval`) and `hvalued` (the representation premise) are its explicit
 semantic ones.
 
-The premises are exactly tex:1822-1832's.  In particular determination is at the
-*combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
+The premises are tex:1822-1832's with one printed omission repaired: this endpoint carries
+`hsupport` — the support of `w` lies in the image of `f` — which the printed `thm:wubexp`
+lacks and which is printed instead on `thm:recurringunbiasednessexp` (tex:1812-1820), a
+statement that introduces no `f`.  The affine twins settle the intended placement
+(`thm:wubaff`, tex:1480-1490, has the clause; `thm:recurringunbiasedness`, tex:1225-1233,
+does not), so the clause is stated here.  Recorded as `PE2` in `notes/paper-errata.md`.
+
+Determination is at the *combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
 which it would not be under `LUVCombination.ExactTheoryPresentation`.  The mesh feedback
 bridge is built from approximate determination; see
 `FeedbackTruth.luv_wubexp_ofComputation`.

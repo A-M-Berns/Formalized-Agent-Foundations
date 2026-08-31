@@ -18,12 +18,10 @@ namespace LogicalInduction
 open Filter Topology Set MeasureTheory
 
 /-- Propositions carry the discrete measurable structure, so proposition-valued worlds inherit
-the usual countable product measurable space. -/
-instance propMeasurableSpace : MeasurableSpace Prop := ⊤
-
-instance propMeasurableSingletonClass : MeasurableSingletonClass Prop :=
-  ⟨fun _ => trivial⟩
-
+the usual countable product measurable space.  The discrete structure on `Prop` and its
+singleton-measurability are Mathlib's `Prop.instMeasurableSpace` and
+`Prop.instMeasurableSingletonClass` (`Mathlib/MeasureTheory/MeasurableSpace/Instances.lean`);
+this file declares neither. -/
 instance pcWorldMeasurableSpace : MeasurableSpace PCWorld :=
   inferInstanceAs (MeasurableSpace (ℕ → Prop))
 

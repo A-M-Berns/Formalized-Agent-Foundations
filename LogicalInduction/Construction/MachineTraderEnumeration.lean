@@ -67,10 +67,11 @@ lemma enumeratedTrader_strat (i n : ℕ) :
 
 /-! ## The function an index computes
 
-Named because it is the object a future soundness proof must place in `Complexity.FP`; see
-the module note above for why that is not available yet. `bitsToDigits_enumeratedOutput`
-below is the half of the connection that *is* available, and it is what makes the eventual
-soundness proof a matter of the `FP` membership alone. -/
+Named because it is the object the soundness proof places in `Complexity.FP`, which
+`enumeratedOutput_mem_FP` below does via the clocked simulator of `Machine/ClockedSim.lean`.
+`bitsToDigits_enumeratedOutput` is the other half of the connection — it identifies this
+function's output on a unary day with the index's token stream — and together the two reduce
+`enumeratedTrader_machineEfficient` to that `FP` membership. -/
 
 /-- The function an index computes: the described machine's output word on its input, or the
 empty word if the indexed clock runs out. This is the function

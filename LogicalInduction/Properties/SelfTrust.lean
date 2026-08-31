@@ -171,6 +171,13 @@ paper's e.c. rational sequences are the special case `ratCodeFeature`, and `def:
 emission field is **write-out** metered, so that special case reaches the paper's own
 class: `PGenerableRat.ofDigitRatCodes` admits `p n = 1 − 2⁻ⁿ` and every other sequence
 whose codes are exponential but polynomially writable (`pGenerableRat_two_pow_inv`).
+
+Both quoted LUVs carry their threshold families in the **write-out** class
+(`LUV.BigThresholdCodeSeq`), the same meter `sentence_codes` uses and the one the rest of
+the day-indexed surface carries: polynomially many emitted tokens, individual token values
+unbounded.  Nothing on this lane opens a threshold certificate as value-bounded emission
+data — every consumer either reindexes it or hands it to `AffineCombination.PolySequence`,
+whose `sentence_poly` field is already write-out metered.
 Paper node: `thm:st` -/
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
@@ -179,8 +186,8 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
   sentence_codes : BigSentenceCodes φ
   probability_generable : PGenerableRat P p
-  product_codes : LUV.RpnThresholdCodeSeq A
-  confidence_codes : LUV.RpnThresholdCodeSeq B
+  product_codes : LUV.BigThresholdCodeSeq A
+  confidence_codes : LUV.BigThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))

@@ -97,8 +97,18 @@ def emptyBitDeductiveProcess : DeductiveProcess where
   D := fun _ ↦ ∅
   mono := fun _ φ hφ ↦ by simp at hφ
 
-/-- Ordinary propositional atoms are independently realizable over the constantly empty
-deductive process. -/
+/-- **Inhabitation only, and degenerate.**  Ordinary propositional atoms are independently
+realizable over the constantly empty deductive process.  This says the premise's fields are
+satisfiable and nothing more: every stage of `emptyBitDeductiveProcess` is `∅`, so
+`realizable` is discharged *vacuously* — `v.ConsistentWith ∅` holds for the constantly-false
+world, and no atom of the family is ever constrained by a deductive commitment.  The paper's
+`thm:dus` reading, in which the atoms are independent of a theory that is actually saying
+something, is therefore **not exercised** by this witness; what is exercised is that the
+`IndependentBitAtoms` interface has an inhabitant.  For that reading see
+`paperIndependentBitAtoms`, which realizes every bit assignment against every stage of
+`paperDP T`.  The endpoint
+`lic_domination_universalSemimeasure_ofIndependentAtoms` is proved for an arbitrary
+deductive process, so the degeneracy bounds the witness, not the theorem. -/
 def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess where
   atom := LO.Propositional.Formula.atom
   realizable := by
@@ -513,8 +523,9 @@ lemma badCount_diag_polyFueled : ∃ c, PolyFueled c (fun i => badCount i i) := 
 def bitBlock (j : ℕ) (b : Bool) : List ℕ :=
   if b then [3, j + 5] else [3, 2, j + 5, 0]
 
-lemma rpn_bitPrefixLiteral (j : ℕ) (b : Bool) :
-    3 :: rpn (bitPrefixLiteral Formula.atom j b) = bitBlock j b := by
+lemma rpn_bitPrefixLiteral (nameMap : ℕ → ℕ) (j : ℕ) (b : Bool) :
+    3 :: rpn (bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) j b)
+      = bitBlock (nameMap j) b := by
   cases b <;> simp [bitPrefixLiteral, bitBlock, rpn]
 
 lemma rpn_top : rpn (⊤ : Sentence) = [2, 0, 0] := by
@@ -522,10 +533,11 @@ lemma rpn_top : rpn (⊤ : Sentence) = [2, 0, 0] := by
 
 lemma rpn_and (φ ψ : Sentence) : rpn (φ ⋏ ψ) = 3 :: (rpn φ ++ rpn ψ) := rfl
 
-lemma rpn_conj_ofFn : ∀ (σ : List Bool) (off : ℕ),
+lemma rpn_conj_ofFn (nameMap : ℕ → ℕ) : ∀ (σ : List Bool) (off : ℕ),
     rpn ((List.ofFn fun k : Fin σ.length =>
-        bitPrefixLiteral Formula.atom (off + k) (σ.get k)).conj) =
-      (List.range σ.length).flatMap (fun j => bitBlock (off + j) (σ.getD j false)) ++
+        bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) (off + k) (σ.get k)).conj) =
+      (List.range σ.length).flatMap
+          (fun j => bitBlock (nameMap (off + j)) (σ.getD j false)) ++
         [2, 0, 0] := by
   intro σ
   induction σ with
@@ -533,10 +545,10 @@ lemma rpn_conj_ofFn : ∀ (σ : List Bool) (off : ℕ),
   | cons b τ ih =>
       intro off
       have key : (List.ofFn fun k : Fin (b :: τ).length =>
-          bitPrefixLiteral Formula.atom (off + k) ((b :: τ).get k)) =
-          bitPrefixLiteral Formula.atom off b ::
+          bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) (off + k) ((b :: τ).get k)) =
+          bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) off b ::
             (List.ofFn fun k : Fin τ.length =>
-              bitPrefixLiteral Formula.atom (off + 1 + k) (τ.get k)) := by
+              bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) (off + 1 + k) (τ.get k)) := by
         apply List.ext_getElem
         · simp
         · intro n h1 h2
@@ -551,7 +563,7 @@ lemma rpn_conj_ofFn : ∀ (σ : List Bool) (off : ℕ),
         List.range_succ_eq_map, List.flatMap_cons]
       simp only [List.flatMap_map, List.getD_cons_zero,
         List.getD_cons_succ, Nat.add_zero]
-      rw [← rpn_bitPrefixLiteral off b]
+      rw [← rpn_bitPrefixLiteral nameMap off b]
       simp only [List.cons_append, List.append_assoc]
       congr 2
       congr 1
@@ -559,10 +571,11 @@ lemma rpn_conj_ofFn : ∀ (σ : List Bool) (off : ℕ),
       intro j _
       rw [show off + 1 + j = off + Nat.succ j from by omega]
 
-lemma rpn_bitPrefixSentence (σ : List Bool) :
-    rpn (bitPrefixSentence Formula.atom σ) =
-      (List.range σ.length).flatMap (fun j => bitBlock j (σ.getD j false)) ++ [2, 0, 0] := by
-  have h := rpn_conj_ofFn σ 0
+lemma rpn_bitPrefixSentence (nameMap : ℕ → ℕ) (σ : List Bool) :
+    rpn (bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) σ) =
+      (List.range σ.length).flatMap
+        (fun j => bitBlock (nameMap j) (σ.getD j false)) ++ [2, 0, 0] := by
+  have h := rpn_conj_ofFn nameMap σ 0
   simp only [Nat.zero_add] at h
   rw [bitPrefixSentence]
   exact h
@@ -570,14 +583,15 @@ lemma rpn_bitPrefixSentence (σ : List Bool) :
 /-! ### The emitted canonical run -/
 
 /-- The canonical Polish run of the prefix conjunction named by chain code `i`. -/
-def prefixRun (i : ℕ) : List ℕ :=
+def prefixRun (nameMap : ℕ → ℕ) (i : ℕ) : List ℕ :=
   if badCount i i = 0 then
     (List.range (chainLen i)).flatMap
-      (fun j => bitBlock j (decide (headC (tailC^[j] i) = 1))) ++ [2, 0, 0]
+      (fun j => bitBlock (nameMap j) (decide (headC (tailC^[j] i) = 1))) ++ [2, 0, 0]
   else [2, 0, 0]
 
-lemma prefixRun_eq (i : ℕ) :
-    prefixRun i = rpn (bitPrefixSentence Formula.atom (bitStringEnumeration i)) := by
+lemma prefixRun_eq (nameMap : ℕ → ℕ) (i : ℕ) :
+    prefixRun nameMap i =
+      rpn (bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) (bitStringEnumeration i)) := by
   rw [rpn_bitPrefixSentence, bitStringEnumeration_eq, prefixRun]
   by_cases h : badCount i i = 0
   · rw [if_pos h, if_pos h, chainBits, List.length_map, List.length_range]
@@ -591,14 +605,15 @@ lemma prefixRun_eq (i : ℕ) :
   · rw [if_neg h, if_neg h]
     simp
 
-lemma prefixRun_polySegStream : PolySegStream prefixRun := by
+lemma prefixRun_polySegStream {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}
+    (hname : PolyFueled cname nameMap) : PolySegStream (prefixRun nameMap) := by
   obtain ⟨citer, hiter⟩ := tailC_iterate_polyFueled
   obtain ⟨chead, hhead⟩ := headC_polyFueled
   obtain ⟨clen, hlen⟩ := chainLen_polyFueled
   obtain ⟨cbad, hbad⟩ := badCount_diag_polyFueled
   obtain ⟨cad, had⟩ := addc_polyFueled
-  have hj5 : PolyFueled _ (fun z : ℕ => z.unpair.2 + 5) :=
-    (had.comp (PolyFueled.right.pair (PolyFueled.const 5))).of_eq
+  have hj5 : PolyFueled _ (fun z : ℕ => nameMap z.unpair.2 + 5) :=
+    (had.comp ((hname.comp PolyFueled.right).pair (PolyFueled.const 5))).of_eq
       (fun z => by simp only [Nat.unpair_pair])
   have hh : PolyFueled _ (fun z : ℕ => headC (tailC^[z.unpair.2] z.unpair.1)) :=
     hhead.comp hiter
@@ -608,17 +623,17 @@ lemma prefixRun_polySegStream : PolySegStream prefixRun := by
     (had.comp ((subc_polyFueled.comp (hh.pair (PolyFueled.const 1))).pair
       (subc_polyFueled.comp ((PolyFueled.const 1).pair hh)))).of_eq
       (fun z => by simp only [Nat.unpair_pair])
-  have hpos : PolySegStream (fun z : ℕ => [3, z.unpair.2 + 5]) :=
+  have hpos : PolySegStream (fun z : ℕ => [3, nameMap z.unpair.2 + 5]) :=
     (PolySegStream.ofTokenStream
       ((PolyTokenStream.const 3).append (PolyTokenStream.polyTok hj5))).of_eq
       (fun z => by simp)
-  have hneg : PolySegStream (fun z : ℕ => [3, 2, z.unpair.2 + 5, 0]) :=
+  have hneg : PolySegStream (fun z : ℕ => [3, 2, nameMap z.unpair.2 + 5, 0]) :=
     (PolySegStream.ofTokenStream
       (((PolyTokenStream.const 3).append (PolyTokenStream.const 2)).append
         ((PolyTokenStream.polyTok hj5).append (PolyTokenStream.const 0)))).of_eq
       (fun z => by simp)
   have hseg : PolySegStream (fun z : ℕ =>
-      bitBlock z.unpair.2 (decide (headC (tailC^[z.unpair.2] z.unpair.1) = 1))) := by
+      bitBlock (nameMap z.unpair.2) (decide (headC (tailC^[z.unpair.2] z.unpair.1) = 1))) := by
     refine (PolySegStream.ifZero hpos hneg htest).of_eq (fun z => ?_)
     by_cases hb : headC (tailC^[z.unpair.2] z.unpair.1) = 1
     · rw [if_pos (by omega), hb]
@@ -641,11 +656,13 @@ lemma prefixRun_polySegStream : PolySegStream prefixRun := by
   · rw [if_neg h, if_neg h]
 
 /-- **The prefix-conjunction sequence is write-out metered efficiently computable.** -/
-lemma bigSentenceCodes_bitPrefixSentence :
-    BigSentenceCodes (fun i => bitPrefixSentence Formula.atom (bitStringEnumeration i)) :=
+lemma bigSentenceCodes_bitPrefixSentence {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}
+    (hname : PolyFueled cname nameMap) :
+    BigSentenceCodes (fun i =>
+      bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) (bitStringEnumeration i)) :=
   BigSentenceCodes.ofCanonical
     (BigTokenStream.ofPolySegStream
-      (prefixRun_polySegStream.of_eq (fun i => prefixRun_eq i)))
+      ((prefixRun_polySegStream hname).of_eq (fun i => prefixRun_eq nameMap i)))
 
 end BitChain
 
@@ -656,7 +673,7 @@ Paper node: `thm:dus` -/
 lemma ordinaryBitPrefixCodes :
     BigSentenceCodes (fun i ↦
       bitPrefixSentence ordinaryIndependentBitAtoms.atom (bitStringEnumeration i)) :=
-  BitChain.bigSentenceCodes_bitPrefixSentence
+  BitChain.bigSentenceCodes_bitPrefixSentence PolyFueled.id
 
 /-- Construct the complete prefix presentation from independent atoms and a write-out
 naming certificate for the actual literal conjunctions.
@@ -673,12 +690,27 @@ def bitPrefixSentencesOfIndependentAtoms
   holds_prefix := fun v σ ↦ PCWorld.holds_bitPrefixSentence v I.atom σ
   realizable := I.realizable
 
-/-- **The `thm:dus` / `thm:strict` presentation, inhabited.**  Ordinary propositional atoms
-over the constantly-empty deductive process, with the naming certificate discharged by
-`ordinaryBitPrefixCodes`.  This is the non-vacuity witness for `BitPrefixSentences`.
+/-- **The `thm:dus` / `thm:strict` presentation, inhabited — and degenerate in its
+realizability.**  Ordinary propositional atoms over the constantly-empty deductive process,
+with the naming certificate discharged by `ordinaryBitPrefixCodes`.
+
+What this witness does and does not exercise.  The *naming* half is real and is the
+interesting half: `prefix_codes` is discharged by `ordinaryBitPrefixCodes`, a genuine
+write-out emitter for the literal conjunctions, and `not_polySentenceCodes_bitPrefixSentence`
+above shows the whole-value form of that field has no inhabitant at all, so the token
+metering is forced rather than convenient.  The *realizability* half is discharged
+**vacuously**: every stage of `emptyBitDeductiveProcess` is `∅` (see
+`ordinaryIndependentBitAtoms`), so no atom is ever constrained, and the paper's
+Θ-load-bearing reading of `thm:dus` — atoms independent of a theory with content — is not
+exercised here.  Read this as inhabitation of `BitPrefixSentences`, not as evidence that the
+domination endpoint has content over a substantive process; for that, see
+`paperBitPrefixSentences`, the same presentation over `paperDP T`.  The endpoint itself
+(`lic_domination_universalSemimeasure_ofIndependentAtoms`) is proved for an arbitrary
+deductive process and an arbitrary inductor over it.
 Paper node: `thm:dus` -/
 def ordinaryBitPrefixSentences : BitPrefixSentences emptyBitDeductiveProcess :=
   bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms ordinaryBitPrefixCodes
+
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The semimeasure's from-below
@@ -700,6 +732,7 @@ theorem lic_domination_universalSemimeasure_ofIndependentAtoms
       K * M.mass σ ≤ limitingBelief P
         (bitPrefixSentence I.atom σ) :=
   lic_domination_universalSemimeasure A emit P hworld
+
 
 #print axioms PCWorld.holds_bitPrefixSentence
 #print axioms bitStringEnumeration_covers

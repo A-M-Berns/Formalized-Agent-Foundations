@@ -358,3 +358,31 @@ formalization takes the correct route (`re_complete_mp` under `[𝗣𝗔⁻ ⪯ 
 honest where the printed proof is loose — and this is part of why `[𝗣𝗔⁻ ⪯ T]` appears
 on the surface at all (see the pending charging ruling). (Found blind by the T10
 feasibility probe, 2026-08-31; verified against the tex by the orchestrator.)
+
+## tex:1812/1824 — the feedback support condition is printed on the wrong expectation theorem
+
+The condition "the support of ⟨w⟩ is contained in the image of f" is printed on
+thm:recurringunbiasednessexp (tex:1812) — whose statement never introduces a deferral
+function f (and carries a "weighting weighting" typo) — and is absent from thm:wubexp
+(tex:1823-1832). The affine twins show the intended placement: thm:wubaff (tex:1481)
+HAS the condition, plain thm:recurringunbiasedness (tex:1225-1233) does not and has no
+f. So the condition belongs on the feedback theorems and was transposed in the
+expectation pair. The formalization applies the correction in both directions:
+`luv_wubexp_ofComputation`(+`_unconditional`) TAKES the support hypothesis, and
+`BoundedSequence.recurringunbiasednessexp` does NOT. (Found blind by the final audit,
+lens B, 2026-08-31; verified against the tex by the orchestrator. The endpoint
+docstrings' claim that "the premises are exactly tex:1822-1832's" is being corrected
+to declare this transposition — see the final-audit fix wave.)
+
+## tex:1305-1313 — def:seqprand's above/below branches have the sign backwards
+
+"Varied pseudorandom above p" is printed as `(∑ wᵢ(pᵢ − ThmInd(φᵢ)))/(∑ wᵢ) ≳ₙ 0`,
+and thm:prand (tex:1316-1326) pairs that branch with the conclusion `ℙₙ(φₙ) ≳ₙ pₙ`.
+Counterexample to the printed pairing: all φᵢ Θ-refutable and e.c., pᵢ = 1/2, f(n) =
+n+1 (constant weighting is f-patient and divergent) — then pᵢ − ThmInd = 1/2 ≳ 0, so
+the family is "above" as printed, yet provability induction forces ℙₙ(φₙ) ≈ₙ 0,
+contradicting ≳ₙ 1/2. The intended orientation is `ThmInd(φᵢ) − pᵢ` (truth frequency
+runs above the target), which is what the formalization uses
+(`VariedPseudorandomAbove`, Properties/Pseudorandomness.lean, whose docstring flags
+the corrected sign). (Found blind by the final audit, lens A, 2026-08-31; verified
+against the tex by the orchestrator.)

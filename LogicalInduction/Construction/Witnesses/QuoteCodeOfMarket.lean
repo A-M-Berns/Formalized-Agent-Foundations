@@ -464,18 +464,20 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
       exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
 
 /-- The indicator product's threshold family is 𝓔𝓒 (`def:ec`): the `⋏`-shell is emitted
-as a **token** — `RpnSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
+as a **token** — `BigSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
 the quotation-atom block — rather than as a `Nat.pair` around the two Gödel values, so the
-family is metered by symbol count and never by the code's magnitude.  The quotation side is
-the quote's own threshold stream `q.poly`, read at the paired index on the nose (mesh
-thresholds are nonnegative, so the `⊤` branch is never emitted).
+family is metered by the number of emitted tokens and never by the code's magnitude.  The
+quotation side is the quote's own threshold stream `q.poly`, read at the paired index on
+the nose (mesh thresholds are nonnegative, so the `⊤` branch is never emitted); it is
+token-metered and weakens into the write-out class on the spot.
 Paper node: `def:ec`, `thm:st` -/
-lemma indicatorProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ) :
-    LUV.RpnThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
-  have hφAt : RpnSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
-  have hquote : RpnSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
-      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) := q.poly
+lemma indicatorProductLUV_bigThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
+    LUV.BigThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
+  have hφAt : BigSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
+  have hquote : BigSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
+      ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
+    BigSentenceCodes.ofRpnSentenceCodes q.poly
   refine (hφAt.and hquote).of_eq (fun m => ?_)
   have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))

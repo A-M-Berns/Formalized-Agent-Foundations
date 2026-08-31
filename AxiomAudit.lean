@@ -470,10 +470,17 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/FeedbackTruth.lean — the delayed-truth bridge: a computation of
 -- the feedback value, clocked to the deferral day, feeding the unbiasedness endpoints.
--- `FeedbackTruth.ordinaryFeedbackTruthComputation` is the constructed non-vacuity
--- witness for the delayed-truth premise (constant value stream — see its docstring).
+-- `FeedbackTruth.ordinaryFeedbackTruthComputation` inhabits the delayed-truth premise with
+-- a constant value stream (inhabitation only — see its docstring);
+-- `FeedbackTruth.alternatingFeedbackTruthComputation_nonempty` is the **non-degenerate**
+-- witness, whose stream takes both values along the deferral image, so the endpoints'
+-- dependence on `truth` is exercised by an actual inhabitant and not only by the
+-- arbitrary-`truth` statement.  `FeedbackTruth.exists_nonconstant_feedbackTruthComputation`
+-- records that non-constancy explicitly; it carries no `Paper node:` line and so is
+-- deliberately not asserted here.
 #assert_axioms_clean
   FeedbackTruth.ordinaryFeedbackTruthComputation
+  FeedbackTruth.alternatingFeedbackTruthComputation_nonempty
   feedbackTruthSequence feedbackTruthSequence_ofDetermined
   lic_wubaff_ofComputation lic_wub_ofComputation
   boundedCombination_wubaff_ofComputation luv_wubexp_ofComputation
@@ -483,13 +490,28 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 
 -- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
 -- independent bit atoms, its token-metered naming emitter, and the semimeasure-domination
--- endpoint they feed.  `ordinaryBitPrefixSentences` is the **non-vacuity witness** for
+-- endpoint they feed.  `ordinaryBitPrefixSentences` is the **inhabitation witness** for
 -- `BitPrefixSentences`; `not_polySentenceCodes_bitPrefixSentence` records why that field must
 -- be metered in tokens rather than in the pair-code value.
+--
+-- Two witness layers, and which one to cite (final audit).  `ordinaryBitPrefixSentences`
+-- lives over `emptyBitDeductiveProcess`, whose every stage is `∅`, so its `realizable` field
+-- is discharged VACUOUSLY: it is an INHABITATION witness only, and the paper's
+-- Θ-load-bearing reading of `thm:dus` is not exercised by it.  What it does exercise is the
+-- naming half, which is the forced one: `ordinaryBitPrefixCodes` is a genuine write-out
+-- emitter and the whole-value form of that field is unsatisfiable outright.
+-- `paperIndependentBitAtoms` / `paperBitPrefixSentences` are the SUBSTANTIVE layer, over
+-- `paperDP T`, whose stages are non-empty: independence is realized there by grafting a bit
+-- assignment at the reserved atom tag 7, disjoint from the process's own atoms.  Cite the
+-- paperDP layer, not the ordinary one, when asked whether the `thm:dus` premises are
+-- non-vacuously satisfiable.  Both endpoints remain proved for an arbitrary deductive
+-- process, so neither layer's limits bound the theorem.  See the declarations' docstrings.
 #assert_axioms_clean
   not_polySentenceCodes_bitPrefixSentence ordinaryBitPrefixCodes
   bitPrefixSentencesOfIndependentAtoms ordinaryBitPrefixSentences
   lic_domination_universalSemimeasure_ofIndependentAtoms
+  paperIndependentBitAtoms paperBitPrefixCodes paperBitPrefixSentences
+  lic_domination_universalSemimeasure_paperDP
 
 -- Construction/Witnesses/UniversalDovetailer.lean — the universal continuous semimeasure.
 -- The universal continuous semimeasure is fully constructed: the semimeasure laws, the
@@ -746,6 +768,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_domination_universalSemimeasure_unconditional
   lic_domination_dovetailSemimeasure_unconditional
   lic_domination_everyLowerSemicomputable_unconditional
+  lic_domination_dovetailSemimeasure_paperDP
+  lic_domination_everyLowerSemicomputable_paperDP
   lic_strict_domination_universalSemimeasure_unconditional
   lic_conditioned_ofCompiler_unconditional
   lic_conditioned_fixed_unconditional
@@ -1308,7 +1332,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   paperFutureQuoteCode paperDeferredExpectationQuoteCode
   paperConfidenceQuoteCode
   PGenerableRat.computable
-  indicatorProductLUV_valuesAt indicatorProductLUV_rpnThresholdCodeSeq
+  indicatorProductLUV_valuesAt indicatorProductLUV_bigThresholdCodeSeq
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed
   lic_self_trust_closed
@@ -1442,7 +1466,7 @@ not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Framework/Expectations.lean
 #assert_axioms_clean
-  LUV.RpnThresholdCodeSeq LUV.RpnThresholdCodes
+  LUV.RpnThresholdCodeSeq LUV.RpnThresholdCodes LUV.BigThresholdCodeSeq
 
 -- LogicalInduction/Framework/RpnEmission.lean
 #assert_axioms_clean
@@ -1868,9 +1892,10 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- carries `BigSentenceCodes` (`source_codes`, `quote_codes`) and `DigitRatCodes`
 -- (`inverse_width_codes`); `ParadoxResistanceQuote.sentence_codes` and
 -- `SelfTrustQuote.sentence_codes` are `BigSentenceCodes`.  `SelfTrustQuote`'s two remaining
--- threshold fields (`product_codes`, `confidence_codes`) are `LUV.RpnThresholdCodeSeq` —
+-- threshold fields (`product_codes`, `confidence_codes`) were `LUV.RpnThresholdCodeSeq` —
 -- token-metered, not whole-value, and not `PolyThresholdCodeSeq` as the paragraph above
--- implied.  The migrated fields are enumerated in the block below.
+-- implied.  As of 2026-08-31 both are at the write-out `LUV.BigThresholdCodeSeq`; see the
+-- migration block below.  The migrated fields are enumerated in the block below.
 --
 -- ## WRITE-OUT FIELD MIGRATION (2026-08-27/28)
 --
@@ -1879,7 +1904,13 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- symbols a poly-time writer must emit is bounded.  This is what `def:ec` actually meters
 -- (tex:753-755, explicitly at tex:1931-1933).  `#assert_fields` freezes field *names* only,
 -- so each type change is recorded here; each is a **widening** of the structure's
--- hypothesis, hence a strengthening of every theorem taking that structure.
+-- hypothesis, hence a strengthening of every theorem taking that structure.  In particular
+-- `SelfTrustQuote.product_codes` and `.confidence_codes` changed *type* on 2026-08-31, from
+-- `LUV.RpnThresholdCodeSeq` to the write-out `LUV.BigThresholdCodeSeq`, and the freeze below
+-- passed unchanged — as it always will for a type change.
+--
+--   `LUV.RpnThresholdCodeSeq` → `LUV.BigThresholdCodeSeq` (2026-08-31):
+--     `SelfTrustQuote.product_codes`, `SelfTrustQuote.confidence_codes`.
 --
 --   `PolySentenceCodes`/`RpnSentenceCodes` → `BigSentenceCodes`:
 --     `PolyTradeEmulatable.sentence_poly`, `AffineCombination.PolySequence.sentence_poly`,
@@ -1932,16 +1963,31 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- of its condition hypothesis, so `ConditioningPresentation.condition_codes`,
 -- `CompactConditioningProcessComputation.condition_codes` and the `thm:scon` machine
 -- transports (`CondStep.conditionedTranslation_preserves_machine`,
--- `eventualConditionedTranslation_preserves_machine`) remain at `RpnSentenceCodes`.
--- `lic_self_trust_closed` (`thm:st`) likewise remains at `RpnSentenceCodes φ`: its
--- `product_codes` obligation is `LUV.RpnThresholdCodeSeq (indicatorProductLUV … φ)`,
--- discharged by `indicatorProductLUV_rpnThresholdCodeSeq`, which needs `φ`'s codes at
--- token-metered strength.  There is no write-out threshold class — `LUV.BigThresholdCodeSeq`
--- does not exist — so widening `thm:st` is a `RpnThresholdCodeSeq` migration, not a
--- sentence-class one.  `paperConfidenceQuoteCode` is held at `RpnSentenceCodes` for the
--- same reason: widening the *def* alone is sound but unusable, and would have put two
--- `BigSentenceCodes.ofRpnSentenceCodes` wrappers inside `lic_self_trust_closed`'s printed
--- statement for no gain in reach.
+-- `eventualConditionedTranslation_preserves_machine`) remain at `RpnSentenceCodes`.  After
+-- 2026-08-31 the conditioning lane is the **only** token-metered retention on the
+-- day-indexed surface.  The obstruction, at the line level:
+-- `CondStep.machineSentenceBlocks_of_rpn` (`Construction/Machine/CondStep.lean`) opens the
+-- certificate as emission data — it destructures the stream, clocks it with
+-- `PolySegStream.clockedTokens_certificate`, and feeds `TraderMachine.traderOutput`, whose
+-- digit clamp is the identity only because `CondStep.mem_digitize_le_four` holds under a
+-- **value-bounded** stream.  A write-out stream supplies no such clock, so widening those
+-- fields is a `BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking proved in
+-- `FP`, not a statement change.  Disclosed at the structure in `ConditioningPresentation.lean`.
+--
+-- MIGRATED (2026-08-31, FINAL-audit defect 4).  `lic_self_trust_closed` (`thm:st`) no longer
+-- sits at `RpnSentenceCodes φ`; it takes `hφ : BigSentenceCodes φ`, like every other closed
+-- endpoint.  The write-out threshold class `LUV.BigThresholdCodeSeq`
+-- (`Framework/Expectations.lean`) now **exists** — `BigSentenceCodes` at the same
+-- `⟨n,⟨k,i⟩⟩` paired index `LUV.RpnThresholdCodeSeq` uses — with
+-- `LUV.RpnThresholdCodeSeq.toBig` the embedding and `LUV.BigThresholdCodeSeq.reindex` the
+-- reindexing.  `SelfTrustQuote.product_codes` and `.confidence_codes` are widened to it,
+-- `indicatorProductLUV_rpnThresholdCodeSeq` is now `indicatorProductLUV_bigThresholdCodeSeq`
+-- (`BigSentenceCodes.and` supplies the `⋏`-shell token), and `paperConfidenceQuoteCode`
+-- takes `BigSentenceCodes` — it consumed its hypothesis only through `.primrec`.  Nothing on
+-- the self-trust lane opened a threshold certificate as value-bounded emission data: every
+-- consumer either reindexes it (`.comp`/`.reindex`) or hands it to
+-- `AffineCombination.PolySequence`, whose `sentence_poly` field is already write-out metered
+-- — which is why this was a widening at each binder, not a rebuild of the splice.
 --
 -- Widened in this change (2026-08-28 audit, R2-F11), each having consumed its sentence-codes
 -- hypothesis only through `.primrec`, which `BigSentenceCodes.primrec` supplies:

@@ -138,14 +138,36 @@ lemma DeductiveProcessComputation.union_toComputable
 
 /-- Honest operational input for efficient condition naming.  The ordinary stage program
 is retained for the union construction.  `condition_codes` says the *actual* finite
-conjunctions form an 𝓔𝓒 sentence sequence (`def:ec`, token-metered); it assumes no
-prices, trades, wealth bound, exploitation fact, or logical-inductor conclusion.
+conjunctions are efficiently nameable; it assumes no prices, trades, wealth bound,
+exploitation fact, or logical-inductor conclusion.
 
 This strengthening is necessary: `ComputableDeductiveProcess` alone promises termination
-but no efficiency bound.  Metering **symbols** rather than the whole pair-code value is
+but no efficiency bound.  Metering **tokens** rather than the whole pair-code value is
 what keeps the growing form realizable: `deductiveStageCondition (extra.D n)` is a
 conjunction of `|extra.D n|` sentences, so it is deep, and its pair code is exponential
 in its symbol count.
+
+**Class disclosure — this field is narrower than `def:ec`.**  It is `RpnSentenceCodes`,
+the *token-metered* class: polynomially many emitted tokens **and** a polynomial bound on
+each individual token's value.  The paper's `def:ec` is the write-out class
+`BigSentenceCodes`, which bounds only the number of tokens a poly-time writer emits and
+leaves their magnitudes free; `RpnSentenceCodes` embeds into it
+(`BigSentenceCodes.ofRpnSentenceCodes`), and a single atom of exponential index is
+admitted by the write-out class while `RpnSentenceCodes` excludes it.  This field and
+`ConditioningPresentation.condition_codes` are the two places on the day-indexed surface
+that the write-out migration deliberately did **not** move; everything else it touched
+now sits at `BigSentenceCodes`.
+
+The narrowing is load-bearing, not cosmetic.  `thm:scon`'s conditioned-trader transport
+consumes this certificate as **emission data**, not as an opaque predicate:
+`CondStep.machineSentenceBlocks_of_rpn` destructures it into a `PolySegStream`, obtains a
+clocked token schedule from `PolySegStream.clockedTokens_certificate`, and runs
+`TraderMachine.traderOutput`, whose digit clamp is the identity only because the stream
+bounds each token's value (`CondStep.mem_digitize_le_four`).  A write-out stream supplies
+no such clock, so widening this field is not a statement change but a
+`BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking that has to be proved in
+`FP` — the open precondition recorded in `KNOWLEDGE.md`, at the scale of `CondStep.lean`'s
+own `_mem_FP` suite rather than of a lemma.
 Paper node: `thm:scon`, `def:ec` -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where

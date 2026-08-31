@@ -49,7 +49,7 @@ paper's section carries per-node tiers, reading notes and audit notes, because o
 paper has the strength classification they are read from. The others are correspondence
 views, and say so.
 
-Of the 53, **18 are also instantiated over the concrete inductor constructed here** — 18 of
+Of the 53, **19 are also instantiated over the concrete inductor constructed here** — 19 of
 them at exact or strengthened, 0 at qualified — so they hold of a specific algorithm rather
 than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
 different degree of faithfulness.
@@ -71,14 +71,23 @@ write an object bounds its **symbols**, permitting values up to exponential.
 The *write-out* classes exist for most kinds of datum the property tail
 consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
 machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
-the emission surface they are consumed on. **One kind is metered differently: LUV
-thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
+the emission surface they are consumed on. **One kind is still metered differently on the
+`_ofRepresentation` layer: LUV thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
 `lic_expected_future_expectations_ofRepresentation_unconditional`,
 `lic_no_expected_net_update_ofRepresentation_unconditional`, its `_conditional_` sibling,
 and `lic_self_trust_ofRepresentation_unconditional` take `RpnThresholdCodeSeq`, which is
 `RpnSentenceCodes` on the threshold family rather than one of the write-out classes.
 **That is not a restriction on the paper's own first-order LUVs**, and this file has now
 been wrong about it in both directions.
+
+The write-out threshold class does now exist. `LUV.BigThresholdCodeSeq`
+(`Framework/Expectations.lean`, with `LUV.RpnThresholdCodeSeq.toBig` and
+`LUV.BigThresholdCodeSeq.reindex`) meters the threshold family the write-out way, and
+`SelfTrustQuote.product_codes`/`.confidence_codes` were widened to it, which is what let
+`thm:st`'s closed endpoint move to `BigSentenceCodes`. An earlier edition of this file, and
+the knowledge base, recorded the absence of such a class as the blocker for that migration;
+that blocker is retired. The five endpoints above have not been migrated — nothing on the
+`_ofRepresentation` layer needed it — so `RpnThresholdCodeSeq` is where they stay.
 
 The route from a literal paper LUV into the class is
 `PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
@@ -253,7 +262,11 @@ inherited — it survives on exactly three of the 105 endpoints, where the subst
 fixed point and rational-cut arithmetic are indexed at `𝗜𝚺₁`, and is disclosed there as
 representation infrastructure alongside `[T.Δ₁]`. What each shown endpoint asks for now is
 the paper's own standing assumption on Θ. `thm:lp` lands at `strengthened` rather than
-`exact`, because it *constructs* the paradoxical sequence the paper merely posits. The
+`exact`, because it *constructs* the paradoxical sequence the paper merely posits; its
+statement is also width-free now — the four `width` binders are gone from
+`lic_paradox_resistance_ofDiagonal_unconditional`, which takes `(p : ℚ) (hp0 : 0 < p)
+(hp1 : p < 1)` and discharges the vanishing tolerance internally at `2⁻ⁿ`, where earlier
+editions of the ledger argued the premises were eliminable instead of eliminating them. The
 per-node residual disclosures, and the rulings behind them, are in the
 *Arithmetic-theory hypotheses* section of the classification ledger; the construction they
 describe is in *Instantiating the arithmetic-theory family* below.
@@ -335,14 +348,27 @@ endpoints exist that take **no caller input** at all
 (`lic_domination_everyLowerSemicomputable_unconditional`,
 `lic_strict_domination_universalSemimeasure_unconditional`).
 
-One qualification on those input-free endpoints, because it is easy to miss and it is why
-these two nodes are not counted as instantiated over the arithmetic inductor: they hold
-over `emptyBitDeductiveProcess` — the constantly-empty theory — where the atoms'
-independence and the plausible-world hypothesis are discharged by "no stage asserts
-anything". That is a real logical inductor and a real theorem, but the paper frames these
-results as fresh symbols added *to* a theory Θ, so the reasoner handles empirical
-uncertainty *as well as* logical uncertainty (tex:1550, 1559); at Θ = ∅ there is no "as
-well as". The general forms carry the content.
+One qualification on those input-free endpoints, because it is easy to miss: they hold over
+`emptyBitDeductiveProcess` — the constantly-empty theory — where the atoms' independence and
+the plausible-world hypothesis are discharged by "no stage asserts anything", and
+`realizable` is discharged **vacuously**. That is a real logical inductor and a real
+theorem, but the paper frames these results as fresh symbols added *to* a theory Θ, so the
+reasoner handles empirical uncertainty *as well as* logical uncertainty (tex:1550, 1559); at
+Θ = ∅ there is no "as well as". They are signposted at their declarations as *inhabitation*
+witnesses, not as evidence of content over a substantive theory.
+
+`thm:dus` now also has a second, substantive witness layer over a non-empty process, and
+that is why it counts as instantiated over the arithmetic inductor while `thm:strict` does
+not. `paperIndependentBitAtoms` and `paperBitPrefixSentences`
+(`Construction/Witnesses/BitPrefixSyntax.lean`,
+`Construction/Witnesses/UnconditionalOverLIA.lean`) put the bit atoms over `paperDP T` —
+the same market the whole §4 tail runs on — at a freshly reserved `bitAtomTag := 7`, with
+`realizable` proved rather than vacuous. Composed with the constructed dovetail,
+`lic_domination_dovetailSemimeasure_paperDP` and
+`lic_domination_everyLowerSemicomputable_paperDP` close the node with **no caller input and
+no vacuous premise**. Cite that layer, not the empty-process one, when asked whether the
+node's premises are non-vacuously satisfiable. The universal forms still carry the
+generality: both nodes are proved for any deductive process and any inductor.
 
 One point on the surface is worth stating plainly, since it constrains the interface.
 `BitPrefixSentences.prefix_codes` is metered in **symbols**, not in the Gödel *value* of the
@@ -350,9 +376,10 @@ sentence code. That is forced, and the forcing is proved rather than asserted: a
 connective costs two nested `Nat.pair`s (a fourth power) while a `List Bool` cons costs one
 (a square), so the prefix conjunction's code is about `2^(4^m)` at an enumeration index of
 about `5^(2^m)`, and no polynomial closes that gap for any atom family over any deductive
-process (`not_polySentenceCodes_bitPrefixSentence`). Symbol metering — the repo's
-`RpnSentenceCodes`, built for exactly this pathology — is also the paper's own cost measure
-at `def:ec`, and the prefix conjunction's Polish run is `Θ(m)` small tokens.
+process (`not_polySentenceCodes_bitPrefixSentence`). Symbol metering — built for exactly
+this pathology, and the field now sits at the write-out class `BigSentenceCodes` — is also
+the paper's own cost measure at `def:ec`, and the prefix conjunction's Polish run is `Θ(m)`
+small tokens.
 
 The emitter that discharges it (`BitChain`) walks the enumeration index's own `Nat.pair`
 chain: two fuel-clocked `prec` scans recover the string's length and a *global* head-validity
@@ -420,6 +447,24 @@ being the value-`1` and value-`0` fibers of one Foundation `code` formula
 (`universalQuoteCode`, `Framework/QuoteRepresentability.lean`), so that
 `Θ ⊢ ∼(pos ⋏ neg)` is a theorem of Θ (`universalQuote_exclusive_prov`, from `code_uniq`
 plus Gödel completeness) rather than a fact about ℕ.
+
+### How to read the closed forms — universality
+
+The paper's §4 fixes an arbitrary logical inductor ℙ and proves its properties once.
+This development carries that content in two layers, and the ledger's axis column says
+which layer a row's shown endpoint lives in. The **generic carriers** (`lic_provind_true`,
+`lic_belief_finitistic_consistency`, `lic_introspection`, …) quantify over any market
+`P` with `[IsLogicalInductor P DP]` and take their day-data through constructed
+interfaces; they hold the paper's universal quantifier. The **closed forms**
+(`_unconditional`/`_closed`, axis `instantiated`) discharge every interface over the
+constructed inductor `liaHistory (paperDP T)` — they are the fully-assembled corollaries
+a client can apply with no inputs beyond the theory instances, and they are what the
+canonical inventory shows wherever discharge is possible. A row marked `universal`
+(e.g. `thm:dus`) quantifies over any `DP` and any inductor even in its shown form. So
+"the closed form names LIA" is the disclosed reading of the axis, not a loss recorded
+nowhere: the universal statement is the generic carrier one import away, and both
+layers are inventoried and axiom-checked. Three independent fresh-context audits
+converged on asking exactly this question, which is why it is answered here, once.
 
 ### The single market
 
@@ -628,18 +673,26 @@ the per-row accounting.
    this particular class contains the paper's, which is why the calibration gap above is
    disclosed rather than waved through.
 
-   The model bites in a second, subtler place, and it is what keeps most of the
-   qualified rows qualified. Within the fuel model there are two ways to meter a
-   sentence sequence: by **symbol count** (`RpnSentenceCodes`) — the faithful reading of
-   `def:ec`, and the paper's own cost measure — or by the **Gödel value** of the single
-   pair-code token (`PolySentenceCodes`). These are not interchangeable: the same
+   The model bites in a second, subtler place, and it is what kept most of the
+   qualified rows qualified. Within the fuel model there are three ways to meter a
+   sentence sequence, in decreasing width: by **write-out cost** (`BigSentenceCodes`) —
+   how many tokens a poly-time writer emits, with their magnitudes free, which is the
+   faithful reading of `def:ec` and the class the surface now uses; by **symbol count with
+   a per-token value bound** (`RpnSentenceCodes`), narrower, and the paper's own cost
+   measure only up to that extra bound; or by the **Gödel value** of the single
+   pair-code token (`PolySentenceCodes`), narrowest. These are not interchangeable: the same
    pathology proved in the domination section above (`not_polySentenceCodes_bitPrefixSentence`)
    exhibits a paper-admissible e.c. sentence family that the whole-value class provably
    excludes, so whole-value metering is a genuine restriction of the paper's class.
 
-   The property tail is stated at the faithful token-metered class throughout, and so
-   is the whole quotation family's *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
-   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). The
+   Neither is a restriction the property tail takes any more: it is stated at the
+   **write-out** class `BigSentenceCodes` throughout — wider than the token-metered one and
+   the faithful reading of `def:ec` — and so is the whole quotation family's
+   *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
+   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). No canonical
+   endpoint binds `RpnSentenceCodes`; the two token-metered retentions left on the surface
+   are `LUV.RpnThresholdCodeSeq` on the `_ofRepresentation` layer and `thm:scon`'s
+   conditioning certificate, disclosed on that node's row. The
    metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` used to sit at a narrower
    class here too, because the analogous `PolyNatCodes` on the *horizon* restricted the
    paper's "any computable function `f`" to polynomial-time `f`. That is now fixed: the
@@ -662,8 +715,12 @@ the per-row accounting.
    `thm:st` was the one place in the quotation family where the generalization had real
    content: its product LUV used to inline the sentence's Gödel value into a `Nat.pair`
    shell. The token-level `⋏` emitter that repairs it is built
-   (`indicatorProductLUV_rpnThresholdCodeSeq`), so the closed endpoint now sits at the
-   token-metered class like the rest.
+   (`indicatorProductLUV_bigThresholdCodeSeq`), and with `LUV.BigThresholdCodeSeq` in hand
+   the closed endpoint took the final step too: `lic_self_trust_closed` now asks for
+   `hφ : BigSentenceCodes φ`, so it sits at the write-out class like the rest. What made
+   that possible was a fact about consumption rather than a new bound — the token-metered
+   form of `hφ` was consumed nowhere on this lane, only ever as `.primrec` or through a
+   reindexing that is already write-out metered.
 
    The retired `BoundedComputation` carrier was a genuinely different defect, and a
    syntactic one: the paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas that structure
@@ -859,6 +916,23 @@ refuted and replaced.
   trader hypothesis is strictly stronger. The fuel-level theorem and its concrete witnesses
   (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`) are
   unchanged and inhabited beside them.
+
+  **Class disclosure, because this is the last one on the day-indexed surface.** That
+  `RpnSentenceCodes` is *not* `def:ec`'s class. `def:ec` is the write-out
+  `BigSentenceCodes`, which bounds only how many tokens a poly-time writer emits;
+  `RpnSentenceCodes` additionally bounds each token's value and embeds into the write-out
+  class by `BigSentenceCodes.ofRpnSentenceCodes`; the datum that separates them is a single
+  atom of exponential index, admitted by the write-out class and excluded here — argued, not
+  carried by a strictness lemma, as the class table above records. The retention is forced,
+  at line level rather than by inspection:
+  `CondStep.machineSentenceBlocks_of_rpn` opens the certificate as emission data,
+  destructuring the stream, clocking it with `PolySegStream.clockedTokens_certificate` and
+  running `TraderMachine.traderOutput`, whose digit clamp is the identity only under a
+  value-bounded stream (`CondStep.mem_digitize_le_four`). A write-out stream supplies no
+  such clock, so widening is a `BigSentenceCodes → CondStep.MachineSentenceBlocks`
+  re-blocking to be proved in `FP`, at the scale of `CondStep.lean`'s own ~50 `_mem_FP`
+  lemmas. It restricts which conditioning data a caller may supply; it does not touch what
+  is concluded.
 * **`thm:ifp` — closure under finite perturbations.** All four categories are represented,
   and the published statement is in the first only as a refutation.
 

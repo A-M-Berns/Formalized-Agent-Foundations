@@ -1542,6 +1542,15 @@ Determination is the paper's `def:affthmval` premise on the *combination*; `hval
 asks that each completed world value the component LUVs somehow.  The mesh traded is
 therefore only approximately determined, and the bias-run economics absorbs the
 (negligible-against-magnitude) mesh error.
+
+*One printed premise is deliberately dropped.*  The printed
+`thm:recurringunbiasednessexp` (tex:1812-1820) additionally asks that the support of `w`
+lie in the image of `f` — a clause referring to a deferral function the statement never
+introduces.  It is a transposition: the clause belongs on `thm:wubexp` (tex:1822-1832),
+where the affine twins place it (`thm:wubaff` has it, `thm:recurringunbiasedness` does
+not) and where `FeedbackTruth.luv_wubexp_ofComputation` states it.  This endpoint
+therefore takes a bare generable divergent weighting, with no deferral function at all.
+Recorded as `PE2` in `notes/paper-errata.md`.
 Paper node: `thm:recurringunbiasednessexp` -/
 theorem BoundedSequence.recurringunbiasednessexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}

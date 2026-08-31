@@ -162,6 +162,22 @@ def RpnThresholdCodeSeq (X : ℕ → LUV) : Prop :=
   RpnSentenceCodes (fun m => (X m.unpair.1).gt
     ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
 
+/-- **Write-out form** of the threshold sequence interface: a `def:ec` *write-out* sentence
+stream emitting `⌜X_n > i/k⌝` at index `⟨n,⟨k,i⟩⟩`, at exactly the paired-index convention
+of `RpnThresholdCodeSeq`.  The two differ only in the meter on the underlying sentence
+stream — `RpnThresholdCodeSeq` bounds every emitted *token's value*, this one bounds only
+the number of tokens — so this is the class the paper's `def:ec` actually names, and it is
+where the rest of the migrated day-indexed surface already sits.
+Paper node: `def:ec` -/
+def BigThresholdCodeSeq (X : ℕ → LUV) : Prop :=
+  BigSentenceCodes (fun m => (X m.unpair.1).gt
+    ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- The token-metered threshold sequence interface embeds into the write-out one. -/
+lemma RpnThresholdCodeSeq.toBig {X : ℕ → LUV}
+    (h : RpnThresholdCodeSeq X) : BigThresholdCodeSeq X :=
+  BigSentenceCodes.ofRpnSentenceCodes h
+
 /-- The whole-value threshold interface embeds into the block form by escape blocks. -/
 lemma RpnThresholdCodes.ofPolyThresholdCodes {X : LUV} (h : X.PolyThresholdCodes) :
     X.RpnThresholdCodes :=

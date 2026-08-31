@@ -172,7 +172,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF)
     (hp : GeneratedRatFeature (liaHistory (paperDP T)) p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
+    (hA : LUV.BigThresholdCodeSeq A) (hB : LUV.BigThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (paperDP T) (f n) (φ n)) (p n)))
     (product_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
@@ -326,7 +326,7 @@ supplies at the call sites that do carry the efficiency certificate for other re
 This is the same narrowing the sibling `thm:ref` code (`paperIntervalQuoteCode`) makes.
 Paper node: `thm:st` -/
 noncomputable def paperConfidenceQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (δ p : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (δ p : ℕ → ℚ)
     (hδ : Computable δ) (hp : PGenerableRat (liaHistory (paperDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((paperMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
@@ -435,8 +435,12 @@ theorem lic_introspection_closed
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
-sentence sequence with its `def:ec` token-metered codes, the deferral function, and the
-threshold data remain.
+sentence sequence with its `def:ec` write-out codes, the deferral function, and the
+threshold data remain.  The two threshold obligations this discharges internally are at
+the same write-out meter (`LUV.BigThresholdCodeSeq`): `A`'s comes from
+`indicatorProductLUV_bigThresholdCodeSeq`, whose `⋏`-shell is one emitted token, and `B`'s
+is the quote's own threshold stream weakened into the write-out class.  Nothing on this
+lane opens a threshold certificate as value-bounded emission data.
 
 The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
 a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
@@ -452,7 +456,7 @@ theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (hp : PGenerableRat (liaHistory (paperDP T)) p) :
     (fun n ↦ (indicatorProductLUV
           (paperConfidenceQuoteCode T f φ hφ δ p
@@ -468,11 +472,11 @@ theorem lic_self_trust_closed
           hδ.computable hp) φ n)
     (paperConfidenceQuoteCode T f φ hφ δ p
         hδ.computable hp).luv
-    delta_pos probability_mem (BigSentenceCodes.ofRpnSentenceCodes hφ) hδ
+    delta_pos probability_mem hφ hδ
     hp.choose hp.choose_spec
-    (indicatorProductLUV_rpnThresholdCodeSeq _ hφ)
+    (indicatorProductLUV_bigThresholdCodeSeq _ hφ)
     (paperConfidenceQuoteCode T f φ hφ δ p
-        hδ.computable hp).poly
+        hδ.computable hp).poly.toBig
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (paperQuotationPresentation T)
       (paperConfidenceQuoteCode T f φ hφ δ p
@@ -598,19 +602,24 @@ constructed internally.
 diagonal reaches Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`.  It is
 carried *in place of* the `[𝗣𝗔⁻ ⪯ T]` of the section above, not beside it — see the section
 note.  The elaborated signature therefore carries no redundant pair.
+The tolerance width the interior construction needs is *not* a premise: the paper states no
+`δ` at this node, and `width` occurs nowhere in the conclusion, so the endpoint discharges it
+internally at the paper's own tolerance sequence `2⁻ⁿ` (`digitRatCodes_two_pow_inv`).
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
-    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
-    (hwidthPos : ∀ n, 0 < width n)
-    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
+    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1) :
     (fun n => liaHistory (paperDP T) n
       ((paperDiagonalQuoteCode T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) :=
   haveI : 𝗣𝗔⁻ ⪯ T := inferInstance
   haveI := paperLIA T
   lic_paradox_resistance_ofDiagonal (paperQuotationPresentation T) (liaHistory (paperDP T))
-    (paperMarketComputation T) p hp0 hp1 width hwidth hwidthPos hwidthZero
+    (paperMarketComputation T) p hp0 hp1
+    (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) digitRatCodes_two_pow_inv
+    (fun n => by positivity)
+    (Filter.Tendsto.congr (fun n => by push_cast; rw [inv_pow])
+      (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num :
+        ((2 : ℝ)⁻¹) < 1)))
     (paperDP_hworld T)
 
 #print axioms paperDiagonalQuoteCode
