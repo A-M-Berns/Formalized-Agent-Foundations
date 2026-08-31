@@ -21,9 +21,14 @@ substrate and the shared proof machinery.
 * `RepresentsComputations` — the paper's standing assumption on the first-order background
                      theory `Θ` (§2, "Representing computations"), and the two literals it
                      yields over a represented value graph.
+* `DerivationSize` — the symbol count `dSize` of a Foundation derivation code, tied to
+                     Foundation's own constructors by equation, with the converse bound
+                     `le_G_dSize` that makes a symbol-bounded proof search finite
+                     (`dd:symbolcount`); `DerivationSizeComputable` carries its
+                     computability layer.
 * `BoundedConsistency` — bounded provability over Foundation's internal derivations, its
                      computable decider, and the paper's finite-consistency predicate
-                     `Con(Θ)(ν)` (§4.10, `dd:proofcode`).
+                     `Con(Θ)(ν)` (§4.10, `dd:symbolcount`).
 * `Compactness`    — propositional compactness over Cantor space: per-stage satisfiability
                      of a deductive process yields one world consistent with every stage.
 * `Affine`         — trade magnitude/net-worth bounds and affine combinations (buy orders).

@@ -872,14 +872,53 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- same applies to a `#assert_fields RepresentsComputations` freeze of its single field
 -- `repr`.
 
+-- Framework/DerivationSize.lean — the §4.10 symbol measure.  Foundation exposes no size
+-- function on its internal derivations, so this module builds one: `dSize : ℕ → ℕ`, the
+-- symbol count of a derivation code, by external recursion at `V := ℕ`.  Two things make it
+-- usable.  (i) Faithfulness: `dSize_axL`, `dSize_cutRule`, … tie it to Foundation's own
+-- derivation constructors, and `mem_iff_testBit` identifies the sequent bitset's members
+-- with the bits `sSize` sums over.  (ii) The converse bound `le_G_dSize : d ≤ G (dSize d)`
+-- for a computable monotone tower `G` — `dSize d ≤ d` is the useless direction; this is the
+-- one that turns "some derivation of at most `k` symbols" into a *finite* search and so
+-- keeps the metered predicate decidable in both polarities.  The counting convention (one
+-- symbol per rule name / connective / quantifier / predicate / function symbol / variable
+-- occurrence, one separator per argument-list entry, and, per index, its binary digit count
+-- plus one marker token — `idxLen n = Nat.size n + 1`, the marker being what separates an
+-- index numeral from the following material) is `dd:symbolcount`, stated in that module's
+-- header; the paper fixes neither an encoding nor an alphabet, so a convention is
+-- unavoidable and no substitution is charged.
+-- NOT YET INVENTORIED — none of this module's declarations carries a `Paper node:` line
+-- (the measure is a convention supporting `thm:pac` / `thm:pazfc`, not a paper node of its
+-- own), and `scripts/check-paper-nodes.sh` forbids unannotated names in an
+-- `#assert_axioms_clean` block.  Axiom accounting for the module is therefore the
+-- `#print axioms` footer at the foot of the file, which covers its whole public surface;
+-- that footer is logging-only — the check is the human read of the build log, per the
+-- audit doctrine, not a failing gate.
+
+-- Framework/DerivationSizeComputable.lean — the computability layer for the §4.10 symbol
+-- measure.  `DerivationSize.lean` defines `tSize`, `tvSize`, `fSize`, `sSize`, `dSize` and
+-- the tower `G` by well-founded recursion at `ℕ`, which says nothing about effectivity;
+-- this module proves each of them primitive recursive (hence computable) by Mathlib's
+-- course-of-values recursor `Primrec.nat_strong_rec`, and adds
+-- `computable_boundedSearchValue`, the bounded-existential search that
+-- `BoundedConsistency.lean` spends to make `bProv` decidable in both polarities.  Nothing
+-- here is a modeling choice: it is the effectivity half of `dd:symbolcount`, without which
+-- the §4.10 proof search would be a classical existence statement rather than an algorithm.
+-- NOT YET INVENTORIED — same reason as its base module: no declaration carries a
+-- `Paper node:` line.  Axiom accounting is the `#print axioms` footer at the foot of the
+-- file, covering all of its public lemmas; logging-only, checked by the human read of the
+-- build log per the audit doctrine.
+
 -- Framework/BoundedConsistency.lean — the §4.10 bounded-provability substrate.
--- `BProv T φ k` is "some `T`-derivation with Gödel number below `k` proves the sentence
--- coded by `φ`", over Foundation's internal `Bootstrapping.Proof`; `conWithin T k` is the
--- paper's `Con(T)(k)` at that measure (`dd:proofcode` — the derivation's code stands in
--- for the paper's symbol count, Foundation exposing no size function on internal
--- derivations).  Decidability is obtained without a proof checker: `Proof` is `𝚫₁`, so the
--- packed bounded search and its negation are both `𝚺₁` by `definability`, and
--- `re_iff_sigma1` + `ComputablePred.computable_iff_re_compl_re'` turn the pair into
+-- `BProv T φ k` is "some `T`-derivation of the sentence coded by `φ` has `k` or fewer
+-- symbols", over Foundation's internal `Bootstrapping.Proof` and `dSize`, with the bound
+-- **inclusive** as the paper's is; `conWithin T k` is the paper's `Con(T)(k)` at that
+-- measure.  (The former `dd:proofcode` substitution — metering by the derivation's Gödel
+-- number — was retired in tranche 9a and is gone from the surface.)  Decidability is
+-- obtained without a proof checker: `Proof` is `𝚫₁`, so the packed proof predicate and its
+-- negation are both `𝚺₁` by `definability`, and `re_iff_sigma1` +
+-- `ComputablePred.computable_iff_re_compl_re'` decide it; the *search* is then finite by
+-- `bProv_iff_bounded`, which is where `le_G_dSize` is spent, giving
 -- `bprovValue T : ℕ → ℕ`.  `conRunValue T' f` is the universal decider actually represented
 -- by `thm:pac` and `thm:pazfc`; `conWithin_of_consistent` is the truth premise, derived from
 -- consistency alone through `Bootstrapping.provable_of_standard_proof`.  The whole substrate

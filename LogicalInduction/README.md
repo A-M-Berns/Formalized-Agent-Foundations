@@ -211,8 +211,8 @@ admitted by the source route, with no code-digit theory needed.
 Its two §4.10 neighbours **left that list in tranche 8**. `thm:pac` and `thm:pazfc` are one
 construction at two theories. Both endpoints price the arithmetized finite-consistency family
 of a theory `Θ′`, rendered as the value-`0` sentence of a `Θ`-formula representing `Θ′`'s
-bounded-provability decider (`Framework/BoundedConsistency.lean`, metered by derivation code —
-`dd:proofcode`). `lic_belief_finitistic_consistency_unconditional` is the diagonal `Θ′ = Θ`,
+bounded-provability decider (`Framework/BoundedConsistency.lean`, metered in **symbols** by
+`dSize`, as the paper meters it). `lic_belief_finitistic_consistency_unconditional` is the diagonal `Θ′ = Θ`,
 where the consistency needed for the claims' truth is already implied by `Θ`'s representing
 computations; `lic_belief_stronger_theory_consistency_unconditional` takes `Θ′` as a second
 parameter with consistency as the paper's own explicit premise, and is witnessed at
@@ -220,7 +220,7 @@ parameter with consistency as the paper's own explicit premise, and is witnessed
 assumes of `Θ′` only that it is a stronger consistent recursively axiomatizable theory
 (tex:1881-1886) and states no containment, so the Lean hypotheses **match** the paper's rather
 than generalizing them; what makes the result interesting is the informal case where `Θ` cannot
-prove `Con(Θ′)`, which the `𝗜𝚺₁`/`𝗣𝗔` witness carries concretely. Both are `exact` modulo the disclosed `dd:proofcode` metering substitution. The
+prove `Con(Θ′)`, which the `𝗜𝚺₁`/`𝗣𝗔` witness carries concretely. Both are `exact`; the metering is the paper's own symbol count, under the stated counting convention `dd:symbolcount`. The
 `@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl` identity
 that the kernel once accepted has been deleted and is false: the second endpoint's abstract
 layer no longer exists, and the two nodes differ in which theory is metered.
@@ -414,10 +414,10 @@ whenever the represented decider is non-constant, and the Con lane discharges it
 boundary is degenerate and disclosed at the endpoints: at an eventually bounded horizon (in the
 limit, constantly `0`) the decider is constant, and there a `γ` ignoring its argument does
 represent it. It assumes no consistency hypothesis: consistency comes from the paper's
-own representability premise, and the truth of every day's claim is derived from it. The
-one disclosed substitution is `dd:proofcode` — the finite search is metered by the
-derivation's Gödel number rather than the paper's symbol count, Foundation exposing no
-symbol measure on internal derivations. `lic_belief_stronger_theory_consistency_unconditional`
+own representability premise, and the truth of every day's claim is derived from it. The finite
+search is metered as the paper meters it, in **symbols** and with the bound inclusive:
+`dSize` (`Framework/DerivationSize.lean`) counts the symbols of the derivation code, and the
+one thing disclosed is the counting convention itself, `dd:symbolcount`. `lic_belief_stronger_theory_consistency_unconditional`
 (`thm:pazfc`) is the same construction at a second theory: it takes `Θ′` as a parameter with
 the paper's own `Entailment.Consistent Θ′` as its premise, represents `Θ′`'s bounded-provability
 decider **in `Θ`**, and is witnessed at `Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔` with horizon `fun n => ack n n` —
@@ -684,21 +684,29 @@ the per-row accounting.
    `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted, and the
    symbol-metered class the statements use is the paper's own condition on its own syntax.
 
-4. **Live — the proof-search measure (`dd:proofcode`).** §4.10's finite proof searches are
-   metered by the **Gödel number of the derivation**, not by the paper's symbol count:
-   `Con(Θ′)(ν)` is read as "no `Θ′`-derivation of `⊥` has code below `ν`"
-   (`Framework/BoundedConsistency.lean`). Foundation's internal derivations expose no size
-   function — `Semiformula.bv` measures a formula, not a derivation — so no symbol measure is
-   available to state the paper's own bound. This is a disclosed type-`(c)` substitution: it
-   changes *which* finite search each day names, and nothing else. The family's decidability,
-   its `def:ec` emission and the truth of every instance are proved from consistency alone
-   (`conWithin_of_consistent`), with no relation between the two measures assumed. **Queued
-   for retirement** by the Foundation symbol-measure work (tranche 9a), after which the same
-   statements hold with `ν` a symbol bound. It is the one thing standing between `thm:pac`
-   and `thm:pazfc` and an unqualified `exact`, and it is charged globally, as `dd:fuel` is,
-   rather than against those rows. It does not reach `thm:incons`, whose sentence is the
-   *unbounded* existential over proofs: nothing is metered there, so the substitution does
-   not arise.
+4. **Convention, not substitution — the §4.10 symbol measure (`dd:symbolcount`).** The paper's
+   `Con(Θ′)(ν)` counts *symbols* of the derivation and fixes neither a Gödel encoding nor an
+   alphabet. Foundation exposes no size function on its internal derivations — `Semiformula.bv`
+   measures a formula, not a derivation — so `LogicalInduction/Framework/DerivationSize.lean`
+   defines one: `dSize`, by external recursion over the derivation codes at `V := ℕ`, with the
+   equations tying it to Foundation's own derivation constructors (`dSize_axL`, `dSize_cutRule`,
+   …) and the converse bound `le_G_dSize : d ≤ G (dSize d)` that makes a symbol-bounded proof
+   search a finite one, and so decidable in both polarities. §4.10's searches are now metered by
+   it — `BProv T φ k := ∃ d, Proof T d φ ∧ dSize d ≤ k`, the bound **inclusive**, as the paper's
+   “`ν` or fewer symbols” is. What is disclosed here is the *counting convention*: one symbol per
+   rule name, connective, quantifier, predicate/function symbol and variable occurrence; one
+   separator per argument-list entry; each index at its binary digit length plus one marker token (`idxLen n = Nat.size n + 1`). It is stated in
+   full in that module's header. The index clause is forced — charging one symbol per variable
+   occurrence regardless of index would make the measure infinite-fibred and the bounded search
+   undecidable in the negative polarity — and it is the same write-out metering the rest of the
+   development uses for `def:ec`. The convention can only ever *over*-count, so `conWithin` is if
+   anything a weaker claim under it than under a leaner one, and the truth of every instance is
+   proved from consistency alone (`conWithin_of_consistent`), independently of it. The previous
+   edition metered by the derivation's Gödel number and disclosed that as the type-`(c)`
+   substitution `dd:proofcode`; that substitution **was retired in tranche 9a** and no longer
+   appears anywhere in the development. `thm:pac` and `thm:pazfc` are `exact` with nothing
+   charged against them. Nothing is metered at `thm:incons`, whose sentence is the *unbounded*
+   existential over proofs, so no convention arises there.
 
 The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
 fuel certificate is proved to imply membership in it. What is disclosed at the affected

@@ -551,7 +551,7 @@ The design is the bounded lane's, with the extensionality trap taken seriously. 
 represented is the **universal bounded-provability decider at the horizon**,
 `conRunValue T' f` (`Framework/BoundedConsistency.lean`): it takes a packed
 `⟨sentence code, day⟩`, evaluates `f` at the day *inside*, and decides whether the coded
-sentence has a `T'`-derivation with Gödel number below `f(day)`.  Its extension varies with
+sentence has a `T'`-derivation of at most `f(day)` symbols.  Its extension varies with
 `T'`'s theorems, so the `γ` `RepresentsComputations T` returns for it genuinely names the
 metered theory; one `γ` serves every day at that horizon.  `⊥` then enters the *sentence*,
 as the first component of the compact argument `binNumeral ⟨⌜⊥⌝, n⟩`.
@@ -561,9 +561,12 @@ consistent `T'`, `fun n => conWithin T' (f n)` is extensionally `True` and its i
 the constant `0`, so a representing `γ` would name nothing at all (`R5-F08`,
 `KNOWLEDGE.md`).
 
-Two disclosures at this boundary.  The finite search is metered by the derivation's Gödel
-number rather than the paper's symbol count (`dd:proofcode`, glossary in
-`LogicalInduction.lean`).  And the propositional rendering of `Con` is a *negated* atom:
+One disclosure at this boundary — and it is a *convention*, not a substitution.  The finite
+search is metered by the derivation's symbol count, as the paper meters it, under the
+counting convention of `Framework/DerivationSize.lean` (`dd:symbolcount`, glossary in
+`LogicalInduction.lean`); the paper fixes no encoding or alphabet, so a convention is
+unavoidable, and the truth of every instance is independent of it.  And the propositional
+rendering of `Con` is a *negated* atom:
 the paper's `Con(Θ)(ν)` is `∀ν' (γ(⟨⌜⊥⌝,n⟩, ν') ⟺ ν' = 0̄)`, a universal sentence, whose
 paper-prime decomposition is the negation of the prime `∃`-sentence
 `representedClaimSentence`.  That is the paper's own decomposition, not a choice made here.
@@ -679,7 +682,7 @@ lemma conGamma_mentions_zero (T' : ArithmeticTheory) [T'.Δ₁] [RepresentsCompu
   mentions_zero_of_repr_ne _ (conGamma_spec T T' hh) h
 
 /-- **A usable sufficient condition: one derivation under one day's horizon.**  If some
-sentence code has a `T'`-derivation with Gödel number below `horizons n`, the decider is `1`
+sentence code has a `T'`-derivation of at most `horizons n` symbols, the decider is `1`
 there and `0` at `⌜⊥⌝` on the same day (consistency of `T'`), so it is non-constant.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from
@@ -696,8 +699,8 @@ lemma conGamma_mentions_zero_of_bProv (T' : ArithmeticTheory) [T'.Δ₁]
   exact _root_.one_ne_zero
 
 /-- **The condition every interesting horizon satisfies.**  `⊤` is `T'`-provable, so it has
-*some* derivation code; an unbounded horizon eventually exceeds it, and the previous lemma
-applies.  This is the form a caller can actually discharge: it asks nothing of `T'` beyond
+*some* derivation, and that derivation has *some* symbol count; an unbounded horizon
+eventually exceeds it, and the previous lemma applies.  This is the form a caller can actually discharge: it asks nothing of `T'` beyond
 the consistency the endpoint already assumes, and nothing of the horizon beyond
 unboundedness.
 
@@ -709,12 +712,12 @@ lemma conGamma_mentions_zero_of_horizon_unbounded (T' : ArithmeticTheory) [T'.Δ
     (conGamma T T' hh).Mentions 0 := by
   obtain ⟨d, hd⟩ : ∃ d : ℕ, Bootstrapping.Proof (V := ℕ) T' d ⌜(⊤ : ArithmeticSentence)⌝ :=
     provableCode_quote_verum T'
-  obtain ⟨n, hn⟩ := hub d
+  obtain ⟨n, hn⟩ := hub (dSize d)
   exact conGamma_mentions_zero_of_bProv T T' hh hcons
-    (φcode := ⌜(⊤ : ArithmeticSentence)⌝) (n := n) ⟨d, hn, hd⟩
+    (φcode := ⌜(⊤ : ArithmeticSentence)⌝) (n := n) ⟨d, hd, le_of_lt hn⟩
 
 /-- **The §4.10 claim family.**  Day `n` claims that `T'` proves no contradiction with a
-derivation code below `horizons n`; the claim is *true* on every day, by consistency of
+derivation of at most `horizons n` symbols; the claim is *true* on every day, by consistency of
 `T'` alone (`conWithin_of_consistent`), and hence `T`-provable through the representation.
 
 `T` is the represent*ing* theory — the paper's `Θ`, whose provable propositions the market
@@ -734,8 +737,9 @@ needs only that `T` represent a computable function, that function's totality an
 computability being facts about `T'`'s derivation codes rather than about `T`.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from `RepresentsComputations`
-and `conWithin_of_consistent`; (c) modelling substitution `dd:proofcode` on the measure of
-the finite search. -/
+and `conWithin_of_consistent`.  The measure of the finite search is the paper's — symbols —
+under this development's counting convention (`dd:symbolcount`); no modelling substitution
+is charged here. -/
 noncomputable def representedConClaims (T' : ArithmeticTheory) [T.Δ₁] [T'.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [RepresentsComputations T] (hcons : Entailment.Consistent T') {horizons : ℕ → ℕ}
     (hh : ComputableHorizon horizons) :
@@ -811,15 +815,15 @@ paper's own subject matter.
 The day-`n` claim is this development's rendering of the paper's `Con(Θ)(⌜f⌝(⌜n⌝))`: the
 value-`0` sentence of the formula `γ` representing the universal bounded-provability decider
 `conRunValue T f`, at the compact name of the argument `⟨⌜⊥⌝, n⟩`.  Read out, it says that no
-`T`-derivation of `⊥` has Gödel number below `f(n)`.
+`T`-derivation of `⊥` has `f(n)` or fewer symbols — the paper's own reading.
 
 *It is a paraphrase, in two disclosed respects, and is not asserted to BE the paper's
 sentence.*  What `γ` represents is the **composite** decider `conRunValue T f` — the paper's
 `⌜f⌝(⌜n⌝)` read as `⌜g⌝(⟨⌜⊥⌝, n⟩) = 0̄` for that composite `g` — rather than `f` alone; this
 is the module header's standing disclosure and costs no extra hypothesis, since
-`RepresentsComputations` represents any total computable function.  And the finite search is
-metered by the derivation's Gödel number rather than by the paper's symbol count
-(`dd:proofcode`).
+`RepresentsComputations` represents any total computable function.  The finite search itself
+is metered as the paper meters it, in symbols, under the counting convention of
+`Framework/DerivationSize.lean` (`dd:symbolcount`) — a convention, not a substitution.
 
 The horizon is an arbitrary computable function, named by its program and evaluated *inside*
 the represented decider; both ends of that range are live.  It may grow as fast as `Ack` (the
@@ -841,8 +845,8 @@ disclosure in `LogicalInduction/README.md`),
 which assumes only that `Θ` is consistent, c.e. and represents computations: it asks for a
 Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
 deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The finite proof search is metered by the derivation's Gödel number
-rather than by the paper's symbol count (`dd:proofcode`).
+formalized here.  The finite proof search is metered in symbols, as the paper meters it,
+under the counting convention of `Framework/DerivationSize.lean` (`dd:symbolcount`).
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional
     (horizons : ℕ → ℕ) (hh : ComputableHorizon horizons) :
@@ -863,15 +867,16 @@ The market is `Θ`'s: `paperTheoryDP T` enumerates the propositions `T` proves, 
 inductor is trained on that process alone.  The *claims*, however, are about a second
 theory `T'` — the paper's `Θ′`, "a stronger consistent recursively axiomatizable theory,
 such as `𝗣𝗔 + Con(𝗣𝗔)` or `ZFC`" (tex:1881-1886).  Day `n` renders the arithmetized
-`Con(Θ′)(⌜f⌝(⌜n⌝))`: no `T'`-derivation of `⊥` has Gödel number below `f(n)`, written as
+`Con(Θ′)(⌜f⌝(⌜n⌝))`: no `T'`-derivation of `⊥` has `f(n)` or fewer symbols, written as
 the value-`0` sentence of the `T`-formula representing `T'`'s bounded-provability decider.
 So the inductor, which can prove nothing about `T'` from its own theory, nevertheless comes
 to believe every finite consistency statement about it.
 
-*A paraphrase, in the same two disclosed respects as `thm:pac`*: `γ` represents the
+*A paraphrase in the same disclosed respect as `thm:pac`*: `γ` represents the
 **composite** decider `conRunValue T' f`, not `f` alone (the module header's standing
-disclosure), and the search is metered by the derivation's Gödel number rather than by the
-paper's symbol count (`dd:proofcode`).  The horizon ranges over *all* computable functions,
+disclosure).  The search itself is metered as the paper meters it, in symbols, under the
+counting convention of `Framework/DerivationSize.lean` (`dd:symbolcount`) — a convention,
+not a substitution.  The horizon ranges over *all* computable functions,
 not only fast-growing ones: `Ack` is the witness below, and a degenerate horizon (constantly
 `0`) makes the represented decider constant, so the day family may then collapse to a single
 sentence.  Day separation in the non-degenerate case is `conClaimSentence_ne_of_day_ne` with
@@ -894,8 +899,8 @@ which assumes only that `Θ` is consistent, c.e. and represents computations, an
 is consistent and recursively axiomatizable: it asks for a
 Δ₁ axiom set where the paper assumes only c.e.  By Craig's trick every c.e. theory has a
 deductively equivalent Δ₁ axiomatization, so the theorems transfer; that reduction is not
-formalized here.  The finite proof search is metered by the derivation's Gödel number
-rather than by the paper's symbol count (`dd:proofcode`).
+formalized here.  The finite proof search is metered in symbols, as the paper meters it,
+under the counting convention of `Framework/DerivationSize.lean` (`dd:symbolcount`).
 Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional
     (T' : ArithmeticTheory) [T'.Δ₁] (hcons : Entailment.Consistent T')
@@ -1630,7 +1635,8 @@ end Halting
 generalization of `Con(Θ′)(ν)` (tex:1863-1866) — the unbounded `∃` over proofs of `⊥` from
 `⌜Θ′⌝`.  It is therefore Σ₁, not decidable, so this lane is the *halting* lane's shape, not
 the bounded lane's: one fixed r.e. schema, with the day's data in the argument.  No horizon
-appears and `dd:proofcode` is not in play — the existential is over all proofs either way.
+appears and no symbol measure is in play — the existential is over all proofs either way,
+so the counting convention of `dd:symbolcount` does not reach this node.
 
 **Which theories.**  *Disclosed paraphrase.*  The theory sequence is the **deduction family**
 `Θ′ₙ := Θ₀ ∪ {σₙ}` over a fixed `Δ₁` base theory `Θ₀`, not an arbitrary e.c. sequence of
@@ -1868,7 +1874,13 @@ writing denotes `σₙ`.
 `Θ′ₙ = Θ₀ ∪ {σₙ}` rather than an arbitrary e.c. sequence of recursively axiomatizable
 theories; see the section header for the Foundation obstruction that forces it and for why the
 day's theory is nevertheless genuinely named in the sentence.  This is the single remaining
-qualification on this node.
+qualification on this node, and it **stands**: the obstruction is verified, not queued.
+Foundation's fixpoint blueprint for `Derivation` cannot host satisfaction over coded
+formulas, so full uniformity in the theory code is a truth-predicate project rather than a
+repair to this development.  A *middle* rendering — uniformity over a coded family of `Δ₁`
+axiomatizations, short of full uniformity — remains possible as an optional **upstream**
+item; it is pending a user ruling and is not scheduled here.  (Any earlier note that a later
+tranche would retire this charge is withdrawn.)
 *Residual hypothesis (disclosed).*  `[T.Δ₁]`, `[T'.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings
 beyond the paper (see the global disclosure in `LogicalInduction/README.md`), which assumes
 only that the theories are consistent (for `Θ`), c.e. and represent computations: they ask for
@@ -2068,9 +2080,12 @@ end Inconsistency
 #print axioms loopsWitness_never_halts
 #print axioms loopsTheory_refutes
 #print axioms thm_loops_applied_at_loopsTheory
+#print axioms conClaimArg
 #print axioms conClaimArg_digits
+#print axioms conClaimSentence
 #print axioms conClaimSentence_bigSentenceCodes
 #print axioms conClaimSentence_ne_of_day_ne
+#print axioms exists_reprAll_conRunValue
 #print axioms conGamma
 #print axioms conGamma_spec
 #print axioms conGamma_mentions_zero

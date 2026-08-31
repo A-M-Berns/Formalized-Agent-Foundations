@@ -11,19 +11,20 @@ internal derivations: bounded provability `BProv`, its decidability, the total c
 `conWithin` with the soundness bridge that makes every one of its instances **true** for a
 consistent theory.
 
-## What is measured (`dd:proofcode`)
+## What is measured: symbols
 
-The paper meters the proof search in **symbols of the derivation**.  Foundation's internal
-derivations (`Bootstrapping.Derivation`) carry no size function — `Semiformula.bv` is the
-only comparable template, and it measures a formula, not a derivation — so the bound here
-is on the derivation's **Gödel number** `d` instead: `BProv T φ k` is "some `d < k` is a
-`T`-derivation of `φ`".  This is a disclosed modelling substitution, `dd:proofcode`
-(glossary in `LogicalInduction.lean`).  It changes which *finite* search each day names; it
-does not change the family's shape, its decidability, or the fact that every instance is
-true when `T` is consistent — `conWithin_of_consistent` below is proved from consistency
-alone, with no size relation assumed.  (Only that direction holds instance-wise: an
-inconsistent `T` still satisfies `conWithin T k` for every `k` below its least
-inconsistency-proof code; consistency is characterized by *all* instances, not each.)
+The bound is on the derivation's **symbol count**, as the paper says, and it is
+**inclusive** (`dSize d ≤ k`), as the paper says.  `Framework/DerivationSize.lean` builds
+`dSize`, the symbol count of a Foundation derivation code, by external recursion at
+`V := ℕ` — which is the only place §4.10 meters anything — and proves the equations that
+tie it to Foundation's own derivation constructors (`dSize_axL`, `dSize_cutRule`, …).
+
+The earlier `dd:proofcode` modelling substitution — metering by the derivation's *Gödel
+number* because Foundation exposes no size function — is **retired**.  What is left is a
+*convention*, not a substitution: the paper fixes neither a Gödel encoding nor an alphabet
+("written in `ℒ` using a Gödel encoding"), so some symbol-counting convention has to be
+chosen, and ours is stated in full in `DerivationSize.lean`'s header.  Nothing in this
+module depends on the choice beyond `le_G_dSize`.
 
 ## Why bounded *provability*, not bounded *consistency*
 
@@ -31,64 +32,38 @@ The represented lane must name the theory.  `conWithin T` is, for a consistent `
 extensionally the constant predicate `True`, so a `γ` representing its indicator would name
 nothing (the `R5-F08` extensionality trap, `KNOWLEDGE.md`).  What varies with `T`'s theorems
 is bounded *provability* with the sentence code in the argument, so that is what is made
-computable here: `bprovValue T : ℕ → ℕ` decides `∃ d < k, Proof T d φ` at the packed
-argument `⟨φ, k⟩`, and the day-`n` Con claim is read off it as the value `0` at
+computable here: `bprovValue T : ℕ → ℕ` decides `∃ d, Proof T d φ ∧ dSize d ≤ k` at the
+packed argument `⟨φ, k⟩`, and the day-`n` Con claim is read off it as the value `0` at
 `⟨⌜⊥⌝, f n⟩`.
 
 ## How computability is obtained
 
 No proof checker is written.  Foundation's `Bootstrapping.Proof` is `𝚫₁`
-(`Proof.definable'`), so the packed bounded-search predicate and its negation are both
-`𝚺₁` by `definability`; `re_iff_sigma1` turns each into an r.e. predicate on ℕ and
+(`Proof.definable'`), so the packed proof predicate and its negation are both `𝚺₁` by
+`definability`; `re_iff_sigma1` turns each into an r.e. predicate on ℕ and
 `ComputablePred.computable_iff_re_compl_re'` turns the pair into a decider.  Foundation's
 own arithmetic pairing coincides with Mathlib's at `ℕ` (`nat_pair_eq`), which is what lets
 the definable form (stated with `π₁`/`π₂`) and the computable form (stated with
 `Nat.pair`/`Nat.unpair`) be the same predicate.
+
+That alone decides `Proof T d φ` for a *given* `d`.  What makes the symbol-metered search
+decidable — in both polarities, which is what the total decider needs — is the converse
+bound `le_G_dSize : d ≤ G (dSize d)` of `DerivationSize.lean`: a derivation with at most `k`
+symbols has code at most `G k`, so the unbounded search over `d` collapses to a bounded one
+(`bProv_iff_bounded`).  `dSize d ≤ d` is the useless direction; this is the one that does
+the work.
 -/
 import Foundation.FirstOrder.Incompleteness.First
 import Foundation.FirstOrder.Incompleteness.RosserProvability
 import Mathlib.Computability.Partrec
 import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.DerivationSizeComputable
 
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.FirstOrder.Arithmetic.Bootstrapping
 
 variable (T : ArithmeticTheory) [T.Δ₁]
-
-/-! ## Bounded provability -/
-
-/-- **Bounded provability** (`dd:proofcode`).  Some derivation with Gödel number below `k`
-proves the sentence coded by `φcode` in `T`.  The paper's measure is the derivation's
-symbol count; see the module docstring.  The bound is *exclusive* (`d < k`) where the
-paper's `ν` or fewer symbols is inclusive — with the measure already replaced by
-`dd:proofcode` this is absorbed by shifting the horizon, but each fixed-horizon family
-reads as the paper's bound `k - 1`. -/
-def BProv (φcode k : ℕ) : Prop := ∃ d < k, Bootstrapping.Proof (V := ℕ) T d φcode
-
-/-- `BProv` at a single packed argument `⟨φcode, k⟩`, spelled with Foundation's own
-arithmetic pairing so that `definability` can see through it. -/
-def BProvPacked (z : ℕ) : Prop := ∃ d < π₂ z, Bootstrapping.Proof (V := ℕ) T d (π₁ z)
-
-/-- The bounded search is `𝚺₁`: `Proof` is `𝚫₁` and the search is bounded.
-
-Kind `P` (proved).  Provenance: (b) Foundation citations — `Proof.definable'`,
-`pi₁_definable`, `pi₂_definable`. -/
-lemma bProvPacked_sigmaOne : 𝚺₁-Predicate (BProvPacked T) := by
-  unfold BProvPacked; definability
-
-/-- …and so is its negation, the bounded search being bounded in both polarities. -/
-lemma not_bProvPacked_sigmaOne : 𝚺₁-Predicate (fun z => ¬ BProvPacked T z) := by
-  unfold BProvPacked; definability
-
-/-- **Bounded provability is decidable.**  Both polarities are r.e. by `re_iff_sigma1`, and
-a predicate r.e. together with its complement is computable.
-
-Kind `C` (composition).  Provenance: (b) Foundation citation — `re_iff_sigma1`;
-Mathlib citation — `ComputablePred.computable_iff_re_compl_re'`. -/
-lemma bProvPacked_computable : ComputablePred (BProvPacked T) :=
-  ComputablePred.computable_iff_re_compl_re'.mpr
-    ⟨re_iff_sigma1.mpr (bProvPacked_sigmaOne T), re_iff_sigma1.mpr (not_bProvPacked_sigmaOne T)⟩
 
 /-! ## Foundation's pairing at `ℕ` is Mathlib's
 
@@ -105,26 +80,115 @@ lemma pi₂_nat (z : ℕ) : π₂ z = z.unpair.2 := by
   conv_rhs => rw [← h]
   simp
 
-lemma bProvPacked_iff (z : ℕ) : BProvPacked T z ↔ BProv T z.unpair.1 z.unpair.2 := by
-  simp [BProvPacked, BProv, pi₁_nat, pi₂_nat]
+/-! ## The proof predicate is computable
+
+Not the *search* — a single `Proof T d φ`, at the packed pair.  Everything metered is built
+on top of this. -/
+
+/-- Foundation's internal proof predicate at a packed argument `⟨d, φcode⟩`, spelled with
+Foundation's own arithmetic pairing so that `definability` can see through it. -/
+def ProofPacked (z : ℕ) : Prop := Bootstrapping.Proof (V := ℕ) T (π₁ z) (π₂ z)
+
+/-- `Proof` is `𝚫₁`, so the packed form is `𝚺₁`.
+
+Kind `P` (proved).  Provenance: (b) Foundation citations — `Proof.definable'`,
+`pi₁_definable`, `pi₂_definable`. -/
+lemma proofPacked_sigmaOne : 𝚺₁-Predicate (ProofPacked T) := by
+  unfold ProofPacked; definability
+
+/-- …and so is its negation, `Proof` being `𝚫₁`. -/
+lemma not_proofPacked_sigmaOne : 𝚺₁-Predicate (fun z => ¬ ProofPacked T z) := by
+  unfold ProofPacked; definability
+
+/-- **The proof predicate is decidable.**  Both polarities are r.e. by `re_iff_sigma1`, and
+a predicate r.e. together with its complement is computable.
+
+Kind `C` (composition).  Provenance: (b) Foundation citation — `re_iff_sigma1`;
+Mathlib citation — `ComputablePred.computable_iff_re_compl_re'`. -/
+lemma proofPacked_computable : ComputablePred (ProofPacked T) :=
+  ComputablePred.computable_iff_re_compl_re'.mpr
+    ⟨re_iff_sigma1.mpr (proofPacked_sigmaOne T), re_iff_sigma1.mpr (not_proofPacked_sigmaOne T)⟩
+
+lemma proofPacked_iff (z : ℕ) :
+    ProofPacked T z ↔ Bootstrapping.Proof (V := ℕ) T z.unpair.1 z.unpair.2 := by
+  simp [ProofPacked, pi₁_nat, pi₂_nat]
+
+lemma proofPacked_pair_iff (d φcode : ℕ) :
+    ProofPacked T (Nat.pair d φcode) ↔ Bootstrapping.Proof (V := ℕ) T d φcode := by
+  simp [proofPacked_iff]
+
+/-! ## Bounded provability -/
+
+/-- **Bounded provability.**  Some `T`-derivation of the sentence coded by `φcode` has at
+most `k` symbols.  The bound is **inclusive**, matching the paper's "`ν` or fewer
+symbols". -/
+def BProv (φcode k : ℕ) : Prop :=
+  ∃ d, Bootstrapping.Proof (V := ℕ) T d φcode ∧ dSize d ≤ k
+
+/-- **The search is bounded.**  A derivation of at most `k` symbols has code at most `G k`,
+so the unbounded existential is a finite search — which is what makes `BProv` decidable in
+*both* polarities, and hence the day's decider total.
+
+Kind `C` (composition).  Provenance: (a) derived in-project from `le_G_dSize` and
+`G_mono`. -/
+lemma bProv_iff_bounded (φcode k : ℕ) :
+    BProv T φcode k ↔ ∃ d ≤ G k, Bootstrapping.Proof (V := ℕ) T d φcode ∧ dSize d ≤ k := by
+  constructor
+  · rintro ⟨d, hd, hs⟩
+    exact ⟨d, le_trans (le_G_dSize d) (G_mono hs), hd, hs⟩
+  · rintro ⟨d, -, hd, hs⟩
+    exact ⟨d, hd, hs⟩
+
+/-- `BProv` at a single packed argument `⟨φcode, k⟩`. -/
+def BProvPacked (z : ℕ) : Prop := BProv T z.unpair.1 z.unpair.2
+
+lemma bProvPacked_iff (z : ℕ) : BProvPacked T z ↔ BProv T z.unpair.1 z.unpair.2 := Iff.rfl
 
 /-! ## The ℕ-valued decider -/
 
 open Classical in
 /-- **The bounded-provability decider.**  `1` when the sentence coded by `z.unpair.1` has a
-`T`-derivation with Gödel number below `z.unpair.2`, else `0`.  Total, and — the point of
-the design — its extension varies with `T`'s theorems, because the sentence code is an
+`T`-derivation of at most `z.unpair.2` symbols, else `0`.  Total, and — the point of the
+design — its extension varies with `T`'s theorems, because the sentence code is an
 *argument*. -/
 noncomputable def bprovValue (z : ℕ) : ℕ := if BProvPacked T z then 1 else 0
 
-/-- The decider is computable.
+/-- The decider is computable: the bounded search of `bProv_iff_bounded` runs over a
+computable predicate (`proofPacked_computable`, `dSize_computable`) with a computable bound
+(`G_computable`).
 
-Kind `C` (composition).  Provenance: (a) derived in-project from
-`bProvPacked_computable`. -/
+Kind `C` (composition).  Provenance: (a) derived in-project. -/
 lemma bprovValue_computable : Computable (bprovValue T) := by
-  obtain ⟨_, hc⟩ := bProvPacked_computable T
-  refine (Computable.cond hc (Computable.const 1) (Computable.const 0)).of_eq fun z => ?_
-  by_cases h : BProvPacked T z <;> simp [bprovValue, h]
+  classical
+  obtain ⟨_, hc⟩ := proofPacked_computable T
+  have hproof : Computable fun x : ℕ × ℕ =>
+      decide (Bootstrapping.Proof (V := ℕ) T x.2 x.1.unpair.1) := by
+    have := hc.comp (Primrec₂.natPair.to_comp.comp Computable.snd
+      ((Primrec.fst.comp Primrec.unpair).to_comp.comp Computable.fst))
+    refine this.of_eq fun x => ?_
+    simp [proofPacked_pair_iff]
+  -- `PrimrecRel` packages its own `Decidable` instance existentially, so `nat_le` has to be
+  -- re-decided at the ambient instance before it composes.
+  have hle : Computable fun q : ℕ × ℕ => decide (q.1 ≤ q.2) :=
+    (PrimrecPred.decide Primrec.nat_le).to_comp
+  have hsize : Computable fun x : ℕ × ℕ => decide (dSize x.2 ≤ x.1.unpair.2) :=
+    hle.comp (Computable.pair (dSize_computable.comp Computable.snd)
+      ((Primrec.snd.comp Primrec.unpair).to_comp.comp Computable.fst))
+  have hp : Computable fun x : ℕ × ℕ =>
+      decide (Bootstrapping.Proof (V := ℕ) T x.2 x.1.unpair.1 ∧ dSize x.2 ≤ x.1.unpair.2) := by
+    have hand := (Primrec.dom_bool₂ (fun a b => a && b)).to_comp.comp hproof hsize
+    refine hand.of_eq fun x => ?_
+    by_cases h1 : Bootstrapping.Proof (V := ℕ) T x.2 x.1.unpair.1 <;>
+      by_cases h2 : dSize x.2 ≤ x.1.unpair.2 <;> simp [h1, h2]
+  have hb : Computable fun a : ℕ => G a.unpair.2 :=
+    G_computable.comp (Primrec.snd.comp Primrec.unpair).to_comp
+  refine (computable_boundedSearchValue
+    (p := fun z d => Bootstrapping.Proof (V := ℕ) T d z.unpair.1 ∧ dSize d ≤ z.unpair.2)
+    hp hb).of_eq fun z => ?_
+  unfold bprovValue
+  by_cases h : BProvPacked T z
+  · rw [if_pos ((bProv_iff_bounded T _ _).mp h), if_pos h]
+  · rw [if_neg (fun hc' => h ((bProv_iff_bounded T _ _).mpr hc')), if_neg h]
 
 @[simp] lemma bprovValue_eq_zero_iff (z : ℕ) : bprovValue T z = 0 ↔ ¬ BProvPacked T z := by
   unfold bprovValue; split <;> simp_all
@@ -134,8 +198,7 @@ lemma bprovValue_computable : Computable (bprovValue T) := by
 
 /-! ## Finite consistency -/
 
-/-- **The paper's `Con(T)(k)`** at the derivation-code measure (`dd:proofcode`): no
-`T`-derivation of `⊥` has Gödel number below `k`. -/
+/-- **The paper's `Con(T)(k)`**: no `T`-derivation of `⊥` has `k` or fewer symbols. -/
 def conWithin (k : ℕ) : Prop := ¬ BProv T ⌜(⊥ : ArithmeticSentence)⌝ k
 
 set_option maxHeartbeats 1000000 in
@@ -150,28 +213,29 @@ lemma provable_of_bProv_witness (φ : ArithmeticSentence) {d : ℕ}
   simpa [Nat.cast_id] using h
 
 /-- **Every finite consistency statement about a consistent theory is true.**  This is the
-truth premise of `thm:pac`, and it needs nothing but consistency: a bounded derivation of
-`⊥` would be a derivation of `⊥`.
+truth premise of `thm:pac`, and it needs nothing but consistency: a derivation of `⊥` with
+some symbol count is still a derivation of `⊥`.  In particular it is independent of the
+symbol-counting convention.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
 `Bootstrapping.provable_of_standard_proof`. -/
 lemma conWithin_of_consistent (hcon : Entailment.Consistent T) (k : ℕ) : conWithin T k := by
-  rintro ⟨d, -, hd⟩
+  rintro ⟨d, hd, -⟩
   exact Entailment.Consistent.not_bot hcon (provable_of_bProv_witness T ⊥ hd)
 
 /-- Finite consistency is antitone in the bound: trusting `T` for longer is a stronger
 claim. -/
 lemma conWithin_anti {k k' : ℕ} (h : k ≤ k') : conWithin T k' → conWithin T k := by
-  rintro hk ⟨d, hd, hp⟩
-  exact hk ⟨d, lt_of_lt_of_le hd h, hp⟩
+  rintro hk ⟨d, hp, hs⟩
+  exact hk ⟨d, hp, le_trans hs h⟩
 
 /-! ## The universal bounded-provability decider at a horizon
 
 The function actually represented by the §4.10 endpoints.  It takes a packed
 `⟨φcode, day⟩`, evaluates the horizon `f` at the day *inside* — `f` may grow as fast as it
-likes, and is never written out — and decides bounded provability of `φcode` below `f day`.
-It mentions no particular sentence, so one `γ` serves every day and every claim at that
-horizon; the sentence `⌜⊥⌝` enters only through the *argument*. -/
+likes, and is never written out — and decides whether `φcode` has a `T`-derivation of at
+most `f day` symbols.  It mentions no particular sentence, so one `γ` serves every day and
+every claim at that horizon; the sentence `⌜⊥⌝` enters only through the *argument*. -/
 
 /-- **The universal bounded-provability decider at horizon `f`.** -/
 noncomputable def conRunValue (f : ℕ → ℕ) (z : ℕ) : ℕ :=
@@ -189,11 +253,11 @@ lemma conRunValue_computable {f : ℕ → ℕ} (hf : Computable f) :
 
 lemma conRunValue_pair_eq_zero_iff (f : ℕ → ℕ) (φ n : ℕ) :
     conRunValue T f (Nat.pair φ n) = 0 ↔ ¬ BProv T φ (f n) := by
-  simp [conRunValue, bProvPacked_iff]
+  simp [conRunValue, BProvPacked]
 
 lemma conRunValue_pair_eq_one_iff (f : ℕ → ℕ) (φ n : ℕ) :
     conRunValue T f (Nat.pair φ n) = 1 ↔ BProv T φ (f n) := by
-  simp [conRunValue, bProvPacked_iff]
+  simp [conRunValue, BProvPacked]
 
 /-- **The value the paper's day-`n` Con claim asserts.**  At the argument naming `⊥` and the
 day, the decider is `0` — for a consistent `T`, on every day, at every horizon. -/
@@ -206,9 +270,9 @@ lemma conRunValue_bot_eq_zero {f : ℕ → ℕ} (hcon : Entailment.Consistent T)
 `thm:pac`/`thm:pazfc` are about the *bounded* family above.  `thm:incons` is about the
 paper's `⌜Θ′⌝ is inconsistent` (tex:1863-1866), which is the **negation of the universal
 generalization** of `Con(Θ′)(ν)` — that is, the unbounded `∃ν: there is a proof of ⊥ from
-⌜Θ′⌝ with ν or fewer symbols`.  Nothing is metered there, so no horizon and no `dd:proofcode`
-choice of measure enters: the existential ranges over *all* proofs either way, and the two
-readings are the same predicate.
+⌜Θ′⌝ with ν or fewer symbols`.  Nothing is metered there, so no horizon and no choice of
+measure enters: the existential ranges over *all* proofs either way, and the two readings
+are the same predicate.
 
 Foundation already carries that predicate — `Bootstrapping.Provable T : ℕ → Prop`, literally
 `∃ d, Proof T d φcode` — with both bridges this development needs, so nothing is built here
@@ -276,7 +340,17 @@ lemma not_provableCode_quote_falsum (hcon : Entailment.Consistent T) :
     ¬ ProvableCode T ⌜(⊥ : ArithmeticSentence)⌝ := by
   simpa using Entailment.Consistent.not_bot hcon
 
-#print axioms bProvPacked_computable
+-- The symbol-measure computability layer, printed here so the §4.10 substrate's axiom
+-- accounting is in one place.
+#print axioms dSize_computable
+#print axioms sSize_computable
+#print axioms fSize_computable
+#print axioms tSize_computable
+#print axioms G_computable
+#print axioms computable_boundedSearchValue
+
+#print axioms proofPacked_computable
+#print axioms bprovValue_computable
 #print axioms conWithin_of_consistent
 #print axioms conRunValue_computable
 #print axioms conRunValue_bot_eq_zero

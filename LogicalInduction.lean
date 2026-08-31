@@ -86,17 +86,31 @@ list is exhaustive; a label appearing nowhere below is not in use.
   the world-value and threshold-emission obligations are *proved* rather than assumed.
   Endpoints suffixed `_arith` are the paper's statement restricted to this class, and are
   where the general layer's representation hypotheses get discharged.
-* **`dd:proofcode`** — §4.10's finite proof searches are metered by the **Gödel number of
-  the derivation**, not by the paper's symbol count. `Con(Θ′)(ν)` is read as "no
-  `Θ′`-derivation of `⊥` has code below `ν`" (`Framework/BoundedConsistency.lean`).
-  Foundation's internal derivations expose no size function — `Semiformula.bv` measures a
-  formula, not a derivation — so no symbol measure is available to state the paper's own
-  bound. This is a disclosed type-`(c)` substitution: it changes *which* finite search each
-  day names, and nothing else. The family's decidability, its `def:ec` emission and the
-  truth of every instance are proved from consistency alone
-  (`conWithin_of_consistent`), with no relation between the two measures assumed. Retired
-  by the queued Foundation symbol-measure work (tranche 9a), after which the same
-  statements hold with `ν` a symbol bound.
+* **`dd:symbolcount`** — §4.10's finite proof searches are metered by the **symbol count
+  of the derivation**, as the paper's `Con(Θ′)(ν)` is (tex:1855-1866), with the bound
+  inclusive. Foundation exposes no size function on its internal derivations, so
+  `Framework/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
+  the derivation codes at `V := ℕ`, with equations tying it to Foundation's own
+  constructors (`dSize_axL`, `dSize_cutRule`, …) and the converse bound
+  `le_G_dSize : d ≤ G (dSize d)` that keeps the metered search decidable in both
+  polarities. This is a **convention, not a modelling substitution**: the paper fixes
+  neither a Gödel encoding nor an alphabet ("written in `ℒ` using a Gödel encoding"), so
+  some counting convention must be chosen, and ours — one symbol per rule name,
+  connective, quantifier, predicate, function symbol and variable occurrence, one
+  separator per argument-list entry, and, for every variable, function and relation index,
+  its binary digit count **plus one marker token** (`idxLen n = Nat.size n + 1`, so
+  `idxLen 0 = 1` and `idxLen 1 = 2`; the marker is what separates an index numeral from
+  the material following it) — is stated in full in that module's header. The index
+  convention is the same write-out metering the rest of this development uses (`def:ec`),
+  and it is what makes the measure finite-fibred; the fixed per-index marker over-counts,
+  which is the safe direction for a bound. Nothing outside `DerivationSize.lean` depends
+  on the choice *for the truth of the endpoints* — `conWithin_of_consistent`, which proves
+  every day's claim from consistency alone, never mentions `dSize` — the choice affects
+  only which horizons discharge the non-degeneracy side conditions
+  (`conGamma_mentions_zero_of_bProv`, `conGamma_mentions_zero_of_horizon_unbounded`), whose
+  hypotheses are quantitative in the measure. *(This entry replaces the retired
+  `dd:proofcode`, which disclosed the Gödel-number measure that stood in for the paper's
+  symbol count before tranche 9a.)*
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable

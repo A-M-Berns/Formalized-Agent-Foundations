@@ -335,3 +335,13 @@ defect above is confined to the printed proof.
 exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on the interval
 bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
 `GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
+
+## tex:1859 — the Con(PA)(Ack) gloss is off by one against its own definition
+
+The paper glosses `Con(PA)(⌜Ack(10,10)⌝)` as saying "any proof of ⊥ from PA requires
+at least Ack(10,10) symbols", but the definition two lines above (tex:1857) reads
+"there is no proof of ⊥ … with ν or fewer symbols", which gives "requires MORE than
+Ack(10,10)". The formalization follows the definition, not the gloss: `BProv`'s bound
+is inclusive (`dSize d ≤ k`), so `conWithin T k` is exactly the definition's reading.
+Recorded so a faithfulness auditor does not read the inclusive bound as drift.
+(Found blind, R9 lens B, 2026-08-31.)
