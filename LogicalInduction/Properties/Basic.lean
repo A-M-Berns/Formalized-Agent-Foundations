@@ -39,10 +39,6 @@ noncomputable def buySignal (feat : EF) (ε : ℚ) : EF :=
 @[simp] lemma buySignal_rank (feat : EF) (ε : ℚ) : (buySignal feat ε).rank = feat.rank := by
   simp [buySignal]
 
-lemma buySignal_polyEF {t : ℕ → EF} (ht : PolyEF t) (ε : ℚ) :
-    PolyEF (fun n => buySignal (t n) ε) :=
-  (PolyEF.const 0).max (ht.add (PolyEF.const (-ε/2)))
-
 /-- `0 ≤ buySignal feat ε`. -/
 lemma buySignal_nonneg (feat : EF) (ε : ℚ) (P : History) :
     0 ≤ (buySignal feat ε).denote P := by rw [buySignal_denote]; exact le_max_left _ _

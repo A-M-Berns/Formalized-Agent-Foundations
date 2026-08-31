@@ -481,10 +481,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   luv_wubexp_ofComputation_unconditional
 
 -- Construction/Witnesses/BitPrefixSyntax.lean — the prefix-sentence family over
--- independent bit atoms, its symbol-metered naming emitter, and the semimeasure-domination
+-- independent bit atoms, its token-metered naming emitter, and the semimeasure-domination
 -- endpoint they feed.  `ordinaryBitPrefixSentences` is the **non-vacuity witness** for
 -- `BitPrefixSentences`; `not_polySentenceCodes_bitPrefixSentence` records why that field must
--- be metered in symbols rather than in the pair-code value.
+-- be metered in tokens rather than in the pair-code value.
 #assert_axioms_clean
   not_polySentenceCodes_bitPrefixSentence ordinaryBitPrefixCodes
   bitPrefixSentencesOfIndependentAtoms ordinaryBitPrefixSentences
@@ -774,12 +774,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- `invPaperLUV` builds the literal paper LUV of value `1/v` from any closed `ℒₒᵣ` term of
 -- value `v`, and its two instances are `unitFracPaperLUVSeq` at `1/(n+1)` (denominator a
 -- unary numeral) and `dyadicPaperLUVSeq` at `2⁻ⁿ` (denominator the compact numeral of
--- `2 ^ n`, `O(n)` symbols).  The second is what shows the symbol-metered class reaches the
+-- `2 ^ n`, `O(n)` symbols).  The second is what shows the token-metered class reaches the
 -- superpolynomially small values the paper writes.
 -- `PaperLUV.rpnThresholdCodes` is the single-LUV route out of the frontend: the constant
 -- family reindexed along `m ↦ ⟨0, m⟩`, giving the non-sequence `LUV.RpnThresholdCodes` that
 -- the whole-LUV endpoints take as a hypothesis (`LUV.expect_converges`, `thm:ec`), with no
--- efficiency side condition, since a constant formula family is trivially symbol-metered.
+-- efficiency side condition, since a constant formula family is trivially token-metered.
 -- The metering is on the paper's **source**.  `PaperLUVSeq` carries each LUV's defining
 -- formula as the paper writes it (`source : ℕ → ArithSource 1`, over the primitive
 -- connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and quantifiers `∀ ∃` of tex:571-577), a proof that it denotes the LUV's Foundation
@@ -1341,7 +1341,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 #assert_fields ArithmeticLUVPresentation
   threshold_enters threshold_refutes
 -- Tier-2 field change (2026-07-30, superseded 2026-08-28): `prefix_codes` moved from the
--- whole-value `PolySentenceCodes` to the symbol-metered `RpnSentenceCodes`, and then to the
+-- whole-value `PolySentenceCodes` to the token-metered `RpnSentenceCodes`, and then to the
 -- write-out class `BigSentenceCodes` in the migration recorded in the WRITE-OUT FIELD
 -- MIGRATION block below.  `#assert_fields` freezes field *names* only, so the type change is
 -- recorded here explicitly; it is what makes the structure inhabitable
@@ -1521,12 +1521,12 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- (`inverse_width_codes`); `ParadoxResistanceQuote.sentence_codes` and
 -- `SelfTrustQuote.sentence_codes` are `BigSentenceCodes`.  `SelfTrustQuote`'s two remaining
 -- threshold fields (`product_codes`, `confidence_codes`) are `LUV.RpnThresholdCodeSeq` —
--- symbol-metered, not whole-value, and not `PolyThresholdCodeSeq` as the paragraph above
+-- token-metered, not whole-value, and not `PolyThresholdCodeSeq` as the paragraph above
 -- implied.  The migrated fields are enumerated in the block below.
 --
 -- ## WRITE-OUT FIELD MIGRATION (2026-08-27/28)
 --
--- Every field below moved from a whole-value or symbol-metered class to a **write-out**
+-- Every field below moved from a whole-value or token-metered class to a **write-out**
 -- class, in which the object's numeric magnitude is unrestricted and only the number of
 -- symbols a poly-time writer must emit is bounded.  This is what `def:ec` actually meters
 -- (tex:753-755, explicitly at tex:1931-1933).  `#assert_fields` freezes field *names* only,
@@ -1588,7 +1588,7 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- `lic_self_trust_closed` (`thm:st`) likewise remains at `RpnSentenceCodes φ`: its
 -- `product_codes` obligation is `LUV.RpnThresholdCodeSeq (indicatorProductLUV … φ)`,
 -- discharged by `indicatorProductLUV_rpnThresholdCodeSeq`, which needs `φ`'s codes at
--- symbol-metered strength.  There is no write-out threshold class — `LUV.BigThresholdCodeSeq`
+-- token-metered strength.  There is no write-out threshold class — `LUV.BigThresholdCodeSeq`
 -- does not exist — so widening `thm:st` is a `RpnThresholdCodeSeq` migration, not a
 -- sentence-class one.  `theoremConfidenceQuoteCode` is held at `RpnSentenceCodes` for the
 -- same reason: widening the *def* alone is sound but unusable, and would have put two
@@ -1816,7 +1816,7 @@ the semantic-lifted lane stayed invisible for two tranches.
     explicitly declines (tex:2673), and nothing here takes it. The only surviving occurrence
     of the name anywhere in `LogicalInduction/` is `loopsTheory_soundOnSigma1`, a fact about
     one concrete theory used as a non-vacuity witness for `thm:loops`'s `hloops`.
-  * `𝗣𝗔⁻ ⪯ ·` — **17 of 105**, and `𝗥₀ ⪯ ·` — **0**.  `thm:incons` carried the last one
+  * `𝗣𝗔⁻ ⪯ ·` — **16 of 105**, and `𝗥₀ ⪯ ·` — **0**.  `thm:incons` carried the last one
     redundantly, beside the stronger `𝗣𝗔⁻` it also carries; it was dropped on 2026-08-30
     and the binder is gone from the elaborated signature, Foundation's
     `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` (`Arithmetic/Schemata.lean`) supplying it.
@@ -1835,9 +1835,13 @@ the semantic-lifted lane stayed invisible for two tranches.
     `source_valued` steps prove rational-cut arithmetic *inside* `T`; and
     `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`), whose diagonal is
     Foundation's `parameterized_diagonal₁`, stated over `𝗜𝚺₁`.  That endpoint prints
-    `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]`: the pair is redundant (`𝗜𝚺₁ ⪯ T`
-    implies `𝗣𝗔⁻ ⪯ T` by instance) but not removable, because its proof term references the
-    section's `𝗣𝗔⁻` instance and Lean rejects `omit` on a referenced section variable.
+    `[T.Δ₁] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]` and carries **no** `[𝗣𝗔⁻ ⪯ T]`: the two
+    would be redundant (`𝗜𝚺₁ ⪯ T` implies `𝗣𝗔⁻ ⪯ T` by instance), so that endpoint is
+    declared *outside* the `𝗣𝗔⁻` section of `ComputationDP.lean` and recovers the weaker
+    instance in its proof term, where `theoremLIA`/`theoremDP_hworld` need it.  `omit`
+    cannot do this job: it does not take the variable out of the local context, so instance
+    search still reaches it from the conclusion's `theoremDiagonalQuoteCode`.  It is therefore
+    not one of the 17 above.
 
 The tranche-7/D step that closed the last eight was deleting `theory_sigmaOne` from
 `QuotationTheoryPresentation` (see the FIELD REMOVAL note above): the seven closed quotation
@@ -1869,8 +1873,9 @@ noncomputable def concreteArithmeticInstantiation :=
 /-! ### No Σ₁-soundness is asked for at a concrete theory (2026-08-30)
 
 `thm:ref` elaborates exactly three instance arguments — `[T.Δ₁]`, `[𝗣𝗔⁻ ⪯ T]` and
-`[Entailment.Consistent T]` — and `thm:lp` exactly four, those three plus the `[𝗜𝚺₁ ⪯ T]` its
-diagonal genuinely spends.  Both would fail to typecheck as written if
+`[Entailment.Consistent T]` — and `thm:lp` exactly three as well: `[T.Δ₁]`,
+`[Entailment.Consistent T]`, and the `[𝗜𝚺₁ ⪯ T]` its diagonal genuinely spends, with no
+`[𝗣𝗔⁻ ⪯ T]` beside it.  Both would fail to typecheck as written if
 `[T.SoundOnHierarchy 𝚺 1]` were still in either binder list; the arity is also the live
 regression test for tranche 7's `𝗜𝚺₁` deletion, since restoring the binder on `thm:ref` would
 give it a fourth argument.  The corresponding `grep` is
@@ -1885,7 +1890,7 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
 /-- `thm:lp` at the concrete theory `𝗜𝚺₁`, soundness-free. -/
 example :=
   @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
-    inferInstance inferInstance inferInstance inferInstance
+    inferInstance inferInstance inferInstance
 
 /-! ### `thm:ref` below `𝗜𝚺₁` (tranche 7/D)
 

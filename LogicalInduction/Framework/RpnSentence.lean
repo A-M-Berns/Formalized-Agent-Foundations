@@ -28,7 +28,7 @@ the transducer (`parseRpnC`, `unRpnTokensC`), which compute on pair codes so the
 can certify them.  Their primitive recursiveness is proved in `Framework/RpnComputation.lean`,
 and the poly-fuelled emission bridges in `Framework/RpnEmission.lean`.
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.Criterion
 
@@ -2440,7 +2440,7 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
   unfold strategyOfTokens
   rw [deserializeTrades_unRpn_escExpand]
 
-/-! ## The symbol-metered emission model
+/-! ## The token-metered emission model
 
 An efficiently computable trader emits a digit stream whose undigitized tokens form an
 RPN-expanded strategy stream; the decode contracts sentence blocks (`unRpn`) before

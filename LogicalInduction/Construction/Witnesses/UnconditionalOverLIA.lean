@@ -50,7 +50,7 @@ constructed `LIA` over the (computable) empty process and `hworld` is trivial â€
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
 
 The prefix-sentence presentation is the constructed `ordinaryBitPrefixSentences`, whose
-symbol-metered naming certificate is discharged by `ordinaryBitPrefixCodes`.
+token-metered naming certificate is discharged by `ordinaryBitPrefixCodes`.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_unconditional
     {M : LowerSemicomputableContinuousSemimeasure}

@@ -330,14 +330,12 @@ lemma computationClaimSentence_digits
 
 /-- Write-out access to the packed `⟨⌜mₙ⌝, xₙ⟩` machine/input name.
 
-**Who uses this.**  Two lanes, for two different reasons.  `thm:incons`
-(`inconsistentTheoryClaimsOfComputation` below) still runs on the tag-keyed atom over
-`theoremDP`, where this is the claim *name*.  And since the R5-F08 repair it is again live
-for `thm:halts`/`thm:loops`: those endpoints are stated over `paperTheoryDP` at the fixed
-`universalHaltingSchema`, and the pair is written *into the sentence* as the compact numeral
-`binNumeral (haltingClaimInput (machines n) (inputs n))`, whose symbol run this certificate
-is what supplies (`representedHaltingClaims`, `ComputationRepresented.lean`).  So `hm` and
-`hi` are load-bearing on the `def:ec` obligation there, not merely on a computability step.
+**Who uses this.**  One lane: `thm:halts`/`thm:loops`.  Those endpoints are stated over
+`paperTheoryDP` at the fixed `universalHaltingSchema`, and the pair is written *into the
+sentence* as the compact numeral `binNumeral (haltingClaimInput (machines n) (inputs n))`,
+whose token run this certificate is what supplies (`representedHaltingClaims`,
+`ComputationRepresented.lean`).  So `hm` and `hi` are load-bearing on the `def:ec`
+obligation there, not merely on a computability step.
 
 The superseded reading — machine and input hidden *inside* a `codeOfREPred` schema, with
 `hm`/`hi` consumed only by an r.e.-ness step — was extensional and named no machine; see the
@@ -349,7 +347,11 @@ lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : �
 
 /-- The deferred-horizon claim name is write-out in the day for **every** computable
 horizon: `⌜f⌝` enters as a constant and the day enters unevaluated.  No hypothesis on `f`
-appears — this is the whole point of the deferred schema. -/
+appears — this is the whole point of the deferred schema.
+
+Like the four sentence-level certificates below, this one has no consumer: it certified the
+bounded lane while that lane was stated over `theoremDP`, and `thm:dontwait` now names its
+argument through `boundedArg_digits` (`ComputationRepresented.lean`) instead. -/
 lemma boundedHaltingClaimInput_digits
     {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
@@ -359,15 +361,25 @@ lemma boundedHaltingClaimInput_digits
     ((BigDigits.const (Nat.Partrec.Code.sourceNat horizon)).natPair
       (BigDigits.of_polyFueled PolyFueled.id))).of_eq (fun _ => rfl)
 
-/-- **No consumer as of the `thm:halts`/`thm:loops` migration.**  This was the claim-sentence
-generator for the unbounded halting lane over `theoremDP`; that lane is now stated over
-`paperTheoryDP` at the day-indexed schema, whose sentences are emitted by
-`schemaDayClaimSentence_bigSentenceCodes` (`ComputationRepresented.lean`) instead.  Retained
-rather than deleted, pending a consolidation ruling.  `boundedHaltingClaimSentence_digits`
-below is orphaned the same way, by the earlier bounded-lane migration; the two
-`thm:incons` generators (`inconsistencyClaimSentence_digits`,
-`consistencyClaimSentence_digits`) are still live, at
-`inconsistentTheoryClaimsOfComputation`. -/
+/-! ### Write-out certificates for the four tag-keyed claim families
+
+**None of the four lemmas below has a consumer.**  They are the claim-sentence generators for
+the four rows of `theoremDP`'s tag table (`eventAtom` tags 0–5, `ComputationDP.lean`), and
+each was once the emission certificate for an endpoint stated over `theoremDP`.  All four of
+those endpoints have since moved: `thm:halts`/`thm:loops` are stated over `paperTheoryDP` at
+the day-indexed schema, whose sentences are emitted by
+`schemaDayClaimSentence_bigSentenceCodes` (`ComputationRepresented.lean`); the bounded lane
+moved earlier, the same way; and `thm:incons` is now a statement about *theories*, emitted by
+`representedInconsistentTheoryClaims` (same file).
+
+What survives of these four rows is the tag table itself: the sentence families
+`haltingClaimSentence` … `consistencyClaimSentence` are still the atoms of `theoremDP`'s
+stage worlds, and these lemmas are their write-out certificates, kept alongside them.  They
+are retained rather than deleted pending the ruling on the tag table as a whole; nothing
+prices them. -/
+
+/-- Write-out certificate for the unbounded-halting tag row.  No consumer; see the section
+note above. -/
 lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
     DigitSentenceCodes (fun n => haltingClaimSentence (input n)) :=
   computationClaimSentence_digits .halting universalHaltingSchema hinput

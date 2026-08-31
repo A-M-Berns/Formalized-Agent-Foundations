@@ -47,7 +47,7 @@ open RpnConditioning
 
 /-! ## `thm:scon` packaging: operational witnesses and the paper-facing endpoints
 
-The two symbol-metered translation certificates discharge the operational witness
+The two token-metered translation certificates discharge the operational witness
 structures of `Properties/Conditioning.lean`, closing the criterion level: conditioning a
 logical inductor on a computable presentation yields a logical inductor of the
 conditioned market. -/

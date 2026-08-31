@@ -554,6 +554,7 @@ computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity
 `liaHistory (theoremDP T)` with no market, inductor, presentation, or `hworld` hypothesis
 remaining — only the caller's own quoted decision and its reflection data. -/
 
+section PeanoMinus
 variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 /-- The constructed inductor instance for the provability process, reused (inlined) by every
@@ -637,30 +638,6 @@ theorem lic_introspection_ofCode_unconditional
     φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδpos hδzero hab q
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
-/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
-its self-referential public atom, and the matching FFL parameterized fixed point are all
-constructed internally.
-`𝗜𝚺₁ ⪯ T` is the one genuinely load-bearing arithmetic strengthening left on this lane: the
-diagonal reaches Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`.  It is
-carried *alongside* the section's `[𝗣𝗔⁻ ⪯ T]` rather than in place of it — `𝗜𝚺₁ ⪯ T` does
-imply `𝗣𝗔⁻ ⪯ T` by instance (Foundation, `Arithmetic/Schemata.lean`), so the pair is
-redundant, but `omit [𝗣𝗔⁻ ⪯ T]` is rejected here: the proof term references the section
-instance directly (through `theoremLIA`/`theoremDP_hworld`), and Lean refuses to omit a
-referenced section variable.
-Paper node: `thm:lp` -/
-theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
-    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
-    (hwidthPos : ∀ n, 0 < width n)
-    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((theoremDiagonalQuoteCode T p).toBooleanQuoteCode.sentence n)) ≈ₙ
-      fun _ => (p : ℝ) :=
-  haveI := theoremLIA T
-  lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
-    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthPos hwidthZero
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
 /-- `thm:cee` (expected future expectations), unconditional over `LIA`.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation_unconditional
@@ -740,6 +717,42 @@ theorem lic_self_trust_ofRepresentation_unconditional
   lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
     f φ δ p A B delta_pos probability_mem hφ hδ pFeature hp hA hB
     confidence_reflected product_reflected
+    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+
+end PeanoMinus
+
+/-! ## `thm:lp` sits below `𝗣𝗔⁻`
+
+The paradox-resistance endpoint is the one place on this lane where the diagonal is built,
+and Foundation's `parameterized_diagonal₁` is stated over `𝗜𝚺₁`.  Since `𝗜𝚺₁ ⪯ T` implies
+`𝗣𝗔⁻ ⪯ T` by instance (`Arithmetic/Schemata.lean`), carrying both would put a redundant pair
+in the elaborated signature, so the declaration sits outside the `𝗣𝗔⁻` section above and
+recovers the weaker instance in its proof term, where `theoremLIA`/`theoremDP_hworld` need
+it.  `omit` cannot do this job: instance search reaches a section variable that is still in
+the local context, so the binder has to be out of scope rather than merely unlisted. -/
+
+variable [T.Δ₁] [Entailment.Consistent T]
+
+/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
+its self-referential public atom, and the matching FFL parameterized fixed point are all
+constructed internally.
+`𝗜𝚺₁ ⪯ T` is the one genuinely load-bearing arithmetic strengthening left on this lane: the
+diagonal reaches Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`.  It is
+carried *in place of* the `[𝗣𝗔⁻ ⪯ T]` of the section above, not beside it — see the section
+note.  The elaborated signature therefore carries no redundant pair.
+Paper node: `thm:lp` -/
+theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
+    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
+    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
+    (hwidthPos : ∀ n, 0 < width n)
+    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
+    (fun n => liaHistory (theoremDP T) n
+      ((theoremDiagonalQuoteCode T p).toBooleanQuoteCode.sentence n)) ≈ₙ
+      fun _ => (p : ℝ) :=
+  haveI : 𝗣𝗔⁻ ⪯ T := inferInstance
+  haveI := theoremLIA T
+  lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
+    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthPos hwidthZero
     (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
 
 /-! ## The meta-learning lane lives over the paper's own theorem process

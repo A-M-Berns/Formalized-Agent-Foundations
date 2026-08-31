@@ -30,7 +30,8 @@ module depends on the choice beyond `le_G_dSize`.
 
 The represented lane must name the theory.  `conWithin T` is, for a consistent `T`,
 extensionally the constant predicate `True`, so a `γ` representing its indicator would name
-nothing (the `R5-F08` extensionality trap, `KNOWLEDGE.md`).  What varies with `T`'s theorems
+nothing — the extensionality trap: a represented predicate is pinned by its extension, so
+a constant one names no theory.  What varies with `T`'s theorems
 is bounded *provability* with the sentence code in the argument, so that is what is made
 computable here: `bprovValue T : ℕ → ℕ` decides `∃ d, Proof T d φ ∧ dSize d ≤ k` at the
 packed argument `⟨φ, k⟩`, and the day-`n` Con claim is read off it as the value `0` at

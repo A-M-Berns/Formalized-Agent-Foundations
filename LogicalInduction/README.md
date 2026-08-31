@@ -158,7 +158,7 @@ least `2^n`. Machines are named by `Code.sourceNat`, linear in the syntax tree; 
 carried the `input_poly` fields of the §4.10 presentation structures to `BigDigits`,
 removing a smaller restriction from those rows without touching what actually qualified
 them; both structures (`BoundedComputation`, `SemidecidableComputation`) were themselves
-retired in tranche 8, when the two nodes moved onto arithmetized subject matter. `PolyMachineCodes` is now named only inside the witness that
+retired when the two nodes moved onto arithmetized subject matter. `PolyMachineCodes` is now named only inside the witness that
 refutes it, and no paper-facing endpoint takes a whole-value class **on a datum the paper
 quantifies over as e.c.** One paper-facing endpoint still takes one on a repo-side object:
 `lic_domination_universalSemimeasure_ofIndependentAtoms` (`thm:dus`) takes a
@@ -184,13 +184,13 @@ derivability to represent. The deduction theorem makes the day's theory nameable
 single written name `ArithSource.sourceNat sₙ` of the day's adjoined axiom, which the day's
 sentence writes out, so the claim genuinely names the day's theory; the restriction on
 *which* theory sequences are covered is the disclosed part, and its row says exactly what is
-and is not formalized. That charge is backed by a **verified obstruction** (tranche 9b)
+and is not formalized. That charge is backed by a **verified obstruction**
 rather than by a queued repair: Foundation's fixpoint blueprint for `Derivation` cannot host
 satisfaction over coded formulas, so full uniformity in the theory code is a truth-predicate
 project, and a *middle* rendering — uniformity over a coded family of Δ₁ axiomatizations — is
 an optional upstream item, pending a ruling.
 
-The **second** charge this node used to carry is **retired (tranche 9-pre)**. Its `def:ec`
+The **second** charge this node used to carry is **retired**. Its `def:ec`
 premise was `hσ : BigDigits (deductionFamilyArg σ)`, metering the day's theory name by the
 base-4 digit count of a formula's *Gödel code*; it is now stated on the **written source** of
 the day's adjoined axiom (`hs : PolyArithmeticSourceSeq s`, with `hcompile` saying that
@@ -208,7 +208,7 @@ every pair of distinct days. No code-metered premise could admit that family. Th
 signpost for a missing `BigDigits` combinator is withdrawn — the family it was blocking is
 admitted by the source route, with no code-digit theory needed.
 
-Its two §4.10 neighbours **left that list in tranche 8**. `thm:pac` and `thm:pazfc` are one
+Its two §4.10 neighbours **have since left that list**. `thm:pac` and `thm:pazfc` are one
 construction at two theories. Both endpoints price the arithmetized finite-consistency family
 of a theory `Θ′`, rendered as the value-`0` sentence of a `Θ`-formula representing `Θ′`'s
 bounded-provability decider (`Framework/BoundedConsistency.lean`, metered in **symbols** by
@@ -449,7 +449,7 @@ everything else here.
 **The residuals, named once.** Beyond the paper's own premise three binders appear, and all
 three are representation infrastructure rather than theory strength:
 
-* `[𝗣𝗔⁻ ⪯ T]`, on **17** of the 105 canonical endpoints — a finite set of ordered-semiring
+* `[𝗣𝗔⁻ ⪯ T]`, on **16** of the 105 canonical endpoints — a finite set of ordered-semiring
   axioms, and the one item on this list that is a **genuine strengthening** rather than
   infrastructure. It is *not* implied by "Θ represents computations": the paper's premise
   yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄`, and Robinson's **R** represents
@@ -461,7 +461,7 @@ three are representation infrastructure rather than theory strength:
   Θ; ours is object-level so the stage-world proof stays constructive. **Whether this is
   charged globally or against each row is pending a ruling**, and no row's status turns on
   it today. (`lic_disbelief_inconsistent_theories_unconditional` used to carry a redundant
-  `[𝗥₀ ⪯ T]` beside it; that binder was dropped in tranche 8 and the proof elaborates
+  `[𝗥₀ ⪯ T]` beside it; that binder was dropped and the proof elaborates
   unchanged, reaching `𝗥₀` through Foundation's `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T`, so no
   canonical endpoint carries it. `RepresentsComputations` also quantifies
   over `f : ℕ → ℕ` where the paper writes `ℕ⁺ → ℕ⁺` — an at-least-as-strong hypothesis.)
@@ -552,7 +552,7 @@ the per-row accounting.
    exhibits a paper-admissible e.c. sentence family that the whole-value class provably
    excludes, so whole-value metering is a genuine restriction of the paper's class.
 
-   The property tail is stated at the faithful symbol-metered class throughout, and so
+   The property tail is stated at the faithful token-metered class throughout, and so
    is the whole quotation family's *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
    `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). The
    metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` used to sit at a narrower
@@ -568,7 +568,7 @@ the per-row accounting.
    quote-code constructors consume from the hypothesis is a *computability* fact,
    `Primrec fun n => encode (φ n)`, used to key the market's quote table by sentence
    code; no polynomial bound on the code value is needed anywhere downstream. The
-   symbol-metered class already supplies that fact (`RpnSentenceCodes.primrec`, written
+   token-metered class already supplies that fact (`RpnSentenceCodes.primrec`, written
    for exactly this boundary, and noting in its own docstring that the codes are *not*
    polynomially fueled). The six above were therefore signature generalizations. The
    lesson generalizes past this instance: a hypothesis being consumed as *data* does not
@@ -578,13 +578,13 @@ the per-row accounting.
    content: its product LUV used to inline the sentence's Gödel value into a `Nat.pair`
    shell. The token-level `⋏` emitter that repairs it is built
    (`indicatorProductLUV_rpnThresholdCodeSeq`), so the closed endpoint now sits at the
-   symbol-metered class like the rest.
+   token-metered class like the rest.
 
    The retired `BoundedComputation` carrier was a genuinely different defect, and a
    syntactic one: the paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas that structure
    carried the *evaluated* horizon `steps n` inside the claim's input, which is why its
    value had to be polynomially bounded. The fix was not a better bound but a different
-   claim schema, and that is what tranche 8 landed: `thm:pac` and `thm:pazfc` both sit on
+   claim schema, and that is what the arithmetization landed: `thm:pac` and `thm:pazfc` both sit on
    the arithmetized `Con(Θ′)` family of item 4 below, where the horizon is named by its
    *program* and evaluated inside the represented decider, and the structure — together
    with `SemidecidableComputation`, the corresponding carrier for `thm:incons` — has been
@@ -611,7 +611,7 @@ the per-row accounting.
    and `[0,1]` membership, its threshold syntax is the paper's own, and its world-value
    semantics is *derived* through `paperTheoryDP` and the rational cut rather than carried
    as a build-frozen certificate. `PaperLUVSeq` additionally compiles that literal
-   threshold syntax to the symbol-metered `RpnThresholdCodeSeq`, and the frontend is
+   threshold syntax to the token-metered `RpnThresholdCodeSeq`, and the frontend is
    inhabited by varying concrete families at both ends of the range the paper writes:
    `unitFracPaperLUVSeq` at `1/(n+1)` and `dyadicPaperLUVSeq` at `2⁻ⁿ`, the latter naming
    its denominator by the compact `ℒₒᵣ` term `binNumeral (2 ^ n)`; `PaperLUV.rpnThresholdCodes`
@@ -636,6 +636,16 @@ the per-row accounting.
    namespace disjoint from semantic handles. The renamed theorem stream is a genuine
    independent copy—there are no alias axioms back to the original atoms—so the prior
    self-reference diagonal is unavailable.
+
+   Both invariants of that design—language separation, and admission gated by effectively
+   checked cut laws—are forced, and each has its own negative result.
+   `no_nonvacuous_worldValued_presented_of_rpn`
+   (`Construction/Witnesses/SemanticSource.lean`) exhibits an efficiently emitted,
+   world-valued indicator source that mentions its own semantic handle: unrestricted
+   presentation would force `p ↔ ¬p`. `semanticFreshIncreasing_not_jointly_reflected`
+   (`Construction/Witnesses/SemanticJoint.lean`) exhibits a source that is fresh but has
+   malformed increasing thresholds: interpreting every fresh emitter would make the
+   universal product closure inconsistent.
 
    Source admission is not proof-carrying. From the existing completed-world
    `source_valued` premise, rational-cut laws follow semantically; propositional compactness
@@ -703,7 +713,7 @@ the per-row accounting.
    anything a weaker claim under it than under a leaner one, and the truth of every instance is
    proved from consistency alone (`conWithin_of_consistent`), independently of it. The previous
    edition metered by the derivation's Gödel number and disclosed that as the type-`(c)`
-   substitution `dd:proofcode`; that substitution **was retired in tranche 9a** and no longer
+   substitution `dd:proofcode`; that substitution **has been retired** and no longer
    appears anywhere in the development. `thm:pac` and `thm:pazfc` are `exact` with nothing
    charged against them. Nothing is metered at `thm:incons`, whose sentence is the *unbounded*
    existential over proofs, so no convention arises there.

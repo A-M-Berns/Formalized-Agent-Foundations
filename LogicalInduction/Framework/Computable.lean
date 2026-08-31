@@ -248,60 +248,19 @@ lemma PolyFueled.succ_comp {cg : Nat.Partrec.Code} {g : ℕ → ℕ} (hg : PolyF
   exact ⟨fun n => max (bg n) (g n + 1), fueled_comp fueled_succ hfg, hpfg.add_one,
     hpbg.max hpfg.add_one⟩
 
-/-! ### `PolyEF` — day-indexed feature templates with e.c. codes.
-
-`PolyEF t` says the per-day code `n ↦ (t n).toNat` is poly-fueled. It is closed under the
-`EF` constructors (leaves `const`/`price φ n`), so any feature template a property proof
-builds — e.g. the responsive `max(0, c − φ*ⁿ)` buy-signal — is e.c. by composition. -/
-
-/-- The per-day code of the template `t` is efficiently computable. -/
-def PolyEF (t : ℕ → EF) : Prop := ∃ c, PolyFueled c (fun n => (t n).toNat)
-
-lemma PolyEF.const (q : ℚ) : PolyEF (fun _ => EF.const q) :=
-  ⟨_, PolyFueled.const (Nat.pair 0 (Encodable.encode q))⟩
-
-lemma PolyEF.price (φ : Sentence) : PolyEF (fun n => EF.price φ n) :=
-  ⟨_, (PolyFueled.const 1).pair ((PolyFueled.const (Encodable.encode φ)).pair PolyFueled.id)⟩
-
-lemma PolyEF.add {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
-    PolyEF (fun n => EF.add (a n) (b n)) := by
-  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
-  exact ⟨_, (PolyFueled.const 2).pair (hca.pair hcb)⟩
-
-lemma PolyEF.mul {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
-    PolyEF (fun n => EF.mul (a n) (b n)) := by
-  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
-  exact ⟨_, (PolyFueled.const 3).pair (hca.pair hcb)⟩
-
-lemma PolyEF.max {a b : ℕ → EF} (ha : PolyEF a) (hb : PolyEF b) :
-    PolyEF (fun n => EF.max (a n) (b n)) := by
-  obtain ⟨_, hca⟩ := ha; obtain ⟨_, hcb⟩ := hb
-  exact ⟨_, (PolyFueled.const 4).pair (hca.pair hcb)⟩
-
-lemma PolyEF.safeRecip {a : ℕ → EF} (ha : PolyEF a) :
-    PolyEF (fun n => EF.safeRecip (a n)) := by
-  obtain ⟨_, hca⟩ := ha
-  exact ⟨_, (PolyFueled.const 5).pair hca⟩
-
-/-- The responsive **buy-signal** coefficient `max(0, c − φ*ⁿ)` — the shape the convergence
-and provability-induction property proofs use — is `PolyEF`. -/
-example (φ : Sentence) (c : ℚ) :
-    PolyEF (fun n => EF.max (EF.const 0) (EF.add (EF.const c) (EF.mul (EF.const (-1))
-      (EF.price φ n)))) :=
-  (PolyEF.const 0).max ((PolyEF.const c).add ((PolyEF.const (-1)).mul (PolyEF.price φ)))
-
 /-! ## Prec-fueled predecessor — the day-`(n-1)` price reference.
 
-The single-day templates above (`PolyEF.price φ n`) suffice for accumulation traders, but the
-**convergence arbitrage trader** (`thm:con`) is the first to reference *two consecutive days'*
-prices — it must know the previous day's holding to close a position risk-free — so its
-coefficient template contains `EF.price φ (n-1)`, whose encoding contains `n - 1 = Nat.pred n`.
+A single-day feature template suffices for accumulation traders, but the **convergence
+arbitrage trader** (`thm:con`) is the first to reference *two consecutive days'* prices — it
+must know the previous day's holding to close a position risk-free — so its coefficient
+template contains `EF.price φ (n-1)`, whose encoding contains `n - 1 = Nat.pred n`.
 
 `Nat.pred` is *the* canonical primitive-recursive function: it cannot be built from the
 prec-free primitives (`const`/`succ`/`pair`/`comp`/`left`/`right`), so this is the one place we
 must account `evaln` fuel through a genuine `Code.prec` — which *does* decrement fuel. We do it
-once, here, and bound the cost by a degree-4 polynomial, so every multi-day-referencing trader
-(convergence, moving-threshold expectation control, …) reuses `PolyEF.pricePred` for free. -/
+once, here, and bound the cost by a degree-4 polynomial, so that every later construction that
+needs a decrement — `subc`, the token-index dispatchers, the segment-stream length
+arithmetic — reuses `predc_polyFueled` for free. -/
 
 /-- The core recursor: `prec zero (comp left right)` on `pair a m` returns `pred m`
 (independent of the dummy `a`) — the `succ`-case `cg = comp left right` extracts the recursion
@@ -389,17 +348,6 @@ lemma predc_polyFueled : PolyFueled predc Nat.pred := by
   show 32*(n+1)^4 + n + 1 ≤ 33*(n+1)^4 + 33
   have hx : n+1 ≤ (n+1)^4 := Nat.le_self_pow (by norm_num) _
   omega
-
-/-- The **previous-day** price feature `φ*⁽ⁿ⁻¹⁾` is an efficiently-computable template — the
-piece the convergence arbitrage trader needs beyond the single-day `PolyEF.price`. -/
-lemma PolyEF.pricePred (φ : Sentence) : PolyEF (fun n => EF.price φ (n-1)) := by
-  have h := (PolyFueled.const 1).pair
-    ((PolyFueled.const (Encodable.encode φ)).pair predc_polyFueled)
-  have heq : (fun n => Nat.pair 1 (Nat.pair (Encodable.encode φ) (Nat.pred n)))
-      = (fun n => (EF.price φ (n-1)).toNat) := by
-    funext n; simp only [EF.toNat, Nat.pred_eq_sub_one]
-  rw [heq] at h
-  exact ⟨_, h⟩
 
 /-! ## Token-indexed dispatch — emitting the `i`-th token of a fixed-length stream.
 

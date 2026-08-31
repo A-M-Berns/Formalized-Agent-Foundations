@@ -109,8 +109,8 @@ list is exhaustive; a label appearing nowhere below is not in use.
   only which horizons discharge the non-degeneracy side conditions
   (`conGamma_mentions_zero_of_bProv`, `conGamma_mentions_zero_of_horizon_unbounded`), whose
   hypotheses are quantitative in the measure. *(This entry replaces the retired
-  `dd:proofcode`, which disclosed the Gödel-number measure that stood in for the paper's
-  symbol count before tranche 9a.)*
+  `dd:proofcode`, which disclosed the Gödel-number measure that used to stand in for the
+  paper's symbol count.)*
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable

@@ -42,7 +42,7 @@ def EfficientlyEmulatable (Ts : ℕ → Trader) : Prop :=
 
 /-- The economic half of family emulation: members trade nothing before launch.
 This is the only clause the netWorth/budget chain consumes, and — unlike the
-universal-program token emission — it is metering-agnostic, so symbol-metered
+universal-program token emission — it is metering-agnostic, so token-metered
 (spliced) families inhabit it too. -/
 def LaunchGated (Ts : ℕ → Trader) : Prop :=
   ∀ k n, n < k → ((Ts k).strat n).trades = []

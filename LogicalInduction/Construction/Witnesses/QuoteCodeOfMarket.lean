@@ -272,11 +272,11 @@ lemma ratNatCast_prim : Primrec fun n : ℕ => (n : ℚ) := by
 
 set_option maxHeartbeats 1000000 in
 /-- **`expectQuoteAt` is computable** (uncurried over `⟨idx, day⟩`).  Threshold codes come
-from the LUV sequence's symbol-metered block stream, via the whole-value naming program
+from the LUV sequence's token-metered block stream, via the whole-value naming program
 `RpnSentenceCodes.primrec` extracts from it; each cell quote from the market program, the
 bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`.  Only
 *computability* of the codes is used — never a polynomial bound on their values — which is
-why the symbol-metered class (`def:ec`) suffices here. -/
+why the token-metered class (`def:ec`) suffices here. -/
 lemma MarketComputation.expectQuoteAt_computable {P : History}
     (market : MarketComputation P)
     {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
@@ -840,7 +840,7 @@ noncomputable def theoremDeferredExpectationQuoteCode (f : DeferralFunction)
 
 /-- **`thm:cee` (expected future expectations), closed form over the constructed `LIA`**
 — the reflection data is constructed from the market program; only the source LUV
-sequence, its `def:ec` symbol-metered threshold codes, its own theory-valuedness
+sequence, its `def:ec` token-metered threshold codes, its own theory-valuedness
 (`source_valued`, the paper's premise that `X` is a genuine LUV of the theory), and the
 deferral function remain.
 Paper node: `thm:cee` -/
@@ -864,7 +864,7 @@ theorem lic_expected_future_expectations_closed
 /-- **`thm:er`, closed form over the constructed `LIA`** — no reflection hypotheses.
 For every efficiently codeable LUV sequence, the market's expectation agrees
 asymptotically with its expectation of the *constructed* quoted-expectation LUV.  Only
-the LUV sequence and its `def:ec` symbol-metered threshold codes remain.
+the LUV sequence and its `def:ec` token-metered threshold codes remain.
 Paper node: `thm:er` -/
 theorem lic_iterated_expectations_closed
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
@@ -1000,7 +1000,7 @@ theorem lic_introspection_closed
 /-- **`thm:st` (self-trust), closed form over the constructed `LIA`** — no reflection
 hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code of the
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
-sentence sequence with its `def:ec` symbol-metered codes, the deferral function, and the
+sentence sequence with its `def:ec` token-metered codes, the deferral function, and the
 threshold data remain.
 
 The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
@@ -1144,7 +1144,7 @@ constructed `LIA`** — for an **arbitrary** e.c. source family `X`, as the pape
 with both quoted products constructed.  `Z` is the mesh product of `X` with the
 deferred-weight quote code, and `Z'` the quote of the market's own deferred weighted
 expectation.  The remaining hypotheses are the paper's own: the source family with its
-`def:ec` symbol-metered threshold codes and completed-world values (`lem:conluvapprox`,
+`def:ec` token-metered threshold codes and completed-world values (`lem:conluvapprox`,
 as in `thm:cee`), the
 `[0,1]` P-generable weight, and the deferral function.
 

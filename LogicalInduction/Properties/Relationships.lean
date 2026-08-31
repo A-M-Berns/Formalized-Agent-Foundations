@@ -88,12 +88,6 @@ lemma eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
 
-lemma sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
-  have hgap : PolyEF (gap2EF φ ψ) :=
-    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
-
-
 /-- The token stream of `gap2EF = φ*ⁿ − ψ*ⁿ` (an `add`/`mul`/`price`/`const` tree). -/
 lemma gap2EF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gap2EF φ ψ n).serialize) := by
   simp only [gap2EF]
@@ -235,12 +229,6 @@ lemma impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n 
   · push_neg at h
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
-
-
-lemma impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
-  have hgap : PolyEF (gap2EF φ ψ) :=
-    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact buySignal_polyEF hgap ε
 
 
 /-- The token stream of `impSig = max(0, (φ*−ψ*) − ε/2)`. -/

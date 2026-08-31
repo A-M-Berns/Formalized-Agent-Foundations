@@ -13,7 +13,7 @@ substrate and the shared proof machinery.
                      *bits* rather than in code values (`dd:fuel`).
 * `RpnSentence`    — sentences as Polish-notation symbol runs (one token per formula
                      symbol), so stream length tracks symbol count rather than code size.
-* `RpnSplice`      — the symbol-metered sentence-sequence class and its combinators.
+* `RpnSplice`      — the token-metered sentence-sequence class and its combinators.
 * `RpnEmission`    — realizes those sequences as emitted digit streams.
 * `RpnComputation` — primitive recursion for the Polish-notation contraction, which the
                      trading firm's compiler runs to decode candidate traders.
@@ -37,7 +37,7 @@ substrate and the shared proof machinery.
 * `Expectations`   — logically uncertain variables (`def:luv`).
 * `RationalCut`    — generic bounded-cut semantics yielding completed-world LUV values.
 
-The four `Rpn*` modules together discharge `def:ec`'s symbol-metered sentence slots.
+The four `Rpn*` modules together discharge `def:ec`'s token-metered sentence slots.
 -/
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Foundations

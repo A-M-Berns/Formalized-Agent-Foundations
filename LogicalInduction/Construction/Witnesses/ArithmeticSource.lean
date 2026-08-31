@@ -973,7 +973,7 @@ threshold-code certificate `LUV.RpnThresholdCodes`, which is what the whole-LUV 
 take as a hypothesis (`LUV.expect_converges`, `thm:ec`).  It is the constant family
 (`PaperLUVSeq.const`) reindexed along the poly-fueled map `m ↦ ⟨0, m⟩`, which turns the
 sequence's `⟨n, ⟨k, i⟩⟩` convention into the single-LUV `⟨k, i⟩` one.  No efficiency
-hypothesis is needed: a constant formula family is trivially symbol-metered, so this holds of
+hypothesis is needed: a constant formula family is trivially token-metered, so this holds of
 *every* `PaperLUV`.  Kind `C`; hypotheses `(a)`.
 Paper node: `def:ec` -/
 lemma PaperLUV.rpnThresholdCodes (X : PaperLUV T) : X.toLUV.RpnThresholdCodes := by

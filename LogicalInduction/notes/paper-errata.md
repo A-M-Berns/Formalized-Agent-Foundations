@@ -345,3 +345,16 @@ Ack(10,10)". The formalization follows the definition, not the gloss: `BProv`'s 
 is inclusive (`dSize d ≤ k`), so `conWithin T k` is exactly the definition's reading.
 Recorded so a faithfulness auditor does not read the inclusive bound as drift.
 (Found blind, R9 lens B, 2026-08-31.)
+
+## tex:4487-4491 (app:incons) — the printed proof invokes the wrong hypothesis
+
+The proof of thm:incons argues: each `⌜Θ′ₙ is inconsistent⌝` "is provable in 𝗣𝗔, and
+Θ represents computations, [so] each of these statements is provable in Θ" (verbatim,
+both conjuncts). Representability of computable functions (tex:600-604) does not yield
+`𝗣𝗔 ⊢ ψ ⇒ Θ ⊢ ψ`. What discharges the step is that the inconsistency statements are
+Σ₁ and true, so Σ₁-completeness of Θ suffices — but the paper never states
+Σ₁-completeness as a hypothesis (its standing assumptions on Θ are tex:993-997). The
+formalization takes the correct route (`re_complete_mp` under `[𝗣𝗔⁻ ⪯ T]`), i.e. it is
+honest where the printed proof is loose — and this is part of why `[𝗣𝗔⁻ ⪯ T]` appears
+on the surface at all (see the pending charging ruling). (Found blind by the T10
+feasibility probe, 2026-08-31; verified against the tex by the orchestrator.)

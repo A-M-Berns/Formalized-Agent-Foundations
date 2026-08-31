@@ -24,8 +24,7 @@ demands.  The two halves of the class's `Iff` are proved by opposite routes:
   free, and there is deliberately no `of_weakerThan` lemma here.  The honest transport is
   the hypothesis `[ℕ↓[ℒₒᵣ] ⊧* U]` carried by `representsComputations_of_peanoMinus`.
 
-**Every registered instance is `ℕ`-sound, and that is a gap in the non-vacuity argument
-(R5-F12).**  `representsComputations_of_peanoMinus` requires `[ℕ↓[ℒₒᵣ] ⊧* U]`, and the three
+**Every registered instance is `ℕ`-sound, and that is a gap in the non-vacuity argument.**  `representsComputations_of_peanoMinus` requires `[ℕ↓[ℒₒᵣ] ⊧* U]`, and the three
 instances registered below (`𝗣𝗔⁻`, `𝗜𝚺₁`, `𝗣𝗔`) are all true in the standard model.  The
 *class* is strictly weaker than that — it is a condition on `U`'s derivations only, and the
 paper's `Θ` is assumed consistent, c.e. and representing computations, with no soundness —

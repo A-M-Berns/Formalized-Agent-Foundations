@@ -393,7 +393,7 @@ noncomputable def cxQuote :
 
 /-- The Boolean quotation code behind that diagonal.  Naming it separately is what makes
 the sentence family's *whole-value* code available (`BooleanQuoteCode.sentence_poly`); the
-`ParadoxResistanceQuote` above carries only the symbol-metered `BigSentenceCodes`, which
+`ParadoxResistanceQuote` above carries only the write-out `BigSentenceCodes`, which
 the day-`0` quote program cannot use. -/
 noncomputable def cxQuoteCode := (theoremDiagonalQuoteCode T (1 / 2)).toBooleanQuoteCode
 

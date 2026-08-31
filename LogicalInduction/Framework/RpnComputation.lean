@@ -2,12 +2,12 @@
 # Primitive recursion for the RPN contraction
 
 `unRpn` (through its code-level form `unRpnTokensC`) is primitive recursive: the
-trading firm's compiler runs it to decode symbol-metered candidate traders.  Both
+trading firm's compiler runs it to decode token-metered candidate traders.  Both
 fuelled recursions are packaged for `Primrec.nat_strong_rec` on the paired index
 `⟨fuel, encode ts⟩`; recursive calls strictly decrease it because every sub-parse
 returns a suffix (list codes grow strictly along `cons`).
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.RpnSentence

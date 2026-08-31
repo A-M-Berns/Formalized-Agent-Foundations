@@ -1531,7 +1531,7 @@ traded sentence varies with the day must carry a poly bound on `⌜φₙ⌝`. Tw
 below remove the residual: `EfficientlyComputableDigit` meters token *bits* rather than
 token values, and the Polish-notation layer replaces a sentence's single pair code by one
 token per formula symbol, so that stream length tracks symbol count even for skewed
-formulas. Their composite is the symbol-metered class `EfficientlyComputable`. -/
+formulas. Their composite is the token-metered class `EfficientlyComputable`. -/
 
 /-- Run a length program and then a token program under a shared clock.  The requested
 length is clamped to the clock, so every index emits a polynomial-size stream even when its
@@ -1957,9 +1957,11 @@ def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ
   strat n := strategyOfTokens n (unRpn (undigitize
     (clockedTokens lengthCode tokenCode (clock n) n)))
 
-/-- **The symbol-metered efficient-computability class** (`def:ec`): two
+/-- **The token-metered efficient-computability class** (`def:ec`): two
 programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
-serialization.
+serialization.  Earlier revisions of this development called this tier "symbol-metered"; the
+name changed to "token-metered" to avoid collision with the paper's own derivation-symbol
+count (`dSize`, `dd:symbolcount`).
 Paper node: `def:ec` -/
 def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
@@ -2030,7 +2032,7 @@ def MachineEfficientTrader (Tr : Trader) : Prop :=
 
 /-- `def:lic`, in the fuel-certified reading.  The market `P` satisfies the **Logical
 Induction Criterion** relative to `DP` if no efficiently computable trader exploits it,
-where efficiency is the symbol-metered class `EfficientlyComputable` above.
+where efficiency is the token-metered class `EfficientlyComputable` above.
 
 **This is the compatibility reading, not the paper's quantifier.**  The paper's own
 quantifier is ordinary machine polynomial time, and `IsMachineLogicalInductor`

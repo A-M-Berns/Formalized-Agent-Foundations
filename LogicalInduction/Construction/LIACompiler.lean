@@ -2841,7 +2841,7 @@ attribute [local irreducible] Nat.sqrt
 
 /-! ## Primitive recursion of the decode
 
-The trading firm's compiler runs the symbol-metered decode.  With the concrete
+The trading firm's compiler runs the token-metered decode.  With the concrete
 `Primcodable Sentence` instance in scope, each strong-recursion step is a composition of
 standard `Primrec` combinators. -/
 
@@ -3923,7 +3923,7 @@ lemma unRpn_prim : Primrec unRpn := by
   exact h2.of_eq fun ts => by
     rw [unF, Nat.unpair_pair, Denumerable.ofNat_encode, ← unRpn_eq_unRpnTokensC]
 
-/-- A symbol-metered sentence sequence (`def:ec`) has primitive-recursive whole-value
+/-- A token-metered sentence sequence (`def:ec`) has primitive-recursive whole-value
 codes: its block stream is primitive recursive (`PolySegStream.primrec`) and the block
 parser decodes each segment.  Note the codes are **not** polynomially fueled — a deep
 sentence's pair code is value-exponential in its symbol count — so this is exactly the
@@ -3941,9 +3941,9 @@ lemma RpnSentenceCodes.primrec {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
   rw [parseRpnC_eq, hp n]
   rfl
 
-/-- The whole-value naming program extracted from a symbol-metered sentence sequence.
+/-- The whole-value naming program extracted from a token-metered sentence sequence.
 Used where a *value* code is genuinely required (market quote tables keyed by sentence
-code), as opposed to symbol-metered emission. -/
+code), as opposed to token-metered emission. -/
 lemma RpnSentenceCodes.exists_code {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
     ∃ c : Nat.Partrec.Code, ∀ n, Encodable.encode (φ n) ∈ c.eval n := by
   obtain ⟨c, hc⟩ := Nat.Partrec.Code.exists_code.mp

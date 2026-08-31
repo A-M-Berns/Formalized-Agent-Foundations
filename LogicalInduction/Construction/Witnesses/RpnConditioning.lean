@@ -33,7 +33,7 @@ Contents:
   `eventualConditionedTranslation_preserves_ecRpn` (finite-zero, launch-gated), and the
   paper-facing conditioning theorems assembled from them.
 
-Paper node: `thm:scon` (symbol-metered conditioning translation).
+Paper node: `thm:scon` (token-metered conditioning translation).
 -/
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Framework.RpnEmission
@@ -7101,7 +7101,7 @@ by the symbol-level trade-run count, exact against the token model
 (`rpnTradeCountAt_eq_frameTradeCount`); and `ec_of_rawSegStream` digitizes back into a
 `def:ec` certificate. -/
 
-/-- **The gated conditioning translation preserves symbol-metered efficient
+/-- **The gated conditioning translation preserves token-metered efficient
 computability** (`def:ec` → `def:ec`), over any `𝓔𝓒` sentence sequence.
 Paper node: `thm:scon` -/
 theorem conditionedTranslation_preserves_ecRpn
@@ -7159,7 +7159,7 @@ theorem conditionedTranslation_preserves_ecRpn
 #print axioms conditionedTranslation_preserves_ecRpn
 
 /-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
-symbol-metered efficient computability** (`def:ec` → `def:ec`).
+token-metered efficient computability** (`def:ec` → `def:ec`).
 Paper node: `thm:scon` -/
 theorem eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}

@@ -48,7 +48,7 @@ def semanticHandleLUVSeq (schema n : ℕ) : LUV where
     (semanticHandleLUVSeq schema n).gt r =
       semanticPrimeSentence schema (Nat.pair n (Encodable.encode r)) := rfl
 
-/-- Compact handles preserve the repository's symbol-metered threshold interface. -/
+/-- Compact handles preserve the repository's token-metered threshold interface. -/
 lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
     LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) := by
   obtain ⟨cg, hgcd⟩ := gcdc_polyFueled

@@ -404,7 +404,7 @@ lemma obuChunkSeg_spliceStream
   rw [serialize_obuCoef, serialize_armChain_obuBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- The varying-sentence scale ladder is efficiently computable in the symbol-metered
+/-- The varying-sentence scale ladder is efficiently computable in the token-metered
 class, from an 𝓔𝓒 enumeration certificate.
 Paper node: `def:ec` -/
 lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :

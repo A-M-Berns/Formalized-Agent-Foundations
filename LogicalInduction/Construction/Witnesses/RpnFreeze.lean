@@ -219,7 +219,7 @@ lemma matchRun_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p =
 
 `matchRun`'s escape test `sentenceMatches ψ c` is the decoder-faithful one, and it reads
 `Nat.unpair` at every node — the recorded obstruction to certifying the matcher at the
-symbol-metered emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
+write-out emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
 by `⊥`: off the `⊥` fiber Foundation's decoder is injective.  So on a `⊥`-free target the
 matcher below — whose only tests are comparisons of a stream token against a **fixed
 numeral** — is the same function.  `matchRunCanon` is not an alternative semantics; it is
@@ -1384,7 +1384,7 @@ private lemma polyFueled_ifEqFn {cf cg ca cb : Code} {f g A B : ℕ → ℕ}
 poly-fueled token function, stream index and start position.
 
 **Scope warning — this is the token-metered hypothesis, and it is *not* available at the
-symbol-metered emission site.**  A digit stream supplies only `BigDigits` access to its
+write-out emission site.**  A digit stream supplies only `BigDigits` access to its
 tokens (values may be exponential), never `PolyFueled`.  Every test inside `matchRun`
 factors through a small clamp — grammar tags `0/1/2/3/4`, atom tokens `a + 5` — except the
 escape leaf, which must decide `Encodable.decode c = some ψ` for an exponentially large

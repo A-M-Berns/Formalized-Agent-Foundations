@@ -436,7 +436,7 @@ lemma triangularRepeat_repeats (source : ℕ → Sentence) :
   simp [triangularRepeat]
 
 /-- The exact efficient-repetition witness when the supplied enumeration is already an
-𝓔𝓒 (`def:ec`, symbol-metered) sentence stream.  The second pairing coordinate is pure
+𝓔𝓒 (`def:ec`, token-metered) sentence stream.  The second pairing coordinate is pure
 padding, so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
 The bounded universal-emulator extension below removes this stronger clock assumption for
 arbitrary computable/c.e. source programs.
@@ -2809,7 +2809,7 @@ flat administrative freeze transducer compile that table into a polynomial token
 preserving token-model efficient computability.
 
 Disclosed boundary (`dd:fuel`): the collapsed `EfficientPrefixPatch.preserves_ec` asks for
-symbol-metered preservation, so this token-model fact does not package into that structure.
+token-metered preservation, so this token-model fact does not package into that structure.
 The RPN freeze transducer is constructed (`RpnFreeze.lean`), but its fuel certificate needs
 a decode test on exponentially large escape codes, and the digit model cannot express it:
 `BigDigits` is closed under an operation only when that operation's base-4 digit recurrence

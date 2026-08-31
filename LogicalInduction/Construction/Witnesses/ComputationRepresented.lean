@@ -33,7 +33,7 @@ machine sequence:
 The machine and its input then enter the *sentence*, as the argument written into that fixed
 object — which is what makes the claim family actually depend on the machine sequence.
 
-This replaces a design that did not (`R5-F08`/`R5-F09`, blind audit 2026-08-30).  Building
+This replaces a design that did not.  Building
 the family instead as `codeOfREPred (fun n => CodeHalts (mₙ) (xₙ))`, or as
 `RepresentsComputations.repr` of a decider that mentions the sequence, makes the sentence
 depend on that predicate's **extension** only; and each endpoint's own hypothesis pins the
@@ -111,7 +111,7 @@ compact-numeral run for `t`, whatever `γ` is (`SubstEmission.lean`).
 
 `[T.Δ₁]` is the strengthening beyond the paper, which assumes only that `Θ` is consistent,
 c.e., and represents computations; it is disclosed at each endpoint.  The `[𝗜𝚺₁ ⪯ T]` that
-accompanied it through tranche 6 has been **deleted** (tranche 7).  It was never used:
+once accompanied it has been **deleted**.  It was never used:
 `paperTheoryDP`'s computability goes through Foundation's internal provability predicate
 instantiated at `V := ℕ`, so the side condition discharged is `ℕ ⊧* 𝗜𝚺₁`, which holds
 outright, not `𝗜𝚺₁ ⪯ T`.  Nothing on this lane assumes `T` proves any induction.
@@ -558,8 +558,8 @@ as the first component of the compact argument `binNumeral ⟨⌜⊥⌝, n⟩`.
 
 Representing the *consistency* predicate directly would have been the trap: for a
 consistent `T'`, `fun n => conWithin T' (f n)` is extensionally `True` and its indicator is
-the constant `0`, so a representing `γ` would name nothing at all (`R5-F08`,
-`KNOWLEDGE.md`).
+the constant `0`, so a representing `γ` would name nothing at all — the extensionality
+trap.
 
 One disclosure at this boundary — and it is a *convention*, not a substitution.  The finite
 search is metered by the derivation's symbol count, as the paper meters it, under the
@@ -1149,7 +1149,7 @@ lemma paperTheoryDP_covers_schemaArgClaim_neg [T.Δ₁]
 /-- The `thm:halts`/`thm:loops` claim sentence for the day-`n` machine and input: the fixed
 universal halting schema at the compact name of `⟨⌜mₙ⌝, xₙ⟩`.
 
-This is the declaration the whole R5-F08 repair turns on.  It depends on `machines` and
+This is the declaration the naming repair turns on.  It depends on `machines` and
 `inputs` through the *argument*, not through the schema, so distinct machine source numbers
 give distinct sentences outright (`haltingArgClaimSentence_ne_of_source_ne`), and a fortiori
 distinct halting behaviour does (`haltingArgClaimSentence_ne_of_halts_ne`). -/
@@ -1688,8 +1688,8 @@ which is all `codeOfREPred` consumes.  Note the negation is taken on the *compil
 not on the source, so the deduction bridge `provableCode_neg_iff_not_consistent_adjoin`
 applies at `compile (s n)` unchanged.
 
-Representing "`T'` is inconsistent" directly would have been the extensionality trap (`R5-F08`,
-`KNOWLEDGE.md`): under the theorem's own hypothesis that predicate is constantly `True`, and a
+Representing "`T'` is inconsistent" directly would have been the extensionality trap: under
+the theorem's own hypothesis that predicate is constantly `True`, and a
 schema built from it would name nothing. -/
 noncomputable def inconsistencySchema (T' : ArithmeticTheory) [T'.Δ₁] :
     ArithmeticSemisentence 1 :=

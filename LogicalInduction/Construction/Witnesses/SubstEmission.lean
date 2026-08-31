@@ -1,5 +1,5 @@
 /-
-# Substituted closed-term instances are symbol-metered emittable
+# Substituted closed-term instances are token-metered emittable
 
 The paper's representability hypothesis (§2, "Representing computations") hands us, for a
 fixed total computable `f`, a two-variable arithmetic formula `γ_f` about which nothing is
@@ -257,7 +257,7 @@ private lemma polySegStream_formula {k : ℕ} (τ : ℕ → Semiterm.Const ℒ�
 
 For an arbitrary `γ` — including one produced by the representability hypothesis, hence
 Lean-opaque and possibly `Classical.choice`-obtained — and an arbitrary closed-term family
-`τ` whose symbol runs are certified by `henc`, the family `n ↦ γ(τ n, ν)` is symbol-metered
+`τ` whose symbol runs are certified by `henc`, the family `n ↦ γ(τ n, ν)` is token-metered
 emittable.  The cost is the fixed skeleton of `γ` plus one copy of `τ n`'s run for each of
 the finitely many occurrences of the substituted slot.
 

@@ -138,7 +138,7 @@ lemma DeductiveProcessComputation.union_toComputable
 
 /-- Honest operational input for efficient condition naming.  The ordinary stage program
 is retained for the union construction.  `condition_codes` says the *actual* finite
-conjunctions form an 𝓔𝓒 sentence sequence (`def:ec`, symbol-metered); it assumes no
+conjunctions form an 𝓔𝓒 sentence sequence (`def:ec`, token-metered); it assumes no
 prices, trades, wealth bound, exploitation fact, or logical-inductor conclusion.
 
 This strengthening is necessary: `ComputableDeductiveProcess` alone promises termination
@@ -202,7 +202,7 @@ sentence-block streams, which is what keeps this witness cheap.
 It is an *eventually constant* growing process, and deliberately so.  An unboundedly growing
 one — say `extra.D n = {atom 0, …, atom (n-1)}` — is not reachable at this cost: the
 `n`-conjunct condition has code exponential in its symbol count, so the whole-value
-interface `PolySentenceCodes` is unavailable by construction, and the symbol-metered route
+interface `PolySentenceCodes` is unavailable by construction, and the token-metered route
 `RpnSentenceCodes.ofCanonical` needs a variable-width *conjunction* block combinator
 (`RpnSentenceCodes.bigOr` is the disjunction analogue, and `Finset.conj` is `conj₂` of the
 `toList`, which has no `⊤` terminator to close the chain on) together with an emitter for

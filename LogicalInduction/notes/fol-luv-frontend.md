@@ -10,7 +10,7 @@ This frontend supplies the missing half: a literal Foundation-arithmetic object 
 *produces* the abstract interface, rather than an abstraction standing in for it. A
 `PaperLUV` is an actual one-variable arithmetic formula carrying object-level Foundation
 proofs; it compiles to an ordinary `LUV` whose thresholds are the paper's own literal
-threshold sentences, and it supplies world-value semantics and symbol-metered efficiency
+threshold sentences, and it supplies world-value semantics and token-metered efficiency
 as *derived* facts instead of caller-supplied certificates.
 
 Two independent bridges meet in `PaperLUVSeq`:
@@ -109,7 +109,7 @@ polynomially bounded on *arbitrary* input, which is the property the shared gram
 The leaf contracts to the **exact existing** public syntax — `paperPrimeSentence` and
 `paperPrimeDecompose` — not to an alias or a semantic handle.
 
-## Symbol-metered efficiency
+## Token-metered efficiency
 
 The efficiency hypothesis is structural, and it is metered on the paper's **source**
 language rather than on Foundation's normal form:

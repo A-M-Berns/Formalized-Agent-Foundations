@@ -1877,7 +1877,7 @@ lemma dusDiagonalWeight_polyRatCodes
   refine ⟨_, ((PolyFueled.const 2).pair hsq).of_eq (fun x ↦ ?_)⟩
   rw [encode_dusDiagonalWeight]
 
-/-- Symbol-metered emitter for the inverse-square diagonal trader. -/
+/-- Token-metered emitter for the inverse-square diagonal trader. -/
 lemma dusTrader_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
