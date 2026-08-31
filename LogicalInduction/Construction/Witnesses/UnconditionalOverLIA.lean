@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.Witnesses.ComputationDP
+import LogicalInduction.Construction.Witnesses.PaperTheoryDP
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Construction.Witnesses.RpnConditioning
@@ -10,7 +10,7 @@ import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 # Unconditional instantiations over the constructed `LIA` — semimeasure & conditioning
 
 Companion to `ComputationDP.lean` (which instantiates the meta-learning and self-reference
-endpoints over the provability process `theoremDP`).  Here two further property families are
+endpoints over the provability process `paperDP`).  Here two further property families are
 made unconditional over a constructed `LIA` inductor:
 
 * **Universal semimeasure** (`thm:dus`) over the constantly-empty deductive process, whose
@@ -124,13 +124,13 @@ Paper node: `thm:scon` -/
 theorem lic_conditioned_ofCompiler_unconditional
     (T : ArithmeticTheory) [T.Δ₁]
     (extra : DeductiveProcess)
-    (C : ConditioningPresentation (theoremDP T) extra)
-    (compiler : ConditioningTraderCompiler (liaHistory (theoremDP T)) (theoremDP T) extra C) :
-    IsLogicalInductor (conditionedHistory (liaHistory (theoremDP T)) C.condition)
-      ((theoremDP T).union extra) :=
-  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
-  lic_conditioned (liaHistory (theoremDP T)) (theoremDP T) extra C compiler
+    (C : ConditioningPresentation (paperDP T) extra)
+    (compiler : ConditioningTraderCompiler (liaHistory (paperDP T)) (paperDP T) extra C) :
+    IsLogicalInductor (conditionedHistory (liaHistory (paperDP T)) C.condition)
+      ((paperDP T).union extra) :=
+  haveI : IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+    LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
+  lic_conditioned (liaHistory (paperDP T)) (paperDP T) extra C compiler
 
 /-- Fixed-sentence `thm:scon` transfer over the constructed `LIA`, with **no** remaining
 premise — the paper's statement exactly: conditioning the constructed inductor on any single
@@ -142,15 +142,15 @@ theorem lic_conditioned_fixed_unconditional
     (T : ArithmeticTheory) [T.Δ₁]
     (ψ : Sentence) :
     IsLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
-      ((theoremDP T).adjoinSentence ψ) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
-  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+      (conditionedHistory (liaHistory (paperDP T)) (fun _ => ψ))
+      ((paperDP T).adjoinSentence ψ) := by
+  let base : DeductiveProcessComputation (paperDP T) :=
+    (paperDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+    LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
   exact ConditioningCompile.lic_conditioned_fixed_ofComputationAndMarket
-    (liaHistory (theoremDP T)) (theoremDP T)
-    base (theoremMarketComputation T) ψ
+    (liaHistory (paperDP T)) (paperDP T)
+    base (paperMarketComputation T) ψ
 
 /-- Growing finite-prefix `thm:scon` transfer over the constructed `LIA`, with **no**
 remaining premise — the paper's statement exactly.  The extra process supplies its compact
@@ -165,16 +165,16 @@ theorem lic_conditioned_growing_unconditional
     (extra : DeductiveProcess)
     (more : CompactConditioningProcessComputation extra) :
     IsLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T))
+      (conditionedHistory (liaHistory (paperDP T))
         (fun n => deductiveStageCondition (extra.D n)))
-      ((theoremDP T).union extra) := by
-  let base : DeductiveProcessComputation (theoremDP T) :=
-    (theoremDP_computable T).nonemptyComputation.some
-  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+      ((paperDP T).union extra) := by
+  let base : DeductiveProcessComputation (paperDP T) :=
+    (paperDP_computable T).nonemptyComputation.some
+  haveI : IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+    LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
   exact ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
-    (liaHistory (theoremDP T)) (theoremDP T) extra
-    base more (theoremMarketComputation T)
+    (liaHistory (paperDP T)) (paperDP T) extra
+    base more (paperMarketComputation T)
 
 /-- **Fixed-sentence `thm:scon` over the constructed `LIA`, at the paper's own
 quantifier**: conditioning on any single sentence `ψ` yields a market no trader in ordinary
@@ -185,12 +185,12 @@ theorem lic_conditioned_fixed_machine_unconditional
     (T : ArithmeticTheory) [T.Δ₁]
     (ψ : Sentence) :
     IsMachineLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T)) (fun _ => ψ))
-      ((theoremDP T).adjoinSentence ψ) := by
-  haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
+      (conditionedHistory (liaHistory (paperDP T)) (fun _ => ψ))
+      ((paperDP T).adjoinSentence ψ) := by
+  haveI : IsMachineLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+    LIA_isMachineLogicalInductor (paperDP T) (paperDP_computable T)
   exact ConditioningCompile.lic_conditioned_fixed_machine
-    (liaHistory (theoremDP T)) (theoremDP T) ψ
+    (liaHistory (paperDP T)) (paperDP T) ψ
 
 /-- **Growing finite-prefix `thm:scon` over the constructed `LIA`, at the paper's own
 quantifier**, with no remaining premise.
@@ -201,13 +201,13 @@ theorem lic_conditioned_growing_machine_unconditional
     (extra : DeductiveProcess)
     (more : CompactConditioningProcessComputation extra) :
     IsMachineLogicalInductor
-      (conditionedHistory (liaHistory (theoremDP T))
+      (conditionedHistory (liaHistory (paperDP T))
         (fun n => deductiveStageCondition (extra.D n)))
-      ((theoremDP T).union extra) := by
-  haveI : IsMachineLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T)
+      ((paperDP T).union extra) := by
+  haveI : IsMachineLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+    LIA_isMachineLogicalInductor (paperDP T) (paperDP_computable T)
   exact ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
-    (liaHistory (theoremDP T)) (theoremDP T) extra more
+    (liaHistory (paperDP T)) (paperDP T) extra more
 
 /-- **The growing form of `thm:scon` doing visible work.**  Instantiated at
 `growingConditionProcess`, whose stages are nonempty and *strictly grow*, so the adjoined
@@ -226,9 +226,9 @@ theorem exists_growing_conditioned_machine_inductor
       (∀ n, deductiveStageCondition (extra.D n) ≠ ⊤) ∧
       deductiveStageCondition (extra.D 0) ≠ deductiveStageCondition (extra.D 1) ∧
       IsMachineLogicalInductor
-        (conditionedHistory (liaHistory (theoremDP T))
+        (conditionedHistory (liaHistory (paperDP T))
           (fun n => deductiveStageCondition (extra.D n)))
-        ((theoremDP T).union extra) :=
+        ((paperDP T).union extra) :=
   ⟨growingConditionProcess, growingConditionProcess_ssubset,
     deductiveStageCondition_growing_ne_top, deductiveStageCondition_growing_ne,
     lic_conditioned_growing_machine_unconditional T growingConditionProcess

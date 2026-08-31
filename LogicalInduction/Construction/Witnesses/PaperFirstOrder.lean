@@ -26,10 +26,15 @@ open LO.Propositional
 
 /-- Reserved public-atom tag for prime sentences of the pre-extension arithmetic language.
 
-Existing computation, quotation, product-definition, and semantic-prime atoms use tags
-`0` through `6`.  Tag `7` therefore records language ownership syntactically and is disjoint
-from semantic handles by construction. -/
-def paperPrimeTag : ℕ := 7
+Existing computation, quotation, product-definition, and semantic-prime atoms use payload
+tags `0`–`4`.  Tag `5` therefore records language ownership syntactically and is disjoint
+from semantic handles by construction.  See the global atom-payload allocation table at
+`ComputationClaimKind.godelCode`.
+
+The `RpnSentence`/`Criterion` parsers spell this tag as the literal `5` (they are upstream
+of this definition); `parseStructuredPaperPrime_spec` in `StructuredPaperRpn.lean` is the
+bridge, and both must move together. -/
+def paperPrimeTag : ℕ := 5
 
 /-- Compact public name of a first-order prime reading.  The Boolean records whether the
 stored formula is read positively.  Negative prime heads store their original formula with
@@ -160,7 +165,7 @@ lemma paperPrimeDecompose_semanticPrimeFresh (φ : ArithmeticProposition) :
 
 The valuation below is intentionally defined by ownership rather than by decoding an
 arbitrary natural.  Injectivity of `paperPrimeCode` makes its value on every compiled atom
-canonical, while atoms outside tag `7` remain false. -/
+canonical, while atoms outside tag `5` remain false. -/
 
 /-- The propositional world induced by a first-order arithmetic structure. -/
 noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]

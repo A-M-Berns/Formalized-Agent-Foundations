@@ -11,7 +11,7 @@ import LogicalInduction.Framework.SubstOccurrence
 # Concrete computation syntax and arithmetic-theory representation
 
 Syntax layer for the paper's computational-knowledge theorems (`thm:pac`, `thm:pazfc`,
-`thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait`).
+`thm:halts`, `thm:loops`, `thm:dontwait`).
 
 The public logical-induction language is propositional, while the computation
 representation theorem is first-order arithmetic.  This file supplies the translation
@@ -178,8 +178,6 @@ lemma universalBoundedHaltingSchema_spec (z : ℕ) :
 inductive ComputationClaimKind
   | halting
   | boundedHalting
-  | inconsistency
-  | consistency
   deriving DecidableEq
 
 /-- A concrete quoted first-order claim: its role, arithmetic schema, and compact input. -/
@@ -188,11 +186,32 @@ structure ComputationClaim where
   schema : ArithmeticSemisentence 1
   input : ℕ
 
+/-- **The global atom-payload allocation** — the first component of every public atom code
+in this development, and the authoritative table.  It is gapless: every value from `0` to
+`6` is allocated, and nothing else is emitted by any process here.
+
+| tag | atoms | declaration |
+|---|---|---|
+| `0` | halting claims | `ComputationClaimKind.godelCode` |
+| `1` | bounded-halting claims | `ComputationClaimKind.godelCode` |
+| `2` | quotation claims | `quotationClaimCode` (`QuotationAffine.lean`) |
+| `3` | quoted products | `productTag` (`ProductDefinition.lean`) |
+| `4` | semantic handles | `semanticPrimeTag` (`SemanticPrime.lean`) |
+| `5` | first-order primes | `paperPrimeTag` (`PaperFirstOrder.lean`) |
+| `6` | old-language copy | `oldLanguageTag` (`OldLanguageLift.lean`) |
+
+Tags `7`/`8` are used by `FinitePerturbationCounterexample`'s advice atoms, which no
+process emits; they sit above the allocated block so the counterexample's disjointness
+argument is numeric rather than incidental.
+
+Do **not** confuse this with the two other tag spaces in this development: `theoremDP`'s
+*event* index (`eventAtom`, tags `0`–`5`), and the RPN *token* opcodes
+(`Framework/RpnSentence.lean`), which also run `0`–`8`.  Note in particular that the
+`RpnSentence`/`Criterion` parsers spell the first-order-prime payload tag as the literal
+`5`, because `paperPrimeTag` is defined downstream of them. -/
 def ComputationClaimKind.godelCode : ComputationClaimKind → ℕ
   | .halting => 0
   | .boundedHalting => 1
-  | .inconsistency => 2
-  | .consistency => 3
 
 lemma ComputationClaimKind.godelCode_injective :
     Function.Injective ComputationClaimKind.godelCode := by
@@ -231,24 +250,11 @@ noncomputable def haltingClaim (z : ℕ) : ComputationClaim :=
 noncomputable def boundedHaltingClaim (z : ℕ) : ComputationClaim :=
   ⟨.boundedHalting, universalBoundedHaltingSchema, z⟩
 
-noncomputable def inconsistencyClaim (z : ℕ) : ComputationClaim :=
-  ⟨.inconsistency, universalHaltingSchema, z⟩
-
-/-- Consistency is named by the negation of the same halting/search schema. -/
-noncomputable def consistencyClaim (z : ℕ) : ComputationClaim :=
-  ⟨.consistency, ∼universalHaltingSchema, z⟩
-
 noncomputable def haltingClaimSentence (z : ℕ) : Sentence :=
   computationClaimSentence (haltingClaim z)
 
 noncomputable def boundedHaltingClaimSentence (z : ℕ) : Sentence :=
   computationClaimSentence (boundedHaltingClaim z)
-
-noncomputable def inconsistencyClaimSentence (z : ℕ) : Sentence :=
-  computationClaimSentence (inconsistencyClaim z)
-
-noncomputable def consistencyClaimSentence (z : ℕ) : Sentence :=
-  computationClaimSentence (consistencyClaim z)
 
 /-- Pair a repository machine's **source** number and its input without running the machine.
 The name is `Code.sourceNat`, linear in the machine's syntax tree — see the representation
@@ -345,38 +351,19 @@ lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : �
     BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
   (hm.natPair hi).of_eq (fun _ => rfl)
 
-/-- The deferred-horizon claim name is write-out in the day for **every** computable
-horizon: `⌜f⌝` enters as a constant and the day enters unevaluated.  No hypothesis on `f`
-appears — this is the whole point of the deferred schema.
+/-! ### Write-out certificates for the tag-keyed claim families
 
-Like the four sentence-level certificates below, this one has no consumer: it certified the
-bounded lane while that lane was stated over `theoremDP`, and `thm:dontwait` now names its
-argument through `boundedArg_digits` (`ComputationRepresented.lean`) instead. -/
-lemma boundedHaltingClaimInput_digits
-    {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
-    (horizon : Nat.Partrec.Code) :
-    BigDigits (fun n => boundedHaltingClaimInput (machines n) (inputs n) horizon n) :=
-  ((hm.natPair hi).natPair
-    ((BigDigits.const (Nat.Partrec.Code.sourceNat horizon)).natPair
-      (BigDigits.of_polyFueled PolyFueled.id))).of_eq (fun _ => rfl)
+**Neither lemma below has a consumer.**  They are the claim-sentence generators for the two
+rows of `theoremDP`'s *event* tag table (`eventAtom` tags 0–3, `ComputationDP.lean`), and
+each was once the emission certificate for an endpoint stated over `theoremDP`.  Both of
+those endpoints have since moved: `thm:halts`/`thm:loops` are stated over the single market
+`paperDP` at the day-indexed schema, whose sentences are emitted by `schemaDayClaimSentence_bigSentenceCodes`
+(`ComputationRepresented.lean`), and the bounded lane moved earlier, the same way.
 
-/-! ### Write-out certificates for the four tag-keyed claim families
-
-**None of the four lemmas below has a consumer.**  They are the claim-sentence generators for
-the four rows of `theoremDP`'s tag table (`eventAtom` tags 0–5, `ComputationDP.lean`), and
-each was once the emission certificate for an endpoint stated over `theoremDP`.  All four of
-those endpoints have since moved: `thm:halts`/`thm:loops` are stated over `paperTheoryDP` at
-the day-indexed schema, whose sentences are emitted by
-`schemaDayClaimSentence_bigSentenceCodes` (`ComputationRepresented.lean`); the bounded lane
-moved earlier, the same way; and `thm:incons` is now a statement about *theories*, emitted by
-`representedInconsistentTheoryClaims` (same file).
-
-What survives of these four rows is the tag table itself: the sentence families
-`haltingClaimSentence` … `consistencyClaimSentence` are still the atoms of `theoremDP`'s
-stage worlds, and these lemmas are their write-out certificates, kept alongside them.  They
-are retained rather than deleted pending the ruling on the tag table as a whole; nothing
-prices them. -/
+What survives of these rows is the tag table itself: the sentence families
+`haltingClaimSentence` and `boundedHaltingClaimSentence` are still the atoms of
+`theoremDP`'s stage worlds, and these lemmas are their write-out certificates, kept
+alongside them. -/
 
 /-- Write-out certificate for the unbounded-halting tag row.  No consumer; see the section
 note above. -/
@@ -387,14 +374,6 @@ lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits inpu
 lemma boundedHaltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
     DigitSentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
   computationClaimSentence_digits .boundedHalting universalBoundedHaltingSchema hinput
-
-lemma inconsistencyClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
-    DigitSentenceCodes (fun n => inconsistencyClaimSentence (input n)) :=
-  computationClaimSentence_digits .inconsistency universalHaltingSchema hinput
-
-lemma consistencyClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
-    DigitSentenceCodes (fun n => consistencyClaimSentence (input n)) :=
-  computationClaimSentence_digits .consistency (∼universalHaltingSchema) hinput
 
 /-! ## The narrow background-theory translation premise -/
 
@@ -408,7 +387,7 @@ schema.  That is what lets the constructed process
 consistency of `T` alone.  The bounded lane's *supply* of those negative literals is the
 paper's representability premise, not weak Σ₁-representation: see
 `ComputationRepresented.lean`.
-Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
+Paper node: `thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure ComputationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory) where
   theory_deltaOne : LO.FirstOrder.Theory.Δ₁ T
@@ -418,7 +397,7 @@ structure ComputationTheoryPresentation
       ∃ k, haltingClaimSentence z ∈ DP.D k
   /-- **No consumer as of the `thm:halts`/`thm:loops` migration.**  The only endpoint that
   read this field was the `theoremDP` form of `thm:loops`; that endpoint is now stated over
-  `paperTheoryDP` at the day-indexed halting schema
+  the single market `paperDP` at the day-indexed halting schema
   (`Construction/Witnesses/ComputationRepresented.lean`) and gets its negative literal from
   its own `hloops` premise instead.  The field is still *discharged* — by
   `theoremPresentation` in `ComputationDP.lean` and by `ProductDefinition.lean` — and is
@@ -433,12 +412,6 @@ structure ComputationTheoryPresentation
   boundedFailure_refutes : ∀ z : ℕ,
     T ⊢ ∼(universalBoundedHaltingSchema/[↑z]) →
       ∃ k, (∼boundedHaltingClaimSentence z) ∈ DP.D k
-  inconsistency_enters : ∀ z : ℕ,
-    T ⊢ universalHaltingSchema/[↑z] →
-      ∃ k, inconsistencyClaimSentence z ∈ DP.D k
-  inconsistency_refutesConsistency : ∀ z : ℕ,
-    T ⊢ universalHaltingSchema/[↑z] →
-      ∃ k, (∼consistencyClaimSentence z) ∈ DP.D k
 
 /-! ## Operational predicate presentations -/
 

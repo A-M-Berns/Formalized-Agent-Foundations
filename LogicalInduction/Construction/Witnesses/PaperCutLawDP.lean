@@ -344,11 +344,11 @@ lemma paperCutLawSentence_atom_tag_of_fire [T.Δ₁] {e a : ℕ}
 /-! ## The fixed paper-facing base process -/
 
 noncomputable def paperBaseDP [T.Δ₁] : DeductiveProcess :=
-  (theoremPaperDP T).union (paperCutLawDP T)
+  (paperDP T).union (paperCutLawDP T)
 
 noncomputable def paperBaseDPComputation [T.Δ₁] :
     DeductiveProcessComputation (paperBaseDP T) :=
-  (theoremPaperDPComputation T).union
+  (paperDPComputation T).union
     (paperCutLawDP_computable T).nonemptyComputation.some
 
 lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
@@ -358,7 +358,7 @@ lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Cons
   intro k sentence hsentence
   rw [paperBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hsentence
   rcases hsentence with hbase | hcut
-  · exact theoremPaperDP_hworld_of_model T hT f k sentence hbase
+  · exact paperDP_hworld_of_model T hT f k sentence hbase
   · apply (PCWorld.holds_congr_atomCodes sentence fun a ha =>
       paperTheoryExtensionWorld_agree_paper T M f ?_).mpr
       (paperCutLawDP_hworld_of_model T hT f k sentence hcut)
@@ -387,7 +387,7 @@ lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [Entailment.Consistent T]
   intro a ha
   rw [paperBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hsentence
   rcases hsentence with hbase | hcut
-  · rw [theoremPaperDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
+  · rw [paperDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
     rcases hbase with htheorem | hpaper
     · exact theoremDP_semanticPrimeFresh T k sentence htheorem a ha
     · have htag := paperTheoryDP_atom_tag T hpaper ha

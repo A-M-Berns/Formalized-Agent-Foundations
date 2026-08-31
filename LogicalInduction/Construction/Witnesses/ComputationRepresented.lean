@@ -13,7 +13,8 @@ The paper's computational-knowledge theorems name the day-`n` claim by *naming t
 it is about*: `thm:halts` and `thm:loops` assert "`⌜mₙ⌝` halts on `⌜xₙ⌝`" (tex:1931), and
 `thm:dontwait`, `thm:pac`, `thm:pazfc` go through the representation `⌜f⌝(⌜n⌝)` of a total
 computable function (tex:600–606).  This file states all five families that way, over the
-paper's own `Θ`-complete deductive process `paperTheoryDP`.
+single paper-facing market `paperDP`, whose `paperTheoryDP` component is the paper's own
+`Θ`-complete theorem stream.
 
 ## The design, and the error it replaces
 
@@ -102,7 +103,8 @@ changes.
   Σ₁-soundness to keep the two apart.
 * **The deductive process is the paper's own.**  Because `γ` is supplied *existentially* by
   `RepresentsComputations` there is no computable map to `⌜γ⌝`, so no fixed schema can be
-  dovetailed; `paperTheoryDP` enumerates *every* `T`-provable proposition and needs none.
+  dovetailed; `paperDP`'s theorem stream publishes *every* `T`-provable proposition and
+  needs none.
 
 The `def:ec` obligation on each family is **discharged**, not assumed: the paper's source
 language writes `∀ν (γ(t,ν) ⟺ ν = 0̄)` with one `iff` node over a fixed skeleton and one
@@ -191,21 +193,23 @@ lemma representedClaimSentence_bigSentenceCodes (γ : ArithmeticSemisentence 2)
 variable (T : ArithmeticTheory)
 
 /-- The theorem process publishes the claim atom when `T` refutes the value-`0` sentence. -/
-lemma paperTheoryDP_covers_representedClaim [T.Δ₁]
+lemma paperDP_covers_representedClaim [T.Δ₁]
     (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ ∼(reprAllTerm γ 0 t)) :
-    ∃ k, representedClaimSentence γ t ∈ (paperTheoryDP T).D k := by
+    ∃ k, representedClaimSentence γ t ∈ (paperDP T).D k := by
   have := paperTheoryDP_covers_outer_provable T _ h
-  rwa [paperPrimeDecompose_neg_reprAllTerm] at this
+  rw [paperPrimeDecompose_neg_reprAllTerm] at this
+  exact paperDP_covers_of_paperTheoryDP T this
 
 /-- The theorem process publishes the negated claim atom when `T` proves the value-`0`
 sentence. -/
-lemma paperTheoryDP_covers_representedClaim_neg [T.Δ₁]
+lemma paperDP_covers_representedClaim_neg [T.Δ₁]
     (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ reprAllTerm γ 0 t) :
-    ∃ k, (∼representedClaimSentence γ t) ∈ (paperTheoryDP T).D k := by
+    ∃ k, (∼representedClaimSentence γ t) ∈ (paperDP T).D k := by
   have := paperTheoryDP_covers_outer_provable T _ h
-  rwa [paperPrimeDecompose_reprAllTerm] at this
+  rw [paperPrimeDecompose_reprAllTerm] at this
+  exact paperDP_covers_of_paperTheoryDP T this
 
 /-! ## Transferring provability to the compact spelling
 
@@ -479,7 +483,7 @@ compact argument numeral is emitted from — and by nothing else; the *literals*
 `hγ`.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from
-`RepresentsComputations`; the deductive process is `paperTheoryDP`, which is soundness-free.
+`RepresentsComputations`; the deductive process is `paperDP`, which is soundness-free.
 This is the `thm:dontwait` claim family; the paper node itself is carried by the endpoint
 that consumes it, not by this constructor. -/
 noncomputable def representedBoundedClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
@@ -487,21 +491,21 @@ noncomputable def representedBoundedClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (γ : ArithmeticSemisentence 2)
     (hγ : ∀ z y : ℕ, y = universalRunValue steps z ↔ T ⊢ reprAll γ y z) :
-    RepresentedDecidableClaims (paperTheoryDP T)
+    RepresentedDecidableClaims (paperDP T)
       (fun n => CodeHaltsWithin (machines n) (inputs n) (steps n)) where
   sentence n := representedClaimSentence γ (binNumeral (boundedArg machines inputs n))
   sentence_poly :=
     representedClaimSentence_bigSentenceCodes γ _
       (polySegStream_binNumeral_const (boundedArg_digits hm hi))
   provable_of_true n hn := by
-    refine paperTheoryDP_covers_representedClaim T γ _ ?_
+    refine paperDP_covers_representedClaim T γ _ ?_
     refine (provable_neg_reprAllTerm_binNumeral_iff T γ _).mpr ?_
     refine represents_refutes_all T γ _ ?_
     refine (hγ _ 1).mp ?_
     rw [universalRunValue_boundedArg]
     exact ((boundedRunValue_eq_one_iff machines inputs steps n).mpr hn).symm
   disprovable_of_false n hn := by
-    refine paperTheoryDP_covers_representedClaim_neg T γ _ ?_
+    refine paperDP_covers_representedClaim_neg T γ _ ?_
     refine (provable_reprAllTerm_binNumeral_iff T γ _).mpr ?_
     refine (hγ _ 0).mp ?_
     rw [universalRunValue_boundedArg]
@@ -520,8 +524,8 @@ lemma exists_reprAll_of_representsComputations [RepresentsComputations T]
 Both constructors below name the day-`n` claim the way the paper does — through the
 representation of a *total* computable function (tex:600-606), applied to an argument that
 names the machine and its input (tex:1931) — and therefore carry both literals over one
-sentence.  Neither consumes a semantic hypothesis on `T`: the process is `paperTheoryDP`,
-whose non-vacuity is `paperTheoryDP_nonvacuous`, from consistency alone.
+sentence.  Neither consumes a semantic hypothesis on `T`: the process is `paperDP`,
+whose non-vacuity is `paperDP_nonvacuous`, from consistency alone.
 -/
 
 /-- The `thm:dontwait` claim family: `⌜qₙ⌝ halts on ⌜yₙ⌝ within ⌜f⌝(⌜n⌝) steps`, named
@@ -534,7 +538,7 @@ noncomputable def representedBoundedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons) :
-    RepresentedDecidableClaims (paperTheoryDP T)
+    RepresentedDecidableClaims (paperDP T)
       (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)) :=
   representedBoundedClaims T hm hi _
     (exists_reprAll_of_representsComputations T hh.computable).choose_spec
@@ -744,38 +748,33 @@ is charged here. -/
 noncomputable def representedConClaims (T' : ArithmeticTheory) [T.Δ₁] [T'.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [RepresentsComputations T] (hcons : Entailment.Consistent T') {horizons : ℕ → ℕ}
     (hh : ComputableHorizon horizons) :
-    RepresentedDecidableClaims (paperTheoryDP T) (fun n => conWithin T' (horizons n)) where
+    RepresentedDecidableClaims (paperDP T) (fun n => conWithin T' (horizons n)) where
   sentence n := conClaimSentence (conGamma T T' hh) n
   sentence_poly := conClaimSentence_bigSentenceCodes _
   provable_of_true n _ := by
-    refine paperTheoryDP_covers_representedClaim_neg T _ _ ?_
+    refine paperDP_covers_representedClaim_neg T _ _ ?_
     refine (provable_reprAllTerm_binNumeral_iff T _ _).mpr ?_
     refine (conGamma_spec T T' hh _ 0).mp ?_
     exact (conRunValue_bot_eq_zero T' hcons n).symm
   disprovable_of_false n hn := absurd (conWithin_of_consistent T' hcons (horizons n)) hn
 
-/-! ## The paper-facing endpoints, over the paper's own deductive process
+/-! ## The paper-facing endpoints, over the single market
 
-`paperTheoryDP T` enumerates every `T`-provable proposition, is computable
-(`paperTheoryDP_computable`), and has a world consistent with every stage from
-**consistency of `T` alone** (`paperTheoryDP_nonvacuous`).  Together with the two literals
-of `RepresentsComputations` this leaves the three bounded-claim endpoints below with no
-semantic hypothesis on `T`, no presentation argument, and no `hworld` argument. -/
+`paperDP T` publishes every `T`-provable proposition (through its `paperTheoryDP`
+component) alongside the computation and quotation literals, is computable
+(`paperDP_computable`), and has a world consistent with every stage
+(`paperDP_nonvacuous`).  Together with the two literals of `RepresentsComputations` this
+leaves the three bounded-claim endpoints below with no semantic hypothesis on `T`, no
+presentation argument, and no `hworld` argument. -/
 
-/-- Market non-vacuity for the paper's theorem process, from **consistency of `T` alone**.
-Shared by the bounded endpoints below — which get consistency from the representability
-premise (`RepresentsComputations.consistent`) — and by the halting endpoints, which assume
-it directly. -/
-private lemma paperTheoryDP_hworld_stages [T.Δ₁] (hcon : Entailment.Consistent T) :
-    ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n) := by
+/-- Market non-vacuity in the stage-indexed form these endpoints take, with consistency
+supplied as a term rather than an instance — the bounded endpoints get it from the
+representability premise (`RepresentsComputations.consistent`), the halting endpoints
+assume it directly. -/
+private lemma paperDP_hworld_stages [T.Δ₁] [𝗣𝗔⁻ ⪯ T] (hcon : Entailment.Consistent T) :
+    ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n) := by
   haveI := hcon
-  obtain ⟨v, hv⟩ := paperTheoryDP_nonvacuous T
-  exact fun n => ⟨v, hv n⟩
-
-/-- The constructed inductor over the paper's theorem process. -/
-private noncomputable abbrev paperLIA [T.Δ₁] :
-    IsLogicalInductor (liaHistory (paperTheoryDP T)) (paperTheoryDP T) :=
-  LIA_is_logical_inductor (paperTheoryDP T) (paperTheoryDP_computable T)
+  exact paperDP_hworld T
 
 section Endpoints
 
@@ -793,16 +792,16 @@ r.e.-ness of provability in `T` runs through Foundation's internal provability p
 `V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
-    (P : History) [IsLogicalInductor P (paperTheoryDP T)]
+    (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n)) :
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
     (fun n => P n
       ((representedBoundedHaltingClaims T machines inputs horizons hm hi hh).sentence n))
         ≈ₙ fun _ => 0 :=
-  lic_does_not_anticipate_halting P (paperTheoryDP T) machines inputs horizons
+  lic_does_not_anticipate_halting P (paperDP T) machines inputs horizons
     (representedBoundedHaltingClaims T machines inputs horizons hm hi hh) hnever hworld
 
 /-! ### Unconditional over the constructed `LIA`
@@ -851,20 +850,20 @@ under the counting convention of `Framework/DerivationSize.lean` (`dd:symbolcoun
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency_unconditional
     (horizons : ℕ → ℕ) (hh : ComputableHorizon horizons) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       (conClaimSentence (conGamma T T hh) n)) ≈ₙ fun _ => 1 :=
   haveI := paperLIA T
-  lic_belief_finitistic_consistency (liaHistory (paperTheoryDP T)) (paperTheoryDP T)
+  lic_belief_finitistic_consistency (liaHistory (paperDP T)) (paperDP T)
     (fun n => conWithin T (horizons n))
     (representedConClaims T T (RepresentsComputations.consistent T)
       hh).toRepresentedSemidecidableClaims
     (fun n => conWithin_of_consistent T (RepresentsComputations.consistent T) (horizons n))
-    (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
+    (paperDP_hworld_stages T (RepresentsComputations.consistent T))
 
 /-- **Belief in the Consistency of a Stronger Theory** (`thm:pazfc`), unconditional over
 `LIA`, at the paper's own subject matter.
 
-The market is `Θ`'s: `paperTheoryDP T` enumerates the propositions `T` proves, and the
+The market is `Θ`'s: `paperDP T` publishes the propositions `T` proves, and the
 inductor is trained on that process alone.  The *claims*, however, are about a second
 theory `T'` — the paper's `Θ′`, "a stronger consistent recursively axiomatizable theory,
 such as `𝗣𝗔 + Con(𝗣𝗔)` or `ZFC`" (tex:1881-1886).  Day `n` renders the arithmetized
@@ -906,14 +905,14 @@ Paper node: `thm:pazfc` -/
 theorem lic_belief_stronger_theory_consistency_unconditional
     (T' : ArithmeticTheory) [T'.Δ₁] (hcons : Entailment.Consistent T')
     (horizons : ℕ → ℕ) (hh : ComputableHorizon horizons) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       (conClaimSentence (conGamma T T' hh) n)) ≈ₙ fun _ => 1 :=
   haveI := paperLIA T
-  lic_belief_finitistic_consistency (liaHistory (paperTheoryDP T)) (paperTheoryDP T)
+  lic_belief_finitistic_consistency (liaHistory (paperDP T)) (paperDP T)
     (fun n => conWithin T' (horizons n))
     (representedConClaims T T' hcons hh).toRepresentedSemidecidableClaims
     (fun n => conWithin_of_consistent T' hcons (horizons n))
-    (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
+    (paperDP_hworld_stages T (RepresentsComputations.consistent T))
 
 /-- `thm:dontwait`, unconditional over `LIA`.  `hh` supplies the horizon program for an
 arbitrary computable `f` — no growth bound — which is the paper's own quantifier, and `hm`
@@ -933,19 +932,19 @@ theorem lic_does_not_anticipate_halting_unconditional
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedBoundedHaltingClaims T machines inputs horizons hm hi hh).sentence n))
         ≈ₙ fun _ => 0 :=
   haveI := paperLIA T
-  lic_does_not_anticipate_halting_ofComputation T (liaHistory (paperTheoryDP T))
-    machines inputs horizons hm hi hh hnever (paperTheoryDP_hworld_stages T (RepresentsComputations.consistent T))
+  lic_does_not_anticipate_halting_ofComputation T (liaHistory (paperDP T))
+    machines inputs horizons hm hi hh hnever (paperDP_hworld_stages T (RepresentsComputations.consistent T))
 
 /-- **`thm:dontwait`, applied.**  A machine that provably halts on nothing
 (`neverHaltMachine`), the paper's `⟨y⟩` bitstring inputs `2 ^ n`, and the identity horizon
 supplied through `ComputableHorizon.of`.  The non-halting hypothesis is proved, not assumed;
 nothing is left to the caller. -/
 example :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedBoundedHaltingClaims T
           (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
           (digitMachineCodes_const neverHaltMachine) bigDigits_two_pow
@@ -967,7 +966,7 @@ arithmetized.
 This is the first endpoint of the development whose subject matter is a `Con(Θ)` family
 rather than a caller-supplied bounded computation. -/
 example :
-    (fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+    (fun n => liaHistory (paperDP 𝗜𝚺₁) n
       (conClaimSentence (conGamma 𝗜𝚺₁ 𝗜𝚺₁ ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
   lic_belief_finitistic_consistency_unconditional 𝗜𝚺₁ _ ComputableHorizon.ackermann
 
@@ -983,7 +982,7 @@ soundness at the standard model (`Schemata.lean`).  That semantic route lives *i
 witness only* — the endpoint above takes consistency as a hypothesis, exactly as the paper
 does, and no soundness assumption reaches the trust surface. -/
 example :
-    (fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+    (fun n => liaHistory (paperDP 𝗜𝚺₁) n
       (conClaimSentence (conGamma 𝗜𝚺₁ 𝗣𝗔 ComputableHorizon.ackermann) n)) ≈ₙ fun _ => 1 :=
   lic_belief_stronger_theory_consistency_unconditional 𝗜𝚺₁ 𝗣𝗔 inferInstance _
     ComputableHorizon.ackermann
@@ -1012,11 +1011,11 @@ end Endpoints
 /-! ## The unbounded halting family, at the paper's process
 
 §4.10's `thm:halts` and `thm:loops` name the day-`n` claim "`⌜mₙ⌝ halts on `⌜xₙ⌝`".  Both
-are stated below over `paperTheoryDP`, the paper's own `Θ`-complete process, and therefore
+are stated below over `paperDP`, the single paper-facing market, and therefore
 carry **no semantic hypothesis on `T`**: the positive literal is Σ₁-completeness
 (`re_complete_mp`, which needs `[𝗥₀ ⪯ T]` and nothing else), the negative literal is the
 paper's own object-level refutation premise, and market non-vacuity is
-`paperTheoryDP_nonvacuous`, from consistency alone.  That retires the
+`paperDP_nonvacuous`, from consistency alone.  That retires the
 `[T.SoundOnHierarchy 𝚺 1]` instance the superseded fixed-schema pair carried, which was
 load-bearing only through the *other* process's fiber-exclusivity step.
 
@@ -1129,21 +1128,23 @@ lemma provable_neg_schemaArgClaim_iff (T : ArithmeticTheory) (σ : ArithmeticSem
     simp [schemaArgClaim, schemaArgBody, Semiformula.eval_substs]
 
 /-- The theorem process publishes the claim atom when `T` proves the argument instance. -/
-lemma paperTheoryDP_covers_schemaArgClaim [T.Δ₁] (σ : ArithmeticSemisentence 1)
+lemma paperDP_covers_schemaArgClaim [T.Δ₁] (σ : ArithmeticSemisentence 1)
     (t : Semiterm.Const ℒₒᵣ) (h : T ⊢ (σ/[t.const] : ArithmeticSentence)) :
-    ∃ k, schemaArgClaimSentence σ t ∈ (paperTheoryDP T).D k := by
+    ∃ k, schemaArgClaimSentence σ t ∈ (paperDP T).D k := by
   have := paperTheoryDP_covers_outer_provable T _ ((provable_schemaArgClaim_iff T σ t).mpr h)
-  rwa [paperPrimeDecompose_schemaArgClaim] at this
+  rw [paperPrimeDecompose_schemaArgClaim] at this
+  exact paperDP_covers_of_paperTheoryDP T this
 
 /-- The theorem process publishes the negated claim atom when `T` refutes the argument
 instance. -/
-lemma paperTheoryDP_covers_schemaArgClaim_neg [T.Δ₁]
+lemma paperDP_covers_schemaArgClaim_neg [T.Δ₁]
     (σ : ArithmeticSemisentence 1) (t : Semiterm.Const ℒₒᵣ)
     (h : T ⊢ ∼(σ/[t.const] : ArithmeticSentence)) :
-    ∃ k, (∼schemaArgClaimSentence σ t) ∈ (paperTheoryDP T).D k := by
+    ∃ k, (∼schemaArgClaimSentence σ t) ∈ (paperDP T).D k := by
   have := paperTheoryDP_covers_outer_provable T _
     ((provable_neg_schemaArgClaim_iff T σ t).mpr h)
-  rwa [paperPrimeDecompose_neg_schemaArgClaim] at this
+  rw [paperPrimeDecompose_neg_schemaArgClaim] at this
+  exact paperDP_covers_of_paperTheoryDP T this
 
 /-! ### The halting claim: the universal schema at a machine-naming argument -/
 
@@ -1328,14 +1329,14 @@ carried by the endpoints that consume it, not by this constructor. -/
 noncomputable def representedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
-    RepresentedSemidecidableClaims (paperTheoryDP T)
+    RepresentedSemidecidableClaims (paperDP T)
       (fun n => CodeHalts (machines n) (inputs n)) where
   sentence := haltingArgClaimSentence machines inputs
   sentence_poly :=
     schemaArgClaimSentence_bigSentenceCodes universalHaltingSchema _
       (polySegStream_binNumeral_const (haltingClaimInput_digits hm hi))
   provable_of_true n hn := by
-    refine paperTheoryDP_covers_schemaArgClaim T universalHaltingSchema _ ?_
+    refine paperDP_covers_schemaArgClaim T universalHaltingSchema _ ?_
     refine (provable_subst_binNumeral_iff T universalHaltingSchema _).mpr ?_
     exact re_complete_mp (T := T) universalCodeHalts_re
       ((universalCodeHalts_claimInput (machines n) (inputs n)).mpr hn)
@@ -1362,14 +1363,14 @@ r.e.-ness of provability in `T` runs through Foundation's internal provability p
 `V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_ofComputation
-    (P : History) [IsLogicalInductor P (paperTheoryDP T)]
+    (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n)) :
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
     (fun n => P n ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ
       fun _ => 1 :=
-  lic_learns_halting_patterns P (paperTheoryDP T) machines inputs
+  lic_learns_halting_patterns P (paperDP T) machines inputs
     (representedHaltingClaims T machines inputs hm hi) hhalts hworld
 
 /-- **Learning of Provable Non-Halting Patterns** over the paper's theorem process.  `hloops`
@@ -1385,22 +1386,23 @@ r.e.-ness of provability in `T` runs through Foundation's internal provability p
 `V := ℕ`, whose side condition is `ℕ ⊧* 𝗜𝚺₁` — true outright — and never `𝗜𝚺₁ ⪯ T`.
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
-    (P : History) [IsLogicalInductor P (paperTheoryDP T)]
+    (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hloops : ∀ n : ℕ, T ⊢ ∼(haltingArgClaimInstance machines inputs n))
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D n)) :
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
     (fun n => P n ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ
       fun _ => 0 :=
-  lic_learns_provable_nonhalting_patterns P (paperTheoryDP T) machines inputs
+  lic_learns_provable_nonhalting_patterns P (paperDP T) machines inputs
     (representedHaltingClaims T machines inputs hm hi)
-    (fun n => paperTheoryDP_covers_schemaArgClaim_neg T universalHaltingSchema _
+    (fun n => paperDP_covers_schemaArgClaim_neg T universalHaltingSchema _
       (hloops n)) hworld
 
 variable [Entailment.Consistent T]
 
-/-- `thm:halts`, unconditional over `LIA`.  The deductive process is the paper's own, is
-proved computable (`paperTheoryDP_computable`), and its market non-vacuity follows from
+/-- `thm:halts`, unconditional over `LIA`.  The deductive process is the single
+paper-facing market's, is proved computable (`paperDP_computable`), and its market
+non-vacuity follows from
 consistency of `T` alone, so nothing remains beyond the theory instances and the (true)
 hypothesis that the machines halt.  In particular there is no soundness instance.
 *Residual hypothesis (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the strengthenings beyond the paper (see the global
@@ -1416,11 +1418,11 @@ theorem lia_learns_halting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ fun _ => 1 :=
   haveI := paperLIA T
-  lic_learns_halting_patterns_ofComputation T (liaHistory (paperTheoryDP T))
-    machines inputs hm hi hhalts (paperTheoryDP_hworld_stages T inferInstance)
+  lic_learns_halting_patterns_ofComputation T (liaHistory (paperDP T))
+    machines inputs hm hi hhalts (paperDP_hworld_stages T inferInstance)
 
 /-- `thm:loops`, unconditional over `LIA`.  `hm` and `hi` are the write-out metered classes
 shared with `thm:halts`; `hloops` is the object-level refutation premise, which cannot be
@@ -1438,11 +1440,11 @@ theorem lic_learns_provable_nonhalting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hloops : ∀ n : ℕ, T ⊢ ∼(haltingArgClaimInstance machines inputs n)) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ fun _ => 0 :=
   haveI := paperLIA T
-  lic_learns_provable_nonhalting_patterns_ofComputation T (liaHistory (paperTheoryDP T))
-    machines inputs hm hi hloops (paperTheoryDP_hworld_stages T inferInstance)
+  lic_learns_provable_nonhalting_patterns_ofComputation T (liaHistory (paperDP T))
+    machines inputs hm hi hloops (paperDP_hworld_stages T inferInstance)
 
 /-- **`thm:halts`, applied.**  The machine family is `Nat.Partrec.Code.nest`, whose source
 grows linearly in the day and whose source *number* is exponential (so the whole-value class
@@ -1450,7 +1452,7 @@ excludes it, `digitMachineCodes_nest_not_polyMachineCodes`), and whose halting h
 *proved* rather than assumed (`codeHalts_nest`).  The inputs are the paper's own `⟨x⟩` shape,
 the `n`-bit string `2 ^ n`.  Nothing is left for the caller. -/
 example :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
           Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
         ≈ₙ fun _ => 1 :=
@@ -1472,7 +1474,7 @@ theory — by `loopsTheory_refutes` and `thm_loops_applied_at_loopsTheory` below
 example
     (hloops : ∀ n : ℕ,
       T ⊢ ∼(haltingArgClaimInstance Nat.Partrec.Code.nest (fun n => 2 ^ n) n)) :
-    (fun n => liaHistory (paperTheoryDP T) n
+    (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
           Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
         ≈ₙ fun _ => 0 :=
@@ -1616,7 +1618,7 @@ separately by the `thm:halts` and `thm:dontwait` clients above — because what 
 exists to show is that the refutation premise is inhabitable at all.
 Paper node: `thm:loops` -/
 theorem thm_loops_applied_at_loopsTheory :
-    (fun n => liaHistory (paperTheoryDP loopsTheory) n
+    (fun n => liaHistory (paperDP loopsTheory) n
       ((representedHaltingClaims loopsTheory (fun _ => neverHaltMachine) (fun _ => 0)
           (digitMachineCodes_const neverHaltMachine) (BigDigits.const 0)).sentence n))
         ≈ₙ fun _ => 0 :=
@@ -2173,14 +2175,14 @@ Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation cita
 `machineTheoryInconsistent_of_not_consistent`). -/
 noncomputable def representedInconsistentTheoryClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m) :
-    InconsistentTheoryClaims (paperTheoryDP T)
+    InconsistentTheoryClaims (paperDP T)
       (fun n => ¬Entailment.Consistent (theoryOf (m n))) where
   inconsistencySentence := inconsistencyArgClaimSentence m
   inconsistency_poly :=
     schemaArgClaimSentence_bigSentenceCodes inconsistencySchema _
       (polySegStream_binNumeral_const hm)
   inconsistency_provable n hn := by
-    refine paperTheoryDP_covers_schemaArgClaim T inconsistencySchema _ ?_
+    refine paperDP_covers_schemaArgClaim T inconsistencySchema _ ?_
     refine (provable_subst_binNumeral_iff T inconsistencySchema _).mpr ?_
     exact re_complete_mp (T := T) machineTheoryInconsistent_re
       (machineTheoryInconsistent_of_not_consistent hn)
@@ -2213,16 +2215,16 @@ Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories_unconditional [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m)
     (hinc : ∀ n, ¬Entailment.Consistent (theoryOf (m n))) :
-    ((fun n => liaHistory (paperTheoryDP T) n
+    ((fun n => liaHistory (paperDP T) n
         ((representedInconsistentTheoryClaims T m hm).inconsistencySentence n))
           ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (paperTheoryDP T) n
+      ((fun n => liaHistory (paperDP T) n
         ((representedInconsistentTheoryClaims T m hm).consistencySentence n))
           ≈ₙ fun _ => 0) :=
   haveI := paperLIA T
-  lic_disbelief_inconsistent_theories (liaHistory (paperTheoryDP T)) (paperTheoryDP T) _
+  lic_disbelief_inconsistent_theories (liaHistory (paperDP T)) (paperDP T) _
     (representedInconsistentTheoryClaims T m hm) hinc
-    (paperTheoryDP_hworld_stages T inferInstance)
+    (paperDP_hworld_stages T inferInstance)
 
 /-! ### Witnesses
 
@@ -2351,10 +2353,10 @@ instances.  The day-`n` theory takes a different value for every `n`, and the da
 lemma below fires at every pair of distinct days.
 Paper node: `thm:incons` -/
 theorem thm_incons_applied_deep :
-    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+    ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
           (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+      ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
           (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
   lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ deepDayMachine
@@ -2425,10 +2427,10 @@ and the whole sequence is named by machine sources of `O(n)` symbols.  The deduc
 rendering this replaces could not state such a family at all.
 Paper node: `thm:incons` -/
 theorem thm_incons_applied_infinite :
-    ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+    ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
           (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (paperTheoryDP 𝗜𝚺₁) n
+      ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
           (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
   lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ infiniteDayMachine

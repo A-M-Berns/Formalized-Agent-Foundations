@@ -134,7 +134,7 @@ are the interface, in this order:
   endpoint inherits a semantic hypothesis from it.)
 * `LogicalInduction.Construction.Witnesses.ComputationRepresented` — the endpoints stated
   at that premise (`thm:dontwait`, `thm:pac`, `thm:pazfc`), over
-  `liaHistory (paperTheoryDP T)` with no soundness instance — together with `thm:halts` and
+  `liaHistory (paperDP T)` with no soundness instance — together with `thm:halts` and
   `thm:loops`, which live in the same file over the same process but need only
   `[Entailment.Consistent T]`, their claim being the fixed universal halting schema at the
   same kind of machine-naming argument.
@@ -186,9 +186,11 @@ when the whole development is wanted.
   (`Construction/Witnesses/SemanticLiftedCCEE.lean`) instantiates `slack` at the constant
   `0` over an arbitrary threshold-certified source family, so exactness is available — but
   the two are incomparable rather than one superseding the other: the mesh endpoint speaks
-  about the market `liaHistory (theoremDP T)`, the exact one about
+  about the single paper-facing market `liaHistory (paperDP T)`, the exact one about
   `liaHistory (canonicalCCEEDP T)` over a renamed and registry-closed process.  Choose by
-  which market the client needs to reason about, not by which has less slack.
+  which market the client needs to reason about, not by which has less slack.  Every other
+  canonical endpoint in this library is stated over `liaHistory (paperDP T)`; the
+  semantic-lifted `thm:ccee` process is the one exception.
 * **The LUV carrier is a threshold presentation.**  The `LUV` objects a client meets are
   rational threshold families over the propositional language, not first-order terms. This
   is a *representation interface*, not a modeling substitution: the paper's literal

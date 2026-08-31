@@ -58,6 +58,7 @@ import LogicalInduction.Construction.Witnesses.R0Representability
 import LogicalInduction.Construction.Witnesses.SubstEmission
 import LogicalInduction.Construction.Witnesses.ComputationRepresented
 import LogicalInduction.Construction.Witnesses.PaperCutLawDP
+import LogicalInduction.Construction.Witnesses.PaperMarket
 import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
 import LogicalInduction.Construction.Witnesses.ArithmeticSource

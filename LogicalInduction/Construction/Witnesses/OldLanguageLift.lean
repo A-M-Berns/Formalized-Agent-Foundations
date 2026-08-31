@@ -14,8 +14,9 @@ namespace LogicalInduction
 
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
-/-- Reserved outer tag for the fixed copy of the pre-extension propositional language. -/
-def oldLanguageTag : ℕ := 8
+/-- Reserved outer tag for the fixed copy of the pre-extension propositional language.
+See the global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
+def oldLanguageTag : ℕ := 6
 
 /-- The atom injection into the fixed old-language namespace. -/
 def oldAtom (a : ℕ) : ℕ := Nat.pair oldLanguageTag a
@@ -108,7 +109,7 @@ lemma oldAtom_ne_semanticPrimeCode (a schema input : ℕ) :
 lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ oldLanguageTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -121,12 +122,6 @@ lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
         ComputationClaimKind.godelCode, oldLanguageTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, oldLanguageTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, oldLanguageTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
         ComputationClaimKind.godelCode, oldLanguageTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_quoteAtom _ a ha, oldLanguageTag] at hc

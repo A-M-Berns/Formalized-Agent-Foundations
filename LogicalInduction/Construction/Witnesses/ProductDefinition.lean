@@ -66,7 +66,8 @@ The schema is jointly satisfiable only if the product atoms do not already occur
 source's own threshold sentences — an adversarial `X` with `(X n).gt s = ∼productAtom n r`
 would make a stage unsatisfiable.  `ProductAtomFresh` is that side condition, stated
 syntactically through `sentenceAtomCodes`.  Tag `productTag` is unused by every atom this
-repo's processes emit (computation claims carry tags `0`–`3`, quotation claims tag `4`), so
+repo's processes emit (computation claims carry payload tags `0`–`1`, quotation claims
+payload tag `2`), so
 the condition holds for every repo-constructed family; it is the propositional rendering's
 residue, replacing the mesh route's slack disclosure with a strictly milder one.
 -/
@@ -133,9 +134,10 @@ lemma PCWorld.holds_congr_atomCodes {v v' : PCWorld} :
 /-! ## The fresh product atoms -/
 
 /-- The atom tag reserved for quoted-product definitions.  Computation claims carry tags
-`0`–`3` (`ComputationClaimKind.godelCode`) and quotation claims tag `4`
-(`quotationClaimCode`), so `5` names no atom any process in this repo emits. -/
-def productTag : ℕ := 5
+`0`–`1` (`ComputationClaimKind.godelCode`) and quotation claims tag `2`
+(`quotationClaimCode`), so `3` names no atom any process in this repo emits.  See the
+global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
+def productTag : ℕ := 3
 
 /-- The fresh atom standing for `⌜Xₙ · Wₙ > r⌝`. -/
 def productAtom (n : ℕ) (r : ℚ) : Sentence :=
@@ -163,8 +165,9 @@ For a *genuinely arbitrary* e.c. family, `ProductAtomFresh` must be assumed: a
 blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`5`
 atoms.  For everything this repository constructs the condition is a *theorem*, and the
 lemmas below are what discharge it: the constructed process's stages are images of
-`eventAtom`, whose atoms carry the computation-claim tags `0`–`3` or the quotation tag `4`,
-and every quotation threshold family carries tag `4`.  Nothing but `productLUV` uses tag
+`eventAtom`, whose atoms carry the computation-claim payload tags `0`–`1` or the quotation
+payload tag `2`, and every quotation threshold family carries tag `2`.  Nothing but
+`productLUV` uses tag
 `productTag = 5`. -/
 
 @[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
@@ -182,18 +185,19 @@ lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
   simp [ComputationClaim.godelCode]
 
 lemma sentenceAtomCodes_quoteAtom (w : ℕ) :
-    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 4 := by
+    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 2 := by
   intro a ha
   rw [quoteAtom, quotationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
   subst ha
   simp [quotationClaimCode]
 
 /-- **The constructed process's literals never carry the product tag.**  Every atom of an
-`eventAtom` is a computation claim (tags `0`–`3`) or a quotation claim (tag `4`). -/
+`eventAtom` is a computation claim (payload tags `0`–`1`) or a quotation claim (payload
+tag `2`). -/
 lemma eventAtom_atomCodes_ne_productTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ productTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -207,18 +211,12 @@ lemma eventAtom_atomCodes_ne_productTag (e : ℕ) :
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
         ComputationClaimKind.godelCode, productTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, productTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
-        ComputationClaimKind.godelCode, productTag] at hc
   · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
   · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
   · simp at ha
 
 /-- Every quotation threshold family is fresh for the product tag: its thresholds are
-quotation atoms (tag `4`). -/
+quotation atoms (payload tag `2`). -/
 lemma arithmeticThresholdLUV_productAtomFresh (code : ℕ) :
     ProductAtomFresh (arithmeticThresholdLUV code) := by
   intro n r a ha
@@ -977,9 +975,6 @@ noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
   halting_refutes z h := (Q.halting_refutes z h).imp fun k hk => hsub k hk
   boundedHalting_enters z h := (Q.boundedHalting_enters z h).imp fun k hk => hsub k hk
   boundedFailure_refutes z h := (Q.boundedFailure_refutes z h).imp fun k hk => hsub k hk
-  inconsistency_enters z h := (Q.inconsistency_enters z h).imp fun k hk => hsub k hk
-  inconsistency_refutesConsistency z h :=
-    (Q.inconsistency_refutesConsistency z h).imp fun k hk => hsub k hk
   quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
   quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
 

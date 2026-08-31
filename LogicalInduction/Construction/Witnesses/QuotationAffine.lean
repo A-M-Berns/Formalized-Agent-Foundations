@@ -36,10 +36,11 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## Compact public names and the proof bridge -/
 
-/-- Injective atom payload for a dual-schema arithmetic decision at one input.  Tag `4`
-keeps quotation names disjoint from the four computation-claim roles. -/
+/-- Injective atom payload for a dual-schema arithmetic decision at one input.  Tag `2`
+keeps quotation names disjoint from the computation-claim roles (tags `0`–`1`); see the
+global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
 def quotationClaimCode (positive negative : ArithmeticSemisentence 1) (input : ℕ) : ℕ :=
-  Nat.pair 4 (Nat.pair (Encodable.encode positive)
+  Nat.pair 2 (Nat.pair (Encodable.encode positive)
     (Nat.pair (Encodable.encode negative) input))
 
 def quotationClaimSentence (positive negative : ArithmeticSemisentence 1)
@@ -69,7 +70,7 @@ lemma quotationClaimSentence_poly
     (positive negative : ArithmeticSemisentence 1)
     {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => quotationClaimSentence positive negative (input n)) := by
-  let hpayload := (PolyFueled.const 4).pair
+  let hpayload := (PolyFueled.const 2).pair
     ((PolyFueled.const (Encodable.encode positive)).pair
       ((PolyFueled.const (Encodable.encode negative)).pair hinput.code_poly))
   refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
@@ -3647,7 +3648,7 @@ lemma diagonalPriceDecisionPart_partrec
   have hpayload : Primrec fun z : Nat.Partrec.Code × ℕ =>
       quotationClaimCode universalQuotePos universalQuoteNeg
         (Nat.pair (Encodable.encode z.1) z.2) :=
-    Primrec₂.natPair.comp (Primrec.const 4)
+    Primrec₂.natPair.comp (Primrec.const 2)
       (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuotePos))
         (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuoteNeg))
           hselector))

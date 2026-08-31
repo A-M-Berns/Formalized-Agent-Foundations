@@ -386,9 +386,13 @@ negation from that class alone — no semantic hypothesis, only the `[𝗥₀ �
 apparatus, which the premise itself supplies in substance. On the unbounded halting lane
 less is needed still: the positive literal is Σ₁-completeness alone (`re_complete_mp`).
 
-**3. A computable deductive process over Θ.** `paperTheoryDP T` enumerates Θ's theorems,
-and its stage worlds are non-vacuous from consistency (`paperTheoryDP_nonvacuous`). What
-each day-`n` claim is *about* is fixed by an argument written into the sentence — the
+**3. A computable deductive process over Θ, and the single market it feeds.**
+`paperTheoryDP T` enumerates Θ's theorems, and `theoremDP T` is the literal
+provability/quotation stream the constructed quote codes are read off. The market is their
+**union**, `paperDP T = (theoremDP T).union (paperTheoryDP T)` — one market for the whole §4
+tail, as in the paper — computable (`paperDPComputation`) and with stage worlds non-vacuous
+from consistency (`paperDP_nonvacuous`, `paperDP_hworld`). See *The single market* below.
+What each day-`n` claim is *about* is fixed by an argument written into the sentence — the
 machine's source number and its input, packed and spelled by the compact Horner term
 `binNumeral`, whose `O(log v)` symbol run is emitted digit by digit from the paper's own
 write-out certificates `DigitMachineCodes` and `BigDigits`, which is what makes those two
@@ -405,16 +409,49 @@ represented claim family should carry the same witness.
 `lic_does_not_anticipate_halting_unconditional` (`thm:dontwait`),
 `lic_belief_finitistic_consistency_unconditional` (`thm:pac`) and
 `lic_belief_stronger_theory_consistency_unconditional` (`thm:pazfc`) are stated over
-`liaHistory (paperTheoryDP T)`. The bounded lane takes `[RepresentsComputations T]`; the
+`liaHistory (paperDP T)`. The bounded lane takes `[RepresentsComputations T]`; the
 unbounded lane takes only `[Entailment.Consistent T]`, needing no *represented* negative
 literal — `thm:loops`'s negative literal is its own `hloops` premise, which the paper
 (`app:loops`) also assumes outright. The quotation family (`thm:ref`, `thm:lp`, `thm:st`,
-`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) reaches its closed forms over
-`theoremDP T` under `[Entailment.Consistent T]` in the same way, its two quotation schemas
+`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`) reaches its closed forms over that **same**
+market `paperDP T` — whose literal-stream half `theoremDP T` is where the quotation atoms
+enter — under `[Entailment.Consistent T]` in the same way, its two quotation schemas
 being the value-`1` and value-`0` fibers of one Foundation `code` formula
 (`universalQuoteCode`, `Framework/QuoteRepresentability.lean`), so that
 `Θ ⊢ ∼(pos ⋏ neg)` is a theorem of Θ (`universalQuote_exclusive_prov`, from `code_uniq`
 plus Gödel completeness) rather than a fact about ℕ.
+
+### The single market
+
+The paper builds one market `𝕡` over one deductive process and prices every §4 property in
+it. So does this development, as of round 13 (2026-08-31): every canonical endpoint whose
+statement names a market names `liaHistory (paperDP T)`, with the single exception of
+`thm:ccee`, which is priced over `canonicalCCEEDP T` by ruling — the fixed enlarged language
+that lane needs for exact semantic multiplication is what puts it out of scope.
+
+Until round 13 the endpoints ran in two lanes — the quotation family over
+`liaHistory (theoremDP T)`, the computational-knowledge family over
+`liaHistory (paperTheoryDP T)` — and that split was a disclosed departure from the paper's
+single `𝕡`. It is now closed **by construction, not by argument**: the union process, which
+already existed unused under the name `theoremPaperDP`, was collapsed into the load-bearing
+name `paperDP`, so there is no suffixed layer and no parallel market beside it. `theoremDP`
+and `paperTheoryDP` survive only as ingredients of that union and as the CCEE lane's base; no
+endpoint is stated at either.
+
+The check that the collapse cost nothing is the binder census over the 105 canonical
+endpoints, which is **identical** before and after: `𝗣𝗔⁻ ⪯ ·` 16, `𝗜𝚺₁ ⪯ ·` 3, `[T.Δ₁]` 23,
+`[Entailment.Consistent ·]` 15, `[RepresentsComputations ·]` 3, and soundness 0. The union's
+stage-world witness is discharged from exactly the instances the two component witnesses
+were, so no endpoint bought its new market with a new hypothesis.
+
+The same round retired two dead atoms from the provability world — the `inconsistency` and
+`consistency` computation claims, which nothing consumed — together with the two
+`ComputationTheoryPresentation` obligations that discharged them. That structure now has six
+fields and states a strictly weaker interface, which strengthens every endpoint that consumes
+it. The `theoremDP` event tag space is gapless `0`–`5` (halting ±, bounded halting ±,
+quotation ±) and the global atom-payload space gapless `0`–`6`, with the finite-perturbation
+counterexample's advice tags at `7`/`8` above it rather than colliding with it. Older notes
+elsewhere that speak of the quotation-negation fiber as "tag 7" mean today's tag 5.
 
 **§4.10 belief in finitistic consistency.**
 `lic_belief_finitistic_consistency_unconditional` (`thm:pac`) is stated at the paper's own
@@ -476,7 +513,7 @@ three are representation infrastructure rather than theory strength:
   yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄`, and Robinson's **R** represents
   every computable function without containing `𝗣𝗔⁻`. Two steps spend it — the compact
   `binNumeral` value transfer `def:ec` forces (`provable_subst_iff_of_val`), and
-  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at tag 7 and is the
+  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at tag 5 and is the
   price of not assuming Σ₁-soundness there. The paper's own exclusivity argument is
   metatheoretic, through the representability biconditional, and needs no arithmetic inside
   Θ; ours is object-level so the stage-world proof stays constructive. **Whether this is
@@ -679,7 +716,8 @@ the per-row accounting.
 
    This is not the rejected source-dependent `productDefDP` maneuver. There is one market,
    `liaHistory (canonicalCCEEDP T)`, constructed over a fixed enlarged language from the
-   outset; no equality with prices of `liaHistory (theoremDP T)` is asserted or needed.
+   outset; no equality with prices of the single market `liaHistory (paperDP T)` is
+   asserted or needed. `thm:ccee` is the one node priced outside that market, by ruling.
    `canonicalCCEEDP_hworld` supplies an explicit completed-world witness for the full
    universal source, quotation, and product process.
 

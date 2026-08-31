@@ -17,8 +17,9 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-- Reserved tag for compact handles whose denotation is supplied by a fixed semantic
-theorem process. -/
-def semanticPrimeTag : ℕ := 6
+theorem process.  See the global atom-payload allocation table at
+`ComputationClaimKind.godelCode`. -/
+def semanticPrimeTag : ℕ := 4
 
 /-- The public handle consists of a schema selector and its unevaluated input. -/
 def semanticPrimeCode (schema input : ℕ) : ℕ :=

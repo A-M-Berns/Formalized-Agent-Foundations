@@ -458,7 +458,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_self_trust_ofRepresentation lic_expected_future_expectations_ofRepresentation
   lic_no_expected_net_update_ofRepresentation
   lic_no_expected_net_update_conditional_ofRepresentation
-  theoremMarketComputation theoremDiagonalQuoteCode
+  theoremMarketComputation paperMarketComputation paperQuotationPresentation
+  paperDiagonalQuoteCode
   lic_paradox_resistance_ofDiagonal_unconditional
 
 -- Construction/Witnesses/FeedbackEmission.lean — the emitter that turns a feedback
@@ -1284,14 +1285,16 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   loopsTheory
   thm_loops_applied_at_loopsTheory
 
--- Construction/Witnesses/QuoteCodeOfMarket.lean — constructed rational quote codes:
--- the first *discharge* of the `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
+-- Construction/Witnesses/QuoteCodeOfMarket.lean (market-generic parts) and
+-- Construction/Witnesses/PaperMarket.lean (the instantiations at the single market
+-- `paperDP`) — constructed rational quote codes: the first *discharge* of the
+-- `RationalQuoteCode` reflection data.  `lic_expectations_of_probabilities_closed` is
 -- `thm:epr` over the constructed LIA with no reflection hypotheses at all.
 #assert_axioms_clean
   arithmeticThresholdLUV_polyThresholdCodeSeq
   RationalQuoteCode.ofComputable
   MarketComputation.expectQuote_computable
-  theoremPriceQuoteCode theoremExpectationQuoteCode
+  paperPriceQuoteCode paperExpectationQuoteCode
   lic_expectations_of_probabilities_closed
   lic_iterated_expectations_closed
 
@@ -1302,14 +1305,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- out of its emitted serialization, evaluate it against the certified market, minimize
 -- over the interpreter clock.
 #assert_axioms_clean
-  theoremFutureQuoteCode theoremDeferredExpectationQuoteCode
-  theoremConfidenceQuoteCode
+  paperFutureQuoteCode paperDeferredExpectationQuoteCode
+  paperConfidenceQuoteCode
   PGenerableRat.computable
   indicatorProductLUV_valuesAt indicatorProductLUV_rpnThresholdCodeSeq
   lic_no_expected_net_update_closed
   lic_expected_future_expectations_closed
   lic_self_trust_closed
-  theoremIntervalQuoteCode lic_introspection_closed
+  paperIntervalQuoteCode lic_introspection_closed
 
 -- Historical mesh `ccee`: the weighted conditional, **general-source** closed form. The deferred-weight
 -- quote code names the `w ∘ f` program (deferral costs nothing at emission), and
@@ -1322,8 +1325,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- README's modeling-boundary history. The exact endpoint of record is audited next.
 #assert_axioms_clean
   PCWorld.ValuesAt.eq
-  theoremDeferredWeightQuoteCode
-  theoremConditionalExpectationQuoteCode
+  theoremDeferredWeightQuoteCode paperDeferredWeightQuoteCode
+  paperConditionalExpectationQuoteCode
   meshProductLUV_valuesAt
   meshProductLUV_rpnThresholdCodeSeq
   indicatorProductLUV_exact_left_reflected
@@ -1723,9 +1726,21 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- reads `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` (tranche 7 replaced `[𝗜𝚺₁ ⪯ T]` with
 -- the `𝗣𝗔⁻` the tag-7 case actually spends) and NO declaration in
 -- `LogicalInduction/` carries a `SoundOnHierarchy` instance binder any more.
--- Field NAMES are unchanged, so the block below still passes.
+-- 2026-08-31 (T8/8, tag-space retirement).  The `inconsistency_enters` and
+-- `inconsistency_refutesConsistency` fields are GONE, together with
+-- `ComputationClaimKind.inconsistency`/`.consistency`, `inconsistencyClaim`/
+-- `consistencyClaim` and their claim sentences: the T8/iv restatement moved `thm:incons`
+-- onto `paperTheoryDP` (`representedInconsistentTheoryClaims`,
+-- `ComputationRepresented.lean`), leaving those two rows of `theoremDP`'s tag table with
+-- no consumer.  `theoremDP`'s event tag space is now `0`–`5` and gapless: `0`/`1`
+-- halting ±, `2`/`3` bounded halting ±, `4`/`5` quotation ± (the quotation tags were
+-- `6`/`7` before this change, and audit prose above and below dated earlier than
+-- 2026-08-31 refers to them by those numbers).  `theoremDP_hworld` was re-established
+-- over the shrunk space by deleting the two retired cases; the surviving cases are
+-- unchanged, and no endpoint's elaborated signature moved.  The block below is shortened
+-- by exactly the two retired field names.
 #assert_fields ComputationTheoryPresentation
-  theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes inconsistency_enters inconsistency_refutesConsistency
+  theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes
 #assert_fields ConditionalExpectationQuote
   weight_mem weight_generable source_codes left_codes right_codes slack slack_tendsto source_valued left_reflected right_reflected affine
 #assert_fields ConditioningPresentation
@@ -1923,16 +1938,16 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 -- discharged by `indicatorProductLUV_rpnThresholdCodeSeq`, which needs `φ`'s codes at
 -- token-metered strength.  There is no write-out threshold class — `LUV.BigThresholdCodeSeq`
 -- does not exist — so widening `thm:st` is a `RpnThresholdCodeSeq` migration, not a
--- sentence-class one.  `theoremConfidenceQuoteCode` is held at `RpnSentenceCodes` for the
+-- sentence-class one.  `paperConfidenceQuoteCode` is held at `RpnSentenceCodes` for the
 -- same reason: widening the *def* alone is sound but unusable, and would have put two
 -- `BigSentenceCodes.ofRpnSentenceCodes` wrappers inside `lic_self_trust_closed`'s printed
 -- statement for no gain in reach.
 --
 -- Widened in this change (2026-08-28 audit, R2-F11), each having consumed its sentence-codes
 -- hypothesis only through `.primrec`, which `BigSentenceCodes.primrec` supplies:
--- `theoremPriceQuoteCode` and `lic_expectations_of_probabilities_closed` (`thm:epr`),
--- `theoremFutureQuoteCode` and `lic_no_expected_net_update_closed` (`thm:ceu`),
--- `theoremIntervalQuoteCode` and `lic_introspection_closed` (`thm:ref`).  Those three closed
+-- `paperPriceQuoteCode` and `lic_expectations_of_probabilities_closed` (`thm:epr`),
+-- `paperFutureQuoteCode` and `lic_no_expected_net_update_closed` (`thm:ceu`),
+-- `paperIntervalQuoteCode` and `lic_introspection_closed` (`thm:ref`).  Those three closed
 -- paper endpoints now admit sentence families whose Gödel codes are exponential while their
 -- emitted symbol count stays polynomial.
 -- Retired from the Tier-2 freeze (2026-08-28 audit, R2-F15/F18).  `PolyMachineCodes` and
@@ -2171,9 +2186,9 @@ the semantic-lifted lane stayed invisible for two tranches.
     `[T.Δ₁] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]` and carries **no** `[𝗣𝗔⁻ ⪯ T]`: the two
     would be redundant (`𝗜𝚺₁ ⪯ T` implies `𝗣𝗔⁻ ⪯ T` by instance), so that endpoint is
     declared *outside* the `𝗣𝗔⁻` section of `ComputationDP.lean` and recovers the weaker
-    instance in its proof term, where `theoremLIA`/`theoremDP_hworld` need it.  `omit`
+    instance in its proof term, where `paperLIA`/`theoremDP_hworld` need it.  `omit`
     cannot do this job: it does not take the variable out of the local context, so instance
-    search still reaches it from the conclusion's `theoremDiagonalQuoteCode`.  It is therefore
+    search still reaches it from the conclusion's `paperDiagonalQuoteCode`.  It is therefore
     not one of the 17 above.
 
 The tranche-7/D step that closed the last eight was deleting `theory_sigmaOne` from

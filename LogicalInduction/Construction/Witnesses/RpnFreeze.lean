@@ -133,7 +133,7 @@ lemma segOf_split (get : ℕ → ℕ) {p r q : ℕ} (h₁ : p ≤ r) (h₂ : r �
 The second ambiguity source, independent of the `⊥` fiber that `CanonicalCodes.lean`
 settles: a structured leaf `[1, 0, …]` admits non-canonical payload spellings, so a run
 matcher cannot recognize it by comparing against a fixed word.  It does not have to.  The
-structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 7 _)`, so a
+structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 5 _)`, so a
 target outside that shape is never denoted by a structured block and the matcher may reject
 the block on its two-token tag alone — no replay of the structured parser, and no decode.
 
@@ -146,7 +146,7 @@ Proof kind: `P` proved.  Provenance: (b) `parseStructuredPaperPrime`.
 Paper node: `app:ifp` -/
 lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence} {r : List ℕ},
     parseStructuredPaperPrime payload = some (φ, r) →
-      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc)) := by
+      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair pol fc)) := by
   intro payload φ r h
   cases payload with
   | nil => exfalso; revert h; simp [parseStructuredPaperPrime]
@@ -172,7 +172,7 @@ lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence}
 lemma parseStructuredPaperPrime_ne_of_not_reserved {payload : List ℕ} {ψ : Sentence}
     {r : List ℕ}
     (hψ : ∀ pol fc : ℕ,
-      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc))) :
+      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair pol fc))) :
     parseStructuredPaperPrime payload ≠ some (ψ, r) := by
   intro h
   obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
@@ -438,7 +438,7 @@ side conditions close exactly that:
 * `decode_eq_some_iff_of_botFree` (`CanonicalCodes.lean`) makes the escape payload the
   *unique* canonical code `⌜ψ'⌝`, whenever `ψ'` has no `⊥` subformula;
 * `parseStructuredPaperPrime_shape` above excludes the structured spelling, whenever `ψ'`
-  is not a reserved atom `atom (Nat.pair 7 _)`.
+  is not a reserved atom `atom (Nat.pair 5 _)`.
 
 So every node has exactly **two** spellings, and the complete spellings of `ψ` are a finite
 explicit list — `2 ^ (nodes of ψ)` fixed token lists, `spellings ψ` below.  Deciding "does

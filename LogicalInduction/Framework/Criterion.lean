@@ -1850,7 +1850,7 @@ def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
             match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
-                  some (Formula.atom (Nat.pair 7 (Nat.pair polarity formulaCode)),
+                  some (Formula.atom (Nat.pair 5 (Nat.pair polarity formulaCode)),
                     p.2.drop (p.1 + 1))
                 else none
             | _ => none
@@ -1867,7 +1867,7 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
             match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
-                  some (Nat.pair 1 (Nat.pair 7 (Nat.pair polarity formulaCode)) + 1,
+                  some (Nat.pair 1 (Nat.pair 5 (Nat.pair polarity formulaCode)) + 1,
                     p.2.drop (p.1 + 1))
                 else none
             | _ => none

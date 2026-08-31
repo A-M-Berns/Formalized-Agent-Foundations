@@ -3480,7 +3480,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     parseStructuredArithmeticFormula_prim.comp hn htake
   have hresult : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
       if w.2.2 = [] ∧ List.getD w.1.2.2 w.1.2.1 0 = 19 then
-        some (Nat.pair 1 (Nat.pair 7 (Nat.pair w.1.1.2.1 w.2.1)) + 1,
+        some (Nat.pair 1 (Nat.pair 5 (Nat.pair w.1.1.2.1 w.2.1)) + 1,
           w.1.2.2.drop (w.1.2.1 + 1))
       else none := by
     have hrest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.2 :=
@@ -3500,9 +3500,9 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
     have hcode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) => w.2.1 :=
       Primrec.fst.comp Primrec.snd
     have houtCode : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
-        Nat.pair 1 (Nat.pair 7 (Nat.pair w.1.1.2.1 w.2.1)) + 1 :=
+        Nat.pair 1 (Nat.pair 5 (Nat.pair w.1.1.2.1 w.2.1)) + 1 :=
       Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 1)
-        (Primrec₂.natPair.comp (Primrec.const 7)
+        (Primrec₂.natPair.comp (Primrec.const 5)
           (Primrec₂.natPair.comp hpol' hcode)))
     have houtRest : Primrec fun w : StructuredPrimeLenCtx × (ℕ × List ℕ) =>
         w.1.2.2.drop (w.1.2.1 + 1) :=
@@ -3512,7 +3512,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
   have hparsed : Primrec fun z : StructuredPrimeLenCtx =>
       (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
         if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
-          some (Nat.pair 1 (Nat.pair 7 (Nat.pair z.1.2.1 p.1)) + 1,
+          some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
             z.2.2.drop (z.2.1 + 1))
         else none :=
     Primrec.option_bind hformula hresult.to₂
@@ -3523,7 +3523,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
       if z.2.1 ≤ z.2.2.length then
         (parseStructuredArithmeticFormula z.2.1 0 (z.2.2.take z.2.1)).bind fun p =>
           if p.2 = [] ∧ List.getD z.2.2 z.2.1 0 = 19 then
-            some (Nat.pair 1 (Nat.pair 7 (Nat.pair z.1.2.1 p.1)) + 1,
+            some (Nat.pair 1 (Nat.pair 5 (Nat.pair z.1.2.1 p.1)) + 1,
               z.2.2.drop (z.2.1 + 1))
           else none
       else none :=
@@ -3533,7 +3533,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
         if p.1 ≤ p.2.length then
           (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
             if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
-              some (Nat.pair 1 (Nat.pair 7 (Nat.pair y.2.1 q.1)) + 1,
+              some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
                 p.2.drop (p.1 + 1))
             else none
         else none :=
@@ -3546,7 +3546,7 @@ private lemma parseStructuredPaperPrimeC_prim : Primrec parseStructuredPaperPrim
           if p.1 ≤ p.2.length then
             (parseStructuredArithmeticFormula p.1 0 (p.2.take p.1)).bind fun q =>
               if q.2 = [] ∧ List.getD p.2 p.1 0 = 19 then
-                some (Nat.pair 1 (Nat.pair 7 (Nat.pair y.2.1 q.1)) + 1,
+                some (Nat.pair 1 (Nat.pair 5 (Nat.pair y.2.1 q.1)) + 1,
                   p.2.drop (p.1 + 1))
               else none
           else none

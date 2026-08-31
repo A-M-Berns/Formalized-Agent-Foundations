@@ -42,13 +42,15 @@ show the premise set is inhabited at all.
 The single-valuedness lemmas `codeAux_uniq`/`code_uniq` that the `→` direction rests on
 live in `Framework/QuoteRepresentability.lean`, which the quotation layer also cites.
 
-**Why `𝗣𝗔⁻` and not `𝗥₀`.**  Foundation states `code_uniq` for models of `𝗥₀`, but leaves
-it commented out, and it does not go through there: the `rfind` case compares two putative
-witnesses `z`, `z'` and needs them to be comparable.  `𝗥₀ = Ω₁–Ω₄` has no trichotomy axiom
-(the classical strong-representability theorem is for Robinson's `R`, which adds
-`Ω₅ : ∀x (x ≤ n̄ ∨ n̄ ≤ x)`), and Foundation records `𝗥₀ ⪱ 𝗣𝗔⁻`.  Weakening the ambient
-theory to `𝗣𝗔⁻` — whose models carry a `LinearOrder` — is what makes the `wlog z < z'`
-step legitimate.  Everything else in the argument needs only `𝗥₀`.
+**Why `𝗣𝗔⁻` and not `𝗥₀`.**  The commented-out `code_uniq` in Foundation reads `𝗥₀`, but
+that text is dead: commit 593d63d8 commented the block out and weakened `𝗣𝗔⁻` to `𝗥₀` in
+one stroke, so the `𝗥₀` version was never compiled and does not go through.  The `rfind`
+case compares two putative witnesses `z`, `z'` and needs them to be comparable.  `𝗥₀ =
+Ω₁–Ω₄` has no trichotomy axiom (the classical strong-representability theorem is for
+Robinson's `R`, which adds `Ω₅ : ∀x (x ≤ n̄ ∨ n̄ ≤ x)`), and Foundation records
+`𝗥₀ ⪱ 𝗣𝗔⁻`.  Keeping the ambient theory at `𝗣𝗔⁻` — whose models carry a `LinearOrder` —
+is what makes the `wlog z < z'` step legitimate.  Everything else in the argument needs
+only `𝗥₀`.
 -/
 import LogicalInduction.Framework.QuoteRepresentability
 import Foundation.FirstOrder.Arithmetic.R0.Representation

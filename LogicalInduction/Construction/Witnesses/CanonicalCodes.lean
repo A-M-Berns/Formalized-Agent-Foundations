@@ -71,7 +71,7 @@ def BotFree : Sentence → Prop
 
 /-! ## The reserved atom shape -/
 
-/-- A sentence no subformula of which is a **reserved atom** `atom (Nat.pair 7 _)`.
+/-- A sentence no subformula of which is a **reserved atom** `atom (Nat.pair 5 _)`.
 
 Tag `7` is the atom payload the structured paper-prime leaf builds
 (`parseStructuredPaperPrime`), and it is the *only* sentence shape that leaf can denote
@@ -79,14 +79,14 @@ Tag `7` is the atom payload the structured paper-prime leaf builds
 by a structured block, and a run matcher may reject one on its two-token tag alone. -/
 def NoReserved : Sentence → Prop
   | ⊥ => True
-  | .atom a => ∀ pol fc : ℕ, a ≠ Nat.pair 7 (Nat.pair pol fc)
+  | .atom a => ∀ pol fc : ℕ, a ≠ Nat.pair 5 (Nat.pair pol fc)
   | φ 🡒 ψ => NoReserved φ ∧ NoReserved ψ
   | φ ⋏ ψ => NoReserved φ ∧ NoReserved ψ
   | φ ⋎ ψ => NoReserved φ ∧ NoReserved ψ
 
 @[simp] lemma noReserved_falsum : NoReserved (⊥ : Sentence) := trivial
 @[simp] lemma noReserved_atom (a : ℕ) :
-    NoReserved (Formula.atom a) ↔ ∀ pol fc : ℕ, a ≠ Nat.pair 7 (Nat.pair pol fc) := Iff.rfl
+    NoReserved (Formula.atom a) ↔ ∀ pol fc : ℕ, a ≠ Nat.pair 5 (Nat.pair pol fc) := Iff.rfl
 @[simp] lemma noReserved_imp (φ ψ : Sentence) :
     NoReserved (φ 🡒 ψ) ↔ NoReserved φ ∧ NoReserved ψ := Iff.rfl
 @[simp] lemma noReserved_and (φ ψ : Sentence) :

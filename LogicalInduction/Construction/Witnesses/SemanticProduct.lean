@@ -286,7 +286,7 @@ noncomputable def theoremSemanticProductDPComputation (T : ArithmeticTheory)
 lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ semanticPrimeTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -299,12 +299,6 @@ lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
         ComputationClaimKind.godelCode, semanticPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
         ComputationClaimKind.godelCode, semanticPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc

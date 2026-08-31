@@ -712,7 +712,7 @@ lemma parseStructuredPaperPrime_tail_suffix {polarity : ℕ} {framed : List ℕ}
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -756,7 +756,7 @@ lemma parseStructuredPaperPrime_append {ts : List ℕ} {φ : Sentence} {rest : L
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -1021,7 +1021,7 @@ lemma parseStructuredPaperPrime_span {ts : List ℕ} {φ : Sentence} {rest : Lis
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -2721,8 +2721,8 @@ lemma parseStructuredPaperPrimeC_eq (ts : List ℕ) :
   · by_cases hterm : payload.getD n 0 = 19
     · simp only [hterm, if_true, Option.map_some, Option.some.injEq, Prod.mk.injEq,
         and_true]
-      change Nat.pair 1 (Nat.pair 7 (Nat.pair polarity code)) + 1 =
-        (Formula.atom (Nat.pair 7 (Nat.pair polarity code)) : Sentence).toNat
+      change Nat.pair 1 (Nat.pair 5 (Nat.pair polarity code)) + 1 =
+        (Formula.atom (Nat.pair 5 (Nat.pair polarity code)) : Sentence).toNat
       rfl
     · simp only [hterm, if_false, Option.map_none]
   · rfl

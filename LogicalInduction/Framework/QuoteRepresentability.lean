@@ -21,8 +21,12 @@ Two directions, two strengths:
   `codeAux_uniq`: the `rfind` case needs `<` to be linear.
 
 `codeAux_uniq`/`code_uniq` are Foundation's own commented-out lemmas
-(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), restated over
-`𝗣𝗔⁻` rather than `𝗥₀` and reproved.  They were first revived in
+(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), revived and
+reproved here **at their original `𝗣𝗔⁻` hypothesis**.  The `𝗥₀` in the commented text is
+not the statement they were retired from: Foundation commit 593d63d8 commented the block
+out *and* weakened `𝗣𝗔⁻` to `𝗥₀` in one stroke, so the visible `𝗥₀` version never
+compiled.  This revival restores the hypothesis the lemmas actually had, and the reason
+they had it is the `rfind` case below.  They were first revived in
 `Construction/Witnesses/R0Representability.lean`; they live here now so that both that
 file and the quotation layer can cite one copy.
 -/
@@ -44,10 +48,11 @@ variable {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
 /-- Single-valuedness of `codeAux c` in every model of `𝗣𝗔⁻`.
 
 This is Foundation's commented-out `codeAux_uniq`
-(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), restated over
-`𝗣𝗔⁻` rather than `𝗥₀` and reproved.  The change of ambient theory is exactly what the
-`rfind` case needs: the `wlog z < z'` step requires `<` to be linear on `M`, which `𝗥₀`
-does not provide.
+(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), revived and
+reproved at its **original** `𝗣𝗔⁻` hypothesis — the `𝗥₀` visible in the commented text is
+dead code that never compiled (commit 593d63d8 commented the block out and weakened
+`𝗣𝗔⁻` to `𝗥₀` together).  `𝗣𝗔⁻` is exactly what the `rfind` case needs: the `wlog z < z'`
+step requires `<` to be linear on `M`, which `𝗥₀` does not provide.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
 `codeAux`, `PeanoMinus`'s `LinearOrder` on models. -/
@@ -89,7 +94,8 @@ lemma codeAux_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
     exact xz (ih hx h₁)
 
 /-- Single-valuedness of `code c` in every model of `𝗣𝗔⁻` — Foundation's commented-out
-`code_uniq`, restated over `𝗣𝗔⁻`.
+`code_uniq`, revived at the `𝗣𝗔⁻` hypothesis it originally carried (see the file header:
+the `𝗥₀` in the commented text is dead code from the commit that retired the block).
 
 Kind `C` (composition) over `codeAux_uniq`. -/
 lemma code_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
