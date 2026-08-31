@@ -49,11 +49,12 @@ the declaration renders a paper claim/theorem; supporting results are `lemma`s �
 note that iso-valued and data-valued carriers must be `def`s, since `≅` is not a Prop.
 
 The **Finite Factored Sets** formalization (Garrabrant, arXiv:2109.11513) lives in
-`FiniteFactoredSets/` and is **complete** — §2–§7, 87 of the 96 in-scope nodes carried by declarations (Mathlib renders the other nine)
-(scope is 96 of the paper's 98, settled by ruling and recorded in that README). Two
+`FiniteFactoredSets/` and is **complete** — §2–§7, 88 of the 97 in-scope nodes carried by declarations (Mathlib renders the other nine)
+(scope is 97 of the paper's 98, settled by ruling and recorded in that README). Two
 boundaries to know before reading a §7 statement: Conjecture 1 is stated as a `Prop`
 (`dd:conjecture`) and **deliberately unproved**, with no declaration anywhere having that
-type — do not spend prover time on it — and Examples 3 and 4 are out of scope by ruling.
+type — do not spend prover time on it — and Example 3 is out of scope by ruling (Example 4
+is carried in `InfiniteExamples.lean`).
 The statements live in fourteen files that follow the paper's own order — `Basic.lean` (§2:
 partitions, factorizations, the chimera function, size and dimension), `History.lean`
 (§3.1–§3.2: generation and history), `Orthogonality.lean` (§3.3–§3.4: orthogonality,

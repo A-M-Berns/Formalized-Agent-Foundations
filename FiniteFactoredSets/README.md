@@ -5,13 +5,15 @@ Formalization of Scott Garrabrant, *Temporal Inference with Finite Factored Sets
 `notes/2109.11513-main.tex` is the exact arXiv source and `notes/2109.11513.pdf` the
 matching PDF.
 
-**Status: complete — §2 through §7 formalized. All 96 in-scope nodes are accounted for:
-87 carry a Lean declaration of ours, and the remaining nine are rendered outright by
+**Status: complete — §2 through §7 formalized. All 97 in-scope nodes are accounted for:
+88 carry a Lean declaration of ours, and the remaining nine are rendered outright by
 Mathlib vocabulary (Definitions 1, 2, 5, 6, 7, 9, 29, 30 and 39 — tabulated below), so
-87 + 9 = 96.** Non-vacuity is discharged by construction: four finite factored sets, two
+88 + 9 = 97.** Non-vacuity is discharged by construction: six finite factored sets (four in
+`Examples.lean`, two in `InferenceExamples.lean`), two
 factored sets outside §5's finiteness boundary, five probability distributions on the
-finite witnesses and one on an infinite carrier, five
-factored set models and six orthogonality databases are built, and the §2.5, §3, §4, §5,
+finite witnesses and one on an infinite carrier, seven
+factored set models and eight orthogonality databases (five and six in `Examples.lean`,
+the §6.2 examples' own in `InferenceExamples.lean`) are built, and the §2.5, §3, §4, §5,
 §6 and §7 vocabulary — `size`, `dim`, `Generates`, `history`, `Orthogonal`, `Entangled`,
 `Before`, `StrictlyBefore`, `Subpartition`, `GeneratesSub`, `historySub`,
 `OrthogonalGivenSet`, `OrthogonalGiven`, `Q`, `mono`, `monos`, `poly`, `irr`, `ProbDist`,
@@ -23,8 +25,8 @@ than merely defined. `OrthogonalSub` is deliberately *not* in that list: the wit
 unfolds it on `coordFS` (an anonymous `example` restating `orthogonalSub_def`) but computes
 no verdict from it, so it is exercised rather than evaluated.
 
-Two things are deliberately *not* claimed and are set out below: Examples 3 and 4 are out
-of scope by ruling, and Conjecture 1 is stated as a `Prop` and deliberately left unproved.
+Two things are deliberately *not* claimed and are set out below: Example 3 is out of
+scope by ruling, and Conjecture 1 is stated as a `Prop` and deliberately left unproved.
 This file says what is claimed and what is not.
 
 ## What is claimed
@@ -51,23 +53,32 @@ This file says what is claimed and what is not.
 | 6.1 | Factored set models, orthogonality databases, consistency, completeness, inferred time | Definitions 38, 40, 41, 42, 43, 44, 45 |
 | 6.2 | The two worked examples | Examples 1, 2; Propositions 33, 34, 35, 36 |
 | 7.2 | The fundamental theorem for finite-dimensional factored sets, **stated as a `Prop` and deliberately not proved** | Conjecture 1 |
+| 7.2 | The `𝒫(ℕ)` factored set and its two-block partition `Z` that is orthogonal to itself under Definition 17's history | Example 4 |
 | 7.3 | Embedded observations, counterfactability, conditional time | Definitions 46, 47, 48, 49, 50 |
 
 §5.1's Definitions 29 (evaluation) and 30 (support) and §6.1's Definition 39 (preimages)
 are the three nodes of these sections
 with no declaration of ours. All three are left out of the rows above and appear in the
-Mathlib-rendered table below instead, which is why those rows name 87 nodes rather than 90.
+Mathlib-rendered table below instead, which is why those rows name 88 nodes rather than 91.
 
-§7's two rows are of different kinds and should not be read together. §7.3 is *definitions
+§7's three rows are of different kinds and should not be read together. §7.3 is *definitions
 only* — the paper states no theorem about Definitions 46–50 — so what is claimed there is
 that each definition is rendered faithfully through the §3–§4 vocabulary, in
-`EmbeddedAgency.lean`. §7.2's row claims that Conjecture 1's *statement* is formalized, in
-`Conjecture.lean`, and nothing more: see "What is not claimed" below before reading that
-row as a result.
+`EmbeddedAgency.lean`. §7.2's first row claims that Conjecture 1's *statement* is formalized,
+in `Conjecture.lean`, and nothing more: see "What is not claimed" below before reading that
+row as a result. §7.2's second row is Example 4 (§7.2.2), in `InfiniteExamples.lean`: the
+paper's `F` on `𝒫(ℕ)` is `infFS`, its `Z` is `finSupp`, and the sentence the paper attaches
+to the example — "`Z` is orthogonal to itself according to the second option, in spite of
+having more than one part", where the second option is history-as-intersection, i.e.
+Definition 17 read on an arbitrary factored set — is proved as `orthogonal_finSupp_self`
+with `finSupp_ne_top`. Example 4 was brought into scope on 2026-08-30 (it had been excluded
+with Example 3 under a rationale that only fits Example 3; see "What is not claimed").
 
 Six of those nodes are stated in halves — five in two, one in three — and every half is
-carried, so those nodes appear in the inventory more than once. The 87 nodes above are
-cited by 94 annotations:
+carried, so those nodes appear in the inventory more than once, and Example 4 has four
+carriers (`infFS`, `finSupp`, `finSupp_ne_top`, `orthogonal_finSupp_self`: the example's
+two objects and the two halves of the sentence the paper attaches to it). The 88 nodes above
+are cited by 98 annotations:
 
 | Node | Carriers |
 |---|---|
@@ -87,10 +98,10 @@ non-vacuity witnesses, so it has far more entries than there are annotations, an
 naming a declaration that does not exist passes the checker and is caught only when
 `AxiomAudit.lean` is elaborated, by `#assert_axioms_clean` failing to resolve the name.
 Node *coverage* is machine-checked since 2026-08-17: `notes/scope-manifest.json` records
-the ruling (Examples 3–4 out) and the nine Mathlib-rendered nodes, and the same checker
+the ruling (Example 3 out, as amended 2026-08-30) and the nine Mathlib-rendered nodes, and the same checker
 fails unless (numbered nodes in the TeX) − out-of-scope − Mathlib-rendered equals the
 annotated node set in both directions — so removing the only carrier of an in-scope node,
-or annotating a node the manifest says is rendered, is a CI failure, and the `87 + 9 = 96`
+or annotating a node the manifest says is rendered, is a CI failure, and the `88 + 9 = 97`
 above is an invariant, not prose. (Recount by hand with
 `grep -rho "Paper node: [A-Za-z]* [0-9]*" FiniteFactoredSets/*.lean | sort -u` if you like;
 editing the manifest is a scope change and needs a ruling recorded here.) Every endpoint — §2–§7, witnesses included —
@@ -106,27 +117,45 @@ hypotheses, which nothing in §2–§7 does.
 The final fresh-context adversarial audit (harness round 11) and an independent external
 review are filed under `notes/audit/`: `round-11-findings.json` (38 raw findings with ids),
 `round-11-resolution.md` (disposition of each), `round-11-adjudication-prompts.md` (the
-cross-family sweeps that could not run — codex quota; re-run when it resets), and
+cross-family sweeps that could not run at the time — codex quota),
 `external-audit-gpt56sol-2026-08-17.md` (GPT-5.6 Sol's read-only review of head `4cbb1a7`:
-mathematical PASS, process CONDITIONAL PASS). Two of its conditions are still open and are
-recorded rather than hidden: **the human read-through of the frozen statement surface** —
+mathematical PASS, process CONDITIONAL PASS), and
+`round-11-crossfamily-2026-08-30.md` — the parked codex sweeps, **re-run 2026-08-30**
+against the post-fix surface (statement sweep over regenerated extracts + full-source
+integrity sweep, GPT-5.6 Sol, high effort). That re-run raised no mathematical finding
+against any statement; its yield was stale documentation (fixed in the same change), four
+new paper errata (E15–E18), and two witness-register corrections. It is whole-surface
+cross-family coverage of the fixed head — deliberately run *instead of* per-finding
+adjudication of the 38 already-fixed round-11 findings, which would have adjudicated
+superseded text; the round-11 verdict should now be read as cross-family-covered at the
+surface level, per-finding-single-family. One condition remains open and is recorded
+rather than hidden: **the human read-through of the frozen statement surface** —
 `notes/statement-readthrough-checklist.md` is the checklist, **deferred by Anson on
-2026-08-17 (not waived)** until he can review the mathematics himself — and the per-finding cross-family adjudication of round 11. Neither is a mathematical
-gap; both are trust-accounting obligations of the repo's own standard.
+2026-08-17 (not waived)** until he can review the mathematics himself. It is not a
+mathematical gap; it is a trust-accounting obligation of the repo's own standard.
 
 ## What is not claimed
 
 Two things, and both are rulings rather than gaps.
 
-**Examples 3 and 4 are out of scope.** Both concern `S = 𝒫(ℕ)` — *infinite* factored sets
-— and the paper itself expects the fundamental theorem to fail there; Example 3 is its
-intended counterexample. Excluding exactly the case the paper predicts is false is the
-line; there is no partial formalization of either example hiding anywhere. That said, the
-factored set they are about is built, as a *witness* with no paper-node annotation:
-`InfiniteExamples.lean` carries `infFS` on `ℕ → Bool`, the coordinate factorization that is
-the paper's `𝒫(ℕ)` factored set, and uses it to pin the finiteness hypotheses of §5 (see
-the non-vacuity section). Reading that file as a formalization of Examples 3 or 4 would be
-a misreading: it exhibits the object, and claims nothing the paper claims about it.
+**Example 3 is out of scope.** It concerns `S = 𝒫(ℕ)` — an *infinite* factored set — and
+is the paper's intended counterexample to any generalization of the fundamental theorem
+past finite dimension: the paper's claim about it is hedged ("it *seems* that … we *likely*
+want to say"), and there is no definition of orthogonality for arbitrary factored sets to
+state it against. Excluding exactly the case the paper predicts is false, and does not
+define, is the line; there is no partial formalization of Example 3 hiding anywhere. The
+factored set it is about is built — `InfiniteExamples.infFS` on `ℕ → Bool`, the coordinate
+factorization that is the paper's `𝒫(ℕ)` factored set — but it is also Example 4's `F`,
+and the claims attached to `infFS` (that `[Finite F.B]` is load-bearing in §3 and §5) are
+this library's, not Example 3's.
+
+Example 4 *was* excluded with Example 3 under the 2026-08-16 ruling, on the rationale
+above; a 2026-08-30 audit found that rationale fits Example 3 only. Example 4 sits under
+§7.2.2 ("Orthogonality and Time in Arbitrary Factored Sets"), is not about the fundamental
+theorem, and its claim — `Z = {finite, infinite}` is self-orthogonal under
+history-as-intersection — is a definite statement in this library's own committed vocabulary
+(`FactoredSet.history` *is* that intersection). It is therefore in scope and carried; the
+manifest records the amendment.
 
 **Conjecture 1 is stated and deliberately not proved.**
 `FundamentalTheoremFiniteDim` in `Conjecture.lean` is a `def … : Prop` — Theorem 3's
@@ -178,9 +207,9 @@ re-landed against `FactoredSet`: the first as `coeff_add_mul_of_split` in
 direction needs — as the private `eq_zero_of_eval_pos_eq_zero` in `Probability.lean`,
 which is `MvPolynomial.funext_set` at `Set.Ioi 0`.
 
-**Scope (settled 2026-08-16): 96 of 98 nodes**, all now landed. In: §1–§6 in full, §7's
-Definitions 46–50, and Conjecture 1 stated as a `Prop` and deliberately not proved. Out:
-Examples 3 and 4 only, as above.
+**Scope (settled 2026-08-16, amended 2026-08-30): 97 of 98 nodes**, all now landed. In:
+§1–§6 in full, §7's Definitions 46–50, Conjecture 1 stated as a `Prop` and deliberately not
+proved, and Example 4. Out: Example 3 only, as above.
 
 A consequence worth knowing before reading any §3–§4 statement: **finiteness is kept
 minimal.** `FactoredSet` carries no `Fintype S`, and §3–§4 are stated with `Finite B`
@@ -468,15 +497,16 @@ coordinate determines the second. Every declaration below is inventoried:
 | Proposition 25 and Theorem 2 hold and fail on a witness | `orthogonalGiven_fst_snd_top`, `orthogonalGiven_fst_fst_fst`, `not_orthogonalGiven_fst_fst_top`, `thm2_decomposition_coordFS`, `thm2_weakUnion_coordFS`, and a third decomposition instance at a genuinely non-degenerate `W` (`Examples.lean`) | `X ⊥^F X \| Z` being trivially true or trivially false, and Theorem 2's clauses never being instantiated |
 | Definitions 26–27 have degenerate corners a client should know about | `orthogonalGivenSet_empty`, `orthogonalGiven_bot` | reading `OrthogonalGivenSet` as always meaningful. Conditioning on `∅`, or on `Dis_S`, makes every pair orthogonal — faithful to the paper (a block is never empty), but a trap |
 
-Read the Theorem 2 row for exactly what it says, since two of its three instances are
-degenerate on purpose and one is not. `thm2_decomposition_coordFS` takes `W = ⊤`, which
-makes its first conjunct the already-proved `orthogonalGiven_fst_snd_top` and its second a
-consequence of Proposition 23 clause 4 alone; `thm2_weakUnion_coordFS` takes `W = Y`. The
-third instance is the one that meters decomposition, at `Z = ⊤`, `Y = fstFactor`,
-`W = sndFactor` and `X` the XOR partition. Contraction, composition and symmetry —
-Theorem 2's remaining clauses, and the two whose proofs consume Lemma 2 and Proposition 23
-clause 2 — have no concrete instantiation here; `orthogonalGiven_semigraphoid` carries all
-five, and the witnesses meter three.
+Read the Theorem 2 rows for exactly what they say, since two of the instances are
+degenerate on purpose. `thm2_decomposition_coordFS` takes `W = ⊤`, which makes its first
+conjunct the already-proved `orthogonalGiven_fst_snd_top` and its second a consequence of
+Proposition 23 clause 4 alone; `thm2_weakUnion_coordFS` takes `W = Y`. The non-degenerate
+decomposition instance is `thm2_decomposition_coordFS_xorPart`, at `X = diagPart`,
+`Y = orPart`, `W = andPart`, `Z = xorPart` (from the two-sided
+`orthogonalGiven_diagPart_orAnd_xorPart`); contraction and composition are metered on the
+same configuration by `thm2_contraction_coordFS` and `thm2_composition_coordFS`. Symmetry
+alone has no dedicated instance; `orthogonalGiven_semigraphoid` carries all five clauses,
+and the witnesses meter four of them.
 
 §5.1–§5.2 adds a third layer — the ring `Poly^F`, the characteristic polynomial `Q^F_E`,
 the monomials `mono`/`monos`/`poly`, and the irreducible parts `Irr^F(E)` — and again the
@@ -626,7 +656,7 @@ files:
 | Definition 46 is neither empty nor total, and its negative side is the paper's own reading | a positive `Observes` instance on `coordFS`, together with the paper's Newcomb and counterfactual-mugging configurations as *negative* instances (`Examples.lean`) | `Observes` holding vacuously or universally. The negatives matter more than the positive here: §7.3's point is that an agent may fail to observe an event it "knows", and a witness file that only exhibited positives would leave that unexercised |
 | Definition 46's **second** clause is metered, not merely satisfied | a positive `Observes` instance whose conditioning set is not a block of the world model, so `h^F(W\|Eᶜ) ≠ ∅` (`Examples.lean`) | a positive witness that discharges clause 2 for a reason independent of the agent. Where `Eᶜ` *is* a block of `W`, `W\|Eᶜ` is indiscrete and clause 2 holds for **every** agent — which is the shape of the first positive instance, disclosed rather than repaired |
 | Definition 47 is inhabited over a block-indexed family, so the reindexing is not vacuous | an `ObservesPartition` instance on `coordFS` (`Examples.lean`) | the `As : X.classes → Setoid S` rendering being unsatisfiable, or satisfiable only at a one-block `X` where the family carries no information |
-| Definition 47's sub-agent decomposition does work, so it is not Definition 46 read blockwise | an `ObservesPartition` instance with a **non-constant** family `As`, and one whose clause-2 obligations are not automatic (`Examples.lean`) | reading `∃ As, A = ⋁_S(range As) ∧ …` as decoration. At a constant family `sInf (Set.range As) = A` by `sInf_singleton`, so the existential carries no information, and the earlier positive instance is exactly that case |
+| Definition 47's sub-agent decomposition does work, so it is not Definition 46 read blockwise | an `ObservesPartition` instance with a **non-constant** family `As` (`Examples.lean`) | reading `∃ As, A = ⋁_S(range As) ∧ …` as decoration. At a constant family `sInf (Set.range As) = A` by `sInf_singleton`, so the existential carries no information, and the earlier positive instance is exactly that case. (The non-constant instance's clause-2 obligations still discharge for structural reasons — one block's restricted world history is indiscrete and the other uses the `⊤` agent — so what it meters is the decomposition, not clause 2; clause 2 is metered at Definition 46, per its own row) |
 | Definition 48 separates partitions, and the separating example is the paper's | `Counterfactable` holding at a factor of `coordFS` and **failing** at the XOR / bleen-grue partition (`Examples.lean`) | `Counterfactable` being total. `X = ⋁_S(h^F(X))` is an equation, and the XOR partition is exactly the paper's illustration of a partition whose history recovers strictly more than itself |
 | Definition 49 is inhabited, and separately from Definition 48 | a `CounterfactableRel` instance on `coordFS` (`Examples.lean`) | reading the relative notion as the absolute one with a spectator argument |
 | Definition 50 is computed at a conditioning set that is not `S` | a `BeforeGivenSet` instance on `coordFS` (`Examples.lean`) | conditional time being exercised only where `restrict` is the identity, which is where it reduces to Definition 19 |

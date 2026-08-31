@@ -15,12 +15,12 @@ The supported downstream import for factored-set research is:
 import FiniteFactoredSets.API
 ```
 
-**Status: complete** — §2–§7 of Garrabrant, arXiv:2109.11513, are formalized: all 96
-in-scope nodes are carried, 87 by declarations of ours and nine by Mathlib vocabulary.
+**Status: complete** — §2–§7 of Garrabrant, arXiv:2109.11513, are formalized: all 97
+in-scope nodes are carried, 88 by declarations of ours and nine by Mathlib vocabulary.
 This boundary is therefore the whole consumer surface rather than an incremental one.
 Two things it deliberately does not hand you, both recorded in
-`FiniteFactoredSets/README.md`: Examples 3 and 4 are out of scope by ruling — they concern
-*infinite* factored sets, the case the paper itself expects the fundamental theorem to
+`FiniteFactoredSets/README.md`: Example 3 is out of scope by ruling — it concerns an
+*infinite* factored set, the case the paper itself expects the fundamental theorem to
 fail in — and **Conjecture 1 is stated and deliberately not proved**, so
 `FundamentalTheoremFiniteDim` is a `Prop` that no declaration of ours has as its type.
 Consult that README for the exact trust surface.
@@ -151,8 +151,10 @@ under `FiniteFactoredSets.FactoredSet` (use `open FiniteFactoredSets` and dot no
   `Q^F_E = ∏_{C ∈ Irr^F(E)} poly^F_C(E)`, with `poly_dvd_Q` its divisibility corollary; and
   `irreducible_poly_of_mem_irr`
   (Proposition 31) says each factor is `Irreducible` in `Poly S` — Mathlib's
-  `Irreducible`, whose units over `ℝ` are the nonzero constants, which is the paper's
-  "no factorization into two polynomials of nonempty support".  Definition 35's minimality
+  `Irreducible`, whose units over `ℝ` are the nonzero constants.  That notion is strictly
+  stronger than the paper's "no factorization into two polynomials of nonempty support"
+  (Mathlib additionally requires a nonunit; the two agree on nonzero non-units, which every
+  `poly^F_C(E)` at stake is — see `dd:poly` in the glossary).  Definition 35's minimality
   clause is vacuous at a singleton (`∅` is the only strict subset of `{b}`, and it is not
   nonempty), so a one-element `C` is in `Irr^F(E)` as soon as `χ^F_C(E,E) = E`.  Two
   working lemmas come with it: `subset_chimeraImage_self` (`E ⊆ χ^F_C(E,E)` always, so
@@ -535,10 +537,10 @@ basis rather than merely unproved.  `natBoolFS` on `ℕ × Bool` is the other co
 dimension, infinite carrier, which is exactly the class Conjecture 1 quantifies over.
 Import it explicitly if a factored set outside the finite world is what you need.
 
-Neither of those is a paper node, and the omission is deliberate: **Examples 3 and 4 are
-out of scope by ruling.**  Both concern infinite factored sets — the case the paper itself
-expects the fundamental theorem to fail in, Example 3 being its intended counterexample —
-so the `𝒫(ℕ)` factored set appears in this library as a *witness* pinning finiteness
-hypotheses, carrying no paper-node annotation, and not as a claim to have formalized those
-two examples.
+`natBoolFS` is not a paper node.  `infFS` is the `F` of both §7.2 examples and carries
+Example 4's annotation together with `finSupp` / `orthogonal_finSupp_self` / `finSupp_ne_top`
+(the two-block partition that is orthogonal to itself under Definition 17's history, the
+paper's "second option"); **Example 3 is out of scope by ruling** — the case the paper
+itself expects the fundamental theorem to fail in — and nothing in `InfiniteExamples`
+claims it.
 -/

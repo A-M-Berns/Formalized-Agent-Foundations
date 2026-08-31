@@ -43,10 +43,11 @@ from pathlib import Path
 LI_LABEL = re.compile(r"(thm|lem|cor|def|app):[a-zA-Z]+|App\.\s|§")
 CF_LABEL = re.compile(r"Paper node:.*(Claim|Theorem)\s+[0-9]+")
 # Finite Factored Sets numbers every environment on its own global counter, so a
-# paper-facing `theorem` there cites `Theorem n`, `Proposition n`, `Lemma n` or
-# `Corollary n` — never a `<section>.<n>` pair.
+# paper-facing `theorem` there cites `Theorem n`, `Proposition n`, `Lemma n`,
+# `Corollary n` or (for the claim the paper attaches to Example 4 in prose)
+# `Example n` — never a `<section>.<n>` pair.
 FFS_LABEL = re.compile(
-    r"Paper node:.*(Theorem|Proposition|Lemma|Corollary)\s+[0-9]+")
+    r"Paper node:.*(Theorem|Proposition|Lemma|Corollary|Example)\s+[0-9]+")
 
 MA_LABEL = re.compile(
     r"Paper node:.*(Theorem|Lemma|Proposition|Corollary|Condition)\s+[0-9]+\.[0-9]+"

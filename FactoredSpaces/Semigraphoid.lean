@@ -273,7 +273,7 @@ theorem isCompositionalSemigraphoid_structIndepRel [∀ i, Fintype (Ω i)] :
       · haveI := hΩ
         haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
         haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
-        refine structIndepGiven_of_forall_condIndepVar fun P hP => ?_
+        refine structIndepGiven_of_forall_condIndepVar (Or.inl ‹_›) fun P hP => ?_
         exact (isSemigraphoid_condIndepRel P).decomposition X Y Z W
           (condIndepVar_of_structIndepGiven h P hP)
     · intro α β κ δ X Y Z W h
@@ -288,7 +288,7 @@ theorem isCompositionalSemigraphoid_structIndepRel [∀ i, Fintype (Ω i)] :
       · haveI := hΩ
         haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
         haveI : Nonempty κ := ⟨Z (Classical.arbitrary _)⟩
-        refine structIndepGiven_of_forall_condIndepVar fun P hP => ?_
+        refine structIndepGiven_of_forall_condIndepVar (Or.inl ‹_›) fun P hP => ?_
         exact (isSemigraphoid_condIndepRel P).weakUnion X Y Z W
           (condIndepVar_of_structIndepGiven h P hP)
     · intro α β κ δ X Y Z W h₁ h₂
@@ -326,7 +326,7 @@ theorem isCompositionalSemigraphoid_structIndepRel [∀ i, Fintype (Ω i)] :
         haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
         haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
         haveI : Nonempty κ := ⟨Z (Classical.arbitrary _)⟩
-        refine structIndepGiven_of_forall_condIndepVar fun P hP => ?_
+        refine structIndepGiven_of_forall_condIndepVar (Or.inl ‹_›) fun P hP => ?_
         exact (isSemigraphoid_condIndepRel P).contraction X Y Z W
           (condIndepVar_of_structIndepGiven h₁ P hP) (condIndepVar_of_structIndepGiven h₂ P hP)
   refine ⟨hsemi, ?_⟩

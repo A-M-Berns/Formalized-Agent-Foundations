@@ -1457,10 +1457,10 @@ def main():
              'scope notes and the deliberately-unannotated inventory endpoints; '
              '<strong>no strength classification exists for this paper</strong>'),
             ('finite-factored-sets', ffs,
-             '<strong>complete</strong> — §2–§7; 87 nodes carried by declarations and '
-             'nine rendered by Mathlib vocabulary, 96 in scope. Conjecture 1 is stated '
-             'as a <code>Prop</code> and deliberately not proved, and Examples 3 and 4 '
-             'are out of scope by ruling; <strong>no strength classification exists for '
+             '<strong>complete</strong> — §2–§7; 88 nodes carried by declarations and '
+             'nine rendered by Mathlib vocabulary, 97 in scope. Conjecture 1 is stated '
+             'as a <code>Prop</code> and deliberately not proved, and Example 3 '
+             'is out of scope by ruling; <strong>no strength classification exists for '
              'this paper</strong>'),
             ('factored-space-models', fsm,
              '<strong>in progress</strong> — the correspondence view of what is landed so '

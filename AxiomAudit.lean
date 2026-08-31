@@ -2323,9 +2323,10 @@ whenever a biextensional frame is replaced by its collapse, together with the th
 `Frame.exists_env_injective_of_biextEquiv` — the standard refuters for `◁ₓ` and `◁₊` —
 and `Frame.BiextEquiv.dual`, which every dualized definition runs on); the
 inhabitation of Definition 31's choice functions (`Frame.partitionSectionsOut` and the
-`Nonempty` instance built from it, which the paper assumes without comment); the one
-combined-iff convenience wrapper (`Frame.addSubagent_iff_addSubagentCategorical`,
-whose two halves are the annotated Claims 55 and 56); and the last three blocks, the
+`Nonempty` instance built from it, which the paper assumes without comment); the two
+combined-iff convenience wrappers (`Frame.addSubagent_iff_addSubagentCategorical`,
+whose two halves are the annotated Claims 55 and 56, and its multiplicative sibling
+`Frame.multSubagent_iff_multSubagentCategorical`, the composite of Claims 59 and 60); and the last three blocks, the
 non-vacuity, subagency, and operation/Appendix-B witnesses of
 `CartesianFrames/Examples.lean`, listed here so that the separations they assert are
 axiom-checked alongside the definitions they constrain. -/
@@ -2383,6 +2384,7 @@ open CartesianFrames in
   Frame.AddSubagentCategorical Frame.MultSubagentCategorical
   Frame.AddSubagentCategorical.addSubagent Frame.AddSubagent.addSubagentCategorical
   Frame.addSubagent_iff_addSubagentCategorical
+  Frame.multSubagent_iff_multSubagentCategorical
   Frame.MultSubagentSubEnv
   Frame.multSubagentCategorical_iff_multSubagentSubEnv
   Frame.multSubagentSubEnv_iff_multSubagent
@@ -2451,15 +2453,16 @@ accounting is prose in `FiniteFactoredSets/README.md`, to be re-derived by hand 
 
 This formalization is **complete** for its ruled scope: the list below covers §2–§7 —
 every in-scope node has a carrier or is Mathlib-rendered; Conjecture 1 (§7.2) is listed as
-a stated `Prop` that nothing proves, and Examples 3–4 are out of scope by ruling.  Nine of
+a stated `Prop` that nothing proves, and Example 3 is out of scope by ruling (Example 4 was
+brought into scope 2026-08-30 and is carried by the `InfiniteExamples` entries below).  Nine of
 the paper's nodes have no Lean carrier at all because they are rendered by
 Mathlib vocabulary under the `dd:` tags in `FiniteFactoredSets.lean`.  Six are in §2.1 —
 Definition 1 (the disjoint union `⊔S`) is absorbed into `Setoid` and the dependent product,
 Definition 2 (partition) is `Setoid`, Definition 5 (`∼_X`) is the setoid relation,
 Definition 6 (finer) is `≤`, Definition 7 (`Dis_S`/`Ind_S`) is `⊥`/`⊤`, and Definition 9
 (`∏(B)`) is the dependent product — and three are outside it: §5.1's Definitions 29
-(evaluation) and 30 (support) and §6.1's Definition 39 (preimages).  Nine plus the 87
-carried below is the 96 in-scope nodes.  Those nine are recorded in
+(evaluation) and 30 (support) and §6.1's Definition 39 (preimages).  Nine plus the 88
+carried below is the 97 in-scope nodes.  Those nine are recorded in
 `FiniteFactoredSets/README.md` rather than
 inventoried here, because there is no declaration of this project's to axiom-check. -/
 
@@ -2599,11 +2602,12 @@ open FiniteFactoredSets in
   Examples.lemma2_lhs_coordFS Examples.lemma2_rhs_coordFS
   -- §4.3: restriction can entangle, so `OrthogonalGiven` is neither empty nor total and is
   -- not implied by Definition 18; Proposition 25 exhibited on the witness, and Theorem 2
-  -- partly so.  Read the Theorem 2 witnesses for exactly what they are: only decomposition
-  -- and weak union have concrete instances, and `thm2_weakUnion_coordFS` takes `W = Y`, so
-  -- contraction, composition and symmetry have no concrete instantiation here.  The
-  -- endpoint `orthogonalGiven_semigraphoid` carries all five clauses; the witnesses meter
-  -- two of them.
+  -- largely so.  Read the Theorem 2 witnesses for exactly what they are: the two
+  -- instances here are degenerate on purpose (`thm2_decomposition_coordFS` takes `W = ⊤`,
+  -- `thm2_weakUnion_coordFS` takes `W = Y`); the non-degenerate decomposition,
+  -- contraction and composition instances are in the block below.  The endpoint
+  -- `orthogonalGiven_semigraphoid` carries all five clauses; the witnesses meter four
+  -- (symmetry has no dedicated instance).
   Examples.fstOnEdiag Examples.sndOnEdiag
   Examples.historySub_fstOnEdiag Examples.historySub_sndOnEdiag
   Examples.not_orthogonalGivenSet_Ediag Examples.Ediag_mem_xorPart_classes
@@ -2879,6 +2883,8 @@ open FiniteFactoredSets in
   InfiniteExamples.boolFactor_mem InfiniteExamples.singleton_natFactor_subset
   InfiniteExamples.singleton_boolFactor_subset InfiniteExamples.natBoolFS_B_finite
   InfiniteExamples.not_finite_natBool
+  InfiniteExamples.finSupp InfiniteExamples.finSupp_rel_iff InfiniteExamples.finSupp_ne_top
+  InfiniteExamples.history_finSupp InfiniteExamples.orthogonal_finSupp_self
   InfiniteExamples.history_natFactor InfiniteExamples.history_boolFactor
   InfiniteExamples.orthogonal_natFactor_boolFactor
   InfiniteExamples.not_orthogonal_natFactor_self
@@ -2890,9 +2896,11 @@ open FiniteFactoredSets in
   -- `infFS` is the other side of the line: the coordinate factorization of `ℕ → Bool`,
   -- whose basis is infinite (`infFS_B_infinite`, `not_finite_B`).  Up to
   -- `𝒫(ℕ) ≃ (ℕ → Bool)` it is the factored set §7.2 uses to say it does *not* expect the
-  -- fundamental theorem past finite dimension; the paper's §7.2 examples are out of scope
-  -- by the ruling in `KNOWLEDGE.md`, so no node is claimed for it and it carries no
-  -- annotation.  `not_isDistribution_diracAt_infFS` is what makes it earn its place: the
+  -- fundamental theorem past finite dimension.  It is the `F` of both §7.2 examples:
+  -- Example 3 is out of scope by ruling, while Example 4 (in scope since 2026-08-30) is
+  -- carried by `infFS` with `finSupp` / `finSupp_ne_top` / `orthogonal_finSupp_self`
+  -- below.  `not_isDistribution_diracAt_infFS` is what makes the conjecture-boundary
+  -- reading earn its place: the
   -- `[Finite F.B]` on `FactoredSet.isDistribution_diracAt` is load-bearing, because with
   -- `B` infinite the family in Definition 37 has infinite multiplicative support and
   -- `finprod` returns `1` rather than the elementary product.  So past finite dimension
@@ -3420,7 +3428,8 @@ open FactoredSpaces in
   cohistory_union_eq_univ_of_condIndepAll condProb_eq_of_agree_on_relevant
   condIndepEventVar_proj_cohistory condIndepVarEvent_proj_cohistory disintegrates_cohistory
   cohistory_eq_compl_eventHistory disjoint_eventHistory_of_condIndepAll
-  structIndepGiven_iff_forall_condIndepVar structIndepGiven_of_open
+  structIndepGiven_iff_forall_condIndepVar structIndepGiven_iff_forall_condIndepVar_of_nonempty
+  structIndepGiven_of_open
   -- §5.1: Definition 5.1, Proposition 5.2; plus the two unnumbered claims named in the
   -- preamble (Table 1 "Intersection" row; the Pearl semigraphoid fact behind Prop 5.2)
   IsSemigraphoid IsGraphoid IsCompositionalSemigraphoid

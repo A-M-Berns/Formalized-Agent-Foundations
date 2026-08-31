@@ -58,11 +58,18 @@ remains anywhere. d-separation itself, which the paper uses without defining, is
 * `history X C` is `H(X | C)`; `history X Set.univ` is the unconditional `H(X)`;
   `eventHistory A C = history (indic A) C` is `H(A | C)` (`dd:event-indicator`);
   `fiber Z z` is the event `{Z = z}`, so `history X (fiber Z z)` is `H(X | z)`.
-* Value spaces carry `[Nonempty α]` only where the printed statement is otherwise
-  *false* — Lemmas 4.7, A.2, 4.9 and Theorem 6.2 (errata E1, E12, E14; see
-  `notes/paper-errata.md`); Definition 5.1 / Proposition 5.2, Lemmas 4.8, 4.12 and B.1
-  carry no value-space hypothesis at all (their empty-value cases are proved directly
-  through the degenerate-history lemmas of `History.lean`).
+* Value spaces carry an inhabitation hypothesis only where the printed statement is
+  otherwise *false* — Lemmas 4.7, A.2, 4.9 and Theorem 6.2 (errata E1, E12, E14; see
+  `notes/paper-errata.md`). Theorem 6.2 carries the weakest such hypothesis,
+  `Nonempty α ∨ Nonempty β` (it fails only with both value spaces empty). Lemmas 4.7 and
+  A.2 carry `[Nonempty α]`, which is slightly stronger than their exact failure set — they
+  fail only when `Val(X)` is empty *and* at least two factors are empty; with `Val(X)` empty
+  and at most one empty factor they hold — because the exact condition is a statement
+  about the factors, not a hypothesis the paper's statement has a slot for. Lemma 4.9's
+  `[Nonempty α]` is exact (one empty factor suffices to refute it). Definition 5.1 /
+  Proposition 5.2, Lemmas 4.8, 4.12 and B.1 carry no value-space hypothesis at all (their
+  empty-value cases are proved directly through the degenerate-history lemmas of
+  `History.lean`).
 
 The `dd:` glossary lives in `FactoredSpaces.lean`; settled decisions, the correspondence
 table and pitfalls are in `KNOWLEDGE.md`.

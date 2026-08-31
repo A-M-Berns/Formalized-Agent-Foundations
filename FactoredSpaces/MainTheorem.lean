@@ -14,19 +14,9 @@ universe u v
 variable {I : Type u} [DecidableEq I] [Fintype I] {Ω : I → Type v} [∀ i, Fintype (Ω i)]
 variable {α β γ : Type*}
 
-/-- **Soundness and completeness of structural independence.** For random variables
-`X, Y, Z` on the factored space `Ω`: `X ⊥_Ω Y | Z` iff `X ⊥^P Y | Z` holds for all
-probability distributions `P` that factorize over `Ω`.
-
-The two `[Nonempty]` binders on `Val(X)` and `Val(Y)` are **added** by the formalization:
-the theorem as printed quantifies over arbitrary random variables and is false without
-them (`notes/paper-errata.md`, E14 — with an empty factor `Ω_i` and `Val(X)`, `Val(Y)`
-both empty there is no distribution at all, so the right-hand side is vacuously true
-while `H(X | z)` is a nonempty set of indices).  Nothing is assumed about `Val(Z)`.  See
-`dd:variable` in the glossary for where value-space inhabitation enters this development.
-
-Paper node: Theorem 6.2 (§6.1). -/
-theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
+/-- Theorem 6.2 with both value spaces inhabited — the case that carries the mathematics;
+the paper-node statement above reduces to it whenever `Ω` is inhabited. -/
+lemma structIndepGiven_iff_forall_condIndepVar_of_nonempty [Nonempty α] [Nonempty β]
     (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) :
     StructIndepGiven X Y Z ↔ ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z := by
   -- Lemma 4.9 turns the histories of `X` and `Y` into unions over their events, so
@@ -55,20 +45,53 @@ theorem structIndepGiven_iff_forall_condIndepVar [Nonempty α] [Nonempty β]
     exact (hkey (fiber Z z)).mpr fun x y =>
       disjoint_eventHistory_of_condIndepAll fun P hP => h P hP x y z
 
+/-- **Soundness and completeness of structural independence.** For random variables
+`X, Y, Z` on the factored space `Ω`: `X ⊥_Ω Y | Z` iff `X ⊥^P Y | Z` holds for all
+probability distributions `P` that factorize over `Ω`.
+
+The hypothesis `Nonempty α ∨ Nonempty β` — at least one of `Val(X)`, `Val(Y)` inhabited —
+is **added** by the formalization: the theorem as printed quantifies over arbitrary random
+variables and is false exactly when both value spaces are empty (`notes/paper-errata.md`,
+E14 — then some factor `Ω_i` is empty, there is no distribution at all, so the right-hand
+side is vacuously true while `H(X | z)` is a nonempty set of indices).  The disjunction is
+the weakest correction: with exactly one value space empty, `Ω` is empty, so the right-hand
+side is again vacuous but now the inhabited side's history of the empty event is `∅` and
+the left-hand side holds too.  Nothing is assumed about `Val(Z)`.  See `dd:variable` in
+the glossary for where value-space inhabitation enters this development.
+
+Paper node: Theorem 6.2 (§6.1). -/
+theorem structIndepGiven_iff_forall_condIndepVar (hne : Nonempty α ∨ Nonempty β)
+    (X : Pt Ω → α) (Y : Pt Ω → β) (Z : Pt Ω → γ) :
+    StructIndepGiven X Y Z ↔ ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z := by
+  by_cases hΩ : Nonempty (Pt Ω)
+  · haveI := hΩ
+    haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
+    haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
+    exact structIndepGiven_iff_forall_condIndepVar_of_nonempty X Y Z
+  · rw [not_nonempty_iff] at hΩ
+    constructor
+    · intro _ P _
+      exact absurd P.nonempty_carrier (not_nonempty_iff.mpr hΩ)
+    · intro _ z
+      have hfib : fiber Z z = ∅ := Set.eq_empty_of_isEmpty _
+      rcases hne with hα | hβ
+      · rw [history_eq_empty_of_eq_empty X hfib]; exact Finset.disjoint_empty_left _
+      · rw [history_eq_empty_of_eq_empty Y hfib]; exact Finset.disjoint_empty_right _
+
 /-- The soundness direction of Theorem 6.2 on its own. -/
 lemma condIndepVar_of_structIndepGiven
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ} (h : StructIndepGiven X Y Z)
     (P : Distr (Pt Ω)) (hP : Factorizes P) : CondIndepVar P X Y Z := by
   haveI : Nonempty (Pt Ω) := P.nonempty_carrier
   haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
-  haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
-  exact (structIndepGiven_iff_forall_condIndepVar X Y Z).mp h P hP
+  exact (structIndepGiven_iff_forall_condIndepVar (Or.inl ‹_›) X Y Z).mp h P hP
 
-/-- The completeness direction of Theorem 6.2 on its own. -/
-lemma structIndepGiven_of_forall_condIndepVar [Nonempty α] [Nonempty β]
+/-- The completeness direction of Theorem 6.2 on its own, under the same
+`Nonempty α ∨ Nonempty β` hypothesis as the theorem. -/
+lemma structIndepGiven_of_forall_condIndepVar (hne : Nonempty α ∨ Nonempty β)
     {X : Pt Ω → α} {Y : Pt Ω → β} {Z : Pt Ω → γ}
     (h : ∀ P : Distr (Pt Ω), Factorizes P → CondIndepVar P X Y Z) : StructIndepGiven X Y Z :=
-  (structIndepGiven_iff_forall_condIndepVar X Y Z).mpr h
+  (structIndepGiven_iff_forall_condIndepVar hne X Y Z).mpr h
 
 /-- **Strong completeness.** If there is a nonempty open set `S ⊆ Δ^⊗(Ω)` with
 `X ⊥^P Y | Z` for all `P ∈ S`, then `X ⊥_Ω Y | Z`.  Openness of `S` in `Δ^⊗(Ω)` — a
@@ -87,7 +110,7 @@ theorem structIndepGiven_of_open
   haveI : Nonempty α := ⟨X (Classical.arbitrary _)⟩
   haveI : Nonempty β := ⟨Y (Classical.arbitrary _)⟩
   obtain ⟨ε, hε, hball⟩ := hopen Q hQS
-  exact structIndepGiven_of_forall_condIndepVar
+  exact structIndepGiven_of_forall_condIndepVar (Or.inl ‹_›)
     (condIndepVar_of_local (hS hQS) hε fun Q' hQ'f hd => h Q' (hball Q' hQ'f hd))
 
 end FactoredSpaces

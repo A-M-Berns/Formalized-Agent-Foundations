@@ -366,26 +366,39 @@ argued and are recorded beside the table rather than in it.
   factored set may have infinite size — which is exactly why `dd:finiteness-minimal` keeps
   the two conditions apart rather than collapsing them into one `Fintype`.
 
-## Scope (Anson's ruling, 2026-08-16): 96 of 98 nodes
+## Scope (Anson's ruling, 2026-08-16, amended 2026-08-30): 97 of 98 nodes
 
-**In:** §1–§6 in full; §7's Definitions 46–50 (embedded agency); and **Conjecture 1,
-stated as a Lean `Prop` and deliberately not proved**, carrying a citation.
+**In:** §1–§6 in full; §7's Definitions 46–50 (embedded agency); **Conjecture 1,
+stated as a Lean `Prop` and deliberately not proved**, carrying a citation; and, since
+2026-08-30, **Example 4** (`InfiniteExamples.finSupp`, `orthogonal_finSupp_self`,
+`finSupp_ne_top`, with `infFS` as its `F`).
 
-**Out:** Examples 3 and 4 only. Both are about `S = 𝒫(ℕ)` — *infinite* factored sets —
-and the paper itself expects the fundamental theorem to fail there; Example 3 is its
-intended counterexample. Excluding exactly the case the paper predicts is false is a
-defensible line; "we stopped at §6" is not.
+**Out:** Example 3 only. It is about `S = 𝒫(ℕ)` — an *infinite* factored set — and is the
+paper's hedged counterexample to the fundamental theorem past finite dimension, stated
+against no definition of orthogonality. Excluding exactly the case the paper predicts is
+false is a defensible line; "we stopped at §6" is not.
 
-**Stage 7 landed (2026-08-17), so the scope is now fully realized: 87 node carriers + 9
-Mathlib-rendered whole nodes = 96.** §7.3 is `EmbeddedAgency.lean` (Definitions 46–50,
+*Why Example 4 moved.* The original ruling excluded both examples as "the case the paper
+predicts the fundamental theorem fails in". That describes Example 3 (§7.2.1). Example 4 is
+under §7.2.2 and illustrates the *second option* for defining orthogonality at infinite
+dimension — history as the intersection of all generating `C ⊆ B`, orthogonality and time
+"left alone" — which is verbatim this library's `history`/`Orthogonal` read on an arbitrary
+`FactoredSet`. Its claim (`Z` self-orthogonal though two-block) is a theorem of ours, not
+speculation, so the non-formalizability rationale never applied to it. A fresh-context audit
+raised this on 2026-08-30 and Anson ruled it in.
+
+**Stage 7 landed (2026-08-17), so the scope is now fully realized: 88 node carriers + 9
+Mathlib-rendered whole nodes = 97.** §7.3 is `EmbeddedAgency.lean` (Definitions 46–50,
 definitions only — the paper states no theorem about them) and §7.2 is `Conjecture.lean`.
 The infinite factored set the round-9 audit had sitting in scratch is now committed as
 `InfiniteExamples.infFS` (`ℕ → Bool`, coordinate factorization), alongside `natBoolFS` on
 `ℕ × Bool` (finite dimension, infinite carrier — the class Conjecture 1 ranges over and
-Theorem 3 does not). Read those as *witnesses pinning finiteness hypotheses*, carrying no
-paper-node annotation: they are not a formalization of Examples 3 or 4, which remain out of
-scope. `Examples.lean` stays finite by construction; that is why the infinite witnesses got
-their own file rather than being folded in.
+Theorem 3 does not). Read `natBoolFS` and the `evEq` results as *witnesses pinning
+finiteness hypotheses*, carrying no paper-node annotation; `infFS` itself and the `finSupp`
+results carry Example 4's annotation (since 2026-08-30), and nothing in the file is a
+formalization of Example 3, which remains out of scope. `Examples.lean` stays finite by
+construction; that is why the infinite witnesses got their own file rather than being
+folded in.
 
 ### Consequence: keep finiteness minimal, starting now
 
@@ -567,10 +580,13 @@ it belongs in the library as a stated open `Prop` with this note attached.
   is the checklist (51 Tier-A definitions, 43 Tier-B theorems, file:line, generated from the
   annotations); it is Anson's to perform and sign — **deferred by Anson on 2026-08-17, not
   waived**, until he understands the mathematics well enough to review the statements himself
-  (same ruling for Cartesian Frames). (3) cross-family adjudication of the 38
-  round-11 findings — prompts parked, codex quota resets 2026-08-20; note that the external
-  review is whole-artifact cross-family coverage of the *fixed* surface, which is the
-  stronger property, but not per-finding adjudication.
+  (same ruling for Cartesian Frames). (3) was closed on 2026-08-30: the parked codex
+  sweeps were re-run against the current head (statement extracts regenerated, integrity
+  sweep over full source; `notes/audit/round-11-crossfamily-2026-08-30.md`). No
+  mathematical finding survived against any statement; the yield was stale documentation,
+  four new paper errata (E15–E18) and two witness-register corrections, all fixed in the
+  same change. This is whole-surface cross-family coverage of the fixed head, chosen
+  deliberately over per-finding adjudication of the 38 superseded findings.
 * **Release-record rule (from the review):** the read-through, the adversarial audit and the
   green build must name the same SHA. Any correction from the read-through re-opens the
   gate at a new SHA; the checklist's sign-off block records it.
@@ -584,10 +600,11 @@ The last adversarial round over the whole library, run after §7 landed. Its fin
 so the round ran as a *single-family* audit — ten Opus lenses (four faithfulness shards,
 four integrity shards, one cross-cutting, one register/tooling), with no independent
 cross-family adjudication of the findings. Every earlier round had a second family
-adjudicating. **This is recorded as an outstanding TODO, not as a completed step**: the
-adjudication prompts are written and parked at `.harness/audit/final-codex-*.txt`, and the
-round should be re-run through them when quota returns. Read a round-11 verdict as
-single-family until that happens.
+adjudicating. **This TODO was discharged on 2026-08-30**: the parked prompts were re-run (adapted to
+the amended scope) against the post-fix head — see
+`notes/audit/round-11-crossfamily-2026-08-30.md`. Read a round-11 verdict as cross-family
+covered at the whole-surface level; the per-finding channel for the original 38 was
+superseded by the fixes and never ran.
 
 * **Lean 4.31 makes cross-module dependency probes silently lie.** `Environment.find?` on an
   **imported** theorem returns a `ConstantInfo` whose `value?` is `none` — proof bodies live
