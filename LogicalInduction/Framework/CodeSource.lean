@@ -47,18 +47,18 @@ attribute [local irreducible] Nat.sqrt
 /-- Reading a base-`16` little-endian digit list back out, position by position.  Beyond
 the list the quotient has run out and the digit is `0`, which is exactly `getD`'s
 default. -/
-lemma ofDigits_div_pow_mod {L : List ℕ} (hd : ∀ d ∈ L, d < 16) (i : ℕ) :
-    Nat.ofDigits 16 L / 16 ^ i % 16 = L.getD i 0 := by
+lemma ofDigits_div_pow_mod {b : ℕ} (hb : 1 < b) {L : List ℕ} (hd : ∀ d ∈ L, d < b)
+    (i : ℕ) : Nat.ofDigits b L / b ^ i % b = L.getD i 0 := by
   rcases lt_or_ge i L.length with hi | hi
-  · rw [Nat.ofDigits_div_pow_eq_ofDigits_drop i (by norm_num) L hd,
+  · rw [Nat.ofDigits_div_pow_eq_ofDigits_drop i (lt_trans Nat.zero_lt_one hb) L hd,
       List.drop_eq_getElem_cons hi, Nat.ofDigits_cons]
-    have hrw : (L[i] : ℕ) + 16 * Nat.ofDigits 16 (L.drop (i + 1)) =
-        L[i] + Nat.ofDigits 16 (L.drop (i + 1)) * 16 := by ring
+    have hrw : (L[i] : ℕ) + b * Nat.ofDigits b (L.drop (i + 1)) =
+        L[i] + Nat.ofDigits b (L.drop (i + 1)) * b := by ring
     rw [hrw, Nat.add_mul_mod_self_right,
       Nat.mod_eq_of_lt (hd _ (L.getElem_mem hi)), List.getD_eq_getElem _ _ hi]
-  · have hlt : Nat.ofDigits 16 L < 16 ^ i :=
-      lt_of_lt_of_le (Nat.ofDigits_lt_base_pow_length (by norm_num) hd)
-        (Nat.pow_le_pow_right (by norm_num) hi)
+  · have hlt : Nat.ofDigits b L < b ^ i :=
+      lt_of_lt_of_le (Nat.ofDigits_lt_base_pow_length hb hd)
+        (Nat.pow_le_pow_right (le_of_lt hb) hi)
     rw [Nat.div_eq_of_lt hlt, Nat.zero_mod, List.getD_eq_default _ _ hi]
 
 /-- Base-4 digits of a base-16 numeral: `16 = 4 ^ 2`, so base-16 slot `j / 2` carries
@@ -66,7 +66,7 @@ base-4 digits `2 * (j / 2)` and `2 * (j / 2) + 1`. -/
 lemma dig4_ofDigits_sixteen {L : List ℕ} (hd : ∀ d ∈ L, d < 16) (j : ℕ) :
     dig4 (Nat.ofDigits 16 L) j = L.getD (j / 2) 0 / 4 ^ (j % 2) % 4 := by
   have hdq : Nat.ofDigits 16 L / 16 ^ (j / 2) % 16 = L.getD (j / 2) 0 :=
-    ofDigits_div_pow_mod hd _
+    ofDigits_div_pow_mod (by norm_num) hd _
   have hsplit : (4 : ℕ) ^ j = 16 ^ (j / 2) * 4 ^ (j % 2) := by
     have h : j = 2 * (j / 2) + j % 2 := by omega
     calc (4 : ℕ) ^ j = 4 ^ (2 * (j / 2) + j % 2) := by rw [← h]
@@ -135,6 +135,239 @@ lemma BigDigits.ofBase16Digits {L : ℕ → List ℕ} {cl cd : Code}
           Nat.ofDigits_lt_base_pow_length (by norm_num) (hmem n)
       _ = 4 ^ ((L n).length * 2) := by rw [mul_comm, pow_mul]; norm_num)
   exact ⟨_, _, hclen, hdigit⟩
+
+
+/-! ## Base-`64` digit extraction, and naming a token run
+
+`ofBase16Digits` serves alphabets of fewer than sixteen tags — `Code.sourceNat`'s `1..8`.
+The paper's arithmetic *formula* alphabet is `0..18, 20..22`
+(`ArithSource.sourceTokens`), which does not fit, so the same theory runs once more at
+`64 = 4 ^ 3`: one base-`64` digit per emitted token.
+
+`tokenListNat` is the resulting naming map for a token run.  It appends the sentinel
+`63` — a value outside every alphabet used here — so that the top digit is never `0` and
+therefore never lost to truncation; that makes the map injective and gives the decoder a
+terminator to stop at.  Its base-`4` digit count is `3 * (n + 1)` for a run of `n`
+tokens: **linear in the written text**, which is the whole point.  Compare the Godel code
+of the formula that text denotes, which pairs at every node and is doubly exponential. -/
+
+/-- Base-4 digits of a base-64 numeral: `64 = 4 ^ 3`, so base-64 slot `j / 3` carries
+base-4 digits `3 * (j / 3)`, `3 * (j / 3) + 1` and `3 * (j / 3) + 2`. -/
+lemma dig4_ofDigits_sixtyFour {L : List ℕ} (hd : ∀ d ∈ L, d < 64) (j : ℕ) :
+    dig4 (Nat.ofDigits 64 L) j = L.getD (j / 3) 0 / 4 ^ (j % 3) % 4 := by
+  have hdq : Nat.ofDigits 64 L / 64 ^ (j / 3) % 64 = L.getD (j / 3) 0 :=
+    ofDigits_div_pow_mod (by norm_num) hd _
+  have hsplit : (4 : ℕ) ^ j = 64 ^ (j / 3) * 4 ^ (j % 3) := by
+    have h : j = 3 * (j / 3) + j % 3 := by omega
+    calc (4 : ℕ) ^ j = 4 ^ (3 * (j / 3) + j % 3) := by rw [← h]
+      _ = (4 ^ 3) ^ (j / 3) * 4 ^ (j % 3) := by rw [pow_add, pow_mul]
+      _ = 64 ^ (j / 3) * 4 ^ (j % 3) := by norm_num
+  rw [dig4, hsplit, ← Nat.div_div_eq_div_mul, ← hdq]
+  set a := Nat.ofDigits 64 L / 64 ^ (j / 3) with ha
+  have hr : j % 3 = 0 ∨ j % 3 = 1 ∨ j % 3 = 2 := by omega
+  rcases hr with hr | hr | hr
+  · rw [hr, pow_zero, Nat.div_one, Nat.div_one]
+    exact (Nat.mod_mod_of_dvd a (by norm_num)).symm
+  · have h1 : a % 64 / 4 = a / 4 % 16 := by
+      have := Nat.mod_mul_right_div_self a 4 16
+      norm_num at this
+      exact this
+    rw [hr, pow_one, h1]
+    exact (Nat.mod_mod_of_dvd (a / 4) (by norm_num)).symm
+  · have h2 : a % 64 / 16 = a / 16 % 4 := by
+      have := Nat.mod_mul_right_div_self a 16 4
+      norm_num at this
+      exact this
+    have h16 : (4 : ℕ) ^ (2 : ℕ) = 16 := by norm_num
+    rw [hr, h16, h2, Nat.mod_mod_of_dvd (a / 16) (by norm_num)]
+
+/-- Poly-fueled access to a base-64 tag stream gives poly-fueled base-4 digit access to
+the numeral it denotes — the base-`64` twin of `BigDigits.ofBase16Digits`. -/
+lemma BigDigits.ofBase64Digits {L : ℕ → List ℕ} {cl cd : Code}
+    (hlen : PolyFueled cl (fun n => (L n).length))
+    (hdig : PolyFueled cd (fun z => (L z.unpair.1).getD z.unpair.2 0))
+    (hlt : ∀ n j, (L n).getD j 0 < 64) :
+    BigDigits (fun n => Nat.ofDigits 64 (L n)) := by
+  have hmem : ∀ n, ∀ d ∈ L n, d < 64 := by
+    intro n d hd
+    obtain ⟨i, hi, rfl⟩ := List.mem_iff_getElem.mp hd
+    rw [← List.getD_eq_getElem (L n) 0 hi]
+    exact hlt n i
+  obtain ⟨cdm3, hdm3⟩ := divmodc_polyFueled 3 (by norm_num)
+  obtain ⟨cdm4, hdm4⟩ := divmodc_polyFueled 4 (by norm_num)
+  obtain ⟨cdm16, hdm16⟩ := divmodc_polyFueled 16 (by norm_num)
+  -- index `⟨n, j⟩ ↦ ⟨n, j / 3⟩`, then the three base-4 digits of the base-64 slot
+  have hthird : PolyFueled _ (fun z : ℕ => z.unpair.2 / 3) :=
+    (PolyFueled.left.comp (hdm3.comp PolyFueled.right)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hres : PolyFueled _ (fun z : ℕ => z.unpair.2 % 3) :=
+    (PolyFueled.right.comp (hdm3.comp PolyFueled.right)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hslot : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD (z.unpair.2 / 3) 0) :=
+    (hdig.comp (PolyFueled.left.pair hthird)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hd0 : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD (z.unpair.2 / 3) 0 % 4) :=
+    (PolyFueled.right.comp (hdm4.comp hslot)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hd1 : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD (z.unpair.2 / 3) 0 / 4 % 4) :=
+    (PolyFueled.right.comp (hdm4.comp (PolyFueled.left.comp (hdm4.comp hslot)))).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hd2 : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD (z.unpair.2 / 3) 0 / 16 % 4) :=
+    (PolyFueled.right.comp (hdm4.comp (PolyFueled.left.comp (hdm16.comp hslot)))).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hsub : PolyFueled _ (fun z : ℕ => z.unpair.2 % 3 - 1) :=
+    (subc_polyFueled.comp (hres.pair (PolyFueled.const 1))).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  obtain ⟨cdig, hdigit⟩ : ∃ c, PolyFueled c
+      (fun z : ℕ => dig4 (Nat.ofDigits 64 (L z.unpair.1)) z.unpair.2) := by
+    refine ⟨_, (ifzSel_polyFueled.comp
+      ((hd0.pair (ifzSel_polyFueled.comp ((hd1.pair hd2).pair hsub))).pair hres)).of_eq
+      (fun z => ?_)⟩
+    simp only [Nat.unpair_pair, ifzSelFn]
+    rw [dig4_ofDigits_sixtyFour (hmem _)]
+    have hr : z.unpair.2 % 3 = 0 ∨ z.unpair.2 % 3 = 1 ∨ z.unpair.2 % 3 = 2 := by omega
+    rcases hr with hr | hr | hr
+    · rw [if_pos hr, hr, pow_zero, Nat.div_one]
+    · rw [if_neg (by omega : ¬ z.unpair.2 % 3 = 0), hr]
+      norm_num
+    · rw [if_neg (by omega : ¬ z.unpair.2 % 3 = 0), hr]
+      norm_num
+  obtain ⟨cm, hcm⟩ := mulc_polyFueled 3
+  obtain ⟨clen, hclen⟩ := BigDigits.len_of_digits hdigit (hcm.comp hlen) (fun n => by
+    rw [len4_le_iff]
+    calc Nat.ofDigits 64 (L n) < 64 ^ (L n).length :=
+          Nat.ofDigits_lt_base_pow_length (by norm_num) (hmem n)
+      _ = 4 ^ ((L n).length * 3) := by rw [mul_comm, pow_mul]; norm_num)
+  exact ⟨_, _, hclen, hdigit⟩
+
+/-- **The name of a token run**: one base-`64` digit per token, most significant last,
+closed by the sentinel `63`. -/
+def tokenListNat (ts : List ℕ) : ℕ := Nat.ofDigits 64 (ts ++ [63])
+
+/-- Below its own length a list is unchanged by appending. -/
+private lemma getD_append_of_lt {l l' : List ℕ} {i : ℕ} (hi : i < l.length) :
+    (l ++ l').getD i 0 = l.getD i 0 := by
+  have hi' : i < (l ++ l').length := by
+    simp only [List.length_append]; omega
+  rw [List.getD_eq_getElem _ _ hi', List.getD_eq_getElem _ _ hi,
+    List.getElem_append_left hi]
+
+/-- At its own length, a list with one element appended shows that element. -/
+private lemma getD_append_singleton_length {l : List ℕ} {d : ℕ} :
+    (l ++ [d]).getD l.length 0 = d := by
+  have hi : l.length < (l ++ [d]).length := by
+    simp only [List.length_append, List.length_singleton]; omega
+  rw [List.getD_eq_getElem _ _ hi]
+  simp
+
+/-- Reading the name back out, digit by digit. -/
+lemma tokenListNat_digit {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) (i : ℕ) :
+    tokenListNat ts / 64 ^ i % 64 = (ts ++ [63]).getD i 0 := by
+  unfold tokenListNat
+  refine ofDigits_div_pow_mod (b := 64) (by norm_num) (fun d hd => ?_) i
+  rcases List.mem_append.mp hd with h | h
+  · exact lt_trans (hts d h) (by norm_num)
+  · simp only [List.mem_singleton] at h
+    omega
+
+/-- Below the sentinel the name reproduces the run. -/
+lemma tokenListNat_digit_lt {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) {i : ℕ}
+    (hi : i < ts.length) : tokenListNat ts / 64 ^ i % 64 = ts.getD i 0 := by
+  rw [tokenListNat_digit hts, getD_append_of_lt hi]
+
+/-- At the run's length the name shows the sentinel. -/
+lemma tokenListNat_digit_length {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) :
+    tokenListNat ts / 64 ^ ts.length % 64 = 63 := by
+  rw [tokenListNat_digit hts, getD_append_singleton_length]
+
+/-- The run is shorter than its own name, so a search bounded by the name is long
+enough to find the sentinel. -/
+lemma length_lt_tokenListNat (ts : List ℕ) : ts.length < tokenListNat ts := by
+  have h1 : ts.length < 2 ^ ts.length := Nat.lt_two_pow_self
+  have h2 : (2 : ℕ) ^ ts.length ≤ 64 ^ ts.length := Nat.pow_le_pow_left (by norm_num) _
+  have h3 : (64 : ℕ) ^ ts.length * 63 ≤ tokenListNat ts := by
+    unfold tokenListNat
+    rw [Nat.ofDigits_append]
+    simp only [Nat.ofDigits_singleton]
+    exact Nat.le_add_left _ _
+  omega
+
+/-- **The naming map is injective** on runs over an alphabet below the sentinel: distinct
+written texts get distinct names, with no appeal to what they denote. -/
+lemma tokenListNat_injective {ts us : List ℕ} (hts : ∀ t ∈ ts, t < 63)
+    (hus : ∀ t ∈ us, t < 63) (h : tokenListNat ts = tokenListNat us) : ts = us := by
+  have key : ∀ i, (ts ++ [63]).getD i 0 = (us ++ [63]).getD i 0 := fun i => by
+    rw [← tokenListNat_digit hts, ← tokenListNat_digit hus, h]
+  have hlen : ts.length = us.length := by
+    by_contra hne
+    rcases lt_or_gt_of_ne hne with hlt | hlt
+    · have h1 := key ts.length
+      rw [getD_append_singleton_length, getD_append_of_lt hlt] at h1
+      have hmem : us.getD ts.length 0 ∈ us := by
+        rw [List.getD_eq_getElem _ _ hlt]
+        exact us.getElem_mem hlt
+      have := hus _ hmem
+      omega
+    · have h1 := key us.length
+      rw [getD_append_singleton_length, getD_append_of_lt hlt] at h1
+      have hmem : ts.getD us.length 0 ∈ ts := by
+        rw [List.getD_eq_getElem _ _ hlt]
+        exact ts.getElem_mem hlt
+      have := hts _ hmem
+      omega
+  refine List.ext_getElem hlen (fun i h₁ h₂ => ?_)
+  have hi := key i
+  rw [getD_append_of_lt h₁, getD_append_of_lt h₂,
+    List.getD_eq_getElem _ _ h₁, List.getD_eq_getElem _ _ h₂] at hi
+  exact hi
+
+/-- **The delivery interface**: an efficiently emitted token run is efficiently *named*.
+This is the write-out bridge the paper's `def:ec` needs for objects presented by source
+text rather than by Godel code. -/
+lemma BigDigits.ofTokenListNat {L : ℕ → List ℕ} (h : PolySegStream L)
+    (hlt : ∀ n, ∀ t ∈ L n, t < 63) : BigDigits (fun n => tokenListNat (L n)) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
+  have hlenM : PolyFueled _ (fun n => (L n ++ [63]).length) :=
+    hlen.succ_comp.of_eq (fun n => by
+      simp only [List.length_append, List.length_singleton, hslen n])
+  have hlenN : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1) := hlen.comp PolyFueled.left
+  have ha : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1 - z.unpair.2) :=
+    (subc_polyFueled.comp (hlenN.pair PolyFueled.right)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hb : PolyFueled _ (fun z : ℕ => z.unpair.2 - lenFn z.unpair.1) :=
+    (subc_polyFueled.comp (PolyFueled.right.pair hlenN)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hinner := ifzSel_polyFueled.comp
+    (((PolyFueled.const 63).pair (PolyFueled.const 0)).pair hb)
+  have houter := ifzSel_polyFueled.comp ((hinner.pair htok).pair ha)
+  have hdigM : PolyFueled _ (fun z : ℕ => (L z.unpair.1 ++ [63]).getD z.unpair.2 0) :=
+    houter.of_eq (fun z => by
+    simp only [Nat.unpair_pair, ifzSelFn]
+    have hlz : (L z.unpair.1).length = lenFn z.unpair.1 := hslen _
+    rcases lt_trichotomy z.unpair.2 (lenFn z.unpair.1) with hj | hj | hj
+    · have htz : tokenFn z = (L z.unpair.1).getD z.unpair.2 0 := by
+        have hg := hget z.unpair.1 z.unpair.2 hj
+        rwa [Nat.pair_unpair] at hg
+      rw [if_neg (by omega), htz,
+        getD_append_of_lt (by omega : z.unpair.2 < (L z.unpair.1).length)]
+    · rw [if_pos (by omega), if_pos (by omega), hj, ← hlz,
+        getD_append_singleton_length]
+    · rw [if_pos (by omega), if_neg (by omega),
+        List.getD_eq_default _ _ (by
+          simp only [List.length_append, List.length_singleton]; omega)])
+  have hbound : ∀ n j, (L n ++ [63]).getD j 0 < 64 := by
+    intro n j
+    rcases lt_or_ge j (L n ++ [63]).length with hj | hj
+    · rw [List.getD_eq_getElem _ _ hj]
+      rcases List.mem_append.mp ((L n ++ [63]).getElem_mem hj) with hm | hm
+      · exact lt_trans (hlt n _ hm) (by norm_num)
+      · simp only [List.mem_singleton] at hm
+        omega
+    · rw [List.getD_eq_default _ _ hj]
+      norm_num
+  have hbig : BigDigits (fun n => Nat.ofDigits 64 (L n ++ [63])) :=
+    BigDigits.ofBase64Digits (L := fun n => L n ++ [63]) hlenM hdigM hbound
+  exact hbig.of_eq (fun n => rfl)
 
 end LogicalInduction
 
@@ -233,7 +466,7 @@ lemma pow_pred_le_sourceNat (c : Code) : 16 ^ (c.size - 1) ≤ c.sourceNat := by
     have := sourceTags_lt_16 c L[c.size - 1] (List.mem_reverse.mp hmem')
     omega
   have hmod : c.sourceNat / 16 ^ (c.size - 1) % 16 = L.getD (c.size - 1) 0 :=
-    ofDigits_div_pow_mod (sourceTags_reverse_lt_16 c) _
+    ofDigits_div_pow_mod (by norm_num) (sourceTags_reverse_lt_16 c) _
   have hq : 1 ≤ c.sourceNat / 16 ^ (c.size - 1) := by
     rcases Nat.eq_zero_or_pos (c.sourceNat / 16 ^ (c.size - 1)) with h | h
     · rw [h] at hmod; simp at hmod; exact absurd hmod.symm hne
@@ -368,7 +601,7 @@ lemma peelIter_ofDigits (f : ℕ) (L : List ℕ) (hd : ∀ d ∈ L, d < 16) (hf 
   have hM : ∀ d ∈ L.reverse, d < 16 := by simpa using hd
   have hfun : (fun i => Nat.ofDigits 16 L.reverse / 16 ^ i % 16)
       = fun i => L.reverse.getD i 0 :=
-    funext fun i => ofDigits_div_pow_mod hM i
+    funext fun i => ofDigits_div_pow_mod (by norm_num) hM i
   rw [peelIter_snd, hfun,
     map_range_reverse_getD _ f (by simpa using hf)]
   simp

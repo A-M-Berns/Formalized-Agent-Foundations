@@ -1030,19 +1030,40 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- unbounded horizon, the paper's own `Ack` included, is on the other side.
 --
 -- The **§4.10 `thm:incons` lane** likewise: `inconsistencySchema`,
--- `inconsistencySchema_spec`, `inconsistencySchema_not_argument_insensitive`,
--- `inconsistencySchema_mentions_zero`, `deductionFamilyArg`,
--- `inconsistencyArgClaimSentence`, `inconsistencyArgClaimInstance`,
+-- `provableCode_negSource_re`, `inconsistencySchema_spec`,
+-- `negSourceFormulaCode_sourceNat_of_sentence`,
+-- `inconsistencySchema_not_argument_insensitive`, `inconsistencySchema_mentions_zero`,
+-- `deductionFamilyArg`, `inconsistencyArgClaimSentence`, `inconsistencyArgClaimInstance`,
 -- `inconsistencyArgClaimSentence_ne_of_arg_ne`, `representedInconsistentTheoryClaims`, and
--- the day-varying witness added in R7 (`alternatingInconsistentAxiom`, `_digits`,
--- `_inconsistent`, `thm_incons_applied_alternating`) — none annotated, all covered
--- transitively by `lic_disbelief_inconsistent_theories_unconditional` below, which is added
--- to this block in the same change (it was previously audited only in the capstone roll-up).
--- Two charges stand on that row and are stated at the declarations: the deduction-family
--- paraphrase `Θ′ₙ = Θ₀ ∪ {σₙ}`, and the over-strength `def:ec` premise `hσ` (the Gödel-code
--- metering correction recorded in the WRITE-OUT FIELD MIGRATION block above).  The witness
--- family is now genuinely day-varying but takes finitely many values; an unbounded-code
--- family is blocked on a missing `BigDigits` combinator, signposted at the witness.
+-- the witnesses (`falsumSource` and its two lemmas; `deepInconsistentSource`,
+-- `deepInconsistentAxiom`, `compile_deepInconsistentSource`,
+-- `deepInconsistentSource_polyArithmeticSourceSeq`,
+-- `sourceTokens_deepInconsistentSource_length`, `deepInconsistentSource_sourceNat_ne`,
+-- `deepInconsistentAxiom_inconsistent`, `thm_incons_applied_deep`,
+-- `inconsistencyArgClaimSentence_deep_ne`) — none annotated, all covered transitively by
+-- `lic_disbelief_inconsistent_theories_unconditional` below, which is added to this block in
+-- the same change (it was previously audited only in the capstone roll-up).
+--
+-- **One charge now stands on that row**, stated at the declarations: the deduction-family
+-- paraphrase `Θ′ₙ = Θ₀ ∪ {σₙ}`.  The second charge — the over-strength `def:ec` premise
+-- `hσ : BigDigits (deductionFamilyArg σ)`, which metered a formula's **Gödel code** — is
+-- **retired** (tranche 9-pre): the premise is now `hs : PolyArithmeticSourceSeq s` on the
+-- day's *written source*, the paper's own meter, with the code recovered inside the
+-- represented predicate by `negSourceFormulaCode` where only recursive enumerability is
+-- asked.  See the WRITE-OUT FIELD MIGRATION block below for the full accounting.
+--
+-- Retired with it: `alternatingInconsistentAxiom`, `alternatingInconsistentAxiom_digits`,
+-- `alternatingInconsistentAxiom_inconsistent`, `thm_incons_applied_alternating` and
+-- `deductionFamilyArg_ne_of_ne` (R7).  Those existed only because the code-metered class
+-- could not admit an unboundedly day-varying family, so the best available witness took two
+-- values and separation was exercised at two days.  `thm_incons_applied_deep` takes a
+-- different value on **every** day — `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥`, `5n + 7` symbols written,
+-- `≥ 2 ^ n` nodes compiled — and `inconsistencyArgClaimSentence_deep_ne` separates every
+-- pair of distinct days, so the two-valued witness is strictly subsumed and is not kept.
+-- `deductionFamilyArg_ne_of_ne` (sentence inequality → code inequality, by quote
+-- injectivity) is replaced by `ArithSource.sourceNat_ne_of_sourceTokens_ne`, which needs no
+-- quotation argument at all: distinct *writings* have distinct names by injectivity of the
+-- base-64 naming map.
 #assert_axioms_clean
   DigitMachineCodes.computable ComputableHorizon.computable
   lic_does_not_anticipate_halting_ofComputation
@@ -1487,27 +1508,36 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 --     `FeedbackTraderEmission.sentence_poly`.
 --   `PolyNatCodes` → `BigDigits`:
 --     `SemidecidableComputation.input_poly` (the structure is since **retired**, tranche 8).
---     CORRECTION (2026-08-30, R7-C1): the sentence that stood here — that the premise
---     `hσ : BigDigits (deductionFamilyArg σ)` of
+--     CORRECTION (2026-08-30, R7-C1), and its **REPAIR** (2026-08-30, tranche 9-pre): the
+--     sentence that stood here — that the premise `hσ : BigDigits (deductionFamilyArg σ)` of
 --     `lic_disbelief_inconsistent_theories_unconditional` takes over that role "at the same
---     write-out class" — was **wrong**, and is the one place in this file that oversold a
+--     write-out class" — was **wrong**, and was the one place in this file that oversold a
 --     hypothesis.  The retired `input_poly` metered a natural-number *input*, where the
 --     base-4 digit count IS the written length, so `BigDigits` there was genuinely the
---     paper's write-out class.  `hσ` applies `BigDigits` to `⌜∼σₙ⌝`, the **Gödel code of a
+--     paper's write-out class.  `hσ` applied `BigDigits` to `⌜∼σₙ⌝`, the **Gödel code of a
 --     formula**.  Foundation's formula encoding pairs at every node, so the code value is
 --     roughly doubly exponential in the parse tree and its digit count roughly `2 ^ depth`
 --     — the same failure mode that disqualified `Encodable.encode` as a machine-naming map
---     (see the `DigitMachineCodes` doctrine at `Framework/WriteOut.lean`, and the source
---     language of `Construction/Witnesses/ArithmeticSource.lean`).  `hσ` is therefore
---     STRICTLY STRONGER than `def:ec` on this lane: it admits only `O(log n)`-depth (e.g.
---     `binNumeral`-spelled) theory-name families and EXCLUDES paper-admissible families
---     whose source text is short but whose parse tree is deep (the `iffChain` shape that
---     `PolyArithmeticSourceSeq` exists for).  Being an over-strong *hypothesis* it narrows
---     coverage rather than weakening the conclusion; it is the second charge on the
---     `thm:incons` row, beside the deduction-family paraphrase.  The faithful repair —
---     restate the premise on the source language — is queued as source-metered
---     re-rendering work and is deliberately not attempted here.  Disclosed at
---     `deductionFamilyArg` and at the endpoint.
+--     (see the `DigitMachineCodes` doctrine at `Framework/WriteOut.lean`).  `hσ` was
+--     therefore STRICTLY STRONGER than `def:ec` on this lane: it admitted only
+--     `O(log n)`-depth (e.g. `binNumeral`-spelled) theory-name families and EXCLUDED
+--     paper-admissible families whose source text is short but whose parse tree is deep.
+--
+--     That premise is **gone**.  The endpoint now takes the day's adjoined axiom by its
+--     source text and meters it with `hs : PolyArithmeticSourceSeq s`
+--     (`Construction/Witnesses/ArithmeticSource.lean`) — one token per symbol the writer
+--     writes, which is `def:ec` verbatim — together with `hcompile`, saying that writing
+--     denotes `σₙ`.  What the sentence emits is `ArithSource.sourceNat sₙ`, the run read as
+--     a base-`64` numeral with a sentinel (`tokenListNat`, `Framework/CodeSource.lean`),
+--     whose base-`4` digit count is `3 * (sourceTokens sₙ).length + 3`: **linear in the
+--     written text**, exactly as `Code.sourceNat` is for machines.  The Gödel code is
+--     recovered from that numeral *inside* the represented predicate, by
+--     `negSourceFormulaCode` (`Construction/Witnesses/SourceNumbering.lean`), which is
+--     computable and therefore all `codeOfREPred` consumes — the paper asks only for
+--     recursive enumerability there, and the code's size is free.  The class is strictly
+--     wider for it: `deepInconsistentSource` is admitted and no digit bound on codes can
+--     admit it.  The charge is retired from the `thm:incons` row; the deduction-family
+--     paraphrase is the sole remaining one.
 --   `RpnSpliceStream` → `BigSpliceStream`:
 --     `GeneratedRatFeature.polyTok`.
 --

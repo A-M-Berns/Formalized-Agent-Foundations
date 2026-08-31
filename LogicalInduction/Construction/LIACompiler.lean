@@ -3155,7 +3155,11 @@ private lemma negFormulaG_prim : Primrec negFormulaG := by
   · simp [negFormulaGCore]
   simp [negFormulaGCore, hn]
 
-private lemma negFormulaCode_prim : Primrec negFormulaCode := by
+/-- Tag-swapping De Morgan negation on formula codes is primitive recursive.  Exported
+alongside `parseStructuredArithmeticFormula_prim`, and for the same reason: together they
+are the decoding half of the source-text naming of formulas (`negSourceFormulaCode`,
+`Construction/Witnesses/SourceNumbering.lean`). -/
+lemma negFormulaCode_prim : Primrec negFormulaCode := by
   have hF : Primrec₂ (fun (_ : Unit) => negFormulaCode) :=
     Primrec.nat_strong_rec _ (negFormulaG_prim.comp Primrec.snd).to₂
       fun _ n => negFormulaG_spec n
@@ -3400,7 +3404,12 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
   · simp [structuredFormulaGCore, hf, hs]
   simp [structuredFormulaGCore, hf, hs]
 
-private lemma parseStructuredArithmeticFormula_prim :
+/-- The structured arithmetic formula grammar is primitive recursive.  Exported (rather
+than private, like its siblings in this section) because it is also the decoding half of
+the source-text naming of formulas: `negSourceFormulaCode`
+(`Construction/Witnesses/SourceNumbering.lean`) recovers a formula's Godel code from the
+numeral naming its written run, and needs exactly this certificate. -/
+lemma parseStructuredArithmeticFormula_prim :
     Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel 0 ts := by
   have hF : Primrec₂ (fun (_ : Unit) => structuredFormulaF) :=
     Primrec.nat_strong_rec _ (structuredFormulaG_prim.comp Primrec.snd).to₂

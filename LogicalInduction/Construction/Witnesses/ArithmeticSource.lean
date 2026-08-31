@@ -425,6 +425,33 @@ lemma sourceTokens_lt_23 {k : ℕ} (s : ArithSource k) :
         · exact iha x h
         · exact ihb x h
 
+/-! ### Naming a written formula
+
+`def:ec` charges a trader for the symbols it *writes*.  A source's name is therefore its
+own emitted run, read as a numeral (`tokenListNat`, `Framework/CodeSource.lean`): one
+base-`64` digit per token, closed by a sentinel outside the alphabet.  Its base-`4` digit
+count — the length actually written down — is `3 * (sourceTokens s).length + 3`, linear in
+the paper's text.
+
+The Godel code `Encodable.encode (compile s)` is **not** this number and is not usable
+here: Foundation's `Semiformula.toNat` pairs at every node, so it is doubly exponential in
+the parse tree and its digit count exponential.  `iffChainSource` separates the two on the
+nose (`sourceTokens_iffChainSource_length` is `5n + 4`, while the normal form it names has
+`≥ 2 ^ n` nodes). -/
+
+/-- **The name of a written formula**: its emitted token run, read as a numeral. -/
+def sourceNat {k : ℕ} (s : ArithSource k) : ℕ := tokenListNat (sourceTokens s)
+
+/-- The source alphabet sits below the naming sentinel. -/
+lemma sourceTokens_lt_63 {k : ℕ} (s : ArithSource k) : ∀ x ∈ sourceTokens s, x < 63 :=
+  fun x hx => lt_trans (sourceTokens_lt_23 s x hx) (by norm_num)
+
+/-- **Distinct writings get distinct names**, with no appeal to what they denote — the
+day-separation input for families presented by source text. -/
+lemma sourceNat_ne_of_sourceTokens_ne {k l : ℕ} {s : ArithSource k} {t : ArithSource l}
+    (h : sourceTokens s ≠ sourceTokens t) : sourceNat s ≠ sourceNat t := fun he =>
+  h (tokenListNat_injective (sourceTokens_lt_63 s) (sourceTokens_lt_63 t) he)
+
 end ArithSource
 
 /-! ## The source-metered family class
@@ -493,6 +520,15 @@ lemma iff {k : ℕ} {a b : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq 
     simp [sourceTokens]
 
 end PolyArithmeticSourceSeq
+
+/-- **The write-out certificate, delivered.**  A family certified at the size `def:ec`
+charges — one token per source node — is a family whose *names* are efficiently written
+out.  This is the bridge that lets a paper-facing statement meter a formula sequence by
+its writing instead of by its Godel code. -/
+lemma PolyArithmeticSourceSeq.bigDigits_sourceNat {k : ℕ} {s : ℕ → ArithSource k}
+    (h : PolyArithmeticSourceSeq s) : BigDigits (fun n => (s n).sourceNat) :=
+  BigDigits.ofTokenListNat h fun n => ArithSource.sourceTokens_lt_63 (s n)
+
 
 /-- **The old class embeds**: a normal-form-metered family is a source-metered family of
 leaves, token for token. -/

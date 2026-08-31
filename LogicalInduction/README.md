@@ -175,29 +175,38 @@ families whose Gödel codes grow exponentially while their emitted symbol count 
 polynomial. Their status is unchanged — the narrower class was already inside the paper's —
 and their rows record the widening.
 
-**The one remaining qualified node is `thm:incons`**, and it is qualified on two disclosed
-charges, neither of them a theory-hypothesis one. `thm:incons` is stated for the **deduction family**
+**The one remaining qualified node is `thm:incons`**, and it is qualified on **one** disclosed
+charge, which is not a theory-hypothesis one. `thm:incons` is stated for the **deduction family**
 `Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base theory, rather than for an arbitrary efficiently
 computable sequence of recursively axiomatizable theories: Foundation's derivability
 predicate takes its theory as a meta parameter, so there is no uniform-in-theory-code
 derivability to represent. The deduction theorem makes the day's theory nameable by the
-single code `⌜∼σₙ⌝`, which the day's sentence writes out, so the claim genuinely names the
-day's theory; the restriction on *which* theory sequences are covered is the disclosed part,
-and its row says exactly what is and is not formalized. A **second** charge is disclosed on
-the same row: the `def:ec` premise `hσ : BigDigits (deductionFamilyArg σ)` meters the day's
-theory name by the base-4 digit count of a formula's *Gödel code*, not by its source length —
-Foundation's encoding pairs at every node, so that count is `~2^depth`, and the premise admits
-only `O(log n)`-depth families, excluding paper-admissible short-source/deep-parse ones. It is
-neither `dd:fuel` nor `dd:proofcode` but the ordinary write-out class applied to the wrong
-quantity, and being an over-strong *hypothesis* it narrows which theory sequences the endpoint
-covers rather than weakening its conclusion; the faithful repair is to state the premise on
-`PolyArithmeticSourceSeq`, and it is queued with the 9-series. The paper's own subject matter
-is exhibited — the in-file example runs at base theory `𝗜𝚺₁` with `σₙ := ⊥`, so every day's
-theory `𝗜𝚺₁ ∪ {⊥}` is actually inconsistent — and a genuinely day-varying witness,
-`alternatingInconsistentAxiom n := if n % 2 = 0 then ⊥ else ⊥ ⋏ ⊥`, sits beside it with its
-emission certificate and a fully applied endpoint, exercising day separation at days `0` and
-`1`. That family takes two values, not unboundedly many: an unbounded-length family is blocked
-on a missing `BigDigits` combinator, signposted at the witness.
+single written name `ArithSource.sourceNat sₙ` of the day's adjoined axiom, which the day's
+sentence writes out, so the claim genuinely names the day's theory; the restriction on
+*which* theory sequences are covered is the disclosed part, and its row says exactly what is
+and is not formalized. That charge is backed by a **verified obstruction** (tranche 9b)
+rather than by a queued repair: Foundation's fixpoint blueprint for `Derivation` cannot host
+satisfaction over coded formulas, so full uniformity in the theory code is a truth-predicate
+project, and a *middle* rendering — uniformity over a coded family of Δ₁ axiomatizations — is
+an optional upstream item, pending a ruling.
+
+The **second** charge this node used to carry is **retired (tranche 9-pre)**. Its `def:ec`
+premise was `hσ : BigDigits (deductionFamilyArg σ)`, metering the day's theory name by the
+base-4 digit count of a formula's *Gödel code*; it is now stated on the **written source** of
+the day's adjoined axiom (`hs : PolyArithmeticSourceSeq s`, with `hcompile` saying that
+writing denotes `σₙ`), one token per symbol the writer writes. The Gödel code is recovered
+inside the represented predicate by `negSourceFormulaCode`, which is computable and is all
+`codeOfREPred` consumes — the paper asks only for recursive enumerability there. The paper's
+own subject matter is exhibited — the in-file example runs at base theory `𝗜𝚺₁` with the
+one-token source `falsumSource`, so every day's theory `𝗜𝚺₁ ∪ {⊥}` is actually inconsistent —
+and beside it sits the payoff of the re-metering: `deepInconsistentSource n`, whose day-`n`
+axiom is `5n + 7` written tokens and `≥ 2^n` nodes once compiled, is `def:ec`-admissible on
+the nose, inconsistent on every day, fully applied at `thm_incons_applied_deep`, and distinct
+on *every* day, with `inconsistencyArgClaimSentence_deep_ne` separating the claim sentences of
+every pair of distinct days. No code-metered premise could admit that family. The two-valued
+`alternatingInconsistentAxiom` witness is strictly subsumed and has been deleted, and the
+signpost for a missing `BigDigits` combinator is withdrawn — the family it was blocking is
+admitted by the source route, with no code-digit theory needed.
 
 Its two §4.10 neighbours **left that list in tranche 8**. `thm:pac` and `thm:pazfc` are one
 construction at two theories. Both endpoints price the arithmetized finite-consistency family
@@ -416,9 +425,10 @@ an inductor over a theory that cannot prove `Con(𝗣𝗔)` coming to believe ev
 consistency statement about it. `lic_disbelief_inconsistent_theories_unconditional`
 (`thm:incons`) prices the paper's inconsistent-theory family, at the **deduction family**
 `Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base: the day's sentence is the universal provability schema
-of `Θ₀` at the compact numeral `⌜∼σₙ⌝`, the premise `∀ n, ¬Consistent (σ n ∷ Θ₀)` is the
-paper's own, and the two disclosed parts are the restriction to deduction families and the
-code-metered `def:ec` premise (see *The one remaining qualified node* above).
+of `Θ₀`, read at written names, at the compact numeral `binNumeral (sₙ.sourceNat)`, the premise
+`∀ n, ¬Consistent (σ n ∷ Θ₀)` is the paper's own, its `def:ec` premise is stated on the written
+source of the day's adjoined axiom, and the one disclosed part is the restriction to deduction
+families (see *The one remaining qualified node* above).
 
 **The premise is inhabited, and the instances are registered.**
 `representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
