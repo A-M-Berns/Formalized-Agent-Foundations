@@ -42,14 +42,16 @@ The checks, all fail-closed:
      assertion, checked by the build but not public trust surface.
   F. strength tiers are drawn from the declared vocabulary, and the secondary axis from
      its own.
-  G. **the README's headline counts are the ledger's**: every number in
-     `LogicalInduction/README.md`'s strength table and its surrounding prose — the
-     theorem/lemma total, each per-status count, the definition-node split, the
-     instantiated sub-count and its split — is recomputed from the strength table and
-     compared. These were hand-entered, and one recently stood twelve nodes wrong while
-     still adding up, because nothing recomputed the total from the rows. A number that
-     disagrees fails; a sentence that no longer matches its pattern also fails, so a check
-     cannot be silently lost by rewording.
+  G. **the ledger's own headline counts are its rows'**: every number in
+     `scripts/coverage-classification.md`'s *Headline counts* section — the theorem/lemma
+     total, each per-status count, the definition-node split, the instantiated sub-count
+     and its split — is recomputed from the strength table and compared. These were
+     hand-entered, and one recently stood twelve nodes wrong while still adding up, because
+     nothing recomputed the total from the rows. A number that disagrees fails; a sentence
+     that no longer matches its pattern also fails, so a check cannot be silently lost by
+     rewording. The counts live in the classification file and nowhere else: a README is a
+     conceptual document, and a tally mirrored into one is a tally that outlives the thing
+     it counted.
 
 Run from the repo root. Exit status is nonzero on any violation.
 """
@@ -67,7 +69,6 @@ import paper_nodes  # noqa: E402 - path fixed up just above
 LIB = Path("LogicalInduction")
 AUDIT = Path("AxiomAudit.lean")
 CLASSIFICATION = Path("scripts/coverage-classification.md")
-README = Path("LogicalInduction/README.md")
 
 STATUSES = {"exact", "strengthened", "corrected", "refuted", "qualified"}
 AXES = {"universal", "instantiated", "n/a"}
@@ -313,7 +314,7 @@ def excluded(lab: str) -> bool:
 # Annotated declarations deliberately outside the axiom gate. The default posture is "no
 # exemption": an annotated declaration that is not asserted should be asserted, since
 # adding a name to an internal `#assert_axioms_clean` block costs one line and disturbs
-# no count (labels, not declarations, drive the README/classification tallies). Add an
+# no count (labels, not declarations, drive the classification tallies). Add an
 # entry only for a declaration an assertion genuinely cannot reach — e.g. a `private`
 # declaration, which `#assert_axioms_clean` cannot name from `AxiomAudit.lean` — with a
 # one-line reason. Every entry is itself checked: it must name a real annotated carrier
@@ -435,15 +436,15 @@ def check_per_declaration_coverage(root: Path) -> tuple[list[str], int, int]:
 
 
 # ----------------------------------------------------------------------------
-# G. the README's headline counts, re-derived from the ledger
+# G. the ledger's headline counts, re-derived from the ledger's own rows
 # ----------------------------------------------------------------------------
 
 def tally(strength: dict[str, dict]) -> dict[str, dict[str, int]]:
-    """Ledger counts, split the way the README reports them.
+    """Ledger counts, split the way the Headline counts section reports them.
 
     'thm' — theorem and lemma nodes; 'def' — definition nodes (`def:` labels), which the
-    README deliberately keeps out of the main table; 'inst' — the theorem/lemma nodes
-    additionally instantiated over the constructed inductor.
+    headline table deliberately keeps out; 'inst' — the theorem/lemma nodes additionally
+    instantiated over the constructed inductor.
     """
     out = {"thm": {}, "def": {}, "inst": {}}
     for lab, row in strength.items():
@@ -454,19 +455,22 @@ def tally(strength: dict[str, dict]) -> dict[str, dict[str, int]]:
     return out
 
 
-def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
-    """Every headline number in `LogicalInduction/README.md` must equal the ledger's.
+def check_headline_counts(root: Path, strength: dict[str, dict]) -> list[str]:
+    """Every number in the ledger's *Headline counts* section must equal its own rows.
 
-    The README's numbers were hand-entered, and hand-entered numbers drift: one recently
-    stood twelve nodes wrong and happened to still add up, because nothing recomputed the
-    total from the rows. So each is re-derived here from the strength table and compared.
+    Those numbers were hand-entered, and hand-entered numbers drift: one recently stood
+    twelve nodes wrong and happened to still add up, because nothing recomputed the total
+    from the rows. So each is re-derived here from the strength table and compared.
+
+    They are checked here, in the classification file, and nowhere else — the file that
+    carries the rows is the file that may carry their tally.
 
     Fail-closed in both directions. A number that disagrees fails; a sentence that no
     longer matches its pattern *also* fails, rather than silently dropping a check —
     reword freely, but keep the number in a shape this can find, or update the pattern in
     the same commit.
     """
-    text = re.sub(r"\s+", " ", (root / README).read_text(encoding="utf-8"))
+    text = re.sub(r"\s+", " ", (root / CLASSIFICATION).read_text(encoding="utf-8"))
     counts = tally(strength)
     n_thm = sum(counts["thm"].values())
     n_def = sum(counts["def"].values())
@@ -477,7 +481,7 @@ def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
         m = re.search(pattern, text)
         if not m:
             errs.append(
-                f"README-count check: FAIL — {README} no longer states {what} in a "
+                f"headline-count check: FAIL — {CLASSIFICATION} no longer states {what} in a "
                 f"recognizable form (pattern {pattern!r}). Keep the number greppable or "
                 "update this pattern in the same commit; a count nothing checks is how "
                 "the last wrong one survived.")
@@ -485,8 +489,8 @@ def check_readme_counts(root: Path, strength: dict[str, dict]) -> list[str]:
         got = [int(g) for g in m.groups()]
         if got != expected:
             errs.append(
-                f"README-count check: FAIL — {README} says {what} = "
-                f"{', '.join(map(str, got))}, but {CLASSIFICATION} yields "
+                f"headline-count check: FAIL — {CLASSIFICATION} says {what} = "
+                f"{', '.join(map(str, got))}, but its own strength rows yield "
                 f"{', '.join(map(str, expected))}")
 
     # the two totals, stated twice each in the prose
@@ -660,8 +664,8 @@ def main() -> int:
                   f"(allowed: {sorted(AXES)})")
             fail = True
 
-    # --- G. the README's headline counts match the ledger ---------------------
-    for err in check_readme_counts(root, strength):
+    # --- G. the ledger's headline counts match its own rows -------------------
+    for err in check_headline_counts(root, strength):
         print(err)
         fail = True
 
@@ -690,7 +694,7 @@ def main() -> int:
         f"on-label and axiom-checked; "
         f"{sum(counts['thm'].values())} theorem/lemma nodes: {fmt(counts['thm'])}; "
         f"{sum(counts['def'].values())} definition nodes: {fmt(counts['def'])}; "
-        f"README headline counts match)"
+        f"ledger headline counts match)"
     )
     print(
         f"per-declaration coverage check: OK "

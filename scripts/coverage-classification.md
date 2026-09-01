@@ -34,6 +34,45 @@ The three artifacts, and which one is which:
 So a curated node can no longer fall back, and a strength claim can no longer be about a
 declaration the reader never sees.
 
+## Headline counts
+
+This is the audit artifact where the tallies live, and the only place they are stated.
+`scripts/check_endpoint_coverage.py` recomputes every number in this section from the
+strength table below and fails the build if any of them drifts — in both directions, so a
+count cannot be lost by rewording the sentence that carries it. Reword freely, but keep each
+number in a shape the checker can find, or update its pattern in the same commit.
+
+53 of the paper's labelled results are carried as annotated nodes — named after the paper's
+own label, build-audited, and rendered on the trust surface. How strong each node is, over
+the 53 annotated theorem and lemma nodes:
+
+| | count | what it means |
+|---|---:|---|
+| **exact** | 43 | proved as the paper states it, on the paper's own hypotheses |
+| **strengthened** | 7 | the Lean statement is stronger than the printed one |
+| **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
+| **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
+| **qualified** | 0 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained — **none remain** |
+
+The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
+not mixed into the table above.
+
+Of the 53, **19 are also instantiated over the concrete inductor constructed here** — 19 of
+them at exact or strengthened, 0 at qualified — so they hold of a specific algorithm rather
+than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
+different degree of faithfulness.
+
+Every tier is relative to the disclosed model — propositional sentences, and machine
+polynomial time as the trader class with the fuel calculus as its certificate. "Exact" means
+the paper's statement is reached *within that model*, not that the model equivalence is
+proved.
+
+Eight further labelled appendix lemmas (`lem:fpl`, `lem:mm`, `lem:budgeter`,
+`prop:enumeration`, `lem:type2`, `lem:type3`, `lem:conluvapprox`, `lem:limexpapprox`) are
+formalized as construction machinery cited from their module headers rather than as
+annotated nodes; they are listed and gated in `scripts/check_endpoint_coverage.py`, which
+fails if a labelled paper result is neither carried nor explicitly excused.
+
 ## Inventory split
 
 `AxiomAudit.lean`'s `LogicalInduction` section now has two kinds of block:
