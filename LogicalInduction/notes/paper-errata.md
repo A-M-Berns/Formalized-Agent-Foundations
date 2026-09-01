@@ -12,6 +12,8 @@ Each entry states the published claim, the defect, and what this repository does
 | PE4 | `app:prandaff` — patience argument | unstated monotonicity assumption |
 | PE5 | `def:seqprand` vs. `thm:prand` | sign inconsistency |
 | PE6 | `thm:ref` / `app:ref` — Introspection | printed hypotheses too weak for the printed proof |
+| PE7 | `Con(PA)(Ack)` gloss (tex:1859) | gloss contradicts its definition (off by one) |
+| PE8 | `app:incons` — proof of `thm:incons` | proof cites representability where Σ₁-completeness is needed |
 
 ---
 
@@ -211,13 +213,20 @@ deferral function, timely value computability and support ⊆ image of `f`, conc
 
 ### Repository status
 
-The formalization places the hypotheses correctly and does not inherit the bug.
-`recurringunbiasednessexp` (`Construction/Witnesses/HistoricalMaturity.lean`) takes a
-generable divergent weighting with no deferral or image-of-`f` hypothesis and concludes a
-limit point; the pseudorandom/feedback capstones (`prandaff` and the `wubexp` route) carry
-the deferral function, `PatientSettlementClock` and pseudorandomness data and conclude a
-full limit. This is forced by construction: the full-limit conclusion is not provable
-without the deferral clause, and the limit-point conclusion does not need it.
+A second, independent confirmation of the intended placement: the *plain* affine
+recurring-unbiasedness theorem (`thm:recurringunbiasedness`, tex:1225–1233) carries no
+support clause and introduces no deferral function at all, exactly parallel to how the
+expectation recurring theorem should read.
+
+The formalization places the hypotheses correctly and declares the correction at the
+statements. `BoundedSequence.recurringunbiasednessexp`
+(`Construction/Witnesses/HistoricalMaturity.lean`) takes a generable divergent weighting
+with no deferral or image-of-`f` hypothesis and concludes a limit point;
+`luv_wubexp_ofComputation` and `luv_wubexp_ofComputation_unconditional`
+(`Construction/Witnesses/FeedbackTruth.lean`, `FeedbackUnconditional.lean`) carry the
+deferral function and the support-in-image hypothesis and conclude a full limit. This is
+forced by construction: the full-limit conclusion is not provable without the deferral
+clause, and the limit-point conclusion does not need it.
 
 ---
 
@@ -263,6 +272,12 @@ says the `≈ₙ` may be replaced by `≳ₙ` to give "varied pseudorandom **abo
 With the paper's centering those two `≳ₙ`s point in opposite directions: bounding
 `avg(p − ThmInd)` *below* says the truth frequency undershoots `p`, which forces the price
 *down*, not up.
+
+A concrete counterexample to the printed pairing: take every `φᵢ` Θ-refutable and e.c.,
+`pᵢ = 1/2`, and `f(n) = n+1`, so the constant weighting is `f`-patient and divergent. Then
+`avg(p − ThmInd) = 1/2 ≳ₙ 0` and the family is "varied pseudorandom above ⟨p⟩" as printed
+— yet provability induction forces `Pₙ(φₙ) ≈ₙ 0`, contradicting the advertised
+`Pₙ(φₙ) ≳ₙ 1/2`.
 
 The repository centers the other way —
 `VariedPseudorandomAbove truth p := PseudorandomAbove (truth − p)`
@@ -336,53 +351,40 @@ exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on th
 bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
 `GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
 
-## tex:1859 — the Con(PA)(Ack) gloss is off by one against its own definition
+---
 
-The paper glosses `Con(PA)(⌜Ack(10,10)⌝)` as saying "any proof of ⊥ from PA requires
-at least Ack(10,10) symbols", but the definition two lines above (tex:1857) reads
-"there is no proof of ⊥ … with ν or fewer symbols", which gives "requires MORE than
-Ack(10,10)". The formalization follows the definition, not the gloss: `BProv`'s bound
-is inclusive (`dSize d ≤ k`), so `conWithin T k` is exactly the definition's reading.
-Recorded so a faithfulness auditor does not read the inclusive bound as drift.
-(Found blind, R9 lens B, 2026-08-31.)
+## PE7 — The `Con(PA)(Ack)` gloss contradicts its own definition (`sec:trust`)
 
-## tex:4487-4491 (app:incons) — the printed proof invokes the wrong hypothesis
+**Off-by-one in an illustrative gloss; no statement or proof is affected.**
 
-The proof of thm:incons argues: each `⌜Θ′ₙ is inconsistent⌝` "is provable in 𝗣𝗔, and
-Θ represents computations, [so] each of these statements is provable in Θ" (verbatim,
-both conjuncts). Representability of computable functions (tex:600-604) does not yield
-`𝗣𝗔 ⊢ ψ ⇒ Θ ⊢ ψ`. What discharges the step is that the inconsistency statements are
-Σ₁ and true, so Σ₁-completeness of Θ suffices — but the paper never states
-Σ₁-completeness as a hypothesis (its standing assumptions on Θ are tex:993-997). The
-formalization takes the correct route (`re_complete_mp` under `[𝗣𝗔⁻ ⪯ T]`), i.e. it is
-honest where the printed proof is loose — and this is part of why `[𝗣𝗔⁻ ⪯ T]` appears
-on the surface at all (see the pending charging ruling). (Found blind by the T10
-feasibility probe, 2026-08-31; verified against the tex by the orchestrator.)
+tex:1857 defines `Con(Θ′)(ν)` as "there is no proof of ⊥ from `⌜Θ′⌝` with `ν` or fewer
+symbols" — an inclusive bound. Two lines later, tex:1859 glosses
+`Con(PA)(⌜Ack(10,10)⌝)` as saying that any proof of ⊥ from PA "requires **at least**
+Ack(10,10) symbols"; by the definition it requires *more than* Ack(10,10).
 
-## tex:1812/1824 — the feedback support condition is printed on the wrong expectation theorem
+The formalization follows the definition, not the gloss: `BProv`'s bound is inclusive
+(`dSize d ≤ k`, `Framework/BoundedConsistency.lean`), so `conWithin T k` is exactly the
+definition's reading. Recorded so that the inclusive bound is not misread as drift
+against the gloss.
 
-The condition "the support of ⟨w⟩ is contained in the image of f" is printed on
-thm:recurringunbiasednessexp (tex:1812) — whose statement never introduces a deferral
-function f (and carries a "weighting weighting" typo) — and is absent from thm:wubexp
-(tex:1823-1832). The affine twins show the intended placement: thm:wubaff (tex:1481)
-HAS the condition, plain thm:recurringunbiasedness (tex:1225-1233) does not and has no
-f. So the condition belongs on the feedback theorems and was transposed in the
-expectation pair. The formalization applies the correction in both directions:
-`luv_wubexp_ofComputation`(+`_unconditional`) TAKES the support hypothesis, and
-`BoundedSequence.recurringunbiasednessexp` does NOT. (Found blind by the final audit,
-lens B, 2026-08-31; verified against the tex by the orchestrator. The endpoint
-docstrings' claim that "the premises are exactly tex:1822-1832's" is being corrected
-to declare this transposition — see the final-audit fix wave.)
+---
 
-## tex:1305-1313 — def:seqprand's above/below branches have the sign backwards
+## PE8 — `app:incons` invokes representability where Σ₁-completeness is needed
 
-"Varied pseudorandom above p" is printed as `(∑ wᵢ(pᵢ − ThmInd(φᵢ)))/(∑ wᵢ) ≳ₙ 0`,
-and thm:prand (tex:1316-1326) pairs that branch with the conclusion `ℙₙ(φₙ) ≳ₙ pₙ`.
-Counterexample to the printed pairing: all φᵢ Θ-refutable and e.c., pᵢ = 1/2, f(n) =
-n+1 (constant weighting is f-patient and divergent) — then pᵢ − ThmInd = 1/2 ≳ 0, so
-the family is "above" as printed, yet provability induction forces ℙₙ(φₙ) ≈ₙ 0,
-contradicting ≳ₙ 1/2. The intended orientation is `ThmInd(φᵢ) − pᵢ` (truth frequency
-runs above the target), which is what the formalization uses
-(`VariedPseudorandomAbove`, Properties/Pseudorandomness.lean, whose docstring flags
-the corrected sign). (Found blind by the final audit, lens A, 2026-08-31; verified
-against the tex by the orchestrator.)
+**The theorem is fine; the printed proof cites the wrong hypothesis for its key step.**
+
+The proof of `thm:incons` (tex:4487–4491) argues, for both conjuncts: each
+`⌜Θ′ₙ is inconsistent⌝` "is provable in 𝗣𝗔, and Θ represents computations, [so] each of
+these statements is provable in Θ". Representability of computable functions
+(tex:600–604) does not transfer 𝗣𝗔-provability to Θ: it yields facts of the form
+`Θ ⊢ ∀ν(γ(n̄,ν) ↔ ν = ȳ)`, not an inclusion of theories. What actually discharges the
+step is that the inconsistency statements are Σ₁ and true, so Σ₁-completeness of Θ
+suffices — a property the paper never states among its standing assumptions on Θ
+(tex:993–997).
+
+The formalization proves the step by the correct route: `re_complete_mp` under
+`[𝗣𝗔⁻ ⪯ T]`. This is one of the two places that motivate the globally disclosed
+`[𝗣𝗔⁻ ⪯ T]` hypothesis (see the README's discussion of arithmetic-theory assumptions):
+the paper's own argument tacitly consumes arithmetical strength beyond its stated
+premises at exactly this point.
+
