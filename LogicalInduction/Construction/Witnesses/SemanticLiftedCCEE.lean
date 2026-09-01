@@ -18,13 +18,13 @@ set_option maxHeartbeats 2000000
 
 /-- The quotation base together with an independent renamed copy of the theorem stream. -/
 noncomputable def liftedCCEEBaseDP
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] : DeductiveProcess :=
   (theoremQuoteBaseDP T).union (liftDP (theoremDP T))
 
 noncomputable def liftedCCEEBaseDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     DeductiveProcessComputation (liftedCCEEBaseDP T) :=
   (theoremQuoteBaseDPComputation T).union
     (liftDPComputation ((theoremDP_computable T).nonemptyComputation.some))
@@ -33,8 +33,8 @@ noncomputable def liftedCCEEBaseDPComputation
 
 Paper node: `thm:ccee` -/
 lemma liftedCCEEBaseDP_computable
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     ComputableDeductiveProcess (liftedCCEEBaseDP T) :=
   (liftedCCEEBaseDPComputation T).toComputable
 
@@ -83,8 +83,8 @@ lemma liftedCCEEBaseWorld_semanticQuoteDefSentence_iff
       (liftedCCEEBaseWorld_quoteAtom T _)
 
 lemma liftedCCEEBaseWorld_consistent_theorem
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (liftedCCEEBaseWorld T).ConsistentWithTheory (theoremDP T) := by
   intro k phi hphi
   apply (PCWorld.holds_congr_atomCodes phi (fun a ha =>
@@ -93,8 +93,8 @@ lemma liftedCCEEBaseWorld_consistent_theorem
   exact theoremQuoteCertifiedProductWorld_consistent_theorem T k phi hphi
 
 lemma liftedCCEEBaseWorld_consistent_quote
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (liftedCCEEBaseWorld T).ConsistentWithTheory semanticQuoteDP := by
   intro k phi hphi
   obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
@@ -104,8 +104,8 @@ lemma liftedCCEEBaseWorld_consistent_quote
       (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e))))
 
 lemma liftedCCEEBaseWorld_consistent_lifted
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (liftedCCEEBaseWorld T).ConsistentWithTheory (liftDP (theoremDP T)) := by
   rw [consistentWithTheory_liftDP_iff]
   have hpull : pullOldWorld (liftedCCEEBaseWorld T) = provabilityWorld T := by
@@ -119,8 +119,8 @@ lemma liftedCCEEBaseWorld_consistent_lifted
 
 Paper node: `thm:ccee` -/
 lemma liftedCCEEBaseWorld_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (liftedCCEEBaseWorld T).ConsistentWithTheory (liftedCCEEBaseDP T) := by
   intro k phi hphi
   rw [liftedCCEEBaseDP, DeductiveProcess.union_stage, Finset.mem_union,
@@ -132,13 +132,13 @@ lemma liftedCCEEBaseWorld_hworld
 
 /-- The one process used to construct the final logical inductor. -/
 noncomputable def canonicalCCEEDP
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : DeductiveProcess :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] : DeductiveProcess :=
   semanticRegistryClosureDP (liftedCCEEBaseDPComputation T)
 
 noncomputable def canonicalCCEEDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     DeductiveProcessComputation (canonicalCCEEDP T) :=
   semanticRegistryClosureDPComputation (liftedCCEEBaseDPComputation T)
 
@@ -146,20 +146,20 @@ noncomputable def canonicalCCEEDPComputation
 
 Paper node: `thm:ccee` -/
 lemma canonicalCCEEDP_computable
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     ComputableDeductiveProcess (canonicalCCEEDP T) :=
   (canonicalCCEEDPComputation T).toComputable
 
 private noncomputable abbrev canonicalCCEEWorld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] : PCWorld :=
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] : PCWorld :=
   semanticRegistryProductExtensionWorld (liftedCCEEBaseDPComputation T)
     (semanticSourceExtensionWorld (liftedCCEEBaseWorld T))
 
 lemma canonicalCCEEWorld_quoteLeaf
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (code input : ℕ) :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (code input : ℕ) :
     (canonicalCCEEWorld T).Holds (semanticQuoteLeaf code input) ↔
       (liftedCCEEBaseWorld T).Holds (semanticQuoteLeaf code input) := by
   change (semanticRegistryProductExtensionWorld (liftedCCEEBaseDPComputation T)
@@ -173,8 +173,8 @@ lemma canonicalCCEEWorld_quoteLeaf
     (semanticQuoteSchema code) input (by simp [semanticQuoteSchema])
 
 lemma canonicalCCEEWorld_quoteAtom
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (w : ℕ) :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (w : ℕ) :
     (canonicalCCEEWorld T).Holds (quoteAtom w) ↔
       (liftedCCEEBaseWorld T).Holds (quoteAtom w) := by
   change semanticRegistryProductExtensionWorld (liftedCCEEBaseDPComputation T)
@@ -186,8 +186,8 @@ lemma canonicalCCEEWorld_quoteAtom
   · simp [quotationClaimCode, semanticPrimeTag]
 
 lemma canonicalCCEEWorld_semanticQuoteDefSentence_iff
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] (e : ℕ) :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] (e : ℕ) :
     (canonicalCCEEWorld T).Holds (semanticQuoteDefSentence e) ↔
       (liftedCCEEBaseWorld T).Holds (semanticQuoteDefSentence e) := by
   unfold semanticQuoteDefSentence
@@ -200,8 +200,8 @@ lemma canonicalCCEEWorld_semanticQuoteDefSentence_iff
       (canonicalCCEEWorld_quoteAtom T _)
 
 lemma canonicalCCEEWorld_consistent_quote
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (canonicalCCEEWorld T).ConsistentWithTheory semanticQuoteDP := by
   intro k phi hphi
   obtain ⟨e, rfl⟩ := exists_of_mem_semanticQuoteStageList
@@ -214,8 +214,8 @@ lemma canonicalCCEEWorld_consistent_quote
 
 Paper node: `thm:ccee` -/
 lemma canonicalCCEEDP_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (canonicalCCEEWorld T).ConsistentWithTheory (canonicalCCEEDP T) := by
   intro k phi hphi
   rw [canonicalCCEEDP, semanticRegistryClosureDP,
@@ -253,47 +253,47 @@ lemma canonicalCCEEDP_hworld
       (liftedCCEEBaseWorld T) (liftedCCEEBaseWorld_hworld T) k phi hproduct
 
 private lemma canonicalCCEE_consistent_base
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory (liftedCCEEBaseDP T) :=
   PCWorld.consistentWithTheory_union_left
     (PCWorld.consistentWithTheory_union_left hv)
 
 private lemma canonicalCCEE_consistent_source
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory semanticSourceDP :=
   PCWorld.consistentWithTheory_union_right
     (PCWorld.consistentWithTheory_union_left hv)
 
 private lemma canonicalCCEE_consistent_product
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory
       (semanticRegistryProductDP (liftedCCEEBaseDPComputation T)) :=
   PCWorld.consistentWithTheory_union_right hv
 
 private lemma canonicalCCEE_consistent_lifted
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory (liftDP (theoremDP T)) :=
   PCWorld.consistentWithTheory_union_right (canonicalCCEE_consistent_base hv)
 
 private lemma canonicalCCEE_consistent_theorem
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory (theoremDP T) :=
   PCWorld.consistentWithTheory_union_left
     (PCWorld.consistentWithTheory_union_left (canonicalCCEE_consistent_base hv))
 
 private lemma canonicalCCEE_consistent_quote
-    {T : ArithmeticTheory} [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] {v : PCWorld}
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] {v : PCWorld}
     (hv : v.ConsistentWithTheory (canonicalCCEEDP T)) :
     v.ConsistentWithTheory semanticQuoteDP :=
   PCWorld.consistentWithTheory_union_right
@@ -329,8 +329,8 @@ lemma liftedRpnSemanticHandle_valuesAt {X : ℕ → LUV}
 
 Paper node: `thm:ccee` -/
 lemma liftedRpnSource_factor_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x)
@@ -348,8 +348,8 @@ lemma liftedRpnSource_factor_eventually
 
 Paper node: `thm:ccee` -/
 lemma canonicalRationalQuote_factor_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
     ∃ fuel, semanticFactorPrefixValidAtFuel (liftedCCEEBaseDPComputation T)
       (semanticQuoteSchema q.code) limit fuel = true := by
@@ -363,20 +363,20 @@ lemma canonicalRationalQuote_factor_eventually
   simpa only [semanticQuoteSchema] using hfuel
 
 private noncomputable abbrev canonicalCCEELIA
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     IsLogicalInductor (liaHistory (canonicalCCEEDP T)) (canonicalCCEEDP T) :=
   LIA_is_logical_inductor _ (canonicalCCEEDPComputation T).toComputable
 
 noncomputable def canonicalCCEEMarketComputation
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     MarketComputation (liaHistory (canonicalCCEEDP T)) :=
   liaMarketComputation (canonicalCCEEDP T) (canonicalCCEEDPComputation T).toComputable
 
 noncomputable def canonicalDeferredWeightQuoteCode
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (canonicalCCEEDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
@@ -385,8 +385,8 @@ noncomputable def canonicalDeferredWeightQuoteCode
     f w hw weight_mem
 
 noncomputable def canonicalConditionalExpectationQuoteCode
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction) (schema : ℕ) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (canonicalCCEEDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
@@ -403,9 +403,9 @@ admitted by finite semantic consequence; the weight and right-hand quotation are
 internally.  The sole LIA process is `canonicalCCEEDP T`, fixed before `X`, `f`, and `w`.
 
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_closed_exact
-    (T : ArithmeticTheory) [T.Δ₁] [ISigma 1 ⪯ T]
-    [T.SoundOnHierarchy SigmaSymbol.sigma 1]
+theorem lic_no_expected_net_update_conditional_exact_canonical
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T]
     (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld),
@@ -460,6 +460,6 @@ theorem lic_no_expected_net_update_conditional_closed_exact
 
 #print axioms liftedCCEEBaseWorld_hworld
 #print axioms canonicalCCEEDP_hworld
-#print axioms lic_no_expected_net_update_conditional_closed_exact
+#print axioms lic_no_expected_net_update_conditional_exact_canonical
 
 end LogicalInduction

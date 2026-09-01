@@ -13,11 +13,22 @@ substrate and the shared proof machinery.
                      *bits* rather than in code values (`dd:fuel`).
 * `RpnSentence`    — sentences as Polish-notation symbol runs (one token per formula
                      symbol), so stream length tracks symbol count rather than code size.
-* `RpnSplice`      — the symbol-metered sentence-sequence class and its combinators.
+* `RpnSplice`      — the token-metered sentence-sequence class and its combinators.
 * `RpnEmission`    — realizes those sequences as emitted digit streams.
 * `RpnComputation` — primitive recursion for the Polish-notation contraction, which the
                      trading firm's compiler runs to decode candidate traders.
 * `Criterion`      — expressible features (`def:tf`), traders, the LI criterion (`def:lic`).
+* `RepresentsComputations` — the paper's standing assumption on the first-order background
+                     theory `Θ` (§2, "Representing computations"), and the two literals it
+                     yields over a represented value graph.
+* `DerivationSize` — the symbol count `dSize` of a Foundation derivation code, tied to
+                     Foundation's own constructors by equation, with the converse bound
+                     `le_G_dSize` that makes a symbol-bounded proof search finite
+                     (`dd:symbolcount`); `DerivationSizeComputable` carries its
+                     computability layer.
+* `BoundedConsistency` — bounded provability over Foundation's internal derivations, its
+                     computable decider, and the paper's finite-consistency predicate
+                     `Con(Θ)(ν)` (§4.10, `dd:symbolcount`).
 * `Compactness`    — propositional compactness over Cantor space: per-stage satisfiability
                      of a deductive process yields one world consistent with every stage.
 * `Affine`         — trade magnitude/net-worth bounds and affine combinations (buy orders).
@@ -26,7 +37,7 @@ substrate and the shared proof machinery.
 * `Expectations`   — logically uncertain variables (`def:luv`).
 * `RationalCut`    — generic bounded-cut semantics yielding completed-world LUV values.
 
-The four `Rpn*` modules together discharge `def:ec`'s symbol-metered sentence slots.
+The four `Rpn*` modules together discharge `def:ec`'s token-metered sentence slots.
 -/
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Foundations
@@ -38,8 +49,13 @@ import LogicalInduction.Framework.RpnSplice
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnComputation
 import LogicalInduction.Framework.Criterion
+import LogicalInduction.Framework.RepresentsComputations
+import LogicalInduction.Framework.BoundedConsistency
+import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
 import LogicalInduction.Framework.RationalCut
+import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Machine.WriteOutMachine

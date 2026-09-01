@@ -2,12 +2,12 @@
 # Primitive recursion for the RPN contraction
 
 `unRpn` (through its code-level form `unRpnTokensC`) is primitive recursive: the
-trading firm's compiler runs it to decode symbol-metered candidate traders.  Both
+trading firm's compiler runs it to decode token-metered candidate traders.  Both
 fuelled recursions are packaged for `Primrec.nat_strong_rec` on the paired index
 `⟨fuel, encode ts⟩`; recursive calls strictly decrease it because every sub-parse
 returns a suffix (list codes grow strictly along `cons`).
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.RpnSentence
@@ -265,6 +265,19 @@ public def structuredFormulaGCore (m : ℕ)
       else if t = 17 ∨ t = 18 then
         (look (Nat.pair fuel (Encodable.encode rest))).map fun p =>
           (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
+      else if t = 20 then
+        (look (Nat.pair fuel (Encodable.encode rest))).map fun p =>
+          (negFormulaCode p.1, p.2)
+      else if t = 21 then
+        (look (Nat.pair fuel (Encodable.encode rest))).bind fun p =>
+          (look (Nat.pair fuel (Encodable.encode p.2))).map fun q =>
+            (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
+      else if t = 22 then
+        (look (Nat.pair fuel (Encodable.encode rest))).bind fun p =>
+          (look (Nat.pair fuel (Encodable.encode p.2))).map fun q =>
+            (Nat.pair 4
+              (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
+                (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
       else none
 
 public lemma structuredFormulaGCore_spec (m : ℕ)
@@ -297,8 +310,41 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
     rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
   by_cases hquant : t = 17 ∨ t = 18 <;> simp only [hquant, if_true, if_false]
+  · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
+      Nat.unpair_pair, Denumerable.ofNat_encode]
+  by_cases h20 : t = 20 <;> simp only [h20, if_true, if_false]
+  · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
+      Nat.unpair_pair, Denumerable.ofNat_encode]
+  by_cases h21 : t = 21 <;> simp only [h21, if_true, if_false]
+  · rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
+      Nat.unpair_pair, Denumerable.ofNat_encode]
+    rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+    · rfl
+    simp only [Option.bind_some]
+    have hpSuffix := parseStructuredArithmeticFormula_suffix hp
+    have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
+      calc
+        Nat.pair fuel (Encodable.encode p.2) ≤
+            Nat.pair fuel (Encodable.encode rest) :=
+          pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
+        _ < m := structured_smaller_index hf hs
+    rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
+      Denumerable.ofNat_encode]
+  by_cases h22 : t = 22 <;> simp only [h22, if_true, if_false]
   rw [hlook _ (structured_smaller_index hf hs), structuredFormulaF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
+  rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
+  · rfl
+  simp only [Option.bind_some]
+  have hpSuffix := parseStructuredArithmeticFormula_suffix hp
+  have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
+    calc
+      Nat.pair fuel (Encodable.encode p.2) ≤
+          Nat.pair fuel (Encodable.encode rest) :=
+        pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
+      _ < m := structured_smaller_index hf hs
+  rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
+    Denumerable.ofNat_encode]
 
 public def structuredFormulaG
     (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=

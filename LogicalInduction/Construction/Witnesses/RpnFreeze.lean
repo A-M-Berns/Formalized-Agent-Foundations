@@ -77,6 +77,7 @@ Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:l
 -/
 import LogicalInduction.Construction.Witnesses.CanonicalCodes
 import LogicalInduction.Construction.Witnesses.RpnConditioning
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -132,7 +133,7 @@ lemma segOf_split (get : ℕ → ℕ) {p r q : ℕ} (h₁ : p ≤ r) (h₂ : r �
 The second ambiguity source, independent of the `⊥` fiber that `CanonicalCodes.lean`
 settles: a structured leaf `[1, 0, …]` admits non-canonical payload spellings, so a run
 matcher cannot recognize it by comparing against a fixed word.  It does not have to.  The
-structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 7 _)`, so a
+structured parser returns *only* atoms of the reserved shape `atom (Nat.pair 5 _)`, so a
 target outside that shape is never denoted by a structured block and the matcher may reject
 the block on its two-token tag alone — no replay of the structured parser, and no decode.
 
@@ -145,7 +146,7 @@ Proof kind: `P` proved.  Provenance: (b) `parseStructuredPaperPrime`.
 Paper node: `app:ifp` -/
 lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence} {r : List ℕ},
     parseStructuredPaperPrime payload = some (φ, r) →
-      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc)) := by
+      ∃ pol fc : ℕ, φ = LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair pol fc)) := by
   intro payload φ r h
   cases payload with
   | nil => exfalso; revert h; simp [parseStructuredPaperPrime]
@@ -171,7 +172,7 @@ lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence}
 lemma parseStructuredPaperPrime_ne_of_not_reserved {payload : List ℕ} {ψ : Sentence}
     {r : List ℕ}
     (hψ : ∀ pol fc : ℕ,
-      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 7 (Nat.pair pol fc))) :
+      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair pol fc))) :
     parseStructuredPaperPrime payload ≠ some (ψ, r) := by
   intro h
   obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
@@ -218,7 +219,7 @@ lemma matchRun_escape (get : ℕ → ℕ) (φ : Sentence) (p : ℕ) (h : get p =
 
 `matchRun`'s escape test `sentenceMatches ψ c` is the decoder-faithful one, and it reads
 `Nat.unpair` at every node — the recorded obstruction to certifying the matcher at the
-symbol-metered emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
+write-out emission site.  `CanonicalCodes.lean` shows that this is caused *entirely*
 by `⊥`: off the `⊥` fiber Foundation's decoder is injective.  So on a `⊥`-free target the
 matcher below — whose only tests are comparisons of a stream token against a **fixed
 numeral** — is the same function.  `matchRunCanon` is not an alternative semantics; it is
@@ -437,7 +438,7 @@ side conditions close exactly that:
 * `decode_eq_some_iff_of_botFree` (`CanonicalCodes.lean`) makes the escape payload the
   *unique* canonical code `⌜ψ'⌝`, whenever `ψ'` has no `⊥` subformula;
 * `parseStructuredPaperPrime_shape` above excludes the structured spelling, whenever `ψ'`
-  is not a reserved atom `atom (Nat.pair 7 _)`.
+  is not a reserved atom `atom (Nat.pair 5 _)`.
 
 So every node has exactly **two** spellings, and the complete spellings of `ψ` are a finite
 explicit list — `2 ^ (nodes of ψ)` fixed token lists, `spellings ψ` below.  Deciding "does
@@ -1383,7 +1384,7 @@ private lemma polyFueled_ifEqFn {cf cg ca cb : Code} {f g A B : ℕ → ℕ}
 poly-fueled token function, stream index and start position.
 
 **Scope warning — this is the token-metered hypothesis, and it is *not* available at the
-symbol-metered emission site.**  A digit stream supplies only `BigDigits` access to its
+write-out emission site.**  A digit stream supplies only `BigDigits` access to its
 tokens (values may be exponential), never `PolyFueled`.  Every test inside `matchRun`
 factors through a small clamp — grammar tags `0/1/2/3/4`, atom tokens `a + 5` — except the
 escape leaf, which must decide `Encodable.decode c = some ψ` for an exponentially large

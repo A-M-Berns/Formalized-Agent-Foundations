@@ -189,14 +189,14 @@ lemma addConstEF_price (A : AffineCombination) (e : EF)
     (addConstEF A e).price V n = A.price V n + e.denote V := by
   simp [AffineCombination.price, addConstEF_value]
 
-@[simp] theorem addConstEF_magnitude (A : AffineCombination) (e : EF)
+@[simp] lemma addConstEF_magnitude (A : AffineCombination) (e : EF)
     (V : History) :
     (addConstEF A e).magnitude V = A.magnitude V := rfl
 
 def meshErrorFeature (n : ℕ) (b : ℚ) : EF :=
   EF.mul (EF.const (-(2 * b))) (EF.const (1 / (n : ℚ)))
 
-@[simp] theorem meshErrorFeature_denote (n : ℕ) (b : ℚ) (P : History) :
+@[simp] lemma meshErrorFeature_denote (n : ℕ) (b : ℚ) (P : History) :
     (meshErrorFeature n b).denote P = (-(2 * b / n) : ℚ) := by
   simp [meshErrorFeature]
   ring
@@ -270,7 +270,7 @@ lemma meshAffine_price (A : LUVCombination) (P : History) (k m : ℕ) :
       rw [List.flatMap_cons, List.map_append, List.sum_append, List.map_cons,
         List.sum_cons, meshBlock_price, ih]
 
-@[simp] theorem meshAffine_price_diagonal
+@[simp] lemma meshAffine_price_diagonal
     (A : LUVCombination) (P : History) (n : ℕ) :
     (A.meshAffine (n + 1)).price P n = A.expect P n := by
   rw [meshAffine_price]

@@ -18,16 +18,17 @@ schema entered stagewise by an extra process.  Nothing in the first-order theory
 the paper's `Θ` contains the product term natively, and a fresh-atom definitional extension
 is the propositional counterpart.
 
-**What this file is for.**  It is the *obstruction-closure demonstration* for the `thm:ccee`
-substrate boundary — evidence that the mesh endpoint's slack is an artifact of the
-propositional substrate rather than of logical induction, since the same trader and the same
-criterion give an exact conclusion as soon as the product exists syntactically.  It is **not**
-a rendering of `thm:ccee`, and nothing here supersedes
-`lic_no_expected_net_update_conditional_closed`, which remains the `thm:ccee` endpoint of
-record: the inductor here is `LIA` over the *extended* process, a different inductor, and
-conservativity of completed-world truth does not carry prices across.  A cross-family
-adjudication on 2026-08-11 ruled on exactly this point; see the resolution section of
-`LogicalInduction/notes/boundary-propositional-substrate.md`.
+**What this file is for.**  It shows that the mesh endpoint's slack is an artifact of the
+propositional substrate rather than of logical induction: the same trader and the same
+criterion give an exact conclusion as soon as the product exists syntactically.  It is
+**not** a rendering of `thm:ccee` and does not supersede
+`lic_no_expected_net_update_conditional_closed`, because the inductor here is `LIA` over the
+*extended* process — a different inductor — and conservativity of completed-world truth does
+not carry prices across.  The same caveat applies to the zero-slack endpoint
+`lic_no_expected_net_update_conditional_exact_canonical`
+(`Construction/Witnesses/SemanticLiftedCCEE.lean`), which buys exactness over
+`liaHistory (canonicalCCEEDP T)` rather than over `liaHistory (theoremDP T)`.  A reader who
+needs a statement about the latter market must use the mesh endpoint.
 
 ## The schema
 
@@ -65,7 +66,8 @@ The schema is jointly satisfiable only if the product atoms do not already occur
 source's own threshold sentences — an adversarial `X` with `(X n).gt s = ∼productAtom n r`
 would make a stage unsatisfiable.  `ProductAtomFresh` is that side condition, stated
 syntactically through `sentenceAtomCodes`.  Tag `productTag` is unused by every atom this
-repo's processes emit (computation claims carry tags `0`–`3`, quotation claims tag `4`), so
+repo's processes emit (computation claims carry payload tags `0`–`1`, quotation claims
+payload tag `2`), so
 the condition holds for every repo-constructed family; it is the propositional rendering's
 residue, replacing the mesh route's slack disclosure with a strictly milder one.
 -/
@@ -132,9 +134,10 @@ lemma PCWorld.holds_congr_atomCodes {v v' : PCWorld} :
 /-! ## The fresh product atoms -/
 
 /-- The atom tag reserved for quoted-product definitions.  Computation claims carry tags
-`0`–`3` (`ComputationClaimKind.godelCode`) and quotation claims tag `4`
-(`quotationClaimCode`), so `5` names no atom any process in this repo emits. -/
-def productTag : ℕ := 5
+`0`–`1` (`ComputationClaimKind.godelCode`) and quotation claims tag `2`
+(`quotationClaimCode`), so `3` names no atom any process in this repo emits.  See the
+global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
+def productTag : ℕ := 3
 
 /-- The fresh atom standing for `⌜Xₙ · Wₙ > r⌝`. -/
 def productAtom (n : ℕ) (r : ℚ) : Sentence :=
@@ -162,8 +165,9 @@ For a *genuinely arbitrary* e.c. family, `ProductAtomFresh` must be assumed: a
 blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`5`
 atoms.  For everything this repository constructs the condition is a *theorem*, and the
 lemmas below are what discharge it: the constructed process's stages are images of
-`eventAtom`, whose atoms carry the computation-claim tags `0`–`3` or the quotation tag `4`,
-and every quotation threshold family carries tag `4`.  Nothing but `productLUV` uses tag
+`eventAtom`, whose atoms carry the computation-claim payload tags `0`–`1` or the quotation
+payload tag `2`, and every quotation threshold family carries tag `2`.  Nothing but
+`productLUV` uses tag
 `productTag = 5`. -/
 
 @[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
@@ -181,18 +185,19 @@ lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
   simp [ComputationClaim.godelCode]
 
 lemma sentenceAtomCodes_quoteAtom (w : ℕ) :
-    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 4 := by
+    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 2 := by
   intro a ha
   rw [quoteAtom, quotationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
   subst ha
   simp [quotationClaimCode]
 
 /-- **The constructed process's literals never carry the product tag.**  Every atom of an
-`eventAtom` is a computation claim (tags `0`–`3`) or a quotation claim (tag `4`). -/
+`eventAtom` is a computation claim (payload tags `0`–`1`) or a quotation claim (payload
+tag `2`). -/
 lemma eventAtom_atomCodes_ne_productTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ productTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -206,18 +211,12 @@ lemma eventAtom_atomCodes_ne_productTag (e : ℕ) :
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
         ComputationClaimKind.godelCode, productTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, productTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
-        ComputationClaimKind.godelCode, productTag] at hc
   · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
   · exact fun hc => by simp [sentenceAtomCodes_quoteAtom _ a ha, productTag] at hc
   · simp at ha
 
 /-- Every quotation threshold family is fresh for the product tag: its thresholds are
-quotation atoms (tag `4`). -/
+quotation atoms (payload tag `2`). -/
 lemma arithmeticThresholdLUV_productAtomFresh (code : ℕ) :
     ProductAtomFresh (arithmeticThresholdLUV code) := by
   intro n r a ha
@@ -233,8 +232,8 @@ lemma RationalQuoteCode.productAtomFresh {T : ArithmeticTheory} {value : ℕ →
 constructed provability process is an image of `eventAtom`.  This is the side condition
 `productDefDP_union_consistentWithTheory` takes on the base process, discharged rather than
 assumed. -/
-lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) :
+lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁]
+    [Entailment.Consistent T] (k : ℕ) :
     ∀ φ ∈ (theoremDP T).D k, ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ productTag := by
   classical
   intro φ hφ
@@ -953,10 +952,9 @@ Two further costs of the demonstration, stated plainly rather than buried:
   to `PolyRatCodes` would remove it, at the cost of dropping the paper's own worked example
   for this theorem (tex:2077) — a strictly worse trade, and not taken.
 
-The cross-family adjudication of 2026-08-11 (`LogicalInduction/notes/boundary-propositional-substrate.md`,
-resolution section) rejected reading this section as `thm:ccee` at an instance, for exactly
-the price-transport reason above, and ranked the renderings mesh > this > weight-narrowing.
-The framing here is the ruled one. -/
+Reading this section as `thm:ccee` at an instance is therefore wrong, for exactly the
+price-transport reason above; the renderings rank mesh > this > weight-narrowing, and the
+framing above is the ranked one. -/
 
 /-- Stages of the union constrain the base process in particular. -/
 lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
@@ -977,16 +975,12 @@ noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
   halting_refutes z h := (Q.halting_refutes z h).imp fun k hk => hsub k hk
   boundedHalting_enters z h := (Q.boundedHalting_enters z h).imp fun k hk => hsub k hk
   boundedFailure_refutes z h := (Q.boundedFailure_refutes z h).imp fun k hk => hsub k hk
-  inconsistency_enters z h := (Q.inconsistency_enters z h).imp fun k hk => hsub k hk
-  inconsistency_refutesConsistency z h :=
-    (Q.inconsistency_refutesConsistency z h).imp fun k hk => hsub k hk
-  theory_sigmaOne := Q.theory_sigmaOne
   quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
   quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
 
 section ExactClosed
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 variable (f : DeferralFunction) (w : ℕ → ℚ)
   (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
   (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
@@ -1084,7 +1078,7 @@ slack; `weight_valued` (a) `RationalQuoteCode.reflected` through the lifted pres
 `weight_generable_extended` (c) — modeling substitutions disclosed at the statement, in
 `LogicalInduction/README.md`, and in `scripts/coverage-classification.md`.
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_exact_closed
+theorem lic_no_expected_net_update_conditional_exact_productExtension
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
@@ -1162,11 +1156,15 @@ lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / 
   have := h 0 1
   norm_num at this
 
-/-- Every efficiently codeable rational sequence is `def:pgen` against **every** market,
-through its constant feature. -/
+/-- Every **value-bounded** rational code sequence is `def:pgen` against every market —
+the derived corollary of the general write-out constructor
+`PGenerableRat.ofDigitRatCodes`, kept for callers who already hold a `PolyRatCodes`
+certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
+(`digitRatCodes_two_pow_inv_not_polyRatCodes`), which the general constructor admits
+(`pGenerableRat_two_pow_inv`). -/
 lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
     PGenerableRat P q :=
-  ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+  PGenerableRat.ofDigitRatCodes (DigitRatCodes.ofPolyRatCodes hq) P
 
 /-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
 satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`
@@ -1178,11 +1176,11 @@ generability premise empties it, and neither is jointly unsatisfiable with the p
 premises.
 
 This says nothing about the base inductor either; it witnesses that
-`lic_no_expected_net_update_conditional_exact_closed` has instances, not that its
+`lic_no_expected_net_update_conditional_exact_productExtension` has instances, not that its
 conclusion transfers to `liaHistory (theoremDP T)`.
 Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] [𝗥₀ ⪯ T]
+theorem lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (f : DeferralFunction) :
     ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
       (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) (X : ℕ → LUV),
@@ -1211,7 +1209,7 @@ theorem lic_no_expected_net_update_conditional_exact_closed_nonvacuous
 #print axioms eventAtom_atomCodes_ne_productTag
 #print axioms QuotationTheoryPresentation.mono
 #print axioms exactProductDP_hworld
-#print axioms lic_no_expected_net_update_conditional_exact_closed
-#print axioms lic_no_expected_net_update_conditional_exact_closed_nonvacuous
+#print axioms lic_no_expected_net_update_conditional_exact_productExtension
+#print axioms lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
 
 end LogicalInduction

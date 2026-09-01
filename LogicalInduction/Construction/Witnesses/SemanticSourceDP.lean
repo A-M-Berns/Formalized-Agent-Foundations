@@ -311,18 +311,18 @@ lemma semanticSourceExtensionWorld_consistentWith_union
     (hv₀ k φ hφ)
 
 /-- The canonical source-aware theory process is fixed from `T` alone. -/
-noncomputable def theoremSemanticSourceDP (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess :=
+noncomputable def theoremSemanticSourceDP (T : ArithmeticTheory) [T.Δ₁]
+    [Entailment.Consistent T] : DeductiveProcess :=
   (theoremDP T).union semanticSourceDP
 
 noncomputable def theoremSemanticSourceDPComputation (T : ArithmeticTheory)
-    [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremSemanticSourceDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     semanticSourceDP_computable.nonemptyComputation.some
 
-lemma theoremDP_semanticPrimeFresh (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) (φ : Sentence) (hφ : φ ∈ (theoremDP T).D k) :
+lemma theoremDP_semanticPrimeFresh (T : ArithmeticTheory) [T.Δ₁]
+    [Entailment.Consistent T] (k : ℕ) (φ : Sentence) (hφ : φ ∈ (theoremDP T).D k) :
     SemanticPrimeFreshSentence φ := by
   simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
     Finset.mem_range] at hφ
@@ -330,8 +330,8 @@ lemma theoremDP_semanticPrimeFresh (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁
   exact eventAtom_atomCodes_ne_semanticPrimeTag e
 
 /-- Explicit non-vacuity of the fixed theorem-plus-source process. -/
-lemma theoremSemanticSourceDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma theoremSemanticSourceDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (semanticSourceExtensionWorld (provabilityWorld T)).ConsistentWithTheory
       (theoremSemanticSourceDP T) :=
   semanticSourceExtensionWorld_consistentWith_union (theoremDP T)

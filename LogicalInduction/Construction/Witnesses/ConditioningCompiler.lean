@@ -205,7 +205,7 @@ lemma conditionedQuoteCode_spec {P : History} (market : MarketComputation P)
     denominator, conditionedQuoteTable]
 
 /-- The conditioned history is a computable rational market whenever the base market has a
-named computation and the condition sequence is symbol-metered (whence its whole-value
+named computation and the condition sequence is token-metered (whence its whole-value
 naming program is recursive — `RpnSentenceCodes.exists_code`). -/
 noncomputable def conditionedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) :
@@ -3322,7 +3322,8 @@ lemma exists_eventual_condition_price_floor
       funext (AffineCombination.sentenceAffine_futureHigh ψ P)
     rw [hfutureEq] at hfutureLiminfAffine
     exact hfutureLiminfAffine
-  have hpreemptive := lic_preemptive_learning P DP ψ hψ hworld
+  have hpreemptive := lic_preemptive_learning P DP ψ
+    (BigSentenceCodes.ofRpnSentenceCodes hψ) hworld
   have hdiagLiminf : lower ≤ liminf (fun n => P n (ψ n)) atTop := by
     rw [hpreemptive.1]
     exact hfutureLiminf
@@ -3368,7 +3369,7 @@ noncomputable def eventualConditioningFloorOfJointConsistency
 
 The public operational-witness constructors and the paper-facing `thm:scon` endpoints
 live in `RpnConditioning.lean` (namespace `ConditioningCompile`), where the
-symbol-metered (`EfficientlyComputable`) translation certificates they require are
+token-metered (`EfficientlyComputable`) translation certificates they require are
 proved.  This file carries the economic and floor content they consume. -/
 
 

@@ -1,23 +1,18 @@
 /-
 # The genuine polynomial-time trader class and its enumeration
 
-Stage 3 of the efficiency-model program (`LogicalInduction/notes/complexitylib-adoption.md`).
-This file carries the paper-facing side of that program: a trader class defined through
-**ordinary machine polynomial time** — `Complexity.FP`, from the pinned complexitylib fork —
-together with a total effective enumeration of it and the **coverage** theorem that lets
-`TradingFirm`'s existing dominance proof quantify over it.
+The trader class the paper actually asks for — defined through **ordinary machine
+polynomial time**, `Complexity.FP` from the pinned complexitylib fork — together with a
+total effective enumeration of it and the **coverage** theorem that lets `TradingFirm`'s
+dominance proof quantify over it. So the *construction's* trader universe is the genuine
+machine class.
 
-**What this replaces, and what it does not.** `LogicalInduction.EfficientlyComputable`
-(`Framework/Criterion.lean`) renders `def:ec` through a fuel-clocked `Nat.Partrec.Code.evaln`
-interpreter — a disclosed type-`(c)` substitution, not a machine complexity class.
-`MachineEfficientTrader` below is the machine class the paper actually asks for.
-`PolyFueled` and `EfficientlyComputable` remain the internal certification technology every
-concrete property proof uses, and `Framework/MachineEfficiency.lean` now proves the
-inclusion `EfficientlyComputable Tr → MachineEfficientTrader Tr`: everything the fuel
-calculus certifies is machine-efficient. The converse is not proved, so neither class
-supersedes the other. What this file establishes is that the *construction's* trader
-universe — what `TradingFirm` enumerates and dominates — can be the genuine machine
-class.
+**How it relates to the fuel class.** `LogicalInduction.EfficientlyComputable`
+(`Framework/Criterion.lean`) is a fuel-clocked `Nat.Partrec.Code.evaln` certificate
+(`dd:fuel`), and it remains the internal certification technology every concrete property
+proof uses. `Framework/MachineEfficiency.lean` proves the inclusion
+`EfficientlyComputable Tr → MachineEfficientTrader Tr`: everything the fuel calculus
+certifies is machine-efficient. The converse is not proved and is not claimed.
 
 **Unary days.** The paper measures a trader's runtime as polynomial in the day `n`, with `n`
 written in unary. `unaryDay n = List.replicate n true` has length exactly `n`, so a machine
@@ -72,10 +67,11 @@ lemma enumeratedTrader_strat (i n : ℕ) :
 
 /-! ## The function an index computes
 
-Named because it is the object a future soundness proof must place in `Complexity.FP`; see
-the module note above for why that is not available yet. `bitsToDigits_enumeratedOutput`
-below is the half of the connection that *is* available, and it is what makes the eventual
-soundness proof a matter of the `FP` membership alone. -/
+Named because it is the object the soundness proof places in `Complexity.FP`, which
+`enumeratedOutput_mem_FP` below does via the clocked simulator of `Machine/ClockedSim.lean`.
+`bitsToDigits_enumeratedOutput` is the other half of the connection — it identifies this
+function's output on a unary day with the index's token stream — and together the two reduce
+`enumeratedTrader_machineEfficient` to that `FP` membership. -/
 
 /-- The function an index computes: the described machine's output word on its input, or the
 empty word if the indexed clock runs out. This is the function

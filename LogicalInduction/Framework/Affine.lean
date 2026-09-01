@@ -15,6 +15,7 @@ objects compared by affine provability/preemptive learning.
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.WriteOut
 import LogicalInduction.Framework.RpnEmission
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
@@ -288,9 +289,9 @@ structure PolySequence (As : ℕ → AffineCombination) where
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
   termCount_poly : ∃ c, PolyFueled c termCount
-  const_poly : RpnSpliceStream (fun n => (As n).const.serialize)
-  coefficient_poly : RpnSpliceStream (fun z => (coefficient z).serialize)
-  sentence_poly : RpnSentenceCodes sentence
+  const_poly : BigSpliceStream (fun n => (As n).const.serialize)
+  coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
+  sentence_poly : BigSentenceCodes sentence
   terms_eq : ∀ n,
     (As n).terms = (List.range (termCount n)).map (fun j =>
       (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
@@ -350,7 +351,7 @@ lemma priceFeature_serialize (A : AffineCombination) (n : ℕ) :
 feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market day `m`. -/
 lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    RpnSpliceStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
+    BigSpliceStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
   -- An individual term block is indexed by `q = ⟨⟨n,m⟩,j⟩`.
   have hmember := PolyFueled.left.comp PolyFueled.left
@@ -358,19 +359,20 @@ lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
   have hterm := PolyFueled.right
   have hcanonical := hmember.pair hterm
   have hcoeff := h.coefficient_poly.comp hcanonical
-  have hprice := RpnSpliceStream.serialize_price h.sentence_poly hcanonical hday
-  have hblock : RpnSpliceStream (fun q =>
+  have hprice := BigSpliceStream.serialize_price
+    h.sentence_poly hcanonical hday
+  have hblock : BigSpliceStream (fun q =>
       (h.coefficient (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize ++
         (EF.price (h.sentence (Nat.pair q.unpair.1.unpair.1 q.unpair.2))
           q.unpair.1.unpair.2).serialize ++ [3, 2]) := by
-    refine RpnSpliceStream.of_eq
-      (((hcoeff.append hprice).append (RpnSpliceStream.tag 3 (by norm_num))).append
-        (RpnSpliceStream.tag 2 (by norm_num))) ?_
+    refine BigSpliceStream.of_eq
+      (((hcoeff.append hprice).append (BigSpliceStream.tag 3 (by norm_num))).append
+        (BigSpliceStream.tag 2 (by norm_num))) ?_
     intro q
     simp [List.append_assoc]
   have hblocks := hblock.concatVar (hcount.comp PolyFueled.left)
   have hconst := h.const_poly.comp PolyFueled.left
-  refine RpnSpliceStream.of_eq (hconst.append hblocks) ?_
+  refine BigSpliceStream.of_eq (hconst.append hblocks) ?_
   intro z
   rw [priceFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, Nat.unpair_pair]
@@ -548,7 +550,7 @@ lemma absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
   simp only [absFeature, EF.denoteWith, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul]
   rw [abs_eq_max_neg]
 
-@[simp] theorem absFeature_rank (e : EF) : (absFeature e).rank = e.rank := by
+@[simp] lemma absFeature_rank (e : EF) : (absFeature e).rank = e.rank := by
   simp [absFeature, EF.rank]
 
 /-- Share magnitude reified as an expressible feature. -/
@@ -575,20 +577,20 @@ lemma magnitudeFeature_serialize (A : AffineCombination) :
 /-- Uniform emission of the reified share magnitude for a polynomial affine sequence. -/
 lemma PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    RpnSpliceStream (fun n => (As n).magnitudeFeature.serialize) := by
+    BigSpliceStream (fun n => (As n).magnitudeFeature.serialize) := by
   obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have habs : RpnSpliceStream (fun z => (absFeature (h.coefficient z)).serialize) := by
-    refine RpnSpliceStream.of_eq
-      ((((h.coefficient_poly.append (RpnSpliceStream.serialize_const (-1))).append
-          h.coefficient_poly).append (RpnSpliceStream.tag 3 (by norm_num))).append
-        (RpnSpliceStream.tag 4 (by norm_num))) ?_
+  have habs : BigSpliceStream (fun z => (absFeature (h.coefficient z)).serialize) := by
+    refine BigSpliceStream.of_eq
+      ((((h.coefficient_poly.append (BigSpliceStream.serialize_const (-1))).append
+          h.coefficient_poly).append (BigSpliceStream.tag 3 (by norm_num))).append
+        (BigSpliceStream.tag 4 (by norm_num))) ?_
     intro z
     rw [absFeature_serialize]
     simp [EF.serialize, List.append_assoc]
   have hterms := habs.concatVar hcount
-  have htags := RpnSpliceStream.repeatTag 2 (by norm_num) hcount
-  refine RpnSpliceStream.of_eq
-    ((hterms.append (RpnSpliceStream.serialize_const 0)).append htags) ?_
+  have htags := BigSpliceStream.repeatTag 2 (by norm_num) hcount
+  refine BigSpliceStream.of_eq
+    ((hterms.append (BigSpliceStream.serialize_const 0)).append htags) ?_
   intro n
   rw [magnitudeFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, List.length_map, List.length_range]
@@ -661,9 +663,9 @@ lemma riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
 /-- Uniform launch-risk emission once the entry feature is uniformly emitted. -/
 lemma PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
-    (hentry : RpnSpliceStream (fun n => (entry n).serialize)) :
-    RpnSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
-  RpnSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
+    (hentry : BigSpliceStream (fun n => (entry n).serialize)) :
+    BigSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
+  BigSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
 
 /-- Buying `A` on day `n`: purchase each sentence coefficient at the current market price.
 The affine constant needs no trade because it cancels between world value and price. -/
@@ -672,7 +674,7 @@ def buy (A : AffineCombination) (n : ℕ)
   trades := A.terms
   rank_le := hrank
 
-@[simp] theorem buy_trades (A : AffineCombination) (n : ℕ)
+@[simp] lemma buy_trades (A : AffineCombination) (n : ℕ)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.buy n hrank).trades = A.terms := rfl
 
@@ -776,10 +778,10 @@ def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := fun z => EF.mul (EF.const q) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const q) h.const_poly
-  coefficient_poly := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const q)
+  const_poly := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const q) h.const_poly
+  coefficient_poly := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const q)
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by
@@ -841,10 +843,10 @@ def PolySequence.neg {As : ℕ → AffineCombination} (h : PolySequence As) :
   coefficient := fun z => EF.mul (EF.const (-1)) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const (-1)) h.const_poly
-  coefficient_poly := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const (-1))
+  const_poly := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const (-1)) h.const_poly
+  coefficient_poly := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const (-1))
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by
@@ -939,7 +941,7 @@ def roundTrip (A : AffineCombination) (buyDay sellDay : ℕ) (hopen : buyDay < s
           (fun p hp => (hrank p hp).trans (Nat.le_of_lt hopen)))
       · exact emptyStrategy n
 
-@[simp] theorem roundTrip_strat_open (A : AffineCombination) (buyDay sellDay : ℕ)
+@[simp] lemma roundTrip_strat_open (A : AffineCombination) (buyDay sellDay : ℕ)
     (hopen : buyDay < sellDay) (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
     (A.roundTrip buyDay sellDay hopen hrank).strat buyDay = A.buy buyDay hrank := by
   simp [roundTrip]

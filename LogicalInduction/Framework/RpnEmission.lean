@@ -1,13 +1,13 @@
 /-
 # RPN emission bridges: fuelled scans and realization
 
-The poly-fuelled side of the symbol-metered emission model: the escape-slot automaton
+The poly-fuelled side of the token-metered emission model: the escape-slot automaton
 scanned over any digit `PolySegStream`, the per-position range form of the escape
 splice, and the realization bridges into `EfficientlyComputable` (`ec_of_rawEmission` /
-`ec_of_rawSegStream`, the symbol-metered counterparts of `ecDigit_of_rawEmission` /
+`ec_of_rawSegStream`, the token-metered counterparts of `ecDigit_of_rawEmission` /
 `ecDigit_of_rawSegStream`, with the decode routed through `unRpn ∘ undigitize`).
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.RpnSentence
@@ -103,7 +103,7 @@ lemma PolySegStream.escModeScan {s : ℕ → List ℕ} (h : PolySegStream s) :
   simp only [escModeStep, Nat.unpair_pair, ifzSelFn, Nat.reduceAdd]
   split_ifs <;> omega
 
-/-! ## The symbol-metered realization bridges -/
+/-! ## The token-metered realization bridges -/
 
 /-- A length/token emission under one polynomial clock *is* the clocked token stream.
 This is the step shared by every raw-emission certificate below. -/
@@ -140,7 +140,7 @@ lemma ec_of_rawClocked (Tr : Trader) (raw : ℕ → List ℕ)
   rw [hclock n]
   exact hstrategy n
 
-/-- Exact digit emitters instantiate the symbol-metered bounded-emulator definition. -/
+/-- Exact digit emitters instantiate the token-metered bounded-emulator definition. -/
 lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
@@ -205,7 +205,7 @@ lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
 
 /-! ## The model inclusions
 
-A token-model or digit-model certificate transfers into the symbol-metered class by
+A token-model or digit-model certificate transfers into the token-metered class by
 the escape splice — every sentence-slot token is prefixed by the escape tag, a poly
 digit-level rewrite whose contracted decode is the original strategy
 (`strategyOfTokens_unRpn_escExpand`). -/
@@ -343,7 +343,7 @@ lemma RpnSpliceStream.ec (Tr : Trader)
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
 `RpnSentenceCodes` sentence sequence, is efficiently computable.  This is the entry point
-used by the copy-only property families, which need only the symbol-metered
+used by the copy-only property families, which need only the token-metered
 `RpnSentenceCodes` hypothesis rather than the stronger whole-value `PolySentenceCodes`.
 Paper node: `def:ec` -/
 lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)

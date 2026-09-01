@@ -8,6 +8,7 @@ premise is not silently widened to an arbitrary Lean function.
 -/
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Framework.Expectations
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -20,24 +21,29 @@ def sentenceAffine (φ : ℕ → Sentence) (n : ℕ) : AffineCombination where
   const := .const 0
   terms := [(.const 1, φ n)]
 
-@[simp] theorem sentenceAffine_price (φ : ℕ → Sentence) (P : History) (n m : ℕ) :
+@[simp] lemma sentenceAffine_price (φ : ℕ → Sentence) (P : History) (n m : ℕ) :
     (sentenceAffine φ n).price P m = P m (φ n) := by
   simp [sentenceAffine, price, value]
 
-@[simp] theorem sentenceAffine_magnitude (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_magnitude (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     (sentenceAffine φ n).magnitude P = 1 := by
   simp [sentenceAffine, magnitude]
 
-/-- A polynomial sentence-code progression induces a legal one-share affine sequence. -/
-noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+/-- A polynomial sentence-code progression induces a legal one-share affine sequence.
+
+This is one of the two discharges that make `thm:simcal`'s endpoint reach the paper's own
+hypothesis set: `AffineCombination.simcal` takes `PolySequence (sentenceAffine φ)` as an
+argument, and this constructs it from the paper's "`⟨φ⟩` is an e.c. sequence".
+Paper node: `thm:simcal` -/
+noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     PolySequence (sentenceAffine φ) := by
   exact {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const 1
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceAffine]
     const_rank := by intro n; simp [sentenceAffine]
@@ -55,7 +61,7 @@ lemma sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2]
 
 /-- The one-share sentence family as an exact paper `BCS` witness. -/
-noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (P : History) : BoundedCombinationSequence (sentenceAffine φ) P where
   poly := sentenceAffine_polySequence φ hφ
   bounded := ⟨1, fun n => by simp [l1Norm, sentenceAffine, magnitude]⟩
@@ -67,18 +73,18 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
   const := .mul (.const (-1)) (.const (p n))
   terms := [(.const 1, φ n)]
 
-@[simp] theorem sentenceMinusProbability_value (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_value (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (n : ℕ) (V : History) (w : Valuation) :
     (sentenceMinusProbability φ p n).value V w = w (φ n) - (p n : ℝ) := by
   simp [sentenceMinusProbability, value]
   ring
 
-@[simp] theorem sentenceMinusProbability_price (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_price (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (P : History) (n m : ℕ) :
     (sentenceMinusProbability φ p n).price P m = P m (φ n) - (p n : ℝ) := by
   simp [price]
 
-@[simp] theorem sentenceMinusProbability_magnitude (φ : ℕ → Sentence) (p : ℕ → ℚ)
+@[simp] lemma sentenceMinusProbability_magnitude (φ : ℕ → Sentence) (p : ℕ → ℚ)
     (P : History) (n : ℕ) :
     (sentenceMinusProbability φ p n).magnitude P = 1 := by
   simp [sentenceMinusProbability, magnitude]
@@ -87,17 +93,17 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
 the Appendix proof of `thm:perkno`. -/
 noncomputable def sentenceMinusProbability_polySequence
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p) :
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p) :
     PolySequence (sentenceMinusProbability φ p) := by
   exact {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
-      (RpnSpliceStream.serialize_const_comp hp)
-    coefficient_poly := RpnSpliceStream.serialize_const 1
+    const_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
+      (BigSpliceStream.serialize_const_write hp.toBigDigits)
+    coefficient_poly := BigSpliceStream.serialize_const 1
     sentence_poly := hφ.comp PolyFueled.left
     terms_eq := by intro n; simp [sentenceMinusProbability]
     const_rank := by intro n; simp [sentenceMinusProbability, EF.rank]
@@ -114,12 +120,12 @@ lemma sentenceMinusProbability_bounded (φ : ℕ → Sentence) (p : ℕ → ℚ)
   rw [sentenceMinusProbability_price, abs_le]
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2, (hp n).1, (hp n).2]
 
-@[simp] theorem sentenceAffine_futureHigh (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_futureHigh (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     affineFutureHigh (sentenceAffine φ) P n =
       sSup (Set.range (fun j => P (n + j) (φ n))) := by
   simp [affineFutureHigh]
 
-@[simp] theorem sentenceAffine_futureLow (φ : ℕ → Sentence) (P : History) (n : ℕ) :
+@[simp] lemma sentenceAffine_futureLow (φ : ℕ → Sentence) (P : History) (n : ℕ) :
     affineFutureLow (sentenceAffine φ) P n =
       sInf (Set.range (fun j => P (n + j) (φ n))) := by
   simp [affineFutureLow]
@@ -170,7 +176,7 @@ uniformly from that side.
 Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -200,7 +206,7 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
@@ -231,7 +237,7 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
@@ -316,7 +322,7 @@ target sequence pointwise.
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : RpnSentenceCodes φ) (hp : PolyRatCodes p)
+    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
@@ -346,7 +352,7 @@ The price range is carried by `IsLogicalInductor`; plausible-world existence rem
 explicit deductive-process hypothesis.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => P n (φ n)) atTop =
         liminf (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) atTop ∧

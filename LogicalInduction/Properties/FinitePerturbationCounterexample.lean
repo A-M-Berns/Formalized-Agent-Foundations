@@ -2,6 +2,7 @@ import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.MachineEfficiency
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.Introspection
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # A refutation of the unrestricted finite-day perturbation theorem
@@ -421,17 +422,22 @@ and never reads `P' 0` at a process atom; and `χ`'s reflection is transported a
 `hagree`, which constrains only days `≥ 1`.  Even a hypothetical collision `sa n = χ m`
 would be harmless, since nothing reads `P' 0 (χ m)`.
 
-Tags `6`/`7` are nevertheless chosen disjoint from every tag this repo's processes emit —
-computation claims `0`–`3` (`ComputationClaimKind.godelCode`), quotation claims `4`
-(`quotationClaimCode`), quoted products `5` (`productTag`) — so the advice layer is inert
-everywhere, not merely where the proof happens to look.
+Tags `7`/`8` are nevertheless chosen disjoint from every tag this repo's processes emit.
+The global atom-payload space is gapless and fully allocated (see the table at
+`ComputationClaimKind.godelCode`): computation claims `0`–`1`
+(`ComputationClaimKind.godelCode`), quotation claims `2` (`quotationClaimCode`), quoted
+products `3` (`productTag`), semantic handles `4` (`semanticPrimeTag`), first-order primes
+`5` (`paperPrimeTag`), the old-language copy `6` (`oldLanguageTag`).  The advice tags sit
+immediately **above** that block, at `7` and `8`, so the advice layer is inert everywhere,
+not merely where the proof happens to look — and, unlike the earlier `6`/`7` choice, it no
+longer collides numerically with any allocated tag.
 -/
 
-/-- The schedule-gate advice atom for day `n`, on the fresh tag `6`. -/
-def schedAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 6 n)
+/-- The schedule-gate advice atom for day `n`, on the fresh tag `7`. -/
+def schedAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 7 n)
 
-/-- The sign advice atom for day `n`, on the fresh tag `7`. -/
-def signAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 7 n)
+/-- The sign advice atom for day `n`, on the fresh tag `8`. -/
+def signAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 8 n)
 
 @[simp] lemma schedAtom_inj {m n : ℕ} : schedAtom m = schedAtom n ↔ m = n := by
   simp [schedAtom, Nat.pair_eq_pair]
@@ -442,22 +448,24 @@ def signAtom (n : ℕ) : Sentence := LO.Propositional.Formula.atom (Nat.pair 7 n
 @[simp] lemma schedAtom_ne_signAtom (m n : ℕ) : schedAtom m ≠ signAtom n := by
   simp [schedAtom, signAtom, Nat.pair_eq_pair]
 
-lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 6 n + 5] := rfl
+lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 7 n + 5] := rfl
 
-lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 7 n + 5] := rfl
+lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 8 n + 5] := rfl
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_schedAtom : RpnSentenceCodes schedAtom := by
-  obtain ⟨c, hc⟩ := ((PolyFueled.const 6).pair PolyFueled.id).addConst 5
-  exact RpnSentenceCodes.ofCanonical
-    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+lemma rpnSentenceCodes_schedAtom : BigSentenceCodes schedAtom := by
+  obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
+  exact BigSentenceCodes.ofCanonical
+    ((BigTokenStream.ofPolySegStream
+      (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
       (fun n => (rpn_schedAtom n).symm))
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_signAtom : RpnSentenceCodes signAtom := by
-  obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
-  exact RpnSentenceCodes.ofCanonical
-    ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq
+lemma rpnSentenceCodes_signAtom : BigSentenceCodes signAtom := by
+  obtain ⟨c, hc⟩ := ((PolyFueled.const 8).pair PolyFueled.id).addConst 5
+  exact BigSentenceCodes.ofCanonical
+    ((BigTokenStream.ofPolySegStream
+      (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
       (fun n => (rpn_signAtom n).symm))
 
 /-! ## The perturbed market
@@ -690,33 +698,33 @@ lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
   · rw [if_pos h, if_pos h]; ring
   · rw [if_neg h, if_neg h]; ring
 
-/-- **The advice trader is machine-efficient**, given `RpnSentenceCodes` certificates for
+/-- **The advice trader is machine-efficient**, given `BigSentenceCodes` certificates for
 the two advice-atom families and for the traded diagonal.
 
 Route note: the coefficient carries *price* leaves, which is the whole point of the
 construction, so the price-free entry points
 (`EfficientlyComputable.ofSingleTradeBlocks` / `ofTradeBlocks`, both of which demand
-`EF.priceFree`) do not apply.  The general splice capstone `RpnSpliceStream.ec` does, with
-`RpnSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
+`EF.priceFree`) do not apply.  The general splice capstone `BigSpliceStream.ec` does, with
+`BigSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
 corresponding advice-atom code stream.
 Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
 lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
-    (hsa : RpnSentenceCodes sa) (hsi : RpnSentenceCodes si) (hχ : RpnSentenceCodes χ) :
+    (hsa : BigSentenceCodes sa) (hsi : BigSentenceCodes si) (hχ : BigSentenceCodes χ) :
     MachineEfficientTrader (adviceTrader sa si χ) := by
   have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
-  have hgate : RpnSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
-    RpnSpliceStream.serialize_price hsa PolyFueled.id hday
-  have hsign : RpnSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
-    RpnSpliceStream.serialize_price hsi PolyFueled.id hday
-  have hcoef : RpnSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
-    RpnSpliceStream.serialize_mul hgate
-      (RpnSpliceStream.serialize_add
-        (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const 2) hsign)
-        (RpnSpliceStream.serialize_const (-1)))
-  have htrade : RpnSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
-    RpnSpliceStream.tradeSlot hχ PolyFueled.id
+  have hgate : BigSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
+    BigSpliceStream.serialize_price hsa PolyFueled.id hday
+  have hsign : BigSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
+    BigSpliceStream.serialize_price hsi PolyFueled.id hday
+  have hcoef : BigSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
+    BigSpliceStream.serialize_mul hgate
+      (BigSpliceStream.serialize_add
+        (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const 2) hsign)
+        (BigSpliceStream.serialize_const (-1)))
+  have htrade : BigSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
+    BigSpliceStream.tradeSlot hχ PolyFueled.id
   refine EfficientlyComputable.toMachine
-    (RpnSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
+    (BigSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
   simp [adviceTrader, serializeTrades]
 
 /-! ## Assembly
@@ -760,10 +768,11 @@ theorem not_overgeneral_ifp_of_advice
 
 The concrete existential this reduction consumes — a machine logical inductor with a
 `p = 1/2` paradox-resistance diagonal, together with the computability of its perturbed
-market — cannot be stated in this module.  `theoremDP` and the whole quotation layer live
-in `Construction/Witnesses/ComputationDP.lean`, which reaches this file through
-`ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so naming them
-here is an import cycle.
+market — cannot be stated in this module.  The single market `paperDP`, its literal-stream
+component `theoremDP` and the whole quotation layer live in
+`Construction/Witnesses/PaperTheoryDP.lean` and `ComputationDP.lean`, which reach this file
+through `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so
+naming them here is an import cycle.
 
 The witness and the closed refutation therefore live downstream, in
 `Construction/Witnesses/FinitePerturbationWitness.lean` — the same split

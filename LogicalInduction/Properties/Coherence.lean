@@ -234,14 +234,6 @@ lemma gapEF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
     Pi.add_apply, Pi.mul_apply]; push_cast; ring
 
 
-/-- The signal template is efficiently computable. -/
-lemma sigEF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sigEF φ ψ σ ε) := by
-  have hgap : PolyEF (gapEF φ ψ) :=
-    (PolyEF.price (φ ⋎ ψ)).add
-      (((PolyEF.const (-1)).mul (PolyEF.price φ)).add ((PolyEF.const (-1)).mul (PolyEF.price ψ)))
-  exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
-
-
 /-- The token stream of `gapEF` is compositional (an `add`/`mul`/`price`/`const` tree). -/
 lemma gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ n).serialize) := by
   simp only [gapEF]

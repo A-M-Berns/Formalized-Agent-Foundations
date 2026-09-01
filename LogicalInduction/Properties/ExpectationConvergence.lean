@@ -180,7 +180,7 @@ traders are those of the affine master theorems, all constructed and e.c.-certif
 Provenance: `hcode` and `hcons` are the disclosed representation boundaries; `hval` is the
 disclosed type-`(c)` linkage above; everything else is derived in-project.
 
-The threshold-block hypothesis is the symbol-metered `def:ec` interface for the paper's
+The threshold-block hypothesis is the token-metered `def:ec` interface for the paper's
 `Θ`-definable LUV syntax.
 Paper node: `thm:ec` -/
 theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)

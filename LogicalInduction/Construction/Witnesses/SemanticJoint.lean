@@ -119,7 +119,7 @@ processes (`theoremDP`, quote aliases, products) is impossible.
 -/
 
 noncomputable def increasingQuoteCode (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] : BooleanQuoteCode T
+    [𝗥₀ ⪯ T] : BooleanQuoteCode T
       (fun input => input = Nat.pair 0 (Encodable.encode (1 : ℚ))) :=
   BooleanQuoteCode.ofComputable
     ((Primrec.eq.comp Primrec.id
@@ -129,7 +129,7 @@ noncomputable def increasingQuoteCode (T : ArithmeticTheory)
 completed world, even together with the ordinary theorem process.  This forces explicit
 factor-schema ownership in the repaired architecture. -/
 lemma theorem_quote_product_not_jointly_satisfiable
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗥₀ ⪯ T] :
     ¬∃ v : PCWorld,
       v.ConsistentWithTheory (theoremDP T) ∧
       v.ConsistentWithTheory semanticQuoteDP ∧

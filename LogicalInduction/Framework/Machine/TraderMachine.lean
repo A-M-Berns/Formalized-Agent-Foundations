@@ -1,9 +1,9 @@
 /-
 # The trader machine
 
-Stage 2 item 5: the machine that computes an `EfficientlyComputable` trader's day-`n`
-serialization, so that the trader lands in `Complexity.FP` and hence in
-`MachineEfficientTrader`.
+The machine that computes an `EfficientlyComputable` trader's day-`n` serialization, so
+that the trader lands in `Complexity.FP` and hence in `MachineEfficientTrader`. This is the
+last link of `EfficientlyComputable.toMachine`.
 
 This file builds it out of the fork's register calculus. Three layers:
 

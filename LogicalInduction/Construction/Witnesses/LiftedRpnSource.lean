@@ -98,7 +98,7 @@ private lemma liftedRpnSourceOutput_computable {X : ℕ → LUV}
       by_cases h : decodedQuotationRat input.unpair.2 < 0 <;>
         simp [liftedRpnSourceOutput, sourceOutput, h]
 
-/-- The total emitter program extracted from the caller's existing symbol-metered RPN
+/-- The total emitter program extracted from the caller's existing token-metered RPN
 certificate.  The code is data inside a universal tag-`0` schema; the semantic process is
 not specialized to `X`. -/
 noncomputable def liftedRpnSourceCode {X : ℕ → LUV}

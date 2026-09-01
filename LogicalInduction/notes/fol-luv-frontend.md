@@ -10,14 +10,14 @@ This frontend supplies the missing half: a literal Foundation-arithmetic object 
 *produces* the abstract interface, rather than an abstraction standing in for it. A
 `PaperLUV` is an actual one-variable arithmetic formula carrying object-level Foundation
 proofs; it compiles to an ordinary `LUV` whose thresholds are the paper's own literal
-threshold sentences, and it supplies world-value semantics and symbol-metered efficiency
+threshold sentences, and it supplies world-value semantics and token-metered efficiency
 as *derived* facts instead of caller-supplied certificates.
 
 Two independent bridges meet in `PaperLUVSeq`:
 
 ```text
 semantic:   PaperLUV → paperTheoryDP → rational cut → ValuesAt
-syntactic:  PolyArithmeticFormulaSeq → structured RPN → RpnThresholdCodeSeq
+syntactic:  PolyArithmeticSourceSeq → structured RPN → RpnThresholdCodeSeq
 ```
 
 Downstream code is untouched: it still consumes the abstract `LUV`.
@@ -109,13 +109,20 @@ polynomially bounded on *arbitrary* input, which is the property the shared gram
 The leaf contracts to the **exact existing** public syntax — `paperPrimeSentence` and
 `paperPrimeDecompose` — not to an alias or a semantic handle.
 
-## Symbol-metered efficiency
+## Token-metered efficiency
 
-The efficiency hypothesis is structural:
+The efficiency hypothesis is structural, and it is metered on the paper's **source**
+language rather than on Foundation's normal form:
 
 ```lean
+PolyArithmeticSourceSeq s   :=  PolySegStream (fun n => sourceTokens (s n))
 PolyArithmeticFormulaSeq φ  :=  PolySegStream (fun n => encodeArithmeticFormulaSymbols (φ n))
 ```
+
+The second is the normal-form class, retained as a strictness foil:
+`PolyArithmeticFormulaSeq.toSource` embeds it, and the inclusion is strict at the
+biconditional chain (`iffChainSource_polyArithmeticSourceSeq` versus
+`iffChain_not_polyArithmeticFormulaSeq`).
 
 It certifies emission of the formula's *symbols*, and asks nothing about the magnitude of
 Foundation Gödel codes. The emitted-token audit pins the cost model: every payload token is
@@ -124,7 +131,7 @@ Foundation Gödel codes. The emitted-token audit pins the cost model: every payl
 
 The lifting endpoints are `structuredPaperPrime_rpnSentenceCodes` and, for the
 quantifier-headed propositions that threshold syntax always produces,
-`structuredPaperDecomposeAll_rpnSentenceCodes`.
+`structuredPaperSourceDecomposeAll_rpnSentenceCodes` (over the source language below).
 
 ## PaperLUVSeq
 
@@ -134,8 +141,16 @@ and supplies it on the LUVs' *own defining formulas*:
 ```lean
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   luv        : ℕ → PaperLUV T
-  structural : PolyArithmeticFormulaSeq (fun n => (luv n).formula)
+  source     : ℕ → ArithSource 1
+  compiles   : ∀ n, ArithSource.compile (source n) =
+                 (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
+  structural : PolyArithmeticSourceSeq source
 ```
+
+The certificate is on the paper's **source**, not on Foundation's normal form: `source n`
+is the defining formula as the paper writes it, over the primitive connectives
+`¬ ∧ ∨ ⟹ ⟺ ∀ ∃` of tex:560; `compiles` says it denotes the LUV's Foundation formula; and
+`structural` is `def:ec`'s condition on that writing, one emitted token per source node.
 
 Everything the threshold syntax adds on top is discharged internally: the implication
 shell, the fixed comparison template of `paperRatGtDef`, and the reduced numerator and
@@ -172,7 +187,7 @@ part of this frontend.
 
 - **Ordered-value representation.** As above: a numerator/positive-denominator pair code,
   not canonical rational arithmetic, and no arithmetic closure between LUV values.
-- **Decomposition bridge is head-scoped.** `structuredPaperDecomposeAll_rpnSentenceCodes`
+- **Decomposition bridge is head-scoped.** `structuredPaperSourceDecomposeAll_rpnSentenceCodes`
   covers quantifier-headed propositions, which is what `thresholdFormula` always produces.
   A version for arbitrary outer Boolean structure would need a bracket-counting scan over
   the payload; it is not required by this frontend.

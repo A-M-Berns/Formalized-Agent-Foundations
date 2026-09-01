@@ -18,7 +18,6 @@ elementary base-4 carry arithmetic; the implementation layer runs the carry loop
 Paper node: `def:ec` (digit model), `thm:scon` (conditioning translation residual).
 -/
 import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.Expectations
 
 namespace LogicalInduction
 
@@ -37,6 +36,32 @@ def dig4 (t j : ℕ) : ℕ := t / 4 ^ j % 4
 lemma dig4_lt (t j : ℕ) : dig4 t j < 4 := Nat.mod_lt _ (by norm_num)
 
 lemma dig4_le (t j : ℕ) : dig4 t j ≤ 3 := by have := dig4_lt t j; omega
+
+/-- The least significant digit is the residue. -/
+lemma dig4_zero (t : ℕ) : dig4 t 0 = t % 4 := by simp [dig4]
+
+/-- A value below the base is its own single digit. -/
+lemma dig4_of_lt_four {t : ℕ} (h : t < 4) : dig4 t 0 = t := by
+  rw [dig4_zero]; exact Nat.mod_eq_of_lt h
+
+/-- **Peeling the least significant digit.**  The higher digits of `t` are the digits of
+`t / 4`.  This is the step relation a base-4 Horner recursion runs on, and the reason a
+Horner naming of `t` is emittable from `BigDigits`-style digit access without any base
+conversion. -/
+lemma dig4_succ (t j : ℕ) : dig4 t (j + 1) = dig4 (t / 4) j := by
+  have h : (4 : ℕ) ^ (j + 1) = 4 * 4 ^ j := by ring
+  rw [dig4, dig4, h, ← Nat.div_div_eq_div_mul]
+
+/-- The digit-count recursion, in the `t / 4` form `len4_succ` states for `t = m + 1`. -/
+lemma len4_div_four {t : ℕ} (ht : 0 < t) : len4 t = len4 (t / 4) + 1 := by
+  obtain ⟨m, rfl⟩ : ∃ m, t = m + 1 := ⟨t - 1, by omega⟩
+  exact len4_succ m
+
+lemma len4_pos {t : ℕ} (ht : 0 < t) : 0 < len4 t := by
+  rw [len4_div_four ht]; omega
+
+lemma len4_eq_one {t : ℕ} (h0 : 0 < t) (h : t < 4) : len4 t = 1 := by
+  rw [len4_div_four h0, Nat.div_eq_of_lt h, len4_zero]
 
 lemma dig4_eq_zero_of_le {t j : ℕ} (h : len4 t ≤ j) : dig4 t j = 0 := by
   have ht : t < 4 ^ j := by
@@ -221,6 +246,12 @@ lemma len4_mul_le (x y : ℕ) : len4 (x * y) ≤ len4 x + len4 y := by
     _ < (x + 1) * (y + 1) := by ring_nf; omega
     _ ≤ 4 ^ len4 x * 4 ^ len4 y :=
         Nat.mul_le_mul (lt_four_pow_len4 x) (lt_four_pow_len4 y)
+
+/-- `len4` is primitive recursive.  Obtained from `len4_polyFueled` rather than proved
+again: a poly-fueled function is in particular primitive recursive. -/
+lemma len4_primrec : Primrec len4 := by
+  obtain ⟨_, h⟩ := len4_polyFueled
+  exact h.primrec
 
 /-! ### Multiplication columns
 
@@ -516,6 +547,36 @@ lemma of_eq {x x' : ℕ → ℕ} (h : BigDigits x) (he : ∀ m, x m = x' m) :
     BigDigits x' := by
   rwa [funext he] at h
 
+/-- A write-out digit family is primitive recursive.  The value itself may be exponential,
+but it is recoverable from its own digits: `x m = ∑_{j < len4 (x m)} dig4 (x m) j * 4 ^ j`,
+accumulated by primitive recursion on the digit index.  This is what lets a consumer that
+needs `Computable x` — a market clock, say — accept a write-out certificate in place of a
+poly-fueled value. -/
+lemma primrec {x : ℕ → ℕ} (h : BigDigits x) : Primrec x := by
+  obtain ⟨cl, cd, hl, hd⟩ := h
+  have hlp : Primrec fun m => len4 (x m) := hl.primrec
+  have hdp : Primrec fun z : ℕ => dig4 (x z.unpair.1) z.unpair.2 := hd.primrec
+  have hpow : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) := Primrec₂.unpaired'.mp Nat.Primrec.pow
+  have hdig : Primrec₂ fun (m k : ℕ) => dig4 (x m) k :=
+    (hdp.comp (Primrec₂.natPair.comp Primrec.fst Primrec.snd)).to₂.of_eq
+      (fun m k => by simp)
+  have hstep : Primrec fun p : ℕ × ℕ × ℕ => p.2.2 + dig4 (x p.1) p.2.1 * 4 ^ p.2.1 :=
+    Primrec.nat_add.comp (Primrec.snd.comp Primrec.snd)
+      (Primrec.nat_mul.comp
+        (hdig.comp Primrec.fst (Primrec.fst.comp Primrec.snd))
+        (hpow.comp (Primrec.const 4) (Primrec.fst.comp Primrec.snd)))
+  refine (Primrec.nat_rec' hlp (Primrec.const 0) hstep.to₂).of_eq fun m => ?_
+  have key : ∀ k : ℕ,
+      (Nat.rec 0 (fun k acc => acc + dig4 (x m) k * 4 ^ k) k : ℕ)
+        = ∑ j ∈ Finset.range k, dig4 (x m) j * 4 ^ j := by
+    intro k
+    induction k with
+    | zero => simp
+    | succ k ih => rw [Finset.sum_range_succ, ← ih]
+  show (Nat.rec 0 (fun k acc => acc + dig4 (x m) k * 4 ^ k) (len4 (x m)) : ℕ) = x m
+  rw [key, ← mod_pow_eq_sum_dig4]
+  exact Nat.mod_eq_of_lt (lt_four_pow_len4 _)
+
 /-- Polynomial *values* have digit access — the degenerate case, where the value itself
 and not merely its digits is poly-fueled. -/
 lemma of_polyFueled {c : Code} {x : ℕ → ℕ} (h : PolyFueled c x) : BigDigits x := by
@@ -756,6 +817,41 @@ lemma natPair {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
 lemma succ {x : ℕ → ℕ} (hx : BigDigits x) : BigDigits (fun m => x m + 1) :=
   hx.add (const 1)
 
+/-- **Closure under a poly-fueled two-way branch.**  Digit access commutes with the
+selection: the length and every digit of the selected value are the `ifzSel` choice
+between the two arms' certificates, with the test evaluated at the day component of the
+paired input.  This is the digit-level mirror of `PolySegStream.ifZero`, and the selector
+the rational write-out class uses for the numerator's sign. -/
+lemma ifZero {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y)
+    {ct : Code} {tf : ℕ → ℕ} (ht : PolyFueled ct tf) :
+    BigDigits (fun m => if tf m = 0 then x m else y m) := by
+  obtain ⟨clx, cdx, hlx, hdx⟩ := hx
+  obtain ⟨cly, cdy, hly, hdy⟩ := hy
+  have hlen : PolyFueled _ (fun m => len4 (if tf m = 0 then x m else y m)) :=
+    (ifzSel_polyFueled.comp ((hlx.pair hly).pair ht)).of_eq (fun m => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      by_cases h : tf m = 0 <;> simp [h])
+  have hdig : PolyFueled _ (fun z =>
+      dig4 (if tf z.unpair.1 = 0 then x z.unpair.1 else y z.unpair.1) z.unpair.2) :=
+    (ifzSel_polyFueled.comp ((hdx.pair hdy).pair (ht.comp PolyFueled.left))).of_eq
+      (fun z => by
+        simp only [Nat.unpair_pair, ifzSelFn]
+        by_cases h : tf z.unpair.1 = 0 <;> simp [h])
+  exact ⟨_, _, hlen, hdig⟩
+
+/-- The parity of a big value is poly-fueled: it is the parity of its lowest base-4
+digit, which the digit certificate supplies directly.  The rational write-out class reads
+the numerator's sign off this bit, so the sign needs no field of its own. -/
+lemma mod_two {x : ℕ → ℕ} (hx : BigDigits x) : ∃ c, PolyFueled c (fun m => x m % 2) := by
+  obtain ⟨cl, cd, hl, hd⟩ := hx
+  obtain ⟨cm, hm⟩ := divmodc_polyFueled 2 (by norm_num)
+  have hlow : PolyFueled _ (fun m => dig4 (x m) 0) :=
+    (hd.comp (PolyFueled.id.pair (PolyFueled.const 0))).of_eq
+      (fun m => by simp only [Nat.unpair_pair])
+  refine ⟨_, (PolyFueled.right.comp (hm.comp hlow)).of_eq (fun m => ?_)⟩
+  simp only [Nat.unpair_pair, dig4, pow_zero, Nat.div_one]
+  omega
+
 /-- One clamped accumulation step: clamping accumulator and place value at `M` loses
 nothing about the clamped total. -/
 lemma min_clamp_step (a p d M : ℕ) :
@@ -898,6 +994,39 @@ lemma digitVal_append_singleton (b : List ℕ) (d : ℕ) :
 lemma blockSplit_snoc (ds : List ℕ) (d : ℕ) :
     blockSplit (ds ++ [d]) = blockStep (blockSplit ds) d := by
   rw [blockSplit, List.foldl_append, List.foldl_cons, List.foldl_nil, blockSplit]
+
+/-- The one-digit undigitizer transition is primitive recursive. -/
+lemma undigitizeStep_prim : Primrec₂ undigitizeStep := by
+  let S := List ℕ × ℕ × ℕ
+  have hout : Primrec fun z : S × ℕ => z.1.1 := Primrec.fst.comp Primrec.fst
+  have hacc : Primrec fun z : S × ℕ => z.1.2.1 :=
+    Primrec.fst.comp (Primrec.snd.comp Primrec.fst)
+  have hpow : Primrec fun z : S × ℕ => z.1.2.2 :=
+    Primrec.snd.comp (Primrec.snd.comp Primrec.fst)
+  have hd : Primrec fun z : S × ℕ => z.2 := Primrec.snd
+  have hlt : PrimrecPred fun z : S × ℕ => z.2 < 4 :=
+    PrimrecRel.comp Primrec.nat_lt hd (Primrec.const 4)
+  have hthen : Primrec fun z : S × ℕ =>
+      ((z.1.1, z.1.2.1 + z.2 * z.1.2.2, 4 * z.1.2.2) : S) :=
+    hout.pair ((Primrec.nat_add.comp hacc (Primrec.nat_mul.comp hd hpow)).pair
+      (Primrec.nat_mul.comp (Primrec.const 4) hpow))
+  have helse : Primrec fun z : S × ℕ => ((z.1.1 ++ [z.1.2.1], 0, 1) : S) :=
+    (Primrec.list_append.comp hout
+      (Primrec.list_cons.comp hacc (Primrec.const []))).pair
+      ((Primrec.const 0).pair (Primrec.const 1))
+  exact (Primrec.ite hlt hthen helse).to₂.of_eq fun s d => by
+    rcases s with ⟨out, acc, pow⟩
+    unfold undigitizeStep
+    by_cases h : d < 4 <;> simp [h]
+
+/-- The streaming undigitizer is primitive recursive. -/
+lemma undigitize_prim : Primrec undigitize := by
+  have hstep : Primrec₂ fun (_ : List ℕ) (p : (List ℕ × ℕ × ℕ) × ℕ) =>
+      undigitizeStep p.1 p.2 :=
+    (undigitizeStep_prim.comp (Primrec.fst.comp Primrec.snd)
+      (Primrec.snd.comp Primrec.snd)).to₂
+  exact (Primrec.fst.comp (Primrec.list_foldl Primrec.id
+    (Primrec.const (([], 0, 1) : List ℕ × ℕ × ℕ)) hstep)).of_eq fun ds => by rfl
 
 /-- The undigitize fold tracks the block split: accumulator = value of the current
 block, place = `4 ^` its digit count. -/
@@ -1594,6 +1723,7 @@ lemma DigitSentenceCodes.comp {φ : ℕ → Sentence} (h : DigitSentenceCodes φ
 #print axioms PolySegStream.freezeModeScan
 #print axioms PolySegStream.dayClampTokens
 
+#print axioms len4_primrec
 #print axioms PolySegStream.undigitizeTokens
 #print axioms BigDigits.add
 #print axioms BigDigits.mul

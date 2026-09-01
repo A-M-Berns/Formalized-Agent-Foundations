@@ -11,6 +11,7 @@ fields mention only sentence emission and eventual theoremhood/refutability; the
 mention market prices or any desired asymptotic conclusion.
 -/
 import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -22,7 +23,7 @@ process.  This is the exact propositional boundary used for halting and inconsis
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
-  sentence_poly : RpnSentenceCodes sentence
+  sentence_poly : BigSentenceCodes sentence
   provable_of_true : ∀ n, truth n → ∃ k, sentence n ∈ DP.D k
 
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
@@ -42,52 +43,86 @@ is decidable and is the computation represented in `thm:dontwait`. -/
 def CodeHaltsWithin (machine : Nat.Partrec.Code) (input steps : ℕ) : Prop :=
   (Nat.Partrec.Code.evaln steps machine input).isSome = true
 
-/-- The two separately emitted sentences used for an inconsistent theory: “inconsistent”
-is eventually proved when the finite contradiction search succeeds, while “consistent” is
-then refuted.  Keeping both sequences explicit avoids assuming a syntactic-negation law that
-the abstract `Sentence` representation does not provide.
+/-- The emitted “`⌜Θ′ₙ⌝` is inconsistent” family.  One sentence sequence, not two: the paper
+defines `⌜Θ′⌝ is inconsistent` as the *negation* of `⌜Θ′⌝ is consistent` (tex:1863-1866), so
+the consistency family is recovered syntactically by `consistencySentence` below rather than
+carried as an independent field.  The earlier two-family shape existed to avoid assuming a
+syntactic negation on the abstract `Sentence` type; `Sentence` is Foundation's propositional
+`Formula`, which has one, so the reason no longer holds.
 Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
-  consistencySentence : ℕ → Sentence
-  inconsistency_poly : RpnSentenceCodes inconsistencySentence
-  consistency_poly : RpnSentenceCodes consistencySentence
+  inconsistency_poly : BigSentenceCodes inconsistencySentence
   inconsistency_provable : ∀ n, inconsistent n →
     ∃ k, inconsistencySentence n ∈ DP.D k
-  consistency_disprovable : ∀ n, inconsistent n →
-    ∃ k, (∼consistencySentence n) ∈ DP.D k
+
+/-- **The paper's “`⌜Θ′ₙ⌝` is consistent”**: the negation of the day-`n` inconsistency
+sentence (tex:1863-1866). -/
+def InconsistentTheoryClaims.consistencySentence {DP : DeductiveProcess}
+    {inconsistent : ℕ → Prop} (R : InconsistentTheoryClaims DP inconsistent) (n : ℕ) :
+    Sentence :=
+  ∼R.inconsistencySentence n
+
+/-- **Provability induction at the negated sentence.**  `lic_provind_false` asks for `∼ψ` to
+enter the completed theory; when `ψ` is itself a negation `∼φ` of a *theorem*, that would ask
+for `∼∼φ`, which the paper's prime decomposition never emits.  The price still goes to zero,
+for the same reason and by the same argument: in a world consistent with the stage, `φ` holds,
+so `∼φ` does not, so every sampled payout of `∼φ` is `0`. -/
+private lemma provind_neg_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (fun n => P n (∼φ n)) ≈ₙ fun _ => 0 := by
+  let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
+    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
+  have hψpoly := AffineCombination.sentenceAffine_polySequence (fun n => ∼φ n) hφ.neg
+  have hψeq := hψpoly.affine_provind_theory_eq P DP
+    (AffineCombination.sentenceAffine_bounded _ P hP)
+    ⟨1, fun n => by simp⟩ hworld 0 (fun n v hv => by
+      obtain ⟨k, hk⟩ := hthm n
+      have hpos := hv k (φ n) hk
+      have hfalse : ¬v.Holds (∼φ n) := fun h => (PCWorld.holds_neg v (φ n)).mp h hpos
+      simp [AffineCombination.sentenceAffine, AffineCombination.value,
+        PCWorld.payout, hfalse])
+  simpa using hψeq
 
 /-- **Belief in Finitistic Consistency** (`thm:pac`), at the propositional computation-
 representation boundary.  `consistentWithin n` is the truth of the finite proof search
 named on day `n`; its representing syntax may compactly contain a fixed arbitrary
 computable function rather than evaluating that function in polynomial time.
+
+The representation premise is the **semidecidable** one.  Every day's claim is true here
+(`hconsistent`), so only the positive half of a decidable representation is ever consumed —
+the negative field `disprovable_of_false` of `RepresentedDecidableClaims` would be
+unreachable.  Callers holding a decidable bundle pass its
+`.toRepresentedSemidecidableClaims` projection; keeping the weaker premise is what makes
+that visible in the statement rather than only in the proof.
 Paper node: `thm:pac` -/
 theorem lic_belief_finitistic_consistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (consistentWithin : ℕ → Prop)
-    (R : RepresentedDecidableClaims DP consistentWithin)
+    (R : RepresentedSemidecidableClaims DP consistentWithin)
     (hconsistent : ∀ n, consistentWithin n)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
     (fun n => R.provable_of_true n (hconsistent n)) hworld
 
-/-- **Belief in the Consistency of a Stronger Theory** (`thm:pazfc`).  The logical-
-induction argument is identical to `thm:pac`; the distinction is carried by the supplied
-finite-consistency predicate and its concrete representation witness.
-Paper node: `thm:pazfc` -/
-theorem lic_belief_stronger_theory_consistency
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (strongerConsistentWithin : ℕ → Prop)
-    (R : RepresentedDecidableClaims DP strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
-  lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hconsistent n)) hworld
-
 /-- **Disbelief in Inconsistent Theories** (`thm:incons`): timely belief in each emitted
-inconsistency sentence and timely disbelief in its separately emitted consistency sentence.
+inconsistency sentence and, therefore, timely disbelief in its negation — the paper's
+consistency sentence.  The second conjunct costs no further representation premise; it is the
+first one read through the market's own valuation of a negation.
+
+*What this layer is.*  This is the **abstract boundary**, not the content: `inconsistent`
+and `hall` are carried only so that the `InconsistentTheoryClaims` bundle can be indexed by
+the property its witness is required to establish, and the proof consumes nothing but
+`R.inconsistency_provable` at every day.  The premise parameter is therefore not eliminable
+without dissolving the bundle's index — and it should not be: what makes `thm:incons` a
+theorem about *theories* rather than about an arbitrary emitted sentence family lives
+entirely in the witnesses (`representedInconsistentTheoryClaims` and the applied endpoints
+in `Construction/Witnesses/ComputationRepresented.lean`), where `inconsistent n` is
+instantiated at `¬Entailment.Consistent (theoryOf (m n))` — the freestanding day-theory
+enumerated by the day's machine, with no base theory anywhere — and discharged.
 Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -98,8 +133,8 @@ theorem lic_disbelief_inconsistent_theories
       ((fun n => P n (R.consistencySentence n)) ≈ₙ fun _ => 0) :=
   ⟨lic_provind_true P DP R.inconsistencySentence R.inconsistency_poly
       (fun n => R.inconsistency_provable n (hall n)) hworld,
-    lic_provind_false P DP R.consistencySentence R.consistency_poly
-      (fun n => R.consistency_disprovable n (hall n)) hworld⟩
+    provind_neg_false P DP R.inconsistencySentence R.inconsistency_poly
+      (fun n => R.inconsistency_provable n (hall n)) hworld⟩
 
 /-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named machine/input
 sequences.  Machine runtime is unrestricted: only the representing sentence sequence must
@@ -157,7 +192,6 @@ theorem lic_does_not_anticipate_halting
   exact ⟨out, Nat.Partrec.Code.evaln_sound (by simpa using hout)⟩
 
 #print axioms lic_belief_finitistic_consistency
-#print axioms lic_belief_stronger_theory_consistency
 #print axioms lic_disbelief_inconsistent_theories
 #print axioms lic_learns_halting_patterns
 #print axioms lic_learns_provable_nonhalting_patterns

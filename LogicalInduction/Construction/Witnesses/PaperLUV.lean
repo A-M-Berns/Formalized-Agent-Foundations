@@ -210,7 +210,7 @@ lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
           (r.num.natAbs : M) * d < c * (r.den : M) from
         ⟨c, d, hpair, hd, hrd⟩)
 
-lemma rationalCutAt [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma rationalCutAt [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (v : PCWorld)
     (hv : v.ConsistentWithTheory (paperTheoryDP T)) :
     v.RationalCutAt X.toLUV := by
@@ -237,8 +237,10 @@ lemma rationalCutAt [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     exact (v.holds_paperPrimeDecompose_imp _ _).mp himp' hs
 
 /-- Every completed public world of the canonical first-order theorem process assigns a
-real value to the abstract LUV compiled from a literal paper LUV. -/
-lemma source_valued [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+real value to the abstract LUV compiled from a literal paper LUV.  This is what makes the
+frontend's world value *derived* rather than assumed.
+Paper node: `def:luv` -/
+lemma source_valued [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) :
     ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
       ∃ x : ℝ, v.ValuesAt X.toLUV x := by

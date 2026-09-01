@@ -29,6 +29,7 @@ from the preemptive-learning transport proved here.
 -/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -121,7 +122,7 @@ structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
 Paper node: `thm:ceu` -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  sentence_codes : RpnSentenceCodes φ
+  sentence_codes : BigSentenceCodes φ
   quote_codes : LUV.RpnThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P (f n) (φ n))
@@ -166,18 +167,27 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
 The confidence threshold `p` enters as a **P-generable** rational sequence (`def:ece`),
 matching the paper's `thm:st`: `p` may vary continuously with the market's own prices, and
 the trader carries it as a feature *expression* rather than as a day-`n` numeral.  The
-paper's e.c. rational sequences are the special case `ratCodeFeature`.
+paper's e.c. rational sequences are the special case `ratCodeFeature`, and `def:ece`'s
+emission field is **write-out** metered, so that special case reaches the paper's own
+class: `PGenerableRat.ofDigitRatCodes` admits `p n = 1 − 2⁻ⁿ` and every other sequence
+whose codes are exponential but polynomially writable (`pGenerableRat_two_pow_inv`).
+
+Both quoted LUVs carry their threshold families in the **write-out** class
+(`LUV.BigThresholdCodeSeq`), the same meter `sentence_codes` uses and the one the rest of
+the day-indexed surface carries: polynomially many emitted tokens, individual token values
+unbounded.  Nothing on this lane opens a threshold certificate as value-bounded emission
+data — every consumer either reindexes it or hands it to `AffineCombination.PolySequence`,
+whose `sentence_poly` field is already write-out metered.
 Paper node: `thm:st` -/
 structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (A B : ℕ → LUV) where
   delta_pos : ∀ n, 0 < δ n
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
-  sentence_codes : RpnSentenceCodes φ
-  delta_codes : PolyRatCodes δ
+  sentence_codes : BigSentenceCodes φ
   probability_generable : PGenerableRat P p
-  product_codes : LUV.RpnThresholdCodeSeq A
-  confidence_codes : LUV.RpnThresholdCodeSeq B
+  product_codes : LUV.BigThresholdCodeSeq A
+  confidence_codes : LUV.BigThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))

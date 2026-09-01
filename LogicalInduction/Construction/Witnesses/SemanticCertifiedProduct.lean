@@ -340,7 +340,7 @@ lemma theoremQuoteCertifiedProductWorld_consistent_quote (T : ArithmeticTheory) 
       ((theoremQuoteCertifiedProductWorld_quote T _ _).mp hleaf)
 
 lemma theoremQuoteCertifiedProductWorld_consistent_theorem
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     (theoremQuoteCertifiedProductWorld T).ConsistentWithTheory (theoremDP T) := by
   intro n φ hφ
   have hφ' := hφ
@@ -355,12 +355,12 @@ lemma theoremQuoteCertifiedProductWorld_consistent_theorem
 /-- The repaired fixed process, chosen from `T` before any source, market, weight, or
 deferral. -/
 noncomputable def theoremQuoteCertifiedProductDP
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcess :=
   ((theoremDP T).union semanticQuoteDP).union semanticCertifiedProductDP
 
 noncomputable def theoremQuoteCertifiedProductDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremQuoteCertifiedProductDP T) :=
   (((theoremDP_computable T).nonemptyComputation.some).union
     semanticQuoteDP_computable.nonemptyComputation.some).union
@@ -368,7 +368,7 @@ noncomputable def theoremQuoteCertifiedProductDPComputation
 
 /-- Joint non-vacuity of the fixed theorem, quotation, and certified-product substrate. -/
 lemma theoremQuoteCertifiedProductDP_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     (theoremQuoteCertifiedProductWorld T).ConsistentWithTheory
       (theoremQuoteCertifiedProductDP T) := by
   intro n φ hφ
@@ -385,7 +385,7 @@ lemma theoremQuoteCertifiedProductDP_hworld
 theorem/quote/certified-product process.  The remaining presentation premises are kept
 explicit here; the proof-carrying source interpreter is responsible for discharging them. -/
 lemma lic_no_expected_net_update_conditional_certifiedSemantic
-    {T : ArithmeticTheory} [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {P : History} [IsLogicalInductor P (theoremQuoteCertifiedProductDP T)]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -414,7 +414,7 @@ lemma lic_no_expected_net_update_conditional_certifiedSemantic
     (PCWorld.consistentWithTheory_union_right hv) X W n hx (weight_valued n v hv)
 
 private noncomputable abbrev theoremQuoteCertifiedProductLIA
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     IsLogicalInductor (liaHistory (theoremQuoteCertifiedProductDP T))
       (theoremQuoteCertifiedProductDP T) :=
   LIA_is_logical_inductor _ (theoremQuoteCertifiedProductDPComputation T).toComputable
@@ -423,7 +423,7 @@ private noncomputable abbrev theoremQuoteCertifiedProductLIA
 paper-facing capstone: `PresentedLUVSeq`, weight presentation, and the right quote remain
 visible until the universal certified-source registry is implemented. -/
 lemma lic_no_expected_net_update_conditional_certifiedSemantic_closed
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremQuoteCertifiedProductDP T)) w)

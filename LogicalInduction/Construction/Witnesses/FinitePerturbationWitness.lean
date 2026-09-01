@@ -1,7 +1,8 @@
-import LogicalInduction.Construction.Witnesses.ComputationDP
+import LogicalInduction.Construction.Witnesses.PaperMarket
 import LogicalInduction.Construction.Witnesses.ProductDefinition
 import LogicalInduction.Construction.Witnesses.FiniteEntailment
 import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # The concrete witness for the finite-perturbation counterexample
@@ -11,16 +12,17 @@ unrestricted finite-day perturbation statement abstractly and closes with
 `not_overgeneral_ifp_of_advice`, a complete reduction.  This module supplies the witness
 that reduction consumes and states the closed refutation.
 
-The split is forced: `theoremDP` and the quotation layer reach the abstract module through
+The split is forced: `paperDP` and the quotation layer reach the abstract module through
 `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so the witness
 cannot be named there.  It is the same split `lic_paradox_resistance_ofDiagonal` and
 `lic_paradox_resistance_ofDiagonal_unconditional` already use.
 
 The market fed to `paradoxResistanceQuoteOfDiagonal` is the **unperturbed** one
-(`theoremMarketComputation`): `χ n` asserts a fact about that quote program, and
+(`paperMarketComputation`): `χ n` asserts a fact about that quote program, and
 `advicePerturbed_agree` carries the reflection to the perturbed market on every day `≥ 1`.
-Nothing here carries a `Paper node:` line — this refutes `thm:ifp` rather than rendering
-it.
+`not_overgeneral_ifp` carries `Paper node: thm:ifp` and is a canonical trust-surface
+endpoint: a refutation belongs to the node it refutes, and is audited exactly like any
+other endpoint.
 -/
 
 namespace LogicalInduction
@@ -31,7 +33,11 @@ open LO.Propositional
 open Filter Topology
 open Classical
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+-- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
+-- (`paradoxResistanceQuoteOfDiagonal`), which reaches Foundation's `parameterized_diagonal₁`.
+-- It is not inherited from `QuotationTheoryPresentation`, which no longer carries it.
+-- `𝗣𝗔⁻ ⪯ T` and `𝗥₀ ⪯ T` follow by instance (`Foundation`'s `Arithmetic/Schemata.lean`).
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Entailment.Consistent T]
 
 /-! ## Computability of the schedule
 
@@ -374,11 +380,11 @@ harmonic family `1/(n+1)`.
 Kind `Def`; hypotheses `(b)` `paradoxResistanceQuoteOfDiagonal`,
 `harmonicWeight_polyRatCodes`. -/
 noncomputable def cxQuote :
-    ParadoxResistanceQuote (liaHistory (theoremDP T)) (theoremDP T) (1 / 2) :=
-  paradoxResistanceQuoteOfDiagonal (quotationPresentation T)
-    (theoremMarketComputation T) (1 / 2) (fun n : ℕ => 1 / ((n : ℚ) + 1))
-    harmonicWeight_polyRatCodes
-    (PolyRatCodes.inv_of_pos harmonicWeight_polyRatCodes (fun n => by positivity))
+    ParadoxResistanceQuote (liaHistory (paperDP T)) (paperDP T) (1 / 2) :=
+  paradoxResistanceQuoteOfDiagonal (paperQuotationPresentation T)
+    (paperMarketComputation T) (1 / 2) (fun n : ℕ => 1 / ((n : ℚ) + 1))
+    (DigitRatCodes.ofPolyRatCodes
+      (PolyRatCodes.inv_of_pos harmonicWeight_polyRatCodes (fun n => by positivity)))
     (fun n => by positivity)
     (by
       have h : ∀ n : ℕ, ((1 / ((n : ℚ) + 1) : ℚ) : ℝ) = 1 / ((n : ℝ) + 1) := by
@@ -387,9 +393,9 @@ noncomputable def cxQuote :
 
 /-- The Boolean quotation code behind that diagonal.  Naming it separately is what makes
 the sentence family's *whole-value* code available (`BooleanQuoteCode.sentence_poly`); the
-`ParadoxResistanceQuote` above carries only the symbol-metered `RpnSentenceCodes`, which
+`ParadoxResistanceQuote` above carries only the write-out `BigSentenceCodes`, which
 the day-`0` quote program cannot use. -/
-noncomputable def cxQuoteCode := (theoremDiagonalQuoteCode T (1 / 2)).toBooleanQuoteCode
+noncomputable def cxQuoteCode := (paperDiagonalQuoteCode T (1 / 2)).toBooleanQuoteCode
 
 /-- The diagonal family: `χ n` holds exactly when its own day-`n` price is below `1/2`. -/
 noncomputable def cxDiagonal : ℕ → Sentence := (cxQuoteCode T).sentence
@@ -406,7 +412,7 @@ lemma cxQuote_sentence : (cxQuote T).sentence = cxDiagonal T := rfl
 /-- The perturbed market: the constructed `LIA` with day `0` republished as the advice
 table. -/
 noncomputable def cxPerturbed : History :=
-  advicePerturbed (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T)
+  advicePerturbed (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T)
 
 /-! ### The perturbed quote table
 
@@ -424,13 +430,13 @@ private def advIdx (c : ℕ) : ℕ := (c - 1).unpair.2.unpair.2
 private lemma encode_atom_code (x : ℕ) :
     Encodable.encode (LO.Propositional.Formula.atom x : Sentence) = Nat.pair 1 x + 1 := rfl
 
-private lemma advTag_schedAtom (m : ℕ) : advTag (Encodable.encode (schedAtom m)) = 6 := by
+private lemma advTag_schedAtom (m : ℕ) : advTag (Encodable.encode (schedAtom m)) = 7 := by
   simp [advTag, schedAtom, encode_atom_code, Nat.unpair_pair]
 
 private lemma advIdx_schedAtom (m : ℕ) : advIdx (Encodable.encode (schedAtom m)) = m := by
   simp [advIdx, schedAtom, encode_atom_code, Nat.unpair_pair]
 
-private lemma advTag_signAtom (m : ℕ) : advTag (Encodable.encode (signAtom m)) = 7 := by
+private lemma advTag_signAtom (m : ℕ) : advTag (Encodable.encode (signAtom m)) = 8 := by
   simp [advTag, signAtom, encode_atom_code, Nat.unpair_pair]
 
 private lemma advIdx_signAtom (m : ℕ) : advIdx (Encodable.encode (signAtom m)) = m := by
@@ -473,17 +479,17 @@ private lemma advIdx_prim : Primrec advIdx := by
 
 /-- The day-`0` advice row as a rational quote table. -/
 noncomputable def cxRow (c : ℕ) : ℚ :=
-  cond (decide (advTag c = 6))
-    (cond (gateBool (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) (advIdx c)) 1 0)
-    (cond (decide (advTag c = 7))
-      (cond (decide ((theoremMarketComputation T).quote (advIdx c)
+  cond (decide (advTag c = 7))
+    (cond (gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) (advIdx c)) 1 0)
+    (cond (decide (advTag c = 8))
+      (cond (decide ((paperMarketComputation T).quote (advIdx c)
           (Encodable.encode (cxDiagonal T (advIdx c))) < 1 / 2)) 1 0)
-      ((theoremMarketComputation T).quote 0 c))
+      ((paperMarketComputation T).quote 0 c))
 
 /-- The perturbed market's quote table: the advice row on day `0`, the original table
 after. -/
 noncomputable def cxTable (n c : ℕ) : ℚ :=
-  if n = 0 then cxRow T c else (theoremMarketComputation T).quote n c
+  if n = 0 then cxRow T c else (paperMarketComputation T).quote n c
 
 /-- **The table is exact.**
 Kind `P`; hypotheses `(a)`. -/
@@ -496,12 +502,12 @@ lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
     · obtain ⟨m, rfl⟩ := hs
       rw [cxRow, advTag_schedAtom, advIdx_schedAtom, cxPerturbed, advicePerturbed,
         advicePerturb_zero_schedAtom, gateBit]
-      by_cases hg : ∃ j, sched (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) j = m
+      by_cases hg : ∃ j, sched (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) j = m
       · rw [if_pos hg, (gateBool_eq_true_iff _ _ _ m).2 hg]
         norm_num
       · rw [if_neg hg]
-        have : gateBool (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) m = false := by
-          rcases hb : gateBool (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) m with _ | _
+        have : gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m = false := by
+          rcases hb : gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m with _ | _
           · rfl
           · exact absurd ((gateBool_eq_true_iff _ _ _ m).1 hb) hg
         rw [this]
@@ -510,37 +516,37 @@ lemma cxPerturbed_eq_cxTable (n : ℕ) (φ : Sentence) :
       · obtain ⟨m, rfl⟩ := hi
         rw [cxRow, advTag_signAtom, advIdx_signAtom, cxPerturbed, advicePerturbed,
           advicePerturb_zero_signAtom, signBit,
-          (theoremMarketComputation T).quote_exact m (cxDiagonal T m)]
+          (paperMarketComputation T).quote_exact m (cxDiagonal T m)]
         have hcast := rat_cast_lt_half
-        by_cases hlt : (theoremMarketComputation T).quote m
+        by_cases hlt : (paperMarketComputation T).quote m
             (Encodable.encode (cxDiagonal T m)) < 1 / 2
         · rw [if_pos ((hcast _).2 hlt), decide_eq_true hlt]
           norm_num
         · rw [if_neg (fun hh => hlt ((hcast _).1 hh)), decide_eq_false hlt]
           norm_num
       · push Not at hs hi
-        have h6 : advTag (Encodable.encode φ) ≠ 6 := fun h =>
+        have h6 : advTag (Encodable.encode φ) ≠ 7 := fun h =>
           hs _ (Encodable.encode_injective (eq_atom_of_advTag (by omega) h))
-        have h7 : advTag (Encodable.encode φ) ≠ 7 := fun h =>
+        have h7 : advTag (Encodable.encode φ) ≠ 8 := fun h =>
           hi _ (Encodable.encode_injective (eq_atom_of_advTag (by omega) h))
         rw [cxRow, cxPerturbed, advicePerturbed, advicePerturb, if_pos rfl,
           adviceRow_of_not_advice _ _ _ _ hs hi,
-          (theoremMarketComputation T).quote_exact 0 φ]
+          (paperMarketComputation T).quote_exact 0 φ]
         simp [h6, h7]
   · rw [cxTable, if_neg (by omega), cxPerturbed, advicePerturbed, advicePerturb,
       if_neg (by omega)]
-    exact (theoremMarketComputation T).quote_exact n φ
+    exact (paperMarketComputation T).quote_exact n φ
 
 end Computability
 
 lemma cxTable_eq_cond (n c : ℕ) :
     cxTable T n c = cond (decide (n = 0)) (cxRow T c)
-      ((theoremMarketComputation T).quote n c) := by
+      ((paperMarketComputation T).quote n c) := by
   by_cases h : n = 0 <;> simp [cxTable, h]
 
 /-- The certified program for the constructed process. -/
-noncomputable def cxProcessComputation : DeductiveProcessComputation (theoremDP T) :=
-  (theoremDP_computable T).nonemptyComputation.some
+noncomputable def cxProcessComputation : DeductiveProcessComputation (paperDP T) :=
+  (paperDP_computable T).nonemptyComputation.some
 
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxDiagonal : Computable (cxDiagonal T) := by
@@ -549,27 +555,27 @@ lemma computable_cxDiagonal : Computable (cxDiagonal T) := by
 
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxQuoteAt : Computable (fun m : ℕ =>
-    (theoremMarketComputation T).quote m (Encodable.encode (cxDiagonal T m))) :=
-  ((computable_quote (theoremMarketComputation T)).comp
+    (paperMarketComputation T).quote m (Encodable.encode (cxDiagonal T m))) :=
+  ((computable_quote (paperMarketComputation T)).comp
     (Primrec₂.natPair.to_comp.comp Computable.id
       (Computable.encode.comp (computable_cxDiagonal T)))).of_eq
     (fun _ => by simp [Nat.unpair_pair])
 
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxLt : Computable
-    (fun m => decide (liaHistory (theoremDP T) m (cxDiagonal T m) < 1 / 2)) :=
+    (fun m => decide (liaHistory (paperDP T) m (cxDiagonal T m) < 1 / 2)) :=
   (primrec_rat_lt_half.to_comp.comp (computable_cxQuoteAt T)).of_eq (fun m => by
-    rw [(theoremMarketComputation T).quote_exact m (cxDiagonal T m)]
+    rw [(paperMarketComputation T).quote_exact m (cxDiagonal T m)]
     exact decide_eq_decide.mpr (rat_cast_lt_half _).symm)
 
 /-- The diagonal dichotomy for the unperturbed market, at every day. -/
 lemma cxDichotomy : ∀ m, 1 ≤ m →
-    Dichotomy (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) m :=
+    Dichotomy (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) m :=
   fun m hm => dichotomy_of_paradoxQuote (cxQuote T) (fun _ _ _ => rfl) hm
 
 /-- Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxSched :
-    Computable (sched (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T)) :=
+    Computable (sched (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T)) :=
   computable_sched (cxDichotomy T)
     (computable_settleTotal (cxDichotomy T) (computable_cxDiagonal T) (computable_cxLt T)
       (computable_stage (cxProcessComputation T)))
@@ -577,25 +583,25 @@ lemma computable_cxSched :
 /-- **The perturbed quote table is computable.**
 Kind `C`; hypotheses `(a)`. -/
 lemma computable_cxTable : Computable (fun z : ℕ => cxTable T z.unpair.1 z.unpair.2) := by
-  have hM := computable_quote (theoremMarketComputation T)
+  have hM := computable_quote (paperMarketComputation T)
   have hgate := computable_gateBool (computable_cxSched T)
   have hidx : Computable advIdx := advIdx_prim.to_comp
   have hrow : Computable (cxRow T) := by
-    have h6 : Computable (fun c : ℕ => decide (advTag c = 6)) :=
-      (Primrec.eq.comp advTag_prim (Primrec.const 6)).decide.to_comp
-    have h7 : Computable (fun c : ℕ => decide (advTag c = 7)) :=
+    have h6 : Computable (fun c : ℕ => decide (advTag c = 7)) :=
       (Primrec.eq.comp advTag_prim (Primrec.const 7)).decide.to_comp
+    have h7 : Computable (fun c : ℕ => decide (advTag c = 8)) :=
+      (Primrec.eq.comp advTag_prim (Primrec.const 8)).decide.to_comp
     have ha : Computable (fun c : ℕ =>
-        cond (gateBool (liaHistory (theoremDP T)) (theoremDP T) (cxDiagonal T) (advIdx c))
+        cond (gateBool (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T) (advIdx c))
           (1 : ℚ) 0) :=
       Computable.cond (hgate.comp hidx) (Computable.const 1) (Computable.const 0)
     have hb : Computable (fun c : ℕ =>
-        cond (decide ((theoremMarketComputation T).quote (advIdx c)
+        cond (decide ((paperMarketComputation T).quote (advIdx c)
           (Encodable.encode (cxDiagonal T (advIdx c))) < 1 / 2)) (1 : ℚ) 0) :=
       Computable.cond
         ((primrec_rat_lt_half.to_comp.comp (computable_cxQuoteAt T)).comp hidx)
         (Computable.const 1) (Computable.const 0)
-    have hd : Computable (fun c : ℕ => (theoremMarketComputation T).quote 0 c) :=
+    have hd : Computable (fun c : ℕ => (paperMarketComputation T).quote 0 c) :=
       (hM.comp (Primrec₂.natPair.to_comp.comp (Computable.const 0) Computable.id)).of_eq
         (fun c => by simp [Nat.unpair_pair])
     exact Computable.cond h6 ha (Computable.cond h7 hb hd)
@@ -622,9 +628,9 @@ what make all of it a function of the *unperturbed* market alone, so the day-`0`
 not refer to itself.
 Kind `C`; hypotheses `(a)`. -/
 theorem computableMarket_cxPerturbed : ComputableMarket (cxPerturbed T) := by
-  refine ⟨fun n φ => advicePerturbed_mem_Icc (theoremDP T) (cxDiagonal T)
-    (fun m ψ => (LIA_isMachineLogicalInductor (theoremDP T)
-      (theoremDP_computable T)).marketComputable.1 m ψ) n φ, ?_⟩
+  refine ⟨fun n φ => advicePerturbed_mem_Icc (paperDP T) (cxDiagonal T)
+    (fun m ψ => (LIA_isMachineLogicalInductor (paperDP T)
+      (paperDP_computable T)).marketComputable.1 m ψ) n φ, ?_⟩
   have hcomp : Computable (fun z : ℕ =>
       Encodable.encode (cxTable T z.unpair.1 z.unpair.2)) :=
     Computable.encode.comp (computable_cxTable T)
@@ -652,14 +658,14 @@ theorem exists_advice_perturbation_ofTheory :
         (Tr.strat i).value P' v.payout = 0) ∧
       (∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
         = roundValue P' χ v (sched P' DP χ j)) :=
-  ⟨liaHistory (theoremDP T), cxPerturbed T, theoremDP T, cxDiagonal T,
+  ⟨liaHistory (paperDP T), cxPerturbed T, paperDP T, cxDiagonal T,
     adviceTrader schedAtom signAtom (cxDiagonal T),
-    LIA_isMachineLogicalInductor (theoremDP T) (theoremDP_computable T),
+    LIA_isMachineLogicalInductor (paperDP T) (paperDP_computable T),
     computableMarket_cxPerturbed T,
     advicePerturbed_agree _ _ _,
     adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom
-      (RpnSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
-    fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩,
+      (BigSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
+    paperDP_hworld T,
     fun j => dichotomy_of_paradoxQuote (cxQuote T) (advicePerturbed_agree _ _ _)
       (one_le_sched _ _ _ j),
     fun v i hi => adviceTrader_value_off_sched schedAtom signAtom (cxDiagonal T) _ _
@@ -702,8 +708,14 @@ theorem exists_advice_perturbation :
 /-- **The unrestricted finite-day perturbation statement is false** — the negation of the
 paper's `thm:ifp` as printed, at the paper's own quantifier, with no theory parameter.
 
-Fully proved and axiom-clean.  Refutes rather than renders, so no `Paper node:` line.
-Kind `C`; hypotheses `(a)`. -/
+Fully proved and axiom-clean.  This declaration *refutes* rather than renders `thm:ifp`,
+and it carries the node so that the refutation is on the checked gates and on the
+read-through page: `thm:ifp` is the one node whose printed statement is false, and the
+canonical public view of it must lead with this theorem and with the corrected
+replacement `FreezeOracle.machine_lic_iff_of_recognizableSupport`.  See
+`notes/paper-errata.md` PE1.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
 theorem not_overgeneral_ifp :
     ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
         IsMachineLogicalInductor P DP → ComputableMarket P' →

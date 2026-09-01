@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.BoundedEvaluation
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Uniform historical-maturity verification
@@ -1459,7 +1460,7 @@ theorem simcal
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
-    (hδ : PolyPositiveWidths δ)
+    (hδpos : ∀ n, 0 < (δ n : ℝ))
     (hpoly : PolySequence (sentenceAffine φ))
     (htruth : TheoryTruth φ DP truth)
     (hWgen : PGenerableWeighting (calibrationIndicator φ a b δ))
@@ -1478,7 +1479,7 @@ theorem simcal
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness φ hpoly hWgen
     htruth hdiv hworld
-  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδ
+  exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 
 end AffineCombination
@@ -1541,6 +1542,15 @@ Determination is the paper's `def:affthmval` premise on the *combination*; `hval
 asks that each completed world value the component LUVs somehow.  The mesh traded is
 therefore only approximately determined, and the bias-run economics absorbs the
 (negligible-against-magnitude) mesh error.
+
+*One printed premise is deliberately dropped.*  The printed
+`thm:recurringunbiasednessexp` (tex:1812-1820) additionally asks that the support of `w`
+lie in the image of `f` — a clause referring to a deferral function the statement never
+introduces.  It is a transposition: the clause belongs on `thm:wubexp` (tex:1822-1832),
+where the affine twins place it (`thm:wubaff` has it, `thm:recurringunbiasedness` does
+not) and where `FeedbackTruth.luv_wubexp_ofComputation` states it.  This endpoint
+therefore takes a bare generable divergent weighting, with no deferral function at all.
+Recorded as `PE2` in `notes/paper-errata.md`.
 Paper node: `thm:recurringunbiasednessexp` -/
 theorem BoundedSequence.recurringunbiasednessexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -1721,7 +1731,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1748,7 +1758,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1775,7 +1785,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : RpnSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1801,7 +1811,7 @@ constructed internally: no operational infrastructure hypothesis remains.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1835,7 +1845,7 @@ theorem lic_learning_pseudorandom_frequency_above
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1870,7 +1880,7 @@ historical-verifier or settlement-clock premise.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

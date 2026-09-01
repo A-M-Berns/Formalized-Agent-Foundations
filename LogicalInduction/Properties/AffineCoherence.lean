@@ -13,6 +13,7 @@ Theorems here: `thm:affcoh` (`PolySequence.affcoh`), the completed-theory forms 
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.TimelyLearning
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -31,7 +32,7 @@ def toPCWorld (v : BoolPCWorld) : PCWorld := fun a => v a = true
 noncomputable def ofPCWorld (v : PCWorld) : BoolPCWorld := fun a =>
   @decide (v a) (Classical.propDecidable _)
 
-@[simp] theorem ofPCWorld_toPCWorld (v : PCWorld) :
+@[simp] lemma ofPCWorld_toPCWorld (v : PCWorld) :
     (ofPCWorld v).toPCWorld = v := by
   funext a
   apply propext
@@ -106,7 +107,7 @@ lemma eval_toBoolPCWorld_restrict (v : BoolPCWorld) (B : ℕ) (φ : Sentence)
 def FiniteWorld.payoutRat {B : ℕ} (u : FiniteWorld B) (φ : Sentence) : ℚ :=
   if eval u.toBoolPCWorld φ then 1 else 0
 
-@[simp] theorem eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
+@[simp] lemma eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
     eval v φ = true ↔ v.toPCWorld.Holds φ := by
   induction φ with
   | atom a => simp [eval, toPCWorld, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
@@ -173,7 +174,7 @@ lemma isClopen_holds (φ : Sentence) :
   exact ⟨isClosed_singleton.preimage (continuous_eval φ),
     (continuous_eval φ).isOpen_preimage _ (isOpen_discrete _)⟩
 
-@[simp] theorem payout_toPCWorld (v : BoolPCWorld) (φ : Sentence) :
+@[simp] lemma payout_toPCWorld (v : BoolPCWorld) (φ : Sentence) :
     v.toPCWorld.payout φ = if eval v φ = true then 1 else 0 := by
   rw [PCWorld.payout]
   by_cases h : eval v φ = true
@@ -345,10 +346,10 @@ def empty : AffineCombination where
 def eventualMember (As : ℕ → AffineCombination) (i n : ℕ) : AffineCombination :=
   if i ≤ n then As i else empty
 
-@[simp] theorem eventualMember_eq (As : ℕ → AffineCombination) (i n : ℕ) (h : i ≤ n) :
+@[simp] lemma eventualMember_eq (As : ℕ → AffineCombination) (i n : ℕ) (h : i ≤ n) :
     eventualMember As i n = As i := by simp [eventualMember, h]
 
-@[simp] theorem eventualMember_eq_empty (As : ℕ → AffineCombination) (i n : ℕ)
+@[simp] lemma eventualMember_eq_empty (As : ℕ → AffineCombination) (i n : ℕ)
     (h : ¬i ≤ n) : eventualMember As i n = empty := by simp [eventualMember, h]
 
 /-- A fixed threshold between two fixed natural outputs is polynomially fueled. -/
@@ -374,7 +375,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
   let cidx := Classical.choose hidx
   have hcidx := Classical.choose_spec hidx
   let hconst := h.const_poly.comp (PolyFueled.const i)
-  let hconstGated := RpnSpliceStream.gateFeature hconst i
+  let hconstGated := BigSpliceStream.gateFeature hconst i
   let hcoeff := h.coefficient_poly.comp hcidx
   exact {
     termCount := fun n => if n < i then 0 else h.termCount i
@@ -382,7 +383,7 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
     sentence := fun z => h.sentence (idx z)
     termCount_poly := polyFueled_if_lt_const i 0 (h.termCount i)
     const_poly := by
-      refine RpnSpliceStream.of_eq hconstGated ?_
+      refine BigSpliceStream.of_eq hconstGated ?_
       intro n
       by_cases hin : i ≤ n
       · simp [AffineCombination.eventualMember, hin, gateFeature]
@@ -886,7 +887,7 @@ completed-theory theorems. Individual proofs may appear arbitrarily later than t
 sequence indices.
 Paper node: `thm:provind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
@@ -906,7 +907,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
 whose negations are completed-theory theorems.
 Paper node: `thm:provind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
@@ -929,7 +930,7 @@ process; they need not be present by their own index.
 Paper node: `thm:provind` -/
 theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
-    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ)
+    (hφ : BigSentenceCodes φ) (hψ : BigSentenceCodes ψ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

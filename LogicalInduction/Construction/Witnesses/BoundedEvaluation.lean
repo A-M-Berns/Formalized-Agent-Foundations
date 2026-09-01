@@ -1,6 +1,7 @@
 import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Framework.Emission
 import LogicalInduction.Properties
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Representation witnesses for the efficient-computability side conditions
@@ -435,7 +436,7 @@ lemma triangularRepeat_repeats (source : ℕ → Sentence) :
   simp [triangularRepeat]
 
 /-- The exact efficient-repetition witness when the supplied enumeration is already an
-𝓔𝓒 (`def:ec`, symbol-metered) sentence stream.  The second pairing coordinate is pure
+𝓔𝓒 (`def:ec`, token-metered) sentence stream.  The second pairing coordinate is pure
 padding, so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
 The bounded universal-emulator extension below removes this stronger clock assumption for
 arbitrary computable/c.e. source programs.
@@ -444,7 +445,8 @@ def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
     (hsource : RpnSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
-  sequence_poly := hsource.comp PolyFueled.left
+  sequence_poly :=
+    (BigSentenceCodes.ofRpnSentenceCodes hsource).comp PolyFueled.left
   repeats := triangularRepeat_repeats source
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
@@ -528,7 +530,7 @@ Paper node: `def:ec`, `thm:obu` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
-  sequence_poly := RpnSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
+  sequence_poly := BigSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
   repeats := by
     intro i N
     -- `ceRepeatSeq h i` is some `source i'`; that member recurs at arbitrarily large fuel.
@@ -1442,8 +1444,8 @@ exactly what a `Nat.Partrec.Code` quote code consumes. -/
 
 /-- A feature progression emitted as an RPN-spliceable serialization stream is primitive
 recursive as a whole-value function. -/
-lemma RpnSpliceStream.feature_primrec {feature : ℕ → EF}
-    (h : RpnSpliceStream fun n => (feature n).serialize) : Primrec feature := by
+lemma BigSpliceStream.feature_primrec {feature : ℕ → EF}
+    (h : BigSpliceStream fun n => (feature n).serialize) : Primrec feature := by
   obtain ⟨s, hs, hcontract⟩ := h
   have htokens : Primrec fun n => (feature n).serialize := by
     refine (unRpn_prim.comp hs.primrec).of_eq fun n => ?_
@@ -1458,7 +1460,7 @@ market-dependent thresholds: `def:ece` hands over only a feature stream, and emi
 `⌜… > q n⌝` requires a program computing `q n`.
 
 Proof kind `C` (composition).  Provenance: the parse step is
-`RpnSpliceStream.feature_primrec` (a); the evaluation step is minimization of
+`BigSpliceStream.feature_primrec` (a); the evaluation step is minimization of
 `MarketComputation.denoteRatComp` over the interpreter clock, pinned by
 `EF.denoteRatWithAtFuel_sound`/`_complete` and
 `MarketComputation.exists_fuel_quoteAtFuel_list` (a); the bridge from `EF.denote` to
@@ -1467,7 +1469,8 @@ Paper node: `def:ece` -/
 lemma PGenerableRat.computable {P : History} (market : MarketComputation P) {q : ℕ → ℚ}
     (h : PGenerableRat P q) : Computable q := by
   obtain ⟨feature, hfeature⟩ := h
-  have hfp : Primrec feature := RpnSpliceStream.feature_primrec hfeature.polyTok
+  have hfp : Primrec feature :=
+    BigSpliceStream.feature_primrec hfeature.polyTok
   have hval : ∀ n, (feature n).denoteRat
       (fun day φ => market.quote day (Encodable.encode φ)) = q n := by
     intro n
@@ -2806,7 +2809,7 @@ flat administrative freeze transducer compile that table into a polynomial token
 preserving token-model efficient computability.
 
 Disclosed boundary (`dd:fuel`): the collapsed `EfficientPrefixPatch.preserves_ec` asks for
-symbol-metered preservation, so this token-model fact does not package into that structure.
+token-metered preservation, so this token-model fact does not package into that structure.
 The RPN freeze transducer is constructed (`RpnFreeze.lean`), but its fuel certificate needs
 a decode test on exponentially large escape codes, and the digit model cannot express it:
 `BigDigits` is closed under an operation only when that operation's base-4 digit recurrence

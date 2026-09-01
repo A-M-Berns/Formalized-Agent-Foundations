@@ -8,7 +8,7 @@ efficiently-computable-sentence-sequence class (self-delimiting block streams);
 expansion contracting to it position-wise.  The realization capstones (digitize +
 `ec_of_rawSegStream`) live in `Framework/RpnEmission.lean`.
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.RpnSentence
@@ -63,7 +63,7 @@ lemma RpnSentenceCodes.of_eq {φ ψ : ℕ → Sentence} (h : RpnSentenceCodes φ
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨s, hs, fun n => (hφψ n) ▸ hp n⟩
 
-/-- A fixed sentence is a symbol-metered efficient sentence family.  This is the
+/-- A fixed sentence is a token-metered efficient sentence family.  This is the
 consumer constructor for constant propositions; it keeps callers above the raw clocked
 code layer. -/
 lemma RpnSentenceCodes.const (φ : Sentence) : RpnSentenceCodes (fun _ => φ) :=

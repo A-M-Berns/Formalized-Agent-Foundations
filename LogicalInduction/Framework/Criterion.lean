@@ -86,21 +86,21 @@ noncomputable def denoteWith : EF → List ℝ → History → ℝ
 
 noncomputable def denote (e : EF) (V : History) : ℝ := e.denoteWith [] V
 
-@[simp] theorem denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_price (φ : Sentence) (n : ℕ) (ρ : List ℝ) (V : History) :
     (price φ n).denoteWith ρ V = V n φ := rfl
-@[simp] theorem denoteWith_const (q : ℚ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_const (q : ℚ) (ρ : List ℝ) (V : History) :
     (const q).denoteWith ρ V = (q : ℝ) := rfl
-@[simp] theorem denoteWith_add (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_add (a b : EF) (ρ : List ℝ) (V : History) :
     (add a b).denoteWith ρ V = a.denoteWith ρ V + b.denoteWith ρ V := rfl
-@[simp] theorem denoteWith_mul (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_mul (a b : EF) (ρ : List ℝ) (V : History) :
     (mul a b).denoteWith ρ V = a.denoteWith ρ V * b.denoteWith ρ V := rfl
-@[simp] theorem denoteWith_max (a b : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_max (a b : EF) (ρ : List ℝ) (V : History) :
     (max a b).denoteWith ρ V = Max.max (a.denoteWith ρ V) (b.denoteWith ρ V) := rfl
-@[simp] theorem denoteWith_safeRecip (a : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_safeRecip (a : EF) (ρ : List ℝ) (V : History) :
     (safeRecip a).denoteWith ρ V = (Max.max 1 (a.denoteWith ρ V))⁻¹ := rfl
-@[simp] theorem denoteWith_var (i : ℕ) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_var (i : ℕ) (ρ : List ℝ) (V : History) :
     (var i).denoteWith ρ V = ρ.getD i 0 := rfl
-@[simp] theorem denoteWith_letE (x body : EF) (ρ : List ℝ) (V : History) :
+@[simp] lemma denoteWith_letE (x body : EF) (ρ : List ℝ) (V : History) :
     (letE x body).denoteWith ρ V = body.denoteWith (x.denoteWith ρ V :: ρ) V := rfl
 
 /-- Exact rational evaluation of an expressible feature against a rational price table.
@@ -184,33 +184,33 @@ def rank : EF → ℕ
   | var _       => 0
   | letE x body => Nat.max x.rank body.rank
 
-@[simp] theorem rank_price (φ : Sentence) (n : ℕ) : (price φ n).rank = n := rfl
-@[simp] theorem rank_const (q : ℚ) : (const q).rank = 0 := rfl
-@[simp] theorem rank_add (a b : EF) : (add a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_mul (a b : EF) : (mul a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_max (a b : EF) : (max a b).rank = Nat.max a.rank b.rank := rfl
-@[simp] theorem rank_safeRecip (a : EF) : (safeRecip a).rank = a.rank := rfl
-@[simp] theorem rank_var (i : ℕ) : (var i).rank = 0 := rfl
-@[simp] theorem rank_letE (x body : EF) : (letE x body).rank = Nat.max x.rank body.rank := rfl
+@[simp] lemma rank_price (φ : Sentence) (n : ℕ) : (price φ n).rank = n := rfl
+@[simp] lemma rank_const (q : ℚ) : (const q).rank = 0 := rfl
+@[simp] lemma rank_add (a b : EF) : (add a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_mul (a b : EF) : (mul a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_max (a b : EF) : (max a b).rank = Nat.max a.rank b.rank := rfl
+@[simp] lemma rank_safeRecip (a : EF) : (safeRecip a).rank = a.rank := rfl
+@[simp] lemma rank_var (i : ℕ) : (var i).rank = 0 := rfl
+@[simp] lemma rank_letE (x body : EF) : (letE x body).rank = Nat.max x.rank body.rank := rfl
 
 /-! ### `denote` is a ring map on the nose (all `rfl`), packaged for `simp`. -/
 
 @[simp] theorem denote_price (φ : Sentence) (n : ℕ) :
     (price φ n).denote = fun V => V n φ := rfl
 
-@[simp] theorem denote_const (q : ℚ) :
+@[simp] lemma denote_const (q : ℚ) :
     (const q).denote = fun _ => (q : ℝ) := rfl
 
-@[simp] theorem denote_add (a b : EF) : (add a b).denote = a.denote + b.denote := by
+@[simp] lemma denote_add (a b : EF) : (add a b).denote = a.denote + b.denote := by
   funext V; simp [denote, denoteWith, Pi.add_apply]
 
-@[simp] theorem denote_mul (a b : EF) : (mul a b).denote = a.denote * b.denote := by
+@[simp] lemma denote_mul (a b : EF) : (mul a b).denote = a.denote * b.denote := by
   funext V; simp [denote, denoteWith, Pi.mul_apply]
 
-@[simp] theorem denote_max (a b : EF) (V : History) :
+@[simp] lemma denote_max (a b : EF) (V : History) :
     (max a b).denote V = Max.max (a.denote V) (b.denote V) := rfl
 
-@[simp] theorem denote_safeRecip (a : EF) (V : History) :
+@[simp] lemma denote_safeRecip (a : EF) (V : History) :
     (safeRecip a).denote V = (Max.max 1 (a.denote V))⁻¹ := rfl
 
 /-! ### Continuity (`def:tf`), proved for the whole DSL — this is what breaks the
@@ -658,7 +658,7 @@ def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
     Option EF.StreamState :=
   tokens.foldl EF.streamStep state
 
-@[simp] theorem EF.streamReadFrom_append (left right : List ℕ)
+@[simp] lemma EF.streamReadFrom_append (left right : List ℕ)
     (state : Option EF.StreamState) :
     EF.streamReadFrom (left ++ right) state =
       EF.streamReadFrom right (EF.streamReadFrom left state) := by
@@ -1531,7 +1531,7 @@ traded sentence varies with the day must carry a poly bound on `⌜φₙ⌝`. Tw
 below remove the residual: `EfficientlyComputableDigit` meters token *bits* rather than
 token values, and the Polish-notation layer replaces a sentence's single pair code by one
 token per formula symbol, so that stream length tracks symbol count even for skewed
-formulas. Their composite is the symbol-metered class `EfficientlyComputable`. -/
+formulas. Their composite is the token-metered class `EfficientlyComputable`. -/
 
 /-- Run a length program and then a token program under a shared clock.  The requested
 length is clamped to the clock, so every index emits a polynomial-size stream even when its
@@ -1703,7 +1703,10 @@ def rpn : Sentence → List ℕ
 
 The formerly invalid escape prefix `[1, 0]` introduces an exact paper-prime atom.  Its
 payload is a small-token prefix tree.  Tags `0`--`2` encode naturals in binary; tags
-`3`--`8` encode arithmetic terms; and tags `9`--`18` encode arithmetic formulas.  The
+`3`--`8` encode arithmetic terms; and tags `9`--`18` together with `20`--`22`
+encode arithmetic formulas: `9`--`18` are Foundation's negation-normal-form
+constructors, and `20` (`¬`), `21` (`⟹`), `22` (`⟺`) are the paper's remaining
+primitive connectives (tex:560), contracted into normal form by the parser.  The
 numeric parser below deliberately constructs Foundation's established Godel code only
 inside contraction.  In particular, the emitted stream never contains that code as a
 token. -/
@@ -1711,9 +1714,9 @@ token. -/
 /-- Arity of one node in the shared structured arithmetic payload grammar. -/
 public def structuredArithmeticArity (t : ℕ) : Option ℕ :=
   if t = 0 then some 0
-  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 then some 1
+  else if t = 1 ∨ t = 2 ∨ t = 3 ∨ t = 4 ∨ t = 17 ∨ t = 18 ∨ t = 20 then some 1
   else if t = 5 ∨ t = 6 ∨ t = 9 ∨ t = 10 then some 0
-  else if t ≤ 16 then some 2
+  else if t ≤ 16 ∨ t = 21 ∨ t = 22 then some 2
   else none
 
 public def arithmeticVec2Code (a b : ℕ) : ℕ :=
@@ -1725,6 +1728,41 @@ public def arithmeticFuncCode (arity symbol args : ℕ) : ℕ :=
 public def arithmeticRelCode (negative : Bool) (symbol a b : ℕ) : ℕ :=
   Nat.pair (if negative then 1 else 0)
     (Nat.pair 2 (Nat.pair symbol (arithmeticVec2Code a b))) + 1
+
+/-- Negation as a map on Foundation's arithmetic formula codes.  Foundation's
+`Semiformula` is a negation-normal-form datatype, so `∼` is not a constructor: it is the
+De Morgan involution that swaps the constructor tags `0↔1` (`rel`/`nrel`), `2↔3`
+(`verum`/`falsum`), `4↔5` (`and`/`or`) and `6↔7` (`all`/`exs`), recursing into the
+subcodes at the last two pairs.  This is the numeric mirror of that involution, used by
+the structured parser to realize the paper's primitive `¬`, `⟹` and `⟺` (tex:560)
+without those connectives ever being emitted as codes.
+
+*Proof kind:* `Def`.  Its correctness against Foundation's `∼` is
+`negFormulaCode_spec`. -/
+public def negFormulaCode (n : ℕ) : ℕ :=
+  match n with
+  | 0 => 0
+  | e + 1 =>
+      let a := e.unpair.1
+      let c := e.unpair.2
+      if a = 0 then Nat.pair 1 c + 1
+      else if a = 1 then Nat.pair 0 c + 1
+      else if a = 2 then Nat.pair 3 0 + 1
+      else if a = 3 then Nat.pair 2 0 + 1
+      else if a = 4 then
+        Nat.pair 5 (Nat.pair (negFormulaCode c.unpair.1) (negFormulaCode c.unpair.2)) + 1
+      else if a = 5 then
+        Nat.pair 4 (Nat.pair (negFormulaCode c.unpair.1) (negFormulaCode c.unpair.2)) + 1
+      else if a = 6 then Nat.pair 7 (negFormulaCode c) + 1
+      else if a = 7 then Nat.pair 6 (negFormulaCode c) + 1
+      else 0
+decreasing_by
+  all_goals
+    simp_wf
+    first
+      | exact le_trans (Nat.unpair_left_le _) (Nat.unpair_right_le _)
+      | exact le_trans (Nat.unpair_right_le _) (Nat.unpair_right_le _)
+      | exact Nat.unpair_right_le _
 
 /- Numeric mirror of the structural arithmetic codec.  The three mutually recursive
 parsers return an exact Foundation code and the untouched suffix. -/
@@ -1776,6 +1814,19 @@ mutual
         else if t = 17 ∨ t = 18 then
           (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
             (Nat.pair (if t = 17 then 6 else 7) p.1 + 1, p.2)
+        else if t = 20 then
+          (parseStructuredArithmeticFormula fuel 0 rest).map fun p =>
+            (negFormulaCode p.1, p.2)
+        else if t = 21 then
+          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+              (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1, q.2)
+        else if t = 22 then
+          (parseStructuredArithmeticFormula fuel 0 rest).bind fun p =>
+            (parseStructuredArithmeticFormula fuel 0 p.2).map fun q =>
+              (Nat.pair 4
+                (Nat.pair (Nat.pair 5 (Nat.pair (negFormulaCode p.1) q.1) + 1)
+                  (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2)
         else none
 end
 
@@ -1788,7 +1839,8 @@ def readStructuredLength : List ℕ → Option (ℕ × List ℕ)
 
 /-- Parse the tail of a `[1, 0, ...]` structured paper-prime escape.  After polarity,
 `L` copies of `1` and a terminating `0` delimit exactly `L` payload symbols.  Token
-`19`, which is outside the arithmetic codec alphabet `0..18`, closes the atomic block
+`19`, the one value reserved out of the arithmetic codec alphabet
+`0..18, 20..22`, closes the atomic block
 for syntax-preserving streaming scanners. -/
 def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
   | polarity :: framed =>
@@ -1798,7 +1850,7 @@ def parseStructuredPaperPrime : List ℕ → Option (Sentence × List ℕ)
             match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
-                  some (Formula.atom (Nat.pair 7 (Nat.pair polarity formulaCode)),
+                  some (Formula.atom (Nat.pair 5 (Nat.pair polarity formulaCode)),
                     p.2.drop (p.1 + 1))
                 else none
             | _ => none
@@ -1815,7 +1867,7 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
             match parseStructuredArithmeticFormula p.1 0 (p.2.take p.1) with
             | some (formulaCode, []) =>
                 if List.getD p.2 p.1 0 = 19 then
-                  some (Nat.pair 1 (Nat.pair 7 (Nat.pair polarity formulaCode)) + 1,
+                  some (Nat.pair 1 (Nat.pair 5 (Nat.pair polarity formulaCode)) + 1,
                     p.2.drop (p.1 + 1))
                 else none
             | _ => none
@@ -1905,9 +1957,11 @@ def clockedTrader (lengthCode tokenCode : Nat.Partrec.Code) (clock : ℕ → ℕ
   strat n := strategyOfTokens n (unRpn (undigitize
     (clockedTokens lengthCode tokenCode (clock n) n)))
 
-/-- **The symbol-metered efficient-computability class** (`def:ec`): two
+/-- **The token-metered efficient-computability class** (`def:ec`): two
 programs under one polynomial clock emit the digit stream of an RPN-expanded strategy
-serialization.
+serialization.  Earlier revisions of this development called this tier "symbol-metered"; the
+name changed to "token-metered" to avoid collision with the paper's own derivation-symbol
+count (`dSize`, `dd:symbolcount`).
 Paper node: `def:ec` -/
 def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
@@ -1978,7 +2032,7 @@ def MachineEfficientTrader (Tr : Trader) : Prop :=
 
 /-- `def:lic`, in the fuel-certified reading.  The market `P` satisfies the **Logical
 Induction Criterion** relative to `DP` if no efficiently computable trader exploits it,
-where efficiency is the symbol-metered class `EfficientlyComputable` above.
+where efficiency is the token-metered class `EfficientlyComputable` above.
 
 **This is the compatibility reading, not the paper's quantifier.**  The paper's own
 quantifier is ordinary machine polynomial time, and `IsMachineLogicalInductor`
@@ -2023,7 +2077,7 @@ identically `0`, its plausible assessments lie in `{0}`, and it does **not** exp
 /-- The trader that never trades. -/
 def Trader.zero : Trader := ⟨fun _ => ⟨[], by simp⟩⟩
 
-@[simp] theorem Trader.zero_netWorth (V : History) (v : PCWorld) (n : ℕ) :
+@[simp] lemma Trader.zero_netWorth (V : History) (v : PCWorld) (n : ℕ) :
     Trader.zero.netWorth V v n = 0 := by
   simp [Trader.netWorth, Trader.zero, Strategy.value]
 

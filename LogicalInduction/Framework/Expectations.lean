@@ -11,17 +11,22 @@ sum of the market's prices** on `X`'s threshold sentences,
 `𝔼ₙ(X) = (1/n) · ∑_{i<n} Pₙ(⌜X > i/n⌝)`. So once a LUV is presented by its threshold
 sentences, `𝔼ₙ(X)` is a genuine `ℕ → ℝ` derived from `P : History`.
 
-Modeling note (`def:luv`, disclosed type-`(c)`): the paper's LUVs are *first-order* — a
-formula `X(ν)` free in one variable, over a theory `Θ` that represents computations — whereas
-our `Sentence = Formula ℕ` is propositional. We model a `[0,1]`-LUV faithfully **by its
-observable content for the market**: the family of threshold sentences `X.gt r = ⌜X > r⌝ ∈
-Sentence`. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
+Modeling note (`def:luv`): the paper's LUVs are *first-order* — a formula `X(ν)` free in
+one variable, over a theory `Θ` that represents computations. The node itself is closed by a
+literal such object: `PaperLUV` (`Construction/Witnesses/PaperLUV.lean`) is an actual
+one-variable arithmetic formula carrying object-level `T`-proofs, and it is the canonical
+endpoint for `def:luv`. The `LUV` carrier *here* is the convenience layer it compiles into,
+which presents a `[0,1]`-LUV by its **observable content for the market**: the family of
+threshold sentences `X.gt r = ⌜X > r⌝ ∈ Sentence`. Downstream results are stated against the
+carrier and so apply to more families than the paper's; `PaperLUV` is what shows the paper's
+own objects are among them. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
 coherence conditions on that family; we carry only what a given theorem needs, as explicit
 hypotheses, rather than reconstructing the first-order syntax.
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.RpnSplice
+import LogicalInduction.Framework.WriteOut
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 namespace LogicalInduction
@@ -40,16 +45,70 @@ compact codes consumed by the token-emission model. -/
 closed feature progression. This is the propositional/token-model rendering of the
 paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
 nodes are legal only underneath the shared `letE` emitter and cannot be free inputs.
+
+The emission field is **write-out metered** (`BigSpliceStream`): the feature progression
+costs polynomially many *symbols* per day, with no bound on any single token's numeric
+value. That is what admits a constant leaf `EF.const (q n)` whose payload token is
+literally `⌜q n⌝` — for the paper's own `δ n = 2⁻ⁿ` an exponential value, and so outside
+the value-metered `RpnSpliceStream` (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
+`PGenerableRat.ofDigitRatCodes` is the constructor that uses the width;
+`pGenerableRat_two_pow_inv` is the witness that it is a real one.
 Paper node: `def:ece` -/
 structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
     (feature : ℕ → EF) : Prop where
   rank_le : ∀ n, (feature n).rank ≤ n
-  polyTok : RpnSpliceStream (fun n => (feature n).serialize)
+  polyTok : BigSpliceStream (fun n => (feature n).serialize)
   closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
   denote : ∀ n, (feature n).denote P = (q n : ℝ)
 
 def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
   ∃ feature : ℕ → EF, GeneratedRatFeature P q feature
+
+/-- A rational sequence viewed as a closed constant feature on each day. -/
+def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
+  EF.const (q n)
+
+/-- **The write-out constructor for `def:ece`.**  A rational sequence whose numerator and
+denominator are reachable digit by digit generates itself at any market, through
+`ratCodeFeature`: the day-`n` serialization is the single payload chunk `[1, ⌜q n⌝]`,
+emitted by `BigSpliceStream.serialize_const_write`, whose payload token is written out
+digit by digit and so may be exponential in `n`.
+Kind: `P` proved; provenance: (a) derived in-project. -/
+lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : DigitRatCodes q) :
+    GeneratedRatFeature P q (ratCodeFeature q) where
+  rank_le := fun n => by simp [ratCodeFeature, EF.rank]
+  polyTok := BigSpliceStream.serialize_const_write hq.toBigDigits
+  closed := fun n ρ V => by simp [ratCodeFeature]
+  denote := fun n => by simp [ratCodeFeature]
+
+/-- **The write-out constructor for `def:ece`.**  Digit access to a rational sequence makes
+it ℙ‾-generable at any market.
+
+This is the general constructor; `PGenerableRat.ofPolyRatCodes`
+(`Construction/Witnesses/ProductDefinition.lean`) is the value-bounded corollary, kept only
+for callers already holding a `PolyRatCodes` certificate.  The width is not cosmetic: the
+paper's `δ n = 2⁻ⁿ` satisfies this and refutes `PolyRatCodes`
+(`digitRatCodes_two_pow_inv_not_polyRatCodes`).
+Kind: `C` composition; provenance: (a) derived in-project. -/
+lemma PGenerableRat.ofDigitRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) (P : History) :
+    PGenerableRat P q :=
+  ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
+
+/-- **Non-vacuity for the widened `def:ece` (kind `N+`).**  The paper's own tolerance
+sequence `δ n = 2⁻ⁿ` is ℙ‾-generable at every market, and its Gödel codes are *not*
+value-bounded — so this witness is admitted by `PGenerableRat.ofDigitRatCodes` and by no
+route through `PGenerableRat.ofPolyRatCodes`.  It is the concrete content of widening
+`GeneratedRatFeature.polyTok` from `RpnSpliceStream` to `BigSpliceStream`. -/
+lemma pGenerableRat_two_pow_inv (P : History) :
+    PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) ∧
+      ¬ PolyRatCodes (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
+  ⟨PGenerableRat.ofDigitRatCodes digitRatCodes_two_pow_inv P,
+    digitRatCodes_two_pow_inv_not_polyRatCodes.2⟩
+
+example (P : History) : PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
+  (pGenerableRat_two_pow_inv P).1
+
+#print axioms pGenerableRat_two_pow_inv
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a
@@ -102,6 +161,22 @@ def RpnThresholdCodes (X : LUV) : Prop :=
 def RpnThresholdCodeSeq (X : ℕ → LUV) : Prop :=
   RpnSentenceCodes (fun m => (X m.unpair.1).gt
     ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- **Write-out form** of the threshold sequence interface: a `def:ec` *write-out* sentence
+stream emitting `⌜X_n > i/k⌝` at index `⟨n,⟨k,i⟩⟩`, at exactly the paired-index convention
+of `RpnThresholdCodeSeq`.  The two differ only in the meter on the underlying sentence
+stream — `RpnThresholdCodeSeq` bounds every emitted *token's value*, this one bounds only
+the number of tokens — so this is the class the paper's `def:ec` actually names, and it is
+where the rest of the migrated day-indexed surface already sits.
+Paper node: `def:ec` -/
+def BigThresholdCodeSeq (X : ℕ → LUV) : Prop :=
+  BigSentenceCodes (fun m => (X m.unpair.1).gt
+    ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- The token-metered threshold sequence interface embeds into the write-out one. -/
+lemma RpnThresholdCodeSeq.toBig {X : ℕ → LUV}
+    (h : RpnThresholdCodeSeq X) : BigThresholdCodeSeq X :=
+  BigSentenceCodes.ofRpnSentenceCodes h
 
 /-- The whole-value threshold interface embeds into the block form by escape blocks. -/
 lemma RpnThresholdCodes.ofPolyThresholdCodes {X : LUV} (h : X.PolyThresholdCodes) :
@@ -177,8 +252,9 @@ end LUV
 The paper's "`Θ` represents computations, so every consistent world assigns each LUV its
 true value" becomes, in our threshold presentation, a coherence condition relating a world
 to a value: `v` affirms every threshold strictly below `x` and denies every one strictly
-above. **Disclosed type-`(c)`**: this is the market-observable content of "`v` believes
-`X = x`", not a first-order reconstruction. -/
+above. This is the market-observable content of "`v` believes `X = x`" rather than a
+first-order reconstruction — the literal reconstruction is `PaperLUV`, which derives its
+world-value semantics instead of assuming it. -/
 
 /-- The p.c. world `v` **values** the `[0,1]`-LUV `X` at `x`: threshold coherence around
 `x`. -/

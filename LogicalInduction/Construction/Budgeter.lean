@@ -239,10 +239,10 @@ def neg (e : EF) : EF := .mul (.const (-1)) e
 /-- Minimum expressed using the paper's allowed `max` and multiplication by `-1`. -/
 def min (a b : EF) : EF := neg (.max (neg a) (neg b))
 
-@[simp] theorem rank_neg (e : EF) : e.neg.rank = e.rank := by
+@[simp] lemma rank_neg (e : EF) : e.neg.rank = e.rank := by
   simp [neg, EF.rank]
 
-@[simp] theorem rank_min (a b : EF) :
+@[simp] lemma rank_min (a b : EF) :
     (min a b).rank = Nat.max a.rank b.rank := by
   simp [min, neg, EF.rank]
 
@@ -325,7 +325,7 @@ def tradeListWorldValueFeature (trades : List (EF × Sentence)) (n : ℕ)
     .mul p.1 (.add (.const (boolPayoutRat u p.2))
       (.mul (.const (-1)) (.price p.2 n))))
 
-@[simp] theorem tradeListWorldValueFeature_strategy {n : ℕ} (T : Strategy n)
+@[simp] lemma tradeListWorldValueFeature_strategy {n : ℕ} (T : Strategy n)
     (u : ℕ → Bool) :
     tradeListWorldValueFeature T.trades n u = T.worldValueFeature u := by
   rfl
@@ -441,13 +441,13 @@ def rawWorthRatTradeLists (tradesAt : ℕ → List (EF × Sentence))
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (m : ℕ) : ℚ :=
   rawPriorWorthRatTradeLists tradesAt Q u (m + 1)
 
-@[simp] theorem rawPriorWorthRatTradeLists_trader (Tr : Trader)
+@[simp] lemma rawPriorWorthRatTradeLists_trader (Tr : Trader)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ) :
     rawPriorWorthRatTradeLists (fun i => (Tr.strat i).trades) Q u n =
       rawPriorWorthRat Tr Q u n := by
   rfl
 
-@[simp] theorem rawWorthRatTradeLists_trader (Tr : Trader)
+@[simp] lemma rawWorthRatTradeLists_trader (Tr : Trader)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (m : ℕ) :
     rawWorthRatTradeLists (fun i => (Tr.strat i).trades) Q u m =
       rawWorthRat Tr Q u m := by
@@ -942,7 +942,7 @@ def budgetAtomsFromStageTradeLists (D : ℕ → Finset Sentence)
   (D n).biUnion Sentence.atoms ∪
     (Finset.range (n + 1)).biUnion fun i => tradeListSentenceAtoms (tradesAt i)
 
-@[simp] theorem budgetAtomsFromStageTradeLists_trader (D : ℕ → Finset Sentence)
+@[simp] lemma budgetAtomsFromStageTradeLists_trader (D : ℕ → Finset Sentence)
     (Tr : Trader) (n : ℕ) :
     budgetAtomsFromStageTradeLists D (fun i => (Tr.strat i).trades) n =
       budgetAtomsFromStages D Tr n := by

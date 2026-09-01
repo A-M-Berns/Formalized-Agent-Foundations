@@ -28,7 +28,7 @@ the transducer (`parseRpnC`, `unRpnTokensC`), which compute on pair codes so the
 can certify them.  Their primitive recursiveness is proved in `Framework/RpnComputation.lean`,
 and the poly-fuelled emission bridges in `Framework/RpnEmission.lean`.
 
-Paper node: `def:ec` (symbol-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots).
 -/
 import LogicalInduction.Framework.Criterion
 
@@ -661,6 +661,39 @@ public lemma parseStructuredArithmeticFormula_suffix :
         subst rest
         exact (ih hp).trans (List.suffix_cons t ts)
       rw [if_neg hquant] at h
+      by_cases h20 : t = 20
+      · rw [if_pos h20] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p
+        · simp [hp] at h
+        simp only [hp, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
+        rcases h with ⟨-, hrest⟩
+        subst rest
+        exact (ih hp).trans (List.suffix_cons t ts)
+      rw [if_neg h20] at h
+      by_cases h21 : t = 21
+      · rw [if_pos h21] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p
+        · simp [hp] at h
+        simp only [hp, Option.bind_some] at h
+        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q
+        · simp [hq] at h
+        simp only [hq, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
+        rcases h with ⟨-, hrest⟩
+        subst rest
+        exact ((ih hq).trans (ih hp)).trans (List.suffix_cons t ts)
+      rw [if_neg h21] at h
+      by_cases h22 : t = 22
+      · rw [if_pos h22] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p
+        · simp [hp] at h
+        simp only [hp, Option.bind_some] at h
+        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q
+        · simp [hq] at h
+        simp only [hq, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
+        rcases h with ⟨-, hrest⟩
+        subst rest
+        exact ((ih hq).trans (ih hp)).trans (List.suffix_cons t ts)
+      rw [if_neg h22] at h
       simp at h
 
 lemma parseStructuredPaperPrime_tail_suffix {polarity : ℕ} {framed : List ℕ}
@@ -679,7 +712,7 @@ lemma parseStructuredPaperPrime_tail_suffix {polarity : ℕ} {framed : List ℕ}
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -723,7 +756,7 @@ lemma parseStructuredPaperPrime_append {ts : List ℕ} {φ : Sentence} {rest : L
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -750,7 +783,7 @@ lemma parseStructuredPaperPrime_append {ts : List ℕ} {φ : Sentence} {rest : L
 /-! ### Structured-block span facts
 
 A successfully parsed structured paper-prime block is delimited by the reserved
-terminator `19`: every consumed token before the terminator is `< 19`, and the parse
+terminator `19`: every consumed token before the terminator differs from `19`, and the parse
 consumes through exactly one final `19`.  These facts let streaming scanners recognize
 the block boundary from the terminator alone, without replaying the Foundation
 decoder. -/
@@ -848,10 +881,19 @@ lemma parseStructuredArithmeticTerm_consumed_lt : ∀ {fuel depth : ℕ} {ts : L
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
 
+/-- **Statement change (Part I).**  This lemma formerly concluded `∀ x ∈ w, x < 19`.
+The structured formula grammar now also uses the tags `20` (`¬`), `21` (`⟹`) and `22`
+(`⟺`) for the paper's primitive connectives, so consumed tokens are no longer bounded
+by `19`.  The conclusion is weakened to `∀ x ∈ w, x ≠ 19`, which is exactly what the
+three consumers need — they use it only to rule out the reserved terminator `19` inside
+a consumed span.  The term and numeral sub-grammars are unchanged and still satisfy the
+stronger `< 19` bound (`parseStructuredArithmeticTerm_consumed_lt`).
+
+*Proof kind:* `P` proved. -/
 lemma parseStructuredArithmeticFormula_consumed_lt :
     ∀ {fuel depth : ℕ} {ts : List ℕ} {code : ℕ} {rest : List ℕ},
       parseStructuredArithmeticFormula fuel depth ts = some (code, rest) →
-      ∃ w, ts = w ++ rest ∧ ∀ x ∈ w, x < 19 := by
+      ∃ w, ts = w ++ rest ∧ ∀ x ∈ w, x ≠ 19 := by
   intro fuel
   induction fuel with
   | zero =>
@@ -884,8 +926,8 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         rcases List.mem_cons.mp hx with rfl | hx'
         · omega
         · rcases List.mem_append.mp hx' with hx₁ | hx₂
-          · exact hw₁ x hx₁
-          · exact hw₂ x hx₂
+          · have := hw₁ x hx₁; omega
+          · have := hw₂ x hx₂; omega
       rw [if_neg hrel] at h
       by_cases hbin : t = 15 ∨ t = 16
       · rw [if_pos hbin] at h
@@ -914,6 +956,48 @@ lemma parseStructuredArithmeticFormula_consumed_lt :
         · omega
         · exact hw₁ x hx'
       rw [if_neg hquant] at h
+      by_cases h20 : t = 20
+      · rw [if_pos h20] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
+        rcases h with ⟨-, hrest⟩
+        subst rest
+        obtain ⟨w₁, hts, hw₁⟩ := ih hp
+        refine ⟨t :: w₁, by rw [hts]; simp, ?_⟩
+        rintro x hx
+        rcases List.mem_cons.mp hx with rfl | hx'
+        · omega
+        · exact hw₁ x hx'
+      rw [if_neg h20] at h
+      by_cases h21 : t = 21
+      · rw [if_pos h21] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q <;> simp [hq] at h
+        obtain ⟨a, rfl, -⟩ := h
+        obtain ⟨w₁, hts, hw₁⟩ := ih hp
+        obtain ⟨w₂, hp2, hw₂⟩ := ih hq
+        refine ⟨t :: w₁ ++ w₂, by rw [hts, hp2]; simp, ?_⟩
+        rintro x hx
+        rcases List.mem_cons.mp hx with rfl | hx'
+        · omega
+        · rcases List.mem_append.mp hx' with hx₁ | hx₂
+          · exact hw₁ x hx₁
+          · exact hw₂ x hx₂
+      rw [if_neg h21] at h
+      by_cases h22 : t = 22
+      · rw [if_pos h22] at h
+        rcases hp : parseStructuredArithmeticFormula fuel 0 ts with _ | p <;> simp [hp] at h
+        rcases hq : parseStructuredArithmeticFormula fuel 0 p.2 with _ | q <;> simp [hq] at h
+        obtain ⟨a, rfl, -⟩ := h
+        obtain ⟨w₁, hts, hw₁⟩ := ih hp
+        obtain ⟨w₂, hp2, hw₂⟩ := ih hq
+        refine ⟨t :: w₁ ++ w₂, by rw [hts, hp2]; simp, ?_⟩
+        rintro x hx
+        rcases List.mem_cons.mp hx with rfl | hx'
+        · omega
+        · rcases List.mem_append.mp hx' with hx₁ | hx₂
+          · exact hw₁ x hx₁
+          · exact hw₂ x hx₂
+      rw [if_neg h22] at h
       simp at h
 
 /-- **Structured span**: a successful structured paper-prime parse consumes a
@@ -937,7 +1021,7 @@ lemma parseStructuredPaperPrime_span {ts : List ℕ} {φ : Sentence} {rest : Lis
   rw [hp] at h
   rcases r with _ | ⟨x, xs⟩
   · change (if List.getD payload n 0 = 19 then
-        some (Formula.atom (Nat.pair 7 (Nat.pair polarity code)), payload.drop (n + 1))
+        some (Formula.atom (Nat.pair 5 (Nat.pair polarity code)), payload.drop (n + 1))
       else none) = some (φ, rest) at h
     by_cases hterm : payload.getD n 0 = 19
     · rw [if_pos hterm] at h
@@ -972,8 +1056,7 @@ lemma parseStructuredPaperPrime_span {ts : List ℕ} {φ : Sentence} {rest : Lis
           · rcases List.mem_cons.mp hx₂ with rfl | hx₃
             · omega
             · rw [hw] at hx₃
-              have := hwlt x hx₃
-              omega
+              exact hwlt x hx₃
     · rw [if_neg hterm] at h
       contradiction
   · simp at h
@@ -1090,8 +1173,7 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
               rw [List.take_of_length_le (by simp [hn1])]
               simp
             rw [hv] at h19
-            have := hvlt 19 h19
-            omega
+            exact hvlt 19 h19 rfl
       · have hR : ¬ n ≤ (fr' ++ [19]).length := by simp; omega
         conv_rhs => rw [if_neg hR]
         by_cases hn2 : n ≤ (fr' ++ 19 :: tail).length
@@ -1112,8 +1194,7 @@ lemma parseStructuredPaperPrime_first19 (w : List ℕ) (hw : ∀ x ∈ w, x ≠ 
               List.take_succ_cons]
             exact List.mem_cons_self ..
           rw [hv] at h19
-          have := hvlt 19 h19
-          omega
+          exact hvlt 19 h19 rfl
         · rw [if_neg hn2]
           rfl
   · rw [if_neg hpol, if_neg hpol]
@@ -2359,7 +2440,7 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
   unfold strategyOfTokens
   rw [deserializeTrades_unRpn_escExpand]
 
-/-! ## The symbol-metered emission model
+/-! ## The token-metered emission model
 
 An efficiently computable trader emits a digit stream whose undigitized tokens form an
 RPN-expanded strategy stream; the decode contracts sentence blocks (`unRpn`) before
@@ -2640,8 +2721,8 @@ lemma parseStructuredPaperPrimeC_eq (ts : List ℕ) :
   · by_cases hterm : payload.getD n 0 = 19
     · simp only [hterm, if_true, Option.map_some, Option.some.injEq, Prod.mk.injEq,
         and_true]
-      change Nat.pair 1 (Nat.pair 7 (Nat.pair polarity code)) + 1 =
-        (Formula.atom (Nat.pair 7 (Nat.pair polarity code)) : Sentence).toNat
+      change Nat.pair 1 (Nat.pair 5 (Nat.pair polarity code)) + 1 =
+        (Formula.atom (Nat.pair 5 (Nat.pair polarity code)) : Sentence).toNat
       rfl
     · simp only [hterm, if_false, Option.map_none]
   · rfl

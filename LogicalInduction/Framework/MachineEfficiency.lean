@@ -1,10 +1,10 @@
 /-
 # The fuel-clocked class is inside the machine class
 
-Stage 2's endpoint (`LogicalInduction/notes/complexitylib-adoption.md`): every
-`EfficientlyComputable` trader — the `dd:fuel` rendering of `def:ec`, a fuel-clocked
-`Nat.Partrec.Code` pair under a polynomial day clock — is a `MachineEfficientTrader`, a
-member of the class defined through ordinary machine polynomial time (`Complexity.FP`).
+Every `EfficientlyComputable` trader — a fuel-clocked `Nat.Partrec.Code` pair under a
+polynomial day clock (`dd:fuel`) — is a `MachineEfficientTrader`, a member of the class
+defined through ordinary machine polynomial time (`Complexity.FP`). This is what makes the
+fuel calculus a *certification device* for `def:ec` rather than a substitution for it.
 
 The chain, and where each link lives:
 
@@ -29,6 +29,7 @@ the fuel model is outside the machine model, so a theorem quantifying over
 see `LogicalInduction/README.md` for the standing disclosure.
 -/
 import LogicalInduction.Framework.Machine.TraderMachine
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -73,7 +74,9 @@ serialization. Both transport theorems now exist.
 * `thm:scon` — **complete at the machine quantifier**, in all three forms.
   `CondStep.conditionedTranslation_preserves_machine` and
   `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
-  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts;
+  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts
+  (`RpnSentenceCodes`, not `BigSentenceCodes`: the conditioning compiler destructures a
+  `PolySegStream` out of the hypothesis, which the write-out class does not supply);
   `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
   `lic_conditioned_eventual_machine` are the endpoints. The fuel endpoints and their
   witnesses are untouched beside them.

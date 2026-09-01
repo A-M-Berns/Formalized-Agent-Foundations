@@ -270,12 +270,12 @@ lemma semanticProductWorld_holds_schema (left right n kind : ℕ) (r : ℚ) (zs 
 /-- The process used for the eventual `LIA` is fixed from the arithmetic theory alone:
 the ordinary provability stream and the semantic product closure are combined before any
 market, source LUV, weight, or deferral is selected. -/
-noncomputable def theoremSemanticProductDP (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess :=
+noncomputable def theoremSemanticProductDP (T : ArithmeticTheory) [T.Δ₁]
+    [Entailment.Consistent T] : DeductiveProcess :=
   (theoremDP T).union semanticProductDP
 
 noncomputable def theoremSemanticProductDPComputation (T : ArithmeticTheory)
-    [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremSemanticProductDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     semanticProductDP_computable.nonemptyComputation.some
@@ -286,7 +286,7 @@ noncomputable def theoremSemanticProductDPComputation (T : ArithmeticTheory)
 lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ semanticPrimeTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -299,12 +299,6 @@ lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
         ComputationClaimKind.godelCode, semanticPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
         ComputationClaimKind.godelCode, semanticPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc
@@ -377,8 +371,8 @@ lemma theoremSemanticProductWorld_holds_schema (T : ArithmeticTheory)
 end
 
 /-- The pre-market combined process has a completed world at every stage. -/
-lemma theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    [Entailment.Consistent T] :
     (theoremSemanticProductWorld T).ConsistentWithTheory (theoremSemanticProductDP T) := by
   intro n φ hφ
   rw [theoremSemanticProductDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
@@ -541,7 +535,7 @@ lemma semanticProductLUV_rpnThresholdCodeSeq (X W : PresentedLUVSeq) :
 /-- The paper's conditional-expectation conclusion with the exact semantic product, over
 the single process fixed from `T` before the market and all source data are chosen. -/
 lemma lic_no_expected_net_update_conditional_semantic
-    {T : ArithmeticTheory} [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {P : History} [IsLogicalInductor P (theoremSemanticProductDP T)]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -566,7 +560,7 @@ lemma lic_no_expected_net_update_conditional_semantic
     (PCWorld.consistentWithTheory_union_right hv) X W n hx (weight_valued n v hv)
 
 private noncomputable abbrev theoremSemanticProductLIA (T : ArithmeticTheory)
-    [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    [T.Δ₁] [Entailment.Consistent T] :
     IsLogicalInductor (liaHistory (theoremSemanticProductDP T)) (theoremSemanticProductDP T) :=
   LIA_is_logical_inductor _ (theoremSemanticProductDPComputation T).toComputable
 
@@ -575,7 +569,7 @@ worlds are constructed internally.  Its remaining hypotheses are precisely the p
 source/weight/right-quotation representation premises, now carried by semantic-prime LUV
 presentations rather than a mesh approximation. -/
 lemma lic_no_expected_net_update_conditional_semantic_closed
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremSemanticProductDP T)) w)

@@ -7,6 +7,7 @@ the exclusive–exhaustive families of `thm:lex` proper.
 -/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -85,12 +86,6 @@ lemma eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (
   · push_neg at h
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
-
-
-lemma sig2EF_polyEF (φ ψ : Sentence) (σ ε : ℚ) : PolyEF (sig2EF φ ψ σ ε) := by
-  have hgap : PolyEF (gap2EF φ ψ) :=
-    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact buySignal_polyEF ((PolyEF.const σ).mul hgap) ε
 
 
 /-- The token stream of `gap2EF = φ*ⁿ − ψ*ⁿ` (an `add`/`mul`/`price`/`const` tree). -/
@@ -236,12 +231,6 @@ lemma impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n 
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
 
-lemma impSig_polyEF (φ ψ : Sentence) (ε : ℚ) : PolyEF (impSig φ ψ ε) := by
-  have hgap : PolyEF (gap2EF φ ψ) :=
-    (PolyEF.price φ).add ((PolyEF.const (-1)).mul (PolyEF.price ψ))
-  exact buySignal_polyEF hgap ε
-
-
 /-- The token stream of `impSig = max(0, (φ*−ψ*) − ε/2)`. -/
 lemma impSig_stream (φ ψ : Sentence) (ε : ℚ) :
     PolyTokenStream (fun n => (impSig φ ψ ε n).serialize) := by
@@ -301,16 +290,16 @@ def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ
 sentence sequences. -/
 noncomputable def exclusiveExhaustive_polySequence
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, RpnSentenceCodes (φ j)) :
+    (hφ : ∀ j < k, BigSentenceCodes (φ j)) :
     AffineCombination.PolySequence (exclusiveExhaustiveAffine k φ) := by
   exact {
     termCount := fun _ => k
     coefficient := fun _ => .const (1 / (k : ℚ))
     sentence := fun z => φ (z.unpair.2 % k) z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
-    const_poly := RpnSpliceStream.serialize_const (-(1 / (k : ℚ)))
-    coefficient_poly := RpnSpliceStream.serialize_const (1 / (k : ℚ))
-    sentence_poly := RpnSentenceCodes.modDispatch hk hφ
+    const_poly := BigSpliceStream.serialize_const (-(1 / (k : ℚ)))
+    coefficient_poly := BigSpliceStream.serialize_const (1 / (k : ℚ))
+    sentence_poly := BigSentenceCodes.modDispatch hk hφ
     terms_eq := by
       intro n
       rw [exclusiveExhaustiveAffine]
@@ -358,7 +347,7 @@ Paper node: `thm:lex` -/
 theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, RpnSentenceCodes (φ j))
+    (hφ : ∀ j < k, BigSentenceCodes (φ j))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :

@@ -1,6 +1,8 @@
 import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.RpnSplice
+import LogicalInduction.Properties.ExpectationConvergence
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Structured Foundation-arithmetic RPN codec and the literal paper LUV frontend
@@ -24,13 +26,16 @@ Contents:
 * the leaf and decomposition blocks `structuredPaperPrimeBlock` /
   `structuredPaperDecomposeBlock`, contracting to the exact public tag-7 syntax
   `paperPrimeSentence` / `paperPrimeDecompose`;
-* the symbol-metered family interface `PolyArithmeticFormulaSeq` and the emission
+* the normal-form-metered family interface `PolyArithmeticFormulaSeq` and the emission
   liftings, with the emitted-token audit pinning every token to a fixed small constant;
-* negation as a token map, which transports a structural certificate to the negated
-  family without re-deriving its emission;
-* the frontend `PaperLUVSeq`: a structurally certified family of literal paper LUVs
-  compiles to `LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, inhabited by
-  the varying `1/(n+1)` family `unitFracPaperLUVSeq`.
+* the compact numerals `binNumeral`, which name a value in `O(log v)` `ℒₒᵣ` nodes.
+
+`PolyArithmeticFormulaSeq` is **not** the class the development certifies families in:
+because Foundation's `Semiformula` is negation-normal-form, it charges a `⟺` twice per
+side, which the paper does not.  The paper's own condition is metered on the source
+language of `ArithmeticSource.lean` (`PolyArithmeticSourceSeq`), where this class embeds
+by `PolyArithmeticFormulaSeq.toSource`; the literal LUV frontend `PaperLUVSeq` and the
+strictness separation between the two classes live there.
 
 ## Compatibility with the shared grammar
 
@@ -297,7 +302,8 @@ def structuredPaperPrimeBlock (positive : Bool) (φ : ArithmeticProposition) : L
   [1, 0, Encodable.encode positive] ++
     (List.replicate payload.length 1 ++ (0 :: payload ++ [19]))
 
-private lemma readStructuredLength_replicate (n : ℕ) (tail : List ℕ) :
+/-- The unary length field reads back the replicate count, leaving the payload. -/
+lemma readStructuredLength_replicate (n : ℕ) (tail : List ℕ) :
     readStructuredLength (List.replicate n 1 ++ 0 :: tail) = some (n, tail) := by
   induction n with
   | zero => rfl
@@ -433,13 +439,54 @@ lemma parseRpn_encodePaperThreshold {T : ArithmeticTheory} [T.Δ₁]
       (structuredPaperDecomposeBlock (X.thresholdFormula r)) = some (X.toLUV.gt r, []) := by
   simpa using parseRpn_structuredPaperDecomposeBlock_exact (X.thresholdFormula r)
 
-/-! ## Symbol-metered family interface
+/-! ## Normal-form-metered family interface
 
 This predicate deliberately certifies the structural payload, not Foundation's Godel
 code.  The lifting theorem below adds only fixed tokens and a unary copy of the already
 poly-fueled payload length.  Thus the final tag-7 value is constructed by `parseRpn` and
-never occurs in the emitter's output range. -/
+never occurs in the emitter's output range.
 
+**What is metered.**  `PolyArithmeticFormulaSeq φ` asks that the *symbol list*
+`encodeArithmeticFormulaSymbols (φ n)` be a `PolySegStream`: polynomially many tokens, each
+of polynomially bounded value.  The serializer emits **one token per node of the Foundation
+formula**, so the metered quantity is that formula's own symbol count.  Nothing here is
+expanded: Godel codes are never emitted, and no numeral is rewritten into a larger object
+than the author wrote.
+
+**This is the foil, not the paper's class.**  `def:ec` (tex:753) asks for a polynomial-time
+writer of the formula *as the paper writes it*, over the primitive connectives
+`¬ ∧ ∨ ⟹ ⟺ ∀ ∃` of tex:560.  On `¬`, `∧`, `∨`, `⟹`, `∀`, `∃` and on numerals named
+compactly in `ℒₒᵣ`, the count here equals the paper's.  On `⟺` it does not: Foundation's
+`Semiformula` has no biconditional constructor, so `a 🡘 b` is notation for
+`(a 🡒 b) ⋏ (b 🡒 a)` and costs `3 + 2|a| + 2|b|` symbols
+(`encodeArithmeticFormulaSymbols_iff`) — both sides duplicated, a factor of two per nesting
+level.  This class is therefore **strictly finer** than `def:ec`, on `⟺` alone.
+
+The paper's condition is `PolyArithmeticSourceSeq` (`ArithmeticSource.lean`), which meters
+the paper's *source* — `⟺` a constructor, expanded into normal form inside the parser and
+never emitted.  This class embeds into it token for token
+(`PolyArithmeticFormulaSeq.toSource`), and the inclusion is strict: the biconditional
+family `iffChain` is certified there and provably not here
+(`iffChainSource_polyArithmeticSourceSeq` against `iffChain_not_polyArithmeticFormulaSeq`).
+Everything downstream — `PaperLUVSeq` and its concrete families — is certified in the
+source class; this one survives as the sharp comparison object.
+
+**Naming large values.**  A term's cost is the cost of the *name*, not of the value it
+denotes.  Foundation's `Semiterm.Operator.numeral` is unary
+(`encodeArithmeticTermSymbols_numeral`: the numeral `v` costs `2 * v - 1` symbols).  That is
+an artifact of Foundation's default numeral, not something the paper imposes: the paper fixes
+no numeral notation and writes numerals positionally (tex:614, tex:757).  The compact name is
+available inside `ℒₒᵣ` — the `Compact numerals` section below supplies it: `binNumeral v` is
+the Horner term for `v`, `O(log v)` nodes (`binNumeralEnc_length_le`), with the same value in
+every model of `𝗣𝗔⁻` (`binNumeral_val`).  So on numerals neither class is narrower than
+`def:ec`; `unaryRendering_two_pow_not_polyArithmeticFormulaSeq` documents the artifact. -/
+
+/-- **The normal-form-metered class** — the strictness foil, not the paper's condition:
+it meters one token per node of the *Foundation* formula, which charges `⟺` twice per side.
+The paper's class is `PolyArithmeticSourceSeq` (`ArithmeticSource.lean`), into which this
+one embeds by `PolyArithmeticFormulaSeq.toSource`.
+
+*Proof kind:* `Def`. -/
 def PolyArithmeticFormulaSeq {k : ℕ} (φ : ℕ → ArithmeticSemiformula ℕ k) : Prop :=
   PolySegStream (fun n => encodeArithmeticFormulaSymbols (φ n))
 
@@ -604,151 +651,14 @@ lemma structuredPaperPrimeBlock_span (positive : Bool) (φ : ArithmeticPropositi
       · have := encodeArithmeticFormulaSymbols_lt φ x h'
         omega
 
-/-! ## Negation as a token map
-
-Negation-normal-form negation acts on the payload alphabet by swapping the dual tag
-pairs and fixing every term token, so a structural certificate for a formula family
-transports to its negation without re-deriving the emission. -/
-
 open Nat.Partrec (Code)
 
-/-- Token action of negation-normal-form negation on the formula alphabet. -/
-def negArithTok (t : ℕ) : ℕ :=
-  if t = 9 then 10 else if t = 10 then 9
-  else if t = 11 then 12 else if t = 12 then 11
-  else if t = 13 then 14 else if t = 14 then 13
-  else if t = 15 then 16 else if t = 16 then 15
-  else if t = 17 then 18 else if t = 18 then 17
-  else t
-
-lemma negArithTok_of_lt {x : ℕ} (h : x < 9) : negArithTok x = x := by
-  rw [negArithTok]
-  split_ifs <;> omega
-
-lemma map_negArithTok_term {k : ℕ} (t : ArithmeticSemiterm ℕ k) :
-    (encodeArithmeticTermSymbols t).map negArithTok =
-      encodeArithmeticTermSymbols t := by
-  conv_rhs => rw [← List.map_id (encodeArithmeticTermSymbols t)]
-  exact List.map_congr_left fun x hx =>
-    negArithTok_of_lt (encodeArithmeticTermSymbols_lt t x hx)
-
-lemma encodeArithmeticFormulaSymbols_neg {k : ℕ} (φ : ArithmeticSemiformula ℕ k) :
-    encodeArithmeticFormulaSymbols (∼φ) =
-      (encodeArithmeticFormulaSymbols φ).map negArithTok := by
-  induction φ with
-  | verum => rfl
-  | falsum => rfl
-  | rel r v =>
-      rcases r with _ | _ <;>
-        simp [encodeArithmeticFormulaSymbols, negArithTok, map_negArithTok_term]
-  | nrel r v =>
-      rcases r with _ | _ <;>
-        simp [encodeArithmeticFormulaSymbols, negArithTok, map_negArithTok_term]
-  | and φ ψ ihφ ihψ =>
-      show encodeArithmeticFormulaSymbols ((∼φ).or (∼ψ)) = _
-      simp [encodeArithmeticFormulaSymbols, ihφ, ihψ, negArithTok]
-  | or φ ψ ihφ ihψ =>
-      show encodeArithmeticFormulaSymbols ((∼φ).and (∼ψ)) = _
-      simp [encodeArithmeticFormulaSymbols, ihφ, ihψ, negArithTok]
-  | all φ ih =>
-      show encodeArithmeticFormulaSymbols ((∼φ).exs) = _
-      simp [encodeArithmeticFormulaSymbols, ih, negArithTok]
-  | exs φ ih =>
-      show encodeArithmeticFormulaSymbols ((∼φ).all) = _
-      simp [encodeArithmeticFormulaSymbols, ih, negArithTok]
-
-/-- Streams are closed under a poly-fueled token map. -/
-lemma PolySegStream.mapTok {s : ℕ → List ℕ} (h : PolySegStream s)
-    {cf : Code} {f : ℕ → ℕ} (hf : PolyFueled cf f) :
-    PolySegStream (fun n => (s n).map f) := by
-  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
-  refine ⟨_, cl, fun z => f (tokenFn z), lenFn, hf.comp htok, hlen, fun n => ?_,
-    fun n i hi => ?_⟩
-  · simpa using hslen n
-  · have hilt : i < (s n).length := by rw [hslen n]; exact hi
-    show f (tokenFn (Nat.pair n i)) = ((s n).map f).getD i 0
-    rw [hget n i hi, List.getD_eq_getElem _ _ hilt,
-      List.getD_eq_getElem _ _ (by simpa using hilt), List.getElem_map]
-
-/-- Dispatch on an equality test against a constant. -/
-private lemma polyFueled_ifEqK {cf ca cb : Code} {F A B : ℕ → ℕ}
-    (hF : PolyFueled cf F) (K : ℕ) (hA : PolyFueled ca A) (hB : PolyFueled cb B) :
-    ∃ c, PolyFueled c (fun z => if F z = K then A z else B z) := by
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  have hT : PolyFueled _ (fun z => (F z - K) + (K - F z)) :=
-    (had.comp ((subc_polyFueled.comp (hF.pair (PolyFueled.const K))).pair
-      (subc_polyFueled.comp ((PolyFueled.const K).pair hF)))).of_eq fun z => by
-        simp only [Nat.unpair_pair]
-  refine ⟨_, (ifzSel_polyFueled.comp ((hA.pair hB).pair hT)).of_eq fun z => ?_⟩
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk : F z = K
-  · rw [if_pos (by omega), if_pos hk]
-  · rw [if_neg (by omega), if_neg hk]
-
-lemma negArithTok_polyFueled {cf : Code} {F : ℕ → ℕ} (hF : PolyFueled cf F) :
-    ∃ c, PolyFueled c (fun z => negArithTok (F z)) := by
-  obtain ⟨_, h18⟩ := polyFueled_ifEqK hF 18 (PolyFueled.const 17) hF
-  obtain ⟨_, h17⟩ := polyFueled_ifEqK hF 17 (PolyFueled.const 18) h18
-  obtain ⟨_, h16⟩ := polyFueled_ifEqK hF 16 (PolyFueled.const 15) h17
-  obtain ⟨_, h15⟩ := polyFueled_ifEqK hF 15 (PolyFueled.const 16) h16
-  obtain ⟨_, h14⟩ := polyFueled_ifEqK hF 14 (PolyFueled.const 13) h15
-  obtain ⟨_, h13⟩ := polyFueled_ifEqK hF 13 (PolyFueled.const 14) h14
-  obtain ⟨_, h12⟩ := polyFueled_ifEqK hF 12 (PolyFueled.const 11) h13
-  obtain ⟨_, h11⟩ := polyFueled_ifEqK hF 11 (PolyFueled.const 12) h12
-  obtain ⟨_, h10⟩ := polyFueled_ifEqK hF 10 (PolyFueled.const 9) h11
-  obtain ⟨c, h9⟩ := polyFueled_ifEqK hF 9 (PolyFueled.const 10) h10
-  exact ⟨c, h9.of_eq fun z => by rw [negArithTok]⟩
-
-/-- The structural certificate is closed under negation. -/
-lemma PolyArithmeticFormulaSeq.neg {k : ℕ} {φ : ℕ → ArithmeticSemiformula ℕ k}
-    (h : PolyArithmeticFormulaSeq φ) :
-    PolyArithmeticFormulaSeq (fun n => ∼(φ n)) := by
-  obtain ⟨cf, hf⟩ := negArithTok_polyFueled (PolyFueled.id)
-  exact (h.mapTok hf).of_eq fun n =>
-    (encodeArithmeticFormulaSymbols_neg (φ n)).symm
-
-/-- Existential closure of a structural certificate: one extra fixed tag. -/
-lemma PolyArithmeticFormulaSeq.exs {k : ℕ}
-    {φ : ℕ → ArithmeticSemiformula ℕ (k + 1)} (h : PolyArithmeticFormulaSeq φ) :
-    PolyArithmeticFormulaSeq (fun n => (φ n).exs) := by
-  have htag : PolySegStream (fun _ : ℕ => ([18] : List ℕ)) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 18)
-  exact (htag.append h).of_eq fun n => by simp [encodeArithmeticFormulaSymbols]
-
-/-! ## The universally quantified decompose bridge
-
-`paperPrimeDecompose` recurses only through the outer Boolean structure, so a
-quantifier-headed proposition decomposes to a single structured leaf inside the
-negation shell.  This is the shape the paper's threshold syntax takes. -/
-
-lemma structuredPaperDecomposeBlock_all (φ : ArithmeticSemiformula ℕ 1) :
-    structuredPaperDecomposeBlock (.all φ) =
-      [2] ++ structuredPaperPrimeBlock true (.exs (∼φ)) ++ [0] := by
-  simp [structuredPaperDecomposeBlock]
-
-lemma structuredPaperDecomposeBlock_all_polySegStream
-    {φ : ℕ → ArithmeticSemiformula ℕ 1} (hφ : PolyArithmeticFormulaSeq φ) :
-    PolySegStream (fun n => structuredPaperDecomposeBlock (.all (φ n))) := by
-  have hpayload : PolyArithmeticFormulaSeq (fun n => (∼(φ n)).exs) := hφ.neg.exs
-  have hprime := structuredPaperPrimeBlock_polySegStream true
-    (fun n => (∼(φ n)).exs) hpayload
-  have hshell : PolySegStream (fun _ : ℕ => ([2] : List ℕ)) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
-  have hclose : PolySegStream (fun _ : ℕ => ([0] : List ℕ)) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 0)
-  exact ((hshell.append hprime).append hclose).of_eq fun n => by
-    rw [structuredPaperDecomposeBlock_all]
-
-/-- **Decompose efficiency lifting at a quantified head**: an efficiently presented
-family of universally quantified arithmetic propositions has an efficient stream of
-exact paper-prime decomposition blocks.  The emitter outputs only the small structured
-block; the tag-7 atom code is built by parser contraction. -/
-lemma structuredPaperDecomposeAll_rpnSentenceCodes
-    (φ : ℕ → ArithmeticSemiformula ℕ 1) (hφ : PolyArithmeticFormulaSeq φ) :
-    RpnSentenceCodes (fun n => paperPrimeDecompose (.all (φ n))) :=
-  ⟨fun n => structuredPaperDecomposeBlock (.all (φ n)),
-    structuredPaperDecomposeBlock_all_polySegStream hφ,
-    fun n => parseRpn_structuredPaperDecomposeBlock_exact (.all (φ n))⟩
+/-- Every fixed token list is a segment stream. -/
+lemma PolySegStream.constList : ∀ c : List ℕ, PolySegStream (fun _ : ℕ => c)
+  | [] => PolySegStream.ofTokenStream PolyTokenStream.nil
+  | t :: c =>
+      ((PolySegStream.ofTokenStream (PolyTokenStream.const t)).append
+        (PolySegStream.constList c)).of_eq fun _ => rfl
 
 /-! ## Numerals
 
@@ -787,360 +697,381 @@ lemma encodeArithmeticTermSymbols_numeral_polySegStream {k : ℕ} {cv : Code}
     (PolySegStream.repeatTag 6 hv)).of_eq fun n =>
       (encodeArithmeticTermSymbols_numeral (v n) (hne n)).symm
 
-/-! ## The literal first-order LUV frontend
+/-! ## Compact numerals
 
-A single `PaperLUV` carries no efficiency certificate, so the family layer supplies
-one — and supplies it as *structural symbol emission of the threshold bodies*, never as
-a bound on Foundation's Godel codes and never as a caller-provided tag-7 code.  The
-compiler below turns that certificate into the paper's exact threshold sentences. -/
+Foundation's `Semiterm.Operator.numeral` is unary, so naming a large value with it costs
+symbols linear in the value.  That is the cost model of the paper's own `ℒₒᵣ`, and the
+paper does not pay it: it names large values by *compact terms* or by definitions
+(tex:614, "writing `⌜f(3)⌝` does not involve computing `f(3)`").  `binNumeral` is the
+compact naming a paper author has in `ℒₒᵣ` itself — Horner form over `0`/`1`/`+`/`*`,
+`O(log v)` nodes for the value `v` — with the same value in every model of `𝗣𝗔⁻`.
 
-section Frontend
+The recursion is **base four**, not base two, and that choice is load-bearing rather than
+cosmetic.  A base-two Horner step has to branch on the parity, so its symbol list has two
+different widths (`[8,7,6,6]` against `[7,8,7,6,6] … [6]`); a variable-width run is not
+something `PolySegStream.blocks` can emit, and the whole point of a compact numeral in
+this development is that a *write-out* value stream can name its own values.  In base
+four the digit is carried by a fixed `(1+1) * b₁ + b₀` shape, so the symbol list is two
+uniform runs — `binNumeralLen v - 1` copies of the nine-token `hornerPrefix` followed by
+`binNumeralLen v` copies of the seven-token `digitEnc` — and both runs are driven by
+`len4` and `dig4`, which are exactly the two primitives `BigDigits` certifies.  No base
+conversion is performed anywhere: `binNumeralEnc_eq` reads the numeral straight off the
+base-4 digits. -/
 
-variable {T : ArithmeticTheory} [T.Δ₁]
+/-- The `ℒₒᵣ` term naming a single bit. -/
+def bitTerm (b : ℕ) : Semiterm.Const ℒₒᵣ :=
+  if b = 0 then Semiterm.Operator.Zero.zero else Semiterm.Operator.One.one
 
-/-- The body under the paper's threshold quantifier, as a proposition-level formula. -/
-def paperThresholdBody (X : PaperLUV T) (r : ℚ) : ArithmeticSemiformula ℕ 1 :=
-  ((X.formula 🡒 paperRatGtDef r : ArithmeticSemisentence 1) :
-    ArithmeticSemiformula ℕ 1)
+/-- The `ℒₒᵣ` term naming a base-4 digit, in the fixed shape `(1+1) * (d / 2) + d % 2`.
+The shape is uniform in `d`, which is what makes the numeral's symbol list a
+constant-width block. -/
+def digitTerm (d : ℕ) : Semiterm.Const ℒₒᵣ :=
+  Semiterm.Operator.Add.add.comp
+    ![Semiterm.Operator.Mul.mul.comp
+        ![Semiterm.Operator.Add.add.comp
+            ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+          bitTerm (d / 2)],
+      bitTerm (d % 2)]
 
-lemma paperThresholdFormula_eq_all (X : PaperLUV T) (r : ℚ) :
-    ((X.thresholdFormula r : ArithmeticSentence) : ArithmeticProposition) =
-      .all (paperThresholdBody X r) := by
-  simp only [PaperLUV.thresholdFormula, paperThresholdBody]
-  simp
+/-- The Horner base as an `ℒₒᵣ` term: `(1+1) * (1+1)`. -/
+def fourTerm : Semiterm.Const ℒₒᵣ :=
+  Semiterm.Operator.Mul.mul.comp
+    ![Semiterm.Operator.Add.add.comp
+        ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+      Semiterm.Operator.Add.add.comp
+        ![Semiterm.Operator.One.one, Semiterm.Operator.One.one]]
+
+/-- Horner-form ("base-four") numeral: the value `v` named by `O(log v)` `ℒₒᵣ` nodes,
+`v ↦ ((1+1)*(1+1)) * ⌜v / 4⌝ + ⌜v % 4⌝` down to a single digit. -/
+def binNumeral (v : ℕ) : Semiterm.Const ℒₒᵣ :=
+  if v < 4 then digitTerm v
+  else
+    Semiterm.Operator.Add.add.comp
+      ![Semiterm.Operator.Mul.mul.comp ![fourTerm, binNumeral (v / 4)],
+        digitTerm (v % 4)]
+termination_by v
+decreasing_by exact Nat.div_lt_self (by omega) (by omega)
+
+/-- The number of base-4 digits the compact numeral writes: `len4 v`, except that the
+value `0` still occupies one digit. -/
+def binNumeralLen (v : ℕ) : ℕ := max (len4 v) 1
+
+lemma binNumeralLen_pos (v : ℕ) : 0 < binNumeralLen v :=
+  lt_of_lt_of_le Nat.zero_lt_one (le_max_right _ _)
+
+lemma binNumeralLen_of_lt_four {v : ℕ} (h : v < 4) : binNumeralLen v = 1 := by
+  have : len4 v ≤ 1 := (len4_le_iff v 1).mpr (by simpa using h)
+  simp only [binNumeralLen]
+  omega
+
+lemma binNumeralLen_div {v : ℕ} (h : 4 ≤ v) :
+    binNumeralLen v = binNumeralLen (v / 4) + 1 := by
+  have hq : 0 < v / 4 := Nat.div_pos h (by norm_num)
+  have h1 : 0 < len4 (v / 4) := len4_pos hq
+  have h2 : len4 v = len4 (v / 4) + 1 := len4_div_four (by omega)
+  simp only [binNumeralLen]
+  omega
+
+/-- The symbol block of one base-4 digit (width 7). -/
+def digitEnc (d : ℕ) : List ℕ := [7, 8, 7, 6, 6, d / 2 + 5, d % 2 + 5]
+
+/-- The symbol block of one Horner step (width 9). -/
+def hornerPrefix : List ℕ := [7, 8, 8, 7, 6, 6, 7, 6, 6]
+
+/-- The symbol list of `binNumeral`, read off the same recursion. -/
+def binNumeralEnc (v : ℕ) : List ℕ :=
+  if v < 4 then digitEnc v
+  else hornerPrefix ++ binNumeralEnc (v / 4) ++ digitEnc (v % 4)
+termination_by v
+decreasing_by exact Nat.div_lt_self (by omega) (by omega)
+
+lemma encodeArithmeticTermSymbols_bitTerm {k : ℕ} {b : ℕ} (hb : b < 2) :
+    encodeArithmeticTermSymbols ((bitTerm b).const : ArithmeticSemiterm ℕ k)
+      = [b + 5] := by
+  rcases (by omega : b = 0 ∨ b = 1) with rfl | rfl <;> rfl
+
+lemma encodeArithmeticTermSymbols_digitTerm {k : ℕ} {d : ℕ} (hd : d < 4) :
+    encodeArithmeticTermSymbols ((digitTerm d).const : ArithmeticSemiterm ℕ k)
+      = digitEnc d := by
+  show (7 : ℕ) :: (encodeArithmeticTermSymbols
+      ((Semiterm.Operator.Mul.mul.comp
+        ![Semiterm.Operator.Add.add.comp
+            ![Semiterm.Operator.One.one, Semiterm.Operator.One.one],
+          bitTerm (d / 2)] : Semiterm.Const ℒₒᵣ).const : ArithmeticSemiterm ℕ k) ++
+      encodeArithmeticTermSymbols ((bitTerm (d % 2)).const : ArithmeticSemiterm ℕ k)) = _
+  show (7 : ℕ) :: ((8 : ℕ) :: (encodeArithmeticTermSymbols
+      ((Semiterm.Operator.Add.add.comp
+        ![Semiterm.Operator.One.one, Semiterm.Operator.One.one] :
+          Semiterm.Const ℒₒᵣ).const : ArithmeticSemiterm ℕ k) ++
+      encodeArithmeticTermSymbols ((bitTerm (d / 2)).const : ArithmeticSemiterm ℕ k)) ++
+      encodeArithmeticTermSymbols ((bitTerm (d % 2)).const : ArithmeticSemiterm ℕ k)) = _
+  rw [encodeArithmeticTermSymbols_bitTerm (show d / 2 < 2 by omega),
+    encodeArithmeticTermSymbols_bitTerm (show d % 2 < 2 by omega)]
   rfl
 
-lemma paperLUV_gt_eq (X : PaperLUV T) (r : ℚ) :
-    X.toLUV.gt r = paperPrimeDecompose (.all (paperThresholdBody X r)) := by
-  rw [PaperLUV.toLUV_gt, paperThresholdFormula_eq_all]
+lemma encodeArithmeticTermSymbols_binNumeral {k : ℕ} :
+    ∀ v : ℕ, encodeArithmeticTermSymbols
+      ((binNumeral v).const : ArithmeticSemiterm ℕ k) = binNumeralEnc v := by
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeral, if_pos hv, binNumeralEnc, if_pos hv]
+      exact encodeArithmeticTermSymbols_digitTerm hv
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hrec := ih _ hlt
+      rw [binNumeral, if_neg (by omega), binNumeralEnc, if_neg (by omega)]
+      show (7 : ℕ) :: (encodeArithmeticTermSymbols
+          ((Semiterm.Operator.Mul.mul.comp
+            ![fourTerm, binNumeral (v / 4)] : Semiterm.Const ℒₒᵣ).const :
+              ArithmeticSemiterm ℕ k) ++
+          encodeArithmeticTermSymbols
+            ((digitTerm (v % 4)).const : ArithmeticSemiterm ℕ k)) = _
+      show (7 : ℕ) :: ((8 : ℕ) :: (encodeArithmeticTermSymbols
+          ((fourTerm : Semiterm.Const ℒₒᵣ).const : ArithmeticSemiterm ℕ k) ++
+          encodeArithmeticTermSymbols
+            ((binNumeral (v / 4)).const : ArithmeticSemiterm ℕ k)) ++
+          encodeArithmeticTermSymbols
+            ((digitTerm (v % 4)).const : ArithmeticSemiterm ℕ k)) = _
+      rw [hrec, encodeArithmeticTermSymbols_digitTerm (Nat.mod_lt _ (by norm_num))]
+      rfl
 
-/-! ### Threshold syntax as small tokens
+private lemma flatMap_range_const (c : List ℕ) :
+    ∀ n : ℕ, (List.range n).flatMap (fun _ : ℕ => c) = (List.replicate n c).flatten := by
+  intro n
+  induction n with
+  | zero => simp
+  | succ n ih =>
+      rw [List.range_succ, List.flatMap_append, ih, List.replicate_succ',
+        List.flatten_append]
+      simp
 
-`paperRatGtDef` is a fixed template around two Foundation numerals, so its encoding
-splits into two constant blocks and two numeral runs; the numerals at query index
-`⟨n, ⟨k, i⟩⟩` are the reduced numerator and denominator of `i / k`, which the fuel
-calculus already computes (`gcdc_polyFueled`, `divmod1_polyFueled`).  Together with the
-implication shell this discharges the threshold-body certificate from a certificate on
-the LUVs' defining formulas alone. -/
+/-- **The compact numeral in closed digit form.**  The symbol list is two uniform runs:
+`binNumeralLen v - 1` copies of the nine-token Horner block, then one seven-token digit
+block per base-4 digit of `v`, most significant first.  This is the shape
+`PolySegStream.blocks` emits, and every quantity in it (`len4`, `dig4`) is a primitive
+`BigDigits` already certifies — which is what makes `polySegStream_binNumeralEnc` a
+composition rather than a new machine. -/
+lemma binNumeralEnc_eq (v : ℕ) :
+    binNumeralEnc v =
+      (List.range (binNumeralLen v - 1)).flatMap (fun _ => hornerPrefix) ++
+      (List.range (binNumeralLen v)).flatMap
+        (fun j => digitEnc (dig4 v (binNumeralLen v - 1 - j))) := by
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+      simp [dig4_of_lt_four hv]
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hrec := ih _ hlt
+      have hLv : binNumeralLen v = binNumeralLen (v / 4) + 1 := binNumeralLen_div hv
+      obtain ⟨K, hK⟩ : ∃ K, binNumeralLen (v / 4) = K + 1 :=
+        ⟨binNumeralLen (v / 4) - 1, by have := binNumeralLen_pos (v / 4); omega⟩
+      rw [hK] at hrec hLv
+      have e1 : (List.range (K + 1)).flatMap (fun _ : ℕ => hornerPrefix)
+          = hornerPrefix ++ (List.range K).flatMap (fun _ : ℕ => hornerPrefix) := by
+        rw [flatMap_range_const, flatMap_range_const, List.replicate_succ,
+          List.flatten_cons]
+      have e2 : (List.range (K + 1 + 1)).flatMap
+            (fun j => digitEnc (dig4 v (K + 1 - j)))
+          = (List.range (K + 1)).flatMap (fun j => digitEnc (dig4 (v / 4) (K - j)))
+            ++ digitEnc (v % 4) := by
+        rw [List.range_succ, List.flatMap_append]
+        congr 1
+        · refine List.flatMap_congr ?_
+          intro j hj
+          rw [List.mem_range] at hj
+          have hj' : K + 1 - j = (K - j) + 1 := by omega
+          rw [hj', dig4_succ]
+        · simp [dig4_zero]
+      rw [binNumeralEnc, if_neg (by omega), hrec, hLv]
+      simp only [Nat.add_sub_cancel]
+      rw [e1, e2]
+      simp [List.append_assoc]
 
-private def ratGtPre : List ℕ :=
-  [18, 18, 15, 16, 15, 13, 3, 2, 0, 3, 0, 11, 3, 1, 2, 0, 7, 8, 3, 0, 3, 0, 3, 2,
-   0, 15, 16, 11, 3, 0, 3, 2, 0, 13, 3, 0, 3, 2, 0, 11, 3, 1, 2, 0, 7, 7, 8, 3, 2,
-   0, 3, 2, 0, 3, 2, 0, 3, 0, 15, 13, 5, 3, 0, 13, 8]
+/-- The exact symbol count: one nine-token Horner block per digit *after* the first, plus
+one seven-token digit block per digit. -/
+lemma binNumeralEnc_length (v : ℕ) :
+    (binNumeralEnc v).length = 16 * binNumeralLen v - 9 := by
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+      rfl
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hrec := ih _ hlt
+      have hLv : binNumeralLen v = binNumeralLen (v / 4) + 1 := binNumeralLen_div hv
+      have hp := binNumeralLen_pos (v / 4)
+      rw [binNumeralEnc, if_neg (by omega)]
+      simp only [List.length_append, hrec, hLv, digitEnc, hornerPrefix,
+        List.length_cons, List.length_nil]
+      omega
 
-private def ratGtMid : List ℕ := [3, 0, 8, 3, 2, 0]
+/-- **The compact numeral is logarithmic.**  Each base-4 Horner step contributes sixteen
+symbols and consumes two bits of the value, so naming `v` costs `O(log v)` — against
+`2 * v - 1` for the unary numeral (`encodeArithmeticTermSymbols_numeral`). -/
+lemma binNumeralEnc_length_le : ∀ v : ℕ,
+    (binNumeralEnc v).length ≤ 8 * Nat.log 2 v + 7 := by
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeralEnc, if_pos hv]
+      simp [digitEnc]
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hrec := ih _ hlt
+      have hlog2 : 2 ≤ Nat.log 2 v := by
+        have hpow : (2 : ℕ) ^ 2 = 4 := by norm_num
+        exact (Nat.le_log_iff_pow_le (by norm_num) (by omega)).mpr (by omega)
+      have hdiv : Nat.log 2 (v / 4) = Nat.log 2 v - 2 := by
+        have h4 : v / 2 / 2 = v / 4 := by rw [Nat.div_div_eq_div_mul]
+        rw [← h4, Nat.log_div_base, Nat.log_div_base]
+        omega
+      rw [binNumeralEnc, if_neg (by omega)]
+      simp only [List.length_append, digitEnc, hornerPrefix, List.length_cons,
+        List.length_nil]
+      omega
 
-private lemma oringMul_term :
-    (Semiterm.Operator.Mul.mul : Semiterm.Operator ℒₒᵣ 2).term =
-      Semiterm.func Language.Mul.mul Semiterm.bvar := rfl
-
-private lemma oringAdd_term :
-    (Semiterm.Operator.Add.add : Semiterm.Operator ℒₒᵣ 2).term =
-      Semiterm.func Language.Add.add Semiterm.bvar := rfl
-
-private lemma oringOne_term :
-    (Semiterm.Operator.One.one : Semiterm.Operator ℒₒᵣ 0).term =
-      Semiterm.func Language.One.one ![] := rfl
-
-private lemma oringNumZero_term :
-    (Semiterm.Operator.numeral ℒₒᵣ 0).term =
-      Semiterm.func Language.Zero.zero ![] := rfl
-
-private lemma emb_subst_nil_comm {n : ℕ} (t : Semiterm ℒₒᵣ Empty 0) :
-    (Rew.emb ((Rew.subst ![]) t) : ArithmeticSemiterm ℕ n) =
-      (Rew.subst ![]) (Rew.emb t) := by
-  have h : ((Rew.emb : Rew ℒₒᵣ Empty n ℕ n).comp (Rew.subst ![])) =
-      ((Rew.subst ![]).comp (Rew.emb : Rew ℒₒᵣ Empty 0 ℕ 0)) := by
-    ext x
-    · exact Fin.elim0 x
-    · exact IsEmpty.elim inferInstance x
-  rw [← Rew.comp_app, h, Rew.comp_app]
-
-private def encNumeral (v : ℕ) : List ℕ :=
-  encodeArithmeticTermSymbols
-    ((Semiterm.Operator.numeral ℒₒᵣ v).const : ArithmeticSemiterm ℕ 3)
-
-private lemma enc_paperRatGtDef (r : ℚ) (hr : ¬ r < 0) :
-    encodeArithmeticFormulaSymbols
-      ((paperRatGtDef r : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
-      ratGtPre ++ encNumeral r.num.natAbs ++ ratGtMid ++ encNumeral r.den := by
-  rw [paperRatGtDef, if_neg hr]
-  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
-    encodeStructuredNat, ratGtPre, ratGtMid, encNumeral,
-    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
-    Semiformula.Operator.le_def, Semiterm.Operator.operator,
-    Semiterm.Operator.const, oringMul_term, oringAdd_term,
-    oringNumZero_term, Matrix.fun_eq_vec_two, emb_subst_nil_comm]
-
-private lemma encNumeral_zero : encNumeral 0 = [5] := rfl
-
-private lemma encNumeral_of_ne_zero {v : ℕ} (hv : v ≠ 0) :
-    encNumeral v = List.replicate (v - 1) 7 ++ List.replicate v 6 :=
-  encodeArithmeticTermSymbols_numeral v hv
-
-/-- Every fixed token list is a segment stream. -/
-lemma PolySegStream.constList : ∀ c : List ℕ, PolySegStream (fun _ : ℕ => c)
-  | [] => PolySegStream.ofTokenStream PolyTokenStream.nil
-  | t :: c =>
-      ((PolySegStream.ofTokenStream (PolyTokenStream.const t)).append
-        (PolySegStream.constList c)).of_eq fun _ => rfl
-
-/-- Numerals of a poly-fueled value stream are emittable, zero included. -/
-lemma encNumeral_polySegStream {cv : Code} {v : ℕ → ℕ} (hv : PolyFueled cv v) :
-    PolySegStream (fun n => encNumeral (v n)) := by
-  have hpred : PolyFueled _ (fun n => v n - 1) :=
-    (subc_polyFueled.comp (hv.pair (PolyFueled.const 1))).of_eq fun n => by
-      simp only [Nat.unpair_pair]
-  have hpos : PolySegStream (fun n => List.replicate (v n - 1) 7 ++
-      List.replicate (v n) 6) :=
-    (PolySegStream.repeatTag 7 hpred).append (PolySegStream.repeatTag 6 hv)
-  refine ((PolySegStream.constList [5]).ifZero hpos hv).of_eq fun n => ?_
-  by_cases h : v n = 0
-  · rw [if_pos h, h, encNumeral_zero]
-  · rw [if_neg h, encNumeral_of_ne_zero h]
-
-/-- The threshold rational named by a `RpnThresholdCodeSeq` query index `⟨n, ⟨k, i⟩⟩`. -/
-def queryRat (m : ℕ) : ℚ :=
-  (m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)
-
-lemma queryRat_nonneg (m : ℕ) : ¬ queryRat m < 0 := by
-  rw [queryRat]
-  exact not_lt.mpr (div_nonneg (by positivity) (by positivity))
-
-lemma queryNum_polyFueled :
-    ∃ c, PolyFueled c (fun m => (queryRat m).num.natAbs) := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  have hk := PolyFueled.left.comp PolyFueled.right
-  have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
-  refine ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair numPF).pair hk)).of_eq fun m => ?_⟩
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
-    simp
-  · rw [if_neg hk0, queryRat]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
-        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, ComputableLUV.natCast_div_num hk0, Int.natAbs_natCast]
-
-lemma queryDen_polyFueled :
-    ∃ c, PolyFueled c (fun m => (queryRat m).den) := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  have hk := PolyFueled.left.comp PolyFueled.right
-  have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
-  refine ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 1).pair denPF).pair hk)).of_eq fun m => ?_⟩
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, queryRat, hk0]
-    simp
-  · rw [if_neg hk0, queryRat]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
-        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, ComputableLUV.natCast_div_den hk0]
-
-/-- The implication shell in symbol form. -/
-lemma encodeArithmeticFormulaSymbols_imp {k : ℕ}
-    (A B : ArithmeticSemiformula ℕ k) :
-    encodeArithmeticFormulaSymbols (A 🡒 B) =
-      16 :: ((encodeArithmeticFormulaSymbols A).map negArithTok ++
-        encodeArithmeticFormulaSymbols B) := by
-  show encodeArithmeticFormulaSymbols ((∼A).or B) = _
-  rw [encodeArithmeticFormulaSymbols, encodeArithmeticFormulaSymbols_neg]
-
-/-- The threshold syntax of a rational query is structurally emittable. -/
-lemma paperRatGt_polySegStream :
-    PolySegStream (fun m => encodeArithmeticFormulaSymbols
-      ((paperRatGtDef (queryRat m) : ArithmeticSemisentence 1) :
-        ArithmeticSemiformula ℕ 1)) := by
-  obtain ⟨cn, hnum⟩ := queryNum_polyFueled
-  obtain ⟨cd, hden⟩ := queryDen_polyFueled
-  refine (((PolySegStream.constList ratGtPre).append
-    (encNumeral_polySegStream hnum)).append
-      ((PolySegStream.constList ratGtMid).append
-        (encNumeral_polySegStream hden))).of_eq fun m => ?_
-  rw [enc_paperRatGtDef _ (queryRat_nonneg m)]
-  simp [List.append_assoc]
-
-lemma paperThresholdBody_polySegStream (X : ℕ → PaperLUV T)
-    (h : PolyArithmeticFormulaSeq (fun n =>
-      (((X n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1))) :
-    PolyArithmeticFormulaSeq (fun m =>
-      paperThresholdBody (X m.unpair.1) (queryRat m)) := by
-  obtain ⟨cf, hf⟩ := negArithTok_polyFueled (PolyFueled.id)
-  have hX := h.comp (PolyFueled.left)
-  refine ((PolySegStream.constList [16]).append
-    ((hX.mapTok hf).append paperRatGt_polySegStream)).of_eq fun m => ?_
-  show _ = encodeArithmeticFormulaSymbols (paperThresholdBody _ _)
-  rw [paperThresholdBody]
-  simp only [LogicalConnective.HomClass.map_imply]
-  rw [encodeArithmeticFormulaSymbols_imp]
-  simp [List.append_assoc]
-
-/-- An efficiently presented family of literal paper LUVs.  The certificate is
-structural symbol emission of the LUVs' own *defining formulas* — never a bound on
-Foundation codes, a caller-provided tag-7 code, or a semantic handle.  Everything the
-threshold syntax adds on top (the implication shell, the fixed comparison template, and
-the reduced numerals of the query rational) is discharged internally.
-
-Inhabited by `unitFracPaperLUVSeq`, the family of values `1/(n+1)`. -/
-structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
-  luv : ℕ → PaperLUV T
-  structural : PolyArithmeticFormulaSeq (fun n =>
-    (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1))
-
-/-- The threshold bodies inherit the family's structural certificate. -/
-lemma PaperLUVSeq.thresholdBody_structural (X : PaperLUVSeq T) :
-    PolyArithmeticFormulaSeq (fun m =>
-      paperThresholdBody (X.luv m.unpair.1) (queryRat m)) :=
-  paperThresholdBody_polySegStream X.luv X.structural
-
-/-- Any single literal paper LUV presents as a constant family.  This is a
-convenience, not the non-vacuity witness: see `unitFracPaperLUVSeq` for a family whose
-defining formulas genuinely vary with `n`. -/
-def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T where
-  luv _ := X
-  structural := PolySegStream.constList _
-
-lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
-    LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
-  have h := structuredPaperDecomposeAll_rpnSentenceCodes _ X.thresholdBody_structural
-  exact h.of_eq fun m => (paperLUV_gt_eq _ _).symm
-
-/-! ### A concrete family
-
-The interface is inhabited by a genuinely varying family: the LUVs of value `1/(n+1)`,
-whose defining formulas grow with `n` and whose uniqueness and unit-interval facts are
-discharged in any theory extending `𝗜𝚺₁` by completeness over its models. -/
-
-/-- The value `1/(n+1)`: the code of that fraction, with the denominator named once. -/
-def unitFracFormula (n : ℕ) : ArithmeticSemisentence 1 :=
-  “q. ∃ b, !!(Semiterm.Operator.numeral ℒₒᵣ (n + 1)) = b ∧ !pairDef q 1 b”
-
-private def unitFracPost : List ℕ :=
-  [3, 0, 16, 15, 13, 6, 3, 0, 11, 3, 2, 0, 7, 8, 3, 0, 3, 0, 6, 15, 16, 11, 3, 0,
-   6, 13, 3, 0, 6, 11, 3, 2, 0, 7, 7, 8, 6, 6, 6, 3, 0]
-
-private lemma oringNumOne_term :
-    (Semiterm.Operator.numeral ℒₒᵣ 1).term =
-      Semiterm.func Language.One.one ![] := rfl
-
-/-- The numeral encoding in the normal form the frame computation leaves behind. -/
-private lemma encNumeral_norm (k v : ℕ) (hv : v ≠ 0) :
-    encodeArithmeticTermSymbols
-      (((Rew.subst ![]) (Rew.emb (Semiterm.Operator.numeral ℒₒᵣ v).term)) :
-        ArithmeticSemiterm ℕ k) =
-      List.replicate (v - 1) 7 ++ List.replicate v 6 := by
-  have h := encodeArithmeticTermSymbols_numeral (k := k) v hv
-  simpa [Semiterm.Operator.const, Semiterm.Operator.operator] using h
-
-private lemma enc_unitFracFormula (n : ℕ) :
-    encodeArithmeticFormulaSymbols
-      ((unitFracFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1) =
-      [18, 15, 11] ++ (List.replicate n 7 ++ List.replicate (n + 1) 6) ++
-        unitFracPost := by
-  rw [unitFracFormula]
-  simp [pairDef, encodeArithmeticFormulaSymbols, encodeArithmeticTermSymbols,
-    encodeStructuredNat, unitFracPost,
-    Semiformula.Operator.lt_def, Semiformula.Operator.eq_def,
-    Semiformula.Operator.le_def, Semiterm.Operator.operator,
-    Semiterm.Operator.const, oringMul_term, oringAdd_term,
-    oringNumZero_term, oringNumOne_term, Matrix.fun_eq_vec_two,
-    emb_subst_nil_comm, encNumeral_norm _ (n + 1) (by omega)]
-
-/-- The literal paper LUV of value `1/(n+1)`. -/
-def unitFracPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (n : ℕ) :
-    PaperLUV T where
-  formula := unitFracFormula n
-  unique := by
-    apply LO.FirstOrder.Arithmetic.complete T
-    intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
-    simp [models_iff, unitFracFormula, pairDef, numeral_eq_natCast]
-    rcases Nat.eq_zero_or_pos n with rfl | hn
-    · simp
-    · simp [hn, hn.ne']
-  unit := by
-    apply LO.FirstOrder.Arithmetic.complete T
-    intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
-    simp [models_iff, unitFracFormula, pairDef, paperRatUnitDef,
-      numeral_eq_natCast]
-    intro x hx
-    refine ⟨1, (n : M) + 1, ?_, ?_, ?_⟩
-    · rcases hx with ⟨hn, rfl⟩ | ⟨rfl, rfl⟩
-      · exact Or.inl ⟨by simpa using hn, rfl⟩
-      · exact Or.inr ⟨by simp, by simp⟩
-    · simp
-    · simp
-
-/-- The defining formulas of the `1/(n+1)` family are structurally emittable. -/
-lemma unitFrac_polyArithmeticFormulaSeq :
-    PolyArithmeticFormulaSeq (fun n =>
-      ((unitFracFormula n : ArithmeticSemisentence 1) :
-        ArithmeticSemiformula ℕ 1)) := by
-  have hid : PolyFueled _ (fun n : ℕ => n) := PolyFueled.id
-  have hsucc : PolyFueled _ (fun n : ℕ => n + 1) := PolyFueled.id.succ_comp
-  refine ((PolySegStream.constList [18, 15, 11]).append
-    (((PolySegStream.repeatTag 7 hid).append
-      (PolySegStream.repeatTag 6 hsucc)).append
-        (PolySegStream.constList unitFracPost))).of_eq fun n => ?_
-  rw [enc_unitFracFormula n]
+private lemma val_one {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻] :
+    (Semiterm.Operator.One.one : Semiterm.Const ℒₒᵣ).val (![] : Fin 0 → M) = 1 := by
   simp
 
-/-- **Non-vacuity** (`N+`): a genuinely varying family of literal paper LUVs, with
-values `1/(n+1)`, carrying the structural certificate. -/
-def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
-  luv n := unitFracPaperLUV T n
-  structural := unitFrac_polyArithmeticFormulaSeq
+private lemma val_add_comp {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
+    (s t : Semiterm.Const ℒₒᵣ) :
+    (Semiterm.Operator.Add.add.comp ![s, t] : Semiterm.Const ℒₒᵣ).val (![] : Fin 0 → M)
+      = s.val (![] : Fin 0 → M) + t.val (![] : Fin 0 → M) := by
+  simp [Semiterm.Operator.val_comp, Matrix.fun_eq_vec_two]
 
-/-- **The literal paper frontend**: an efficiently presented family of literal
-first-order paper LUVs is both semantically valued on every completed world of the
-canonical theorem process and efficiently thresholded in the symbol-metered emission
-calculus. -/
-lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (X : PaperLUVSeq T) :
-    (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
-        ∃ x : ℝ, v.ValuesAt (X.luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) :=
-  ⟨fun n => PaperLUV.source_valued (X.luv n), X.rpnThresholdCodeSeq⟩
+private lemma val_mul_comp {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
+    (s t : Semiterm.Const ℒₒᵣ) :
+    (Semiterm.Operator.Mul.mul.comp ![s, t] : Semiterm.Const ℒₒᵣ).val (![] : Fin 0 → M)
+      = s.val (![] : Fin 0 → M) * t.val (![] : Fin 0 → M) := by
+  simp [Semiterm.Operator.val_comp, Matrix.fun_eq_vec_two]
 
-/-- **The frontend on a concrete family**: the literal `1/(n+1)` LUVs are valued on every
-completed world of the canonical theorem process and efficiently thresholded, so the
-frontend's two conclusions hold of an actual first-order family rather than only of a
-hypothetical one. -/
-lemma unitFracPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
-    (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
-        ∃ x : ℝ, v.ValuesAt ((unitFracPaperLUVSeq T).luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
-  (unitFracPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+/-- **The compact numeral names its value.**  In every model of `𝗣𝗔⁻` the Horner term
+`binNumeral v` evaluates to `v`, so it is interchangeable with Foundation's unary numeral
+wherever only the value matters. -/
+lemma binNumeral_val {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻] :
+    ∀ v : ℕ, (binNumeral v).val (![] : Fin 0 → M) = (v : M) := by
+  have hbit : ∀ b : ℕ, b < 2 →
+      (bitTerm b).val (![] : Fin 0 → M) = (b : M) := by
+    intro b hb
+    rcases (by omega : b = 0 ∨ b = 1) with rfl | rfl <;> simp [bitTerm]
+  have hdig : ∀ d : ℕ, d < 4 →
+      (digitTerm d).val (![] : Fin 0 → M) = (d : M) := by
+    intro d hd
+    have hcast : (d : M) = 2 * ((d / 2 : ℕ) : M) + ((d % 2 : ℕ) : M) := by
+      have hdd : d = 2 * (d / 2) + d % 2 := by omega
+      calc (d : M) = ((2 * (d / 2) + d % 2 : ℕ) : M) := by rw [← hdd]
+        _ = 2 * ((d / 2 : ℕ) : M) + ((d % 2 : ℕ) : M) := by push_cast; ring
+    rw [digitTerm]
+    simp only [val_add_comp, val_mul_comp, val_one,
+      hbit _ (show d / 2 < 2 by omega), hbit _ (show d % 2 < 2 by omega)]
+    rw [hcast]; ring
+  have hfour : (fourTerm : Semiterm.Const ℒₒᵣ).val (![] : Fin 0 → M) = 4 := by
+    rw [fourTerm]
+    simp only [val_add_comp, val_mul_comp, val_one]
+    first | norm_num | ring
+  intro v
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeral, if_pos hv]; exact hdig v hv
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hrec := ih _ hlt
+      have hcast : (v : M) = 4 * ((v / 4 : ℕ) : M) + ((v % 4 : ℕ) : M) := by
+        have hvv : v = 4 * (v / 4) + v % 4 := by omega
+        calc (v : M) = ((4 * (v / 4) + v % 4 : ℕ) : M) := by rw [← hvv]
+          _ = 4 * ((v / 4 : ℕ) : M) + ((v % 4 : ℕ) : M) := by push_cast; ring
+      rw [binNumeral, if_neg (by omega)]
+      simp only [val_add_comp, val_mul_comp, hfour, hrec,
+        hdig _ (Nat.mod_lt _ (by norm_num))]
+      rw [hcast]
+      try ring
 
-end Frontend
+/-- **The compact numeral in the standard model.**  The `M = ℕ` instance of
+`binNumeral_val`. -/
+lemma binNumeral_val_nat (v : ℕ) : (binNumeral v).val (![] : Fin 0 → ℕ) = v := by
+  simpa using binNumeral_val (M := ℕ) v
 
-#print axioms unitFracPaperLUVSeq
-#print axioms unitFracPaperLUVSeq_frontend
-#print axioms PaperLUVSeq.rpnThresholdCodeSeq
-#print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
+/-- **Distinct values get distinct names.**  Immediate from `binNumeral_val_nat`: the
+standard-model value of `binNumeral v` recovers `v`. -/
+lemma binNumeral_injective : Function.Injective binNumeral := by
+  intro a b hab
+  have ha := binNumeral_val_nat a
+  rw [hab, binNumeral_val_nat b] at ha
+  exact ha.symm
+
+/-- **The compact numeral is emittable from write-out digit access.**  If the values `v n`
+are exponential but their base-4 length and digits are poly-fueled (`BigDigits`), the
+compact numerals naming them are a polynomially metered token stream: two
+constant-width runs, one counted by `len4` and one emitting `dig4` through a fixed
+seven-token block.  Every emitted token is a tag in `5..8`, so the class is
+`PolySegStream` and not `BigTokenStream`. -/
+lemma polySegStream_binNumeralEnc {v : ℕ → ℕ} (hv : BigDigits v) :
+    PolySegStream (fun n => binNumeralEnc (v n)) := by
+  obtain ⟨cl, cd, hl, hd⟩ := hv
+  obtain ⟨cdm, hdm⟩ := divmodc_polyFueled 2 (by norm_num)
+  -- The digit count `binNumeralLen (v n) = if len4 (v n) = 0 then 1 else len4 (v n)`.
+  have hL : PolyFueled _ (fun n => binNumeralLen (v n)) :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 1).pair hl).pair hl)).of_eq (fun n => by
+      simp only [Nat.unpair_pair, ifzSelFn, binNumeralLen]
+      split <;> omega)
+  have hL1 : PolyFueled _ (fun n => binNumeralLen (v n) - 1) :=
+    (predc_polyFueled.comp hL).of_eq (fun n => Nat.pred_eq_sub_one)
+  -- Run 1: the Horner prefixes.
+  have hblk1 : PolyTokenStream (fun _ : ℕ => hornerPrefix) :=
+    (PolyTokenStream.const 7).append <| (PolyTokenStream.const 8).append <|
+      (PolyTokenStream.const 8).append <| (PolyTokenStream.const 7).append <|
+      (PolyTokenStream.const 6).append <| (PolyTokenStream.const 6).append <|
+      (PolyTokenStream.const 7).append <| (PolyTokenStream.const 6).append
+        (PolyTokenStream.const 6)
+  have hrun1 := PolySegStream.blocks hblk1 9 (fun _ => rfl) (by omega) hL1
+  -- Run 2: the digit blocks, most significant first.
+  have hLm : PolyFueled _ (fun m : ℕ => binNumeralLen (v m.unpair.1)) :=
+    hL.comp PolyFueled.left
+  have hidx : PolyFueled _
+      (fun m : ℕ => binNumeralLen (v m.unpair.1) - 1 - m.unpair.2) :=
+    (subc_polyFueled.comp ((predc_polyFueled.comp hLm).pair PolyFueled.right)).of_eq
+      (fun m => by simp only [Nat.unpair_pair, Nat.pred_eq_sub_one])
+  have hdg : PolyFueled _ (fun m : ℕ =>
+      dig4 (v m.unpair.1) (binNumeralLen (v m.unpair.1) - 1 - m.unpair.2)) :=
+    (hd.comp (PolyFueled.left.pair hidx)).of_eq (fun m => by simp only [Nat.unpair_pair])
+  have hq : PolyFueled _ (fun m : ℕ =>
+      dig4 (v m.unpair.1) (binNumeralLen (v m.unpair.1) - 1 - m.unpair.2) / 2) :=
+    (PolyFueled.left.comp (hdm.comp hdg)).of_eq (fun m => by simp only [Nat.unpair_pair])
+  have hr : PolyFueled _ (fun m : ℕ =>
+      dig4 (v m.unpair.1) (binNumeralLen (v m.unpair.1) - 1 - m.unpair.2) % 2) :=
+    (PolyFueled.right.comp (hdm.comp hdg)).of_eq (fun m => by simp only [Nat.unpair_pair])
+  obtain ⟨_, hq5⟩ := hq.addConst 5
+  obtain ⟨_, hr5⟩ := hr.addConst 5
+  have hblk2 : PolyTokenStream (fun m : ℕ =>
+      digitEnc (dig4 (v m.unpair.1) (binNumeralLen (v m.unpair.1) - 1 - m.unpair.2))) :=
+    (PolyTokenStream.const 7).append <| (PolyTokenStream.const 8).append <|
+      (PolyTokenStream.const 7).append <| (PolyTokenStream.const 6).append <|
+      (PolyTokenStream.const 6).append <|
+      (PolyTokenStream.polyTok hq5).append (PolyTokenStream.polyTok hr5)
+  have hrun2 := PolySegStream.blocks hblk2 7 (fun _ => rfl) (by omega) hL
+  refine (hrun1.append hrun2).of_eq fun n => ?_
+  simp only [Nat.unpair_pair]
+  rw [binNumeralEnc_eq]
+
+/-- **The compact numeral of a write-out family is emittable as `ℒₒᵣ` term symbols.**  The
+form the arithmetic source frontend consumes: the RPN symbol stream of the compact
+numeral naming `v n` is polynomially metered whenever `v` is written out. -/
+lemma polySegStream_binNumeral_const {v : ℕ → ℕ} (hv : BigDigits v) (l : ℕ) :
+    PolySegStream (fun n => encodeArithmeticTermSymbols
+      ((binNumeral (v n)).const : ArithmeticSemiterm ℕ l)) :=
+  (polySegStream_binNumeralEnc hv).of_eq fun n =>
+    (encodeArithmeticTermSymbols_binNumeral (k := l) (v n)).symm
+
+/-- **The doubling family is structurally emittable.**  The compact numerals of `2 ^ n`
+are emitted by the digit route: `2 ^ n` is written out (`bigDigits_two_pow`) even though
+its value is superpolynomial, and a written-out family names its values compactly. -/
+lemma binNumeralEnc_two_pow_polySegStream :
+    PolySegStream (fun n => binNumeralEnc (2 ^ n)) :=
+  polySegStream_binNumeralEnc bigDigits_two_pow
+
 
 #print axioms parseArithmeticTermSymbols_encode
 #print axioms parseArithmeticFormulaSymbols_encode
@@ -1148,5 +1079,15 @@ end Frontend
 #print axioms parseRpn_structuredPaperDecomposeBlock_exact
 #print axioms parseRpn_encodePaperThreshold
 #print axioms structuredPaperPrime_rpnSentenceCodes
+#print axioms binNumeral_val
+#print axioms binNumeral_val_nat
+#print axioms binNumeral_injective
+#print axioms binNumeralEnc_eq
+#print axioms binNumeralEnc_length
+#print axioms binNumeralEnc_length_le
+#print axioms encodeArithmeticTermSymbols_binNumeral
+#print axioms polySegStream_binNumeralEnc
+#print axioms polySegStream_binNumeral_const
+#print axioms binNumeralEnc_two_pow_polySegStream
 
 end LogicalInduction

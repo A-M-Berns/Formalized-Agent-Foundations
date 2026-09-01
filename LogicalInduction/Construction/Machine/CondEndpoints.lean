@@ -23,13 +23,31 @@ import LogicalInduction.Construction.Machine.CondStep
 
 namespace LogicalInduction
 
+/-- `def:lic` at the paper's own quantifier is satisfied vacuously over a deductive process
+with an unsatisfiable stage: no trader of any class exploits such a process, so only
+computability of the market and of the process remains to check.  This is the machine-class
+sibling of `isLogicalInductor_of_stage_unsatisfiable`, and the degenerate branch of Closure
+Under Conditioning — the case the paper's `thm:scon` covers implicitly when the extended
+theory is inconsistent.  Kind `P`; hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem isMachineLogicalInductor_of_stage_unsatisfiable
+    (V : History) (DP : DeductiveProcess)
+    (hV : ComputableMarket V) (hDP : ComputableDeductiveProcess DP)
+    {N : ℕ} (hN : ∀ v : PCWorld, ¬ v.ConsistentWith (DP.D N)) :
+    IsMachineLogicalInductor V DP where
+  marketComputable := hV
+  processComputable := hDP
+  noExploit Tr _ := Tr.not_exploits_of_stage_unsatisfiable V DP hV.1 hN
+
+#print axioms isMachineLogicalInductor_of_stage_unsatisfiable
+
 namespace ConditioningCompile
 
 open RpnConditioning
 
 /-! ## `thm:scon` packaging: operational witnesses and the paper-facing endpoints
 
-The two symbol-metered translation certificates discharge the operational witness
+The two token-metered translation certificates discharge the operational witness
 structures of `Properties/Conditioning.lean`, closing the criterion level: conditioning a
 logical inductor on a computable presentation yields a logical inductor of the
 conditioned market. -/
@@ -159,6 +177,19 @@ theorem lic_conditioned_eventual_ofMarketComputation
     (eventualConditioningFloorOfJointConsistency
       P DP market C.condition C.condition_codes hjoint)
 
+/-- **The same at the paper's own quantifier.**  `hjoint` is repo-side, as above.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_eventual_machine_ofMarketComputation
+    (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (C : ConditioningPresentation DP extra) (market : MarketComputation P)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i)) :
+    IsMachineLogicalInductor (conditionedHistory P C.condition) (DP.union extra) :=
+  lic_conditioned_eventualOfFloor_machine P DP extra C market
+    (eventualConditioningFloorOfJointConsistency
+      P DP market C.condition C.condition_codes hjoint)
+
 /-- Fixed-sentence form of Closure Under Conditioning, with **no** consistency hypothesis —
 the paper's `thm:scon` statement exactly.  The two branches are the paper's two cases: where
 `Θ ∪ {ψ}` stays satisfiable at every stage the analytic price-floor argument runs, and where
@@ -232,6 +263,83 @@ theorem lic_conditioned_growing_ofComputationsAndMarket
         C.condition_codes).toComputable)
       C.combined_computable (N := N) hN
 
+/-- **Fixed-sentence `thm:scon` at the paper's own quantifier**: conditioning a *machine*
+logical inductor on a single sentence `ψ` yields a machine logical inductor over `Θ ∪ {ψ}`,
+with **no** consistency hypothesis.  The two branches are the paper's own: where `Θ ∪ {ψ}`
+stays satisfiable at every stage the analytic price-floor argument runs, and where some
+stage is already unsatisfiable the criterion holds vacuously.  The stage program and the
+rational market program the proof runs on are read off the inductor instance itself
+(`processComputable`, `marketComputable`), so the statement carries no computability
+premise beyond `IsMachineLogicalInductor`.
+Kind `C` (composition of the two branches); hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_fixed_machine
+    (P : History) (DP : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
+    (ψ : Sentence) :
+    IsMachineLogicalInductor
+      (conditionedHistory P (fun _ => ψ)) (DP.adjoinSentence ψ) := by
+  obtain ⟨base⟩ := hLI.processComputable.nonemptyComputation
+  obtain ⟨market⟩ := hLI.marketComputable.nonemptyComputation
+  let C := fixedConditioningPresentation base ψ
+  by_cases hjoint : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds ψ
+  · have hjointC : ∀ n, ∃ v : PCWorld,
+        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+      intro n
+      obtain ⟨v, hv, hψ⟩ := hjoint n
+      exact ⟨v, hv, fun _ => hψ⟩
+    have hresult :=
+      lic_conditioned_eventual_machine_ofMarketComputation
+        P DP (fixedConditionProcess ψ) C market hjointC
+    simpa [C, fixedConditioningPresentation,
+      DeductiveProcess.adjoinSentence] using hresult
+  · push_neg at hjoint
+    obtain ⟨N, hN⟩ := hjoint
+    refine isMachineLogicalInductor_of_stage_unsatisfiable _ _
+      ((conditionedMarketComputation market (fun _ => ψ)
+        (C.condition_codes)).toComputable)
+      C.combined_computable (N := N) ?_
+    intro v hv
+    rw [DeductiveProcess.adjoinSentence,
+      PCWorld.consistentWith_union_iff] at hv
+    exact hN v hv.1 (hv.2 ψ (by simp [fixedConditionProcess]))
+
+/-- **Growing finite-prefix `thm:scon` at the paper's own quantifier**, with **no**
+consistency hypothesis.  As in the fixed-sentence form the two branches are the paper's
+own; where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is satisfiable, propositional compactness
+(`DeductiveProcess.exists_consistentWithTheory`) produces the single world the price-floor
+argument consumes.  The base stage program and the rational market program are read off the
+inductor instance itself, so the only computability premise is the one about the *adjoined*
+process, which no instance supplies.  For a non-degenerate `more` — nonempty, strictly
+growing stages — see `growingCompactConditioningProcessComputation`.
+Kind `C` (composition of the two branches); hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_machine_ofProcessComputation
+    (P : History) (DP extra : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
+    (more : CompactConditioningProcessComputation extra) :
+    IsMachineLogicalInductor
+      (conditionedHistory P
+        (fun n => deductiveStageCondition (extra.D n)))
+      (DP.union extra) := by
+  obtain ⟨base⟩ := hLI.processComputable.nonemptyComputation
+  obtain ⟨market⟩ := hLI.marketComputable.nonemptyComputation
+  let C := conditioningPresentationOfComputations base more
+  by_cases hsat : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union extra).D n)
+  · obtain ⟨w, hw⟩ := (DP.union extra).exists_consistentWithTheory hsat
+    have hjointC : ∀ n, ∃ v : PCWorld,
+        v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (C.condition i) := by
+      intro n
+      refine ⟨w, ((PCWorld.consistentWith_union_iff w DP extra n).mp (hw n)).1, fun i => ?_⟩
+      exact (C.holds_condition i w).2
+        ((PCWorld.consistentWith_union_iff w DP extra i).mp (hw i)).2
+    exact lic_conditioned_eventual_machine_ofMarketComputation
+      P DP extra C market hjointC
+  · push_neg at hsat
+    obtain ⟨N, hN⟩ := hsat
+    exact isMachineLogicalInductor_of_stage_unsatisfiable _ _
+      ((conditionedMarketComputation market C.condition
+        C.condition_codes).toComputable)
+      C.combined_computable (N := N) hN
+
 /-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
 market/trader compiler are both assembled from their named computations.
 Paper node: `thm:scon` -/
@@ -256,8 +364,11 @@ theorem lic_conditioned_gated_ofComputationsAndMarket
 #print axioms lic_conditioned_eventualOfFloor
 #print axioms lic_conditioned_eventualOfFloor_machine
 #print axioms lic_conditioned_eventual_ofMarketComputation
+#print axioms lic_conditioned_eventual_machine_ofMarketComputation
 #print axioms lic_conditioned_fixed_ofComputationAndMarket
 #print axioms lic_conditioned_growing_ofComputationsAndMarket
+#print axioms lic_conditioned_fixed_machine
+#print axioms lic_conditioned_growing_machine_ofProcessComputation
 #print axioms lic_conditioned_gated_ofComputationsAndMarket
 
 end ConditioningCompile

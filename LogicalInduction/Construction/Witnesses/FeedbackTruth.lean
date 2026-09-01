@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.QuotationAffine
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Concrete delayed feedback truth for `thm:wubaff` and `thm:wubexp`
@@ -44,11 +45,15 @@ feedback clock, because `f (k+1) > k` forces the clock above the `k + ⌜1⌝ + 
 `fueled_const` needs.  Kind `N+`, provenance (a).
 
 Disclosure: this witness is **degenerate in the value stream** — `value` and `truth` are
-both constant.  A non-constant witness would have to fuel-certify a program emitting
-`Encodable.encode (q k)` for a varying rational `q`, and the `Encodable ℚ` encoding is a
-`Denumerable` bijection with no arithmetic normal form in the `PolyFueled` toolkit, so no
-such certificate is available in-repo.  The witness therefore establishes satisfiability of
-the premise, not the non-degeneracy of the values a real feedback stream would carry.
+both constant — so on its own it establishes satisfiability of the premise and nothing
+about the endpoints' dependence on `truth`.  That dependence is exercised instead by
+`alternatingFeedbackTruthComputation_nonempty` below, whose stream takes both values along
+the deferral image.  What remains out of reach is a stream ranging over *unboundedly many*
+rationals: that would need a fuel certificate for `Encodable.encode (q k)` with `q` varying
+freely, and the `Encodable ℚ` encoding is a `Denumerable` bijection with no arithmetic
+normal form in the `PolyFueled` toolkit.  A finitely-valued stream needs no such normal
+form — only constant codes selected by a poly-fueled test — which is what the alternating
+witness uses.
 Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
 def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
     FeedbackTruthComputation (fun _ => (1 : ℝ)) f where
@@ -64,6 +69,86 @@ def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
   agrees k := by norm_num
 
 #print axioms ordinaryFeedbackTruthComputation
+
+/-! ### A non-degenerate delayed-truth witness
+
+`ordinaryFeedbackTruthComputation` inhabits the premise but says nothing about a varying
+value stream.  The witness below carries a genuinely two-valued stream — `1` at even
+feedback indices, `0` at odd — so the endpoints' dependence on `truth` is exercised by an
+inhabitant, not only by the arbitrary-`truth` statement.  The program is a parity test
+(`BigDigits.mod_two` on the identity) feeding a two-way `ifzSel` between the two constant
+rational codes, so it stays inside the `PolyFueled` toolkit and hence inside the deferral
+clock. -/
+
+private lemma parity_polyFueled : ∃ c, PolyFueled c (fun k => k % 2) :=
+  BigDigits.mod_two (BigDigits.of_polyFueled PolyFueled.id)
+
+private lemma twoValued_polyFueled (A B : ℕ) :
+    ∃ c, PolyFueled c (fun k => if k % 2 = 0 then A else B) := by
+  obtain ⟨cp, hp⟩ := parity_polyFueled
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const A).pair (PolyFueled.const B)).pair hp)).of_eq (fun k => ?_)⟩
+  simp only [Nat.unpair_pair, ifzSelFn]
+
+/-- The alternating feedback value stream: the value of the `k`th deferred component is
+`1` for even `k` and `0` for odd `k`. -/
+def alternatingValue (k : ℕ) : ℚ := if k % 2 = 0 then 1 else 0
+
+private lemma alternatingValue_polyFueled :
+    ∃ c, PolyFueled c (fun k => Encodable.encode (alternatingValue k)) := by
+  obtain ⟨c, hc⟩ :=
+    twoValued_polyFueled (Encodable.encode (1 : ℚ)) (Encodable.encode (0 : ℚ))
+  exact ⟨c, hc.of_eq fun k => by
+    by_cases h : k % 2 = 0 <;> simp [alternatingValue, h]⟩
+
+open scoped Classical in
+/-- The semantic truth stream matched to `alternatingValue` along `f`: `1` exactly on the
+even part of the deferral image, `0` everywhere else. -/
+noncomputable def alternatingTruth (f : DeferralFunction) (n : ℕ) : ℝ :=
+  if ∃ k, f k = n ∧ k % 2 = 0 then 1 else 0
+
+private lemma alternatingTruth_apply {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) (k : ℕ) :
+    alternatingTruth f (f k) = ((alternatingValue k : ℚ) : ℝ) := by
+  classical
+  by_cases h : k % 2 = 0
+  · have : ∃ j, f j = f k ∧ j % 2 = 0 := ⟨k, rfl, h⟩
+    simp [alternatingTruth, alternatingValue, this, h]
+  · have : ¬ ∃ j, f j = f k ∧ j % 2 = 0 := by
+      rintro ⟨j, hj, hj2⟩
+      exact h (hstrict.injective hj ▸ hj2)
+    simp [alternatingTruth, alternatingValue, this, h]
+
+/-- **N+, non-degenerate.**  The delayed-truth premise is inhabited by a stream that
+actually varies: the alternating value stream, clocked inside the deferral schedule.  The
+fuel accounting is generic — a `PolyFueled` program for the value codes always fits, since
+`ecClock a d (f (k+1)) ≥ a * (k+1)^d + a` by `f (k+1) > k`.  Kind `N+`, provenance (a).
+Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
+lemma alternatingFeedbackTruthComputation_nonempty {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) :
+    Nonempty (FeedbackTruthComputation (alternatingTruth f) f) := by
+  obtain ⟨c, b, hfuel, -, a, d, hb⟩ := alternatingValue_polyFueled
+  refine ⟨{ value := alternatingValue, code := c, a := a, degree := d
+            computes := fun k => ?_, agrees := fun k => (alternatingTruth_apply hstrict k).symm }⟩
+  refine Nat.Partrec.Code.evaln_mono ?_ (hfuel k)
+  have hf : k + 1 ≤ f (k + 1) + 1 := by have := f.lt (k + 1); omega
+  have hmono : a * (k + 1) ^ d + a ≤ a * (f (k + 1) + 1) ^ d + a := by gcongr
+  calc b k ≤ a * (k + 1) ^ d + a := hb k
+    _ ≤ a * (f (k + 1) + 1) ^ d + a := hmono
+    _ = ecClock a d (f (k + 1)) := rfl
+
+/-- The alternating witness is genuinely non-constant on the deferral image: the theorem's
+`truth` argument takes both values at inhabited instances. -/
+lemma exists_nonconstant_feedbackTruthComputation {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) :
+    ∃ truth : ℕ → ℝ, Nonempty (FeedbackTruthComputation truth f) ∧
+      truth (f 0) = 1 ∧ truth (f 1) = 0 := by
+  refine ⟨alternatingTruth f, alternatingFeedbackTruthComputation_nonempty hstrict, ?_, ?_⟩
+  · simpa [alternatingValue] using alternatingTruth_apply hstrict 0
+  · simpa [alternatingValue] using alternatingTruth_apply hstrict 1
+
+#print axioms alternatingFeedbackTruthComputation_nonempty
+#print axioms exists_nonconstant_feedbackTruthComputation
 
 /-! ## The shifted deferral schedule -/
 
@@ -259,7 +344,7 @@ lemma sequence_eq_at
   rw [sequence, feedbackFlag_at f hstrict hspec k, if_neg one_ne_zero,
     sourceIndex_at f hstrict hspec k, feedbackIndex_at f hstrict hspec k]
 
-@[simp] theorem sequence_price_at
+@[simp] lemma sequence_price_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
@@ -272,7 +357,7 @@ lemma sequence_eq_at
   simp [AffineCombination.price, AffineCombination.value]
   ring
 
-@[simp] theorem sequence_magnitude
+@[simp] lemma sequence_magnitude
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (fa fd m : ℕ) (P : History) :
@@ -317,30 +402,30 @@ noncomputable def sequencePoly
   have hquery : PolyFueled _ (fun z : ℕ =>
       Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2) :=
     (hsource.comp PolyFueled.left).pair PolyFueled.right
-  have hcoeffPoly : RpnSpliceStream (fun z => (coeff z).serialize) := by
+  have hcoeffPoly : BigSpliceStream (fun z => (coeff z).serialize) := by
     simpa only [coeff] using hA.coefficient_poly.comp hquery
-  have hsentencePoly : RpnSentenceCodes sentence :=
+  have hsentencePoly : BigSentenceCodes sentence :=
     (hA.sentence_poly.comp hquery).of_eq (fun z => rfl)
-  have hrawConst : RpnSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
-    RpnSpliceStream.payload 1 (Or.inl rfl) htruth
-  have hminusRaw : RpnSpliceStream (fun m =>
+  have hrawConst : BigSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
+    BigSpliceStream.payload 1 (Or.inl rfl) htruth
+  have hminusRaw : BigSpliceStream (fun m =>
       (EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) :=
-    ((RpnSpliceStream.serialize_const (-1)).append hrawConst).append
-      (RpnSpliceStream.tag 3 (by norm_num))
-  have hactiveRaw : RpnSpliceStream (fun m =>
+    ((BigSpliceStream.serialize_const (-1)).append hrawConst).append
+      (BigSpliceStream.tag 3 (by norm_num))
+  have hactiveRaw : BigSpliceStream (fun m =>
       (As (sourceIndex f fa fd m)).const.serialize ++
         ((EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) ++ [2]) :=
     ((hA.const_poly.comp hsource).append hminusRaw).append
-      (RpnSpliceStream.tag 2 (by norm_num))
-  have hconstIf := RpnSpliceStream.ifZero
-    (RpnSpliceStream.serialize_const 0) hactiveRaw hflag
+      (BigSpliceStream.tag 2 (by norm_num))
+  have hconstIf := BigSpliceStream.ifZero
+    (BigSpliceStream.serialize_const 0) hactiveRaw hflag
   exact {
     termCount := count
     coefficient := coeff
     sentence := sentence
     termCount_poly := hcountPoly
     const_poly := by
-      refine RpnSpliceStream.of_eq hconstIf ?_
+      refine BigSpliceStream.of_eq hconstIf ?_
       intro m
       by_cases hm : feedbackFlag f fa fd m = 0
       · simp [sequence, hm]
@@ -641,7 +726,7 @@ completed-theory truth stream, weighting, schedule, and deadline-bounded truth p
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
@@ -695,11 +780,21 @@ theorem boundedCombination_wubaff_ofComputation
   exact FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth h hW hdet hstrict
     hsupport bridge hWdiv hworld
 
-/-- **`thm:wubexp` from the paper's own premises.**  The threshold mesh, its feedback
-traders, and its sparse delayed-truth sequence are all constructed here; nothing about the
-sequence is assumed beyond what tex:1822-1832 assumes.
+/-- **`thm:wubexp` at its corrected premises.**  The threshold mesh, its feedback traders,
+and its sparse delayed-truth sequence are all constructed here.
 
-The semantic premises are exactly the paper's: `hdet` is `def:affthmval` — every completed
+*One premise this endpoint carries is not printed at this node.*  `hsupport`
+(`WeightingSupportedOnDeferralImage`: the support of `w` lies in the image of `f`) is
+absent from the printed `thm:wubexp` (tex:1822-1832) and appears instead, spuriously, on
+`thm:recurringunbiasednessexp` (tex:1812-1820) — whose statement never introduces a
+deferral function `f` for it to refer to.  The affine twins settle the intended placement:
+`thm:wubaff` (tex:1480-1490) carries the clause and `thm:recurringunbiasedness`
+(tex:1225-1233) does not.  The clause belongs on the feedback theorem, so this endpoint
+states it here; the mirror half of the same correction is
+`BoundedSequence.recurringunbiasednessexp`, which drops it.  Recorded as `PE2` in
+`notes/paper-errata.md`.
+
+The semantic premises are the paper's: `hdet` is `def:affthmval` — every completed
 world assigns the *combination* `Aₙ` the same value `truth n` — and `hvalued` is the
 representation premise that each completed world values the component LUVs somehow
 (`W(X)` being a supremum, paper worlds always do).  Neither pins a component LUV's value
@@ -723,8 +818,9 @@ No endpoint of this node uses `LUVCombination.ExactTheoryPresentation`, and none
 that structure fixes a completed-theory value for *every component LUV*, which is strictly
 stronger than `def:affthmval` and would be a premise the paper does not state.
 
-Kind `C`; provenance: `hdet`, `hvalued`, `hshare`, `hW`, `hWdiv`, `hstrict`, `hsupport`
-(a) — the paper's own hypotheses; `C` (a) — the paper's deadline-bounded truth program,
+Kind `C`; provenance: `hdet`, `hvalued`, `hshare`, `hW`, `hWdiv`, `hstrict` (a) — the
+paper's own hypotheses; `hsupport` (a) — the paper's own hypothesis, at the node it was
+transposed away from (`PE2`); `C` (a) — the paper's deadline-bounded truth program,
 in the `dd:fuel` efficiency model; `hworld` (a) — finite-stage plausible worlds.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation

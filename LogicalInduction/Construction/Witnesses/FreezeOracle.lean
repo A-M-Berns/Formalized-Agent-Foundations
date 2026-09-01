@@ -378,15 +378,15 @@ so the perturbation it licenses moves an actual price. -/
 
 /-- An atom is recognizable as soon as it is not the reserved shape; `BotFree` is free. -/
 lemma recognizable_atom (a : ℕ)
-    (ha : ∀ pol fc : ℕ, a ≠ Nat.pair 7 (Nat.pair pol fc)) :
+    (ha : ∀ pol fc : ℕ, a ≠ Nat.pair 5 (Nat.pair pol fc)) :
     Recognizable (LO.Propositional.Formula.atom a) where
   botFree := botFree_atom a
   noReserved := ha
 
 /-- Atom `0` is not reserved: every reserved payload is positive. -/
-lemma atom_zero_noReserved : ∀ pol fc : ℕ, (0 : ℕ) ≠ Nat.pair 7 (Nat.pair pol fc) := by
+lemma atom_zero_noReserved : ∀ pol fc : ℕ, (0 : ℕ) ≠ Nat.pair 5 (Nat.pair pol fc) := by
   intro pol fc h
-  have hpos : 0 < Nat.pair 7 (Nat.pair pol fc) := by
+  have hpos : 0 < Nat.pair 5 (Nat.pair pol fc) := by
     rw [Nat.pair]
     split <;> omega
   omega
@@ -627,7 +627,7 @@ toolkit.  Each half of `Recognizable` stands for one missing primitive:
 
 * **`NoReserved` stands for a structured-payload parser.**  A leaf may also be spelled with
   the structured paper-prime block `[1, 0, …]`, whose payload admits spellings no fixed word
-  comparison catches.  That block denotes *only* reserved atoms `atom (Nat.pair 7 _)`
+  comparison catches.  That block denotes *only* reserved atoms `atom (Nat.pair 5 _)`
   (`parseStructuredPaperPrime_shape`), so excluding those targets makes the branch
   unreachable.  Covering them instead would mean running `parseStructuredArithmeticFormula`
   inside `FP`.

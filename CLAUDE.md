@@ -6,7 +6,7 @@ on top of [Foundation](https://github.com/FormalizedFormalLogic/Foundation) and 
 The flagship formalization is **Logical Induction** (Garrabrant et al.,
 arXiv:1609.03543) in `LogicalInduction/`; see
 `LogicalInduction/README.md` for the trust-surface summary and
-`LogicalInduction/notes/faithfulness-audit-2026-08-08.md` for the current audit. **The paper is the
+`LogicalInduction/notes/paper-errata.md` for the recorded defects in the source paper. **The paper is the
 spec** (`LogicalInduction/notes/1609.03543v5-main.tex`); every paper-facing theorem carries the paper's
 real `\label` in a `Paper node:` docstring line, checked two-way by
 `scripts/check-paper-nodes.sh`. The `dd:*` design-decision labels used in docstrings
@@ -221,8 +221,7 @@ arithmetic, has formalized nothing we didn't already assume.
    Lean's type system, say so in the session report — do not quietly route around it.
    A stop-and-report ("Foundation doesn't expose X", "Mathlib lacks Y"), stated
    self-containedly at the site, is a *success*, not a failure. The current verified
-   obstructions live in `LogicalInduction/README.md` ("Planned future work") and
-   `LogicalInduction/notes/boundary-efficiency-model.md`.
+   obstructions live in `LogicalInduction/README.md`.
 
 ### Human read-through
 
@@ -235,7 +234,7 @@ read-through.
 > surface** — not per-milestone. Order: **(1)** results green with disclosures in
 > place (done); **(2)** consolidation / de-slop / API surface (governed by the consumer
 > completion rule above; see
-> `LogicalInduction/notes/consolidation.md`), after which the surface re-freezes and the read-through
+> the consumer completion rule above), after which the surface re-freezes and the read-through
 > runs over it; **(3)** a final fresh-context adversarial audit, last.
 
 ### Scheduled adversarial audit
@@ -246,10 +245,10 @@ theorems (hypotheses unsatisfiable/unrealizable); conclusion-in-hypothesis squee
 oversold stubs; type-`(c)` substitutions; degenerate non-vacuity (constant-sequence
 witnesses); and off-loaded steps. Where possible, non-vacuity is discharged **by the
 construction** rather than a stand-in witness. The fresh 2026-08-08 audit
-(`LogicalInduction/notes/faithfulness-audit-2026-08-08.md`) is the current snapshot: every qualification
+(`scripts/coverage-classification.md`) is the current snapshot: every qualification
 is tied to the final statement surface or a verified obstruction.
 
-### Consolidation discipline (Anson, standing — see `LogicalInduction/notes/consolidation.md`)
+### Consolidation discipline (Anson, standing)
 
 The end state must show **no structural evidence of previous versions**: no
 ₙ-suffixed public layers, no parallel classes that exist only because a definition was
@@ -273,7 +272,7 @@ The living gotcha log (tactic-level traps that repeatedly bite: `rcases h : e`
 substituting the goal, `Nat.sqrt` whnf loops in `Primrec` work — fix = scoped
 `irreducible Nat.sqrt`, `lake env lean`'s auto-bound implicits masking signature
 errors, stale upstream oleans under `lake env lean`, `#assert_fields` freezing field
-*names* only, …) is kept in `LogicalInduction/notes/consolidation.md`'s wave-gotchas section — check
+*names* only, …) is kept in `LogicalInduction/notes/lean-gotchas.md` — check
 it before starting deep `Primrec`/`PolyFueled` work.
 
 ## Working conventions

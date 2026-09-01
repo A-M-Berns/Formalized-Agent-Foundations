@@ -19,11 +19,23 @@ them. The first governs the trust surface; the second is expressed through a cur
 consumer surface. Faithfulness comes first, and the API never hides a modeling boundary
 or replaces paper-legible statements with unnecessary abstraction.
 
+Five things get called "a boundary" and they are not the same thing, so the READMEs keep
+them apart — and none of the five is reported as a *count*, because a count is what survives
+past the thing it counted. Each node's own row in
+[`scripts/coverage-classification.md`](scripts/coverage-classification.md) says which, if
+any, applies to it. A **modeling substitution** is a weaker or different object standing in for the
+one the paper means — the dangerous kind, and the kind that gets disclosed at the statement.
+A **representation interface** is a choice of how to present a faithful object, which
+restricts *who can supply the input* without changing what is proved. A **paper erratum** is
+a defect in the source. A **strengthening** is where the Lean statement is stronger than the
+printed one. And **certification technology** is internal machinery whose only job is to
+discharge a hypothesis. Only the first is a debt against faithfulness.
+
 ## What's here
 
 | Paper<img width="520" height="1"> | Directory | Status |
 |---|---|---|
-| Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Complete; two disclosed modeling substitutions |
+| Garrabrant et al. (2016), [*Logical Induction*](https://arxiv.org/abs/1609.03543) | [`LogicalInduction/`](LogicalInduction/README.md) | Complete; one printed theorem refuted, boundaries itemised per node |
 | Barász et al. (2014), [*Robust Cooperation in the Prisoner's Dilemma via Provability Logic*](https://arxiv.org/abs/1401.5577) | [`ModalAgents/`](ModalAgents/README.md) | Complete at the GL level; Thm 4.6 unformalized |
 | Garrabrant, Herrmann, and Lopez-Wild (2021), [*Cartesian Frames*](https://arxiv.org/abs/2109.10996) | [`CartesianFrames/`](CartesianFrames/README.md) | Complete |
 | Garrabrant (2021), [*Temporal Inference with Finite Factored Sets*](https://arxiv.org/abs/2109.11513) | [`FiniteFactoredSets/`](FiniteFactoredSets/README.md) | Complete; Conjecture 1 stated, unproved |
@@ -32,9 +44,10 @@ or replaces paper-legible statements with unnecessary abstraction.
 
 All zero `sorry`, zero `axiom`. Per-paper node counts are checker-derived and live on the
 [trust-surface page](docs/trust-surface.html) (its coverage stamp) and in each paper's node
-checker output (`scripts/check-*-nodes.py`); each directory's README gives the detailed statement-level
-accounting — what is proved, what is modeled, which printed statements were corrected — and
-exactly where the trust boundary sits.
+checker output (`scripts/check-*-nodes.py`). Each directory's README explains what the paper's
+objects are in Lean, what is modeled and how, and where the trust boundary sits; the
+statement-by-statement correspondence lives beside it, in that paper's classification ledger
+and on the trust-surface page.
 
 For downstream work, use the supported entrypoints below. Each deliberately avoids
 unnecessary construction or regression-test machinery; the module documentation names
@@ -87,14 +100,16 @@ rather than finite range — the generality *Condensation* is stated at
 
 Along the way the project has also produced some free-standing artifacts: a from-scratch
 Brouwer fixed-point theorem via Sperner's lemma (Mathlib has none), an autoformalized
-sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and four recorded
+sequent-calculus proof of the de Jongh–Sambin GL fixed-point theorem, and six recorded
 errata in the *Logical Induction* paper itself
 ([`LogicalInduction/notes/paper-errata.md`](LogicalInduction/notes/paper-errata.md)), and a
 further set in *Cartesian Frames*
 ([`CartesianFrames/notes/paper-errata.md`](CartesianFrames/notes/paper-errata.md)) —
 including two printed proofs that establish less than their statements require, a false
 "equivalently" in a definition, and a footnote asserting an isomorphism that does not
-exist. Every affected statement is nonetheless true, and is proved here.
+exist. Most of those affected statements are nonetheless true and are proved here — but not
+all: *Logical Induction*'s closure under finite perturbations is **false as printed**, and is
+formally refuted here, with a corrected replacement proved in its place.
 
 ## Building
 

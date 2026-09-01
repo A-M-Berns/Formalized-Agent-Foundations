@@ -7,9 +7,21 @@
 #      `#assert_fields` structures) carries a `Paper node:` field. Catches surface
 #      members that lost their annotation.
 #
-# Run from repo root. Exits nonzero on any violation.
+# Run from repo root. Exits nonzero on any violation, and says so on the last line: a
+# reader (or a log skimmed through a pipe, where the exit status is the pipeline's and not
+# this script's) must never see a cheerful last line from a failing run. The EXIT trap
+# covers the `set -e` paths too, where a violation is not what ended the script.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+reported=0
+finish() {
+  status=$?
+  if [ "$status" -ne 0 ] && [ "$reported" -eq 0 ]; then
+    echo "paper-node check: FAIL — aborted before finishing (exit $status)"
+  fi
+}
+trap finish EXIT
 
 TEX=LogicalInduction/notes/1609.03543v5-main.tex
 LIB=LogicalInduction
@@ -70,5 +82,8 @@ fi
 
 if [ "$fail" -eq 0 ]; then
   echo "paper-node check: OK ($(wc -l < /tmp/_pn_used | tr -d ' ') distinct labels, all valid; inventory covered both directions)"
+else
+  reported=1
+  echo "paper-node check: FAIL — see the violations above"
 fi
 exit $fail

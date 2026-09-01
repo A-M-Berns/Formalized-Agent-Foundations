@@ -19,8 +19,9 @@ Built on this substrate downstream, in `Computable.lean` / `Criterion.lean`:
 * `def:world` → `PCWorld` — a propositionally consistent `{0,1}` valuation.
 * `def:worlds` → `DeductiveProcess` — `D n ⊆ D (n+1)`, each propositionally consistent,
   union = theorems.
-* `def:ec`     → `EfficientlyComputable` — a fuel-clocked interpreter (`dd:fuel`),
-  **not** a complexity class. This is a disclosed type-`(c)` modeling choice.
+* `def:ec`     → `MachineEfficientTrader` — ordinary machine polynomial time, via
+  `Complexity.FP`. `EfficientlyComputable` is the fuel-clocked *certificate* that implies
+  it (`dd:fuel`), not the class itself.
 -/
 import Mathlib.Algebra.Ring.Pi
 import Mathlib.Topology.Instances.Real.Lemmas

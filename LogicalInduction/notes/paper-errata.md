@@ -1,297 +1,390 @@
-# Logical Induction — paper errata and open formalization questions
+# Logical Induction — paper errata
 
-_Last reviewed: 2026-07-23 against arXiv:1609.03543v5._
+Defects in arXiv:1609.03543v5 itself, as opposed to discrepancies introduced by this
+formalization. Line references are into the committed source `1609.03543v5-main.tex`.
+Each entry states the published claim, the defect, and what this repository does instead.
 
-This ledger records defects in the source paper rather than discrepancies introduced by the
-Lean development. Paper errata are intentionally excluded from
-[`faithfulness-audit-2026-08-08.md`](faithfulness-audit-2026-08-08.md), whose scope is the
-faithfulness and completeness of this repository.
+| | node | severity |
+| --- | --- | --- |
+| PE1 | `thm:ifp` — Closure under Finite Perturbations | **the theorem is false** |
+| PE2 | `thm:recurringunbiasednessexp` / `thm:wubexp` | swapped hypothesis (transcription) |
+| PE3 | `app:prandaff` — decidability of `Settled(n,m)` | claim false as written; repairable |
+| PE4 | `app:prandaff` — patience argument | unstated monotonicity assumption |
+| PE5 | `def:seqprand` vs. `thm:prand` | sign inconsistency |
+| PE6 | `thm:ref` / `app:ref` — Introspection | printed hypotheses too weak for the printed proof |
+| PE7 | `Con(PA)(Ack)` gloss (tex:1859) | gloss contradicts its definition (off by one) |
+| PE8 | `app:incons` — proof of `thm:incons` | proof cites representability where Σ₁-completeness is needed |
+
+---
 
 ## PE1 — Closure under Finite Perturbations (`thm:ifp`)
 
-**Status: the published theorem is FALSE, and the repository now proves it false.**
+### Published statement
+
+> Let `⟨p⟩` and `⟨p'⟩` be markets with `pₙ = p'ₙ` for all but finitely many `n`. Then
+> `⟨p⟩` is a logical inductor if and only if `⟨p'⟩` is a logical inductor.
+
+(`1609.03543v5-main.tex:1521–1524`, proved in `app:ifp`.) A pricing is *any* computable
+rational valuation and a market *any* computable sequence of pricings
+(`def:pricing`/`def:marketprocess`, tex:676–682) — no finite support, no runtime bound, no
+bound on the size of the returned rational. §4 quantifies over arbitrary markets
+deliberately, noting that the constructed `LIA` has finite support per day but that the
+results are stated in the general case (tex:993–997).
+
+### Defect
+
+**The theorem is false**, and its published proof is separately invalid.
+
+The proof (tex:6047–6062) transports an exploiting trader by rewriting every early price
+leaf `φ^{*i}`, `i < N`, into the constant `pᵢ(φ)`, and justifies the rewrite's efficiency
+thus: "only finitely many constants `pᵢ(φ)` are needed, and can be hard-coded into `F`."
+There are finitely many early *days* `i`, but `φ` ranges over all sentences, and a day-`n`
+strategy may name new sentences in old-day leaves as `n` grows. So the constant set is
+infinite, `F` must *compute* `pᵢ(φ)` rather than table it, and `def:marketprocess` bounds
+neither the runtime of that computation nor the size of its rational output. Hard-coding
+the finitely many *programs* does not help: running one on a varying sentence can take
+superpolynomial time and return a rational needing superpolynomially many symbols to
+print.
+
+That is a gap in the proof. The theorem itself fails for the same underlying reason, one
+step further out.
+
+### Formal refutation
+
 `FinitePerturbationCounterexample.not_overgeneral_ifp`
-(`Construction/Witnesses/FinitePerturbationWitness.lean`) is a kernel-checked, axiom-clean
-refutation of the unrestricted statement at the paper's own quantifier, with no theory
-parameter. The published *proof* is separately invalid, for the independent reason recorded
-below; the repository additionally proves a corrected finite-*support* theorem, which is the
-restricted case in which the published proof's own justification is sound.
+(`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the negation of the
+printed statement, at the paper's own quantifier (`IsMachineLogicalInductor`,
+`MachineEfficientTrader`), with no theory parameter and no unproved hypothesis. It is
+kernel-checked and axiom-clean; `not_overgeneral_ifp_ofTheory` is the same result over any
+Σ₁-sound Δ₁ theory extending `𝗜𝚺₁`. The abstract reduction it rests on,
+`not_overgeneral_ifp_of_advice`, lives in `Properties/FinitePerturbationCounterexample.lean`.
 
-### Published statement and proof
+Both closed forms carry `Paper node: \`thm:ifp\``. A refutation belongs to the node it
+refutes: the label records that the declaration is part of this formalization's account of
+that node, not that it repeats the printed statement. `not_overgeneral_ifp` is a canonical
+trust-surface endpoint and is audited exactly like any other.
 
-The paper defines a pricing as any computable rational valuation and a market as a computable
-sequence of pricings (`1609.03543v5-main.tex:676–682`). Neither definition requires finite
-support, polynomial-time price lookup, or a polynomial bound on the size of the returned
-rational. The property section explicitly says that, although the constructed `LIA` has
-finite support each day, its results quantify over arbitrary markets
-(`1609.03543v5-main.tex:993–997`).
+### Counterexample mechanism
 
-`thm:ifp` says that two markets which differ on only finitely many days are either both
-logical inductors or both non-inductors. In `app:ifp`, an exploiting trader is transported
-between the markets by transforming every old price leaf `φ^{*i}`, for `i < N`, into the
-constant price `P_i(φ)`. The proof claims that this transformation is efficiently computable
-because only finitely many constants are needed (`1609.03543v5-main.tex:6047–6062`).
+A single changed pricing day is an infinite computable function, and `def:marketprocess`
+puts no bound on its runtime or output size. That is enough for one day to act as
+persistent historical advice, handing an efficient trader information it could not compute
+for itself. The gap between *computable* and *efficiently computable* is exactly what the
+perturbation smuggles across.
 
-That justification is false. There are finitely many early days `i`, but `φ` ranges over all
-sentences. As the trader's day grows, its efficiently generated strategy may mention new
-sentences in old-day price leaves. The transformation must therefore evaluate the arbitrary
-computable functions `φ ↦ P_i(φ)` and emit their exact rational results. The market
-definition supplies no polynomial runtime or output-size bound, so this transformation need
-not preserve efficient computability.
+Made precise:
 
-Hard-coding the finitely many *programs* for the early pricings does not fix the issue:
-executing those programs on a varying sentence can still take superpolynomial time, and the
-resulting rational can itself require superpolynomially many symbols to print.
+* `P` is the constructed `LIA` over the `𝗜𝚺₁` theorem process — a genuine machine logical
+  inductor (`LIA_isMachineLogicalInductor`).
+* `χ` is the repository's diagonal price family: in every world consistent with the
+  completed theory, `χ n` holds exactly when `P n (χ n) < 1/2`. A trader knowing that one
+  bit earns a *certain* `≥ 1/2` on day `n` once the day has settled — buy below the
+  threshold, where the sentence is true; short at or above it, where it is false.
+  Computing the bit is computable but not polynomial-time, which is why `P` itself
+  survives.
+* `P'` changes **day `0` only**, publishing the sign and schedule bits as the prices of
+  advice atoms at otherwise unused tags. It is a legal `ComputableMarket`: the day-`0` row
+  is a total computable search, terminating by propositional compactness
+  (`DeductiveProcess.exists_stage_entails`).
+* The exploiting trader is a genuine `MachineEfficientTrader`, and never computes the
+  bits. Its day-`n` coefficient is the rank-`0` feature
+  `price (schedAtom n) 0 * (2 * price (signAtom n) 0 - 1)`, so the *market* supplies the
+  advice at valuation time. A sparse schedule lets each round settle before the next
+  opens, bounding downside by `1` while settled rounds accumulate `≥ 1/2` each.
 
-### What the current Lean development proves
+So `P` satisfies the criterion, `P'` agrees with it from day `1` on and is computable, and
+`P'` is exploited. No repair of the appendix's transport argument can close this: the
+theorem, not merely its proof, is wrong.
 
-[`LogicalInduction/Properties/FinitePerturbations.lean`](../LogicalInduction/Properties/FinitePerturbations.lean)
-formalizes the semantic freezing transformation, its rank and syntax properties, the bounded
-net-worth error, and preservation of exploitation. Its `EfficientPrefixPatch P cutoff`
-records the missing computational condition: freezing the exact early quote table of `P`
-must preserve efficient trader generation.
+### Corrected replacement
 
-The theorem `lic_iff_of_finitePerturbation` proves the paper's biconditional when both market
-prefixes carry this certificate. This is strictly weaker than unrestricted `thm:ifp`.
+Finite *support* is what rescues the hard-coding step, and the repository proves that
+case.
 
-**Correction (2026-08-02).** An earlier version of this paragraph asserted that the
-restricted statement "is not vacuous", on the strength of a declaration
-`liaEfficientPrefixPatch` said to build the required finite lookup compiler. **No such
-declaration exists** — the name appears nowhere in the repo outside prose, and
-`Properties/FinitePerturbations.lean` states the opposite in its own words: the efficiency
-certificate for the emitted stream is not discharged, so no `LIA` instance of
-`EfficientPrefixPatch` exists. `EfficientPrefixPatch` therefore has **zero inhabitants
-anywhere**, and `lic_iff_of_finitePerturbation`'s hypothesis has no exhibited witness. The
-restricted statement must not be described as non-vacuous until one is built. This is
-exactly the failure the inhabitation lens exists to catch, and it survived in the ledger
-that was supposed to be catching it.
+`FreezeOracle.machine_lic_iff_of_recognizableSupport`
+(`Construction/Witnesses/FreezeOracle.lean`) is the statement to cite:
 
-The informal large-output example in the Lean source shows why the certificate cannot be
-derived from `ComputableMarket` alone: an early pricing can assign a sentence of code `n` a
-rational whose exact numeral has size exponential—or worse—in `n`. This establishes a
-failure of the paper's proposed efficient transformation, not by itself a counterexample to
-the theorem's logical-inductor biconditional. In the repository's clocked interpreter an
-output may be numerically larger than its raw fuel, but `codeEvaln_result_le` together with
-`codeEvalBound_poly` bounds a fixed program's output by a code-dependent polynomial in that
-fuel. That is the output-size obstruction used here.
+```lean
+theorem machine_lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : RecognizableSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP
+```
 
-### The corrected theorem (2026-08-26)
+`RecognizableSupportPerturbation P P'` asks for a finite set `S` of `(day, sentence)`
+coordinates off which the two markets agree, every sentence in it `Recognizable`. There is
+no certificate hypothesis: the freeze certificate each market needs is *compiled* from its
+own computability certificate by
+`FreezeOracle.machineFiniteSupportPatch_ofRecognizable`.
 
-Finite support is exactly what rescues the hard-coding step, and the repository now proves
-that case. `FiniteSupportPerturbation P P'` says the two markets differ on only finitely
-many `(day, sentence)` price *coordinates*; the freeze then reads its quote table at
-finitely many places, so the appendix's "hard-code the constants" justification is
-literally valid. `lic_iff_of_finiteSupportPerturbation` and
-`machine_lic_iff_of_finiteSupportPerturbation` (the latter at the paper's own quantifier,
-`MachineEfficientTrader`) carry it.
+Two things about that statement, both stated at the declaration:
 
-Two things must be said plainly about that theorem, and are said at the statement:
+1. **Its hypothesis is strictly stronger than the paper's.** Finite support implies tail
+   agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — a day-`0`
+   market pricing the sentence of code `n` at `1 − 1/2^(2^n)` agrees with `LIA` from day
+   `1` and is not finitely supported. This is a *corrected* theorem, a proper restriction
+   of `thm:ifp`, not a restatement of it.
+2. **The one residual hypothesis is representation, not mathematics.** `Recognizable ψ` —
+   `BotFree ψ` and `NoReserved ψ` — constrains the *syntax* of the finitely many sentences
+   whose price moves, and constrains no market, trader, or perturbation. Each half stands
+   for one `Complexity.FP` primitive this toolkit lacks: `BotFree` for **integer square
+   root** (Foundation's `Formula.ofNat` discards the payload at tag `0`, so `⊥` has
+   infinitely many escape codes and deciding whether a code denotes `⊥` is deciding
+   whether it is a perfect square — polynomial time mathematically), and `NoReserved` for
+   a **structured-payload parser**. Neither half has slack: every position in a term is
+   escape-able, so `BotFree` must be hereditary, and a structured spelling at any subterm
+   breaks completeness. `decode_and_noncanonical` proves the first restriction *necessary*
+   rather than an artifact. So the unrestricted finite-*support* statement is, as far as
+   this development can tell, true, and unprovable here for want of two primitives rather
+   than for want of a theorem.
 
-1. **Its hypothesis is strictly stronger than the paper's.** Finite support implies
-   tail agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — the
-   day-`0` huge-numeral market above agrees with `LIA` from day `1` and is not finitely
-   supported. So this is a *corrected* theorem, a proper restriction of `thm:ifp`, not a
-   restatement of it. The published unrestricted theorem is **false** — refuted by
-   `not_overgeneral_ifp` — and its published proof is separately invalid.
-2. **It needs no caller-supplied certificate, and it is non-vacuous and informative;
-   its fuel-class certificates remain uninhabited.** See the 2026-08-26 update
-   below for the precise state. Nothing here should be described as non-vacuous without
-   reading it — that is the failure the 2026-08-02 correction above exists to catch.
+The underlying general form, taking a freeze certificate per market, is
+`machine_lic_iff_of_finiteSupportPerturbation` (`Properties/FinitePerturbations.lean`).
 
-### The unrestricted statement, settled (2026-08-26): it is false
+### Downstream consequence
 
-What was a research-level stretch goal is now a theorem. Alternative 2 below is the one that
-held.
+* **Non-vacuous.** `FreezeOracle.machine_lic_iff_twoPoint` is the corrected theorem at a
+  concrete pair of computable markets with real `Nat.Partrec.Code` tables, proved to
+  differ at the frozen coordinate, discharging every hypothesis at once.
+* **Informative.** Those particular markets price everything at zero but one coordinate
+  and are very likely exploitable, so the equivalence might hold there because both sides
+  fail. `LIAPerturbation.machineLogicalInductor_liaPerturbed` removes that qualification:
+  `liaHistory DP` is a machine logical inductor, and moving one price at the
+  `Recognizable` coordinate `(0, atom 0)` — a genuinely nonzero change,
+  `liaPerturbed_ne` — yields a market that still is, **by this theorem and nothing else**.
+  That market is the output of no construction here. The instance inherits
+  `Construction/LIA.lean`'s own two hypotheses (LIA's market program, a computable
+  deductive process), which are pre-existing and unchanged.
+* **The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
+  `FiniteSupportPatch` have no inhabitant anywhere: the fuel calculus does not close over
+  the escape-leaf decode the frozen lookup needs (`dd:fuel`; see
+  `Construction/Witnesses/RpnFreeze.lean`). Only the machine-class certificate is
+  discharged. `lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation`
+  therefore still carry certificate hypotheses with no exhibited witness.
+* **The degenerate discharge is available and deliberately not taken.** `S = ∅` makes the
+  freeze the identity and inhabits any certificate, at the cost of forcing `P = P'`.
+  Recorded here so nobody later mistakes it for a discharge.
 
-1. ~~**The unrestricted theorem:** prove `thm:ifp` for arbitrary computable markets using a
-   transport argument that does not require efficient access to the changed prefixes~~ —
-   impossible, by the counterexample.
-2. **Its negation** — *proved*: `not_overgeneral_ifp`. The construction is exactly the
-   advice-tape route this ledger anticipated below, made precise:
+Verdict wording for downstream documentation:
 
-   * `P` is the constructed `LIA` over the `𝗜𝚺₁` theorem process, a genuine machine logical
-     inductor (`LIA_isMachineLogicalInductor`).
-   * `χ` is the repo's diagonal price family: in every world consistent with the completed
-     theory, `χ n` holds exactly when `P n (χ n) < 1/2`. So a trader knowing only that one
-     bit earns a *certain* `≥ 1/2` on day `n` once the day has settled — buy below the
-     threshold, where the sentence is true; short at or above it, where it is false.
-   * `P'` changes **day `0` only**, publishing the sign and schedule bits as the prices of
-     advice atoms at otherwise unused tags. It is a legal `ComputableMarket`: the day-`0`
-     row is a total computable search, terminating by propositional compactness
-     (`DeductiveProcess.exists_stage_entails`).
-   * The exploiting trader is genuinely `MachineEfficientTrader`. It never computes the
-     bits: its day-`n` coefficient is the rank-`0` feature
-     `price (schedAtom n) 0 * (2 * price (signAtom n) 0 - 1)`, so the *market* supplies the
-     advice at valuation time. A sparse schedule lets each round settle before the next
-     opens, bounding downside by `1` while the settled rounds accumulate `≥ 1/2` each.
-
-**The mechanism, stated plainly.** A single changed pricing day is an infinite computable
-function, and `def:marketprocess` puts no bound on its runtime or output size. That is
-enough for one day to act as persistent historical advice, handing an efficient trader
-information it could not compute for itself. The gap between *computable* and *efficiently
-computable* is exactly what the perturbation smuggles across, and no amount of care in the
-appendix's transport argument can close it — the theorem, not merely its proof, is wrong.
-
-The earlier note that formal success "requires the full separation result — one
-tail-equivalent market satisfying the LIC and the other admitting an efficient exploiter —
-not merely another proof that `EfficientPrefixPatch` can be uninhabited" was the right bar,
-and it is the bar that has been met.
-
-The finite-support theorem is a *third* outcome, and it settles neither of these: it
-repairs the appendix's argument on the restricted domain where that argument is valid,
-while leaving the unrestricted statement open.
-
-### Where the corrected theorem stands (2026-08-26)
-
-**The corrected theorem needs no caller-supplied certificate.**
-`FreezeOracle.machine_lic_iff_of_recognizableSupport` takes two `ComputableMarket`s and a
-perturbation with finite, `Recognizable` support, and nothing else: the freeze certificate
-is *compiled* from the market's own computability certificate. The earlier
-`MachineFiniteSupportPatch` survives as implementation machinery, not as the statement.
-
-**The one residual hypothesis is representation, not mathematics.** `Recognizable ψ` —
-`BotFree ψ` and `NoReserved ψ` — constrains the *syntax* of the finitely many sentences
-whose price moves. It constrains no market, trader or perturbation. Each half stands for
-exactly one `Complexity.FP` primitive this toolkit lacks:
-
-* `BotFree` for **integer square root** — Foundation's `Formula.ofNat` discards the payload
-  at tag `0`, so `⊥` has infinitely many escape codes and deciding whether a code denotes
-  `⊥` is deciding whether it is a perfect square. Polynomial time mathematically.
-* `NoReserved` for a **structured-payload parser** — the structured block admits payload
-  spellings no fixed word comparison catches. It denotes only reserved atoms, so excluding
-  those makes the branch unreachable.
-
-Neither half has slack: every position in a term is escape-able, so `BotFree` must be
-hereditary, and a structured spelling at any subterm breaks completeness, so `NoReserved`
-must be too. `decode_and_noncanonical` proves the first restriction *necessary* rather than
-an artifact of the approach. So the unrestricted finite-support statement is, as far as this
-development can tell, **true** — and unprovable here for want of two primitives rather than
-for want of a theorem.
-
-**Non-vacuous, and informative.** `machine_lic_iff_twoPoint` is closed but for the
-deductive process: a concrete pair of computable markets, proved to differ at the frozen
-coordinate, discharging every hypothesis at once — so the antecedent is satisfiable. Those
-particular markets are uninformative (they price everything at zero but one coordinate and
-are very likely exploitable, so the equivalence may hold because both sides fail), which is
-why the stronger instance matters: `LIAPerturbation.machineLogicalInductor_liaPerturbed`
-applies the corrected theorem to the constructed `LIA` with one price moved, and *derives*
-that the perturbed market is a machine logical inductor. That market is not the output of
-any construction in this repo, so its inductor-hood is exactly what the theorem buys. It
-inherits `Construction/LIA.lean`'s own two hypotheses — LIA's market program and a
-computable deductive process — which are pre-existing and unchanged.
-
-**The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
-`FiniteSupportPatch` have no inhabitant, and the reason is now attributed rather than open:
-the fuel calculus does not close over the escape-leaf decode the lookup needs — the
-`dd:fuel` inverse-operation ceiling, binding exactly where it was predicted to.
-
-One degenerate discharge is available and deliberately **not** taken: `S = ∅` makes the
-freeze the identity and inhabits the certificate trivially, but forces `P = P'`. That is the
-degenerate non-vacuity this repository's audit standard rejects, recorded here so nobody
-later mistakes it for a discharge.
-
-The precise verdict documentation should now use:
-
-> The published unrestricted finite-perturbation theorem is **false**, and the repository
-> proves it false. Its published proof is separately invalid. The repository proves a
+> The published unrestricted finite-perturbation theorem is false, and the repository
+> proves it false; its published proof is separately invalid. The repository proves a
 > corrected finite-*support* theorem — the restricted case in which the published proof's
-> own justification is sound — and the efficiently patchable case at the paper's own
-> hypothesis shape. Neither restricted theorem has an inhabited patch certificate.
+> own justification is sound — at the paper's own quantifier, with no certificate
+> hypothesis and one residual syntactic side condition. The fuel-class readings of the
+> same theorem still have no inhabited certificate.
+
+---
 
 ## PE2 — Swapped good-feedback hypothesis in the expectation unbiasedness pair (`thm:recurringunbiasednessexp`, `thm:wubexp`)
 
-**Status:** confirmed statement-level erratum in arXiv v5, not a soundness defect. The
-repository's formalization independently carries the corrected hypotheses. Reported here for
-disclosure; worth forwarding to the authors.
+**Confirmed statement-level erratum in v5; not a soundness defect.** Worth forwarding to
+the authors.
 
-### The defect
+### Published statement and defect
 
-The two expectation-level unbiasedness theorems in §4.8 have the good-feedback hypothesis
-attached to the wrong member of the pair, mirroring the correctly-stated affine pair
+The two expectation-level unbiasedness theorems in §4.8 attach the good-feedback
+hypothesis to the wrong member of the pair, mirroring the correctly-stated affine pair
 (`thm:recunbiasedaff` / `thm:wubaff`) incorrectly.
 
-- **Expectation Recurring Unbiasedness, Thm 4.8.15** (`main.tex:1812–1820`,
-  `\label{thm:recurringunbiasednessexp}`) states its weighting as "a `\pgenable` divergent
-  weighting **weighting** such that the support of `w` is contained in the image of `f`."
-  This carries a **spurious** good-feedback clause: (i) it references a deferral function `f`
-  the statement never introduces, and (ii) its correctly-stated affine analogue Affine
-  Recurring Unbiasedness (`thm:recunbiasedaff`, `main.tex:1469–1478`) has **no** such clause.
-  The doubled word "weighting weighting" is a second typo in the same line.
+* **Expectation Recurring Unbiasedness** (tex:1812–1820, `thm:recurringunbiasednessexp`)
+  states its weighting as "a generable divergent weighting **weighting** such that the
+  support of `w` is contained in the image of `f`." That clause is spurious: it references
+  a deferral function `f` the statement never introduces, and its correctly-stated affine
+  analogue `thm:recunbiasedaff` (tex:1469–1478) has no such clause. The doubled word is a
+  second typo in the same line.
+* **Expectation Unbiasedness From Feedback** (tex:1822–1832, `thm:wubexp`) states only "a
+  generable divergent weighting" and *lacks* the support-in-image clause — even though its
+  affine analogue `thm:wubaff` (tex:1480–1490) carries it. Its timely-computability clause
+  also writes `thmval(affₙ)` where the theorem's sequence is `affluv`.
 
-- **Expectation Unbiasedness From Feedback, Thm 4.8.16** (`main.tex:1822–1832`,
-  `\label{thm:wubexp}`) states only "a `\pgenable` divergent weighting" and **lacks** the
-  "support ⊆ image of `f`" clause — even though its affine analogue Affine Unbiasedness from
-  Feedback (`thm:wubaff`, `main.tex:1480–1490`) **does** carry it. Its timely-computability
-  clause also writes `\thmval(\aff_n)` where the theorem's sequence is `\affluv`.
+So the clause belongs on the feedback theorem and is absent there, while appearing
+spuriously on the recurring theorem.
 
-So the "support of `w` contained in the image of `f`" good-feedback hypothesis has been
-swapped: it belongs on the feedback theorem (4.8.16) and is absent there, while appearing
-spuriously on the recurring theorem (4.8.15).
+### Why it is transcription, not mathematics
 
-### Why it is a transcription error, not a mathematical one
-
-The paper's own appendix proofs use the intended (correct) hypotheses. Expectation Recurring
-Unbiasedness is proved by reduction to the clause-free affine 4.5.9, and Expectation
-Unbiasedness From Feedback by reduction to the clause-bearing affine 4.5.10. The theorems are
-therefore true as intended; only the printed §4.8 statements (restated verbatim at v5
-pp. 112–113) are garbled. The correct statements are: 4.8.15 with a bare generable divergent
-weighting concluding a limit point at 0; 4.8.16 with the deferral function, timely value
-computability, and support ⊆ image of `f`, concluding `\eqsim_n 0`.
+The appendix proofs use the intended hypotheses: Expectation Recurring Unbiasedness
+reduces to the clause-free affine 4.5.9, Expectation Unbiasedness From Feedback to the
+clause-bearing affine 4.5.10. The theorems are true as intended; only the printed §4.8
+statements (restated verbatim at v5 pp. 112–113) are garbled. Correct statements: 4.8.15
+with a bare generable divergent weighting concluding a limit point at `0`; 4.8.16 with the
+deferral function, timely value computability and support ⊆ image of `f`, concluding
+`≈ₙ 0`.
 
 ### Repository status
 
-The Lean development independently places the hypotheses correctly, so it does not inherit the
-bug. `recurringunbiasednessexp` (`Construction/Witnesses/HistoricalMaturity.lean`) takes a
-generable divergent weighting with no deferral/image-of-`f` hypothesis and concludes a limit
-point; the pseudorandom/feedback capstones (`prandaff` and the `wubexp` route) carry the
-deferral function, `PatientSettlementClock`, and pseudorandomness data and conclude a full
-limit. This is forced by construction: the full-limit conclusion is not provable without the
-deferral clause, and the limit-point conclusion does not need it, so building the actual
-proofs disciplined the statements into the corrected shape. The discrepancy was not previously
-recorded as a paper erratum.
+A second, independent confirmation of the intended placement: the *plain* affine
+recurring-unbiasedness theorem (`thm:recurringunbiasedness`, tex:1225–1233) carries no
+support clause and introduces no deferral function at all, exactly parallel to how the
+expectation recurring theorem should read.
+
+The formalization places the hypotheses correctly and declares the correction at the
+statements. `BoundedSequence.recurringunbiasednessexp`
+(`Construction/Witnesses/HistoricalMaturity.lean`) takes a generable divergent weighting
+with no deferral or image-of-`f` hypothesis and concludes a limit point;
+`luv_wubexp_ofComputation` and `luv_wubexp_ofComputation_unconditional`
+(`Construction/Witnesses/FeedbackTruth.lean`, `FeedbackUnconditional.lean`) carry the
+deferral function and the support-in-image hypothesis and conclude a full limit. This is
+forced by construction: the full-limit conclusion is not provable without the deferral
+clause, and the limit-point conclusion does not need it.
+
+---
 
 ## PE3 — `Settled(n,m)` decidability as written (`app:prandaff`)
 
-**Status:** repaired in-repo; the paper's assertion is fixable but not literally true as
-stated.
+**Repaired in-repo; the paper's assertion is fixable but not literally true as stated.**
 
-`1609.03543v5-main.tex:4865` asserts that `Settled(n,m)` — "all worlds in
-`pcworlds(D_m)` value the combination `A_n` at `thmval(A_n)`" — is decidable. As written
-the predicate mentions `thmval(A_n)`, which is not computable, so the literal test is not
-one a machine can run. The repair (which the paper's proof clearly intends): under
-consistency of the theory, settlement is equivalent to inter-world *agreement* on the
-finitely many relevant truth assignments, which is a finite decidable test given exact
-rational market quotes. Formalized as
-`AffineCombination.DeterminedViaTheory.settled_iff_agree`
-(`Properties/Calibration.lean`), with the rational-quote requirement supplied by
-`IsLogicalInductor.marketComputable`. Discovered during the 2026-07-28 F9 investigation.
+tex:4865 asserts that `Settled(n,m)` — "all worlds in `pcworlds(D_m)` value the
+combination `Aₙ` at `thmval(Aₙ)`" — is decidable. As written the predicate mentions
+`thmval(Aₙ)`, which is not computable, so the literal test is not one a machine can run.
+
+The repair, which the paper's proof clearly intends: under consistency of the theory,
+settlement is equivalent to inter-world *agreement* on the finitely many relevant truth
+assignments, a finite decidable test given exact rational market quotes. Formalized as
+`AffineCombination.DeterminedViaTheory.settled_iff_agree` (`Properties/Calibration.lean`),
+with the rational-quote requirement supplied by `IsLogicalInductor.marketComputable`.
+
+---
 
 ## PE4 — Patience argument assumes a monotone deferral function (`app:prandaff`)
 
-**Status:** repaired in-repo by a strengthened trader; not previously recorded.
+**Repaired in-repo by a strengthened trader.**
 
-`1609.03543v5-main.tex:4905` argues the constructed weighting is `f`-patient via
-`Σ_{n≤m} [f(n) ≥ m] α_n ≤ 1`, which implicitly assumes the deferral function is
-monotone; `def:deferralfunc` (tex:1240) requires only `f(n) > n`. For non-monotone `f`
-the bracket can admit unboundedly many terms between `m` and `f`-images from far below.
-The repo's trader replaces the bracket with the envelope `max_{k≤i} f k`
+tex:4923 argues the constructed weighting is `f`-patient via
+`Σ_{n≤m} [f(n) ≥ m] αₙ ≤ 1`, which implicitly assumes the deferral function is monotone;
+`def:deferralfunc` (tex:1240) requires only `f(n) > n`. For non-monotone `f` the bracket
+can admit unboundedly many terms between `m` and `f`-images from far below.
+
+The repository's trader replaces the bracket with the envelope `max_{k≤i} f k`
 (`deferralEnvelope`, `Properties/Pseudorandomness.lean`), which restores the bound for
-arbitrary deferral functions. Justified in the docstring at the definition site;
-surfaced as an erratum during the 2026-07-28 F9 investigation.
+arbitrary deferral functions. Justified in the docstring at the definition site.
+
+---
 
 ## PE5 — Sign inconsistency in `def:seqprand` vs. `thm:prand`'s one-sided forms
 
-**Status:** repaired in-repo by orienting the definition to its advertised conclusion;
-disclosed at the definition site. Minor, and plausibly a transcription slip.
+**Repaired in-repo by orienting the definition to its advertised conclusion; disclosed at
+the definition site.** Minor, and plausibly a transcription slip.
 
-`def:seqprand` (`1609.03543v5-main.tex:1305–1311`) displays the weighted average of
-`(pᵢ − ThmInd(φᵢ))` and says the `≂ₙ` may be replaced by `≳ₙ` to give "varied
-pseudorandom **above** ⟨p⟩". `thm:prand` (tex:1314–1320) then pairs that notion with the
-conclusion `Pₙ(φₙ) ≳ₙ pₙ`. With the paper's centering those two `≳ₙ`s point in opposite
-directions: bounding `avg(p − ThmInd)` *below* says the truth frequency undershoots `p`,
-which forces the price *down*, not up. The repo centers the other way —
+`def:seqprand` (tex:1305–1311) displays the weighted average of `(pᵢ − ThmInd(φᵢ))` and
+says the `≈ₙ` may be replaced by `≳ₙ` to give "varied pseudorandom **above** ⟨p⟩".
+`thm:prand` (tex:1314–1320) then pairs that notion with the conclusion `Pₙ(φₙ) ≳ₙ pₙ`.
+With the paper's centering those two `≳ₙ`s point in opposite directions: bounding
+`avg(p − ThmInd)` *below* says the truth frequency undershoots `p`, which forces the price
+*down*, not up.
+
+A concrete counterexample to the printed pairing: take every `φᵢ` Θ-refutable and e.c.,
+`pᵢ = 1/2`, and `f(n) = n+1`, so the constant weighting is `f`-patient and divergent. Then
+`avg(p − ThmInd) = 1/2 ≳ₙ 0` and the family is "varied pseudorandom above ⟨p⟩" as printed
+— yet provability induction forces `Pₙ(φₙ) ≈ₙ 0`, contradicting the advertised
+`Pₙ(φₙ) ≳ₙ 1/2`.
+
+The repository centers the other way —
 `VariedPseudorandomAbove truth p := PseudorandomAbove (truth − p)`
 (`Properties/Pseudorandomness.lean`) — which is the orientation the exploiting-trader
-argument actually needs and which makes the paper's advertised conclusion come out
-right. Disclosed in that definition's docstring ("with the sign oriented to match its
-advertised conclusion"). Surfaced by the 2026-07-29 closing audit.
+argument needs and which makes the paper's advertised conclusion come out right. Disclosed
+in that definition's docstring.
+
+---
+
+## PE6 — Introspection's printed hypotheses do not license its printed proof (`thm:ref`, `app:ref`)
+
+**The theorem is not false.** Its printed hypotheses are insufficient to run its own printed
+proof. That is a different defect from PE1 and should not be read as the same one.
+
+### Published statement
+
+> Let `⟨φ⟩` be an e.c. sequence of sentences, and `⟨a⟩`, `⟨b⟩` be **ℙ-generable** sequences
+> of probabilities. Then, for any e.c. sequence of positive rationals `⟨δ⟩ → 0`, there
+> exists a sequence of positive rationals `⟨ε⟩ → 0` such that for all `n`: (1) if
+> `ℙₙ(φₙ) ∈ (aₙ+δₙ, bₙ−δₙ)` then `ℙₙ(⌜⌜aₙ⌝ < ⌜ℙ⌝_⌜n⌝(⌜φₙ⌝) < ⌜bₙ⌝⌝) > 1−εₙ`; (2) if
+> `ℙₙ(φₙ) ∉ (aₙ−δₙ, bₙ+δₙ)` then that same price is `< εₙ`.
+
+(`1609.03543v5-main.tex:1969–1981`, proved in `app:ref`, tex:5310.) Note that `⟨φ⟩` and
+`⟨δ⟩` are required **e.c.**, while `⟨a⟩` and `⟨b⟩` are required only ℙ-generable.
+
+### Defect
+
+`app:ref` sets `ψₙ := ⌜⌜aₙ⌝ < ⌜ℙ⌝_⌜n⌝(⌜φₙ⌝) < ⌜bₙ⌝⌝` and applies `thm:affprovind` to the
+combination `ctsind_{δₙ}(aₙ < ℙₙ(φₙ) < bₙ) · (1 − ψₙ)`, and to its counterpart for the
+second statement.
+
+`thm:affprovind` quantifies over `BCS` (`def:bap`): bounded **ℙ-generable** ℝ-combination
+sequences. By `def:ece`, ℙ-generable means there is an **e.c.** `EF`-combination progression
+whose value at `ℙ` is the combination; and by `def:affcomsen` an `EF`-combination
+`c + f₁φ₁ + ⋯ + f_kφ_k` names its **sentences** as well as its features. So the appendix's
+application requires the sequence `⟨ψ⟩` to be efficiently writable.
+
+The *coefficient* `ctsind_{δₙ}(aₙ < ℙₙ(φₙ) < bₙ)` is a feature, and ℙ-generability of
+`⟨a⟩`, `⟨b⟩` is exactly what makes it e.c. The *sentence* `ψₙ` is not. As printed it
+contains the numerals `⌜aₙ⌝` and `⌜bₙ⌝`, so writing it requires producing those numerals
+from `n`. `def:ece` supplies an e.c. **feature expression** whose *value at the market* is
+`aₙ`; it supplies no program producing the numeral. Recovering the numeral means evaluating
+that expression against the market's prices, and `def:marketprocess` bounds neither the
+runtime of the market program nor the size of the rationals it returns — the same
+unboundedness PE1 turns into a counterexample. So `aₙ` is obtainable computably but not in
+time polynomial in `n`, `⟨ψ⟩` is not e.c., and `thm:affprovind` does not apply.
+
+The omission reads as an oversight rather than a subtlety: the same statement is careful to
+demand e.c. of `⟨φ⟩` and `⟨δ⟩`, which it needs for exactly this reason.
+
+### What the repository does about it
+
+The Lean development does **not** inherit the gap, and does not need the missing
+hypothesis, because of `dd:quote-code`. The introspection target sentence is not a literal
+formula containing numerals for `aₙ` and `bₙ`; it is a *code-indexed quote atom*,
+`BooleanQuoteCode.sentence n = quoteAtom ⟪code, n⟫`, whose emission cost is a pairing with
+`n` and is therefore independent of `a` and `b` altogether
+(`BooleanQuoteCode.sentence_poly`). What the construction needs of `a` and `b` is only that
+the interval predicate `aₙ < ℙₙ(φₙ) < bₙ` be **decidable**, so the deductive process can
+enter the corresponding quote claim — and decidability, unlike efficiency, does follow from
+ℙ-generability once a market program is in hand (`PGenerableRat.computable`, which
+dovetails the feature's evaluation against the market's quote program).
+
+So the paper's route needs `⟨a⟩`, `⟨b⟩` efficiently writable; this development's route needs
+them only computable, which the printed hypotheses do give. `thm:ref` is therefore
+formalized at the paper's own hypothesis strength over the constructed inductor, and the
+defect above is confined to the printed proof.
+
+`lic_introspection_closed` (`Construction/Witnesses/QuoteCodeOfMarket.lean`) carries
+exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on the interval
+bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
+`GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
+
+---
+
+## PE7 — The `Con(PA)(Ack)` gloss contradicts its own definition (`sec:trust`)
+
+**Off-by-one in an illustrative gloss; no statement or proof is affected.**
+
+tex:1857 defines `Con(Θ′)(ν)` as "there is no proof of ⊥ from `⌜Θ′⌝` with `ν` or fewer
+symbols" — an inclusive bound. Two lines later, tex:1859 glosses
+`Con(PA)(⌜Ack(10,10)⌝)` as saying that any proof of ⊥ from PA "requires **at least**
+Ack(10,10) symbols"; by the definition it requires *more than* Ack(10,10).
+
+The formalization follows the definition, not the gloss: `BProv`'s bound is inclusive
+(`dSize d ≤ k`, `Framework/BoundedConsistency.lean`), so `conWithin T k` is exactly the
+definition's reading. Recorded so that the inclusive bound is not misread as drift
+against the gloss.
+
+---
+
+## PE8 — `app:incons` invokes representability where Σ₁-completeness is needed
+
+**The theorem is fine; the printed proof cites the wrong hypothesis for its key step.**
+
+The proof of `thm:incons` (tex:4487–4491) argues, for both conjuncts: each
+`⌜Θ′ₙ is inconsistent⌝` "is provable in 𝗣𝗔, and Θ represents computations, [so] each of
+these statements is provable in Θ". Representability of computable functions
+(tex:600–604) does not transfer 𝗣𝗔-provability to Θ: it yields facts of the form
+`Θ ⊢ ∀ν(γ(n̄,ν) ↔ ν = ȳ)`, not an inclusion of theories. What actually discharges the
+step is that the inconsistency statements are Σ₁ and true, so Σ₁-completeness of Θ
+suffices — a property the paper never states among its standing assumptions on Θ
+(tex:993–997).
+
+The formalization proves the step by the correct route: `re_complete_mp` under
+`[𝗣𝗔⁻ ⪯ T]`. This is one of the two places that motivate the globally disclosed
+`[𝗣𝗔⁻ ⪯ T]` hypothesis (see the README's discussion of arithmetic-theory assumptions):
+the paper's own argument tacitly consumes arithmetical strength beyond its stated
+premises at exactly this point.
+

@@ -1,8 +1,9 @@
 /-
 # The clocked simulator for a fixed description
 
-Stage 3's soundness half. `Construction/MachineTraderEnumeration.lean` enumerates traders
-by a finite `TMDesc` together with a polynomial clock, and reads off the described
+The soundness half of the trader enumeration.
+`Construction/MachineTraderEnumeration.lean` enumerates traders by a finite `TMDesc`
+together with a polynomial clock, and reads off the described
 machine's output when it halts inside that clock and `[]` when it does not. That truncated
 behaviour has to be an ordinary polynomial-time function, or the enumeration is not an
 enumeration *of* machine-efficient traders.

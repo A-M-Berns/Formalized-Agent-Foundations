@@ -145,17 +145,20 @@ lemma liaPerturbed_ne (DP : DeductiveProcess) {r : ℚ}
 
 /-- **The perturbed inductor.**  `liaHistory DP` is a machine logical inductor; move one
 price and the result still is — and that is a consequence of the corrected `thm:ifp`, not of
-any construction here.
+any construction here.  Market computability of `liaHistory DP` is not a premise: it is a
+field of `LIA_isMachineLogicalInductor DP hDP`, so the computable deductive process is the
+only input.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
 theorem machineLogicalInductor_liaPerturbed (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP)
-    (hmarket : ComputableMarket (liaHistory DP)) (r : ℚ) (h0 : 0 ≤ r) (h1 : r ≤ 1) :
+    (hDP : ComputableDeductiveProcess DP) (r : ℚ) (h0 : 0 ≤ r) (h1 : r ≤ 1) :
     IsMachineLogicalInductor (liaPerturbed DP r) DP := by
+  have hLIA : IsMachineLogicalInductor (liaHistory DP) DP :=
+    LIA_isMachineLogicalInductor DP hDP
+  have hmarket : ComputableMarket (liaHistory DP) := hLIA.marketComputable
   refine (machine_lic_iff_of_recognizableSupport (liaHistory DP) (liaPerturbed DP r) DP
-    hmarket (computableMarket_liaPerturbed DP hmarket r h0 h1) ?_).mp
-    (lia_isMachineLogicalInductor_of_computableMarket DP hDP hmarket)
+    hmarket (computableMarket_liaPerturbed DP hmarket r h0 h1) ?_).mp hLIA
   refine ⟨exampleS, ?_, liaPerturbed_agree DP r⟩
   intro p hp
   simp only [exampleS, Finset.mem_singleton] at hp
@@ -172,8 +175,7 @@ doing visible work rather than merely having satisfiable hypotheses.
 Kind `N+` non-vacuity witness.
 Paper node: `thm:ifp` -/
 theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP)
-    (hmarket : ComputableMarket (liaHistory DP)) :
+    (hDP : ComputableDeductiveProcess DP) :
     ∃ P' : History,
       ComputableMarket P' ∧
       IsMachineLogicalInductor P' DP ∧
@@ -181,8 +183,10 @@ theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
         ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) ∧
       (∀ d φ, (d, φ) ∉ exampleS → liaHistory DP d φ = P' d φ) := by
   obtain ⟨r, h0, h1, hr⟩ := exists_perturbation_value DP
+  have hmarket : ComputableMarket (liaHistory DP) :=
+    (LIA_isMachineLogicalInductor DP hDP).marketComputable
   exact ⟨liaPerturbed DP r, computableMarket_liaPerturbed DP hmarket r h0 h1,
-    machineLogicalInductor_liaPerturbed DP hDP hmarket r h0 h1,
+    machineLogicalInductor_liaPerturbed DP hDP r h0 h1,
     liaPerturbed_ne DP hr, liaPerturbed_agree DP r⟩
 
 #print axioms LogicalInduction.LIAPerturbation.computableMarket_liaPerturbed

@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Compact semantic-prime names
@@ -16,8 +17,9 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-- Reserved tag for compact handles whose denotation is supplied by a fixed semantic
-theorem process. -/
-def semanticPrimeTag : ℕ := 6
+theorem process.  See the global atom-payload allocation table at
+`ComputationClaimKind.godelCode`. -/
+def semanticPrimeTag : ℕ := 4
 
 /-- The public handle consists of a schema selector and its unevaluated input. -/
 def semanticPrimeCode (schema input : ℕ) : ℕ :=
@@ -47,7 +49,7 @@ def semanticHandleLUVSeq (schema n : ℕ) : LUV where
     (semanticHandleLUVSeq schema n).gt r =
       semanticPrimeSentence schema (Nat.pair n (Encodable.encode r)) := rfl
 
-/-- Compact handles preserve the repository's symbol-metered threshold interface. -/
+/-- Compact handles preserve the repository's token-metered threshold interface. -/
 lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
     LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) := by
   obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
@@ -114,22 +116,6 @@ lemma semanticPrimeCode_injective :
   rintro ⟨s₁, i₁⟩ ⟨s₂, i₂⟩ h
   simp only [semanticPrimeCode, Nat.pair_eq_pair] at h
   exact Prod.ext h.2.1 h.2.2
-
-/-- A semantic handle has a whole-value emission certificate whenever its input does.
-Unlike a first-order numeral, the schema itself is a fixed token and the varying input is
-not expanded into the public formula. -/
-lemma semanticPrimeSentence_poly (schema : ℕ) {input : ℕ → ℕ}
-    (hinput : PolyNatCodes input) :
-    PolySentenceCodes (fun n => semanticPrimeSentence schema (input n)) := by
-  let hpayload := (PolyFueled.const semanticPrimeTag).pair
-    ((PolyFueled.const schema).pair hinput.code_poly)
-  refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
-
-/-- Hence semantic handles are efficient sentence sequences in the symbol-metered API. -/
-lemma semanticPrimeSentence_rpn (schema : ℕ) {input : ℕ → ℕ}
-    (hinput : PolyNatCodes input) :
-    RpnSentenceCodes (fun n => semanticPrimeSentence schema (input n)) :=
-  RpnSentenceCodes.ofPolySentenceCodes (semanticPrimeSentence_poly schema hinput)
 
 /-- A paper-facing LUV source has a syntax-bearing threshold schema, not merely an erased
 family of propositional thresholds. -/

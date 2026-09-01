@@ -2,8 +2,8 @@
 # Logical Induction (Garrabrant et al., arXiv:1609.03543) — Lean 4 formalization
 
 The root roll-up: importing this file brings in the whole formalization. Start here, then
-read `LogicalInduction/README.md` for what is proved, the two declared modeling
-boundaries, and the faithfulness record; `AxiomAudit.lean` is the checked inventory of
+read `LogicalInduction/README.md` for what is proved, the declared modeling boundary,
+and the faithfulness record; `AxiomAudit.lean` is the checked inventory of
 every public endpoint. The library follows the paper's own sectioning — `Framework` is
 §2–3 (sentences, markets, features, traders, exploitation, the criterion, efficient
 computability, expectations, and the shared asymptotic vocabulary), `Properties` is the
@@ -53,6 +53,26 @@ list is exhaustive; a label appearing nowhere below is not in use.
   lands inside it. The label now marks a *sufficient certification device*, and what
   remains open is only its converse (the model card's lower calibration), which nothing
   paper-facing depends on.
+* **`dd:nnf`** — the *semantic* object language is Foundation's
+  **negation-normal-form** `Semiformula` (constructors `verum/falsum/rel/nrel/and/or/all/exs`,
+  negation a meta-level involution, `A 🡒 B` notation for `∼A ⋎ B`, `A 🡘 B` notation for
+  `(A 🡒 B) ⋏ (B 🡒 A)`), but *writing* is metered on a **source** language, not on that
+  normal form. `ArithSource k` (`Construction/Witnesses/ArithmeticSource.lean`) carries the
+  paper's own primitive connectives (tex:560) — `¬`, `∧`, `∨`, `⟹`, `⟺`, `∀`, `∃`, plus
+  atomic leaves — `compile : ArithSource k → ArithmeticSemiformula ℕ k` gives it its
+  meaning (`eval_compile`), and `def:ec`'s condition is `PolyArithmeticSourceSeq`: one
+  emitted token per node of the formula **as the paper writes it**. Normal-form expansion
+  happens inside the parser (tags `20`/`21`/`22`) and is never charged. So this label no
+  longer marks a substitution: nothing pays twice for a `⟺`. What it marks is the
+  two-layer architecture, and the fact that the normal-form-metered class
+  `PolyArithmeticFormulaSeq` is retained as a **strictness foil** rather than deleted: it
+  embeds (`PolyArithmeticFormulaSeq.toSource`) and the inclusion is *strict*, witnessed at
+  the left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`, which costs `5n + 4` source tokens
+  (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) and
+  `≥ 2ⁿ` normal-form tokens (`iffChain_not_polyArithmeticFormulaSeq`,
+  `two_pow_le_encode_iffChain`). That family is carried all the way to a literal paper LUV
+  family (`iffPaperLUVSeq`, `iffPaperLUVSeq_frontend`), so
+  `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can
@@ -66,6 +86,59 @@ list is exhaustive; a label appearing nowhere below is not in use.
   the world-value and threshold-emission obligations are *proved* rather than assumed.
   Endpoints suffixed `_arith` are the paper's statement restricted to this class, and are
   where the general layer's representation hypotheses get discharged.
+* **`dd:symbolcount`** — §4.10's finite proof searches are metered by the **symbol count
+  of the derivation**, as the paper's `Con(Θ′)(ν)` is (tex:1855-1866), with the bound
+  inclusive. Foundation exposes no size function on its internal derivations, so
+  `Framework/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
+  the derivation codes at `V := ℕ`, with equations tying it to Foundation's own
+  constructors (`dSize_axL`, `dSize_cutRule`, …) and the converse bound
+  `le_G_dSize : d ≤ G (dSize d)` that keeps the metered search decidable in both
+  polarities. This is a **convention, not a modelling substitution**: the paper fixes
+  neither a Gödel encoding nor an alphabet ("written in `ℒ` using a Gödel encoding"), so
+  some counting convention must be chosen, and ours — one symbol per rule name,
+  connective, quantifier, predicate, function symbol and variable occurrence, one
+  separator per argument-list entry, and, for every variable, function and relation index,
+  its binary digit count **plus one marker token** (`idxLen n = Nat.size n + 1`, so
+  `idxLen 0 = 1` and `idxLen 1 = 2`; the marker is what separates an index numeral from
+  the material following it) — is stated in full in that module's header. The index
+  convention is the same write-out metering the rest of this development uses (`def:ec`),
+  and it is what makes the measure finite-fibred; the fixed per-index marker over-counts,
+  which is the safe direction for a bound. Nothing outside `DerivationSize.lean` depends
+  on the choice *for the truth of the endpoints* — `conWithin_of_consistent`, which proves
+  every day's claim from consistency alone, never mentions `dSize` — the choice affects
+  only which horizons discharge the non-degeneracy side conditions
+  (`conGamma_mentions_zero_of_bProv`, `conGamma_mentions_zero_of_horizon_unbounded`), whose
+  hypotheses are quantitative in the measure. *(This entry replaces the retired
+  `dd:proofcode`, which disclosed the Gödel-number measure that used to stand in for the
+  paper's symbol count.)*
+* **`dd:machinetheory`** — a day's theory in `thm:incons` is presented by a **machine that
+  enumerates the written sources of its axioms** (`theoryOf`,
+  `Construction/Witnesses/ComputationRepresented.lean`), and reading a machine as a theory
+  requires fixing a convention. Ours: **an output contributes the sentence a written source
+  names, and anything else contributes nothing.** Concretely, an output `v` is admitted only
+  if it is literally the name of its own decoded token run *and* that run is the complete
+  emitted run of one `ArithSource 0` whose compiled form is a sentence (`AdmissibleName`,
+  `Construction/Witnesses/SourceWindow.lean`, deciding source-hood with the depth-tracking,
+  free-variable-rejecting recognizer `sourceRun`,
+  `Construction/Witnesses/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
+  `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, a diverging or
+  inadmissible output contributing the inert `⊤`. The gate is not hygiene: without it the
+  token splice is unsound, and `MachineTheoryInconsistent` holds of machines presenting the
+  *empty* theory (R11). With it, `machineTheoryInconsistent_iff` proves the represented
+  predicate **equivalent** to the convention's claim — the day-`n` sentence says exactly
+  "`theoryOf (mₙ)` is inconsistent", in both directions.
+  This is a **convention, not a modelling substitution** — the same status `dd:symbolcount`
+  has — and the paper never defines "recursively axiomatizable" beyond the phrase (tex:940,
+  1855, 1882, 1894). What is proved of its reach: every one-axiom theory is presented
+  exactly (`theoryOf_const_ofNNF`), `ArithSource.ofNNF` writing every sentence. What is *not*
+  formalized: the uniform half — that every r.e. set of sentences is `theoryOf m` for a
+  single `m` — which would need `encodeArithmeticFormulaSymbols` certified primitive
+  recursive, and which the endpoint does not consume (`hinc` is stated at the caller's own
+  machine). Any other convention gives a coextensive class of theories but a different
+  represented predicate, hence a different schema — which is why it is stated here rather
+  than left implicit. Note what the convention does *not* do: it fixes no base theory, bounds
+  no number of axioms, and asks no computability of the day's theory beyond the machine that
+  presents it.
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable

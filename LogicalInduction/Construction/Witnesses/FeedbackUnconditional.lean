@@ -1,5 +1,6 @@
-import LogicalInduction.Construction.Witnesses.ComputationDP
+import LogicalInduction.Construction.Witnesses.PaperTheoryDP
 import LogicalInduction.Construction.Witnesses.FeedbackTruth
+import LogicalInduction.Framework.WriteOut
 
 /-!
 # Feedback and LUV unbiasedness over the constructed `LIA`
@@ -11,9 +12,9 @@ traders and the delayed truth sequence — and the remaining market-side hypothe
 discharged here over the same provability process the computational-knowledge and quotation
 endpoints use:
 
-* `theoremDP_computable` constructs the deductive process and hence the `LIA` inductor;
+* `paperDP_computable` constructs the deductive process and hence the `LIA` inductor;
 * `liaHistory_range` supplies the ordinary probability bounds; and
-* `theoremDP_hworld` supplies a plausible world at every finite stage.
+* `paperDP_hworld` supplies a plausible world at every finite stage.
 
 The caller still supplies the paper's substantive inputs: an affine/LUV sequence, its
 completed-theory determination data, the deferral schedule, weighting, and the explicit
@@ -28,11 +29,11 @@ namespace FeedbackTruth
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic
 open AffineCombination
 
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 private noncomputable abbrev feedbackLIA :
-    IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-  LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+    IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+  LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
 
 /-- `thm:wub` over the constructed `LIA`: the market, deductive process, logical-inductor
 instance, finite-stage plausible worlds, feedback traders, and sparse delayed truth sequence
@@ -40,20 +41,20 @@ are all constructed.  The caller supplies the paper's efficiently coded sentence
 completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation_unconditional
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
-    (truth : ℕ → ℝ) (htruth : TheoryTruth φ (theoremDP T) truth)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (truth : ℕ → ℝ) (htruth : TheoryTruth φ (paperDP T) truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
-    (hWdiv : DivergentWeighting W (liaHistory (theoremDP T)))
+    (hWdiv : DivergentWeighting W (liaHistory (paperDP T)))
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
     (C : FeedbackTruthComputation truth f)
-    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (theoremDP T)) f) :
-    weightedBias (fun i ↦ (W i).denote (liaHistory (theoremDP T)))
-      (fun i ↦ liaHistory (theoremDP T) i (φ i)) truth ≈ₙ (fun _ ↦ 0) := by
+    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (paperDP T)) f) :
+    weightedBias (fun i ↦ (W i).denote (liaHistory (paperDP T)))
+      (fun i ↦ liaHistory (paperDP T) i (φ i)) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
-  exact lic_wub_ofComputation (liaHistory (theoremDP T)) (theoremDP T)
+  exact lic_wub_ofComputation (liaHistory (paperDP T)) (paperDP T)
     φ hφ truth htruth W hW hWdiv f hstrict
     C hsupport
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+    (paperDP_hworld T)
 
 /-- `thm:wubaff` over the constructed `LIA`.  Only the paper's affine data and the
 operational delayed-truth program remain caller inputs.
@@ -62,18 +63,18 @@ theorem lic_wubaff_ofComputation_unconditional
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     {truth : ℕ → ℝ} {f : DeferralFunction}
-    (hdet : DeterminedViaTheory As (liaHistory (theoremDP T)) (theoremDP T) truth)
+    (hdet : DeterminedViaTheory As (liaHistory (paperDP T)) (paperDP T) truth)
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (theoremDP T)) f)
-    (hWdiv : DivergentWeighting W (liaHistory (theoremDP T)))
-    (hbounded : BoundedAffinePrices As (liaHistory (theoremDP T)))
-    (hmag : ∀ i, (As i).magnitude (liaHistory (theoremDP T)) ≤ 1) :
-    weightedBias (fun i ↦ (W i).denote (liaHistory (theoremDP T)))
-      (fun i ↦ (As i).price (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
+    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (paperDP T)) f)
+    (hWdiv : DivergentWeighting W (liaHistory (paperDP T)))
+    (hbounded : BoundedAffinePrices As (liaHistory (paperDP T)))
+    (hmag : ∀ i, (As i).magnitude (liaHistory (paperDP T)) ≤ 1) :
+    weightedBias (fun i ↦ (W i).denote (liaHistory (paperDP T)))
+      (fun i ↦ (As i).price (liaHistory (paperDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact lic_wubaff_ofComputation hpoly hW hdet C hstrict hsupport hWdiv hbounded hmag
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+    (paperDP_hworld T)
 
 /-- Paper-facing `thm:wubaff` over the constructed `LIA`, for an arbitrary bounded
 affine-combination sequence.  The canonical unit-risk normalization and both feedback
@@ -81,20 +82,20 @@ operational witnesses are constructed by the lower-level endpoint.
 Paper node: `thm:wubaff` -/
 theorem boundedCombination_wubaff_ofComputation_unconditional
     {As : ℕ → AffineCombination}
-    (h : BoundedCombinationSequence As (liaHistory (theoremDP T)))
+    (h : BoundedCombinationSequence As (liaHistory (paperDP T)))
     {W : ℕ → EF} (hW : PGenerableWeighting W)
     {truth : ℕ → ℝ}
-    (hdet : DeterminedViaTheory As (liaHistory (theoremDP T)) (theoremDP T) truth)
+    (hdet : DeterminedViaTheory As (liaHistory (paperDP T)) (paperDP T) truth)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (C : FeedbackTruthComputation
       (fun n ↦ (h.unitNormalization.scale : ℝ) * truth n) f)
-    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (theoremDP T)) f)
-    (hWdiv : DivergentWeighting W (liaHistory (theoremDP T))) :
-    weightedBias (fun i ↦ (W i).denote (liaHistory (theoremDP T)))
-      (fun i ↦ (As i).price (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
+    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (paperDP T)) f)
+    (hWdiv : DivergentWeighting W (liaHistory (paperDP T))) :
+    weightedBias (fun i ↦ (W i).denote (liaHistory (paperDP T)))
+      (fun i ↦ (As i).price (liaHistory (paperDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact boundedCombination_wubaff_ofComputation h hW hdet hstrict C hsupport hWdiv
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+    (paperDP_hworld T)
 
 /-- `thm:wubexp` over the constructed `LIA`: the concrete normalized threshold mesh, its
 feedback traders, and its delayed truth sequence yield recurring unbiasedness for bounded LUV
@@ -102,32 +103,38 @@ combinations.  The deadline-bounded truth program `C` is the paper's explicit op
 input; `hdet` (`def:affthmval`) and `hvalued` (the representation premise) are its explicit
 semantic ones.
 
-The premises are exactly tex:1822-1832's.  In particular determination is at the
-*combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
+The premises are tex:1822-1832's with one printed omission repaired: this endpoint carries
+`hsupport` — the support of `w` lies in the image of `f` — which the printed `thm:wubexp`
+lacks and which is printed instead on `thm:recurringunbiasednessexp` (tex:1812-1820), a
+statement that introduces no `f`.  The affine twins settle the intended placement
+(`thm:wubaff`, tex:1480-1490, has the clause; `thm:recurringunbiasedness`, tex:1225-1233,
+does not), so the clause is stated here.  Recorded as `PE2` in `notes/paper-errata.md`.
+
+Determination is at the *combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
 which it would not be under `LUVCombination.ExactTheoryPresentation`.  The mesh feedback
 bridge is built from approximate determination; see
 `FeedbackTruth.luv_wubexp_ofComputation`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
     {As : ℕ → LUVCombination}
-    (h : LUVCombination.BoundedSequence As (liaHistory (theoremDP T)))
-    (hvalued : LUVCombination.WorldValued As (theoremDP T))
+    (h : LUVCombination.BoundedSequence As (liaHistory (paperDP T)))
+    (hvalued : LUVCombination.WorldValued As (paperDP T))
     {truth : ℕ → ℝ}
     (hdet : LUVCombination.DeterminedViaTheory
-      As (liaHistory (theoremDP T)) (theoremDP T) truth)
-    (b : ℚ) (hshare : ∀ n, (As n).shareNorm (liaHistory (theoremDP T)) ≤ (b : ℝ))
+      As (liaHistory (paperDP T)) (paperDP T) truth)
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm (liaHistory (paperDP T)) ≤ (b : ℝ))
     {W : ℕ → EF} (hW : PGenerableWeighting W)
-    (hWdiv : DivergentWeighting W (liaHistory (theoremDP T)))
+    (hWdiv : DivergentWeighting W (liaHistory (paperDP T)))
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
     (C : FeedbackTruthComputation
-      (LUVCombination.normalizedMeshTruth As (liaHistory (theoremDP T))
-        (theoremDP T) (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩) b) f)
-    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (theoremDP T)) f) :
-    weightedBias (fun i ↦ (W i).denote (liaHistory (theoremDP T)))
-      (fun i ↦ (As i).expect (liaHistory (theoremDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
+      (LUVCombination.normalizedMeshTruth As (liaHistory (paperDP T))
+        (paperDP T) (paperDP_hworld T) b) f)
+    (hsupport : WeightingSupportedOnDeferralImage W (liaHistory (paperDP T)) f) :
+    weightedBias (fun i ↦ (W i).denote (liaHistory (paperDP T)))
+      (fun i ↦ (As i).expect (liaHistory (paperDP T)) i) truth ≈ₙ (fun _ ↦ 0) := by
   haveI := feedbackLIA T
   exact luv_wubexp_ofComputation h hvalued hdet b hshare hW hWdiv hstrict
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩) C hsupport
+    (paperDP_hworld T) C hsupport
 
 #print axioms lic_wubaff_ofComputation_unconditional
 #print axioms lic_wub_ofComputation_unconditional

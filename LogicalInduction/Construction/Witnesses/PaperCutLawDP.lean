@@ -38,8 +38,7 @@ def paperCutLawFires [T.Δ₁] (e : ℕ) : Prop :=
         (paperFirstOrderImpCode e.unpair.2.unpair.2 e.unpair.2.unpair.1)
   else False
 
-private lemma paperProvableCode_re [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+private lemma paperProvableCode_re [T.Δ₁] :
     REPred fun formulaCode : ℕ => Bootstrapping.Provable T formulaCode := by
   apply re_iff_sigma1.mpr
   definability
@@ -51,8 +50,7 @@ private lemma paperIsFormulaCode_re :
     Bootstrapping.IsSemiformula ℒₒᵣ 0 formulaCode
   definability
 
-lemma paperCutLawFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : REPred (paperCutLawFires T) := by
+lemma paperCutLawFires_re [T.Δ₁] : REPred (paperCutLawFires T) := by
   have htag (k : ℕ) : REPred fun e : ℕ => e.unpair.1 = k :=
     ComputablePred.to_re
       (Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const k)).computablePred
@@ -138,8 +136,7 @@ lemma paperCutLawSentence_prim : Primrec paperCutLawSentence := by
     (Primrec.decode.comp paperCutLawSentenceCode_prim)
     (Primrec.const (⊤ : Sentence))).of_eq fun _ => rfl
 
-lemma exists_paperCutLawCode [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_paperCutLawCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ paperCutLawFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (paperCutLawFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -161,13 +158,11 @@ lemma paperCutLawStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
   obtain ⟨e, ⟨he, hsome⟩, rfl⟩ := hφ
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
-noncomputable def paperCutLawDP [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess where
+noncomputable def paperCutLawDP [T.Δ₁] : DeductiveProcess where
   D := paperCutLawStage (exists_paperCutLawCode T).choose
   mono := paperCutLawStage_mono _
 
-lemma paperCutLawDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {e : ℕ} (hfire : paperCutLawFires T e) :
+lemma paperCutLawDP_covers [T.Δ₁] {e : ℕ} (hfire : paperCutLawFires T e) :
     ∃ k, paperCutLawSentence e ∈ (paperCutLawDP T).D k := by
   classical
   set code := (exists_paperCutLawCode T).choose
@@ -230,8 +225,7 @@ lemma paperCutLawStage_encode_prim (c : Nat.Partrec.Code) :
   exact Primrec.encode.comp
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
-lemma paperCutLawDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : ComputableDeductiveProcess (paperCutLawDP T) := by
+lemma paperCutLawDP_computable [T.Δ₁] : ComputableDeductiveProcess (paperCutLawDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec
       (Primrec.nat_iff.mp
@@ -266,8 +260,7 @@ private lemma eq_paperDownwardEvent_of_codes {e : ℕ} (h1 : e.unpair.1 = 1)
       rw [h1, hlower, hupper, Nat.pair_unpair]
     _ = paperDownwardEvent (Encodable.encode lower) (Encodable.encode upper) := rfl
 
-lemma paperCutLawDP_covers_upper [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticProposition)
+lemma paperCutLawDP_covers_upper [T.Δ₁] (φ : ArithmeticProposition)
     (hprov : Bootstrapping.Provable T (Encodable.encode (∼φ))) :
     ∃ k, (∼paperPrimeDecompose φ) ∈ (paperCutLawDP T).D k := by
   have hfire : paperCutLawFires T (paperUpperEvent (Encodable.encode φ)) := by
@@ -275,8 +268,7 @@ lemma paperCutLawDP_covers_upper [T.Δ₁] [𝗜𝚺₁ ⪯ T]
       paperFormulaEncode_isFormula]
   simpa using paperCutLawDP_covers T hfire
 
-lemma paperCutLawDP_covers_downward [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (lower upper : ArithmeticProposition)
+lemma paperCutLawDP_covers_downward [T.Δ₁] (lower upper : ArithmeticProposition)
     (hprov : Bootstrapping.Provable T (Encodable.encode (upper 🡒 lower))) :
     ∃ k, (paperPrimeDecompose upper 🡒 paperPrimeDecompose lower) ∈
       (paperCutLawDP T).D k := by
@@ -286,8 +278,7 @@ lemma paperCutLawDP_covers_downward [T.Δ₁] [𝗜𝚺₁ ⪯ T]
       paperFormulaEncode_isFormula]
   simpa using paperCutLawDP_covers T hfire
 
-lemma paperCutLawDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
+lemma paperCutLawDP_hworld_of_model [T.Δ₁]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperPrimeWorld M f).ConsistentWithTheory (paperCutLawDP T) := by
@@ -352,24 +343,22 @@ lemma paperCutLawSentence_atom_tag_of_fire [T.Δ₁] {e a : ℕ}
 
 /-! ## The fixed paper-facing base process -/
 
-noncomputable def paperBaseDP [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess :=
-  (theoremPaperDP T).union (paperCutLawDP T)
+noncomputable def paperBaseDP [T.Δ₁] : DeductiveProcess :=
+  (paperDP T).union (paperCutLawDP T)
 
-noncomputable def paperBaseDPComputation [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcessComputation (paperBaseDP T) :=
-  (theoremPaperDPComputation T).union
+noncomputable def paperBaseDPComputation [T.Δ₁] :
+    DeductiveProcessComputation (paperBaseDP T) :=
+  (paperDPComputation T).union
     (paperCutLawDP_computable T).nonemptyComputation.some
 
-lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
+lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperTheoryExtensionWorld T M f).ConsistentWithTheory (paperBaseDP T) := by
   intro k sentence hsentence
   rw [paperBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hsentence
   rcases hsentence with hbase | hcut
-  · exact theoremPaperDP_hworld_of_model T hT f k sentence hbase
+  · exact paperDP_hworld_of_model T hT f k sentence hbase
   · apply (PCWorld.holds_congr_atomCodes sentence fun a ha =>
       paperTheoryExtensionWorld_agree_paper T M f ?_).mpr
       (paperCutLawDP_hworld_of_model T hT f k sentence hcut)
@@ -381,8 +370,7 @@ lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     exact ((exists_paperCutLawCode T).choose_spec e).mp
       (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
 
-lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperBaseDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
     LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
@@ -392,14 +380,14 @@ lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
   let f : ℕ → M := fun _ => Classical.choice hMne
   exact ⟨paperTheoryExtensionWorld T M f, paperBaseDP_hworld_of_model T hT f⟩
 
-lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (k : ℕ) (sentence : Sentence)
+lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [Entailment.Consistent T]
+    (k : ℕ) (sentence : Sentence)
     (hsentence : sentence ∈ (paperBaseDP T).D k) :
     SemanticPrimeFreshSentence sentence := by
   intro a ha
   rw [paperBaseDP, DeductiveProcess.union_stage, Finset.mem_union] at hsentence
   rcases hsentence with hbase | hcut
-  · rw [theoremPaperDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
+  · rw [paperDP, DeductiveProcess.union_stage, Finset.mem_union] at hbase
     rcases hbase with htheorem | hpaper
     · exact theoremDP_semanticPrimeFresh T k sentence htheorem a ha
     · have htag := paperTheoryDP_atom_tag T hpaper ha

@@ -16,6 +16,8 @@
   --uni-bg: #E4EEEC;
   --ins-bg: #3D6B66;
   --ins-ink: #F2F7F6;
+  --refute: #A33526;
+  --refute-bg: #F7E5E1;
   --card-bg: #FFFFFF;
   --code-bg: #E9EEEE;
   --serif: 'Charter', 'Bitstream Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
@@ -30,6 +32,7 @@
     --hair: #33362F; --accent: #7FB5AE; --accent-ink: #9CC8C2;
     --qual: #C99A5B; --qual-bg: #2E2617;
     --uni-bg: #223330; --ins-bg: #7FB5AE; --ins-ink: #14211F;
+    --refute: #E08A78; --refute-bg: #331C17;
     --card-bg: #1D1F21; --code-bg: #242A2A;
   }
 }
@@ -40,6 +43,7 @@
   --hair: #33362F; --accent: #7FB5AE; --accent-ink: #9CC8C2;
   --qual: #C99A5B; --qual-bg: #2E2617;
   --uni-bg: #223330; --ins-bg: #7FB5AE; --ins-ink: #14211F;
+  --refute: #E08A78; --refute-bg: #331C17;
   --card-bg: #1D1F21; --code-bg: #242A2A;
 }
 :root[data-theme="light"] {
@@ -49,6 +53,7 @@
   --hair: #E2DFD6; --accent: #3D6B66; --accent-ink: #2E5450;
   --qual: #9A6A2F; --qual-bg: #F4EADB;
   --uni-bg: #E4EEEC; --ins-bg: #3D6B66; --ins-ink: #F2F7F6;
+  --refute: #A33526; --refute-bg: #F7E5E1;
   --card-bg: #FFFFFF; --code-bg: #E9EEEE;
 }
 * { box-sizing: border-box; }
@@ -80,8 +85,10 @@ nav.rail { position: sticky; top: 0; align-self: start; height: 100vh; overflow-
 .nav-item:hover { background: var(--code-bg); }
 .nav-item.done { color: var(--ink-soft); text-decoration: line-through; }
 .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.dot.universal { background: var(--accent); }
-.dot.instantiated { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1.5px; }
+.dot.exact { background: var(--accent); }
+.dot.strengthened { background: var(--accent); outline: 2px solid var(--accent); outline-offset: 1.5px; }
+.dot.corrected { background: var(--qual); outline: 2px solid var(--qual); outline-offset: 1.5px; }
+.dot.refuted { background: var(--refute); }
 .dot.qualified { background: var(--qual); }
 .dot.plain { background: none; border: 1px solid var(--ink-soft); }
 
@@ -107,9 +114,20 @@ h2.paper-head { font-family: var(--serif); font-size: 26px; margin: 0 0 2px;
 .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
 .tier, .staged { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 9px;
   border-radius: 999px; white-space: nowrap; }
-.tier.universal { background: var(--uni-bg); color: var(--accent-ink); }
-.tier.instantiated { background: var(--ins-bg); color: var(--ins-ink); }
+.tier.exact { background: var(--uni-bg); color: var(--accent-ink); }
+.tier.strengthened { background: var(--ins-bg); color: var(--ins-ink); }
+.tier.corrected { background: var(--qual-bg); color: var(--qual);
+  box-shadow: inset 0 0 0 1px var(--qual); }
+.tier.refuted { background: var(--refute-bg); color: var(--refute);
+  box-shadow: inset 0 0 0 1px var(--refute); }
 .tier.qualified { background: var(--qual-bg); color: var(--qual); }
+.axis { font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; padding: 2px 8px;
+  border-radius: 999px; white-space: nowrap; background: var(--code-bg);
+  color: var(--ink-soft); margin-left: 6px; }
+.ep-role { font-size: 11px; color: var(--qual); margin-left: 8px; font-weight: 600; }
+.ep-other { font-size: 12px; color: var(--ink-soft); margin-top: 10px;
+  padding-top: 8px; border-top: 1px dashed var(--hair); }
+.ep-other code { font-size: 0.85em; }
 /* A declaration whose *statement* is final but whose proof is still `sorry`, staged in
    the paper's `-PENDING` comment block of AxiomAudit.lean rather than gated by
    `#assert_axioms_clean`.  Same pill as a tier badge, in the page's warning colour;
@@ -266,7 +284,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     </table></div>
     <p><strong>Only Logical Induction has a strength classification and per-node reading
     notes.</strong> They are the product of a dedicated re-derivation pass and a
-    machine-checked table; the other two libraries have had no such pass. No tier, audit note
+    machine-checked table; the other libraries have had no such pass. No tier, audit note
     or reading note is shown for a paper that does not have one — the correspondence is what
     those sections claim, and it is all they claim.</p>
 
@@ -274,7 +292,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <p>Within each paper, nodes appear in that paper's own order, grouped by its own sections;
     definitions come first and are load-bearing for everything after. Where a node has several
     inventory endpoints, the ‹ › arrows page through all of them. Check-boxes track progress
-    across all three papers and persist locally in the browser. Signatures are statements only,
+    across every formalized paper and persist locally in the browser. Signatures are statements only,
     verbatim from source; file paths locate the full declaration. Paper statements are
     machine-converted from the arXiv TeX (custom macros expanded, rendered as MathML) — for any
     formula that looks off, the arXiv PDF is the authority; the Lean pane is exact source text.</p>
@@ -295,31 +313,61 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
   <code>LogicalInduction/</code> · %%NLI%% nodes</p>
 
   <div class="method">
-    <h3>The two standing disclosures (apply to every node)</h3>
-    <p>Sentences are propositional (<code>Formula ℕ</code>); the paper's first-order Θ enters
-    through explicit interfaces. Efficient computability is the fuel-clocked interpreter model
-    <code>dd:fuel</code>, not a machine complexity class. "Paper strength" always means
-    <em>within this disclosed model</em>. Details: <code>LogicalInduction/README.md</code>,
-    "The two modeling boundaries".</p>
+    <h3>The standing disclosures (apply to every node)</h3>
+    <p>Five things get called "a boundary" and they are not the same: a <b>modeling
+    substitution</b> (a weaker or different object standing in for the paper's — the only one
+    that is a debt against faithfulness), a <b>representation interface</b> (a choice of how to
+    present a faithful object, restricting who may supply the input without changing what is
+    proved), a <b>paper erratum</b>, a <b>strengthening</b>, and <b>certification
+    technology</b>. Sorted that way: sentences are propositional (<code>Formula ℕ</code>), which
+    is the paper's own outer language by its Notation section, with the first-order Θ entering
+    through explicit interfaces; the trader class is ordinary machine polynomial time
+    (<code>MachineEfficientTrader</code>, through <code>Complexity.FP</code>) and the
+    fuel-clocked <code>dd:fuel</code> calculus is certification technology proved to land inside
+    it; <code>dd:fuel</code> on a statement's <em>own</em> data sequences is a representation
+    interface, charged once at <code>def:ec</code> and not again downstream. Details:
+    <code>README.md</code> and <code>LogicalInduction/README.md</code>.</p>
 
-    <h3>Tiers</h3>
+    <h3>Status — is the paper's printed statement right, and do we prove it?</h3>
     <div class="legend">
-      <span class="tier universal">paper strength · universal</span><span class="count">%%NUNI%% — the paper's own statement, for every logical inductor</span>
+      <span class="tier exact">exact</span><span class="count">%%NEXACT%% — the printed statement, proved, on the paper's own hypotheses</span>
     </div>
     <div class="legend">
-      <span class="tier instantiated">paper strength · instantiated</span><span class="count">%%NINS%% — additionally holds of the constructed LIA with obligations discharged</span>
+      <span class="tier strengthened">strengthened</span><span class="count">%%NSTR%% — the printed statement and more: a weaker hypothesis, a stronger conclusion, or a datum the paper assumes and we construct</span>
     </div>
     <div class="legend">
-      <span class="tier qualified">qualified</span><span class="count">%%NQ%% — a named interface or class restriction is retained; the note says which</span>
+      <span class="tier corrected">corrected</span><span class="count">%%NCORR%% — the printed statement is defective; the repaired statement is proved, and the note names the erratum</span>
     </div>
-    <p>The tier and note on every card are read from
-    <code>scripts/coverage-classification.md</code>, which is machine-checked against the
-    endpoint inventory on every build, so a node cannot ship without a strength call. The
+    <div class="legend">
+      <span class="tier refuted">refuted</span><span class="count">%%NREF%% — the printed statement is <b>false</b>, and its negation is proved here</span>
+    </div>
+    <div class="legend">
+      <span class="tier qualified">qualified</span><span class="count">%%NQUAL%% — falls short: a restricted class, a retained interface, or the intended subject matter abstracted to a placeholder; the note says which</span>
+    </div>
+    <p>The secondary <span class="axis">universal</span> / <span class="axis">instantiated</span>
+    badge says <em>which inductors</em> — every one, or the constructed LIA with its obligations
+    discharged. Neither is stronger than the other, and neither overrides the status.</p>
+    <p>Status, axis, note <em>and the endpoints shown below them</em> are all read from one
+    file, <code>scripts/coverage-classification.md</code>, and
+    <code>scripts/check_endpoint_coverage.py</code> fails the build unless every curated
+    endpoint resolves, carries the node's label, and is inside <code>AxiomAudit.lean</code>'s
+    <code>LI-CANONICAL</code> block. They used to be three independently maintained artifacts;
+    every disagreement they developed was invisible. The
+    <span class="tier refuted" style="font-size:10px">refuted</span>,
+    <span class="tier corrected" style="font-size:10px">corrected</span> and
     <span class="tier qualified" style="font-size:10px">qualified</span> rows deserve the slow
-    pass: each one's note names exactly what is retained and why.</p>
+    pass.</p>
+
+    <h3>What the Lean pane shows</h3>
+    <p>Only the <b>canonical endpoints</b> — the small curated set a skeptical reader is asked
+    to read, the paper's own printed form first. It is not every declaration carrying the label:
+    <code>thm:scon</code> has 54 axiom-checked carriers and 4 canonical endpoints. The rest are
+    listed by name under the slides, and remain under the build's axiom gate as internal
+    regression assertions; they are construction machinery and compatibility carriers, not the
+    read-through set.</p>
 
     <h3>Metering vocabulary</h3>
-    <p><code>RpnSentenceCodes</code> / symbol-metered classes are the faithful rendering of the
+    <p><code>RpnSentenceCodes</code> / token-metered classes are the faithful rendering of the
     paper's <code>def:ec</code>; whole-value classes (<code>PolyNatCodes</code> &amp;c.) are
     provably narrower and appear only where a row is marked qualified.</p>
 
@@ -329,13 +377,13 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="vocab">
       <tr><td><code>[IsLogicalInductor P DP]</code></td><td>“let ℙ‾ be a logical inductor over D‾”; <code>P n φ</code> is ℙₙ(φ)</td></tr>
       <tr><td><code>hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)</code></td><td>each stage is propositionally consistent — ambient in the paper’s notion of deductive process, explicit here</td></tr>
-      <tr><td><code>RpnSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>PolyRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals, at the symbol-metered rendering of <code>def:ec</code></td></tr>
+      <tr><td><code>RpnSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>PolyRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals, at the token-metered rendering of <code>def:ec</code></td></tr>
       <tr><td><code>GeneratedRatFeature</code>, <code>PGenerableRat</code>, <code>PGenerableWeighting</code></td><td>“ℙ‾-generable” (def:ece / def:fuz): the sequence enters as market expressions, not values</td></tr>
       <tr><td><code>≈ₙ&ensp;≳ₙ&ensp;≲ₙ</code>, <code>limitingBelief P φ</code></td><td>the paper’s ≈ₙ, ≳ₙ, ≲ₙ and ℙ∞(φ)</td></tr>
       <tr><td><code>PCWorld</code>, <code>v.ConsistentWithTheory DP</code></td><td>a world <code>v</code> is the paper’s 𝕎; <code>ConsistentWithTheory</code> is membership in 𝒫𝒞(Γ), the completed (theory-consistent) worlds</td></tr>
       <tr><td><code>TheoryTruth φ DP truth</code>, <code>DeterminedViaTheory</code>, <code>WorldValued</code></td><td>Γ decides each φₙ with value truthₙ; def:affthmval (the combination has one value in every completed world); def:luv’s world-value clause</td></tr>
       <tr><td><code>(X n).expect P n</code></td><td>𝔼ₙ(Xₙ), via the def:e threshold mesh</td></tr>
-      <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]</code>, <code>theoremDP T</code>, <code>liaHistory (theoremDP T)</code></td><td>“Γ represents computations” (a Σ₁-sound T ⊇ IΣ₁); Γ’s provability process; the constructed inductor over it</td></tr>
+      <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]</code>, <code>paperDP T</code>, <code>liaHistory (paperDP T)</code></td><td>“Γ represents computations” (a consistent T ⊇ IΣ₁ — the Σ₁-soundness instance that used to sit here was retired 2026-08-30); Γ’s provability process; the constructed inductor over it</td></tr>
     </table></div>
   </div>
 

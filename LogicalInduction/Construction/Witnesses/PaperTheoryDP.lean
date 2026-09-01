@@ -25,7 +25,7 @@ variable (T : ArithmeticTheory)
 def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
   Bootstrapping.Provable T formulaCode
 
-lemma paperTheoremFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoremFires_re [T.Δ₁] :
     REPred (paperTheoremFires T) := by
   apply re_iff_sigma1.mpr
   change 𝚺₁-Predicate fun formulaCode : ℕ => Bootstrapping.Provable T formulaCode
@@ -49,7 +49,7 @@ lemma paperTheoremSentence_prim : Primrec paperTheoremSentence := by
     (Primrec.const (⊥ : Sentence))).of_eq fun _ => rfl
 
 /-- A partial-recursive semi-decider for the universal theorem events. -/
-lemma exists_paperTheoremCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_paperTheoremCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code,
       ∀ formulaCode, (code.eval formulaCode).Dom ↔ paperTheoremFires T formulaCode := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (paperTheoremFires_re T)
@@ -121,12 +121,12 @@ lemma paperTheoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
 
 /-- The fixed public process enumerating decompositions of all `T`-provable first-order
 propositions. -/
-noncomputable def paperTheoryDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def paperTheoryDP [T.Δ₁] :
     DeductiveProcess where
   D := paperTheoremStage (exists_paperTheoremCode T).choose
   mono := paperTheoremStage_mono _
 
-lemma paperTheoryDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma paperTheoryDP_covers [T.Δ₁]
     {formulaCode : ℕ} (hfire : paperTheoremFires T formulaCode) :
     ∃ k, paperTheoremSentence formulaCode ∈ (paperTheoryDP T).D k := by
   classical
@@ -142,16 +142,14 @@ lemma paperTheoryDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
   exact evaln_isSome_mono (le_max_right formulaCode fuel)
     (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)
 
-lemma paperTheoryDP_covers_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticProposition)
+lemma paperTheoryDP_covers_provable [T.Δ₁] (φ : ArithmeticProposition)
     (hφ : Bootstrapping.Provable T (Encodable.encode φ)) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
   simpa using paperTheoryDP_covers T (formulaCode := Encodable.encode φ) hφ
 
 /-- Ordinary object-level provability is the public interface to the fixed theorem
 process; encoded provability remains only an implementation detail of its enumerator. -/
-lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
+lemma paperTheoryDP_covers_outer_provable [T.Δ₁] (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
     ∃ k, paperPrimeDecompose φ ∈ (paperTheoryDP T).D k := by
   have hquote : Bootstrapping.Provable T (⌜φ⌝ : ℕ) :=
     Bootstrapping.provable_iff_provable.mpr hφ
@@ -163,8 +161,7 @@ lemma paperTheoryDP_covers_outer_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-- Every completed public world of `paperTheoryDP T` holds the prime decomposition of
 each ordinary theorem of `T`. -/
-lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (v : PCWorld)
+lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] (v : PCWorld)
     (hv : v.ConsistentWithTheory (paperTheoryDP T))
     (φ : ArithmeticSentence) (hφ : T ⊢ φ) :
     v.Holds (paperPrimeDecompose φ) := by
@@ -223,7 +220,7 @@ lemma paperTheoremStage_encode_prim (c : Nat.Partrec.Code) :
   exact Primrec.encode.comp
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
-lemma paperTheoryDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoryDP_computable [T.Δ₁] :
     ComputableDeductiveProcess (paperTheoryDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec
@@ -241,8 +238,7 @@ lemma paperFormulaCode_has_proposition {formulaCode : ℕ}
   rcases hwf.sound with ⟨φ, hφ⟩
   exact ⟨φ, by simpa [LO.FirstOrder.Semiformula.quote_eq_encode] using hφ⟩
 
-lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {formulaCode : ℕ}
+lemma paperTheoremFires_has_proposition [T.Δ₁] {formulaCode : ℕ}
     (hfire : paperTheoremFires T formulaCode) :
     ∃ φ : ArithmeticProposition, Encodable.encode φ = formulaCode ∧
       Bootstrapping.Provable T (Encodable.encode φ) := by
@@ -256,8 +252,7 @@ lemma paperTheoremFires_has_proposition [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-- Every first-order model of `T` induces a completed public world for the fixed theorem
 process. -/
-lemma paperTheoryDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
+lemma paperTheoryDP_hworld_of_model [T.Δ₁]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
     (paperPrimeWorld M f).ConsistentWithTheory (paperTheoryDP T) := by
@@ -274,8 +269,7 @@ lemma paperTheoryDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     paperPrimeWorld_holds_decompose M f]
   exact provable_proposition_evalf_of_model T hT f hprov
 
-lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] {k : ℕ} {sentence : Sentence}
+lemma paperTheoryDP_atom_tag [T.Δ₁] {k : ℕ} {sentence : Sentence}
     (hsentence : sentence ∈ (paperTheoryDP T).D k) {a : ℕ}
     (ha : a ∈ sentenceAtomCodes sentence) : a.unpair.1 = paperPrimeTag := by
   simp only [paperTheoryDP, paperTheoremStage, Finset.mem_image,
@@ -292,8 +286,7 @@ lemma paperTheoryDP_atom_tag [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 /-- Completeness turns the already-proved consistency of the arithmetic base into an
 explicit completed world.  Thus the universal theorem stream is not merely syntactically
 computable; it is non-vacuous. -/
-lemma paperTheoryDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
+lemma paperTheoryDP_nonvacuous [T.Δ₁] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
     LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
@@ -308,7 +301,7 @@ lemma paperTheoryDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 lemma eventAtom_atomCodes_ne_paperPrimeTag (e : ℕ) :
     ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ paperPrimeTag := by
   intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
@@ -321,12 +314,6 @@ lemma eventAtom_atomCodes_ne_paperPrimeTag (e : ℕ) :
         ComputationClaimKind.godelCode, paperPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, paperPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, inconsistencyClaim,
-        ComputationClaimKind.godelCode, paperPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, consistencyClaim,
         ComputationClaimKind.godelCode, paperPrimeTag] at hc
   · exact fun hc => by
       simp [sentenceAtomCodes_quoteAtom _ a ha, paperPrimeTag] at hc
@@ -368,24 +355,56 @@ lemma paperTheoryExtensionWorld_holds_paper_iff
   PCWorld.holds_congr_atomCodes (paperPrimeDecompose φ) fun a ha =>
     paperTheoryExtensionWorld_agree_paper T M f (paperPrimeDecompose_atom_tag φ a ha)
 
+/-! ## The single paper-facing market
+
+The paper fixes **one** deductive process `𝔻` and prices everything against the one market
+`𝕡` the construction builds over it.  `paperDP` is that process: the union of the
+computation/quotation literal stream (`theoremDP`) with the `Θ`-complete first-order
+theorem stream (`paperTheoryDP`).  Every canonical endpoint of the self-reference
+(`thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`), conditioning
+(`thm:scon`), feedback (`thm:wub`, `thm:wubaff`, `thm:wubexp`) and meta-learning
+(`thm:halts`, `thm:loops`, `thm:dontwait`, `thm:pac`, `thm:pazfc`, `thm:incons`) families
+is stated over `liaHistory (paperDP T)`.
+
+The two component streams remain named because they are *construction ingredients*, not
+alternative markets: the quotation presentation and the represented-claim coverage are
+proved of a component and lifted here monotonically, and the semantic-lifted `thm:ccee`
+lane keeps its own base process by ruling.  No canonical endpoint is stated at a
+component. -/
+
 /-- The paper theorem stream is added before any source, market, weight, or deferral is
 chosen. -/
-noncomputable def theoremPaperDP [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess :=
+noncomputable def paperDP [T.Δ₁] : DeductiveProcess :=
   (theoremDP T).union (paperTheoryDP T)
 
-noncomputable def theoremPaperDPComputation [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] : DeductiveProcessComputation (theoremPaperDP T) :=
+/-- The literal stream is a substage of the single market's process. -/
+lemma theoremDP_subset_paperDP [T.Δ₁] (k : ℕ) :
+    (theoremDP T).D k ⊆ (paperDP T).D k := by
+  rw [paperDP, DeductiveProcess.union_stage]
+  exact Finset.subset_union_left
+
+/-- The first-order theorem stream is a substage of the single market's process. -/
+lemma paperTheoryDP_subset_paperDP [T.Δ₁] (k : ℕ) :
+    (paperTheoryDP T).D k ⊆ (paperDP T).D k := by
+  rw [paperDP, DeductiveProcess.union_stage]
+  exact Finset.subset_union_right
+
+/-- Coverage lifts from the first-order theorem stream to the single market. -/
+lemma paperDP_covers_of_paperTheoryDP [T.Δ₁] {φ : Sentence}
+    (h : ∃ k, φ ∈ (paperTheoryDP T).D k) : ∃ k, φ ∈ (paperDP T).D k :=
+  h.imp fun k hk => paperTheoryDP_subset_paperDP T k hk
+
+noncomputable def paperDPComputation [T.Δ₁] :
+    DeductiveProcessComputation (paperDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     (paperTheoryDP_computable T).nonemptyComputation.some
 
-lemma theoremPaperDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1]
+lemma paperDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
-    (paperTheoryExtensionWorld T M f).ConsistentWithTheory (theoremPaperDP T) := by
+    (paperTheoryExtensionWorld T M f).ConsistentWithTheory (paperDP T) := by
   intro k φ hφ
-  rw [theoremPaperDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
+  rw [paperDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
   rcases hφ with hbase | hpaper
   · apply (paperTheoryExtensionWorld_holds_base_iff T M f fun a ha => ?_).mpr
       (theoremDP_hworld T k φ hbase)
@@ -406,16 +425,49 @@ lemma theoremPaperDP_hworld_of_model [T.Δ₁] [𝗜𝚺₁ ⪯ T]
       paperPrimeWorld_holds_decompose M f]
     exact provable_proposition_evalf_of_model T hT f hprov
 
-lemma theoremPaperDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] :
-    ∃ v : PCWorld, v.ConsistentWithTheory (theoremPaperDP T) := by
+lemma paperDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
+    ∃ v : PCWorld, v.ConsistentWithTheory (paperDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
     LO.FirstOrder.Theory.small_satisfiable_of_consistent (T := T) inferInstance
   rcases LO.FirstOrder.satisfiable_iff.mp hs with ⟨M, hMne, hMstr, hT⟩
   letI : Nonempty M := hMne
   letI : Structure ℒₒᵣ M := hMstr
   let f : ℕ → M := fun _ => Classical.choice hMne
-  exact ⟨paperTheoryExtensionWorld T M f, theoremPaperDP_hworld_of_model T hT f⟩
+  exact ⟨paperTheoryExtensionWorld T M f, paperDP_hworld_of_model T hT f⟩
+
+/-! ### The market data every endpoint over `paperDP` consumes -/
+
+/-- The single market's process is computable: the union of the two stage programs. -/
+lemma paperDP_computable [T.Δ₁] : ComputableDeductiveProcess (paperDP T) :=
+  (paperDPComputation T).toComputable
+
+/-- **Market non-vacuity (`hworld`) for the single market.**  Every stage has a consistent
+world, from consistency of `T` alone (via satisfiability); this is the stage-indexed form
+the quotation and meta-learning endpoints take. -/
+lemma paperDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (n : ℕ) :
+    ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n) := by
+  obtain ⟨v, hv⟩ := paperDP_nonvacuous T
+  exact ⟨v, hv n⟩
+
+/-- **The quotation presentation over the single market**, lifted from the literal stream.
+Every field is either theory-side or an "enters some stage" claim, so the lift is the
+monotone one; only the stage program is supplied afresh.
+Paper node: `thm:ref` -/
+noncomputable def paperQuotationPresentation [T.Δ₁] :
+    QuotationTheoryPresentation (paperDP T) T :=
+  (quotationPresentation T).mono (theoremDP_subset_paperDP T) (paperDPComputation T)
+
+/-- The constructed inductor instance for the single market, reused by every endpoint. -/
+noncomputable abbrev paperLIA [T.Δ₁] :
+    IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
+  LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
+
+/-- A named exact market program for the single market, used to build its own quote codes
+and its paradox-resistance diagonal.
+Paper node: `thm:lia` -/
+noncomputable def paperMarketComputation [T.Δ₁] :
+    MarketComputation (liaHistory (paperDP T)) :=
+  liaMarketComputation (paperDP T) (paperDP_computable T)
 
 #print axioms paperTheoremSentence_spec
 #print axioms paperTheoremSentence_prim
@@ -423,7 +475,11 @@ lemma theoremPaperDP_nonvacuous [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 #print axioms paperTheoryDP_computable
 #print axioms paperTheoryDP_hworld_of_model
 #print axioms paperTheoryDP_nonvacuous
-#print axioms theoremPaperDPComputation
-#print axioms theoremPaperDP_nonvacuous
+#print axioms paperDPComputation
+#print axioms paperDP_nonvacuous
+#print axioms paperDP_computable
+#print axioms paperDP_hworld
+#print axioms paperQuotationPresentation
+#print axioms paperMarketComputation
 
 end LogicalInduction

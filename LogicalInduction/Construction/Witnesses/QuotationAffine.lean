@@ -1,4 +1,6 @@
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
+import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.QuoteRepresentability
 import LogicalInduction.Construction.Witnesses.FeedbackEmission
 import LogicalInduction.Properties.Introspection
 import Foundation.FirstOrder.Bootstrapping.FixedPoint
@@ -34,10 +36,11 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## Compact public names and the proof bridge -/
 
-/-- Injective atom payload for a dual-schema arithmetic decision at one input.  Tag `4`
-keeps quotation names disjoint from the four computation-claim roles. -/
+/-- Injective atom payload for a dual-schema arithmetic decision at one input.  Tag `2`
+keeps quotation names disjoint from the computation-claim roles (tags `0`–`1`); see the
+global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
 def quotationClaimCode (positive negative : ArithmeticSemisentence 1) (input : ℕ) : ℕ :=
-  Nat.pair 4 (Nat.pair (Encodable.encode positive)
+  Nat.pair 2 (Nat.pair (Encodable.encode positive)
     (Nat.pair (Encodable.encode negative) input))
 
 def quotationClaimSentence (positive negative : ArithmeticSemisentence 1)
@@ -67,7 +70,7 @@ lemma quotationClaimSentence_poly
     (positive negative : ArithmeticSemisentence 1)
     {input : ℕ → ℕ} (hinput : PolyNatCodes input) :
     PolySentenceCodes (fun n => quotationClaimSentence positive negative (input n)) := by
-  let hpayload := (PolyFueled.const 4).pair
+  let hpayload := (PolyFueled.const 2).pair
     ((PolyFueled.const (Encodable.encode positive)).pair
       ((PolyFueled.const (Encodable.encode negative)).pair hinput.code_poly))
   refine ⟨_, (((PolyFueled.const 1).pair hpayload).succ_comp).of_eq (fun _ => rfl)⟩
@@ -141,18 +144,57 @@ lemma universalComputation_partrec : Nat.Partrec universalComputation := by
     ((Computable.ofNat Nat.Partrec.Code).comp (Primrec.fst.comp Primrec.unpair).to_comp)
     (Primrec.snd.comp Primrec.unpair).to_comp)
 
-/-- The fixed positive universal quotation schema; the selector `code` is folded into the
-numeral `⟨code, input⟩`. -/
-noncomputable def universalQuotePos : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => quotePos z.unpair.1 z.unpair.2)
-/-- The fixed negative universal quotation schema. -/
-noncomputable def universalQuoteNeg : ArithmeticSemisentence 1 :=
-  codeOfREPred (fun z => quoteNeg z.unpair.1 z.unpair.2)
+/-- The universal computation as the one-argument *vector* partial function that
+Foundation's `Nat.ArithPart₁.exists_code` codes. -/
+lemma universalComputation_vector_partrec :
+    Partrec (fun v : List.Vector ℕ 1 => universalComputation (v.get 0)) :=
+  (Partrec.nat_iff.mpr universalComputation_partrec).comp
+    (Primrec.to_comp <| Primrec.vector_get.comp Primrec.id (Primrec.const (0 : Fin 1)))
 
-lemma universalQuotePos_re : REPred (fun z : ℕ => quotePos z.unpair.1 z.unpair.2) :=
-  REPred.of_eq (repred_mem universalComputation_partrec 1) (fun _ => Iff.rfl)
-lemma universalQuoteNeg_re : REPred (fun z : ℕ => quoteNeg z.unpair.1 z.unpair.2) :=
-  REPred.of_eq (repred_mem universalComputation_partrec 0) (fun _ => Iff.rfl)
+/-- **One** arithmetic code formula for the whole universal quote evaluation.
+
+The positive and negative quotation schemas are the value-`1` and value-`0` fibers of this
+single formula (`valueSchema`), not two independent r.e. schemas.  That is what makes their
+exclusivity provable *in the theory* (`universalQuote_exclusive_prov`) rather than merely
+true in `ℕ`, and it is why the quotation family carries no Σ₁-soundness hypothesis. -/
+noncomputable def universalQuoteCode : Nat.ArithPart₁.Code 1 :=
+  (Nat.ArithPart₁.exists_code
+    (Nat.ArithPart₁.of_partrec
+      (Nat.Partrec'.of_part universalComputation_vector_partrec))).choose
+
+lemma universalQuoteCode_spec :
+    universalQuoteCode.eval (fun v : List.Vector ℕ 1 => universalComputation (v.get 0)) :=
+  (Nat.ArithPart₁.exists_code
+    (Nat.ArithPart₁.of_partrec
+      (Nat.Partrec'.of_part universalComputation_vector_partrec))).choose_spec
+
+/-- The fixed positive universal quotation schema — the value-`1` fiber of
+`universalQuoteCode`; the selector `code` is folded into the numeral `⟨code, input⟩`. -/
+noncomputable def universalQuotePos : ArithmeticSemisentence 1 :=
+  valueSchema universalQuoteCode 1
+/-- The fixed negative universal quotation schema — the value-`0` fiber of the *same*
+code formula. -/
+noncomputable def universalQuoteNeg : ArithmeticSemisentence 1 :=
+  valueSchema universalQuoteCode 0
+
+/-- Σ₁-completeness supplies the positive literal; `[𝗥₀ ⪯ T]` only. -/
+lemma universalQuotePos_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] {w : ℕ}
+    (h : quotePos w.unpair.1 w.unpair.2) :
+    T ⊢ (universalQuotePos/[‘↑w’] : ArithmeticSentence) :=
+  valueSchema_prov T universalQuoteCode_spec (by simpa [universalComputation, quotePos, quoteNeg] using h)
+
+/-- Σ₁-completeness supplies the negative literal too; `[𝗥₀ ⪯ T]` only. -/
+lemma universalQuoteNeg_prov (T : ArithmeticTheory) [𝗥₀ ⪯ T] {w : ℕ}
+    (h : quoteNeg w.unpair.1 w.unpair.2) :
+    T ⊢ (universalQuoteNeg/[‘↑w’] : ArithmeticSentence) :=
+  valueSchema_prov T universalQuoteCode_spec (by simpa [universalComputation, quotePos, quoteNeg] using h)
+
+/-- **Exclusivity is a theorem of `T`.**  The two quotation schemas are the value fibers of
+one code formula, so `𝗣𝗔⁻` already refutes their conjunction — no appeal to the standard
+model, and hence no Σ₁-soundness, is needed anywhere downstream. -/
+lemma universalQuote_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (w : ℕ) :
+    T ⊢ ∼((universalQuotePos/[‘↑w’] : ArithmeticSentence) ⋏ universalQuoteNeg/[‘↑w’]) :=
+  valueSchema_exclusive_prov T universalQuoteCode (by decide) w
 
 /-- The public quotation literal for a folded selector/input pair `w = ⟨code, input⟩`. -/
 noncomputable def quoteAtom (w : ℕ) : Sentence :=
@@ -170,7 +212,6 @@ Paper node: `thm:ref`, `thm:lp`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm
 structure QuotationTheoryPresentation
     (DP : DeductiveProcess) (T : ArithmeticTheory)
     extends ComputationTheoryPresentation DP T where
-  theory_sigmaOne : 𝗜𝚺₁ ⪯ T
   quote_positive_enters : ∀ (code input : ℕ),
     T ⊢ universalQuotePos/[↑(Nat.pair code input)] →
       ∃ k, quoteAtom (Nat.pair code input) ∈ DP.D k
@@ -220,7 +261,7 @@ lemma reflected
 /-- Build a Boolean quote code from any decidable predicate: pick a total `{0,1}`-valued
 decider, name it by its `Code`, and discharge completeness from FFL weak representation of
 the folded universal fibers. -/
-noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T]
     {truth : ℕ → Prop} (htruth : ComputablePred truth) : BooleanQuoteCode T truth := by
   classical
   -- `.choose` (not `obtain`) since the goal is data: `∃` cannot eliminate into `Type`.
@@ -245,9 +286,9 @@ noncomputable def ofComputable {T : ArithmeticTheory} [𝗥₀ ⪯ T] [T.SoundOn
     simp only [quoteNeg, hval, Part.mem_some_iff, htr]
     cases f input <;> simp
   refine ⟨Encodable.encode c, fun input htrue => ?_, fun input hfalse => ?_⟩
-  · refine (re_complete (T := T) universalQuotePos_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+  · refine universalQuotePos_prov T (w := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hpos input).mpr htrue
-  · refine (re_complete (T := T) universalQuoteNeg_re (x := Nat.pair (Encodable.encode c) input)).mp ?_
+  · refine universalQuoteNeg_prov T (w := Nat.pair (Encodable.encode c) input) ?_
     simpa [Nat.unpair_pair] using (hneg input).mpr hfalse
 
 end BooleanQuoteCode
@@ -258,7 +299,7 @@ end BooleanQuoteCode
 def decodedQuotationRat (z : ℕ) : ℚ :=
   (Encodable.decode (α := ℚ) z).getD 0
 
-@[simp] theorem decodedQuotationRat_encode (r : ℚ) :
+@[simp] lemma decodedQuotationRat_encode (r : ℚ) :
     decodedQuotationRat (Encodable.encode r) = r := by
   simp [decodedQuotationRat]
 
@@ -342,7 +383,7 @@ lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
 /-- A compact varying threshold presentation emits the literal diagonal expectation
 mesh uniformly; no opaque serialized affine object is decoded. -/
 noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
-    (hcode : LUV.RpnThresholdCodeSeq X) :
+    (hcode : LUV.BigThresholdCodeSeq X) :
     AffineCombination.PolySequence (expectAffineSeq X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -354,8 +395,8 @@ noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
     sentence := fun z ↦
       (X z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
     termCount_poly := ⟨_, PolyFueled.id.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const_comp
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
     sentence_poly := hsentence.of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
@@ -439,15 +480,15 @@ noncomputable def numericQuoteAffine_polySequence
     (H : ℕ → EF) (Y : ℕ → LUV)
     (hH : PGenerableWeighting H) (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteAffine H Y) := by
-  let base := LUV.expectAffineSeq_polySequence Y hY
+  let base := LUV.expectAffineSeq_polySequence Y hY.toBig
   exact {
     termCount := base.termCount
     coefficient := fun z ↦ EF.mul (EF.const (-1)) (base.coefficient z)
     sentence := base.sentence
     termCount_poly := base.termCount_poly
     const_poly := hH.polySeg
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
       base.coefficient_poly
     sentence_poly := base.sentence_poly
     terms_eq := by
@@ -525,10 +566,10 @@ def currentPriceFeature (φ : ℕ → Sentence) (n : ℕ) : EF :=
   EF.price (φ n) n
 
 lemma currentPriceFeature_generated (φ : ℕ → Sentence)
-    (hφ : RpnSentenceCodes φ) :
+    (hφ : BigSentenceCodes φ) :
     PGenerableWeighting (currentPriceFeature φ) := by
   exact {
-    polySeg := (RpnSpliceStream.serialize_price hφ PolyFueled.id
+    polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.id
       PolyFueled.id).of_eq (fun n ↦ by simp [currentPriceFeature])
     rank_le := by intro n; simp [currentPriceFeature]
     closed := by intro n ρ V; simp [currentPriceFeature]
@@ -536,7 +577,7 @@ lemma currentPriceFeature_generated (φ : ℕ → Sentence)
 
 noncomputable def currentPriceNumericTarget
     {P : History} {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ)) :
     NumericQuoteTarget P (fun n ↦ (value n : ℝ)) where
@@ -553,7 +594,7 @@ current rational price and the literal price-feature/threshold affine mesh. -/
 noncomputable def currentPriceExpectationQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
@@ -574,12 +615,12 @@ def currentExpectationFeature (X : ℕ → LUV) (n : ℕ) : EF :=
 lemma currentExpectationFeature_generated (X : ℕ → LUV)
     (hX : LUV.RpnThresholdCodeSeq X) :
     PGenerableWeighting (currentExpectationFeature X) := by
-  let hmesh := LUV.expectAffineSeq_polySequence X hX
+  let hmesh := LUV.expectAffineSeq_polySequence X hX.toBig
   have hdiag : PolyFueled
       (Nat.Partrec.Code.id.pair Nat.Partrec.Code.id)
       (fun n : ℕ ↦ Nat.pair n n) := PolyFueled.id.pair PolyFueled.id
   exact {
-    polySeg := RpnSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp hdiag)
+    polySeg := BigSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp hdiag)
       (fun n ↦ by simp [currentExpectationFeature])
     rank_le := by
       intro n
@@ -645,7 +686,7 @@ def gatedAffirmativeAffine (scale : ℚ) (H : ℕ → EF)
   const := EF.const 0
   terms := [(EF.mul (EF.const scale) (H n), quote n)]
 
-@[simp] theorem gatedComplementAffine_price (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_price (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n m : ℕ) :
     (gatedComplementAffine scale H quote n).price P m =
       (scale : ℝ) * (H n).denote P * (1 - P m (quote n)) := by
@@ -653,33 +694,33 @@ def gatedAffirmativeAffine (scale : ℚ) (H : ℕ → EF)
     AffineCombination.value]
   ring
 
-@[simp] theorem gatedComplementAffine_value (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_value (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (w : Valuation) (n : ℕ) :
     (gatedComplementAffine scale H quote n).value P w =
       (scale : ℝ) * (H n).denote P * (1 - w (quote n)) := by
   simp [gatedComplementAffine, AffineCombination.value]
   ring
 
-@[simp] theorem gatedComplementAffine_magnitude (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedComplementAffine_magnitude (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n : ℕ) :
     (gatedComplementAffine scale H quote n).magnitude P =
       |(scale : ℝ) * (H n).denote P| := by
   simp [gatedComplementAffine, AffineCombination.magnitude, abs_mul]
 
-@[simp] theorem gatedAffirmativeAffine_price (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_price (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n m : ℕ) :
     (gatedAffirmativeAffine scale H quote n).price P m =
       (scale : ℝ) * (H n).denote P * P m (quote n) := by
   simp [gatedAffirmativeAffine, AffineCombination.price,
     AffineCombination.value]
 
-@[simp] theorem gatedAffirmativeAffine_value (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_value (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (w : Valuation) (n : ℕ) :
     (gatedAffirmativeAffine scale H quote n).value P w =
       (scale : ℝ) * (H n).denote P * w (quote n) := by
   simp [gatedAffirmativeAffine, AffineCombination.value]
 
-@[simp] theorem gatedAffirmativeAffine_magnitude (scale : ℚ) (H : ℕ → EF)
+@[simp] lemma gatedAffirmativeAffine_magnitude (scale : ℚ) (H : ℕ → EF)
     (quote : ℕ → Sentence) (P : History) (n : ℕ) :
     (gatedAffirmativeAffine scale H quote n).magnitude P =
       |(scale : ℝ) * (H n).denote P| := by
@@ -696,12 +737,12 @@ noncomputable def gatedComplementAffine_polySequence
     coefficient := fun z ↦ EF.mul (EF.const (-scale)) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const scale) hH.polySeg
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-scale))
+    const_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const scale) hH.polySeg
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-scale))
       (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedComplementAffine]
     const_rank := by
@@ -735,11 +776,11 @@ noncomputable def gatedAffirmativeAffine_polySequence
     coefficient := fun z ↦ EF.mul (EF.const scale) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
     termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const scale)
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const scale)
       (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedAffirmativeAffine]
     const_rank := by intro n; simp [gatedAffirmativeAffine]
@@ -838,7 +879,7 @@ namespace PGenerableWeighting
 lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.mul (A n) (B n)) where
-  polySeg := RpnSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -851,7 +892,7 @@ lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
 lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.add (A n) (B n)) where
-  polySeg := RpnSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -862,24 +903,6 @@ lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
     rw [hA.closed n ρ V, hB.closed n ρ V]
 
 end PGenerableWeighting
-
-lemma GeneratedRatFeature.toWeighting
-    {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
-    (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
-  polySeg := h.polyTok
-  rank_le := h.rank_le
-  closed := h.closed
-
-/-- A polynomial rational code sequence, viewed as a closed constant feature on each day. -/
-def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
-  EF.const (q n)
-
-lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ)
-    (hq : PolyRatCodes q) : GeneratedRatFeature P q (ratCodeFeature q) where
-  rank_le := by intro n; simp [ratCodeFeature]
-  polyTok := RpnSpliceStream.serialize_const_comp hq
-  closed := by intro n ρ V; simp [ratCodeFeature]
-  denote := by intro n; simp [ratCodeFeature]
 
 /-- Polynomial rational codes remain polynomial after a polynomially fueled reindexing. -/
 lemma PolyRatCodes.reindex {q : ℕ → ℚ} (hq : PolyRatCodes q)
@@ -911,16 +934,16 @@ def ctsIndFeature (δ : ℕ → ℚ) (x y : ℕ → EF) (n : ℕ) : EF :=
     (EF.const (1 / δ n)))
 
 lemma ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (hx : PGenerableWeighting x) (hy : PGenerableWeighting y) :
     PGenerableWeighting (ctsIndFeature δ x y) := by
-  have hinv : RpnSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
-    RpnSpliceStream.serialize_const_comp hδinv
-  have hnegY := RpnSpliceStream.serialize_mul
-    (RpnSpliceStream.serialize_const (-1)) hy.polySeg
+  have hinv : BigSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
+    BigSpliceStream.serialize_const_write hδinv.toBigDigits
+  have hnegY := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const (-1)) hy.polySeg
   exact {
-    polySeg := RpnSpliceStream.serialize_clip01
-      (RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_add hx.polySeg hnegY) hinv)
+    polySeg := BigSpliceStream.serialize_clip01
+      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_add hx.polySeg hnegY) hinv)
     rank_le := by
       intro n
       simp only [ctsIndFeature, clip01_rank, EF.rank]
@@ -1152,6 +1175,18 @@ lemma LUV.RpnThresholdCodeSeq.reindex
     (hi.comp PolyFueled.left).pair PolyFueled.right
   exact (hX.comp hquery).of_eq (fun z ↦ by simp)
 
+/-- The write-out threshold interface reindexes along a poly-fueled index map, exactly as
+the token-metered one does: only the paired query index is recomputed. -/
+lemma LUV.BigThresholdCodeSeq.reindex
+    {X : ℕ → LUV} (hX : LUV.BigThresholdCodeSeq X)
+    {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
+    LUV.BigThresholdCodeSeq (fun n ↦ X (index n)) := by
+  obtain ⟨ci, hi⟩ := hindex
+  have hquery : PolyFueled _ (fun z : ℕ ↦
+      Nat.pair (index z.unpair.1) z.unpair.2) :=
+    (hi.comp PolyFueled.left).pair PolyFueled.right
+  exact (hX.comp hquery).of_eq (fun z ↦ by simp)
+
 /-- Pointwise addition of polynomial affine families, with the two term streams joined
 by a bounded conditional rather than by decoding either affine object. -/
 noncomputable def AffineCombination.PolySequence.add
@@ -1179,13 +1214,13 @@ noncomputable def AffineCombination.PolySequence.add
   have hqueryB : PolyFueled _ (fun z : ℕ ↦
       Nat.pair z.unpair.1 (z.unpair.2 - hA.termCount z.unpair.1)) :=
     hn.pair hoffset
-  have hcoeff := RpnSpliceStream.ifZero hA.coefficient_poly
+  have hcoeff := BigSpliceStream.ifZero hA.coefficient_poly
     (hB.coefficient_poly.comp hqueryB) htest
-  have hsentence : RpnSentenceCodes (fun z ↦
+  have hsentence : BigSentenceCodes (fun z ↦
       if z.unpair.2 < hA.termCount z.unpair.1 then hA.sentence z
       else hB.sentence (Nat.pair z.unpair.1
         (z.unpair.2 - hA.termCount z.unpair.1))) :=
-    (RpnSentenceCodes.ifZero hA.sentence_poly
+    (BigSentenceCodes.ifZero hA.sentence_poly
       (hB.sentence_poly.comp hqueryB) htest).of_eq (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos (by omega : (z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0),
@@ -1204,8 +1239,8 @@ noncomputable def AffineCombination.PolySequence.add
         (z.unpair.2 - hA.termCount z.unpair.1))
     termCount_poly := ⟨cadd.comp (cA.pair cB),
       (hadd.comp (hcA.pair hcB)).of_eq (fun n ↦ by simp)⟩
-    const_poly := RpnSpliceStream.serialize_add hA.const_poly hB.const_poly
-    coefficient_poly := RpnSpliceStream.of_eq hcoeff (fun z ↦ by
+    const_poly := BigSpliceStream.serialize_add hA.const_poly hB.const_poly
+    coefficient_poly := BigSpliceStream.of_eq hcoeff (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos hjlt, if_pos (by omega)]
       · rw [if_neg hjlt, if_neg (by omega)])
@@ -1258,8 +1293,8 @@ noncomputable def AffineCombination.PolySequence.scaleFeature
   coefficient := fun z ↦ EF.mul (W z.unpair.1) (hA.coefficient z)
   sentence := hA.sentence
   termCount_poly := hA.termCount_poly
-  const_poly := RpnSpliceStream.serialize_mul hW.polySeg hA.const_poly
-  coefficient_poly := RpnSpliceStream.serialize_mul
+  const_poly := BigSpliceStream.serialize_mul hW.polySeg hA.const_poly
+  coefficient_poly := BigSpliceStream.serialize_mul
     (hW.polySeg.comp PolyFueled.left) hA.coefficient_poly
   sentence_poly := hA.sentence_poly
   terms_eq := by
@@ -1495,7 +1530,7 @@ the flat term index stays a plain `range` and the block/offset inverse is divisi
 remainder rather than an inverse prefix-sum. -/
 noncomputable def PolySequence.blockSum
     {Bs : ℕ → AffineCombination} (hB : PolySequence Bs)
-    {coeff : ℕ → EF} (hcoeff : RpnSpliceStream fun z => (coeff z).serialize)
+    {coeff : ℕ → EF} (hcoeff : BigSpliceStream fun z => (coeff z).serialize)
     (hcoeffClosed : ∀ z ρ V, (coeff z).denoteWith ρ V = (coeff z).denote V)
     (hcoeffRank : ∀ m k, (coeff (Nat.pair m k)).rank ≤ m)
     {cnt width : ℕ → ℕ}
@@ -1504,7 +1539,7 @@ noncomputable def PolySequence.blockSum
     (hBconstRank : ∀ m k, (Bs (Nat.pair m k)).const.rank ≤ m)
     (hBcoeffRank : ∀ m k o, o < hB.termCount (Nat.pair m k) →
       (hB.coefficient (Nat.pair (Nat.pair m k) o)).rank ≤ m)
-    (pad : Sentence) (hpad : RpnSentenceCodes fun _ : ℕ => pad) :
+    (pad : Sentence) (hpad : BigSentenceCodes fun _ : ℕ => pad) :
     PolySequence (AffineCombination.blockSum Bs coeff cnt width pad) := by
   have hcntPF := Classical.choose_spec hcnt
   have hwidthPF := Classical.choose_spec hwidth
@@ -1560,26 +1595,26 @@ noncomputable def PolySequence.blockSum
       coefficient_rank := ?_
       const_closed := ?_
       coefficient_closed := ?_ }
-  · refine RpnSpliceStream.of_eq
-      ((((hcoeff.append hB.const_poly).append (RpnSpliceStream.tag 3 (by norm_num))).concatVar
-        hcntPF).append ((RpnSpliceStream.serialize_const 0).append
-          (RpnSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
+  · refine BigSpliceStream.of_eq
+      ((((hcoeff.append hB.const_poly).append (BigSpliceStream.tag 3 (by norm_num))).concatVar
+        hcntPF).append ((BigSpliceStream.serialize_const 0).append
+          (BigSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
     rw [AffineCombination.blockSum, foldr_addMul_serialize]
     simp [List.append_assoc]
-  · have hif : RpnSpliceStream (fun z ↦
+  · have hif : BigSpliceStream (fun z ↦
         (if z.unpair.2 % width z.unpair.1 <
             hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
           hB.coefficient (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
             (z.unpair.2 % width z.unpair.1))
         else EF.const 0).serialize) := by
-      refine RpnSpliceStream.of_eq (RpnSpliceStream.ifZero (hB.coefficient_poly.comp hq)
-        (RpnSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
+      refine BigSpliceStream.of_eq (BigSpliceStream.ifZero (hB.coefficient_poly.comp hq)
+        (BigSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
       by_cases hlt : z.unpair.2 % width z.unpair.1 <
           hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
       · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
       · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
-    exact RpnSpliceStream.serialize_mul (hcoeff.comp hkey) hif
-  · refine (RpnSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
+    exact BigSpliceStream.serialize_mul (hcoeff.comp hkey) hif
+  · refine (BigSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
     · rw [if_pos (show _ = 0 from by omega), if_pos hlt]
@@ -1786,27 +1821,27 @@ lemma selectorFeature_rank {g : ℕ → EF} {m k : ℕ}
 
 /-- Uniform emission of the selector weights. -/
 lemma selectorFeature_polySeg {g : ℕ → EF}
-    (hg : RpnSpliceStream fun z ↦ (g z).serialize) :
-    RpnSpliceStream fun z ↦ (selectorFeature g z).serialize := by
+    (hg : BigSpliceStream fun z ↦ (g z).serialize) :
+    BigSpliceStream fun z ↦ (selectorFeature g z).serialize := by
   have hidx : PolyFueled _ (fun q : ℕ ↦ Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hfactor : RpnSpliceStream fun q ↦
+  have hfactor : BigSpliceStream fun q ↦
       (selectorFactor g (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize := by
-    refine RpnSpliceStream.of_eq
-      ((((RpnSpliceStream.serialize_const 1).append
-        (RpnSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
-        ((RpnSpliceStream.tag 3 (by norm_num)).append
-          (RpnSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
+    refine BigSpliceStream.of_eq
+      ((((BigSpliceStream.serialize_const 1).append
+        (BigSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
+        ((BigSpliceStream.tag 3 (by norm_num)).append
+          (BigSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
     rw [selectorFactor_serialize]
     simp [List.append_assoc]
-  have hprod : RpnSpliceStream fun z ↦ (selectorProd g z).serialize := by
-    refine RpnSpliceStream.of_eq
+  have hprod : BigSpliceStream fun z ↦ (selectorProd g z).serialize := by
+    refine BigSpliceStream.of_eq
       (((hfactor.concatVar PolyFueled.right).append
-        ((RpnSpliceStream.serialize_const 1).append
-          (RpnSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
+        ((BigSpliceStream.serialize_const 1).append
+          (BigSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
     rw [selectorProd, foldr_mul_serialize]
     simp [List.append_assoc]
-  exact RpnSpliceStream.serialize_mul hg hprod
+  exact BigSpliceStream.serialize_mul hg hprod
 
 lemma list_sum_range {M : Type*} [AddCommMonoid M] (n : ℕ) (F : ℕ → M) :
     ((List.range n).map F).sum = ∑ j ∈ Finset.range n, F j := by
@@ -1834,26 +1869,26 @@ state that refinement, and it is exactly what a fibre gate needs in order to be 
 day-`m` affine coefficient.
 Paper node: `def:ece` -/
 structure PairedWeighting (A : ℕ → EF) : Prop where
-  polySeg : RpnSpliceStream fun z ↦ (A z).serialize
+  polySeg : BigSpliceStream fun z ↦ (A z).serialize
   rank_le : ∀ z, (A z).rank ≤ z.unpair.1
   closed : ∀ z ρ V, (A z).denoteWith ρ V = (A z).denote V
 
 namespace PairedWeighting
 
-lemma ofRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) :
+lemma ofRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) :
     PairedWeighting (fun z ↦ EF.const (q z)) where
-  polySeg := RpnSpliceStream.serialize_const_comp hq
+  polySeg := BigSpliceStream.serialize_const_write hq.toBigDigits
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma const (q : ℚ) : PairedWeighting (fun _ ↦ EF.const q) where
-  polySeg := RpnSpliceStream.serialize_const q
+  polySeg := BigSpliceStream.serialize_const q
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.mul (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1862,7 +1897,7 @@ lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.add (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1871,7 +1906,7 @@ lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma max {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.max (A z) (B z)) where
-  polySeg := RpnSpliceStream.serialize_max hA.polySeg hB.polySeg
+  polySeg := BigSpliceStream.serialize_max hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1885,7 +1920,7 @@ lemma clip01 {A : ℕ → EF} (hA : PairedWeighting A) :
       (PairedWeighting.const 1)).max ((PairedWeighting.const (-1)).mul hA)))))
   exact h
 
-lemma ctsInd {δ : ℕ → ℚ} (hδinv : PolyRatCodes (fun z ↦ 1 / δ z))
+lemma ctsInd {δ : ℕ → ℚ} (hδinv : DigitRatCodes (fun z ↦ 1 / δ z))
     {x y : ℕ → EF} (hx : PairedWeighting x) (hy : PairedWeighting y) :
     PairedWeighting (ctsIndFeature δ x y) :=
   PairedWeighting.clip01
@@ -2002,8 +2037,8 @@ lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
 lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
     PairedWeighting (matchFeat f a degree) :=
   PairedWeighting.ofRatCodes
-    (ratNatCast_codes_of_polyFueled
-      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree)))
+    (DigitRatCodes.ofPolyRatCodes (ratNatCast_codes_of_polyFueled
+      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree))))
 
 lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History) :
@@ -2043,13 +2078,13 @@ lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 
   simp
 
 lemma gateBase_paired (f : DeferralFunction) (a degree : ℕ) {δ : ℚ}
-    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
+    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
     PairedWeighting (gateBase f a degree δ d) :=
   (matchFeat_paired f a degree).mul
     (PairedWeighting.ctsInd hδinv hd (PairedWeighting.const δ))
 
 lemma gateCoeff_paired (f : DeferralFunction) (a degree : ℕ) {δ C : ℚ}
-    (hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ))
+    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ))
     (hB : AffineCombination.PolySequence Bs)
     (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
@@ -2101,8 +2136,7 @@ lemma fibre_price_eventually_small
       |(Bs (Nat.pair m k)).price P m| < 2 * (δ : ℝ) := by
   have hCR : (0 : ℝ) < (C : ℝ) := by exact_mod_cast hC
   have hδR : (0 : ℝ) < (δ : ℝ) := by exact_mod_cast hδ
-  have hδinv : PolyRatCodes (fun _ : ℕ ↦ 1 / δ) :=
-    ⟨_, PolyFueled.const (Encodable.encode (1 / δ))⟩
+  have hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ) := DigitRatCodes.const (1 / δ)
   have hnorm : (0 : ℝ) < ((1 / (2 * C) : ℚ) : ℝ) := by
     have : (0 : ℚ) < 1 / (2 * C) := by positivity
     exact_mod_cast this
@@ -2417,7 +2451,7 @@ def LUV.crossPrecisionAffine (X : ℕ → LUV) (low high : ℕ → ℕ)
 
 noncomputable def LUV.crossPrecisionAffine_polySequence
     (X : ℕ → LUV) (low high : ℕ → ℕ)
-    (hX : LUV.RpnThresholdCodeSeq X)
+    (hX : LUV.BigThresholdCodeSeq X)
     (hlow : ∃ c, PolyFueled c low) (hhigh : ∃ c, PolyFueled c high) :
     AffineCombination.PolySequence (LUV.crossPrecisionAffine X low high) := by
   let clow := Classical.choose hlow
@@ -2450,38 +2484,40 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
       Nat.pair z.unpair.1 (Nat.pair (high z.unpair.1)
         (z.unpair.2 - low z.unpair.1))) :=
     hn.pair (hhi.pair hoffset')
-  have hInvLow : RpnSpliceStream (fun z ↦
+  have hInvLow : BigSpliceStream (fun z ↦
       (EF.const (1 / (low z.unpair.1 : ℚ))).serialize) :=
-    RpnSpliceStream.serialize_const_comp
+    BigSpliceStream.serialize_const_comp
       ⟨cinv.comp (clow.comp Nat.Partrec.Code.left),
         hinv.comp (hlow.comp PolyFueled.left)⟩
-  have hInvHighNeg : RpnSpliceStream (fun z ↦
+  have hInvHighNeg : BigSpliceStream (fun z ↦
       (EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    have hinvHigh : RpnSpliceStream (fun z ↦
+    have hinvHigh : BigSpliceStream (fun z ↦
         (EF.const (1 / (high z.unpair.1 : ℚ))).serialize) :=
-      RpnSpliceStream.serialize_const_comp
+      BigSpliceStream.serialize_const_comp
         ⟨cinv.comp (chigh.comp Nat.Partrec.Code.left),
           hinv.comp (hhigh.comp PolyFueled.left)⟩
-    exact RpnSpliceStream.serialize_mul (RpnSpliceStream.serialize_const (-1)) hinvHigh
-  have hcoeff : RpnSpliceStream (fun z ↦
+    exact BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) hinvHigh
+  have hcoeff : BigSpliceStream (fun z ↦
       (if z.unpair.2 < low z.unpair.1 then
         EF.const (1 / (low z.unpair.1 : ℚ))
       else EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    refine RpnSpliceStream.of_eq
-      (RpnSpliceStream.ifZero hInvLow hInvHighNeg htest') ?_
+    refine BigSpliceStream.of_eq
+      (BigSpliceStream.ifZero hInvLow hInvHighNeg htest') ?_
     intro z
     by_cases hlt : z.unpair.2 < low z.unpair.1
     · rw [if_pos hlt, if_pos (by omega)]
     · rw [if_neg hlt, if_neg (by omega)]
-  have hsentence : RpnSentenceCodes (fun z ↦
+  have hsentence : BigSentenceCodes (fun z ↦
       if z.unpair.2 < low z.unpair.1 then
         (X z.unpair.1).gt ((z.unpair.2 : ℚ) / (low z.unpair.1 : ℚ))
       else (X z.unpair.1).gt
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))) := by
-    refine (RpnSentenceCodes.ifZero (hX.comp hqueryLow) (hX.comp hqueryHigh)
+    refine (BigSentenceCodes.ifZero
+      (hX.comp hqueryLow)
+      (hX.comp hqueryHigh)
       htest').of_eq (fun z ↦ ?_)
     simp only [Nat.unpair_pair]
     by_cases hlt : z.unpair.2 < low z.unpair.1
@@ -2501,7 +2537,7 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))
     termCount_poly := ⟨cadd.comp (clow.pair chigh), hcount'⟩
-    const_poly := RpnSpliceStream.serialize_const 0
+    const_poly := BigSpliceStream.serialize_const 0
     coefficient_poly := hcoeff
     sentence_poly := hsentence
     terms_eq := by
@@ -2633,12 +2669,12 @@ lemma crossPrecision_deferred_tendsto_zero
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.BigThresholdCodeSeq X)
     (hvalued : ∀ k (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X k) x)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
     Tendsto (fun n ↦ (X n).expectApprox (P (f n)) (n + 1) -
       (X n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
-  have hX' : LUV.RpnThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
+  have hX' : LUV.BigThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
     hX.reindex ⟨_, PolyFueled.right⟩
   have hB : AffineCombination.PolySequence (crossPrecisionBlocks X) :=
     LUV.crossPrecisionAffine_polySequence (fun z ↦ X z.unpair.2)
@@ -2717,8 +2753,8 @@ noncomputable def LUV.expectDifferenceAffine_polySequence
     (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
     (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (LUV.expectDifferenceAffine X Y) :=
-  (LUV.expectAffineSeq_polySequence X hX).add
-    (LUV.expectAffineSeq_polySequence Y hY).neg
+  (LUV.expectAffineSeq_polySequence X hX.toBig).add
+    (LUV.expectAffineSeq_polySequence Y hY.toBig).neg
 
 lemma LUV.expectDifferenceAffine_priceAt
     (X Y : ℕ → LUV) (P : History) (n m : ℕ) :
@@ -2751,8 +2787,8 @@ noncomputable def featureConstantAffine_polySequence
   sentence := fun _ ↦ ⊥
   termCount_poly := ⟨Nat.Partrec.Code.const 0, PolyFueled.const 0⟩
   const_poly := hH.polySeg
-  coefficient_poly := RpnSpliceStream.serialize_const 0
-  sentence_poly := RpnSentenceCodes.ofPolySentenceCodes
+  coefficient_poly := BigSpliceStream.serialize_const 0
+  sentence_poly := BigSentenceCodes.ofPolySentenceCodes
     ⟨Nat.Partrec.Code.const (Encodable.encode (⊥ : Sentence)), PolyFueled.const _⟩
   terms_eq := by intro n; simp [featureConstantAffine]
   const_rank := hH.rank_le
@@ -2760,22 +2796,22 @@ noncomputable def featureConstantAffine_polySequence
   const_closed := hH.closed
   coefficient_closed := by intro z ρ V; simp [EF.denoteWith]
 
-@[simp] theorem featureConstantAffine_value
+@[simp] lemma featureConstantAffine_value
     (H : ℕ → EF) (P : History) (v : Valuation) (n : ℕ) :
     (featureConstantAffine H n).value P v = (H n).denote P := by
   simp [featureConstantAffine, AffineCombination.value]
 
-@[simp] theorem featureConstantAffine_price
+@[simp] lemma featureConstantAffine_price
     (H : ℕ → EF) (P : History) (n m : ℕ) :
     (featureConstantAffine H n).price P m = (H n).denote P := by
   simp [AffineCombination.price]
 
-@[simp] theorem AffineCombination.sentenceAffine_value
+@[simp] lemma AffineCombination.sentenceAffine_value
     (φ : ℕ → Sentence) (P : History) (v : Valuation) (n : ℕ) :
     (AffineCombination.sentenceAffine φ n).value P v = v (φ n) := by
   simp [AffineCombination.sentenceAffine, AffineCombination.value]
 
-@[simp] theorem featureConstantAffine_magnitude
+@[simp] lemma featureConstantAffine_magnitude
     (H : ℕ → EF) (P : History) (n : ℕ) :
     (featureConstantAffine H n).magnitude P = 0 := by
   simp [featureConstantAffine, AffineCombination.magnitude]
@@ -2829,7 +2865,7 @@ lemma pairedExpectationBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
 /-- The paired mesh family is emitted uniformly from the varying threshold presentation:
 the evaluation day fixes the precision and the source index selects the LUV. -/
 noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.BigThresholdCodeSeq X) :
     AffineCombination.PolySequence (pairedExpectationBlocks X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
@@ -2845,8 +2881,8 @@ noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
       (X w.unpair.1.unpair.2).gt ((w.unpair.2 : ℚ) /
         ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
     termCount_poly := ⟨_, PolyFueled.left.succ_comp⟩
-    const_poly := RpnSpliceStream.serialize_const 0
-    coefficient_poly := RpnSpliceStream.serialize_const_comp
+    const_poly := BigSpliceStream.serialize_const 0
+    coefficient_poly := BigSpliceStream.serialize_const_comp
       ⟨_, hinv.comp hm.succ_comp⟩
     sentence_poly := hsentence.of_eq (fun w ↦ by simp)
     terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
@@ -2869,7 +2905,7 @@ lemma pairedExpectationFeature_denote (X : ℕ → LUV) (P : History) (m k : ℕ
   simp [pairedExpectationBlocks_price, LUV.expect]
 
 lemma pairedExpectationFeature_paired (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.BigThresholdCodeSeq X) :
     PairedWeighting (pairedExpectationFeature X) := by
   let hmesh := pairedExpectationBlocks_polySequence X hX
   exact {
@@ -2891,9 +2927,9 @@ lemma pairedPriceFeature_denote (φ : ℕ → Sentence) (P : History) (m k : ℕ
     (pairedPriceFeature φ (Nat.pair m k)).denote P = P m (φ k) := by
   simp [pairedPriceFeature]
 
-lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) :
+lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     PairedWeighting (pairedPriceFeature φ) where
-  polySeg := (RpnSpliceStream.serialize_price hφ PolyFueled.right
+  polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.right
     PolyFueled.left).of_eq (fun z ↦ by simp [pairedPriceFeature])
   rank_le := by intro z; simp [pairedPriceFeature]
   closed := by intro z ρ V; simp [pairedPriceFeature]
@@ -2952,7 +2988,7 @@ noncomputable def numericQuoteBlocks_polySequence
     (hY : LUV.RpnThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteBlocks H Y) :=
   (featureConstantAffine_polySequence H hH.toPGenerable).add
-    (pairedExpectationBlocks_polySequence Y hY).neg
+    (pairedExpectationBlocks_polySequence Y hY.toBig).neg
 
 /-- **Deferred numeric quote without injectivity.**  If every completed world assigns the
 paired target `H ⟨f k, k⟩` to the quote LUV `Y k`, then the deferred market reading of
@@ -3041,7 +3077,7 @@ lemma conditional_deferred_tendsto_zero
     (PairedWeighting.const (-1)).mul (PairedWeighting.ofPGenerableFst hW)
   have htargetP :
       PairedWeighting (fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)) :=
-    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX)
+    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX.toBig)
   set Wneg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (W z.unpair.1) with hWnegDef
   set target : ℕ → EF := fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)
     with htargetDef
@@ -3050,8 +3086,8 @@ lemma conditional_deferred_tendsto_zero
       ((pairedExpectationBlocks X z).scale (Wneg z))).add
       (numericQuoteBlocks target Z' z) with hBsDef
   have hB : AffineCombination.PolySequence Bs :=
-    ((pairedExpectationBlocks_polySequence Z hZ).add
-      ((pairedExpectationBlocks_polySequence X hX).scaleFeature Wneg
+    ((pairedExpectationBlocks_polySequence Z hZ.toBig).add
+      ((pairedExpectationBlocks_polySequence X hX.toBig).scaleFeature Wneg
         hWnegP.toPGenerable)).add
       (numericQuoteBlocks_polySequence target htargetP Z' hZ')
   -- denotations of the two derived features
@@ -3232,14 +3268,14 @@ lemma selfTrust_deferred_tendsto_zero
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (p : ℕ → ℚ) (hp : ∀ m, 0 ≤ p m ∧ p m ≤ 1)
     (pF : ℕ → EF) (hpF : PairedWeighting pF)
     (hpFmem : ∀ z, 0 ≤ (pF z).denote P ∧ (pF z).denote P ≤ 1)
     (hpDenote : ∀ m k, k ≤ m → (pF (Nat.pair m k)).denote P = (p k : ℝ))
     (G : ℕ → EF) (hG : PairedWeighting G)
     (hGmem : ∀ z, 0 ≤ (G z).denote P ∧ (G z).denote P ≤ 1)
-    (A B : ℕ → LUV) (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
+    (A B : ℕ → LUV) (hA : LUV.BigThresholdCodeSeq A) (hB : LUV.BigThresholdCodeSeq B)
     (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
       v.ValuesAt (B k) ((G (Nat.pair m k)).denote P) ∧
         v.ValuesAt (A k) (v.payout (φ k) * (G (Nat.pair m k)).denote P))
@@ -3254,7 +3290,7 @@ lemma selfTrust_deferred_tendsto_zero
   have hpNeg : PairedWeighting pNeg := (PairedWeighting.const (-1)).mul hpF
   have hGNeg : PairedWeighting GNeg := (PairedWeighting.const (-1)).mul hG
   have hpG : PairedWeighting pG := hpF.mul hG
-  have hφ' : RpnSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
+  have hφ' : BigSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
   set Bs : ℕ → AffineCombination := fun z ↦
     ((((pairedExpectationBlocks A z).add
         ((pairedExpectationBlocks B z).scale (pNeg z))).add
@@ -3450,13 +3486,13 @@ concrete one-share portfolios; the outward sum is normalized by `1/2`. -/
 noncomputable def introspectionIntervalQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : PolyRatCodes δ) (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -3518,13 +3554,12 @@ noncomputable def introspectionIntervalQuoteOfCode
     lower_generated := hlower
     upper_feature := upperFeature
     upper_generated := hupper
-    width_codes := hδ
     inverse_width_codes := hδinv
     width_pos := hδpos
     width_tendsto_zero := hδzero
     probability_bounds := hab
     quote := q.sentence
-    quote_codes := RpnSentenceCodes.ofPolySentenceCodes q.sentence_poly
+    quote_codes := BigSentenceCodes.ofPolySentenceCodes q.sentence_poly
     reflected := by
       intro n v hv
       exact q.reflected Q n v hv
@@ -3585,15 +3620,13 @@ structure ParameterizedDiagonalQuoteCode
   represents_fixedpoint : ∀ (z : ℕ), (parameterizedFixedpoint body).Evalb ![z] ↔ truth z
 
 /-- The genuine parameterized fixed point carried by a diagonal quote satisfies FFL's
-uniform diagonal law inside the presented arithmetic theory: a genuine self-referential
+uniform diagonal law inside the ambient arithmetic theory: a genuine self-referential
 arithmetic sentence, not a stipulated relation, backs the quoted decision. -/
 lemma ParameterizedDiagonalQuoteCode.diagonal_law
-    {DP : DeductiveProcess} {T : ArithmeticTheory} {truth : ℕ → Prop}
-    (Q : QuotationTheoryPresentation DP T)
+    {T : ArithmeticTheory} [𝗜𝚺₁ ⪯ T] {truth : ℕ → Prop}
     (q : ParameterizedDiagonalQuoteCode T truth) :
     T ⊢ ∀⁰ (parameterizedFixedpoint q.body 🡘
       q.body/[⌜parameterizedFixedpoint q.body⌝, #0]) := by
-  letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
   simpa using parameterized_diagonal₁ (T := T) q.body
 
 /-! ## A public diagonal atom derived from the computable market -/
@@ -3627,7 +3660,7 @@ lemma diagonalPriceDecisionPart_partrec
   have hpayload : Primrec fun z : Nat.Partrec.Code × ℕ =>
       quotationClaimCode universalQuotePos universalQuoteNeg
         (Nat.pair (Encodable.encode z.1) z.2) :=
-    Primrec₂.natPair.comp (Primrec.const 4)
+    Primrec₂.natPair.comp (Primrec.const 2)
       (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuotePos))
         (Primrec₂.natPair.comp (Primrec.const (Encodable.encode universalQuoteNeg))
           hselector))
@@ -3798,15 +3831,15 @@ parameterized fixed point.  No caller-supplied truth relation occurs in this con
 Paper node: `thm:lp` -/
 noncomputable def parameterizedDiagonalQuoteCodeOfMarket
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) :
+    [𝗥₀ ⪯ T] (p : ℚ) :
     ParameterizedDiagonalQuoteCode T (diagonalPriceTruth market p) where
   toBooleanQuoteCode := {
     code := Encodable.encode (diagonalPriceDecisionCode market p)
     pos_complete := fun n hn =>
-      (re_complete universalQuotePos_re).mp <| by
+      universalQuotePos_prov T <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuotePos_iff market p n).mpr hn
     neg_complete := fun n hn =>
-      (re_complete universalQuoteNeg_re).mp <| by
+      universalQuoteNeg_prov T <| by
         simpa [Nat.unpair_pair] using (diagonalPriceQuoteNeg_iff market p n).mpr hn
   }
   body := diagonalPriceBody market p
@@ -3814,7 +3847,7 @@ noncomputable def parameterizedDiagonalQuoteCodeOfMarket
 
 lemma parameterizedDiagonalQuoteCodeOfMarket_sentence
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     (parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n =
       quoteAtom
         (Nat.pair (Encodable.encode (diagonalPriceDecisionCode market p)) n) :=
@@ -3826,7 +3859,7 @@ arithmetic fixed point and the public atom, derived here rather than assumed.
 Paper node: `thm:lp` -/
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     ((parameterizedFixedpoint
           (parameterizedDiagonalQuoteCodeOfMarket market T p).body).Evalb ![n]) ↔
       P n
@@ -3846,7 +3879,7 @@ lemma parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint
 
 lemma parameterizedDiagonalQuoteCodeOfMarket_public_price_iff
     {P : History} (market : MarketComputation P) (T : ArithmeticTheory)
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (p : ℚ) (n : ℕ) :
+    [𝗥₀ ⪯ T] (p : ℚ) (n : ℕ) :
     diagonalPriceTruth market p n ↔
       P n
         ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n) <
@@ -3868,24 +3901,22 @@ lemma parameterizedDiagonalQuoteCodeOfMarket_public_price_iff
 its decision code, and its FFL fixed point are all built internally, so there is no
 caller-supplied self-reference premise. -/
 noncomputable def paradoxResistanceQuoteOfDiagonal
-    {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [T.SoundOnHierarchy 𝚺 1] (Q : QuotationTheoryPresentation DP T)
+    {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory} [𝗜𝚺₁ ⪯ T]
+    (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
-    (hwidth : PolyRatCodes width)
-    (hwidthInv : PolyRatCodes (fun n ↦ 1 / width n))
+    (hwidthInv : DigitRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     ParadoxResistanceQuote P DP p := by
-  letI : 𝗜𝚺₁ ⪯ T := Q.theory_sigmaOne
   let q := parameterizedDiagonalQuoteCodeOfMarket market T p
   let quote := q.toBooleanQuoteCode
   let price : ℕ → EF := currentPriceFeature quote.sentence
   let pFeature : ℕ → EF := AffineCombination.constantRatFeature p
   let lower : ℕ → EF := ctsIndFeature width pFeature price
   let upper : ℕ → EF := ctsIndFeature width price pFeature
-  have hquote : RpnSentenceCodes quote.sentence :=
-    RpnSentenceCodes.ofPolySentenceCodes quote.sentence_poly
+  have hquote : BigSentenceCodes quote.sentence :=
+    BigSentenceCodes.ofPolySentenceCodes quote.sentence_poly
   have hprice : PGenerableWeighting price :=
     currentPriceFeature_generated quote.sentence hquote
   have hpFeature : PGenerableWeighting pFeature :=
@@ -3913,7 +3944,6 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     sentence := quote.sentence
     sentence_codes := hquote
     width := width
-    width_codes := hwidth
     width_pos := hwidthPos
     width_tendsto_zero := hwidthZero
     diagonal_reflected := by
@@ -4123,7 +4153,7 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
       atTop (𝓝 0) := by
     have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
       (DeferralFibre.pairedExpectationFeature X)
-      (DeferralFibre.pairedExpectationFeature_paired X hX) hHmem Y hY
+      (DeferralFibre.pairedExpectationFeature_paired X hX.toBig) hHmem Y hY
       (fun m k hfk v hv ↦ by
         rw [DeferralFibre.pairedExpectationFeature_denote, ← hfk]
         exact reflected k v hv) hP
@@ -4131,9 +4161,9 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
     rw [DeferralFibre.pairedExpectationFeature_denote]
     rfl
   have hcrossX0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    X hX source_valued hP
+    X hX.toBig source_valued hP
   have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY quote_valued hP
+    Y hY.toBig quote_valued hP
   let raw := LUV.expectDifferenceAffine X Y
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4191,7 +4221,7 @@ noncomputable def futurePriceQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     [IsLogicalInductor P DP]
@@ -4227,13 +4257,13 @@ noncomputable def futurePriceQuoteOfRepresentation
     rw [DeferralFibre.pairedPriceFeature_denote]
     rfl
   have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY quote_valued hP
+    Y hY.toBig quote_valued hP
   let sentenceFamily := AffineCombination.sentenceAffine φ
   let quoteFamily := LUV.expectAffineSeq Y
   let raw : ℕ → AffineCombination := fun n ↦
     (sentenceFamily n).add (quoteFamily n).neg
   let hsentence := AffineCombination.sentenceAffine_polySequence φ hφ
-  let hquote := LUV.expectAffineSeq_polySequence Y hY
+  let hquote := LUV.expectAffineSeq_polySequence Y hY.toBig
   let hraw := hsentence.add hquote.neg
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4348,9 +4378,9 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
   have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f hspec
     X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem slack slack_tendsto hsemantic hP
   have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z hZ Zvalued hP
+    Z hZ.toBig Zvalued hP
   have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z' hZ' Z'valued hP
+    Z' hZ'.toBig Z'valued hP
   let raw := LUV.expectDifferenceAffine Z Z'
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -4429,11 +4459,11 @@ noncomputable def selfTrustQuoteOfRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (hδinv : PolyRatCodes (fun n ↦ 1 / δ n))
+    (hφ : BigSentenceCodes φ)
+    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A)
-    (hB : LUV.RpnThresholdCodeSeq B)
+    (hA : LUV.BigThresholdCodeSeq A)
+    (hB : LUV.BigThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
@@ -4453,8 +4483,8 @@ noncomputable def selfTrustQuoteOfRepresentation
     simpa [a, degree, PrefixPatchCompile.ecClock] using
       Classical.choose_spec (Classical.choose_spec f.fueled)
   let δp : ℕ → ℚ := fun z ↦ δ (min z.unpair.2 z.unpair.1)
-  have hδpInv : PolyRatCodes (fun z ↦ 1 / δp z) :=
-    hδinv.reindex PairedWeighting.clampedSource_polyFueled
+  have hδpInv : DigitRatCodes (fun z ↦ 1 / δp z) :=
+    hδinv.comp (Classical.choose_spec PairedWeighting.clampedSource_polyFueled)
   have hδpPos : ∀ z, 0 < δp z := fun z ↦ delta_pos _
   let pF : ℕ → EF := fun z ↦ pFeature (min z.unpair.2 z.unpair.1)
   have hpF : PairedWeighting pF :=
@@ -4536,8 +4566,8 @@ noncomputable def selfTrustQuoteOfRepresentation
   let hpOrig : PGenerableWeighting pOrig := hp.toWeighting
   let pNeg : ℕ → EF := fun n ↦ EF.mul (EF.const (-1)) (pOrig n)
   have hpNeg : PGenerableWeighting pNeg := {
-    polySeg := RpnSpliceStream.serialize_mul
-      (RpnSpliceStream.serialize_const (-1))
+    polySeg := BigSpliceStream.serialize_mul
+      (BigSpliceStream.serialize_const (-1))
       hpOrig.polySeg
     rank_le := by intro n; simp [pNeg, EF.rank, hpOrig.rank_le n]
     closed := by intro n ρ V; simp [pNeg, EF.denoteWith, hpOrig.closed n ρ V]
@@ -4554,7 +4584,6 @@ noncomputable def selfTrustQuoteOfRepresentation
     delta_pos := delta_pos
     probability_mem := probability_mem
     sentence_codes := hφ
-    delta_codes := hδ
     probability_generable := ⟨pFeature, hp⟩
     product_codes := hA
     confidence_codes := hB
@@ -4663,7 +4692,7 @@ theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -4709,10 +4738,10 @@ theorem lic_self_trust_ofRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
+    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A)
-    (hB : LUV.RpnThresholdCodeSeq B)
+    (hA : LUV.BigThresholdCodeSeq A)
+    (hB : LUV.BigThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
@@ -4725,7 +4754,7 @@ theorem lic_self_trust_ofRepresentation
       fun n ↦ (p n : ℝ) * (B n).expect P n :=
   lic_self_trust P DP f φ δ p A B hworld
     (selfTrustQuoteOfRepresentation f φ δ p A B delta_pos
-      probability_mem hφ hδ (hδ.inv_of_pos delta_pos) pFeature hp hA hB
+      probability_mem hφ (hδ.inv_of_pos delta_pos) pFeature hp hA hB
       confidence_reflected product_reflected hworld)
 
 /-! ## Direct same-day consumers -/
@@ -4736,7 +4765,7 @@ theorem lic_expectations_of_probabilities_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -4768,13 +4797,13 @@ theorem lic_introspection_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : PolyRatCodes δ)
+    (hδ : DigitRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -4794,7 +4823,7 @@ theorem lic_introspection_ofCode
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   let package := introspectionIntervalQuoteOfCode Q φ hφ a b δ
-    lowerFeature hlower upperFeature hupper hδ (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
+    lowerFeature hlower upperFeature hupper (hδ.inv_of_pos hδpos) hδpos hδzero hab q hP
   exact lic_introspection P DP φ a b δ package hworld
 
 /-- Paper-facing `thm:lp` entry point.  Its genuine parameterized fixed point and public
@@ -4802,19 +4831,19 @@ diagonal atom are constructed from `market`; no semantic diagonal premise is acc
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T] [𝗜𝚺₁ ⪯ T]
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     (market : MarketComputation P)
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
+    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n
       ((parameterizedDiagonalQuoteCodeOfMarket market T p).toBooleanQuoteCode.sentence n)) ≈ₙ
       fun _ => (p : ℝ) := by
-  let package := paradoxResistanceQuoteOfDiagonal Q market p width hwidth
+  let package := paradoxResistanceQuoteOfDiagonal Q market p width
     (hwidth.inv_of_pos hwidthPos) hwidthPos hwidthZero
   exact lic_paradox_resistance P DP p hp0 hp1 package hworld
 
@@ -4822,20 +4851,20 @@ theorem lic_paradox_resistance_ofDiagonal
 
 /-- A concrete FFL-backed Boolean quote whose represented predicate is always true. -/
 noncomputable def trueBooleanQuoteCode
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [𝗥₀ ⪯ T] :
     BooleanQuoteCode T (fun _ ↦ True) :=
   BooleanQuoteCode.ofComputable (ComputablePred.const True)
 
 /-- A concrete FFL-backed Boolean quote whose represented predicate is always false. -/
 noncomputable def falseBooleanQuoteCode
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [𝗥₀ ⪯ T] :
     BooleanQuoteCode T (fun _ ↦ False) :=
   BooleanQuoteCode.ofComputable (ComputablePred.const False)
 
 /-- `N+`: the positive arithmetic quotation schema reaches the public process. -/
 lemma quotationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (trueBooleanQuoteCode T).sentence n ∈ DP.D k := by
   let q := trueBooleanQuoteCode T
@@ -4845,7 +4874,7 @@ lemma quotationRepresentation_positive_path
 literal, exercising the separate negative quotation path. -/
 lemma quotationRepresentation_negative_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
-    [𝗥₀ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+    [𝗥₀ ⪯ T]
     (Q : QuotationTheoryPresentation DP T) (n : ℕ) :
     ∃ k, (∼(falseBooleanQuoteCode T).sentence n) ∈ DP.D k := by
   let q := falseBooleanQuoteCode T

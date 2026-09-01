@@ -24,7 +24,7 @@ unconditional certified-LUV endpoints.
 
 namespace LogicalInduction
 
-open LO.FirstOrder LO.FirstOrder.Arithmetic
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 
 namespace ComputableLUV
 
@@ -36,26 +36,30 @@ noncomputable def luvEventAtom (e : ℕ) : Sentence :=
   if e.unpair.1 = 0 then LO.Propositional.Formula.atom e.unpair.2
   else ∼ LO.Propositional.Formula.atom e.unpair.2
 
-/-- The `Θ`-provability obligation a threshold event fires on. -/
-def luvEventFires (e : ℕ) : Prop :=
-  (e.unpair.1 = 0 ∧ T ⊢ L.thresholdSchema/[↑e.unpair.2]) ∨
-    (e.unpair.1 = 1 ∧ T ⊢ L.thresholdFailureSchema/[↑e.unpair.2])
+/-- The `Θ`-provability obligation a threshold event fires on.  Tag `1` is the **literal
+negation of the same sentence** tag `0` fires on, not a separate complementary schema; that
+is what makes the two mutually exclusive under consistency alone. -/
+def luvEventFires [RepresentsComputations T] (e : ℕ) : Prop :=
+  (e.unpair.1 = 0 ∧ T ⊢ (L.thresholdSchema T)/[↑e.unpair.2]) ∨
+    (e.unpair.1 = 1 ∧ T ⊢ ∼((L.thresholdSchema T)/[↑e.unpair.2]))
 
-lemma luvEventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma luvEventFires_re [T.Δ₁] [RepresentsComputations T] :
     REPred (L.luvEventFires T) := by
   have htag : ∀ k : ℕ, REPred (fun e : ℕ => e.unpair.1 = k) := by
     intro k
     exact ComputablePred.to_re
       (Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const k)).computablePred
-  have hpos : REPred (fun e : ℕ => T ⊢ L.thresholdSchema/[↑e.unpair.2]) :=
-    REPred.comp (Primrec.snd.comp Primrec.unpair).to_comp (provable_instances_re T L.thresholdSchema)
-  have hneg : REPred (fun e : ℕ => T ⊢ L.thresholdFailureSchema/[↑e.unpair.2]) :=
+  have hpos : REPred (fun e : ℕ => T ⊢ (L.thresholdSchema T)/[↑e.unpair.2]) :=
     REPred.comp (Primrec.snd.comp Primrec.unpair).to_comp
-      (provable_instances_re T L.thresholdFailureSchema)
+      (provable_instances_re T (L.thresholdSchema T))
+  have hneg : REPred (fun e : ℕ => T ⊢ ∼((L.thresholdSchema T)/[↑e.unpair.2])) := by
+    have h := REPred.comp (Primrec.snd.comp Primrec.unpair).to_comp
+      (provable_instances_re T (∼(L.thresholdSchema T)))
+    simpa only [LogicalConnective.HomClass.map_neg] using h
   exact ((htag 0).and hpos).or ((htag 1).and hneg)
 
 /-- A partial-recursive semi-decider for `luvEventFires`. -/
-lemma exists_luvEventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_luvEventCode [T.Δ₁] [RepresentsComputations T] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ L.luvEventFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (L.luvEventFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -66,12 +70,12 @@ lemma exists_luvEventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺
 
 open Classical in
 /-- Fuel-`k` dovetailer of the fired threshold atoms. -/
-noncomputable def luvStage [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (k : ℕ) : Finset Sentence :=
+noncomputable def luvStage [T.Δ₁] [RepresentsComputations T] (k : ℕ) : Finset Sentence :=
   ((Finset.range (k + 1)).filter
       (fun e => (Nat.Partrec.Code.evaln k (L.exists_luvEventCode T).choose e).isSome = true)).image
     (luvEventAtom)
 
-lemma luvStage_mono [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (k : ℕ) :
+lemma luvStage_mono [T.Δ₁] [RepresentsComputations T] (k : ℕ) :
     L.luvStage T k ⊆ L.luvStage T (k + 1) := by
   classical
   intro φ hφ
@@ -80,12 +84,13 @@ lemma luvStage_mono [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (k
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
 /-- The concrete deductive process enumerating the `Θ`-provable LUV threshold literals. -/
-noncomputable def luvThresholdDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess where
+noncomputable def luvThresholdDP [T.Δ₁] [RepresentsComputations T] :
+    DeductiveProcess where
   D := L.luvStage T
   mono := L.luvStage_mono T
 
 /-- Coverage: every fired threshold event's atom eventually appears. -/
-lemma luvThresholdDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma luvThresholdDP_covers [T.Δ₁] [RepresentsComputations T]
     {e : ℕ} (he : L.luvEventFires T e) :
     ∃ k, luvEventAtom e ∈ (L.luvThresholdDP T).D k := by
   classical
@@ -100,12 +105,21 @@ lemma luvThresholdDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
 
 /-! ## Non-vacuity: the standard-truth world is consistent with every stage -/
 
-/-- The world believing each threshold atom exactly at its true value (`ThresholdPred`).  Its
-negation/positive fibers are pinned by `Θ`'s decidable-threshold soundness. -/
-noncomputable def luvWorld : PCWorld := fun m => L.ThresholdPred m
+/-- The world believing each threshold atom exactly when `Θ` *proves* it.  No appeal to
+standard truth: the two event tags publish complementary literals over one sentence, so
+consistency of `Θ` alone keeps this world consistent with every stage.
 
-lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (k : ℕ) : (L.luvWorld).ConsistentWith ((L.luvThresholdDP T).D k) := by
+The standard-truth world, which the scheduled-reveal process of `LUVExpectationCertified`
+still uses, is `truthWorld`. -/
+noncomputable def luvWorld [RepresentsComputations T] : PCWorld :=
+  fun m => T ⊢ (L.thresholdSchema T)/[‘↑m’]
+
+/-- The world believing each threshold atom exactly at its true value (`ThresholdPred`). -/
+noncomputable def truthWorld : PCWorld := fun m => L.ThresholdPred m
+
+lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
+    [Entailment.Consistent T]
+    (k : ℕ) : (L.luvWorld T).ConsistentWith ((L.luvThresholdDP T).D k) := by
   classical
   intro φ hφ
   simp only [luvThresholdDP, luvStage, Finset.mem_image, Finset.mem_filter, Finset.mem_range] at hφ
@@ -116,29 +130,32 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.Sound
       exact Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩
     exact ((L.exists_luvEventCode T).choose_spec e).mp hdom
   rcases hfires with ⟨htag, hprov⟩ | ⟨htag, hprov⟩
-  · -- positive literal: the atom holds because Θ proves the threshold, so it is true
+  · -- positive literal: the world believes exactly what `Θ` proves
     simp only [luvEventAtom, htag, if_pos, holds_atom]
-    show (L.luvWorld) e.unpair.2
-    exact (re_complete L.thresholdPred_re).mpr hprov
-  · -- refutation literal: the negated atom holds because Θ proves the failure schema
+    exact hprov
+  · -- refutation literal: `Θ` cannot also prove the positive one, by consistency
     simp only [luvEventAtom, htag, if_neg (_root_.one_ne_zero), holds_not, holds_atom]
-    show ¬ (L.luvWorld) e.unpair.2
-    exact (re_complete L.thresholdPred_compl_re).mpr hprov
+    intro hpos
+    have hpos' : T ⊢ ((L.thresholdSchema T)/[↑e.unpair.2] : ArithmeticSentence) := hpos
+    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+      (by cl_prover [hpos', hprov])
 
-lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
-    (L.luvWorld).ConsistentWithTheory (L.luvThresholdDP T) :=
+lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
+    [Entailment.Consistent T] :
+    (L.luvWorld T).ConsistentWithTheory (L.luvThresholdDP T) :=
   fun k => L.luvWorld_consistent T k
 
 /-- **`hworld` non-vacuity.** Every stage of the constructed process has a consistent world. -/
-lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
+    [Entailment.Consistent T]
     (n : ℕ) : ∃ v : PCWorld, v.ConsistentWith ((L.luvThresholdDP T).D n) :=
-  ⟨L.luvWorld, L.luvWorld_consistent T n⟩
+  ⟨L.luvWorld T, L.luvWorld_consistent T n⟩
 
 /-! ## The presentation is satisfiable -/
 
 /-- **F7 non-vacuity payoff.**  The `ArithmeticLUVPresentation` premise of `LUVPresentation.lean`
 is *satisfiable*: the constructed process reveals exactly the `Θ`-provable threshold literals. -/
-noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T] :
     ArithmeticLUVPresentation L (L.luvThresholdDP T) T where
   threshold_enters i r hprov := by
     have he : L.luvEventFires T (Nat.pair 0 (thresholdCode i r)) :=
@@ -175,7 +192,7 @@ lemma luvEventAtom_prim : Primrec (fun e : ℕ => luvEventAtom e) := by
   · simp [luvEventAtom, h, encode_atom]
   · simp [luvEventAtom, h, encode_negAtom]
 
-lemma luvStage_eq_toFinset [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma luvStage_eq_toFinset [T.Δ₁] [RepresentsComputations T]
     (c : Nat.Partrec.Code) (k : ℕ) :
     ((Finset.range (k + 1)).filter
         (fun e => (Nat.Partrec.Code.evaln k c e).isSome = true)).image luvEventAtom =
@@ -195,7 +212,7 @@ lemma luvStage_eq_toFinset [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
       exact ⟨e, ⟨he, hs⟩, Option.some_inj.mp hcond⟩
     · rw [if_neg hs] at hcond; exact absurd hcond (by simp)
 
-lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma luvStage_encode_prim [T.Δ₁] [RepresentsComputations T] :
     Primrec (fun k => Encodable.encode (L.luvStage T k)) := by
   set c := (L.exists_luvEventCode T).choose with hc
   have hevaln : Primrec (fun p : ℕ × ℕ => (Nat.Partrec.Code.evaln p.1 c p.2).isSome) :=
@@ -230,7 +247,7 @@ lemma luvStage_encode_prim [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
 
 /-- **The scheduled provability process is computable.**  One fixed partial-recursive program
 emits the encoded stage `D k` on input `k`. -/
-lemma luvThresholdDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma luvThresholdDP_computable [T.Δ₁] [RepresentsComputations T] :
     ComputableDeductiveProcess (L.luvThresholdDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (L.luvStage_encode_prim T)))

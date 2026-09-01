@@ -1331,9 +1331,6 @@ noncomputable def universalPrefixPresentation :
   sentence := prefixSentenceEnum
   sentence_codes := prefixSentenceEnum_polySentenceCodes
   approximation := fun n i => uSel (Nat.pair n i)
-  approximation_codes := by
-    obtain ⟨c, hc⟩ := uSel_polyRatCodes
-    exact ⟨c, hc.of_eq (fun z => by simp only [Nat.pair_unpair])⟩
   approximation_nonneg := fun n i => uSel_nonneg _
   approximation_le := fun n i => by
     have := uSel_le (Nat.pair n i)

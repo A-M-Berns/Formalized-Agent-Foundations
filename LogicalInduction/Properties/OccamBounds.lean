@@ -12,6 +12,7 @@ one constant), plus `lic_limitingBelief_add_neg` (`thm:lc`), which the upper hal
 -/
 import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
@@ -37,8 +38,6 @@ structure PrefixMachinePresentation (κ : Sentence → ℕ) where
   sentence : ℕ → Sentence
   sentence_codes : PolySentenceCodes sentence
   approximation : ℕ → ℕ → ℚ
-  approximation_codes : PolyRatCodes
-    (fun z ↦ approximation z.unpair.1 z.unpair.2)
   approximation_nonneg : ∀ n i, 0 ≤ approximation n i
   approximation_le : ∀ n i,
     ((approximation n i : ℚ) : ℝ) ≤ prefixWeight κ (sentence i)
@@ -112,15 +111,15 @@ theorem lic_limitingBelief_add_neg
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
     fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, RpnSentenceCodes (pair j) := by
+  have hcodes : ∀ j < 2, BigSentenceCodes (pair j) := by
     intro j hj
     by_cases h0 : j = 0
     · subst j
-      exact RpnSentenceCodes.ofPolySentenceCodes
+      exact BigSentenceCodes.ofPolySentenceCodes
         ⟨_, PolyFueled.const (Encodable.encode φ)⟩
     · have h1 : j = 1 := by omega
       subst j
-      exact RpnSentenceCodes.ofPolySentenceCodes
+      exact BigSentenceCodes.ofPolySentenceCodes
         ⟨_, PolyFueled.const (Encodable.encode (∼φ))⟩
   have hsemantic : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range 2).map (fun j ↦ v.payout (pair j n))).sum = 1 := by

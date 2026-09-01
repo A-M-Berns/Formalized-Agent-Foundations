@@ -166,7 +166,7 @@ noncomputable def liaStatePrefix (DP : DeductiveProcess) :
   | 0 => []
   | n + 1 => liaStatePrefix DP n ++ [liaStates DP n]
 
-@[simp] theorem liaStatePrefix_length (DP : DeductiveProcess) (n : ℕ) :
+@[simp] lemma liaStatePrefix_length (DP : DeductiveProcess) (n : ℕ) :
     (liaStatePrefix DP n).length = n := by
   induction n with
   | zero => rfl

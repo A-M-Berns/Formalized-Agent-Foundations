@@ -3,30 +3,44 @@ import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Construction.LIACompiler
 import Foundation.FirstOrder.Incompleteness.Halting
+-- for `ISigma1_delta1Definable`; not reachable through `Incompleteness.Halting`
+import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1
+import LogicalInduction.Framework.WriteOut
 
 /-!
-# The provability deductive process and the unconditional `LIA` endpoints
+# The computation/quotation literal stream
 
 The `_ofComputation` endpoints of `ComputationSyntax.lean` are conditional on a
 `ComputationTheoryPresentation DP T`: a computable deductive process whose stages track the
 `T`-provable instances of the fixed universal computation schemas.  This file constructs
-such a process for a fixed Σ₁-sound `T ⊇ 𝗜𝚺₁`, discharging both the presentation and the
-market non-vacuity hypothesis `hworld`, which is *proved* from consistency and Σ₁-soundness
-of `T` rather than assumed.  Instantiated at the constructed `LIA` inductor, this leaves the
-computational-knowledge endpoints (`thm:halts`, `thm:pac`, `thm:pazfc`, `thm:incons`,
-`thm:loops`, `thm:dontwait`) with no market, inductor, presentation, or `hworld` hypothesis.
+such a process for a fixed `Δ₁` theory `T` interpreting `𝗣𝗔⁻`, discharging both the
+presentation and the market non-vacuity hypothesis `hworld`, which is *proved* from
+consistency of `T` rather than assumed — Σ₁-soundness was the earlier premise and is
+**gone**, along with the `𝗜𝚺₁` containment: the positive direction the endpoints need is
+Σ₁-completeness (`re_complete_mp`), not soundness.
+
+`theoremDP` is a *component*, not a market of record.  The paper fixes one deductive
+process, and the single market this development prices everything against is `paperDP`
+(`PaperTheoryDP.lean`), which unions this literal stream with the `Θ`-complete first-order
+theorem stream.  Every paper-facing endpoint is stated over `liaHistory (paperDP T)`: the
+self-reference family (`thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`,
+`thm:ceu`) in `PaperMarket.lean`, the meta-learning family (`thm:halts`, `thm:loops`,
+`thm:dontwait`, `thm:pac`, `thm:pazfc`, `thm:incons`) in `ComputationRepresented.lean`.
+What this file supplies is the presentation and the non-vacuity that the union's own
+`paperQuotationPresentation` and `paperDP_hworld` are lifted from, plus — for the
+semantic-lifted `thm:ccee` lane, which keeps this stream as its base process by ruling —
+that lane's own market program.
 
 The same computable process also inhabits the code-indexed `QuotationTheoryPresentation`
-(event tags 6/7 enumerate the quotation atoms), so `quotationPresentation` together with
+(event tags 4/5 enumerate the quotation atoms), so `quotationPresentation` together with
 `theoremDP_hworld` exhibit a presentation and a plausible-world family that hold
 simultaneously (`quotation_presentation_nonvacuous`).  Because quotation folds a
 decidable-decision selector into the numeral of *fixed* universal schemas
 (`universalQuotePos`/`universalQuoteNeg`), its instances are enumerable by the same
 `provable_instances_re`; the positive and negative fibers are the value-1 and value-0
 fibers of one deterministic computation, hence mutually exclusive, which is what keeps
-`hworld` consistent on tags 6/7.  The self-reference endpoints (`thm:ref`, `thm:lp`,
-`thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) then instantiate over the
-same constructed inductor.
+`hworld` consistent on event tags 4/5.  (Those are *event* tags; the quotation atoms'
+payload tag is `2` — see the allocation table at `ComputationClaimKind.godelCode`.)
 
 The two mechanical obligations behind all of this are discharged here: provability of
 schema instances is recursively enumerable, and the fuel-clocked stage enumerator is
@@ -45,8 +59,8 @@ open Classical in
 /-- For a fixed schema `φ`, provability of its numerical instances in a Δ₁, Σ₁-sound theory
 extending `𝗜𝚺₁` is recursively enumerable.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
-lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
-    [T.SoundOnHierarchy 𝚺 1] (φ : ArithmeticSemisentence 1) :
+lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
+    (φ : ArithmeticSemisentence 1) :
     REPred (fun z : ℕ => T ⊢ φ/[↑z]) := by
   have hsig : 𝚺₁-Predicate fun b : ℕ ↦
       Bootstrapping.Provable T (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
@@ -65,10 +79,10 @@ lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
 
 /-! ## The combined event stream
 
-An *event* is a code `e = ⟨tag, z⟩` with `tag ∈ {0,…,7}` selecting one of the eight
-enters/refutes obligations (six computation tags 0–5, two quotation tags 6–7) and `z` its
+An *event* is a code `e = ⟨tag, z⟩` with `tag ∈ {0,…,5}` selecting one of the six
+enters/refutes obligations (four computation tags 0–3, two quotation tags 4–5) and `z` its
 input (for quotation, `z = ⟨code, input⟩`).  A single r.e. predicate `Fires` and a single
-atom map `atom` capture all eight; the deductive process enumerates the fired atoms. -/
+atom map `atom` capture all six; the deductive process enumerates the fired atoms. -/
 
 variable (T : ArithmeticTheory)
 
@@ -79,10 +93,8 @@ noncomputable def eventAtom (e : ℕ) : Sentence :=
   | 1 => ∼haltingClaimSentence e.unpair.2
   | 2 => boundedHaltingClaimSentence e.unpair.2
   | 3 => ∼boundedHaltingClaimSentence e.unpair.2
-  | 4 => inconsistencyClaimSentence e.unpair.2
-  | 5 => ∼consistencyClaimSentence e.unpair.2
-  | 6 => quoteAtom e.unpair.2
-  | 7 => ∼quoteAtom e.unpair.2
+  | 4 => quoteAtom e.unpair.2
+  | 5 => ∼quoteAtom e.unpair.2
   | _ => ⊤
 
 /-- The provability obligation an event fires on. -/
@@ -91,28 +103,24 @@ def eventFires (e : ℕ) : Prop :=
   | 0 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
   | 1 => T ⊢ ∼(universalHaltingSchema/[↑e.unpair.2])
   | 2 => T ⊢ universalBoundedHaltingSchema/[↑e.unpair.2]
-  | 3 => T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]
-  | 4 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
-  | 5 => T ⊢ universalHaltingSchema/[↑e.unpair.2]
-  | 6 => T ⊢ universalQuotePos/[↑e.unpair.2]
-  | 7 => T ⊢ universalQuoteNeg/[↑e.unpair.2]
+  | 3 => T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])
+  | 4 => T ⊢ universalQuotePos/[↑e.unpair.2]
+  | 5 => T ⊢ universalQuoteNeg/[↑e.unpair.2]
   | _ => False
 
 /-- Substitution commutes with negation, so the tag-1 obligation is provability of a schema
 instance and hence r.e. -/
-lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma eventFires_re [T.Δ₁] :
     REPred (eventFires T) := by
   have key : eventFires T = fun e =>
       (e.unpair.1 = 0 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
       (e.unpair.1 = 1 ∧ T ⊢ ∼(universalHaltingSchema/[↑e.unpair.2])) ∨
       (e.unpair.1 = 2 ∧ T ⊢ universalBoundedHaltingSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 3 ∧ T ⊢ universalBoundedFailureSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 4 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 5 ∧ T ⊢ universalHaltingSchema/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 6 ∧ T ⊢ universalQuotePos/[↑e.unpair.2]) ∨
-      (e.unpair.1 = 7 ∧ T ⊢ universalQuoteNeg/[↑e.unpair.2]) := by
+      (e.unpair.1 = 3 ∧ T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])) ∨
+      (e.unpair.1 = 4 ∧ T ⊢ universalQuotePos/[↑e.unpair.2]) ∨
+      (e.unpair.1 = 5 ∧ T ⊢ universalQuoteNeg/[↑e.unpair.2]) := by
     funext e
-    rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | n <;>
+    rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | n <;>
       simp [eventFires, h]
   rw [key]
   -- Each conjunct is (computable tag-equality) ∧ (r.e. provability of a schema instance).
@@ -129,13 +137,17 @@ lemma eventFires_re [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
     have h := hsub (∼universalHaltingSchema)
     simp only [LogicalConnective.HomClass.map_neg] at h
     exact h
+  have hnegbounded :
+      REPred (fun e : ℕ => T ⊢ ∼(universalBoundedHaltingSchema/[↑e.unpair.2])) := by
+    have h := hsub (∼universalBoundedHaltingSchema)
+    simp only [LogicalConnective.HomClass.map_neg] at h
+    exact h
   refine ((htag 0).and (hsub _)).or (((htag 1).and hnegsub).or
-    (((htag 2).and (hsub _)).or (((htag 3).and (hsub _)).or
-      (((htag 4).and (hsub _)).or (((htag 5).and (hsub _)).or
-        (((htag 6).and (hsub _)).or ((htag 7).and (hsub _))))))))
+    (((htag 2).and (hsub _)).or (((htag 3).and hnegbounded).or
+      (((htag 4).and (hsub _)).or ((htag 5).and (hsub _))))))
 
 /-- A partial-recursive semi-decider for `eventFires`: `code.eval e` halts iff `e` fires. -/
-lemma exists_eventCode [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma exists_eventCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ eventFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (eventFires_re T)
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
@@ -170,12 +182,12 @@ lemma theoremStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
 /-- The constructed deductive process enumerating the `T`-provable computation literals. -/
-noncomputable def theoremDP [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] : DeductiveProcess where
+noncomputable def theoremDP [T.Δ₁] : DeductiveProcess where
   D := theoremStage (exists_eventCode T).choose
   mono := theoremStage_mono _
 
 /-- Coverage: every fired event's atom eventually appears in a stage. -/
-lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
+lemma theoremDP_covers [T.Δ₁]
     {e : ℕ} (he : eventFires T e) :
     ∃ k, eventAtom e ∈ (theoremDP T).D k := by
   classical
@@ -193,9 +205,10 @@ lemma theoremDP_covers [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
 /-! ## Non-vacuity: a consistent world for every stage
 
 The world reads each atom's `kind` code off its Gödel name and believes it iff the
-corresponding schema instance is `T`-provable (consistency atoms are disbelieved).  Because
-`T` is consistent and Σ₁-sound, no stage ever contains both a literal and its negation, so
-this fixed world is consistent with every stage. -/
+corresponding schema instance is `T`-provable (consistency atoms are disbelieved).  Every
+refutation tag fires on the *literal negation* of the sentence its positive partner fires
+on, so **consistency of `T` alone** keeps this fixed world consistent with every stage; no
+semantic hypothesis on `T` appears. -/
 
 /-- The provability world: an atom is believed iff its claim kind is a "positive" kind and
 the associated halting schema instance is `T`-provable. -/
@@ -204,10 +217,9 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
     T ⊢ universalHaltingSchema/[↑m.unpair.2.unpair.2]
   else if m.unpair.1 = ComputationClaimKind.boundedHalting.godelCode then
     T ⊢ universalBoundedHaltingSchema/[↑m.unpair.2.unpair.2]
-  else if m.unpair.1 = ComputationClaimKind.inconsistency.godelCode then
-    T ⊢ universalHaltingSchema/[↑m.unpair.2.unpair.2]
-  else if m.unpair.1 = 4 then
-    -- quotation atoms (tag 4): believe iff the positive folded universal schema is provable
+  else if m.unpair.1 = 2 then
+    -- quotation atoms (atom payload tag 2): believe iff the positive folded universal
+    -- schema is provable
     T ⊢ universalQuotePos/[↑m.unpair.2.unpair.2.unpair.2]
   else False
 
@@ -230,24 +242,13 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
   simp [provabilityWorld, boundedHaltingClaim, ComputationClaim.godelCode,
     ComputationClaimKind.godelCode, Nat.unpair_pair]
 
-@[simp] lemma provabilityWorld_inconsistency (z : ℕ) :
-    (provabilityWorld T) ((inconsistencyClaim z).godelCode) ↔
-      T ⊢ universalHaltingSchema/[↑z] := by
-  simp [provabilityWorld, inconsistencyClaim, ComputationClaim.godelCode,
-    ComputationClaimKind.godelCode, Nat.unpair_pair]
-
-@[simp] lemma provabilityWorld_consistency (z : ℕ) :
-    (provabilityWorld T) ((consistencyClaim z).godelCode) ↔ False := by
-  simp [provabilityWorld, consistencyClaim, ComputationClaim.godelCode,
-    ComputationClaimKind.godelCode, Nat.unpair_pair]
-
 @[simp] lemma provabilityWorld_quote (w : ℕ) :
     (provabilityWorld T) (quotationClaimCode universalQuotePos universalQuoteNeg w) ↔
       T ⊢ universalQuotePos/[↑w] := by
   simp [provabilityWorld, quotationClaimCode, ComputationClaimKind.godelCode, Nat.unpair_pair]
 
 /-- **Non-vacuity (`hworld`).** The provability world is consistent with every stage. -/
-lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] (n : ℕ) :
+lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (n : ℕ) :
     (provabilityWorld T).ConsistentWith ((theoremDP T).D n) := by
   classical
   intro φ hφ
@@ -259,7 +260,7 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     exact ((exists_eventCode T).choose_spec e).mp
       (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
   -- Case on the event tag.
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   · -- tag 0: positive halting
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, haltingClaimSentence, computationClaimSentence, holds_atom,
@@ -274,34 +275,26 @@ lemma theoremDP_hworld [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_atom,
       provabilityWorld_boundedHalting] using hfires
-  · -- tag 3: ∼bounded halting, via Σ₁-soundness and determinism of the horizon term
+  · -- tag 3: ∼bounded halting, ruled out by consistency of `T`
     simp only [eventFires, h] at hfires
     simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, holds_not,
       holds_atom, provabilityWorld_boundedHalting]
     intro hbh
-    exact universalBoundedClaims_exclusive e.unpair.2
-      ⟨(re_complete (T := T) universalBoundedHalts_re).mpr hbh,
-        (re_complete (T := T) universalBoundedFailure_re).mpr hfires⟩
-  · -- tag 4: positive inconsistency
-    simp only [eventFires, h] at hfires
-    simpa only [eventAtom, h, inconsistencyClaimSentence, computationClaimSentence, holds_atom,
-      provabilityWorld_inconsistency] using hfires
-  · -- tag 5: ∼consistency, always disbelieved
-    simp [eventAtom, h, consistencyClaimSentence, computationClaimSentence]
-  · -- tag 6: positive quotation
+    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hbh, hfires])
+  · -- tag 4: positive quotation
     simp only [eventFires, h] at hfires
     simpa only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_atom,
       provabilityWorld_quote] using hfires
-  · -- tag 7: ∼quotation, ruled out by determinism (positive/negative fibers are exclusive)
+  · -- tag 5: ∼quotation, ruled out by consistency — the positive and negative quotation
+    -- schemas are the value-`1` and value-`0` fibers of ONE code formula, and `T` itself
+    -- refutes their conjunction (`universalQuote_exclusive_prov`); no soundness is used.
     simp only [eventFires, h] at hfires
     simp only [eventAtom, h, quoteAtom, quotationClaimSentence, holds_not,
       holds_atom, provabilityWorld_quote]
     intro hpos
-    have hp : quotePos e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuotePos_re (x := e.unpair.2)).mpr hpos
-    have hn : quoteNeg e.unpair.2.unpair.1 e.unpair.2.unpair.2 :=
-      (re_complete (T := T) universalQuoteNeg_re (x := e.unpair.2)).mpr hfires
-    exact quotePos_quoteNeg_exclusive _ _ ⟨hp, hn⟩
+    have hexc := universalQuote_exclusive_prov T e.unpair.2
+    exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
+      (by cl_prover [hpos, hfires, hexc])
   · -- default tag: atom is ⊤, always held
     simp only [eventAtom, h]
     show LO.Propositional.Formula.Boolean.val (provabilityWorld T) ⊤
@@ -359,9 +352,10 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
   -- Gödel-code builders `Nat.pair kind (Nat.pair schema z)`.
   have gc : ∀ k S : ℕ, Primrec (fun e : ℕ => Nat.pair k (Nat.pair S e.unpair.2)) := fun k S =>
     Primrec₂.natPair.comp (Primrec.const k) (Primrec₂.natPair.comp (Primrec.const S) hz)
-  -- Quotation Gödel-code builder `Nat.pair 4 (Nat.pair Kpos (Nat.pair Kneg z))`.
-  have gcQuote : Primrec (fun e : ℕ => Nat.pair 4 (Nat.pair KQP (Nat.pair KQN e.unpair.2))) :=
-    Primrec₂.natPair.comp (Primrec.const 4)
+  -- Quotation Gödel-code builder `Nat.pair 2 (Nat.pair Kpos (Nat.pair Kneg z))`
+  -- (payload tag `2`; the `tagEq 4`/`tagEq 5` below are *event* tags).
+  have gcQuote : Primrec (fun e : ℕ => Nat.pair 2 (Nat.pair KQP (Nat.pair KQN e.unpair.2))) :=
+    Primrec₂.natPair.comp (Primrec.const 2)
       (Primrec₂.natPair.comp (Primrec.const KQP)
         (Primrec₂.natPair.comp (Primrec.const KQN) hz))
   -- Positive/negated atom encoders from a Gödel-code function.
@@ -379,14 +373,12 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
     (Primrec.ite (tagEq 1) (encN (gc 0 KH))
     (Primrec.ite (tagEq 2) (encA (gc 1 KBH))
     (Primrec.ite (tagEq 3) (encN (gc 1 KBH))
-    (Primrec.ite (tagEq 4) (encA (gc 2 KH))
-    (Primrec.ite (tagEq 5) (encN (gc 3 KnH))
-    (Primrec.ite (tagEq 6) (encA gcQuote)
-    (Primrec.ite (tagEq 7) (encN gcQuote)
+    (Primrec.ite (tagEq 4) (encA gcQuote)
+    (Primrec.ite (tagEq 5) (encN gcQuote)
     (Primrec.const
-      (Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1)))))))))).of_eq ?_
+      (Nat.pair 2 (Nat.pair (Nat.pair 0 0 + 1) (Nat.pair 0 0 + 1)) + 1)))))))).of_eq ?_
   intro e
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | _ | _ | m
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
   · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
       ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
   · simp [h, eventAtom, haltingClaimSentence, computationClaimSentence, haltingClaim,
@@ -397,16 +389,12 @@ lemma eventAtom_prim : Primrec (fun e : ℕ => eventAtom e) := by
   · simp [h, eventAtom, boundedHaltingClaimSentence, computationClaimSentence,
       boundedHaltingClaim, ComputationClaim.godelCode, ComputationClaimKind.godelCode,
       encode_negAtom, hKBH]
-  · simp [h, eventAtom, inconsistencyClaimSentence, computationClaimSentence, inconsistencyClaim,
-      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_atom, hKH]
-  · simp [h, eventAtom, consistencyClaimSentence, computationClaimSentence, consistencyClaim,
-      ComputationClaim.godelCode, ComputationClaimKind.godelCode, encode_negAtom, hKnH]
   · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
       encode_atom, hKQP, hKQN]
   · simp [h, eventAtom, quoteAtom, quotationClaimSentence, quotationClaimCode,
       encode_negAtom, hKQP, hKQN]
   · rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-      if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega)]
+      if_neg (by omega), if_neg (by omega)]
     simp [eventAtom, h, encode_top]
 
 /-! ### Assembling the computation -/
@@ -462,7 +450,7 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
 
 /-- The provability deductive process is computable: one fixed partial-recursive program
 emits the encoded stage `D n` on input `n`. -/
-lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+lemma theoremDP_computable [T.Δ₁] :
     ComputableDeductiveProcess (theoremDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim (exists_eventCode T).choose)))
@@ -472,9 +460,9 @@ lemma theoremDP_computable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy �
 
 /-! ## The presentation and the unconditional LIA endpoint -/
 
-/-- **The constructed computation presentation.**  All six enters/refutes obligations are
+/-- **The constructed computation presentation.**  All four enters/refutes obligations are
 discharged by coverage of the provability enumeration. -/
-noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def theoremPresentation [T.Δ₁] :
     ComputationTheoryPresentation (theoremDP T) T where
   theory_deltaOne := inferInstance
   process := (theoremDP_computable T).nonemptyComputation.some
@@ -494,32 +482,23 @@ noncomputable def theoremPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHi
     have : eventFires T (Nat.pair 3 z) := by simp only [eventFires, Nat.unpair_pair]; exact hz
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
-  inconsistency_enters z hz := by
-    have : eventFires T (Nat.pair 4 z) := by simp only [eventFires, Nat.unpair_pair]; exact hz
-    obtain ⟨k, hk⟩ := theoremDP_covers T this
-    exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
-  inconsistency_refutesConsistency z hz := by
-    have : eventFires T (Nat.pair 5 z) := by simp only [eventFires, Nat.unpair_pair]; exact hz
-    obtain ⟨k, hk⟩ := theoremDP_covers T this
-    exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
 
 /-- The constructed quotation presentation.  The same computable provability process
-`theoremDP`, whose stages also enumerate the code-indexed quotation atoms on tags 6/7,
+`theoremDP`, whose stages also enumerate the code-indexed quotation atoms on tags 4/5,
 inhabits `QuotationTheoryPresentation`.  Together with the proved `theoremDP_hworld` this
 supplies the two hypotheses shared by the introspection, self-trust, expectation, and
 paradox-resistance endpoints.
 Paper node: `thm:ref` -/
-noncomputable def quotationPresentation [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+noncomputable def quotationPresentation [T.Δ₁] :
     QuotationTheoryPresentation (theoremDP T) T where
   toComputationTheoryPresentation := theoremPresentation T
-  theory_sigmaOne := inferInstance
   quote_positive_enters code input h := by
-    have : eventFires T (Nat.pair 6 (Nat.pair code input)) := by
+    have : eventFires T (Nat.pair 4 (Nat.pair code input)) := by
       simp only [eventFires, Nat.unpair_pair]; exact h
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
   quote_negative_refutes code input h := by
-    have : eventFires T (Nat.pair 7 (Nat.pair code input)) := by
+    have : eventFires T (Nat.pair 5 (Nat.pair code input)) := by
       simp only [eventFires, Nat.unpair_pair]; exact h
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
@@ -534,46 +513,29 @@ numeral, so their positive and negative fibers are mutually exclusive and no sta
 forced to contain a literal together with its negation.
 Paper node: `thm:ref` -/
 theorem quotation_presentation_nonvacuous
-    (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1] :
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ (DP : DeductiveProcess) (_ : QuotationTheoryPresentation DP T),
       ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) :=
   ⟨theoremDP T, quotationPresentation T,
     fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩⟩
 
-/-- For a Σ₁-sound theory `T ⊇ 𝗜𝚺₁`, the constructed `LIA` inductor over the constructed
-provability deductive process learns every halting pattern.  The deductive process is
-constructed and proved computable and the market non-vacuity `hworld` is proved, so no
-hypothesis remains beyond the theory instances and the (true) hypothesis that the machines
-halt.
-Paper node: `thm:halts` -/
-theorem lia_learns_halting_patterns_unconditional
-    (T : ArithmeticTheory) [𝗥₀ ⪯ T] [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-    LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
-  lic_learns_halting_patterns_ofComputation (theoremPresentation T) (liaHistory (theoremDP T))
-    machines inputs hm hi hhalts
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+/-! ## The market program of the `LIA` over a computable process
 
-/-! ## Unconditional self-reference and quotation endpoints over the constructed `LIA`
+`quotationPresentation` inhabits `QuotationTheoryPresentation` over the constructed
+computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity.  Both are
+*ingredients*: the paper-facing endpoints are stated over the single market `paperDP`
+(`PaperTheoryDP.lean`), which contains this literal stream, and are assembled in
+`PaperMarket.lean` from the monotone lift of the presentation proved here.  What stays here
+is the presentation, its non-vacuity, and the market program of the `LIA` over an arbitrary
+computable process — the last of which the single market's own program is an instance of.
 
-Because `quotationPresentation` inhabits `QuotationTheoryPresentation` over the constructed
-computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity, every
-`_ofCode`/`_ofDiagonal`/`_ofRepresentation` self-reference endpoint instantiates over
-`liaHistory (theoremDP T)` with no market, inductor, presentation, or `hworld` hypothesis
-remaining — only the caller's own quoted decision and its reflection data. -/
+The exact-product `thm:ccee` lane (`ProductDefinition.lean` and the semantic-lifted
+`canonicalCCEEDP` above it) keeps this stream as *its* base process by ruling, and is the
+one place a canonical endpoint is priced somewhere other than `paperDP`; that is why
+`theoremMarketComputation` survives beside `paperMarketComputation`. -/
 
-variable [T.Δ₁] [𝗜𝚺₁ ⪯ T] [T.SoundOnHierarchy 𝚺 1]
-
-/-- The constructed inductor instance for the provability process, reused (inlined) by every
-unconditional quotation endpoint below. -/
-private noncomputable abbrev theoremLIA : IsLogicalInductor (liaHistory (theoremDP T)) (theoremDP T) :=
-  LIA_is_logical_inductor (theoremDP T) (theoremDP_computable T)
+section PeanoMinus
+variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
 
 /-- A named exact market program for the `LIA` over **any** computable deductive process.
 `thm:lia` makes the constructed market a logical inductor over `DP`, and a logical
@@ -583,255 +545,23 @@ noncomputable def liaMarketComputation (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) : MarketComputation (liaHistory DP) :=
   (LIA_is_logical_inductor DP hDP).marketComputable.nonemptyComputation.some
 
-/-- A named exact market program for the constructed `LIA`, used to derive its canonical
-paradox-resistance diagonal without any caller-supplied semantic relation.
-Paper node: `thm:lp` -/
+/-- A named exact market program for the `LIA` over the literal stream.  It is the market
+of the exact-product `thm:ccee` lane, which keeps that stream as its base process; the
+single market's program is `paperMarketComputation`.
+Paper node: `thm:lia` -/
 noncomputable def theoremMarketComputation :
     MarketComputation (liaHistory (theoremDP T)) :=
   liaMarketComputation (theoremDP T) (theoremDP_computable T)
 
-/-- The canonical public diagonal quote for the constructed `LIA` at threshold `p`.
-Paper node: `thm:lp` -/
-noncomputable def theoremDiagonalQuoteCode (p : ℚ) :
-    ParameterizedDiagonalQuoteCode T
-      (diagonalPriceTruth (theoremMarketComputation T) p) :=
-  parameterizedDiagonalQuoteCodeOfMarket (theoremMarketComputation T) T p
+end PeanoMinus
 
-/-- `thm:epr`, unconditional over `LIA`.
-Paper node: `thm:epr` -/
-theorem lic_expectations_of_probabilities_ofCode_unconditional
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ)
-    (q : RationalQuoteCode T value)
-    (hexact : ∀ n, liaHistory (theoremDP T) n (φ n) = (value n : ℝ)) :
-    (fun n => liaHistory (theoremDP T) n (φ n)) ≈ₙ
-      fun n => (q.luv n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_expectations_of_probabilities_ofCode (quotationPresentation T)
-    (liaHistory (theoremDP T)) φ hφ q hexact
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+/-! ## The paper-facing endpoints live over the single market
 
-/-- `thm:er`, unconditional over `LIA`.
-Paper node: `thm:er` -/
-theorem lic_iterated_expectations_ofCode_unconditional
-    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
-    (q : RationalQuoteCode T value)
-    (hexact : ∀ n, (X n).expect (liaHistory (theoremDP T)) n = (value n : ℝ)) :
-    (fun n => (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
-      fun n => (q.luv n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_iterated_expectations_ofCode (quotationPresentation T)
-    (liaHistory (theoremDP T)) X hX q hexact
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:ref` (introspection), unconditional over `LIA`.
-Paper node: `thm:ref` -/
-theorem lic_introspection_ofCode_unconditional
-    (φ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (a b δ : ℕ → ℚ)
-    (lowerFeature : ℕ → EF)
-    (hlower : GeneratedRatFeature (liaHistory (theoremDP T)) a lowerFeature)
-    (upperFeature : ℕ → EF)
-    (hupper : GeneratedRatFeature (liaHistory (theoremDP T)) b upperFeature)
-    (hδ : PolyRatCodes δ)
-    (hδpos : ∀ n, 0 < δ n)
-    (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
-    (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
-    (q : BooleanQuoteCode T (fun n ↦
-      (a n : ℝ) < liaHistory (theoremDP T) n (φ n) ∧
-        liaHistory (theoremDP T) n (φ n) < (b n : ℝ))) :
-    ∃ ε : ℕ → ℚ, (∀ n, 0 < ε n) ∧ Tendsto (fun n ↦ (ε n : ℝ)) atTop (𝓝 0) ∧
-      ∀ n,
-        (((a n : ℝ) + δ n < liaHistory (theoremDP T) n (φ n) ∧
-            liaHistory (theoremDP T) n (φ n) < (b n : ℝ) - δ n) →
-          1 - (ε n : ℝ) < liaHistory (theoremDP T) n (q.sentence n)) ∧
-        ((¬ ((a n : ℝ) - δ n < liaHistory (theoremDP T) n (φ n) ∧
-              liaHistory (theoremDP T) n (φ n) < (b n : ℝ) + δ n)) →
-          liaHistory (theoremDP T) n (q.sentence n) < (ε n : ℝ)) :=
-  haveI := theoremLIA T
-  lic_introspection_ofCode (quotationPresentation T) (liaHistory (theoremDP T))
-    φ hφ a b δ lowerFeature hlower upperFeature hupper hδ hδpos hδzero hab q
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:lp` (paradox resistance), unconditional over `LIA`.  The named market program,
-its self-referential public atom, and the matching FFL parameterized fixed point are all
-constructed internally.
-Paper node: `thm:lp` -/
-theorem lic_paradox_resistance_ofDiagonal_unconditional
-    (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : PolyRatCodes width)
-    (hwidthPos : ∀ n, 0 < width n)
-    (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((theoremDiagonalQuoteCode T p).toBooleanQuoteCode.sentence n)) ≈ₙ
-      fun _ => (p : ℝ) :=
-  haveI := theoremLIA T
-  lic_paradox_resistance_ofDiagonal (quotationPresentation T) (liaHistory (theoremDP T))
-    (theoremMarketComputation T) p hp0 hp1 width hwidth hwidthPos hwidthZero
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:cee` (expected future expectations), unconditional over `LIA`.
-Paper node: `thm:cee` -/
-theorem lic_expected_future_expectations_ofRepresentation_unconditional
-    (f : DeferralFunction)
-    (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
-    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      ∃ x, v.ValuesAt (X n) x)
-    (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      v.ValuesAt (Y n) ((X n).expect (liaHistory (theoremDP T)) (f n))) :
-    (fun n ↦ (X n).expect (liaHistory (theoremDP T)) n) ≈ₙ
-      fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_expected_future_expectations_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f X Y hX hY source_valued reflected
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:ceu` (no expected net update), unconditional over `LIA`.
-Paper node: `thm:ceu` -/
-theorem lic_no_expected_net_update_ofRepresentation_unconditional
-    (f : DeferralFunction)
-    (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : RpnSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
-    (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      v.ValuesAt (Y n) (liaHistory (theoremDP T) (f n) (φ n))) :
-    (fun n ↦ liaHistory (theoremDP T) n (φ n)) ≈ₙ
-      fun n ↦ (Y n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_no_expected_net_update_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f φ Y hφ hY reflected
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:ccee` (conditional no expected net update), unconditional over `LIA`.
-Paper node: `thm:ccee` -/
-theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
-    (f : DeferralFunction)
-    (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
-    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
-    (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w)
-    (hX : LUV.RpnThresholdCodeSeq X) (hZ : LUV.RpnThresholdCodeSeq Z)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
-    (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
-    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      ∃ x, v.ValuesAt (X n) x)
-    (left_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      ∀ x, v.ValuesAt (X n) x →
-        ∃ z, v.ValuesAt (Z n) z ∧ |z - x * w (f n)| ≤ slack n)
-    (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      v.ValuesAt (Z' n) ((X n).expect (liaHistory (theoremDP T)) (f n) * w (f n))) :
-    (fun n ↦ (Z n).expect (liaHistory (theoremDP T)) n) ≈ₙ
-      fun n ↦ (Z' n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_no_expected_net_update_conditional_ofRepresentation (P := liaHistory (theoremDP T))
-    (DP := theoremDP T) f X Z Z' w weight_mem weight_generable hX hZ hZ'
-    slack slack_tendsto source_valued left_reflected right_reflected
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:st` (self-trust), unconditional over `LIA`.  The confidence threshold `p` is
-P-generable (`def:ece`) against the constructed market, presented by its feature
-expression.
-Paper node: `thm:st` -/
-theorem lic_self_trust_ofRepresentation_unconditional
-    (f : DeferralFunction)
-    (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
-    (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : RpnSentenceCodes φ) (hδ : PolyRatCodes δ)
-    (pFeature : ℕ → EF)
-    (hp : GeneratedRatFeature (liaHistory (theoremDP T)) p pFeature)
-    (hA : LUV.RpnThresholdCodeSeq A) (hB : LUV.RpnThresholdCodeSeq B)
-    (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n)))
-    (product_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
-      v.ValuesAt (A n)
-        (v.payout (φ n) * ctsInd (δ n) (liaHistory (theoremDP T) (f n) (φ n)) (p n))) :
-    (fun n ↦ (A n).expect (liaHistory (theoremDP T)) n) ≳ₙ
-      fun n ↦ (p n : ℝ) * (B n).expect (liaHistory (theoremDP T)) n :=
-  haveI := theoremLIA T
-  lic_self_trust_ofRepresentation (P := liaHistory (theoremDP T)) (DP := theoremDP T)
-    f φ δ p A B delta_pos probability_mem hφ hδ pFeature hp hA hB
-    confidence_reflected product_reflected
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-! ## Unconditional meta-learning siblings over the constructed `LIA`
-
-The other five `_ofComputation` meta-learning endpoints instantiate over `liaHistory
-(theoremDP T)` exactly like `lia_learns_halting_patterns_unconditional`, reusing
-`theoremPresentation` + `theoremDP_hworld`. Only the caller's concrete computation and the
-(true) hypothesis about it remain. -/
-
-/-- `thm:pac`, unconditional over `LIA`, at the paper's horizon class: `C`'s step budget is
-any computable `f`, named by its program and evaluated by the arithmetic schema rather than
-by the sentence emitter.
-Paper node: `thm:pac` -/
-theorem lic_belief_finitistic_consistency_unconditional [𝗥₀ ⪯ T]
-    (consistentWithin : ℕ → Prop) (C : BoundedComputation consistentWithin)
-    (hconsistent : ∀ n, consistentWithin n) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI := theoremLIA T
-  lic_belief_finitistic_consistency_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) consistentWithin C hconsistent
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:pazfc`, unconditional over `LIA`, at the same arbitrary-computable-horizon class
-as `thm:pac`.
-Paper node: `thm:pazfc` -/
-theorem lic_belief_stronger_theory_consistency_unconditional [𝗥₀ ⪯ T]
-    (strongerConsistentWithin : ℕ → Prop)
-    (C : BoundedComputation strongerConsistentWithin)
-    (hconsistent : ∀ n, strongerConsistentWithin n) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedDecidableClaimsOfComputation (theoremPresentation T) C).sentence n))
-        ≈ₙ fun _ => 1 :=
-  haveI := theoremLIA T
-  lic_belief_stronger_theory_consistency_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) strongerConsistentWithin C hconsistent
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:incons`, unconditional over `LIA`.
-Paper node: `thm:incons` -/
-theorem lic_disbelief_inconsistent_theories_unconditional [𝗥₀ ⪯ T]
-    (inconsistent : ℕ → Prop) (C : SemidecidableComputation inconsistent)
-    (hall : ∀ n, inconsistent n) :
-    ((fun n => liaHistory (theoremDP T) n
-        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).inconsistencySentence n))
-          ≈ₙ fun _ => 1) ∧
-      ((fun n => liaHistory (theoremDP T) n
-        ((inconsistentTheoryClaimsOfComputation (theoremPresentation T) C).consistencySentence n))
-          ≈ₙ fun _ => 0) :=
-  haveI := theoremLIA T
-  lic_disbelief_inconsistent_theories_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) inconsistent C hall
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:loops`, unconditional over `LIA`.
-Paper node: `thm:loops` -/
-theorem lic_learns_provable_nonhalting_patterns_unconditional [𝗥₀ ⪯ T]
-    (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hloops : ∀ n, T ⊢ ∼(universalHaltingSchema/[
-      ↑(haltingClaimInput (machines n) (inputs n))])) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedHaltingClaims (theoremPresentation T) machines inputs hm hi).sentence n))
-        ≈ₙ fun _ => 0 :=
-  haveI := theoremLIA T
-  lic_learns_provable_nonhalting_patterns_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) machines inputs hm hi hloops
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
-
-/-- `thm:dontwait`, unconditional over `LIA`.  `hh` supplies the horizon program for an
-arbitrary computable `f` — no growth bound — which is the paper's own quantifier.
-Paper node: `thm:dontwait` -/
-theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
-    (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : PolyMachineCodes machines) (hi : PolyNatCodes inputs)
-    (hh : ComputableHorizon horizons)
-    (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
-    (fun n => liaHistory (theoremDP T) n
-      ((representedBoundedHaltingClaims (theoremPresentation T) machines inputs horizons hm hi hh).sentence n))
-        ≈ₙ fun _ => 0 :=
-  haveI := theoremLIA T
-  lic_does_not_anticipate_halting_ofComputation (theoremPresentation T)
-    (liaHistory (theoremDP T)) machines inputs horizons hm hi hh hnever
-    (fun n => ⟨provabilityWorld T, theoremDP_hworld T n⟩)
+Every `_ofCode`/`_ofDiagonal`/`_ofRepresentation` self-reference endpoint (`thm:ref`,
+`thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`) and every §4.9-4.10
+meta-learning endpoint (`thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`, `thm:dontwait`,
+`thm:incons`) is stated over `paperDP` — the former in `PaperMarket.lean`, the latter in
+`ComputationRepresented.lean`.  Nothing of either lane remains here. -/
 
 #print axioms provable_instances_re
 #print axioms theoremDP_covers
@@ -839,10 +569,6 @@ theorem lic_does_not_anticipate_halting_unconditional [𝗥₀ ⪯ T]
 #print axioms theoremPresentation
 #print axioms quotationPresentation
 #print axioms quotation_presentation_nonvacuous
-#print axioms lia_learns_halting_patterns_unconditional
-#print axioms lic_introspection_ofCode_unconditional
-#print axioms lic_paradox_resistance_ofDiagonal_unconditional
-#print axioms lic_self_trust_ofRepresentation_unconditional
-#print axioms lic_expectations_of_probabilities_ofCode_unconditional
+#print axioms liaMarketComputation
 
 end LogicalInduction

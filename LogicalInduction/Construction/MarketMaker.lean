@@ -99,7 +99,7 @@ def tradeListMarketValueRat (trades : List (EF × Sentence)) (n : ℕ)
     (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) : ℚ :=
   (trades.map fun p => p.1.denoteRat Q * (w p.2 - Q n p.2)).sum
 
-@[simp] theorem tradeListSupport_strategy {n : ℕ} (T : Strategy n) :
+@[simp] lemma tradeListSupport_strategy {n : ℕ} (T : Strategy n) :
     tradeListSupport T.trades = T.support := by
   rfl
 
@@ -123,7 +123,7 @@ lemma strategyValuation_not_mem {n : ℕ} (T : Strategy n)
     strategyValuation T x φ = 0 := by
   simp [strategyValuation, hφ]
 
-@[simp] theorem strategyValuation_coordinateSentence {n : ℕ} (T : Strategy n)
+@[simp] lemma strategyValuation_coordinateSentence {n : ℕ} (T : Strategy n)
     (x : EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)))
     (i : Fin (Fintype.card ↥T.support)) :
     strategyValuation T x (T.coordinateSentence i) = x i := by
@@ -493,9 +493,9 @@ def quoteFromEntries : List (Sentence × ℚ) → Sentence → ℚ
   | [], _ => 0
   | (ψ, q) :: rest, φ => if φ = ψ then q else quoteFromEntries rest φ
 
-@[simp] theorem quoteFromEntries_nil (φ : Sentence) : quoteFromEntries [] φ = 0 := rfl
+@[simp] lemma quoteFromEntries_nil (φ : Sentence) : quoteFromEntries [] φ = 0 := rfl
 
-@[simp] theorem quoteFromEntries_cons (ψ : Sentence) (q : ℚ)
+@[simp] lemma quoteFromEntries_cons (ψ : Sentence) (q : ℚ)
     (rest : List (Sentence × ℚ)) (φ : Sentence) :
     quoteFromEntries ((ψ, q) :: rest) φ =
       if φ = ψ then q else quoteFromEntries rest φ := rfl
@@ -691,7 +691,7 @@ lemma value_eq_marketRatCast {n : ℕ} (T : Strategy n) (P : History)
 
 end Strategy
 
-@[simp] theorem tradeListMarketValueRat_strategy {n : ℕ} (T : Strategy n)
+@[simp] lemma tradeListMarketValueRat_strategy {n : ℕ} (T : Strategy n)
     (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) :
     tradeListMarketValueRat T.trades n Q w = T.marketValueRat Q w := by
   rfl
@@ -729,7 +729,7 @@ def tradeListSupportBitWorldRatFromList (trades : List (EF × Sentence))
     if xs.getD ((supportSentenceList (tradeListSupport trades)).idxOf φ) false then 1 else 0
   else 0
 
-@[simp] theorem tradeListSupportBitWorldRatFromList_strategy {n : ℕ}
+@[simp] lemma tradeListSupportBitWorldRatFromList_strategy {n : ℕ}
     (T : Strategy n) (xs : List Bool) :
     tradeListSupportBitWorldRatFromList T.trades xs =
       supportBitWorldRatFromList T xs := by
@@ -747,7 +747,7 @@ lemma supportBitWorldRatFromList_eq {n : ℕ} (T : Strategy n) (xs : List Bool) 
 def supportAssignmentList (S : Finset Sentence) (b : S → Bool) : List Bool :=
   (supportSentenceList S).map fun φ => if hφ : φ ∈ S then b ⟨φ, hφ⟩ else false
 
-@[simp] theorem supportAssignmentList_length (S : Finset Sentence) (b : S → Bool) :
+@[simp] lemma supportAssignmentList_length (S : Finset Sentence) (b : S → Bool) :
     (supportAssignmentList S b).length = S.card := by
   simp [supportAssignmentList, supportSentenceList]
 
