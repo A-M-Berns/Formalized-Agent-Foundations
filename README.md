@@ -44,9 +44,10 @@ discharge a hypothesis. Only the first is a debt against faithfulness.
 
 All zero `sorry`, zero `axiom`. Per-paper node counts are checker-derived and live on the
 [trust-surface page](docs/trust-surface.html) (its coverage stamp) and in each paper's node
-checker output (`scripts/check-*-nodes.py`); each directory's README gives the detailed statement-level
-accounting — what is proved, what is modeled, which printed statements were corrected — and
-exactly where the trust boundary sits.
+checker output (`scripts/check-*-nodes.py`). Each directory's README explains what the paper's
+objects are in Lean, what is modeled and how, and where the trust boundary sits; the
+statement-by-statement correspondence lives beside it, in that paper's classification ledger
+and on the trust-surface page.
 
 For downstream work, use the supported entrypoints below. Each deliberately avoids
 unnecessary construction or regression-test machinery; the module documentation names

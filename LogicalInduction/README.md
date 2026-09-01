@@ -3,1008 +3,297 @@
 A Lean 4 formalization of Garrabrant, Benson-Tilsen, Critch, Soares, Taylor,
 [*Logical Induction*](https://arxiv.org/abs/1609.03543) (arXiv:1609.03543v5).
 
-## Downstream use
+The paper's three pieces are all here. The **logical induction criterion** (§3) is stated at
+the paper's own quantifier — no polynomial-time trader exploits the market. The **§4 property
+tail** — convergence and coherence, provability induction, timely learning, calibration and
+unbiasedness, pseudorandomness, logical relationships, non-dogmatism and its Occam forms,
+universal-semimeasure domination, closure under conditioning and perturbation, expectations,
+introspection, paradox resistance, self-trust — is proved for *every* logical inductor, and
+then instantiated over a concrete one. The **§5 existence theorem** is proved in the paper's
+full sense: the algorithm is built (market maker via a from-scratch Sperner/Brouwer fixed
+point, budgeter, trading firm over a universal trader enumeration) and shown to satisfy the
+criterion. Zero `sorry`, zero `axiom` declarations; every public endpoint reports only
+Lean's standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build.
 
-Use `import LogicalInduction.API` for the semantic framework and general property
-theorems: sentences, markets, deductive processes, features, traders and exploitation,
-the logical-induction criterion, affine combinations, LUVs, expectations, asymptotics,
-and the `lic_*` families. It intentionally excludes the concrete LIA construction and
-compiler. Some raw digit/RPN machinery is necessarily visible through transitive theorem
-imports, but is not thereby designated as supported API. Import
-`LogicalInduction.Construction.LIACompiler` for the concrete construction endpoints, or
-`LogicalInduction` for the complete rollup. The API module documents the supported
-high-level efficiency certificates and the unchanged `dd:fuel`, propositional-LUV, and
-finite-perturbation boundaries.
+Formalizing it turned up six defects in the paper, recorded with their repairs in
+[`notes/paper-errata.md`](notes/paper-errata.md). One is not a repairable slip: **closure
+under finite perturbations is false as printed**, and is refuted here, with a corrected
+finite-support theorem proved in its place.
 
-The existence theorem is proved in the paper's full sense. 53 of the paper's labelled
-results are carried as annotated nodes — named after the paper's own label, build-audited,
-and rendered on the trust surface. Eight further labelled appendix lemmas
-(`lem:fpl`, `lem:mm`, `lem:budgeter`, `prop:enumeration`, `lem:type2`, `lem:type3`,
-`lem:conluvapprox`, `lem:limexpapprox`) are also formalized, but as construction machinery
-cited from their module headers rather than as annotated nodes; they are listed and gated in
-`scripts/check_endpoint_coverage.py`, which fails if a labelled paper result is neither
-carried nor explicitly excused. How strong each node is, over the 53 annotated theorem and
-lemma nodes:
+## How logical induction is modeled
 
-| | count | what it means |
-|---|---:|---|
-| **exact** | 43 | proved as the paper states it, on the paper's own hypotheses |
-| **strengthened** | 7 | the Lean statement is stronger than the printed one |
-| **corrected** | 2 | the printed statement is defective; the corrected statement is proved (`thm:prand`, `thm:recurringunbiasednessexp`) |
-| **refuted** | 1 | the printed statement is **false**, and is refuted here (`thm:ifp`) |
-| **qualified** | 0 | proved with an explicitly named representation interface, class restriction, or hypothesis stronger than the paper's, retained — **none remain** |
+### The objects
 
-The paper's 13 *definition* nodes are classified separately (12 exact, 1 qualified) and are
-not mixed into the table above.
+| Paper | Lean |
+|---|---|
+| sentence φ of the market language | `Sentence` — Foundation's propositional `Formula` |
+| the market 𝕡, prices ℙₙ(φ) | `History` — day and sentence to a price in `[0,1]` |
+| deductive process `D₁ ⊆ D₂ ⊆ …` (`def:dedproc`) | `DeductiveProcess` |
+| a world consistent with stage `n` | `PCWorld`, `PCWorld.ConsistentWith` |
+| expressible feature (`def:tf`) | `EF` — a reified expression in prices and rationals, with a denotation (`dd:dsl`) |
+| trading strategy for day `n` (`def:tradestrat`) | `Strategy` — a finite list of (feature, sentence) trades |
+| trader (`def:trader`) | `Trader` — a day-indexed family of strategies |
+| exploitation (`def:exploitation`) | `Trader.Exploits P DP` |
+| affine combination of sentences (`def:affcomsen`) | `AffineCombination` |
+| logically uncertain variable (`def:luv`) | `LUV`, with `LUV.expect` its market expectation |
+| the criterion (`def:lic`) | `IsMachineLogicalInductor` |
+| the algorithm (`def:lia`) | `LIA`, `liaHistory` |
 
-Each non-exact node says in one line what it retains, strengthens, corrects or refutes. The
-per-node table is [`scripts/coverage-classification.md`](../scripts/coverage-classification.md),
-machine-checked against the endpoint inventory so a node cannot ship without a strength
-call, and so that a name shown on the trust surface must resolve, carry the node it is
-listed under, and be axiom-checked. A browsable guide — every paper statement rendered
-beside the Lean endpoint that carries it — is generated from the repository at
-[`docs/trust-surface.html`](../docs/trust-surface.html) (`python3 scripts/gen-trust-surface.py`
-to regenerate). That guide covers every formalized paper, one section each; only this
-paper's section carries per-node tiers, reading notes and audit notes, because only this
-paper has the strength classification they are read from. The others are correspondence
-views, and say so.
+Limit vocabulary — `≈ₙ`, `≳ₙ`, `≲ₙ`, `ConvergesTo` — lives in one module,
+`Framework/Asymptotics`, built on Mathlib's `Tendsto` and `∀ᶠ n in atTop` (`dd:asymp`).
 
-Of the 53, **19 are also instantiated over the concrete inductor constructed here** — 19 of
-them at exact or strengthened, 0 at qualified — so they hold of a specific algorithm rather
-than a hypothetical one. The paper states no such theorems; that is a strengthening, not a
-different degree of faithfulness.
+### Efficient computability, and why there are two classes
 
-**Two caveats on those counts, because both are easy to miss.** First, every tier is
-relative to the disclosed model — propositional sentences, and machine polynomial time as
-the trader class with the fuel calculus as its certificate (see *The modeling boundary*);
-"exact" means the paper's statement is reached *within that model*, not that the model
-equivalence is proved.
+The paper's `def:ec` is ordinary machine polynomial time, and so is the class the criterion
+quantifies over: `MachineEfficientTrader Tr` says some function in `Complexity.FP` maps the
+*unary* day `n` to a word decoding to `Tr`'s day-`n` strategy. `IsMachineLogicalInductor` is
+`def:lic` over that class, and it is what the construction discharges
+(`LIA_isMachineLogicalInductor`). The trading firm genuinely enumerates that class —
+`enumeratedTrader` is both sound (`enumeratedTrader_machineEfficient`) and covering
+(`exists_enumeratedTrader_eq`) — so the enumeration is an enumeration *of* machine-efficient
+traders, not merely one that happens to cover them, and LIA satisfies LIC at the paper's own
+quantifier.
 
-Second, the cause that used to dominate the `qualified` count — a **whole-value**
-efficiency hypothesis where the paper asks only for efficient computability — is now gone
-from the paper-facing surface. `PolyFueled` bundles `IsPolyBounded f`, a bound on the
-function's *output value*, so `PolyNatCodes` and `PolyMachineCodes` admit only sequences
-whose values grow polynomially, while the paper's e.c. is polynomial *time*: poly time to
-write an object bounds its **symbols**, permitting values up to exponential.
-`not_polyFueled_two_pow` proves that restriction strict.
-
-The *write-out* classes exist for most kinds of datum the property tail
-consumes — `BigDigits` for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for
-machine codes, `BigSentenceCodes` for sentences, and `BigTokenStream`/`BigSpliceStream` for
-the emission surface they are consumed on. **One kind is still metered differently on the
-`_ofRepresentation` layer: LUV thresholds.** `lic_iterated_expectations_ofCode_unconditional`,
-`lic_expected_future_expectations_ofRepresentation_unconditional`,
-`lic_no_expected_net_update_ofRepresentation_unconditional`, its `_conditional_` sibling,
-and `lic_self_trust_ofRepresentation_unconditional` take `RpnThresholdCodeSeq`, which is
-`RpnSentenceCodes` on the threshold family rather than one of the write-out classes.
-**That is not a restriction on the paper's own first-order LUVs**, and this file has now
-been wrong about it in both directions.
-
-The write-out threshold class does now exist. `LUV.BigThresholdCodeSeq`
-(`Framework/Expectations.lean`, with `LUV.RpnThresholdCodeSeq.toBig` and
-`LUV.BigThresholdCodeSeq.reindex`) meters the threshold family the write-out way, and
-`SelfTrustQuote.product_codes`/`.confidence_codes` were widened to it, which is what let
-`thm:st`'s closed endpoint move to `BigSentenceCodes`. An earlier edition of this file, and
-the knowledge base, recorded the absence of such a class as the blocker for that migration;
-that blocker is retired. The five endpoints above have not been migrated — nothing on the
-`_ofRepresentation` layer needed it — so `RpnThresholdCodeSeq` is where they stay.
-
-The route from a literal paper LUV into the class is
-`PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq`
-(`Construction/Witnesses/StructuredPaperRpn.lean`). It quantifies over `PaperLUVSeq`, not
-over `ℕ → PaperLUV`: that structure bundles a field `PaperLUV` itself does not carry —
-`structural : PolyArithmeticFormulaSeq`, a `PolySegStream` certificate on the defining
-formula's *symbol list*. An earlier edition of this file overlooked the field and claimed
-the residue cost the paper nothing; the field is real and is stated here.
-
-What the field asks for is the paper's own `def:ec` condition, on the paper's connectives.
-It meters the formula string, one token per node of the Foundation formula, and along this
-route every emitted token is a fixed small constant (`encodeArithmeticFormulaSymbols_lt`,
-`structuredPaperPrimeBlock_span`), so the class is polynomial *length* — write-out — and
-never expands a Gödel code or a numeral beyond what the author wrote. Large values are named
-compactly, as the paper names them (tex:614): `binNumeral v` is the Horner `ℒₒᵣ` term for `v`
-in `O(log v)` nodes (`binNumeralEnc_length_le`, `binNumeral_val`) — the same term that names
-the machine/input argument of the computational-knowledge claims below — and
-`dyadicPaperLUVSeq` is
-the family of literal paper LUVs of value **`2⁻ⁿ`** built on it, with
-`dyadicPaperLUVSeq_frontend` giving both frontend conclusions. It stands beside
-`unitFracPaperLUVSeq` at `1/(n+1)`; the two share the template `invFormula`/`invPaperLUV` and
-differ only in the denominator's name. `PaperLUV.rpnThresholdCodes` is the single-LUV route
-into the non-sequence `LUV.RpnThresholdCodes`, the hypothesis `thm:ec`
-(`LUV.expect_converges`) takes.
-
-Two boundaries of that metering are recorded as named refutations, and they are of different
-kinds. The first is an **artifact**: the same value spelled with Foundation's *unary*
-`Operator.numeral` has no certificate
-(`unaryRendering_two_pow_not_polyArithmeticFormulaSeq`). The paper fixes no numeral notation
-— it writes numerals positionally (tex:614, tex:757) — and the value is nameable compactly
-inside `ℒₒᵣ`, so the class is not narrowed on numerals.
-
-The second concerns the **connectives**, and it is settled by where the metering sits.
-Foundation's `Semiformula` is a negation-normal-form datatype with no `⟺` constructor, so
-metering the normal form would charge `3 + 2|A| + 2|B|` tokens for `A 🡘 B`
-(`encodeArithmeticFormulaSymbols_iff`) while the paper's language has `⟺` as a **primitive**
-(tex:560). Nothing here meters the normal form. `PaperLUVSeq` carries each LUV's defining
-formula as the paper writes it — `source : ℕ → ArithSource 1` over the primitive connectives
-`¬ ∧ ∨ ⟹ ⟺ ∀ ∃`, a proof `compiles` that it denotes the LUV's Foundation formula, and
-`def:ec`'s condition on that writing, `structural : PolyArithmeticSourceSeq` — one emitted
-token per **source** node, with normal-form expansion done inside the parser (tags
-`20`/`21`/`22`) and never charged. The normal-form-metered `PolyArithmeticFormulaSeq` is
-kept as a **strictness foil**: it embeds (`PolyArithmeticFormulaSeq.toSource`) and the
-inclusion is strict, witnessed by the left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`, which is
-certified in the paper's class at `5n + 4` emitted tokens
-(`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) and refuted
-in the foil at `≥ 2ⁿ` (`iffChain_not_polyArithmeticFormulaSeq`,
-`two_pow_le_encode_iffChain`). `iffPaperLUVSeq` carries that family all the way to a literal
-paper LUV family, with `iffPaperLUVSeq_frontend` giving both frontend conclusions, so
-`PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved rather than asserted. That
-two-layer architecture is what `dd:nnf` labels; it is not a charge. The residual `dd:fuel`
-substitution is levied once at `def:ec` and is not re-levied here.
-
-Of the write-out/value-metered class pairs listed above, four containments are **proved
-strict**: `bigDigits_two_pow_not_polyFueled` (`BigDigits` over `∃ c, PolyFueled c v`),
-`bigTokenStream_not_polySegStream` (`BigTokenStream` over `PolySegStream`),
-`digitRatCodes_two_pow_inv_not_polyRatCodes` (`DigitRatCodes` over `PolyRatCodes`) and
-`bigSpliceStream_two_pow_inv_not_rpnSpliceStream` (`BigSpliceStream` over
-`RpnSpliceStream`, at the constant feature for `δₙ = 2^(−n)`). The remaining pair —
-`BigSentenceCodes` over `RpnSentenceCodes` — is an inclusion with **no strictness proof**;
-what is established for it is that its write-out constructor `ofDigitSentenceCodes` has no
-value-bounded counterpart. Building the rational one retired
-exactly the four rows this classification predicted it would: `thm:ref`, `thm:st`,
-`thm:perkno` and `thm:simcal` now take the paper's own class, so `δₙ = 2^(−n)` and
-`pₙ = 1 − 2^(−n)` are admissible data.
-
-The machine and input classes then retired the last three. `thm:halts`, `thm:loops` and
-`thm:dontwait` took the `PolyMachineCodes`/`PolyNatCodes` pair, where the mismatch was
-sharpest — tex:1931-1933 asks for poly time to *write out* `⟨m⟩`, and a length-`n` bitstring
-has value `2^n` — and now take `DigitMachineCodes`/`BigDigits`. The migration is proved
-strict in both coordinates: `bigDigits_two_pow_not_polyNatCodes` exhibits `xₙ = 2ⁿ`, the
-paper's own `⟨x⟩` shape, as admissible for `BigDigits` and refuted for `PolyNatCodes`, and
-`digitMachineCodes_nest_not_polyMachineCodes` does the same for `Nat.Partrec.Code.nest`,
-a machine sequence whose source is `2n + 1` symbols long while its source number is at
-least `2^n`. Machines are named by `Code.sourceNat`, linear in the syntax tree; Mathlib's
-`Encodable.encode` squares per node and is deliberately not the naming map. The same change
-carried the `input_poly` fields of the §4.10 presentation structures to `BigDigits`,
-removing a smaller restriction from those rows without touching what actually qualified
-them; both structures (`BoundedComputation`, `SemidecidableComputation`) were themselves
-retired when the two nodes moved onto arithmetized subject matter. `PolyMachineCodes` is now named only inside the witness that
-refutes it, and no paper-facing endpoint takes a whole-value class **on a datum the paper
-quantifies over as e.c.** One paper-facing endpoint still takes one on a repo-side object:
-`lic_domination_universalSemimeasure_ofIndependentAtoms` (`thm:dus`) takes a
-`DUSThresholdEmission`, whose `threshold_sum_codes` and `inverse_width_codes` fields are
-whole-value `PolyRatCodes` (`Properties/UniversalSemimeasure.lean:405-407`). It constrains
-the repo's own rational approximation table, which the paper never quantifies over and
-which the repo constructs and proves the certificate for (`dusThresholdEmission`), so it
-does not lower that row — the `thm:dus` row states this and the test it passes.
-
-Widening a hypothesis strengthens the theorem that takes it, so the same change strengthened
-several rows already classified `exact`: `lic_provind`, `lic_persistence_of_knowledge`,
-`sentenceAffine_polySequence` and the rest of the affine/trader lane now accept sentence
-families whose Gödel codes grow exponentially while their emitted symbol count stays
-polynomial. Their status is unchanged — the narrower class was already inside the paper's —
-and their rows record the widening.
-
-**No node is `qualified` any more.** The last one was `thm:incons`, and tranche 10 moved it to
-`exact`. It is now stated for an arbitrary **machine-enumerated** recursively axiomatized theory
-sequence: `lic_disbelief_inconsistent_theories_unconditional` takes a machine family
-`m : ℕ → Nat.Partrec.Code`, `hm : DigitMachineCodes m` — `def:ec` on the *naming* of the
-sequence, which is what tex:1905's "efficiently named" and tex:1931's "write out the source code
-specifying `mₙ`" ask for, the runtime of an individual `mₙ` being immaterial — and the paper's own
-inconsistency premise `hinc : ∀ n, ¬Consistent (theoryOf (m n))`, stated at the day's *theory*
-itself. `Θ′ₙ = theoryOf (mₙ)` is freestanding: no base theory, no relation to the market's `Θ`, no
-`Δ₁` hypothesis of its own, and possibly **infinitely axiomatized**. Both conjuncts of the paper's
-display are concluded.
-
-The **deduction-family charge that held this node is retired**, not restated in another form. The
-previous rendering priced `Θ′ₙ = Θ₀ ∪ {σₙ}` over a fixed Δ₁ base, because Foundation's
-`Derivation T` takes `T` as a *meta* parameter and there is no uniform-in-theory-code derivability
-predicate to represent. That **verified obstruction still stands verbatim** — full uniformity in a
-theory code is a truth-predicate project, not a tranche — and the new rendering sidesteps it
-rather than contradicting it: it never forms an internal uniform derivability predicate at all. It
-quantifies over coded machines *externally*, at `V := ℕ`, and buys the uniformity from
-**compactness**. An inconsistency is always witnessed by finitely many axioms (Foundation's proof
-object carries its own axiom list), a finite list of *written* axioms splices into one written
-conjunction at token level (`combineSourceNats`), and refuting that conjunction is a question of
-pure logic — so the represented predicate,
-`MachineTheoryInconsistent z := ∃ w, ProvableCode ∅ (negWindowCode z w)`, runs over the **empty
-theory** and mentions no base theory anywhere.
-
-Its `def:ec` premise moved with it. The Gödel-code-metered `hσ : BigDigits (deductionFamilyArg σ)`
-was retired in tranche 9-pre for `PolyArithmeticSourceSeq` on the written source of the day's
-adjoined axiom; in tranche 10 there is no adjoined axiom to meter, and the premise is
-`DigitMachineCodes m` on the **machine's** own written source — `binNumeral ((m n).sourceNat)`,
-the tag stream read base-16, whose base-4 digit count is linear in the source. Nothing about the
-day's axioms is metered: they are produced *inside* the machine, and the spliced window is parsed
-*inside* the represented predicate, where the paper asks only for recursive enumerability.
-Anti-extensionality came out unconditional as well — `inconsistencySchema_mentions_zero` needs no
-hypothesis now, where the deduction-family version needed `Consistent Θ₀`, because the machine
-that keeps writing `⊥` presents an inconsistent theory and the machine that never writes presents
-the empty one.
-
-Non-vacuity is discharged by the construction at two witnesses the old rendering could not state.
-`thm_incons_applied_deep` runs at `mₙ = dayMachine (comp deepSourceCode left) n`, whose day-`n`
-theory is the single axiom `(∀x. A(x) ⟺ ⋯ ⟺ A(x)) ∧ ⊥` — `5n + 7` symbols as the paper writes it,
-`≥ 2^n` nodes in normal form, Gödel code doubly exponential in that, while the *machine's* source
-stays `O(n)` — so it exercises the metering gap, with
-`inconsistencyArgClaimSentence_deep_ne` separating the claim sentences of every pair of distinct
-days. `thm_incons_applied_infinite` runs at `mₙ = dayMachine deepSourceCode n`, which writes a
-different axiom on every input, so `theoryOf (mₙ)` is **infinite**
-(`infinite_theoryOf_infiniteDayMachine`) — genuinely recursively axiomatized rather than finitely
-axiomatized, which is what the paper's own examples `𝗣𝗔` (tex:1859) and `𝗭𝗙𝗖` (tex:1889) are, and
-which a deduction family adjoining one sentence can never be. Both are fully applied with nothing
-left to the caller. What reading a machine as a theory *does* require is a convention, and it is
-stated rather than left implicit: `dd:machinetheory`, under *The modeling boundary* below.
-
-Its two §4.10 neighbours left the `qualified` column earlier. `thm:pac` and `thm:pazfc` are one
-construction at two theories. Both endpoints price the arithmetized finite-consistency family
-of a theory `Θ′`, rendered as the value-`0` sentence of a `Θ`-formula representing `Θ′`'s
-bounded-provability decider (`Framework/BoundedConsistency.lean`, metered in **symbols** by
-`dSize`, as the paper meters it). `lic_belief_finitistic_consistency_unconditional` is the diagonal `Θ′ = Θ`,
-where the consistency needed for the claims' truth is already implied by `Θ`'s representing
-computations; `lic_belief_stronger_theory_consistency_unconditional` takes `Θ′` as a second
-parameter with consistency as the paper's own explicit premise, and is witnessed at
-`Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔`. No hypothesis relates `Θ` and `Θ′` in either statement: the paper
-assumes of `Θ′` only that it is a stronger consistent recursively axiomatizable theory
-(tex:1881-1886) and states no containment, so the Lean hypotheses **match** the paper's rather
-than generalizing them; what makes the result interesting is the informal case where `Θ` cannot
-prove `Con(Θ′)`, which the `𝗜𝚺₁`/`𝗣𝗔` witness carries concretely. Both are `exact`; the metering is the paper's own symbol count, under the stated counting convention `dd:symbolcount`. The
-`@lic_belief_finitistic_consistency = @lic_belief_stronger_theory_consistency := rfl` identity
-that the kernel once accepted has been deleted and is false: the second endpoint's abstract
-layer no longer exists, and the two nodes differ in which theory is metered.
-
-The eleven arithmetic-theory nodes that used to sit beside them — `thm:ref`, `thm:lp`,
-`thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:halts`, `thm:loops`,
-`thm:dontwait` — no longer are. They were qualified for a theory-hypothesis reason, and
-that reason is gone in both of its parts: **no canonical endpoint carries
-`[T.SoundOnHierarchy 𝚺 1]`** (0 of 105, the quotation lane having been the last holdout),
-and the residual `[𝗜𝚺₁ ⪯ Θ]` that then held them was deleted everywhere it was merely
-inherited — it survives on exactly three of the 105 endpoints, where the substrate's Gödel
-fixed point and rational-cut arithmetic are indexed at `𝗜𝚺₁`, and is disclosed there as
-representation infrastructure alongside `[T.Δ₁]`. What each shown endpoint asks for now is
-the paper's own standing assumption on Θ. `thm:lp` lands at `strengthened` rather than
-`exact`, because it *constructs* the paradoxical sequence the paper merely posits; its
-statement is also width-free now — the four `width` binders are gone from
-`lic_paradox_resistance_ofDiagonal_unconditional`, which takes `(p : ℚ) (hp0 : 0 < p)
-(hp1 : p < 1)` and discharges the vanishing tolerance internally at `2⁻ⁿ`, where earlier
-editions of the ledger argued the premises were eliminable instead of eliminating them. The
-per-node residual disclosures, and the rulings behind them, are in the
-*Arithmetic-theory hypotheses* section of the classification ledger; the construction they
-describe is in *Instantiating the arithmetic-theory family* below.
-
-These numbers are recomputed from the classification ledger by
-`scripts/check_endpoint_coverage.py`, which fails the build if any figure here drifts from
-it — in both directions, so a count cannot be lost by rewording the sentence that carries
-it. Rows that have
-since moved were re-derived again from the merged signatures. Where a count is uncertain
-we have rounded against ourselves.
-
-**Zero `sorry`, zero `axiom` declarations** — every public endpoint reports only Lean's
-standard `propext`, `Classical.choice`, `Quot.sound`, enforced by the build
-(`AxiomAudit.lean` enumerates the public surface and fails compilation on any
-regression), and every paper-label citation is verified two-way by script. That holds when
-the arithmetic-theory family is *instantiated* as well as parametrically. The one standing
-modeling substitution, and the representation interfaces that are not substitutions, are
-described under *The modeling boundary* below.
-
-## The main theorem
-
-For every computable deductive process, a logical inductor exists — in the paper's full
-sense:
-
-* `exists_computable_beliefSequence_logical_inductor` — there is a computable sequence
-  of explicit finite-support rational belief states (one program emits the day-`n`
-  association list) whose induced pricing satisfies the logical induction criterion.
-* `LIA_isMachineLogicalInductor` — the concrete recursively-constructed rational market
-  built here (the paper's §5 algorithm: market maker via a from-scratch Sperner/Brouwer
-  fixed point, budgeter, trading firm over a universal trader enumeration) satisfies
-  the criterion **at the paper's own quantifier**: no trader in ordinary machine
-  polynomial time exploits it. `LIA_is_logical_inductor` is the same statement at the
-  fuel-class compatibility predicate, and follows.
-* `exists_machine_logical_inductor` — the bare existence statement at that quantifier.
-
-The chain the criterion's efficiency side runs along, all of it proved and axiom-clean:
+Exhibiting a `Complexity.FP` witness by hand is unpleasant, so the development also carries a
+compositional **certificate calculus**: `EfficientlyComputable` / `PolyFueled` (`dd:fuel`) ask
+for a `Nat.Partrec.Code` pair emitting the trade stream inside a polynomial fuel bound on
+Mathlib's `evaln`. This is *certification technology*, not a rival definition of efficiency,
+and the whole relationship between the two is one theorem:
 
 ```text
-EfficientlyComputable Tr                     fuel certificate (how traders are built)
-      │  EfficientlyComputable.toMachine     evaln → complexitylib TM, concrete bounds
-      ▼
-MachineEfficientTrader Tr                    def:ec: Complexity.FP on the unary day
-      │  exists_enumeratedTrader_eq          exact coverage
-      ▼
-∃ i, enumeratedTrader i = Tr                 finite TMDesc + polynomial clock
-      │  trading_firm_dominance
-      ▼
-(tradingFirmTrader DP Q).Exploits P DP       lem:tfdom
-      │  lia_no_machine_trader_exploits
-      ▼
-LIA_isMachineLogicalInductor                 thm:lia at the machine class
-
-and, in the other direction,
-∀ i, MachineEfficientTrader (enumeratedTrader i)     enumeratedTrader_machineEfficient
+EfficientlyComputable Tr  ──EfficientlyComputable.toMachine──▶  MachineEfficientTrader Tr
 ```
 
-so the enumeration is an enumeration *of* machine-efficient traders, not merely one that
-covers them.
+proved through a real `evaln` → Turing-machine compiler with concrete register and step
+bounds. **The converse is neither proved nor claimed**, and nothing paper-facing needs it: a
+fuel certificate is a sufficient route into the paper's class, and every concrete exploiting
+trader in the §4 proofs is built that way. `IsLogicalInductor` — the criterion over the
+fuel-certified class — is kept as a compatibility interface, since the §4 theorems are stated
+against it and `IsMachineLogicalInductor.toIsLogicalInductor` carries all of them to a machine
+logical inductor unchanged.
 
-The §4 property tail — convergence, coherence, provability induction, persistence,
-preemptive learning, calibration, unbiasedness, pseudorandomness, logical
-relationships, non-dogmatism, Occam bounds, universal-semimeasure domination, closure
-under conditioning and perturbation, expectations, introspection, paradox resistance,
-and self-trust — is proved for **every** logical inductor (`[IsLogicalInductor P DP]`),
-with paper-facing names mirroring the paper's labels (`lic_provind` ↔ `thm:provind`).
-Where a theorem needs representation machinery (quotation, arithmetic,
-computation-representing theories), that machinery is *constructed* over the concrete
-inductor wherever the model permits, yielding `_unconditional` and `_closed` endpoints
-with no hypotheses beyond the statement's own data; where a residual interface remains,
-the per-node table says which.
+A second question about metering is settled inside the certificate layer, and it matters
+because getting it wrong silently narrows the paper's class. `def:ec` bounds how many symbols
+a poly-time writer *emits*; it does not bound their magnitudes. So the certificate classes the
+property tail takes are the **write-out** ones — `BigSentenceCodes` for sentences, `BigDigits`
+for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for machine codes, with
+`BigTokenStream` / `BigSpliceStream` on the emission surface — under which `δₙ = 2⁻ⁿ`, an
+`n`-bit string, and the Gödel code of a sentence naming an `n`-bit machine are all admissible,
+as they are for the paper. Value-bounded metering would exclude them, and that exclusion is
+proved rather than argued (`bigDigits_two_pow_not_polyNatCodes`,
+`not_polySentenceCodes_bitPrefixSentence`, and three more). One retention is left on the
+paper-facing surface and is disclosed at its node: `thm:scon`'s conditioning certificate asks
+for the narrower `RpnSentenceCodes` on the *condition*, which restricts which conditioning
+data a caller may supply and does not touch what is concluded.
 
-## Domination of the universal semimeasure — how it is witnessed
+The paper is explicit, immediately after `def:ec`, that its framework "is not wedded to this
+definition" and that a different efficiency class with suitable closure properties yields
+logical inductors with different runtime/strength trade-offs (tex:757). So the choice of class
+is a variation the paper anticipates. What is *not* thereby licensed is any claim that the
+fuel class contains the paper's; the `dd:fuel` model card in `Framework/Computable.lean`
+states that open question, and it is why the machine class, not the fuel class, is what the
+criterion quantifies over.
 
-`thm:dus` and `thm:strict` quantify over a *presentation* of finite bit prefixes as
-sentences: an independent atom family, an enumeration of all finite bit strings, and an
-efficient naming of the corresponding prefix conjunctions. Both nodes are proved at paper strength for **any** deductive process and any logical
-inductor, and that presentation is now constructed (`ordinaryBitPrefixSentences`), so
-endpoints exist that take **no caller input** at all
-(`lic_domination_everyLowerSemicomputable_unconditional`,
-`lic_strict_domination_universalSemimeasure_unconditional`).
+### Sentences, the market language, and the arithmetic theory
 
-One qualification on those input-free endpoints, because it is easy to miss: they hold over
-`emptyBitDeductiveProcess` — the constantly-empty theory — where the atoms' independence and
-the plausible-world hypothesis are discharged by "no stage asserts anything", and
-`realizable` is discharged **vacuously**. That is a real logical inductor and a real
-theorem, but the paper frames these results as fresh symbols added *to* a theory Θ, so the
-reasoner handles empirical uncertainty *as well as* logical uncertainty (tex:1550, 1559); at
-Θ = ∅ there is no "as well as". They are signposted at their declarations as *inhabitation*
-witnesses, not as evidence of content over a substantive theory.
+The market prices propositional sentences. The paper's background theory Θ is first-order, and
+it enters through explicit interfaces rather than by making the market's language first-order.
+The two layers meet in the deductive process: `paperTheoryDP T` enumerates Θ's theorems as
+propositional atoms, and `theoremDP T` is the literal provability/quotation stream the quote
+codes are read off.
 
-`thm:dus` now also has a second, substantive witness layer over a non-empty process, and
-that is why it counts as instantiated over the arithmetic inductor while `thm:strict` does
-not. `paperIndependentBitAtoms` and `paperBitPrefixSentences`
-(`Construction/Witnesses/BitPrefixSyntax.lean`,
-`Construction/Witnesses/UnconditionalOverLIA.lean`) put the bit atoms over `paperDP T` —
-the same market the whole §4 tail runs on — at a freshly reserved `bitAtomTag := 7`, with
-`realizable` proved rather than vacuous. Composed with the constructed dovetail,
-`lic_domination_dovetailSemimeasure_paperDP` and
-`lic_domination_everyLowerSemicomputable_paperDP` close the node with **no caller input and
-no vacuous premise**. Cite that layer, not the empty-process one, when asked whether the
-node's premises are non-vacuously satisfiable. The universal forms still carry the
-generality: both nodes are proved for any deductive process and any inductor.
+First-order claims are therefore *compiled* into the market. A day-`n` claim's subject matter
+is written into its sentence as an argument, spelled by the compact Horner `ℒₒᵣ` term
+`binNumeral` (`O(log v)` symbols, so `def:ec`'s write-out metering can pay for it); what is
+*represented* inside Θ is universal and fixed once per theorem — the r.e. `universalHaltingSchema`
+on the unbounded lane, one `γ` per horizon program on the bounded lane. That the family
+genuinely separates its data is proved, not assumed
+(`haltingArgClaimSentence_ne_of_halts_ne`, `representedClaimSentence_ne_of_runValue_ne`).
 
-One point on the surface is worth stating plainly, since it constrains the interface.
-`BitPrefixSentences.prefix_codes` is metered in **symbols**, not in the Gödel *value* of the
-sentence code. That is forced, and the forcing is proved rather than asserted: a binary
-connective costs two nested `Nat.pair`s (a fourth power) while a `List Bool` cons costs one
-(a square), so the prefix conjunction's code is about `2^(4^m)` at an enumeration index of
-about `5^(2^m)`, and no polynomial closes that gap for any atom family over any deductive
-process (`not_polySentenceCodes_bitPrefixSentence`). Symbol metering — built for exactly
-this pathology, and the field now sits at the write-out class `BigSentenceCodes` — is also
-the paper's own cost measure at `def:ec`, and the prefix conjunction's Polish run is `Θ(m)`
-small tokens.
+Formula families are metered on the language the paper actually writes in. The paper's
+connectives include `⟺` as a primitive (tex:560); Foundation's `Semiformula` is a
+negation-normal-form datatype with no such constructor, so metering the normal form would
+charge exponentially for a left-nested biconditional chain. Nothing here meters the normal
+form: `ArithSource` carries the paper's primitives, `def:ec`'s condition is
+`PolyArithmeticSourceSeq` — one emitted token per node *as the paper writes it* — and
+normal-form expansion happens inside the parser and is never charged. That two-layer
+architecture is what `dd:nnf` labels, and the inclusion is proved strict rather than asserted.
 
-The emitter that discharges it (`BitChain`) walks the enumeration index's own `Nat.pair`
-chain: two fuel-clocked `prec` scans recover the string's length and a *global* head-validity
-flag, and a variable-width concatenation emits two- or four-token literal blocks. The
-validity scan is a correctness obligation, not a cost one — `Encodable Bool` sends every code
-`≥ 2` to `none` and the list decoder is applicative, so one malformed head collapses the whole
-string to `[]` (the sentence becomes `⊤`) rather than truncating it, and a position-local
-emitter would silently disagree with the enumeration on every malformed index.
+**LUVs are presented by thresholds.** A logically uncertain variable reaches downstream results
+as its family of threshold sentences `⌜X > r⌝`. This is a representation interface, not a
+substitution: the paper's literal first-order object exists as `PaperLUV` — an actual
+one-variable arithmetic formula carrying object-level Θ-proofs of unique existence and `[0,1]`
+membership — and compiles into the carrier, so results stated against the carrier apply to
+more families than the paper's, with `PaperLUV` showing that the paper's own are among them.
+The frontend is inhabited at concrete families across the range the paper writes
+(`unitFracPaperLUVSeq` at `1/(n+1)`, `dyadicPaperLUVSeq` at `2⁻ⁿ`). What remains charged here
+is narrow and stated where it bites: a `PaperLUV`'s object-level value is named by a
+numerator/denominator pair code rather than by a canonical rational arithmetic inside `ℒₒᵣ`.
 
-## Instantiating the arithmetic-theory family
+### What is assumed about the background theory
 
-The paper's §2 Notation fixes a single standing assumption on the background theory Θ, and
-this development's arithmetic-theory family is stated at it and nothing more. The path from
-that assumption to a property theorem has four steps, and each is a named object here.
+The paper's §2 fixes one standing assumption on Θ, and the arithmetic-theory family is stated
+at it. `RepresentsComputations T` (`Framework/RepresentsComputations.lean`) is that assumption
+verbatim: for every total computable `f` there is a Θ-formula `γ_f` with
+`y = f n ↔ Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ)`. It is a condition on what Θ *derives*, with no
+reference to truth in ℕ, and it already forces Θ consistent (`RepresentsComputations.consistent`,
+the paper's own tex:604 observation). Consuming the class never uses semantics; *verifying* it
+for a particular theory does, and `representsComputations_of_peanoMinus` registers instances at
+`𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`, so a client instantiating at one of those supplies nothing.
 
-**1. The paper's premise, as a class.** tex:600-606 assumes that Θ *represents
-computations*: for every total computable `f : ℕ → ℕ` there is a two-variable Θ-formula
-`γ_f` with
+Three further binders appear, and they are of two different kinds:
 
-    y = f n  ↔  Θ ⊢ ∀ν (γ_f(n̄, ν) ⟺ ν = ȳ),
+* **`[T.Δ₁]`** — a `Δ₁`-definable axiom set, where the paper asks only that Θ be computably
+  enumerable. This is representation infrastructure: by Craig's trick every c.e. theory has a
+  deductively equivalent `Δ₁` axiomatization, and every statement here is about `T ⊢ ·`, which
+  such a re-axiomatization preserves. That transfer step is not formalized here, and that is
+  the honest residual. What consumes the binder is the enumeration of Θ's theorems, never a
+  step of a paper proof.
+* **`[𝗜𝚺₁ ⪯ T]`** — likewise infrastructure, on three endpoints only, where the substrate's
+  Gödel fixed point (`thm:lp`) and rational-cut arithmetic are indexed at `𝗜𝚺₁`.
+* **`[𝗣𝗔⁻ ⪯ T]`** — a **genuine, if small, strengthening**, and the one item here that is not
+  infrastructure. It is *not* implied by "Θ represents computations": that premise yields
+  `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄`, and Robinson's R represents every
+  computable function without containing `𝗣𝗔⁻`. Two steps spend it — moving provability across
+  the compact numeral spelling that `def:ec` forces, and the object-level exclusivity of the
+  quotation schema's two fibers. What it bought is worth the trade and is the reason it is
+  here: it let **Σ₁-soundness be removed from the entire development**. No declaration in
+  `LogicalInduction/` carries a soundness instance binder — the paper treats soundness as a
+  further assumption it explicitly declines (tex:2673), and nothing here takes it. Every theory
+  in the paper's intended range satisfies `𝗣𝗔⁻`: `𝗜𝚺₁`, `𝗣𝗔`, `𝗣𝗔 + Con(𝗣𝗔)`, and the
+  arithmetic of ZFC.
 
-imposed for §4.8–§4.12 at tex:993-997. `RepresentsComputations T`
-(`Framework/RepresentsComputations.lean`) is that condition verbatim modulo the disclosed ℕ⁺→ℕ index shift (see the premise
-list below). It is a condition on
-what Θ *derives*, with no reference to truth in ℕ; the paper notes at tex:604 that it
-already forces Θ consistent, and `RepresentsComputations.consistent` is that observation.
+Two places additionally need a *counting convention*, because the paper fixes none and one is
+unavoidable. `dd:symbolcount` is §4.10's symbol measure on derivations (`dSize`, with the bound
+inclusive, as the paper's "ν or fewer symbols" is); `dd:machinetheory` is how a machine is read
+as a theory in `thm:incons` (`theoryOf`, with admission of an output as an axiom name *decided*
+rather than assumed). Both are conventions rather than substitutions — each can only
+over-count or under-admit, and the truth of every instance is proved independently of it — and
+both are stated in full at their modules and in the glossary in `LogicalInduction.lean`.
 
-**2. Both literals, from one sentence.** `represents_proves` and
-`represents_refutes` / `represents_refutes_all` deliver the positive claim and its literal
-negation from that class alone — no semantic hypothesis, only the `[𝗥₀ ⪯ T]` numeral
-apparatus, which the premise itself supplies in substance. On the unbounded halting lane
-less is needed still: the positive literal is Σ₁-completeness alone (`re_complete_mp`).
+### One market, and how to read the closed forms
 
-**3. A computable deductive process over Θ, and the single market it feeds.**
-`paperTheoryDP T` enumerates Θ's theorems, and `theoremDP T` is the literal
-provability/quotation stream the constructed quote codes are read off. The market is their
-**union**, `paperDP T = (theoremDP T).union (paperTheoryDP T)` — one market for the whole §4
-tail, as in the paper — computable (`paperDPComputation`) and with stage worlds non-vacuous
-from consistency (`paperDP_nonvacuous`, `paperDP_hworld`). See *The single market* below.
-What each day-`n` claim is *about* is fixed by an argument written into the sentence — the
-machine's source number and its input, packed and spelled by the compact Horner term
-`binNumeral`, whose `O(log v)` symbol run is emitted digit by digit from the paper's own
-write-out certificates `DigitMachineCodes` and `BigDigits`, which is what makes those two
-hypotheses load-bearing on `def:ec`. What is *represented* is universal and fixed once per
-theorem: the r.e. `universalHaltingSchema` on the unbounded lane, and one `γ` per horizon
-program for the total `universalRunValue f` on the bounded lane — the paper's `⌜f⌝`. That
-the family genuinely separates its data is proved, not assumed:
-`haltingArgClaimSentence_ne_of_halts_ne` and `representedClaimSentence_ne_of_runValue_ne`
-show that data differing in halting behaviour receive different claim sentences. Any future
-represented claim family should carry the same witness.
+The paper builds one market over one deductive process and prices every §4 property in it. So
+does this development: every canonical endpoint whose statement names a market names
+`liaHistory (paperDP T)`, where `paperDP T` is the union of the theorem enumeration and the
+literal quotation stream. There is **one documented exception**: `thm:ccee` is priced over
+`canonicalCCEEDP T`, by ruling, because the fixed enlarged language that lane needs for exact
+semantic multiplication puts it outside the shared one.
 
-**4. The property theorem over `LIA`.** `lia_learns_halting_patterns_unconditional`
-(`thm:halts`), `lic_learns_provable_nonhalting_patterns_unconditional` (`thm:loops`),
-`lic_does_not_anticipate_halting_unconditional` (`thm:dontwait`),
-`lic_belief_finitistic_consistency_unconditional` (`thm:pac`) and
-`lic_belief_stronger_theory_consistency_unconditional` (`thm:pazfc`) are stated over
-`liaHistory (paperDP T)`. The bounded lane takes `[RepresentsComputations T]`; the
-unbounded lane takes only `[Entailment.Consistent T]`, needing no *represented* negative
-literal — `thm:loops`'s negative literal is its own `hloops` premise, which the paper
-(`app:loops`) also assumes outright. The quotation family (`thm:ref`, `thm:lp`, `thm:st`,
-`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`) reaches its closed forms over that **same**
-market `paperDP T` — whose literal-stream half `theoremDP T` is where the quotation atoms
-enter — under `[Entailment.Consistent T]` in the same way, its two quotation schemas
-being the value-`1` and value-`0` fibers of one Foundation `code` formula
-(`universalQuoteCode`, `Framework/QuoteRepresentability.lean`), so that
-`Θ ⊢ ∼(pos ⋏ neg)` is a theorem of Θ (`universalQuote_exclusive_prov`, from `code_uniq`
-plus Gödel completeness) rather than a fact about ℕ.
+The §4 content is carried in two layers, and both are inventoried. The **generic carriers**
+(`lic_provind_true`, `lic_introspection`, …) quantify over any market with
+`[IsLogicalInductor P DP]` and take their day-data through constructed interfaces; they hold
+the paper's universal quantifier. The **closed forms** (`_unconditional` / `_closed`) discharge
+every one of those interfaces over the constructed inductor, and are the fully-assembled
+corollaries a client can apply with no inputs beyond the theory instances. So when a closed
+form names `LIA`, the universal statement is the generic carrier one import away; that is the
+reading of the two layers, not a loss.
 
-### How to read the closed forms — universality
+One non-vacuity caveat is worth stating because it is easy to miss. The *input-free* universal
+semimeasure endpoints (`lic_domination_everyLowerSemicomputable_unconditional`,
+`lic_strict_domination_universalSemimeasure_unconditional`) hold over the constantly-empty
+deductive process, where atom independence and realizability are discharged by "no stage
+asserts anything". They are real theorems, but the paper frames those results as fresh symbols
+added *to* a theory, so cite instead the substantive layer over `paperDP T`
+(`lic_domination_dovetailSemimeasure_paperDP`,
+`lic_domination_everyLowerSemicomputable_paperDP`) when asked whether the premises are
+non-vacuously satisfiable.
 
-The paper's §4 fixes an arbitrary logical inductor ℙ and proves its properties once.
-This development carries that content in two layers, and the ledger's axis column says
-which layer a row's shown endpoint lives in. The **generic carriers** (`lic_provind_true`,
-`lic_belief_finitistic_consistency`, `lic_introspection`, …) quantify over any market
-`P` with `[IsLogicalInductor P DP]` and take their day-data through constructed
-interfaces; they hold the paper's universal quantifier. The **closed forms**
-(`_unconditional`/`_closed`, axis `instantiated`) discharge every interface over the
-constructed inductor `liaHistory (paperDP T)` — they are the fully-assembled corollaries
-a client can apply with no inputs beyond the theory instances, and they are what the
-canonical inventory shows wherever discharge is possible. A row marked `universal`
-(e.g. `thm:dus`) quantifies over any `DP` and any inductor even in its shown form. So
-"the closed form names LIA" is the disclosed reading of the axis, not a loss recorded
-nowhere: the universal statement is the generic carrier one import away, and both
-layers are inventoried and axiom-checked. Three independent fresh-context audits
-converged on asking exactly this question, which is why it is answered here, once.
+## What differs from the paper
 
-### The single market
+* **Closure under finite perturbations (`thm:ifp`) is false as printed, and is refuted here.**
+  The paper has finitely many changed *days*, not finitely many changed `(day, sentence)`
+  constants — and a single day is an infinite pricing function, so it can carry unbounded
+  computational advice that an efficient trader reads off historical price features without
+  ever computing it. `not_overgeneral_ifp` proves the unrestricted statement false at the
+  paper's own quantifier. The corrected theorem is finite *support*, which is exactly the case
+  in which the appendix's "hard-code the constants" step is literally valid, and is strictly
+  stronger than the printed tail agreement. Details and the counterexample mechanism:
+  [`notes/paper-errata.md`](notes/paper-errata.md), PE1.
+* **Two printed statements are defective in repairable ways and are proved corrected**
+  (`thm:prand`, `thm:recurringunbiasednessexp`). Three further printed defects — a decidability
+  claim, a missing monotonicity assumption, and a printed proof that does not follow from its
+  printed hypotheses — are recorded with the repository's response at each. All six are in the
+  errata ledger.
+* **Some statements come out stronger than printed.** `thm:scon` is proved at the machine
+  quantifier in all three forms; `thm:lp` *constructs* the paradoxical sequence the paper
+  merely posits; §4 properties that the paper states only for a hypothetical inductor are
+  additionally instantiated over the concrete one built here; and the presentations that
+  `thm:dus` and `thm:strict` quantify over are constructed rather than assumed.
+* **Genuine modeling boundaries**, all disclosed above and at their statements: the fuel
+  calculus is a certification device whose relation to polynomial time is one-directional; the
+  corrected `thm:ifp` retains a `Recognizable` condition on the syntax of the moved sentences,
+  standing for two `Complexity.FP` primitives this toolkit lacks (integer square root; a
+  structured-payload parser) — the unrestricted finite-support statement is, as far as this
+  development can tell, true, and is unproved here; the fuel-class perturbation certificates
+  `EfficientPrefixPatch` and `FiniteSupportPatch` are **uninhabited**, which is why the machine
+  form is the one to use; and `thm:ccee`'s `dd:mesh` reading carries a per-day reflection slack
+  in an explicit `slack` field, with an exact (`slack = 0`) endpoint available over the renamed
+  process — the two are incomparable, and you choose by which market you need.
 
-The paper builds one market `𝕡` over one deductive process and prices every §4 property in
-it. So does this development, as of round 13 (2026-08-31): every canonical endpoint whose
-statement names a market names `liaHistory (paperDP T)`, with the single exception of
-`thm:ccee`, which is priced over `canonicalCCEEDP T` by ruling — the fixed enlarged language
-that lane needs for exact semantic multiplication is what puts it out of scope.
+For the theorem-by-theorem correspondence and the exact strength classification of every node,
+see [`scripts/coverage-classification.md`](../scripts/coverage-classification.md) and the
+generated read-through guide [`docs/trust-surface.html`](../docs/trust-surface.html).
 
-Until round 13 the endpoints ran in two lanes — the quotation family over
-`liaHistory (theoremDP T)`, the computational-knowledge family over
-`liaHistory (paperTheoryDP T)` — and that split was a disclosed departure from the paper's
-single `𝕡`. It is now closed **by construction, not by argument**: the union process, which
-already existed unused under the name `theoremPaperDP`, was collapsed into the load-bearing
-name `paperDP`, so there is no suffixed layer and no parallel market beside it. `theoremDP`
-and `paperTheoryDP` survive only as ingredients of that union and as the CCEE lane's base; no
-endpoint is stated at either.
+## How to use it
 
-The check that the collapse cost nothing is the binder census over the 105 canonical
-endpoints, which is **identical** before and after: `𝗣𝗔⁻ ⪯ ·` 16, `𝗜𝚺₁ ⪯ ·` 3, `[T.Δ₁]` 23,
-`[Entailment.Consistent ·]` 15, `[RepresentsComputations ·]` 3, and soundness 0. The union's
-stage-world witness is discharged from exactly the instances the two component witnesses
-were, so no endpoint bought its new market with a new hypothesis.
+```lean
+import LogicalInduction.API
+```
 
-The same round retired two dead atoms from the provability world — the `inconsistency` and
-`consistency` computation claims, which nothing consumed — together with the two
-`ComputationTheoryPresentation` obligations that discharged them. That structure now has six
-fields and states a strictly weaker interface, which strengthens every endpoint that consumes
-it. The `theoremDP` event tag space is gapless `0`–`5` (halting ±, bounded halting ±,
-quotation ±) and the global atom-payload space gapless `0`–`6`, with the finite-perturbation
-counterexample's advice tags at `7`/`8` above it rather than colliding with it. Older notes
-elsewhere that speak of the quotation-negation fiber as "tag 7" mean today's tag 5.
+That is the supported interface for downstream theoretical work: the semantic objects, both
+efficiency notions and the bridge between them, the criterion, the §4 library, and the two
+criterion-preserving transforms. `LogicalInduction/API.lean`'s module documentation is the map;
+`APITests/LogicalInduction.lean` is a worked client session against it.
 
-**§4.10 belief in finitistic consistency.**
-`lic_belief_finitistic_consistency_unconditional` (`thm:pac`) is stated at the paper's own
-subject matter: for any computable horizon `f`, the constructed inductor's day-`n` price
-of the arithmetized claim "no `Θ`-derivation of `⊥` has code below `f(n)`" tends to `1`.
-The claim family is built from one representing formula per horizon — the formula
-`RepresentsComputations` returns for the universal bounded-provability decider — with
-`⌜⊥⌝` and the day written into the sentence as a compact numeral, so the family names the
-theory and the day. That it does not collapse to a constant is a **theorem**, not a side
-condition: `mentions_zero_of_repr_ne` derives `γ.Mentions 0` from the representation spec alone
-whenever the represented decider is non-constant, and the Con lane discharges it at
-`conGamma_mentions_zero`, with `conGamma_mentions_zero_of_bProv` and
-`conGamma_mentions_zero_of_horizon_unbounded` as usable sufficient conditions and
-`conGamma_mentions_zero_ackermann` fully discharged at the paper's own illustration. The only
-boundary is degenerate and disclosed at the endpoints: at an eventually bounded horizon (in the
-limit, constantly `0`) the decider is constant, and there a `γ` ignoring its argument does
-represent it. It assumes no consistency hypothesis: consistency comes from the paper's
-own representability premise, and the truth of every day's claim is derived from it. The finite
-search is metered as the paper meters it, in **symbols** and with the bound inclusive:
-`dSize` (`Framework/DerivationSize.lean`) counts the symbols of the derivation code, and the
-one thing disclosed is the counting convention itself, `dd:symbolcount`. `lic_belief_stronger_theory_consistency_unconditional`
-(`thm:pazfc`) is the same construction at a second theory: it takes `Θ′` as a parameter with
-the paper's own `Entailment.Consistent Θ′` as its premise, represents `Θ′`'s bounded-provability
-decider **in `Θ`**, and is witnessed at `Θ = 𝗜𝚺₁`, `Θ′ = 𝗣𝗔` with horizon `fun n => ack n n` —
-an inductor over a theory that cannot prove `Con(𝗣𝗔)` coming to believe every finite
-consistency statement about it. `lic_disbelief_inconsistent_theories_unconditional`
-(`thm:incons`) prices the paper's inconsistent-theory family at the paper's own generality: an
-arbitrary **machine-enumerated** recursively axiomatized sequence `Θ′ₙ = theoryOf (mₙ)`, with no
-base theory, no `Δ₁` hypothesis of its own, and possibly infinitely axiomatized. The day's
-sentence is one universal schema, `codeOfREPred MachineTheoryInconsistent`, whose represented
-predicate refutes a spliced finite window of the day's written axioms over the **empty** theory,
-at the compact numeral `binNumeral ((m n).sourceNat)`; the premise
-`∀ n, ¬Consistent (theoryOf (m n))` is the paper's own, and its `def:ec` premise is
-`DigitMachineCodes m`, on the machine's own written source. Nothing is disclosed against it
-beyond the presentation convention `dd:machinetheory` (see *The modeling boundary* below).
+Deeper imports, and what each is for:
 
-**The premise is inhabited, and the instances are registered.**
-`representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
-proves the class for any theory `U` with `[𝗣𝗔⁻ ⪯ U]` that is true in `ℕ`, and instances are
-registered at **`𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`**. Not at `𝗥₀`: Foundation's `code_uniq` is stated
-for `𝗥₀` only inside a commented-out block, and `𝗥₀` has no trichotomy axiom, so the `rfind`
-case of single-valuedness is unavailable there — `𝗣𝗔⁻` is the weakest theory in
-Foundation's hierarchy for which the argument closes. Note the asymmetry, which is
-deliberate: **verifying** the premise for a particular theory uses that theory's truth in
-`ℕ` (through Gödel completeness and soundness), while **consuming** it never does. No
-endpoint carries a semantic hypothesis on `T`; the concrete instances pay for themselves.
-`AxiomAudit.lean` pins concrete instantiations at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔` so that a
-regression would fail the build, and they are axiom-clean: Foundation proves
-`Δ₁`-definability of `𝗜𝚺₁` and `𝗣𝗔` outright at the pinned revision
-(`InductionSchemeDelta1.lean`), so a concrete instance reports the same three axioms as
-everything else here.
+| Import | For |
+|---|---|
+| `LogicalInduction.Framework.RepresentsComputations` | stating your own theory's standing assumption |
+| `LogicalInduction.Construction.Witnesses.R0Representability` | discharging it at `𝗣𝗔⁻`, `𝗜𝚺₁` or `𝗣𝗔` |
+| `LogicalInduction.Construction.Witnesses.ComputationRepresented` | the §4.10 endpoints over `liaHistory (paperDP T)` |
+| `LogicalInduction.Construction.LIACompiler` | the §5 construction and its existence endpoints |
+| `LogicalInduction.Construction.Witnesses.ArithmeticSource` | building a new literal first-order LUV family |
+| `LogicalInduction` | the whole development |
 
-**The residuals, named once.** This is their single narrative home; the classification
-ledger's rows point here rather than restating them. Beyond the paper's own premise three
-binders appear. Two of them — `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` — are **charged globally by the
-user's ruling of 2026-08-31**, and no more: they are disclosed here, and no row's status
-turns on either. The third is representation infrastructure of the substrate:
+A handful of names to orient by:
 
-* `[𝗣𝗔⁻ ⪯ T]`, on **16** of the 105 canonical endpoints — a finite set of ordered-semiring
-  axioms, and the one item on this list that is a **genuine strengthening** rather than
-  infrastructure. **It is charged globally, by the user's ruling of 2026-08-31**: disclosed
-  once, here, alongside `[T.Δ₁]`, levied against no row, and re-argued in no per-row entry
-  of the classification ledger. It is *not* implied by "Θ represents computations": the
-  paper's premise yields `Θ ⊬ n̄ = m̄` for `n ≠ m` but never `Θ ⊢ n̄ ≠ m̄` — that is `𝗥₀`'s
-  Ω₃ — and Robinson's **R** represents every computable function without containing
-  `𝗣𝗔⁻`; three independent blind audits confirmed that gap. Two steps spend it. The first is
-  the compact `binNumeral` value transfer `def:ec` forces
-  (`provable_subst_iff_of_val`): Foundation's unary numeral costs its own value in symbols,
-  which no write-out certificate can pay, so the compact spelling is forced, and moving
-  provability across it is Gödel completeness over models of `𝗣𝗔⁻`. The second is
-  `code_uniq`'s `rfind` case, which buys object-level fiber exclusivity at the quotation
-  tag, and is what let **Σ₁-soundness be deleted from all 105 endpoints**: one small
-  *syntactic* assumption on Θ bought the removal of every *semantic* hypothesis, which is
-  the trade this disclosure records. The paper's own exclusivity argument is
-  metatheoretic, through the representability biconditional, and needs no arithmetic inside
-  Θ; ours is object-level so the stage-world proof stays constructive. The paper is not
-  innocent of the assumption either: the printed proof of `thm:incons` (app:incons,
-  tex:4487-4491) cites representability at exactly the point where Σ₁-completeness of Θ is
-  what the step needs — arithmetical strength beyond its own stated premises, of the kind
-  this binder supplies, `[𝗣𝗔⁻ ⪯ T]` yielding `𝗥₀ ⪯ T` and with it Σ₁-completeness. The
-  erratum is recorded in `notes/paper-errata.md`. Nor is the binder an invention of ours — Foundation's
-  `code_uniq` was *originally* stated at `𝗣𝗔⁻`, the `𝗥₀` text being dead code, so reviving
-  the commented-out block restores the `𝗣𝗔⁻` statement. And every theory in the paper's
-  intended range satisfies it: `𝗜𝚺₁`, `𝗣𝗔`, `𝗣𝗔 + Con(𝗣𝗔)`, and the arithmetic of ZFC.
-  (`lic_disbelief_inconsistent_theories_unconditional` used to carry a redundant
-  `[𝗥₀ ⪯ T]` beside it; that binder was dropped and the proof elaborates
-  unchanged, reaching `𝗥₀` through Foundation's `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T`, so no
-  canonical endpoint carries it. `RepresentsComputations` also quantifies
-  over `f : ℕ → ℕ` where the paper writes `ℕ⁺ → ℕ⁺` — an at-least-as-strong hypothesis.)
-* `[T.Δ₁]` — a `Δ₁`-definable *axiom set*, where the paper asks only that Θ be computably
-  enumerable. **Charged globally, by the same ruling of 2026-08-31**, and likewise re-argued
-  in no per-row entry. The two are not the same condition on `T` as presented: a c.e. axiom
-  set need not be `Δ₁`. They are the same condition on the *theory*: by Craig's trick every
-  c.e. theory has a deductively equivalent `Δ₁` (indeed primitive recursive) axiomatization,
-  and every statement here is about `T ⊢ ·`, which such a re-axiomatization preserves. That
-  transfer step **is not formalized** here, and is the honest residual. Two further facts
-  place the charge: the paper never defines "recursively axiomatizable" and fixes no
-  presentation of Θ (tex:600-606), the phrase being used informally throughout §4; and the
-  paper's own arithmetized sentences are presentation-relative in exactly the same way —
-  `Con(Θ′)(ν)`, the halting claims and “`⌈Θ′ₙ⌉` is inconsistent” all depend on how the axiom
-  set is written down, both for their symbol counts and for their provability, so fixing a
-  presentation is a precondition of the paper's own §4.10 material rather than an extra ask.
-  What consumes `[T.Δ₁]` is the enumeration of `T`'s theorems, never a step of a paper
-  proof; it does not lower a row.
-* `[𝗜𝚺₁ ⪯ T]` — on **three** of the 105 canonical endpoints and no others.
-  `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`) builds its paradoxical
-  sequence through Foundation's `parameterized_diagonal₁`, which is stated over `𝗜𝚺₁`;
-  `unitFracPaperLUVSeq` and `unitFracPaperLUVBoundedSequence` prove rational-cut arithmetic
-  inside `T`. Both are places where the substrate's apparatus is indexed at `𝗜𝚺₁`, so this
-  is charged with `[T.Δ₁]` and not against a row.
+* `MachineEfficientTrader` — `def:ec`, the paper-facing trader class.
+* `IsMachineLogicalInductor` — `def:lic` over that class. `IsLogicalInductor` is the
+  compatibility form the §4 theorems are stated against; state new consequences of the
+  criterion against *it*, so they are available at both.
+* `EfficientlyComputable.toMachine` — the one bridge from a fuel certificate into the class.
+* `LIA_isMachineLogicalInductor` — the constructed inductor satisfies the criterion.
+  `exists_machine_logical_inductor` is the bare existence statement, and
+  `exists_computable_beliefSequence_logical_inductor` the form that hands back a computable
+  sequence of explicit finite-support rational belief states.
+* `lic_provind`, `lic_persistence_of_knowledge`, `lic_lex_tendsto_zero`, … — the §4 library,
+  named after the paper's labels.
+* `lic_conditioned_machine` — closure under conditioning (`thm:scon`).
+* `lic_iff_of_recognizableSupportPerturbation` — the corrected `thm:ifp`.
 
-**Σ₁-soundness is gone from the whole development.** No declaration in `LogicalInduction/`
-carries a `SoundOnHierarchy` instance binder, and **0 of the 105** canonical endpoints name
-one — the paper treats soundness as a *further* assumption it explicitly declines
-(tex:2673), and nothing here takes it. The only surviving occurrence of the name is
-`loopsTheory_soundOnSigma1`, a fact about one concrete theory used as a non-vacuity witness
-for `thm:loops`'s `hloops`. How the last consumption was retired is recorded in the
-*Arithmetic-theory hypotheses* section of
-[`scripts/coverage-classification.md`](../scripts/coverage-classification.md), together with
-the per-row accounting.
+## Where the accounting lives
 
-## The modeling boundary
+This file explains the mathematics and how to start using it. The rest is deliberately
+elsewhere, each artifact answering one question:
 
-1. **Efficient computability is now the machine class; the fuel model is a certification
-   device.** `def:ec` is `MachineEfficientTrader` — a trader is efficient when some
-   `Complexity.FP` function of the *unary* day emits its day-`n` strategy. The
-   construction enumerates that class (`enumeratedTrader`, sound and covering), the
-   Trading Firm dominates it (`trading_firm_dominance`), and the capstone is
-   `LIA_isMachineLogicalInductor` / `exists_machine_logical_inductor`: `def:lic` and
-   `thm:li` at the paper's own quantifier.
-
-   The fuel-clocked class `EfficientlyComputable` survives as the *certification
-   technology* every concrete exploiting trader is built with, and
-   `EfficientlyComputable.toMachine` proves those certificates imply genuine machine
-   efficiency, through a real `evaln` → Turing-machine compiler with concrete register and
-   step bounds. The converse is neither proved nor claimed, and nothing paper-facing needs
-   it. `IsLogicalInductor` — the criterion over the fuel class — is kept as a
-   compatibility predicate; every machine logical inductor is one, so the whole property
-   tail transfers unchanged.
-
-   **What this leaves.** The two statements whose *conclusion* is itself the criterion —
-   they transport an arbitrary trader backwards across a market change, so restating them
-   needs the machine class closed under the same trader translations. Both transports are
-   now proved:
-
-   * **closure under conditioning** (`thm:scon`) — **complete at the machine quantifier**,
-     in all three forms. `conditionedTranslation_preserves_machine` and
-     `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
-     under the same hypothesis on the condition as their fuel counterparts; the endpoints
-     are `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
-     `lic_conditioned_eventual_machine`. The fuel theorem and its witnesses are untouched
-     beside them.
-   * **closure under finite perturbations** (`thm:ifp`) — no longer a boundary of this
-     kind, and for a stronger reason than the transport being built: the published
-     unrestricted statement is **false**, and `not_overgeneral_ifp` proves it so. A single
-     changed pricing day is an infinite computable function, so it can carry unbounded
-     computational advice to an efficient trader. The corrected finite-*support* theorem is
-     proved at both classes, and its machine form
-     (`machine_lic_iff_of_recognizableSupport`) asks only for two computable markets and a
-     perturbation — the freeze certificate is compiled from the market's own certificate
-     rather than supplied. One residual hypothesis remains, `Recognizable`, and it is a
-     condition on syntax rather than on markets; see the `thm:ifp` entry below for what it
-     stands for.
-
-   One thing this boundary is *not*, and it is worth saying plainly because the word
-   "substitution" invites the opposite reading: choosing an efficiency notion is a
-   choice the paper explicitly leaves open. Immediately after `def:ec` it says its
-   framework "is not wedded to this definition," that stricter notions "would yield
-   'dumber' inductors with better runtimes, and vice versa," and that it picks
-   polynomial-time functions "because it has some closure properties that are convenient
-   for our purposes" (tex:757). So a different-but-honest efficiency class is a
-   variation the paper anticipates, not a departure from it. What is *not* thereby
-   licensed — and what the model card states as the open question — is the claim that
-   this particular class contains the paper's, which is why the calibration gap above is
-   disclosed rather than waved through.
-
-   The model bites in a second, subtler place, and it is what kept most of the
-   qualified rows qualified. Within the fuel model there are three ways to meter a
-   sentence sequence, in decreasing width: by **write-out cost** (`BigSentenceCodes`) —
-   how many tokens a poly-time writer emits, with their magnitudes free, which is the
-   faithful reading of `def:ec` and the class the surface now uses; by **symbol count with
-   a per-token value bound** (`RpnSentenceCodes`), narrower, and the paper's own cost
-   measure only up to that extra bound; or by the **Gödel value** of the single
-   pair-code token (`PolySentenceCodes`), narrowest. These are not interchangeable: the same
-   pathology proved in the domination section above (`not_polySentenceCodes_bitPrefixSentence`)
-   exhibits a paper-admissible e.c. sentence family that the whole-value class provably
-   excludes, so whole-value metering is a genuine restriction of the paper's class.
-
-   Neither is a restriction the property tail takes any more: it is stated at the
-   **write-out** class `BigSentenceCodes` throughout — wider than the token-metered one and
-   the faithful reading of `def:ec` — and so is the whole quotation family's
-   *unconditional-over-`LIA`* layer (`thm:epr`, `thm:er`,
-   `thm:ref`, `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st` and `thm:wub`). No canonical
-   endpoint binds `RpnSentenceCodes`; the two token-metered retentions left on the surface
-   are `LUV.RpnThresholdCodeSeq` on the `_ofRepresentation` layer and `thm:scon`'s
-   conditioning certificate, disclosed on that node's row. The
-   metacomputation family `thm:pac`/`thm:pazfc`/`thm:dontwait` used to sit at a narrower
-   class here too, because the analogous `PolyNatCodes` on the *horizon* restricted the
-   paper's "any computable function `f`" to polynomial-time `f`. That is now fixed: the
-   claim schema defers the horizon term (`ComputableHorizon` names `⌜f⌝`; the arithmetic
-   schema evaluates it), so any computable `f` is admissible and
-   `not_polyNatCodes_ack` exhibits one — diagonal Ackermann — that the old class
-   provably excluded.
-
-   For the quotation family the gap turned out to be **residue, not obstruction**, and
-   the distinction is recorded because it was got wrong once — in this file. What the
-   quote-code constructors consume from the hypothesis is a *computability* fact,
-   `Primrec fun n => encode (φ n)`, used to key the market's quote table by sentence
-   code; no polynomial bound on the code value is needed anywhere downstream. The
-   token-metered class already supplies that fact (`RpnSentenceCodes.primrec`, written
-   for exactly this boundary, and noting in its own docstring that the codes are *not*
-   polynomially fueled). The six above were therefore signature generalizations. The
-   lesson generalizes past this instance: a hypothesis being consumed as *data* does not
-   establish that its strength is load-bearing — check what the consumer extracts.
-
-   `thm:st` was the one place in the quotation family where the generalization had real
-   content: its product LUV used to inline the sentence's Gödel value into a `Nat.pair`
-   shell. The token-level `⋏` emitter that repairs it is built
-   (`indicatorProductLUV_bigThresholdCodeSeq`), and with `LUV.BigThresholdCodeSeq` in hand
-   the closed endpoint took the final step too: `lic_self_trust_closed` now asks for
-   `hφ : BigSentenceCodes φ`, so it sits at the write-out class like the rest. What made
-   that possible was a fact about consumption rather than a new bound — the token-metered
-   form of `hφ` was consumed nowhere on this lane, only ever as `.primrec` or through a
-   reindexing that is already write-out metered.
-
-   The retired `BoundedComputation` carrier was a genuinely different defect, and a
-   syntactic one: the paper's sentence names the *term* `⌜f⌝(⌜n⌝)`, whereas that structure
-   carried the *evaluated* horizon `steps n` inside the claim's input, which is why its
-   value had to be polynomially bounded. The fix was not a better bound but a different
-   claim schema, and that is what the arithmetization landed: `thm:pac` and `thm:pazfc` both sit on
-   the arithmetized `Con(Θ′)` family of item 4 below, where the horizon is named by its
-   *program* and evaluated inside the represented decider, and the structure — together
-   with `SemidecidableComputation`, the corresponding carrier for `thm:incons` — has been
-   deleted.
-
-   Worth noting: the paper itself is explicit (remark after `def:ec`) that its
-   framework is not wedded to polynomial time — any efficiency class with suitable
-   closure properties yields logical inductors, with stricter classes giving weaker
-   but faster ones. Poly-time was their choice of convenience, not a load-bearing
-   one. The fuel class carries the closure properties the theory's core needs — the
-   construction and all but one of the property theorems completed inside it — so even
-   if the inclusion question resolves negatively, what is formalized here is a logical
-   inductor over a legitimate neighboring instantiation of the framework, not a
-   different kind of theorem. The `thm:ifp` exception above is the one place where the
-   class's closure gap is load-bearing rather than cosmetic.
-2. **Retired — the propositional substrate.** Sentences are still Foundation's
-   propositional formulas, and the paper's first-order theory Θ still enters through
-   explicit interfaces instantiated by arithmetic theories. That is now an ambient
-   representation choice rather than a standing modeling *substitution*, because the one
-   node it was charged at is no longer abstracted. A logically uncertain variable is
-   presented to downstream results by its family of threshold sentences `⌜X > r⌝`, but
-   that family is now produced by a literal first-order object: `PaperLUV` is an actual
-   one-variable arithmetic formula carrying object-level `T`-proofs of unique existence
-   and `[0,1]` membership, its threshold syntax is the paper's own, and its world-value
-   semantics is *derived* through `paperTheoryDP` and the rational cut rather than carried
-   as a build-frozen certificate. `PaperLUVSeq` additionally compiles that literal
-   threshold syntax to the token-metered `RpnThresholdCodeSeq`, and the frontend is
-   inhabited by varying concrete families at both ends of the range the paper writes:
-   `unitFracPaperLUVSeq` at `1/(n+1)` and `dyadicPaperLUVSeq` at `2⁻ⁿ`, the latter naming
-   its denominator by the compact `ℒₒᵣ` term `binNumeral (2 ^ n)`; `PaperLUV.rpnThresholdCodes`
-   is the single-LUV route into the non-sequence `LUV.RpnThresholdCodes`. Nothing remains
-   charged to this item; `dd:nnf`, listed as item 3 below, is no longer a substitution
-   either. See
-   [`notes/fol-luv-frontend.md`](notes/fol-luv-frontend.md); `def:luv` is classified
-   `instantiated` accordingly.
-
-   `def:blcp` is closed the same way: `PaperLUVCombination` reaches the abstract carrier
-   only through `PaperLUV.toLUV`, and its bounded-sequence certificate comes from the paper
-   family's own structural data rather than from anything assumed of the shares. What
-   remains charged to this item is narrow and stated where it bites: the object-level value
-   of a `PaperLUV` is named by a numerator/positive-denominator pair code rather than by a
-   canonical rational arithmetic inside `ℒₒᵣ`.
-
-   The flat atom representation once forced the closed `thm:ccee` endpoint through a
-   `1/(n+1)` mesh product. That historical endpoint remains available, but it is no longer
-   the endpoint of record. `Construction/Witnesses/SemanticLiftedCCEE.lean` constructs one
-   canonical language and deductive process from `T` before the source, deferral, or weight
-   is selected. A fixed injective renaming places every caller source in an old-language
-   namespace disjoint from semantic handles. The renamed theorem stream is a genuine
-   independent copy—there are no alias axioms back to the original atoms—so the prior
-   self-reference diagonal is unavailable.
-
-   Both invariants of that design—language separation, and admission gated by effectively
-   checked cut laws—are forced, and each has its own negative result.
-   `no_nonvacuous_worldValued_presented_of_rpn`
-   (`Construction/Witnesses/SemanticSource.lean`) exhibits an efficiently emitted,
-   world-valued indicator source that mentions its own semantic handle: unrestricted
-   presentation would force `p ↔ ¬p`. `semanticFreshIncreasing_not_jointly_reflected`
-   (`Construction/Witnesses/SemanticJoint.lean`) exhibits a source that is fresh but has
-   malformed increasing thresholds: interpreting every fresh emitter would make the
-   universal product closure inconsistent.
-
-   Source admission is not proof-carrying. From the existing completed-world
-   `source_valued` premise, rational-cut laws follow semantically; propositional compactness
-   gives a finite theorem stage, and an executable finite entailment checker lets the fixed
-   universal registry discover that stage. `RpnThresholdCodeSeq` supplies the mesh-query
-   emitter needed by exact semantic multiplication. Thus
-   `lic_no_expected_net_update_conditional_exact_canonical` has the same caller source class as
-   the former mesh endpoint, constructs the deferred weight and right quotation internally,
-   and instantiates the conditional trader theorem with slack identically zero.
-
-   This is not the rejected source-dependent `productDefDP` maneuver. There is one market,
-   `liaHistory (canonicalCCEEDP T)`, constructed over a fixed enlarged language from the
-   outset; no equality with prices of the single market `liaHistory (paperDP T)` is
-   asserted or needed. `thm:ccee` is the one node priced outside that market, by ruling.
-   `canonicalCCEEDP_hworld` supplies an explicit completed-world witness for the full
-   universal source, quotation, and product process.
-
-   **The slack is invisible at the one known downstream interface.** The deference port
-   of "Deference Done Better" into this framework consumes `thm:ccee` as a hypothesis
-   `hCcee : Approx Exw Eew` — two abstract real sequences related by `≈ₙ`, with no LUV
-   structure, no deductive process, and no slack term crossing the boundary. The mesh
-   endpoint's conclusion has exactly that shape, so it discharges the hypothesis as well
-   as an exactly-reflecting one would.
-
-3. **Retired — the object language (`dd:nnf`).** The *semantic* object language is still
-   Foundation's negation-normal-form `Semiformula` (`verum/falsum/rel/nrel/and/or/all/exs`),
-   but *writing* is no longer metered there. The paper's language has `⟺` as a primitive
-   connective (tex:560, "includes the basic logical connectives ¬, ∧, ∨, ⟹, ⟺"), and formula
-   families are metered on a matching **source** language: `ArithSource k`
-   (`Construction/Witnesses/ArithmeticSource.lean`) carries those primitives plus atomic
-   leaves, `ArithSource.compile` gives it its meaning (`eval_compile` is the semantic
-   bridge), and `def:ec`'s condition is `PolyArithmeticSourceSeq` — one emitted token per
-   node of the formula **as the paper writes it**. Normal-form expansion happens inside
-   `parseStructuredArithmeticFormula` (source tags `20` = `¬`, `21` = `⟹`, `22` = `⟺`) and
-   is never charged to the emitter. So nothing pays twice for a biconditional, and the
-   substitution this item used to disclose is gone.
-
-   What the label now marks is the two-layer architecture and one deliberate retention: the
-   normal-form-metered class `PolyArithmeticFormulaSeq` is kept as a **strictness foil**. It
-   embeds (`PolyArithmeticFormulaSeq.toSource`), and the inclusion is strict, proved at the
-   left-nested chain `Φ₀ = A`, `Φₖ₊₁ = Φₖ ⟺ A`: `5n + 4` source tokens
-   (`iffChainSource_polyArithmeticSourceSeq`, `sourceTokens_iffChainSource_length`) against
-   `≥ 2ⁿ` normal-form tokens (`iffChain_not_polyArithmeticFormulaSeq`,
-   `two_pow_le_encode_iffChain`). `iffPaperLUVSeq` carries that family to a literal paper LUV
-   family whose `n`-th defining formula is `O(n)` characters to write, with
-   `iffPaperLUVSeq_frontend` reaching `LUV.RpnThresholdCodeSeq`. So
-   `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved, not asserted, and the
-   symbol-metered class the statements use is the paper's own condition on its own syntax.
-
-4. **Convention, not substitution — the §4.10 symbol measure (`dd:symbolcount`).** The paper's
-   `Con(Θ′)(ν)` counts *symbols* of the derivation and fixes neither a Gödel encoding nor an
-   alphabet. Foundation exposes no size function on its internal derivations — `Semiformula.bv`
-   measures a formula, not a derivation — so `LogicalInduction/Framework/DerivationSize.lean`
-   defines one: `dSize`, by external recursion over the derivation codes at `V := ℕ`, with the
-   equations tying it to Foundation's own derivation constructors (`dSize_axL`, `dSize_cutRule`,
-   …) and the converse bound `le_G_dSize : d ≤ G (dSize d)` that makes a symbol-bounded proof
-   search a finite one, and so decidable in both polarities. §4.10's searches are now metered by
-   it — `BProv T φ k := ∃ d, Proof T d φ ∧ dSize d ≤ k`, the bound **inclusive**, as the paper's
-   “`ν` or fewer symbols” is. What is disclosed here is the *counting convention*: one symbol per
-   rule name, connective, quantifier, predicate/function symbol and variable occurrence; one
-   separator per argument-list entry; each index at its binary digit length plus one marker token (`idxLen n = Nat.size n + 1`). It is stated in
-   full in that module's header. The index clause is forced — charging one symbol per variable
-   occurrence regardless of index would make the measure infinite-fibred and the bounded search
-   undecidable in the negative polarity — and it is the same write-out metering the rest of the
-   development uses for `def:ec`. The convention can only ever *over*-count, so `conWithin` is if
-   anything a weaker claim under it than under a leaner one, and the truth of every instance is
-   proved from consistency alone (`conWithin_of_consistent`), independently of it. The previous
-   edition metered by the derivation's Gödel number and disclosed that as the type-`(c)`
-   substitution `dd:proofcode`; that substitution **has been retired** and no longer
-   appears anywhere in the development. `thm:pac` and `thm:pazfc` are `exact` with nothing
-   charged against them. Nothing is metered at `thm:incons`, whose sentence is the *unbounded*
-   existential over proofs, so no convention arises there.
-
-5. **Convention, not substitution — presenting a theory by a machine (`dd:machinetheory`).** The
-   paper says only that `thm:incons`'s day-`n` theory is recursively axiomatizable and
-   efficiently named; reading a machine *as* a theory requires fixing a convention, and ours is
-   stated rather than left implicit. `theoryOf m`
-   (`Construction/Witnesses/ComputationRepresented.lean`) reads the machine's outputs as
-   `ArithSource.sourceNat` names of axiom *sources*: an output contributes the sentence its
-   named source writes, and **anything else contributes nothing**; and the budget-`b` window at
-   inputs `is` is `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, so a
-   diverging *or inadmissible* output contributes the inert `⊤`. **Admission is decided, not
-   assumed.** `AdmissibleName` (`Construction/Witnesses/SourceWindow.lean`) admits a number only
-   if it is literally the name of its own decoded run *and* that run is the complete emitted run
-   of one `ArithSource 0` whose compiled form is a sentence — the second test run by the
-   recognizer `sourceRun` (`Construction/Witnesses/SourceRecognizer.lean`), which, unlike the
-   numeric formula parser, tracks binder depth and rejects the free-variable tag. **The gate is
-   load-bearing, not hygiene.** Ungated, the splice is unsound in three independent ways: a
-   number that is no name decodes like a shorter one (`tokensOfNat` stops at the first
-   sentinel), two *incomplete* runs concatenate into one complete run, and a genuine source may
-   compile to a formula with free variables, which `∅` refutes without its being a sentence of
-   any theory — each of which lets a machine presenting the **empty** theory satisfy the
-   represented predicate. Gated, `machineTheoryInconsistent_iff` proves
-   `MachineTheoryInconsistent m.sourceNat ↔ ¬Entailment.Consistent (theoryOf m)`, so the day-`n`
-   sentence says exactly what the convention claims, in both directions. **How far the
-   convention reaches.** What is *proved* is the per-sentence half: `theoryOf_const_ofNNF` gives
-   `theoryOf (Code.const ⌜written σ⌝) = {σ}`, so every one-axiom theory is presented exactly,
-   `ArithSource.ofNNF` writing every sentence, and the paper never defines
-   "recursively axiomatizable" beyond the phrase. What is **not formalized** is the *uniform*
-   half of surjectivity — that for every r.e. set of sentences there is a *single* machine
-   enumerating their names — which would need `encodeArithmeticFormulaSymbols` certified
-   primitive recursive at the level of Foundation formula codes. The endpoint does not consume
-   it: `hinc` is stated at `theoryOf (m n)` for the machine the caller supplies. The convention
-   is disclosed because a different one would give a coextensive class of theories but a
-   different represented predicate, hence a different schema. The glossary entry is in
-   `LogicalInduction.lean`.
-
-The fuel model is no longer a modeling substitution: `def:ec` is the machine class, and the
-fuel certificate is proved to imply membership in it. What is disclosed at the affected
-statements is now the *residue* — the two machine-class transport theorems named above.
-
-## The two closure statements
-
-`thm:scon` and `thm:ifp` are the two theorems whose *conclusion* is itself the criterion, so
-the machine ⟸ fuel bridge never reached them: their proofs transport an arbitrary trader
-backwards across a market change and must certify the transported trader. Both are now
-settled, and they settled differently — one strengthened to the machine class, the other
-refuted and replaced.
-
-* **`thm:scon` — closure under conditioning.** *Strengthened paper theorem.* Complete at
-  the machine quantifier in all three forms — abstract compiler, gated translator and
-  finite-zero translator. The `Complexity.FP` transports
-  (`conditionedTranslation_preserves_machine`,
-  `eventualConditionedTranslation_preserves_machine`) carry the same `RpnSentenceCodes`
-  hypothesis on the condition as the fuel counterparts, so nothing is weakened and the
-  trader hypothesis is strictly stronger. The fuel-level theorem and its concrete witnesses
-  (`GatedConditioningOperationalWitness`, `EventualConditioningOperationalWitness`) are
-  unchanged and inhabited beside them.
-
-  **Class disclosure, because this is the last one on the day-indexed surface.** That
-  `RpnSentenceCodes` is *not* `def:ec`'s class. `def:ec` is the write-out
-  `BigSentenceCodes`, which bounds only how many tokens a poly-time writer emits;
-  `RpnSentenceCodes` additionally bounds each token's value and embeds into the write-out
-  class by `BigSentenceCodes.ofRpnSentenceCodes`; the datum that separates them is a single
-  atom of exponential index, admitted by the write-out class and excluded here — argued, not
-  carried by a strictness lemma, as the class table above records. The retention is forced,
-  at line level rather than by inspection:
-  `CondStep.machineSentenceBlocks_of_rpn` opens the certificate as emission data,
-  destructuring the stream, clocking it with `PolySegStream.clockedTokens_certificate` and
-  running `TraderMachine.traderOutput`, whose digit clamp is the identity only under a
-  value-bounded stream (`CondStep.mem_digitize_le_four`). A write-out stream supplies no
-  such clock, so widening is a `BigSentenceCodes → CondStep.MachineSentenceBlocks`
-  re-blocking to be proved in `FP`, at the scale of `CondStep.lean`'s own ~50 `_mem_FP`
-  lemmas. It restricts which conditioning data a caller may supply; it does not touch what
-  is concluded.
-* **`thm:ifp` — closure under finite perturbations.** All four categories are represented,
-  and the published statement is in the first only as a refutation.
-
-  * *Exact paper theorem* — **refuted**. `not_overgeneral_ifp`
-    (`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the unrestricted
-    finite-day statement **false** at the paper's own quantifier: closed but for the
-    deductive process, `sorry`-free, `[propext, Classical.choice, Quot.sound]`.
-  * *Corrected theorem* — `machine_lic_iff_of_recognizableSupport` (`FreezeOracle`):
-    two computable markets differing on only finitely many `(day, sentence)` price
-    coordinates satisfy the criterion together. Finite support is the natural repair,
-    because it is exactly the case in which the appendix's "hard-code the constants" step
-    is literally valid. It is **strictly stronger** than the paper's tail agreement
-    (`FiniteSupportPerturbation.tail_agree` one way; the day-`0` huge-numeral market the
-    other), so this is a proper restriction, not a restatement. `Properties/FinitePerturbations.lean`
-    holds the class-agnostic form and its fuel-class twin.
-  * *Compatibility* — `lic_iff_of_finitePerturbation` keeps the paper's own hypothesis
-    shape and its explicit prefix-patch premises. It is retained so the repo's coverage of
-    the paper's quantifier is legible; it is **not** the corrected paper-facing theorem.
-  * *Auxiliary* — the freeze compiler and run-oracle machinery (`FreezeStep`,
-    `FreezeOracle`, `RpnFreeze`, `CanonicalCodes`) are implementation, not statements.
-
-  **Why the paper's proof fails.** The paper has finitely many changed *days*, not finitely
-  many changed `(day, sentence)` constants. A single day is an infinite pricing function, so
-  it can carry unbounded computational advice — which is exactly what the counterexample
-  makes an efficient trader read, through historical price features, without ever computing
-  it.
-
-  **The one residual hypothesis, and what it is.** The corrected theorem asks that the
-  finitely many sentences whose price moves be `Recognizable` — `BotFree` and `NoReserved`.
-  That is a condition on *syntax*, not on markets, traders or perturbations: representation
-  residue, not mathematics. Each half stands for one `Complexity.FP` primitive this toolkit
-  lacks — integer square root for `BotFree` (Foundation's `ofNat` discards the payload at
-  tag `0`, so deciding whether a code denotes `⊥` is deciding whether it is a perfect
-  square) and a structured-payload parser for `NoReserved`. Both are polynomial time
-  mathematically. Neither half has slack: `decode_and_noncanonical` proves the first
-  necessary, and a structured spelling at any subterm breaks completeness. So the
-  unrestricted finite-support statement is, as far as this development can tell, **true** —
-  and unprovable here for want of two primitives rather than for want of a theorem.
-
-  **Witnesses.** `machine_lic_iff_twoPoint` is closed but for the deductive process — a
-  concrete pair of computable markets, proved to differ at the frozen coordinate,
-  discharging every hypothesis at once — so the corrected theorem is **non-vacuous**. It is
-  also **informative**: `LIAPerturbation.machineLogicalInductor_liaPerturbed` applies it to
-  the constructed `LIA` with one price moved and *derives* that the perturbed market is
-  itself a machine logical inductor. That market is not the output of any construction here,
-  so its inductor-hood is exactly what the theorem buys. It inherits `Construction/LIA.lean`'s
-  own two hypotheses — LIA's market program and a computable deductive process — which are
-  pre-existing and unchanged.
-
-  The fuel-class certificates `EfficientPrefixPatch` and `FiniteSupportPatch` remain
-  **uninhabited**, because the fuel calculus does not close over the escape-leaf decode: the
-  `dd:fuel` inverse-operation ceiling, binding where it was predicted to.
-
-## Faithfulness
-
-Every paper-facing statement carries the paper's own `\label` in a `Paper node:` docstring
-line, checked in both directions by `scripts/check-paper-nodes.sh`: every cited label exists
-in the committed TeX, and every audited endpoint carries a label. `scripts/check_endpoint_coverage.py`
-records each node's strength, `AxiomAudit.lean` asserts axiom cleanliness at every canonical
-endpoint, and `docs/trust-surface.html` renders the node-by-node correspondence for a human
-read-through.
-
-The formalization surfaced six defects in the paper itself, recorded with their repairs in
-[`notes/paper-errata.md`](notes/paper-errata.md). One of them is not a repairable slip: the
-printed closure under finite perturbations is **false**, and is refuted here.
+* **Which Lean statement carries which paper node, and how strong is it?** —
+  [`scripts/coverage-classification.md`](../scripts/coverage-classification.md), machine-checked
+  against the endpoint inventory, and rendered for reading at
+  [`docs/trust-surface.html`](../docs/trust-surface.html).
+* **What does each endpoint depend on?** — `AxiomAudit.lean`, which enumerates the public
+  surface and fails compilation on any axiom regression or disappearance.
+* **What is wrong with the paper?** — [`notes/paper-errata.md`](notes/paper-errata.md).
+* **Where exactly does an implementation boundary sit?** — the declaration's own docstring and
+  its module header; `dd:*` design-decision labels are defined in the glossary in
+  `LogicalInduction.lean`.
 
 ## Layout
 
-* `Framework/` — the paper's §2–3: sentences, markets, features, traders,
-  exploitation, the criterion, efficient computability, expectations, and the shared
-  asymptotic vocabulary.
+* `Framework/` — §2–3: sentences, markets, features, traders, exploitation, the criterion,
+  efficient computability, expectations, and the asymptotic vocabulary.
 * `Properties/` — the §4 property tail, one file per theorem family.
 * `Construction/` — the §5 existence proof, with `Construction/Witnesses/` holding the
-  constructed representation machinery that discharges the property tail's interfaces
-  over the concrete inductor.
+  constructed representation machinery that discharges the property tail's interfaces over the
+  concrete inductor.
