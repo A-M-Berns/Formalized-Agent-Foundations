@@ -2,207 +2,203 @@ import LogicalInduction.Properties
 import LogicalInduction.Construction.Witnesses.FreezeOracle
 
 /-!
-# Logical Induction consumer API
-
-The recommended import for research that builds on the logical-induction framework:
+# Logical Induction — the supported interface
 
 ```lean
 import LogicalInduction.API
-import LogicalInduction.Framework.WriteOut
 ```
 
-It gives the paper's criterion at the paper's own quantifier, the §4 property tail, and
-the two transport theorems whose conclusions *are* the criterion (conditioning and the
-corrected finite-perturbation theorem).  It stops short of the §5 existence construction.
+One import, and it is the whole interface for theoretical work over logical inductors: the
+semantic objects of the paper's §2–3, the criterion at the paper's own quantifier, the §4
+property library, and the two theorems that move the criterion from one market to another.
+It stops short of the §5 existence construction, which is a separate import (below).
 
-## The criterion, at the paper's own quantifier
+Nothing else needs to come with it.  In particular the write-out certificate layer
+(`Framework/WriteOut`) arrives transitively, so its constructors — `BigSentenceCodes`,
+`BigDigits`, `BigSpliceStream.ec` — are usable from this import alone.
 
-Two declarations carry the trust surface, and clients should reach for them first:
+## The objects
 
-* `MachineEfficientTrader` — `def:ec`.  A trader is efficient when some function in
-  `Complexity.FP` maps the *unary* day `n` to a word that decodes to its day-`n` strategy.
-  Ordinary machine polynomial time; no fuel, no interpreter.
-* `IsMachineLogicalInductor` — `def:lic` over that class: a computable market and
-  deductive process such that no `MachineEfficientTrader` exploits the market.  This is
-  the criterion the LIA construction discharges.
+A **`Sentence`** is a propositional formula over Foundation's `Formula`; a **`History`** is
+the market, a function from day and sentence to a price in `[0,1]`; a
+**`DeductiveProcess`** is the day-indexed stream of what has been deduced, and a
+**`PCWorld`** a propositionally consistent world completing it.  An **`EF`** is an
+expressible feature (`dd:dsl`), a reified expression in prices and rationals with a
+denotation; a **`Strategy`** is a day's finite list of (feature, sentence) trades; a
+**`Trader`** is a day-indexed family of strategies, and `Trader.Exploits P DP` says its
+holdings are bounded below and unbounded above across the plausible worlds — the paper's
+notion of making unbounded money at no risk.  An **`AffineCombination`** is the affine
+portfolio the §4 proofs price.  A **`LUV`** is a logically uncertain variable, presented by
+its family of threshold sentences, with `LUV.expect` its market expectation.  The limit
+vocabulary — `≈ₙ`, `≳ₙ`, `≲ₙ`, `ConvergesTo` — is owned by `Framework.Asymptotics`
+(`dd:asymp`); do not redefine it downstream.
 
-Everything else in this file's efficiency vocabulary exists to serve those two.
+## Efficiency: one class, one certification route
 
-## Certification and compatibility machinery
+The paper's `def:ec` is **ordinary machine polynomial time**, and so is the Lean rendering:
 
-`MachineEfficientTrader` is a semantic class: to use it you must exhibit a
-`Complexity.FP` witness.  Two devices help.
+* `MachineEfficientTrader Tr` — some function in `Complexity.FP` maps the *unary* day `n` to
+  a word decoding to `Tr`'s day-`n` strategy.  No fuel, no interpreter, no repository-local
+  notion of cost.
 
-* `EfficientlyComputable` / `PolyFueled` (`dd:fuel`) are **certificates**, not a
-  definition of efficiency.  They ask for a `Nat.Partrec.Code` pair emitting the trade
-  stream inside a polynomial fuel bound on Mathlib's `evaln`, and
-  `EfficientlyComputable.toMachine` proves every such certificate lands in
-  `MachineEfficientTrader`.  So a fuel certificate is a *sufficient* route into the
-  paper's class.  The converse is not proved and is not claimed; nothing paper-facing
-  depends on it.  The high-level constructors clients actually use —
-  `BigSentenceCodes`, `BigSpliceStream.ec`,
-  `EfficientlyComputable.ofSingleTradeBlocks` / `.ofTradeBlocks` — build these
-  certificates.
-* `IsLogicalInductor` is the **compatibility predicate**: the same criterion stated over
-  the fuel-certified class.  The §4 property theorems are all stated against it, and the
-  instance `IsMachineLogicalInductor.toIsLogicalInductor` carries every one of them to a
-  machine logical inductor unchanged (a machine logical inductor *is* a fuel-class one,
-  because every fuel certificate is a machine certificate).  Clients writing new
-  consequences of the criterion should state them against `[IsLogicalInductor P DP]` for
-  exactly this reason: such a statement is automatically available at the machine class,
-  while the reverse would not be.
+To use that class you must exhibit a `Complexity.FP` witness, which is unpleasant by hand.
+So there is a compositional certificate calculus, and exactly one bridge out of it:
 
-The one place the instance does not suffice is a theorem whose *conclusion* is the
-criterion, since there the class must be closed under a trader translation.  Both such
-theorems are stated separately at the machine class; see below.
+* `EfficientlyComputable Tr` / `PolyFueled` (`dd:fuel`) ask for a `Nat.Partrec.Code` pair
+  emitting the trade stream inside a polynomial fuel bound on Mathlib's `evaln`.  These are
+  **certificates**, not a definition of efficiency.
+* `EfficientlyComputable.toMachine : EfficientlyComputable Tr → MachineEfficientTrader Tr`
+  is the bridge, proved through a real `evaln` → Turing-machine compiler.
 
-## Supported surface
+So a fuel certificate is a *sufficient* route into the paper's class.  The converse is
+neither proved nor claimed, and nothing paper-facing depends on it.  The constructors a
+client actually builds with are `EfficientlyComputable.ofSingleTradeBlocksBig`,
+`.ofSingleTradeBlocks` and `.ofTradeBlocks`, fed by the write-out sentence and datum classes
+`BigSentenceCodes`, `BigDigits`, `DigitRatCodes`, `DigitMachineCodes` and the emission
+classes `BigTokenStream` / `BigSpliceStream`.
 
-**Framework.**  `Sentence`, `History` (markets), `PCWorld`, `DeductiveProcess`, `EF`
-(expressible features, `dd:dsl`), `Strategy`, `Trader`, `Trader.Exploits`,
-`AffineCombination`, `LUV` and expectations, and the shared asymptotic relations
-(`≈ₙ`, `≳ₙ`, `≲ₙ`, `ConvergesTo`) owned by `Framework.Asymptotics` (`dd:asymp`).
+## The criterion, and which of its two forms to state against
 
-**Properties (§4).**  The `lic_*` families: coherence and convergence, provability
-induction, timely learning, calibration, pseudorandomness, logical relationships,
-non-dogmatism and its uniform and Occam forms, universal-semimeasure domination,
-expectations, introspection, and self-trust.  Each takes `[IsLogicalInductor P DP]`.
+* `IsMachineLogicalInductor P DP` — `def:lic` over `MachineEfficientTrader`: a computable
+  market and deductive process such that no polynomial-time trader exploits the market.
+  **This is the paper-facing criterion**, and the one the §5 construction discharges.
+* `IsLogicalInductor P DP` — the same criterion over the fuel-certified class.  It is the
+  compatibility interface: the §4 property theorems are stated against it, and the instance
+  `IsMachineLogicalInductor.toIsLogicalInductor` carries every one of them to a machine
+  logical inductor unchanged.
 
-**Closure under conditioning (`thm:scon`).**  `lic_conditioned`,
-`lic_conditioned_gated`, `lic_conditioned_eventual` at the fuel class, and
-`lic_conditioned_machine`, `lic_conditioned_gated_machine`,
-`lic_conditioned_eventual_machine` at the machine class.  The machine forms are the
-canonical ones; the fuel forms are neither derivable from them nor they from it, so both
-stand.
+The asymmetry is worth internalizing, because it determines how to state new results.  A
+theorem *consuming* the criterion should take `[IsLogicalInductor P DP]`: such a statement is
+automatically available at the machine class, while the reverse is not.  A theorem whose
+*conclusion* is the criterion cannot use the instance at all — it must be stated at the
+machine class directly, since the class has to be closed under the trader translation the
+proof performs.  Both such theorems are below, at both classes.
 
-**Closure under finite perturbations (`thm:ifp`).**  Read this one carefully, because the
-printed theorem is false.
+## The §4 property library
 
-* `FinitePerturbationCounterexample.not_overgeneral_ifp` **refutes** the paper's
-  unrestricted statement.  It lives in
-  `Construction/Witnesses/FinitePerturbationWitness.lean` (its abstract half,
-  `not_overgeneral_ifp_of_advice`, is here); `notes/paper-errata.md` PE1 is the ledger.
-* `FiniteSupportPerturbation P P'` — the two markets differ at only finitely many
-  `(day, sentence)` price coordinates — is the corrected hypothesis, strictly stronger
-  than the paper's tail agreement (`FiniteSupportPerturbation.tail_agree` gives one
-  direction; the converse fails).  `lic_iff_of_finiteSupportPerturbation` and
-  `machine_lic_iff_of_finiteSupportPerturbation` carry it, each taking a freeze
-  certificate per market.
-* `FreezeOracle.machine_lic_iff_of_recognizableSupport` is **the statement to use**: two
-  `ComputableMarket`s and a `RecognizableSupportPerturbation` — finite support plus a
-  syntactic `Recognizable` condition on the finitely many sentences whose price moves —
-  and no certificate hypothesis at all, because the freeze certificate is compiled from
-  each market's own computability certificate
-  (`FreezeOracle.machineFiniteSupportPatch_ofRecognizable`).
-* `lic_iff_of_finitePerturbation` is the older fuel-class form, and it retains an
-  explicit `EfficientPrefixPatch` hypothesis.  See the honest boundaries below.
+Every `lic_*` family takes `[IsLogicalInductor P DP]` and holds of *every* logical inductor:
+convergence and coherence, provability induction, timely learning (persistence of knowledge,
+preemptive learning), calibration and unbiasedness, pseudorandomness, logical relationships,
+non-dogmatism with its uniform and Occam forms, universal-semimeasure domination,
+expectations, introspection, paradox resistance, and self-trust.  Names mirror the paper's
+labels (`lic_provind` ↔ `thm:provind`).
 
-This is the one place the API reaches into `Construction/Witnesses/`, and it does so for
-a statement rather than for machinery: the corrected `thm:ifp` and its own hypothesis are
-defined in `FreezeOracle.lean`.
+## Moving the criterion between markets
 
-## What is deliberately not advertised
+**Conditioning (`thm:scon`).**  `lic_conditioned_machine`, `lic_conditioned_gated_machine`
+and `lic_conditioned_eventual_machine` are the canonical forms; `lic_conditioned`,
+`lic_conditioned_gated` and `lic_conditioned_eventual` are their fuel-class counterparts.
+Neither set follows from the other, so both stand.
 
-Lean makes transitively imported declarations visible, but visibility is not a stability
-promise.  The following are implementation, not interface, and clients should not depend
-on them: raw `Nat.Partrec.Code` manipulation, the register-machine simulator and its
-compilers (`Framework/Machine/`), token and bit folds, RPN parsing internals, the
-freeze and conditioning stream compilers, and the trader implementations inside the
-property proofs.
+**Finite perturbation (`thm:ifp`).**  Read this one carefully, because the *printed* theorem
+is false: a single changed pricing day is an infinite computable function, so it can carry
+unbounded computational advice to an efficient trader.
+`FinitePerturbationCounterexample.not_overgeneral_ifp` refutes the paper's unrestricted
+statement (`notes/paper-errata.md`, PE1).
 
-The **arithmetic-theory layer** is likewise not in this import, and that is deliberate:
-the criterion and the §4 tail name no theory, and a client that does not instantiate over
-one should not have to elaborate the arithmetization.  When a client does, three imports
-are the interface, in this order:
+What holds — and what a client should use — is the finite-*support* correction, exported
+here as `lic_iff_of_recognizableSupportPerturbation`: two `ComputableMarket`s differing at
+only finitely many `(day, sentence)` price coordinates satisfy the criterion together, with
+no certificate hypothesis, because the freeze certificate is compiled from each market's own
+computability certificate.  `RecognizableSupportPerturbation` is its hypothesis;
+`recognizable_atom` and `atom_zero_noReserved` build the syntactic side condition for
+atoms, and `RecognizableSupportPerturbation.toFiniteSupport` and
+`FiniteSupportPerturbation.tail_agree` relate it to the paper's tail agreement (finite
+support is strictly stronger).
 
-* `LogicalInduction.Framework.RepresentsComputations` — the class
-  `RepresentsComputations T`, the Lean rendering of the paper's standing §2 assumption
-  that Θ *represents computations* (arXiv:1609.03543v5, tex:600-606).  This is the
-  hypothesis a client supplies about its own theory.  It is proof-theoretic — a condition
-  on what `T` derives, with no reference to truth in ℕ — and it yields both literals over
-  one sentence (`represents_proves`, `represents_refutes`, `represents_refutes_all`) plus
-  consistency (`RepresentsComputations.consistent`, the paper's tex:604 observation).
-  A client supplies it once and pays for it once: the endpoints below apply it to a
-  *universal decider* (`universalRunValue f`, which reads the machine, its input and the
-  day out of a packed argument), so one `γ` per horizon program serves every machine
-  sequence, and the machine is named inside the claim sentence by its argument rather than
-  by the represented function.
-* `LogicalInduction.Construction.Witnesses.R0Representability` —
-  `representsComputations_of_peanoMinus` and the registered instances at `𝗣𝗔⁻`, `𝗜𝚺₁` and
-  `𝗣𝗔`.  A client instantiating at one of those needs no assumption of its own.  (That
-  *verification* uses the theory's truth in `ℕ`; consuming the class never does, so no
-  endpoint inherits a semantic hypothesis from it.)
-* `LogicalInduction.Construction.Witnesses.ComputationRepresented` — the endpoints stated
-  at that premise (`thm:dontwait`, `thm:pac`, `thm:pazfc`), over
-  `liaHistory (paperDP T)` with no soundness instance — together with `thm:halts` and
-  `thm:loops`, which live in the same file over the same process but need only
-  `[Entailment.Consistent T]`, their claim being the fixed universal halting schema at the
-  same kind of machine-naming argument.
+Two honest boundaries travel with that theorem.  Its residual `Recognizable` hypothesis
+constrains the *syntax* of the moved sentences — not the markets, traders or the
+perturbation — and stands for two `Complexity.FP` primitives this repository lacks (integer
+square root; a structured-payload parser); the unrestricted finite-support statement is, as
+far as this development can tell, true, and is unproved here.  And the fuel-class forms
+`lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation` take patch
+certificates (`EfficientPrefixPatch`, `FiniteSupportPatch`) that have **no inhabitant
+anywhere in this repository**, because the fuel calculus does not close over the escape-leaf
+decode the frozen lookup needs.  Use the machine form.
 
-Besides the paper's own premise a client supplies `[T.Δ₁]`, a `Δ₁`-definable axiom set —
-representation infrastructure, since Craig's trick re-axiomatizes any c.e. theory and every
-statement here is about `T ⊢ ·` — and `[𝗣𝗔⁻ ⪯ T]`, which is a **genuine, if small,
-strengthening**: it is *not* implied by "represents computations" (Robinson's R represents
-every computable function without containing `𝗣𝗔⁻`), and is spent on the compact-numeral
-value transfer and on object-level schema exclusivity.  Both are disclosed in
-`LogicalInduction/README.md`.  `[𝗜𝚺₁ ⪯ T]` is needed by only three endpoints — `thm:lp`,
-whose diagonal is Foundation's `parameterized_diagonal₁`, and the two literal-`PaperLUV`
-frontends.  No endpoint asks for Σ₁-soundness.
+## Deeper imports, and when you need them
 
-The *source language* behind the `def:ec` metering of formula families (`ArithSource`,
-`PolyArithmeticSourceSeq`, `PaperLUVSeq`, in
-`LogicalInduction.Construction.Witnesses.ArithmeticSource`) is construction machinery, not
-interface: clients consume its conclusions (`LUV.RpnThresholdCodeSeq`, the completed-world
-`source_valued`), not its emitters.  Import it only to build a new literal paper LUV
-family.
+This import names no first-order theory, and deliberately so: the criterion and the §4 tail
+name none either, and a client that never instantiates over a theory should not elaborate
+the arithmetization.  When you do instantiate, three imports are the interface, in order:
 
-For the §5 existence endpoints (`LIA`, `LIA_isMachineLogicalInductor`,
-`exists_logical_inductor`) import `LogicalInduction.Construction.LIACompiler`.  For the
-`thm:ifp` refutation witness and the informative `LIA` perturbation import
+* `LogicalInduction.Framework.RepresentsComputations` — the class `RepresentsComputations T`,
+  the paper's standing §2 assumption that Θ represents computations, together with
+  `represents_proves`, `represents_refutes`, `represents_refutes_all` and
+  `RepresentsComputations.consistent`.  This is the hypothesis you supply about your theory.
+* `LogicalInduction.Construction.Witnesses.R0Representability` — instances discharging it at
+  `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`, so instantiating at one of those costs you nothing.
+* `LogicalInduction.Construction.Witnesses.ComputationRepresented` — the endpoints stated at
+  that premise over the single market `liaHistory (paperDP T)`.
+
+Two further binders appear there beside the paper's own premise, and both are disclosed in
+`LogicalInduction/README.md`: `[T.Δ₁]` (a `Δ₁`-definable axiom set — representation
+infrastructure) and `[𝗣𝗔⁻ ⪯ T]` (a genuine, small strengthening).  `[𝗜𝚺₁ ⪯ T]` is asked for
+by three endpoints only.  No endpoint asks for Σ₁-soundness.
+
+For the §5 existence endpoints — `LIA`, `LIA_isMachineLogicalInductor`,
+`exists_machine_logical_inductor` — import `LogicalInduction.Construction.LIACompiler`.  For
+the `thm:ifp` refutation witness and the perturbed-`LIA` application, import
 `LogicalInduction.Construction.Witnesses.FinitePerturbationWitness` and
-`LogicalInduction.Construction.Witnesses.LIAPerturbation`.  Import `LogicalInduction`
-when the whole development is wanted.
+`...Witnesses.LIAPerturbation`.  To build a new *literal* first-order LUV family, import
+`...Witnesses.ArithmeticSource` for the source language.  `import LogicalInduction` takes
+the whole development.
 
-## Honest boundaries carried into client code
+## Not interface
 
-* **The fuel-class certificates for `thm:ifp` are uninhabited.**  `EfficientPrefixPatch`
-  and `FiniteSupportPatch` have no inhabitant anywhere in this repository, because the
-  fuel calculus does not close over the escape-leaf decode the frozen lookup needs
-  (`dd:fuel`).  `lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation`
-  therefore have no exhibited witness for their certificate hypotheses.  This API neither
-  manufactures one nor hides that.  The *machine*-class certificate is discharged, which
-  is why the machine statement above is the one to use.
-* **`Recognizable` is representation residue.**  It constrains the syntax of the moved
-  sentences, not the markets, traders, or the perturbation.  Its two halves stand for two
-  `Complexity.FP` primitives this repository lacks (integer square root; a
-  structured-payload parser); the boundary note at the end of `FreezeOracle.lean` names
-  them.  The unrestricted finite-*support* statement is, as far as this development can
-  tell, true, and is unproved here.
-* **`dd:mesh` is not the strongest `thm:ccee`.**  `ConditionalExpectationQuote` carries a
-  per-day reflection slack, and the mesh reading realizes the quoted product on a finite
-  mesh of threshold atoms, reflecting it only to within `1/(n+1)`.  Statements that use
-  that reading carry the slack explicitly in the `slack` field.  The closed exact endpoint
-  `lic_no_expected_net_update_conditional_exact_canonical`
-  (`Construction/Witnesses/SemanticLiftedCCEE.lean`) instantiates `slack` at the constant
-  `0` over an arbitrary threshold-certified source family, so exactness is available — but
-  the two are incomparable rather than one superseding the other: the mesh endpoint speaks
-  about the single paper-facing market `liaHistory (paperDP T)`, the exact one about
-  `liaHistory (canonicalCCEEDP T)` over a renamed and registry-closed process.  Choose by
-  which market the client needs to reason about, not by which has less slack.  Every other
-  canonical endpoint in this library is stated over `liaHistory (paperDP T)`; the
-  semantic-lifted `thm:ccee` process is the one exception.
-* **The LUV carrier is a threshold presentation.**  The `LUV` objects a client meets are
-  rational threshold families over the propositional language, not first-order terms. This
-  is a *representation interface*, not a modeling substitution: the paper's literal
+Lean makes transitively imported declarations visible; visibility is not a stability
+promise.  Raw `Nat.Partrec.Code` manipulation, the register-machine simulator and its
+compilers (`Framework/Machine/`), token and bit folds, RPN parsing internals, the freeze and
+conditioning stream compilers, and the trader implementations inside the property proofs are
+implementation, and may be renamed or restructured.
+
+## Two representation interfaces you will meet
+
+* **LUVs are threshold families.**  The `LUV` objects a client meets are rational threshold
+  families over the propositional language, not first-order terms.  The paper's literal
   first-order object exists as `PaperLUV` — an actual one-variable arithmetic formula
-  carrying object-level proofs — and is the canonical endpoint for `def:luv`. It compiles
-  into the carrier, so results stated against the carrier apply to more families than the
-  paper's, `PaperLUV` being what shows the paper's own are among them.  Where a *sequence*
-  of paper LUVs must carry `def:ec`, the certificate is on the paper's own writing of the
-  defining formula (`PaperLUVSeq.structural : PolyArithmeticSourceSeq`, over the primitive
-  connectives of tex:560), not on Foundation's negation normal form.
+  carrying object-level proofs — and compiles into the carrier, so results stated against the
+  carrier apply to more families than the paper's.
+* **`dd:mesh` and `thm:ccee`.**  `ConditionalExpectationQuote` carries a per-day reflection
+  slack in its `slack` field.  An exact (`slack = 0`) endpoint exists —
+  `lic_no_expected_net_update_conditional_exact_canonical` — but over a different, renamed
+  deductive process; the two are incomparable, and you choose by which market you need to
+  reason about.  Every other canonical endpoint in this library is stated over
+  `liaHistory (paperDP T)`.
 
-`LogicalInduction/README.md` is the authoritative disclosure record and `AxiomAudit.lean`
-the checked endpoint inventory; the `dd:fuel` model card in `Framework/Computable.lean`
-records exactly what the fuel model does and does not settle.
+`LogicalInduction/README.md` explains the modeling; `scripts/coverage-classification.md` and
+`AxiomAudit.lean` carry the exact paper correspondence and the axiom accounting.
 -/
+
+namespace LogicalInduction
+
+/-! The corrected finite-perturbation hypothesis and its atom witnesses, re-exported so
+clients need not name the construction namespace they are defined in. -/
+
+export FreezeOracle (RecognizableSupportPerturbation recognizable_atom atom_zero_noReserved)
+
+/-- **Closure under finite perturbations, corrected (`thm:ifp`).**
+
+Two computable markets that differ at only finitely many `(day, sentence)` price
+coordinates satisfy the logical induction criterion together, at the paper's own
+quantifier.  This is the supported name for the result; it is definitionally
+`FreezeOracle.machine_lic_iff_of_recognizableSupport`, which is where it is proved.
+
+The paper's own statement — finitely many changed *days* — is **false**, and is refuted by
+`FinitePerturbationCounterexample.not_overgeneral_ifp`; see `notes/paper-errata.md`, PE1.
+Finite support is the natural repair, and is strictly stronger than the printed tail
+agreement (`FiniteSupportPerturbation.tail_agree` gives one direction; the converse fails).
+
+The `Recognizable` half of `hpert` is a condition on the *syntax* of the finitely many moved
+sentences, not on the markets, traders or the perturbation: disclosed representation
+residue rather than mathematical content.
+
+Kind `C`; hypotheses `(a)` except that residue.
+Paper node: `thm:ifp` -/
+theorem lic_iff_of_recognizableSupportPerturbation (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : RecognizableSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
+  FreezeOracle.machine_lic_iff_of_recognizableSupport P P' DP hPcomp hP'comp hpert
+
+end LogicalInduction

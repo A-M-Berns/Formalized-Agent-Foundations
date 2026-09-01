@@ -72,6 +72,7 @@ fields here, then run `scripts/check-paper-nodes.sh`.
 import Lean.Util.CollectAxioms
 import LogicalInduction.Properties
 import LogicalInduction.Construction
+import LogicalInduction.API
 import ModalAgents.Cooperation
 import ModalAgents.Behavioral
 import ModalAgents.FixedPoint
@@ -746,6 +747,17 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.machine_lic_iff_twoPoint
   FreezeOracle.machineFiniteSupportPatch_ofRecognizable
   FreezeOracle.machine_lic_iff_of_recognizableSupport
+
+-- LogicalInduction/API.lean — the consumer-surface name for the corrected `thm:ifp`.
+-- `lic_iff_of_recognizableSupportPerturbation` is a thin public wrapper, definitionally the
+-- `FreezeOracle` theorem asserted just above; it exists so a client cites a root-namespace
+-- name rather than a construction namespace.  Asserted here because it carries a
+-- `Paper node:` line, and the per-declaration gate admits no annotated declaration that no
+-- `#assert_axioms_clean` block names.  It is NOT public canonical trust surface: the
+-- LI-CANONICAL block is exactly the endpoints table of `scripts/coverage-classification.md`,
+-- and `thm:ifp`'s canonical endpoint there is unchanged.
+#assert_axioms_clean
+  lic_iff_of_recognizableSupportPerturbation
 
 -- Construction/Witnesses/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
 -- `liaHistory DP` is a machine logical inductor; `liaPerturbed` moves ONE price, at the
