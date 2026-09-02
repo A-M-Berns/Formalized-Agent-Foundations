@@ -175,6 +175,36 @@ proof-body edits because `hs.digitizeStream` re-resolves by dot notation from
 `PolySegStream.digitizeStream` to the new `BigTokenStream.digitizeStream` (two distinct
 lemmas, same base name — grep both namespaces).
 
+**scon GROWING form — now at the paper's own quantifier (2026-09-02, bigAnd tranche).**
+`ConditioningCompile.lic_conditioned_growing_machine_ofSequence` (`CondEndpoints.lean`,
+`Paper node: thm:scon`) renders the growing clause for an **arbitrary** `BigSentenceCodes ψ`,
+conditioning on the prefix conjunctions `ψ₀⋏…⋏ψₙ` (harmless `⊤` tail), over
+`DP.union (prefixProcess ψ)`. It **derives** the prefix-conjunction write-out certificate
+rather than taking it as data — closing the gap that four audit channels flagged on
+`lic_conditioned_growing_machine_ofProcessComputation` (which stays as the general
+process-quantified form). The enabling combinators are **`RpnSentenceCodes.bigAnd` /
+`BigSentenceCodes.bigAnd`** (`RpnSplice.lean` / `WriteOut.lean`, `Paper node: def:ec`,
+mirrors of `bigOr`): the terminator closing the fold is the fixed three-token block
+`[2,0,0] = imp ⊥ ⊥ = ⊤` (`Formula.top_def`, `rfl`; `sentenceConjunction [] = ⊤`), so **no
+positivity hypothesis on the width** is needed. `parseRpn_conjChain` (`RpnSplice.lean`, NOT
+`private` — reused cross-file) is the shared parse induction.
+- **Genuine obstruction, side-stepped not solved:** the certificate is emitted through
+  `ConditioningPresentation`'s FREE `condition` field in **index order**
+  (`sentenceConjunction ((range (n+1)).map ψ)`), NOT through
+  `deductiveStageCondition (extra.D n) = (extra.D n).toList.conj₂`. The latter is genuinely
+  **not poly-writable** for a growing family: `Finset.toList` order is recoverable only from
+  exponential Gödel codes and `conj₂` is not permutation-invariant, so the Finset erases the
+  emittable index order. The `Finset` `prefixProcess` is kept only for the order-insensitive
+  `holds_condition` (`List.mem_toFinset`) and the union. Do not retry the `deductiveStageCondition`
+  route — it is impossible at this cost, and the old "no conjunction emitter exists" note at
+  `ConditioningPresentation.lean:216-225` is now corrected to say exactly this.
+- Pitfalls this landed: a `def` returning a code-carrying structure cannot `obtain` from a Prop
+  `∃` (`Exists.casesOn` → Prop only) — split into `exists_prefixProcessCode` + `.choose`. There
+  is no `List.toFinset` `Primrec`; use `sentenceListFinsetNorm` (dedup + code-sort, spec via
+  `List.toFinset_sort`). `CondEndpoints.lean` is NOT reachable from `LogicalInduction.API`
+  (import-graph BFS: 82 modules, absent), so these endpoints are trust-surface only and their
+  non-vacuity client (`ψ = atom i`, injective ⇒ conjunctions strictly grow) lives in-file.
+
 **ccee — final state.** `thm:ccee` now has THREE renderings differing in two dimensions:
 `lic_no_expected_net_update_conditional_paperLUV_closed` (**exact, zero-slack, market
 `liaHistory (paperDP T)`, literal `PaperLUVSeq T` source**, binders `[T.Δ₁] [𝗜𝚺₁ ⪯ T]

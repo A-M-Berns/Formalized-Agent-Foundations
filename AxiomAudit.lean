@@ -201,6 +201,7 @@ topical blocks stay the place where each endpoint is explained. -/
   LUVCombination.BoundedSequence.recurringunbiasednessexp lic_introspection_closed
   lic_introspection ConditioningCompile.lic_conditioned_fixed_machine
   ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
+  ConditioningCompile.lic_conditioned_growing_machine_ofSequence
   lic_conditioned_fixed_machine_unconditional lic_conditioned_growing_machine_unconditional
   AffineCombination.simcal AffineCombination.sentenceAffine_polySequence
   calibrationIndicator_pgenerable lic_self_trust_closed
@@ -553,6 +554,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   growingConditionProcessComputation growingCompactConditioningProcessComputation
   growingConditionProcess_ssubset
   deductiveStageCondition_growing_ne deductiveStageCondition_growing_ne_top
+  prefixProcess prefixProcessComputation prefixConditioningPresentation
 
 -- Construction/Witnesses/ConditioningCompiler.lean — the eventual price floor the
 -- conditioning translation needs.  (The `def:ec`-preserving translations themselves are
@@ -628,6 +630,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   ConditioningCompile.lic_conditioned_growing_ofComputationsAndMarket
   ConditioningCompile.lic_conditioned_fixed_machine
   ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
+  ConditioningCompile.lic_conditioned_growing_machine_ofSequence
   ConditioningCompile.lic_conditioned_gated_ofComputationsAndMarket
 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
@@ -1612,11 +1615,12 @@ not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Framework/RpnSplice.lean
 #assert_axioms_clean
-  RpnSentenceCodes RpnSentenceCodes.bigOr
+  RpnSentenceCodes RpnSentenceCodes.bigOr RpnSentenceCodes.bigAnd
 
 -- LogicalInduction/Framework/WriteOut.lean
 #assert_axioms_clean
-  BigSentenceCodes BigSpliceStream.ec BigTokenStream BigTokenStream.digitizeStream
+  BigSentenceCodes BigSentenceCodes.bigAnd BigSpliceStream.ec BigTokenStream
+  BigTokenStream.digitizeStream
   DigitRatCodes EfficientlyComputable.ofSingleTradeBlocksBig ec_of_bigTokenStream
 
 -- LogicalInduction/Construction/TradingFirm.lean

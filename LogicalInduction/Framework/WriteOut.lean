@@ -307,6 +307,40 @@ lemma neg {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
     (hpb z)]
   rfl
 
+/-- **Variable-width conjunction of written-out sentence streams.**  `D z j` is the `j`-th
+conjunct at index `z`, presented by a single write-out block stream on the paired index,
+and `cnt z` conjuncts are taken.  The emitted block is `cnt z` `⋏`-tagged conjunct blocks
+followed by the three-token constant `[2, 0, 0]` (the block for `⊤`) — a
+`BigTokenStream.concatVar`, so the whole family stays 𝓔𝓒.  This is the write-out-class
+mirror of `RpnSentenceCodes.bigAnd` (which is itself the conjunction analogue of
+`RpnSentenceCodes.bigOr`); the parse argument (`parseRpn_conjChain`) is shared verbatim,
+only the stream certificate changes.  No positivity hypothesis on `cnt` is
+needed: the empty width folds to `⊤`.
+Paper node: `def:ec` -/
+lemma bigAnd {D : ℕ → ℕ → Sentence}
+    (hD : BigSentenceCodes fun m => D m.unpair.1 m.unpair.2)
+    {ccnt : Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    BigSentenceCodes (fun z => sentenceConjunction ((List.range (cnt z)).map (D z))) := by
+  obtain ⟨b, hb, hpb⟩ := hD
+  have h3 : BigTokenStream (fun _ : ℕ => [3]) :=
+    BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream (PolyTokenStream.const 3))
+  have h200 : BigTokenStream (fun _ : ℕ => [2, 0, 0]) :=
+    BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream
+      ((PolyTokenStream.const 2).append
+        ((PolyTokenStream.const 0).append (PolyTokenStream.const 0))))
+  have hseg : BigTokenStream (fun m => 3 :: b m) := (h3.append hb).of_eq (fun m => by simp)
+  refine ⟨fun z => ((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z j)) ++ [2, 0, 0],
+    ((hseg.concatVar hcnt).append h200).of_eq (fun z => rfl), fun z => ?_⟩
+  have hblk : ∀ j, parseRpn (b (Nat.pair z j)).length (b (Nat.pair z j)) =
+      some (D z j, []) := by
+    intro j
+    simpa using hpb (Nat.pair z j)
+  have := parseRpn_conjChain (fun j => b (Nat.pair z j)) (fun j => D z j) hblk
+    (cnt z) 0 []
+    (((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j))) ++ 2 :: 0 :: 0 :: []).length
+    le_rfl
+  simpa using this
+
 end BigSentenceCodes
 
 /-! ## The write-out splice class

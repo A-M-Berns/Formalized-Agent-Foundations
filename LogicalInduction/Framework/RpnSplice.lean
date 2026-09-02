@@ -184,6 +184,86 @@ private lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
       rw [ih (a + 1) rest fuel (le_trans (Nat.le_add_left _ _) hlen)]
       rfl
 
+/-! ### Variable-width conjunction blocks
+
+The growing-conditioning strengthening of `thm:scon` needs a conjunction whose *width*
+grows with the index — the prefix conjunction `ψ₀ ⋏ ⋯ ⋏ ψₙ`.  As with the disjunction
+chain the block cannot be a fixed tuple of segments; the emitted form is a `concatVar` of
+`⋏`-tagged conjunct blocks closed by the fixed three-token constant `[2, 0, 0]`, which the
+prefix parser reads as `⊤ = ⊥ ➝ ⊥` (Foundation's `Formula.top_def`, definitional), the
+conjunction identity.  This is the empty-fold terminator, mirroring the single `⊥` token
+that closes the disjunction chain. -/
+
+/-- The prefix parser reads a `⋏`-tagged chain of complete blocks closed by the constant
+`[2, 0, 0]` (the block for `⊤ = ⊥ ➝ ⊥`) as the right-associated conjunction of the
+blocks' sentences, leaving the tail untouched.  (Not `private`: the write-out mirror
+`BigSentenceCodes.bigAnd` in `Framework/WriteOut.lean` reuses this parse fact verbatim.) -/
+lemma parseRpn_conjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
+    (hblk : ∀ b, parseRpn (blk b).length (blk b) = some (D b, [])) :
+    ∀ (t a : ℕ) (rest : List ℕ) (fuel : ℕ),
+      (((List.range t).flatMap fun j => 3 :: blk (a + j)) ++ 2 :: 0 :: 0 :: rest).length ≤ fuel →
+      parseRpn fuel (((List.range t).flatMap fun j => 3 :: blk (a + j)) ++ 2 :: 0 :: 0 :: rest) =
+        some (sentenceConjunction ((List.range t).map fun j => D (a + j)), rest) := by
+  intro t
+  induction t with
+  | zero =>
+      intro a rest fuel hfuel
+      simp only [List.range_zero, List.flatMap_nil, List.nil_append, List.map_nil]
+      -- goal: parseRpn fuel (2 :: 0 :: 0 :: rest) = some (sentenceConjunction [], rest)
+      obtain ⟨fuel, rfl⟩ : ∃ g, fuel = g + 1 := by
+        cases fuel with
+        | zero => simp at hfuel
+        | succ g => exact ⟨g, rfl⟩
+      rw [parseRpn_cons, if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      obtain ⟨fuel, rfl⟩ : ∃ g, fuel = g + 1 := by
+        cases fuel with
+        | zero => simp at hfuel
+        | succ g => exact ⟨g, rfl⟩
+      rw [parseRpn_cons, if_pos rfl]
+      simp only [Option.bind_some]
+      rw [parseRpn_cons, if_pos rfl]
+      simp only [Option.bind_some]
+      rfl
+  | succ t ih =>
+      intro a rest fuel hfuel
+      have hsplit : ((List.range (t + 1)).flatMap fun j => 3 :: blk (a + j)) =
+          (3 :: blk a) ++ ((List.range t).flatMap fun j => 3 :: blk (a + 1 + j)) := by
+        rw [List.range_succ_eq_map]
+        simp only [List.flatMap_cons, List.flatMap_map,
+          Nat.add_zero]
+        congr 1
+        refine List.flatMap_congr (fun j _ => ?_)
+        congr 2
+        omega
+      have hmapsplit : ((List.range (t + 1)).map fun j => D (a + j)) =
+          D a :: ((List.range t).map fun j => D (a + 1 + j)) := by
+        rw [List.range_succ_eq_map]
+        simp only [List.map_cons, List.map_map, Function.comp_def, Nat.add_zero]
+        congr 1
+        refine List.map_congr_left (fun j _ => ?_)
+        congr 1
+        omega
+      rw [hsplit] at hfuel
+      rw [hsplit, hmapsplit]
+      set F := (List.range t).flatMap fun j => 3 :: blk (a + 1 + j) with hF
+      have hassoc : ((3 :: blk a) ++ F) ++ 2 :: 0 :: 0 :: rest =
+          3 :: (blk a ++ (F ++ 2 :: 0 :: 0 :: rest)) := by simp
+      rw [hassoc] at hfuel ⊢
+      obtain ⟨fuel, rfl⟩ : ∃ g, fuel = g + 1 := by
+        cases fuel with
+        | zero => simp at hfuel
+        | succ g => exact ⟨g, rfl⟩
+      have hlen : (blk a).length + (F ++ 2 :: 0 :: 0 :: rest).length ≤ fuel := by
+        simp only [List.length_cons, List.length_append] at hfuel ⊢
+        omega
+      rw [parseRpn_cons]
+      rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+      rw [parseRpn_block_head (hblk a) (F ++ 2 :: 0 :: 0 :: rest)
+        (le_trans (Nat.le_add_right _ _) hlen)]
+      simp only [Option.bind_some]
+      rw [ih (a + 1) rest fuel (le_trans (Nat.le_add_left _ _) hlen)]
+      rfl
+
 /-- **Variable-width disjunction of sentence-block streams.**  `D z j` is the `j`-th
 disjunct at index `z`, presented by a single block stream on the paired index, and `cnt z`
 disjuncts are taken.  The emitted block is `cnt z` `⋎`-tagged disjunct blocks followed by
@@ -208,6 +288,36 @@ lemma RpnSentenceCodes.bigOr {D : ℕ → ℕ → Sentence}
   have := parseRpn_disjChain (fun j => b (Nat.pair z j)) (fun j => D z j) hblk
     (cnt z) 0 []
     (((List.range (cnt z)).flatMap fun j => 4 :: b (Nat.pair z (0 + j))) ++ 0 :: []).length
+    le_rfl
+  simpa using this
+
+/-- **Variable-width conjunction of sentence-block streams.**  `D z j` is the `j`-th
+conjunct at index `z`, presented by a single block stream on the paired index, and `cnt z`
+conjuncts are taken.  The emitted block is `cnt z` `⋏`-tagged conjunct blocks followed by
+the three-token constant `[2, 0, 0]` (the block for `⊤`) — a `PolySegStream.concatVar`, so
+the whole family stays 𝓔𝓒.  No positivity hypothesis on `cnt` is needed: the empty width
+folds to `⊤`.
+Paper node: `def:ec` -/
+lemma RpnSentenceCodes.bigAnd {D : ℕ → ℕ → Sentence}
+    (hD : RpnSentenceCodes fun m => D m.unpair.1 m.unpair.2)
+    {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
+    RpnSentenceCodes (fun z => sentenceConjunction ((List.range (cnt z)).map (D z))) := by
+  obtain ⟨b, hb, hpb⟩ := hD
+  have h3 : PolySegStream (fun _ : ℕ => [3]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 3)
+  have h200 : PolySegStream (fun _ : ℕ => [2, 0, 0]) :=
+    PolySegStream.ofTokenStream ((PolyTokenStream.const 2).append
+      ((PolyTokenStream.const 0).append (PolyTokenStream.const 0)))
+  have hseg : PolySegStream (fun m => 3 :: b m) := (h3.append hb).of_eq (fun m => by simp)
+  refine ⟨fun z => ((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z j)) ++ [2, 0, 0],
+    ((PolySegStream.concatVar hseg hcnt).append h200).of_eq (fun z => rfl), fun z => ?_⟩
+  have hblk : ∀ j, parseRpn (b (Nat.pair z j)).length (b (Nat.pair z j)) =
+      some (D z j, []) := by
+    intro j
+    simpa using hpb (Nat.pair z j)
+  have := parseRpn_conjChain (fun j => b (Nat.pair z j)) (fun j => D z j) hblk
+    (cnt z) 0 []
+    (((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j))) ++ 2 :: 0 :: 0 :: []).length
     le_rfl
   simpa using this
 

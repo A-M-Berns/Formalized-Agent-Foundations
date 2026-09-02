@@ -310,18 +310,16 @@ propositional compactness (`DeductiveProcess.exists_consistentWithTheory`) produ
 single world the price-floor argument consumes.  The base stage program and the rational
 market program are read off the inductor instance itself.
 
-**Scope, precisely** (this is narrower than the fixed-sentence endpoint above, and unlike it
-takes a `def:ec` certificate as data): the write-out efficiency of the cumulative conditions
-`n ↦ ⋀(extra.D n)` is supplied by the `CompactConditioningProcessComputation` hypothesis,
-not derived here.  The paper's growing clause starts from an arbitrary efficiently computable
-*individual-sentence* sequence `⟨ψ⟩` and pads the prefix conjunctions to keep them efficiently
-computable (tex:6126); converting an arbitrary `BigSentenceCodes ψ` into a `BigSentenceCodes`
-certificate for `n ↦ ⋀_{i≤n} ψ_i` needs a variable-width conjunction-block emitter that does
-not yet exist in the write-out library (only a binary `and`; see the note at
-`ConditioningPresentation.lean:216-225`).  So this endpoint proves closure for every `extra`
-whose cumulative conditions are separately certified — the general process quantifier — rather
-than for every raw e.c. sentence sequence.  For a non-degenerate `more` — nonempty, strictly
-growing stages — see `growingCompactConditioningProcessComputation`.
+**Scope** (this is the general *process*-quantified form; it takes a `def:ec` certificate as
+data): the write-out efficiency of the cumulative conditions `n ↦ ⋀(extra.D n)` is supplied
+by the `CompactConditioningProcessComputation` hypothesis, not derived here.  It proves
+closure for every `extra` whose cumulative conditions are separately certified.  For the
+paper's own quantifier — starting from an **arbitrary** efficiently computable
+*individual-sentence* sequence `⟨ψ⟩` and conditioning on the prefix conjunctions
+`ψ₀ ⋏ ⋯ ⋏ ψₙ` (tex:1613-1618, tex:6126), with the `BigSentenceCodes ψ → BigSentenceCodes
+(n ↦ ⋀_{i≤n} ψ_i)` bridge *derived* by `BigSentenceCodes.bigAnd` — use
+`lic_conditioned_growing_machine_ofSequence` below.  For a non-degenerate `more` — nonempty,
+strictly growing stages — see `growingCompactConditioningProcessComputation`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_growing_machine_ofProcessComputation
@@ -350,6 +348,69 @@ theorem lic_conditioned_growing_machine_ofProcessComputation
       ((conditionedMarketComputation market C.condition
         C.condition_codes).toComputable)
       C.combined_computable (N := N) hN
+
+/-- **Growing `thm:scon` at the paper's own quantifier**: conditioning a *machine* logical
+inductor on the prefix conjunctions `ψ₀ ⋏ ⋯ ⋏ ψₙ` of an **arbitrary** efficiently computable
+sentence sequence `⟨ψ⟩` (`BigSentenceCodes ψ`) yields a machine logical inductor over the
+growing process `Θ ∪ prefixProcess ψ` — whose stage `n` is `Θ.D n ∪ {ψ₀, …, ψₙ}` and whose
+union over all stages is `Θ ∪ {ψᵢ | i ∈ ℕ}` — with **no** consistency hypothesis.  This is the endpoint the paper's
+growing clause (tex:1613-1618, appendix tex:6126) states: the write-out efficiency of the
+growing conditions is *derived* from `BigSentenceCodes ψ` by `BigSentenceCodes.bigAnd`
+(through `prefixConditioningPresentation`), not assumed as data — the gap that
+`lic_conditioned_growing_machine_ofProcessComputation` left open.  As in that endpoint the
+two branches are the paper's own: where every finite stage of `Θ ∪ {ψ₀…ψₙ}` is satisfiable,
+propositional compactness produces the single world the price-floor argument consumes, and
+where some stage is already unsatisfiable the criterion holds vacuously.  The base stage
+program and the rational market program are read off the inductor instance itself.  The
+condition carries a harmless `⊤` tail from `bigAnd`'s empty-fold terminator.
+Kind `C` (composition of the two branches); hypotheses `(a)`.
+Paper node: `thm:scon` -/
+theorem lic_conditioned_growing_machine_ofSequence
+    (P : History) (DP : DeductiveProcess) [hLI : IsMachineLogicalInductor P DP]
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    IsMachineLogicalInductor
+      (conditionedHistory P (fun n => sentenceConjunction ((List.range (n + 1)).map ψ)))
+      (DP.union (prefixProcess ψ)) := by
+  obtain ⟨base⟩ := hLI.processComputable.nonemptyComputation
+  obtain ⟨market⟩ := hLI.marketComputable.nonemptyComputation
+  let C := prefixConditioningPresentation base ψ hψ
+  by_cases hsat : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union (prefixProcess ψ)).D n)
+  · obtain ⟨w, hw⟩ := (DP.union (prefixProcess ψ)).exists_consistentWithTheory hsat
+    exact lic_conditioned_eventual_machine_ofMarketComputation P DP (prefixProcess ψ) C market
+      (fun n => ⟨w, ((PCWorld.consistentWith_union_iff w DP (prefixProcess ψ) n).mp (hw n)).1,
+        fun i => (C.holds_condition i w).2
+          ((PCWorld.consistentWith_union_iff w DP (prefixProcess ψ) i).mp (hw i)).2⟩)
+  · push_neg at hsat
+    obtain ⟨N, hN⟩ := hsat
+    exact isMachineLogicalInductor_of_stage_unsatisfiable _ _
+      ((conditionedMarketComputation market C.condition C.condition_codes).toComputable)
+      C.combined_computable (N := N) hN
+
+/-- The atom family `i ↦ atom i` is a written-out sentence sequence (`def:ec`): its
+canonical Polish block is the single token `i + 5` (`rpn (atom i) = [i + 5]`), emitted by a
+constant-shift poly-fueled program. -/
+private lemma bigSentenceCodes_atom :
+    BigSentenceCodes (fun i => (LO.Propositional.Formula.atom i : Sentence)) := by
+  obtain ⟨c, hc⟩ := PolyFueled.id.addConst 5
+  exact BigSentenceCodes.ofRpnSentenceCodes
+    (RpnSentenceCodes.ofCanonical
+      ((PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc)).of_eq (fun i => rfl)))
+
+/-- **Non-vacuity of the arbitrary-e.c.-sequence quantifier.**  A client instantiates
+`lic_conditioned_growing_machine_ofSequence` at a genuinely growing sequence — the injective
+atom family `i ↦ atom i`, whose prefix conjunctions strictly grow with `n` (they are not
+eventually constant, unlike `growingConditionProcess`) — with the write-out certificate
+discharged by `bigSentenceCodes_atom`.  This witnesses that the endpoint's hypothesis class
+`BigSentenceCodes ψ` is inhabited by a non-degenerate `ψ`, so the paper's raw
+e.c.-sequence quantifier is reached with content. -/
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] :
+    IsMachineLogicalInductor
+      (conditionedHistory P
+        (fun n => sentenceConjunction
+          ((List.range (n + 1)).map (fun i => (LO.Propositional.Formula.atom i : Sentence)))))
+      (DP.union (prefixProcess (fun i => (LO.Propositional.Formula.atom i : Sentence)))) :=
+  lic_conditioned_growing_machine_ofSequence P DP
+    (fun i => (LO.Propositional.Formula.atom i : Sentence)) bigSentenceCodes_atom
 
 /-- Paper-facing SCON constructor: the canonical finite-stage presentation and the complete
 market/trader compiler are both assembled from their named computations.
@@ -380,6 +441,7 @@ theorem lic_conditioned_gated_ofComputationsAndMarket
 #print axioms lic_conditioned_growing_ofComputationsAndMarket
 #print axioms lic_conditioned_fixed_machine
 #print axioms lic_conditioned_growing_machine_ofProcessComputation
+#print axioms lic_conditioned_growing_machine_ofSequence
 #print axioms lic_conditioned_gated_ofComputationsAndMarket
 
 end ConditioningCompile
