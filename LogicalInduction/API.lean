@@ -97,20 +97,31 @@ unbounded computational advice to an efficient trader.
 statement (`notes/paper-errata.md`, PE1).
 
 What holds — and what a client should use — is the finite-*support* correction, exported
-here as `lic_iff_of_recognizableSupportPerturbation`: two `ComputableMarket`s differing at
+here as `lic_iff_of_finiteSupportPerturbation_machine`: two `ComputableMarket`s differing at
 only finitely many `(day, sentence)` price coordinates satisfy the criterion together, with
-no certificate hypothesis, because the freeze certificate is compiled from each market's own
-computability certificate.  `RecognizableSupportPerturbation` is its hypothesis;
-`recognizable_atom` and `atom_zero_noReserved` build the syntactic side condition for
-atoms, and `RecognizableSupportPerturbation.toFiniteSupport` and
-`FiniteSupportPerturbation.tail_agree` relate it to the paper's tail agreement (finite
-support is strictly stronger).
+no certificate hypothesis (the freeze certificate is compiled from each market's own
+computability certificate) and **no condition on the moved sentences**.
+`FiniteSupportPerturbation` is its whole hypothesis, and
+`FiniteSupportPerturbation.tail_agree` relates it to the paper's tail agreement (finite
+support is strictly stronger — `tailAgree_not_finiteSupport` proves the converse fails, so
+this theorem cannot re-derive the refuted printed one).
+`lic_iff_of_noReservedSupportPerturbation` and
+`lic_iff_of_recognizableSupportPerturbation` are the previous, weaker-reaching names, kept
+for compatibility and now one-line corollaries.
 
-Two honest boundaries travel with that theorem.  Its residual `Recognizable` hypothesis
-constrains the *syntax* of the moved sentences — not the markets, traders or the
-perturbation — and stands for two `Complexity.FP` primitives this repository lacks (integer
-square root; a structured-payload parser); the unrestricted finite-support statement is, as
-far as this development can tell, true, and is unproved here.  And the fuel-class forms
+No syntactic boundary travels with that theorem any more.  Both halves of the former
+`Recognizable` condition stood for missing `Complexity.FP` devices, and both devices were
+built rather than assumed away: `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` put
+integer square root and `Nat.unpair` inside `Complexity.FP` and `FiberTest.fiberW_mem_FP`
+builds the escape-leaf decode test on them (retiring `BotFree`), while `PayAuto` decides the
+structured payload language of a fixed formula code and `CtrAuto.ctrMachine` decides the
+structured block's `aⁿbⁿ` unary length field (retiring `NoReserved`).
+`FreezeOracle.machine_lic_iff_hardPoint` and `FreezeOracle.machine_lic_iff_reservedPoint`
+freeze coordinates at `atom 0 ⋏ ⊥` and at a reserved atom respectively — sentences the
+earlier endpoints provably could not reach.  What is disclosed instead is a property of the
+construction, not of the statement: the recognizer is compiled per frozen sentence, so its
+polynomial-time constants depend on that sentence, which is sound exactly because the
+support is finite.  And the fuel-class forms
 `lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation` take patch
 certificates (`EfficientPrefixPatch`, `FiniteSupportPatch`) that have **no inhabitant
 anywhere in this repository**, because the fuel calculus does not close over the escape-leaf
@@ -160,11 +171,17 @@ implementation, and may be renamed or restructured.
   carrying object-level proofs — and compiles into the carrier, so results stated against the
   carrier apply to more families than the paper's.
 * **`dd:mesh` and `thm:ccee`.**  `ConditionalExpectationQuote` carries a per-day reflection
-  slack in its `slack` field.  An exact (`slack = 0`) endpoint exists —
-  `lic_no_expected_net_update_conditional_exact_canonical` — but over a different, renamed
-  deductive process; the two are incomparable, and you choose by which market you need to
-  reason about.  Every other canonical endpoint in this library is stated over
-  `liaHistory (paperDP T)`.
+  slack in its `slack` field.  That slack is the price of a *threshold-only* source: nothing
+  in the abstract `LUV` interface names a value, so the quoted product can only be
+  reconstructed from thresholds.  For the paper's **literal** first-order sources
+  (`PaperLUVSeq`) the product is exact —
+  `lic_no_expected_net_update_conditional_paperLUV_closed` states `thm:ccee` at `slack = 0`
+  over the single market `liaHistory (paperDP T)`, like every other canonical endpoint.
+  `lic_no_expected_net_update_conditional_exact_canonical` remains as the generalized
+  semantic-extension form: exact for an *arbitrary* threshold-only source, but priced over a
+  renamed deductive process.  `PaperLUVSeq` itself is a construction interface and is not
+  re-exported here; import
+  `LogicalInduction.Construction.Witnesses.PaperExactCCEE` to use the exact route.
 
 `LogicalInduction/README.md` explains the modeling; `scripts/coverage-classification.md` and
 `AxiomAudit.lean` carry the exact paper correspondence and the axiom accounting.
@@ -175,25 +192,52 @@ namespace LogicalInduction
 /-! The corrected finite-perturbation hypothesis and its atom witnesses, re-exported so
 clients need not name the construction namespace they are defined in. -/
 
-export FreezeOracle (RecognizableSupportPerturbation recognizable_atom atom_zero_noReserved)
+export FreezeOracle (NoReservedSupportPerturbation RecognizableSupportPerturbation
+  recognizable_atom atom_zero_noReserved)
 
 /-- **Closure under finite perturbations, corrected (`thm:ifp`).**
 
 Two computable markets that differ at only finitely many `(day, sentence)` price
 coordinates satisfy the logical induction criterion together, at the paper's own
 quantifier.  This is the supported name for the result; it is definitionally
-`FreezeOracle.machine_lic_iff_of_recognizableSupport`, which is where it is proved.
+`FreezeOracle.machine_lic_iff_of_finiteSupport`, which is where it is proved.  The name
+carries the `_machine` suffix because `lic_iff_of_finiteSupportPerturbation` is taken by the
+*fuel-class* statement, which takes a patch certificate that has no inhabitant.
 
 The paper's own statement — finitely many changed *days* — is **false**, and is refuted by
 `FinitePerturbationCounterexample.not_overgeneral_ifp`; see `notes/paper-errata.md`, PE1.
 Finite support is the natural repair, and is strictly stronger than the printed tail
-agreement (`FiniteSupportPerturbation.tail_agree` gives one direction; the converse fails).
+agreement: `FiniteSupportPerturbation.tail_agree` gives one direction and
+`tailAgree_not_finiteSupport` refutes the converse, so this theorem cannot re-derive the
+refuted one.
 
-The `Recognizable` half of `hpert` is a condition on the *syntax* of the finitely many moved
-sentences, not on the markets, traders or the perturbation: disclosed representation
-residue rather than mathematical content.
+`hpert` is the whole hypothesis on the perturbation, and there is no hypothesis at all on
+the finitely many moved sentences: no `Recognizable`, no `BotFree`, no `NoReserved`, and no
+freeze certificate.
 
-Kind `C`; hypotheses `(a)` except that residue.
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
+theorem lic_iff_of_finiteSupportPerturbation_machine (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : FiniteSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
+  FreezeOracle.machine_lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert
+
+/-- A previous public name, kept so existing clients keep compiling.  Strictly weaker in
+reach: `NoReservedSupportPerturbation` implies `FiniteSupportPerturbation`.
+
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
+theorem lic_iff_of_noReservedSupportPerturbation (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : NoReservedSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
+  FreezeOracle.machine_lic_iff_of_noReservedSupport P P' DP hPcomp hP'comp hpert
+
+/-- The oldest public name, likewise kept.  Strictly weaker in reach again:
+`Recognizable` implies `NoReserved`.
+
+Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
 theorem lic_iff_of_recognizableSupportPerturbation (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')

@@ -55,6 +55,18 @@ structure DeferralFunction where
 
 instance : CoeFun DeferralFunction (fun _ => ℕ → ℕ) := ⟨DeferralFunction.f⟩
 
+/-- **Non-vacuity of `def:deferralfunc`** — kind `N+` non-vacuity witness.  The successor
+`n ↦ n + 1` is a deferral function: it defers (`n < n + 1`) and `Nat.Partrec.Code.succ`
+returns it within one step of the clocked interpreter, well inside the polynomial-in-`f n`
+budget.  Every `DeferralFunction` binder in this file and in the `thm:cee` / `thm:ceu` /
+`thm:ccee` / `thm:st` endpoints is therefore inhabited.
+Provenance: (a) derived in-project. -/
+def succDeferral : DeferralFunction where
+  f := (· + 1)
+  lt n := Nat.lt_succ_self n
+  code := Nat.Partrec.Code.succ
+  fueled := ⟨1, 1, fun n => by simp [Nat.Partrec.Code.evaln]⟩
+
 /-- `def:ctsind`, real-valued form: the continuous threshold indicator
 `ctsind_δ(x > y)` — `0` at `x ≤ y`, linear on `(y, y+δ]`, `1` beyond. -/
 noncomputable def ctsInd (δ : ℚ) (x y : ℝ) : ℝ :=
@@ -416,5 +428,6 @@ theorem lic_self_trust (P : History) (DP : DeductiveProcess)
 #print axioms lic_no_expected_net_update
 #print axioms lic_no_expected_net_update_conditional
 #print axioms lic_self_trust
+#print axioms succDeferral
 
 end LogicalInduction

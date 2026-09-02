@@ -164,6 +164,32 @@ lemma BigTokenStream.primrec {t : ℕ → List ℕ} (h : BigTokenStream t) : Pri
   obtain ⟨ds, hds, _, heq⟩ := h
   exact (undigitize_prim.comp hds.primrec).of_eq heq
 
+/-- **The write-out digit transformer**: the canonical digitization of a written-out
+token stream is a `PolySegStream`.  This is `PolySegStream.digitizeStream` for the class
+that does *not* meter token values, and it is what lets every consumer that reaches its
+block hypothesis through `.digitizeStream` accept write-out data.
+
+The write-out certificate's own digit stream already supplies everything needed:
+`PolySegStream.undigitizeTokens` reads a poly-fueled token *count* and `BigDigits` access
+to each token's digits off it, `BigDigits.blockSeg` re-emits each token's self-delimiting
+digit block, and `PolySegStream.concatVar` glues the blocks with a runtime prefix scan.
+No token value is ever materialized, so nothing here bounds one.
+Kind `P`, provenance (a).
+Paper node: `def:ec` -/
+lemma BigTokenStream.digitizeStream {t : ℕ → List ℕ} (h : BigTokenStream t) :
+    PolySegStream (fun n => digitize (t n)) := by
+  obtain ⟨ds, hds, -, hu⟩ := h
+  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := hds.undigitizeTokens
+  refine (hbig.blockSeg.concatVar hcnt).of_eq (fun n => ?_)
+  simp only [Nat.unpair_pair]
+  rw [← hu n, digitize]
+  generalize undigitize (ds n) = l
+  conv_rhs => rw [show l = (List.range l.length).map (fun j => l.getD j 0) from
+    List.ext_getElem (by simp) (fun i h1 h2 => by
+      simp only [List.getElem_map, List.getElem_range]
+      exact (List.getD_eq_getElem l 0 h1).symm)]
+  rw [List.flatMap_map]
+
 /-- **The paper's 𝓔𝓒 sentence-sequence class, write-out metered.**  A written-out stream
 of self-delimiting sentence blocks parsing to the sequence, each block consumed exactly.
 Contrast `RpnSentenceCodes`, which additionally bounds every emitted *token's* value by a

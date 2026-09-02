@@ -2,32 +2,45 @@
 # RPN splice streams: the 𝓔𝓒-sequence interface and its combinators
 
 This module sits upstream of the feature and LUV interfaces, so their structures can
-carry the `𝓔𝓒`-sequence hypothesis.  `RpnSentenceCodes` is the paper's
-efficiently-computable-sentence-sequence class (self-delimiting block streams);
+carry the `𝓔𝓒`-sequence hypothesis.  `RpnSentenceCodes` is a **narrower, token-metered
+sufficient subclass** of `def:ec`'s own write-out sentence class `BigSentenceCodes`
+(`Framework/WriteOut.lean`): both are streams of self-delimiting sentence blocks, and this
+one additionally bounds every emitted token's *value* by a polynomial in the day.
 `RpnSpliceStream` says a token-stream family has a polynomially emittable RPN
 expansion contracting to it position-wise.  The realization capstones (digitize +
 `ec_of_rawSegStream`) live in `Framework/RpnEmission.lean`.
 
-Paper node: `def:ec` (token-metered sentence slots).
+Paper node: `def:ec` (token-metered sentence slots — a subclass rendering, not the node's
+own class).
 -/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.RpnSentence
 
 namespace LogicalInduction
 
-/-! ## The 𝓔𝓒 sentence-sequence interface (`RpnSentenceCodes`)
+/-! ## A token-metered 𝓔𝓒 sentence-sequence subclass (`RpnSentenceCodes`)
 
 The paper's affine and self-trust theorems quantify over *efficiently computable
-sequences of sentences*.  The whole-value interface (`PolySentenceCodes`) meters the
-single pair-code token, which excludes deep or skewed sentence sequences whose codes
-are value-exponential in their symbol count.  `RpnSentenceCodes` meters **symbols** instead:
-some polynomially emittable stream of self-delimiting sentence blocks — canonical
-Polish runs or escaped pair codes — parses to the sequence. -/
+sequences of sentences*, and the class they are now stated over is the write-out class
+`BigSentenceCodes`; none of them quantifies over `RpnSentenceCodes`.  What this class is
+for is the *supply* side: it is the convenient token-metered subclass the compilers in
+`Construction/` emit into, embedding by `BigSentenceCodes.ofRpnSentenceCodes`, and it is
+still the class the LUV threshold interfaces (`LUV.RpnThresholdCodes(Seq)`,
+`Framework/Expectations.lean`) are phrased in.  The whole-value interface
+(`PolySentenceCodes`) meters the single pair-code token, which excludes deep or skewed
+sentence sequences whose codes are value-exponential in their symbol count.
+`RpnSentenceCodes` meters **symbols** instead: some polynomially emittable stream of
+self-delimiting sentence blocks — canonical Polish runs or escaped pair codes — parses to
+the sequence, with each emitted token's value bounded as well. -/
 
-/-- The paper's 𝓔𝓒 sentence-sequence class: a `PolySegStream` of self-delimiting
-sentence blocks parsing to the sequence (each block consumed exactly).  Canonical
-Polish runs (`ofCanonical`) admit arbitrarily deep and skewed sentences at poly symbol
-count; escaped pair codes (`ofPolySentenceCodes`) embed the whole-value interface.
+/-- **A narrower, token-metered sufficient subclass of `def:ec`'s write-out sentence class
+`BigSentenceCodes`**: a `PolySegStream` of self-delimiting sentence blocks parsing to the
+sequence (each block consumed exactly), which bounds every emitted token's *value* by a
+polynomial in the day on top of their number.  Canonical Polish runs (`ofCanonical`) admit
+arbitrarily deep and skewed sentences at poly symbol count; escaped pair codes
+(`ofPolySentenceCodes`) embed the whole-value interface; `BigSentenceCodes.ofRpnSentenceCodes`
+is the inclusion into the node's own class.  No separation of the two sentence classes is
+proved here.
 Paper node: `def:ec` -/
 def RpnSentenceCodes (φ : ℕ → Sentence) : Prop :=
   ∃ s : ℕ → List ℕ, PolySegStream s ∧

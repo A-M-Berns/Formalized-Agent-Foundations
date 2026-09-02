@@ -60,6 +60,15 @@ agrees with the constant-comparison matcher `matchRunCanon`, and **no square roo
 needed at all**.  The disclosure below therefore binds exactly when the frozen quote table
 contains a sentence with a `⊥` subformula.
 
+**Scope of that disclosure: the FUEL class only.**  In the *machine* class the square root
+is no longer avoided, it is built — `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec`
+inside `Complexity.FP`, with `FiberTest.fiberW_mem_FP` the escape-leaf test on top.  The
+pattern layer below (`patterns`, `parseRpnLegacy_iff_patMatch`) is what consumes it: it
+replaces the constant spelling list by a list of patterns with holes, so `⊥`'s infinite
+fibre no longer defeats exhaustiveness and `BotFree` disappears from the machine-class
+endpoint.  Everything in the paragraphs above is about `BigDigits`/`PolyFueled`, which is a
+different and still-open calculus (`dd:fuel`).
+
 That gap is a limitation of the fuel model (`dd:fuel`), not of the mathematics: in the
 intended complexity model the claim holds, since `unpair` on poly-bit inputs is
 poly-time.  Closing it inside the fuel calculus — a `BigDigits.sqrt` — is blocked
@@ -761,6 +770,359 @@ theorem parseRpn_iff_mem_spellings {ψ : Sentence} (hrec : Recognizable ψ) (b :
       (parseRpn_imp_parseRpnLegacy b.length b h hrec.noReserved)
   · intro h
     exact parseRpn_of_legacy (spellings_sound ψ b h)
+
+/-! ### The pattern layer: the same characterization, with no `⊥` side condition
+
+`spellings` is a list of *constants*, and that is exactly why it needs `BotFree`.  The only
+place a node's alternatives could be infinite is the two-token escape `[1, c]`, whose
+obligation is `Encodable.decode c = some χ`; on a `⊥`-free target that obligation collapses
+to a single numeral (`decode_eq_some_iff_of_botFree`), but at `⊥` its fiber is infinite
+(`decode_falsum_noncanonical`) and the multiplicity propagates through every connective
+(`decode_and_noncanonical`).  Under-approximating there would be *unsound*, not merely
+lossy: a run the parser accepts but the recognizer rejects leaves a price leaf unfrozen.
+
+The fix is to stop asking for constants.  A **pattern** is a token list with holes: a
+`PatTok.lit t` where the spelling is fixed, and a `PatTok.hole χ` wherever an escape payload
+may sit, carrying the obligation `decode c = some χ` rather than equality with a numeral.
+The infinite multiplicity is then confined *inside* the hole predicate, so the list of
+patterns is finite and exhaustive **unconditionally** — `patterns_complete` and
+`parseRpnLegacy_iff_patMatch` below carry no `BotFree` hypothesis, and the `⊥` target is an
+ordinary case rather than a flagged placeholder.
+
+`PatMatch` is **positional**: `List.Forall₂` of the per-token obligation, so a match forces
+`b.length = p.length` (`patMatch_length`) and each token's obligation is read off the
+position it occupies.  This is deliberately not an existential over decompositions of `b`:
+the block positions inside a pattern are determined by the pattern alone, hence computable
+at elaboration time, which is what a later automaton construction needs.
+
+`spellings` and its two characterizations are left exactly as they are: they are on the
+audited surface, they are consumed by `FreezeOracle.lean`, and on a `⊥`-free target they are
+the sharper statement (membership in a list of constants). -/
+
+/-- One token of a spelling **pattern**: a fixed literal token, or a `hole` — a code slot
+whose obligation is `Encodable.decode c = some χ` rather than equality with a numeral. -/
+inductive PatTok
+  | /-- A fixed grammar token. -/ lit (t : ℕ)
+  | /-- An escape payload slot for the subformula `χ`. -/ hole (χ : Sentence)
+
+/-- What a single pattern token demands of the stream token in its position. -/
+def PatTok.Matches : PatTok → ℕ → Prop
+  | .lit t, c => c = t
+  | .hole χ, c => (Encodable.decode c : Option Sentence) = some χ
+
+@[simp] lemma PatTok.matches_lit (t c : ℕ) : (PatTok.lit t).Matches c ↔ c = t := Iff.rfl
+
+@[simp] lemma PatTok.matches_hole (χ : Sentence) (c : ℕ) :
+    (PatTok.hole χ).Matches c ↔ (Encodable.decode c : Option Sentence) = some χ := Iff.rfl
+
+/-- A token list matches a pattern **positionally**: equal lengths, and each token satisfies
+the obligation of the pattern token sitting in its position. -/
+def PatMatch (p : List PatTok) (b : List ℕ) : Prop := List.Forall₂ PatTok.Matches p b
+
+@[simp] lemma patMatch_nil_left (b : List ℕ) : PatMatch [] b ↔ b = [] :=
+  List.forall₂_nil_left_iff
+
+@[simp] lemma patMatch_nil_right (p : List PatTok) : PatMatch p [] ↔ p = [] :=
+  List.forall₂_nil_right_iff
+
+lemma patMatch_cons_left_iff {τ : PatTok} {p : List PatTok} {b : List ℕ} :
+    PatMatch (τ :: p) b ↔ ∃ c b', τ.Matches c ∧ PatMatch p b' ∧ b = c :: b' :=
+  List.forall₂_cons_left_iff
+
+lemma patMatch_cons {τ : PatTok} {p : List PatTok} {c : ℕ} {b : List ℕ}
+    (hc : τ.Matches c) (h : PatMatch p b) : PatMatch (τ :: p) (c :: b) :=
+  List.Forall₂.cons hc h
+
+/-- **A pattern fixes the length of everything it matches.**  Every pattern is a literal
+list, so the block boundaries inside a matched run are determined by the pattern alone —
+they need no scan of the run.
+
+Proof kind: `C` composition.  Provenance: (b) `List.Forall₂.length_eq`. -/
+lemma patMatch_length {p : List PatTok} {b : List ℕ} (h : PatMatch p b) :
+    b.length = p.length :=
+  (List.Forall₂.length_eq h).symm
+
+lemma patMatch_append {p₁ p₂ : List PatTok} {b₁ b₂ : List ℕ}
+    (h₁ : PatMatch p₁ b₁) (h₂ : PatMatch p₂ b₂) : PatMatch (p₁ ++ p₂) (b₁ ++ b₂) :=
+  List.rel_append h₁ h₂
+
+/-- Splitting a match along a concatenation of patterns.  The split point is forced by
+`p₁`'s length, so this is a genuine inversion, not a choice. -/
+lemma patMatch_append_inv : ∀ (p₁ p₂ : List PatTok) (b : List ℕ),
+    PatMatch (p₁ ++ p₂) b → ∃ b₁ b₂, b = b₁ ++ b₂ ∧ PatMatch p₁ b₁ ∧ PatMatch p₂ b₂ := by
+  intro p₁
+  induction p₁ with
+  | nil => intro p₂ b h; exact ⟨[], b, rfl, List.Forall₂.nil, h⟩
+  | cons τ p ih =>
+      intro p₂ b h
+      rw [List.cons_append, patMatch_cons_left_iff] at h
+      obtain ⟨c, b', hc, hrest, rfl⟩ := h
+      obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ := ih p₂ b' hrest
+      exact ⟨c :: b₁, b₂, rfl, patMatch_cons hc h₁, h₂⟩
+
+/-- The complete legacy spelling **patterns** of a target.
+
+Each node contributes two alternatives, exactly as in `spellings`: the two-token escape —
+now `[lit 1, hole ψ]`, whose payload obligation is the decode itself — and the structural
+spelling.  Unlike `spellings` the `⊥` case is not a placeholder: `[lit 1, hole ⊥]` covers
+`⊥`'s whole infinite decode fiber in one pattern. -/
+def patterns : Sentence → List (List PatTok)
+  | ⊥ => [[.lit 0], [.lit 1, .hole ⊥]]
+  | .atom a =>
+      [[.lit (a + 5)], [.lit 1, .hole (LO.Propositional.Formula.atom a : Sentence)]]
+  | φ 🡒 χ =>
+      [.lit 1, .hole (φ 🡒 χ)] ::
+        (patterns φ).flatMap fun p₁ =>
+          (patterns χ).map fun p₂ => PatTok.lit 2 :: (p₁ ++ p₂)
+  | φ ⋏ χ =>
+      [.lit 1, .hole (φ ⋏ χ)] ::
+        (patterns φ).flatMap fun p₁ =>
+          (patterns χ).map fun p₂ => PatTok.lit 3 :: (p₁ ++ p₂)
+  | φ ⋎ χ =>
+      [.lit 1, .hole (φ ⋎ χ)] ::
+        (patterns φ).flatMap fun p₁ =>
+          (patterns χ).map fun p₂ => PatTok.lit 4 :: (p₁ ++ p₂)
+
+/-- The escape pattern is listed for **every** target — this is the case that `spellings`
+could only cover under `BotFree`. -/
+lemma escape_mem_patterns (ψ : Sentence) : [PatTok.lit 1, PatTok.hole ψ] ∈ patterns ψ := by
+  -- `simp` leaves the residual `Formula.falsum = ⊥` / `a.and b = a ⋏ b` goals: the
+  -- `patterns` equations are stated in the `LogicalConnective` notation, which is only
+  -- *defeq* to the raw constructor `cases` produces.
+  cases ψ <;> simp [patterns] <;> rfl
+
+/-- A code denoting `ψ` matches `ψ`'s escape pattern, whatever its multiplicity. -/
+lemma patMatch_escape {ψ : Sentence} {c : ℕ}
+    (hd : (Encodable.decode c : Option Sentence) = some ψ) :
+    PatMatch [PatTok.lit 1, PatTok.hole ψ] [1, c] :=
+  List.Forall₂.cons rfl (List.Forall₂.cons hd List.Forall₂.nil)
+
+private lemma patMatch_escape_parse {ψ : Sentence} {b : List ℕ}
+    (h : PatMatch [PatTok.lit 1, PatTok.hole ψ] b) :
+    parseRpnLegacy b.length b = some (ψ, []) := by
+  obtain ⟨c₀, b₀, hc₀, h₀, rfl⟩ := patMatch_cons_left_iff.mp h
+  obtain ⟨c₁, b₁, hc₁, h₁, rfl⟩ := patMatch_cons_left_iff.mp h₀
+  have hb₁ : b₁ = [] := (patMatch_nil_left b₁).mp h₁
+  subst hb₁
+  have hc₀' : c₀ = 1 := hc₀
+  subst hc₀'
+  exact parseRpnLegacy_escape' hc₁ [] (by simp)
+
+/-- **Every listed pattern really parses**, for every target — no side condition.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpn_bin_body`, `spellings_sound`,
+`patMatch_escape_parse`.
+Paper node: `app:ifp` -/
+lemma patterns_sound : ∀ (ψ : Sentence), ∀ p ∈ patterns ψ, ∀ b : List ℕ, PatMatch p b →
+    parseRpnLegacy b.length b = some (ψ, []) := by
+  have hbin : ∀ (t : ℕ) (φ χ : Sentence)
+      (p₁ p₂ : List PatTok) (b : List ℕ), PatMatch (PatTok.lit t :: (p₁ ++ p₂)) b →
+      (∀ b₁, PatMatch p₁ b₁ → parseRpnLegacy b₁.length b₁ = some (φ, [])) →
+      (∀ b₂, PatMatch p₂ b₂ → parseRpnLegacy b₂.length b₂ = some (χ, [])) →
+      ∃ b₁ b₂, b = t :: (b₁ ++ b₂) ∧
+        parseRpnLegacy b₁.length b₁ = some (φ, []) ∧
+        parseRpnLegacy b₂.length b₂ = some (χ, []) := by
+    intro t φ χ p₁ p₂ b hb h₁ h₂
+    obtain ⟨c, b', hc, hrest, rfl⟩ := patMatch_cons_left_iff.mp hb
+    have hc' : c = t := hc
+    subst hc'
+    obtain ⟨b₁, b₂, rfl, hm₁, hm₂⟩ := patMatch_append_inv p₁ p₂ b' hrest
+    exact ⟨b₁, b₂, rfl, h₁ b₁ hm₁, h₂ b₂ hm₂⟩
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum =>
+      intro p hp b hb
+      simp only [patterns, List.mem_cons, List.not_mem_nil, or_false] at hp
+      rcases hp with rfl | rfl
+      · obtain ⟨c, b', hc, h', rfl⟩ := patMatch_cons_left_iff.mp hb
+        have hb' : b' = [] := (patMatch_nil_left b').mp h'
+        subst hb'
+        have hc' : c = 0 := hc
+        subst hc'
+        exact spellings_sound ⊥ [0] (by simp [spellings])
+      · exact patMatch_escape_parse hb
+  | hatom a =>
+      intro p hp b hb
+      simp only [patterns, List.mem_cons, List.not_mem_nil, or_false] at hp
+      rcases hp with rfl | rfl
+      · obtain ⟨c, b', hc, h', rfl⟩ := patMatch_cons_left_iff.mp hb
+        have hb' : b' = [] := (patMatch_nil_left b').mp h'
+        subst hb'
+        have hc' : c = a + 5 := hc
+        subst hc'
+        exact spellings_sound _ [a + 5] (by simp [spellings])
+      · exact patMatch_escape_parse hb
+  | himp φ χ ihφ ihχ =>
+      intro p hp b hb
+      simp only [patterns, List.mem_cons, List.mem_flatMap, List.mem_map] at hp
+      rcases hp with rfl | ⟨p₁, hp₁, p₂, hp₂, rfl⟩
+      · exact patMatch_escape_parse hb
+      · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
+          hbin 2 φ χ p₁ p₂ b hb
+            (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
+        have hlen : ((2 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 := by simp
+        rw [hlen]
+        show (if (2 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (2 : ℕ) = 2 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.imp h₁ h₂ le_rfl
+  | hand φ χ ihφ ihχ =>
+      intro p hp b hb
+      simp only [patterns, List.mem_cons, List.mem_flatMap, List.mem_map] at hp
+      rcases hp with rfl | ⟨p₁, hp₁, p₂, hp₂, rfl⟩
+      · exact patMatch_escape_parse hb
+      · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
+          hbin 3 φ χ p₁ p₂ b hb
+            (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
+        have hlen : ((3 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 := by simp
+        rw [hlen]
+        show (if (3 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (3 : ℕ) = 3 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.and h₁ h₂ le_rfl
+  | hor φ χ ihφ ihχ =>
+      intro p hp b hb
+      simp only [patterns, List.mem_cons, List.mem_flatMap, List.mem_map] at hp
+      rcases hp with rfl | ⟨p₁, hp₁, p₂, hp₂, rfl⟩
+      · exact patMatch_escape_parse hb
+      · obtain ⟨b₁, b₂, rfl, h₁, h₂⟩ :=
+          hbin 4 φ χ p₁ p₂ b hb
+            (fun b₁ h => ihφ p₁ hp₁ b₁ h) (fun b₂ h => ihχ p₂ hp₂ b₂ h)
+        have hlen : ((4 : ℕ) :: (b₁ ++ b₂)).length = (b₁ ++ b₂).length + 1 := by simp
+        rw [hlen]
+        show (if (4 : ℕ) = 0 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 1 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 2 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 3 then _ else _) = _
+        rw [if_neg (by omega)]
+        show (if (4 : ℕ) = 4 then _ else _) = _
+        rw [if_pos rfl]
+        exact parseRpn_bin_body LO.Propositional.Formula.or h₁ h₂ le_rfl
+
+/-- **The pattern list is exhaustive — unconditionally.**  Every complete legacy parse of
+*any* target matches one of the finitely many listed patterns.
+
+This is where the pattern layer earns its keep.  `spellings_complete` had to rewrite the
+escape payload `c` to the canonical numeral, which is `decode_eq_some_iff_of_botFree` and
+hence needs `BotFree`; here the hypothesis `parseRpnLegacy_block_inv` hands over,
+`hd : Encodable.decode c = some ψ`, *is* the hole's obligation, so nothing is thrown away
+and the `⊥` target goes through the same escape/structural split as the others.
+
+Proof kind: `P` proved.  Provenance: (a) `parseRpnLegacy_block_inv`, `escape_mem_patterns`,
+`patMatch_append`.
+Paper node: `app:ifp` -/
+lemma patterns_complete : ∀ (ψ : Sentence), ∀ b : List ℕ,
+    parseRpnLegacy b.length b = some (ψ, []) → ∃ p ∈ patterns ψ, PatMatch p b := by
+  intro ψ
+  induction ψ using LO.Propositional.Formula.rec' with
+  | hfalsum =>
+      intro b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, _⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact ⟨[PatTok.lit 0], by simp [patterns],
+          List.Forall₂.cons rfl List.Forall₂.nil⟩
+      · exact ⟨_, escape_mem_patterns _, patMatch_escape hd⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hatom a =>
+      intro b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · exact ⟨_, escape_mem_patterns _, patMatch_escape hd⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain rfl := LO.Propositional.Formula.atom.inj hψ
+        exact ⟨[PatTok.lit (a + 5)], by simp [patterns],
+          List.Forall₂.cons rfl List.Forall₂.nil⟩
+  | himp φ χ ihφ ihχ =>
+      intro b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · exact ⟨_, escape_mem_patterns _, patMatch_escape hd⟩
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.imp.inj hψ
+        obtain ⟨p₁, hm₁, hb₁⟩ := ihφ b₁ hp₁
+        obtain ⟨p₂, hm₂, hb₂⟩ := ihχ b₂ hp₂
+        refine ⟨PatTok.lit 2 :: (p₁ ++ p₂), ?_, patMatch_cons rfl (patMatch_append hb₁ hb₂)⟩
+        exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr
+          ⟨p₁, hm₁, List.mem_map.mpr ⟨p₂, hm₂, rfl⟩⟩)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hand φ χ ihφ ihχ =>
+      intro b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · exact ⟨_, escape_mem_patterns _, patMatch_escape hd⟩
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.and.inj hψ
+        obtain ⟨p₁, hm₁, hb₁⟩ := ihφ b₁ hp₁
+        obtain ⟨p₂, hm₂, hb₂⟩ := ihχ b₂ hp₂
+        refine ⟨PatTok.lit 3 :: (p₁ ++ p₂), ?_, patMatch_cons rfl (patMatch_append hb₁ hb₂)⟩
+        exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr
+          ⟨p₁, hm₁, List.mem_map.mpr ⟨p₂, hm₂, rfl⟩⟩)
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+  | hor φ χ ihφ ihχ =>
+      intro b hb
+      rcases parseRpnLegacy_block_inv hb with
+        ⟨rfl, hψ⟩ | ⟨c, rfl, hd⟩ | ⟨_, _, _, _, rfl, hψ, _, _⟩ |
+        ⟨_, _, _, _, rfl, hψ, _, _⟩ | ⟨b₁, b₂, φ₁, φ₂, rfl, hψ, hp₁, hp₂⟩ | ⟨a', rfl, hψ⟩
+      · exact absurd hψ (by simp)
+      · exact ⟨_, escape_mem_patterns _, patMatch_escape hd⟩
+      · exact absurd hψ (by simp)
+      · exact absurd hψ (by simp)
+      · obtain ⟨rfl, rfl⟩ := LO.Propositional.Formula.or.inj hψ
+        obtain ⟨p₁, hm₁, hb₁⟩ := ihφ b₁ hp₁
+        obtain ⟨p₂, hm₂, hb₂⟩ := ihχ b₂ hp₂
+        refine ⟨PatTok.lit 4 :: (p₁ ++ p₂), ?_, patMatch_cons rfl (patMatch_append hb₁ hb₂)⟩
+        exact List.mem_cons_of_mem _ (List.mem_flatMap.mpr
+          ⟨p₁, hm₁, List.mem_map.mpr ⟨p₂, hm₂, rfl⟩⟩)
+      · exact absurd hψ (by simp)
+
+/-- **The characterization, with the `⊥` side condition gone.**  A run denotes `ψ` in the
+legacy grammar exactly when it matches one of `ψ`'s finitely many spelling patterns — for
+*every* `ψ`, `⊥` subformulas included.
+
+Proof kind: `C` composition.  Provenance: (a) `patterns_sound`, `patterns_complete`.
+Paper node: `app:ifp` -/
+lemma parseRpnLegacy_iff_patMatch (ψ : Sentence) (b : List ℕ) :
+    parseRpnLegacy b.length b = some (ψ, []) ↔ ∃ p ∈ patterns ψ, PatMatch p b :=
+  ⟨patterns_complete ψ b, fun ⟨_, hp, hm⟩ => patterns_sound ψ _ hp b hm⟩
+
+/-- **The same, at the grammar the freeze actually parses with.**  Only `NoReserved`
+survives; the `BotFree` half of `Recognizable` is no longer needed anywhere on this route.
+
+Proof kind: `C` composition.  Provenance: (a) `parseRpn_imp_parseRpnLegacy`,
+`patterns_complete`, `patterns_sound`; (b) `parseRpn_of_legacy`.
+Paper node: `app:ifp` -/
+lemma parseRpn_iff_patMatch {ψ : Sentence} (hnr : NoReserved ψ) (b : List ℕ) :
+    parseRpn b.length b = some (ψ, []) ↔ ∃ p ∈ patterns ψ, PatMatch p b := by
+  constructor
+  · intro h
+    exact patterns_complete ψ b (parseRpn_imp_parseRpnLegacy b.length b h hnr)
+  · rintro ⟨p, hp, hm⟩
+    exact parseRpn_of_legacy (patterns_sound ψ p hp b hm)
 
 /-- **Matcher soundness**: a successful positional match certifies that the tokens it
 consumed form a complete self-delimiting block parsing to the target. -/

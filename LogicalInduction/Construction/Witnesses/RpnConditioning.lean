@@ -19,7 +19,7 @@ Contents:
 * the **price pass** `rpnConditionRun`: a streaming transducer copying every input
   token and, at each price-day position, appending the RPN expansion of the conditional
   price expression — the buffered sentence run re-spliced into the conjunction shell,
-  the condition block drawn from an `RpnSentenceCodes` stream — so that contracting the
+  the condition block drawn from a written-out (`BigSentenceCodes`) stream — so that contracting the
   output reproduces the token-model rewrite `conditionPriceTokenRun` of the contracted
   input (`unRpn_rpnConditionRun`, anchored per chunk by `unRpn_price_rewrite_chunk`);
 * the **frame pass** `rpnFrameRun` / `rpnFrameOutput`, replacing each trade run by the
@@ -1311,13 +1311,14 @@ lemma rpnGuardedConditionRun_polySegStream_of {s : ℕ → List ℕ} (h : PolySe
     simp [digitize]
 
 /-- **The price-pass certificate**: the digitized guarded symbol-level price rewrite of
-any digit `PolySegStream` is a `PolySegStream`, over any polynomially emittable
-condition block stream — copied tokens are re-rendered digit blocks, the buffered run
+any digit `PolySegStream` is a `PolySegStream`, over any **written-out** condition block
+stream — copied tokens are re-rendered digit blocks, the buffered run
 is copied by position (`concatVar` over the recorded run length), and the condition
-blocks are drawn at the clamped day.
+blocks are drawn at the clamped day.  The condition stream is metered on its digits
+only (`BigTokenStream`), so a condition's Gödel code may be exponential in the day.
 Paper node: `thm:scon` -/
 lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
-    (h : PolySegStream s) (hb : PolySegStream blocks) (ε : ℚ) :
+    (h : PolySegStream s) (hb : BigTokenStream blocks) (ε : ℚ) :
     PolySegStream (fun n => digitize
       (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (s n)))) := by
   obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
@@ -6207,11 +6208,11 @@ lemma rpnFrameTailMid_polyTokenStream (second : Bool) {cD cb ci : Code}
   simp [rpnFrameTailMid]
 
 /-- **The frame-pass certificate**: the digitized symbol-level frame output of any digit
-`PolySegStream` is a `PolySegStream`, over any polynomially emittable condition block
+`PolySegStream` is a `PolySegStream`, over any **written-out** condition block
 stream and poly-fueled day/budget codes.
 Paper node: `thm:scon` -/
 lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List ℕ}
-    (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
+    (hsrc : PolySegStream src) (hblocks : BigTokenStream blocks)
     {cD cb ci : Code} {dayF bcF ibcF : ℕ → ℕ}
     (hdayF : PolyFueled cD dayF) (hbcF : PolyFueled cb bcF)
     (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
@@ -6456,7 +6457,7 @@ def rpnSafeSeparatedFrameOutput (tf lenF : ℕ → ℕ) (blkψ : List ℕ) (ε :
 `PolySegStream` is a `PolySegStream`.
 Paper node: `thm:scon` -/
 lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
-    (hsrc : PolySegStream src) (hblocks : PolySegStream blocks)
+    (hsrc : PolySegStream src) (hblocks : BigTokenStream blocks)
     {cb ci : Code} {bcF ibcF : ℕ → ℕ} (hbcF : PolyFueled cb bcF)
     (hibcF : PolyFueled ci ibcF) (ε : ℚ) :
     PolySegStream (fun n => digitize
@@ -6728,7 +6729,7 @@ theorem strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
 /-- **The zero-aware price-pass certificate.**
 Paper node: `thm:scon` -/
 lemma rpnGuardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
-    {s blocks : ℕ → List ℕ} (h : PolySegStream s) (hb : PolySegStream blocks)
+    {s blocks : ℕ → List ℕ} (h : PolySegStream s) (hb : BigTokenStream blocks)
     (ε : ℚ) :
     PolySegStream (fun n => digitize
       (rpnGuardedConditionTokens (rpnZeroAwareEmit zeroDays blocks ε) n
@@ -7102,10 +7103,12 @@ by the symbol-level trade-run count, exact against the token model
 `def:ec` certificate. -/
 
 /-- **The gated conditioning translation preserves token-metered efficient
-computability** (`def:ec` → `def:ec`), over any `𝓔𝓒` sentence sequence.
+computability** (`def:ec` → `def:ec`), over any `𝓔𝓒` sentence sequence — the
+write-out class `BigSentenceCodes`, in which a condition's Gödel code may be
+exponential in the day.
 Paper node: `thm:scon` -/
 theorem conditionedTranslation_preserves_ecRpn
-    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (ε : ℚ)
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : EfficientlyComputable T) :
     EfficientlyComputable (T.conditionedTranslation ψ ε) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT
@@ -7163,7 +7166,7 @@ token-metered efficient computability** (`def:ec` → `def:ec`).
 Paper node: `thm:scon` -/
 theorem eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}
-    (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
+    (F : EventualConditioningFloor P ψ) (hψ : BigSentenceCodes ψ)
     (T : Trader) (hT : EfficientlyComputable T) :
     EfficientlyComputable (T.eventualConditionedTranslation F) := by
   obtain ⟨lengthCode, tokenCode, a, k, hcert⟩ := hT

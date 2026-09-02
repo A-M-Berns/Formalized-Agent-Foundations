@@ -112,7 +112,46 @@ example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
 /-! ## 5. Conditioning an inductor
 
 Given the conditioning data, a client conditions a machine logical inductor and reads a §4
-property off the conditioned market. -/
+property off the conditioned market.
+
+The conditioning data is assembled from a **write-out** condition certificate —
+`BigSentenceCodes`, `def:ec`'s own class, which meters how many digits a polynomial-time
+writer must emit and bounds no token's value, so a condition's Gödel code may be
+exponential in the day.  Nothing on this path meters a sentence code. -/
+
+/-- A client's conditioning presentation, built from write-out condition data. -/
+def clientPresentation {DP extra : DeductiveProcess} (ψ : ℕ → Sentence)
+    (hψ : BigSentenceCodes ψ)
+    (hholds : ∀ n (v : PCWorld), v.Holds (ψ n) ↔ v.ConsistentWith (extra.D n))
+    (hcomb : ComputableDeductiveProcess (DP.union extra)) :
+    ConditioningPresentation DP extra where
+  condition := ψ
+  condition_codes := hψ
+  holds_condition := hholds
+  combined_computable := hcomb
+
+/-- Conditioning on a write-out condition family, end to end: the client supplies only a
+`BigSentenceCodes` certificate and the compiler for the presentation it builds, and reads a
+§4 convergence property off the conditioned market. -/
+example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (ψc : ℕ → Sentence) (hψc : BigSentenceCodes ψc)
+    (hholds : ∀ n (v : PCWorld), v.Holds (ψc n) ↔ v.ConsistentWith (extra.D n))
+    (hcomb : ComputableDeductiveProcess (DP.union extra))
+    (compiler : ConditioningTraderCompiler P DP extra
+      (clientPresentation ψc hψc hholds hcomb))
+    (φ ψ : Sentence)
+    (h1 : ∀ n, (∼φ ⋎ ψ) ∈ (DP.union extra).D n)
+    (h2 : ∀ n, (∼ψ ⋎ φ) ∈ (DP.union extra).D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.union extra).D n)) :
+    ConvergesTo (fun n => conditionedHistory P ψc n φ
+      - conditionedHistory P ψc n ψ) 0 := by
+  -- The ascription is load-bearing: without it the local instance's type mentions
+  -- `(clientPresentation ψc hψc hholds hcomb).condition` rather than `ψc`, and instance
+  -- search does not unfold a plain `def` to see they agree.
+  haveI : IsMachineLogicalInductor (conditionedHistory P ψc) (DP.union extra) :=
+    lic_conditioned_machine P DP extra
+      (clientPresentation ψc hψc hholds hcomb) compiler
+  exact lic_lex_tendsto_zero _ _ φ ψ h1 h2 hcons
 
 example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
     (C : ConditioningPresentation DP extra)
@@ -167,6 +206,87 @@ the implication a client needs to see that. -/
 example (P P' : History) (h : RecognizableSupportPerturbation P P') :
     ∃ N : ℕ, ∀ d, N ≤ d → ∀ ψ, P d ψ = P' d ψ :=
   h.toFiniteSupport.tail_agree
+
+/-! ### A coordinate the previous endpoint could not reach
+
+The moved sentence here has a `⊥` subformula, so it fails `BotFree` and no
+`RecognizableSupportPerturbation` can name it.  `NoReservedSupportPerturbation` can, which
+is what makes the strengthening visible from the client side rather than only in the
+statement. -/
+
+/-- The client's own target: `atom 0 ⋏ ⊥`. -/
+private def clientBotSentence : Sentence := (LO.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
+
+/-- It is **not** recognizable — the old hypothesis is unavailable at this coordinate. -/
+example : ¬ BotFree clientBotSentence := by
+  intro h
+  exact botFree_falsum ((botFree_and _ _).mp h).2
+
+/-- A client's own one-coordinate perturbation at that sentence. -/
+lemma noReservedSupport_of_singleBotSentence {P P' : History}
+    (hagree : ∀ d φ, (d, φ) ≠ (0, clientBotSentence) → P d φ = P' d φ) :
+    NoReservedSupportPerturbation P P' := by
+  refine ⟨{(0, clientBotSentence)}, ?_, fun d φ hmem => hagree d φ ?_⟩
+  · intro q hq
+    simp only [Finset.mem_singleton] at hq
+    subst hq
+    rw [clientBotSentence, noReserved_and]
+    exact ⟨atom_zero_noReserved, noReserved_falsum⟩
+  · intro hc
+    exact hmem (by simp [hc])
+
+/-- **Composition, at the harder coordinate.**  Same client-side reasoning as above, on a
+sentence the previous endpoint's hypothesis cannot express. -/
+example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor P DP]
+    (hP'comp : ComputableMarket P')
+    (hagree : ∀ d φ, (d, φ) ≠ (0, clientBotSentence) → P d φ = P' d φ)
+    (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P' n φ - P' n ψ) 0 := by
+  have hP' : IsMachineLogicalInductor P' DP :=
+    (lic_iff_of_noReservedSupportPerturbation P P' DP
+      hP.marketComputable hP'comp (noReservedSupport_of_singleBotSentence hagree)).mp hP
+  exact lic_lex_tendsto_zero P' DP φ ψ h1 h2 hcons
+
+/-! ### A coordinate no syntactic hypothesis can reach
+
+The moved sentence here is a **reserved atom**, `atom (Nat.pair 5 (Nat.pair 0 0))`.  It
+fails `NoReserved`, so neither `RecognizableSupportPerturbation` nor
+`NoReservedSupportPerturbation` can name this coordinate — a run may denote it through a
+structured paper-prime block whose unary length field is unbounded.  Plain
+`FiniteSupportPerturbation` names it, and that is the whole hypothesis. -/
+
+/-- The client's own target: a reserved atom. -/
+private def clientReservedSentence : Sentence :=
+  LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
+
+/-- It fails `NoReserved` — *both* older hypotheses are unavailable at this coordinate. -/
+example : ¬ NoReserved clientReservedSentence := by
+  intro h
+  exact (noReserved_atom _).mp h 0 0 rfl
+
+/-- A client's own one-coordinate perturbation at that sentence.  Note what is *not* here:
+no syntactic side condition on the moved sentence, and no freeze certificate. -/
+lemma finiteSupport_of_singleReservedSentence {P P' : History}
+    (hagree : ∀ d φ, (d, φ) ≠ (0, clientReservedSentence) → P d φ = P' d φ) :
+    FiniteSupportPerturbation P P' := by
+  refine ⟨{(0, clientReservedSentence)}, fun d φ hmem => hagree d φ ?_⟩
+  intro hc
+  exact hmem (by simp [hc])
+
+/-- **Composition, at a coordinate no syntactic hypothesis reaches.**  Same client-side
+reasoning as above, on a sentence whose price the earlier endpoints provably could not
+freeze. -/
+example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor P DP]
+    (hP'comp : ComputableMarket P')
+    (hagree : ∀ d φ, (d, φ) ≠ (0, clientReservedSentence) → P d φ = P' d φ)
+    (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ConvergesTo (fun n => P' n φ - P' n ψ) 0 := by
+  have hP' : IsMachineLogicalInductor P' DP :=
+    (lic_iff_of_finiteSupportPerturbation_machine P P' DP
+      hP.marketComputable hP'comp (finiteSupport_of_singleReservedSentence hagree)).mp hP
+  exact lic_lex_tendsto_zero P' DP φ ψ h1 h2 hcons
 
 /-! ## 7. Expectations -/
 

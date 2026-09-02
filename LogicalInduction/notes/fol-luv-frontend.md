@@ -176,12 +176,36 @@ non-vacuity witness.
 ## Downstream interface
 
 `PaperLUVSeq` supplies exactly the two abstract interfaces downstream LUV results expect:
-world-valuedness and `LUV.RpnThresholdCodeSeq`. It is deliberately *not* wired into the
-exact-CCEE consumers here: those take a `PresentedLUVSeq`, whose `threshold_named` field
-requires thresholds named by a semantic-handle schema (`semanticPrimeSentence`) — the
-naming this frontend exists to avoid. Connecting the two would mean changing the fixed
-deductive process or reintroducing handles, which is separate architectural work and not
-part of this frontend.
+world-valuedness and `LUV.RpnThresholdCodeSeq`.
+
+It is also, since the 2026-09-02 strengthening, the **source interface of the exact
+`thm:ccee` endpoint on the single market**
+(`lic_no_expected_net_update_conditional_paperLUV_closed`,
+`Construction/Witnesses/PaperExactCCEE.lean`). An earlier version of this note said the
+frontend was deliberately not wired into the exact-CCEE consumers, because those took a
+`PresentedLUVSeq` whose `threshold_named` field wanted thresholds named by a semantic-handle
+schema, and because connecting them looked like it would require changing the fixed
+deductive process. That was wrong on the second count, and the route that refutes it does
+not touch the handle schema at all:
+
+- Two literal paper LUVs multiply **exactly** in arithmetic, because a `PaperLUV` names its
+  value by a numerator/positive-denominator pair code and the unreduced pair `(a·c)/(b·d)`
+  is a perfectly good name for the product (`paperProductPaperLUV`,
+  `Construction/Witnesses/PaperExactProduct.lean`). No semantic handle, no product atom
+  published by the process, no `PresentedLUVSeq`.
+- The deferred weight is represented literally by `RepresentsComputations` — the paper's own
+  §2 premise on `Θ` — rather than rendered as a numeral, which a merely-computable weight
+  forbids (`Construction/Witnesses/PaperRepresentedWeight.lean`). What is represented is the
+  weight's pair *function*, i.e. its values day by day: `RepresentsComputations.repr` takes
+  the function plus a `Computable` proof, and the formula family it yields is determined by
+  the function's extension, so two different generability certificates for the same weight
+  produce identical formulas.
+- **The process stays fixed.** `paperTheoryDP T` already enumerates *every* `T`-theorem, so
+  the representing formula may be selected after the weight and the deferral function are
+  known without enlarging `paperDP T`. That is the observation the old paragraph missed.
+
+The `PresentedLUVSeq` / `canonicalCCEEDP` lane survives as the *generalized* exact result,
+covering threshold-only sources this frontend does not reach.
 
 ## Scope and remaining limitations
 

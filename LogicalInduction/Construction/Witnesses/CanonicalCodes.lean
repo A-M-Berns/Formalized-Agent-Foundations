@@ -99,14 +99,27 @@ def NoReserved : Sentence → Prop
 The freeze's run-level lookup carries side conditions rather than machinery, and they are
 easier to audit collected than scattered.  There are **three**, in two families:
 
-*On each sentence of the frozen quote table* — bundled as `Recognizable` below:
+*On each sentence of the frozen quote table* — bundled as `Recognizable` below.  **Neither
+is assumed any more**; both are recorded because they are what the ⊥-fibre witnesses below
+are *for*, and because `Recognizable` survives as a compatibility hypothesis.
 
 1. `BotFree ψ` — no `⊥` subformula.  Without it the escape leaf admits infinitely many
-   codes (`decode_falsum_noncanonical`), so no finite spelling list is exhaustive and the
-   decision reduces to `Nat.unpair` / integer square root.
+   codes (`decode_falsum_noncanonical`), so no finite spelling *list* is exhaustive and the
+   decision reduces to `Nat.unpair` / integer square root.  **That decision is now made
+   rather than avoided.**  `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` put base-4
+   integer square root and `Nat.unpair` inside `Complexity.FP`; `FiberTest.fiberW_mem_FP`
+   is the escape-leaf test built on them; and `RpnFreeze.patterns` replaces the spelling
+   list by a list of *patterns with holes*, so the infinite fibre lives inside a hole
+   predicate instead of defeating exhaustiveness.  The freeze endpoint
+   `FreezeOracle.machine_lic_iff_of_finiteSupport` therefore does not assume this.
 2. `NoReserved ψ` — no reserved-atom subformula.  Without it a structured block may denote
-   the target, and the structured payload admits non-canonical spellings that no fixed word
-   comparison catches.
+   the target, which needs two devices: the structured payload's unary length field must be
+   matched against the payload's own token count — an `aⁿbⁿ` constraint, since
+   `parseStructuredNat`'s self-loop at the numeral `0` makes that length unbounded even for
+   a fixed target — and the payload language of a fixed formula code must be recognized
+   exactly.  `CtrAuto.ctrMachine` is the first (`RunAuto.BlockMachine` instantiated as a
+   finite control with one unary counter) and `PayAuto` the second.  **This one is no longer
+   assumed either**; `FreezeOracle.machine_lic_iff_of_finiteSupport` is unrestricted.
 
 *On the table as a whole*:
 
@@ -114,10 +127,11 @@ easier to audit collected than scattered.  There are **three**, in two families:
    fits in a fixed budget.  This is the paper's own finiteness (`app:ifp`) reappearing as
    the condition that makes `TokenFold.runFold_mem_FP`'s emission budget close.
 
-Conditions 1 and 2 are what make a target's complete spellings a *finite explicit list*
+Conditions 1 and 2 are what made a target's complete spellings a *finite explicit list*
 (`RpnFreeze.spellings`); condition 3 is what makes emitting the answer polynomial.  None of
 them is a restriction on the freeze, the trader, or the market — all three are properties of
-the table being frozen. -/
+the table being frozen.  The recognizer the freeze now runs is
+`RpnFreeze.parseRpn_iff_patMatch`, which needs only condition 2. -/
 
 /-- The per-sentence recognition conditions on a frozen table entry. -/
 structure Recognizable (ψ : Sentence) : Prop where

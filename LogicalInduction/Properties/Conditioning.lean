@@ -1802,28 +1802,26 @@ lemma PCWorld.consistentWith_union_iff
 This is the shared input for both the fixed-condition and growing-prefix forms of
 `thm:scon`. It carries no prices or logical-inductor conclusion.
 
-`condition_codes` is metered in **symbols** rather than in the whole pair-code value:
-growing finite conjunctions are deep, so their whole-value pair codes are exponential in
-symbol count and the whole-value interface would silently exclude exactly the intended
-`thm:scon` inputs. Where a whole-value naming program is genuinely needed (the
-conditioned market's quote table, keyed by sentence code) it is extracted recursively —
-not polynomially — via `RpnSentenceCodes.exists_code`.
+`condition_codes` is `def:ec`'s own write-out class `BigSentenceCodes`: metered on the
+number of digits a poly-time writer must emit, with no bound whatever on a token's value,
+so a condition's Gödel code may be exponential in the day. Growing finite conjunctions are
+deep, so a whole-value interface would silently exclude exactly the intended `thm:scon`
+inputs. Where a whole-value naming program is genuinely needed (the conditioned market's
+quote table, keyed by sentence code) it is extracted recursively — not polynomially — via
+`BigSentenceCodes.exists_code`.
 
-*Class disclosure — this field is narrower than `def:ec`.* `RpnSentenceCodes` is the
-token-metered class; `def:ec`'s own class is the write-out `BigSentenceCodes`, which is
-strictly wider (`BigSentenceCodes.ofRpnSentenceCodes` embeds the former in the latter, and
-an atom family at exponentially growing index separates them). This field is **not** at
-`def:ec`'s class, and the surrounding text should not be read as claiming so. It is the
-only token-metered retention left on the day-indexed surface, and it is forced:
-`CondStep.machineSentenceBlocks_of_rpn` opens the certificate as emission data — clocking
-it via `PolySegStream.clockedTokens_certificate` and feeding `TraderMachine.traderOutput`,
-whose digit clamp is the identity only under a value-bounded stream — so widening this
-field is a `BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking proved in `FP`,
-not a statement change. See `Construction/Witnesses/ConditioningPresentation.lean`.
+The machine transducer's extra requirement, that the oracle's word end on complete parser
+blocks, is supplied from this same certificate by
+`CondStep.machineSentenceBlocks_of_big`, whose clocked digit stream comes from
+`BigTokenStream.digitizeStream`; the digit clamp downstream is the identity because the
+clamped object is a list of base-4 digits, not because token values are bounded. The
+token-metered `RpnSentenceCodes` survives only as a convenient sufficient subclass, via
+`BigSentenceCodes.ofRpnSentenceCodes`. See
+`Construction/Witnesses/ConditioningPresentation.lean`.
 Paper node: `thm:scon` -/
 structure ConditioningPresentation (DP extra : DeductiveProcess) where
   condition : ℕ → Sentence
-  condition_codes : RpnSentenceCodes condition
+  condition_codes : BigSentenceCodes condition
   holds_condition : ∀ n (v : PCWorld),
     v.Holds (condition n) ↔ v.ConsistentWith (extra.D n)
   combined_computable : ComputableDeductiveProcess (DP.union extra)

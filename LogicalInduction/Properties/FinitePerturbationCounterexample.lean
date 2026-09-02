@@ -29,6 +29,27 @@ records what remains.
 
 This file is deliberately **not** annotated with a `Paper node:` line: it refutes a paper
 statement rather than rendering one.
+
+## What this refutes, and what it leaves standing
+
+The perturbation built here rewrites **one entire pricing row** — day `0` — at infinitely
+many sentence coordinates (`advicePerturb` moves `schedAtom n` and `signAtom n` for every
+`n`).  So it is a counterexample to the *finite-days* hypothesis and to nothing else: it
+fails `FiniteSupportPerturbation` outright, because that predicate bounds the number of
+moved `(day, sentence)` **coordinates**, not the number of moved days.
+
+The two hypotheses are genuinely different, in the direction that matters:
+
+```
+finite coordinate support  ⇒  eventual day agreement   (FiniteSupportPerturbation.tail_agree)
+eventual day agreement     ⇏  finite coordinate support (tailAgree_not_finiteSupport)
+```
+
+Both are proved in `Properties/FinitePerturbations.lean`.  Hence the corrected theorem
+proved there cannot re-derive the statement refuted here, and the paper's own "only
+finitely many constants are needed, and can be hard-coded" step is repaired at exactly the
+point where it becomes valid: under finite coordinate support the frozen quote table is a
+finite list of rows; under mere day agreement it is not.
 -/
 
 namespace LogicalInduction

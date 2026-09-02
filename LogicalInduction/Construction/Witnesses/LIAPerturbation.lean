@@ -8,7 +8,7 @@ file removes that qualification.
 
 `liaHistory DP` **is** a machine logical inductor (`Construction/LIA.lean`, given its market
 program and a computable deductive process).  Moving one price — the coordinate
-`(0, atom 0)`, which is `Recognizable` — gives a market that is still computable, still
+`(0, atom 0)` — gives a market that is still computable, still
 agrees with `liaHistory` everywhere else, and is therefore *also* a machine logical
 inductor, **by the corrected theorem**.  Nothing else derives that: the perturbed market is
 not the output of any construction here, and its inductor-hood is exactly what
@@ -157,13 +157,9 @@ theorem machineLogicalInductor_liaPerturbed (DP : DeductiveProcess)
   have hLIA : IsMachineLogicalInductor (liaHistory DP) DP :=
     LIA_isMachineLogicalInductor DP hDP
   have hmarket : ComputableMarket (liaHistory DP) := hLIA.marketComputable
-  refine (machine_lic_iff_of_recognizableSupport (liaHistory DP) (liaPerturbed DP r) DP
+  refine (machine_lic_iff_of_finiteSupport (liaHistory DP) (liaPerturbed DP r) DP
     hmarket (computableMarket_liaPerturbed DP hmarket r h0 h1) ?_).mp hLIA
-  refine ⟨exampleS, ?_, liaPerturbed_agree DP r⟩
-  intro p hp
-  simp only [exampleS, Finset.mem_singleton] at hp
-  subst hp
-  exact recognizable_atom 0 atom_zero_noReserved
+  exact ⟨exampleS, liaPerturbed_agree DP r⟩
 
 /-- **The informative instance, packaged.**  A computable market that is a machine logical
 inductor, differs from the constructed one at exactly one coordinate, and differs there by a

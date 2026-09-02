@@ -101,42 +101,95 @@ theorem, not merely its proof, is wrong.
 Finite *support* is what rescues the hard-coding step, and the repository proves that
 case.
 
-`FreezeOracle.machine_lic_iff_of_recognizableSupport`
+`FreezeOracle.machine_lic_iff_of_finiteSupport`
 (`Construction/Witnesses/FreezeOracle.lean`) is the statement to cite:
 
 ```lean
-theorem machine_lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
+theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (hpert : RecognizableSupportPerturbation P P') :
+    (hpert : FiniteSupportPerturbation P P') :
     IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP
 ```
 
-`RecognizableSupportPerturbation P P'` asks for a finite set `S` of `(day, sentence)`
-coordinates off which the two markets agree, every sentence in it `Recognizable`. There is
-no certificate hypothesis: the freeze certificate each market needs is *compiled* from its
-own computability certificate by
-`FreezeOracle.machineFiniteSupportPatch_ofRecognizable`.
+`FiniteSupportPerturbation P P'` asks for a finite set `S` of `(day, sentence)` coordinates
+off which the two markets agree, and asks nothing else — nothing about the sentences in it.
+There is no certificate hypothesis either: the freeze certificate each market needs is
+*compiled* from its own computability certificate by
+`FreezeOracle.machineFiniteSupportPatch`. The earlier
+`machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport` survive
+as one-line compatibility corollaries.
 
 Two things about that statement, both stated at the declaration:
 
 1. **Its hypothesis is strictly stronger than the paper's.** Finite support implies tail
-   agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails — a day-`0`
-   market pricing the sentence of code `n` at `1 − 1/2^(2^n)` agrees with `LIA` from day
-   `1` and is not finitely supported. This is a *corrected* theorem, a proper restriction
-   of `thm:ifp`, not a restatement of it.
-2. **The one residual hypothesis is representation, not mathematics.** `Recognizable ψ` —
-   `BotFree ψ` and `NoReserved ψ` — constrains the *syntax* of the finitely many sentences
-   whose price moves, and constrains no market, trader, or perturbation. Each half stands
-   for one `Complexity.FP` primitive this toolkit lacks: `BotFree` for **integer square
-   root** (Foundation's `Formula.ofNat` discards the payload at tag `0`, so `⊥` has
-   infinitely many escape codes and deciding whether a code denotes `⊥` is deciding
-   whether it is a perfect square — polynomial time mathematically), and `NoReserved` for
-   a **structured-payload parser**. Neither half has slack: every position in a term is
-   escape-able, so `BotFree` must be hereditary, and a structured spelling at any subterm
-   breaks completeness. `decode_and_noncanonical` proves the first restriction *necessary*
-   rather than an artifact. So the unrestricted finite-*support* statement is, as far as
-   this development can tell, true, and unprovable here for want of two primitives rather
-   than for want of a theorem.
+   agreement (`FiniteSupportPerturbation.tail_agree`); the converse fails, and that is now
+   also proved rather than argued — `tailAgree_not_finiteSupport` exhibits two markets
+   agreeing from day one that differ at infinitely many coordinates, because a day's fibre
+   is infinite. So
+
+   ```
+   finite coordinate support  ⇒  eventual day agreement
+   eventual day agreement     ⇏  finite coordinate support
+   ```
+
+   and the corrected theorem cannot re-derive the refuted one. This is a *corrected*
+   theorem, a proper restriction of `thm:ifp`, not a restatement of it. The counterexample
+   above is exactly on the wrong side of that line: it moves one whole pricing row, hence
+   infinitely many coordinates.
+2. **No residual hypothesis on the moved sentences remains.** There used to be two, both
+   constraining the *syntax* of the finitely many sentences whose price moves rather than
+   any market, trader, or perturbation. Each stood for a missing `Complexity.FP` device, and
+   each was retired by building the device — never by weakening or renaming the condition.
+
+   `BotFree` is **gone**, and the way it went is worth recording. It stood for **integer
+   square root**: Foundation's `Formula.ofNat` discards the payload at tag `0`, so `⊥` has
+   infinitely many escape codes (`decode_falsum_noncanonical`, `decode_and_noncanonical`),
+   and deciding whether a code denotes `⊥` is deciding whether it is a perfect square. That
+   primitive is now built — `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` supply
+   base-4 integer square root and `Nat.unpair` inside `Complexity.FP`,
+   `FiberTest.fiberW_mem_FP` the escape-leaf decode test on top of them — and the recognizer
+   was rebuilt around it: `RpnFreeze.patterns` replaces the finite spelling list by a finite
+   list of *patterns with holes*, confining the infinite fibre inside a hole predicate, and
+   `PatAuto.ifParse_mem_FP` decides the whole thing in polynomial time.
+   `FreezeOracle.machine_lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
+   sentence the previous endpoint provably could not freeze
+   (`FreezeOracle.not_recognizable_hardS`).
+
+   `NoReserved` is **gone** too, and it stood for a **structured-payload recognizer** —
+   which turned out to be two problems rather than one. A structured leaf is spelled
+   `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]` with `L = |p|`.
+
+   The first problem is the length identification. `L` is unbounded even for a fixed target,
+   because `parseStructuredNat` has a self-loop at the numeral `0` (`1^k 0` spells `0` for
+   every `k`), so matching the unary field against the payload's own length is `aⁿbⁿ` and no
+   finite-state device decides it — no extension of a spelling list could have closed this.
+   `CtrAuto.ctrMachine` does: `RunAuto.BlockMachine` instantiated as a finite control paired
+   with one unary counter, whose state grows a mark per token and stays inside
+   `Complexity.FP`.
+
+   The second problem is larger and was not anticipated when `NoReserved` was first
+   disclosed: recognizing *which* payload token strings denote the fixed formula code, given
+   that numeral padding and the double negation `[20, 20]` both preserve a code, so the set
+   is infinite and not a spelling list either. `PayAuto` decides it exactly, by top-down
+   predictive parsing against a stack of obligations that carries the pending negation as a
+   *parity bit* instead of applying `negFormulaCode`. That keeps every child code an
+   `unpair` component of its parent, so a potential argument bounds the reachable stacks and
+   the state set is finite. The parity step is sound because `negFormulaCode` is an
+   involution **on the parser's range** — it is not one on `ℕ`, where tags 2/3 discard their
+   payload; `PayAuto.WFCode` carries the difference.
+
+   `StructPat.parseRpn_iff_segMatch` is the characterization the two devices are hung on: a
+   run denotes `ψ` under the full grammar exactly when it matches one of `ψ`'s finitely many
+   *segment* patterns, structured blocks included, for every `ψ`.
+   `FreezeOracle.machine_lic_iff_reservedPoint` exercises the difference at a reserved atom,
+   a coordinate neither earlier endpoint could freeze
+   (`FreezeOracle.not_noReserved_pointS_reserved`).
+
+   What is disclosed in their place is a property of the *construction*, not of the
+   statement: the recognizer is compiled per frozen sentence, so its polynomial-time
+   constants depend on that sentence. That is the paper's own "finitely many constants can
+   be hard-coded", and it is sound precisely because the support is finite — which is
+   exactly where the printed finite-*days* proof fails and this one does not.
 
 The underlying general form, taking a freeze certificate per market, is
 `machine_lic_iff_of_finiteSupportPerturbation` (`Properties/FinitePerturbations.lean`).

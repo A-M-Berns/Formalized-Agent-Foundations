@@ -168,6 +168,7 @@ topical blocks stay the place where each endpoint is explained. -/
   AffineCombination.PolySequence.affine_provind_theory_le
   AffineCombination.PolySequence.affine_provind_theory_eq lic_learning_pseudorandom_frequency
   lic_learning_pseudorandom_frequency_above lic_learning_pseudorandom_frequency_below
+  lic_no_expected_net_update_conditional_paperLUV_closed
   lic_no_expected_net_update_conditional_exact_canonical lic_expected_future_expectations_closed
   lic_no_expected_net_update_closed lic_limitingBelief_tendsto lic_price_convergesTo
   lic_does_not_anticipate_halting_unconditional
@@ -178,7 +179,7 @@ topical blocks stay the place where each endpoint is explained. -/
   lic_expect_combination_provind_le lic_expect_combination_provind_eq
   lia_learns_halting_patterns_unconditional
   FinitePerturbationCounterexample.not_overgeneral_ifp
-  FreezeOracle.machine_lic_iff_of_recognizableSupport
+  FreezeOracle.machine_lic_iff_of_finiteSupport
   LIAPerturbation.machineLogicalInductor_liaPerturbed
   lic_disbelief_inconsistent_theories_unconditional lic_limitCoherence
   lic_learning_exclusive_exhaustive exists_computable_beliefSequence_logical_inductor
@@ -442,7 +443,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- enumeration of a c.e. set, settlement/patient clocks, and the prefix-freeze certificate.
 #assert_axioms_clean
   codeEvalnNat_polyFueled
-  EfficientRepeatedEnumeration.ofRpn EfficientRepeatedEnumeration.ofCE
+  EfficientRepeatedEnumeration.ofBig EfficientRepeatedEnumeration.ofCE
   lic_uniform_nonDogmatism_ofCE
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
   liaFreezeBefore_preserves_ecTok
@@ -596,9 +597,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- Construction/Machine/CondStep.lean — the conditioning transduction in the machine model:
 -- the same token-level automaton as the fuel realization, driven as a `Complexity.FP` client
 -- of `TokenFold.runFold`, and the transport theorem the machine criterion needs.
--- Both transport theorems take the *same* `RpnSentenceCodes` hypothesis on the condition
--- sequence as their fuel counterparts, so nothing about `ψ` is weakened; their trader
--- hypothesis is the machine class, so they are strictly stronger there.
+-- Both transport theorems take the *same* `BigSentenceCodes` hypothesis on the condition
+-- sequence as their fuel counterparts — `def:ec`'s own write-out class, in which a
+-- condition's Gödel code may be exponential in the day — so nothing about `ψ` is weakened;
+-- their trader hypothesis is the machine class, so they are strictly stronger there.
+-- The bridge to the transducer's block discipline is `CondStep.machineSentenceBlocks_of_big`,
+-- clocked by `BigTokenStream.digitizeStream`.
 #assert_axioms_clean
   CondStep.conditionedTranslation_preserves_machine
   CondStep.eventualConditionedTranslation_preserves_machine
@@ -629,14 +633,15 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- Construction/Witnesses/RpnFreeze.lean — the prefix-freeze transducer in the RPN symbol
 -- model, the run-level quote lookup, and the spelling characterization the lookup rests on.
 --
--- MACHINE CLASS: closed.  `RpnFreeze.parseRpn_iff_mem_spellings` says a run denotes a
--- target exactly when it is one of the target's finitely many complete spellings, so the
--- lookup is membership in a list of constants rather than a parser; `FreezeStep` runs the
--- resulting transducer through `TokenFold.runFold_mem_FP`; `FreezeOracle` supplies the
--- lookup for any finite table and compiles the patch from the market's own certificate.
--- The public statement is `FreezeOracle.machine_lic_iff_of_recognizableSupport`: finite
--- support, computability of both markets, and a syntactic `Recognizable` condition on the
--- finitely many sentences whose price moves — no patch hypothesis.
+-- MACHINE CLASS: closed.  `RpnFreeze.parseRpnLegacy_iff_patMatch` says a run denotes a
+-- target exactly when it matches one of the target's finitely many spelling PATTERNS —
+-- literal grammar tokens with a hole wherever an escape leaf may stand — so the lookup is a
+-- fixed-depth automaton rather than a parser; `FreezeStep` runs the resulting transducer
+-- through `TokenFold.runFold_mem_FP`; `FreezeOracle` supplies the lookup for any finite
+-- table and compiles the patch from the market's own certificate.
+-- The public statement is `FreezeOracle.machine_lic_iff_of_finiteSupport`: finite support
+-- and computability of both markets, and NOTHING ELSE — no patch hypothesis, and no
+-- condition of any kind on the finitely many sentences whose price moves.
 --
 -- FUEL CLASS: still open, and this is a true negative.  `EfficientPrefixPatch` and
 -- `FiniteSupportPatch` remain uninhabited: the emitted segment's fuel certificate needs a
@@ -644,22 +649,56 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- closed under that inverse operation (`dd:fuel`).  `lic_iff_of_finitePerturbation` is
 -- therefore still the only fuel-class coverage of `thm:ifp`.
 --
--- THE `⊥` NARROWING, which is what makes the machine class work:
--- `decode_eq_some_iff_of_botFree` (CanonicalCodes.lean) proves Foundation's decoder
--- injective off the `⊥` fiber and `RpnFreeze.matchRun_eq_matchRunCanon` turns the matcher
--- into constant comparisons on a `⊥`-free target; `decode_and_noncanonical` is the converse
--- witness, so the restriction is necessary and not an artifact.  `BotFree` in `Recognizable`
--- is exactly this, and it stands in for integer square root in `Complexity.FP`; `NoReserved`
--- stands in for a structured-payload parser.  Both are conditions on SYNTAX, not on markets
--- or perturbations.
+-- THE `⊥` NARROWING IS GONE, and this is the substantive change.  It used to be the thing
+-- that made the machine class work: `decode_eq_some_iff_of_botFree` proves Foundation's
+-- decoder injective off the `⊥` fiber, so on a `⊥`-free target the escape-leaf test is a
+-- comparison against a fixed numeral, while `decode_falsum_noncanonical` /
+-- `decode_and_noncanonical` show the fiber really is infinite otherwise.  Those witnesses
+-- now motivate the parser instead of restricting it: `DigitFP.sqrtRemW_mem_FP` and
+-- `DigitFP.unpairW_spec` put base-4 integer square root and `Nat.unpair` in
+-- `Complexity.FP`, `FiberTest.fiberW_mem_FP` builds the decode test on top of them (its
+-- correctness is `sentenceMatches_eq_one_iff`, already proved both ways), and
+-- `PatAuto.ifParse_mem_FP` is the recognizer that consumes it.  So `BotFree` is DISCHARGED,
+-- not assumed.
+--
+-- `NoReserved` IS GONE TOO, and it stood for TWO devices, not one.  A structured
+-- paper-prime leaf is spelled `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]` with `L = |p|`.
+--   (i) The LENGTH IDENTIFICATION.  `L` is unbounded even for a fixed target because
+--   `parseStructuredNat` has a self-loop at the numeral `0` (`1^k 0` spells `0` for every
+--   `k`), so matching the unary field against the payload's own length is `a^n b^n`: no
+--   finite-state device decides it, and no extension of a spelling list or of
+--   `RunAuto.BlockAutomaton` could have.  `CtrAuto.ctrMachine` does — `BlockMachine`
+--   instantiated as a finite control paired with one unary counter.
+--   (ii) The PAYLOAD LANGUAGE: which token strings denote the fixed formula code.  This is
+--   the larger half, it was NOT anticipated when `NoReserved` was first disclosed, and it
+--   is not a spelling list either, since numeral padding and the double negation `[20, 20]`
+--   both preserve a code.  `PayAuto` decides it exactly by top-down predictive parsing
+--   against a stack of obligations that carries the pending negation as a PARITY BIT rather
+--   than applying `negFormulaCode`; that keeps every child code an `unpair` component of its
+--   parent, so a potential argument bounds the reachable stacks and the state set is finite.
+--   Soundness of the parity step needs `negFormulaCode` to be an involution ON THE PARSER'S
+--   RANGE — it is NOT one on `Nat`, where tags 2/3 discard their payload
+--   (`PayAuto.WFCode`).
+-- `StructPat.parseRpn_iff_segMatch` is the unconditional characterization the two hang on,
+-- and `SegRec.ifParseFull_mem_FP` the resulting polynomial-time decision.
+--
+-- WHAT IS DISCLOSED IN THEIR PLACE is a property of the CONSTRUCTION, not of the statement:
+-- the recognizer is compiled per frozen sentence, so its polynomial-time witness carries
+-- constants (the automaton's state bound) depending on that sentence.  That is exactly the
+-- paper's own "finitely many constants can be hard-coded", and it is sound precisely because
+-- the support is finite — the point at which the printed finite-DAYS proof breaks and this
+-- one does not.
 --
 -- CAREFUL, two different "unrestricted" statements meet here.  The finite-SUPPORT statement
--- WITHOUT the `Recognizable` condition — same two computable markets, differing on finitely
--- many `(day, sentence)` coordinates, no syntactic side condition — is believed true and is
--- unproved here; that is what the previous sentence's `BotFree`/`NoReserved` residue costs.
--- The PAPER's unrestricted statement, tail agreement past some day `N`, is a different and
--- STRONGER claim, and it is FALSE: `FinitePerturbationCounterexample.not_overgeneral_ifp`
--- refutes it (PE1).  Do not read the first as retracting the second.
+-- without any syntactic condition — same two computable markets, differing on finitely many
+-- `(day, sentence)` coordinates — is now PROVED
+-- (`FreezeOracle.machine_lic_iff_of_finiteSupport`).  The PAPER's unrestricted statement,
+-- tail agreement past some day `N`, is a different and STRONGER claim, and it is FALSE:
+-- `FinitePerturbationCounterexample.not_overgeneral_ifp` refutes it (PE1).  Do not read the
+-- first as retracting the second.  The two hypotheses are separated mechanically:
+-- `FiniteSupportPerturbation.tail_agree` gives finite coordinate support => eventual day
+-- agreement, and `tailAgree_not_finiteSupport` shows the converse fails, so the corrected
+-- theorem cannot re-derive the refuted one.
 #assert_axioms_clean
   EF.strategyOfTokens_freezeTokenRunOn_trades
   MachineEfficientTrader.freezeOn
@@ -674,6 +713,10 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   RpnFreeze.parseRpnLegacy_iff_mem_spellings
   RpnFreeze.parseRpn_imp_parseRpnLegacy
   RpnFreeze.parseRpn_iff_mem_spellings
+  RpnFreeze.patterns_sound
+  RpnFreeze.patterns_complete
+  RpnFreeze.parseRpnLegacy_iff_patMatch
+  RpnFreeze.parseRpn_iff_patMatch
   RpnFreeze.matchRun_eq_matchRunCanon
   decode_eq_some_iff_of_botFree
   sentenceMatches_of_botFree
@@ -702,7 +745,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- done.  No `RunOracle` instance exists, so no patch structure is inhabited.
 -- The table side conditions are collected in `CanonicalCodes.lean`'s "The recognition side
 -- conditions, in one place": `Recognizable` (= `BotFree` + `NoReserved`) per sentence, plus
--- the constant output bound on the table as a whole.
+-- the constant output bound on the table as a whole.  Only the last is still assumed; both
+-- halves of `Recognizable` are discharged by the recognizer chain
+-- (`StructPat` / `PayAuto` / `CtrAuto` / `SegAuto` / `SegCtr` / `SegRec`).
 #assert_axioms_clean
   FreezeStep.decodeBits_flatEmitR
   FreezeStep.freezePass_mem_FP
@@ -715,15 +760,30 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- market whose frozen table is presented by a recognizable entry list, and
 -- `machineFiniteSupportPatch_example` / `_pair` do so at a table with a REAL row
 -- (`exampleS_nonempty`), so the degenerate empty-table discharge is not what is happening.
--- SIDE CONDITIONS: `TablePresentation` is no longer one of them.  `entriesOf` reads the
--- entry list off `S` and the market's own quote table, so
--- `machineFiniteSupportPatch_ofRecognizable` needs only `ComputableMarket` plus
--- `Recognizable` per table sentence, and the public
--- `machine_lic_iff_of_recognizableSupport` carries NO patch hypothesis at all.
+-- SIDE CONDITIONS: THERE ARE NONE LEFT on the sentences.  `TablePresentation` is not one:
+-- `entriesOf` reads the entry list off `S` and the market's own quote table, so
+-- `machineFiniteSupportPatch` needs only `ComputableMarket`, and the public
+-- `machine_lic_iff_of_finiteSupport` carries no patch hypothesis and no syntactic condition
+-- at all.  `machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport`
+-- are retained as one-line compatibility corollaries, not as the strongest statement.
 -- The constant output budget is DERIVED here (`oracleOf_length_le`), not assumed.
--- The one surviving condition, `Recognizable`, is representation residue rather than
--- mathematics; the boundary note in the file names the two `Complexity.FP` primitives it
--- stands in for (integer square root, and a structured-payload parser).
+-- What IS disclosed is a property of the construction rather than the statement: the
+-- recognizer is compiled per frozen sentence, so its polynomial-time constants depend on
+-- that sentence — the paper's own hard-coded finite table, sound because the support is
+-- finite.
+-- STRICTNESS is proved, not asserted, and now at BOTH retired conditions, at the
+-- PERTURBATION level (not merely the sentence level): `not_recognizableSupport_hardPoint`
+-- proves `¬ RecognizableSupportPerturbation` of the `hardSentence` market pair outright, and
+-- `not_noReservedSupport_reservedPoint` proves `¬ NoReservedSupportPerturbation` of the
+-- `reservedSentence` pair — each ruling out *every* admissible support set by forcing the
+-- differing coordinate into it (`pointHistory_ne_at`), which a sentence-level negative alone
+-- cannot do.  `machine_lic_iff_hardPoint` then applies the new endpoint at
+-- `hardSentence = atom 0 ⋏ ⊥` (which fails `BotFree`) and `machine_lic_iff_reservedPoint` at
+-- `reservedSentence` (a reserved atom failing `NoReserved`), each over a concrete pair of
+-- `ComputableMarket`s that genuinely differ there (`computableMarket_point`,
+-- `pointHistory_ne_at`).  (`not_recognizable_hardS` / `not_noReserved_pointS_reserved` remain
+-- as the underlying sentence/set-level facts, but are not themselves the unreachability
+-- witnesses.)
 -- The market pair is now supplied too: `computableMarket_twoPoint` builds two honest
 -- `ComputableMarket`s (rational table plus a `Nat.Partrec.Code` on the PAIRED input, so day
 -- zero gets no free special-casing), `twoPointHistory_ne_at` exhibits their disagreement,
@@ -747,6 +807,41 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.machine_lic_iff_twoPoint
   FreezeOracle.machineFiniteSupportPatch_ofRecognizable
   FreezeOracle.machine_lic_iff_of_recognizableSupport
+  FreezeOracle.machineFiniteSupportPatch_ofNoReserved
+  FreezeOracle.machine_lic_iff_of_noReservedSupport
+  FreezeOracle.machineFiniteSupportPatch
+  FreezeOracle.machine_lic_iff_reservedPoint
+  FreezeOracle.not_noReserved_pointS_reserved
+  StructPat.parseRpn_iff_segMatch
+  StructPat.segPatterns_sound
+  StructPat.segPatterns_complete
+  PayAuto.payAccepts_iff
+  PayAuto.payAuto_iff
+  PayAuto.nineteen_not_mem_of_parse
+  CtrAuto.ctrMachine_accepts
+  CtrAuto.ifCtr_mem_FP
+  SegAuto.segAuto_accepts
+  SegCtr.segMatch_iff_relaxed_and_ctr
+  SegRec.segMatch_iff_accepts
+  SegRec.ifParseFull_mem_FP
+  FreezeOracle.not_botFree_hardSentence
+  FreezeOracle.not_noReserved_reservedSentence
+  FreezeOracle.not_recognizable_hardS
+  FreezeOracle.not_recognizableSupport_hardPoint
+  FreezeOracle.not_noReservedSupport_reservedPoint
+  FreezeOracle.computableMarket_point
+  FreezeOracle.pointHistory_ne_at
+  FreezeOracle.machine_lic_iff_hardPoint
+  FiniteSupportPerturbation.tail_agree
+  DigitFP.sqrtRemW_mem_FP
+  DigitFP.unpairW_spec
+  FiberTest.fiberW_mem_FP
+  FiberTest.holeGuards
+  PatAuto.ifParseLegacy_mem_FP
+  PatAuto.ifParse_mem_FP
+  RunAuto.guardedAutomaton
+  RunAuto.BlockAutomaton.ifAuto_mem_FP
+  tailAgree_not_finiteSupport
 
 -- LogicalInduction/API.lean — the consumer-surface name for the corrected `thm:ifp`.
 -- `lic_iff_of_recognizableSupportPerturbation` is a thin public wrapper, definitionally the
@@ -757,6 +852,8 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- LI-CANONICAL block is exactly the endpoints table of `scripts/coverage-classification.md`,
 -- and `thm:ifp`'s canonical endpoint there is unchanged.
 #assert_axioms_clean
+  lic_iff_of_finiteSupportPerturbation_machine
+  lic_iff_of_noReservedSupportPerturbation
   lic_iff_of_recognizableSupportPerturbation
 
 -- Construction/Witnesses/LIAPerturbation.lean — the corrected `thm:ifp` doing visible work.
@@ -1358,7 +1455,9 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- left product reflects only to within `1/(n+1)`: a **disclosed type-`(c)` substitution**
 -- carried by `ConditionalExpectationQuote.slack`.  `indicatorProductLUV_exact_left_reflected`
 -- is the non-vacuity witness at the exact (`slack = 0`) end.  See the Part F header and the
--- README's modeling-boundary history. The exact endpoint of record is audited next.
+-- README's modeling-boundary history.  This is the **general-input** `thm:ccee` form: it
+-- admits an arbitrary threshold-only e.c. source, and pays the mesh for it.  The exact
+-- same-market endpoint for the paper's *literal* sources is audited two blocks down.
 #assert_axioms_clean
   PCWorld.ValuesAt.eq
   theoremDeferredWeightQuoteCode paperDeferredWeightQuoteCode
@@ -1368,11 +1467,36 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   indicatorProductLUV_exact_left_reflected
   lic_no_expected_net_update_conditional_closed
 
--- Construction/Witnesses/SemanticLiftedCCEE.lean — endpoint of record for `thm:ccee`.
+-- Construction/Witnesses/PaperExactProduct.lean, PaperRepresentedWeight.lean,
+-- PaperExactCCEE.lean — the exact `thm:ccee` endpoint **on the single market**.
+--
+-- A `PaperLUV` names its value by a numerator/positive-denominator pair code, so two of
+-- them multiply exactly inside arithmetic: `paperProductPaperLUV` is the unreduced product
+-- code `(a·c)/(b·d)`, and `paperProductPaperLUV_valuesAt` proves its rational cut is
+-- exactly the product of the factors' cuts.  The deferred weight is represented literally
+-- by `RepresentsComputations` (the paper's own §2 premise on `Θ`), so nothing has to name
+-- the value `w (f n)` as a numeral.  The deductive process is untouched: the endpoint is
+-- stated over `liaHistory (paperDP T)` like every other canonical endpoint, at `slack = 0`.
+#assert_axioms_clean
+  PaperLUV.paperProductPaperLUV
+  PaperLUV.paperProductPaperLUV_valuesAt
+  paperExactProductLUVSeq
+  representedPairPaperLUV
+  representedPairPaperLUV_valuesAt
+  representedPairPaperLUVSeq
+  deferredWeightPaperLUVSeq
+  deferredWeightPaperLUVSeq_valuesAt
+  lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
+  lic_no_expected_net_update_conditional_paperLUV_closed
+
+-- Construction/Witnesses/SemanticLiftedCCEE.lean — the generalized semantic-extension form
+-- of `thm:ccee`, retained but no longer the canonical paper rendering.
 -- A fixed old-language copy prevents semantic self-reference; finite-stage entailment
--- admits every source satisfying the paper-facing `source_valued` premise. The one
--- canonical process is fixed from `T`, has an explicit completed world, and supports the
--- exact semantic product with zero slack.
+-- admits every source satisfying the paper-facing `source_valued` premise, including
+-- threshold-only ones that are not literal paper LUVs. The one canonical process is fixed
+-- from `T`, has an explicit completed world, and supports the exact semantic product with
+-- zero slack — at the cost of pricing in `liaHistory (canonicalCCEEDP T)` rather than the
+-- single market.
 #assert_axioms_clean
   liftedCCEEBaseDP_computable
   liftedCCEEBaseWorld_hworld
@@ -1492,8 +1616,8 @@ not axioms.  Grouped by defining file. -/
 
 -- LogicalInduction/Framework/WriteOut.lean
 #assert_axioms_clean
-  BigSentenceCodes BigSpliceStream.ec BigTokenStream DigitRatCodes
-  EfficientlyComputable.ofSingleTradeBlocksBig ec_of_bigTokenStream
+  BigSentenceCodes BigSpliceStream.ec BigTokenStream BigTokenStream.digitizeStream
+  DigitRatCodes EfficientlyComputable.ofSingleTradeBlocksBig ec_of_bigTokenStream
 
 -- LogicalInduction/Construction/TradingFirm.lean
 #assert_axioms_clean
@@ -1741,6 +1865,11 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   code pos_complete neg_complete
 #assert_fields CEEnumeration
   code halts outputs_sound
+-- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- 2026-09-02: `condition_codes` moved from `RpnSentenceCodes` to `BigSentenceCodes`
+-- (`def:ec`'s own write-out class) — a WIDENING of what a caller may supply, carried by
+-- `BigTokenStream.digitizeStream` + `CondStep.machineSentenceBlocks_of_big`.  The field
+-- name is unchanged, so this block passes without moving; the freeze does not see it.
 #assert_fields CompactConditioningProcessComputation
   toDeductiveProcessComputation condition_codes
 #assert_fields CompletedAffineQuoteApprox
@@ -1779,6 +1908,9 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
   theory_deltaOne process halting_enters halting_refutes boundedHalting_enters boundedFailure_refutes
 #assert_fields ConditionalExpectationQuote
   weight_mem weight_generable source_codes left_codes right_codes slack slack_tendsto source_valued left_reflected right_reflected affine
+-- TYPE CHANGE, invisible to `#assert_fields` (which freezes field *names* only).
+-- 2026-09-02: `condition_codes` moved from `RpnSentenceCodes` to `BigSentenceCodes`, the
+-- same widening recorded at `CompactConditioningProcessComputation` above.
 #assert_fields ConditioningPresentation
   condition condition_codes holds_condition combined_computable
 #assert_fields ConditioningTraderCompiler
@@ -1971,20 +2103,60 @@ comments beside the affected structure. The set is order-insensitive. Regenerate
 --   `RpnSpliceStream` → `BigSpliceStream`:
 --     `GeneratedRatFeature.polyTok`.
 --
--- Not migrated, deliberately: the conditioning compiler destructures a `PolySegStream` out
--- of its condition hypothesis, so `ConditioningPresentation.condition_codes`,
--- `CompactConditioningProcessComputation.condition_codes` and the `thm:scon` machine
--- transports (`CondStep.conditionedTranslation_preserves_machine`,
--- `eventualConditionedTranslation_preserves_machine`) remain at `RpnSentenceCodes`.  After
--- 2026-08-31 the conditioning lane is the **only** token-metered retention on the
--- day-indexed surface.  The obstruction, at the line level:
--- `CondStep.machineSentenceBlocks_of_rpn` (`Construction/Machine/CondStep.lean`) opens the
--- certificate as emission data — it destructures the stream, clocks it with
--- `PolySegStream.clockedTokens_certificate`, and feeds `TraderMachine.traderOutput`, whose
--- digit clamp is the identity only because `CondStep.mem_digitize_le_four` holds under a
--- **value-bounded** stream.  A write-out stream supplies no such clock, so widening those
--- fields is a `BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking proved in
--- `FP`, not a statement change.  Disclosed at the structure in `ConditioningPresentation.lean`.
+-- MIGRATED (2026-09-02, `thm:scon` widening).  The conditioning lane is no longer a
+-- token-metered retention.  `ConditioningPresentation.condition_codes`,
+-- `CompactConditioningProcessComputation.condition_codes`, both machine transports
+-- (`CondStep.conditionedTranslation_preserves_machine`,
+-- `eventualConditionedTranslation_preserves_machine`) and both fuel transports
+-- (`RpnConditioning.conditionedTranslation_preserves_ecRpn`,
+-- `…eventualConditionedTranslation_preserves_ecRpn`) now take `BigSentenceCodes`.
+-- The `_ecRpn` suffix on the two fuel transports is **not** a sentence-class name and was
+-- deliberately left unchanged: `ec` names the efficiency class they preserve
+-- (`EfficientlyComputable`) and `Rpn` names the RPN *symbol model* their compiler emits
+-- in, the sibling lane being `ConditioningCompile.conditionedTranslation_preserves_ecDigit`
+-- over the digit model.  Neither theorem mentions any `Rpn` sentence class.
+-- `RpnSentenceCodes` survives on this lane only as a convenient sufficient subclass, via
+-- `BigSentenceCodes.ofRpnSentenceCodes`.
+--
+-- What this retires is the **conditioning lane's** token-metered retention, and only that.
+-- Token-metered retentions do remain elsewhere on the day-indexed, paper-node-annotated
+-- surface, all of them in the LUV *threshold* interfaces
+-- (`LUV.RpnThresholdCodes` / `LUV.RpnThresholdCodeSeq`, which unfold to `RpnSentenceCodes`
+-- on the threshold family `⌜Xₙ > i/k⌝`, so a census grepping signatures for
+-- `RpnSentenceCodes` does not see them):
+--   * `LUVCombinationSyntax.threshold_poly` (`Construction/Witnesses/LUVSyntax.lean`), a
+--     Tier-2 frozen field, reached by the LI-CANONICAL `_ofSyntax` endpoints — so this one
+--     **is** on the canonical endpoint census;
+--   * `ConvergencePresentation.threshold_code` (`Properties/ExpectationProperties.lean`);
+--   * direct `RpnThresholdCodes` / `RpnThresholdCodeSeq` binders on the `thm:expcoh`,
+--     `thm:perexpkno` and `lic_expectation_provind*` endpoints and on the affine tail
+--     (`Properties/ExpectationAffine.lean`);
+--   * the quote certificates `ExpectedFutureExpectationQuote` (`thm:cee`), `FuturePriceQuote`
+--     (`thm:ceu`), `ConditionalExpectationQuote` (`thm:ccee`),
+--     `CurrentPriceExpectationQuote` (`thm:epr`) and `CurrentExpectationQuote` (`thm:er`).
+-- `LUV.BigThresholdCodeSeq` exists as the write-out counterpart and is what
+-- `SelfTrustQuote.product_codes`/`.confidence_codes` were widened to, but the migration of
+-- the remaining threshold carriers has not been done.  Why this is a *rendering
+-- sensitivity* rather than a narrowing of the paper's admissible LUVs — the threshold
+-- route meters a formula string over a fixed finite alphabet (`0..19`), so the per-token value
+-- clause is vacuous along it — is worked out in
+-- `scripts/coverage-classification.md`, *LUV-threshold metering: rendering sensitivity,
+-- witnessed*.
+--
+-- The obstruction this file previously recorded here was **mis-diagnosed**, and the record
+-- is corrected rather than merely updated.  It claimed that `machineSentenceBlocks_of_rpn`
+-- clocked the certificate in a way only a value-bounded stream supports, so that widening
+-- meant a `BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking in `FP` at the
+-- scale of `CondStep.lean`'s own `_mem_FP` suite.  Both halves were wrong.  (a) The digit
+-- clamp `min · 4` is the identity because the clamped object is literally a list of base-4
+-- digits and terminators — `CondStep.mem_digitize_le_four` is a fact about `digitize ts`
+-- for an ARBITRARY token list `ts`, and bounds no token's value.  (b) A write-out stream
+-- does supply the clock: `PolySegStream.undigitizeTokens` reads a poly-fueled token count
+-- and `BigDigits` per-token digit access off the certificate's own digit stream, and
+-- `BigDigits.blockSeg |>.concatVar` re-emits the canonical digitization.  Packaged as
+-- `BigTokenStream.digitizeStream` (`Framework/WriteOut.lean`, ~12 lines), it makes
+-- `machineSentenceBlocks_of_big` a hypothesis-type change with no proof-body edit, and
+-- every downstream consumer widens the same way.  No `_mem_FP` lemma was added.
 --
 -- MIGRATED (2026-08-31, FINAL-audit defect 4).  `lic_self_trust_closed` (`thm:st`) no longer
 -- sits at `RpnSentenceCodes φ`; it takes `hφ : BigSentenceCodes φ`, like every other closed

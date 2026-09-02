@@ -303,13 +303,24 @@ theorem lic_conditioned_fixed_machine
       PCWorld.consistentWith_union_iff] at hv
     exact hN v hv.1 (hv.2 ψ (by simp [fixedConditionProcess]))
 
-/-- **Growing finite-prefix `thm:scon` at the paper's own quantifier**, with **no**
-consistency hypothesis.  As in the fixed-sentence form the two branches are the paper's
-own; where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is satisfiable, propositional compactness
-(`DeductiveProcess.exists_consistentWithTheory`) produces the single world the price-floor
-argument consumes.  The base stage program and the rational market program are read off the
-inductor instance itself, so the only computability premise is the one about the *adjoined*
-process, which no instance supplies.  For a non-degenerate `more` — nonempty, strictly
+/-- **Growing finite-prefix `thm:scon`**, universally quantified over the adjoined
+process `extra`, with **no** consistency hypothesis.  As in the fixed-sentence form the two
+branches are the paper's own; where every finite stage of `Θ ∪ {ψ₁…ψₙ}` is satisfiable,
+propositional compactness (`DeductiveProcess.exists_consistentWithTheory`) produces the
+single world the price-floor argument consumes.  The base stage program and the rational
+market program are read off the inductor instance itself.
+
+**Scope, precisely** (this is narrower than the fixed-sentence endpoint above, and unlike it
+takes a `def:ec` certificate as data): the write-out efficiency of the cumulative conditions
+`n ↦ ⋀(extra.D n)` is supplied by the `CompactConditioningProcessComputation` hypothesis,
+not derived here.  The paper's growing clause starts from an arbitrary efficiently computable
+*individual-sentence* sequence `⟨ψ⟩` and pads the prefix conjunctions to keep them efficiently
+computable (tex:6126); converting an arbitrary `BigSentenceCodes ψ` into a `BigSentenceCodes`
+certificate for `n ↦ ⋀_{i≤n} ψ_i` needs a variable-width conjunction-block emitter that does
+not yet exist in the write-out library (only a binary `and`; see the note at
+`ConditioningPresentation.lean:216-225`).  So this endpoint proves closure for every `extra`
+whose cumulative conditions are separately certified — the general process quantifier — rather
+than for every raw e.c. sentence sequence.  For a non-degenerate `more` — nonempty, strictly
 growing stages — see `growingCompactConditioningProcessComputation`.
 Kind `C` (composition of the two branches); hypotheses `(a)`.
 Paper node: `thm:scon` -/

@@ -436,24 +436,23 @@ lemma triangularRepeat_repeats (source : ℕ → Sentence) :
   simp [triangularRepeat]
 
 /-- The exact efficient-repetition witness when the supplied enumeration is already an
-𝓔𝓒 (`def:ec`, token-metered) sentence stream.  The second pairing coordinate is pure
+𝓔𝓒 (`def:ec`, write-out metered) sentence stream.  The second pairing coordinate is pure
 padding, so every source index recurs arbitrarily late, and the reindexing is poly-fueled.
 The bounded universal-emulator extension below removes this stronger clock assumption for
 arbitrary computable/c.e. source programs.
 Paper node: `def:ec` -/
-def EfficientRepeatedEnumeration.ofRpn (source : ℕ → Sentence)
-    (hsource : RpnSentenceCodes source) :
+def EfficientRepeatedEnumeration.ofBig (source : ℕ → Sentence)
+    (hsource : BigSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
-  sequence_poly :=
-    (BigSentenceCodes.ofRpnSentenceCodes hsource).comp PolyFueled.left
+  sequence_poly := hsource.comp PolyFueled.left
   repeats := triangularRepeat_repeats source
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
 
 /-! ### General (c.e.) efficient repetition via the universal simulator
 
-`ofRpn` requires the source stream to already be efficiently codeable.  The paper's Uniform
+`ofBig` requires the source stream to already be efficiently codeable.  The paper's Uniform
 Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly.  The
 bounded universal interpreter `codeEvalnNat` — itself poly-fueled by
 `codeEvalnNat_polyFueled` — removes that gap by dovetailing: on `⟨i, fuel⟩` run the
@@ -2852,7 +2851,7 @@ theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
 #print axioms deadlinePassed_mono
 #print axioms dovetailFound_eq_true_iff
 #print axioms triangularRepeat_repeats
-#print axioms EfficientRepeatedEnumeration.ofRpn
+#print axioms EfficientRepeatedEnumeration.ofBig
 #print axioms EfficientRepeatedEnumeration.ofCE
 #print axioms lic_uniform_nonDogmatism_ofCE
 #print axioms PrefixPatchCompile.freezeBefore_preserves_ec

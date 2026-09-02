@@ -130,7 +130,15 @@ lemma liftedCCEEBaseWorld_hworld
   · exact liftedCCEEBaseWorld_consistent_quote T k phi hquote
   · exact liftedCCEEBaseWorld_consistent_lifted T k phi hlift
 
-/-- The one process used to construct the final logical inductor. -/
+/-- The single deductive process this file's `thm:ccee` endpoint prices against, fixed from
+`T` alone — before any source `X`, deferral `f`, or weight `w` is chosen — as the semantic
+registry closure of the lifted quotation base.  It is **not** the process of the repo's main
+construction: the single market every other market-bearing canonical endpoint reads is
+`liaHistory (paperDP T)` (round-13 ruling), and
+`lic_no_expected_net_update_conditional_exact_canonical` is the one canonical endpoint
+priced outside it.  The paper rendering of `thm:ccee` lives on `paperDP` instead
+(`lic_no_expected_net_update_conditional_paperLUV_closed`,
+`Construction/Witnesses/PaperExactCCEE.lean`). -/
 noncomputable def canonicalCCEEDP
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] : DeductiveProcess :=
@@ -398,10 +406,27 @@ noncomputable def canonicalConditionalExpectationQuoteCode
     (semanticHandleLUVSeq_rpnThresholdCodeSeq schema)
     w hw weight_mem
 
-/-- **`thm:ccee`, exact paper-facing form.**  The source is automatically renamed and
-admitted by finite semantic consequence; the weight and right-hand quotation are built
-internally.  The sole LIA process is `canonicalCCEEDP T`, fixed before `X`, `f`, and `w`.
+/-- **`thm:ccee`, generalized semantic-extension form, at zero slack.**  The source is
+automatically renamed and admitted by finite semantic consequence; the weight and
+right-hand quotation are built internally.  The sole LIA process is `canonicalCCEEDP T`,
+fixed before `X`, `f`, and `w`.
 
+**This is no longer the paper rendering of the node, and the docstring that called it
+"the exact paper-facing form" is retracted.**  The paper rendering is
+`lic_no_expected_net_update_conditional_paperLUV_closed`
+(`Construction/Witnesses/PaperExactCCEE.lean`), which is priced on the single market
+`liaHistory (paperDP T)`.  What this form buys instead is a *wider input class*: the
+abstract, threshold-only source interface (`X : ℕ → LUV` with `LUV.RpnThresholdCodeSeq X`),
+which the literal-`PaperLUVSeq` rendering does not reach.  What it costs is the market: it
+is the **one** canonical endpoint priced outside `paperDP` (round-13 scope ruling), on the
+different process `canonicalCCEEDP T`.
+
+One binder asymmetry is deliberate and worth reading twice: `source_valued` is quantified
+over worlds consistent with `theoremDP T`, a *smaller* process than `canonicalCCEEDP T`,
+hence over a **superset** of worlds.  That makes it a stronger premise on the caller, not a
+weaker one, and it is the form the proof consumes.  Non-vacuity of the weight binder is
+witnessed by `canonicalCCEE_weight_nonvacuous`.
+Kind: `C` composition; provenance: (a) derived in-project.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_exact_canonical
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
@@ -458,8 +483,27 @@ theorem lic_no_expected_net_update_conditional_exact_canonical
     rwa [Rat.cast_mul,
       ← (canonicalCCEEMarketComputation T).expectQuoteAt_cast sourceHandle n (f n)] at h
 
+/-- **Non-vacuity of the weight binder over `canonicalCCEEDP`** — kind `N+` non-vacuity
+witness.  `lic_no_expected_net_update_conditional_exact_canonical`'s `weight_mem` and
+`weight_generable` hypotheses are jointly inhabited over the canonical process by a
+genuinely **non-constant** weight, the harmonic sequence `n ↦ 1/(n+1)`: it is
+`[0,1]`-valued, ℙ‾-generable against *every* market — `PGenerableRat.ofPolyRatCodes` is
+history-arbitrary — and not constant.  This is the witness the `thm:ccee` row previously
+recorded as missing.
+Provenance: (a) `harmonicWeight_mem`, `harmonicWeight_polyRatCodes`,
+`harmonicWeight_not_constant`. -/
+lemma canonicalCCEE_weight_nonvacuous
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
+    (∀ n : ℕ, 0 ≤ 1 / ((n : ℚ) + 1) ∧ 1 / ((n : ℚ) + 1) ≤ 1) ∧
+      PGenerableRat (liaHistory (canonicalCCEEDP T)) (fun n : ℕ => 1 / ((n : ℚ) + 1)) ∧
+      ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / ((n : ℚ) + 1) :=
+  ⟨harmonicWeight_mem,
+    PGenerableRat.ofPolyRatCodes harmonicWeight_polyRatCodes _,
+    harmonicWeight_not_constant⟩
+
 #print axioms liftedCCEEBaseWorld_hworld
 #print axioms canonicalCCEEDP_hworld
 #print axioms lic_no_expected_net_update_conditional_exact_canonical
+#print axioms canonicalCCEE_weight_nonvacuous
 
 end LogicalInduction

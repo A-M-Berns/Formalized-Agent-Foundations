@@ -5,28 +5,39 @@
 day's token block and the buffered sentence run's bits, return the frozen suffix.  This file
 builds one, for a quote table presented as a finite list of entries.
 
-The lookup is a **constant-depth chain**, not a parser.  For each table entry it makes two
-tests: the day, against a fixed numeral (`TokenFold.ifNumEq_mem_FP`), and the buffered run,
-against each of the finitely many complete spellings of that entry's sentence
-(`TokenFold.ifMatch_mem_FP`).  That the spellings are finitely many is
-`RpnFreeze.spellings`, and that membership in that list *is* denotation is
-`RpnFreeze.parseRpn_iff_mem_spellings` — which is where the table's side conditions enter.
+The table's own key is **parsing**: `tableLookup` fires the row whose sentence the buffered
+run denotes under `parseRpn`.  That is the semantic specification, and it carries no
+syntactic side condition at all — `tableLookup_eq_on` and both bridges to the market's
+code-level tables are unconditional.
+
+What *does* carry a side condition is the concrete recognizer that computes the key inside
+`Complexity.FP`.  It is `oracleOf`, a **constant-depth chain**: for each table entry two
+tests, the day against a fixed numeral (`TokenFold.ifNumEq_mem_FP`), and the buffered run
+against that entry's sentence by `SegRec.segNest` — the run recognizer, which walks the
+finitely many *segment* patterns of the target, decides each hole's escape-leaf obligation
+with `FiberTest.holeGuards`, each structured payload with `PayAuto`, and each structured
+length field with `CtrAuto`.  That a run matches one of those patterns exactly when it
+denotes the target is `StructPat.parseRpn_iff_segMatch`, which carries no side condition at
+all.  So there is no syntactic condition left to thread.
 
 ## What this file assumes, and where it is written down
 
-`TablePresentation` below carries the conditions, and they are the same three already
-collected in `CanonicalCodes.lean`'s "The recognition side conditions, in one place":
-
-* every table sentence is `Recognizable` (`BotFree` and `NoReserved`) — otherwise the
-  spelling list is not exhaustive and the chain rejects runs it should accept;
-* the entry list presents `S` and `quote` faithfully (`lookup_eq`);
+* the entry list presents `S` and `quote` faithfully (`TablePresentation.lookup_eq`);
 * the constant output budget, which here is *derived* rather than assumed
   (`oracleOf_length_le`): the emitted suffix is one of finitely many constant words.
 
+`BotFree` and `NoReserved` used to be assumptions here and are not any more.  The escape
+leaf's decode test is performed (`FiberTest.fiberW_mem_FP`, over `DigitFP.sqrtRemW_mem_FP`)
+rather than assumed away, and the structured paper-prime block is recognized
+(`SegRec.ifParseFull_mem_FP`) rather than excluded.  Nothing about a frozen sentence's
+syntax is assumed anywhere in this file.
+
 Nothing here is a restriction on the freeze, the trader, or the market.  All of it is a
-property of the table being frozen.
+property of the table being frozen, or of the recognizer chosen for it.
 -/
 import LogicalInduction.Construction.Witnesses.FreezeStep
+import LogicalInduction.Construction.Witnesses.FiberTestFP
+import LogicalInduction.Construction.Witnesses.SegmentRecognizer
 
 namespace LogicalInduction.FreezeOracle
 
@@ -44,12 +55,18 @@ structure TableEntry where
 
 /-! ## The lookup, on tokens -/
 
-/-- Look a buffered run and a day up in the table, taking the first matching row. -/
+/-- Look a buffered run and a day up in the table, taking the first matching row.
+
+The run key is **parsing**, not spelling membership: the row fires exactly when the run
+denotes the row's sentence under the grammar the freeze actually parses with.  Which
+concrete recognizer computes that test is the oracle's business (`oracleOf` below), and
+keeping the two apart is what lets the recognizer be replaced without touching any of the
+bridges to the market's code-level tables. -/
 def tableLookup (entries : List TableEntry) (b : List ℕ) (D : ℕ) : Option ℚ :=
   match entries with
   | [] => none
   | e :: rest =>
-      if e.day = D ∧ b ∈ RpnFreeze.spellings e.sentence then some e.value
+      if e.day = D ∧ parseRpn b.length b = some (e.sentence, []) then some e.value
       else tableLookup rest b D
 
 /-- The run-level selector the table denotes. -/
@@ -65,48 +82,44 @@ def quoteRunOf (entries : List TableEntry) (b : List ℕ) (D : ℕ) : ℕ :=
 /-- The suffix emitted for one row. -/
 def entryBits (e : TableEntry) : List Bool := tokBits [1, Encodable.encode e.value, 8]
 
-/-- Does the buffer spell any of these token lists? -/
-def spellChain (sps : List (List ℕ)) (hit miss bufW : List Bool) : List Bool :=
-  match sps with
-  | [] => miss
-  | s :: rest => if decodeBits bufW = s then hit else spellChain rest hit miss bufW
+/-- **The oracle**: a constant-depth chain over the table's rows.
 
-/-- **The oracle**: a constant-depth chain over the table's rows. -/
+Per row it makes two tests: the day, against a fixed numeral, and the buffered run, against
+the row's sentence — the latter by `SegRec.segNest` rather than by membership in a list of
+constant spellings.  Two substitutions removed the two old side conditions.  `⊥`'s infinite
+decode fibre lives inside a *hole* predicate that `FiberTest.holeGuards` decides, so the
+pattern list is exhaustive without `BotFree`; and a structured paper-prime block is a
+*segment* that `SegRec` recognizes with a finite automaton for the payload and a counter for
+the unary length field, so the list is exhaustive without `NoReserved` either. -/
 def oracleOf (entries : List TableEntry) (v : List Bool) : List Bool :=
   match entries with
   | [] => []
   | e :: rest =>
       if NumEqBits e.day (fstBlock v) then
-        spellChain (RpnFreeze.spellings e.sentence) (entryBits e)
-          (oracleOf rest v) (sndBlock v)
+        SegRec.segNest FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+          (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v
       else oracleOf rest v
 
 /-! ### What the chain emits -/
-
-lemma decodeBits_spellChain : ∀ (sps : List (List ℕ)) (hit miss bufW : List Bool),
-    decodeBits (spellChain sps hit miss bufW)
-      = if decodeBits bufW ∈ sps then decodeBits hit else decodeBits miss
-  | [], hit, miss, bufW => by rw [spellChain]; simp
-  | (s :: sps), hit, miss, bufW => by
-      rw [spellChain]
-      by_cases h : decodeBits bufW = s
-      · rw [if_pos h, if_pos (by rw [h]; exact List.mem_cons_self ..)]
-      · rw [if_neg h, decodeBits_spellChain sps hit miss bufW]
-        by_cases h2 : decodeBits bufW ∈ sps
-        · rw [if_pos h2, if_pos (List.mem_cons_of_mem _ h2)]
-        · rw [if_neg h2, if_neg (by
-            intro hc
-            rcases List.mem_cons.mp hc with hc | hc
-            · exact h hc
-            · exact h2 hc)]
 
 @[simp] lemma decodeBits_entryBits (e : TableEntry) :
     decodeBits (entryBits e) = [1, Encodable.encode e.value, 8] := by
   rw [entryBits, decodeBits_tokBits]
 
-/-- **The chain computes the table lookup.**
+/-- **The chain computes the table lookup — with no condition on the table.**
 
-Proof kind: `P` proved.  Provenance: (a) `numEqBits_spec`, `decodeBits_spellChain`.
+The chain's per-row test is segment-pattern matching; the table's key is parsing.  That the
+two agree is `StructPat.parseRpn_iff_segMatch`, which holds for every target, so no
+syntactic side condition is consumed here or anywhere downstream.
+
+Exactness is what is at stake, in both directions.  A run the parser accepts but the chain
+rejects would leave that price leaf unfrozen; a run the chain accepts but the parser does
+not would freeze a coordinate the table does not name.  `segNest` is exact because
+`SegRec.segMatch_iff_accepts` splits each pattern's language into a part its automaton
+decides and a part its counter decides, and neither approximates.
+
+Proof kind: `P` proved.  Provenance: (a) `numEqBits_spec`, `SegRec.segNest_pos`,
+`SegRec.segNest_neg`; (b) `StructPat.parseRpn_iff_segMatch`.
 Paper node: `app:ifp` -/
 lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
     (∀ d ∈ cur, d < 4) → ∀ bufW : List Bool,
@@ -117,21 +130,25 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
       rw [oracleOf, selRunOf, tableLookup]
       simp [quoteRunOf, tableLookup]
   | (e :: rest), cur, hcur, bufW => by
-      rw [oracleOf, fstBlock_pair, sndBlock_pair]
+      have hiff := StructPat.parseRpn_iff_segMatch e.sentence (decodeBits bufW)
+      rw [oracleOf, fstBlock_pair]
       by_cases hday : NumEqBits e.day (digitsToBits cur)
       · have hd : digitVal cur = e.day := (numEqBits_spec e.day cur hcur).mp hday
-        rw [if_pos hday, decodeBits_spellChain]
-        by_cases hsp : decodeBits bufW ∈ RpnFreeze.spellings e.sentence
+        rw [if_pos hday]
+        by_cases hp : parseRpn (decodeBits bufW).length (decodeBits bufW)
+            = some (e.sentence, [])
         · have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
-              = some e.value := by
-            rw [tableLookup, if_pos ⟨hd.symm, hsp⟩]
-          rw [if_pos hsp, decodeBits_entryBits]
+              = some e.value := by rw [tableLookup, if_pos ⟨hd.symm, hp⟩]
+          rw [SegRec.segNest_pos _ _ _ _ _ _ (by
+            rw [sndBlock_pair]; exact hiff.mp hp), decodeBits_entryBits]
           simp only [selRunOf, quoteRunOf, hlk]
           simp
         · have hlk : tableLookup (e :: rest) (decodeBits bufW) (digitVal cur)
               = tableLookup rest (decodeBits bufW) (digitVal cur) := by
-            rw [tableLookup, if_neg (fun hc => hsp hc.2)]
-          rw [if_neg hsp, decodeBits_oracleOf rest cur hcur bufW]
+            rw [tableLookup, if_neg (fun hc => hp hc.2)]
+          rw [SegRec.segNest_neg _ _ _ _ _ _ (by
+            rw [sndBlock_pair]; exact fun hc => hp (hiff.mpr hc))]
+          rw [decodeBits_oracleOf rest cur hcur bufW]
           simp only [selRunOf, quoteRunOf, hlk]
       · have hd : digitVal cur ≠ e.day := fun hc =>
           hday ((numEqBits_spec e.day cur hcur).mpr hc)
@@ -143,36 +160,21 @@ lemma decodeBits_oracleOf : ∀ (entries : List TableEntry) (cur : List ℕ),
 
 /-! ### Well-formedness and the constant budget -/
 
-lemma blockWF_spellChain : ∀ (sps : List (List ℕ)) (hit miss bufW : List Bool),
-    BlockWF hit → BlockWF miss → BlockWF (spellChain sps hit miss bufW)
-  | [], hit, miss, bufW, _, hm => by rw [spellChain]; exact hm
-  | (s :: sps), hit, miss, bufW, hh, hm => by
-      rw [spellChain]
-      split_ifs
-      · exact hh
-      · exact blockWF_spellChain sps hit miss bufW hh hm
-
 lemma blockWF_oracleOf : ∀ (entries : List TableEntry) (v : List Bool),
     BlockWF (oracleOf entries v)
   | [], v => by rw [oracleOf]; exact BlockWF.nil
   | (e :: rest), v => by
       rw [oracleOf]
       split_ifs
-      · exact blockWF_spellChain _ _ _ _ (blockWF_tokBits _) (blockWF_oracleOf rest v)
+      · rcases SegRec.segNest_cases FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+            (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v with h | h
+        · rw [h]; exact blockWF_tokBits _
+        · rw [h]; exact blockWF_oracleOf rest v
       · exact blockWF_oracleOf rest v
 
 /-- The constant output budget: the widest suffix the table can emit. -/
 def oracleLen (entries : List TableEntry) : ℕ :=
   entries.foldr (fun e n => max (entryBits e).length n) 0
-
-lemma length_spellChain_le : ∀ (sps : List (List ℕ)) (hit miss bufW : List Bool) (n : ℕ),
-    hit.length ≤ n → miss.length ≤ n → (spellChain sps hit miss bufW).length ≤ n
-  | [], hit, miss, bufW, n, _, hm => by rw [spellChain]; exact hm
-  | (s :: sps), hit, miss, bufW, n, hh, hm => by
-      rw [spellChain]
-      split_ifs
-      · exact hh
-      · exact length_spellChain_le sps hit miss bufW n hh hm
 
 lemma oracleOf_length_le : ∀ (entries : List TableEntry) (v : List Bool),
     (oracleOf entries v).length ≤ oracleLen entries
@@ -181,32 +183,18 @@ lemma oracleOf_length_le : ∀ (entries : List TableEntry) (v : List Bool),
       rw [oracleOf, oracleLen, List.foldr_cons]
       have hrec : (oracleOf rest v).length ≤ oracleLen rest := oracleOf_length_le rest v
       split_ifs
-      · exact length_spellChain_le _ _ _ _ _ (le_max_left _ _)
-          (le_trans hrec (le_max_right _ _))
+      · rcases SegRec.segNest_cases FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+            (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v with h | h
+        · rw [h]; exact le_max_left _ _
+        · rw [h]; exact le_trans hrec (le_max_right _ _)
       · exact le_trans hrec (le_max_right _ _)
 
 /-! ### Membership -/
 
-lemma spellChain_mem_FP : ∀ (sps : List (List ℕ)) {B H M : List Bool → List Bool},
-    B ∈ FP → H ∈ FP → M ∈ FP →
-    (fun z => spellChain sps (H z) (M z) (B z)) ∈ FP
-  | [], B, H, M, _, _, hM => by
-      have heq : (fun z => spellChain [] (H z) (M z) (B z)) = M := by
-        funext z; rw [spellChain]
-      rwa [heq]
-  | (s :: sps), B, H, M, hB, hH, hM => by
-      have hrec := spellChain_mem_FP sps hB hH hM
-      have h := ifMatch_mem_FP s hB hH hrec
-      have heq : (fun z => if decodeBits (B z) = s then H z
-            else spellChain sps (H z) (M z) (B z))
-          = fun z => spellChain (s :: sps) (H z) (M z) (B z) := by
-        funext z; rw [spellChain]
-      rwa [heq] at h
+/-- **The chain is polynomial time**: a fixed-depth nest of a numeral test and a pattern
+test, one level per table row.
 
-/-- **The chain is polynomial time**: a fixed-depth nest of a numeral test and a
-spelling test, one level per table row.
-
-Proof kind: `C` composition.  Provenance: (b) `ifNumEq_mem_FP`, `ifMatch_mem_FP`.
+Proof kind: `C` composition.  Provenance: (b) `ifNumEq_mem_FP`, `SegRec.segNest_mem_FP`.
 Paper node: `app:ifp` -/
 lemma oracleOf_mem_FP : ∀ (entries : List TableEntry), oracleOf entries ∈ FP
   | [] => by
@@ -215,13 +203,14 @@ lemma oracleOf_mem_FP : ∀ (entries : List TableEntry), oracleOf entries ∈ FP
       rw [heq]; exact constFn_mem_FP []
   | (e :: rest) => by
       have hrec := oracleOf_mem_FP rest
-      have hspell : (fun v => spellChain (RpnFreeze.spellings e.sentence) (entryBits e)
-          (oracleOf rest v) (sndBlock v)) ∈ FP :=
-        spellChain_mem_FP _ sndBlock_mem_FP (constFn_mem_FP _) hrec
-      have h := ifNumEq_mem_FP fstBlock_mem_FP e.day hspell hrec
+      have hpat : (fun v => SegRec.segNest FiberTest.holeGuards sndBlock
+          (fun _ => entryBits e) (fun v => oracleOf rest v)
+          (StructPat.segPatterns e.sentence) v) ∈ FP :=
+        SegRec.segNest_mem_FP _ sndBlock_mem_FP (constFn_mem_FP _) hrec _
+      have h := ifNumEq_mem_FP fstBlock_mem_FP e.day hpat hrec
       have heq : (fun v => if NumEqBits e.day (fstBlock v) then
-            spellChain (RpnFreeze.spellings e.sentence) (entryBits e)
-              (oracleOf rest v) (sndBlock v)
+            SegRec.segNest FiberTest.holeGuards sndBlock (fun _ => entryBits e)
+              (fun v => oracleOf rest v) (StructPat.segPatterns e.sentence) v
           else oracleOf rest v) = oracleOf (e :: rest) := by
         funext v; rw [oracleOf]
       rwa [heq] at h
@@ -257,17 +246,17 @@ def tableLookupOn (entries : List TableEntry) (φ : Sentence) (D : ℕ) : Option
   | e :: rest =>
       if e.day = D ∧ e.sentence = φ then some e.value else tableLookupOn rest φ D
 
-/-- **On a run that parses, the two lookups agree.**  This is where `Recognizable` is
-used, and the only place. -/
+/-- **On a run that parses, the two lookups agree** — unconditionally.
+
+Since `tableLookup` is keyed by parsing and `parseRpn` is a function, a run that parses to
+`φ` fires exactly the rows whose sentence *is* `φ`.  No syntactic side condition survives
+at this level; the recognition condition lives entirely in `decodeBits_oracleOf`. -/
 lemma tableLookup_eq_on : ∀ (entries : List TableEntry),
-    (∀ e ∈ entries, Recognizable e.sentence) →
     ∀ {b : List ℕ} {φ : Sentence}, parseRpn b.length b = some (φ, []) → ∀ D : ℕ,
     tableLookup entries b D = tableLookupOn entries φ D
-  | [], _, b, φ, _, D => rfl
-  | (e :: rest), hrec, b, φ, hb, D => by
-      have hrece : Recognizable e.sentence := hrec e (List.mem_cons_self ..)
-      have hiff : b ∈ RpnFreeze.spellings e.sentence ↔ e.sentence = φ := by
-        rw [← RpnFreeze.parseRpn_iff_mem_spellings hrece b]
+  | [], b, φ, _, D => rfl
+  | (e :: rest), b, φ, hb, D => by
+      have hiff : parseRpn b.length b = some (e.sentence, []) ↔ e.sentence = φ := by
         constructor
         · intro h
           rw [hb] at h
@@ -277,18 +266,15 @@ lemma tableLookup_eq_on : ∀ (entries : List TableEntry),
       by_cases hc : e.day = D ∧ e.sentence = φ
       · rw [if_pos ⟨hc.1, hiff.mpr hc.2⟩, if_pos hc]
       · rw [if_neg (fun h => hc ⟨h.1, hiff.mp h.2⟩), if_neg hc]
-        exact tableLookup_eq_on rest
-          (fun e' he' => hrec e' (List.mem_cons_of_mem _ he')) hb D
+        exact tableLookup_eq_on rest hb D
 
-/-- The conditions under which an entry list presents a market's frozen quote table.
+/-- The condition under which an entry list presents a market's frozen quote table.
 
-Both are properties of the **table**, not of the freeze: the sentences must be recognizable
-(`CanonicalCodes.lean`'s two per-sentence conditions, bundled as `Recognizable`), and the
-list must name exactly the coordinates of `S` with their quotes. -/
+It is a property of the **table**, not of the freeze: the list must name exactly the
+coordinates of `S` with their quotes.  Nothing syntactic survives here — the recognizer's
+side condition is carried separately, at `runOracleOf`. -/
 structure TablePresentation (S : Finset (ℕ × Sentence)) (quote : ℕ → Sentence → ℚ)
     (entries : List TableEntry) : Prop where
-  /-- Every table sentence is recognizable from its run. -/
-  recognizable : ∀ e ∈ entries, Recognizable e.sentence
   /-- The list presents `S` and `quote` faithfully. -/
   lookup_eq : ∀ (D : ℕ) (φ : Sentence),
     tableLookupOn entries φ D = if (D, φ) ∈ S then some (quote D φ) else none
@@ -321,7 +307,7 @@ lemma selRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence �
     {entries : List TableEntry} (htab : TablePresentation S quote entries)
     {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, [])) (D : ℕ) :
     selRunOf entries b D = selCodeOf S D (Encodable.encode φ) := by
-  rw [selRunOf, tableLookup_eq_on entries htab.recognizable hb D, htab.lookup_eq D φ,
+  rw [selRunOf, tableLookup_eq_on entries hb D, htab.lookup_eq D φ,
     selCodeOf_decode D _ (Encodable.encodek φ)]
   by_cases hmem : (D, φ) ∈ S
   · rw [if_pos hmem]; simp [hmem]
@@ -339,7 +325,7 @@ lemma quoteRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence
     (hsel : selRunOf entries b D = true) :
     quoteRunOf entries b D = quoteCodeOf quote D (Encodable.encode φ) := by
   have hlk : tableLookup entries b D = if (D, φ) ∈ S then some (quote D φ) else none := by
-    rw [tableLookup_eq_on entries htab.recognizable hb D, htab.lookup_eq D φ]
+    rw [tableLookup_eq_on entries hb D, htab.lookup_eq D φ]
   have hmem : (D, φ) ∈ S := by
     by_contra hc
     rw [selRunOf, hlk, if_neg hc] at hsel
@@ -349,8 +335,8 @@ lemma quoteRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence
 
 /-! ## The patch, for a presented table -/
 
-/-- **`MachineFiniteSupportPatch` for any market whose frozen table is presented by a
-recognizable entry list.**
+/-- **`MachineFiniteSupportPatch` for any market whose frozen table is presented by an
+entry list of reserved-atom-free sentences.**
 
 Kind `C`; hypotheses `(a)` except the `TablePresentation`, which is the disclosed side
 condition on the table.
@@ -414,11 +400,6 @@ lemma exampleS_nonempty : exampleS.Nonempty :=
 
 lemma examplePresentation (q : ℚ) :
     TablePresentation exampleS (exampleQuote q) (exampleEntries q) where
-  recognizable := by
-    intro e he
-    simp only [exampleEntries, List.mem_cons, List.not_mem_nil, or_false] at he
-    subst he
-    exact recognizable_atom 0 atom_zero_noReserved
   lookup_eq := by
     intro D φ
     rw [exampleEntries, tableLookupOn, tableLookupOn]
@@ -537,14 +518,8 @@ lemma tableLookupOn_map : ∀ (l : List (ℕ × Sentence)) (mq : ℕ → ℕ →
             · exact hc ⟨congrArg Prod.fst h.symm, congrArg Prod.snd h.symm⟩
             · exact hm h)]
 
-lemma tablePresentation_entriesOf (S : Finset (ℕ × Sentence)) (mq : ℕ → ℕ → ℚ)
-    (hrec : ∀ p ∈ S, Recognizable p.2) :
+lemma tablePresentation_entriesOf (S : Finset (ℕ × Sentence)) (mq : ℕ → ℕ → ℚ) :
     TablePresentation S (fun d φ => mq d (Encodable.encode φ)) (entriesOf S mq) where
-  recognizable := by
-    intro e he
-    rw [entriesOf, List.mem_map] at he
-    obtain ⟨q, hq, rfl⟩ := he
-    exact hrec q (Finset.mem_toList.mp hq)
   lookup_eq := by
     intro D φ
     rw [entriesOf, tableLookupOn_map]
@@ -556,92 +531,177 @@ No presentation is supplied by the caller: the entry list is `entriesOf`, read o
 the market's rational table.  `Classical.choice` enters only to name that table, which
 `ComputableMarket` asserts to exist.
 
-Kind `C`; hypotheses `(a)` except `hrec`, the syntactic side condition on `S`.
+There is no condition on the sentences of `S`.  The recognizer that decides which runs
+denote them is `SegRec.ifParseFull_mem_FP`, which walks the target's segment patterns with a
+finite automaton for the shape and the structured payload and a one-counter machine for the
+structured length field; nothing about the target restricts it.
+
+Kind `C`; hypotheses `(a)`.
 Paper node: `app:ifp` -/
-noncomputable def machineFiniteSupportPatch_ofRecognizable (P : History)
-    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
-    (hrec : ∀ p ∈ S, Recognizable p.2) :
+noncomputable def machineFiniteSupportPatch (P : History)
+    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P) :
     MachineFiniteSupportPatch P S :=
   let mc := hP.nonemptyComputation.some
   machineFiniteSupportPatch_ofTable P S (fun d φ => mc.quote d (Encodable.encode φ))
     (fun d φ _ => mc.quote_exact d φ) (entriesOf S mc.quote)
-    (tablePresentation_entriesOf S mc.quote hrec)
+    (tablePresentation_entriesOf S mc.quote)
+
+/-- Compatibility: the reserved-atom-free form, now an immediate specialization.
+
+Kind `C`; hypotheses `(a)`.
+Paper node: `app:ifp` -/
+noncomputable def machineFiniteSupportPatch_ofNoReserved (P : History)
+    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
+    (_hnr : ∀ p ∈ S, NoReserved p.2) :
+    MachineFiniteSupportPatch P S :=
+  machineFiniteSupportPatch P S hP
+
+/-- Compatibility: the syntactically recognizable form, likewise.
+
+Kind `C`; hypotheses `(a)`.
+Paper node: `app:ifp` -/
+noncomputable def machineFiniteSupportPatch_ofRecognizable (P : History)
+    (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
+    (_hrec : ∀ p ∈ S, Recognizable p.2) :
+    MachineFiniteSupportPatch P S :=
+  machineFiniteSupportPatch P S hP
+
+/-- `P` and `P'` differ on only finitely many price coordinates, and no sentence involved
+has a **reserved-atom** subformula.
+
+This is the public hypothesis of the corrected theorem.  Its two halves are of different
+kinds and should be read that way: finite support is a **mathematical** condition on the
+perturbation, while `NoReserved` is a **representation** condition on the sentences, forced
+by FAF's RPN syntax and not by the mathematics.
+
+`BotFree`, the other half of the old `Recognizable`, is gone: the escape leaf's decode test
+is now performed rather than assumed away (`FiberTest.holeGuards`). -/
+def NoReservedSupportPerturbation (P P' : History) : Prop :=
+  ∃ S : Finset (ℕ × Sentence),
+    (∀ p ∈ S, NoReserved p.2) ∧ ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
+
+lemma NoReservedSupportPerturbation.toFiniteSupport {P P' : History}
+    (h : NoReservedSupportPerturbation P P') : FiniteSupportPerturbation P P' := by
+  obtain ⟨S, -, hagree⟩ := h
+  exact ⟨S, hagree⟩
 
 /-- `P` and `P'` differ on only finitely many price coordinates, and every sentence
 involved is syntactically recognizable.
 
-This is the public hypothesis of the corrected theorem.  Its two halves are of different
-kinds and should be read that way: finite support is a **mathematical** condition on the
-perturbation, while `Recognizable` is a **representation** condition on the sentences,
-forced by FAF's RPN syntax and not by the mathematics. -/
+Retained for compatibility; `NoReservedSupportPerturbation` is strictly weaker and is what
+the theorem below actually needs. -/
 def RecognizableSupportPerturbation (P P' : History) : Prop :=
   ∃ S : Finset (ℕ × Sentence),
     (∀ p ∈ S, Recognizable p.2) ∧ ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
 
+lemma RecognizableSupportPerturbation.toNoReserved {P P' : History}
+    (h : RecognizableSupportPerturbation P P') : NoReservedSupportPerturbation P P' := by
+  obtain ⟨S, hrec, hagree⟩ := h
+  exact ⟨S, fun p hp => (hrec p hp).noReserved, hagree⟩
+
 lemma RecognizableSupportPerturbation.toFiniteSupport {P P' : History}
-    (h : RecognizableSupportPerturbation P P') : FiniteSupportPerturbation P P' := by
-  obtain ⟨S, -, hagree⟩ := h
-  exact ⟨S, hagree⟩
+    (h : RecognizableSupportPerturbation P P') : FiniteSupportPerturbation P P' :=
+  h.toNoReserved.toFiniteSupport
 
-/-- **The corrected `thm:ifp`, with no patch hypothesis.**
+/-- **The corrected `thm:ifp`.**
 
-Finite support, computability of both markets, and a syntactic condition on the finitely
-many sentences involved — nothing else.  The `MachineFiniteSupportPatch` both markets need
-is *compiled* here rather than assumed, from `S` and their own quote tables.
+Finite `(day, sentence)` support and computability of both markets — nothing else.  No
+patch certificate: the `MachineFiniteSupportPatch` both markets need is *compiled* here,
+from `S` and their own quote tables.  And no condition on the finitely many sentences whose
+price moves: the recognizer that decides which token runs denote them
+(`SegRec.ifParseFull_mem_FP`) is unconditional.
 
-Kind `C`; hypotheses `(a)` except the `Recognizable` half of `hpert`, which is disclosed
-representation residue rather than mathematical content.
+This is the canonical corrected replacement for the paper's finite-*days* statement, which
+is **false** and stays refuted (`FinitePerturbationCounterexample.not_overgeneral_ifp`).
+The two statements cannot be confused: finite coordinate support implies eventual day
+agreement (`FiniteSupportPerturbation.tail_agree`) and the converse fails
+(`tailAgree_not_finiteSupport`), so this theorem cannot re-derive the refuted one.
+
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
+theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : FiniteSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+  obtain ⟨S, hagree⟩ := hpert
+  exact machine_lic_iff_of_finiteSupportPerturbation P P' DP S hPcomp hP'comp hagree
+    (machineFiniteSupportPatch P S hPcomp)
+    (machineFiniteSupportPatch P' S hP'comp)
+
+/-- **The reserved-atom-free endpoint, now an immediate corollary.**
+
+Kind `C`; hypotheses `(a)`.
+Paper node: `thm:ifp` -/
+theorem machine_lic_iff_of_noReservedSupport (P P' : History) (DP : DeductiveProcess)
+    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
+    (hpert : NoReservedSupportPerturbation P P') :
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
+  machine_lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
+
+/-- **The syntactically recognizable endpoint, likewise.**
+
+Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
 theorem machine_lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : RecognizableSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
-  obtain ⟨S, hrec, hagree⟩ := hpert
-  exact machine_lic_iff_of_finiteSupportPerturbation P P' DP S hPcomp hP'comp hagree
-    (machineFiniteSupportPatch_ofRecognizable P S hPcomp hrec)
-    (machineFiniteSupportPatch_ofRecognizable P' S hP'comp hrec)
+    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
+  machine_lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
 
-/-! ### The boundary: exactly what `Recognizable` is standing in for
+/-! ### What the two old side conditions stood for, and how each was discharged
 
-`machine_lic_iff_of_recognizableSupport` is the strongest statement proved here.  The
-mathematically natural one would drop `Recognizable` entirely:
+`machine_lic_iff_of_finiteSupport` is the strongest statement proved here, and it is the
+mathematically natural one: finite `(day, sentence)` support, computability of both markets,
+nothing else.  Both syntactic conditions the earlier endpoints carried are gone, and neither
+was weakened or renamed — each stood for a missing `Complexity.FP` device, and each device
+was built.
 
-```
-FiniteSupportPerturbation P P' → ComputableMarket P → ComputableMarket P' →
-  (IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP)
-```
-
-That statement is, as far as this development can tell, **true** — and it is *not* provable
-here.  The gap is not mathematical.  For any finite `S` the freeze rewrite really is
-polynomial time; what is missing is a proof of that inside this repo's `Complexity.FP`
-toolkit.  Each half of `Recognizable` stands for one missing primitive:
-
-* **`BotFree` stands for integer square root.**  A price leaf may be spelled with the
+* **`BotFree` stood for integer square root.**  A price leaf may be spelled with the
   two-token escape `[1, c]`, meaning `Encodable.decode c`, and Foundation's `Formula.ofNat`
   discards the payload at tag `0`, so `⊥` has infinitely many codes
-  (`decode_falsum_noncanonical`).  Deciding "does this code denote `⊥`" is deciding whether
-  `c - 1` is a perfect square, i.e. integer square root — polynomial time in the bit width,
-  but not available in the `FP` toolkit here.  On `⊥`-free targets the same test is a
-  comparison against a fixed numeral (`decode_eq_some_iff_of_botFree`), which is why the
-  restriction buys the whole construction.
+  (`decode_falsum_noncanonical`).  Deciding "does this code denote `ψ`" is therefore
+  `Nat.unpair` on the token's digits, i.e. integer square root.
+  `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` supply the arithmetic and
+  `FiberTest.fiberW_mem_FP` the decode test, while `RpnFreeze.patterns` replaces the
+  constant spelling list, confining the infinite fibre inside a hole predicate.
 
-* **`NoReserved` stands for a structured-payload parser.**  A leaf may also be spelled with
-  the structured paper-prime block `[1, 0, …]`, whose payload admits spellings no fixed word
-  comparison catches.  That block denotes *only* reserved atoms `atom (Nat.pair 5 _)`
-  (`parseStructuredPaperPrime_shape`), so excluding those targets makes the branch
-  unreachable.  Covering them instead would mean running `parseStructuredArithmeticFormula`
-  inside `FP`.
+* **`NoReserved` stood for a structured-payload recognizer**, and that is two problems, not
+  one.  A leaf may also be spelled with the structured paper-prime block
+  `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]`, which denotes *only* reserved atoms
+  `atom (Nat.pair 5 _)` (`parseStructuredPaperPrime_shape`), so excluding those targets made
+  the branch unreachable.  Covering them needed both of:
 
-Neither is a restriction on markets, traders, or perturbations: both are conditions on the
-**syntax** of the finitely many sentences whose price moves.  Read against the
-classification the file header asks for — finite support is condition (i), a mathematical
-property of the perturbation; `Recognizable` is condition (ii), residue of FAF's RPN
-representation.  A table of ordinary propositional sentences over ordinary atoms satisfies
-it; `machineFiniteSupportPatch_example` is such a table.
+  - **the length identification**, `L = |p|`.  The numeral `0` is spelled `1^k 0` for every
+    `k` (`parseStructuredNat`'s self-loop), so `L` is unbounded even for a fixed target and
+    matching `1^L` against `|p|` is `aⁿbⁿ`.  No bounded-state device decides it;
+    `CtrAuto.ctrMachine` — `RunAuto.BlockMachine` instantiated as a finite control paired
+    with one unary counter, whose state grows a mark per token and stays inside
+    `Complexity.FP` — does.
+  - **the payload language** itself: *which* token strings denote the fixed code `fc`.  This
+    is the larger half and it is not a matter of a finite spelling list either, because
+    numeral padding and the double negation `[20, 20]` both preserve a code.  `PayAuto`
+    decides it by top-down predictive parsing against a stack of obligations, carrying the
+    pending negation as a parity bit rather than applying `negFormulaCode`; that keeps every
+    child code an `unpair` component of its parent, so a potential argument bounds the
+    reachable stacks and the state set is finite.  The parity trick is sound because
+    `negFormulaCode` is an involution *on the parser's range* — not on `ℕ`, where tags 2/3
+    discard their payload (`PayAuto.WFCode`).
 
-The patch hypothesis itself was residue of the *third* kind — neither mathematics nor
-representation, but a compiler artifact — and it is gone: `entriesOf` reads the table off
-`S` and the market's own certificate, so no caller supplies anything. -/
+Neither condition was ever a restriction on markets, traders, or perturbations: both were
+conditions on the **syntax** of the finitely many sentences whose price moves.  Read against
+the classification the file header asks for, finite support is condition (i), a mathematical
+property of the perturbation — and there is no longer any condition (ii).
+
+The patch hypothesis was residue of a *third* kind — neither mathematics nor representation,
+but a compiler artifact — and it is gone too: `entriesOf` reads the table off `S` and the
+market's own certificate, so no caller supplies anything.
+
+What remains disclosed here is one thing only, and it is a property of the *construction*
+rather than of the statement: the recognizer is compiled per frozen sentence, so its
+polynomial-time witness carries constants (the automaton's state bound) that depend on that
+sentence.  That is exactly the paper's own "finitely many constants can be hard-coded", and
+it is sound precisely because the support is finite — which is the point at which the
+published finite-*days* proof breaks and this one does not. -/
 
 /-! ## A concrete computable market pair
 
@@ -786,6 +846,279 @@ theorem machine_lic_iff_twoPoint (DP : DeductiveProcess) :
     (twoPointHistory_agree _ _)
     (twoPointHistory_exact _) (twoPointHistory_exact _)
 
+/-! ## The strictness targets
+
+The two sentences a `Recognizable`-restricted freeze cannot take, one for each half of the
+restriction.  They are recorded here — with the negative facts proved, so nothing rests on
+inspection — because they are the yardstick for whether a later compiler is genuinely
+stronger: a result that covers *these* coordinates is strictly stronger in actual use than
+`machine_lic_iff_of_recognizableSupport`, and one that does not is the same theorem under a
+new name. -/
+
+/-- A target with a `⊥` subformula: fails `BotFree`, so its escape leaf has infinitely many
+codes (`decode_falsum_noncanonical`) and no finite spelling list is exhaustive. -/
+def hardSentence : Sentence := (LO.Propositional.Formula.atom 0 : Sentence) ⋏ ⊥
+
+/-- A reserved atom: fails `NoReserved`, so a structured paper-prime block denotes it and
+the structured branch of `parseRpn` is reachable at that leaf. -/
+def reservedSentence : Sentence :=
+  LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair 0 0))
+
+/-- **`hardSentence` fails `BotFree`.**
+
+Kind `N-` negative witness.  Provenance: (a) `botFree_and`, `botFree_falsum`.
+Paper node: `app:ifp` -/
+lemma not_botFree_hardSentence : ¬ BotFree hardSentence := by
+  rw [hardSentence]
+  intro h
+  exact botFree_falsum ((botFree_and _ _).mp h).2
+
+/-- **`reservedSentence` fails `NoReserved`.**
+
+Kind `N-` negative witness.  Provenance: (a) `noReserved_atom`.
+Paper node: `app:ifp` -/
+lemma not_noReserved_reservedSentence : ¬ NoReserved reservedSentence := by
+  rw [reservedSentence]
+  intro h
+  exact (noReserved_atom _).mp h 0 0 rfl
+
+lemma not_recognizable_hardSentence : ¬ Recognizable hardSentence :=
+  fun h => not_botFree_hardSentence h.botFree
+
+lemma not_recognizable_reservedSentence : ¬ Recognizable reservedSentence :=
+  fun h => not_noReserved_reservedSentence h.noReserved
+
+/-- A two-row coordinate set, one row for each half of the old restriction. -/
+def hardS : Finset (ℕ × Sentence) := {(0, hardSentence), (1, reservedSentence)}
+
+lemma mem_hardS_hard : (0, hardSentence) ∈ hardS := by simp [hardS]
+
+lemma mem_hardS_reserved : (1, reservedSentence) ∈ hardS := by simp [hardS]
+
+/-- **`hardS` is outside the reach of the recognizable-support theorem** — both of its rows
+are, in fact.  This is what a strictness claim for a later unrestricted compiler has to
+beat.
+
+Kind `N-` negative witness.  Provenance: (a) `not_recognizable_hardSentence`.
+Paper node: `app:ifp` -/
+lemma not_recognizable_hardS : ¬ ∀ p ∈ hardS, Recognizable p.2 := by
+  intro h
+  exact not_recognizable_hardSentence (h (0, hardSentence) mem_hardS_hard)
+
+/-! ## Strictness: a frozen coordinate the old theorem provably could not reach
+
+`hardSentence` fails `BotFree` (`not_botFree_hardSentence`), so
+`machine_lic_iff_of_recognizableSupport` does not apply to any coordinate set containing it
+— `not_recognizable_hardS` is that fact, proved rather than asserted.
+`machine_lic_iff_of_noReservedSupport` does apply, and this section carries the difference
+all the way to a concrete pair of computable markets that differ at exactly that
+coordinate.
+
+The construction is `twoPointHistory` with the frozen sentence a parameter; the `atom 0`
+instance above is kept because it is inventoried, and this one is what shows the
+strengthening is not vacuous. -/
+
+/-- The rational quote table: `q` at `(0, φ)`, zero everywhere else. -/
+def pointQuote (φ : Sentence) (q : ℚ) : ℕ → ℕ → ℚ := fun n c =>
+  if n = 0 ∧ c = Encodable.encode φ then q else 0
+
+/-- The market it presents. -/
+def pointHistory (φ : Sentence) (q : ℚ) : History :=
+  fun n χ => (pointQuote φ q n (Encodable.encode χ) : ℝ)
+
+/-- Its single moved coordinate. -/
+def pointS (φ : Sentence) : Finset (ℕ × Sentence) := {(0, φ)}
+
+lemma pointQuote_mem_Icc (φ : Sentence) {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1) (n c : ℕ) :
+    0 ≤ pointQuote φ q n c ∧ pointQuote φ q n c ≤ 1 := by
+  rw [pointQuote]
+  split_ifs
+  · exact ⟨h0, h1⟩
+  · exact ⟨le_refl 0, by norm_num⟩
+
+lemma pointHistory_mem_Icc (φ : Sentence) {q : ℚ} (h0 : 0 ≤ q) (h1 : q ≤ 1)
+    (n : ℕ) (χ : Sentence) :
+    0 ≤ pointHistory φ q n χ ∧ pointHistory φ q n χ ≤ 1 := by
+  obtain ⟨ha, hb⟩ := pointQuote_mem_Icc φ h0 h1 n (Encodable.encode χ)
+  constructor
+  · show (0 : ℝ) ≤ ((pointQuote φ q n (Encodable.encode χ) : ℚ) : ℝ)
+    exact_mod_cast ha
+  · show ((pointQuote φ q n (Encodable.encode χ) : ℚ) : ℝ) ≤ 1
+    exact_mod_cast hb
+
+/-- **The table is computable**, as a function of the paired input. -/
+lemma computable_pointQuote (φ : Sentence) (q : ℚ) :
+    Computable (fun z : ℕ => pointQuote φ q z.unpair.1 z.unpair.2) := by
+  have h1 : Computable (fun z : ℕ => decide (z.unpair.1 = 0)) :=
+    (Primrec.eq.comp (Primrec.fst.comp Primrec.unpair) (Primrec.const 0)).decide.to_comp
+  have h2 : Computable (fun z : ℕ =>
+      decide (z.unpair.2 = Encodable.encode φ)) :=
+    (Primrec.eq.comp (Primrec.snd.comp Primrec.unpair) (Primrec.const _)).decide.to_comp
+  refine (Computable.cond h1
+    (Computable.cond h2 (Computable.const q) (Computable.const 0))
+    (Computable.const 0)).of_eq (fun z => ?_)
+  rw [pointQuote]
+  by_cases ha : z.unpair.1 = 0
+  · by_cases hb : z.unpair.2 = Encodable.encode φ
+    · simp [ha, hb]
+    · simp [ha, hb]
+  · simp [ha]
+
+/-- **The market is an honest `ComputableMarket`**, at any frozen sentence.
+
+Kind `N+` non-vacuity witness.  Provenance: (a) `computable_pointQuote`;
+(b) `Nat.Partrec.Code.exists_code`.
+Paper node: `app:ifp` -/
+theorem computableMarket_point (φ : Sentence) (q : ℚ) (h0 : 0 ≤ q) (h1 : q ≤ 1) :
+    ComputableMarket (pointHistory φ q) := by
+  refine ⟨pointHistory_mem_Icc φ h0 h1, ?_⟩
+  have hcomp : Computable (fun z : ℕ =>
+      Encodable.encode (pointQuote φ q z.unpair.1 z.unpair.2)) :=
+    Computable.encode.comp (computable_pointQuote φ q)
+  have hpart : Nat.Partrec (fun z : ℕ =>
+      Part.some (Encodable.encode (pointQuote φ q z.unpair.1 z.unpair.2))) :=
+    Partrec.nat_iff.mp hcomp.partrec
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp hpart
+  refine ⟨pointQuote φ q, code, fun n χ => rfl, fun z => ?_⟩
+  rw [hcode]
+  simp
+
+/-- Off the frozen coordinate the two markets agree. -/
+lemma pointHistory_agree (φ : Sentence) (q q' : ℚ) :
+    ∀ d χ, (d, χ) ∉ pointS φ → pointHistory φ q d χ = pointHistory φ q' d χ := by
+  intro d χ hmem
+  have hne : ¬(d = 0 ∧ χ = φ) := by
+    intro hc
+    exact hmem (by simp [pointS, hc.1, hc.2])
+  have hq : ∀ r : ℚ, pointQuote φ r d (Encodable.encode χ) = 0 := by
+    intro r
+    rw [pointQuote, if_neg]
+    intro hc
+    exact hne ⟨hc.1, Encodable.encode_injective hc.2⟩
+  rw [pointHistory, pointHistory, hq, hq]
+
+/-- **The two markets genuinely differ, at the frozen coordinate.**
+
+Kind `N+` non-vacuity witness.
+Paper node: `app:ifp` -/
+lemma pointHistory_ne_at (φ : Sentence) :
+    pointHistory φ (1 / 2) 0 φ ≠ pointHistory φ (1 / 3) 0 φ := by
+  rw [pointHistory, pointHistory, pointQuote, pointQuote,
+    if_pos ⟨rfl, rfl⟩, if_pos ⟨rfl, rfl⟩]
+  norm_num
+
+/-- **No recognizable-support perturbation reaches the `hardSentence` point pair.**  This is
+the *perturbation-level* negative the strictness claim actually needs: because
+`RecognizableSupportPerturbation` is an existential over the support set `S`, a sentence-level
+failure (`not_recognizable_hardSentence`) does not by itself rule the old endpoint out — one
+must also force the moved coordinate into *every* admissible `S`.  Here the two markets differ
+at `(0, hardSentence)` (`pointHistory_ne_at`), so any `S` witnessing agreement off `S` must
+contain it, and then recognizability of its second component fails.
+
+Kind `N-` negative witness.  Provenance: (a) `not_recognizable_hardSentence`,
+`pointHistory_ne_at`.
+Paper node: `app:ifp` -/
+lemma not_recognizableSupport_hardPoint :
+    ¬ RecognizableSupportPerturbation
+        (pointHistory hardSentence (1 / 2)) (pointHistory hardSentence (1 / 3)) := by
+  rintro ⟨S, hrec, hagree⟩
+  by_cases hmem : (0, hardSentence) ∈ S
+  · exact not_recognizable_hardSentence (hrec _ hmem)
+  · exact pointHistory_ne_at hardSentence (hagree 0 hardSentence hmem)
+
+/-- **No no-reserved-support perturbation reaches the `reservedSentence` point pair.**  The
+companion perturbation-level negative for the `NoReserved` half: the two markets differ at
+`(0, reservedSentence)` (`pointHistory_ne_at`), forcing that coordinate into every admissible
+support set, where `NoReserved` of its second component fails
+(`not_noReserved_reservedSentence`).
+
+Kind `N-` negative witness.  Provenance: (a) `not_noReserved_reservedSentence`,
+`pointHistory_ne_at`.
+Paper node: `app:ifp` -/
+lemma not_noReservedSupport_reservedPoint :
+    ¬ NoReservedSupportPerturbation
+        (pointHistory reservedSentence (1 / 2)) (pointHistory reservedSentence (1 / 3)) := by
+  rintro ⟨S, hnr, hagree⟩
+  by_cases hmem : (0, reservedSentence) ∈ S
+  · exact not_noReserved_reservedSentence (hnr _ hmem)
+  · exact pointHistory_ne_at reservedSentence (hagree 0 reservedSentence hmem)
+
+/-- `hardSentence` has no reserved-atom subformula, so it is inside the new theorem's
+hypothesis — while failing the old one's (`not_recognizable_hardSentence`). -/
+lemma noReserved_hardSentence : NoReserved hardSentence := by
+  rw [hardSentence, noReserved_and]
+  exact ⟨atom_zero_noReserved, noReserved_falsum⟩
+
+/-- **The strictness regression: the corrected theorem at a `⊥`-containing frozen
+sentence.**
+
+Every hypothesis is discharged — both markets are `ComputableMarket`s with real
+`Nat.Partrec.Code` tables, they agree off the single coordinate `(0, hardSentence)` and
+disagree on it (`pointHistory_ne_at`) — and this perturbation is one the previous endpoint
+provably could not take: `not_recognizableSupport_hardPoint` establishes
+`¬ RecognizableSupportPerturbation` of the two markets outright (not merely that the
+sentence fails `Recognizable`), so `machine_lic_iff_of_recognizableSupport` is inapplicable
+here by a proved *perturbation-level* negative rather than by inspection.  This is what makes
+the strengthening strict *in use* and not only in statement.
+
+Kind `N+` non-vacuity witness.  Provenance: (a) `computableMarket_point`,
+`machine_lic_iff_of_finiteSupport`.
+Paper node: `app:ifp` -/
+theorem machine_lic_iff_hardPoint (DP : DeductiveProcess) :
+    IsMachineLogicalInductor (pointHistory hardSentence (1 / 2)) DP
+      ↔ IsMachineLogicalInductor (pointHistory hardSentence (1 / 3)) DP :=
+  machine_lic_iff_of_finiteSupport _ _ DP
+    (computableMarket_point hardSentence (1 / 2) (by norm_num) (by norm_num))
+    (computableMarket_point hardSentence (1 / 3) (by norm_num) (by norm_num))
+    ⟨pointS hardSentence, pointHistory_agree hardSentence _ _⟩
+
+/-- **The strictness regression at a *reserved* frozen sentence.**
+
+`reservedSentence` is `atom (Nat.pair 5 (Nat.pair 0 0))`, and it fails `NoReserved`
+(`not_noReserved_reservedSentence`) — so neither `machine_lic_iff_of_recognizableSupport`
+nor `machine_lic_iff_of_noReservedSupport` applies to this perturbation, established outright
+by the perturbation-level negative `not_noReservedSupport_reservedPoint` (which forces the
+differing coordinate into every admissible support set) rather than by inspection.  It is
+exactly the case the structured paper-prime branch of
+`parseRpn` exists for: a run may denote this sentence through a block
+`[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]` whose unary length field is unbounded, and the
+freeze's recognizer has to accept every one of them.
+
+Together with `machine_lic_iff_hardPoint` — which does the same for the `BotFree` half —
+this is what makes the unrestricted endpoint strictly stronger *in use* rather than only in
+statement.
+
+Kind `N+` non-vacuity witness.  Provenance: (a) `computableMarket_point`,
+`machine_lic_iff_of_finiteSupport`.
+Paper node: `app:ifp` -/
+theorem machine_lic_iff_reservedPoint (DP : DeductiveProcess) :
+    IsMachineLogicalInductor (pointHistory reservedSentence (1 / 2)) DP
+      ↔ IsMachineLogicalInductor (pointHistory reservedSentence (1 / 3)) DP :=
+  machine_lic_iff_of_finiteSupport _ _ DP
+    (computableMarket_point reservedSentence (1 / 2) (by norm_num) (by norm_num))
+    (computableMarket_point reservedSentence (1 / 3) (by norm_num) (by norm_num))
+    ⟨pointS reservedSentence, pointHistory_agree reservedSentence _ _⟩
+
+/-- **`pointS reservedSentence` is outside the reach of both earlier endpoints.**
+
+Kind `N-` negative witness.  Provenance: (a) `not_noReserved_reservedSentence`.
+Paper node: `app:ifp` -/
+lemma not_noReserved_pointS_reserved :
+    ¬ ∀ p ∈ pointS reservedSentence, NoReserved p.2 := by
+  intro h
+  exact not_noReserved_reservedSentence (h (0, reservedSentence) (by simp [pointS]))
+
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_of_finiteSupport
+#print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_reservedPoint
+#print axioms LogicalInduction.FreezeOracle.not_noReserved_pointS_reserved
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_of_noReservedSupport
+#print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch_ofNoReserved
+#print axioms LogicalInduction.FreezeOracle.computableMarket_point
+#print axioms LogicalInduction.FreezeOracle.pointHistory_ne_at
+#print axioms LogicalInduction.FreezeOracle.machine_lic_iff_hardPoint
+#print axioms LogicalInduction.FreezeOracle.not_recognizable_hardS
+#print axioms LogicalInduction.FreezeOracle.not_recognizable_reservedSentence
 #print axioms LogicalInduction.FreezeOracle.machineFiniteSupportPatch_ofRecognizable
 #print axioms LogicalInduction.FreezeOracle.machine_lic_iff_of_recognizableSupport
 #print axioms LogicalInduction.FreezeOracle.computableMarket_twoPoint

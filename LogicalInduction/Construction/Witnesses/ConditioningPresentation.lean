@@ -147,31 +147,23 @@ what keeps the growing form realizable: `deductiveStageCondition (extra.D n)` is
 conjunction of `|extra.D n|` sentences, so it is deep, and its pair code is exponential
 in its symbol count.
 
-**Class disclosure — this field is narrower than `def:ec`.**  It is `RpnSentenceCodes`,
-the *token-metered* class: polynomially many emitted tokens **and** a polynomial bound on
-each individual token's value.  The paper's `def:ec` is the write-out class
-`BigSentenceCodes`, which bounds only the number of tokens a poly-time writer emits and
-leaves their magnitudes free; `RpnSentenceCodes` embeds into it
-(`BigSentenceCodes.ofRpnSentenceCodes`), and a single atom of exponential index is
-admitted by the write-out class while `RpnSentenceCodes` excludes it.  This field and
-`ConditioningPresentation.condition_codes` are the two places on the day-indexed surface
-that the write-out migration deliberately did **not** move; everything else it touched
-now sits at `BigSentenceCodes`.
+This field is at `def:ec`'s own class, the write-out `BigSentenceCodes`: it bounds only
+the number of digits a poly-time writer must emit and places no bound whatever on a
+token's value, so a stage condition's Gödel code may be exponential in the day.  The
+token-metered `RpnSentenceCodes` is a sufficient subclass, embedded by
+`BigSentenceCodes.ofRpnSentenceCodes`, and is what the cheap witnesses in this file
+happen to build; nothing on the `thm:scon` lane requires it.
 
-The narrowing is load-bearing, not cosmetic.  `thm:scon`'s conditioned-trader transport
-consumes this certificate as **emission data**, not as an opaque predicate:
-`CondStep.machineSentenceBlocks_of_rpn` destructures it into a `PolySegStream`, obtains a
-clocked token schedule from `PolySegStream.clockedTokens_certificate`, and runs
-`TraderMachine.traderOutput`, whose digit clamp is the identity only because the stream
-bounds each token's value (`CondStep.mem_digitize_le_four`).  A write-out stream supplies
-no such clock, so widening this field is not a statement change but a
-`BigSentenceCodes → CondStep.MachineSentenceBlocks` re-blocking that has to be proved in
-`FP` — the open precondition recorded in `KNOWLEDGE.md`, at the scale of `CondStep.lean`'s
-own `_mem_FP` suite rather than of a lemma.
+The certificate is consumed as **emission data**, not as an opaque predicate:
+`CondStep.machineSentenceBlocks_of_big` destructures it, clocks the digitization of its
+block stream through `BigTokenStream.digitizeStream`, and runs
+`TraderMachine.traderOutput`.  The digit clamp there is the identity because the clamped
+object is a list of base-4 digits and terminators (`CondStep.mem_digitize_le_four`) — not
+because token values are bounded — which is exactly why the write-out class suffices.
 Paper node: `thm:scon`, `def:ec` -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
-  condition_codes : RpnSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
+  condition_codes : BigSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
 
 /-- **Inhabitation only, and degenerate.**  The compact operational interface is inhabited by
 the constantly empty deductive process, whose stage program and empty-conjunction program
@@ -190,7 +182,7 @@ lemma compactConditioningProcessComputation_nonempty :
   refine ⟨extra, ⟨{
     code := Nat.Partrec.Code.const (Encodable.encode (∅ : Finset Sentence))
     code_spec := fun n ↦ by simp [extra]
-    condition_codes := RpnSentenceCodes.ofPolySentenceCodes
+    condition_codes := BigSentenceCodes.ofPolySentenceCodes
       ⟨_, (PolyFueled.const
         (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))).of_eq
           (fun n ↦ by simp [extra])⟩ }⟩⟩
@@ -222,13 +214,15 @@ conjunction thereafter.  Its condition-code certificate is a two-way dispatch of
 sentence-block streams, which is what keeps this witness cheap.
 
 It is an *eventually constant* growing process, and deliberately so.  An unboundedly growing
-one — say `extra.D n = {atom 0, …, atom (n-1)}` — is not reachable at this cost: the
-`n`-conjunct condition has code exponential in its symbol count, so the whole-value
-interface `PolySentenceCodes` is unavailable by construction, and the token-metered route
-`RpnSentenceCodes.ofCanonical` needs a variable-width *conjunction* block combinator
-(`RpnSentenceCodes.bigOr` is the disjunction analogue, and `Finset.conj` is `conj₂` of the
-`toList`, which has no `⊤` terminator to close the chain on) together with an emitter for
-the `Finset.toList` order.  Neither exists here.
+one — say `extra.D n = {atom 0, …, atom (n-1)}` — is not reachable at this cost, though
+the obstruction is no longer the *value* one.  The write-out class removes that half: a
+condition whose code is exponential in its symbol count is admissible here, so
+`PolySentenceCodes`' unavailability by construction no longer bites.  What is still
+missing is the *shape* combinator — `BigSentenceCodes.ofCanonical` would need a
+variable-width **conjunction** block emitter (`RpnSentenceCodes.bigOr` is the disjunction
+analogue, and `Finset.conj` is `conj₂` of the `toList`, which has no `⊤` terminator to
+close the chain on) together with an emitter for the `Finset.toList` order.  Neither
+exists here.
 -/
 
 /-- The atoms adjoined by `growingConditionProcess`. -/
@@ -300,11 +294,11 @@ noncomputable def growingConditionProcessComputation :
     exists_growingConditionProcessCode.choose_spec⟩
 
 private lemma growingConditionProcess_condition_codes :
-    RpnSentenceCodes fun n => deductiveStageCondition (growingConditionProcess.D n) :=
-  (RpnSentenceCodes.ifZero
-      (RpnSentenceCodes.const
+    BigSentenceCodes fun n => deductiveStageCondition (growingConditionProcess.D n) :=
+  (BigSentenceCodes.ifZero
+      (BigSentenceCodes.const
         (deductiveStageCondition ({growingConditionAtom 0} : Finset Sentence)))
-      (RpnSentenceCodes.const (deductiveStageCondition
+      (BigSentenceCodes.const (deductiveStageCondition
         ({growingConditionAtom 0, growingConditionAtom 1} : Finset Sentence)))
       PolyFueled.id).of_eq (fun n => by
     cases n with
@@ -392,7 +386,7 @@ noncomputable def fixedConditioningPresentation
     ConditioningPresentation DP (fixedConditionProcess ψ) where
   condition := fun _ => ψ
   condition_codes :=
-    RpnSentenceCodes.ofPolySentenceCodes
+    BigSentenceCodes.ofPolySentenceCodes
       ⟨Nat.Partrec.Code.const (Encodable.encode ψ),
         (PolyFueled.const (Encodable.encode ψ)).of_eq (fun _ => rfl)⟩
   holds_condition := by

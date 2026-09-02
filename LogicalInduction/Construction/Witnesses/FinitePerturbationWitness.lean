@@ -714,6 +714,15 @@ read-through page: `thm:ifp` is the one node whose printed statement is false, a
 canonical public view of it must lead with this theorem and with the corrected
 replacement `FreezeOracle.machine_lic_iff_of_recognizableSupport`.  See
 `notes/paper-errata.md` PE1.
+
+**Why the corrected theorem does not re-derive this one.**  The perturbation built here
+moves one whole pricing row, hence infinitely many `(day, sentence)` coordinates, so it
+fails `FiniteSupportPerturbation` — which is what the corrected theorem assumes.  The two
+hypotheses separate in the direction that matters:
+`FiniteSupportPerturbation.tail_agree` gives finite coordinate support ⇒ eventual day
+agreement, and `tailAgree_not_finiteSupport` shows the converse fails (both in
+`Properties/FinitePerturbations.lean`).  So the corrected statement is strictly weaker in
+hypothesis-strength terms *and* strictly outside the region this refutation covers.
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
 theorem not_overgeneral_ifp :

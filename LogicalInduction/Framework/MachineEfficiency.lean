@@ -74,9 +74,17 @@ serialization. Both transport theorems now exist.
 * `thm:scon` — **complete at the machine quantifier**, in all three forms.
   `CondStep.conditionedTranslation_preserves_machine` and
   `eventualConditionedTranslation_preserves_machine` are the `Complexity.FP` transports,
-  under the same `RpnSentenceCodes` hypothesis on the condition as their fuel counterparts
-  (`RpnSentenceCodes`, not `BigSentenceCodes`: the conditioning compiler destructures a
-  `PolySegStream` out of the hypothesis, which the write-out class does not supply);
+  under the same `BigSentenceCodes` hypothesis on the condition as their fuel counterparts
+  (`RpnConditioning.conditionedTranslation_preserves_ecRpn` and its eventual form — the
+  `Rpn` there names the RPN *symbol model* the compiler emits in, not the sentence class).
+  `BigSentenceCodes` is `def:ec`'s own write-out class, in which a condition's Gödel code
+  may be exponential in the day; what carries it into the transducer is
+  `CondStep.machineSentenceBlocks_of_big`, running on `BigTokenStream.digitizeStream`
+  (`Framework/WriteOut.lean`).  An earlier edition of this paragraph said the transports
+  had to take the narrower `RpnSentenceCodes` because the conditioning compiler
+  destructures a `PolySegStream` the write-out class does not supply; that diagnosis was
+  wrong and is retracted — the canonical digitization of a write-out token stream *is* a
+  `PolySegStream`.
   `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
   `lic_conditioned_eventual_machine` are the endpoints. The fuel endpoints and their
   witnesses are untouched beside them.

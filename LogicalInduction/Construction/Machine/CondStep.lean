@@ -2480,8 +2480,12 @@ lemma condOutputW_mem_FP (ε : ℚ) {B Wf Sf : List Bool → List Bool}
 The splicing emitter concatenates the condition block with other fragments, so it needs the
 oracle's word to carry a whole number of complete blocks — `MachineSentenceCodes` fixes only
 the *decode*, which does not constrain the raw word's block structure.  No strengthening of
-the hypothesis is needed in practice: the machine witness `RpnSentenceCodes.toMachine`
-builds is `traderOutput`, whose word is literally `digitsToBits (digitize ·)`. -/
+the hypothesis is needed: for **any** write-out certificate the word is
+`digitsToBits (digitize ·)` of the certificate's own token stream, and the downstream digit
+clamp `min · 4` is the identity on it because the object is a list of base-4 digits and
+terminators (`mem_digitize_le_four`) — *not* because the stream's token values are bounded.
+`BigTokenStream.digitizeStream` supplies the clocked digit stream in the write-out class,
+so `MachineSentenceBlocks` is produced from `def:ec`'s own sentence class. -/
 
 /-- The machine reading of `𝓔𝓒`, with the block discipline the splicing emitter needs. -/
 def MachineSentenceBlocks (ψ : ℕ → Sentence) : Prop :=
@@ -2497,11 +2501,12 @@ lemma mem_digitize_le_four (ts : List ℕ) : ∀ d ∈ digitize ts, d ≤ 4 := b
   · exact le_of_lt (natDigits4_lt t d hd)
   · simp at hd; omega
 
-/-- **Every fuel-metered efficient sentence sequence is machine-metered, block-complete.**
-The word `RpnSentenceCodes.toMachine` produces is `digitsToBits (digitize ·)` with its
+/-- **Every write-out efficient sentence sequence is machine-metered, block-complete.**
+The word produced is `digitsToBits (digitize ·)` of the certificate's block stream, with its
 digits already below the clamp, so the clamp is the identity on it and the block structure
-survives. -/
-lemma machineSentenceBlocks_of_rpn {ψ : ℕ → Sentence} (h : RpnSentenceCodes ψ) :
+survives.  The digit stream is clocked by `BigTokenStream.digitizeStream`, which needs no
+bound on token values.  Kind `P`, provenance (a). -/
+lemma machineSentenceBlocks_of_big {ψ : ℕ → Sentence} (h : BigSentenceCodes ψ) :
     MachineSentenceBlocks ψ := by
   obtain ⟨s, hs, hp⟩ := h
   obtain ⟨lc, tc, a, k, hclk⟩ := PolySegStream.clockedTokens_certificate hs.digitizeStream
@@ -2536,17 +2541,24 @@ a *machine*-efficient trader is machine-efficient.  The witness is the four pass
 run on the packed word `pair (F x) x` so that the transduction can read the trading day off
 the machine's own input; correctness is the class-agnostic core
 `RpnConditioning.strategyOfTokens_rpnConditionOutput`, applied to the token stream the
-source word denotes.
+source word denotes. -/
 
-The `ψ` hypothesis is `RpnSentenceCodes`, exactly as in the fuel-class counterpart
-`conditionedTranslation_preserves_ecRpn`, so nothing about the sentence sequence is weakened;
-the trader hypothesis is the *machine* class, so the theorem is strictly stronger there.
+/-- **Closure under conditioning at the paper's own trader class, gated form**: the
+conditioned translation of a machine-efficient trader is machine-efficient.
+
+The `ψ` hypothesis is `BigSentenceCodes` — `def:ec`'s own write-out sentence class, in which
+a condition's Gödel code may be exponential in the day — exactly as in the fuel-class
+counterpart `RpnConditioning.conditionedTranslation_preserves_ecRpn` (whose `Rpn` names the
+RPN *symbol model* the compiler emits in, not the sentence class), so nothing about the
+sentence sequence is weakened; the trader hypothesis is the *machine* class, so the theorem
+is strictly stronger there.
+Kind: `P` proved; provenance: (a) derived in-project.
 Paper node: `thm:scon` -/
 theorem conditionedTranslation_preserves_machine
-    (ψ : ℕ → Sentence) (hψ : RpnSentenceCodes ψ) (ε : ℚ)
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : MachineEfficientTrader T) :
     MachineEfficientTrader (T.conditionedTranslation ψ ε) := by
-  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_rpn hψ
+  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_big hψ
   obtain ⟨F, hF, hFspec⟩ := hT
   refine ⟨fun x => condOutputW ε B sndBlock fstBlock (pair (F x) x),
     mem_FP_withInput hF
@@ -2842,16 +2854,19 @@ private lemma ifConstLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ 
 /-- **Closure under conditioning at the paper's own trader class, finite-zero form**: the
 eventual conditioned translation of a machine-efficient trader is machine-efficient.
 
-As with the gated form, the `ψ` hypothesis is `RpnSentenceCodes`, the same one the fuel
-counterpart `eventualConditionedTranslation_preserves_ecRpn` takes, and the trader
-hypothesis is the machine class.
+As with the gated form, the `ψ` hypothesis is `BigSentenceCodes` — `def:ec`'s own write-out
+sentence class — the same one the fuel counterpart
+`RpnConditioning.eventualConditionedTranslation_preserves_ecRpn` takes (whose `Rpn` names
+the RPN *symbol model*, not the sentence class), and the trader hypothesis is the machine
+class.
+Kind: `P` proved; provenance: (a) derived in-project.
 Paper node: `thm:scon` -/
 theorem eventualConditionedTranslation_preserves_machine
     {P : History} {ψ : ℕ → Sentence}
-    (F : EventualConditioningFloor P ψ) (hψ : RpnSentenceCodes ψ)
+    (F : EventualConditioningFloor P ψ) (hψ : BigSentenceCodes ψ)
     (T : Trader) (hT : MachineEfficientTrader T) :
     MachineEfficientTrader (T.eventualConditionedTranslation F) := by
-  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_rpn hψ
+  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_big hψ
   obtain ⟨G, hG, hGspec⟩ := hT
   refine ⟨fun x =>
     (if F.cutoff ≤ (sndBlock (pair (G x) x)).length then
@@ -2899,7 +2914,7 @@ theorem eventualConditionedTranslation_preserves_machine
 #print axioms LogicalInduction.CondStep.acceptsW_mem_FP
 #print axioms LogicalInduction.CondStep.decodeBits_condOutputW
 #print axioms LogicalInduction.CondStep.condOutputW_mem_FP
-#print axioms LogicalInduction.CondStep.machineSentenceBlocks_of_rpn
+#print axioms LogicalInduction.CondStep.machineSentenceBlocks_of_big
 #print axioms LogicalInduction.CondStep.mem_zeroDays_clamp
 #print axioms LogicalInduction.CondStep.decodeBits_zeroCondOutputW
 #print axioms LogicalInduction.CondStep.zeroCondOutputW_mem_FP

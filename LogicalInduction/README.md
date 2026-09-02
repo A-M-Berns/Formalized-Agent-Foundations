@@ -81,10 +81,29 @@ for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for machine cod
 `n`-bit string, and the Gödel code of a sentence naming an `n`-bit machine are all admissible,
 as they are for the paper. Value-bounded metering would exclude them, and that exclusion is
 proved rather than argued (`bigDigits_two_pow_not_polyNatCodes`,
-`not_polySentenceCodes_bitPrefixSentence`, and three more). One retention is left on the
-paper-facing surface and is disclosed at its node: `thm:scon`'s conditioning certificate asks
-for the narrower `RpnSentenceCodes` on the *condition*, which restricts which conditioning
-data a caller may supply and does not touch what is concluded.
+`not_polySentenceCodes_bitPrefixSentence`, and three more). The conditioning lane's retention is gone: `thm:scon`'s
+conditioning certificate used to ask for the narrower `RpnSentenceCodes` on the *condition*,
+and now asks for `BigSentenceCodes` like everything else.
+
+Token-metered retentions do, however, remain on the paper-facing surface, and they are all
+in the LUV **threshold** interfaces — `LUV.RpnThresholdCodes` and `LUV.RpnThresholdCodeSeq`,
+which unfold to `RpnSentenceCodes` on the threshold family `⌜Xₙ > i/k⌝`, so a census that
+greps signatures for `RpnSentenceCodes` does not see them. `LUVCombinationSyntax.threshold_poly`
+is a Tier-2 frozen field reached by the canonical `_ofSyntax` endpoints, so that one is *on*
+the endpoint census; beside it sit `ConvergencePresentation.threshold_code`, the direct
+threshold binders on the `thm:expcoh` / `thm:perexpkno` / `lic_expectation_provind*`
+endpoints and the affine tail, and the quote certificates of `thm:cee`, `thm:ceu`,
+`thm:ccee`, `thm:epr` and `thm:er`. The write-out counterpart `LUV.BigThresholdCodeSeq`
+exists (`Framework/Expectations.lean`) and `lic_self_trust_closed`'s quote codes were
+migrated to it; the rest have not been. Why this is a *rendering sensitivity* rather than a
+narrowing of the paper's admissible LUVs — along the threshold route what is metered is a
+formula string over a fixed finite alphabet (`0..19`), so the per-token *value* clause is vacuous
+and the class is exactly polynomial length — is worked out in
+`scripts/coverage-classification.md`, section *LUV-threshold metering: rendering
+sensitivity, witnessed*. The obstruction recorded for that retention was mis-diagnosed — the machine
+transducer's digit clamp is the identity because the clamped object is a list of base-4
+digits, not because token values are bounded — and the widening cost one lemma,
+`BigTokenStream.digitizeStream`.
 
 The paper is explicit, immediately after `def:ec`, that its framework "is not wedded to this
 definition" and that a different efficiency class with suitable closure properties yields
@@ -176,9 +195,13 @@ both are stated in full at their modules and in the glossary in `LogicalInductio
 The paper builds one market over one deductive process and prices every §4 property in it. So
 does this development: every canonical endpoint whose statement names a market names
 `liaHistory (paperDP T)`, where `paperDP T` is the union of the theorem enumeration and the
-literal quotation stream. There is **one documented exception**: `thm:ccee` is priced over
-`canonicalCCEEDP T`, by ruling, because the fixed enlarged language that lane needs for exact
-semantic multiplication puts it outside the shared one.
+literal quotation stream — `thm:ccee` included, since the exact same-market endpoint
+`lic_no_expected_net_update_conditional_paperLUV_closed` landed. One canonical endpoint is
+still *priced* outside the shared market: `thm:ccee`'s
+`lic_no_expected_net_update_conditional_exact_canonical`, over `canonicalCCEEDP T`, whose
+fixed enlarged language is what buys exact semantic multiplication for an arbitrary
+*threshold-only* source. It is retained as the generalized semantic-extension form of the
+theorem, not as the paper rendering.
 
 The §4 content is carried in two layers, and both are inventoried. The **generic carriers**
 (`lic_provind_true`, `lic_introspection`, …) quantify over any market with
@@ -222,14 +245,17 @@ non-vacuously satisfiable.
   `thm:dus` and `thm:strict` quantify over are constructed rather than assumed.
 * **Genuine modeling boundaries**, all disclosed above and at their statements: the fuel
   calculus is a certification device whose relation to polynomial time is one-directional; the
-  corrected `thm:ifp` retains a `Recognizable` condition on the syntax of the moved sentences,
-  standing for two `Complexity.FP` primitives this toolkit lacks (integer square root; a
-  structured-payload parser) — the unrestricted finite-support statement is, as far as this
-  development can tell, true, and is unproved here; the fuel-class perturbation certificates
-  `EfficientPrefixPatch` and `FiniteSupportPatch` are **uninhabited**, which is why the machine
-  form is the one to use; and `thm:ccee`'s `dd:mesh` reading carries a per-day reflection slack
-  in an explicit `slack` field, with an exact (`slack = 0`) endpoint available over the renamed
-  process — the two are incomparable, and you choose by which market you need.
+  corrected `thm:ifp` carries **no** condition on the syntax of the moved sentences.  Both
+  halves of the former `Recognizable` condition stood for missing `Complexity.FP` devices,
+  and both devices were built rather than assumed away: `DigitFP.sqrtRemW_mem_FP` and
+  `DigitFP.unpairW_spec` put base-4 integer square root and `Nat.unpair` in `Complexity.FP`
+  with `FiberTest.fiberW_mem_FP` the escape-leaf decode test on them (retiring `BotFree`),
+  while `PayAuto` decides the structured payload language of a fixed formula code and
+  `CtrAuto.ctrMachine` the structured block's `aⁿbⁿ` unary length field (retiring
+  `NoReserved`).  What is disclosed in their place is a property of the construction rather
+  than of the statement: the recognizer is compiled per frozen sentence, so its
+  polynomial-time constants depend on that sentence — the paper's own "finitely many
+  constants can be hard-coded", sound exactly because the support is finite.
 
 For the theorem-by-theorem correspondence and the exact strength classification of every node,
 see [`scripts/coverage-classification.md`](../scripts/coverage-classification.md) and the
@@ -271,7 +297,10 @@ A handful of names to orient by:
 * `lic_provind`, `lic_persistence_of_knowledge`, `lic_lex_tendsto_zero`, … — the §4 library,
   named after the paper's labels.
 * `lic_conditioned_machine` — closure under conditioning (`thm:scon`).
-* `lic_iff_of_recognizableSupportPerturbation` — the corrected `thm:ifp`.
+* `lic_iff_of_finiteSupportPerturbation_machine` — the corrected `thm:ifp` (its strongest
+  form is `FreezeOracle.machine_lic_iff_of_finiteSupport`; the older
+  `lic_iff_of_noReservedSupportPerturbation` and
+  `lic_iff_of_recognizableSupportPerturbation` are compatibility corollaries).
 
 ## Where the accounting lives
 

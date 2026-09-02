@@ -74,27 +74,23 @@ sentence slot.  This is the token model the finite-support freeze needs, and the
 `Construction/Witnesses/FreezeStep.lean`.
 
 **Where the corrected theorem now stands.**  `MachineFiniteSupportPatch` is inhabited, and
-not by a caller-supplied witness: `FreezeOracle.machineFiniteSupportPatch_ofRecognizable`
-compiles it from the market's own computability certificate and the coordinate set alone.
-So the patch is no longer a hypothesis of the public statement —
-`FreezeOracle.machine_lic_iff_of_recognizableSupport` asks for finite support, computability
-of both markets, and a **syntactic** condition on the finitely many sentences whose price
-moves (`Recognizable`), and nothing else.
+not by a caller-supplied witness: `FreezeOracle.machineFiniteSupportPatch` compiles it from
+the market's own computability certificate and the coordinate set alone.  So the patch is no
+longer a hypothesis of the public statement, and neither is anything about the moved
+sentences — `FreezeOracle.machine_lic_iff_of_finiteSupport` asks for finite support and
+computability of both markets, and nothing else.
 
-Three things that remain true, and are not softened by the above:
+Two things that remain true, and are not softened by the above:
 
 * `FiniteSupportPatch` and `EfficientPrefixPatch` — the *fuel-class* certificates — are
   still uninhabited, because the fuel calculus does not close over the escape-leaf decode
   (`dd:fuel`; see `Construction/Witnesses/RpnFreeze.lean`).  Only the machine-class
   certificate is discharged.
-* `Recognizable` is representation residue, not mathematics.  The unrestricted statement is
-  true and unproved here; `FreezeOracle`'s boundary note gives the two missing `FP`
-  primitives it stands for.
 * The theorem is non-vacuous *and* informative.
   `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of genuinely different
   computable markets, so the antecedent is satisfiable; and
   `LIAPerturbation.machineLogicalInductor_liaPerturbed` puts it to work — `liaHistory DP` is
-  a machine logical inductor, and moving one price at a `Recognizable` coordinate yields a
+  a machine logical inductor, and moving one price at an arbitrary coordinate yields a
   market that still is, *by this theorem and nothing else*.  The price change is proved
   nonzero (`LIAPerturbation.liaPerturbed_ne`).  That instance inherits `Construction/LIA.lean`'s
   own two hypotheses — the LIA market program and a computable deductive process — which
@@ -1088,7 +1084,13 @@ theorem lic_iff_of_finitePerturbation
 def FiniteSupportPerturbation (P P' : History) : Prop :=
   ∃ S : Finset (ℕ × Sentence), ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
 
-/-- Finite support is *strictly stronger* than the paper's tail-agreement hypothesis. -/
+/-- Finite support is *strictly stronger* than the paper's tail-agreement hypothesis.
+
+Half of the separation that keeps the corrected `thm:ifp` honest; the other half, that the
+converse fails, is `tailAgree_not_finiteSupport` below.
+
+Proof kind: `P` proved.  Provenance: (b) `Finset.le_sup`.
+Paper node: `app:ifp` -/
 lemma FiniteSupportPerturbation.tail_agree {P P' : History}
     (h : FiniteSupportPerturbation P P') :
     ∃ N : ℕ, ∀ d, N ≤ d → ∀ φ, P d φ = P' d φ := by
@@ -1099,6 +1101,46 @@ lemma FiniteSupportPerturbation.tail_agree {P P' : History}
   have : d ≤ (S.image Prod.fst).sup id :=
     Finset.le_sup (f := id) (Finset.mem_image.2 ⟨(d, φ), hmem, rfl⟩)
   omega
+
+/-- **And it is *strictly* stronger: the converse fails.**  Two markets can agree from day
+one onward and still differ at infinitely many `(day, sentence)` coordinates — a single
+rewritten pricing row already does it, because a day's fibre is infinite.
+
+This is the separation that keeps the corrected `thm:ifp` honest.  The published theorem
+hypothesises *eventual day agreement*; that statement is refuted here
+(`FinitePerturbationCounterexample`).  What is proved instead assumes finite **coordinate**
+support, and the implication runs one way only:
+
+```
+finite coordinate support  ⇒  eventual day agreement   (tail_agree)
+eventual day agreement     ⇏  finite coordinate support (this lemma)
+```
+
+So the corrected theorem cannot accidentally re-derive the false one.  It also locates
+exactly where the paper's own "only finitely many constants are needed, and can be
+hard-coded" argument becomes valid: under finite coordinate support the frozen table really
+is a finite list of `(day, sentence, price)` rows, whereas under mere day agreement the
+rewritten row carries infinitely many prices and no such table exists.
+
+Proof kind: `N-` negative witness.  Provenance: (a) `Infinite.exists_notMem_finset`;
+(b) `LO.Propositional.Formula.atom` injective.
+Paper node: `app:ifp` -/
+lemma tailAgree_not_finiteSupport :
+    ∃ P P' : History, (∀ d, 1 ≤ d → ∀ φ, P d φ = P' d φ) ∧
+      ¬ FiniteSupportPerturbation P P' := by
+  classical
+  haveI : Infinite Sentence :=
+    Infinite.of_injective (LO.Propositional.Formula.atom (α := ℕ))
+      (fun _ _ h => LO.Propositional.Formula.atom.inj h)
+  refine ⟨fun _ _ => 0, fun d _ => if d = 0 then 1 else 0, ?_, ?_⟩
+  · intro d hd _
+    show (0 : ℝ) = if d = 0 then 1 else 0
+    rw [if_neg (by omega)]
+  · rintro ⟨S, hS⟩
+    obtain ⟨φ, hφ⟩ := Infinite.exists_notMem_finset (S.image Prod.snd)
+    have hmem : (0, φ) ∉ S := fun hc => hφ (Finset.mem_image.mpr ⟨(0, φ), hc, rfl⟩)
+    have h0 := hS 0 φ hmem
+    simp at h0
 
 namespace Strategy
 

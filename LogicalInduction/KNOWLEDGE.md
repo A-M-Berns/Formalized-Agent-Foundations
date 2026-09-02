@@ -124,11 +124,127 @@ name does not say what the object is.
 
 **FINAL-audit verification records (lenses A/B/D, 2026-08-31) — cleared suspicions, do not re-raise.** Criterion core: `EF.rank` is a sound over-approximation (safe, denotationally lossless); the rank-soundness lemmas live in `Construction/MarketMaker.lean:1309-1328`, NOT Criterion.lean. `thm:li` delivers a genuine `def:belseq`. thm:lp's diagonal is real Kleene recursion (`parameterizedDiagonalQuoteCodeOfMarket_public_fixedpoint`). `hworld` on every §4 endpoint is NECESSARY (stage-unsatisfiable processes make the criterion vacuous — `isLogicalInductor_of_stage_unsatisfiable`). `HasROI`'s Summable clause is load-bearing (Mathlib tsum of divergent series = 0) and disclosed; not canonical. thm:obu: read the `_ofCE` endpoint (paper's own premise; `EfficientRepeatedEnumeration.ofCE` dovetails). thm:benford at thm:prand strength (patience-restricted quantifier = weaker hypothesis). `limitingBelief`/`expectInf` are TOTAL limsup stand-ins proved equal to genuine limits under the inductor hypotheses. `AffineQuoteEq.future_coherent` is derived on the closed lane, not assumed. Pseudorandom's `DeferralPatient` narrows a ∀-hypothesis = strengthens. paperDP publishes only on T-provability (nothing smuggled as bare literals); its two components use DISJOINT atom families, so 'm halts on x' has two unrelated propositional representations in the one market. CCEE's `source_valued` over theoremDP-worlds is a STRONGER premise (superset of worlds), and the form the proof needs. The suffix ladder in practice: `_ofX` conditional / `_unconditional` discharged over paperDP / `_closed` also constructs the quote-portfolio; canonical names are the innermost discharged form, often in `Construction/Witnesses/` not `Properties/`. `lint_paper_labels` enforces theorem⇒label only, not label⇒claim: construction machinery `theorem`s carrying `def:ec` are a disclosed convention. `machine_lic_iff_of_recognizableSupport` covers finite COORDINATE support, not the paper's finitely-many-DAYS — deliberately, since the whole-day case is exactly what `not_overgeneral_ifp` refutes. `kappaU` is safe only because `uLenSet` is provably nonempty — preserve `uLenSet_sInf_mem` under any refactor.
 
-**FINAL-audit lens C verification records.** The write-out migration is complete on the day-indexed surface EXCEPT the two disclosed token-metered retentions (thm:st's hφ; conditioning's condition_codes — AxiomAudit:1929-1946). Cleared traps: `PrefixMachinePresentation`'s whole-value + surjective pair is satisfiable because `prefixSentenceEnum` is indexed BY the code (`encode (sentence n) ≤ n` — the trap needs index ≪ code); `LUV.RpnThresholdCodeSeq` on paper LUVs avoids emitting exponential codes because `structuredPaperSourceDecomposeAll_rpnSentenceCodes` emits the SOURCE block and `parseRpn` contracts to the tag atom; `codeEvalnNat_polyFueled` is true despite bounding values — Mathlib's `evaln` guards `n < k` at every prec/rfind', so `codeEvalBound` is poly in fuel for fixed code. Client-probe compiles verified for pac/pazfc/ob/expcoh at named theories. Missing convenience: no `PaperLUVCombination.worldValued` — clients hand-assemble via `paperTheoryDP_subset_paperDP` + Classical.epsilon (four-line recipe verified). The `not_polySentenceCodes_bitPrefixSentence` emptiness proof is the MODEL for discharging the metering trap — ask for the emptiness proof, not an inhabitation proof, when a value-metered field appears on day-indexed syntax. Full verified-inhabitant table is in the lens-C report (verdicts-FINAL context).
+**FINAL-audit lens C verification records.** The write-out migration is complete on the day-indexed surface EXCEPT the two disclosed token-metered retentions (thm:st's hφ; conditioning's condition_codes — AxiomAudit:1929-1946). <!-- SUPERSEDED 2026-09-02: conditioning's condition_codes is now BigSentenceCodes (retention GONE); the surviving token-metered carriers are the LUV threshold classes, several ON the canonical census. See the "Post-merge strengthenings (2026-09-02)" section. --> Cleared traps: `PrefixMachinePresentation`'s whole-value + surjective pair is satisfiable because `prefixSentenceEnum` is indexed BY the code (`encode (sentence n) ≤ n` — the trap needs index ≪ code); `LUV.RpnThresholdCodeSeq` on paper LUVs avoids emitting exponential codes because `structuredPaperSourceDecomposeAll_rpnSentenceCodes` emits the SOURCE block and `parseRpn` contracts to the tag atom; `codeEvalnNat_polyFueled` is true despite bounding values — Mathlib's `evaln` guards `n < k` at every prec/rfind', so `codeEvalBound` is poly in fuel for fixed code. Client-probe compiles verified for pac/pazfc/ob/expcoh at named theories. Missing convenience: no `PaperLUVCombination.worldValued` — clients hand-assemble via `paperTheoryDP_subset_paperDP` + Classical.epsilon (four-line recipe verified). The `not_polySentenceCodes_bitPrefixSentence` emptiness proof is the MODEL for discharging the metering trap — ask for the emptiness proof, not an inhabitation proof, when a value-metered field appears on day-indexed syntax. Full verified-inhabitant table is in the lens-C report (verdicts-FINAL context).
 
 **FINAL-audit additional confirmed defects (fix wave F7/F8):** thm:lp's four width binders are DEAD — a width-free derivation COMPILES (internal width (2^n)⁻¹ + digitRatCodes_two_pow_inv); collapse to the width-free statement. The thm:dus/thm:strict boundary's sole inhabitant lives over `emptyBitDeductiveProcess` (every stage ∅, realizable vacuous) signposted as "the non-vacuity witness" without the house degeneracy caveat; the row discloses Θ=∅ as degenerate but the witness/audit notes don't; stretch fix = IndependentBitAtoms over paperDP via payload-tag disjointness.
 
 **FINAL fix wave landed (VERIFIED, 9072691+785e202).** F1 duplicate Prop instances deleted (Mathlib cited). F3/PE2 declared at all three statements (the mirror half was SILENT — a second unlisted defect, now declared). F4 mixed-truth witness `alternatingFeedbackTruthComputation_nonempty` LANDED (~75 lines; the old "no non-constant certificate available" docstring was a scope error — finitely-valued streams need only constant codes + ifzSel; family has EIGHT endpoints, not five). F5 `lic_self_trust_closed` widened to `BigSentenceCodes` (token form consumed NOWHERE on the lane; `LUV.BigThresholdCodeSeq` built + `.toBig`/`.reindex`; `indicatorProductLUV_bigThresholdCodeSeq` collapsed rename). F6 STALLED-DISCLOSED: conditioning is the ONLY token-metered retention left — `machineSentenceBlocks_of_rpn` opens the certificate as emission data and its digit clamp is the identity only under a VALUE-bounded stream; widening = BigSentenceCodes→MachineSentenceBlocks re-blocking in FP (~50 lemmas); false def:ec claims corrected at BOTH sites incl. the sibling at Properties/Conditioning.lean:1805. F7 thm:lp width binders collapsed (width-free takes the plain name; the QuotationAffine conditional twin KEEPS its widths — genuinely consumed). F8: empty-process witnesses re-signposted "inhabitation only" AND the stretch landed — `bitAtomTag := 7`, `paperIndependentBitAtoms` with substantive realizability over paperDP, plus `lic_domination_dovetailSemimeasure_paperDP`/`lic_domination_everyLowerSemicomputable_paperDP` closing thm:dus with NO caller input (the "no DUSApproximationPresentation witness" claim was a namespaced-grep false negative — `Dovetail.dusApproximationPresentation` exists and was already consumed). Atom-tag registry: product 3, semanticPrime 4, paperPrime 5, oldLanguage 6, bitAtom 7; NEXT FREE = 8; each carries a freshness lemma.
+
+## Post-merge strengthenings (2026-09-02) — scon / ccee / ifp
+
+A harness run after PR #9 landed three representation-level strengthenings on the frozen
+surface. **This section supersedes earlier prose where they conflict.**
+
+**RETRACTIONS (earlier entries in this file are now false — do not act on them):**
+
+- **"A write-out stream supplies no clock."** FALSE, on both halves. The `thm:scon`
+  conditioning lane was widened from `RpnSentenceCodes` to `BigSentenceCodes` (def:ec's own
+  write-out class) by **one ~12-line lemma**, `BigTokenStream.digitizeStream : BigTokenStream
+  t → PolySegStream (fun n ↦ digitize (t n))` (`Framework/WriteOut.lean`), proved from
+  `PolySegStream.undigitizeTokens` + `BigDigits.blockSeg` + `concatVar`. The old F6
+  STALLED-DISCLOSED claim (a `BigSentenceCodes → MachineSentenceBlocks` FP re-blocking "at
+  the scale of ~50 `_mem_FP` lemmas") was a **mis-diagnosis**: `CondStep.mem_digitize_le_four`
+  bounds `digitize ts` for an *arbitrary* token list (the clamp re-reads DIGITS, it does not
+  bound a VALUE), and the write-out certificate carries its own clock. Lesson: before
+  recording a metering retention as forced, check whether the clamp bounds a value or re-reads
+  digits.
+- **`machineSentenceBlocks_of_rpn` → `machineSentenceBlocks_of_big`** (old name GONE);
+  **`EfficientRepeatedEnumeration.ofRpn` → `.ofBig`** (takes `BigSentenceCodes`; the earlier
+  "keeps its `Rpn` argument and wraps internally" line is stale). Both `condition_codes`
+  structure fields (`ConditioningPresentation`, `CompactConditioningProcessComputation`) are
+  now `BigSentenceCodes`. `RpnSentenceCodes` binds no endpoint on this lane; it survives only
+  as a narrower sufficient subclass via `BigSentenceCodes.ofRpnSentenceCodes`.
+- **"Two token-metered retentions remain on the day-indexed surface" / "the sole survivor
+  anywhere is `LUV.RpnThresholdCodeSeq`."** BOTH stale. The conditioning retention is GONE
+  after the widening. The surviving token-metered carriers are the **LUV threshold classes**
+  (`LUV.RpnThresholdCodeSeq`/`RpnThresholdCodes`, which *unfold to* `RpnSentenceCodes`), and
+  several are **on the canonical census**: `LUVCombinationSyntax.threshold_poly` (a frozen
+  Tier-2 field consumed by the four canonical `_ofSyntax` endpoints — `expcoh_ofSyntax`,
+  `perexpkno_ofSyntax`, `mesh_independence_ofSyntax`, `exppolymax_ofSyntax`), plus
+  `ConvergencePresentation.threshold_code` and the thm:cee/ceu/ccee quote structures.
+  **Census trap:** a signature grep for the string `RpnSentenceCodes` MISSES all of these,
+  because `LUV.RpnThresholdCodes(Seq)` is *defined as* `RpnSentenceCodes` (`Framework/
+  Expectations.lean:157,162`). Grep `RpnThreshold` too, and expand structure fields.
+
+**scon — final state.** Strongest paper-facing conditioning theorems now assume
+`BigSentenceCodes`; `RpnSentenceCodes` retained as a sufficient subclass. The `_ecRpn` /
+`_ecDigit` suffixes on `RpnConditioning.*_preserves_ecRpn` name the *symbol model* the
+compiler emits in (RPN vs digit), NOT a sentence class — both take `BigSentenceCodes`; do not
+"consolidate" them to `_preserves_ec` (it would collide the two lanes). Widening needed zero
+proof-body edits because `hs.digitizeStream` re-resolves by dot notation from
+`PolySegStream.digitizeStream` to the new `BigTokenStream.digitizeStream` (two distinct
+lemmas, same base name — grep both namespaces).
+
+**ccee — final state.** `thm:ccee` now has THREE renderings differing in two dimensions:
+`lic_no_expected_net_update_conditional_paperLUV_closed` (**exact, zero-slack, market
+`liaHistory (paperDP T)`, literal `PaperLUVSeq T` source**, binders `[T.Δ₁] [𝗜𝚺₁ ⪯ T]
+[RepresentsComputations T]` — PA instantiates; the paper rendering, new files
+`PaperExactProduct`/`PaperRepresentedWeight`/`PaperExactCCEE.lean`);
+`lic_no_expected_net_update_conditional_exact_canonical` (exact, arbitrary threshold-only
+source, but market `canonicalCCEEDP T` — retained as the **generalized semantic-extension**
+result, NOT the paper rendering); and `lic_no_expected_net_update_conditional_closed` (mesh
+`dd:mesh` slack `1/(n+1)`, arbitrary source, `paperDP` market — the general-input approximate
+form). `dd:mesh` is a property of the general-input endpoint, not of the node. The product is
+exact for literal LUVs because a `PaperLUV` names its value by an unreduced numerator/
+denominator pair code, so `(a/b)·(c/d)` is named by `(a·c)/(b·d)` (no gcd, no new DP atom);
+the abstract `LUV` interface names no value, which is why mesh exists there. The DP does NOT
+grow for the weight: `paperTheoryDP_covers_outer_provable` is universal, so the representing
+formula `γ` is chosen after `f,w` are fixed. The weight is *represented*
+(`RepresentsComputations` + `polyArithmeticFormulaSeq_subst_numeral`, metering only the day
+numeral), never numeral-rendered (its values are computable but not `2^poly`-bounded).
+`[RepresentsComputations T]` is the paper's own §2 premise (tex:600-606), anti-monotone in `T`
+so it must stay an instance binder; user-accepted per the ccee spec. The `.choose`-built
+weight family is extension-determined (equal-extension weights give identical formulas by
+`rfl`) — benign, and prose must say it represents the weight's *values/pair function*, not its
+*program*.
+
+**ifp — final state.** The corrected finite-perturbation theorem is
+`FreezeOracle.machine_lic_iff_of_finiteSupport`: finite `(day, sentence)`-coordinate support
+(`FiniteSupportPerturbation`, a `Finset` of PAIRS — not finite-days) + `ComputableMarket` on
+both, **no** `Recognizable`/`BotFree`/`NoReserved`, no caller freeze certificate.
+`machine_lic_iff_of_noReservedSupport` / `_of_recognizableSupport` are strictly-weaker
+compatibility corollaries via `.toFiniteSupport`; `machineFiniteSupportPatch` takes no
+condition on `S`. `NoReserved`/`BotFree` were retired by BUILDING the FP machinery they stood
+for, in six new modules (`StructuredPatterns`, `CounterAutomaton`, `PayloadAutomaton`,
+`SegmentAutomaton`, `SegmentCounter`, `SegmentRecognizer`): a per-target recognizer of exactly
+the token runs that `parseRpn` maps to a fixed sentence (characterization
+`StructPat.parseRpn_iff_segMatch`, both directions proved). `NoReserved` was actually TWO
+devices — the aⁿbⁿ unary length field (a counter machine `CtrAuto.ctrMachine`) AND the payload
+language of a fixed formula code (an obligation-stack parser `PayAuto`, finite by a potential
+argument, never evaluated). The published finite-DAYS theorem stays FALSE
+(`not_overgeneral_ifp`, PE1); `tail_agree` + `tailAgree_not_finiteSupport` pin the one-way
+implication so the corrected theorem cannot re-derive the refuted one. **DISCLOSED residual
+(replaces the `NoReserved` disclosure):** the recognizer is compiled *per frozen sentence*, so
+its FP witness carries constants depending on that sentence — the paper's own "finitely many
+constants can be hard-coded" step, sound because the support is finite (the day index enters
+only as the trader-machine input, no per-day blowup). Documented at the FreezeOracle boundary
+note, API, README, errata PE1, coverage-classification. Strictness is proved at the
+PERTURBATION level (`not_recognizableSupport_hardPoint` / `not_noReservedSupport_reservedPoint`
+— note `RecognizableSupportPerturbation` is an existential over `S`, so a sentence-level
+negative alone does not rule the old endpoint out; you must force the differing coordinate into
+every admissible `S` via `pointHistory_ne_at`).
+
+**New non-vacuity witnesses:** `succDeferral : DeferralFunction` (first constructed inhabitant —
+`f := (·+1)`, `code := Nat.Partrec.Code.succ`, `fueled := ⟨1,1,by simp [Nat.Partrec.Code.evaln]⟩`);
+`canonicalCCEE_weight_nonvacuous`. Non-vacuity toolkit for any weight premise
+(`ProductDefinition.lean`): `harmonicWeight_polyRatCodes`/`_mem`/`_not_constant` +
+`PGenerableRat.ofPolyRatCodes` (arbitrary `P` — one line at any market); also
+`pGenerableRat_two_pow_inv P` (returns a conjunction — take `.1`).
+
+**Standing pitfalls surfaced this run** (see also the Pitfalls section): `Semiformula.exs` is
+NOT `∃⁰` (simp/rw keyed on the head symbol); the `“x y z. …”` DSL binds the FIRST named binder
+to `#0`; `Rew.castLE` is the free way to embed a formula at higher arity (preserves token runs,
+so a `def:ec` certificate transports); instance search will not unfold an opaque `def`'s
+structure projection (ascribe the `haveI` type, or `show` through the projection);
+`check-paper-nodes.sh` is fail-closed BOTH ways (Paper-node line ⇔ `#assert_axioms_clean`
+membership) and a `/-! -/` section comment satisfies it while `findDocString?` returns none;
+`Option.some_bind`/`none_bind`/`map_some'` do not exist in this toolchain (real names
+`Option.bind_some`/`map_some`/`map_eq_some_iff`/`bind_eq_some_iff`); `negFormulaCode` is NOT
+involutive on all of ℕ (only on the parser's range — `PayAuto.WFCode`). Machine/harness:
+`safe-lake.sh` counts DISK as a load axis (15 GB floor that never self-clears — override with
+`CLAUDE_MIN_DISK_GB=<n>`), and OOM kills under swap pressure come from GUI apps, not Lean
+(cap with `LEAN_NUM_THREADS`); never `pkill -f 'safe-lake.sh build <target>'` (matches other
+sessions — kill by pid).
 
 ## Settled design decisions
 
@@ -284,6 +400,10 @@ producers: `QuoteCodeOfMarket`, `ProductDefinition`, `SemanticSource`, `Semantic
 with `BigSentenceCodes.ofRpnSentenceCodes` at each Rpn-producer → Big-consumer site.
 `thm:st` is pinned at `Rpn` one level down (no `LUV.BigThresholdCodeSeq` exists).
 `EfficientRepeatedEnumeration.ofRpn` keeps its `Rpn` argument and wraps internally.
+<!-- SUPERSEDED 2026-09-02: `EfficientRepeatedEnumeration.ofRpn` → `.ofBig` (BigSentenceCodes);
+`LUV.BigThresholdCodeSeq` now exists; the conditioning lane is BigSentenceCodes. See the
+"Post-merge strengthenings (2026-09-02)" section above. -->
+
 
 **Strictness ledger (never reprove).** `not_polyFueled_two_pow`, `bigDigits_two_pow_not_polyFueled`,
 `bigTokenStream_not_polySegStream`, `digitRatCodes_two_pow_inv_not_polyRatCodes`,

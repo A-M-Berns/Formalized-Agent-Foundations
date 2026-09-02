@@ -38,6 +38,15 @@ import LogicalInduction.Construction.Witnesses.FreezeOracle
 import LogicalInduction.Construction.Witnesses.LIAPerturbation
 import LogicalInduction.Construction.Witnesses.FreezeStep
 import LogicalInduction.Construction.Witnesses.RpnFreeze
+import LogicalInduction.Construction.Witnesses.RunAutomaton
+import LogicalInduction.Construction.Witnesses.PatternAutomaton
+import LogicalInduction.Construction.Witnesses.StructuredPatterns
+import LogicalInduction.Construction.Witnesses.CounterAutomaton
+import LogicalInduction.Construction.Witnesses.PayloadAutomaton
+import LogicalInduction.Construction.Witnesses.SegmentAutomaton
+import LogicalInduction.Construction.Witnesses.SegmentCounter
+import LogicalInduction.Construction.Witnesses.SegmentRecognizer
+import LogicalInduction.Construction.Witnesses.FiberTestFP
 import LogicalInduction.Construction.Witnesses.StrictSeparators
 import LogicalInduction.Construction.Witnesses.SemanticPrime
 import LogicalInduction.Construction.Witnesses.SemanticQuote
@@ -63,3 +72,6 @@ import LogicalInduction.Construction.Witnesses.PaperLUV
 import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
 import LogicalInduction.Construction.Witnesses.ArithmeticSource
 import LogicalInduction.Construction.Witnesses.FinitePerturbationWitness
+import LogicalInduction.Construction.Witnesses.PaperExactProduct
+import LogicalInduction.Construction.Witnesses.PaperRepresentedWeight
+import LogicalInduction.Construction.Witnesses.PaperExactCCEE
