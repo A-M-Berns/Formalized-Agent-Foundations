@@ -38,7 +38,7 @@ lines of the text extraction; the checker will assert the exact node set (38 hea
 | 4.1 | (unnumbered) | multivalued functions, `id`, `all`, inverse, composition, single-valued | Mathlib `SetRel` |
 | 4.2 | Def 3 | outcome correspondence `Γ ∼_Φ Γ'` | in |
 | 4.2 | Lemma 2 (1–7) | reflexivity, symmetry, transitivity, weakening, `all`, elimination (two forms) | in |
-| 4.2 | (unnumbered) | equivalence relation `R` (∃ single-valued bijection), preorder `⪰` (∃ Pareto-improving Φ) | carriers; `⪰` is the §6 SPI-selection object |
+| 4.2 | (unnumbered) | equivalence relation `R` (∃ single-valued bijection), preorder `⪰` (∃ Pareto-improving Φ) | carriers; `⪰` is a correspondence-level tool, not the §6 selection problem (see §6) |
 | 4.3 | Def 4 | Pareto-improving outcome correspondence | in |
 | 4.3 | **Thm 3** | SPI ⟺ ∃ Pareto-improving outcome correspondence | in (the keystone) |
 | 4.4 | Assumption 1, 2 | elimination; isomorphism | in, as predicates on the representative model |
@@ -53,11 +53,11 @@ lines of the text extraction; the checker will assert the exact node set (38 hea
 | 5.2 | Def 7 | strict full-coordination SPI decision problem | in |
 | 5.2 | Lemma 11 | Pareto-optimality in `C(Γ)` decidable by LP | mathematics in (LP characterization), "polynomial time" *RULING 6* |
 | 5.2 | Prop 12 | Algorithm 1 decides Def 7 | correctness iff in; runtime *RULING 6* |
-| 5.3 | Lemma 13 | WLOG isomorphic-copy token games, conditional-expectation equality | in (needs care, §5 defect D6) |
+| 5.3 | Lemma 13 | WLOG isomorphic-copy token games, conditional-expectation equality | in, on `supp Π(Γ)` (§3.4; D6, D7) |
 | 5.3 | Cor 14 | safely-achievable expected payoffs form a convex polytope | in |
 | 5.3 | Thm 15 | two-player geometric characterization (L1, L2, L3; App. E) | in, **own tranche** (2-D convex geometry) |
 | 5.3 | Prop 16 | a Pareto improvement with no perfect-coordination SPI (Table 7) | in; needs a constructed Π with prescribed play probabilities (§3.6) |
-| 6 | — | SPI selection problem: prose only, no nodes | no node; the `⪰` preorder, maximal SPIs and symmetric SPIs get carriers as the research hook |
+| 6 | — | SPI selection problem: prose only, no nodes | no node; what this paper can and cannot offer the selection problem is stated in §6 — RULING 9 |
 | App. B | — | Sen/Raub discussion, no nodes | out |
 | App. A | Thm 17 | Tennenholtz 2004 | cited external; **not** re-proved (we prove Prop 18 directly, which does not use Thm 17) |
 | App. D | Lemma 27 | subgraph isomorphism NP-complete (Cook 1971) | cited external; the only way to carry it is as a named axiom in complexity tranche |
