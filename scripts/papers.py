@@ -207,6 +207,10 @@ NON_PAPER_LIBRARIES = {
     "PFR": "vendored subset of teorth/pfr @ 01c9b66 (Apache-2.0) supplying Shannon "
            "information theory, which the pinned Mathlib lacks — dependency code, not a "
            "paper formalized by this project; see ShannonInformation/vendor/PROVENANCE.md",
+    "Palomar": "Challenge/Solution pairs for Palomar registry submissions (plus the "
+               "never-submitted Comparator smoke test) — a packaging surface over "
+               "libraries registered above, not itself a paper; see Palomar/README.md "
+               "and scripts/check_palomar_wiring.py",
     "ShannonInformation": "shared, paper-neutral consumer surface over the vendored PFR "
                           "entropy substrate — infrastructure used by paper libraries, "
                           "not itself a paper; see ShannonInformation/README.md",
