@@ -1,49 +1,42 @@
-/-
-# Fixed-code `evaln` runs in polynomially many interpreter steps
+import LogicalInduction.Framework.Computable
 
-This file establishes the *time* half of the fuel-model calibration, as a fact about
-`Nat.Partrec.Code.evaln` alone — no machine, no tape, no complexity class.
-
-**What the calibration needs, and why this is the load-bearing half.**
-`Framework/Emission.lean` already bounds the *values* `evaln` produces: `codeEvalBound` is
-polynomial in the fuel for each fixed code (`codeEvalBound_poly`), and every result is under
-it (`codeEvaln_result_le`). That controls output size. It says nothing about *runtime*, and
-the model card is explicit that the two must not be conflated: a computation can produce a
-small answer after enormous work.
-
-`codeEvalSteps` below is the missing half — the number of interpreter invocations
-`evaln k c n` performs, counted by the same recursion `evaln` itself uses. The theorem is:
-
-```
-codeEvalSteps_poly : ∀ c, IsPolyBounded (codeEvalSteps c)
-```
-
-For a **fixed** code, the interpreter's work is polynomial in its fuel. The exponent depends
-on `c` — specifically on how deeply `prec`/`rfind'` nest, since those are the clauses that
-recurse on the *same* code with one less fuel while `pair`/`comp` recurse on structurally
-smaller codes at unchanged fuel. This is the bound the compiled machine's step count is
-measured against, so the machine construction downstream works against a settled bound.
-
-**Why this is stated over fuel rather than over the day.** `PolyFueled c f` supplies a
-polynomial fuel bound `b` in the numeric day `n`, and `EfficientlyComputable` supplies the
-explicit clock `a * (n + 1) ^ k + a`. Composing either with `codeEvalSteps_poly` gives a
-polynomial step count in `n` — and since the paper presents the day in **unary**, polynomial
-in `n` *is* polynomial in the input length. That is what makes the fuel calculus a sound
-*certification device* for the machine class rather than a substitution for it.
+/-! # Fixed-code `evaln` runs in polynomially many interpreter steps
 
 **Not a paper node.** Nothing here renders a result of arXiv:1609.03543.
+
+`codeEvalSteps c k` counts the interpreter invocations `evaln k c n` performs, by the same
+recursion `Nat.Partrec.Code.evaln` itself uses, and `codeEvalSteps_poly` shows that for each
+**fixed** code that count is polynomial in the fuel.
+
+**Why the count is structural.** `pair` and `comp` recurse into structurally smaller codes at
+*unchanged* fuel, while `prec` and `rfind'` recurse into the *same* code with one less fuel.
+The nesting depth of the fuel-consuming clauses is what becomes the polynomial's exponent.
+
+**Where this stands in the development.** It is a calibration fact about
+`Nat.Partrec.Code.evaln` alone — no machine, no tape, no complexity class — and it is the
+*time* counterpart of the *value* bound `codeEvalBound` (`Framework/Emission.lean`), which is
+likewise polynomial in the fuel for each fixed code. It is not the bound a compiled machine's
+step count is measured against: that is `codeMachineTime`
+(`Framework/Machine/EvalnRegBound.lean`), built from `evalnArithmeticCost`, `codeEvalBound` and
+the two window bounds independently of anything here. The chain from a fuel certificate to
+membership in the machine class runs through `Framework/MachineEfficiency.lean`.
+
+**Why the statement is over fuel rather than over the day** (`dd:fuel`). `PolyFueled c f`
+supplies a polynomial fuel bound in the numeric day `n`, and `EfficientlyComputable` supplies
+the explicit clock `a * (n + 1) ^ k + a`; phrasing the step count over fuel is what lets those
+polynomials compose. Since the paper presents the day in **unary**, polynomial in `n` is
+polynomial in the input length.
 -/
-import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction
 
 open Nat.Partrec.Code
 
-/-! ## A missing closure property of `IsPolyBounded`
+/-! ## Polynomial closure under products
 
-`Framework/Computable.lean` has `.of_le`, `.linear`, `.max`, `.add_one`, `.pair` and `.comp`,
-but no two-function product — which the `prec` case below needs, since unrolling a
-fuel-decrementing recursion multiplies a step count by the fuel. -/
+`Framework/Computable.lean` carries the `IsPolyBounded` closure algebra; the pointwise product
+is added here because it is what the `prec` case below needs — unrolling a fuel-decrementing
+recursion multiplies a step count by the fuel. -/
 
 /-- Polynomially bounded functions are closed under pointwise product. -/
 lemma IsPolyBounded.mul {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyBounded g) :
@@ -63,20 +56,6 @@ lemma IsPolyBounded.mul {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyB
     _ ≤ 4 * (a₁ + 1) * (a₂ + 1) * (n + 1) ^ (k₁ + k₂) := by rw [hxy]; nlinarith
     _ ≤ 4 * (a₁ + 1) * (a₂ + 1) * (n + 1) ^ (k₁ + k₂) + 4 * (a₁ + 1) * (a₂ + 1) :=
         Nat.le_add_right _ _
-
-/-- Polynomially bounded functions are closed under pointwise sum. -/
-lemma IsPolyBounded.add' {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyBounded g) :
-    IsPolyBounded (fun n => f n + g n) := by
-  obtain ⟨a₁, k₁, h₁⟩ := hf
-  obtain ⟨a₂, k₂, h₂⟩ := hg
-  refine ⟨a₁ + a₂, Max.max k₁ k₂, fun n => ?_⟩
-  have hp₁ : (n + 1) ^ k₁ ≤ (n + 1) ^ Max.max k₁ k₂ :=
-    Nat.pow_le_pow_right (by omega) (le_max_left _ _)
-  have hp₂ : (n + 1) ^ k₂ ≤ (n + 1) ^ Max.max k₁ k₂ :=
-    Nat.pow_le_pow_right (by omega) (le_max_right _ _)
-  have := h₁ n
-  have := h₂ n
-  nlinarith
 
 /-! ## The interpreter's step count -/
 
@@ -116,6 +95,11 @@ private lemma polyMajorant_mono (a m : ℕ) :
   simp only
   nlinarith
 
+/-- The normal-form polynomial majorant is itself polynomially bounded, by its own witness. -/
+private lemma polyMajorant_isPolyBounded (a m : ℕ) :
+    IsPolyBounded (fun k => a * (k + 1) ^ m + a) :=
+  ⟨a, m, fun _ => le_rfl⟩
+
 /-- Unrolling a fuel-decrementing recursion against a monotone majorant. -/
 private lemma steps_le_of_recur {S C : ℕ → ℕ} (hC : Monotone C)
     (h0 : S 0 ≤ C 0) (hstep : ∀ k, S (k + 1) ≤ C (k + 1) + S k) :
@@ -137,27 +121,17 @@ those are the clauses that consume fuel. For each fixed code the count is polyno
 is what a polynomial-time simulation of a *fixed* program needs. -/
 lemma codeEvalSteps_poly (c : Nat.Partrec.Code) : IsPolyBounded (codeEvalSteps c) := by
   induction c with
-  | zero =>
-      refine ⟨1, 0, fun k => ?_⟩
-      cases k <;> simp [codeEvalSteps]
-  | succ =>
-      refine ⟨1, 0, fun k => ?_⟩
-      cases k <;> simp [codeEvalSteps]
-  | left =>
-      refine ⟨1, 0, fun k => ?_⟩
-      cases k <;> simp [codeEvalSteps]
-  | right =>
-      refine ⟨1, 0, fun k => ?_⟩
-      cases k <;> simp [codeEvalSteps]
+  | zero | succ | left | right =>
+      exact ⟨1, 0, fun k => by cases k <;> simp [codeEvalSteps]⟩
   | pair cf cg ihf ihg =>
       refine IsPolyBounded.of_le
-        (((IsPolyBounded.linear 1).add' ihf).add' ihg) fun k => ?_
+        (((IsPolyBounded.linear 1).add ihf).add ihg) fun k => ?_
       cases k with
       | zero => simp [codeEvalSteps]
       | succ k => simp only [codeEvalSteps]; omega
   | comp cf cg ihf ihg =>
       refine IsPolyBounded.of_le
-        (((IsPolyBounded.linear 1).add' ihg).add' ihf) fun k => ?_
+        (((IsPolyBounded.linear 1).add ihg).add ihf) fun k => ?_
       cases k with
       | zero => simp [codeEvalSteps]
       | succ k => simp only [codeEvalSteps]; omega
@@ -166,53 +140,42 @@ lemma codeEvalSteps_poly (c : Nat.Partrec.Code) : IsPolyBounded (codeEvalSteps c
       obtain ⟨a₂, m₂, h₂⟩ := ihg
       set C : ℕ → ℕ :=
         fun k => 1 + (a₁ * (k + 1) ^ m₁ + a₁) + (a₂ * (k + 1) ^ m₂ + a₂) with hC
-      have e1 : ∀ i j : ℕ, i ≤ j →
-          a₁ * (i + 1) ^ m₁ + a₁ ≤ a₁ * (j + 1) ^ m₁ + a₁ :=
-        fun i j hij => polyMajorant_mono a₁ m₁ hij
-      have e2 : ∀ i j : ℕ, i ≤ j →
-          a₂ * (i + 1) ^ m₂ + a₂ ≤ a₂ * (j + 1) ^ m₂ + a₂ :=
-        fun i j hij => polyMajorant_mono a₂ m₂ hij
       have hCmono : Monotone C := by
         intro i j hij
-        have := e1 i j hij
-        have := e2 i j hij
+        have : a₁ * (i + 1) ^ m₁ + a₁ ≤ a₁ * (j + 1) ^ m₁ + a₁ := polyMajorant_mono a₁ m₁ hij
+        have : a₂ * (i + 1) ^ m₂ + a₂ ≤ a₂ * (j + 1) ^ m₂ + a₂ := polyMajorant_mono a₂ m₂ hij
         simp only [hC]
         omega
       have hbound := steps_le_of_recur (S := codeEvalSteps (.prec cf cg)) hCmono
-        (by simp [codeEvalSteps, hC]; try omega)
+        (by simp [codeEvalSteps, hC]; omega)
         (fun k => by
           simp only [codeEvalSteps, hC]
           have := h₁ (k + 1)
           have := h₂ (k + 1)
           omega)
-      have hconst : IsPolyBounded (fun _ : ℕ => 1) := ⟨1, 0, fun k => by simp⟩
-      have hA : IsPolyBounded (fun k => a₁ * (k + 1) ^ m₁ + a₁) :=
-        ⟨a₁, m₁, fun k => le_refl _⟩
-      have hB : IsPolyBounded (fun k => a₂ * (k + 1) ^ m₂ + a₂) :=
-        ⟨a₂, m₂, fun k => le_refl _⟩
+      have hconst : IsPolyBounded (fun _ : ℕ => 1) := ⟨1, 0, fun _ => by simp⟩
       exact IsPolyBounded.of_le
-        ((IsPolyBounded.linear 1).mul ((hconst.add' hA).add' hB)) hbound
+        ((IsPolyBounded.linear 1).mul
+          ((hconst.add (polyMajorant_isPolyBounded a₁ m₁)).add
+            (polyMajorant_isPolyBounded a₂ m₂)))
+        hbound
   | rfind' cf ihf =>
       obtain ⟨a₁, m₁, h₁⟩ := ihf
       set C : ℕ → ℕ := fun k => 1 + (a₁ * (k + 1) ^ m₁ + a₁) with hC
-      have e1 : ∀ i j : ℕ, i ≤ j →
-          a₁ * (i + 1) ^ m₁ + a₁ ≤ a₁ * (j + 1) ^ m₁ + a₁ :=
-        fun i j hij => polyMajorant_mono a₁ m₁ hij
       have hCmono : Monotone C := by
         intro i j hij
-        have := e1 i j hij
+        have : a₁ * (i + 1) ^ m₁ + a₁ ≤ a₁ * (j + 1) ^ m₁ + a₁ := polyMajorant_mono a₁ m₁ hij
         simp only [hC]
         omega
       have hbound := steps_le_of_recur (S := codeEvalSteps (.rfind' cf)) hCmono
-        (by simp [codeEvalSteps, hC]; try omega)
+        (by simp [codeEvalSteps, hC])
         (fun k => by
           simp only [codeEvalSteps, hC]
           have := h₁ (k + 1)
           omega)
-      have hconst : IsPolyBounded (fun _ : ℕ => 1) := ⟨1, 0, fun k => by simp⟩
-      have hA : IsPolyBounded (fun k => a₁ * (k + 1) ^ m₁ + a₁) :=
-        ⟨a₁, m₁, fun k => le_refl _⟩
+      have hconst : IsPolyBounded (fun _ : ℕ => 1) := ⟨1, 0, fun _ => by simp⟩
       exact IsPolyBounded.of_le
-        ((IsPolyBounded.linear 1).mul (hconst.add' hA)) hbound
+        ((IsPolyBounded.linear 1).mul (hconst.add (polyMajorant_isPolyBounded a₁ m₁)))
+        hbound
 
 end LogicalInduction

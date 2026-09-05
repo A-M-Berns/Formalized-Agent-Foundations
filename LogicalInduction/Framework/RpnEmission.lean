@@ -1,18 +1,44 @@
-/-
-# RPN emission bridges: fuelled scans and realization
-
-The poly-fuelled side of the token-metered emission model: the escape-slot automaton
-scanned over any digit `PolySegStream`, the per-position range form of the escape
-splice, and the realization bridges into `EfficientlyComputable` (`ec_of_rawEmission` /
-`ec_of_rawSegStream`, the token-metered counterparts of `ecDigit_of_rawEmission` /
-`ecDigit_of_rawSegStream`, with the decode routed through `unRpn ∘ undigitize`).
-
-Paper node: `def:ec` (token-metered sentence slots).
--/
 import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.RpnSentence
 import LogicalInduction.Framework.Emission
 import LogicalInduction.Framework.RpnSplice
+
+/-!
+# RPN emission bridges
+
+The realization half of `def:ec` (tex:753) in the **token-metered** model: the bridges that
+turn an emission certificate into `EfficientlyComputable`, with the decode routed through
+`unRpn ∘ undigitize`.
+
+* **The escape splice, per position.** `escExpandFold_range` and `escExpand_eq_flatMap`
+  re-express `escExpand` as a `flatMap` over token positions, each position's decision taken
+  at the escape mode of the prefix before it, so that a digit-level segment stream can
+  reproduce the splice position by position.
+* **The escape-slot scan.** `PolySegStream.escModeScan` runs the escape-slot automaton over
+  an arbitrary digit `PolySegStream`. It is the token-model twin of
+  `PolySegStream.freezeModeScan` (`Framework/DigitArith.lean`).
+* **The realization chain.** `clockedTokens_eq_of_emission` → `ec_of_rawClocked` →
+  `ec_of_rawSegStream`. Its reusable step is `PolySegStream.clockedTokens_certificate`,
+  which says a polynomial segment stream is a clocked emission of itself; the machine-model
+  compilers and the conditioning transducer consume it too.
+* **The model inclusions.** `EfficientlyComputable.ofDigitEmitter` and `.ofTokenEmitter`
+  carry a digit- or token-metered certificate into the class, and
+  `IsLogicalInductor.noExploitTok` / `.noExploitDigit` are the no-exploitation forms the §4
+  property proofs invoke for their concretely constructed traders.
+* **The trader constructors.** `RpnSpliceStream.ec`,
+  `EfficientlyComputable.ofSingleTradeBlocks` and `.ofTradeBlocks` are the token-metered
+  entry points a client builds with; their write-out mirrors are in
+  `Framework/WriteOut.lean`.
+
+**Design** (`dd:fuel`). What is metered here is the token stream: a certificate bounds both
+how many tokens day `n` emits and how large each one is. The write-out class that keeps the
+first bound and drops the second is `BigTokenStream` (`Framework/WriteOut.lean`).
+
+**Design.** `Nat.sqrt` is locally irreducible file-wide; see the note in
+`Framework/Emission.lean`.
+
+Paper node: `def:ec` (token-metered sentence slots).
+-/
 
 namespace LogicalInduction
 
@@ -23,6 +49,9 @@ attribute [local irreducible] Nat.sqrt
 
 /-! ## The per-position range form of the escape splice -/
 
+/-- Prefix form of the escape splice: expanding the first `count` emitted tokens is the
+position-wise `flatMap`, with each position's decision taken at the escape mode of the
+prefix before it. -/
 lemma escExpandFold_range (tf : ℕ → ℕ) (n count : ℕ) :
     escExpandFold 0 ((List.range count).map fun j => tf (Nat.pair n j)) =
       (List.range count).flatMap fun j =>
@@ -140,26 +169,11 @@ lemma ec_of_rawClocked (Tr : Trader) (raw : ℕ → List ℕ)
   rw [hclock n]
   exact hstrategy n
 
-/-- Exact digit emitters instantiate the token-metered bounded-emulator definition. -/
-lemma ec_of_rawEmission (Tr : Trader) (raw : ℕ → List ℕ)
-    (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
-    (hlength : ∀ n, evaln (a * (n + 1) ^ k + a) lengthCode n =
-      some (raw n).length)
-    (hsize : ∀ n, (raw n).length ≤ a * (n + 1) ^ k + a)
-    (htoken : ∀ n i, i < (raw n).length →
-      evaln (a * (n + 1) ^ k + a) tokenCode (Nat.pair n i) =
-        some ((raw n).getD i 0))
-    (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputable Tr :=
-  ec_of_rawClocked Tr raw lengthCode tokenCode a k
-    (clockedTokens_eq_of_emission raw lengthCode tokenCode a k hlength hsize htoken)
-    hstrategy
-
 /-- **A polynomial segment stream is a clocked emission of itself.** Its poly-fueled
 length and token codes, run under one polynomial day clock dominating both fuel bounds and
 the stream length, produce the stream on the nose. This is the certificate the trader
 compiler consumes, in both the fuel model (`ec_of_rawSegStream`) and the machine model
-(`RpnSentenceCodes.toMachine`, `Framework/Machine/SentenceCodes.lean`). -/
+(`RpnSentenceCodes.toMachine`, `BigTokenStream.toMachine`). -/
 lemma PolySegStream.clockedTokens_certificate {raw : ℕ → List ℕ} (h : PolySegStream raw) :
     ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
       ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n := by
@@ -198,10 +212,6 @@ lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     EfficientlyComputable Tr := by
   obtain ⟨lc, tc, a, k, hclock⟩ := h.clockedTokens_certificate
   exact ec_of_rawClocked Tr raw lc tc a k hclock hstrategy
-
-#print axioms escExpand_eq_flatMap
-#print axioms PolySegStream.escModeScan
-#print axioms ec_of_rawSegStream
 
 /-! ## The model inclusions
 
@@ -306,10 +316,12 @@ lemma IsLogicalInductor.noExploitDigit {P : History} {DP : DeductiveProcess}
     ∀ Tr : Trader, EfficientlyComputableDigit Tr → ¬ Tr.Exploits P DP :=
   fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofDigitEmitter h)
 
-#print axioms EfficientlyComputable.ofDigitEmitter
-#print axioms EfficientlyComputable.ofTokenEmitter
-#print axioms IsLogicalInductor.noExploitTok
-#print axioms IsLogicalInductor.noExploitDigit
+/-! ## Trader constructors
+
+The token-metered entry points a client builds an exploiting trader with. Their write-out
+mirrors — the same constructors with the per-token value bound dropped — are
+`EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`
+(`Framework/WriteOut.lean`). -/
 
 /-- **The capstone realization**: a trader whose per-day trade serialization is
 RPN-spliceable is efficiently computable.
@@ -338,7 +350,6 @@ lemma RpnSpliceStream.ec (Tr : Trader)
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
           rw [dif_pos rank_le]
-
 
 /-- **Single-trade realization over an 𝓔𝓒 sentence sequence**: a trader playing one
 trade per day, with a polynomially emittable price-free coefficient stream and an
@@ -395,7 +406,8 @@ lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
 /-- **Variable-count realization over an 𝓔𝓒 sentence sequence**: a trader playing
 `count n` trades on day `n` (indexed `z = ⟨n, j⟩`), with polynomially emittable
 price-free coefficient streams and an `RpnSentenceCodes` sentence family, is
-efficiently computable. -/
+efficiently computable.  `EfficientlyComputable.ofTradeBlocksBig`
+(`Framework/WriteOut.lean`) is the same constructor over the write-out sentence class. -/
 lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
     (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
     (hcount : ∃ c, PolyFueled c count)
@@ -453,11 +465,5 @@ lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
           rw [hdecode] at hsome
           obtain rfl := Option.some.inj hsome
           rw [dif_pos hrank]
-
-#print axioms RpnSentenceCodes.ofCanonical
-#print axioms RpnSentenceCodes.ofPolySentenceCodes
-#print axioms EfficientlyComputable.ofSingleTradeBlocks
-#print axioms EfficientlyComputable.ofTradeBlocks
-#print axioms RpnSpliceStream.ec
 
 end LogicalInduction

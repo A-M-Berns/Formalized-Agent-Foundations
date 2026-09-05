@@ -4,18 +4,50 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 /-!
 # Compiling an existing RPN source into the fixed old-language registry
 
-The exact product only needs nonnegative rational thresholds.  Every nonnegative reduced
-rational is already one of the `i/k` queries certified by `RpnThresholdCodeSeq`; negative
-queries receive the canonical true sentence.  Thus no arbitrary-rational efficiency
-premise is added to the caller.
+This module is the compiler that admits a caller's *existing* token-metered RPN threshold
+certificate (`LUV.RpnThresholdCodeSeq X`) into the fixed old-language semantic registry,
+so that the exact product of `thm:ccee` accepts an arbitrary threshold-only source.
+
+It defines `liftedRpnSourceSentence`, the represented sentence at an arbitrary rational
+query; `liftedRpnMeshQuery`, the conversion into the `⟨n,⟨k,i⟩⟩` ABI of
+`RpnThresholdCodeSeq`; `liftedRpnSourceCode`, the total emitter program extracted from the
+caller's certificate; and `liftedRpnSourceSchema`, its self-describing tag-`0` schema.
+
+No new efficiency premise is added to the caller: the exact product needs only nonnegative
+rational thresholds, every nonnegative reduced rational is already one of the `i/k` queries
+`RpnThresholdCodeSeq` certifies, and negative queries receive the canonical true sentence
+`⊤`.
+
+The main results are `liftedRpnSource_reflected` — exact reflection of the internally
+lifted source through the one fixed universal source interpreter — and
+`liftedRpnSourcePrefix_eventually_valid`, that every finite registry prefix is eventually
+validated, which is the hypothesis the registry gate consumes.
+`liftedRpnSourceSentence_fresh` separates every derived sentence from the
+semantic-extension namespace, which is what keeps the extension world's leaf agreement
+available.
+
+Consumers: `Construction/Witnesses/SemanticLiftedCCEE.lean`, where
+`liftedRpnSource_factor_eventually` turns these into admission of the source as an exact
+product factor, and thence `lic_no_expected_net_update_conditional_exact_canonical`
+(`thm:ccee`, generalized semantic-extension form).
+
+Design: the emitter code is *data* inside a universal tag-`0` schema; the semantic process
+is never specialized to `X`, which is what keeps the deductive process fixed from `T`
+before a source is chosen.
 -/
 
 namespace LogicalInduction
 
 open LO LO.Propositional
 
+-- Both registry predicates are `List.range` dovetails (`EntailedSourceRegistry.lean`).
+-- The proofs below reach them only through their monotonicity and characterization
+-- lemmas, so keeping the ranges opaque stops `simp` unfolding a dovetail inside the
+-- eventual-validity inductions.
 attribute [local irreducible] entailedSourceLawSeen
 attribute [local irreducible] entailedSourcePrefixValidAtFuel
+
+/-! ## The lifted source sentence and its query ABI -/
 
 /-- The source sentence represented at an arbitrary rational query.  Negative thresholds
 use `⊤`; nonnegative thresholds are the fixed old-language copy of the caller's source. -/
@@ -30,6 +62,7 @@ def liftedRpnMeshQuery (input : ℕ) : ℕ :=
   let z := Encodable.encode r
   Nat.pair n (Nat.pair z.unpair.2 z.unpair.1.div2)
 
+/-- The query conversion is primitive recursive. -/
 lemma liftedRpnMeshQuery_prim : Primrec liftedRpnMeshQuery := by
   have hn : Primrec fun input : ℕ => input.unpair.1 := Primrec.fst.comp Primrec.unpair
   have hz : Primrec fun input : ℕ => Encodable.encode
@@ -50,6 +83,8 @@ private lemma nonnegative_rat_mesh (r : ℚ) (hr : 0 ≤ r) :
   rw [Nat.cast_natAbs, abs_of_nonneg hn]
   exact Rat.num_div_den r
 
+/-- **The ABI specification**: at a nonnegative query the conversion preserves the LUV
+index and the rational `i/k` it names. -/
 lemma liftedRpnMeshQuery_spec (n : ℕ) (r : ℚ) (hr : 0 ≤ r) :
     (liftedRpnMeshQuery (Nat.pair n (Encodable.encode r))).unpair.1 = n ∧
     (((liftedRpnMeshQuery (Nat.pair n (Encodable.encode r))).unpair.2.unpair.2 : ℚ) /
@@ -98,6 +133,8 @@ private lemma liftedRpnSourceOutput_computable {X : ℕ → LUV}
       by_cases h : decodedQuotationRat input.unpair.2 < 0 <;>
         simp [liftedRpnSourceOutput, sourceOutput, h]
 
+/-! ## The extracted emitter and its schema -/
+
 /-- The total emitter program extracted from the caller's existing token-metered RPN
 certificate.  The code is data inside a universal tag-`0` schema; the semantic process is
 not specialized to `X`. -/
@@ -106,6 +143,8 @@ noncomputable def liftedRpnSourceCode {X : ℕ → LUV}
   Classical.choose (Nat.Partrec.Code.exists_code.mp
     (Partrec.nat_iff.mp (liftedRpnSourceOutput_computable hX)))
 
+/-- **The emitter specification**: the extracted program emits the intended represented
+sentence at every rational query. -/
 lemma liftedRpnSourceCode_spec {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) (n : ℕ) (r : ℚ) :
     Encodable.encode (liftedRpnSourceSentence X n r) ∈
@@ -129,10 +168,12 @@ noncomputable def liftedRpnSourceSchema {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) : ℕ :=
   semanticEmitterSchema (Nat.pair (Encodable.encode (liftedRpnSourceCode hX)) 0)
 
+/-- The derived schema carries the source tag `0`. -/
 @[simp] lemma liftedRpnSourceSchema_source {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) : (liftedRpnSourceSchema hX).unpair.1 = 0 := by
   simp [liftedRpnSourceSchema]
 
+/-- The universal interpreter reads the extracted program back out of the schema. -/
 @[simp] lemma liftedRpnSourceSchema_emitterCode {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) :
     semanticSourceEmitterCode (liftedRpnSourceSchema hX) = liftedRpnSourceCode hX := by
@@ -150,6 +191,8 @@ lemma liftedRpnSourceSentence_fresh (X : ℕ → LUV) (n : ℕ) (r : ℚ) :
     obtain ⟨b, _, rfl⟩ := Finset.mem_image.mp ha
     have haold : (oldAtom b).unpair.1 = oldLanguageTag := by simp [oldAtom]
     simpa [haold, oldLanguageTag, semanticPrimeTag]
+
+/-! ## Reflection through the universal interpreter -/
 
 /-- Exact reflection of the internally lifted source through the one fixed universal
 source interpreter. -/
@@ -170,6 +213,7 @@ lemma liftedRpnSource_reflected {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq 
     simp
   · exact liftedRpnSourceSentence_fresh X n r
 
+/-- Emission is monotone in the interpreter's fuel. -/
 lemma semanticSourceSentenceAtFuel_mono {schema input fuel fuel' : ℕ}
     (hff : fuel ≤ fuel') {phi : Sentence}
     (h : semanticSourceSentenceAtFuel schema input fuel = some phi) :
@@ -183,6 +227,7 @@ lemma semanticSourceSentenceAtFuel_mono {schema input fuel fuel' : ℕ}
         some out from he']
       simpa [he] using h
 
+/-- Enough fuel eventually emits the represented sentence at any one query. -/
 lemma liftedRpnSourceSentenceAtFuel_eventually {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) (n : ℕ) (r : ℚ) :
     ∃ fuel, semanticSourceSentenceAtFuel (liftedRpnSourceSchema hX)
@@ -194,6 +239,7 @@ lemma liftedRpnSourceSentenceAtFuel_eventually {X : ℕ → LUV}
   refine ⟨fuel, ?_⟩
   simpa [semanticSourceSentenceAtFuel, liftedRpnSourceSchema_emitterCode] using hfuel
 
+/-- Enough fuel eventually witnesses the freshness of the sentence at any one query. -/
 lemma liftedRpnSourceFreshSeen_eventually {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X) (n z : ℕ) :
     ∃ fuel, semanticSourceFreshSeen (liftedRpnSourceSchema hX) n z fuel = true := by
@@ -203,6 +249,12 @@ lemma liftedRpnSourceFreshSeen_eventually {X : ℕ → LUV}
     ⟨fuel, le_rfl, liftedRpnSourceSentence X n (decodedQuotationRat z), hemit,
       liftedRpnSourceSentence_fresh X n _⟩⟩
 
+/-! ## Registry-prefix validity -/
+
+/-- Enough fuel eventually witnesses one downward cut law `X n > s ⊢ X n > r` for `r < s`.
+The hypotheses are the ones the registry gate carries: every `X n` is valued in every
+world consistent with `DP`, and every world consistent with the base process is consistent
+with the lifted copy of `DP`. -/
 lemma liftedRpnSourceLawSeen_eventually {DP Base : DeductiveProcess}
     (base : DeductiveProcessComputation Base) {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X)
@@ -266,6 +318,8 @@ private lemma liftedListAll_eventually_of_mono {l : List ℕ}
         exact hmono y (Nat.le_max_right _ _) (hfs y hy)⟩
 
 set_option maxHeartbeats 8000000 in
+/-- **Prefix validity**: every finite registry prefix is eventually validated, which is
+what the registry gate consumes to admit the lifted source as a certified factor. -/
 lemma liftedRpnSourcePrefix_eventually_valid {DP Base : DeductiveProcess}
     (base : DeductiveProcessComputation Base) {X : ℕ → LUV}
     (hX : LUV.RpnThresholdCodeSeq X)
@@ -319,8 +373,5 @@ lemma liftedRpnSourcePrefix_eventually_valid {DP Base : DeductiveProcess}
     exact htestMono zs (Nat.le_max_right _ _) (hdown zs hzs)
   exact entailedSourcePrefix_eventually_of_threshold base
     (liftedRpnSourceSchema hX) limit thresholdEventually
-
-#print axioms liftedRpnSourceCode_spec
-#print axioms liftedRpnSource_reflected
 
 end LogicalInduction

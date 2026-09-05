@@ -3,16 +3,15 @@ import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
 /-!
 # The paper's formula source language, and the literal LUV frontend over it
 
-The paper writes arithmetic expressions over the primitive connectives `¬ ∧ ∨ ⟹ ⟺` (tex:560) and the quantifiers `∀ ∃` (tex:571-577)
-(tex:560), and `def:ec` (tex:753) meters *the formula as the paper writes it*.
-Foundation's `Semiformula`, by contrast, is a *negation-normal-form* datatype whose
-constructors are `verum`, `falsum`, `rel`, `nrel`, `and`, `or`, `all`, `exs`.  The two
-counts agree everywhere except at `⟺`: `a 🡘 b` unfolds to `(∼a ⋎ b) ⋏ (∼b ⋎ a)`,
-duplicating both sides, so an `n`-deep `⟺` nest is `O(n)` paper characters and
-`2^Ω(n)` Foundation nodes.
+The paper writes arithmetic expressions over the primitive connectives `¬ ∧ ∨ ⟹ ⟺`
+(tex:560) and the quantifiers `∀ ∃` (tex:568-573), and `def:ec` (tex:753) meters *the
+formula as the paper writes it*.  Foundation's `Semiformula` is a negation-normal-form
+datatype with no `⟺`, so the paper's writing and Foundation's normal form are metered on
+two layers; `dd:nnf` is that design decision, and this module is where the paper's layer
+lives.
 
-So this module puts the two on their proper footing.  `ArithSource k` is the paper's own
-formula *source*, with `not`/`imp`/`iff` as primitive constructors, and
+`ArithSource k` is the paper's own formula *source*, with `not`/`imp`/`iff` as primitive
+constructors, and
 
 * `compile : ArithSource k → ArithmeticSemiformula ℕ k` sends a source to the Foundation
   normal form it denotes (`⟺` unfolding happens here, once, at compile time);
@@ -20,25 +19,63 @@ formula *source*, with `not`/`imp`/`iff` as primitive constructors, and
   not `(→) ∧ (→)`, so `eval_compile` is a real theorem rather than a restatement;
 * `sourceTokens` is the emitted symbol run, one token per *source* node, using the
   parser tags `20` (`¬`), `21` (`⟹`) and `22` (`⟺`) added to
-  `parseStructuredArithmeticFormula` alongside the normal-form tags `9`–`18`;
-* `PolyArithmeticSourceSeq` meters that run.  **This is the paper's class**: a family is
-  certified at the size `def:ec` charges, not at the size Foundation's normal form
-  happens to have.  `PolyArithmeticFormulaSeq` (`StructuredPaperRpn.lean`) is the
-  normal-form-metered foil; it embeds here by `PolyArithmeticFormulaSeq.toSource`, and
-  `iffChain` witnesses that the embedding is strict.
+  `parseStructuredArithmeticFormula` alongside the normal-form tags `9`–`18`, and
+  `sourceNat` reads that run as a numeral — the name `def:ec` charges for;
+* `PolyArithmeticSourceSeq` meters that run.  This is the paper's class: a family is
+  certified at the size `def:ec` charges.  `PolyArithmeticFormulaSeq`
+  (`StructuredPaperRpn.lean`) is the normal-form-metered foil; it embeds here by
+  `PolyArithmeticFormulaSeq.toSource`, and `iffChain` witnesses that the embedding is
+  strict.
 
-This is the same trade the development already makes for programs with `Code.sourceNat`:
-the Godel code of an `n`-deep `iff` source is roughly `2^(2^n)` and is **never emitted**;
-the emitter writes the small source run, and the number is built by parser contraction.
+The closure calculus `PolyArithmeticSourceSeq.{leaf,and,or,all,exs,not,imp,iff}` is the
+public interface a client certifies a new family with; `LogicalInduction/README.md` names
+this module as the import for that.  The main results are `eval_compile` (compilation is
+semantics preserving), `parseStructuredArithmeticFormula_sourceTokens` (the round trip),
+`compile_eq_of_sourceTokens_eq` (the emitted run determines what the source denotes, which
+is what `dd:machinetheory` needs of a written name) and
+`PolyArithmeticSourceSeq.bigDigits_sourceNat` (a source-metered family has write-out
+names).  This is the same trade the development already makes for programs with
+`Code.sourceNat`: the Gödel code of an `n`-deep `iff` source is roughly `2^(2^n)` and is
+never emitted; the emitter writes the small source run, and the number is built by parser
+contraction.
 
 On top of the source language sits the literal first-order LUV frontend: `PaperLUVSeq`
 carries each LUV's defining formula *as written* (`source`), a proof that it denotes the
 LUV's Foundation formula (`compiles`), and the paper's efficiency condition on that
 writing (`structural`); `PaperLUVSeq.rpnThresholdCodeSeq` compiles it to
-`LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax.  Three families inhabit
-it — `unitFracPaperLUVSeq` at `1/(n+1)`, `dyadicPaperLUVSeq` at `2⁻ⁿ` (a superpolynomially
-small value named in `O(n)` symbols by `binNumeral`), and `iffPaperLUVSeq`, whose
-`n`-th defining formula is `O(n)` tokens to write and `≥ 2 ^ n` nodes once compiled.
+`LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, with
+`PaperLUV.rpnThresholdCodes` the single-LUV corollary and `PaperLUVSeq.ofNNF` the
+constructor for a family presented by normal-form leaves.  Three families inhabit it —
+`unitFracPaperLUVSeq` at `1/(n+1)`, `dyadicPaperLUVSeq` at `2⁻ⁿ` (a superpolynomially
+small value named in `O(n)` symbols by `binNumeral`), and `iffPaperLUVSeq`, whose `n`-th
+defining formula is `O(n)` tokens to write and `≥ 2 ^ n` nodes once compiled.  The
+strictness separation `iffChainSource_polyArithmeticSourceSeq` against
+`iffChain_not_polyArithmeticFormulaSeq` proves
+`PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` rather than asserting it, and
+`unaryRendering_two_pow_not_polyArithmeticFormulaSeq` / `...SourceSeq` record that
+Foundation's unary numeral is inadmissible at `2ⁿ` in *both* classes — an artifact of that
+numeral, not a narrowing of `def:ec`, since the paper fixes no numeral notation (tex:564,
+tex:614).
+
+Finally `PaperLUVCombination` states `def:blcp` with literal paper LUVs as shares,
+reaching the abstract carrier only through `toLUV`; `unitFracPaperLUVBoundedSequence`
+inhabits it.
+
+Two design facts about this layer, both of them constraints rather than preferences.
+
+*The leaf's length field is unary, not a count.* `structuredLeafBlock`
+(`StructuredPaperRpn.lean`) frames its payload with `replicate payload.length 1` and the
+reserved terminator `19`.  An explicit symbol **count** field would be self-delimiting for
+the parser and wrong for everything else on the ABI: the conditioning automaton clamps large
+token values, so a count read off an untrusted stream reintroduces a polynomial-output
+problem on malformed input, and the run/parse correspondence fails at the marker.  Small
+tokens plus a reserved terminator keep every scanner's state polynomially bounded on
+*arbitrary* input, which is the property the shared grammar needs.
+
+*The decomposition bridge is head-scoped.*
+`structuredPaperSourceDecomposeAll_rpnSentenceCodes` covers quantifier-headed propositions,
+which is what `PaperLUV.thresholdFormula` always produces.  Arbitrary outer Boolean
+structure would need a bracket-counting scan over the payload; no consumer here asks for it.
 -/
 
 namespace LogicalInduction
@@ -232,7 +269,7 @@ private lemma parse_tag22 (fuel depth : ℕ) (rest : List ℕ) :
               (Nat.pair 5 (Nat.pair (negFormulaCode q.1) p.1) + 1)) + 1, q.2) := rfl
 
 /-- **Source round trip**: the numeric parser turns a source's emitted run back into the
-Godel code of the formula it compiles to, leaving the suffix untouched.  The three
+Gödel code of the formula it compiles to, leaving the suffix untouched.  The three
 connective tags are discharged by `negFormulaCode_spec`.
 
 *Proof kind:* `P` proved. -/
@@ -322,11 +359,12 @@ lemma compile_eq_of_sourceTokens_eq {k : ℕ} {s s' : ArithSource k}
   rw [h1] at h2
   exact Encodable.encode_injective (by simpa using Option.some.inj h2)
 
-/-! ## Alphabet -/
+/-! ## The source alphabet -/
 
-/-- The source alphabet avoids the reserved block terminator `19`. -/
-lemma sourceTokens_ne_19 {k : ℕ} (s : ArithSource k) :
-    ∀ x ∈ sourceTokens s, x ≠ 19 := by
+/-- Every source token is either a normal-form token (`< 19`) or one of the three
+connective tags `20`, `21`, `22`.  Both alphabet facts below read off this one induction. -/
+lemma sourceTokens_alphabet {k : ℕ} (s : ArithSource k) :
+    ∀ x ∈ sourceTokens s, x < 19 ∨ (20 ≤ x ∧ x < 23) := by
   induction s with
   | leaf φ =>
       intro x hx
@@ -383,66 +421,17 @@ lemma sourceTokens_ne_19 {k : ℕ} (s : ArithSource k) :
       · rcases List.mem_append.mp hx' with h | h
         · exact iha x h
         · exact ihb x h
+
+/-- The source alphabet avoids the reserved block terminator `19`, which is what lets a
+source run sit inside a structured leaf block. -/
+lemma sourceTokens_ne_19 {k : ℕ} (s : ArithSource k) :
+    ∀ x ∈ sourceTokens s, x ≠ 19 := fun x hx => by
+  rcases sourceTokens_alphabet s x hx with h | h <;> omega
 
 /-- Every source token is a fixed small constant: the alphabet is `0..18, 20..22`. -/
 lemma sourceTokens_lt_23 {k : ℕ} (s : ArithSource k) :
-    ∀ x ∈ sourceTokens s, x < 23 := by
-  induction s with
-  | leaf φ =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      have := encodeArithmeticFormulaSymbols_lt φ x hx
-      omega
-  | and a b iha ihb =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · rcases List.mem_append.mp hx' with h | h
-        · exact iha x h
-        · exact ihb x h
-  | or a b iha ihb =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · rcases List.mem_append.mp hx' with h | h
-        · exact iha x h
-        · exact ihb x h
-  | all a ih =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · exact ih x hx'
-  | exs a ih =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · exact ih x hx'
-  | not a ih =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · exact ih x hx'
-  | imp a b iha ihb =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · rcases List.mem_append.mp hx' with h | h
-        · exact iha x h
-        · exact ihb x h
-  | iff a b iha ihb =>
-      intro x hx
-      simp only [sourceTokens] at hx
-      rcases List.mem_cons.mp hx with rfl | hx'
-      · omega
-      · rcases List.mem_append.mp hx' with h | h
-        · exact iha x h
-        · exact ihb x h
+    ∀ x ∈ sourceTokens s, x < 23 := fun x hx => by
+  rcases sourceTokens_alphabet s x hx with h | h <;> omega
 
 /-! ### Naming a written formula
 
@@ -452,7 +441,7 @@ base-`64` digit per token, closed by a sentinel outside the alphabet.  Its base-
 count — the length actually written down — is `3 * (sourceTokens s).length + 3`, linear in
 the paper's text.
 
-The Godel code `Encodable.encode (compile s)` is **not** this number and is not usable
+The Gödel code `Encodable.encode (compile s)` is **not** this number and is not usable
 here: Foundation's `Semiformula.toNat` pairs at every node, so it is doubly exponential in
 the parse tree and its digit count exponential.  `iffChainSource` separates the two on the
 nose (`sourceTokens_iffChainSource_length` is `5n + 4`, while the normal form it names has
@@ -479,7 +468,7 @@ end ArithSource
 Foundation normal form to the paper's source: it certifies that the *emitted source run*
 is a `PolySegStream`.  Since `ofNNF` is token-for-token the old encoder
 (`sourceTokens_ofNNF`), every family certified by `PolyArithmeticFormulaSeq` is certified
-here (`PolyArithmeticFormulaSeq.toSource`), and `⟺` is now charged linearly. -/
+here (`PolyArithmeticFormulaSeq.toSource`), and `⟺` is charged linearly (`dd:nnf`). -/
 
 open ArithSource in
 /-- **The paper's efficiency condition on formula families** (`def:ec`, tex:753): the run
@@ -498,40 +487,62 @@ namespace PolyArithmeticSourceSeq
 
 open ArithSource
 
+/-! ### The closure calculus
+
+These eight lemmas are the public interface a client certifies a new source-metered family
+with: one per source constructor, each charging the constructor's single tag on top of the
+sub-family's own run. -/
+
+/-- A normal-form-metered family read as leaves is source-metered, token for token. -/
 lemma leaf {k : ℕ} {φ : ℕ → ArithmeticSemiformula ℕ k} (h : PolyArithmeticFormulaSeq φ) :
     PolyArithmeticSourceSeq (fun n => ArithSource.leaf (φ n)) :=
   PolySegStream.of_eq h fun _ => rfl
 
+/-- A conjunction of source-metered families is source-metered: one token (`15`) plus the
+two runs. -/
 lemma and {k : ℕ} {a b : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq a)
     (hb : PolyArithmeticSourceSeq b) :
     PolyArithmeticSourceSeq (fun n => ArithSource.and (a n) (b n)) :=
   ((PolySegStream.constList [15]).append (ha.append hb)).of_eq fun _ => by
     simp [sourceTokens]
 
+/-- A disjunction of source-metered families is source-metered: one token (`16`) plus the
+two runs. -/
 lemma or {k : ℕ} {a b : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq a)
     (hb : PolyArithmeticSourceSeq b) :
     PolyArithmeticSourceSeq (fun n => ArithSource.or (a n) (b n)) :=
   ((PolySegStream.constList [16]).append (ha.append hb)).of_eq fun _ => by
     simp [sourceTokens]
 
+/-- A universally quantified source-metered family is source-metered: one token (`17`)
+plus the run. -/
 lemma all {k : ℕ} {a : ℕ → ArithSource (k + 1)} (ha : PolyArithmeticSourceSeq a) :
     PolyArithmeticSourceSeq (fun n => ArithSource.all (a n)) :=
   ((PolySegStream.constList [17]).append ha).of_eq fun _ => by simp [sourceTokens]
 
+/-- An existentially quantified source-metered family is source-metered: one token (`18`)
+plus the run. -/
 lemma exs {k : ℕ} {a : ℕ → ArithSource (k + 1)} (ha : PolyArithmeticSourceSeq a) :
     PolyArithmeticSourceSeq (fun n => ArithSource.exs (a n)) :=
   ((PolySegStream.constList [18]).append ha).of_eq fun _ => by simp [sourceTokens]
 
+/-- A negated source-metered family is source-metered: one token (`20`) plus the run.  The
+De Morgan expansion happens in the parser, off the emitted stream. -/
 lemma not {k : ℕ} {a : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq a) :
     PolyArithmeticSourceSeq (fun n => ArithSource.not (a n)) :=
   ((PolySegStream.constList [20]).append ha).of_eq fun _ => by simp [sourceTokens]
 
+/-- An implication of source-metered families is source-metered: one token (`21`) plus the
+two runs, with no negation pushed through the antecedent. -/
 lemma imp {k : ℕ} {a b : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq a)
     (hb : PolyArithmeticSourceSeq b) :
     PolyArithmeticSourceSeq (fun n => ArithSource.imp (a n) (b n)) :=
   ((PolySegStream.constList [21]).append (ha.append hb)).of_eq fun _ => by
     simp [sourceTokens]
 
+/-- A biconditional of source-metered families is source-metered: one token (`22`) plus
+the two runs.  This is where `⟺` is charged linearly, against the `2^Ω(n)` the normal form
+would charge (`dd:nnf`). -/
 lemma iff {k : ℕ} {a b : ℕ → ArithSource k} (ha : PolyArithmeticSourceSeq a)
     (hb : PolyArithmeticSourceSeq b) :
     PolyArithmeticSourceSeq (fun n => ArithSource.iff (a n) (b n)) :=
@@ -543,11 +554,10 @@ end PolyArithmeticSourceSeq
 /-- **The write-out certificate, delivered.**  A family certified at the size `def:ec`
 charges — one token per source node — is a family whose *names* are efficiently written
 out.  This is the bridge that lets a paper-facing statement meter a formula sequence by
-its writing instead of by its Godel code. -/
+its writing instead of by its Gödel code. -/
 lemma PolyArithmeticSourceSeq.bigDigits_sourceNat {k : ℕ} {s : ℕ → ArithSource k}
     (h : PolyArithmeticSourceSeq s) : BigDigits (fun n => (s n).sourceNat) :=
   BigDigits.ofTokenListNat h fun n => ArithSource.sourceTokens_lt_63 (s n)
-
 
 /-- **The old class embeds**: a normal-form-metered family is a source-metered family of
 leaves, token for token. -/
@@ -558,88 +568,58 @@ lemma PolyArithmeticFormulaSeq.toSource {k : ℕ}
 
 /-! ## Structured leaves at the source level
 
-The emitted block is the paper's *source* run, not the normal form it denotes: the same
-`[1, 0, polarity]` dispatch prefix, the same unary payload length, the same reserved
-terminator `19`, with `sourceTokens s` as the payload.  Parser contraction rebuilds the
-Godel code of `compile s`, so the public tag-7 atom is exactly the one the normal-form
-block produces — what changes is only how many tokens were emitted to name it. -/
+The emitted block is `structuredLeafBlock` (`StructuredPaperRpn.lean`) at the paper's
+*source* run rather than at the normal form it denotes: the same `[1, 0, polarity]`
+dispatch prefix, the same unary payload length, the same reserved terminator `19`, with
+`sourceTokens s` as the payload.  Parser contraction rebuilds the Gödel code of
+`compile s`, so the public tag-`5` atom is exactly the one the normal-form block produces —
+what changes is only how many tokens were emitted to name it. -/
 
 open ArithSource in
 /-- The atomic block whose contraction is `paperPrimeSentence positive (compile s)`. -/
 def structuredPaperSourcePrimeBlock (positive : Bool) (s : ArithSource 0) : List ℕ :=
-  let payload := sourceTokens s
-  [1, 0, Encodable.encode positive] ++
-    (List.replicate payload.length 1 ++ (0 :: payload ++ [19]))
+  structuredLeafBlock positive (sourceTokens s)
 
-private lemma parseStructuredPaperPrime_sourceTokens (positive : Bool)
-    (s : ArithSource 0) (tail : List ℕ) :
-    parseStructuredPaperPrime
-      (Encodable.encode positive ::
-        (List.replicate (ArithSource.sourceTokens s).length 1 ++
-        (0 :: (ArithSource.sourceTokens s ++ 19 :: tail)))) =
-      some (paperPrimeSentence positive (ArithSource.compile s), tail) := by
-  rw [parseStructuredPaperPrime.eq_def]
-  simp only [List.cons_append]
-  have hbool : Encodable.encode positive ≤ 1 := by cases positive <;> simp
-  rw [if_pos hbool]
-  rw [readStructuredLength_replicate]
-  simp only [Option.bind_some, List.length_append]
-  rw [if_pos (by omega), List.take_left]
-  have hparse := ArithSource.parseStructuredArithmeticFormula_sourceTokens
-    (depth := 0) s [] le_rfl
-  simp only [List.append_nil] at hparse
-  rw [hparse]
-  simp only [List.getD_append_right _ _ _ _ le_rfl, Nat.sub_self, List.getD_cons_zero,
-    if_pos rfl]
-  rw [List.drop_append]
-  simp
-  simp [paperPrimeSentence, paperPrimeCode, paperPrimeTag]
-
-private lemma structuredPaperSourcePrimeBlock_length_pos (positive : Bool)
-    (s : ArithSource 0) : 0 < (structuredPaperSourcePrimeBlock positive s).length := by
-  simp [structuredPaperSourcePrimeBlock]
+/-- A source leaf block is never empty; this is the fuel side condition `parseRpn` asks
+for, and the length hypothesis the claim families supply. -/
+lemma structuredPaperSourcePrimeBlock_length_pos (positive : Bool)
+    (s : ArithSource 0) : 0 < (structuredPaperSourcePrimeBlock positive s).length :=
+  structuredLeafBlock_length_pos positive _
 
 /-- **Source leaf contraction**: the emitted source block parses to the exact public
-tag-7 atom of the formula the source compiles to. -/
+tag-`5` atom of the formula the source compiles to. -/
 lemma parseRpn_structuredPaperSourcePrimeBlock (positive : Bool) (s : ArithSource 0)
     (tail : List ℕ) {fuel : ℕ} (hfuel : 1 ≤ fuel) :
     parseRpn fuel (structuredPaperSourcePrimeBlock positive s ++ tail) =
-      some (paperPrimeSentence positive (ArithSource.compile s), tail) := by
-  match fuel, hfuel with
-  | fuel + 1, _ =>
-      rw [structuredPaperSourcePrimeBlock]
-      simp only [List.append_assoc, List.cons_append]
-      rw [parseRpn.eq_def]
-      norm_num
-      exact parseStructuredPaperPrime_sourceTokens positive s tail
+      some (paperPrimeSentence positive (ArithSource.compile s), tail) :=
+  parseRpn_structuredLeafBlock
+    (by
+      simpa using ArithSource.parseStructuredArithmeticFormula_sourceTokens
+        (depth := 0) s [] le_rfl)
+    tail hfuel
 
 /-- The source leaf of an efficiently presented source family is efficiently emittable:
 constant framing, a unary length run, and the source payload itself. -/
 lemma structuredPaperSourcePrimeBlock_polySegStream (positive : Bool)
     (s : ℕ → ArithSource 0) (hs : PolyArithmeticSourceSeq s) :
-    PolySegStream (fun n => structuredPaperSourcePrimeBlock positive (s n)) := by
-  obtain ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩ := hs
-  have hpayload : PolySegStream (fun n => ArithSource.sourceTokens (s n)) :=
-    ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩
-  have hlength : PolyFueled cl (fun n => (ArithSource.sourceTokens (s n)).length) :=
-    hl.of_eq fun n => (hlen n).symm
-  have hprefix : PolySegStream (fun _ => [1, 0, Encodable.encode positive]) :=
-    PolySegStream.ofTokenStream <| (PolyTokenStream.const 1).append <|
-      (PolyTokenStream.const 0).append (PolyTokenStream.const (Encodable.encode positive))
-  have hframe := (PolySegStream.repeatTag 1 hlength).append
-    (PolySegStream.ofTokenStream (PolyTokenStream.const 0))
-  have hend : PolySegStream (fun _ => [19]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 19)
-  exact (hprefix.append (hframe.append (hpayload.append hend))).of_eq fun n => by
-    simp [structuredPaperSourcePrimeBlock, List.append_assoc]
+    PolySegStream (fun n => structuredPaperSourcePrimeBlock positive (s n)) :=
+  structuredLeafBlock_polySegStream positive hs
+
+/-- **The source block is a `19`-free span**: the instance of `structuredLeafBlock_span`
+at the class the development actually meters, whose payload alphabet is `0..18, 20..22`
+(`sourceTokens_lt_23`) and so never contains the terminator. -/
+lemma structuredPaperSourcePrimeBlock_span (positive : Bool) (s : ArithSource 0) :
+    ∃ w, structuredPaperSourcePrimeBlock positive s = 1 :: 0 :: (w ++ [19]) ∧
+      ∀ x ∈ w, x ≠ 19 :=
+  structuredLeafBlock_span positive (ArithSource.sourceTokens_ne_19 s)
 
 /-! ### The universally quantified source block
 
 `paperPrimeDecompose` recurses only through the outer Boolean structure, so a
 `∀`-headed proposition decomposes to a single leaf inside a negation shell.  Foundation's
 `Semiformula` has no `∀` for a negated body either, so the paper's `∀x. φ` is written
-`¬∃x. ¬φ` — at the source level that costs exactly one extra token (`20`), which is what
-makes the shell affordable here. -/
+`¬∃x. ¬φ`, the reading the paper itself declares (tex:568-573) — at the source level that
+costs exactly one extra token (`20`), which is what makes the shell affordable here. -/
 
 /-- The block whose contraction is `paperPrimeDecompose (.all (compile s))`. -/
 def structuredPaperSourceDecomposeAllBlock (s : ArithSource 1) : List ℕ :=
@@ -662,12 +642,14 @@ lemma parseRpn_structuredPaperSourceDecomposeAllBlock_suffix (s : ArithSource 1)
   simp only [Option.bind_some, paperPrimeDecompose]
   rfl
 
+/-- The same contraction on a closed run. -/
 lemma parseRpn_structuredPaperSourceDecomposeAllBlock (s : ArithSource 1) :
     parseRpn (structuredPaperSourceDecomposeAllBlock s).length
       (structuredPaperSourceDecomposeAllBlock s) =
       some (paperPrimeDecompose (.all (ArithSource.compile s)), []) := by
   simpa using parseRpn_structuredPaperSourceDecomposeAllBlock_suffix s []
 
+/-- The `∀`-blocks of a source-metered family are efficiently emittable. -/
 lemma structuredPaperSourceDecomposeAllBlock_polySegStream
     {s : ℕ → ArithSource 1} (hs : PolyArithmeticSourceSeq s) :
     PolySegStream (fun n => structuredPaperSourceDecomposeAllBlock (s n)) := by
@@ -682,7 +664,7 @@ lemma structuredPaperSourceDecomposeAllBlock_polySegStream
 /-- **Decompose efficiency lifting at a quantified head, source metered**: an
 efficiently *written* family of universally quantified paper formulas has an efficient
 stream of exact paper-prime decomposition blocks.  The emitter outputs only the small
-source block; the tag-7 atom code is built by parser contraction. -/
+source block; the tag-`5` atom code is built by parser contraction. -/
 lemma structuredPaperSourceDecomposeAll_rpnSentenceCodes (s : ℕ → ArithSource 1)
     (hs : PolyArithmeticSourceSeq s) :
     RpnSentenceCodes (fun n => paperPrimeDecompose (.all (ArithSource.compile (s n)))) :=
@@ -690,11 +672,88 @@ lemma structuredPaperSourceDecomposeAll_rpnSentenceCodes (s : ℕ → ArithSourc
     structuredPaperSourceDecomposeAllBlock_polySegStream hs,
     fun n => parseRpn_structuredPaperSourceDecomposeAllBlock (s n)⟩
 
+/-! ### Arity coercion on the source language
+
+A source embedded under `Rew.castLE` is *index preserving* (`Rew.castLe_bvar`:
+`castLE h #x = #(Fin.castLE h x)`, same `.val`), so its token run and the formula it
+compiles to are literally unchanged and a family's `def:ec` certificate transports along
+the coercion with no new emission induction. -/
+
+namespace ArithSource
+
+/-- Arity coercion of a source, leaf-wise by `Rew.castLE`.  Index preserving, hence free
+of emission cost. -/
+def castLE : ∀ {k k' : ℕ}, k ≤ k' → ArithSource k → ArithSource k'
+  | _, _, h, .leaf φ => .leaf (Rew.castLE h ▹ φ)
+  | _, _, h, .and a b => .and (castLE h a) (castLE h b)
+  | _, _, h, .or a b => .or (castLE h a) (castLE h b)
+  | _, _, h, .all a => .all (castLE (Nat.succ_le_succ h) a)
+  | _, _, h, .exs a => .exs (castLE (Nat.succ_le_succ h) a)
+  | _, _, h, .not a => .not (castLE h a)
+  | _, _, h, .imp a b => .imp (castLE h a) (castLE h b)
+  | _, _, h, .iff a b => .iff (castLE h a) (castLE h b)
+
+/-- Arity coercion emits nothing: the token run is unchanged. -/
+@[simp] lemma sourceTokens_castLE : ∀ {k k' : ℕ} (h : k ≤ k') (a : ArithSource k),
+    sourceTokens (castLE h a) = sourceTokens a
+  | _, _, h, .leaf φ => by simp [castLE, sourceTokens]
+  | _, _, h, .and a b => by
+      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
+  | _, _, h, .or a b => by
+      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
+  | _, _, h, .all a => by
+      simp [castLE, sourceTokens, sourceTokens_castLE (Nat.succ_le_succ h) a]
+  | _, _, h, .exs a => by
+      simp [castLE, sourceTokens, sourceTokens_castLE (Nat.succ_le_succ h) a]
+  | _, _, h, .not a => by simp [castLE, sourceTokens, sourceTokens_castLE h a]
+  | _, _, h, .imp a b => by
+      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
+  | _, _, h, .iff a b => by
+      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
+
+/-- Arity coercion commutes with compilation. -/
+lemma compile_castLE : ∀ {k k' : ℕ} (h : k ≤ k') (a : ArithSource k),
+    compile (castLE h a) = Rew.castLE h ▹ compile a
+  | _, _, h, .leaf φ => rfl
+  | _, _, h, .and a b => by
+      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
+        LogicalConnective.HomClass.map_and]
+  | _, _, h, .or a b => by
+      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
+        LogicalConnective.HomClass.map_or]
+  | _, _, h, .all a => by
+      simp only [castLE, compile, compile_castLE (Nat.succ_le_succ h) a]
+      have hq := Rewriting.app_all (Rew.castLE h) (compile a)
+      rw [Rew.q_castLE] at hq
+      exact hq.symm
+  | _, _, h, .exs a => by
+      simp only [castLE, compile, compile_castLE (Nat.succ_le_succ h) a]
+      have hq := Rewriting.app_exs (Rew.castLE h) (compile a)
+      rw [Rew.q_castLE] at hq
+      exact hq.symm
+  | _, _, h, .not a => by
+      simp only [castLE, compile, compile_castLE h a,
+        LogicalConnective.HomClass.map_neg]
+  | _, _, h, .imp a b => by
+      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
+        LogicalConnective.HomClass.map_imply]
+  | _, _, h, .iff a b => by
+      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
+        LogicalConnective.HomClass.map_iff]
+
+end ArithSource
+
+/-- Arity coercion of a source-metered family is source-metered, at the same cost. -/
+lemma PolyArithmeticSourceSeq.castLE {k k' : ℕ} (h : k ≤ k') {a : ℕ → ArithSource k}
+    (ha : PolyArithmeticSourceSeq a) :
+    PolyArithmeticSourceSeq (fun n => ArithSource.castLE h (a n)) :=
+  ha.of_eq fun n => by simp
+
 /-! ## The literal first-order LUV frontend
 
 A single `PaperLUV` carries no efficiency certificate, so the family layer supplies
 one — and supplies it as *structural symbol emission of the threshold bodies*, never as
-a bound on Foundation's Godel codes and never as a caller-provided tag-7 code.  The
+a bound on Foundation's Gödel codes and never as a caller-provided tag-`5` code.  The
 compiler below turns that certificate into the paper's exact threshold sentences. -/
 
 section Frontend
@@ -740,10 +799,6 @@ private lemma oringMul_term :
 private lemma oringAdd_term :
     (Semiterm.Operator.Add.add : Semiterm.Operator ℒₒᵣ 2).term =
       Semiterm.func Language.Add.add Semiterm.bvar := rfl
-
-private lemma oringOne_term :
-    (Semiterm.Operator.One.one : Semiterm.Operator ℒₒᵣ 0).term =
-      Semiterm.func Language.One.one ![] := rfl
 
 private lemma oringNumZero_term :
     (Semiterm.Operator.numeral ℒₒᵣ 0).term =
@@ -931,13 +986,14 @@ lemma paperThresholdSource_polyArithmeticSourceSeq {s : ℕ → ArithSource 1}
 
 /-- An efficiently presented family of literal paper LUVs.  The certificate is
 structural emission of the *source* the paper writes for each LUV's defining formula —
-never a bound on Foundation codes, a caller-provided tag-7 code, or a semantic handle.
+never a bound on Foundation codes, a caller-provided tag-`5` code, or a semantic handle.
 Everything the threshold syntax adds on top (the implication node, the fixed comparison
 template, and the reduced numerals of the query rational) is discharged internally.
 
 `source` is the paper's own writing of the defining formula, in the primitive
-connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and the quantifiers `∀ ∃` of tex:571-577; `compiles` says it denotes the LUV's Foundation
-normal form; and `structural` meters that writing — one token per *source* node.  That
+connectives `¬ ∧ ∨ ⟹ ⟺` of tex:560 and the quantifiers `∀ ∃` of tex:568-573;
+`compiles` says it denotes the LUV's Foundation normal form; and `structural` meters that
+writing — one token per *source* node.  That
 is `def:ec`'s own count: the paper's writer emits the formula as written, and the
 normal-form expansion of `⟹` and `⟺` happens inside the parser, off the stream.  Large
 values are reached by *naming* them compactly: the class is inhabited both by
@@ -952,10 +1008,15 @@ first-order paper LUV into `LUV.RpnThresholdCodeSeq`, with `PaperLUV.rpnThreshol
 its single-LUV corollary.
 Paper node: `def:luv` -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
+  /-- The literal paper LUVs. -/
   luv : ℕ → PaperLUV T
+  /-- The paper's own writing of each defining formula, in the primitive connectives of
+  tex:560 and the quantifiers of tex:568-573. -/
   source : ℕ → ArithSource 1
+  /-- That writing denotes the LUV's Foundation normal form. -/
   compiles : ∀ n, ArithSource.compile (source n) =
     (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
+  /-- `def:ec`'s metering on that writing — one token per source node. -/
   structural : PolyArithmeticSourceSeq source
 
 /-- The threshold bodies inherit the family's structural certificate. -/
@@ -964,15 +1025,26 @@ lemma PaperLUVSeq.thresholdSource_structural (X : PaperLUVSeq T) :
       paperThresholdSource (X.source m.unpair.1) (queryRat m)) :=
   paperThresholdSource_polyArithmeticSourceSeq X.structural
 
+/-- **A family presented by normal-form leaves.**  The commonest way to build a
+`PaperLUVSeq`: take the LUVs' own defining formulas as the written sources, certified in
+the normal-form-metered foil, which embeds into the paper's class by
+`PolyArithmeticFormulaSeq.toSource`.  A family whose writing is genuinely smaller than its
+normal form is built from the closure calculus instead — see `iffPaperLUVSeq`. -/
+def PaperLUVSeq.ofNNF (luv : ℕ → PaperLUV T)
+    (h : PolyArithmeticFormulaSeq (fun n =>
+      (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1))) :
+    PaperLUVSeq T where
+  luv := luv
+  source n := ArithSource.ofNNF
+    (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
+  compiles _ := rfl
+  structural := h.toSource
+
 /-- Any single literal paper LUV presents as a constant family, its own defining formula
 read as a one-leaf source.  This is a convenience, not the non-vacuity witness: see
 `unitFracPaperLUVSeq` for a family whose defining formulas genuinely vary with `n`. -/
-def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T where
-  luv _ := X
-  source _ := ArithSource.ofNNF
-    ((X.formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
-  compiles _ := rfl
-  structural := PolySegStream.constList _
+def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T :=
+  PaperLUVSeq.ofNNF (fun _ => X) (PolySegStream.constList _)
 
 /-- The literal threshold syntax of a paper-LUV family is emittable in the source-metered
 calculus, so the abstract LUVs it compiles to carry the threshold-code certificate the
@@ -1002,7 +1074,7 @@ lemma PaperLUV.rpnThresholdCodes (X : PaperLUV T) : X.toLUV.RpnThresholdCodes :=
   have hf : PolyFueled _ (fun m : ℕ => Nat.pair 0 m) :=
     (PolyFueled.const 0).pair PolyFueled.id
   show RpnSentenceCodes _
-  exact (h.comp hf).of_eq fun m => by simp [PaperLUVSeq.const]
+  exact (h.comp hf).of_eq fun m => by simp [PaperLUVSeq.const, PaperLUVSeq.ofNNF]
 
 /-! ### Concrete families
 
@@ -1171,12 +1243,8 @@ lemma unitFrac_polyArithmeticFormulaSeq :
 /-- **Non-vacuity** (`N+`): a genuinely varying family of literal paper LUVs, with
 values `1/(n+1)`, carrying the structural certificate.
 Paper node: `def:luv` -/
-def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
-  luv n := unitFracPaperLUV T n
-  source n := ArithSource.ofNNF
-    ((unitFracFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
-  compiles _ := rfl
-  structural := unitFrac_polyArithmeticFormulaSeq.toSource
+def unitFracPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T :=
+  PaperLUVSeq.ofNNF (fun n => unitFracPaperLUV T n) unitFrac_polyArithmeticFormulaSeq
 
 /-- **The literal paper frontend**: an efficiently presented family of literal
 first-order paper LUVs is both semantically valued on every completed world of the
@@ -1227,12 +1295,8 @@ LUVs of value `2⁻ⁿ` carries the structural certificate.  This is the value t
 as `X > 2⁻ⁿ`; it is admissible here because the class meters the *formula string*, and the
 compact numeral names `2 ^ n` in `O(n)` symbols.  Kind `N+`; hypotheses `(a)`.
 Paper node: `def:luv` -/
-def dyadicPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
-  luv n := dyadicPaperLUV T n
-  source n := ArithSource.ofNNF
-    ((dyadicFormula n : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
-  compiles _ := rfl
-  structural := dyadic_polyArithmeticFormulaSeq.toSource
+def dyadicPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T :=
+  PaperLUVSeq.ofNNF (fun n => dyadicPaperLUV T n) dyadic_polyArithmeticFormulaSeq
 
 /-- **The frontend at `2⁻ⁿ`**: the literal paper LUVs of value `2⁻ⁿ` are valued on every
 completed world of the canonical theorem process and efficiently thresholded.  Together with
@@ -1253,9 +1317,10 @@ which no polynomial bounds.
 
 The unary cost is an artifact of Foundation's default numeral, **not** a property of the
 paper: the paper fixes no numeral notation — its underline convention (tex:564) substitutes
-whatever expression stands for the value, and its examples write numerals as digits.  What matters for faithfulness is that the *value* is nameable compactly inside
-`ℒₒᵣ` — `binNumeral v` has `O(log v)` nodes — so on numerals neither class is narrower than
-`def:ec`, and this lemma documents that artifact rather than a gap.  It is stated for both
+whatever expression stands for the value, and its examples write numerals as digits.
+What matters for faithfulness is that the *value* is nameable compactly inside
+`ℒₒᵣ` — `binNumeral v` has `O(log v)` nodes — so on numerals neither class is narrower
+than `def:ec`, and this lemma documents that artifact rather than a gap.  It is stated for both
 classes, since the artifact is a property of the *name* and survives the move to the source
 metering: `unaryRendering_two_pow_not_polyArithmeticSourceSeq` is the statement about the
 class `PaperLUVSeq` actually uses.  Kind `P`; hypotheses `(a)`.
@@ -1277,10 +1342,10 @@ lemma unaryRendering_two_pow_not_polyArithmeticFormulaSeq :
   omega
 
 /-- **The same numeral artifact, at the live class.**  Read as a one-leaf source, the
-unary rendering of `2⁻ⁿ` is still inadmissible: `ofNNF` emits the normal form token for
-token, so the artifact of Foundation's unary numeral is not repaired by moving the meter
-to the source — and does not need to be, since `binNumeral` names the same value in
-`O(n)` symbols (`dyadicPaperLUVSeq`).  Kind `P`; hypotheses `(a)`.
+unary rendering of `2⁻ⁿ` is inadmissible in this class too: `ofNNF` emits the normal form
+token for token, so the artifact of Foundation's unary numeral is not repaired by moving
+the meter to the source — and does not need to be, since `binNumeral` names the same value
+in `O(n)` symbols (`dyadicPaperLUVSeq`).  Kind `P`; hypotheses `(a)`.
 Paper node: `def:ec` -/
 lemma unaryRendering_two_pow_not_polyArithmeticSourceSeq :
     ¬ PolyArithmeticSourceSeq (fun n => ArithSource.ofNNF
@@ -1292,7 +1357,7 @@ lemma unaryRendering_two_pow_not_polyArithmeticSourceSeq :
 
 `⟺` is one of the paper's primitive connectives (tex:560) and `def:ec` (tex:753) meters
 the formula *as the paper writes it*.  Foundation's `Semiformula` has no biconditional
-constructor: `a 🡘 b` is notation for `(∼a ⋎ b) ⋏ (∼b ⋎ a)`, which duplicates both sides.
+constructor: `a 🡘 b` is notation for `(∼a ⋎ b) ⋏ (∼b ⋎ a)`, duplicating both sides.
 Metering the normal form therefore charges an `n`-deep `⟺` nest `2^Ω(n)` where the paper
 charges `O(n)`.  That is the whole reason the classes are two: `PolyArithmeticSourceSeq`
 is the paper's condition, and `PolyArithmeticFormulaSeq` is the strictly finer
@@ -1484,7 +1549,6 @@ lemma iffChain_odd_valid {M : Type*} [Structure ℒₒᵣ M] (x : M) (n : ℕ) :
         simp [ih1]
   exact (key n).2
 
-
 /-- **The reciprocal paper LUV, with an inert conjunct.**  A closed `ℒₒᵣ` term of positive
 standard value `v` names the literal paper LUV of value `1/v`, and the defining formula may
 carry any extra conjunct `ψ` that holds in every model of `𝗣𝗔⁻`: uniqueness and
@@ -1533,7 +1597,6 @@ def invPaperLUVWith (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T]
     · exact_mod_cast hv
     · exact_mod_cast hv1
 
-
 /-- **The biconditional-valued paper LUV.**  Value `1/1 = 1`, named by the numeral `1`,
 with the valid chain `iffChain (2n+1)` conjoined onto the defining formula: `O(n)`
 characters as the paper writes it, `≥ 2^(2n+1)` nodes once compiled into Foundation's
@@ -1544,8 +1607,6 @@ def iffPaperLUV (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] (n : ℕ) :
     (fun M _ _ => by simp)
     (iffChain (2 * n + 1)) (fun M _ _ x => iffChain_odd_valid x n)
 
-
-
 /-! ### The capstone family: `O(n)` characters to write, `2ⁿ` nodes once compiled
 
 An odd biconditional chain is *valid*: `A ⟺ A` is a theorem of pure logic, and `⊤ ⟺ A` is
@@ -1555,7 +1616,8 @@ the Foundation object naming it by `2^Ω(n)`.  That makes it the sharp test of w
 efficiency condition is metering: `iffPaperLUVSeq` is a family of *literal paper LUVs*
 whose `n`-th defining formula the paper writes in `O(n)` characters, which is admitted
 here (`iffPaperLUVSeq_frontend` reaches `LUV.RpnThresholdCodeSeq`), while the
-normal-form-metered foil rejects its `⟺`-chain core (`iffChain_not_polyArithmeticFormulaSeq`). -/
+normal-form-metered foil rejects its `⟺`-chain core
+(`iffChain_not_polyArithmeticFormulaSeq`). -/
 
 /-- The paper's writing of `iffPaperLUV`'s defining formula: the reciprocal template at
 the numeral `1`, conjoined with the biconditional chain. -/
@@ -1589,7 +1651,8 @@ logical no-op — every model satisfies it — so the LUVs are the constant-`1` 
 varies is the *writing*, which is `O(n)` characters here and `≥ 2ⁿ` Foundation nodes after
 compilation.  Its `⟺`-chain core is exactly what the normal-form-metered foil provably
 excludes (`iffChain_not_polyArithmeticFormulaSeq` is stated at `iffChain`, not at this
-conjunction; the separation is the point, the family is its LUV carrier).  Kind `N+`; hypotheses `(a)`.
+conjunction; the separation is the point, the family is its LUV carrier).
+Kind `N+`; hypotheses `(a)`.
 Paper node: `def:luv` -/
 def iffPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperLUVSeq T where
   luv n := iffPaperLUV T n
@@ -1608,7 +1671,6 @@ lemma iffPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] :
         ∃ x : ℝ, v.ValuesAt ((iffPaperLUVSeq T).luv n).toLUV x) ∧
       LUV.RpnThresholdCodeSeq (fun n => ((iffPaperLUVSeq T).luv n).toLUV) :=
   (iffPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
-
 
 /-- A client consuming the witness: the expectation-of-indicators endpoint (`thm:ei`) takes
 the threshold-code class as a hypothesis, and the `2⁻ⁿ` family discharges it outright. -/
@@ -1758,37 +1820,6 @@ noncomputable def unitFracPaperLUVBoundedSequence
       simp [PaperLUVCombination.combination, unitFracPaperLUVCombination,
         LUVCombination.l1Norm, LUVCombination.shareNorm]⟩
 
-#print axioms PaperLUVCombination.boundedSequence
-#print axioms unitFracPaperLUVBoundedSequence
-
 end Frontend
-
-#print axioms invPaperLUV
-#print axioms invPaperLUVWith
-#print axioms unitFracPaperLUVSeq
-#print axioms unitFracPaperLUVSeq_frontend
-#print axioms dyadicPaperLUVSeq
-#print axioms dyadicPaperLUVSeq_frontend
-#print axioms iffPaperLUV
-#print axioms iffPaperLUVSeq
-#print axioms iffPaperLUVSeq_frontend
-#print axioms iffChain_odd_valid
-#print axioms iffChainSource_polyArithmeticSourceSeq
-#print axioms sourceTokens_iffChainSource_length
-#print axioms compile_iffChainSource
-#print axioms iffChain_injective
-#print axioms iffChain_not_polyArithmeticFormulaSeq
-#print axioms unaryRendering_two_pow_not_polyArithmeticFormulaSeq
-#print axioms unaryRendering_two_pow_not_polyArithmeticSourceSeq
-#print axioms PaperLUV.rpnThresholdCodes
-#print axioms PaperLUVSeq.rpnThresholdCodeSeq
-#print axioms PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq
-#print axioms parseRpn_structuredPaperSourcePrimeBlock
-#print axioms parseRpn_structuredPaperSourceDecomposeAllBlock
-#print axioms structuredPaperSourceDecomposeAll_rpnSentenceCodes
-#print axioms negFormulaCode_spec
-#print axioms ArithSource.eval_compile
-#print axioms ArithSource.parseStructuredArithmeticFormula_sourceTokens
-#print axioms ArithSource.compile_eq_of_sourceTokens_eq
 
 end LogicalInduction

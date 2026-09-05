@@ -1,47 +1,50 @@
-/-
-# Polynomial-time streaming folds
-
-`MachineEfficientTrader` (`Framework/Criterion.lean`) asks for a `Complexity.FP` function of
-the *unary* day whose output word `strategyOfOutput` decodes to the trader's strategy.
-Transporting a trader across a **syntactic** rewrite of that serialized stream — freezing a
-price leaf, splicing a conditioning block — therefore means exhibiting the rewrite itself as
-an `FP` function.  This file is the reusable core of that job.
-
-The clients are not finite-state.  `RpnConditioning.rpnConditionRun` carries a packed state
-`⟨mode, counter, runLen⟩` together with a buffered sentence run: `mode` is finite, but the
-open-subtree counter, the run length and the buffer are all unbounded, bounded only by the
-input length.  So the theorem they need is not a Mealy-machine theorem but a **fold with an
-`FP` step whose state stays polynomially bounded** — which is exactly what the fork's
-`Complexity.Cobham.recFoldClamp_mem_FP` provides once the clamp is discharged.
-
-Contents:
-
-* `recFold_mem_FP` — `FP` is closed under a right fold with an `FP` step, a constant base
-  and a polynomially bounded running value;
-* `foldlBits`, `foldlBits_mem_FP` — the same closure in the left-to-right form the stream
-  rewriters use, obtained by folding over the reversed input;
-* `mem_FP_withInput` — how a transduction recovers the day `n` from `unaryDay n`;
-* `unaryOfBits_le_mem_FP` — the guarded unary expansion: read a value off the stream and
-  emit that many marks, clamped to a length already available.  This is the one piece plain
-  composition does not give, because the value read is data, not a length;
-* `strategyOfOutput_digitsToBits` and its unconditional clamped form — the adapters that
-  lift a *digit*-level rewrite to the bit level `MachineEfficientTrader` reads.
-
-**Import disclosure.** This file imports `Complexitylib.Classes.P.Cobham.Internal`, which the
-fork treats as proof internals (`Cobham.lean` imports it non-publicly).  The fold engine
-`recFoldClamp_mem_FP`, the block projections `fstBlock`/`sndBlock` and the string kit
-(`pairFn_mem_FP`, `appendFn_mem_FP`, `takeLenFn_mem_FP`, `selectHeadFn_mem_FP`) live only
-there; nothing here depends on Cobham's algebra itself, only on those `FP` closure lemmas.
-If the fork ever promotes them to a public closure module, this import should follow.
-
-Everything in this file is supporting infrastructure rather than a paper claim, so the
-declarations are `lemma`s and carry no `Paper node:` line.
--/
 import LogicalInduction.Framework.Machine.DigitBits
 import Complexitylib.Classes.P.Composition
 import Complexitylib.Classes.P.PairWithInput
 import Complexitylib.Classes.P.Cobham.Internal
-import Complexitylib.Mathlib.NatBits
+
+/-!
+# Polynomial-time streaming folds
+
+`MachineEfficientTrader` (`def:ec`, `Framework/Criterion.lean`) asks for a `Complexity.FP`
+function of the *unary* day whose output word `strategyOfOutput` decodes to the trader's
+strategy.  Transporting a trader across a **syntactic** rewrite of that serialized stream —
+freezing a price leaf, splicing a conditioning block — therefore means exhibiting the
+rewrite itself as an `FP` function.  This file is the reusable core of that job.
+
+The clients are not finite-state.  `RpnConditioning.rpnConditionRun`
+(`Construction/Machine/CondStep.lean`) carries a packed state `⟨mode, counter, runLen⟩`
+together with a buffered sentence run: `mode` is finite, but the open-subtree counter, the
+run length and the buffer are all unbounded, bounded only by the input length.  So what they
+need is not a Mealy-machine theorem but a **fold with an `FP` step whose state stays
+polynomially bounded** — which is exactly what the fork's
+`Complexity.Cobham.recFoldClamp_mem_FP` provides once the clamp is discharged.
+
+Contents:
+
+* `constFn_mem_FP` — the arbitrary constant word the fork does not supply;
+* `recFold_mem_FP` — `FP` is closed under a right fold with an `FP` step, a constant base
+  and a polynomially bounded running value;
+* `foldlBits`, `foldlBits_mem_FP` — the same closure in the left-to-right form the stream
+  rewriters use, obtained by folding over the reversed input (`recFold_reverse`).  The state
+  bound is demanded on every word no longer than the stream, because the clamp has to be
+  discharged on the machine's malformed inputs too;
+* `mem_FP_withInput` — how a transduction recovers the day `n` from `unaryDay n`.
+
+`Framework/Machine/TokenFold.lean` builds the tokenizer on `foldlBits_mem_FP`, and the
+stream rewriters of `Construction/Witnesses/` reach the fold through that tokenizer;
+`Construction/Machine/CondStep.lean` takes `mem_FP_withInput`.  `constFn_mem_FP` is used
+wherever a rewrite emits a fixed word.
+
+**Import disclosure.** This file imports `Complexitylib.Classes.P.Cobham.Internal`, which the
+fork treats as proof internals (`Cobham.lean` imports it non-publicly).  The fold engine
+(`recFoldClamp_mem_FP`, `recFoldClamp_eq_recFold`), the block projection `fstBlock` and the
+string kit (`pairFn_mem_FP`, `const_nil_mem_FP`, `cons_mem_FP`) live only there; nothing here
+depends on Cobham's algebra itself, only on those `FP` closure lemmas.
+
+Everything in this file is supporting infrastructure rather than a paper claim, so the
+declarations are `lemma`s and carry no `Paper node` line.
+-/
 
 namespace LogicalInduction.FPFold
 
@@ -175,126 +178,6 @@ lemma foldlBits_mem_FP {A B W S : List Bool → List Bool}
     rw [recFold_reverse, List.reverse_reverse]
   rwa [heq] at h
 
-/-! ## The guarded unary expansion
-
-Every other closure in this file moves *words* around, so it composes.  Turning a value
-**read off the stream** into that many marks does not: `Complexity.FP` has length arithmetic
-(`Cobham.mulLenFn_mem_FP`, `Complexity.unaryLength_mem_FP`) but no way to make a length out
-of data, and unclamped it would not even be polynomial — a `k`-bit value denotes up to
-`2 ^ k` marks.
-
-The clamp is what makes it legitimate and is exactly the guard the clients have: a day read
-out of a day-`n` strategy stream is `≤ n`, and `n` is the length of a word already in hand
-(`mem_FP_withInput` below puts `unaryDay n` there).  So the primitive is *"emit
-`min value cap` marks"*, with `cap` a length rather than a number, and it is a fold: one
-doubling per bit, truncated at `cap` after every step. -/
-
-/-- One step of the guarded expansion: double the unary accumulator, add the incoming bit,
-and truncate to the cap.  The argument is `pair cap acc`. -/
-private def dblStep (b : Bool) (u : List Bool) : List Bool :=
-  ((sndBlock u ++ sndBlock u) ++ (if b then [true] else [])).take (fstBlock u).length
-
-private lemma dblStep_mem_FP (b : Bool) : dblStep b ∈ FP :=
-  takeLenFn_mem_FP fstBlock_mem_FP
-    (appendFn_mem_FP (appendFn_mem_FP sndBlock_mem_FP sndBlock_mem_FP)
-      (constFn_mem_FP (if b then [true] else [])))
-
-/-- Snoc for big-endian decoding.  The fork proves this as `Nat.fromBits_append_singleton`
-but keeps it `private`; it is recovered here from the public little-endian interface. -/
-private lemma fromBits_append_singleton (bs : List Bool) (b : Bool) :
-    Nat.fromBits (bs ++ [b]) = 2 * Nat.fromBits bs + (if b then 1 else 0) := by
-  have hrev : (bs ++ [b]).reverse = b :: bs.reverse := by simp
-  have h1 : Nat.fromBits (bs ++ [b]) = Nat.fromBitsLE (b :: bs.reverse) := by
-    show Nat.fromBits (bs ++ [b]) = Nat.fromBits ((b :: bs.reverse).reverse)
-    rw [← hrev, List.reverse_reverse]
-  have h2 : Nat.fromBitsLE bs.reverse = Nat.fromBits bs := by
-    show Nat.fromBits bs.reverse.reverse = Nat.fromBits bs
-    rw [List.reverse_reverse]
-  rw [h1, Nat.fromBitsLE_cons, h2]
-  omega
-
-/-- **The expansion computes what it says.** Truncating after every doubling is invisible:
-once the accumulator saturates it stays saturated, and the true value has already passed the
-cap, so both sides read `cap`. -/
-private lemma foldlBits_dblStep (W : List Bool) : ∀ bs : List Bool,
-    foldlBits (dblStep false) (dblStep true) W [] bs
-      = List.replicate (min (Nat.fromBits bs) W.length) true := by
-  intro bs
-  induction bs using List.reverseRecOn with
-  | nil => simp [Nat.fromBits]
-  | append_singleton cs b ih =>
-      rw [foldlBits_append_singleton, ih, fromBits_append_singleton]
-      have hrep : ∀ m : ℕ,
-          dblStep b (pair W (List.replicate m true))
-            = List.replicate (min (2 * m + (if b then 1 else 0)) W.length) true := by
-        intro m
-        rw [dblStep, fstBlock_pair, sndBlock_pair, ← List.replicate_add]
-        cases b with
-        | false =>
-            simp only [if_neg (by simp : ¬ (false = true)), List.append_nil,
-              List.take_replicate]
-            congr 1
-            omega
-        | true =>
-            have hsucc : List.replicate (m + m) true ++ [true]
-                = List.replicate (m + m + 1) true :=
-              (List.replicate_add (m + m) 1 true).symm
-            have hif : (if true = true then [true] else ([] : List Bool)) = [true] := by
-              simp
-            have hif1 : (if true = true then 1 else 0) = 1 := by simp
-            rw [hif, hif1, hsucc, List.take_replicate]
-            congr 1
-            omega
-      have hstep : (bif b then dblStep true else dblStep false) = dblStep b := by
-        cases b <;> rfl
-      have hmin : ∀ v L β : ℕ, min (2 * min v L + β) L = min (2 * v + β) L := by
-        intro v L β
-        omega
-      rw [hstep, hrep, hmin]
-
-/-- **Guarded unary expansion is polynomial-time.** `V z` is a value read off the stream,
-big-endian; `C z` is a word whose *length* is the guard.  The result is `min` of the two,
-in unary.
-
-This is the piece plain composition does not give, and it is what lets a rewrite feed a day
-read out of the stream to an oracle indexed by unary days: `blocks ∘ unaryOfBits_le` is then
-an ordinary `mem_FP_comp`.
-
-Proof kind: `C` composition.  Provenance: (b) `foldlBits_mem_FP` above,
-`Cobham.takeLenFn_mem_FP`, `Cobham.appendFn_mem_FP`, `Nat.fromBitsLE_cons`;
-(a) `foldlBits_dblStep`. -/
-lemma unaryOfBits_le_mem_FP {V C : List Bool → List Bool} (hV : V ∈ FP) (hC : C ∈ FP) :
-    (fun z => List.replicate (min (Nat.fromBits (V z)) (C z).length) true) ∈ FP := by
-  have h := foldlBits_mem_FP (A := dblStep false) (B := dblStep true) (W := C) (S := V)
-    (dblStep_mem_FP false) (dblStep_mem_FP true) hC hV [] Polynomial.X
-    (fun z u _ => by
-      rw [foldlBits_dblStep]
-      simp only [List.length_replicate, Polynomial.eval_X]
-      omega)
-  have heq : (fun z => foldlBits (dblStep false) (dblStep true) (C z) [] (V z))
-      = fun z => List.replicate (min (Nat.fromBits (V z)) (C z).length) true := by
-    funext z
-    rw [foldlBits_dblStep]
-  rwa [heq] at h
-
-/-- **An oracle indexed by unary days may be called on a day read off the stream.**
-
-This is the whole of the "oracle-valued emitter" question, and the answer is that there is
-nothing to add: an emitter is just an `FP` function of the step's packed argument, so once
-`unaryOfBits_le_mem_FP` turns the *value* `D` into the *word* `unaryDay D`, calling
-`Blocks` on it is an ordinary `mem_FP_comp`.  `V` and `C` here are arbitrary `FP` functions
-of the step's argument, so instantiating `V` at the extraction of the day slot and `C` at
-the guard word is exactly what a rewriter's step does.
-
-Note what the guard buys: without it the composite is not merely unproved but *false* as a
-polynomial-time claim, since a `k`-bit day would name up to `2 ^ k` marks.
-
-Proof kind: `C` composition.  Provenance: (b) `mem_FP_comp`; (a) `unaryOfBits_le_mem_FP`. -/
-lemma emitOracle_mem_FP {V C Blocks : List Bool → List Bool}
-    (hV : V ∈ FP) (hC : C ∈ FP) (hBlocks : Blocks ∈ FP) :
-    (fun z => Blocks (List.replicate (min (Nat.fromBits (V z)) (C z).length) true)) ∈ FP :=
-  mem_FP_comp (unaryOfBits_le_mem_FP hV hC) hBlocks
-
 /-! ## Recovering the day -/
 
 /-- **The composite that makes the machine's own input available to a transduction.**
@@ -310,34 +193,3 @@ lemma mem_FP_withInput {F G : List Bool → List Bool} (hF : F ∈ FP) (hG : G �
   mem_FP_comp (mem_FP_pairWithInput hF) hG
 
 end LogicalInduction.FPFold
-
-/-! ## Digit-level rewrites, read back by `strategyOfOutput` -/
-
-namespace LogicalInduction
-
-/-- A digit-level rewrite lifts to the bit level through `digitsToBits`, provided the digits
-it emits fit in three bits.
-
-Proof kind: `C` composition.  Provenance: (a) `bitsToDigits_digitsToBits`. -/
-lemma strategyOfOutput_digitsToBits (n : ℕ) (ds : List ℕ) (h : ∀ d ∈ ds, d < 8) :
-    strategyOfOutput n (digitsToBits ds)
-      = strategyOfTokens n (unRpn (undigitize ds)) := by
-  rw [strategyOfOutput, bitsToDigits_digitsToBits ds h]
-
-/-- **The adapter, unconditionally.** Clamping every digit at the block terminator makes it
-fit in three bits and is invisible to `undigitize`, so *any* digit stream — including the
-unbounded token values a rewrite may emit — round-trips through the bit rendering
-`MachineEfficientTrader` reads.
-
-Proof kind: `C` composition.  Provenance: (a) `strategyOfOutput_digitsToBits`,
-`undigitize_map_min_four`. -/
-lemma strategyOfOutput_digitsToBits_clamp (n : ℕ) (ds : List ℕ) :
-    strategyOfOutput n (digitsToBits (ds.map (fun d => min d 4)))
-      = strategyOfTokens n (unRpn (undigitize ds)) := by
-  rw [strategyOfOutput_digitsToBits n _ (by
-        intro d hd
-        obtain ⟨e, -, rfl⟩ := List.mem_map.mp hd
-        omega),
-    undigitize_map_min_four]
-
-end LogicalInduction

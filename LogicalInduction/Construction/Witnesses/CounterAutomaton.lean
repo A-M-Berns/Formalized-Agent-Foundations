@@ -1,4 +1,7 @@
-/-
+import LogicalInduction.Construction.Witnesses.RunAutomaton
+import Complexitylib.Classes.P
+
+/-!
 # A finite control with one unbounded counter, in polynomial time
 
 `RunAuto.BlockAutomaton` fixes the number of states, and that is exactly what an `aⁿbⁿ`
@@ -35,8 +38,6 @@ and the counter grows by at most one — which is what buys admission to
 Everything here is supporting infrastructure rather than a paper claim, so the declarations
 are `lemma`s and `def`s.
 -/
-import LogicalInduction.Construction.Witnesses.RunAutomaton
-import Complexitylib.Classes.P
 
 namespace LogicalInduction.CtrAuto
 
@@ -550,9 +551,5 @@ lemma ifCtr_mem_FP (p : CtrProgram) {S X Y : List Bool → List Bool}
     · rw [if_pos ((ctrMachine_accepts p _).mpr hc), if_pos hc]
     · rw [if_neg (fun hd => hc ((ctrMachine_accepts p _).mp hd)), if_neg hc]
   rwa [heq] at h
-
-#print axioms LogicalInduction.CtrAuto.ctrMachine
-#print axioms LogicalInduction.CtrAuto.ctrMachine_accepts
-#print axioms LogicalInduction.CtrAuto.ifCtr_mem_FP
 
 end LogicalInduction.CtrAuto

@@ -16,24 +16,32 @@ token run by prefixing the `.and` tag `15` and concatenating the decoded runs; t
 is pure list surgery, so `combineTokens_map_sourceNat` identifies it with the emitted run
 of the right-nested conjunction `conjSource`, and `compile_conjSource` says what that
 conjunction denotes.  `axiomWindow` then packages the finite window a day actually sees —
-machine `z`, budget and input list packed into `w` — with a diverging input contributing
-the inert `⊤`, and `negWindowCode` names the Godel code of the negation of the window's
-conjunction, which is the argument the represented predicate of `thm:incons` is
-instantiated at.
+machine `z`, budget and input list packed into `w` — with a diverging or inadmissible
+output contributing the inert `⊤`, and `negWindowCode` names the Gödel code of the negation
+of the window's conjunction, which is the argument the represented predicate of
+`thm:incons` is instantiated at.
 
-**The per-entry gate, and why the splice needs one.**  Splicing is list surgery, so it is
-blind to what the pieces are: nothing in `combineTokens` stops two *incomplete* runs from
-concatenating into one complete run, and nothing in `tokensOfNat` — which stops at the
-first sentinel — stops a number that is no name at all from decoding like a short one.
-Ungated, both make a machine whose theory is *empty* satisfy the represented predicate.
-So `axiomWindow` admits an output only if it passes `AdmissibleName`: the number is
-literally the name of its own decoded run, and that run is the complete emitted run of one
-`ArithSource 0` whose compiled form is a *sentence* (`SourceRecognizer.sourceRun`).  An
-output failing either test contributes the inert `⊤` instead of itself.  The gate is what
-makes `exists_sources_axiomWindow` true — *every* window, at every argument, is literally
-`ss.map ArithSource.sourceNat` for genuine sentence-valued sources `ss`, each either
-emitted by the machine or the inert filler — and that in turn is what makes the represented
-predicate say exactly what the `dd:machinetheory` convention claims it says.
+**The per-entry gate.**  Reading a machine as a presentation of a theory is the
+`dd:machinetheory` convention (glossary in `LogicalInduction.lean`); what this module
+supplies is the decision procedure that convention needs.  `AdmissibleName` is two decidable
+tests — the exact-name test `tokenListNat (tokensOfNat v) = v`, and the complete-source test
+`sourceRun (tokensOfNat v).length 0 (tokensOfNat v) = some []` — and `gateName` passes an
+admissible name through, substituting `verumSourceNat` for anything else.
+
+The gate is load-bearing rather than hygiene, for a reason local to the splice: splicing is
+list surgery, so nothing in `combineTokens` stops two *incomplete* runs from concatenating
+into one complete run, and nothing in `tokensOfNat` — which stops at the first sentinel —
+stops a number that is no name at all from decoding like a shorter one.  Ungated, either
+makes a machine whose theory is *empty* satisfy the represented predicate.  Gated,
+`exists_sources_axiomWindow` holds at *every* argument with no hypothesis on the machine:
+every window is literally `ss.map ArithSource.sourceNat` for genuine sentence-valued sources
+`ss`, each either emitted by the machine or the inert filler.  That is what turns the
+represented predicate into a statement about the presented theory rather than about the
+emitted stream, and it is what `machineTheoryInconsistent_iff` consumes.
+
+No paper node renders here.  The endpoint,
+`lic_disbelief_inconsistent_theories_unconditional`, and the account of how far the
+convention reaches both live in `ComputationRepresented.lean`.
 
 Everything here is primitive recursive save the last step, which inherits
 `negSourceFormulaCode`'s `Computable`.  As in `SourceNumbering.lean`, none of it is
@@ -52,9 +60,8 @@ def verumSourceNat : ℕ := (ArithSource.leaf (⊤ : ArithmeticSemiformula ℕ 0
 
 /-- **Splice a list of written sources into the written form of their conjunction.**
 `15` is `ArithSource.sourceTokens`' `.and` tag, so this is pure list surgery on the
-emitted runs; the empty list splices to the run of `⊤`.  Written as a `foldr` because
-that is the shape `Primrec.list_foldr` accepts — see `combineTokens_nil` and
-`combineTokens_cons` for the defining equations. -/
+emitted runs; the empty list splices to the run of `⊤`.  Written in `foldr` form, the
+shape `Primrec.list_foldr` accepts. -/
 def combineTokens (vs : List ℕ) : List ℕ :=
   vs.foldr (fun v acc => 15 :: (tokensOfNat v ++ acc))
     (encodeArithmeticFormulaSymbols (⊤ : ArithmeticSemiformula ℕ 0))
@@ -127,6 +134,8 @@ def AdmissibleName (v : ℕ) : Prop :=
   tokenListNat (tokensOfNat v) = v ∧
     sourceRun (tokensOfNat v).length 0 (tokensOfNat v) = some []
 
+/-- Both conjuncts are decidable equalities, so admissibility is decidable;
+`admissibleName_primrec` strengthens this to primitive recursiveness. -/
 instance : DecidablePred AdmissibleName := fun _ => inferInstanceAs (Decidable (_ ∧ _))
 
 /-- **The gate itself**: an admissible name passes through, anything else contributes the
@@ -257,7 +266,7 @@ lemma exists_sources_axiomWindow (z w : ℕ) :
           exact eq_verum_of_sourceNat_eq_verum hc hname
       · exact hall t ht'
 
-/-- **The Godel code of the negation of the day-window conjunction** — the argument at
+/-- **The Gödel code of the negation of the day-window conjunction** — the argument at
 which the represented inconsistency predicate is instantiated. -/
 def negWindowCode (z w : ℕ) : ℕ :=
   negSourceFormulaCode (combineSourceNats (axiomWindow z w))
@@ -326,29 +335,3 @@ lemma negWindowCode_computable : Computable₂ negWindowCode :=
     (combineSourceNats_primrec.comp axiomWindow_primrec).to_comp
 
 end LogicalInduction
-
-#print axioms LogicalInduction.verumSourceNat
-#print axioms LogicalInduction.combineTokens
-#print axioms LogicalInduction.combineTokens_nil
-#print axioms LogicalInduction.combineTokens_cons
-#print axioms LogicalInduction.combineSourceNats
-#print axioms LogicalInduction.conjSource
-#print axioms LogicalInduction.combineTokens_map_sourceNat
-#print axioms LogicalInduction.combineSourceNats_map_sourceNat
-#print axioms LogicalInduction.compile_conjSource
-#print axioms LogicalInduction.AdmissibleName
-#print axioms LogicalInduction.gateName
-#print axioms LogicalInduction.exists_source_of_admissibleName
-#print axioms LogicalInduction.admissibleName_sourceNat
-#print axioms LogicalInduction.gateName_sourceNat
-#print axioms LogicalInduction.gateName_verumSourceNat
-#print axioms LogicalInduction.exists_source_gateName
-#print axioms LogicalInduction.axiomWindow
-#print axioms LogicalInduction.exists_sources_axiomWindow
-#print axioms LogicalInduction.negWindowCode
-#print axioms LogicalInduction.combineTokens_primrec
-#print axioms LogicalInduction.combineSourceNats_primrec
-#print axioms LogicalInduction.admissibleName_primrec
-#print axioms LogicalInduction.gateName_primrec
-#print axioms LogicalInduction.axiomWindow_primrec
-#print axioms LogicalInduction.negWindowCode_computable

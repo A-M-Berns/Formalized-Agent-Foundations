@@ -65,11 +65,15 @@ lean_lib AxiomAudit where
   srcDir := "."
 
 -- The executable machine side: the description bridge, the clocked simulator, and the
--- conditioning transduction. An aggregator target so `lake build` exercises the whole
--- directory as a unit, including the modules `LogicalInduction.lean` does not reach.
--- Most of it *is* reachable from `LogicalInduction.lean` — `Construction.lean` imports
--- `MachineTraderEnumeration`, which imports `Machine.ClockedSim`, which imports
--- `Machine.DescExec` — because the enumeration's soundness half rests on it.
+-- conditioning transduction, rooted at `LogicalInduction.Construction.Machine`.
+-- It builds a SUBSET of what `lean_lib LogicalInduction` covers, not a superset: every
+-- module this root imports is already reachable from `LogicalInduction.lean` (via
+-- `Construction.lean` → `MachineTraderEnumeration` → `Machine.ClockedSim` →
+-- `Machine.DescExec`, the enumeration's soundness half). What the target adds is exactly
+-- the root module `LogicalInduction.Construction.Machine` itself, which nothing else
+-- imports — so it is the directory-granularity build unit for iterating on
+-- `Construction/Machine/`, and a `lake build MachineExec` green tells you nothing that
+-- `lake build LogicalInduction` green does not.
 -- `DescExec` is the only module in this repository that names a `Complexity.*`
 -- declaration outside the criterion itself; its import surface is
 -- `…UTM.Internal.Interp`, a 5-file / ~2.2k-line closure of the pinned fork, not the

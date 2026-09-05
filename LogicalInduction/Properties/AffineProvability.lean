@@ -1,19 +1,43 @@
-/-
-# Affine Provability Induction (§4.5, `thm:affprovind`, `app:affprovind`)
-
-The affine analogue of provability induction, stated semantically: if every sufficiently
-late plausible world values a polynomially generated affine bundle at least `c`, then the
-bundle's diagonal market price cannot stay below `c`. `affine_tendsto_zero` is the
-two-sided form obtained by applying it to the family and its negation.
--/
 import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# The semantic engine behind Affine Provability Induction
+
+Paper §4.5, `thm:affprovind`, with its appendix proof `app:affprovind`: if every
+sufficiently late plausible world values a polynomially generated affine bundle at least
+`c`, the bundle's diagonal market price cannot stay below `c`.
+
+This module carries no `Paper node` line.  The node's endpoints are
+`AffineCombination.PolySequence.affine_provind_theory_ge`, `…_le` and `…_eq` in
+`AffineCoherence.lean`, stated over the paper's `BCS` interface and consuming
+`affine_provind` here.
+
+`PolySequence.buyBelowTrader` buys the day-`n` affine bundle with a continuous coefficient
+that is zero before `start`, one below `low`, and ramps to zero by `low + δ`: the entry
+gate `gateFeature` and the buy signal `gradualEntry` of `AffinePreemptiveLearning`.  Its
+efficient-computability certificate is assembled in the write-out class through
+`BigSpliceStream` (`Framework/WriteOut.lean`), one trade slot per bundle term.
+
+`PolySequence.affine_provind` is the one-sided conclusion
+`AsympGE (fun n => (As n).price P n) (fun _ => c)`, proved by routing that trader through
+`exploits_of_ge_partialSums` (`Properties/Basic.lean`): its value is world-dependent but
+bounded below by the world-independent quantity `entry · (c − price)`.
+`PolySequence.affine_tendsto_zero` is the two-sided form, obtained by applying
+`affine_provind` to the family and to its negation.
+
+`AffineCoherence.lean` consumes both as the paper endpoints, and `ExpectationAffine.lean`
+reaches them for the expectation analogues.  The asymptotic vocabulary `AsympGE`/`AsympEq`
+comes from `Framework/Asymptotics` (`dd:asymp`).
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
 namespace AffineCombination
+
+/-! ## The gated buy-below trader -/
 
 /-- Buy the day-`n` affine bundle with a continuous coefficient which is zero before
 `start`, one below `low`, and ramps to zero by `low + δ`. -/
@@ -69,6 +93,8 @@ lemma PolySequence.buyBelowTrader_value {As : ℕ → AffineCombination}
   rw [PolySequence.buyBelowTrader, AffineCombination.buy_value,
     AffineCombination.scale_value, AffineCombination.scale_price]
   ring
+
+/-! ## The one-sided conclusion -/
 
 /-- **Affine Provability Induction.**  An eventually uniform plausible-world lower bound
 on a normalized polynomial affine family is learned on the diagonal. -/
@@ -138,6 +164,8 @@ lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
         (buyIndF_mem ((As i).priceFeature i) low δ P).1)
   exact hLI.noExploit _ (h.buyBelowTrader_ec start low δ)
     (exploits_of_ge_partialSums _ P DP w ε hε hnonneg hnet hfreqW hcons)
+
+/-! ## The two-sided form -/
 
 /-- Two-sided affine provability: if every late plausible world values the family
 uniformly near zero, then its diagonal market price converges to zero. -/

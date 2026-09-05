@@ -2,7 +2,6 @@ import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import Mathlib.Computability.Halting
 import Mathlib.Data.List.Sections
 
-
 /-!
 # Separator data for strict domination of the universal semimeasure (`thm:strict`)
 
@@ -40,10 +39,20 @@ node compete, so the semimeasure inequality holds.  A universal `M` dominates it
 `M.mass (prefixes i)` stays above a fixed positive constant forever, and cannot tend to
 `0`.
 
-Two pieces of that argument are reusable elsewhere: `ceNestedSemimeasure`, a concrete
+Two pieces of that argument are stated in reusable form: `ceNestedSemimeasure`, a concrete
 inhabitant of `LowerSemicomputableContinuousSemimeasure`, and
 `exists_code_evaln_of_computable`, which says any computable `ℕ × List Bool → ℕ` meets the
 bounded-fuel `approximation_computes` interface.
+
+## Reading the endpoints against the paper
+
+`lic_strict_domination_universalSemimeasure_ofAtomCodes` is the statement of the printed
+`thm:strict`, and is the strongest form: it needs only computability of the atoms' Gödel codes,
+`[IsLogicalInductor]` and `0 < C`.  The results above it are steps of the appendix proof
+`app:strict`, and each says which step it is; they carry the same provenance label because they
+are inventoried infrastructure for that node, not because they restate the paper's theorem.
+`ordinaryAtom_code_computable` discharges the atom hypothesis for the repo's own atoms, and
+`UnconditionalOverLIA.lean` closes the endpoint over `LIA`.
 -/
 
 namespace LogicalInduction
@@ -54,7 +63,7 @@ open Filter Topology
 -- for the product and list types used below, so `Nat.sqrt` is kept opaque in this file.
 attribute [local irreducible] Nat.sqrt
 
-/-! ### Pointwise prefix agreement
+/-! ## Pointwise prefix agreement
 
 `List.IsPrefix` has no computability API in Mathlib, so the prefix relation is used here in
 its pointwise form, which is directly decidable by a `List.range`/`getElem?` comparison. -/
@@ -134,7 +143,7 @@ lemma prefixAgreeB_primrec :
     Primrec.list_map Primrec.fst (Primrec.option_some.comp Primrec.snd).to₂
   exact Primrec.comp ((Primrec.eq (α := List (Option Bool))).decide) (hleft.pair hright)
 
-/-! ### The semimeasure carried by a computably enumerated nested family -/
+/-! ## The semimeasure carried by a computably enumerated nested family -/
 
 variable (enum : ℕ → List Bool)
 
@@ -350,9 +359,10 @@ noncomputable def ceNestedSemimeasure (henum : Computable enum)
   approximation_le n σ := ceApprox_le_ceMass n σ
   approximation_tendsto σ := ceApprox_tendsto σ
 
-/-- **A universal semimeasure never abandons a computably enumerated nested family.**
+/-- **A universal semimeasure never abandons a computably enumerated nested family.**  The
+domination step of `app:strict`.
 Paper node: `thm:strict` -/
-theorem exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
+lemma exists_pos_mass_of_ce_nested (M : UniversalContinuousSemimeasure)
     (henum : Computable enum)
     (hcomparable : ∀ j j', PrefixAgree (enum j) (enum j') ∨ PrefixAgree (enum j') (enum j)) :
     ∃ c : ℝ, 0 < c ∧ ∀ j, c ≤ M.mass (enum j) := by
@@ -389,10 +399,10 @@ lemma prefixAgree_of_nested {prefixes : ℕ → List Bool}
   · exact Or.inr (by simpa [Nat.add_sub_cancel' h] using hmono i' (i - i'))
 
 /-- No nested family of bit strings with a computable enumeration can have vanishing
-universal-semimeasure mass.  This is what rules out presenting the separator data as a
-single nested prefix family.
+universal-semimeasure mass.  This is the obstruction step of `app:strict`: it rules out
+presenting the separator data as a single nested prefix family.
 Paper node: `thm:strict` -/
-theorem no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
+lemma no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
     (prefixes : ℕ → List Bool)
     (hnested : ∀ i, ∃ rest, prefixes (i + 1) = prefixes i ++ rest)
     (henum : Computable enum)
@@ -415,7 +425,7 @@ theorem no_ce_null_prefix_family (M : UniversalContinuousSemimeasure)
   obtain ⟨N, hN⟩ := eventually_atTop.1 hev
   exact absurd (hN N le_rfl) (not_lt.2 (hall N))
 
-/-! ### Kleene's inseparable pair
+/-! ## Kleene's inseparable pair
 
 `A₁ = {e : e(e) ↓ = 1}` and `A₀ = {e : e(e) ↓ = 0}` are disjoint c.e. sets with no
 computable separator (`kleene_recursively_inseparable`).  Dovetailing them with `evaln`
@@ -435,10 +445,10 @@ lemma kleeneSet_disjoint {e : ℕ} (h0 : e ∈ kleeneSet false) (h1 : e ∈ klee
   exact absurd (Part.mem_unique h0' h1') (by norm_num)
 
 /-- **Recursive inseparability of Kleene's pair.**  No computable predicate contains `A₁`
-and avoids `A₀`.  This is the computability-theoretic input behind `thm:strict`; it is what
+and avoids `A₀`.  This is the computability-theoretic input of `app:strict`; it is what
 makes the separator class contain no computable member.
 Paper node: `thm:strict` -/
-theorem kleene_recursively_inseparable (f : ℕ → Bool) (hf : Computable f)
+lemma kleene_recursively_inseparable (f : ℕ → Bool) (hf : Computable f)
     (h1 : ∀ e ∈ kleeneSet true, f e = true)
     (h0 : ∀ e ∈ kleeneSet false, f e = false) : False := by
   have hg : Nat.Partrec fun e : ℕ ↦ (Part.some (if f e then 0 else 1) : Part ℕ) := by
@@ -499,7 +509,7 @@ lemma kleeneAssignment_of_decide {n e : ℕ} {b : Bool} (h : kleeneDecide n e = 
       simp [kleeneAssignment, this]
   | true => simp [kleeneAssignment, hmem]
 
-/-! ### The constraint theory and its stagewise consistent class -/
+/-! ## The constraint theory and its stagewise consistent class -/
 
 /-- Stage-`n` constraint: the conjunction of the literals for the bits decided by stage
 `n`.  Undecided bits are left free, so this is *not* a prefix sentence. -/
@@ -813,7 +823,9 @@ lemma mem_separatorConsistentAt {σ : List Bool} {n : ℕ} :
     · rfl
     · simpa using hall e (List.mem_range.1 he) b hb
 
-/-! ### The stage class masses are non-increasing
+/-! ## The stage class masses
+
+### Non-increasing under refinement
 
 Nothing computability-theoretic is needed here.  A stage-`(n+1)` consistent string
 truncates to a stage-`n` consistent one — stage decisions only grow with fuel — and
@@ -1029,6 +1041,8 @@ lemma classMass_wrong_bit_lt (M : ContinuousSemimeasure) {r : ℝ} {k : ℕ}
     classMass_antitone M hks
   have hrS := hle S
   linarith
+
+/-! ## The Kučera–Demuth search -/
 
 /-! ### Bounded-fuel access to the approximants
 
@@ -1431,14 +1445,14 @@ private lemma no_pos_class_floor (L : LowerSemicomputableContinuousSemimeasure) 
   · intro e he
     simp [hbit e false he]
 
-/-- **The separator classes are null (`thm:strict`, measure half).**  For a universal
-continuous semimeasure the stage classes of the Kleene constraint theory carry vanishing
-total mass: the class masses are antitone, so they converge to some `r ≥ 0`, and a positive
-floor is refuted by `no_pos_class_floor` (Kučera–Demuth: the semimeasure's own
+/-- **The separator classes are null: the Kučera–Demuth step of `app:strict`.**  For a
+universal continuous semimeasure the stage classes of the Kleene constraint theory carry
+vanishing total mass: the class masses are antitone, so they converge to some `r ≥ 0`, and a
+positive floor is refuted by `no_pos_class_floor` (Kučera–Demuth: the semimeasure's own
 lower-semicomputable approximants would compute a separator by majority vote,
 contradicting `kleene_recursively_inseparable`).
 Paper node: `thm:strict` -/
-theorem separatorClass_mass_tendsto_zero (M : UniversalContinuousSemimeasure) :
+lemma separatorClass_mass_tendsto_zero (M : UniversalContinuousSemimeasure) :
     Tendsto (fun n ↦ ((separatorConsistentAt n).map M.mass).sum) atTop (𝓝 0) := by
   have hrw : (fun n ↦ ((separatorConsistentAt n).map M.mass).sum)
       = classMass M.toLowerSemicomputableContinuousSemimeasure.toContinuousSemimeasure
@@ -1466,17 +1480,7 @@ theorem separatorClass_mass_tendsto_zero (M : UniversalContinuousSemimeasure) :
     (htend.eventually_lt_const (by linarith)).exists
   exact no_pos_class_floor M.toLowerSemicomputableContinuousSemimeasure hpos hle hk
 
-/-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
-hypothesis of the separator presentation.
-Paper node: `thm:strict` -/
-lemma ordinaryAtom_code_computable :
-    Computable fun k ↦ Encodable.encode (ordinaryIndependentBitAtoms.atom k) := by
-  have hpair : Computable fun k : ℕ ↦ Nat.pair 1 k + 1 :=
-    Computable.succ.comp
-      (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 1) Computable.id)
-  exact hpair.of_eq (fun _ ↦ rfl)
-
-/-! ### The separator presentation
+/-! ## The separator presentation
 
 Every field is discharged here.  Realizability of the non-computable target assignment
 comes from `BitPrefixSentences.realizable` — the total form, which is exactly why that
@@ -1488,6 +1492,16 @@ is supplied by the caller:
   repo's concrete atoms by `ordinaryAtom_code_computable`; from it the whole constraint
   theory's enumerator is *built* (`separatorConstraintCE`), so no formula-emission input is
   assumed here. -/
+
+/-- The repo's concrete bit atoms have computable Gödel codes, so they meet the atom
+hypothesis of the separator presentation.
+Paper node: `thm:strict` -/
+lemma ordinaryAtom_code_computable :
+    Computable fun k ↦ Encodable.encode (ordinaryIndependentBitAtoms.atom k) := by
+  have hpair : Computable fun k : ℕ ↦ Nat.pair 1 k + 1 :=
+    Computable.succ.comp
+      (Computable₂.comp Primrec₂.natPair.to_comp (Computable.const 1) Computable.id)
+  exact hpair.of_eq (fun _ ↦ rfl)
 
 /-- The separator presentation of `thm:strict`, built from Kleene's recursively inseparable
 pair: the constraint theory, its c.e. enumerator, the stagewise consistent classes, and
@@ -1544,13 +1558,5 @@ theorem lic_strict_domination_universalSemimeasure_ofAtomCodes
     ∀ C : ℝ, 0 < C → ∃ σ : List Bool,
       limitingBelief P (B.prefixSentence σ) > C * M.mass σ :=
   lic_strict_domination_universalSemimeasure P (strictSeparatorPresentationOfKleene M B hatom)
-
-#print axioms ceNestedSemimeasure
-#print axioms exists_pos_mass_of_ce_nested
-#print axioms no_ce_null_prefix_family
-#print axioms kleene_recursively_inseparable
-#print axioms separatorClass_mass_tendsto_zero
-#print axioms strictSeparatorPresentationOfKleene
-#print axioms lic_strict_domination_universalSemimeasure_ofAtomCodes
 
 end LogicalInduction

@@ -19,7 +19,7 @@ between the two: claims carry an actual FFL arithmetic schema and a compact inpu
 their Gödel names are propositional atoms.  `ComputationTheoryPresentation` is the
 remaining background-theory premise: it translates proofs of the fixed universal
 computation schemas into stages of a computable deductive process.  It contains no
-sentence sequences, prices, markets, or asymptotic conclusions.
+prices, markets, or asymptotic conclusions.
 
 FFL's `re_complete` gives weak (positive) representation of every r.e. predicate.  A false
 decidable claim is *not* refutable from weak representation, so every refutation field of
@@ -84,10 +84,11 @@ evaluate it.  A bounded claim therefore carries `⌜f⌝` — a constant — pai
 `n` unevaluated, so the claim's Gödel name is polynomial in `n` for *every* computable `f`,
 not only the polynomial-time ones.
 
-The price is that the positive and negative schemas are no longer exhaustive: if the
-horizon program diverges on `n`, neither fires.  They remain mutually exclusive
-(`universalBoundedClaims_exclusive`), which is what the deductive-process construction
-needs, and for a total `f` — the paper's setting — exactly one of them fires. -/
+The price is that the positive and negative literals of the schema are not exhaustive: if the
+horizon program diverges on `n`, neither fires.  They remain mutually exclusive — this is one
+schema read at two literals, `σ` and `∼σ`, as the module docstring records — which is what
+the deductive-process construction needs, and for a total `f` — the paper's setting — exactly
+one of them fires. -/
 
 /-- Decode `z = ⟨⟨machine, input⟩, ⟨horizon program, day⟩⟩` into its machine. -/
 def boundedClaimMachine (z : ℕ) : Nat.Partrec.Code :=
@@ -151,6 +152,7 @@ private lemma universalBoundedRun_re (b : Bool) :
   · rintro ⟨m, hm, hb⟩
     exact ⟨0, Part.mem_bind_iff.mpr ⟨m, hm, by rw [if_pos hb]; simp⟩⟩
 
+/-- The deferred-horizon bounded halting predicate is recursively enumerable. -/
 lemma universalBoundedHalts_re : REPred UniversalBoundedHalts :=
   (universalBoundedRun_re true).of_eq fun _ => Iff.rfl
 
@@ -187,8 +189,8 @@ structure ComputationClaim where
   input : ℕ
 
 /-- **The global atom-payload allocation** — the first component of every public atom code
-in this development, and the authoritative table.  It is gapless: every value from `0` to
-`6` is allocated, and nothing else is emitted by any process here.
+in this development, and the authoritative table.  Every value from `0` to `7` is
+allocated; a new atom family takes a fresh tag and a row here.
 
 | tag | atoms | declaration |
 |---|---|---|
@@ -199,10 +201,12 @@ in this development, and the authoritative table.  It is gapless: every value fr
 | `4` | semantic handles | `semanticPrimeTag` (`SemanticPrime.lean`) |
 | `5` | first-order primes | `paperPrimeTag` (`PaperFirstOrder.lean`) |
 | `6` | old-language copy | `oldLanguageTag` (`OldLanguageLift.lean`) |
+| `7` | `thm:dus` bit atoms over `paperDP` | `bitAtomTag` (`UnconditionalOverLIA.lean`) |
 
-Tags `7`/`8` are used by `FinitePerturbationCounterexample`'s advice atoms, which no
-process emits; they sit above the allocated block so the counterexample's disjointness
-argument is numeric rather than incidental.
+`FinitePerturbationCounterexample`'s advice atoms also use `7` and `8`.  They live over that
+counterexample's own market and process, and what its construction needs of them is
+disjointness from the tags *its own* processes emit, which is what is proved there — not
+that the numerals are globally unallocated.
 
 Do **not** confuse this with the two other tag spaces in this development: `theoremDP`'s
 *event* index (`eventAtom`, tags `0`–`5`), and the RPN *token* opcodes
@@ -213,6 +217,7 @@ def ComputationClaimKind.godelCode : ComputationClaimKind → ℕ
   | .halting => 0
   | .boundedHalting => 1
 
+/-- The kind tags are distinct, so the tag component separates the two claim families. -/
 lemma ComputationClaimKind.godelCode_injective :
     Function.Injective ComputationClaimKind.godelCode := by
   intro a b h
@@ -223,6 +228,7 @@ def ComputationClaim.godelCode (claim : ComputationClaim) : ℕ :=
   Nat.pair claim.kind.godelCode
     (Nat.pair (Encodable.encode claim.schema) claim.input)
 
+/-- Distinct claims have distinct compact Gödel names. -/
 lemma ComputationClaim.godelCode_injective :
     Function.Injective ComputationClaim.godelCode := by
   rintro ⟨ka, sa, ia⟩ ⟨kb, sb, ib⟩ h
@@ -238,21 +244,30 @@ lemma ComputationClaim.godelCode_injective :
 def computationClaimSentence (claim : ComputationClaim) : Sentence :=
   LO.Propositional.Formula.atom claim.godelCode
 
+/-- Distinct claims are named by distinct propositional atoms: the separation fact a client
+reasoning about two claims at once needs. -/
 lemma computationClaimSentence_injective :
     Function.Injective computationClaimSentence := by
   intro a b h
   apply ComputationClaim.godelCode_injective
   injection h
 
+/-- The claim "`z` names a halting run", at the fixed unbounded universal schema. -/
 noncomputable def haltingClaim (z : ℕ) : ComputationClaim :=
   ⟨.halting, universalHaltingSchema, z⟩
 
+/-- The claim "`z` names a run halting within its deferred horizon", at the fixed bounded
+universal schema. -/
 noncomputable def boundedHaltingClaim (z : ℕ) : ComputationClaim :=
   ⟨.boundedHalting, universalBoundedHaltingSchema, z⟩
 
+/-- The propositional atom naming the unbounded-halting claim at `z`.  It is the atom of
+`theoremDP`'s unbounded event-tag row (`ComputationDP.eventAtom`). -/
 noncomputable def haltingClaimSentence (z : ℕ) : Sentence :=
   computationClaimSentence (haltingClaim z)
 
+/-- The propositional atom naming the bounded-halting claim at `z`.  It is the atom of
+`theoremDP`'s bounded event-tag row. -/
 noncomputable def boundedHaltingClaimSentence (z : ℕ) : Sentence :=
   computationClaimSentence (boundedHaltingClaim z)
 
@@ -341,11 +356,7 @@ lemma computationClaimSentence_digits
 sentence* as the compact numeral `binNumeral (haltingClaimInput (machines n) (inputs n))`,
 whose token run this certificate is what supplies (`representedHaltingClaims`,
 `ComputationRepresented.lean`).  So `hm` and `hi` are load-bearing on the `def:ec`
-obligation there, not merely on a computability step.
-
-The superseded reading — machine and input hidden *inside* a `codeOfREPred` schema, with
-`hm`/`hi` consumed only by an r.e.-ness step — was extensional and named no machine; see the
-header of `ComputationRepresented.lean`. -/
+obligation there, not merely on a computability step. -/
 lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
     BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
@@ -353,24 +364,22 @@ lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : �
 
 /-! ### Write-out certificates for the tag-keyed claim families
 
-**Neither lemma below has a consumer.**  They are the claim-sentence generators for the two
-rows of `theoremDP`'s *event* tag table (`eventAtom` tags 0–3, `ComputationDP.lean`), and
-each was once the emission certificate for an endpoint stated over `theoremDP`.  Both of
-those endpoints have since moved: `thm:halts`/`thm:loops` are stated over the single market
-`paperDP` at the day-indexed schema, whose sentences are emitted by `schemaDayClaimSentence_bigSentenceCodes`
-(`ComputationRepresented.lean`), and the bounded lane moved earlier, the same way.
+The two lemmas below are the write-out certificates of the two `theoremDP` event-tag rows
+(`eventAtom` tags `0`–`3`, `ComputationDP.lean`), whose sentence families
+`haltingClaimSentence` and `boundedHaltingClaimSentence` are the atoms of `theoremDP`'s
+stage worlds.  They are the API facts for those rows and are kept alongside them.
 
-What survives of these rows is the tag table itself: the sentence families
-`haltingClaimSentence` and `boundedHaltingClaimSentence` are still the atoms of
-`theoremDP`'s stage worlds, and these lemmas are their write-out certificates, kept
-alongside them. -/
+The `thm:halts` / `thm:loops` endpoints are stated over the single market `paperDP` at the
+day-indexed schema instead, and their sentences are emitted by
+`representedClaimSentence_bigSentenceCodes` (`ComputationRepresented.lean`); the bounded
+lane is arranged the same way. -/
 
-/-- Write-out certificate for the unbounded-halting tag row.  No consumer; see the section
-note above. -/
+/-- Write-out certificate for the unbounded-halting tag row. -/
 lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
     DigitSentenceCodes (fun n => haltingClaimSentence (input n)) :=
   computationClaimSentence_digits .halting universalHaltingSchema hinput
 
+/-- Write-out certificate for the bounded-halting tag row. -/
 lemma boundedHaltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
     DigitSentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
   computationClaimSentence_digits .boundedHalting universalBoundedHaltingSchema hinput
@@ -395,14 +404,11 @@ structure ComputationTheoryPresentation
   halting_enters : ∀ z : ℕ,
     T ⊢ universalHaltingSchema/[↑z] →
       ∃ k, haltingClaimSentence z ∈ DP.D k
-  /-- **No consumer as of the `thm:halts`/`thm:loops` migration.**  The only endpoint that
-  read this field was the `theoremDP` form of `thm:loops`; that endpoint is now stated over
-  the single market `paperDP` at the day-indexed halting schema
-  (`Construction/Witnesses/ComputationRepresented.lean`) and gets its negative literal from
-  its own `hloops` premise instead.  The field is still *discharged* — by
-  `theoremPresentation` in `ComputationDP.lean` and by `ProductDefinition.lean` — and is
-  still frozen in `AxiomAudit.lean`'s `#assert_fields` block, so nothing is broken; it is
-  retained deliberately, pending a consolidation ruling on whether the field stays. -/
+  /-- A `T`-proof of the literal negation of an unbounded-schema instance enters the process
+  as the negated claim atom.  It is the negative half of the `halting_enters` literal pair,
+  and is discharged by `ComputationDP.theoremPresentation` and by `ProductDefinition.lean`.
+  The `thm:loops` endpoint over `paperDP` takes its negative literal from its own `hloops`
+  premise rather than from this field. -/
   halting_refutes : ∀ z : ℕ,
     T ⊢ ∼(universalHaltingSchema/[↑z]) →
       ∃ k, (∼haltingClaimSentence z) ∈ DP.D k
@@ -413,7 +419,7 @@ structure ComputationTheoryPresentation
     T ⊢ ∼(universalBoundedHaltingSchema/[↑z]) →
       ∃ k, (∼boundedHaltingClaimSentence z) ∈ DP.D k
 
-/-! ## Operational predicate presentations -/
+/-! ## Operational horizon presentations -/
 
 /-- The paper's `f` — an arbitrary computable step budget, presented by the program `⌜f⌝`
 that computes it.  The program is a *constant* in the day-indexed claim name, so no
@@ -493,6 +499,7 @@ lemma codeHalts_nest (n x : ℕ) : CodeHalts (Nat.Partrec.Code.nest n) x := by
 `succ` never returns `0`, so the search never terminates. -/
 def neverHaltMachine : Nat.Partrec.Code := .rfind' .succ
 
+/-- `neverHaltMachine` halts on no input. -/
 lemma not_codeHalts_neverHaltMachine (x : ℕ) : ¬ CodeHalts neverHaltMachine x := by
   intro h
   rw [CodeHalts, Part.dom_iff_mem] at h
@@ -501,6 +508,8 @@ lemma not_codeHalts_neverHaltMachine (x : ℕ) : ¬ CodeHalts neverHaltMachine x
     Nat.mem_rfind] at hv
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv
   simp at h1
+
+/-! ## Argument sensitivity of the universal schema -/
 
 /-- **The universal halting schema is not argument-insensitive.**
 
@@ -554,12 +563,12 @@ lemma universalHaltingSchema_mentions_zero :
     (‘↑z’ : Semiterm ℒₒᵣ Empty 0) (‘↑z'’ : Semiterm ℒₒᵣ Empty 0)
   rw [← key z, ← key z', hsub]
 
+/-! ## Constant machine names -/
+
 /-- A constant machine sequence is write-out named for free. -/
 lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
     DigitMachineCodes (fun _ => c) :=
   BigDigits.const (Nat.Partrec.Code.sourceNat c)
-
-#print axioms universalHaltingSchema_not_argument_insensitive
 
 /-! ## Positive and negative path witnesses -/
 
@@ -576,16 +585,5 @@ lemma computationRepresentation_positive_path
   rw [Part.dom_iff_mem]
   refine ⟨0, Nat.Partrec.Code.evaln_sound (k := 1) ?_⟩
   simp [Nat.Partrec.Code.evaln]
-
-#print axioms universalCodeHalts_re
-#print axioms universalBoundedHalts_re
-#print axioms universalHaltingSchema_spec
-#print axioms ComputableHorizon.ackermann
-#print axioms not_polyNatCodes_ack
-#print axioms bigDigits_two_pow_not_polyNatCodes
-#print axioms digitMachineCodes_nest_not_polyMachineCodes
-#print axioms ComputationClaim.godelCode_injective
-#print axioms computationClaimSentence_digits
-#print axioms computationRepresentation_positive_path
 
 end LogicalInduction

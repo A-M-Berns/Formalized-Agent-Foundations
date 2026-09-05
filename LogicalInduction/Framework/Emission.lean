@@ -3,12 +3,46 @@ import LogicalInduction.Framework.Computable
 /-!
 # Polynomial emission machinery (`dd:fuel`)
 
-Conclusion-free bounded-simulation compilers over `Nat.Partrec.Code`
-(`codeEvalBound`, `codeEvalnNat`, dovetailing) and the
-clocked token-emission layer (`PrefixPatchCompile.ecClock` …
-`clockedTokens_polySegStream`), together with the token→digit inclusion
-`EfficientlyComputableTok.toDigit`.  No market-limit, exploitation, or
-logical-inductor conclusions appear here; property files consume the interfaces.
+The certification substrate for `def:ec` (tex:753): the polynomial-fuel interpreter
+machinery every `EfficientlyComputable` certificate is built from.
+
+`codeEvalBound` bounds, in terms of the simulated code and the clock, the value one
+successful `Nat.Partrec.Code.evaln` call can return; `codeEvalnNat` is the total
+`none ↦ 0`, `some x ↦ x + 1` normalization of that clocked interpreter.  Four results
+follow.
+
+* `codeEvalnNat_polyFueled` — the **universal bounded simulator**: for every fixed code,
+  the normalized bounded interpreter is itself poly-fueled.  Mathlib's
+  `Code.primrec_evaln` gives only primitive recursion, with no fuel certificate, so this
+  is a structural induction on the code in which `precEvalState`, `precNat` and
+  `rfindNat` supply the explicit fuel-decrement iteration the two recursive constructors
+  need.
+* The **bounded dovetail** (`acceptsWithin`, `dovetailStep`, `dovetailFound`,
+  `dovetailFound_eq_true_iff`) — the generic form of the paper's `DefinitelySettled`
+  clock (`app:prandaff`), consumed by the `PatientSettlementClock.active_codes` field
+  (declared in `Properties/Pseudorandomness.lean`, discharged via
+  `polyFueled_dovetailFound` in `Construction/Witnesses/BoundedEvaluation.lean`) and by
+  `HistoricalVerifiedMaturitySchedule.check_poly` (`Framework/ROI.lean`).
+* `PrefixPatchCompile.clockedTokens_polySegStream` — the raw token stream a clocked
+  trader program emits under `ecClock a k` is a `PolySegStream`.  This is what
+  `Framework/RpnEmission.lean` and the conditioning and settlement witnesses
+  (`Construction/Witnesses/DigitConditioning.lean`, `RpnConditioning.lean`,
+  `BoundedEvaluation.lean`) build their trader certificates on.
+* `EfficientlyComputableTok.toDigit` — every token-model certificate is a digit-model
+  certificate, obtained by digitizing that clocked stream.
+
+The module is conclusion-free: no market-limit, exploitation or logical-inductor
+statement appears here; the property files consume the interfaces.
+
+`Nat.sqrt` is made locally irreducible in the sections doing deep `PolyFueled` work over
+`Nat.pair`-encoded products: `Nat.pair`'s definition mentions `Nat.sqrt`, whose
+well-founded recursion makes `whnf` unfold endlessly during defeq checks on nested pair
+codes, hanging elaboration.  The attribute is always scoped, so no global reasoning about
+`Nat.sqrt` is affected.  `Construction/LIACompiler.lean` blocks the same name for the same
+reason and states it in its own header, together with the unrelated definitional blocks it
+needs; `Framework/Machine/DigitArithFP.lean` blocks it for a different reason — to keep the
+square-root recurrence driven by `sqrt_rec`'s Mathlib characterizations — and says so at
+its own site.
 -/
 
 namespace LogicalInduction
@@ -181,11 +215,7 @@ lemma codeEvalnNat_le (code : Nat.Partrec.Code) (z : ℕ) :
   | some out =>
       simpa using Nat.add_le_add_right (codeEvaln_result_le code h) 1
 
-lemma codeEvalnNat_output_poly (code : Nat.Partrec.Code) :
-    IsPolyBounded (codeEvalnNat code) := by
-  have hclock : IsPolyBounded fun z => codeEvalBound code z.unpair.1 :=
-    (codeEvalBound_poly code).comp isPolyBounded_fst
-  exact hclock.add_one.of_le (codeEvalnNat_le code)
+/-! ## The clocked `prec` state -/
 
 /-- Direct iterative presentation of the clocked `prec` interpreter clause.  Fixing the
 target recursion depth `total`, iteration `j` uses exactly the residual clock
@@ -271,14 +301,10 @@ lemma precEvalState_final (cf cg : Nat.Partrec.Code)
 
 /-! ## Universal bounded simulator
 
-Target: for every fixed `simulated : Code`, the total normalized bounded interpreter
-`codeEvalnNat simulated : ℕ → ℕ` is computable in the project's own polynomial-fuel model
-(`PolyFueled`). Mathlib does not supply this: `Code.primrec_evaln` gives only primitive
-recursion, with no polynomial fuel certificate. The proof is a structural induction on
-`simulated`. Every `evaln` clause self-guards its input (`guard (n ≤ k)`), so a failed
-guard already forces the sub-code interpreter to `none`; that makes the `pair`/`comp`
-cases pure combinations of the sub-code compilers, while only `prec`/`rfind'` require
-genuine fuel-decrement iteration. -/
+Every `evaln` clause self-guards its input (`guard (n ≤ k)`), so a failed guard already
+forces the sub-code interpreter to `none`.  That makes the `pair`/`comp` cases pure
+combinations of the sub-code compilers, while only `prec`/`rfind'` require genuine
+fuel-decrement iteration. -/
 
 /-- The interpreter returns `none` once the input exceeds the clock. -/
 lemma evaln_eq_none_of_gt {k : ℕ} (c : Nat.Partrec.Code) {n : ℕ} (h : k ≤ n) :
@@ -300,45 +326,41 @@ lemma polyFueled_baseGuard {bv : ℕ → ℕ} {c : Nat.Partrec.Code} (h : PolyFu
   · rw [if_pos hle, if_pos (Nat.sub_eq_zero_of_le hle)]
   · rw [if_neg hle, if_neg (by omega : ¬ z.unpair.1 - z.unpair.2 = 0)]
 
-lemma codeEvalnNat_zero_eq (z : ℕ) :
-    codeEvalnNat .zero z = if z.unpair.1 ≤ z.unpair.2 then 0 else 0 + 1 := by
+/-- The `evaln` side of the base-code shape `polyFueled_baseGuard` compiles: a code
+returning `bv n` at every input inside its clock normalizes to
+`if z.1 ≤ z.2 then 0 else bv z.2 + 1`.  Instantiated at `zero/succ/left/right` below. -/
+private lemma codeEvalnNat_baseGuard_eq {c : Nat.Partrec.Code} {bv : ℕ → ℕ}
+    (h : ∀ k n, n ≤ k → Nat.Partrec.Code.evaln (k + 1) c n = some (bv n)) (z : ℕ) :
+    codeEvalnNat c z = if z.unpair.1 ≤ z.unpair.2 then 0 else bv z.unpair.2 + 1 := by
   rw [codeEvalnNat]
   cases hk : z.unpair.1 with
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
     by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle]
-    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
+    · have hne : ¬ k + 1 ≤ z.unpair.2 := by omega
+      simp [h k z.unpair.2 hle, hne]
+    · have hge : k + 1 ≤ z.unpair.2 := by omega
+      simp [evaln_eq_none_of_gt c hge, hge]
+
+lemma codeEvalnNat_zero_eq (z : ℕ) :
+    codeEvalnNat .zero z = if z.unpair.1 ≤ z.unpair.2 then 0 else 0 + 1 :=
+  codeEvalnNat_baseGuard_eq (c := .zero) (bv := fun _ => 0)
+    (fun _ _ hn => by simp [Nat.Partrec.Code.evaln, hn]) z
 
 lemma codeEvalnNat_succ_eq (z : ℕ) :
-    codeEvalnNat .succ z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2 + 1 + 1 := by
-  rw [codeEvalnNat]
-  cases hk : z.unpair.1 with
-  | zero => simp [Nat.Partrec.Code.evaln]
-  | succ k =>
-    by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle]
-    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
+    codeEvalnNat .succ z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2 + 1 + 1 :=
+  codeEvalnNat_baseGuard_eq (c := .succ) (bv := fun n => n + 1)
+    (fun _ _ hn => by simp [Nat.Partrec.Code.evaln, hn]) z
 
 lemma codeEvalnNat_left_eq (z : ℕ) :
-    codeEvalnNat .left z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.1 + 1 := by
-  rw [codeEvalnNat]
-  cases hk : z.unpair.1 with
-  | zero => simp [Nat.Partrec.Code.evaln]
-  | succ k =>
-    by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle]
-    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
+    codeEvalnNat .left z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.1 + 1 :=
+  codeEvalnNat_baseGuard_eq (c := .left) (bv := fun n => n.unpair.1)
+    (fun _ _ hn => by simp [Nat.Partrec.Code.evaln, hn]) z
 
 lemma codeEvalnNat_right_eq (z : ℕ) :
-    codeEvalnNat .right z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.2 + 1 := by
-  rw [codeEvalnNat]
-  cases hk : z.unpair.1 with
-  | zero => simp [Nat.Partrec.Code.evaln]
-  | succ k =>
-    by_cases hle : z.unpair.2 ≤ k
-    · simp [Nat.Partrec.Code.evaln, hle]
-    · simp [Nat.Partrec.Code.evaln, hle, (by omega : k + 1 ≤ z.unpair.2)]
+    codeEvalnNat .right z = if z.unpair.1 ≤ z.unpair.2 then 0 else z.unpair.2.unpair.2 + 1 :=
+  codeEvalnNat_baseGuard_eq (c := .right) (bv := fun n => n.unpair.2)
+    (fun _ _ hn => by simp [Nat.Partrec.Code.evaln, hn]) z
 
 /-- `pair`: with both sub-code interpreters at the *same* fuel/input `z`, the whole clause is
 `none` iff either sub-result is (the guard-fail case is subsumed, since a failed guard sends
@@ -547,13 +569,7 @@ lemma rfindNat_le (cf : Nat.Partrec.Code) (A : ℕ) :
       · exact ih
 
 section PrecCompile
--- `Nat.sqrt` is made locally irreducible here and in every other section doing deep
--- `Primrec`/`PolyFueled` work over `Nat.pair`-encoded products: `Nat.pair`'s definition
--- mentions `Nat.sqrt`, whose well-founded recursion makes `whnf` unfold it endlessly
--- during defeq checks on nested pair codes, hanging elaboration. The attribute is scoped,
--- so no global reasoning about `Nat.sqrt` is affected. This is the one recurring
--- elaboration workaround in the repo; every `attribute [local irreducible] Nat.sqrt`
--- below and in other files is this same fix.
+-- The `dd:fuel` elaboration safeguard; see the module docstring.
 attribute [local irreducible] Nat.sqrt
 
 /-- Compile the `prec` case: `precNat` is a primitive recursion whose base/step call the
@@ -761,10 +777,8 @@ growing budget:
 with the three properties it needs: poly in `m`; `DefinitelySettled → Settled`; and if
 `Settled(n,m)` then `DefinitelySettled(n,M)` for some `M ≥ m`.  Nothing here is specific to
 settlement — this is the generic move that turns *any* code into a polynomial Boolean table
-that is monotone in the budget and eventually fires.  It is what
-`PatientSettlementClock.active_codes` (`Properties/Pseudorandomness.lean`) and
-`HistoricalVerifiedMaturitySchedule.check_poly` (`Framework/ROI.lean`) both need, so it is
-stated once, generically.
+that is monotone in the budget and eventually fires.  Both consumers named in the module
+docstring need exactly that, so it is stated once, generically.
 
 The simulator (`codeEvalnNat_polyFueled`) is what makes the budgeted run polynomial;
 `polyFueled_boundedAny` supplies the bounded search. -/
@@ -794,8 +808,7 @@ that the resulting raw token stream is a `PolySegStream`. -/
 
 namespace PrefixPatchCompile
 
--- Deep `PolyFueled`/segment compositions carry nested `Primcodable` products.  Prevent
--- elaboration from reducing their `Nat.unpair` implementation through `Nat.sqrt`.
+-- The `dd:fuel` elaboration safeguard; see the module docstring.
 attribute [local irreducible] Nat.sqrt
 
 /-- The polynomial clock carried by an `EfficientlyComputableTok` certificate. -/
@@ -904,7 +917,7 @@ lemma clockedTokens_polySegStream (lengthCode tokenCode : Nat.Partrec.Code)
 
 end PrefixPatchCompile
 
-/-! ### The digit-model inclusion (`dd:fuel`) -/
+/-! ## The digit-model inclusion (`dd:fuel`) -/
 
 /-- **Every token-model certificate is a digit-model certificate.**  A clocked token
 stream is a `PolySegStream` (`clockedTokens_polySegStream`), its digit stream is again one
@@ -921,7 +934,5 @@ theorem EfficientlyComputableTok.toDigit {Tr : Trader}
   refine ecDigit_of_rawSegStream Tr hdig (fun n => ?_)
   rw [undigitize_digitize, ← hTr]
   rfl
-
-#print axioms EfficientlyComputableTok.toDigit
 
 end LogicalInduction

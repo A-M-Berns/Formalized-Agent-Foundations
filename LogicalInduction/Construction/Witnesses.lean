@@ -1,16 +1,3 @@
-/-
-# Witness constructions (`LogicalInduction.Construction.Witnesses`)
-
-Concrete compilers and syntax objects that inhabit the boundary interfaces the property
-proofs take as hypotheses — prefix machines, the universal semimeasure and its
-dovetailer, feedback and quotation witnesses, and the efficiency certificates for the
-conditioning and freeze compilers. Each turns an assumed interface into a constructed
-one; the README records which remain disclosed.
-
-The §5 construction spine — market maker, budgeter, trading firm, `LIA`, and the
-existence result — lives one level up; a reader auditing `exists_logical_inductor`
-never needs this folder.
--/
 import LogicalInduction.Construction.Witnesses.KraftInequality
 import LogicalInduction.Construction.Witnesses.PrefixMachine
 import LogicalInduction.Construction.Witnesses.UniversalPrefix
@@ -22,6 +9,7 @@ import LogicalInduction.Construction.Witnesses.ConditioningPresentation
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Construction.Witnesses.BitPrefixSyntax
 import LogicalInduction.Construction.Witnesses.ComputationSyntax
+import LogicalInduction.Construction.Witnesses.DeferralFibre
 import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Construction.Witnesses.FeedbackTruth
 import LogicalInduction.Construction.Witnesses.FeedbackUnconditional
@@ -75,3 +63,77 @@ import LogicalInduction.Construction.Witnesses.FinitePerturbationWitness
 import LogicalInduction.Construction.Witnesses.PaperExactProduct
 import LogicalInduction.Construction.Witnesses.PaperRepresentedWeight
 import LogicalInduction.Construction.Witnesses.PaperExactCCEE
+
+/-!
+# Witness constructions (`LogicalInduction.Construction.Witnesses`)
+
+Concrete compilers and syntax objects that inhabit the boundary interfaces the §4 property
+proofs take as hypotheses, turning each assumed interface into a constructed one.
+`LogicalInduction/README.md` records which boundaries remain disclosed.
+
+The import list above is the directory's entry points; the remaining modules of the
+directory arrive through them and are named in the groups below.
+
+## Prefix machines and semimeasures
+
+`KraftInequality`, `PrefixMachine`, `UniversalPrefix`, `UniversalDovetailer` — the
+constructed presentations `thm:dus` and `thm:strict` quantify over, together with the
+prefix complexity `thm:ob` is instantiated at. `BitPrefixSyntax` and `StrictSeparators`
+build the independent-atom sentence families they are stated over, and
+`BoundedEvaluation` carries the bounded-evaluation layer and `thm:obu`'s c.e. source
+premise (`CEEnumeration`).
+
+## Feedback, maturity and quotation
+
+`HistoricalMaturity`, `FeedbackEmission`, `FeedbackTruth`, `FeedbackUnconditional`,
+`QuotationAffine` with its quotation-free half `DeferralFibre`, and `QuoteCodeOfMarket`
+(`dd:quote-code`).
+
+## Conditioning, freeze and the recognizer kit
+
+`ConditioningPresentation`, `ConditioningCompiler`, `DigitConditioning`, `RpnConditioning`,
+`FreezeOracle`, `FreezeStep`, `RpnFreeze`, `LIAPerturbation`, plus the automaton kit
+(`RunAutomaton`, `PatternAutomaton`, `StructuredPatterns`, `CounterAutomaton`,
+`PayloadAutomaton`, `SegmentAutomaton`, `SegmentCounter`, `SegmentRecognizer`,
+`FiberTestFP`) that supplies the `Complexity.FP` recognizers the corrected `thm:ifp` needs.
+`CanonicalCodes` settles when the escape-leaf decode test agrees with canonical-code
+comparison, which is what the freeze reads at a price leaf.
+
+## Logically uncertain variables
+
+`LUVSyntax`, `LUVArithmetic`, `LUVPresentation`, `LUVDeductiveProcess`,
+`LUVExpectationCertified` — the certified arithmetic LUV class and its `_arith` endpoints
+(`dd:luv-arith`).
+
+## The semantic-product lane
+
+`SemanticPrime` through `SemanticLiftedCCEE`, with `ProductDefinition` and
+`CertifiedSource`, realizing `thm:ccee` for an arbitrary threshold-only source on the
+finite mesh (`dd:mesh`).  `OldLanguageLift` supplies the fixed renaming that answers the
+vocabulary-ownership obstruction, `LiftedRpnSource` admits a caller's existing RPN threshold
+certificate into that fixed registry, and `EntailedSourceRegistry` is the certificate-free
+admission gate, deciding admission by the executable finite check of `FiniteEntailment`.
+
+## The paper's literal first-order layer
+
+`ArithmeticSource` (the source language `def:ec` meters on, `dd:nnf`), `PaperFirstOrder`,
+`PaperFirstOrderCompiler`, `PaperTheoryDP`, `PaperMarket`, `PaperLUV`,
+`StructuredPaperRpn`, `PaperExactProduct`, `PaperRepresentedWeight`, `PaperExactCCEE`,
+`R0Representability`, `SubstEmission`, `ComputationSyntax`, `ComputationRepresented`
+(`dd:machinetheory`), `PaperCutLawDP` and `FinitePerturbationWitness`.  The write-and-read-back
+kit for that layer is `DayMachine` (a machine carrying the day in its own source),
+`SourceNumbering` (inverting the naming map), `SourceRecognizer` (gating which token runs are
+genuinely written sources) and `SourceWindow` (splicing a day's written axioms into one
+written conjunction).
+
+## Unconditional instantiation over the constructed inductor
+
+`UnconditionalOverLIA` makes `thm:dus`, `thm:strict` and `thm:scon` unconditional over the
+constructed `LIA`, and `ComputationDP` does the same for the meta-learning and
+self-reference families, building the computable deductive process their endpoints are
+stated over.
+
+The §5 construction spine — market maker, budgeter, trading firm, `liaStates`, and the
+existence results — lives one level up; a reader auditing `exists_machine_logical_inductor`
+never needs this folder.
+-/

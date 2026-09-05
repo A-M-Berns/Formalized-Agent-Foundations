@@ -1,16 +1,40 @@
-/-
-# Primitive recursion for the RPN contraction
+import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.RpnSentence
 
-`unRpn` (through its code-level form `unRpnTokensC`) is primitive recursive: the
-trading firm's compiler runs it to decode token-metered candidate traders.  Both
-fuelled recursions are packaged for `Primrec.nat_strong_rec` on the paired index
-`⟨fuel, encode ts⟩`; recursive calls strictly decrease it because every sub-parse
-returns a suffix (list codes grow strictly along `cons`).
+/-!
+# Strong recursion for the Polish-notation decode
+
+Packages the fuelled recursions of the Polish-notation decode for `Primrec.nat_strong_rec`
+on the paired index `⟨fuel, encode ts⟩`. This module supplies the step functions and their
+step laws; the `Primrec` conclusions themselves are drawn in
+`Construction/LIACompiler.lean`, which is what the trading firm's compiler consumes to
+decode token-metered candidate traders.
+
+Five recursions are packaged: `structuredNat`, `structuredTerm` and `structuredFormula`
+(the arithmetic sub-grammars of the structured paper-prime block), `parse` (`parseRpnC`)
+and `un` (`unRpnTokensC`). Each comes as five declarations — `…F`, the spec on the paired
+index; `…GCore`, one step over an abstract lookup; `…GCore_spec`, the law that any faithful
+lookup below `m` computes `…F m`; `…G`, the step over the value table; and `…G_spec`.
+
+The recursive calls decrease because every sub-parse returns a suffix of its input
+(`parseRpn_suffix`, `parseRpnC_suffix`, and the `_suffix` facts of
+`Framework/RpnSentence.lean`), while list codes grow strictly along `cons`
+(`encode_lt_encode_cons`) and weakly along suffixes (`encode_le_of_suffix`); hence
+`Nat.pair fuel (encode rest) < Nat.pair (fuel + 1) (encode ts)`. Those two coding facts are
+generic over `List ℕ` rather than RPN-specific, and
+`Construction/Witnesses/SourceRecognizer.lean` consumes them for its own strong recursion.
+
+The tag dispatch of `structuredFormulaGCore` mirrors `parseStructuredArithmeticFormula`:
+`9`/`10` for the propositional constants, `11`–`14` for the relations, `15`/`16` for the
+normal-form binary connectives, `17`/`18` for the quantifiers, and `20`/`21`/`22` for the
+paper's own `¬`/`⟹`/`⟺`, whose expansion into normal form happens here and is never
+charged (`dd:nnf`).
+
+Design choices: `dd:fuel` (the decode is certified through a fuel clock), `dd:nnf` (why
+tags `20`/`21`/`22` exist).
 
 Paper node: `def:ec` (token-metered sentence slots).
 -/
-import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.RpnSentence
 
 namespace LogicalInduction
 
@@ -18,6 +42,8 @@ open Encodable LO.Propositional
 
 /-! ## Suffix discipline of the parser -/
 
+/-- A successful parse returns a suffix of its input — the decreasing measure for the
+strong recursion. -/
 lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest : List ℕ),
     parseRpn fuel ts = some (φ, rest) → rest <:+ ts
   | 0, ts, φ, rest => by simp
@@ -80,6 +106,8 @@ lemma parseRpn_suffix : ∀ (fuel : ℕ) (ts : List ℕ) (φ : Sentence) (rest :
       obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
       exact (List.suffix_cons t ts)
 
+/-- The code-level mirror of `parseRpn_suffix`: a successful `parseRpnC` returns a suffix
+of its input. -/
 lemma parseRpnC_suffix {fuel : ℕ} {ts : List ℕ} {e : ℕ} {rest : List ℕ}
     (h : parseRpnC fuel ts = some (e, rest)) : rest <:+ ts := by
   rw [parseRpnC_eq] at h
@@ -91,14 +119,21 @@ lemma parseRpnC_suffix {fuel : ℕ} {ts : List ℕ} {e : ℕ} {rest : List ℕ}
     obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
     exact parseRpn_suffix fuel ts φ r hp
 
-/-! ## List codes grow along `cons` and shrink along suffixes -/
+/-! ## List codes grow along `cons` and shrink along suffixes
 
+Both facts are generic over `List ℕ`, with no RPN content;
+`Construction/Witnesses/SourceRecognizer.lean` consumes them for its own strong recursion.
+-/
+
+/-- List codes grow strictly along `cons`; together with `parseRpn_suffix` this is why
+`Nat.pair fuel (encode rest)` strictly decreases. -/
 lemma encode_lt_encode_cons (a : ℕ) (l : List ℕ) :
     Encodable.encode l < Encodable.encode (a :: l) := by
   rw [Encodable.encode_list_cons]
   have := Nat.right_le_pair (Encodable.encode a) (Encodable.encode l)
   omega
 
+/-- List codes grow weakly along suffixes, the second half of the decreasing measure. -/
 lemma encode_le_of_suffix : ∀ {l₁ l₂ : List ℕ}, l₁ <:+ l₂ →
     Encodable.encode l₁ ≤ Encodable.encode l₂ := by
   intro l₁ l₂ h
@@ -111,11 +146,19 @@ lemma encode_le_of_suffix : ∀ {l₁ l₂ : List ℕ}, l₁ <:+ l₂ →
             le_of_lt (encode_lt_encode_cons a _)
         _ = Encodable.encode ((a :: p) ++ l₁) := rfl
 
-/-! ## Strong recursion for the structured natural decoder -/
+/-! ## The structured arithmetic sub-grammars
 
+The numeral, term and formula grammars of the structured paper-prime block, each packaged
+as the same five declarations.
+-/
+
+/-- `parseStructuredNat` on the paired index `⟨fuel, encode ts⟩` (list argument via the
+canonical `ofNat`). -/
 public def structuredNatF (m : ℕ) : Option (ℕ × List ℕ) :=
   parseStructuredNat m.unpair.1 (Denumerable.ofNat (List ℕ) m.unpair.2)
 
+/-- One strong-recursion step of the numeral grammar over an abstract lookup for the
+smaller indices: tag `0` ends the numeral, tags `1`/`2` append a binary digit. -/
 public def structuredNatGCore (m : ℕ) (look : ℕ → Option (ℕ × List ℕ)) :
     Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
@@ -144,6 +187,16 @@ private lemma structured_smaller_index {m fuel t rest}
       Nat.pair_lt_pair_left _ (Nat.lt_succ_self fuel)
     _ = m := by rw [hm2, ← hfuel, Nat.pair_unpair]
 
+/-- The form the sub-grammars need after a first sub-parse has already consumed part of the
+block: any suffix `r` of the tail is still at a strictly smaller index than `m`. -/
+private lemma structured_smaller_index_of_suffix {m fuel t rest r}
+    (hfuel : m.unpair.1 = fuel + 1)
+    (hts : Denumerable.ofNat (List ℕ) m.unpair.2 = t :: rest)
+    (hr : r <:+ rest) :
+    Nat.pair fuel (Encodable.encode r) < m :=
+  lt_of_le_of_lt (pair_le_pair_right' fuel (encode_le_of_suffix hr))
+    (structured_smaller_index hfuel hts)
+
 public lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
     (hlook : ∀ i, i < m → look i = structuredNatF i) :
     structuredNatGCore m look = structuredNatF m := by
@@ -161,6 +214,7 @@ public lemma structuredNatGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × Li
   rw [hlook _ (structured_smaller_index hf hs), structuredNatF,
     Nat.unpair_pair, Denumerable.ofNat_encode]
 
+/-- The numeral grammar's strong-recursion step over the value table. -/
 public def structuredNatG (prev : List (Option (ℕ × List ℕ))) :
     Option (Option (ℕ × List ℕ)) :=
   some (structuredNatGCore prev.length fun i => (prev[i]?).getD none)
@@ -174,10 +228,15 @@ public lemma structuredNatG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
+/-- `parseStructuredArithmeticTerm` on the paired index `⟨fuel, encode ts⟩` (list argument
+via the canonical `ofNat`). -/
 public def structuredTermF (m : ℕ) : Option (ℕ × List ℕ) :=
   parseStructuredArithmeticTerm m.unpair.1 0
     (Denumerable.ofNat (List ℕ) m.unpair.2)
 
+/-- One strong-recursion step of the term grammar over an abstract lookup for the smaller
+indices: tags `3`/`4` read a variable or a numeral, `5`/`6` the constants, `7`/`8` the two
+binary function symbols. -/
 public def structuredTermGCore (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
@@ -218,15 +277,11 @@ public lemma structuredTermGCore_spec (m : ℕ)
   rcases hp : parseStructuredArithmeticTerm fuel 0 rest with _ | p
   · rfl
   simp only [Option.bind_some]
-  have hpSuffix := parseStructuredArithmeticTerm_suffix hp
-  have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
-    calc
-      Nat.pair fuel (Encodable.encode p.2) ≤
-          Nat.pair fuel (Encodable.encode rest) :=
-        pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
-      _ < m := structured_smaller_index hf hs
+  have hidx := structured_smaller_index_of_suffix hf hs
+    (parseStructuredArithmeticTerm_suffix hp)
   rw [hlook _ hidx, structuredTermF, Nat.unpair_pair, Denumerable.ofNat_encode]
 
+/-- The term grammar's strong-recursion step over the value table. -/
 public def structuredTermG
     (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
   some (structuredTermGCore prev.length fun i => (prev[i]?).getD none)
@@ -241,10 +296,17 @@ public lemma structuredTermG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
+/-- `parseStructuredArithmeticFormula` on the paired index `⟨fuel, encode ts⟩` (list
+argument via the canonical `ofNat`). -/
 public def structuredFormulaF (m : ℕ) : Option (ℕ × List ℕ) :=
   parseStructuredArithmeticFormula m.unpair.1 0
     (Denumerable.ofNat (List ℕ) m.unpair.2)
 
+/-- One strong-recursion step of the formula grammar over an abstract lookup for the
+smaller indices. The tag dispatch mirrors `parseStructuredArithmeticFormula`: `9`/`10` are
+the propositional constants, `11`–`14` the relations, `15`/`16` the normal-form binary
+connectives and `17`/`18` the quantifiers, while `20`/`21`/`22` carry the paper's own
+`¬`/`⟹`/`⟺` and expand them into normal form here, uncharged (`dd:nnf`). -/
 public def structuredFormulaGCore (m : ℕ)
     (look : ℕ → Option (ℕ × List ℕ)) : Option (ℕ × List ℕ) :=
   match m.unpair.1, Denumerable.ofNat (List ℕ) m.unpair.2 with
@@ -300,13 +362,8 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
     rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
     · rfl
     simp only [Option.bind_some]
-    have hpSuffix := parseStructuredArithmeticFormula_suffix hp
-    have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
-      calc
-        Nat.pair fuel (Encodable.encode p.2) ≤
-            Nat.pair fuel (Encodable.encode rest) :=
-          pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
-        _ < m := structured_smaller_index hf hs
+    have hidx := structured_smaller_index_of_suffix hf hs
+      (parseStructuredArithmeticFormula_suffix hp)
     rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
   by_cases hquant : t = 17 ∨ t = 18 <;> simp only [hquant, if_true, if_false]
@@ -321,13 +378,8 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
     rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
     · rfl
     simp only [Option.bind_some]
-    have hpSuffix := parseStructuredArithmeticFormula_suffix hp
-    have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
-      calc
-        Nat.pair fuel (Encodable.encode p.2) ≤
-            Nat.pair fuel (Encodable.encode rest) :=
-          pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
-        _ < m := structured_smaller_index hf hs
+    have hidx := structured_smaller_index_of_suffix hf hs
+      (parseStructuredArithmeticFormula_suffix hp)
     rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
       Denumerable.ofNat_encode]
   by_cases h22 : t = 22 <;> simp only [h22, if_true, if_false]
@@ -336,16 +388,12 @@ public lemma structuredFormulaGCore_spec (m : ℕ)
   rcases hp : parseStructuredArithmeticFormula fuel 0 rest with _ | p
   · rfl
   simp only [Option.bind_some]
-  have hpSuffix := parseStructuredArithmeticFormula_suffix hp
-  have hidx : Nat.pair fuel (Encodable.encode p.2) < m := by
-    calc
-      Nat.pair fuel (Encodable.encode p.2) ≤
-          Nat.pair fuel (Encodable.encode rest) :=
-        pair_le_pair_right' fuel (encode_le_of_suffix hpSuffix)
-      _ < m := structured_smaller_index hf hs
+  have hidx := structured_smaller_index_of_suffix hf hs
+    (parseStructuredArithmeticFormula_suffix hp)
   rw [hlook _ hidx, structuredFormulaF, Nat.unpair_pair,
     Denumerable.ofNat_encode]
 
+/-- The formula grammar's strong-recursion step over the value table. -/
 public def structuredFormulaG
     (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
   some (structuredFormulaGCore prev.length fun i => (prev[i]?).getD none)
@@ -361,7 +409,7 @@ public lemma structuredFormulaG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
-/-! ## The strong-recursion package -/
+/-! ## The sentence-block parser (`parseRpnC`) -/
 
 /-- `parseRpnC` on the paired index (list argument via the canonical `ofNat`). -/
 def parseF (m : ℕ) : Option (ℕ × List ℕ) :=
@@ -430,17 +478,14 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
       rw [hlook _ (hidx _ le_rfl), parseF, Nat.unpair_pair,
         Denumerable.ofNat_encode]
     rw [h1st]
-    obtain ⟨hb2, hb3, hb4⟩ :
-        (t = 2 → True) ∧ (t = 3 → True) ∧ (t = 4 → True) := ⟨fun _ => trivial,
-          fun _ => trivial, fun _ => trivial⟩
     rcases hp1 : parseRpnC fuel' rest with _ | ⟨e1, r1⟩
     · rcases hb with rfl | rfl | rfl
       · rw [if_pos rfl]
-        try rfl
+        rfl
       · rw [if_neg (by norm_num), if_pos rfl]
-        try rfl
+        rfl
       · rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
-        try rfl
+        rfl
     · have hsfx := parseRpnC_suffix hp1
       have h2nd : look (Nat.pair fuel' (Encodable.encode r1)) =
           parseRpnC fuel' r1 := by
@@ -461,6 +506,8 @@ lemma parseGCore_spec (m : ℕ) (look : ℕ → Option (ℕ × List ℕ))
 def parseG (prev : List (Option (ℕ × List ℕ))) : Option (Option (ℕ × List ℕ)) :=
   some (parseGCore prev.length fun i => (prev[i]?).getD none)
 
+/-- The value-table law `Primrec.nat_strong_rec` consumes
+(`Construction/LIACompiler.lean`). -/
 lemma parseG_spec (m : ℕ) :
     parseG ((List.range m).map parseF) = some (parseF m) := by
   rw [parseG, show ((List.range m).map parseF).length = m from by simp]
@@ -470,7 +517,7 @@ lemma parseG_spec (m : ℕ) :
   rw [List.getElem?_eq_getElem hib, Option.getD_some, List.getElem_map,
     List.getElem_range]
 
-/-! ## The strong-recursion package for the stream contraction -/
+/-! ## The stream contraction (`unRpnTokensC`) -/
 
 /-- `unRpnTokensC` on the paired index. -/
 def unF (m : ℕ) : List ℕ :=
@@ -576,6 +623,8 @@ lemma unGCore_spec (m : ℕ) (look : ℕ → List ℕ)
 def unG (prev : List (List ℕ)) : Option (List ℕ) :=
   some (unGCore prev.length fun i => (prev[i]?).getD [])
 
+/-- The value-table law `Primrec.nat_strong_rec` consumes
+(`Construction/LIACompiler.lean`). -/
 lemma unG_spec (m : ℕ) :
     unG ((List.range m).map unF) = some (unF m) := by
   rw [unG, show ((List.range m).map unF).length = m from by simp]

@@ -1,62 +1,71 @@
-/-
+import LogicalInduction.Framework.Machine.FPFold
+import LogicalInduction.Framework.DigitArith
+import Complexitylib.Classes.P.Cobham
+
+/-!
 # Tokenizing transductions in `Complexity.FP`
 
 `MachineEfficientTrader` (`Framework/Criterion.lean`) reads a machine's output word as a
-*token* stream: three bits per digit (`Machine/DigitBits.lean`), digits below four
+*token* stream: three bits per digit (`Framework/Machine/DigitBits.lean`), digits below four
 accumulating little-endian into a token and any digit from four up closing the block
-(`undigitize`).  Transporting a trader across a rewrite of that stream — splicing a
-conditioning block, freezing a price leaf — therefore means running a token-level
-transducer on a *bit* word, in polynomial time.
+(`undigitize`). Transporting a trader across a rewrite of that stream — splicing a
+conditioning block, freezing a price leaf — therefore means running a token-level transducer
+on a *bit* word, in polynomial time.
 
-`Machine/FPFold.lean` supplies the engine (`foldlBits_mem_FP`: a left fold whose step is
-`FP` and whose state stays polynomially bounded).  This file supplies the pieces a client
-of that engine still has to build, and none of them is a new combinator:
+`Framework/Machine/FPFold.lean` is the engine: `foldlBits_mem_FP`, a left fold whose step is
+`FP` and whose state stays polynomially bounded. This file is the tokenizer built on that
+engine — the pieces a client of it has to supply. Nothing here is a paper claim, so the
+declarations are `lemma`s carrying no `Paper node` line.
 
-* **`dgFold`** — the three-bit digit fold.  Every reader of this stream consumes it three
+## What the file builds
+
+* **`dgFold`** — the three-bit digit fold. Every reader of this stream consumes it three
   bits at a time, so `dgStep` does that once and for all: a two-slot phase fills, the third
   bit completes a digit, and the client is handed it as `digitSlots` — three separately
   *headable* one-bit words, because `Complexity.FP` has `selectHead` but no `tail`.
   `dgFold_cli` proves the realization on every bit word and `dgFold_mem_FP` places it in
-  `FP` from one per-digit length hypothesis.  The two clients below are instances.
+  `FP` from one per-digit length hypothesis. The two clients below are instances.
 
-* **`LEUnary`** — the endianness residual.  `FPFold.unaryOfBits_le_mem_FP` reads its value
-  big-endian through `Nat.fromBits`, while the stream carries token values as
-  `undigitize`'s little-endian base-four digit runs.  `unaryOfDigitsLE_le_mem_FP` is the
-  matching primitive: `leDigit`, a digit-fold client that folds a token's own digit-bit
-  block into `min value cap` marks, with `cap` a length already in hand.  The
-  guard is not optional — a `k`-bit value denotes up to `4 ^ k` marks — and it is exactly
-  what the clients have: a day read out of a day-`n` stream is `≤ n`, and every token test
-  the conditioning automaton makes factors through a small clamp.
+* **`LEUnary`** — reading a token's value back as a length. The stream carries token values
+  as `undigitize`'s little-endian base-four digit runs, and `unaryOfDigitsLE_le_mem_FP` is
+  the primitive that reads one: `leDigit`, a digit-fold client folding a token's own
+  digit-bit block into `min value cap` marks, with `cap` a length already in hand. The guard
+  is not optional — a `k`-bit value denotes up to `4 ^ k` marks — and it is exactly what the
+  clients have: a day read out of a day-`n` stream is `≤ n`, and every token test the
+  conditioning automaton makes factors through a small clamp.
 
-* **`Increment`** — the second client, and the converse direction: a value known only as a
-  *length* rendered back into the stream as base-four digits, one carry-propagating
-  increment per mark.  The run it builds is deliberately not the canonical `natDigits4`
-  one; `undigitize` reads a token's value, and `unaryToDigits_val` is that value.
+* **`Increment`** — the converse direction: a value known only as a *length* rendered back
+  into the stream as base-four digits, one carry-propagating increment per mark. The run it
+  builds is deliberately not the canonical `natDigits4` one; `undigitize` reads a token's
+  value, and `unaryToDigits_val` is that value.
 
-* **`TokenFold`** — the tokenizer itself.  `tkStep` is one bit of the digit/token parser:
-  a two-slot phase fills, a complete digit either extends the current token block or (its
+* **`TokenFold`** — the tokenizer itself. `tkStep` is one bit of the digit/token parser: a
+  two-slot phase fills, a complete digit either extends the current token block or (its
   leading bit set) closes it, and closing calls the client's `STEP`/`EMIT` on the token's
-  digit-bit block.  `tkFold` is the digit-level model it realizes, `tkFold_out` proves the
-  realization on *every* bit word — malformed ones included, where a trailing partial
-  digit is discarded exactly as `bitsToDigits` discards it — and `tkFold_mem_FP` places the
+  digit-bit block. `tkFold` is the digit-level model it realizes, `tkFold_out` proves the
+  realization on *every* bit word — malformed ones included, where a trailing partial digit
+  is discarded exactly as `bitsToDigits` discards it — and `tkFold_mem_FP` places the
   composite in `FP` from two per-step length hypotheses on the client.
 
-The client receives each token as its raw digit-bit block rather than as a number, which is
-deliberate: an arbitrary machine word may carry a *non-canonical* run (`[1, 0]` and `[1]`
-are both the token `1`), so a client that compared blocks against constant words would be
-wrong on inputs `undigitize` reads identically.  The supported interface is to read the
-value through `LEUnary`, whose clamp makes it a length; every test the conditioning and
-freeze automata make is a comparison against a small constant or against the day, and both
-have a cap available.
+## Three client granularities
 
-Everything here is supporting infrastructure rather than a paper claim, so the declarations
-are `lemma`s and carry no `Paper node:` line.  It sits beside `FPFold.lean` and could be
-merged into it; it is a separate module only because the two were written on different
-tracks.
+`tkFold` (one digit) → `runFold` (one block, `tkFold_blockSplit`) → `natFold` (one token
+value, `runFold_natFold`), each with an `FP` closure lemma and an `_cli` variant for a client
+computing a value rather than a stream. `BlockWF` and `decodeBits` are the splice discipline
+— every piece a whole number of complete blocks — under which the machine's reading
+distributes over a concatenation. `matchPass`/`ifMatch_mem_FP` decide whether a word's token
+stream is one particular fixed list, the run matcher's per-candidate call.
+
+## Why the client sees bits, not numbers
+
+The client receives each token as its raw digit-bit block rather than as a number, which is
+deliberate: an arbitrary machine word may carry a *non-canonical* run (`[1, 0]` and `[1]` are
+both the token `1`), so a client that compared blocks against constant words would be wrong
+on inputs `undigitize` reads identically. The supported reads are `LEUnary`'s clamp, whose
+guard makes the value a length, and the fixed-numeral test `ifNumEq_mem_FP`, justified by
+`digitVal_eq_iff_zero_padded`. Every test the conditioning and freeze automata make is a
+comparison against a small constant or against the day, and both have a cap available.
 -/
-import LogicalInduction.Framework.Machine.FPFold
-import LogicalInduction.Framework.DigitArith
-import Complexitylib.Classes.P.Cobham
 
 namespace LogicalInduction.TokenFold
 
@@ -124,15 +133,19 @@ lemma digitsToBits_append (a b : List ℕ) :
     digitsToBits (a ++ b) = digitsToBits a ++ digitsToBits b := by
   simp [digitsToBits, List.flatMap_append]
 
+@[simp] lemma length_digitsToBits (ds : List ℕ) :
+    (digitsToBits ds).length = 3 * ds.length := by
+  induction ds with
+  | nil => simp [digitsToBits]
+  | cons d ds ih =>
+      rw [digitsToBits_cons, List.length_append, length_digitBits, ih, List.length_cons]
+      omega
+
 /-- A digit handed to a client as three separately-headable one-bit slots.  This is the
 shape a client can branch on: `Complexity.FP` has `selectHead` but no `tail`, so a flat
 three-bit word would be unusable past its first bit. -/
 def digitSlots (d : ℕ) : List Bool :=
   pair [(d / 4) % 2 == 1] (pair [(d / 2) % 2 == 1] [d % 2 == 1])
-
-lemma digitSlots_of_bits (b0 b1 b2 : Bool) :
-    digitSlots (4 * b2n b0 + 2 * b2n b1 + b2n b2) = pair [b0] (pair [b1] [b2]) := by
-  cases b0 <;> cases b1 <;> cases b2 <;> rfl
 
 /-! ### Selection helpers -/
 
@@ -143,12 +156,6 @@ lemma selectHead_true (x y : List Bool) : selectHead [true] x y = x := by
 lemma selectHead_false (x y : List Bool) : selectHead [false] x y = y := by
   rw [selectHead_eq]
   simp [headFlag]
-
-lemma selectHead_singleton (b : Bool) (x y : List Bool) :
-    selectHead [b] x y = if b then x else y := by
-  cases b
-  · simpa using selectHead_false x y
-  · simpa using selectHead_true x y
 
 /-! ### Length bounds on the block projections
 
@@ -326,9 +333,9 @@ lemma tail_mem_FP {A : List Bool → List Bool} (hA : A ∈ FP) :
 /-! ### Branching on a length, and on a whole constant word
 
 `ifEqLen_mem_FP` and `ifLeLen_mem_FP` are the two shapes every small-numeral comparison
-factors through; both machine clients carried private copies of them until now.
+factors through, and both machine clients reach them here.
 
-`eqConstFn_mem_FP` is the piece neither the fork nor this file had: deciding a word against
+`eqConstFn_mem_FP` is the piece the fork does not supply: deciding a word against
 a **fixed** constant.  `Complexity.selectHead` branches on one bit, so equality against a
 constant of length `k` is a nest of `k` such branches over iterated tails — constant depth,
 because the constant is fixed at elaboration time.  It is what a token test needs when the
@@ -399,6 +406,7 @@ lemma eqConstFn_mem_FP : ∀ (c : List Bool) {A X Y : List Bool → List Bool},
 /-- The packed digit-fold state: a two-slot phase and the client state. -/
 def dgSt (ph cli : List Bool) : List Bool := pair ph cli
 
+-- The digit step's argument is `pair W (dgSt (pair p0 p1) cli)`; these read its parts.
 private def dW (v : List Bool) : List Bool := fstBlock v
 private def dst (v : List Bool) : List Bool := sndBlock v
 private def dph (v : List Bool) : List Bool := fstBlock (dst v)
@@ -431,6 +439,9 @@ private lemma dgStep_three (STEP : List Bool → List Bool) (W cli : List Bool)
     simp [foldlBits, dgStep, dgSt, dW, dst, dph, dp0, dp1, dcli,
       selectHead_true, selectHead_emptyFlag_cons, b2n, digitSlots]
 
+/-- **The bit-level digit fold realizes the digit-level model, on every bit word.** A
+trailing partial digit is discarded exactly as `bitsToDigits` discards it, so the statement
+needs no well-formedness hypothesis on `W`. -/
 lemma dgFold_cli (STEP : List Bool → List Bool) (W : List Bool) :
     ∀ (w cli : List Bool),
       sndBlock (foldlBits (dgStep STEP false) (dgStep STEP true) W
@@ -518,7 +529,6 @@ private lemma DgBnd.length_le {m : ℕ} {st : List Bool} (h : DgBnd m st) :
 /-! ### Membership -/
 
 private lemma dW_mem_FP : dW ∈ FP := fstBlock_mem_FP
-private lemma dst_mem_FP : dst ∈ FP := sndBlock_mem_FP
 private lemma dph_mem_FP : dph ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
 private lemma dp0_mem_FP : dp0 ∈ FP := mem_FP_comp dph_mem_FP fstBlock_mem_FP
 private lemma dp1_mem_FP : dp1 ∈ FP := mem_FP_comp dph_mem_FP sndBlock_mem_FP
@@ -538,6 +548,10 @@ lemma dgStep_mem_FP {STEP : List Bool → List Bool} (hSTEP : STEP ∈ FP) (b : 
                 (pairFn_mem_FP dp1_mem_FP (constFn_mem_FP [b])))))
           hSTEP)))
 
+/-- **The digit fold is in `FP`.** The client's whole obligation is one per-digit length
+inequality, `hSbnd`, quantified over *arbitrary* words rather than over reachable states —
+which is what `FPFold.foldlBits_mem_FP`'s clamp needs, since it must be discharged on the
+machine's malformed inputs too. -/
 lemma dgFold_mem_FP {STEP Wf Sf : List Bool → List Bool} {c : ℕ} {qP : Polynomial ℕ}
     (hSTEP : STEP ∈ FP) (hW : Wf ∈ FP) (hSf : Sf ∈ FP)
     (hSbnd : ∀ (W cli : List Bool) (b0 b1 b2 : Bool),
@@ -591,7 +605,8 @@ lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
       cases n with
       | zero => simp [natDigits4]
       | succ m =>
-          rw [natDigits4, digitVal_cons, ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
+          rw [natDigits4, digitVal_cons,
+            ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
           omega
 
 /-! ### Base-4 representation is unique up to trailing zeros
@@ -658,12 +673,6 @@ lemma digitVal_eq_iff_zero_padded (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4)
     rw [digitVal_append, digitVal_natDigits4, digitVal_replicate_zero]
     omega
 
-/-- The value the guard reads back from a token's own digit block. -/
-lemma digitVal_bitsToDigits_digitsToBits_natDigits4 (t : ℕ) :
-    digitVal (bitsToDigits (digitsToBits (natDigits4 t))) = t := by
-  rw [bitsToDigits_digitsToBits _ (fun d hd => lt_trans (natDigits4_lt t d hd) (by norm_num)),
-    digitVal_natDigits4]
-
 /-! ## The guarded little-endian expansion
 
 The first client of the digit fold, and the endianness residual named in the file header:
@@ -676,6 +685,8 @@ def leAccVal (cap : ℕ) : ℕ → ℕ → List ℕ → ℕ
   | m, _, [] => m
   | m, p, d :: ds => leAccVal cap (min (m + d * p) cap) (min (4 * p) (cap + 1)) ds
 
+/-- The clamp is invisible below the cap: while the accumulated value stays under `cap`, the
+guarded expansion agrees with the unguarded one. -/
 lemma leAccVal_spec (cap : ℕ) : ∀ (ds : List ℕ) (m p : ℕ), m ≤ cap →
     leAccVal cap m p ds = min (m + p * digitVal ds) cap
   | [], m, p, hm => by simp [leAccVal, hm]
@@ -714,6 +725,8 @@ lemma leAccVal_spec (cap : ℕ) : ∀ (ds : List ℕ) (m p : ℕ), m ≤ cap →
               omega
             rw [min_eq_right hL, min_eq_right hR]
 
+-- The guarded-expansion client's state is `pair cap (pair acc (pair pow bits))`; these read
+-- its parts.
 private def leCap (v : List Bool) : List Bool := fstBlock v
 private def leCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
 private def leAcc (v : List Bool) : List Bool := fstBlock (leCli v)
@@ -726,12 +739,6 @@ private def leB2 (v : List Bool) : List Bool := sndBlock (sndBlock (leSlots v))
 private def rep : ℕ → List Bool → List Bool
   | 0, _ => []
   | k + 1, p => p ++ rep k p
-
-private lemma rep_replicate (k p : ℕ) :
-    rep k (List.replicate p true) = List.replicate (k * p) true := by
-  induction k with
-  | zero => simp [rep]
-  | succ k ih => rw [rep, ih, ← List.replicate_add]; ring_nf
 
 private def repPow (k : ℕ) (v : List Bool) : List Bool := rep k (lePow v)
 
@@ -766,6 +773,8 @@ def lePowVal (cap : ℕ) : ℕ → List ℕ → ℕ
   | p, [] => p
   | p, _ :: ds => lePowVal cap (min (4 * p) (cap + 1)) ds
 
+/-- `leDigit` as a digit-fold client: folding a token's digit-bit block accumulates
+`min value cap` marks. -/
 lemma dgFold_leDigit (W : List Bool) : ∀ (ds : List ℕ) (m p : ℕ), (∀ d ∈ ds, d < 8) →
     dgFold leDigit W (pair (List.replicate m true) (List.replicate p true)) ds
       = pair (List.replicate (leAccVal W.length m p ds) true)
@@ -840,6 +849,7 @@ one — `undigitize` reads a token's value, and that is what `unaryToDigits_val`
 
 namespace Increment
 
+-- The increment client's state, and the three digit-bit slots it is handed.
 private def icCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
 private def icDone (v : List Bool) : List Bool := fstBlock (icCli v)
 private def icOut (v : List Bool) : List Bool := sndBlock (icCli v)
@@ -1056,6 +1066,7 @@ canonical `natDigits4` one and does not need to be: `undigitize` reads a token's
 `unaryToDigits_val` is that value. -/
 def unaryToDigits (u : List Bool) : List Bool := foldlBits incStep incStep [] [] u
 
+/-- The increment run, as the bit rendering of `unaryDigits`. -/
 lemma unaryToDigits_eq (u : List Bool) :
     unaryToDigits u = digitsToBits (unaryDigits u.length) := by
   induction u using List.reverseRecOn with
@@ -1067,19 +1078,14 @@ lemma unaryToDigits_eq (u : List Bool) :
         incStep_spec _ (unaryDigits_lt bs.length)]
       simp [unaryDigits, List.length_append]
 
+/-- The value `undigitize` reads back from the emitted run is the length of the unary word
+it came from. The run is deliberately not the canonical `natDigits4` one. -/
 lemma unaryToDigits_val (u : List Bool) :
     digitVal (bitsToDigits (unaryToDigits u)) = u.length := by
   rw [unaryToDigits_eq,
     bitsToDigits_digitsToBits _
       (fun d hd => lt_trans (unaryDigits_lt u.length d hd) (by norm_num)),
     unaryDigits_val]
-
-lemma unaryToDigits_digits_lt (u : List Bool) :
-    ∀ d ∈ bitsToDigits (unaryToDigits u), d < 4 := by
-  rw [unaryToDigits_eq,
-    bitsToDigits_digitsToBits _
-      (fun d hd => lt_trans (unaryDigits_lt u.length d hd) (by norm_num))]
-  exact unaryDigits_lt u.length
 
 /-! ### Membership -/
 
@@ -1165,7 +1171,7 @@ lemma unaryToDigits_mem_FP {U : List Bool → List Bool} (hU : U ∈ FP) :
       · simp [List.sum_replicate]; omega
       · rw [List.eq_replicate_iff]
         exact ⟨by simp, by intro b hb; obtain ⟨d, -, rfl⟩ := List.mem_map.mp hb; rfl⟩
-      
+
     rw [hlen]
     have := unaryDigits_length u.length
     simp only [Polynomial.eval_mul, Polynomial.eval_X, Polynomial.eval_ofNat]
@@ -1173,11 +1179,7 @@ lemma unaryToDigits_mem_FP {U : List Bool → List Bool} (hU : U ∈ FP) :
 
 end Increment
 
-open LEUnary
-
 /-! ## The generic bit-level tokenizer -/
-
-
 
 /-- The packed tokenizer state: two-slot phase, current token block, client state,
 output so far. -/
@@ -1191,6 +1193,8 @@ rather than a stream — an acceptance test, a counter read at the end — needs
 than `outOf`. -/
 def cliOf (st : List Bool) : List Bool := fstBlock (sndBlock (sndBlock st))
 
+-- The token step's argument is `pair W (tkSt (pair p0 p1) tok cli out)`; these read its
+-- parts.
 private def wpar (v : List Bool) : List Bool := fstBlock v
 private def sst (v : List Bool) : List Bool := sndBlock v
 private def phv (v : List Bool) : List Bool := fstBlock (sst v)
@@ -1279,6 +1283,7 @@ lemma tkFold_cli_out (STEP EMIT : List Bool → List Bool) (W : List Bool) :
       · rw [if_neg hd, if_neg hd]
         exact tkFold_cli_out STEP EMIT W rest _ _ _
 
+/-- The output projection of `tkFold_cli_out`. -/
 lemma tkFold_out (STEP EMIT : List Bool → List Bool) (W : List Bool)
     (w tok cli out : List Bool) :
     outOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
@@ -1286,6 +1291,7 @@ lemma tkFold_out (STEP EMIT : List Bool → List Bool) (W : List Bool)
       = (tkFold STEP EMIT W tok cli out (bitsToDigits w)).2.2 :=
   (tkFold_cli_out STEP EMIT W w tok cli out).2
 
+/-- The client-state projection of `tkFold_cli_out`. -/
 lemma tkFold_cli (STEP EMIT : List Bool → List Bool) (W : List Bool)
     (w tok cli out : List Bool) :
     cliOf (foldlBits (tkStep STEP EMIT false) (tkStep STEP EMIT true) W
@@ -1343,8 +1349,6 @@ private lemma tkStep_bound {STEP EMIT : List Bool → List Bool} {c Q k : ℕ}
             · simp [tkStep, tkSt, sst, phv, p0v, p1v, tokv, cliv, outv,
                 selectHead_true, selectHead_emptyFlag_cons]
 
-
-
 private lemma tkRun_arith (o o1 O Q k K S0 S1 L : ℕ)
     (h1 : o1 ≤ O + Q + k * S0) (h2 : S1 ≤ S0 + K)
     (h3 : o ≤ o1 + L * (Q + k * S1 + k * (K * L))) :
@@ -1399,10 +1403,7 @@ private lemma tkRun_bound {STEP EMIT : List Bool → List Bool} {c Q k : ℕ}
             have := hout'
             omega)
 
-
-
 private lemma wpar_mem_FP : wpar ∈ FP := fstBlock_mem_FP
-private lemma sst_mem_FP : sst ∈ FP := sndBlock_mem_FP
 private lemma phv_mem_FP : phv ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
 private lemma p0v_mem_FP : p0v ∈ FP := mem_FP_comp phv_mem_FP fstBlock_mem_FP
 private lemma p1v_mem_FP : p1v ∈ FP := mem_FP_comp phv_mem_FP sndBlock_mem_FP
@@ -1436,8 +1437,6 @@ lemma tkStep_mem_FP {STEP EMIT : List Bool → List Bool} (hSTEP : STEP ∈ FP)
               (appendFn_mem_FP (appendFn_mem_FP tokv_mem_FP p0v_mem_FP) p1v_mem_FP)
               (constFn_mem_FP [b]))
             (pairFn_mem_FP cliv_mem_FP outv_mem_FP)))))
-
-
 
 private lemma tkFold_arith (a b t cl o L n Q Qn C0 O0 K k : ℕ)
     (ha : a ≤ 1) (hb : b ≤ 1) (hsum : cl + t ≤ C0 + K * L)
@@ -1545,7 +1544,6 @@ lemma tkFold_cli_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool} {c k : ℕ}
     exact tkFold_cli STEP EMIT (Wf z) (Sf z) [] cli₀ out₀
   rwa [heq] at hcomp
 
-
 /-! ## The token-level model -/
 
 /-- The fold a tokenizing client is really running: one step per token of
@@ -1556,6 +1554,7 @@ def natFold (STEPn EMITn : List Bool → ℕ → List Bool) :
   | cli, out, t :: ts =>
       natFold STEPn EMITn (STEPn cli t) (out ++ EMITn cli t) ts
 
+/-- Block splitting distributes over an append of digit streams. -/
 lemma foldl_blockStep_append : ∀ (ds : List ℕ) (bs : List (List ℕ)) (cur : List ℕ),
     (List.foldl blockStep (bs, cur) ds).1 = bs ++ (List.foldl blockStep ([], cur) ds).1 ∧
       (List.foldl blockStep (bs, cur) ds).2 = (List.foldl blockStep ([], cur) ds).2
@@ -1659,7 +1658,9 @@ def NumEqBits (K : ℕ) (w : List Bool) : Prop :=
   w.take (numBits K).length = numBits K ∧
     digitVal (bitsToDigits (w.drop (numBits K).length)) = 0
 
-instance (K : ℕ) (w : List Bool) : Decidable (NumEqBits K w) :=
+/-- The test is decidable: it is a conjunction of a prefix equality and a value-zero
+check. -/
+instance NumEqBits.decidable (K : ℕ) (w : List Bool) : Decidable (NumEqBits K w) :=
   inferInstanceAs (Decidable (_ ∧ _))
 
 /-- **The test decides the value**, on every well-formed block.
@@ -1762,11 +1763,6 @@ def mstep (ts : List ℕ) (i t : ℕ) : ℕ :=
 @[simp] lemma mstep_fail (ts : List ℕ) (t : ℕ) :
     mstep ts (ts.length + 1) t = ts.length + 1 := by
   rw [mstep, if_neg (by omega)]
-
-lemma mstep_le (ts : List ℕ) (i t : ℕ) (hi : i ≤ ts.length) :
-    mstep ts i t ≤ ts.length + 1 := by
-  rw [mstep]
-  split_ifs <;> omega
 
 /-- Failure is absorbing. -/
 lemma foldl_mstep_fail (ts : List ℕ) : ∀ l : List ℕ,
@@ -2056,14 +2052,6 @@ lemma blockWF_unaryBlock (u : List Bool) : BlockWF (unaryBlock u) := by
   rw [unaryBlock, Increment.unaryToDigits_eq]
   exact blockWF_run _ (Increment.unaryDigits_lt u.length)
 
-@[simp] lemma length_digitsToBits (ds : List ℕ) :
-    (digitsToBits ds).length = 3 * ds.length := by
-  induction ds with
-  | nil => simp [digitsToBits]
-  | cons d ds ih =>
-      rw [digitsToBits_cons, List.length_append, length_digitBits, ih, List.length_cons]
-      omega
-
 /-- The emitted block is logarithmic in the value, hence certainly linear in the unary
 word it came from. -/
 lemma length_unaryBlock_le (u : List Bool) : (unaryBlock u).length ≤ 3 * u.length + 3 := by
@@ -2146,6 +2134,8 @@ lemma tkFold_blockSplit_cli_out {STEP EMIT : List Bool → List Bool}
   rw [blockSplit]
   exact h
 
+/-- The digit-level fold, re-read one *block* at a time: `runFold` over the blocks
+`blockSplit` cuts the stream into agrees with `tkFold` over its digits. -/
 lemma tkFold_blockSplit {STEP EMIT : List Bool → List Bool}
     {STEPr EMITr : List Bool → List ℕ → List Bool} (W : List Bool)
     (hS : ∀ (cli : List Bool) (cur : List ℕ), (∀ d ∈ cur, d < 4) →
@@ -2274,11 +2264,6 @@ lemma natFold_mem_FP {STEP EMIT Wf Sf : List Bool → List Bool}
     rw [runFold_natFold, undigitize_eq_blockSplit]
   rwa [heq] at h
 
-#print axioms LogicalInduction.TokenFold.eqConstFn_mem_FP
-#print axioms LogicalInduction.TokenFold.digitVal_eq_iff_zero_padded
-#print axioms LogicalInduction.TokenFold.numEqBits_spec
-#print axioms LogicalInduction.TokenFold.ifNumEq_mem_FP
-#print axioms LogicalInduction.TokenFold.foldl_mstep_zero_iff
 /-! ## Deciding a token stream against a fixed list, in `FP`
 
 The pieces fit: `matchNest` is the step, `foldl_mstep_zero_iff` is its correctness, and
@@ -2287,6 +2272,7 @@ splits its input into.  `ifMatch_mem_FP` is the consumer-facing form — branch 
 word's token stream *is* one particular fixed list — and it is what a run matcher calls once
 per candidate spelling. -/
 
+-- The matcher client's state and the token block it is handed.
 private def mvCli (v : List Bool) : List Bool := fstBlock (sndBlock v)
 private def mvTok (v : List Bool) : List Bool := sndBlock (sndBlock v)
 
@@ -2391,18 +2377,5 @@ lemma ifMatch_mem_FP (ts : List ℕ) {A X Y : List Bool → List Bool} (hA : A �
     · rw [if_pos ((matchPass_iff ts (A z)).mpr hm), if_pos hm]
     · rw [if_neg (fun hc => hm ((matchPass_iff ts (A z)).mp hc)), if_neg hm]
   rwa [heq] at h
-
-#print axioms LogicalInduction.TokenFold.dgFold_cli
-#print axioms LogicalInduction.TokenFold.dgFold_mem_FP
-#print axioms LogicalInduction.TokenFold.LEUnary.unaryOfDigitsLE_le_mem_FP
-#print axioms LogicalInduction.TokenFold.Increment.unaryToDigits_val
-#print axioms LogicalInduction.TokenFold.Increment.unaryToDigits_mem_FP
-#print axioms LogicalInduction.TokenFold.tkFold_out
-#print axioms LogicalInduction.TokenFold.tkFold_mem_FP
-#print axioms LogicalInduction.TokenFold.tkFold_undigitize
-#print axioms LogicalInduction.TokenFold.tkFold_blockSplit
-#print axioms LogicalInduction.TokenFold.runFold_mem_FP
-#print axioms LogicalInduction.TokenFold.runFold_cli_mem_FP
-#print axioms LogicalInduction.TokenFold.natFold_mem_FP
 
 end LogicalInduction.TokenFold

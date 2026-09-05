@@ -1,29 +1,64 @@
-/-
-# `thm:nd` — Non-Dogmatism (paper §4.6; appendix `app:nondog`)
-
-Paper statement: if `Θ ⊬ ¬φ` then `P∞(φ) > 0`, and if `Θ ⊬ φ` then `P∞(φ) < 1`.
-
-**Modeling substitution, disclosed.** The syntactic hypothesis `Θ ⊬ ¬φ` is rendered
-semantically and per-day — "`φ`-satisfying plausible worlds keep existing", i.e.
-`∀ n, ∃ v, v.ConsistentWith (DP.D n) ∧ v.Holds φ` — the `def:lang`-level reading of `⊬`.
-The dual direction uses the mirrored condition with `¬ v.Holds φ`.
-
-Contents:
-* `lic_nonDogmatism_weak` — a decaying-bound fragment (eventually `Pₙφ ≥ 2^{-(n+2)}`),
-  proved by a memoryless one-day-at-a-time trader; retained beside the full theorem.
-* `lic_nonDogmatism`, `lic_nonDogmatism_dual` — the two directions of `thm:nd`, via the
-  buy and sell scale ladders (the trader shape the paper uses in `app:obu`).
-* `lic_limit_pos`, `lic_limit_lt_one` — the limit forms `P∞(φ) > 0` and `P∞(φ) < 1`,
-  taking price convergence as a hypothesis.
--/
 import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Coherence
 import LogicalInduction.Properties.Hysteresis
+
+/-!
+# §4.6 Non-Dogmatism
+
+`thm:nd` (`app:nondog`): if `Θ ⊬ ¬φ` then `P∞(φ) > 0`, and if `Θ ⊬ φ` then `P∞(φ) < 1`.
+
+**Modeling substitution, disclosed.** The syntactic `Θ ⊬ ¬φ` is rendered semantically and
+per-day as `∀ n, ∃ v, v.ConsistentWith (DP.D n) ∧ v.Holds φ` — the world-level reading of `⊬`
+(`def:world`, tex:720; propositional consistency at tex:726). The dual direction mirrors it
+with `¬ v.Holds φ`.
+
+## The endpoints
+
+`lic_nonDogmatism` and `lic_nonDogmatism_dual` are the canonical carriers; their conclusion
+`∃ ε > 0, ∀ᶠ n, ε ≤ Pₙ(φ)` is stronger than the paper's limit claim. `lic_limit_pos` and
+`lic_limit_lt_one` are the literal `P∞` corollaries and take the convergence as an input;
+`lic_exists_limit_pos` and `lic_exists_limit_lt_one` discharge it through
+`lic_price_convergesTo` (`thm:con`).
+
+`lic_nonDogmatism_weak` is a strictly weaker fragment: the bound `2^{-(n+2)}` decays with `n`
+rather than being bounded away from 0. Its trader is memoryless and its proof is one page.
+
+## The scale-ladder trader
+
+The full trader is the scale ladder of the paper's `app:ob`/`app:obu` shape: rung `j` buys up
+to `j³` shares below the price `1/j³` at weight `1/j²`, so total spend is `≤ Σ 1/j² ≤ 2` in
+every world while a fired rung banks `j·(1 − 1/j³) ≥ j − 1` in the plausible `φ`-worlds. The
+paper's `thm:nd` proof is a one-line corollary of `thm:ob` (`app:nondog`), and both go through
+the parametric-trader lemma `lem:type2`.
+
+The paper's constants are rescaled polynomially for `dd:fuel`: the fuel interpreter prices
+tokens by value and the encodings of `2^{-j}` are exponentially large, so the ladder uses
+`1/j³` thresholds and `1/j²` weights with the same economics.
+
+The recursive budget trader is not poly-size expressible as an `EF` tree. The state
+`r(n+1) = r n − Pₙ·ctsind(Pₙ < r n/2)` uses `r n` twice, so its tree doubles per day, and no
+single-occurrence recursion repairs it: such a chain is a composition of unary
+affine/`max`/`min` steps, hence monotone or antitone in its state, while the budget update is
+neither. The paper's own state update `α(n+1) = α n + (k+1−α n)·Lₙ` is affine in the state,
+hence single-occurrence, and in product form is the arming chain used here; the paper
+certifies it by dynamic programming (`app:dynamicprogramming`), a sharing the `dd:dsl` tree
+does not have.
+
+The arming chain `Π_{i<n}(1 − sig i)` lives in `Properties/Hysteresis.lean`; here it is padded
+with degenerate (`δ = 0`) indicators before each rung's start day, so every rung's chain has
+the same serialization width — the shape the doubly-indexed emission needs.
+
+Efficient computability is `PolySegStream.concat` over the rungs, `PolySegStream.blocks`
+within a chunk, and poly-fueled arithmetic for the rung-varying rational constants through
+their closed encode forms (`encode_ndThr`, `encode_sellB_pad`, `encode_sellB_live`). The sell
+side routes negative numerators through `Int.negSucc`.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
-/-! ## The weak fragment: a decaying lower bound
+/-! ## The decaying-bound fragment
 
 The trader is memoryless: on day `n` it buys `β n = max 0 (1 − 2^{n+1}·Pₙφ)` shares of
 `φ`. Its day-`n` spend is `β n · Pₙφ ≤ 2^{-(n+1)}`, so total spend is `≤ 1` in every
@@ -60,7 +95,7 @@ lemma serialize_twoPowChain : ∀ k,
       rw [twoPowChain, EF.serialize, serialize_twoPowChain k, List.range_succ]
       simp [EF.serialize]
 
-/-! ### The trader (`def:trader`) -/
+/-! ### The trader -/
 
 /-- Day-`n` buy signal: `max 0 (1 − 2^{n+1}·φ*ⁿ)` — fires only when the price is below
 `2^{-(n+1)}`, at slope `2^{n+1}`. -/
@@ -151,7 +186,7 @@ lemma ndBeta_trigger (φ : Sentence) (P : History) (n : ℕ)
 
 /-- **The exploitation** (`thm:nd`, weak fragment): with prices in `[0,1]`, plausible
 `φ`-worlds daily, and frequent dips below `2^{-(n+2)}`, `ndTrader φ` exploits. -/
-theorem ndTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma ndTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (hP0 : ∀ n, 0 ≤ P n φ) (hP1 : ∀ n, P n φ ≤ 1)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ)
     (hfreq : ∃ᶠ n in atTop, P n φ < 1 / 2 ^ (n + 2)) :
@@ -205,9 +240,11 @@ theorem ndTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
             Finset.sum_le_sum_of_subset_of_nonneg hsub (fun i _ _ => hterm0 i)
     nlinarith
 
-/-! ### Efficient computability, via `ecTok_of_blockStream` -/
+/-! ### Efficient computability -/
 
-theorem serialize_ndBeta (φ : Sentence) (n : ℕ) :
+/-- The day-`n` signal's serialization: 8 head tokens, `n` width-3 pow-chain blocks, and a
+7-token tail carrying the day index. -/
+lemma serialize_ndBeta (φ : Sentence) (n : ℕ) :
     (ndBeta φ n).serialize
       = [1, Encodable.encode (0:ℚ), 1, Encodable.encode (1:ℚ), 1, Encodable.encode (-1:ℚ),
          1, Encodable.encode (2:ℚ)]
@@ -255,9 +292,9 @@ lemma ndTrader_ecTok (φ : Sentence) : EfficientlyComputableTok (ndTrader φ) :=
 `φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
 `Θ ⊬ ¬φ`), the price is eventually at least `2^{-(n+2)}`.
 
-RETAINED FRAGMENT — strictly weaker than the paper's `thm:nd`, because the bound decays
-with `n` rather than being bounded away from `0`. It is kept beside the faithful form
-`lic_nonDogmatism` below, which supersedes it. The price range is carried by
+Strictly weaker than `thm:nd`: the bound `2^{-(n+2)}` decays with `n` rather than being
+bounded away from 0, and `lic_nonDogmatism` implies it. Its trader is memoryless — one day at
+a time, no state — which is why the statement stands on its own. The price range is carried by
 `IsLogicalInductor`.
 Paper node: `thm:nd` -/
 theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
@@ -273,99 +310,14 @@ theorem lic_nonDogmatism_weak (P : History) (DP : DeductiveProcess)
   exact hLI.noExploitTok (ndTrader φ) (ndTrader_ecTok φ)
     (ndTrader_exploits P DP φ hP0 hP1 hφ hfreq)
 
-#print axioms lic_nonDogmatism_weak
+/-! ## The scale ladder: rung constants and signals
 
-/-! ## Full `thm:nd` — the scale-ladder trader
-
-Paper: the §4.6 proof sketch, with the formal construction in `app:obu` via `lem:type2`.
-The trader "spend[s] their first 50 cents when `Pₙ(φ) < 1/2` … their next 25 cents when
-`Pₙ(φ) < 1/4`", one rung per scale, so that under `liminf Pₙφ = 0` every rung eventually
-fires and plausible profits diverge while total spend stays bounded.
-
-**Two modeling deviations from the paper's trader, disclosed:**
-
-1. *The recursive budget trader is not poly-size expressible as an `EF` tree.* The natural
-   state `r(n+1) = r n − Pₙ·ctsind(Pₙ < r n/2)` uses `r n` twice (once bare, once inside
-   the clip), so its tree doubles per day. No single-occurrence recursion can repair this:
-   a chain that consumes its state once is a composition of unary affine/`max`/`min` steps,
-   hence *monotone or antitone* in the state, while the budget update is genuinely
-   non-monotone. The paper's own `app:obu` trader dodges this — its state update
-   `α(n+1) = α n + (k+1−α n)·Lₙ` is affine in `α`, i.e. `α n·(1−Lₙ) + (k+1)·Lₙ`, single
-   occurrence — and in product form (`remaining shares = target·Π(1−Lᵢ)`) it is exactly the
-   `hystN` chain shape from `thm:con`. (The paper certifies its version by dynamic
-   programming, `app:dynamicprogramming` — sharing our tree `dd:dsl` does not have.)
-
-2. *The paper's constants are rescaled polynomially for `dd:fuel`.* The fuel-clocked
-   interpreter prices tokens by **value**, and the encodings of `2^{-j}`-style rationals
-   are exponentially large values. Rung `j` here buys up to `j³` shares below the price
-   `1/j³` at weight `1/j²` (trade coefficient constant `j = j³/j²`): total spend
-   `≤ Σ 1/j² ≤ 2`, and a fired rung `j` banks `j·(1 − 1/j³) ≥ j − 1` — same economics,
-   poly-value constants.
-
-Rungs are padded with degenerate (`δ = 0`, identically-zero) `ctsind` factors on days
-before their start day `j`, so every rung's arming chain has the same, uniform-width
-serialization — the shape the doubly-indexed token emission needs. -/
-
-/-! ### The generic arming chain -/
-
-/-- Arming chain over a per-day disarm signal: `armChain sig n = Π_{i<n} (1 − sig i)`.
-With `sig i ∈ [0,1]` it decays from `1` toward `0`, and the *shares telescope*: the total
-of `armChain · sig` over any window is the drop in the chain's value. Shared by the buy
-and sell ladders. -/
-def armChain (sig : ℕ → EF) : ℕ → EF
-  | 0 => .const 1
-  | (n + 1) => .mul (armChain sig n) (oneMinus (sig n))
-
-lemma armChain_denote_zero (sig : ℕ → EF) (P : History) :
-    (armChain sig 0).denote P = 1 := by simp [armChain]
-
-lemma armChain_denote_succ (sig : ℕ → EF) (P : History) (n : ℕ) :
-    (armChain sig (n + 1)).denote P
-      = (armChain sig n).denote P * (1 - (sig n).denote P) := by
-  simp [armChain, EF.denote_mul, Pi.mul_apply, oneMinus_denote]
-
-lemma armChain_mem (sig : ℕ → EF) (P : History)
-    (hs : ∀ i, 0 ≤ (sig i).denote P ∧ (sig i).denote P ≤ 1) :
-    ∀ n, 0 ≤ (armChain sig n).denote P ∧ (armChain sig n).denote P ≤ 1
-  | 0 => by rw [armChain_denote_zero]; norm_num
-  | (n + 1) => by
-      obtain ⟨ih0, ih1⟩ := armChain_mem sig P hs n
-      obtain ⟨hs0, hs1⟩ := hs n
-      rw [armChain_denote_succ]
-      constructor
-      · nlinarith
-      · nlinarith
-
-/-- Padded-start rungs stay fully armed until their start day. -/
-lemma armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
-    (hpad : ∀ i < j, (sig i).denote P = 0) :
-    ∀ n, n ≤ j → (armChain sig n).denote P = 1 := by
-  intro n
-  induction n with
-  | zero => intro _; exact armChain_denote_zero sig P
-  | succ n ih =>
-      intro h
-      rw [armChain_denote_succ, ih (by omega), hpad n (by omega)]
-      ring
-
-/-- The shares telescope: `Σ_{n ∈ [j, N)} armChain·sig = armChain j − armChain N`. -/
-lemma armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j ≤ N) :
-    ∑ n ∈ Finset.Ico j N, (armChain sig n).denote P * (sig n).denote P
-      = (armChain sig j).denote P - (armChain sig N).denote P := by
-  induction N, h using Nat.le_induction with
-  | base => simp
-  | succ N hN ih =>
-      rw [Finset.sum_Ico_succ_top hN, ih, armChain_denote_succ]
-      ring
-
-lemma armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
-    ∀ n, (armChain sig n).rank ≤ n - 1
-  | 0 => by simp [armChain]
-  | (n + 1) => by
-      have ih := armChain_rank sig hs n
-      have hn := hs n
-      simp only [armChain, EF.rank, oneMinus_rank, max_le_iff]
-      omega
+Paper: the §4.6 sketch; the formal proof is `app:nondog`, a corollary of `thm:ob` (`app:ob`),
+and both go through the parametric-trader lemma `lem:type2`. The trader *shape* used here is
+the one the paper writes in `app:ob`/`app:obu`: it "spend[s] their first 50 cents when
+`Pₙ(φ) < 1/2` … their next 25 cents when `Pₙ(φ) < 1/4`", one rung per scale, so that under
+`liminf Pₙφ = 0` every rung eventually fires and plausible profits diverge while total spend
+stays bounded. -/
 
 /-! ### Rung constants -/
 
@@ -492,7 +444,7 @@ lemma ndCoef_rank (φ : Sentence) (j n : ℕ) : (ndCoef φ j n).rank ≤ n := by
   simp only [ndCoef, EF.rank, max_le_iff]
   omega
 
-/-! ### The ladder and the trader -/
+/-! ## The buy ladder and its economics -/
 
 /-- The day-`n` ladder: `Σ_{j=1}^{m} ndCoef j n` (left-nested adds). -/
 def ndLadderEF (φ : Sentence) (n : ℕ) : ℕ → EF
@@ -516,8 +468,8 @@ lemma ndLadderEF_rank (φ : Sentence) (n : ℕ) : ∀ m, (ndLadderEF φ n m).ran
       simp only [ndLadderEF, EF.rank, max_le_iff]
       omega
 
-/-- The **scale-ladder non-dogmatism trader** (`thm:nd`, `app:obu` shape): on day `n`,
-rung `j ≤ n` buys `j · armChainⱼ · ctsind(Pₙφ < 1/j³)` shares of `φ`. -/
+/-- The **scale-ladder non-dogmatism trader** (`thm:nd`, `app:ob`/`app:obu` shape): on day
+`n`, rung `j ≤ n` buys `j · armChainⱼ · ctsind(Pₙφ < 1/j³)` shares of `φ`. -/
 def ndLadderTrader (φ : Sentence) : Trader where
   strat n := { trades := [(ndLadderEF φ n n, φ)]
                rank_le := by
@@ -537,7 +489,7 @@ lemma ndLadderTrader_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : �
           ((k + 1 : ℕ) : ℝ) * ndShares φ V (k + 1) n * (v.payout φ - V n φ) := by
   simp only [Trader.netWorth, ndLadderTrader_value, ndLadderEF_denote, Finset.sum_mul]
 
-/-! ### The economics -/
+/-! ### Spend and profit bounds -/
 
 /-- Triangle swap for the ladder's double sums. -/
 private lemma sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
@@ -625,7 +577,7 @@ lemma ndTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : v.Holds φ
 /-- **The exploitation** (`thm:nd`): if the price frequently dips below every positive
 threshold, the scale-ladder trader exploits — every rung eventually fires, banking
 `≥ j − 1` in the plausible `φ`-worlds, while total spend stays `≤ 2` in every world. -/
-theorem ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ)
     (hfreq : ∀ ε : ℝ, 0 < ε → ∃ᶠ n in atTop, P n φ < ε) :
     (ndLadderTrader φ).Exploits P DP := by
@@ -705,18 +657,16 @@ theorem ndLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sent
     have hsingle := Finset.single_le_sum hterm hjmem
     linarith
 
-#print axioms ndLadderTrader_exploits
+/-! ## Buy-ladder emission
 
-/-! ### Efficient computability (the parametric-ladder emission)
+The day-`n` stream is `n` rung chunks of uniform width `Θ(n)`, each: a rung-constant head,
+`n` fixed-width arm blocks (only the day index and the rung's `ℚ`-constant tokens vary), the
+day-`n` trade signal, and closers. The `PolySegStream.concat` over the rungs divides by a
+runtime divisor, and the rung-varying constants come from their closed forms
+(`⌜ndThr j⌝ = Nat.pair 2 (2j³)` and the rest, out of `encode_rat_eq`). -/
 
-The day-`n` stream is `n` rung chunks of uniform width `Θ(n)`, each: a rung-constant
-head, `n` fixed-width arm blocks (only the day-index and the rung's `ℚ`-constant tokens
-vary), the day-`n` trade signal, and closers. Emission: `PolySegStream.concat` over the
-rungs (runtime-divisor division), `PolySegStream.blocks` within each chunk, and
-poly-fueled arithmetic for the rung-varying encoded constants
-(`⌜ndThr j⌝ = Nat.pair 2 (2j³)` etc. — the closed forms of `encode_rat_eq`). -/
-
-theorem encode_rat_zero : Encodable.encode ((0 : ℚ)) = 1 := rfl
+/-- `⌜(0 : ℚ)⌝ = 1`. -/
+lemma encode_rat_zero : Encodable.encode ((0 : ℚ)) = 1 := rfl
 
 lemma ndThr_eq_inv (j : ℕ) : ndThr j = ((2 * j ^ 3 : ℕ) : ℚ)⁻¹ := by
   rw [ndThr, one_div]
@@ -848,14 +798,8 @@ lemma serialize_ndBuySig_length (φ : Sentence) (j i : ℕ) :
 lemma serialize_armChain_ndBuy (φ : Sentence) (j : ℕ) : ∀ n,
     (armChain (ndBuySig φ j) n).serialize
       = [1, Encodable.encode ((1 : ℚ))]
-        ++ (List.range n).flatMap (fun i => ndArmBlock φ j i)
-  | 0 => by simp [armChain, EF.serialize]
-  | (n + 1) => by
-      rw [armChain]
-      simp only [EF.serialize]
-      rw [serialize_armChain_ndBuy φ j n, List.range_succ, List.flatMap_append,
-        List.flatMap_singleton, ndArmBlock]
-      simp [List.append_assoc]
+        ++ (List.range n).flatMap (fun i => ndArmBlock φ j i) :=
+  fun n => by simpa [ndArmBlock] using serialize_armChain (ndBuySig φ j) n
 
 lemma serialize_ndCoef (φ : Sentence) (j n : ℕ) :
     (ndCoef φ j n).serialize
@@ -946,8 +890,6 @@ lemma ndLadderTrader_ecTok (φ : Sentence) :
     serializeTrades, serializeTrades, serialize_ndLadderEF]
   simp [Nat.unpair_pair]
 
-#print axioms ndLadderTrader_ecTok
-
 /-- **Non-Dogmatism, positive direction** (`thm:nd`): under a logical inductor, if
 `φ`-satisfying plausible worlds keep existing (the per-day semantic rendering of
 `Θ ⊬ ¬φ`), the price is eventually bounded away from `0`. No price-range hypotheses are
@@ -966,9 +908,7 @@ theorem lic_nonDogmatism (P : History) (DP : DeductiveProcess)
   exact hLI.noExploitTok (ndLadderTrader φ) (ndLadderTrader_ecTok φ)
     (ndLadderTrader_exploits P DP φ hφ hfreq)
 
-#print axioms lic_nonDogmatism
-
-/-! ### The dual direction: `Θ ⊬ φ` ⇒ price bounded away from `1`
+/-! ## The sell ladder
 
 The mirrored **sell** ladder. This does *not* reduce to the positive direction applied to
 `∼φ` — the prices of `φ` and `∼φ` are unlinked without coherence — so
@@ -1166,7 +1106,7 @@ lemma ndSellTerm_profit (φ : Sentence) (P : History) (v : PCWorld) (hv : ¬ v.H
 /-- **The dual exploitation** (`thm:nd`): if the price frequently spikes above every
 `1 − ε`, the sell ladder exploits — every rung eventually fires, banking `≥ j − 1` in
 the plausible `¬φ`-worlds, while the downside stays `≤ 2` in every world. -/
-theorem ndSellLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
+lemma ndSellLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ)
     (hfreq : ∀ ε : ℝ, 0 < ε → ∃ᶠ n in atTop, 1 - ε < P n φ) :
     (ndSellLadderTrader φ).Exploits P DP := by
@@ -1243,16 +1183,15 @@ theorem ndSellLadderTrader_exploits (P : History) (DP : DeductiveProcess) (φ : 
     have hsingle := Finset.single_le_sum hterm hjmem
     linarith
 
-#print axioms ndSellLadderTrader_exploits
-
-/-! ### Sell-ladder emission — negative-numerator constant tokens
+/-! ## Sell-ladder emission
 
 The sell chunks mirror the buy chunks, but the band constants `δ − b` (with
 `b = 1 − ndThr j` near `1`) have **negative numerators**: their encodes route through
 `Int.negSucc` (`⌜−(a/b)⌝ = pair (2(a−1)+1) b` for a normalized positive fraction
 `a/b`), with an extra rung-1 branch where the live constant collapses to `0`. -/
 
-theorem encode_int_neg_natCast {n : ℕ} (hn : 0 < n) :
+/-- `⌜−n⌝ = 2n − 1` for `n > 0`, via `Int.negSucc`. -/
+lemma encode_int_neg_natCast {n : ℕ} (hn : 0 < n) :
     Encodable.encode ((-(n : ℤ))) = 2 * n - 1 := by
   have h : -((n : ℤ)) = Int.negSucc (n - 1) := by omega
   rw [h, show Encodable.encode (Int.negSucc (n - 1)) = 2 * (n - 1) + 1 from rfl]
@@ -1413,14 +1352,8 @@ lemma serialize_ndSellSig_length (φ : Sentence) (j i : ℕ) :
 lemma serialize_armChain_ndSell (φ : Sentence) (j : ℕ) : ∀ n,
     (armChain (ndSellSig φ j) n).serialize
       = [1, Encodable.encode ((1 : ℚ))]
-        ++ (List.range n).flatMap (fun i => ndSellArmBlock φ j i)
-  | 0 => by simp [armChain, EF.serialize]
-  | (n + 1) => by
-      rw [armChain]
-      simp only [EF.serialize]
-      rw [serialize_armChain_ndSell φ j n, List.range_succ, List.flatMap_append,
-        List.flatMap_singleton, ndSellArmBlock]
-      simp [List.append_assoc]
+        ++ (List.range n).flatMap (fun i => ndSellArmBlock φ j i) :=
+  fun n => by simpa [ndSellArmBlock] using serialize_armChain (ndSellSig φ j) n
 
 lemma serialize_ndSellCoef (φ : Sentence) (j n : ℕ) :
     (ndSellCoef φ j n).serialize
@@ -1508,8 +1441,6 @@ lemma ndSellLadderTrader_ecTok (φ : Sentence) :
     serializeTrades, serializeTrades, serialize_ndSellLadderEF]
   simp [Nat.unpair_pair]
 
-#print axioms ndSellLadderTrader_ecTok
-
 /-- **Non-Dogmatism, dual direction** (`thm:nd`): under a logical inductor, if
 `φ`-falsifying plausible worlds keep existing (the per-day semantic rendering of
 `Θ ⊬ φ`), the price is eventually bounded away from `1`.
@@ -1527,13 +1458,11 @@ theorem lic_nonDogmatism_dual (P : History) (DP : DeductiveProcess)
   exact hLI.noExploitTok (ndSellLadderTrader φ) (ndSellLadderTrader_ecTok φ)
     (ndSellLadderTrader_exploits P DP φ hφ hfreq)
 
-#print axioms lic_nonDogmatism_dual
-
-/-! ### Limit-form corollaries (`P∞`) -/
+/-! ## Limit forms -/
 
 /-- `thm:nd`, limit form, positive direction: `P∞(φ) > 0`. Convergence of the price is an
-explicit hypothesis rather than an appeal to `thm:con`, so the statement is usable at any
-convergent limit the caller already has (`lic_price_convergesTo` supplies one).
+explicit hypothesis, so the statement applies to any convergent limit the caller already has;
+`lic_exists_limit_pos` is the form that supplies one, from `thm:con`.
 Paper node: `thm:nd` -/
 theorem lic_limit_pos (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : Sentence) {L : ℝ}
@@ -1555,7 +1484,25 @@ theorem lic_limit_lt_one (P : History) (DP : DeductiveProcess)
   have hle : L ≤ 1 - ε := le_of_tendsto hL hev
   linarith
 
-#print axioms lic_limit_pos
-#print axioms lic_limit_lt_one
+/-- `thm:nd`, limit form, positive direction, with the convergence supplied: the price of `φ`
+converges, and its limit `P∞(φ)` is positive. Convergence comes from `lic_price_convergesTo`
+(`thm:con`), whose plausible-world hypothesis is already implied by `hφ`.
+Paper node: `thm:nd` -/
+theorem lic_exists_limit_pos (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (φ : Sentence)
+    (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) :
+    ∃ L, ConvergesTo (fun n => P n φ) L ∧ 0 < L := by
+  obtain ⟨L, hL⟩ := lic_price_convergesTo P DP φ (fun n => (hφ n).imp fun _ h => h.1)
+  exact ⟨L, hL, lic_limit_pos P DP φ hL hφ⟩
+
+/-- `thm:nd`, limit form, dual direction, with the convergence supplied: the price of `φ`
+converges, and its limit `P∞(φ)` is below `1`.
+Paper node: `thm:nd` -/
+theorem lic_exists_limit_lt_one (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (φ : Sentence)
+    (hφ : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) :
+    ∃ L, ConvergesTo (fun n => P n φ) L ∧ L < 1 := by
+  obtain ⟨L, hL⟩ := lic_price_convergesTo P DP φ (fun n => (hφ n).imp fun _ h => h.1)
+  exact ⟨L, hL, lic_limit_lt_one P DP φ hL hφ⟩
 
 end LogicalInduction

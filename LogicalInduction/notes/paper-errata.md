@@ -441,3 +441,22 @@ The formalization proves the step by the correct route: `re_complete_mp` under
 the paper's own argument tacitly consumes arithmetical strength beyond its stated
 premises at exactly this point.
 
+
+---
+
+## Citation record — where the paper actually says it
+
+Not errata: these are locations in `1609.03543v5-main.tex` that this development cites and
+that are easy to cite wrongly, recorded here because each cost a correction pass. A wrong
+`tex:` line is invisible to every checker.
+
+| what | where | the mistake to avoid |
+| --- | --- | --- |
+| the primitive connectives `¬ ∧ ∨ ⟹ ⟺` | tex:560 | — |
+| the quantifiers `∀ ∃`, and `∀x.φ` read as `¬∃x.¬φ` | tex:568-573 | citing tex:571-577 |
+| the prime-sentence decomposition (Boolean atoms of a first-order theory) | tex:566-573 | citing tex:560, which is the connective paragraph |
+| `⌜⟨f⟩(7)⌝` is shorthand for `⌜γ_f(7,ν)⌝` | tex:1655 | citing tex:1660 |
+| `thm:pazfc`'s own hypothesis — `Θ′` **any recursively axiomatizable consistent theory** | tex:1882 | quoting it as `𝗣𝗔 + Con(𝗣𝗔)`, or as containing `Θ`; the paper states **no** containment hypothesis |
+| the informal "stronger than `Θ`" framing of `thm:pazfc` | tex:1879 | reading it as part of the theorem's hypotheses |
+| `𝗭𝗙𝗖` as the worked example for `thm:pazfc` | tex:1889 | — |
+| `def:ec` meters *writing the object out* | tex:753-755, explicitly tex:1931-1933 | reading it as a bound on a Gödel code's value |

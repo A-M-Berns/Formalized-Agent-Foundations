@@ -4,24 +4,55 @@ import LogicalInduction.Framework.WriteOut
 /-!
 # Uniform historical-maturity verification
 
-The Return on Investment lemma (`lem:type3`) builds its trader around a maturity search: on day
-`n`, for every `k, j ≤ n`, it records `open(k,j) = 0` once `j` steps of computation verify that
-the `k`th member's holdings have matured — few future trades, plus guaranteed profit in every
-plausible world.  Running that search uniformly needs programs for the member traders, the
-market, and the deductive stages.
+The Return on Investment lemma (`lem:type3`, tex:3567, "No Repeatable ε-ROI") builds its trader
+around a maturity search: on day `n`, for every `k, j ≤ n`, it records `open(k,j) = 0` once `j`
+steps of computation verify that the `k`th member's holdings have matured — few future trades,
+plus guaranteed profit in every plausible world.  The paper leaves that search as an operational
+premise; running it uniformly needs programs for the member traders, the market, and the
+deductive stages.
 
-The semantic finite maturity check lives in `Properties.Calibration`, and
-`AffineCombination.BiasRunHistoricallyVerifiable` isolates the computational boundary it leaves
-open.  This file closes that boundary: the check is compiled for a uniformly emulatable trader
-family, placed behind the generic bounded dovetail, and packaged as the historical verification
-schedule that repeatable ROI consumes.  The statistical endpoints at the end of the file
-(`thm:recunbiasedaff`, `thm:prandaff`, `thm:simcal`, `thm:prand`, `thm:benford`,
-`thm:recurringunbiasednessexp`, `thm:prandexp`) are stated with no verifier hypothesis as a
-result.
+The semantic finite maturity check itself lives in `Properties/Calibration.lean`, and the two
+interfaces it leaves open are `AffineCombination.BiasRunHistoricallyVerifiable`
+(`Properties/Calibration.lean`) and `ROIBudget.HistoricalVerifiedMaturitySchedule`
+(`Framework/ROI.lean`).  This file closes both: the check is compiled for a uniformly emulatable
+trader family, placed behind the generic bounded dovetail, and packaged as the historical
+verification schedule that repeatable ROI consumes.
+
+## The compilation lane
+
+`HistoricalMaturityCompile` is file-internal apart from the non-dependent compiled checker
+`familyMaturityCheckAtFuel` and its correctness bridge `familyMaturityCheckAtFuel_iff`,
+`FamilyMaturitySemidecider` with its `ofComputations` extraction, and
+`historicalScheduleOfComputations`, the schedule repeatable ROI consumes.  The checker is
+compiled non-dependently — its type never mentions `Ts i` — and that is what makes it primitive
+recursive in the member index (`familyMaturityCheckAtFuel_prim`).
+
+The certificates it runs on are `PolyFueled`/`dovetailFound` for `check_poly`, and fuel-clocked
+`MarketComputation`/`DeductiveProcessComputation` reads for prices and stages (`dd:fuel`).
+Features are metered rather than evaluated because `EF` is reified syntax with a fuel-bounded
+rational denotation (`dd:dsl`), which is what lets the risk and payoff folds be primitive
+recursive.
+
+## The endpoints
+
+The statistical capstones at the end of the file are stated with no verifier hypothesis:
+`thm:recunbiasedaff`, `thm:recurringunbiasedness`, `thm:simcal`, `thm:prandaff`, `thm:prand`,
+`thm:benford`, `thm:recurringunbiasednessexp` (with the erratum `PE2` of
+`notes/paper-errata.md`) and `thm:prandexp`.  The settlement clocks are constructed too
+(`patientApproxClockOfInductor`, `patientClockOfInductor`): `IsLogicalInductor` already carries
+a computable market and a computable deductive process, so the `BoundedCombinationSequence`
+capstones build their own clock rather than asking for one.  The six
+`ApproxDeterminedViaTheory.lic_prandaff{,_above,_below}` and
+`DeterminedViaTheory.lic_prandaff{,_above,_below}` forms above them do take the clock as
+data, at an explicit `(clock : PatientSettlementClock …)` binder.  The LUV lane trades a
+normalized threshold mesh, which is only approximately determined, so its clock tests
+agreement within the vanishing rational `meshTol` rather than exact agreement.  Asymptotic
+conclusions use the shared `≈ₙ`/`≳ₙ`/`≲ₙ` vocabulary (`dd:asymp`).
 -/
 
 namespace LogicalInduction
-namespace HistoricalMaturityCompile
+
+/-! ## Primitive-recursive access to an emulatable trader family -/
 
 private def markerSentence : Sentence := LO.Propositional.Formula.atom 0
 
@@ -72,6 +103,8 @@ lemma PolyTradeEmulatable.trades_primrec {Ts : ℕ → Trader}
   exact hraw.of_eq fun z => by
     simpa using (h.trades_eq z.unpair.1 z.unpair.2).symm
 
+namespace HistoricalMaturityCompile
+
 /-! ## Primitive-recursive finite-prefix data -/
 
 private def ratNeg (q : ℚ) : ℚ := (-1) * q
@@ -120,11 +153,11 @@ private lemma tradeAtomBoundSum_prim : Primrec tradeAtomBoundSum := by
 
 /-- Support bound for a family member's strategies through day `m`, excluding the
 deductive stage. -/
-def familyTradeAtomLimit {Ts : ℕ → Trader} (i m : ℕ) : ℕ :=
+private def familyTradeAtomLimit {Ts : ℕ → Trader} (i m : ℕ) : ℕ :=
   ((List.range (m + 1)).map fun d =>
     tradeAtomBoundSum ((Ts i).strat d).trades).sum
 
-lemma familyTradeAtomLimit_prim {Ts : ℕ → Trader}
+private lemma familyTradeAtomLimit_prim {Ts : ℕ → Trader}
     (h : PolyTradeEmulatable Ts) :
     Primrec₂ (familyTradeAtomLimit (Ts := Ts)) := by
   have hrange : Primrec fun p : ℕ × ℕ => List.range (p.2 + 1) :=
@@ -133,7 +166,7 @@ lemma familyTradeAtomLimit_prim {Ts : ℕ → Trader}
   have hday : Primrec₂ fun (p : ℕ × ℕ) (d : ℕ) =>
       tradeAtomBoundSum ((Ts p.1).strat d).trades :=
     ((tradeAtomBoundSum_prim.comp
-      (PolyTradeEmulatable.trades_primrec h |>.comp
+      (h.trades_primrec.comp
         (Primrec₂.natPair.comp (Primrec.fst.comp₂ Primrec₂.left)
           Primrec₂.right))).to₂).of_eq fun p d => by rw [Nat.unpair_pair]
   have hmap : Primrec fun p : ℕ × ℕ =>
@@ -143,11 +176,11 @@ lemma familyTradeAtomLimit_prim {Ts : ℕ → Trader}
   exact (natListSum_prim.comp hmap).to₂.of_eq fun _ _ => rfl
 
 /-- Fully executable support bound, using the decoded deductive stage. -/
-def familyMaturityAtomLimit {Ts : ℕ → Trader}
+private def familyMaturityAtomLimit {Ts : ℕ → Trader}
     (i : ℕ) (stage : Finset Sentence) (m : ℕ) : ℕ :=
   stage.sum BoolPCWorld.atomBound + familyTradeAtomLimit (Ts := Ts) i m
 
-lemma familyMaturityAtomLimit_eq {Ts : ℕ → Trader}
+private lemma familyMaturityAtomLimit_eq {Ts : ℕ → Trader}
     (i : ℕ) (stage : Finset Sentence) (m : ℕ) :
     familyMaturityAtomLimit (Ts := Ts) i stage m =
       AffineCombination.maturityAtomLimitFromStage (Ts i) stage m := by
@@ -155,7 +188,7 @@ lemma familyMaturityAtomLimit_eq {Ts : ℕ → Trader}
     finset_sum_eq_stageSort_sum]
   rfl
 
-lemma familyMaturityAtomLimit_prim {Ts : ℕ → Trader}
+private lemma familyMaturityAtomLimit_prim {Ts : ℕ → Trader}
     (h : PolyTradeEmulatable Ts) :
     Primrec fun q : (ℕ × Finset Sentence) × ℕ =>
       familyMaturityAtomLimit (Ts := Ts) q.1.1 q.1.2 q.2 := by
@@ -174,12 +207,12 @@ lemma familyMaturityAtomLimit_prim {Ts : ℕ → Trader}
 /-! ## Compiled rational risk and payoff folds -/
 
 /-- Every trade through day `m`, tagged by the day on which it was placed. -/
-def familyDatedTrades {Ts : ℕ → Trader} (i m : ℕ) :
+private def familyDatedTrades {Ts : ℕ → Trader} (i m : ℕ) :
     List (ℕ × (EF × Sentence)) :=
   (List.range (m + 1)).flatMap fun d =>
     ((Ts i).strat d).trades.map fun p => (d, p)
 
-lemma familyDatedTrades_prim {Ts : ℕ → Trader}
+private lemma familyDatedTrades_prim {Ts : ℕ → Trader}
     (h : PolyTradeEmulatable Ts) :
     Primrec₂ (familyDatedTrades (Ts := Ts)) := by
   have hrange : Primrec fun p : ℕ × ℕ => List.range (p.2 + 1) :=
@@ -191,7 +224,7 @@ lemma familyDatedTrades_prim {Ts : ℕ → Trader}
     Primrec₂.natPair.comp hpfirst Primrec₂.right
   have htrades : Primrec₂ fun (p : ℕ × ℕ) (d : ℕ) =>
       ((Ts p.1).strat d).trades := by
-    have hraw := (PolyTradeEmulatable.trades_primrec h).comp hindex
+    have hraw := h.trades_primrec.comp hindex
     exact hraw.to₂.of_eq fun p d => by rw [Nat.unpair_pair]
   have hday : Primrec₂ fun (p : ℕ × ℕ) (d : ℕ) =>
       ((Ts p.1).strat d).trades.map fun x => (d, x) := by
@@ -205,14 +238,14 @@ lemma familyDatedTrades_prim {Ts : ℕ → Trader}
 
 /-- Fuel-bounded magnitude of a dated trade list.  The date tags are ignored for risk;
 they are retained so the same prefix representation can feed payoff computation. -/
-def datedMagnitudeComp {P : History} (market : MarketComputation P) (fuel : ℕ)
+private def datedMagnitudeComp {P : History} (market : MarketComputation P) (fuel : ℕ)
     (trades : List (ℕ × (EF × Sentence))) : Option ℚ :=
   trades.foldr (fun p acc =>
     (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
       acc.map fun tail => ratAbs coefficient + tail) (some 0)
 
 /-- Fuel-bounded net worth of a dated trade list at a finite Boolean world. -/
-def datedValueComp {P : History} (market : MarketComputation P) (fuel : ℕ)
+private def datedValueComp {P : History} (market : MarketComputation P) (fuel : ℕ)
     (bits : List Bool) (trades : List (ℕ × (EF × Sentence))) : Option ℚ :=
   trades.foldr (fun p acc =>
     (market.denoteRatComp fuel p.2.1).bind fun coefficient =>
@@ -223,7 +256,7 @@ def datedValueComp {P : History} (market : MarketComputation P) (fuel : ℕ)
 section
 attribute [local irreducible] Nat.sqrt
 
-lemma datedMagnitudeComp_prim {P : History} (market : MarketComputation P) :
+private lemma datedMagnitudeComp_prim {P : History} (market : MarketComputation P) :
     Primrec fun q : ℕ × List (ℕ × (EF × Sentence)) =>
       datedMagnitudeComp market q.1 q.2 := by
   let Q := ℕ × List (ℕ × (EF × Sentence))
@@ -247,7 +280,7 @@ lemma datedMagnitudeComp_prim {P : History} (market : MarketComputation P) :
   exact (Primrec.list_foldr Primrec.snd (Primrec.const (some 0)) hstep).of_eq
     fun q => by simp only [datedMagnitudeComp]
 
-lemma datedValueComp_prim {P : History} (market : MarketComputation P) :
+private lemma datedValueComp_prim {P : History} (market : MarketComputation P) :
     Primrec fun q : (ℕ × List Bool) ×
         List (ℕ × (EF × Sentence)) =>
       datedValueComp market q.1.1 q.1.2 q.2 := by
@@ -359,7 +392,7 @@ private lemma datedValue_day_fold {P : History} (market : MarketComputation P)
               | some tail =>
                   cases acc <;> simp [ratSub_eq_sub, add_assoc]
 
-lemma datedMagnitudeComp_familyDatedTrades_eq {Ts : ℕ → Trader}
+private lemma datedMagnitudeComp_familyDatedTrades_eq {Ts : ℕ → Trader}
     {P : History} (market : MarketComputation P) (i fuel m : ℕ) :
     datedMagnitudeComp market fuel (familyDatedTrades (Ts := Ts) i m) =
       (Ts i).partialMagnitudeRatAtFuel market fuel m := by
@@ -383,7 +416,7 @@ lemma datedMagnitudeComp_familyDatedTrades_eq {Ts : ℕ → Trader}
           ((Ts i).strat d).trades <;>
         cases (Ts i).partialMagnitudeRatDaysAtFuel market fuel rest <;> rfl
 
-lemma datedValueComp_familyDatedTrades_eq {Ts : ℕ → Trader}
+private lemma datedValueComp_familyDatedTrades_eq {Ts : ℕ → Trader}
     {P : History} (market : MarketComputation P)
     (i fuel m : ℕ) (bits : List Bool) :
     datedValueComp market fuel bits (familyDatedTrades (Ts := Ts) i m) =
@@ -411,19 +444,19 @@ lemma datedValueComp_familyDatedTrades_eq {Ts : ℕ → Trader}
           (BoolPCWorld.bitsPayoutRat bits) rest <;> rfl
 
 /-- Compiled finite-prefix risk for one family member. -/
-def familyPartialMagnitudeComp {Ts : ℕ → Trader} {P : History}
+private def familyPartialMagnitudeComp {Ts : ℕ → Trader} {P : History}
     (market : MarketComputation P) (i fuel m : ℕ) : Option ℚ :=
   datedMagnitudeComp market fuel (familyDatedTrades (Ts := Ts) i m)
 
 /-- Compiled finite-prefix net worth for one family member at a bit-list world. -/
-def familyPartialValueComp {Ts : ℕ → Trader} {P : History}
+private def familyPartialValueComp {Ts : ℕ → Trader} {P : History}
     (market : MarketComputation P) (i fuel m : ℕ) (bits : List Bool) : Option ℚ :=
   datedValueComp market fuel bits (familyDatedTrades (Ts := Ts) i m)
 
 section
 attribute [local irreducible] Nat.sqrt
 
-lemma familyPartialMagnitudeComp_prim {Ts : ℕ → Trader} {P : History}
+private lemma familyPartialMagnitudeComp_prim {Ts : ℕ → Trader} {P : History}
     (h : PolyTradeEmulatable Ts) (market : MarketComputation P) :
     Primrec fun q : (ℕ × ℕ) × ℕ =>
       familyPartialMagnitudeComp (Ts := Ts) market q.1.1 q.1.2 q.2 := by
@@ -434,7 +467,7 @@ lemma familyPartialMagnitudeComp_prim {Ts : ℕ → Trader} {P : History}
   exact (datedMagnitudeComp_prim market).comp
     ((Primrec.snd.comp Primrec.fst).pair htrades)
 
-lemma familyPartialValueComp_prim {Ts : ℕ → Trader} {P : History}
+private lemma familyPartialValueComp_prim {Ts : ℕ → Trader} {P : History}
     (h : PolyTradeEmulatable Ts) (market : MarketComputation P) :
     Primrec fun q : (((ℕ × ℕ) × ℕ) × List Bool) =>
       familyPartialValueComp (Ts := Ts) market
@@ -452,6 +485,9 @@ end
 
 /-! ## The non-dependent maturity checker -/
 
+/-- Half of a rational, written as a multiplication so that its `Primrec` proof is one
+composition (`halfRat_prim`); `halfRat_eq` rewrites it to `q / 2`.  The maturity checker halves
+its caller's tolerance, so the compiled and semantic checks agree at `halfRat (tolerance i)`. -/
 def halfRat (q : ℚ) : ℚ := (1 / 2) * q
 
 lemma halfRat_eq (q : ℚ) : halfRat q = q / 2 := by
@@ -462,7 +498,7 @@ lemma halfRat_prim : Primrec halfRat :=
   ratMul_prim.comp (Primrec.const (1 / 2)) Primrec.id
 
 /-- One Boolean-world branch of the compiled family checker. -/
-def familyMaturityWorldCheck {Ts : ℕ → Trader} {P : History}
+private def familyMaturityWorldCheck {Ts : ℕ → Trader} {P : History}
     (market : MarketComputation P) (epsilon tolerance : ℚ)
     (i m fuel : ℕ) (stage : Finset Sentence) (bits : List Bool) : Bool :=
   !(stageSatBits stage bits) ||
@@ -486,13 +522,13 @@ def familyMaturityCheckAtFuel {Ts : ℕ → Trader} {P : History}
               (familyMaturityWorldCheck (Ts := Ts) market epsilon (tolerance i)
                 i m fuel stage)
 
-lemma familyPartialMagnitudeComp_eq {Ts : ℕ → Trader} {P : History}
+private lemma familyPartialMagnitudeComp_eq {Ts : ℕ → Trader} {P : History}
     (market : MarketComputation P) (i fuel m : ℕ) :
     familyPartialMagnitudeComp (Ts := Ts) market i fuel m =
       (Ts i).partialMagnitudeRatAtFuel market fuel m :=
   datedMagnitudeComp_familyDatedTrades_eq market i fuel m
 
-lemma familyPartialValueComp_eq {Ts : ℕ → Trader} {P : History}
+private lemma familyPartialValueComp_eq {Ts : ℕ → Trader} {P : History}
     (market : MarketComputation P) (i fuel m : ℕ) (bits : List Bool) :
     familyPartialValueComp (Ts := Ts) market i fuel m bits =
       (Ts i).partialNetWorthRatAtFuel market fuel
@@ -947,9 +983,11 @@ namespace AffineCombination
 
 open Filter
 
+/-! ## Affine recurring unbiasedness and calibration -/
+
 /-- The canonical geometric ROI tolerance stream is primitive recursive as an exact
 rational sequence. -/
-lemma roiToleranceRat_prim : Primrec roiToleranceRat := by
+private lemma roiToleranceRat_prim : Primrec roiToleranceRat := by
   have hstep : Primrec₂ fun (_n : ℕ) (prev : ℚ) => prev * (1 / 2) :=
     ratMul_prim.comp₂ Primrec₂.right (Primrec₂.const (1 / 2))
   have hrec : Primrec (Nat.rec (motive := fun _ => ℚ) (1 / 2)
@@ -964,7 +1002,7 @@ lemma roiToleranceRat_prim : Primrec roiToleranceRat := by
         rw [ih]
         simp only [roiToleranceRat, pow_succ]
 
-lemma roiToleranceRat_pos (i : ℕ) : 0 < (roiToleranceRat i : ℝ) := by
+private lemma roiToleranceRat_pos (i : ℕ) : 0 < (roiToleranceRat i : ℝ) := by
   rw [roiToleranceRat]
   positivity
 
@@ -1149,8 +1187,11 @@ private noncomputable def patientClockOfInductor
       exact ⟨m, fun v w hv hw => by rw [hm v hv, hm w hw]; simp⟩)
     (fun i => by simp) f
 
-/-- The nonnegative affine pseudorandomness branch with historical maturity constructed
-from the logical inductor computations.
+/-- **`thm:prandaff`, nonnegative branch.**  If a bounded affine sequence determined via `Θ` is
+pseudorandom above a deferral function `f` — every `f`-patient generable divergent weighting
+averages its `Θ`-values to `≳ₙ 0` — then its diagonal prices `(As n).price P n` are `≳ₙ 0`.
+Stated at approximate determination, with the historical maturity schedule constructed from the
+logical inductor's own market and deductive-process computations.
 Paper node: `thm:prandaff` -/
 theorem ApproxDeterminedViaTheory.lic_prandaff_above
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1163,8 +1204,6 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_above
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomAbove truth f P) :
     (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro ε hε
   by_contra hnotEventually
   rw [Filter.not_eventually] at hnotEventually
@@ -1213,7 +1252,9 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_above
   exact (not_eventually_weightedAverage_lt_of_limitPoint_bias
     w market truth hden hbias htruth ((q : ℝ) / 2) (half_pos hq0)) hmarketBad
 
-/-- The nonpositive affine pseudorandomness branch with constructed maturity schedules.
+/-- **`thm:prandaff`, nonpositive branch.**  Pseudorandomness below `f` gives
+`(As n).price P n ≲ₙ 0`.  Stated at approximate determination, with the historical maturity
+schedule constructed.
 Paper node: `thm:prandaff` -/
 theorem ApproxDeterminedViaTheory.lic_prandaff_below
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1226,8 +1267,6 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_below
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomBelow truth f P) :
     (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hboundedNeg : BoundedAffinePrices (fun n ↦ (As n).neg) P := by
     obtain ⟨B, hB0, hB⟩ := hbounded
     refine ⟨B, hB0, fun n m ↦ ?_⟩
@@ -1245,7 +1284,9 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_below
   simp only [zero_add]
   linarith
 
-/-- Exact two-sided affine pseudorandomness with no historical-verifier premises.
+/-- **`thm:prandaff`, two-sided.**  Pseudorandomness relative to `f` gives
+`(As n).price P n ≈ₙ 0`.  Stated at approximate determination, with no historical-verifier
+premise.
 Paper node: `thm:prandaff` -/
 theorem ApproxDeterminedViaTheory.lic_prandaff
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1258,13 +1299,13 @@ theorem ApproxDeterminedViaTheory.lic_prandaff
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : Pseudorandom truth f P) :
     (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨hdet.lic_prandaff_below hpoly hnegl hbounded hmag hworld f clock hpseudo.2,
     hdet.lic_prandaff_above hpoly hnegl hbounded hmag hworld f clock hpseudo.1⟩
 
-/-- Exact `thm:prandaff`, nonnegative branch with constructed maturity: `e = 0`.
+/-- **`thm:prandaff`, nonnegative branch at exact determination.**  For a bounded affine
+sequence determined via `Θ`, pseudorandomness above `f` gives `(As n).price P n ≳ₙ 0`.  This is
+the approximate form at `e = 0`, with the maturity schedule constructed.
 Paper node: `thm:prandaff` -/
 theorem DeterminedViaTheory.lic_prandaff_above
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1279,7 +1320,9 @@ theorem DeterminedViaTheory.lic_prandaff_above
   hdet.approx.lic_prandaff_above hpoly (errorNegligible_zero As P) hbounded hmag hworld
     f clock hpseudo
 
-/-- Exact `thm:prandaff`, nonpositive branch with constructed maturity: `e = 0`.
+/-- **`thm:prandaff`, nonpositive branch at exact determination.**  Pseudorandomness below `f`
+gives `(As n).price P n ≲ₙ 0`; the approximate form at `e = 0`, with the maturity schedule
+constructed.
 Paper node: `thm:prandaff` -/
 theorem DeterminedViaTheory.lic_prandaff_below
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1294,7 +1337,9 @@ theorem DeterminedViaTheory.lic_prandaff_below
   hdet.approx.lic_prandaff_below hpoly (errorNegligible_zero As P) hbounded hmag hworld
     f clock hpseudo
 
-/-- Exact two-sided `thm:prandaff` with constructed maturity: `e = 0`.
+/-- **`thm:prandaff`, two-sided at exact determination.**  Pseudorandomness relative to `f`
+gives `(As n).price P n ≈ₙ 0`; the approximate form at `e = 0`, with the maturity schedule
+constructed.
 Paper node: `thm:prandaff` -/
 theorem DeterminedViaTheory.lic_prandaff
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -1309,7 +1354,10 @@ theorem DeterminedViaTheory.lic_prandaff
   hdet.approx.lic_prandaff hpoly (errorNegligible_zero As P) hbounded hmag hworld
     f clock hpseudo
 
-/-- Paper-facing bounded affine recurring-unbiasedness with no verifier hypothesis.
+/-- **`thm:recunbiasedaff`.**  For a bounded combination sequence determined via `Θ` and a
+generable divergent weighting `W`, the weighted bias of the diagonal prices
+`(As i).price P i` against the `Θ`-values `truth` has `0` as a limit point — so it converges to
+`0` whenever it converges.  No historical-verifier hypothesis: the schedule is constructed.
 Paper node: `thm:recunbiasedaff` -/
 theorem BoundedCombinationSequence.recunbiasedaff
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -1323,8 +1371,6 @@ theorem BoundedCombinationSequence.recunbiasedaff
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth) 0 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
   have hdetScaled : DeterminedViaTheory
@@ -1353,8 +1399,10 @@ theorem BoundedCombinationSequence.recunbiasedaff
     rwa [heq] at hs'
   exact hasLimitPoint_zero_of_const_mul (ne_of_gt hq) hscaled
 
-/-- Paper-facing nonnegative `thm:prandaff` for an arbitrary bounded combination
-sequence, with historical maturity constructed internally.
+/-- **`thm:prandaff`, nonnegative branch at the paper's own `BCS` premise.**  For a bounded
+combination sequence determined via `Θ`, pseudorandomness above a deferral function `f` gives
+`(As n).price P n ≳ₙ 0`.  Historical maturity is constructed internally, so no verifier
+hypothesis remains.
 Paper node: `thm:prandaff` -/
 theorem BoundedCombinationSequence.prandaff_above
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -1383,7 +1431,8 @@ theorem BoundedCombinationSequence.prandaff_above
     simpa only [q, scale_price, EF.denote_const] using hs
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
-/-- Paper-facing nonpositive `thm:prandaff` with constructed maturity schedules.
+/-- **`thm:prandaff`, nonpositive branch at the paper's own `BCS` premise.**  Pseudorandomness
+below `f` gives `(As n).price P n ≲ₙ 0`, with the maturity schedules constructed.
 Paper node: `thm:prandaff` -/
 theorem BoundedCombinationSequence.prandaff_below
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -1412,7 +1461,8 @@ theorem BoundedCombinationSequence.prandaff_below
     simpa only [q, scale_price, EF.denote_const] using hs
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
-/-- Exact two-sided paper `thm:prandaff`, without historical-verifier premises.
+/-- **`thm:prandaff`, two-sided at the paper's own `BCS` premise.**  Pseudorandomness relative
+to `f` gives `(As n).price P n ≈ₙ 0`, without historical-verifier premises.
 Paper node: `thm:prandaff` -/
 theorem BoundedCombinationSequence.prandaff
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -1423,13 +1473,14 @@ theorem BoundedCombinationSequence.prandaff
     (f : DeferralFunction)
     (hpseudo : Pseudorandom truth f P) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨h.prandaff_below hdet hworld f hpseudo.2,
     h.prandaff_above hdet hworld f hpseudo.1⟩
 
-/-- Ordinary recurring unbiasedness with its affine historical schedules constructed.
+/-- **`thm:recurringunbiasedness`.**  Given an efficiently computable sequence `φ` of decidable
+sentences and a generable divergent weighting `W`, the weighted bias of the diagonal prices
+`P i (φ i)` against the truth values `truth` has `0` as a limit point — so it converges to `0`
+whenever it converges.  The affine historical schedules it needs are constructed.
 Paper node: `thm:recurringunbiasedness` -/
 theorem recurringunbiasedness
     (φ : ℕ → Sentence) (hpoly : PolySequence (sentenceAffine φ))
@@ -1442,8 +1493,6 @@ theorem recurringunbiasedness
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => P i (φ i)) truth) 0 := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
@@ -1454,7 +1503,11 @@ theorem recurringunbiasedness
     hmag hworld
   simpa using h
 
-/-- Recurring calibration with no historical-verifier premises.
+/-- **`thm:simcal`.**  For an efficiently computable sequence `φ` of decidable sentences,
+rationals `a`, `b` and a positive rational tolerance stream `δ` whose continuous indicator of
+`a < P i (φ i) < b` has divergent weight: the frequency of truth on that fuzzy subsequence has a
+limit point in `[a, b]`, and converges only to a point of `[a, b]`.  No historical-verifier
+premise.
 Paper node: `thm:simcal` -/
 theorem simcal
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1475,8 +1528,6 @@ theorem simcal
           (weightedAverage
             (fun n => (calibrationIndicator φ a b δ n).denote P) truth) x →
         x ∈ Set.Icc (a : ℝ) (b : ℝ) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness φ hpoly hWgen
     htruth hdiv hworld
   exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
@@ -1564,8 +1615,6 @@ theorem BoundedSequence.recurringunbiasednessexp
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).expect P i) truth) 0 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨B, hB⟩ := h.bounded
   obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
   have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
@@ -1620,7 +1669,10 @@ theorem BoundedSequence.recurringunbiasednessexp
   funext i
   ring
 
-/-- Paper-facing nonnegative `thm:prandexp`, without historical-verifier premises.
+/-- **`thm:prandexp`, nonnegative branch.**  For a bounded LUV combination sequence determined
+via `Θ`, if some deferral function `f` makes every `f`-patient generable divergent weighting
+average its `Θ`-values to `≳ₙ 0`, then the diagonal expectations `(As n).expect P n` are
+`≳ₙ 0`.  No historical-verifier premise.
 
 Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
 asks that each completed world value the component LUVs somehow.  The traded threshold
@@ -1664,7 +1716,8 @@ theorem BoundedSequence.prandexp
       meshAffine_price_diagonal] using haff
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
-/-- The nonpositive comparison direction of `thm:prandexp`, with constructed maturity.
+/-- **`thm:prandexp`, nonpositive branch.**  The `≲ₙ` direction of the same statement:
+`(As n).expect P n ≲ₙ 0`, with the maturity schedule constructed.
 Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
 tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
@@ -1704,7 +1757,8 @@ theorem BoundedSequence.prandexp_below
       meshAffine_price_diagonal] using haff
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
-/-- Two-sided expectation pseudorandomness, without verifier premises.
+/-- **`thm:prandexp`, two-sided.**  Both comparison directions together:
+`(As n).expect P n ≈ₙ 0`, without verifier premises.
 Determination is combination-level (`def:affthmval`); see `prandexp` for the mesh
 tolerance discipline this forces on the settlement clock.
 Paper node: `thm:prandexp` -/
@@ -1726,7 +1780,10 @@ end LUVCombination
 
 /-! ## Sentence-frequency specializations -/
 
-/-- `thm:prand`, varied-pseudorandom-above branch with constructed maturity schedules.
+/-- **`thm:prand`, above branch.**  Given an efficiently computable sequence `φ` of
+`Θ`-decidable sentences and a generable sequence `p` of rational probabilities, if `φ` is
+`p`-varied pseudorandom above relative to all `f`-patient generable divergent weightings, then
+`P n (φ n) ≳ₙ p n`.  The maturity schedules are constructed.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1753,7 +1810,9 @@ theorem lic_learning_varied_pseudorandom_above
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- `thm:prand`, varied-pseudorandom-below branch with constructed maturity schedules.
+/-- **`thm:prand`, below branch.**  Varied pseudorandomness below `p` relative to all
+`f`-patient generable divergent weightings gives `P n (φ n) ≲ₙ p n`, with the maturity schedules
+constructed.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1780,7 +1839,8 @@ theorem lic_learning_varied_pseudorandom_below
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- Exact two-sided `thm:prand`, without historical-verifier premises.
+/-- **`thm:prand`, two-sided.**  Varied pseudorandomness relative to all `f`-patient generable
+divergent weightings gives `P n (φ n) ≈ₙ p n`, without historical-verifier premises.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1806,8 +1866,10 @@ theorem lic_learning_varied_pseudorandom
   simpa only [AsympEq, AffineCombination.sentenceMinusFeature_price,
     hp.denote, sub_zero] using hres
 
-/-- Lower half of fixed-frequency `thm:benford`, with maturity and settlement both
-constructed internally: no operational infrastructure hypothesis remains.
+/-- **`thm:benford`, the `≳ₙ` half.**  If an efficiently computable sequence `φ` of decidable
+sentences is pseudorandom with frequency `p` over all generable divergent weightings, then
+`P n (φ n) ≳ₙ p`.  Maturity and settlement are both constructed internally, so no operational
+infrastructure hypothesis remains.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1841,7 +1903,8 @@ theorem lic_learning_pseudorandom_frequency_above
       (le_max_right 0 (p - ε / 2)).trans_lt hqlow
     linarith
 
-/-- Upper half of fixed-frequency `thm:benford`, with maturity constructed internally.
+/-- **`thm:benford`, the `≲ₙ` half.**  Pseudorandomness with frequency `p` over all generable
+divergent weightings gives `P n (φ n) ≲ₙ p`, with maturity constructed internally.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -1875,7 +1938,8 @@ theorem lic_learning_pseudorandom_frequency_below
       hqhigh.trans_le (min_le_right 1 (p + ε / 2))
     linarith
 
-/-- Exact fixed-frequency `thm:benford`: the two one-sided halves combined, with no
+/-- **`thm:benford`.**  Pseudorandomness with frequency `p` over all generable divergent
+weightings gives `P n (φ n) ≈ₙ p`: the two one-sided halves combined, with no
 historical-verifier or settlement-clock premise.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
@@ -1886,8 +1950,6 @@ theorem lic_learning_pseudorandom_frequency
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (hpseudo : PseudorandomFrequency truth p f P) :
     (fun n ↦ P n (φ n)) ≈ₙ (fun _ ↦ p) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
     lic_learning_pseudorandom_frequency_below P DP φ hφ truth htruth p hp hworld

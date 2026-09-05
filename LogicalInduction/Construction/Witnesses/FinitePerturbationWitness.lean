@@ -7,22 +7,51 @@ import LogicalInduction.Framework.WriteOut
 /-!
 # The concrete witness for the finite-perturbation counterexample
 
-`Properties/FinitePerturbationCounterexample.lean` develops the refutation of the
-unrestricted finite-day perturbation statement abstractly and closes with
-`not_overgeneral_ifp_of_advice`, a complete reduction.  This module supplies the witness
-that reduction consumes and states the closed refutation.
+`thm:ifp` (tex:1521): the concrete advice perturbation that refutes the printed statement,
+and the closed refutation itself (`not_overgeneral_ifp`, a canonical trust-surface endpoint
+on that node).
 
-The split is forced: `paperDP` and the quotation layer reach the abstract module through
-`ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so the witness
-cannot be named there.  It is the same split `lic_paradox_resistance_ofDiagonal` and
-`lic_paradox_resistance_ofDiagonal_unconditional` already use.
+`Properties/FinitePerturbationCounterexample.lean` develops the refutation abstractly and
+closes with `not_overgeneral_ifp_of_advice`, a complete reduction.  This module supplies the
+witness that reduction consumes.  The split is forced: `paperDP` and the quotation layer
+reach the abstract module through `ComputationSyntax` → `BoundedEvaluation` →
+`LogicalInduction.Properties`, so the witness cannot be named there.  It is the same split
+`lic_paradox_resistance_ofDiagonal` and `lic_paradox_resistance_ofDiagonal_unconditional`
+already use.
 
-The market fed to `paradoxResistanceQuoteOfDiagonal` is the **unperturbed** one
-(`paperMarketComputation`): `χ n` asserts a fact about that quote program, and
-`advicePerturbed_agree` carries the reflection to the perturbed market on every day `≥ 1`.
-`not_overgeneral_ifp` carries `Paper node: thm:ifp` and is a canonical trust-surface
-endpoint: a refutation belongs to the node it refutes, and is audited exactly like any
-other endpoint.
+Objects defined: the settlement test `settledTest` / `settledTestZ` and its total search
+`settleTotal`; the schedule `sched` with its computable form `schedComp`; the gate bit
+`gateBool`; the `p = 1/2` diagonal package `cxQuote` / `cxDiagonal`; and the perturbed market
+`cxPerturbed` with its rational table `cxRow` / `cxTable`.
+
+Main results: `computableMarket_cxPerturbed` (`def:marketprocess`),
+`exists_advice_perturbation{,_ofTheory}` and `not_overgeneral_ifp{,_ofTheory}`.
+
+Why the day-`0` row terminates: `settleStage` is `Nat.find` over a Boolean test that
+`stageEntails` decides, so `Computable.find` applies with existence supplied by compactness
+and no constructive stage bound; `sched` follows by `Computable.nat_rec`; the gate bit is the
+bounded search licensed by `le_sched`; and the sign bit is a rational comparison built from
+`encode_rat_eq`, because neither Mathlib nor this repository exposes a primitive-recursive
+order on `ℚ` (`LIACompiler`'s `ratNum_prim` / `ratDen_prim` are `private`).
+
+Why the row does not refer to itself: `sched_congr` and `settleStage_congr` make every
+ingredient a function of the *unperturbed* market alone, which is why
+`paradoxResistanceQuoteOfDiagonal` is fed `paperMarketComputation` — `χ n` asserts a fact
+about that quote program — and `advicePerturbed_agree` carries the reflection to the
+perturbed market on every day `≥ 1`.
+
+The hypotheses actually charged are `[T.Δ₁]`, `[𝗜𝚺₁ ⪯ T]` (because `cxQuote` runs the
+`thm:lp` diagonal into Foundation's `parameterized_diagonal₁`) and
+`[Entailment.Consistent T]`; `𝗣𝗔⁻ ⪯ T` and `𝗥₀ ⪯ T` follow by instance.  There is no
+soundness assumption anywhere.
+
+Why the corrected theorem does not re-derive this one: the perturbation moves one whole
+pricing row, hence infinitely many coordinates, so it fails `FiniteSupportPerturbation`;
+`FiniteSupportPerturbation.tail_agree` and `tailAgree_not_finiteSupport` separate the two
+hypotheses in the direction that matters.
+
+`not_overgeneral_ifp` carries the node `thm:ifp` and is a canonical trust-surface endpoint:
+a refutation belongs to the node it refutes, and is audited exactly like any other endpoint.
 -/
 
 namespace LogicalInduction
@@ -35,11 +64,11 @@ open Classical
 
 -- `𝗜𝚺₁` is charged here because this file's `cxQuote` runs the `thm:lp` diagonal
 -- (`paradoxResistanceQuoteOfDiagonal`), which reaches Foundation's `parameterized_diagonal₁`.
--- It is not inherited from `QuotationTheoryPresentation`, which no longer carries it.
+-- `QuotationTheoryPresentation` does not carry it, so it is charged here.
 -- `𝗣𝗔⁻ ⪯ T` and `𝗥₀ ⪯ T` follow by instance (`Foundation`'s `Arithmetic/Schemata.lean`).
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] [Entailment.Consistent T]
 
-/-! ## Computability of the schedule
+/-! ## Computability of the settlement search
 
 The day-`0` advice row is a search.  This section makes each ingredient computable, in the
 dependency order recorded on `computableMarket_cxPerturbed`, over an abstract market,
@@ -193,8 +222,8 @@ lemma settleTotal_eq (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) {m : ℕ}
     rw [settledTestZ_of_ne_zero V DP χ (by omega), settledTest_eq_true_iff] at h
     exact h
 
-/-- **Obligation (3).**  The settlement search is computable: `Nat.find` over a computable
-Boolean test, which is `Mathlib`'s `Computable.find`.
+/-- The settlement search is computable: `Nat.find` over a computable Boolean test, which is
+Mathlib's `Computable.find`.
 Kind `C`; hypotheses `(b)` `Computable.find`. -/
 lemma computable_settleTotal (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m)
     (hχ : Computable χ) (hlt : Computable (fun m => decide (V m (χ m) < 1 / 2)))
@@ -218,7 +247,7 @@ lemma schedComp_eq (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m) (j : ℕ) :
       rw [ih, settleTotal_eq hdicho (one_le_sched V DP χ j)]
       rfl
 
-/-- **Obligation (4).**  The schedule is computable, by recursion on the computable step.
+/-- The schedule is computable, by recursion on that computable step.
 Kind `C`; hypotheses `(b)` `Computable.nat_rec`. -/
 lemma computable_sched (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m)
     (hcomp : Computable (settleTotal hdicho)) : Computable (sched V DP χ) := by
@@ -231,7 +260,7 @@ lemma computable_sched (hdicho : ∀ m, 1 ≤ m → Dichotomy V DP χ m)
   exact ((Computable.nat_rec Computable.id (Computable.const 1) hstep).of_eq
     (fun j => rfl)).of_eq (schedComp_eq hdicho)
 
-/-! ### The gate bit -/
+/-! ## The schedule and the gate bit -/
 
 /-- The schedule never falls below its index, which is what bounds the gate search. -/
 lemma le_sched (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (i : ℕ) :
@@ -277,7 +306,8 @@ lemma gateAux_eq_true_iff (V : History) (DP : DeductiveProcess) (χ : ℕ → Se
 noncomputable def gateBool (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (n : ℕ) : Bool := gateAux V DP χ n n
 
-/-- **Obligation (5).**  Strict monotonicity from `sched 0 = 1` bounds the search by `n`.
+/-- The gate search is bounded by `n`, because `sched 0 = 1` and `sched` is strictly
+increasing (`le_sched`).
 Kind `C`; hypotheses `(a)`. -/
 lemma gateBool_eq_true_iff (V : History) (DP : DeductiveProcess) (χ : ℕ → Sentence)
     (n : ℕ) : gateBool V DP χ n = true ↔ ∃ j, sched V DP χ j = n := by
@@ -305,7 +335,7 @@ lemma computable_gateBool (hs : Computable (sched V DP χ)) :
     exact ((Primrec.dom_bool₂ (· || ·)).to_comp.comp hIH hcmp).to₂
   exact Computable.nat_rec Computable.id hbase hstep
 
-/-! ### Comparing a rational against the diagonal threshold
+/-! ## Comparing a rational against the diagonal threshold
 
 Neither Mathlib nor this repository exposes a primitive-recursive order on `ℚ`
 (`LIACompiler`'s `ratNum_prim`/`ratDen_prim` are `private`), so the one comparison this
@@ -405,16 +435,12 @@ Kind `C`; hypotheses `(b)` `BooleanQuoteCode.sentence_poly`. -/
 lemma cxDiagonal_poly : PolySentenceCodes (cxDiagonal T) :=
   (cxQuoteCode T).sentence_poly
 
-/-- The paradox-resistance package is stated about exactly this family.
-Kind `T`. -/
-lemma cxQuote_sentence : (cxQuote T).sentence = cxDiagonal T := rfl
-
 /-- The perturbed market: the constructed `LIA` with day `0` republished as the advice
 table. -/
 noncomputable def cxPerturbed : History :=
   advicePerturbed (liaHistory (paperDP T)) (paperDP T) (cxDiagonal T)
 
-/-! ### The perturbed quote table
+/-! ## The perturbed market and its quote table
 
 The advice atoms are recognised arithmetically off the sentence code — an atom's code is
 `⟪1, x⟫ + 1` — so no `Primcodable Sentence` decoding is needed and the recogniser is
@@ -626,8 +652,12 @@ step; the gate bit is the bounded search licensed by `le_sched`; and the sign bi
 rational comparison built from `encode_rat_eq`.  `sched_congr` and `settleStage_congr` are
 what make all of it a function of the *unperturbed* market alone, so the day-`0` row does
 not refer to itself.
+
+The computability of the perturbed market is a step towards `not_overgeneral_ifp` below,
+which is the declaration carrying the node; this one is not in the `AxiomAudit.lean`
+inventory and so carries no provenance line of its own.
 Kind `C`; hypotheses `(a)`. -/
-theorem computableMarket_cxPerturbed : ComputableMarket (cxPerturbed T) := by
+lemma computableMarket_cxPerturbed : ComputableMarket (cxPerturbed T) := by
   refine ⟨fun n φ => advicePerturbed_mem_Icc (paperDP T) (cxDiagonal T)
     (fun m ψ => (LIA_isMachineLogicalInductor (paperDP T)
       (paperDP_computable T)).marketComputable.1 m ψ) n φ, ?_⟩
@@ -645,8 +675,11 @@ theorem computableMarket_cxPerturbed : ComputableMarket (cxPerturbed T) := by
 /-! ## The witness, and the refutation -/
 
 include T in
-/-- The advice perturbation refuting `thm:ifp`, over any Σ₁-sound Δ₁ theory extending
-`𝗜𝚺₁`.  Refutes rather than renders, so no `Paper node:` line.
+/-- The advice perturbation refuting `thm:ifp`, over any consistent `Δ₁` theory extending
+`𝗜𝚺₁`.
+Refutes rather than renders, so it carries no `Paper node` line; it is inventoried in
+`AxiomAudit.lean` to keep it axiom-checked, and named in
+`scripts/check-paper-nodes.sh`'s exemption list.
 Kind `C`; hypotheses `(a)`. -/
 theorem exists_advice_perturbation_ofTheory :
     ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
@@ -674,11 +707,13 @@ theorem exists_advice_perturbation_ofTheory :
       (advicePerturbed_schedAtom_on _ _ _) (advicePerturbed_signAtom_on _ _ _) v j⟩
 
 include T in
-/-- **The unrestricted finite-day perturbation statement is false**, over any Σ₁-sound Δ₁
-theory extending `𝗜𝚺₁` — the negation of the paper's `thm:ifp` as printed, at the paper's
-own quantifier.
+/-- **The unrestricted finite-day perturbation statement is false**, over any consistent
+`Δ₁` theory extending `𝗜𝚺₁` — the negation of the paper's `thm:ifp` as printed, at the
+paper's own quantifier.
 
-Fully proved and axiom-clean.  Refutes rather than renders, so no `Paper node:` line.
+Refutes rather than renders, so it carries no `Paper node` line; it is inventoried in
+`AxiomAudit.lean` to keep it axiom-checked, and named in
+`scripts/check-paper-nodes.sh`'s exemption list.
 Kind `C`; hypotheses `(a)`. -/
 theorem not_overgeneral_ifp_ofTheory :
     ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
@@ -690,8 +725,10 @@ theorem not_overgeneral_ifp_ofTheory :
     hzero hval
 
 /-- The advice perturbation refuting `thm:ifp`, closed at `𝗜𝚺₁` — which is `Δ₁`-definable
-(`ISigma1_delta1Definable`), extends itself, and is Σ₁-sound because `ℕ ⊧* 𝗜𝚺₁`.  Refutes
-rather than renders, so no `Paper node:` line.
+(`ISigma1_delta1Definable`), extends itself, and is consistent.
+Refutes rather than renders, so it carries no `Paper node` line; it is inventoried in
+`AxiomAudit.lean` to keep it axiom-checked, and named in
+`scripts/check-paper-nodes.sh`'s exemption list.
 Kind `C`; hypotheses `(a)`. -/
 theorem exists_advice_perturbation :
     ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
@@ -708,12 +745,11 @@ theorem exists_advice_perturbation :
 /-- **The unrestricted finite-day perturbation statement is false** — the negation of the
 paper's `thm:ifp` as printed, at the paper's own quantifier, with no theory parameter.
 
-Fully proved and axiom-clean.  This declaration *refutes* rather than renders `thm:ifp`,
-and it carries the node so that the refutation is on the checked gates and on the
-read-through page: `thm:ifp` is the one node whose printed statement is false, and the
-canonical public view of it must lead with this theorem and with the corrected
-replacement `FreezeOracle.machine_lic_iff_of_recognizableSupport`.  See
-`notes/paper-errata.md` PE1.
+This declaration *refutes* rather than renders `thm:ifp`, and it carries the node so that
+the refutation is on the checked gates and on the read-through page: `thm:ifp` is the one
+node whose printed statement is false, and the canonical public view of it must lead with
+this theorem and with the corrected replacement
+`FreezeOracle.machine_lic_iff_of_finiteSupport`.  See `notes/paper-errata.md` PE1.
 
 **Why the corrected theorem does not re-derive this one.**  The perturbation built here
 moves one whole pricing row, hence infinitely many `(day, sentence)` coordinates, so it
@@ -730,15 +766,6 @@ theorem not_overgeneral_ifp :
         IsMachineLogicalInductor P DP → ComputableMarket P' →
         (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP :=
   not_overgeneral_ifp_ofTheory 𝗜𝚺₁
-
-
-
-
-
-
-#print axioms LogicalInduction.FinitePerturbationCounterexample.computableMarket_cxPerturbed
-#print axioms LogicalInduction.FinitePerturbationCounterexample.exists_advice_perturbation
-#print axioms LogicalInduction.FinitePerturbationCounterexample.not_overgeneral_ifp
 
 end FinitePerturbationCounterexample
 end LogicalInduction

@@ -3,14 +3,30 @@ import LogicalInduction.Construction.Witnesses.PaperFirstOrder
 /-!
 # Numeric compiler for paper first-order prime decompositions
 
-The fixed all-theorems process cannot execute Lean's structural
-`paperPrimeDecompose`; it needs a program on Gödel codes.  This file defines that numeric
+The fixed all-theorems process of `PaperTheoryDP.lean` cannot execute Lean's structural
+`paperPrimeDecompose`; it needs a program on Gödel codes.  This module defines that numeric
 compiler directly against Foundation's `Semiformula.toNat` layout.  Invalid inputs receive
-the harmless public sentence `⊥`.  On genuine arithmetic sentence codes the compiler is
-proved extensionally equal to `paperPrimeDecompose`.
+the harmless public sentence `⊥`, and correctness is claimed only on genuine arithmetic
+sentence codes (`paperPrimeDecomposeCode_spec`).
 
-Only the two Boolean first-order constructors recurse.  Prime polarity is stored in the
-tag-`7` atom handle, so atomic and quantified formulas are constant-depth translations.
+* Numeric constructors: `paperPrimeAtomCodeRaw` builds a tag-`5` paper-prime atom
+  (`paperPrimeTag`); `paperPublicNegCode` / `AndCode` / `OrCode` / `ImpCode` build the
+  propositional layer; `paperFirstOrderImpCode` renders first-order implication as
+  `not-left or right` in Foundation's NNF syntax (`dd:nnf`).
+* `paperFirstOrderNegCode` is the raw course-of-values implementation of Foundation's typed
+  negation, specified by `paperFirstOrderNegCode_spec`.
+* Only the two Boolean first-order constructors recurse.  Prime polarity is stored in the
+  tag-`5` paper-prime atom handle, so atomic and quantified formulas are constant-depth
+  translations.
+* Primitive recursiveness (`paperFirstOrderNegCode_prim`, `paperPrimeDecomposeCode_prim`)
+  follows the repository's propositional decoder compiler: course-of-values recursion storing
+  the already compiled codes below `n` in a list.
+
+The tags `0`–`7` matched *inside* this compiler are Foundation's `Semiformula.toNat`
+constructor tags, an unrelated tag space to the global atom-payload allocation that owns
+`paperPrimeTag = 5` (`ComputationSyntax.lean` records the same warning).
+
+`PaperTheoryDP.lean` decodes this compiler's output into the published stage.
 -/
 
 namespace LogicalInduction
@@ -23,7 +39,9 @@ private lemma encode_public_formula_eq_toNat (φ : Sentence) :
 private def publicBotCode : ℕ := Encodable.encode (⊥ : Sentence)
 private def publicTopCode : ℕ := Encodable.encode (⊤ : Sentence)
 
-/-- Numeric encoding of a tag-`7` paper-prime atom whose first-order formula already has
+/-! ## Numeric constructors for the public layer -/
+
+/-- Numeric encoding of a tag-`5` paper-prime atom whose first-order formula already has
 Gödel code `formulaCode`. -/
 def paperPrimeAtomCodeRaw (positive : Bool) (formulaCode : ℕ) : ℕ :=
   Nat.pair 1
@@ -56,12 +74,15 @@ lemma paperPublicImpCode_prim : Primrec₂ paperPublicImpCode := by
 /-! ## Numeric first-order negation
 
 Canonical paper primes require the dual of a negative prime head.  Foundation's typed
-negation already supplies the specification; this raw course-of-values implementation
-makes the same operation executable by the fixed compiler. -/
+negation supplies the specification; the raw course-of-values implementation below makes the
+same operation executable by the fixed compiler. -/
 
 private def firstOrderBotCode : ℕ :=
   Encodable.encode (Semiformula.falsum : ArithmeticProposition)
 
+/-- Raw course-of-values implementation of Foundation's typed negation on Gödel codes: it
+swaps the NNF constructor tags pairwise (`0`/`1`, `2`/`3`, `4`/`5`, `6`/`7`).  Malformed
+codes receive falsum's code.  Specified by `paperFirstOrderNegCode_spec`. -/
 def paperFirstOrderNegCode : ℕ → ℕ
   | 0 => firstOrderBotCode
   | e + 1 =>
@@ -252,9 +273,11 @@ lemma paperFirstOrderImpCode_prim : Primrec₂ paperFirstOrderImpCode := by
     paperPublicOrCode (Encodable.encode φ) (Encodable.encode ψ) =
       Encodable.encode (φ ⋎ ψ) := rfl
 
-/-- Raw total compiler on Foundation first-order sentence codes.  Malformed Boolean child
-codes are still translated totality-first; only correctness on genuine encodings is used
-by the theorem enumerator. -/
+/-! ## The compiler and its correctness -/
+
+/-- Raw total compiler on Foundation first-order sentence codes.  The compiler is total, so
+malformed Boolean child codes are still translated; only correctness on genuine encodings is
+used by the theorem enumerator. -/
 def paperPrimeDecomposeCode : ℕ → ℕ
   | 0 => publicBotCode
   | n@(e + 1) =>
@@ -453,8 +476,5 @@ lemma paperPrimeDecomposeCode_prim : Primrec paperPrimeDecomposeCode := by
   have hrec := Primrec.nat_strong_rec (fun (_ : Unit) n => paperPrimeDecomposeCode n)
     hstep (fun _ n => by simpa using congrArg some (paperPrimeCodeStep_history n))
   exact (hrec.comp (Primrec.const ()) Primrec.id).of_eq fun _ => rfl
-
-#print axioms paperPrimeDecomposeCode_spec
-#print axioms paperPrimeDecomposeCode_prim
 
 end LogicalInduction

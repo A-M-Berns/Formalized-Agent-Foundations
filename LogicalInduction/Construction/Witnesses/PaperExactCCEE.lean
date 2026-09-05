@@ -5,15 +5,31 @@ import LogicalInduction.Construction.Witnesses.PaperRepresentedWeight
 /-!
 # `thm:ccee` at zero slack, on the single market
 
+This module renders `thm:ccee` (tex:2069) at zero slack, over the single paper-facing
+market `liaHistory (paperDP T)`, for the paper's **literal** first-order LUV sources.
+
 `lic_no_expected_net_update_conditional_closed` (`PaperMarket.lean`) states `thm:ccee` for
 an **arbitrary** threshold-only source family, and pays for that generality with the
 disclosed mesh slack (`dd:mesh`): nothing in the abstract `LUV` interface names a value, so
-the quoted product can only be reconstructed from thresholds to within `1/(n+1)`.
+the quoted product can only be reconstructed from thresholds to within `1/(n+1)`.  For the
+paper's literal first-order sources the product is exact, because arithmetic multiplies
+pair codes exactly (`PaperExactProduct.lean`).  This module feeds that exact product into
+the same generic trading argument at `slack = 0`.  The trade is exactness for generality,
+and it is the only difference: same `paperDP T`, same market, same deductive process as
+every other canonical endpoint.
 
-For the paper's **literal** first-order sources the product is exact, because arithmetic
-multiplies pair codes exactly (`PaperExactProduct.lean`).  This module feeds that exact
-product into the same generic trading argument at `slack = 0`, over the same market
-`liaHistory (paperDP T)`.  The deductive process is untouched.
+Two declarations carry the content.
+`lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq` is parametric in the weight's
+literal representation and holds the substance;
+`lic_no_expected_net_update_conditional_paperLUV_closed` is the paper-facing endpoint,
+which only supplies the represented weight `deferredWeightPaperLUVSeq`
+(`PaperRepresentedWeight.lean`).  Its hypotheses are the paper's own, and are justified at
+the declaration.
+
+The two clients at the foot of the file are witnesses in the in-file style of
+`ArithmeticSource.lean`: one varies the source over `𝗣𝗔` with deferral and weight left
+hypothetical, the other discharges every binder.  `PaperLUVSeq` is not part of the curated
+consumer import.
 -/
 
 namespace LogicalInduction
@@ -22,6 +38,8 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open Filter Topology
 
 variable (T : ArithmeticTheory)
+
+/-! ## The exact endpoint -/
 
 /-- **`thm:ccee` at zero slack, parametric in the weight's literal representation.**  The
 substance is here; the closed endpoint below only supplies the represented weight.
@@ -40,7 +58,6 @@ lemma lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
       fun n ↦ ((paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
         X.rpnThresholdCodeSeq w weight_generable weight_mem).luv n).expect
           (liaHistory (paperDP T)) n := by
-  haveI : 𝗣𝗔⁻ ⪯ T := inferInstance
   refine lic_no_expected_net_update_conditional_ofRepresentation_unconditional (T := T)
     f (fun n => (X.luv n).toLUV)
     (fun n => ((paperExactProductLUVSeq X W).luv n).toLUV)
@@ -73,9 +90,9 @@ literally inside `T` (`deferredWeightPaperLUVSeq`), and the left quoted product 
 `liaHistory (paperDP T)`, the same one every other canonical endpoint names, and the
 deductive process is the one fixed from `T` alone.
 
-The general abstract-LUV form `lic_no_expected_net_update_conditional_closed` remains
-available and is the more general-input result: it admits any threshold-only e.c. source,
-at the price of the disclosed `dd:mesh` product slack.  This endpoint trades that
+The general abstract-LUV form `lic_no_expected_net_update_conditional_closed` is the more
+general-input result: it admits any threshold-only e.c. source, at the price of the
+disclosed `dd:mesh` product slack.  This endpoint trades that
 generality for exactness — literal first-order sources multiply exactly in arithmetic,
 threshold-only ones do not.
 
@@ -115,7 +132,7 @@ theorem lic_no_expected_net_update_conditional_paperLUV_closed
     (deferredWeightPaperLUVSeq_valuesAt T (paperMarketComputation T) f w
       weight_generable weight_mem)
 
-/-! ### Clients of the exact same-market route
+/-! ## Clients of the exact same-market route
 
 Two witnesses.  The first keeps the deferral and the weight hypothetical and varies only
 the source: an actual, genuinely varying `PaperLUVSeq` — the paper's own `1/(n+1)`
@@ -142,8 +159,7 @@ theory is `𝗣𝗔`, the source is the paper's own varying `1/(n+1)` literal LU
 deferral function is `succDeferral`, and the weight is the harmonic sequence
 `n ↦ 1/(n+1)` — non-constant (`harmonicWeight_not_constant`), `[0,1]`-valued
 (`harmonicWeight_mem`) and ℙ‾-generable against every market
-(`PGenerableRat.ofPolyRatCodes harmonicWeight_polyRatCodes`).
-Provenance: (a) derived in-project. -/
+(`PGenerableRat.ofPolyRatCodes harmonicWeight_polyRatCodes`). -/
 example :
     (fun n ↦ ((paperExactProductLUVSeq (unitFracPaperLUVSeq 𝗣𝗔)
         (deferredWeightPaperLUVSeq 𝗣𝗔 (paperMarketComputation 𝗣𝗔) succDeferral
@@ -160,8 +176,5 @@ example :
   lic_no_expected_net_update_conditional_paperLUV_closed 𝗣𝗔 succDeferral
     (unitFracPaperLUVSeq 𝗣𝗔) (fun n : ℕ => 1 / ((n : ℚ) + 1)) harmonicWeight_mem
     (PGenerableRat.ofPolyRatCodes harmonicWeight_polyRatCodes (liaHistory (paperDP 𝗣𝗔)))
-
-#print axioms lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
-#print axioms lic_no_expected_net_update_conditional_paperLUV_closed
 
 end LogicalInduction

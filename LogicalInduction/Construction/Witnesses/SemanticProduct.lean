@@ -4,10 +4,50 @@ import LogicalInduction.Construction.Witnesses.ProductDefinition
 /-!
 # Fixed semantic-prime product closure
 
-This is the source-independent counterpart of `ProductDefinition`'s exact product
-mathematics.  A product handle carries the schemas of both factors in its own name, so one
-deductive process can enumerate the existing positive, negative, and below-zero rational
-cut clauses for *every* product before a market or source LUV is chosen.
+`thm:ccee`'s exact product mathematics in source-independent form: the semantic-prime
+counterpart of `ProductDefinition.lean`'s fresh-atom construction, and the shared closure the
+`SemanticCertifiedProduct`, `SemanticRegistryProduct` and `SemanticJoint` lanes are built on.
+
+The key move is that a product handle carries the schemas of *both* factors in its own name
+(`semanticProductSchema left right = Nat.pair 1 (Nat.pair left right)`, tag `1` of the
+semantic schema language), so one deductive process can enumerate the defining clauses for
+*every* product before a market, source LUV, weight or deferral is chosen.
+
+## Objects
+
+`semanticProductSchema`, `semanticProductAtom`, `semanticProductLUV`,
+`semanticProductSchemaInstance` (the three clause kinds — positive at `r ≤ s·t`, negative at
+`s·t ≤ r`, and the `r < 0` axiom), `semanticProductJob`, `semanticProductDefSentence`,
+`semanticProductStageList`, `semanticProductDP`, `semanticProductWorld`.
+
+The clause family is `ProductDefinition.productSchemaInstance` with the three threshold
+lookups replaced by their self-describing semantic-prime counterparts; the factors are
+mesh-indexed `⟨k,i⟩` for the same reason (`meshIndexRat`), so the emitter is derivable rather
+than assumed.
+
+## Main results
+
+`semanticProductDefSentence_computable` / `semanticProductDP_computable` (`def:dedproc` for
+the closure); `semanticProductWorld_holds_schema` and `semanticProductWorld_productAtom` (the
+canonical satisfying world, which `SemanticCertifiedProduct` reuses); and
+`semanticProductLUV_rpnThresholdCodeSeq` (`def:ec` for the product family, consumed by
+`SemanticCertifiedProduct` and `SemanticRegistryProduct`).
+
+The reflection lemmas the downstream lanes consume are `semanticProductDefSentence_job`,
+`holds_semanticProduct_pos`, `not_holds_semanticProduct_neg` and `holds_semanticProduct_below`,
+read off at their job codes: a completed world pins `semanticProductAtom left right n r` to
+exactly `x·c > r` by density of ℚ in the two factors, with no slack and no positivity
+hypothesis on the right factor.
+
+## Disjointness
+
+`PresentedLUVSeq.schema_ne_product` — a leaf presentation lives on tag `0` and so cannot
+collide with the tag-`1` product constructor.  `eventAtom_atomCodes_ne_semanticPrimeTag` — the
+ordinary theorem stream never uses the semantic-prime atom tag, which is what lets the two
+processes be unioned; `SemanticSourceDP` and `SemanticCertifiedProduct` consume it.
+
+Design choices: `dd:mesh` is *not* paid here — this is the exact product, and the mesh index
+is only how nonnegative rational factors are named; `dd:quote-code` for the handle.
 -/
 
 namespace LogicalInduction
@@ -16,6 +56,8 @@ open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 -- Keep the pairing decoder opaque while elaborating fixed job syntax.
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The product handle -/
 
 /-- Tag-`1` constructor of the semantic schema language: a product of two schema names. -/
 def semanticProductSchema (left right : ℕ) : ℕ := Nat.pair 1 (Nat.pair left right)
@@ -32,6 +74,8 @@ def semanticProductLUV (X W : PresentedLUVSeq) (n : ℕ) : LUV :=
     (semanticProductLUV X W n).gt r =
       semanticProductAtom X.thresholdSchema W.thresholdSchema n r := rfl
 
+/-! ## Disjointness from the theorem stream -/
+
 /-- A leaf presentation cannot collide with the product constructor. -/
 lemma PresentedLUVSeq.schema_ne_product (X : PresentedLUVSeq) (right : ℕ) :
     X.thresholdSchema ≠ semanticProductSchema X.thresholdSchema right := by
@@ -39,6 +83,33 @@ lemma PresentedLUVSeq.schema_ne_product (X : PresentedLUVSeq) (right : ℕ) :
   have hx := X.source_schema
   rw [h] at hx
   simp [semanticProductSchema] at hx
+
+/-- The ordinary theorem stream never uses the semantic-prime atom tag, which is what lets it
+be unioned with the semantic closure. -/
+lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
+    ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ semanticPrimeTag := by
+  intro a ha
+  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
+  all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
+        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
+        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc
+  · exact fun hc => by
+      simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc
+  · simp at ha
+
+/-! ## The defining clause family -/
 
 /-- The fixed clause family, directly ported from `productSchemaInstance`.  The source
 thresholds are recovered from the two schema names embedded in the product handle. -/
@@ -83,6 +154,9 @@ lemma mem_semanticProductStageList {e k : ℕ} (h : e ≤ k) :
       · have he : e = k + 1 := le_antisymm h hge
         simp [semanticProductStageList, he]
 
+/-- Inversion of the stage list: every sentence in a stage is one decoded job.  This is what
+an `hworld` obligation over `semanticProductDP` is discharged through, together with
+`semanticProductWorld_holds_schema`. -/
 lemma semanticProductStageList_exists {φ : Sentence} {k : ℕ}
     (h : φ ∈ semanticProductStageList k) : ∃ e, φ = semanticProductDefSentence e := by
   induction k with
@@ -101,9 +175,11 @@ def semanticProductDP : DeductiveProcess where
     simp only [List.mem_toFinset] at hφ ⊢
     exact List.mem_cons_of_mem _ hφ
 
-/-! ### Computability of the fixed closure -/
+/-! ## Computability of the closure -/
 
 set_option maxHeartbeats 4000000 in
+/-- Decoding a job code into its clause is computable: every projection is `Primrec` and the
+three clause shapes are assembled from fixed atom pairings. -/
 lemma semanticProductDefSentence_computable : Computable semanticProductDefSentence := by
   classical
   refine Computable.encode_iff.mp ?_
@@ -129,11 +205,14 @@ lemma semanticProductDefSentence_computable : Computable semanticProductDefSente
     Primrec.fst.comp (Primrec.unpair.comp he)
   have hzt : Primrec fun e : ℕ => e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2 :=
     Primrec.snd.comp (Primrec.unpair.comp he)
-  have hq : Primrec fun e : ℕ => decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1 :=
+  have hq : Primrec fun e : ℕ =>
+      decodedQuotationRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1 :=
     decodedQuotationRat_prim.comp hcr
-  have hs : Primrec fun e : ℕ => meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1 :=
+  have hs : Primrec fun e : ℕ =>
+      meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1 :=
     meshIndexRat_prim.comp hzs
-  have ht : Primrec fun e : ℕ => meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2 :=
+  have ht : Primrec fun e : ℕ =>
+      meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2 :=
     meshIndexRat_prim.comp hzt
   have hatom : Primrec fun p : ℕ × ℕ =>
       Encodable.encode (semanticPrimeSentence p.1 p.2) :=
@@ -145,11 +224,13 @@ lemma semanticProductDefSentence_computable : Computable semanticProductDefSente
     Primrec₂.natPair.comp hn (Primrec.encode.comp hq)
   have hleft : Primrec fun e : ℕ => Encodable.encode
       (semanticPrimeSentence e.unpair.1 (Nat.pair e.unpair.2.unpair.2.unpair.1
-        (Encodable.encode (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1)))) :=
+        (Encodable.encode
+          (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.1)))) :=
     hatom.comp (hl.pair (Primrec₂.natPair.comp hn (Primrec.encode.comp hs)))
   have hright : Primrec fun e : ℕ => Encodable.encode
       (semanticPrimeSentence e.unpair.2.unpair.1 (Nat.pair e.unpair.2.unpair.2.unpair.1
-        (Encodable.encode (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2)))) :=
+        (Encodable.encode
+          (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2.unpair.2)))) :=
     hatom.comp (hr.pair (Primrec₂.natPair.comp hn (Primrec.encode.comp ht)))
   have hschema : Primrec fun e : ℕ => semanticProductSchema e.unpair.1 e.unpair.2.unpair.1 :=
     (Primrec₂.natPair.comp (Primrec.const 1) (Primrec₂.natPair.comp hl hr)).of_eq (fun _ => rfl)
@@ -202,13 +283,16 @@ lemma semanticProductDefSentence_computable : Computable semanticProductDefSente
   · simp [h0, h1, hneg']
 
 set_option maxHeartbeats 1000000 in
-/-- The whole fixed semantic closure is a computable deductive process. -/
+/-- `def:dedproc` for the fixed closure: the whole semantic product process is computable.
+`semanticProductDP` is public and `SemanticJoint.lean` unions it, so this is the certificate a
+client supplies to compile it. -/
 lemma semanticProductDP_computable : ComputableDeductiveProcess semanticProductDP := by
   have hlist : Computable semanticProductStageList := by
     have hstep : Computable fun p : ℕ × List Sentence =>
         semanticProductDefSentence (p.1 + 1) :: p.2 :=
       Computable.list_cons.comp
-        (semanticProductDefSentence_computable.comp (Primrec.succ.to_comp.comp Computable.fst))
+        (semanticProductDefSentence_computable.comp
+          (Primrec.succ.to_comp.comp Computable.fst))
         Computable.snd
     refine (Computable.nat_rec Computable.id
       (Computable.const [semanticProductDefSentence 0])
@@ -226,14 +310,20 @@ lemma semanticProductDP_computable : ComputableDeductiveProcess semanticProductD
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticProductStageList k))
 
-/-! ### Fixed-process non-vacuity -/
+/-! ## The canonical satisfying world -/
 
 open Classical in
+/-- The canonical world of the fixed closure: it affirms a semantic-prime handle exactly when
+the handle is a product atom whose threshold is negative, and nothing else.  This is the least
+assignment satisfying every clause of `semanticProductSchemaInstance` at once
+(`semanticProductWorld_holds_schema`), and it is what `SemanticCertifiedProduct`'s own
+`hworld` is built from. -/
 noncomputable def semanticProductWorld : PCWorld := fun a =>
   if a.unpair.1 = semanticPrimeTag ∧ a.unpair.2.unpair.1.unpair.1 = 1 then
     decodedQuotationRat a.unpair.2.unpair.2.unpair.2 < 0
   else False
 
+/-- The canonical world affirms no handle at a nonnegative threshold. -/
 lemma semanticProductWorld_nonneg (schema n : ℕ) (q : ℚ) (hq : 0 ≤ q) :
     ¬ semanticProductWorld.Holds
       (semanticPrimeSentence schema (Nat.pair n (Encodable.encode q))) := by
@@ -243,6 +333,7 @@ lemma semanticProductWorld_nonneg (schema n : ℕ) (q : ℚ) (hq : 0 ≤ q) :
     decodedQuotationRat_encode]
   split <;> simp_all
 
+/-- On product atoms it is exactly the `r < 0` axiom. -/
 lemma semanticProductWorld_productAtom (left right n : ℕ) (r : ℚ) :
     semanticProductWorld.Holds (semanticProductAtom left right n r) ↔ r < 0 := by
   change semanticProductWorld
@@ -250,6 +341,8 @@ lemma semanticProductWorld_productAtom (left right n : ℕ) (r : ℚ) :
   simp [semanticProductWorld, semanticPrimeCode, semanticProductSchema,
     decodedQuotationRat_encode]
 
+/-- **The canonical world satisfies every clause**, whatever the kind, threshold and mesh
+indices — so the closure is non-vacuous by construction. -/
 lemma semanticProductWorld_holds_schema (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
     semanticProductWorld.Holds (semanticProductSchemaInstance left right n kind r zs zt) := by
   rw [semanticProductSchemaInstance]
@@ -267,125 +360,7 @@ lemma semanticProductWorld_holds_schema (left right n kind : ℕ) (r : ℚ) (zs 
   · exact (semanticProductWorld_productAtom left right n r).mpr hr
   · exact PCWorld.holds_top _
 
-/-- The process used for the eventual `LIA` is fixed from the arithmetic theory alone:
-the ordinary provability stream and the semantic product closure are combined before any
-market, source LUV, weight, or deferral is selected. -/
-noncomputable def theoremSemanticProductDP (T : ArithmeticTheory) [T.Δ₁]
-    [Entailment.Consistent T] : DeductiveProcess :=
-  (theoremDP T).union semanticProductDP
-
-noncomputable def theoremSemanticProductDPComputation (T : ArithmeticTheory)
-    [T.Δ₁] [Entailment.Consistent T] :
-    DeductiveProcessComputation (theoremSemanticProductDP T) :=
-  ((theoremDP_computable T).nonemptyComputation.some).union
-    semanticProductDP_computable.nonemptyComputation.some
-
-/-! ### A joint completed world -/
-
-/-- The original theorem stream never uses the semantic-prime atom tag. -/
-lemma eventAtom_atomCodes_ne_semanticPrimeTag (e : ℕ) :
-    ∀ a ∈ sentenceAtomCodes (eventAtom e), a.unpair.1 ≠ semanticPrimeTag := by
-  intro a ha
-  rcases h : e.unpair.1 with _ | _ | _ | _ | _ | _ | m
-  all_goals simp only [eventAtom, h, sentenceAtomCodes_neg] at ha
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, haltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_computationClaimSentence _ a ha, boundedHaltingClaim,
-        ComputationClaimKind.godelCode, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc
-  · exact fun hc => by
-      simp [sentenceAtomCodes_quoteAtom _ a ha, semanticPrimeTag] at hc
-  · simp at ha
-
-open Classical in
-noncomputable def theoremSemanticProductWorld (T : ArithmeticTheory) : PCWorld := fun a =>
-  if a.unpair.1 = semanticPrimeTag then semanticProductWorld a else provabilityWorld T a
-
-section
-
-lemma theoremSemanticProductWorld_agree_base (T : ArithmeticTheory) {a : ℕ}
-    (ha : a.unpair.1 ≠ semanticPrimeTag) :
-    theoremSemanticProductWorld T a ↔ provabilityWorld T a := by
-  simp [theoremSemanticProductWorld, ha]
-
-lemma theoremSemanticProductWorld_agree_semantic (T : ArithmeticTheory) (schema input : ℕ) :
-    theoremSemanticProductWorld T (semanticPrimeCode schema input) ↔
-      semanticProductWorld (semanticPrimeCode schema input) := by
-  simp [theoremSemanticProductWorld, semanticPrimeCode]
-
-lemma theoremSemanticProductWorld_holds_base_iff (T : ArithmeticTheory) {φ : Sentence}
-    (hφ : ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ semanticPrimeTag) :
-    (theoremSemanticProductWorld T).Holds φ ↔ (provabilityWorld T).Holds φ :=
-  PCWorld.holds_congr_atomCodes φ
-    (fun a ha => theoremSemanticProductWorld_agree_base T (hφ a ha))
-
-lemma theoremSemanticProductWorld_holds_semanticPrime (T : ArithmeticTheory) (schema input : ℕ) :
-    (theoremSemanticProductWorld T).Holds (semanticPrimeSentence schema input) ↔
-      semanticProductWorld.Holds (semanticPrimeSentence schema input) :=
-  theoremSemanticProductWorld_agree_semantic T schema input
-
-lemma theoremSemanticProductWorld_nonneg (T : ArithmeticTheory) (schema n : ℕ) (q : ℚ)
-    (hq : 0 ≤ q) :
-    ¬ (theoremSemanticProductWorld T).Holds
-      (semanticPrimeSentence schema (Nat.pair n (Encodable.encode q))) :=
-  fun h => semanticProductWorld_nonneg schema n q hq
-    ((theoremSemanticProductWorld_holds_semanticPrime T schema _).mp h)
-
-lemma theoremSemanticProductWorld_productAtom (T : ArithmeticTheory) (left right n : ℕ) (r : ℚ) :
-    (theoremSemanticProductWorld T).Holds (semanticProductAtom left right n r) ↔ r < 0 := by
-  change (theoremSemanticProductWorld T).Holds
-      (semanticPrimeSentence (semanticProductSchema left right)
-        (Nat.pair n (Encodable.encode r))) ↔ r < 0
-  rw [theoremSemanticProductWorld_holds_semanticPrime]
-  change semanticProductWorld.Holds (semanticProductAtom left right n r) ↔ r < 0
-  exact semanticProductWorld_productAtom left right n r
-
-lemma theoremSemanticProductWorld_holds_schema (T : ArithmeticTheory)
-    (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
-    (theoremSemanticProductWorld T).Holds
-      (semanticProductSchemaInstance left right n kind r zs zt) := by
-  rw [semanticProductSchemaInstance]
-  split_ifs with hkind hpos hkind hneg hr
-  · intro h
-    exact False.elim ((theoremSemanticProductWorld_nonneg T left n (meshIndexRat zs)
-      (meshIndexRat_nonneg zs)) h.1)
-  · exact PCWorld.holds_top _
-  · intro hp
-    have hp' : r < 0 := (theoremSemanticProductWorld_productAtom T left right n r).mp hp
-    have hs : 0 ≤ meshIndexRat zs * meshIndexRat zt :=
-      mul_nonneg (meshIndexRat_nonneg zs) (meshIndexRat_nonneg zt)
-    linarith
-  · exact PCWorld.holds_top _
-  · exact (theoremSemanticProductWorld_productAtom T left right n r).mpr hr
-  · exact PCWorld.holds_top _
-
-end
-
-/-- The pre-market combined process has a completed world at every stage. -/
-lemma theoremSemanticProductDP_hworld (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] :
-    (theoremSemanticProductWorld T).ConsistentWithTheory (theoremSemanticProductDP T) := by
-  intro n φ hφ
-  rw [theoremSemanticProductDP, DeductiveProcess.union_stage, Finset.mem_union] at hφ
-  rcases hφ with hbase | hsemantic
-  · apply (theoremSemanticProductWorld_holds_base_iff T
-      (fun a ha => ?_)).mpr (theoremDP_hworld T n φ hbase)
-    simp only [theoremDP, theoremStage, Finset.mem_image, Finset.mem_filter,
-      Finset.mem_range] at hbase
-    obtain ⟨e, _, rfl⟩ := hbase
-    exact eventAtom_atomCodes_ne_semanticPrimeTag e a ha
-  · obtain ⟨e, rfl⟩ := semanticProductStageList_exists (List.mem_toFinset.mp hsemantic)
-    rw [semanticProductDefSentence]
-    exact theoremSemanticProductWorld_holds_schema T _ _ _ _ _ _ _
+/-! ## Reading the clauses off their job codes -/
 
 lemma semanticProductDefSentence_mem_stage (e : ℕ) :
     semanticProductDefSentence e ∈ semanticProductDP.D e :=
@@ -406,8 +381,10 @@ lemma semanticProductDefSentence_job (left right n kind : ℕ) (r : ℚ) (zs zt 
 lemma holds_semanticProduct_pos {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticProductDP) (left right n : ℕ) {r : ℚ} {zs zt : ℕ}
     (hst : r ≤ meshIndexRat zs * meshIndexRat zt)
-    (hX : v.Holds (semanticPrimeSentence left (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
-    (hW : v.Holds (semanticPrimeSentence right (Nat.pair n (Encodable.encode (meshIndexRat zt)))) ) :
+    (hX : v.Holds
+      (semanticPrimeSentence left (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
+    (hW : v.Holds
+      (semanticPrimeSentence right (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
     v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticProductDefSentence hv (semanticProductJob left right n 0 r zs zt)
   rw [semanticProductDefSentence_job, semanticProductSchemaInstance,
@@ -417,8 +394,10 @@ lemma holds_semanticProduct_pos {v : PCWorld}
 lemma not_holds_semanticProduct_neg {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticProductDP) (left right n : ℕ) {r : ℚ} {zs zt : ℕ}
     (hst : meshIndexRat zs * meshIndexRat zt ≤ r)
-    (hX : ¬ v.Holds (semanticPrimeSentence left (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
-    (hW : ¬ v.Holds (semanticPrimeSentence right (Nat.pair n (Encodable.encode (meshIndexRat zt)))) ) :
+    (hX : ¬ v.Holds
+      (semanticPrimeSentence left (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
+    (hW : ¬ v.Holds
+      (semanticPrimeSentence right (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
     ¬ v.Holds (semanticProductAtom left right n r) := by
   have h := holds_semanticProductDefSentence hv (semanticProductJob left right n 1 r zs zt)
   rw [semanticProductDefSentence_job, semanticProductSchemaInstance,
@@ -438,54 +417,10 @@ lemma holds_semanticProduct_below {v : PCWorld}
 
 end
 
-lemma exists_of_mem_semanticProductStageList {φ : Sentence} {k : ℕ}
-    (h : φ ∈ semanticProductStageList k) : ∃ e, φ = semanticProductDefSentence e := by
-  induction k with
-  | zero => exact ⟨0, by simpa [semanticProductStageList] using h⟩
-  | succ k ih =>
-      rcases List.mem_cons.mp h with h | h
-      · exact ⟨k + 1, h⟩
-      · exact ih h
-
-/-- Every stage of the fixed semantic closure has a canonical satisfying world. -/
-lemma semanticProductDP_hworld :
-    semanticProductWorld.ConsistentWithTheory semanticProductDP := by
-  intro k φ hφ
-  obtain ⟨e, rfl⟩ := exists_of_mem_semanticProductStageList (List.mem_toFinset.mp hφ)
-  rw [semanticProductDefSentence]
-  exact semanticProductWorld_holds_schema _ _ _ _ _ _ _
-
-/-- Exact product reflection over the single fixed semantic closure process.  This is the
-existing `productLUV_valuesAt` rational-density proof with only the three schema lookups
-replaced by their self-describing semantic-prime counterparts. -/
-lemma semanticProductLUV_valuesAt {v : PCWorld}
-    (hv : v.ConsistentWithTheory semanticProductDP) (X W : PresentedLUVSeq) (n : ℕ)
-    {x c : ℝ} (hx : v.ValuesAt (X.toLUV n) x) (hc : v.ValuesAt (W.toLUV n) c) :
-    v.ValuesAt (semanticProductLUV X W n) (x * c) := by
-  obtain ⟨hx0, hx1, hxthr⟩ := hx
-  obtain ⟨hc0, hc1, hcthr⟩ := hc
-  refine ⟨mul_nonneg hx0 hc0, by nlinarith, fun r => ⟨?_, ?_⟩⟩
-  · intro hr
-    rw [semanticProductLUV_gt]
-    rcases lt_or_ge r 0 with hneg | hpos
-    · exact holds_semanticProduct_below hv X.thresholdSchema W.thresholdSchema n hneg
-    · obtain ⟨s, t, hs0, ht0, hst, hsx, htc⟩ := exists_rat_pair_lt_mul hx0 hc0 hpos hr
-      obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
-      obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
-      exact holds_semanticProduct_pos hv X.thresholdSchema W.thresholdSchema n hst
-        (by simpa only [PresentedLUVSeq.gt_eq] using (hxthr _).1 hsx)
-        (by simpa only [PresentedLUVSeq.gt_eq] using (hcthr _).1 htc)
-  · intro hr
-    rw [semanticProductLUV_gt]
-    obtain ⟨s, t, hs0, ht0, hst, hxs, hct⟩ := exists_rat_pair_mul_lt hx0 hc0 hr
-    obtain ⟨zs, rfl⟩ := exists_meshIndexRat hs0
-    obtain ⟨zt, rfl⟩ := exists_meshIndexRat ht0
-    exact not_holds_semanticProduct_neg hv X.thresholdSchema W.thresholdSchema n hst
-      (by simpa only [PresentedLUVSeq.gt_eq] using (hxthr _).2 hxs)
-      (by simpa only [PresentedLUVSeq.gt_eq] using (hcthr _).2 hct)
-
 /-! ## `def:ec` for semantic products -/
 
+/-- The product handle's name at the packed mesh index `⟨n,⟨k,i⟩⟩` is emitted under a
+polynomial fuel bound, by reducing `i/k` at runtime under a fixed atom shell. -/
 lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (semanticProductAtom left right m.unpair.1
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))) := by
@@ -504,7 +439,8 @@ lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
     (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
   have fullPF := ((PolyFueled.const 1).pair
     ((PolyFueled.const semanticPrimeTag).pair
-      ((PolyFueled.const (semanticProductSchema left right)).pair (hn.pair meshPF)))).succ_comp
+      ((PolyFueled.const (semanticProductSchema left right)).pair
+        (hn.pair meshPF)))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
   rw [semanticProductAtom, semanticPrimeSentence, semanticPrimeCode, encode_atom]
   simp only [Nat.unpair_pair, ifzSelFn]
@@ -520,72 +456,18 @@ lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
       Nat.succ_pred_eq_of_pos hg
     rw [hg1, encode_rat_natCast_div hk0, two_mul]
 
+/-- The whole-value threshold certificate for a semantic product family. -/
 lemma semanticProductLUV_polyThresholdCodeSeq (X W : PresentedLUVSeq) :
     LUV.PolyThresholdCodeSeq (semanticProductLUV X W) := by
-  obtain ⟨c, hc⟩ := semanticProductAtom_mesh_encode_polyFueled X.thresholdSchema W.thresholdSchema
+  obtain ⟨c, hc⟩ :=
+    semanticProductAtom_mesh_encode_polyFueled X.thresholdSchema W.thresholdSchema
   exact ⟨c, hc.of_eq (fun m => by rw [semanticProductLUV_gt])⟩
 
+/-- **`def:ec` for semantic products.**  The token-metered threshold interface the downstream
+product lanes consume. -/
 lemma semanticProductLUV_rpnThresholdCodeSeq (X W : PresentedLUVSeq) :
     LUV.RpnThresholdCodeSeq (semanticProductLUV X W) :=
   LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
     (semanticProductLUV_polyThresholdCodeSeq X W)
-
-/-! ## Exact conditional expectation over the fixed process -/
-
-/-- The paper's conditional-expectation conclusion with the exact semantic product, over
-the single process fixed from `T` before the market and all source data are chosen. -/
-lemma lic_no_expected_net_update_conditional_semantic
-    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-    {P : History} [IsLogicalInductor P (theoremSemanticProductDP T)]
-    (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
-    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
-    (weight_generable : PGenerableRat P w)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
-    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      ∃ x, v.ValuesAt (X.toLUV n) x)
-    (weight_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      v.ValuesAt (W.toLUV n) (w (f n)))
-    (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      v.ValuesAt (Z' n) ((X.toLUV n).expect P (f n) * w (f n))) :
-    (fun n ↦ (semanticProductLUV X W n).expect P n) ≈ₙ
-      fun n ↦ (Z' n).expect P n := by
-  refine lic_no_expected_net_update_conditional_ofRepresentation
-    (DP := theoremSemanticProductDP T) f X.toLUV (semanticProductLUV X W) Z' w
-    weight_mem weight_generable X.threshold_codes (semanticProductLUV_rpnThresholdCodeSeq X W)
-    hZ' (fun _ => 0) tendsto_const_nhds source_valued (fun n v hv x hx => ?_)
-    right_reflected (fun n => ⟨theoremSemanticProductWorld T,
-      (theoremSemanticProductDP_hworld T) n⟩)
-  refine ⟨x * (w (f n) : ℝ), ?_, by simp⟩
-  exact semanticProductLUV_valuesAt
-    (PCWorld.consistentWithTheory_union_right hv) X W n hx (weight_valued n v hv)
-
-private noncomputable abbrev theoremSemanticProductLIA (T : ArithmeticTheory)
-    [T.Δ₁] [Entailment.Consistent T] :
-    IsLogicalInductor (liaHistory (theoremSemanticProductDP T)) (theoremSemanticProductDP T) :=
-  LIA_is_logical_inductor _ (theoremSemanticProductDPComputation T).toComputable
-
-/-- Closed-process form of the exact semantic endpoint: the inductor and its completed
-worlds are constructed internally.  Its remaining hypotheses are precisely the paper's
-source/weight/right-quotation representation premises, now carried by semantic-prime LUV
-presentations rather than a mesh approximation. -/
-lemma lic_no_expected_net_update_conditional_semantic_closed
-    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-    (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
-    (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
-    (weight_generable : PGenerableRat (liaHistory (theoremSemanticProductDP T)) w)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
-    (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      ∃ x, v.ValuesAt (X.toLUV n) x)
-    (weight_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      v.ValuesAt (W.toLUV n) (w (f n)))
-    (right_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremSemanticProductDP T) →
-      v.ValuesAt (Z' n) ((X.toLUV n).expect
-        (liaHistory (theoremSemanticProductDP T)) (f n) * w (f n))) :
-    (fun n ↦ (semanticProductLUV X W n).expect
-      (liaHistory (theoremSemanticProductDP T)) n) ≈ₙ
-      fun n ↦ (Z' n).expect (liaHistory (theoremSemanticProductDP T)) n := by
-  haveI := theoremSemanticProductLIA T
-  exact lic_no_expected_net_update_conditional_semantic f X W Z' w weight_mem
-    weight_generable hZ' source_valued weight_valued right_reflected
 
 end LogicalInduction

@@ -1,92 +1,86 @@
-/-
-# Symbol-level finite-prefix freeze compiler
-
-`Properties/FinitePerturbations.lean` compiles the administrative prefix freeze
-`EF.freezeBefore` into a flat streaming transducer over the *contracted* strategy stream
-(`EF.freezeTokenRun`): after a price frame `[0, ⌜φ⌝, day]` with `day < cutoff` it appends
-the constant-quote suffix `[1, quote, 8]`.  The collapsed efficiency class
-`EfficientlyComputable` meters the RPN-expanded stream, where the sentence slot is a
-symbol **run** rather than a single pair code, so the freeze must walk the flat grammar
-and — at a price-day position — look the quote up *from the run*.
-
-The lookup is the whole content of this file.  The LIA's prefix quote table is a finite
-list of `(sentence, rational)` entries (`PrefixPatchCompile.liaPrefixQuote`), so for each
-table sentence we must decide whether the buffered run denotes it.  The list-level
-decision `runMatches` runs the full block parser, so it covers every block of the
-extended grammar — structured paper-prime leaves included — and transfers the
-token-model table verbatim (`runQuoteFromEntries_exact`,
-`runPrefixQuoteFromStates_exact`).
-
-The *positional* matcher is scoped to the legacy fragment.  A legacy run for a fixed
-target is a fixed *constant-depth* pattern — the target's Polish traversal, with any
-subterm optionally replaced by the two-token escape `[1, code]` — so the decision is a
-bounded composition of token comparisons, not a scan: `matchRun` recurses on the target
-sentence and returns the position just past the matched run.  Its characterization
-`matchRun_iff` (soundness `matchRun_sound` + completeness `matchRun_complete`) stops
-exactly at the block's end iff the block parses **in the legacy grammar**
-(`parseRpnLegacy`).  A structured paper-prime leaf has no constant-depth positional
-decision: its payload admits non-canonical spellings, so the positional test would have
-to replay the structured parser, whose contracted state is a whole Foundation code —
-the same side of the `dd:fuel` boundary as the escape decode below.  The positional
-chain (`runMatchesLegacy`, `runQuoteFromEntriesAt`, `runPrefixQuoteFromStatesAt`)
-therefore certifies the legacy fragment only.
-
-The transducer itself is an instance of the emitter-generic run rewriter in
-`RpnConditioning.lean`: `freezeEmit` plugs into `rpnConditionRun`, so the commutation
-`unRpn_rpnConditionRun_of` and the emission certificate
-`rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
-
-## Disclosed residual: the emission certificate
-
-This residual predates the structured first-order leaf and is independent of it: the
-obstruction is `decode` on an exponentially large escape payload, which the structured
-codec neither introduces nor worsens.  A structured leaf simply lands on the same side of
-the boundary, for the reason given above.
-
-Everything below is unconditional and axiom-clean, but it does **not** yield
-`liaEfficientPrefixPatch`.  The missing step is the fuel certificate for the emitted
-segment: `matchRun_polyFueled` asks for a `PolyFueled` (poly-*bounded*) token function,
-whereas a digit stream supplies only `BigDigits`.  The one test that does not factor
-through a small clamp is the escape leaf, which must decide `Encodable.decode c = some ψ`
-for an exponentially large `c`; since Foundation's `Formula.ofNat` ignores the payload at
-tag `0`, `decode` is not injective, so the test reduces to `Nat.unpair` / integer square
-root, which `BigDigits` does not close over.
-
-**Narrowed (`matchRun_eq_matchRunCanon`, below).**  That decode ambiguity is caused
-*entirely* by `⊥`: `CanonicalCodes.lean` proves Foundation's decoder injective on every
-sentence with no `⊥` subformula, and exhibits the two codes that break it at `⊥`.  So on
-a `⊥`-free target the escape test is a comparison against a fixed numeral, `matchRun`
-agrees with the constant-comparison matcher `matchRunCanon`, and **no square root is
-needed at all**.  The disclosure below therefore binds exactly when the frozen quote table
-contains a sentence with a `⊥` subformula.
-
-**Scope of that disclosure: the FUEL class only.**  In the *machine* class the square root
-is no longer avoided, it is built — `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec`
-inside `Complexity.FP`, with `FiberTest.fiberW_mem_FP` the escape-leaf test on top.  The
-pattern layer below (`patterns`, `parseRpnLegacy_iff_patMatch`) is what consumes it: it
-replaces the constant spelling list by a list of patterns with holes, so `⊥`'s infinite
-fibre no longer defeats exhaustiveness and `BotFree` disappears from the machine-class
-endpoint.  Everything in the paragraphs above is about `BigDigits`/`PolyFueled`, which is a
-different and still-open calculus (`dd:fuel`).
-
-That gap is a limitation of the fuel model (`dd:fuel`), not of the mathematics: in the
-intended complexity model the claim holds, since `unpair` on poly-bit inputs is
-poly-time.  Closing it inside the fuel calculus — a `BigDigits.sqrt` — is blocked
-structurally rather than by effort.  `BigDigits` is closed under an operation exactly
-when that operation's base-4 digit recurrence has a poly-bounded carry (`addCarry4 ≤ 1`,
-`mulCarry4 x y p ≤ 3(p+1)`, `ltFlag4 ≤ 1`, …), because the iterated state of
-`PolyFueled.prec` must be `IsPolyBounded`; and, more fundamentally, `evaln`'s guard
-bounds every sub-code's input by its fuel, so the fuel calculus admits no large
-intermediates anywhere.  Square root's carry is the partial remainder, which has `Θ(len)`
-digits and cannot be compressed to `O(log)` bits.  So the toolkit is closed under the
-forward big-value operations (`add`, `mul`, `natPair`, `ltNat`, `clampVal`) and open
-under their *inverses* (`sqrt`, `unpair`, division by a large divisor).
-
-Paper node: `app:ifp` / `thm:ifp` (the finite-prefix efficiency closure), `def:lia`.
--/
 import LogicalInduction.Construction.Witnesses.CanonicalCodes
 import LogicalInduction.Construction.Witnesses.RpnConditioning
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Symbol-level finite-prefix freeze compiler
+
+`app:ifp` — the finite-support freeze as a rewrite of the *flat* RPN symbol stream, which is
+the stream a `Complexity.FP` machine actually holds.
+`Properties/FinitePerturbations.lean` compiles the administrative prefix freeze
+`EF.freezeBefore` into a flat streaming transducer over the *contracted* strategy stream
+(`EF.freezeTokenRun`): after a price frame `[0, ⌜φ⌝, day]` with `day < cutoff` it appends the
+constant-quote suffix `[1, quote, 8]`.  That obligation is stated on the contracted stream,
+which a machine never holds — computing `unRpn` would mean re-encoding each parsed sentence —
+so this module carries it across.
+
+## Objects
+
+`segOf` (stream segments), `matchRun` and `matchRunCanon` (the constant-depth positional
+matcher and its fixed-numeral twin), `spellings` and `patterns` (two descriptions of a
+target's complete parses), `runMatches` / `runQuoteFromEntries` / `runPrefixQuoteFromStates`
+(the run-level tables), and `freezeEmitOn` / `freezeTokensOn` / `freezeBodyOn` (the
+transducer).  The transducer is an instance of the emitter-generic run rewriter in
+`RpnConditioning.lean`, so the commutation `unRpn_rpnConditionRun_of` and the emission
+certificate `rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
+
+## Why the lookup needs no automaton
+
+Fix a target `ψ`.  Each node of a complete parse is spelled either structurally or by the
+two-token escape `[1, c]` with `decode c = some ψ'`.  `spellings` lists the escape as the
+canonical numeral, so it is a finite list of *constants* — exhaustive only under `BotFree`,
+because `⊥`'s decode fibre is infinite (`decode_falsum_noncanonical`).  `patterns` puts the
+decode obligation inside a `PatTok.hole`, so the list is finite and exhaustive
+unconditionally.  Neither supersedes the other: `spellings` states the sharper `⊥`-free form
+(membership in a list of constants) and is what `FreezeOracle.lean` consumes; `patterns`
+states the unconditional form and is what `PatternAutomaton.lean` compiles into
+`Complexity.FP`.
+
+## Main results and their consumers
+
+`parseRpnLegacy_iff_patMatch` and `parseRpn_iff_patMatch` are what `PatternAutomaton.lean`
+turns into a `Complexity.FP` decision; `parseRpnLegacy_iff_mem_spellings` and
+`parseRpn_iff_mem_spellings` are the sharper `⊥`-free form; `unRpn_rpnFreezeRunOn` is the
+contraction-exactness bridge and `freezeStreamRewriter_of_flatPass` the reduction of
+`FreezeStreamRewriter` to a flat pass.
+
+The grammar bridge is `parseRpn_imp_parseRpnLegacy`: the full grammar collapses to the legacy
+one on `NoReserved` targets, because the structured paper-prime branch denotes only reserved
+atoms `atom (Nat.pair 5 _)` (`parseStructuredPaperPrime_shape`).  The reverse direction is
+unconditional (`parseRpn_of_legacy`, `Framework/RpnSentence.lean`).
+
+Where the two side conditions land: `BotFree` is discharged in the machine class, by the
+pattern layer together with `DigitFP.sqrtRemW_mem_FP`; `NoReserved` survives on the
+recognizer, because a structured payload's unary length field is an `aⁿbⁿ` constraint no
+`RunAuto.BlockAutomaton` expresses.
+
+## The fuel-class obstruction (`dd:fuel`)
+
+`BigDigits` is closed under an operation exactly when that operation's base-4 digit
+recurrence has a poly-bounded carry (`addCarry4 ≤ 1`, `mulCarry4 x y p ≤ 3(p+1)`,
+`ltFlag4 ≤ 1`, …), because the iterated state of `PolyFueled.prec` must be `IsPolyBounded`;
+and `evaln`'s guard bounds every sub-code's input by its fuel, so the fuel calculus admits no
+large intermediates anywhere.  Square root's carry is the partial remainder, `Θ(len)` digits
+wide, which no `O(log)`-bit state holds.  So the calculus is closed under the forward
+big-value operations (`add`, `mul`, `natPair`, `ltNat`, `clampVal`) and open under their
+inverses (`sqrt`, `unpair`, division by a large divisor).  The one test that does not factor
+through a small clamp is the escape leaf, which must decide `Encodable.decode c = some ψ` for
+an exponentially large `c`, and Foundation's `Formula.ofNat` ignores the payload at tag `0`,
+so that test reduces to `Nat.unpair`.  Hence nothing here yields `liaEfficientPrefixPatch`.
+
+That obstruction binds exactly when the frozen quote table contains a sentence with a `⊥`
+subformula: `matchRun_eq_matchRunCanon` shows the decode ambiguity is caused entirely by `⊥`,
+so on a `⊥`-free target every escape test is a comparison against a fixed numeral and no
+square root is needed.  In the *machine* class the square root is built rather than avoided
+(`DigitFP.sqrtRemW_mem_FP`, `DigitFP.unpairW_spec`, with `FiberTest.fiberW_mem_FP` the
+escape-leaf test on top), which is what the pattern layer consumes.
+
+Consequently `matchRun_polyFueled` and the positional table chain below it certify the token
+model only and have no consumer; they are kept as the token-model half of this disclosure.
+
+This module serves the finite-prefix efficiency closure `app:ifp` / `thm:ifp` and the
+algorithm `def:lia`; the provenance lines sit on the declarations below, not on this header.
+-/
 
 namespace LogicalInduction
 
@@ -177,16 +171,6 @@ lemma parseStructuredPaperPrime_shape : ∀ {payload : List ℕ} {φ : Sentence}
                 exact ⟨pol, formulaCode, (congrArg Prod.fst (Option.some.inj h)).symm⟩
             | cons a b => exfalso; revert h; simp
 
-/-- **A target outside the reserved atom shape is never denoted by a structured leaf.** -/
-lemma parseStructuredPaperPrime_ne_of_not_reserved {payload : List ℕ} {ψ : Sentence}
-    {r : List ℕ}
-    (hψ : ∀ pol fc : ℕ,
-      ψ ≠ LO.Propositional.Formula.atom (Nat.pair 5 (Nat.pair pol fc))) :
-    parseStructuredPaperPrime payload ≠ some (ψ, r) := by
-  intro h
-  obtain ⟨pol, fc, hshape⟩ := parseStructuredPaperPrime_shape h
-  exact hψ pol fc hshape
-
 /-- The constant-depth positional run matcher. -/
 def matchRun (get : ℕ → ℕ) : Sentence → ℕ → ℕ
   | ⊥, p =>
@@ -243,7 +227,8 @@ def matchRunCanon (get : ℕ → ℕ) : Sentence → ℕ → ℕ
       else if get p = 0 then p + 2 else 0
   | .atom a, p =>
       if get p = 1 then
-        (if get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) then p + 3 else 0)
+        (if get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) then
+          p + 3 else 0)
       else if get p = a + 5 then p + 2 else 0
   | φ 🡒 ψ, p =>
       if get p = 1 then
@@ -296,7 +281,8 @@ lemma matchRun_eq_matchRunCanon (get : ℕ → ℕ) :
       by_cases hp : get p = 1
       · rw [matchRun_escape get _ p hp, matchRunCanon_escape get _ p hp,
           sentenceMatches_of_botFree _ (by simp)]
-        by_cases hc : get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) <;>
+        by_cases hc :
+            get (p + 1) = Encodable.encode (LO.Propositional.Formula.atom a : Sentence) <;>
           simp [hc]
       · simp only [matchRun, matchRunCanon, if_neg hp]
   | himp φ ψ ihφ ihψ =>
@@ -335,7 +321,6 @@ lemma parseRpn_bin_body {b₁ b₂ : List ℕ} {φ ψ : Sentence}
   simp only [Option.bind_some]
   rw [parseRpnLegacy_mono b₂ (by omega) h₂]
   rfl
-
 
 /-- Inversion of a complete binary-shell parse into its two complete sub-blocks. -/
 lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
@@ -795,9 +780,9 @@ position it occupies.  This is deliberately not an existential over decompositio
 the block positions inside a pattern are determined by the pattern alone, hence computable
 at elaboration time, which is what a later automaton construction needs.
 
-`spellings` and its two characterizations are left exactly as they are: they are on the
-audited surface, they are consumed by `FreezeOracle.lean`, and on a `⊥`-free target they are
-the sharper statement (membership in a list of constants). -/
+`spellings` states the sharper `⊥`-free form — membership in a list of constants — and is
+what `FreezeOracle.lean` consumes; `patterns` states the unconditional form and is what
+`PatternAutomaton.lean` compiles. -/
 
 /-- One token of a spelling **pattern**: a fixed literal token, or a `hole` — a code slot
 whose obligation is `Encodable.decode c = some χ` rather than equality with a numeral. -/
@@ -1110,8 +1095,8 @@ lemma parseRpnLegacy_iff_patMatch (ψ : Sentence) (b : List ℕ) :
     parseRpnLegacy b.length b = some (ψ, []) ↔ ∃ p ∈ patterns ψ, PatMatch p b :=
   ⟨patterns_complete ψ b, fun ⟨_, hp, hm⟩ => patterns_sound ψ _ hp b hm⟩
 
-/-- **The same, at the grammar the freeze actually parses with.**  Only `NoReserved`
-survives; the `BotFree` half of `Recognizable` is no longer needed anywhere on this route.
+/-- **The same, at the grammar the freeze parses with.**  `NoReserved` is the only side
+condition on this route; the `BotFree` half of `Recognizable` plays no part in it.
 
 Proof kind: `C` composition.  Provenance: (a) `parseRpn_imp_parseRpnLegacy`,
 `patterns_complete`, `patterns_sound`; (b) `parseRpn_of_legacy`.
@@ -1560,7 +1545,7 @@ This is the bridge the machine-class certificate needs: the transducer runs on t
 stream a machine actually holds, while `EF.freezeTokenRunOn` — and hence
 `FreezeStreamRewriter` — is stated on the contracted one.
 Paper node: `app:ifp` -/
-theorem unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ)
+lemma unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ)
     (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
     (hsel : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
       ∀ D, selRun b D = selCode D (Encodable.encode φ))
@@ -1587,70 +1572,11 @@ theorem unRpn_rpnFreezeRunOn (selRun : List ℕ → ℕ → Bool) (quoteRun : Li
 def freezeTokens (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (L : List ℕ) : List ℕ :=
   freezeTokensOn (fun d _ => decide (d < cutoff)) quoteCode L
 
-/-- The body the token-model freeze splices at a completed price leaf. -/
-def freezeBody (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) : List ℕ :=
-  if d < cutoff then [1, quoteCode d fc, 8] else []
-
-lemma freezeBody_eq (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ) :
-    freezeBody quoteCode cutoff fc d
-      = freezeBodyOn (fun d _ => decide (d < cutoff)) quoteCode fc d := by
-  simp only [freezeBody, freezeBodyOn, decide_eq_true_eq]
-
-lemma freezeTokens_nil (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) :
-    freezeTokens quoteCode cutoff [] = [] := rfl
-
-lemma freezeTokens_single (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ)
-    (L : List ℕ) (h0 : t ≠ 0) (h1 : t ≠ 1) (h6 : t ≠ 6) (h7 : t ≠ 7) :
-    freezeTokens quoteCode cutoff (t :: L) = t :: freezeTokens quoteCode cutoff L :=
-  freezeTokensOn_single _ quoteCode t L h0 h1 h6 h7
-
-lemma freezeTokens_one (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t : ℕ) :
-    freezeTokens quoteCode cutoff [t] = [t] :=
-  freezeTokensOn_one _ quoteCode t
-
-lemma freezeTokens_payload (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (t c : ℕ)
-    (ht : t = 1 ∨ t = 7) (L : List ℕ) :
-    freezeTokens quoteCode cutoff (t :: c :: L) =
-      t :: c :: freezeTokens quoteCode cutoff L :=
-  freezeTokensOn_payload _ quoteCode t c ht L
-
-lemma freezeTokens_price (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc d : ℕ)
-    (L : List ℕ) :
-    freezeTokens quoteCode cutoff (0 :: fc :: d :: L) =
-      0 :: fc :: d :: (freezeBody quoteCode cutoff fc d ++
-        freezeTokens quoteCode cutoff L) := by
-  rw [freezeBody_eq]
-  exact freezeTokensOn_price _ quoteCode fc d L
-
-lemma freezeTokens_pricePair (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ) :
-    freezeTokens quoteCode cutoff [0, fc] = [0, fc] :=
-  freezeTokensOn_pricePair _ quoteCode fc
-
-lemma freezeTokens_trade (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ) (fc : ℕ)
-    (L : List ℕ) :
-    freezeTokens quoteCode cutoff (6 :: fc :: L) =
-      6 :: fc :: freezeTokens quoteCode cutoff L :=
-  freezeTokensOn_trade _ quoteCode fc L
-
 /-- **The symbol-level freeze emitter**: at a price-day slot before the cutoff, retain
 the day and splice the constant quote of the buffered sentence run under the
 administrative binding. -/
 def freezeEmit (quoteRun : List ℕ → ℕ → ℕ) (cutoff : ℕ) : List ℕ → ℕ → List ℕ :=
   freezeEmitOn (fun _ D => decide (D < cutoff)) quoteRun
-
-/-- **The rewritten price chunk contracts to the token-model freeze.** -/
-lemma unRpn_freeze_rewrite_chunk (quoteRun : List ℕ → ℕ → ℕ)
-    (quoteCode : ℕ → ℕ → ℕ) (cutoff : ℕ)
-    (hq : ∀ (b : List ℕ) (φ : Sentence), parseRpn b.length b = some (φ, []) →
-      ∀ D, quoteRun b D = quoteCode D (Encodable.encode φ))
-    {b : List ℕ} {φ : Sentence} (hb : parseRpn b.length b = some (φ, []))
-    (D : ℕ) (rest : List ℕ) :
-    unRpn (0 :: b ++ freezeEmit quoteRun cutoff b D ++ rest) =
-      0 :: Encodable.encode φ :: D ::
-        (freezeBody quoteCode cutoff (Encodable.encode φ) D ++ unRpn rest) := by
-  rw [freezeBody_eq, freezeEmit]
-  exact unRpn_freezeOn_rewrite_chunk _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
-    (fun b' φ' hb' D' _ => hq b' φ' hb' D') hb D rest
 
 /-- **Whole-stream contraction exactness for the freeze pass**: on every input stream —
 well-formed or garbage — the contraction of the symbol-level freeze transducer's output
@@ -1842,10 +1768,6 @@ lemma matchRun_polyFueled {ct cn : Code} {tf N : ℕ → ℕ}
       exact ⟨c, hc.of_eq fun z => by rw [matchRun]⟩
 
 /-! ### Positional form of the run-level tables -/
-
-lemma runMatches_cases (target : Sentence) (b : List ℕ) :
-    runMatches target b = 0 ∨ runMatches target b = 1 := by
-  rw [runMatches]; split <;> simp
 
 /-- Legacy-fragment list-level match: the list form of the positional matcher.  The
 poly-fueled positional chain below certifies this fragment only — a structured

@@ -1,39 +1,64 @@
-/-
-# Part III — Expectations of LUVs (`def:luv`, `def:e`, the LUV bridge)
-
-The deference / dose-response corpora run almost entirely on **expectations** `E^H_n(X)` of
-logically uncertain variables — objects they treat as abstract `ℕ → ℝ` sequences. This file
-makes that object *concrete*, which is what lets their expectation-level hypotheses be
-discharged from our side.
-
-The unlock is the paper's `def:e`: the day-`n` expectation of a `[0,1]`-LUV `X` is a **finite
-sum of the market's prices** on `X`'s threshold sentences,
-`𝔼ₙ(X) = (1/n) · ∑_{i<n} Pₙ(⌜X > i/n⌝)`. So once a LUV is presented by its threshold
-sentences, `𝔼ₙ(X)` is a genuine `ℕ → ℝ` derived from `P : History`.
-
-Modeling note (`def:luv`): the paper's LUVs are *first-order* — a formula `X(ν)` free in
-one variable, over a theory `Θ` that represents computations. The node itself is closed by a
-literal such object: `PaperLUV` (`Construction/Witnesses/PaperLUV.lean`) is an actual
-one-variable arithmetic formula carrying object-level `T`-proofs, and it is the canonical
-endpoint for `def:luv`. The `LUV` carrier *here* is the convenience layer it compiles into,
-which presents a `[0,1]`-LUV by its **observable content for the market**: the family of
-threshold sentences `X.gt r = ⌜X > r⌝ ∈ Sentence`. Downstream results are stated against the
-carrier and so apply to more families than the paper's; `PaperLUV` is what shows the paper's
-own objects are among them. The paper's well-definedness (`Θ` proves a unique value) becomes monotonicity /
-coherence conditions on that family; we carry only what a given theorem needs, as explicit
-hypotheses, rather than reconstructing the first-order syntax.
--/
 import LogicalInduction.Framework.Computable
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.RpnSplice
 import LogicalInduction.Framework.WriteOut
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
+/-!
+# Expectations of LUVs (`def:luv`, `def:e`) and the ℙ̄-generable class (`def:ece`)
+
+This module renders §4.8 `sec:expectations` (tex:1627) — `def:luv` (tex:1635) and `def:e`
+(tex:1670) — together with the `def:ece` generability class (tex:1218) over which the affine
+and self-trust results quantify.
+
+* `GeneratedRatFeature` / `PGenerableRat` — `def:ece` for rational sequences, with the
+  emission field write-out metered (`BigSpliceStream`), and the constructor
+  `PGenerableRat.ofDigitRatCodes`. The width is load-bearing: `pGenerableRat_two_pow_inv`
+  shows the paper's own `δ n = 2⁻ⁿ` is admitted here and refutes `PolyRatCodes`.
+* `LUV` — a `[0,1]`-logically-uncertain variable presented by its threshold sentences
+  `X.gt r = ⌜X > r⌝`, which is a LUV's entire observable content for a market. The paper's
+  LUVs are *first-order* — a formula `X(ν)` free in one variable over a theory `Θ` that
+  represents computations — and that literal object is `PaperLUV`
+  (`Construction/Witnesses/PaperLUV.lean`), an actual one-variable arithmetic formula
+  carrying object-level `T`-proofs, which compiles into this carrier. Results stated here
+  are therefore stated of more families than the paper's, and `PaperLUV` is what shows the
+  paper's own are among them. The paper's well-definedness (`Θ` proves a unique value)
+  becomes monotonicity and coherence conditions on the threshold family, carried as the
+  explicit hypotheses a given theorem needs rather than reconstructed as first-order syntax.
+* The threshold-code interfaces, at three meters: whole-value (`LUV.PolyThresholdCodes`,
+  `LUV.PolyThresholdCodeSeq`), token (`LUV.RpnThresholdCodes`, `LUV.RpnThresholdCodeSeq`)
+  and write-out (`LUV.BigThresholdCodes`, `LUV.BigThresholdCodeSeq`), with the embeddings
+  `ofPolyThresholdCodes` and `toBig`. `README.md` records which endpoints bind the token
+  forms and why that is a rendering sensitivity rather than a narrowing of `def:ec`.
+* `LUV.expectApprox` and `LUV.expect` — `def:e`'s finite price sum
+  `𝔼_k^V(X) = (1/k) · ∑_{i<k} V(⌜X > i/k⌝)`, with the day-`n` operator taken at precision
+  `n + 1` under the repo's day-index convention (Lean day `n` = paper day `n+1`,
+  `Framework/Foundations.lean`), so every day has a nondegenerate grid and the grid error is
+  `1/(n+1)`. `expectApprox_nonneg` and `expectApprox_le_one` inherit `[0,1]` from the prices.
+* `PCWorld.ValuesAt` and `PCWorld.ApproxValuesUpTo` — the market-observable content of "`v`
+  believes `X = x`", with `PCWorld.expectApprox_near_ofGrid` and
+  `PCWorld.ValuesAt.expectApprox_near` the `lem:conluvapprox` counting argument (tex:4982)
+  at the single-LUV form the affine results consume.
+* `LUV.IsIndicator` — the relational rendering of the paper's `1(φ)`, quantified over
+  completed-theory worlds (`PCWorld.ConsistentWithTheory`, the quantifier of `app:ei`'s own
+  argument) rather than over every finite stage; `indicatorWitness_isIndicator` and
+  `indicatorWitness_not_stagewise` show that the stage-quantified reading would exclude the
+  paper's own indicator.
+
+**Design.**  Paper-side LUV *constructions* — indicators, affine combinations — enter as
+relational predicates over arbitrary threshold families, never as canonical `LUV` values; the
+reason is given at `## Indicator families` below.
+
+`thm:ec` itself is proved in `Properties/ExpectationConvergence.lean`
+(`LUV.expect_converges`), which needs the completed-theory world-value linkage this module
+does not carry.
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
 
-/-! ### Efficient family interfaces
+/-! ## Efficient family interfaces (`def:ece`)
 
 The paper's affine, Self-Trust, and introspection theorems quantify over efficiently
 computable sequences.
@@ -43,7 +68,7 @@ compact codes consumed by the token-emission model. -/
 
 /-- A rational sequence generated continuously from the market by a polynomial-size,
 closed feature progression. This is the propositional/token-model rendering of the
-paper's `def:pgen` for rational sequences. Closure is load-bearing: internal `EF.var`
+paper's `def:ece` for rational sequences. Closure is load-bearing: internal `EF.var`
 nodes are legal only underneath the shared `letE` emitter and cannot be free inputs.
 
 The emission field is **write-out metered** (`BigSpliceStream`): the feature progression
@@ -61,6 +86,11 @@ structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
   closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
   denote : ∀ n, (feature n).denote P = (q n : ℝ)
 
+/-- **ℙ̄-generability for rational sequences** — the paper's `def:ece` (tex:1218) at the
+rational case: `q` is generable from the market `P` when some efficiently computable feature
+progression denotes it day by day. `GeneratedRatFeature` is the certificate this existential
+ranges over, and `PGenerableRat.ofDigitRatCodes` is the constructor that produces one from
+digit access to `q`. -/
 def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
   ∃ feature : ℕ → EF, GeneratedRatFeature P q feature
 
@@ -105,10 +135,7 @@ lemma pGenerableRat_two_pow_inv (P : History) :
   ⟨PGenerableRat.ofDigitRatCodes digitRatCodes_two_pow_inv P,
     digitRatCodes_two_pow_inv_not_polyRatCodes.2⟩
 
-example (P : History) : PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
-  (pGenerableRat_two_pow_inv P).1
-
-#print axioms pGenerableRat_two_pow_inv
+/-! ## Logically uncertain variables (`def:luv`) -/
 
 /-- `def:luv` (abstracted). A `[0,1]`-logically-uncertain variable, presented by its
 threshold sentences: `X.gt r = ⌜X > r⌝`. This is the LUV's entire observable content for a
@@ -127,6 +154,8 @@ structure LUV where
 
 namespace LUV
 
+/-! ## Threshold-code interfaces (`def:ec`) -/
+
 /-- A threshold presentation is **polynomially codeable** when the sentence code for
 `X > i/n` is computable with polynomial fuel from `⟨n,i⟩`.  Paper LUVs are
 Θ-definable, so this is the propositional interface corresponding to their compact
@@ -143,7 +172,7 @@ def PolyThresholdCodeSeq (X : ℕ → LUV) : Prop :=
     Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))))
 
-/-! #### Block form of the threshold interfaces (`def:ec`)
+/-! ### Block form of the threshold interfaces (`def:ec`)
 
 `PolyThresholdCodes` meters the *pair code* of the threshold sentence, which excludes deep
 or skewed threshold families whose codes are value-exponential in their symbol count. The
@@ -162,16 +191,30 @@ def RpnThresholdCodeSeq (X : ℕ → LUV) : Prop :=
   RpnSentenceCodes (fun m => (X m.unpair.1).gt
     ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
 
+/-- **Write-out form** of the single-LUV threshold interface: a `def:ec` *write-out* sentence
+stream emitting `⌜X > i/k⌝` at index `⟨k,i⟩`, at exactly the paired-index convention of
+`RpnThresholdCodes`.  It is the single-LUV analogue of `BigThresholdCodeSeq`, and stands to
+`RpnThresholdCodes` as that class stands to `RpnThresholdCodeSeq`: the two differ only in the
+meter on the underlying sentence stream, `RpnThresholdCodes` bounding every emitted token's
+*value* and this one only their number. -/
+def BigThresholdCodes (X : LUV) : Prop :=
+  BigSentenceCodes (fun m => X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ)))
+
 /-- **Write-out form** of the threshold sequence interface: a `def:ec` *write-out* sentence
 stream emitting `⌜X_n > i/k⌝` at index `⟨n,⟨k,i⟩⟩`, at exactly the paired-index convention
 of `RpnThresholdCodeSeq`.  The two differ only in the meter on the underlying sentence
 stream — `RpnThresholdCodeSeq` bounds every emitted *token's value*, this one bounds only
 the number of tokens — so this is the class the paper's `def:ec` actually names, and it is
-where the rest of the migrated day-indexed surface already sits.
+where the rest of the day-indexed surface sits.
 Paper node: `def:ec` -/
 def BigThresholdCodeSeq (X : ℕ → LUV) : Prop :=
   BigSentenceCodes (fun m => (X m.unpair.1).gt
     ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))
+
+/-- The token-metered single-LUV threshold interface embeds into the write-out one. -/
+lemma RpnThresholdCodes.toBig {X : LUV}
+    (h : X.RpnThresholdCodes) : X.BigThresholdCodes :=
+  BigSentenceCodes.ofRpnSentenceCodes h
 
 /-- The token-metered threshold sequence interface embeds into the write-out one. -/
 lemma RpnThresholdCodeSeq.toBig {X : ℕ → LUV}
@@ -188,10 +231,7 @@ lemma RpnThresholdCodeSeq.ofPolyThresholdCodeSeq {X : ℕ → LUV}
     (h : PolyThresholdCodeSeq X) : RpnThresholdCodeSeq X :=
   RpnSentenceCodes.ofPolySentenceCodes h
 
-/-- A constant LUV sequence inherits the block form from the single-LUV interface. -/
-lemma RpnThresholdCodes.constSeq {X : LUV} (h : X.RpnThresholdCodes) :
-    RpnThresholdCodeSeq (fun _ => X) :=
-  (h.comp (PolyFueled.right)).of_eq (fun _ => rfl)
+/-! ## Expectations (`def:e`) -/
 
 /-- `def:e`. The **approximate expectation** of `X` under a valuation `V` at precision `k`:
 `𝔼_k^V(X) = ∑_{i<k} (1/k) · V(⌜X > i/k⌝)`. Lands in `[0,1]` when `V` does (a share is worth
@@ -209,12 +249,13 @@ error bounds are `1/(n+1)`, whose positivity is free. -/
 noncomputable def expect (P : History) (n : ℕ) (X : LUV) : ℝ :=
   X.expectApprox (P n) (n + 1)
 
-/-- The **expectation sequence** `n ↦ 𝔼ₙ(X)`. This is the concrete object the deference
-corpus abstracts as `E^H_n(X) : ℕ → ℝ`; a hypothesis `Approx (E_now X) (E_now Y)` there is
-`expectSeq P X ≈ₙ expectSeq P Y` here. -/
+/-- The **expectation sequence** `n ↦ 𝔼ₙ(X)` derived from the market `P`: the `ℕ → ℝ`
+sequence of day-`n` expectations of `X`. Limit statements about it are phrased in the shared
+asymptotic vocabulary of `Framework/Asymptotics` (`≈ₙ`, `≳ₙ`, `≲ₙ`, convergence; `dd:asymp`),
+which is where that vocabulary is defined once for the whole development. -/
 noncomputable def expectSeq (P : History) (X : LUV) : ℕ → ℝ := fun n => X.expect P n
 
-/-! ### Basic bounds — `𝔼` inherits `[0,1]` from the prices. -/
+/-! ## Basic bounds — `𝔼` inherits `[0,1]` from the prices. -/
 
 lemma expectApprox_nonneg (V : Valuation) (k : ℕ) (X : LUV)
     (hV : ∀ s, 0 ≤ V s) : 0 ≤ X.expectApprox V k := by
@@ -236,7 +277,7 @@ lemma expect_mem_Icc (P : History) (n : ℕ) (X : LUV)
   ⟨X.expectApprox_nonneg (P n) (n + 1) (fun s => (hP s).1),
    X.expectApprox_le_one (P n) (n + 1) (fun s => (hP s).2)⟩
 
-/-! ### `thm:ec` — Expectations Converge.
+/-! ## `thm:ec` — Expectations Converge
 
 Proved in `Properties/ExpectationConvergence.lean` (`LUV.expect_converges`): the day-`n`
 expectation is the price of the precision-`n+1` threshold bundle, so `thm:affcoh` traps it
@@ -247,7 +288,7 @@ quantified over `cworlds(Θ)`, and daily plausible worlds, on top of the price b
 
 end LUV
 
-/-! ### World-side LUV values (`lem:conluvapprox` substrate, D1 modeling)
+/-! ## World-side LUV values (`lem:conluvapprox`)
 
 The paper's "`Θ` represents computations, so every consistent world assigns each LUV its
 true value" becomes, in our threshold presentation, a coherence condition relating a world
@@ -274,7 +315,7 @@ lemma PCWorld.ValuesAt.eq {v : PCWorld} {X : LUV} {x y : ℝ}
   · obtain ⟨r, hr1, hr2⟩ := exists_rat_btwn h
     exact (hy.2.2 r).2 hr1 ((hx.2.2 r).1 hr2)
 
-/-- **`lem:conluvapprox`, single-LUV form (D1)** (paper `main.tex` 4982): a world that
+/-- **`lem:conluvapprox`, single-LUV form at grid coherence** (tex:4982): a world that
 values `X` at `x` assesses the precision-`n` approximate expectation within `1/n` of `x`.
 
 Counting argument: thresholds `i/n` strictly below `x` pay `1` (there are at least
@@ -283,7 +324,12 @@ Counting argument: thresholds `i/n` strictly below `x` pay `1` (there are at lea
 one possible threshold *equal* to `x` is the `+1` slack. Hence
 `x ≤ 𝔼ₙ ≤ x + 1/n` — one-sided, which `|·|` weakens. Only this single-LUV form is needed:
 the affine results in `Properties/ExpectationAffine.lean` combine per-LUV bounds rather
-than a combination (`b/n`) form. -/
+than a combination (`b/n`) form.
+
+This result is deliberately carried without a `Paper node` line: `lem:conluvapprox` is
+listed in `UNANNOTATED_PAPER_RESULTS` in `scripts/check_endpoint_coverage.py` against
+`Properties/ExpectationConvergence.lean`. Do not add the annotation — it would put the
+label under the per-declaration axiom gate, which this statement does not answer to. -/
 theorem PCWorld.expectApprox_near_ofGrid {v : PCWorld} {X : LUV} {x : ℝ}
     (hx0 : 0 ≤ x) (hx1 : x ≤ 1) {n : ℕ} (hn : 0 < n)
     (hgrid : ∀ i : ℕ, i < n →
@@ -378,7 +424,10 @@ theorem PCWorld.expectApprox_near_ofGrid {v : PCWorld} {X : LUV} {x : ℝ}
 
 /-- **`lem:conluvapprox`, single-LUV form.**  A world that values `X` at `x` assesses the
 precision-`n` approximate expectation within `1/n` of `x` — the full-`ValuesAt` specialization of
-`expectApprox_near_ofGrid` (the counting argument only ever needs grid-point coherence). -/
+`expectApprox_near_ofGrid` (the counting argument only ever needs grid-point coherence).
+
+This result is deliberately carried without a `Paper node` line, for the reason spelled out
+at `expectApprox_near_ofGrid` above. -/
 theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
     (hval : v.ValuesAt X x) {n : ℕ} (hn : 0 < n) :
     |X.expectApprox v.payout n - x| ≤ 1 / n := by
@@ -387,8 +436,6 @@ theorem PCWorld.ValuesAt.expectApprox_near {v : PCWorld} {X : LUV} {x : ℝ}
   have hcast : (((i : ℚ) / (n : ℚ) : ℚ) : ℝ) = (i : ℝ) / (n : ℝ) := by push_cast; ring
   exact ⟨fun hi => (hthr ((i : ℚ) / (n : ℚ))).1 (by rw [hcast]; exact hi),
     fun hi => (hthr ((i : ℚ) / (n : ℚ))).2 (by rw [hcast]; exact hi)⟩
-
-#print axioms PCWorld.ValuesAt.expectApprox_near
 
 /-- Finite-precision world–value agreement up to precision `N`: the day-`n` approximate
 expectation (for `0 < n ≤ N`) sits within `1/n` of `x`, with `x` nonneg.  Unlike the full
@@ -409,13 +456,13 @@ lemma PCWorld.ValuesAt.approxValuesUpTo {v : PCWorld} {X : LUV} {x : ℝ}
     (hx : v.ValuesAt X x) (N : ℕ) : v.ApproxValuesUpTo X x N :=
   ⟨hx.1, fun _ hn _ => hx.expectApprox_near hn⟩
 
-/-! ### Relational expectation-family substrate
+/-! ## Indicator families
 
 The definitions live here because expectation convergence consumes them, and keeping them
 upstream of the affine layer avoids an import cycle. The theorems that use them —
 `thm:ei`, `thm:loe`, `thm:expprovind` — are proved in `Properties/ExpectationAffine.lean`,
 where the affine machinery is available.
-**General principle (D3):** paper-side LUV *constructions* — indicators, affine
+**General principle:** paper-side LUV *constructions* — indicators, affine
 combinations — enter our modeling as **relational predicates over arbitrary threshold
 families**, never as canonical `LUV` values. Constructing a representative (e.g. defining
 the indicator of `φ` as `gt r := φ` on `[0,1)`) would make the theorem *definitional* —
@@ -468,9 +515,7 @@ lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
       · exact fun h => hφ ((hmid (le_of_lt hr) hr1).1 h)
       · exact hhi (le_of_not_gt hr1)
 
-#print axioms LUV.IsIndicator.valuesAt
-
-/-! #### Non-vacuity of `LUV.IsIndicator` (kind `N+`)
+/-! ### Non-vacuity of `LUV.IsIndicator` (kind `N+`)
 
 The class is inhabited by a *non-degenerate* indicator: thresholds that are not the
 sentence `φ` itself, linked to it only by an equivalence the deductive process reveals.
@@ -533,11 +578,13 @@ lemma indicatorWitness_isIndicator :
     simp [indicatorWitnessLUV, if_neg hn0, if_neg hn1, PCWorld.Holds,
       LO.Propositional.Formula.Boolean.val]
 
-#print axioms indicatorWitness_isIndicator
-
-/-- The stage-quantified reading — demanding the `[0,1)` equivalence already in
-`pcworlds(D n)` for *every* `n` — excludes the witness above, hence the paper's own
-`1(φ)`.  Recorded so the quantifier is not silently re-tightened. -/
+/-- **The stage-quantified reading of `LUV.IsIndicator` is strictly too narrow.**  Demanding
+the `[0,1)` equivalence already in `pcworlds(DP.D n)` for *every* `n` excludes
+`indicatorWitnessLUV`, and hence the paper's own `1(φ)`: `indicatorWitnessDP.D 0` is empty, so
+a day-`0` plausible world may set `atom 1` freely while `atom 0` fails.  This is the proved
+obstruction that fixes `LUV.IsIndicator`'s quantifier at `PCWorld.ConsistentWithTheory`, and
+it is recorded here — with no consumer, deliberately — so that the quantifier is not silently
+re-tightened by a later reading of `app:ei`. -/
 lemma indicatorWitness_not_stagewise :
     ¬ ∀ n (v : PCWorld), v.ConsistentWith (indicatorWitnessDP.D n) → ∀ r : ℚ,
       0 ≤ (r : ℝ) → (r : ℝ) < 1 →
@@ -549,7 +596,5 @@ lemma indicatorWitness_not_stagewise :
   have := h 0 _ hv 0 (by norm_num) (by norm_num)
   simp [indicatorWitnessLUV, PCWorld.Holds,
     LO.Propositional.Formula.Boolean.val] at this
-
-#print axioms indicatorWitness_not_stagewise
 
 end LogicalInduction

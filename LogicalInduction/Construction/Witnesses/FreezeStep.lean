@@ -1,24 +1,35 @@
-/-
+import LogicalInduction.Construction.Machine.CondStep
+import LogicalInduction.Construction.Witnesses.RpnFreeze
+
+/-!
 # The finite-support freeze as a polynomial-time transduction
 
+`app:ifp` — the freeze pass as a `Complexity.FP` transduction over the flat RPN stream.
 `Properties/FinitePerturbations.lean` names the one `Complexity.FP` fact the machine-class
-patch still needs (`FreezeStreamRewriter`), and `RpnFreeze.freezeStreamRewriter_of_flatPass`
+patch requires (`FreezeStreamRewriter`), and `RpnFreeze.freezeStreamRewriter_of_flatPass`
 reduces it to a pass over the **flat** stream — the one a machine actually holds, since
 contracting would mean re-encoding each parsed sentence.  This file is that pass.
 
-It is a client of `Framework/Machine/TokenFold.lean`'s block fold, and it reuses the
-conditioning track's automaton wholesale: `CondStep.condStepR` *is* `rpnConditionRun`'s
-state machine, and `condStepW_mem_FP`, `condStepW_length_le`, `csPack_condStepR`,
-`csTokens_condStepR` and `bufWF_condStepR` are all emitter-generic.  Only
-`CondStep.condPass_mem_FP` bundles a particular emitter.  So the freeze contributes exactly
-one thing — its emitter — and everything else here is plumbing that emitter into the fold.
+## Objects
+
+`RunOracle` (the run-level lookup interface), `flatEmitW` / `flatEmitR` (the word- and
+block-level emitters), and the four lemmas `flatEmitW_mem_FP`, `flatEmitW_length_le`,
+`decodeBits_flatEmitR`, `decodeBits_freezePass`.
+
+What the module contributes is exactly one thing: its emitter.  Everything else is reuse —
+`Framework/Machine/TokenFold.lean`'s block fold, plus the conditioning track's automaton
+wholesale: `CondStep.condStepR` *is* `rpnConditionRun`'s state machine, and
+`condStepW_mem_FP`, `condStepW_length_le`, `csPack_condStepR`, `csTokens_condStepR` and
+`bufWF_condStepR` are emitter-generic.  Only `CondStep.condPass_mem_FP` bundles a particular
+emitter.
 
 ## The emitter's lookup
 
 `RunOracle` is the emitter's lookup: given the incoming day's token block and the buffered
 sentence run's bits, it returns the bits of `[1, quote, 8]` when the coordinate is selected
-and nothing when it is not.  `Construction/Witnesses/FreezeOracle.lean` builds one for any
-finite table (`runOracleOf`), so this is an interface rather than an open obligation.
+and nothing when it is not.  It is inhabited: `Construction/Witnesses/FreezeOracle.lean`
+builds one for any finite quote table (`runOracleOf`), so `freezeStreamRewriter_of_runOracle`
+closes the chain from a finite table to an inhabited `MachineFiniteSupportPatch`.
 
 Deciding whether a buffered run denotes a table sentence is what that construction does, and
 `RpnFreeze.parseRpn_iff_mem_spellings` is why it can: under two syntactic side conditions on
@@ -49,10 +60,8 @@ and the emission stays polynomial.  `flatEmitR` therefore computes
 `RpnFreeze.freezeEmitOn selRun quoteRun` exactly, with no clamp and no gap to close later.
 
 Everything here is construction infrastructure rather than a paper statement, so the
-declarations are `lemma`s.
+declarations are `lemma`s carrying `app:ifp` as supporting nodes.
 -/
-import LogicalInduction.Construction.Machine.CondStep
-import LogicalInduction.Construction.Witnesses.RpnFreeze
 
 namespace LogicalInduction.FreezeStep
 
@@ -71,7 +80,7 @@ bits of `[1, quote, 8]` when the price coordinate is selected and nothing when i
 `R_length_le` is the finite-table condition in complexity clothing; see this file's header
 for why it is load-bearing rather than convenient.
 
-**No instance of this structure exists in the repo.** -/
+Inhabited by `FreezeOracle.runOracleOf`, which builds one for any finite quote table. -/
 structure RunOracle (selRun : List ℕ → ℕ → Bool) (quoteRun : List ℕ → ℕ → ℕ) where
   /-- The oracle. -/
   R : List Bool → List Bool
@@ -118,8 +127,10 @@ lemma flatEmitW_eq (R : List Bool → List Bool) (W cli : List Bool) (cur : List
   rw [flatEmitW, flatEmitR]
   simp only [gvCli, gvTok, sndBlock_pair, fstBlock_pair]
 
-/-! ### What the emitter emits -/
+/-! ## What the emitter emits -/
 
+/-- The emitter's output is a whole number of complete blocks, so the fold's accumulated word
+stays decodable. -/
 lemma blockWF_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
     (E : RunOracle selRun quoteRun) (cli : List Bool) (cur : List ℕ)
     (hcur : ∀ d ∈ cur, d < 4) : BlockWF (flatEmitR E.R cli cur) := by
@@ -153,8 +164,10 @@ lemma decodeBits_flatEmitR {selRun : List ℕ → ℕ → Bool} {quoteRun : List
     split_ifs <;> simp
   · exact hdayd
 
-/-! ### Membership and the emission bound -/
+/-! ## Membership and the emission bound -/
 
+/-- The word-level emitter is polynomial time, from the oracle's own `FP` membership and
+`TokenFold`'s block projections. -/
 lemma flatEmitW_mem_FP {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
     (E : RunOracle selRun quoteRun) : flatEmitW E.R ∈ FP := by
   have hcli : gvCli ∈ FP := mem_FP_comp sndBlock_mem_FP fstBlock_mem_FP
@@ -193,6 +206,8 @@ lemma flatEmitW_length_le {selRun : List ℕ → ℕ → Bool} {quoteRun : List 
 
 /-! ## The freeze pass, decoded -/
 
+/-- Folding the emitter over a well-formed block sequence decodes to `rpnConditionRun` applied
+to the same tokens — the induction `decodeBits_freezePass` runs on. -/
 lemma decodeBits_runFold_freeze {selRun : List ℕ → ℕ → Bool} {quoteRun : List ℕ → ℕ → ℕ}
     (E : RunOracle selRun quoteRun) :
     ∀ (rs : List (List ℕ)) (cli out : List Bool),
@@ -278,10 +293,5 @@ lemma freezeStreamRewriter_of_runOracle {selRun : List ℕ → ℕ → Bool}
     hsel hq ?_
   intro F hF
   exact ⟨_, freezePass_mem_FP E hF, fun x => decodeBits_freezePass E _⟩
-
-#print axioms LogicalInduction.FreezeStep.decodeBits_flatEmitR
-#print axioms LogicalInduction.FreezeStep.freezePass_mem_FP
-#print axioms LogicalInduction.FreezeStep.decodeBits_freezePass
-#print axioms LogicalInduction.FreezeStep.freezeStreamRewriter_of_runOracle
 
 end LogicalInduction.FreezeStep

@@ -1,43 +1,45 @@
-/-
-# One code formula, two value fibers: provable exclusivity for quoted decisions
-
-The quotation apparatus (`Construction/Witnesses/QuotationAffine.lean`) names a Boolean
-decision by a *positive* and a *negative* arithmetic schema and needs the two never to be
-provable together.  Building them as two independent r.e. schemas (`codeOfREPred`) makes
-their exclusivity a fact about the **standard model** only, which is why the quotation
-family used to carry `[T.SoundOnHierarchy 𝚺 1]`.
-
-This file supplies the soundness-free replacement.  Both schemas come from the *same*
-Foundation `code c` formula for one partial recursive function, read at two different
-values: `valueSchema c 1` and `valueSchema c 0`.  Single-valuedness of `code c` in every
-model of `𝗣𝗔⁻` (`code_uniq`) plus Gödel completeness then make exclusivity a *theorem of
-the theory*, so the quotation tag closes from consistency exactly like the halting tags.
-
-Two directions, two strengths:
-
-* `valueSchema_prov` (a true value is provable) is Σ₁-completeness — `[𝗥₀ ⪯ T]` only.
-* `valueSchema_exclusive_prov` (two different values are refutable together) is
-  `code_uniq` + `Arithmetic.complete` — `[𝗣𝗔⁻ ⪯ T]`, for the reason recorded at
-  `codeAux_uniq`: the `rfind` case needs `<` to be linear.
-
-`codeAux_uniq`/`code_uniq` are Foundation's own commented-out lemmas
-(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), revived and
-reproved here **at their original `𝗣𝗔⁻` hypothesis**.  The `𝗥₀` in the commented text is
-not the statement they were retired from: Foundation commit 593d63d8 commented the block
-out *and* weakened `𝗣𝗔⁻` to `𝗥₀` in one stroke, so the visible `𝗥₀` version never
-compiled.  This revival restores the hypothesis the lemmas actually had, and the reason
-they had it is the `rfind` case below.  They were first revived in
-`Construction/Witnesses/R0Representability.lean`; they live here now so that both that
-file and the quotation layer can cite one copy.
--/
 import LogicalInduction.Framework.RepresentsComputations
 import Foundation.FirstOrder.Arithmetic.R0.Representation
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
 import Foundation.FirstOrder.Arithmetic.Induction
 
+/-!
+# One code formula, two value fibers: provable exclusivity for quoted decisions
+
+The quotation apparatus (`Construction/Witnesses/QuotationAffine.lean`) names a Boolean
+decision by a *positive* and a *negative* arithmetic schema and needs the two never to be
+provable together. Building them as two independent r.e. schemas (`codeOfREPred`) makes
+their exclusivity a fact about the **standard model** only, which would force a
+`[T.SoundOnHierarchy 𝚺 1]` binder on the whole quotation family. This module is the
+soundness-free alternative.
+
+Both schemas come from the *same* Foundation `code c` formula for one partial recursive
+function, read at two different values: `valueSchema c 1` and `valueSchema c 0`.
+Single-valuedness of `code c` in every model of `𝗣𝗔⁻` (`code_uniq`) plus Gödel
+completeness make exclusivity a *theorem of the theory*, so the quotation tag closes from
+consistency exactly like the halting tags.
+
+* `valueSchema c y` is "the computation coded by `c` returns `y` on input `#0`": `code c`
+  carries the value at `#0` and the argument at `#1`, so fixing the value slot leaves a
+  one-variable schema in the argument. With `valueSchema_subst`, `valueSchema_sigma_one`
+  and `models_valueSchema`.
+* `valueSchema_prov` — a true value fact is provable, by Σ₁-completeness alone: `[𝗥₀ ⪯ T]`.
+* `valueSchema_exclusive_prov` — two different value fibers of the same code formula are
+  refuted together in any extension of `𝗣𝗔⁻`; `code_uniq` plus Gödel completeness.
+
+`codeAux_uniq` and `code_uniq` are Foundation's own lemmas
+(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), which are
+commented out upstream; they are reproved here at `𝗣𝗔⁻`. `𝗣𝗔⁻` is what the `rfind` case
+needs — its `wlog z < z'` step requires `<` to be linear on `M`, which `𝗥₀` does not
+provide. One copy serves both `Construction/Witnesses/R0Representability.lean` and the
+quotation layer.
+-/
+
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
+
+/-! ## Single-valuedness of a code formula -/
 
 section Uniq
 
@@ -45,14 +47,9 @@ open Nat.ArithPart₁
 
 variable {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻]
 
-/-- Single-valuedness of `codeAux c` in every model of `𝗣𝗔⁻`.
-
-This is Foundation's commented-out `codeAux_uniq`
-(`Foundation/FirstOrder/Arithmetic/R0/Representation.lean`, lines 115–162), revived and
-reproved at its **original** `𝗣𝗔⁻` hypothesis — the `𝗥₀` visible in the commented text is
-dead code that never compiled (commit 593d63d8 commented the block out and weakened
-`𝗣𝗔⁻` to `𝗥₀` together).  `𝗣𝗔⁻` is exactly what the `rfind` case needs: the `wlog z < z'`
-step requires `<` to be linear on `M`, which `𝗥₀` does not provide.
+/-- Single-valuedness of `codeAux c` in every model of `𝗣𝗔⁻` (see the module header for
+the provenance).  `𝗣𝗔⁻` is exactly what the `rfind` case needs: the `wlog z < z'` step
+requires `<` to be linear on `M`, which `𝗥₀` does not provide.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
 `codeAux`, `PeanoMinus`'s `LinearOrder` on models. -/
@@ -93,9 +90,8 @@ lemma codeAux_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
     rcases this with ⟨x, xz, hx⟩
     exact xz (ih hx h₁)
 
-/-- Single-valuedness of `code c` in every model of `𝗣𝗔⁻` — Foundation's commented-out
-`code_uniq`, revived at the `𝗣𝗔⁻` hypothesis it originally carried (see the file header:
-the `𝗥₀` in the commented text is dead code from the commit that retired the block).
+/-- Single-valuedness of `code c` in every model of `𝗣𝗔⁻` (see the module header for the
+provenance).
 
 Kind `C` (composition) over `codeAux_uniq`. -/
 lemma code_uniq {k} {c : Code k} {v : Fin k → M} {z z' : M} :
@@ -137,6 +133,8 @@ lemma models_valueSchema {c : Code 1} {g : List.Vector ℕ 1 →. ℕ} (hc : c.e
   rw [valueSchema_subst]
   simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton]
     using models_code hc y ![z]
+
+/-! ## The two literals -/
 
 /-- **The positive literal.**  A true value fact is provable, by Σ₁-completeness alone.
 

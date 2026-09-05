@@ -1,28 +1,39 @@
-/-
+import LogicalInduction.Framework.Criterion
+import Mathlib.Topology.Compactness.Compact
+import Mathlib.Topology.Constructions
+import Mathlib.Topology.Order
+
+/-!
 # Compactness — one world for the whole deductive process
 
 Propositional compactness in the exact form the criterion consumes: if every finite stage
 of a deductive process has a propositionally consistent world, then a *single* world is
 consistent with every stage (`PCWorld.ConsistentWithTheory`).
 
-The route is Cantor space, not a proof calculus.  A `PCWorld` is an atom valuation
+The route is Cantor space, not a proof calculus. A `PCWorld` is an atom valuation
 `ℕ → Prop` read through Foundation's Boolean evaluation, so it is a point of `ℕ → Bool` up
-to atomwise equality.  For each sentence `φ` the truth set `{b | (ofBits b).Holds φ}` is
-clopen — by induction on `φ`, atoms being preimages of clopens under coordinate
-projections — hence each stage's consistency set is a finite intersection of clopens, so
-closed.  The stage sets are nested and nonempty by hypothesis, and `ℕ → Bool` is compact
-(Tychonoff over the finite discrete `Bool`), so Cantor's intersection theorem supplies a
-point of every stage set at once.
+to atomwise equality (`PCWorld.exists_bits`). For each sentence `φ` the truth set
+`{b | (ofBits b).Holds φ}` is clopen — by induction on the connectives, atoms being
+preimages of clopens under coordinate projections (`PCWorld.isClopen_setOf_holds`) — hence
+each stage's consistency set is a finite intersection of clopens, so closed
+(`PCWorld.isClosed_setOf_consistentWith`). The stage sets are nested and nonempty by
+hypothesis, and `ℕ → Bool` is compact (Tychonoff over the finite discrete `Bool`), so
+Cantor's intersection theorem supplies a point of every stage set at once.
+
+Two endpoints come out:
+
+* `DeductiveProcess.exists_consistentWithTheory` — one world consistent with every stage.
+  It is what lets the growing form of `thm:scon` be stated with no joint-consistency
+  premise; the explanation is at the lemma.
+* `DeductiveProcess.exists_stage_entails` — the finite-consequence form: a semantic
+  consequence of the completed theory is already forced by one finite stage. Consumed by
+  `Properties/FinitePerturbationCounterexample.lean` to close the settlement gap in the
+  `thm:ifp` refutation.
 
 Kind `P`; hypotheses `(a)` (Mathlib's Cantor intersection theorem and Foundation's atomwise
-evaluation congruence — provenance `(b)` citations).  This module exists to *delete* a
-repo-side joint-consistency hypothesis from the growing form of `thm:scon`, so it is
-infrastructure and carries no paper node of its own.
+evaluation congruence — provenance `(b)` citations). The module is infrastructure and
+carries no paper node of its own.
 -/
-import LogicalInduction.Framework.Criterion
-import Mathlib.Topology.Compactness.Compact
-import Mathlib.Topology.Constructions
-import Mathlib.Topology.Order
 
 namespace LogicalInduction
 
@@ -30,12 +41,14 @@ open LO.Propositional
 
 namespace PCWorld
 
+/-! ## Worlds as points of Cantor space -/
+
 /-- A point of Cantor space read as a p.c. world. -/
-private def ofBits (b : ℕ → Bool) : PCWorld := fun i => b i = true
+def ofBits (b : ℕ → Bool) : PCWorld := fun i => b i = true
 
 /-- Every p.c. world agrees with some Cantor point on every sentence.  Uses Foundation's
 atomwise congruence for Boolean evaluation. -/
-private lemma exists_bits (v : PCWorld) :
+lemma exists_bits (v : PCWorld) :
     ∃ b : ℕ → Bool, ∀ φ : Sentence, (ofBits b).Holds φ ↔ v.Holds φ := by
   classical
   refine ⟨fun i => decide (v i), fun φ => ?_⟩
@@ -45,9 +58,11 @@ private lemma exists_bits (v : PCWorld) :
     (v := ofBits (fun i => decide (v i))) (u := v) hatom (φ := φ)
   simpa [Holds, Formula.Boolean.models_iff_val] using this
 
+/-! ## Truth sets are clopen -/
+
 /-- The truth set of a sentence is clopen in Cantor space: each sentence depends on
 finitely many atoms, expressed here as a direct induction over the connectives. -/
-private lemma isClopen_setOf_holds (φ : Sentence) :
+lemma isClopen_setOf_holds (φ : Sentence) :
     IsClopen {b : ℕ → Bool | (ofBits b).Holds φ} := by
   induction φ with
   | atom a =>
@@ -79,7 +94,7 @@ private lemma isClopen_setOf_holds (φ : Sentence) :
       rw [hset]; exact ihφ.union ihψ
 
 /-- A stage's consistency set is closed: a finite intersection of the clopen truth sets. -/
-private lemma isClosed_setOf_consistentWith (D : Finset Sentence) :
+lemma isClosed_setOf_consistentWith (D : Finset Sentence) :
     IsClosed {b : ℕ → Bool | (ofBits b).ConsistentWith D} := by
   have hset : {b : ℕ → Bool | (ofBits b).ConsistentWith D}
       = ⋂ φ, ⋂ _ : φ ∈ D, {b : ℕ → Bool | (ofBits b).Holds φ} := by
@@ -89,6 +104,8 @@ private lemma isClosed_setOf_consistentWith (D : Finset Sentence) :
     isClosed_iInter fun _ => (isClopen_setOf_holds φ).isClosed
 
 end PCWorld
+
+/-! ## Compactness for deductive processes -/
 
 /-- **Propositional compactness for deductive processes.**  If every finite stage of `DP`
 admits a propositionally consistent world, one world is consistent with *every* stage.
@@ -101,7 +118,7 @@ lemma DeductiveProcess.exists_consistentWithTheory (DP : DeductiveProcess)
     (h : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ v : PCWorld, v.ConsistentWithTheory DP := by
   set t : ℕ → Set (ℕ → Bool) :=
-    fun n => {b | (PCWorld.ofBits b).ConsistentWith (DP.D n)} with ht
+    fun n => {b | (PCWorld.ofBits b).ConsistentWith (DP.D n)}
   have htd : ∀ i, t (i + 1) ⊆ t i := by
     intro i b hb φ hφ; exact hb φ (DP.mono i hφ)
   have htn : ∀ i, (t i).Nonempty := by
@@ -129,7 +146,7 @@ lemma DeductiveProcess.exists_stage_entails (DP : DeductiveProcess) (phi : Sente
   push Not at hstage
   set t : ℕ → Set (ℕ → Bool) := fun n =>
     {b | (PCWorld.ofBits b).ConsistentWith (DP.D n) ∧
-      ¬ (PCWorld.ofBits b).Holds phi} with ht
+      ¬ (PCWorld.ofBits b).Holds phi}
   have htd : ∀ i, t (i + 1) ⊆ t i := by
     intro i b hb
     exact ⟨fun psi hpsi => hb.1 psi (DP.mono i hpsi), hb.2⟩

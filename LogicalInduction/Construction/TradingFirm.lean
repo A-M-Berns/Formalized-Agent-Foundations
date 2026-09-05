@@ -1,18 +1,54 @@
-/-
-# Trading firm (`def:tradingfirm`, `lem:tfdom`)
-
-The paper writes the firm as a doubly-infinite geometric mixture.  Its day action is
-nevertheless a finite strategy: only traders whose gate has opened can trade, and all
-sufficiently large budgets reproduce the raw gated trader.  This file makes the uniform
-cutoff used by that compression executable from the expressible-feature syntax.
--/
 import LogicalInduction.Construction.Budgeter
 import LogicalInduction.Framework.MachineEfficiency
 import LogicalInduction.Properties.FinitePerturbations
 
+/-!
+# `eq:tradingfirm` — the Trading Firm and its dominance lemma
+
+This module renders §5's TradingFirm: the definition at tex:2551-2558 (`eq:tradingfirm`)
+and Trading Firm Dominance (`lem:tfdom`, tex:2588).
+
+The paper writes the firm as the doubly-infinite geometric mixture
+`∑_k ∑_b 2^{-k-b} · Budgeter^DP_n(b, S^k, ·)`.  Its day action is nevertheless a finite
+strategy, because only traders whose gate has opened can trade and all sufficiently large
+budgets reproduce the raw gated trader.
+
+It defines the syntactic absolute bound `EF.absBound` / `Strategy.absBound`, which is what
+makes the uniform cutoff executable from the expressible-feature syntax (`dd:dsl`); the gate
+`Trader.gate` (the paper's `S^k`); the cutoff `tradingFirmTotalBound` /
+`tradingFirmCutoff` (the paper's `C_n`); the weights `tradingFirmWeight`; the day action
+`TradingFirmAt`; and the realizations `TradingFirm` (adaptive) and `tradingFirmTrader`
+(static).
+
+The main results are `trading_firm_dominance_of_covered` (the covered-index core),
+`trading_firm_dominance` (`lem:tfdom` at the machine quantifier) and its fuel-certified
+corollary `trading_firm_dominance_of_ec`.  `trading_firm_dominance` is consumed by
+`Construction/LIA.lean`; the operational and trade-list forms are consumed by
+`Construction/LIAComputation.lean` and `Construction/LIACompiler.lean`.
+
+The class quantified over is `MachineEfficientTrader` — `def:ec` at the paper's own
+quantifier — and the enumeration it is read through, together with the coverage theorem
+`exists_enumeratedTrader_eq`, comes from `Construction/MachineTraderEnumeration.lean`.
+
+The quantitative engine is `tradingFirmTrader_residual_floor`: the firm keeps the uniform
+downside `-2` even after removing any one weighted positive-budget component, which is what
+lets a single exploiting Budgeter drive the whole firm's upside above every bound.
+
+Two conventions are worth naming.  `tradingFirmWeight j b = 2^-(j+1+b)` is the paper's
+`2^{-k-b}` at 0-based enumeration indices (`k = j+1`), with budgets positive integers
+throughout.  And `tradingFirmTotalBound` intentionally sums over all candidates and all
+days: the redundancy makes each individual bound an immediate summand and keeps the
+calculation finite and executable.
+-/
+
 namespace LogicalInduction
 
 open Classical
+
+/-! ## Absolute bounds on features and strategies
+
+The cutoff `C_n` has to be computed from syntax, so both the feature language and strategies
+carry a syntactic absolute bound that is sound for every `[0,1]` market. -/
 
 namespace EF
 
@@ -150,6 +186,7 @@ against a `[0,1]` payout table. -/
 def absBound {n : ℕ} (T : Strategy n) : ℚ :=
   (T.trades.map fun p => p.1.absBound).sum
 
+/-- The trade-list spelling of `Strategy.absBound`, for the first-order compiler path. -/
 def tradeListAbsBound (trades : List (EF × Sentence)) : ℚ :=
   (trades.map fun p => p.1.absBound).sum
 
@@ -210,6 +247,11 @@ lemma scaleConst_value {n : ℕ} (q : ℚ) (T : Strategy n)
   simp [scaleConst, Strategy.scaleBy_value]
 
 end Strategy
+
+/-! ## Gated traders
+
+`Trader.gate k` is the paper's `S^k`: the trader silenced before day `k`.  Gating changes a
+trader's net worth by a bounded amount, so it preserves exploitation. -/
 
 namespace Trader
 
@@ -279,6 +321,8 @@ end Trader
 /-- The gated `j`th trader in the concrete redundant enumeration. -/
 def firmRawTrader (j : ℕ) : Trader := (enumeratedTrader j).gate j
 
+/-! ## The uniform cutoff `C_n` -/
+
 /-- A uniform rational bound for every prefix of every gate opened by day `n`.  Summing
 all candidates and all days is intentionally redundant: it makes each individual bound
 an immediate summand and remains a completely executable finite calculation. -/
@@ -290,11 +334,13 @@ def tradingFirmTotalBound (n : ℕ) : ℚ :=
 def tradingFirmCutoff (n : ℕ) : ℕ :=
   ⌈tradingFirmTotalBound n⌉₊ + 1
 
+/-- The trade-list spelling of `tradingFirmTotalBound`. -/
 def tradingFirmTotalBoundTradeLists (n : ℕ) : ℚ :=
   ∑ j ∈ Finset.range (n + 1),
     ∑ i ∈ Finset.range (n + 1),
       Strategy.tradeListAbsBound ((firmRawTrader j).strat i).trades
 
+/-- The trade-list spelling of `tradingFirmCutoff`. -/
 def tradingFirmCutoffTradeLists (n : ℕ) : ℕ :=
   ⌈tradingFirmTotalBoundTradeLists n⌉₊ + 1
 
@@ -320,6 +366,10 @@ lemma tradingFirmTotalBound_lt_cutoff (n : ℕ) :
   have hceil := Nat.le_ceil (tradingFirmTotalBound n)
   exact lt_of_le_of_lt hceil
     (by exact_mod_cast Nat.lt_succ_self ⌈tradingFirmTotalBound n⌉₊)
+
+/-! ## Geometric budget weights
+
+The weights and the wealth bound they have to dominate at the cutoff. -/
 
 /-- The 0-based form of the paper's weight `2^{-k-b}`: enumeration index `j`
 corresponds to paper index `k=j+1`, while budgets remain positive integers. -/
@@ -372,21 +422,6 @@ lemma tradingFirmBudgetCost_hasSum (j : ℕ) :
     norm_num
     ring
 
-lemma strategyBound_le_total {j i n : ℕ} (hj : j ≤ n) (hi : i ≤ n) :
-    ((firmRawTrader j).strat i).absBound ≤ tradingFirmTotalBound n := by
-  have hiMem : i ∈ Finset.range (n + 1) := by simp; omega
-  have hjMem : j ∈ Finset.range (n + 1) := by simp; omega
-  have hinner : ((firmRawTrader j).strat i).absBound ≤
-      ∑ d ∈ Finset.range (n + 1), ((firmRawTrader j).strat d).absBound :=
-    Finset.single_le_sum
-      (fun d _ => Strategy.absBound_nonneg ((firmRawTrader j).strat d)) hiMem
-  have houter : (∑ d ∈ Finset.range (n + 1),
-      ((firmRawTrader j).strat d).absBound) ≤ tradingFirmTotalBound n := by
-    unfold tradingFirmTotalBound
-    exact Finset.single_le_sum (fun k _ => Finset.sum_nonneg (fun d _ =>
-      Strategy.absBound_nonneg ((firmRawTrader k).strat d))) hjMem
-  exact hinner.trans houter
-
 lemma firmRaw_netWorth_abs_lt_cutoff (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     {j m n : ℕ} (hj : j ≤ n) (hm : m ≤ n) (v : PCWorld) :
@@ -428,6 +463,11 @@ lemma firmRaw_netWorth_abs_lt_cutoff (P : History)
     _ ≤ (tradingFirmTotalBound n : ℝ) := hinner
     _ < (tradingFirmCutoff n : ℝ) := by
       exact_mod_cast tradingFirmTotalBound_lt_cutoff n
+
+/-! ## The component decomposition
+
+One enumeration index contributes explicit budgets up through `C_n` plus a closed-form
+geometric tail; the day action joins those contributions over all open indices. -/
 
 /-- The finite list of explicitly retained positive-budget components for `(j,n)`. -/
 def tradingFirmBudgetComponents (DP : DeductiveProcess)
@@ -475,7 +515,9 @@ lemma tradingFirmComponentAt_eq_of_eq_prefix
   unfold tradingFirmComponentAt
   rw [tradingFirmBudgetComponents_eq_of_eq_prefix DP Q R n j hQR]
 
-/-- `def:tradingfirm`: the finite exact day strategy corresponding to the paper's
+/-! ## `eq:tradingfirm` — the day action -/
+
+/-- `eq:tradingfirm`: the finite exact day strategy corresponding to the paper's
 doubly-infinite geometric mixture. -/
 def TradingFirmAt (DP : DeductiveProcess) (Q : ℕ → Sentence → ℚ)
     (n : ℕ) : Strategy n :=
@@ -488,29 +530,39 @@ def TradingFirmAtFromStages (D : ℕ → Finset Sentence)
   Strategy.join ((List.range (n + 1)).map fun j =>
     tradingFirmComponentAtFromStages D Q n j)
 
-/-! Fully first-order Boolean-list counterparts used by the concrete compiler. -/
+/-! ### Operational finite-stage and trade-list forms
 
+The recursive market program receives decoded finite stages and raw trade lists, not a
+semantic `DeductiveProcess` oracle, so every object above has a counterpart here whose
+inputs and outputs are fixed first-order data.  Each is proved equal to the semantic form
+it mirrors. -/
+
+/-- The Boolean-list rung of `tradingFirmBudgetComponents`. -/
 def tradingFirmBudgetComponentsFromStageLists (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n j : ℕ) : List (Strategy n) :=
   (List.range (tradingFirmCutoff n)).map fun r =>
     (BudgeterAtFromStageLists D (firmRawTrader j) (r + 1) Q n).scaleConst
       (tradingFirmWeight j (r + 1))
 
+/-- The Boolean-list rung of `tradingFirmComponentAt`. -/
 def tradingFirmComponentAtFromStageLists (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n j : ℕ) : Strategy n :=
   Strategy.join (tradingFirmBudgetComponentsFromStageLists D Q n j ++
     [((firmRawTrader j).strat n).scaleConst
       (tradingFirmWeight j (tradingFirmCutoff n))])
 
+/-- The Boolean-list rung of the day action `TradingFirmAt`. -/
 def TradingFirmAtFromStageLists (D : ℕ → Finset Sentence)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Strategy n :=
   Strategy.join ((List.range (n + 1)).map fun j =>
     tradingFirmComponentAtFromStageLists D Q n j)
 
+/-- Scale every trade of a raw trade list by a rational constant, as a trade list. -/
 def scaleConstTradeList (q : ℚ) (trades : List (EF × Sentence)) :
     List (EF × Sentence) :=
   trades.map fun p => (.mul (.const q) p.1, p.2)
 
+/-- The fully erased trade-list rung of `tradingFirmComponentAt`. -/
 def tradingFirmComponentTradesFromStageTradeLists
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ)
     (n j : ℕ) : List (EF × Sentence) :=
@@ -521,6 +573,7 @@ def tradingFirmComponentTradesFromStageTradeLists
     scaleConstTradeList (tradingFirmWeight j (tradingFirmCutoffTradeLists n))
       ((firmRawTrader j).strat n).trades
 
+/-- The fully erased trade-list rung of the day action `TradingFirmAt`. -/
 def tradingFirmTradesFromStageTradeLists
     (D : ℕ → Finset Sentence) (Q : ℕ → Sentence → ℚ)
     (n : ℕ) : List (EF × Sentence) :=
@@ -629,6 +682,8 @@ lemma TradingFirmAt_eq_of_eq_prefix
   apply List.map_congr_left
   intro j _hj
   exact tradingFirmComponentAt_eq_of_eq_prefix DP Q R n j hQR
+
+/-! ## Realizations and the component sum -/
 
 /-- Adaptive form consumed by the recursive LIA construction. -/
 def TradingFirm (DP : DeductiveProcess) : AdaptiveTrader where
@@ -825,6 +880,8 @@ lemma tradingFirmComponentTrader_netWorth_hasSum
     unfold Trader.netWorth budgetedTrader
     rw [Finset.mul_sum]
 
+/-! ## The uniform `-2` floor and its residual form -/
+
 /-- Each fixed enumerated-trader component has downside at most its total geometric
 budget mass `2^{-j}`. -/
 lemma tradingFirmComponentTrader_netWorth_floor
@@ -982,6 +1039,8 @@ lemma tradingFirmTrader_residual_floor
       (by omega) hnj v, mul_zero, sub_zero]
     exact tradingFirmTrader_netWorth_floor DP P hP Q hQ n v hv
 
+/-! ## `lem:tfdom` — Trading Firm Dominance -/
+
 /-- **Trading Firm Dominance, covered-index core** (`lem:tfdom`).  On any rational
 `[0,1]` market, if a trader *occurring in the enumeration* exploits the market, the
 concrete finite TradingFirm also exploits it.  The proof selects the trader's enumerated
@@ -1020,13 +1079,10 @@ theorem trading_firm_dominance_of_covered
     apply (le_div_iff₀ hweight).2
     linarith
 
-/-- **Trading Firm Dominance** (`lem:tfdom`): an exploiting machine-efficient trader makes
-the firm exploit — the enumeration covers the whole class.
-
-The class is `MachineEfficientTrader`: ordinary machine polynomial time, through
-`Complexity.FP`. Every trader the fuel calculus certifies is one of these
-(`EfficientlyComputable.toMachine`), so the fuel-certified corollary is immediate; it is
-stated as `trading_firm_dominance_of_ec`, immediately below.
+/-- **Trading Firm Dominance** (`lem:tfdom`): if any machine-efficient trader exploits the
+market then the Trading Firm exploits it too.  The class is `MachineEfficientTrader`
+(`def:ec`), and the enumeration covers all of it.  Its instance at the fuel certificates
+(`dd:fuel`) is `trading_firm_dominance_of_ec`.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
     (DP : DeductiveProcess) (P : History)
@@ -1039,9 +1095,9 @@ theorem trading_firm_dominance
   trading_firm_dominance_of_covered DP P hP Q hQ Tr
     (exists_enumeratedTrader_eq Tr hTr) hEx
 
-/-- The fuel-certified corollary of Trading Firm Dominance. The primary statement is
-`trading_firm_dominance`, over the machine class; this is the instance the fuel calculus's
-certificates feed.
+/-- The fuel-certified corollary of Trading Firm Dominance.  The primary statement is
+`trading_firm_dominance`, over the machine class (`def:ec`); this is the instance the fuel
+certificates (`dd:fuel`) feed, through `EfficientlyComputable.toMachine`.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance_of_ec
     (DP : DeductiveProcess) (P : History)
@@ -1052,10 +1108,5 @@ theorem trading_firm_dominance_of_ec
     (hEx : Tr.Exploits P DP) :
     (tradingFirmTrader DP Q).Exploits P DP :=
   trading_firm_dominance DP P hP Q hQ Tr hTr.toMachine hEx
-
-#print axioms tradingFirmWeight_tail_hasSum
-#print axioms tradingFirmComponentAt_value_hasSum
-#print axioms tradingFirmTrader_residual_floor
-#print axioms trading_firm_dominance
 
 end LogicalInduction

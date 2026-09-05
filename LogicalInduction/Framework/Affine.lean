@@ -1,17 +1,3 @@
-/-
-# Affine combinations
-
-Hosts `def:tradermag` (`Strategy.magnitude`, `Trader.magnitude`) with the trade
-value/net-worth bounds, `def:roi`, and the affine-combination syntax `def:affcomsen`
-consumed by the affine property proofs in `Properties/` (affine coherence, provability,
-persistence, preemptive learning) and by the expectation lifts built on them.
-
-The paper's affine results trade expressions `c + Σ eᵢ φᵢ`.  A trade contains only the
-sentence coefficients: buying the combination on day `n` automatically contributes the
-cash term `-Pₙ(c + Σ eᵢ φᵢ)`, so the explicit affine constant cancels.  Keeping the
-combination as syntax is nevertheless essential: its price and its value in a world are the
-objects compared by affine provability/preemptive learning.
--/
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Computable
@@ -19,11 +5,77 @@ import LogicalInduction.Framework.WriteOut
 import LogicalInduction.Framework.RpnEmission
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
+/-!
+# Affine combinations, magnitude and return on investment
+
+Renders the trader-level accounting `def:tradermag` (tex:3532) and `def:roi` (tex:3548)
+together with the affine syntax `def:affcomsen` (tex:878) and its uniformly generated
+sequences, `def:ec` (tex:753) and `def:bap` (tex:1374).
+
+## What the module defines
+
+* `Strategy.magnitude` and `Trader.magnitude` (`def:tradermag`): the total absolute share
+  volume, the constant (cash) term omitted.  `Strategy.abs_value_le_magnitude` is the tool
+  behind every return estimate — in a market priced in `[0,1]` a strategy's value in any
+  `{0,1}`-world is bounded by its magnitude, a share being worth at most `1` and costing at
+  least `0`.
+* `HasROI` (`def:roi`), with `Trader.Matured` and `HasROI.exists_matured`: the finite-stage
+  form of ε-return that the repeatable-ROI budgeter consumes.
+* `Trader.not_exploits_of_stage_unsatisfiable` and
+  `isLogicalInductor_of_stage_unsatisfiable` (`thm:scon`): nobody exploits a deductive
+  process one of whose stages is propositionally unsatisfiable, so the criterion holds
+  there once the market and the process are computable.  This is the degenerate branch of
+  Closure Under Conditioning, the case that arises when the extended theory is
+  inconsistent.
+* `AffineCombination` (`def:affcomsen`): the expression `c + Σ eᵢ φᵢ` with
+  expressible-feature coefficients, with its `value` in a valuation, its market `price`,
+  its share `magnitude` and the paper's `L¹` norm `l1Norm`, and the bounds relating them.
+* `AffineCombination.PolySequence` (`def:ec`), the emission certificate for a uniformly
+  generated rank-legal sequence of affine combinations, and `BoundedCombinationSequence`
+  (`def:bap`), its `L¹`-bounded form.  The closure operations `PolySequence.scaleRat`,
+  `PolySequence.neg` and `PolySequence.shift` are here; the algebra is completed
+  downstream by `PolySequence.addConst` (`Properties/AffinePersistence.lean`),
+  `PolySequence.addConstEF` (`Construction/Witnesses/LUVSyntax.lean`) and
+  `PolySequence.add` (`Construction/Witnesses/QuotationAffine.lean`).
+* The reified features `priceFeature`, `absFeature`, `magnitudeFeature` and `riskFeature`
+  (`dd:dsl`), each with its serialization, uniform emission, denotation, rank and
+  closedness lemmas: the objects the affine property proofs emit and meter.
+* The finite round trips `buy` and `roundTrip`, whose world-independent payoff is what the
+  affine-preemptive-learning trader is assembled from.
+
+The results are consumed by the affine property proofs in `Properties/` (affine coherence,
+provability, persistence, preemptive learning), by the expectation lifts built on them, and
+by the representation witnesses in `Construction/Witnesses/`.
+
+## Design
+
+* An affine combination is kept as *syntax* rather than as a function: its price and its
+  value in a world are the objects the affine results compare, and its coefficients have to
+  be emitted and metered (`dd:dsl`).
+* Repeated sentences are allowed, matching `Strategy`; normalization is not needed for the
+  value and magnitude arguments.
+* A trade carries only the sentence coefficients.  Buying the combination on day `n`
+  contributes the cash term `-Pₙ(c + Σ eᵢ φᵢ)` of its own accord, so the affine constant
+  cancels and carries no risk.
+* `HasROI` carries an explicit summability clause.  Mathlib defines the `tsum` of a
+  non-summable series to be `0`, so without that clause a trader of infinite risk would
+  claim zero magnitude and satisfy the predicate vacuously.
+* `HasROI` states its inequality uniformly over the worlds plausible at late times.  The
+  paper states the limit inequality over the worlds consistent with the completed theory
+  and derives this operational form by compactness plus enumeration of the deductive
+  process; the propositional substrate packages neither the completed theory nor a
+  computability witness for the process, so the uniform form is carried explicitly.  It is
+  exactly the form the maturity search consumes.
+* `PolySequence` exposes term count, coefficients and sentences separately instead of a
+  single serialized value, so a uniform transformation of an affine family can emit
+  coefficient and sentence codes without decoding one.
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
 
-/-! ## `def:tradermag` — Magnitude
+/-! ## Magnitude (`def:tradermag`)
 
 The magnitude of a trade is the total number of shares it moves, `∑_φ |T[φ](𝓥)|` — the
 constant (cash) term omitted. It is the "investment" against which return is measured. -/
@@ -76,36 +128,36 @@ magnitude); the `def:roi` predicate below is what consumes it. -/
 noncomputable def Trader.magnitude (Tr : Trader) (V : History) : ℝ :=
   ∑' n, (Tr.strat n).magnitude V
 
-/-! ## `def:roi` — ε-Return on Investment -/
+/-! ## Return on investment (`def:roi`) -/
 
 /-- `def:roi`. A trader has **ε return on investment** against `V` relative to `DP` when
-its total share magnitude is finite and, uniformly over worlds still plausible at late
-times, its net worth is eventually at least `(ε-η)` times that magnitude for every `η>0`.
+its total share magnitude is finite and, for every `η > 0`, its net worth is eventually at
+least `(ε - η)` times that magnitude in every world plausible on the day in question.
 
-The paper states the limit inequality over all worlds consistent with the completed theory
-and derives this operational form by compactness plus enumeration of `DP`. Our propositional
-substrate does not package the completed theory or a computability witness for `DP`, so the
-uniform plausible-world form is carried explicitly. It is exactly the form the repeatable-ROI
-maturity search consumes, and avoids silently assuming an unavailable uniformization lemma. -/
+Two clauses the paper does not write are carried explicitly, for the reasons given in the
+module docstring: summability of the strategy magnitudes, and uniformity of the inequality
+over plausible worlds in place of the paper's limit over the worlds consistent with the
+completed theory. -/
 def HasROI (Tr : Trader) (V : History) (DP : DeductiveProcess) (ε : ℝ) : Prop :=
   Summable (fun n => (Tr.strat n).magnitude V) ∧
     ∀ η : ℝ, 0 < η → ∃ N, ∀ n, N ≤ n → ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) → (ε - η) * Tr.magnitude V ≤ Tr.netWorth V v n
 
-/-! ### Finite-magnitude risk bound
+/-! ### Finite-magnitude risk bounds
 
-The summability clause above is load-bearing. In Mathlib, `tsum` of a non-summable real
-series is defined as `0`; omitting summability would therefore let an infinite-risk trader
-claim zero magnitude. The following lemmas turn genuine finite magnitude into the uniform
-lower bound required by `Exploits`. -/
+These lemmas turn a genuinely finite total magnitude — the point of `HasROI`'s summability
+clause — into the uniform lower bound on net worth that `Trader.Exploits` requires, by way
+of the partial sums of the strategy magnitudes. -/
 
+/-- Every partial sum of strategy magnitudes is bounded by the total. -/
 lemma Trader.partial_magnitude_le (Tr : Trader) (V : History)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) (n : ℕ) :
     ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V ≤ Tr.magnitude V := by
   exact hmag.sum_le_tsum _ (fun i _ => Strategy.magnitude_nonneg (Tr.strat i) V)
 
-/-- Magnitude is nonnegative (including Mathlib's zero value for a divergent nonnegative
-series; finiteness is still required everywhere that magnitude represents actual risk). -/
+/-- Magnitude is nonnegative, including at Mathlib's zero value for a divergent
+nonnegative series; finiteness is a separate hypothesis wherever magnitude has to represent
+actual risk. -/
 lemma Trader.magnitude_nonneg (Tr : Trader) (V : History) : 0 ≤ Tr.magnitude V := by
   exact tsum_nonneg (fun n => Strategy.magnitude_nonneg (Tr.strat n) V)
 
@@ -157,8 +209,8 @@ lemma HasROI.exists_matured {Tr : Trader} {V : History} {DP : DeductiveProcess}
   exact hNprofit _ (le_max_right _ _)
 
 /-- At every finite day, a trader's net worth is bounded in absolute value by the *partial*
-sum of its strategy magnitudes up to that day — no summability needed.  Used to bound the
-finitely many early stages when the value hypothesis holds only eventually. -/
+sum of its strategy magnitudes up to that day — no summability needed.  This is what bounds
+the finitely many early stages when the value hypothesis holds only eventually. -/
 lemma Trader.abs_netWorth_le_partialMagnitude (Tr : Trader) (V : History) (v : PCWorld)
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) (n : ℕ) :
     |Tr.netWorth V v n| ≤ ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V := by
@@ -180,23 +232,13 @@ bounded in absolute value by its total magnitude. -/
 lemma Trader.abs_netWorth_le_magnitude (Tr : Trader) (V : History) (v : PCWorld)
     (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) (n : ℕ) :
-    |Tr.netWorth V v n| ≤ Tr.magnitude V := by
-  calc
-    |Tr.netWorth V v n|
-        ≤ ∑ i ∈ Finset.range (n + 1), |(Tr.strat i).value V v.payout| := by
-          simpa [Trader.netWorth] using
-            (Finset.abs_sum_le_sum_abs (s := Finset.range (n + 1))
-              (f := fun i => (Tr.strat i).value V v.payout))
-    _ ≤ ∑ i ∈ Finset.range (n + 1), (Tr.strat i).magnitude V := by
-          exact Finset.sum_le_sum (fun i _ => Strategy.abs_value_le_magnitude
-            (Tr.strat i) V v.payout (fun φ => by
-              by_cases hφ : v.Holds φ
-              · exact Or.inr (by simp [PCWorld.payout, hφ])
-              · exact Or.inl (by simp [PCWorld.payout, hφ])) (hP i))
-    _ ≤ Tr.magnitude V := Tr.partial_magnitude_le V hmag n
+    |Tr.netWorth V v n| ≤ Tr.magnitude V :=
+  (Tr.abs_netWorth_le_partialMagnitude V v hP n).trans (Tr.partial_magnitude_le V hmag n)
 
-/-- Finite total magnitude supplies the bounded-downside half of exploitation uniformly
-over all plausible worlds. -/
+/-- Finite total magnitude supplies the bounded-downside half of `Trader.Exploits`: the
+trader's plausible assessments are bounded below by `-Tr.magnitude V`, uniformly over all
+days and all plausible worlds.  This is the half a downstream non-exploitation argument
+has to discharge before it can concentrate on unboundedness above. -/
 lemma Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
     (DP : DeductiveProcess) (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
     (hmag : Summable (fun n => (Tr.strat n).magnitude V)) :
@@ -206,16 +248,12 @@ lemma Trader.bddBelow_plausible_of_finiteMagnitude (Tr : Trader) (V : History)
   have h := Tr.abs_netWorth_le_magnitude V v hP hmag n
   exact (neg_le_of_abs_le h)
 
-#print axioms Trader.abs_netWorth_le_magnitude
-
-/-! ### The degenerate process: no plausible worlds from some stage on
+/-! ## The degenerate process: no plausible worlds from some stage on
 
 If some stage `D N` of the deductive process is propositionally unsatisfiable, nestedness
 kills every later stage too, so the plausible assessments of any trader are drawn from the
 finitely many days `n < N` and are bounded by the corresponding partial magnitudes.  Nobody
-exploits such a process, and the criterion is satisfied by any computable market over it.
-This is the branch the paper's closure results silently include when the theory being
-conditioned on is inconsistent. -/
+exploits such a process, and the criterion is satisfied by any computable market over it. -/
 
 /-- No trader exploits a deductive process one of whose stages has no propositionally
 consistent world: its plausible assessments are a finite union of magnitude-bounded sets,
@@ -240,9 +278,10 @@ lemma Trader.not_exploits_of_stage_unsatisfiable (Tr : Trader) (V : History)
           (fun i _ _ => Strategy.magnitude_nonneg (Tr.strat i) V)
 
 /-- `def:lic` is satisfied vacuously over a deductive process with an unsatisfiable stage:
-computability of the market and of the process is all that remains to check.  Kind `P`;
-hypotheses `(a)`.  This is the degenerate branch of Closure Under Conditioning — the case
-the paper's `thm:scon` covers implicitly when the extended theory is inconsistent.
+computability of the market and of the process is all that remains to check.  This is the
+degenerate branch of Closure Under Conditioning — the case the paper's `thm:scon` covers
+implicitly when the extended theory is inconsistent.
+Kind `P`; hypotheses `(a)`.
 Paper node: `thm:scon` -/
 theorem isLogicalInductor_of_stage_unsatisfiable (V : History) (DP : DeductiveProcess)
     (hV : ComputableMarket V) (hDP : ComputableDeductiveProcess DP)
@@ -252,14 +291,16 @@ theorem isLogicalInductor_of_stage_unsatisfiable (V : History) (DP : DeductivePr
   processComputable := hDP
   noExploit Tr _ := Tr.not_exploits_of_stage_unsatisfiable V DP hV.1 hN
 
-#print axioms isLogicalInductor_of_stage_unsatisfiable
+/-! ## Affine combinations (`def:affcomsen`) -/
 
 /-- `def:affcomsen`. An affine combination `c + Σ eᵢ φᵢ` with expressible-feature
 coefficients. Repeated sentences are allowed, matching `Strategy`; normalization is not
 needed for the value and magnitude arguments.
 Paper node: `def:affcomsen` -/
 structure AffineCombination where
+  /-- The affine constant `c`, itself an expressible feature. -/
   const : EF
+  /-- The sentence terms `eᵢ φᵢ`, coefficient first.  A sentence may occur more than once. -/
   terms : List (EF × Sentence)
 
 /-- Affine combinations are determined by their constant and term list. -/
@@ -278,6 +319,13 @@ arbitrary valuation of its sentences. -/
 noncomputable def value (A : AffineCombination) (V : History) (w : Valuation) : ℝ :=
   A.const.denote V + (A.terms.map (fun p => p.1.denote V * w p.2)).sum
 
+/-! ## Polynomial affine sequences (`def:ec`)
+
+The uniform-emission certificate an affine family has to carry to be traded by an
+efficiently computable trader, together with the rank and closedness facts its projections
+give on each member's term list.
+-/
+
 /-- Operational certificate for a polynomially generated, rank-legal sequence of affine
 combinations.  The paired index for a term is `⟨n,j⟩`: sequence member, then term number.
 This is the affine analogue of `PolyTradeEmulatable`; it exposes syntax boundaries so
@@ -285,22 +333,35 @@ uniform transformations can emit coefficients and sentence codes without decodin
 opaque serialized value.
 Paper node: `def:ec` -/
 structure PolySequence (As : ℕ → AffineCombination) where
+  /-- Number of sentence terms in `As n`. -/
   termCount : ℕ → ℕ
+  /-- Coefficient at the paired index `⟨n,j⟩`. -/
   coefficient : ℕ → EF
+  /-- Sentence at the paired index `⟨n,j⟩`. -/
   sentence : ℕ → Sentence
+  /-- The term count is computed within a polynomial fuel bound (`dd:fuel`). -/
   termCount_poly : ∃ c, PolyFueled c termCount
+  /-- The affine constants are emitted as one uniform token stream. -/
   const_poly : BigSpliceStream (fun n => (As n).const.serialize)
+  /-- The coefficients are emitted as one uniform token stream over the paired index. -/
   coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
+  /-- The sentence codes are emitted uniformly over the paired index. -/
   sentence_poly : BigSentenceCodes sentence
+  /-- The projections reassemble each member's term list in order. -/
   terms_eq : ∀ n,
     (As n).terms = (List.range (termCount n)).map (fun j =>
       (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
+  /-- Member `n`'s constant mentions no price beyond day `n`. -/
   const_rank : ∀ n, (As n).const.rank ≤ n
+  /-- Member `n`'s coefficients mention no price beyond day `n`. -/
   coefficient_rank : ∀ n j, j < termCount n → (coefficient (Nat.pair n j)).rank ≤ n
+  /-- The constants are closed: no free DSL variable, so the environment is irrelevant. -/
   const_closed : ∀ n ρ V, (As n).const.denoteWith ρ V = (As n).const.denote V
+  /-- The coefficients are closed, in the same sense as `const_closed`. -/
   coefficient_closed : ∀ z ρ V,
     (coefficient z).denoteWith ρ V = (coefficient z).denote V
 
+/-- Every coefficient of member `n` mentions no price beyond day `n`. -/
 lemma PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)
     (n : ℕ) : ∀ p ∈ (As n).terms, p.1.rank ≤ n := by
   intro p hp
@@ -309,6 +370,7 @@ lemma PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence
   obtain ⟨j, hj, rfl⟩ := hp
   exact h.coefficient_rank n j hj
 
+/-- Every coefficient of member `n` is closed, so its denotation ignores the environment. -/
 lemma PolySequence.term_closed {As : ℕ → AffineCombination} (h : PolySequence As)
     (n : ℕ) : ∀ p ∈ (As n).terms, ∀ ρ V,
       p.1.denoteWith ρ V = p.1.denote V := by
@@ -317,6 +379,13 @@ lemma PolySequence.term_closed {As : ℕ → AffineCombination} (h : PolySequenc
   simp only [List.mem_map, List.mem_range] at hp
   obtain ⟨j, _, rfl⟩ := hp
   exact h.coefficient_closed (Nat.pair n j) ρ V
+
+/-! ## Prices and the reified price feature
+
+The day-`n` market price of an affine combination, and its image `priceFeature` inside the
+expressible-feature DSL (`dd:dsl`), which is what a trader emits when it has to name a
+price it cannot compute.
+-/
 
 /-- Market price of an affine combination on day `n`. -/
 noncomputable def price (A : AffineCombination) (V : History) (n : ℕ) : ℝ :=
@@ -377,6 +446,7 @@ lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
   rw [priceFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, Nat.unpair_pair]
 
+/-- The reified price feature denotes the market price it names. -/
 lemma priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
     (A.priceFeature n).denote V = A.price V n := by
   rw [price, value, priceFeature]
@@ -395,6 +465,7 @@ lemma priceFeature_denote (A : AffineCombination) (V : History) (n : ℕ) :
         ring
   exact aux A.terms A.const
 
+/-- Price features of a polynomial affine sequence are closed: no free DSL variable. -/
 lemma PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (n m : ℕ) (ρ : List ℝ) (V : History) :
     ((As n).priceFeature m).denoteWith ρ V = ((As n).priceFeature m).denote V := by
@@ -419,6 +490,7 @@ lemma PolySequence.priceFeature_closed {As : ℕ → AffineCombination}
   exact aux (As n).terms (As n).const (h.const_closed n ρ V)
     (fun p hp => h.term_closed n p hp ρ V)
 
+/-- Pricing a rank-`k` combination on day `n ≥ k` gives a feature of rank at most `n`. -/
 lemma priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
     (hc : A.const.rank ≤ k) (ht : ∀ p ∈ A.terms, p.1.rank ≤ k) :
     (A.priceFeature n).rank ≤ n := by
@@ -438,6 +510,13 @@ lemma priceFeature_rank (A : AffineCombination) {k n : ℕ} (hkn : k ≤ n)
         · intro q hq
           exact ht' q (by simp [hq])
   exact aux A.terms A.const (hc.trans hkn) ht
+
+/-! ## Share magnitude, the `L¹` norm and bounded sequences (`def:bap`)
+
+The magnitude omits the affine constant, as `def:tradermag` does; the paper's `L¹` norm
+`l1Norm` puts it back.  Prices are bounded by the norm and price differences by the
+magnitude, and `BoundedCombinationSequence` is the uniformly norm-bounded family.
+-/
 
 /-- Share magnitude of an affine combination, omitting its constant term as in
 `def:tradermag`. -/
@@ -496,9 +575,12 @@ lemma abs_price_le_l1Norm (A : AffineCombination) (V : History) (n : ℕ)
 whose full coefficient `L¹` norm (including the trailing constant) has one uniform bound.
 Paper node: `def:bap` -/
 structure BoundedCombinationSequence (As : ℕ → AffineCombination) (V : History) where
+  /-- The uniform emission certificate for the family. -/
   poly : PolySequence As
+  /-- One `L¹` bound valid at every index. -/
   bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm V ≤ B
 
+/-- A uniform `L¹` bound gives a uniform share-magnitude bound. -/
 lemma BoundedCombinationSequence.magnitudeBounded
     {As : ℕ → AffineCombination} {V : History}
     (h : BoundedCombinationSequence As V) :
@@ -536,6 +618,14 @@ lemma abs_price_sub_price_le_magnitude (A : AffineCombination) (V : History) (m 
           rw [abs_mul]
           exact add_le_add (by nlinarith [abs_nonneg (p.1.denote V)]) ih
 
+/-! ## Reified magnitude and launch risk
+
+`magnitudeFeature` reifies the share magnitude as an expressible feature, built from the
+absolute value `absFeature`, and `riskFeature` weights it by an entry coefficient.  Each
+comes with its serialization, its uniform emission from a `PolySequence`, its denotation
+and its rank bound (`dd:dsl`).
+-/
+
 /-- Absolute value inside the expressible-feature DSL. -/
 def absFeature (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
@@ -545,6 +635,7 @@ lemma absFeature_serialize (e : EF) :
       e.serialize ++ (EF.const (-1)).serialize ++ e.serialize ++ [3, 4] := by
   simp [absFeature, EF.serialize, List.append_assoc]
 
+/-- `absFeature` denotes the absolute value of its argument's denotation. -/
 lemma absFeature_denoteWith (e : EF) (V : History) (ρ : List ℝ) :
     (absFeature e).denoteWith ρ V = |e.denoteWith ρ V| := by
   simp only [absFeature, EF.denoteWith, Rat.cast_neg, Rat.cast_one, neg_mul, one_mul]
@@ -609,11 +700,13 @@ lemma magnitudeFeature_denoteWith (A : AffineCombination) (V : History) (ρ : Li
           List.map_cons, List.sum_cons, ih]
   exact aux A.terms
 
+/-- The reified magnitude feature denotes the share magnitude it names. -/
 lemma magnitudeFeature_denote (A : AffineCombination) (V : History) :
     A.magnitudeFeature.denote V = A.magnitude V := by
   rw [EF.denote, magnitudeFeature_denoteWith]
   rfl
 
+/-- Magnitude features of a polynomial affine sequence are closed. -/
 lemma PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) (n : ℕ) (ρ : List ℝ) (V : History) :
     (As n).magnitudeFeature.denoteWith ρ V = (As n).magnitudeFeature.denote V := by
@@ -623,6 +716,7 @@ lemma PolySequence.magnitudeFeature_closed {As : ℕ → AffineCombination}
   intro p hp
   rw [h.term_closed n p hp ρ V]
 
+/-- The reified magnitude has the rank of the coefficients it sums. -/
 lemma magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
     (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) : A.magnitudeFeature.rank ≤ n := by
   have aux : ∀ l : List (EF × Sentence),
@@ -641,10 +735,12 @@ lemma magnitudeFeature_rank_le (A : AffineCombination) {n : ℕ}
 def riskFeature (A : AffineCombination) (entry : EF) : EF :=
   EF.mul entry A.magnitudeFeature
 
+/-- The launch-risk feature denotes the entry weight times the share magnitude. -/
 lemma riskFeature_denote (A : AffineCombination) (entry : EF) (V : History) :
     (A.riskFeature entry).denote V = entry.denote V * A.magnitude V := by
   simp [riskFeature, EF.denote_mul, magnitudeFeature_denote]
 
+/-- Launch-risk features are closed once the entry feature is. -/
 lemma PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
     (hentry : ∀ n ρ V, (entry n).denoteWith ρ V = (entry n).denote V)
@@ -654,6 +750,7 @@ lemma PolySequence.riskFeature_closed {As : ℕ → AffineCombination}
   simp only [riskFeature, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
   rw [hentry n ρ V, h.magnitudeFeature_closed n ρ V]
 
+/-- The launch-risk feature has rank at most that of its entry weight and coefficients. -/
 lemma riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
     (hentry : entry.rank ≤ n) (hterms : ∀ p ∈ A.terms, p.1.rank ≤ n) :
     (A.riskFeature entry).rank ≤ n := by
@@ -666,6 +763,13 @@ lemma PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
     (hentry : BigSpliceStream (fun n => (entry n).serialize)) :
     BigSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
   BigSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
+
+/-! ## Buying an affine combination
+
+The single-day strategy that acquires the combination at the current market price.  Its
+value is world value minus price, its magnitude is the combination's own, and the resulting
+bounds are the affine forms of `Strategy.abs_value_le_magnitude`.
+-/
 
 /-- Buying `A` on day `n`: purchase each sentence coefficient at the current market price.
 The affine constant needs no trade because it cancels between world value and price. -/
@@ -733,6 +837,12 @@ lemma abs_value_sub_value_le_magnitude (A : AffineCombination) (V : History)
           _ ≤ |p.1.denote V| + (ps.map (fun q => |q.1.denote V|)).sum :=
               add_le_add hstep ih
 
+/-! ## Scaling, negation and reindexing
+
+The pointwise operations under which affine combinations, and their `PolySequence`
+certificates, are closed.
+-/
+
 /-- Scale every coefficient, including the affine constant, by an expressible feature. -/
 def scale (e : EF) (A : AffineCombination) : AffineCombination where
   const := .mul e A.const
@@ -770,7 +880,7 @@ lemma scale_magnitude (e : EF) (A : AffineCombination) (V : History) :
       ring
 
 /-- Polynomial affine families are closed under multiplication by a fixed rational.
-This is the uniform normalization operation used to pass from the paper's arbitrary
+This is the uniform normalization that passes from the paper's arbitrary
 bounded-combination sequences to the unit-magnitude economic core. -/
 def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As) (q : ℚ) :
     PolySequence (fun n => (As n).scale (.const q)) where
@@ -1009,6 +1119,7 @@ lemma roundTrip_magnitude_other (A : AffineCombination) (V : History)
   rw [roundTrip_strat_other A buyDay sellDay n hopen hrank ho hc]
   simp [emptyStrategy, Strategy.magnitude]
 
+/-- A round trip trades on two days only, so its strategy magnitudes are summable. -/
 lemma roundTrip_summable (A : AffineCombination) (V : History)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) :
@@ -1085,7 +1196,12 @@ lemma roundTrip_netWorth (A : AffineCombination) (V : History) (v : PCWorld)
   ring
 
 /-- Any realized price gain that covers `rate` times the two-sided share volume gives a
-`rate`-ROI witness, uniformly over all plausible worlds. -/
+`rate`-ROI witness, uniformly over all plausible worlds.
+
+This is the payoff of the round-trip section and the entry point a client wants: it turns a
+purely market-level fact — that `A` is priced higher on `sellDay` than on `buyDay` by enough
+to cover twice its share magnitude — into a `HasROI` witness, with no reasoning about worlds
+required of the caller.  Both `roundTrip_magnitude` and `roundTrip_netWorth` feed it. -/
 lemma roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductiveProcess)
     (buyDay sellDay : ℕ) (hopen : buyDay < sellDay)
     (hrank : ∀ p ∈ A.terms, p.1.rank ≤ buyDay) (rate : ℝ)
@@ -1101,15 +1217,5 @@ lemma roundTrip_hasROI (A : AffineCombination) (V : History) (DP : DeductiveProc
     nlinarith
 
 end AffineCombination
-
-#print axioms AffineCombination.buy_value
-#print axioms AffineCombination.abs_value_sub_price_le_magnitude
-#print axioms AffineCombination.magnitudeFeature_denote
-#print axioms AffineCombination.riskFeature_denote
-#print axioms AffineCombination.scale_value
-#print axioms AffineCombination.priceFeature_denote
-#print axioms AffineCombination.roundTrip_netWorth
-#print axioms AffineCombination.roundTrip_magnitude
-#print axioms AffineCombination.roundTrip_hasROI
 
 end LogicalInduction

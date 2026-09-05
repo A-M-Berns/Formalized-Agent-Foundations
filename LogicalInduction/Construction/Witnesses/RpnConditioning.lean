@@ -1,43 +1,97 @@
-/-
-# Symbol-level conditioning translation compiler
-
-Closure under conditioning asks that conditioning an efficiently computable trader on a
-computable sentence sequence again yield an efficiently computable trader.  Efficiency
-(`EfficientlyComputable`) is metered on the RPN-expanded strategy stream, in which a
-sentence slot is a whole symbol **run** rather than a single code.  The rewrite must
-therefore walk the flat grammar with a run-aware automaton (a pending-subtree counter)
-and splice the condition sentence as a *block*, using the fact that conjunction is
-concatenation under the `3` shell: `rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ`.  The companion
-compiler in `DigitConditioning.lean` rewrites the *contracted* stream instead, where a
-sentence slot is one token.
-
-Contents:
-
-* the run-aware mode automaton `rpnCondStep` (packed state `⟨mode, counter, runLen⟩`)
-  and the **run–parse correspondence**: over any block `parseRpn` consumes completely,
-  the automaton walks the run and exits exactly at the block boundary;
-* the **price pass** `rpnConditionRun`: a streaming transducer copying every input
-  token and, at each price-day position, appending the RPN expansion of the conditional
-  price expression — the buffered sentence run re-spliced into the conjunction shell,
-  the condition block drawn from a written-out (`BigSentenceCodes`) stream — so that contracting the
-  output reproduces the token-model rewrite `conditionPriceTokenRun` of the contracted
-  input (`unRpn_rpnConditionRun`, anchored per chunk by `unRpn_price_rewrite_chunk`);
-* the **frame pass** `rpnFrameRun` / `rpnFrameOutput`, replacing each trade run by the
-  locally gated leg body, with its agreement `frameAgree_unRpn_rpnFrameOutput`, budget
-  exactness `rpnTradeCountAt_eq_frameTradeCount`, and the gated two-leg join
-  `rpnSafeSeparatedFrameOutput`;
-* the emission certificates `rpnGuardedConditionRun_polySegStream` and
-  `rpnFrameOutput_polySegStream`: each pass carries a digit `PolySegStream` to a digit
-  `PolySegStream`;
-* the class-preservation endpoints `conditionedTranslation_preserves_ecRpn` (gated) and
-  `eventualConditionedTranslation_preserves_ecRpn` (finite-zero, launch-gated), and the
-  paper-facing conditioning theorems assembled from them.
-
-Paper node: `thm:scon` (token-metered conditioning translation).
--/
 import LogicalInduction.Construction.Witnesses.DigitConditioning
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Compactness
+
+/-!
+# The conditioning translation in the RPN symbol model
+
+Closure under conditioning asks that conditioning an efficiently computable trader on a
+computable sentence sequence again yield an efficiently computable trader.  This module
+renders that efficiency transport in the RPN *symbol* model of the `dd:fuel` certificate
+`EfficientlyComputable`, where a sentence slot is a whole token **run** rather than a
+single code.  The rewrite therefore walks the flat grammar with a run-aware automaton
+carrying a pending-subtree counter, and splices the condition sentence as a *block*,
+using the fact that conjunction is concatenation under the `3` shell:
+`rpn (φ ⋏ ψ) = 3 :: rpn φ ++ rpn ψ`.  The companion compiler in `DigitConditioning.lean`
+rewrites the *contracted* stream, where a sentence slot is one token, and
+`Construction/Machine/CondStep.lean` drives the same automaton as a `Complexity.FP`
+client — the `def:ec` mirror of this transduction.
+
+## The run-aware automaton
+
+`rcPack` / `rcMode` / `rcCnt` / `rcLen` pack and project the control triple
+`⟨mode, counter, runLen⟩`; `rpnCondStep` is its one-token step, and the scalars
+`rcModeF` / `rcCntF` / `rcLenF` are the branch-flattened components the fueled scans
+arithmetize.  `runLen` counts the tokens of the current sentence run; the price pass
+reads it back as the buffered condition subject, the frame pass as the buffered trade
+sentence.
+
+## The run–parse correspondence
+
+`foldl_rpnCondStep_run` and its price and trade instances walk the block `parseRpn`
+consumes; `parse_of_runWalk` is the converse — a run the automaton walks to its first
+return either parses completely as one sentence block or poisons every extension.
+`parseRpn_strip` factors any successful parse through a complete block.
+
+## The price pass
+
+`rpnConditionRun` is the streaming transducer, with emitters `rpnPriceEmit` (the
+conditional-price body) and `rpnZeroAwareEmit` (the constant `1` on a finite set of
+days).  `rpnGuardedConditionTokens` adds the day guard, and `unRpn_price_rewrite_chunk`
+is the per-chunk anchor: the rewritten price chunk contracts to the token-model rewrite
+of the contracted chunk, with `parseRpn_and_block` supplying the conjunction shell.
+
+## The frame pass
+
+`rpnFrameEmit` splices the buffered trade run into the locally gated leg body,
+`rpnFrameRun` / `rpnFrameOutput` stream it, and `rpnSafeSeparatedFrameOutput` joins the
+two legs at a structurally accepting boundary (`rpnStructurallyAccepts`).
+
+## The poison algebra
+
+`Unreadable`, `UnRpnStops`, `FrameAgree`, `FrameContract`.  Design fact, stated once
+here: `unRpn` does **not** distribute over an append — a poisoned chunk in the left
+factor stops the contraction before the right factor is read, so in general
+`unRpn (A ++ B) ≠ unRpn A ++ unRpn B`.  The two-leg join therefore consumes the prefix
+form `FrameContract` rather than the plain agreement `FrameAgree`, and `unRpn_split`
+carries a base-mode hypothesis.  `FrameContract` is available exactly when the source
+returns the run automaton to base mode — the condition the structural-acceptance gate
+tests — together with the observation that a readable source excludes both legs' poison
+branches, since a poisoned leg's token image fails to deserialize.
+
+## Main results
+
+All annotated `thm:scon`: the emitter-generic master commutations
+`unRpn_rpnConditionRun_of` and `frameJoint_unRpn_rpnFrameOutput`; guard honesty
+`strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay`; budget exactness
+`rpnTradeCountAt_eq_frameTradeCount`; gate agreement `rpnStructurallyAccepts_agree`; the
+chunk-boundary split `unRpn_split`; and the class-agnostic strategy-level cores
+`strategyOfTokens_rpnConditionOutput` and `strategyOfTokens_rpnZeroAwareOutput`.
+
+## Emission certificates
+
+`rpnGuardedConditionRun_polySegStream(_of)`,
+`rpnGuardedZeroAwareConditionRun_polySegStream`, `rpnFrameOutput_polySegStream` and
+`rpnSafeSeparatedFrameOutput_polySegStream` carry a digit `PolySegStream` to a digit
+`PolySegStream`.  The condition-block stream is metered on its digits only
+(`BigTokenStream`, from `BigSentenceCodes`), so a condition's Gödel code may be
+exponential in the day.
+
+## Endpoints and consumers
+
+`conditionedTranslation_preserves_ecRpn` and
+`eventualConditionedTranslation_preserves_ecRpn` preserve the `dd:fuel` certificate
+`EfficientlyComputable`; `Construction/Machine/CondEndpoints.lean` assembles them with
+the machine transports into the criterion-level `lic_conditioned*` endpoints, which are
+this module's only paper-facing consumers.
+`Construction/Witnesses/RpnFreeze.lean` plugs `freezeEmit` into `rpnConditionRun` and
+reuses `unRpn_rpnConditionRun_of` and `rpnGuardedConditionRun_polySegStream_of`, so the
+mode alphabet of `rpnCondStep` is shared by three consumers.  `LogicalInduction/API.lean`
+lists this compiler as implementation, not interface.
+
+This module renders `thm:scon` in the RPN symbol model; the provenance lines sit on the
+declarations below, not on this header.
+-/
 
 namespace LogicalInduction
 
@@ -64,13 +118,20 @@ Packed as `Nat.pair mode (Nat.pair counter runLen)`.  Modes:
 * `8` / `9` — structured paper-prime payload inside a price / trade run;
 * `3` / `5` — opaque payload after a base-level `1` / `7` tag.
 
-`runLen` counts the tokens of the current sentence run (price *and* trade runs track
-it uniformly; only price runs consume it). -/
+`runLen` counts the tokens of the current sentence run; the price pass reads it back as
+the buffered condition subject, the frame pass as the buffered trade sentence. -/
 
+/-- The control triple `⟨mode, counter, runLen⟩`, packed as
+`Nat.pair mode (Nat.pair counter runLen)`.  The mode legend is in the section header. -/
 def rcPack (m c r : ℕ) : ℕ := Nat.pair m (Nat.pair c r)
 
+/-- The mode component of a packed control state. -/
 def rcMode (st : ℕ) : ℕ := st.unpair.1
+
+/-- The open-subtree counter of a packed control state. -/
 def rcCnt (st : ℕ) : ℕ := st.unpair.2.unpair.1
+
+/-- The length of the sentence run in progress, in a packed control state. -/
 def rcLen (st : ℕ) : ℕ := st.unpair.2.unpair.2
 
 @[simp] lemma rcMode_pack (m c r : ℕ) : rcMode (rcPack m c r) = m := by
@@ -408,7 +469,88 @@ lemma foldl_rpnCondStep_run {a b s : ℕ} {exit : ℕ → ℕ}
                       simp only [List.take_zero, List.foldl_nil, rcMode_pack]
                       exact Or.inl trivial
 
+/-! ### Run-step normal forms
+
+The step from a live run state, one lemma per mode: the run itself (`1` / `4`), its
+escape payload (`6` / `7`), and its structured paper-prime payload (`8` / `9`).  These
+are the step-shape hypotheses the generic walk lemmas take, and the price and trade
+families instantiate them. -/
+
 set_option maxHeartbeats 1600000 in
+/-- The step inside a price run, in offset-counter form. -/
+lemma rpnCondStep_price (c r t : ℕ) :
+    rpnCondStep (rcPack 1 (c + 1) r) t =
+      if t = 1 then rcPack 6 (c + 1) (r + 1)
+      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 1 (c + 2) (r + 1)
+      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step on an escape payload inside a price run. -/
+lemma rpnCondStep_priceEsc (c r t : ℕ) :
+    rpnCondStep (rcPack 6 (c + 1) r) t =
+      if t = 0 then rcPack 8 (c + 1) (r + 1)
+      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step on a structured paper-prime payload inside a price run. -/
+lemma rpnCondStep_priceStr (c r t : ℕ) :
+    rpnCondStep (rcPack 8 (c + 1) r) t =
+      if t = 19 then (if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1))
+      else rcPack 8 (c + 1) (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step inside a trade run, in offset-counter form. -/
+lemma rpnCondStep_trade (c r t : ℕ) :
+    rpnCondStep (rcPack 4 (c + 1) r) t =
+      if t = 1 then rcPack 7 (c + 1) (r + 1)
+      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 4 (c + 2) (r + 1)
+      else if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step on an escape payload inside a trade run. -/
+lemma rpnCondStep_tradeEsc (c r t : ℕ) :
+    rpnCondStep (rcPack 7 (c + 1) r) t =
+      if t = 0 then rcPack 9 (c + 1) (r + 1)
+      else if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+set_option maxHeartbeats 1600000 in
+/-- The step on a structured paper-prime payload inside a trade run. -/
+lemma rpnCondStep_tradeStr (c r t : ℕ) :
+    rpnCondStep (rcPack 9 (c + 1) r) t =
+      if t = 19 then (if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1))
+      else rcPack 9 (c + 1) (r + 1) := by
+  rw [rpnCondStep]
+  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
+  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
+    first | omega | (exfalso; assumption)
+
+/-- Inside a run the recorded run length grows by exactly one per token. -/
+lemma rcLen_run_step (st t : ℕ)
+    (hm : rcMode st = 1 ∨ rcMode st = 6 ∨ rcMode st = 8) :
+    rcLen (rpnCondStep st t) = rcLen st + 1 := by
+  rw [rpnCondStep]
+  split_ifs <;> simp only [rcLen_pack] <;> omega
+
 /-- Price-run instance: the walk exits into the day-expect mode `2`. -/
 lemma foldl_rpnCondStep_price_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
     {rest : List ℕ} (h : parseRpn fuel ts = some (φ, rest)) :
@@ -419,20 +561,12 @@ lemma foldl_rpnCondStep_price_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
       (∀ c r k, k < blk.length →
         rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 1 ∨
         rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 6 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 8) := by
-  refine foldl_rpnCondStep_run (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
-    (fun c r t => ?_) (fun c r t => ?_) (fun c r t => ?_) fuel ts h
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
+        rcMode (List.foldl rpnCondStep (rcPack 1 (c + 1) r) (blk.take k)) = 8) :=
+  foldl_rpnCondStep_run (b := 6) (s := 8) (exit := fun r' => rcPack 2 0 r')
+    (fun c r t => rpnCondStep_price c r t)
+    (fun c r t => rpnCondStep_priceEsc c r t)
+    (fun c r t => rpnCondStep_priceStr c r t) fuel ts h
 
-set_option maxHeartbeats 1600000 in
 /-- Trade-run instance: the walk exits back to base. -/
 lemma foldl_rpnCondStep_trade_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
     {rest : List ℕ} (h : parseRpn fuel ts = some (φ, rest)) :
@@ -442,18 +576,11 @@ lemma foldl_rpnCondStep_trade_run (fuel : ℕ) (ts : List ℕ) {φ : Sentence}
       (∀ c r k, k < blk.length →
         rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 4 ∨
         rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 7 ∨
-        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 9) := by
-  refine foldl_rpnCondStep_run (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
-    (fun c r t => ?_) (fun c r t => ?_) (fun c r t => ?_) fuel ts h
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
-  · rw [rpnCondStep]
-    simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-    split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;> first | omega | (exfalso; assumption)
+        rcMode (List.foldl rpnCondStep (rcPack 4 (c + 1) r) (blk.take k)) = 9) :=
+  foldl_rpnCondStep_run (b := 7) (s := 9) (exit := fun _ => rcPack 0 0 0)
+    (fun c r t => rpnCondStep_trade c r t)
+    (fun c r t => rpnCondStep_tradeEsc c r t)
+    (fun c r t => rpnCondStep_tradeStr c r t) fuel ts h
 
 /-- A complete price sentence block walks from the run entry to the day slot, with the
 run length recording exactly the block length. -/
@@ -539,16 +666,6 @@ lemma rpnConditionRun_append (emit : List ℕ → ℕ → List ℕ)
       simp only [List.cons_append, rpnConditionRun]
       rw [ih]
       simp [List.append_assoc]
-
-/-- At a non-emitting position (control mode ≠ `2`) the transducer copies the token
-through and leaves the buffer to the streaming update. -/
-lemma rpnConditionRun_copy (emit : List ℕ → ℕ → List ℕ)
-    (st : ℕ) (buf : List ℕ) (t : ℕ) (hm : rcMode st ≠ 2) (ts : List ℕ) :
-    rpnConditionRun emit (st, buf) (t :: ts) =
-      let rest := rpnConditionRun emit
-        (rpnCondStep st t, rpnCondBuf st buf t) ts
-      (rest.1, t :: rest.2) := by
-  simp [rpnConditionRun, hm]
 
 /-! ## Per-chunk contraction (the correctness anchor)
 
@@ -727,17 +844,14 @@ def rpnGuardedConditionTokens (emit : List ℕ → ℕ → List ℕ) (n : ℕ)
   then (rpnConditionRun emit (rcPack 0 0 0, []) ts).2
   else []
 
-#print axioms foldl_rpnCondStep_price_block
-#print axioms foldl_rpnCondStep_trade_block
-#print axioms rpnConditionRun_range
-#print axioms unRpn_price_rewrite_chunk
-
 /-! ## Scalar components of the step (the fueled decomposition)
 
 The packed step splits into three scalar functions of `(mode, counter, runLen, token)`
 whose branch tests are single equalities/inequalities — the shape the `ifzSel`
 cascades arithmetize.  All token tests factor through the clamp `min t 8`. -/
 
+/-- The next mode of `rpnCondStep`, as a function of the current mode, counter and
+token.  `rpnCondStep_components` reassembles the three scalars into the packed step. -/
 def rcModeF (m c t : ℕ) : ℕ :=
   if m = 0 then
     if t = 0 then 1 else if t = 1 then 3 else if t = 6 then 4
@@ -756,6 +870,8 @@ def rcModeF (m c t : ℕ) : ℕ :=
   else if m = 9 then if t = 19 then (if c ≤ 1 then 0 else 4) else 9
   else 0
 
+/-- The next open-subtree counter of `rpnCondStep`, as a function of the current mode,
+counter and token. -/
 def rcCntF (m c t : ℕ) : ℕ :=
   if m = 0 then (if t = 0 then 1 else if t = 6 then 1 else 0)
   else if m = 1 then
@@ -772,6 +888,8 @@ def rcCntF (m c t : ℕ) : ℕ :=
   else if m = 9 then if t = 19 then (if c ≤ 1 then 0 else c - 1) else c
   else 0
 
+/-- The next run length of `rpnCondStep`, as a function of the current mode, counter,
+run length and token. -/
 def rcLenF (m c r t : ℕ) : ℕ :=
   if m = 0 then 0
   else if m = 1 then r + 1
@@ -1107,9 +1225,6 @@ lemma rpnBigDayFlagScan {s : ℕ → List ℕ} (h : PolySegStream s) :
         (2 - rcMode (rpnCondControlAt tf n j)) = 0),
       if_pos rfl]
 
-#print axioms rpnCondScan
-#print axioms rpnBigDayFlagScan
-
 /-! ## The trade-run exit count
 
 The frame pass's budget codes are set by the number of completed trades; at symbol
@@ -1183,8 +1298,6 @@ lemma rpnTradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
         · rw [if_pos hm9, if_pos ⟨Or.inr (Or.inr hm9), hm1⟩]
         · rw [if_neg hm9, if_neg (by tauto)]
   · rw [if_neg hm1, if_neg (by tauto)]
-
-#print axioms rpnTradeCountScan
 
 /-! ## The emission certificate
 
@@ -1389,19 +1502,6 @@ lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
   rw [rpnPriceEmit, digitize_rpnConditionEmit, digitize_rpnCondWindow]
   simp only [Nat.unpair_pair, htf, rcLen, List.append_assoc]
 
-#print axioms rpnGuardedConditionRun_polySegStream
-
-/-! ## The append wrinkle
-
-`unRpn` does **not** distribute over an append: if `A` carries a poisoned chunk the
-contraction stops inside `A` and never reads `B`, so in general
-`unRpn (A ++ B) ≠ unRpn A ++ unRpn B`.  The two-leg join concatenates two frame outputs
-and therefore cannot consume the plain agreement `FrameAgree`; it consumes the prefix
-form `FrameContract` instead, which is available exactly when the source returns the run
-automaton to base mode — the condition the structural-acceptance gate tests — together
-with the observation that a *readable* source excludes both legs' poison branches, since
-a poisoned leg's token image fails to deserialize. -/
-
 /-! ## Parse localization
 
 The whole-stream exactness argument needs to evaluate `unRpn` on transducer outputs
@@ -1523,7 +1623,8 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                   ((parseRpn fuel ts').bind fun p =>
                     (parseRpn fuel p.2).bind fun q =>
                       some (mk p.1 q.1, q.2)) = some (φ, rest) →
-                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨ (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
+                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨
+                    (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
                     (t = 4 ∧ mk = LO.Propositional.Formula.or)) →
                   ∃ blk, t :: ts' = blk ++ rest ∧
                     parseRpn blk.length blk = some (φ, []) := by
@@ -1586,88 +1687,11 @@ lemma parseRpn_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : 
                       parseRpn_cons, if_neg h0, if_neg h1, if_neg h2, if_neg h3,
                       if_neg h4]
 
-/-! ### Run-step normal forms (for the converse walk argument) -/
-
-set_option maxHeartbeats 1600000 in
-/-- The step inside a price run, in offset-counter form. -/
-lemma rpnCondStep_price (c r t : ℕ) :
-    rpnCondStep (rcPack 1 (c + 1) r) t =
-      if t = 1 then rcPack 6 (c + 1) (r + 1)
-      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 1 (c + 2) (r + 1)
-      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-set_option maxHeartbeats 1600000 in
-/-- The step on an escape payload inside a price run. -/
-lemma rpnCondStep_priceEsc (c r t : ℕ) :
-    rpnCondStep (rcPack 6 (c + 1) r) t =
-      if t = 0 then rcPack 8 (c + 1) (r + 1)
-      else if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-set_option maxHeartbeats 1600000 in
-/-- The step on a structured paper-prime payload inside a price run. -/
-lemma rpnCondStep_priceStr (c r t : ℕ) :
-    rpnCondStep (rcPack 8 (c + 1) r) t =
-      if t = 19 then (if c = 0 then rcPack 2 0 (r + 1) else rcPack 1 c (r + 1))
-      else rcPack 8 (c + 1) (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-set_option maxHeartbeats 1600000 in
-/-- The step inside a trade run, in offset-counter form. -/
-lemma rpnCondStep_trade (c r t : ℕ) :
-    rpnCondStep (rcPack 4 (c + 1) r) t =
-      if t = 1 then rcPack 7 (c + 1) (r + 1)
-      else if t = 2 ∨ t = 3 ∨ t = 4 then rcPack 4 (c + 2) (r + 1)
-      else if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-set_option maxHeartbeats 1600000 in
-/-- The step on an escape payload inside a trade run. -/
-lemma rpnCondStep_tradeEsc (c r t : ℕ) :
-    rpnCondStep (rcPack 7 (c + 1) r) t =
-      if t = 0 then rcPack 9 (c + 1) (r + 1)
-      else if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-set_option maxHeartbeats 1600000 in
-/-- The step on a structured paper-prime payload inside a trade run. -/
-lemma rpnCondStep_tradeStr (c r t : ℕ) :
-    rpnCondStep (rcPack 9 (c + 1) r) t =
-      if t = 19 then (if c = 0 then rcPack 0 0 0 else rcPack 4 c (r + 1))
-      else rcPack 9 (c + 1) (r + 1) := by
-  rw [rpnCondStep]
-  simp only [rcMode_pack, rcCnt_pack, rcLen_pack]
-  split_ifs <;> simp only [rcPack, Nat.pair_eq_pair, true_and, and_true] <;>
-    first | omega | (exfalso; assumption)
-
-/-- Inside a run the recorded run length grows by exactly one per token. -/
-lemma rcLen_run_step (st t : ℕ)
-    (hm : rcMode st = 1 ∨ rcMode st = 6 ∨ rcMode st = 8) :
-    rcLen (rpnCondStep st t) = rcLen st + 1 := by
-  rw [rpnCondStep]
-  split_ifs <;> simp only [rcLen_pack] <;> omega
-
 /-! ### Generic run-walk step facts
 
-The price (`1`/`6`, exit to the day slot) and trade (`4`/`7`, exit to base) runs share
-the walk shape; every fact below is generic over the mode pair `(a, b)` and the exit,
-constrained only by the two step-shape hypotheses (mirroring
+The price (`1`/`6`/`8`, exit to the day slot) and trade (`4`/`7`/`9`, exit to base) runs
+share the walk shape; every fact below is generic over the mode triple `(a, b, s)` and
+the exit, constrained only by the three step-shape hypotheses (mirroring
 `foldl_rpnCondStep_run`'s parametrization) and the exit's counter/mode
 disambiguators. -/
 
@@ -2027,8 +2051,10 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
                 rfl
               have hW'succ : ∀ k (hk : k < u'.length),
                   W' (k + 1) = rpnCondStep (W' k) (u'[k]'hk) := fun k hk => by
-                rw [hW']
-                try simp only []
+                show List.foldl rpnCondStep (rcPack a (c + 1 + 1) (r + 1))
+                      (u'.take (k + 1)) =
+                    rpnCondStep (List.foldl rpnCondStep
+                      (rcPack a (c + 1 + 1) (r + 1)) (u'.take k)) (u'[k]'hk)
                 rw [htake u' k hk, List.foldl_append, List.foldl_cons,
                   List.foldl_nil]
               have hW'0 : W' 0 = rcPack a (c + 2) (r + 1) := rfl
@@ -2126,8 +2152,10 @@ lemma parse_of_runWalk {a b s : ℕ} {exit : ℕ → ℕ}
               have hW2eq : ∀ k, List.foldl rpnCondStep
                   (rcPack a (c + 1) (r + 1 + k1)) (u2.take k) = W' (k1 + k) := by
                 intro k
-                rw [hW']
-                try simp only []
+                show List.foldl rpnCondStep (rcPack a (c + 1) (r + 1 + k1))
+                      (u2.take k) =
+                    List.foldl rpnCondStep (rcPack a (c + 1 + 1) (r + 1))
+                      (u'.take (k1 + k))
                 rw [List.take_add, List.foldl_append, ← hu2]
                 congr 1
                 exact hk1state.symm
@@ -2326,11 +2354,6 @@ lemma parse_of_tradeRunWalk : ∀ (N : ℕ) (u : List ℕ), u.length ≤ N → �
     (fun r' => rcCnt_pack 0 0 0)
     (fun r' => ⟨by simp, by simp, by simp⟩)
 
-#print axioms parseRpn_strip
-#print axioms parse_of_runWalk
-#print axioms parse_of_priceRunWalk
-#print axioms parse_of_tradeRunWalk
-
 /-! ## Whole-stream contraction exactness (the master commutation)
 
 `unRpn` of the transducer output on an **arbitrary** stream — garbage included — is
@@ -2393,6 +2416,20 @@ lemma rpnCondStep_fallback (st t : ℕ)
   rw [rpnCondStep, if_neg h0, if_neg h1, if_neg h6, if_neg h8, if_neg h4,
     if_neg h7, if_neg h9]
 
+/-- The day slot consumes the day token and falls back to base. -/
+lemma rpnCondStep_day (r t : ℕ) : rpnCondStep (rcPack 2 0 r) t = rcPack 0 0 0 :=
+  rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp)
+    (by simp) (by simp)
+
+/-- An opaque payload mode (`3` / `5`) consumes its payload and falls back to base. -/
+lemma rpnCondStep_opaque {m : ℕ} (hm : m = 3 ∨ m = 5) (c r t : ℕ) :
+    rpnCondStep (rcPack m c r) t = rcPack 0 0 0 :=
+  rpnCondStep_fallback _ _
+    (by rcases hm with rfl | rfl <;> simp) (by rcases hm with rfl | rfl <;> simp)
+    (by rcases hm with rfl | rfl <;> simp) (by rcases hm with rfl | rfl <;> simp)
+    (by rcases hm with rfl | rfl <;> simp) (by rcases hm with rfl | rfl <;> simp)
+    (by rcases hm with rfl | rfl <;> simp)
+
 lemma rcLen_step_base (t : ℕ) : rcLen (rpnCondStep (rcPack 0 0 0) t) = 0 := by
   rw [rpnCondStep_base]
   split_ifs <;> simp
@@ -2412,14 +2449,7 @@ lemma rpnConditionRun_from_payload (emit : List ℕ → ℕ → List ℕ)
       ((rpnConditionRun emit (rcPack 0 0 0, []) L).1,
         t :: (rpnConditionRun emit (rcPack 0 0 0, []) L).2) := by
   have hstep : rpnCondStep (rcPack m c' r') t = rcPack 0 0 0 :=
-    rpnCondStep_fallback _ _
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
-      (by rcases hm with rfl | rfl <;> simp)
+    rpnCondStep_opaque hm c' r' t
   have hbuf : rpnCondBuf (rcPack m c' r') buf t = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
   rw [rpnConditionRun_cons, hstep, hbuf,
@@ -2435,7 +2465,7 @@ lemma rpnConditionRun_from_day (emit : List ℕ → ℕ → List ℕ)
         emit buf d ++
           (rpnConditionRun emit (rcPack 0 0 0, []) L).2) := by
   have hstep : rpnCondStep (rcPack 2 0 r') d = rcPack 0 0 0 :=
-    rpnCondStep_fallback _ _ (by simp) (by simp) (by simp) (by simp) (by simp) (by simp) (by simp)
+    rpnCondStep_day r' d
   have hbuf : rpnCondBuf (rcPack 2 0 r') buf d = [] :=
     rpnCondBuf_of_len_zero _ _ _ (by rw [hstep]; simp)
   rw [rpnConditionRun_cons, hstep, hbuf, if_pos (by simp)]
@@ -2676,7 +2706,10 @@ lemma tradeWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
     (fun c r t => rpnCondStep_tradeStr c r t)
     0 (fun _ => rcMode_pack 0 0 0) v j hj hmods
 
-/-! ### Token-model run equations (per contracted chunk) -/
+/-! ### Token-model run equations (per contracted chunk)
+
+Chunk-by-chunk characterizations of `ConditioningCompile.conditionPriceTokenRun`, the
+token-model transducer this compiler mirrors. -/
 
 section TokenRunEq
 
@@ -2724,7 +2757,7 @@ token-model rewrite `R` of the contraction, provided `R` copies every non-price 
 splices the shared price body `Z` at a completed price leaf, and the symbol emitter
 contracts to that same body (`hemit`).
 Paper node: `thm:scon` -/
-theorem unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List ℕ → List ℕ)
+lemma unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : List ℕ → List ℕ)
     (Z : ℕ → ℕ → List ℕ)
     (hRnil : R [] = [])
     (hRsingle : ∀ t L, t ≠ 0 → t ≠ 1 → t ≠ 6 → t ≠ 7 → R (t :: L) = t :: R L)
@@ -3079,7 +3112,7 @@ theorem unRpn_rpnConditionRun_of (emit : List ℕ → ℕ → List ℕ) (R : Lis
 — well-formed or garbage — the contraction of the transducer output is the token-model
 price rewrite (`conditionPriceTokenRun`) of the contraction.
 Paper node: `thm:scon` -/
-theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
+lemma unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
     (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     unRpn ((rpnConditionRun (rpnPriceEmit blocks ε) (rcPack 0 0 0, []) ts).2) =
@@ -3093,7 +3126,6 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
     (fun t => conditionPriceTokenRun_one _ ε t)
     (fun t c L ht => conditionPriceTokenRun_payload _ ε t c ht L)
     (fun fc d L => by
-      try simp only []
       rw [conditionPriceTokenRun_price]
       simp [List.append_assoc])
     (fun fc => conditionPriceTokenRun_price_pair _ ε fc)
@@ -3101,9 +3133,6 @@ theorem unRpn_rpnConditionRun (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence
     (fun b φ hb D rest => by
       rw [rpnPriceEmit, unRpn_price_rewrite_chunk hb (hblocks D) D ε rest]
       simp [List.append_assoc])
-
-#print axioms unRpn_rpnConditionRun_of
-#print axioms unRpn_rpnConditionRun
 
 /-! ## Guard-honesty transfer
 
@@ -3243,8 +3272,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                             show j - blk.length = (j - blk.length - 1) + 1 by
                               omega,
                             List.take_succ_cons, List.foldl_cons,
-                            rpnCondStep_fallback _ _ (by simp) (by simp)
-                              (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
+                            rpnCondStep_day] at hmode
                           have hjr2 : j - blk.length - 1 < r2.length := by
                             simp only [List.length_append, List.length_cons]
                               at hj
@@ -3347,8 +3375,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                             omega
                         | j + 1 =>
                             rw [List.take_succ_cons, List.foldl_cons,
-                              rpnCondStep_fallback _ _ (by simp) (by simp)
-                                (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
+                              rpnCondStep_opaque (Or.inl rfl)] at hmode
                             simp only [List.length_cons] at hj hts
                             rcases ih rest' (by omega) j (by omega) hmode with
                               ⟨j'', hj'', hm'', hd''⟩ | hun
@@ -3379,8 +3406,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
                               omega
                           | j + 1 =>
                               rw [List.take_succ_cons, List.foldl_cons,
-                                rpnCondStep_fallback _ _ (by simp) (by simp)
-                                  (by simp) (by simp) (by simp) (by simp) (by simp)] at hmode
+                                rpnCondStep_opaque (Or.inr rfl)] at hmode
                               simp only [List.length_cons] at hj hts
                               rcases ih rest' (by omega) j (by omega) hmode with
                                 ⟨j'', hj'', hm'', hd''⟩ | hun
@@ -3420,7 +3446,7 @@ lemma rpn_mode2_localize : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
 position of the symbol stream forces the empty validated strategy on the
 contraction.
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay (n : ℕ) (ts : List ℕ)
+lemma strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay (n : ℕ) (ts : List ℕ)
     (j : ℕ) (hj : j < ts.length)
     (hmode : rcMode (List.foldl rpnCondStep (rcPack 0 0 0) (ts.take j)) = 2)
     (hday : n < ts.getD j 0) :
@@ -3455,7 +3481,7 @@ guarded symbol-level price rewrite decodes to the retained-condition-price
 translation of the contraction's strategy — on every stream, including under a
 failed guard (both sides are then empty by guard honesty).
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_rpnGuardedConditionTokens_trades
+lemma strategyOfTokens_rpnGuardedConditionTokens_trades
     (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
     (ε : ℚ) (n : ℕ) (ts : List ℕ) :
@@ -3472,10 +3498,6 @@ theorem strategyOfTokens_rpnGuardedConditionTokens_trades
     rw [unRpn_nil, strategyOfTokens_nil_trades,
       strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay n ts j hj hm hday]
     rfl
-
-#print axioms rpn_mode2_localize
-#print axioms strategyOfTokens_unRpn_trades_eq_nil_of_rpnBigDay
-#print axioms strategyOfTokens_rpnGuardedConditionTokens_trades
 
 /-! ## Budget exactness: symbol-level trade counting
 
@@ -3583,7 +3605,7 @@ of a stream and the completed trades of its contraction agree, unless the contra
 is unreadable (in which case the validated strategy — and hence the frame budget — is
 empty on both sides).
 Paper node: `thm:scon` -/
-theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+lemma tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     rpnTradeRuns (rcPack 0 0 0) ts = tokTradeRuns 0 (unRpn ts) ∨
       Unreadable (unRpn ts) := by
   intro N
@@ -3635,10 +3657,7 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                         if_neg (by simp [rcMode, rcPack]),
                         rpnTradeRuns_append, rpnTradeRuns_price_block hblk, hwalk,
                         rpnTradeRuns,
-                        show rpnCondStep (rcPack 2 0 blk.length) d = rcPack 0 0 0 from
-                          rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
-                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                            (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]),
+                        rpnCondStep_day blk.length d,
                         if_neg (by simp [rcMode, rcPack])]
                       omega
                     rw [unRpn_price_chunk_block hblk d r2, hcount]
@@ -3713,16 +3732,7 @@ theorem tradeRuns_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                       rw [rpnTradeRuns, hstep1, if_neg (by
                         rcases ht1 with rfl | rfl <;> simp [rcMode, rcPack]),
                         rpnTradeRuns,
-                        show rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
-                            rcPack 0 0 0 from
-                          rpnCondStep_fallback _ _
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack])
-                            (by split <;> simp [rcMode, rcPack]),
+                        rpnCondStep_opaque (by split <;> simp) 0 0 c,
                         if_neg (by split <;> simp [rcMode, rcPack])]
                       omega
                     rw [unRpn_payload_chunk t c ht1 r, hcount]
@@ -3787,7 +3797,7 @@ symbol-level stream equals the completed-trade count the digit-model frame pass 
 off the contraction — unless the contraction is unreadable, in which case both
 validated strategies are empty and the budget is irrelevant.
 Paper node: `thm:scon` -/
-theorem rpnTradeCountAt_eq_frameTradeCount (tf tokenFn lenFn : ℕ → ℕ) (n : ℕ)
+lemma rpnTradeCountAt_eq_frameTradeCount (tf tokenFn lenFn : ℕ → ℕ) (n : ℕ)
     (ts : List ℕ) (hts : vpre tf n ts.length = ts)
     (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
     rpnTradeCountAt tf n ts.length = frameTradeCount tokenFn lenFn n ∨
@@ -3796,9 +3806,6 @@ theorem rpnTradeCountAt_eq_frameTradeCount (tf tokenFn lenFn : ℕ → ℕ) (n :
   simp only [Nat.unpair_pair]
   rw [tradeScanAt_eq_runs, hL]
   exact tradeRuns_unRpn_agree ts.length ts le_rfl
-
-#print axioms tradeRuns_unRpn_agree
-#print axioms rpnTradeCountAt_eq_frameTradeCount
 
 /-! ## Symbol-level structural acceptance (the two-leg join gate)
 
@@ -3929,7 +3936,7 @@ lemma rpnDepthRuns_trade_block {b : List ℕ} {φ : Sentence}
 
 /-- **Symbol-level depth and mode agree with the contraction** unless the contraction
 is unreadable. Paper node: `thm:scon` -/
-theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
+lemma depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     ((∀ d, rpnDepthRuns (rcPack 0 0 0) ts d = tokDepthRuns 0 (unRpn ts) d) ∧
       rcMode (List.foldl rpnCondStep (rcPack 0 0 0) ts) = freezeMode4 (unRpn ts)) ∨
     Unreadable (unRpn ts) := by
@@ -3979,10 +3986,7 @@ theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                       simp only [List.length_cons] at hlt
                       omega
                     have hstD : rpnCondStep (rcPack 2 0 blk.length) d0 =
-                        rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        rcPack 0 0 0 := rpnCondStep_day blk.length d0
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
                         (0 :: (blk ++ d0 :: r2)) =
                         List.foldl rpnCondStep (rcPack 0 0 0) r2 := by
@@ -4098,14 +4102,7 @@ theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                     have hstep2 :
                         rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
                           rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
+                      rpnCondStep_opaque (by split <;> simp) 0 0 c
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
                         (t :: c :: r) = List.foldl rpnCondStep (rcPack 0 0 0) r := by
                       rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2]
@@ -4171,8 +4168,6 @@ theorem depthMode_unRpn_agree : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N �
                     show (t :: unRpn rest) = [t] ++ unRpn rest from rfl]
                   exact hU.cons_chunk hchunk
 
-#print axioms depthMode_unRpn_agree
-
 /-! ## The position-indexed acceptance scan -/
 
 /-- Feature-stack depth strictly before source position `j`. -/
@@ -4225,7 +4220,7 @@ def rpnStructurallyAccepts (tf lenF : ℕ → ℕ) (n : ℕ) : ℕ :=
 
 /-- **Gate agreement**: the symbol-side acceptance test agrees with the token-model
 test on the contraction, unless the contraction is unreadable. Paper node: `thm:scon` -/
-theorem rpnStructurallyAccepts_agree (tf tokenFn lenF lenFn : ℕ → ℕ) (n : ℕ)
+lemma rpnStructurallyAccepts_agree (tf tokenFn lenF lenFn : ℕ → ℕ) (n : ℕ)
     (ts : List ℕ) (hts : vpre tf n (lenF n) = ts)
     (hL : vpre tokenFn n (lenFn n) = unRpn ts) :
     rpnStructurallyAccepts tf lenF n = parserStructurallyAccepts tokenFn lenFn n ∨
@@ -4343,10 +4338,6 @@ lemma rpnDepthScan {s : ℕ → List ℕ} (h : PolySegStream s) :
                 · rw [if_neg hnext, if_neg (by tauto)]
               · rw [if_neg hm9, if_neg (by tauto)]
 
-#print axioms rpnStructurallyAccepts_agree
-#print axioms rpnDepthScan
-
-
 /-! ## The frame pass (symbol level) — emission and contraction anchor
 
 The token-model frame transducer (`conditioningFrameTokenRun`) replaces each trade
@@ -4359,64 +4350,60 @@ the denominator — leaving the gate arithmetic (constants, `letE` variables,
 operators) verbatim.  The contraction anchor below is compositional, through the
 prefix-contraction algebra `UnRpnContractsTo`. -/
 
-lemma _root_.LogicalInduction.UnRpnContractsTo.of_eq {xs ys xs' ys' : List ℕ} (h : UnRpnContractsTo xs ys)
-    (hx : xs = xs') (hy : ys = ys') : UnRpnContractsTo xs' ys' := hx ▸ hy ▸ h
+/-- Transport a contraction along equalities of its two sides. -/
+lemma _root_.LogicalInduction.UnRpnContractsTo.of_eq {xs ys xs' ys' : List ℕ}
+    (h : UnRpnContractsTo xs ys) (hx : xs = xs') (hy : ys = ys') :
+    UnRpnContractsTo xs' ys' := hx ▸ hy ▸ h
 
+/-- A bare operator or close token contracts to itself. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.single (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
     UnRpnContractsTo [t] [t] :=
   (UnRpnTransparent.single t ht).contractsTo
 
+/-- A constant or variable payload chunk contracts to itself. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.payload (t c : ℕ) (ht : t = 1 ∨ t = 7) :
     UnRpnContractsTo [t, c] [t, c] :=
   (UnRpnTransparent.payload t c ht).contractsTo
 
-/-- A price chunk with an expanded sentence block contracts to the token-model
-price leaf. -/
-lemma _root_.LogicalInduction.UnRpnContractsTo.priceSym {b : List ℕ} {φ : Sentence}
-    (hb : parseRpn b.length b = some (φ, [])) (day : ℕ) :
-    UnRpnContractsTo (0 :: b ++ [day]) (rawPriceTokens (Encodable.encode φ) day) :=
-  fun rest => by
-    rw [show (0 :: b ++ [day]) ++ rest = 0 :: (b ++ day :: rest) by simp,
-      unRpn_price_chunk_block hb day rest]
-    rfl
+/-! ### The raw-combinator algebra
 
-/-- A trade chunk with an expanded sentence block contracts to the token-model
-trade pair. -/
-lemma _root_.LogicalInduction.UnRpnContractsTo.tradeSym {b : List ℕ} {φ : Sentence}
-    (hb : parseRpn b.length b = some (φ, [])) :
-    UnRpnContractsTo (6 :: b) [6, Encodable.encode φ] := fun rest => by
-  rw [show (6 :: b) ++ rest = 6 :: (b ++ rest) by simp,
-    unRpn_trade_chunk_block hb rest]
-  rfl
+The contraction of a `raw…Tokens` combinator is the combinator of the contractions: the
+arithmetic skeleton is transparent, so only the sentence slots move. -/
 
-/-! ### The raw-combinator algebra -/
-
+/-- A rational constant is transparent. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.constTok (c : ℕ) :
     UnRpnContractsTo (rawConstTokens c) (rawConstTokens c) :=
   UnRpnContractsTo.payload 1 c (Or.inl rfl)
 
+/-- A `letE` variable is transparent. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.varTok (i : ℕ) : UnRpnContractsTo [7, i] [7, i] :=
   UnRpnContractsTo.payload 7 i (Or.inr rfl)
 
+/-- Product of contractions. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.mulTok {a a' b b' : List ℕ}
     (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
     UnRpnContractsTo (rawMulTokens a b) (rawMulTokens a' b') :=
   (ha.append hb).append (UnRpnContractsTo.single 3 (by norm_num))
 
+/-- Sum of contractions. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.addTok {a a' b b' : List ℕ}
     (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
     UnRpnContractsTo (rawAddTokens a b) (rawAddTokens a' b') :=
   (ha.append hb).append (UnRpnContractsTo.single 2 (by norm_num))
 
+/-- Maximum of contractions. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.maxTok {a a' b b' : List ℕ}
     (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
     UnRpnContractsTo (rawMaxTokens a b) (rawMaxTokens a' b') :=
   (ha.append hb).append (UnRpnContractsTo.single 4 (by norm_num))
 
-lemma _root_.LogicalInduction.UnRpnContractsTo.safeRecipTok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
+/-- Safe reciprocal of a contraction. -/
+lemma _root_.LogicalInduction.UnRpnContractsTo.safeRecipTok {a a' : List ℕ}
+    (ha : UnRpnContractsTo a a') :
     UnRpnContractsTo (rawSafeRecipTokens a) (rawSafeRecipTokens a') :=
   ha.append (UnRpnContractsTo.single 5 (by norm_num))
 
+/-- Minimum of contractions, through its `max` encoding. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.minTok {a a' b b' : List ℕ}
     (ha : UnRpnContractsTo a a') (hb : UnRpnContractsTo b b') :
     UnRpnContractsTo (rawMinTokens a b) (rawMinTokens a' b') :=
@@ -4424,14 +4411,18 @@ lemma _root_.LogicalInduction.UnRpnContractsTo.minTok {a a' b b' : List ℕ}
     (((UnRpnContractsTo.constTok _).mulTok ha).maxTok
       ((UnRpnContractsTo.constTok _).mulTok hb))
 
+/-- Absolute value of a contraction. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.absTok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
     UnRpnContractsTo (rawAbsTokens a) (rawAbsTokens a') :=
   ha.maxTok ((UnRpnContractsTo.constTok _).mulTok ha)
 
-lemma _root_.LogicalInduction.UnRpnContractsTo.clip01Tok {a a' : List ℕ} (ha : UnRpnContractsTo a a') :
+/-- Clipping a contraction to `[0, 1]`. -/
+lemma _root_.LogicalInduction.UnRpnContractsTo.clip01Tok {a a' : List ℕ}
+    (ha : UnRpnContractsTo a a') :
     UnRpnContractsTo (rawClip01Tokens a) (rawClip01Tokens a') :=
   (UnRpnContractsTo.constTok _).maxTok ((UnRpnContractsTo.constTok _).minTok ha)
 
+/-- The conditioning gate over contracted rank and magnitude arguments. -/
 lemma _root_.LogicalInduction.UnRpnContractsTo.gateTok {r r' m m' : List ℕ}
     (hr : UnRpnContractsTo r r') (hm : UnRpnContractsTo m m')
     (bc ibc : ℕ) :
@@ -4443,8 +4434,9 @@ lemma _root_.LogicalInduction.UnRpnContractsTo.gateTok {r r' m m' : List ℕ}
       ((UnRpnContractsTo.constTok _).mulTok hr)).mulTok
     ((UnRpnContractsTo.constTok ibc).mulTok ((UnRpnContractsTo.constTok _).maxTok hm)))
 
-lemma _root_.LogicalInduction.UnRpnContractsTo.lowerSafeRecipTok {a a' : List ℕ} (ha : UnRpnContractsTo a a')
-    (ε : ℚ) :
+/-- Lower-bounded safe reciprocal of a contraction. -/
+lemma _root_.LogicalInduction.UnRpnContractsTo.lowerSafeRecipTok {a a' : List ℕ}
+    (ha : UnRpnContractsTo a a') (ε : ℚ) :
     UnRpnContractsTo (rawLowerSafeRecipTokens a ε) (rawLowerSafeRecipTokens a' ε) :=
   (UnRpnContractsTo.constTok _).mulTok
     (((UnRpnContractsTo.constTok _).mulTok ha).safeRecipTok)
@@ -4504,8 +4496,8 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
       (rawMulTokens (rawPriceTokens (Encodable.encode (φ ⋏ ψn)) day)
         (rawLowerSafeRecipTokens
           (rawPriceTokens (Encodable.encode ψn) day) ε)) :=
-    (UnRpnContractsTo.priceSym hconj day).mulTok
-      (UnRpnContractsTo.lowerSafeRecipTok (UnRpnContractsTo.priceSym hblk day) ε)
+    (UnRpnContractsTo.priceChunk hconj day).mulTok
+      (UnRpnContractsTo.lowerSafeRecipTok (UnRpnContractsTo.priceChunk hblk day) ε)
   have hmin : UnRpnContractsTo
       (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc)))
       (rawMinTokens [7, 1] (rawMulTokens [7, 1] (rpnFrameGate bc ibc))) :=
@@ -4515,7 +4507,7 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
   cases second with
   | false =>
       have htail : UnRpnContractsTo (6 :: (3 :: buf ++ blk))
-          [6, Encodable.encode (φ ⋏ ψn)] := UnRpnContractsTo.tradeSym hconj
+          [6, Encodable.encode (φ ⋏ ψn)] := UnRpnContractsTo.tradeChunk hconj
       have hcomp := (((hratio.append hmin).append hclose).append
         (hclose.append htail))
       refine hcomp.of_eq ?_ ?_
@@ -4524,7 +4516,7 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
           rpnFrameGate, conjunctionCode_exact]
   | true =>
       have htail : UnRpnContractsTo (6 :: blk) [6, Encodable.encode ψn] :=
-        UnRpnContractsTo.tradeSym hblk
+        UnRpnContractsTo.tradeChunk hblk
       have hsecondBody : UnRpnContractsTo
           (rawMulTokens (rawConstTokens (Encodable.encode (-1 : ℚ)))
             (rawMulTokens
@@ -4541,8 +4533,6 @@ lemma rpnFrameEmit_contractsTo {buf blk : List ℕ} {φ ψn : Sentence}
       · simp [rpnFrameEmit]
       · simp [rawLocallyGatedSecondBodyTokens, rawConditioningRatioTokens,
           rpnFrameGate, conjunctionCode_exact]
-
-#print axioms rpnFrameEmit_contractsTo
 
 /-! ### The frame run (streaming, exit-triggered) -/
 
@@ -4581,11 +4571,6 @@ lemma rpnFrameEmitAt_base_trade (second : Bool) (blk : List ℕ) (ε : ℚ)
     (day bc ibc : ℕ) (buf : List ℕ) :
     rpnFrameEmitAt second blk ε day bc ibc (rcPack 0 0 0) buf 6 = [] := by
   simp [rpnFrameEmitAt]
-
-lemma rpnFrameEmitAt_base_other (second : Bool) (blk : List ℕ) (ε : ℚ)
-    (day bc ibc : ℕ) (buf : List ℕ) (t : ℕ) (ht : t ≠ 6) :
-    rpnFrameEmitAt second blk ε day bc ibc (rcPack 0 0 0) buf t = [t] := by
-  simp [rpnFrameEmitAt, ht]
 
 lemma rpnFrameRun_append (second : Bool) (blk : List ℕ) (ε : ℚ) (day bc ibc : ℕ)
     (s : ℕ × List ℕ) (xs ys : List ℕ) :
@@ -4758,7 +4743,10 @@ lemma rpnFrameOutput_append_base (second : Bool) (blkψ : List ℕ) (ε : ℚ)
   rw [rpnFrameOutput, rpnFrameOutput, rpnFrameRun_append]
   simp only [h1, List.append_assoc]
 
-/-! ### Token-model frame run equations (per contracted chunk) -/
+/-! ### Token-model frame run equations (per contracted chunk)
+
+Chunk-by-chunk characterizations of `ConditioningCompile.conditioningFrameTokenOutput`,
+the token-model transducer the frame pass mirrors. -/
 
 section FrameTokenRunEq
 
@@ -4778,10 +4766,6 @@ lemma conditioningFrameTokenOutput_payload (t c : ℕ) (ht : t = 1 ∨ t = 7)
   rcases ht with rfl | rfl <;>
     simp [conditioningFrameTokenOutput, conditioningFrameTokenRun,
       conditioningFrameTokenEmit, EF.freezeTokenNext]
-
-lemma conditioningFrameTokenOutput_nil :
-    conditioningFrameTokenOutput second ψCode day ε bc ibc [] = [] := by
-  simp [conditioningFrameTokenOutput, conditioningFrameTokenRun]
 
 lemma conditioningFrameTokenOutput_one (t : ℕ) (ht : t = 1 ∨ t = 7) :
     conditioningFrameTokenOutput second ψCode day ε bc ibc [t] = [t] := by
@@ -4812,11 +4796,6 @@ lemma conditioningFrameTokenOutput_trade (fc : ℕ) (L : List ℕ) :
     simp [conditioningFrameTokenOutput, conditioningFrameTokenRun,
       conditioningFrameTokenEmit, EF.freezeTokenNext, List.append_assoc]
 
-lemma conditioningFrameTokenOutput_trade_flush :
-    conditioningFrameTokenOutput second ψCode day ε bc ibc [6] = [6] := by
-  simp [conditioningFrameTokenOutput, conditioningFrameTokenRun,
-    conditioningFrameTokenEmit, EF.freezeTokenNext]
-
 end FrameTokenRunEq
 
 /-- Price-run instance of the inside invariant (for streams that never exit). -/
@@ -4836,11 +4815,10 @@ lemma priceWalk_inside (v : List ℕ) (j : ℕ) (hj : j ≤ v.length)
 
 /-! ### Splitting the contraction at a chunk boundary
 
-The two-leg join concatenates two symbol-level frame outputs, and `unRpn` does **not**
-distribute over an append when the left factor carries a poisoned chunk.  It does
-split, though, on any stream the run automaton walks back to base mode: either the
-stream is `UnRpnContractsTo`-transparent ahead of every continuation, or its first poisoned
-chunk stops the contraction outright.  Same chunk induction as
+By the append fact recorded in the module header, the contraction does not split
+unconditionally.  It does split on any stream the run automaton walks back to base
+mode: either the stream is `UnRpnContractsTo`-transparent ahead of every continuation,
+or its first poisoned chunk stops the contraction outright.  Same chunk induction as
 `tradeRuns_unRpn_agree`, with the first-exit localization supplying the
 poisons-every-extension branch. -/
 
@@ -4865,7 +4843,7 @@ lemma UnRpnStops.cons_chunk {C A : List ℕ} {P : List ℕ}
 walks back to base mode, either the whole stream contracts transparently ahead of any
 continuation, or a poisoned chunk stops the contraction outright (and the contraction
 is unreadable). Paper node: `thm:scon` -/
-theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
+lemma unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
     List.foldl rpnCondStep (rcPack 0 0 0) A = rcPack 0 0 0 →
     UnRpnContractsTo A (unRpn A) ∨ (UnRpnStops A ∧ Unreadable (unRpn A)) := by
   intro N
@@ -4903,10 +4881,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       simp only [List.length_cons] at hlt
                       omega
                     have hstD : rpnCondStep (rcPack 2 0 blk.length) d0 =
-                        rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _ (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
-                        (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack]) (by simp [rcMode, rcPack])
+                        rcPack 0 0 0 := rpnCondStep_day blk.length d0
                     have hbase2 : List.foldl rpnCondStep (rcPack 0 0 0) r2 =
                         rcPack 0 0 0 := by
                       rw [List.foldl_cons, rpnCondStep_base_price,
@@ -4914,7 +4889,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       exact hbase
                     have hA2 : (0 : ℕ) :: (blk ++ d0 :: r2) =
                         (0 :: blk ++ [d0]) ++ r2 := by simp
-                    have hC := UnRpnContractsTo.priceSym hblk d0
+                    have hC := UnRpnContractsTo.priceChunk hblk d0
                     rcases ih r2 hr2 hbase2 with hIH | ⟨hstop, hU⟩
                     · exact Or.inl (((hC.append hIH).of_eq hA2.symm rfl).self)
                     · refine Or.inr ⟨?_, ?_⟩
@@ -4990,7 +4965,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                       List.foldl_append, hwalk] at hbase
                     exact hbase
                   have hA1 : (6 : ℕ) :: (blk ++ r1) = (6 :: blk) ++ r1 := by simp
-                  have hC := UnRpnContractsTo.tradeSym hblk
+                  have hC := UnRpnContractsTo.tradeChunk hblk
                   rcases ih r1 hr1 hbase1 with hIH | ⟨hstop, hU⟩
                   · exact Or.inl (((hC.append hIH).of_eq hA1.symm rfl).self)
                   · refine Or.inr ⟨?_, ?_⟩
@@ -5075,14 +5050,7 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                     have hstep2 :
                         rpnCondStep (rcPack (if t = 1 then 3 else 5) 0 0) c =
                           rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
-                        (by split <;> simp [rcMode, rcPack])
+                      rpnCondStep_opaque (by split <;> simp) 0 0 c
                     have hbaseR : List.foldl rpnCondStep (rcPack 0 0 0) r =
                         rcPack 0 0 0 := by
                       rw [List.foldl_cons, hstep1, List.foldl_cons, hstep2] at hbase
@@ -5115,15 +5083,11 @@ theorem unRpn_split : ∀ (N : ℕ) (A : List ℕ), A.length ≤ N →
                     exact hU.cons_chunk (by
                       simp [freezeMode4Step, ht0, ht1.1, ht6, ht1.2])
 
-#print axioms unRpn_split
-
 /-! ### Both-poison agreement -/
 
 /-- Outputs agree up to a common unreadable failure. -/
 def FrameAgree (a b : List ℕ) : Prop :=
   a = b ∨ (Unreadable a ∧ Unreadable b)
-
-lemma FrameAgree.of_eq {a b : List ℕ} (h : a = b) : FrameAgree a b := Or.inl h
 
 lemma Unreadable.append_right {u : List ℕ} (h : Unreadable u) (v : List ℕ) :
     Unreadable (u ++ v) := by
@@ -5136,11 +5100,6 @@ lemma FrameAgree.cons_chunk {C a b : List ℕ}
   rcases h with rfl | ⟨ha, hb⟩
   · exact Or.inl rfl
   · exact Or.inr ⟨ha.cons_chunk hC, hb.cons_chunk hC⟩
-
-lemma FrameAgree.of_eq_append {C a b x y : List ℕ}
-    (hC : List.foldl freezeMode4Step 0 C = 0) (h : FrameAgree a b)
-    (hx : x = C ++ a) (hy : y = C ++ b) : FrameAgree x y := by
-  rw [hx, hy]; exact h.cons_chunk hC
 
 lemma strategyOfTokens_of_deserializeTrades_none {a : List ℕ}
     (h : deserializeTrades a = none) (n : ℕ) :
@@ -5248,7 +5207,7 @@ lemma unreadable_conditioningFrameTokenOutput_poison (second : Bool)
 /-- The frame pass's **prefix** invariant: the symbol-level output contracts to the
 token-model output ahead of *any* continuation, or its first poisoned chunk stops the
 contraction outright and both sides are unreadable.  This is the form the two-leg join
-needs — `FrameAgree` alone does not survive an append. -/
+needs, by the append fact recorded in the module header. -/
 def FrameContract (A B : List ℕ) : Prop :=
   UnRpnContractsTo A B ∨ (UnRpnStops A ∧ Unreadable (unRpn A) ∧ Unreadable B)
 
@@ -5271,8 +5230,9 @@ lemma FrameContract.cons_chunk {C P A B : List ℕ} (hC : UnRpnContractsTo C P)
     rw [hC A]
     exact hU.cons_chunk hF
 
-lemma _root_.LogicalInduction.UnRpnContractsTo.frameAgree_chunk {C P A B : List ℕ} (hC : UnRpnContractsTo C P)
-    (hF : List.foldl freezeMode4Step 0 P = 0) (h : FrameAgree (unRpn A) B) :
+lemma _root_.LogicalInduction.UnRpnContractsTo.frameAgree_chunk {C P A B : List ℕ}
+    (hC : UnRpnContractsTo C P) (hF : List.foldl freezeMode4Step 0 P = 0)
+    (h : FrameAgree (unRpn A) B) :
     FrameAgree (unRpn (C ++ A)) (P ++ B) := by
   rw [hC A]
   exact h.cons_chunk hF
@@ -5328,7 +5288,7 @@ a single chunk induction proves both: every chunk case admitting a prefix contra
 the one admitting the equality, and the base-mode hypothesis discharges the three that do
 not (a truncated price chunk, a run that never exits, a bare payload tag).
 Paper node: `thm:scon` -/
-theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
+lemma frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
     (ε : ℚ) (day bc ibc : ℕ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
     FrameAgree (unRpn (rpnFrameOutput second blkψ ε day bc ibc ts))
@@ -5401,9 +5361,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                 | d :: r2 =>
                     subst heq
                     have hstD : rpnCondStep (rcPack 2 0 blk.length) d =
-                        rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                        (by simp) (by simp) (by simp) (by simp)
+                        rcPack 0 0 0 := rpnCondStep_day blk.length d
                     have hCeq : (0 : ℕ) :: (blk ++ d :: r2) =
                         (0 :: (blk ++ [d])) ++ r2 := by simp
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0)
@@ -5439,8 +5397,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       rfl
                     have hC : UnRpnContractsTo (0 :: (blk ++ [d]))
                         [0, Encodable.encode φ, d] :=
-                      (UnRpnContractsTo.priceSym hblk d).of_eq (by simp)
-                        (by simp [rawPriceTokens])
+                      (UnRpnContractsTo.priceChunk hblk d).of_eq (by simp) rfl
                     have hF : List.foldl freezeMode4Step 0
                         [0, Encodable.encode φ, d] = 0 := by
                       simp [freezeMode4Step]
@@ -5778,7 +5735,8 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         rw [hcat, rpnFrameRun_append, hsilent]
                         simp only
                         rw [rpnFrameRun_cons, hemitLast]
-                        simp only [rpnFrameRun_nil, List.nil_append, List.append_assoc, hstepLast, hcat]
+                        simp only [rpnFrameRun_nil, List.nil_append,
+                          List.append_assoc, hstepLast, hcat]
                       have hall : ∀ r, unRpn (rpnFrameOutput second blkψ ε day bc
                           ibc (6 :: rest) ++ r) = [0, 0] := by
                         intro r
@@ -5858,8 +5816,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                       simp at this
                 | c :: rest' =>
                     have hst2 : rpnCondStep (rcPack 3 0 0) c = rcPack 0 0 0 :=
-                      rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                        (by simp) (by simp) (by simp) (by simp)
+                      rpnCondStep_opaque (Or.inl rfl) 0 0 c
                     have hstate : List.foldl rpnCondStep (rcPack 0 0 0) [1, c] =
                         rcPack 0 0 0 := by
                       rw [List.foldl_cons, rpnCondStep_base_one, List.foldl_cons,
@@ -5923,8 +5880,7 @@ theorem frameJoint_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
                         simp at this
                   | c :: rest' =>
                       have hst2 : rpnCondStep (rcPack 5 0 0) c = rcPack 0 0 0 :=
-                        rpnCondStep_fallback _ _ (by simp) (by simp) (by simp)
-                          (by simp) (by simp) (by simp) (by simp)
+                        rpnCondStep_opaque (Or.inr rfl) 0 0 c
                       have hstate : List.foldl rpnCondStep (rcPack 0 0 0) [7, c] =
                           rcPack 0 0 0 := by
                         rw [List.foldl_cons, rpnCondStep_base_seven,
@@ -6014,7 +5970,7 @@ output of the contraction, or both are unreadable (which happens exactly at a ma
 trade run, where the token model expands a body around the poison code `0` and the
 symbol side has no block to splice).  Either way the decoded strategies agree.
 Paper node: `thm:scon` -/
-theorem frameAgree_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
+lemma frameAgree_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
     (ε : ℚ) (day bc ibc : ℕ) (ts : List ℕ) :
     FrameAgree (unRpn (rpnFrameOutput second blkψ ε day bc ibc ts))
@@ -6025,9 +5981,9 @@ theorem frameAgree_unRpn_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
 
 /-- **The frame pass contracts as a prefix** whenever the source stream returns the run
 automaton to base mode — the condition the acceptance gate tests.  This is the
-primitive the two-leg join consumes: `FrameAgree` alone does not survive an append.
+primitive the two-leg join consumes, by the append fact recorded in the module header.
 Paper node: `thm:scon` -/
-theorem frameContract_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
+lemma frameContract_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
     (ε : ℚ) (day bc ibc : ℕ) (ts : List ℕ)
     (hbase : List.foldl rpnCondStep (rcPack 0 0 0) ts = rcPack 0 0 0) :
@@ -6041,7 +5997,7 @@ theorem frameContract_rpnFrameOutput (second : Bool) (blkψ : List ℕ)
 frame output decodes to the same validated strategy as the token-model frame output of
 the contraction — on every stream.
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_unRpn_rpnFrameOutput_trades (second : Bool) (blkψ : List ℕ)
+lemma strategyOfTokens_unRpn_rpnFrameOutput_trades (second : Bool) (blkψ : List ℕ)
     {ψn : Sentence} (hblkψ : parseRpn blkψ.length blkψ = some (ψn, []))
     (ε : ℚ) (day bc ibc : ℕ) (n : ℕ) (ts : List ℕ) :
     (strategyOfTokens n
@@ -6050,11 +6006,6 @@ theorem strategyOfTokens_unRpn_rpnFrameOutput_trades (second : Bool) (blkψ : Li
         (Encodable.encode ψn) day ε bc ibc (unRpn ts))).trades :=
   (frameAgree_unRpn_rpnFrameOutput second blkψ hblkψ ε day bc ibc
     ts).strategyOfTokens_trades_eq n
-
-#print axioms frameJoint_unRpn_rpnFrameOutput
-#print axioms frameAgree_unRpn_rpnFrameOutput
-#print axioms frameContract_rpnFrameOutput
-#print axioms strategyOfTokens_unRpn_rpnFrameOutput_trades
 
 /-! ### Per-position view of the frame pass
 
@@ -6119,9 +6070,6 @@ lemma rpnFrameSegment_eq (tf : ℕ → ℕ) (second : Bool) (blkψ : List ℕ) (
   rw [rpnFrameSegment]
   simp only [Nat.unpair_pair, rpnFrameEmitAt]
   rfl
-
-#print axioms rpnFrameRun_range
-#print axioms rpnFrameSegment_eq
 
 /-! ### The frame-pass emission certificate
 
@@ -6291,7 +6239,8 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
     · exact hblkN.of_eq fun z => by simp
   have hEmit : PolySegStream (fun z : ℕ => digitize
       (rpnFrameEmit second (blocks z.unpair.1) ε (dayF z.unpair.1) (bcF z.unpair.1)
-        (ibcF z.unpair.1) (rpnCondWindow tf z.unpair.1 z.unpair.2 ++ [tf (Nat.pair z.unpair.1 z.unpair.2)]))) := by
+        (ibcF z.unpair.1) (rpnCondWindow tf z.unpair.1 z.unpair.2 ++
+          [tf (Nat.pair z.unpair.1 z.unpair.2)]))) := by
     refine ((((((hconst03.append hwinD).append hblkN).append hdayFrame).append
       hblkN).append hmid).append hlast).of_eq fun z => ?_
     rw [digitize_rpnFrameEmit]
@@ -6410,9 +6359,6 @@ lemma rpnFrameOutput_polySegStream (second : Bool) {src blocks : ℕ → List �
         · rw [if_neg (by omega), if_neg (by tauto)]
           simp [digitize]
 
-#print axioms rpnFrameOutput_polySegStream
-
-
 /-! ### The gated two-leg join
 
 `safeSeparatedFrameTokenOutput` emits the first frame leg alone unless the source is
@@ -6478,14 +6424,11 @@ lemma rpnSafeSeparatedFrameOutput_polySegStream {src blocks : ℕ → List ℕ}
   · rw [if_pos hacc, if_pos hacc]
   · rw [if_neg hacc, if_neg hacc, digitize_append]
 
-#print axioms rpnAcceptScan
-#print axioms rpnSafeSeparatedFrameOutput_polySegStream
-
 /-- **The gated two-leg join agrees with the token model**: the contraction of the
 symbol-level gated join decodes to the same validated strategy as the token-model
 gated join of the contraction.
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
+lemma strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
     (tf tokenFn lenF lenFn : ℕ → ℕ) (blkψ : List ℕ) {ψn : Sentence}
     (hblkψ : parseRpn blkψ.length blkψ = some (ψn, [])) (ε q : ℚ) (n : ℕ)
     (ts : List ℕ) (hts : vpre tf n (lenF n) = ts)
@@ -6593,8 +6536,6 @@ theorem strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
         · rw [hstop _]
           exact hU1.deserializeTrades_eq_none
 
-#print axioms strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades
-
 /-! ## The zero-aware price pass (for the eventual translation)
 
 The eventual translation prices a *finite* set of days at the constant `1` instead of
@@ -6671,7 +6612,7 @@ lemma unRpn_zero_rewrite_chunk {b : List ℕ} {φ : Sentence}
 
 /-- **Whole-stream contraction exactness for the zero-aware price pass.**
 Paper node: `thm:scon` -/
-theorem unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ)
+lemma unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ)
     (ψ : ℕ → Sentence)
     (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
     (ε : ℚ) : ∀ (N : ℕ) (ts : List ℕ), ts.length ≤ N →
@@ -6690,12 +6631,10 @@ theorem unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ →
     (fun t => zeroAwareConditionPriceTokenRun_one zeroDays _ ε t)
     (fun t c L ht => zeroAwareConditionPriceTokenRun_payload zeroDays _ ε t c ht L)
     (fun fc d L => by
-      try simp only []
       rw [zeroAwareConditionPriceTokenRun_price])
     (fun fc => zeroAwareConditionPriceTokenRun_price_pair zeroDays _ ε fc)
     (fun fc L => zeroAwareConditionPriceTokenRun_trade zeroDays _ ε fc L)
     (fun b φ hb D rest => by
-      try simp only []
       rw [rpnZeroAwareEmit]
       by_cases hD : D ∈ zeroDays
       · rw [if_pos hD, unRpn_zero_rewrite_chunk hb D rest, if_pos hD]
@@ -6705,7 +6644,7 @@ theorem unRpn_rpnZeroAwareConditionRun (zeroDays : Finset ℕ) (blocks : ℕ →
 
 /-- **The zero-aware guarded price-pass strategy-level equality.**
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
+lemma strategyOfTokens_rpnGuardedZeroAwareConditionTokens_trades
     (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ D, parseRpn (blocks D).length (blocks D) = some (ψ D, []))
     (ε : ℚ) (n : ℕ) (ts : List ℕ) :
@@ -6817,11 +6756,7 @@ lemma rpnGuardedZeroAwareConditionRun_polySegStream (zeroDays : Finset ℕ)
     rw [digitize_rpnConditionEmit, digitize_rpnCondWindow]
     simp only [Nat.unpair_pair, htf, rcLen, List.append_assoc]
 
-
-#print axioms unRpn_rpnZeroAwareConditionRun
-#print axioms rpnGuardedZeroAwareConditionRun_polySegStream
-
-/-! ### The class-agnostic conditioning transduction
+/-! ## The class-agnostic conditioning transduction
 
 The two conditioning passes compose into a single list-level transduction,
 `rpnConditionOutput`, carrying a day's source token stream to that day's conditioned
@@ -6869,12 +6804,69 @@ def rpnConditionOutput (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ) (ts : Li
       (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts)))
     (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n ts)
 
+/-- The assembly step shared by the three class-preservation endpoints: once the priced
+stream's trades are the source trades under a per-position price map `g`, the two frame
+legs of the gated join are that map composed with `frameLeg`, at the budget the source's
+own trade count sets.  The trade-run count is exact here because a nonempty priced
+strategy makes the contraction readable, which rules out the poison branch of
+`rpnTradeCountAt_eq_frameTradeCount`. -/
+private lemma frameLegs_of_priced_trades (tfP tokP lenP lenT : ℕ → ℕ) (n : ℕ)
+    (ts : List ℕ) (hvts : vpre tfP n (lenP n) = ts)
+    (hvL : vpre tokP n (lenT n) = unRpn ts) (hlen : ts.length = lenP n)
+    (ψn : Sentence) (ε : ℚ) (g : EF → EF) (L : List (EF × Sentence)) (hL : L ≠ [])
+    (hprice : (strategyOfTokens n (unRpn ts)).trades =
+      L.map fun tr => (g tr.1, tr.2)) :
+    (strategyOfTokens n (unRpn ts)).trades.map
+        (frameLeg false ψn ε (frameBudget n (rpnTradeCountAt tfP n (lenP n))) n) ++
+      (strategyOfTokens n (unRpn ts)).trades.map
+        (frameLeg true ψn ε (frameBudget n (rpnTradeCountAt tfP n (lenP n))) n) =
+      L.map (fun p => frameLeg false ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) ++
+        L.map (fun p => frameLeg true ψn ε
+          (Strategy.localConditioningBudget (conditioningBudget n) L.length) n
+          (g p.1, p.2)) := by
+  have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
+    rw [hprice]
+    simpa using hL
+  have hdecodePriced :=
+    deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil n (unRpn ts) hpricedNe
+  have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
+    (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
+  have hreadyTokens :
+      EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
+          (some EF.streamInitial) =
+        some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
+    rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
+      unRpn ts from hvL]
+    exact hreadyPriced
+  have hcountTok : frameTradeCount tokP lenT n = L.length := by
+    calc
+      frameTradeCount tokP lenT n =
+          (strategyOfTokens n (unRpn ts)).trades.length :=
+        frameTradeCount_eq_length_of_read tokP lenT n
+          ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
+      _ = L.length := by rw [hprice, List.length_map]
+  have hnotUnread : ¬ Unreadable (unRpn ts) := by
+    intro hU
+    rw [hU.deserializeTrades_eq_none] at hdecodePriced
+    simp at hdecodePriced
+  have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
+    rcases rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
+      (by rw [hlen]; exact hvts) hvL with h | hU
+    · rw [← h, hlen]
+    · exact absurd hU hnotUnread
+  have hpos : 0 < L.length := List.length_pos_iff.mpr hL
+  rw [hprice, hcountSym, hcountTok, frameBudget_eq n L.length hpos]
+  simp only [List.map_map]
+  rfl
+
 /-- **The conditioning transduction is correct on any stream**: whenever a day-`n`
 source token stream decodes to the trader's day-`n` strategy, the transduced stream
 decodes to the conditioned trader's day-`n` strategy.  No efficiency class appears, so
 this is the shared core of every class-preservation endpoint for `thm:scon`.
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_rpnConditionOutput
+lemma strategyOfTokens_rpnConditionOutput
     (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
     (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
@@ -6919,61 +6911,15 @@ theorem strategyOfTokens_rpnConditionOutput
     simp [Trader.conditionedTranslation,
       Strategy.separatedLocallyGatedConditionalContract]
     exact hempty
-  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
-      rw [hprice]
-      simpa using hempty
-    have hdecodePriced :=
-      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-        n (unRpn ts) hpricedNe
-    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
-    have hreadyTokens :
-        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
-            (some EF.streamInitial) =
-          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
-      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
-        unRpn ts from hvL]
-      exact hreadyPriced
-    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
-      calc
-        frameTradeCount tokP lenT n =
-            (strategyOfTokens n (unRpn ts)).trades.length :=
-          frameTradeCount_eq_length_of_read tokP lenT n
-            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
-        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-    have hnotUnread : ¬ Unreadable (unRpn ts) := by
-      intro hU
-      rw [hU.deserializeTrades_eq_none] at hdecodePriced
-      simp at hdecodePriced
-    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
-      have hlenEq : ts.length = lenP n := rfl
-      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
-        (by rw [hlenEq]; exact hvts) hvL
-      rcases this with h | hU
-      · rw [← h, hlenEq]
-      · exact absurd hU hnotUnread
-    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
-    rw [hprice, hq, hcountSym, hcountTok,
-      frameBudget_eq n (T.strat n).trades.length hpos]
-    simp only [List.map_map]
-    change
-      ((T.strat n).trades.map fun p =>
-        frameLeg false (ψ n) ε
-          (Strategy.localConditioningBudget (conditioningBudget n)
-            (T.strat n).trades.length) n
-          (p.1.retainedConditionPrices ψ ε, p.2)) ++
-        ((T.strat n).trades.map fun p =>
-          frameLeg true (ψ n) ε
-            (Strategy.localConditioningBudget (conditioningBudget n)
-              (T.strat n).trades.length) n
-            (p.1.retainedConditionPrices ψ ε, p.2)) =
-        ((T.conditionedTranslation ψ ε).strat n).trades
+  · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl (ψ n) ε
+      (fun e : EF => e.retainedConditionPrices ψ ε) (T.strat n).trades hempty hprice]
     simp only [frameLeg_retained_eq_locallyGatedFirstLeg,
       frameLeg_retained_eq_locallyGatedSecondLeg]
     rfl
 
-#print axioms strategyOfTokens_rpnConditionOutput
-
+/-- **The finite-zero conditioning transduction**: the guarded zero-aware price pass
+followed by the gated two-leg frame pass, whose budget is set by the priced stream's own
+trade-run count. -/
 def rpnZeroAwareOutput (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ε : ℚ) (n : ℕ)
     (ts : List ℕ) : List ℕ :=
   rpnSafeSeparatedFrameRuns (blocks n) ε n
@@ -6989,7 +6935,7 @@ transduced stream decodes to the except-zero gated contract over the trader's da
 strategy.  No efficiency class appears, so this is the shared core of every
 class-preservation endpoint for the eventual form of `thm:scon`.
 Paper node: `thm:scon` -/
-theorem strategyOfTokens_rpnZeroAwareOutput
+lemma strategyOfTokens_rpnZeroAwareOutput
     (zeroDays : Finset ℕ) (blocks : ℕ → List ℕ) (ψ : ℕ → Sentence)
     (hblocks : ∀ d, parseRpn (blocks d).length (blocks d) = some (ψ d, []))
     (ε : ℚ) (T : Trader) (n : ℕ) (src : List ℕ)
@@ -7034,63 +6980,14 @@ theorem strategyOfTokens_rpnZeroAwareOutput
   · rw [hprice, hempty]
     simp [Strategy.separatedExceptZeroConditionalContract]
     exact hempty
-  · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
-      rw [hprice]
-      simpa using hempty
-    have hdecodePriced :=
-      deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-        n (unRpn ts) hpricedNe
-    have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-      (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
-    have hreadyTokens :
-        EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
-            (some EF.streamInitial) =
-          some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
-      rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
-        unRpn ts from hvL]
-      exact hreadyPriced
-    have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
-      calc
-        frameTradeCount tokP lenT n =
-            (strategyOfTokens n (unRpn ts)).trades.length :=
-          frameTradeCount_eq_length_of_read tokP lenT n
-            ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
-        _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-    have hnotUnread : ¬ Unreadable (unRpn ts) := by
-      intro hU
-      rw [hU.deserializeTrades_eq_none] at hdecodePriced
-      simp at hdecodePriced
-    have hcountSym : rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
-      have hlenEq : ts.length = lenP n := rfl
-      have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
-        (by rw [hlenEq]; exact hvts) hvL
-      rcases this with h | hU
-      · rw [← h, hlenEq]
-      · exact absurd hU hnotUnread
-    have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
-    rw [hprice, hq, hcountSym, hcountTok,
-      frameBudget_eq n (T.strat n).trades.length hpos]
-    simp only [List.map_map]
-    change
-      ((T.strat n).trades.map fun p =>
-        frameLeg false (ψ n) ε
-          (Strategy.localConditioningBudget (conditioningBudget n)
-            (T.strat n).trades.length) n
-          (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) ++
-        ((T.strat n).trades.map fun p =>
-          frameLeg true (ψ n) ε
-            (Strategy.localConditioningBudget (conditioningBudget n)
-              (T.strat n).trades.length) n
-            (p.1.retainedConditionPricesExceptZero zeroDays ψ ε, p.2)) =
-        ((T.strat n).separatedExceptZeroConditionalContract zeroDays ψ ε
-          (conditioningBudget n)).trades
+  · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl (ψ n) ε
+      (fun e : EF => e.retainedConditionPricesExceptZero zeroDays ψ ε)
+      (T.strat n).trades hempty hprice]
     simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
       frameLeg_exceptZero_eq_locallyGatedSecondLeg]
     rfl
 
-#print axioms strategyOfTokens_rpnZeroAwareOutput
-
-/-! ### The class-preservation endpoints
+/-! ## The class-preservation endpoints
 
 The assembly: the source certificate gives the clocked digit stream of the RPN-expanded
 strategy serialization; the guarded price pass rewrites its price days
@@ -7099,15 +6996,16 @@ strategy serialization; the guarded price pass rewrites its price days
 join splices the two conditional legs (`rpnSafeSeparatedFrameOutput_polySegStream`,
 `strategyOfTokens_unRpn_rpnSafeSeparatedFrameOutput_trades`); the budget codes are set
 by the symbol-level trade-run count, exact against the token model
-(`rpnTradeCountAt_eq_frameTradeCount`); and `ec_of_rawSegStream` digitizes back into a
-`def:ec` certificate. -/
+(`rpnTradeCountAt_eq_frameTradeCount`); and `ec_of_rawSegStream` digitizes back into an
+`EfficientlyComputable` certificate. -/
 
-/-- **The gated conditioning translation preserves token-metered efficient
-computability** (`def:ec` → `def:ec`), over any `𝓔𝓒` sentence sequence — the
-write-out class `BigSentenceCodes`, in which a condition's Gödel code may be
-exponential in the day.
+/-- **The gated conditioning translation preserves the `dd:fuel` certificate**:
+`EfficientlyComputable` → `EfficientlyComputable`, over any `𝓔𝓒` sentence sequence in
+the write-out class `BigSentenceCodes`, in which a condition's Gödel code may be
+exponential in the day.  The paper's own class `def:ec` is transported by
+`CondStep.conditionedTranslation_preserves_machine`.
 Paper node: `thm:scon` -/
-theorem conditionedTranslation_preserves_ecRpn
+lemma conditionedTranslation_preserves_ecRpn
     (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) (ε : ℚ)
     (T : Trader) (hT : EfficientlyComputable T) :
     EfficientlyComputable (T.conditionedTranslation ψ ε) := by
@@ -7159,12 +7057,12 @@ theorem conditionedTranslation_preserves_ecRpn
   exact strategyOfTokens_rpnConditionOutput blocks ψ hblocksParse ε T n
     (undigitize (source n)) (congrFun (congrArg Trader.strat hcert) n)
 
-#print axioms conditionedTranslation_preserves_ecRpn
-
-/-- **The eventual (finite-zero, launch-gated) conditioning translation preserves
-token-metered efficient computability** (`def:ec` → `def:ec`).
+/-- **The eventual (finite-zero, launch-gated) conditioning translation preserves the
+`dd:fuel` certificate**: `EfficientlyComputable` → `EfficientlyComputable`.  The paper's
+own class `def:ec` is transported by
+`CondStep.eventualConditionedTranslation_preserves_machine`.
 Paper node: `thm:scon` -/
-theorem eventualConditionedTranslation_preserves_ecRpn
+lemma eventualConditionedTranslation_preserves_ecRpn
     {P : History} {ψ : ℕ → Sentence}
     (F : EventualConditioningFloor P ψ) (hψ : BigSentenceCodes ψ)
     (T : Trader) (hT : EfficientlyComputable T) :
@@ -7269,62 +7167,13 @@ theorem eventualConditionedTranslation_preserves_ecRpn
     · rw [hprice, hempty]
       simp [Strategy.separatedExceptZeroConditionalContract]
       exact hempty
-    · have hpricedNe : (strategyOfTokens n (unRpn ts)).trades ≠ [] := by
-        rw [hprice]
-        simpa using hempty
-      have hdecodePriced :=
-        deserializeTrades_eq_some_of_strategyOfTokens_trades_ne_nil
-          n (unRpn ts) hpricedNe
-      have hreadyPriced := streamReadFrom_eq_ready_of_deserializeTrades_eq_some
-        (unRpn ts) (strategyOfTokens n (unRpn ts)).trades hdecodePriced
-      have hreadyTokens :
-          EF.streamReadFrom ((List.range (lenT n)).map fun i => tokP (Nat.pair n i))
-              (some EF.streamInitial) =
-            some ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) := by
-        rw [show ((List.range (lenT n)).map fun i => tokP (Nat.pair n i)) =
-          unRpn ts from hvL]
-        exact hreadyPriced
-      have hcountTok : frameTradeCount tokP lenT n = (T.strat n).trades.length := by
-        calc
-          frameTradeCount tokP lenT n =
-              (strategyOfTokens n (unRpn ts)).trades.length :=
-            frameTradeCount_eq_length_of_read tokP lenT n
-              ((0, none), ([], (strategyOfTokens n (unRpn ts)).trades)) hreadyTokens
-          _ = (T.strat n).trades.length := by rw [hprice, List.length_map]
-      have hnotUnread : ¬ Unreadable (unRpn ts) := by
-        intro hU
-        rw [hU.deserializeTrades_eq_none] at hdecodePriced
-        simp at hdecodePriced
-      have hcountSym :
-          rpnTradeCountAt tfP n (lenP n) = frameTradeCount tokP lenT n := by
-        have hlenEq : ts.length = lenP n := rfl
-        have := rpnTradeCountAt_eq_frameTradeCount tfP tokP lenT n ts
-          (by rw [hlenEq]; exact hvts) hvL
-        rcases this with h | hU
-        · rw [← h, hlenEq]
-        · exact absurd hU hnotUnread
-      have hpos : 0 < (T.strat n).trades.length := List.length_pos_iff.mpr hempty
-      rw [hprice, hq, hcountSym, hcountTok,
-        frameBudget_eq n (T.strat n).trades.length hpos]
-      simp only [List.map_map]
-      change
-        ((T.strat n).trades.map fun p =>
-          frameLeg false (ψ n) F.epsilon
-            (Strategy.localConditioningBudget (conditioningBudget n)
-              (T.strat n).trades.length) n
-            (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon, p.2)) ++
-          ((T.strat n).trades.map fun p =>
-            frameLeg true (ψ n) F.epsilon
-              (Strategy.localConditioningBudget (conditioningBudget n)
-                (T.strat n).trades.length) n
-              (p.1.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon, p.2)) =
-          ((T.strat n).separatedExceptZeroConditionalContract
-            F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
+    · rw [hq, frameLegs_of_priced_trades tfP tokP lenP lenT n ts hvts hvL rfl (ψ n)
+        F.epsilon
+        (fun e : EF => e.retainedConditionPricesExceptZero F.zeroDays ψ F.epsilon)
+        (T.strat n).trades hempty hprice]
       simp only [frameLeg_exceptZero_eq_locallyGatedFirstLeg,
         frameLeg_exceptZero_eq_locallyGatedSecondLeg]
       rfl
-
-#print axioms eventualConditionedTranslation_preserves_ecRpn
 
 end RpnConditioning
 

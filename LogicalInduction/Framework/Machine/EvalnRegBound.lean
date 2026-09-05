@@ -1,26 +1,54 @@
-/-
-# A register bound for the compiled `evaln` interpreter
+import LogicalInduction.Framework.Emission
+import LogicalInduction.Framework.Machine.CodeSteps
+import LogicalInduction.Framework.Machine.EvalnCompiler
+
+/-!
+# Register and step bounds for the compiled `evaln` interpreter
+
+**Not a paper node.** Nothing here renders a result of arXiv:1609.03543; the declarations
+are `lemma`s and `def`s carrying no `Paper node` line. This is the accounting for the
+machines `Framework/Machine/EvalnCompiler.lean` builds: how large their registers get, and
+how long they run.
+
+## The register bound
 
 `codeEvalBound` (`Framework/Emission.lean`) bounds the value a *successful* `evaln` call
-returns. That is not enough for the compiled machine, whose registers also hold
-intermediate values larger than any node's own answer:
+returns. That is not enough for the compiled machine, whose registers also hold intermediate
+values larger than any node's own answer:
 
 * `prec`'s body reconstructs `Nat.pair a (Nat.pair j acc)` before invoking `cg`, while
   `codeEvalBound (prec cf cg) k` is only `max (codeEvalBound cf k) (codeEvalBound cg k)`;
 * `rfind'`'s body forms `Nat.pair a m` with `m` advancing one per level, so `m` can reach
   `m₀ + fuel` — past the input.
 
-So the machine needs its own structural bound, and it must carry those pairs explicitly.
-`codeRegBound c s` is that bound, with the single parameter `s` standing for a common
-bound on the node's input *and* fuel registers. It is monotone in `s` and, for each fixed
-code, polynomially bounded — which is what the runtime argument consumes.
+So the machine needs its own structural bound, carrying those pairs explicitly
+(`precWindowBound`, `rfWindowBound`). `codeRegBound c s` is that bound, with the single
+parameter `s` standing for a common bound on the node's input *and* fuel registers. It is
+monotone in `s` (`codeRegBound_mono`) and, for each fixed code, polynomially bounded
+(`codeRegBound_poly`).
 
 Nothing here assumes an arbitrary bound is closed under `Nat.pair`: every pair the machine
-forms appears in the definition.
+forms appears in `codeRegBound`'s definition.
+
+`codeVals_lt` is the structural companion to `codeVals_encodes`: a single ambient bound `B`
+dominating `codeRegBound c s` holds of every register, each child using its own size
+parameter while sharing `B`. The two looping constructors get their own loop invariants
+(`precLoopVals_ok`, `rfLoopVals_ok`, `RfStateOK`).
+
+## The step bound
+
+`codeMachineTime c s A` mirrors the per-constructor Hoare bounds, with `A` the common
+arithmetic cost. It is monotone in the cost (`codeMachineTime_mono_cost`) and polynomial per
+fixed code (`codeMachineTime_poly`, and at the machine's own register bound
+`codeMachineTime_arith_poly`). `compiledTM_hoareTime` proves the compiled machine meets it,
+for all eight constructors.
+
+## Where it is consumed
+
+`compiledTM_hoareTime` and `codeMachineTime_poly` are consumed by
+`Framework/Machine/TraderMachine.lean`, on the `EfficientlyComputable.toMachine` chain mapped
+in `Framework/MachineEfficiency.lean`.
 -/
-import LogicalInduction.Framework.Emission
-import LogicalInduction.Framework.Machine.CodeSteps
-import LogicalInduction.Framework.Machine.EvalnCompiler
 
 namespace LogicalInduction.EvalnCompiler
 
@@ -761,10 +789,12 @@ lemma codeVals_lt : ∀ (c : Nat.Partrec.Code) (s B : ℕ) (V : Fin (codeRegs c)
       have hFfB := codeVals_lt cf (s + codeEvalBound cg s) B
         (compLeftIn (codeRegs cf) (codeRegs cg) (codeRegs_ge cf) (codeRegs_ge cg)
           (codeVals cg) V) hBf hLb
-        (by show compLeftIn _ _ _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s + codeEvalBound cg s
+        (by show compLeftIn _ _ _ _ _ V ⟨0, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
+            ≤ s + codeEvalBound cg s
             rw [compLeftIn_zero]
             exact le_trans hvG (Nat.le_add_left _ _))
-        (by show compLeftIn _ _ _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩ ≤ s + codeEvalBound cg s
+        (by show compLeftIn _ _ _ _ _ V ⟨1, Nat.lt_of_lt_of_le (by norm_num) (codeRegs_ge cf)⟩
+            ≤ s + codeEvalBound cg s
             rw [compLeftIn_one]
             exact le_trans h1' (Nat.le_add_right _ _))
       have hA := compPhaseAVec_lt (codeRegs_ge cf) (codeRegs_ge cg) (codeVals cf)
@@ -875,46 +905,6 @@ def codeMachineTime : Nat.Partrec.Code → ℕ → ℕ → ℕ
         + (s * ((22 * A + codeMachineTime cf (s + rfWindowBound s) A + 22) + 2)
           + (s + 2) + 1 + (2 * A + 1))
 
-lemma codeMachineTime_mono_size (c : Nat.Partrec.Code) (A : ℕ) :
-    Monotone (fun s => codeMachineTime c s A) := by
-  induction c with
-  | zero => exact monotone_const
-  | succ => exact monotone_const
-  | left => exact monotone_const
-  | right => exact monotone_const
-  | pair cf cg ihf ihg =>
-      intro a b hab
-      simp only [codeMachineTime]
-      exact Nat.add_le_add_right (Nat.add_le_add (Nat.add_le_add (le_refl _) (ihf hab))
-        (ihg hab)) 15
-  | comp cf cg ihf ihg =>
-      intro a b hab
-      simp only [codeMachineTime]
-      exact Nat.add_le_add_right
-        (Nat.add_le_add (Nat.add_le_add (le_refl _)
-          (ihf (Nat.add_le_add hab (codeEvalBound_mono cg hab)))) (ihg hab)) 12
-  | prec cf cg ihf ihg =>
-      intro a b hab
-      simp only [codeMachineTime]
-      have h1 : codeMachineTime cf a A ≤ codeMachineTime cf b A := ihf hab
-      have h2 : codeMachineTime cg (a + precWindowBound cf cg a) A
-          ≤ codeMachineTime cg (b + precWindowBound cf cg b) A :=
-        ihg (Nat.add_le_add hab (precWindowBound_mono cf cg hab))
-      have h3 : a * ((15 * A + codeMachineTime cg (a + precWindowBound cf cg a) A + 15) + 2)
-          ≤ b * ((15 * A + codeMachineTime cg (b + precWindowBound cf cg b) A + 15) + 2) :=
-        Nat.mul_le_mul hab (by omega)
-      omega
-  | rfind' cf ihf =>
-      intro a b hab
-      simp only [codeMachineTime]
-      have h2 : codeMachineTime cf (a + rfWindowBound a) A
-          ≤ codeMachineTime cf (b + rfWindowBound b) A :=
-        ihf (Nat.add_le_add hab (rfWindowBound_mono hab))
-      have h3 : a * ((22 * A + codeMachineTime cf (a + rfWindowBound a) A + 22) + 2)
-          ≤ b * ((22 * A + codeMachineTime cf (b + rfWindowBound b) A + 22) + 2) :=
-        Nat.mul_le_mul hab (by omega)
-      omega
-
 lemma codeMachineTime_mono_cost (c : Nat.Partrec.Code) (s : ℕ) :
     Monotone (fun A => codeMachineTime c s A) := by
   induction c generalizing s with
@@ -998,28 +988,28 @@ lemma arith_codeRegBound_mono (c : Nat.Partrec.Code) :
 /-- **The step bound is polynomial in the size parameter, for each fixed code.** -/
 lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPolyBounded A →
     Monotone A → IsPolyBounded (fun s => codeMachineTime c s (A s))
-  | .zero, A, hA, _ => ((IsPolyBounded.const_mul hA 3).add' (IsPolyBounded.const 2)).of_le
+  | .zero, A, hA, _ => ((IsPolyBounded.const_mul hA 3).add (IsPolyBounded.const 2)).of_le
       (fun s => by simp only [codeMachineTime]; omega)
-  | .succ, A, hA, _ => ((IsPolyBounded.const_mul hA 6).add' (IsPolyBounded.const 5)).of_le
+  | .succ, A, hA, _ => ((IsPolyBounded.const_mul hA 6).add (IsPolyBounded.const 5)).of_le
       (fun s => by simp only [codeMachineTime]; omega)
-  | .left, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 4)).of_le
+  | .left, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add (IsPolyBounded.const 4)).of_le
       (fun s => by simp only [codeMachineTime]; omega)
-  | .right, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 4)).of_le
+  | .right, A, hA, _ => ((IsPolyBounded.const_mul hA 5).add (IsPolyBounded.const 4)).of_le
       (fun s => by simp only [codeMachineTime]; omega)
   | .pair cf cg, A, hA, hmA => by
       have hf := codeMachineTime_poly cf A hA hmA
       have hg := codeMachineTime_poly cg A hA hmA
-      exact ((((IsPolyBounded.const_mul hA 14).add' hf).add' hg).add'
+      exact ((((IsPolyBounded.const_mul hA 14).add hf).add hg).add
         (IsPolyBounded.const 15)).of_le (fun s => by simp only [codeMachineTime]; omega)
   | .comp cf cg, A, hA, hmA => by
       have hshift : IsPolyBounded (fun s => s + codeEvalBound cg s) :=
-        isPolyBounded_id.add' (codeEvalBound_poly cg)
+        isPolyBounded_id.add (codeEvalBound_poly cg)
       have hf : IsPolyBounded
           (fun s => codeMachineTime cf (s + codeEvalBound cg s)
             (A (s + codeEvalBound cg s))) :=
         (codeMachineTime_poly cf A hA hmA).comp hshift
       have hg := codeMachineTime_poly cg A hA hmA
-      refine ((((IsPolyBounded.const_mul hA 11).add' hf).add' hg).add'
+      refine ((((IsPolyBounded.const_mul hA 11).add hf).add hg).add
         (IsPolyBounded.const 12)).of_le (fun s => ?_)
       simp only [codeMachineTime]
       have : codeMachineTime cf (s + codeEvalBound cg s) (A s)
@@ -1028,7 +1018,7 @@ lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPol
       omega
   | .prec cf cg, A, hA, hmA => by
       have hshift : IsPolyBounded (fun s => s + precWindowBound cf cg s) :=
-        isPolyBounded_id.add' (precWindowBound_poly cf cg)
+        isPolyBounded_id.add (precWindowBound_poly cf cg)
       have hf := codeMachineTime_poly cf A hA hmA
       have hg : IsPolyBounded
           (fun s => codeMachineTime cg (s + precWindowBound cf cg s)
@@ -1039,10 +1029,11 @@ lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPol
             + codeMachineTime cg (s + precWindowBound cf cg s)
                 (A (s + precWindowBound cf cg s)) + 15) + 2)) :=
         isPolyBounded_id.mul
-          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 15).add' hg).add' (IsPolyBounded.const 17))
-      refine ((((((IsPolyBounded.const_mul hA 12).add' hf).add' (IsPolyBounded.const 13)).add'
-        hloop).add' isPolyBounded_id).add'
-        ((IsPolyBounded.const_mul hA 5).add' (IsPolyBounded.const 7))).of_le (fun s => ?_)
+          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 15).add hg).add
+            (IsPolyBounded.const 17))
+      refine ((((((IsPolyBounded.const_mul hA 12).add hf).add (IsPolyBounded.const 13)).add
+        hloop).add isPolyBounded_id).add
+        ((IsPolyBounded.const_mul hA 5).add (IsPolyBounded.const 7))).of_le (fun s => ?_)
       simp only [codeMachineTime]
       have hc : codeMachineTime cg (s + precWindowBound cf cg s) (A s)
           ≤ codeMachineTime cg (s + precWindowBound cf cg s)
@@ -1058,7 +1049,7 @@ lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPol
       omega
   | .rfind' cf, A, hA, hmA => by
       have hshift : IsPolyBounded (fun s => s + rfWindowBound s) :=
-        isPolyBounded_id.add' rfWindowBound_poly
+        isPolyBounded_id.add rfWindowBound_poly
       have hf : IsPolyBounded
           (fun s => codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s))) :=
         (codeMachineTime_poly cf A hA hmA).comp hshift
@@ -1067,10 +1058,11 @@ lemma codeMachineTime_poly : ∀ (c : Nat.Partrec.Code) (A : ℕ → ℕ), IsPol
             + codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s))
               + 22) + 2)) :=
         isPolyBounded_id.mul
-          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 22).add' hf).add' (IsPolyBounded.const 24))
-      refine (((((IsPolyBounded.const_mul hA 9).add' (IsPolyBounded.const 9)).add' hloop).add'
-        isPolyBounded_id).add'
-        ((IsPolyBounded.const_mul hA 2).add' (IsPolyBounded.const 4))).of_le (fun s => ?_)
+          (((IsPolyBounded.const_mul (IsPolyBounded.comp hA hshift) 22).add hf).add
+            (IsPolyBounded.const 24))
+      refine (((((IsPolyBounded.const_mul hA 9).add (IsPolyBounded.const 9)).add hloop).add
+        isPolyBounded_id).add
+        ((IsPolyBounded.const_mul hA 2).add (IsPolyBounded.const 4))).of_le (fun s => ?_)
       simp only [codeMachineTime]
       have hc : codeMachineTime cf (s + rfWindowBound s) (A s)
           ≤ codeMachineTime cf (s + rfWindowBound s) (A (s + rfWindowBound s)) :=

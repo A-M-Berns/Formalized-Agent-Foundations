@@ -10,41 +10,49 @@ import LogicalInduction.Framework.WriteOut
 /-!
 # The computation/quotation literal stream
 
-The `_ofComputation` endpoints of `ComputationSyntax.lean` are conditional on a
-`ComputationTheoryPresentation DP T`: a computable deductive process whose stages track the
-`T`-provable instances of the fixed universal computation schemas.  This file constructs
-such a process for a fixed `Δ₁` theory `T` interpreting `𝗣𝗔⁻`, discharging both the
-presentation and the market non-vacuity hypothesis `hworld`, which is *proved* from
-consistency of `T` rather than assumed — Σ₁-soundness was the earlier premise and is
-**gone**, along with the `𝗜𝚺₁` containment: the positive direction the endpoints need is
-Σ₁-completeness (`re_complete_mp`), not soundness.
+For a fixed `Δ₁` theory `T` interpreting `𝗣𝗔⁻`, this file constructs a computable
+deductive process `theoremDP` whose stages are the `T`-provable instances of the fixed
+universal computation and quotation schemas.
+
+It discharges the hypotheses the `_ofComputation` and `_ofCode` endpoints take over such a
+process: `ComputationTheoryPresentation` (`theoremPresentation`) and
+`QuotationTheoryPresentation` (`quotationPresentation`), together with the market
+non-vacuity hypothesis `hworld` (`theoremDP_hworld`).  `hworld` is *proved* from
+consistency of `T`: every refutation tag fires on the literal negation of the sentence its
+positive partner fires on, and the two quotation fibers are refuted jointly inside `T`
+(`universalQuote_exclusive_prov`), so no semantic hypothesis on `T` is needed.
+
+An *event* is a code `e = ⟨tag, z⟩` with `tag ∈ {0,…,5}` selecting one of six
+enters/refutes obligations — four computation tags and two quotation tags — and `z` its
+input.  One r.e. predicate `eventFires` and one atom map `eventAtom` carry all six, and a
+stage is the fuel-`k` dovetail of the events `e ≤ k`.  Because quotation folds a
+decidable-decision selector into the numeral of the *fixed* schemas
+`universalQuotePos`/`universalQuoteNeg`, its instances are enumerable by the same
+`provable_instances_re` as the computation tags.  (Those are *event* tags; the quotation
+atoms' payload tag is `2` — see the allocation table at `ComputationClaimKind.godelCode`.)
+
+The two mechanical obligations behind the construction are discharged here: provability of
+schema instances is recursively enumerable (`provable_instances_re`), and the fuel-clocked
+stage enumerator is primitive recursive (`eventAtom_prim`, `theoremStage_encode_prim`,
+`theoremDP_computable`).
 
 `theoremDP` is a *component*, not a market of record.  The paper fixes one deductive
-process, and the single market this development prices everything against is `paperDP`
-(`PaperTheoryDP.lean`), which unions this literal stream with the `Θ`-complete first-order
-theorem stream.  Every paper-facing endpoint is stated over `liaHistory (paperDP T)`: the
-self-reference family (`thm:ref`, `thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`,
-`thm:ceu`) in `PaperMarket.lean`, the meta-learning family (`thm:halts`, `thm:loops`,
-`thm:dontwait`, `thm:pac`, `thm:pazfc`, `thm:incons`) in `ComputationRepresented.lean`.
-What this file supplies is the presentation and the non-vacuity that the union's own
-`paperQuotationPresentation` and `paperDP_hworld` are lifted from, plus — for the
-semantic-lifted `thm:ccee` lane, which keeps this stream as its base process by ruling —
-that lane's own market program.
+process, and every paper-facing endpoint is priced over `paperDP` (`PaperTheoryDP.lean`),
+which unions this literal stream with the `Θ`-complete first-order theorem stream and
+whose `paperQuotationPresentation` and `paperDP_hworld` are lifted from the presentation
+and non-vacuity proved here.  The self-reference family (`thm:ref`, `thm:lp`, `thm:st`,
+`thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`) is assembled in `PaperMarket.lean`, the
+meta-learning family (`thm:halts`, `thm:loops`, `thm:dontwait`, `thm:pac`, `thm:pazfc`,
+`thm:incons`) in `ComputationRepresented.lean`.
 
-The same computable process also inhabits the code-indexed `QuotationTheoryPresentation`
-(event tags 4/5 enumerate the quotation atoms), so `quotationPresentation` together with
-`theoremDP_hworld` exhibit a presentation and a plausible-world family that hold
-simultaneously (`quotation_presentation_nonvacuous`).  Because quotation folds a
-decidable-decision selector into the numeral of *fixed* universal schemas
-(`universalQuotePos`/`universalQuoteNeg`), its instances are enumerable by the same
-`provable_instances_re`; the positive and negative fibers are the value-1 and value-0
-fibers of one deterministic computation, hence mutually exclusive, which is what keeps
-`hworld` consistent on event tags 4/5.  (Those are *event* tags; the quotation atoms'
-payload tag is `2` — see the allocation table at `ComputationClaimKind.godelCode`.)
+`liaMarketComputation` is the `LIA`'s exact market program over an arbitrary computable
+deductive process (`thm:lia`); `theoremMarketComputation` instantiates it at this stream
+and is consumed by `QuoteCodeOfMarket.deferredWeightQuoteCode` on the exact-product
+`thm:ccee` lane, which keeps this stream as its base process by ruling and is the one
+canonical endpoint priced outside `paperDP`.
 
-The two mechanical obligations behind all of this are discharged here: provability of
-schema instances is recursively enumerable, and the fuel-clocked stage enumerator is
-primitive recursive.
+Hypotheses: `[T.Δ₁]` for the enumeration, `[𝗣𝗔⁻ ⪯ T]` and `[Entailment.Consistent T]` for
+non-vacuity; that is the whole premise set.
 -/
 
 namespace LogicalInduction
@@ -56,14 +64,16 @@ open Filter Topology
 /-! ## Provability of schema instances is recursively enumerable -/
 
 open Classical in
-/-- For a fixed schema `φ`, provability of its numerical instances in a Δ₁, Σ₁-sound theory
-extending `𝗜𝚺₁` is recursively enumerable.  Mirrors the positive-path assembly inside FFL's
+/-- For a fixed schema `φ` and a `Δ₁` theory `T`, provability of `φ`'s numerical instances
+is recursively enumerable: the predicate is `𝚺₁` by `definability` and internalisation, and
+`re_iff_sigma1` converts it.  Mirrors the positive-path assembly inside FFL's
 `incomplete_of_REPred_not_ComputablePred_Nat'`. -/
 lemma provable_instances_re (T : ArithmeticTheory) [T.Δ₁]
     (φ : ArithmeticSemisentence 1) :
     REPred (fun z : ℕ => T ⊢ φ/[↑z]) := by
   have hsig : 𝚺₁-Predicate fun b : ℕ ↦
-      Bootstrapping.Provable T (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
+      Bootstrapping.Provable T
+        (Bootstrapping.subst ℒₒᵣ ?[Bootstrapping.Arithmetic.numeral b] ⌜φ⌝) := by
     definability
   apply REPred.of_eq (re_iff_sigma1.mpr hsig)
   intro a
@@ -108,8 +118,9 @@ def eventFires (e : ℕ) : Prop :=
   | 5 => T ⊢ universalQuoteNeg/[↑e.unpair.2]
   | _ => False
 
-/-- Substitution commutes with negation, so the tag-1 obligation is provability of a schema
-instance and hence r.e. -/
+/-- `eventFires` is a six-way disjunction of a primitive-recursive tag test with
+provability of a fixed schema instance; substitution commutes with negation, so the two
+refutation tags are schema instances too, and the whole predicate is r.e. -/
 lemma eventFires_re [T.Δ₁] :
     REPred (eventFires T) := by
   have key : eventFires T = fun e =>
@@ -218,14 +229,17 @@ noncomputable def provabilityWorld : PCWorld := fun m =>
   else if m.unpair.1 = ComputationClaimKind.boundedHalting.godelCode then
     T ⊢ universalBoundedHaltingSchema/[↑m.unpair.2.unpair.2]
   else if m.unpair.1 = 2 then
-    -- quotation atoms (atom payload tag 2): believe iff the positive folded universal
-    -- schema is provable
+    -- Atom payload tag `2` is the quotation claims (allocation table at
+    -- `ComputationClaimKind.godelCode`); believe one iff the positive folded universal
+    -- schema is provable.
     T ⊢ universalQuotePos/[↑m.unpair.2.unpair.2.unpair.2]
   else False
 
+/-- A world holds a propositional atom exactly when its valuation does. -/
 @[simp] lemma holds_atom (v : PCWorld) (m : ℕ) :
     v.Holds (Formula.atom m) ↔ v m := Iff.rfl
 
+/-- The `@[simp]` form of `PCWorld.holds_neg`. -/
 @[simp] lemma holds_not (v : PCWorld) (φ : Sentence) :
     v.Holds (∼φ) ↔ ¬ v.Holds φ := by
   show LO.Propositional.Formula.Boolean.val v (∼φ) ↔ ¬ LO.Propositional.Formula.Boolean.val v φ
@@ -307,7 +321,8 @@ in the stage index.  Isolating this mechanical obligation keeps the epistemic co
 fully proved. -/
 
 /-- A finite sentence set given as a list's `toFinset` has the code of the canonical
-sorted, duplicate-free list — the reusable core of `sentenceFinsetUnionNorm_spec`. -/
+sorted, duplicate-free list.  Every stage-encoding computability proof in
+`Construction/Witnesses/` reduces its stage encoder to this shape. -/
 lemma encode_toFinset_eq (l : List Sentence) :
     Encodable.encode l.toFinset =
       Encodable.encode ((sentenceDedup l).insertionSort sentenceCodeLE) := by
@@ -452,13 +467,14 @@ lemma theoremStage_encode_prim (c : Nat.Partrec.Code) :
 emits the encoded stage `D n` on input `n`. -/
 lemma theoremDP_computable [T.Δ₁] :
     ComputableDeductiveProcess (theoremDP T) := by
+  let eventCode := (exists_eventCode T).choose
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
-    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim (exists_eventCode T).choose)))
+    (Nat.Partrec.of_primrec (Primrec.nat_iff.mp (theoremStage_encode_prim eventCode)))
   refine ⟨code, fun n => ?_⟩
   rw [hcode]
   exact Part.mem_some _
 
-/-! ## The presentation and the unconditional LIA endpoint -/
+/-! ## The presentations -/
 
 /-- **The constructed computation presentation.**  All four enters/refutes obligations are
 discharged by coverage of the provability enumeration. -/
@@ -503,10 +519,11 @@ noncomputable def quotationPresentation [T.Δ₁] :
     obtain ⟨k, hk⟩ := theoremDP_covers T this
     exact ⟨k, by simpa only [eventAtom, Nat.unpair_pair] using hk⟩
 
-/-- Quotation non-vacuity certificate (`N+`).  For a Σ₁-sound `T ⊇ 𝗜𝚺₁` there is a deductive
-process carrying both a `QuotationTheoryPresentation` and the market non-vacuity hypothesis
-`hworld`, so the conjunction consumed by every `_ofCode`/`_ofDiagonal`/`_ofRepresentation`
-introspection, self-trust, expectation, and paradox-resistance endpoint is satisfiable.
+/-- Quotation non-vacuity certificate.  For a consistent `Δ₁` theory `T` interpreting
+`𝗣𝗔⁻` there is a deductive process carrying both a `QuotationTheoryPresentation` and the
+market non-vacuity hypothesis `hworld`, so the conjunction consumed by every
+`_ofCode`/`_ofDiagonal`/`_ofRepresentation` introspection, self-trust, expectation, and
+paradox-resistance endpoint is satisfiable.
 Code-indexing is what makes such a witness possible: the quotation schemas are fixed
 (`universalQuotePos`/`universalQuoteNeg`) with the decision selector folded into the
 numeral, so their positive and negative fibers are mutually exclusive and no stage is
@@ -521,18 +538,12 @@ theorem quotation_presentation_nonvacuous
 
 /-! ## The market program of the `LIA` over a computable process
 
-`quotationPresentation` inhabits `QuotationTheoryPresentation` over the constructed
-computable `theoremDP`, and `theoremDP_hworld` discharges the market non-vacuity.  Both are
-*ingredients*: the paper-facing endpoints are stated over the single market `paperDP`
-(`PaperTheoryDP.lean`), which contains this literal stream, and are assembled in
-`PaperMarket.lean` from the monotone lift of the presentation proved here.  What stays here
-is the presentation, its non-vacuity, and the market program of the `LIA` over an arbitrary
-computable process — the last of which the single market's own program is an instance of.
-
-The exact-product `thm:ccee` lane (`ProductDefinition.lean` and the semantic-lifted
-`canonicalCCEEDP` above it) keeps this stream as *its* base process by ruling, and is the
-one place a canonical endpoint is priced somewhere other than `paperDP`; that is why
-`theoremMarketComputation` survives beside `paperMarketComputation`. -/
+`liaMarketComputation` is the `LIA`'s exact market program over an arbitrary computable
+deductive process; the single market's own program, `paperMarketComputation`, is one of its
+instances.  `theoremMarketComputation` is the instance at this literal stream.  It is
+consumed by `QuoteCodeOfMarket.deferredWeightQuoteCode` on the exact-product `thm:ccee`
+lane, which keeps this stream as its base process by ruling and is the one canonical
+endpoint priced outside `paperDP`. -/
 
 section PeanoMinus
 variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
@@ -554,21 +565,5 @@ noncomputable def theoremMarketComputation :
   liaMarketComputation (theoremDP T) (theoremDP_computable T)
 
 end PeanoMinus
-
-/-! ## The paper-facing endpoints live over the single market
-
-Every `_ofCode`/`_ofDiagonal`/`_ofRepresentation` self-reference endpoint (`thm:ref`,
-`thm:lp`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`) and every §4.9-4.10
-meta-learning endpoint (`thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`, `thm:dontwait`,
-`thm:incons`) is stated over `paperDP` — the former in `PaperMarket.lean`, the latter in
-`ComputationRepresented.lean`.  Nothing of either lane remains here. -/
-
-#print axioms provable_instances_re
-#print axioms theoremDP_covers
-#print axioms theoremDP_hworld
-#print axioms theoremPresentation
-#print axioms quotationPresentation
-#print axioms quotation_presentation_nonvacuous
-#print axioms liaMarketComputation
 
 end LogicalInduction

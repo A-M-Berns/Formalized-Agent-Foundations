@@ -2,19 +2,51 @@ import LogicalInduction.Construction.Witnesses.QuotationAffine
 import LogicalInduction.Framework.WriteOut
 
 /-!
-# Concrete delayed feedback truth for `thm:wubaff` and `thm:wubexp`
+# Concrete delayed feedback truth for `thm:wub`, `thm:wubaff` and `thm:wubexp`
 
-The completed-theory value stream in `DeterminedViaTheory` is semantic data; it is not a
-computable oracle.  This file therefore takes the paper's separate operational premise:
-one program emits the rational value of `A_{f k}` by the next feedback deadline.  A bounded
-simulation of that program is combined with the already-certified deferral schedule to
-emit the literal sparse affine sequence
+The completed-theory value stream in `DeterminedViaTheory` is semantic data, not a
+computable oracle.  This file renders the delayed-feedback half of `thm:wub` (tex:1249),
+`thm:wubaff` (tex:1480) and `thm:wubexp` (tex:1822): the paper's separate operational
+premise that `thmval` of the day's combination can be computed in time `O(f(n+1))`.
 
-`A_{f k} - truth(f k)` on day `f(k+1)`, and `0` on every other day.
+`FeedbackTruthComputation truth f` is that premise — a rational value stream, a
+`Nat.Partrec.Code`, and an `evaln` bound at the deferral clock `ecClock a degree (f (k+1))`.
+The semantic agreement `value k = truth (f k)` is recorded only on the required indices, and
+the certificate carries no price-accuracy, unbiasedness, convergence, or logical-inductor
+conclusion; uniform normalization and market bounds remain separate inputs to the public
+constructor.
 
-The operational certificate contains no price-accuracy, unbiasedness, convergence, or
-logical-inductor conclusion.  Uniform normalization and market bounds remain separate
-inputs to the public constructor.
+The premise is inhabited.  `ordinaryFeedbackTruthComputation` is the constant witness;
+`alternatingFeedbackTruthComputation_nonempty` and
+`exists_nonconstant_feedbackTruthComputation` give a genuinely two-valued stream, so the
+endpoints' dependence on `truth` is exercised by an actual inhabitant.  A stream ranging
+over unboundedly many rationals is out of reach, because `Encodable ℚ` is a `Denumerable`
+bijection with no arithmetic normal form in the `PolyFueled` toolkit (`dd:fuel`).
+
+`feedbackFlag`, `feedbackIndex` and `sourceIndex` recover the source component of a delayed
+feedback day through the bounded deferral evaluator, never through an unbounded inverse of
+`f`; they need only `StrictlyIncreasingDeferral`, which `thm:wubaff` itself supplies.
+
+`feedbackResidualSeq As C fa fd` is the emitted object: the sparse literal affine family
+carrying `A_{f k} - truth (f k)` on day `f (k+1)` and the zero combination on every other
+day, with `feedbackResidualSeqPoly` its uniform polynomial syntax emitter (`dd:fuel`) and
+`truthCodeAt_eq_of_flag` proving the emitted rational payload is the canonical code.
+
+`feedbackResidualSeq_value_vanishing` and `feedbackResidualSeq_bounded` feed
+`feedbackTruthSequence`, which builds the `FeedbackTruthSequence` boundary at
+`ApproxDeterminedViaTheory`.  `feedbackTruthSequence_ofDetermined` is the exact (`err = 0`)
+instance used by the sentence and affine lanes; the LUV mesh needs the approximate form
+(`dd:mesh`).
+
+The endpoints are `lic_wubaff_ofComputation`, `lic_wub_ofComputation`,
+`boundedCombination_wubaff_ofComputation` and `luv_wubexp_ofComputation`, each universal
+over `[IsLogicalInductor P DP]`.  `FeedbackUnconditional.lean` lifts all four to the
+`_unconditional` forms over the `LIA`, and `LUVExpectationCertified.lean` consumes the last
+of them.
+
+One paper defect is carried here: `thm:wubexp`'s `hsupport` clause is printed at
+`thm:recurringunbiasednessexp` instead (`PE2`, `notes/paper-errata.md`), and
+`luv_wubexp_ofComputation` states it at the feedback theorem where it belongs.
 -/
 
 namespace LogicalInduction
@@ -23,6 +55,8 @@ namespace FeedbackTruth
 open AffineCombination PrefixPatchCompile Filter Topology
 
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The delayed-truth premise -/
 
 /-- The paper's delayed truth computation premise.  Input `k` names the value of
 `A_{f k}`; the program must return its canonical rational code by day `f(k+1)`.
@@ -37,9 +71,9 @@ structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) 
     some (Encodable.encode (value k))
   agrees : ∀ k, (value k : ℝ) = truth (f k)
 
-/-! ## Non-vacuity witness -/
+/-! ## Non-vacuity witnesses -/
 
-/-- **N+.** The delayed-truth premise is inhabited, for every deferral schedule `f`: the
+/-- **The delayed-truth premise is inhabited, for every deferral schedule `f`:** the
 constant program `Code.const ⌜1⌝` returns the code of `1` well inside the polynomial
 feedback clock, because `f (k+1) > k` forces the clock above the `k + ⌜1⌝ + 1` fuel that
 `fueled_const` needs.  Kind `N+`, provenance (a).
@@ -67,8 +101,6 @@ def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
     simp only [ecClock, pow_one]
     nlinarith [hf]
   agrees k := by norm_num
-
-#print axioms ordinaryFeedbackTruthComputation
 
 /-! ### A non-degenerate delayed-truth witness
 
@@ -119,8 +151,8 @@ private lemma alternatingTruth_apply {f : DeferralFunction}
       exact h (hstrict.injective hj ▸ hj2)
     simp [alternatingTruth, alternatingValue, this, h]
 
-/-- **N+, non-degenerate.**  The delayed-truth premise is inhabited by a stream that
-actually varies: the alternating value stream, clocked inside the deferral schedule.  The
+/-- **The delayed-truth premise is inhabited by a stream that actually varies:** the
+alternating value stream, clocked inside the deferral schedule.  The
 fuel accounting is generic — a `PolyFueled` program for the value codes always fits, since
 `ecClock a d (f (k+1)) ≥ a * (k+1)^d + a` by `f (k+1) > k`.  Kind `N+`, provenance (a).
 Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
@@ -146,9 +178,6 @@ lemma exists_nonconstant_feedbackTruthComputation {f : DeferralFunction}
   refine ⟨alternatingTruth f, alternatingFeedbackTruthComputation_nonempty hstrict, ?_, ?_⟩
   · simpa [alternatingValue] using alternatingTruth_apply hstrict 0
   · simpa [alternatingValue] using alternatingTruth_apply hstrict 1
-
-#print axioms alternatingFeedbackTruthComputation_nonempty
-#print axioms exists_nonconstant_feedbackTruthComputation
 
 /-! ## The shifted deferral schedule -/
 
@@ -320,8 +349,10 @@ lemma truthCodeAt_eq_of_flag
 
 /-! ## Literal sparse affine syntax -/
 
-/-- The centered active member, or the literal zero affine combination off schedule. -/
-def sequence {truth : ℕ → ℝ} {f : DeferralFunction}
+/-- The feedback residual family: on an active day the source combination `A_{f k}`
+centred at the computed value of `truth (f k)`, and the literal zero affine combination on
+every other day. -/
+def feedbackResidualSeq {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (fa fd m : ℕ) : AffineCombination :=
   if feedbackFlag f fa fd m = 0 then
@@ -331,40 +362,40 @@ def sequence {truth : ℕ → ℝ} {f : DeferralFunction}
         (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
       (As (sourceIndex f fa fd m)).terms⟩
 
-lemma sequence_eq_at
+lemma feedbackResidualSeq_eq_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     {fa fd : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (k : ℕ) :
-    sequence As C fa fd (f (k + 1)) =
+    feedbackResidualSeq As C fa fd (f (k + 1)) =
       ⟨EF.add (As (f k)).const (EF.mul (EF.const (-1)) (EF.const (C.value k))),
         (As (f k)).terms⟩ := by
-  rw [sequence, feedbackFlag_at f hstrict hspec k, if_neg one_ne_zero,
+  rw [feedbackResidualSeq, feedbackFlag_at f hstrict hspec k, if_neg one_ne_zero,
     sourceIndex_at f hstrict hspec k, feedbackIndex_at f hstrict hspec k]
 
-@[simp] lemma sequence_price_at
+@[simp] lemma feedbackResidualSeq_price_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     {fa fd : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (P : History) (k : ℕ) :
-    (sequence As C fa fd (f (k + 1))).price P (f (k + 1)) =
+    (feedbackResidualSeq As C fa fd (f (k + 1))).price P (f (k + 1)) =
       (As (f k)).price P (f (k + 1)) - (C.value k : ℝ) := by
-  rw [sequence_eq_at As C hstrict hspec k]
+  rw [feedbackResidualSeq_eq_at As C hstrict hspec k]
   simp [AffineCombination.price, AffineCombination.value]
   ring
 
-@[simp] lemma sequence_magnitude
+@[simp] lemma feedbackResidualSeq_magnitude
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (fa fd m : ℕ) (P : History) :
-    (sequence As C fa fd m).magnitude P =
+    (feedbackResidualSeq As C fa fd m).magnitude P =
       if feedbackFlag f fa fd m = 0 then 0
       else (As (sourceIndex f fa fd m)).magnitude P := by
-  unfold sequence AffineCombination.magnitude
+  unfold feedbackResidualSeq AffineCombination.magnitude
   split <;> simp
 
 /-! ### Polynomial affine-sequence certificate -/
@@ -372,14 +403,14 @@ lemma sequence_eq_at
 /-- The sparse literal sequence has a uniform polynomial syntax emitter.  The rational
 payload on an active branch is emitted directly from the bounded universal evaluator;
 `truthCodeAt_eq_of_flag` proves that payload is the canonical code appearing in the syntax. -/
-noncomputable def sequencePoly
+noncomputable def feedbackResidualSeqPoly
     {As : ℕ → AffineCombination} (hA : PolySequence As)
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
     (fa fd : ℕ)
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k)) :
-    PolySequence (sequence As C fa fd) := by
+    PolySequence (feedbackResidualSeq As C fa fd) := by
   let cflag := Classical.choose (feedbackFlag_polyFueled f fa fd)
   have hflag := Classical.choose_spec (feedbackFlag_polyFueled f fa fd)
   let csource := Classical.choose (sourceIndex_polyFueled f fa fd)
@@ -428,22 +459,22 @@ noncomputable def sequencePoly
       refine BigSpliceStream.of_eq hconstIf ?_
       intro m
       by_cases hm : feedbackFlag f fa fd m = 0
-      · simp [sequence, hm]
+      · simp [feedbackResidualSeq, hm]
       · have hm1 : feedbackFlag f fa fd m = 1 :=
           (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
         rw [truthCodeAt_eq_of_flag C hstrict hspec hm1]
-        simp [sequence, hm, EF.serialize, List.append_assoc]
+        simp [feedbackResidualSeq, hm, EF.serialize, List.append_assoc]
     coefficient_poly := hcoeffPoly
     sentence_poly := hsentencePoly
     terms_eq := by
       intro m
-      unfold sequence count coeff sentence
+      unfold feedbackResidualSeq count coeff sentence
       by_cases hm : feedbackFlag f fa fd m = 0
       · simp [hm]
       · simp [hm, hA.terms_eq]
     const_rank := by
       intro m
-      unfold sequence
+      unfold feedbackResidualSeq
       by_cases hm : feedbackFlag f fa fd m = 0
       · simp [hm]
       · rw [if_neg hm]
@@ -465,7 +496,7 @@ noncomputable def sequencePoly
       exact (hA.coefficient_rank _ j (by simpa [hm] using hj)).trans hsle
     const_closed := by
       intro m ρ V
-      unfold sequence
+      unfold feedbackResidualSeq
       split
       · simp [EF.denoteWith]
       · simp only [EF.denoteWith, EF.denote_add, EF.denote_mul, EF.denote_const,
@@ -480,7 +511,7 @@ noncomputable def sequencePoly
 
 /-- The value the sparse sequence takes in a completed world, on either branch: `0` off
 schedule, and the determination residual of `A_{f i}` on the active day `f (i+1)`. -/
-lemma sequence_value_eq
+lemma feedbackResidualSeq_value_eq
     {As : ℕ → AffineCombination} {P : History}
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
@@ -488,10 +519,10 @@ lemma sequence_value_eq
     {fa fd : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     {m : ℕ} (hm : feedbackFlag f fa fd m = 1) (v : PCWorld) :
-    (sequence As C fa fd m).value P v.payout =
+    (feedbackResidualSeq As C fa fd m).value P v.payout =
       (As (f (feedbackIndex f fa fd m))).value P v.payout -
         truth (f (feedbackIndex f fa fd m)) := by
-  unfold sequence
+  unfold feedbackResidualSeq
   rw [if_neg (by omega)]
   have hsource := sourceIndex_eq_of_flag f hstrict hspec hm
   have heq :
@@ -527,9 +558,9 @@ On the active day `f (i+1)` the sequence is `A_{f i}` centred at the computed va
 `truth (f i)`, so a completed world values it at exactly the determination residual at
 index `f i` — and `f i → ∞` along the schedule, so the residual is eventually below any
 tolerance.  This is what lets the threshold mesh of a LUV combination, which
-`def:affthmval` determines only up to its `O(1/n)` mesh error, still supply a feedback
-bridge. -/
-lemma sequence_value_vanishing
+`def:affthmval` determines only up to its `O(1/n)` mesh error (`dd:mesh`), still supply a
+feedback bridge. -/
+lemma feedbackResidualSeq_value_vanishing
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
     (hdet : ApproxDeterminedViaTheory As P DP truth err)
@@ -539,26 +570,29 @@ lemma sequence_value_vanishing
     {fa fd : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k)) :
     ∀ ε > 0, ∀ᶠ m in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      |(sequence As C fa fd m).value P v.payout| ≤ ε := by
+      |(feedbackResidualSeq As C fa fd m).value P v.payout| ≤ ε := by
   intro ε hε
   obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 herr ε hε
   rw [Filter.eventually_atTop]
   refine ⟨f (N + 1), fun m hm v hv => ?_⟩
   by_cases hflag : feedbackFlag f fa fd m = 0
-  · have hzero : (sequence As C fa fd m).value P v.payout = 0 := by
-      simp [sequence, hflag, AffineCombination.value]
+  · have hzero : (feedbackResidualSeq As C fa fd m).value P v.payout = 0 := by
+      simp [feedbackResidualSeq, hflag, AffineCombination.value]
     rw [hzero, abs_zero]
     exact hε.le
   · have hm1 : feedbackFlag f fa fd m = 1 :=
       (feedbackFlag_zero_or_one f fa fd m).resolve_left hflag
-    rw [sequence_value_eq C hstrict hspec hm1 v]
+    rw [feedbackResidualSeq_value_eq C hstrict hspec hm1 v]
     have hidx : N ≤ f (feedbackIndex f fa fd m) :=
       le_source_of_flag f hstrict hspec hm1 hm
     have hsmall := hN _ hidx
     rw [Real.dist_eq, sub_zero] at hsmall
     exact (hdet _ v hv).trans ((le_abs_self _).trans hsmall.le)
 
-lemma sequence_bounded
+/-- The sparse feedback sequence inherits a uniform price bound: off schedule its price is
+`0`, and on an active day it is a bounded source price minus a computed value whose
+completed-world distance from the source price is bounded by the magnitude and residual. -/
+lemma feedbackResidualSeq_bounded
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
     (hpoly : PolySequence As)
@@ -572,7 +606,7 @@ lemma sequence_bounded
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    BoundedAffinePrices (sequence As C fa fd) P := by
+    BoundedAffinePrices (feedbackResidualSeq As C fa fd) P := by
   obtain ⟨B, hB0, hB⟩ := hbounded
   obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
   obtain ⟨M0, hM0⟩ := herr.bddAbove_range
@@ -581,7 +615,7 @@ lemma sequence_bounded
   have hM0le : (0 : ℝ) ≤ M := le_max_right _ _
   refine ⟨2 * B + 1 + M, by positivity, ?_⟩
   intro m n
-  unfold sequence
+  unfold feedbackResidualSeq
   by_cases hm : feedbackFlag f fa fd m = 0
   · simp [hm, AffineCombination.price, AffineCombination.value]
     linarith
@@ -635,7 +669,7 @@ Determination enters only *approximately*: `hdet` bounds each completed world's
 disagreement with the advertised `truth n` by `err n`, and `herr` sends that residual to
 zero.  Exact determination is the `err = 0` instance (`feedbackTruthSequence_ofDetermined`).
 The slack is what carries the LUV mesh, which `def:affthmval` determines only to within
-its `O(1/n)` mesh error.
+its `O(1/n)` mesh error (`dd:mesh`).
 Paper node: `thm:wubaff` -/
 noncomputable def feedbackTruthSequence
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -650,25 +684,25 @@ noncomputable def feedbackTruthSequence
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     FeedbackTruthSequence As truth P DP f := by
-  let fa := Classical.choose f.fueled
-  let fd := Classical.choose (Classical.choose_spec f.fueled)
-  have hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k) := by
-    simpa [fa, fd, ecClock] using Classical.choose_spec (Classical.choose_spec f.fueled)
+  let fa := Classical.choose f.exists_clock
+  let fd := Classical.choose (Classical.choose_spec f.exists_clock)
+  have hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k) :=
+    Classical.choose_spec (Classical.choose_spec f.exists_clock)
   exact {
     determined := ⟨err, herr, hdet⟩
-    sequence := sequence As C fa fd
-    poly := sequencePoly hpoly C hstrict fa fd hspec
-    bounded := sequence_bounded hpoly hbounded hmag hdet herr C hstrict hspec hP hworld
+    sequence := feedbackResidualSeq As C fa fd
+    poly := feedbackResidualSeqPoly hpoly C hstrict fa fd hspec
+    bounded := feedbackResidualSeq_bounded hpoly hbounded hmag hdet herr C hstrict hspec hP hworld
     magnitude := by
       intro m
-      rw [sequence_magnitude]
+      rw [feedbackResidualSeq_magnitude]
       split
       · simp
       · exact hmag _
-    value_vanishing := sequence_value_vanishing hdet herr C hstrict hspec
+    value_vanishing := feedbackResidualSeq_value_vanishing hdet herr C hstrict hspec
     feedback_price := by
       intro k
-      rw [sequence_price_at As C hstrict hspec P k, C.agrees]
+      rw [feedbackResidualSeq_price_at As C hstrict hspec P k, C.agrees]
   }
 
 /-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual.  This is
@@ -802,7 +836,7 @@ across worlds, so `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered. 
 the paper's operational premise: one program emits `thmval` of the mesh by the next
 deferral deadline.
 
-*Why the mesh route survives combination-level determination.*  Meshing is nonlinear
+*Why the mesh route works under combination-level determination.*  Meshing is nonlinear
 (each LUV is replaced by a rounded threshold bundle), so the precision-`n` mesh of a
 combination-determined sequence is **not** determined: two completed worlds may split the
 determined total differently across components and mesh to different values.  What
@@ -820,8 +854,10 @@ stronger than `def:affthmval` and would be a premise the paper does not state.
 
 Kind `C`; provenance: `hdet`, `hvalued`, `hshare`, `hW`, `hWdiv`, `hstrict` (a) — the
 paper's own hypotheses; `hsupport` (a) — the paper's own hypothesis, at the node it was
-transposed away from (`PE2`); `C` (a) — the paper's deadline-bounded truth program,
-in the `dd:fuel` efficiency model; `hworld` (a) — finite-stage plausible worlds.
+transposed away from (`PE2`); `C` (a) — the paper's deadline-bounded truth program, in the
+`dd:fuel` efficiency model, asked for the normalized mesh rather than for the combination
+itself (see the mesh paragraph above and `dd:mesh`); `hworld` (a) — finite-stage plausible
+worlds.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -854,12 +890,6 @@ theorem luv_wubexp_ofComputation
     (LUVCombination.normalizedMesh_magnitude_le_one b hshare) hP hworld
   exact FeedbackEmission.luv_wubexp_ofFeedbackTruth h hvalued hdet b hshare
     hW hWdiv hstrict hsupport hworld bridge
-
-#print axioms feedbackTruthSequence
-#print axioms lic_wubaff_ofComputation
-#print axioms lic_wub_ofComputation
-#print axioms boundedCombination_wubaff_ofComputation
-#print axioms luv_wubexp_ofComputation
 
 end FeedbackTruth
 end LogicalInduction

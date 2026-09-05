@@ -7,6 +7,17 @@ import LogicalInduction.Framework.Compactness
 The semantic compactness theorem supplies a finite stage which forces any completed-theory
 consequence.  This file makes that finite check executable by enumerating the Boolean
 assignments to exactly the atoms occurring in the stage and target sentence.
+
+`stageEntails` is the decision procedure, `stageEntails_eq_true_iff` its semantic
+characterization, `stageEntails_primrec` its primitive recursivity, and
+`DeductiveProcess.stageEntails_complete_of_semantic` the compactness bridge: a sentence
+holding in every completed-theory world is entailed by some finite stage, executably.
+Nothing here is a paper node.
+
+Consumers: `EntailedSourceRegistry.lean`, whose admission gate accepts exactly when
+`stageEntails` verifies that the decoded base stage entails the emitted law, and
+`FinitePerturbationWitness.lean`, whose day-`0` settlement search is `Nat.find` over the
+Boolean test `stageEntails` decides.
 -/
 
 namespace LogicalInduction
@@ -155,9 +166,5 @@ lemma DeductiveProcess.stageEntails_complete_of_semantic
     ∃ k, stageEntails (DP.D k) phi = true := by
   obtain ⟨k, hk⟩ := DP.exists_stage_entails phi h
   exact ⟨k, (stageEntails_eq_true_iff (DP.D k) phi).2 hk⟩
-
-#print axioms stageEntails_eq_true_iff
-#print axioms stageEntails_primrec
-#print axioms DeductiveProcess.stageEntails_complete_of_semantic
 
 end LogicalInduction

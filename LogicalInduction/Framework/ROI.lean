@@ -1,35 +1,101 @@
-/-
-# Repeatable return on investment (`LogicalInduction.ROI`)
-
-The capital-allocation argument behind the paper's repeatable-ROI lemma (`lem:type3`).
-A family of component traders is combined into a single budgeted trader: `active i n`
-records that the `i`th component is still tying up capital on day `n`, and the
-recursively chosen weight `βₙ` is exactly the capital not tied up by earlier components
-on that day.
-
-Contents: uniformly emulatable trader families and their efficient-computability
-witnesses; exact rational finite-prefix semantics for magnitude and net worth; the
-Boolean-schedule and continuous-occupancy budgets with their unit-capital invariants;
-the bounded-verification bridge from a polynomial maturity checker to a closing
-schedule; and the concluding `noRepeatableROI`.
--/
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Computable
 import Mathlib.Algebra.BigOperators.Fin
 import LogicalInduction.Framework.WriteOut
 
+/-!
+# Repeatable return on investment
+
+This module renders the paper's Return on Investment appendix `app:roi`: the lemma
+`lem:type3` (No Repeatable ε-ROI) and the trader-construction machinery its proof needs.
+That lemma is one of the paper results carried without a `Paper node` line — `lem:type3`
+is listed in `UNANNOTATED_PAPER_RESULTS` in `scripts/check_endpoint_coverage.py` — so this
+header is where the coverage gate expects its citation.
+
+## Emulatable families
+
+`EfficientlyEmulatable` renders `def:emulatabletraders` (`app:emulatable`) clause for
+clause: uniformly polynomial emission of member `k` on day `n`, and the zero trade before
+day `k`. The development builds against the structured refinement `PolyTradeEmulatable`,
+which additionally exposes trade counts, coefficient segments and sentence codes, so that
+a uniform syntax transformation can scale every trade. `LaunchGated` isolates the single
+economic clause the net-worth and budget chain consumes, and is metering-agnostic, so
+token-metered families inhabit it too.
+
+## The adaptive budget
+
+`weight active α n` is the paper's `βₙ = 1 - ∑_{i<n} open(i,n) βᵢ αᵢ` (tex:3659), by
+well-founded recursion; `outstanding` is the capital those earlier components tie up.
+`fractionalWeight` is the continuous-occupancy analogue, reading a real occupancy in
+`[0,1]` instead of a Boolean open bit. The unit-capital invariants are `weight_nonneg`,
+`weight_le_one` and `activeAllocation_le_one`, with fractional counterparts.
+
+Because features are reified syntax (`dd:dsl`), the coefficient must be *emitted*, not
+merely computed. Reifying either recurrence directly would inline every earlier `β` as
+syntax and make the index-`n` expression exponential in `n`. `letChain` and `sharedOf`
+instead bind each earlier value once with `EF.letE` and refer back to it by a
+constant-size `EF.var`, keeping the index-`n` expression polynomial; they are proved once
+(serialization, uniform emission, rank, denotation, closedness) at an arbitrary body
+family. `sharedFeatureWeight` and `fractionalSharedFeatureWeight` are the two instances,
+and their `_denote`, `_rank_le` and `_polySeg` specifications follow from the generic
+ones — the last of them uniform emission as a `BigSpliceStream` (`dd:fuel`).
+
+`scaledFamilyTrader` likewise bundles a trader family at an arbitrary coefficient family,
+and `sharedBudgetedTrader` and `fractionalBudgetedTrader` are its two instances; the
+`_value`, `_magnitude`, `_netWorth` (the rectangular component view `LaunchGated` buys)
+and `_ec` specifications are proved once and transported.
+`allocationPrefix_not_bddAbove_of_frequently` and its fractional twin supply the recycling
+half: if every position eventually closes and launch sizes are frequently bounded away
+from zero, cumulative allocation is unbounded.
+
+## Bounded verification
+
+The paper does not ask for the first maturity day to be computable, only for each finite
+maturity claim to be checkable (tex:3648). `VerifiedMaturitySchedule` carries a uniformly
+polynomial, sound, eventually successful checker; `HistoricalVerifiedMaturitySchedule` is
+the form concrete market and process code can supply — a fixed budget certifies some
+`m ≤ n` — and `toVerified` promotes it, charging one extra tolerance for the post-`m`
+trading tail. `polyFueled_boundedNone` turns the bounded prefix scan into the openness
+table the shared trader consumes. The exact rational finite-prefix evaluators
+(`Strategy.magnitudeRat`, `Strategy.valueRat` and the `…AtFuel` sound/complete pairs) are
+what let such a checker *decide* the maturity conditions against a `MarketComputation`.
+
+## Main results
+
+`noRepeatableROI` states `lem:type3`; `noRepeatableROI_of_verifiedMaturity` is the client
+form, discharging the closing days, the semantic maturity schedule and the polynomial
+openness table from a single checker. `noFractionalRepeatableReturn` is the
+continuous-occupancy analogue. Limits are stated with `ConvergesTo` (`dd:asymp`).
+
+Four hypotheses go beyond the printed `lem:type3`, and are named at `noRepeatableROI`
+itself: the WLOG normalisation `αₖ ≤ 1`, the summable tolerance family, the explicit
+plausible-world clause, and the polynomial maturity verifier.
+
+Consumers: `Properties/AffinePreemptiveLearning.lean`, `Properties/Calibration.lean`,
+`Properties/Pseudorandomness.lean`, `Properties/UniversalSemimeasure.lean`,
+`Construction/Budgeter.lean`, `Construction/LIACompiler.lean`,
+`Construction/Witnesses/HistoricalMaturity.lean` (the heaviest client of the maturity
+interfaces) and `Construction/Witnesses/FeedbackEmission.lean`; `API.lean` presents the
+emulatability and budget vocabulary on the consumer surface.
+-/
+
 namespace LogicalInduction
 
 open scoped BigOperators
 
-/-! ## Uniformly emulatable trader families -/
+/-! ## Emulatable trader families -/
 
-/-- Operational form of the paper's efficiently emulatable sequence. A single uniform
-token program emits member `k` on day `n` in a polynomial bound independent of `k` (for
-`k ≤ n`), and member `k` is identically zero before day `k`. The paper phrases this as an
-efficiently generated sequence of uniformly bounded programs; pairing `k` into the input
-is the equivalent universal-program presentation used by our token emitter. -/
+/-- The paper's efficiently emulatable sequence of traders (`def:emulatabletraders`,
+`app:emulatable`) in operational form. A single uniform token program emits member `k` on
+day `n` within a polynomial bound independent of `k` (for `k ≤ n`), and member `k` is
+identically zero before day `k`. The paper phrases this as an efficiently generated
+sequence of uniformly bounded programs; pairing `k` into the input is the equivalent
+universal-program presentation our token emitter uses.
+
+This is the reference rendering of the paper's definition. The development builds against
+the structured refinement `PolyTradeEmulatable`, and reaches the one clause it needs from
+here through `EfficientlyEmulatable.launchGated`. -/
 def EfficientlyEmulatable (Ts : ℕ → Trader) : Prop :=
   ∃ (code : Nat.Partrec.Code) (a d : ℕ),
     (∀ k n, n < k → ((Ts k).strat n).trades = []) ∧
@@ -47,6 +113,7 @@ universal-program token emission — it is metering-agnostic, so token-metered
 def LaunchGated (Ts : ℕ → Trader) : Prop :=
   ∀ k n, n < k → ((Ts k).strat n).trades = []
 
+/-- The bridge from the paper's definition to the clause the budget chain consumes. -/
 lemma EfficientlyEmulatable.launchGated {Ts : ℕ → Trader}
     (h : EfficientlyEmulatable Ts) : LaunchGated Ts := by
   obtain ⟨_, _, _, hz, _, _⟩ := h
@@ -55,11 +122,6 @@ lemma EfficientlyEmulatable.launchGated {Ts : ℕ → Trader}
 lemma LaunchGated.zero_before {Ts : ℕ → Trader}
     (h : LaunchGated Ts) {k n : ℕ} (hnk : n < k) :
     ((Ts k).strat n).trades = [] := h k n hnk
-
-lemma EfficientlyEmulatable.zero_before {Ts : ℕ → Trader}
-    (h : EfficientlyEmulatable Ts) {k n : ℕ} (hnk : n < k) :
-    ((Ts k).strat n).trades = [] :=
-  h.launchGated.zero_before hnk
 
 lemma Trader.netWorth_succ (Tr : Trader) (V : History) (v : PCWorld) (n : ℕ) :
     Tr.netWorth V v (n + 1) =
@@ -82,11 +144,6 @@ lemma LaunchGated.netWorth_launch {Ts : ℕ → Trader}
     simp
   · intro hk
     simp at hk
-
-lemma EfficientlyEmulatable.netWorth_launch {Ts : ℕ → Trader}
-    (h : EfficientlyEmulatable Ts) (V : History) (v : PCWorld) (k : ℕ) :
-    (Ts k).netWorth V v k = ((Ts k).strat k).value V v.payout :=
-  h.launchGated.netWorth_launch V v k
 
 /-- Structured operational witness for an emulatable trader family. Where
 `EfficientlyEmulatable` only certifies the paper-facing token semantics, this witness also
@@ -203,15 +260,19 @@ padding used when a repeatable profitable family only starts after some day. -/
 lemma Trader.zero_hasROI (V : History) (DP : DeductiveProcess) (ε : ℝ) :
     HasROI Trader.zero V DP ε := by
   constructor
-  · simpa [Trader.zero, Strategy.magnitude] using
-      (summable_zero : Summable (fun _ : ℕ => (0 : ℝ)))
+  · simp [Trader.zero, Strategy.magnitude]
   · intro η hη
     refine ⟨0, fun n _ v _ => ?_⟩
     have hmag : Trader.zero.magnitude V = 0 := by
       simp [Trader.magnitude, Trader.zero, Strategy.magnitude]
     rw [hmag, mul_zero, Trader.zero_netWorth]
 
-/-! ### Exact rational finite-prefix semantics for maturity certificates -/
+/-! ## Exact rational finite-prefix evaluation
+
+A bounded verifier decides the maturity conditions by evaluating magnitude and net worth
+exactly, over the rationals, on a finite prefix of days, against a `MarketComputation`.
+Each `…AtFuel` evaluator comes with a soundness lemma (a successful answer is the exact
+value) and a completeness lemma (enough fuel makes it succeed). -/
 
 /-- Executable rational share magnitude for one strategy. -/
 def Strategy.magnitudeRat {n : ℕ} (T : Strategy n)
@@ -372,25 +433,6 @@ lemma Strategy.valueRatAtFuel_sound
     q = T.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w := by
   exact valueRatListAtFuel_sound market fuel n w T.trades h
 
-/-- Every finite strategy magnitude eventually computes at one market clock. -/
-lemma Strategy.exists_fuel_magnitudeRatAtFuel
-    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P) :
-    ∃ fuel, T.magnitudeRatAtFuel market fuel = some
-      (T.magnitudeRat (fun d φ => market.quote d (Encodable.encode φ))) := by
-  obtain ⟨fuel, hfuel⟩ :=
-    market.exists_fuel_quoteAtFuel_list (magnitudeRatQueries T.trades)
-  exact ⟨fuel, magnitudeRatListAtFuel_complete market fuel T.trades hfuel⟩
-
-/-- Every finite strategy value eventually computes at one market clock. -/
-lemma Strategy.exists_fuel_valueRatAtFuel
-    {n : ℕ} (T : Strategy n) {P : History} (market : MarketComputation P)
-    (w : Sentence → ℚ) :
-    ∃ fuel, T.valueRatAtFuel market fuel w = some
-      (T.valueRat (fun d φ => market.quote d (Encodable.encode φ)) w) := by
-  obtain ⟨fuel, hfuel⟩ :=
-    market.exists_fuel_quoteAtFuel_list (valueRatQueries n T.trades)
-  exact ⟨fuel, valueRatListAtFuel_complete market fuel n w T.trades hfuel⟩
-
 /-- Exact rational `{0,1}` payout associated with a Boolean world. -/
 noncomputable def PCWorld.payoutRat (v : PCWorld) (φ : Sentence) : ℚ :=
   by
@@ -455,10 +497,12 @@ def Trader.partialNetWorthRatQueriesDays (Tr : Trader) :
   | d :: rest => Strategy.valueRatQueries d (Tr.strat d).trades ++
       partialNetWorthRatQueriesDays Tr rest
 
+/-- Market cells needed by rational magnitude through day `n`. -/
 def Trader.partialMagnitudeRatQueries (Tr : Trader) (n : ℕ) :
     List (ℕ × Sentence) :=
   partialMagnitudeRatQueriesDays Tr (List.range (n + 1))
 
+/-- Market cells needed by rational net worth through day `n`. -/
 def Trader.partialNetWorthRatQueries (Tr : Trader) (n : ℕ) :
     List (ℕ × Sentence) :=
   partialNetWorthRatQueriesDays Tr (List.range (n + 1))
@@ -628,27 +672,6 @@ lemma Trader.partialNetWorthRatAtFuel_complete
       Tr.partialNetWorthRatDaysAtFuel_complete market fuel w
         (List.range (n + 1)) hready
 
-/-- Every finite trader-magnitude prefix eventually computes at one market clock. -/
-lemma Trader.exists_fuel_partialMagnitudeRatAtFuel
-    (Tr : Trader) {P : History} (market : MarketComputation P) (n : ℕ) :
-    ∃ fuel, Tr.partialMagnitudeRatAtFuel market fuel n = some
-      (Tr.partialMagnitudeRat
-        (fun d φ => market.quote d (Encodable.encode φ)) n) := by
-  obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list
-    (Tr.partialMagnitudeRatQueries n)
-  exact ⟨fuel, Tr.partialMagnitudeRatAtFuel_complete market fuel n hfuel⟩
-
-/-- Every finite trader net-worth prefix eventually computes at one market clock. -/
-lemma Trader.exists_fuel_partialNetWorthRatAtFuel
-    (Tr : Trader) {P : History} (market : MarketComputation P)
-    (w : Sentence → ℚ) (n : ℕ) :
-    ∃ fuel, Tr.partialNetWorthRatAtFuel market fuel w n = some
-      (Tr.partialNetWorthRat
-        (fun d φ => market.quote d (Encodable.encode φ)) w n) := by
-  obtain ⟨fuel, hfuel⟩ := market.exists_fuel_quoteAtFuel_list
-    (Tr.partialNetWorthRatQueries n)
-  exact ⟨fuel, Tr.partialNetWorthRatAtFuel_complete market fuel w n hfuel⟩
-
 /-- Rational partial net worth only depends on payouts of sentences actually traded
 through the requested day. -/
 lemma Trader.partialNetWorthRat_congr (Tr : Trader)
@@ -685,6 +708,10 @@ lemma Trader.netWorth_eq_ratCast (Tr : Trader)
   intro d hd
   exact (Tr.strat d).value_eq_ratCast P Q hQ v.payout wQ hw
 
+/-! ## Segment emission for emulatable families -/
+
+/-- Serialization distributes over trade-list concatenation. This is the normal form every
+segment-emitter proof rewrites with. -/
 @[simp] lemma serializeTrades_append (xs ys : List (EF × Sentence)) :
     serializeTrades (xs ++ ys) = serializeTrades xs ++ serializeTrades ys := by
   induction xs with
@@ -794,6 +821,11 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     simp [count, hs]
   · simp [gateTraderFamily, hs, Trader.zero, count]
 
+/-! ## Scaling and joining strategies
+
+General `Strategy` algebra: the budgeted trader is a join of components, each scaled by one
+expressible feature. -/
+
 namespace Strategy
 
 /-- Multiply every share coefficient in a strategy by one legal feature. -/
@@ -868,6 +900,8 @@ end Strategy
 
 namespace ROIBudget
 
+/-! ## Feature sums and the openness table -/
+
 /-- The openness table is efficiently available to the syntax emitter. Inputs are paired
 as `⟨k,i⟩`; output `1` means component `i` is active at budget stage `k`. -/
 def PolyActiveSchedule (active : ℕ → ℕ → Bool) : Prop :=
@@ -916,13 +950,7 @@ lemma sumFeatures_rank_le (es : List EF) (n : ℕ)
       change Nat.max e.rank (sumFeatures es).rank ≤ n
       exact Nat.max_le.mpr ⟨h e (by simp), ih (fun x hx => h x (by simp [hx]))⟩
 
-lemma sumFeatures_rankWith_le (es : List EF) (ρ : List ℕ) (n : ℕ)
-    (h : ∀ e ∈ es, e.rankWith ρ ≤ n) : (sumFeatures es).rankWith ρ ≤ n := by
-  induction es with
-  | nil => change 0 ≤ n; omega
-  | cons e es ih =>
-      change Nat.max (e.rankWith ρ) ((sumFeatures es).rankWith ρ) ≤ n
-      exact Nat.max_le.mpr ⟨h e (by simp), ih (fun x hx => h x (by simp [hx]))⟩
+/-! ## The adaptive budget: Boolean closing schedules -/
 
 /-- Capital currently tied up by components with index below `n`. -/
 noncomputable def outstanding (active : ℕ → ℕ → Bool) (α β : ℕ → ℝ) (n : ℕ) : ℝ :=
@@ -939,57 +967,133 @@ noncomputable def weight (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (n :
 termination_by n
 decreasing_by exact i.isLt
 
-/-- The budget coefficient reified as an expressible feature. Each openness bit is
-precomputed by the slow maturity search and inserted as syntax, exactly as in the paper. -/
-def featureWeight (active : ℕ → ℕ → Bool) (α : ℕ → EF) (n : ℕ) : EF :=
-  EF.add (EF.const 1) (EF.mul (EF.const (-1))
-    (sumFeatures (List.ofFn (fun i : Fin n =>
-      if active i n then EF.mul (featureWeight active α i) (α i) else EF.const 0))))
-termination_by n
-decreasing_by exact i.isLt
+/-! ### Shared straight-line chains
 
-/-- Syntactic budget coefficients denote the semantic adaptive weights. -/
-lemma featureWeight_denote (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (V : History) (n : ℕ) :
-    (featureWeight active α n).denote V =
-      weight active (fun i => (α i).denote V) n := by
-  rw [featureWeight, weight]
-  simp only [EF.denote_add, EF.denote_const, EF.denote_mul, Pi.add_apply, Pi.mul_apply,
-    Rat.cast_one, Rat.cast_neg, neg_mul, one_mul]
-  rw [sumFeatures_denote]
-  simp only [List.map_ofFn, List.sum_ofFn]
-  apply congrArg (fun x : ℝ => 1 - x)
-  apply Finset.sum_congr rfl
-  intro i hi
-  by_cases h : active i n = true
-  · simp only [Function.comp_apply, h, if_true, EF.denote_mul, Pi.mul_apply]
-    rw [featureWeight_denote]
-  · simp [Function.comp_apply, h]
+A budget coefficient is defined by a recurrence in the earlier coefficients. Since features
+are reified syntax (`dd:dsl`), reifying that recurrence directly would inline every earlier
+value and make the index-`n` expression exponential in `n`. A `letChain` instead binds the
+consecutive recurrence bodies with `EF.letE`, so each earlier value is written once and
+referred to by a constant-size `EF.var`. Both budgets in this module are instances: they
+differ only in the body family they chain. -/
 
-/-- If the magnitude progression is rank-respecting, so is every reified budget
-coefficient.  The day-`n` coefficient is therefore legal to use on every day `m ≥ n`. -/
-lemma featureWeight_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) : ∀ n, (featureWeight active α n).rank ≤ n := by
+/-- Bind `count` consecutive recurrence bodies starting at index `k`, then return the last
+one. Body `j` is interpreted in an environment holding `[βⱼ₋₁, …, β₀]`. -/
+def letChain (body : ℕ → EF) (k : ℕ) : ℕ → EF
+  | 0 => EF.var 0
+  | count + 1 => EF.letE (body k) (letChain body (k + 1) count)
+
+/-- The chain computing the index-`n` value of a recurrence. -/
+def sharedOf (body : ℕ → EF) (n : ℕ) : EF := letChain body 0 (n + 1)
+
+/-- The postfix stream of a chain consists of its consecutive binding bodies, the terminal
+reference to the newest binding, and one `letE` tag per binding. -/
+lemma letChain_serialize (body : ℕ → EF) (k count : ℕ) :
+    (letChain body k count).serialize =
+      (List.range' k count).flatMap (fun j => (body j).serialize) ++
+        (EF.var 0).serialize ++ List.replicate count 8 := by
+  induction count generalizing k with
+  | zero => simp [letChain, EF.serialize]
+  | succ count ih =>
+      rw [letChain]
+      change (body k).serialize ++ (letChain body (k + 1) count).serialize ++ [8] = _
+      rw [ih (k + 1)]
+      simp [List.range'_succ, List.replicate_succ', List.append_assoc]
+
+/-- Uniform polynomial-time emission of a whole chain, from uniform emission of its
+recurrence bodies. -/
+lemma sharedOf_polySeg (body : ℕ → EF)
+    (hbody : BigSpliceStream (fun k => (body k).serialize)) :
+    BigSpliceStream (fun n => (sharedOf body n).serialize) := by
+  have hbodies : BigSpliceStream (fun n =>
+      (List.range (n + 1)).flatMap (fun j => (body j).serialize)) := by
+    refine BigSpliceStream.of_eq
+      (BigSpliceStream.concatVar (hbody.comp PolyFueled.right)
+        PolyFueled.id.succ_comp) ?_
+    intro n
+    simp only [Nat.unpair_pair]
+  have hvar : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
+    BigSpliceStream.serialize_var (PolyFueled.const 0)
+  have htags : BigSpliceStream (fun n => List.replicate (n + 1) 8) :=
+    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
+  refine BigSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro n
-  induction n using Nat.strong_induction_on with
-  | h n ih =>
-      rw [featureWeight]
-      simp only [EF.rank_add, EF.rank_const, EF.rank_mul]
+  rw [sharedOf, letChain_serialize]
+  rw [List.range_eq_range']
+
+/-- Bodies of rank at most their own index give a chain of rank at most its last index. -/
+lemma letChain_rank_le (body : ℕ → EF) (hbody : ∀ k, (body k).rank ≤ k) (k count : ℕ) :
+    (letChain body k count).rank ≤ if count = 0 then 0 else k + count - 1 := by
+  induction count generalizing k with
+  | zero => simp [letChain]
+  | succ count ih =>
+      rw [letChain, EF.rank]
       apply Nat.max_le.mpr
       constructor
-      · omega
-      · apply Nat.max_le.mpr
-        constructor
-        · omega
-        · apply sumFeatures_rank_le
-          intro e he
-          simp only [List.mem_ofFn] at he
-          obtain ⟨i, rfl⟩ := he
-          split
-          · exact Nat.max_le.mpr ⟨(ih i i.isLt).trans (Nat.le_of_lt i.isLt),
-              (hα i).trans (Nat.le_of_lt i.isLt)⟩
-          · change 0 ≤ n
-            omega
+      · exact (hbody k).trans (by cases count <;> simp)
+      · have H := ih (k + 1)
+        cases count with
+        | zero => simp [letChain]
+        | succ count =>
+            simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
+
+/-- The index-`n` chain is legal on day `n`. -/
+lemma sharedOf_rank_le (body : ℕ → EF) (hbody : ∀ k, (body k).rank ≤ k) (n : ℕ) :
+    (sharedOf body n).rank ≤ n := by
+  rw [sharedOf]
+  simpa using letChain_rank_le body hbody 0 (n + 1)
+
+/-- The environment invariant a chain maintains: slot `k - 1 - i` holds the value of the
+recurrence at index `i`. -/
+private def PriorEnv (w : ℕ → ℝ) (k : ℕ) (ρ : List ℝ) : Prop :=
+  ∀ i : Fin k, ρ.getD (k - 1 - i) 0 = w i
+
+private lemma priorEnv_cons (w : ℕ → ℝ) (k : ℕ) (ρ : List ℝ) (hρ : PriorEnv w k ρ) :
+    PriorEnv w (k + 1) (w k :: ρ) := by
+  intro i
+  by_cases hi : (i : ℕ) = k
+  · have hilast : i = Fin.last k := Fin.ext hi
+    subst i
+    simp
+  · have hik : (i : ℕ) < k := by omega
+    have hidx : k + 1 - 1 - (i : ℕ) = (k - 1 - (i : ℕ)) + 1 := by omega
+    rw [hidx]
+    simp only [List.getD_cons_succ]
+    exact hρ ⟨i, hik⟩
+
+private lemma letChain_denoteWith (body : ℕ → EF) (w : ℕ → ℝ) (V : History)
+    (hbody : ∀ k ρ, PriorEnv w k ρ → (body k).denoteWith ρ V = w k)
+    (k count : ℕ) (ρ : List ℝ) (hρ : PriorEnv w k ρ) :
+    (letChain body k count).denoteWith ρ V =
+      if count = 0 then ρ.getD 0 0 else w (k + count - 1) := by
+  induction count generalizing k ρ with
+  | zero => simp [letChain]
+  | succ count ih =>
+      rw [letChain, EF.denoteWith, hbody k ρ hρ]
+      rw [ih (k := k + 1) (ρ := w k :: ρ) (priorEnv_cons w k ρ hρ)]
+      cases count with
+      | zero => simp
+      | succ count =>
+          simp
+          congr 1
+          omega
+
+/-- A chain denotes the recurrence it encodes. -/
+private lemma sharedOf_denote (body : ℕ → EF) (w : ℕ → ℝ) (V : History)
+    (hbody : ∀ k ρ, PriorEnv w k ρ → (body k).denoteWith ρ V = w k) (n : ℕ) :
+    (sharedOf body n).denote V = w n := by
+  rw [sharedOf, EF.denote]
+  simpa using letChain_denoteWith body w V hbody 0 (n + 1) [] (fun i => Fin.elim0 i)
+
+/-- A chain is closed with respect to any surrounding `letE` environment: its internal
+bindings shadow and discharge every variable the recurrence uses. -/
+private lemma sharedOf_closed (body : ℕ → EF) (w : ℕ → ℝ) (V : History)
+    (hbody : ∀ k ρ, PriorEnv w k ρ → (body k).denoteWith ρ V = w k) (n : ℕ)
+    (ρ : List ℝ) :
+    (sharedOf body n).denoteWith ρ V = (sharedOf body n).denote V := by
+  rw [sharedOf, EF.denote]
+  have hleft := letChain_denoteWith body w V hbody 0 (n + 1) ρ (fun i => Fin.elim0 i)
+  have hright := letChain_denoteWith body w V hbody 0 (n + 1) [] (fun i => Fin.elim0 i)
+  simpa using hleft.trans hright.symm
 
 /-! ### Shared straight-line budget expression -/
 
@@ -1067,12 +1171,13 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
 
 /-- Bind `count` consecutive budget variables starting at `k`, then return the last one.
 Each earlier `β` is represented once and referenced by a constant-size `EF.var`. -/
-def sharedWeights (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : ℕ → EF
-  | 0 => EF.var 0
-  | count + 1 => EF.letE (featureWeightBody active α k)
-      (sharedWeights active α (k + 1) count)
+def sharedWeights (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : ℕ → EF :=
+  letChain (featureWeightBody active α) k
 
-/-- Polynomial-sharing version of the day-`n` budget coefficient. -/
+/-- Polynomial-sharing version of the day-`n` budget coefficient. Definitionally
+`sharedOf (featureWeightBody active α) n`; it is spelled through `sharedWeights` because
+downstream emission proofs unfold it to a chain and then rewrite with
+`sharedWeights_serialize`. -/
 def sharedFeatureWeight (active : ℕ → ℕ → Bool) (α : ℕ → EF) (n : ℕ) : EF :=
   sharedWeights active α 0 (n + 1)
 
@@ -1083,68 +1188,22 @@ lemma sharedWeights_serialize (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (sharedWeights active α k count).serialize =
       (List.range' k count).flatMap
           (fun j => (featureWeightBody active α j).serialize) ++
-        (EF.var 0).serialize ++ List.replicate count 8 := by
-  induction count generalizing k with
-  | zero => simp [sharedWeights, EF.serialize]
-  | succ count ih =>
-      rw [sharedWeights]
-      change (featureWeightBody active α k).serialize ++
-          (sharedWeights active α (k + 1) count).serialize ++ [8] = _
-      rw [ih (k + 1)]
-      simp [List.range'_succ, List.replicate_succ', List.append_assoc]
+        (EF.var 0).serialize ++ List.replicate count 8 :=
+  letChain_serialize _ k count
 
 /-- Uniform polynomial-time emission of the complete day-`n` shared budget coefficient.
-This is the representation-level companion to the semantic, rank, and exact-cost
-specifications of the same feature. -/
+This is the representation-level companion to `sharedFeatureWeight_denote` and
+`sharedFeatureWeight_rank_le`. -/
 lemma sharedFeatureWeight_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : BigSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
-    BigSpliceStream (fun n => (sharedFeatureWeight active α n).serialize) := by
-  have hbody := featureWeightBody_polySeg active α hα hactive
-  have hbodies : BigSpliceStream (fun n =>
-      (List.range (n + 1)).flatMap
-        (fun j => (featureWeightBody active α j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp PolyFueled.right)
-        PolyFueled.id.succ_comp) ?_
-    intro n
-    simp only [Nat.unpair_pair]
-  have hvar : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun n => List.replicate (n + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
-  intro n
-  rw [sharedFeatureWeight, sharedWeights_serialize]
-  rw [List.range_eq_range']
-
-/-- Exact non-duplicating cost recurrence for the shared representation. Earlier budget
-expressions contribute only a variable reference in later bodies. -/
-def sharedWeightCost (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ) : ℕ → ℕ
-  | 0 => 1
-  | count + 1 => (featureWeightBody active α k).cost +
-      sharedWeightCost active α (k + 1) count + 1
-
-lemma sharedWeights_cost_eq (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (k count : ℕ) :
-    (sharedWeights active α k count).cost = sharedWeightCost active α k count := by
-  induction count generalizing k with
-  | zero => rfl
-  | succ count ih =>
-      simp only [sharedWeights, sharedWeightCost, EF.cost]
-      rw [ih]
-
-lemma sharedFeatureWeight_cost_eq (active : ℕ → ℕ → Bool) (α : ℕ → EF) (n : ℕ) :
-    (sharedFeatureWeight active α n).cost = sharedWeightCost active α 0 (n + 1) := by
-  exact sharedWeights_cost_eq active α 0 (n + 1)
-
-private def PriorWeightEnv (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (V : History) (k : ℕ) (ρ : List ℝ) : Prop :=
-  ∀ i : Fin k, ρ.getD (k - 1 - i) 0 = weight active (fun j => (α j).denote V) i
+    BigSpliceStream (fun n => (sharedFeatureWeight active α n).serialize) :=
+  sharedOf_polySeg _ (featureWeightBody_polySeg active α hα hactive)
 
 private lemma featureWeightBody_denoteWith (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (V : History) (k : ℕ) (ρ : List ℝ) (hρ : PriorWeightEnv active α V k ρ) :
+    (V : History) (k : ℕ) (ρ : List ℝ)
+    (hρ : PriorEnv (weight active (fun j => (α j).denote V)) k ρ) :
     (featureWeightBody active α k).denoteWith ρ V =
       weight active (fun j => (α j).denote V) k := by
   rw [featureWeightBody, weight]
@@ -1166,112 +1225,14 @@ private lemma featureWeightBody_denoteWith (active : ℕ → ℕ → Bool) (α :
   rw [hsum]
   ring
 
-private lemma priorWeightEnv_cons (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (V : History) (k : ℕ) (ρ : List ℝ) (hρ : PriorWeightEnv active α V k ρ) :
-    PriorWeightEnv active α V (k + 1)
-      (weight active (fun j => (α j).denote V) k :: ρ) := by
-  intro i
-  by_cases hi : (i : ℕ) = k
-  · have hilast : i = Fin.last k := Fin.ext hi
-    subst i
-    simp
-  · have hik : (i : ℕ) < k := by omega
-    have hidx : k + 1 - 1 - (i : ℕ) = (k - 1 - (i : ℕ)) + 1 := by omega
-    rw [hidx]
-    simp only [List.getD_cons_succ]
-    exact hρ ⟨i, hik⟩
-
-private lemma sharedWeights_denoteWith (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (V : History) (k count : ℕ) (ρ : List ℝ) (hρ : PriorWeightEnv active α V k ρ) :
-    (sharedWeights active α k count).denoteWith ρ V =
-      if count = 0 then ρ.getD 0 0
-      else weight active (fun j => (α j).denote V) (k + count - 1) := by
-  induction count generalizing k ρ with
-  | zero => simp [sharedWeights]
-  | succ count ih =>
-      rw [sharedWeights, EF.denoteWith,
-        featureWeightBody_denoteWith active α hαc V k ρ hρ]
-      rw [ih (k := k + 1)
-        (ρ := weight active (fun j => (α j).denote V) k :: ρ)
-        (priorWeightEnv_cons active α V k ρ hρ)]
-      cases count with
-      | zero => simp
-      | succ count =>
-          simp
-          congr 1
-          omega
-
 /-- The shared straight-line expression denotes exactly the same adaptive coefficient as
 the semantic recurrence. -/
 lemma sharedFeatureWeight_denote (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
     (V : History) (n : ℕ) :
     (sharedFeatureWeight active α n).denote V =
-      weight active (fun i => (α i).denote V) n := by
-  rw [sharedFeatureWeight, EF.denote]
-  simpa using sharedWeights_denoteWith active α hαc V 0 (n + 1) [] (by
-    intro i
-    exact Fin.elim0 i)
-
-private def PriorRankEnv (k : ℕ) (ρ : List ℕ) : Prop :=
-  ∀ i : Fin k, ρ.getD (k - 1 - i) 0 ≤ i
-
-private lemma featureWeightBody_rankWith_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) (hαr : ∀ i ρ, (α i).rankWith ρ = (α i).rank)
-    (k : ℕ) (ρ : List ℕ)
-    (hρ : PriorRankEnv k ρ) : (featureWeightBody active α k).rankWith ρ ≤ k := by
-  rw [featureWeightBody]
-  simp only [EF.rankWith]
-  apply Nat.max_le.mpr
-  constructor
-  · omega
-  · apply Nat.max_le.mpr
-    constructor
-    · omega
-    · apply sumFeatures_rankWith_le
-      intro e he
-      simp only [List.mem_ofFn] at he
-      obtain ⟨i, rfl⟩ := he
-      split
-      · exact Nat.max_le.mpr ⟨(hρ i).trans (Nat.le_of_lt i.isLt),
-          (by rw [hαr i ρ]; exact (hα i).trans (Nat.le_of_lt i.isLt))⟩
-      · change 0 ≤ k
-        omega
-
-private lemma priorRankEnv_cons (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) (hαr : ∀ i ρ, (α i).rankWith ρ = (α i).rank)
-    (k : ℕ) (ρ : List ℕ) (hρ : PriorRankEnv k ρ) :
-    PriorRankEnv (k + 1) ((featureWeightBody active α k).rankWith ρ :: ρ) := by
-  intro i
-  by_cases hi : (i : ℕ) = k
-  · have hilast : i = Fin.last k := Fin.ext hi
-    subst i
-    simpa using featureWeightBody_rankWith_le active α hα hαr k ρ hρ
-  · have hik : (i : ℕ) < k := by omega
-    have hidx : k + 1 - 1 - (i : ℕ) = (k - 1 - (i : ℕ)) + 1 := by omega
-    rw [hidx]
-    simp only [List.getD_cons_succ]
-    exact hρ ⟨i, hik⟩
-
-private lemma sharedWeights_rankWith_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) (hαr : ∀ i ρ, (α i).rankWith ρ = (α i).rank)
-    (k count : ℕ) (ρ : List ℕ)
-    (hρ : PriorRankEnv k ρ) :
-    (sharedWeights active α k count).rankWith ρ ≤
-      if count = 0 then ρ.getD 0 0 else k + count - 1 := by
-  induction count generalizing k ρ with
-  | zero => simp [sharedWeights, EF.rankWith]
-  | succ count ih =>
-      rw [sharedWeights, EF.rankWith]
-      have H := ih (k := k + 1)
-        (ρ := (featureWeightBody active α k).rankWith ρ :: ρ)
-        (priorRankEnv_cons active α hα hαr k ρ hρ)
-      cases count with
-      | zero =>
-          exact H.trans (featureWeightBody_rankWith_le active α hα hαr k ρ hρ)
-      | succ count =>
-          simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
+      weight active (fun i => (α i).denote V) n :=
+  sharedOf_denote _ _ V (featureWeightBody_denoteWith active α hαc V) n
 
 private lemma featureWeightBody_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : ∀ i, (α i).rank ≤ i) (k : ℕ) :
@@ -1292,66 +1253,51 @@ private lemma featureWeightBody_rank_le (active : ℕ → ℕ → Bool) (α : �
       · exact Nat.max_le.mpr ⟨by simp, (hα i).trans (Nat.le_of_lt i.isLt)⟩
       · simp
 
-private lemma sharedWeights_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) (k count : ℕ) :
-    (sharedWeights active α k count).rank ≤
-      if count = 0 then 0 else k + count - 1 := by
-  induction count generalizing k with
-  | zero => simp [sharedWeights]
-  | succ count ih =>
-      rw [sharedWeights, EF.rank]
-      apply Nat.max_le.mpr
-      constructor
-      · exact (featureWeightBody_rank_le active α hα k).trans (by
-          cases count <;> simp)
-      · have H := ih (k + 1)
-        cases count with
-        | zero => simp [sharedWeights]
-        | succ count =>
-            simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
-
 lemma sharedFeatureWeight_rank_le (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hα : ∀ i, (α i).rank ≤ i) (n : ℕ) :
-    (sharedFeatureWeight active α n).rank ≤ n := by
-  rw [sharedFeatureWeight]
-  simpa using sharedWeights_rank_le active α hα 0 (n + 1)
+    (sharedFeatureWeight active α n).rank ≤ n :=
+  sharedOf_rank_le _ (featureWeightBody_rank_le active α hα) n
 
-/-- Budgeted component sum using the shared straight-line `β` representation. -/
-def sharedBudgetedTrader (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) : Trader where
+/-! ### Budgeted component sums
+
+Both budgets — the Boolean closing schedule and the continuous occupancy one — bundle a
+trader family by scaling each launched component by a coefficient family `β` subject to
+`(β i).rank ≤ i`. The construction and its four specifications — segment emission, value,
+magnitude, net worth — are proved once, at an arbitrary such family, and each budget
+instantiates them. -/
+
+/-- The day-`n` sum of every component launched by day `n`, each scaled by its own
+coefficient `β i`. The rank hypothesis is what makes `β i` legal to use on day `n ≥ i`. -/
+def scaledFamilyTrader (Ts : ℕ → Trader) (β : ℕ → EF)
+    (hβ : ∀ i, (β i).rank ≤ i) : Trader where
   strat n := Strategy.join (List.ofFn (fun i : Fin (n + 1) =>
-    Strategy.scaleBy (sharedFeatureWeight active α i)
-      ((sharedFeatureWeight_rank_le active α hα i).trans (by omega))
-      ((Ts i).strat n)))
+    Strategy.scaleBy (β i) ((hβ i).trans (by omega)) ((Ts i).strat n)))
 
-/-- The shared budget construction preserves uniform segment emission for a structured
-emulatable family. The proof performs two variable-width concatenations: trades within one
-component, then all components launched by day `n`. -/
-lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
-    (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
-    (hactive : PolyActiveSchedule active)
+/-- A uniformly emitted coefficient family bundles a structured emulatable family into a
+uniformly emitted trader. The proof performs two variable-width concatenations: trades
+within one component, then all components launched by day `n`. -/
+lemma scaledFamilyTrader_polySeg (Ts : ℕ → Trader) (β : ℕ → EF)
+    (hβ : ∀ i, (β i).rank ≤ i)
+    (hβseg : BigSpliceStream (fun i => (β i).serialize))
     (hTs : PolyTradeEmulatable Ts) :
     BigSpliceStream (fun n =>
-      serializeTrades ((sharedBudgetedTrader Ts active α hαrank).strat n).trades) := by
+      serializeTrades ((scaledFamilyTrader Ts β hβ).strat n).trades) := by
   obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
   -- Input to an individual scaled trade is `q = ⟨⟨n,k⟩,j⟩`.
   have hday := PolyFueled.left.comp PolyFueled.left
   have hmember := PolyFueled.right.comp PolyFueled.left
   have htradeNo := PolyFueled.right
   have hcanonical := (hmember.pair hday).pair htradeNo
-  have hβ := (sharedFeatureWeight_polySeg active α hαseg hactive).comp hmember
+  have hcoefficient := hβseg.comp hmember
   have hcoeff := hTs.coefficient_poly.comp hcanonical
-  have hscaled := BigSpliceStream.serialize_mul hβ hcoeff
+  have hscaled := BigSpliceStream.serialize_mul hcoefficient hcoeff
   have hframe := BigSpliceStream.tradeSlot hTs.sentence_poly hcanonical
   have hone : BigSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2
       let j := q.unpair.2
       let z := Nat.pair (Nat.pair k n) j
-      serializeTrades [
-        (EF.mul (sharedFeatureWeight active α k) (hTs.coefficient z), hTs.sentence z)]) := by
+      serializeTrades [(EF.mul (β k) (hTs.coefficient z), hTs.sentence z)]) := by
     refine BigSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades]
@@ -1360,20 +1306,79 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
   have hall := BigSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
   refine BigSpliceStream.of_eq hall ?_
   intro n
-  rw [sharedBudgetedTrader]
+  rw [scaledFamilyTrader]
   simp only [Strategy.join, Strategy.scaleBy]
   rw [serializeTrades_flatMap]
   simp only [List.ofFn_eq_map]
   rw [← List.map_coe_finRange_eq_range]
-  rw [List.flatMap_map]
-  rw [List.flatMap_map]
+  rw [List.flatMap_map, List.flatMap_map]
   apply List.flatMap_congr
   intro k hk
   simp only [Nat.unpair_pair]
-  rw [hTs.trades_eq]
-  rw [List.map_map]
-  rw [serializeTrades_map_singleton]
+  rw [hTs.trades_eq, List.map_map, serializeTrades_map_singleton]
   simp only [Function.comp_apply]
+
+/-- Day-`n` value is the finite `β`-weighted sum of component values. -/
+lemma scaledFamilyTrader_value (Ts : ℕ → Trader) (β : ℕ → EF)
+    (hβ : ∀ i, (β i).rank ≤ i) (V : History) (w : Valuation) (n : ℕ) :
+    ((scaledFamilyTrader Ts β hβ).strat n).value V w =
+      ∑ i : Fin (n + 1), (β i).denote V * ((Ts i).strat n).value V w := by
+  rw [scaledFamilyTrader, Strategy.join_value]
+  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
+  exact Finset.sum_congr rfl (fun i _ => Strategy.scaleBy_value _ _ _ _ _)
+
+/-- Day-`n` magnitude is the finite `|β|`-weighted sum of component magnitudes. -/
+lemma scaledFamilyTrader_magnitude (Ts : ℕ → Trader) (β : ℕ → EF)
+    (hβ : ∀ i, (β i).rank ≤ i) (V : History) (n : ℕ) :
+    ((scaledFamilyTrader Ts β hβ).strat n).magnitude V =
+      ∑ i : Fin (n + 1), |(β i).denote V| * ((Ts i).strat n).magnitude V := by
+  rw [scaledFamilyTrader, Strategy.join_magnitude]
+  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
+  exact Finset.sum_congr rfl (fun i _ => Strategy.scaleBy_magnitude _ _ _ _)
+
+/-- Net worth of the bundle is the finite `β`-weighted sum of component net worths.
+`LaunchGated` — components trade nothing before their launch day — is what turns the
+triangular daily bundle into this rectangular component view. -/
+lemma scaledFamilyTrader_netWorth (Ts : ℕ → Trader) (β : ℕ → EF)
+    (hβ : ∀ i, (β i).rank ≤ i) (hTs : LaunchGated Ts) (V : History) (v : PCWorld) :
+    ∀ n, (scaledFamilyTrader Ts β hβ).netWorth V v n =
+      ∑ i : Fin (n + 1), (β i).denote V * (Ts i).netWorth V v n := by
+  intro n
+  induction n with
+  | zero =>
+      simpa [Trader.netWorth] using scaledFamilyTrader_value Ts β hβ V v.payout 0
+  | succ n ih =>
+      have hday := scaledFamilyTrader_value Ts β hβ V v.payout (n + 1)
+      have hlaunch := hTs.netWorth_launch V v (n + 1)
+      rw [Trader.netWorth_succ, hday, ih]
+      conv_lhs =>
+        rhs
+        rw [Fin.sum_univ_castSucc]
+      conv_rhs => rw [Fin.sum_univ_castSucc]
+      simp only [Fin.val_castSucc, Fin.val_last]
+      rw [hlaunch]
+      simp_rw [Trader.netWorth_succ, mul_add]
+      rw [Finset.sum_add_distrib]
+      ring
+
+/-- Budgeted component sum using the shared straight-line `β` representation. -/
+def sharedBudgetedTrader (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool) (α : ℕ → EF)
+    (hα : ∀ i, (α i).rank ≤ i) : Trader :=
+  scaledFamilyTrader Ts (sharedFeatureWeight active α)
+    (sharedFeatureWeight_rank_le active α hα)
+
+/-- The shared budget construction preserves uniform segment emission for a structured
+emulatable family. -/
+lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
+    (active : ℕ → ℕ → Bool) (α : ℕ → EF)
+    (hαrank : ∀ i, (α i).rank ≤ i)
+    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hactive : PolyActiveSchedule active)
+    (hTs : PolyTradeEmulatable Ts) :
+    BigSpliceStream (fun n =>
+      serializeTrades ((sharedBudgetedTrader Ts active α hαrank).strat n).trades) :=
+  scaledFamilyTrader_polySeg Ts _ _
+    (sharedFeatureWeight_polySeg active α hαseg hactive) hTs
 
 lemma sharedBudgetedTrader_ec (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
@@ -1392,11 +1397,9 @@ lemma sharedBudgetedTrader_value (Ts : ℕ → Trader) (active : ℕ → ℕ →
     ((sharedBudgetedTrader Ts active α hα).strat n).value V w =
       ∑ i : Fin (n + 1), weight active (fun k => (α k).denote V) i *
         ((Ts i).strat n).value V w := by
-  rw [sharedBudgetedTrader, Strategy.join_value]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  apply Finset.sum_congr rfl
-  intro i hi
-  rw [Strategy.scaleBy_value, sharedFeatureWeight_denote active α hαc]
+  rw [sharedBudgetedTrader, scaledFamilyTrader_value]
+  exact Finset.sum_congr rfl
+    (fun i _ => by rw [sharedFeatureWeight_denote active α hαc])
 
 lemma sharedBudgetedTrader_magnitude (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
     (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i)
@@ -1405,15 +1408,11 @@ lemma sharedBudgetedTrader_magnitude (Ts : ℕ → Trader) (active : ℕ → ℕ
     ((sharedBudgetedTrader Ts active α hα).strat n).magnitude V =
       ∑ i : Fin (n + 1), |weight active (fun k => (α k).denote V) i| *
         ((Ts i).strat n).magnitude V := by
-  rw [sharedBudgetedTrader, Strategy.join_magnitude]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  apply Finset.sum_congr rfl
-  intro i hi
-  rw [Strategy.scaleBy_magnitude, sharedFeatureWeight_denote active α hαc]
+  rw [sharedBudgetedTrader, scaledFamilyTrader_magnitude]
+  exact Finset.sum_congr rfl
+    (fun i _ => by rw [sharedFeatureWeight_denote active α hαc])
 
-/-- Net worth of the shared sum is the finite weighted sum of component net worths.
-`LaunchGated` — components trade nothing before their launch day — is what turns the
-triangular daily bundle into this rectangular component view. -/
+/-- Net worth of the shared sum is the finite weighted sum of component net worths. -/
 lemma sharedBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
@@ -1424,56 +1423,13 @@ lemma sharedBudgetedTrader_netWorth (Ts : ℕ → Trader)
         ∑ i : Fin (n + 1), weight active (fun k => (α k).denote V) i *
           (Ts i).netWorth V v n := by
   intro n
-  induction n with
-  | zero =>
-      simpa [Trader.netWorth] using
-        (sharedBudgetedTrader_value Ts active α hαrank hαc V v.payout 0)
-  | succ n ih =>
-      have hday := sharedBudgetedTrader_value Ts active α hαrank hαc V v.payout (n + 1)
-      have hlaunch := hTs.netWorth_launch V v (n + 1)
-      rw [Trader.netWorth_succ, hday, ih]
-      conv_lhs =>
-        rhs
-        rw [Fin.sum_univ_castSucc]
-      conv_rhs => rw [Fin.sum_univ_castSucc]
-      simp only [Fin.val_castSucc, Fin.val_last]
-      rw [hlaunch]
-      simp_rw [Trader.netWorth_succ, mul_add]
-      rw [Finset.sum_add_distrib]
-      ring
+  rw [sharedBudgetedTrader, scaledFamilyTrader_netWorth Ts _ _ hTs]
+  exact Finset.sum_congr rfl
+    (fun i _ => by rw [sharedFeatureWeight_denote active α hαc])
 
+/-! ### Closing schedules and the unit-capital invariant -/
 
-/-- The finite day-`n` sum of all component strategies launched by then, scaled by their
-reified adaptive budget coefficients. -/
-def budgetedTrader (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i) : Trader where
-  strat n := Strategy.join (List.ofFn (fun i : Fin (n + 1) =>
-    Strategy.scaleBy (featureWeight active α i)
-      ((featureWeight_rank_le active α hα i).trans (by omega))
-      ((Ts i).strat n)))
-
-lemma budgetedTrader_value (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
-    (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i) (V : History) (w : Valuation) (n : ℕ) :
-    ((budgetedTrader Ts active α hα).strat n).value V w =
-      ∑ i : Fin (n + 1), weight active (fun k => (α k).denote V) i *
-        ((Ts i).strat n).value V w := by
-  rw [budgetedTrader, Strategy.join_value]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  apply Finset.sum_congr rfl
-  intro i hi
-  rw [Strategy.scaleBy_value, featureWeight_denote]
-
-lemma budgetedTrader_magnitude (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
-    (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i) (V : History) (n : ℕ) :
-    ((budgetedTrader Ts active α hα).strat n).magnitude V =
-      ∑ i : Fin (n + 1), |weight active (fun k => (α k).denote V) i| *
-        ((Ts i).strat n).magnitude V := by
-  rw [budgetedTrader, Strategy.join_magnitude]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  apply Finset.sum_congr rfl
-  intro i hi
-  rw [Strategy.scaleBy_magnitude, featureWeight_denote]
-
+/-- The budget recurrence in the form the invariant proofs use. -/
 lemma weight_eq (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (n : ℕ) :
     weight active α n = 1 - outstanding active α (weight active α) n := by
   rw [weight]
@@ -1559,7 +1515,7 @@ lemma weight_le_one
     · exact mul_nonneg (weight_nonneg active α hclose hα0 hα1 i) (hα0 i)
     · exact le_rfl))
 
-/-! ### Continuous occupancy budget
+/-! ## The adaptive budget: continuous occupancy
 
 The affine gradual-sale construction exposes its still-risky fraction as an expressible
 feature in `[0,1]`.  The following semantic budget is the fractional analogue of the
@@ -1720,7 +1676,7 @@ lemma fractional_allocations_finset_le_one
       simp [hin]
     _ ≤ 1 := hbudget
 
-/-! #### Shared expressible-feature representation -/
+/-! ### Shared expressible-feature representation -/
 
 /-- The fractional-weight recurrence body in an environment
 `[βₖ₋₁, …, β₀]`. -/
@@ -1731,30 +1687,24 @@ def fractionalWeightBody (occupancy : ℕ → ℕ → EF) (α : ℕ → EF) (k :
 
 /-- Shared straight-line chain for consecutive fractional launch weights. -/
 def fractionalSharedWeights (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
-    (k : ℕ) : ℕ → EF
-  | 0 => EF.var 0
-  | count + 1 => EF.letE (fractionalWeightBody occupancy α k)
-      (fractionalSharedWeights occupancy α (k + 1) count)
+    (k : ℕ) : ℕ → EF :=
+  letChain (fractionalWeightBody occupancy α) k
 
-/-- Polynomial-sharing feature for the day-`n` fractional budget coefficient. -/
+/-- Polynomial-sharing feature for the day-`n` fractional budget coefficient. Spelled
+through `fractionalSharedWeights` for the same reason as `sharedFeatureWeight`. -/
 def fractionalSharedFeatureWeight (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (n : ℕ) : EF :=
   fractionalSharedWeights occupancy α 0 (n + 1)
 
+/-- The postfix stream of a fractional chain, in the same shape as
+`sharedWeights_serialize`. -/
 lemma fractionalSharedWeights_serialize (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (k count : ℕ) :
     (fractionalSharedWeights occupancy α k count).serialize =
       (List.range' k count).flatMap
           (fun j => (fractionalWeightBody occupancy α j).serialize) ++
-        (EF.var 0).serialize ++ List.replicate count 8 := by
-  induction count generalizing k with
-  | zero => simp [fractionalSharedWeights, EF.serialize]
-  | succ count ih =>
-      rw [fractionalSharedWeights]
-      change (fractionalWeightBody occupancy α k).serialize ++
-          (fractionalSharedWeights occupancy α (k + 1) count).serialize ++ [8] = _
-      rw [ih (k + 1)]
-      simp [List.range'_succ, List.replicate_succ', List.append_assoc]
+        (EF.var 0).serialize ++ List.replicate count 8 :=
+  letChain_serialize _ k count
 
 /-- Uniform segment emitter for the fractional recurrence bodies. The occupancy stream is
 indexed by `⟨day, component⟩`. -/
@@ -1809,41 +1759,21 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
   funext i
   simp
 
+/-- Uniform polynomial-time emission of the day-`n` fractional budget coefficient. -/
 lemma fractionalSharedFeatureWeight_polySeg (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (hα : BigSpliceStream (fun i => (α i).serialize))
     (hocc : BigSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    BigSpliceStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) := by
-  have hbody := fractionalWeightBody_polySeg occupancy α hα hocc
-  have hbodies : BigSpliceStream (fun n =>
-      (List.range (n + 1)).flatMap
-        (fun j => (fractionalWeightBody occupancy α j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp PolyFueled.right)
-        PolyFueled.id.succ_comp) ?_
-    intro n
-    simp only [Nat.unpair_pair]
-  have hvar : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun n => List.replicate (n + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
-  intro n
-  rw [fractionalSharedFeatureWeight, fractionalSharedWeights_serialize]
-  rw [List.range_eq_range']
-
-private def FractionalPriorWeightEnv (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (V : History) (k : ℕ) (ρ : List ℝ) : Prop :=
-  ∀ i : Fin k, ρ.getD (k - 1 - i) 0 =
-    fractionalWeight (fun j n => (occupancy j n).denote V)
-      (fun j => (α j).denote V) i
+    BigSpliceStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) :=
+  sharedOf_polySeg _ (fractionalWeightBody_polySeg occupancy α hα hocc)
 
 private lemma fractionalWeightBody_denoteWith
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
     (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
     (V : History) (k : ℕ) (ρ : List ℝ)
-    (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
+    (hρ : PriorEnv (fractionalWeight (fun j n => (occupancy j n).denote V)
+      (fun j => (α j).denote V)) k ρ) :
     (fractionalWeightBody occupancy α k).denoteWith ρ V =
       fractionalWeight (fun i n => (occupancy i n).denote V)
         (fun i => (α i).denote V) k := by
@@ -1856,49 +1786,7 @@ private lemma fractionalWeightBody_denoteWith
   intro i hi
   rw [hρ i, hαc i ρ V, hoccc i k ρ V]
 
-private lemma fractionalPriorWeightEnv_cons
-    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF) (V : History)
-    (k : ℕ) (ρ : List ℝ) (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
-    FractionalPriorWeightEnv occupancy α V (k + 1)
-      (fractionalWeight (fun i n => (occupancy i n).denote V)
-        (fun i => (α i).denote V) k :: ρ) := by
-  intro i
-  by_cases hi : (i : ℕ) = k
-  · have hilast : i = Fin.last k := Fin.ext hi
-    subst i
-    simp
-  · have hik : (i : ℕ) < k := by omega
-    have hidx : k + 1 - 1 - (i : ℕ) = (k - 1 - (i : ℕ)) + 1 := by omega
-    rw [hidx]
-    simp only [List.getD_cons_succ]
-    exact hρ ⟨i, hik⟩
-
-private lemma fractionalSharedWeights_denoteWith
-    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
-    (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
-    (hoccc : ∀ i n ρ V, (occupancy i n).denoteWith ρ V = (occupancy i n).denote V)
-    (V : History) (k count : ℕ) (ρ : List ℝ)
-    (hρ : FractionalPriorWeightEnv occupancy α V k ρ) :
-    (fractionalSharedWeights occupancy α k count).denoteWith ρ V =
-      if count = 0 then ρ.getD 0 0
-      else fractionalWeight (fun i n => (occupancy i n).denote V)
-        (fun i => (α i).denote V) (k + count - 1) := by
-  induction count generalizing k ρ with
-  | zero => simp [fractionalSharedWeights]
-  | succ count ih =>
-      rw [fractionalSharedWeights, EF.denoteWith,
-        fractionalWeightBody_denoteWith occupancy α hαc hoccc V k ρ hρ]
-      rw [ih (k := k + 1)
-        (ρ := fractionalWeight (fun i n => (occupancy i n).denote V)
-          (fun i => (α i).denote V) k :: ρ)
-        (fractionalPriorWeightEnv_cons occupancy α V k ρ hρ)]
-      cases count with
-      | zero => simp
-      | succ count =>
-          simp
-          congr 1
-          omega
-
+/-- The shared fractional chain denotes the fractional recurrence. -/
 lemma fractionalSharedFeatureWeight_denote
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαc : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V)
@@ -1906,10 +1794,9 @@ lemma fractionalSharedFeatureWeight_denote
     (V : History) (n : ℕ) :
     (fractionalSharedFeatureWeight occupancy α n).denote V =
       fractionalWeight (fun i n => (occupancy i n).denote V)
-        (fun i => (α i).denote V) n := by
-  rw [fractionalSharedFeatureWeight, EF.denote]
-  simpa using fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
-    0 (n + 1) [] (by intro i; exact Fin.elim0 i)
+        (fun i => (α i).denote V) n :=
+  sharedOf_denote _ _ V
+    (fractionalWeightBody_denoteWith occupancy α hαc hoccc V) n
 
 /-- A shared fractional-weight feature is closed with respect to any surrounding `letE`
 environment whenever its attempted-weight and occupancy inputs are closed.  The internal
@@ -1921,13 +1808,9 @@ lemma fractionalSharedFeatureWeight_closed
       (occupancy i n).denote V)
     (n : ℕ) (ρ : List ℝ) (V : History) :
     (fractionalSharedFeatureWeight occupancy α n).denoteWith ρ V =
-      (fractionalSharedFeatureWeight occupancy α n).denote V := by
-  rw [fractionalSharedFeatureWeight, EF.denote]
-  have hleft := fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
-    0 (n + 1) ρ (by intro i; exact Fin.elim0 i)
-  have hright := fractionalSharedWeights_denoteWith occupancy α hαc hoccc V
-    0 (n + 1) [] (by intro i; exact Fin.elim0 i)
-  simpa using hleft.trans hright.symm
+      (fractionalSharedFeatureWeight occupancy α n).denote V :=
+  sharedOf_closed _ _ V
+    (fractionalWeightBody_denoteWith occupancy α hαc hoccc V) n ρ
 
 private lemma fractionalWeightBody_rank_le
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -1950,42 +1833,22 @@ private lemma fractionalWeightBody_rank_le
         ⟨by simp, (hα i).trans (Nat.le_of_lt i.isLt)⟩,
         hocc i k (Nat.le_of_lt i.isLt)⟩
 
-private lemma fractionalSharedWeights_rank_le
-    (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
-    (hα : ∀ i, (α i).rank ≤ i)
-    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) (k count : ℕ) :
-    (fractionalSharedWeights occupancy α k count).rank ≤
-      if count = 0 then 0 else k + count - 1 := by
-  induction count generalizing k with
-  | zero => simp [fractionalSharedWeights]
-  | succ count ih =>
-      rw [fractionalSharedWeights, EF.rank]
-      apply Nat.max_le.mpr
-      constructor
-      · exact (fractionalWeightBody_rank_le occupancy α hα hocc k).trans (by
-          cases count <;> simp)
-      · have H := ih (k + 1)
-        cases count with
-        | zero => simp [fractionalSharedWeights]
-        | succ count =>
-            simpa [Nat.add_assoc, Nat.add_comm, Nat.add_left_comm] using H
-
+/-- The day-`n` fractional chain is legal on day `n`. -/
 lemma fractionalSharedFeatureWeight_rank_le
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hα : ∀ i, (α i).rank ≤ i)
     (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) (n : ℕ) :
-    (fractionalSharedFeatureWeight occupancy α n).rank ≤ n := by
-  rw [fractionalSharedFeatureWeight]
-  simpa using fractionalSharedWeights_rank_le occupancy α hα hocc 0 (n + 1)
+    (fractionalSharedFeatureWeight occupancy α n).rank ≤ n :=
+  sharedOf_rank_le _ (fractionalWeightBody_rank_le occupancy α hα hocc) n
+
+/-! ### Fractional budgeted component sums -/
 
 /-- Component-family sum scaled by shared fractional launch weights. -/
 def fractionalBudgetedTrader (Ts : ℕ → Trader) (occupancy : ℕ → ℕ → EF)
     (α : ℕ → EF) (hα : ∀ i, (α i).rank ≤ i)
-    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) : Trader where
-  strat n := Strategy.join (List.ofFn (fun i : Fin (n + 1) =>
-    Strategy.scaleBy (fractionalSharedFeatureWeight occupancy α i)
-      ((fractionalSharedFeatureWeight_rank_le occupancy α hα hocc i).trans (by omega))
-      ((Ts i).strat n)))
+    (hocc : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n) : Trader :=
+  scaledFamilyTrader Ts (fractionalSharedFeatureWeight occupancy α)
+    (fractionalSharedFeatureWeight_rank_le occupancy α hα hocc)
 
 lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -1996,43 +1859,9 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hTs : PolyTradeEmulatable Ts) :
     BigSpliceStream (fun n => serializeTrades
-      ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).trades) := by
-  obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
-  have hday := PolyFueled.left.comp PolyFueled.left
-  have hmember := PolyFueled.right.comp PolyFueled.left
-  have htradeNo := PolyFueled.right
-  have hcanonical := (hmember.pair hday).pair htradeNo
-  have hβ := (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg).comp hmember
-  have hcoeff := hTs.coefficient_poly.comp hcanonical
-  have hscaled := BigSpliceStream.serialize_mul hβ hcoeff
-  have hframe := BigSpliceStream.tradeSlot hTs.sentence_poly hcanonical
-  have hone : BigSpliceStream (fun q =>
-      let n := q.unpair.1.unpair.1
-      let k := q.unpair.1.unpair.2
-      let j := q.unpair.2
-      let z := Nat.pair (Nat.pair k n) j
-      serializeTrades [
-        (EF.mul (fractionalSharedFeatureWeight occupancy α k) (hTs.coefficient z),
-          hTs.sentence z)]) := by
-    refine BigSpliceStream.of_eq (hscaled.append hframe) ?_
-    intro q
-    simp [serializeTrades]
-  have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
-  have hcomponent := BigSpliceStream.concatVar hone hcountReindexed
-  have hall := BigSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq hall ?_
-  intro n
-  rw [fractionalBudgetedTrader]
-  simp only [Strategy.join, Strategy.scaleBy]
-  rw [serializeTrades_flatMap]
-  simp only [List.ofFn_eq_map]
-  rw [← List.map_coe_finRange_eq_range]
-  rw [List.flatMap_map, List.flatMap_map]
-  apply List.flatMap_congr
-  intro k hk
-  simp only [Nat.unpair_pair]
-  rw [hTs.trades_eq, List.map_map, serializeTrades_map_singleton]
-  simp only [Function.comp_apply]
+      ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).trades) :=
+  scaledFamilyTrader_polySeg Ts _ _
+    (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg) hTs
 
 lemma fractionalBudgetedTrader_ec (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -2060,12 +1889,9 @@ lemma fractionalBudgetedTrader_value (Ts : ℕ → Trader)
         fractionalWeight (fun j d => (occupancy j d).denote V)
             (fun j => (α j).denote V) i *
           ((Ts i).strat n).value V w := by
-  rw [fractionalBudgetedTrader, Strategy.join_value]
-  simp only [List.map_ofFn, List.sum_ofFn, Function.comp_apply]
-  apply Finset.sum_congr rfl
-  intro i hi
-  rw [Strategy.scaleBy_value,
-    fractionalSharedFeatureWeight_denote occupancy α hαc hoccc]
+  rw [fractionalBudgetedTrader, scaledFamilyTrader_value]
+  exact Finset.sum_congr rfl (fun i _ => by
+    rw [fractionalSharedFeatureWeight_denote occupancy α hαc hoccc])
 
 lemma fractionalBudgetedTrader_netWorth (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
@@ -2079,35 +1905,38 @@ lemma fractionalBudgetedTrader_netWorth (Ts : ℕ → Trader)
         fractionalWeight (fun j d => (occupancy j d).denote V)
             (fun j => (α j).denote V) i * (Ts i).netWorth V v n := by
   intro n
-  induction n with
-  | zero =>
-      simpa [Trader.netWorth] using
-        (fractionalBudgetedTrader_value Ts occupancy α hαrank hoccRank hαc hoccc
-          V v.payout 0)
-  | succ n ih =>
-      have hday := fractionalBudgetedTrader_value Ts occupancy α hαrank hoccRank
-        hαc hoccc V v.payout (n + 1)
-      have hlaunch := hTs.netWorth_launch V v (n + 1)
-      rw [Trader.netWorth_succ, hday, ih]
-      conv_lhs =>
-        rhs
-        rw [Fin.sum_univ_castSucc]
-      conv_rhs => rw [Fin.sum_univ_castSucc]
-      simp only [Fin.val_castSucc, Fin.val_last]
-      rw [hlaunch]
-      simp_rw [Trader.netWorth_succ, mul_add]
-      rw [Finset.sum_add_distrib]
-      ring
+  rw [fractionalBudgetedTrader, scaledFamilyTrader_netWorth Ts _ _ hTs]
+  exact Finset.sum_congr rfl (fun i _ => by
+    rw [fractionalSharedFeatureWeight_denote occupancy α hαc hoccc])
+
+/-! ### Recycling the fractional budget -/
+
+/-- Finite tails of a nonnegative summable real series are uniformly small. Both recycling
+arguments — fractional and Boolean — use this to bound the still-outstanding capital. -/
+lemma summable_tail_Ico_lt {f : ℕ → ℝ} (hf0 : ∀ i, 0 ≤ f i)
+    (hf : Summable f) {r : ℝ} (hr : 0 < r) :
+    ∃ K, ∀ n, K ≤ n → ∑ i ∈ Finset.Ico K n, f i < r := by
+  have htend := hf.hasSum.tendsto_sum_nat
+  obtain ⟨K, hK⟩ := Metric.tendsto_atTop.mp htend r hr
+  refine ⟨K, fun n hKn => ?_⟩
+  have hnear := hK K le_rfl
+  rw [Real.dist_eq, abs_lt] at hnear
+  have hnle : (∑ i ∈ Finset.range n, f i) ≤ ∑' i, f i :=
+    hf.sum_le_tsum _ (fun i _ => hf0 i)
+  have hsplit := Finset.sum_range_add_sum_Ico f hKn
+  linarith
 
 /-- Capital allocated at the launch of fractional component `i`. -/
 noncomputable def fractionalAllocation (occupancy : ℕ → ℕ → ℝ)
     (α : ℕ → ℝ) (i : ℕ) : ℝ :=
   fractionalWeight occupancy α i * α i
 
+/-- Total capital launched through component `n`. -/
 noncomputable def fractionalAllocationPrefix (occupancy : ℕ → ℕ → ℝ)
     (α : ℕ → ℝ) (n : ℕ) : ℝ :=
   ∑ i : Fin (n + 1), fractionalAllocation occupancy α i
 
+/-- Capital launched through component `n` that is still occupied on day `n`. -/
 noncomputable def fractionalActiveAllocation
     (occupancy : ℕ → ℕ → ℝ) (α : ℕ → ℝ) (n : ℕ) : ℝ :=
   ∑ i : Fin (n + 1), fractionalAllocation occupancy α i * occupancy i n
@@ -2175,19 +2004,7 @@ lemma fractionalAllocationPrefix_not_bddAbove_of_frequently
     summable_of_sum_range_le ha0 hsumRange
   let r : ℝ := min (1 / 2 : ℝ) (δ / 2)
   have hr : 0 < r := lt_min (by norm_num) (half_pos hδ)
-  obtain ⟨K, htail⟩ : ∃ K, ∀ n, K ≤ n →
-      ∑ i ∈ Finset.Ico K n, fractionalAllocation occupancy α i < r := by
-    have htend := haSum.hasSum.tendsto_sum_nat
-    obtain ⟨K, hK⟩ := Metric.tendsto_atTop.mp htend r hr
-    refine ⟨K, fun n hKn => ?_⟩
-    have hnear := hK K le_rfl
-    rw [Real.dist_eq, abs_lt] at hnear
-    have hnle : (∑ i ∈ Finset.range n, fractionalAllocation occupancy α i) ≤
-        ∑' i, fractionalAllocation occupancy α i :=
-      haSum.sum_le_tsum _ (fun i _ => ha0 i)
-    have hsplit := Finset.sum_range_add_sum_Ico
-      (fractionalAllocation occupancy α) hKn
-    linarith
+  obtain ⟨K, htail⟩ := summable_tail_Ico_lt ha0 haSum hr
   have hweightedZero : ∀ i, ∃ N, ∀ n, N ≤ n →
       fractionalWeight occupancy α i * α i * occupancy i n = 0 := by
     intro i
@@ -2377,6 +2194,8 @@ lemma noFractionalRepeatableReturn
   rw [Real.dist_eq, sub_zero, abs_of_nonneg (hα0 n)]
   exact lt_of_not_ge (hN n hn)
 
+/-! ## Recycling the Boolean unit budget -/
+
 /-- Capital allocated to component `i`. -/
 noncomputable def allocation (active : ℕ → ℕ → Bool) (α : ℕ → ℝ) (i : ℕ) : ℝ :=
   weight active α i * α i
@@ -2418,20 +2237,6 @@ lemma activeAllocation_le_one (active : ℕ → ℕ → Bool) (α : ℕ → ℝ)
   · simp [h]
     exact le_trans (le_add_of_nonneg_right
       (allocation_nonneg active α hclose hα0 hα1 n)) hbudget
-
-/-- Finite tails of a nonnegative summable real series are uniformly small. -/
-lemma summable_tail_Ico_lt {f : ℕ → ℝ} (hf0 : ∀ i, 0 ≤ f i)
-    (hf : Summable f) {r : ℝ} (hr : 0 < r) :
-    ∃ K, ∀ n, K ≤ n → ∑ i ∈ Finset.Ico K n, f i < r := by
-  have htend := hf.hasSum.tendsto_sum_nat
-  obtain ⟨K, hK⟩ := Metric.tendsto_atTop.mp htend r hr
-  refine ⟨K, fun n hKn => ?_⟩
-  have hnear := hK K le_rfl
-  rw [Real.dist_eq, abs_lt] at hnear
-  have hnle : (∑ i ∈ Finset.range n, f i) ≤ ∑' i, f i :=
-    hf.sum_le_tsum _ (fun i _ => hf0 i)
-  have hsplit := Finset.sum_range_add_sum_Ico f hKn
-  linarith
 
 /-- If every component eventually closes and component magnitudes are frequently bounded
 away from zero, the unit budget is recycled infinitely often: cumulative allocation is not
@@ -2545,7 +2350,7 @@ lemma allocationPrefix_not_bddAbove (close : ℕ → ℕ) (active : ℕ → ℕ 
     hα0 hα1 hδ
   exact Filter.frequently_atTop.mpr (fun N => ⟨N, le_rfl, hδα N⟩)
 
-/-! ### From ROI maturity to a closing schedule -/
+/-! ## From ROI maturity to a closing schedule -/
 
 /-- Keep component `i` active strictly before its selected closing day. -/
 def activeUntil (close : ℕ → ℕ) (i n : ℕ) : Bool := decide (n < close i)
@@ -2555,6 +2360,9 @@ lemma activeUntil_closing (close : ℕ → ℕ) : ClosingSchedule (activeUntil c
   simp [activeUntil] at h ⊢
   omega
 
+/-- Every component of an `activeUntil` schedule does eventually close. The companion to
+`activeUntil_closing`: together they say the schedule is a closing one whose positions all
+terminate, which is what the recycling argument needs of any schedule a client builds. -/
 lemma activeUntil_eventually_closed (close : ℕ → ℕ) (i : ℕ) :
     ∃ N, ∀ n, N ≤ n → activeUntil close i n = false := by
   refine ⟨close i, fun n hn => ?_⟩
@@ -2609,7 +2417,7 @@ def MaturitySchedule (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (η : ℕ → ℝ) (close : ℕ → ℕ) : Prop :=
   ∀ i, (Ts i).Matured V DP ε (η i) (close i)
 
-/-! ## Polynomial bounded-verification bridge
+/-! ## Bounded verification of maturity
 
 The paper does not require the first maturity day itself to be polynomially computable.
 It requires each finite maturity claim to be checkable efficiently.  On budget day `k` we
@@ -2682,12 +2490,14 @@ noncomputable def VerifiedMaturitySchedule.close
     (h : VerifiedMaturitySchedule Ts V DP ε η) (i : ℕ) : ℕ :=
   Nat.find (h.complete i)
 
+/-- The checker does succeed on the day `close` selects. -/
 lemma VerifiedMaturitySchedule.check_close
     {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
     (h : VerifiedMaturitySchedule Ts V DP ε η) (i : ℕ) :
     h.check i (h.close i) = true :=
   Nat.find_spec (h.complete i)
 
+/-- `close` is the *first* successful day: the checker fails strictly before it. -/
 lemma VerifiedMaturitySchedule.check_false_of_lt_close
     {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
     (h : VerifiedMaturitySchedule Ts V DP ε η) {i m : ℕ} (hm : m < h.close i) :
@@ -2695,6 +2505,9 @@ lemma VerifiedMaturitySchedule.check_false_of_lt_close
   apply Bool.eq_false_of_not_eq_true
   exact Nat.find_min (h.complete i) hm
 
+/-- The bounded prefix scan "no day `m ≤ k` passes the checker" is exactly the openness
+bit "component `i` is still open on day `k`". This is the step that makes the openness
+table polynomial without asking for the closing day itself to be computable. -/
 lemma VerifiedMaturitySchedule.boundedNone_eq_activeUntil
     {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
     (h : VerifiedMaturitySchedule Ts V DP ε η) (i k : ℕ) :
@@ -2712,6 +2525,8 @@ lemma VerifiedMaturitySchedule.boundedNone_eq_activeUntil
   · intro hlt m hm
     exact h.check_false_of_lt_close (lt_of_le_of_lt hm hlt)
 
+/-- The openness table the shared budget emitter consumes is polynomial. One of the two
+facts the paper-facing bridge takes from a verified schedule. -/
 lemma VerifiedMaturitySchedule.polyActive
     {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
     (h : VerifiedMaturitySchedule Ts V DP ε η) :
@@ -2722,11 +2537,15 @@ lemma VerifiedMaturitySchedule.polyActive
   simp only [Nat.unpair_pair]
   rw [h.boundedNone_eq_activeUntil]
 
+/-- Soundness at the selected day gives the semantic maturity schedule. The other fact the
+paper-facing bridge takes from a verified schedule. -/
 lemma VerifiedMaturitySchedule.maturity
     {Ts : ℕ → Trader} {V : History} {DP : DeductiveProcess} {ε : ℝ} {η : ℕ → ℝ}
     (h : VerifiedMaturitySchedule Ts V DP ε η) :
     MaturitySchedule Ts V DP ε η h.close :=
   fun i => h.sound i (h.close i) (h.check_close i)
+
+/-! ## No repeatable ε-ROI (`lem:type3`) -/
 
 /-- Quantitative lower bound for the repeatable-ROI bundle. Total launched allocation earns
 `ε`; at most one unit remains active, and the summable maturity tolerances pay for every
@@ -2977,9 +2796,31 @@ lemma repeatableROI_of_frequently
   · exact sharedBudgetedTrader_exploits_of_frequently Ts V DP ε hε η close α hαrank
       hαc hmag hα0 hα1 hδ hδα hP hTs.launchGated hroi hη0 hηsum hmature hworld
 
-/-- `lem:type3`, operational paper-facing form: a logical inductor admits no efficiently
-repeatable family with fixed positive ROI and a polynomial maturity verifier unless the
-component magnitudes converge to zero. -/
+/-- No Repeatable ε-ROI, `lem:type3`: a logical inductor admits no efficiently emulatable
+family of traders that all have ε-ROI for one fixed `ε > 0`, unless the `ℙ`-generable
+magnitudes `αₖ = |T^k(ℙ)|` converge to zero.
+
+Four hypotheses go beyond the printed lemma.
+
+* `hα1 : (α i).denote V ≤ 1` — the paper derives this WLOG inside the proof (tex:3612), by
+  dividing `T^k`'s trades by `max(1, αₖ)`. That renormalisation is not formalized, so the
+  normalisation is a caller obligation.
+* `hη0` / `hηsum : Summable η` — a summable family of maturity tolerances in place of the
+  paper's single `ε/3`. This is a generalization: the constant family is summable only in
+  the trivial case, so the Lean form covers strictly more schedules.
+* `hworld` — some world is consistent with every stage of `DP`. `DeductiveProcess`
+  (`Framework/Criterion.lean`) carries only `D` and `mono`, and fixes no consistency, so
+  the clause the paper reads off its deductive process is carried explicitly.
+* `hactive` / `hmature` / `close` — the polynomial openness table and the semantic maturity
+  schedule. The paper builds both inside the proof from ε-ROI plus computability of `DP`
+  (tex:3645-3650). `exists_maturitySchedule` shows the semantic half is free;
+  `noRepeatableROI_of_verifiedMaturity` is the form clients should apply, discharging all
+  three from one polynomial checker.
+
+This result is deliberately carried without a `Paper node` line: `lem:type3` is listed in
+`UNANNOTATED_PAPER_RESULTS` in `scripts/check_endpoint_coverage.py`, and is cited from this
+module's header instead. Do not add the annotation — it would put the label under the
+per-declaration axiom gate, which this statement does not answer to. -/
 theorem noRepeatableROI
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor V DP]
@@ -3027,61 +2868,21 @@ lemma noRepeatableROI_of_verifiedMaturity
     (hη0 : ∀ i, 0 ≤ η i) (hηsum : Summable η)
     (hver : VerifiedMaturitySchedule Ts V DP ε η)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    ConvergesTo (fun i => (α i).denote V) 0 := by
-  exact noRepeatableROI Ts V DP ε hε η hver.close α hαrank hαseg hαc hmag hα0 hα1
+    ConvergesTo (fun i => (α i).denote V) 0 :=
+  noRepeatableROI Ts V DP ε hε η hver.close α hαrank hαseg hαc hmag hα0 hα1
     hP hTs hver.polyActive hroi hη0 hηsum hver.maturity hworld
 
-/-- A semantic closing day selected from each member's ROI witness. This is deliberately
-noncomputable: the paper-facing construction instead uses a bounded verification search
-built from the computable market/process certificates carried by `IsLogicalInductor`. -/
-noncomputable def maturityDay (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
-    (ε η : ℝ) (hroi : ∀ i, HasROI (Ts i) V DP ε) (hη : 0 < η) (i : ℕ) : ℕ :=
-  Classical.choose ((hroi i).exists_matured hη)
-
-lemma maturityDay_spec (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
-    (ε η : ℝ) (hroi : ∀ i, HasROI (Ts i) V DP ε) (hη : 0 < η) (i : ℕ) :
-    (Ts i).Matured V DP ε η (maturityDay Ts V DP ε η hroi hη i) :=
-  Classical.choose_spec ((hroi i).exists_matured hη)
-
-lemma maturitySchedule_closing (Ts : ℕ → Trader) (V : History)
-    (DP : DeductiveProcess) (ε η : ℝ) (hroi : ∀ i, HasROI (Ts i) V DP ε)
-    (hη : 0 < η) :
-    ClosingSchedule (activeUntil (maturityDay Ts V DP ε η hroi hη)) :=
-  activeUntil_closing _
-
-#print axioms weight_nonneg_and_postAllocation_le
-#print axioms fractionalWeight_nonneg_and_postAllocation_le
-#print axioms fractionalSharedFeatureWeight_denote
-#print axioms fractionalSharedFeatureWeight_polySeg
-#print axioms fractionalBudgetedTrader_ec
-#print axioms fractionalBudgetedTrader_exploits
-#print axioms noFractionalRepeatableReturn
-#print axioms EfficientlyEmulatable.of_polySeg
-#print axioms Trader.zero_hasROI
-#print axioms Strategy.magnitude_eq_ratCast
-#print axioms Strategy.value_eq_ratCast
-#print axioms Trader.partialNetWorthRat_congr
-#print axioms Trader.netWorth_eq_ratCast
-#print axioms HistoricalVerifiedMaturitySchedule.toVerified
-#print axioms maturityDay_spec
-#print axioms featureWeight_denote
-#print axioms budgetedTrader_value
-#print axioms budgetedTrader_magnitude
-#print axioms sharedFeatureWeight_denote
-#print axioms sharedFeatureWeight_rank_le
-#print axioms sharedFeatureWeight_cost_eq
-#print axioms sharedFeatureWeight_polySeg
-#print axioms sharedBudgetedTrader_value
-#print axioms sharedBudgetedTrader_magnitude
-#print axioms sharedBudgetedTrader_ec
-#print axioms sharedBudgetedTrader_netWorth_lower
-#print axioms allocationPrefix_not_bddAbove
-#print axioms allocationPrefix_not_bddAbove_of_frequently
-#print axioms sharedBudgetedTrader_exploits
-#print axioms repeatableROI
-#print axioms noRepeatableROI
-#print axioms VerifiedMaturitySchedule.polyActive
-#print axioms noRepeatableROI_of_verifiedMaturity
+/-- A `MaturitySchedule` at a constant tolerance always exists: `HasROI.exists_matured`
+supplies a maturity day for each component, and the schedule is their choice function.
+This records which half of `noRepeatableROI`'s maturity input is a real obligation — only
+the *polynomial verifier* of `VerifiedMaturitySchedule` is, the semantic schedule is free.
+It is deliberately noncomputable; the paper-facing route builds closing days by bounded
+verification instead. -/
+lemma exists_maturitySchedule (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
+    (ε η : ℝ) (hroi : ∀ i, HasROI (Ts i) V DP ε) (hη : 0 < η) :
+    ∃ close, MaturitySchedule Ts V DP ε (fun _ => η) close :=
+  ⟨fun i => Classical.choose ((hroi i).exists_matured hη),
+    fun i => Classical.choose_spec ((hroi i).exists_matured hη)⟩
 
 end ROIBudget
 

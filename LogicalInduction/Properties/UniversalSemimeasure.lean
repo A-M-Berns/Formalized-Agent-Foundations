@@ -1,20 +1,76 @@
-/-
-# Non-Dogmatism: the universal semimeasure (paper §4.6)
-
-Renders `thm:dus` (Domination of the Universal Semimeasure) and `thm:strict` (Strict
-Domination), together with the semimeasure substrate and the unit-budget trader they need.
-
-A continuous semimeasure is not a discrete a-priori semimeasure: one path may retain mass
-`1` through infinitely many prefixes, so `thm:dus` does not reduce to ordinary sentence
-prefix complexity with a fixed coding constant.
--/
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.LimitCoherence
 import LogicalInduction.Framework.WriteOut
 
+/-!
+# Non-dogmatism: the universal semimeasure
+
+Renders paper §4.6: `thm:dus` (Domination of the Universal Semimeasure) and `thm:strict`
+(Strict Domination), whose proofs are `app:dus` and `app:strict`.
+
+## Contents
+
+* The semimeasure substrate: `ContinuousSemimeasure`,
+  `LowerSemicomputableContinuousSemimeasure`, `UniversalContinuousSemimeasure`.  A
+  continuous semimeasure is not a discrete a-priori one: one path may retain mass `1`
+  through infinitely many prefixes, so `thm:dus` does not reduce to `thm:ob`'s
+  prefix-complexity bound with a fixed coding constant.
+* The presentation interfaces a client supplies: `IndependentBitAtoms` (the paper's fresh
+  zero-arity predicates `b₁, b₂, …`), `BitPrefixSentences` (their finite-prefix
+  conjunctions), `DUSApproximationPresentation`, `DUSThresholdEmission` and
+  `StrictSeparatorPresentation`.
+* Finite-tree machinery: `semimeasureMean`, `prefixPurchaseMax`, `bitTreeNodes`,
+  `prefixPathPayout`, and `semimeasureMean_le_mass_mul_max`, which is the appendix's
+  `MeanPayout ≤ MaxPayout` obtained from the split inequality alone.
+* The trader: `dusScaleTrader` is the unit-budget scale-`k` member over
+  `ROIBudget.sharedFeatureWeight`, and `dusTrader` joins the inverse-square diagonal
+  `dusDiagonalScale j = (j+1)^4` at weight `1/(j+1)^2`, with downside bounded by `2`.
+* The two paper-facing endpoints, `lic_domination_universalSemimeasure` and
+  `lic_strict_domination_universalSemimeasure`.
+
+## Conventions
+
+Every hypothesis structure in this file is **conclusion-free**: it carries computational
+data only — no market price, no purchase and no domination claim — so none of them can
+smuggle a theorem in as a hypothesis.  Each is documented by what it does carry.
+
+Prefix sentences are named by write-out metered `BigSentenceCodes` (`def:ec`).  That
+metering is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against
+an enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form is unsatisfiable
+(`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
+while the canonical Polish run is `Θ(m)` tiny tokens.
+
+The trader buys one prefix per day, at index `n.unpair.2`, so that every index recurs
+cofinally; the appendix instead buys every prefix on every late day.  The economics is
+unchanged.
+
+Trader efficiency certificates are fuel-clocked (`dd:fuel`) and the limit vocabulary is
+`dd:asymp`'s.  The strict half proves the market side only.
+
+## Where the results are consumed
+
+`lic_domination_universalSemimeasure` is stated for *any* lower-semicomputable continuous
+semimeasure, where the paper assumes a universal one.  It is discharged at
+`lic_domination_universalSemimeasure_ofIndependentAtoms`
+(`Construction/Witnesses/BitPrefixSyntax.lean`) and in the `_paperDP` and `_unconditional`
+forms in `Construction/Witnesses/UnconditionalOverLIA.lean`.
+`lic_strict_domination_universalSemimeasure` is discharged at
+`lic_strict_domination_universalSemimeasure_ofAtomCodes`
+(`Construction/Witnesses/StrictSeparators.lean`), whose separator comes from Kleene's
+recursively inseparable pair through `strictSeparatorPresentationOfKleene`.
+
+`ordinaryBitPrefixSentences` inhabits `BitPrefixSentences` over the constantly-empty
+deductive process, and is an inhabitation witness only.  The substantive layer over
+`paperDP T` is `bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T)
+paperBitPrefixCodes` (`Construction/Witnesses/UnconditionalOverLIA.lean`; see the README's
+non-vacuity caveat).
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Continuous semimeasures -/
 
 /-- A continuous semimeasure on finite bitstrings. Mass can disappear but cannot be
 created when a node is split into its two children.
@@ -50,10 +106,13 @@ structure UniversalContinuousSemimeasure extends
   universal : ∀ ν : LowerSemicomputableContinuousSemimeasure,
     ∃ c : ℝ, 0 < c ∧ ∀ σ, c * ν.mass σ ≤ mass σ
 
-/-- The semantic premise behind the independent zero-arity predicates used in `thm:dus`:
-every finite Boolean assignment to the atoms remains compatible with every finite deductive
-stage.  It carries no preassembled prefix sentence, syntax semantics, market data, or
-domination conclusion.
+/-! ## Independent bit atoms and their prefix sentences -/
+
+/-- The semantic premise behind the independent zero-arity predicates `b₁, b₂, …` of
+`thm:dus`: the atom family, together with the fact that every finite Boolean assignment to
+it remains compatible with every finite deductive stage.  Conclusion-free, as the module
+docstring records.  Over the paper's own process the inhabitant is
+`paperIndependentBitAtoms T` (`Construction/Witnesses/UnconditionalOverLIA.lean`).
 Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
@@ -61,17 +120,18 @@ structure IndependentBitAtoms (DP : DeductiveProcess) where
     v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
 
 /-- Propositional syntax for the independent zero-arity predicates and their finite-prefix
-conjunctions from `thm:dus`. `holds_prefix` fixes the exact Boolean semantics, while
-`finite_realizable` records compatibility with each finite deductive stage.  The
-enumeration/code fields record the paper's efficient list of all finite strings.
+conjunctions from `thm:dus`.  It carries the atom family, the prefix sentences,
+`enumeration` — the paper's efficient list of all finite bit strings — the write-out
+metered names `prefix_codes` (`BigSentenceCodes`, `def:ec`; the module docstring records
+why that metering is forced), the exact Boolean semantics `holds_prefix`, and
+compatibility with each finite deductive stage.  Conclusion-free, as the module docstring
+records.
 
-`prefix_codes` is the paper's efficient naming of the prefix sentences, metered in
-**symbols** (`BigSentenceCodes`, `dd:ec`) rather than in the whole pair-code value.  That
-choice is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against an
-enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form of this field is *unsatisfiable*
-(`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
-while its canonical Polish run is `Θ(m)` tiny tokens.  The structure is inhabited over the
-repo's concrete atoms by `ordinaryBitPrefixSentences`.
+Over the paper's own process the inhabitant is
+`bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T) paperBitPrefixCodes`
+(`Construction/Witnesses/UnconditionalOverLIA.lean`); `ordinaryBitPrefixSentences` sits
+over the constantly-empty process and is an inhabitation witness only (README, non-vacuity
+caveat).
 Paper node: `thm:dus` -/
 structure BitPrefixSentences (DP : DeductiveProcess) where
   atom : ℕ → Sentence
@@ -84,27 +144,34 @@ structure BitPrefixSentences (DP : DeductiveProcess) where
   realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
     v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true)
 
-/-- The finite-prefix form of realizability: every finite bit string is compatible with
-every finite deductive stage.  Specialization of the total field, which is what a theory
-constraining infinitely many bits (`thm:strict`) needs. -/
-lemma IndependentBitAtoms.finite_realizable {DP : DeductiveProcess}
-    (I : IndependentBitAtoms DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+/-- The finite-prefix form of realizability, read off the total realizability field: every
+finite bit string is compatible with every finite deductive stage.  This is the form a
+theory constraining infinitely many bits (`thm:strict`) needs. -/
+private lemma finite_realizable_of_realizable {DP : DeductiveProcess} {atom : ℕ → Sentence}
+    (realizable : ∀ (n : ℕ) (f : ℕ → Bool), ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ k, (v.Holds (atom k) ↔ f k = true))
+    (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧
-        ∀ k : Fin σ.length, (v.Holds (I.atom k) ↔ σ.get k = true) := by
-  obtain ⟨v, hv, hbits⟩ := I.realizable n (fun k ↦ σ.getD k false)
+        ∀ k : Fin σ.length, (v.Holds (atom k) ↔ σ.get k = true) := by
+  obtain ⟨v, hv, hbits⟩ := realizable n (fun k ↦ σ.getD k false)
   refine ⟨v, hv, fun k ↦ ?_⟩
   rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
   simp
+
+/-- The finite-prefix form of realizability for a bare atom family; the convenience a
+client assembling a `BitPrefixSentences` out of an `IndependentBitAtoms` wants. -/
+lemma IndependentBitAtoms.finite_realizable {DP : DeductiveProcess}
+    (I : IndependentBitAtoms DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧
+        ∀ k : Fin σ.length, (v.Holds (I.atom k) ↔ σ.get k = true) :=
+  finite_realizable_of_realizable I.realizable n σ
 
 /-- The finite-prefix form of realizability for an assembled prefix presentation. -/
 lemma BitPrefixSentences.finite_realizable {DP : DeductiveProcess}
     (B : BitPrefixSentences DP) (n : ℕ) (σ : List Bool) : ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧
-        ∀ k : Fin σ.length, (v.Holds (B.atom k) ↔ σ.get k = true) := by
-  obtain ⟨v, hv, hbits⟩ := B.realizable n (fun k ↦ σ.getD k false)
-  refine ⟨v, hv, fun k ↦ ?_⟩
-  rw [hbits k, List.getD_eq_getElem _ _ k.isLt]
-  simp
+        ∀ k : Fin σ.length, (v.Holds (B.atom k) ↔ σ.get k = true) :=
+  finite_realizable_of_realizable B.realizable n σ
 
 lemma BitPrefixSentences.prefix_possible
     {DP : DeductiveProcess} (B : BitPrefixSentences DP) (σ : List Bool) :
@@ -348,17 +415,15 @@ lemma semimeasureMean_root_le_max
   have hroot := M.root_le_one
   nlinarith [mul_le_mul_of_nonneg_right hroot hmax0]
 
-/-! ## The direct unit-budget purchase family
+/-! ## The unit-budget scale trader
 
-Deviation from the appendix, which considers every prefix on every sufficiently late day:
-the dovetail below considers one prefix per day, visiting enumeration index `n.unpair.2`
-on day `n`, so every index `i` recurs on the unbounded subsequence `Nat.pair m i`.  The
-economic argument is unchanged.
+The dovetail below buys one prefix per day, visiting enumeration index `n.unpair.2` on day
+`n`, so every index `i` recurs on the unbounded subsequence `Nat.pair m i` (module
+docstring).
 
 The paper first slows an arbitrary lower approximation down to a polynomial-time table.
 That compiler fact is kept separate from the mathematical semimeasure presentation: the
-structure below carries only the rational table and its syntax-level polynomial
-certificate — no prices, purchases, or domination conclusion. -/
+structure below carries the rational table and its syntax-level polynomial certificate. -/
 
 /-- Polynomially emitted from-below approximation used by the DUS trader.
 Paper node: `thm:dus` -/
@@ -396,8 +461,9 @@ def dusEmitBase {DP : DeductiveProcess}
     (z : ℕ) : ℚ :=
   dusBase A z.unpair.1 z.unpair.2
 
-/-- Derived rational tokens used by the continuous low-price gate. This is a
-syntax-only compiler boundary: it contains neither market data nor a domination claim.
+/-- Uniform token emission for the derived rationals of the continuous low-price gate.
+Conclusion-free, as the module docstring records: it carries write-out certificates and
+nothing else.
 Paper node: `thm:dus` -/
 structure DUSThresholdEmission {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -444,16 +510,6 @@ lemma dusBase_cast {DP : DeductiveProcess}
   rw [dusBase]
   push_cast
   ring
-
-lemma dusBase_nonneg {DP : DeductiveProcess}
-    {M : LowerSemicomputableContinuousSemimeasure}
-    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
-    (k n : ℕ) :
-    0 ≤ ((dusBase A k n : ℚ) : ℝ) := by
-  rw [dusBase_cast]
-  have ha : 0 ≤ ((A.approximation n n.unpair.2 : ℚ) : ℝ) := by
-    exact_mod_cast A.nonneg n n.unpair.2
-  positivity
 
 lemma dusBase_pos {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -625,7 +681,9 @@ lemma dusCostEF_rpnSpliceStream
   have hprice := BigSpliceStream.serialize_price B.prefix_codes hidx PolyFueled.right
   exact BigSpliceStream.serialize_mul hsignal hprice
 
-/-- All earlier purchases remain charged to the one unit of cash. -/
+/-- The all-open closing schedule: no purchase is ever released, so every purchase stays
+charged to the one unit of cash and `ROIBudget.weight dusActive` is the remaining budget
+(`dusActive_closing`). -/
 def dusActive (_ _ : ℕ) : Bool := true
 
 lemma dusActive_closing : ROIBudget.ClosingSchedule dusActive := by
@@ -646,8 +704,8 @@ def dusSharesEF {DP : DeductiveProcess}
     (k n : ℕ) : EF :=
   .mul (dusRemainingEF A k n) (dusSignal A k n)
 
-/- Uniform emission of the all-open budget-recurrence body for input `⟨k,j⟩`. -/
 attribute [local irreducible] Nat.sqrt in
+/-- Uniform emission of the all-open budget-recurrence body for input `⟨k, j⟩`. -/
 lemma dusWeightBody_rpnSpliceStream
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1083,19 +1141,6 @@ lemma dusSpendPrefix_mul_le_meanPrefix
       (lt_div_iff₀ hkpos).mp hprice
     nlinarith
 
-/-- Every dollar spent increases semimeasure-weighted payout by at least the paper's
-factor `2(k+1)`. -/
-lemma dusSpend_mul_le_meanPayout
-    {DP : DeductiveProcess}
-    {M : LowerSemicomputableContinuousSemimeasure}
-    {B : BitPrefixSentences DP} (A : DUSApproximationPresentation M B)
-    (P : History) (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
-    (k n : ℕ) :
-    (2 * ((k + 1 : ℕ) : ℝ)) * dusSpendThrough A P k n ≤
-      dusMeanPayoutThrough A P k n := by
-  simpa [dusSpendThrough, dusMeanPayoutThrough] using
-    dusSpendPrefix_mul_le_meanPrefix A P hP k (n + 1)
-
 lemma dusSpendThrough_eq
     {DP : DeductiveProcess}
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -1119,6 +1164,8 @@ lemma dusSpendThrough_eq
     ring
   · rw [dusShares_eq, dusCostEF_denote]
     ring
+
+/-! ### Budget accounting and the divergence hinge -/
 
 /-- The reified recurrence is exactly one minus all earlier purchase costs. -/
 lemma dusRemainingEF_denote_eq_one_sub_spendBefore
@@ -1186,6 +1233,31 @@ lemma tendsto_pair_left_atTop (i : ℕ) :
   filter_upwards [eventually_ge_atTop N] with m hm
   exact hm.trans (Nat.left_le_pair m i)
 
+/-- A prefix whose limiting belief falls below its scaled mass has positive mass: a
+nonpositive mass would make the scaled bound nonpositive, contradicting the nonnegativity
+of a limiting belief. -/
+private lemma dus_mass_pos_of_low_limit
+    {DP : DeductiveProcess}
+    {M : LowerSemicomputableContinuousSemimeasure}
+    {B : BitPrefixSentences DP}
+    (P : History) [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (k i : ℕ)
+    (hlow : limitingBelief P (B.prefixSentence (B.enumeration i)) <
+      M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
+    0 < M.mass (B.enumeration i) := by
+  set φ := B.prefixSentence (B.enumeration i) with hφ
+  have hconv := lic_limitingBelief_tendsto P DP hworld φ
+  have hlim0 : 0 ≤ limitingBelief P φ :=
+    ge_of_tendsto hconv (Filter.Eventually.of_forall
+      (fun n ↦ (IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ).1))
+  have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
+  by_contra h
+  push_neg at h
+  have hdivle : M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
+    div_nonpos_of_nonpos_of_nonneg h hkpos.le
+  linarith
+
 /-- A prefix violating the scale-`k` domination bound eventually fires at full strength
 on every sufficiently late revisit. -/
 lemma eventually_dusSignal_eq_one_of_low_limit
@@ -1199,8 +1271,6 @@ lemma eventually_dusSignal_eq_one_of_low_limit
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∀ᶠ m in atTop,
       (dusSignal A k (Nat.pair m i)).denote P = 1 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let φ := B.prefixSentence (B.enumeration i)
   have hvisit := tendsto_pair_left_atTop i
   have hconv0 := lic_limitingBelief_tendsto P DP hworld φ
@@ -1209,18 +1279,8 @@ lemma eventually_dusSignal_eq_one_of_low_limit
   have happ : Tendsto
       (fun m ↦ ((A.approximation (Nat.pair m i) i : ℚ) : ℝ)) atTop
       (𝓝 (M.mass (B.enumeration i))) := (A.tendsto i).comp hvisit
-  have hlim0 : 0 ≤ limitingBelief P φ :=
-    ge_of_tendsto hconv0 (Filter.Eventually.of_forall (fun n ↦ (hP n φ).1))
-  have hmass : 0 < M.mass (B.enumeration i) := by
-    have hlow' : limitingBelief P φ < M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) := by simpa only [φ] using hlow
-    have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
-    by_contra h
-    push_neg at h
-    have hdivle : M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
-      div_nonpos_of_nonpos_of_nonneg h hkpos.le
-    linarith
+  have hmass : 0 < M.mass (B.enumeration i) :=
+    dus_mass_pos_of_low_limit P hworld k i hlow
   have hscale : Tendsto
       (fun m ↦ (1 / (4 * ((k + 1 : ℕ) : ℝ))) *
         ((A.approximation (Nat.pair m i) i : ℚ) : ℝ)) atTop
@@ -1286,20 +1346,8 @@ lemma exists_dusMeanPayout_ge_of_low_limit
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hevent := eventually_dusSignal_eq_one_of_low_limit A P hworld k i hlow
   obtain ⟨N, hN⟩ := Filter.eventually_atTop.1 hevent
-  have hmass : 0 < M.mass (B.enumeration i) := by
-    let φ := B.prefixSentence (B.enumeration i)
-    have hconv := lic_limitingBelief_tendsto P DP hworld φ
-    have hlim0 : 0 ≤ limitingBelief P φ :=
-      ge_of_tendsto hconv (Filter.Eventually.of_forall (fun n ↦ (hP n φ).1))
-    have hlow' : limitingBelief P φ < M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) := by simpa only [φ] using hlow
-    have hkpos : 0 < (8 * ((k + 1 : ℕ) : ℝ)) := by positivity
-    by_contra h
-    push_neg at h
-    have hdivle : M.mass (B.enumeration i) /
-        (8 * ((k + 1 : ℕ) : ℝ)) ≤ 0 :=
-      div_nonpos_of_nonpos_of_nonneg h hkpos.le
-    linarith
+  have hmass : 0 < M.mass (B.enumeration i) :=
+    dus_mass_pos_of_low_limit P hworld k i hlow
   by_contra hreach
   push_neg at hreach
   let g : ℕ → ℕ := fun r ↦ Nat.pair (N + r) i
@@ -1747,8 +1795,6 @@ lemma exists_live_consistent_dusScaleTrader_netWorth_ge_of_low_limit
       M.mass (B.enumeration i) / (8 * ((k + 1 : ℕ) : ℝ))) :
     ∃ n, ∃ v : PCWorld, k ≤ n ∧ v.ConsistentWith (DP.D n) ∧
       (k : ℝ) ≤ (dusScaleTrader A k).netWorth P v n := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨n, v, hv, hnet⟩ :=
     exists_consistent_dusScaleTrader_netWorth_ge_of_low_limit
       A P hworld k i hlow
@@ -1960,11 +2006,21 @@ lemma dusTrader_ec
     EfficientlyComputable (dusTrader A) :=
   BigSpliceStream.ec _ (dusTrader_rpnSpliceStream A emit)
 
-/-! ### Paper-facing domination theorem -/
+/-! ## Domination of the universal semimeasure (`thm:dus`) -/
 
-/-- **Domination of the Universal Semimeasure** (`thm:dus`). One positive constant
+/-- **Domination of the Universal Semimeasure** (`thm:dus`).  One positive constant
 simultaneously lower-bounds the limiting probability of every finite bit prefix by its
 continuous-semimeasure mass.
+
+Stronger than printed: the paper fixes a *universal* continuous semimeasure, while this
+holds of every lower-semicomputable one.
+
+Four inputs have no counterpart in the paper, all of them conclusion-free presentation
+data (module docstring): `B`, the prefix sentences naming the paper's independent bit
+atoms; `A`, the polynomial-time from-below rational table the paper's proof first
+compiles; `emit`, the uniform token emission certifying the resulting trader efficient
+(`dd:fuel`); and `hworld`, non-emptiness of the worlds consistent with each finite stage,
+which the paper takes for granted.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure
     {DP : DeductiveProcess}
@@ -1975,14 +2031,10 @@ theorem lic_domination_universalSemimeasure
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ C : ℝ, 0 < C ∧ ∀ σ,
       C * M.mass σ ≤ limitingBelief P (B.prefixSentence σ) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   by_cases hscale : ∃ j : ℕ, ∀ σ,
       M.mass σ / (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ)) ≤
         limitingBelief P (B.prefixSentence σ)
   · obtain ⟨j, hall⟩ := hscale
-    have hden : (0 : ℝ) < 8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ) := by
-      positivity
     refine ⟨1 / (8 * ((dusDiagonalScale j + 1 : ℕ) : ℝ)),
       by positivity, fun σ ↦ ?_⟩
     convert hall σ using 1
@@ -2009,24 +2061,10 @@ theorem lic_domination_universalSemimeasure
       (dusTrader A) (dusTrader_ec A emit)
       (dusTrader_exploits_of_failed_scales A P hworld hfail)
 
+/-! ## Strict domination of the universal semimeasure (`thm:strict`)
 
-#print axioms semimeasureMean_root_le_max
-#print axioms dusSpendThrough_le_one
-#print axioms dusScaleTrader_netWorth_ge_neg_one
-#print axioms dusScaleTrader_ec
-#print axioms exists_dusMeanPayout_ge_of_low_limit
-#print axioms exists_consistent_dusGrossPayout_ge_mean
-#print axioms dusTrader_netWorth_ge_neg_two
-#print axioms dusTrader_exploits_of_failed_scales
-#print axioms dusTrader_ec
-#print axioms lic_domination_universalSemimeasure
-
-/-! ## Strict Domination of the Universal Semimeasure (`thm:strict`)
-
-Only the market half is proved here.  It is factored over
-`StrictSeparatorPresentation`, an interface holding the computability-theory data, and
-that interface mentions no market price and no strict-domination conclusion — it cannot
-smuggle the theorem in as a hypothesis.  The interface is discharged by
+Only the market half is proved here.  It is factored over `StrictSeparatorPresentation`,
+the conclusion-free interface holding the computability-theory data, discharged by
 `strictSeparatorPresentationOfKleene` in `Construction/Witnesses/StrictSeparators.lean`,
 which builds it from Kleene's recursively inseparable pair.
 
@@ -2037,8 +2075,6 @@ the constraints decided so far.  Undecided bits stay free, so the constraints ne
 assemble into a single nested prefix family, and no such family would do: by
 `no_ce_null_prefix_family` (same construction file), a nested prefix family with a
 computable enumeration always keeps positive universal-semimeasure mass. -/
-
-open Filter Topology
 
 /-- Interface to the recursively-inseparable separator class used in the paper's proof of
 Strict Domination.  `mass_class_tendsto_zero` is the computability-theory fact it exists
@@ -2113,8 +2149,14 @@ lemma strict_domination_of_null_separator_class
   rw [hscale] at hterm
   linarith
 
-/-- **Strict Domination of the Universal Semimeasure** (`thm:strict`). The universal
-continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs.
+/-- **Strict Domination of the Universal Semimeasure** (`thm:strict`).  The universal
+continuous semimeasure does not dominate the logical inductor's limiting prefix beliefs:
+no positive constant `C` bounds every prefix belief by `C` times its mass.
+
+The paper states no hypothesis here, because `app:strict` constructs the separator inside
+the proof.  `S` is that construction's data, held at the conclusion-free interface
+described in the section header and discharged by `strictSeparatorPresentationOfKleene`
+(`Construction/Witnesses/StrictSeparators.lean`).
 Paper node: `thm:strict` -/
 theorem lic_strict_domination_universalSemimeasure
     {DP : DeductiveProcess}
@@ -2127,8 +2169,5 @@ theorem lic_strict_domination_universalSemimeasure
   intro C hC
   obtain ⟨σ, hσ⟩ := strict_domination_of_null_separator_class P S C hC
   exact ⟨σ, hσ⟩
-
-#print axioms strict_domination_of_null_separator_class
-#print axioms lic_strict_domination_universalSemimeasure
 
 end LogicalInduction

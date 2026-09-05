@@ -1,4 +1,6 @@
-/-
+import LogicalInduction.Framework.RpnSentence
+
+/-!
 # An exact finite automaton for one structured payload code
 
 `Criterion.parseStructuredArithmeticFormula` is the numeric mirror of the structured
@@ -33,7 +35,6 @@ with `payQ fc` the absorbing reject state.
 Everything here is construction infrastructure rather than a paper statement, so the
 declarations are `lemma`s and `def`s.
 -/
-import LogicalInduction.Framework.RpnSentence
 
 namespace LogicalInduction.PayAuto
 
@@ -43,7 +44,6 @@ open LogicalInduction
 -- well-founded definition during `whnf` and loops; local opacity stops that.
 -- See `notes/lean-gotchas.md`.
 attribute [local irreducible] Nat.sqrt
-
 
 def pnat (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredNat ts.length ts
 def ptrm (ts : List ℕ) : Option (ℕ × List ℕ) := parseStructuredArithmeticTerm ts.length 0 ts
@@ -318,7 +318,6 @@ lemma pfml_suffix {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = som
     rest <:+ ts :=
   parseStructuredArithmeticFormula_suffix h
 
-
 /-! ## Part 1 — computation lemmas for `negFormulaCode` at each constructor tag -/
 
 lemma neg_tag0 (p : ℕ) : negFormulaCode (Nat.pair 0 p + 1) = Nat.pair 1 p + 1 := by
@@ -477,7 +476,6 @@ lemma neg_ne_zero_of_parse {fuel depth : ℕ} {ts : List ℕ} {c : ℕ} {rest : 
     (h : parseStructuredArithmeticFormula fuel depth ts = some (c, rest)) : c ≠ 0 :=
   (wfCode_of_parseFormula h).ne_zero
 
-
 /-- Involutivity of `negFormulaCode` on the formula parser's range, in the canonical-fuel
 spelling used throughout this file. -/
 lemma invol_of_pfml {ts : List ℕ} {c : ℕ} {rest : List ℕ} (h : pfml ts = some (c, rest)) :
@@ -612,7 +610,6 @@ def SatStack : List Obl → List ℕ → List ℕ → Prop
   | [], ts, rest => rest = ts
   | o :: S, ts, rest => ∃ mid, SatObl o ts mid ∧ SatStack S mid rest
 
-
 lemma satStack_append (L S : List Obl) (ts rest : List ℕ) :
     SatStack (L ++ S) ts rest ↔ ∃ mid, SatStack L ts mid ∧ SatStack S mid rest := by
   induction L generalizing ts with
@@ -708,7 +705,8 @@ lemma key_num (n t : ℕ) (ts mid : List ℕ) :
     · rintro ⟨⟨v, r⟩, hv, hq⟩
       simp only [Prod.mk.injEq] at hq
       obtain ⟨rfl, rfl⟩ := hq
-      refine ⟨[Obl.num ((2 * v + 1) / 2)], by rw [if_pos (show 2 * ((2 * v + 1) / 2) + 1 = 2 * v + 1 by omega)], ?_⟩
+      refine ⟨[Obl.num ((2 * v + 1) / 2)],
+        by rw [if_pos (show 2 * ((2 * v + 1) / 2) + 1 = 2 * v + 1 by omega)], ?_⟩
       rw [satStack_one]
       show pnat ts = some ((2 * v + 1) / 2, r)
       rw [show (2 * v + 1) / 2 = v by omega]; exact hv
@@ -716,7 +714,6 @@ lemma key_num (n t : ℕ) (ts mid : List ℕ) :
     constructor
     · rintro ⟨L, hL, -⟩; exact absurd hL (by simp)
     · intro h; exact absurd h (by simp)
-
 
 /-! ## key_trm -/
 
@@ -899,7 +896,6 @@ lemma key_trm (c t : ℕ) (ts mid : List ℕ) :
       · rw [if_neg hc0] at hL; exact absurd hL (by simp)
     · intro h; exact absurd h (by simp)
 
-
 /-! ## key_fml_A : the `.fml` step for tokens 9–14 -/
 
 /-- Auxiliary: `negFormulaCode` on a relation code is a pure tag flip (`neg_tag0`/
@@ -1039,7 +1035,6 @@ lemma key_fml_A (c : ℕ) (β : Bool) (t : ℕ)
     simp only [if_neg h9, if_neg h10, if_pos hcond]
     exact key_fml_rel c β (decide (t = 12 ∨ t = 14)) (if t = 11 ∨ t = 12 then 0 else 1)
       ts mid hc _ rfl
-
 
 /-! ## key_fml_B : the propositional-connective tokens (15,16,17,18,20) -/
 
@@ -1188,7 +1183,6 @@ lemma key_fml_B (c : ℕ) (β : Bool) (t : ℕ)
         refine ⟨[Obl.fml x1 false], rfl, ?_⟩
         rw [satStack_one]
         exact ⟨x1, hx, rfl⟩
-
 
 /-- The `⟹` token (`t = 21`), which the parser contracts into NNF as `¬x ∨ y`. -/
 lemma key_fml_C21 (c : ℕ) (β : Bool) (ts mid : List ℕ) :
@@ -1425,7 +1419,6 @@ lemma key_fml_C (c : ℕ) (β : Bool) (t : ℕ) (ht : t = 21 ∨ t = 22) (ts mid
   rcases ht with rfl | rfl
   · exact key_fml_C21 c β ts mid
   · exact key_fml_C22 c β ts mid
-
 
 lemma key_fml_D (c : ℕ) (β : Bool) (t : ℕ)
     (ht : ¬ (t = 9 ∨ t = 10 ∨ t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14 ∨ t = 15 ∨ t = 16 ∨ t = 17

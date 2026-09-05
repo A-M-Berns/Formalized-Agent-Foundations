@@ -10,16 +10,15 @@ Domination of the Universal Semimeasure (`thm:dus`) is stated over an abstract
 prefix sentences are literal finite conjunctions over an independent atom family, the
 finite-string enumeration is the total decode-with-empty enumeration induced by the stock
 `List Bool` encoding, and the presentation's efficient-naming field is discharged by an
-explicit emitter (`ordinaryBitPrefixSentences`).
+explicit emitter (`ordinaryBitPrefixCodes`), which `ordinaryBitPrefixSentences` assembles
+into the presentation.
 
 **Why the naming field is write-out metered.**  The whole-value form of that field
-(`PolySentenceCodes`) is *unsatisfiable* here, and that is proved rather than asserted:
-`not_polySentenceCodes_bitPrefixSentence` shows a `⋏` node costs two nested `Nat.pair`s
-while a `List Bool` cons costs one, so along the all-ones strings the prefix sentence's code
-(`≥ 2 ^ 4 ^ m`) outruns every polynomial in its own enumeration index (`≤ 5 ^ 2 ^ m`).  The
-repo's **write-out** class `BigSentenceCodes` (`Framework/WriteOut.lean`) meters the
-*canonical Polish run* instead, which for the length-`m` prefix conjunction is `Θ(m)` tiny
-tokens — so the field becomes dischargeable without changing the sentences named.  (The
+(`PolySentenceCodes`) has no inhabitant here, for any atom family; the proof and the counting
+are at `## The whole-value naming certificate is uninhabited` below.  The repo's write-out
+class `BigSentenceCodes` (`Framework/WriteOut.lean`) meters the *canonical Polish run*
+instead, which for the length-`m` prefix conjunction is `Θ(m)` tiny tokens, so the field is
+dischargeable without changing the sentences named.  The metering label is `def:ec`.  (The
 per-token-value-metered class is `RpnSentenceCodes`, in `Framework/RpnSplice.lean`; it is
 not what this field takes.)
 
@@ -32,13 +31,22 @@ validity, emits the run.  `BitChain.decode_chain` proves that run really is the 
 the sentence the abstract enumeration names — including the malformed case, where the stock
 decoder collapses the *whole* string to `[]` (one bad head kills the applicative chain), so
 the emitter must dispatch on a global scan rather than per position.
+
+**Assembly.**  `bigSentenceCodes_bitPrefixSentence` → `ordinaryBitPrefixCodes` →
+`bitPrefixSentencesOfIndependentAtoms` → `ordinaryBitPrefixSentences`, feeding the endpoint
+`lic_domination_universalSemimeasure_ofIndependentAtoms`, which is proved for an arbitrary
+deductive process and an arbitrary inductor over it.  The naming half of the inhabitant is
+real and forced; its `realizable` field is discharged vacuously over
+`emptyBitDeductiveProcess`, so the paper's reading — atoms independent of a theory with
+content — is exercised instead by `paperIndependentBitAtoms` / `paperBitPrefixSentences`
+over `paperDP T` (`UnconditionalOverLIA.lean`).
 -/
 
 namespace LogicalInduction
 
 open LO.Propositional
 
-/-! ### Literal conjunctions and their exact semantics -/
+/-! ## Literal conjunctions and their exact semantics -/
 
 /-- The positive or negative literal selected by one prefix bit. -/
 def bitPrefixLiteral (atom : ℕ → Sentence) (k : ℕ) (b : Bool) : Sentence :=
@@ -78,18 +86,19 @@ def bitPrefixSentence (atom : ℕ → Sentence) (σ : List Bool) : Sentence :=
   intro k
   exact v.holds_bitPrefixLiteral atom k (σ.get k)
 
-/-! ### Concrete total enumeration -/
+/-! ## The concrete total enumeration -/
 
 /-- Decode a stock `List Bool` code, using the empty string for malformed codes. -/
 def bitStringEnumeration (i : ℕ) : List Bool :=
   (Encodable.decode (α := List Bool) i).getD []
 
+/-- The enumeration is onto: every finite bit string is named by its own stock code. -/
 lemma bitStringEnumeration_covers (σ : List Bool) :
     ∃ i, bitStringEnumeration i = σ := by
   refine ⟨Encodable.encode σ, ?_⟩
   simp [bitStringEnumeration, Encodable.encodek]
 
-/-! ### Non-vacuity of the independence premise -/
+/-! ## Non-vacuity of the independence premise -/
 
 /-- The constantly empty deductive process used to witness that finite atom independence
 is a genuine, inhabited premise. -/
@@ -119,11 +128,12 @@ def ordinaryIndependentBitAtoms : IndependentBitAtoms emptyBitDeductiveProcess w
     · intro k
       rfl
 
+/-- The `IndependentBitAtoms` interface has an inhabitant. -/
 lemma independentBitAtoms_nonempty :
     ∃ DP : DeductiveProcess, Nonempty (IndependentBitAtoms DP) :=
   ⟨emptyBitDeductiveProcess, ⟨ordinaryIndependentBitAtoms⟩⟩
 
-/-! ### Why the naming field is write-out metered: the whole-value premise is unsatisfiable
+/-! ## The whole-value naming certificate is uninhabited
 
 The non-vacuity guard, run in the negative direction: a *whole-value* naming certificate
 (`PolySentenceCodes`) for the prefix conjunctions has **no inhabitant**, for any atom family.
@@ -257,7 +267,7 @@ lemma not_polySentenceCodes_bitPrefixSentence (atom : ℕ → Sentence) :
   obtain ⟨b, -, hpoly, -⟩ := hc
   exact not_isPolyBounded_bitPrefixSentence_codes atom hpoly
 
-/-! ### The write-out emitter
+/-! ## The write-out emitter
 
 A stock `List Bool` code is a chain of `Nat.pair`s: `encode (b :: l) = pair ⌜b⌝ ⌜l⌝ + 1`.
 `BitChain` walks that chain with two `prec` scans — one for its length, one for a *global*
@@ -384,6 +394,8 @@ lemma badCount_eq_zero_iff (a j : ℕ) :
 /-- Every head along the whole chain is a legal `Bool` code. -/
 def ChainOK (i : ℕ) : Prop := ∀ j, headC (tailC^[j] i) ≤ 1
 
+/-- Chain validity is decided by the diagonal scan: the chain has no malformed head exactly
+when `badCount i i = 0`, because the chain reaches `0` within `i` steps. -/
 lemma chainOK_iff_badCount (i : ℕ) : ChainOK i ↔ badCount i i = 0 := by
   rw [badCount_eq_zero_iff]
   constructor
@@ -395,6 +407,7 @@ lemma chainOK_iff_badCount (i : ℕ) : ChainOK i ↔ badCount i i = 0 := by
         (iterate_eq_zero_iff i j).mpr (le_trans (chainLen_le i) hj)
       rw [this, headC_zero]; omega
 
+/-- Chain validity is decidable, through the diagonal scan. -/
 instance : DecidablePred ChainOK :=
   fun i => decidable_of_iff _ (chainOK_iff_badCount i).symm
 
@@ -414,6 +427,11 @@ lemma decode_bool_of_le_one {h : ℕ} (hh : h ≤ 1) :
     Encodable.decode (α := Bool) h = some (decide (h = 1)) := by
   interval_cases h <;> simp
 
+/-- **The decoder, read off the chain.**  The stock `List Bool` decoder succeeds exactly
+when every head along the chain is a legal `Bool` code, and then returns the bits the chain
+reads off.  A single malformed head sends the *whole* string to `none` — the applicative
+`decode_list_succ` does not truncate — which is why the emitter dispatches on the global
+validity scan rather than per position. -/
 lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
     if ChainOK i then some (chainBits i) else none := by
   intro i
@@ -450,6 +468,8 @@ lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
         · intro hOK
           exact hh (by simpa using hOK 0)
 
+/-- The abstract enumeration in chain terms: a valid code names the bits its chain reads
+off, a malformed one names the empty string. -/
 lemma bitStringEnumeration_eq (i : ℕ) :
     bitStringEnumeration i = if badCount i i = 0 then chainBits i else [] := by
   rw [bitStringEnumeration, decode_chain]
@@ -533,6 +553,8 @@ lemma rpn_top : rpn (⊤ : Sentence) = [2, 0, 0] := by
 
 lemma rpn_and (φ ψ : Sentence) : rpn (φ ⋏ ψ) = 3 :: (rpn φ ++ rpn ψ) := rfl
 
+/-- The Polish run of an offset literal conjunction is the concatenation of the per-position
+literal blocks followed by the empty-fold terminator `[2, 0, 0]`. -/
 lemma rpn_conj_ofFn (nameMap : ℕ → ℕ) : ∀ (σ : List Bool) (off : ℕ),
     rpn ((List.ofFn fun k : Fin σ.length =>
         bitPrefixLiteral (fun k ↦ Formula.atom (nameMap k)) (off + k) (σ.get k)).conj) =
@@ -571,6 +593,7 @@ lemma rpn_conj_ofFn (nameMap : ℕ → ℕ) : ∀ (σ : List Bool) (off : ℕ),
       intro j _
       rw [show off + 1 + j = off + Nat.succ j from by omega]
 
+/-- The Polish run of a prefix conjunction, at offset `0`. -/
 lemma rpn_bitPrefixSentence (nameMap : ℕ → ℕ) (σ : List Bool) :
     rpn (bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) σ) =
       (List.range σ.length).flatMap
@@ -589,6 +612,8 @@ def prefixRun (nameMap : ℕ → ℕ) (i : ℕ) : List ℕ :=
       (fun j => bitBlock (nameMap j) (decide (headC (tailC^[j] i) = 1))) ++ [2, 0, 0]
   else [2, 0, 0]
 
+/-- **The emitter is correct.**  The emitted run is literally the Polish run of the prefix
+conjunction that the abstract enumeration names at `i`. -/
 lemma prefixRun_eq (nameMap : ℕ → ℕ) (i : ℕ) :
     prefixRun nameMap i =
       rpn (bitPrefixSentence (fun k ↦ Formula.atom (nameMap k)) (bitStringEnumeration i)) := by
@@ -605,6 +630,8 @@ lemma prefixRun_eq (nameMap : ℕ → ℕ) (i : ℕ) :
   · rw [if_neg h, if_neg h]
     simp
 
+/-- The emitted run is a polynomial segment stream: the two scans and the per-position
+block dispatch are all poly-fueled. -/
 lemma prefixRun_polySegStream {cname : Nat.Partrec.Code} {nameMap : ℕ → ℕ}
     (hname : PolyFueled cname nameMap) : PolySegStream (prefixRun nameMap) := by
   obtain ⟨citer, hiter⟩ := tailC_iterate_polyFueled
@@ -666,7 +693,9 @@ lemma bigSentenceCodes_bitPrefixSentence {cname : Nat.Partrec.Code} {nameMap : �
 
 end BitChain
 
-/-- **The concrete prefix conjunctions are efficiently nameable** (`dd:ec`, write-out metered):
+/-! ## The presentation and the domination endpoint -/
+
+/-- **The concrete prefix conjunctions are efficiently nameable** (`def:ec`, write-out metered):
 the canonical Polish run of the length-`m` prefix conjunction is `3m + 3` tokens at worst,
 emitted by walking the enumeration index's own `Nat.pair` chain.
 Paper node: `thm:dus` -/
@@ -694,23 +723,18 @@ def bitPrefixSentencesOfIndependentAtoms
 realizability.**  Ordinary propositional atoms over the constantly-empty deductive process,
 with the naming certificate discharged by `ordinaryBitPrefixCodes`.
 
-What this witness does and does not exercise.  The *naming* half is real and is the
-interesting half: `prefix_codes` is discharged by `ordinaryBitPrefixCodes`, a genuine
-write-out emitter for the literal conjunctions, and `not_polySentenceCodes_bitPrefixSentence`
-above shows the whole-value form of that field has no inhabitant at all, so the token
-metering is forced rather than convenient.  The *realizability* half is discharged
-**vacuously**: every stage of `emptyBitDeductiveProcess` is `∅` (see
-`ordinaryIndependentBitAtoms`), so no atom is ever constrained, and the paper's
-Θ-load-bearing reading of `thm:dus` — atoms independent of a theory with content — is not
-exercised here.  Read this as inhabitation of `BitPrefixSentences`, not as evidence that the
-domination endpoint has content over a substantive process; for that, see
+The *naming* half is the real one: `prefix_codes` is discharged by `ordinaryBitPrefixCodes`,
+a genuine write-out emitter for the literal conjunctions, and the whole-value form of that
+field has no inhabitant at all, so the token metering is forced rather than convenient.  The
+*realizability* half is discharged vacuously, for the reason recorded at
+`ordinaryIndependentBitAtoms`; read this as inhabitation of `BitPrefixSentences`, not as
+evidence that the domination endpoint has content over a substantive process.  For that see
 `paperBitPrefixSentences`, the same presentation over `paperDP T`.  The endpoint itself
 (`lic_domination_universalSemimeasure_ofIndependentAtoms`) is proved for an arbitrary
 deductive process and an arbitrary inductor over it.
 Paper node: `thm:dus` -/
 def ordinaryBitPrefixSentences : BitPrefixSentences emptyBitDeductiveProcess :=
   bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms ordinaryBitPrefixCodes
-
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The semimeasure's from-below
@@ -732,20 +756,5 @@ theorem lic_domination_universalSemimeasure_ofIndependentAtoms
       K * M.mass σ ≤ limitingBelief P
         (bitPrefixSentence I.atom σ) :=
   lic_domination_universalSemimeasure A emit P hworld
-
-
-#print axioms PCWorld.holds_bitPrefixSentence
-#print axioms bitStringEnumeration_covers
-#print axioms two_pow_le_encode_conj
-#print axioms encode_replicate_true_le
-#print axioms not_isPolyBounded_bitPrefixSentence_codes
-#print axioms not_polySentenceCodes_bitPrefixSentence
-#print axioms ordinaryIndependentBitAtoms
-#print axioms independentBitAtoms_nonempty
-#print axioms BitChain.decode_chain
-#print axioms ordinaryBitPrefixCodes
-#print axioms bitPrefixSentencesOfIndependentAtoms
-#print axioms ordinaryBitPrefixSentences
-#print axioms lic_domination_universalSemimeasure_ofIndependentAtoms
 
 end LogicalInduction

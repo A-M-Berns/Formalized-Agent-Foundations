@@ -4,13 +4,35 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 /-!
 # Exact public cut laws from first-order proofs
 
-Prime decomposition preserves truth but, because FAF's public negation is an implication to
-false, it does not commute with first-order NNF negation by definitional equality.  This
-fixed process closes precisely that ABI gap.  It checks provability of `¬φ` or `φ → ψ` in
-the old first-order theory and publishes the corresponding *literal public* negation or
-implication between prime decompositions.
+The fixed cut-law process closing the ABI gap between first-order NNF negation and FAF's
+public negation — construction machinery for the semantic-source lane, with no paper
+`\label` of its own.
 
-The process is universal and fixed by `T`; no source family occurs in its definition.
+The gap: prime decomposition preserves truth, but because public negation is an implication
+to `⊥` it does not commute with first-order negation by definitional equality, so the literal
+public negation and implication have to be published explicitly.  The process checks
+provability of `¬φ` or `φ → ψ` in the old first-order theory and publishes the corresponding
+literal public sentence.
+
+Objects defined: the two event codes `paperUpperEvent` and `paperDownwardEvent`; the firing
+predicate `paperCutLawFires` (well-formedness plus `Bootstrapping.Provable T` of the negation
+or the implication); the published sentence `paperCutLawSentence` with its two `@[simp]`
+characterizations; the stage `paperCutLawStage`; and the process `paperCutLawDP`.
+
+Main results: `paperCutLawFires_re` (the gate is r.e.), `paperCutLawDP_computable`, the
+coverage lemmas `paperCutLawDP_covers`, `_covers_upper` and `_covers_downward`, and the
+model-soundness lemma `paperCutLawDP_hworld_of_model`.  The atom-tag discipline is
+`paperCutLawSentence_atom_tag_of_fire`: every published atom carries `paperPrimeTag`, which
+is what lets the process be unioned without disturbing another lane's verdicts.
+
+`paperBaseDP = (paperDP T).union (paperCutLawDP T)` is the fixed base process, with its
+program `paperBaseDPComputation`, its non-vacuity `paperBaseDP_nonvacuous` (from
+satisfiability of a consistent `T`) and its freshness `paperBaseDP_semanticPrimeFresh`.
+`paperBaseDP` is defined and proved out, but no endpoint prices against it: the endpoints run
+over `paperDP T`, because unioning the cut-law lane into the endpoint files would pull the
+semantic-source lane into each of them.
+
+The process is universal and fixed by `T` alone; no source family occurs in its definition.
 -/
 
 namespace LogicalInduction
@@ -20,6 +42,8 @@ open LO.Propositional
 
 variable (T : ArithmeticTheory)
 
+/-! ## The cut-law events and when they fire -/
+
 /-- Upper-cut event for a threshold formula code. -/
 def paperUpperEvent (formulaCode : ℕ) : ℕ := Nat.pair 0 formulaCode
 
@@ -27,6 +51,8 @@ def paperUpperEvent (formulaCode : ℕ) : ℕ := Nat.pair 0 formulaCode
 def paperDownwardEvent (lowerCode upperCode : ℕ) : ℕ :=
   Nat.pair 1 (Nat.pair lowerCode upperCode)
 
+/-- The event `e` fires when its payload is a well-formed ℒₒᵣ formula code and `T` proves the
+corresponding negation (tag `0`) or implication (tag `1`).  Every other tag never fires. -/
 def paperCutLawFires [T.Δ₁] (e : ℕ) : Prop :=
   if e.unpair.1 = 0 then
     Bootstrapping.IsFormula ℒₒᵣ e.unpair.2 ∧
@@ -50,6 +76,7 @@ private lemma paperIsFormulaCode_re :
     Bootstrapping.IsSemiformula ℒₒᵣ 0 formulaCode
   definability
 
+/-- Firing is recursively enumerable: well-formedness and `T`-provability are both `𝚺₁`. -/
 lemma paperCutLawFires_re [T.Δ₁] : REPred (paperCutLawFires T) := by
   have htag (k : ℕ) : REPred fun e : ℕ => e.unpair.1 = k :=
     ComputablePred.to_re
@@ -81,6 +108,10 @@ lemma paperCutLawFires_re [T.Δ₁] : REPred (paperCutLawFires T) := by
     · simp [paperCutLawFires, h1]
     · simp [paperCutLawFires, h0, h1]
 
+/-! ## The published sentence -/
+
+/-- The code of the literal public negation (tag `0`) or implication (tag `1`) between prime
+decompositions that a fired event publishes; the code of `⊤` on any other event. -/
 def paperCutLawSentenceCode (e : ℕ) : ℕ :=
   if e.unpair.1 = 0 then
     paperPublicNegCode (paperPrimeDecomposeCode e.unpair.2)
@@ -90,6 +121,8 @@ def paperCutLawSentenceCode (e : ℕ) : ℕ :=
       (paperPrimeDecomposeCode e.unpair.2.unpair.1)
   else Encodable.encode (⊤ : Sentence)
 
+/-- The sentence an event publishes: `paperCutLawSentenceCode` decoded, `⊤` when the code
+decodes to nothing. -/
 def paperCutLawSentence (e : ℕ) : Sentence :=
   (Encodable.decode (α := Sentence) (paperCutLawSentenceCode e)).getD ⊤
 
@@ -136,6 +169,9 @@ lemma paperCutLawSentence_prim : Primrec paperCutLawSentence := by
     (Primrec.decode.comp paperCutLawSentenceCode_prim)
     (Primrec.const (⊤ : Sentence))).of_eq fun _ => rfl
 
+/-! ## The process and its program -/
+
+/-- A program whose domain is exactly the firing set, from the r.e. presentation. -/
 lemma exists_paperCutLawCode [T.Δ₁] :
     ∃ code : Nat.Partrec.Code, ∀ e, (code.eval e).Dom ↔ paperCutLawFires T e := by
   obtain ⟨f, hf, hfP⟩ := REPred.iff'.mp (paperCutLawFires_re T)
@@ -146,6 +182,7 @@ lemma exists_paperCutLawCode [T.Δ₁] :
   exact (hfP e).symm
 
 open Classical in
+/-- Stage `k`: the sentences of every event below `k` whose gate halts within `k` steps. -/
 noncomputable def paperCutLawStage (code : Nat.Partrec.Code) (k : ℕ) : Finset Sentence :=
   ((Finset.range (k + 1)).filter
     (fun e => (Nat.Partrec.Code.evaln k code e).isSome = true)).image paperCutLawSentence
@@ -158,10 +195,12 @@ lemma paperCutLawStage_mono (code : Nat.Partrec.Code) (k : ℕ) :
   obtain ⟨e, ⟨he, hsome⟩, rfl⟩ := hφ
   exact ⟨e, ⟨by omega, evaln_isSome_mono (Nat.le_succ k) hsome⟩, rfl⟩
 
+/-- The cut-law process: fixed by `T`, monotone by `paperCutLawStage_mono`. -/
 noncomputable def paperCutLawDP [T.Δ₁] : DeductiveProcess where
   D := paperCutLawStage (exists_paperCutLawCode T).choose
   mono := paperCutLawStage_mono _
 
+/-- Every firing event has its sentence published at some stage. -/
 lemma paperCutLawDP_covers [T.Δ₁] {e : ℕ} (hfire : paperCutLawFires T e) :
     ∃ k, paperCutLawSentence e ∈ (paperCutLawDP T).D k := by
   classical
@@ -225,6 +264,7 @@ lemma paperCutLawStage_encode_prim (c : Nat.Partrec.Code) :
   exact Primrec.encode.comp
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
+/-- The cut-law process is a computable deductive process. -/
 lemma paperCutLawDP_computable [T.Δ₁] : ComputableDeductiveProcess (paperCutLawDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
     (Nat.Partrec.of_primrec
@@ -260,6 +300,8 @@ private lemma eq_paperDownwardEvent_of_codes {e : ℕ} (h1 : e.unpair.1 = 1)
       rw [h1, hlower, hupper, Nat.pair_unpair]
     _ = paperDownwardEvent (Encodable.encode lower) (Encodable.encode upper) := rfl
 
+/-- Upper coverage: whenever `T` proves `∼φ`, the public negation of `φ`'s prime
+decomposition is published. -/
 lemma paperCutLawDP_covers_upper [T.Δ₁] (φ : ArithmeticProposition)
     (hprov : Bootstrapping.Provable T (Encodable.encode (∼φ))) :
     ∃ k, (∼paperPrimeDecompose φ) ∈ (paperCutLawDP T).D k := by
@@ -268,6 +310,8 @@ lemma paperCutLawDP_covers_upper [T.Δ₁] (φ : ArithmeticProposition)
       paperFormulaEncode_isFormula]
   simpa using paperCutLawDP_covers T hfire
 
+/-- Downward coverage: whenever `T` proves `upper 🡒 lower`, the public implication between
+their prime decompositions is published. -/
 lemma paperCutLawDP_covers_downward [T.Δ₁] (lower upper : ArithmeticProposition)
     (hprov : Bootstrapping.Provable T (Encodable.encode (upper 🡒 lower))) :
     ∃ k, (paperPrimeDecompose upper 🡒 paperPrimeDecompose lower) ∈
@@ -278,6 +322,8 @@ lemma paperCutLawDP_covers_downward [T.Δ₁] (lower upper : ArithmeticPropositi
       paperFormulaEncode_isFormula]
   simpa using paperCutLawDP_covers T hfire
 
+/-- Model soundness: the prime world of any model of `T` satisfies every published cut
+law. -/
 lemma paperCutLawDP_hworld_of_model [T.Δ₁]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
@@ -318,6 +364,10 @@ lemma paperCutLawDP_hworld_of_model [T.Δ₁]
     exact (paperPrimeWorld_holds_decompose M f lower).mpr
       (himpEval ((paperPrimeWorld_holds_decompose M f upper).mp hupperHolds))
 
+/-! ## The atom tag -/
+
+/-- Every atom of a published cut law carries `paperPrimeTag`, so the process can be unioned
+without disturbing another lane's verdicts. -/
 lemma paperCutLawSentence_atom_tag_of_fire [T.Δ₁] {e a : ℕ}
     (hfire : paperCutLawFires T e)
     (ha : a ∈ sentenceAtomCodes (paperCutLawSentence e)) :
@@ -341,16 +391,23 @@ lemma paperCutLawSentence_atom_tag_of_fire [T.Δ₁] {e a : ℕ}
     · exact paperPrimeDecompose_atom_tag upper a ha
     · exact paperPrimeDecompose_atom_tag lower a ha
 
-/-! ## The fixed paper-facing base process -/
+/-! ## The fixed paper-facing base process
 
+The union below is a complete, proved-out package that no endpoint consumes, for the reason
+stated in the module header. -/
+
+/-- `paperDP T` together with the cut laws. -/
 noncomputable def paperBaseDP [T.Δ₁] : DeductiveProcess :=
   (paperDP T).union (paperCutLawDP T)
 
+/-- The certified program for `paperBaseDP`, the union of its two components' own. -/
 noncomputable def paperBaseDPComputation [T.Δ₁] :
     DeductiveProcessComputation (paperBaseDP T) :=
   (paperDPComputation T).union
     (paperCutLawDP_computable T).nonemptyComputation.some
 
+/-- Model soundness for the base process: the paper extension world of any model of `T` is
+consistent with every stage of `paperBaseDP`. -/
 lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     {M : Type*} [Nonempty M] [Structure ℒₒᵣ M]
     (hT : M ↓[ℒₒᵣ] ⊧* T) (f : ℕ → M) :
@@ -370,6 +427,8 @@ lemma paperBaseDP_hworld_of_model [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Cons
     exact ((exists_paperCutLawCode T).choose_spec e).mp
       (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
 
+/-- Non-vacuity: a consistent `T` is satisfiable, and any model of it yields a completed
+world for `paperBaseDP`. -/
 lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ v : PCWorld, v.ConsistentWithTheory (paperBaseDP T) := by
   have hs : LO.FirstOrder.Satisfiable T :=
@@ -380,6 +439,8 @@ lemma paperBaseDP_nonvacuous [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consisten
   let f : ℕ → M := fun _ => Classical.choice hMne
   exact ⟨paperTheoryExtensionWorld T M f, paperBaseDP_hworld_of_model T hT f⟩
 
+/-- Every stage of `paperBaseDP` stays in the old language: no atom of it carries
+`semanticPrimeTag`. -/
 lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [Entailment.Consistent T]
     (k : ℕ) (sentence : Sentence)
     (hsentence : sentence ∈ (paperBaseDP T).D k) :
@@ -401,13 +462,5 @@ lemma paperBaseDP_semanticPrimeFresh [T.Δ₁] [Entailment.Consistent T]
         (Part.dom_iff_mem.mpr ⟨out, Nat.Partrec.Code.evaln_sound hout⟩)
     have htag := paperCutLawSentence_atom_tag_of_fire T hfire ha
     simp [htag, paperPrimeTag, semanticPrimeTag]
-
-#print axioms paperCutLawFires_re
-#print axioms paperCutLawSentence_prim
-#print axioms paperCutLawDP_computable
-#print axioms paperCutLawDP_hworld_of_model
-#print axioms paperBaseDPComputation
-#print axioms paperBaseDP_nonvacuous
-#print axioms paperBaseDP_semanticPrimeFresh
 
 end LogicalInduction

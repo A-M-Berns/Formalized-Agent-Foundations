@@ -1,26 +1,39 @@
-/-
-# The §4.10 symbol measures are primitive recursive
-
-`DerivationSize.lean` defines the symbol measures by well-founded recursion on `ℕ`, which
-says nothing about their effectivity.  This module supplies the missing half: `G`, `tSize`,
-`tvSize`, `fSize`, `sSize` and `dSize` are all primitive recursive, hence computable, so the
-bounded proof search of §4.10 is a genuine algorithm rather than a classical existence
-statement.
-
-Each of the three well-founded measures recurses only on values strictly below its
-argument, so each is obtained from Mathlib's course-of-values recursor
-`Primrec.nat_strong_rec`: the step function reads its recursive values out of the list
-`(List.range n).map f`, whose `i`-th entry is `f i` and whose length is `n`.  `tSize` and
-`tvSize` share one recursion (`tvAux`), so they are packed into a single function of
-`2 * n + mode` before the recursor is applied; every recursive call of `tvAux` strictly
-decreases that packed value.
-
-`Nat.size` — which `idxLen` counts with — has no primitive-recursiveness lemma in Mathlib,
-so it is obtained here by the same recursor from `size n = size (n / 2) + 1`.
--/
 import LogicalInduction.Framework.DerivationSize
 import Mathlib.Computability.Primrec.List
 import Mathlib.Computability.Partrec
+
+/-!
+# The §4.10 symbol measures are primitive recursive
+
+`DerivationSize.lean` defines the symbol measures by well-founded recursion at `ℕ`, which
+says nothing about their effectivity. This module supplies the missing half of
+`dd:symbolcount`: `tSize`, `tvSize`, `fSize`, `sSize`, `dSize` and `G` are all primitive
+recursive, hence computable. Without it the §4.10 bounded proof search is a classical
+existence statement rather than an algorithm.
+
+Each well-founded measure recurses only on values strictly below its argument, so each is
+obtained from Mathlib's course-of-values recursor `Primrec.nat_strong_rec`: the step
+function reads its recursive values out of `(List.range n).map f`, whose `i`-th entry is
+`f i` and whose length is `n`. The entries are read with `List.getD`, because `l[i]` cannot
+be written where Foundation's binder notation registers `)[` as a token.
+
+`tSize` and `tvSize` share one recursion (`tvAux`), so they are packed into a single
+function of `2 * n + mode` before the recursor is applied; every recursive `tvAux` call
+strictly decreases that packed value.
+
+`Nat.size` — which `idxLen` counts with — has no primitive-recursiveness lemma in Mathlib,
+so it is obtained here by the same recursor from `size n = size (n / 2) + 1`.
+
+`G` recurses structurally over the private squaring function `P`. Privacy restricts name
+resolution, not unfolding, so the six-fold iterate is definitionally the explicit tower
+`Gstep`, and `G_succ_eq` is `rfl`.
+
+The module closes with the `Computable` forms the §4.10 decider consumes, and with
+`computable_boundedSearchValue`: a bounded existential over a computable predicate with a
+computable bound is computable. Mathlib offers only the `Primrec` list combinators here, so
+the scan is an explicit `Nat.rec` fed to `Computable.nat_rec`. All of it is spent in
+`Framework/BoundedConsistency.lean`, to make `bprovValue` total and computable.
+-/
 
 namespace LogicalInduction
 
@@ -575,28 +588,5 @@ lemma computable_boundedSearchValue
   · rintro ⟨d, hd, hpd⟩; exact ⟨d, by omega, hpd⟩
 
 end BoundedSearch
-
-/-! ## Axiom accounting
-
-All of this module's public lemmas, printed for the audit log.  Like its base module
-`DerivationSize.lean`, nothing here carries a paper-node annotation — this is the
-effectivity half of the `dd:symbolcount` convention, not a paper node — so the names cannot
-appear in an `#assert_axioms_clean` block and are accounted for here instead.  **Logging only**: no gate
-fails on a dirty print; the control is the human read of the build log, per the audit
-doctrine.  See `AxiomAudit.lean`'s `Framework/DerivationSizeComputable.lean` block. -/
-
-#print axioms tSize_primrec
-#print axioms tvSize_primrec
-#print axioms fSize_primrec
-#print axioms sSize_primrec
-#print axioms dSize_primrec
-#print axioms G_primrec
-#print axioms tSize_computable
-#print axioms tvSize_computable
-#print axioms fSize_computable
-#print axioms sSize_computable
-#print axioms dSize_computable
-#print axioms G_computable
-#print axioms computable_boundedSearchValue
 
 end LogicalInduction

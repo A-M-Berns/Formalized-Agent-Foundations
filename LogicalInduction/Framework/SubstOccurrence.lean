@@ -1,17 +1,28 @@
-/-
+import Foundation.FirstOrder.Basic.Syntax.Rew
+
+/-!
 # Bound-variable occurrence for semiformulas
 
 Foundation records the bound variables of a *term* (`LO.FirstOrder.Semiterm.bv`) but
-offers no occurrence notion for formulas.  This module supplies one —
-`LO.FirstOrder.Semiformula.Mentions` — together with the two transport lemmas it exists
-for: rewrites that agree off `#k` agree on a formula that does not mention `#k`, and
-rewrites that agree on a formula which *does* mention `#k` already agree at `#k`.
+offers no occurrence notion for formulas. This module supplies one.
 
-The arity-one corollaries are the consumable ones: substitution into a formula that
-mentions `#0` is injective, and substitution into one that does not is constant.
+* `Semiformula.Mentions φ k` says that `#k` occurs in `φ`, counted under quantifiers, so
+  that `(∀⁰ φ).Mentions k ↔ φ.Mentions (k + 1)`. It comes with a full `@[simp]` equation
+  set on the NNF constructors, plus `mentions_neg` for the meta-level involution.
+* It rests on two term-level transport lemmas, `Semiterm.rew_eq_of_bvEqOn` and
+  `Semiterm.eq_of_rew_eq_of_mem_bv`.
+* `rew_eq_of_not_mentions` — rewrites agreeing off `#k` agree on a formula that does not
+  mention `#k`.
+* `eq_of_rew_eq_of_mentions` — rewrites agreeing on a formula that *does* mention `#k`
+  already agree at `#k`.
+* The arity-one corollaries are the consumable ones: `subst_injective_of_mentions`
+  (substitution into a formula mentioning `#0` is injective) and `subst_eq_of_not_mentions`
+  (substitution into one that does not is constant).
+
+They are spent in `Framework/RepresentsComputations.lean`, where `mentions_zero_of_repr_ne`
+discharges the occurrence side condition of the syntactic-separation family
+(`representedClaimSentence_ne_of_const_ne`, `conClaimSentence_ne_of_day_ne`).
 -/
-
-import Foundation.FirstOrder.Basic.Syntax.Rew
 
 namespace LO.FirstOrder
 
@@ -20,6 +31,8 @@ variable {L : Language} {ξ : Type*} {n m : ℕ}
 private lemma bShift_injective :
     Function.Injective (Rew.bShift : Semiterm L ξ n → Semiterm L ξ (n + 1)) :=
   Rew.map_inj (Fin.succ_injective n) Function.injective_id
+
+/-! ## Occurrence in terms -/
 
 namespace Semiterm
 
@@ -58,6 +71,8 @@ end Semiterm
 
 namespace Semiformula
 
+/-! ## Occurrence in formulas -/
+
 /-- `φ.Mentions k` : the bound variable `#k` occurs in `φ`, counting under quantifiers,
 so that `(∀⁰ φ).Mentions k ↔ φ.Mentions (k + 1)`. -/
 def Mentions : {n : ℕ} → Semiformula L ξ n → ℕ → Prop
@@ -95,6 +110,8 @@ def Mentions : {n : ℕ} → Semiformula L ξ n → ℕ → Prop
 @[simp] lemma mentions_neg {φ : Semiformula L ξ n} {k : ℕ} :
     (∼φ).Mentions k ↔ φ.Mentions k := by
   induction φ using rec' generalizing k <;> simp [*]
+
+/-! ## Rewrites that agree off an occurrence -/
 
 private lemma rew_eq_aux : ∀ {n : ℕ} (φ : Semiformula L ξ n) (m k : ℕ)
     (ω₁ ω₂ : Rew L ξ n ξ m), ¬φ.Mentions k →
@@ -153,6 +170,8 @@ lemma rew_eq_of_not_mentions {n m : ℕ} {φ : Semiformula L ξ n} {k : ℕ}
     (hf : ∀ x : ξ, ω₁ &x = ω₂ &x) :
     ω₁ ▹ φ = ω₂ ▹ φ :=
   rew_eq_aux φ m k ω₁ ω₂ hk hb hf
+
+/-! ## Substitution injectivity -/
 
 private lemma eq_of_rew_eq_aux : ∀ {n : ℕ} (φ : Semiformula L ξ n) (m : ℕ) (k : Fin n)
     (ω₁ ω₂ : Rew L ξ n ξ m), φ.Mentions (k : ℕ) → ω₁ ▹ φ = ω₂ ▹ φ → ω₁ #k = ω₂ #k := by
@@ -224,10 +243,5 @@ lemma subst_eq_of_not_mentions {σ : Semiformula L ξ 1} (hσ : ¬σ.Mentions 0)
     fun x ↦ by simp
 
 end Semiformula
-
-#print axioms Semiformula.rew_eq_of_not_mentions
-#print axioms Semiformula.eq_of_rew_eq_of_mentions
-#print axioms Semiformula.subst_injective_of_mentions
-#print axioms Semiformula.subst_eq_of_not_mentions
 
 end LO.FirstOrder

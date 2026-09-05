@@ -5,22 +5,24 @@ import LogicalInduction.Framework.WriteOut
 /-!
 # Feedback and LUV unbiasedness over the constructed `LIA`
 
-The paper's unbiasedness-from-feedback theorems (`thm:wub`, `thm:wubaff`, `thm:wubexp`),
-instantiated at the constructed provability process and its `LIA` inductor.  The
-`_ofComputation` endpoints supply both operational witnesses of the argument — the feedback
-traders and the delayed truth sequence — and the remaining market-side hypotheses are
-discharged here over the same provability process the computational-knowledge and quotation
-endpoints use:
+`thm:wub` (tex:1249), `thm:wubaff` (tex:1480) and `thm:wubexp` (tex:1822), instantiated over
+the constructed `LIA` at `paperDP T` — the same provability process the
+computational-knowledge and quotation endpoints price against.  The generic `_ofComputation`
+carriers these endpoints delegate to, which supply the argument's operational witnesses (the
+feedback traders and the delayed truth sequence), live in `FeedbackTruth.lean`.
 
-* `paperDP_computable` constructs the deductive process and hence the `LIA` inductor;
-* `liaHistory_range` supplies the ordinary probability bounds; and
+Three market-side interfaces are discharged here:
+
+* `paperDP_computable` constructs the deductive process, and with it the inductor through
+  `LIA_is_logical_inductor`;
+* the constructed market's `liaHistory_range` supplies the ordinary probability bounds;
 * `paperDP_hworld` supplies a plausible world at every finite stage.
 
-The caller still supplies the paper's substantive inputs: an affine/LUV sequence, its
-completed-theory determination data, the deferral schedule, weighting, and the explicit
-deadline-bounded program computing the delayed truth values.  No separate feedback deductive
-process is needed: `FeedbackTruthComputation` is an operational value computation, not a
-presentation whose literals must be enumerated by the process.
+The caller supplies the paper's own substantive data: an affine or LUV sequence, its
+`def:affthmval` determination, the deferral schedule, the weighting, and the deadline-bounded
+truth program `FeedbackTruthComputation`.  No separate feedback deductive process is needed,
+because `FeedbackTruthComputation` is an operational value computation rather than a
+presentation whose literals a process must enumerate.
 -/
 
 namespace LogicalInduction
@@ -34,6 +36,8 @@ variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consis
 private noncomputable abbrev feedbackLIA :
     IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
   LIA_is_logical_inductor (paperDP T) (paperDP_computable T)
+
+/-! ## `thm:wub` over the constructed market -/
 
 /-- `thm:wub` over the constructed `LIA`: the market, deductive process, logical-inductor
 instance, finite-stage plausible worlds, feedback traders, and sparse delayed truth sequence
@@ -55,6 +59,8 @@ theorem lic_wub_ofComputation_unconditional
     φ hφ truth htruth W hW hWdiv f hstrict
     C hsupport
     (paperDP_hworld T)
+
+/-! ## `thm:wubaff`, general and bounded -/
 
 /-- `thm:wubaff` over the constructed `LIA`.  Only the paper's affine data and the
 operational delayed-truth program remain caller inputs.
@@ -97,6 +103,8 @@ theorem boundedCombination_wubaff_ofComputation_unconditional
   exact boundedCombination_wubaff_ofComputation h hW hdet hstrict C hsupport hWdiv
     (paperDP_hworld T)
 
+/-! ## `thm:wubexp` at the normalized threshold mesh -/
+
 /-- `thm:wubexp` over the constructed `LIA`: the concrete normalized threshold mesh, its
 feedback traders, and its delayed truth sequence yield recurring unbiasedness for bounded LUV
 combinations.  The deadline-bounded truth program `C` is the paper's explicit operational
@@ -110,9 +118,10 @@ statement that introduces no `f`.  The affine twins settle the intended placemen
 (`thm:wubaff`, tex:1480-1490, has the clause; `thm:recurringunbiasedness`, tex:1225-1233,
 does not), so the clause is stated here.  Recorded as `PE2` in `notes/paper-errata.md`.
 
-Determination is at the *combination* level only: `[(1, X), (-1, X)]` for a wholly undetermined `X` is covered,
-which it would not be under `LUVCombination.ExactTheoryPresentation`.  The mesh feedback
-bridge is built from approximate determination; see
+Determination is at the *combination* level only: `[(1, X), (-1, X)]` for a wholly
+undetermined `X` is covered, which it would not be under
+`LUVCombination.ExactTheoryPresentation`.  The mesh feedback bridge is built from
+approximate determination; see
 `FeedbackTruth.luv_wubexp_ofComputation`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofComputation_unconditional
@@ -135,11 +144,6 @@ theorem luv_wubexp_ofComputation_unconditional
   haveI := feedbackLIA T
   exact luv_wubexp_ofComputation h hvalued hdet b hshare hW hWdiv hstrict
     (paperDP_hworld T) C hsupport
-
-#print axioms lic_wubaff_ofComputation_unconditional
-#print axioms lic_wub_ofComputation_unconditional
-#print axioms boundedCombination_wubaff_ofComputation_unconditional
-#print axioms luv_wubexp_ofComputation_unconditional
 
 end FeedbackTruth
 end LogicalInduction

@@ -5,47 +5,56 @@ import LogicalInduction.Construction.Witnesses.ComputationSyntax
 /-!
 # First-order arithmetic LUVs (`def:luv`, the certified threshold bridge)
 
-This file replaces the raw threshold-sentence abstraction (`Framework/Expectations.lean`'s
-`LUV.gt : ℚ → Sentence`, which carries no internal meaning) by a *certified* first-order
-object, for the paper's own primary LUV class.
-
-## Design decision `dd:luv-arith` (disclosed type-`(c)`)
-
-The paper's `def:luv` is *any* one-variable formula `X` that `Θ` proves defines a unique value
-in `[0,1]`.  Its own worked example (`main.tex:1660`) is the canonical class we reconstruct:
+`Framework/Expectations.lean`'s `LUV.gt : ℚ → Sentence` names thresholds without giving them
+an internal meaning.  This file renders `def:luv` (tex:1635) as a certified first-order object
+for the paper's own worked LUV class, the computable `[0,1]`-valued function LUV of
+`main.tex:1655`:
 
 > if `f : ℕ⁺ → [0,1]` is computable then `⌜f(7)⌝` is a LUV, because `⌜f(7)⌝` abbreviates
 > `⌜γ_f(7,ν)⌝` where `γ_f` is the predicate of `Θ` representing `f`.
 
-Concretely a **computable `[0,1]`-valued function** LUV is given by computable `num, den : ℕ → ℕ`
-with `0 < den i` and `num i ≤ den i`; the value of the `i`-th LUV is the rational
-`num i / den i ∈ ℚ ∩ [0,1]`.  The threshold `⌜X_i > r⌝` for `r : ℚ` is arithmetized as the FFL
-schema `codeOfREPred` of the **decidable** predicate "`r < num i / den i`", exactly as
-`ComputationSyntax` arithmetizes halting.
+## Design decision `dd:luv-arith`
+
+Such a LUV family is given by computable `num, den : ℕ → ℕ` with `0 < den i` and
+`num i ≤ den i`; the value of the `i`-th LUV is the rational `num i / den i ∈ ℚ ∩ [0,1]`.
+The file defines `ComputableLUV` and its `value`, the compact code `thresholdCode i r` naming
+the query `⌜X_i > r⌝`, the decidable `ThresholdPred` on codes, its total `{0,1}` decider
+`thresholdValue`, the arithmetic schema `thresholdSchema`, the propositional
+`thresholdSentence`, and `toLUV : ℕ → LUV`.  This is the certified class over which the
+world-value and threshold-emission obligations are *proved* rather than assumed, and it is
+what the `_arith` endpoint suffix restricts to (`dd:luv-arith`).
+
+The class sits at the paper's own premise.  `ThresholdPred` is decidable, so its `{0,1}`
+indicator is a total computable function and the standing assumption `RepresentsComputations`
+(tex:600-606) supplies `thresholdGamma` directly.  Both public literals are then taken over
+*one* sentence: `threshold_provable` proves the value-`0` instance of
+`thresholdSchema/[‘m’]`, and `threshold_refutable` refutes that same sentence at the decider's
+value `1`.
 
 **Why the nonstandard-world subtlety of `def:luv` collapses here.**  The paper's world value is
 the *supremum* `sup {x | W(⌜X ≥ x⌝)=1}`, a roundabout definition it needs "in cases where `W`
-assigns `X` a non-standard value".  Because our threshold predicate is *decidable* (`Δ₁`), FFL's
-`re_complete` makes `Θ` **prove** every true threshold and **refute** every false one (via the
-complementary schema).  Hence every world consistent with a deductive process that reveals those
-`Θ`-theorems pins the cut exactly at the standard rational `num i / den i` — no nonstandard slack,
-and the sup collapses to that rational.  This is what lets the downstream presentation interfaces
-(`ExactTheoryPresentation`, `WorldValued`, `ValuesAt`) be *derived* rather than *assumed*
-(`LUVPresentation.lean`).
+assigns `X` a non-standard value".  Because `Θ` decides every threshold, every world consistent
+with a deductive process that reveals those `Θ`-theorems pins the cut exactly at the standard
+rational `num i / den i` — no nonstandard slack, and the sup collapses to that rational.  This
+is what lets the downstream presentation interfaces (`ExactTheoryPresentation`, `WorldValued`,
+`ValuesAt`) be *derived* rather than *assumed* (`LUVPresentation.lean`).
 
 **Scope of this file.**  This class is the paper's own worked example, and the decidability
-collapse above is what makes its world value pin exactly.  It is *not* the only first-order
+collapse above is what makes its world value pin exactly.  It is not the only first-order
 bridge in the repository: `Witnesses/StructuredPaperRpn.lean` and `Witnesses/PaperLUV.lean`
-now carry a literal frontend (`PaperLUV`, `PaperLUVSeq`) for an *arbitrary* value-defining
+carry a literal frontend (`PaperLUV`, `PaperLUVSeq`) for an *arbitrary* value-defining
 one-variable arithmetic formula, with the value represented inside `ℒₒᵣ` as a
 numerator/positive-denominator pair code and the world value obtained from a rational cut
 rather than from decidability.  What that frontend fixes is the value *representation*, not
-the formula: canonical rational arithmetic inside `ℒₒᵣ` remains unbuilt, and arithmetic
-closure between LUV values is outside both files.
+the formula: canonical rational arithmetic inside `ℒₒᵣ` is unbuilt, and arithmetic closure
+between LUV values is outside both files.
 
-All comparisons inside the r.e. predicate are over `ℕ` (this Mathlib has no `Primrec`/`Computable`
-arithmetic on `ℤ`/`ℚ`); the rational threshold's sign and magnitude are decoded from its canonical
-`num`/`den` at the propositional naming layer.
+`toLUV_polyThresholdCodes` discharges `dd:fuel` for this class; what it is the only instance
+of, and why, is stated at the declaration.
+
+All comparisons inside the threshold predicate are over `ℕ`, since Mathlib carries no
+`Primrec`/`Computable` arithmetic on `ℤ`/`ℚ`; the rational threshold's sign and magnitude are
+decoded from its canonical `num`/`den` at the propositional naming layer.
 -/
 
 namespace LogicalInduction
@@ -82,7 +91,7 @@ lemma value_le_one (i : ℕ) : L.value i ≤ 1 := by
   rw [div_le_one (by exact_mod_cast L.den_pos i)]
   exact_mod_cast L.num_le_den i
 
-/-! ## The decidable threshold predicate and its FFL schema -/
+/-! ## The decidable threshold predicate -/
 
 /-- The compact natural code naming the query "`r < X_i`": pairs the LUV index `i` with the
 threshold's sign (`0` for `0 ≤ r`, `1` for `r < 0`) and canonical magnitude `|r.num|`, `r.den`. -/
@@ -99,16 +108,16 @@ def codeAbsNum (m : ℕ) : ℕ := m.unpair.2.unpair.2.unpair.1
 def codeDen (m : ℕ) : ℕ := m.unpair.2.unpair.2.unpair.2
 
 /-- Left side of the threshold comparison: `|r.num| * den i`. -/
-def lhs (m : ℕ) : ℕ := codeAbsNum m * L.den (codeIdx m)
+def thresholdLhs (m : ℕ) : ℕ := codeAbsNum m * L.den (codeIdx m)
 /-- Right side of the threshold comparison: `num i * r.den` plus a sign offset that dominates
 the left side exactly when `r < 0` (`sgn ≠ 0`), making the predicate vacuously true there. -/
-def rhs (m : ℕ) : ℕ :=
+def thresholdRhs (m : ℕ) : ℕ :=
   L.num (codeIdx m) * codeDen m + codeSgn m * (codeAbsNum m * L.den (codeIdx m) + 1)
 
 /-- The decidable threshold predicate on codes, comparing the decoded rational `r` against
 `num i / den i` by a single `ℕ` cross-multiplication.  A negative `r` (`sgn ≠ 0`) is below every
 `[0,1]` value, and the additive offset forces the predicate true there. -/
-def ThresholdPred (m : ℕ) : Prop := L.lhs m < L.rhs m
+def ThresholdPred (m : ℕ) : Prop := L.thresholdLhs m < L.thresholdRhs m
 
 instance : DecidablePred L.ThresholdPred := fun m => by
   unfold ThresholdPred; infer_instance
@@ -145,14 +154,6 @@ lemma thresholdPred_computable : ComputablePred L.ThresholdPred := by
     Computable₂.comp Primrec.nat_lt.decide.to_comp hlhs hrhs
   exact (Computable.computablePred hdec).of_eq (fun m => Iff.rfl)
 
-/-- The threshold predicate is r.e. -/
-lemma thresholdPred_re : REPred L.ThresholdPred := L.thresholdPred_computable.to_re
-
-/-- The complement threshold predicate is r.e. (used for the refutation schema: because
-thresholds are decidable, `Θ` refutes every false one). -/
-lemma thresholdPred_compl_re : REPred (fun m => ¬ L.ThresholdPred m) :=
-  L.thresholdPred_computable.not.to_re
-
 /-! ### Code projections -/
 
 @[simp] lemma codeIdx_thresholdCode (i : ℕ) (r : ℚ) : codeIdx (thresholdCode i r) = i := by
@@ -173,7 +174,7 @@ the decidable arithmetic faithful to `def:luv`. -/
 lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
     L.ThresholdPred (thresholdCode i r) ↔ r < L.value i := by
   have hden : (0 : ℚ) < (L.den i : ℚ) := by exact_mod_cast L.den_pos i
-  unfold ThresholdPred lhs rhs value
+  unfold ThresholdPred thresholdLhs thresholdRhs value
   simp only [codeIdx_thresholdCode, codeSgn_thresholdCode, codeAbsNum_thresholdCode,
     codeDen_thresholdCode]
   rw [lt_div_iff₀ hden]
@@ -209,17 +210,18 @@ lemma thresholdPred_code_iff (i : ℕ) (r : ℚ) :
           < L.num i * r.den + 1 * (r.num.natAbs * L.den i + 1) := by omega
       exact_mod_cast this
 
-/-! ### The threshold schema, at the paper's representability premise
+/-! ## The threshold schema at the representability premise
 
 The threshold predicate is *decidable*, so its `{0,1}` indicator is a total computable
-function and the paper's standing assumption on `Θ` (`RepresentsComputations`, §2 lines
-600–606) supplies a formula whose value graph `Θ` both proves and refutes.  Both public
-literals therefore come from **one** sentence.
+function and the paper's standing assumption on `Θ` (`RepresentsComputations`, tex:600-606)
+supplies a formula whose value graph `Θ` both proves and refutes.  Both public literals
+therefore come from **one** sentence.
 
-The superseded design named the positive threshold by `codeOfREPred ThresholdPred` and the
-negative by a *second*, complementary r.e. schema.  Weak Σ₁-representation gives nothing
-negative about the first schema, so keeping the two apart in a completed world required
-Σ₁-soundness of `Θ` — an assumption the paper never makes. -/
+One sentence is forced, not merely convenient.  A two-schema presentation — an r.e. schema for
+the positive threshold and a complementary one for the negative — cannot keep the two literals
+apart in a completed world, because weak Σ₁-representation yields nothing negative about the
+first schema; separating them would need Σ₁-soundness of `Θ`, which the paper never assumes
+and which no declaration in `LogicalInduction/` carries. -/
 
 /-- The total `{0,1}` decider behind the threshold predicate: `0` exactly when the
 threshold holds.  Decidability of `ThresholdPred` is what makes this total, which is what
@@ -278,7 +280,9 @@ lemma threshold_provable (i : ℕ) (r : ℚ) (h : r < L.value i) :
 
 /-- **Provable decidedness (negative).**  A false threshold is refuted — the *literal
 negation of the same sentence*, from the representation at the decider's value `1`
-(`represents_refutes_all`).  This is the step that replaces Σ₁-soundness. -/
+(`represents_refutes_all`).  This is what keeps Σ₁-soundness out of the development: the
+false threshold is refuted from the representation at the decider's value `1`, not from
+soundness of `Θ`. -/
 lemma threshold_refutable (i : ℕ) (r : ℚ) (h : ¬ r < L.value i) :
     T ⊢ ∼((L.thresholdSchema T)/[‘↑(thresholdCode i r)’]) := by
   rw [L.thresholdSchema_subst T]
@@ -289,7 +293,7 @@ lemma threshold_refutable (i : ℕ) (r : ℚ) (h : ¬ r < L.value i) :
 
 end Provability
 
-/-! ### The propositional LUV -/
+/-! ## The propositional LUV -/
 
 /-- The public propositional sentence naming the query `⌜X_i > r⌝`. -/
 def thresholdSentence (i : ℕ) (r : ℚ) : Sentence :=
@@ -303,7 +307,7 @@ def toLUV (i : ℕ) : LUV where
 
 @[simp] lemma toLUV_gt (i : ℕ) (r : ℚ) : (toLUV i).gt r = thresholdSentence i r := rfl
 
-/-! ### The threshold-code efficiency certificate (`dd:fuel` discharged for `dd:luv-arith`)
+/-! ## The threshold-code efficiency certificate (`dd:fuel` discharged for `dd:luv-arith`)
 
 `PolyThresholdCodes` asks for one poly-fueled program emitting the encoded threshold sentence
 `⌜Xᵢ > b/k⌝` from the query `⟨k, b⟩`.  The sentence's atom code carries the *reduced*
@@ -311,9 +315,15 @@ numerator/denominator of `b/k`, so the program is `gcdc` (the runtime Euclid ite
 by two `divmod1` divisions and the fixed pairing shell — with an `ifzSel` fallback to `0/1` for
 the everywhere-zero `k = 0` query. -/
 
-/-- Reduced numerator of a natural-cast quotient: `((b : ℚ) / k).num = b / gcd b k`. -/
-lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
-    ((b : ℚ) / (k : ℚ)).num = (b / Nat.gcd b k : ℕ) := by
+/-- Reduction of a natural-cast quotient to a coprime integer ratio: `(b : ℚ) / k` is the
+ratio of `b / gcd b k` and the positive `k / gcd b k`, which are coprime.  This is the shared
+step behind `natCast_div_num` and `natCast_div_den`. -/
+private lemma natCast_div_reduce {b k : ℕ} (hk : k ≠ 0) :
+    (b : ℚ) / (k : ℚ)
+        = (((b / Nat.gcd b k : ℕ) : ℤ) : ℚ) / (((k / Nat.gcd b k : ℕ) : ℤ) : ℚ)
+      ∧ (0 : ℤ) < ((k / Nat.gcd b k : ℕ) : ℤ)
+      ∧ Nat.Coprime (((b / Nat.gcd b k : ℕ) : ℤ)).natAbs
+          (((k / Nat.gcd b k : ℕ) : ℤ)).natAbs := by
   have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
   have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
   have hk' : (k / Nat.gcd b k) * Nat.gcd b k = k := Nat.div_mul_cancel (Nat.gcd_dvd_right b k)
@@ -324,38 +334,23 @@ lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
     exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hb'.symm
   have hkQ : (k : ℚ) = ((k / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
     exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hk'.symm
-  have heq : (b : ℚ) / (k : ℚ)
-      = (((b / Nat.gcd b k : ℕ) : ℤ) : ℚ) / (((k / Nat.gcd b k : ℕ) : ℤ) : ℚ) := by
-    rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
-  rw [heq, Rat.num_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
-    (b := ((k / Nat.gcd b k : ℕ) : ℤ)) (by exact_mod_cast hkg)
-    (by
-      simp only [← Int.natCast_div, Int.natAbs_natCast]
-      exact Nat.coprime_div_gcd_div_gcd hg)]
+  refine ⟨?_, by exact_mod_cast hkg, ?_⟩
+  · rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
+  · simp only [← Int.natCast_div, Int.natAbs_natCast]
+    exact Nat.coprime_div_gcd_div_gcd hg
+
+/-- Reduced numerator of a natural-cast quotient: `((b : ℚ) / k).num = b / gcd b k`. -/
+lemma natCast_div_num {b k : ℕ} (hk : k ≠ 0) :
+    ((b : ℚ) / (k : ℚ)).num = (b / Nat.gcd b k : ℕ) := by
+  obtain ⟨heq, hpos, hcop⟩ := natCast_div_reduce hk
+  rw [heq, Rat.num_div_eq_of_coprime hpos hcop]
 
 /-- Reduced denominator of a natural-cast quotient: `((b : ℚ) / k).den = k / gcd b k`. -/
 lemma natCast_div_den {b k : ℕ} (hk : k ≠ 0) :
     ((b : ℚ) / (k : ℚ)).den = k / Nat.gcd b k := by
-  have hg : 0 < Nat.gcd b k := Nat.gcd_pos_of_pos_right b (Nat.pos_of_ne_zero hk)
-  have hb' : (b / Nat.gcd b k) * Nat.gcd b k = b := Nat.div_mul_cancel (Nat.gcd_dvd_left b k)
-  have hk' : (k / Nat.gcd b k) * Nat.gcd b k = k := Nat.div_mul_cancel (Nat.gcd_dvd_right b k)
-  have hkg : 0 < k / Nat.gcd b k :=
-    Nat.div_pos (Nat.le_of_dvd (Nat.pos_of_ne_zero hk) (Nat.gcd_dvd_right b k)) hg
-  have hgQ : (Nat.gcd b k : ℚ) ≠ 0 := by exact_mod_cast hg.ne'
-  have hbQ : (b : ℚ) = ((b / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
-    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hb'.symm
-  have hkQ : (k : ℚ) = ((k / Nat.gcd b k : ℕ) : ℚ) * (Nat.gcd b k : ℚ) := by
-    exact_mod_cast congrArg (Nat.cast : ℕ → ℚ) hk'.symm
-  have heq : (b : ℚ) / (k : ℚ)
-      = (((b / Nat.gcd b k : ℕ) : ℤ) : ℚ) / (((k / Nat.gcd b k : ℕ) : ℤ) : ℚ) := by
-    rw [hbQ, hkQ, mul_div_mul_right _ _ hgQ, Int.cast_natCast, Int.cast_natCast]
-  have hden := Rat.den_div_eq_of_coprime (a := ((b / Nat.gcd b k : ℕ) : ℤ))
-    (b := ((k / Nat.gcd b k : ℕ) : ℤ))
-    (by exact_mod_cast hkg) (by
-      simp only [← Int.natCast_div, Int.natAbs_natCast]
-      exact Nat.coprime_div_gcd_div_gcd hg)
+  obtain ⟨heq, hpos, hcop⟩ := natCast_div_reduce hk
   rw [heq]
-  exact_mod_cast hden
+  exact_mod_cast Rat.den_div_eq_of_coprime hpos hcop
 
 private lemma encode_thresholdSentence (i : ℕ) (r : ℚ) :
     Encodable.encode (thresholdSentence i r) = Nat.pair 1 (thresholdCode i r) + 1 := rfl
@@ -390,7 +385,8 @@ lemma thresholdCodeNat_eq (i j m : ℕ) :
 /-- The `ℕ`-level threshold code is primitive recursive in the packed query
 `⟨i, ⟨m, j⟩⟩`. -/
 lemma thresholdCodeNat_primrec :
-    Primrec (fun e : ℕ => thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1) := by
+    Primrec
+      (fun e : ℕ => thresholdCodeNat e.unpair.1 e.unpair.2.unpair.2 e.unpair.2.unpair.1) := by
   have hi : Primrec (fun e : ℕ => e.unpair.1) := Primrec.fst.comp Primrec.unpair
   have hm : Primrec (fun e : ℕ => e.unpair.2.unpair.1) :=
     Primrec.fst.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.unpair))
@@ -417,8 +413,9 @@ attribute [local irreducible] Nat.sqrt in
 /-- **`dd:fuel` discharged for `dd:luv-arith` thresholds.**  The threshold presentation of every
 `toLUV i` is polynomially codeable: one poly-fueled program — the runtime Euclid `gcdc`, two
 `divmod1` reductions, an `ifzSel` zero-denominator fallback, and the fixed atom shell — emits
-the encoded sentence `⌜Xᵢ > b/k⌝` from `⟨k, b⟩`.  This is the first `PolyThresholdCodes`
-certificate *proved* rather than assumed in the repository.
+the encoded sentence `⌜Xᵢ > b/k⌝` from `⟨k, b⟩`.  This is the repository's only proved
+`PolyThresholdCodes` certificate; every other threshold-code obligation is a caller
+hypothesis.
 Paper node: `def:ec` -/
 theorem toLUV_polyThresholdCodes (i : ℕ) : (toLUV i).PolyThresholdCodes := by
   obtain ⟨cg, hgcd⟩ := gcdc_polyFueled

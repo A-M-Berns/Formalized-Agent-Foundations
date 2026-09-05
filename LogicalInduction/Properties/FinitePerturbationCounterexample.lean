@@ -27,8 +27,24 @@ Everything below the assembly section is a complete, unconditional development o
 bookkeeping over an *abstract* history, diagonal family and trader.  The assembly section
 records what remains.
 
-This file is deliberately **not** annotated with a `Paper node:` line: it refutes a paper
+This file is deliberately **not** annotated with a `Paper node` line: it refutes a paper
 statement rather than rendering one.
+
+## What the file builds
+
+* Settlement: `Dichotomy`, `SettledAt` and `settleStage`, the *least* stage deciding a
+  diagonal day.
+* The sparse schedule: `sched` and `roundCount`, one open position at a time.
+* Per-round accounting: `signCoeff`, `roundValue`, `half_le_roundValue`,
+  `neg_one_le_roundValue`, `netWorth_eq_sum`, `netWorth_ge`, `exploits`.  Exploitation is
+  read off exact finite sums; no convergence statement is used anywhere.
+* Transport across the day-`0` perturbation: `settledAt_congr`, `settleStage_congr` and
+  `sched_congr` show the schedule depends only on days `≥ 1`, which is what removes the
+  apparent circularity.
+* The advice layer: `schedAtom`/`signAtom`, `adviceRow`, `advicePerturb`,
+  `advicePerturbed`, `gateBit`, `signBit`, `adviceCoefficient`, `adviceTrader` and
+  `adviceTrader_efficient`.
+* The reduction `not_overgeneral_ifp_of_advice`, unconditional and complete.
 
 ## What this refutes, and what it leaves standing
 
@@ -305,7 +321,8 @@ lemma netWorth_ge (Tr : Trader) (V : History) (DP : DeductiveProcess) (χ : ℕ 
   · rw [h0]
     simp only [Finset.range_zero, Finset.sum_empty, Nat.cast_zero]
     norm_num
-  · obtain ⟨d, hd⟩ : ∃ d, roundCount V DP χ n = d + 1 := ⟨roundCount V DP χ n - 1, by omega⟩
+  · obtain ⟨d, hd⟩ : ∃ d, roundCount V DP χ n = d + 1 :=
+      ⟨roundCount V DP χ n - 1, by omega⟩
     have hsettled : ∀ j ∈ Finset.range d,
         (1 : ℝ) / 2 ≤ roundValue V χ v (sched V DP χ j) := by
       intro j hj
@@ -421,15 +438,6 @@ lemma dichotomy_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
   rw [← hagree m hm, ← hcast]
   exact q.diagonal_reflected m v hv
 
-/-- Every scheduled day carries the dichotomy, which is the hypothesis the exploitation
-bookkeeping consumes.
-Kind `C`; hypotheses `(a)`. -/
-lemma dichotomy_sched_of_paradoxQuote {P P' : History} {DP : DeductiveProcess}
-    (q : ParadoxResistanceQuote P DP (1 / 2))
-    (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) (j : ℕ) :
-    Dichotomy P' DP q.sentence (sched P' DP q.sentence j) :=
-  dichotomy_of_paradoxQuote q hagree (one_le_sched P' DP q.sentence j)
-
 /-! ## The advice atoms
 
 `P' 0` is defined by decoding its argument, so the two advice families must be injective
@@ -443,15 +451,15 @@ and never reads `P' 0` at a process atom; and `χ`'s reflection is transported a
 `hagree`, which constrains only days `≥ 1`.  Even a hypothetical collision `sa n = χ m`
 would be harmless, since nothing reads `P' 0 (χ m)`.
 
-Tags `7`/`8` are nevertheless chosen disjoint from every tag this repo's processes emit.
-The global atom-payload space is gapless and fully allocated (see the table at
-`ComputationClaimKind.godelCode`): computation claims `0`–`1`
-(`ComputationClaimKind.godelCode`), quotation claims `2` (`quotationClaimCode`), quoted
-products `3` (`productTag`), semantic handles `4` (`semanticPrimeTag`), first-order primes
-`5` (`paperPrimeTag`), the old-language copy `6` (`oldLanguageTag`).  The advice tags sit
-immediately **above** that block, at `7` and `8`, so the advice layer is inert everywhere,
-not merely where the proof happens to look — and, unlike the earlier `6`/`7` choice, it no
-longer collides numerically with any allocated tag.
+Tags `7`/`8` are nevertheless chosen disjoint from every tag the market perturbed here
+emits, so the advice layer is inert numerically and not merely where the proof happens to
+look.  The registry of the atom-payload space is the table at
+`ComputationClaimKind.godelCode` (`Construction/Witnesses/ComputationSyntax.lean`), and
+the process and diagonal family the downstream witness supplies draw their atoms from the
+payload tags `0`–`6` that table allocates.  Disjointness from every tag in the repository
+is a strictly stronger property, and is neither claimed nor needed: `7` also names the
+`thm:dus` bit atoms (`UnconditionalOverLIA.bitAtomTag`), which belong to a separate
+development and never enter this market.
 -/
 
 /-- The schedule-gate advice atom for day `n`, on the fresh tag `7`. -/
@@ -762,8 +770,10 @@ concrete witness, which lives downstream (see the closing section).
 trader whose day-`n` position is the advice-signed unit position in `χ n` on schedule and
 empty off it, the unrestricted finite-perturbation statement is false.
 
-Refutes, rather than renders, the paper's `thm:ifp`: it carries no `Paper node:` line and
-is not an inventory endpoint.
+Refutes, rather than renders, the paper's `thm:ifp`, so it carries no `Paper node` line: an
+annotation would file it as a rendering of the statement it disproves.  It is inventoried in
+`AxiomAudit.lean` all the same, to keep it axiom-checked, and `scripts/check-paper-nodes.sh`
+names it in the exemption list that lets an inventory member go unannotated.
 Kind `C`; hypotheses `(a)`. -/
 theorem not_overgeneral_ifp_of_advice
     (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader)
@@ -803,6 +813,3 @@ already use.  Everything in this file is abstract and unconditional.
 
 end FinitePerturbationCounterexample
 end LogicalInduction
-
-
-

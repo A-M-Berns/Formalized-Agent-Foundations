@@ -1,4 +1,9 @@
-/-
+import LogicalInduction.Framework.Machine.TokenFold
+-- `Complexity.id_mem_FP` (the fixed-numeral guard tests the token word itself) lives in the
+-- `Classes/P` root rather than the Cobham subtree `TokenFold` already reaches.
+import Complexitylib.Classes.P
+
+/-!
 # Deciding a regular property of a token run, in polynomial time
 
 `TokenFold.ifMatch_mem_FP` branches on "this word's token stream is exactly `ts`", for one
@@ -35,10 +40,6 @@ are `lemma`s and `def`s.  Two of them — `guardedAutomaton` and
 freeze recognizer runs on, so they carry that node and sit in the endpoint inventory; the
 rest do not.
 -/
-import LogicalInduction.Framework.Machine.TokenFold
--- `Complexity.id_mem_FP` (the fixed-numeral guard tests the token word itself) lives in the
--- `Classes/P` root rather than the Cobham subtree `TokenFold` already reaches.
-import Complexitylib.Classes.P
 
 namespace LogicalInduction.RunAuto
 
@@ -603,7 +604,6 @@ def guardedAutomaton (Q : ℕ) (rows : ℕ → GuardRow) (acc : ℕ → Bool) : 
 @[simp] lemma guardedAutomaton_accept (Q : ℕ) (rows : ℕ → GuardRow) (acc : ℕ → Bool) :
     (guardedAutomaton Q rows acc).accept = acc := rfl
 
-
 /-! ## Counters: when a bounded state set is not enough
 
 `BlockAutomaton` fixes the number of states, which is the right shape for a propositional
@@ -728,13 +728,5 @@ lemma ifRun_mem_FP {S X Y : List Bool → List Bool} (hS : S ∈ FP) (hX : X ∈
   rwa [heq] at h
 
 end BlockMachine
-
-#print axioms LogicalInduction.RunAuto.tableAutomaton
-#print axioms LogicalInduction.RunAuto.guardedAutomaton
-#print axioms LogicalInduction.RunAuto.BlockMachine.pass_eq
-#print axioms LogicalInduction.RunAuto.BlockMachine.ifRun_mem_FP
-#print axioms LogicalInduction.RunAuto.BlockAutomaton.length_pass
-#print axioms LogicalInduction.RunAuto.BlockAutomaton.pass_mem_FP
-#print axioms LogicalInduction.RunAuto.BlockAutomaton.ifAuto_mem_FP
 
 end LogicalInduction.RunAuto

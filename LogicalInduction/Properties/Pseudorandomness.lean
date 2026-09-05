@@ -1,26 +1,75 @@
-/-
-# Feedback and pseudorandomness
-
-Renders §4.4 "Learning Statistical Patterns" together with the affine feedback theorems
-it depends on: `thm:wubaff` (Affine Unbiasedness from Feedback) and its one-share
-specialization `thm:wub`, `thm:prandaff` (Learning Pseudorandom Affine Sequences), its
-rational varied-frequency specialization `thm:prand`, and fixed real frequency
-`thm:benford`, proved from `thm:prand` by the paper's rational squeeze.  Definitions
-`def:deferralfunc`, `def:pseudorandom`, `def:seqprand`; appendix proofs `app:wubaff`,
-`app:prandaff`, `app:pseudorandom`.
-
-`DeferralPatient` is the paper's bounded-window condition (uniformly bounded weight in
-each window `[n, f n]`), not the stronger and easier "all divergent weightings".
-
-Two operational premises are kept explicit as hypothesis structures rather than folded
-into the theorems: settlement clocks and historical verifier constructors.  Each carries
-only computational data — no selector divergence, price bound, bias, pseudorandomness, or
-learning conclusion.
--/
 import LogicalInduction.Properties.Calibration
 import LogicalInduction.Properties.SelfTrust
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Feedback and pseudorandomness
+
+Renders paper §4.4, "Learning Statistical Patterns" — `def:pseudorandom`, `thm:benford`,
+`def:seqprand` and `thm:prand` — together with §4.3's `def:deferralfunc` and `thm:wub`
+(Unbiasedness from Feedback) and §4.5's affine generalizations `thm:wubaff` (Affine
+Unbiasedness from Feedback) and `thm:prandaff` (Learning Pseudorandom Affine Sequences).
+The appendix proofs are `app:wubaff`, `app:prandaff`, `app:prand` and `app:pseudorandom`.
+
+## Contents
+
+* Pseudorandomness vocabulary: `DeferralPatient` — the paper's uniformly bounded weight in
+  each window `[n, f n]`, not the stronger and easier "all divergent weightings" —
+  `StrictlyIncreasingDeferral`, `WeightingSupportedOnDeferralImage`, `PseudorandomAbove`,
+  `PseudorandomBelow`, `Pseudorandom`, `PseudorandomFrequency` (`def:pseudorandom`) and
+  the `VariedPseudorandom*` family (`def:seqprand`).
+* The Kelly feedback kernel: `feedbackWealth` as an explicit finite product,
+  `feedbackWealth_log_lower` (the paper's log bound, with the coarser quadratic factor
+  `2`), and `feedbackWealth_not_bddAbove_of_frequently_positive_return`.
+* The concrete sparse round-trip trader: `feedbackReturnFeature`, `feedbackFactorFeature`,
+  `feedbackWealthFeature` and `feedbackBetaFeature` reify the recurrence as expressible
+  features; `feedbackRoundTrip` and the joined `feedbackTrader` have downside bounded by
+  `1` uniformly in world and day, and value at least `Wealth_k / 2 - 1` on each feedback
+  day.
+* The operational patient selector for `app:prandaff`: `deferralEnvelope`,
+  `PatientSettlementClock`, `patientOccupancy` and `patientUnderpriceWeight`, proved
+  P-generable, divergent and `f`-patient.
+* The endpoints `AffineCombination.lic_wubaff`, `AffineCombination.lic_wub`,
+  `AffineCombination.BoundedCombinationSequence.wubaff`, the `lic_prandaff_*` family and
+  the sentence-frequency `lic_learning_*` specializations.
+
+## Two printed defects repaired here
+
+* `def:seqprand`'s sign is reoriented, so that
+  `VariedPseudorandomAbove truth p = PseudorandomAbove (truth - p)` matches `thm:prand`'s
+  advertised conclusion (PE5 in `notes/paper-errata.md`, with the counterexample to the
+  printed pairing).
+* `app:prandaff`'s patience argument is run against the monotone `deferralEnvelope`, so it
+  holds for the non-monotone deferral functions `def:deferralfunc` actually permits (PE4).
+
+## Conventions
+
+Every hypothesis structure in this file is **conclusion-free**: it carries computational
+data only — no price bound, no weighting-divergence or bias premise, and no
+pseudorandom-learning conclusion — so none of them can smuggle a theorem in as a
+hypothesis.  Each is documented by what it does carry.  They are
+`FeedbackTraderEmission`, `FeedbackTraderEmissionFamily`, `FeedbackTraderEmissionSigns`
+and `FeedbackTruthSequence` (discharged in `Construction/Witnesses/FeedbackEmission.lean` and
+`FeedbackTruth.lean`), `PatientSettlementClock`
+(`BoundedEvaluation.PatientSettlementClock.ofComputations`) and
+`PseudorandomFrequencyInfrastructureWithHistoricalVerifiers`
+(`Construction/Witnesses/HistoricalMaturity.lean`).
+
+`dd:asymp` owns the limit vocabulary and `dd:fuel` the trader certificates.  `thm:benford`
+is proved from `thm:prand` by the paper's rational squeeze, with `p` staying real
+throughout.
+
+## Where the results are consumed
+
+`AffineCombination.lic_wubaff`, `AffineCombination.lic_wub` and
+`AffineCombination.BoundedCombinationSequence.wubaff` feed
+`Construction/Witnesses/FeedbackUnconditional.lean`'s `lic_wubaff_ofComputation*` forms.
+The `lic_prandaff_*_of_historicalVerifiers` and `BoundedCombinationSequence.prandaff*`
+forms feed `Properties/ExpectationProperties.lean` and the clock-free
+`lic_learning_varied_pseudorandom*` and `lic_learning_pseudorandom_frequency*` endpoints in
+`Construction/Witnesses/HistoricalMaturity.lean`.
+-/
 
 namespace LogicalInduction
 
@@ -65,6 +114,11 @@ def sentenceMinusFeature (φ : ℕ → Sentence) (pFeature : ℕ → EF) (n : �
     (sentenceMinusFeature φ pFeature n).magnitude P = 1 := by
   simp [sentenceMinusFeature, magnitude]
 
+/-- The `PolySequence` certificate for the centered family `φ n - pFeature n`: a single
+term of coefficient `1` on `φ n`, with the negated generated rational as the constant.  It
+is assembled from a write-out certificate for the sentences (`def:ec`) and a
+`GeneratedRatFeature` certificate for the rationals, and is what the `thm:prand` endpoints
+supply for their affine family. -/
 noncomputable def sentenceMinusFeature_polySequence
     (φ : ℕ → Sentence) (pFeature : ℕ → EF)
     (hφ : BigSentenceCodes φ) {P : History} {p : ℕ → ℚ}
@@ -107,6 +161,8 @@ lemma sentenceMinusFeature_bounded
       (hpProb n).1, (hpProb n).2]
 
 end AffineCombination
+
+/-! ## Pseudorandom sequences and patient weightings -/
 
 /-- A realized weighting is **`f`-patient** when the total weight in every inclusive
 deferral window `[n, f n]` has one uniform finite bound.  This is exactly the definition
@@ -172,6 +228,8 @@ def PseudorandomBelow (truth : ℕ → ℝ) (f : DeferralFunction) (P : History)
 def Pseudorandom (truth : ℕ → ℝ) (f : DeferralFunction) (P : History) : Prop :=
   PseudorandomAbove truth f P ∧ PseudorandomBelow truth f P
 
+/-! ## Rescaling and sign transport -/
+
 /-- Positive rescaling preserves pseudorandom nonnegativity. -/
 lemma PseudorandomAbove.const_mul_pos
     {truth : ℕ → ℝ} {f : DeferralFunction} {P : History}
@@ -231,26 +289,33 @@ lemma asympEq_zero_of_const_mul_pos
   exact ⟨asympLE_zero_of_const_mul_pos hc h.1,
     asympGE_zero_of_const_mul_pos hc h.2⟩
 
-/-- Paper pseudorandomness at a fixed (possibly irrational) frequency `p`: every legal,
-divergent, `f`-patient market-generated weighting sees weighted truth frequency `p`.
-Keeping `p : ℝ` is essential for `thm:benford`; rationality is introduced only locally
-by the squeeze proof. -/
+/-- Paper `def:pseudorandom`: pseudorandomness at a fixed, possibly irrational, frequency
+`p` — every legal, divergent, `f`-patient market-generated weighting sees weighted truth
+frequency `p`.  The paper quantifies over an arbitrary set `S` of divergent weightings;
+here `S` is fixed inline to the P-generable divergent `f`-patient ones.  Keeping `p : ℝ` is
+essential for `thm:benford`; rationality is introduced only locally by the squeeze proof. -/
 def PseudorandomFrequency (truth : ℕ → ℝ) (p : ℝ)
     (f : DeferralFunction) (P : History) : Prop :=
   ∀ (W : ℕ → EF), PGenerableWeighting W → DivergentWeighting W P →
     DeferralPatient f W P →
       weightedAverage (fun i ↦ (W i).denote P) truth ≈ₙ (fun _ ↦ p)
 
-/-- Paper `def:seqprand`, with the sign oriented to match its advertised conclusion:
-the determined centered value is `ThmInd(φₙ) - pₙ`. -/
+/-- Paper `def:seqprand`, `≳ₙ` branch, with the sign oriented to match its advertised
+conclusion: the determined centered value is `ThmInd(φₙ) - pₙ` (PE5 in
+`notes/paper-errata.md`). -/
 def VariedPseudorandomAbove (truth : ℕ → ℝ) (p : ℕ → ℚ)
     (f : DeferralFunction) (P : History) : Prop :=
   PseudorandomAbove (fun n ↦ truth n - (p n : ℝ)) f P
 
+/-- Paper `def:seqprand`, `≲ₙ` branch, with the same sign reorientation as
+`VariedPseudorandomAbove` (PE4/PE5 are recorded in `notes/paper-errata.md`; PE5 gives the
+counterexample to the printed pairing). -/
 def VariedPseudorandomBelow (truth : ℕ → ℝ) (p : ℕ → ℚ)
     (f : DeferralFunction) (P : History) : Prop :=
   PseudorandomBelow (fun n ↦ truth n - (p n : ℝ)) f P
 
+/-- Paper `def:seqprand`, two-sided, with the same sign reorientation as
+`VariedPseudorandomAbove` (PE5 in `notes/paper-errata.md`). -/
 def VariedPseudorandom (truth : ℕ → ℝ) (p : ℕ → ℚ)
     (f : DeferralFunction) (P : History) : Prop :=
   Pseudorandom (fun n ↦ truth n - (p n : ℝ)) f P
@@ -279,6 +344,7 @@ lemma PseudorandomFrequency.variedBelow_of_lt
     weightedAverage_const _ _ (ne_of_gt hden)]
   linarith
 
+/-- Negating the stream turns pseudorandom nonpositivity into nonnegativity. -/
 lemma PseudorandomBelow.neg {truth : ℕ → ℝ} {f : DeferralFunction}
     {P : History} (h : PseudorandomBelow truth f P) :
     PseudorandomAbove (fun n ↦ -truth n) f P := by
@@ -288,6 +354,23 @@ lemma PseudorandomBelow.neg {truth : ℕ → ℝ} {f : DeferralFunction}
   filter_upwards [hbelow ε hε, hWdiv.eventually_prefixSum_pos] with n hn hden
   rw [weightedAverage_neg _ _ (ne_of_gt hden)]
   linarith
+
+/-- Negating the stream turns pseudorandom nonnegativity into nonpositivity. -/
+lemma PseudorandomAbove.neg {truth : ℕ → ℝ} {f : DeferralFunction}
+    {P : History} (h : PseudorandomAbove truth f P) :
+    PseudorandomBelow (fun n ↦ -truth n) f P := by
+  intro W hWgen hWdiv hpatient
+  have habove := h W hWgen hWdiv hpatient
+  intro ε hε
+  filter_upwards [habove ε hε, hWdiv.eventually_prefixSum_pos] with n hn hden
+  rw [weightedAverage_neg _ _ (ne_of_gt hden)]
+  linarith
+
+/-- Negating the stream exchanges the two branches of two-sided pseudorandomness. -/
+lemma Pseudorandom.neg {truth : ℕ → ℝ} {f : DeferralFunction}
+    {P : History} (h : Pseudorandom truth f P) :
+    Pseudorandom (fun n ↦ -truth n) f P :=
+  ⟨h.2.neg, h.1.neg⟩
 
 /-! ## Fractional-wealth feedback kernel -/
 
@@ -301,8 +384,7 @@ noncomputable def feedbackWealth (δ : ℝ) (w r : ℕ → ℝ) (k : ℕ) : ℝ 
 /-- Elementary logarithmic estimate used by the Kelly argument.  The slightly coarser
 factor `2` (instead of the paper's informal factor `1`) follows directly from
 `1 - x⁻¹ ≤ log x` and is sufficient for the same convergence contradiction. -/
-lemma sub_two_mul_sq_le_log_one_add {x : ℝ}
-    (hlo : -(1 / 2 : ℝ) ≤ x) (_hhi : x ≤ 1 / 2) :
+lemma sub_two_mul_sq_le_log_one_add {x : ℝ} (hlo : -(1 / 2 : ℝ) ≤ x) :
     x - 2 * x ^ 2 ≤ Real.log (1 + x) := by
   have hpos : 0 < 1 + x := by linarith
   have hlog := Real.one_sub_inv_le_log_of_pos hpos
@@ -367,7 +449,7 @@ lemma feedbackWealth_log_lower {δ : ℝ} {w r : ℕ → ℝ}
         Real.log (1 + δ * w i * r i) := by
     intro i hi
     have hbet := feedbackBet_mem_Icc hδ0 hδ (hw i) (hr i)
-    have hlog := sub_two_mul_sq_le_log_one_add hbet.1 hbet.2
+    have hlog := sub_two_mul_sq_le_log_one_add hbet.1
     have hw0 := (hw i).1
     have hw1 := (hw i).2
     have hrlo := (hr i).1
@@ -442,8 +524,9 @@ lemma feedbackWealth_not_bddAbove_of_frequently_positive_return
 
 namespace ROIBudget
 
-/-- A finite feature product, used to represent multiplicative Kelly wealth without an
-opaque recursive certificate. -/
+/-- The finite product of a list of expressible features, right-folded over `EF.mul` from
+`EF.const 1`.  It is what lets multiplicative Kelly wealth be carried as explicit syntax
+the emitter can meter, matching `ROIBudget.sumFeatures` on the additive side. -/
 def prodFeatures : List EF → EF :=
   List.foldr EF.mul (EF.const 1)
 
@@ -599,15 +682,6 @@ lemma feedbackWealthFeature_closed {As : ℕ → AffineCombination}
   simp only [List.mem_map, List.mem_range] at he
   obtain ⟨j, hj, rfl⟩ := he
   exact feedbackFactorFeature_closed hpoly hW f δ j ρ P
-
-lemma feedbackBetaFeature_closed {As : ℕ → AffineCombination}
-    (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
-    (f : DeferralFunction) (δ : ℚ) (k : ℕ) (ρ : List ℝ) (P : History) :
-    (feedbackBetaFeature As W f δ k).denoteWith ρ P =
-      (feedbackBetaFeature As W f δ k).denote P := by
-  simp only [feedbackBetaFeature, EF.denoteWith, EF.denote_mul,
-    Pi.mul_apply, EF.denote_const]
-  rw [feedbackWealthFeature_closed hpoly hW f δ k ρ P, hW.closed (f k) ρ P]
 
 @[simp] lemma feedbackFactorFeature_denote
     (As : ℕ → AffineCombination) (W : ℕ → EF) (f : DeferralFunction)
@@ -838,13 +912,12 @@ lemma feedbackTrader_trades
   intro k hk
   exact feedbackRoundTrip_trades hpoly hW hstrict δ k n
 
-/-- Structured token-emission boundary for the concrete feedback trader.  It exposes
-the exact trade count, each coefficient feature, and each sentence code; `trades_eq`
-requires these fields to reconstruct the trader's real day strategy.  It contains no
-prices, worlds, wealth bounds, bias premise, exploitation claim, or logical-induction
-conclusion.  Inhabiting it is a purely computational obligation, discharged by running
-the deferral program under a day-`n` polynomial clock and emitting a trade only for the
-components whose bounded run has returned the current day.
+/-- Structured token-emission boundary for the concrete feedback trader.  It carries the
+exact trade count, each coefficient feature and each sentence code, together with
+`trades_eq`, which pins those fields to the trader's real day strategy.  Conclusion-free,
+as the module docstring records.  Inhabiting it is a purely computational obligation,
+discharged by running the deferral program under a day-`n` polynomial clock and emitting a
+trade only for the components whose bounded run has returned the current day.
 Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTraderEmission
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -861,10 +934,10 @@ structure FeedbackTraderEmission
       (List.range (tradeCount n)).map (fun j ↦
         (coefficient (Nat.pair n j), sentence (Nat.pair n j)))
 
-/-- Uniform emission boundary for every sufficiently small rational Kelly fraction.
-The feedback proof selects the fraction only after receiving an analytic error tolerance,
-so a single preselected trader is not enough for the paper's quantified convergence
-claim.  Each member is still the exact, conclusion-free `FeedbackTraderEmission` above.
+/-- Uniform emission boundary for every sufficiently small rational Kelly fraction.  The
+feedback proof selects the fraction only after receiving an analytic error tolerance, so a
+single preselected trader does not meet the paper's quantified convergence claim.  Each
+member is exactly the `FeedbackTraderEmission` above.
 Paper node: `thm:wubaff` -/
 structure FeedbackTraderEmissionFamily
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -873,9 +946,9 @@ structure FeedbackTraderEmissionFamily
   emit : ∀ δ : ℚ, 0 < (δ : ℝ) → (δ : ℝ) ≤ 1 / 2 →
     FeedbackTraderEmission hpoly hW hstrict δ
 
-/-- The two sign orientations required for an equality conclusion.  The negative family
-emits the same concrete Kelly construction applied to the explicitly negated affine
-sequence; no bias or convergence claim is stored in this boundary.
+/-- The two sign orientations an equality conclusion requires.  The negative family emits
+the same concrete Kelly construction applied to the explicitly negated affine sequence.
+Conclusion-free, as the module docstring records.
 Paper node: `thm:wubaff` -/
 structure FeedbackTraderEmissionSigns
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -904,14 +977,6 @@ lemma feedbackTrader_ec
   intro n
   rw [emit.trades_eq, serializeTrades_map_singleton]
 
-private lemma feedback_list_range_map_sum (g : ℕ → ℝ) : ∀ n,
-    ((List.range n).map g).sum = ∑ k ∈ Finset.range n, g k
-  | 0 => by simp
-  | n + 1 => by
-      rw [List.range_succ, List.map_append, List.sum_append,
-        Finset.sum_range_succ, feedback_list_range_map_sum g n]
-      simp
-
 lemma feedbackTrader_strat_value {As : ℕ → AffineCombination}
     (hpoly : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
@@ -920,7 +985,7 @@ lemma feedbackTrader_strat_value {As : ℕ → AffineCombination}
       ∑ k ∈ Finset.range (n + 1),
         ((feedbackRoundTrip hpoly hW hstrict δ k).strat n).value P w := by
   rw [feedbackTrader, Strategy.join_value]
-  simpa [Function.comp_def] using feedback_list_range_map_sum
+  simpa [Function.comp_def] using list_range_map_sum
     (fun k ↦ ((feedbackRoundTrip hpoly hW hstrict δ k).strat n).value P w) (n + 1)
 
 lemma feedbackRoundTrip_value_zero_of_day_lt_index
@@ -1050,6 +1115,33 @@ lemma feedbackTrader_netWorth_at_stage
     feedbackRoundTrip_closed_sum hpoly hW hstrict δ P v k n hopen,
     feedbackRoundTrip_netWorth_during_open hpoly hW hstrict δ P v k n hopen hclose]
 
+/-- A one-step price difference of a normalized affine combination lies in `[-1, 1]`. -/
+private lemma price_sub_price_mem_Icc {As : ℕ → AffineCombination} {P : History}
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (i a b : ℕ) :
+    (As i).price P a - (As i).price P b ∈ Set.Icc (-1 : ℝ) 1 := by
+  have ha := (As i).abs_price_sub_price_le_magnitude P a b (hP a) (hP b)
+  have hm := hmag i
+  rw [abs_le] at ha
+  exact ⟨by linarith, by linarith⟩
+
+/-- The downside of a single live unit position in a normalized affine combination, read
+against any completed world, is at least `-1`. -/
+private lemma neg_one_le_value_sub_price {As : ℕ → AffineCombination} {P : History}
+    (hpoly : PolySequence As)
+    (hmag : ∀ i, (As i).magnitude P ≤ 1)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (v : PCWorld) (i : ℕ) :
+    -1 ≤ (As i).value P v.payout - (As i).price P i := by
+  have hdiffAbs := (As i).abs_value_sub_price_le_magnitude P v.payout i
+    (hpoly.terms_rank i)
+    (fun φ ↦ by
+      by_cases hφ : v.Holds φ
+      · exact Or.inr (by simp [PCWorld.payout, hφ])
+      · exact Or.inl (by simp [PCWorld.payout, hφ]))
+    (hP i)
+  rw [abs_le] at hdiffAbs
+  linarith [hmag i]
+
 /-- Kelly's bounded-downside invariant for the actual joined trader.  It is uniform in
 the assessment world and day: normalized affine magnitude bounds the sole live position,
 while positivity of the explicit multiplicative wealth makes all completed gains absorb
@@ -1070,26 +1162,13 @@ lemma feedbackTrader_netWorth_lower
     let returns : ℕ → ℝ := fun j ↦
       (As (f j)).price P (f (j + 1)) - (As (f j)).price P (f j)
     have hw : ∀ j, weights j ∈ Set.Icc (0 : ℝ) 1 := fun j ↦ hWdiv.1 (f j)
-    have hr : ∀ j, returns j ∈ Set.Icc (-1 : ℝ) 1 := by
-      intro j
-      have ha := (As (f j)).abs_price_sub_price_le_magnitude P
-        (f (j + 1)) (f j) (hP (f (j + 1))) (hP (f j))
-      have hm := hmag (f j)
-      rw [abs_le] at ha
-      exact ⟨by dsimp [returns]; linarith, by dsimp [returns]; linarith⟩
+    have hr : ∀ j, returns j ∈ Set.Icc (-1 : ℝ) 1 := fun j ↦
+      price_sub_price_mem_Icc hmag hP (f j) (f (j + 1)) (f j)
     have hwealth : 0 < feedbackWealth (δ : ℝ) weights returns k :=
       feedbackWealth_pos hδ0 hδ hw hr k
-    have hdiffAbs := (As (f k)).abs_value_sub_price_le_magnitude P v.payout (f k)
-      (hpoly.terms_rank (f k))
-      (fun φ ↦ by
-        by_cases hφ : v.Holds φ
-        · exact Or.inr (by simp [PCWorld.payout, hφ])
-        · exact Or.inl (by simp [PCWorld.payout, hφ]))
-      (hP (f k))
     have hdiff : -1 ≤
-        (As (f k)).value P v.payout - (As (f k)).price P (f k) := by
-      rw [abs_le] at hdiffAbs
-      linarith [hmag (f k)]
+        (As (f k)).value P v.payout - (As (f k)).price P (f k) :=
+      neg_one_le_value_sub_price hpoly hmag hP v (f k)
     have hcoef0 : 0 ≤ (δ : ℝ) * feedbackWealth (δ : ℝ) weights returns k * weights k :=
       mul_nonneg (mul_nonneg hδ0 hwealth.le) (hw k).1
     have hopenLower :
@@ -1200,26 +1279,13 @@ lemma feedbackTrader_netWorth_at_feedback_lower
   let returns : ℕ → ℝ := fun j ↦
     (As (f j)).price P (f (j + 1)) - (As (f j)).price P (f j)
   have hw : ∀ j, weights j ∈ Set.Icc (0 : ℝ) 1 := fun j ↦ hWdiv.1 (f j)
-  have hr : ∀ j, returns j ∈ Set.Icc (-1 : ℝ) 1 := by
-    intro j
-    have ha := (As (f j)).abs_price_sub_price_le_magnitude P
-      (f (j + 1)) (f j) (hP (f (j + 1))) (hP (f j))
-    have hm := hmag (f j)
-    rw [abs_le] at ha
-    exact ⟨by dsimp [returns]; linarith, by dsimp [returns]; linarith⟩
+  have hr : ∀ j, returns j ∈ Set.Icc (-1 : ℝ) 1 := fun j ↦
+    price_sub_price_mem_Icc hmag hP (f j) (f (j + 1)) (f j)
   have hwealth : 0 ≤ feedbackWealth (δ : ℝ) weights returns k :=
     (feedbackWealth_pos hδ0 hδ hw hr k).le
-  have hdiffAbs := (As (f k)).abs_value_sub_price_le_magnitude P v.payout (f k)
-    (hpoly.terms_rank (f k))
-    (fun φ ↦ by
-      by_cases hφ : v.Holds φ
-      · exact Or.inr (by simp [PCWorld.payout, hφ])
-      · exact Or.inl (by simp [PCWorld.payout, hφ]))
-    (hP (f k))
   have hdiff : -1 ≤
-      (As (f k)).value P v.payout - (As (f k)).price P (f k) := by
-    rw [abs_le] at hdiffAbs
-    linarith [hmag (f k)]
+      (As (f k)).value P v.payout - (As (f k)).price P (f k) :=
+    neg_one_le_value_sub_price hpoly hmag hP v (f k)
   rw [feedbackTrader_netWorth_at_feedback hpoly hW hstrict δ P v k,
     feedbackBetaFeature_denote]
   change feedbackWealth (δ : ℝ) weights returns k / 2 - 1 ≤
@@ -1298,13 +1364,8 @@ lemma feedbackTrader_exploits_of_frequently_positive_return
     fun i ↦ hWdiv.1 (f i)
   have hr : ∀ i,
       (As (f i)).price P (f (i + 1)) - (As (f i)).price P (f i) ∈
-        Set.Icc (-1 : ℝ) 1 := by
-    intro i
-    have ha := (As (f i)).abs_price_sub_price_le_magnitude P
-      (f (i + 1)) (f i) (hP (f (i + 1))) (hP (f i))
-    have hm := hmag (f i)
-    rw [abs_le] at ha
-    exact ⟨by linarith, by linarith⟩
+        Set.Icc (-1 : ℝ) 1 := fun i ↦
+    price_sub_price_mem_Icc hmag hP (f i) (f (i + 1)) (f i)
   apply feedbackTrader_exploits_of_wealth_unbounded hpoly hW hstrict δ hWdiv hmag hP
     hδ0.le hδ hworld
   exact feedbackWealth_not_bddAbove_of_frequently_positive_return
@@ -1509,6 +1570,8 @@ lemma prefixSum_eq_feedbackPrefixSum_stage
   exact prefixSum_at_deferral_eq_feedbackPrefixSum hstrict hsupport
     (feedbackStage f n)
 
+/-! ### The feedback clock and its transfer to all-day averages -/
+
 /-- Convergence on the sparse feedback clock transfers back to the paper's all-day
 weighted average when the weighting has no mass off the schedule image. -/
 lemma weightedAverage_supported_asympEq_zero_of_feedback
@@ -1622,6 +1685,8 @@ lemma feedbackWeightedAverage_asympEq_zero
   apply (div_le_iff₀ hmass0).2
   linarith
 
+/-! ## Unbiasedness from feedback (`thm:wubaff`, `thm:wub`) -/
+
 /-- One-sided sparse feedback theorem.  Delayed quote accuracy makes the weighted
 future-price error vanish.  If the current weighted bias were recurrently negative,
 their difference would give the explicit Kelly trader a recurrent positive return,
@@ -1642,8 +1707,6 @@ lemma feedbackWeightedBias_asympGE_zero
     feedbackWeightedAverage (fun k ↦ (W (f k)).denote P)
       (fun k ↦ (As (f k)).price P (f k) - truth (f k)) ≳ₙ
         (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let w : ℕ → ℝ := fun k ↦ (W (f k)).denote P
   let quoteError : ℕ → ℝ := fun k ↦
     (As (f k)).price P (f (k + 1)) - truth (f k)
@@ -1716,7 +1779,6 @@ lemma feedbackWeightedBias_asympEq_zero
     (emit : FeedbackTraderEmissionSigns hpoly hW hstrict)
     (hWdiv : DivergentWeighting W P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
-    (_hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hacc : DeferralFeedbackAccurate As truth P f)
     (hmass : Tendsto
       (feedbackPrefixSum (fun k ↦ (W (f k)).denote P)) atTop atTop)
@@ -1832,8 +1894,6 @@ theorem lic_wubaff
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ (As i).price P i) truth ≈ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let w : ℕ → ℝ := fun i ↦ (W i).denote P
   let bias : ℕ → ℝ := fun i ↦ (As i).price P i - truth i
   have hmass : Tendsto
@@ -1844,7 +1904,7 @@ theorem lic_wubaff
   have hsparse : feedbackWeightedAverage (fun k ↦ w (f k))
       (fun k ↦ bias (f k)) ≈ₙ (fun _ ↦ 0) := by
     simpa only [w, bias] using feedbackWeightedBias_asympEq_zero
-      hpoly hW hstrict emit hWdiv hmag hP hacc hmass hworld
+      hpoly hW hstrict emit hWdiv hmag hacc hmass hworld
   have hall : weightedAverage w bias ≈ₙ (fun _ ↦ 0) :=
     weightedAverage_supported_asympEq_zero_of_feedback hstrict
       (by exact hsupport) hsparse
@@ -1871,8 +1931,6 @@ theorem BoundedCombinationSequence.wubaff
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i => (W i).denote P)
       (fun i => (As i).price P i) truth ≈ₙ (fun _ => 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
   have hdetScaled : DeterminedViaTheory
@@ -1921,8 +1979,6 @@ theorem lic_wub
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     weightedBias (fun i ↦ (W i).denote P)
       (fun i ↦ P i (φ i)) truth ≈ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
@@ -1937,7 +1993,12 @@ theorem lic_wub
 
 end AffineCombination
 
-/-! ## Operational patient selector -/
+/-! ## Operational patient selector
+
+The selector `app:prandaff` needs is built here: `deferralEnvelope` restores the patience
+bound for non-monotone deferral functions (PE4), `PatientSettlementClock` carries the
+`DefinitelySettled` dovetail, and `patientOccupancy`/`patientUnderpriceWeight` assemble the
+underpricing weighting that is proved P-generable, divergent and `f`-patient. -/
 
 /-- Monotone envelope of a possibly nonmonotone deferral function.  The paper only
 requires `f n > n`, so its patient-selector construction must retain component `i`
@@ -1962,25 +2023,24 @@ lemma deferral_le_envelope_of_le (f : DeferralFunction) {i j : ℕ} (hij : i ≤
     f i ≤ deferralEnvelope f j :=
   (deferral_le_envelope f i).trans (deferralEnvelope_mono f hij)
 
-lemma lt_deferralEnvelope (f : DeferralFunction) (n : ℕ) :
-    n < deferralEnvelope f n :=
-  (f.lt n).trans_le (deferral_le_envelope f n)
-
 /-- A bounded operational clock for the two finite facts used by the Appendix
 `app:prandaff` selector: whether component `i` is still before its envelope deadline or
 not yet certified settled at stage `n`.
 
 The clock is an internal interface, **not** a modeling substitution: it is *derived* from
-the paper's own `DefinitelySettled` dovetail (`app:prandaff`), which a logical inductor's
-market and deductive-process programs already supply. `PatientSettlementClock.ofComputations`
-builds it from `IsLogicalInductor`'s
-`marketComputable`/`processComputable` alone, so every paper-facing `thm:prandaff`,
-`thm:prand`, `thm:prandexp`, and `thm:benford` endpoint discharges it with no added
-hypothesis — provenance kind `C`, composition. Its emitted bit is polynomially codeable;
-activity only decreases; every component is active through its deadline and eventually
-becomes inactive; and inactivity certifies both deadline passage and finite-stage
-settlement *to within the error stream `err`*.  It contains no prices, weighting
-divergence, bias, or pseudorandom-learning conclusion.  It is instantiated by a bounded
+the paper's own `DefinitelySettled` dovetail (`app:prandaff`).
+`PatientSettlementClock.ofComputations`
+(`Construction/Witnesses/BoundedEvaluation.lean`) runs that dovetail on the inductor's own
+market and deductive-process programs; its remaining inputs — the polynomial certificate
+`hpoly`, the determination premise `hdet`, world non-emptiness `hworld`, and the tolerance
+stream with its primitive recursiveness, reachability and error bound — are already
+hypotheses of the endpoints, which is why no paper-facing `thm:prandaff`, `thm:prand`,
+`thm:prandexp` or `thm:benford` endpoint takes a clock.  Provenance kind `C`, composition.
+
+Its emitted bit is polynomially codeable; activity only decreases; every component is
+active through its deadline and eventually becomes inactive; and inactivity certifies both
+deadline passage and finite-stage settlement *to within the error stream `err`*.
+Conclusion-free, as the module docstring records.  It is instantiated by a bounded
 universal evaluator (a total fuel-clocked interpreter run under a growing budget) plus a
 finite-world checker.
 
@@ -2003,6 +2063,10 @@ structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
     deferralEnvelope f i < n ∧ ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
       |(As i).value P v.payout - truth i| ≤ err i
 
+/-- The same clock read against the negated affine sequence and the negated truth stream.
+Every field transports unchanged except `settled_of_inactive`, whose tolerance is symmetric
+under negation — which is what lets the nonpositive `thm:prandaff` branch reuse the proved
+nonnegative one. -/
 def PatientSettlementClock.neg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
@@ -2351,6 +2415,18 @@ lemma DeferralPatient.mono_bound {f : DeferralFunction} {W : ℕ → EF} {P : Hi
   obtain ⟨C, hC⟩ := h
   refine ⟨max C 0, le_max_right _ _, fun n ↦ (hC n).trans (le_max_left _ _ )⟩
 
+/-- The subsequence along which a zero bias limit point is witnessed, together with the
+smallness of the bias on it.  Both analytic contradictions below open with this step. -/
+private lemma exists_subseq_bias_lt
+    (w market truth : ℕ → ℝ)
+    (hbias : HasLimitPoint (weightedBias w market truth) 0) {δ : ℝ} (hδ : 0 < δ) :
+    ∃ ψ : ℕ → ℕ, StrictMono ψ ∧
+      ∀ᶠ k in atTop, |weightedBias w market truth (ψ k)| < δ := by
+  obtain ⟨ψ, hψmono, hψbias⟩ := hbias.exists_subseq
+  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 hψbias δ hδ
+  exact ⟨ψ, hψmono, eventually_atTop.2 ⟨N, fun k hk ↦ by
+    simpa [Real.dist_eq] using hN k hk⟩⟩
+
 /-- The analytic contradiction linking recurring unbiasedness to pseudorandom learning.
 If normalized bias has `0` as a subsequential limit and the normalized truth average is
 asymptotically nonnegative, then the normalized market average cannot remain below any
@@ -2364,7 +2440,8 @@ lemma not_eventually_weightedAverage_lt_of_limitPoint_bias
     (ε : ℝ) (hε : 0 < ε) :
     ¬ ∀ᶠ n in atTop, weightedAverage w market n < -ε := by
   intro hmarket
-  obtain ⟨ψ, hψmono, hψbias⟩ := hbias.exists_subseq
+  obtain ⟨ψ, hψmono, hbiasNear⟩ :=
+    exists_subseq_bias_lt w market truth hbias (show (0 : ℝ) < ε / 4 by linarith)
   have htruthNear : ∀ᶠ n in atTop,
       -(ε / 4) ≤ weightedAverage w truth n := by
     have h := htruth (ε / 4) (by linarith)
@@ -2381,12 +2458,6 @@ lemma not_eventually_weightedAverage_lt_of_limitPoint_bias
       -(ε / 4) ≤ weightedAverage w truth (ψ k) ∧
       weightedAverage w market (ψ k) < -ε :=
     hψmono.tendsto_atTop hall
-  have hbiasNear : ∀ᶠ k in atTop,
-      |weightedBias w market truth (ψ k)| < ε / 4 := by
-    have h := Metric.tendsto_atTop.1 hψbias (ε / 4) (by linarith)
-    obtain ⟨N, hN⟩ := h
-    exact eventually_atTop.2 ⟨N, fun k hk ↦ by
-      simpa [Real.dist_eq] using hN k hk⟩
   obtain ⟨N, hN⟩ := eventually_atTop.1 (hallψ.and hbiasNear)
   obtain ⟨hk, hb⟩ := hN N le_rfl
   rw [weightedBias_eq_market_sub_truth w market truth (ne_of_gt hk.1)] at hb
@@ -2403,7 +2474,8 @@ lemma not_eventually_weightedAverage_gt_of_limitPoint_bias
     (ε : ℝ) (hε : 0 < ε) :
     ¬ ∀ᶠ n in atTop, ε < weightedAverage w market n := by
   intro hmarket
-  obtain ⟨ψ, hψmono, hψbias⟩ := hbias.exists_subseq
+  obtain ⟨ψ, hψmono, hbiasNear⟩ :=
+    exists_subseq_bias_lt w market truth hbias (show (0 : ℝ) < ε / 4 by linarith)
   have htruthNear : ∀ᶠ n in atTop,
       weightedAverage w truth n ≤ ε / 4 := by
     have h := htruth (ε / 4) (by linarith)
@@ -2419,44 +2491,41 @@ lemma not_eventually_weightedAverage_gt_of_limitPoint_bias
       weightedAverage w truth (ψ k) ≤ ε / 4 ∧
       ε < weightedAverage w market (ψ k) :=
     hψmono.tendsto_atTop hall
-  have hbiasNear : ∀ᶠ k in atTop,
-      |weightedBias w market truth (ψ k)| < ε / 4 := by
-    have h := Metric.tendsto_atTop.1 hψbias (ε / 4) (by linarith)
-    obtain ⟨N, hN⟩ := h
-    exact eventually_atTop.2 ⟨N, fun k hk ↦ by
-      simpa [Real.dist_eq] using hN k hk⟩
   obtain ⟨N, hN⟩ := eventually_atTop.1 (hallψ.and hbiasNear)
   obtain ⟨hk, hb⟩ := hN N le_rfl
   rw [weightedBias_eq_market_sub_truth w market truth (ne_of_gt hk.1)] at hb
   rw [abs_lt] at hb
   linarith [hk.2.1, hk.2.2, hb.1, hb.2]
 
-/-! ## Paper-facing affine pseudorandomness branch -/
+/-! ## Learning pseudorandom affine sequences (`thm:prandaff`)
+
+Each endpoint below follows `app:prandaff`: it builds the underpricing selector of the
+operational patient section above, proves it P-generable, divergent and `f`-patient,
+obtains its zero recurring-bias limit point from the unbiasedness theorem, and derives the
+diagonal contradiction against the pseudorandomness premise. -/
+
+namespace AffineCombination
 
 /-- The `≳ₙ 0` branch of `thm:prandaff`, conditional only on the two operational
 representation hypotheses: historical maturity verification for arbitrary legal
-weightings, and the settlement clock for the determined affine sequence.  The proof
-constructs the `app:prandaff` selector, proves it P-generable/divergent/patient, obtains
-its zero recurring-bias limit point, and derives the diagonal contradiction. -/
-theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+weightings, and the settlement clock for the determined affine sequence. -/
+theorem ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
-    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (hnegl : AffineCombination.ErrorNegligible As P e)
+    (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+      BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   intro ε hε
   by_contra hnotEventually
   rw [Filter.not_eventually] at hnotEventually
@@ -2512,69 +2581,65 @@ theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_above_of_histor
 
 /-- The `≲ₙ 0` branch of `thm:prandaff`, obtained by applying the proved nonnegative
 branch to the explicitly negated affine sequence. -/
-theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+theorem ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
-    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (hnegl : AffineCombination.ErrorNegligible As P e)
+    (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   have hboundedNeg : BoundedAffinePrices (fun n ↦ (As n).neg) P := by
     obtain ⟨B, hB0, hB⟩ := hbounded
     refine ⟨B, hB0, fun n m ↦ ?_⟩
-    rw [AffineCombination.neg_price, abs_neg]
+    rw [neg_price, abs_neg]
     exact hB n m
   have hmagNeg : ∀ i, ((As i).neg).magnitude P ≤ 1 := by
     intro i
-    rw [AffineCombination.neg_magnitude]
+    rw [neg_magnitude]
     exact hmag i
   have haboveNeg := hdet.neg.lic_prandaff_above_of_historicalVerifiers
     hpoly.neg hnegl.neg hboundedNeg hmagNeg hworld f clock.neg hpseudo.neg
       hverifyNeg hverifyNegNeg
   intro ε hε
   filter_upwards [haboveNeg ε hε] with n hn
-  rw [AffineCombination.neg_price] at hn
+  rw [neg_price] at hn
   simp only [zero_add]
   linarith
 
 /-- Exact two-sided `thm:prandaff`: pseudorandom completed-theory values force the
 diagonal affine prices to converge asymptotically to zero.  The separate declarations
 above retain the paper's one-sided variants. -/
-theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+theorem ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
-    (hdet : AffineCombination.ApproxDeterminedViaTheory As P DP truth e)
-    (hnegl : AffineCombination.ErrorNegligible As P e)
+    (hdet : ApproxDeterminedViaTheory As P DP truth e)
+    (hnegl : ErrorNegligible As P e)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+      BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
     hdet.lic_prandaff_below_of_historicalVerifiers hpoly hnegl hbounded hmag hworld
@@ -2583,78 +2648,78 @@ theorem AffineCombination.ApproxDeterminedViaTheory.lic_prandaff_of_historicalVe
       f clock hpseudo.1 hverify hverifyNeg⟩
 
 /-- Exact `thm:prandaff`, nonnegative branch: the `e = 0` specialization. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+theorem DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+      BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≳ₙ (fun _ ↦ 0) :=
   hdet.approx.lic_prandaff_above_of_historicalVerifiers hpoly
-    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    (errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
     hverify hverifyNeg
 
 /-- Exact `thm:prandaff`, nonpositive branch: the `e = 0` specialization. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+theorem DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≲ₙ (fun _ ↦ 0) :=
   hdet.approx.lic_prandaff_below_of_historicalVerifiers hpoly
-    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    (errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
     hverifyNeg hverifyNegNeg
 
 /-- Exact two-sided `thm:prandaff`: the `e = 0` specialization. -/
-theorem AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
-    {As : ℕ → AffineCombination} (hpoly : AffineCombination.PolySequence As)
+theorem DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+    {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    {truth err : ℕ → ℝ} (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
     (hbounded : BoundedAffinePrices As P)
     (hmag : ∀ i, (As i).magnitude P ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction) (clock : PatientSettlementClock As P DP truth err f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
+      BiasRunHistoricallyVerifiable As hpoly W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
+      BiasRunHistoricallyVerifiable (fun n ↦ (As n).neg)
         hpoly.neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n ↦ ((As n).neg).neg) hpoly.neg.neg W hWgen P DP) :
     (fun n ↦ (As n).price P n) ≈ₙ (fun _ ↦ 0) :=
   hdet.approx.lic_prandaff_of_historicalVerifiers hpoly
-    (AffineCombination.errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
+    (errorNegligible_zero As P) hbounded hmag hworld f clock hpseudo
     hverify hverifyNeg hverifyNegNeg
 
 /-- The nonnegative `thm:prandaff` branch for an arbitrary `BCS`.  The patient clock and
 historical verifiers are formulated for the canonical normalized family, and
 positive-scale cancellation restores the original diagonal prices. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
+theorem BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
-    (h : AffineCombination.BoundedCombinationSequence As P)
+    (h : BoundedCombinationSequence As P)
     {truth : ℕ → ℝ}
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock
@@ -2662,11 +2727,11 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historica
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : PseudorandomAbove truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => (As n).scale (.const h.unitNormalization.scale))
         (h.poly.scaleRat h.unitNormalization.scale) W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => ((As n).scale (.const h.unitNormalization.scale)).neg)
         (h.poly.scaleRat h.unitNormalization.scale).neg W hWgen P DP) :
     (fun n => (As n).price P n) ≳ₙ (fun _ => 0) := by
@@ -2674,26 +2739,26 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_above_of_historica
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
-  have hdetScaled : AffineCombination.DeterminedViaTheory
+  have hdetScaled : DeterminedViaTheory
       (fun n => (As n).scale (.const q)) P DP
       (fun n => (q : ℝ) * truth n) := by
     intro n v hv
-    rw [AffineCombination.scale_value, EF.denote_const, hdet n v hv]
+    rw [scale_value, EF.denote_const, hdet n v hv]
   have hs := hdetScaled.lic_prandaff_above_of_historicalVerifiers
     (h.poly.scaleRat q) ((h.boundedPrices hP).scaleRat q)
       h.unitNormalization.magnitude_le_one hworld f clock
       (hpseudo.const_mul_pos hq) hverify hverifyNeg
   have hscaled : (fun n => (q : ℝ) * (As n).price P n) ≳ₙ (fun _ => 0) := by
-    simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
+    simpa only [q, scale_price, EF.denote_const] using hs
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
 /-- The nonpositive `thm:prandaff` branch for an arbitrary `BCS`. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
+theorem BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
-    (h : AffineCombination.BoundedCombinationSequence As P)
+    (h : BoundedCombinationSequence As P)
     {truth : ℕ → ℝ}
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock
@@ -2701,11 +2766,11 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historica
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : PseudorandomBelow truth f P)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => ((As n).scale (.const h.unitNormalization.scale)).neg)
         (h.poly.scaleRat h.unitNormalization.scale).neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => (((As n).scale (.const h.unitNormalization.scale)).neg).neg)
         (h.poly.scaleRat h.unitNormalization.scale).neg.neg W hWgen P DP) :
     (fun n => (As n).price P n) ≲ₙ (fun _ => 0) := by
@@ -2713,26 +2778,26 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_below_of_historica
     fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
-  have hdetScaled : AffineCombination.DeterminedViaTheory
+  have hdetScaled : DeterminedViaTheory
       (fun n => (As n).scale (.const q)) P DP
       (fun n => (q : ℝ) * truth n) := by
     intro n v hv
-    rw [AffineCombination.scale_value, EF.denote_const, hdet n v hv]
+    rw [scale_value, EF.denote_const, hdet n v hv]
   have hs := hdetScaled.lic_prandaff_below_of_historicalVerifiers
     (h.poly.scaleRat q) ((h.boundedPrices hP).scaleRat q)
       h.unitNormalization.magnitude_le_one hworld f clock
       (hpseudo.const_mul_pos hq) hverifyNeg hverifyNegNeg
   have hscaled : (fun n => (q : ℝ) * (As n).price P n) ≲ₙ (fun _ => 0) := by
-    simpa only [q, AffineCombination.scale_price, EF.denote_const] using hs
+    simpa only [q, scale_price, EF.denote_const] using hs
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
 /-- Two-sided `thm:prandaff` for an arbitrary `BCS`. -/
-theorem AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerifiers
+theorem BoundedCombinationSequence.prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
-    (h : AffineCombination.BoundedCombinationSequence As P)
+    (h : BoundedCombinationSequence As P)
     {truth : ℕ → ℝ}
-    (hdet : AffineCombination.DeterminedViaTheory As P DP truth)
+    (hdet : DeterminedViaTheory As P DP truth)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (f : DeferralFunction)
     (clock : PatientSettlementClock
@@ -2740,29 +2805,35 @@ theorem AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerif
       (fun n => (h.unitNormalization.scale : ℝ) * truth n) 0 f)
     (hpseudo : Pseudorandom truth f P)
     (hverify : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => (As n).scale (.const h.unitNormalization.scale))
         (h.poly.scaleRat h.unitNormalization.scale) W hWgen P DP)
     (hverifyNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => ((As n).scale (.const h.unitNormalization.scale)).neg)
         (h.poly.scaleRat h.unitNormalization.scale).neg W hWgen P DP)
     (hverifyNegNeg : ∀ (W : ℕ → EF) (hWgen : PGenerableWeighting W),
-      AffineCombination.BiasRunHistoricallyVerifiable
+      BiasRunHistoricallyVerifiable
         (fun n => (((As n).scale (.const h.unitNormalization.scale)).neg).neg)
         (h.poly.scaleRat h.unitNormalization.scale).neg.neg W hWgen P DP) :
     (fun n => (As n).price P n) ≈ₙ (fun _ => 0) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨h.prandaff_below_of_historicalVerifiers hdet hworld f clock hpseudo.2
       hverifyNeg hverifyNegNeg,
     h.prandaff_above_of_historicalVerifiers hdet hworld f clock hpseudo.1
       hverify hverifyNeg⟩
 
-/-! ## Sentence-frequency specializations -/
+end AffineCombination
 
-theorem AffineCombination.TheoryTruth.sentenceMinusFeature_determined
+/-! ## Sentence-frequency specializations (`thm:prand`) -/
+
+/-- The bridge from `def:thmval` to the affine layer: if `truth` is the completed-theory
+truth stream of `φ` and `pFeature` generates the rational sequence `p`, then the centered
+family `sentenceMinusFeature φ pFeature` is determined via Θ, with value `truth n - p n`.
+This is the sense in which `def:seqprand`'s centered stream is an affine object.  It is a
+bridge between two of the paper's definitions rather than a claim of the paper, so it is a
+`lemma` and is not an inventory endpoint. -/
+lemma AffineCombination.TheoryTruth.sentenceMinusFeature_determined
     {φ : ℕ → Sentence} {P : History} {DP : DeductiveProcess}
     {truth : ℕ → ℝ} (htruth : AffineCombination.TheoryTruth φ DP truth)
     {p : ℕ → ℚ} {pFeature : ℕ → EF}
@@ -2773,7 +2844,15 @@ theorem AffineCombination.TheoryTruth.sentenceMinusFeature_determined
   intro n v hv
   rw [AffineCombination.sentenceMinusFeature_value, hp.denote n, htruth n v hv]
 
-/-- `thm:prand`, varied-pseudorandom-above branch.
+/-- `thm:prand`, varied-pseudorandom-above branch: if the completed-theory truth stream of
+`φ` is varied pseudorandom above `⟨p⟩`, then `Pₙ(φₙ) ≳ₙ pₙ`.
+
+Five inputs have no counterpart in the paper.  `hφ` and `hp` are the write-out sentence
+codes and the market-generated rational feature that carry `def:ec`'s emission side; `clock`
+is the `app:prandaff` `DefinitelySettled` dovetail, discharged with no added hypothesis by
+`PatientSettlementClock.ofComputations` (see that structure's docstring); `hverify` and
+`hverifyNeg` are the historical bias-run verifiers for the centered family and its
+negation.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -2810,7 +2889,9 @@ theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- `thm:prand`, varied-pseudorandom-below branch.
+/-- `thm:prand`, varied-pseudorandom-below branch: if the completed-theory truth stream of
+`φ` is varied pseudorandom below `⟨p⟩`, then `Pₙ(φₙ) ≲ₙ pₙ`.  Hypotheses as in the
+above branch, read against the negated family.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -2847,7 +2928,9 @@ theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
   rw [AffineCombination.sentenceMinusFeature_price, hp.denote n] at hn
   linarith
 
-/-- Exact two-sided `thm:prand`.
+/-- **`thm:prand`.**  If the completed-theory truth stream of `φ` is varied pseudorandom
+over `⟨p⟩`, then `Pₙ(φₙ) ≈ₙ pₙ`.  The conjunction of the two one-sided branches, with the
+same non-paper inputs.
 Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -2888,17 +2971,20 @@ theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
   simpa only [AsympEq, AffineCombination.sentenceMinusFeature_price,
     hp.denote, sub_zero] using hres
 
-/-! ## Fixed-frequency rational squeeze -/
+/-! ## Fixed-frequency rational squeeze (`thm:benford`)
+
+The real target frequency `p` is squeezed between rationals learned through `thm:prand`:
+below `p` for the `≳ₙ` half, above it for the `≲ₙ` half, with the endpoints `p = 0` and
+`p = 1` closed instead by the market's own pointwise probability bounds. -/
 
 /-- The operational evidence needed to apply the conditional rational-target `prand`
 theorem at every rational `q ∈ [0,1]` used by the `thm:benford` squeeze.
 
 This is an explicit type-(c) representation boundary, not a learning certificate.  Its
 fields provide settlement clocks and executable historical verifiers for the centered
-affine family `φₙ - q` and its two negations.  It contains no price bound,
-pseudorandomness premise, convergence statement, or conclusion of `thm:benford`.  Both
-fields are inhabited from a total fuel-clocked universal interpreter run under a growing
-budget.
+affine family `φₙ - q` and its two negations, and nothing else; conclusion-free, as the
+module docstring records.  Both fields are inhabited from a total fuel-clocked universal
+interpreter run under a growing budget.
 Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
@@ -2936,9 +3022,10 @@ structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
           (AffineCombination.constantRatFeature_generated P q)).neg.neg
         W hWgen P DP
 
-/-- Lower half of `thm:benford`.  The target frequency `p` remains real.  At `p = 0`
-the market's pointwise probability lower bound suffices; otherwise a rational
-`max(0, p-ε/2) < q < p` is learned via `prand`.
+/-- Lower half of `thm:benford`: the price of `φₙ` is eventually within any `ε` of being
+at least the real frequency `p`.  The target frequency stays real throughout;
+`hinfra` supplies the settlement clocks and historical verifiers at every rational the
+squeeze needs (section header).
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -2976,9 +3063,8 @@ theorem lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
       (le_max_right 0 (p - ε / 2)).trans_lt hqlow
     linarith
 
-/-- Upper half of `thm:benford`.  At `p = 1` the market's pointwise probability upper
-bound suffices; otherwise the proof learns a rational
-`p < q < min(1, p+ε/2)` via the below branch of `prand`.
+/-- Upper half of `thm:benford`: the price of `φₙ` is eventually within any `ε` of being
+at most the real frequency `p`.  Hypotheses as in the lower half (section header).
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -3016,9 +3102,14 @@ theorem lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
       hqhigh.trans_le (min_le_right 1 (p + ε / 2))
     linarith
 
-/-- Exact `thm:benford`: an efficiently emittable sentence sequence whose completed-
-theory truth stream is pseudorandom with real frequency `p` is learned at frequency `p`.
-The proof is the paper's rational squeeze, with explicit endpoint cases.
+/-- **`thm:benford`.**  An efficiently emittable sentence sequence whose completed-theory
+truth stream is pseudorandom with real frequency `p` is learned at frequency `p`:
+`Pₙ(φₙ) ≈ₙ p`.
+
+The paper states no hypothesis corresponding to `hinfra`, which carries the settlement
+clocks and executable historical verifiers the squeeze needs at each rational target; it
+is conclusion-free (module docstring) and discharged in
+`Construction/Witnesses/HistoricalMaturity.lean`.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
@@ -3030,8 +3121,6 @@ theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (hinfra : PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
       P DP φ hφ truth f) :
     (fun n ↦ P n (φ n)) ≈ₙ (fun _ ↦ p) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   rw [asympEq_iff_asympLE_asympGE]
   exact ⟨
     lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
@@ -3040,47 +3129,5 @@ theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
       P DP φ hφ truth htruth p hp hworld
       f hpseudo hinfra⟩
-
-#print axioms not_eventually_weightedAverage_lt_of_limitPoint_bias
-#print axioms not_eventually_weightedAverage_gt_of_limitPoint_bias
-#print axioms ROIBudget.fractional_allocations_finset_le_one
-#print axioms patientUnderpriceWeight_pgenerable
-#print axioms patientUnderpriceWeight_deferralPatient
-#print axioms patientUnderpriceWeight_divergent
-#print axioms AffineCombination.sentenceMinusFeature_polySequence
-#print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
-#print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
-#print axioms AffineCombination.DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.prandaff_of_historicalVerifiers
-#print axioms lic_learning_varied_pseudorandom_above_of_historicalVerifiers
-#print axioms lic_learning_varied_pseudorandom_below_of_historicalVerifiers
-#print axioms lic_learning_varied_pseudorandom_of_historicalVerifiers
-#print axioms AffineCombination.constantRatFeature_generated
-#print axioms PseudorandomFrequency.variedAbove_of_lt
-#print axioms PseudorandomFrequency.variedBelow_of_lt
-#print axioms sub_two_mul_sq_le_log_one_add
-#print axioms feedbackWealth_log_lower
-#print axioms feedbackWealth_not_bddAbove_of_frequently_positive_return
-#print axioms AffineCombination.feedbackBetaFeature_denote
-#print axioms AffineCombination.feedbackTrader_netWorth_eq_component_sum
-#print axioms AffineCombination.feedbackTrader_netWorth_lower
-#print axioms AffineCombination.feedbackTrader_netWorth_at_feedback_lower
-#print axioms AffineCombination.feedbackTrader_exploits_of_frequently_positive_return
-#print axioms AffineCombination.feedbackTrader_ec
-#print axioms AffineCombination.lic_not_frequently_positive_feedback_return
-#print axioms AffineCombination.feedbackWeightedAverage_asympEq_zero
-#print axioms AffineCombination.feedbackPrefixSum_tendsto_atTop
-#print axioms AffineCombination.weightedAverage_supported_asympEq_zero_of_feedback
-#print axioms AffineCombination.feedbackWeightedBias_asympGE_zero
-#print axioms AffineCombination.feedbackWeightedBias_asympEq_zero
-#print axioms AffineCombination.FeedbackTruthSequence.accurate
-#print axioms AffineCombination.lic_wubaff
-#print axioms AffineCombination.BoundedCombinationSequence.wubaff
-#print axioms AffineCombination.lic_wub
-#print axioms lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
-#print axioms lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
-#print axioms lic_learning_pseudorandom_frequency_of_historicalVerifiers
 
 end LogicalInduction

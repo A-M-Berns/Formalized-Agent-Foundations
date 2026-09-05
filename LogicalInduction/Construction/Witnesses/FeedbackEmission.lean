@@ -2,16 +2,45 @@ import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Framework.WriteOut
 
 /-!
-# Concrete feedback-trader emission for `thm:wubaff`
+# Concrete feedback-trader emission for `thm:wubaff` and `thm:wubexp`
 
 The feedback trader of the paper's unbiasedness-from-feedback argument is indexed by a
-deferral function (`def:deferralfunc`) whose program runs in time polynomial in its
-*output*, not necessarily in its input.  On day `n` we therefore run that program only for
-the polynomial clock justified when its output is exactly `n`.  Successful runs are sound
-by partial-function uniqueness; unfinished runs emit no trade.
+deferral function (`def:deferralfunc`), whose program runs in time polynomial in its
+*output* and not in its input (tex:1244).  This file turns that bounded schedule into the
+literal coefficient and sentence streams of `AffineCombination.feedbackTrader`.
 
-This file turns that bounded schedule into the literal coefficient/sentence streams of
-`AffineCombination.feedbackTrader`.  It contains no market or convergence argument.
+**The schedule.**  On day `n` the deferral program is run only for the clock justified when
+its output is exactly `n`; `scheduledRun` and `scheduledMatch` normalize an unfinished run
+to `0`, and successful runs are sound by partial-function uniqueness
+(`scheduledMatch_eq_one_iff`, `scheduledValue_eq`).
+
+**Bounded-schedule features.**  `scheduledReturnFeature`, `scheduledFactorFeature`,
+`scheduledWealthFeature` and `scheduledBetaFeature` are the bounded-schedule forms of the
+four feedback features.  Each is proved equal to its ideal counterpart once the runtime day
+has reached the relevant deferral value, and each carries a `BigSpliceStream` emission
+certificate.
+
+**Trade blocks and the flattening.**  `scheduledTermCount` gives a component's width on a
+day — an opening match takes priority, and strict increase of the deferral function rules
+out an overlap — with `scheduledTermCoefficient` and `scheduledTermSentence` its entries;
+`scheduledTradeBlock_eq` proves the block is literally the round-trip trade syntax,
+including the nested closing coefficient `AffineCombination.neg` generates.
+`scheduledTradeCount`, `scheduledTradeMember` and `scheduledTradeOffset` are the prefix-scan
+fields that reconstruct the variable-width blocks as one day-indexed stream
+(`scheduledTradeFields_eq_blocks`, `scheduledTradeFields_eq_trader`).
+
+**The inhabitants.**  `feedbackTraderEmission`, `feedbackTraderEmissionFamily` — one
+construction for every rational Kelly fraction — and `feedbackTraderEmissionSigns`, the only
+inhabitants of `AffineCombination.FeedbackTraderEmissionSigns`.
+
+**Consumers with the boundary discharged.**  `lic_wubaff_ofFeedbackTruth` and
+`boundedCombination_wubaff_ofFeedbackTruth` (`thm:wubaff`), and `luv_wubexp_ofFeedbackTruth`
+(`thm:wubexp`), each stated over an arbitrary market with `[IsLogicalInductor P DP]`.  The
+market and convergence arguments they invoke live in `Properties/Pseudorandomness.lean` and
+`Properties/ExpectationProperties.lean`.
+
+`Nat.sqrt` is locally irreducible here for the reason stated in `BoundedEvaluation.lean`'s
+module header.
 -/
 
 namespace LogicalInduction
@@ -19,10 +48,10 @@ namespace FeedbackEmission
 
 open AffineCombination PrefixPatchCompile
 
--- Deep products below use `Nat.unpair` through `Primcodable`; keep its square-root
--- implementation opaque during elaboration, since unfolding `Nat.sqrt` sends `whnf` into
--- a loop on the `dd:fuel` compiler goals.
+-- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The bounded deferral schedule -/
 
 /-- Run the deferral program for component `k` with the day-`n` polynomial clock.
 Input is `⟨n,k⟩`; output is normalized as `0` for unfinished and `f k + 1` for finished. -/
@@ -72,6 +101,7 @@ lemma scheduledMatch_polyFueled (f : DeferralFunction) (a degree : ℕ) :
         ((z.unpair.1 + 1) - scheduledRun f a degree z) ≠ 0 := by omega
     rw [if_neg hz, if_neg h]
 
+/-- The match flag is Boolean. -/
 lemma scheduledMatch_zero_or_one (f : DeferralFunction) (a degree z : ℕ) :
     scheduledMatch f a degree z = 0 ∨ scheduledMatch f a degree z = 1 := by
   simp only [scheduledMatch]
@@ -95,6 +125,7 @@ lemma scheduledMatch_eq_one_iff
     subst n
     simp [scheduledMatch, scheduledRun, deadlineRun, codeEvalnNat, hspec]
 
+/-- The match flag is `0` exactly when the component does not defer to this day. -/
 lemma scheduledMatch_eq_zero_iff
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -149,12 +180,15 @@ lemma scheduledValue_eq
 def scheduledDeferral (f : DeferralFunction) (a degree n k : ℕ) : ℕ :=
   scheduledValue f a degree (Nat.pair n k)
 
+/-- Day-indexed form of `scheduledValue_eq`. -/
 lemma scheduledDeferral_eq
     (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
     {n k : ℕ} (hkn : f k ≤ n) :
     scheduledDeferral f a degree n k = f k :=
   scheduledValue_eq f hspec hkn
+
+/-! ## Bounded-schedule features and their ideal counterparts -/
 
 /-- Bounded-schedule version of one feedback return feature. -/
 def scheduledReturnFeature (As : ℕ → AffineCombination)
@@ -191,6 +225,8 @@ def scheduledBetaFeature (As : ℕ → AffineCombination) (W : ℕ → EF)
     (EF.mul (EF.const δ) (scheduledWealthFeature As W f a degree δ z))
     (W (scheduledDeferral f a degree z.unpair.1 z.unpair.2))
 
+/-- Once the runtime day has reached both deferral values in play, the bounded-schedule
+return feature *is* the ideal feedback return feature. -/
 lemma scheduledReturnFeature_eq
     (As : ℕ → AffineCombination) (f : DeferralFunction) {a degree : ℕ}
     (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
@@ -200,6 +236,8 @@ lemma scheduledReturnFeature_eq
   simp [scheduledReturnFeature, feedbackReturnFeature,
     scheduledDeferral_eq f hspec hcur, scheduledDeferral_eq f hspec hnext]
 
+/-- Once the runtime day has reached both deferral values in play, the bounded-schedule
+Kelly factor *is* the ideal feedback factor. -/
 lemma scheduledFactorFeature_eq
     (As : ℕ → AffineCombination) (W : ℕ → EF)
     (f : DeferralFunction) {a degree : ℕ}
@@ -211,6 +249,9 @@ lemma scheduledFactorFeature_eq
     scheduledReturnFeature_eq As f hspec hcur hnext,
     scheduledDeferral_eq f hspec hcur]
 
+/-- Once the runtime day has reached the component's deferral value, the bounded-schedule
+wealth feature *is* the ideal feedback wealth feature; strict increase carries the bound to
+every earlier component in the product. -/
 lemma scheduledWealthFeature_eq
     {As : ℕ → AffineCombination} {W : ℕ → EF}
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
@@ -228,6 +269,8 @@ lemma scheduledWealthFeature_eq
   · exact (hstrict.monotone (by omega)).trans hk
   · exact (hstrict.monotone (by omega)).trans hk
 
+/-- Once the runtime day has reached the component's deferral value, the bounded-schedule
+share feature *is* the ideal feedback share feature. -/
 lemma scheduledBetaFeature_eq
     {As : ℕ → AffineCombination} {W : ℕ → EF}
     {f : DeferralFunction} (hstrict : StrictlyIncreasingDeferral f)
@@ -240,7 +283,7 @@ lemma scheduledBetaFeature_eq
     scheduledWealthFeature_eq hstrict hspec δ hk,
     scheduledDeferral_eq f hspec hk]
 
-/-! ### Polynomial syntax streams for the scheduled features -/
+/-! ## Polynomial syntax streams for the scheduled features -/
 
 lemma scheduledDeferral_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (fun z ↦
@@ -319,7 +362,7 @@ lemma scheduledBetaFeature_polySeg
   simpa [scheduledBetaFeature] using BigSpliceStream.serialize_mul
     (BigSpliceStream.serialize_mul hdelta hwealth) hweight
 
-/-! ### Conditional affine-term blocks and their flattened index -/
+/-! ## Conditional affine-term blocks and their flattened index -/
 
 /-- Number of affine terms emitted by component `k` on day `n`.  An opening match takes
 priority; strict increase of the deferral function rules out an overlap between the opening
@@ -373,6 +416,8 @@ def scheduledTermCoefficient
   if scheduledMatch f a degree z = 1 then base
   else EF.mul (EF.const (-1)) base
 
+/-- Sentence at `q = ⟨⟨n,k⟩,j⟩` inside a scheduled component block: the `j`-th sentence of
+the affine combination the bounded schedule looks up for component `k` on day `n`. -/
 def scheduledTermSentence
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) (q : ℕ) : Sentence :=
@@ -491,6 +536,7 @@ def scheduledTradeOffset
   j - segPrefix (scheduledTermCount hpoly f a degree) n
     (scheduledTradeMember hpoly f a degree n j)
 
+/-- A flattened day-term lands in one of the day's own component blocks. -/
 lemma scheduledTradeMember_lt
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) {n j : ℕ}
@@ -509,6 +555,7 @@ lemma scheduledTradeMember_lt
   change k < n + 1
   omega
 
+/-- A flattened day-term's offset lies inside the width of the block it lands in. -/
 lemma scheduledTradeOffset_lt
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) {n j : ℕ}
@@ -566,6 +613,9 @@ lemma scheduledTradeOffset_polyFueled
   exact ⟨_, (subc_polyFueled.comp (PolyFueled.right.pair hp)).of_eq (fun z => by
     simp [scheduledTradeOffset])⟩
 
+/-- Coefficient of the *flattened* day-term `⟨n,j⟩`, reached by resolving `j` into its
+component block and offset through the prefix scan.  It is the `coefficient` field of
+`FeedbackTraderEmission`. -/
 def scheduledTradeCoefficient
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (W : ℕ → EF) (f : DeferralFunction) (a degree : ℕ) (δ : ℚ)
@@ -575,6 +625,8 @@ def scheduledTradeCoefficient
       (scheduledTradeMember hpoly f a degree z.unpair.1 z.unpair.2))
     (scheduledTradeOffset hpoly f a degree z.unpair.1 z.unpair.2))
 
+/-- Sentence of the *flattened* day-term `⟨n,j⟩`, reached the same way as its coefficient.
+It is the `sentence` field of `FeedbackTraderEmission`. -/
 def scheduledTradeSentence
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : Sentence :=
@@ -669,6 +721,9 @@ lemma scheduledTradeFields_eq_blocks
     simp only [scheduledTradeCoefficient, scheduledTradeSentence, Nat.unpair_pair]
     rfl
 
+/-- **The emission contract.**  The flattened coefficient/sentence fields reproduce the
+feedback trader's own day-`n` trade list exactly.  This is what
+`FeedbackTraderEmission.trades_eq` consumes. -/
 lemma scheduledTradeFields_eq_trader
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -685,6 +740,8 @@ lemma scheduledTradeFields_eq_trader
   apply List.flatMap_congr
   intro k hk
   exact (scheduledTradeBlock_eq hpoly hstrict hspec δ n k).symm
+
+/-! ## The emission inhabitants -/
 
 /-- Concrete bounded-dovetail inhabitant of the feedback trader's syntax boundary. -/
 noncomputable def feedbackTraderEmission
@@ -727,10 +784,17 @@ noncomputable def feedbackTraderEmissionSigns
   positive := feedbackTraderEmissionFamily hpoly hW hstrict
   negative := feedbackTraderEmissionFamily hpoly.neg hW hstrict
 
-/-! ### Consumers with the emission boundary discharged -/
+/-! ## Consumers with the emission boundary discharged -/
 
-/-- Affine unbiasedness, with the feedback-emission boundary discharged by a concrete
-feedback-truth sequence.
+/-- **Affine Unbiasedness from Feedback.**  The paper's claim: for a bounded affine
+combination sequence determined via the theory, a strictly increasing deferral function
+along which the truth values are computable, and a p-generable divergent weighting supported
+on the deferral image, the weighted bias of the prices against the truth values tends to
+zero.
+
+Beyond the paper: the truth values enter through a `FeedbackTruthSequence` bridge rather
+than through a computability hypothesis on `thmval`, and the syntax boundary of the feedback
+trader is discharged here by `feedbackTraderEmissionSigns` rather than assumed.
 Paper node: `thm:wubaff` -/
 theorem lic_wubaff_ofFeedbackTruth
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
@@ -748,7 +812,14 @@ theorem lic_wubaff_ofFeedbackTruth
   AffineCombination.lic_wubaff hpoly hW hstrict hsupport
     (feedbackTraderEmissionSigns hpoly hW hstrict) bridge hWdiv hmag hworld
 
-/--
+/-- **Affine Unbiasedness from Feedback, over a bounded combination sequence.**  The same
+paper claim as `lic_wubaff_ofFeedbackTruth`, taken at the paper's own `BCS` hypothesis: the
+magnitude bound comes from the sequence's own bound rather than being assumed.
+
+Beyond the paper: the `FeedbackTruthSequence` bridge is taken over the unit-normalized
+family `(As n).scale (.const h.unitNormalization.scale)` and its rescaled truth values,
+which is the form in which the magnitude bound of `thm:wubaff` is available; the syntax
+boundary is discharged by `feedbackTraderEmissionSigns`.
 Paper node: `thm:wubaff` -/
 theorem boundedCombination_wubaff_ofFeedbackTruth
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -770,7 +841,16 @@ theorem boundedCombination_wubaff_ofFeedbackTruth
       (h.poly.scaleRat h.unitNormalization.scale) hW hstrict)
     bridge hWdiv hworld
 
-/--
+/-- **Expectation Unbiasedness from Feedback.**  The paper's claim: for a bounded LUV
+combination sequence determined via the theory, a strictly increasing deferral function, and
+a p-generable divergent weighting, the weighted bias of the expectations against the truth
+values tends to zero.
+
+Beyond the paper: the `FeedbackTruthSequence` bridge is taken over the normalized diagonal
+threshold mesh `LUVCombination.normalizedMesh As b` and its mesh truth values rather than
+over the LUV family itself — the mesh is what turns the expectation statement into the
+affine one — and the weighting is required to be supported on the deferral image.  The
+syntax boundary is discharged by `feedbackTraderEmissionSigns`.
 Paper node: `thm:wubexp` -/
 theorem luv_wubexp_ofFeedbackTruth
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -791,11 +871,6 @@ theorem luv_wubexp_ofFeedbackTruth
       (fun i ↦ (As i).expect P i) truth ≈ₙ (fun _ ↦ 0) :=
   h.wubexp hvalued hdet b hshare hW hWdiv hstrict hsupport hworld
     (feedbackTraderEmissionSigns (h.normalizedMesh_poly b) hW hstrict) bridge
-
-#print axioms feedbackTraderEmissionSigns
-#print axioms lic_wubaff_ofFeedbackTruth
-#print axioms boundedCombination_wubaff_ofFeedbackTruth
-#print axioms luv_wubexp_ofFeedbackTruth
 
 end FeedbackEmission
 end LogicalInduction

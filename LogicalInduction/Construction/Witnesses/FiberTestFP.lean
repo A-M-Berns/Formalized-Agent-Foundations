@@ -1,29 +1,37 @@
-/-
-# The escape-leaf decode test, in `Complexity.FP`
-
-`PatAuto.HoleGuards` is the one thing the spelling recognizer cannot supply on its own: for
-a fixed subformula `χ`, decide "does this token's code decode to `χ`" in polynomial time.
-On a `⊥`-free `χ` that is a fixed-numeral comparison (`PatAuto.botFreeGuard`).  In general it
-is not, because Foundation's `Formula.ofNat` discards the payload at tag `0`, so `⊥`'s fibre
-is `{k² + 1}` and the multiplicity propagates through every connective.
-
-This file inhabits the interface.  The recursion is `PrefixPatchCompile.sentenceMatches`'s,
-whose correctness against `Encodable.decode` is already proved in both directions
-(`sentenceMatches_eq_one_iff`), so nothing about the *decoder* is re-derived here; what is
-new is only that each step — predecessor, `Nat.unpair`, comparison against a fixed numeral —
-is available on a token's **digit word** inside `Complexity.FP`, which is
-`Framework/Machine/DigitArithFP.lean`.
-
-The depth of the recursion is the size of `χ`, a constant of the frozen table, so the whole
-test is a fixed-depth composition rather than a scan.
-
-Everything here is construction infrastructure rather than a paper statement, so the
-declarations are `lemma`s and `def`s.  `fiberW_mem_FP` and `holeGuards` carry `app:ifp`:
-they are the primitive the boundary note used to name as *missing*, and naming them there
-now is how that disclosure is retired.
--/
 import LogicalInduction.Framework.Machine.DigitArithFP
 import LogicalInduction.Construction.Witnesses.PatternAutomaton
+
+/-!
+# The escape-leaf decode test, in `Complexity.FP`
+
+Renders `app:ifp` (tex:6018) by inhabiting `PatAuto.HoleGuards`, the one input the spelling
+recognizer cannot supply on its own: for a fixed subformula `χ`, decide "does this token's
+code decode to `χ`" in polynomial time.  `fiberW_mem_FP` and `holeGuards` are the `Complexity.FP`
+decode test the recognizer needs, built rather than assumed.
+
+On a `⊥`-free `χ` the test is a fixed-numeral comparison
+(`CanonicalCodes.sentenceMatches_of_botFree`).  In general it is not: Foundation's
+`Formula.ofNat` discards the payload at tag `0`, so `⊥`'s decode fibre is `{k² + 1}` and the
+multiplicity propagates through every connective.
+
+* The recursion is `PrefixPatchCompile.sentenceMatches`'s, whose correctness against
+  `Encodable.decode` is proved in both directions (`sentenceMatches_eq_one_iff`), so nothing
+  about the *decoder* is re-derived here.  What is added is that each step — predecessor,
+  `Nat.unpair`, comparison against a fixed numeral — is available on a token's **digit word**
+  inside `Complexity.FP` (`Framework/Machine/DigitArithFP.lean`).
+* `tagW` / `payW` / `leftW` / `rightW` are the digit-word projections, with their
+  `IsDigitWord` and `wordVal` laws.
+* `fiberW` is the test itself, run on digit words, with the connective conjunction spelled by
+  returning the right branch inside the left branch's success case.
+* Main results: `fiberW_mem_FP` (polynomial time at a fixed depth set by the target's size, a
+  constant of the frozen table, so the whole test is a fixed-depth composition rather than a
+  scan) and `length_fiberW_eq_one` (it computes `sentenceMatches`).
+
+`fiberW_mem_FP` and `holeGuards` are in `AxiomAudit.lean`.  `SegmentRecognizer.lean` is
+parameterized over the interface `PatAuto.HoleGuards` rather than over these terms;
+`FreezeOracle.lean` supplies `holeGuards` as its inhabitant, and the term-level consumers are
+`FreezeOracle.lean`, `PatternAutomaton.lean`, `RpnFreeze.lean` and `CanonicalCodes.lean`.
+-/
 
 namespace LogicalInduction.FiberTest
 
@@ -150,16 +158,6 @@ def fiberW : Sentence → List Bool → List Bool
       else if NumEqBits 4 (tagW w) then
         (if (fiberW φ (leftW w)).length = 1 then fiberW ψ (rightW w) else [])
       else []
-
-/-- Its output is always a flag word. -/
-lemma length_fiberW_le : ∀ (χ : Sentence) (w : List Bool), (fiberW χ w).length ≤ 1 := by
-  intro χ
-  induction χ using LO.Propositional.Formula.rec' with
-  | hfalsum => intro w; simp only [fiberW]; split_ifs <;> simp
-  | hatom a => intro w; simp only [fiberW]; split_ifs <;> simp
-  | himp φ ψ _ ihψ => intro w; simp only [fiberW]; split_ifs <;> simp [ihψ]
-  | hand φ ψ _ ihψ => intro w; simp only [fiberW]; split_ifs <;> simp [ihψ]
-  | hor φ ψ _ ihψ => intro w; simp only [fiberW]; split_ifs <;> simp [ihψ]
 
 /-- **The test is polynomial time**, at a fixed depth set by the target's size.
 
@@ -324,9 +322,9 @@ def holeGuard (χ : Sentence) : TokGuard where
 
 /-- **`PatAuto.HoleGuards` is inhabited.**
 
-This is the whole of what the pattern recognizer was missing, and with it
-`PatAuto.ifParseLegacy_mem_FP` decides "this run denotes `ψ`" for an *arbitrary* target with
-no syntactic side condition.
+With it, `PatAuto.ifParseLegacy_mem_FP` decides "this run denotes `ψ`" in the legacy grammar
+for an arbitrary target; `SegRec.ifParseFull_mem_FP` is the corresponding unconditional
+decision at the full grammar `parseRpn`.
 
 Kind `N+` non-vacuity witness.  Provenance: (a) `fiberW_mem_FP`, `length_fiberW_eq_one`;
 (b) `PrefixPatchCompile.sentenceMatches_eq_one_iff`.
@@ -334,9 +332,5 @@ Paper node: `app:ifp` -/
 def holeGuards : HoleGuards where
   guard := holeGuard
   guard_spec := fun χ c => by simp [holeGuard]
-
-#print axioms LogicalInduction.FiberTest.fiberW_mem_FP
-#print axioms LogicalInduction.FiberTest.length_fiberW_eq_one
-#print axioms LogicalInduction.FiberTest.holeGuards
 
 end LogicalInduction.FiberTest

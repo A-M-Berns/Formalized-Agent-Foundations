@@ -3,16 +3,31 @@ import LogicalInduction.Construction.Witnesses.SemanticCertifiedProduct
 /-!
 # Executable admission of rational quotation factors
 
-Certified paper sources use tag `0` and carry their own cut-proof program.  Deferred
-weights instead already have the repository's `RationalQuoteCode`: tag `2` quotation
-leaves are identified with old quotation atoms by `semanticQuoteDP`.  This file gives the
-fixed product registry an executable way to recognize the only coherence it needs from
-such a factor: downward closure on every finite rational-query prefix.
+The executable admission gate for tag-`2` quotation factors of the fixed product registry:
+`app` machinery for `thm:ccee` with no paper `\label` of its own, serving
+`lic_no_expected_net_update_conditional_*`.
 
-For `r < s`, downward closure follows if the base process has exposed either the positive
-claim at `r` or the negative claim at `s`.  Every total `[0,1]` `RationalQuoteCode`
-eventually supplies one of those alternatives, while malformed selectors are never
-trusted merely because they use tag `2`.
+Tag `2` differs from tag `0`.  A certified paper source carries its own cut-proof program,
+whereas a deferred weight already has the repository's `RationalQuoteCode`, and
+`semanticQuoteDP` identifies its leaves with old quotation atoms.  The only coherence the
+exact product needs from such a factor is downward closure on each finite rational-query
+prefix; bounds come separately from `RationalQuoteCode.value_mem`.
+
+Objects defined: `semanticSentenceSeenAtFuel` (bounded literal search in a computable
+process), `semanticQuoteFactorClaim` and `…Link`, `…EvidenceAtFuel`, `…DownwardAtFuel`, and
+the three nested prefix quantifiers `…ZsValid` / `…ZrValid` / `…NValid` feeding
+`semanticQuoteFactorPrefixValidAtFuel`.
+
+Main results: `…PrefixValidAtFuel_computable` (the gate is decidable), `…_mono` (clock
+monotonicity), `…_downward` (what an accepted prefix yields), and the two completeness
+lemmas `rationalQuote_semanticQuoteFactorPrefix_eventually{,_of_subprocess}`.  They are
+consumed by `SemanticRegistryProduct.lean` and `SemanticLiftedCCEE.lean`.
+
+Design: for `r < s`, downward closure follows from either the positive claim at `r` or the
+negative claim at `s`; every total `[0,1]` `RationalQuoteCode` eventually supplies one, and a
+malformed selector is never trusted for wearing tag `2`.  The `_of_subprocess` form is the
+general one — it asks only that the base process contain the canonical theorem/quotation
+stages — and the fixed-base form is its instance.
 -/
 
 namespace LogicalInduction
@@ -20,6 +35,8 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
+
+/-! ## Bounded literal search in a computable process -/
 
 /-- Bounded search for a literal sentence in a fixed computable process. -/
 def semanticSentenceSeenAtFuel {DP : DeductiveProcess}
@@ -43,21 +60,6 @@ private lemma listRangeAny_prim' {α : Type} [Primcodable α]
     induction List.range (bound a + 1) with
     | nil => rfl
     | cons x xs ih => simp [List.any, ih]
-
-private lemma listRangeAll_prim' {α : Type} [Primcodable α]
-    {bound : α → ℕ} {test : α → ℕ → Bool}
-    (hbound : Primrec bound) (htest : Primrec₂ test) :
-    Primrec fun a => (List.range (bound a + 1)).all (test a) := by
-  have hrange : Primrec fun a => List.range (bound a + 1) :=
-    Primrec.list_range.comp (Primrec.nat_add.comp hbound (Primrec.const 1))
-  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 && q.2 :=
-    (Primrec.dom_bool₂ (· && ·)).comp₂
-      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
-      (Primrec.snd.comp₂ Primrec₂.right)
-  exact (Primrec.list_foldr hrange (Primrec.const true) hstep).of_eq fun a => by
-    induction List.range (bound a + 1) with
-    | nil => rfl
-    | cons x xs ih => simp [List.all, ih]
 
 lemma semanticSentenceSeenAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
@@ -122,6 +124,8 @@ lemma semanticSentenceSeenAtFuel_eventually {DP : DeductiveProcess}
   exact ⟨k, by simp [fuel], DP.D k,
     base.stageAtFuel_mono (by simp [fuel]) hf, hmem⟩
 
+/-! ## The quotation claim and its definitional link -/
+
 /-- The old quotation claim corresponding to a tag-`2` leaf threshold. -/
 noncomputable def semanticQuoteFactorClaim (schema n z : ℕ) (positive : Bool) : Sentence :=
   let atom := quoteAtom (Nat.pair schema.unpair.2
@@ -135,6 +139,9 @@ noncomputable def semanticQuoteFactorLink (schema n z : ℕ) (positive : Bool) :
   semanticQuoteDefSentence
     (Nat.pair (bif positive then 0 else 1) (Nat.pair schema.unpair.2 input))
 
+/-! ## The bounded evidence and the finite prefix -/
+
+/-- Both the quotation claim and its definitional link have appeared by this clock. -/
 noncomputable def semanticQuoteFactorEvidenceAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema fuel n z : ℕ) (positive : Bool) : Bool :=
@@ -144,6 +151,8 @@ noncomputable def semanticQuoteFactorEvidenceAtFuel {DP : DeductiveProcess}
 attribute [local irreducible] semanticQuoteFactorClaim semanticQuoteFactorLink
   semanticQuoteFactorEvidenceAtFuel
 
+/-- For `r < s`, downward closure is witnessed by the positive claim at `r` or the negative
+claim at `s`; trivially true otherwise. -/
 noncomputable def semanticQuoteFactorDownwardAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema fuel n zr zs : ℕ) : Bool :=
@@ -158,12 +167,14 @@ noncomputable def semanticQuoteFactorZsValid {DP : DeductiveProcess}
   (List.range (limit + 1)).all fun zs =>
     semanticQuoteFactorDownwardAtFuel base schema fuel n zr zs
 
+/-- Inclusive bounded conjunction over the left-threshold coordinate. -/
 noncomputable def semanticQuoteFactorZrValid {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema limit fuel n : ℕ) : Bool :=
   (List.range (limit + 1)).all fun zr =>
     semanticQuoteFactorZsValid base schema fuel n zr limit
 
+/-- Inclusive bounded conjunction over the source index. -/
 noncomputable def semanticQuoteFactorNValid {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema limit fuel : ℕ) : Bool :=
@@ -178,6 +189,8 @@ noncomputable def semanticQuoteFactorPrefixValidAtFuel {DP : DeductiveProcess}
     (schema limit fuel : ℕ) : Bool :=
   (schema.unpair.1 == 2) &&
     semanticQuoteFactorNValid base schema limit fuel
+
+/-! ## Decidability of the gate -/
 
 private lemma sentenceNeg_computable : Computable fun φ : Sentence => ∼φ := by
   have h : Primrec fun φ : Sentence => ∼φ := by
@@ -372,6 +385,8 @@ lemma semanticQuoteFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
       (Computable.snd.comp Computable.fst))
   exact ((Primrec.dom_bool₂ (· && ·)).to_comp.comp htag hn').of_eq fun _ => rfl
 
+/-! ## Clock monotonicity -/
+
 private lemma listAll_mono_fuel {P : Type*} {test : P → ℕ → Bool}
     (hmono : ∀ p {f g}, f ≤ g → test p f = true → test p g = true)
     (xs : List P) {f g : ℕ} (hfg : f ≤ g)
@@ -471,77 +486,7 @@ lemma semanticQuoteFactorPrefixValidAtFuel_downward {DP : DeductiveProcess}
   rw [semanticQuoteFactorZsValid, List.all_eq_true] at hzsFuel
   exact hzsFuel zs hsmem
 
-lemma rationalQuote_semanticQuoteFactorDownward_eventually
-    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    {value : ℕ → ℚ} (q : RationalQuoteCode T value)
-    (n zr zs : ℕ) :
-    ∃ fuel, semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
-      (semanticQuoteSchema q.code) fuel n zr zs = true := by
-  by_cases hrs : decodedQuotationRat zr < decodedQuotationRat zs
-  · by_cases hrv : decodedQuotationRat zr < value n
-    · obtain ⟨k, hk⟩ := (quotationPresentation T).quote_positive_enters q.code
-          (Nat.pair n (Encodable.encode (decodedQuotationRat zr)))
-          (q.pos_complete n _ hrv)
-      have hbase : semanticQuoteFactorClaim (semanticQuoteSchema q.code) n zr true ∈
-          (theoremQuoteBaseDP T).D k := by
-        change _ ∈ (theoremDP T).D k ∪ semanticQuoteDP.D k
-        apply Finset.mem_union_left
-        simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk
-      obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually
-        (theoremQuoteBaseDPComputation T) hbase
-      let e := Nat.pair 0 (Nat.pair q.code
-        (Nat.pair n (Encodable.encode (decodedQuotationRat zr))))
-      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zr true ∈
-          (theoremQuoteBaseDP T).D e := by
-        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
-        apply Finset.mem_union_right
-        change _ ∈ (semanticQuoteStageList e).toFinset
-        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
-          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e)))
-      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually
-        (theoremQuoteBaseDPComputation T) hlinkBase
-      let common := max fuel linkFuel
-      have hc := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
-        (Nat.le_max_left fuel linkFuel) hfuel
-      have hl := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
-        (Nat.le_max_right fuel linkFuel) hlinkFuel
-      exact ⟨common, by
-        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
-        exact Or.inl ⟨hc, hl⟩⟩
-    · have hvs : value n < decodedQuotationRat zs :=
-        lt_of_le_of_lt (not_lt.mp hrv) hrs
-      obtain ⟨k, hk⟩ := (quotationPresentation T).quote_negative_refutes q.code
-          (Nat.pair n (Encodable.encode (decodedQuotationRat zs)))
-          (q.neg_complete n _ hvs)
-      have hbase : semanticQuoteFactorClaim (semanticQuoteSchema q.code) n zs false ∈
-          (theoremQuoteBaseDP T).D k := by
-        change _ ∈ (theoremDP T).D k ∪ semanticQuoteDP.D k
-        apply Finset.mem_union_left
-        simpa [semanticQuoteFactorClaim, semanticQuoteSchema, Nat.unpair_pair] using hk
-      obtain ⟨fuel, hfuel⟩ := semanticSentenceSeenAtFuel_eventually
-        (theoremQuoteBaseDPComputation T) hbase
-      let e := Nat.pair 1 (Nat.pair q.code
-        (Nat.pair n (Encodable.encode (decodedQuotationRat zs))))
-      have hlinkBase : semanticQuoteFactorLink (semanticQuoteSchema q.code) n zs false ∈
-          (theoremQuoteBaseDP T).D e := by
-        change _ ∈ (theoremDP T).D e ∪ semanticQuoteDP.D e
-        apply Finset.mem_union_right
-        change _ ∈ (semanticQuoteStageList e).toFinset
-        simpa [semanticQuoteFactorLink, semanticQuoteSchema, e] using
-          (List.mem_toFinset.mpr (mem_semanticQuoteStageList (le_refl e)))
-      obtain ⟨linkFuel, hlinkFuel⟩ := semanticSentenceSeenAtFuel_eventually
-        (theoremQuoteBaseDPComputation T) hlinkBase
-      let common := max fuel linkFuel
-      have hc := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
-        (Nat.le_max_left fuel linkFuel) hfuel
-      have hl := semanticSentenceSeenAtFuel_mono (theoremQuoteBaseDPComputation T)
-        (Nat.le_max_right fuel linkFuel) hlinkFuel
-      exact ⟨common, by
-        simp only [semanticQuoteFactorDownwardAtFuel, semanticQuoteFactorEvidenceAtFuel,
-          if_pos hrs, Bool.or_eq_true, Bool.and_eq_true]
-        exact Or.inr ⟨hc, hl⟩⟩
-  · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
+/-! ## Completeness for every rational quote code -/
 
 /-- The quotation-factor completeness argument works in any fixed computable base which
 contains the canonical theorem/quotation stages. -/
@@ -615,6 +560,16 @@ lemma rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess
         exact Or.inr ⟨hc, hl⟩⟩
   · exact ⟨0, by simp [semanticQuoteFactorDownwardAtFuel, hrs]⟩
 
+/-- The fixed-base instance of the completeness argument. -/
+lemma rationalQuote_semanticQuoteFactorDownward_eventually
+    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
+    {value : ℕ → ℚ} (q : RationalQuoteCode T value)
+    (n zr zs : ℕ) :
+    ∃ fuel, semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
+      (semanticQuoteSchema q.code) fuel n zr zs = true :=
+  rationalQuote_semanticQuoteFactorDownward_eventually_of_subprocess T
+    (theoremQuoteBaseDPComputation T) (fun _ _ h => h) q n zr zs
+
 set_option maxHeartbeats 2000000 in
 lemma rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
@@ -657,56 +612,13 @@ lemma rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess
     rw [semanticQuoteFactorNValid, List.all_eq_true]
     exact List.all_eq_true.mp hfuel⟩
 
-set_option maxHeartbeats 2000000 in
+/-- The fixed-base instance of the finite-prefix completeness argument. -/
 lemma rationalQuote_semanticQuoteFactorPrefix_eventually
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {value : ℕ → ℚ} (q : RationalQuoteCode T value) (limit : ℕ) :
     ∃ fuel, semanticQuoteFactorPrefixValidAtFuel (theoremQuoteBaseDPComputation T)
-      (semanticQuoteSchema q.code) limit fuel = true := by
-  have hdown : ∀ p : ℕ × ℕ × ℕ, ∃ fuel,
-      semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
-        (semanticQuoteSchema q.code) fuel p.1 p.2.1 p.2.2 = true :=
-    fun p => rationalQuote_semanticQuoteFactorDownward_eventually T q p.1 p.2.1 p.2.2
-  have hmono : ∀ p : ℕ × ℕ × ℕ, ∀ {f g}, f ≤ g →
-      semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
-        (semanticQuoteSchema q.code) f p.1 p.2.1 p.2.2 = true →
-      semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
-        (semanticQuoteSchema q.code) g p.1 p.2.1 p.2.2 = true :=
-    fun p _ _ hfg h => semanticQuoteFactorDownwardAtFuel_mono
-      (theoremQuoteBaseDPComputation T) _ _ _ _ hfg h
-  have hzs (n zr : ℕ) : ∃ fuel,
-      semanticQuoteFactorZsValid (theoremQuoteBaseDPComputation T)
-        (semanticQuoteSchema q.code) fuel n zr limit = true := by
-    simpa [semanticQuoteFactorZsValid] using
-      (listAll_eventually (test := fun zs fuel =>
-        semanticQuoteFactorDownwardAtFuel (theoremQuoteBaseDPComputation T)
-          (semanticQuoteSchema q.code) fuel n zr zs)
-        (fun zs _ _ hfg h => semanticQuoteFactorDownwardAtFuel_mono
-          (theoremQuoteBaseDPComputation T) _ _ _ _ hfg h)
-        (fun zs => rationalQuote_semanticQuoteFactorDownward_eventually T q n zr zs)
-        (List.range (limit + 1)))
-  have hzr (n : ℕ) : ∃ fuel,
-      semanticQuoteFactorZrValid (theoremQuoteBaseDPComputation T)
-        (semanticQuoteSchema q.code) limit fuel n = true := by
-    apply listAll_eventually
-        (test := fun zr fuel => semanticQuoteFactorZsValid
-          (theoremQuoteBaseDPComputation T) (semanticQuoteSchema q.code) fuel n zr limit)
-        _ (hzs n) (List.range (limit + 1))
-    intro zr f g hfg h
-    exact semanticQuoteFactorZsValid_mono (theoremQuoteBaseDPComputation T)
-      (semanticQuoteSchema q.code) n zr limit hfg h
-  obtain ⟨fuel, hfuel⟩ := listAll_eventually
-    (test := fun n fuel => semanticQuoteFactorZrValid
-      (theoremQuoteBaseDPComputation T) (semanticQuoteSchema q.code) limit fuel n)
-    (fun n _ _ hfg h => semanticQuoteFactorZrValid_mono
-      (theoremQuoteBaseDPComputation T) (semanticQuoteSchema q.code) limit n hfg h)
-    hzr (List.range (limit + 1))
-  refine ⟨fuel, ?_⟩
-  rw [semanticQuoteFactorPrefixValidAtFuel, Bool.and_eq_true]
-  constructor
-  · simp [semanticQuoteSchema]
-  · rw [semanticQuoteFactorNValid, List.all_eq_true]
-    intro n hn
-    exact (List.all_eq_true.mp hfuel) n hn
+      (semanticQuoteSchema q.code) limit fuel = true :=
+  rationalQuote_semanticQuoteFactorPrefix_eventually_of_subprocess T
+    (theoremQuoteBaseDPComputation T) (fun _ _ h => h) q limit
 
 end LogicalInduction

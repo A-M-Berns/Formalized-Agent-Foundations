@@ -1,31 +1,58 @@
-/-
+import LogicalInduction.Construction.Witnesses.RunAutomaton
+import LogicalInduction.Construction.Witnesses.RpnFreeze
+
+/-!
 # Recognizing a target's spellings with an automaton
 
-`RpnFreeze.parseRpnLegacy_iff_patMatch` says a run denotes a target exactly when it matches
-one of finitely many **patterns** — literal grammar tokens, with a `hole χ` wherever an
-escape leaf may stand, the hole's obligation being `decode c = some χ`.  That
-characterization carries no `BotFree`: `⊥`'s infinite decode fibre lives inside the hole
-predicate rather than in the pattern list.
+`app:ifp` — `RpnFreeze.parseRpnLegacy_iff_patMatch`'s characterization turned into a
+`Complexity.FP` decision.  That lemma says a run denotes a target exactly when it matches one
+of finitely many **patterns**: literal grammar tokens, with a `hole χ` wherever an escape leaf
+may stand, the hole's obligation being `decode c = some χ`.  It carries no `BotFree`, because
+`⊥`'s infinite decode fibre lives inside the hole predicate rather than in the pattern list.
 
-This file turns that characterization into a `Complexity.FP` decision, and the shape of the
-turning is the point.  A pattern is a literal list, so matching it is a prefix walk with a
-counter bounded by the pattern's own length — a `RunAuto.BlockAutomaton` whose guards are
-`RunAuto.litGuard`s at literal positions and, at a hole, one guard per subformula.  The
-whole of what is *not* available unconditionally is therefore collected in a single
+The shape of the turning is the point.  A pattern is a literal list, so matching it is a
+prefix walk with a counter bounded by the pattern's own length — a `RunAuto.BlockAutomaton`
+whose guards are `RunAuto.litGuard`s at literal positions and, at a hole, one guard per
+subformula.  The whole of what is *not* available unconditionally is collected in a single
 interface, `HoleGuards`: a polynomial-time test of "does this code decode to `χ`".
 
 That isolation is the deliverable.  Everything else here — the automaton, the fold, the
 disjunction over the pattern list, and the `FP` membership of all of it — is unconditional
-and axiom-clean.  Supplying a `HoleGuards` needs `Nat.unpair` on a token's digit word, hence
-integer square root in `FP`; nothing else does.
+and axiom-clean.
+
+## Objects
+
+`HoleGuards`, `tokGuard`, `patRows`, `patAuto`, `patNest`.
+
+`HoleGuards` is inhabited: `FiberTest.holeGuards` (`FiberTestFP.lean`, on the axiom-clean
+`fiberW_mem_FP`) is the instance, and it is on the freeze recognizer's critical path.  What it
+costs is `Nat.unpair` on a token's digit word, hence integer square root in `FP`
+(`DigitFP.sqrtRemW_mem_FP`, `DigitFP.unpairW_spec`); on a `⊥`-free `χ` the test degenerates to
+a fixed-numeral comparison, because Foundation's decoder is injective off the `⊥` fibre
+(`decode_eq_some_iff_of_botFree`).
+
+## Main results
+
+The automaton's correctness chain runs `patAuto_step_of_lt` / `_of_ge` and
+`foldl_patAuto_fail` (the failure state absorbs) to `foldl_patAuto` (the fold reaches the end
+state exactly on a match, from any reachable position) and `patAuto_accepts`.  The disjunction
+`patNest` takes branch `X` as soon as one pattern matches (`patNest_pos`, `patNest_neg`,
+`patNest_mem_FP`).
+
+The two consumer-facing decisions are `ifParseLegacy_mem_FP` — branching on "this word's run
+denotes `ψ` in the legacy grammar" is polynomial time with *no* syntactic condition on `ψ` —
+and `ifParse_mem_FP` at the grammar the freeze parses with, where `NoReserved` is the only
+survivor, because the structured paper-prime branch denotes reserved atoms and nothing else
+(`parseStructuredPaperPrime_shape`).
+
+`NoReserved` cannot be dropped the way `BotFree` was: the structured payload's unary length
+field is an `aⁿbⁿ` constraint, which `RunAuto.BlockAutomaton` cannot express — covering
+reserved targets would need `RunAuto.BlockMachine`.
 
 Everything here is construction infrastructure rather than a paper statement, so the
-declarations are `lemma`s and `def`s.  The two consumer-facing decisions
-(`ifParseLegacy_mem_FP`, `ifParse_mem_FP`) carry `app:ifp`, because they are what the
-freeze's recognizer actually is; the rest do not.
+declarations are `lemma`s and `def`s.  The two consumer-facing decisions carry `app:ifp`,
+because they are what the freeze's recognizer is; the rest do not.
 -/
-import LogicalInduction.Construction.Witnesses.RunAutomaton
-import LogicalInduction.Construction.Witnesses.RpnFreeze
 
 namespace LogicalInduction.PatAuto
 
@@ -37,21 +64,22 @@ open LogicalInduction.RunAuto LogicalInduction.RpnFreeze
 -- See `notes/lean-gotchas.md`.
 attribute [local irreducible] Nat.sqrt
 
-/-! ## The one thing that is not free -/
+/-! ## The escape-leaf test -/
 
 /-- **The escape-leaf test, as an interface.**
 
 For each subformula `χ` a polynomial-time decision of "this token's code decodes to `χ`".
-On a `⊥`-free `χ` this is a comparison against a fixed numeral
-(`decode_eq_some_iff_of_botFree`) and `RunAuto.litGuard` supplies it; in general it is not,
+On a `⊥`-free `χ` the test degenerates to a comparison against the fixed numeral `⌜χ⌝`
+(`decode_eq_some_iff_of_botFree`) and `RunAuto.litGuard` supplies it; in general it does not,
 because Foundation's decoder discards the payload at tag `0` and `⊥`'s fibre is infinite
 (`decode_falsum_noncanonical`).
 
 Building an instance requires deciding `decode c = some ⊥` in `Complexity.FP` — that is
 "`c - 1` is a perfect square", with the connective cases propagating it through `Nat.unpair`,
-i.e. a polynomial-time integer square root.  That primitive is now supplied, so this interface
-is inhabited: `FiberTest.holeGuards` (`FiberTestFP.lean`, built on the axiom-clean
-`fiberW_mem_FP`) is the instance, and it is on the freeze recognizer's critical path. -/
+i.e. a polynomial-time integer square root.  `⊥`'s infinite fibre is the only obstruction to
+inhabiting the interface everywhere.  `FiberTest.holeGuards` (`FiberTestFP.lean`, built on the
+axiom-clean `fiberW_mem_FP`) is the instance, and it is on the freeze recognizer's critical
+path. -/
 structure HoleGuards where
   /-- The guard for each subformula. -/
   guard : Sentence → TokGuard
@@ -65,30 +93,12 @@ def tokGuard (H : HoleGuards) : PatTok → TokGuard
   | .lit t => litGuard t
   | .hole χ => H.guard χ
 
-lemma tokGuard_spec (H : HoleGuards) (τ : PatTok) (c : ℕ) : (tokGuard H τ).P c = true ↔ τ.Matches c := by
+/-- The guard a pattern token demands is exactly the token's own obligation. -/
+lemma tokGuard_spec (H : HoleGuards) (τ : PatTok) (c : ℕ) :
+    (tokGuard H τ).P c = true ↔ τ.Matches c := by
   cases τ with
   | lit t => simp [tokGuard, litGuard]
   | hole χ => rw [tokGuard]; exact H.guard_spec χ c
-
-/-- **The hole test *is* available on the `⊥`-free fragment**, and is exactly the
-fixed-numeral comparison the old spelling chain made.
-
-This pins down what `HoleGuards` is missing and what it is not.  Foundation's decoder is
-injective off the `⊥` fibre (`decode_eq_some_iff_of_botFree`), so for a `⊥`-free `χ` the
-question "does this code decode to `χ`" is "is this code `⌜χ⌝`" and `litGuard` answers it.
-The interface is therefore not a black box standing in for the whole problem: it is
-inhabited on the fragment the old side condition allowed, and the *only* obstruction to
-inhabiting it everywhere is `⊥`'s infinite fibre — hence integer square root.
-
-Kind `N+` non-vacuity witness.  Provenance: (b) `decode_eq_some_iff_of_botFree`. -/
-def botFreeGuard {χ : Sentence} (_h : BotFree χ) : TokGuard :=
-  litGuard (Encodable.encode χ)
-
-lemma botFreeGuard_spec {χ : Sentence} (h : BotFree χ) (c : ℕ) :
-    (botFreeGuard h).P c = true ↔ (Encodable.decode c : Option Sentence) = some χ := by
-  rw [botFreeGuard, litGuard]
-  simp only [decide_eq_true_eq]
-  exact (decode_eq_some_iff_of_botFree χ h c).symm
 
 /-! ## The automaton for one pattern -/
 
@@ -103,7 +113,10 @@ def patRows (H : HoleGuards) (p : List PatTok) (i : ℕ) : GuardRow :=
 def patAuto (H : HoleGuards) (p : List PatTok) : BlockAutomaton :=
   guardedAutomaton (p.length + 1) (patRows H p) (fun i => decide (i = p.length))
 
-lemma patAuto_step_of_lt (H : HoleGuards) (p : List PatTok) {i : ℕ} (hi : i < p.length) (t : ℕ) :
+/-- Inside the pattern, the step advances on a satisfied guard and falls to the absorbing
+state otherwise. -/
+lemma patAuto_step_of_lt (H : HoleGuards) (p : List PatTok) {i : ℕ} (hi : i < p.length)
+    (t : ℕ) :
     (patAuto H p).step i t
       = if (tokGuard H p[i]).P t = true then i + 1 else p.length + 1 := by
   have hrow : patRows H p i = ⟨[(tokGuard H p[i], i + 1)], p.length + 1⟩ := by
@@ -113,7 +126,9 @@ lemma patAuto_step_of_lt (H : HoleGuards) (p : List PatTok) {i : ℕ} (hi : i < 
   simp only [hrow, rowStep]
   split_ifs <;> omega
 
-lemma patAuto_step_of_ge (H : HoleGuards) (p : List PatTok) {i : ℕ} (hi : p.length ≤ i) (t : ℕ) :
+/-- Past the pattern's end, every step falls to the absorbing state. -/
+lemma patAuto_step_of_ge (H : HoleGuards) (p : List PatTok) {i : ℕ} (hi : p.length ≤ i)
+    (t : ℕ) :
     (patAuto H p).step i t = p.length + 1 := by
   have hrow : patRows H p i = ⟨[], p.length + 1⟩ := by
     unfold patRows
@@ -188,6 +203,7 @@ def patNest (H : HoleGuards) (S X Y : List Bool → List Bool) :
       if (patAuto H p).Accepts (decodeBits (S z)) = true then X z
       else patNest H S X Y ps z
 
+/-- If some pattern in the list matches, the nest takes the `X` branch. -/
 lemma patNest_pos (H : HoleGuards) (S X Y : List Bool → List Bool) :
     ∀ (l : List (List PatTok)) (z : List Bool),
       (∃ p ∈ l, PatMatch p (decodeBits (S z))) → patNest H S X Y l z = X z
@@ -203,6 +219,7 @@ lemma patNest_pos (H : HoleGuards) (S X Y : List Bool → List Bool) :
         · exact absurd (hc ▸ hqm) h
         · exact ⟨q, hc, hqm⟩
 
+/-- If none matches, it takes the `Y` branch. -/
 lemma patNest_neg (H : HoleGuards) (S X Y : List Bool → List Bool) :
     ∀ (l : List (List PatTok)) (z : List Bool),
       (¬ ∃ p ∈ l, PatMatch p (decodeBits (S z))) → patNest H S X Y l z = Y z
@@ -213,19 +230,10 @@ lemma patNest_neg (H : HoleGuards) (S X Y : List Bool → List Bool) :
       exact patNest_neg H S X Y l z
         (fun hc => hm (by obtain ⟨q, hq, hqm⟩ := hc; exact ⟨q, List.mem_cons_of_mem _ hq, hqm⟩))
 
-/-- The nest returns one of its two branches, whatever the outcome. -/
-lemma patNest_cases (H : HoleGuards) (S X Y : List Bool → List Bool) :
-    ∀ (l : List (List PatTok)) (z : List Bool),
-      patNest H S X Y l z = X z ∨ patNest H S X Y l z = Y z
-  | [], z => by rw [patNest]; exact Or.inr rfl
-  | (p :: l), z => by
-      rw [patNest]
-      split_ifs
-      · exact Or.inl rfl
-      · exact patNest_cases H S X Y l z
-
-lemma patNest_mem_FP (H : HoleGuards) {S X Y : List Bool → List Bool} (hS : S ∈ FP) (hX : X ∈ FP)
-    (hY : Y ∈ FP) : ∀ l : List (List PatTok), (fun z => patNest H S X Y l z) ∈ FP
+/-- The nest is polynomial time when its three components are. -/
+lemma patNest_mem_FP (H : HoleGuards) {S X Y : List Bool → List Bool} (hS : S ∈ FP)
+    (hX : X ∈ FP) (hY : Y ∈ FP) :
+    ∀ l : List (List PatTok), (fun z => patNest H S X Y l z) ∈ FP
   | [] => by
       have heq : (fun z => patNest H S X Y [] z) = Y := by funext z; rw [patNest]
       rwa [heq]
@@ -237,16 +245,16 @@ lemma patNest_mem_FP (H : HoleGuards) {S X Y : List Bool → List Bool} (hS : S 
         funext z; rw [patNest]
       rwa [heq] at h
 
-/-! ## The decisions the freeze actually asks for -/
+/-! ## The decisions the freeze asks for -/
 
 /-- **Branching on "this word's run denotes `ψ` in the legacy grammar" is polynomial
 time** — with no syntactic condition on `ψ` at all, given the hole guards.
 
-Proof kind: `C` composition.  Provenance: (a) `patNest_spec`, `patNest_mem_FP`;
-(b) `RpnFreeze.parseRpnLegacy_iff_patMatch`.
+Proof kind: `C` composition.  Provenance: (a) `patNest_pos`, `patNest_neg`,
+`patNest_mem_FP`; (b) `RpnFreeze.parseRpnLegacy_iff_patMatch`.
 Paper node: `app:ifp` -/
-lemma ifParseLegacy_mem_FP (H : HoleGuards) (ψ : Sentence) {S X Y : List Bool → List Bool} (hS : S ∈ FP)
-    (hX : X ∈ FP) (hY : Y ∈ FP) :
+lemma ifParseLegacy_mem_FP (H : HoleGuards) (ψ : Sentence)
+    {S X Y : List Bool → List Bool} (hS : S ∈ FP) (hX : X ∈ FP) (hY : Y ∈ FP) :
     (fun z => if parseRpnLegacy (decodeBits (S z)).length (decodeBits (S z))
           = some (ψ, []) then X z else Y z) ∈ FP := by
   have h := patNest_mem_FP H hS hX hY (patterns ψ)
@@ -291,9 +299,5 @@ lemma ifParse_mem_FP (H : HoleGuards) {ψ : Sentence} (hnr : NoReserved ψ)
         (fun hc => hp ((parseRpn_iff_patMatch hnr (decodeBits (S z))).mpr hc)),
         if_neg hp]
   rwa [heq] at h
-
-#print axioms LogicalInduction.PatAuto.patAuto_accepts
-#print axioms LogicalInduction.PatAuto.ifParseLegacy_mem_FP
-#print axioms LogicalInduction.PatAuto.ifParse_mem_FP
 
 end LogicalInduction.PatAuto

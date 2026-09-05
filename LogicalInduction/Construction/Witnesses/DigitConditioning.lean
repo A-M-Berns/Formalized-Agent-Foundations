@@ -1,28 +1,45 @@
-/-
-# Digit-model conditioning translation
-
-The conditioning price rewrite (`conditionPriceTokenRun`, ConditioningCompiler) is a
-token transducer whose emitted rewrite applies `ψCode` to the price-*day* token.  In the
-digit-metered emission model (`EfficientlyComputableDigit`) token values may be
-exponential in the day, held only as digit blocks, so the transducer must **guard**:
-price-day tokens are compared against the trading day `n` by digit clamp, and an
-oversized day aborts the emission.  This file provides
-
-* the correspondence between the standalone digit-side mode automaton (`freezeMode4`,
-  Framework/DigitArith) and the token-side freeze control (`EF.freezeTokenNext`),
-  including pending-payload recovery *by position*;
-* the **guard honesty** lemma: a price-day token exceeding `n` at a mode-2 position
-  forces the day-`n` validated strategy of the stream to be empty (the parser either
-  rejects, or records a trade whose rank exceeds `n`) — so the empty emission realizes
-  the translation on guarded days;
-* the digit-model transducer itself and its `PolySegStream` certificate (the
-  `conjunctionCode` bignum block is the one segment rendered from `BigDigits`).
-
-Paper node: `thm:scon` (digit-model residual of the conditioning translation).
--/
 import LogicalInduction.Construction.Witnesses.ConditioningCompiler
 import LogicalInduction.Framework.DigitArith
 import LogicalInduction.Framework.WriteOut
+
+/-! # Digit-model conditioning translation
+
+The digit-metered residual of closure under conditioning (`thm:scon`).  The conditioning
+price rewrite (`conditionPriceTokenRun`) and the frame pass of `ConditioningCompiler` are
+recompiled for the `EfficientlyComputableDigit` emission model (`Framework/Criterion.lean`),
+which meters base-4 digits rather than token values: a token may be exponential in the day
+and is held only as a digit block, so the transducer must **guard**.  Price-day tokens are
+compared against the trading day `n` by digit clamp, and an oversized day aborts the
+emission.
+
+The module supplies, in order:
+
+* the correspondence between the standalone digit-side mode automaton `freezeMode4`
+  (`Framework/DigitArith.lean`) and the token-side freeze control `EF.freezeTokenNext`,
+  including recovery of a mode-2 control's pending payload by position
+  (`freezeTokenControlAt_mode2`);
+* **guard honesty** (`strategyOfTokens_trades_eq_nil_of_bigDay`): a price-day token
+  exceeding the trading day `n` at a mode-2 position forces the day-`n` validated strategy
+  of the stream to be empty — the parser either rejects, or records a trade whose rank
+  exceeds `n` — which is what licenses the transducer's abort;
+* the day-guard flag `bigDayFlagAt` and its poly-fueled scan over any digit
+  `PolySegStream`, from which the guarded rewrites `guardedConditionTokens` and
+  `guardedZeroAwareConditionTokens` are certified (the `conjunctionCode` shell is the one
+  bignum block, rendered from digit access by `BigDigits`);
+* the frame pass: three further shallow scans (`PolySegStream.tradeCountScan`,
+  `PolySegStream.depthScan`, `PolySegStream.acceptsScan`), the raw-combinator
+  `PolyTokenStream` algebra, and `safeSeparatedFrameDigitOutput_polySegStream`.
+
+The two endpoints are `conditionedTranslation_preserves_ecDigit` and
+`eventualConditionedTranslation_preserves_ecDigit`, inventoried for `thm:scon` in
+`AxiomAudit.lean`.  They are the digit-model sibling of the RPN symbol-model lane in
+`Construction/Witnesses/RpnConditioning.lean`, which imports this file for the
+raw-combinator algebra, the day-guard flag and guard honesty.
+
+Efficiency is certified by fuel-clocked interpreter bounds (`dd:fuel`).  Because the digit
+model meters write-out length rather than token magnitude, it is the guard — not a bound on
+token values — that keeps the transducer polynomial.
+-/
 
 namespace LogicalInduction
 
@@ -357,7 +374,7 @@ lemma strategyOfTokens_trades_eq_nil_of_bigDay (n : ℕ) (ts : List ℕ) (j : �
 
 `1` iff some mode-2 position below the cursor carries a day token exceeding `n`.  The
 digit transducer emits nothing on flagged days; guard honesty (above) shows the empty
-emission still realizes the translation there. -/
+emission realizes the translation there. -/
 
 /-- Guard flag over the virtual token stream. -/
 def bigDayFlagAt (tf : ℕ → ℕ) (n : ℕ) : ℕ → ℕ
@@ -869,6 +886,7 @@ lemma rawSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
     PolyTokenStream (fun z => rawSafeRecipTokens (a z)) :=
   ha.append (PolyTokenStream.const 5)
 
+/-- `min`, derived from `max` by negating both arguments and the result. -/
 lemma rawMin {a b : ℕ → List ℕ} (ha : PolyTokenStream a) (hb : PolyTokenStream b) :
     PolyTokenStream (fun z => rawMinTokens (a z) (b z)) :=
   rawMul (rawConstQ (-1)) (rawMax (rawMul (rawConstQ (-1)) ha)
@@ -882,6 +900,8 @@ lemma rawAbs {a : ℕ → List ℕ} (ha : PolyTokenStream a) :
     PolyTokenStream (fun z => rawAbsTokens (a z)) :=
   rawMax ha (rawMul (rawConstQ (-1)) ha)
 
+/-- The reciprocal with clamp floor `ε`, obtained by rescaling `safeRecip` by `1 / ε` on
+both sides. -/
 lemma rawLowerSafeRecip {a : ℕ → List ℕ} (ha : PolyTokenStream a) (ε : ℚ) :
     PolyTokenStream (fun z => rawLowerSafeRecipTokens (a z) ε) :=
   rawMul (rawConstQ (1 / ε)) (rawSafeRecip (rawMul (rawConstQ (1 / ε)) ha))
@@ -1682,14 +1702,6 @@ lemma eventualConditionedTranslation_preserves_ecDigit
         ((T.strat n).separatedExceptZeroConditionalContract
           F.zeroDays ψ F.epsilon (conditioningBudget n)).trades
       simp [Strategy.separatedExceptZeroConditionalContract, hTempty]
-
-#print axioms eventualConditionedTranslation_preserves_ecDigit
-#print axioms conditionedTranslation_preserves_ecDigit
-#print axioms strategyOfTokens_trades_eq_nil_of_bigDay
-#print axioms guardedConditionRun_polySegStream
-#print axioms PolySegStream.tradeCountScan
-#print axioms PolySegStream.depthScan
-#print axioms PolySegStream.acceptsScan
 
 end ConditioningCompile
 

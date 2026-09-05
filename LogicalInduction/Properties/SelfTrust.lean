@@ -1,11 +1,22 @@
-/-
-# Self-Trust — §4.12: `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`; `def:deferralfunc`
+import LogicalInduction.Properties.ExpectationAffine
+import LogicalInduction.Properties.Basic
+import LogicalInduction.Framework.WriteOut
+
+/-!
+# Self-Trust
+
+Renders §4.12: `thm:cee` (tex:2045), `thm:ceu` (tex:2056), `thm:ccee` (tex:2068) and
+`thm:st` (tex:2092).  Two definitions the paper states in §4.3 are rendered here as well:
+`def:deferralfunc` (tex:1240), whose efficiency clause goes through the clocked interpreter
+(`dd:fuel`) and which `succDeferral` inhabits, and `def:ctsind` (tex:1174) in its
+real-valued form `ctsInd` — the feature-valued rendering of the same definition is
+`calibrationIndicator` in `Properties/Calibration.lean`.
 
 These theorems quantify over *quoted* sentences (`⌜𝔼_{f(n)}(X_n)⌝`, `⌜P_{f(n)}(φ_n)⌝`) —
-first-order reflection our propositional `Sentence` cannot express. Reflection is therefore
-modeled in the way that keeps the statements non-vacuous:
+first-order reflection the propositional `Sentence` cannot express.  Quotation is therefore
+modeled relationally, in the way that keeps the statements non-vacuous:
 
-* **Quoted objects are relational.** Each quoted expression enters as an *arbitrary* LUV
+* **Quoted objects are relational.** Each quoted expression enters as an *arbitrary* `LUV`
   family `Y : ℕ → LUV` constrained by a linkage hypothesis (`PCWorld.ValuesAt`), never as
   a canonical construction — building a representative here would silently pre-discharge
   the very learning content the theorem asserts.
@@ -14,28 +25,37 @@ modeled in the way that keeps the statements non-vacuous:
   threshold diagram.  The faithful propositional translation therefore asks every world
   consistent with the completed theory to value the quote correctly.  The explicit inductor
   construction discharges this pointwise: each true or false threshold computation is
-  eventually proved and enters `D`.  Deferred market timing remains a separate, load-bearing
-  obligation in `AffineQuoteEq`/`AffineQuoteGE`; no future-knowing deductive process is
-  introduced.
+  eventually proved and enters `D`.
 
 **Residual type-`(c)` disclosure:** the linkage hypotheses import the paper's entire
 "quoting + Θ-represents-computations" mechanism; their principled witness is the explicit
-inductor construction.
+inductor construction in `Construction/Witnesses/QuotationAffine.lean`.
 
-The completed-theory hypotheses record the logical semantics of each quote, while
-`AffineQuoteEq`/`AffineQuoteGE` supply the operational certificate: one fixed, uniformly
-emitted affine portfolio whose later price is coherent.  This separates logical quotation
-from the preemptive-learning transport proved here.
+Market timing is a separate, load-bearing obligation, and the fixed-portfolio section below
+is where it is exposed: `AffineQuotePortfolio` carries the portfolio fixed on day `n`, its
+uniform emitter, its normalization and its bounded prices, and `AffineQuoteEq` /
+`AffineQuoteGE` add the deferred-day coherence `thm:exppolymax` needs.  No future-knowing
+deductive process is introduced.
+
+`AffineQuotePortfolio.preemptive_asympEq_zero` and `preemptive_asympGE_zero` are the
+reusable `thm:affpolymax` transport that the four endpoints below run through, and
+`gap_asympEq_zero_of_diagonal` divides the normalization back out.  That last step is
+shared: the same-day certificates in `Properties/Introspection.lean` reach a vanishing
+diagonal price by Affine Provability Induction instead, and then divide out through it.
+
+Each of the four theorems is stated against one bundled certificate —
+`ExpectedFutureExpectationQuote`, `FuturePriceQuote`, `ConditionalExpectationQuote`,
+`SelfTrustQuote` — inhabited over the constructed inductor in
+`Construction/Witnesses/QuotationAffine.lean`.  `thm:ccee`'s vanishing product slack is
+carried explicitly as `ConditionalExpectationQuote.slack` (`dd:mesh`).  Those four
+structures and the three portfolio structures are `#assert_fields`-frozen.
 -/
-import LogicalInduction.Properties.ExpectationAffine
-import LogicalInduction.Properties.Basic
-import LogicalInduction.Framework.WriteOut
 
 namespace LogicalInduction
 
 open Filter Topology
 
-/-! ### `def:deferralfunc` -/
+/-! ## Deferral functions -/
 
 /-- `def:deferralfunc`. A **deferral function**: `f n > n`, and `f` is computable within
 fuel polynomial **in `f n`** (the paper's "time polynomial in `f(n)`" — deliberately
@@ -67,21 +87,37 @@ def succDeferral : DeferralFunction where
   code := Nat.Partrec.Code.succ
   fueled := ⟨1, 1, fun n => by simp [Nat.Partrec.Code.evaln]⟩
 
+/-! ## The continuous threshold indicator -/
+
 /-- `def:ctsind`, real-valued form: the continuous threshold indicator
 `ctsind_δ(x > y)` — `0` at `x ≤ y`, linear on `(y, y+δ]`, `1` beyond. -/
 noncomputable def ctsInd (δ : ℚ) (x y : ℝ) : ℝ :=
   min 1 (max 0 ((x - y) / (δ : ℝ)))
 
-/-! ### Fixed-portfolio quote coherence
+/-- The continuous threshold gate always lies in `[0,1]` when its width is positive. -/
+lemma ctsInd_mem_Icc (δ : ℚ) (x y : ℝ) :
+    ctsInd δ x y ∈ Set.Icc (0 : ℝ) 1 := by
+  constructor
+  · exact le_min zero_le_one (le_max_left _ _)
+  · exact min_le_left _ _
+
+/-- The continuous threshold gate is fully on once its first argument exceeds the second
+by at least the positive rational width. -/
+lemma ctsInd_eq_one_of_le_sub (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
+    (hgap : (δ : ℝ) ≤ x - y) : ctsInd δ x y = 1 := by
+  have hδR : (0 : ℝ) < δ := by exact_mod_cast hδ
+  have hratio : 1 ≤ (x - y) / (δ : ℝ) := (le_div_iff₀ hδR).2 (by linarith)
+  have hzero : 0 ≤ (x - y) / (δ : ℝ) := zero_le_one.trans hratio
+  unfold ctsInd
+  rw [max_eq_right hzero, min_eq_left hratio]
+
+/-! ## Fixed-portfolio quote coherence
 
 The paper's `thm:exppolymax` step does not compare two independently regenerated
-day-indexed expectation grids.  It fixes one affine portfolio on day `n`, and compares
-the price of that *same portfolio* on day `n` with its price on the deferred day `f n`.
-The certificate below exposes exactly that boundary.  It contains the concrete
-portfolio family, its uniform polynomial emitter, the normalization used to keep one
-unit of affine risk, and the exact identification of its day-`n` price with the quoted
-gap.  Coherence is imposed only at the later market day, so it does not give `D n`
-oracle access to future prices.
+day-indexed expectation grids.  It fixes one affine portfolio on day `n` and reprices
+*that same portfolio* on the deferred day `f n`, so coherence at the later day gives `D n`
+no oracle access to future prices.  The structures below expose exactly that boundary; the
+individual fields are documented at the structures.
 -/
 
 /-- A polynomial, normalized fixed-portfolio presentation of a real-valued gap.
@@ -147,7 +183,8 @@ required to reflect `x · w (f n)` only to within a *vanishing* slack `slack n`,
 exactly.  This is what makes the theorem available for an arbitrary e.c. source family
 `X`, as the paper states it: an exact product LUV would have to carry the threshold
 `⌜X > r / w (f n)⌝`, whose emitter would need the *value* of the deferred weight, which
-is unavailable (see the Part F note in `Construction/Witnesses/QuoteCodeOfMarket.lean`).
+is unavailable (the `dd:mesh` construction in
+`Construction/Witnesses/QuoteCodeOfMarket.lean` is where this is worked out).
 The general-source construction instead reads the deferred weight through its own
 threshold atoms on a width-`n+1` mesh, which pins the product to within `1/(n+1)`.  The
 exact-reflection case is the `slack = 0` instance and is still inhabited (the indicator
@@ -210,6 +247,15 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
   affine : AffineQuoteGE P f
     (fun n => (A n).expect P n - (p n : ℝ) * (B n).expect P n)
 
+/-! ## Preemptive transport
+
+`thm:affpolymax` applied to a fixed portfolio: a polynomial affine family with bounded
+magnitude has no preemptive price gaps, so a portfolio worth asymptotically nothing when
+repriced on its deferred day already has an asymptotically zero diagonal price.
+`gap_asympEq_zero_of_diagonal` then divides the portfolio's positive rational normalization
+back out, returning the quoted gap itself.
+-/
+
 namespace AffineQuotePortfolio
 
 private lemma price_le_futureHigh {P : History} {gap : ℕ → ℝ}
@@ -239,14 +285,12 @@ private lemma futureLow_le_price {P : History} {gap : ℕ → ℝ}
 /-- Reusable `thm:affpolymax` transport: if a fixed polynomial affine portfolio is
 asymptotically worth zero when repriced on its deferred day, then its diagonal price is
 already asymptotically zero. -/
-theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
+lemma preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympEq (fun n => (q.family n).price P n) (fun _ => 0) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   rw [asympEq_iff_asympLE_asympGE]
   have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hcons
   constructor
@@ -276,24 +320,30 @@ theorem preemptive_asympEq_zero {P : History} {gap : ℕ → ℝ}
     have hbound : -ε ≤ (q.family n).price P n := by linarith [le_of_not_gt hn]
     linarith
 
+/-- Divide the portfolio's positive rational normalization out of an asymptotically
+vanishing diagonal price, recovering the quoted gap itself.  This is the last step of every
+two-sided quotation endpoint, here and in `Properties/Introspection.lean`; the callers
+differ only in which result supplies the vanishing diagonal price. -/
+lemma gap_asympEq_zero_of_diagonal {P : History} {gap : ℕ → ℝ}
+    (q : AffineQuotePortfolio P gap)
+    (hdiag : AsympEq (fun n => (q.family n).price P n) (fun _ => 0)) :
+    AsympEq gap (fun _ => 0) := by
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
+  have hzero := asympEq_iff_eventuallyWithin.1 hdiag ((q.scale : ℝ) * ε) (mul_pos hs hε)
+  filter_upwards [hzero] with n hn
+  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
+  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+
 /-- Remove the positive normalization from a two-sided fixed-portfolio certificate. -/
 lemma gap_asympEq_zero {P : History} {gap : ℕ → ℝ}
     (q : AffineQuotePortfolio P gap)
     (DP : DeductiveProcess) [IsLogicalInductor P DP] (f : DeferralFunction)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympEq (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
-    AsympEq gap (fun _ => 0) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  rw [asympEq_iff_eventuallyWithin]
-  intro ε hε
-  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
-  have hzero := asympEq_iff_eventuallyWithin.1
-    (q.preemptive_asympEq_zero DP f hcons hfuture)
-    ((q.scale : ℝ) * ε) (mul_pos hs hε)
-  filter_upwards [hzero] with n hn
-  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
-  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+    AsympEq gap (fun _ => 0) :=
+  q.gap_asympEq_zero_of_diagonal (q.preemptive_asympEq_zero DP f hcons hfuture)
 
 /-- One-sided version of the preemptive transport. -/
 lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
@@ -302,8 +352,6 @@ lemma preemptive_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympGE (fun n => (q.family n).price P n) (fun _ => 0) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   intro ε hε
   have hgaps := q.poly.noPreemptiveGaps P DP q.magnitude_le_one hcons
   have hfutureHigh : ∀ᶠ n in atTop, -ε / 2 < affineFutureHigh q.family P n := by
@@ -323,8 +371,6 @@ lemma gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hfuture : AsympGE (fun n => (q.family n).price P (f n)) (fun _ => 0)) :
     AsympGE gap (fun _ => 0) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   intro ε hε
   have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
   have hzero := q.preemptive_asympGE_zero DP f hcons hfuture
@@ -335,7 +381,7 @@ lemma gap_asympGE_zero {P : History} {gap : ℕ → ℝ}
 
 end AffineQuotePortfolio
 
-/-! ### The four Self-Trust statements
+/-! ## The four Self-Trust statements
 
 Common shape: `f` a deferral function, completed-theory semantics for each quoted family,
 and a fixed-portfolio coherence certificate.  The semantic fields are pointwise consequences
@@ -351,8 +397,6 @@ theorem lic_expected_future_expectations (P : History) (DP : DeductiveProcess)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : ExpectedFutureExpectationQuote P DP f X Y) :
     AsympEq (fun n => (X n).expect P n) (fun n => (Y n).expect P n) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
     hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
@@ -367,8 +411,6 @@ theorem lic_no_expected_net_update (P : History) (DP : DeductiveProcess)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : FuturePriceQuote P DP f φ Y) :
     AsympEq (fun n => P n (φ n)) (fun n => (Y n).expect P n) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
     hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
@@ -381,7 +423,7 @@ vanishing slack of `x · w (f n)`, and `Z' n` at the (world-independent)
 `𝔼_{f n}(Xₙ) · w (f n)`.
 
 The bundled certificate records both `[0,1]` membership and paper-side P-generability
-(`def:pgen`) of `w`, and carries the left-product slack (disclosed type-`(c)`; see
+(`def:ece`) of `w`, and carries the left-product slack (disclosed type-`(c)`; see
 `ConditionalExpectationQuote`).
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProcess)
@@ -390,8 +432,6 @@ theorem lic_no_expected_net_update_conditional (P : History) (DP : DeductiveProc
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : ConditionalExpectationQuote P DP f X Z Z' w) :
     AsympEq (fun n => (Z n).expect P n) (fun n => (Z' n).expect P n) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   simpa only [AsympEq, sub_zero] using
     hquote.affine.toAffineQuotePortfolio.gap_asympEq_zero DP f hcons
       hquote.affine.future_coherent
@@ -414,20 +454,10 @@ theorem lic_self_trust (P : History) (DP : DeductiveProcess)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hquote : SelfTrustQuote P DP f φ δ p A B) :
     AsympGE (fun n => (A n).expect P n) (fun n => (p n : ℝ) * (B n).expect P n) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   have hgap := hquote.affine.toAffineQuotePortfolio.gap_asympGE_zero DP f hcons
     hquote.affine.future_coherent
   intro ε hε
   filter_upwards [hgap ε hε] with n hn
   linarith
-
-#print axioms AffineQuotePortfolio.preemptive_asympEq_zero
-#print axioms AffineQuotePortfolio.preemptive_asympGE_zero
-#print axioms lic_expected_future_expectations
-#print axioms lic_no_expected_net_update
-#print axioms lic_no_expected_net_update_conditional
-#print axioms lic_self_trust
-#print axioms succDeferral
 
 end LogicalInduction

@@ -1,23 +1,57 @@
-/-
-# §4.5 Affine coherence (`thm:affcoh`, appendix `app:affcoh`)
-
-The compactness bridge and the theorems that consume it.  Boolean worlds are represented
-topologically as `ℕ → Bool`; formula evaluation is continuous, so nested finite-stage model
-sets and every fixed affine sublevel set are closed in a compact product space.  That is
-what lets a bound holding in every completed-theory world be pulled back to a uniform bound
-from some finite stage on.
-
-Theorems here: `thm:affcoh` (`PolySequence.affcoh`), the completed-theory forms of
-`thm:affprovind`, and `thm:provind` (`lic_provind`).
--/
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.TimelyLearning
+import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Affine Coherence
+
+Renders §4.5: `thm:affcoh` (Affine Coherence, appendix `app:affcoh`), all three comparison
+forms of `thm:affprovind`, and the sentence-level `thm:provind` of §4.2 as the one-share
+special case of the affine equality form.
+
+`BoolPCWorld` is the Boolean-world toolkit: `ℕ → Bool` with `toPCWorld` / `ofPCWorld`,
+`eval`, `atomBound`, and the finite-support types `FiniteWorld B` / `bitsWorld` /
+`bitsPayoutRat`. `bitsWorld` exists for compilation rather than for the mathematics:
+`ℕ → Bool` admits no `Primcodable` instance, so routing through `List Bool` keeps every
+compiled quantity a function of `Primcodable` arguments. The toolkit is consumed by
+`Properties/{Calibration,LimitCoherence}.lean` and
+`Construction/Witnesses/{BoundedEvaluation,HistoricalMaturity}.lean`.
+
+The compactness bridge is `continuous_eval`: formula evaluation is continuous on the
+product space, so model sets are clopen and affine sublevel sets closed.
+`eventually_affineValue_gt_of_theory` pulls a bound holding in every completed-theory world
+back to a uniform bound from some finite stage on. The completed-theory value set is
+`completedAffineValues`, with extrema `completedAffineLow` / `completedAffineHigh` and
+their uniform filter bounds.
+
+`PolySequence.eventualMember` is the legal fixed-portfolio progression: a polynomial affine
+sequence can uniformly emit any one of its members forever after that member's own index.
+It carries the first half of affine coherence. The two pointwise bridges
+`completedTheoryLow_le_limitingValue` and `limitingValue_le_completedTheoryHigh` — the
+latter by applying the former to the negated family — assemble into `PolySequence.affcoh`.
+
+`affine_provind_theory_ge` / `_le` / `_eq` are `thm:affprovind`. The vanishing-error
+variants `_tendsto_zero`, `_le_const` and `_ge_const` are what quoted `[0,1]` values and
+the `dd:mesh` slack need, since a finite threshold sum approximates its real value only
+within `O(1/n)`.
+
+`lic_provind_true` / `lic_provind_false` / `lic_provind` are the paper-facing
+`thm:provind`: efficient theorem and disprovable-sentence sequences need only appear
+somewhere in the completed process, not by their own index. §4.2's sentence-level theorem
+lands in this §4.5 module because it is the `k = 1`, `b ∈ {0,1}` special case of
+`affine_provind_theory_eq`.
+
+Limit vocabulary is `dd:asymp`'s; the reified features the portfolios are built from are
+`dd:dsl`'s.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Boolean worlds and finite-support payouts -/
 
 /-- A Boolean-valued presentation of a propositionally consistent world, used only for
 the compactness proof. -/
@@ -74,7 +108,8 @@ compilation rather than for the mathematics.  `BoolPCWorld` is `ℕ → Bool`, a
 type, which admits no `Primcodable` instance — so `Primrec (eval v)` cannot even be stated
 for a world `v`.  Routing through a `List Bool` keeps every compiled quantity a function of
 `Primcodable` arguments (`List Bool × Sentence`), with the world appearing only as a
-beta-reduced intermediate.  `bitsWorld_eq_toBoolPCWorld` bridges back. -/
+beta-reduced intermediate.  `toBoolPCWorld_bitsToFin` and `bitsWorld_ofFn`
+(`Properties/Calibration.lean`) bridge back to the dependent finite worlds. -/
 def bitsWorld (l : List Bool) : BoolPCWorld := fun a => l.getD a false
 
 /-- Rational payout under a bit list: the non-dependent form of `FiniteWorld.payoutRat`. -/
@@ -148,6 +183,8 @@ lemma FiniteWorld.payoutRat_restrict_ofPCWorld (v : PCWorld) (B : ℕ)
       exact fun he => hh (heval.mp he)
     simp [this, PCWorld.payoutRat, hh]
 
+/-! ## Compactness in the product space -/
+
 /-- Sentence evaluation depends continuously on its finitely many atoms. -/
 lemma continuous_eval (φ : Sentence) : Continuous (fun v : BoolPCWorld => eval v φ) := by
   induction φ with
@@ -218,8 +255,8 @@ lemma isClosed_consistentWith (DP : DeductiveProcess) (n : ℕ) :
 
 /-- A fixed affine sublevel set is closed. -/
 lemma isClosed_affineValue_le (A : AffineCombination) (P : History) (q : ℝ) :
-    IsClosed {v : BoolPCWorld | A.value P v.toPCWorld.payout ≤ q} := by
-  exact isClosed_Iic.preimage (continuous_affineValue A P)
+    IsClosed {v : BoolPCWorld | A.value P v.toPCWorld.payout ≤ q} :=
+  isClosed_Iic.preimage (continuous_affineValue A P)
 
 end BoolPCWorld
 
@@ -244,7 +281,7 @@ completed theory, then after some finite stage it is above `q` in every plausibl
 The proof is a compact-product argument: if bad finite-stage worlds existed arbitrarily
 late, the closed finite-stage model sets together with the fixed affine sublevel set would
 have the finite intersection property, hence a completed-theory bad world. -/
-theorem eventually_affineValue_gt_of_theory
+lemma eventually_affineValue_gt_of_theory
     (DP : DeductiveProcess) (A : AffineCombination) (P : History) (q : ℝ)
     (hall : ∀ v : PCWorld, v.ConsistentWithTheory DP → q < A.value P v.payout) :
     ∀ᶠ n in atTop, ∀ v : PCWorld,
@@ -271,8 +308,7 @@ theorem eventually_affineValue_gt_of_theory
     | none =>
         simpa [affineCompactConstraint] using hvalue
     | some n =>
-        have hnK : n ≤ K := by
-          exact Finset.le_sup (s := u) (f := fun i => i.getD 0) hi
+        have hnK : n ≤ K := Finset.le_sup (s := u) (f := fun i => i.getD 0) hi
         have hnm : n ≤ m := hnK.trans hmK
         have hsub : DP.D n ⊆ DP.D m := Finset.le_iff_subset.mp
           (monotone_nat_of_le_succ (fun k => Finset.le_iff_subset.mpr (DP.mono k)) hnm)
@@ -295,32 +331,14 @@ theorem eventually_affineValue_gt_of_theory
   exact (not_lt_of_ge hbvalue) this
 
 /-- Nonempty finite-stage plausible sets have a world in their nested intersection, i.e.
-a world consistent with the completed theory. -/
+a world consistent with the completed theory. The compactness argument itself lives in
+`Framework/Compactness.lean`; this is the §4.5-local spelling of it. -/
 lemma exists_consistentWithTheory (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    ∃ v : PCWorld, v.ConsistentWithTheory DP := by
-  have hfip : ∀ u : Finset ℕ,
-      (Set.univ ∩ ⋂ n ∈ u,
-        {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)}).Nonempty := by
-    intro u
-    let K := u.sup id
-    obtain ⟨v, hv⟩ := hworld K
-    refine ⟨BoolPCWorld.ofPCWorld v, ?_⟩
-    constructor
-    · exact Set.mem_univ _
-    simp only [Set.mem_iInter]
-    intro n hn
-    have hnK : n ≤ K := Finset.le_sup (s := u) (f := id) hn
-    have hsub : DP.D n ⊆ DP.D K := Finset.le_iff_subset.mp
-      (monotone_nat_of_le_succ (fun k => Finset.le_iff_subset.mpr (DP.mono k)) hnK)
-    simpa using (show (BoolPCWorld.ofPCWorld v).toPCWorld.ConsistentWith (DP.D n) from
-      fun φ hφ => by
-        rw [BoolPCWorld.ofPCWorld_toPCWorld]
-        exact hv φ (hsub hφ))
-  obtain ⟨b, _, hb⟩ := isCompact_univ.inter_iInter_nonempty
-    (fun n => {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)})
-    (BoolPCWorld.isClosed_consistentWith DP) hfip
-  exact ⟨b.toPCWorld, fun n => Set.mem_iInter.mp hb n⟩
+    ∃ v : PCWorld, v.ConsistentWithTheory DP :=
+  DP.exists_consistentWithTheory hworld
+
+/-! ## Completed-theory affine values -/
 
 /-- Values of `A` over all worlds consistent with the completed theory. -/
 def completedAffineValues (DP : DeductiveProcess) (A : AffineCombination)
@@ -335,6 +353,8 @@ lemma completedAffineValues_nonempty (DP : DeductiveProcess) (A : AffineCombinat
   exact ⟨A.value P v.payout, v, hv, rfl⟩
 
 namespace AffineCombination
+
+/-! ## The fixed-member progression -/
 
 /-- The empty affine combination used before a fixed member's coefficients become
 rank-legal. -/
@@ -422,6 +442,26 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
       exact h.coefficient_closed (idx z) ρ V
   }
 
+/-- A day-`n` member of a bounded normalized affine family takes values in `[-(B+C), B+C]`
+in every world: its day-`n` price is within `B`, and its value differs from that price by
+at most its share magnitude `C`. -/
+lemma PolySequence.abs_value_le_of_bounded {As : ℕ → AffineCombination}
+    (h : PolySequence As) (P : History) {B C : ℝ}
+    (hB : ∀ n m, |(As n).price P m| ≤ B) (hC : ∀ n, (As n).magnitude P ≤ C)
+    (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1) (n : ℕ) (v : PCWorld) :
+    |(As n).value P v.payout| ≤ B + C := by
+  have hdifference := (As n).abs_value_sub_price_le_magnitude P v.payout n
+    (h.terms_rank n)
+    (fun φ => by
+      by_cases hφ : v.Holds φ
+      · exact Or.inr (by simp [PCWorld.payout, hφ])
+      · exact Or.inl (by simp [PCWorld.payout, hφ]))
+    (hP n)
+  have hprice := hB n n
+  have hmagnitude := hC n
+  rw [abs_le] at hdifference hprice ⊢
+  constructor <;> linarith
+
 /-- Completed-theory values of a normalized bounded affine family have uniform real
 bounds. -/
 lemma PolySequence.completedAffineValues_bdd {As : ℕ → AffineCombination}
@@ -434,19 +474,8 @@ lemma PolySequence.completedAffineValues_bdd {As : ℕ → AffineCombination}
   obtain ⟨B, hB0, hB⟩ := hbounded
   obtain ⟨C, hC⟩ := hmag
   have hC0 : 0 ≤ C := (As 0).magnitude_nonneg P |>.trans (hC 0)
-  have hvalue : ∀ v : PCWorld, |(As n).value P v.payout| ≤ B + C := by
-    intro v
-    have hdifference := (As n).abs_value_sub_price_le_magnitude P v.payout n
-      (h.terms_rank n)
-      (fun φ => by
-        by_cases hφ : v.Holds φ
-        · exact Or.inr (by simp [PCWorld.payout, hφ])
-        · exact Or.inl (by simp [PCWorld.payout, hφ]))
-      (hP n)
-    have hprice := hB n n
-    have hmagnitude := hC n
-    rw [abs_le] at hdifference hprice ⊢
-    constructor <;> linarith
+  have hvalue : ∀ v : PCWorld, |(As n).value P v.payout| ≤ B + C :=
+    h.abs_value_le_of_bounded P hB hC hP n
   constructor
   · refine ⟨-(B + C), ?_⟩
     rintro x ⟨v, _, rfl⟩
@@ -466,7 +495,7 @@ lemma PolySequence.completedTheoryLow_le_limitingValue
     sInf (completedAffineValues DP (As i) P) ≤
       (As i).value P (limitingBelief P) := by
   have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   by_contra hnot
   have hlt : (As i).value P (limitingBelief P) <
       sInf (completedAffineValues DP (As i) P) := lt_of_not_ge hnot
@@ -531,16 +560,8 @@ lemma PolySequence.limitingValue_le_completedTheoryHigh
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (i : ℕ) :
     (As i).value P (limitingBelief P) ≤
       sSup (completedAffineValues DP (As i) P) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
-    obtain ⟨B, hB0, hB⟩ := hbounded
-    exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
-  have hnegMag : ∃ C : ℝ, ∀ n, ((As n).neg).magnitude P ≤ C := by
-    obtain ⟨C, hC⟩ := hmag
-    exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
-  have hneg := h.neg.completedTheoryLow_le_limitingValue P DP hnegBound
-    hnegMag hworld i
+  have hneg := h.neg.completedTheoryLow_le_limitingValue P DP hbounded.neg
+    (exists_magnitude_bound_neg hmag) hworld i
   rw [completedAffineValues_neg, Real.sInf_neg, neg_value] at hneg
   linarith
 
@@ -572,19 +593,8 @@ lemma PolySequence.completedAffineExtrema_filterBounds
       IsBoundedUnder (· ≤ ·) atTop (completedAffineHigh As P DP) := by
   obtain ⟨B, hB0, hB⟩ := hbounded
   obtain ⟨C, hC⟩ := hmag
-  have hvalue : ∀ n (v : PCWorld), |(As n).value P v.payout| ≤ B + C := by
-    intro n v
-    have hdifference := (As n).abs_value_sub_price_le_magnitude P v.payout n
-      (h.terms_rank n)
-      (fun φ => by
-        by_cases hφ : v.Holds φ
-        · exact Or.inr (by simp [PCWorld.payout, hφ])
-        · exact Or.inl (by simp [PCWorld.payout, hφ]))
-      (hP n)
-    have hprice := hB n n
-    have hmagnitude := hC n
-    rw [abs_le] at hdifference hprice ⊢
-    constructor <;> linarith
+  have hvalue : ∀ n (v : PCWorld), |(As n).value P v.payout| ≤ B + C :=
+    h.abs_value_le_of_bounded P hB hC hP
   have hextrema : ∀ n,
       -(B + C) ≤ completedAffineLow As P DP n ∧
         completedAffineLow As P DP n ≤ B + C ∧
@@ -617,6 +627,8 @@ lemma PolySequence.completedAffineExtrema_filterBounds
     isBoundedUnder_of_eventually_ge (Eventually.of_forall (fun n => (hextrema n).2.2.1)),
     isBoundedUnder_of_eventually_le (Eventually.of_forall (fun n => (hextrema n).2.2.2))⟩
 
+/-! ## Affine Coherence (`thm:affcoh`) -/
+
 /-- Paper-facing **Affine Coherence** (`thm:affcoh`). The limiting affine value lies
 between completed-theory extrema in liminf/limsup, and persistence transports it to the
 main diagonal.
@@ -635,7 +647,7 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
         limsup (fun n => (As n).value P (limitingBelief P)) atTop ≤
           limsup (completedAffineHigh As P DP) atTop) := by
   let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   obtain ⟨hdlo, hdhi, hhlo, hhhi, hllo, hlhi⟩ := hbounded.filterBounds
   obtain ⟨hlimlo, hlimhi⟩ :=
     AffineCombination.BoundedAffinePrices.limitingValue_filterBounds
@@ -675,6 +687,8 @@ theorem PolySequence.affcoh {As : ℕ → AffineCombination} (h : PolySequence A
     · exact limsup_le_limsup (Eventually.of_forall htheoryHigh)
         hlimlo.isCobounded_flip hthhi
 
+/-! ## Affine Provability Induction (`thm:affprovind`) -/
+
 /-- Lower form of **Affine Provability Induction**: for `⟨A⟩` a bounded combination
 sequence and `b : ℝ`, a uniform lower bound `b ≤ W(Aₙ)` in every completed-theory world
 `W ∈ cworlds(Θ)` is learned on the main diagonal.
@@ -690,7 +704,7 @@ theorem PolySequence.affine_provind_theory_ge
       b ≤ (As n).value P v.payout) :
     (fun n => (As n).price P n) ≳ₙ fun _ => b := by
   let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   obtain ⟨_, hdhi, _, _, _, _⟩ := hbounded.filterBounds
   obtain ⟨_, htlhi, _, _⟩ :=
     h.completedAffineExtrema_filterBounds P DP hbounded hmag hP hworld
@@ -725,14 +739,8 @@ theorem PolySequence.affine_provind_theory_le
     (hval : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       (As n).value P v.payout ≤ b) :
     (fun n => (As n).price P n) ≲ₙ fun _ => b := by
-  have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
-    obtain ⟨B, hB0, hB⟩ := hbounded
-    exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
-  have hnegMag : ∃ C : ℝ, ∀ n, ((As n).neg).magnitude P ≤ C := by
-    obtain ⟨C, hC⟩ := hmag
-    exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
-  have hneg := h.neg.affine_provind_theory_ge P DP hnegBound
-    hnegMag hworld (-b)
+  have hneg := h.neg.affine_provind_theory_ge P DP hbounded.neg
+    (exists_magnitude_bound_neg hmag) hworld (-b)
     (fun n v hv => by rw [neg_value]; linarith [hval n v hv])
   intro ε hε
   filter_upwards [hneg ε hε] with n hn
@@ -758,6 +766,8 @@ theorem PolySequence.affine_provind_theory_eq
     h.affine_provind_theory_ge P DP hbounded hmag hworld b
       (fun n v hv => (hval n v hv).ge)⟩
 
+/-! ## Vanishing-error forms -/
+
 /-- Vanishing-error form of paper-facing affine provability induction.  This is the form
 needed by quoted `[0,1]` values: the finite threshold sum approximates its represented real
 value within `O(1/n)`, so completed-theory values tend uniformly to zero rather than being
@@ -772,7 +782,7 @@ lemma PolySequence.affine_provind_theory_tendsto_zero
       v.ConsistentWithTheory DP → |(As n).value P v.payout| ≤ ε) :
     (fun n => (As n).price P n) ≈ₙ fun _ => 0 := by
   let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   rw [asympEq_iff_eventuallyWithin]
   intro ε hε
   obtain ⟨hdlo, hdhi, _, _, _, _⟩ := hbounded.filterBounds
@@ -825,7 +835,7 @@ lemma PolySequence.affine_provind_theory_le_const
       v.ConsistentWithTheory DP → (As n).value P v.payout ≤ c + ε) :
     (fun n => (As n).price P n) ≲ₙ fun _ => c := by
   let hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   intro ε hε
   obtain ⟨_, hdhi, _, _, _, _⟩ := hbounded.filterBounds
   obtain ⟨_, _, hthlo, _⟩ :=
@@ -858,13 +868,8 @@ lemma PolySequence.affine_provind_theory_ge_const
     (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWithTheory DP → c - ε ≤ (As n).value P v.payout) :
     (fun n => (As n).price P n) ≳ₙ fun _ => c := by
-  have hnegBound : BoundedAffinePrices (fun n => (As n).neg) P := by
-    obtain ⟨B, hB0, hB⟩ := hbounded
-    exact ⟨B, hB0, fun n m => by simpa [neg_price] using hB n m⟩
-  have hnegMag : ∃ C : ℝ, ∀ n, ((As n).neg).magnitude P ≤ C := by
-    obtain ⟨C, hC⟩ := hmag
-    exact ⟨C, fun n => by simpa [neg_magnitude] using hC n⟩
-  have hneg := h.neg.affine_provind_theory_le_const P DP hnegBound hnegMag hworld (-c)
+  have hneg := h.neg.affine_provind_theory_le_const P DP hbounded.neg
+    (exists_magnitude_bound_neg hmag) hworld (-c)
     (fun ε hε => by
       filter_upwards [hval ε hε] with n hn v hv
       rw [neg_value]; linarith [hn v hv])
@@ -873,14 +878,9 @@ lemma PolySequence.affine_provind_theory_ge_const
   rw [neg_price] at hn
   linarith
 
-#print axioms eventually_affineValue_gt_of_theory
-#print axioms AffineCombination.PolySequence.eventualMember
-#print axioms AffineCombination.PolySequence.completedTheoryLow_le_limitingValue
-#print axioms AffineCombination.PolySequence.affcoh
-#print axioms AffineCombination.PolySequence.affine_provind_theory_eq
-#print axioms AffineCombination.PolySequence.affine_provind_theory_tendsto_zero
-
 end AffineCombination
+
+/-! ## Provability Induction (`thm:provind`) -/
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence of
 completed-theory theorems. Individual proofs may appear arbitrarily later than their
@@ -892,7 +892,7 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
   let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
-    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   have hφpoly := AffineCombination.sentenceAffine_polySequence φ hφ
   have hφeq := hφpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded φ P hP)
@@ -912,7 +912,7 @@ theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInduct
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
   let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
-    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   have hψpoly := AffineCombination.sentenceAffine_polySequence ψ hψ
   have hψeq := hψpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded ψ P hP)
@@ -935,16 +935,8 @@ theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P D
     (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n => P n (φ n)) ≈ₙ fun _ => 1) ∧
-      ((fun n => P n (ψ n)) ≈ₙ fun _ => 0) := by
-  exact ⟨lic_provind_true P DP φ hφ hthm hworld,
+      ((fun n => P n (ψ n)) ≈ₙ fun _ => 0) :=
+  ⟨lic_provind_true P DP φ hφ hthm hworld,
     lic_provind_false P DP ψ hψ hdis hworld⟩
-
-#print axioms lic_provind_true
-#print axioms lic_provind_false
-
-#print axioms lic_provind
-#print axioms BoolPCWorld.eval_toBoolPCWorld_restrict
-#print axioms BoolPCWorld.FiniteWorld.payoutRat_eq_toPCWorld
-#print axioms BoolPCWorld.FiniteWorld.payoutRat_restrict_ofPCWorld
 
 end LogicalInduction

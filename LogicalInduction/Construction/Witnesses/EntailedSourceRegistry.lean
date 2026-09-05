@@ -4,15 +4,38 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceDP
 /-!
 # Entailment-gated source admission
 
-This is the certificate-free replacement for the tag-`0` cut-law gate.  A bounded witness
-contains only clocks for the universal emitter and the already-fixed base process.  The
-gate accepts exactly when exhaustive finite propositional evaluation verifies that the
-decoded base stage entails the emitted law.
+The certificate-free admission gate for tag-`0` sources — construction machinery for
+`thm:ccee`'s exact product, parallel to the certificate-carrying gate in
+`SemanticSourceRegistry.lean`.
+
+What distinguishes it: the witness carries no proof object and no source-specific process,
+only clocks for the universal emitter and for the already-fixed base process, plus a base
+stage index.  The gate accepts exactly when exhaustive finite propositional evaluation
+(`stageEntails`) verifies that the decoded base stage entails the emitted law.
+
+Objects defined: `entailedSourceLawEvidenceAt`, `entailedSourceLawSeen` (dovetailed over
+packed witnesses), and the three nested prefix predicates
+`entailedSourceDownwardPrefixValidAtFuel`, `entailedSourceThresholdPrefixValidAtFuel` and
+`entailedSourcePrefixValidAtFuel`.
+
+Main results: primitive recursiveness of each; `entailedSourceLawEvidenceAt_sound` (accepted
+evidence holds in every completed base world); `entailedSourceLawSeen_eventually` (every
+emitted law that is a completed-base consequence is eventually admitted, via
+`DeductiveProcess.stageEntails_complete_of_semantic`); `entailedSourcePrefixValidAtFuel_downward`;
+and `semanticSourceExtensionWorld_downward_of_entailedSeen`.  They are consumed by
+`SemanticRegistryProduct.lean` and `LiftedRpnSource.lean`.
+
+Design: exact product consistency uses only freshness and pairwise downward closure; bounds
+are supplied separately by the `ValuesAt` hypotheses at the point where multiplication is
+reflected.  `entailedSourceLawSeen` is made `local irreducible` before the prefix predicates
+so that their `Primrec` elaboration matches structurally rather than by reduction.
 -/
 
 namespace LogicalInduction
 
 open LO LO.Propositional
+
+/-! ## The bounded entailment check -/
 
 /-- One bounded certificate-free source-law check.  The packed witness contains emitter
 fuel, base-program fuel, and base stage index. -/
@@ -78,26 +101,13 @@ lemma entailedSourceLawEvidenceAt_prim {DP : DeductiveProcess}
     cases semanticSourceCutLawAtFuel p.1.1 p.1.2 p.2.unpair.1 <;>
       cases base.stageAtFuel p.2.unpair.2.unpair.1 p.2.unpair.2.unpair.2 <;> rfl
 
+/-! ## Dovetailing over witnesses -/
+
 /-- Dovetail the bounded evidence over all packed clock/stage witnesses. -/
 def entailedSourceLawSeen {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (schema job fuel : ℕ) : Bool :=
   (List.range (fuel + 1)).any fun witness =>
     entailedSourceLawEvidenceAt base schema job witness
-
-private lemma listRangeAny_prim {α : Type} [Primcodable α]
-    {bound : α → ℕ} {test : α → ℕ → Bool}
-    (hbound : Primrec bound) (htest : Primrec₂ test) :
-    Primrec fun a => (List.range (bound a + 1)).any (test a) := by
-  have hrange : Primrec fun a => List.range (bound a + 1) :=
-    Primrec.list_range.comp (Primrec.nat_add.comp hbound (Primrec.const 1))
-  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 || q.2 :=
-    (Primrec.dom_bool₂ (· || ·)).comp₂
-      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
-      (Primrec.snd.comp₂ Primrec₂.right)
-  exact (Primrec.list_foldr hrange (Primrec.const false) hstep).of_eq fun a => by
-    induction List.range (bound a + 1) with
-    | nil => rfl
-    | cons x xs ih => simp [List.any, ih]
 
 lemma entailedSourceLawSeen_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
@@ -129,6 +139,8 @@ lemma entailedSourceLawSeen_mono {DP : DeductiveProcess}
   obtain ⟨w, hw, he⟩ := (entailedSourceLawSeen_iff base schema job fuel).1 h
   exact (entailedSourceLawSeen_iff base schema job fuel').2
     ⟨w, hw.trans hff, he⟩
+
+/-! ## Soundness and completeness of the gate -/
 
 /-- Accepted evidence is semantically sound in every completed base world. -/
 lemma entailedSourceLawEvidenceAt_sound {DP : DeductiveProcess}
@@ -174,6 +186,7 @@ lemma entailedSourceLawSeen_eventually {DP : DeductiveProcess}
 Exact product consistency uses only freshness and pairwise downward closure.  Bounds are
 provided by the `ValuesAt` hypotheses at the point where multiplication is reflected. -/
 
+/-- Pairwise downward checks for one source index and one left threshold. -/
 def entailedSourceDownwardPrefixValidAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema limit fuel n zr : ℕ) : Bool :=
@@ -184,12 +197,14 @@ def entailedSourceDownwardPrefixValidAtFuel {DP : DeductiveProcess}
       entailedSourceLawSeen base schema (sourceCutDownwardJob n r s) fuel
     else true
 
+/-- Freshness and all downward checks for one threshold query. -/
 def entailedSourceThresholdPrefixValidAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
     (schema limit fuel n zr : ℕ) : Bool :=
   semanticSourceFreshSeen schema n zr fuel &&
     entailedSourceDownwardPrefixValidAtFuel base schema limit fuel n zr
 
+/-- All executable evidence required to expose query indices at most `limit`. -/
 def entailedSourcePrefixValidAtFuel {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (schema limit fuel : ℕ) : Bool :=
   (List.range (limit + 1)).all fun n =>
@@ -197,21 +212,6 @@ def entailedSourcePrefixValidAtFuel {DP : DeductiveProcess}
       entailedSourceThresholdPrefixValidAtFuel base schema limit fuel n zr
 
 attribute [local irreducible] entailedSourceLawSeen
-
-private lemma entailedListRangeAll_prim { α : Type } [Primcodable α]
-    {bound : α → ℕ} {test : α → ℕ → Bool}
-    (hbound : Primrec bound) (htest : Primrec₂ test) :
-    Primrec fun a => (List.range (bound a + 1)).all (test a) := by
-  have hrange : Primrec fun a => List.range (bound a + 1) :=
-    Primrec.list_range.comp (Primrec.nat_add.comp hbound (Primrec.const 1))
-  have hstep : Primrec₂ fun (a : α) (q : ℕ × Bool) => test a q.1 && q.2 :=
-    (Primrec.dom_bool₂ (· && ·)).comp₂
-      (htest.comp₂ Primrec₂.left (Primrec.fst.comp₂ Primrec₂.right))
-      (Primrec.snd.comp₂ Primrec₂.right)
-  exact (Primrec.list_foldr hrange (Primrec.const true) hstep).of_eq fun a => by
-    induction List.range (bound a + 1) with
-    | nil => rfl
-    | cons x xs ih => simp [List.all, ih]
 
 set_option maxHeartbeats 8000000 in
 lemma entailedSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
@@ -259,7 +259,7 @@ lemma entailedSourceDownwardPrefixValidAtFuel_prim {DP : DeductiveProcess}
         decodedQuotationRat q.1.2 < decodedQuotationRat q.2 :=
       (ratLE_prim.comp hs (hr.comp Primrec.fst)).not.of_eq fun _ => by simp [not_le]
     exact (Primrec.ite hlt hseen (Primrec.const true)).to₂
-  exact entailedListRangeAll_prim hlimit htest
+  exact listRangeAll_prim hlimit htest
 
 lemma entailedSourceThresholdPrefixValidAtFuel_prim {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
@@ -301,9 +301,13 @@ lemma entailedSourcePrefixValidAtFuel_prim {DP : DeductiveProcess}
           (Primrec.snd.comp Primrec.fst)).pair Primrec.snd)
       exact ((entailedSourceThresholdPrefixValidAtFuel_prim base).comp hpack).to₂.of_eq
         fun _ _ => rfl
-    exact (entailedListRangeAll_prim hlimitQ htest).to₂
-  exact entailedListRangeAll_prim hlimit hinner
+    exact (listRangeAll_prim hlimitQ htest).to₂
+  exact listRangeAll_prim hlimit hinner
 
+/-! ## Prefix accessors and clock monotonicity -/
+
+/-- Prefix validity exposes freshness for every admitted source query: the accessor for the
+freshness conjunct, paired with `entailedSourcePrefixValidAtFuel_downward` below. -/
 lemma entailedSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
     (hvalid : entailedSourcePrefixValidAtFuel base schema limit fuel = true)
@@ -363,6 +367,8 @@ lemma entailedSourcePrefixValidAtFuel_mono {DP : DeductiveProcess}
   exact entailedSourceThresholdPrefixValidAtFuel_mono base hff
     (List.all_eq_true.mp (h n hn) zr hzr)
 
+/-! ## Soundness in the canonical extension world -/
+
 /-- Entailment-gated downward evidence is sound in the canonical source extension. -/
 lemma semanticSourceExtensionWorld_downward_of_entailedSeen {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
@@ -387,24 +393,6 @@ lemma semanticSourceExtensionWorld_downward_of_entailedSeen {DP : DeductiveProce
   exact (semanticSourceExtensionWorld_leaf_iff v₀ schema _ witness.unpair.1
     hsource hφr hfr).mpr (himp hs₀)
 
-private lemma entailedListAll_eventually_of_mono {l : List ℕ}
-    {test : ℕ → ℕ → Bool}
-    (hmono : ∀ x {fuel fuel'}, fuel ≤ fuel' → test x fuel = true →
-      test x fuel' = true)
-    (heventual : ∀ x ∈ l, ∃ fuel, test x fuel = true) :
-    ∃ fuel, l.all (fun x => test x fuel) = true := by
-  induction l with
-  | nil => exact ⟨0, rfl⟩
-  | cons x xs ih =>
-      obtain ⟨fx, hfx⟩ := heventual x (by simp)
-      obtain ⟨fs, hfs⟩ := ih (fun y hy => heventual y (by simp [hy]))
-      refine ⟨max fx fs, ?_⟩
-      rw [List.all_cons, Bool.and_eq_true]
-      exact ⟨hmono x (Nat.le_max_left _ _) hfx, by
-        rw [List.all_eq_true] at hfs ⊢
-        intro y hy
-        exact hmono y (Nat.le_max_right _ _) (hfs y hy)⟩
-
 /-- Pointwise eventual threshold admission combines into one finite-prefix clock. -/
 lemma entailedSourcePrefix_eventually_of_threshold
     {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
@@ -428,17 +416,13 @@ lemma entailedSourcePrefix_eventually_of_threshold
   have rowEventually : ∀ n ∈ List.range (limit + 1),
       ∃ fuel, row n fuel = true := by
     intro n _
-    exact entailedListAll_eventually_of_mono
+    exact listAll_eventually_of_mono
       (l := List.range (limit + 1))
       (fun zr _ _ hff h => entailedSourceThresholdPrefixValidAtFuel_mono base hff h)
       (fun zr _ => heventual n zr)
-  obtain ⟨fuel, hfuel⟩ := entailedListAll_eventually_of_mono rowMono rowEventually
+  obtain ⟨fuel, hfuel⟩ := listAll_eventually_of_mono rowMono rowEventually
   refine ⟨fuel, ?_⟩
   rw [entailedSourcePrefixValidAtFuel, List.all_eq_true]
   exact List.all_eq_true.mp hfuel
-
-#print axioms entailedSourceLawEvidenceAt_prim
-#print axioms entailedSourceLawEvidenceAt_sound
-#print axioms entailedSourceLawSeen_eventually
 
 end LogicalInduction

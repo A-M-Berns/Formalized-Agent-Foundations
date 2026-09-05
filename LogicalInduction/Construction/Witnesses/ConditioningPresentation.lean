@@ -2,27 +2,60 @@ import LogicalInduction.Construction.Witnesses.BoundedEvaluation
 import LogicalInduction.Properties.Conditioning
 
 /-!
-# Concrete finite-stage presentation for Closure Under Conditioning
+# Concrete presentations for Closure Under Conditioning
 
-This file constructs the `ConditioningPresentation` that `thm:scon` takes as input, so
-that no caller has to assume one.  The condition on day `n` is the canonical finite
-conjunction of the extra deductive stage; its Boolean semantics and the computation of the
-union process are derived here.  Polynomial naming is supplied by an operational
-certificate for the extra process: the certificate contains one program that emits the
-actual conjunction code with polynomial fuel, rather than treating the semantic stage
-function as a polynomial oracle.
+`thm:scon` takes a `ConditioningPresentation` as data.  This file constructs one in three
+forms, so that no caller of `lic_conditioned` / `lic_conditioned_machine` has to assume one.
+
+**Shared machinery.**  `deductiveStageCondition` is the canonical finite conjunction of a
+deductive stage under the code-canonical `Finset` order (empty conjunction `⊤`), with its
+exact Boolean semantics `PCWorld.holds_deductiveStageCondition`;
+`sentenceFinsetUnionNorm` and `sentenceListFinsetNorm` are the primitive-recursive
+normalizers behind `DeductiveProcessComputation.union`, which computes the union process a
+presentation must certify.
+
+**Form 1, fixed condition** (`fixedConditionProcess`, `fixedConditioningPresentation`): the
+paper's `Θ ∪ {ψ}` case, tex:6124.
+
+**Form 2, compact growing** (`CompactConditioningProcessComputation`,
+`conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations`): the
+certificate carries a program emitting the actual conjunction code at the write-out class
+`BigSentenceCodes`, so a stage condition's Gödel code may be exponential in the day.  The
+certificate is destructured as emission data by `CondStep.machineSentenceBlocks_of_big`.
+
+**Form 3, prefix conjunctions from an arbitrary e.c. sequence** (`prefixProcess`,
+`prefixProcessComputation`, `prefixConditioningPresentation`): the paper's own quantifier
+for the growing form (tex:1613-1618, appendix tex:6126), with write-out efficiency of the
+conditions derived from `BigSentenceCodes ψ` through `BigSentenceCodes.bigAnd`.  It is
+consumed by `ConditioningCompile.lic_conditioned_growing_machine_ofSequence`.
+
+**One design fact.**  In form 3 the condition is written in index order through the free
+`condition` field of `ConditioningPresentation`, not through
+`deductiveStageCondition (extra.D n) = (extra.D n).toList.conj₂`: the `Finset.toList` order
+is recoverable only from exponential Gödel codes, `conj₂` is not permutation-invariant, and
+the index order the emitter needs is erased by the `Finset`.  The `Finset` process is kept
+only for the order-insensitive `holds_condition` and for the union computation.
+
+**Non-vacuity.**  `growingCompactConditioningProcessComputation` adjoins stages that are
+nonempty and strictly grow (`growingConditionProcess_ssubset`,
+`deductiveStageCondition_growing_ne`, `deductiveStageCondition_growing_ne_top`), so the
+growing form says something; `compactConditioningProcessComputation_nonempty` is
+inhabitation only and carries no such content.
 -/
 
 namespace LogicalInduction
 
 open LO.Propositional
 
-/-! ### Canonical finite conjunction -/
+/-! ## Canonical finite conjunction -/
 
 /-- The sentence asserting every member of a finite deductive stage.  `Finset.conj` uses
 the code-canonical `Finset` order, and the empty conjunction is `⊤`. -/
 noncomputable def deductiveStageCondition (stage : Finset Sentence) : Sentence := stage.conj
 
+/-- A world satisfies a stage's canonical conjunction exactly when it is consistent with
+that stage.  This is the exact Boolean semantics the `holds_condition` field of every
+presentation in this file is discharged by. -/
 @[simp] lemma PCWorld.holds_deductiveStageCondition
     (v : PCWorld) (stage : Finset Sentence) :
     v.Holds (deductiveStageCondition stage) ↔ v.ConsistentWith stage := by
@@ -34,11 +67,11 @@ noncomputable def deductiveStageCondition (stage : Finset Sentence) : Sentence :
   simpa [deductiveStageCondition, PCWorld.Holds, PCWorld.ConsistentWith,
     Finset.conj] using hlist stage.toList
 
-/-! ### Canonical encoded union
+/-! ## Canonical encoded union
 
 The stock `Finset Sentence` encoding is the encoding of its code-sorted list.  The LIA
-compiler already proves primitive-recursive code sorting and duplicate removal.  We expose
-one normalizer built from those existing pieces and use it after pairing two stage outputs.
+compiler already proves primitive-recursive code sorting and duplicate removal, and one
+normalizer built from those pieces is applied after pairing two stage outputs.
 -/
 
 /-- Code-sorted duplicate-free union of two encoded sentence lists.  Malformed list codes
@@ -49,6 +82,7 @@ def sentenceFinsetUnionNorm (z : ℕ) : ℕ :=
   Encodable.encode <|
     (sentenceDedup (left ++ right)).insertionSort sentenceCodeLE
 
+/-- The union normalizer is primitive recursive. -/
 lemma sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
   have hleft : Primrec fun z : ℕ ↦
       (Encodable.decode (α := List Sentence) z.unpair.1).getD [] :=
@@ -66,6 +100,7 @@ lemma sentenceFinsetUnionNorm_prim : Primrec sentenceFinsetUnionNorm := by
     (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp happend))).of_eq
       fun z ↦ by rfl
 
+/-- On a pair of encoded finite stages the normalizer computes the code of their union. -/
 lemma sentenceFinsetUnionNorm_spec (left right : Finset Sentence) :
     sentenceFinsetUnionNorm
         (Nat.pair (Encodable.encode left) (Encodable.encode right)) =
@@ -127,6 +162,7 @@ noncomputable def DeductiveProcessComputation.union
     Part.eq_some_iff.mpr (hunion (DP.D n) (extra.D n))
   simp [Nat.Partrec.Code.eval, hbase, hmore, hnormalized, Seq.seq]
 
+/-- The union of two computable deductive processes is a computable deductive process. -/
 lemma DeductiveProcessComputation.union_toComputable
     {DP extra : DeductiveProcess}
     (base : DeductiveProcessComputation DP)
@@ -134,7 +170,7 @@ lemma DeductiveProcessComputation.union_toComputable
     ComputableDeductiveProcess (DP.union extra) :=
   (base.union more).toComputable
 
-/-! ### Public presentation constructor -/
+/-! ## The compact operational interface and its presentation -/
 
 /-- Honest operational input for efficient condition naming.  The ordinary stage program
 is retained for the union construction.  `condition_codes` says the *actual* finite
@@ -200,44 +236,35 @@ noncomputable def conditioningPresentationOfComputations
   holds_condition n v := v.holds_deductiveStageCondition (extra.D n)
   combined_computable := base.union_toComputable more.toDeductiveProcessComputation
 
-/-! ### A genuinely growing extra process
+/-! ## A genuinely growing extra process
 
-`compactConditioningProcessComputation_nonempty` above shows only that the interface is
-*inhabited*: its witness has `extra.D n = ∅` at every stage, so the adjoined condition is
-the empty conjunction `⊤` and `DP.union extra = DP`.  That witness is therefore no evidence
-that the growing form of `thm:scon` says anything, and it is not cited as such.
+`compactConditioningProcessComputation_nonempty` above is inhabitation only, and degenerate
+for the reason recorded at that lemma.  The process below carries the non-vacuity burden
+instead: it reveals `atom 0` on day `0` and adds `atom 1` from day `1` on, so its stages are
+nonempty, they *strictly grow*, and the condition sequence `n ↦ ⋀ (extra.D n)` changes with
+`n` — `atom 0` at day `0`, a two-conjunct conjunction thereafter.  Its condition-code
+certificate is a two-way dispatch of constant sentence-block streams, which is what keeps
+this witness cheap.
 
-The process below is the honest one.  It reveals `atom 0` on day `0` and adds `atom 1` from
-day `1` on, so its stages are nonempty, they *strictly grow*, and the condition sequence
-`n ↦ ⋀ (extra.D n)` genuinely changes with `n`: `atom 0` at day `0` and a two-conjunct
-conjunction thereafter.  Its condition-code certificate is a two-way dispatch of constant
-sentence-block streams, which is what keeps this witness cheap.
-
-It is an *eventually constant* growing process, and deliberately so.  This particular
-witness is eventually constant only for cheapness; an *unboundedly* growing prefix process
-`n ↦ {ψ₀, …, ψₙ}` over an arbitrary e.c. sequence is now fully reachable — see
-`prefixProcess` / `prefixConditioningPresentation` below and the arbitrary-e.c.-sequence
-endpoint `ConditioningCompile.lic_conditioned_growing_machine_ofSequence`
-(`Construction/Machine/CondEndpoints.lean`).  The write-out class removed the *value* half
-(a condition whose code is exponential in its symbol count is admissible), and the *shape*
-combinator now exists too: `BigSentenceCodes.bigAnd` (`Framework/WriteOut.lean`) writes a
+The witness is eventually constant, for cheapness alone.  An unboundedly growing prefix
+process `n ↦ {ψ₀, …, ψₙ}` over an arbitrary e.c. sequence is reachable: see `prefixProcess`
+/ `prefixConditioningPresentation` below and the arbitrary-e.c.-sequence endpoint
+`ConditioningCompile.lic_conditioned_growing_machine_ofSequence`
+(`Construction/Machine/CondEndpoints.lean`).  The write-out class places no bound on a
+condition's code value, so a condition whose code is exponential in its symbol count is
+admissible, and `BigSentenceCodes.bigAnd` (`Framework/WriteOut.lean`) writes a
 variable-width conjunction, closing the fold on the three-token `⊤ = [2, 0, 0]` terminator.
 
-What that combinator does **not** rescue is the `deductiveStageCondition (extra.D n) =
-(extra.D n).toList.conj₂` route used by `CompactConditioningProcessComputation`: the
-`Finset.toList` order is recoverable only from exponential Gödel codes, `conj₂` is not
-permutation-invariant, and the index order the emitter needs is erased by the `Finset`.
-The strengthening therefore writes the condition in **index order** through the free
-`condition` field of `ConditioningPresentation` — `sentenceConjunction ((range (n+1)).map
-ψ)` — and keeps the `Finset` process only for the order-insensitive `holds_condition` and
-the union computation.  So the emitter obstruction is genuinely closed; the residual is
-only that the `deductiveStageCondition`/`toList` spelling stays unusable, which is
-side-stepped rather than solved.
+That combinator does not rescue the `deductiveStageCondition (extra.D n) =
+(extra.D n).toList.conj₂` route used by `CompactConditioningProcessComputation`; the prefix
+presentation writes the condition in index order through the free `condition` field
+instead, for the reason recorded at the prefix-conjunction section below.
 -/
 
 /-- The atoms adjoined by `growingConditionProcess`. -/
 def growingConditionAtom (i : ℕ) : Sentence := LO.Propositional.Formula.atom i
 
+/-- The two adjoined atoms are distinct, which is what makes the growing stages strict. -/
 lemma growingConditionAtom_zero_ne_one :
     growingConditionAtom 0 ≠ growingConditionAtom 1 := by
   simp [growingConditionAtom]
@@ -261,7 +288,7 @@ def growingConditionProcess : DeductiveProcess where
     growingConditionProcess.D (n + 1) =
       {growingConditionAtom 0, growingConditionAtom 1} := rfl
 
-/-- The stages strictly grow: the adjoined theory is not constant. 
+/-- The stages strictly grow: the adjoined theory is not constant.
 Paper node: `thm:scon` -/
 lemma growingConditionProcess_ssubset :
     growingConditionProcess.D 0 ⊂ growingConditionProcess.D 1 := by
@@ -269,10 +296,6 @@ lemma growingConditionProcess_ssubset :
     growingConditionProcess_succ]
   refine Finset.ssubset_iff_of_subset (by simp) |>.mpr ⟨growingConditionAtom 1, by simp, ?_⟩
   simp [Ne.symm growingConditionAtom_zero_ne_one]
-
-lemma growingConditionProcess_nonempty (n : ℕ) :
-    (growingConditionProcess.D n).Nonempty := by
-  cases n <;> simp
 
 private lemma growingConditionProcess_primrec :
     Primrec fun n : ℕ => Encodable.encode (growingConditionProcess.D n) := by
@@ -296,7 +319,7 @@ private lemma exists_growingConditionProcessCode :
   exact ⟨code, fun n => by rw [hcode]; exact Part.mem_some_iff.mpr rfl⟩
 
 /-- The strictly growing process is computable, by a two-way dispatch between two constant
-stage codes. 
+stage codes.
 Paper node: `thm:scon` -/
 noncomputable def growingConditionProcessComputation :
     DeductiveProcessComputation growingConditionProcess :=
@@ -317,7 +340,7 @@ private lemma growingConditionProcess_condition_codes :
 
 /-- **`N+` witness with content.**  The compact conditioning interface is inhabited by a
 process whose stages are nonempty and strictly growing, so the growing form of `thm:scon`
-instantiated here adjoins a real, changing condition rather than the empty conjunction. 
+instantiated here adjoins a real, changing condition rather than the empty conjunction.
 Paper node: `thm:scon` -/
 noncomputable def growingCompactConditioningProcessComputation :
     CompactConditioningProcessComputation growingConditionProcess where
@@ -347,7 +370,7 @@ lemma deductiveStageCondition_growing_succ (n : ℕ) :
 
 /-- **No stage's condition is the empty conjunction.**  This is the property the degenerate
 inhabitant fails: at `extra.D n = ∅` every condition is `⊤`, and conditioning on `⊤` is not
-conditioning. 
+conditioning.
 Paper node: `thm:scon` -/
 lemma deductiveStageCondition_growing_ne_top (n : ℕ) :
     deductiveStageCondition (growingConditionProcess.D n) ≠ ⊤ := by
@@ -361,7 +384,7 @@ lemma deductiveStageCondition_growing_ne_top (n : ℕ) :
 /-- **The condition sequence genuinely changes with the stage.**  Day `0` names a single
 atom; every later day names a two-conjunct conjunction.  Together with
 `deductiveStageCondition_growing_ne_top` this is what makes the growing form of `thm:scon`
-say something about *growing* conditioning when instantiated here. 
+say something about *growing* conditioning when instantiated here.
 Paper node: `thm:scon` -/
 lemma deductiveStageCondition_growing_ne :
     deductiveStageCondition (growingConditionProcess.D 0) ≠
@@ -370,26 +393,25 @@ lemma deductiveStageCondition_growing_ne :
   rw [deductiveStageCondition_growing_zero, show (1 : ℕ) = 0 + 1 from rfl, hxy]
   simp [growingConditionAtom]
 
-/-! ### Prefix-conjunction presentation from an arbitrary e.c. sentence sequence
+/-! ## Prefix conjunctions from an arbitrary e.c. sentence sequence
 
-This is the strengthening that reaches the paper's own quantifier for the growing form of
-`thm:scon` (tex:1613-1618, appendix tex:6126): the paper starts from an **arbitrary
-efficiently computable individual-sentence sequence** `⟨ψ⟩` and conditions on the prefix
-conjunctions `ψ₀ ⋏ ⋯ ⋏ ψₙ`.  The bridge missing before this tranche was
-`BigSentenceCodes ψ → BigSentenceCodes (n ↦ ⋀_{i≤n} ψ_i)`; `BigSentenceCodes.bigAnd`
-(`Framework/WriteOut.lean`) supplies it, so the write-out efficiency of the growing
-conditions is now *derived* from `BigSentenceCodes ψ` rather than assumed as data.
+This form reaches the paper's own quantifier for the growing form of `thm:scon`
+(tex:1613-1618, appendix tex:6126): the paper starts from an **arbitrary efficiently
+computable individual-sentence sequence** `⟨ψ⟩` and conditions on the prefix conjunctions
+`ψ₀ ⋏ ⋯ ⋏ ψₙ`.  `BigSentenceCodes.bigAnd` (`Framework/WriteOut.lean`) supplies
+`BigSentenceCodes ψ → BigSentenceCodes (n ↦ ⋀_{i≤n} ψᵢ)`, so the write-out efficiency of
+the growing conditions is derived from `BigSentenceCodes ψ` rather than taken as data.
 
 Two design points make this go through where the `deductiveStageCondition` /
-`CompactConditioningProcessComputation` route does not (see the note above): the condition
-sentence is written in **index order** — `sentenceConjunction ((range (n+1)).map ψ)`, the
-poly-emittable shape `bigAnd` produces — via the *free* `condition` field of
-`ConditioningPresentation`, and the `Finset` prefix process is kept only for
-`holds_condition` (a set-membership fact, insensitive to order and duplicates) and the
-union computation.  Routing the condition through `deductiveStageCondition (extra.D n) =
-(extra.D n).toList.conj₂` instead is *not* poly-writable for a growing family: the
-`Finset.toList` order is recoverable only from exponential Gödel codes and `conj₂` is not
-permutation-invariant, so the index order the emitter needs is erased by the `Finset`. -/
+`CompactConditioningProcessComputation` route does not.  The condition sentence is written
+in **index order** — `sentenceConjunction ((range (n+1)).map ψ)`, the poly-emittable shape
+`bigAnd` produces — through the *free* `condition` field of `ConditioningPresentation`; and
+the `Finset` prefix process is kept only for `holds_condition` (a set-membership fact,
+insensitive to order and duplicates) and for the union computation.  Routing the condition
+through `deductiveStageCondition (extra.D n) = (extra.D n).toList.conj₂` instead is not
+poly-writable for a growing family: the `Finset.toList` order is recoverable only from
+exponential Gödel codes and `conj₂` is not permutation-invariant, so the index order the
+emitter needs is erased by the `Finset`. -/
 
 /-- Primrec renaming of a sentence *list* to the Gödel code of the finite set it spans:
 dedup, then code-sort, then encode.  The list-input analogue of `sentenceFinsetUnionNorm`,
@@ -397,9 +419,11 @@ used to compute the prefix process's stage codes from `(range (n+1)).map ψ`. -/
 def sentenceListFinsetNorm (l : List Sentence) : ℕ :=
   Encodable.encode ((sentenceDedup l).insertionSort sentenceCodeLE)
 
+/-- The list-input normalizer is primitive recursive. -/
 lemma sentenceListFinsetNorm_prim : Primrec sentenceListFinsetNorm :=
   Primrec.encode.comp (sentenceInsertionSort_prim.comp sentenceDedup_prim)
 
+/-- The normalizer computes the code of the finite set a sentence list spans. -/
 lemma sentenceListFinsetNorm_spec (l : List Sentence) :
     sentenceListFinsetNorm l = Encodable.encode l.toFinset := by
   let canonical := (sentenceDedup l).insertionSort sentenceCodeLE
@@ -470,7 +494,7 @@ noncomputable def prefixConditioningPresentation
       List.mem_toFinset]
   combined_computable := base.union_toComputable (prefixProcessComputation ψ hψ)
 
-/-! ### Fixed-condition presentation -/
+/-! ## Fixed-condition presentation -/
 
 /-- The constant deductive process containing one fixed conditioning sentence. -/
 def fixedConditionProcess (ψ : Sentence) : DeductiveProcess where
@@ -505,6 +529,8 @@ noncomputable def fixedConditioningPresentation
   combined_computable :=
     base.union_toComputable (fixedConditionProcessComputation ψ)
 
+/-! ## The endpoint with the presentation discharged -/
+
 /-- Closure under conditioning with the presentation argument discharged by the concrete
 finite-conjunction and union construction above.
 Paper node: `thm:scon` -/
@@ -519,17 +545,5 @@ theorem lic_conditioned_gated_ofComputations
       (DP.union extra) :=
   lic_conditioned_gated P DP extra
     (conditioningPresentationOfComputations base more) W
-
-#print axioms PCWorld.holds_deductiveStageCondition
-#print axioms DeductiveProcessComputation.union
-#print axioms compactConditioningProcessComputation_nonempty
-#print axioms conditioningPresentationOfComputations
-#print axioms fixedConditioningPresentation
-#print axioms growingConditionProcessComputation
-#print axioms growingCompactConditioningProcessComputation
-#print axioms growingConditionProcess_ssubset
-#print axioms deductiveStageCondition_growing_ne
-#print axioms deductiveStageCondition_growing_ne_top
-#print axioms lic_conditioned_gated_ofComputations
 
 end LogicalInduction

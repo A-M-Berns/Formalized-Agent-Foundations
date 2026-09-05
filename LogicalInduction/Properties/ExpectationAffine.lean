@@ -1,19 +1,66 @@
-/-
-# Expectations — §4.8: `thm:ei`, `thm:loe`, `thm:expprovind`
-
-Polynomial affine presentations of the growing threshold bundles of `def:e`, followed by
-the expectation-level consequences of affine provability induction: expectations of
-indicators, linearity of expectation, and expectation provability induction (in `≥`, `≤`
-and `=` forms).
--/
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Expectations
+
+Renders §4.8 *Expectations*: `thm:ei` (Expectations of Indicators), `thm:loe` (Linearity of
+Expectation) and `thm:expprovind` (Expectation Provability Induction).
+
+The growing threshold bundles of `def:e` are presented as affine combinations:
+`LUV.expectAffine X k = Σ_{i<k} (1/k)·⌜X > i/k⌝`, priced on day `n` at that day's own grid
+`k = n + 1`, so `expectAffine_price` is the day-`n` expectation.
+
+`indicatorAffine` / `indicatorAffineSeq` is the day-`n` discrepancy between `𝔼ₙ(Yₙ)` and
+`Pₙ(φₙ)`. The family is indexed by the day because `thm:ei` is stated for an e.c. *sequence*
+of sentences; the constant case is the `Y n = Y`, `φ n = φ` instance.
+`linearityAffine a b X Y Z k` is the affine discrepancy `a·𝔼X + b·𝔼Y − 𝔼Z` at precision `k`.
+
+Each carries an explicit `AffineCombination.PolySequence` emission certificate built from
+the LUV threshold-code classes. `dd:luv-arith` and the README's *LUV-threshold metering*
+note explain why `RpnThresholdCodes` / `RpnThresholdCodeSeq` appear on this surface rather
+than the write-out classes.
+
+The world hypotheses are the *finite-precision* ones the trader argument actually consumes
+(`|𝔼ⱽ_{n+1}(X) − x| ≤ 1/(n+1)`), which are satisfiable at a finite stage unlike the full
+`PCWorld.ValuesAt` cut. `lic_linearity_of_expectation_ofValuesAt` and
+`lic_expectation_provind_ofValuesAt` recover the `ValuesAt` statements from them via
+`expectApprox_near`, and `exists_eventually_const_div_lt` is the `dd:mesh` shrinking step
+they share.
+
+The endpoints are `lic_expectation_indicator`; `lic_linearity_of_expectation(_ofValuesAt)`;
+and `lic_expectation_provind`, `_ofValuesAt`, `_le` (the dual, through the negated mesh) and
+`_eq`. Everything routes through
+`AffineCombination.PolySequence.affine_provind_theory_tendsto_zero` / `.affine_provind` from
+`Properties/AffineCoherence.lean`, and the endpoints are consumed by
+`Construction/Witnesses/{LUVExpectationCertified,ArithmeticSource}.lean`.
+
+Limit vocabulary is `dd:asymp`'s and is never redefined here.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
+/-- The `dd:mesh` shrinking step: a fixed constant over the day-`n` grid width eventually
+falls below any positive `ε`. Every endpoint here turns a `1/(n+1)`-accurate world
+hypothesis into an `ε`-accurate one through this lemma. -/
+lemma exists_eventually_const_div_lt (C ε : ℝ) (hε : 0 < ε) :
+    ∀ᶠ n : ℕ in atTop, C * (1 / ((n : ℝ) + 1)) < ε := by
+  obtain ⟨N, hN⟩ := exists_nat_gt (C / ε)
+  filter_upwards [Filter.eventually_ge_atTop N] with n hn
+  have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+  have hNn : C / ε < (n : ℝ) + 1 :=
+    hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hn
+                    linarith)
+  have hC : C < ((n : ℝ) + 1) * ε := (div_lt_iff₀ hε).mp hNn
+  calc
+    C * (1 / ((n : ℝ) + 1)) = C / ((n : ℝ) + 1) := by ring
+    _ < ε := (div_lt_iff₀ hnR).2 (by nlinarith)
+
 namespace LUV
+
+/-! ## Threshold bundles (`def:e`) -/
 
 /-- The precision-`k` threshold bundle of `X`: `∑_{i<k} (1/k)·⌜X > i/k⌝` (`def:e`).  Priced
 on day `n` at the day's own grid `k = n + 1` it is the day-`n` expectation. -/
@@ -39,6 +86,11 @@ lemma expectAffine_value (X : LUV) (P : History) (w : Valuation) (n : ℕ) :
   rw [zero_add, List.sum_map_mul_left, one_div]
   congr 1
 
+/-- Uniform emission certificate for the growing threshold bundles of `X`. It consumes
+`RpnThresholdCodes` — the threshold-code class of `dd:luv-arith`, per the README's
+*LUV-threshold metering* note — which is what discharges the paper's "the LUV's threshold
+sentences are efficiently codeable" hypothesis. Consumed by
+`Properties/ExpectationConvergence.lean` and by `lic_expectation_provind` / `_le` here. -/
 noncomputable def expectAffine_polySequence (X : LUV) (hcode : X.RpnThresholdCodes) :
     AffineCombination.PolySequence X.expectAffine := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
@@ -68,6 +120,8 @@ lemma expectAffine_magnitude_le_one (X : LUV) (P : History) (n : ℕ) :
     simp
     field_simp
     norm_num
+
+/-! ## Indicator discrepancies -/
 
 /-- Affine discrepancy between an indicator LUV's precision-`k` expectation and the price
 of its underlying sentence. -/
@@ -122,7 +176,7 @@ lemma indicatorAffine_magnitude_le_two (Y : LUV) (φ : Sentence) (P : History) (
 
 /-! ### Varying indicator families
 
-`thm:ei` is stated in the paper for an **ec sequence** of sentences `⟨φ⟩`, so the affine
+`thm:ei` is stated in the paper for an e.c. *sequence* of sentences `⟨φ⟩`, so the affine
 family it needs is indexed by the day: at day `n`, the precision-`n+1` discrepancy between
 `𝔼ₙ(Yₙ)` and `Pₙ(φₙ)`.  The constant case is the `Y n = Y`, `φ n = φ` instance. -/
 
@@ -139,6 +193,10 @@ lemma indicatorAffineSeq_value (Y : ℕ → LUV) (φ : ℕ → Sentence) (P : Hi
     (indicatorAffineSeq Y φ n).value P w = (Y n).expectApprox w (n + 1) - w (φ n) :=
   indicatorAffine_value _ _ P w (n + 1)
 
+/-- Uniform emission certificate for the day-indexed indicator discrepancies. It consumes
+the sequence-level threshold-code class `RpnThresholdCodeSeq` (`dd:luv-arith`) together with
+sentence codes for `⟨φ⟩`, discharging both efficient-sequence hypotheses `thm:ei` states.
+Consumed by `lic_expectation_indicator`. -/
 noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ → Sentence)
     (hY : LUV.RpnThresholdCodeSeq Y) (hφ : BigSentenceCodes φ) :
     AffineCombination.PolySequence (indicatorAffineSeq Y φ) := by
@@ -193,6 +251,8 @@ noncomputable def indicatorAffineSeq_polySequence (Y : ℕ → LUV) (φ : ℕ �
     coefficient_closed := by intro z ρ V; split <;> simp [EF.denoteWith]
   }
 
+/-! ## The linearity discrepancy -/
+
 /-- The affine discrepancy witnessing linearity of expectation, at precision `k`. -/
 def linearityAffine (a b : ℚ) (X Y Z : LUV) (k : ℕ) : AffineCombination where
   const := .const 0
@@ -206,6 +266,10 @@ def linearityAffine (a b : ℚ) (X Y Z : LUV) (k : ℕ) : AffineCombination wher
       (.mul (.const (-1)) (.const (1 / (k : ℚ))),
         Z.gt (((j - k * 2 : ℕ) : ℚ) / (k : ℚ))))
 
+/-- Uniform emission certificate for the linearity discrepancy `a·𝔼X + b·𝔼Y − 𝔼Z`. It
+consumes one `RpnThresholdCodes` per LUV (`dd:luv-arith`), which is what discharges
+`thm:loe`'s efficient-codeability hypothesis. Consumed by
+`lic_linearity_of_expectation`. -/
 noncomputable def linearityAffine_polySequence (a b : ℚ) (X Y Z : LUV)
     (hX : X.RpnThresholdCodes) (hY : Y.RpnThresholdCodes)
     (hZ : Z.RpnThresholdCodes) :
@@ -383,6 +447,8 @@ lemma linearityAffine_value (a b : ℚ) (X Y Z : LUV) (P : History)
 
 end LUV
 
+/-! ## Expectations of indicators (`thm:ei`) -/
+
 /-- **Expectations of indicators** (`thm:ei`).  For an efficiently computable sequence of
 sentences `⟨φ⟩` and an indicator family `Yₙ` for `φₙ` (the paper's `1(φₙ)`, rendered
 relationally over `cworlds(Θ)` by `LUV.IsIndicator`), the day-`n` expectation of the
@@ -398,7 +464,7 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
     (hY : ∀ n, (Y n).IsIndicator (φ n) DP) :
     AsympEq (fun n => (Y n).expect P n) (fun n => P n (φ n)) := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   have hmagn : ∀ n, (LUV.indicatorAffineSeq Y φ n).magnitude P ≤ 2 :=
     fun n => LUV.indicatorAffine_magnitude_le_two _ _ P _
   have hbounded : BoundedAffinePrices (LUV.indicatorAffineSeq Y φ) P :=
@@ -411,15 +477,8 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
       v.ConsistentWithTheory DP →
         |(LUV.indicatorAffineSeq Y φ n).value P v.payout| ≤ ε := by
     intro ε hε
-    obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-    refine Filter.eventually_atTop.mpr ⟨N, fun n hnlarge v hv => ?_⟩
-    have hnR : (0 : ℝ) < ((n + 1 : ℕ) : ℝ) := by positivity
-    have hNn : (1 : ℝ) / ε < ((n + 1 : ℕ) : ℝ) :=
-      hN.trans_le (by push_cast; exact_mod_cast (Nat.le_succ_of_le hnlarge))
-    have hsmall : 1 / ((n + 1 : ℕ) : ℝ) < ε := by
-      rw [div_lt_iff₀ hε] at hNn
-      rw [div_lt_iff₀ hnR]
-      nlinarith
+    filter_upwards [exists_eventually_const_div_lt 1 ε hε] with n hraw v hv
+    have hsmall : 1 / ((n + 1 : ℕ) : ℝ) < ε := by push_cast; linarith [hraw]
     have hnear := ((hY n).valuesAt hv).expectApprox_near n.succ_pos
     rw [LUV.indicatorAffineSeq_value]
     exact hnear.trans hsmall.le
@@ -427,9 +486,10 @@ theorem lic_expectation_indicator (P : History) (DP : DeductiveProcess)
     hφ).affine_provind_theory_tendsto_zero P DP hbounded ⟨2, hmagn⟩ hcons hsemantic
   simpa only [LUV.indicatorAffineSeq_price, AsympEq, sub_zero] using hzero
 
-#print axioms lic_expectation_indicator
+/-! ## Linearity of expectation (`thm:loe`) -/
 
-/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form), finite-precision hypothesis.
+/-- **Linearity of expectation** (`thm:loe`, fixed `X, Y, Z` form), finite-precision
+hypothesis.
 
 The world hypothesis is the finite-precision agreement the trader argument consumes: in
 every day-`n` plausible world, `X`, `Y`, `Z` have values `x, y, z` with `z = a x + b y`, and
@@ -456,17 +516,8 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
       v.ConsistentWith (DP.D n) →
         |(LUV.linearityAffine a b X Y Z (n + 1)).value P v.payout| ≤ ε := by
     intro ε hε
-    obtain ⟨N, hN⟩ := exists_nat_gt (C / ε)
-    filter_upwards [hvals, Filter.eventually_ge_atTop N] with n hvals_n hnlarge v hv
-    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
-    have hNn : C / ε < (n : ℝ) + 1 :=
-      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
-                      linarith)
-    have hsmall : C * (1 / ((n : ℝ) + 1)) < ε := by
-      have hNn' : C < ((n : ℝ) + 1) * ε := (div_lt_iff₀ hε).mp hNn
-      calc
-        C * (1 / ((n : ℝ) + 1)) = C / ((n : ℝ) + 1) := by ring
-        _ < ε := (div_lt_iff₀ hnR).2 (by nlinarith)
+    filter_upwards [hvals, exists_eventually_const_div_lt C ε hε]
+      with n hvals_n hsmall v hv
     obtain ⟨x, y, z, hrelation, hnearX, hnearY, hnearZ⟩ := hvals_n v hv
     rw [LUV.linearityAffine_value]
     have hrearrange :
@@ -503,8 +554,6 @@ theorem lic_linearity_of_expectation (P : History) (DP : DeductiveProcess)
     P DP hcons hsemantic
   simpa only [LUV.linearityAffine_price, LUV.expectSeq, AsympEq, sub_zero] using hzero
 
-#print axioms lic_linearity_of_expectation
-
 /-- **Linearity of expectation** (`thm:loe`), full `PCWorld.ValuesAt` form.  Recovers the
 original statement as a corollary of the finite-precision form: `ValuesAt` implies the day-`n`
 approximation bound via `expectApprox_near`, and the world's linear relation on exact values
@@ -529,7 +578,7 @@ theorem lic_linearity_of_expectation_ofValuesAt (P : History) (DP : DeductivePro
         by simpa using hy.expectApprox_near n.succ_pos,
         by simpa using hz.expectApprox_near n.succ_pos⟩))
 
-#print axioms lic_linearity_of_expectation_ofValuesAt
+/-! ## Expectation provability induction (`thm:expprovind`) -/
 
 /-- **Expectation Provability Induction** (`thm:expprovind`), finite-precision form.
 
@@ -545,19 +594,12 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
       ∃ x : ℝ, c ≤ x ∧ |X.expectApprox v.payout (n + 1) - x| ≤ 1 / ((n : ℝ) + 1)) :
     AsympGE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
-  obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
   have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
         c - ε / 2 ≤ (X.expectAffine (n + 1)).value P v.payout := by
-    filter_upwards [hval, Filter.eventually_ge_atTop N] with n hval_n hnlarge v hv
-    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
-    have hNn : (2 : ℝ) / ε < (n : ℝ) + 1 :=
-      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
-                      linarith)
-    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by
-      rw [div_lt_iff₀ hε] at hNn
-      rw [div_lt_iff₀ hnR]
-      nlinarith
+    filter_upwards [hval, exists_eventually_const_div_lt 1 (ε / 2) (by linarith)]
+      with n hval_n hraw v hv
+    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by linarith [hraw]
     obtain ⟨x, hcx, hnear⟩ := hval_n v hv
     rw [LUV.expectAffine_value]
     rw [abs_le] at hnear
@@ -574,8 +616,6 @@ theorem lic_expectation_provind (P : History) (DP : DeductiveProcess)
   rw [LUV.expectAffine_price] at hn
   simpa [LUV.expectSeq] using (show c ≤ X.expect P n + ε by linarith)
 
-#print axioms lic_expectation_provind
-
 /-- **Expectation Provability Induction** (`thm:expprovind`), full `PCWorld.ValuesAt` form.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
@@ -589,8 +629,6 @@ theorem lic_expectation_provind_ofValuesAt (P : History) (DP : DeductiveProcess)
       obtain ⟨x, hcx, hx⟩ := hval n v hv
       exact ⟨x, hcx, by simpa using hx.expectApprox_near n.succ_pos⟩))
 
-#print axioms lic_expectation_provind_ofValuesAt
-
 /-- **Expectation Provability Induction** (`thm:expprovind`), upper (`≤`) form.  Dual of the
 lower form through the negated affine mesh.
 Paper node: `thm:expprovind` -/
@@ -601,17 +639,12 @@ theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
       ∃ x : ℝ, x ≤ c ∧ |X.expectApprox v.payout (n + 1) - x| ≤ 1 / ((n : ℝ) + 1)) :
     AsympLE (X.expectSeq P) (fun _ => c) := by
   intro ε hε
-  obtain ⟨N, hN⟩ := exists_nat_gt (2 / ε)
   have hsemantic : ∀ᶠ n in atTop, ∀ v : PCWorld,
       v.ConsistentWith (DP.D n) →
         -c - ε / 2 ≤ ((X.expectAffine (n + 1)).neg).value P v.payout := by
-    filter_upwards [hval, Filter.eventually_ge_atTop N] with n hval_n hnlarge v hv
-    have hnR : (0 : ℝ) < (n : ℝ) + 1 := by positivity
-    have hNn : (2 : ℝ) / ε < (n : ℝ) + 1 :=
-      hN.trans_le (by have : (N : ℝ) ≤ (n : ℝ) := by exact_mod_cast hnlarge
-                      linarith)
-    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by
-      rw [div_lt_iff₀ hε] at hNn; rw [div_lt_iff₀ hnR]; nlinarith
+    filter_upwards [hval, exists_eventually_const_div_lt 1 (ε / 2) (by linarith)]
+      with n hval_n hraw v hv
+    have hsmall : 1 / ((n : ℝ) + 1) < ε / 2 := by linarith [hraw]
     obtain ⟨x, hxc, hnear⟩ := hval_n v hv
     rw [AffineCombination.neg_value, LUV.expectAffine_value]
     rw [abs_le] at hnear
@@ -628,8 +661,6 @@ theorem lic_expectation_provind_le (P : History) (DP : DeductiveProcess)
   rw [AffineCombination.neg_price, LUV.expectAffine_price] at hn
   simpa [LUV.expectSeq] using (show X.expect P n ≤ c + ε by linarith)
 
-#print axioms lic_expectation_provind_le
-
 /-- **Expectation Provability Induction** (`thm:expprovind`), equality (`=`) form.  Combines the
 lower and upper forms: a determined LUV value forces the expectation sequence to it.
 Paper node: `thm:expprovind` -/
@@ -639,8 +670,6 @@ theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
     (hval : ∀ᶠ n in atTop, ∀ (v : PCWorld), v.ConsistentWith (DP.D n) →
       |X.expectApprox v.payout (n + 1) - c| ≤ 1 / ((n : ℝ) + 1)) :
     AsympEq (X.expectSeq P) (fun _ => c) := by
-  have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
-    fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
   have hge : AsympGE (X.expectSeq P) (fun _ => c) :=
     lic_expectation_provind P DP X hcode hcons c
       (hval.mono (fun n hn v hv => ⟨c, le_rfl, hn v hv⟩))
@@ -651,7 +680,5 @@ theorem lic_expectation_provind_eq (P : History) (DP : DeductiveProcess)
   intro ε hε
   filter_upwards [hle ε hε, hge ε hε] with n hnle hnge
   rw [abs_le]; constructor <;> [linarith; linarith]
-
-#print axioms lic_expectation_provind_eq
 
 end LogicalInduction

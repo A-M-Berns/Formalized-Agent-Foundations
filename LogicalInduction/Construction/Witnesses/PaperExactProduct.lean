@@ -3,23 +3,48 @@ import LogicalInduction.Construction.Witnesses.ArithmeticSource
 /-!
 # Exact literal products of paper LUVs
 
-The abstract threshold-only `LUV` interface can only *approximate* a product: nothing in
-it names the two factors' values, so the product has to be reconstructed from thresholds
-to within a mesh (`dd:mesh`).  The paper's literal first-order LUVs (`PaperLUV`) do not
-have that limitation: a value is named inside arithmetic by a numerator/denominator pair
-code, and arithmetic multiplies pairs exactly.
+This module renders the **exact** product of two literal paper LUVs, the object that lets
+`thm:ccee` be stated at zero slack.  The abstract threshold-only `LUV` interface can only
+approximate a product — nothing in it names the two factors' values, so the product has to
+be reconstructed from thresholds to within a mesh (`dd:mesh`).  A `PaperLUV` names its
+value inside arithmetic by a numerator/denominator pair code, and arithmetic multiplies
+pairs exactly.
 
-This module builds that exact product.  Given literal LUVs `X` and `W`, the formula
+Given literal LUVs `X` and `W`, the formula
 
 ```text
-Z(q) := ∃ qx qw a b c d, X(qx) ∧ W(qw) ∧ qx = ⟪a,b⟫ ∧ qw = ⟪c,d⟫ ∧ q = ⟪a·c, b·d⟫
+Z(q) := ∃ qx qw a b c d,
+          X(qx) ∧ W(qw) ∧ qx = ⟪a,b⟫ ∧ qw = ⟪c,d⟫ ∧ q = ⟪a·c, b·d⟫
 ```
 
-names the *unreduced* product code `(a·c)/(b·d)`.  No gcd normalisation is performed and
-none is needed: the semantics of a paper LUV is its rational cut, never its code, so the
-unreduced pair is the same value as the reduced one.  What has to be proved is that the
-cut of `Z` is exactly the product of the cuts of `X` and `W`, and that is what
-`paperProductPaperLUV_valuesAt` says.
+names the **unreduced** product code `(a·c)/(b·d)`.  No gcd normalisation is performed and
+none is needed: a paper LUV's semantics is the rational cut of its thresholds, never its
+code.
+
+Objects defined: `paperProductPairing`, `paperProductFormula`,
+`PaperLUV.paperProductPaperLUV`, the source presentation `paperProductSource`, and the
+family `paperExactProductLUVSeq`.  The main results are
+`paperProduct_threshold_provable` / `_refutable`, the two object-level `T`-derivations
+obtained by completeness over models of `T`, and `paperProductPaperLUV_valuesAt`: in every
+completed world of the canonical theorem process the product LUV is valued at exactly the
+product of the factors' values, no mesh and no slack.
+
+The product nests `exs` under `Rew.castLE` rather than using a flat six-binder prefix
+because `castLE` is index preserving, so both symbol encoders and the source-token run are
+literally unchanged and a factor family's `def:ec` certificate transports to the product
+with no new emission induction (`ArithSource.castLE`, `ArithmeticSource.lean`).
+
+The arithmetic caution, as a design fact: never form `p * s` as a rational inside a
+derivation — `(p * s).num` is the *reduced* numerator, whereas the object-level code is
+deliberately unreduced.  That is the shape `rat_cross_prod_le` / `_ge` are built around.
+Both threshold directions are strict one-sided clauses because `ValuesAt` leaves the
+threshold *at* the value undecided (`PCWorld.RationalCutAt`), so there is no biconditional
+to prove at `r = x·c`.
+
+Consumers: `Construction/Witnesses/PaperExactCCEE.lean` (`paperExactProductLUVSeq`,
+`paperProductPaperLUV_valuesAt`) and `PaperRepresentedWeight.lean` (`natAbs_num_cast`);
+`AxiomAudit.lean` inventories `paperProductPaperLUV`, `paperProductPaperLUV_valuesAt` and
+`paperExactProductLUVSeq`.
 
 *Proof kind:* `P`; hypotheses `(a)` throughout — the two threshold derivations are
 genuine `T`-derivations obtained by completeness over models of `T`, not Lean-level side
@@ -49,8 +74,8 @@ def paperProductFormula (Xf Wf : ArithmeticSemisentence 1) : ArithmeticSemisente
     (∃⁰ ((Rew.castLE (by omega) ▹ Wf) ⋏ paperProductPairing)))
 
 /-- The intended reading of the product formula in any model. -/
-lemma paperProductFormula_eval {M : Type} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻]
-    (Xf Wf : ArithmeticSemisentence 1) (q : M) :
+lemma paperProductFormula_eval {M : Type} [ORingStructure M]
+    [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻] (Xf Wf : ArithmeticSemisentence 1) (q : M) :
     Semiformula.Eval ![q] Empty.elim (paperProductFormula Xf Wf) ↔
       ∃ a b, Semiformula.Eval ![pair a b] Empty.elim Xf ∧
         ∃ c d, Semiformula.Eval ![pair c d] Empty.elim Wf ∧ q = pair (a * c) (b * d) := by
@@ -118,8 +143,8 @@ Both chains live in an arbitrary model of `T`, whose arithmetic is an ordered co
 semiring with no subtraction, so everything is arranged as products of nonnegative terms.
 The rational data enters only as the cast `ℕ`-level cross-multiplication `hcross`. -/
 
-private lemma prod_cross_lt {M : Type} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻]
-    {P Pd S Sd R Rd : ℕ} {a b c d : M}
+private lemma prod_cross_lt {M : Type} [ORingStructure M]
+    [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻] {P Pd S Sd R Rd : ℕ} {a b c d : M}
     (hX : (P : M) * b < a * (Pd : M)) (hW : (S : M) * d < c * (Sd : M))
     (hRd : 0 < Rd)
     (hcross : R * (Pd * Sd) ≤ (P * S) * Rd) :
@@ -146,8 +171,8 @@ private lemma prod_cross_lt {M : Type} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 
     _ = ((a * c) * (Rd : M)) * ((Pd : M) * (Sd : M)) := by ac_rfl
   exact lt_of_mul_lt_mul_right hchain (LO.FirstOrder.Arithmetic.zero_le _)
 
-private lemma prod_cross_le {M : Type} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻]
-    {P Pd S Sd R Rd : ℕ} {a b c d : M}
+private lemma prod_cross_le {M : Type} [ORingStructure M]
+    [M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻] {P Pd S Sd R Rd : ℕ} {a b c d : M}
     (hX : a * (Pd : M) ≤ (P : M) * b) (hW : c * (Sd : M) ≤ (S : M) * d)
     (hPd : 0 < Pd) (hSd : 0 < Sd)
     (hcross : (P * S) * Rd ≤ R * (Pd * Sd)) :
@@ -173,120 +198,6 @@ private lemma prod_cross_le {M : Type} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 
         mul_le_mul_of_nonneg_right hcross' (LO.FirstOrder.Arithmetic.zero_le _)
     _ = ((R : M) * (b * d)) * ((Pd : M) * (Sd : M)) := by ac_rfl
   exact le_of_mul_le_mul_right hchain (mul_pos hPd' hSd')
-
-
-/-! ## Arity coercion on the source language
-
-The product formula embeds its two factors under `Rew.castLE`, which is *index
-preserving* (`Rew.castLe_bvar`: `castLE h #x = #(Fin.castLE h x)`, same `.val`).  Both
-symbol encoders and the source-token run are therefore literally unchanged, so a factor
-family's `def:ec` certificate transports to the product with no new emission induction.
-That is the whole reason the product is built with nested `exs` and `castLE` rather than a
-flat six-binder prefix. -/
-
-@[simp] lemma encodeArithmeticTermSymbols_castLE {k k' : ℕ} (h : k ≤ k')
-    (t : ArithmeticSemiterm ℕ k) :
-    encodeArithmeticTermSymbols (Rew.castLE h t) = encodeArithmeticTermSymbols t := by
-  induction t with
-  | bvar x => simp [encodeArithmeticTermSymbols]
-  | fvar x => simp [encodeArithmeticTermSymbols]
-  | func f v ih =>
-      cases f <;> simp [Rew.func, encodeArithmeticTermSymbols, ih]
-
-@[simp] lemma encodeArithmeticFormulaSymbols_castLE {k : ℕ}
-    (φ : ArithmeticSemiformula ℕ k) :
-    ∀ {k' : ℕ} (h : k ≤ k'),
-      encodeArithmeticFormulaSymbols (Rew.castLE h ▹ φ) =
-        encodeArithmeticFormulaSymbols φ := by
-  induction φ using Semiformula.rec' with
-  | hverum => intro k' h; simp [encodeArithmeticFormulaSymbols]
-  | hfalsum => intro k' h; simp [encodeArithmeticFormulaSymbols]
-  | hrel r v => intro k' h; cases r <;> simp [encodeArithmeticFormulaSymbols]
-  | hnrel r v => intro k' h; cases r <;> simp [encodeArithmeticFormulaSymbols]
-  | hand φ ψ ihp ihq =>
-      intro k' h
-      simp only [LogicalConnective.HomClass.map_and, encodeArithmeticFormulaSymbols,
-        ihp h, ihq h]
-  | hor φ ψ ihp ihq =>
-      intro k' h
-      simp only [LogicalConnective.HomClass.map_or, encodeArithmeticFormulaSymbols,
-        ihp h, ihq h]
-  | hall φ ih =>
-      intro k' h
-      rw [Rewriting.app_all, Rew.q_castLE]
-      simp only [encodeArithmeticFormulaSymbols, ih]
-  | hexs φ ih =>
-      intro k' h
-      rw [Rewriting.app_exs, Rew.q_castLE]
-      simp only [encodeArithmeticFormulaSymbols, ih]
-
-namespace ArithSource
-
-/-- Arity coercion of a source, leaf-wise by `Rew.castLE`.  Index preserving, hence free
-of emission cost. -/
-def castLE : ∀ {k k' : ℕ}, k ≤ k' → ArithSource k → ArithSource k'
-  | _, _, h, .leaf φ => .leaf (Rew.castLE h ▹ φ)
-  | _, _, h, .and a b => .and (castLE h a) (castLE h b)
-  | _, _, h, .or a b => .or (castLE h a) (castLE h b)
-  | _, _, h, .all a => .all (castLE (Nat.succ_le_succ h) a)
-  | _, _, h, .exs a => .exs (castLE (Nat.succ_le_succ h) a)
-  | _, _, h, .not a => .not (castLE h a)
-  | _, _, h, .imp a b => .imp (castLE h a) (castLE h b)
-  | _, _, h, .iff a b => .iff (castLE h a) (castLE h b)
-
-@[simp] lemma sourceTokens_castLE : ∀ {k k' : ℕ} (h : k ≤ k') (a : ArithSource k),
-    sourceTokens (castLE h a) = sourceTokens a
-  | _, _, h, .leaf φ => by simp [castLE, sourceTokens]
-  | _, _, h, .and a b => by
-      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
-  | _, _, h, .or a b => by
-      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
-  | _, _, h, .all a => by
-      simp [castLE, sourceTokens, sourceTokens_castLE (Nat.succ_le_succ h) a]
-  | _, _, h, .exs a => by
-      simp [castLE, sourceTokens, sourceTokens_castLE (Nat.succ_le_succ h) a]
-  | _, _, h, .not a => by simp [castLE, sourceTokens, sourceTokens_castLE h a]
-  | _, _, h, .imp a b => by
-      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
-  | _, _, h, .iff a b => by
-      simp [castLE, sourceTokens, sourceTokens_castLE h a, sourceTokens_castLE h b]
-
-lemma compile_castLE : ∀ {k k' : ℕ} (h : k ≤ k') (a : ArithSource k),
-    compile (castLE h a) = Rew.castLE h ▹ compile a
-  | _, _, h, .leaf φ => rfl
-  | _, _, h, .and a b => by
-      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
-        LogicalConnective.HomClass.map_and]
-  | _, _, h, .or a b => by
-      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
-        LogicalConnective.HomClass.map_or]
-  | _, _, h, .all a => by
-      simp only [castLE, compile, compile_castLE (Nat.succ_le_succ h) a]
-      have hq := Rewriting.app_all (Rew.castLE h) (compile a)
-      rw [Rew.q_castLE] at hq
-      exact hq.symm
-  | _, _, h, .exs a => by
-      simp only [castLE, compile, compile_castLE (Nat.succ_le_succ h) a]
-      have hq := Rewriting.app_exs (Rew.castLE h) (compile a)
-      rw [Rew.q_castLE] at hq
-      exact hq.symm
-  | _, _, h, .not a => by
-      simp only [castLE, compile, compile_castLE h a,
-        LogicalConnective.HomClass.map_neg]
-  | _, _, h, .imp a b => by
-      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
-        LogicalConnective.HomClass.map_imply]
-  | _, _, h, .iff a b => by
-      simp only [castLE, compile, compile_castLE h a, compile_castLE h b,
-        LogicalConnective.HomClass.map_iff]
-
-end ArithSource
-
-lemma PolyArithmeticSourceSeq.castLE {k k' : ℕ} (h : k ≤ k') {a : ℕ → ArithSource k}
-    (ha : PolyArithmeticSourceSeq a) :
-    PolyArithmeticSourceSeq (fun n => ArithSource.castLE h (a n)) :=
-  ha.of_eq fun n => by simp
-
 
 /-! ## The exact product paper LUV -/
 
@@ -350,9 +261,14 @@ def paperProductPaperLUV [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) : PaperLUV T whe
       mul_le_mul hab' hcd' (LO.FirstOrder.Arithmetic.zero_le _)
         (LO.FirstOrder.Arithmetic.zero_le _)⟩
 
+/-- The defining formula of the product LUV is the product formula of the factors'
+defining formulas — the field projection, in `simp` normal form. -/
 @[simp] lemma paperProductPaperLUV_formula [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) :
     (paperProductPaperLUV X W).formula = paperProductFormula X.formula W.formula := rfl
 
+/-- **The positive threshold derivation**: if `r ≤ p·s` then `T` proves
+`X > p 🡒 (W > s 🡒 XW > r)`.  Obtained by completeness over models of `T`; the
+cross-multiplication is on the *unreduced* product code. -/
 lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p s r : ℚ}
     (hp : 0 ≤ p) (hs : 0 ≤ s) (hr : r ≤ p * s) :
     T ⊢ (X.thresholdFormula p 🡒 (W.thresholdFormula s 🡒
@@ -384,6 +300,8 @@ lemma paperProduct_threshold_provable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p 
     exact ⟨⟨hb, hd⟩,
       prod_cross_lt hltp hlts r.den_pos (rat_cross_prod_le hp hs hr0' hr)⟩
 
+/-- **The refutation dual**: if `p·s ≤ r` then `T` proves
+`∼(X > p) 🡒 (∼(W > s) 🡒 ∼(XW > r))`.  Same route, same unreduced codes. -/
 lemma paperProduct_threshold_refutable [𝗜𝚺₁ ⪯ T] (X W : PaperLUV T) {p s r : ℚ}
     (hp : 0 ≤ p) (hs : 0 ≤ s) (hr : p * s ≤ r) :
     T ⊢ (∼X.thresholdFormula p 🡒 (∼W.thresholdFormula s 🡒
@@ -416,6 +334,7 @@ The cut of the product is the product of the cuts.  Both directions are *strict*
 one-sided clauses: `ValuesAt` deliberately leaves the threshold *at* the value undecided
 (`PCWorld.RationalCutAt`), so there is no biconditional to prove at `r = x·c`. -/
 
+/-- Below a strict product bound there are rational factors witnessing it. -/
 private lemma exists_rat_factors_lt {x c : ℝ} {r : ℚ} (_hx : 0 ≤ x) (hc : 0 ≤ c)
     (hr : 0 ≤ r) (hlt : (r : ℝ) < x * c) :
     ∃ p s : ℚ, 0 ≤ p ∧ 0 ≤ s ∧ (p : ℝ) < x ∧ (s : ℝ) < c ∧ r ≤ p * s := by
@@ -447,6 +366,7 @@ private lemma exists_rat_factors_lt {x c : ℝ} {r : ℚ} (_hx : 0 ≤ x) (hc : 
   exact ⟨p, t, by exact_mod_cast hp0.le, by exact_mod_cast ht0, hp2, ht2,
     by exact_mod_cast hps⟩
 
+/-- Above a strict product bound there are rational factors witnessing it. -/
 private lemma exists_rat_factors_gt {x c : ℝ} {r : ℚ} (hx : 0 ≤ x) (hc : 0 ≤ c)
     (hgt : x * c < (r : ℝ)) :
     ∃ p s : ℚ, 0 ≤ p ∧ 0 ≤ s ∧ x < (p : ℝ) ∧ c < (s : ℝ) ∧ p * s ≤ r := by
@@ -541,12 +461,12 @@ private lemma emb_castLE_comm {k k' : ℕ} (h : k ≤ k') (φ : ArithmeticSemise
     (((Rew.castLE h ▹ φ : ArithmeticSemisentence k') : ArithmeticSemiformula ℕ k')) =
       Rew.castLE h ▹ ((φ : ArithmeticSemisentence k) : ArithmeticSemiformula ℕ k) := by
   have hc : ((Rew.emb : Rew ℒₒᵣ Empty k' ℕ k').comp (Rew.castLE h)) =
-      ((Rew.castLE h : Rew ℒₒᵣ ℕ k ℕ k').comp (Rew.emb : Rew ℒₒᵣ Empty k ℕ k)) := by
+      ((Rew.castLE h : Rew ℒₒᵣ ℕ k ℕ k').comp
+        (Rew.emb : Rew ℒₒᵣ Empty k ℕ k)) := by
     ext x
     · rfl
     · exact IsEmpty.elim inferInstance x
   rw [← TransitiveRewriting.comp_app, hc, TransitiveRewriting.comp_app]
-
 
 /-- The source presentation of the exact product: the two factor sources under an
 index-preserving arity coercion, plus a fixed pairing leaf. -/
@@ -558,7 +478,8 @@ def paperProductSource (sx sw : ArithSource 1) : ArithSource 1 :=
 
 /-- The product source compiles to the product formula, so the exact product of two
 literal paper-LUV *families* is again one. -/
-lemma compile_paperProductSource (Xf Wf : ArithmeticSemisentence 1) (sx sw : ArithSource 1)
+lemma compile_paperProductSource (Xf Wf : ArithmeticSemisentence 1)
+    (sx sw : ArithSource 1)
     (hx : ArithSource.compile sx = ((Xf : ArithmeticSemisentence 1) :
       ArithmeticSemiformula ℕ 1))
     (hw : ArithSource.compile sw = ((Wf : ArithmeticSemisentence 1) :
@@ -592,15 +513,10 @@ def paperExactProductLUVSeq [𝗜𝚺₁ ⪯ T] (X W : PaperLUVSeq T) : PaperLUV
             (PolyArithmeticSourceSeq.castLE (by omega) W.structural)
             (PolySegStream.constList _))))
 
+/-- The `n`-th member of the exact product family is the pointwise product LUV — the
+field projection, in `simp` normal form. -/
 @[simp] lemma paperExactProductLUVSeq_luv [𝗜𝚺₁ ⪯ T] (X W : PaperLUVSeq T) (n : ℕ) :
     (paperExactProductLUVSeq X W).luv n =
       PaperLUV.paperProductPaperLUV (X.luv n) (W.luv n) := rfl
-
-#print axioms PaperLUV.paperProductPaperLUV
-#print axioms PaperLUV.paperProduct_threshold_provable
-#print axioms PaperLUV.paperProduct_threshold_refutable
-#print axioms PaperLUV.paperProductPaperLUV_valuesAt
-#print axioms paperProductSource
-#print axioms paperExactProductLUVSeq
 
 end LogicalInduction

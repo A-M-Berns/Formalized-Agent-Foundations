@@ -4,14 +4,35 @@ import LogicalInduction.Construction.Witnesses.SemanticQuote
 /-!
 # Certified-factor semantic product closure
 
-`SemanticJoint.theorem_quote_product_not_jointly_satisfiable` shows that the original
-unrestricted product process cannot be combined with the universal quote interpreter: it
-treats every schema, including arbitrary Boolean quote programs, as a coherent LUV factor.
+Product-clause activation depends on factor-schema ownership, with the exact product
+mathematics unchanged.  This is the answer to
+`SemanticJoint.theorem_quote_product_not_jointly_satisfiable`, which shows that a
+schema-unrestricted product process cannot be combined with the universal quote interpreter,
+because it treats every schema — including arbitrary Boolean quote programs — as a coherent
+LUV factor.
 
-This file repairs schema ownership without changing the exact product mathematics.  Product
-clauses are active only when both factor schemas belong to tag `0`, the namespace reserved
-for proof-carrying source/cut presentations.  Quote aliases remain in tag `2`; malformed
-quote programs therefore cannot become product factors accidentally.
+* `certifiedProductJobOwned` is decidable and asks that both factor schemas sit in tag `0`,
+  the namespace reserved for proof-carrying source/cut presentations.  Quote aliases live in
+  tag `2` and therefore cannot become product factors.
+* `semanticCertifiedProductDefSentence` guards the exact clause by that test (returning the
+  inert top otherwise); `semanticCertifiedProductStageList` and
+  `semanticCertifiedProductDP` build the process, and `semanticCertifiedProductDP_computable`
+  gives it a program.
+* `semanticCertifiedProductLUV_valuesAt` shows exact multiplication is unchanged for tag-`0`
+  presentations; `semanticProductJob_owned` is why every `PresentedLUVSeq` pair passes the
+  guard.
+* `theoremQuoteCertifiedProductWorld` is the joint world — ordinary provability off the
+  semantic tag, the canonical quotation meaning on quote schemas, the product world's
+  coherent zero cut elsewhere — and `theoremQuoteCertifiedProductDP_hworld` proves the union
+  of the three processes non-vacuous.
+* `lic_no_expected_net_update_conditional_certifiedSemantic` carries `thm:ccee` over that
+  process at exact multiplication, with the presentation premises kept explicit; `..._closed`
+  is its constructed-inductor form.
+
+This is the generalized semantic-extension lane.  The paper rendering of `thm:ccee` over the
+shared market is `lic_no_expected_net_update_conditional_paperLUV_closed` (see
+`LogicalInduction/README.md` and `LogicalInduction/API.lean`).  Consumed by
+`SemanticQuoteFactor.lean` and `SemanticRegistryProduct.lean`.
 -/
 
 namespace LogicalInduction
@@ -19,6 +40,8 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
+
+/-! ## Factor-schema ownership -/
 
 /-- Whether a product job's two factor schemas belong to the certified source namespace. -/
 def certifiedProductJobOwned (e : ℕ) : Prop :=
@@ -28,10 +51,13 @@ instance (e : ℕ) : Decidable (certifiedProductJobOwned e) := by
   unfold certifiedProductJobOwned
   exact instDecidableAnd
 
+/-! ## The guarded product process -/
+
 /-- Guard the existing exact clause by certified factor ownership. -/
 def semanticCertifiedProductDefSentence (e : ℕ) : Sentence :=
   if certifiedProductJobOwned e then semanticProductDefSentence e else ⊤
 
+/-- The guarded clause list published by stage `k`: one clause per product job `e ≤ k`. -/
 def semanticCertifiedProductStageList : ℕ → List Sentence
   | 0 => [semanticCertifiedProductDefSentence 0]
   | k + 1 => semanticCertifiedProductDefSentence (k + 1) ::
@@ -107,6 +133,8 @@ lemma semanticCertifiedProductDP_computable :
   refine ⟨code, fun k => ?_⟩
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticCertifiedProductStageList k))
+
+/-! ## Exact multiplication for certified factors -/
 
 lemma semanticCertifiedProductDefSentence_mem_stage (e : ℕ) :
     semanticCertifiedProductDefSentence e ∈ semanticCertifiedProductDP.D e :=
@@ -352,13 +380,15 @@ lemma theoremQuoteCertifiedProductWorld_consistent_theorem
       (eventAtom_atomCodes_ne_semanticPrimeTag e a ha))).mpr
   exact theoremDP_hworld T n (eventAtom e) hφ
 
-/-- The repaired fixed process, chosen from `T` before any source, market, weight, or
+/-- The joint fixed process, chosen from `T` before any source, market, weight, or
 deferral. -/
 noncomputable def theoremQuoteCertifiedProductDP
     (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcess :=
   ((theoremDP T).union semanticQuoteDP).union semanticCertifiedProductDP
 
+/-- The named stage program of `theoremQuoteCertifiedProductDP`, the union of the three
+component programs. -/
 noncomputable def theoremQuoteCertifiedProductDPComputation
     (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremQuoteCertifiedProductDP T) :=
@@ -379,7 +409,7 @@ lemma theoremQuoteCertifiedProductDP_hworld
   · exact theoremQuoteCertifiedProductWorld_consistent_quote T n φ hquote
   · exact theoremQuoteCertifiedProductWorld_consistent_product T n φ hproduct
 
-/-! ## Exact conditional expectation over the repaired fixed process -/
+/-! ## Exact conditional expectation over the joint process -/
 
 /-- Exact multiplication enters the generic CCEE theorem over the jointly non-vacuous
 theorem/quote/certified-product process.  The remaining presentation premises are kept
@@ -419,9 +449,11 @@ private noncomputable abbrev theoremQuoteCertifiedProductLIA
       (theoremQuoteCertifiedProductDP T) :=
   LIA_is_logical_inductor _ (theoremQuoteCertifiedProductDPComputation T).toComputable
 
-/-- Closed-inductor form of the repaired exact semantic endpoint.  This is not yet the
-paper-facing capstone: `PresentedLUVSeq`, weight presentation, and the right quote remain
-visible until the universal certified-source registry is implemented. -/
+/-- The generalized semantic-extension form of `thm:ccee`, over the joint
+theorem/quote/certified-product process, in constructed-inductor form.  The paper rendering
+is `lic_no_expected_net_update_conditional_paperLUV_closed` over the shared market; this
+endpoint keeps its presentation premises explicit because it quantifies over an arbitrary
+`PresentedLUVSeq` pair. -/
 lemma lic_no_expected_net_update_conditional_certifiedSemantic_closed
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
@@ -444,11 +476,5 @@ lemma lic_no_expected_net_update_conditional_certifiedSemantic_closed
   haveI := theoremQuoteCertifiedProductLIA T
   exact lic_no_expected_net_update_conditional_certifiedSemantic
     f X W Z' w weight_mem weight_generable hZ' source_valued weight_valued right_reflected
-
-#print axioms semanticCertifiedProductDP_computable
-#print axioms semanticCertifiedProductDP_hworld
-#print axioms semanticCertifiedProductLUV_valuesAt
-#print axioms theoremQuoteCertifiedProductDP_hworld
-#print axioms lic_no_expected_net_update_conditional_certifiedSemantic_closed
 
 end LogicalInduction

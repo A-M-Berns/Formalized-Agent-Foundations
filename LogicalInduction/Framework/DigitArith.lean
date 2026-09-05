@@ -1,31 +1,52 @@
-/-
+import LogicalInduction.Framework.Computable
+
+/-!
 # Digit-stream bignum arithmetic (`dd:fuel`, digit model)
 
-The digit-metered emission model (`EfficientlyComputableDigit`) admits token *values*
-exponential in the day, held only as base-4 digit blocks.  Transducers that must
-*compute* on such values — the conditioning translation derives `⌜φ ⋏ ψ⌝` from `⌜φ⌝`,
-a `Nat.pair`-shell (square + add) at exponential values — therefore need arithmetic
-directly on digit streams: the clocked machine can never materialize the values
-(`evaln` outputs are fuel-bounded).
+The write-out half of `def:ec` (tex:753) at the level of *values*.  `def:ec` bounds how
+many symbols a polynomial-time writer emits, not how large they are, so the digit-metered
+emission model (`EfficientlyComputableDigit`) admits token values exponential in the day,
+held only as base-4 digit blocks.  A transducer that must *compute* on such values — the
+conditioning translation derives `⌜φ ⋏ ψ⌝` from `⌜φ⌝` through a `Nat.pair` shell, a square
+and an add at exponential values — therefore needs arithmetic directly on the digit
+streams: the clocked machine can never materialize the value itself, `evaln` outputs being
+fuel-bounded.
 
-This file provides that layer.  `BigDigits x` certifies poly-fueled *digit access*
-(length + per-digit) to a possibly-exponential value family `x : ℕ → ℕ`, and is closed
-under addition, multiplication (schoolbook column convolution with a poly-bounded
-carry), comparison, `Nat.pair`, and the conjunction-code shell.  The spec layer is the
-elementary base-4 carry arithmetic; the implementation layer runs the carry loops with
-`PolyFueled.prec`.
+The **spec layer** is elementary base-4 arithmetic: digit access (`dig4`, `len4`), the
+addition carry (`addCarry4`), the schoolbook multiplication columns (`conv4`, `mulCarry4`,
+`colSum4`) with their loop invariant `colSum4_decomp`, and the comparison flag `ltFlag4`.
+
+The **implementation layer** is `BigDigits x`: poly-fueled digit access — length and each
+digit — to a possibly exponential value family `x : ℕ → ℕ`, with its closure suite `add`,
+`mul`, `ltNat`, `natPair`, `succ`, `ifZero`, `mod_two`, `clampVal`, `blockSeg`,
+`len_of_digits` and `primrec`.
+
+The **read side** is the `undigitize` block view (`blockStep`, `blockSplit`, `digitVal`,
+`blkTrack`) and the fueled scans over it (`blockCount_polyFueled`, `blkTrackLen_polyFueled`,
+`blkDig_polyFueled`), culminating in `PolySegStream.undigitizeTokens`, the interface the
+digit-model transducers consume.  Beside it sit the digit-level freeze-mode scan
+(`freezeMode4`, `PolySegStream.freezeModeScan`) and the day clamp
+(`PolySegStream.dayClampTokens`), which `Construction/Witnesses/DigitConditioning.lean` and
+`RpnConditioning.lean` consume for `thm:scon`'s conditioning translation.
+
+The **sentence-code layer** is `DigitSentenceCodes`: the digit-metered sentence class,
+reached from the poly-value one by `PolySentenceCodes.toDigit` and wrapped for write-out
+as `BigSentenceCodes` (`Framework/WriteOut.lean`).
+
+The fuel model is unit-cost arithmetic, so a poly-fuel run produces a poly-*value* output;
+that is why digit access, and not value computation, is the certificate a write-out object
+can carry (`dd:fuel`).  `Nat.sqrt` is made locally irreducible file-wide — the same
+elaboration safeguard `Framework/Emission.lean` explains.
 
 Paper node: `def:ec` (digit model), `thm:scon` (conditioning translation residual).
 -/
-import LogicalInduction.Framework.Computable
 
 namespace LogicalInduction
 
 open Nat.Partrec (Code)
 open Nat.Partrec.Code
 
--- Deep `Primrec`/`PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`
--- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
+-- The `dd:fuel` elaboration safeguard; see the module docstring.
 attribute [local irreducible] Nat.sqrt
 
 /-! ## Spec layer — base-4 digit/carry arithmetic -/
@@ -60,9 +81,6 @@ lemma len4_div_four {t : ℕ} (ht : 0 < t) : len4 t = len4 (t / 4) + 1 := by
 lemma len4_pos {t : ℕ} (ht : 0 < t) : 0 < len4 t := by
   rw [len4_div_four ht]; omega
 
-lemma len4_eq_one {t : ℕ} (h0 : 0 < t) (h : t < 4) : len4 t = 1 := by
-  rw [len4_div_four h0, Nat.div_eq_of_lt h, len4_zero]
-
 lemma dig4_eq_zero_of_le {t j : ℕ} (h : len4 t ≤ j) : dig4 t j = 0 := by
   have ht : t < 4 ^ j := by
     by_contra hcon
@@ -74,13 +92,6 @@ lemma lt_four_pow_len4 (t : ℕ) : t < 4 ^ len4 t := by
   by_contra hcon
   have := (lt_len4_iff t (len4 t)).mpr (le_of_not_gt hcon)
   omega
-
-lemma four_pow_le_of_dig4_ne {t j : ℕ} (h : dig4 t j ≠ 0) : 4 ^ j ≤ t := by
-  by_contra hcon
-  simp [dig4, Nat.div_eq_of_lt (lt_of_not_ge hcon)] at h
-
-lemma lt_len4_of_dig4_ne {t j : ℕ} (h : dig4 t j ≠ 0) : j < len4 t :=
-  (lt_len4_iff t j).mpr (four_pow_le_of_dig4_ne h)
 
 lemma dig4_len4_pred_ne_zero {t : ℕ} (ht : 0 < t) :
     dig4 t (len4 t - 1) ≠ 0 := by
@@ -813,7 +824,8 @@ lemma natPair {x y : ℕ → ℕ} (hx : BigDigits x) (hy : BigDigits y) :
         rw [Nat.pair, if_neg h])
   exact ⟨_, _, hlen, hdig⟩
 
-/-- Closure under successor (the `+ 1` of encoding shells). -/
+/-- **Closure under successor** — the `+ 1` of the encoding shells, as the ripple carry
+of `add` against the constant `1`. -/
 lemma succ {x : ℕ → ℕ} (hx : BigDigits x) : BigDigits (fun m => x m + 1) :=
   hx.add (const 1)
 
@@ -873,6 +885,8 @@ lemma min_clamp_step (a p d M : ℕ) :
     rw [show min (a + d * p) M = M from Nat.min_eq_right h1,
       show min (M + d * min p M) M = M from Nat.min_eq_right h2]
 
+/-- The `min_clamp_step` companion for the place value: clamping before multiplying by
+the base loses nothing about the clamped product. -/
 lemma min_clamp_pow (p M : ℕ) :
     min (4 * p) M = min (4 * min p M) M := by
   by_cases hp : p ≤ M
@@ -991,6 +1005,8 @@ lemma digitVal_append_singleton (b : List ℕ) (d : ℕ) :
       simp only [List.cons_append, digitVal, ih, List.length_cons]
       ring
 
+/-- Extending the stream by one digit is one `blockStep` on the split so far — the
+per-prefix recurrence every fueled scan below iterates. -/
 lemma blockSplit_snoc (ds : List ℕ) (d : ℕ) :
     blockSplit (ds ++ [d]) = blockStep (blockSplit ds) d := by
   rw [blockSplit, List.foldl_append, List.foldl_cons, List.foldl_nil, blockSplit]
@@ -1064,7 +1080,8 @@ lemma undigitize_eq_blockSplit (ds : List ℕ) :
     undigitize ds = (blockSplit ds).1.map digitVal := by
   have h := foldl_undigitizeStep_blockStep ds [] []
   rw [undigitize, blockSplit]
-  rw [show (([], 0, 1) : List ℕ × ℕ × ℕ) = (List.map digitVal [], digitVal [], 4 ^ ([] : List ℕ).length) by simp]
+  rw [show (([], 0, 1) : List ℕ × ℕ × ℕ) =
+    (List.map digitVal [], digitVal [], 4 ^ ([] : List ℕ).length) by simp]
   rw [h]
 
 /-- Every completed block consists of digits `< 4`. -/
@@ -1144,6 +1161,9 @@ iterate; the final-select lemma discharges the closed/unclosed distinction. -/
 /-- Block `j` of the running split, counting the trailing partial as next block. -/
 def blkTrack (s : List (List ℕ) × List ℕ) (j : ℕ) : List ℕ := (s.1 ++ [s.2]).getD j []
 
+/-- The tracking recurrence: a digit `< 4` extends block `j` exactly when `j` is the
+index the current partial block occupies; every other digit, and every other `j`, leaves
+block `j` alone. -/
 lemma blkTrack_blockStep (s : List (List ℕ) × List ℕ) (d j : ℕ) :
     blkTrack (blockStep s d) j =
       if d < 4 ∧ s.1.length = j then blkTrack s j ++ [d] else blkTrack s j := by
@@ -1184,6 +1204,8 @@ lemma blkTrack_blockStep (s : List (List ℕ) × List ℕ) (d j : ℕ) :
         cases k <;> simp
       rw [hLHS, hRHS]
 
+/-- Once block `j` has been closed it is read straight off the completed list, so the
+tracking view and the split agree there. -/
 lemma blkTrack_closed (s : List (List ℕ) × List ℕ) {j : ℕ} (hj : j < s.1.length) :
     blkTrack s j = s.1.getD j [] := by
   rw [blkTrack, List.getD_append _ _ _ _ hj]
@@ -1237,6 +1259,8 @@ lemma vpre_succ (tokenFn : ℕ → ℕ) (n i : ℕ) :
   rw [vpre, List.range_succ, List.map_append, vpre]
   rfl
 
+/-- Evaluated at the emitted length, the virtual prefix is the day's actual token list —
+the rewrite that turns a scan's `prec` invariant into a statement about the stream. -/
 lemma vpre_eq_stream {s : ℕ → List ℕ} {tokenFn lenFn : ℕ → ℕ}
     (hslen : ∀ n, (s n).length = lenFn n)
     (hget : ∀ n i, i < lenFn n → tokenFn (Nat.pair n i) = (s n).getD i 0) (n : ℕ) :
@@ -1276,6 +1300,8 @@ lemma blockCount_polyFueled {ct : Code} {tokenFn : ℕ → ℕ}
     rw [pow_one]
     omega
 
+/-- `Nat.pair` on a diagonal argument is quadratically bounded, written in the `⟨a, k⟩`
+coefficient shape `IsPolyBounded` takes — hence the `1 *`. -/
 lemma pair_le_one_add_sq (z : ℕ) : Nat.pair z z ≤ 1 * (z + 1) ^ 2 + 1 := by
   have hp : Nat.pair z z = z * z + z + z := by
     rw [Nat.pair, if_neg (lt_irrefl z)]
@@ -1716,18 +1742,5 @@ lemma DigitSentenceCodes.comp {φ : ℕ → Sentence} (h : DigitSentenceCodes φ
     {cg : Code} {g : ℕ → ℕ} (hg : PolyFueled cg g) :
     DigitSentenceCodes (fun n => φ (g n)) :=
   BigDigits.comp h hg
-
-#print axioms DigitSentenceCodes
-#print axioms PolySentenceCodes.toDigit
-
-#print axioms PolySegStream.freezeModeScan
-#print axioms PolySegStream.dayClampTokens
-
-#print axioms len4_primrec
-#print axioms PolySegStream.undigitizeTokens
-#print axioms BigDigits.add
-#print axioms BigDigits.mul
-#print axioms BigDigits.natPair
-#print axioms BigDigits.blockSeg
 
 end LogicalInduction

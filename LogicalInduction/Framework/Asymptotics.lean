@@ -1,23 +1,37 @@
-/-
-# Asymptotics (`dd:asymp`)
-
-The single home for the limit vocabulary used across the property tail: `≈ₙ` / `≳ₙ` /
-`≲ₙ`, "eventually within ε", and "converges to". Built on Mathlib's
-`Tendsto (· − ·) atTop (𝓝 0)` and `∀ᶠ n in atTop, …`. Define each idiom **once** here;
-do not redefine per file.
-
-Convention: state results in the **limiting** form by default (the downstream deference
-work consumes it); add the finite-stage form only where a consumer needs it.
-
-Paper reference (arXiv:1609.03543 §2, notation): `f ≈ₙ g` means `f n − g n → 0`;
-`f ≳ₙ g` means `liminf (f n − g n) ≥ 0`, i.e. for every ε > 0, eventually
-`f n ≥ g n − ε`.
--/
 import Mathlib.Analysis.SpecificLimits.Basic
+
+/-!
+# Asymptotics — the limit vocabulary (`dd:asymp`)
+
+The single home of the limit vocabulary the §4 property tail is stated in; nothing
+downstream redefines it.
+
+* `AsympEq` (`≈ₙ`), `AsympLE` (`≲ₙ`) and `AsympGE` (`≳ₙ`) are the paper's §2 notation:
+  `f ≈ₙ g` is `f n − g n → 0`; `f ≲ₙ g` is "for every `ε > 0`, eventually `f n ≤ g n + ε`";
+  `f ≳ₙ g` is `≲ₙ` reversed, i.e. `liminf (f n − g n) ≥ 0`.
+* `EventuallyWithin ε f g` is the finite-stage building block, and `ConvergesTo f x` a thin
+  alias for `Tendsto f atTop (𝓝 x)`, so no downstream file spells the filter form.
+
+Everything is built on Mathlib's `Tendsto` and `∀ᶠ n in atTop`, in the limiting rather than
+the finite-stage form; the finite-stage form appears only where a consumer needs it. The
+`thm:perkno` and `thm:tbo` endpoints of `Properties/TimelyLearning.lean`, and the
+`thm:wubaff` / `thm:wubexp` family in `Properties/Pseudorandomness.lean` and
+`Properties/ExpectationProperties.lean`, take the limiting form.
+
+The workhorses are the ε-characterization `asympEq_iff_eventuallyWithin` and the two-sided
+split `asympEq_iff_asympLE_asympGE`. `≈ₙ` is an equivalence, registered with
+`@[refl]`/`@[symm]`/`@[trans]` so that `calc`, `rfl` and `symm` work on it; `AsympLE.trans`
+is likewise `@[trans]`, and `AsympLE.trans_asympEq` / `AsympEq.trans_asympLE` chain the
+one-sided form against the two-sided one. `AsympEq.add`, `.sub`, `.const_mul`,
+`AsympLE.add` and `AsympEq.finsetSum` are the congruence algebra, so a consumer combining
+sequences need not descend to `filter_upwards` by hand.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## The limit relations -/
 
 /-- `f ≈ₙ g` : the two sequences agree in the limit (`dd:asymp`). -/
 def AsympEq (f g : ℕ → ℝ) : Prop :=
@@ -37,6 +51,9 @@ def AsympGE (f g : ℕ → ℝ) : Prop :=
   AsympLE g f
 
 @[inherit_doc] scoped infix:50 " ≳ₙ " => AsympGE
+
+/-- `≳ₙ` is `≲ₙ` with its arguments exchanged. -/
+lemma asympGE_iff {f g : ℕ → ℝ} : f ≳ₙ g ↔ g ≲ₙ f := Iff.rfl
 
 /-- The sequences `f` and `g` are eventually within `ε` of each other. The finite-stage
 building block; the limiting forms above are the default vocabulary. -/
@@ -87,7 +104,7 @@ lemma AsympEq.trans {f g h : ℕ → ℝ} (hfg : f ≈ₙ g) (hgh : g ≈ₙ h) 
   show Tendsto (fun n => f n - h n) atTop (𝓝 0)
   simpa [sub_add_sub_cancel] using h₁.add h₂
 
-/-! ## Splitting `≈ₙ` into the one-sided bounds -/
+/-! ## One-sided bounds and their transitivity -/
 
 lemma AsympEq.asympLE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≲ₙ g := by
   intro ε hε
@@ -99,6 +116,7 @@ lemma AsympEq.asympGE {f g : ℕ → ℝ} (h : f ≈ₙ g) : f ≳ₙ g :=
   h.symm.asympLE
 
 /-- `≲ₙ` is transitive. -/
+@[trans]
 lemma AsympLE.trans {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h := by
   intro ε hε
   filter_upwards [h₁ (ε / 2) (by linarith), h₂ (ε / 2) (by linarith)] with n hn₁ hn₂
@@ -108,13 +126,9 @@ lemma AsympLE.trans {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≲ₙ h
 lemma AsympLE.trans_asympEq {f g h : ℕ → ℝ} (h₁ : f ≲ₙ g) (h₂ : g ≈ₙ h) : f ≲ₙ h :=
   h₁.trans h₂.asympLE
 
-/-- Finite sums respect `≈ₙ` (this is the additivity `thm:loe` supplies over a finite
-menu; a downstream consumer discharges its `thm:loe` hypothesis with this). -/
-theorem AsympEq.finsetSum {J : Type*} [Fintype J] {f g : J → ℕ → ℝ}
-    (h : ∀ j, f j ≈ₙ g j) : (fun n => ∑ j, f j n) ≈ₙ (fun n => ∑ j, g j n) := by
-  have key : Tendsto (fun n => ∑ j, (f j n - g j n)) atTop (𝓝 (∑ _j : J, (0 : ℝ))) :=
-    tendsto_finset_sum _ (fun j _ => h j)
-  simpa [AsympEq, Finset.sum_sub_distrib] using key
+/-- `f ≈ₙ g` followed by `g ≲ₙ h` gives `f ≲ₙ h`. -/
+lemma AsympEq.trans_asympLE {f g h : ℕ → ℝ} (h₁ : f ≈ₙ g) (h₂ : g ≲ₙ h) : f ≲ₙ h :=
+  h₁.asympLE.trans h₂
 
 lemma asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
     f ≈ₙ g ↔ f ≲ₙ g ∧ f ≳ₙ g := by
@@ -125,9 +139,51 @@ lemma asympEq_iff_asympLE_asympGE {f g : ℕ → ℝ} :
   rw [abs_sub_le_iff]
   constructor <;> linarith
 
+/-! ## Sums and scalars -/
+
+/-- `≈ₙ` is preserved by pointwise addition. -/
+lemma AsympEq.add {f₁ g₁ f₂ g₂ : ℕ → ℝ} (h₁ : f₁ ≈ₙ g₁) (h₂ : f₂ ≈ₙ g₂) :
+    (fun n => f₁ n + f₂ n) ≈ₙ fun n => g₁ n + g₂ n := by
+  have h₁' : Tendsto (fun n => f₁ n - g₁ n) atTop (𝓝 0) := h₁
+  have h₂' : Tendsto (fun n => f₂ n - g₂ n) atTop (𝓝 0) := h₂
+  show Tendsto (fun n => f₁ n + f₂ n - (g₁ n + g₂ n)) atTop (𝓝 0)
+  simpa [add_sub_add_comm] using h₁'.add h₂'
+
+/-- `≈ₙ` is preserved by pointwise subtraction. -/
+lemma AsympEq.sub {f₁ g₁ f₂ g₂ : ℕ → ℝ} (h₁ : f₁ ≈ₙ g₁) (h₂ : f₂ ≈ₙ g₂) :
+    (fun n => f₁ n - f₂ n) ≈ₙ fun n => g₁ n - g₂ n := by
+  have h₁' : Tendsto (fun n => f₁ n - g₁ n) atTop (𝓝 0) := h₁
+  have h₂' : Tendsto (fun n => f₂ n - g₂ n) atTop (𝓝 0) := h₂
+  show Tendsto (fun n => f₁ n - f₂ n - (g₁ n - g₂ n)) atTop (𝓝 0)
+  simpa [sub_sub_sub_comm] using h₁'.sub h₂'
+
+/-- `≈ₙ` is preserved by multiplication by a constant. -/
+lemma AsympEq.const_mul {f g : ℕ → ℝ} (c : ℝ) (h : f ≈ₙ g) :
+    (fun n => c * f n) ≈ₙ fun n => c * g n := by
+  have h' : Tendsto (fun n => f n - g n) atTop (𝓝 0) := h
+  show Tendsto (fun n => c * f n - c * g n) atTop (𝓝 0)
+  simpa [mul_sub] using h'.const_mul c
+
+/-- `≲ₙ` is preserved by pointwise addition. -/
+lemma AsympLE.add {f₁ g₁ f₂ g₂ : ℕ → ℝ} (h₁ : f₁ ≲ₙ g₁) (h₂ : f₂ ≲ₙ g₂) :
+    (fun n => f₁ n + f₂ n) ≲ₙ fun n => g₁ n + g₂ n := by
+  intro ε hε
+  filter_upwards [h₁ (ε / 2) (by linarith), h₂ (ε / 2) (by linarith)] with n hn₁ hn₂
+  show f₁ n + f₂ n ≤ g₁ n + g₂ n + ε
+  linarith
+
+/-- Finite sums respect `≈ₙ`. -/
+lemma AsympEq.finsetSum {J : Type*} [Fintype J] {f g : J → ℕ → ℝ}
+    (h : ∀ j, f j ≈ₙ g j) : (fun n => ∑ j, f j n) ≈ₙ (fun n => ∑ j, g j n) := by
+  have key : Tendsto (fun n => ∑ j, (f j n - g j n)) atTop (𝓝 (∑ _j : J, (0 : ℝ))) :=
+    tendsto_finset_sum _ (fun j _ => h j)
+  simpa [AsympEq, Finset.sum_sub_distrib] using key
+
 /-! ## Convergence as `≈ₙ` against a constant -/
 
-theorem convergesTo_iff_asympEq_const {f : ℕ → ℝ} {x : ℝ} :
+/-- `f` converges to `x` exactly when it is asymptotically equal to the constant sequence
+`x` (`dd:asymp`). -/
+lemma convergesTo_iff_asympEq_const {f : ℕ → ℝ} {x : ℝ} :
     ConvergesTo f x ↔ f ≈ₙ fun _ => x := by
   show Tendsto f atTop (𝓝 x) ↔ AsympEq f fun _ => x
   unfold AsympEq

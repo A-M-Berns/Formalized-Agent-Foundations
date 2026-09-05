@@ -4,34 +4,39 @@ import Mathlib.Data.Nat.Digits.Defs
 /-!
 # Machine source encodings — the naming a polynomial-time writer can emit
 
-Machines are `Nat.Partrec.Code`.  A trader that *names* a machine must write the name
-down, so the naming map has to be one whose output length is controlled by the machine's
-syntax (arXiv:1609.03543, §4.11).
+The naming a polynomial-time writer can emit, for `def:ec` at §4.10 (`sec:halting`,
+tex:1919; the writability requirement itself is tex:1931-1933).  Machines are
+`Nat.Partrec.Code`, and a trader that *names* a machine must write the name down, so the
+naming map has to be one whose output length is controlled by the machine's syntax.
 
-The **source encoding** here is the postfix (reverse-Polish) tag stream of the code's
-syntax tree — one tag per node, drawn from `1..8` — read as a base-`16` numeral,
-most-significant tag first (`sourceNat`).  Since `16 = 4 ^ 2`, its base-4 digit count is
-at most `2 * c.size`: **linear in the syntax tree** (`len4_sourceNat_le`).
+* `Code.sourceTags` / `Code.sourceNat` — the postfix (reverse-Polish) tag stream of a code's
+  syntax tree, one tag per node drawn from `1..8` with tag `0` reserved as a pad, read as a
+  base-`16` numeral most-significant tag first.  Since `16 = 4 ^ 2`, its base-4 length is at
+  most `2 * c.size` (`len4_sourceNat_le`): linear in the tree.
+* `Code.ofSource` — the total primitive recursive inverse (`ofSource_primrec`,
+  `ofSource_sourceNat`), metered in peel steps.  `ofSource n` takes exactly `len4 n` of them
+  (`ofSource_peelSteps`), so at most `2 * c.size` for a machine name
+  (`sourceNat_peelSteps_le`).  That is the whole cost claim made here; no `PolyFueled` or
+  `Complexity.FP` certificate is proved for `ofSource`.
+* The base transfer lemmas — `ofDigits_div_pow_mod` at any base, `dig4_ofDigits_sixteen` and
+  `dig4_ofDigits_sixtyFour`, and the `BigDigits` constructors `ofBase16Digits`,
+  `ofBase16PolySegStream` and `ofBase64Digits`.
+* `tokenListNat` — the name of a token run, one base-64 digit per token closed by the
+  sentinel `63`, whose base-4 length is `3 * (n + 1)`.  `tokenListNat_injective` and
+  `tokenListNat_primrec` are what `Construction/Witnesses/SourceNumbering.lean` and
+  `combineSourceNats_primrec` consume, and `BigDigits.ofTokenListNat` is the delivery
+  interface: an efficiently emitted token run is efficiently *named*.
+* `nest`, `bigDigits_sourceNat_nest` and `two_pow_le_sourceNat_nest` — the family witnessing
+  why `Encodable.encode` is not the naming map.  `encodeCode` squares the value at every
+  `pair`/`comp`/`prec` node, so on `nest` the written length is exponential in the tree size
+  where `sourceNat`'s is linear.  The full account is at `DigitMachineCodes`
+  (`Framework/WriteOut.lean`); the strictness statement it feeds is
+  `digitMachineCodes_nest_not_polyMachineCodes`
+  (`Construction/Witnesses/ComputationSyntax.lean`).
 
-Decoding is by `ofSource`, a *total* primitive recursive function (`ofSource_primrec`)
-inverting `sourceNat` (`ofSource_sourceNat`).  Its cost is metered in peel steps, one per
-base-4 digit of the name: `ofSource n` takes exactly `len4 n` steps (`ofSource_peelSteps`),
-so decoding a machine name takes at most `2 * c.size` steps (`sourceNat_peelSteps_le`) —
-**linear in the source length**.  That is the whole cost claim made here; no `PolyFueled`
-or `Complexity.FP` certificate is proved for `ofSource`.
-
-Mathlib's `Encodable.encode : Nat.Partrec.Code → ℕ` fails this.  `encodeCode` emits
-`2 * (2 * Nat.pair (encode cf) (encode cg)) + 4` at every `pair`/`comp`/`prec` node, and
-`Nat.pair` squares, so the *value* squares once per node.  For the family
-`nest 0 = zero`, `nest (n+1) = pair (nest n) zero` — source length `n + 1` nodes on the
-spine — the base-4 digit counts of `Encodable.encode (nest n)` are
-
-    0, 2, 4, 8, 16, 33, 67, 134, …
-
-i.e. the encoded *value* is doubly exponential in `n` (and so in the tree size `2 * n + 1`),
-and its digit count — the length actually written down — is *exponential* in the tree size.
-`sourceNat`'s digit count is linear in it.  `Encodable.encode` is therefore not used for
-naming; `sourceNat` is.
+**Design.**  The sentinel in `tokenListNat` exists so the top digit is never `0` and never
+lost to truncation: that is what makes the map injective and gives the decoder a terminator.
+`sourceNat` needs none, because `sourceTags` never emits the tag `0`.
 -/
 
 namespace LogicalInduction
@@ -42,7 +47,7 @@ open Nat.Partrec (Code)
 -- (pair/unpair unfolding); keep it opaque throughout (the standard `dd:fuel` safeguard).
 attribute [local irreducible] Nat.sqrt
 
-/-! ## Base-16 digit extraction -/
+/-! ## Base-`b` digit extraction -/
 
 /-- Reading a base-`16` little-endian digit list back out, position by position.  Beyond
 the list the quotient has run out and the digit is `0`, which is exactly `getD`'s
@@ -85,7 +90,7 @@ lemma dig4_ofDigits_sixteen {L : List ℕ} (hd : ∀ d ∈ L, d < 16) (j : ℕ) 
     rw [hr, pow_one, h1]
     omega
 
-/-! ## Transferring base-16 stream access to `BigDigits` -/
+/-! ## Base-16 transfer to `BigDigits` -/
 
 /-- Poly-fueled access to a base-16 tag stream gives poly-fueled base-4 digit access to
 the numeral it denotes.  `16 = 4 ^ 2`, so tag `j` occupies base-4 digits `2 * j` and
@@ -136,20 +141,57 @@ lemma BigDigits.ofBase16Digits {L : ℕ → List ℕ} {cl cd : Code}
       _ = 4 ^ ((L n).length * 2) := by rw [mul_comm, pow_mul]; norm_num)
   exact ⟨_, _, hclen, hdigit⟩
 
+/-- **Naming a base-16 segment stream**: a segment stream whose tokens are all below `16`
+names a numeral with poly-fueled base-4 digit access.  `BigDigits.ofTokenListNat` is the
+base-64 twin, for the wider arithmetic-token alphabet.
 
-/-! ## Base-`64` digit extraction, and naming a token run
+There is no sentinel here — `Code.sourceTags` never emits the tag `0`, so the leading digit
+of a source numeral is already nonzero and nothing is lost to truncation.  All this lemma
+does is clamp the stream's emitter to `0` outside the emitted range (via `ifzSel` on
+`lenFn n - i`) and hand the result to `BigDigits.ofBase16Digits`.
+
+Kind C (composition).  Provenance: (a) derived in-project from `BigDigits.ofBase16Digits`
+and the `PolySegStream` interface. -/
+lemma BigDigits.ofBase16PolySegStream {L : ℕ → List ℕ} (h : PolySegStream L)
+    (hlt : ∀ n, ∀ d ∈ L n, d < 16) : BigDigits (fun n => Nat.ofDigits 16 (L n)) := by
+  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
+  have hlenL : PolyFueled _ (fun n => (L n).length) :=
+    hlen.of_eq (fun n => (hslen n).symm)
+  have hlenN : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1) := hlen.comp PolyFueled.left
+  have ha : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1 - z.unpair.2) :=
+    (subc_polyFueled.comp (hlenN.pair PolyFueled.right)).of_eq
+      (fun z => by simp only [Nat.unpair_pair])
+  have hdig : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD z.unpair.2 0) :=
+    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair htok).pair ha)).of_eq (fun z => by
+      simp only [Nat.unpair_pair, ifzSelFn]
+      have hlz : (L z.unpair.1).length = lenFn z.unpair.1 := hslen _
+      rcases lt_or_ge z.unpair.2 (lenFn z.unpair.1) with hj | hj
+      · rw [if_neg (by omega)]
+        have hg := hget z.unpair.1 z.unpair.2 hj
+        rwa [Nat.pair_unpair] at hg
+      · rw [if_pos (by omega)]
+        exact (List.getD_eq_default _ _ (by omega)).symm)
+  have hbound : ∀ n j, (L n).getD j 0 < 16 := by
+    intro n j
+    rcases lt_or_ge j (L n).length with hj | hj
+    · rw [List.getD_eq_getElem _ _ hj]
+      exact hlt n _ ((L n).getElem_mem hj)
+    · rw [List.getD_eq_default _ _ hj]
+      norm_num
+  exact BigDigits.ofBase16Digits hlenL hdig hbound
+
+/-! ## Base-64 transfer, and naming a token run
 
 `ofBase16Digits` serves alphabets of fewer than sixteen tags — `Code.sourceNat`'s `1..8`.
 The paper's arithmetic *formula* alphabet is `0..18, 20..22`
 (`ArithSource.sourceTokens`), which does not fit, so the same theory runs once more at
 `64 = 4 ^ 3`: one base-`64` digit per emitted token.
 
-`tokenListNat` is the resulting naming map for a token run.  It appends the sentinel
-`63` — a value outside every alphabet used here — so that the top digit is never `0` and
-therefore never lost to truncation; that makes the map injective and gives the decoder a
-terminator to stop at.  Its base-`4` digit count is `3 * (n + 1)` for a run of `n`
-tokens: **linear in the written text**, which is the whole point.  Compare the Godel code
-of the formula that text denotes, which pairs at every node and is doubly exponential. -/
+`tokenListNat` is the resulting naming map for a token run, closed by the sentinel `63` — a
+value outside every alphabet used here — for the reason given in the module header.  Its
+base-`4` digit count is `3 * (n + 1)` for a run of `n` tokens: **linear in the written
+text**, which is the whole point.  Compare the Gödel code of the formula that text denotes,
+which pairs at every node and is doubly exponential. -/
 
 /-- Base-4 digits of a base-64 numeral: `64 = 4 ^ 3`, so base-64 slot `j / 3` carries
 base-4 digits `3 * (j / 3)`, `3 * (j / 3) + 1` and `3 * (j / 3) + 2`. -/
@@ -270,16 +312,6 @@ lemma tokenListNat_digit {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) (i : ℕ) 
   · simp only [List.mem_singleton] at h
     omega
 
-/-- Below the sentinel the name reproduces the run. -/
-lemma tokenListNat_digit_lt {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) {i : ℕ}
-    (hi : i < ts.length) : tokenListNat ts / 64 ^ i % 64 = ts.getD i 0 := by
-  rw [tokenListNat_digit hts, getD_append_of_lt hi]
-
-/-- At the run's length the name shows the sentinel. -/
-lemma tokenListNat_digit_length {ts : List ℕ} (hts : ∀ t ∈ ts, t < 63) :
-    tokenListNat ts / 64 ^ ts.length % 64 = 63 := by
-  rw [tokenListNat_digit hts, getD_append_singleton_length]
-
 /-- The run is shorter than its own name, so a search bounded by the name is long
 enough to find the sentinel. -/
 lemma length_lt_tokenListNat (ts : List ℕ) : ts.length < tokenListNat ts := by
@@ -340,47 +372,6 @@ lemma tokenListNat_primrec : Primrec tokenListNat := by
         (Primrec.nat_mul.comp (Primrec.const 64) (Primrec.snd.comp Primrec.snd))
   exact (Primrec.list_foldr hlist (Primrec.const 0) hstep).of_eq fun ts => by
     rw [tokenListNat, hfold]
-
-
-/-- **The base-16 twin of `BigDigits.ofTokenListNat`**: a segment stream whose tokens are
-all below `16` names a numeral with poly-fueled base-4 digit access.
-
-Unlike the base-64 token-run map there is no sentinel here — `Code.sourceTags` never emits
-the tag `0`, so the leading digit of a source numeral is already nonzero and nothing is
-lost to truncation.  All this lemma does is clamp the stream's emitter to `0` outside the
-emitted range (via `ifzSel` on `lenFn n - i`) and hand the result to
-`BigDigits.ofBase16Digits`.
-
-Kind C (composition).  Provenance: (a) derived in-project from `BigDigits.ofBase16Digits`
-and the `PolySegStream` interface, following `BigDigits.ofTokenListNat` verbatim modulo
-the base and the missing sentinel. -/
-lemma BigDigits.ofBase16PolySegStream {L : ℕ → List ℕ} (h : PolySegStream L)
-    (hlt : ∀ n, ∀ d ∈ L n, d < 16) : BigDigits (fun n => Nat.ofDigits 16 (L n)) := by
-  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hslen, hget⟩ := h
-  have hlenL : PolyFueled _ (fun n => (L n).length) :=
-    hlen.of_eq (fun n => (hslen n).symm)
-  have hlenN : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1) := hlen.comp PolyFueled.left
-  have ha : PolyFueled _ (fun z : ℕ => lenFn z.unpair.1 - z.unpair.2) :=
-    (subc_polyFueled.comp (hlenN.pair PolyFueled.right)).of_eq
-      (fun z => by simp only [Nat.unpair_pair])
-  have hdig : PolyFueled _ (fun z : ℕ => (L z.unpair.1).getD z.unpair.2 0) :=
-    (ifzSel_polyFueled.comp (((PolyFueled.const 0).pair htok).pair ha)).of_eq (fun z => by
-      simp only [Nat.unpair_pair, ifzSelFn]
-      have hlz : (L z.unpair.1).length = lenFn z.unpair.1 := hslen _
-      rcases lt_or_ge z.unpair.2 (lenFn z.unpair.1) with hj | hj
-      · rw [if_neg (by omega)]
-        have hg := hget z.unpair.1 z.unpair.2 hj
-        rwa [Nat.pair_unpair] at hg
-      · rw [if_pos (by omega)]
-        exact (List.getD_eq_default _ _ (by omega)).symm)
-  have hbound : ∀ n j, (L n).getD j 0 < 16 := by
-    intro n j
-    rcases lt_or_ge j (L n).length with hj | hj
-    · rw [List.getD_eq_getElem _ _ hj]
-      exact hlt n _ ((L n).getElem_mem hj)
-    · rw [List.getD_eq_default _ _ hj]
-      norm_num
-  exact BigDigits.ofBase16Digits hlenL hdig hbound
 
 /-- **The delivery interface**: an efficiently emitted token run is efficiently *named*.
 This is the write-out bridge the paper's `def:ec` needs for objects presented by source
@@ -464,9 +455,6 @@ def size : Code → ℕ
   | .prec a b => a.size + b.size + 1
   | .rfind' a => a.size + 1
 
-lemma sourceTags_ne_nil (c : Code) : sourceTags c ≠ [] := by
-  cases c <;> simp [sourceTags]
-
 lemma sourceTags_lt_16 (c : Code) : ∀ t ∈ sourceTags c, 1 ≤ t ∧ t < 16 := by
   induction c with
   | zero | succ | left | right =>
@@ -534,9 +522,6 @@ lemma pow_pred_le_sourceNat (c : Code) : 16 ^ (c.size - 1) ≤ c.sourceNat := by
     · exact h
   exact (Nat.one_le_div_iff (by positivity)).mp hq
 
-lemma sourceNat_pos (c : Code) : 0 < c.sourceNat :=
-  lt_of_lt_of_le (by positivity) (pow_pred_le_sourceNat c)
-
 /-- **Linearity.**  The base-4 length of the source encoding is at most twice the number
 of nodes. -/
 lemma len4_sourceNat_le (c : Code) : len4 c.sourceNat ≤ 2 * c.size := by
@@ -553,14 +538,6 @@ lemma size_le_len4_sourceNat (c : Code) : c.size ≤ len4 c.sourceNat := by
     calc (4 : ℕ) ^ (2 * (c.size - 1)) = 16 ^ (c.size - 1) := by rw [pow_mul]; norm_num
       _ ≤ c.sourceNat := pow_pred_le_sourceNat c
   have := (lt_len4_iff c.sourceNat (2 * (c.size - 1))).mpr hpow
-  omega
-
-lemma size_le_sourceNat (c : Code) : c.size ≤ c.sourceNat := by
-  refine le_trans ?_ (pow_pred_le_sourceNat c)
-  have hpos : 0 < c.size := size_pos c
-  have h2 : c.size - 1 < 2 ^ (c.size - 1) := Nat.lt_two_pow_self
-  have h16 : (2 : ℕ) ^ (c.size - 1) ≤ 16 ^ (c.size - 1) :=
-    Nat.pow_le_pow_left (by norm_num) _
   omega
 
 /-! ## The decoder -/
@@ -588,6 +565,7 @@ def sourceStep (st : List Code) (t : ℕ) : List Code :=
 lemma sourceStep_pad (st : List Code) : sourceStep st 0 = st := by
   simp [sourceStep]
 
+/-- A run of pad tags leaves the stack alone. -/
 lemma foldl_sourceStep_replicate (k : ℕ) (st : List Code) :
     (List.replicate k 0).foldl sourceStep st = st := by
   induction k generalizing st with
@@ -627,6 +605,8 @@ lemma peelIter_fst (f n : ℕ) : (peelIter f n).1 = n / 16 ^ f := by
       simp only [peelStep, ih]
       rw [Nat.div_div_eq_div_mul, ← pow_succ]
 
+/-- The digits peeled after `f` steps are the first `f` base-16 digits of `n`, most
+significant first. -/
 lemma peelIter_snd (f n : ℕ) :
     (peelIter f n).2 = (List.range f).reverse.map (fun i => n / 16 ^ i % 16) := by
   induction f with
@@ -637,6 +617,7 @@ lemma peelIter_snd (f n : ℕ) :
         List.reverse_cons, List.reverse_nil, List.nil_append, List.map_cons,
         List.singleton_append]
 
+/-- Reading `f ≥ M.length` positions out of `M` with `getD` returns `M` padded with zeros. -/
 lemma map_range_getD (M : List ℕ) : ∀ f, M.length ≤ f →
     (List.range f).map (fun i => M.getD i 0) = M ++ List.replicate (f - M.length) 0 := by
   induction M with
@@ -649,6 +630,7 @@ lemma map_range_getD (M : List ℕ) : ∀ f, M.length ≤ f →
       rw [ih g (by simpa using hf)]
       simp
 
+/-- The most-significant-first form of `map_range_getD`: the pad leads. -/
 lemma map_range_reverse_getD (M : List ℕ) (f : ℕ) (hf : M.length ≤ f) :
     (List.range f).reverse.map (fun i => M.getD i 0)
       = List.replicate (f - M.length) 0 ++ M.reverse := by
@@ -693,12 +675,14 @@ lemma ofSource_sourceNat (c : Code) : ofSource c.sourceNat = c := by
     List.foldl_append, foldl_sourceStep_replicate, sourceStep_tags]
   simp
 
+/-- Distinct codes get distinct names, since `ofSource` inverts `sourceNat`. -/
 lemma sourceNat_injective : Function.Injective sourceNat := by
   intro a b h
   rw [← ofSource_sourceNat a, ← ofSource_sourceNat b, h]
 
 /-! ## The decoder is primitive recursive -/
 
+/-- One peel step is primitive recursive. -/
 lemma peelStep_primrec : _root_.Primrec peelStep := by
   have hq : _root_.Primrec (fun p : ℕ × List ℕ => p.1 / 16) :=
     _root_.Primrec.nat_div.comp _root_.Primrec.fst (_root_.Primrec.const 16)
@@ -707,11 +691,13 @@ lemma peelStep_primrec : _root_.Primrec peelStep := by
   exact (_root_.Primrec.pair hq
     (_root_.Primrec.list_cons.comp hr _root_.Primrec.snd)).of_eq (fun _ => rfl)
 
+/-- Iterated peeling is primitive recursive, by `Primrec.nat_rec'` on the step count. -/
 lemma peelIter_primrec : _root_.Primrec (fun p : ℕ × ℕ => peelIter p.1 p.2) :=
   (_root_.Primrec.nat_rec' _root_.Primrec.fst
     (_root_.Primrec.pair _root_.Primrec.snd (_root_.Primrec.const ([] : List ℕ)))
     (peelStep_primrec.comp (_root_.Primrec.snd.comp _root_.Primrec.snd)).to₂).of_eq (fun _ => rfl)
 
+/-- The stack-machine step is primitive recursive, one branch per tag. -/
 lemma sourceStep_primrec : _root_.Primrec₂ sourceStep := by
   have hst : _root_.Primrec (fun p : List Code × ℕ => p.1) := _root_.Primrec.fst
   have htail : _root_.Primrec (fun p : List Code × ℕ => p.1.tail) :=
@@ -763,6 +749,8 @@ lemma sourceStep_primrec : _root_.Primrec₂ sourceStep := by
                 hst)))))
   exact main.of_eq (fun _ => rfl)
 
+/-- **The decoder is primitive recursive.**  `ofSource` is the fold of `sourceStep` over the
+digits `peelIter` produces, and both are primitive recursive. -/
 lemma ofSource_primrec : _root_.Primrec ofSource := by
   have hpeel : _root_.Primrec (fun n : ℕ => (peelIter (len4 n) n).2) :=
     _root_.Primrec.snd.comp
@@ -777,9 +765,19 @@ lemma ofSource_primrec : _root_.Primrec ofSource := by
   exact (_root_.Primrec.option_getD.comp (_root_.Primrec.list_head?.comp hfold)
     (_root_.Primrec.const Code.zero)).of_eq (fun n => (hhd _ _).symm)
 
+/-- The decoder is `Computable`, the form a client working in the `Computable` hierarchy
+rather than the `Primrec` one asks for. -/
 lemma ofSource_computable : _root_.Computable ofSource := ofSource_primrec.to_comp
 
-/-! ## The `nest` family -/
+/-! ## The `nest` family
+
+The left-nested spine `nest 0 = zero`, `nest (n+1) = pair (nest n) zero`, on which
+`Encodable.encode`'s written length is exponential in the tree size while `sourceNat`'s is
+linear.  `bigDigits_sourceNat_nest` gives the family poly-fueled digit access and
+`two_pow_le_sourceNat_nest` bounds it from below; together they are what
+`digitMachineCodes_nest_not_polyMachineCodes`
+(`Construction/Witnesses/ComputationSyntax.lean`) separates the two machine-naming classes
+with. -/
 
 /-- The `nest` family: `nest 0 = zero`, `nest (n+1) = pair (nest n) zero`. -/
 def nest : ℕ → Code
@@ -802,6 +800,7 @@ lemma size_nest (n : ℕ) : (nest n).size = 2 * n + 1 := by
       show (nest n).size + Code.zero.size + 1 = _
       rw [ih]; simp [size]; omega
 
+/-- The tag stream of `nest n`, most significant first: `n` copies of `[5, 1]` then `[1]`. -/
 lemma reverse_sourceTags_nest (n : ℕ) :
     (sourceTags (nest n)).reverse = (List.replicate n [5, 1]).flatten ++ [1] := by
   induction n with
@@ -819,6 +818,7 @@ def nestDig (n j : ℕ) : ℕ :=
 lemma nestDig_lt (n j : ℕ) : nestDig n j < 16 := by
   unfold nestDig; split_ifs <;> omega
 
+/-- `nestDig` is the closed form of that stream's `j`-th tag. -/
 lemma getD_revTags (n : ℕ) : ∀ j,
     ((List.replicate n [5, 1]).flatten ++ [1]).getD j 0 = nestDig n j := by
   induction n with
@@ -856,6 +856,8 @@ lemma getD_reverse_sourceTags_nest (n j : ℕ) :
     (sourceTags (nest n)).reverse.getD j 0 = nestDig n j := by
   rw [reverse_sourceTags_nest]; exact getD_revTags n j
 
+/-- **The `nest` family is digit-accessible.**  Its name has `2 * (2 * n + 1)` base-4 digits
+and the `j`-th is `nestDig`'s closed form, so digit access is poly-fueled. -/
 lemma bigDigits_sourceNat_nest : BigDigits (fun n => (nest n).sourceNat) := by
   obtain ⟨cdm2, hdm2⟩ := divmodc_polyFueled 2 (by norm_num)
   obtain ⟨cm, hcm⟩ := mulc_polyFueled 2
@@ -912,55 +914,3 @@ lemma two_pow_le_sourceNat_nest (n : ℕ) : 2 ^ n ≤ (nest n).sourceNat := by
     _ ≤ 16 ^ (2 * n) := Nat.pow_le_pow_left (by norm_num) _
 
 end Nat.Partrec.Code
-
-#print axioms LogicalInduction.ofDigits_div_pow_mod
-#print axioms LogicalInduction.dig4_ofDigits_sixteen
-#print axioms LogicalInduction.BigDigits.ofBase16Digits
-#print axioms LogicalInduction.BigDigits.ofBase16PolySegStream
-#print axioms LogicalInduction.tokenListNat_primrec
-#print axioms Nat.Partrec.Code.sourceTags
-#print axioms Nat.Partrec.Code.size
-#print axioms Nat.Partrec.Code.sourceTags_ne_nil
-#print axioms Nat.Partrec.Code.sourceTags_lt_16
-#print axioms Nat.Partrec.Code.sourceTags_length
-#print axioms Nat.Partrec.Code.size_pos
-#print axioms Nat.Partrec.Code.sourceNat
-#print axioms Nat.Partrec.Code.sourceTags_reverse_lt_16
-#print axioms Nat.Partrec.Code.sourceNat_lt
-#print axioms Nat.Partrec.Code.pow_pred_le_sourceNat
-#print axioms Nat.Partrec.Code.sourceNat_pos
-#print axioms Nat.Partrec.Code.len4_sourceNat_le
-#print axioms Nat.Partrec.Code.size_le_sourceNat
-#print axioms Nat.Partrec.Code.size_le_len4_sourceNat
-#print axioms Nat.Partrec.Code.sourceStep
-#print axioms Nat.Partrec.Code.sourceStep_pad
-#print axioms Nat.Partrec.Code.foldl_sourceStep_replicate
-#print axioms Nat.Partrec.Code.sourceStep_tags
-#print axioms Nat.Partrec.Code.peelStep
-#print axioms Nat.Partrec.Code.peelIter
-#print axioms Nat.Partrec.Code.peelIter_succ
-#print axioms Nat.Partrec.Code.peelIter_fst
-#print axioms Nat.Partrec.Code.peelIter_snd
-#print axioms Nat.Partrec.Code.map_range_getD
-#print axioms Nat.Partrec.Code.map_range_reverse_getD
-#print axioms Nat.Partrec.Code.peelIter_ofDigits
-#print axioms Nat.Partrec.Code.ofSource
-#print axioms Nat.Partrec.Code.ofSource_peelSteps
-#print axioms Nat.Partrec.Code.sourceNat_peelSteps_le
-#print axioms Nat.Partrec.Code.ofSource_sourceNat
-#print axioms Nat.Partrec.Code.sourceNat_injective
-#print axioms Nat.Partrec.Code.peelStep_primrec
-#print axioms Nat.Partrec.Code.peelIter_primrec
-#print axioms Nat.Partrec.Code.sourceStep_primrec
-#print axioms Nat.Partrec.Code.ofSource_primrec
-#print axioms Nat.Partrec.Code.ofSource_computable
-#print axioms Nat.Partrec.Code.nest
-#print axioms Nat.Partrec.Code.sourceTags_nest
-#print axioms Nat.Partrec.Code.size_nest
-#print axioms Nat.Partrec.Code.reverse_sourceTags_nest
-#print axioms Nat.Partrec.Code.nestDig
-#print axioms Nat.Partrec.Code.nestDig_lt
-#print axioms Nat.Partrec.Code.getD_revTags
-#print axioms Nat.Partrec.Code.getD_reverse_sourceTags_nest
-#print axioms Nat.Partrec.Code.bigDigits_sourceNat_nest
-#print axioms Nat.Partrec.Code.two_pow_le_sourceNat_nest

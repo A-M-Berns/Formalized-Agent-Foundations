@@ -1,21 +1,32 @@
-/-
+import LogicalInduction.Construction.Machine.DescExec
+import Complexitylib.Models.TuringMachine.Registers
+import Complexitylib.Models.TuringMachine.Registers.Emit
+import Complexitylib.Models.TuringMachine.Registers.Horner
+import Complexitylib.Models.TuringMachine.Registers.InputLen
+import Complexitylib.Classes.P.NormalForm
+
+/-!
 # The clocked simulator for a fixed description
 
-The soundness half of the trader enumeration.
-`Construction/MachineTraderEnumeration.lean` enumerates traders by a finite `TMDesc`
-together with a polynomial clock, and reads off the described
-machine's output when it halts inside that clock and `[]` when it does not. That truncated
-behaviour has to be an ordinary polynomial-time function, or the enumeration is not an
-enumeration *of* machine-efficient traders.
+The soundness half of `Construction/MachineTraderEnumeration.lean`. That enumeration indexes
+traders by a finite `TMDesc` together with a polynomial clock, and reads off the described
+machine's output when it halts inside that clock and `[]` when it does not; for the
+enumeration to be an enumeration *of* machine-efficient traders, that truncated behaviour has
+to be an ordinary `Complexity.FP` function. This file builds the machine that computes it.
 
-This file builds the machine that computes it. The description is *fixed* — an index names
-one — so no interpreter is needed: the simulator's control states are the described
-machine's own states, and one of its transitions performs one transition of the described
-machine while advancing a unary clock head by one cell. Four work tapes: `0` mirrors the
-described machine's single work tape, `1` holds the clock, `2` and `3` are the scratch the
-clock's construction needs.
+Because the description is *fixed* — an index names one — no interpreter is needed. The
+simulator's control states are the described machine's own states plus four phase markers
+(`SimQ`), and one of its transitions performs one transition of the described machine while
+advancing a unary clock head by one cell.
 
-Three phases:
+**Objects.** `simδ` and `simTM`; the tape layout `simWork` (work tape `0` mirrors the
+described machine's single work tape, `1` holds the unary clock, `2` and `3` are the
+clock-preparation scratch) and the clock tape `clkTape`; the truncated output word
+`clockedOutput`; the clock preparation `prepCap` and `prepTM`; and the whole machine
+`clockedTM` with its step bound `clockedTime`, in polynomial form via `prepCapPoly` and
+`clockedTimePoly`.
+
+**The three phases.**
 
 * `pre` — one transition moving the shared heads back to cell `0`, so the simulation starts
   at the described machine's own initial configuration. Every combinator delivers its tapes
@@ -26,34 +37,40 @@ Three phases:
 * `rewind` / `wipe` — the timeout branch, which walks the output head back to the left end
   and blanks cell `1`, so the output word is empty.
 
-The construction is generic in the description and the clock, and is a candidate for
-upstreaming; it is kept here for the same reason as `runChildFixed` and
-`forRegs_hoareTime`, to leave the pinned fork untouched.
+**Main results.** `simTM_hoareTime` (step bound `2 * V + 6`), `prepTM_hoareTime`,
+`clockedTM_computesInTime`, `clockedTimePoly_eval`, and the capstone `clockedOutput_mem_FP`,
+which `enumeratedOutput_mem_FP` (`Construction/MachineTraderEnumeration.lean`) consumes.
+
+**Interface with `Construction/Machine/DescExec.lean`.** `clockedOutput` is stated against
+`evalHalted`, so `runUntilHalt_spec` supplies the halting branch and `runUntilHalt_complete`
+the timeout branch.
+
+**Design facts.** The clock is unary, so the guard is a single cell read. The construction is
+generic in the description and the clock, and lives here rather than in the pinned
+`complexitylib` fork. `reachesIn_output_startInvariant` and `reachesIn_output_head_le` are
+generic facts about an arbitrary `Complexity.TM`. The pinned `complexitylib` fork proves the
+second of them (`Complexity.TM.UTMBody.reachesIn_output_head_le`), but only inside the
+`UTM/Internal/SimLoop.lean` closure, which this file does not import; the first has no
+upstream counterpart.
+
+**Not a paper node.** Nothing here renders anything in arXiv:1609.03543; declarations are
+`lemma`s and `def`s rather than `theorem`s (`scripts/lint_paper_labels.py`).
 -/
-import LogicalInduction.Construction.Machine.DescExec
-import Complexitylib.Models.TuringMachine.Registers
-import Complexitylib.Models.TuringMachine.Registers.Emit
-import Complexitylib.Models.TuringMachine.Registers.Horner
-import Complexitylib.Models.TuringMachine.Registers.InputLen
-import Complexitylib.Classes.P.NormalForm
 
 namespace LogicalInduction.MachineExec
 
 open Complexity Complexity.TM
 
-/-! ## The clocked simulator for a fixed description -/
+/-! ## The simulator's states and transition function -/
 
-/-- The simulator's states: the simulated machine's own state while it runs, plus four
-    phase markers — `pre` (rewind the shared heads to cell 0, so the simulation starts at
-    the interpreted machine's own initial configuration), `rewind` and `wipe` (the timeout
-    branch, which blanks output cell 1), and `done`. -/
+/-- The simulator's states: the described machine's own state while it runs, plus the four
+    phase markers `pre`, `rewind`, `wipe` and `done` of the module docstring's phase list. -/
 abbrev SimQ (Q : Type) := Q ⊕ Fin 4
 
 variable (d : TMDesc)
 
-/-- The simulator's transition function. Work tape `0` mirrors the interpreted machine's
-    single work tape, work tape `1` holds the unary clock (one mark per remaining step,
-    head advancing right), and work tapes `2` and `3` are the clock-preparation scratch. -/
+/-- The simulator's transition function: one described transition per clock mark, with the
+    described halt state and an exhausted clock each routed to a phase marker. -/
 def simδ :
     SimQ (d.toTM).Q → Γ → (Fin 4 → Γ) → Γ →
       SimQ (d.toTM).Q × (Fin 4 → Γw) × Γw × Dir3 × (Fin 4 → Dir3) × Dir3 :=
@@ -95,7 +112,7 @@ def simδ :
         (Sum.inr 3, fun i => readBackWrite (wHeads i), readBackWrite oHead,
           idleDir iHead, fun i => idleDir (wHeads i), idleDir oHead)
 
-/-- **The clocked simulator.** Rewinds to the interpreted machine's initial configuration,
+/-- **The clocked simulator.** Rewinds to the described machine's initial configuration,
     then runs it one step per clock mark; halting first wins, exhausting the clock blanks
     output cell 1. -/
 def simTM : TM 4 where
@@ -139,10 +156,11 @@ def simTM : TM 4 where
         · exact ⟨fun h => by simp [idleDir, h], fun i h => by simp [idleDir, h],
             fun h => by simp [idleDir, h]⟩
 
+/-! ## The tape layout -/
 
-/-! ### The simulator's tape layout -/
-
-/-- The simulator's four work tapes. -/
+/-- The simulator's four work tapes: `0` mirrors the described machine's single work tape,
+`1` holds the unary clock (one mark per remaining step, head advancing right), and `2` and
+`3` are the clock-preparation scratch. -/
 def simWork (w0 clk s2 s3 : Tape) : Fin 4 → Tape :=
   fun i => if i = 0 then w0 else if i = 1 then clk else if i = 2 then s2 else s3
 
@@ -151,27 +169,11 @@ def simWork (w0 clk s2 s3 : Tape) : Fin 4 → Tape :=
 @[simp] lemma simWork_two (w0 clk s2 s3 : Tape) : simWork w0 clk s2 s3 2 = s2 := rfl
 @[simp] lemma simWork_three (w0 clk s2 s3 : Tape) : simWork w0 clk s2 s3 3 = s3 := rfl
 
-lemma simWork_eq (W : Fin 4 → Tape) : simWork (W 0) (W 1) (W 2) (W 3) = W := by
-  funext i
-  fin_cases i <;> rfl
+/-! ## One simulated step -/
 
-/-- A `Fin 1`-indexed tape family is its own value at `0`. -/
-lemma work_fin_one (w : Fin 1 → Tape) : (fun _ : Fin 1 => w 0) = w := by
-  funext i
-  rw [Subsingleton.elim i 0]
-
-/-- Writing back the symbol under the head is a no-op away from the left-end marker. -/
-lemma writeBack_move (t : Tape) (h : t.read ≠ Γ.start) (dir : Dir3) :
-    t.writeAndMove (readBackWrite t.read).toΓ dir = t.move dir := by
-  unfold Tape.writeAndMove
-  rw [toΓ_readBackWrite_of_ne_start h]
-  simp only [Tape.write, Tape.read]
-  split
-  · rfl
-  · simp [Function.update_eq_self]
-
-/-! ### One simulated step -/
-
+/-- One transition of the simulator performs one transition of the described machine and
+advances the clock head by one cell, provided the clock cell under the head still holds a
+mark. -/
 lemma simTM_step_run (d : TMDesc) (c c' : Cfg 1 (d.toTM).Q)
     (hstep : (d.toTM).step c = some c') (clk s2 s3 : Tape) (hclk : clk.read = Γ.one)
     (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -199,20 +201,19 @@ lemma simTM_step_run (d : TMDesc) (c c' : Cfg 1 (d.toTM).Q)
   · simp [simWork]
   · simp only [simWork_one, if_neg (by decide : ¬((1 : Fin 4) = 0)),
       if_pos (rfl : (1 : Fin 4) = 1)]
-    exact writeBack_move clk (by rw [hclk]; simp) Dir3.right
+    exact writeAndMove_readBack clk (by rw [hclk]; simp) Dir3.right
   · show s2.writeAndMove (readBackWrite s2.read).toΓ (idleDir s2.read) = s2
-    rw [writeBack_move s2 hs2, idleDir, if_neg hs2]
-    rfl
+    exact transitionTape_eq_self hs2
   · show s3.writeAndMove (readBackWrite s3.read).toΓ (idleDir s3.read) = s3
-    rw [writeBack_move s3 hs3, idleDir, if_neg hs3]
-    rfl
+    exact transitionTape_eq_self hs3
 
-
-/-! ### The phase transitions -/
+/-! ## The phase transitions -/
 
 private lemma simTM_ne_halt_inl (d : TMDesc) (q : (d.toTM).Q) :
     (Sum.inl q : SimQ (d.toTM).Q) ≠ Sum.inr 3 := by simp
 
+/-- The `pre` transition: from the start state, move the shared heads back to cell `0` and
+enter the described machine's own start state. -/
 lemma simTM_step_pre (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (hi : inp.read ≠ Γ.start) (hw0 : w0.read ≠ Γ.start) (hout : out.read ≠ Γ.start)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -225,17 +226,17 @@ lemma simTM_step_pre (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
   simp only [simδ, Fin.val_zero, reduceIte, Option.some.injEq, Cfg.mk.injEq, true_and,
     and_true]
   refine ⟨by rw [moveLeftDir, if_neg hi], ?_, by
-    rw [writeBack_move out hout, moveLeftDir, if_neg hout]⟩
+    rw [writeAndMove_readBack out hout, moveLeftDir, if_neg hout]⟩
   funext i
   fin_cases i
   · show w0.writeAndMove (readBackWrite w0.read).toΓ (moveLeftDir w0.read) = _
-    rw [writeBack_move w0 hw0, moveLeftDir, if_neg hw0]; rfl
+    rw [writeAndMove_readBack w0 hw0, moveLeftDir, if_neg hw0]; rfl
   · show clk.writeAndMove (readBackWrite clk.read).toΓ (idleDir clk.read) = clk
-    rw [writeBack_move clk hclk, idleDir, if_neg hclk]; rfl
+    exact transitionTape_eq_self hclk
   · show s2.writeAndMove (readBackWrite s2.read).toΓ (idleDir s2.read) = s2
-    rw [writeBack_move s2 hs2, idleDir, if_neg hs2]; rfl
+    exact transitionTape_eq_self hs2
   · show s3.writeAndMove (readBackWrite s3.read).toΓ (idleDir s3.read) = s3
-    rw [writeBack_move s3 hs3, idleDir, if_neg hs3]; rfl
+    exact transitionTape_eq_self hs3
 
 /-- The shared shape of every phase transition: the work tapes are written back and
     idled, the input tape is idled, and only the output tape and the state move. -/
@@ -258,11 +259,11 @@ private lemma simTM_step_phase (d : TMDesc) (s s' : SimQ (d.toTM).Q)
   fin_cases i
   · rfl
   · show clk.writeAndMove (readBackWrite clk.read).toΓ (idleDir clk.read) = clk
-    rw [writeBack_move clk hclk, idleDir, if_neg hclk]; rfl
+    exact transitionTape_eq_self hclk
   · show s2.writeAndMove (readBackWrite s2.read).toΓ (idleDir s2.read) = s2
-    rw [writeBack_move s2 hs2, idleDir, if_neg hs2]; rfl
+    exact transitionTape_eq_self hs2
   · show s3.writeAndMove (readBackWrite s3.read).toΓ (idleDir s3.read) = s3
-    rw [writeBack_move s3 hs3, idleDir, if_neg hs3]; rfl
+    exact transitionTape_eq_self hs3
 
 /-- The idle transition shared by the halt and timeout branches. -/
 private lemma simTM_step_idle (d : TMDesc) (s s' : SimQ (d.toTM).Q)
@@ -278,6 +279,7 @@ private lemma simTM_step_idle (d : TMDesc) (s s' : SimQ (d.toTM).Q)
           transitionTape out⟩ :=
   simTM_step_phase d s s' hs inp w0 clk s2 s3 out _ _ hclk hs2 hs3 hδ
 
+/-- Reaching the described halt state ends the run, whatever the clock still holds. -/
 lemma simTM_step_halt (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (hone : clk.read = Γ.one)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -289,6 +291,8 @@ lemma simTM_step_halt (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
                 rw [if_neg (by simp [hone] : ¬((simWork w0 clk s2 s3 1).read ≠ Γ.one)),
                   if_true])
 
+/-- An exhausted clock sends the run into the timeout branch, whatever state the described
+machine is in. -/
 lemma simTM_step_timeout (d : TMDesc) (q : (d.toTM).Q)
     (inp w0 clk s2 s3 out : Tape) (hclock : clk.read ≠ Γ.one)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -298,14 +302,15 @@ lemma simTM_step_timeout (d : TMDesc) (q : (d.toTM).Q)
   simTM_step_idle d _ _ (simTM_ne_halt_inl d _) inp w0 clk s2 s3 out hclk
     hs2 hs3 (by simp only [simδ, simWork_one]; rw [if_pos hclock])
 
-
-/-! ### The clock tape -/
+/-! ## The clock tape -/
 
 /-- The clock tape after `j` simulated steps: `V` marks, head at cell `1 + j`. -/
 def clkTape (V j : ℕ) : Tape := ⟨1 + j, regCells V⟩
 
+/-- Before the first simulated step the clock tape is the canonical register tape. -/
 @[simp] lemma clkTape_zero (V : ℕ) : clkTape V 0 = regTape V := rfl
 
+/-- The clock cell under the head holds a mark exactly while steps remain. -/
 lemma clkTape_read (V j : ℕ) :
     (clkTape V j).read = if 1 + j ≤ V then Γ.one else Γ.blank := by
   simp only [clkTape, Tape.read, regCells, if_neg (by omega : ¬(1 + j = 0))]
@@ -315,8 +320,10 @@ lemma clkTape_read_ne_start (V j : ℕ) : (clkTape V j).read ≠ Γ.start := by
 
 lemma clkTape_move (V j : ℕ) : (clkTape V j).move Dir3.right = clkTape V (j + 1) := rfl
 
-/-! ### The simulation phase -/
+/-! ## The simulation phase -/
 
+/-- A run of the described machine lifts to a run of the simulator of the same length,
+advancing the clock head one cell per step, as long as the clock covers it. -/
 lemma simTM_reachesIn_run (d : TMDesc) (V : ℕ) (s2 s3 : Tape)
     (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
     ∀ (t j : ℕ) (c₀ c : Cfg 1 (d.toTM).Q), (d.toTM).reachesIn t c₀ c → j + t ≤ V →
@@ -344,8 +351,9 @@ lemma simTM_reachesIn_run (d : TMDesc) (V : ℕ) (s2 s3 : Tape)
           have he : j + 1 + t = j + (t + 1) := by omega
           rwa [he] at this
 
-/-! ### The timeout phase -/
+/-! ## The timeout phase -/
 
+/-- A `rewind` transition off the left end moves the output head one cell left. -/
 lemma simTM_step_rewind (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (hout : out.read ≠ Γ.start)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -357,8 +365,9 @@ lemma simTM_step_rewind (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (by simp only [simδ]
         rw [if_neg (by decide : ¬(((1 : Fin 4) : ℕ) = 0)),
           if_pos (by decide : ((1 : Fin 4) : ℕ) = 1), if_neg hout]),
-    writeBack_move out hout]
+    writeAndMove_readBack out hout]
 
+/-- A `rewind` transition at the left end enters `wipe`, stepping back onto cell `1`. -/
 lemma simTM_step_rewound (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (hout : out.read = Γ.start) (hhead : out.head = 0)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -372,6 +381,7 @@ lemma simTM_step_rewound (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
           if_pos (by decide : ((1 : Fin 4) : ℕ) = 1), if_pos hout])]
   simp only [Tape.writeAndMove, Tape.write, hhead, if_true]
 
+/-- The `wipe` transition blanks the output cell under the head and halts. -/
 lemma simTM_step_wipe (d : TMDesc) (inp w0 clk s2 s3 out : Tape)
     (hout : out.read ≠ Γ.start)
     (hclk : clk.read ≠ Γ.start) (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
@@ -409,8 +419,9 @@ lemma simTM_rewind (d : TMDesc) (clk s2 s3 : Tape)
             ⟨h, cells⟩⟩ _
         simpa [Function.iterate_succ_apply] using hrec
 
-/-! ### Two invariants of a run's output tape -/
+/-! ## Two invariants of a run's output tape -/
 
+/-- The output tape's left-end marker survives any run: every transition writes `Γw`. -/
 lemma reachesIn_output_startInvariant {n : ℕ} {tm : TM n} :
     ∀ {t : ℕ} {c c' : Cfg n tm.Q}, tm.reachesIn t c c' →
       c.output.StartInvariant → c'.output.StartInvariant := by
@@ -429,6 +440,7 @@ lemma reachesIn_output_startInvariant {n : ℕ} {tm : TM n} :
             subst hstep
             exact hwf.writeAndMove _ _
 
+/-- A run of length `t` advances the output head by at most `t` cells. -/
 lemma reachesIn_output_head_le {n : ℕ} {tm : TM n} :
     ∀ {t : ℕ} {c c' : Cfg n tm.Q}, tm.reachesIn t c c' →
       c'.output.head ≤ c.output.head + t := by
@@ -447,15 +459,10 @@ lemma reachesIn_output_head_le {n : ℕ} {tm : TM n} :
             · exact absurd hstep (by simp)
             · simp only [Option.some.injEq] at hstep
               subst hstep
-              show ((c.output.write _).move _).head ≤ c.output.head + 1
-              have h1 := Tape.head_move_le (c.output.write
-                ((tm.δ c.state c.input.read (fun i => (c.work i).read) c.output.read).2.2.1).toΓ)
-                ((tm.δ c.state c.input.read (fun i => (c.work i).read) c.output.read).2.2.2.2.2)
-              rw [Tape.write_head] at h1
-              exact h1
+              exact Tape.head_writeAndMove_le _ _ _
           omega
 
-/-! ### The word the simulator leaves -/
+/-! ## The word the simulator leaves -/
 
 /-- The output word of the clocked run: the described machine's output when it halts
     inside the clock, and the empty word when it does not. -/
@@ -464,7 +471,8 @@ def clockedOutput (d : TMDesc) (V : ℕ) (x : List Bool) : List Bool :=
   | none => []
   | some c => codedOutput c
 
-lemma regCells_zero : regCells 0 = (Tape.init ([] : List Γ)).cells := by
+/-- The register cells for the value `0` are the cells of the blank tape. -/
+lemma regCells_zero_eq_init_nil : regCells 0 = (Tape.init ([] : List Γ)).cells := by
   funext j
   simp only [regCells, Tape.init]
   split_ifs with h1 h2
@@ -472,10 +480,11 @@ lemma regCells_zero : regCells 0 = (Tape.init ([] : List Γ)).cells := by
   · omega
   · simp
 
+/-! ## The simulator's Hoare specification -/
 
-/-! ### The simulator's Hoare specification -/
-
-set_option maxHeartbeats 1000000 in
+/-- **The simulator's specification.** Started on the input word with a `V`-mark clock, the
+simulator halts within `2 * V + 6` steps leaving `clockedOutput d V x` on its output tape:
+the described machine's output if it halts inside `V` steps, and the empty word otherwise. -/
 lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
     (hs2 : s2.read ≠ Γ.start) (hs3 : s3.read ≠ Γ.start) :
     (simTM d).HoareTime
@@ -508,7 +517,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
     simp only [Tape.init, if_neg (by omega : ¬ j = 0)]
     simp
   have hwork0 : (regTape 0).move Dir3.left = ((d.toTM).initCfg x).work 0 :=
-    Tape.ext rfl regCells_zero
+    Tape.ext rfl regCells_zero_eq_init_nil
   have hpre := simTM_step_pre d ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ (regTape 0)
     (regTape V) s2 s3 ⟨1, (Tape.init ([] : List Γ)).cells⟩ hi hw0 hout0 hclkV hs2 hs3
   rw [hwork0] at hpre
@@ -575,11 +584,8 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
       have hhead : outT.head ≤ V + 1 := by
         have h1 := reachesIn_output_head_le hcV
         have h2 : outT.head ≤ cV.output.head + 1 := by
-          rw [houtT, transitionTape, Tape.writeAndMove]
-          have hm := Tape.head_move_le
-            (cV.output.write (readBackWrite cV.output.read).toΓ)
-            (idleDir cV.output.read)
-          rwa [Tape.write_head] at hm
+          rw [houtT, transitionTape]
+          exact Tape.head_writeAndMove_le _ _ _
         simp only [Cfg.init, Tape.init_head] at h1
         omega
       have hrew := simTM_rewind d (clkTape V (0 + V)) s2 s3
@@ -609,7 +615,7 @@ lemma simTM_hoareTime (d : TMDesc) (x : List Bool) (V : ℕ) (s2 s3 : Tape)
         show Function.update outT.cells 1 Γ.blank (0 + 1) = Γ.blank
         simp
 
-/-! ### The clock preparation -/
+/-! ## The clock preparation -/
 
 /-- The Horner-prefix cap `polyEvalTM` asks for, at the input length. -/
 noncomputable def prepCap (p : Polynomial ℕ) (N : ℕ) : ℕ :=
@@ -620,6 +626,8 @@ noncomputable def prepCap (p : Polynomial ℕ) (N : ℕ) : ℕ :=
 noncomputable def prepTM (p : Polynomial ℕ) : TM 4 :=
   seqTM (inputLenRegTM 2) (polyEvalTM 2 1 3 p)
 
+/-- The preparation measures the input length into register `2` and evaluates the clock
+polynomial there, leaving `p.eval |x|` marks in register `1`. -/
 lemma prepTM_hoareTime (p : Polynomial ℕ) (x : List Bool) :
     (prepTM p).HoareTime
       (EmitPred ⟨1, (Tape.init (x.map Γ.ofBool)).cells⟩ (fun _ => regTape 0) [])
@@ -673,8 +681,7 @@ lemma prepTM_hoareTime (p : Polynomial ℕ) (x : List Bool) :
   exact seqTM_hoareTime _ _ hlen
     (fun _ _ _ h => emitPred_transition hinp₀ hW1p [] _ _ _ h) hpoly
 
-
-/-! ### The whole machine -/
+/-! ## The whole machine -/
 
 /-- **The clocked machine for a fixed description.** Bump, build the clock, simulate. -/
 noncomputable def clockedTM (d : TMDesc) (p : Polynomial ℕ) : TM 4 :=
@@ -687,6 +694,8 @@ noncomputable def clockedTime (p : Polynomial ℕ) (N : ℕ) : ℕ :=
       ((p.natDegree + 1) * (layerBudget (prepCap p N) + 1) + 1))) + 1 +
     (2 * p.eval N + 6))
 
+/-- **The clocked machine computes the truncated output.** Its step bound is `clockedTime p`,
+which `clockedTimePoly` exhibits as a polynomial. -/
 lemma clockedTM_computesInTime (d : TMDesc) (p : Polynomial ℕ) :
     (clockedTM d p).ComputesInTime
       (fun x => clockedOutput d (p.eval x.length) x) (clockedTime p) := by
@@ -717,7 +726,7 @@ lemma clockedTM_computesInTime (d : TMDesc) (p : Polynomial ℕ) :
     (fun _ => Tape.init []) (Tape.init []) ⟨rfl, fun _ => rfl, rfl⟩
   exact ⟨c', t, ht, hreach, hhalt, hpost⟩
 
-/-! ### The bound is a polynomial -/
+/-! ## The step bound is a polynomial -/
 
 open Polynomial in
 /-- The Horner cap, as a polynomial. -/
@@ -755,6 +764,3 @@ lemma clockedOutput_mem_FP (d : TMDesc) (p : Polynomial ℕ) :
   rw [clockedTimePoly_eval]
 
 end LogicalInduction.MachineExec
-
-
-

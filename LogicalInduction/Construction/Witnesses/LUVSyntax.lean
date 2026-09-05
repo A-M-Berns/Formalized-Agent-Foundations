@@ -7,15 +7,42 @@ import LogicalInduction.Framework.WriteOut
 
 The paper's expectations material (`sec:expectations`) works with `[0,1]`-LUVs (`def:luv`)
 and finite rational combinations of them, approximating their expectations by a threshold
-mesh (`lem:mesh`).  This file supplies the syntactic side of that machinery: a compact sequence
-presentation naming the constants, coefficients, LUVs, and threshold sentences occurring
-in a sequence of LUV combinations, from which the diagonal threshold mesh is emitted
-directly — term `j * n + i` is coefficient `a_j / n` on the literal sentence `X_j > i/n`.
+mesh (`lem:mesh`).  This module supplies the syntactic side of that machinery: a compact
+presentation naming the constants, coefficients, LUVs and threshold sentences occurring in
+a sequence of LUV combinations, from which the threshold mesh is emitted directly, metered
+as `def:ec` requires.  In the diagonal mesh at precision `n + 1`, flattened term
+`j * (n + 1) + i` is coefficient `a_j / (n + 1)` on the literal sentence `X_j > i/(n+1)`.
 
-The presentation carries no prices, convergence, exploitation, or logical-inductor
-conclusion.  Its semantic companion states only the represented threshold facts in finite
-and completed stages; the public `WorldValued`, `ConvergencePresentation`, and
-`ExactTheoryPresentation` packages are derived from those below.
+## Contents
+
+* `LUVCombinationSyntax` is the caller-supplied data of the `_ofSyntax` endpoints, and a
+  Tier-2 frozen structure.  Two `AffineCombination.PolySequence` boundaries come from it:
+  `diagonalMeshPoly`, at precision `n + 1`, and `meshFamilyPoly`, at an arbitrary
+  polynomial source/precision pair, where `source n ≤ n` is exactly the feature-rank
+  legality condition of the affine sequence interface.  `polySequence` packages the
+  diagonal one as `LUVCombination.PolySequence`.
+* `TheorySemantics` and the transport `exactTheoryPresentation`/`worldValued` read the
+  syntax semantically, over completed theories alone.
+* `AffineCombination.triangularSoftmaxPoly` is the generic first-active softmax compiler.
+  Member `i` of day `m` is stored at the strictly positive paired index
+  `triangularIndex m i = ⟨m, i + 1⟩`, with `triangularRemainder`, `triangularSignal` and
+  `triangularWeight` as its first-active weights.
+* `upperGapPoly` and `lowerGapPoly` emit the two cross-precision mesh gap families, and
+  `meshSoftmaxPoly` / `meshSoftmaxLowerPoly` the softmaxes over them.
+* `meshSoftmaxOperationalWitness` assembles those with the `def:blcp` `L¹` bound and the
+  market's own `[0,1]` price range into `LUVCombination.MeshSoftmaxOperationalWitness`.
+  It lives here rather than in the properties layer because it needs
+  `LUVCombinationSyntax`, which is downstream of that layer.
+* The four `_ofSyntax` endpoints — `mesh_independence_ofSyntax`, `exppolymax_ofSyntax`,
+  `expcoh_ofSyntax` and `perexpkno_ofSyntax` — are the canonical carriers of `lem:mesh`,
+  `thm:exppolymax`, `thm:expcoh` and `thm:perexpkno`.  The last three are applied over the
+  `dd:luv-arith` class in `Construction/Witnesses/LUVExpectationCertified.lean`.
+
+Features are reified syntax (`dd:dsl`), so the constant and coefficient emitters are
+metered on `EF.serialize` through the write-out classes, while the threshold family is
+metered per token at `LUV.RpnThresholdCodeSeq`.  `LUVCombinationSyntax` is inhabited at a
+genuinely index-varying sequence by `ordinaryLUVCombinationSyntax`
+(`Construction/Witnesses/QuoteCodeOfMarket.lean`).
 -/
 
 namespace LogicalInduction
@@ -24,6 +51,14 @@ namespace LogicalInduction
 
 /-- Operational syntax for a sequence of LUV combinations.  The LUV and coefficient at
 `z = ⟨n,j⟩` are the `j`th term of member `n`.
+
+The constant and coefficient emitters are the write-out classes on `EF.serialize`
+(`dd:dsl`).  The threshold field is different: `threshold_poly` is the *token-metered*
+`LUV.RpnThresholdCodeSeq`, one token per node of the threshold sentence `⌜X_j > i/k⌝`.
+It is the one token-metered retention on the canonical endpoint census — the `_ofSyntax`
+endpoints below reach it — and `scripts/coverage-classification.md`, under "LUV-threshold
+metering: rendering sensitivity, witnessed", records why that restricts who may supply the
+data rather than what is proved of it.
 Paper node: `def:luv` -/
 structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
   termCount : ℕ → ℕ
@@ -43,6 +78,8 @@ structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
     (coefficient z).denoteWith ρ V = (coefficient z).denote V
 
 namespace LUVCombinationSyntax
+
+/-! ## The diagonal threshold mesh -/
 
 /-- Number of threshold shares in the diagonal mesh. -/
 def meshTermCount {As : ℕ → LUVCombination}
@@ -71,7 +108,7 @@ def meshSentence {As : ℕ → LUVCombination}
   (S.luv (Nat.pair z.unpair.1 (S.meshMember z))).gt
     ((S.meshOffset z : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
 
-lemma meshTermCount_poly {As : ℕ → LUVCombination}
+private lemma meshTermCount_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshTermCount := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
@@ -79,6 +116,8 @@ lemma meshTermCount_poly {As : ℕ → LUVCombination}
   exact ⟨_, (hmul.comp (hcount.pair PolyFueled.id.succ_comp)).of_eq (fun n ↦ by
       simp [meshTermCount])⟩
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in deep `PolyFueled`
+-- elaboration; see `notes/lean-gotchas.md`.
 attribute [local irreducible] Nat.sqrt in
 private lemma meshDivMod_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
@@ -90,21 +129,30 @@ private lemma meshDivMod_poly {As : ℕ → LUVCombination}
   refine ⟨cdm.comp _, (hdm.comp hinput).of_eq (fun z ↦ ?_)⟩
   simp [meshMember, meshOffset]
 
-lemma meshMember_poly {As : ℕ → LUVCombination}
+private lemma meshMember_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshMember := by
   obtain ⟨c, h⟩ := S.meshDivMod_poly
   exact ⟨Nat.Partrec.Code.left.comp c,
     (PolyFueled.left.comp h).of_eq (fun z ↦ by simp)⟩
 
-lemma meshOffset_poly {As : ℕ → LUVCombination}
+private lemma meshOffset_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
     ∃ c, PolyFueled c S.meshOffset := by
   obtain ⟨c, h⟩ := S.meshDivMod_poly
   exact ⟨Nat.Partrec.Code.right.comp c,
     (PolyFueled.right.comp h).of_eq (fun z ↦ by simp)⟩
 
-lemma getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
+/-- Locate an element of a flat concatenation of blocks of one constant width `W`, by
+division and remainder.
+
+`AffineCombination.getD_flatMap_of_prefix_any` (`Properties/AffinePersistence.lean`) is the
+variable-width form of the same fact, addressed through `segPrefix` rather than `/` and
+`%`.  Instantiating it here is not immediate: it asks for its block-width hypothesis at
+*every* index, while the constant-width caller has it only below the block count, and the
+constant-width prefix identity `segPrefix (fun _ ↦ W) n j = j * W` it would then need has
+no home. -/
+private lemma getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
     (d : α) (W : ℕ) (hW0 : 0 < W) :
     ∀ c i, (∀ j < c, (f j).length = W) → i < c * W →
       ((List.range c).flatMap f).getD i d = (f (i / W)).getD (i % W) d := by
@@ -132,7 +180,9 @@ lemma getD_flatMap_const_width_any {α : Type*} (f : ℕ → List α)
           simpa [hic, Nat.mul_comm] using hqr
         omega
 
-lemma flatMap_threshold_terms (l : List (EF × LUV)) (n : ℕ) :
+/-- Flattening a list of LUV terms into its precision-`n` threshold bundle is the same as
+enumerating `l.length * n` shares by quotient and remainder. -/
+private lemma flatMap_threshold_terms (l : List (EF × LUV)) (n : ℕ) :
     l.flatMap (fun p ↦ ((p.2.expectAffine n).scale p.1).terms) =
       (List.range (l.length * n)).map (fun t ↦
         let p := l.getD (t / n) (EF.const 0, (⟨fun _ ↦ ⊤⟩ : LUV))
@@ -265,7 +315,15 @@ noncomputable def polySequence {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) : LUVCombination.PolySequence As where
   mesh_poly := S.diagonalMeshPoly
 
-/-! ## Exact represented semantics -/
+/-! ## Represented threshold semantics
+
+`TheorySemantics` reads a `LUVCombinationSyntax` semantically, over completed theories
+alone, and `exactTheoryPresentation` then `worldValued` transport it to the
+`LUVCombination.WorldValued` boundary that the `_ofSyntax` endpoints below take as a
+hypothesis.  That is the route open to a caller holding the completed-theory truth laws;
+the `dd:luv-arith` lane instead discharges the same boundary outright, through
+`ComputableLUV.worldValued_ofArithmetic` (`Construction/Witnesses/LUVPresentation.lean`).
+-/
 
 /-- Completed-theory truth laws for the threshold families named by a compact syntax
 presentation.  These are representation facts only, and they are quantified over
@@ -281,6 +339,8 @@ structure TheorySemantics {As : ℕ → LUVCombination}
       v.Holds ((S.luv (Nat.pair n j)).gt r) ↔
         (r : ℝ) < value n (S.luv (Nat.pair n j))
 
+/-- Every LUV occurring in a member of the sequence carries the token-metered threshold
+codes, read off the presentation's `threshold_poly` field. -/
 lemma threshold_code {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (n : ℕ) (p : EF × LUV)
     (hp : p ∈ (As n).terms) : p.2.RpnThresholdCodes := by
@@ -309,7 +369,9 @@ def exactTheoryPresentation {As : ℕ → LUVCombination}
     obtain ⟨j, hj, rfl⟩ := hp
     exact H.completed_threshold_iff n j hj v hv r
 
-/-- The completed-world valuation boundary follows from the exact presentation. -/
+/-- Transport of a completed-theory representation to the `LUVCombination.WorldValued`
+boundary demanded by the `_ofSyntax` endpoints.  The `dd:luv-arith` lane reaches that
+boundary by `ComputableLUV.worldValued_ofArithmetic` instead. -/
 def worldValued {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) {DP : DeductiveProcess}
     (H : S.TheorySemantics DP) : LUVCombination.WorldValued As DP :=
@@ -317,11 +379,10 @@ def worldValued {As : ℕ → LUVCombination}
 
 end LUVCombinationSyntax
 
-
-/-! ## Generic triangular softmax compiler
+/-! ## The generic triangular softmax compiler
 
 The mesh selector on day `m` scans a triangular family `G m 0, …, G m (m-1)`.
-We encode a member at the strictly positive paired index `⟨m,i+1⟩`; this keeps every
+A member is encoded at the strictly positive paired index `⟨m,i+1⟩`; this keeps every
 member's feature rank below its `AffineCombination.PolySequence` index, including the
 corner at day zero. -/
 
@@ -329,8 +390,11 @@ namespace AffineCombination
 
 open LUVCombination
 
+/-- Global index of member `i` of the day-`m` triangular family: the paired index
+`⟨m, i+1⟩`, strictly positive so that the member's feature rank stays below `m`. -/
 def triangularIndex (m i : ℕ) : ℕ := Nat.pair m (i + 1)
 
+/-- The day-`m` triangular family `G ⟨m,1⟩, …, G ⟨m,m⟩`, in scan order. -/
 def triangularGaps (G : ℕ → AffineCombination) (m : ℕ) : List AffineCombination :=
   (List.range m).map (fun i ↦ G (triangularIndex m i))
 
@@ -354,35 +418,18 @@ def triangularRemainder (G : ℕ → AffineCombination) (m i : ℕ)
   | i + 1 => .mul (triangularRemainder G m i threshold pad)
       (oneMinus (sellIndF ((G (triangularIndex m i)).priceFeature m) threshold pad))
 
+/-- First-active signal of triangular member `i` on day `m`: the sell indicator on that
+member's own day-`m` price feature. -/
 def triangularSignal (G : ℕ → AffineCombination) (m i : ℕ)
     (threshold pad : ℚ) : EF :=
   sellIndF ((G (triangularIndex m i)).priceFeature m) threshold pad
 
+/-- Allocation weight of triangular member `i` on day `m`: the mass still unspent before
+it, times its own first-active signal. -/
 def triangularWeight (G : ℕ → AffineCombination) (m i : ℕ)
     (threshold pad : ℚ) : EF :=
   .mul (triangularRemainder G m i threshold pad)
     (triangularSignal G m i threshold pad)
-
-private lemma softmaxRemainder_take_succ
-    (gaps : List AffineCombination) (day i : ℕ) (threshold pad : ℚ)
-    (remaining : EF) (hi : i < gaps.length) :
-    softmaxRemainder (gaps.take (i + 1)) day threshold pad remaining =
-      .mul (softmaxRemainder (gaps.take i) day threshold pad remaining)
-        (oneMinus (sellIndF ((gaps.get ⟨i, hi⟩).priceFeature day) threshold pad)) := by
-  induction i generalizing gaps remaining with
-  | zero =>
-      cases gaps with
-      | nil => simp at hi
-      | cons A rest => simp [softmaxRemainder]
-  | succ i ih =>
-      cases gaps with
-      | nil => simp at hi
-      | cons A rest =>
-          have hi' : i < rest.length := by simpa using hi
-          simp only [List.take_succ_cons, softmaxRemainder]
-          rw [ih rest (.mul remaining
-            (oneMinus (sellIndF (A.priceFeature day) threshold pad))) hi']
-          rfl
 
 private lemma foldr_congr_mem {α β : Type*} (l : List α)
     (f g : α → β → β) (init : β)
@@ -397,13 +444,6 @@ private lemma foldr_congr_mem {α β : Type*} (l : List α)
       · intro y hy acc
         exact h y (by simp [hy]) acc
 
-lemma triangularRemainder_succ (G : ℕ → AffineCombination)
-    (m i : ℕ) (threshold pad : ℚ) (_hi : i < m) :
-    triangularRemainder G m (i + 1) threshold pad =
-      .mul (triangularRemainder G m i threshold pad)
-        (oneMinus (triangularSignal G m i threshold pad)) := by
-  rfl
-
 private lemma softmaxRemainder_append
     (xs ys : List AffineCombination) (day : ℕ) (threshold pad : ℚ)
     (remaining : EF) :
@@ -416,7 +456,7 @@ private lemma softmaxRemainder_append
       simp only [List.cons_append, softmaxRemainder]
       exact ih _
 
-@[simp] lemma softmaxRemainder_triangular_prefix
+@[simp] private lemma softmaxRemainder_triangular_prefix
     (G : ℕ → AffineCombination) (m i : ℕ) (threshold pad : ℚ) :
     softmaxRemainder ((List.range i).map (fun j ↦ G (triangularIndex m j)))
         m threshold pad (.const 1) =
@@ -475,7 +515,7 @@ private lemma softmaxAffine_const_eq_fold
       simp only [List.mem_range] at hi
       simp [hi, List.take_succ_cons, softmaxRemainder, Nat.succ_eq_add_one]
 
-lemma softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
+private lemma softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
     (m : ℕ) (threshold pad : ℚ) :
     (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).terms =
       (List.range m).flatMap (fun i ↦
@@ -488,7 +528,7 @@ lemma softmaxAffine_triangular_terms (G : ℕ → AffineCombination)
   simp only [List.mem_range] at hi
   simp [triangularWeight, triangularSignal, hi, Nat.le_of_lt hi]
 
-lemma softmaxAffine_triangular_const (G : ℕ → AffineCombination)
+private lemma softmaxAffine_triangular_const (G : ℕ → AffineCombination)
     (m : ℕ) (threshold pad : ℚ) :
     (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).const =
       (List.range m).foldr (fun i acc ↦
@@ -503,29 +543,37 @@ lemma softmaxAffine_triangular_const (G : ℕ → AffineCombination)
 
 /-! ### Polynomial emission of the triangular selector -/
 
+/-- Number of terms of the triangular member indexed by `z = ⟨m,i⟩`: the block width of
+the flattened day-`m` emission. -/
 def triangularMemberLength {G : ℕ → AffineCombination}
     (hG : PolySequence G) (z : ℕ) : ℕ :=
   hG.termCount (triangularIndex z.unpair.1 z.unpair.2)
 
+/-- Total number of flattened terms emitted by the day-`m` triangular softmax. -/
 def triangularTermCount {G : ℕ → AffineCombination}
     (hG : PolySequence G) (m : ℕ) : ℕ :=
   segPrefix (triangularMemberLength hG) m m
 
+/-- Triangular member owning the flattened term `z = ⟨m,j⟩`. -/
 def triangularMember {G : ℕ → AffineCombination}
     (hG : PolySequence G) (z : ℕ) : ℕ :=
   segLocate (triangularMemberLength hG) z.unpair.1 z.unpair.2 z.unpair.1
 
+/-- Position of the flattened term `z = ⟨m,j⟩` inside its own triangular member. -/
 def triangularOffset {G : ℕ → AffineCombination}
     (hG : PolySequence G) (z : ℕ) : ℕ :=
   z.unpair.2 - segPrefix (triangularMemberLength hG) z.unpair.1
     (triangularMember hG z)
 
+/-- Coefficient of the flattened term `z = ⟨m,j⟩`: its member's allocation weight times
+that member's own coefficient at the term's offset. -/
 def triangularCoefficient {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) (z : ℕ) : EF :=
   .mul (triangularWeight G z.unpair.1 (triangularMember hG z) threshold pad)
     (hG.coefficient (Nat.pair
       (triangularIndex z.unpair.1 (triangularMember hG z)) (triangularOffset hG z)))
 
+/-- Sentence of the flattened term `z = ⟨m,j⟩`, read off its own triangular member. -/
 def triangularSentence {G : ℕ → AffineCombination}
     (hG : PolySequence G) (z : ℕ) : Sentence :=
   hG.sentence (Nat.pair
@@ -907,9 +955,34 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
     simp only [triangularCoefficient, EF.denoteWith, EF.denote_mul, Pi.mul_apply]
     rw [triangularWeight_closed hG, hG.coefficient_closed]
 
+/-! ### Uniformly generated constant features -/
+
+/-- Add a uniformly generated feature to the affine constant coordinate. -/
+noncomputable def PolySequence.addConstEF {As : ℕ → AffineCombination}
+    (hA : PolySequence As) (e : ℕ → EF) (he : PGenerableWeighting e) :
+    PolySequence (fun n ↦ LUVCombination.addConstEF (As n) (e n)) where
+  termCount := hA.termCount
+  coefficient := hA.coefficient
+  sentence := hA.sentence
+  termCount_poly := hA.termCount_poly
+  const_poly := BigSpliceStream.serialize_add hA.const_poly he.polySeg
+  coefficient_poly := hA.coefficient_poly
+  sentence_poly := hA.sentence_poly
+  terms_eq := hA.terms_eq
+  const_rank := by
+    intro n
+    simp only [LUVCombination.addConstEF, EF.rank]
+    exact Nat.max_le.mpr ⟨hA.const_rank n, he.rank_le n⟩
+  coefficient_rank := hA.coefficient_rank
+  const_closed := by
+    intro n ρ V
+    simp only [LUVCombination.addConstEF, EF.denoteWith, EF.denote_add, Pi.add_apply]
+    rw [hA.const_closed n ρ V, he.closed n ρ V]
+  coefficient_closed := hA.coefficient_closed
+
 end AffineCombination
 
-/-! ## Cross-index threshold meshes and concrete mesh gaps -/
+/-! ## Cross-index meshes and the mesh gap families -/
 
 namespace LUVCombinationSyntax
 
@@ -1037,37 +1110,6 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     simp only [EF.denoteWith, EF.denote_mul, EF.denote_const, Pi.mul_apply]
     rw [S.coefficient_closed]
 
-end LUVCombinationSyntax
-
-namespace AffineCombination
-
-/-- Add a uniformly generated feature to the affine constant coordinate. -/
-noncomputable def PolySequence.addConstEF {As : ℕ → AffineCombination}
-    (hA : PolySequence As) (e : ℕ → EF) (he : PGenerableWeighting e) :
-    PolySequence (fun n ↦ LUVCombination.addConstEF (As n) (e n)) where
-  termCount := hA.termCount
-  coefficient := hA.coefficient
-  sentence := hA.sentence
-  termCount_poly := hA.termCount_poly
-  const_poly := BigSpliceStream.serialize_add hA.const_poly he.polySeg
-  coefficient_poly := hA.coefficient_poly
-  sentence_poly := hA.sentence_poly
-  terms_eq := hA.terms_eq
-  const_rank := by
-    intro n
-    simp only [LUVCombination.addConstEF, EF.rank]
-    exact Nat.max_le.mpr ⟨hA.const_rank n, he.rank_le n⟩
-  coefficient_rank := hA.coefficient_rank
-  const_closed := by
-    intro n ρ V
-    simp only [LUVCombination.addConstEF, EF.denoteWith, EF.denote_add, Pi.add_apply]
-    rw [hA.const_closed n ρ V, he.closed n ρ V]
-  coefficient_closed := hA.coefficient_closed
-
-end AffineCombination
-
-namespace LUVCombinationSyntax
-
 private def upperGapFamily (As : ℕ → LUVCombination) (b : ℚ) (q : ℕ) :
     AffineCombination :=
   (As q.unpair.2).meshGap (q.unpair.2 + 1) (q.unpair.1 + 1) b
@@ -1136,6 +1178,25 @@ private lemma lowerGap_rank_legal {As : ℕ → LUVCombination}
     · exact AffineCombination.neg_terms_rank_le _
         (meshAffine_terms_rank_of_syntax S hn) p hp
 
+/-- The completed-world error allowance `-2b/(n+1)` that both cross-precision gap families
+add to their constant coordinate, indexed by the paired gap index. -/
+private def meshErrorWeighting (b : ℚ) (q : ℕ) : EF :=
+  LUVCombination.meshErrorFeature (q.unpair.2 + 1) b
+
+private lemma pGenerableWeighting_meshErrorWeighting (b : ℚ) :
+    PGenerableWeighting (meshErrorWeighting b) := {
+  polySeg := BigSpliceStream.serialize_mul
+    (BigSpliceStream.serialize_const (-(2 * b)))
+    (BigSpliceStream.serialize_const_comp
+      ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
+        PolyFueled.right.succ_comp⟩)
+  rank_le := by
+    intro q; simp [meshErrorWeighting, LUVCombination.meshErrorFeature, EF.rank]
+  closed := by
+    intro q ρ V
+    simp [meshErrorWeighting, LUVCombination.meshErrorFeature, EF.denoteWith]
+}
+
 /-- Polynomial syntax for every upper cross-precision gap, stored at paired indices. -/
 noncomputable def upperGapPoly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (b : ℚ) :
@@ -1145,18 +1206,8 @@ noncomputable def upperGapPoly {As : ℕ → LUVCombination}
     ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right.succ_comp⟩ hright
   have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1 + 1)
     ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left.succ_comp⟩ hright
-  have hbase := hlow.add hhigh.neg
-  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature (q.unpair.2 + 1) b
-  have he : PGenerableWeighting e := {
-    polySeg := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-(2 * b)))
-      (BigSpliceStream.serialize_const_comp
-        ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
-          PolyFueled.right.succ_comp⟩)
-    rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
-    closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
-  }
-  exact hbase.addConstEF e he
+  exact (hlow.add hhigh.neg).addConstEF (meshErrorWeighting b)
+    (pGenerableWeighting_meshErrorWeighting b)
 
 /-- Polynomial syntax for every lower cross-precision gap, stored at paired indices. -/
 noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
@@ -1167,18 +1218,8 @@ noncomputable def lowerGapPoly {As : ℕ → LUVCombination}
     ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.right.succ_comp⟩ hright
   have hhigh := S.meshFamilyPoly (fun q ↦ q.unpair.2) (fun q ↦ q.unpair.1 + 1)
     ⟨_, PolyFueled.right⟩ ⟨_, PolyFueled.left.succ_comp⟩ hright
-  have hbase := hhigh.add hlow.neg
-  let e : ℕ → EF := fun q ↦ LUVCombination.meshErrorFeature (q.unpair.2 + 1) b
-  have he : PGenerableWeighting e := {
-    polySeg := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-(2 * b)))
-      (BigSpliceStream.serialize_const_comp
-        ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
-          PolyFueled.right.succ_comp⟩)
-    rank_le := by intro q; simp [e, LUVCombination.meshErrorFeature, EF.rank]
-    closed := by intro q ρ V; simp [e, LUVCombination.meshErrorFeature, EF.denoteWith]
-  }
-  exact hbase.addConstEF e he
+  exact (hhigh.add hlow.neg).addConstEF (meshErrorWeighting b)
+    (pGenerableWeighting_meshErrorWeighting b)
 
 /-- Exact polynomial emitter for the upper mesh softmax consumed by `mesh_upper_eventually`. -/
 noncomputable def meshSoftmaxPoly {As : ℕ → LUVCombination}
@@ -1214,6 +1255,32 @@ noncomputable def meshSoftmaxLowerPoly {As : ℕ → LUVCombination}
       AffineCombination.triangularIndex]
   exact hfun ▸ h
 
+/-! ## The mesh-softmax operational witness -/
+
+/-- A first-active softmax over a family of gap lists whose members are uniformly
+price-bounded is itself price-bounded, by the same constant. -/
+private lemma boundedAffinePrices_softmaxAffine {P : History}
+    (gaps : ℕ → List AffineCombination) (threshold pad : ℚ) (C : ℝ) (hC : 0 ≤ C)
+    (hgaps : ∀ m day, ∀ A ∈ gaps m, |A.price P day| ≤ C) :
+    BoundedAffinePrices
+      (fun m ↦ LUVCombination.softmaxAffine (gaps m) m threshold pad (.const 1)) P := by
+  refine ⟨C, hC, fun m day ↦ ?_⟩
+  simpa only [EF.denote_const, Rat.cast_one, one_mul] using
+    LUVCombination.abs_softmaxAffine_price_le (gaps m) P m day threshold pad
+      (.const 1) C (by simp) hC (fun A hA ↦ hgaps m day A hA)
+
+/-- Magnitude analogue of `boundedAffinePrices_softmaxAffine`: unit initial mass keeps the
+softmax inside the members' own magnitude bound. -/
+private lemma magnitude_softmaxAffine_le {P : History}
+    (gaps : ℕ → List AffineCombination) (threshold pad : ℚ) (C : ℝ) (hC : 0 ≤ C)
+    (hgaps : ∀ m, ∀ A ∈ gaps m, A.magnitude P ≤ C) :
+    ∀ m, (LUVCombination.softmaxAffine (gaps m) m threshold pad
+      (.const 1)).magnitude P ≤ C := by
+  intro m
+  simpa only [EF.denote_const, Rat.cast_one, one_mul] using
+    LUVCombination.softmaxAffine_magnitude_le (gaps m) P m threshold pad (.const 1) C
+      (by simp) hC (hgaps m)
+
 /-- Compact LUV syntax and the sequence's `L¹` bound together discharge the operational
 witness — polynomial emission of the mesh softmax, plus a uniform price bound on it — that
 the mesh lemma consumes.
@@ -1228,84 +1295,60 @@ noncomputable def meshSoftmaxOperationalWitness
     intro b ε
     obtain ⟨B, hB⟩ := h.bounded
     have hB0 : 0 ≤ B := (As 0).l1Norm_nonneg P |>.trans (hB 0)
-    refine ⟨2 * B + 2 * |(b : ℝ)|, by positivity, fun m day ↦ ?_⟩
-    simpa only [LUVCombination.meshSoftmax, EF.denote_const, Rat.cast_one, one_mul] using
-      LUVCombination.abs_softmaxAffine_price_le
-        (LUVCombination.meshGaps As m b) P m day (ε / 2) (ε / 4) (.const 1)
-          (2 * B + 2 * |(b : ℝ)|) (by simp) (by positivity) (by
-            intro A hA
-            simp only [LUVCombination.meshGaps, List.mem_map, List.mem_range] at hA
-            obtain ⟨i, hi, rfl⟩ := hA
-            exact LUVCombination.abs_meshGap_price_le (As (i + 1)) P (by omega)
-              b B (hB (i + 1)) (hP day))
+    exact boundedAffinePrices_softmaxAffine (fun m ↦ LUVCombination.meshGaps As m b)
+      (ε / 2) (ε / 4) (2 * B + 2 * |(b : ℝ)|) (by positivity) (by
+        intro m day A hA
+        simp only [LUVCombination.meshGaps, List.mem_map, List.mem_range] at hA
+        obtain ⟨i, hi, rfl⟩ := hA
+        exact LUVCombination.abs_meshGap_price_le (As (i + 1)) P (by omega)
+          b B (hB (i + 1)) (hP day))
   magnitude := by
     intro b ε
     obtain ⟨B, hB⟩ := h.bounded
     have hB0 : 0 ≤ B := (As 0).l1Norm_nonneg P |>.trans (hB 0)
-    refine ⟨2 * B, by
-      intro m
-      have hgaps : ∀ A ∈ LUVCombination.meshGaps As m b,
-          A.magnitude P ≤ 2 * B := by
-        intro A hA
-        simp only [LUVCombination.meshGaps, List.mem_map, List.mem_range] at hA
-        obtain ⟨i, hi, rfl⟩ := hA
-        have hshare : (As (i + 1)).shareNorm P ≤ B := by
-          calc
-            (As (i + 1)).shareNorm P ≤ (As (i + 1)).l1Norm P := by
-              simp only [LUVCombination.l1Norm]
-              exact le_add_of_nonneg_left (abs_nonneg _)
-            _ ≤ B := hB (i + 1)
-        exact (LUVCombination.meshGap_magnitude_le (As (i + 1)) P
-          (i + 2) (m + 1) b).trans (by linarith)
-      simpa only [LUVCombination.meshSoftmax, EF.denote_const, Rat.cast_one, one_mul] using
-        LUVCombination.softmaxAffine_magnitude_le
-          (LUVCombination.meshGaps As m b) P m (ε / 2) (ε / 4) (.const 1)
-            (2 * B) (by simp) (by positivity) hgaps
-    ⟩
+    refine ⟨2 * B, magnitude_softmaxAffine_le (fun m ↦ LUVCombination.meshGaps As m b)
+      (ε / 2) (ε / 4) (2 * B) (by positivity) ?_⟩
+    intro m A hA
+    simp only [LUVCombination.meshGaps, List.mem_map, List.mem_range] at hA
+    obtain ⟨i, hi, rfl⟩ := hA
+    have hshare : (As (i + 1)).shareNorm P ≤ B := by
+      have h1 : (As (i + 1)).shareNorm P ≤ (As (i + 1)).l1Norm P :=
+        le_add_of_nonneg_left (abs_nonneg _)
+      exact h1.trans (hB (i + 1))
+    exact (LUVCombination.meshGap_magnitude_le (As (i + 1)) P
+      (i + 2) (m + 1) b).trans (by linarith)
   lower_poly := S.meshSoftmaxLowerPoly
   lower_bounded := by
     intro b ε
     obtain ⟨B, hB⟩ := h.bounded
     have hB0 : 0 ≤ B := (As 0).l1Norm_nonneg P |>.trans (hB 0)
-    refine ⟨2 * B + 2 * |(b : ℝ)|, by positivity, fun m day ↦ ?_⟩
-    simpa only [LUVCombination.meshSoftmaxLower, EF.denote_const, Rat.cast_one, one_mul] using
-      LUVCombination.abs_softmaxAffine_price_le
-        (LUVCombination.meshGapsLower As m b) P m day (ε / 2) (ε / 4) (.const 1)
-          (2 * B + 2 * |(b : ℝ)|) (by simp) (by positivity) (by
-            intro A hA
-            simp only [LUVCombination.meshGapsLower, List.mem_map, List.mem_range] at hA
-            obtain ⟨i, hi, rfl⟩ := hA
-            exact LUVCombination.abs_meshGapLower_price_le (As (i + 1)) P (by omega)
-              b B (hB (i + 1)) (hP day))
+    exact boundedAffinePrices_softmaxAffine (fun m ↦ LUVCombination.meshGapsLower As m b)
+      (ε / 2) (ε / 4) (2 * B + 2 * |(b : ℝ)|) (by positivity) (by
+        intro m day A hA
+        simp only [LUVCombination.meshGapsLower, List.mem_map, List.mem_range] at hA
+        obtain ⟨i, hi, rfl⟩ := hA
+        exact LUVCombination.abs_meshGapLower_price_le (As (i + 1)) P (by omega)
+          b B (hB (i + 1)) (hP day))
   lower_magnitude := by
     intro b ε
     obtain ⟨B, hB⟩ := h.bounded
     have hB0 : 0 ≤ B := (As 0).l1Norm_nonneg P |>.trans (hB 0)
-    refine ⟨2 * B, by
-      intro m
-      have hgaps : ∀ A ∈ LUVCombination.meshGapsLower As m b,
-          A.magnitude P ≤ 2 * B := by
-        intro A hA
-        simp only [LUVCombination.meshGapsLower, List.mem_map, List.mem_range] at hA
-        obtain ⟨i, hi, rfl⟩ := hA
-        have hshare : (As (i + 1)).shareNorm P ≤ B := by
-          calc
-            (As (i + 1)).shareNorm P ≤ (As (i + 1)).l1Norm P := by
-              simp only [LUVCombination.l1Norm]
-              exact le_add_of_nonneg_left (abs_nonneg _)
-            _ ≤ B := hB (i + 1)
-        exact (LUVCombination.meshGapLower_magnitude_le (As (i + 1)) P
-          (i + 2) (m + 1) b).trans (by linarith)
-      simpa only [LUVCombination.meshSoftmaxLower, EF.denote_const, Rat.cast_one,
-          one_mul] using
-        LUVCombination.softmaxAffine_magnitude_le
-          (LUVCombination.meshGapsLower As m b) P m (ε / 2) (ε / 4) (.const 1)
-            (2 * B) (by simp) (by positivity) hgaps
-    ⟩
+    refine ⟨2 * B, magnitude_softmaxAffine_le
+      (fun m ↦ LUVCombination.meshGapsLower As m b)
+      (ε / 2) (ε / 4) (2 * B) (by positivity) ?_⟩
+    intro m A hA
+    simp only [LUVCombination.meshGapsLower, List.mem_map, List.mem_range] at hA
+    obtain ⟨i, hi, rfl⟩ := hA
+    have hshare : (As (i + 1)).shareNorm P ≤ B := by
+      have h1 : (As (i + 1)).shareNorm P ≤ (As (i + 1)).l1Norm P :=
+        le_add_of_nonneg_left (abs_nonneg _)
+      exact h1.trans (hB (i + 1))
+    exact (LUVCombination.meshGapLower_magnitude_le (As (i + 1)) P
+      (i + 2) (m + 1) b).trans (by linarith)
 
 end LUVCombinationSyntax
 
-/-! ## Expectation endpoints with the mesh-softmax witness discharged
+/-! ## Expectation endpoints with the operational witness discharged
 
 `Properties/ExpectationProperties.lean` states the four mesh-driven expectation theorems
 against `MeshSoftmaxOperationalWitness`, the operational package certifying that the
@@ -1321,6 +1364,18 @@ namespace LUVCombination.BoundedSequence
 
 open Filter Topology
 
+/-- The `def:blcp` `L¹` bound in the form the mesh theorems consume it: a nonnegative
+rational bounding every member's share norm. -/
+private lemma exists_rat_shareNorm_bound {As : ℕ → LUVCombination} {P : History}
+    (h : LUVCombination.BoundedSequence As P) :
+    ∃ b : ℚ, (0 : ℝ) ≤ (b : ℝ) ∧ ∀ n, (As n).shareNorm P ≤ (b : ℝ) := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  refine ⟨b, (le_max_right B 0).trans hbB.le, fun n ↦ ?_⟩
+  have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+    le_add_of_nonneg_left (abs_nonneg _)
+  exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+
 /-- Appendix `lem:mesh` with the mesh-softmax operational witness discharged from the
 compact LUV syntax.  Proof kind `C`; every hypothesis is type `(a)`.
 Paper node: `lem:mesh` -/
@@ -1332,13 +1387,7 @@ theorem mesh_independence_ofSyntax
     (hvalued : LUVCombination.WorldValued As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (LUVCombination.meshTailError As P) atTop (𝓝 0) := by
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
   exact h.mesh_independence (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
@@ -1357,13 +1406,7 @@ theorem exppolymax_ofSyntax
         liminf (futureHigh As P) atTop ∧
       limsup (fun n => (As n).expect P n) atTop =
         limsup (futureLow As P) atTop := by
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
   exact h.exppolymax (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued b hb hshare hworld
@@ -1386,13 +1429,7 @@ theorem expcoh_ofSyntax
           limsup (fun n => (As n).expectInf P) atTop ∧
         limsup (fun n => (As n).expectInf P) atTop ≤
           limsup (completedHigh As P DP) atTop) := by
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
   exact h.expcoh (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld
@@ -1411,30 +1448,11 @@ theorem perexpkno_ofSyntax
         liminf (fun n => (As n).expectInf P) atTop ∧
       limsup (futureHigh As P) atTop =
         limsup (fun n => (As n).expectInf P) atTop := by
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hb : (0 : ℝ) ≤ (b : ℝ) := (le_max_right B 0).trans hbB.le
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  obtain ⟨b, hb, hshare⟩ := exists_rat_shareNorm_bound h
   exact h.perexpkno (S.meshSoftmaxOperationalWitness h
       (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
     hvalued S.threshold_code b hb hshare hworld
 
 end LUVCombination.BoundedSequence
-
-#print axioms LUVCombinationSyntax.diagonalMeshPoly
-#print axioms LUVCombinationSyntax.polySequence
-#print axioms LUVCombinationSyntax.threshold_code
-#print axioms LUVCombinationSyntax.exactTheoryPresentation
-#print axioms LUVCombinationSyntax.worldValued
-#print axioms LUVCombinationSyntax.meshSoftmaxPoly
-#print axioms LUVCombinationSyntax.meshSoftmaxLowerPoly
-#print axioms LUVCombinationSyntax.meshSoftmaxOperationalWitness
-#print axioms LUVCombination.BoundedSequence.mesh_independence_ofSyntax
-#print axioms LUVCombination.BoundedSequence.exppolymax_ofSyntax
-#print axioms LUVCombination.BoundedSequence.expcoh_ofSyntax
-#print axioms LUVCombination.BoundedSequence.perexpkno_ofSyntax
 
 end LogicalInduction

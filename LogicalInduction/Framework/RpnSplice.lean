@@ -1,46 +1,51 @@
-/-
+import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.RpnSentence
+
+/-!
 # RPN splice streams: the 𝓔𝓒-sequence interface and its combinators
 
-This module sits upstream of the feature and LUV interfaces, so their structures can
-carry the `𝓔𝓒`-sequence hypothesis.  `RpnSentenceCodes` is a **narrower, token-metered
-sufficient subclass** of `def:ec`'s own write-out sentence class `BigSentenceCodes`
-(`Framework/WriteOut.lean`): both are streams of self-delimiting sentence blocks, and this
-one additionally bounds every emitted token's *value* by a polynomial in the day.
-`RpnSpliceStream` says a token-stream family has a polynomially emittable RPN
-expansion contracting to it position-wise.  The realization capstones (digitize +
-`ec_of_rawSegStream`) live in `Framework/RpnEmission.lean`.
+Sits upstream of the feature and LUV interfaces so their structures can carry the
+`𝓔𝓒`-sequence hypothesis.
+
+`RpnSentenceCodes φ` is a narrower, token-metered sufficient subclass of `def:ec`'s own
+write-out sentence class `BigSentenceCodes` (`Framework/WriteOut.lean`): a `PolySegStream`
+of self-delimiting sentence blocks parsing to `φ`, each block consumed exactly, which
+bounds every emitted token's *value* on top of their number. The whole-value interface
+`PolySentenceCodes` meters the single pair-code token, which excludes deep or skewed
+sentence sequences whose codes are value-exponential in their symbol count;
+`RpnSentenceCodes` meters symbols instead. `BigSentenceCodes.ofRpnSentenceCodes` is the
+inclusion into the node's own class; no separation of the two is proved.
+
+The paper's affine and self-trust theorems quantify over `BigSentenceCodes`, not over this
+class. `RpnSentenceCodes` is the supply side: the class the compilers in `Construction/`
+emit into, and the class the LUV threshold interfaces `LUV.RpnThresholdCodes(Seq)`
+(`Framework/Expectations.lean`) are phrased in.
+
+Constructors and combinators: `ofCanonical`, `ofPolySentenceCodes`, `const`, `of_eq`,
+`comp`, `ifZero`, `modDispatch` (the fixed-`k` families of `thm:lex`), the fixed-arity
+`and`/`or`/`imp`, and the variable-width `bigOr`/`bigAnd`, whose parse laws are
+`parseRpn_disjChain`/`parseRpn_conjChain`.
+
+`RpnSpliceStream ts` says some `PolySegStream` contracts (`UnRpnContractsTo`) to `ts`
+position-wise. Slot-free runs embed by transparency; price and trade sentence slots draw
+their blocks from an `RpnSentenceCodes` certificate; the class is closed under the same
+combinators as `PolySegStream`, so a `serialize` emission assembly transfers combinator for
+combinator. The realization capstones (digitize + `ec_of_rawSegStream`) live in
+`Framework/RpnEmission.lean`.
 
 Paper node: `def:ec` (token-metered sentence slots — a subclass rendering, not the node's
 own class).
 -/
-import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.RpnSentence
 
 namespace LogicalInduction
 
-/-! ## A token-metered 𝓔𝓒 sentence-sequence subclass (`RpnSentenceCodes`)
+/-! ## A token-metered 𝓔𝓒 sentence-sequence subclass (`RpnSentenceCodes`) -/
 
-The paper's affine and self-trust theorems quantify over *efficiently computable
-sequences of sentences*, and the class they are now stated over is the write-out class
-`BigSentenceCodes`; none of them quantifies over `RpnSentenceCodes`.  What this class is
-for is the *supply* side: it is the convenient token-metered subclass the compilers in
-`Construction/` emit into, embedding by `BigSentenceCodes.ofRpnSentenceCodes`, and it is
-still the class the LUV threshold interfaces (`LUV.RpnThresholdCodes(Seq)`,
-`Framework/Expectations.lean`) are phrased in.  The whole-value interface
-(`PolySentenceCodes`) meters the single pair-code token, which excludes deep or skewed
-sentence sequences whose codes are value-exponential in their symbol count.
-`RpnSentenceCodes` meters **symbols** instead: some polynomially emittable stream of
-self-delimiting sentence blocks — canonical Polish runs or escaped pair codes — parses to
-the sequence, with each emitted token's value bounded as well. -/
-
-/-- **A narrower, token-metered sufficient subclass of `def:ec`'s write-out sentence class
-`BigSentenceCodes`**: a `PolySegStream` of self-delimiting sentence blocks parsing to the
-sequence (each block consumed exactly), which bounds every emitted token's *value* by a
-polynomial in the day on top of their number.  Canonical Polish runs (`ofCanonical`) admit
-arbitrarily deep and skewed sentences at poly symbol count; escaped pair codes
-(`ofPolySentenceCodes`) embed the whole-value interface; `BigSentenceCodes.ofRpnSentenceCodes`
-is the inclusion into the node's own class.  No separation of the two sentence classes is
-proved here.
+/-- A `PolySegStream` of self-delimiting sentence blocks parsing to `φ`, each block
+consumed exactly; a token-metered sufficient subclass of `BigSentenceCodes` (see the module
+docstring).  Canonical Polish runs (`ofCanonical`) admit arbitrarily deep and skewed
+sentences at poly symbol count; escaped pair codes (`ofPolySentenceCodes`) embed the
+whole-value interface.
 Paper node: `def:ec` -/
 def RpnSentenceCodes (φ : ℕ → Sentence) : Prop :=
   ∃ s : ℕ → List ℕ, PolySegStream s ∧
@@ -71,6 +76,7 @@ lemma RpnSentenceCodes.comp {φ : ℕ → Sentence} (h : RpnSentenceCodes φ)
   obtain ⟨s, hs, hp⟩ := h
   exact ⟨fun z => s (f z), hs.comp hf, fun z => hp (f z)⟩
 
+/-- Transport along a pointwise equality of sentence families. -/
 lemma RpnSentenceCodes.of_eq {φ ψ : ℕ → Sentence} (h : RpnSentenceCodes φ)
     (hφψ : ∀ n, φ n = ψ n) : RpnSentenceCodes ψ := by
   obtain ⟨s, hs, hp⟩ := h
@@ -111,6 +117,49 @@ lemma RpnSentenceCodes.and {φ ψ : ℕ → Sentence}
     simp
   rw [hlen, parseRpn_cons]
   rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
+  rw [parseRpn_block_head (hpa z) (b z) (by omega)]
+  simp only [Option.bind_some]
+  rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
+    (hpb z)]
+  rfl
+
+/-- Disjunction of two sentence-block streams: the fixed `⋎` tag in front of the two
+blocks, which the prefix parser consumes in order. -/
+lemma RpnSentenceCodes.or {φ ψ : ℕ → Sentence}
+    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
+    RpnSentenceCodes (fun z => φ z ⋎ ψ z) := by
+  obtain ⟨a, ha, hpa⟩ := hφ
+  obtain ⟨b, hb, hpb⟩ := hψ
+  have h4 : PolySegStream (fun _ : ℕ => [4]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 4)
+  refine ⟨fun z => 4 :: (a z ++ b z), ((h4.append ha).append hb).of_eq (fun z => by simp),
+    fun z => ?_⟩
+  have hlen : (4 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
+    simp
+  rw [hlen, parseRpn_cons]
+  rw [if_neg (by norm_num), if_neg (by norm_num), if_neg (by norm_num),
+    if_neg (by norm_num), if_pos rfl]
+  rw [parseRpn_block_head (hpa z) (b z) (by omega)]
+  simp only [Option.bind_some]
+  rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
+    (hpb z)]
+  rfl
+
+/-- Implication of two sentence-block streams: the fixed implication tag in front of the
+two blocks, which the prefix parser consumes in order. -/
+lemma RpnSentenceCodes.imp {φ ψ : ℕ → Sentence}
+    (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
+    RpnSentenceCodes (fun z => LO.Propositional.Formula.imp (φ z) (ψ z)) := by
+  obtain ⟨a, ha, hpa⟩ := hφ
+  obtain ⟨b, hb, hpb⟩ := hψ
+  have h2 : PolySegStream (fun _ : ℕ => [2]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
+  refine ⟨fun z => 2 :: (a z ++ b z), ((h2.append ha).append hb).of_eq (fun z => by simp),
+    fun z => ?_⟩
+  have hlen : (2 :: (a z ++ b z)).length = (a z).length + (b z).length + 1 := by
+    simp
+  rw [hlen, parseRpn_cons]
+  rw [if_neg (by norm_num), if_neg (by norm_num), if_pos rfl]
   rw [parseRpn_block_head (hpa z) (b z) (by omega)]
   simp only [Option.bind_some]
   rw [parseRpn_mono (b z) (show (b z).length ≤ (a z).length + (b z).length by omega)
@@ -317,13 +366,14 @@ lemma RpnSentenceCodes.bigAnd {D : ℕ → ℕ → Sentence}
     simpa using hpb (Nat.pair z j)
   have := parseRpn_conjChain (fun j => b (Nat.pair z j)) (fun j => D z j) hblk
     (cnt z) 0 []
-    (((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j))) ++ 2 :: 0 :: 0 :: []).length
+    (((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j)))
+      ++ 2 :: 0 :: 0 :: []).length
     le_rfl
   simpa using this
 
 section
--- A recurring `dd:fuel` gotcha: nested `Nat.unpair` reductions loop `whnf` on
--- `Nat.sqrt`; scope it irreducible rather than raising heartbeats.
+-- `Nat.sqrt` is scoped irreducible: `PolyFueled` elaboration over paired inputs otherwise
+-- loops in `whnf` (see `Construction/Witnesses/RpnFreeze.lean`).
 attribute [local irreducible] Nat.sqrt
 
 /-- Finite mod-`k` dispatch of sentence-block streams: the paper's fixed-`k` family
@@ -367,18 +417,19 @@ lemma RpnSentenceCodes.modDispatch {k : ℕ} (hk : 0 < k) {φ : ℕ → ℕ → 
 
 end
 
-/-- The spliced price-leaf serialization over a sentence-block stream: the reusable
-segment for buy-signal coefficients whose price leaf sits on the traded sentence
-(`[0, ⌜φ (f m)⌝, f m]` with the sentence token replaced by the block).  Its
-contraction is `UnRpnContractsTo.priceChunk`. -/
+/-- The spliced price-leaf segment over a sentence-block stream: the reusable segment for
+buy-signal coefficients whose price leaf sits on the traded sentence, `[0, ⌜φ⌝, d]` with the
+sentence token replaced by its block.  The sentence index and the day are read by
+independent poly-fueled maps.  Its contraction is `UnRpnContractsTo.priceChunk`. -/
 lemma priceSlotSeg {s : ℕ → List ℕ} (hs : PolySegStream s)
-    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
-    PolySegStream (fun m => 0 :: s (f m) ++ [f m]) := by
+    {cs cd : Nat.Partrec.Code} {sf df : ℕ → ℕ}
+    (hsf : PolyFueled cs sf) (hdf : PolyFueled cd df) :
+    PolySegStream (fun m => 0 :: s (sf m) ++ [df m]) := by
   have h0 : PolySegStream (fun _ : ℕ => [0]) :=
     PolySegStream.ofTokenStream (PolyTokenStream.const 0)
-  have hd : PolySegStream (fun m : ℕ => [f m]) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hf)
-  exact ((h0.append (hs.comp hf)).append hd).of_eq fun m => by
+  have hd : PolySegStream (fun m : ℕ => [df m]) :=
+    PolySegStream.ofTokenStream (PolyTokenStream.polyTok hdf)
+  exact ((h0.append (hs.comp hsf)).append hd).of_eq fun m => by
     simp
 
 /-! ## `RpnSpliceStream` — polynomially emittable RPN expansions
@@ -394,10 +445,14 @@ combinator. -/
 def RpnSpliceStream (ts : ℕ → List ℕ) : Prop :=
   ∃ s : ℕ → List ℕ, PolySegStream s ∧ ∀ z, UnRpnContractsTo (s z) (ts z)
 
+/-- A polynomially emittable stream with no sentence slots is spliceable by
+transparency: contraction leaves it unchanged. -/
 lemma RpnSpliceStream.ofTransparent {ts : ℕ → List ℕ} (h : PolySegStream ts)
     (ht : ∀ z, UnRpnTransparent (ts z)) : RpnSpliceStream ts :=
   ⟨ts, h, fun z => (ht z).contractsTo⟩
 
+/-- Concatenation of spliceable streams, the workhorse for assembling an emission from
+its segments. -/
 lemma RpnSpliceStream.append {a b : ℕ → List ℕ}
     (ha : RpnSpliceStream a) (hb : RpnSpliceStream b) :
     RpnSpliceStream (fun z => a z ++ b z) := by
@@ -405,12 +460,15 @@ lemma RpnSpliceStream.append {a b : ℕ → List ℕ}
   obtain ⟨sb, hsb, hcb⟩ := hb
   exact ⟨fun z => sa z ++ sb z, hsa.append hsb, fun z => (hca z).append (hcb z)⟩
 
+/-- Reindexing along a poly-fueled index map. -/
 lemma RpnSpliceStream.comp {ts : ℕ → List ℕ} (h : RpnSpliceStream ts)
     {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
     RpnSpliceStream (fun z => ts (f z)) := by
   obtain ⟨s, hs, hc⟩ := h
   exact ⟨fun z => s (f z), hs.comp hf, fun z => hc (f z)⟩
 
+/-- Variable-width concatenation: `cnt n` copies of a segment read on the paired index.
+This is what the mesh product of `thm:ccee` needs, its width growing with the index. -/
 lemma RpnSpliceStream.concatVar {seg : ℕ → List ℕ} (hseg : RpnSpliceStream seg)
     {ccnt : Nat.Partrec.Code} {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
     RpnSpliceStream (fun n =>
@@ -429,14 +487,6 @@ lemma RpnSpliceStream.concatVar {seg : ℕ → List ℕ} (hseg : RpnSpliceStream
         simpa using ih.append (hc (Nat.pair n m))
   exact key (cnt n)
 
-/-- A spliced price leaf on a sentence sequence: target `[0, ⌜φ (f m)⌝, f m]`. -/
-lemma RpnSpliceStream.priceSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
-    {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
-    RpnSpliceStream (fun m => [0, Encodable.encode (φ (f m)), f m]) := by
-  obtain ⟨s, hs, hp⟩ := hφ
-  exact ⟨fun m => 0 :: s (f m) ++ [f m], priceSlotSeg hs hf,
-    fun m => UnRpnContractsTo.priceChunk (hp (f m)) (f m)⟩
-
 /-- A spliced trade frame on a sentence sequence: target `[6, ⌜φ (f m)⌝]`. -/
 lemma RpnSpliceStream.tradeSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes φ)
     {c : Nat.Partrec.Code} {f : ℕ → ℕ} (hf : PolyFueled c f) :
@@ -447,6 +497,7 @@ lemma RpnSpliceStream.tradeSlot {φ : ℕ → Sentence} (hφ : RpnSentenceCodes 
   exact ⟨fun m => 6 :: s (f m), (h6.append (hs.comp hf)).of_eq (fun m => by simp),
     fun m => UnRpnContractsTo.tradeChunk (hp (f m))⟩
 
+/-- Two-way dispatch of spliceable streams along a poly-fueled test. -/
 lemma RpnSpliceStream.ifZero {s₀ s₁ : ℕ → List ℕ}
     (h₀ : RpnSpliceStream s₀) (h₁ : RpnSpliceStream s₁)
     {ct : Nat.Partrec.Code} {t : ℕ → ℕ} (ht : PolyFueled ct t) :
@@ -459,6 +510,7 @@ lemma RpnSpliceStream.ifZero {s₀ s₁ : ℕ → List ℕ}
   · simpa [hz] using hca z
   · simpa [hz] using hcb z
 
+/-- Transport along a pointwise equality of token streams. -/
 lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
     (hab : ∀ z, a z = b z) : RpnSpliceStream b := by
   obtain ⟨s, hs, hc⟩ := h
@@ -468,7 +520,11 @@ lemma RpnSpliceStream.of_eq {a b : ℕ → List ℕ} (h : RpnSpliceStream a)
 
 One-for-one mirrors of the `PolySegStream.serialize_*` closure suite: an emission
 assembly written against that suite transfers by renaming combinators.  Operator tails
-and payload frames are transparent; only sentence slots differ. -/
+and payload frames are transparent; only sentence slots differ.
+
+The suite is complete by construction — every `EF` constructor has a member here — and
+completeness is the contract, so a member is kept even where nothing in the library
+currently calls it. -/
 
 /-- A bare operator/close token as a spliceable stream. -/
 lemma RpnSpliceStream.tag (t : ℕ) (ht : t ≠ 0 ∧ t ≠ 1 ∧ t ≠ 6 ∧ t ≠ 7) :
@@ -556,11 +612,7 @@ lemma RpnSpliceStream.serialize_price {φ : ℕ → Sentence} (hφ : RpnSentence
     RpnSpliceStream (fun z => (EF.price (φ (sf z)) (df z)).serialize) := by
   obtain ⟨s, hstream, hp⟩ := hφ
   refine ⟨fun z => 0 :: s (sf z) ++ [df z], ?_, fun z => ?_⟩
-  · have h0 : PolySegStream (fun _ : ℕ => [0]) :=
-      PolySegStream.ofTokenStream (PolyTokenStream.const 0)
-    have hdSeg : PolySegStream (fun z : ℕ => [df z]) :=
-      PolySegStream.ofTokenStream (PolyTokenStream.polyTok hd)
-    exact ((h0.append (hstream.comp hs)).append hdSeg).of_eq fun z => by simp
+  · exact priceSlotSeg hstream hs hd
   · have := UnRpnContractsTo.priceChunk (hp (sf z)) (df z)
     exact fun rest => by
       have h1 := this rest

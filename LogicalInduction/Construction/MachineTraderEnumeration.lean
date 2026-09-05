@@ -1,48 +1,48 @@
-/-
-# The genuine polynomial-time trader class and its enumeration
-
-The trader class the paper actually asks for — defined through **ordinary machine
-polynomial time**, `Complexity.FP` from the pinned complexitylib fork — together with a
-total effective enumeration of it and the **coverage** theorem that lets `TradingFirm`'s
-dominance proof quantify over it. So the *construction's* trader universe is the genuine
-machine class.
-
-**How it relates to the fuel class.** `LogicalInduction.EfficientlyComputable`
-(`Framework/Criterion.lean`) is a fuel-clocked `Nat.Partrec.Code.evaln` certificate
-(`dd:fuel`), and it remains the internal certification technology every concrete property
-proof uses. `Framework/MachineEfficiency.lean` proves the inclusion
-`EfficientlyComputable Tr → MachineEfficientTrader Tr`: everything the fuel calculus
-certifies is machine-efficient. The converse is not proved and is not claimed.
-
-**Unary days.** The paper measures a trader's runtime as polynomial in the day `n`, with `n`
-written in unary. `unaryDay n = List.replicate n true` has length exactly `n`, so a machine
-polynomial in its input length is polynomial in the day, and `Complexity.FP`'s asymptotics
-are the paper's. A binary rendering would silently strengthen the class.
-
-**Token streams, not giant numerals.** The efficiently generated object is a finite digit
-stream, so the class is stated over the machine's finite output word, decoded by the
-*existing* pipeline `strategyOfTokens ∘ unRpn ∘ undigitize ∘ bitsToDigits`. No second parser
-is introduced, and malformed output inherits the established zero-strategy fallback.
-
-**The semantic class and the enumeration are kept apart.** `MachineEfficientTrader` is not
-defined as "occurs in the enumeration"; that every member of the class *does* occur is the
-content of `exists_enumeratedTrader_eq`.
-
-**Both halves are proved here.** Coverage is `exists_enumeratedTrader_eq`; soundness
-— that every index denotes a member of the class — is
-`enumeratedTrader_machineEfficient`, and it is a real theorem rather than the `rfl`
-it is in the fuel setting, because a bogus index's trader is the described machine's
-*truncated* behaviour and an `FP` witness for a truncation needs a clocked simulator.
-`Machine/ClockedSim.lean` builds one: the description an index names is fixed, so the
-simulator's control states are the described machine's own and one transition performs one
-described step under a unary clock.
-
-**No paper node.** Declarations use `lemma`/`theorem` per `scripts/lint_paper_labels.py`;
-the `theorem`s here carry `def:ec` because they are what that node's machine reading asks
-for.
--/
 import LogicalInduction.Construction.Machine.ClockedSim
 import LogicalInduction.Framework.Computable
+
+/-!
+# `def:ec` — the machine trader class and its enumeration
+
+This module renders `def:ec` (tex:753) at the paper's own quantifier: ordinary machine
+polynomial time, through `Complexity.FP` from the pinned complexitylib fork. It defines
+`enumeratedTrader : ℕ → Trader` — run the described machine on the unary day under the
+indexed clock, then decode — and `enumeratedOutput : ℕ → List Bool → List Bool`, the
+function an index computes.
+
+Both halves of "this is an enumeration *of* the class" are proved here.
+`enumeratedOutput_mem_FP` and `enumeratedTrader_machineEfficient` are soundness: every index
+denotes a member of the class. `exists_enumeratedTrader_eq` is coverage: every
+machine-efficient trader occurs at some index, as an exact equality of traders. Coverage is
+what `Construction/TradingFirm.lean` consumes — `trading_firm_dominance_of_covered` takes
+`hcov : ∃ j, enumeratedTrader j = Tr` and nothing else — so it is what makes the dominance
+proof quantify over the machine class.
+
+Three choices shape the rendering.
+
+*Unary days.* The paper measures a trader's runtime as polynomial in the day `n` written in
+unary, and `unaryDay n = List.replicate n true` has length exactly `n`, so
+`Complexity.FP`'s asymptotics are the paper's; a binary rendering would silently strengthen
+the class.
+
+*Token streams, not giant numerals.* The class is stated over the machine's finite output
+word, decoded by the existing pipeline
+`strategyOfTokens ∘ unRpn ∘ undigitize ∘ bitsToDigits`; no second parser is introduced, and
+malformed output inherits the established zero-strategy fallback.
+
+*The semantic class and the enumeration are kept apart.* `MachineEfficientTrader` is not
+defined as "occurs in the enumeration"; that every member does occur is the content of
+`exists_enumeratedTrader_eq`. Soundness is correspondingly a real theorem rather than the
+`rfl` it is in the fuel setting, because a bogus index's trader is the described machine's
+*truncated* behaviour, and an `FP` witness for a truncation needs the clocked simulator of
+`Machine/ClockedSim.lean`: the description an index names is fixed, so the simulator's
+control states are the described machine's own and one transition performs one described
+step under a unary clock.
+
+Relation to the certificate layer (`dd:fuel`): `Framework/MachineEfficiency.lean` proves
+`EfficientlyComputable Tr → MachineEfficientTrader Tr`; the converse is not proved and is
+not claimed.
+-/
 
 namespace LogicalInduction
 
@@ -88,8 +88,6 @@ lemma bitsToDigits_enumeratedOutput (i n : ℕ) :
   cases evalHalted (progDesc i) (progClock i n) (unaryDay n) with
   | none => rfl
   | some c => rfl
-
-
 
 /-! ## Soundness
 
@@ -150,6 +148,5 @@ theorem exists_enumeratedTrader_eq (Tr : Trader) (hTr : MachineEfficientTrader T
     · rw [progDesc_index]; exact hd
     · rw [progClock_index, length_unaryDay]; exact lt_clock_succ (hak n)
   rw [enumeratedTrader_strat, htok, ← hstrat n, strategyOfOutput]
-
 
 end LogicalInduction

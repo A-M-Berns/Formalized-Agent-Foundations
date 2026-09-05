@@ -1,36 +1,43 @@
-/-
+import LogicalInduction.Construction.Witnesses.RpnFreeze
+
+/-!
 # Structured spelling patterns: the pattern characterization with no side condition
 
-`RpnFreeze.parseRpn_iff_patMatch` characterizes the runs denoting a target under the
-**full** grammar `parseRpn`, but only for a `NoReserved` target.  The residual hypothesis
-is exactly the structured paper-prime leaf: at a reserved atom `atom (Nat.pair 5 _)` the
-full grammar admits a whole extra family of spellings — the `[1, 0, …]` blocks — and
-`RpnFreeze.patterns`, whose alternatives are *single tokens*, cannot name them, because a
-structured block's unary length field makes it a variable-width segment.
+Renders `app:ifp` (tex:6018): the unconditional spelling characterization the corrected
+finite-perturbation freeze recognizer rests on.  `RpnFreeze` handles the legacy grammar, and
+the full grammar `parseRpn` under `NoReserved`; this module removes that condition by
+listing the structured alternatives.
 
-This file removes that hypothesis by widening the pattern alphabet from tokens to
-**segments**.  A `PatSeg` is a literal token, an escape payload hole (as before), or a whole
-structured block `StructBlock pol fc`, whose obligation is the token language of one
-structured paper-prime block:
+The residual hypothesis there is exactly the structured paper-prime leaf: at a reserved atom
+`atom (Nat.pair 5 _)` the full grammar admits a whole extra family of spellings — the
+`[1, 0, …]` blocks — and `RpnFreeze.patterns`, whose alternatives are *single tokens*, cannot
+name them, because a structured block's unary length field makes it a variable-width segment.
 
-    [1, 0, pol] ++ 1^|p| ++ 0 :: p ++ [19]      with  pol ≤ 1  and  p a complete payload.
+* `StructBlock pol fc` is the token language of one structured paper-prime block,
 
-A run matches a segment pattern when it splits, in order, into segment matches
-(`SegMatch`).  The split is no longer forced by the pattern's length — a `struct` segment
-matches runs of many lengths — but it is still forced by the *run*, since the block is
-self-delimiting: this is why `SegMatch` is an existential over decompositions where
-`RpnFreeze.PatMatch` was a positional `List.Forall₂`.
+      [1, 0, pol] ++ 1^|p| ++ 0 :: p ++ [19]    with  pol ≤ 1  and  p a complete payload.
 
-The payoff is `parseRpn_iff_segMatch`: for **every** target, a run denotes it under the full
-grammar exactly when it matches one of the finitely many listed segment patterns.  No
-`BotFree` (the escape's infinite decode fibre lives inside a hole, as in `RpnFreeze`), and
-no `NoReserved` (the structured spellings are now listed, at the one node shape that can
-carry them).
+* `PatSeg` is the segment alphabet — a literal token, an escape payload hole, or a whole
+  structured block — with `PatSeg.MatchesSeg` and `SegMatch`.  A run matches a segment
+  pattern when it splits, in order, into segment matches.  The split is forced by the *run*
+  rather than by the pattern's length, since a structured block is variable-width and
+  self-delimiting; that is why `SegMatch` is an existential over decompositions rather than
+  a positional `List.Forall₂`.
+* `StructBlockRelaxed` / `PatSeg.MatchesRelaxed` / `SegMatchRelaxed` is the relaxed language:
+  everything a pattern demands except the length identification, which is the half a
+  finite-state device decides.  Its `pol ≤ 1` and `19 ∉ p` conjuncts are load-bearing.
+* `structAlts` and `segPatterns` are the complete finite spelling list of a target under the
+  full grammar.
+* Main results: `parseRpn_block_inv` (seven-way head inversion, the structured block being
+  the seventh alternative), `segPatterns_sound`, `segPatterns_complete`, and
+  `parseRpn_iff_segMatch` — the characterization with no `BotFree` (the escape's infinite
+  decode fibre lives inside a hole) and no `NoReserved` condition on the target.
 
-Supporting infrastructure for the freeze recognizer rather than a paper claim; the
-declarations are `lemma`s and `def`s.
+Consumed by `SegmentAutomaton.lean` and `SegmentCounter.lean`, which split `SegMatch` into
+the relaxed and counter halves, and through them by `SegRec.ifParseFull_mem_FP`.
+`parseRpn_iff_segMatch`, `segPatterns_sound` and `segPatterns_complete` are in
+`AxiomAudit.lean`.
 -/
-import LogicalInduction.Construction.Witnesses.RpnFreeze
 
 namespace LogicalInduction
 
@@ -287,8 +294,7 @@ lemma parseRpn_bin_inv {rest : List ℕ} {fuel : ℕ}
 
 /-- **Inversion of a complete full-grammar block parse at its head token.**
 
-Seven alternatives where `RpnFreeze.parseRpnLegacy_block_inv` has six: the extra one is the
-structured paper-prime block, which is exactly the spelling the legacy grammar lacks.
+Seven-way inversion; the structured paper-prime block is the seventh alternative.
 
 Proof kind: `P` proved.  Provenance: (a) `parseStructuredPaperPrime_inv`,
 `parseRpn_bin_inv`; (b) `parseRpn_cons`. -/
@@ -472,7 +478,6 @@ matches. -/
 def SegMatchRelaxed (p : List PatSeg) (b : List ℕ) : Prop :=
   ∃ bs : List (List ℕ), List.Forall₂ PatSeg.MatchesRelaxed p bs ∧ b = bs.flatten
 
-
 /-- The structured alternatives available at an atom.  They exist exactly at the reserved
 shape `atom (Nat.pair 5 (Nat.pair pol fc))` with `pol ≤ 1`, which is the only sentence a
 structured block can denote (`parseStructuredPaperPrime_inv`). -/
@@ -524,6 +529,8 @@ private lemma segMatch_escape_parse {ψ : Sentence} {b : List ℕ}
 private lemma reserved_pair_eq {a : ℕ} (h5 : a.unpair.1 = 5) :
     Nat.pair 5 (Nat.pair a.unpair.2.unpair.1 a.unpair.2.unpair.2) = a := by
   rw [Nat.pair_unpair, ← h5, Nat.pair_unpair]
+
+/-! ## Soundness, completeness, and the characterization -/
 
 /-- **Every listed segment pattern really parses**, for every target — no side condition.
 
@@ -623,9 +630,8 @@ lemma segPatterns_sound : ∀ (ψ : Sentence), ∀ p ∈ segPatterns ψ, ∀ b :
 /-- **The segment pattern list is exhaustive — unconditionally.**
 
 Every complete *full-grammar* parse of *any* target matches one of the finitely many listed
-segment patterns.  Where `RpnFreeze.patterns_complete` had to exclude the structured
-spelling by `NoReserved`, here the structured alternative is listed at the one node shape
-that can carry it, and the inversion's seventh branch lands on it.
+segment patterns: the structured alternative is listed at the one node shape that can carry
+it, and the inversion's seventh branch lands on it.
 
 Proof kind: `P` proved.  Provenance: (a) `parseRpn_block_inv`, `escape_mem_segPatterns`,
 `segMatch_append`.
@@ -736,8 +742,7 @@ lemma segPatterns_complete : ∀ (ψ : Sentence), ∀ b : List ℕ,
 
 A run denotes `ψ` under the full grammar `parseRpn` exactly when it matches one of `ψ`'s
 finitely many segment patterns — for *every* `ψ`: `⊥` subformulas and reserved atoms
-included.  This is the unconditional analogue of `RpnFreeze.parseRpn_iff_patMatch`, which
-still carries `NoReserved`.
+included.  `RpnFreeze.parseRpn_iff_patMatch` is the `NoReserved` form.
 
 Proof kind: `C` composition.  Provenance: (a) `segPatterns_sound`,
 `segPatterns_complete`.

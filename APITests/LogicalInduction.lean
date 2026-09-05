@@ -6,7 +6,12 @@ import LogicalInduction.API
 A downstream researcher's session, in order: build a trader, certify it efficient, use the
 criterion to conclude it cannot exploit the market, read a §4 property off that market,
 condition the inductor, and transport the criterion across a corrected finite-support
-perturbation.
+perturbation.  Then the rest of the documented interface: the certificate kit an exploiting
+trader is assembled from, the exploitation engines and indicator toolkit that prove it
+exploits, the shared asymptotic algebra, the convergence and non-dogmatism forms with their
+side conditions discharged, hypothesis-free conditioning, return on investment, and the
+constructed data (`CEEnumeration`, `ComputableHorizon`, `PresentedLUVSeq`, the LUV lanes,
+the statistical capstones) that arrives with the same import.
 
 Everything here imports `LogicalInduction.API` and nothing else — no machine, compiler or
 parser internals — and uses the API's objects rather than restating its endpoints.
@@ -296,6 +301,381 @@ example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
     (X : LUV) (n : ℕ) : 0 ≤ X.expect P n ∧ X.expect P n ≤ 1 :=
   X.expect_mem_Icc P n fun φ =>
     IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+
+end
+
+/-! ## 8. The certificate kit, in the shape a client assembles it
+
+`dd:fuel`'s calculus is part of the interface: an exploiting trader is built by emitting its
+feature syntax as a `PolySegStream`, naming its sentences with a write-out class, and closing
+the assembly with one of the `EfficientlyComputable.of…` constructors. -/
+
+/-- A rational constant serializes as a segment stream with no side conditions. -/
+example (q : ℚ) : PolySegStream (fun _ => (EF.const q).serialize) :=
+  PolySegStream.serialize_const q
+
+/-- The `serialize_*` suite mirrors the whole `EF` grammar, so a compound feature's stream is
+assembled constructor by constructor. -/
+example (A B : ℕ → EF)
+    (hA : PolySegStream fun n => (A n).serialize)
+    (hB : PolySegStream fun n => (B n).serialize) :
+    PolySegStream fun n => (EF.max (EF.add (A n) (B n)) (EF.mul (A n) (B n))).serialize :=
+  PolySegStream.serialize_max (PolySegStream.serialize_add hA hB)
+    (PolySegStream.serialize_mul hA hB)
+
+/-- A price leaf at a poly-fueled day index, and a reciprocal on top of it. -/
+example (f : ℕ → ℕ) (c : Nat.Partrec.Code) (hf : PolyFueled c f) (φ : Sentence) :
+    PolySegStream fun m => (EF.safeRecip (EF.price φ (f m))).serialize :=
+  PolySegStream.serialize_safeRecip (PolySegStream.serialize_price hf φ)
+
+/-- Sentence families are closed under the connectives, `or` and `imp` included. -/
+example (φ ψ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
+    RpnSentenceCodes fun z => φ z ⋎ ψ z :=
+  RpnSentenceCodes.or hφ hψ
+
+example (φ ψ : ℕ → Sentence) (hφ : RpnSentenceCodes φ) (hψ : RpnSentenceCodes ψ) :
+    RpnSentenceCodes fun z => LO.Propositional.Formula.imp (φ z) (ψ z) :=
+  RpnSentenceCodes.imp hφ hψ
+
+/-- A constant sentence family is one, so the connectives compose off a base case. -/
+example (φ : Sentence) : RpnSentenceCodes fun _ : ℕ => φ := RpnSentenceCodes.const φ
+
+/-- The trader-level capstone: a segment-stream certificate for the day's serialized trades
+is a token-model efficiency certificate. -/
+example (T : Trader) (h : PolySegStream fun n => serializeTrades (T.strat n).trades) :
+    EfficientlyComputableTok T :=
+  ecTok_of_segStream T h
+
+/-- The shared recipe behind every machine reading: a segment stream yields a
+`Complexity.FP` word that decodes back to it. -/
+example (ds : ℕ → List ℕ) (h : PolySegStream ds) := h.exists_FP_word
+
+/-- …and the write-out classes' machine readings are one step from it. -/
+example (t : ℕ → List ℕ) (h : BigTokenStream t) : MachineTokenStream t := h.toMachine
+
+example (φ : ℕ → Sentence) (h : BigSentenceCodes φ) : MachineSentenceCodes φ := h.toMachine
+
+example (φ : ℕ → Sentence) (h : RpnSentenceCodes φ) : MachineSentenceCodes φ := h.toMachine
+
+/-- Variable trade count, write-out coefficients and write-out sentences: the general
+assembly constructor a `def:ec` argument ends with. -/
+example (T : Trader) (count : ℕ → ℕ) (f : ℕ → EF) (ψ : ℕ → Sentence)
+    (hcount : ∃ c, PolyFueled c count)
+    (hf : BigSpliceStream fun z => (f z).serialize)
+    (hψ : BigSentenceCodes ψ)
+    (hT : ∀ n, (T.strat n).trades =
+      (List.range (count n)).map fun j => (f (Nat.pair n j), ψ (Nat.pair n j))) :
+    EfficientlyComputable T :=
+  EfficientlyComputable.ofTradeBlocksBig T count f ψ hcount hf hψ hT
+
+/-! ## 9. Showing that a trader exploits
+
+Three engines, and the two accounting lemmas that feed them. -/
+
+open Filter in
+/-- World-neutral growth: the trader's net worth is a partial sum of a nonnegative sequence
+that is frequently bounded away from zero. -/
+example (T : Trader) (P : History) (DP : DeductiveProcess) (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε)
+    (hnonneg : ∀ i, 0 ≤ w i)
+    (hval : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      T.netWorth P v n = ∑ i ∈ Finset.range (n + 1), w i)
+    (hfreq : ∃ᶠ n in atTop, ε ≤ w n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    T.Exploits P DP :=
+  exploits_of_nonneg_partialSums T P DP w ε hε hnonneg hval hfreq hcons
+
+open Filter in
+/-- The world-dependent form, for a trader whose day value depends on the world. -/
+example (T : Trader) (P : History) (DP : DeductiveProcess) (w : ℕ → ℝ) (ε : ℝ) (hε : 0 < ε)
+    (hnonneg : ∀ i, 0 ≤ w i)
+    (hge : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∑ i ∈ Finset.range (n + 1), w i ≤ T.netWorth P v n)
+    (hfreq : ∃ᶠ n in atTop, ε ≤ w n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    T.Exploits P DP :=
+  exploits_of_ge_partialSums T P DP w ε hε hnonneg hge hfreq hcons
+
+/-- The definitional engine: a floor plus unboundedness. -/
+example (T : Trader) (P : History) (DP : DeductiveProcess) (C : ℝ)
+    (h1 : ∀ x ∈ T.plausibleAssessments P DP, -C ≤ x)
+    (h2 : ∀ B : ℝ, ∃ x ∈ T.plausibleAssessments P DP, B < x) :
+    T.Exploits P DP :=
+  exploits_of_bddBelow_of_unbounded T P DP C h1 h2
+
+/-- Summable total magnitude discharges the bounded-downside half of the definition. -/
+example (T : Trader) (V : History) (DP : DeductiveProcess)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1)
+    (hmag : Summable fun n => (T.strat n).magnitude V) :
+    BddBelow (T.plausibleAssessments V DP) :=
+  T.bddBelow_plausible_of_finiteMagnitude V DP hP hmag
+
+/-- Exploitation transports across markets whose net-worth streams differ boundedly. -/
+example {T T' : Trader} {P P' : History} {DP : DeductiveProcess}
+    (h : T.Exploits P DP) (C : ℝ)
+    (hdiff : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) →
+      |T.netWorth P v n - T'.netWorth P' v n| ≤ C) :
+    T'.Exploits P' DP :=
+  h.of_boundedDifference C hdiff
+
+/-! ### The indicator toolkit
+
+The ε-gated buy signal and the latched arming chain the §4.1 and §4.5 traders run on. -/
+
+example (feat : EF) (ε : ℚ) (P : History) : 0 ≤ (buySignal feat ε).denote P :=
+  buySignal_nonneg feat ε P
+
+example (feat : EF) (ε : ℚ) (P : History)
+    (h : (0 : ℝ) ≤ feat.denote P + (-(ε : ℝ) / 2)) :
+    (buySignal feat ε).denote P = feat.denote P + (-(ε : ℝ) / 2) :=
+  buySignal_eq_of_pos feat ε P h
+
+example (sig : ℕ → EF) (P : History) : (armChain sig 0).denote P = 1 :=
+  armChain_denote_zero sig P
+
+/-- The arming chain's emission shape: one multiplication block per elapsed day. -/
+example (sig : ℕ → EF) (n : ℕ) :
+    (armChain sig n).serialize
+      = [1, Encodable.encode ((1 : ℚ))]
+        ++ (List.range n).flatMap fun i => (oneMinus (sig i)).serialize ++ [3] :=
+  serialize_armChain sig n
+
+open Filter in
+/-- A failure of convergence hands the trader a rational oscillation window. -/
+example (P : History) (φ : Sentence) (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hnc : ¬ ∃ L, ConvergesTo (fun n => P n φ) L) :
+    ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, P n φ < (a : ℝ)) ∧
+      (∃ᶠ n in atTop, (b : ℝ) < P n φ) :=
+  exists_rat_oscillation_of_not_convergesTo P φ hb hnc
+
+/-! ## 10. The shared asymptotic vocabulary, and feature grading -/
+
+example (f₁ g₁ f₂ g₂ : ℕ → ℝ) (h₁ : f₁ ≈ₙ g₁) (h₂ : f₂ ≈ₙ g₂) :
+    (fun n => f₁ n - f₂ n) ≈ₙ fun n => g₁ n - g₂ n :=
+  h₁.sub h₂
+
+example (c : ℝ) (f g : ℕ → ℝ) (h : f ≈ₙ g) :
+    (fun n => c * f n) ≈ₙ fun n => c * g n :=
+  AsympEq.const_mul c h
+
+example (f₁ g₁ f₂ g₂ : ℕ → ℝ) (h₁ : f₁ ≲ₙ g₁) (h₂ : f₂ ≲ₙ g₂) :
+    (fun n => f₁ n + f₂ n) ≲ₙ fun n => g₁ n + g₂ n :=
+  h₁.add h₂
+
+example (f g : ℕ → ℝ) : f ≳ₙ g ↔ g ≲ₙ f := asympGE_iff
+
+/-- Rank grading is monotone, so a rank-`n` strategy may be built from lower-rank pieces. -/
+example {m n : ℕ} (h : m ≤ n) : EF.EFn m ≤ EF.EFn n := EF.EFn_mono h
+
+/-- A world values a LUV at most one way. -/
+example (v : PCWorld) (X : LUV) (x y : ℝ) (hx : v.ValuesAt X x) (hy : v.ValuesAt X y) :
+    x = y :=
+  hx.eq hy
+
+/-! ### The limiting expectation, and the deferral interface
+
+`LUV.expectInf` is `𝔼_∞(X)`; its two companion lemmas mean a client never unfolds the choice
+inside it. -/
+
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (X : LUV)
+    (hcode : X.RpnThresholdCodes)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
+    ConvergesTo (X.expectSeq P) (X.expectInf P DP hcode hcons hval) :=
+  X.expectSeq_convergesTo_expectInf P DP hcode hcons hval
+
+/-- Any independently identified limit of the expectation sequence *is* `𝔼_∞(X)`. -/
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (X : LUV)
+    (hcode : X.RpnThresholdCodes)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x)
+    {L : ℝ} (hL : ConvergesTo (X.expectSeq P) L) :
+    L = X.expectInf P DP hcode hcons hval :=
+  X.expectInf_eq_of_convergesTo P DP hcode hcons hval hL
+
+/-- The self-trust endpoints' `def:deferralfunc` binder is inhabited. -/
+example : DeferralFunction := succDeferral
+
+/-- Dividing a quote portfolio's normalization out of a vanishing diagonal price. -/
+example {P : History} {gap : ℕ → ℝ} (q : AffineQuotePortfolio P gap)
+    (hdiag : (fun n => (q.family n).price P n) ≈ₙ fun _ => 0) :
+    gap ≈ₙ fun _ => 0 :=
+  q.gap_asympEq_zero_of_diagonal hdiag
+
+/-! ## 11. Convergence and non-dogmatism, with the side conditions discharged -/
+
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (φ : Sentence)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ∃ L, ConvergesTo (fun n => P n φ) L :=
+  lic_price_convergesTo P DP φ hcons
+
+/-- An independent sentence's price has a limit strictly inside `(0,1)`, with convergence
+supplied by the library rather than assumed by the client. -/
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (φ : Sentence)
+    (hpos : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ)
+    (hneg : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) :
+    (∃ L, ConvergesTo (fun n => P n φ) L ∧ 0 < L) ∧
+      (∃ L, ConvergesTo (fun n => P n φ) L ∧ L < 1) :=
+  ⟨lic_exists_limit_pos P DP φ hpos, lic_exists_limit_lt_one P DP φ hneg⟩
+
+/-- The affine benchmarks' uniform cross-time price bound, read off a bounded combination
+sequence. -/
+example (As : ℕ → AffineCombination) (V : History)
+    (h : AffineCombination.BoundedCombinationSequence As V)
+    (hP : ∀ n φ, 0 ≤ V n φ ∧ V n φ ≤ 1) :
+    BoundedAffinePrices As V :=
+  h.boundedPrices hP
+
+/-! ## 12. Conditioning with no consistency premise
+
+The two machine endpoints read the stage and market programs off the inductor instance, so a
+client supplies only the condition. -/
+
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (ψ : Sentence) :
+    IsMachineLogicalInductor (conditionedHistory P fun _ => ψ) (DP.adjoinSentence ψ) :=
+  ConditioningCompile.lic_conditioned_fixed_machine P DP ψ
+
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    IsMachineLogicalInductor
+      (conditionedHistory P fun n => sentenceConjunction ((List.range (n + 1)).map ψ))
+      (DP.union (prefixProcess ψ)) :=
+  ConditioningCompile.lic_conditioned_growing_machine_ofSequence P DP ψ hψ
+
+/-- Conditioning a *machine* inductor on one sentence, then reading a §4 property off the
+conditioned market — the whole client session in three lines. -/
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (ψ : Sentence)
+    (φ χ : Sentence)
+    (h1 : ∀ n, (∼φ ⋎ χ) ∈ (DP.adjoinSentence ψ).D n)
+    (h2 : ∀ n, (∼χ ⋎ φ) ∈ (DP.adjoinSentence ψ).D n)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.adjoinSentence ψ).D n)) :
+    ConvergesTo (fun n => conditionedHistory P (fun _ => ψ) n φ
+      - conditionedHistory P (fun _ => ψ) n χ) 0 := by
+  haveI := ConditioningCompile.lic_conditioned_fixed_machine P DP ψ
+  exact lic_lex_tendsto_zero _ _ φ χ h1 h2 hcons
+
+noncomputable section
+
+/-- The three constructors for the conditioning data, so no client fills the fields by
+hand. -/
+example {DP : DeductiveProcess} (base : DeductiveProcessComputation DP) (ψ : Sentence) :
+    ConditioningPresentation DP (fixedConditionProcess ψ) :=
+  fixedConditioningPresentation base ψ
+
+example {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    ConditioningPresentation DP (prefixProcess ψ) :=
+  prefixConditioningPresentation base ψ hψ
+
+example {DP extra : DeductiveProcess} (base : DeductiveProcessComputation DP)
+    (more : CompactConditioningProcessComputation extra) :
+    ConditioningPresentation DP extra :=
+  conditioningPresentationOfComputations base more
+
+/-! ## 13. Return on investment
+
+`lem:type3`'s maturity input splits: the semantic schedule is free, and only the polynomial
+verifier is a real obligation. -/
+
+example (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess) (ε η : ℝ)
+    (hroi : ∀ i, HasROI (Ts i) V DP ε) (hη : 0 < η) :
+    ∃ close, ROIBudget.MaturitySchedule Ts V DP ε (fun _ => η) close :=
+  ROIBudget.exists_maturitySchedule Ts V DP ε η hroi hη
+
+end
+
+/-! ## 14. The refuted printed theorem, reachable by its bare name
+
+`not_overgeneral_ifp` is re-exported by `LogicalInduction.API`, so a client can state the
+paper's own defect without naming the construction namespace it is proved in. -/
+
+example : ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
+    IsMachineLogicalInductor P DP → ComputableMarket P' →
+    (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP :=
+  not_overgeneral_ifp
+
+/-- …and the corrected theorem doing visible work in the other direction: the constructed
+market with one price moved is still a machine logical inductor. -/
+example (DP : DeductiveProcess) (hDP : ComputableDeductiveProcess DP) (r : ℚ)
+    (h0 : 0 ≤ r) (h1 : r ≤ 1) :
+    IsMachineLogicalInductor (LIAPerturbation.liaPerturbed DP r) DP :=
+  LIAPerturbation.machineLogicalInductor_liaPerturbed DP hDP r h0 h1
+
+/-! ## 15. Constructed data that arrives with the same import -/
+
+/-- `thm:obu` at the paper's own premise: an unclocked c.e. enumeration of the source. -/
+example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+    (source : ℕ → Sentence) (h : CEEnumeration source)
+    (hjoint : ∀ n, ∃ v : PCWorld,
+      v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i)) :
+    ∃ ε : ℝ, 0 < ε ∧ ∀ i, ε ≤ limitingBelief P (source i) :=
+  lic_uniform_nonDogmatism_ofCE P DP source h hjoint
+
+/-- `def:ece` for rational sequences: the write-out route in, and the computability out. -/
+example (P : History) (q : ℕ → ℚ) (hq : DigitRatCodes q) : PGenerableRat P q :=
+  PGenerableRat.ofDigitRatCodes hq P
+
+example (P : History) (market : MarketComputation P) (q : ℕ → ℚ)
+    (h : PGenerableRat P q) : Computable q :=
+  PGenerableRat.computable market h
+
+noncomputable section
+
+/-- Every computable step budget is an admissible §4.10 horizon, and the diagonal Ackermann
+function is one — so the interface is strictly wider than any polynomial class. -/
+example (steps : ℕ → ℕ) (h : Computable steps) : ComputableHorizon steps :=
+  ComputableHorizon.of h
+
+example : ComputableHorizon (fun n => _root_.ack n n) := ComputableHorizon.ackermann
+
+/-- A presented LUV source unfolds its thresholds to the handle it is named by. -/
+example (X : PresentedLUVSeq) (n : ℕ) (r : ℚ) :
+    (X.toLUV n).gt r =
+      semanticPrimeSentence X.thresholdSchema (Nat.pair n (Encodable.encode r)) :=
+  X.gt_eq n r
+
+/-- …and the handle families carry `def:ec`'s threshold certificate. -/
+example (schema : ℕ) : LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) :=
+  semanticHandleLUVSeq_rpnThresholdCodeSeq schema
+
+/-! ### Reachability roll-call
+
+The remaining documented routes carry the paper's own hypothesis lists, which the library
+exercises at their proof sites; what a client needs from this import is that the names
+resolve from it, which is what these lines check. -/
+
+example := @lic_domination_universalSemimeasure_ofIndependentAtoms
+example := @bitPrefixSentencesOfIndependentAtoms
+example := @lic_strict_domination_universalSemimeasure_ofAtomCodes
+example := @no_nonvacuous_worldValued_presented_of_rpn
+
+example := @AffineCombination.simcal
+example := @AffineCombination.recurringunbiasedness
+example := @AffineCombination.BoundedCombinationSequence.recunbiasedaff
+example := @AffineCombination.BoundedCombinationSequence.prandaff
+example := @LUVCombination.BoundedSequence.recurringunbiasednessexp
+example := @LUVCombination.BoundedSequence.prandexp
+example := @lic_learning_varied_pseudorandom
+example := @lic_learning_pseudorandom_frequency
+
+example := @FeedbackEmission.feedbackTraderEmissionSigns
+example := @FeedbackEmission.lic_wubaff_ofFeedbackTruth
+example := @FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth
+example := @FeedbackEmission.luv_wubexp_ofFeedbackTruth
+
+example := @ComputableLUV.toLUV_polyThresholdCodes
+example := @ComputableLUV.valuesAt_ofArithmetic
+example := @LUVCombination.BoundedSequence.mesh_independence_ofSyntax
+example := @LUVCombination.BoundedSequence.expcoh_ofSyntax
+example := @LUVCombination.BoundedSequence.perexpkno_ofSyntax
+example := @LUVCombination.BoundedSequence.exppolymax_ofSyntax
+
+example := @ROIBudget.noRepeatableROI
+example := @ROIBudget.noRepeatableROI_of_verifiedMaturity
+
+example := @LIA_isMachineLogicalInductor
+example := @exists_machine_logical_inductor
+example := @exists_computable_beliefSequence_logical_inductor
+example := @liaBoundedEvaluatorCompiler
 
 end
 

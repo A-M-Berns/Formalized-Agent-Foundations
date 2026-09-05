@@ -5,7 +5,7 @@ import LogicalInduction.Construction.LIACompiler
 # Recognizing the token runs that are genuinely *written sources*
 
 `Framework/Criterion.lean`'s `parseStructuredArithmeticFormula` is a *numeric* parser: it
-turns a token run into a Foundation Godel code.  It is deliberately permissive, and two of
+turns a token run into a Foundation Gödel code.  It is deliberately permissive, and two of
 its liberties are fatal if it is used as a *gate* on what a machine may present as an
 axiom:
 
@@ -25,6 +25,16 @@ exactly the runs of the form `ArithSource.sourceTokens s ++ rest` with
 * **complete** (`sourceRun_sourceTokens`): every such run is accepted;
 * **primitive recursive** (`sourceRun_prim`), so the gate can sit inside the emission
   calculus rather than in the metatheory.
+
+`sourceRun_full_prim` is the single entry point out of the module: `admissibleName_primrec`
+(`Construction/Witnesses/SourceWindow.lean`) uses it to make `AdmissibleName` a decidable
+primitive-recursive test.  Nothing outside this file uses the recognizers themselves.
+
+The alphabet recognized is the paper's own source alphabet — `ArithSource.sourceTokens`
+tags, the normal-form expansion tags `20`/`21`/`22` among them — and not Foundation's
+negation normal form (`dd:nnf`).  No paper node renders here: this is representation
+infrastructure for `thm:incons`, whose statement lives in
+`Construction/Witnesses/ComputationRepresented.lean`.
 
 ## Why the nat sub-recognizer is not `parseStructuredNat`
 
@@ -351,9 +361,13 @@ lemma sourceTermRun_emb : ∀ {k : ℕ} (u : Semiterm ℒₒᵣ Empty k) (tail :
               if_pos (by norm_num)]
             rw [ih 0 (encodeArithmeticTermSymbols
                 (Rew.emb (v 1) : ArithmeticSemiterm ℕ k) ++ tail)
-              (by simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel; omega),
+              (by
+                simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel
+                omega),
               Option.bind_some,
-              ih 1 tail (by simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel; omega)]
+              ih 1 tail (by
+                simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel
+                omega)]
       · intro tail fuel hfuel
         cases fuel with
         | zero => simp [encodeArithmeticTermSymbols] at hfuel
@@ -364,9 +378,13 @@ lemma sourceTermRun_emb : ∀ {k : ℕ} (u : Semiterm ℒₒᵣ Empty k) (tail :
               if_pos (by norm_num)]
             rw [ih 0 (encodeArithmeticTermSymbols
                 (Rew.emb (v 1) : ArithmeticSemiterm ℕ k) ++ tail)
-              (by simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel; omega),
+              (by
+                simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel
+                omega),
               Option.bind_some,
-              ih 1 tail (by simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel; omega)]
+              ih 1 tail (by
+                simp [Rew.func, Function.comp_apply, encodeArithmeticTermSymbols] at hfuel
+                omega)]
 
 /-! ### Pushing the semisentence embedding through the constructors
 
@@ -485,7 +503,8 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
       | zero => exact (formulaSymbols_length_pos hfuel).elim
       | succ fuel =>
           have hlen :
-              (encodeArithmeticFormulaSymbols (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length +
+              (encodeArithmeticFormulaSymbols
+                  (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length +
                 (encodeArithmeticFormulaSymbols
                   (Rewriting.emb ψ : ArithmeticSemiformula ℕ _)).length ≤ fuel := by
             simpa [coe_and, encodeArithmeticFormulaSymbols] using hfuel
@@ -499,7 +518,8 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
       | zero => exact (formulaSymbols_length_pos hfuel).elim
       | succ fuel =>
           have hlen :
-              (encodeArithmeticFormulaSymbols (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length +
+              (encodeArithmeticFormulaSymbols
+                  (Rewriting.emb φ : ArithmeticSemiformula ℕ _)).length +
                 (encodeArithmeticFormulaSymbols
                   (Rewriting.emb ψ : ArithmeticSemiformula ℕ _)).length ≤ fuel := by
             simpa [coe_or, encodeArithmeticFormulaSymbols] using hfuel
@@ -536,7 +556,8 @@ lemma sourceRun_emb : ∀ {k : ℕ} (τ : ArithmeticSemisentence k) (tail : List
 
 /-- **Source completeness — the gate does not reject genuine axioms.**  Every emitted run
 of a source whose compilation is the embedding of a semisentence is accepted, with the
-same fuel budget the numeric parser uses (`ArithSource.parseStructuredArithmeticFormula_sourceTokens`).
+same fuel budget the numeric parser uses
+(`ArithSource.parseStructuredArithmeticFormula_sourceTokens`).
 
 *Proof kind:* `P` proved.  The work is propagating `compile s = ↑τ` into the subterms;
 `Rewriting.emb` commutes with every connective, and Foundation's `Semiformula.eq_and_iff`
@@ -646,19 +667,16 @@ lemma sourceRun_sourceTokens : ∀ {k : ℕ} (s : ArithSource k)
           rw [if_neg (by norm_num), if_neg (by norm_num), if_pos (by norm_num),
             iha ha _ (by omega), Option.bind_some, ihb hd₂.symm tail (by omega)]
 
-/-! ## Primitive recursiveness
+/-! ## Binder levels, and the depth-free reformulation
 
-The recognizers are metered by fuel, so each is a single strong recursion on the packed
-index `Nat.pair fuel (Encodable.encode ts)`, in the shape `Primrec.nat_strong_rec` accepts
-(the pattern is the one `Construction/LIACompiler.lean` uses for the numeric parsers).
-
-The binder depth cannot travel in that index: it *grows* at a quantifier while the fuel
-shrinks, and `Nat.pair` is monotone in neither argument against the other, so the
-recursive call would not land at a smaller index.  Instead the depth is eliminated from
-the recursion altogether: `termLevelRun` / `sourceLevelRun` compute, bottom-up, the number
-of enclosing binders a run *requires*, and the depth test becomes one comparison at the
-top (`sourceTermRun_eq`, `sourceRun_eq`).  A quantifier decrements the level rather than
-incrementing a depth, and the fuel-indexed recursion is then depth-free. -/
+The primitive-recursion proof below is a single strong recursion on the packed index
+`Nat.pair fuel (Encodable.encode ts)`, and the binder depth cannot travel in that index:
+it *grows* at a quantifier while the fuel shrinks, and `Nat.pair` is monotone in neither
+argument against the other, so the recursive call would not land at a smaller index.  So
+the depth is eliminated from the recursion altogether: `termLevelRun` / `sourceLevelRun`
+compute, bottom-up, the number of enclosing binders a run *requires* — a quantifier
+decrements the level rather than incrementing a depth — and the depth test becomes one
+comparison at the top (`sourceTermRun_eq`, `sourceRun_eq`). -/
 
 /-- The bottom-up *level* of a written term: one more than the largest bound-variable
 index it uses, `0` if it uses none.  A run is a term at depth `k` exactly when its level
@@ -697,6 +715,35 @@ def sourceLevelRun : ℕ → List ℕ → Option (ℕ × List ℕ)
       else if t = 20 then sourceLevelRun fuel rest
       else none
 
+/-- **The depth test commutes with a binary node.**  At a two-child tag both recognizers
+have the same shape — run the child, then run the sibling on what it left — so checking
+`≤ k` after each child agrees with checking it once against the maximum of the two levels.
+This is the only step of `sourceTermRun_eq` and `sourceRun_eq` that does any work, and it
+is used three times: at the binary term tags, at the relation tags, and at the binary
+source tags.
+
+*Proof kind:* `P` proved. -/
+private lemma bind_ite_le_binary {L : List ℕ → Option (ℕ × List ℕ)} {k : ℕ}
+    (ts : List ℕ) :
+    (((L ts).bind fun p => if p.1 ≤ k then some p.2 else none).bind fun r =>
+        (L r).bind fun p => if p.1 ≤ k then some p.2 else none) =
+      ((L ts).bind fun p => (L p.2).map fun q => (max p.1 q.1, q.2)).bind fun p =>
+        if p.1 ≤ k then some p.2 else none := by
+  rcases hp : L ts with _ | p
+  · simp
+  simp only [Option.bind_some]
+  by_cases hpk : p.1 ≤ k
+  · simp only [hpk, if_true, Option.bind_some]
+    rcases hq : L p.2 with _ | q
+    · simp
+    simp only [Option.bind_some, Option.map_some]
+    by_cases hqk : q.1 ≤ k <;> simp [hqk, hpk]
+  · simp only [hpk, if_false, Option.bind_none]
+    rcases hq : L p.2 with _ | q
+    · simp
+    simp only [Option.map_some, Option.bind_some]
+    rw [if_neg (by simp; omega)]
+
 /-- **The depth test factors through the level.**
 
 *Proof kind:* `P` proved. -/
@@ -719,22 +766,8 @@ lemma sourceTermRun_eq : ∀ (fuel k : ℕ) (ts : List ℕ),
       by_cases h6 : t = 6
       · simp [h6]
       by_cases h78 : t = 7 ∨ t = 8
-      · simp only [h3, h5, h6, h78, if_true, if_false]
-        rw [ih k rest]
-        rcases hp : termLevelRun fuel rest with _ | p
-        · simp
-        simp only [Option.bind_some]
-        by_cases hpk : p.1 ≤ k
-        · simp only [hpk, if_true, Option.bind_some, ih k p.2]
-          rcases hq : termLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.bind_some, Option.map_some]
-          by_cases hqk : q.1 ≤ k <;> simp [hqk, hpk]
-        · simp only [hpk, if_false, Option.bind_none]
-          rcases hq : termLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.map_some, Option.bind_some]
-          rw [if_neg (by simp; omega)]
+      · simp only [h3, h5, h6, h78, if_true, if_false, ih]
+        exact bind_ite_le_binary (L := termLevelRun fuel) rest
       · simp [h3, h5, h6, h78]
 
 /-- **The depth test factors through the level**, at the source level.
@@ -754,39 +787,11 @@ lemma sourceRun_eq : ∀ (fuel k : ℕ) (ts : List ℕ),
       by_cases h910 : t = 9 ∨ t = 10
       · simp [h910]
       by_cases hrel : t = 11 ∨ t = 12 ∨ t = 13 ∨ t = 14
-      · simp only [h910, hrel, if_true, if_false]
-        rw [sourceTermRun_eq fuel k rest]
-        rcases hp : termLevelRun fuel rest with _ | p
-        · simp
-        simp only [Option.bind_some]
-        by_cases hpk : p.1 ≤ k
-        · simp only [hpk, if_true, Option.bind_some, sourceTermRun_eq fuel k p.2]
-          rcases hq : termLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.bind_some, Option.map_some]
-          by_cases hqk : q.1 ≤ k <;> simp [hqk, hpk]
-        · simp only [hpk, if_false, Option.bind_none]
-          rcases hq : termLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.map_some, Option.bind_some]
-          rw [if_neg (by simp; omega)]
+      · simp only [h910, hrel, if_true, if_false, sourceTermRun_eq]
+        exact bind_ite_le_binary (L := termLevelRun fuel) rest
       by_cases hbin : t = 15 ∨ t = 16 ∨ t = 21 ∨ t = 22
-      · simp only [h910, hrel, hbin, if_true, if_false]
-        rw [ih k rest]
-        rcases hp : sourceLevelRun fuel rest with _ | p
-        · simp
-        simp only [Option.bind_some]
-        by_cases hpk : p.1 ≤ k
-        · simp only [hpk, if_true, Option.bind_some, ih k p.2]
-          rcases hq : sourceLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.bind_some, Option.map_some]
-          by_cases hqk : q.1 ≤ k <;> simp [hqk, hpk]
-        · simp only [hpk, if_false, Option.bind_none]
-          rcases hq : sourceLevelRun fuel p.2 with _ | q
-          · simp
-          simp only [Option.map_some, Option.bind_some]
-          rw [if_neg (by simp; omega)]
+      · simp only [h910, hrel, hbin, if_true, if_false, ih]
+        exact bind_ite_le_binary (L := sourceLevelRun fuel) rest
       by_cases hq : t = 17 ∨ t = 18
       · simp only [h910, hrel, hbin, hq, if_true, if_false]
         rw [ih (k + 1) rest]
@@ -798,6 +803,12 @@ lemma sourceRun_eq : ∀ (fuel k : ℕ) (ts : List ℕ),
       · simp only [h20, if_true]
         exact ih k rest
       · simp [h910, hrel, hbin, hq, h20]
+
+/-! ## Primitive recursiveness
+
+Each recognizer is metered by fuel, so each is a single strong recursion on the packed
+index `Nat.pair fuel (Encodable.encode ts)`, in the shape `Primrec.nat_strong_rec` accepts
+(the pattern `Construction/LIACompiler.lean` uses for the numeric parsers). -/
 
 /-! ### Suffix bookkeeping
 
@@ -1360,24 +1371,6 @@ lemma sourceLevelRun_prim : Primrec₂ sourceLevelRun := by
   exact h2.to₂.of_eq fun fuel ts => by
     rw [sourceLevelF, Nat.unpair_pair, Denumerable.ofNat_encode]
 
-/-- **The term recognizer is primitive recursive**, jointly in its fuel, its binder depth
-and its input.
-
-*Proof kind:* `C` composition, through `sourceTermRun_eq`. -/
-lemma sourceTermRun_prim :
-    Primrec fun x : (ℕ × ℕ) × List ℕ => sourceTermRun x.1.1 x.1.2 x.2 := by
-  have h : Primrec fun x : (ℕ × ℕ) × List ℕ =>
-      (termLevelRun x.1.1 x.2).bind fun p =>
-        if p.1 ≤ x.1.2 then some p.2 else none := by
-    refine Primrec.option_bind
-      (termLevelRun_prim.comp (Primrec.fst.comp Primrec.fst) Primrec.snd) ?_
-    exact (Primrec.ite
-      (PrimrecRel.comp Primrec.nat_le (Primrec.fst.comp Primrec.snd)
-        (Primrec.snd.comp (Primrec.fst.comp Primrec.fst)))
-      (Primrec.option_some.comp (Primrec.snd.comp Primrec.snd))
-      (Primrec.const none)).to₂
-  exact h.of_eq fun x => (sourceTermRun_eq x.1.1 x.1.2 x.2).symm
-
 /-- **The source recognizer is primitive recursive**, jointly in its fuel, its binder
 depth and its input.  This is what lets the `thm:incons` window gate a machine's output on
 "this run really writes a sentence" inside the emission calculus.
@@ -1412,24 +1405,3 @@ lemma sourceRun_full_prim :
     by_cases hh : sourceRun ts.length 0 ts = some [] <;> simp [hh]
 
 end LogicalInduction
-
-#print axioms LogicalInduction.structuredNatRun
-#print axioms LogicalInduction.structuredNatRun_shape
-#print axioms LogicalInduction.structuredNatRun_encode
-#print axioms LogicalInduction.sourceTermRun
-#print axioms LogicalInduction.sourceRun
-#print axioms LogicalInduction.exists_semiterm_of_sourceTermRun
-#print axioms LogicalInduction.exists_source_of_sourceRun
-#print axioms LogicalInduction.sourceTermRun_emb
-#print axioms LogicalInduction.sourceRun_emb
-#print axioms LogicalInduction.sourceRun_sourceTokens
-#print axioms LogicalInduction.termLevelRun
-#print axioms LogicalInduction.sourceLevelRun
-#print axioms LogicalInduction.sourceTermRun_eq
-#print axioms LogicalInduction.sourceRun_eq
-#print axioms LogicalInduction.structuredNatRun_prim
-#print axioms LogicalInduction.termLevelRun_prim
-#print axioms LogicalInduction.sourceLevelRun_prim
-#print axioms LogicalInduction.sourceTermRun_prim
-#print axioms LogicalInduction.sourceRun_prim
-#print axioms LogicalInduction.sourceRun_full_prim

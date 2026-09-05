@@ -1,23 +1,65 @@
-/-
-# §4.1 Convergence and Coherence
-
-* `thm:lc`  — Limit Coherence (bullets 2 & 3: disprovable→0, finite additivity).
-* `thm:con` — Convergence (the oscillation reduction and its arbitrage trader).
--/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.Hysteresis
+
+/-!
+# §4.1 Convergence and Coherence
+
+The two exploitation arguments behind `thm:con` and behind two of the three bullets of
+`thm:lc`. Every exploitation here routes through `exploits_of_nonneg_partialSums`
+(`Properties/Basic.lean`): each trader in this module is world-neutral, so its day-`i` value
+is one fixed real and its net worth is that sequence's partial sum.
+
+## Convergence
+
+`lic_price_convergesTo` renders `thm:con`: under a logical inductor the price of every
+sentence converges. The proof reduces non-convergence to a rational oscillation and
+arbitrages it. The canonical carrier of `thm:con` in the `ℙ∞` naming is
+`lic_limitingBelief_tendsto` (`AffinePersistence.lean`), which names the limit; this module
+supplies its existence.
+
+`exists_rat_oscillation_of_not_exists_convergesTo` is the reduction: a `[0,1]`-bounded
+sequence that fails to converge oscillates across a rational gap — below `a` infinitely often
+and above `b` infinitely often, for some rationals `a < b`. It is the contrapositive of
+Mathlib's `tendsto_of_no_upcrossings` taken over the dense range of `(↑) : ℚ → ℝ`, and the
+rationality of `a` and `b` is what lets an arbitrage trader use the two thresholds as `EF`
+constants. It is stated at an arbitrary bounded sequence rather than at prices;
+`exists_rat_oscillation_of_not_convergesTo` is the price instance.
+
+`oscillation_exploitable` names the arbitrage trader: the hysteresis trader of
+`Properties/Hysteresis.lean`, which buys below `a`, holds through the ramp and sells above
+`b`, packaged with its efficient-computability certificate.
+
+## Limit coherence
+
+`lic_disprovable_tendsto_zero` is bullet 2 of `thm:lc`: the price of a sentence disprovable
+from day 0 on converges to `0`. Its trader is `sellDaily`, which sells one share of `φ` a
+day; every plausible world values a disprovable `φ` at `0`, so the day-`i` value is `Pᵢ(φ)`.
+
+`lic_excl_gap_tendsto_zero` and `lic_limit_additive` are bullet 3: the price gap
+`Pₙ(φ∨ψ) − Pₙ(φ) − Pₙ(ψ)` of an exclusive disjunction converges to `0`, and hence the
+limiting prices are additive. The trader is `exclTr`, which plays the world-neutral portfolio
+`σ·[(-1, φ∨ψ), (1, φ), (1, ψ)]` gated by the continuous buy-signal `sigEF` on the price gap
+`gapEF`, in both directions `σ = ±1`. `PCWorld.payout_or_of_excl` is the world-level finite
+additivity identity that portfolio rests on, shared with `LimitCoherence.lean`.
+
+The canonical carrier of `thm:lc` as a whole — the Gaifman conditions on the limiting belief
+and the countably additive measure on completed worlds — is `lic_limitCoherence`
+(`LimitCoherence.lean`); the two theorems here are contributing bullets.
+
+Those two bullets take their derivability hypothesis in the *day-0* form `∀ n, χ ∈ DP.D n`
+rather than the paper's `Θ ⊢ χ` (tex:1022-1024). Since a `DeductiveProcess` is monotone, that
+is membership in the very first stage, and it is strictly stronger than the paper's
+`∃ k, χ ∈ DP.D k`: it says the sentence is derivable from day 0 on, not merely eventually.
+`lic_limitCoherence` carries the node at the paper's own form — it takes no derivability
+hypothesis at all, and the measure it produces is supported on the completed-theory worlds,
+so the paper's `Θ ⊢ ¬φ` bullets read off it directly.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
-
-/-! ## Limit Coherence, bullet (2): disprovable ⇒ price → 0 (`thm:lc`)
-
-The mirror image of the provability bullet, via the **sell** trader. If `φ` is disprovable
-— `∼φ` always deducible — then every plausible world values `φ` at `0`, so selling one share
-of `φ` a day yields net worth `∑ᵢ Pᵢ(φ) ≥ 0`; if the price stays above `ε` infinitely often
-that is unbounded, so a logical inductor forces `Pₙ(φ) → 0`. -/
+/-! ## Limit coherence: disprovable sentences -/
 
 /-- In a world consistent with a set containing `∼φ`, `φ` is false (Foundation Boolean
 semantics: `∼φ = φ 🡒 ⊥`, so `Holds (∼φ) ↔ ¬ Holds φ`). -/
@@ -28,20 +70,17 @@ lemma PCWorld.payout_of_disprovable (v : PCWorld) (φ : Sentence) (h : v.Holds (
       LO.Propositional.Formula.neg_def] using h
   rw [PCWorld.payout, if_neg this]
 
-
 /-- The trader that sells one share of `φ` every day (buys `-1`). -/
 def sellDaily (φ : Sentence) : Trader where
   strat _ := { trades := [(EF.const (-1), φ)]
                rank_le := by intro p hp; simp only [List.mem_singleton] at hp
                              subst hp; exact Nat.zero_le _ }
 
-
 lemma sellDaily_netWorth (φ : Sentence) (V : History) (v : PCWorld) (m : ℕ) :
     (sellDaily φ).netWorth V v m = ∑ i ∈ Finset.range (m + 1), (V i φ - v.payout φ) := by
   simp only [Trader.netWorth, sellDaily, Strategy.value]
   refine Finset.sum_congr rfl (fun i _ => ?_)
   simp [EF.denote]
-
 
 lemma sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) := by
   refine ecTok_of_stream _ ?_
@@ -50,7 +89,6 @@ lemma sellDaily_ec (φ : Sentence) : EfficientlyComputableTok (sellDaily φ) := 
   exact PolyTokenStream.trades_cons (PolyTokenStream.serialize_const (-1))
     (PolyFueled.const (Encodable.encode φ)) PolyTokenStream.trades_nil
 
-
 /-- Exploitation of the sell trader under infinitely-often *overpricing* of a disprovable
 `φ`: net worth `∑ Pᵢ(φ) ≥ 0` (prices `≥ 0`), unbounded along the overpriced subsequence. -/
 lemma sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentence) (ε : ℝ)
@@ -58,39 +96,10 @@ lemma sellDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Senten
     (hfreq : ∃ᶠ n in atTop, ε ≤ P n φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (sellDaily φ).Exploits P DP := by
-  have hpay : ∀ (m : ℕ) (v : PCWorld), v.ConsistentWith (DP.D m) → v.payout φ = 0 :=
-    fun m v hv => PCWorld.payout_of_disprovable v φ (hv (∼φ) (hdis m))
-  refine ⟨⟨0, ?_⟩, ?_⟩
-  · rintro x ⟨m, v, hv, rfl⟩
-    rw [sellDaily_netWorth]
-    refine Finset.sum_nonneg (fun i _ => ?_)
-    rw [hpay m v hv]; have := hP0 i; linarith
-  · rintro ⟨B, hB⟩
-    obtain ⟨g, hg_mono, hg⟩ := extraction_of_frequently_atTop hfreq
-    obtain ⟨M, hM⟩ := exists_nat_gt (B / ε)
-    obtain ⟨v, hv⟩ := hcons (g M)
-    have hsub : (Finset.range (M + 1)).image g ⊆ Finset.range (g M + 1) := by
-      intro i hi
-      simp only [Finset.mem_image, Finset.mem_range] at hi
-      obtain ⟨k, hk, rfl⟩ := hi
-      exact Finset.mem_range.mpr (by have := hg_mono.monotone (Nat.lt_succ_iff.mp hk); omega)
-    have hge : (M + 1 : ℝ) * ε ≤ (sellDaily φ).netWorth P v (g M) := by
-      rw [sellDaily_netWorth, hpay (g M) v hv]
-      calc (M + 1 : ℝ) * ε
-          = ∑ _k ∈ Finset.range (M + 1), ε := by
-            rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]; push_cast; ring
-        _ ≤ ∑ k ∈ Finset.range (M + 1), (P (g k) φ - 0) :=
-            Finset.sum_le_sum (fun k _ => by have := hg k; linarith)
-        _ = ∑ i ∈ (Finset.range (M + 1)).image g, (P i φ - 0) := by
-            rw [Finset.sum_image (hg_mono.injective.injOn)]
-        _ ≤ ∑ i ∈ Finset.range (g M + 1), (P i φ - 0) :=
-            Finset.sum_le_sum_of_subset_of_nonneg hsub
-              (fun i _ _ => by have := hP0 i; linarith)
-    have hmem : (sellDaily φ).netWorth P v (g M) ∈ (sellDaily φ).plausibleAssessments P DP :=
-      ⟨g M, v, hv, rfl⟩
-    have hBm : B < (M + 1 : ℝ) * ε := by rw [div_lt_iff₀ hε] at hM; nlinarith
-    exact absurd (le_trans hge (hB hmem)) (by linarith)
-
+  refine exploits_of_nonneg_partialSums (sellDaily φ) P DP (fun i => P i φ) ε hε hP0
+    (fun n v hv => ?_) hfreq hcons
+  rw [sellDaily_netWorth, PCWorld.payout_of_disprovable v φ (hv (∼φ) (hdis n))]
+  simp
 
 /-- **Finite additivity of payout under exclusion.** If `∼(φ∧ψ)` holds (the disjuncts are
 mutually exclusive), the payout of `φ∨ψ` is the sum of the payouts — the world-level identity
@@ -105,9 +114,13 @@ lemma PCWorld.payout_or_of_excl (v : PCWorld) (φ ψ : Sentence)
   · rw [if_pos (show v.Holds (φ ⋎ ψ) from Or.inr hψ), if_neg hφ, if_pos hψ]; norm_num
   · rw [if_neg (show ¬ v.Holds (φ ⋎ ψ) from not_or.mpr ⟨hφ, hψ⟩), if_neg hφ, if_neg hψ]; norm_num
 
+/-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a sentence disprovable from day
+0 on converges to `0` under a logical inductor.
 
-/-- **Limit Coherence, bullet (2)** (`thm:lc`): the price of a disprovable sentence
-converges to `0` under a logical inductor.
+The hypothesis `hdis : ∀ n, (∼φ) ∈ DP.D n` is the day-0 form: monotonicity of `DP` makes it
+membership in the first stage, strictly stronger than the paper's `Θ ⊢ ¬φ`, which is
+`∃ k, (∼φ) ∈ DP.D k`. `lic_limitCoherence` (`LimitCoherence.lean`) carries `thm:lc` at the
+paper's own form, with no derivability hypothesis at all.
 Paper node: `thm:lc` -/
 theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hdis : ∀ n, (∼φ) ∈ DP.D n)
@@ -128,48 +141,24 @@ theorem lic_disprovable_tendsto_zero (P : History) (DP : DeductiveProcess)
   have h1 := hN n hn
   constructor <;> linarith
 
-/-! ## `thm:con` — Convergence.
-
-> The limit `P_∞(φ) := limₙ Pₙ(φ)` exists for all `φ`.  *(Garrabrant et al., `thm:con`.)*
-
-The paper's argument (`sec:convergence` / `app:con`): if the market never makes up its mind
-about `φ`, its price oscillates, and a trader can **arbitrage** the oscillation — buy `φ`
-cheap, sell it back dear — pocketing a fixed profit on each swing at no risk, hence
-exploiting. A logical inductor forbids this, so the price must converge.
-
-This splits into two halves:
-
-1. **The reduction (`exists_rat_oscillation_of_not_convergesTo`).** Non-convergence of a
-   `[0,1]`-bounded price forces a *rational* oscillation: `a < b` in `ℚ` with `Pₙφ < a`
-   infinitely often and `Pₙφ > b` infinitely often. This is the contrapositive of Mathlib's
-   `tendsto_of_no_upcrossings` over the dense set `↑ℚ ⊆ ℝ`.
-
-2. **The exploiting trader (`oscillation_exploitable`).** Given the oscillation, the
-   hysteresis trader (`Properties/Hysteresis.lean`) arbitrages it: buy below `a`, hold, sell
-   above `b`.
-
-`lic_price_convergesTo` chains them against `def:lic`. -/
-
-open Filter Topology in
-
-
+/-! ## Limit coherence: finite additivity -/
 
 /-- Price gap of an exclusive pair: `P(φ∨ψ) − P(φ) − P(ψ)`, as an `EF`. -/
 noncomputable def gapEF (φ ψ : Sentence) (n : ℕ) : EF :=
   .add (.price (φ ⋎ ψ) n) (.add (.mul (.const (-1)) (.price φ n)) (.mul (.const (-1)) (.price ψ n)))
 
-
 /-- Continuous buy-signal for direction `σ ∈ {1,-1}`: `max(0, σ·gap − ε/2)`. -/
 noncomputable def sigEF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
   buySignal (.mul (.const σ) (gapEF φ ψ n)) ε
 
-
+/-- The price gap reads only day-`n` prices, so it has rank at most `n`: the legality fact a
+client gating a trader on `gapEF` needs. -/
 lemma gapEF_rank (φ ψ : Sentence) (n : ℕ) : (gapEF φ ψ n).rank ≤ n := by
   simp [gapEF, EF.rank]
 
+/-- The buy-signal inherits the rank of the gap it reads. -/
 lemma sigEF_rank (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : (sigEF φ ψ σ ε n).rank ≤ n := by
-  simp [sigEF, EF.rank, gapEF]
-
+  simpa [sigEF] using gapEF_rank φ ψ n
 
 /-- The exclusion-arbitrage trader for direction `σ`: each day plays `sig` copies of the
 world-neutral portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]`. -/
@@ -179,16 +168,13 @@ noncomputable def exclTr (φ ψ : Sentence) (σ ε : ℚ) : Trader where
                           (.mul (sigEF φ ψ σ ε n) (.const σ), ψ)]
                rank_le := by
                  intro p hp
-                 have hs := sigEF_rank φ ψ σ ε n
                  simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
                  rcases hp with h|h|h <;> subst h <;>
                    exact (by simpa [EF.rank] using sigEF_rank φ ψ σ ε n) }
 
-
 /-- The day-`n` payoff sequence: `sig · σ · gap`, a nonnegative world-independent real. -/
 noncomputable def exclW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : ℝ :=
   (sigEF φ ψ σ ε n).denote P * ((σ : ℝ) * (gapEF φ ψ n).denote P)
-
 
 lemma exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (hv : v.Holds (∼(φ ⋏ ψ))) :
@@ -199,12 +185,10 @@ lemma exclTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) 
     Pi.mul_apply, Pi.add_apply]
   rw [hpay]; push_cast; ring
 
-
 /-- Denotation of the buy-signal: `max(0, σ·gap − ε/2)`. -/
 lemma sigEF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sigEF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gapEF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [sigEF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
-
 
 /-- `exclW` is nonnegative (needs `ε > 0`): when the signal fires, `σ·gap ≥ ε/2 > 0`. -/
 lemma exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
@@ -217,7 +201,6 @@ lemma exclW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε)
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
-
 lemma exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : DeductiveProcess)
     (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n) (n : ℕ) (v : PCWorld) (hv : v.ConsistentWith (DP.D n)) :
     (exclTr φ ψ σ ε).netWorth P v n = ∑ i ∈ Finset.range (n+1), exclW P φ ψ σ ε i := by
@@ -225,14 +208,11 @@ lemma exclTr_netWorth (φ ψ : Sentence) (σ ε : ℚ) (P : History) (DP : Deduc
   refine Finset.sum_congr rfl (fun i _ => ?_)
   exact exclTr_value φ ψ σ ε P v i (hv _ (hexcl n))
 
-
-
 /-- The real price-gap equals the `gapEF` denotation. -/
 lemma gapEF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
     (gapEF φ ψ n).denote P = P n (φ ⋎ ψ) - P n φ - P n ψ := by
   simp only [gapEF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
     Pi.add_apply, Pi.mul_apply]; push_cast; ring
-
 
 /-- The token stream of `gapEF` is compositional (an `add`/`mul`/`price`/`const` tree). -/
 lemma gapEF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gapEF φ ψ n).serialize) := by
@@ -271,7 +251,6 @@ lemma exclTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (exc
       (PolyFueled.const (Encodable.encode ψ))
     PolyTokenStream.trades_nil))
 
-
 /-- Under a logical inductor with `∼(φ∧ψ)` revealed, if `σ·gap ≥ ε` frequently then the
 exclusion-arbitrage trader (direction `σ`, rational threshold `ε > 0`) exploits — contradicting
 `def:lic`. Its net worth is `Σ exclW`, each term nonnegative (world-neutral by exclusivity), and
@@ -291,13 +270,16 @@ lemma exclTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (
   rw [max_eq_right (by linarith)]
   nlinarith [hn, hεr]
 
-
 /-- **Finite additivity of the limiting belief** (`thm:lc`, bullet 3, finite-stage form): if
-`∼(φ∧ψ)` is a theorem (the disjuncts are exclusive), the price gap
+`∼(φ∧ψ)` is disprovable from day 0 on (the disjuncts are exclusive), the price gap
 `Pₙ(φ∨ψ) − Pₙ(φ) − Pₙ(ψ)` converges to `0` under a logical inductor. Hence
 `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)` wherever the limits exist (`thm:con`). Both over- and under-pricing
 are killed by the world-neutral portfolio `σ·[(-1,φ∨ψ),(1,φ),(1,ψ)]` (`σ = ±1`), whose value is
 world-independent by exclusivity.
+
+The hypothesis `hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n` is the day-0 form, strictly stronger than
+the paper's `Θ ⊢ ¬(φ∧ψ)`, which is `∃ k, (∼(φ ⋏ ψ)) ∈ DP.D k`; `lic_limitCoherence`
+(`LimitCoherence.lean`) carries `thm:lc` at the paper's own form.
 Paper node: `thm:lc` -/
 theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
@@ -324,12 +306,15 @@ theorem lic_excl_gap_tendsto_zero (P : History) (DP : DeductiveProcess)
     constructor <;> linarith
   exact eventually_atTop.mp hfin
 
-
 /-- **Finite additivity of the limit** (`thm:lc`, bullet 3, limit form): wherever the three
-prices converge (guaranteed by `thm:con`), an exclusive disjunction's limiting price is the sum
-`P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. Immediate from `lic_excl_gap_tendsto_zero` and uniqueness of limits.
-Stated with the convergences as explicit hypotheses so it is self-contained (and `thm:con`,
-now proved, discharges them).
+prices converge (guaranteed by `thm:con`), the limiting price of a disjunction whose
+exclusivity is disprovable from day 0 on is the sum `P∞(φ∨ψ) = P∞(φ) + P∞(ψ)`. Immediate from
+`lic_excl_gap_tendsto_zero` and uniqueness of limits. Stated with the convergences as explicit
+hypotheses so it is self-contained; `lic_price_convergesTo` (below) discharges all three.
+
+The hypothesis `hexcl` is inherited from `lic_excl_gap_tendsto_zero` in the same day-0 form,
+strictly stronger than the paper's `Θ ⊢ ¬(φ∧ψ)`; `lic_limitCoherence` (`LimitCoherence.lean`)
+carries `thm:lc` at the paper's own form.
 Paper node: `thm:lc` -/
 theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : Sentence) (hexcl : ∀ n, (∼(φ ⋏ ψ)) ∈ DP.D n)
@@ -343,17 +328,17 @@ theorem lic_limit_additive (P : History) (DP : DeductiveProcess) [IsLogicalInduc
   have := tendsto_nhds_unique hto hgap
   linarith
 
-open Filter Topology
+/-! ## The oscillation reduction -/
 
 /-- **The oscillation reduction, general form.** A `[0,1]`-bounded real sequence that does
 *not* converge must **oscillate across a rational gap**: there are rationals `a < b` with the
-sequence below `a` infinitely often and above `b` infinitely often. Instantiated at prices
-(`exists_rat_oscillation_of_not_convergesTo`) and at expectation sequences (`thm:ec`).
+sequence below `a` infinitely often and above `b` infinitely often. Stated at an arbitrary
+bounded sequence; `exists_rat_oscillation_of_not_convergesTo` is the price instance.
 
 This is the contrapositive of `tendsto_of_no_upcrossings` instantiated at the dense range
 of `(↑) : ℚ → ℝ`; the rationality of `a, b` is what lets the arbitrage traders use them as
 `EF` constants. -/
-theorem exists_rat_oscillation_of_not_exists_convergesTo (u : ℕ → ℝ)
+lemma exists_rat_oscillation_of_not_exists_convergesTo (u : ℕ → ℝ)
     (hb : ∀ n, 0 ≤ u n ∧ u n ≤ 1)
     (hnc : ¬ ∃ L, ConvergesTo u L) :
     ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, u n < (a : ℝ)) ∧
@@ -366,13 +351,14 @@ theorem exists_rat_oscillation_of_not_exists_convergesTo (u : ℕ → ℝ)
 
 /-- **Reduction step for `thm:con`**: the price specialization of
 `exists_rat_oscillation_of_not_exists_convergesTo`. -/
-theorem exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
+lemma exists_rat_oscillation_of_not_convergesTo (P : History) (φ : Sentence)
     (hb : ∀ n, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hnc : ¬ ∃ L, ConvergesTo (fun n => P n φ) L) :
     ∃ a b : ℚ, (a : ℝ) < b ∧ (∃ᶠ n in atTop, P n φ < (a : ℝ)) ∧
       (∃ᶠ n in atTop, (b : ℝ) < P n φ) :=
   exists_rat_oscillation_of_not_exists_convergesTo (fun n => P n φ) hb hnc
 
+/-! ## Convergence -/
 
 /-- **The oscillation-arbitrage trader exists and exploits** (`app:con`).
 
@@ -393,7 +379,6 @@ lemma oscillation_exploitable (P : History) (DP : DeductiveProcess) (φ : Senten
     (hA : ∃ᶠ n in atTop, P n φ < (a : ℝ)) (hB : ∃ᶠ n in atTop, (b : ℝ) < P n φ) :
     ∃ Tr : Trader, EfficientlyComputableTok Tr ∧ Tr.Exploits P DP :=
   oscillation_exploitable_hyst P DP φ a b hab hb hcons hA hB
-
 
 /-- **Convergence** (`thm:con`): under a logical inductor, the price of every sentence `φ`
 converges. Proof: if not, the price oscillates across a rational gap

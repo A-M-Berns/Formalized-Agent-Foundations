@@ -1,75 +1,94 @@
-/-
+import Complexitylib.Models.TuringMachine.UTM.Internal.Interp
+import Complexitylib.Classes.P.Description
+import Mathlib.Computability.Primrec.List
+import LogicalInduction.Framework.Criterion
+
+/-!
 # Executable bounded execution of `complexitylib` machine descriptions
 
-The **FAF-specific executable bridge** from finite `complexitylib` machine descriptions to
-primitive-recursive bounded execution. The complexity theory it stands on — the machine
-model, its time measure, `FP`, and the correctness of the description interpreter — is
-upstream, in the pinned `complexitylib` compatibility fork (see `lakefile.lean`).
+The executable bridge from a finite `complexitylib` machine description to
+primitive-recursive bounded execution, which is what makes the machine-trader enumeration of
+`Construction/LIACompiler.lean` and `Construction/MachineTraderEnumeration.lean` `Primrec`.
+The complexity theory underneath — the machine model, its time measure, `FP`, and the
+correctness of the description interpreter — is upstream, in the pinned `complexitylib`
+compatibility fork (see `lakefile.lean`).
 
-**Why descriptions, and not machines.** `LogicalInduction/Construction/LIACompiler.lean`
-needs the trader enumeration to be *primitive recursive*, while a `Complexity.TM k` carries
-its state type as a bundled `Q : Type` and its tapes as functions `ℕ → Γ`, neither of which
-`Primrec` can see. The resolution is that the enumeration is indexed by **descriptions**,
-and an interpreted description
+**Why descriptions, and not machines.** A `Complexity.TM k` carries its state type as a
+bundled `Q : Type` and its tapes as functions `ℕ → Γ`, neither of which `Primrec` can see.
+The enumeration is therefore indexed by **descriptions**: an interpreted description
 
 ```
 Complexity.TMDesc.toTM d : TM 1     with  Q := Fin (2 ^ d.w + 1)
                                     and   δ  := d.lookup, a `List.find?` over `d.entries`
 ```
 
-is already first-order finite data. So neither an arbitrary `TM k` nor the combinator-built
-universal machine `utmTM` has to be executed — only `TMDesc.toTM`, uniformly in `d`, which
-is what the enumeration ranges over anyway.
+is first-order finite data. So neither an arbitrary `TM k` nor the combinator-built universal
+machine `utmTM` is ever executed — only `TMDesc.toTM`, uniformly in `d`, which is what the
+enumeration ranges over anyway.
 
-**What this file provides.**
+**Objects.** `CodedTape` and `CodedCfg`, finite codings of a one-sided tape and of a
+`TMDesc.toTM` configuration, whose `decode` is definitionally the cell function of upstream's
+`Tape.init`; the executable step `codedStep`; the budgeted lane `stepFrozen`, `runUntilHalt`
+and `evalHalted`; the extracted word `codedOutput`; the index decoders `descAt`, `progDesc`,
+`progCoeff`, `progDeg`, `progClock` and `progClockPoly`; `MachineTraderProgram` with its
+canonical index; and the token producers `tokensOf` and `machineTokens`.
 
-* A finite coding of tapes and configurations, `CodedTape` / `CodedCfg`, whose decode map is
-  definitionally the cell function of upstream's own `Tape.init`: a finite window with
-  blanks understood outside it. No head-motion or reachable-region bound is needed — the
-  window grows with the write.
-* `codedStep_eq`, `runCoded_eq`, `decode_initCoded`, `evalCoded_reachesIn` — the simulation
-  lemmas: executable steps on finite data are steps of the real machine, from a real input.
-* Explicit `Primcodable` instances (`Γ`, `Γw`, `Dir3`, `DescAct`, `DescEntry`, `TMDesc`,
-  `CodedTape`, `CodedCfg`) and `primrec_codedStep`, `primrec_runCoded`, `primrec_evalCoded`.
-* `codedOutput` and `hasOutput_codedOutput` — finite output-word extraction, proved equal to
-  upstream's `Tape.HasOutput` convention rather than merely length-bounded.
-* `machineTokens` and `primrec_machineTokens` — the compiler-facing bounded total evaluator,
-  and the one obligation `LIACompiler` consumes.
+**Simulation, in both directions.** `codedStep_eq` is the vertical simulation lemma: one
+coded step decodes to exactly one `TMDesc.toTM` step. Soundness of the budgeted lane is
+`runUntilHalt_spec` and `evalHalted_spec`, the latter carrying correctness of extraction
+against upstream's `Tape.HasOutput` rather than a mere length bound. Completeness is
+`codedStep_eq_none_iff`, `runUntilHalt_complete`, `evalHalted_complete` and
+`hasOutput_unique`: the described machine is deterministic, so there is a single run to
+follow and the executable one cannot miss a halt that occurs strictly inside its budget.
 
-**Three layers, deliberately kept apart.** Nothing in this file proves anything about
-polynomial time. Executability (`Primrec`), polynomial-time soundness of each indexed
-computation, and coverage of every polynomial-time trader are three different facts; making
-the primitive-recursive evaluator carry the complexity proof is the conflation to avoid.
-`machineTokens_steps_le` below is the *step-count* fact this layer can honestly supply; the
-`FP` statement belongs with the complexity layer.
+**Executability.** `Primcodable` instances for `Γ`, `Γw`, `Dir3`, `DescAct`, `DescEntry`,
+`TMDesc`, `CodedTape` and `CodedCfg`, then `primrec_list_find?`, `primrec_lookup`,
+`primrec_codedStep`, `primrec_runUntilHalt`, `primrec_evalHalted` and
+`primrec_machineTokens` — the last being the obligation `LIACompiler` consumes.
 
-**Elaboration hazard — read before extending this file.** `descAt` routes through
+**Polynomial soundness, at this layer only.** `machineTokens_steps_le` and
+`length_machineTokens_le` bound the steps taken, and the length of the emitted stream, by the
+clock the index itself names. Executability, per-index polynomial-time soundness, and
+coverage of every polynomial-time trader are three different facts; the `Complexity.FP`
+statement lives in `Construction/Machine/ClockedSim.lean` and
+`Construction/MachineTraderEnumeration.lean`.
+
+**Coverage bridge.** `exists_clock_of_polynomial`, `exists_desc_computesInTime_clock`,
+`lt_clock_succ` and `machineTokens_eq_of_computesInTime` are what
+`exists_enumeratedTrader_eq` (`Construction/MachineTraderEnumeration.lean`) consumes:
+together they turn a
+`Complexity.FP` witness into an index of this enumeration that emits exactly that witness's
+output.
+
+**Totality.** Every natural number is an index of a real machine and every day yields a token
+list: a malformed index takes a trivial description, `TMDesc.toTM` clamps transition targets
+and `TMDesc.lookup` halts on a missing key, and a run that overruns its clock emits `[]`. No
+clock claim is ever verified; truncation is what makes the soundness bounds above hold at
+*every* index.
+
+**Elaboration discipline — read before extending this file.** `descAt` routes through
 `Encodable.decode` at `TMDesc`, whose `Primcodable` instance is a stack of
-`Primcodable.ofEquiv`s down to `Fin 4`. *Any* `rfl`/`whnf` obligation that lets the
-elaborator unfold it descends into that stack and does not return: five builds of this
-module died on `whnf` timeouts at 200k, 1M, 2M, 4M and 8M heartbeats before the cause was
-identified. **Raising the heartbeat limit is not the fix.** The discipline that works, and
-that the code below follows throughout, is:
+`Primcodable.ofEquiv`s down to `Fin 4`. Any `rfl`/`whnf` obligation that lets the elaborator
+unfold that stack fails to return at any heartbeat setting, and raising the limit is not a
+fix. Four disciplines keep the elaborator out of it, and a declaration added here must keep
+all four:
 
-* `descAt` is sealed `attribute [irreducible]` immediately after its `Primrec` lemma;
-* index fields are plain functions (`progDesc`, `progCoeff`, `progDeg`, `progClock`), not
-  projections out of a structure, so nothing has to reduce to read them;
-* the `Option` fallback is factored into `tokensOf : Option CodedCfg → List ℕ`, so
+* `descAt` is sealed `attribute [irreducible]` once `primrec_descAt` and `descAt_encode` are
+  proved;
+* the index fields `progDesc`, `progCoeff`, `progDeg` and `progClock` are plain functions
+  rather than projections out of a structure, so nothing has to reduce to read them;
+* the `Option` fallback is factored through `tokensOf : Option CodedCfg → List ℕ`, so
   `Primrec.option_casesOn` unifies at that small domain rather than at `ℕ × ℕ`;
-* every `Primrec` lemma is a bare `.comp` whose underlying function is *syntactically* the
-  definition it characterises, so no `of_eq` defeq check is ever performed at a type
-  carrying the coding stack.
+* the `Primrec` lemmas for the index decoders are bare `.comp`s whose underlying functions
+  are *syntactically* the definitions they characterise, so no `of_eq` obligation is
+  discharged at a function carrying the `Primcodable TMDesc` stack.
 
-Keep all four when adding declarations here.
-
-**Not a paper node.** Nothing here renders anything in arXiv:1609.03543, and no strength
-claim in the repository changes because of it. Declarations use `lemma`, not `theorem`, for
-that reason (`scripts/lint_paper_labels.py`).
+**Not a paper node.** Nothing here renders anything in arXiv:1609.03543; no declaration here
+carries a provenance line, and all are `lemma`s and `def`s rather than `theorem`s
+(`scripts/lint_paper_labels.py`).  The file is nonetheless trust-relevant: the `def:ec`
+strength row rests on `enumeratedTrader_machineEfficient` and `exists_enumeratedTrader_eq`,
+which consume the coverage bridge and `primrec_machineTokens` named above.
 -/
-import Complexitylib.Models.TuringMachine.UTM.Internal.Interp
-import Complexitylib.Classes.P.Description
-import Mathlib.Computability.Primrec.List
-import LogicalInduction.Framework.Criterion
 
 open Complexity
 
@@ -151,10 +170,12 @@ def writeAndMove (t : CodedTape) (s : Γ) (d : Dir3) : CodedTape :=
 
 @[simp] lemma decode_read (t : CodedTape) : t.decode.read = t.read := rfl
 
+/-- Coded head motion decodes to `Tape.move`. -/
 lemma decode_move (t : CodedTape) (d : Dir3) :
     (t.move d).decode = t.decode.move d := by
   cases d <;> rfl
 
+/-- Coded write decodes to `Tape.write`. -/
 lemma decode_write (t : CodedTape) (s : Γ) :
     (t.write s).decode = t.decode.write s := by
   by_cases h : t.head = 0
@@ -163,7 +184,9 @@ lemma decode_write (t : CodedTape) (s : Γ) :
     · simp [write, Tape.write, decode, h]
     · funext i
       cases i with
-      | zero => simp [write, Tape.write, decode, h, Function.update_of_ne (by omega : (0:ℕ) ≠ t.head)]
+      | zero =>
+          simp [write, Tape.write, decode, h,
+            Function.update_of_ne (by omega : (0:ℕ) ≠ t.head)]
       | succ i =>
           have hd : t.decode.head = t.head := rfl
           rw [Tape.write, hd, if_neg h]
@@ -175,6 +198,7 @@ lemma decode_write (t : CodedTape) (s : Γ) :
           · rw [if_pos (by omega : i = t.head - 1), if_pos hi]
           · rw [if_neg (by omega : ¬ i = t.head - 1), if_neg hi]
 
+/-- Coded write-then-move decodes to `Tape.writeAndMove`. -/
 lemma decode_writeAndMove (t : CodedTape) (s : Γ) (d : Dir3) :
     (t.writeAndMove s d).decode = t.decode.writeAndMove s d := by
   rw [writeAndMove, decode_move, decode_write]
@@ -216,6 +240,8 @@ def decode (c : CodedCfg) : Cfg 1 (d.toTM).Q where
 
 end CodedCfg
 
+/-! ## The executable step, and its simulation lemma -/
+
 /-- **The executable step.** Reads the three heads, consults the description's transition
 table, and writes/moves — mirroring `TM.step` for `TMDesc.toTM` exactly, but on finite
 data. Returns `none` exactly when the machine has halted. -/
@@ -244,7 +270,7 @@ lemma codedStep_eq (d : TMDesc) (c : CodedCfg) :
     rfl
   · rw [codedStep, if_neg h, TM.step, if_neg (fun hh => h (hq.mp hh))]
     simp only [Option.map_some]
-    -- both sides now name the same table action
+    -- both sides name the same table action
     have hwork : (fun i : Fin 1 => ((CodedCfg.decode d c).work i).read)
         = fun _ => c.work.read := by
       funext i; simp [CodedCfg.decode]
@@ -256,33 +282,16 @@ lemma codedStep_eq (d : TMDesc) (c : CodedCfg) :
     · funext i; rw [CodedTape.decode_writeAndMove]
     · rw [CodedTape.decode_writeAndMove]
 
-/-- Bounded iteration of the executable step. -/
-def runCoded (d : TMDesc) : ℕ → CodedCfg → Option CodedCfg
-  | 0, c => some c
-  | (t + 1), c => (codedStep d c).bind (runCoded d t)
-
-/-- **Iterated simulation.** If the executable run of `t` steps succeeds, the real
-machine reaches the decoded result in exactly `t` steps. -/
-lemma runCoded_eq (d : TMDesc) :
-    ∀ (t : ℕ) (c c' : CodedCfg), runCoded d t c = some c' →
-      (d.toTM).reachesIn t (CodedCfg.decode d c) (CodedCfg.decode d c')
-  | 0, c, c', h => by
-      rw [runCoded, Option.some.injEq] at h; subst h; exact .zero
-  | (t + 1), c, c', h => by
-      rw [runCoded] at h
-      cases hs : codedStep d c with
-      | none => rw [hs] at h; exact absurd h (by simp)
-      | some c₁ =>
-          rw [hs] at h
-          refine .step ?_ (runCoded_eq d t c₁ c' h)
-          have h2 := codedStep_eq d c
-          rw [hs, Option.map_some] at h2
-          exact h2.symm
-
 /-! ## Primitive recursiveness
 
 `Γ` is a four-element type, so it is `Primcodable` via `Fin 4`; everything else is built
 from `ℕ`, `List`, and products, for which Mathlib's `Primrec` API already applies. -/
+
+/-! ### The codings
+
+`Γ`, `Γw` and `Dir3` are coded by their element counts. `CodedTape`, `CodedCfg`, `DescAct`,
+`DescEntry` and `TMDesc` are plain first-order records, so each is coded by an equivalence
+with a nested product. -/
 
 /-- `Γ` as a four-element type. -/
 def ΓEquivFin : Γ ≃ Fin 4 where
@@ -327,11 +336,6 @@ def codedCfgEquiv : CodedCfg ≃ ℕ × CodedTape × CodedTape × CodedTape wher
 
 instance : Primcodable CodedCfg := Primcodable.ofEquiv _ codedCfgEquiv
 
-/-! ### Descriptions are codable
-
-`DescAct`, `DescEntry` and `TMDesc` are plain first-order records, so each is coded by an
-equivalence with a nested product. -/
-
 /-- `DescAct` as a nested product. -/
 def descActEquiv : DescAct ≃ ℕ × Γw × Γw × Dir3 × Dir3 × Dir3 where
   toFun a := (a.q', a.ww, a.wo, a.di, a.dw, a.dOut)
@@ -361,60 +365,57 @@ instance : Primcodable TMDesc := Primcodable.ofEquiv _ tmDescEquiv
 
 /-! ### Primrec accessors -/
 
-open Primrec in
+section
+open Primrec
+
 lemma primrec_descAct_q' : Primrec DescAct.q' :=
   (Primrec.fst.comp (Primrec.of_equiv (e := descActEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_descAct_ww : Primrec DescAct.ww :=
   ((Primrec.fst.comp Primrec.snd).comp (Primrec.of_equiv (e := descActEquiv))).of_eq
     fun _ => rfl
 
-open Primrec in
 lemma primrec_descAct_wo : Primrec DescAct.wo :=
   ((Primrec.fst.comp (Primrec.snd.comp Primrec.snd)).comp
     (Primrec.of_equiv (e := descActEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_descAct_di : Primrec DescAct.di :=
   ((Primrec.fst.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))).comp
     (Primrec.of_equiv (e := descActEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_descAct_dw : Primrec DescAct.dw :=
   ((Primrec.fst.comp (Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd)))).comp
     (Primrec.of_equiv (e := descActEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_descAct_dOut : Primrec DescAct.dOut :=
   ((Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd)))).comp
     (Primrec.of_equiv (e := descActEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_descEntry_act : Primrec DescEntry.act :=
   ((Primrec.snd.comp (Primrec.snd.comp (Primrec.snd.comp Primrec.snd))).comp
     (Primrec.of_equiv (e := descEntryEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_tmDesc_w : Primrec TMDesc.w :=
   (Primrec.fst.comp (Primrec.of_equiv (e := tmDescEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_tmDesc_qhalt : Primrec TMDesc.qhalt :=
   ((Primrec.fst.comp (Primrec.snd.comp Primrec.snd)).comp
     (Primrec.of_equiv (e := tmDescEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_tmDesc_entries : Primrec TMDesc.entries :=
   ((Primrec.snd.comp (Primrec.snd.comp Primrec.snd)).comp
     (Primrec.of_equiv (e := tmDescEquiv))).of_eq fun _ => rfl
 
-/-! ### `List.find?` is primitive recursive
+end
 
-Mathlib supplies `Primrec.list_findIdx` and `Primrec.list_getElem?`; `find?` is their
-composite, because `findIdx` returns the list length when nothing matches and
-`getElem?` returns `none` there. -/
+/-! ### The transition table lookup
 
+`TMDesc.lookup` is a `List.find?` over the description's rows with a halting default. Mathlib
+supplies `Primrec.list_findIdx` and `Primrec.list_getElem?`, whose composite is `find?`,
+because `findIdx` returns the list length when nothing matches and `getElem?` returns `none`
+there. -/
+
+/-- `List.find?` is the `getElem?` of the list at the index `findIdx` reports. -/
 lemma list_find?_eq_getElem? {β : Type*} (p : β → Bool) :
     ∀ l : List β, l.find? p = l[l.findIdx p]?
   | [] => rfl
@@ -429,8 +430,6 @@ lemma primrec_list_find? {α β : Type*} [Primcodable α] [Primcodable β]
     Primrec fun a => (f a).find? (p a) :=
   ((Primrec.list_getElem?.comp hf (Primrec.list_findIdx hf hp))).of_eq fun a =>
     (list_find?_eq_getElem? (p a) (f a)).symm
-
-/-! ### The transition table lookup is primitive recursive -/
 
 /-- Any function out of `Γ` is primitive recursive: `Γ` has four elements, so the
 function is a fixed finite lookup table indexed by the code of its argument. -/
@@ -499,15 +498,18 @@ lemma primrec_lookup :
         (e.q == z.2.1 && e.si == z.2.2.1 && e.sw == z.2.2.2.1 && e.so == z.2.2.2.2) <;>
         simp
 
-/-! ### The coded tape operations are primitive recursive -/
+/-! ### The coded tape operations -/
 
-open Primrec in
+section
+open Primrec
+
 lemma primrec_tape_head : Primrec CodedTape.head :=
   (Primrec.fst.comp (Primrec.of_equiv (e := codedTapeEquiv))).of_eq fun _ => rfl
 
-open Primrec in
 lemma primrec_tape_cells : Primrec CodedTape.cells :=
   (Primrec.snd.comp (Primrec.of_equiv (e := codedTapeEquiv))).of_eq fun _ => rfl
+
+end
 
 set_option maxHeartbeats 1000000 in
 lemma primrec_tape_read : Primrec CodedTape.read :=
@@ -596,8 +598,8 @@ lemma primrec_of_bool {σ : Type*} [Primcodable σ] (g : Bool → σ) (dflt : σ
 
 /-! ### The executable step is primitive recursive
 
-This is the statement FAF's `LIACompiler` consumes: the whole evaluator is primitive
-recursive in the pair (description, configuration). -/
+`codedStep` is primitive recursive in the pair (description, configuration); every coding and
+accessor above feeds into this one lemma. -/
 
 set_option maxHeartbeats 4000000 in
 /-- **The executable step is primitive recursive.** -/
@@ -660,50 +662,7 @@ lemma primrec_codedStep :
   rw [codedStep]
   split <;> rfl
 
-/-! ### The bounded run is primitive recursive
-
-`runCoded` is the shape FAF's `LIACompiler` needs: a total, clock-bounded evaluator,
-primitive recursive in (description, clock, initial configuration). -/
-
-/-- One step lifted to the `Option` monad, so the bounded run is a plain iteration. -/
-def stepOpt (d : TMDesc) (o : Option CodedCfg) : Option CodedCfg :=
-  o.bind (codedStep d)
-
-lemma iterate_stepOpt_none (d : TMDesc) : ∀ t, (stepOpt d)^[t] none = none
-  | 0 => rfl
-  | (t + 1) => by
-      rw [Function.iterate_succ_apply]
-      simpa [stepOpt] using iterate_stepOpt_none d t
-
-lemma runCoded_eq_iterate (d : TMDesc) :
-    ∀ (t : ℕ) (c : CodedCfg), runCoded d t c = (stepOpt d)^[t] (some c)
-  | 0, c => rfl
-  | (t + 1), c => by
-      rw [runCoded, Function.iterate_succ_apply]
-      have hs : stepOpt d (some c) = codedStep d c := rfl
-      rw [hs]
-      cases h : codedStep d c with
-      | none => simp [iterate_stepOpt_none]
-      | some c₁ => simpa [h] using runCoded_eq_iterate d t c₁
-
-set_option maxHeartbeats 4000000 in
-lemma primrec_stepOpt : Primrec fun z : TMDesc × Option CodedCfg => stepOpt z.1 z.2 :=
-  Primrec.option_bind Primrec.snd
-    (Primrec.to₂ (primrec_codedStep.comp
-      (Primrec.pair (Primrec.fst.comp Primrec.fst) Primrec.snd)))
-
-set_option maxHeartbeats 4000000 in
-/-- **The bounded executable run is primitive recursive.** -/
-lemma primrec_runCoded :
-    Primrec fun z : TMDesc × ℕ × CodedCfg => runCoded z.1 z.2.1 z.2.2 := by
-  refine (Primrec.nat_iterate (Primrec.fst.comp Primrec.snd)
-    (Primrec.option_some.comp (Primrec.snd.comp Primrec.snd))
-    (Primrec.to₂ (primrec_stepOpt.comp
-      (Primrec.pair (Primrec.fst.comp Primrec.fst) Primrec.snd)))).of_eq ?_
-  rintro ⟨d, t, c⟩
-  exact (runCoded_eq_iterate d t c).symm
-
-/-! ### The initial configuration
+/-! ## The initial configuration
 
 The coded initial configuration decodes to the real one, so the vertical slice runs from
 a genuine input word, not from an arbitrary configuration. -/
@@ -741,29 +700,6 @@ lemma primrec_initCoded :
     (Primrec.nat_mod.comp hqs hw)
     (Primrec.pair hinp (Primrec.pair (Primrec.const ⟨0, []⟩)
       (Primrec.const ⟨0, []⟩))))).of_eq fun _ => rfl
-
-/-- **The end-to-end bounded evaluator**: from a description and an input word, run the
-described machine for `t` steps, entirely on finite data. -/
-def evalCoded (d : TMDesc) (t : ℕ) (x : List Bool) : Option CodedCfg :=
-  runCoded d t (initCoded d x)
-
-/-- The bounded evaluator tracks the real machine: if it returns a configuration, the
-described machine reaches its decoding from the genuine initial configuration in exactly
-`t` steps. -/
-lemma evalCoded_reachesIn (d : TMDesc) (t : ℕ) (x : List Bool) {c : CodedCfg}
-    (h : evalCoded d t x = some c) :
-    (d.toTM).reachesIn t ((d.toTM).initCfg x) (CodedCfg.decode d c) := by
-  have := runCoded_eq d t (initCoded d x) c h
-  rwa [decode_initCoded] at this
-
-set_option maxHeartbeats 4000000 in
-/-- **The end-to-end bounded evaluator is primitive recursive.** -/
-lemma primrec_evalCoded :
-    Primrec fun z : TMDesc × ℕ × List Bool => evalCoded z.1 z.2.1 z.2.2 :=
-  (primrec_runCoded.comp (Primrec.pair Primrec.fst
-    (Primrec.pair (Primrec.fst.comp Primrec.snd)
-      (primrec_initCoded.comp (Primrec.pair Primrec.fst
-        (Primrec.snd.comp Primrec.snd)))))).of_eq fun _ => rfl
 
 /-! ## Finite output extraction
 
@@ -882,10 +818,11 @@ lemma primrec_codedOutput : Primrec codedOutput := by
 
 /-! ## Running to a halt within a budget
 
-`runCoded` iterates a fixed number of steps and fails when the machine halts early. What a
-clocked evaluator needs is the opposite: run *until* the machine halts, giving up when the
-budget is exhausted. The frozen-pair form below is that, written as a plain iteration so it
-is primitive recursive by `Primrec.nat_iterate`. -/
+A clocked evaluator runs the machine *until* it halts and gives up when the budget is
+exhausted, rather than iterating a fixed number of steps. The frozen-pair form below is
+that: a plain iteration, so it is primitive recursive by `Primrec.nat_iterate`. Because one
+iteration is spent noticing that `codedStep` has returned `none`, the budget must strictly
+exceed the running time — the asymmetry `lt_clock_succ` exists to absorb. -/
 
 /-- One step of the budgeted run: a configuration paired with "has already halted". -/
 def stepFrozen (d : TMDesc) (s : CodedCfg × Bool) : CodedCfg × Bool :=
@@ -904,6 +841,7 @@ halt within `t` steps. Total: `none` means "did not halt in budget". -/
 def evalHalted (d : TMDesc) (t : ℕ) (x : List Bool) : Option CodedCfg :=
   runUntilHalt d t (initCoded d x)
 
+/-- Once the budgeted run has recorded a halt, further iterations change nothing. -/
 lemma stepFrozen_frozen (d : TMDesc) (c : CodedCfg) :
     ∀ t, (stepFrozen d)^[t] (c, true) = (c, true)
   | 0 => rfl
@@ -911,7 +849,7 @@ lemma stepFrozen_frozen (d : TMDesc) (c : CodedCfg) :
       rw [Function.iterate_succ_apply]
       simpa [stepFrozen] using stepFrozen_frozen d c t
 
-/-- A coded step reports `none` exactly when the decoded machine has halted. -/
+/-- A coded step that reports `none` has reached a halted configuration. -/
 lemma halted_of_codedStep_none {d : TMDesc} {c : CodedCfg} (h : codedStep d c = none) :
     (d.toTM).halted (CodedCfg.decode d c) := by
   have h2 := codedStep_eq d c
@@ -1038,6 +976,7 @@ lemma CodedTape.Bounded.writeAndMove {t : CodedTape} {k : ℕ} (h : t.Bounded k)
   · rw [CodedTape.writeAndMove]
     cases d <;> simp only [CodedTape.move] <;> (have := hw.2; omega)
 
+/-- One executable step extends the output tape's window and head by at most one. -/
 lemma codedStep_output_bounded {d : TMDesc} {c c' : CodedCfg} {k : ℕ}
     (hb : c.output.Bounded k) (h : codedStep d c = some c') :
     c'.output.Bounded (k + 1) := by
@@ -1076,6 +1015,7 @@ lemma runUntilHalt_output_invariants (d : TMDesc) :
             (codedStep_output_noStart hns hs) (codedStep_output_bounded hb hs)
           exact ⟨h1, h2.mono (by omega)⟩
 
+/-- Both invariants at the end of a successful budgeted run, from the blank initial tape. -/
 lemma evalHalted_output_invariants {d : TMDesc} {t : ℕ} {x : List Bool} {c : CodedCfg}
     (h : evalHalted d t x = some c) : c.output.NoStart ∧ c.output.Bounded t := by
   obtain ⟨h1, h2⟩ := runUntilHalt_output_invariants d t _ c h 0
@@ -1104,30 +1044,24 @@ lemma evalHalted_spec {d : TMDesc} {t : ℕ} {x : List Bool} {c : CodedCfg}
 
 /-! ## The compiler-facing bounded token evaluator
 
-This is the object `LogicalInduction/Construction/LIACompiler.lean` consumes. It mirrors
-`TraderProgram` / `traderProgramAt` / `clockedTokens` (`Framework/Criterion.lean`,
-`Construction/TraderEnumeration.lean`) one-for-one, replacing only the *token producer*: the
-decoding chain `strategyOfTokens ∘ unRpn ∘ undigitize` downstream of it is generic in a
-`List ℕ` and is reused unchanged.
+This is the object `LogicalInduction/Construction/LIACompiler.lean` consumes. It replaces only
+the *token producer* of the trader enumeration: the decoding chain
+`strategyOfTokens ∘ unRpn ∘ undigitize` downstream of it (`Framework/Criterion.lean`) is
+generic in a `List ℕ` and is reused unchanged.
 
 **Indexing by descriptions, not by description bits.** Upstream's `decodeDesc : List Bool →
 TMDesc` exists because the universal machine reads its program off a tape. Here the described
 machine is executed directly, so the index decodes straight to a `TMDesc` through the
 `Primcodable` instance above. That keeps `decodeDesc`, `encodeDesc`, their roundtrip, and the
-`TerminatedRegion` side condition off this path entirely.
-
-**Why the index fields are plain functions.** `descAt` goes through `Encodable.decode` at
-`TMDesc`, whose instance is a stack of `Primcodable.ofEquiv`s down to `Fin 4`. Any `rfl`
-obligation that lets the elaborator unfold it sends `whnf` into that stack and does not
-return in reasonable time — which is why `progDesc`/`progCoeff`/`progDeg` are separate
-definitions used directly by `machineTokens`, rather than projections out of a structure,
-and why `descAt` is sealed `irreducible` once its `Primrec` fact is proved. The structure
-`MachineTraderProgram` survives only as index bookkeeping for the eventual coverage
-argument, where it is convenient and never has to reduce.
+`TerminatedRegion` side condition off this path entirely. The index fields are plain functions
+and `descAt` is sealed, for the reason the module docstring's elaboration discipline gives;
+`MachineTraderProgram` is index bookkeeping for the coverage argument, where it is convenient
+and never has to reduce.
 
 **Totality.** Four things can go wrong, and none needs new machinery:
 
-1. a malformed index — `Encodable.decode` returns `none` and we take a trivial description;
+1. a malformed index — `Encodable.decode` returns `none` and `descAt` takes a trivial
+   description;
 2. an out-of-range state — `TMDesc.toTM` clamps transition targets, `codedStep` mirrors the
    clamp, and `TMDesc.lookup` falls back to a halting default on a missing key, so *every*
    description denotes a real machine;
@@ -1145,8 +1079,8 @@ it *is* the soundness argument, since a machine run for at most `p n` steps comp
 something polynomial-time whatever `p` was claimed to be. `machineTokens_steps_le` and
 `length_machineTokens_le` are that argument at this layer. -/
 
-/-- Decode an arbitrary natural as a description, using a trivial description for malformed
-indices — the analogue of `LogicalInduction.codeAt`. Sealed below. -/
+/-- Decode an arbitrary natural as a description, taking a trivial description for a
+malformed index. Sealed `irreducible` below. -/
 def descAt (i : ℕ) : TMDesc := (Encodable.decode i).getD ⟨0, 0, 0, []⟩
 
 lemma primrec_descAt : Primrec descAt :=
@@ -1178,12 +1112,13 @@ asks for. -/
 noncomputable def progClockPoly (j : ℕ) : Polynomial ℕ :=
   Polynomial.C (progCoeff j) * (Polynomial.X + 1) ^ progDeg j + Polynomial.C (progCoeff j)
 
+/-- The polynomial clock and its `Polynomial ℕ` form agree at every point. -/
 lemma progClockPoly_eval (j n : ℕ) : (progClockPoly j).eval n = progClock j n := by
   simp [progClockPoly, progClock]
 
-/-- The finite data an index decodes to. Index bookkeeping for the eventual coverage
-argument; `machineTokens` uses the projections above directly. There is no certificate
-field — the clock is a *claim*, never checked. -/
+/-- The finite data an index decodes to. Index bookkeeping for the coverage argument in
+`Construction/MachineTraderEnumeration.lean`; `machineTokens` uses the projections above
+directly. There is no certificate field — the clock is a *claim*, never checked. -/
 structure MachineTraderProgram where
   /-- The machine description; every `TMDesc` denotes a real machine. -/
   desc : TMDesc
@@ -1195,10 +1130,6 @@ structure MachineTraderProgram where
 /-- A canonical natural index for a description/clock tuple. -/
 def MachineTraderProgram.index (p : MachineTraderProgram) : ℕ :=
   Nat.pair (Nat.pair (Encodable.encode p.desc) p.coeff) p.deg
-
-/-- Decode every natural into a description/clock tuple. Total, so the enumeration is. -/
-def machineProgramAt (j : ℕ) : MachineTraderProgram :=
-  ⟨progDesc j, progCoeff j, progDeg j⟩
 
 /-- Decoding a canonical index returns its description. -/
 @[simp] lemma progDesc_index (d : TMDesc) (a k : ℕ) :
@@ -1219,13 +1150,6 @@ def machineProgramAt (j : ℕ) : MachineTraderProgram :=
 lemma progClock_index (d : TMDesc) (a k n : ℕ) :
     progClock (MachineTraderProgram.index ⟨d, a, k⟩) n = a * (n + 1) ^ k + a := by
   rw [progClock, progCoeff_index, progDeg_index]
-
-/-- Round-trip on the packaged form. -/
-@[simp] lemma machineProgramAt_index (p : MachineTraderProgram) :
-    machineProgramAt p.index = p := by
-  cases p
-  rw [machineProgramAt, progDesc_index, progCoeff_index, progDeg_index]
-
 
 /-- Read a finished run into a digit stream; the timeout fallback lives here, on
 `Option CodedCfg`, so its `Primrec` proof stays at that small domain. -/
@@ -1272,14 +1196,14 @@ lemma length_machineTokens_le (j n : ℕ) :
       simp only [tokensOf, length_bitsToDigits]
       omega
 
-/-! ### … and it is primitive recursive
+/-! ### The token evaluator is primitive recursive
 
-`primrec_machineTokens` is the exact obligation `LIACompiler` consumes: with it, the proof of
-`enumeratedTraderTrades_prim` goes through verbatim with `clockedTokens_prim` replaced.
+`primrec_machineTokens` is the exact obligation `LIACompiler` consumes; with it, that file's
+`enumeratedTraderTrades_prim` composes the generic decoding chain onto this token producer.
 
 Every step below is a plain `.comp` whose underlying function is *syntactically* the
-definition being characterised, so no `of_eq` defeq check is ever performed at a type
-carrying the `Primcodable` stack. -/
+definition being characterised, so no `of_eq` obligation is discharged at a function carrying
+the `Primcodable TMDesc` stack. -/
 
 lemma primrec_progDesc : Primrec progDesc :=
   primrec_descAt.comp (Primrec.fst.comp (Primrec.unpair.comp (Primrec.fst.comp Primrec.unpair)))
@@ -1477,12 +1401,9 @@ lemma evalHalted_complete {d : TMDesc} {f : List Bool → List Bool} {T : ℕ �
 `machineTokens_steps_le` is the soundness half: whatever an index emits came from a genuine
 in-clock run. This is the completeness half, and it is what coverage consumes — if the
 description an index names really does compute `f` inside the clock that index claims, then
-the index emits exactly `f`'s digit stream.
-
-Note the strict inequality: `stepFrozen` spends one iteration *noticing* that `codedStep`
-returned `none`, so the budget must exceed the running time rather than merely match it.
-Coverage supplies that by bumping the clock coefficient, which the clock normal form absorbs
-(`progClock_lt_of_le`). -/
+the index emits exactly `f`'s digit stream. Coverage supplies the strict slack the budgeted
+run needs by bumping the clock coefficient, which the clock normal form absorbs
+(`lt_clock_succ`). -/
 
 /-- Bumping the coefficient makes the clock strictly dominate any bound it weakly dominates.
 The slack `stepFrozen` needs, obtained without weakening the converse. -/
@@ -1503,25 +1424,3 @@ lemma machineTokens_eq_of_computesInTime {j : ℕ} {f : List Bool → List Bool}
   rw [machineTokens, hc, tokensOf, hout]
 
 end LogicalInduction.MachineExec
-
-
-/-! ## Axiom report
-
-The simulation capstones, the extraction correctness lemma, the compiler obligation, and the
-two soundness bounds. All depend on exactly `[propext, Classical.choice, Quot.sound]`. -/
-
-section AxiomReport
-open LogicalInduction.MachineExec
-
-#print axioms codedStep_eq
-#print axioms runUntilHalt_spec
-#print axioms decode_initCoded
-#print axioms evalHalted_spec
-#print axioms CodedTape.hasOutput_outputWord
-#print axioms primrec_codedStep
-#print axioms primrec_runUntilHalt
-#print axioms primrec_machineTokens
-#print axioms machineTokens_steps_le
-#print axioms length_machineTokens_le
-
-end AxiomReport

@@ -1,4 +1,10 @@
-/-
+import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Basic
+import Mathlib.Computability.Partrec
+import Mathlib.Data.Nat.Size
+import Mathlib.Data.Nat.Bitwise
+import Mathlib.Tactic.IntervalCases
+
+/-!
 # A symbol measure on Foundation's internal derivation codes — §4.10
 
 The paper's `Con(Θ′)(ν)` (tex:1855-1866) says there is no proof of `⊥` from `⌜Θ′⌝` with
@@ -31,9 +37,9 @@ term vectors (cons lists).  Writing such a derivation out costs:
 * every member of a node's sequent, and every sub-derivation, recursively.
 
 The paper fixes neither a Gödel encoding nor an alphabet ("written in `ℒ` using a Gödel
-encoding"), so a formalization must choose a convention; this is that choice, stated, and
-is the only residue of the retired `dd:proofcode` substitution.  Nothing downstream depends
-on the choice beyond the arithmetic of `dSize_pos` and `le_G_dSize`.
+encoding"), so a formalization must choose a counting convention; this is that choice,
+stated in full (`dd:symbolcount`).  Nothing downstream depends on the choice beyond the
+arithmetic of `dSize_pos` and `le_G_dSize`.
 
 Numbers that are not well-formed codes are given their own numeric value.  That branch is
 never observed: every use sits under `Bootstrapping.Proof`, which forces well-formedness.
@@ -47,11 +53,6 @@ well-formedness hypothesis to thread.
 most `k` symbols" into a search over `d ≤ G k`, which is decidable in *both* polarities.
 `G` is a tower and no attempt is made to make it tight.
 -/
-import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Basic
-import Mathlib.Computability.Partrec
-import Mathlib.Data.Nat.Size
-import Mathlib.Data.Nat.Bitwise
-import Mathlib.Tactic.IntervalCases
 
 namespace LogicalInduction
 
@@ -312,6 +313,7 @@ private lemma G_lt_G_succ (N : ℕ) : G N < G (N + 1) := by
 /-- `G` is monotone, which is what lets a bound at one size be reused at any larger one. -/
 lemma G_mono : Monotone G := monotone_nat_of_le_succ fun N => le_of_lt (G_lt_G_succ N)
 
+/-- `G` dominates the identity, the base case every `le_G_*` bound leans on. -/
 lemma self_le_G : ∀ n : ℕ, n ≤ G n
   | 0 => Nat.zero_le _
   | (n + 1) => Nat.succ_le_of_lt (lt_of_le_of_lt (self_le_G n) (G_lt_G_succ n))
@@ -382,12 +384,16 @@ private lemma le_G_tvAux : ∀ (n mode : ℕ), n ≤ G (tvAux mode n) := by
           exact sub_le_Bd (ih0 _ (arg_lt_succ 0 m)) (by omega)
         · exact sub_le_Bd (ih1 _ (tail_lt_succ 1 m)) (by omega)
 
+/-- The converse bound at terms: a term code is bounded by `G` of its symbol count. -/
 lemma le_G_tSize (n : ℕ) : n ≤ G (tSize n) := le_G_tvAux n 0
 
+/-- The converse bound at term vectors. -/
 lemma le_G_tvSize (n : ℕ) : n ≤ G (tvSize n) := le_G_tvAux n 1
 
 /-! ### Formulas -/
 
+/-- The converse bound at formulas: a formula code is bounded by `G` of its symbol
+count. -/
 lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
   induction n using Nat.strong_induction_on with
   | _ n ih =>
@@ -474,12 +480,15 @@ private lemma seq_le_Bd {s N : ℕ} (h : sSize s ≤ N) : s ≤ Bd N :=
     (le_trans (Nat.pow_le_pow_right (by norm_num) (by have := G_mono h; omega))
       (Nat.le_add_right _ 9))
 
-/-! ### Derivations
+/-! ### Derivations -/
 
-The load-bearing statement of the module: a derivation code is bounded by a computable
-function of its symbol count.  `dSize d ≤ d` is the useless direction; this is the one that
-keeps the bounded search decidable in both polarities. -/
+/-- **The converse bound.**  A derivation code is bounded by a computable monotone function
+of its symbol count.
 
+`dSize d ≤ d` is the useless direction; this is the one that turns "some derivation of `φ`
+has at most `k` symbols" into a search over `d ≤ G k`, decidable in *both* polarities,
+which is what `bProv_iff_bounded` spends.  `G` is a tower, and no attempt is made to make
+it tight. -/
 lemma le_G_dSize (n : ℕ) : n ≤ G (dSize n) := by
   induction n using Nat.strong_induction_on with
   | _ n ih =>
@@ -774,77 +783,5 @@ lemma dSize_pos {d : ℕ} (h : 0 < d) : 0 < dSize d := by
   obtain ⟨m, rfl⟩ : ∃ m, d = m + 1 := ⟨d - 1, by omega⟩
   rw [dSize]
   split_ifs <;> omega
-
-/-! ## Axiom accounting
-
-The whole public surface of this module, printed for the audit log.  The symbol measure is
-the `dd:symbolcount` counting convention supporting `thm:pac` / `thm:pazfc`, not a paper
-node of its own, so no declaration here carries the annotation
-`scripts/check-paper-nodes.sh` demands of names in an `#assert_axioms_clean` block, and the
-accounting is done here instead.  This is **logging only**: nothing fails on a dirty print, and the control is the
-human read of the build log, per the audit doctrine.  See `AxiomAudit.lean`'s
-`Framework/DerivationSize.lean` block. -/
-
-#print axioms pl
-#print axioms pr
-#print axioms pl_le
-#print axioms pr_le
-#print axioms arg
-#print axioms tail
-#print axioms tail_le
-#print axioms arg_le
-#print axioms arg_lt_succ
-#print axioms tail_lt_succ
-#print axioms idxLen
-#print axioms one_le_idxLen
-#print axioms lt_two_pow_idxLen
-#print axioms tvAux
-#print axioms tSize
-#print axioms tvSize
-#print axioms tSize_zero
-#print axioms tvSize_zero
-#print axioms tSize_succ
-#print axioms tvSize_succ
-#print axioms tvAux_zero_eq
-#print axioms tvAux_one_eq
-#print axioms tvAux_succ_of_ne
-#print axioms fSize
-#print axioms sSize
-#print axioms dSize
-#print axioms dSize_pos
-#print axioms G
-#print axioms G_mono
-#print axioms self_le_G
-#print axioms le_G_tSize
-#print axioms le_G_tvSize
-#print axioms le_G_fSize
-#print axioms fSize_le_sSize
-#print axioms fSize_le_sSize_of_mem
-#print axioms lt_two_pow_G_sSize
-#print axioms le_G_dSize
-#print axioms exp_nat_eq
-#print axioms mem_iff_testBit
-#print axioms dSize_axL
-#print axioms dSize_verumIntro
-#print axioms dSize_andIntro
-#print axioms dSize_orIntro
-#print axioms dSize_allIntro
-#print axioms dSize_exsIntro
-#print axioms dSize_wkRule
-#print axioms dSize_shiftRule
-#print axioms dSize_cutRule
-#print axioms dSize_axm
-#print axioms fSize_qqRel
-#print axioms fSize_qqNRel
-#print axioms fSize_qqVerum
-#print axioms fSize_qqFalsum
-#print axioms fSize_qqAnd
-#print axioms fSize_qqOr
-#print axioms fSize_qqAll
-#print axioms fSize_qqExs
-#print axioms tSize_qqBvar
-#print axioms tSize_qqFvar
-#print axioms tSize_qqFunc
-#print axioms tvSize_adjoin
 
 end LogicalInduction

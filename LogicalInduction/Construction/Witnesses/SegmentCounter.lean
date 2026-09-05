@@ -1,24 +1,33 @@
-/-
+import LogicalInduction.Construction.Witnesses.StructuredPatterns
+import LogicalInduction.Construction.Witnesses.CounterAutomaton
+
+/-!
 # Splitting `SegMatch` into a regular part and a counter part
 
-`StructPat.SegMatch` is exact, but it is not what a finite-state device decides: a
-structured segment's unary length field `1^L` must equal its payload's own token count,
-and that is an `aⁿbⁿ` constraint.
-
-This file performs the split.  `StructBlockRelaxed` drops the length identification (and
-carries instead the payload's `19`-freedom, which the payload grammar supplies anyway),
-and `SegMatchRelaxed` is the resulting segment-match relation — a condition a finite
-automaton can check.  `segCtr` is the one-counter program of `CtrAuto` that checks exactly
-the discarded identification, one structured segment at a time, and
-`segMatch_iff_relaxed_and_ctr` proves the split **exact**:
+Renders `app:ifp` (tex:6018): `StructPat.SegMatch` is exact, but it is not what a
+finite-state device decides, because a structured segment's unary length field `1^L` must
+equal its payload's own token count, and that is an `aⁿbⁿ` constraint.  This module performs
+the split, exactly:
 
     SegMatch p b  ↔  SegMatchRelaxed p b  ∧  (segCtr p).Accepts b
 
-Supporting infrastructure for the freeze recognizer rather than a paper claim, so the
-declarations are `lemma`s and `def`s.
+* `StructBlockRelaxed` drops the length identification (carrying instead the payload's
+  `19`-freedom, which the payload grammar supplies anyway) and `SegMatchRelaxed` is the
+  resulting segment-match relation — the half a finite automaton checks.
+* `segCtr` is the one-counter `CtrAuto.CtrProgram` that checks the length identification
+  alone, one structured segment at a time.
+* State encoding: `stQ p m k = (p.length + 1) * m + k` with kinds `0`–`5` (segment start,
+  opening `1`, polarity, unary field, payload, absorbing reject), `rejSt` the reject state
+  and program bound.
+* Both zero tests in the payload state are load-bearing: at the terminator the counter must
+  be exactly spent, and a payload token arriving with the counter spent means the payload is
+  longer than the field.
+* `segMatch_iff_relaxed_and_ctr` proves the split exact; `h19` (a complete payload contains
+  no `19`) is a hypothesis so that `PayAuto.nineteen_not_mem_of_parse` is not duplicated.
+
+Consumed by `SegmentRecognizer.lean`; `segMatch_iff_relaxed_and_ctr` is in
+`AxiomAudit.lean`.
 -/
-import LogicalInduction.Construction.Witnesses.StructuredPatterns
-import LogicalInduction.Construction.Witnesses.CounterAutomaton
 
 namespace LogicalInduction
 
@@ -26,25 +35,9 @@ namespace SegCtr
 
 open CtrAuto StructPat
 
-/-- **The discarded half of the split, in isolation.**
+/-! ## The relaxed part of the split -/
 
-Proof kind: `P` proved.  Provenance: (a) the definitions; the `19`-freedom of a complete
-payload is imported as `h19` rather than reproved. -/
-lemma structBlock_iff_relaxed
-    (h19 : ∀ {q : List ℕ} {c : ℕ},
-      parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
-    (pol fc : ℕ) (b : List ℕ) :
-    StructPat.StructBlock pol fc b ↔
-      ∃ (L : ℕ) (q : List ℕ),
-        b = [1, 0, pol] ++ List.replicate L 1 ++ 0 :: q ++ [19] ∧ pol ≤ 1 ∧
-          parseStructuredArithmeticFormula q.length 0 q = some (fc, []) ∧ 19 ∉ q ∧
-            L = q.length := by
-  constructor
-  · rintro ⟨q, rfl, hpol, hparse⟩
-    exact ⟨q.length, q, rfl, hpol, hparse, h19 hparse, rfl⟩
-  · rintro ⟨L, q, rfl, hpol, hparse, -, rfl⟩
-    exact ⟨q, rfl, hpol, hparse⟩
-
+/-- Dropping the length identification: an exact segment match is a relaxed one. -/
 lemma matchesRelaxed_of_matchesSeg
     (h19 : ∀ {q : List ℕ} {c : ℕ},
       parseStructuredArithmeticFormula q.length 0 q = some (c, []) → 19 ∉ q)
@@ -435,9 +428,6 @@ lemma segMatch_iff_relaxed_and_ctr
     rw [CtrProgram.Accepts, hrun bs, hm] at hacc
     simp only [segCtr, Bool.and_eq_true, decide_eq_true_eq, rejSt] at hacc
     omega
-
-#print axioms LogicalInduction.SegCtr.segCtr
-#print axioms LogicalInduction.SegCtr.segMatch_iff_relaxed_and_ctr
 
 end SegCtr
 

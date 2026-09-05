@@ -7,17 +7,58 @@ import LogicalInduction.Construction.Witnesses.EntailedSourceRegistry
 /-!
 # Registry-guarded exact semantic products
 
-The tag-only product gate is too weak: a malformed program can claim the source namespace.
-This process instead dovetails over product jobs and checker fuel, activating a product clause
-only after both named factors pass the fixed coherent-cut registry on the finite prefix needed
-by that job.  The process depends only on the already fixed base-process computation.
+This module renders the registry-guarded exact semantic product: a deductive process that
+dovetails over product jobs and checker fuel and activates a product clause only after
+*both* named factors pass the fixed coherent-cut registry on the finite prefix that job
+needs.  It supports `thm:ccee` at zero slack; it is not itself a paper node.
+
+Why the gate is a registry and not a tag test: a tag-only product gate is too weak,
+because a malformed program can claim the source namespace.  Admission is therefore
+proof-carrying, and the process depends only on the already fixed base-process
+computation.
+
+Objects defined: `semanticRegistryProductLimit` (the finite query prefix a decoded job
+needs), `semanticFactorPrefixValidAtFuel` (mixed tag-`0` source / tag-`2` quotation
+admission), `semanticRegistryProductDefSentence` and `semanticRegistryProductDP`, and the
+closure `semanticRegistryClosureDP` over a fixed base process.
+
+The canonical joint model is `semanticRegistryProductExtensionWorld`, which interprets
+tag-`1` product atoms as the positive closure of exactly the finite clauses the registry
+admits; `semanticRegistryProductDP_hworld` shows the process has an explicit model over
+every model of its base.
+
+Main results: `semanticRegistryProductLUV_valuesAt` and `semanticSchemaProductLUV_valuesAt`
+— registry admission recovers *exact* multiplication for certified factors, with no
+`dd:mesh` slack.  `semanticSchemaProductLUV` additionally allows the right factor to live
+in the disjoint quotation namespace.
+
+Factor admission has two interfaces for one theorem.  A `CertifiedSourceLUVSeq` supplies
+its own eventual validity, while a raw schema name supplies `∀ limit, ∃ fuel, …`; the
+`_of_eventually` family is the primitive and the `CertifiedSourceLUVSeq` forms are its
+instances along `certifiedSource_factor_eventually`.
+
+Consumers: `Construction/Witnesses/SemanticLiftedCCEE.lean`, which builds
+`canonicalCCEEDP` from `semanticRegistryClosureDP` and reaches
+`lic_no_expected_net_update_conditional_exact_canonical`.  The
+`lic_no_expected_net_update_conditional_registryCertified*` lane at the end of this module
+is a self-contained certified-source front end that is **not on the trust surface**: it
+appears on no census — not `AxiomAudit.lean`, not `scripts/coverage-classification.md`,
+not `LogicalInduction/API.lean` — and the `thm:ccee` row names two other renderings.  It
+is retained as the certified-source counterpart of the canonical endpoint.
+
+Design: `Nat.sqrt` is kept locally irreducible for the standing `dd:fuel` elaboration
+reason.
 -/
 
 namespace LogicalInduction
 
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
+-- Deep `PolyFueled` compositions over paired inputs loop `whnf` on `Nat.sqrt`; keep it
+-- opaque (the standing `dd:fuel` safeguard, as in `Framework/CodeSource.lean`).
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The registry gate -/
 
 /-- The finite source-query prefix needed to justify a decoded product job. -/
 def semanticRegistryProductLimit (e : ℕ) : ℕ :=
@@ -38,6 +79,8 @@ noncomputable def semanticFactorPrefixValidAtFuel {DP : DeductiveProcess}
     semanticQuoteFactorPrefixValidAtFuel base schema limit fuel
   else false
 
+/-! ## The registry-guarded product process -/
+
 /-- Decode a universal registry-product task as `(productJob, checkerFuel)`. -/
 noncomputable def semanticRegistryProductDefSentence {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (q : ℕ) : Sentence :=
@@ -51,12 +94,15 @@ noncomputable def semanticRegistryProductDefSentence {DP : DeductiveProcess}
     semanticProductDefSentence e
   else ⊤
 
+/-- The clause list the registry process publishes at stage `k`: one decoded product task
+per index up to `k`. -/
 noncomputable def semanticRegistryProductStageList {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) : ℕ → List Sentence
   | 0 => [semanticRegistryProductDefSentence base 0]
   | k + 1 => semanticRegistryProductDefSentence base (k + 1) ::
       semanticRegistryProductStageList base k
 
+/-- Every task index up to `k` is published by stage `k`. -/
 lemma mem_semanticRegistryProductStageList {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {q k : ℕ} (h : q ≤ k) :
     semanticRegistryProductDefSentence base q ∈
@@ -69,6 +115,7 @@ lemma mem_semanticRegistryProductStageList {DP : DeductiveProcess}
       · have hq : q = k + 1 := le_antisymm h hge
         simp [semanticRegistryProductStageList, hq]
 
+/-- Every published clause is a decoded product task. -/
 lemma semanticRegistryProductStageList_exists {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {φ : Sentence} {k : ℕ}
     (h : φ ∈ semanticRegistryProductStageList base k) :
@@ -89,6 +136,7 @@ noncomputable def semanticRegistryProductDP {DP : DeductiveProcess}
     simp only [List.mem_toFinset] at hφ ⊢
     exact List.mem_cons_of_mem _ hφ
 
+/-- The prefix bound is primitive recursive. -/
 lemma semanticRegistryProductLimit_prim : Primrec semanticRegistryProductLimit := by
   have he : Primrec fun e : ℕ => e.unpair.2 := Primrec.snd.comp Primrec.unpair
   have heb : Primrec fun e : ℕ => e.unpair.2.unpair.2 :=
@@ -115,6 +163,7 @@ lemma semanticRegistryProductLimit_prim : Primrec semanticRegistryProductLimit :
     Primrec.encode.comp (meshIndexRat_prim.comp hzt)
   exact Primrec.nat_max.comp hn (Primrec.nat_max.comp hsz htz)
 
+/-- Mixed factor admission is computable, uniformly in schema, prefix and fuel. -/
 lemma semanticFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Computable fun p : (ℕ × ℕ) × ℕ =>
@@ -143,6 +192,7 @@ lemma semanticFactorPrefixValidAtFuel_computable {DP : DeductiveProcess}
         · simp [semanticFactorPrefixValidAtFuel, h0, h2]
 
 set_option maxHeartbeats 2000000 in
+/-- Each decoded product task publishes a computable sentence. -/
 lemma semanticRegistryProductDefSentence_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     Computable (semanticRegistryProductDefSentence base) := by
@@ -178,6 +228,9 @@ lemma semanticRegistryProductDefSentence_computable {DP : DeductiveProcess}
   exact Computable.cond hguard (semanticProductDefSentence_computable.comp he.to_comp)
     (Computable.const (⊤ : Sentence))
 
+/-! ## Computability of the process -/
+
+/-- The registry-guarded product process is a computable deductive process. -/
 lemma semanticRegistryProductDP_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     ComputableDeductiveProcess (semanticRegistryProductDP base) := by
@@ -203,54 +256,158 @@ lemma semanticRegistryProductDP_computable {DP : DeductiveProcess}
   exact Part.mem_some_iff.mpr
     (encode_toFinset_eq (semanticRegistryProductStageList base k))
 
+/-- Task `q` is published by stage `q`. -/
 lemma semanticRegistryProductDefSentence_mem_stage {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (q : ℕ) :
     semanticRegistryProductDefSentence base q ∈ (semanticRegistryProductDP base).D q :=
   List.mem_toFinset.mpr (mem_semanticRegistryProductStageList base (le_refl q))
 
+/-- A world consistent with the process satisfies every published task clause. -/
 lemma holds_semanticRegistryProductDefSentence {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base)) (q : ℕ) :
     v.Holds (semanticRegistryProductDefSentence base q) :=
   hv q _ (semanticRegistryProductDefSentence_mem_stage base q)
 
+/-- Registry admission is monotone in the checker's fuel: more dovetailing never
+withdraws an admitted prefix. -/
+lemma semanticFactorPrefixValidAtFuel_mono {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (schema limit : ℕ)
+    {fuel fuel' : ℕ} (hff : fuel ≤ fuel')
+    (h : semanticFactorPrefixValidAtFuel base schema limit fuel = true) :
+    semanticFactorPrefixValidAtFuel base schema limit fuel' = true := by
+  by_cases hzero : schema.unpair.1 = 0
+  · simp only [semanticFactorPrefixValidAtFuel, if_pos hzero] at h ⊢
+    simp only [Bool.or_eq_true] at h ⊢
+    rcases h with h | h
+    · exact Or.inl (semanticSourcePrefixValidAtFuel_mono base hff h)
+    · exact Or.inr (entailedSourcePrefixValidAtFuel_mono base hff h)
+  · have htwo : schema.unpair.1 = 2 := by
+      unfold semanticFactorPrefixValidAtFuel at h
+      rw [if_neg hzero] at h
+      split at h
+      · assumption
+      · simp at h
+    simp only [semanticFactorPrefixValidAtFuel, if_neg hzero, if_pos htwo] at h ⊢
+    exact semanticQuoteFactorPrefixValidAtFuel_mono base schema limit hff h
+
+/-- **The activation primitive.**  Every product clause whose two factor schemas are
+eventually admitted at every finite prefix is activated by the registry process.  The
+`CertifiedSourceLUVSeq` forms below are this lemma at the certified-source interface. -/
+lemma holds_semanticRegistryProduct_schema_of_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {v : PCWorld}
+    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
+    (left right : ℕ)
+    (hleft : ∀ limit, ∃ fuel,
+      semanticFactorPrefixValidAtFuel base left limit fuel = true)
+    (hright : ∀ limit, ∃ fuel,
+      semanticFactorPrefixValidAtFuel base right limit fuel = true)
+    (n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
+    v.Holds (semanticProductSchemaInstance left right n kind r zs zt) := by
+  let e := semanticProductJob left right n kind r zs zt
+  let limit := semanticRegistryProductLimit e
+  obtain ⟨fl, hl⟩ := hleft limit
+  obtain ⟨fr, hr⟩ := hright limit
+  let fuel := max fl fr
+  have hl' := semanticFactorPrefixValidAtFuel_mono base left limit
+    (Nat.le_max_left fl fr) hl
+  have hr' := semanticFactorPrefixValidAtFuel_mono base right limit
+    (Nat.le_max_right fl fr) hr
+  have hl'' : semanticFactorPrefixValidAtFuel base left
+      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hl'
+  have hr'' : semanticFactorPrefixValidAtFuel base right
+      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hr'
+  have h := holds_semanticRegistryProductDefSentence base hv (Nat.pair e fuel)
+  have heleft : e.unpair.1 = left := by simp [e, semanticProductJob]
+  have heright : e.unpair.2.unpair.1 = right := by simp [e, semanticProductJob]
+  have h' : v.Holds (semanticProductDefSentence e) := by
+    simp only [semanticRegistryProductDefSentence, Nat.unpair_pair, heleft, heright,
+      hl'', hr'', Bool.and_self, cond_true] at h
+    exact h
+  simpa [e, semanticProductDefSentence_job] using h'
+
+/-- Positive activation: below the product of two admitted thresholds, the product atom
+holds. -/
+lemma holds_semanticRegistryProduct_pos_of_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {v : PCWorld}
+    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
+    (left right : ℕ)
+    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
+    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
+    (n : ℕ) {r : ℚ} {zs zt : ℕ} (hst : r ≤ meshIndexRat zs * meshIndexRat zt)
+    (hleft : v.Holds (semanticPrimeSentence left
+      (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
+    (hright : v.Holds (semanticPrimeSentence right
+      (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
+    v.Holds (semanticProductAtom left right n r) := by
+  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
+    n 0 r zs zt
+  rw [semanticProductSchemaInstance, if_pos rfl, if_pos hst] at h
+  exact h ⟨hleft, hright⟩
+
+/-- Negative activation: above the product of two refused thresholds, the product atom
+fails. -/
+lemma not_holds_semanticRegistryProduct_neg_of_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {v : PCWorld}
+    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
+    (left right : ℕ)
+    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
+    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
+    (n : ℕ) {r : ℚ} {zs zt : ℕ} (hst : meshIndexRat zs * meshIndexRat zt ≤ r)
+    (hleft : ¬v.Holds (semanticPrimeSentence left
+      (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
+    (hright : ¬v.Holds (semanticPrimeSentence right
+      (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
+    ¬v.Holds (semanticProductAtom left right n r) := by
+  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
+    n 1 r zs zt
+  rw [semanticProductSchemaInstance, if_neg (by decide : ¬(1 : ℕ) = 0),
+    if_pos rfl, if_pos hst] at h
+  intro hp
+  rcases h hp with hx | hw
+  · exact hleft hx
+  · exact hright hw
+
+/-- A negative threshold is below every product, so its atom holds outright. -/
+lemma holds_semanticRegistryProduct_below_of_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) {v : PCWorld}
+    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
+    (left right : ℕ)
+    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
+    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
+    (n : ℕ) {r : ℚ} (hneg : r < 0) :
+    v.Holds (semanticProductAtom left right n r) := by
+  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
+    n 2 r 0 0
+  simpa [semanticProductSchemaInstance, hneg] using h
+
+/-- **The certified-source admission bridge**: a proof-carrying certified source is
+eventually admitted at every finite registry prefix.  This is what turns the
+`_of_eventually` primitives into the `CertifiedSourceLUVSeq` forms. -/
+lemma certifiedSource_factor_eventually {DP : DeductiveProcess}
+    (base : DeductiveProcessComputation DP) (X : CertifiedSourceLUVSeq DP) (limit : ℕ) :
+    ∃ fuel, semanticFactorPrefixValidAtFuel base X.thresholdSchema limit fuel = true := by
+  obtain ⟨fuel, hfuel⟩ := certifiedSourcePrefix_eventually_valid base X limit
+  exact ⟨fuel, by
+    simp [semanticFactorPrefixValidAtFuel, X.thresholdSchema_source, hfuel]⟩
+
+/-! ## Exact multiplication for certified factors -/
+
 /-- Every product clause whose two factors are genuine certified sources is eventually
-activated by the fixed registry process. -/
+activated by the fixed registry process — the certified-source instance of
+`holds_semanticRegistryProduct_schema_of_eventually`. -/
 lemma holds_semanticRegistryProduct_schema {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
     (X W : CertifiedSourceLUVSeq DP) (n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
     v.Holds (semanticProductSchemaInstance X.thresholdSchema W.thresholdSchema
-      n kind r zs zt) := by
-  let e := semanticProductJob X.thresholdSchema W.thresholdSchema n kind r zs zt
-  let limit := semanticRegistryProductLimit e
-  obtain ⟨fx, hX⟩ := certifiedSourcePrefix_eventually_valid base X limit
-  obtain ⟨fw, hW⟩ := certifiedSourcePrefix_eventually_valid base W limit
-  let fuel := max fx fw
-  have hX' : semanticSourcePrefixValidAtFuel base X.thresholdSchema limit fuel = true :=
-    semanticSourcePrefixValidAtFuel_mono base (Nat.le_max_left _ _) hX
-  have hW' : semanticSourcePrefixValidAtFuel base W.thresholdSchema limit fuel = true :=
-    semanticSourcePrefixValidAtFuel_mono base (Nat.le_max_right _ _) hW
-  have hX'' : semanticSourcePrefixValidAtFuel base X.thresholdSchema
-      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hX'
-  have hW'' : semanticSourcePrefixValidAtFuel base W.thresholdSchema
-      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hW'
-  have hXfactor : semanticFactorPrefixValidAtFuel base X.thresholdSchema
-      (semanticRegistryProductLimit e) fuel = true := by
-    simp [semanticFactorPrefixValidAtFuel, X.thresholdSchema_source, hX'']
-  have hWfactor : semanticFactorPrefixValidAtFuel base W.thresholdSchema
-      (semanticRegistryProductLimit e) fuel = true := by
-    simp [semanticFactorPrefixValidAtFuel, W.thresholdSchema_source, hW'']
-  have h := holds_semanticRegistryProductDefSentence base hv (Nat.pair e fuel)
-  have heleft : e.unpair.1 = X.thresholdSchema := by simp [e, semanticProductJob]
-  have heright : e.unpair.2.unpair.1 = W.thresholdSchema := by
-    simp [e, semanticProductJob]
-  have h' : v.Holds (semanticProductDefSentence e) := by
-    simp only [semanticRegistryProductDefSentence, Nat.unpair_pair, heleft, heright,
-      hXfactor, hWfactor, Bool.and_self, cond_true] at h
-    exact h
-  simpa [e, semanticProductDefSentence_job] using h'
+      n kind r zs zt) :=
+  holds_semanticRegistryProduct_schema_of_eventually base hv
+    X.thresholdSchema W.thresholdSchema
+    (certifiedSource_factor_eventually base X)
+    (certifiedSource_factor_eventually base W) n kind r zs zt
 
+/-- Positive activation at certified factors. -/
 lemma holds_semanticRegistryProduct_pos {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
@@ -260,11 +417,13 @@ lemma holds_semanticRegistryProduct_pos {DP : DeductiveProcess}
       (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
     (hW : v.Holds (semanticPrimeSentence W.thresholdSchema
       (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
-    v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) := by
-  have h := holds_semanticRegistryProduct_schema base hv X W n 0 r zs zt
-  rw [semanticProductSchemaInstance, if_pos rfl, if_pos hst] at h
-  exact h ⟨hX, hW⟩
+    v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) :=
+  holds_semanticRegistryProduct_pos_of_eventually base hv
+    X.thresholdSchema W.thresholdSchema
+    (certifiedSource_factor_eventually base X)
+    (certifiedSource_factor_eventually base W) n hst hX hW
 
+/-- Negative activation at certified factors. -/
 lemma not_holds_semanticRegistryProduct_neg {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
@@ -274,22 +433,22 @@ lemma not_holds_semanticRegistryProduct_neg {DP : DeductiveProcess}
       (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
     (hW : ¬v.Holds (semanticPrimeSentence W.thresholdSchema
       (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
-    ¬v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) := by
-  have h := holds_semanticRegistryProduct_schema base hv X W n 1 r zs zt
-  rw [semanticProductSchemaInstance, if_neg (by decide : ¬(1 : ℕ) = 0),
-    if_pos rfl, if_pos hst] at h
-  intro hp
-  rcases h hp with hx | hw
-  · exact hX hx
-  · exact hW hw
+    ¬v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) :=
+  not_holds_semanticRegistryProduct_neg_of_eventually base hv
+    X.thresholdSchema W.thresholdSchema
+    (certifiedSource_factor_eventually base X)
+    (certifiedSource_factor_eventually base W) n hst hX hW
 
+/-- A negative threshold at certified factors. -/
 lemma holds_semanticRegistryProduct_below {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
     (X W : CertifiedSourceLUVSeq DP) (n : ℕ) {r : ℚ} (hr : r < 0) :
-    v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) := by
-  have h := holds_semanticRegistryProduct_schema base hv X W n 2 r 0 0
-  simpa [semanticProductSchemaInstance, hr] using h
+    v.Holds (semanticProductAtom X.thresholdSchema W.thresholdSchema n r) :=
+  holds_semanticRegistryProduct_below_of_eventually base hv
+    X.thresholdSchema W.thresholdSchema
+    (certifiedSource_factor_eventually base X)
+    (certifiedSource_factor_eventually base W) n hr
 
 /-- Registry admission recovers exact multiplication for arbitrary certified factors. -/
 lemma semanticRegistryProductLUV_valuesAt {DP : DeductiveProcess}
@@ -323,23 +482,27 @@ lemma semanticRegistryProductLUV_valuesAt {DP : DeductiveProcess}
       (by simpa only [CertifiedSourceLUVSeq.toPresented_gt] using (hxthr _).2 hxs)
       (by simpa only [CertifiedSourceLUVSeq.toPresented_gt] using (hcthr _).2 hct)
 
+/-- A job's own prefix bound dominates its day index — one of the three coordinate
+bounds that make the two-prefix downward transport go through. -/
 lemma semanticRegistryProductLimit_job_n (left right n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
     n ≤ semanticRegistryProductLimit (semanticProductJob left right n kind r zs zt) := by
   simp [semanticRegistryProductLimit, semanticProductJob]
 
+/-- A job's own prefix bound dominates its left threshold index. -/
 lemma semanticRegistryProductLimit_job_left (left right n kind : ℕ)
     (r : ℚ) (zs zt : ℕ) :
     Encodable.encode (meshIndexRat zs) ≤
       semanticRegistryProductLimit (semanticProductJob left right n kind r zs zt) := by
   simp [semanticRegistryProductLimit, semanticProductJob]
 
+/-- A job's own prefix bound dominates its right threshold index. -/
 lemma semanticRegistryProductLimit_job_right (left right n kind : ℕ)
     (r : ℚ) (zs zt : ℕ) :
     Encodable.encode (meshIndexRat zt) ≤
       semanticRegistryProductLimit (semanticProductJob left right n kind r zs zt) := by
   simp [semanticRegistryProductLimit, semanticProductJob]
 
-/-! ## Canonical joint model -/
+/-! ## The canonical joint model -/
 
 /-- Positive closure of one product atom over an already interpreted source world. -/
 def semanticRegistryProductPositive {DP : DeductiveProcess}
@@ -369,12 +532,14 @@ noncomputable def semanticRegistryProductExtensionWorld {DP : DeductiveProcess}
     r < 0 ∨ semanticRegistryProductPositive base v left right n r
   else v a
 
+/-- Off the tag-`1` product namespace the extension world is the world it extends. -/
 lemma semanticRegistryProductExtensionWorld_agree {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v : PCWorld) {a : ℕ}
     (ha : ¬(a.unpair.1 = semanticPrimeTag ∧ a.unpair.2.unpair.1.unpair.1 = 1)) :
     semanticRegistryProductExtensionWorld base v a ↔ v a := by
   simp [semanticRegistryProductExtensionWorld, ha]
 
+/-- A non-product leaf is read the same way in the extension world. -/
 lemma semanticRegistryProductExtensionWorld_leaf {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v : PCWorld)
     (schema input : ℕ) (hschema : schema.unpair.1 ≠ 1) :
@@ -385,6 +550,7 @@ lemma semanticRegistryProductExtensionWorld_leaf {DP : DeductiveProcess}
   apply semanticRegistryProductExtensionWorld_agree
   simp [semanticPrimeCode, hschema]
 
+/-- A leaf outside the source namespace is read the same way in the source extension. -/
 lemma semanticSourceExtensionWorld_leaf_other (v₀ : PCWorld)
     (schema input : ℕ) (hschema : schema.unpair.1 ≠ 0) :
     (semanticSourceExtensionWorld v₀).Holds (semanticPrimeSentence schema input) ↔
@@ -393,6 +559,7 @@ lemma semanticSourceExtensionWorld_leaf_other (v₀ : PCWorld)
     v₀ (semanticPrimeCode schema input)
   simp [semanticSourceExtensionWorld, semanticPrimeCode, hschema]
 
+/-- A sentence free of semantic-prime atoms is read the same way in the extension. -/
 lemma semanticRegistryProductExtensionWorld_holds_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v : PCWorld) {φ : Sentence}
     (hφ : SemanticPrimeFreshSentence φ) :
@@ -402,6 +569,7 @@ lemma semanticRegistryProductExtensionWorld_holds_fresh {DP : DeductiveProcess}
       intro hproduct
       exact hφ a ha hproduct.1)
 
+/-- The extension world's reading of a product atom, unfolded. -/
 lemma semanticRegistryProductExtensionWorld_productAtom {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v : PCWorld)
     (left right n : ℕ) (r : ℚ) :
@@ -414,6 +582,8 @@ lemma semanticRegistryProductExtensionWorld_productAtom {DP : DeductiveProcess}
   simp [semanticRegistryProductExtensionWorld, semanticPrimeCode,
     semanticProductSchema, decodedQuotationRat_encode]
 
+/-- Admitted factors are downward closed in the threshold: an admitted prefix carries a
+higher threshold's leaf down to a lower one. -/
 lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP) {schema limit fuel n zr zs : ℕ}
@@ -505,6 +675,8 @@ lemma semanticRegistryProductExtensionWorld_downward {DP : DeductiveProcess}
       exact (PCWorld.holds_neg v₀ _).mp
         (by simpa [semanticQuoteFactorClaim, highInput] using hclaim) hquoteAtom
 
+/-- Two different admitted prefixes for one schema are compared by taking the larger
+limit, which is what lets clauses from separate jobs be combined. -/
 lemma semanticRegistryProductExtensionWorld_downward_two_prefixes {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP) {schema n za zb limitA limitB fuelA fuelB : ℕ}
@@ -534,6 +706,8 @@ private lemma mul_factor_le_of_nonneg {a b c d : ℚ}
   push Not at hnot
   nlinarith
 
+/-- An admitted factor is never itself a product atom, which is what keeps the extension
+well-founded. -/
 lemma semanticFactorPrefixValidAtFuel_tag_ne_one {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel : ℕ}
     (h : semanticFactorPrefixValidAtFuel base schema limit fuel = true) :
@@ -658,6 +832,7 @@ lemma semanticRegistryProductExtensionWorld_holds_schema {DP : DeductiveProcess}
       (Or.inl hr)
   · exact PCWorld.holds_top _
 
+/-- Every published task clause is true in the canonical joint world. -/
 lemma semanticRegistryProductExtensionWorld_holds_defSentence {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP) (q : ℕ) :
@@ -752,30 +927,20 @@ lemma semanticRegistryProductExtensionWorld_holds_sourceDef {DP : DeductiveProce
   · rw [if_neg hschema]
     exact PCWorld.holds_top _
 
-lemma semanticSourceRegistryProductDP_hworld {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
-    (hv₀ : v₀.ConsistentWithTheory DP) :
-    (semanticRegistryProductExtensionWorld base
-      (semanticSourceExtensionWorld v₀)).ConsistentWithTheory
-        (semanticSourceDP.union (semanticRegistryProductDP base)) := by
-  intro k φ hφ
-  rw [DeductiveProcess.union_stage, Finset.mem_union] at hφ
-  rcases hφ with hsource | hproduct
-  · obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hsource)
-    exact semanticRegistryProductExtensionWorld_holds_sourceDef base v₀ e
-  · exact semanticRegistryProductDP_hworld base v₀ hv₀ k φ hproduct
-
 /-- The complete registry substrate over a fixed base process. -/
 noncomputable def semanticRegistryClosureDP {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) : DeductiveProcess :=
   (DP.union semanticSourceDP).union (semanticRegistryProductDP base)
 
+/-- A computation for the registry closure, assembled from the base computation. -/
 noncomputable def semanticRegistryClosureDPComputation {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     DeductiveProcessComputation (semanticRegistryClosureDP base) :=
   (base.union semanticSourceDP_computable.nonemptyComputation.some).union
     (semanticRegistryProductDP_computable base).nonemptyComputation.some
 
+/-- The whole registry closure has a model over every model of a base process whose own
+clauses avoid the semantic-prime namespace. -/
 lemma semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) (v₀ : PCWorld)
     (hv₀ : v₀.ConsistentWithTheory DP)
@@ -795,51 +960,30 @@ lemma semanticRegistryClosureDP_hworld {DP : DeductiveProcess}
     exact semanticRegistryProductExtensionWorld_holds_sourceDef base v₀ e
   · exact semanticRegistryProductDP_hworld base v₀ hv₀ k φ hproduct
 
-/-- Canonical theorem/source/exact-product process, fixed from `T` alone. -/
-noncomputable def theoremSemanticRegistryProductDP
-    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] :
-    DeductiveProcess :=
-  semanticRegistryClosureDP
-    ((theoremDP_computable T).nonemptyComputation.some)
-
-noncomputable def theoremSemanticRegistryProductDPComputation
-    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] :
-    DeductiveProcessComputation (theoremSemanticRegistryProductDP T) :=
-  semanticRegistryClosureDPComputation
-    ((theoremDP_computable T).nonemptyComputation.some)
-
-lemma theoremSemanticRegistryProductDP_hworld
-    (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] :
-    (semanticRegistryProductExtensionWorld
-      ((theoremDP_computable T).nonemptyComputation.some)
-      (semanticSourceExtensionWorld (provabilityWorld T))).ConsistentWithTheory
-        (theoremSemanticRegistryProductDP T) :=
-  semanticRegistryClosureDP_hworld
-    ((theoremDP_computable T).nonemptyComputation.some) (provabilityWorld T)
-    (theoremDP_hworld T) (theoremDP_semanticPrimeFresh T)
-
 /-! ## Quotation-aware fixed substrate -/
 
+/-- The quotation-aware fixed substrate: the registry closure over the theorem/quotation
+base, fixed from `T` alone. -/
 noncomputable def theoremQuoteSemanticRegistryProductDP
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] : DeductiveProcess :=
   semanticRegistryClosureDP (theoremQuoteBaseDPComputation T)
 
+/-- A computation for the quotation-aware fixed substrate. -/
 noncomputable def theoremQuoteSemanticRegistryProductDPComputation
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremQuoteSemanticRegistryProductDP T) :=
   semanticRegistryClosureDPComputation (theoremQuoteBaseDPComputation T)
 
+/-- The joint world of the quotation-aware substrate. -/
 private noncomputable abbrev theoremQuoteRegistryWorld
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] : PCWorld :=
   semanticRegistryProductExtensionWorld (theoremQuoteBaseDPComputation T)
     (semanticSourceExtensionWorld (theoremQuoteCertifiedProductWorld T))
 
+/-- Quotation leaves are read the same way in the registry world. -/
 lemma theoremQuoteRegistryWorld_quoteLeaf
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] (code input : ℕ) :
@@ -858,6 +1002,7 @@ lemma theoremQuoteRegistryWorld_quoteLeaf
       (semanticPrimeCode (semanticQuoteSchema code) input)
   simp [semanticSourceExtensionWorld, semanticPrimeCode, semanticQuoteSchema]
 
+/-- Quotation atoms are read the same way in the registry world. -/
 lemma theoremQuoteRegistryWorld_quoteAtom
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] (w : ℕ) :
@@ -873,6 +1018,7 @@ lemma theoremQuoteRegistryWorld_quoteAtom
     simp [quotationClaimCode, semanticPrimeTag]
   · simp [quotationClaimCode, semanticPrimeTag]
 
+/-- The registry world satisfies the quotation process. -/
 lemma theoremQuoteRegistryWorld_consistent_quote
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -895,6 +1041,7 @@ lemma theoremQuoteRegistryWorld_consistent_quote
         ((theoremQuoteCertifiedProductWorld_quote T _ _).mp
           ((theoremQuoteRegistryWorld_quoteLeaf T _ _).mp hleaf)))
 
+/-- The certified product world satisfies the theorem/quotation base. -/
 lemma theoremQuoteCertifiedProductWorld_consistent_base
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -906,6 +1053,7 @@ lemma theoremQuoteCertifiedProductWorld_consistent_base
   · exact theoremQuoteCertifiedProductWorld_consistent_theorem T k φ htheorem
   · exact theoremQuoteCertifiedProductWorld_consistent_quote T k φ hquote
 
+/-- The registry world satisfies the theorem process. -/
 lemma theoremQuoteRegistryWorld_consistent_theorem
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -942,7 +1090,7 @@ lemma theoremQuoteSemanticRegistryProductDP_hworld
       (theoremQuoteCertifiedProductWorld T)
       (theoremQuoteCertifiedProductWorld_consistent_base T) k φ hproduct
 
-/-! ## Exact CCEE over certified factors -/
+/-! ## The schema-level product LUV -/
 
 /-- Product LUV for two admitted raw schema names; unlike `semanticProductLUV`, the right
 factor may belong to the disjoint quotation namespace. -/
@@ -952,114 +1100,19 @@ def semanticSchemaProductLUV (left right n : ℕ) : LUV :=
 @[simp] lemma semanticSchemaProductLUV_gt (left right n : ℕ) (r : ℚ) :
     (semanticSchemaProductLUV left right n).gt r = semanticProductAtom left right n r := rfl
 
+/-- The schema-level product LUV carries the threshold-code certificate the expectation
+layer consumes. -/
 lemma semanticSchemaProductLUV_rpnThresholdCodeSeq (left right : ℕ) :
     LUV.RpnThresholdCodeSeq (semanticSchemaProductLUV left right) := by
   apply LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
   obtain ⟨c, hc⟩ := semanticProductAtom_mesh_encode_polyFueled left right
   exact ⟨c, hc.of_eq (fun _ => rfl)⟩
 
-lemma semanticFactorPrefixValidAtFuel_mono {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) (schema limit : ℕ)
-    {fuel fuel' : ℕ} (hff : fuel ≤ fuel')
-    (h : semanticFactorPrefixValidAtFuel base schema limit fuel = true) :
-    semanticFactorPrefixValidAtFuel base schema limit fuel' = true := by
-  by_cases hzero : schema.unpair.1 = 0
-  · simp only [semanticFactorPrefixValidAtFuel, if_pos hzero] at h ⊢
-    simp only [Bool.or_eq_true] at h ⊢
-    rcases h with h | h
-    · exact Or.inl (semanticSourcePrefixValidAtFuel_mono base hff h)
-    · exact Or.inr (entailedSourcePrefixValidAtFuel_mono base hff h)
-  · have htwo : schema.unpair.1 = 2 := by
-      unfold semanticFactorPrefixValidAtFuel at h
-      rw [if_neg hzero] at h
-      split at h
-      · assumption
-      · simp at h
-    simp only [semanticFactorPrefixValidAtFuel, if_neg hzero, if_pos htwo] at h ⊢
-    exact semanticQuoteFactorPrefixValidAtFuel_mono base schema limit hff h
+/-! ## Factor admission at a raw schema name -/
 
-lemma holds_semanticRegistryProduct_schema_of_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {v : PCWorld}
-    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
-    (left right : ℕ)
-    (hleft : ∀ limit, ∃ fuel,
-      semanticFactorPrefixValidAtFuel base left limit fuel = true)
-    (hright : ∀ limit, ∃ fuel,
-      semanticFactorPrefixValidAtFuel base right limit fuel = true)
-    (n kind : ℕ) (r : ℚ) (zs zt : ℕ) :
-    v.Holds (semanticProductSchemaInstance left right n kind r zs zt) := by
-  let e := semanticProductJob left right n kind r zs zt
-  let limit := semanticRegistryProductLimit e
-  obtain ⟨fl, hl⟩ := hleft limit
-  obtain ⟨fr, hr⟩ := hright limit
-  let fuel := max fl fr
-  have hl' := semanticFactorPrefixValidAtFuel_mono base left limit
-    (Nat.le_max_left fl fr) hl
-  have hr' := semanticFactorPrefixValidAtFuel_mono base right limit
-    (Nat.le_max_right fl fr) hr
-  have hl'' : semanticFactorPrefixValidAtFuel base left
-      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hl'
-  have hr'' : semanticFactorPrefixValidAtFuel base right
-      (semanticRegistryProductLimit e) fuel = true := by simpa [limit] using hr'
-  have h := holds_semanticRegistryProductDefSentence base hv (Nat.pair e fuel)
-  have heleft : e.unpair.1 = left := by simp [e, semanticProductJob]
-  have heright : e.unpair.2.unpair.1 = right := by simp [e, semanticProductJob]
-  have h' : v.Holds (semanticProductDefSentence e) := by
-    simp only [semanticRegistryProductDefSentence, Nat.unpair_pair, heleft, heright,
-      hl'', hr'', Bool.and_self, cond_true] at h
-    exact h
-  simpa [e, semanticProductDefSentence_job] using h'
-
-lemma holds_semanticRegistryProduct_pos_of_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {v : PCWorld}
-    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
-    (left right : ℕ)
-    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
-    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
-    (n : ℕ) {r : ℚ} {zs zt : ℕ} (hst : r ≤ meshIndexRat zs * meshIndexRat zt)
-    (hleft : v.Holds (semanticPrimeSentence left
-      (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
-    (hright : v.Holds (semanticPrimeSentence right
-      (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
-    v.Holds (semanticProductAtom left right n r) := by
-  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
-    n 0 r zs zt
-  rw [semanticProductSchemaInstance, if_pos rfl, if_pos hst] at h
-  exact h ⟨hleft, hright⟩
-
-lemma not_holds_semanticRegistryProduct_neg_of_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {v : PCWorld}
-    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
-    (left right : ℕ)
-    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
-    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
-    (n : ℕ) {r : ℚ} {zs zt : ℕ} (hst : meshIndexRat zs * meshIndexRat zt ≤ r)
-    (hleft : ¬v.Holds (semanticPrimeSentence left
-      (Nat.pair n (Encodable.encode (meshIndexRat zs)))))
-    (hright : ¬v.Holds (semanticPrimeSentence right
-      (Nat.pair n (Encodable.encode (meshIndexRat zt))))) :
-    ¬v.Holds (semanticProductAtom left right n r) := by
-  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
-    n 1 r zs zt
-  rw [semanticProductSchemaInstance, if_neg (by decide : ¬(1 : ℕ) = 0),
-    if_pos rfl, if_pos hst] at h
-  intro hp
-  rcases h hp with hx | hw
-  · exact hleft hx
-  · exact hright hw
-
-lemma holds_semanticRegistryProduct_below_of_eventually {DP : DeductiveProcess}
-    (base : DeductiveProcessComputation DP) {v : PCWorld}
-    (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
-    (left right : ℕ)
-    (hl : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base left limit fuel = true)
-    (hr : ∀ limit, ∃ fuel, semanticFactorPrefixValidAtFuel base right limit fuel = true)
-    (n : ℕ) {r : ℚ} (hneg : r < 0) :
-    v.Holds (semanticProductAtom left right n r) := by
-  have h := holds_semanticRegistryProduct_schema_of_eventually base hv left right hl hr
-    n 2 r 0 0
-  simpa [semanticProductSchemaInstance, hneg] using h
-
+/-- **Exact multiplication at raw schema names.**  Registry admission of both factors
+recovers exactly the product of their values, with the right factor allowed to live in the
+disjoint quotation namespace. -/
 lemma semanticSchemaProductLUV_valuesAt {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {v : PCWorld}
     (hv : v.ConsistentWithTheory (semanticRegistryProductDP base))
@@ -1118,6 +1171,10 @@ private lemma theoremQuoteRegistry_consistent_product
       (semanticRegistryProductDP (theoremQuoteBaseDPComputation T)) :=
   PCWorld.consistentWithTheory_union_right hv
 
+/-! ## Exact CCEE over the certified source front end
+
+This lane is **not on the trust surface** — see the module docstring. -/
+
 /-- Exact CCEE after all three LUV families have entered through the executable certified
 source registry.  Source valuedness and exact left multiplication are internal. -/
 lemma lic_no_expected_net_update_conditional_registryCertified
@@ -1167,6 +1224,8 @@ private noncomputable abbrev theoremQuoteSemanticRegistryProductLIA
   LIA_is_logical_inductor _
     (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
 
+/-- The same statement on the substrate's own LIA market.  Off the trust surface: see the
+module docstring. -/
 lemma lic_no_expected_net_update_conditional_registryCertified_closed
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1191,6 +1250,7 @@ lemma lic_no_expected_net_update_conditional_registryCertified_closed
   exact lic_no_expected_net_update_conditional_registryCertified
     f X W Z' w weight_mem weight_generable weight_value right_value
 
+/-- The market computation of the LIA market over the quotation-aware substrate. -/
 noncomputable def theoremQuoteRegistryMarketComputation
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -1198,6 +1258,7 @@ noncomputable def theoremQuoteRegistryMarketComputation
   liaMarketComputation (theoremQuoteSemanticRegistryProductDP T)
     (theoremQuoteSemanticRegistryProductDPComputation T).toComputable
 
+/-- The internally constructed quotation of the deferred weight over that market. -/
 noncomputable def registryDeferredWeightQuoteCode
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1208,6 +1269,8 @@ noncomputable def registryDeferredWeightQuoteCode
   deferredWeightQuoteCode T (theoremQuoteRegistryMarketComputation T)
     f w hw weight_mem
 
+/-- The internally constructed quotation of the deferred conditional expectation over
+that market. -/
 noncomputable def registryConditionalExpectationQuoteCode
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1228,8 +1291,8 @@ private lemma theoremQuoteRegistry_consistent_theoremDP
     v.ConsistentWithTheory (theoremDP T) :=
   PCWorld.consistentWithTheory_union_left (theoremQuoteRegistry_consistent_base hv)
 
-/-- The right-hand deferred weighted-expectation quotation is now constructed internally;
-only admission of the deferred weight as an exact product factor remains explicit. -/
+/-- The right-hand deferred weighted-expectation quotation is constructed internally; the
+only explicit input is admission of the deferred weight as an exact product factor. -/
 lemma lic_no_expected_net_update_conditional_registry_rightClosed
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1279,17 +1342,8 @@ private lemma theoremQuoteRegistry_consistent_quoteDP
     v.ConsistentWithTheory semanticQuoteDP :=
   PCWorld.consistentWithTheory_union_right (theoremQuoteRegistry_consistent_base hv)
 
-lemma certifiedSource_factor_eventually
-    {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T]
-    (X : CertifiedSourceLUVSeq (theoremQuoteBaseDP T)) (limit : ℕ) :
-    ∃ fuel, semanticFactorPrefixValidAtFuel (theoremQuoteBaseDPComputation T)
-      X.thresholdSchema limit fuel = true := by
-  obtain ⟨fuel, hfuel⟩ := certifiedSourcePrefix_eventually_valid
-    (theoremQuoteBaseDPComputation T) X limit
-  exact ⟨fuel, by
-    simp [semanticFactorPrefixValidAtFuel, X.thresholdSchema_source, hfuel]⟩
-
+/-- An internally constructed rational quotation is eventually admitted at every finite
+registry prefix. -/
 lemma rationalQuote_factor_eventually
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1302,6 +1356,7 @@ lemma rationalQuote_factor_eventually
     if_pos (by simp [semanticQuoteSchema])]
   simpa only [semanticQuoteSchema] using hfuel
 
+/-- A rational quotation's semantic handle is valued at the rational it quotes. -/
 lemma rationalQuote_semanticHandle_valuesAt
     {T : ArithmeticTheory} [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
@@ -1363,7 +1418,7 @@ lemma lic_no_expected_net_update_conditional_certifiedSource_closed
     apply semanticSchemaProductLUV_valuesAt (theoremQuoteBaseDPComputation T)
       (theoremQuoteRegistry_consistent_product hv) X.thresholdSchema
       (semanticQuoteSchema weightQ.code)
-      (certifiedSource_factor_eventually X)
+      (certifiedSource_factor_eventually (theoremQuoteBaseDPComputation T) X)
       (rationalQuote_factor_eventually T weightQ) n hx
     exact rationalQuote_semanticHandle_valuesAt weightQ n v
       (theoremQuoteRegistry_consistent_theoremDP hv)
@@ -1373,14 +1428,5 @@ lemma lic_no_expected_net_update_conditional_certifiedSource_closed
     rwa [Rat.cast_mul,
       ← (theoremQuoteRegistryMarketComputation T).expectQuoteAt_cast
         X.toPresented.toLUV n (f n)] at h
-
-#print axioms semanticRegistryProductDP_computable
-#print axioms semanticRegistryProductLUV_valuesAt
-#print axioms semanticRegistryProductDP_hworld
-#print axioms theoremSemanticRegistryProductDP_hworld
-#print axioms theoremQuoteSemanticRegistryProductDP_hworld
-#print axioms lic_no_expected_net_update_conditional_registryCertified_closed
-#print axioms lic_no_expected_net_update_conditional_registry_rightClosed
-#print axioms lic_no_expected_net_update_conditional_certifiedSource_closed
 
 end LogicalInduction

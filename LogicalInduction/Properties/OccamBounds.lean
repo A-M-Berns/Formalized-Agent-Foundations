@@ -1,22 +1,43 @@
-/-
-# `thm:ob` — Occam Bounds (paper §4.6)
-
-The paper allocates one unit of risk across sentences by the Kraft weights `2^{-κ(φ)}`,
-using an efficiently emulatable *family* of traders indexed by the desired constant.
-Our exploitation criterion quantifies over single traders, so the family is diagonalized
-into one: rung `j` has purchase capacity `j⁴` scaled by `1/j²`, hence risks at most
-`1/j²` while a full purchase has plausible payout of order `j²`, and `Σ_j 1/j²` converges.
-
-Contents: `lic_occam_lower` (the lower half) and `lic_occamBounds` (both halves, sharing
-one constant), plus `lic_limitingBelief_add_neg` (`thm:lc`), which the upper half needs.
--/
 import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.Relationships
 import LogicalInduction.Framework.WriteOut
 
+/-!
+# Occam Bounds
+
+Renders §4.6's `thm:ob` (Occam Bounds, tex:1552).
+
+* `prefixWeight κ φ = 2^{-κ(φ)}` is the Kraft weight, and `PrefixMachinePresentation` the
+  syntax-level presentation of the fixed prefix machine: an efficient sentence enumeration, a
+  polynomial rational from-below approximation to the weight, the finite Kraft bound on that
+  enumeration, and surjectivity.
+* Two further boundary interfaces, both syntax-only: `OccamThresholdEmission`, the gate
+  compiler's two rational token streams, and `PrefixNegationCompiler`, the fixed additive
+  complexity overhead of negation. All three structures are `#assert_fields`-frozen and
+  inhabited in `Construction/Witnesses/PrefixMachine.lean`.
+* The paper allocates one unit of risk across sentences by the Kraft weights, using an
+  efficiently emulatable *family* of traders indexed by the desired constant. The exploitation
+  criterion quantifies over single traders, so the family is diagonalised into one: rung `j` has
+  purchase capacity `j⁴` scaled by `1/j²`, so it risks at most `1/j²` against a plausible payout
+  of order `j²`, and `Σ_j 1/j²` converges.
+* The rung ladder is `obStart`, `obCapacity`, `obBase`, `obBuySig`, `obShares`, `obCoef` and
+  `obSentenceEF`; `obTrader_ecTok` certifies the assembled trader efficiently computable and
+  `obCumulativeRisk_le_two` bounds its cumulative risk by two.
+* `obTrader_exploits` closes the exploitation argument. `lic_occam_lower` is the lower half of
+  `thm:ob`, and `lic_occamBounds` both halves under one constant; the upper half needs only the
+  negation compiler's overhead together with limit coherence for a sentence and its negation
+  (`lic_limitingBelief_add_neg`, a `thm:lc` fact the upper half consumes).
+* The arming chain the rungs carry their state in is `armChain` (`Properties/Hysteresis.lean`).
+
+Consumed by `Properties/UniversalSemimeasure.lean` (`thm:dus`, `thm:strict`) and by
+`Construction/Witnesses/PrefixMachine.lean` (`UPrefix.lic_occamBounds_ofUniversalPrefix`).
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Kraft weights and prefix machines -/
 
 /-- The real Kraft weight associated with prefix complexity `κ`. -/
 noncomputable def prefixWeight (κ : Sentence → ℕ) (φ : Sentence) : ℝ :=
@@ -48,6 +69,8 @@ structure PrefixMachinePresentation (κ : Sentence → ℕ) where
     ∑ i ∈ Finset.range N, prefixWeight κ (sentence i) ≤ 1
   covers : ∀ φ, ∃ i, sentence i = φ
 
+/-! ### Rung constants -/
+
 /-- Rung `j` starts only after both the rung and sentence index are available. -/
 def obStart (j i : ℕ) : ℕ := max j (i + 1)
 
@@ -65,6 +88,8 @@ represents rung `j'+1`, day `n`, and sentence index `i`. -/
 def obEmitBase {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (z : ℕ) : ℚ :=
   obBase U (z.unpair.1 + 1) z.unpair.2.unpair.1 z.unpair.2.unpair.2
+
+/-! ### The emission and negation interfaces -/
 
 /-- The two derived rational-token streams consumed by the Occam gate compiler.
 
@@ -100,6 +125,8 @@ lemma PrefixNegationCompiler.weight_div_le_neg
     _ = 1 / (2 : ℝ) ^ (κ φ + neg.overhead) := by rw [pow_add]
     _ ≤ 1 / (2 : ℝ) ^ κ (∼φ) := one_div_le_one_div_of_le hpos hpow
 
+/-! ### Limit coherence for a sentence and its negation -/
+
 /-- Limit coherence for a sentence and its propositional negation. Derived from the
 exclusive–exhaustive learning law, not assumed as a valuation identity.
 Paper node: `thm:lc` -/
@@ -108,8 +135,6 @@ theorem lic_limitingBelief_add_neg
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) :
     limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
   have hcodes : ∀ j < 2, BigSentenceCodes (pair j) := by
     intro j hj
@@ -147,6 +172,8 @@ theorem lic_limitingBelief_add_neg
   have hone : ConvergesTo (fun n ↦ P n φ + P n (∼φ)) 1 :=
     convergesTo_iff_asympEq_const.mpr hlex
   exact tendsto_nhds_unique hsum hone
+
+/-! ## The rung ladder -/
 
 /-- Low-price gate for sentence `i` on rung `j`, padded to zero before `obStart j i`. -/
 def obBuySig {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
@@ -429,18 +456,14 @@ def obArmBlock {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
     (j i d : ℕ) : List ℕ :=
   (oneMinus (obBuySig U j i d)).serialize ++ [3]
 
+/-- The rung's arming chain serializes into fixed-width blocks: the
+`Properties/Hysteresis.lean` chain law at this file's disarm signal. -/
 lemma serialize_armChain_obBuy {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i : ℕ) : ∀ n,
     (armChain (obBuySig U j i) n).serialize =
       [1, Encodable.encode ((1 : ℚ))] ++
-        (List.range n).flatMap (fun d ↦ obArmBlock U j i d)
-  | 0 => by simp [armChain, EF.serialize]
-  | (n + 1) => by
-      rw [armChain]
-      simp only [EF.serialize]
-      rw [serialize_armChain_obBuy U j i n, List.range_succ,
-        List.flatMap_append, List.flatMap_singleton, obArmBlock]
-      simp [List.append_assoc]
+        (List.range n).flatMap (fun d ↦ obArmBlock U j i d) :=
+  fun n => by simpa [obArmBlock] using serialize_armChain (obBuySig U j i) n
 
 lemma serialize_obCoef {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i n : ℕ) :
@@ -543,6 +566,8 @@ lemma obTradeChunk_polySegStream {κ : Sentence → ℕ}
   rw [serializeTrades, serializeTrades, serialize_obSentenceEF]
   simp [Nat.unpair_pair]
 
+/-! ## The Occam trader -/
+
 /-- The concrete Occam scale ladder. On day `n`, it considers the first `n` sentences and
 the first `n` risk rungs. -/
 def obTrader {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ) : Trader where
@@ -570,8 +595,6 @@ lemma obTrader_ecTok {κ : Sentence → ℕ}
     serializeTrades_map_singleton]
   simp [Nat.unpair_pair]
 
-#print axioms obTrader_ecTok
-
 lemma obTrader_value {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (P : History) (v : Valuation) (n : ℕ) :
     ((obTrader U).strat n).value P v =
@@ -590,6 +613,8 @@ lemma obTrader_netWorth {κ : Sentence → ℕ}
           ((k + 1 : ℕ) : ℝ) ^ 2 * obShares U P (k + 1) i n *
             (v.payout (U.sentence i) - P n (U.sentence i)) := by
   simp only [Trader.netWorth, obTrader_value]
+
+/-! ## Risk and profit accounting -/
 
 lemma PrefixMachinePresentation.weight_le_one {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (i : ℕ) :
@@ -1045,8 +1070,6 @@ lemma obTrader_exploits {κ : Sentence → ℕ}
       nlinarith
     linarith
 
-#print axioms obTrader_exploits
-
 /-! ## Paper-facing Occam bounds -/
 
 /-- Lower half of `thm:ob`: one fixed constant works for every sentence that remains
@@ -1099,8 +1122,6 @@ theorem lic_occam_lower
       (obTrader U) (obTrader_ecTok U emit)
       (obTrader_exploits U P DP hfire)
 
-#print axioms lic_occam_lower
-
 /-- `thm:ob` (Occam Bounds). One fixed positive constant simultaneously supplies the
 lower bound for every unrefutable sentence and the upper bound for every unprovable
 sentence. The upper half needs only the negation compiler's fixed complexity overhead
@@ -1120,8 +1141,6 @@ theorem lic_occamBounds
         (∀ n, ∃ v : PCWorld,
           v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) →
         limitingBelief P φ ≤ 1 - C * prefixWeight κ φ) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   obtain ⟨C₀, hC₀, hlower⟩ := lic_occam_lower U emit P DP hworld
   let d : ℝ := (2 : ℝ) ^ neg.overhead
   have hdpos : 0 < d := by dsimp [d]; positivity
@@ -1149,9 +1168,5 @@ theorem lic_occamBounds
       ring
     rw [hfactor]
     linarith
-
-#print axioms PrefixNegationCompiler.weight_div_le_neg
-#print axioms lic_limitingBelief_add_neg
-#print axioms lic_occamBounds
 
 end LogicalInduction

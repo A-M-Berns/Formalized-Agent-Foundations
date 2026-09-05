@@ -13,10 +13,10 @@ frontend (`PaperLUV`) does name values — by a numerator/denominator pair code 
 exact same-market product needs the weight itself presented as a `PaperLUVSeq`.
 
 This module builds that presentation, from the paper's own standing hypothesis on the
-background theory (`RepresentsComputations`, §2 lines 600–606) and nothing else:
+background theory (`RepresentsComputations`, tex:600-606) and nothing else:
 
 * `deferredWeightPairCode` is the total computable function `n ↦ ⟪num, den⟫` of the
-  deferred weight, computable because `w` is P-generable (`def:pgen`) and `f` is a
+  deferred weight, computable because `w` is P-generable (`def:ece`) and `f` is a
   deferral function;
 * `RepresentsComputations` hands back a two-variable formula `γ` whose `T`-provable value
   graph is that function, and `representedPairPaperLUV` reads `γ(n̄, ·)` as a literal paper
@@ -30,6 +30,11 @@ background theory (`RepresentsComputations`, §2 lines 600–606) and nothing el
   `polyArithmeticFormulaSeq_subst_numeral` meters — and `deferredWeightPaperLUVSeq`
   specialises the whole package to the deferred weight.
 
+`representedPairPaperLUV_valuesAt` and `deferredWeightPaperLUVSeq_valuesAt` are what the
+module exists to supply: they are the exact completed-world values that
+`lic_no_expected_net_update_conditional_paperLUV_closed` (`PaperExactCCEE.lean`) feeds into
+the generic trading argument at `slack = 0`.
+
 *Proof kind:* `P`/`C`; hypotheses `(a)` throughout, save the theory-level premise
 `RepresentsComputations T`, which is the paper's own `(b)`-style standing assumption and is
 realized at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔` (`R0Representability.lean`).  Note that
@@ -41,6 +46,8 @@ namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open scoped LO.FirstOrder.Arithmetic
+
+/-! ## The deferred weight's pair code -/
 
 /-- The pair code of the deferred weight at day `n`: numerator absolute value paired with
 denominator.  For `w (f n) ∈ [0,1]` this is a faithful name of the value, and it is the
@@ -114,6 +121,16 @@ private lemma cross_le_of_div_lt {a b : ℕ} {r : ℚ} (hb : 0 < b)
       _ = r * (r.den : ℚ) * (b : ℚ) := by ring
   exact le_of_lt (by exact_mod_cast h3)
 
+/-- Every model of `T` is a model of `𝗜𝗢𝗽𝗲𝗻`, along `𝗜𝗢𝗽𝗲𝗻 ⪯ 𝗜𝚺₁ ⪯ T`.  This is the
+opening move of each completeness argument below. -/
+private lemma models_iOpen_of_models (T : ArithmeticTheory) [𝗜𝚺₁ ⪯ T]
+    (M : Type) [ORingStructure M] [M↓[ℒₒᵣ] ⊧* T] :
+    M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
+  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
+    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
+  ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+
+/-! ## A represented pair code as a literal paper LUV -/
 
 section Represented
 
@@ -137,20 +154,14 @@ noncomputable def representedPairPaperLUV
   unique := by
     apply LO.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
     simp [models_iff] at hrep ⊢
     exact ⟨_, (hrep _).mpr rfl, fun y hy => (hrep y).mp hy⟩
   unit := by
     apply LO.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
     simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep ⊢
     simp [paperRatUnitDef, pairDef, ← pair_graph]
@@ -172,6 +183,8 @@ noncomputable def representedPairPaperLUV
     (n : ℕ) :
     (representedPairPaperLUV T γ g hγ hmem n).formula = Semiformula.subst γ ![‘↑n’, #0] := rfl
 
+/-! ## Threshold provability and the exact completed-world value -/
+
 /-- Below the represented value, the threshold sentence is a theorem of `T`.  For a negative
 threshold this is well-formedness alone; otherwise it is cross multiplication against the
 represented pair, decided among the standard naturals and cast into the model.
@@ -191,10 +204,7 @@ lemma representedPairPaperLUV_threshold_provable
       cross_lt_of_lt_div (hmem n).2 hr0 hlt
     apply LO.FirstOrder.Arithmetic.complete T
     intro (M : Type) _ hM
-    letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-      Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-    haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-      ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+    haveI := models_iOpen_of_models T M
     have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
     simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
     simp only [models_iff, PaperLUV.thresholdFormula, representedPairPaperLUV_formula]
@@ -228,10 +238,7 @@ lemma representedPairPaperLUV_threshold_refutable
     exact not_lt.mpr (by exact_mod_cast this.le)
   apply LO.FirstOrder.Arithmetic.complete T
   intro (M : Type) _ hM
-  letI : 𝗜𝗢𝗽𝗲𝗻 ⪯ T :=
-    Entailment.WeakerThan.trans (𝓣 := 𝗜𝚺₁) inferInstance inferInstance
-  haveI : M↓[ℒₒᵣ] ⊧* 𝗜𝗢𝗽𝗲𝗻 :=
-    ModelsTheory.of_provably_subtheory M 𝗜𝗢𝗽𝗲𝗻 T inferInstance
+  haveI := models_iOpen_of_models T M
   have hrep := models_of_provable hM ((hγ n (g n)).mp rfl)
   simp [models_iff, LO.FirstOrder.Arithmetic.numeral_eq_natCast] at hrep
   simp only [models_iff, PaperLUV.thresholdFormula, representedPairPaperLUV_formula]
@@ -294,6 +301,8 @@ noncomputable def representedPairPaperLUVSeq
   structural := (polyArithmeticFormulaSeq_subst_numeral γ).toSource
 
 end Represented
+
+/-! ## The deferred weight family -/
 
 section Deferred
 
@@ -375,18 +384,5 @@ lemma deferredWeightPaperLUVSeq_valuesAt [RepresentsComputations T]
   exact h
 
 end Deferred
-
-#print axioms deferredWeightPairCode
-#print axioms deferredWeightPairCode_computable
-#print axioms representedPairPaperLUV
-#print axioms representedPairPaperLUV_formula
-#print axioms representedPairPaperLUV_threshold_provable
-#print axioms representedPairPaperLUV_threshold_refutable
-#print axioms representedPairPaperLUV_valuesAt
-#print axioms representedPairPaperLUVSeq
-#print axioms deferredWeightPairCode_unpair
-#print axioms deferredWeightPairCode_mem
-#print axioms deferredWeightPaperLUVSeq
-#print axioms deferredWeightPaperLUVSeq_valuesAt
 
 end LogicalInduction

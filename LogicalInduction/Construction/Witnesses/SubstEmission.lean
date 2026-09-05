@@ -1,60 +1,71 @@
-/-
-# Substituted closed-term instances are token-metered emittable
-
-The paper's representability hypothesis (§2, "Representing computations") hands us, for a
-fixed total computable `f`, a two-variable arithmetic formula `γ_f` about which nothing is
-known except that it exists: it is produced by an existential, so at the Lean level it is a
-concrete but entirely opaque `Semiformula` value, possibly obtained through
-`Classical.choice`.  Downstream the paper writes a *closed term naming the argument* into
-its first slot and asks that the resulting one-variable family be efficiently written out.
-
-This file discharges that demand, in the general form the claim families actually need.
-For **every** `γ : ArithmeticSemisentence 2` and **every** family of closed terms
-`τ : ℕ → Semiterm.Const ℒₒᵣ` whose own symbol runs are emittable — that hypothesis is the
-parameter `henc` — the family
-
-  `n ↦ γ(τ n, ν)`
-
-is a `PolyArithmeticFormulaSeq`, and so is the representability body
-`γ(τ n, ν) ⟺ ν = ȳ` for each fixed `y`.
-
-The substituted term family is a *parameter*, not the day numeral.  That is what lets one
-theorem serve both uses in this development:
-
-* the day numeral `n̄` (`polyArithmeticFormulaSeq_subst_numeral`,
-  `polyArithmeticFormulaSeq_schemaDayBody`), whose `henc` is `numeralEnc_polySegStream` —
-  the unary block that Foundation's `Semiterm.Operator.numeral` builds;
-* a **compact** numeral — `binNumeral`, Horner over `0/1/+/·`, `O(log v)` `ℒₒᵣ` nodes
-  (`StructuredPaperRpn.lean`) — naming the packed argument of a *universal* represented
-  object: a (machine source, input) pair, or a (machine source, input, day) triple where a
-  horizon is needed.  Its `henc` comes from a write-out digit certificate rather than from
-  `PolySegStream.repeatTag`.  That is the route by which a public claim atom can *name the
-  machine and input it is about*, as the paper's own sentences do (tex:606, tex:1931),
-  while staying inside the paper's write-out classes `DigitMachineCodes`/`BigDigits`.
-
-The proof needs no computability, decidability, or syntactic inspection of `γ`, and none is
-available.  The observation that makes it go through is that a *fixed* formula's symbol
-list is a fixed skeleton with copies of the substituted term's symbol run at finitely many
-fixed positions, and `PolySegStream` is already closed under exactly the operations that
-build such a skeleton: `PolySegStream.constList` accepts any fixed list however obtained,
-`PolySegStream.append` glues, and `henc` emits the substituted run.  The skeleton is
-therefore assembled by ordinary structural recursion on the `Semiformula` value —
-`Classical.choice` is irrelevant to structural recursion — rather than by any computation
-over it.
-
-The one point of care is the de Bruijn bookkeeping under `∀⁰`/`∃⁰`.  The induction is
-generalized over the substitution `ω` and the target depth `l`, with the invariant
-`GoodRew`: every source bound variable goes to either the substituted closed term or a
-bound variable.  Passing a quantifier replaces `ω` by `Rew.q ω`, which sends `#0 ↦ #0` and
-`#i.succ ↦ Rew.bShift (ω #i)`; `Rew.bShift` fixes *any* closed operator constant
-(Foundation's `@[simp] Rew.const`) and shifts a bound variable to a bound variable, so the
-invariant survives.  That is `GoodRew.q`.  This is also why `henc` is quantified over the
-arity: the induction re-enters at depth `l + 1` under a quantifier, so the term's encoding
-is needed at every arity.  For the concrete instances the encoding is arity-independent, so
-supplying it costs one rewrite.
--/
 import LogicalInduction.Construction.Witnesses.ArithmeticSource
 import LogicalInduction.Framework.RepresentsComputations
+
+/-!
+# Substituted closed-term instances are token-metered emittable
+
+This module renders the `def:ec` (tex:753) emission certificate for the represented claim
+families: writing a closed term into a fixed arithmetic schema is token-metered emittable,
+for an arbitrary and Lean-opaque schema.  It supports `thm:halts`, `thm:loops`,
+`thm:dontwait` and `thm:incons`; it is not itself a paper node.
+
+The premise it discharges is the paper's §2 representability hypothesis (tex:600-606),
+which hands a two-variable arithmetic formula `γ_f` about which nothing is known — at the
+Lean level a concrete but entirely opaque `Semiformula` value, possibly obtained through
+`Classical.choice`.  Downstream the paper writes a closed term naming the argument into
+its first slot and asks that the resulting one-variable family be efficiently written out.
+
+The main results are `polyArithmeticFormulaSeq_subst_arg` (two-variable schema) and
+`polyArithmeticFormulaSeq_schemaArgBody` (one-variable schema), each for **every**
+closed-term family `τ` whose own symbol runs the caller certifies by the parameter `henc`,
+together with the sentence-class corollaries `bigSentenceCodes_reprArgClaim` and
+`bigSentenceCodes_schemaArgClaim`, which
+`Construction/Witnesses/ComputationRepresented.lean` consumes.
+
+The substituted term family is a *parameter* rather than the day numeral, so that one
+theorem serves both the unary day numeral and a compact `binNumeral`
+(`StructuredPaperRpn.lean`) naming a packed (machine source, input) pair.  That is the
+route by which a public claim atom names the machine and input it is about, as the paper's
+own sentences do (tex:606, tex:614), while staying inside the paper's write-out classes
+`DigitMachineCodes` / `BigDigits`.
+
+Hiding the varying data inside the schema is not a legitimate alternative: a
+`codeOfREPred` schema depends only on the extension of the predicate it codes, so such a
+claim family collapses to a constant family as soon as an endpoint's hypothesis pins that
+extension, and the sentence then names no machine at all.
+
+The proof needs no computability, decidability, or syntactic inspection of `γ`, and none
+is available.  What makes it go through is that a *fixed* formula's symbol list is a fixed
+skeleton with copies of the substituted term's run at finitely many fixed positions, and
+`PolySegStream` is already closed under exactly the operations that build such a skeleton:
+`PolySegStream.constList` accepts any fixed list however obtained, `PolySegStream.append`
+glues, and `henc` emits the substituted run.  The skeleton is assembled by ordinary
+structural recursion on the `Semiformula` *value*, to which `Classical.choice` is
+irrelevant.
+
+The de Bruijn bookkeeping under `∀⁰`/`∃⁰` is carried by the invariant `GoodRew`: every
+source bound variable goes to the substituted closed term or to a bound variable.  Passing
+a quantifier replaces `ω` by `Rew.q ω`, which sends `#0 ↦ #0` and
+`#i.succ ↦ Rew.bShift (ω #i)`; `Rew.bShift` fixes any closed operator constant
+(Foundation's `@[simp] Rew.const`) and shifts a bound variable to a bound variable, so the
+invariant survives (`GoodRew.q`).  This is also why `henc` is quantified over the arity:
+the induction re-enters at depth `l + 1` under a quantifier.
+
+The biconditional closure is taken on the **source** language, not on
+`PolyArithmeticFormulaSeq`: `⟺` is a primitive of the paper's syntax (tex:560) and only a
+duplicating macro in Foundation's normal form (`dd:nnf`).
+
+The vacuous `∃⁰` wrapper is deliberate: `paperPrimeDecompose` contracts a whole sentence
+to a single prime only at an `.exs` head, and a `codeOfREPred` schema is chosen by
+`Classical.epsilon`, so its head constructor is unreachable.
+`provable_schemaDayClaim_iff` (`ComputationRepresented.lean`) proves the wrapper changes
+nothing.
+
+The day-numeral families (`polyArithmeticFormulaSeq_subst_numeral`, `reprBodySource`,
+`schemaDaySource` and their companions) are the numeral instance of the argument-term
+route, with `schemaDayBody_eq_arg` recording that the day form *is* the argument form at
+the day numeral; the certificate path the endpoints consume is the argument-term family.
+-/
 
 namespace LogicalInduction
 
@@ -162,7 +173,8 @@ Kind `P` (proved).  Provenance: (a) derived in-project. -/
 private lemma polySegStream_term {k l : ℕ} {τ : ℕ → Semiterm.Const ℒₒᵣ}
     (henc : ∀ m : ℕ, PolySegStream (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ m)))
-    {ω : ℕ → Rew ℒₒᵣ Empty k ℕ l} (hω : GoodRew τ ω) (t : Semiterm ℒₒᵣ Empty k) :
+    {ω : ℕ → Rew ℒₒᵣ Empty k ℕ l} (hω : GoodRew τ ω)
+    (t : Semiterm ℒₒᵣ Empty k) :
     PolySegStream (fun n => encodeArithmeticTermSymbols (ω n t)) := by
   induction t with
   | bvar x =>
@@ -292,7 +304,7 @@ lemma polyArithmeticFormulaSeq_subst_numeral (γ : ArithmeticSemisentence 2) :
   polyArithmeticFormulaSeq_subst_arg γ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
-/-! ## The biconditional closure, on the paper's source language
+/-! ## The biconditional closure on the source language
 
 The corollary this file is *for* is `BigSentenceCodes (representedClaimSentence γ)`, the
 last hypothesis of `representedBoundedClaims` in `ComputationRepresented.lean`.
@@ -301,9 +313,9 @@ It is discharged on the **source** language (`ArithmeticSource.lean`), not on th
 normal-form-metered `PolyArithmeticFormulaSeq`.  That is not a convenience: `🡘` is a
 *primitive* of the paper's syntax (tex:560) and only a duplicating macro in Foundation's
 negation normal form, so metering the body `γ(τ n, ν) ⟺ ν = 0̄` after normal-form expansion
-would charge the `γ`-instance twice and would need an exact-stream negation map that the
-source-metering migration deliberately retired.  On the source it is one `iff` node over
-two leaves, and the normal-form expansion happens in the parser, off the emitted stream.
+would charge the `γ`-instance twice and would need an exact-stream negation map on the
+normal form.  On the source it is one `iff` node over two leaves, and the normal-form
+expansion happens in the parser, off the emitted stream (`dd:nnf`).
 -/
 
 open ArithSource in
@@ -346,12 +358,15 @@ def reprArgClaimSource (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒ�
 def reprClaimSource (γ : ArithmeticSemisentence 2) (n : ℕ) : ArithSource 0 :=
   reprArgClaimSource γ (Semiterm.Operator.numeral ℒₒᵣ n)
 
-lemma compile_reprArgClaimSource (γ : ArithmeticSemisentence 2) (t : Semiterm.Const ℒₒᵣ) :
+/-- The claim source compiles to the negated body under one existential. -/
+lemma compile_reprArgClaimSource (γ : ArithmeticSemisentence 2)
+    (t : Semiterm.Const ℒₒᵣ) :
     ArithSource.compile (reprArgClaimSource γ t) =
       Semiformula.exs (∼(Rewriting.emb (Semiformula.subst γ ![t.const, #0] 🡘
         (“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)) := by
   simp [reprArgClaimSource, ArithSource.compile, compile_reprArgBodySource]
 
+/-- The day-numeral instance of `compile_reprArgClaimSource`. -/
 lemma compile_reprClaimSource (γ : ArithmeticSemisentence 2) (n : ℕ) :
     ArithSource.compile (reprClaimSource γ n) =
       Semiformula.exs (∼(Rewriting.emb (reprBody γ 0 n) : ArithmeticSemiformula ℕ 1)) := by
@@ -375,6 +390,7 @@ lemma reprArgBodySource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
       (PolySegStream.constList (encodeArithmeticFormulaSymbols
         (((“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)))
 
+/-- The whole claim source is source-metered: the body, negated, under one `∃` node. -/
 lemma reprArgClaimSource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
     (henc : ∀ l : ℕ, PolySegStream (fun n =>
@@ -382,11 +398,13 @@ lemma reprArgClaimSource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
     PolyArithmeticSourceSeq (fun n => reprArgClaimSource γ (τ n)) :=
   (reprArgBodySource_polyArithmeticSourceSeq γ τ henc).not.exs
 
+/-- The day-numeral instance of `reprArgBodySource_polyArithmeticSourceSeq`. -/
 lemma reprBodySource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2) :
     PolyArithmeticSourceSeq (reprBodySource γ) :=
   reprArgBodySource_polyArithmeticSourceSeq γ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
+/-- The day-numeral instance of `reprArgClaimSource_polyArithmeticSourceSeq`. -/
 lemma reprClaimSource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2) :
     PolyArithmeticSourceSeq (reprClaimSource γ) :=
   reprArgClaimSource_polyArithmeticSourceSeq γ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
@@ -411,13 +429,14 @@ lemma rpnSentenceCodes_reprArgClaim (γ : ArithmeticSemisentence 2)
     RpnSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (∼(Rewriting.emb
         (Semiformula.subst γ ![(τ n).const, #0] 🡘
-          (“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)))) := by
+          (“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) :
+            ArithmeticSemiformula ℕ 1)))) := by
   refine ⟨fun n => structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n)),
     structuredPaperSourcePrimeBlock_polySegStream true _
       (reprArgClaimSource_polyArithmeticSourceSeq γ τ henc), fun n => ?_⟩
   have hlen : 1 ≤
-      (structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n))).length := by
-    simp [structuredPaperSourcePrimeBlock]
+      (structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n))).length :=
+    structuredPaperSourcePrimeBlock_length_pos true _
   have := parseRpn_structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n)) []
     (fuel := (structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n))).length)
     hlen
@@ -447,6 +466,7 @@ lemma rpnSentenceCodes_reprClaim (γ : ArithmeticSemisentence 2) :
   rpnSentenceCodes_reprArgClaim γ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
+/-- The day-numeral instance of `bigSentenceCodes_reprArgClaim`. -/
 lemma bigSentenceCodes_reprClaim (γ : ArithmeticSemisentence 2) :
     BigSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (∼(Rewriting.emb (reprBody γ 0 n) : ArithmeticSemiformula ℕ 1)))) :=
@@ -549,6 +569,8 @@ def schemaArgSource (σ : ArithmeticSemisentence 1) (t : Semiterm.Const ℒₒ�
 def schemaDaySource (σ : ArithmeticSemisentence 1) (n : ℕ) : ArithSource 0 :=
   schemaArgSource σ (Semiterm.Operator.numeral ℒₒᵣ n)
 
+/-- The claim source at a closed term compiles to the vacuously quantified schema
+instance. -/
 lemma compile_schemaArgSource (σ : ArithmeticSemisentence 1)
     (t : Semiterm.Const ℒₒᵣ) :
     ArithSource.compile (schemaArgSource σ t) =
@@ -556,11 +578,14 @@ lemma compile_schemaArgSource (σ : ArithmeticSemisentence 1)
         ArithmeticSemiformula ℕ 1) := by
   simp [schemaArgSource, ArithSource.compile]
 
+/-- The day-numeral instance of `compile_schemaArgSource`. -/
 lemma compile_schemaDaySource (σ : ArithmeticSemisentence 1) (n : ℕ) :
     ArithSource.compile (schemaDaySource σ n) =
       Semiformula.exs (Rewriting.emb (schemaDayBody σ n) : ArithmeticSemiformula ℕ 1) :=
   compile_schemaArgSource σ (Semiterm.Operator.numeral ℒₒᵣ n)
 
+/-- The claim sources at a certified closed-term family are source-metered: one `∃` node
+over the substituted schema leaf. -/
 lemma schemaArgSource_polyArithmeticSourceSeq (σ : ArithmeticSemisentence 1)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
     (henc : ∀ l : ℕ, PolySegStream (fun n =>
@@ -569,6 +594,7 @@ lemma schemaArgSource_polyArithmeticSourceSeq (σ : ArithmeticSemisentence 1)
   (PolyArithmeticSourceSeq.leaf
     (polyArithmeticFormulaSeq_schemaArgBody σ τ henc)).exs
 
+/-- The day-numeral instance of `schemaArgSource_polyArithmeticSourceSeq`. -/
 lemma schemaDaySource_polyArithmeticSourceSeq (σ : ArithmeticSemisentence 1) :
     PolyArithmeticSourceSeq (schemaDaySource σ) :=
   schemaArgSource_polyArithmeticSourceSeq σ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
@@ -594,8 +620,8 @@ lemma rpnSentenceCodes_schemaArgClaim (σ : ArithmeticSemisentence 1)
     structuredPaperSourcePrimeBlock_polySegStream true _
       (schemaArgSource_polyArithmeticSourceSeq σ τ henc), fun n => ?_⟩
   have hlen : 1 ≤
-      (structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n))).length := by
-    simp [structuredPaperSourcePrimeBlock]
+      (structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n))).length :=
+    structuredPaperSourcePrimeBlock_length_pos true _
   have := parseRpn_structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n)) []
     (fuel := (structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n))).length)
     hlen
@@ -614,6 +640,14 @@ lemma bigSentenceCodes_schemaArgClaim (σ : ArithmeticSemisentence 1)
         ArithmeticSemiformula ℕ 1))) :=
   BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_schemaArgClaim σ τ henc)
 
+/-! ### The day-numeral instances
+
+The day-numeral instances are the argument-term route at
+`τ n := Semiterm.Operator.numeral ℒₒᵣ n`; `schemaDayBody_eq_arg` records that they are
+definitionally the same.  The claim families consume the argument-term form, because a
+claim's argument is a compact `binNumeral` naming a packed (machine source, input) pair,
+not a unary day numeral. -/
+
 /-- The day-numeral instance.
 
 Kind `C` (composition).  Provenance: (a) derived in-project. -/
@@ -624,16 +658,10 @@ lemma rpnSentenceCodes_schemaDayClaim (σ : ArithmeticSemisentence 1) :
   rpnSentenceCodes_schemaArgClaim σ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
+/-- The day-numeral instance of `bigSentenceCodes_schemaArgClaim`. -/
 lemma bigSentenceCodes_schemaDayClaim (σ : ArithmeticSemisentence 1) :
     BigSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (Rewriting.emb (schemaDayBody σ n) : ArithmeticSemiformula ℕ 1))) :=
   BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_schemaDayClaim σ)
-
-#print axioms polyArithmeticFormulaSeq_subst_arg
-#print axioms polyArithmeticFormulaSeq_schemaArgBody
-#print axioms bigSentenceCodes_reprArgClaim
-#print axioms bigSentenceCodes_schemaArgClaim
-#print axioms bigSentenceCodes_reprClaim
-#print axioms bigSentenceCodes_schemaDayClaim
 
 end LogicalInduction

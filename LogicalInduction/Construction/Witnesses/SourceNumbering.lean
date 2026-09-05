@@ -6,28 +6,29 @@ import LogicalInduction.Construction.LIACompiler
 
 `ArithSource.sourceNat` names a written formula by its own emitted token run
 (`tokenListNat`, `Framework/CodeSource.lean`) — the number `def:ec` charges a trader for
-writing.  This module inverts that naming and composes the inverse with the structured
-grammar of `Framework/Criterion.lean`, giving
+writing.  This module inverts that naming map and composes the inverse with the structured
+grammar of `Framework/Criterion.lean`.  Nothing here is a paper node; it is the decoder
+side of the `thm:incons` machinery.
 
-* `tokensOfNat`, the token run named by a number, with `tokensOfNat_tokenListNat` the
-  round trip and `tokensOfNat_primrec` its computability;
-* `negSourceFormulaCode`, which sends the *name of a source* to the Godel code of the
-  **negation of the formula that source compiles to**, together with
-  `negSourceFormulaCode_computable`.
+* `tokensOfNat` is the token run named by a number, read as base-`64` digits up to the
+  sentinel `63`, with `tokensOfNat_tokenListNat` the round trip and `tokensOfNat_primrec`
+  its computability;
+* `negSourceFormulaCode` sends the *name of a source* to the Gödel code of the **negation
+  of the formula that source compiles to**, with `negSourceFormulaCode_computable` and the
+  specification `negSourceFormulaCode_sourceNat`.
 
 The negation is taken on the compiled Foundation formula, not on the source — the source
 language's `not` constructor is never used here — so that the refutation the `thm:incons`
-checker needs (`provable_neg_listConj_of_not_consistent`, `Framework/BoundedConsistency.lean`)
-applies at the compiled formula unchanged.
+checker needs (`provable_neg_listConj_of_not_consistent`,
+`Framework/BoundedConsistency.lean`) applies at the compiled formula unchanged.
 
 **Why this exists.**  A predicate of *source names* that is r.e. can be represented in
 arithmetic by `codeOfREPred`.  `thm:incons` uses this to check a day-theory's finite axiom
-window without ever handling a Godel code on the emission side: the machine emits the
+window without ever handling a Gödel code on the emission side: the machine emits the
 *writings* of its axioms, those writings splice into one writing
 (`Construction/Witnesses/SourceWindow.lean`), and the code of the formula that writing
-denotes is recovered here, inside the represented predicate, where the paper asks only for
-recursive enumerability and the code's size is free.  Handing a code to the schema instead
-would be fatal: a formula code's digit count is exponential in the parse depth.
+denotes is recovered here, inside the represented predicate.  Handing a code to the schema
+instead would be fatal: a formula code's digit count is exponential in the parse depth.
 
 Nothing here is efficient and nothing here needs to be: the decoder runs *inside* the
 represented predicate, where the paper asks only for recursive enumerability.  The
@@ -124,7 +125,7 @@ lemma tokensOfNat_primrec : Primrec tokensOfNat := by
 
 /-! ## From a source name to a formula code -/
 
-/-- **The Godel code of the negation of the formula written down by `v`.**
+/-- **The Gödel code of the negation of the formula written down by `v`.**
 
 `v` is read as a token run, the run is parsed by the structured arithmetic grammar — which
 performs all normal-form expansion of `¬`, `⟹` and `⟺` off the written stream — and the
@@ -184,8 +185,3 @@ lemma negSourceFormulaCode_sourceNat {k : ℕ} (s : ArithSource k) :
   exact negFormulaCode_spec _
 
 end LogicalInduction
-
-#print axioms LogicalInduction.tokensOfNat_tokenListNat
-#print axioms LogicalInduction.tokensOfNat_primrec
-#print axioms LogicalInduction.negSourceFormulaCode_computable
-#print axioms LogicalInduction.negSourceFormulaCode_sourceNat

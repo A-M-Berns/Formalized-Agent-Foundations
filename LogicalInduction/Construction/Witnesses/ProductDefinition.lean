@@ -5,9 +5,10 @@ import LogicalInduction.Construction.Witnesses.QuoteCodeOfMarket
 /-!
 # Diagnosing the `thm:ccee` product slack: exact reflection under a definitional extension
 
-`QuoteCodeOfMarket.lean`'s Part F builds the `thm:ccee` left product as a width-`n+1` mesh,
-which reflects `x · w (f n)` only to within `1/(n+1)` — the one disclosed type-`(c)`
-substitution of that endpoint.  The obstruction there is the *emitter*: a strategy block has
+`QuoteCodeOfMarket.lean` builds the `thm:ccee` left product as a width-`n+1` mesh (`dd:mesh`,
+its section "The mesh product: a quoted product for an arbitrary source"), which reflects
+`x · w (f n)` only to within `1/(n+1)` — the one disclosed type-`(c)` substitution of that
+endpoint.  The obstruction there is the *emitter*: a strategy block has
 to be produced with polynomial fuel, and the exact threshold `⌜X > r / w (f n)⌝` names a
 value the emitter cannot have.
 
@@ -56,7 +57,7 @@ This is a strict improvement on the obvious schema, which has the process comput
 through `PGenerableRat.computable` and enter
 `productAtom (n,r) ↔ (X n).gt (r / w (f n))`.  That is circular for a *closed* endpoint: the
 process must be fixed before the market it induces exists, so a process that consults its own
-market cannot be defined, and the weight would have to be narrowed from `def:pgen` to a
+market cannot be defined, and the weight would have to be narrowed from `def:ece` to a
 market-independent e.c. sequence.  The pair schema needs no weight value at all and so keeps
 the paper's `w`.
 
@@ -66,10 +67,27 @@ The schema is jointly satisfiable only if the product atoms do not already occur
 source's own threshold sentences — an adversarial `X` with `(X n).gt s = ∼productAtom n r`
 would make a stage unsatisfiable.  `ProductAtomFresh` is that side condition, stated
 syntactically through `sentenceAtomCodes`.  Tag `productTag` is unused by every atom this
-repo's processes emit (computation claims carry payload tags `0`–`1`, quotation claims
-payload tag `2`), so
+repo's processes emit (the global atom-payload allocation table at
+`ComputationClaimKind.godelCode` allocates `0`–`6`, and `3` is `productLUV`'s alone), so
 the condition holds for every repo-constructed family; it is the propositional rendering's
 residue, replacing the mesh route's slack disclosure with a strictly milder one.
+
+## Objects and results
+
+`productTag = 3`, `productAtom`, `productLUV`, `ProductAtomFresh`, `meshIndexRat`,
+`productSchemaInstance`, `productDefSentence`, `productStageList`, `productDefDP`,
+`ProductAtomTruth`, `productExtensionWorld`.
+
+The main results are `productLUV_valuesAt` and `productLUV_valuesAt_union` (exact reflection,
+with no positivity hypothesis on the weight), `productExtensionWorld_holds_schema` and
+`productDefDP_union_consistentWithTheory` (non-vacuity by construction, extending the base
+process's own world), `productLUV_rpnThresholdCodeSeq` (`def:ec` for the product family), and
+the closed form `lic_no_expected_net_update_conditional_exact_productExtension` with its
+`_nonvacuous` companion.
+
+`sentenceAtomCodes` and `PCWorld.holds_congr_atomCodes` are general propositional-substitution
+utilities, defined here because Foundation's `Formula` carries no occurrence function; nine
+other witness modules use them.
 -/
 
 namespace LogicalInduction
@@ -162,13 +180,12 @@ def ProductAtomFresh (X : ℕ → LUV) : Prop :=
 
 For a *genuinely arbitrary* e.c. family, `ProductAtomFresh` must be assumed: a
 `LUV.RpnThresholdCodeSeq` certificate constrains only the size of the emitted threshold
-blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`5`
+blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`3`
 atoms.  For everything this repository constructs the condition is a *theorem*, and the
 lemmas below are what discharge it: the constructed process's stages are images of
 `eventAtom`, whose atoms carry the computation-claim payload tags `0`–`1` or the quotation
 payload tag `2`, and every quotation threshold family carries tag `2`.  Nothing but
-`productLUV` uses tag
-`productTag = 5`. -/
+`productLUV` uses tag `productTag = 3`. -/
 
 @[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
     sentenceAtomCodes (∼φ) = sentenceAtomCodes φ := by
@@ -633,6 +650,11 @@ lemma PCWorld.consistentWithTheory_union_right {v : PCWorld} {DP extra : Deducti
     (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory extra :=
   fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).2
 
+/-- Stages of the union constrain the base process in particular. -/
+lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
+    (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory DP :=
+  fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).1
+
 /-- **The exact product law over the union process.**  This is the shape
 `ConditionalExpectationQuote.left_reflected` consumes, at `slack = 0`.
 Paper node: `thm:ccee` -/
@@ -807,7 +829,8 @@ lemma productDefSentence_computable {X W : ℕ → LUV}
           (Nat.pair (Encodable.encode
               ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)))
             (Encodable.encode
-              ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)))) + 1)) + 1 :=
+              ((W e.unpair.1).gt
+                (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)))) + 1)) + 1 :=
     Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 2)
       (Primrec₂.natPair.comp heP
         (Primrec.succ.comp (Primrec₂.natPair.comp (Primrec.const 4)
@@ -879,7 +902,7 @@ product is the fresh atom family `productLUV`; every completed-theory world of t
 process values it at exactly `x · w (f n)`, with no slack and no positivity hypothesis on
 the weight.
 
-The weight enters as in the paper (`def:pgen`): `P`-generable against the market, presented
+The weight enters as in the paper (`def:ece`): `P`-generable against the market, presented
 through a LUV family `W` whose completed-world value *is* `w (f n)`.
 
 Note `[IsLogicalInductor P (B.union (productDefDP X W))]`: the conclusion is about the
@@ -945,8 +968,8 @@ Two further costs of the demonstration, stated plainly rather than buried:
   makes a stage unsatisfiable — and it is discharged by construction for every family this
   repository builds, but in the flat propositional atom space it is a genuine narrowing of
   the source class.
-* **The weight needs generability at the extended market.**  `def:pgen` against
-  `liaHistory (theoremDP T)` does not give `def:pgen` against the extension's market: a
+* **The weight needs generability at the extended market.**  `def:ece` against
+  `liaHistory (theoremDP T)` does not give `def:ece` against the extension's market: a
   `GeneratedRatFeature`'s `denote` field is evaluated *at the history*, and the two
   histories differ.  So the demonstration carries that premise separately.  Narrowing `w`
   to `PolyRatCodes` would remove it, at the cost of dropping the paper's own worked example
@@ -955,11 +978,6 @@ Two further costs of the demonstration, stated plainly rather than buried:
 Reading this section as `thm:ccee` at an instance is therefore wrong, for exactly the
 price-transport reason above; the renderings rank mesh > this > weight-narrowing, and the
 framing above is the ranked one. -/
-
-/-- Stages of the union constrain the base process in particular. -/
-lemma PCWorld.consistentWithTheory_union_left {v : PCWorld} {DP extra : DeductiveProcess}
-    (h : v.ConsistentWithTheory (DP.union extra)) : v.ConsistentWithTheory DP :=
-  fun n => ((v.consistentWith_union_iff DP extra n).mp (h n)).1
 
 /-- **`QuotationTheoryPresentation` lifts along a process extension.**  Every field is
 either theory-side or an "enters some stage" claim, and the latter is monotone in the
@@ -1065,7 +1083,7 @@ Two costs of the demonstration, neither of which the mesh endpoint pays:
   propositional atom space has to state it.  Discharged by inspection for every family this
   repository builds (`arithmeticThresholdLUV_productAtomFresh`,
   `theoremDP_atomCodes_ne_productTag`).
-* `weight_generable_extended` — `def:pgen` for `w` against the **extended** market, carried
+* `weight_generable_extended` — `def:ece` for `w` against the **extended** market, carried
   separately because a `GeneratedRatFeature`'s `denote` is evaluated at the history and the
   two histories differ.  Narrowing `w` to `PolyRatCodes` would remove it and drop the
   paper's own worked example at tex:2077; not taken.
@@ -1135,7 +1153,7 @@ A demonstration whose hypotheses nothing satisfies demonstrates nothing, and two
 hypotheses — the freshness restriction and generability at the extended market — are the
 substrate's cost rather than the paper's.  So the joint satisfiability of the whole premise
 set is exhibited, not argued, and by an **index-varying** construction at both ends: the
-weight is the harmonic sequence `1/(n+1)` (efficiently codeable, so `def:pgen` holds against
+weight is the harmonic sequence `1/(n+1)` (efficiently codeable, so `def:ece` holds against
 *every* market, the extended one included) and the source is that sequence's own quotation
 threshold family, whose day-`n` LUV is a distinct family of atoms for each `n`. -/
 
@@ -1156,7 +1174,7 @@ lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / 
   have := h 0 1
   norm_num at this
 
-/-- Every **value-bounded** rational code sequence is `def:pgen` against every market —
+/-- Every **value-bounded** rational code sequence is `def:ece` against every market —
 the derived corollary of the general write-out constructor
 `PGenerableRat.ofDigitRatCodes`, kept for callers who already hold a `PolyRatCodes`
 certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
@@ -1169,7 +1187,7 @@ lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : 
 /-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
 satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`
 threshold codes, the completed-world source values, the atom-freshness restriction and
-`def:pgen` at the **extended** market all hold at once, of a weight sequence that is
+`def:ece` at the **extended** market all hold at once, of a weight sequence that is
 provably non-constant and a source family whose day-`n` LUV is a distinct atom family.  So
 the demonstration is not vacuous — neither the freshness restriction nor the extended-market
 generability premise empties it, and neither is jointly unsatisfiable with the paper's own
@@ -1197,19 +1215,5 @@ theorem lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
     harmonicWeight_not_constant, q.poly, fun n v hv => ⟨(w n : ℝ), ?_⟩,
     q.productAtomFresh, PGenerableRat.ofPolyRatCodes hpoly _⟩
   exact RationalQuoteCode.reflected (quotationPresentation T) q n v hv
-
-#print axioms PCWorld.holds_congr_atomCodes
-#print axioms productLUV_valuesAt
-#print axioms productExtensionWorld_holds_schema
-#print axioms productDefDP_union_consistentWithTheory
-#print axioms productLUV_valuesAt_union
-#print axioms productLUV_rpnThresholdCodeSeq
-#print axioms productDefDP_computable
-#print axioms lic_no_expected_net_update_conditional_exact
-#print axioms eventAtom_atomCodes_ne_productTag
-#print axioms QuotationTheoryPresentation.mono
-#print axioms exactProductDP_hworld
-#print axioms lic_no_expected_net_update_conditional_exact_productExtension
-#print axioms lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
 
 end LogicalInduction

@@ -4,19 +4,32 @@ import Foundation.FirstOrder.Basic.Coding
 /-!
 # Paper first-order sentences at the propositional ABI
 
-The Logical Induction paper treats its public language as propositional logic over the
-prime sentences of an older first-order language.  This file implements that boundary for
-Foundation's arithmetic language without changing FAF's public `Sentence` type.
+The Logical Induction paper treats its public language as propositional logic over the prime
+sentences of an older first-order language (tex:566-573).  This module implements that
+boundary for Foundation's arithmetic language without changing the repository's public
+`Sentence` type.
 
 Boolean connectives are preserved as propositional connectives.  Atomic and quantified
-first-order sentences receive compact public atom names in the reserved tag-`7` namespace.
-Negated relations and universal quantifiers are represented by propositional negation of
-their positive prime, matching the paper's prime decomposition convention.
+first-order sentences receive compact public atom names in the reserved tag-`5` namespace,
+whose row in the global atom-payload allocation table sits at `ComputationClaimKind.godelCode`
+(`ComputationSyntax.lean`).  Negated relations and universal quantifiers are represented by
+propositional negation of their positive prime, matching the paper's prime decomposition
+convention; `.nrel` and `.all` are the two negative-prime cases because Foundation stores
+formulas in negation normal form (`dd:nnf`).
 
-This is only the syntax half of the paper-facing LUV repair.  A later fixed theorem process
-must enumerate the decompositions of proved first-order sentences, and the LUV compiler must
-construct the appropriate rational-threshold formulas.  Keeping this layer separate makes
-the source-language ownership fact unconditional and kernel checked.
+* `paperPrimeCode` / `paperPrimeSentence` are the atom names, proved injective.
+* `paperPrimeDecompose` traverses conjunction and disjunction only; quantifiers stay opaque.
+  `PCWorld.holds_paperPrimeDecompose_neg` and `_imp` give the meta-level involution its
+  propositional reading.
+* `paperPrimeDecompose_atom_tag` and `paperPrimeDecompose_semanticPrimeFresh` are the
+  vocabulary-ownership facts: every compiled atom carries tag `5`, so compiled paper formulas
+  never mention semantic-prime handles.
+* `paperPrimeWorld M f` reads a first-order structure as a p.c. world, and
+  `paperPrimeWorld_holds_decompose` proves the decomposition preserves first-order truth.
+
+`PaperFirstOrderCompiler.lean` gives the decomposition an executable form on Gödel codes and
+`PaperTheoryDP.lean` publishes it as the fixed first-order theorem stream, taking the world
+construction here as its non-vacuity input.
 -/
 
 namespace LogicalInduction
@@ -24,16 +37,15 @@ namespace LogicalInduction
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic
 open LO.Propositional
 
+/-! ## The reserved tag and the prime atom codes -/
+
 /-- Reserved public-atom tag for prime sentences of the pre-extension arithmetic language.
 
-Existing computation, quotation, product-definition, and semantic-prime atoms use payload
-tags `0`–`4`.  Tag `5` therefore records language ownership syntactically and is disjoint
-from semantic handles by construction.  See the global atom-payload allocation table at
-`ComputationClaimKind.godelCode`.
-
-The `RpnSentence`/`Criterion` parsers spell this tag as the literal `5` (they are upstream
-of this definition); `parseStructuredPaperPrime_spec` in `StructuredPaperRpn.lean` is the
-bridge, and both must move together. -/
+Tag `5` in the global atom-payload allocation (`ComputationClaimKind.godelCode`), so language
+ownership is recorded syntactically and is disjoint from semantic handles by construction.
+The `RpnSentence`/`Criterion` parsers sit upstream of this definition and therefore spell the
+tag as the literal `5`; `StructuredPaperRpn.parseRpn_structuredPaperPrimeBlock` is the bridge,
+and the two spellings must move together. -/
 def paperPrimeTag : ℕ := 5
 
 /-- Compact public name of a first-order prime reading.  The Boolean records whether the
@@ -62,11 +74,13 @@ lemma paperPrimeSentence_injective :
   apply paperPrimeCode_injective
   injection h
 
-/-- Prime decomposition of an arithmetic sentence into the existing FAF language.
+/-! ## Prime decomposition -/
+
+/-- Prime decomposition of an arithmetic sentence into the existing public language.
 
 Only conjunction and disjunction are traversed.  Quantifiers remain opaque prime
-sentences.  Foundation stores formulas in negation-normal form, so `.nrel` and `.all` are
-the two negative-prime cases. -/
+sentences.  Foundation stores formulas in negation normal form (`dd:nnf`), so `.nrel` and
+`.all` are the two negative-prime cases. -/
 def paperPrimeDecompose : ArithmeticProposition → Sentence
   | .verum => ⊤
   | .falsum => ⊥
@@ -143,6 +157,8 @@ lemma PCWorld.holds_paperPrimeDecompose_imp (v : PCWorld)
 @[simp] lemma sentenceAtomCodes_paperPrimeSentence (positive : Bool) (φ : ArithmeticProposition) :
     sentenceAtomCodes (paperPrimeSentence positive φ) = {paperPrimeCode positive φ} := rfl
 
+/-! ## Vocabulary ownership -/
+
 /-- Every atom introduced by the first-order compiler has the old-language tag. -/
 lemma paperPrimeDecompose_atom_tag :
     ∀ (φ : ArithmeticProposition) a, a ∈ sentenceAtomCodes (paperPrimeDecompose φ) →
@@ -163,9 +179,9 @@ lemma paperPrimeDecompose_semanticPrimeFresh (φ : ArithmeticProposition) :
 
 /-! ## Model semantics
 
-The valuation below is intentionally defined by ownership rather than by decoding an
-arbitrary natural.  Injectivity of `paperPrimeCode` makes its value on every compiled atom
-canonical, while atoms outside tag `5` remain false. -/
+The valuation below is defined by ownership rather than by decoding an arbitrary natural.
+Injectivity of `paperPrimeCode` makes its value on every compiled atom canonical, while atoms
+outside tag `5` remain false. -/
 
 /-- The propositional world induced by a first-order arithmetic structure. -/
 noncomputable def paperPrimeWorld (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
@@ -231,10 +247,5 @@ lemma paperPrimeWorld_holds_decompose (M : Type*) [Nonempty M] [Structure ℒₒ
           _ = ∼(Semiformula.exs (∼ψ)) := rfl
       rw [hall, LogicalConnective.HomClass.map_neg]
       exact not_congr (paperPrimeWorld_paperPrimeCode M f true (.exs (∼ψ)))
-
-#print axioms paperPrimeCode_injective
-#print axioms paperPrimeDecompose_atom_tag
-#print axioms paperPrimeDecompose_semanticPrimeFresh
-#print axioms paperPrimeWorld_holds_decompose
 
 end LogicalInduction

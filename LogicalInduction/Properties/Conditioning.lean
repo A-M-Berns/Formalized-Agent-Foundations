@@ -1,18 +1,60 @@
-/-
-# Conditionals (paper §4.7)
-
-The capped conditional market of `def:condp`, the combined deductive process, and Closure
-Under Conditioning (`thm:scon`) in both its fixed-condition and growing-prefix forms.
-
-The trader compiler is a separate interface: it must translate an arbitrary
-token-emitted trader through conditional contracts while paying for the capped case out
-of a summable per-day loss budget.
--/
 import LogicalInduction.Properties.UniversalSemimeasure
 import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Properties.TimelyLearning
 
+/-!
+# Conditionals (paper §4.7)
+
+The capped conditional quote `def:condp` and Closure Under Conditioning (`thm:scon`).
+
+`conditionalQuote` is the paper's cap: `V(φ ⋏ ψ)/V(ψ)` when that ratio is below `1`, and
+`1` otherwise — including when `V(ψ) = 0`. `conditionedHistory` reads day `n` of a market
+through the day-`n` member of a condition sequence.
+
+An arbitrary conditional-market trader is compiled into the base market by rewriting price
+leaves: `EF.conditionPrices`, `EF.retainedConditionPrices` and
+`EF.retainedConditionPricesExceptZero` are the three substitutions,
+`Strategy.separatedLocallyGatedConditionalContract` and
+`Strategy.separatedExceptZeroConditionalContract` the two day translations, and
+`Trader.conditionedTranslation` and `Trader.eventualConditionedTranslation` lift them to
+traders.
+
+The cap is paid for by a continuous gate (`EF.conditioningCapGate`, scalar denotation
+`conditioningGateVal`) charged against the per-day budget
+`conditioningBudget n = 1/((n+1)(n+2))`, whose partial sums are exactly `1 - 1/(n+2)` and
+so never reach `1` (`sum_conditioningBudget`). The paper's `2⁻ⁿ` is not used because the
+RPN token model cannot emit an exponential denominator
+(`bigSpliceStream_two_pow_inv_not_rpnSpliceStream`); the telescoping budget is admissible
+in both metering lanes, so one budget serves both.
+
+`EventualConditioningFloor` replaces the paper's appendix double invocation of
+finite-perturbation closure. The only exceptional days are those on which the condition
+prices exactly zero, and on such a day the capped quote is the constant `1`, so the base
+market is never modified.
+
+`ConditioningPresentation` (the syntax/semantics of the adjoined stage, carrying
+`condition_codes : BigSentenceCodes`), `ConditioningTraderCompiler`,
+`GatedConditioningOperationalWitness` and `EventualConditioningOperationalWitness` are the
+boundary interfaces; each is field-frozen in `AxiomAudit.lean`. The economic content —
+same-world tracking and the first-falsified-condition floor — is proved here, not assumed.
+
+Main results: `lic_conditioned`, `lic_conditioned_gated` and `lic_conditioned_eventual`
+over the fuel class, and `lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+`lic_conditioned_eventual_machine` at `def:ec`'s own class. Neither set follows from the
+other. They are stated uniformly over a `ConditioningPresentation`; the fixed-condition and
+growing-prefix instances are built in
+`Construction/Witnesses/ConditioningPresentation.lean`. Consumed by
+`Construction/Machine/CondEndpoints.lean` and
+`Construction/Witnesses/UnconditionalOverLIA.lean`, and re-exported through
+`LogicalInduction.API`.
+
+`DeductiveProcess.union` and `PCWorld.consistentWith_union_iff` give the combined process
+`Θ ∪ {ψᵢ}` over which the conclusion is stated.
+-/
+
 namespace LogicalInduction
+
+/-! ## The capped conditional quote -/
 
 /-- The paper's capped conditional quote. It is `1` when the denominator is zero or when
 the raw numerator is at least the denominator. -/
@@ -33,6 +75,8 @@ lemma conditionalQuote_eq_one {V : Valuation} {φ ψ : Sentence}
     conditionalQuote V φ ψ = 1 := by
   simp [conditionalQuote, not_lt.mpr h]
 
+/-- The cap is inert exactly where conjunction monotonicity holds and the denominator is
+positive: there the capped quote is the plain ratio. -/
 lemma conditionalQuote_eq_div_of_le
     {V : Valuation} {φ ψ : Sentence} (hden : 0 < V ψ)
     (h : V (φ ⋏ ψ) ≤ V ψ) :
@@ -62,13 +106,19 @@ lemma conditionedHistory_mem_Icc
     0 ≤ conditionedHistory P ψ n φ ∧ conditionedHistory P ψ n φ ≤ 1 :=
   conditionalQuote_mem_Icc (P n) (hP n) φ (ψ n)
 
-/-! ### The summable cap gate
+/-! ## The per-day loss budget
 
-The paper uses `2⁻ⁿ` as its per-day loss budget.  Our token model charges for the
-literal numerator and denominator of rational constants, so exponentially large
-denominators are not polynomially writable.  The telescoping budget
-`1 / ((n+1)(n+2))` has the same load-bearing properties—strict positivity and total
-mass at most one—while retaining polynomial-size rational syntax. -/
+`conditioningBudget n = 1/((n+1)(n+2))` telescopes: its partial sums are exactly
+`1 - 1/(n+2)` (`sum_conditioningBudget`), so every term is strictly positive
+(`conditioningBudget_pos`) and the total mass stays below `1`
+(`sum_conditioningBudget_le_one`). Those two facts are all the economic argument uses.
+
+The paper's `2⁻ⁿ` is not available in both metering lanes. The RPN token model charges a
+rational constant as a single token carrying `Encodable.encode q` (`EF.serialize`,
+`Framework/Criterion.lean`), and `2⁻ⁿ` is provably outside that class
+(`bigSpliceStream_two_pow_inv_not_rpnSpliceStream`). Under the write-out classes, which
+meter digits of numerator and denominator, `2⁻ⁿ` would be admissible. The telescoping
+budget is polynomially writable in both, so one budget serves both lanes. -/
 
 /-- Polynomially writable summable budget for day `n`. -/
 def conditioningBudget (n : ℕ) : ℚ :=
@@ -100,6 +150,8 @@ lemma sum_conditioningBudget_le_one (n : ℕ) :
   rw [sum_conditioningBudget]
   have : 0 ≤ 1 / (n + 2 : ℝ) := by positivity
   linarith
+
+/-! ## The continuous cap gate -/
 
 /-- Real denotation of the continuous gate used to attenuate positive buys when the raw
 conditional ratio crosses the cap at one. -/
@@ -162,6 +214,8 @@ lemma gatedConditionalPosition_lower
       have hgate := conditioningGateVal_mul_excess_le hδ (r := r)
       rw [min_eq_right (by nlinarith), abs_of_nonneg ha0]
       rcases hw with rfl | rfl <;> nlinarith
+
+/-! ## Conditional prices as expressible features -/
 
 namespace EF
 
@@ -330,15 +384,15 @@ lemma retainedConditionPrices_denote (e : EF) (P : History)
       e.denote (conditionedHistory P ψ) :=
   e.retainedConditionPrices_denoteWith P ψ hε hden []
 
-/-! ### Exact handling of finitely many zero denominators
+/-! ## Exact treatment of zero-price condition days
 
 The paper repairs a finite prefix of the base market and then invokes finite-perturbation
 closure twice.  That route is not available for arbitrary computable markets: changing a
 whole pricing day can require an inefficient infinite quote table.  Conditioning has more
 structure.  After shrinking the eventual positive floor, the only exceptional days are
 those on which the condition has price exactly zero; the capped conditional valuation on
-such a day is identically `1`.  We can therefore rewrite precisely those historical price
-leaves to the fixed constant `1`, without computing an arbitrary early pricing.
+such a day is identically `1`.  Precisely those historical price leaves are therefore
+rewritten to the fixed constant `1`, without computing an arbitrary early pricing.
 -/
 
 /-- Parser-transparent conditional-price substitution which treats the finite set
@@ -388,6 +442,27 @@ def retainedConditionPricesExceptZero
   | var i => rfl
   | letE x body ihx ihbody =>
       simp [retainedConditionPricesExceptZero, ihx, ihbody]
+
+/-- With no exceptional days the zero-aware substitution is the ordinary retained
+substitution: `zeroDays = ∅` never takes the `.const 1` branch. -/
+lemma retainedConditionPricesExceptZero_empty
+    (e : EF) (ψ : ℕ → Sentence) (ε : ℚ) :
+    e.retainedConditionPricesExceptZero ∅ ψ ε = e.retainedConditionPrices ψ ε := by
+  induction e with
+  | price φ day =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices]
+  | const q => rfl
+  | add a b iha ihb =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices, iha, ihb]
+  | mul a b iha ihb =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices, iha, ihb]
+  | max a b iha ihb =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices, iha, ihb]
+  | safeRecip a iha =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices, iha]
+  | var i => rfl
+  | letE x body ihx ihbody =>
+      simp [retainedConditionPricesExceptZero, retainedConditionPrices, ihx, ihbody]
 
 lemma retainedConditionPricesExceptZero_denoteWith
     (e : EF) (P : History) (zeroDays : Finset ℕ)
@@ -442,7 +517,9 @@ lemma retainedConditionPricesExceptZero_denote
   e.retainedConditionPricesExceptZero_denoteWith
     P zeroDays ψ hε hP hzero hfloor []
 
-/-- Absolute value as an expressible feature, local to the conditioning translator. -/
+/-! ## The gate as an expressible feature -/
+
+/-- Absolute value as an expressible feature. -/
 def absVal (e : EF) : EF :=
   .max e (.mul (.const (-1)) e)
 
@@ -532,97 +609,30 @@ lemma EventualConditioningFloor.not_mem_of_cutoff_le
   intro hmem
   exact (Nat.not_lt_of_ge hd) (F.zeroDays_lt d hmem)
 
-namespace Strategy
+/-! ## The day translation
 
-/-- Reified magnitude of the rewritten conditional-market coefficients. -/
-def conditionedMagnitudeFeature
-    (ψ : ℕ → Sentence) (ε : ℚ) {day : ℕ} (T : Strategy day) : EF :=
-  T.trades.foldr
-    (fun p acc => EF.add (EF.absVal (p.1.conditionPrices ψ ε)) acc)
-    (EF.const 0)
+Each day's strategy is translated position by position. A list of `k` positions gives each
+position budget `τ/k` (`localConditioningBudget`) and normalizes it by that position's own
+magnitude, so the per-position errors still sum to at most `τ`. Normalizing per position
+rather than by a strategy-wide magnitude keeps the emitted coefficients small: a
+strategy-wide magnitude would make every output coefficient repeat the whole input
+strategy. -/
 
-lemma conditionedMagnitudeFeature_denote
-    {day : ℕ} (T : Strategy day) (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d)) :
-    (T.conditionedMagnitudeFeature ψ ε).denote P =
-      T.magnitude (conditionedHistory P ψ) := by
-  simp only [conditionedMagnitudeFeature, Strategy.magnitude]
-  induction T.trades with
-  | nil => simp [EF.denote]
+/-- Both day translations emit two legs per input position, in compiler order (all first
+legs, then all second legs) rather than interleaved.  Given that the two legs of a position
+are together worth what the position's flat-form entry is worth, the two orders have the
+same total value. -/
+private lemma sum_legs_eq_sum_flatMap {α β : Type*} (f g : α → β) (h : α → List β)
+    (v : β → ℝ) (hpair : ∀ p, v (f p) + v (g p) = ((h p).map v).sum) (l : List α) :
+    ((l.map f).map v).sum + ((l.map g).map v).sum = ((l.flatMap h).map v).sum := by
+  induction l with
+  | nil => simp
   | cons p rest ih =>
-      simp only [List.foldr_cons, EF.denote_add, EF.absVal_denote,
-        List.map_cons, List.sum_cons, Pi.add_apply]
-      rw [p.1.conditionPrices_denote P ψ hε hden, ih]
+      simp only [List.map_cons, List.sum_cons, List.flatMap_cons, List.map_append,
+        List.sum_append]
+      linarith [ih, hpair p]
 
-lemma conditionedMagnitudeFeature_rank_le
-    {day : ℕ} (T : Strategy day) (ψ : ℕ → Sentence) (ε : ℚ) :
-    (T.conditionedMagnitudeFeature ψ ε).rank ≤ day := by
-  have aux : ∀ trades : List (EF × Sentence),
-      (∀ p ∈ trades, p.1.rank ≤ day) →
-      (trades.foldr
-        (fun p acc => EF.add (EF.absVal (p.1.conditionPrices ψ ε)) acc)
-        (EF.const 0)).rank ≤ day := by
-    intro trades
-    induction trades with
-    | nil => intro _; simp
-    | cons p rest ih =>
-        intro hrank
-        simp only [List.foldr_cons, EF.rank_add, EF.absVal_rank]
-        apply Nat.max_le.mpr
-        exact ⟨(p.1.conditionPrices_rank ψ ε).le.trans
-          (hrank p (List.mem_cons_self ..)),
-          ih (fun q hq => hrank q (List.mem_cons_of_mem _ hq))⟩
-  exact aux T.trades T.rank_le
-
-/-- Gated version of the literal conditional contracts.  All positions share the
-strategy-wide magnitude feature, so summing the per-position loss bound costs at most the
-single day budget `τ`. -/
-def gatedConditionalContractTrades
-    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (τ : ℚ) (magnitude : EF) :
-    List (EF × Sentence) → List (EF × Sentence) :=
-  fun trades ↦ trades.flatMap (fun p ↦
-      let α := p.1.conditionPrices ψ ε
-      let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
-      let gate := EF.conditioningCapGate ratio magnitude τ
-      let β := efMin α (EF.mul α gate)
-      [(β, p.2 ⋏ ψ day),
-        (EF.mul (EF.const (-1)) (EF.mul β ratio), ψ day)])
-
-/-- Actual day strategy used by the conditioning compiler. -/
-def gatedConditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ)
-    (T : Strategy day) : Strategy day where
-  trades := gatedConditionalContractTrades ψ ε day τ
-    (T.conditionedMagnitudeFeature ψ ε) T.trades
-  rank_le := by
-    intro out hout
-    simp only [gatedConditionalContractTrades, List.mem_flatMap] at hout
-    obtain ⟨p, hp, hout⟩ := hout
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hout
-    let α := p.1.conditionPrices ψ ε
-    let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
-    let magnitude := T.conditionedMagnitudeFeature ψ ε
-    let gate := EF.conditioningCapGate ratio magnitude τ
-    let β := efMin α (EF.mul α gate)
-    have hα : α.rank ≤ day := by
-      dsimp only [α]
-      rw [p.1.conditionPrices_rank]
-      exact T.rank_le p hp
-    have hratio : ratio.rank ≤ day := by
-      simp [ratio, EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank]
-    have hmagnitude : magnitude.rank ≤ day := by
-      exact T.conditionedMagnitudeFeature_rank_le ψ ε
-    have hgate : gate.rank ≤ day := by
-      rw [show gate.rank = Nat.max ratio.rank magnitude.rank by
-        exact EF.conditioningCapGate_rank ratio magnitude τ]
-      exact Nat.max_le.mpr ⟨hratio, hmagnitude⟩
-    have hβ : β.rank ≤ day := by
-      simp only [β, efMin_rank, EF.rank_mul]
-      exact Nat.max_le.mpr ⟨hα, Nat.max_le.mpr ⟨hα, hgate⟩⟩
-    rcases hout with rfl | rfl
-    · exact hβ
-    · simp only [EF.rank_mul, EF.rank_const, Nat.zero_max]
-      exact Nat.max_le.mpr ⟨hβ, hratio⟩
+namespace Strategy
 
 private lemma gatedConditionalPair_lower
     {day : ℕ} (p : EF × Sentence)
@@ -697,139 +707,11 @@ private lemma gatedConditionalPair_lower
     rw [← hrden]
     ring)
 
-private lemma gatedConditionalContractTrades_value_lower
-    {day : ℕ} (trades : List (EF × Sentence))
-    (P : History) (ψ : ℕ → Sentence) {ε τ : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (hτ : 0 < (τ : ℝ)) (magnitude : EF)
-    (v : PCWorld) (hψ : v.Holds (ψ day)) :
-    (trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
-        (v.payout p.2 - conditionedHistory P ψ day p.2))).sum -
-      (trades.map (fun p ↦
-        |p.1.denote (conditionedHistory P ψ)|)).sum *
-        (EF.conditioningTolerance magnitude τ).denote P ≤
-      ((gatedConditionalContractTrades ψ ε day τ magnitude trades).map
-        (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum := by
-  induction trades with
-  | nil => simp [gatedConditionalContractTrades]
-  | cons p rest ih =>
-      have hp := gatedConditionalPair_lower p P ψ hε hden hτ magnitude v hψ
-      rw [gatedConditionalContractTrades] at ih
-      rw [gatedConditionalContractTrades, List.flatMap_cons,
-        List.map_append, List.sum_append]
-      simp only [List.map_cons, List.sum_cons, List.map_nil, List.sum_nil, add_zero]
-      nlinarith
-
-/-- The concrete gated day translation tracks the conditional-market strategy from
-below, losing at most the polynomially writable summable budget for that day. -/
-lemma gatedConditionalContract_value_lower
-    {day : ℕ} (T : Strategy day)
-    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (v : PCWorld) (hψ : v.Holds (ψ day)) :
-    T.value (conditionedHistory P ψ) v.payout -
-        (conditioningBudget day : ℝ) ≤
-      (T.gatedConditionalContract ψ ε (conditioningBudget day)).value P v.payout := by
-  let magnitude := T.conditionedMagnitudeFeature ψ ε
-  let τ := conditioningBudget day
-  have hτ : 0 < (τ : ℝ) := conditioningBudget_pos day
-  have hlist := gatedConditionalContractTrades_value_lower T.trades P ψ
-    hε hden hτ magnitude v hψ
-  have hmag : magnitude.denote P = T.magnitude (conditionedHistory P ψ) := by
-    exact T.conditionedMagnitudeFeature_denote P ψ hε hden
-  have hM0 : 0 ≤ T.magnitude (conditionedHistory P ψ) :=
-    T.magnitude_nonneg (conditionedHistory P ψ)
-  have hmaxPos : (0 : ℝ) < Max.max 1 (T.magnitude (conditionedHistory P ψ)) :=
-    lt_of_lt_of_le (by norm_num) (le_max_left _ _)
-  have hMmax : T.magnitude (conditionedHistory P ψ) ≤
-      Max.max 1 (T.magnitude (conditionedHistory P ψ)) :=
-    le_max_right _ _
-  have hdiv : T.magnitude (conditionedHistory P ψ) /
-      Max.max 1 (T.magnitude (conditionedHistory P ψ)) ≤ 1 :=
-    (div_le_one hmaxPos).2 hMmax
-  have herror :
-      T.magnitude (conditionedHistory P ψ) *
-          (EF.conditioningTolerance magnitude τ).denote P ≤ (τ : ℝ) := by
-    rw [EF.conditioningTolerance_denote, hmag]
-    calc
-      T.magnitude (conditionedHistory P ψ) *
-          ((τ : ℝ) / Max.max 1 (T.magnitude (conditionedHistory P ψ))) =
-          (τ : ℝ) *
-            (T.magnitude (conditionedHistory P ψ) /
-              Max.max 1 (T.magnitude (conditionedHistory P ψ))) := by ring
-      _ ≤ (τ : ℝ) * 1 := mul_le_mul_of_nonneg_left hdiv hτ.le
-      _ = (τ : ℝ) := mul_one _
-  change
-    (T.trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
-      (v.payout p.2 - conditionedHistory P ψ day p.2))).sum - (τ : ℝ) ≤
-      ((gatedConditionalContractTrades ψ ε day τ magnitude T.trades).map
-        (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum
-  calc
-    _ ≤ (T.trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
-          (v.payout p.2 - conditionedHistory P ψ day p.2))).sum -
-        T.magnitude (conditionedHistory P ψ) *
-          (EF.conditioningTolerance magnitude τ).denote P :=
-      sub_le_sub_left herror _
-    _ = (T.trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
-          (v.payout p.2 - conditionedHistory P ψ day p.2))).sum -
-        (T.trades.map (fun p ↦
-          |p.1.denote (conditionedHistory P ψ)|)).sum *
-          (EF.conditioningTolerance magnitude τ).denote P := by
-      rfl
-    _ ≤ _ := hlist
-
-private lemma gatedConditionalContractTrades_value_zero
-    {day : ℕ} (trades : List (EF × Sentence))
-    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (τ : ℚ) (magnitude : EF) (v : PCWorld)
-    (hψ : ¬v.Holds (ψ day)) :
-    ((gatedConditionalContractTrades ψ ε day τ magnitude trades).map
-      (fun p ↦ p.1.denote P * (v.payout p.2 - P day p.2))).sum = 0 := by
-  induction trades with
-  | nil => simp [gatedConditionalContractTrades]
-  | cons p rest ih =>
-      have hdenPos : 0 < P day (ψ day) := hε.trans_le (hden day)
-      have hratio := EF.conditionalRatioEF_denote P (ψ day) hε (hden day) p.2
-      have hpayoutψ : v.payout (ψ day) = 0 := by
-        simp [PCWorld.payout, hψ]
-      have hpayoutAnd : v.payout (p.2 ⋏ ψ day) = 0 := by
-        simp [PCWorld.payout, PCWorld.holds_and, hψ]
-      rw [gatedConditionalContractTrades] at ih
-      rw [gatedConditionalContractTrades, List.flatMap_cons,
-        List.map_append, List.sum_append]
-      simp only [List.map_cons, List.sum_cons, List.map_nil, List.sum_nil,
-        add_zero, EF.denote_mul, EF.denote_const, Pi.mul_apply]
-      rw [ih, hpayoutψ, hpayoutAnd, hratio]
-      push_cast
-      field_simp [ne_of_gt hdenPos]
-      ring
-
-/-- Once the growing condition is false in a world, every gated conditional contract on
-that day has exactly zero value there—including its cash term. -/
-lemma gatedConditionalContract_value_eq_zero_of_not_holds
-    {day : ℕ} (T : Strategy day)
-    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (τ : ℚ) (v : PCWorld) (hψ : ¬v.Holds (ψ day)) :
-    (T.gatedConditionalContract ψ ε τ).value P v.payout = 0 := by
-  exact gatedConditionalContractTrades_value_zero T.trades P ψ hε hden τ
-    (T.conditionedMagnitudeFeature ψ ε) v hψ
-
-/-! ### Locally normalized gate
-
-The strategy-wide magnitude above is convenient analytically but expensive to serialize:
-every output coefficient repeats the whole input strategy.  The compiler uses the equivalent
-per-position allocation below.  A list of `k` positions gives each position budget `τ/k`
-and normalizes it by that position's own magnitude, so the errors still sum to at most `τ`.
--/
-
+/-- The share of a day's budget `τ` allocated to each of `count` positions: `τ/count`. -/
 def localConditioningBudget (τ : ℚ) (count : ℕ) : ℚ := τ / (count : ℚ)
 
+/-- The locally gated conditional contract of a day's trade list, in flat form: each
+position emits both legs of its conditional contract. -/
 def locallyGatedConditionalContractTrades
     (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) (τ : ℚ) (count : ℕ) :
     List (EF × Sentence) → List (EF × Sentence) :=
@@ -843,6 +725,8 @@ def locallyGatedConditionalContractTrades
       [(β, p.2 ⋏ ψ day),
         (EF.mul (EF.const (-1)) (EF.mul β ratio), ψ day)])
 
+/-- The day strategy that trades every position's locally gated conditional contract
+against the base market. -/
 def locallyGatedConditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε τ : ℚ)
     (T : Strategy day) : Strategy day where
   trades := locallyGatedConditionalContractTrades ψ ε day τ T.trades.length T.trades
@@ -943,40 +827,20 @@ lemma separatedLocallyGatedConditionalContract_value
         (trades.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum =
       (locallyGatedConditionalContractTrades ψ ε day τ count trades
         |>.map value).sum := by
-    induction trades with
-    | nil => simp [locallyGatedConditionalContractTrades]
-    | cons p rest ih =>
-        simp only [List.map_cons, List.sum_cons, locallyGatedConditionalContractTrades,
-          List.flatMap_cons, List.map_append, List.sum_append]
-        calc
-          value (locallyGatedFirstLeg ψ ε day τ count p) +
-                (rest.map (locallyGatedFirstLeg ψ ε day τ count) |>.map value).sum +
-              (value (locallyGatedSecondLeg ψ ε day τ count p) +
-                (rest.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum) =
-            value (locallyGatedFirstLeg ψ ε day τ count p) +
-              value (locallyGatedSecondLeg ψ ε day τ count p) +
-              ((rest.map (locallyGatedFirstLeg ψ ε day τ count) |>.map value).sum +
-                (rest.map (locallyGatedSecondLeg ψ ε day τ count) |>.map value).sum) := by
-                  ring
-          _ = value (locallyGatedFirstLeg ψ ε day τ count p) +
-              value (locallyGatedSecondLeg ψ ε day τ count p) +
-              (locallyGatedConditionalContractTrades ψ ε day τ count rest
-                |>.map value).sum := by rw [ih]
-          _ = _ := by
-            have hp : (p.1.retainedConditionPrices ψ ε).denote P =
-                (p.1.conditionPrices ψ ε).denote P := by
-              rw [p.1.retainedConditionPrices_denote P ψ hε hden,
-                p.1.conditionPrices_denote P ψ hε hden]
-            change (p.1.retainedConditionPrices ψ ε).denoteWith [] P =
-              (p.1.conditionPrices ψ ε).denoteWith [] P at hp
-            simp only [locallyGatedFirstLeg, locallyGatedSecondLeg, value,
-              EF.denote, EF.denoteWith_letE]
-            rw [hp]
-            simp [
-              locallyGatedConditionalContractTrades,
-              EF.denoteWith, EF.conditioningCapGate, EF.conditioningTolerance,
-              EF.absVal, EF.conditionalRatioEF, EF.lowerSafeRecip, efMin,
-              clip01, List.getD]
+    rw [locallyGatedConditionalContractTrades]
+    refine sum_legs_eq_sum_flatMap _ _ _ value (fun p ↦ ?_) trades
+    have hp : (p.1.retainedConditionPrices ψ ε).denote P =
+        (p.1.conditionPrices ψ ε).denote P := by
+      rw [p.1.retainedConditionPrices_denote P ψ hε hden,
+        p.1.conditionPrices_denote P ψ hε hden]
+    change (p.1.retainedConditionPrices ψ ε).denoteWith [] P =
+      (p.1.conditionPrices ψ ε).denoteWith [] P at hp
+    simp only [locallyGatedFirstLeg, locallyGatedSecondLeg, value,
+      EF.denote, EF.denoteWith_letE]
+    rw [hp]
+    simp [EF.denoteWith, EF.conditioningCapGate, EF.conditioningTolerance,
+      EF.absVal, EF.conditionalRatioEF, EF.lowerSafeRecip, efMin,
+      clip01, List.getD]
   simpa only [Strategy.value, separatedLocallyGatedConditionalContract,
     locallyGatedConditionalContract, List.map_append, List.sum_append, List.map_map,
     Function.comp_apply] using hsum T.trades.length T.trades
@@ -1132,14 +996,16 @@ lemma locallyGatedConditionalContract_value_eq_zero_of_not_holds
     (T.locallyGatedConditionalContract ψ ε τ).value P v.payout = 0 := by
   exact locallyGatedConditionalContractTrades_value_zero T.trades P ψ hε hden τ v hψ
 
-/-! ### Prefix-safe locally normalized translator
+/-! ### Prefix-safe form
 
-The live coefficient below uses `retainedConditionPricesExceptZero`.  The current-day
+The live coefficient below uses `retainedConditionPricesExceptZero`. The current-day
 conditional-contract ratio still uses the ordinary safe reciprocal; public callers launch
 this translator after every member of `zeroDays`, so that ratio is evaluated only where the
-common positive floor applies.
--/
+common positive floor applies. -/
 
+/-- The zero-aware locally gated contract of a day's trade list, in flat form: the same two
+legs per position, with the coefficient rewritten by `retainedConditionPricesExceptZero` so
+that historical zero-denominator days denote the constant `1`. -/
 def exceptZeroLocallyGatedConditionalContractTrades
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
     (day : ℕ) (τ : ℚ) (count : ℕ) :
@@ -1154,6 +1020,8 @@ def exceptZeroLocallyGatedConditionalContractTrades
       [(β, p.2 ⋏ ψ day),
         (EF.mul (EF.const (-1)) (EF.mul β ratio), ψ day)])
 
+/-- First output leg of the zero-aware conditioning compiler: `locallyGatedFirstLeg` with
+the coefficient rewritten by `retainedConditionPricesExceptZero`. -/
 def exceptZeroLocallyGatedFirstLeg
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
     (day : ℕ) (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
@@ -1167,6 +1035,8 @@ def exceptZeroLocallyGatedFirstLeg
   let β := efMin bound (EF.mul bound gate)
   (EF.letE α (EF.letE ratio β), p.2 ⋏ ψ day)
 
+/-- Second output leg of the zero-aware conditioning compiler: `locallyGatedSecondLeg` with
+the coefficient rewritten by `retainedConditionPricesExceptZero`. -/
 def exceptZeroLocallyGatedSecondLeg
     (zeroDays : Finset ℕ) (ψ : ℕ → Sentence) (ε : ℚ)
     (day : ℕ) (τ : ℚ) (count : ℕ) (p : EF × Sentence) : EF × Sentence :=
@@ -1227,43 +1097,12 @@ private lemma separatedExceptZeroConditionalContract_value_eq_flatMap
           (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count) |>.map value).sum =
       (exceptZeroLocallyGatedConditionalContractTrades
         zeroDays ψ ε day τ count trades |>.map value).sum := by
-    induction trades with
-    | nil => simp [exceptZeroLocallyGatedConditionalContractTrades]
-    | cons p rest ih =>
-        simp only [List.map_cons, List.sum_cons,
-          exceptZeroLocallyGatedConditionalContractTrades, List.flatMap_cons,
-          List.map_append, List.sum_append]
-        calc
-          value (exceptZeroLocallyGatedFirstLeg zeroDays ψ ε day τ count p) +
-                (rest.map
-                  (exceptZeroLocallyGatedFirstLeg zeroDays ψ ε day τ count)
-                    |>.map value).sum +
-              (value
-                  (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count p) +
-                (rest.map
-                  (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count)
-                    |>.map value).sum) =
-            value (exceptZeroLocallyGatedFirstLeg zeroDays ψ ε day τ count p) +
-              value (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count p) +
-              ((rest.map
-                (exceptZeroLocallyGatedFirstLeg zeroDays ψ ε day τ count)
-                  |>.map value).sum +
-                (rest.map
-                  (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count)
-                    |>.map value).sum) := by ring
-          _ = value
-                (exceptZeroLocallyGatedFirstLeg zeroDays ψ ε day τ count p) +
-              value
-                (exceptZeroLocallyGatedSecondLeg zeroDays ψ ε day τ count p) +
-              (exceptZeroLocallyGatedConditionalContractTrades
-                zeroDays ψ ε day τ count rest |>.map value).sum := by rw [ih]
-          _ = _ := by
-            simp [exceptZeroLocallyGatedFirstLeg,
-              exceptZeroLocallyGatedSecondLeg,
-              exceptZeroLocallyGatedConditionalContractTrades, value,
-              EF.denote, EF.denoteWith_letE, EF.conditioningCapGate,
-              EF.conditioningTolerance, EF.absVal, EF.conditionalRatioEF,
-              EF.lowerSafeRecip, efMin, clip01, List.getD]
+    rw [exceptZeroLocallyGatedConditionalContractTrades]
+    refine sum_legs_eq_sum_flatMap _ _ _ value (fun p ↦ ?_) trades
+    simp [exceptZeroLocallyGatedFirstLeg, exceptZeroLocallyGatedSecondLeg, value,
+      EF.denote, EF.denoteWith_letE, EF.conditioningCapGate,
+      EF.conditioningTolerance, EF.absVal, EF.conditionalRatioEF,
+      EF.lowerSafeRecip, efMin, clip01, List.getD]
   simpa only [Strategy.value, separatedExceptZeroConditionalContract,
     List.map_append, List.sum_append, List.map_map, Function.comp_apply]
     using hsum T.trades.length T.trades
@@ -1489,89 +1328,9 @@ lemma separatedExceptZeroConditionalContract_value_eq_zero_of_not_holds
   exact exceptZeroLocallyGatedTrades_value_zero
     T.trades P zeroDays ψ hε hfloor hday τ v hψ
 
-/-- Replace one conditional-market position by the literal two-stock conditional
-contract against the base market. -/
-def conditionalContractTrades
-    (ψ : ℕ → Sentence) (ε : ℚ) (day : ℕ) :
-    List (EF × Sentence) → List (EF × Sentence) :=
-  fun trades ↦ trades.flatMap (fun p ↦
-      let α := p.1.conditionPrices ψ ε
-      let ratio := EF.conditionalRatioEF (ψ day) ε p.2 day
-      [(α, p.2 ⋏ ψ day),
-        (EF.mul (EF.const (-1)) (EF.mul α ratio), ψ day)])
-
-/-- Cap-free core of the Appendix trader translation. Each original trade becomes an
-exact conditional contract; the later continuous gate only modifies positive positions
-on days where conjunction monotonicity is violated. -/
-def conditionalContract {day : ℕ} (ψ : ℕ → Sentence) (ε : ℚ)
-    (T : Strategy day) : Strategy day where
-  trades := conditionalContractTrades ψ ε day T.trades
-  rank_le := by
-    intro p hp
-    simp only [conditionalContractTrades, List.mem_flatMap] at hp
-    obtain ⟨q, hq, hp⟩ := hp
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
-    rcases hp with rfl | rfl
-    · rw [q.1.conditionPrices_rank]
-      exact T.rank_le q hq
-    · simp only [EF.rank_mul, EF.rank_const, Nat.zero_max]
-      rw [q.1.conditionPrices_rank]
-      exact max_le (T.rank_le q hq) (by
-        simp [EF.conditionalRatioEF, EF.lowerSafeRecip, EF.rank])
-
-private lemma conditionalContractTrades_value
-    {day : ℕ} (trades : List (EF × Sentence))
-    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (v : PCWorld) (hψ : v.Holds (ψ day))
-    (hmono : ∀ p ∈ trades, P day (p.2 ⋏ ψ day) ≤ P day (ψ day)) :
-    ((conditionalContractTrades ψ ε day trades).map (fun p ↦
-      p.1.denote P * (v.payout p.2 - P day p.2))).sum =
-    (trades.map (fun p ↦ p.1.denote (conditionedHistory P ψ) *
-      (v.payout p.2 - conditionedHistory P ψ day p.2))).sum := by
-  induction trades with
-  | nil => simp [conditionalContractTrades]
-  | cons p rest ih =>
-      have hdenPos : 0 < P day (ψ day) := hε.trans_le (hden day)
-      have hquote := conditionalQuote_eq_div_of_le hdenPos (hmono p (by simp))
-      have hratio := EF.conditionalRatioEF_denote P (ψ day) hε (hden day) p.2
-      have hcoef := p.1.conditionPrices_denote P ψ hε hden
-      have hpayoutψ : v.payout (ψ day) = 1 := by
-        rw [PCWorld.payout, if_pos hψ]
-      have hpayoutAnd : v.payout (p.2 ⋏ ψ day) = v.payout p.2 := by
-        by_cases hp : v.Holds p.2 <;>
-          simp [PCWorld.payout, PCWorld.holds_and, hψ, hp]
-      have iht := ih (fun q hq ↦ hmono q (by simp [hq]))
-      rw [conditionalContractTrades] at iht
-      simp only [conditionedHistory] at iht
-      simp only [conditionedHistory]
-      rw [conditionalContractTrades, List.flatMap_cons,
-        List.map_append, List.sum_append]
-      simp only [List.map_cons, List.sum_cons, EF.denote_mul, EF.denote_const,
-        Pi.mul_apply, List.map_nil, List.sum_nil, add_zero]
-      rw [iht, hcoef, hratio,
-        hpayoutψ, hpayoutAnd, hquote]
-      push_cast
-      field_simp [ne_of_gt hdenPos]
-      ring
-
-/-- In a world satisfying the day condition, and outside the cap-violation case, the
-literal conditional-contract strategy has exactly the original strategy's value against
-the capped conditional market. -/
-lemma conditionalContract_value
-    {day : ℕ} (T : Strategy day)
-    (P : History) (ψ : ℕ → Sentence) {ε : ℚ}
-    (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (ψ d))
-    (v : PCWorld) (hψ : v.Holds (ψ day))
-    (hmono : ∀ p ∈ T.trades,
-      P day (p.2 ⋏ ψ day) ≤ P day (ψ day)) :
-    (T.conditionalContract ψ ε).value P v.payout =
-      T.value (conditionedHistory P ψ) v.payout := by
-  exact conditionalContractTrades_value T.trades P ψ hε hden v hψ hmono
-
 end Strategy
+
+/-! ## The trader translation -/
 
 namespace Trader
 
@@ -1767,6 +1526,8 @@ lemma eventualConditionedTranslation_netWorth_lower
 
 end Trader
 
+/-! ## The combined deductive process -/
+
 namespace DeductiveProcess
 
 /-- Stagewise union of two deductive processes. -/
@@ -1798,26 +1559,18 @@ lemma PCWorld.consistentWith_union_iff
     simp only [DeductiveProcess.union_stage, Finset.mem_union] at hφ
     exact hφ.elim (hDP φ) (hextra φ)
 
+/-! ## The conditioning presentation and its compiler -/
+
 /-- Syntax/semantics presentation of the finite conjunction of the extra deductive stage.
 This is the shared input for both the fixed-condition and growing-prefix forms of
 `thm:scon`. It carries no prices or logical-inductor conclusion.
 
-`condition_codes` is `def:ec`'s own write-out class `BigSentenceCodes`: metered on the
-number of digits a poly-time writer must emit, with no bound whatever on a token's value,
-so a condition's Gödel code may be exponential in the day. Growing finite conjunctions are
-deep, so a whole-value interface would silently exclude exactly the intended `thm:scon`
-inputs. Where a whole-value naming program is genuinely needed (the conditioned market's
-quote table, keyed by sentence code) it is extracted recursively — not polynomially — via
-`BigSentenceCodes.exists_code`.
+The condition family is certified at `def:ec`'s write-out class `BigSentenceCodes`, because
+a growing conjunction's Gödel code is exponential in the day (README, *Efficient
+computability*). `BigSentenceCodes.ofRpnSentenceCodes` embeds the token-metered
+`RpnSentenceCodes` as a sufficient subclass.
 
-The machine transducer's extra requirement, that the oracle's word end on complete parser
-blocks, is supplied from this same certificate by
-`CondStep.machineSentenceBlocks_of_big`, whose clocked digit stream comes from
-`BigTokenStream.digitizeStream`; the digit clamp downstream is the identity because the
-clamped object is a list of base-4 digits, not because token values are bounded. The
-token-metered `RpnSentenceCodes` survives only as a convenient sufficient subclass, via
-`BigSentenceCodes.ofRpnSentenceCodes`. See
-`Construction/Witnesses/ConditioningPresentation.lean`.
+Inhabitants are built in `Construction/Witnesses/ConditioningPresentation.lean`.
 Paper node: `thm:scon` -/
 structure ConditioningPresentation (DP extra : DeductiveProcess) where
   condition : ℕ → Sentence
@@ -1898,32 +1651,44 @@ lemma ConditioningPresentation.conditionedTranslation_netWorth_eq_before_failure
     (T.strat i) P C.condition hε hden (conditioningBudget i) v
   exact C.not_holds_condition_of_le v (by omega) hm
 
-/-- The paper's first-falsified-condition argument for the concrete translator.  A base
-world either satisfies every condition through `n`, where the summable tracking bound
-applies, or has a least failure, after which every translated trade is exactly zero. -/
-lemma ConditioningPresentation.conditionedTranslation_preserves_floor
+/-- The paper's first-falsified-condition argument, stated once for both translators.
+
+A base world either satisfies every condition through day `n`, where the translated trader
+tracks the source trader within `1` (`hlower`), or has a least failure at some `m ≤ n`,
+after which every translated trade is exactly zero, so the translated net worth on day `n`
+is the sum over `Finset.range m` (`hcut`). That truncated sum is either degenerate — the
+days `Deg` on which the translator has emitted nothing at all, contributing `0` (`hdeg`) —
+or it is bounded below using the source floor at day `m - 1`, which the world does reach.
+
+The gated translator instantiates `Deg` as `m = 0`; the prefix-safe translator instantiates
+it as `m ≤ F.cutoff`, where the source trader has been silenced. -/
+private lemma ConditioningPresentation.preserves_floor_of_before_failure
     {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
-    (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
-    (hden : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
-    (T : Trader)
-    (hfloor : BddBelow (T.plausibleAssessments
+    (P : History) {Tsrc Ttr : Trader} (Deg : ℕ → Prop) [DecidablePred Deg]
+    (hlower : ∀ (v : PCWorld) (n : ℕ), (∀ i, i ≤ n → v.Holds (C.condition i)) →
+      Tsrc.netWorth (conditionedHistory P C.condition) v n - 1 ≤ Ttr.netWorth P v n)
+    (hcut : ∀ (v : PCWorld) (m n : ℕ), m ≤ n → ¬v.Holds (C.condition m) →
+      Ttr.netWorth P v n =
+        ∑ i ∈ Finset.range m, (Ttr.strat i).value P v.payout)
+    (hdeg : ∀ (v : PCWorld) (m : ℕ), Deg m →
+      ∑ i ∈ Finset.range m, (Ttr.strat i).value P v.payout = 0)
+    (hpos : ∀ m : ℕ, ¬ Deg m → 0 < m)
+    (hfloor : BddBelow (Tsrc.plausibleAssessments
       (conditionedHistory P C.condition) (DP.union extra))) :
-    BddBelow ((T.conditionedTranslation C.condition ε).plausibleAssessments P DP) := by
+    BddBelow (Ttr.plausibleAssessments P DP) := by
   classical
   obtain ⟨B, hB⟩ := hfloor
   refine ⟨min (B - 1) 0, ?_⟩
   intro x hx
   obtain ⟨n, v, hvBase, rfl⟩ := hx
   by_cases hall : ∀ i, i ≤ n → v.Holds (C.condition i)
-  · have hvExtra : v.ConsistentWith (extra.D n) :=
-      (C.holds_condition n v).mp (hall n le_rfl)
-    have hvCombined : v.ConsistentWith ((DP.union extra).D n) :=
-      (PCWorld.consistentWith_union_iff v DP extra n).2 ⟨hvBase, hvExtra⟩
+  · have hvCombined : v.ConsistentWith ((DP.union extra).D n) :=
+      (PCWorld.consistentWith_union_iff v DP extra n).2
+        ⟨hvBase, (C.holds_condition n v).mp (hall n le_rfl)⟩
     have hconditional : B ≤
-        T.netWorth (conditionedHistory P C.condition) v n :=
+        Tsrc.netWorth (conditionedHistory P C.condition) v n :=
       hB ⟨n, v, hvCombined, rfl⟩
-    have htrack := T.conditionedTranslation_netWorth_lower
-      P C.condition hε hden v n hall
+    have htrack := hlower v n hall
     exact (min_le_left (B - 1) 0).trans (by linarith)
   · push_neg at hall
     let m : ℕ := Nat.find hall
@@ -1935,16 +1700,12 @@ lemma ConditioningPresentation.conditionedTranslation_preserves_floor
       by_contra hbad
       exact Nat.find_min hall (by simpa only [m] using hi)
         ⟨(Nat.le_of_lt hi).trans hm.1, hbad⟩
-    have hcut :
-        (T.conditionedTranslation C.condition ε).netWorth P v n =
-          ∑ i ∈ Finset.range m,
-            ((T.conditionedTranslation C.condition ε).strat i).value P v.payout :=
-      C.conditionedTranslation_netWorth_eq_before_failure
-        P hε hden T v hm.1 hm.2
-    by_cases hm0 : m = 0
-    · rw [hcut, hm0]
-      simp
-    · let k := m - 1
+    have hcutm := hcut v m n hm.1 hm.2
+    by_cases hdegm : Deg m
+    · rw [hcutm, hdeg v m hdegm]
+      exact min_le_right _ _
+    · have hm0 : 0 < m := hpos m hdegm
+      let k := m - 1
       have hkm : k < m := by
         dsimp only [k]
         omega
@@ -1955,23 +1716,39 @@ lemma ConditioningPresentation.conditionedTranslation_preserves_floor
             (fun j => Finset.le_iff_subset.mpr (DP.mono j)) hkn)
         intro φ hφ
         exact hvBase φ (hsub hφ)
-      have hvExtraK : v.ConsistentWith (extra.D k) :=
-        (C.holds_condition k v).mp (hbefore k hkm)
       have hvCombinedK : v.ConsistentWith ((DP.union extra).D k) :=
-        (PCWorld.consistentWith_union_iff v DP extra k).2 ⟨hvBaseK, hvExtraK⟩
+        (PCWorld.consistentWith_union_iff v DP extra k).2
+          ⟨hvBaseK, (C.holds_condition k v).mp (hbefore k hkm)⟩
       have hconditional : B ≤
-          T.netWorth (conditionedHistory P C.condition) v k :=
+          Tsrc.netWorth (conditionedHistory P C.condition) v k :=
         hB ⟨k, v, hvCombinedK, rfl⟩
-      have htrack := T.conditionedTranslation_netWorth_lower
-        P C.condition hε hden v k
-        (fun i hi => hbefore i (hi.trans_lt hkm))
+      have htrack := hlower v k (fun i hi => hbefore i (hi.trans_lt hkm))
       have hmk : k + 1 = m := by
         dsimp only [k]
         omega
       simp only [Trader.netWorth] at hconditional htrack
       rw [hmk] at hconditional htrack
-      rw [hcut]
+      rw [hcutm]
       exact (min_le_left (B - 1) 0).trans (by linarith)
+
+/-- The first-falsified-condition argument for the concrete gated translator: the
+degenerate case is the world that already fails the day-`0` condition. -/
+lemma ConditioningPresentation.conditionedTranslation_preserves_floor
+    {DP extra : DeductiveProcess} (C : ConditioningPresentation DP extra)
+    (P : History) {ε : ℚ} (hε : 0 < (ε : ℝ))
+    (hden : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
+    (T : Trader)
+    (hfloor : BddBelow (T.plausibleAssessments
+      (conditionedHistory P C.condition) (DP.union extra))) :
+    BddBelow ((T.conditionedTranslation C.condition ε).plausibleAssessments P DP) :=
+  C.preserves_floor_of_before_failure P (fun m => m = 0)
+    (fun v n hall =>
+      T.conditionedTranslation_netWorth_lower P C.condition hε hden v n hall)
+    (fun v _ _ hmn hm =>
+      C.conditionedTranslation_netWorth_eq_before_failure P hε hden T v hmn hm)
+    (fun _ m hm => by rw [show m = 0 from hm]; simp)
+    (fun m hm => Nat.pos_of_ne_zero (show m ≠ 0 from hm))
+    hfloor
 
 /-- Same-world wealth tracking for the prefix-safe translator.  The conditional trader is
 first silenced on the finite exceptional prefix; the base trader then tracks it with the
@@ -2023,86 +1800,18 @@ lemma ConditioningPresentation.eventualConditionedTranslation_preserves_floor
     (T : Trader) (hP : ∀ d φ, 0 ≤ P d φ)
     (hfloor : BddBelow ((T.after F.cutoff).plausibleAssessments
       (conditionedHistory P C.condition) (DP.union extra))) :
-    BddBelow ((T.eventualConditionedTranslation F).plausibleAssessments P DP) := by
-  classical
-  obtain ⟨B, hB⟩ := hfloor
-  refine ⟨min (B - 1) 0, ?_⟩
-  intro x hx
-  obtain ⟨n, v, hvBase, rfl⟩ := hx
-  by_cases hall : ∀ i, i ≤ n → v.Holds (C.condition i)
-  · have hvExtra : v.ConsistentWith (extra.D n) :=
-      (C.holds_condition n v).mp (hall n le_rfl)
-    have hvCombined : v.ConsistentWith ((DP.union extra).D n) :=
-      (PCWorld.consistentWith_union_iff v DP extra n).2 ⟨hvBase, hvExtra⟩
-    have hconditional : B ≤
-        (T.after F.cutoff).netWorth
-          (conditionedHistory P C.condition) v n :=
-      hB ⟨n, v, hvCombined, rfl⟩
-    have htrack := T.eventualConditionedTranslation_netWorth_lower
-      F hP v n hall
-    exact (min_le_left (B - 1) 0).trans (by linarith)
-  · push_neg at hall
-    let m : ℕ := Nat.find hall
-    have hm : m ≤ n ∧ ¬v.Holds (C.condition m) := by
-      dsimp only [m]
-      exact Nat.find_spec hall
-    have hbefore : ∀ i, i < m → v.Holds (C.condition i) := by
-      intro i hi
-      by_contra hbad
-      exact Nat.find_min hall (by simpa only [m] using hi)
-        ⟨(Nat.le_of_lt hi).trans hm.1, hbad⟩
-    have hcut :
-        (T.eventualConditionedTranslation F).netWorth P v n =
-          ∑ i ∈ Finset.range m,
-            ((T.eventualConditionedTranslation F).strat i).value P v.payout :=
-      C.eventualConditionedTranslation_netWorth_eq_before_failure
-        P F T v hm.1 hm.2
-    by_cases hmc : m ≤ F.cutoff
-    · rw [hcut]
-      have hzero :
-          ∑ i ∈ Finset.range m,
-            ((T.eventualConditionedTranslation F).strat i).value
-              P v.payout = 0 := by
-        apply Finset.sum_eq_zero
-        intro i hi
-        have him : i < m := Finset.mem_range.mp hi
-        rw [T.eventualConditionedTranslation_strat_of_lt F
-          (him.trans_le hmc)]
-        simp [Trader.zero, Strategy.value]
-      rw [hzero]
-      exact min_le_right _ _
-    · have hcm : F.cutoff < m := Nat.lt_of_not_ge hmc
-      let k := m - 1
-      have hkm : k < m := by
-        dsimp only [k]
-        omega
-      have hck : F.cutoff ≤ k := by
-        dsimp only [k]
-        omega
-      have hkn : k ≤ n := hkm.le.trans hm.1
-      have hvBaseK : v.ConsistentWith (DP.D k) := by
-        have hsub : DP.D k ⊆ DP.D n := Finset.le_iff_subset.mp
-          (monotone_nat_of_le_succ
-            (fun j => Finset.le_iff_subset.mpr (DP.mono j)) hkn)
-        intro φ hφ
-        exact hvBase φ (hsub hφ)
-      have hvExtraK : v.ConsistentWith (extra.D k) :=
-        (C.holds_condition k v).mp (hbefore k hkm)
-      have hvCombinedK : v.ConsistentWith ((DP.union extra).D k) :=
-        (PCWorld.consistentWith_union_iff v DP extra k).2 ⟨hvBaseK, hvExtraK⟩
-      have hconditional : B ≤
-          (T.after F.cutoff).netWorth
-            (conditionedHistory P C.condition) v k :=
-        hB ⟨k, v, hvCombinedK, rfl⟩
-      have htrack := T.eventualConditionedTranslation_netWorth_lower
-        F hP v k (fun i hi => hbefore i (hi.trans_lt hkm))
-      have hmk : k + 1 = m := by
-        dsimp only [k]
-        omega
-      simp only [Trader.netWorth] at hconditional htrack
-      rw [hmk] at hconditional htrack
-      rw [hcut]
-      exact (min_le_left (B - 1) 0).trans (by linarith)
+    BddBelow ((T.eventualConditionedTranslation F).plausibleAssessments P DP) :=
+  C.preserves_floor_of_before_failure P (fun m => m ≤ F.cutoff)
+    (fun v n hall => T.eventualConditionedTranslation_netWorth_lower F hP v n hall)
+    (fun v _ _ hmn hm =>
+      C.eventualConditionedTranslation_netWorth_eq_before_failure P F T v hmn hm)
+    (fun _ m hmc => Finset.sum_eq_zero fun i hi => by
+      rw [T.eventualConditionedTranslation_strat_of_lt F
+        ((Finset.mem_range.mp hi).trans_le (show m ≤ F.cutoff from hmc))]
+      simp [Trader.zero, Strategy.value])
+    (fun m hmc => Nat.pos_of_ne_zero fun h =>
+      (show ¬ (m ≤ F.cutoff) from hmc) (by omega))
+    hfloor
 
 /-- Operational target for the Appendix conditioning trader construction. `translate T`
 is the actual base-market trader compiled from a conditional-market trader `T`.
@@ -2185,6 +1894,32 @@ def GatedConditioningOperationalWitness.toCompiler
     C.conditionedTranslation_preserves_floor P W.epsilon_pos
       W.denominator_floor T hfloor
 
+/-- Transport of exploitation along a translation that tracks the source trader's wealth
+within `1` on every combined-process world.  A world consistent with `(DP.union extra).D n`
+is in particular consistent with `DP.D n`, so an upper bound on the translated trader's
+plausible assessments bounds the source trader's, contradicting its unboundedness.  This is
+the shared unboundedness half of every `exploits_base` lemma below; the differing half is
+the bounded-below floor, supplied as `hfloor`. -/
+private lemma exploits_base_of_tracks
+    {P V : History} {DP extra : DeductiveProcess}
+    {T T' : Trader}
+    (hT : T.Exploits V (DP.union extra))
+    (hfloor : BddBelow (T'.plausibleAssessments P DP))
+    (htrack : ∀ (n : ℕ) (v : PCWorld), v.ConsistentWith ((DP.union extra).D n) →
+      T.netWorth V v n ≤ T'.netWorth P v n + 1) :
+    T'.Exploits P DP := by
+  refine ⟨hfloor, ?_⟩
+  intro hupper
+  apply hT.2
+  obtain ⟨U, hU⟩ := hupper
+  refine ⟨U + 1, ?_⟩
+  intro x hx
+  obtain ⟨n, v, hv, rfl⟩ := hx
+  have hvBase : v.ConsistentWith (DP.D n) :=
+    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
+  have htranslated : T'.netWorth P v n ≤ U := hU ⟨n, v, hvBase, rfl⟩
+  exact (htrack n v hv).trans (by linarith)
+
 /-- Witness-free gated transport: a conditional-market exploit compiled through the
 gated translator exploits the base market, from the denominator floor alone.
 Paper node: `thm:scon` -/
@@ -2194,19 +1929,10 @@ lemma Trader.conditionedTranslation_exploits_base
     (hε : 0 < (ε : ℝ)) (hfloor : ∀ d, (ε : ℝ) ≤ P d (C.condition d))
     {T : Trader}
     (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
-    (T.conditionedTranslation C.condition ε).Exploits P DP := by
-  refine ⟨C.conditionedTranslation_preserves_floor P hε hfloor T hT.1, ?_⟩
-  intro hupper
-  apply hT.2
-  obtain ⟨U, hU⟩ := hupper
-  refine ⟨U + 1, ?_⟩
-  intro x hx
-  obtain ⟨n, v, hv, rfl⟩ := hx
-  have hvBase : v.ConsistentWith (DP.D n) :=
-    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
-  have htranslated : (T.conditionedTranslation C.condition ε).netWorth P v n ≤ U :=
-    hU ⟨n, v, hvBase, rfl⟩
-  exact (C.conditionedTranslation_tracks P hε hfloor T n v hv).trans (by linarith)
+    (T.conditionedTranslation C.condition ε).Exploits P DP :=
+  exploits_base_of_tracks hT
+    (C.conditionedTranslation_preserves_floor P hε hfloor T hT.1)
+    (fun n v hv => C.conditionedTranslation_tracks P hε hfloor T n v hv)
 
 /-- Witness-free eventual transport: the finite-zero exception path, from the floor
 structure alone.
@@ -2218,32 +1944,18 @@ lemma Trader.eventualConditionedTranslation_exploits_base
     {T : Trader}
     (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
     (T.eventualConditionedTranslation floor).Exploits P DP := by
-  let hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 :=
+  have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 :=
     fun d φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) d φ
-  let hconditioned : ∀ d φ,
-      0 ≤ conditionedHistory P C.condition d φ ∧
-        conditionedHistory P C.condition d φ ≤ 1 :=
-    conditionedHistory_mem_Icc P hP C.condition
   have hAfter :
       (T.after floor.cutoff).Exploits
         (conditionedHistory P C.condition) (DP.union extra) :=
     Trader.Exploits.after T (conditionedHistory P C.condition)
-      (DP.union extra) hconditioned hT floor.cutoff
-  refine ⟨C.eventualConditionedTranslation_preserves_floor
-    P floor T (fun d φ => (hP d φ).1) hAfter.1, ?_⟩
-  intro hupper
-  apply hAfter.2
-  obtain ⟨U, hU⟩ := hupper
-  refine ⟨U + 1, ?_⟩
-  intro x hx
-  obtain ⟨n, v, hv, rfl⟩ := hx
-  have hvBase : v.ConsistentWith (DP.D n) :=
-    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
-  have htranslated :
-      (T.eventualConditionedTranslation floor).netWorth P v n ≤ U :=
-    hU ⟨n, v, hvBase, rfl⟩
-  exact (C.eventualConditionedTranslation_tracks
-    P floor T (fun d φ => (hP d φ).1) n v hv).trans (by linarith)
+      (DP.union extra) (conditionedHistory_mem_Icc P hP C.condition) hT floor.cutoff
+  exact exploits_base_of_tracks hAfter
+    (C.eventualConditionedTranslation_preserves_floor
+      P floor T (fun d φ => (hP d φ).1) hAfter.1)
+    (fun n v hv => C.eventualConditionedTranslation_tracks
+      P floor T (fun d φ => (hP d φ).1) n v hv)
 
 /-- The explicit compiler contract transports a genuine conditional-market exploit to a
 genuine exploit of the base market. The unboundedness proof uses actual same-world wealth
@@ -2254,19 +1966,9 @@ lemma ConditioningTraderCompiler.exploits_base
     (compiler : ConditioningTraderCompiler P DP extra C)
     {T : Trader}
     (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
-    (compiler.translate T).Exploits P DP := by
-  refine ⟨compiler.preserves_floor T hT.1, ?_⟩
-  intro hupper
-  apply hT.2
-  obtain ⟨U, hU⟩ := hupper
-  refine ⟨U + 1, ?_⟩
-  intro x hx
-  obtain ⟨n, v, hv, rfl⟩ := hx
-  have hvBase : v.ConsistentWith (DP.D n) :=
-    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
-  have htranslated : (compiler.translate T).netWorth P v n ≤ U :=
-    hU ⟨n, v, hvBase, rfl⟩
-  exact (compiler.tracks_on_condition T n v hv).trans (by linarith)
+    (compiler.translate T).Exploits P DP :=
+  exploits_base_of_tracks hT (compiler.preserves_floor T hT.1)
+    (fun n v hv => compiler.tracks_on_condition T n v hv)
 
 /-- A conditional-market exploit compiled through the finite-zero exception path would
 exploit the original base market.  The source exploit is first silenced for finitely many
@@ -2277,33 +1979,10 @@ lemma EventualConditioningOperationalWitness.exploits_base
     (W : EventualConditioningOperationalWitness P DP extra C)
     {T : Trader}
     (hT : T.Exploits (conditionedHistory P C.condition) (DP.union extra)) :
-    (T.eventualConditionedTranslation W.floor).Exploits P DP := by
-  let hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 :=
-    fun d φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) d φ
-  let hconditioned : ∀ d φ,
-      0 ≤ conditionedHistory P C.condition d φ ∧
-        conditionedHistory P C.condition d φ ≤ 1 :=
-    conditionedHistory_mem_Icc P hP C.condition
-  have hAfter :
-      (T.after W.floor.cutoff).Exploits
-        (conditionedHistory P C.condition) (DP.union extra) :=
-    Trader.Exploits.after T (conditionedHistory P C.condition)
-      (DP.union extra) hconditioned hT W.floor.cutoff
-  refine ⟨C.eventualConditionedTranslation_preserves_floor
-    P W.floor T (fun d φ => (hP d φ).1) hAfter.1, ?_⟩
-  intro hupper
-  apply hAfter.2
-  obtain ⟨U, hU⟩ := hupper
-  refine ⟨U + 1, ?_⟩
-  intro x hx
-  obtain ⟨n, v, hv, rfl⟩ := hx
-  have hvBase : v.ConsistentWith (DP.D n) :=
-    (PCWorld.consistentWith_union_iff v DP extra n).mp hv |>.1
-  have htranslated :
-      (T.eventualConditionedTranslation W.floor).netWorth P v n ≤ U :=
-    hU ⟨n, v, hvBase, rfl⟩
-  exact (C.eventualConditionedTranslation_tracks
-    P W.floor T (fun d φ => (hP d φ).1) n v hv).trans (by linarith)
+    (T.eventualConditionedTranslation W.floor).Exploits P DP :=
+  Trader.eventualConditionedTranslation_exploits_base W.floor hT
+
+/-! ## Closure under conditioning (`thm:scon`) -/
 
 /-- Criterion-level Closure Under Conditioning, conditional only on the concrete Appendix
 trader compiler above. This statement covers both fixed conditions and growing finite
@@ -2335,11 +2014,11 @@ theorem lic_conditioned_gated
 /-- **Criterion-level Closure Under Conditioning at the paper's own quantifier**: no trader
 in ordinary machine polynomial time exploits the conditioned market either.
 
-The economics is untouched — `exploits_base` is the same lemma the fuel-class endpoint uses,
-and `tracks_on_condition` and `preserves_floor` are reused verbatim.  Only the class the
-compiler's certificate is stated at changes, which is why the compiler carries both
-certificates as fields.  The fuel-class endpoint `lic_conditioned` is *not* derivable from
-this one, nor this from it, so both stand.
+The economic content is shared with the fuel-class endpoint: `exploits_base`,
+`tracks_on_condition` and `preserves_floor` are the same facts. The two endpoints differ
+only in the class the compiler's certificate is stated at, which is why the compiler carries
+both certificates as fields. Neither `lic_conditioned` nor this statement is derivable from
+the other, so both stand.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_machine
     (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
@@ -2393,28 +2072,5 @@ theorem lic_conditioned_eventual_machine
     IsMachineLogicalInductor.noExploit (P := P) (DP := DP)
       (T.eventualConditionedTranslation W.floor)
       (W.translation_machine T hTm) (W.exploits_base hTexp)
-
-#print axioms conditionalQuote_mem_Icc
-#print axioms EF.conditionPrices_denote
-#print axioms conditioningGateVal_mul_excess_le
-#print axioms gatedConditionalPosition_lower
-#print axioms Strategy.gatedConditionalContract_value_lower
-#print axioms Strategy.gatedConditionalContract_value_eq_zero_of_not_holds
-#print axioms Trader.conditionedTranslation_netWorth_lower
-#print axioms Strategy.conditionalContract_value
-#print axioms PCWorld.consistentWith_union_iff
-#print axioms ConditioningPresentation.consistent_combined_iff
-#print axioms ConditioningPresentation.conditionedTranslation_tracks
-#print axioms ConditioningPresentation.conditionedTranslation_preserves_floor
-#print axioms ConditioningPresentation.eventualConditionedTranslation_preserves_floor
-#print axioms GatedConditioningOperationalWitness.toCompiler
-#print axioms ConditioningTraderCompiler.exploits_base
-#print axioms EventualConditioningOperationalWitness.exploits_base
-#print axioms lic_conditioned
-#print axioms lic_conditioned_gated
-#print axioms lic_conditioned_eventual
-#print axioms lic_conditioned_machine
-#print axioms lic_conditioned_gated_machine
-#print axioms lic_conditioned_eventual_machine
 
 end LogicalInduction

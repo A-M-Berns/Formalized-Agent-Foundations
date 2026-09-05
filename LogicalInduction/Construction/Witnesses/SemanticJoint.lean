@@ -3,12 +3,30 @@ import LogicalInduction.Construction.Witnesses.SemanticProduct
 import LogicalInduction.Construction.Witnesses.SemanticQuote
 
 /-!
-# Joint semantic-source/product stress tests
+# Joint semantic-source/product obstructions
 
-Syntactic separation blocks the self-referential source diagonal, but it does not by
-itself make the existing universal product closure jointly satisfiable with an interpreter
-for every fresh emitter.  Product clauses require their factor leaves to behave as
-coherent rational cuts.  This file gives the finite, kernel-checked counterexample.
+Two proved obstructions that force explicit factor-schema ownership in the semantic-CCEE
+lane.  Syntactic separation blocks the self-referential source diagonal, but it does not by
+itself make a universal product closure jointly satisfiable with an interpreter for every
+fresh emitter: product clauses require their factor leaves to behave as coherent rational
+cuts, and neither freshness nor efficient emission secures that.  Both obstructions here
+are finite, kernel-checked counterexamples; this module renders no paper node.
+
+* `semanticProductDP_no_increasing_factor_assignment` is the core inconsistency: the
+  universal product clauses cannot be satisfied by a factor family that is false at `0` and
+  true at `1`, a pattern no genuine `[0,1]` rational cut has.
+* `semanticFreshIncreasingLUVSeq` is the witness family — syntactically fresh
+  (`semanticFreshIncreasingLUVSeq_fresh`) and efficiently emitted
+  (`semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq`), yet malformed in exactly that way.
+  `semanticFreshIncreasing_not_jointly_reflected` is the resulting obstruction.
+* `theorem_quote_product_not_jointly_satisfiable`: `theoremDP`, `semanticQuoteDP` and a
+  schema-unrestricted `semanticProductDP` have no joint completed world, because the quote
+  interpreter interprets every partial-recursive Boolean selector while the product closure
+  treats every schema as a factor.
+
+`SemanticCertifiedProduct.lean` answers both by guarding product clauses on tag-`0` factor
+ownership; `CertifiedSource.lean` consumes the fresh-family witness as the negative side of
+its admission test.
 -/
 
 namespace LogicalInduction
@@ -16,6 +34,8 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The malformed-factor obstruction -/
 
 /-- The universal product clauses are inconsistent with factors that are false at zero
 but true at one.  Genuine `[0,1]` cuts cannot have this pattern. -/
@@ -43,6 +63,8 @@ lemma semanticProductDP_no_increasing_factor_assignment {v : PCWorld}
       (by simpa only [hz0] using hrightZero)
   exact hnprod hprod
 
+/-! ## A fresh, efficiently emitted, malformed threshold family -/
+
 /-- A syntactically fresh but malformed threshold family: false below one and true from
 one upward.  It witnesses why a fixed interpreter cannot safely interpret every fresh
 program and then feed all resulting schemas to the universal product closure. -/
@@ -52,6 +74,8 @@ def semanticFreshIncreasingLUVSeq (_ : ℕ) : LUV where
 @[simp] lemma semanticFreshIncreasingLUVSeq_gt (n : ℕ) (r : ℚ) :
     (semanticFreshIncreasingLUVSeq n).gt r = if r < 1 then ⊥ else ⊤ := rfl
 
+/-- The family mentions no semantic-prime handle: both of its threshold formulas are
+propositional constants.  This is the proof of the word *fresh* in the definition above. -/
 lemma semanticFreshIncreasingLUVSeq_fresh :
     SemanticPrimeFreshLUVSeq semanticFreshIncreasingLUVSeq := by
   intro n r a ha
@@ -63,6 +87,8 @@ lemma semanticFreshIncreasingLUVSeq_fresh :
     change a ∈ sentenceAtomCodes (⊤ : Sentence) at ha
     simp at ha
 
+/-- The family is efficiently emitted: its threshold literals are selected by the mesh
+selector under a polynomial clock. -/
 lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
     LUV.RpnThresholdCodeSeq semanticFreshIncreasingLUVSeq := by
   obtain ⟨c, hc⟩ := semanticValuedDiagonalMeshSelector_polyFueled
@@ -88,7 +114,9 @@ lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
 
 /-- Freshness plus efficient emission is not sufficient for joint source/product
 non-vacuity: exact reflection of the fresh malformed source makes the fixed product
-closure inconsistent. -/
+closure inconsistent.  The family is syntactically fresh
+(`semanticFreshIncreasingLUVSeq_fresh`) and efficiently emitted
+(`semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq`), and neither helps. -/
 lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
     ¬∃ v : PCWorld, v.ConsistentWithTheory semanticProductDP ∧
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
@@ -109,15 +137,18 @@ lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
   exact semanticProductDP_no_increasing_factor_assignment hv
     Xhat.thresholdSchema Xhat.thresholdSchema 0 hone hone hzero hzero
 
-/-! ## Quote/product ownership must also be separated
+/-! ## Quote and product ownership must also be separated
 
-`semanticQuoteDP` deliberately interprets every partial-recursive Boolean selector.  Such a
-selector need not be a coherent LUV threshold family.  Since the original
-`semanticProductDP` ranges over every schema number, it also treats quote schemas as product
-factors.  The following finite contradiction shows that simply unioning all three current
-processes (`theoremDP`, quote aliases, products) is impossible.
+`semanticQuoteDP` deliberately interprets every partial-recursive Boolean selector, and such
+a selector need not be a coherent LUV threshold family.  `semanticProductDP` ranges over
+every schema number, so it treats quote schemas as product factors too.  The finite
+contradiction below is why product clauses must be guarded by factor-schema ownership
+(`SemanticCertifiedProduct.semanticCertifiedProductDP`).
 -/
 
+/-- The quote code of the decidable predicate "the input is the threshold query at `1`": a
+perfectly legal Boolean selector whose reflected leaf family is not a coherent LUV threshold
+family.  It is the witness in `theorem_quote_product_not_jointly_satisfiable`. -/
 noncomputable def increasingQuoteCode (T : ArithmeticTheory)
     [𝗥₀ ⪯ T] : BooleanQuoteCode T
       (fun input => input = Nat.pair 0 (Encodable.encode (1 : ℚ))) :=
@@ -126,8 +157,8 @@ noncomputable def increasingQuoteCode (T : ArithmeticTheory)
       (Primrec.const (Nat.pair 0 (Encodable.encode (1 : ℚ))))).computablePred)
 
 /-- The unrestricted quote interpreter and unrestricted product interpreter have no joint
-completed world, even together with the ordinary theorem process.  This forces explicit
-factor-schema ownership in the repaired architecture. -/
+completed world, even together with the ordinary theorem process.  This is what forces
+explicit factor-schema ownership on the product closure. -/
 lemma theorem_quote_product_not_jointly_satisfiable
     (T : ArithmeticTheory) [T.Δ₁] [𝗥₀ ⪯ T] :
     ¬∃ v : PCWorld,
@@ -155,10 +186,5 @@ lemma theorem_quote_product_not_jointly_satisfiable
     (by simpa [semanticQuoteLeaf, input1] using hone)
     (by simpa [semanticQuoteLeaf, input0] using hzero)
     (by simpa [semanticQuoteLeaf, input0] using hzero)
-
-#print axioms semanticProductDP_no_increasing_factor_assignment
-#print axioms semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq
-#print axioms semanticFreshIncreasing_not_jointly_reflected
-#print axioms theorem_quote_product_not_jointly_satisfiable
 
 end LogicalInduction

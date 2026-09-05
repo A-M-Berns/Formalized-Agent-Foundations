@@ -1,20 +1,50 @@
-/-
-# Introspection — §4.11: `thm:epr`, `thm:er`, `thm:ref`, `thm:lp`
-
-Same-day introspective identities.  The propositional language here cannot construct the
-paper's first-order quotations directly, so a quote is represented by a concrete polynomial
-affine portfolio.  Unlike the deferred Self-Trust certificates, no cross-day coherence is
-assumed: the portfolio has the quoted gap as its current price and is worth zero in every
-world consistent with the completed theory.  Affine Provability Induction supplies the
-learning step.
--/
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Framework.WriteOut
 
+/-!
+# Introspection
+
+Renders §4.11: `thm:ref` (tex:1969), `thm:lp` (tex:1992), `thm:epr` (tex:2014) and
+`thm:er` (tex:2022).
+
+These are the same-day identities.  The propositional language here cannot construct the
+paper's first-order quotations directly, so a quote is represented by a concrete polynomial
+affine portfolio whose current price is the quoted gap and whose value is zero in every
+completed-theory world.  Unlike the deferred Self-Trust certificates of
+`Properties/SelfTrust.lean`, no cross-day coherence is assumed.
+
+Two same-day certificates over `AffineQuotePortfolio` carry that data:
+`CompletedAffineQuoteEq`, whose completed-theory value is exactly zero — the Boolean
+quotation identities — and `CompletedAffineQuoteApprox`, whose value vanishes only
+uniformly, which is what the numeric LUV quotes need, their finite threshold bundle
+differing from the represented real by at most the mesh width.  Both learn their gap on
+the market diagonal through Affine Provability Induction (`gap_asympEq_zero`), and that is
+the whole proof engine of the file.
+
+`thm:epr` and `thm:er` are packaged as `CurrentPriceExpectationQuote` and
+`CurrentExpectationQuote`, each pairing the intended first-order semantics (`reflected`)
+with the concrete portfolio the proof consumes (`affine`).
+
+`thm:ref`: `IntrospectionIntervalQuote` carries the paper's inside and outside continuous
+products, and `lic_introspection` selects a positive rational error sequence strictly
+between the learned gap plus `1/(n+1)` and the same gap plus `2/(n+1)`, so the
+rational-valued conclusion is not hidden inside the quotation package.
+
+`thm:lp`: `ParadoxResistanceQuote` carries the diagonal sentence and its two continuous
+products, and `lic_paradox_resistance` separately rules out prices bounded below and above
+`p`, the vanishing continuous width absorbing the boundary where the diagonal comparison is
+undecidable.
+
+All six structures are `#assert_fields`-frozen and are inhabited over the constructed
+inductor in `Construction/Witnesses/QuotationAffine.lean`.
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Same-day affine quotation -/
 
 /-- A same-day affine quotation identity.  The inherited object exposes the exact
 portfolio, uniform emitter, normalization, bounded prices, and bounded magnitude;
@@ -31,17 +61,10 @@ namespace CompletedAffineQuoteEq
 lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteEq P DP gap) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    gap ≈ₙ fun _ => 0 := by
-  have hprice := q.poly.affine_provind_theory_eq P DP q.bounded
-    ⟨1, q.magnitude_le_one⟩ hworld 0 q.theory_coherent
-  rw [asympEq_iff_eventuallyWithin]
-  intro ε hε
-  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
-  have hnear := asympEq_iff_eventuallyWithin.1 hprice
-    ((q.scale : ℝ) * ε) (mul_pos hs hε)
-  filter_upwards [hnear] with n hn
-  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
-  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+    gap ≈ₙ fun _ => 0 :=
+  q.toAffineQuotePortfolio.gap_asympEq_zero_of_diagonal
+    (q.poly.affine_provind_theory_eq P DP q.bounded
+      ⟨1, q.magnitude_le_one⟩ hworld 0 q.theory_coherent)
 
 end CompletedAffineQuoteEq
 
@@ -62,19 +85,14 @@ diagonal. -/
 lemma gap_asympEq_zero {P : History} {DP : DeductiveProcess} {gap : ℕ → ℝ}
     (q : CompletedAffineQuoteApprox P DP gap) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    gap ≈ₙ fun _ => 0 := by
-  have hprice := q.poly.affine_provind_theory_tendsto_zero P DP q.bounded
-    ⟨1, q.magnitude_le_one⟩ hworld q.theory_coherent
-  rw [asympEq_iff_eventuallyWithin]
-  intro ε hε
-  have hs : (0 : ℝ) < q.scale := by exact_mod_cast q.scale_pos
-  have hnear := asympEq_iff_eventuallyWithin.1 hprice
-    ((q.scale : ℝ) * ε) (mul_pos hs hε)
-  filter_upwards [hnear] with n hn
-  rw [q.current_price, sub_zero, abs_mul, abs_of_pos hs] at hn
-  simpa only [sub_zero] using (mul_le_mul_iff_of_pos_left hs).mp hn
+    gap ≈ₙ fun _ => 0 :=
+  q.toAffineQuotePortfolio.gap_asympEq_zero_of_diagonal
+    (q.poly.affine_provind_theory_tendsto_zero P DP q.bounded
+      ⟨1, q.magnitude_le_one⟩ hworld q.theory_coherent)
 
 end CompletedAffineQuoteApprox
+
+/-! ## Expectations of probabilities and iterated expectations -/
 
 /-- Operational quotation package for `thm:epr`. `Y n` is the LUV expressing the actual
 day-`n` price of `φ n`. The `reflected` field records the intended first-order semantics;
@@ -125,23 +143,6 @@ theorem lic_iterated_expectations
 
 /-! ## Interval introspection -/
 
-/-- The continuous threshold gate always lies in `[0,1]` when its width is positive. -/
-lemma ctsInd_mem_Icc (δ : ℚ) (x y : ℝ) :
-    ctsInd δ x y ∈ Set.Icc (0 : ℝ) 1 := by
-  constructor
-  · exact le_min zero_le_one (le_max_left _ _)
-  · exact min_le_left _ _
-
-/-- The continuous threshold gate is fully on once its first argument exceeds the second
-by at least the positive rational width. -/
-lemma ctsInd_eq_one_of_le_sub (δ : ℚ) (x y : ℝ) (hδ : 0 < δ)
-    (hgap : (δ : ℝ) ≤ x - y) : ctsInd δ x y = 1 := by
-  have hδR : (0 : ℝ) < δ := by exact_mod_cast hδ
-  have hratio : 1 ≤ (x - y) / (δ : ℝ) := (le_div_iff₀ hδR).2 (by linarith)
-  have hzero : 0 ≤ (x - y) / (δ : ℝ) := zero_le_one.trans hratio
-  unfold ctsInd
-  rw [max_eq_right hzero, min_eq_left hratio]
-
 /-- Operational quotation package for `thm:ref`.  `quote n` is the represented sentence
 saying that the actual day-`n` price of `φ n` lies strictly between `a n` and `b n`.
 The two inherited affine objects are exactly the paper's inside and outside continuous
@@ -173,12 +174,15 @@ structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
       ctsInd (δ n) (P n (φ n)) (b n : ℝ)) *
       P n (quote n))
 
+/-- Repackage the structure's `lower_feature`/`lower_generated` pair as the `PGenerableRat`
+interface (`def:ece`) a `thm:ref` client needs; the fields alone do not present it. -/
 lemma IntrospectionIntervalQuote.lower_pgenerable
     {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
     {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
     PGenerableRat P a :=
   ⟨q.lower_feature, q.lower_generated⟩
 
+/-- The upper-bound counterpart of `IntrospectionIntervalQuote.lower_pgenerable`. -/
 lemma IntrospectionIntervalQuote.upper_pgenerable
     {P : History} {DP : DeductiveProcess} {φ : ℕ → Sentence}
     {a b δ : ℕ → ℚ} (q : IntrospectionIntervalQuote P DP φ a b δ) :
@@ -367,12 +371,5 @@ theorem lic_paradox_resistance
     rw [hgate, one_mul, abs_of_nonneg (hP n (q.sentence n)).1] at hnhigh
     have hμle : μ ≤ (p : ℝ) := min_le_left _ _
     linarith
-
-#print axioms CompletedAffineQuoteEq.gap_asympEq_zero
-#print axioms CompletedAffineQuoteApprox.gap_asympEq_zero
-#print axioms lic_expectations_of_probabilities
-#print axioms lic_iterated_expectations
-#print axioms lic_introspection
-#print axioms lic_paradox_resistance
 
 end LogicalInduction

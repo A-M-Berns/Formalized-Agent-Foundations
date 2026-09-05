@@ -10,21 +10,35 @@ cut.  `RationalCutAt` isolates exactly that semantic payload at the existing pro
 ABI.  The theorem `RationalCutAt.exists_valuesAt` proves that this payload is sufficient to
 recover the repository's `PCWorld.ValuesAt` interface, including genuinely undecided cuts.
 
-This is deliberately only the soundness kernel for the future encoded certificate registry.
-A caller-supplied proof of `RationalCutAt` is not by itself an acceptable fixed-process
-certificate: the deductive process cannot inspect an arbitrary Lean proof chosen after the
-process.  The registry must carry checkable object-level evidence that makes these three
-clauses hold in every completed base-theory world.
+This module is the soundness kernel of the certificate boundary.  A caller-supplied Lean
+proof of `RationalCutAt` is not an acceptable fixed-process certificate, because the
+deductive process cannot inspect a proof chosen after the process; that is why
+`SourceCutCertificate` carries a program instead, and why the three soundness clauses are
+stated against every completed base-theory world.  The object-level checker that runs those
+programs under bounded fuel is `SemanticSourceRegistry.lean`.
+
+* Job codings `sourceCutBelowJob` / `sourceCutAboveJob` / `sourceCutDownwardJob` pack the
+  certificate queries; `SourceCutCertificate.rationalCutAt` and `.valuesAt` run that payload
+  back through `RationalCutAt.exists_valuesAt`, so a checked certificate discharges the
+  `source_valued` premise of closed CCEE.
+* `CertifiedSourceLUVSeq DP` is the paper-facing source package: efficient threshold codes, a
+  total emitter program, pre-extension vocabulary ownership (`SemanticPrimeFreshLUVSeq`), and
+  the cut certificate.  Unlike `PresentedLUVSeq` it assumes no semantic-prime reflection.
+* `semanticHandleLUVSeq` and `thresholdSchema` give the compact self-describing handle whose
+  schema number stores both programs; `toPresented` is the canonical wrapper.
+* `semanticFreshIncreasing_no_cutCertificate` is the admission test's negative side: the
+  malformed fresh increasing family of `SemanticJoint.lean` carries no cut certificate over
+  any non-vacuous base process.
 -/
 
 namespace LogicalInduction
 
 /-! ## Executable cut certificates
 
-The following certificate is intentionally code-bearing.  `stageCode` is a repository
-program which, for each requested cut law, returns a stage of the already-fixed base
-deductive process containing that law.  A universal source registry can run this code and
-check finite-stage membership; it need not inspect the accompanying Lean correctness proof.
+The certificate is code-bearing.  `stageCode` is a repository program which, for each
+requested cut law, returns a stage of the already-fixed base deductive process containing
+that law.  A universal source registry runs this code and checks finite-stage membership; it
+does not inspect the accompanying Lean correctness proof.
 -/
 
 /-- Packed certificate query for the lower-bound law at source index `n`, threshold `r`. -/
@@ -81,6 +95,8 @@ lemma valuesAt (C : SourceCutCertificate DP X) {v : PCWorld}
 
 end SourceCutCertificate
 
+/-! ## Certified source LUV sequences -/
+
 /-- The local paper-facing source representation at the current propositional ABI.
 
 It retains efficient emission, carries the executable cut proof program, and records
@@ -108,6 +124,8 @@ variable {DP : DeductiveProcess}
 lemma source_valued (X : CertifiedSourceLUVSeq DP) (n : ℕ) (v : PCWorld)
     (hv : v.ConsistentWithTheory DP) : ∃ x : ℝ, v.ValuesAt (X.toLUV n) x :=
   X.cut_certificate.valuesAt hv n
+
+/-! ## The compact semantic handle -/
 
 /-- Compact source handles at a fixed schema. -/
 def semanticHandleLUVSeq (schema n : ℕ) : LUV where
@@ -152,6 +170,8 @@ lemma semanticHandleLUVSeq_polyThresholdCodeSeq (schema : ℕ) :
       Nat.succ_pred_eq_of_pos hg
     rw [hg1, encode_rat_natCast_div hk0, two_mul]
 
+/-- The handle family's threshold codes in RPN form, weakened from the whole-value
+certificate above. -/
 lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
     LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) :=
   LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
@@ -168,8 +188,8 @@ noncomputable def thresholdSchema (X : CertifiedSourceLUVSeq DP) : ℕ :=
     X.thresholdSchema.unpair.1 = 0 := by
   simp [thresholdSchema]
 
-/-- Canonical compact wrapper.  Reflection is intentionally not claimed here: that is the
-remaining universal verifier/process construction. -/
+/-- Canonical compact wrapper.  Reflection is deliberately outside this object's scope: it
+is the business of the universal verifier and process in `SemanticSourceRegistry.lean`. -/
 noncomputable def toPresented (X : CertifiedSourceLUVSeq DP) : PresentedLUVSeq where
   thresholdSchema := X.thresholdSchema
   source_schema := X.thresholdSchema_source
@@ -200,14 +220,5 @@ lemma semanticFreshIncreasing_no_cutCertificate (DP : DeductiveProcess)
   have hzero := hcut.downward 0 1 (by norm_num) hone
   simpa [semanticFreshIncreasingLUVSeq_gt, PCWorld.Holds,
     LO.Propositional.Formula.Boolean.val] using hzero
-
-#print axioms PCWorld.RationalCutAt.exists_valuesAt
-#print axioms PCWorld.RationalCutAt.valuesAt_iff_sSup
-#print axioms SourceCutCertificate.rationalCutAt
-#print axioms SourceCutCertificate.valuesAt
-#print axioms CertifiedSourceLUVSeq.source_valued
-#print axioms CertifiedSourceLUVSeq.semanticHandleLUVSeq_rpnThresholdCodeSeq
-#print axioms CertifiedSourceLUVSeq.toPresented
-#print axioms semanticFreshIncreasing_no_cutCertificate
 
 end LogicalInduction

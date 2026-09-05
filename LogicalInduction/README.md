@@ -37,7 +37,7 @@ finite-support theorem proved in its place.
 | affine combination of sentences (`def:affcomsen`) | `AffineCombination` |
 | logically uncertain variable (`def:luv`) | `LUV`, with `LUV.expect` its market expectation |
 | the criterion (`def:lic`) | `IsMachineLogicalInductor` |
-| the algorithm (`def:lia`) | `LIA`, `liaHistory` |
+| the algorithm (`def:lia`) | `liaStates`, `liaHistory` |
 
 Limit vocabulary — `≈ₙ`, `≳ₙ`, `≲ₙ`, `ConvergesTo` — lives in one module,
 `Framework/Asymptotics`, built on Mathlib's `Tendsto` and `∀ᶠ n in atTop` (`dd:asymp`).
@@ -81,9 +81,8 @@ for naturals, `DigitRatCodes` for rationals, `DigitMachineCodes` for machine cod
 `n`-bit string, and the Gödel code of a sentence naming an `n`-bit machine are all admissible,
 as they are for the paper. Value-bounded metering would exclude them, and that exclusion is
 proved rather than argued (`bigDigits_two_pow_not_polyNatCodes`,
-`not_polySentenceCodes_bitPrefixSentence`, and three more). The conditioning lane's retention is gone: `thm:scon`'s
-conditioning certificate used to ask for the narrower `RpnSentenceCodes` on the *condition*,
-and now asks for `BigSentenceCodes` like everything else.
+`not_polySentenceCodes_bitPrefixSentence`, and three more). The `thm:scon` conditioning
+certificate asks for `BigSentenceCodes` on the *condition*, like every other write-out lane.
 
 Token-metered retentions do, however, remain on the paper-facing surface, and they are all
 in the LUV **threshold** interfaces — `LUV.RpnThresholdCodes` and `LUV.RpnThresholdCodeSeq`,
@@ -94,15 +93,16 @@ the endpoint census; beside it sit `ConvergencePresentation.threshold_code`, the
 threshold binders on the `thm:expcoh` / `thm:perexpkno` / `lic_expectation_provind*`
 endpoints and the affine tail, and the quote certificates of `thm:cee`, `thm:ceu`,
 `thm:ccee`, `thm:epr` and `thm:er`. The write-out counterpart `LUV.BigThresholdCodeSeq`
-exists (`Framework/Expectations.lean`) and `lic_self_trust_closed`'s quote codes were
-migrated to it; the rest have not been. Why this is a *rendering sensitivity* rather than a
+exists (`Framework/Expectations.lean`) and carries `lic_self_trust_closed`'s quote codes; the
+threshold interfaces listed above are the ones that stay token-metered. Why this is a
+*rendering sensitivity* rather than a
 narrowing of the paper's admissible LUVs — along the threshold route what is metered is a
 formula string over a fixed finite alphabet (`0..19`), so the per-token *value* clause is vacuous
 and the class is exactly polynomial length — is worked out in
 `scripts/coverage-classification.md`, section *LUV-threshold metering: rendering
-sensitivity, witnessed*. The obstruction recorded for that retention was mis-diagnosed — the machine
-transducer's digit clamp is the identity because the clamped object is a list of base-4
-digits, not because token values are bounded — and the widening cost one lemma,
+sensitivity, witnessed*. Nothing obstructs widening the rest: the machine transducer's digit
+clamp is the identity because the clamped object is a list of base-4 digits, not because
+token values are bounded, and the whole widening rests on the single lemma
 `BigTokenStream.digitizeStream`.
 
 The paper is explicit, immediately after `def:ec`, that its framework "is not wedded to this
@@ -176,9 +176,14 @@ Three further binders appear, and they are of two different kinds:
   computable function without containing `𝗣𝗔⁻`. Two steps spend it — moving provability across
   the compact numeral spelling that `def:ec` forces, and the object-level exclusivity of the
   quotation schema's two fibers. What it bought is worth the trade and is the reason it is
-  here: it let **Σ₁-soundness be removed from the entire development**. No declaration in
-  `LogicalInduction/` carries a soundness instance binder — the paper treats soundness as a
-  further assumption it explicitly declines (tex:2673), and nothing here takes it. Every theory
+  here: it let **Σ₁-soundness be removed from the entire development**. No endpoint carries a
+  soundness instance binder — the paper treats soundness as a further assumption it
+  explicitly declines (tex:2673), and no consumer of `RepresentsComputations` takes one.
+  Soundness appears once in `LogicalInduction/`, on the non-vacuity side:
+  `representsComputations_of_peanoMinus`
+  (`Construction/Witnesses/R0Representability.lean`) carries `[ℕ↓[ℒₒᵣ] ⊧* U]` to *verify*
+  the premise for a particular theory, and that file's header records the resulting gap in
+  the non-vacuity argument. Every theory
   in the paper's intended range satisfies `𝗣𝗔⁻`: `𝗜𝚺₁`, `𝗣𝗔`, `𝗣𝗔 + Con(𝗣𝗔)`, and the
   arithmetic of ZFC.
 
@@ -195,9 +200,9 @@ both are stated in full at their modules and in the glossary in `LogicalInductio
 The paper builds one market over one deductive process and prices every §4 property in it. So
 does this development: every canonical endpoint whose statement names a market names
 `liaHistory (paperDP T)`, where `paperDP T` is the union of the theorem enumeration and the
-literal quotation stream — `thm:ccee` included, since the exact same-market endpoint
-`lic_no_expected_net_update_conditional_paperLUV_closed` landed. One canonical endpoint is
-still *priced* outside the shared market: `thm:ccee`'s
+literal quotation stream — `thm:ccee` included, whose exact same-market endpoint is
+`lic_no_expected_net_update_conditional_paperLUV_closed`. One canonical endpoint is
+*priced* outside the shared market: `thm:ccee`'s
 `lic_no_expected_net_update_conditional_exact_canonical`, over `canonicalCCEEDP T`, whose
 fixed enlarged language is what buys exact semantic multiplication for an arbitrary
 *threshold-only* source. It is retained as the generalized semantic-extension form of the
@@ -209,8 +214,8 @@ The §4 content is carried in two layers, and both are inventoried. The **generi
 the paper's universal quantifier. The **closed forms** (`_unconditional` / `_closed`) discharge
 every one of those interfaces over the constructed inductor, and are the fully-assembled
 corollaries a client can apply with no inputs beyond the theory instances. So when a closed
-form names `LIA`, the universal statement is the generic carrier one import away; that is the
-reading of the two layers, not a loss.
+form names `liaHistory`, the universal statement is the generic carrier one import away; that
+is the reading of the two layers, not a loss.
 
 One non-vacuity caveat is worth stating because it is easy to miss. The *input-free* universal
 semimeasure endpoints (`lic_domination_everyLowerSemicomputable_unconditional`,
@@ -246,13 +251,14 @@ non-vacuously satisfiable.
 * **Genuine modeling boundaries**, all disclosed above and at their statements: the fuel
   calculus is a certification device whose relation to polynomial time is one-directional; the
   corrected `thm:ifp` carries **no** condition on the syntax of the moved sentences.  Both
-  halves of the former `Recognizable` condition stood for missing `Complexity.FP` devices,
-  and both devices were built rather than assumed away: `DigitFP.sqrtRemW_mem_FP` and
-  `DigitFP.unpairW_spec` put base-4 integer square root and `Nat.unpair` in `Complexity.FP`
-  with `FiberTest.fiberW_mem_FP` the escape-leaf decode test on them (retiring `BotFree`),
-  while `PayAuto` decides the structured payload language of a fixed formula code and
-  `CtrAuto.ctrMachine` the structured block's `aⁿbⁿ` unary length field (retiring
-  `NoReserved`).  What is disclosed in their place is a property of the construction rather
+  halves of the `Recognizable` condition — the compatibility hypothesis of the restricted
+  form, `BotFree` and `NoReserved` (`Construction/Witnesses/CanonicalCodes.lean`) — stand for
+  `Complexity.FP` devices, and the development builds both devices rather than assuming them:
+  `DigitFP.sqrtRemW_mem_FP` and `DigitFP.unpairW_spec` put base-4 integer square root and
+  `Nat.unpair` in `Complexity.FP` with `FiberTest.fiberW_mem_FP` the escape-leaf decode test
+  on them, which is what discharges `BotFree`, while `PayAuto` decides the structured payload
+  language of a fixed formula code and `CtrAuto.ctrMachine` the structured block's `aⁿbⁿ`
+  unary length field, which is what discharges `NoReserved`.  What is disclosed in their place is a property of the construction rather
   than of the statement: the recognizer is compiled per frozen sentence, so its
   polynomial-time constants depend on that sentence — the paper's own "finitely many
   constants can be hard-coded", sound exactly because the support is finite.
@@ -268,19 +274,33 @@ import LogicalInduction.API
 ```
 
 That is the supported interface for downstream theoretical work: the semantic objects, both
-efficiency notions and the bridge between them, the criterion, the §4 library, and the two
-criterion-preserving transforms. `LogicalInduction/API.lean`'s module documentation is the map;
+efficiency notions and the bridge between them, the certificate kit for building an
+exploiting trader, the criterion, the §4 library, the two criterion-preserving transforms,
+and the constructed data that discharges the property tail's interfaces.
+`LogicalInduction/API.lean`'s module documentation is the map;
 `APITests/LogicalInduction.lean` is a worked client session against it.
 
-Deeper imports, and what each is for:
+That import's closure is 111 modules, of the 152 that `import LogicalInduction` reaches: the
+§2–3 substrate, all of §4, the whole §5 spine (so `liaHistory`, `LIA_isMachineLogicalInductor` and
+`exists_machine_logical_inductor` come with it), `RepresentsComputations` itself, and the
+witness modules the API documentation names. What stays outside is the first-order
+instantiation layer and the semantic-extension lane. Thirteen deeper imports reach those,
+each answering one question:
 
 | Import | For |
 |---|---|
-| `LogicalInduction.Framework.RepresentsComputations` | stating your own theory's standing assumption |
-| `LogicalInduction.Construction.Witnesses.R0Representability` | discharging it at `𝗣𝗔⁻`, `𝗜𝚺₁` or `𝗣𝗔` |
-| `LogicalInduction.Construction.Witnesses.ComputationRepresented` | the §4.10 endpoints over `liaHistory (paperDP T)` |
-| `LogicalInduction.Construction.LIACompiler` | the §5 construction and its existence endpoints |
-| `LogicalInduction.Construction.Witnesses.ArithmeticSource` | building a new literal first-order LUV family |
+| `LogicalInduction.Construction.Witnesses.R0Representability` | discharging `RepresentsComputations` at `𝗣𝗔⁻`, `𝗜𝚺₁` or `𝗣𝗔` |
+| `LogicalInduction.Construction.Witnesses.ComputationRepresented` | the §4.10 endpoints over `liaHistory (paperDP T)`, and their hypothesis-discharge kit |
+| `LogicalInduction.Construction.Witnesses.ArithmeticSource` | writing a new literal first-order formula family (`dd:nnf`) |
+| `LogicalInduction.Construction.Witnesses.PaperLUV` | the paper's literal first-order LUV objects, and the concrete families inhabiting them |
+| `LogicalInduction.Construction.Witnesses.PaperExactCCEE` | `PaperLUVSeq`, and `thm:ccee` at zero mesh slack |
+| `LogicalInduction.Construction.Witnesses.UnconditionalOverLIA` | `thm:dus` and `thm:scon` unconditionally over the constructed inductor |
+| `LogicalInduction.Construction.Witnesses.FeedbackUnconditional` | `thm:wub` / `thm:wubaff` / `thm:wubexp` unconditionally over it |
+| `LogicalInduction.Construction.Witnesses.LUVExpectationCertified` | the `_arith` LUV-expectation tail on the `dd:luv-arith` class |
+| `LogicalInduction.Construction.Witnesses.UniversalPrefix` | the constructed self-delimiting universal machine and its prefix complexity (`thm:ob`) |
+| `LogicalInduction.Construction.Witnesses.UniversalDovetailer` | the constructed universal continuous semimeasure (`thm:dus`) |
+| `LogicalInduction.Construction.Witnesses.SemanticLiftedCCEE` | the lifted-language substrate of the generalized `thm:ccee` |
+| `LogicalInduction.Framework.BoundedConsistency` | bounded provability and `Con(Θ)(ν)` (`dd:symbolcount`) |
 | `LogicalInduction` | the whole development |
 
 A handful of names to orient by:
@@ -298,9 +318,12 @@ A handful of names to orient by:
   named after the paper's labels.
 * `lic_conditioned_machine` — closure under conditioning (`thm:scon`).
 * `lic_iff_of_finiteSupportPerturbation_machine` — the corrected `thm:ifp` (its strongest
-  form is `FreezeOracle.machine_lic_iff_of_finiteSupport`; the older
+  form is `FreezeOracle.machine_lic_iff_of_finiteSupport`;
   `lic_iff_of_noReservedSupportPerturbation` and
-  `lic_iff_of_recognizableSupportPerturbation` are compatibility corollaries).
+  `lic_iff_of_recognizableSupportPerturbation` are the same theorem under strictly stronger
+  hypotheses).
+* `not_overgeneral_ifp` — the refutation of the *printed* `thm:ifp`, re-exported from
+  `LogicalInduction.API` so the bare name resolves from that one import.
 
 ## Where the accounting lives
 

@@ -1,36 +1,46 @@
-/-
-# The hysteresis arbitrage trader for Convergence (`thm:con`, appendix `app:con`)
-
-The economic core of Convergence: given a rational oscillation of `Pₙφ` across `[a, b]`
-(price `< a` i.o., `> b` i.o.), the **hysteresis** trader — buy on dips below `a`, hold
-through the ramp, sell on spikes above `b` — banks the gap on every completed swing,
-regardless of how smoothly the price moves.
-
-With `δ` a rational band width (`0 < δ`, `a + δ ≤ b − δ`), the day-`k` signals are the
-continuous threshold indicators (`def:ctsind`, as `EF`s)
-
-* `buyIndEF k` — `1` when `Pₖφ ≤ a`, `0` when `Pₖφ ≥ a + δ`;
-* `sellIndEF k` — `1` when `Pₖφ ≥ b`, `0` when `Pₖφ ≤ b − δ`;
-
-and the **holdings state** is the size-`Θ(k)` running feature
-`H 0 = 0`, `H (k+1) = max (H k · (1 − sellInd k)) (buyInd k)` (recursive branch first, so
-the serialization accretes fixed-width blocks in ascending day order on one side).
-The day-`n` trade is the difference `H (n+1) − H n` on `φ`.
-
-**The accounting** avoids any per-swing induction: writing `Δᵢ` for the day-`i`
-position change and `B₊/B₋` for the positive/negative variation, buys happen only below
-`a + δ` (fact 1) and sells only above `b − δ` (fact 2), so in every world
-`netWorth ≥ (b−a−2δ)·B₋ − (a+δ)` — bounded below outright, and unbounded as soon as
-`B₋ → ∞`, which each full swing forces (`h = 1` below `a`, `h = 0` above `b`, fact 3).
--/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# The hysteresis arbitrage trader
+
+The oscillation-arbitrage trader that Convergence (`thm:con`, §4.1, appendix `app:con`)
+turns on, together with the continuous threshold-indicator toolkit the whole §4 property
+tail builds its traders from.
+
+* `EF` building blocks: `oneMinus`, `efMin` — via `min x y = −max(−x, −y)`, there being no
+  `min` constructor — and `clip01`, with their denotation and rank laws.
+* Price-indexed signals `buyIndEF φ a δ n` and `sellIndEF φ b δ n`, the paper's continuous
+  threshold indicator (`def:ctsind`) at a price leaf, and the feature-generic
+  `buyIndF e a δ` / `sellIndF e b δ` at an arbitrary feature. At `δ = 0` both are
+  identically zero, because `1/0 = 0` in `ℚ`; that is what makes padded-start ladders
+  uniform-width.
+* The arming chain `armChain sig n = Π_{i<n} (1 − sig i)`, whose update mentions its own
+  previous value once, so the feature tree grows linearly (`dd:dsl` provides no sharing).
+  Consumed by the rung ladders of `NonDogmatism`, `UniformNonDogmatism` and `OccamBounds`
+  and by the gradual-sale component of `AffinePreemptiveLearning`.
+* The holdings state `hystN`: `H 0 = 0`, `H (k+1) = max (H k · (1 − sellInd k)) (buyInd k)`,
+  with the recursive branch written first so the serialization accretes fixed-width blocks in
+  ascending day order on one side; the day-`n` trade is `H (n+1) − H n`.
+* The accounting, which needs no per-swing induction: buys happen only below `a + δ` and
+  sells only above `b − δ`, so `netWorth ≥ (b−a−2δ)·B₋ − (a+δ)` in every world
+  (`hystTrader_netWorth_ge`), and each completed swing adds `1` to the downward variation
+  `B₋` (`hystBneg_unbounded`).
+* Efficient computability (`hystTrader_ecTok`): the day-`n` stream is five segments — fixed
+  head, `n+1` fixed-width blocks, fixed mid, `n` blocks, fixed tail — emitted through
+  `PolySegStream`.
+* `oscillation_exploitable_hyst` is the packaged witness that `Coherence.oscillation_exploitable`
+  consumes, at band `δ = (b−a)/4`.
+
+Downstream consumers of the signal toolkit are `NonDogmatism` and `OccamBounds` (the rung
+ladders) and `AffinePreemptiveLearning` and `AffineProvability` (the gradual-sale components).
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
-/-! ### `EF` building blocks: `1 − e`, `min`, clip to `[0,1]` -/
+/-! ## Feature building blocks -/
 
 /-- `1 − e`. -/
 def oneMinus (e : EF) : EF := .add (.const 1) (.mul (.const (-1)) e)
@@ -87,7 +97,14 @@ lemma clipVal_pos_imp {x : ℝ} (h : 0 < max 0 (min 1 x)) : 0 < x := by
   rw [clipVal_eq_zero hx] at h
   exact lt_irrefl _ h
 
-/-! ### The signals -/
+/-! ## Continuous threshold indicators
+
+The paper's continuous threshold indicator (`def:ctsind`) in two forms: at a price leaf, where
+the priced sentence and day are fixed, and at an arbitrary feature. Both ramp linearly across a
+band of width `δ` and are clipped to `[0,1]`; at `δ = 0` both collapse to the constant `0`,
+since `1/0 = 0` in `ℚ`. -/
+
+/-! ### At a price leaf -/
 
 /-- Buy signal at day `n`: `1` when `Pₙφ ≤ a`, ramps to `0` at `a + δ`. -/
 def buyIndEF (φ : Sentence) (a δ : ℚ) (n : ℕ) : EF :=
@@ -172,7 +189,184 @@ lemma sellInd_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < P n φ) :
 
 end Signals
 
-/-! ### The holdings state and the trader -/
+/-! ### At an arbitrary feature -/
+
+/-- Buy signal on the feature `e`: `1` when `e ≤ a`, ramps to `0` at `a + δ`. -/
+def buyIndF (e : EF) (a δ : ℚ) : EF :=
+  clip01 (.mul (.add (.const (a + δ)) (.mul (.const (-1)) e)) (.const (1/δ)))
+
+/-- Sell signal on the feature `e`: `1` when `e ≥ b`, ramps to `0` at `b − δ`. -/
+def sellIndF (e : EF) (b δ : ℚ) : EF :=
+  clip01 (.mul (.add e (.const (δ - b))) (.const (1/δ)))
+
+lemma buyIndF_denote (e : EF) (a δ : ℚ) (V : History) :
+    (buyIndF e a δ).denote V
+      = max 0 (min 1 (((a : ℝ) + δ - e.denote V) * (1/(δ : ℝ)))) := by
+  simp only [buyIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
+    Pi.mul_apply, Pi.add_apply]
+  push_cast; ring_nf
+
+lemma sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
+    (sellIndF e b δ).denote V
+      = max 0 (min 1 ((e.denote V - ((b : ℝ) - δ)) * (1/(δ : ℝ)))) := by
+  simp only [sellIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
+    Pi.mul_apply, Pi.add_apply]
+  push_cast; ring_nf
+
+@[simp] lemma buyIndF_rank (e : EF) (a δ : ℚ) : (buyIndF e a δ).rank = e.rank := by
+  simp [buyIndF, EF.rank]
+
+@[simp] lemma sellIndF_rank (e : EF) (b δ : ℚ) : (sellIndF e b δ).rank = e.rank := by
+  simp [sellIndF, EF.rank]
+
+section SignalFacts
+
+variable {e : EF} {a b δ : ℚ} {V : History}
+
+lemma buyIndF_mem (e : EF) (a δ : ℚ) (V : History) :
+    0 ≤ (buyIndF e a δ).denote V ∧ (buyIndF e a δ).denote V ≤ 1 := by
+  rw [buyIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
+
+lemma sellIndF_mem (e : EF) (b δ : ℚ) (V : History) :
+    0 ≤ (sellIndF e b δ).denote V ∧ (sellIndF e b δ).denote V ≤ 1 := by
+  rw [sellIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
+
+lemma buyIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndF e a δ).denote V) :
+    e.denote V < (a : ℝ) + δ := by
+  rw [buyIndF_denote] at h
+  have := clipVal_pos_imp h
+  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
+
+lemma buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
+    (buyIndF e a δ).denote V = 1 := by
+  rw [buyIndF_denote]
+  refine clipVal_eq_one ?_
+  have h1 : (δ:ℝ) ≤ (a:ℝ) + δ - e.denote V := by linarith
+  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
+    _ ≤ ((a:ℝ) + δ - e.denote V) * (1/(δ:ℝ)) := by
+        apply mul_le_mul_of_nonneg_right h1; positivity
+
+lemma buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
+    (h : (b : ℝ) < e.denote V) : (buyIndF e a δ).denote V = 0 := by
+  rw [buyIndF_denote]
+  refine clipVal_eq_zero ?_
+  have hδ' : (0:ℝ) < δ := hδ
+  have : (a:ℝ) + δ - e.denote V ≤ 0 := by nlinarith
+  have h1δ : (0:ℝ) ≤ 1/(δ:ℝ) := by positivity
+  nlinarith
+
+lemma sellIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndF e b δ).denote V) :
+    (b : ℝ) - δ < e.denote V := by
+  rw [sellIndF_denote] at h
+  have := clipVal_pos_imp h
+  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
+
+lemma sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
+    (sellIndF e b δ).denote V = 1 := by
+  rw [sellIndF_denote]
+  refine clipVal_eq_one ?_
+  have h1 : (δ:ℝ) ≤ e.denote V - ((b:ℝ) - δ) := by linarith
+  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
+    _ ≤ (e.denote V - ((b:ℝ) - δ)) * (1/(δ:ℝ)) := by
+        apply mul_le_mul_of_nonneg_right h1; positivity
+
+/-- The `δ = 0` degenerate buy signal is identically `0`. -/
+lemma buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
+    (buyIndF e a 0).denote V = 0 := by
+  rw [buyIndF_denote]
+  norm_num
+
+/-- The `δ = 0` degenerate sell signal is identically `0`. -/
+lemma sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
+    (sellIndF e b 0).denote V = 0 := by
+  rw [sellIndF_denote]
+  norm_num
+
+end SignalFacts
+
+/-! ## The arming chain
+
+A trader that opens a position once and unwinds it gradually carries its state in a product
+`Π_{i<n} (1 − sig i)` over a per-day disarm signal. The update mentions the previous state
+exactly once, so the `EF` tree grows linearly in `n`; a state update that used its previous
+value twice would grow exponentially, `dd:dsl` having no sharing. Rungs that start late are
+padded with degenerate (`δ = 0`) indicators before their start day, so every rung's chain has
+the same serialization width — the shape a doubly-indexed emission needs. -/
+
+/-- Arming chain over a per-day disarm signal: `armChain sig n = Π_{i<n} (1 − sig i)`.
+With `sig i ∈ [0,1]` it decays from `1` toward `0`, and the *shares telescope*: the total of
+`armChain · sig` over any window is the drop in the chain's value. -/
+def armChain (sig : ℕ → EF) : ℕ → EF
+  | 0 => .const 1
+  | (n + 1) => .mul (armChain sig n) (oneMinus (sig n))
+
+lemma armChain_denote_zero (sig : ℕ → EF) (P : History) :
+    (armChain sig 0).denote P = 1 := by simp [armChain]
+
+lemma armChain_denote_succ (sig : ℕ → EF) (P : History) (n : ℕ) :
+    (armChain sig (n + 1)).denote P
+      = (armChain sig n).denote P * (1 - (sig n).denote P) := by
+  simp [armChain, EF.denote_mul, Pi.mul_apply, oneMinus_denote]
+
+/-- A chain of `[0,1]`-valued disarm signals stays in `[0,1]`. -/
+lemma armChain_mem (sig : ℕ → EF) (P : History)
+    (hs : ∀ i, 0 ≤ (sig i).denote P ∧ (sig i).denote P ≤ 1) :
+    ∀ n, 0 ≤ (armChain sig n).denote P ∧ (armChain sig n).denote P ≤ 1
+  | 0 => by rw [armChain_denote_zero]; norm_num
+  | (n + 1) => by
+      obtain ⟨ih0, ih1⟩ := armChain_mem sig P hs n
+      obtain ⟨hs0, hs1⟩ := hs n
+      rw [armChain_denote_succ]
+      constructor
+      · nlinarith
+      · nlinarith
+
+/-- Padded-start rungs stay fully armed until their start day. -/
+lemma armChain_denote_of_le (sig : ℕ → EF) (P : History) {j : ℕ}
+    (hpad : ∀ i < j, (sig i).denote P = 0) :
+    ∀ n, n ≤ j → (armChain sig n).denote P = 1 := by
+  intro n
+  induction n with
+  | zero => intro _; exact armChain_denote_zero sig P
+  | succ n ih =>
+      intro h
+      rw [armChain_denote_succ, ih (by omega), hpad n (by omega)]
+      ring
+
+/-- The shares telescope: `Σ_{n ∈ [j, N)} armChain·sig = armChain j − armChain N`. -/
+lemma armChain_shares_sum (sig : ℕ → EF) (P : History) {j N : ℕ} (h : j ≤ N) :
+    ∑ n ∈ Finset.Ico j N, (armChain sig n).denote P * (sig n).denote P
+      = (armChain sig j).denote P - (armChain sig N).denote P := by
+  induction N, h using Nat.le_induction with
+  | base => simp
+  | succ N hN ih =>
+      rw [Finset.sum_Ico_succ_top hN, ih, armChain_denote_succ]
+      ring
+
+lemma armChain_rank (sig : ℕ → EF) (hs : ∀ i, (sig i).rank ≤ i) :
+    ∀ n, (armChain sig n).rank ≤ n - 1
+  | 0 => by simp [armChain]
+  | (n + 1) => by
+      have ih := armChain_rank sig hs n
+      have hn := hs n
+      simp only [armChain, EF.rank, oneMinus_rank, max_le_iff]
+      omega
+
+/-- The chain serializes as its initial `1` followed by one multiplication block per elapsed
+day. Every ladder emission in the property tail is an instance of this shape. -/
+lemma serialize_armChain (sig : ℕ → EF) : ∀ n,
+    (armChain sig n).serialize
+      = [1, Encodable.encode ((1 : ℚ))]
+        ++ (List.range n).flatMap (fun i => (oneMinus (sig i)).serialize ++ [3])
+  | 0 => by simp [armChain, EF.serialize]
+  | (n + 1) => by
+      rw [armChain]
+      simp only [EF.serialize]
+      rw [serialize_armChain sig n, List.range_succ, List.flatMap_append,
+        List.flatMap_singleton]
+      simp [List.append_assoc]
+
+/-! ## The holdings state and the trader -/
 
 /-- The `k`-block holdings state: `H 0 = 0`,
 `H (k+1) = max (H k · (1 − sellInd k)) (buyInd k)`. Day-`n` holdings are `H (n+1)`.
@@ -302,7 +496,7 @@ lemma hystTrader_netWorth (φ a b δ) (P : History) (v : PCWorld) (n : ℕ) :
       = ∑ i ∈ Finset.range (n + 1), hystDelta φ a b δ P i * (v.payout φ - P i φ) := by
   simp [Trader.netWorth, hystTrader, Strategy.value]
 
-/-! ### The variation bookkeeping -/
+/-! ## The variation bookkeeping -/
 
 /-- Positive variation `B₊ n = ∑_{i ≤ n} max Δᵢ 0`. -/
 noncomputable def hystBpos (φ : Sentence) (a b δ : ℚ) (P : History) (n : ℕ) : ℝ :=
@@ -382,7 +576,7 @@ lemma hystTrader_netWorth_ge (φ : Sentence) (a b δ : ℚ) (P : History)
   have hBp := hystBpos_eq φ a b δ P n
   nlinarith [mul_nonneg hpay hh0]
 
-/-! ### `B₋ → ∞` under oscillation -/
+/-! ### Unbounded downward variation under oscillation -/
 
 section Unbounded
 
@@ -435,7 +629,7 @@ lemma hystBneg_unbounded (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : �
 
 end Unbounded
 
-/-! ### Exploitation -/
+/-! ## Exploitation -/
 
 /-- **The hysteresis trader exploits an oscillating market.** -/
 lemma hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
@@ -460,14 +654,13 @@ lemma hystTrader_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence)
     rw [div_lt_iff₀ hγ0] at hK
     nlinarith
 
-/-! ### Efficient computability
+/-! ## Emission: the ramp closures at each stream class
 
-The day-`n` stream decomposes into five segments — fixed head `[1,⌜0⌝]`, `n+1`
-fixed-width blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, `n` more blocks
-(the `H n` chain), fixed tail `[3,2,6,⌜φ⌝]` — emitted by the segment-composition layer
-(`PolySegStream`, `Computable.lean`). -/
+`oneMinus`, `efMin` and `clip01` are transparent operator tails, so each of the four
+emission classes — `PolySegStream`, `RpnSpliceStream`, `BigSpliceStream` and
+`PolyTokenStream` — closes under them by the same `max`/negate composition, and a family
+of indicators is emitted wherever its underlying feature family is. -/
 
-/-- Segment-level mirrors of the ramp closures (transparent operator tails). -/
 lemma PolySegStream.serialize_oneMinus {e : ℕ → EF}
     (he : PolySegStream (fun n => (e n).serialize)) :
     PolySegStream (fun n => (oneMinus (e n)).serialize) :=
@@ -496,7 +689,6 @@ lemma PolySegStream.serialize_clip01 {e : ℕ → EF}
     (PolySegStream.serialize_efMin
       (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1)) he)
 
-/-- Spliced mirrors of the ramp closures (sentence slots may carry RPN blocks). -/
 lemma RpnSpliceStream.serialize_oneMinus {e : ℕ → EF}
     (he : RpnSpliceStream (fun n => (e n).serialize)) :
     RpnSpliceStream (fun n => (oneMinus (e n)).serialize) :=
@@ -518,15 +710,12 @@ lemma RpnSpliceStream.serialize_clip01 {e : ℕ → EF}
   RpnSpliceStream.serialize_max (RpnSpliceStream.serialize_const 0)
     (RpnSpliceStream.serialize_efMin (RpnSpliceStream.serialize_const 1) he)
 
-/-- Write-out streams of `oneMinus` families. -/
 lemma BigSpliceStream.serialize_oneMinus {e : ℕ → EF}
     (he : BigSpliceStream (fun n => (e n).serialize)) :
     BigSpliceStream (fun n => (oneMinus (e n)).serialize) :=
   BigSpliceStream.serialize_add (BigSpliceStream.serialize_const 1)
     (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) he)
 
-/-- Write-out streams of `efMin` families: the same max/negate composition as the
-value-bounded mirror, so an exponentially-named operand costs nothing extra. -/
 lemma BigSpliceStream.serialize_efMin {e f : ℕ → EF}
     (he : BigSpliceStream (fun n => (e n).serialize))
     (hf : BigSpliceStream (fun n => (f n).serialize)) :
@@ -536,21 +725,18 @@ lemma BigSpliceStream.serialize_efMin {e f : ℕ → EF}
       (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) he)
       (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) hf))
 
-/-- Write-out streams of `clip01` families. -/
 lemma BigSpliceStream.serialize_clip01 {e : ℕ → EF}
     (he : BigSpliceStream (fun n => (e n).serialize)) :
     BigSpliceStream (fun n => (clip01 (e n)).serialize) :=
   BigSpliceStream.serialize_max (BigSpliceStream.serialize_const 0)
     (BigSpliceStream.serialize_efMin (BigSpliceStream.serialize_const 1) he)
 
-/-- Token streams of `oneMinus` families. -/
 lemma PolyTokenStream.serialize_oneMinus {e : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize)) :
     PolyTokenStream (fun m => (oneMinus (e m)).serialize) :=
   PolyTokenStream.serialize_add (PolyTokenStream.serialize_const 1)
     (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) he)
 
-/-- Token streams of `efMin` families. -/
 lemma PolyTokenStream.serialize_efMin {e f : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize))
     (hf : PolyTokenStream (fun m => (f m).serialize)) :
@@ -560,12 +746,18 @@ lemma PolyTokenStream.serialize_efMin {e f : ℕ → EF}
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) he)
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const (-1)) hf))
 
-/-- Token streams of `clip01` families. -/
 lemma PolyTokenStream.serialize_clip01 {e : ℕ → EF}
     (he : PolyTokenStream (fun m => (e m).serialize)) :
     PolyTokenStream (fun m => (clip01 (e m)).serialize) :=
   PolyTokenStream.serialize_max (PolyTokenStream.serialize_const 0)
     (PolyTokenStream.serialize_efMin (PolyTokenStream.serialize_const 1) he)
+
+/-! ### The hysteresis trader's stream
+
+The day-`n` stream decomposes into five segments — fixed head `[1,⌜0⌝]`, `n+1` fixed-width
+blocks (the `H (n+1)` chain), fixed mid `[1,⌜−1⌝,1,⌜0⌝]`, `n` more blocks (the `H n`
+chain), fixed tail `[3,2,6,⌜φ⌝]` — emitted by the segment-composition layer
+(`PolySegStream`, `Framework/Computable.lean`). -/
 
 lemma buyIndEF_tokenStream {f : ℕ → ℕ} {c : Nat.Partrec.Code} (hf : PolyFueled c f)
     (φ : Sentence) (a δ : ℚ) :
@@ -671,6 +863,8 @@ lemma hystTrader_ecTok (φ : Sentence) (a b δ : ℚ) :
   rw [serialize_hystN φ a b δ (n + 1), serialize_hystN φ a b δ n]
   simp [Nat.unpair_pair, List.append_assoc]
 
+/-! ## The oscillation-arbitrage package -/
+
 /-- **The oscillation-arbitrage package** (`app:con`): the trader witnessing
 `oscillation_exploitable`. `δ := (b−a)/4`. -/
 lemma oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : Sentence)
@@ -689,104 +883,5 @@ lemma oscillation_exploitable_hyst (P : History) (DP : DeductiveProcess) (φ : S
     linarith
   exact ⟨hystTrader φ a b δ, hystTrader_ecTok φ a b δ,
     hystTrader_exploits P DP φ hδ ha hgap hcons hA hB⟩
-
-/-! ### Feature-generic continuous threshold indicators
-
-The signals above with the priced object abstracted: `buyIndF e a δ` ramps
-from `1` (when `e ≤ a`) to `0` (when `e ≥ a + δ`); `sellIndF e b δ` from `0` (at
-`b − δ`) to `1` (at `b`). At `δ = 0` both are identically `0`, since `1/0 = 0` in `ℚ`. -/
-
-/-- Buy signal on the feature `e`: `1` when `e ≤ a`, ramps to `0` at `a + δ`. -/
-def buyIndF (e : EF) (a δ : ℚ) : EF :=
-  clip01 (.mul (.add (.const (a + δ)) (.mul (.const (-1)) e)) (.const (1/δ)))
-
-/-- Sell signal on the feature `e`: `1` when `e ≥ b`, ramps to `0` at `b − δ`. -/
-def sellIndF (e : EF) (b δ : ℚ) : EF :=
-  clip01 (.mul (.add e (.const (δ - b))) (.const (1/δ)))
-
-lemma buyIndF_denote (e : EF) (a δ : ℚ) (V : History) :
-    (buyIndF e a δ).denote V
-      = max 0 (min 1 (((a : ℝ) + δ - e.denote V) * (1/(δ : ℝ)))) := by
-  simp only [buyIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
-    Pi.mul_apply, Pi.add_apply]
-  push_cast; ring_nf
-
-lemma sellIndF_denote (e : EF) (b δ : ℚ) (V : History) :
-    (sellIndF e b δ).denote V
-      = max 0 (min 1 ((e.denote V - ((b : ℝ) - δ)) * (1/(δ : ℝ)))) := by
-  simp only [sellIndF, clip01_denote, EF.denote_mul, EF.denote_add, EF.denote_const,
-    Pi.mul_apply, Pi.add_apply]
-  push_cast; ring_nf
-
-@[simp] lemma buyIndF_rank (e : EF) (a δ : ℚ) : (buyIndF e a δ).rank = e.rank := by
-  simp [buyIndF, EF.rank]
-
-@[simp] lemma sellIndF_rank (e : EF) (b δ : ℚ) : (sellIndF e b δ).rank = e.rank := by
-  simp [sellIndF, EF.rank]
-
-section SignalFacts
-
-variable {e : EF} {a b δ : ℚ} {V : History}
-
-lemma buyIndF_mem (e : EF) (a δ : ℚ) (V : History) :
-    0 ≤ (buyIndF e a δ).denote V ∧ (buyIndF e a δ).denote V ≤ 1 := by
-  rw [buyIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
-
-lemma sellIndF_mem (e : EF) (b δ : ℚ) (V : History) :
-    0 ≤ (sellIndF e b δ).denote V ∧ (sellIndF e b δ).denote V ≤ 1 := by
-  rw [sellIndF_denote]; exact ⟨clipVal_nonneg _, clipVal_le_one _⟩
-
-lemma buyIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (buyIndF e a δ).denote V) :
-    e.denote V < (a : ℝ) + δ := by
-  rw [buyIndF_denote] at h
-  have := clipVal_pos_imp h
-  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
-
-lemma buyIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : e.denote V < (a : ℝ)) :
-    (buyIndF e a δ).denote V = 1 := by
-  rw [buyIndF_denote]
-  refine clipVal_eq_one ?_
-  have h1 : (δ:ℝ) ≤ (a:ℝ) + δ - e.denote V := by linarith
-  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
-    _ ≤ ((a:ℝ) + δ - e.denote V) * (1/(δ:ℝ)) := by
-        apply mul_le_mul_of_nonneg_right h1; positivity
-
-lemma buyIndF_eq_zero (hδ : 0 < (δ : ℝ)) (hab : (a : ℝ) + δ ≤ (b : ℝ) - δ)
-    (h : (b : ℝ) < e.denote V) : (buyIndF e a δ).denote V = 0 := by
-  rw [buyIndF_denote]
-  refine clipVal_eq_zero ?_
-  have hδ' : (0:ℝ) < δ := hδ
-  have : (a:ℝ) + δ - e.denote V ≤ 0 := by nlinarith
-  have h1δ : (0:ℝ) ≤ 1/(δ:ℝ) := by positivity
-  nlinarith
-
-lemma sellIndF_pos_imp (hδ : 0 < (δ : ℝ)) (h : 0 < (sellIndF e b δ).denote V) :
-    (b : ℝ) - δ < e.denote V := by
-  rw [sellIndF_denote] at h
-  have := clipVal_pos_imp h
-  nlinarith [mul_pos (show (0:ℝ) < 1/(δ:ℝ) by positivity) hδ]
-
-lemma sellIndF_eq_one (hδ : 0 < (δ : ℝ)) (h : (b : ℝ) < e.denote V) :
-    (sellIndF e b δ).denote V = 1 := by
-  rw [sellIndF_denote]
-  refine clipVal_eq_one ?_
-  have h1 : (δ:ℝ) ≤ e.denote V - ((b:ℝ) - δ) := by linarith
-  calc (1:ℝ) = (δ:ℝ) * (1/(δ:ℝ)) := by field_simp
-    _ ≤ (e.denote V - ((b:ℝ) - δ)) * (1/(δ:ℝ)) := by
-        apply mul_le_mul_of_nonneg_right h1; positivity
-
-/-- The `δ = 0` degenerate buy signal is identically `0`. -/
-lemma buyIndF_denote_zero_delta (e : EF) (a : ℚ) (V : History) :
-    (buyIndF e a 0).denote V = 0 := by
-  rw [buyIndF_denote]
-  norm_num
-
-/-- The `δ = 0` degenerate sell signal is identically `0`. -/
-lemma sellIndF_denote_zero_delta (e : EF) (b : ℚ) (V : History) :
-    (sellIndF e b 0).denote V = 0 := by
-  rw [sellIndF_denote]
-  norm_num
-
-end SignalFacts
 
 end LogicalInduction

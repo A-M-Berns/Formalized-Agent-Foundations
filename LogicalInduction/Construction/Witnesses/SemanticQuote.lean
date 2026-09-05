@@ -4,16 +4,48 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 /-!
 # Fixed quote leaves for semantic-prime syntax
 
-A quote leaf `semanticQuoteSchema code` names the already-existing quotation selector
-`code`.  Generic emitted-source programs use the disjoint `semanticEmitterSchema`
-namespace.  This is deliberately not a general first-order bridge: it is a fixed syntactic
-definitional closure between two public names for the same universal quotation instance.
+The fixed definitional bridge between a semantic-prime quote leaf and the universal quotation
+atom it aliases.  Not a paper node: it supplies the shared quotation namespace the
+semantic-lifted `thm:ccee` lane (`SemanticQuoteFactor`, `SemanticRegistryProduct`,
+`SemanticCertifiedProduct`, `SemanticLiftedCCEE`) is built on.
+
+## Objects
+
+`semanticQuoteLeaf code input` — the tag-`2` semantic-prime handle for quotation selector
+`code`; `semanticQuoteDefSentence` — the two implication directions, packed at job code
+`⟨kind, ⟨code, input⟩⟩`; `semanticQuoteStageList`; and `semanticQuoteDP`.
+
+This is a *definitional closure*, not a general first-order bridge: both names denote the same
+universal quotation instance, so the process enters only the two implications.  Nothing in the
+theory changes and no market or source LUV is consulted (`dd:quote-code`).  Disjointness keeps
+the namespace unambiguous: quote leaves live on schema tag `2`, generic emitted-source programs
+on tag `0` (`semanticEmitterSchema`), products on tag `1`, so no handle gets two meanings.
+
+## Main results
+
+`semanticQuoteDefSentence_computable` and `semanticQuoteDP_computable` — the closure is c.e.
+with no oracle for a market or a source LUV — and `semanticQuoteLeaf_reflected`: every
+completed world identifies a quote leaf with its quotation atom, which is what `SemanticJoint`
+and `SemanticRegistryProduct` consume.
+
+The outward-facing exports are the shared base `theoremQuoteBaseDP T = (theoremDP T).union
+semanticQuoteDP` and its `theoremQuoteBaseDPComputation`, fixed from the arithmetic theory
+alone so every downstream source and product registry shares one quotation namespace.
+
+The stage-list enumeration idiom used here — the list, its membership lemma, the
+`DeductiveProcess` wrapper, and a `Computable.nat_rec` + `sentenceDedup` + `insertionSort`
+computability proof — is spelled out again in `ProductDefinition.lean` and
+`SemanticProduct.lean`.
 -/
 
 namespace LogicalInduction
 
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
+/-! ## The quote leaf -/
+
+/-- The tag-`2` semantic-prime handle aliasing the universal quotation atom for selector
+`code` at input `input` (`dd:quote-code`). -/
 def semanticQuoteLeaf (code input : ℕ) : Sentence :=
   semanticPrimeSentence (semanticQuoteSchema code) input
 
@@ -24,6 +56,11 @@ lemma quoteAtom_computable : Computable quoteAtom := by
     ⟨_, PolyFueled.id⟩
   exact Computable.encode_iff.mpr (hc.primrec.of_eq (fun n => by rfl)).to_comp
 
+/-! ## The definitional closure process -/
+
+/-- One clause of the definitional closure, at job code `e = ⟨kind, ⟨code, input⟩⟩`: `kind = 0`
+gives `quoteAtom → leaf`, any other `kind` gives `leaf → quoteAtom`.  Together the two
+directions identify the leaf with its atom in every completed world. -/
 noncomputable def semanticQuoteDefSentence (e : ℕ) : Sentence :=
   if e.unpair.1 = 0 then
     quoteAtom (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2) 🡒
@@ -32,6 +69,8 @@ noncomputable def semanticQuoteDefSentence (e : ℕ) : Sentence :=
     semanticQuoteLeaf e.unpair.2.unpair.1 e.unpair.2.unpair.2 🡒
       quoteAtom (Nat.pair e.unpair.2.unpair.1 e.unpair.2.unpair.2)
 
+/-- All closure clauses through stage `n`.  The clause family is decidable, so no dovetailing
+clock is needed — the process is a plain enumeration. -/
 noncomputable def semanticQuoteStageList : ℕ → List Sentence
   | 0 => [semanticQuoteDefSentence 0]
   | n + 1 => semanticQuoteDefSentence (n + 1) :: semanticQuoteStageList n
@@ -53,6 +92,8 @@ noncomputable def semanticQuoteDP : DeductiveProcess where
     intro φ h
     simp only [List.mem_toFinset] at h ⊢
     exact List.mem_cons_of_mem _ h
+
+/-! ## Computability of the closure -/
 
 set_option maxHeartbeats 2000000 in
 private lemma semanticQuoteLeafJob_encode_computable : Computable fun e : ℕ =>
@@ -133,17 +174,23 @@ lemma semanticQuoteDP_computable : ComputableDeductiveProcess semanticQuoteDP :=
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticQuoteStageList k))
 
+/-! ## The shared quotation base -/
+
 /-- Canonical theorem/quotation base, fixed from the arithmetic theory alone.  It lives
 here so all downstream source and product registries share one quotation namespace. -/
 noncomputable def theoremQuoteBaseDP
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] : DeductiveProcess :=
   (theoremDP T).union semanticQuoteDP
 
+/-- `def:dedproc` computability of `theoremQuoteBaseDP`, as the union of the theorem stream's
+own program and `semanticQuoteDP_computable`. -/
 noncomputable def theoremQuoteBaseDPComputation
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] :
     DeductiveProcessComputation (theoremQuoteBaseDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
     semanticQuoteDP_computable.nonemptyComputation.some
+
+/-! ## Reflection in completed worlds -/
 
 lemma holds_semanticQuoteDefSentence {v : PCWorld}
     (hv : v.ConsistentWithTheory semanticQuoteDP) (e : ℕ) :

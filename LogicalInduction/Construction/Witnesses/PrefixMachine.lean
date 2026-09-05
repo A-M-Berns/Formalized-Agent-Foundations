@@ -1032,7 +1032,7 @@ value is `n` itself or the atom fallback `pair 1 n + 1` — both trivially assem
 (kind `C`; provenance `(a)`: `encode_prefixSentenceEnum`, `of_validCode`,
 `validCode_encode`).
 Paper node: `thm:ob` -/
-theorem sentencePoly_of_invalidBit (h : ∃ c, PolyFueled c invalidBit) :
+lemma sentencePoly_of_invalidBit (h : ∃ c, PolyFueled c invalidBit) :
     PolySentenceCodes prefixSentenceEnum := by
   obtain ⟨cv, hv⟩ := h
   refine ⟨_, (ifzSel_polyFueled.comp
@@ -2077,7 +2077,7 @@ lemma andLoop_polyFueled :
 breadth-first descent `outerSt` with its on-diagonal characterization, the resolution
 and conservation lemmas, and the conjunction fold).
 Paper node: `thm:ob` -/
-theorem invalidBit_polyFueled : ∃ c, PolyFueled c invalidBit := by
+lemma invalidBit_polyFueled : ∃ c, PolyFueled c invalidBit := by
   obtain ⟨cs, hs⟩ := sizec_polyFueled
   obtain ⟨col, hol⟩ := outerLoop_polyFueled
   obtain ⟨cal, hal⟩ := andLoop_polyFueled
@@ -2186,18 +2186,5 @@ theorem lic_occamBounds_ofPrefixMachine
         limitingBelief P φ ≤ 1 - K * prefixWeight prefixKappa φ) :=
   lic_occamBounds prefixMachinePresentation prefixThresholdEmission
     prefixNegationCompiler P DP hworld
-
-#print axioms kraft_inequality
-#print axioms approx_polyRat_of_sentence
-#print axioms sentencePoly_of_invalidBit
-#print axioms invalidBit_polyFueled
-#print axioms prefixSentenceEnum_polySentenceCodes
-#print axioms prefixApprox_polyRatCodes
-#print axioms sentCode_prefix_inj
-#print axioms prefixKraft
-#print axioms prefixNegationCompiler
-#print axioms prefixMachinePresentation
-#print axioms lic_occam_lower_ofPrefixMachine
-#print axioms lic_occamBounds_ofPrefixMachine
 
 end LogicalInduction

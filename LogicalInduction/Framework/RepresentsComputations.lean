@@ -1,26 +1,3 @@
-/-
-# The paper's standing assumption on the background theory: `Θ` represents computations
-
-The paper (§2, "Representing computations", arXiv:1609.03543v5 lines 600–606) fixes one
-standing hypothesis on the first-order background theory `Θ` used from §4.9 onward: that
-
-> for every (total) computable function `f : ℕ⁺ → ℕ⁺` there exists a `Θ`-formula `γ_f` with
-> two free variables such that for all `n, y ∈ ℕ⁺`,
-> `y = f(n)` if and only if `Θ ⊢ ∀ν : γ_f(⌜n⌝, ν) ↔ ν = ⌜y⌝`.
-
-This is the *representability theorem for computable functions*, taken as a hypothesis on
-`Θ` rather than proved about a particular theory.  It is a purely **proof-theoretic**
-condition: it says what `Θ` derives, not what is true.  In particular it is *not* a
-semantic soundness assumption, and this development uses it in place of Σ₁-soundness
-wherever the paper's own argument only needs the paper's own premise.
-
-The paper notes (line 604) that the condition already forces `Θ` to be consistent;
-`RepresentsComputations.consistent` below is that observation.
-
-Because the assumption is an *existential* over `γ_f`, it supplies no computable map
-`f ↦ ⌜γ_f⌝`.  Downstream users get, for each fixed total computable `f`, one fixed formula
-and both literals over it.
--/
 import Foundation.FirstOrder.Arithmetic.R0.Basic
 import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
 import Foundation.FirstOrder.Arithmetic.Schemata
@@ -29,11 +6,62 @@ import Mathlib.Computability.Partrec
 import Mathlib.Tactic.FinCases
 import LogicalInduction.Framework.SubstOccurrence
 
+/-!
+# The paper's standing assumption on the background theory: `Θ` represents computations
+
+The paper (§2, "Representing computations", tex:600-606) fixes one standing hypothesis on
+the first-order background theory `Θ`, in force from §4.8 `sec:expectations` onward
+(tex:1633):
+
+> for every (total) computable function `f : ℕ⁺ → ℕ⁺` there exists a `Θ`-formula `γ_f` with
+> two free variables such that for all `n, y ∈ ℕ⁺`,
+> `y = f(n)` if and only if `Θ ⊢ ∀ν : γ_f(⌜n⌝, ν) ↔ ν = ⌜y⌝`.
+
+This is the *representability theorem for computable functions*, taken as a hypothesis on
+`Θ` rather than proved about a particular theory. It is a purely **proof-theoretic**
+condition: it says what `Θ` derives, not what is true. In particular it is not a semantic
+soundness assumption — the paper flags soundness as a *further* assumption it declines to
+make (tex:2673) — and no consumer of this class takes one. Soundness enters the development
+at exactly one place, on the other side of the interface:
+`representsComputations_of_peanoMinus` (`Construction/Witnesses/R0Representability.lean`)
+asks `[ℕ↓[ℒₒᵣ] ⊧* U]` in order to *verify* the premise for a particular theory, and that
+file's header records the gap this leaves in the non-vacuity argument.
+
+The class quantifies over `f : ℕ → ℕ` and asserts the biconditional at every `y : ℕ`,
+including `0`, where the paper is over `ℕ⁺`; this disclosed index shift asks slightly more
+of `T` than the paper does, and is realized by the committed `𝗣𝗔⁻` / `𝗜𝚺₁` / `𝗣𝗔`
+instances.
+
+## What the module supplies
+
+* Both literals over one represented formula, under `[𝗥₀ ⪯ T]` alone: `represents_proves`,
+  `represents_refutes` and `represents_refutes_all`. Weak Σ₁-representation supplies no
+  negative literal; the paper's own premise supplies both.
+* `RepresentsComputations.consistent` — the paper's own observation (tex:604) that the
+  condition already forces `Θ` consistent.
+* The claim sentence and its fixed schema: `reprBody`, `reprAll`, `reprAllSchema` and
+  `reprAllSchema_subst`. These are what keep `{z | T ⊢ reprAll γ y z}` enumerable by the
+  fixed-schema machinery, even though `γ` comes from an existential that supplies no
+  computable map `f ↦ ⌜γ_f⌝`.
+* `mentions_zero_of_repr_ne` — the representation spec forces `γ` to mention its argument
+  slot as soon as the represented function is non-constant. This is the general discharge
+  of the occurrence side condition, and it cannot drop the non-constancy hypothesis.
+* Naming the argument by an arbitrary closed term (`reprBodyTerm`, `reprAllTerm`,
+  `reprAllSchema_subst_term`), with `provable_subst_iff_of_val`: provability of a schema
+  instance depends only on the term's value, which is what licenses the compact
+  `binNumeral` spelling `def:ec` forces.
+
+Instances live in `Construction/Witnesses/R0Representability.lean`. Consumers use only
+derivability; semantics enters nowhere but verification.
+-/
+
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 
-/-- **The paper's standing assumption on `Θ` (`arXiv:1609.03543v5`, §2, lines 600–606).**
+/-! ## The paper's standing assumption -/
+
+/-- **The paper's standing assumption on `Θ` (§2, tex:600-606).**
 
 `T` *represents computations*: every total computable `f : ℕ → ℕ` has a two-variable
 `T`-formula `γ_f` for which `T` proves, and only proves, the correct value graph in the
@@ -41,12 +69,12 @@ strong "unique value" form
 
 `y = f n ↔ T ⊢ ∀ν, (γ_f(n̄, ν) ↔ ν = ȳ)`.
 
-The paper writes `⌜f⌝(⌜n⌝)` for `γ_f(n̄, ν)` (line 606) and observes that this condition
-already implies `T` is consistent (line 604; see `RepresentsComputations.consistent`).
+The paper writes `⌜f⌝(⌜n⌝)` for `γ_f(n̄, ν)` (tex:606) and observes that this condition
+already implies `T` is consistent (tex:604; see `RepresentsComputations.consistent`).
 
 Note what this is *not*: it is a condition on `T`'s derivations, with no reference to
-truth in the standard model.  It is strictly weaker in kind than Σ₁-soundness, which is
-what this development previously assumed and which the paper never assumes.
+truth in the standard model.  It is strictly weaker in kind than Σ₁-soundness, which the
+paper never assumes (tex:2673) and which no endpoint of this development carries.
 
 *Index-shift strengthening (disclosed).*  The quantifier here is over `f : ℕ → ℕ` and the
 biconditional is asserted at **every** `y : ℕ`, including `y = 0`, where the paper's is over
@@ -131,10 +159,10 @@ lemma represents_proves (T : ArithmeticTheory) [𝗥₀ ⪯ T] (γ : ArithmeticS
 /-- **The negative literal.**  From the representation at the value `0`, `T` *refutes* the
 value-`1` instance of the *same* formula.
 
-This is the step that replaces Σ₁-soundness: previously a false decidable claim was
-refutable only by moving to a second, complementary r.e. schema, since weak representation
-gives nothing negative.  The paper's representability premise gives both literals over one
-formula.
+Weak Σ₁-representation supplies no negative literal: refuting a false decidable claim
+would need a second, complementary r.e. schema, and exclusivity of the two would then be a
+fact about ℕ rather than about `T`.  The paper's representability premise gives both
+literals over one formula, which is why no consumer of the class needs a soundness binder.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
 `R0.Ω₃` (via `numeral_ne_prov`) and `Theory.Proof.specialize`. -/
@@ -226,6 +254,8 @@ function differs; the hypothesis is exactly that non-constancy, and it cannot be
 for a constant `g` (a horizon that is constantly `0` makes `conRunValue` constant, for
 instance) a `γ` ignoring `#0` really does represent `g` correctly.
 
+/-! ## Occurrence of the argument slot -/
+
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
 `Semiformula.rew_eq_of_not_mentions` (`Framework/SubstOccurrence.lean`). -/
 lemma mentions_zero_of_repr_ne {T : ArithmeticTheory} {g : ℕ → ℕ}
@@ -274,10 +304,8 @@ def reprAllTerm (γ : ArithmeticSemisentence 2) (y : ℕ) (t : Semiterm.Const �
     ArithmeticSentence :=
   ∀⁰ (reprBodyTerm γ y t)
 
-/-- The numeral spelling is the `t = n̄` instance of the term spelling. -/
-lemma reprBody_eq_reprBodyTerm (γ : ArithmeticSemisentence 2) (y z : ℕ) :
-    reprBody γ y z = reprBodyTerm γ y (Semiterm.Operator.numeral ℒₒᵣ z) := rfl
-
+/-- The numeral spelling of the claim sentence is the `t = n̄` instance of the closed-term
+spelling. -/
 lemma reprAll_eq_reprAllTerm (γ : ArithmeticSemisentence 2) (y z : ℕ) :
     reprAll γ y z = reprAllTerm γ y (Semiterm.Operator.numeral ℒₒᵣ z) := rfl
 
@@ -341,10 +369,12 @@ lemma provable_subst_iff_of_val (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T]
     haveI : M↓[ℒₒᵣ] ⊧* 𝗣𝗔⁻ := ModelsTheory.of_provably_subtheory M 𝗣𝗔⁻ T inferInstance
     exact (key M).mpr (consequence_iff.mp (Theory.Proof.sound h) M inferInstance)
 
-/-- **The paper's own observation (line 604): representing computations forces consistency.**
+/-- **The paper's own observation (tex:604): representing computations forces consistency.**
 
 If `T` were inconsistent it would prove every sentence, so the representation `Iff` for the
 constant-`0` function would yield `1 = 0`.
+
+/-! ## Consistency -/
 
 Kind `P` (proved).  Provenance: (a) derived in-project from `RepresentsComputations`. -/
 lemma RepresentsComputations.consistent (T : ArithmeticTheory) [h : RepresentsComputations T] :
@@ -353,9 +383,5 @@ lemma RepresentsComputations.consistent (T : ArithmeticTheory) [h : RepresentsCo
   have hinc : Entailment.Inconsistent T := Entailment.not_consistent_iff_inconsistent.mp hcon
   obtain ⟨γ, hγ⟩ := h.repr (fun _ => 0) (Computable.const 0)
   exact absurd ((hγ 0 1).mpr (hinc _)) (by decide)
-
-#print axioms reprAllSchema_subst_term
-#print axioms provable_subst_iff_of_val
-#print axioms mentions_zero_of_repr_ne
 
 end LogicalInduction

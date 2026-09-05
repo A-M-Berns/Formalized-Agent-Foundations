@@ -5,14 +5,34 @@ import LogicalInduction.Construction.Witnesses.FiniteEntailment
 # A fixed old-language copy
 
 The semantic-prime obstruction is a vocabulary-ownership obstruction: a flat source may
-already mention the atoms later used as semantic handles.  This file supplies one fixed
-renaming, chosen independently of any source family, market, weight, or deferral.  There
-are deliberately no axioms identifying the renamed atoms with their original names.
+already mention the atoms later used as semantic handles.  This module supplies one fixed
+renaming that answers it, chosen independently of any source family, market, weight, or
+deferral, and deliberately carrying no axiom identifying a renamed atom with its original.
+
+* `oldLanguageTag = 6` is the module's row in the global atom-payload allocation table
+  (`ComputationClaimKind.godelCode`); `oldAtom`, `liftSentence`, `liftLUV`, `liftDP` and
+  `pullOldWorld` are the renaming and its inverse reading.
+* Transport laws — `sentenceAtomCodes_liftSentence`, `holds_liftSentence_iff`,
+  `liftLUV_valuesAt_iff`, `consistentWith_liftDP_iff`, `consistentWithTheory_liftDP_iff` —
+  are exact, in both directions.
+* Disjointness: `eventAtom_atomCodes_ne_oldLanguageTag` and `theoremDP_oldLanguageFresh` show
+  the established theorem/event vocabulary never uses tag `6`.
+* `liftSentenceCode` is the executable numeric counterpart, proved primitive recursive by
+  course-of-values recursion, giving `liftDPComputation` and `liftDP_computable`.
+* `liftLUV_holds_downward_of_valued` and `liftLUV_downward_eventually_stageEntails` derive the
+  rational downward-cut law that exact mesh multiplication needs from the paper-facing
+  valuedness premise alone, with no caller-supplied cut certificate.
+
+"Old language" here names the pre-extension propositional vocabulary.  Consumed by
+`EntailedSourceRegistry.lean` (transitively), `LiftedRpnSource.lean` and
+`SemanticLiftedCCEE.lean`.
 -/
 
 namespace LogicalInduction
 
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
+
+/-! ## The fixed renaming -/
 
 /-- Reserved outer tag for the fixed copy of the pre-extension propositional language.
 See the global atom-payload allocation table at `ComputationClaimKind.godelCode`. -/
@@ -45,6 +65,8 @@ def liftSentence (phi : Sentence) : Sentence :=
         sentenceAtomCodes (liftSentence psi) = _
       rw [ihphi, ihpsi, sentenceAtomCodes_or, Finset.image_union]
 
+/-! ## Transport laws -/
+
 /-- Read the old-language namespace of a world as a world on the original language. -/
 def pullOldWorld (v : PCWorld) : PCWorld := fun a => v (oldAtom a)
 
@@ -61,9 +83,6 @@ def pullOldWorld (v : PCWorld) : PCWorld := fun a => v (oldAtom a)
 /-- The fixed old-language copy of a threshold presentation. -/
 def liftLUV (X : LUV) : LUV where
   gt r := liftSentence (X.gt r)
-
-/-- Pointwise fixed old-language copy of a source sequence. -/
-def liftLUVSeq (X : ℕ → LUV) : ℕ → LUV := fun n => liftLUV (X n)
 
 /-- World-side LUV values are invariant under the fixed representation change. -/
 @[simp] lemma liftLUV_valuesAt_iff (v : PCWorld) (X : LUV) (x : ℝ) :
@@ -98,12 +117,7 @@ lemma consistentWithTheory_liftDP_iff (v : PCWorld) (DP : DeductiveProcess) :
       (pullOldWorld v).ConsistentWithTheory DP := by
   simp only [PCWorld.ConsistentWithTheory, consistentWith_liftDP_iff]
 
-/-- Lifted atoms cannot collide with semantic-prime atoms. -/
-lemma oldAtom_ne_semanticPrimeCode (a schema input : ℕ) :
-    oldAtom a ≠ semanticPrimeCode schema input := by
-  intro h
-  have := congrArg (fun n : ℕ => n.unpair.1) h
-  simp [oldAtom, oldLanguageTag, semanticPrimeCode, semanticPrimeTag] at this
+/-! ## Vocabulary disjointness -/
 
 /-- The established theorem/event vocabulary does not use the reserved old-copy tag. -/
 lemma eventAtom_atomCodes_ne_oldLanguageTag (e : ℕ) :
@@ -320,39 +334,15 @@ noncomputable def liftDPComputation {DP : DeductiveProcess}
   rw [hcode]
   exact Part.mem_some _
 
-/-- Computability of the fixed old-language copy. -/
+/-- Computability of the fixed old-language copy: the renamed copy of a named computable
+process is computable.  A general fact about `liftDP` rather than a step of any one
+construction, so it has no consumer in the repository. -/
 lemma liftDP_computable {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) :
     ComputableDeductiveProcess (liftDP DP) :=
   (liftDPComputation base).toComputable
 
 /-! ## Cut laws derived from the paper-facing valuedness premise -/
-
-/-- Valuedness over the original process automatically gives the lower bound law in the
-fixed renamed copy. -/
-lemma liftLUV_holds_below_zero_of_valued {DP : DeductiveProcess} {X : LUV}
-    (source_valued : ∀ v : PCWorld,
-      v.ConsistentWithTheory DP → ∃ x, v.ValuesAt X x)
-    {v : PCWorld} (hv : v.ConsistentWithTheory (liftDP DP))
-    {r : ℚ} (hr : r < 0) :
-    v.Holds ((liftLUV X).gt r) := by
-  obtain ⟨x, hx⟩ := source_valued (pullOldWorld v)
-    ((consistentWithTheory_liftDP_iff v DP).mp hv)
-  exact (liftLUV_valuesAt_iff v X x).mpr hx |>.2.2 r |>.1
-    (lt_of_lt_of_le (by exact_mod_cast hr) hx.1)
-
-/-- Valuedness over the original process automatically gives the upper bound law in the
-fixed renamed copy. -/
-lemma liftLUV_not_holds_above_one_of_valued {DP : DeductiveProcess} {X : LUV}
-    (source_valued : ∀ v : PCWorld,
-      v.ConsistentWithTheory DP → ∃ x, v.ValuesAt X x)
-    {v : PCWorld} (hv : v.ConsistentWithTheory (liftDP DP))
-    {r : ℚ} (hr : 1 < r) :
-    ¬v.Holds ((liftLUV X).gt r) := by
-  obtain ⟨x, hx⟩ := source_valued (pullOldWorld v)
-    ((consistentWithTheory_liftDP_iff v DP).mp hv)
-  exact (liftLUV_valuesAt_iff v X x).mpr hx |>.2.2 r |>.2
-    (lt_of_le_of_lt hx.2.1 (by exact_mod_cast hr))
 
 /-- Valuedness alone entails every rational downward-cut law needed by exact mesh
 multiplication. -/
@@ -373,7 +363,9 @@ lemma liftLUV_holds_downward_of_valued {DP : DeductiveProcess} {X : LUV}
     exact ((hxlift.2.2 s).2 hxs hs).elim
 
 /-- The semantic downward law is eventually accepted by the executable checker, with no
-caller-supplied cut certificate. -/
+caller-supplied cut certificate.  The stage-level form of
+`liftLUV_holds_downward_of_valued`, stated for a registry that checks entailment at a stage;
+no consumer in the repository takes this form. -/
 lemma liftLUV_downward_eventually_stageEntails {DP : DeductiveProcess} {X : LUV}
     (source_valued : ∀ v : PCWorld,
       v.ConsistentWithTheory DP → ∃ x, v.ValuesAt X x)
@@ -383,13 +375,5 @@ lemma liftLUV_downward_eventually_stageEntails {DP : DeductiveProcess} {X : LUV}
   apply DeductiveProcess.stageEntails_complete_of_semantic
   intro v hv
   exact liftLUV_holds_downward_of_valued source_valued hv hrs
-
-#print axioms holds_liftSentence_iff
-#print axioms liftLUV_valuesAt_iff
-#print axioms consistentWithTheory_liftDP_iff
-#print axioms liftSentence_primrec
-#print axioms liftDP_computable
-#print axioms liftLUV_holds_downward_of_valued
-#print axioms liftLUV_downward_eventually_stageEntails
 
 end LogicalInduction

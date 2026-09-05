@@ -4,16 +4,43 @@ import LogicalInduction.Construction.Witnesses.ProductDefinition
 /-!
 # The unrestricted semantic-source obstruction
 
-`LUV.RpnThresholdCodeSeq` controls how efficiently threshold sentences are emitted, but
-does not restrict which propositional atoms those sentences contain.  Consequently an
-efficient source can diagonalize against every tag-`0` semantic-source schema.  This file
-records the obstruction: no non-vacuous fixed process can wrap every such source in a
-`PresentedLUVSeq` while identifying the wrapper's thresholds with the original thresholds
-in all completed worlds.
+A representation-boundary result for the semantic extension — a proved obstruction, not a
+paper node.  `LUV.RpnThresholdCodeSeq` controls how efficiently threshold sentences are
+emitted but not which propositional atoms they contain, so an efficient source can
+diagonalize against every tag-`0` semantic-source schema.  No non-vacuous fixed process can
+wrap every such source in a `PresentedLUVSeq` while identifying the wrapper's thresholds with
+the original thresholds in all completed worlds.
 
-This is a representation-boundary result, not a parser limitation.  In particular,
-`RpnSentenceCodes.primrec` and `RpnSentenceCodes.exists_code` already provide the canonical
-total sentence emitter required downstream.
+## The two objects of proof
+
+`semanticDiagonalLUVSeq` — thresholds are the *negations* of the schema-`n` leaf at index `n`
+— and `semanticValuedDiagonalLUVSeq`, a genuine indicator-style `[0,1]` LUV with value `1`
+when the distinguished proposition is false.  Both are certified `LUV.RpnThresholdCodeSeq`, so
+neither is excluded by the paper-facing premise.
+
+## The obstruction and its strengthening
+
+`no_nonvacuous_universal_presented_of_rpn`: an unrestricted fixed-process `presented_of_rpn`
+plus stage-wise non-vacuity is inconsistent, the contradiction occurring at the presentation's
+own schema index `Xhat.thresholdSchema.unpair.2`.
+`no_nonvacuous_worldValued_presented_of_rpn` strengthens it to the class the endpoint actually
+quantifies over: the same holds after restricting the bridge to sources satisfying the exact
+completed-world valuedness premise of closed `thm:ccee`
+(`semanticValuedDiagonalLUVSeq_source_valued`).  Both run through the shared diagonal
+`not_reflected_of_negates_own_schema`.
+
+## What it forces on the design
+
+Any successful bridge must restore the paper's language-separation fact at the type level.
+`SemanticPrimeFreshSentence` / `SemanticPrimeFreshLUVSeq` are that invariant, and eight
+modules carry it; parser computability alone cannot derive it from `RpnThresholdCodeSeq`.
+This is a fact about erased threshold families, not a parser limitation, and it is why
+`PresentedLUVSeq` carries its schema.
+
+What the existing certificate does supply is `rpnThresholdSourceCode` and
+`rpnThresholdSourceCode_spec`: a canonical total naming program selected directly from the
+`RpnThresholdCodeSeq` certificate at the packed index `⟨n,⟨k,i⟩⟩`, so no extra named-code
+premise is needed (`RpnSentenceCodes.primrec`, `RpnSentenceCodes.exists_code`).
 -/
 
 namespace LogicalInduction
@@ -26,7 +53,7 @@ private lemma encodeRat_zero : Encodable.encode (0 : ℚ) = Nat.pair 0 1 := by r
 
 attribute [local irreducible] Nat.sqrt
 
-/-! ## What the existing certificate does provide -/
+/-! ## The canonical naming program -/
 
 /-- A canonical total naming program can be selected directly from the existing
 `RpnThresholdCodeSeq` certificate.  No extra named-code premise is needed. -/
@@ -43,7 +70,7 @@ lemma rpnThresholdSourceCode_spec {X : ℕ → LUV}
       (rpnThresholdSourceCode hX).eval m :=
   Classical.choose_spec hX.exists_code m
 
-/-! ## The local base-language separation invariant -/
+/-! ## The source-language separation invariant -/
 
 /-- A sentence belongs to the pre-extension source vocabulary when none of its atoms use
 the semantic-prime tag reserved for the extension. -/
@@ -53,6 +80,8 @@ def SemanticPrimeFreshSentence (φ : Sentence) : Prop :=
 /-- Pointwise source-language separation for a sequence of LUV threshold families. -/
 def SemanticPrimeFreshLUVSeq (X : ℕ → LUV) : Prop :=
   ∀ n r, SemanticPrimeFreshSentence ((X n).gt r)
+
+/-! ## The threshold diagonal -/
 
 /-- At index `n`, negate the semantic leaf belonging to the `n`th source schema.  Whichever
 tag-`0` schema a proposed presentation chooses, the source attacks it at one index. -/
@@ -113,13 +142,15 @@ lemma semanticDiagonalLUVSeq_rpnThresholdCodeSeq :
   LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
     semanticDiagonalLUVSeq_polyThresholdCodeSeq
 
-/-- No completed world can validate threshold reflection between the diagonal source and
-any `PresentedLUVSeq`.  The contradiction occurs at the presentation's own schema index. -/
-lemma semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLUVSeq) :
+/-- **The diagonal argument.**  A source whose threshold at `0` negates the schema-`n` leaf
+at index `n` cannot be reflected by any `PresentedLUVSeq` in a completed world: the
+presentation's own schema index `Xhat.thresholdSchema.unpair.2` is where the two disagree. -/
+lemma not_reflected_of_negates_own_schema (DP : DeductiveProcess) (Xhat : PresentedLUVSeq)
+    {Y : ℕ → LUV}
+    (hY : ∀ n, (Y n).gt 0 = ∼semanticPrimeSentence (semanticSourceSchema n)
+      (Nat.pair n (Encodable.encode (0 : ℚ)))) :
     ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
-      ∀ n r,
-        (v.Holds ((Xhat.toLUV n).gt r) ↔
-          v.Holds ((semanticDiagonalLUVSeq n).gt r))) := by
+      ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔ v.Holds ((Y n).gt r)) := by
   rintro ⟨v, hv, hreflect⟩
   let n := Xhat.thresholdSchema.unpair.2
   have hschema : semanticSourceSchema n = Xhat.thresholdSchema := by
@@ -127,12 +158,21 @@ lemma semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLU
     exact (congrArg (fun k => Nat.pair k Xhat.thresholdSchema.unpair.2)
       Xhat.source_schema).symm.trans (Nat.pair_unpair Xhat.thresholdSchema)
   have h := hreflect n 0
-  rw [PresentedLUVSeq.gt_eq, semanticDiagonalLUVSeq_gt, hschema, holds_not] at h
+  rw [PresentedLUVSeq.gt_eq, hY n, hschema, holds_not] at h
   by_cases hp : v.Holds
       (semanticPrimeSentence Xhat.thresholdSchema
         (Nat.pair n (Encodable.encode (0 : ℚ))))
   · exact (h.mp hp) hp
   · exact hp (h.mpr hp)
+
+/-- No completed world can validate threshold reflection between the diagonal source and
+any `PresentedLUVSeq`.  The contradiction occurs at the presentation's own schema index. -/
+lemma semanticDiagonal_not_reflected (DP : DeductiveProcess) (Xhat : PresentedLUVSeq) :
+    ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
+      ∀ n r,
+        (v.Holds ((Xhat.toLUV n).gt r) ↔
+          v.Holds ((semanticDiagonalLUVSeq n).gt r))) :=
+  not_reflected_of_negates_own_schema DP Xhat (fun _ => rfl)
 
 /-- Therefore an unrestricted, fixed-process `presented_of_rpn` theorem plus non-vacuity
 is inconsistent.  Any successful bridge must restore the paper's language-separation fact
@@ -150,7 +190,7 @@ lemma no_nonvacuous_universal_presented_of_rpn (DP : DeductiveProcess)
   exact semanticDiagonal_not_reflected DP Xhat
     ⟨v, hv, fun n r => hreflect n r v hv⟩
 
-/-! ## The obstruction inside the world-valued CCEE source class -/
+/-! ## The world-valued diagonal -/
 
 /-- The distinguished proposition attacked by the valued diagonal at index `n`. -/
 def semanticValuedDiagonalProp (n : ℕ) : Sentence :=
@@ -262,20 +302,10 @@ lemma semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
     (Xhat : PresentedLUVSeq) :
     ¬ (∃ v : PCWorld, v.ConsistentWithTheory DP ∧
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
-        v.Holds ((semanticValuedDiagonalLUVSeq n).gt r)) := by
-  rintro ⟨v, hv, hreflect⟩
-  let n := Xhat.thresholdSchema.unpair.2
-  have hschema : semanticSourceSchema n = Xhat.thresholdSchema := by
-    rw [semanticSourceSchema]
-    exact (congrArg (fun k => Nat.pair k Xhat.thresholdSchema.unpair.2)
-      Xhat.source_schema).symm.trans (Nat.pair_unpair Xhat.thresholdSchema)
-  have h := hreflect n 0
-  rw [PresentedLUVSeq.gt_eq, semanticValuedDiagonalLUVSeq_gt, if_neg (by norm_num),
-    if_pos (by norm_num), semanticValuedDiagonalProp, hschema, holds_not] at h
-  by_cases hp : v.Holds (semanticPrimeSentence Xhat.thresholdSchema
-      (Nat.pair n (Encodable.encode (0 : ℚ))))
-  · exact (h.mp hp) hp
-  · exact hp (h.mpr hp)
+        v.Holds ((semanticValuedDiagonalLUVSeq n).gt r)) :=
+  not_reflected_of_negates_own_schema DP Xhat (fun n => by
+    rw [semanticValuedDiagonalLUVSeq_gt, if_neg (by norm_num), if_pos (by norm_num),
+      semanticValuedDiagonalProp])
 
 /-- Strengthened obstruction: even restricting the universal bridge to source families
 that satisfy the exact completed-world valuedness premise of closed CCEE is incompatible
@@ -293,9 +323,5 @@ lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
     (semanticValuedDiagonalLUVSeq_source_valued DP)
   exact semanticValuedDiagonal_not_reflected DP Xhat
     ⟨v, hv, fun n r => hreflect n r v hv⟩
-
-#print axioms semanticValuedDiagonalLUVSeq_rpnThresholdCodeSeq
-#print axioms semanticValuedDiagonalLUVSeq_source_valued
-#print axioms no_nonvacuous_worldValued_presented_of_rpn
 
 end LogicalInduction

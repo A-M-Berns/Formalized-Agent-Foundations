@@ -6,38 +6,75 @@ import LogicalInduction.Framework.WriteOut
 /-!
 # Representation witnesses for the efficient-computability side conditions
 
-The paper's traders and enumerations must be *efficiently computable* (`def:ec`); this file
-supplies the concrete computability objects that discharge that requirement, in four groups:
+The paper's traders and enumerations carry `def:ec` side conditions.  This file supplies the
+concrete computability objects that discharge them where §4 and §5 assume them, in six
+groups.
 
-* **The patient settlement clock.** A sound under-approximation of the deferral deadline
-  plus a dovetailed accept-search, assembled into `PatientSettlementClock` from a single
-  purely computational assumption (a code recognizing a named decidable predicate).
-* **Efficient repeated enumeration.** Triangular repetition for an already-efficient
-  sentence stream, and — via the bounded universal interpreter `codeEvalnNat` — the same
-  for an arbitrary code-enumerable stream, as Uniform Non-Dogmatism needs.
-* **The settlement test compiler.** `Primrec` course-of-values recursions over Gödel codes
-  of `Sentence` (atom bound, evaluation, stage quantifier, bit-list worlds), the fuel layer
-  over the market's quote table, and the extracted checker code.
-* **The finite-prefix freeze objects.** Polynomial parser control, variable-width freeze
-  emission, and lookup in the logical inductor's finite prefix quote table (`def:lia`).
+**1. The patient settlement clock.**  `deadlineRun` / `deadlinePassed` is a sound
+under-approximation of the deferral deadline: a `DeferralFunction` guarantees fuel
+polynomial in `f n` and not in `n`, so the deadline itself is not decidable.
+`polyFueled_dovetailFound` discharges the paper's `DefinitelySettled` bullet (tex:4872).
+`SettlementSemiDecider` is the general interface and `SettlementChecker` the purely
+computational one, from which `PatientSettlementClock.ofChecker` and `.ofComputations`
+derive every semantic field.
 
-No market-limit, exploitation, or logical-inductor conclusions appear here; those live in
-the property files that consume these interfaces.
+**2. Efficient repeated enumeration.**  `triangularRepeat` and
+`EfficientRepeatedEnumeration.ofBig` for an already write-out-metered sentence stream, and
+`CEEnumeration` / `EfficientRepeatedEnumeration.ofCE` for an arbitrary computably enumerable
+one — the padding-and-repeating step of `thm:obu`'s own proof (tex:5651-5656), carried out
+under the interpreter clock and padding with `source 0` rather than with the paper's `⊤`.
+
+**3. The settlement-test compiler.**  `Primrec` course-of-values recursions over Gödel codes
+of `Sentence` (`atomBound_prim`, `evalBits_prim`, `stageSatBits_prim`, `allBitLists_prim`,
+`settlementAtomLimit_prim`), all `Option`-encoded, because a binary code with one
+undecodable child must answer `0`.
+
+**4. The fuel layer over the market's quote table.**  `MarketComputation.totalQuote`,
+`readyAtFuel`, `denoteRatComp` and the bridge `denoteRatComp_eq`.  The `readyAtFuel` guard
+is what makes the total table sound, and `AffineCombination.settlementCheckAtFuel` is the
+conservative bounded check `SettlementChecker.ofComputations` searches over with `rfindOpt`.
+
+**5. `def:ece` into `Computable`.**  `BigSpliceStream.feature_primrec` and
+`PGenerableRat.computable`, the bridge every arithmetic quote code needs in order to emit
+`⌜· > q n⌝` from a market-dependent feature progression.
+
+**6. The finite-prefix freeze (`def:lia`).**  Polynomial parser control (`freezeControlNat`),
+variable-width emission (`freezeTokenRun_polySegStream`), exhaustive raw-code sentence
+matching (`sentenceMatches`), and lookup in the LIA's finite prefix quote table, assembled
+into `liaFreezeBefore_preserves_ecTok`.
+
+**Paper-facing endpoints.**  The file states two: `lic_uniform_nonDogmatism_ofCE`
+(`thm:obu`) and `liaFreezeBefore_preserves_ecTok` (`def:lia`).  Everything else is
+representation machinery, consumed by the property files — `Properties/Calibration.lean`,
+`Properties/UniformNonDogmatism.lean` and the finite-perturbations lane.
+
+**Design choices.**  `dd:fuel` names the certificate calculus these objects certify into,
+and the boundary it reaches is stated at `liaFreezeBefore_preserves_ecTok`: the digit model
+is closed under the forward big-value operations and open under their inverses, so the
+escape-leaf decode test is unavailable at the collapsed class.  Separately, `Nat.sqrt` is
+made locally irreducible in four sections below (and in `FeedbackEmission.lean`) because
+`PolyFueled` and `Primrec` elaboration over nested `Primcodable` product types reaches
+`Nat.unpair`, and unfolding `Nat.sqrt`'s well-founded definition sends `whnf` into a loop.
+The loop is not domain mathematics, so the fix is opacity rather than a heartbeat raise, and
+a declaration moved across one of those `section` boundaries must carry the attribute with
+it.
 -/
 
 namespace LogicalInduction
 
-private lemma decode_sentence_eq_ofNat' (n : ℕ) :
+/-- The `Sentence` decoder is Foundation's `Formula.ofNat`, definitionally. -/
+lemma decode_sentence_eq_ofNat' (n : ℕ) :
     (Encodable.decode n : Option Sentence) =
       LO.Propositional.Formula.ofNat n := rfl
-private lemma encode_sentence_eq_toNat' (φ : Sentence) :
+
+/-- The `Sentence` encoder is Foundation's `Formula.toNat`, definitionally. -/
+lemma encode_sentence_eq_toNat' (φ : Sentence) :
     Encodable.encode φ = LO.Propositional.Formula.toNat φ := rfl
 
+/-! ## The patient settlement clock -/
+
 section
--- `PolyFueled` elaboration over deep product types unfolds `Nat.sqrt`'s well-founded
--- definition during `whnf` (reached via `Nat.unpair` in the `Primcodable` instances) and
--- loops; making it locally irreducible stops that.  The loop is not domain math, so the
--- fix is opacity rather than a heartbeat raise.
+-- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
 /-- Equality against a fixed natural constant as a polynomial `0`/`1` table. -/
@@ -65,8 +102,9 @@ lemma polyFueled_eqConst {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
 the predicate "`c` accepts `⟨i,j⟩` within `n` steps, for some `j ≤ n`" has a polynomial
 Boolean table in `⟨i,n⟩`.
 
-This is the paper's first bullet ("`DefinitelySettled(n,m)` can be decided in time
-polynomial in `m`") discharged. -/
+This is the paper's first bullet ("`DefinitelySettled(n, m)` can be decided in time
+polynomial in `m` when `n ≤ m`", tex:4872) discharged, and without the `n ≤ m` restriction:
+the Lean statement is unrestricted in `⟨i, n⟩`. -/
 lemma polyFueled_dovetailFound (c : Nat.Partrec.Code) :
     ∃ prog, PolyFueled prog
       (fun z => if dovetailFound c z.unpair.1 z.unpair.2 then 1 else 0) := by
@@ -706,37 +744,28 @@ private lemma atomBoundList_history (n : ℕ) :
       by_cases h1 : e.unpair.1 = 1
       · simp [atomBoundList, atomBoundSucc, atomBoundNorm, BoolPCWorld.atomBound,
           LO.Propositional.Formula.ofNat, h1]
-      -- The three binary tags: identical modulo the constructor `ofNat` rebuilds.
+      -- The three binary tags run the same script; only the numeral `ofNat` rebuilds on
+      -- differs, so the script is written once and instantiated at each tag.
+      have hbinTag : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
+          atomBoundList ((List.range (e + 1)).map atomBoundNorm)
+            = atomBoundNorm (e + 1) := by
+        rintro t (rfl | rfl | rfl) ht
+        all_goals
+          simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
+            ht, ↓reduceIte]
+          rw [hbin]
+          simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, ht]
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              e.unpair.2.unpair.1 : Option Sentence) <;>
+            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              e.unpair.2.unpair.2 : Option Sentence) <;>
+            simp [BoolPCWorld.atomBound]
       by_cases h2 : e.unpair.1 = 2
-      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h2, ↓reduceIte]
-        rw [hbin]
-        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h2]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.atomBound]
+      · exact hbinTag 2 (by tauto) h2
       by_cases h3 : e.unpair.1 = 3
-      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h3, ↓reduceIte]
-        rw [hbin]
-        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h3]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.atomBound]
+      · exact hbinTag 3 (by tauto) h3
       by_cases h4 : e.unpair.1 = 4
-      · simp only [atomBoundList, List.length_map, List.length_range, atomBoundSucc,
-          h4, ↓reduceIte]
-        rw [hbin]
-        simp only [atomBoundNorm, LO.Propositional.Formula.ofNat, h4]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.atomBound]
+      · exact hbinTag 4 (by tauto) h4
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [atomBoundList, atomBoundSucc, atomBoundNorm,
           LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
@@ -841,7 +870,7 @@ private lemma evalSucc_prim :
     Primrec.snd.comp (Primrec.unpair.comp (Primrec.snd.comp Primrec.snd))
   -- The atom case: this is where the world parameter is consumed, by `list_getD` on the
   -- parameter rather than on the recursion history.  It is the one move `atomBound` (whose
-  -- `nat_strong_rec` parameter was `Unit`) did not need.
+  -- `nat_strong_rec` parameter is `Unit`) does not need.
   have hatom : Primrec fun p : List Bool × List ℕ × ℕ =>
       cond (p.1.getD (payload p) false) 2 1 :=
     Primrec.cond ((Primrec.list_getD false).comp Primrec.fst hpayload)
@@ -920,36 +949,29 @@ private lemma evalList_history (l : List Bool) (n : ℕ) :
       by_cases h1 : e.unpair.1 = 1
       · simp [evalList, evalSucc, evalNorm, BoolPCWorld.eval, BoolPCWorld.bitsWorld,
           LO.Propositional.Formula.ofNat, h1]
+      -- The three binary tags run the same script; only the numeral `ofNat` rebuilds on
+      -- differs, so the script is written once and instantiated at each tag.
+      have hbinTag : ∀ t : ℕ, t = 2 ∨ t = 3 ∨ t = 4 → e.unpair.1 = t →
+          evalList l ((List.range (e + 1)).map (evalNorm l)) = evalNorm l (e + 1) := by
+        intro t ht2 ht
+        have hrw := evalBinary_history t l e.unpair.2 (e + 1) hleft hright
+        rcases ht2 with rfl | rfl | rfl
+        all_goals
+          simp only [evalList, List.length_map, List.length_range, evalSucc,
+            ht, ↓reduceIte]
+          rw [hrw]
+          simp only [evalNorm, LO.Propositional.Formula.ofNat, ht]
+          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              e.unpair.2.unpair.1 : Option Sentence) <;>
+            cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
+              e.unpair.2.unpair.2 : Option Sentence) <;>
+            simp [BoolPCWorld.eval, evalOp]
       by_cases h2 : e.unpair.1 = 2
-      · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h2, ↓reduceIte]
-        rw [evalBinary_history 2 l e.unpair.2 (e + 1) hleft hright]
-        simp only [evalNorm, LO.Propositional.Formula.ofNat, h2]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.eval, evalOp]
+      · exact hbinTag 2 (by tauto) h2
       by_cases h3 : e.unpair.1 = 3
-      · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h3, ↓reduceIte]
-        rw [evalBinary_history 3 l e.unpair.2 (e + 1) hleft hright]
-        simp only [evalNorm, LO.Propositional.Formula.ofNat, h3]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.eval, evalOp]
+      · exact hbinTag 3 (by tauto) h3
       by_cases h4 : e.unpair.1 = 4
-      · simp only [evalList, List.length_map, List.length_range, evalSucc,
-          h4, ↓reduceIte]
-        rw [evalBinary_history 4 l e.unpair.2 (e + 1) hleft hright]
-        simp only [evalNorm, LO.Propositional.Formula.ofNat, h4]
-        cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.1 : Option Sentence) <;>
-          cases (@LO.Propositional.Formula.ofNat ℕ inferInstance
-            e.unpair.2.unpair.2 : Option Sentence) <;>
-          simp [BoolPCWorld.eval, evalOp]
+      · exact hbinTag 4 (by tauto) h4
       · have htag : 5 ≤ e.unpair.1 := by omega
         simp [evalList, evalSucc, evalNorm,
           LO.Propositional.Formula.ofNat, h0, h1, h2, h3, h4]
@@ -978,8 +1000,8 @@ lemma evalBits_prim : Primrec₂ fun (l : List Bool) (φ : Sentence) =>
 
 /-! ### The stage quantifier
 
-`stageSort` was chosen to be `Finset.sort` under `sentenceCodeLE` precisely because that is
-the order the stock `Finset Sentence` encoding already sorts by (Mathlib's `encodeMultiset`
+`stageSort` is `Finset.sort` under `sentenceCodeLE`, which is the order the stock
+`Finset Sentence` encoding already sorts by (Mathlib's `encodeMultiset`
 sorts by its private `enle = encode ⁻¹'o (· ≤ ·)`, which `sentenceCodeLE` matches
 definitionally, instances included).  So a stage's code *is* the code of its `stageSort`,
 by `rfl`, and the compiled test recovers the list by decoding — no sorting is performed and
@@ -1212,7 +1234,7 @@ lemma settlementAtomLimit_prim :
   exact (Primrec.nat_add.comp hstage hterms).to₂.of_eq fun A stage =>
     (settlementAtomLimit_eq_stageSort A stage).symm
 
-/-! ### The fuel layer
+/-! ### The fuel layer over the market's quote table
 
 Everything above is `Primrec`.  `valueRat` is not, and cannot be: it calls `EF.denoteRat Q`
 where `Q` is the *market*, which a program reaches only through `market.quoteAtFuel`.  So
@@ -1220,14 +1242,12 @@ the checker is a fuel-clocked program rather than a primitive recursive function
 exactly the shape `SettlementChecker.spec` asks for (`∃ F, acceptsWithin code F ⟨i,j⟩`).
 
 This mirrors `Strategy.valueRatListAtFuel` (`ROI.lean`) exactly: a three-part
-sound/mono/exists-fuel contract over the existing `EF.denoteRatWithAtFuel`. -/
-
-/-! ### The computable bounded EF evaluator (the `readyAtFuel` guard)
+sound/mono/exists-fuel contract over the existing `EF.denoteRatWithAtFuel`.
 
 `AffineCombination.valueRatAtFuel` folds `EF.denoteRatWithAtFuel` — an `EF` recursion that
 hits the market at each `price` leaf — so the settlement check is computable only once that
-evaluator is.  Rather than compile a fourth `EF`-code recursion, we reuse the total EF
-rational stack machine (`efRatCompiledEval`, `LIACompiler.lean`) with the **total** quote
+evaluator is.  Rather than compile a fourth `EF`-code recursion, the compiler reuses the
+total EF rational stack machine (`efRatCompiledEval`, `LIACompiler.lean`) with the **total** quote
 table `totalQuote fuel n φ := (market.quoteAtFuel fuel n φ).getD 0`.
 
 That table is total: it reads `0` for an *unanswered* query, so on its own it cannot tell a
@@ -1244,19 +1264,7 @@ lemma EF.denoteRatWith_congr (e : EF) (ρ : List ℚ) (V₁ V₂ : ℕ → Sente
   induction e generalizing ρ with
   | price φ n => exact h (n, φ) (by simp [EF.priceQueries])
   | const q => rfl
-  | add a b iha ihb =>
-      have ha := iha ρ (fun q hq => h q (by
-        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
-      have hb := ihb ρ (fun q hq => h q (by
-        simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
-      simp [EF.denoteRatWith, ha, hb]
-  | mul a b iha ihb =>
-      have ha := iha ρ (fun q hq => h q (by
-        simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
-      have hb := ihb ρ (fun q hq => h q (by
-        simp only [EF.priceQueries, List.mem_append]; exact Or.inr hq))
-      simp [EF.denoteRatWith, ha, hb]
-  | max a b iha ihb =>
+  | add a b iha ihb | mul a b iha ihb | max a b iha ihb =>
       have ha := iha ρ (fun q hq => h q (by
         simp only [EF.priceQueries, List.mem_append]; exact Or.inl hq))
       have hb := ihb ρ (fun q hq => h q (by
@@ -1287,29 +1295,7 @@ lemma EF.denoteRatWithAtFuel_isSome_of_some {P : History}
       simp only [EF.denoteRatWithAtFuel] at h
       rw [h]; rfl
   | const c => intro query hq; simp [EF.priceQueries] at hq
-  | add a b iha ihb =>
-      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, _⟩ := h
-      intro query hq
-      simp only [EF.priceQueries, List.mem_append] at hq
-      rcases hq with hq | hq
-      · exact iha ρ ha query hq
-      · exact ihb ρ hb query hq
-  | mul a b iha ihb =>
-      simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qa, ha, h⟩ := h
-      rw [Option.bind_eq_some_iff] at h
-      obtain ⟨qb, hb, _⟩ := h
-      intro query hq
-      simp only [EF.priceQueries, List.mem_append] at hq
-      rcases hq with hq | hq
-      · exact iha ρ ha query hq
-      · exact ihb ρ hb query hq
-  | max a b iha ihb =>
+  | add a b iha ihb | mul a b iha ihb | max a b iha ihb =>
       simp only [EF.denoteRatWithAtFuel, Option.bind_eq_bind] at h
       rw [Option.bind_eq_some_iff] at h
       obtain ⟨qa, ha, h⟩ := h
@@ -1697,8 +1683,7 @@ lemma valueRatCompAt_eq {P : History} (A : AffineCombination)
       cases affineTermsRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l) A.terms <;> rfl
 
 section
--- `Primrec` elaboration over these nested product types unfolds `Nat.sqrt`'s well-founded
--- definition during `whnf` (via `Nat.unpair`) and loops; local opacity stops that.
+-- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
 /-- The affine term fold is primitive recursive in `((A, fuel), l)`. -/
@@ -1811,8 +1796,7 @@ def AffineCombination.settlementCheckAtFuel (A : AffineCombination)
               (A.valueRatAtFuel market fuel (BoolPCWorld.bitsPayoutRat l')) tol
 
 section
--- `Primrec` elaboration over these nested product types unfolds `Nat.sqrt`'s well-founded
--- definition during `whnf` (via `Nat.unpair`) and loops; local opacity stops that.
+-- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
 /-- The bounded settlement check is primitive recursive in `(A, j, fuel)` for fixed
@@ -2123,9 +2107,7 @@ logical inductor's finite table of early belief states. -/
 
 namespace PrefixPatchCompile
 
--- Deep `PolyFueled`/segment compositions carry nested `Primcodable` products; elaboration
--- unfolds their `Nat.unpair` through `Nat.sqrt`'s well-founded definition during `whnf`
--- and loops.  Local opacity stops that.
+-- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
 /-! ### Polynomial parser control -/
@@ -2449,39 +2431,50 @@ lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
   induction target using LO.Propositional.Formula.rec' generalizing code with
   | hfalsum =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hatom a =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
           · rcases tag with _ | _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | himp φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ,
               Option.bind_eq_some_iff]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
@@ -2489,56 +2482,101 @@ lemma sentenceMatches_eq_one_iff (target : Sentence) (code : ℕ) :
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.imp_inj]
           · rcases tag with _ | _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hand φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
-
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.and_inj]
           · rcases tag with _ | tag <;>
-              simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+              simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+                decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
                 LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
   | hor φ ψ ihφ ihψ =>
       cases code with
-      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+      | zero => simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+          decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
           LO.Propositional.Formula.ofNat]
       | succ e =>
           rcases htag : e.unpair.1 with _ | _ | _ | _ | _ | tag
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, Option.bind_eq_some_iff]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag, ihφ, ihψ]
             cases hleft : LO.Propositional.Formula.ofNat (α := ℕ) e.unpair.2.unpair.1 <;>
               cases hright : LO.Propositional.Formula.ofNat (α := ℕ)
                 e.unpair.2.unpair.2 <;>
               simp [LO.Propositional.Formula.or_inj]
-          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable, decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
+          · simp [sentenceMatches, LO.Propositional.Formula.instEncodable,
+              decode_sentence_eq_ofNat', encode_sentence_eq_toNat',
               LO.Propositional.Formula.ofNat, htag]
+
+/-- The binary-node case of `sentenceMatches_polyFueled`, shared by the three connectives:
+the matcher at a node with tag `tag` is a zero test on the code, a tag comparison, and the
+product of the two child matchers. -/
+private lemma sentenceMatchesBinary_polyFueled (tag : ℕ) {φ ψ : Sentence}
+    (ihφ : ∃ c, PolyFueled c (sentenceMatches φ))
+    (ihψ : ∃ c, PolyFueled c (sentenceMatches ψ)) :
+    ∃ c, PolyFueled c (fun code =>
+      if code = 0 then 0
+      else if code.pred.unpair.1 = tag then
+        sentenceMatches φ code.pred.unpair.2.unpair.1 *
+          sentenceMatches ψ code.pred.unpair.2.unpair.2
+      else 0) := by
+  obtain ⟨cmul, hmul⟩ := mul_polyFueled
+  have hpred := predc_polyFueled
+  have htag := PolyFueled.left.comp hpred
+  have hpayload := PolyFueled.right.comp hpred
+  obtain ⟨cφ, hφ⟩ := ihφ
+  obtain ⟨cψ, hψ⟩ := ihψ
+  have hleft := hφ.comp (PolyFueled.left.comp hpayload)
+  have hright := hψ.comp (PolyFueled.right.comp hpayload)
+  have hproduct := hmul.comp (hleft.pair hright)
+  have hproduct' : PolyFueled _ (fun code =>
+      sentenceMatches φ code.pred.unpair.2.unpair.1 *
+        sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
+    hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
+  obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag tag
+  obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
+  obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+  exact ⟨c, hc.of_eq (fun code => by
+    by_cases hz : code = 0
+    · simp [hz]
+    · by_cases ht : code.pred.unpair.1 = tag <;> simp [hz, ht])⟩
 
 lemma sentenceMatches_polyFueled (target : Sentence) :
     ∃ c, PolyFueled c (sentenceMatches target) := by
-  obtain ⟨cmul, hmul⟩ := mul_polyFueled
   induction target using LO.Propositional.Formula.rec' with
   | hfalsum =>
       have htag := PolyFueled.left.comp predc_polyFueled
@@ -2554,57 +2592,14 @@ lemma sentenceMatches_polyFueled (target : Sentence) :
       obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hpayloadEq
       obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
-
   | himp φ ψ ihφ ihψ =>
-      have hpred := predc_polyFueled
-      have htag := PolyFueled.left.comp hpred
-      have hpayload := PolyFueled.right.comp hpred
-      obtain ⟨cφ, hφ⟩ := ihφ
-      obtain ⟨cψ, hψ⟩ := ihψ
-      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
-      have hright := hψ.comp (PolyFueled.right.comp hpayload)
-      have hproduct := hmul.comp (hleft.pair hright)
-      have hproduct' : PolyFueled _ (fun code =>
-          sentenceMatches φ code.pred.unpair.2.unpair.1 *
-            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
-        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
-      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 2
-      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
-      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      obtain ⟨c, hc⟩ := sentenceMatchesBinary_polyFueled 2 ihφ ihψ
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
   | hand φ ψ ihφ ihψ =>
-      have hpred := predc_polyFueled
-      have htag := PolyFueled.left.comp hpred
-      have hpayload := PolyFueled.right.comp hpred
-      obtain ⟨cφ, hφ⟩ := ihφ
-      obtain ⟨cψ, hψ⟩ := ihψ
-      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
-      have hright := hψ.comp (PolyFueled.right.comp hpayload)
-      have hproduct := hmul.comp (hleft.pair hright)
-      have hproduct' : PolyFueled _ (fun code =>
-          sentenceMatches φ code.pred.unpair.2.unpair.1 *
-            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
-        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
-      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 3
-      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
-      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      obtain ⟨c, hc⟩ := sentenceMatchesBinary_polyFueled 3 ihφ ihψ
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
   | hor φ ψ ihφ ihψ =>
-      have hpred := predc_polyFueled
-      have htag := PolyFueled.left.comp hpred
-      have hpayload := PolyFueled.right.comp hpred
-      obtain ⟨cφ, hφ⟩ := ihφ
-      obtain ⟨cψ, hψ⟩ := ihψ
-      have hleft := hφ.comp (PolyFueled.left.comp hpayload)
-      have hright := hψ.comp (PolyFueled.right.comp hpayload)
-      have hproduct := hmul.comp (hleft.pair hright)
-      have hproduct' : PolyFueled _ (fun code =>
-          sentenceMatches φ code.pred.unpair.2.unpair.1 *
-            sentenceMatches ψ code.pred.unpair.2.unpair.2) :=
-        hproduct.of_eq (fun code => by simp only [Nat.unpair_pair])
-      obtain ⟨ctag, htagEq⟩ := polyFueled_eqConst htag 4
-      obtain ⟨cbody, hbody⟩ := polyFueled_ifZero htagEq (PolyFueled.const 0) hproduct'
-      obtain ⟨c, hc⟩ := polyFueled_ifZero PolyFueled.id (PolyFueled.const 0) hbody
+      obtain ⟨c, hc⟩ := sentenceMatchesBinary_polyFueled 4 ihφ ihψ
       exact ⟨c, hc.of_eq (fun code => by simp [sentenceMatches])⟩
 
 lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
@@ -2624,33 +2619,14 @@ lemma sentenceMatches_le_one (target : Sentence) (code : ℕ) :
           by_cases htag : e.unpair.1 = 1
           · by_cases hpayload : e.unpair.2 = a <;> simp [htag, hpayload]
           · simp [htag]
-  | himp φ ψ ihφ ihψ =>
+  | himp φ ψ ihφ ihψ | hand φ ψ ihφ ihψ | hor φ ψ ihφ ihψ =>
       cases code with
       | zero => simp [sentenceMatches]
       | succ e =>
           simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
-          by_cases htag : e.unpair.1 = 2
-          · simp only [htag, if_true]
-            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
-          · simp [htag]
-  | hand φ ψ ihφ ihψ =>
-      cases code with
-      | zero => simp [sentenceMatches]
-      | succ e =>
-          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
-          by_cases htag : e.unpair.1 = 3
-          · simp only [htag, if_true]
-            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
-          · simp [htag]
-  | hor φ ψ ihφ ihψ =>
-      cases code with
-      | zero => simp [sentenceMatches]
-      | succ e =>
-          simp only [sentenceMatches, Nat.succ_ne_zero, if_false, Nat.pred_succ]
-          by_cases htag : e.unpair.1 = 4
-          · simp only [htag, if_true]
-            nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
-          · simp [htag]
+          split
+          · nlinarith [ihφ e.unpair.2.unpair.1, ihψ e.unpair.2.unpair.2]
+          · omega
 
 lemma sentenceMatches_eq_zero_iff (target : Sentence) (code : ℕ) :
     sentenceMatches target code = 0 ↔
@@ -2777,6 +2753,10 @@ noncomputable def liaPrefixQuoteCode (DP : DeductiveProcess) (cutoff : ℕ) :
     ℕ → ℕ → ℕ :=
   encodedPrefixQuoteFromStates (liaStatePrefix DP cutoff)
 
+/-- **Soundness of the prefix patch.**  On every day before the cutoff, the finite frozen
+table reproduces the LIA's own belief state, so overwriting a trader's quotes there changes
+nothing the trader could observe.  This is the semantic fact behind
+`liaFreezeBefore_preserves_ecTok`, whose own content is the token-level efficiency claim. -/
 lemma liaPrefixQuote_exact (DP : DeductiveProcess) (cutoff : ℕ)
     (day : ℕ) (hday : day < cutoff) (φ : Sentence) :
     liaHistory DP day φ = (liaPrefixQuote DP cutoff day φ : ℝ) := by
@@ -2801,11 +2781,13 @@ lemma liaPrefixQuoteCode_polyFueled (DP : DeductiveProcess) (cutoff : ℕ) :
 
 end PrefixPatchCompile
 
+/-! ## The paper-facing freeze endpoint -/
 
 /-- **Concrete finite-prefix compiler, token-level content.**  The LIA's first `cutoff`
 rational belief states form a fixed finite table; exhaustive raw sentence matching and the
 flat administrative freeze transducer compile that table into a polynomial token emitter,
-preserving token-model efficient computability.
+preserving token-model efficient computability.  That the table reproduces `liaHistory`
+before the cutoff is `PrefixPatchCompile.liaPrefixQuote_exact`.
 
 Disclosed boundary (`dd:fuel`): the collapsed `EfficientPrefixPatch.preserves_ec` asks for
 token-metered preservation, so this token-model fact does not package into that structure.
@@ -2830,31 +2812,5 @@ theorem liaFreezeBefore_preserves_ecTok (DP : DeductiveProcess) (cutoff : ℕ) :
     (PrefixPatchCompile.liaPrefixQuoteCode DP cutoff) cutoff
     (PrefixPatchCompile.liaPrefixQuoteCode_exact DP cutoff)
     hquotePoly Tr hTr
-
-#print axioms polyFueled_dovetailFound
-#print axioms polyFueled_deadlinePassed
-#print axioms AffineCombination.PolySequence.primrec
-#print axioms AffineCombination.settlementCheckAtFuel_prim
-#print axioms SettlementChecker.ofComputations
-#print axioms PatientSettlementClock.ofSemiDecider
-#print axioms PatientSettlementClock.ofChecker
-#print axioms PatientSettlementClock.ofComputations
-#print axioms SettlementChecker.toSemiDecider
-#print axioms AffineCombination.DeterminedViaTheory.settlementTest_iff_settled
-#print axioms AffineCombination.settlementTestBool_iff
-#print axioms mem_allBitLists
-#print axioms AffineCombination.finiteWorlds_agree_of_agree
-#print axioms acceptsWithin_mono
-#print axioms dovetailFound_mono
-#print axioms deadlinePassed_sound
-#print axioms deadlinePassed_eventually
-#print axioms deadlinePassed_mono
-#print axioms dovetailFound_eq_true_iff
-#print axioms triangularRepeat_repeats
-#print axioms EfficientRepeatedEnumeration.ofBig
-#print axioms EfficientRepeatedEnumeration.ofCE
-#print axioms lic_uniform_nonDogmatism_ofCE
-#print axioms PrefixPatchCompile.freezeBefore_preserves_ec
-#print axioms liaFreezeBefore_preserves_ecTok
 
 end LogicalInduction

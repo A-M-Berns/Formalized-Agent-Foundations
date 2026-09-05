@@ -5,15 +5,47 @@ import Foundation.FirstOrder.Arithmetic.IOpen.Basic
 /-!
 # Literal first-order LUV frontend
 
-This module starts the thin frontend for the paper's `def:luv`. A value is represented
-inside one-sorted arithmetic by a pair code for a nonnegative fraction `a / b`:
-`pairDef q a b` with `0 < b`. The public propositional ABI remains unchanged.
+`def:luv` (tex:1635) as a literal first-order object: the paper's own logically uncertain
+variable, rather than the abstract threshold carrier the rest of the development consumes.
+
+Objects defined: `paperRatDef`, `paperRatUnitDef` and `paperRatGtDef r` — the ℒₒᵣ formulas
+saying that a coded value is a nonnegative fraction, that it lies in `[0,1]`, and that it
+exceeds an external rational — and the structure `PaperLUV T`, whose fields `unique` and
+`unit` are object-level `T`-derivations rather than Lean-level side conditions.
+
+The compilation into the carrier is `thresholdFormula` (the literal `⌜X > r⌝`), `toLUV`
+(prime decomposition only) and the `@[simp]` `toLUV_gt`.
+
+Main results: `threshold_provable_of_neg`, `threshold_refutable_of_one_lt` and
+`threshold_downward_provable` — the three rational-cut obligations, each proved by
+completeness over models of `T` — assembled into `rationalCutAt` and hence `source_valued`,
+which *derives* the world value rather than assuming it.
+
+The frontend is imported by `StructuredPaperRpn.lean` and reaches `ArithmeticSource.lean`,
+`PaperExactProduct.lean`, `PaperRepresentedWeight.lean`, `PaperExactCCEE.lean` and
+`ComputationRepresented.lean` through it.  It is inhabited at concrete families in the
+`unitFracPaperLUVSeq` / `dyadicPaperLUVSeq` lane.  `Framework/Expectations.lean` and
+`LUVArithmetic.lean` are upstream of this module and refer to it in prose only.
+
+Representation choice: the object-level value is named by a numerator/positive-denominator
+pair code (`pairDef q a b` with `0 < b`) rather than by a canonical rational arithmetic
+inside ℒₒᵣ; `paperRatGtDef_eval_nat` pins down what that code means in the standard model.
+The representation is **ordered-value, not canonical**: distinct codes such as `1/2` and
+`2/4` stay distinct object codes, `unique` fixes only which code the formula selects, and
+the thresholds determine the external cut.  That is exactly what LUV expectation semantics
+consumes — the represented real is recovered through the rational cut, never through
+internal normalization — so arithmetic or equality closure *between* LUV values is a scope
+boundary of this frontend rather than a gap in `def:luv`.
+The `[𝗜𝚺₁ ⪯ T]` binder on the three threshold lemmas is where the rational-cut arithmetic is
+indexed, as the README records; efficiency belongs to the separate sequence layer, not here.
 -/
 
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open scoped LO.FirstOrder.Arithmetic
+
+/-! ## The rational value code -/
 
 /-- An arithmetic object is a code for a nonnegative fraction. -/
 def paperRatDef : ArithmeticSemisentence 1 :=
@@ -32,6 +64,8 @@ def paperRatGtDef (r : ℚ) : ArithmeticSemisentence 1 :=
     let an := Semiterm.Operator.numeral ℒₒᵣ r.num.natAbs
     let bn := Semiterm.Operator.numeral ℒₒᵣ r.den
     “q. ∃ c, ∃ d, !pairDef q c d ∧ 0 < d ∧ !!an * d < c * !!bn”
+
+/-! ## The literal paper LUV -/
 
 /-- A literal paper `[0,1]`-LUV: one free value variable, with object-level theory
 proofs of unique existence and unit-interval membership. Efficiency belongs to the
@@ -52,6 +86,8 @@ namespace PaperLUV
 
 variable {T : ArithmeticTheory} [T.Δ₁]
 
+/-! ## Threshold formulas and the abstract carrier -/
+
 /-- Literal first-order threshold formula `⌜X > r⌝`: every value satisfying `X`
 is greater than the represented external rational. No out-of-range threshold is
 replaced by a propositional constant. -/
@@ -65,21 +101,10 @@ def toLUV (X : PaperLUV T) : LUV where
 @[simp] lemma toLUV_gt (X : PaperLUV T) (r : ℚ) :
     X.toLUV.gt r = paperPrimeDecompose (X.thresholdFormula r) := rfl
 
-lemma paperRatDef_eval_nat (q : ℕ) :
-    paperRatDef.Evalb ![q] ↔
-      ∃ c d : ℕ,
-        ((c < d ∧ q = d * d + c) ∨ (d ≤ c ∧ q = c * c + c + d)) ∧ 0 < d := by
-  simp [paperRatDef, pairDef]
-
-lemma paperRatUnitDef_eval_nat (q : ℕ) :
-    paperRatUnitDef.Evalb ![q] ↔
-      ∃ c d : ℕ,
-        ((c < d ∧ q = d * d + c) ∨ (d ≤ c ∧ q = c * c + c + d)) ∧
-          0 < d ∧ c ≤ d := by
-  simp [paperRatUnitDef, pairDef]
-
-/-- The rational representation has the intended standard-model meaning. This is the
-first compile-checked boundary test for the frontend. -/
+/-- The coded-fraction comparison has the intended meaning in the standard model: `q` codes
+`c / d` with `0 < d`, and the comparison is the cross multiplication
+`r.num * d < c * r.den`.  This is the adequacy check for the pair-code representation the
+module header discloses. -/
 lemma paperRatGtDef_eval_nat (r : ℚ) (q : ℕ) (hr : 0 ≤ r) :
     (paperRatGtDef r).Evalb ![q] ↔
       ∃ c d : ℕ,
@@ -88,6 +113,8 @@ lemma paperRatGtDef_eval_nat (r : ℚ) (q : ℕ) (hr : 0 ≤ r) :
   have hnr : ¬r < 0 := not_lt.mpr hr
   simp [paperRatGtDef, hnr, pairDef]
 
+/-- `T` proves `⌜X > r⌝` for every negative `r`: below zero, well-formedness of the value
+code is itself the order fact. -/
 lemma threshold_provable_of_neg [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r : ℚ) (hr : r < 0) :
     T ⊢ X.thresholdFormula r := by
@@ -124,6 +151,8 @@ private lemma rat_cross_lt_of_nonneg {r s : ℚ} (hr : 0 ≤ r) (hrs : r < s) :
         (s.num.natAbs : ℤ) * (r.den : ℤ) by
     simpa [Int.natAbs_of_nonneg hrnum, Int.natAbs_of_nonneg hsnum] using hcross)
 
+/-- `T` refutes `⌜X > r⌝` for `r > 1`, from the `unit` derivation and cross
+multiplication. -/
 lemma threshold_refutable_of_one_lt [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r : ℚ) (hr : 1 < r) :
     T ⊢ ∼X.thresholdFormula r := by
@@ -161,6 +190,8 @@ lemma threshold_refutable_of_one_lt [𝗜𝚺₁ ⪯ T]
     _ < (r.num.natAbs : M) * b := hdenmul
   exact _root_.lt_irrefl _ hirr
 
+/-- `T` proves `⌜X > s⌝ → ⌜X > r⌝` for `r < s`: the thresholds are downward closed at the
+object level. -/
 lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (r s : ℚ) (hrs : r < s) :
     T ⊢ (X.thresholdFormula s 🡒 X.thresholdFormula r) := by
@@ -210,6 +241,10 @@ lemma threshold_downward_provable [𝗜𝚺₁ ⪯ T]
           (r.num.natAbs : M) * d < c * (r.den : M) from
         ⟨c, d, hpair, hd, hrd⟩)
 
+/-! ## The rational cut, and the derived world value -/
+
+/-- The three threshold obligations together form a `RationalCutAt` for the compiled LUV, in
+every world consistent with `paperTheoryDP T`. -/
 lemma rationalCutAt [𝗜𝚺₁ ⪯ T]
     (X : PaperLUV T) (v : PCWorld)
     (hv : v.ConsistentWithTheory (paperTheoryDP T)) :
@@ -248,11 +283,5 @@ lemma source_valued [𝗜𝚺₁ ⪯ T]
   exact (X.rationalCutAt v hv).exists_valuesAt
 
 end PaperLUV
-
-#print axioms PaperLUV.paperRatGtDef_eval_nat
-#print axioms PaperLUV.threshold_provable_of_neg
-#print axioms PaperLUV.threshold_refutable_of_one_lt
-#print axioms PaperLUV.threshold_downward_provable
-#print axioms PaperLUV.source_valued
 
 end LogicalInduction

@@ -1,19 +1,80 @@
-/-
-# Budgeter (`def:budgeter`, `lem:budgeter`)
-
-The paper's Budgeter is an adaptive strategy constructor: on day `n` it receives the
-already-fixed rational market prefix, may branch on losses in that prefix, and returns an
-ordinary `n`-strategy whose dependence on the as-yet-unknown current prices remains an
-expressible feature.  This is deliberately distinct from a static `Trader`; the distinction
-is load-bearing because the bankruptcy test is discontinuous in past prices.
--/
 import LogicalInduction.Construction.MarketMaker
 import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Framework.ROI
 
+/-!
+# The Budgeter
+
+This module renders §5's Budgeter: the defining case split of `eq:budgeter`
+(tex:2348-2364) and the three properties of `lem:budgeter` (tex:2386).
+
+## Objects
+
+* `AdaptiveTrader` — the type of the paper's Budgeter output: a map from a day `n` and the
+  already-fixed rational market prefix to an ordinary `n`-strategy.  This is deliberately
+  not a static `Trader`, and the distinction is load-bearing: the bankruptcy test branches
+  discontinuously on past prices, while the surviving trade must stay a rank-legal strategy
+  in the as-yet-unfixed day-`n` prices.
+* `BudgeterAt` — the day action of `eq:budgeter`: zero if the raw trader has already
+  reached `-b` in some plausible world on some earlier day, and otherwise the day-`n` trade
+  scaled by the infimum of the world-specific caps.  `Budgeter` is the `AdaptiveTrader` it
+  induces over `MarketMaker`'s rational history format, `BudgeterFromComputation` the same
+  over a named deductive-process program, and `budgetedTrader` the ordinary trader obtained
+  by running the day action against a fixed rational quote table.
+* `priorBudgetBreach` — the bankruptcy test, and `lossCap` / `budgetWorldScale` /
+  `budgetScaleFeature` the `[max(1, -(world value of the day trade) / (available
+  capital))]⁻¹` cap of `eq:budgeter`.
+* `Sentence.atoms`, `sentenceBool`, `boolPCWorld`, `budgetAtoms`, `finiteAtomAssignments`
+  and `tableConsistent` — the finite plausible-world machinery.  These are the paper's own
+  computability argument (tex:2379): the quantifier over all of `pcworlds(D m)` is replaced
+  by a scan over truth assignments to the finitely many prime atoms occurring in the
+  deductive stage and in the traded sentences, which decides membership and payouts exactly.
+* `EF.neg`, `EF.min`, `EF.listMin` — the feature-DSL infimum, expressed as the paper
+  expresses it, through the allowed `max` and multiplication by `-1` (tex:2381).  Features
+  are reified syntax rather than Lean functions (`dd:dsl`), so the infimum has to be
+  *built*, not taken.  `EF.listMin`'s neutral fallback `1` is reached only on an empty
+  world list, in which case the floor result it feeds is vacuous.
+
+## Main results
+
+The three parts of `lem:budgeter`: `BudgeterAt_value_eq_of_safe` — a trader that has stayed
+strictly within budget through day `n` has its day-`n` trade preserved exactly, as an
+affine contract of equal value in every world; `budgetedTrader_netWorth_floor` — the
+budgeted trader never falls below `-b` in any world plausible on any day; and
+`exists_budgetedTrader_exploits` — some positive integer budget preserves exploitation.
+Parts 2 and 3 are consumed directly by `Construction/TradingFirm.lean`, which caps each
+enumerated trader before aggregating; part 1 reaches it through its prefix-local
+generalization `BudgeterAt_value_eq_of_safe_prefix` below.
+
+`priorBudgetBreach_eq_false_iff` carries the modelling weight of the executable layer: the
+finite bit-table scan is *equivalent* to the paper's semantic past-loss test over all
+plausible worlds, not merely sound for it.
+
+## Prefix-local and operational variants
+
+The prefix-local forms (`*_of_safe_prefix`, `*_cast_of_prefix`, `*_of_eq_prefix`) assume
+market exactness only strictly below day `n`.  That is the interface `MarketMaker` needs,
+where day `n` is a symbolic price vector at the time the strategy is built; the
+total-hypothesis forms are their instances.
+
+The finite-stage and trade-list forms (`*FromStages`, `*FromStageLists`,
+`*FromStageTradeLists`) take the deductive stages, the bit assignments, and the raw trades
+as data of fixed first-order type, because the recursive market program compiled in
+`Construction/LIACompiler.lean` receives decoded finite stages and trade lists rather than a
+semantic `DeductiveProcess` oracle.  Each is proved equal to the semantic form, so nothing
+downstream depends on the erased presentation being the definition.
+-/
+
 namespace LogicalInduction
 
 open Classical
+
+/-! ## Propositional atoms and Boolean evaluation
+
+A propositional sentence is decided by a truth assignment to the finitely many prime atoms
+it mentions, so `budgetAtoms` — the atoms of the deductive stage together with those of
+every sentence traded through day `n` — is a context large enough to evaluate everything
+`eq:budgeter` inspects. -/
 
 namespace Sentence
 
@@ -104,17 +165,18 @@ lemma trade_atoms_subset_budgetAtoms (DP : DeductiveProcess) (Tr : Trader)
   apply Finset.mem_biUnion.mpr
   exact ⟨p.2, (Tr.strat i).snd_mem_support hp, ha⟩
 
+/-! ## Finite plausible worlds and the consistency test
+
+This is the paper's computability argument for the `if` branch of `eq:budgeter`
+(tex:2379).  `finiteAtomAssignments A` enumerates every truth assignment to the atoms in
+`A`; `restrictedAssignment` sends an arbitrary p.c. world into that enumeration
+(`restrictedAssignment_mem`) without changing any payout the day-`n` trades can see
+(`restricted_payout_eq`); and `tableConsistent` decides membership in `pcworlds(D m)` on
+the enumerated tables.  Together these replace a quantifier over all worlds by a scan. -/
+
 /-- Extend a finite bit assignment by `false` outside its atom context. -/
 def finiteAtomTable (A : Finset ℕ) (bits : A → Bool) : ℕ → Bool := fun a =>
   if h : a ∈ A then bits ⟨a, h⟩ else false
-
-/-- Every world has a representative finite bit assignment that agrees on `A`. -/
-lemma exists_finiteAtomTable_agrees (A : Finset ℕ) (v : PCWorld) :
-    ∃ bits : A → Bool, ∀ a ∈ A, finiteAtomTable A bits a = decide (v a) := by
-  let bits : A → Bool := fun a => decide (v a.1)
-  refine ⟨bits, ?_⟩
-  intro a ha
-  simp [finiteAtomTable, ha, bits]
 
 /-- Interpret a bit list against the sorted atoms of `A`. -/
 def atomAssignmentOfList (A : Finset ℕ) (xs : List Bool) : A → Bool := fun a =>
@@ -124,9 +186,14 @@ def atomAssignmentOfList (A : Finset ℕ) (xs : List Bool) : A → Bool := fun a
 def finiteAtomAssignments (A : Finset ℕ) : List (A → Bool) :=
   (allBoolLists A.card).map (atomAssignmentOfList A)
 
-/-! A first-order presentation of the same finite assignments.  Keeping the bit vector as
-data avoids placing the value-dependent function type `A → Bool` at the compiler boundary. -/
+/-! ### First-order presentation of the same assignments
 
+Keeping the bit vector as raw list data, rather than as the value-dependent function type
+`A → Bool`, keeps the assignment enumeration at a fixed first-order type; that is what the
+compiler boundary of `Construction/LIACompiler.lean` can carry. -/
+
+/-- Interpret a bit list directly as an atom table: bit `i` gives the `i`-th atom of `A` in
+increasing order, and every atom outside `A` reads `false`. -/
 def finiteAtomTableFromList (A : Finset ℕ) (xs : List Bool) : ℕ → Bool := fun a =>
   if a ∈ A then xs.getD ((A.sort (· ≤ ·)).idxOf a) false else false
 
@@ -172,19 +239,14 @@ lemma finiteAtomTable_restricted (A : Finset ℕ) (v : PCWorld) {a : ℕ}
     finiteAtomTable A (restrictedAssignment A v) a = decide (v a) := by
   simp [finiteAtomTable, restrictedAssignment, ha]
 
+/-- Deciding a world atomwise and reading the result back as a world is the identity. -/
+lemma boolPCWorld_decide (v : PCWorld) : boolPCWorld (fun a => decide (v a)) = v := by
+  funext a
+  simp [boolPCWorld]
+
 lemma sentenceBool_decide_world (v : PCWorld) (φ : Sentence) :
     sentenceBool (fun a => decide (v a)) φ = true ↔ v.Holds φ := by
-  induction φ with
-  | atom a => simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | falsum => simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | and φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
-  | or φ ψ ihφ ihψ =>
-      simp [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
-  | imp φ ψ ihφ ihψ =>
-      cases hφ : sentenceBool (fun a => decide (v a)) φ <;>
-        cases hψ : sentenceBool (fun a => decide (v a)) ψ <;>
-        simp_all [sentenceBool, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+  rw [sentenceBool_eq_true_iff, boolPCWorld_decide]
 
 lemma sentenceBool_restricted_world (A : Finset ℕ) (v : PCWorld) (φ : Sentence)
     (hφ : φ.atoms ⊆ A) :
@@ -230,6 +292,12 @@ lemma tableConsistent_eq_true_iff (u : ℕ → Bool) (D : Finset Sentence) :
     exact (sentenceBool_eq_true_iff u φ).mp (h φ hφ)
   · intro h φ hφ
     exact (sentenceBool_eq_true_iff u φ).mpr (h φ hφ)
+
+/-! ## `min` and finite infima in the feature DSL
+
+Expressible features are reified syntax (`dd:dsl`), so the infimum of `eq:budgeter` must be
+built from the constructors the paper allows.  It is, exactly as the paper's own proof
+builds it: through `max` and multiplication by `-1` (tex:2381). -/
 
 namespace EF
 
@@ -310,6 +378,13 @@ lemma listMin_denote_le_one (es : List EF) (P : History) :
 
 end EF
 
+/-! ## Exact rational wealth on a market prefix
+
+`eq:budgeter` compares a trader's accumulated wealth against `-b`, and the comparison has to
+be decided rather than approximated.  Over a rational quote table and a Boolean world all
+the sums are rational, so `rawPriorWorthRat` and `rawWorthRat` compute them exactly; the
+`_cast` lemmas identify them with the real-valued `Trader.netWorth` of the criterion. -/
+
 namespace Strategy
 
 /-- The current strategy's value in a fixed Boolean world, reified as an expressible
@@ -319,6 +394,8 @@ def worldValueFeature {n : ℕ} (T : Strategy n) (u : ℕ → Bool) : EF :=
     .mul p.1 (.add (.const (boolPayoutRat u p.2))
       (.mul (.const (-1)) (.price p.2 n))))
 
+/-- Trade-list form of `worldValueFeature`: the day-`n` value of a bare list of trades in
+the Boolean world `u`, carrying no rank proof. -/
 def tradeListWorldValueFeature (trades : List (EF × Sentence)) (n : ℕ)
     (u : ℕ → Bool) : EF :=
   ROIBudget.sumFeatures (trades.map fun p =>
@@ -437,6 +514,7 @@ def rawPriorWorthRatTradeLists (tradesAt : ℕ → List (EF × Sentence))
   ∑ i ∈ Finset.range n,
     tradeListMarketValueRat (tradesAt i) i Q (boolPayoutRat u)
 
+/-- Trade-list form of `rawWorthRat`: raw wealth through day `m`. -/
 def rawWorthRatTradeLists (tradesAt : ℕ → List (EF × Sentence))
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (m : ℕ) : ℚ :=
   rawPriorWorthRatTradeLists tradesAt Q u (m + 1)
@@ -493,7 +571,7 @@ lemma rawWorthRat_cast (Tr : Trader) (P : History)
   rfl
 
 /-- Prefix-local form used by adaptive constructions: raw prior wealth through `n-1`
-does not require a rational quote for the still-variable day `n`. -/
+does not require a rational quote for the as-yet-unfixed day `n`. -/
 lemma rawPriorWorthRat_cast_of_prefix (Tr : Trader) (P : History)
     (Q : ℕ → Sentence → ℚ) (n : ℕ)
     (hQ : ∀ day, day < n → ∀ φ, P day φ = (Q day φ : ℝ))
@@ -595,6 +673,13 @@ lemma tableConsistent_restricted_iff (DP : DeductiveProcess) (Tr : Trader)
       (sentenceBool_restricted_world (budgetAtoms DP Tr n) v φ
         (deductive_atoms_subset_budgetAtoms DP Tr hmn hφ))).mpr (h φ hφ)
 
+/-! ## The bankruptcy scan
+
+The `if` branch of `eq:budgeter`: has the raw trader already reached or crossed `-b` in some
+world plausible on some earlier day?  `priorBudgetBreach_eq_false_iff` is the claim that
+makes the finite scan a faithful rendering rather than a conservative approximation — it is
+*equivalent* to the semantic test, in both directions. -/
+
 /-- Whether the unbudgeted trader has already reached or crossed `-b` in a plausible
 world on some day before `n`.  All quantifiers are explicit finite list scans. -/
 def priorBudgetBreach (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
@@ -627,7 +712,7 @@ lemma priorBudgetBreach_eq_of_eq_prefix
         (fun day hday φ => hQR day (lt_of_le_of_lt hday hm) φ), ih hrest]
 
 /-- Prefix-local soundness direction for the breach scan.  This is the interface needed
-when day `n` is still a symbolic price vector inside MarketMaker. -/
+when day `n` is a symbolic price vector inside MarketMaker. -/
 lemma priorBudgetBreach_eq_false_of_safe_prefix
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ) (n : ℕ)
@@ -690,40 +775,19 @@ lemma priorBudgetBreach_eq_false_iff (DP : DeductiveProcess) (Tr : Trader) (b : 
     rw [← hcast]
     exact_mod_cast hrat
   · intro hsafe
-    unfold priorBudgetBreach
-    apply List.any_eq_false.mpr
-    intro bits hbits
-    have hinner : ((List.range n).any fun m =>
-        tableConsistent (finiteAtomTable (budgetAtoms DP Tr n) bits) (DP.D m) &&
-          decide (rawWorthRat Tr Q
-            (finiteAtomTable (budgetAtoms DP Tr n) bits) m ≤ -(b : ℚ))) = false := by
-      apply List.any_eq_false.mpr
-      intro m hm
-      simp only [List.mem_range] at hm
-      let A := budgetAtoms DP Tr n
-      let u := finiteAtomTable A bits
-      by_cases hcons : tableConsistent u (DP.D m) = true
-      · have hv : (boolPCWorld u).ConsistentWith (DP.D m) :=
-          (tableConsistent_eq_true_iff u (DP.D m)).mp hcons
-        have hreal := hsafe m hm (boolPCWorld u) hv
-        have hcast := rawWorthRat_cast Tr P Q hQ u m
-        have hrat : -(b : ℚ) < rawWorthRat Tr Q u m := by
-          have hreal' : -(b : ℝ) < (rawWorthRat Tr Q u m : ℝ) := by
-            rw [hcast]
-            exact hreal
-          exact_mod_cast hreal'
-        change ¬(tableConsistent u (DP.D m) &&
-          decide (rawWorthRat Tr Q u m ≤ -(b : ℚ))) = true
-        intro htrue
-        have hdec : decide (rawWorthRat Tr Q u m ≤ -(b : ℚ)) = true := by
-          simpa [hcons] using htrue
-        exact (not_le_of_gt hrat) (of_decide_eq_true hdec)
-      · change ¬(tableConsistent u (DP.D m) &&
-          decide (rawWorthRat Tr Q u m ≤ -(b : ℚ))) = true
-        simp [hcons]
-    simp [hinner]
+    exact priorBudgetBreach_eq_false_of_safe_prefix DP Tr b P Q n
+      (fun day _ φ => hQ day φ) hsafe
 
-/-- One world-specific reciprocal loss cap from `def:budgeter`. -/
+/-! ## The loss cap and the budget scale feature
+
+The `else` branch of `eq:budgeter`.  A world values the day-`n` trade at `current` and the
+wealth accumulated before day `n` at `prior`, leaving `available = b + prior` to spend; the
+clause for that world is `lossCap available current = [max(1, -current / available)]⁻¹`, and
+the trade actually made is scaled by the infimum of those clauses, so that no plausible
+world can overspend the budget (tex:2384).  Because each factor lies in `(0, 1]` —
+`lossCap_pos` and `lossCap_le_one` — the clause only ever scales the trade *down*. -/
+
+/-- One world-specific reciprocal loss cap from `eq:budgeter`. -/
 def budgetWorldScale (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ) : EF :=
   .safeRecip (.mul
@@ -787,6 +851,8 @@ lemma lossCap_pos (available current : ℝ) : 0 < lossCap available current := b
   unfold lossCap
   exact inv_pos.mpr (lt_of_lt_of_le zero_lt_one (le_max_left _ _))
 
+/-- Upper half of the characterisation `0 < lossCap ≤ 1` completed by `lossCap_pos`: the
+clause of `eq:budgeter` scales a trade down and never leverages it up (tex:2384). -/
 lemma lossCap_le_one (available current : ℝ) : lossCap available current ≤ 1 := by
   unfold lossCap
   exact (inv_le_one₀ (lt_of_lt_of_le zero_lt_one (le_max_left _ _))).mpr
@@ -837,6 +903,9 @@ lemma budgetScaleFeature_denote_pos (DP : DeductiveProcess) (Tr : Trader) (b : �
   rw [budgetWorldScale_denote Tr b P Q]
   exact lossCap_pos _ _
 
+/-- Feature-level counterpart of `lossCap_le_one`, and the upper half of the
+characterisation completed by `budgetScaleFeature_denote_pos`: the infimum of the world
+clauses is itself a reduction factor in `(0, 1]`. -/
 lemma budgetScaleFeature_denote_le_one (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (P : History) (Q : ℕ → Sentence → ℚ)
     (_hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ) :
@@ -913,8 +982,12 @@ lemma budgetScaleFeature_denote_eq_one_of_safe
   budgetScaleFeature_denote_eq_one_of_safe_prefix DP Tr b hb P Q n
     (fun day _ φ => hQ day φ) hsafe
 
-/-- `def:budgeter`: the exact day action.  The past-prefix branch is executable and the
-nonzero branch is an ordinary rank-legal strategy continuous in current prices. -/
+/-! ## `eq:budgeter` — the day action -/
+
+/-- The exact day action of `eq:budgeter`: the zero strategy if the raw trader has already
+breached `-b` in the market prefix, and otherwise the day-`n` trade scaled by
+`budgetScaleFeature`.  The branch condition is decided on the prefix, and the surviving
+branch is an ordinary rank-legal strategy in the day-`n` prices. -/
 def BudgeterAt (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Strategy n :=
   if priorBudgetBreach DP Tr b Q n then
@@ -923,20 +996,27 @@ def BudgeterAt (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Tr.strat n).scaleBy (budgetScaleFeature DP Tr b Q n)
       (budgetScaleFeature_rank_le DP Tr b Q n)
 
-/-! ### Finite-stage operational form
+/-! ### Finite-stage operational forms
 
 The recursive market program receives decoded finite stages, not a semantic
-`DeductiveProcess` oracle.  These definitions are the same bounded scans as `BudgeterAt`
-with the stage table made an explicit data argument. -/
+`DeductiveProcess` oracle.  These are the same bounded scans as above with the stage table
+`D` made an explicit data argument, and the `FromStageLists` layer additionally replaces the
+value-dependent assignment type `A → Bool` by raw bit lists.  Each is proved equal to its
+semantic counterpart — exactly on the nose in the `FromStageLists` case, and on any prefix
+of exact stages in the `FromStages` case (`BudgeterAtFromStages_eq_of_eq_prefix`), which is
+all the recursion can supply. -/
 
+/-- Stage-table form of `budgetAtoms`. -/
 def budgetAtomsFromStages (D : ℕ → Finset Sentence) (Tr : Trader)
     (n : ℕ) : Finset ℕ :=
   (D n).biUnion Sentence.atoms ∪
     (Finset.range (n + 1)).biUnion fun i => (Tr.strat i).sentenceAtoms
 
+/-- Trade-list form of `Strategy.sentenceAtoms`. -/
 def tradeListSentenceAtoms (trades : List (EF × Sentence)) : Finset ℕ :=
   (tradeListSupport trades).biUnion Sentence.atoms
 
+/-- Stage-table and trade-list form of `budgetAtoms`. -/
 def budgetAtomsFromStageTradeLists (D : ℕ → Finset Sentence)
     (tradesAt : ℕ → List (EF × Sentence)) (n : ℕ) : Finset ℕ :=
   (D n).biUnion Sentence.atoms ∪
@@ -948,6 +1028,7 @@ def budgetAtomsFromStageTradeLists (D : ℕ → Finset Sentence)
       budgetAtomsFromStages D Tr n := by
   rfl
 
+/-- Stage-table form of `priorBudgetBreach`. -/
 def priorBudgetBreachFromStages (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Bool :=
   let A := budgetAtomsFromStages D Tr n
@@ -975,6 +1056,7 @@ lemma priorBudgetBreachFromStageLists_eq (D : ℕ → Finset Sentence)
   intro xs
   simp only [Function.comp_apply, finiteAtomTable_atomAssignmentOfList]
 
+/-- Stage-table form of `budgetScaleFeature`. -/
 def budgetScaleFeatureFromStages (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : EF :=
   let A := budgetAtomsFromStages D Tr n
@@ -1014,6 +1096,7 @@ lemma budgetScaleFeatureFromStageLists_rank_le (D : ℕ → Finset Sentence)
   rw [budgetScaleFeatureFromStageLists_eq]
   exact budgetScaleFeatureFromStages_rank_le D Tr b Q n
 
+/-- Stage-table form of `BudgeterAt`. -/
 def BudgeterAtFromStages (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Strategy n :=
   if priorBudgetBreachFromStages D Tr b Q n then
@@ -1022,6 +1105,7 @@ def BudgeterAtFromStages (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Tr.strat n).scaleBy (budgetScaleFeatureFromStages D Tr b Q n)
       (budgetScaleFeatureFromStages_rank_le D Tr b Q n)
 
+/-- First-order bit-list form of `BudgeterAtFromStages`. -/
 def BudgeterAtFromStageLists (D : ℕ → Finset Sentence) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Strategy n :=
   if priorBudgetBreachFromStageLists D Tr b Q n then
@@ -1042,9 +1126,15 @@ lemma BudgeterAtFromStageLists_eq (D : ℕ → Finset Sentence) (Tr : Trader)
     funext p
     rw [budgetScaleFeatureFromStageLists_eq]
 
-/-! The fully erased Budgeter path.  All inputs and outputs here have fixed first-order
-types, while the equality theorem below reconnects it to the proof-carrying strategy. -/
+/-! ### The fully erased trade-list path
 
+The last erasure: the trader itself is replaced by its day-indexed trade lists, so every
+input and output has a fixed first-order type and the day action produces a bare list of
+trades rather than a `Strategy` carrying a rank proof.  This is the shape
+`Construction/LIACompiler.lean` compiles.  The `_trader` lemmas reconnect each definition to
+the proof-carrying one by instantiating `tradesAt` at `fun i => (Tr.strat i).trades`. -/
+
+/-- Trade-list form of `priorBudgetBreachFromStageLists`. -/
 def priorBudgetBreachFromStageTradeLists (D : ℕ → Finset Sentence)
     (tradesAt : ℕ → List (EF × Sentence)) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : Bool :=
@@ -1055,12 +1145,14 @@ def priorBudgetBreachFromStageTradeLists (D : ℕ → Finset Sentence)
         decide (rawWorthRatTradeLists tradesAt Q
           (finiteAtomTableFromList A xs) m ≤ -(b : ℚ))
 
+/-- Trade-list form of `budgetWorldScale`. -/
 def budgetWorldScaleTradeLists (tradesAt : ℕ → List (EF × Sentence)) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (u : ℕ → Bool) (n : ℕ) : EF :=
   .safeRecip (.mul
     (.const ((b + rawPriorWorthRatTradeLists tradesAt Q u n)⁻¹))
     (EF.neg (Strategy.tradeListWorldValueFeature (tradesAt n) n u)))
 
+/-- Trade-list form of `budgetScaleFeatureFromStageLists`. -/
 def budgetScaleFeatureFromStageTradeLists (D : ℕ → Finset Sentence)
     (tradesAt : ℕ → List (EF × Sentence)) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : EF :=
@@ -1069,6 +1161,8 @@ def budgetScaleFeatureFromStageTradeLists (D : ℕ → Finset Sentence)
     tableConsistent (finiteAtomTableFromList A xs) (D n)).map fun xs =>
       budgetWorldScaleTradeLists tradesAt b Q (finiteAtomTableFromList A xs) n)
 
+/-- The day action of `eq:budgeter` as a bare trade list: the erased form of `BudgeterAt`,
+returning the scaled day-`n` trades directly instead of a `Strategy`. -/
 def budgeterTradesFromStageTradeLists (D : ℕ → Finset Sentence)
     (tradesAt : ℕ → List (EF × Sentence)) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) (n : ℕ) : List (EF × Sentence) :=
@@ -1115,19 +1209,6 @@ lemma budgeterTradesFromStageTradeLists_trader
   · rfl
   · unfold Strategy.scaleBy
     rw [budgetScaleFeatureFromStageTradeLists_trader]
-
-lemma BudgeterAtFromStages_eq (DP : DeductiveProcess)
-    (D : ℕ → Finset Sentence) (hD : D = DP.D) (Tr : Trader) (b : ℕ)
-    (Q : ℕ → Sentence → ℚ) (n : ℕ) :
-    BudgeterAtFromStages D Tr b Q n = BudgeterAt DP Tr b Q n := by
-  subst D
-  unfold BudgeterAtFromStages BudgeterAt priorBudgetBreachFromStages
-    priorBudgetBreach budgetScaleFeatureFromStages budgetScaleFeature
-    budgetAtomsFromStages budgetAtoms
-  split
-  · rfl
-  · unfold Strategy.scaleBy
-    congr
 
 lemma budgetAtomsFromStages_eq_of_eq_prefix (DP : DeductiveProcess)
     (D : ℕ → Finset Sentence) (Tr : Trader) (n : ℕ)
@@ -1198,26 +1279,12 @@ lemma BudgeterAt_eq_of_eq_prefix
     congr 1
     rw [hscale]
 
+/-! ## `lem:budgeter` — preservation, floor, and existence -/
+
 /-- The realized budgeted trader against a fixed rational market table. -/
 def budgetedTrader (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
     (Q : ℕ → Sentence → ℚ) : Trader where
   strat n := BudgeterAt DP Tr b Q n
-
-/-- `lem:budgeter`, part 1: under the paper's strict raw-budget hypothesis, Budgeter
-preserves the day-`n` trade exactly as an affine contract (equal value in every world). -/
-theorem BudgeterAt_value_eq_of_safe
-    (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
-    (P : History) (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
-    (hsafe : ∀ m ≤ n, ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
-      -(b : ℝ) < Tr.netWorth P v m) (w : Sentence → ℝ) :
-    (BudgeterAt DP Tr b Q n).value P w = (Tr.strat n).value P w := by
-  have hbreach : priorBudgetBreach DP Tr b Q n = false :=
-    (priorBudgetBreach_eq_false_iff DP Tr b P Q hQ n).mpr
-      (fun m hm => hsafe m (Nat.le_of_lt hm))
-  simp only [BudgeterAt, hbreach, Bool.false_eq_true, if_false]
-  rw [Strategy.scaleBy_value,
-    budgetScaleFeature_denote_eq_one_of_safe DP Tr b hb P Q hQ n hsafe, one_mul]
 
 /-- Adaptive/prefix form of Budgeter preservation, with no current-price oracle. -/
 lemma BudgeterAt_value_eq_of_safe_prefix
@@ -1234,6 +1301,17 @@ lemma BudgeterAt_value_eq_of_safe_prefix
   rw [Strategy.scaleBy_value,
     budgetScaleFeature_denote_eq_one_of_safe_prefix DP Tr b hb P Q n hQ hsafe,
     one_mul]
+
+/-- `lem:budgeter`, part 1: under the paper's strict raw-budget hypothesis, Budgeter
+preserves the day-`n` trade exactly as an affine contract (equal value in every world). -/
+theorem BudgeterAt_value_eq_of_safe
+    (DP : DeductiveProcess) (Tr : Trader) (b : ℕ) (hb : 0 < b)
+    (P : History) (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ day φ, P day φ = (Q day φ : ℝ)) (n : ℕ)
+    (hsafe : ∀ m ≤ n, ∀ v : PCWorld, v.ConsistentWith (DP.D m) →
+      -(b : ℝ) < Tr.netWorth P v m) (w : Sentence → ℝ) :
+    (BudgeterAt DP Tr b Q n).value P w = (Tr.strat n).value P w :=
+  BudgeterAt_value_eq_of_safe_prefix DP Tr b hb P Q n (fun day _ φ => hQ day φ) hsafe w
 
 lemma budgetScaleFeature_denote_le_lossCap
     (DP : DeductiveProcess) (Tr : Trader) (b : ℕ)
@@ -1414,6 +1492,12 @@ theorem exists_budgetedTrader_exploits
   rw [Trader.Exploits, hassess]
   exact hEx
 
+/-! ## The adaptive Budgeter
+
+The paper's `Budgeter^DP` is a function of the market prefix, not a trader; `AdaptiveTrader`
+is that type, and `TradingFirm` in `Construction/TradingFirm.lean` is the other
+inhabitant. -/
+
 /-- Adaptive traders produce one ordinary strategy from each finite rational market prefix. -/
 structure AdaptiveTrader where
   action : (n : ℕ) → List RationalBeliefState → Strategy n
@@ -1435,11 +1519,5 @@ lemma BudgeterFromComputation_eq {DP : DeductiveProcess}
     BudgeterFromComputation process Tr b = Budgeter DP Tr b := by
   unfold BudgeterFromComputation
   rw [process.computedProcess_eq]
-
-#print axioms priorBudgetBreach_eq_false_iff
-#print axioms BudgeterAt_value_eq_of_safe
-#print axioms budgetedTrader_netWorth_floor
-#print axioms exists_budgetedTrader_exploits
-#print axioms BudgeterFromComputation_eq
 
 end LogicalInduction

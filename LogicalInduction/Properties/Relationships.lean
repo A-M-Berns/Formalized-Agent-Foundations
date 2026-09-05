@@ -1,25 +1,44 @@
-/-
-# Learning Logical Relationships — §4.5: `thm:lex` (`app:lex`)
-
-Three renderings, in increasing generality: equivalence (`⊢ φ ↔ ψ` forces the prices
-together), implication (`⊢ φ → ψ` eventually stops `φ` being overpriced against `ψ`), and
-the exclusive–exhaustive families of `thm:lex` proper.
--/
 import LogicalInduction.Properties.Basic
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Learning Logical Relationships
+
+Renders §4.5 *Learning Logical Relationships*, `thm:lex` (appendix `app:lex`), in three
+renderings of increasing generality: equivalence (`⊢ φ ↔ ψ` forces the prices together),
+implication (`⊢ φ → ψ` eventually stops `φ` being overpriced against `ψ`), and the
+exclusive–exhaustive families that are the paper's statement proper.
+
+The equivalence and implication lanes share one shape: an `EF` price gap (`gap2EF`), a
+continuous buy signal on it (`sig2EF` / `impSig`), a two-sentence portfolio (`eqTr` /
+`impTr`), a world-independent day value (`eqW` / `impW`), an emission certificate (`eqTr_ec`
+/ `impTr_ec`) and an exploitation lemma. The equivalence portfolio `σ·[(1,φ),(−1,ψ)]` is
+world-neutral because equivalence equates the payouts (`PCWorld.payout_eq_of_iff`), so its
+day value is the deterministic difference `σ·(Pφ − Pψ)`. The implication portfolio is only
+risk-free, bounded below by `impW` because `φ → ψ` gives `payout φ ≤ payout ψ`
+(`PCWorld.payout_le_of_imp`).
+
+`lic_lex_tendsto_zero` and `lic_imp_eventually_le` are `thm:lex`-family consequences rather
+than the paper's statement; `scripts/coverage-classification.md` credits `thm:lex` to
+`lic_learning_exclusive_exhaustive` alone.
+
+`exclusiveExhaustiveAffine` normalizes `(Σ_{j<k} φʲₙ − 1)/k` so the share magnitude is
+exactly one, and `exclusiveExhaustive_polySequence` is its uniform emission certificate for a
+fixed positive `k` of efficiently codeable sequences.
+`lic_learning_exclusive_exhaustive` is `thm:lex`; its semantic premise is the
+completed-theory rendering of the paper's "Θ proves exactly one member of each fixed finite
+tuple". It is consumed by `Properties/{LimitCoherence,OccamBounds}.lean`.
+
+`PCWorld.payout_eq_of_iff` and `payout_le_of_imp` are the payout facts the equivalence and
+implication consequences rest on; they are stated and consumed here.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
-
-/-! ## `thm:lex` — learning logical equivalence
-
-If `⊢ φ ↔ ψ` then the prices track each other: `Pₙφ − Pₙψ → 0`. Structurally this is the
-additivity result with a *two*-sentence world-neutral portfolio `σ·[(1,φ),(-1,ψ)]` — by
-equivalence the payouts are equal (`payout_eq_of_iff`), so the day value is the deterministic
-difference `σ·(Pφ−Pψ)`, and the same buy-signal + reusable exploitation engine apply. -/
+/-! ## Learning logical equivalence -/
 
 /-- If both `∼φ⋎ψ` and `∼ψ⋎φ` hold (i.e. `φ ↔ ψ`), the payouts coincide. -/
 lemma PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
@@ -29,26 +48,22 @@ lemma PCWorld.payout_eq_of_iff (v : PCWorld) (φ ψ : Sentence)
   by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ <;>
     simp_all
 
-
 /-- Price difference `Pₙφ − Pₙψ` as an `EF`. -/
 noncomputable def gap2EF (φ ψ : Sentence) (n : ℕ) : EF :=
   .add (.price φ n) (.mul (.const (-1)) (.price ψ n))
 
-
+/-- Buy-signal for the equivalence trader in direction `σ`: `max(0, σ·(Pφ − Pψ) − ε/2)`. -/
 noncomputable def sig2EF (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : EF :=
   buySignal (.mul (.const σ) (gap2EF φ ψ n)) ε
-
 
 lemma gap2EF_denote (φ ψ : Sentence) (P : History) (n : ℕ) :
     (gap2EF φ ψ n).denote P = P n φ - P n ψ := by
   simp only [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price,
     Pi.add_apply, Pi.mul_apply]; push_cast; ring
 
-
 lemma sig2EF_denote (φ ψ : Sentence) (σ ε : ℚ) (P : History) (n : ℕ) :
     (sig2EF φ ψ σ ε n).denote P = max 0 ((σ:ℝ) * (gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [sig2EF, buySignal_denote, EF.denote_mul, EF.denote_const, Pi.mul_apply]
-
 
 /-- The equivalence-arbitrage trader for direction `σ`: plays `sig` copies of
 `σ·[(1,φ),(-1,ψ)]` — world-neutral when `φ ↔ ψ`. -/
@@ -62,10 +77,9 @@ noncomputable def eqTr (φ ψ : Sentence) (σ ε : ℚ) : Trader where
                  rcases hp with h|h <;> subst h <;>
                    exact (by simpa [EF.rank] using hs) }
 
-
+/-- World-independent day-`n` value of the equivalence portfolio: `sig2EF · σ·(Pφ − Pψ)`. -/
 noncomputable def eqW (P : History) (φ ψ : Sentence) (σ ε : ℚ) (n : ℕ) : ℝ :=
   (sig2EF φ ψ σ ε n).denote P * ((σ : ℝ) * (gap2EF φ ψ n).denote P)
-
 
 lemma eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (h1 : v.Holds (∼φ ⋎ ψ)) (h2 : v.Holds (∼ψ ⋎ φ)) :
@@ -76,17 +90,21 @@ lemma eqTr_value (φ ψ : Sentence) (σ ε : ℚ) (P : History) (v : PCWorld) (n
     Pi.mul_apply, Pi.add_apply]
   rw [hpay]; push_cast; ring
 
-
-lemma eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
-    0 ≤ eqW P φ ψ σ ε n := by
-  rw [eqW, sig2EF_denote]
-  set G := (σ:ℝ) * (gap2EF φ ψ n).denote P with hG
+/-- A continuous buy-signal on a gap, times that gap, is never negative: the signal is zero
+until the gap exceeds `ε/2`, and positive only where the gap already is. -/
+lemma buySignal_mul_nonneg (G : ℝ) {ε : ℚ} (hε : 0 < ε) :
+    0 ≤ max 0 (G + (-(ε:ℝ)/2)) * G := by
   by_cases h : G + (-(ε:ℝ)/2) ≤ 0
   · rw [max_eq_left h]; simp
   · push_neg at h
     have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
     exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
 
+/-- The equivalence portfolio's day value is never negative. -/
+lemma eqW_nonneg (P : History) (φ ψ : Sentence) (σ ε : ℚ) (hε : 0 < ε) (n : ℕ) :
+    0 ≤ eqW P φ ψ σ ε n := by
+  rw [eqW, sig2EF_denote]
+  exact buySignal_mul_nonneg _ hε
 
 /-- The token stream of `gap2EF = φ*ⁿ − ψ*ⁿ` (an `add`/`mul`/`price`/`const` tree). -/
 lemma gap2EF_stream (φ ψ : Sentence) : PolyTokenStream (fun n => (gap2EF φ ψ n).serialize) := by
@@ -104,6 +122,8 @@ lemma sig2EF_stream (φ ψ : Sentence) (σ ε : ℚ) :
       (PolyTokenStream.serialize_mul (PolyTokenStream.serialize_const _) (gap2EF_stream φ ψ))
       (PolyTokenStream.serialize_const _))
 
+/-- The equivalence trader is in the token-metered efficient class, from constant sentence
+codes for `φ` and `ψ`. -/
 lemma eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqTr φ ψ σ ε) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((eqTr φ ψ σ ε).strat n).trades =
@@ -118,7 +138,8 @@ lemma eqTr_ec (φ ψ : Sentence) (σ ε : ℚ) : EfficientlyComputableTok (eqTr 
       (PolyFueled.const (Encodable.encode ψ))
     PolyTokenStream.trades_nil)
 
-
+/-- A price gap violated infinitely often in direction `σ` lets the equivalence trader
+exploit the market: its day values are nonnegative and infinitely often at least `ε²/2`. -/
 lemma eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ ε : ℚ)
     (hε : 0 < ε) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (himp2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -137,10 +158,12 @@ lemma eqTr_exploits (P : History) (DP : DeductiveProcess) (φ ψ : Sentence) (σ
     rw [max_eq_right (by linarith)]
     nlinarith [hn, hεr]
 
+/-- **Learning of logical equivalence**: if `⊢ φ ↔ ψ` (both implications revealed by the
+deductive process), the price difference `Pₙφ − Pₙψ → 0` under a logical inductor. The
+portfolio is the world-neutral two-sentence one, payouts being equal by equivalence.
 
-/-- **Learning of logical equivalence** (`thm:lex`, finite-stage form): if `⊢ φ ↔ ψ` (both
-implications revealed by the deductive process), the price difference `Pₙφ − Pₙψ → 0` under a
-logical inductor. World-neutral 2-sentence portfolio (payouts equal by equivalence).
+A consequence of the `thm:lex` family; the paper's statement itself is
+`lic_learning_exclusive_exhaustive`.
 Paper node: `thm:lex` -/
 theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
@@ -163,6 +186,7 @@ theorem lic_lex_tendsto_zero (P : History) (DP : DeductiveProcess)
     rw [Real.dist_eq, ← gap2EF_denote φ ψ P n, abs_lt]; constructor <;> linarith
   exact eventually_atTop.mp hfin
 
+/-! ## Learning logical implication -/
 
 /-- `∼φ⋎ψ` (i.e. `φ→ψ`) makes `φ`'s payout `≤ ψ`'s. -/
 lemma PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
@@ -171,16 +195,13 @@ lemma PCWorld.payout_le_of_imp (v : PCWorld) (φ ψ : Sentence)
   simp only [PCWorld.payout]
   by_cases hφ : v.Holds φ <;> by_cases hψ : v.Holds ψ <;> simp_all
 
-
 /-- Buy-signal for the implication trader: `max(0, (Pφ−Pψ) − ε/2)`. -/
 noncomputable def impSig (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : EF :=
   buySignal (gap2EF φ ψ n) ε
 
-
 lemma impSig_denote (φ ψ : Sentence) (ε : ℚ) (P : History) (n : ℕ) :
     (impSig φ ψ ε n).denote P = max 0 ((gap2EF φ ψ n).denote P + (-(ε:ℝ)/2)) := by
   simp only [impSig, buySignal_denote]
-
 
 /-- Implication trader: `impSig` copies of `[(-1,φ),(1,ψ)]` (sell `φ`, buy `ψ`) — profits when
 `φ` is overpriced relative to `ψ`; risk-free because `φ→ψ` ⇒ `payout φ ≤ payout ψ`. -/
@@ -195,12 +216,12 @@ noncomputable def impTr (φ ψ : Sentence) (ε : ℚ) : Trader where
                  · subst h; simpa [EF.rank] using hs
                  · subst h; exact hs }
 
-
 /-- World-independent lower bound for the day-`n` value: `impSig · (Pφ − Pψ)`. -/
 noncomputable def impW (P : History) (φ ψ : Sentence) (ε : ℚ) (n : ℕ) : ℝ :=
   (impSig φ ψ ε n).denote P * ((gap2EF φ ψ n).denote P)
 
-
+/-- The world-independent floor `impW` on the implication portfolio's day value: `φ → ψ`
+gives `payout φ ≤ payout ψ`, so the portfolio is risk-free. -/
 lemma impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld) (n : ℕ)
     (himp : v.Holds (∼φ ⋎ ψ)) :
     impW P φ ψ ε n ≤ ((impTr φ ψ ε).strat n).value P v.payout := by
@@ -219,17 +240,11 @@ lemma impTr_value_ge (φ ψ : Sentence) (ε : ℚ) (P : History) (v : PCWorld) (
     rw [this]; nlinarith [hs0, hpay]
   simpa [gap2EF, EF.denote_add, EF.denote_mul, EF.denote_const, EF.denote_price] using hgap
 
-
+/-- The implication portfolio's world-independent floor is never negative. -/
 lemma impW_nonneg (P : History) (φ ψ : Sentence) (ε : ℚ) (hε : 0 < ε) (n : ℕ) :
     0 ≤ impW P φ ψ ε n := by
   rw [impW, impSig_denote]
-  set G := (gap2EF φ ψ n).denote P
-  by_cases h : G + (-(ε:ℝ)/2) ≤ 0
-  · rw [max_eq_left h]; simp
-  · push_neg at h
-    have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
-    exact mul_nonneg (le_max_left _ _) (by nlinarith [h, hεr])
-
+  exact buySignal_mul_nonneg _ hε
 
 /-- The token stream of `impSig = max(0, (φ*−ψ*) − ε/2)`. -/
 lemma impSig_stream (φ ψ : Sentence) (ε : ℚ) :
@@ -238,6 +253,8 @@ lemma impSig_stream (φ ψ : Sentence) (ε : ℚ) :
   exact PolyTokenStream.serialize_max (PolyTokenStream.serialize_const _)
     (PolyTokenStream.serialize_add (gap2EF_stream φ ψ) (PolyTokenStream.serialize_const _))
 
+/-- The implication trader is in the token-metered efficient class, from constant sentence
+codes for `φ` and `ψ`. -/
 lemma impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr φ ψ ε) := by
   refine ecTok_of_stream _ ?_
   have h : ∀ n, ((impTr φ ψ ε).strat n).trades =
@@ -249,10 +266,12 @@ lemma impTr_ec (φ ψ : Sentence) (ε : ℚ) : EfficientlyComputableTok (impTr �
     (PolyTokenStream.trades_cons (impSig_stream φ ψ ε) (PolyFueled.const (Encodable.encode ψ))
     PolyTokenStream.trades_nil)
 
+/-- **Learning logical implication**: if `⊢ φ → ψ` (revealed as `∼φ⋎ψ`), then a logical
+inductor eventually stops overpricing `φ` relative to `ψ`: for every `ε > 0`, eventually
+`Pₙφ ≤ Pₙψ + ε`.
 
-/-- **Learning logical implication** (`thm:lex` family): if `⊢ φ → ψ` (revealed as `∼φ⋎ψ`),
-then a logical inductor eventually stops overpricing `φ` relative to `ψ`: for every `ε > 0`,
-eventually `Pₙφ ≤ Pₙψ + ε`.
+A consequence of the `thm:lex` family; the paper's statement itself is
+`lic_learning_exclusive_exhaustive`.
 Paper node: `thm:lex` -/
 theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ ψ : Sentence) (himp : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n)
@@ -277,7 +296,7 @@ theorem lic_imp_eventually_le (P : History) (DP : DeductiveProcess)
   filter_upwards [hmain] with n hn
   rw [gap2EF_denote] at hn; linarith
 
-/-! ## Exact `thm:lex`: finite exclusive–exhaustive families -/
+/-! ## Exclusive–exhaustive families (`thm:lex`) -/
 
 /-- The normalized affine constraint `(Σ_{j<k} φʲₙ - 1) / k`.  Normalization is internal
 and leaves its share magnitude exactly one. -/
@@ -353,7 +372,7 @@ theorem lic_learning_exclusive_exhaustive
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :
     (fun n => ((List.range k).map (fun j => P n (φ j n))).sum) ≈ₙ fun _ => 1 := by
   have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   let As := exclusiveExhaustiveAffine k φ
   have hpoly := exclusiveExhaustive_polySequence k hk φ hφ
   have hmag : ∀ n, (As n).magnitude P ≤ 1 := fun n => by
@@ -395,11 +414,4 @@ theorem lic_learning_exclusive_exhaustive
     ring
   · simp
 
-#print axioms exclusiveExhaustive_polySequence
-#print axioms lic_learning_exclusive_exhaustive
-
 end LogicalInduction
-
-#print axioms LogicalInduction.eqTr_ec
-#print axioms LogicalInduction.impTr_ec
-#print axioms LogicalInduction.lic_imp_eventually_le

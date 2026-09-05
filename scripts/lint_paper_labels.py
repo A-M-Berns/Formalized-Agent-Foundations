@@ -156,10 +156,20 @@ for path, label in sorted(paths, key=lambda entry: entry[0]):
         if j < 0 or not lines[j].rstrip().endswith("-/"):
             violations.append(f"{path}:{i + 1}: theorem {m.group('name')} has no docstring")
             continue
-        doc = [lines[j]]
-        while "/--" not in doc[0] and j > 0:
-            j -= 1
-            doc.insert(0, lines[j])
+        # Walk back to the line that OPENED this comment block — the first line at depth 0,
+        # or line `j` itself for a one-liner — and demand it be a `/--` docstring.  A `/-!`
+        # section header or a plain `/-` comment sitting above a `theorem` is not a
+        # docstring, and treating it as one was a silent blind spot: the walk-back used to
+        # search for `/--` and, failing to find it, ran to the top of the file, so the label
+        # match then succeeded against unrelated prose anywhere above.
+        k = j
+        while k > 0 and depths[k] > 0:
+            k -= 1
+        if "/--" not in lines[k]:
+            violations.append(f"{path}:{i + 1}: theorem {m.group('name')} has no docstring"
+                              f" (the block above is a section header or comment, not `/--`)")
+            continue
+        doc = lines[k:j + 1]
         if not label.search("\n".join(doc)):
             violations.append(f"{path}:{i + 1}: theorem {m.group('name')} docstring names no paper label")
 

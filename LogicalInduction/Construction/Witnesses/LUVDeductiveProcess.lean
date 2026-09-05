@@ -1,25 +1,41 @@
 import LogicalInduction.Construction.Witnesses.LUVPresentation
 
 /-!
-# A concrete deductive process realizing the LUV threshold presentation (F7, non-vacuity)
+# The `Θ`-provable LUV threshold process
 
+A concrete `def:dedproc` deductive process for the certified LUV class (`dd:luv-arith`).
 `LUVPresentation.lean` derives the LUV world-value interfaces from the premise
-`ArithmeticLUVPresentation` (the deductive process reveals the `Θ`-provable threshold literals).
-This file discharges the project's **satisfiability bar** (`CLAUDE.md`): it *constructs* a
-concrete deductive process `luvThresholdDP` and *proves* `ArithmeticLUVPresentation` for it, so
-that premise is satisfied by a real object rather than assumed.
+`ArithmeticLUVPresentation` — the deductive process reveals the `Θ`-provable threshold
+literals.  This module constructs a deductive process `luvThresholdDP` and proves
+`ArithmeticLUVPresentation` for it, so that premise is satisfied by a real object rather than
+assumed.
 
-The construction mirrors `ComputationSyntax`/`ComputationDP`'s `theoremDP`: a two-tag event
-stream (tag `0` = a positive threshold literal, tag `1` = its refutation) whose firing predicate
-is `Θ`-provability of the threshold schema instance — recursively enumerable by
-`provable_instances_re` — dovetailed into monotone finite stages.  A single fixed world (the
-actual standard truth of each threshold predicate) is consistent with every stage, giving
-`hworld` non-vacuity.
+## The construction
 
-The **computability certificate** for this process is also built here
-(`luvThresholdDP_computable`, the analogue of `theoremDP_computable`), which is what lets
-`LUVExpectationCertified.lean` compile it into the concrete inductor and obtain the fully
-unconditional certified-LUV endpoints.
+A two-tag event stream over `Θ`-provability of the threshold schema instance: tag `0`
+publishes `⌜X > r⌝`, tag `1` its literal negation.  The firing predicate is recursively
+enumerable (`provable_instances_re`), and `luvStage` dovetails it into monotone finite stages.
+The objects are `luvEventAtom`, `luvEventFires`, `luvStage`, `luvThresholdDP`, and the two
+candidate worlds `luvWorld` and `truthWorld`.
+
+The two tags publish complementary literals over *one* sentence rather than two separate
+schemas.  That is what makes consistency of `Θ` alone enough for `luvWorld_consistent`, with no
+appeal to standard truth.  `truthWorld` believes each threshold at its true value and is
+defined here for `LUVExpectationCertified.lean`'s scheduled-reveal process `gridDP`, which does
+need the semantic world.
+
+## Main results
+
+`luvArithmeticPresentation` (the `ArithmeticLUVPresentation` instance) and
+`luvThresholdDP_hworld` (stage-wise non-vacuity), both consumed by
+`LUVExpectationCertified.lean`.  The computability certificate `luvThresholdDP_computable` is
+built here too: one fixed partial-recursive program emits the encoded stage `D k` on input `k`,
+via `luvEventAtom_prim` and `luvStage_encode_prim`.
+
+## Hypotheses beyond the paper
+
+`[T.Δ₁]` (enumerating `Θ`'s theorems — the README's infrastructure binder) throughout, and
+`[𝗥₀ ⪯ T]` with `[Entailment.Consistent T]` on the world lemmas.
 -/
 
 namespace LogicalInduction
@@ -29,6 +45,8 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 namespace ComputableLUV
 
 variable (L : ComputableLUV) (T : ArithmeticTheory)
+
+/-! ## The threshold event stream -/
 
 /-- The public literal a threshold event contributes: tag `0` asserts `⌜X > r⌝`, tag `1` denies
 it. -/
@@ -68,6 +86,8 @@ lemma exists_luvEventCode [T.Δ₁] [RepresentsComputations T] :
   rw [hcode]
   exact (hfP e).symm
 
+/-! ## The stages and the process -/
+
 open Classical in
 /-- Fuel-`k` dovetailer of the fired threshold atoms. -/
 noncomputable def luvStage [T.Δ₁] [RepresentsComputations T] (k : ℕ) : Finset Sentence :=
@@ -103,18 +123,17 @@ lemma luvThresholdDP_covers [T.Δ₁] [RepresentsComputations T]
   exact ⟨e, ⟨by omega, evaln_isSome_mono (le_max_right e fuel)
     (Option.isSome_iff_exists.mpr ⟨out, hfuel⟩)⟩, rfl⟩
 
-/-! ## Non-vacuity: the standard-truth world is consistent with every stage -/
+/-! ## Worlds consistent with every stage -/
 
 /-- The world believing each threshold atom exactly when `Θ` *proves* it.  No appeal to
 standard truth: the two event tags publish complementary literals over one sentence, so
-consistency of `Θ` alone keeps this world consistent with every stage.
-
-The standard-truth world, which the scheduled-reveal process of `LUVExpectationCertified`
-still uses, is `truthWorld`. -/
+consistency of `Θ` alone keeps this world consistent with every stage. -/
 noncomputable def luvWorld [RepresentsComputations T] : PCWorld :=
   fun m => T ⊢ (L.thresholdSchema T)/[‘↑m’]
 
-/-- The world believing each threshold atom exactly at its true value (`ThresholdPred`). -/
+/-- The world believing each threshold atom at its true value (`ThresholdPred`).  It is the
+world `LUVExpectationCertified.lean`'s scheduled-reveal process `gridDP` is consistent with;
+`luvThresholdDP` uses `luvWorld` instead, which needs no semantics. -/
 noncomputable def truthWorld : PCWorld := fun m => L.ThresholdPred m
 
 lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
@@ -140,6 +159,9 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)
       (by cl_prover [hpos', hprov])
 
+/-- The provability world is consistent with the whole process, not merely with each stage
+separately.  `luvThresholdDP_hworld` is the existential form the property tail's `hworld`
+obligations take. -/
 lemma luvWorld_consistentWithTheory [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     [Entailment.Consistent T] :
     (L.luvWorld T).ConsistentWithTheory (L.luvThresholdDP T) :=
@@ -153,8 +175,9 @@ lemma luvThresholdDP_hworld [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
 
 /-! ## The presentation is satisfiable -/
 
-/-- **F7 non-vacuity payoff.**  The `ArithmeticLUVPresentation` premise of `LUVPresentation.lean`
-is *satisfiable*: the constructed process reveals exactly the `Θ`-provable threshold literals. -/
+/-- **The presentation is satisfiable.**  The constructed process reveals exactly the
+`Θ`-provable threshold literals, so `LUVPresentation.lean`'s `ArithmeticLUVPresentation`
+premise holds of a real object. -/
 noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T] :
     ArithmeticLUVPresentation L (L.luvThresholdDP T) T where
   threshold_enters i r hprov := by
@@ -170,7 +193,7 @@ noncomputable def luvArithmeticPresentation [𝗥₀ ⪯ T] [T.Δ₁] [Represent
     refine ⟨k, ?_⟩
     simpa [luvEventAtom, thresholdSentence] using hk
 
-/-! ## Efficient computability of the threshold process -/
+/-! ## Computability of the process -/
 
 /-- `luvEventAtom` is primitive recursive: a two-way tag split into fixed atom/negated-atom
 Gödel-code pairings. -/
@@ -246,7 +269,13 @@ lemma luvStage_encode_prim [T.Δ₁] [RepresentsComputations T] :
   exact Primrec.encode.comp (sentenceInsertionSort_prim.comp (sentenceDedup_prim.comp hlist))
 
 /-- **The scheduled provability process is computable.**  One fixed partial-recursive program
-emits the encoded stage `D k` on input `k`. -/
+emits the encoded stage `D k` on input `k`.
+
+This is the certificate a `_unconditional` form over `liaHistory (luvThresholdDP T)` consumes,
+through `LIA_is_logical_inductor`.  No such form exists: `LUVExpectationCertified.lean`'s
+`_unconditional` endpoints are stated over the scheduled-reveal process `gridDP`, and its
+`luvThresholdDP`-indexed `_arith` endpoints carry `[IsLogicalInductor P (L.luvThresholdDP T)]`
+as a caller hypothesis. -/
 lemma luvThresholdDP_computable [T.Δ₁] [RepresentsComputations T] :
     ComputableDeductiveProcess (L.luvThresholdDP T) := by
   obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp

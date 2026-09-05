@@ -1,17 +1,73 @@
-/-
-# Market maker (`lem:fpl`, `def:markemaker`, `lem:mm`)
-
-The finite-dimensional fixed-point argument behind the paper's market maker, and the
-computable rational prices it produces.  The analytic layer below deliberately works with
-the actual `Strategy` representation, including repeated occurrences of one sentence:
-`shares` aggregates all positions in a sentence before the price-adjustment map is formed.
--/
 import LogicalInduction.Construction.Brouwer
 import LogicalInduction.Framework.Affine
+
+/-!
+# MarketMaker (`lem:fpl`, `def:markemaker`, `lem:mm`)
+
+The *Constructing MarketMaker* subsection of the paper's §5 (`sec:construct`): the
+finite-dimensional fixed-point argument behind the market maker, the computable rational
+prices it produces, and the inexploitability of the market those prices generate.
+
+## Objects
+
+* `Strategy.support` and `Strategy.shares` — the finite set of sentences an `n`-strategy
+  trades in, and its aggregate share demand `Tₙ(P_{≤n-1} ++ V)[φ]` at a history.
+* `strategyCube`, `strategyValuation`, `strategyHistory`, `priceAdjustment` — the paper's
+  cube `[0,1]^{S'}` of current-day prices, its reading as a valuation, its splicing into a
+  prior history, and the price-adjustment map `adj`.
+* `RationalBeliefState` — a belief state as the paper represents it: a duplicate-free
+  finite association list of `(sentence, rational in [0,1])` pairs, with `quote`,
+  `toValuation` and `support`.
+* `MarketMakerAccepts` — the decidable acceptance test, with its `FromLists` and
+  `TradeList` rungs and the matching candidate-index searches.
+* `marketMakerStates` and `marketMakerHistory` — the recursion
+  `Pₙ := MarketMakerₙ(Tₙ, P_{≤n-1})` and the real market history it generates.
+
+## Main results
+
+* `fixed_point_lemma` (`lem:fpl`) — some `[0,1]` valuation supported on `support(Tₙ)` gives
+  the day's trade nonpositive value in every propositionally consistent world.
+* `MarketMaker`, with `MarketMaker_accepts` and `MarketMaker_search_clock`
+  (`def:markemaker`) — the first accepted rational candidate of an explicit enumeration,
+  and the bounded clock that reaches it.
+* `marketMaker_not_exploited` (`lem:mm`) — the recursively generated market is not
+  exploited by the trader it faces, relative to any deductive process.
+
+`Construction/LIA.lean` consumes the recursion and `marketMaker_not_exploited`;
+`Construction/LIAComputation.lean` consumes `marketMakerSearchUpTo` and its rungs;
+`Construction/Budgeter.lean` and `Construction/LIACompiler.lean` consume
+`RationalBeliefState`, `rationalHistory` and the trade-list layer.
+
+## Design
+
+Aggregation is load-bearing.  The strategy syntax permits one sentence to occur in several
+trades, whereas a valuation assigns it a single price, so `Strategy.shares` sums every
+position in a sentence before the price-adjustment map is formed.  This is the paper's own
+coefficient notation `Tₙ(⋯)[φ]`.
+
+The acceptance test quantifies over *every* Boolean table on the strategy support, not only
+over the restrictions of globally propositionally consistent worlds.  That quantifier is
+strictly stronger than the paper's `W'`, and it is what makes the test a finite decidable
+search: `fixed_point_lemma_bounded` supplies a fixed point good for it, and
+`fixed_point_lemma` is its specialization to `PCWorld`.
+
+Three acceptance/search rungs run in parallel — semantic, `FromLists`, `TradeList` —
+because the primitive-recursive compiler cannot carry a value-dependent `Strategy n` type.
+Each rung is proved extensionally equal to the one above it.
+
+`marketMakerError n = 1 / 2 ^ (n + 1)` is the paper's `2⁻ⁿ` read at 0-based days, and
+`sum_marketMakerError_lt_one` is the geometric budget the inexploitability bound spends.
+
+Expressible features are reified syntax (`dd:dsl`), so the locality facts a day-`n` strategy
+needs — that it reads prices only up to day `n` — are proved by induction on that syntax
+rather than assumed.
+-/
 
 namespace LogicalInduction
 
 open Classical Set Function
+
+/-! ## Boolean tables of a fixed length -/
 
 /-- All Boolean lists of exactly the requested length, in a fixed executable order. -/
 def allBoolLists : ℕ → List (List Bool)
@@ -29,6 +85,8 @@ lemma mem_allBoolLists_iff : ∀ {n : ℕ} {xs : List Bool},
       cases xs with
       | nil => simp [allBoolLists]
       | cons b xs => cases b <;> simp [allBoolLists, ih]
+
+/-! ## Strategy support and aggregate share demand -/
 
 namespace Strategy
 
@@ -87,14 +145,18 @@ lemma value_eq_sum_support {n : ℕ} (T : Strategy n) (V : History)
 
 end Strategy
 
-/-! Raw trade-list counterparts used at the compiler boundary.  A `Strategy n` carries
-only one computational field, its list of trades; the rank proof is erased by evaluation.
-These definitions make that erasure explicit and avoid a value-dependent `Strategy n`
-type in the primitive-recursive compiler. -/
+/-! ### Raw trade-list counterparts at the compiler boundary
 
+A `Strategy n` carries one computational field, its list of trades; the rank proof is erased
+by evaluation.  The definitions below make that erasure explicit, so that the
+primitive-recursive compiler never has to carry a value-dependent `Strategy n` type.  Each
+is proved to agree with its `Strategy` counterpart on `T.trades`. -/
+
+/-- `Strategy.support` read off a raw trade list. -/
 def tradeListSupport (trades : List (EF × Sentence)) : Finset Sentence :=
   trades.toFinset.image Prod.snd
 
+/-- `Strategy.marketValueRat` read off a raw trade list, with the day supplied as data. -/
 def tradeListMarketValueRat (trades : List (EF × Sentence)) (n : ℕ)
     (Q : ℕ → Sentence → ℚ) (w : Sentence → ℚ) : ℚ :=
   (trades.map fun p => p.1.denoteRat Q * (w p.2 - Q n p.2)).sum
@@ -316,17 +378,6 @@ lemma rationalPriceVector_eq_clip {n : ℕ} (T : Strategy n)
   intro i
   simp [rationalPriceVector, clipPriceVector, rawRationalPriceVector]
 
-lemma rationalPriceVector_mem_cube {n : ℕ} (T : Strategy n)
-    (q : Fin (Fintype.card ↥T.support) → ℚ) :
-    rationalPriceVector T q ∈ strategyCube T := by
-  rw [mem_strategyCube_iff]
-  intro i
-  change 0 ≤ (((max 0 (min 1 (q i)) : ℚ) : ℝ)) ∧
-    (((max 0 (min 1 (q i)) : ℚ) : ℝ)) ≤ 1
-  constructor
-  · exact_mod_cast le_max_left (0 : ℚ) (min 1 (q i))
-  · exact_mod_cast max_le (by norm_num : (0 : ℚ) ≤ 1) (min_le_left 1 (q i))
-
 /-- Turn a support-contained valuation into its coordinate vector. -/
 noncomputable def priceVectorOfValuation {n : ℕ} (T : Strategy n) (V : Valuation) :
     EuclideanSpace ℝ (Fin (Fintype.card ↥T.support)) :=
@@ -377,7 +428,7 @@ private lemma eq_zero_of_clamp_add_eq {x s : ℝ} (hx0 : 0 ≤ x) (hx1 : x ≤ 1
   · rw [max_eq_left (le_of_not_ge hsum0)] at hfix
     linarith
 
-/-! ## `lem:fpl` — strategy-level fixed point -/
+/-! ## `lem:fpl` — the strategy-level fixed point -/
 
 /-- Strong bounded-world form of the fixed point lemma.  The sign proof only uses that each
 sentence pays in `[0,1]`, so it applies even to Boolean tables which are not restrictions of
@@ -428,6 +479,23 @@ lemma fixed_point_lemma_bounded {n : ℕ} (T : Strategy n) (prior : History) :
         exact mul_nonpos_of_nonpos_of_nonneg (le_of_lt hneg) (by linarith [(hw φ).1])
       · have hzero : T.shares (strategyHistory T prior x) φ = 0 := by linarith
         rw [hhist, hzero, zero_mul]
+
+/-- **Fixed Point Lemma** (`lem:fpl`).  For an actual finite day-`n` strategy and an
+arbitrary prior history, there is a `[0,1]` valuation supported on the sentences traded by
+the strategy such that the resulting one-day position has nonpositive value in every
+propositionally consistent world.
+
+The strategy syntax may repeat a sentence.  The proof applies Brouwer to the aggregate
+share demand for that sentence, matching the paper's coefficient notation `T[φ]`. -/
+theorem fixed_point_lemma {n : ℕ} (T : Strategy n) (prior : History) :
+    ∃ V : Valuation,
+      (∀ φ, 0 ≤ V φ ∧ V φ ≤ 1) ∧
+      (∀ φ, φ ∉ T.support → V φ = 0) ∧
+      ∀ v : PCWorld, T.value (Function.update prior n V) v.payout ≤ 0 := by
+  obtain ⟨V, hV, hsupp, hvalue⟩ := fixed_point_lemma_bounded T prior
+  refine ⟨V, hV, hsupp, fun v => hvalue v.payout ?_⟩
+  intro φ
+  by_cases hv : v.Holds φ <;> simp [PCWorld.payout, hv]
 
 /-- Rational cube points are dense enough for all finitely many Boolean support worlds at
 once.  This is the analytic termination theorem behind MarketMaker's brute-force search. -/
@@ -485,7 +553,81 @@ lemma exists_rationalPriceVector_good {n : ℕ} (T : Strategy n) (prior : Histor
   rw [Set.mem_iInter] at hclip
   simpa [rationalPriceVector_eq_clip] using hclip b
 
-/-! ## Finite rational belief states and the decidable MarketMaker test -/
+/-! ## Locality: features and strategies see only prices up to their rank
+
+A day-`n` strategy is required to have rank at most `n`, so its value depends on the market
+only through days `0, …, n`.  Because expressible features are reified syntax (`dd:dsl`),
+that is proved by induction on the syntax rather than read off a semantic definition. -/
+
+namespace EF
+
+/-- An expressible feature cannot distinguish histories which agree through a day above
+its rank.  The environment form handles shared `letE` bindings without expanding them. -/
+lemma denoteWith_eq_of_eqUpTo (e : EF) (ρ σ : List ℝ) (V W : History) (n : ℕ)
+    (hrank : e.rank ≤ n)
+    (hρ : ∀ i, ρ.getD i 0 = σ.getD i 0)
+    (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
+    e.denoteWith ρ V = e.denoteWith σ W := by
+  induction e generalizing ρ σ with
+  | price φ day =>
+      exact hVW day hrank φ
+  | const q => rfl
+  | add a b iha ihb =>
+      simp only [rank_add, max_le_iff] at hrank
+      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
+  | mul a b iha ihb =>
+      simp only [rank_mul, max_le_iff] at hrank
+      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
+  | max a b iha ihb =>
+      simp only [rank_max, max_le_iff] at hrank
+      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
+  | safeRecip a iha =>
+      simp [denoteWith, iha ρ σ hrank hρ]
+  | var i =>
+      exact hρ i
+  | letE x body ihx ihbody =>
+      simp only [rank_letE, max_le_iff] at hrank
+      have hx := ihx ρ σ hrank.1 hρ
+      simp only [denoteWith]
+      apply ihbody (x.denoteWith ρ V :: ρ) (x.denoteWith σ W :: σ) hrank.2
+      · intro i
+        cases i with
+        | zero => simpa using hx
+        | succ i => simpa using hρ i
+
+lemma denote_eq_of_eqUpTo (e : EF) (V W : History) (n : ℕ)
+    (hrank : e.rank ≤ n)
+    (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
+    e.denote V = e.denote W := by
+  exact e.denoteWith_eq_of_eqUpTo [] [] V W n hrank (by simp) hVW
+
+end EF
+
+namespace Strategy
+
+/-- A legal day-`n` strategy only depends on prices through day `n`. -/
+lemma value_eq_of_eqUpTo {n : ℕ} (T : Strategy n) (V W : History)
+    (w : Sentence → ℝ) (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
+    T.value V w = T.value W w := by
+  unfold Strategy.value
+  apply congrArg List.sum
+  apply List.map_congr_left
+  intro p hp
+  rw [p.1.denote_eq_of_eqUpTo V W n (T.rank_le p hp) hVW,
+    hVW n le_rfl p.2]
+
+/-- A payout table only matters on the strategy's syntactic support. -/
+lemma value_eq_of_world_eqOn_support {n : ℕ} (T : Strategy n) (V : History)
+    (w z : Sentence → ℝ) (hwz : ∀ φ ∈ T.support, w φ = z φ) :
+    T.value V w = T.value V z := by
+  rw [T.value_eq_sum_support, T.value_eq_sum_support]
+  apply Finset.sum_congr rfl
+  intro φ hφ
+  rw [hwz φ hφ]
+
+end Strategy
+
+/-! ## Finite rational belief states -/
 
 /-- Lookup in a finite association list, with the first matching key winning and zero as
 the finite-support default. -/
@@ -513,15 +655,6 @@ private lemma quoteFromEntries_map_eq {l : List Sentence} (hl : l.Nodup)
       · have hne : φ ≠ ψ := fun h => hl.1 (h ▸ hφ)
         simp [hne, ih hl.2 hφ]
 
-private lemma quoteFromEntries_map_eq_zero {l : List Sentence} (f : Sentence → ℚ)
-    {φ : Sentence} (hφ : φ ∉ l) :
-    quoteFromEntries (l.map fun ψ => (ψ, f ψ)) φ = 0 := by
-  induction l with
-  | nil => rfl
-  | cons ψ rest ih =>
-      simp only [List.mem_cons, not_or] at hφ
-      simp [hφ.1, ih hφ.2]
-
 private lemma quoteFromEntries_eq_zero {entries : List (Sentence × ℚ)} {φ : Sentence}
     (hφ : φ ∉ entries.map Prod.fst) : quoteFromEntries entries φ = 0 := by
   induction entries with
@@ -537,7 +670,13 @@ private lemma quoteFromEntries_eq_zero {entries : List (Sentence × ℚ)} {φ : 
       simp [quoteFromEntries, hne, ih hrest]
 
 /-- A paper belief state: a rational-valued, finite-support `[0,1]` valuation represented
-by a duplicate-free finite association list.  This is data, not a semantic certificate. -/
+by a duplicate-free finite association list.  This is data, not a semantic certificate.
+
+Equality of states is equality of `entries`, listed order included (`ext`): the two proof
+fields are propositions and carry no information.  So `quote`-equality is strictly weaker
+than state-equality — a state may list an entry with value `0`, and reordering entries gives
+the same `quote` at a different state.  `support` is likewise *syntactic*: it is the set of
+listed keys, whether or not their values vanish. -/
 structure RationalBeliefState where
   entries : List (Sentence × ℚ)
   keys_nodup : (entries.map Prod.fst).Nodup
@@ -545,13 +684,25 @@ structure RationalBeliefState where
 
 namespace RationalBeliefState
 
+/-- A rational belief state is determined by its entry list; the other two fields are
+proofs. -/
+@[ext] lemma ext {B C : RationalBeliefState} (h : B.entries = C.entries) : B = C := by
+  cases B; cases C; subst h; rfl
+
 /-- Exact rational quote, zero outside the finite entry list. -/
 def quote (B : RationalBeliefState) : Sentence → ℚ := quoteFromEntries B.entries
+
+/-- Normal form for a quote taken at an explicit entry list, so that the `quoteFromEntries`
+simp lemmas fire through the structure. -/
+@[simp] lemma quote_mk (entries : List (Sentence × ℚ))
+    (hn : (entries.map Prod.fst).Nodup) (hb : ∀ p ∈ entries, 0 ≤ p.2 ∧ p.2 ≤ 1)
+    (φ : Sentence) :
+    RationalBeliefState.quote ⟨entries, hn, hb⟩ φ = quoteFromEntries entries φ := rfl
 
 /-- Real valuation denoted by a rational belief state. -/
 def toValuation (B : RationalBeliefState) : Valuation := fun φ => (B.quote φ : ℝ)
 
-/-- Syntactic finite support (zero-valued listed entries are harmless). -/
+/-- The set of listed keys, syntactic in the sense described at `RationalBeliefState`. -/
 def support (B : RationalBeliefState) : Finset Sentence :=
   (B.entries.map Prod.fst).toFinset
 
@@ -649,12 +800,15 @@ def rationalHistory (past : List RationalBeliefState) : ℕ → Sentence → ℚ
     | some B => B.quote φ
     | none => 0
 
+/-- In range, the rational history is just the quote of the state listed on that day. -/
+@[simp] lemma rationalHistory_getElem (past : List RationalBeliefState) {day : ℕ}
+    (hday : day < past.length) (φ : Sentence) :
+    rationalHistory past day φ = (past[day]).quote φ := by
+  simp [rationalHistory, List.getElem?_eq_getElem hday]
+
 /-- Real history obtained by casting the exact finite rational table. -/
 def beliefHistory (past : List RationalBeliefState) : History :=
   fun day φ => (rationalHistory past day φ : ℝ)
-
-lemma beliefHistory_eq_ratCast (past : List RationalBeliefState) (day : ℕ)
-    (φ : Sentence) : beliefHistory past day φ = (rationalHistory past day φ : ℝ) := rfl
 
 /-- Replace day `n` of a rational history by a candidate belief state. -/
 def candidateRationalHistory (past : List RationalBeliefState) (n : ℕ)
@@ -668,6 +822,21 @@ lemma candidateHistory_cast (past : List RationalBeliefState) (n : ℕ)
   funext day φ
   by_cases hday : day = n <;> simp [candidateRationalHistory, beliefHistory,
     RationalBeliefState.toValuation, Function.update, hday]
+
+/-! ## The decidable acceptance test and its first-order rungs
+
+`def:markemaker`'s search must decide, for a candidate belief state, whether the day's trade
+earns at most `ε` in every world on the strategy's support.  Everything the test touches is
+finite: exact rational arithmetic on the reified feature syntax, and a scan of the `2 ^ card`
+Boolean tables enumerated by `allBoolLists`.  That is what the `Decidable` instances below
+record, and it is the only reason `MarketMaker` is a computable function at all.
+
+The test appears at three rungs — `MarketMakerAccepts` (semantic, on a `Strategy n`),
+`MarketMakerAcceptsFromLists` (worlds presented as bit lists) and
+`MarketMakerAcceptsTradeList` (day and trade list supplied as data) — because the
+primitive-recursive compiler cannot carry a value-dependent `Strategy n` type.  Each rung is
+proved extensionally equal to the one above it, so the semantic soundness argument is run
+once. -/
 
 namespace Strategy
 
@@ -701,8 +870,10 @@ def supportBitWorldRat {n : ℕ} (T : Strategy n) (b : ↥T.support → Bool) :
     Sentence → ℚ := fun φ =>
   if hφ : φ ∈ T.support then if b ⟨φ, hφ⟩ then 1 else 0 else 0
 
-/-! First-order bit-list presentation of the finite support worlds. -/
+/-! ### First-order bit-list presentation of the finite support worlds -/
 
+/-- The support enumerated in a fixed, computable order: sorted by sentence code.  It is
+what fixes the correspondence between a bit position and a sentence. -/
 def supportSentenceList (S : Finset Sentence) : List Sentence :=
   let r : Sentence → Sentence → Prop := fun φ ψ =>
     Encodable.encode φ ≤ Encodable.encode ψ
@@ -714,15 +885,20 @@ def supportSentenceList (S : Finset Sentence) : List Sentence :=
     ⟨fun φ ψ => le_total (Encodable.encode φ) (Encodable.encode ψ)⟩
   S.sort r
 
+/-- Read a bit list as a Boolean table on the support, position by position along
+`supportSentenceList`, missing positions reading `false`. -/
 def supportAssignmentOfList (S : Finset Sentence) (xs : List Bool) : S → Bool := fun φ =>
   xs.getD ((supportSentenceList S).idxOf φ.1) false
 
+/-- The payout table of a bit list, presented directly on sentences: `1` where the bit at
+that sentence's position is set, `0` elsewhere and off the support. -/
 def supportBitWorldRatFromList {n : ℕ} (T : Strategy n) (xs : List Bool) :
     Sentence → ℚ := fun φ =>
   if _hφ : φ ∈ T.support then
     if xs.getD ((supportSentenceList T.support).idxOf φ) false then 1 else 0
   else 0
 
+/-- `supportBitWorldRatFromList` read off a raw trade list. -/
 def tradeListSupportBitWorldRatFromList (trades : List (EF × Sentence))
     (xs : List Bool) : Sentence → ℚ := fun φ =>
   if _hφ : φ ∈ tradeListSupport trades then
@@ -744,6 +920,7 @@ lemma supportBitWorldRatFromList_eq {n : ℕ} (T : Strategy n) (xs : List Bool) 
       supportAssignmentOfList, hφ]
   · simp [supportBitWorldRatFromList, supportBitWorldRat, hφ]
 
+/-- The bit list of a Boolean table on the support, inverse to `supportAssignmentOfList`. -/
 def supportAssignmentList (S : Finset Sentence) (b : S → Bool) : List Bool :=
   (supportSentenceList S).map fun φ => if hφ : φ ∈ S then b ⟨φ, hφ⟩ else false
 
@@ -779,6 +956,8 @@ def MarketMakerAccepts {n : ℕ} (T : Strategy n) (past : List RationalBeliefSta
     ∀ b : ↥T.support → Bool,
       T.marketValueRat (candidateRationalHistory past n B) (supportBitWorldRat T b) ≤ ε
 
+/-- Decidable: a `Finset` inclusion plus a scan of the finitely many Boolean tables on
+`T.support`, each checked by exact rational arithmetic. -/
 instance MarketMakerAccepts.instDecidable {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
     Decidable (MarketMakerAccepts T past ε B) := by
@@ -801,6 +980,8 @@ def MarketMakerAcceptsTradeList (trades : List (EF × Sentence)) (n : ℕ)
       tradeListMarketValueRat trades n (candidateRationalHistory past n B)
         (tradeListSupportBitWorldRatFromList trades xs) ≤ ε
 
+/-- Decidable, by the same finite scan, with the Boolean tables ranging over
+`allBoolLists`. -/
 instance MarketMakerAcceptsTradeList.instDecidable (trades : List (EF × Sentence))
     (n : ℕ) (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
     Decidable (MarketMakerAcceptsTradeList trades n past ε B) := by
@@ -813,6 +994,7 @@ lemma marketMakerAcceptsTradeList_iff {n : ℕ} (T : Strategy n)
       MarketMakerAcceptsFromLists T past ε B := by
   rfl
 
+/-- Decidable, by the same finite scan over `allBoolLists`. -/
 instance MarketMakerAcceptsFromLists.instDecidable {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (B : RationalBeliefState) :
     Decidable (MarketMakerAcceptsFromLists T past ε B) := by
@@ -918,6 +1100,8 @@ def MarketMakerCandidateAccepts {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) : Prop :=
   ∃ B, marketMakerCandidate k = some B ∧ MarketMakerAccepts T past ε B
 
+/-- Decidable: decoding candidate `k` either fails or yields a unique state, whose
+acceptance is then decided. -/
 instance MarketMakerCandidateAccepts.instDecidable {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
     Decidable (MarketMakerCandidateAccepts T past ε k) := by
@@ -933,15 +1117,18 @@ instance MarketMakerCandidateAccepts.instDecidable {n : ℕ} (T : Strategy n)
           cases hB'
           exact h)
 
+/-- The `FromLists` rung of `MarketMakerCandidateAccepts`. -/
 def MarketMakerCandidateAcceptsFromLists {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) : Prop :=
   ∃ B, marketMakerCandidate k = some B ∧ MarketMakerAcceptsFromLists T past ε B
 
+/-- The `TradeList` rung of `MarketMakerCandidateAccepts`: the rung the compiler emits. -/
 def MarketMakerCandidateAcceptsTradeList (trades : List (EF × Sentence)) (n : ℕ)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) : Prop :=
   ∃ B, marketMakerCandidate k = some B ∧
     MarketMakerAcceptsTradeList trades n past ε B
 
+/-- Decidable, by the same decode-then-test argument. -/
 instance MarketMakerCandidateAcceptsTradeList.instDecidable
     (trades : List (EF × Sentence)) (n : ℕ)
     (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
@@ -958,6 +1145,7 @@ instance MarketMakerCandidateAcceptsTradeList.instDecidable
           cases hB'
           exact h)
 
+/-- Decidable, by the same decode-then-test argument. -/
 instance MarketMakerCandidateAcceptsFromLists.instDecidable {n : ℕ}
     (T : Strategy n) (past : List RationalBeliefState) (ε : ℚ) (k : ℕ) :
     Decidable (MarketMakerCandidateAcceptsFromLists T past ε k) := by
@@ -1032,6 +1220,7 @@ def marketMakerSearchIndexUpToFromLists {n : ℕ} (T : Strategy n)
       | none =>
           if MarketMakerCandidateAcceptsFromLists T past ε fuel then some fuel else none
 
+/-- The `TradeList` rung of `marketMakerSearchIndexUpTo`. -/
 def marketMakerSearchIndexUpToTradeList (trades : List (EF × Sentence)) (n : ℕ)
     (past : List RationalBeliefState) (ε : ℚ) : ℕ → Option ℕ
   | 0 => none
@@ -1124,11 +1313,14 @@ def marketMakerSearchUpTo {n : ℕ} (T : Strategy n)
     Option RationalBeliefState :=
   (marketMakerSearchIndexUpTo T past ε fuel).bind marketMakerCandidate
 
+/-- The `FromLists` rung of `marketMakerSearchUpTo`. -/
 def marketMakerSearchUpToFromLists {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     Option RationalBeliefState :=
   (marketMakerSearchIndexUpToFromLists T past ε fuel).bind marketMakerCandidate
 
+/-- The `TradeList` rung of `marketMakerSearchUpTo`: the bounded search the compiler
+emits, with the day and the trade list supplied as data. -/
 def marketMakerSearchUpToTradeList (trades : List (EF × Sentence)) (n : ℕ)
     (past : List RationalBeliefState) (ε : ℚ) (fuel : ℕ) :
     Option RationalBeliefState :=
@@ -1170,6 +1362,8 @@ lemma marketMakerSearchUpTo_mono_success {n : ℕ} (T : Strategy n)
       rw [hs] at h
       rw [marketMakerSearchIndexUpTo_mono_success T past ε hff hs]
       exact h
+
+/-! ## `def:markemaker` — MarketMaker and its stopping clock -/
 
 private lemma marketMakerCandidate_index_isSome {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) :
@@ -1246,11 +1440,20 @@ lemma MarketMaker_support {n : ℕ} (T : Strategy n)
     (MarketMaker T past ε hε).support ⊆ T.support :=
   (MarketMaker_accepts T past ε hε).1
 
+/-- MarketMaker returns a belief state, so the valuation it denotes lies in `[0,1]` at every
+sentence.  This is the `MarketMaker`-level, real-valued form of the range clause that
+`exists_computable_beliefSequence_logical_inductor` states — there on `quote` — of the belief
+sequence it hands a client. -/
 lemma MarketMaker_range {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε) (φ : Sentence) :
     (MarketMaker T past ε hε).toValuation φ ∈ Set.Icc (0 : ℝ) 1 :=
   (MarketMaker T past ε hε).toValuation_mem_Icc φ
 
+/-- MarketMaker prices at zero every sentence the strategy does not trade.  This is
+`def:markemaker`'s clause `support(B) ⊆ support(Tₙ)` in valuation form, and the
+`MarketMaker`-level, real-valued form of the vanishing clause that
+`exists_computable_beliefSequence_logical_inductor` states — there on `quote` — of the belief
+sequence it hands a client. -/
 lemma MarketMaker_zero_of_not_support {n : ℕ} (T : Strategy n)
     (past : List RationalBeliefState) (ε : ℚ) (hε : 0 < ε)
     {φ : Sentence} (hφ : φ ∉ T.support) :
@@ -1268,75 +1471,7 @@ lemma MarketMaker_worldValue_le {n : ℕ} (T : Strategy n)
       (MarketMaker T past ε hε).toValuation) (supportBitWorld T b) ≤ (ε : ℝ) :=
   (MarketMaker_accepts T past ε hε).worldValue_le b
 
-/-! ## Recursive MarketMaker history and `lem:mm` -/
-
-namespace EF
-
-/-- An expressible feature cannot distinguish histories which agree through a day above
-its rank.  The environment form handles shared `letE` bindings without expanding them. -/
-lemma denoteWith_eq_of_eqUpTo (e : EF) (ρ σ : List ℝ) (V W : History) (n : ℕ)
-    (hrank : e.rank ≤ n)
-    (hρ : ∀ i, ρ.getD i 0 = σ.getD i 0)
-    (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
-    e.denoteWith ρ V = e.denoteWith σ W := by
-  induction e generalizing ρ σ with
-  | price φ day =>
-      exact hVW day hrank φ
-  | const q => rfl
-  | add a b iha ihb =>
-      simp only [rank_add, max_le_iff] at hrank
-      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
-  | mul a b iha ihb =>
-      simp only [rank_mul, max_le_iff] at hrank
-      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
-  | max a b iha ihb =>
-      simp only [rank_max, max_le_iff] at hrank
-      simp [denoteWith, iha ρ σ hrank.1 hρ, ihb ρ σ hrank.2 hρ]
-  | safeRecip a iha =>
-      simp [denoteWith, iha ρ σ hrank hρ]
-  | var i =>
-      exact hρ i
-  | letE x body ihx ihbody =>
-      simp only [rank_letE, max_le_iff] at hrank
-      have hx := ihx ρ σ hrank.1 hρ
-      simp only [denoteWith]
-      apply ihbody (x.denoteWith ρ V :: ρ) (x.denoteWith σ W :: σ) hrank.2
-      · intro i
-        cases i with
-        | zero => simpa using hx
-        | succ i => simpa using hρ i
-
-lemma denote_eq_of_eqUpTo (e : EF) (V W : History) (n : ℕ)
-    (hrank : e.rank ≤ n)
-    (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
-    e.denote V = e.denote W := by
-  exact e.denoteWith_eq_of_eqUpTo [] [] V W n hrank (by simp) hVW
-
-end EF
-
-namespace Strategy
-
-/-- A legal day-`n` strategy only depends on prices through day `n`. -/
-lemma value_eq_of_eqUpTo {n : ℕ} (T : Strategy n) (V W : History)
-    (w : Sentence → ℝ) (hVW : ∀ day, day ≤ n → ∀ φ, V day φ = W day φ) :
-    T.value V w = T.value W w := by
-  unfold Strategy.value
-  apply congrArg List.sum
-  apply List.map_congr_left
-  intro p hp
-  rw [p.1.denote_eq_of_eqUpTo V W n (T.rank_le p hp) hVW,
-    hVW n le_rfl p.2]
-
-/-- A payout table only matters on the strategy's syntactic support. -/
-lemma value_eq_of_world_eqOn_support {n : ℕ} (T : Strategy n) (V : History)
-    (w z : Sentence → ℝ) (hwz : ∀ φ ∈ T.support, w φ = z φ) :
-    T.value V w = T.value V z := by
-  rw [T.value_eq_sum_support, T.value_eq_sum_support]
-  apply Finset.sum_congr rfl
-  intro φ hφ
-  rw [hwz φ hφ]
-
-end Strategy
+/-! ## `lem:mm` — the recursive market is not exploited -/
 
 /-- The finite list of already-produced states supplied to MarketMaker on day `n`. -/
 noncomputable def marketMakerPast (_Tr : Trader) (states : ℕ → RationalBeliefState)
@@ -1451,27 +1586,5 @@ theorem marketMaker_not_exploited (Tr : Trader) (DP : DeductiveProcess) :
   refine ⟨1, ?_⟩
   rintro x ⟨n, v, _hconsistent, rfl⟩
   exact (marketMaker_netWorth_lt_one Tr v n).le
-
-/-- **Fixed Point Lemma** (`lem:fpl`).  For an actual finite day-`n` strategy and an
-arbitrary prior history, there is a `[0,1]` valuation supported on the sentences traded by
-the strategy such that the resulting one-day position has nonpositive value in every
-propositionally consistent world.
-
-The strategy syntax may repeat a sentence.  The proof applies Brouwer to the aggregate
-share demand for that sentence, matching the paper's coefficient notation `T[φ]`. -/
-theorem fixed_point_lemma {n : ℕ} (T : Strategy n) (prior : History) :
-    ∃ V : Valuation,
-      (∀ φ, 0 ≤ V φ ∧ V φ ≤ 1) ∧
-      (∀ φ, φ ∉ T.support → V φ = 0) ∧
-      ∀ v : PCWorld, T.value (Function.update prior n V) v.payout ≤ 0 := by
-  obtain ⟨V, hV, hsupp, hvalue⟩ := fixed_point_lemma_bounded T prior
-  refine ⟨V, hV, hsupp, fun v => hvalue v.payout ?_⟩
-  intro φ
-  by_cases hv : v.Holds φ <;> simp [PCWorld.payout, hv]
-
-#print axioms fixed_point_lemma_bounded
-#print axioms fixed_point_lemma
-#print axioms MarketMaker_search_clock
-#print axioms marketMaker_not_exploited
 
 end LogicalInduction

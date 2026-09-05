@@ -8,20 +8,15 @@ A prefix-free finite set of binary codewords has total Kraft weight `∑ 2^{-|w|
 This is the budget the Occam risk allocation of `thm:ob` spends, and the mathematical
 core of the concrete prefix machine that backs it
 (`Construction/Witnesses/PrefixMachine.lean`); the rest of that construction is Lean
-plumbing. Mathlib has no Kraft inequality (checked 2026-07-20), so the proof here depends
-on Mathlib only.
+plumbing. Mathlib carries no Kraft inequality, so it is proved here, from Mathlib alone.
 
 Proof: the counting argument. Let `L` be the maximum codeword length. A codeword `w` of
 length `ℓ` is the common prefix of exactly `2^(L-ℓ)` binary strings of length `L`;
 prefix-freeness makes these blocked sets pairwise disjoint inside the `2^L` strings of
 length `L`, so `∑ 2^(L-ℓᵢ) ≤ 2^L`, i.e. `∑ 2^(-ℓᵢ) ≤ 1`.
 
-Provenance: proof body produced by Aristotle (run `2d017ff6-0c3b-49a7-8a6e-fe32202cc75a`,
-job `65eaafaa-2ba0-4501-8002-8e9e2043f4d8`, 2026-07-25) against the statement validated
-in-repo; re-elaborated and kernel-checked in this repository (the kernel is the gate,
-never Aristotle's word). Kind `P` proved; hypotheses provenance `(b)` Mathlib only.
-Axioms: `propext`, `Classical.choice`, `Quot.sound` (see `#print axioms` below and the
-`AxiomAudit` entry).
+Kind `P` proved; hypotheses provenance `(b)` Mathlib only. Its axioms — `propext`,
+`Classical.choice`, `Quot.sound` — are asserted in the `AxiomAudit` entry.
 -/
 
 namespace LogicalInduction
@@ -31,7 +26,8 @@ open scoped BigOperators
 /-- **Kraft's inequality (finite, binary).** A prefix-free finite set of binary
 codewords has total Kraft weight at most one. Prefix-free is phrased as an antichain
 under the list-prefix order `<+:`: if one codeword is a prefix of another, they are
-equal. Paper node: `thm:ob` (the Kraft budget behind the Occam risk allocation). -/
+equal. This is the Kraft budget behind the Occam risk allocation.
+Paper node: `thm:ob` -/
 theorem kraft_inequality {S : Finset (List Bool)}
     (hpf : ∀ a ∈ S, ∀ b ∈ S, a <+: b → a = b) :
     ∑ w ∈ S, (1 / 2 : ℝ) ^ w.length ≤ 1 := by
@@ -126,7 +122,5 @@ theorem kraft_inequality {S : Finset (List Bool)}
   rw [Finset.sum_congr rfl hterm, ← Finset.sum_div]
   rw [div_le_one (by positivity)]
   exact hcast
-
-#print axioms kraft_inequality
 
 end LogicalInduction

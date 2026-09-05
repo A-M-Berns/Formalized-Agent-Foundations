@@ -5,13 +5,35 @@ import Foundation.FirstOrder.Bootstrapping.DerivabilityCondition.D1
 import Foundation.FirstOrder.Completeness.CounterModel
 
 /-!
-# A fixed public process for first-order theorems
+# A fixed public process for first-order theorems, and the single paper-facing market
 
-This file connects Foundation's encoded proof system to the tag-`7` public-language
-boundary.  The process is fixed by the arithmetic theory alone: it dovetails over every
-encoded provable first-order proposition and publishes its prime decomposition.  In
-particular, later source LUVs provide proof codes to this already-fixed process rather than
-adding source-dependent axioms.
+This module connects Foundation's encoded proof system to the tag-`5` paper-prime boundary
+of `PaperFirstOrder.lean`, and assembles the deductive process of the single paper-facing
+market.  The theorem process is fixed by the arithmetic theory alone: it dovetails over
+every encoded provable first-order proposition and publishes its prime decomposition, so
+later source LUVs feed proof codes to an already-fixed process rather than adding
+source-dependent axioms.
+
+* `paperTheoremFires` is the r.e. event predicate (encoded provability in `T`),
+  `paperTheoremSentence` decodes the numeric compiler's output, and `exists_paperTheoremCode`
+  gives the semi-decider.
+* `paperTheoremStage` / `paperTheoryDP` dovetail over that semi-decider; coverage is stated
+  at ordinary object-level provability (`paperTheoryDP_covers_outer_provable`), encoded
+  provability staying an implementation detail.
+* Assignment-level soundness (`derivation2_evalf_of_model`,
+  `provable_proposition_evalf_of_model`) is the form the process needs, since Foundation
+  proof codes target `ArithmeticProposition`, whose free-variable type is the naturals.
+* Non-vacuity: `paperTheoryDP_hworld_of_model` turns any model of `T` into a completed world
+  via `paperPrimeWorld`, and `paperTheoryDP_nonvacuous` runs on consistency of `T` alone
+  through completeness.
+* `paperDP T` — `theoremDP` union `paperTheoryDP` — is the single market's process;
+  `paperTheoryExtensionWorld` splices the two worlds along the tag-`5` boundary and
+  `eventAtom_atomCodes_ne_paperPrimeTag` makes the splice disjoint.  The market data every
+  endpoint consumes is `paperDP_computable`, `paperDP_hworld`, `paperQuotationPresentation`
+  (`thm:ref`), `paperLIA` and `paperMarketComputation` (`thm:lia`).
+
+Consumed by `PaperMarket.lean`, `ComputationRepresented.lean`, `UnconditionalOverLIA.lean`,
+`FeedbackUnconditional.lean`, `PaperLUV.lean` and `PaperCutLawDP.lean`.
 -/
 
 namespace LogicalInduction
@@ -20,6 +42,8 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open LO.Propositional
 
 variable (T : ArithmeticTheory)
+
+/-! ## The r.e. theorem event and its semi-decider -/
 
 /-- The r.e. event predicate for the universal first-order theorem stream. -/
 def paperTheoremFires [T.Δ₁] (formulaCode : ℕ) : Prop :=
@@ -107,6 +131,8 @@ lemma provable_proposition_evalf_of_model
 /-! ## The fixed dovetailed process -/
 
 open Classical in
+/-- Stage `k` of the dovetail: the decompositions of every event code `e ≤ k` on which the
+semi-decider halts within fuel `k`. -/
 noncomputable def paperTheoremStage (code : Nat.Partrec.Code) (k : ℕ) : Finset Sentence :=
   ((Finset.range (k + 1)).filter
     (fun e => (Nat.Partrec.Code.evaln k code e).isSome = true)).image paperTheoremSentence
@@ -168,6 +194,9 @@ lemma PCWorld.holds_paperPrimeDecompose_of_provable [T.Δ₁] (v : PCWorld)
   obtain ⟨k, hk⟩ := paperTheoryDP_covers_outer_provable T φ hφ
   exact hv k _ hk
 
+/-! ## Computability -/
+
+/-- The stage as a deduplicated list, the shape the primitive-recursive encoder works on. -/
 lemma paperTheoremStage_eq_toFinset (c : Nat.Partrec.Code) (n : ℕ) :
     paperTheoremStage c n =
       ((List.range (n + 1)).filterMap
@@ -322,6 +351,9 @@ lemma eventAtom_atomCodes_ne_paperPrimeTag (e : ℕ) :
   · simp at ha
 
 open Classical in
+/-- The world that splices a first-order model into the established literal stream: tag-`5`
+atoms are read off `paperPrimeWorld M f`, everything else off `provabilityWorld T`.
+Disjointness of the two halves is `eventAtom_atomCodes_ne_paperPrimeTag`. -/
 noncomputable def paperTheoryExtensionWorld
     (T : ArithmeticTheory) (M : Type*) [Nonempty M] [Structure ℒₒᵣ M]
     (f : ℕ → M) : PCWorld := fun a =>
@@ -366,7 +398,7 @@ theorem stream (`paperTheoryDP`).  Every canonical endpoint of the self-referenc
 (`thm:halts`, `thm:loops`, `thm:dontwait`, `thm:pac`, `thm:pazfc`, `thm:incons`) families
 is stated over `liaHistory (paperDP T)`.
 
-The two component streams remain named because they are *construction ingredients*, not
+The two component streams are named because they are *construction ingredients*, not
 alternative markets: the quotation presentation and the represented-claim coverage are
 proved of a component and lifted here monotonically, and the semantic-lifted `thm:ccee`
 lane keeps its own base process by ruling.  No canonical endpoint is stated at a
@@ -394,6 +426,8 @@ lemma paperDP_covers_of_paperTheoryDP [T.Δ₁] {φ : Sentence}
     (h : ∃ k, φ ∈ (paperTheoryDP T).D k) : ∃ k, φ ∈ (paperDP T).D k :=
   h.imp fun k hk => paperTheoryDP_subset_paperDP T k hk
 
+/-- The named stage program of the single market's process, the union of the two component
+programs.  `paperDP_computable` is its `ComputableDeductiveProcess` form. -/
 noncomputable def paperDPComputation [T.Δ₁] :
     DeductiveProcessComputation (paperDP T) :=
   ((theoremDP_computable T).nonemptyComputation.some).union
@@ -468,18 +502,5 @@ Paper node: `thm:lia` -/
 noncomputable def paperMarketComputation [T.Δ₁] :
     MarketComputation (liaHistory (paperDP T)) :=
   liaMarketComputation (paperDP T) (paperDP_computable T)
-
-#print axioms paperTheoremSentence_spec
-#print axioms paperTheoremSentence_prim
-#print axioms provable_proposition_evalf_of_model
-#print axioms paperTheoryDP_computable
-#print axioms paperTheoryDP_hworld_of_model
-#print axioms paperTheoryDP_nonvacuous
-#print axioms paperDPComputation
-#print axioms paperDP_nonvacuous
-#print axioms paperDP_computable
-#print axioms paperDP_hworld
-#print axioms paperQuotationPresentation
-#print axioms paperMarketComputation
 
 end LogicalInduction

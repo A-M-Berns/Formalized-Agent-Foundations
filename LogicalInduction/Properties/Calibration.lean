@@ -1,27 +1,79 @@
-/-
+import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Framework.WriteOut
+import Mathlib.Topology.Bases
+import Mathlib.Topology.Compactness.Compact
+
+/-!
 # Calibration and unbiasedness
 
-Renders §4.3 "Calibration and Unbiasedness": `thm:simcal` (Recurring Calibration) and
-`thm:recurringunbiasedness` (Recurring Unbiasedness), over divergent weightings (`def:fuz`)
-generable from the market (`def:ece`), together with the affine generalization
-`thm:recunbiasedaff`.  Appendix proofs: `app:simcal`, `app:recurringunbiasedness`,
-`app:recunbiasedaff`.
+Renders §4.3 "Calibration and Unbiasedness" — the continuous threshold indicator
+`def:ctsind` (tex:1174), divergent weightings `def:fuz` (tex:1212) and weightings generable
+from the market `def:ece` (tex:1218) — together with the §4.5 affine generalization
+`thm:recunbiasedaff` (tex:1469).  Appendix proofs: `app:simcal`,
+`app:recurringunbiasedness`, `app:recunbiasedaff`.
+
+## What this module builds
+
+* **The two halves of "`P`-generable divergent weighting".** `PGenerableWeighting` carries
+  `def:ece`'s emitted feature progression; `DivergentWeighting` carries `def:fuz`'s `[0,1]`
+  bound together with the divergent prefix sum.  `pGenerableWeighting_iff` places the
+  former against `GeneratedRatFeature`, which is the same data plus a denotation clause.
+* **The calibration selector.** `calibrationLower`, `calibrationUpper` and
+  `calibrationIndicator` render `def:ctsind` at the feature level, and
+  `calibrationIndicator_pgenerable` proves the selector generable from the paper's own
+  hypotheses on `⟨φ⟩` and `⟨δ⟩` rather than assuming it.  The real-valued rendering of the
+  same definition is `ctsInd` in `Properties/SelfTrust.lean`.
+* **The statistical vocabulary the whole §4 tail shares:** `prefixSum`, `weightedAverage`,
+  `weightedBias`, `HasLimitPoint` and `HasLimitPointIn`.  These are consumed by
+  `Properties/Pseudorandomness.lean`, `Properties/ExpectationProperties.lean` and the
+  witness modules `HistoricalMaturity`, `FeedbackTruth`, `FeedbackEmission`,
+  `FeedbackUnconditional` and `LUVExpectationCertified`.
+* **Determination via the completed theory.** `AffineCombination.DeterminedViaTheory`,
+  its tolerance form `ApproxDeterminedViaTheory` and `ErrorNegligible` render the
+  `def:affthmval` interface; `exists_settled_stage` and `settled_iff_agree` turn
+  determination into exact finite-stage settlement testable without knowing `truth`.
+* **A decidable settlement test.** `AffineCombination.SettlementTest` quantifies over the
+  finite `BoolPCWorld.FiniteWorld`; `SettlementTestBool` is its `Primcodable` `List Bool`
+  presentation and `settlementTestBool_iff` proves the two are the same test.  This is what
+  makes the paper's `settled` machine (`app:prandaff`) implementable, and it is consumed by
+  `Construction/Witnesses/BoundedEvaluation.lean`.
+* **The capped bias-run trader family.** `biasRunRate`, `biasRunAttempt`,
+  `biasRunCoefficient` and `biasRunTrader`, emitted by the single uniform polynomial
+  emitter `biasRunTrader_polyTrade`; persistent negative bias forces every late member to
+  unit share magnitude and positive ROI.
+* **Finite exact maturity certificates.** `UnitMaturitySemanticCertificate` and the
+  executable `unitMaturityCheckAtFuel`, sound and eventually complete, consumed by
+  `Construction/Witnesses/HistoricalMaturity.lean`.
+
+## The conditional layer and where it is discharged
+
+`BiasRunHistoricallyVerifiable` isolates the one remaining operational premise: a bounded
+verifier for historical maturity claims about the capped-run family.  Every endpoint here
+whose name ends `_of_historicalVerifiers` is stated against that premise —
+`ApproxDeterminedViaTheory.recunbiasedaff_of_historicalVerifiers`, its exact-determination
+specialization `DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers`, the
+bounded-sequence form
+`BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers`, and the sentence-level
+`recurringunbiasedness_of_historicalVerifiers` and `simcal_of_historicalVerifiers`.
+
+The unconditional forms — `thm:recunbiasedaff` as
+`AffineCombination.BoundedCombinationSequence.recunbiasedaff`,
+`thm:recurringunbiasedness` as `AffineCombination.recurringunbiasedness` and `thm:simcal`
+as `AffineCombination.simcal` — are proved in
+`Construction/Witnesses/HistoricalMaturity.lean`, which discharges the premise from the
+constructed market and deductive-process computations.
 
 Convention: `weightedAverage` is total, taking value zero when the denominator vanishes.
 Every result that divides separately proves the denominator eventually positive from
 divergence, so the paper's divergent-weighting hypothesis is never silently strengthened.
 -/
-import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Framework.WriteOut
-import Mathlib.Topology.Bases
-import Mathlib.Topology.Compactness.Compact
 
 namespace LogicalInduction
 
 open Filter Topology Set
 open scoped BigOperators
 
-/-! ## Generated divergent weightings -/
+/-! ## Divergent weightings generable from the market -/
 
 /-- A sequence of expressible features generated uniformly in polynomial time and legal
 on its own day.  Its denotation may depend continuously on the market prefix, exactly as
@@ -32,13 +84,17 @@ structure PGenerableWeighting (W : ℕ → EF) : Prop where
   rank_le : ∀ n, (W n).rank ≤ n
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
-/-! ### `def:fuz` against `def:ece`
+/-! ### The `def:ece` data with and without its denotation clause
 
-The two renderings carry the **same** emission data — both meter the feature
-serialization by `BigSpliceStream`, both cap the rank at the day, both demand closure — and
-differ only in `GeneratedRatFeature`'s extra `denote` clause tying the feature's value at
-the market to a rational sequence.  The lemmas below make that relation a theorem rather
-than a remark, in both directions. -/
+`PGenerableWeighting` and `GeneratedRatFeature` are two renderings of the same paper
+notion, `def:ece`: the `def:ece` progression data *without* and *with* its denotation
+clause.  Both meter the feature serialization by `BigSpliceStream`, both cap the rank at
+the day, both demand closure; they differ only in `GeneratedRatFeature`'s extra `denote`
+clause tying the feature's value at the market to a rational sequence.  The lemmas below
+make that relation a theorem rather than a remark, in both directions.
+
+`def:fuz` has no emission content of its own — it is the `[0,1]` bound together with the
+divergent prefix sum — and that content lives below in `DivergentWeighting`. -/
 
 /-- The `def:ece` data forgets its denotation clause to `def:fuz` data. -/
 lemma GeneratedRatFeature.toWeighting {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
@@ -64,11 +120,6 @@ lemma pGenerableWeighting_iff {P : History} {q : ℕ → ℚ} {W : ℕ → EF} :
       PGenerableWeighting W ∧ ∀ n, (W n).denote P = (q n : ℝ) :=
   ⟨fun h => ⟨h.toWeighting, h.denote⟩, fun h => h.1.toGeneratedRatFeature h.2⟩
 
-example {P : History} {q : ℕ → ℚ} {W : ℕ → EF} (h : GeneratedRatFeature P q W) :
-    PGenerableWeighting W := (pGenerableWeighting_iff.mp h).1
-
-#print axioms pGenerableWeighting_iff
-
 /-- Operational certificate for the paper's efficiently computable positive calibration
 widths: exactly tex:1193-1195's "`⟨δ⟩` is an e.c. sequence of positive rationals", and
 nothing more.  Efficient codeability of the reciprocal `1/δ` is *derived* from these two
@@ -82,6 +133,8 @@ hypotheses rather than assumed alongside them. -/
 lemma PolyPositiveWidths.inverse_codes {δ : ℕ → ℚ} (h : PolyPositiveWidths δ) :
     DigitRatCodes (fun n => 1 / δ n) :=
   h.codes.inv_of_pos (fun n => by exact_mod_cast h.positive n)
+
+/-! ## The calibration selector -/
 
 /-- Lower continuous indicator `ctsInd[δₙ](a < Pₙ(φₙ))`. -/
 def calibrationLower (φ : ℕ → Sentence) (a : ℚ) (δ : ℕ → ℚ) (n : ℕ) : EF :=
@@ -136,6 +189,10 @@ lemma calibrationIndicator_pgenerable
     simp [calibrationIndicator, calibrationLower, calibrationUpper, clip01, efMin,
       EF.denoteWith, EF.denote]
 
+/-- The calibration selector takes values in `[0,1]` at every market and on every day.
+This is exactly the range half of the `DivergentWeighting (calibrationIndicator φ a b δ) P`
+hypothesis that every calibration endpoint takes; the other half, divergence of the prefix
+sums, is genuinely a hypothesis about the market. -/
 lemma calibrationIndicator_mem (φ : ℕ → Sentence) (a b : ℚ)
     (δ : ℕ → ℚ) (P : History) (n : ℕ) :
     0 ≤ (calibrationIndicator φ a b δ n).denote P ∧
@@ -649,7 +706,7 @@ of calibration indicator.
 
 The truth stream is allowed to be any `[0,1]` stream here; sentence truth values are the
 important downstream instance. -/
-theorem calibration_limitPoint_transfer
+lemma calibration_limitPoint_transfer
     (w market truth : ℕ → ℝ) (a b : ℝ)
     (hw : ∀ n, 0 ≤ w n)
     (htruth : ∀ n, truth n ∈ Icc (0 : ℝ) 1)
@@ -1474,6 +1531,8 @@ lemma AffineCombination.DeterminedViaTheory.neg
 
 namespace AffineCombination
 
+/-! ### The run rate and its emitters -/
+
 /-- Canonical slowly varying run rate.  `scale` is chosen once from the alleged bias
 gap; the `k+1` denominator makes the finite-prefix charge vanish uniformly in the family
 index while remaining exactly rational and polynomially codeable. -/
@@ -2057,6 +2116,8 @@ lemma biasRun_magnitudePrefix_tendsto_one
         (biasRunAttemptValue W rate P k) (n + 1) = _
     exact (biasRun_magnitudePrefix_eq_one_sub_weight As W rate P k n).symm)
 
+/-! ### The capped-run trader -/
+
 /-- Family member `k` buys its capped run of affine bundles and makes no syntactic trade
 before day `k` (the latter is required by the uniform-emulation interface). -/
 def biasRunTrader {As : ℕ → AffineCombination}
@@ -2068,16 +2129,26 @@ def biasRunTrader {As : ℕ → AffineCombination}
           (biasRunCoefficient_rank_le h hW rate k n) (h.terms_rank n))
     else ⟨[], by simp⟩
 
+/-- The launch-gated per-day trade count of `biasRunTrader`, at the paired index
+`z = ⟨k, n⟩`: family member `k` places one trade per term of `As n` on days `n ≥ k` and none
+before.  This is the count component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable`
+record. -/
 def biasRunTradeCount {As : ℕ → AffineCombination}
     (h : PolySequence As) (z : ℕ) : ℕ :=
   if z.unpair.1 ≤ z.unpair.2 then h.termCount z.unpair.2 else 0
 
+/-- The traded coefficient of `biasRunTrader` at the flattened index `z = ⟨⟨k, n⟩, j⟩`: the
+run coefficient of member `k` on day `n` times the `j`-th term coefficient of `As n`.  This
+is the coefficient component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable` record. -/
 def biasRunTradeCoefficient {As : ℕ → AffineCombination}
     (h : PolySequence As) (W : ℕ → EF) (rate : ℕ → ℚ) (z : ℕ) : EF :=
   EF.mul
     (biasRunCoefficient As W rate z.unpair.1.unpair.1 z.unpair.1.unpair.2)
     (h.coefficient (Nat.pair z.unpair.1.unpair.2 z.unpair.2))
 
+/-- The traded sentence of `biasRunTrader` at the flattened index `z = ⟨⟨k, n⟩, j⟩`: the
+`j`-th sentence of `As n`, independent of the family member `k`.  This is the sentence
+component of `biasRunTrader_polyTrade`'s `PolyTradeEmulatable` record. -/
 def biasRunTradeSentence {As : ℕ → AffineCombination}
     (h : PolySequence As) (z : ℕ) : Sentence :=
   h.sentence (Nat.pair z.unpair.1.unpair.2 z.unpair.2)
@@ -2281,6 +2352,8 @@ lemma biasRunTrader_magnitude_eq_one_of_attemptedRisk
     have hraw := hsummable.hasSum.tendsto_sum_nat.comp (tendsto_add_atTop_nat 1)
     exact hraw
   exact tendsto_nhds_unique htoMagnitude hprefTrader
+
+/-! ### ROI accounting under persistent bias -/
 
 /-- An approximately determined affine value differs from its diagonal market price by at
 most its share magnitude plus the determination error.  The completed-theory world needed
@@ -2814,6 +2887,8 @@ lemma ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
     hworld hP (biasRunRate scale) hrate0 hrate1 (ε / 2) (ε / 8) (ε / 8)
       (by linarith) (by linarith) k hslack hsurplus hrisk using 1 ; ring
 
+/-! ### The repeatable-ROI tolerance budget -/
+
 /-- Exact rational code for the canonical repeatable-ROI tolerance budget. -/
 def roiToleranceRat (i : ℕ) : ℚ := ((1 : ℚ) / 2) ^ (i + 1)
 
@@ -3080,35 +3155,11 @@ def UnitMaturitySemanticCertificate.ofMatured
     fun d φ => market.quote d (Encodable.encode φ)
   refine {
     atomLimit := maturityAtomLimit Tr DP m
-    deduction_bounded := ?_
-    trades_bounded := ?_
+    deduction_bounded := maturityAtomLimit_deduction_bounded Tr DP m
+    trades_bounded := maturityAtomLimit_trades_bounded Tr DP m
     risk := ?_
     payoff := ?_
   }
-  · intro φ hφ
-    have hsingle : BoolPCWorld.atomBound φ ≤
-        (DP.D m).sum BoolPCWorld.atomBound :=
-      Finset.single_le_sum (fun ψ _ => Nat.zero_le (BoolPCWorld.atomBound ψ)) hφ
-    unfold maturityAtomLimit
-    omega
-  · intro d hd p hp
-    have hmem : BoolPCWorld.atomBound p.2 ∈
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)) :=
-      List.mem_map.mpr ⟨p, hp, rfl⟩
-    have hlocal : BoolPCWorld.atomBound p.2 ≤
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum :=
-      List.single_le_sum (fun x _ => Nat.zero_le x) _ hmem
-    have hday : d ∈ Finset.range (m + 1) := Finset.mem_range.mpr (by omega)
-    have houter :
-        ((Tr.strat d).trades.map (fun q => BoolPCWorld.atomBound q.2)).sum ≤
-          ∑ j ∈ Finset.range (m + 1),
-            ((Tr.strat j).trades.map
-              (fun q => BoolPCWorld.atomBound q.2)).sum :=
-      Finset.single_le_sum (fun j _ => Nat.zero_le
-        ((Tr.strat j).trades.map
-          (fun q => BoolPCWorld.atomBound q.2)).sum) hday
-    unfold maturityAtomLimit
-    omega
   · have hrisk := hmature.1
     change 1 - η ≤ Tr.partialMagnitudeRat Q m
     rw [hmag, mul_one,
@@ -3131,7 +3182,8 @@ def UnitMaturitySemanticCertificate.ofMatured
     exact_mod_cast hpay
 
 /-- Exact two-way semantic characterization of unit-trader maturity by the finite
-rational/Boolean certificate core. -/
+rational/Boolean certificate core: the completeness half of the maturity reduction, showing
+the finite certificate loses nothing that `Trader.Matured` records. -/
 lemma UnitMaturitySemanticCertificate.nonempty_iff_matured
     {Tr : Trader} {P : History} {DP : DeductiveProcess}
     (market : MarketComputation P) {ε η : ℚ} {m : ℕ}
@@ -3201,6 +3253,15 @@ lemma unitMaturityCheckAtFuel_eventually_complete
     · next worth hsome =>
         cases Option.some.inj ((hnetWorth u).symm.trans hsome)
         exact c.payoff u (fun φ hφ => hu ⟨φ, hφ⟩)
+
+/-! ## Recurring unbiasedness and calibration
+
+Everything below is stated against `BiasRunHistoricallyVerifiable`, the one remaining
+operational premise.  `Construction/Witnesses/HistoricalMaturity.lean` discharges it from
+the constructed market and deductive-process computations, and it is there that the
+unconditional paper endpoints `AffineCombination.BoundedCombinationSequence.recunbiasedaff`
+(`thm:recunbiasedaff`), `AffineCombination.recurringunbiasedness`
+(`thm:recurringunbiasedness`) and `AffineCombination.simcal` (`thm:simcal`) stand. -/
 
 /-- The exact remaining operational boundary in the affine recurring-unbiasedness proof:
 for every alleged bias gap, a single polynomial Boolean table recognizes historical
@@ -3335,8 +3396,6 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt
     ¬ ∀ᶠ n in atTop,
       weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth n < -ε := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   obtain ⟨q, hq0, hqε⟩ : ∃ q : ℚ, (0 : ℝ) < q ∧ (q : ℝ) < ε :=
     exists_rat_btwn hε
   have hnotq := hdet.not_eventually_weightedBias_lt_of_historicalVerifier
@@ -3452,8 +3511,6 @@ theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => (As i).price P i) truth) 0 := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
   let q : ℚ := h.unitNormalization.scale
   have hq : 0 < (q : ℝ) := h.unitNormalization.scale_pos
   have hdetScaled : DeterminedViaTheory
@@ -3503,7 +3560,10 @@ lemma TheoryTruth.isBoolean {φ : ℕ → Sentence} {DP : DeductiveProcess}
     simpa [PCWorld.payout, hh] using hn.symm
 
 /-- Ordinary recurring unbiasedness as the one-share specialization of affine recurring
-unbiasedness, retaining the same explicit historical-verification boundary. -/
+unbiasedness, retaining the same explicit historical-verification boundary.  This is the
+generic carrier a client with its own historical verifier applies; the unconditional
+`thm:recurringunbiasedness` endpoint is `AffineCombination.recurringunbiasedness` in
+`Construction/Witnesses/HistoricalMaturity.lean`. -/
 lemma recurringunbiasedness_of_historicalVerifiers
     (φ : ℕ → Sentence) (hpoly : PolySequence (sentenceAffine φ))
     {W : ℕ → EF} (hWgen : PGenerableWeighting W)
@@ -3518,8 +3578,6 @@ lemma recurringunbiasedness_of_historicalVerifiers
     HasLimitPoint
       (weightedBias (fun i => (W i).denote P)
         (fun i => P i (φ i)) truth) 0 := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hdet : DeterminedViaTheory (sentenceAffine φ) P DP truth := by
     intro n v hv
     simpa [sentenceAffine, AffineCombination.value] using htruth n v hv
@@ -3533,7 +3591,9 @@ lemma recurringunbiasedness_of_historicalVerifiers
 /-- Recurring calibration from the ordinary recurring-unbiasedness specialization.  Both
 the divergent-case limit point and convergent-case interval guarantee are the exact
 paper conclusions; the only remaining representation premise is the named historical
-verifier for the sentence family and its negation. -/
+verifier for the sentence family and its negation.  This is the generic carrier a client
+with its own verifier applies; the unconditional `thm:simcal` endpoint is
+`AffineCombination.simcal` in `Construction/Witnesses/HistoricalMaturity.lean`. -/
 lemma simcal_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (truth : ℕ → ℝ)
@@ -3557,63 +3617,11 @@ lemma simcal_of_historicalVerifiers
           (weightedAverage
             (fun n => (calibrationIndicator φ a b δ n).denote P) truth) x →
         x ∈ Icc (a : ℝ) (b : ℝ) := by
-  have hP : ∀ n ψ, 0 ≤ P n ψ ∧ P n ψ ≤ 1 :=
-    fun n ψ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n ψ
   have hbias := recurringunbiasedness_of_historicalVerifiers φ hpoly hWgen
     htruth hdiv hworld hverify hverifyNeg
   exact simcal_of_recurring_unbiasedness P φ truth a b δ hδpos
     (fun n => htruth.isBoolean hworld n) hdiv hbias
 
 end AffineCombination
-
-#print axioms calibration_limitPoint_transfer
-#print axioms calibration_convergent_limit_mem
-#print axioms hasLimitPoint_zero_of_two_sided_recurring
-#print axioms weightedAverage_step_tendsto_zero
-#print axioms weightedBias_neg
-#print axioms calibrationIndicator_pgenerable
-#print axioms simcal_of_recurring_unbiasedness
-#print axioms AffineCombination.DeterminedViaTheory.unique
-#print axioms AffineCombination.DeterminedViaTheory.neg
-#print axioms AffineCombination.DeterminedViaTheory.eventually_close
-#print axioms AffineCombination.biasRunCoefficient_denote
-#print axioms AffineCombination.biasRun_magnitudePrefix_le_one
-#print axioms AffineCombination.biasRunTrader_summable_and_magnitude_le_one
-#print axioms AffineCombination.biasRunTrader_magnitude_eq_one_of_attemptedRisk
-#print axioms AffineCombination.ApproxDeterminedViaTheory.abs_truth_sub_price_le_magnitude
-#print axioms weightedExposure_tendsto_atTop_of_eventually_negative_bias
-#print axioms prefixSum_mul_lower_of_prefixSum_lower
-#print axioms AffineCombination.fractionalFamilyFeatureWeight_polySeg
-#print axioms AffineCombination.biasRunTrader_polyTrade
-#print axioms AffineCombination.ApproxDeterminedViaTheory.biasRunTrader_hasROI_of_surplus
-#print axioms AffineCombination.ApproxDeterminedViaTheory.eventually_biasRunTrader_hasROI
-#print axioms MarketComputation.evaln_quote_eq
-#print axioms MarketComputation.exists_evaln_quote
-#print axioms MarketComputation.quoteAtFuel_sound
-#print axioms MarketComputation.quoteAtFuel_complete
-#print axioms MarketComputation.exists_fuel_quoteAtFuel_list
-#print axioms DeductiveProcessComputation.evaln_eq_stage
-#print axioms DeductiveProcessComputation.exists_evaln_stage
-#print axioms DeductiveProcessComputation.stageAtFuel_sound
-#print axioms DeductiveProcessComputation.stageAtFuel_complete
-#print axioms AffineCombination.exists_valueSet
-#print axioms AffineCombination.DeterminedViaTheory.exists_settled_stage
-#print axioms AffineCombination.DeterminedViaTheory.settled_iff_agree
-#print axioms AffineCombination.value_eq_ratCast
-#print axioms AffineCombination.valueRat_congr
-#print axioms AffineCombination.agree_of_finiteWorlds_agree
-#print axioms EF.denoteRatWithAtFuel_sound
-#print axioms EF.denoteRatWithAtFuel_complete
-#print axioms EF.exists_fuel_denoteRatWithAtFuel
-#print axioms AffineCombination.unitMaturityCheckAtFuel_certificate
-#print axioms AffineCombination.unitMaturityCheckAtFuel_sound
-#print axioms AffineCombination.unitMaturityCheckAtFuel_eventually_complete
-#print axioms AffineCombination.UnitMaturitySemanticCertificate.sound
-#print axioms AffineCombination.UnitMaturitySemanticCertificate.nonempty_iff_matured
-#print axioms AffineCombination.ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVerifier
-#print axioms AffineCombination.DeterminedViaTheory.recunbiasedaff_of_historicalVerifiers
-#print axioms AffineCombination.BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
-#print axioms AffineCombination.recurringunbiasedness_of_historicalVerifiers
-#print axioms AffineCombination.simcal_of_historicalVerifiers
 
 end LogicalInduction

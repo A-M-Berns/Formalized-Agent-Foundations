@@ -1,24 +1,63 @@
-/-
-# Expectations (paper §4.8)
-
-LUV combinations (`def:luv`) and bounded combination sequences (`def:blcp`); the
-threshold-mesh lemmas `lem:mesh` and `lem:limexpapprox`; and the expectation theorems
-`thm:expcoh`, `thm:exppolymax`, `thm:perexpkno`, `thm:recurringunbiasednessexp`,
-`thm:wubexp` and `thm:prandexp`, each obtained from its affine counterpart.
-
-A LUV combination is never collapsed to a synthetic LUV: each term is expanded into the
-paper's `n` threshold shares, so the affine theorems still see the actual traded
-sentences.
--/
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.ExpectationConvergence
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Properties.Pseudorandomness
 import Mathlib.Topology.Algebra.Order.LiminfLimsup
 
+/-!
+# Expectations (paper §4.8)
+
+Renders §4.8 (`sec:expectations`): LUV combinations (`def:luv`), bounded
+LUV-combination sequences (`def:blcp`), and the expectation theorems that follow from
+the affine tail.
+
+`LUVCombination` is a constant `EF` together with `EF`-weighted `[0,1]`-LUV terms.  Its
+market evaluation is `expectAt` / `expect` (`def:e`: Lean day `n` is paper day `n + 1`,
+so the diagonal grid is `n + 1`), `value` evaluates it under an abstract LUV valuation,
+and `shareNorm` / `l1Norm` are `def:blcp`'s `‖·‖₁` — the latter including the trailing
+constant, the former omitting it exactly as affine trader magnitude does.
+
+`meshAffine A k` expands each term into its `k` threshold shares, so the affine theorems
+price the paper's actual traded sentences and no synthetic LUV is introduced.
+`meshAffine_price`, `meshAffine_value`, `meshAffine_value_near` (error `shareNorm / k`)
+and `meshAffine_magnitude_eq_shareNorm` are the bridge.
+
+The representation boundaries are `WorldValued` (each completed-theory world values the
+component LUVs somehow — the `def:luv` fact at `cworlds(Θ)`), `DeterminedViaTheory`
+(`def:affthmval`, on the combination only), `ExactTheoryPresentation` (strictly stronger
+than either, produced by the arithmetic layer and consumed by no statement) and
+`ConvergencePresentation` (threshold codes plus per-LUV world values, the `thm:ec` input).
+
+`lem:mesh` is proved by an explicit first-active softmax portfolio over the
+cross-precision gaps (`softmaxAffine`, `meshGaps`, `meshSoftmax`) fed to affine
+provability induction; `MeshSoftmaxOperationalWitness` is the only operational boundary,
+and it is discharged by `LUVCombinationSyntax.meshSoftmaxOperationalWitness`.
+`lem:limexpapprox` (`mesh_limitingValue_near_expectInf`, `limexpapprox`) identifies the
+limiting-belief value of the diagonal mesh with the true limiting expectation
+`expectInf`.
+
+The mesh is only *approximately* determined — `def:affthmval` fixes the combination, not
+its components — so the statistical lane goes through `ApproxDeterminedViaTheory` with
+the vanishing `meshErrorBound` (`lem:conluvapprox`); there is deliberately no exact
+mesh-determination lemma.
+
+Main results: `mesh_independence` (`lem:mesh`), `exppolymax`, `perexpkno`, `expcoh`,
+`wubexp`, `recurringunbiasednessexp_of_historicalVerifiers` and the three
+`prandexp_*_of_historicalVerifiers` forms.  They are consumed by
+`Construction/Witnesses/LUVSyntax.lean` (the `_ofSyntax` forms),
+`Construction/Witnesses/HistoricalMaturity.lean` and
+`Construction/Witnesses/LUVExpectationCertified.lean` (the `_arith` forms,
+`dd:luv-arith`), and are axiom-checked in `AxiomAudit.lean`.
+
+The limit vocabulary `≈ₙ` / `≳ₙ` / `≲ₙ` is `Framework/Asymptotics`'s (`dd:asymp`), and
+coefficients are reified features rather than Lean functions (`dd:dsl`).
+-/
+
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## LUV combinations -/
 
 namespace LUV
 
@@ -114,10 +153,10 @@ value assignment for that member.  Unlike `WorldValued`, this records that the r
 computations are individually determined.
 
 That strength is *not* a premise of any paper node here — it is strictly more than
-`def:affthmval`, which determines only the combination.  This structure survives as the
-convenient shape in which an arithmetic presentation *produces* `WorldValued`
-(`exactTheoryPresentation_ofArithmetic` ⟶ `toWorldValued`), where per-LUV determinedness
-comes free from `Θ` deciding each threshold; no statement consumes it as a hypothesis.
+`def:affthmval`, which determines only the combination.  It is the shape in which an
+arithmetic presentation *produces* `WorldValued` (`exactTheoryPresentation_ofArithmetic`
+then `toWorldValued`), where per-LUV determinedness comes free from `Θ` deciding each
+threshold; no statement consumes it as a hypothesis.
 Paper node: `def:luv` -/
 structure ExactTheoryPresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
@@ -166,49 +205,13 @@ noncomputable def shareNorm (A : LUVCombination) (P : History) : ℝ :=
 noncomputable def l1Norm (A : LUVCombination) (P : History) : ℝ :=
   |A.const.denote P| + A.shareNorm P
 
+/-! ## The threshold mesh -/
+
 /-- Expand every LUV term into its precision-`k` threshold bundle. -/
 def meshAffine (A : LUVCombination) (k : ℕ) : AffineCombination where
   const := A.const
   terms := A.terms.flatMap (fun p =>
     ((p.2.expectAffine k).scale p.1).terms)
-
-/-- Add a closed feature to the constant coordinate of an affine combination.  Unlike
-`addConst`, this preserves the operational expression tree of a generated rational. -/
-def addConstEF (A : AffineCombination) (e : EF) : AffineCombination where
-  const := EF.add A.const e
-  terms := A.terms
-
-lemma addConstEF_value (A : AffineCombination) (e : EF)
-    (V : History) (w : Valuation) :
-    (addConstEF A e).value V w = A.value V w + e.denote V := by
-  simp [addConstEF, AffineCombination.value]
-  ring
-
-lemma addConstEF_price (A : AffineCombination) (e : EF)
-    (V : History) (n : ℕ) :
-    (addConstEF A e).price V n = A.price V n + e.denote V := by
-  simp [AffineCombination.price, addConstEF_value]
-
-@[simp] lemma addConstEF_magnitude (A : AffineCombination) (e : EF)
-    (V : History) :
-    (addConstEF A e).magnitude V = A.magnitude V := rfl
-
-def meshErrorFeature (n : ℕ) (b : ℚ) : EF :=
-  EF.mul (EF.const (-(2 * b))) (EF.const (1 / (n : ℚ)))
-
-@[simp] lemma meshErrorFeature_denote (n : ℕ) (b : ℚ) (P : History) :
-    (meshErrorFeature n b).denote P = (-(2 * b / n) : ℚ) := by
-  simp [meshErrorFeature]
-  ring
-
-/-- Appendix `lem:mesh`'s cross-precision gap.  It compares precision `n` with precision
-`m` and subtracts the completed-world error allowance `2b/n`. -/
-def meshGap (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  addConstEF ((A.meshAffine n).sub (A.meshAffine m)) (meshErrorFeature n b)
-
-/-- Reverse cross-precision gap for the lower half of `lem:mesh`. -/
-def meshGapLower (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  addConstEF ((A.meshAffine m).sub (A.meshAffine n)) (meshErrorFeature n b)
 
 /-- Positive rational normalization used to feed an arbitrary bounded LUV mesh into
 the unit-magnitude statistical affine hubs. -/
@@ -356,93 +359,132 @@ lemma l1Norm_nonneg (A : LUVCombination) (P : History) :
     0 ≤ A.l1Norm P :=
   add_nonneg (abs_nonneg _) (A.shareNorm_nonneg P)
 
-lemma meshGap_price (A : LUVCombination) (P : History)
-    (n m : ℕ) (b : ℚ) (day : ℕ) :
-    (A.meshGap n m b).price P day =
-      A.expectAt P n day - A.expectAt P m day - (2 * (b : ℝ) / n) := by
-  rw [meshGap, addConstEF_price, AffineCombination.sub_price,
+/-! ## Cross-precision gaps -/
+
+/-- Add a closed feature to the constant coordinate of an affine combination.  Unlike
+`addConst`, this preserves the operational expression tree of a generated rational. -/
+def addConstEF (A : AffineCombination) (e : EF) : AffineCombination where
+  const := EF.add A.const e
+  terms := A.terms
+
+lemma addConstEF_value (A : AffineCombination) (e : EF)
+    (V : History) (w : Valuation) :
+    (addConstEF A e).value V w = A.value V w + e.denote V := by
+  simp [addConstEF, AffineCombination.value]
+  ring
+
+lemma addConstEF_price (A : AffineCombination) (e : EF)
+    (V : History) (n : ℕ) :
+    (addConstEF A e).price V n = A.price V n + e.denote V := by
+  simp [AffineCombination.price, addConstEF_value]
+
+@[simp] lemma addConstEF_magnitude (A : AffineCombination) (e : EF)
+    (V : History) :
+    (addConstEF A e).magnitude V = A.magnitude V := rfl
+
+/-- The closed feature denoting `-(2b/n)`: `lem:mesh`'s completed-world error allowance
+at precision `n` for a sequence of share norm at most `b`. -/
+def meshErrorFeature (n : ℕ) (b : ℚ) : EF :=
+  EF.mul (EF.const (-(2 * b))) (EF.const (1 / (n : ℚ)))
+
+@[simp] lemma meshErrorFeature_denote (n : ℕ) (b : ℚ) (P : History) :
+    (meshErrorFeature n b).denote P = (-(2 * b / n) : ℚ) := by
+  simp [meshErrorFeature]
+  ring
+
+/-- The oriented cross-precision gap of `lem:mesh`: the precision-`i` threshold mesh
+minus the precision-`j` one, less the completed-world error allowance `2b/n`.  The two
+halves of `lem:mesh` are its two orientations, `meshGap` and `meshGapLower`, and the
+facts they need are proved once here. -/
+def meshGapAt (A : LUVCombination) (i j n : ℕ) (b : ℚ) : AffineCombination :=
+  addConstEF ((A.meshAffine i).sub (A.meshAffine j)) (meshErrorFeature n b)
+
+lemma meshGapAt_price (A : LUVCombination) (P : History)
+    (i j n : ℕ) (b : ℚ) (day : ℕ) :
+    (A.meshGapAt i j n b).price P day =
+      A.expectAt P i day - A.expectAt P j day - (2 * (b : ℝ) / n) := by
+  rw [meshGapAt, addConstEF_price, AffineCombination.sub_price,
     meshAffine_price, meshAffine_price]
   rw [meshErrorFeature_denote]
   push_cast
   ring
+
+/-- Every completed world values an oriented gap nonpositively, once the error allowance
+is taken at a precision `n` no finer than either of the two compared meshes. -/
+lemma meshGapAt_value_nonpos
+    (A : LUVCombination) (P : History) (v : PCWorld) (ν : LUV → ℝ)
+    {i j n : ℕ} (hn : 0 < n) (hi : n ≤ i) (hj : n ≤ j) {b : ℚ}
+    (hshare : A.shareNorm P ≤ (b : ℝ)) (hvals : A.ValuesAt v ν) :
+    (A.meshGapAt i j n b).value P v.payout ≤ 0 := by
+  have hinear := A.meshAffine_value_near P v ν (hn.trans_le hi) hvals
+  have hjnear := A.meshAffine_value_near P v ν (hn.trans_le hj) hvals
+  rw [abs_le] at hinear hjnear
+  have hnR : (0 : ℝ) < n := by exact_mod_cast hn
+  have hshare0 := A.shareNorm_nonneg P
+  have hinvN : 0 ≤ 1 / (n : ℝ) := (one_div_pos.mpr hnR).le
+  have hnerr : A.shareNorm P * (1 / (n : ℝ)) ≤ (b : ℝ) / n := by
+    simpa [div_eq_mul_inv] using (mul_le_mul_of_nonneg_right hshare hinvN)
+  have hcoarser : ∀ k : ℕ, n ≤ k →
+      A.shareNorm P * (1 / (k : ℝ)) ≤ (b : ℝ) / n := by
+    intro k hk
+    have hkR : (n : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+    calc
+      A.shareNorm P * (1 / (k : ℝ)) ≤ A.shareNorm P * (1 / (n : ℝ)) :=
+        mul_le_mul_of_nonneg_left (one_div_le_one_div_of_le hnR hkR) hshare0
+      _ ≤ (b : ℝ) / n := hnerr
+  have hierr := hcoarser i hi
+  have hjerr := hcoarser j hj
+  have hgap :
+      (A.meshAffine i).value P v.payout - (A.meshAffine j).value P v.payout ≤
+        2 * ((b : ℝ) / n) := by
+    linarith [hinear.2, hjnear.1]
+  rw [meshGapAt, addConstEF_value, AffineCombination.sub_value]
+  rw [meshErrorFeature_denote]
+  push_cast
+  ring_nf at hgap ⊢
+  linarith
+
+/-- Appendix `lem:mesh`'s cross-precision gap.  It compares precision `n` with precision
+`m` and subtracts the completed-world error allowance `2b/n`. -/
+def meshGap (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
+  addConstEF ((A.meshAffine n).sub (A.meshAffine m)) (meshErrorFeature n b)
+
+/-- Reverse cross-precision gap for the lower half of `lem:mesh`. -/
+def meshGapLower (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
+  addConstEF ((A.meshAffine m).sub (A.meshAffine n)) (meshErrorFeature n b)
+
+lemma meshGap_price (A : LUVCombination) (P : History)
+    (n m : ℕ) (b : ℚ) (day : ℕ) :
+    (A.meshGap n m b).price P day =
+      A.expectAt P n day - A.expectAt P m day - (2 * (b : ℝ) / n) :=
+  A.meshGapAt_price P n m n b day
 
 lemma meshGap_value_nonpos
     (A : LUVCombination) (P : History) (v : PCWorld) (ν : LUV → ℝ)
     {n m : ℕ} (hn : 0 < n) (hnm : n ≤ m) {b : ℚ}
     (hshare : A.shareNorm P ≤ (b : ℝ)) (hvals : A.ValuesAt v ν) :
-    (A.meshGap n m b).value P v.payout ≤ 0 := by
-  have hm : 0 < m := hn.trans_le hnm
-  have hnnear := A.meshAffine_value_near P v ν hn hvals
-  have hmnear := A.meshAffine_value_near P v ν hm hvals
-  rw [abs_le] at hnnear hmnear
-  have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-  have hnmR : (n : ℝ) ≤ (m : ℝ) := by exact_mod_cast hnm
-  have hinv : (1 / (m : ℝ)) ≤ 1 / (n : ℝ) := by
-    exact one_div_le_one_div_of_le hnR hnmR
-  have hshare0 := A.shareNorm_nonneg P
-  have hinvN : 0 ≤ 1 / (n : ℝ) := (one_div_pos.mpr hnR).le
-  have hnerr : A.shareNorm P * (1 / (n : ℝ)) ≤ (b : ℝ) / n := by
-    simpa [div_eq_mul_inv] using
-      (mul_le_mul_of_nonneg_right hshare hinvN)
-  have hmerr : A.shareNorm P * (1 / (m : ℝ)) ≤ (b : ℝ) / n := by
-    calc
-      A.shareNorm P * (1 / (m : ℝ)) ≤ A.shareNorm P * (1 / (n : ℝ)) :=
-        mul_le_mul_of_nonneg_left hinv hshare0
-      _ ≤ (b : ℝ) / n := hnerr
-  have hgap :
-      (A.meshAffine n).value P v.payout - (A.meshAffine m).value P v.payout ≤
-        2 * ((b : ℝ) / n) := by
-    linarith [hnnear.2, hmnear.1]
-  rw [meshGap, addConstEF_value, AffineCombination.sub_value]
-  rw [meshErrorFeature_denote]
-  push_cast
-  ring_nf at hgap ⊢
-  linarith
+    (A.meshGap n m b).value P v.payout ≤ 0 :=
+  A.meshGapAt_value_nonpos P v ν hn le_rfl hnm hshare hvals
 
 lemma meshGapLower_price (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) (day : ℕ) :
     (A.meshGapLower n m b).price P day =
-      A.expectAt P m day - A.expectAt P n day - (2 * (b : ℝ) / n) := by
-  rw [meshGapLower, addConstEF_price, AffineCombination.sub_price,
-    meshAffine_price, meshAffine_price]
-  rw [meshErrorFeature_denote]
-  push_cast
-  ring
+      A.expectAt P m day - A.expectAt P n day - (2 * (b : ℝ) / n) :=
+  A.meshGapAt_price P m n n b day
 
 lemma meshGapLower_value_nonpos
     (A : LUVCombination) (P : History) (v : PCWorld) (ν : LUV → ℝ)
     {n m : ℕ} (hn : 0 < n) (hnm : n ≤ m) {b : ℚ}
     (hshare : A.shareNorm P ≤ (b : ℝ)) (hvals : A.ValuesAt v ν) :
-    (A.meshGapLower n m b).value P v.payout ≤ 0 := by
-  have hm : 0 < m := hn.trans_le hnm
-  have hnnear := A.meshAffine_value_near P v ν hn hvals
-  have hmnear := A.meshAffine_value_near P v ν hm hvals
-  rw [abs_le] at hnnear hmnear
-  have hnR : (0 : ℝ) < n := by exact_mod_cast hn
-  have hnmR : (n : ℝ) ≤ (m : ℝ) := by exact_mod_cast hnm
-  have hinv : (1 / (m : ℝ)) ≤ 1 / (n : ℝ) :=
-    one_div_le_one_div_of_le hnR hnmR
-  have hshare0 := A.shareNorm_nonneg P
-  have hinvN : 0 ≤ 1 / (n : ℝ) := (one_div_pos.mpr hnR).le
-  have hnerr : A.shareNorm P * (1 / (n : ℝ)) ≤ (b : ℝ) / n := by
-    simpa [div_eq_mul_inv] using
-      (mul_le_mul_of_nonneg_right hshare hinvN)
-  have hmerr : A.shareNorm P * (1 / (m : ℝ)) ≤ (b : ℝ) / n := by
-    calc
-      A.shareNorm P * (1 / (m : ℝ)) ≤ A.shareNorm P * (1 / (n : ℝ)) :=
-        mul_le_mul_of_nonneg_left hinv hshare0
-      _ ≤ (b : ℝ) / n := hnerr
-  have hgap :
-      (A.meshAffine m).value P v.payout - (A.meshAffine n).value P v.payout ≤
-        2 * ((b : ℝ) / n) := by
-    linarith [hmnear.2, hnnear.1]
-  rw [meshGapLower, addConstEF_value, AffineCombination.sub_value]
-  rw [meshErrorFeature_denote]
-  push_cast
-  ring_nf at hgap ⊢
-  linarith
+    (A.meshGapLower n m b).value P v.payout ≤ 0 :=
+  A.meshGapAt_value_nonpos P v ν hn hnm le_rfl hshare hvals
 
-/-! ### The concrete softmax used by `lem:mesh` -/
+/-! ## The first-active softmax
+
+The concrete portfolio that proves `lem:mesh`: each cross-precision gap receives its
+threshold signal times the mass no earlier gap claimed.  The signal vocabulary it is
+built from — `oneMinus`, `sellIndF`, `clip01` and their denotation lemmas — is
+`Properties/Hysteresis.lean`'s. -/
 
 /-- Remaining unallocated softmax mass after scanning a list of affine gaps. -/
 def softmaxRemainder (gaps : List AffineCombination) (day : ℕ)
@@ -475,9 +517,6 @@ noncomputable def softmaxMass (gaps : List AffineCombination) (P : History)
       remaining.denote P * signal.denote P +
         softmaxMass rest P day threshold pad (.mul remaining (oneMinus signal))
 
--- The `oneMinus_denote` used by the `simp only` calls below is the `@[simp]` lemma
--- accompanying `oneMinus` in `Properties/Hysteresis.lean`.
-
 lemma softmax_mass_add_remainder
     (gaps : List AffineCombination) (P : History) (day : ℕ)
     (threshold pad : ℚ) (remaining : EF) :
@@ -491,33 +530,6 @@ lemma softmax_mass_add_remainder
       rw [add_assoc, ih]
       simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
       ring
-
-lemma softmaxRemainder_nonneg
-    (gaps : List AffineCombination) (P : History) (day : ℕ)
-    (threshold pad : ℚ) (remaining : EF) (hrem : 0 ≤ remaining.denote P) :
-    0 ≤ (softmaxRemainder gaps day threshold pad remaining).denote P := by
-  induction gaps generalizing remaining with
-  | nil => simpa [softmaxRemainder]
-  | cons A rest ih =>
-      simp only [softmaxRemainder]
-      apply ih
-      simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
-      exact mul_nonneg hrem (sub_nonneg.mpr (sellIndF_mem _ _ _ P).2)
-
-lemma softmaxMass_nonneg
-    (gaps : List AffineCombination) (P : History) (day : ℕ)
-    (threshold pad : ℚ) (remaining : EF) (hrem : 0 ≤ remaining.denote P) :
-    0 ≤ softmaxMass gaps P day threshold pad remaining := by
-  induction gaps generalizing remaining with
-  | nil => simp [softmaxMass]
-  | cons A rest ih =>
-      simp only [softmaxMass]
-      have hsig := sellIndF_mem (A.priceFeature day) threshold pad P
-      have hnew : 0 ≤ (EF.mul remaining
-          (oneMinus (sellIndF (A.priceFeature day) threshold pad))).denote P := by
-        simp only [EF.denote_mul, Pi.mul_apply, oneMinus_denote]
-        exact mul_nonneg hrem (sub_nonneg.mpr hsig.2)
-      exact add_nonneg (mul_nonneg hrem hsig.1) (ih _ hnew)
 
 /-- A first-active softmax of uniformly magnitude-bounded inputs has the same magnitude
 bound: its nonnegative allocation weights have total mass at most the initial mass. -/
@@ -734,6 +746,7 @@ def meshSoftmax (As : ℕ → LUVCombination) (b ε : ℚ) (m : ℕ) :
     AffineCombination :=
   softmaxAffine (meshGaps As m b) m (ε / 2) (ε / 4) (.const 1)
 
+/-- `meshGaps` with the two precisions exchanged, for the lower half of `lem:mesh`. -/
 def meshGapsLower (As : ℕ → LUVCombination) (m : ℕ) (b : ℚ) :
     List AffineCombination :=
   (List.range m).map (fun i => (As (i + 1)).meshGapLower (i + 2) (m + 1) b)
@@ -847,7 +860,7 @@ structure MeshSoftmaxOperationalWitness
 /-- Upper half of Appendix `lem:mesh`: after the softmax compiler has emitted the
 concrete sequence, no cross-precision upper discrepancy can exceed `2b/n + ε`
 infinitely often. -/
-theorem mesh_upper_eventually
+lemma mesh_upper_eventually
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (ops : MeshSoftmaxOperationalWitness As P)
@@ -900,7 +913,7 @@ lemma mesh_lower_eventually
   linarith
 
 /-- Two-sided finite form of Appendix `lem:mesh`. -/
-theorem mesh_close_eventually
+lemma mesh_close_eventually
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (ops : MeshSoftmaxOperationalWitness As P)
@@ -931,6 +944,24 @@ Paper node: `def:blcp` -/
 structure BoundedSequence (As : ℕ → LUVCombination) (P : History) where
   poly : PolySequence As
   bounded : ∃ B : ℝ, ∀ n, (As n).l1Norm P ≤ B
+
+/-- A `def:blcp` sequence has a nonnegative *rational* share bound.  The `L¹` bound of
+`def:blcp` is a real, while the mesh constructions ask for a rational `b` — it is written
+into the closed feature `meshErrorFeature` and into the scaling `meshNormScale` — and
+`l1Norm = |const| + shareNorm` turns the one into the other.  Every endpoint below that
+asks a client for `b`, `hb` and `hshare` can therefore obtain all three from the
+`BoundedSequence` it already has; the `_ofBounded` forms do exactly that. -/
+lemma BoundedSequence.exists_rat_shareBound {As : ℕ → LUVCombination} {P : History}
+    (h : BoundedSequence As P) :
+    ∃ b : ℚ, 0 ≤ (b : ℝ) ∧ ∀ n, (As n).shareNorm P ≤ (b : ℝ) := by
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hb⟩ := exists_rat_gt (max B 0)
+  have hB' : B ≤ (b : ℝ) := (le_max_left B 0).trans hb.le
+  refine ⟨b, (le_max_right B 0).trans hb.le, fun n => ?_⟩
+  have hshare : (As n).shareNorm P ≤ (As n).l1Norm P := by
+    simp only [l1Norm]
+    linarith [abs_nonneg ((As n).const.denote P)]
+  exact hshare.trans ((hB n).trans hB')
 
 /-- Propositional representation boundary needed to invoke `thm:ec` on every LUV
 appearing in a combination sequence.  It records only compact threshold codeability and
@@ -965,6 +996,8 @@ noncomputable def futureLow (As : ℕ → LUVCombination)
     (P : History) (n : ℕ) : ℝ :=
   sInf (Set.range (fun j => (As n).expect P (n + j)))
 
+/-- The companion of `futureLow`: the supremum, over future days, of the fixed day-`n`
+combination's expectation. -/
 noncomputable def futureHigh (As : ℕ → LUVCombination)
     (P : History) (n : ℕ) : ℝ :=
   sSup (Set.range (fun j => (As n).expect P (n + j)))
@@ -1021,19 +1054,24 @@ lemma meshAffine_magnitude_eq_shareNorm
       simp only [AffineCombination.magnitude] at hp
       rw [hp, ih]
 
+/-- A gap trades at most twice the share norm, whatever its orientation: the error
+allowance is a constant and contributes no magnitude. -/
+lemma meshGapAt_magnitude_le (A : LUVCombination) (P : History)
+    (i j n : ℕ) (b : ℚ) :
+    (A.meshGapAt i j n b).magnitude P ≤ 2 * A.shareNorm P := by
+  rw [meshGapAt, addConstEF_magnitude, AffineCombination.sub_magnitude]
+  linarith [A.meshAffine_magnitude_le_shareNorm P i,
+    A.meshAffine_magnitude_le_shareNorm P j]
+
 lemma meshGap_magnitude_le (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) :
-    (A.meshGap n m b).magnitude P ≤ 2 * A.shareNorm P := by
-  rw [meshGap, addConstEF_magnitude, AffineCombination.sub_magnitude]
-  linarith [A.meshAffine_magnitude_le_shareNorm P n,
-    A.meshAffine_magnitude_le_shareNorm P m]
+    (A.meshGap n m b).magnitude P ≤ 2 * A.shareNorm P :=
+  A.meshGapAt_magnitude_le P n m n b
 
 lemma meshGapLower_magnitude_le (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) :
-    (A.meshGapLower n m b).magnitude P ≤ 2 * A.shareNorm P := by
-  rw [meshGapLower, addConstEF_magnitude, AffineCombination.sub_magnitude]
-  linarith [A.meshAffine_magnitude_le_shareNorm P n,
-    A.meshAffine_magnitude_le_shareNorm P m]
+    (A.meshGapLower n m b).magnitude P ≤ 2 * A.shareNorm P :=
+  A.meshGapAt_magnitude_le P m n n b
 
 /-- Mesh expansion does not increase the full `L¹` norm. -/
 lemma meshAffine_l1Norm_le (A : LUVCombination) (P : History) (k : ℕ) :
@@ -1049,12 +1087,14 @@ lemma abs_expectAt_le_l1Norm
   exact ((A.meshAffine k).abs_price_le_l1Norm P m hP).trans
     (A.meshAffine_l1Norm_le P k)
 
-lemma abs_meshGap_price_le (A : LUVCombination) (P : History)
-    {n m day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
+/-- A gap's price is bounded by twice the `L¹` bound plus twice the error allowance's
+numerator, whatever its orientation. -/
+lemma abs_meshGapAt_price_le (A : LUVCombination) (P : History)
+    {i j n day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
     (hB : A.l1Norm P ≤ B) (hP : ∀ φ, 0 ≤ P day φ ∧ P day φ ≤ 1) :
-    |(A.meshGap n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| := by
-  have hnExp := A.abs_expectAt_le_l1Norm P n day hP
-  have hmExp := A.abs_expectAt_le_l1Norm P m day hP
+    |(A.meshGapAt i j n b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| := by
+  have hiExp := A.abs_expectAt_le_l1Norm P i day hP
+  have hjExp := A.abs_expectAt_le_l1Norm P j day hP
   have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn
   have hden : (1 : ℝ) ≤ |(n : ℝ)| := by
     rw [abs_of_nonneg (by positivity)]
@@ -1062,41 +1102,25 @@ lemma abs_meshGap_price_le (A : LUVCombination) (P : History)
   have hz : |2 * (b : ℝ) / n| ≤ 2 * |(b : ℝ)| := by
     rw [abs_div, abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ 2 by norm_num)]
     exact div_le_self (mul_nonneg (by norm_num) (abs_nonneg _)) hden
-  rw [meshGap_price]
+  rw [meshGapAt_price]
   calc
-    |A.expectAt P n day - A.expectAt P m day - 2 * (b : ℝ) / n| ≤
-        |A.expectAt P n day| + |A.expectAt P m day| + |2 * (b : ℝ) / n| := by
-      linarith [abs_sub (A.expectAt P n day) (A.expectAt P m day),
-        abs_sub (A.expectAt P n day - A.expectAt P m day) (2 * (b : ℝ) / n)]
+    |A.expectAt P i day - A.expectAt P j day - 2 * (b : ℝ) / n| ≤
+        |A.expectAt P i day| + |A.expectAt P j day| + |2 * (b : ℝ) / n| := by
+      linarith [abs_sub (A.expectAt P i day) (A.expectAt P j day),
+        abs_sub (A.expectAt P i day - A.expectAt P j day) (2 * (b : ℝ) / n)]
     _ ≤ 2 * B + 2 * |(b : ℝ)| := by linarith
+
+lemma abs_meshGap_price_le (A : LUVCombination) (P : History)
+    {n m day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
+    (hB : A.l1Norm P ≤ B) (hP : ∀ φ, 0 ≤ P day φ ∧ P day φ ≤ 1) :
+    |(A.meshGap n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| :=
+  A.abs_meshGapAt_price_le (i := n) (j := m) P hn b B hB hP
 
 lemma abs_meshGapLower_price_le (A : LUVCombination) (P : History)
     {n m day : ℕ} (hn : 0 < n) (b : ℚ) (B : ℝ)
     (hB : A.l1Norm P ≤ B) (hP : ∀ φ, 0 ≤ P day φ ∧ P day φ ≤ 1) :
-    |(A.meshGapLower n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| := by
-  have hnExp := A.abs_expectAt_le_l1Norm P n day hP
-  have hmExp := A.abs_expectAt_le_l1Norm P m day hP
-  have hnR : (1 : ℝ) ≤ n := by exact_mod_cast hn
-  have hden : (1 : ℝ) ≤ |(n : ℝ)| := by
-    rw [abs_of_nonneg (by positivity)]
-    exact hnR
-  have hz : |2 * (b : ℝ) / n| ≤ 2 * |(b : ℝ)| := by
-    rw [abs_div, abs_mul, abs_of_nonneg (show (0 : ℝ) ≤ 2 by norm_num)]
-    exact div_le_self (mul_nonneg (by norm_num) (abs_nonneg _)) hden
-  rw [meshGapLower_price]
-  calc
-    |A.expectAt P m day - A.expectAt P n day - 2 * (b : ℝ) / n| ≤
-        |A.expectAt P m day| + |A.expectAt P n day| + |2 * (b : ℝ) / n| := by
-      linarith [abs_sub (A.expectAt P m day) (A.expectAt P n day),
-        abs_sub (A.expectAt P m day - A.expectAt P n day) (2 * (b : ℝ) / n)]
-    _ ≤ 2 * B + 2 * |(b : ℝ)| := by linarith
-
-/-- `c / (n + 1) → 0`: the day-index-shifted form of `tendsto_const_div_atTop_nhds_zero_nat`,
-used wherever a grid error `1/(n+1)` is squeezed to zero. -/
-lemma tendsto_const_div_succ_atTop_nhds_zero (c : ℝ) :
-    Tendsto (fun n : ℕ => c / ((n : ℝ) + 1)) atTop (𝓝 0) := by
-  have h := (tendsto_const_div_atTop_nhds_zero_nat c).comp (Filter.tendsto_add_atTop_nat 1)
-  simpa [Function.comp_def] using h
+    |(A.meshGapLower n m b).price P day| ≤ 2 * B + 2 * |(b : ℝ)| :=
+  A.abs_meshGapAt_price_le (i := m) (j := n) P hn b B hB hP
 
 /-- Tail supremum appearing literally in Appendix `lem:mesh`. -/
 noncomputable def meshTailError (As : ℕ → LUVCombination)
@@ -1140,6 +1164,24 @@ lemma meshTailError_le
   apply csSup_le (Set.range_nonempty _)
   rintro x ⟨j, rfl⟩
   exact hδ (n + j) (by omega)
+
+/-! ## Weighted averages and limit transfer
+
+Analysis with no LUV content, used to move a conclusion between two asymptotically
+indistinguishable sequences.  What is general is stated outside `LUVCombination`, so a
+client reaches it under its own name; `weightedAverage_tendsto_zero_of_tendsto_zero` and
+`hasLimitPoint_add_tendsto_zero` stay inside it, beside the weighted-bias endpoints that
+consume them. -/
+
+end LUVCombination
+
+/-- `c / (n + 1) → 0`: the day-index-shifted form of
+`tendsto_const_div_atTop_nhds_zero_nat`, used wherever a grid error `1/(n+1)` is squeezed
+to zero. -/
+lemma tendsto_const_div_succ_atTop_nhds_zero (c : ℝ) :
+    Tendsto (fun n : ℕ => c / ((n : ℝ) + 1)) atTop (𝓝 0) := by
+  have h := (tendsto_const_div_atTop_nhds_zero_nat c).comp (Filter.tendsto_add_atTop_nat 1)
+  simpa [Function.comp_def] using h
 
 private lemma abs_sSup_range_sub_sSup_range_le
     (f g : ℕ → ℝ)
@@ -1293,6 +1335,95 @@ private lemma liminf_limsup_eq_of_abs_sub_tendsto_zero
     rw [hdsup, add_zero] at hhi
     exact le_antisymm hhi hlo
 
+namespace LUVCombination
+
+/-- A Toeplitz-style transfer for the repository's inclusive weighted averages:
+nonnegative weights with divergent total mass send every null sequence to zero. -/
+lemma weightedAverage_tendsto_zero_of_tendsto_zero
+    {w e : ℕ → ℝ} (hw0 : ∀ n, 0 ≤ w n)
+    (hdiv : Tendsto (prefixSum w) atTop atTop)
+    (he : Tendsto e atTop (𝓝 0)) :
+    Tendsto (weightedAverage w e) atTop (𝓝 0) := by
+  apply Metric.tendsto_atTop.2
+  intro ε hε
+  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 he (ε / 2) (half_pos hε)
+  let C : ℝ := ∑ i ∈ Finset.range N, w i * |e i|
+  have hC0 : 0 ≤ C := Finset.sum_nonneg fun i _ =>
+    mul_nonneg (hw0 i) (abs_nonneg _)
+  obtain ⟨M, hM⟩ := eventually_atTop.1
+    (hdiv.eventually (eventually_gt_atTop (2 * C / ε)))
+  refine ⟨max N M, fun n hn => ?_⟩
+  have hnN : N ≤ n := (le_max_left N M).trans hn
+  have hnM : M ≤ n := (le_max_right N M).trans hn
+  have hdenLarge : 2 * C / ε < prefixSum w n := hM n hnM
+  have hdenPos : 0 < prefixSum w n := by
+    have hleft : 0 ≤ 2 * C / ε := div_nonneg (mul_nonneg (by norm_num) hC0) hε.le
+    linarith
+  have htail : ∀ i ∈ Finset.Ico N (n + 1), |e i| < ε / 2 := by
+    intro i hi
+    simpa only [Real.dist_eq, sub_zero] using hN i (Finset.mem_Ico.mp hi).1
+  have habsNum : |prefixSum (fun i => w i * e i) n| ≤
+      C + (ε / 2) * prefixSum w n := by
+    calc
+      |prefixSum (fun i => w i * e i) n| ≤
+          ∑ i ∈ Finset.range (n + 1), |w i * e i| := by
+        rw [prefixSum]
+        exact Finset.abs_sum_le_sum_abs _ _
+      _ = ∑ i ∈ Finset.range (n + 1), w i * |e i| := by
+        apply Finset.sum_congr rfl
+        intro i hi
+        rw [abs_mul, abs_of_nonneg (hw0 i)]
+      _ = C + ∑ i ∈ Finset.Ico N (n + 1), w i * |e i| := by
+        dsimp only [C]
+        exact (Finset.sum_range_add_sum_Ico
+          (fun i => w i * |e i|) (by omega : N ≤ n + 1)).symm
+      _ ≤ C + ∑ i ∈ Finset.Ico N (n + 1), w i * (ε / 2) := by
+        apply add_le_add_right
+        apply Finset.sum_le_sum
+        intro i hi
+        exact mul_le_mul_of_nonneg_left (le_of_lt (htail i hi)) (hw0 i)
+      _ ≤ C + ∑ i ∈ Finset.range (n + 1), w i * (ε / 2) := by
+        apply add_le_add_right
+        apply Finset.sum_le_sum_of_subset_of_nonneg
+        · intro i hi
+          exact Finset.mem_range.mpr (Finset.mem_Ico.mp hi).2
+        · intro i hi hnot
+          exact mul_nonneg (hw0 i) (half_pos hε).le
+      _ = C + (ε / 2) * prefixSum w n := by
+        rw [prefixSum]
+        congr 1
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro i hi
+        ring
+  rw [Real.dist_eq, sub_zero, weightedAverage_eq_div (ne_of_gt hdenPos),
+    abs_div, abs_of_pos hdenPos]
+  have hCsmall : C / prefixSum w n < ε / 2 := by
+    rw [div_lt_iff₀ hdenPos]
+    rw [div_lt_iff₀ hε] at hdenLarge
+    nlinarith
+  calc
+    |prefixSum (fun i => w i * e i) n| / prefixSum w n ≤
+        (C + (ε / 2) * prefixSum w n) / prefixSum w n :=
+      div_le_div_of_nonneg_right habsNum hdenPos.le
+    _ = C / prefixSum w n + ε / 2 := by field_simp
+    _ < ε := by linarith
+
+/-- A null perturbation of a sequence does not disturb `0` as a limit point. -/
+lemma hasLimitPoint_add_tendsto_zero
+    {f d : ℕ → ℝ} (hf : HasLimitPoint f 0)
+    (hd : Tendsto d atTop (𝓝 0)) :
+    HasLimitPoint (fun n => f n + d n) 0 := by
+  obtain ⟨ψ, hψmono, hfψ⟩ := hf.exists_subseq
+  have hdψ : Tendsto (d ∘ ψ) atTop (𝓝 0) := hd.comp hψmono.tendsto_atTop
+  have hsum : Tendsto ((fun n => f n + d n) ∘ ψ) atTop (𝓝 0) := by
+    convert hfψ.add hdψ using 1
+    · rfl
+    · simp
+  exact MapClusterPt.of_comp hψmono.tendsto_atTop hsum.mapClusterPt
+
+/-! ## Mesh independence (`lem:mesh`) -/
+
 lemma BoundedSequence.futureHigh_mesh_near
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P)
@@ -1437,7 +1568,25 @@ theorem BoundedSequence.mesh_independence
   rw [Real.dist_eq, sub_zero, abs_of_nonneg hnonneg]
   exact hsup.trans_lt (by linarith)
 
-/-- Rank preservation for the mesh lift. -/
+/-- `mesh_independence` with the rational share bound obtained from the
+`BoundedSequence` itself (`exists_rat_shareBound`) rather than asked of the client. -/
+lemma BoundedSequence.mesh_independence_ofBounded
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : BoundedSequence As P)
+    (ops : MeshSoftmaxOperationalWitness As P)
+    (hvalued : WorldValued As DP)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    Tendsto (meshTailError As P) atTop (𝓝 0) := by
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
+  exact h.mesh_independence ops hvalued b hb hshare hworld
+
+/-! ## Polynomial and bounded LUV-combination consequences -/
+
+/-- Rank preservation for the mesh lift: an emitter of `meshAffine A k` inherits the
+source combination's rank bound, which is what `Strategy.rank_le` obliges a compiled
+trader to establish.  It is the API fact a client compiling a LUV combination needs, and
+is stated once here rather than at each emitter. -/
 lemma meshAffine_rank
     (A : LUVCombination) {day k : ℕ}
     (hconst : A.const.rank ≤ day)
@@ -1456,8 +1605,6 @@ lemma meshAffine_rank
   simp only [LUV.expectAffine, List.mem_map] at hr
   obtain ⟨i, hi, rfl⟩ := hr
   simp [EF.rank]
-
-/-! ## Polynomial and bounded LUV-combination consequences -/
 
 /-- A BLCS compiles to the paper's affine BCS at the diagonal mesh precision. -/
 def BoundedSequence.affineBCS {As : ℕ → LUVCombination} {P : History}
@@ -1482,6 +1629,7 @@ lemma BoundedSequence.mesh_boundedPrices
     BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
   h.affineBCS.boundedPrices hP
 
+/-- `PolySequence.mesh_poly` transported along the rational scaling `meshNormScale b`. -/
 noncomputable def BoundedSequence.normalizedMesh_poly
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (b : ℚ) :
@@ -1508,20 +1656,7 @@ lemma normalizedMesh_magnitude_le_one
     ((mul_le_mul_of_nonneg_left (hshare n) hq0).trans
       (meshNormScale_mul_le_one b))
 
-/-- The completed-theory values of a LUV combination, using actual coherent LUV values
-rather than its finite threshold mesh. -/
-def completedValues (DP : DeductiveProcess) (A : LUVCombination)
-    (P : History) : Set ℝ :=
-  {x | ∃ (v : PCWorld) (ν : LUV → ℝ), v.ConsistentWithTheory DP ∧
-      A.ValuesAt v ν ∧ A.value P ν = x}
-
-noncomputable def completedLow (As : ℕ → LUVCombination)
-    (P : History) (DP : DeductiveProcess) (n : ℕ) : ℝ :=
-  sInf (completedValues DP (As n) P)
-
-noncomputable def completedHigh (As : ℕ → LUVCombination)
-    (P : History) (DP : DeductiveProcess) (n : ℕ) : ℝ :=
-  sSup (completedValues DP (As n) P)
+/-! ## Limiting expectations (`lem:limexpapprox`) -/
 
 /-- Canonical limiting expectation of a fixed combination.  Subsequent mesh-independence
 theorems identify this limsup with the actual limit. -/
@@ -1622,6 +1757,24 @@ theorem BoundedSequence.limexpapprox
       h.mesh_limitingValue_near_expectInf (hvalued.convergencePresentation hcode) hworld n)
     (h.mesh_independence ops hvalued b hb hshare hworld)
 
+/-- `limexpapprox` with the rational share bound obtained from the `BoundedSequence`
+itself (`exists_rat_shareBound`) rather than asked of the client. -/
+lemma BoundedSequence.limexpapprox_ofBounded
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : BoundedSequence As P)
+    (ops : MeshSoftmaxOperationalWitness As P)
+    (hvalued : WorldValued As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    Tendsto (fun n =>
+      |((As n).meshAffine (n + 1)).value P (limitingBelief P) - (As n).expectInf P|)
+      atTop (𝓝 0) := by
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
+  exact h.limexpapprox ops hvalued hcode b hb hshare hworld
+
+/-! ## Approximate determination and the mesh error budget -/
+
 /-- A LUV-combination sequence is determined when every completed-theory world and every
 coherent assignment to its LUVs gives the same advertised value. -/
 def DeterminedViaTheory (As : ℕ → LUVCombination) (P : History)
@@ -1629,6 +1782,8 @@ def DeterminedViaTheory (As : ℕ → LUVCombination) (P : History)
   ∀ n (v : PCWorld) (ν : LUV → ℝ), v.ConsistentWithTheory DP →
     (As n).ValuesAt v ν → (As n).value P ν = truth n
 
+/-- `meshTheoryTruth` scaled by `meshNormScale b`: the truth stream the normalized mesh
+`normalizedMesh` is compared against. -/
 noncomputable def normalizedMeshTruth (As : ℕ → LUVCombination) (P : History)
     (DP : DeductiveProcess)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1639,7 +1794,7 @@ noncomputable def normalizedMeshTruth (As : ℕ → LUVCombination) (P : History
 
 The paper's `def:affthmval` determines a LUV *combination*, not its component LUVs, so
 completed worlds may disagree about the individual threshold sentences the mesh trades.
-What survives is quantitative: two completed worlds each reproduce the determined
+What holds is quantitative: two completed worlds each reproduce the determined
 combination value to within `shareNorm/n`, hence agree with each other to within twice
 that — and trivially to within the mesh's own coefficient sum.  That is exactly the
 `ApproxDeterminedViaTheory` + `ErrorNegligible` input of the affine bias-run economics, and
@@ -1656,14 +1811,6 @@ noncomputable def meshErrorBound (As : ℕ → LUVCombination) (P : History) (b 
     (n : ℕ) : ℝ :=
   min ((normalizedMesh As b n).magnitude P)
     (2 * ((meshNormScale b : ℚ) : ℝ) * (As n).shareNorm P / ((n : ℝ) + 1))
-
-private lemma meshAffine_zero_terms (A : LUVCombination) :
-    (A.meshAffine 0).terms = [] := by
-  simp only [meshAffine, LUV.expectAffine, AffineCombination.scale, List.range_zero,
-    List.map_nil]
-  induction A.terms with
-  | nil => rfl
-  | cons p rest ih => simp
 
 private lemma payout_eq_zero_or_one (u : PCWorld) (φ : Sentence) :
     u.payout φ = 0 ∨ u.payout φ = 1 := by
@@ -1703,7 +1850,7 @@ lemma normalizedMesh_errorNegligible (As : ℕ → LUVCombination) (P : History)
 /-- The diagonal mesh-error budget vanishes for a share-bounded sequence.  This is
 `lem:conluvapprox`'s `O(1/n)` in the form the feedback bridge consumes: the residual by
 which completed worlds may disagree about the *mesh* of a combination-determined sequence
-tends to zero, so affine provability induction still learns its price. -/
+tends to zero, which is all affine provability induction needs to learn its price. -/
 lemma meshErrorBound_tendsto_zero {As : ℕ → LUVCombination} {P : History} (b : ℚ)
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) :
     Tendsto (meshErrorBound As P b) atTop (𝓝 0) := by
@@ -1748,10 +1895,12 @@ lemma WorldValued.normalizedMesh_approxDetermined
   obtain ⟨νw, hνw⟩ := h n tw htw
   have h1 : |((As n).meshAffine (n + 1)).value P v.payout - truth n| ≤
       (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
-    simpa [hdet n v νv hv hνv] using (As n).meshAffine_value_near (k := n + 1) P v νv n.succ_pos hνv
+    simpa [hdet n v νv hv hνv] using
+      (As n).meshAffine_value_near (k := n + 1) P v νv n.succ_pos hνv
   have h2 : |((As n).meshAffine (n + 1)).value P tw.payout - truth n| ≤
       (As n).shareNorm P * (1 / ((n : ℝ) + 1)) := by
-    simpa [hdet n tw νw htw hνw] using (As n).meshAffine_value_near (k := n + 1) P tw νw n.succ_pos hνw
+    simpa [hdet n tw νw htw hνw] using
+      (As n).meshAffine_value_near (k := n + 1) P tw νw n.succ_pos hνw
   have hsum : |((As n).meshAffine (n + 1)).value P v.payout -
       ((As n).meshAffine (n + 1)).value P tw.payout| ≤
       2 * ((As n).shareNorm P * (1 / ((n : ℝ) + 1))) := by
@@ -1812,102 +1961,24 @@ lemma WorldValued.meshTheoryTruth_sub_truth_tendsto
   rw [div_eq_mul_inv, one_mul]
   exact mul_le_mul_of_nonneg_right (hshare n) (by positivity)
 
-/-- A Toeplitz-style transfer for the repository's inclusive weighted averages:
-nonnegative weights with divergent total mass send every null sequence to zero. -/
-lemma weightedAverage_tendsto_zero_of_tendsto_zero
-    {w e : ℕ → ℝ} (hw0 : ∀ n, 0 ≤ w n)
-    (hdiv : Tendsto (prefixSum w) atTop atTop)
-    (he : Tendsto e atTop (𝓝 0)) :
-    Tendsto (weightedAverage w e) atTop (𝓝 0) := by
-  apply Metric.tendsto_atTop.2
-  intro ε hε
-  obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 he (ε / 2) (half_pos hε)
-  let C : ℝ := ∑ i ∈ Finset.range N, w i * |e i|
-  have hC0 : 0 ≤ C := Finset.sum_nonneg fun i _ =>
-    mul_nonneg (hw0 i) (abs_nonneg _)
-  obtain ⟨M, hM⟩ := eventually_atTop.1
-    (hdiv.eventually (eventually_gt_atTop (2 * C / ε)))
-  refine ⟨max N M, fun n hn => ?_⟩
-  have hnN : N ≤ n := (le_max_left N M).trans hn
-  have hnM : M ≤ n := (le_max_right N M).trans hn
-  have hdenLarge : 2 * C / ε < prefixSum w n := hM n hnM
-  have hdenPos : 0 < prefixSum w n := by
-    have hleft : 0 ≤ 2 * C / ε := div_nonneg (mul_nonneg (by norm_num) hC0) hε.le
-    linarith
-  have htail : ∀ i ∈ Finset.Ico N (n + 1), |e i| < ε / 2 := by
-    intro i hi
-    simpa only [Real.dist_eq, sub_zero] using hN i (Finset.mem_Ico.mp hi).1
-  have habsNum : |prefixSum (fun i => w i * e i) n| ≤
-      C + (ε / 2) * prefixSum w n := by
-    calc
-      |prefixSum (fun i => w i * e i) n| ≤
-          ∑ i ∈ Finset.range (n + 1), |w i * e i| := by
-        rw [prefixSum]
-        exact Finset.abs_sum_le_sum_abs _ _
-      _ = ∑ i ∈ Finset.range (n + 1), w i * |e i| := by
-        apply Finset.sum_congr rfl
-        intro i hi
-        rw [abs_mul, abs_of_nonneg (hw0 i)]
-      _ = C + ∑ i ∈ Finset.Ico N (n + 1), w i * |e i| := by
-        dsimp only [C]
-        exact (Finset.sum_range_add_sum_Ico
-          (fun i => w i * |e i|) (by omega : N ≤ n + 1)).symm
-      _ ≤ C + ∑ i ∈ Finset.Ico N (n + 1), w i * (ε / 2) := by
-        apply add_le_add_right
-        apply Finset.sum_le_sum
-        intro i hi
-        exact mul_le_mul_of_nonneg_left (le_of_lt (htail i hi)) (hw0 i)
-      _ ≤ C + ∑ i ∈ Finset.range (n + 1), w i * (ε / 2) := by
-        apply add_le_add_right
-        apply Finset.sum_le_sum_of_subset_of_nonneg
-        · intro i hi
-          exact Finset.mem_range.mpr (Finset.mem_Ico.mp hi).2
-        · intro i hi hnot
-          exact mul_nonneg (hw0 i) (half_pos hε).le
-      _ = C + (ε / 2) * prefixSum w n := by
-        rw [prefixSum]
-        congr 1
-        rw [Finset.mul_sum]
-        apply Finset.sum_congr rfl
-        intro i hi
-        ring
-  rw [Real.dist_eq, sub_zero, weightedAverage_eq_div (ne_of_gt hdenPos),
-    abs_div, abs_of_pos hdenPos]
-  have hCsmall : C / prefixSum w n < ε / 2 := by
-    rw [div_lt_iff₀ hdenPos]
-    rw [div_lt_iff₀ hε] at hdenLarge
-    nlinarith
-  calc
-    |prefixSum (fun i => w i * e i) n| / prefixSum w n ≤
-        (C + (ε / 2) * prefixSum w n) / prefixSum w n :=
-      div_le_div_of_nonneg_right habsNum hdenPos.le
-    _ = C / prefixSum w n + ε / 2 := by field_simp
-    _ < ε := by linarith
+/-! ## Completed-world extrema -/
 
-/-- Consequently, replacing a stream by a pointwise asymptotically equal stream does
-not change its divergent weighted average. -/
-lemma weightedAverage_sub_tendsto_zero_of_sub_tendsto_zero
-    {w x y : ℕ → ℝ} (hw0 : ∀ n, 0 ≤ w n)
-    (hdiv : Tendsto (prefixSum w) atTop atTop)
-    (hxy : Tendsto (fun n => x n - y n) atTop (𝓝 0)) :
-    Tendsto (fun n => weightedAverage w x n - weightedAverage w y n)
-      atTop (𝓝 0) := by
-  have hbase := weightedAverage_tendsto_zero_of_tendsto_zero hw0 hdiv hxy
-  apply hbase.congr'
-  filter_upwards [hdiv.eventually (eventually_gt_atTop 0)] with n hn
-  exact weightedAverage_sub w x y (ne_of_gt hn)
+/-- The completed-theory values of a LUV combination, using actual coherent LUV values
+rather than its finite threshold mesh. -/
+def completedValues (DP : DeductiveProcess) (A : LUVCombination)
+    (P : History) : Set ℝ :=
+  {x | ∃ (v : PCWorld) (ν : LUV → ℝ), v.ConsistentWithTheory DP ∧
+      A.ValuesAt v ν ∧ A.value P ν = x}
 
-lemma hasLimitPoint_add_tendsto_zero
-    {f d : ℕ → ℝ} (hf : HasLimitPoint f 0)
-    (hd : Tendsto d atTop (𝓝 0)) :
-    HasLimitPoint (fun n => f n + d n) 0 := by
-  obtain ⟨ψ, hψmono, hfψ⟩ := hf.exists_subseq
-  have hdψ : Tendsto (d ∘ ψ) atTop (𝓝 0) := hd.comp hψmono.tendsto_atTop
-  have hsum : Tendsto ((fun n => f n + d n) ∘ ψ) atTop (𝓝 0) := by
-    convert hfψ.add hdψ using 1
-    · rfl
-    · simp
-  exact MapClusterPt.of_comp hψmono.tendsto_atTop hsum.mapClusterPt
+/-- The infimum of `completedValues`. -/
+noncomputable def completedLow (As : ℕ → LUVCombination)
+    (P : History) (DP : DeductiveProcess) (n : ℕ) : ℝ :=
+  sInf (completedValues DP (As n) P)
+
+/-- The supremum of `completedValues`. -/
+noncomputable def completedHigh (As : ℕ → LUVCombination)
+    (P : History) (DP : DeductiveProcess) (n : ℕ) : ℝ :=
+  sSup (completedValues DP (As n) P)
 
 lemma completedValues_to_mesh
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -2008,10 +2079,16 @@ lemma BoundedSequence.completedExtrema_mesh_tendsto
     rw [div_eq_mul_inv, one_mul]
     exact mul_le_mul_of_nonneg_right (hshare n) (by positivity)
 
-/-! The three affine master theorems applied to the literal diagonal threshold mesh.
-The remaining expectation-specific step is `lem:mesh`, which replaces fixed precision
-`n` at future market days by each future day's own precision. -/
+/-! ## The affine master theorems on the diagonal mesh
 
+The three affine master theorems applied to the literal diagonal threshold mesh.  The
+remaining expectation-specific step is `lem:mesh`, which replaces fixed precision `n` at
+future market days by each future day's own precision. -/
+
+/-- Affine preemptive learning (`thm:affpolymax`) applied to the diagonal threshold mesh:
+the market's diagonal mesh price has the same lower and upper limits as the mesh's own
+future-day extrema.  This is the form `exppolymax` consumes, before `lem:mesh` replaces
+the fixed precision `n` at future market days by each future day's own precision. -/
 theorem BoundedSequence.mesh_affpolymax
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (DP : DeductiveProcess)
@@ -2023,6 +2100,47 @@ theorem BoundedSequence.mesh_affpolymax
         limsup (affineFutureLow (fun n => (As n).meshAffine (n + 1)) P) atTop := by
   simpa only [meshAffine_price_diagonal] using
     h.affineBCS.affpolymax DP hworld
+
+/-- Persistence of affine knowledge (`thm:peraffkno`) on the diagonal threshold mesh: the
+mesh's future-day extrema and its limiting-belief value share their lower and upper
+limits.  This is the form `perexpkno` consumes. -/
+lemma BoundedSequence.mesh_peraffkno
+    {As : ℕ → LUVCombination} {P : History}
+    (h : BoundedSequence As P) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    liminf (affineFutureLow (fun n => (As n).meshAffine (n + 1)) P) atTop =
+        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+      limsup (affineFutureHigh (fun n => (As n).meshAffine (n + 1)) P) atTop =
+        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop :=
+  h.poly.mesh_poly.peraffkno P DP
+    (h.mesh_boundedPrices
+      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
+    h.mesh_magnitudeBounded hworld
+
+/-- Affine coherence (`thm:affcoh`) on the diagonal threshold mesh: the mesh's
+completed-world extrema sandwich its limiting-belief value, which in turn sandwiches the
+market's diagonal price.  This is the form `expcoh` consumes. -/
+lemma BoundedSequence.mesh_affcoh
+    {As : ℕ → LUVCombination} {P : History}
+    (h : BoundedSequence As P) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP]
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (liminf (completedAffineLow (fun n => (As n).meshAffine (n + 1)) P DP) atTop ≤
+        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+      liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
+        liminf (fun n => (As n).expect P n) atTop) ∧
+      (limsup (fun n => (As n).expect P n) atTop ≤
+          limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
+        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
+          limsup (completedAffineHigh (fun n => (As n).meshAffine (n + 1)) P DP) atTop) := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  simpa only [meshAffine_price_diagonal] using
+    h.poly.mesh_poly.affcoh P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
+      hworld
+
+/-! ## The expectation theorems -/
 
 /-- `thm:exppolymax`: the market's diagonal expectation has the same lower/upper
 limits as the corresponding future-day expectation extrema.  The only operational
@@ -2064,19 +2182,21 @@ theorem BoundedSequence.exppolymax
   have haff := h.mesh_affpolymax DP hworld
   exact ⟨haff.1.trans hhighLimits.1, haff.2.trans hlowLimits.2⟩
 
-lemma BoundedSequence.mesh_peraffkno
-    {As : ℕ → LUVCombination} {P : History}
-    (h : BoundedSequence As P) (DP : DeductiveProcess)
+/-- `exppolymax` with the rational share bound obtained from the `BoundedSequence` itself
+(`exists_rat_shareBound`) rather than asked of the client. -/
+lemma BoundedSequence.exppolymax_ofBounded
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
+    (h : BoundedSequence As P)
+    (ops : MeshSoftmaxOperationalWitness As P)
+    (hvalued : WorldValued As DP)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    liminf (affineFutureLow (fun n => (As n).meshAffine (n + 1)) P) atTop =
-        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
-      limsup (affineFutureHigh (fun n => (As n).meshAffine (n + 1)) P) atTop =
-        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop :=
-  h.poly.mesh_poly.peraffkno P DP
-    (h.mesh_boundedPrices
-      (fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ))
-    h.mesh_magnitudeBounded hworld
+    liminf (fun n => (As n).expect P n) atTop =
+        liminf (futureHigh As P) atTop ∧
+      limsup (fun n => (As n).expect P n) atTop =
+        limsup (futureLow As P) atTop := by
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
+  exact h.exppolymax ops hvalued b hb hshare hworld
 
 /-- `thm:perexpkno`: persistence of expectation knowledge for represented bounded
 LUV-combination sequences.
@@ -2130,24 +2250,22 @@ theorem BoundedSequence.perexpkno
   exact ⟨hlowLimits.1.trans (hper.1.trans hlimLimits.1.symm),
     hhighLimits.2.trans (hper.2.trans hlimLimits.2.symm)⟩
 
-lemma BoundedSequence.mesh_affcoh
-    {As : ℕ → LUVCombination} {P : History}
-    (h : BoundedSequence As P) (DP : DeductiveProcess)
+/-- `perexpkno` with the rational share bound obtained from the `BoundedSequence` itself
+(`exists_rat_shareBound`) rather than asked of the client. -/
+lemma BoundedSequence.perexpkno_ofBounded
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
+    (h : BoundedSequence As P)
+    (ops : MeshSoftmaxOperationalWitness As P)
+    (hvalued : WorldValued As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (liminf (completedAffineLow (fun n => (As n).meshAffine (n + 1)) P DP) atTop ≤
-        liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
-      liminf (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
-        liminf (fun n => (As n).expect P n) atTop) ∧
-      (limsup (fun n => (As n).expect P n) atTop ≤
-          limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ∧
-        limsup (fun n => ((As n).meshAffine (n + 1)).value P (limitingBelief P)) atTop ≤
-          limsup (completedAffineHigh (fun n => (As n).meshAffine (n + 1)) P DP) atTop) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  simpa only [meshAffine_price_diagonal] using
-    h.poly.mesh_poly.affcoh P DP (h.mesh_boundedPrices hP) h.mesh_magnitudeBounded
-      hworld
+    liminf (futureLow As P) atTop =
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      limsup (futureHigh As P) atTop =
+        limsup (fun n => (As n).expectInf P) atTop := by
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
+  exact h.perexpkno ops hvalued hcode b hb hshare hworld
 
 /-- `thm:expcoh`: exact completed-world LUV values bound the true limiting expectation,
 which in turn coheres with the market's diagonal expectations.
@@ -2223,62 +2341,112 @@ theorem BoundedSequence.expcoh
         _ ≤ limsup (completedAffineHigh Ms P DP) atTop := haff.2.2
         _ = limsup (completedHigh As P DP) atTop := hhighLimits.2.symm
 
+/-- `expcoh` with the rational share bound obtained from the `BoundedSequence` itself
+(`exists_rat_shareBound`) rather than asked of the client. -/
+lemma BoundedSequence.expcoh_ofBounded
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    [IsLogicalInductor P DP]
+    (h : BoundedSequence As P)
+    (ops : MeshSoftmaxOperationalWitness As P)
+    (hvalued : WorldValued As DP)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    (liminf (completedLow As P DP) atTop ≤
+        liminf (fun n => (As n).expectInf P) atTop ∧
+      liminf (fun n => (As n).expectInf P) atTop ≤
+        liminf (fun n => (As n).expect P n) atTop) ∧
+      (limsup (fun n => (As n).expect P n) atTop ≤
+          limsup (fun n => (As n).expectInf P) atTop ∧
+        limsup (fun n => (As n).expectInf P) atTop ≤
+          limsup (completedHigh As P DP) atTop) := by
+  obtain ⟨b, hb, hshare⟩ := h.exists_rat_shareBound
+  exact h.expcoh ops hvalued hcode b hb hshare hworld
+
 /-! ## Statistical expectation lifts -/
+
+end LUVCombination
+
+/-- Splitting a null perturbation off an inclusive weighted average: eventually the
+average of `y` is the average of `x` plus the average of `y - x`, and that correction is
+below `ε / 2`.  This is everything the two sign directions of
+`congr_of_sub_tendsto_zero` share. -/
+private lemma weightedAverage_split_of_sub_tendsto_zero
+    {w x y : ℕ → ℝ} (hw0 : ∀ n, 0 ≤ w n)
+    (hdiv : Tendsto (prefixSum w) atTop atTop)
+    (hpos : ∀ᶠ n in atTop, 0 < prefixSum w n)
+    (hsub : Tendsto (fun n => y n - x n) atTop (𝓝 0)) {ε : ℝ} (hε : 0 < ε) :
+    ∀ᶠ n in atTop,
+      weightedAverage w y n =
+          weightedAverage w x n + weightedAverage w (fun i => y i - x i) n ∧
+        |weightedAverage w (fun i => y i - x i) n| < ε / 2 := by
+  have havg : Tendsto (weightedAverage w (fun i => y i - x i)) atTop (𝓝 0) :=
+    LUVCombination.weightedAverage_tendsto_zero_of_tendsto_zero hw0 hdiv hsub
+  have herr : ∀ᶠ n in atTop, |weightedAverage w (fun i => y i - x i) n| < ε / 2 := by
+    obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 havg (ε / 2) (half_pos hε)
+    refine eventually_atTop.2 ⟨N, fun n hn => ?_⟩
+    simpa only [Real.dist_eq, sub_zero] using hN n hn
+  filter_upwards [herr, hpos] with n he hnpos
+  refine ⟨?_, he⟩
+  rw [← weightedAverage_add w x (fun i => y i - x i) (ne_of_gt hnpos)]
+  congr 1
+  funext i
+  ring
+
+namespace PseudorandomAbove
 
 /-- A pointwise null perturbation is invisible to every legal divergent weighted
 average, so it preserves pseudorandom nonnegativity. -/
-lemma PseudorandomAbove.congr_of_sub_tendsto_zero
+lemma congr_of_sub_tendsto_zero
     {x y : ℕ → ℝ} {f : DeferralFunction} {P : History}
     (hx : PseudorandomAbove x f P)
     (hsub : Tendsto (fun n => y n - x n) atTop (𝓝 0)) :
     PseudorandomAbove y f P := by
   intro W hWgen hWdiv hpatient ε hε
-  let w : ℕ → ℝ := fun i => (W i).denote P
-  have hbase := hx W hWgen hWdiv hpatient (ε / 2) (half_pos hε)
-  have havg : Tendsto (weightedAverage w (fun i => y i - x i)) atTop (𝓝 0) :=
-    weightedAverage_tendsto_zero_of_tendsto_zero
-      (fun n => (hWdiv.1 n).1) hWdiv.2 hsub
-  have herr : ∀ᶠ n in atTop,
-      dist (weightedAverage w (fun i => y i - x i) n) 0 < ε / 2 := by
-    obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 havg (ε / 2) (half_pos hε)
-    exact eventually_atTop.2 ⟨N, hN⟩
-  filter_upwards [hbase, herr, hWdiv.eventually_prefixSum_pos] with n hn he hnpos
-  have hy : weightedAverage w y n = weightedAverage w x n +
-      weightedAverage w (fun i => y i - x i) n := by
-    rw [← weightedAverage_add w x (fun i => y i - x i) (ne_of_gt hnpos)]
-    congr 1
-    funext i
-    ring
-  rw [hy]
-  rw [Real.dist_eq, sub_zero] at he
-  linarith [neg_abs_le (weightedAverage w (fun i => y i - x i) n)]
+  filter_upwards [hx W hWgen hWdiv hpatient (ε / 2) (half_pos hε),
+    weightedAverage_split_of_sub_tendsto_zero (w := fun i => (W i).denote P)
+      (fun n => (hWdiv.1 n).1) hWdiv.2 hWdiv.eventually_prefixSum_pos hsub hε]
+    with n hn hsplit
+  rw [hsplit.1]
+  linarith [neg_abs_le
+    (weightedAverage (fun i => (W i).denote P) (fun i => y i - x i) n), hsplit.2]
+
+end PseudorandomAbove
+
+namespace PseudorandomBelow
 
 /-- The corresponding null-perturbation transfer for pseudorandom nonpositivity. -/
-lemma PseudorandomBelow.congr_of_sub_tendsto_zero
+lemma congr_of_sub_tendsto_zero
     {x y : ℕ → ℝ} {f : DeferralFunction} {P : History}
     (hx : PseudorandomBelow x f P)
     (hsub : Tendsto (fun n => y n - x n) atTop (𝓝 0)) :
     PseudorandomBelow y f P := by
   intro W hWgen hWdiv hpatient ε hε
-  let w : ℕ → ℝ := fun i => (W i).denote P
-  have hbase := hx W hWgen hWdiv hpatient (ε / 2) (half_pos hε)
-  have havg : Tendsto (weightedAverage w (fun i => y i - x i)) atTop (𝓝 0) :=
-    weightedAverage_tendsto_zero_of_tendsto_zero
-      (fun n => (hWdiv.1 n).1) hWdiv.2 hsub
-  have herr : ∀ᶠ n in atTop,
-      dist (weightedAverage w (fun i => y i - x i) n) 0 < ε / 2 := by
-    obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 havg (ε / 2) (half_pos hε)
-    exact eventually_atTop.2 ⟨N, hN⟩
-  filter_upwards [hbase, herr, hWdiv.eventually_prefixSum_pos] with n hn he hnpos
-  have hy : weightedAverage w y n = weightedAverage w x n +
-      weightedAverage w (fun i => y i - x i) n := by
-    rw [← weightedAverage_add w x (fun i => y i - x i) (ne_of_gt hnpos)]
-    congr 1
-    funext i
-    ring
-  rw [hy]
-  rw [Real.dist_eq, sub_zero] at he
-  linarith [le_abs_self (weightedAverage w (fun i => y i - x i) n)]
+  filter_upwards [hx W hWgen hWdiv hpatient (ε / 2) (half_pos hε),
+    weightedAverage_split_of_sub_tendsto_zero (w := fun i => (W i).denote P)
+      (fun n => (hWdiv.1 n).1) hWdiv.2 hWdiv.eventually_prefixSum_pos hsub hε]
+    with n hn hsplit
+  rw [hsplit.1]
+  linarith [le_abs_self
+    (weightedAverage (fun i => (W i).denote P) (fun i => y i - x i) n), hsplit.2]
+
+end PseudorandomBelow
+
+namespace LUVCombination
+
+/-- The mesh truth stream differs from the rescaled LUV truth by a null sequence: this is
+`meshTheoryTruth_sub_truth_tendsto` scaled by `meshNormScale b`, and it is the
+perturbation the two pseudorandomness transfers below absorb. -/
+private lemma WorldValued.normalizedMeshTruth_sub_scaled_tendsto
+    {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
+    (h : WorldValued As DP)
+    {truth : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) :
+    Tendsto (fun n => normalizedMeshTruth As P DP hworld b n -
+      ((meshNormScale b : ℚ) : ℝ) * truth n) atTop (𝓝 0) := by
+  have herr := (h.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare).const_mul
+    ((meshNormScale b : ℚ) : ℝ)
+  simpa only [normalizedMeshTruth, mul_sub, mul_zero] using herr
 
 /-- Exact LUV truth pseudorandomness transfers to the normalized threshold mesh used by
 the affine statistical hubs. -/
@@ -2289,14 +2457,12 @@ lemma WorldValued.normalizedMeshTruth_pseudorandomAbove
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {f : DeferralFunction} (hpseudo : PseudorandomAbove truth f P) :
-    PseudorandomAbove (normalizedMeshTruth As P DP hworld b) f P := by
-  let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
-  have hscaled := PseudorandomAbove.const_mul_pos hpseudo (meshNormScale_pos b)
-  apply PseudorandomAbove.congr_of_sub_tendsto_zero hscaled
-  have herr := h.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
-  have hscaledErr := herr.const_mul q
-  simpa only [normalizedMeshTruth, q, mul_sub, mul_zero] using hscaledErr
+    PseudorandomAbove (normalizedMeshTruth As P DP hworld b) f P :=
+  PseudorandomAbove.congr_of_sub_tendsto_zero
+    (hpseudo.const_mul_pos (meshNormScale_pos b))
+    (h.normalizedMeshTruth_sub_scaled_tendsto hdet hworld b hshare)
 
+/-- The nonpositive direction of the same transfer. -/
 lemma WorldValued.normalizedMeshTruth_pseudorandomBelow
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     (h : WorldValued As DP)
@@ -2304,13 +2470,10 @@ lemma WorldValued.normalizedMeshTruth_pseudorandomBelow
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (b : ℚ) (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     {f : DeferralFunction} (hpseudo : PseudorandomBelow truth f P) :
-    PseudorandomBelow (normalizedMeshTruth As P DP hworld b) f P := by
-  let q : ℝ := ((meshNormScale b : ℚ) : ℝ)
-  have hscaled := PseudorandomBelow.const_mul_pos hpseudo (meshNormScale_pos b)
-  apply PseudorandomBelow.congr_of_sub_tendsto_zero hscaled
-  have herr := h.meshTheoryTruth_sub_truth_tendsto hdet hworld b hshare
-  have hscaledErr := herr.const_mul q
-  simpa only [normalizedMeshTruth, q, mul_sub, mul_zero] using hscaledErr
+    PseudorandomBelow (normalizedMeshTruth As P DP hworld b) f P :=
+  PseudorandomBelow.congr_of_sub_tendsto_zero
+    (hpseudo.const_mul_pos (meshNormScale_pos b))
+    (h.normalizedMeshTruth_sub_scaled_tendsto hdet hworld b hshare)
 
 /-- `thm:recurringunbiasednessexp`: determined LUV-combination truth is recurrently
 unbiased under every represented divergent weighting.  The two verifier premises are
@@ -2320,7 +2483,21 @@ instantiated on the concretely normalized threshold mesh.
 Determination is the paper's `def:affthmval` premise on the *combination*; `hvalued` only
 asks that each completed world value the component LUVs somehow.  The mesh they trade is
 therefore only approximately determined, and the bias-run economics absorbs the
-(negligible-against-magnitude) mesh error. -/
+(negligible-against-magnitude) mesh error.
+
+*One printed premise is deliberately dropped.*  The printed
+`thm:recurringunbiasednessexp` (tex:1812-1820) additionally asks that the support of `w`
+lie in the image of `f` — a clause referring to a deferral function the statement never
+introduces.  It is a transposition: the clause belongs on `thm:wubexp` (tex:1822-1832),
+where the affine twins place it (`thm:wubaff` has it, `thm:recurringunbiasedness` does
+not), and it is carried there, on `wubexp`'s `hsupport`.  This endpoint therefore takes a
+bare generable divergent weighting, with no deferral function at all.  Recorded as `PE2`
+in `notes/paper-errata.md`.
+
+The rational share bound `b` occurs in the *types* of `hverify` and `hverifyNeg`, through
+`normalizedMesh As b`, so there is no `_ofBounded` form of this statement: a client has
+to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one) before it can even
+state the verifier premises. -/
 theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2401,6 +2578,22 @@ Determination is the paper's own `def:affthmval` premise — all completed world
 the value of the *combination*.  `hvalued` only asks that each completed world value the
 component LUVs somehow (paper LUVs always do, `W(X)` being a supremum); the components
 are free to differ between worlds, so `Z = X + (1 - X)` is covered.
+
+*One premise this statement carries is not printed at this node.*  `hsupport`
+(`WeightingSupportedOnDeferralImage`: the support of `w` lies in the image of `f`) is
+absent from the printed `thm:wubexp` (tex:1822-1832) and appears instead, spuriously, on
+`thm:recurringunbiasednessexp` (tex:1812-1820) — whose statement never introduces a
+deferral function `f` for it to refer to.  The affine twins settle the intended
+placement: `thm:wubaff` (tex:1480-1490) carries the clause and
+`thm:recurringunbiasedness` (tex:1225-1233) does not.  The clause belongs on the feedback
+theorem, so it is stated here; the mirror half of the same correction is
+`recurringunbiasednessexp_of_historicalVerifiers`, which drops it.  Recorded as `PE2` in
+`notes/paper-errata.md`.
+
+The rational share bound `b` occurs in the *types* of `emit` and `bridge`, through
+`normalizedMesh As b`, so there is no `_ofBounded` form of this statement: a client has
+to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one) before it can even
+state the operational premises.
 Paper node: `thm:wubexp` -/
 theorem BoundedSequence.wubexp
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
@@ -2477,7 +2670,12 @@ theorem BoundedSequence.wubexp
   simpa only [AsympEq, sub_zero, w, market] using hfinal
 
 /-- The nonnegative comparison direction of `thm:prandexp`, taking the bias-run
-historical-verifiability premises for the normalized threshold mesh. -/
+historical-verifiability premises for the normalized threshold mesh.
+
+The rational share bound `b` occurs in the *types* of `clock`, `hverify` and `hverifyNeg`,
+through `normalizedMesh As b`, so this statement and its two siblings have no `_ofBounded`
+form: a client has to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one)
+before it can state the premises. -/
 theorem BoundedSequence.prandexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
@@ -2589,24 +2787,6 @@ theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
       hverifyNeg hverifyNegNeg,
     h.prandexp_of_historicalVerifiers hvalued hdet b hshare hworld f clock hpseudo.1
       hverify hverifyNeg⟩
-
-#print axioms LUV.expectAffine_priceAt
-#print axioms meshAffine_price
-#print axioms meshAffine_value
-#print axioms meshAffine_value_near
-#print axioms meshAffine_magnitude_le_shareNorm
-#print axioms BoundedSequence.affineBCS
-#print axioms BoundedSequence.mesh_affpolymax
-#print axioms BoundedSequence.exppolymax
-#print axioms BoundedSequence.mesh_peraffkno
-#print axioms BoundedSequence.perexpkno
-#print axioms BoundedSequence.mesh_affcoh
-#print axioms BoundedSequence.expcoh
-#print axioms BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
-#print axioms BoundedSequence.wubexp
-#print axioms BoundedSequence.prandexp_of_historicalVerifiers
-#print axioms BoundedSequence.prandexp_below_of_historicalVerifiers
-#print axioms BoundedSequence.prandexp_eq_of_historicalVerifiers
 
 end LUVCombination
 

@@ -95,6 +95,13 @@ jobs:
       - name: Check paper wiring
         run: python3 scripts/check_paper_wiring.py
 
+      # Blocking: every .lean under LogicalInduction/ is reachable from a lakefile root
+      # and imports nothing that does not exist. A module orphaned by a split, a deleted
+      # lane, or a stale roll-up import list is invisible to `lake build` — nothing
+      # compiles it, so nothing fails — which is exactly what this closes.
+      - name: Check LogicalInduction file closure
+        run: python3 scripts/check_li_file_closure.py
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

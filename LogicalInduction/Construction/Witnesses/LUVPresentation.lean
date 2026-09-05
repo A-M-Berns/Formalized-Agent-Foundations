@@ -3,25 +3,33 @@ import LogicalInduction.Construction.Witnesses.ComputationDP
 import LogicalInduction.Properties.ExpectationProperties
 
 /-!
-# Deriving the LUV presentation interfaces from certified arithmetic (F7, item 3)
+# LUV world-value interfaces, derived from certified arithmetic
 
 `Framework/Expectations.lean` and `Properties/ExpectationProperties.lean` state the world–value
-coherence of LUVs as **caller-supplied hypotheses** — `PCWorld.ValuesAt`, `WorldValued`, and
-`ExactTheoryPresentation` — with no arithmetic content behind them.  This file derives them
-from a certified LUV syntax instead of assuming them.
+coherence of logically uncertain variables (`def:luv`) as caller-supplied hypotheses —
+`PCWorld.ValuesAt`, `LUVCombination.WorldValued` and `LUVCombination.ExactTheoryPresentation` —
+with no arithmetic content behind them.  This module derives all three for the `dd:luv-arith`
+certified class of `LUVArithmetic.lean`, whose LUVs are presented by rational thresholds
+`num i / den i` over an arithmetic theory representing computations.
 
-This file does exactly that for the `dd:luv-arith` class (`LUVArithmetic.lean`).  The one
-remaining premise is `ArithmeticLUVPresentation`: that the deductive process **reveals** the
-`Θ`-provable threshold literals — the direct analogue of `ComputationSyntax`'s
-`ComputationTheoryPresentation` for the halting tail, and the same honestly-disclosed boundary
-(the audit accepts that boundary for the computation tail; here it is strictly stronger than the
-former raw `ExactTheoryPresentation` hypothesis, because the threshold truth is now pinned by
-`Θ`-provability of a decidable predicate).
+`LUV.tagIndex` recovers a certified LUV's family index from the code of its own threshold atom,
+with `toLUV_tagIndex` the retraction on the `toLUV` image.
 
-Given that premise, `ExactTheoryPresentation` — and hence `WorldValued` and `ValuesAt` — is a
-**theorem**, via `threshold_holds_iff`: every world consistent with the process holds `⌜X_i > r⌝`
-exactly when the rational `r` is below the standard value `num i / den i`, with no nonstandard
-slack (the decidable-threshold collapse of `def:luv`'s roundabout supremum).
+`ArithmeticLUVPresentation` is the one residual premise: the deductive process reveals the
+`Θ`-provable positive threshold literals and the `Θ`-provable refutations.  It is the same
+disclosed boundary that `ComputationTheoryPresentation` carries on the halting tail, and it is
+stronger than a raw `ExactTheoryPresentation` hypothesis, because threshold truth is pinned by
+`Θ`-provability of a decidable predicate rather than assumed.  It is a Tier-2 frozen structure
+carrying an `[RepresentsComputations T]` instance binder.
+
+The main result `threshold_holds_iff` collapses the world value: for such a theory every world
+consistent with the process holds `⌜X_i > r⌝` exactly when the rational `r` is below the standard
+value `num i / den i`, with no nonstandard slack.  What that costs, and why no soundness
+instance is taken, is stated at the declaration.
+
+From it come `exactTheoryPresentation_ofArithmetic`, consumed in `LUVExpectationCertified.lean`
+through `worldValued_ofArithmetic`, and `valuesAt_ofArithmetic`, the single-LUV form for the
+property families that take `PCWorld.ValuesAt` directly.
 -/
 
 namespace LogicalInduction
@@ -31,6 +39,8 @@ open LO.FirstOrder LO.FirstOrder.Arithmetic
 namespace ComputableLUV
 
 variable (L : ComputableLUV)
+
+/-! ## Recovering a certified LUV's family index -/
 
 /-- Recover a computable-function LUV's family index from its threshold naming (`gt 0` is the
 atom `⌜X_i > 0⌝`, whose code carries `i`).  A LUV outside the `toLUV` image tags to `0`. -/
@@ -61,11 +71,17 @@ structure _root_.LogicalInduction.ArithmeticLUVPresentation
 
 variable {L}
 
-/-- **The world-value collapse.**  For a theory representing computations whose provable
-thresholds the process reveals, every consistent world holds `⌜X_i > r⌝` exactly when `r` is
-below the standard rational value — the decidable-threshold discharge of `def:luv`'s world
-value.  Both directions run on the paper's own premise: no soundness assumption. -/
-theorem threshold_holds_iff {DP : DeductiveProcess} {T : ArithmeticTheory}
+/-! ## The world-value collapse -/
+
+/-- For a theory representing computations whose provable thresholds the process reveals, every
+consistent world holds `⌜X_i > r⌝` exactly when `r` is below the standard rational value — the
+decidable-threshold discharge of `def:luv`'s world value.  Both directions run on the paper's own
+representability premise (`tex:604`); no soundness instance is taken.
+
+The `def:luv` provenance line sits on `ArithmeticLUVPresentation` above, which is the node's
+carrier; this collapse is the supporting fact `AxiomAudit.lean` classifies as internal
+infrastructure of the `dd:luv-arith` lane, so it carries no provenance line of its own. -/
+lemma threshold_holds_iff {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T] [RepresentsComputations T]
     (pres : ArithmeticLUVPresentation L DP T) {v : PCWorld}
     (hv : v.ConsistentWithTheory DP) (i : ℕ) (r : ℚ) :
@@ -83,7 +99,7 @@ theorem threshold_holds_iff {DP : DeductiveProcess} {T : ArithmeticTheory}
     obtain ⟨k, hk⟩ := pres.threshold_enters i r (L.threshold_provable i r hltq)
     exact hv k _ hk
 
-/-! ## Deriving `ExactTheoryPresentation` -/
+/-! ## Deriving `ExactTheoryPresentation`, `WorldValued` and `ValuesAt` -/
 
 /-- **`ExactTheoryPresentation` is derived, not assumed.**  For any LUV-combination
 sequence all of whose LUVs are `dd:luv-arith` LUVs, the interface is constructed from the

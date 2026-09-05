@@ -17,6 +17,18 @@ the settled design decisions and the correspondence table, and points here for p
 - **A witness-file edit blocks everyone downstream of it in a shared worktree.** Parallel
   sessions in one tree see each other's syntax errors; poll and do unaffected work rather
   than assuming your own edit broke the build.
+- **Count columns in CHARACTERS, not bytes.** `awk`'s `length` and most shell one-liners
+  count bytes, so every line carrying `𝗜𝚺₁`, `≈ₙ`, `⊢` or a theory glyph over-reports its
+  width by 3-4x. A survey that "found 60 over-long lines" found 10. Use
+  `python3 -c 'len(line)'` on decoded text.
+- **The worktree isolation guard rejects a command containing the substring `git` anywhere**,
+  including inside an identifier like `digitAt` or a path like `DigitBits.lean`, and rejects
+  shell loops and variable assignments outright. Split such commands, or drive them from a
+  script file.
+- **`#print axioms` is not a gate and never was.** It prints to the build log; nothing fails
+  on it. The `#assert_axioms_clean` blocks in `AxiomAudit.lean` are the only axiom gate, and
+  they reach a declaration only by naming it or through an asserted declaration's proof term
+  — never downstream, so an applied witness needs its own assertion.
 
 ## Parsing and elaboration
 
@@ -34,6 +46,24 @@ the settled design decisions and the correspondence table, and points here for p
   gets stuck); use `simp [evaln]` for concrete evaluations. Likewise `native_decide`
   misreports on goals with free variables in the token-decode area, and
   `simp [strategyOfTokens, …]` sticks on the dependent `match hdecode :` — use bare `rfl`.
+- **A docstring must come AFTER `open … in` / `set_option … in`, not before.** Written
+  before the modifier the file still elaborates — Lean silently drops the modifier — and the
+  failure surfaces later, somewhere else, as a missing instance or a heartbeat blowup. The
+  same block must not be moved above a `/-! … -/` header.
+- **A `/-! … -/` section header between a docstring and its declaration is a syntax error.**
+  Detector: a line ending in `-/` immediately followed by a line opening `/-!`. Two
+  consecutive `/-- … -/` docstrings are likewise a parse error.
+- **`obtain` does not typecheck against an existential in a `Type`-valued goal.** Producing
+  data from `∃ …` there needs `Classical.choose` / `Classical.choose_spec`, not `rcases`
+  destructuring; the error names the motive, not the tactic.
+- **A `private lemma` declared inside a `variable` section auto-includes that section's
+  instance binders** (e.g. `[T.Δ₁]`), silently widening its signature. Declare such helpers
+  above the section, or `omit` the binder explicitly.
+- **`try simp only []` can be load-bearing.** It beta-reduces a redex left by a preceding
+  `rw`; deleting it as a no-op breaks the next step with an unrelated-looking error. If you
+  remove one, replace it with an explicit `show`.
+- **`Option.pure_def` is the missing rewrite when collapsing an `Option.bind` idiom** —
+  `pure x` does not `simp` to `some x` on its own.
 
 ## Proof shapes
 
@@ -88,7 +118,7 @@ the settled design decisions and the correspondence table, and points here for p
   scratch-checking hazard that a real `lake build` would have caught — one more reason the
   entry above says `lake env lean` is not a gate.
 
-## Traps recorded in the 2026-08-28 write-out / source-encoding round
+## Write-out and source-encoding traps
 
 - **A failed elaboration makes `#print axioms` report `sorryAx` on *downstream* declarations
   in the same file.** Check the error list and `grep -rn sorry` before treating a build-log
@@ -109,7 +139,7 @@ the settled design decisions and the correspondence table, and points here for p
   failure is a bare "failed to synthesize Theory.Delta1 ISigma1".
 - **Don't `rw [thyName]` to unfold a theory built as `insert σ 𝗜𝚺₁`**; use
   `inferInstanceAs (Theory.Delta1 (insert σ 𝗜𝚺₁))` and state provability lemmas at the
-  unfolded sentence. `[ℕ ⊧* T] → T.SoundOn F` (`Arithmetic/Basic/Model.lean:99`) gives
+  unfolded sentence. `[ℕ ⊧* T] → T.SoundOn F` (Foundation, `FirstOrder/Arithmetic/Basic/Model.lean`, the `Theory.SoundOn` instance) gives
   `SoundOnHierarchy 𝚺 1` *and* `Consistent` for free once every axiom is true in ℕ.
 - **`split_ifs <;> omega` is unsafe when a guard is decidably false on literals** — it leaves
   `h : False ⊢ 5 = 1`. Discharge guards explicitly: `rw [if_neg (by omega), …, if_pos (by decide)]`.
@@ -150,8 +180,8 @@ the settled design decisions and the correspondence table, and points here for p
   (`> log 2>&1; echo EXIT=$?`) and grep the log for `^error`.
 - **`LUV.RpnThresholdCodes`/`RpnThresholdCodeSeq` are `def`s**, so `h.comp` dot-notation fails;
   ascribe to the unfolded `RpnSentenceCodes _` first. The index shift Seq→single is reindexing
-  along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); `RpnThresholdCodes.constSeq`
-  goes the OPPOSITE way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
+  along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); there is no lemma
+  going the other way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
   near the END of the file — client examples at concrete LUVs must be placed after them.
 - **Adding a tag to `parseStructuredArithmeticFormula` (Framework/Criterion.lean) has FOUR obligatory
   downstream repairs:** `parseStructuredArithmeticFormula_consumed_lt` and `_suffix`
@@ -195,7 +225,7 @@ the settled design decisions and the correspondence table, and points here for p
   identifier"** for the new declarations — rebuild just that module first
   (`safe-lake.sh build LogicalInduction.Framework.RepresentsComputations`).
 - **Vacuous-quantifier introduction is not in Foundation's `Theory.Proof` API** (`specialize` only
-  eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Completeness/CounterModel.lean:253)
+  eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Foundation, `FirstOrder/Completeness/CounterModel.lean`)
   → `provable_iff_of_realize_iff`; write the model lambda as `fun M _ _ => by …` so `[Nonempty M]` is
   introduced. In `∀ n, T ⊢ ∼(σ/[↑n])` the binder infers as a closed TERM, not ℕ — spell `∀ n : ℕ`.
   `ArithmeticTerm` takes a type argument; closed terms are `(‘↑n’ : ArithmeticSemiterm Empty 0)`.
@@ -207,7 +237,9 @@ the settled design decisions and the correspondence table, and points here for p
   `PolySegStream.blocks` needs a constant block width. `binNumeralEnc_length_le` is `8·log₂v+7`.
 - **`provable_subst_iff_of_val T φ t v hval : T ⊢ φ/[t.const] ↔ T ⊢ φ/[↑v]`** (RepresentsComputations.lean):
   completeness out, `Theory.Proof.sound` back; needs only `𝗣𝗔⁻ ⪯ T` (Foundation derives it from
-  `[𝗜𝚺₁ ⪯ T]`, Schemata.lean:404); state `hval` over `M : Type` to match `Arithmetic.complete.{0}`.
+  `[𝗜𝚺₁ ⪯ T]` — `FirstOrder/Arithmetic/Schemata.lean` registers `[𝗜𝚺₀ ⪯ T]`, `[𝗜𝚺₁ ⪯ T]`
+  and `[𝗣𝗔 ⪯ T]` instances for it, and `[𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` besides, so a `⪯` binder is
+  often redundant and can be checked dead by reading that file rather than by a build); state `hval` over `M : Type` to match `Arithmetic.complete.{0}`.
   `Structure.numeral_eq_numeral` lands on `ORingStructure.numeral`; bridge with `numeral_eq_natCast`.
 - **`𝗣𝗔⁻`/`⊧*` are PARSE errors ("expected token") without `import …PeanoMinus.Basic`/`.Schemata`.**
 - **Atom-equality → formula-equality chain:** `paperPrimeSentence_injective` (explicit `(a₁ := (true, φ))`),
@@ -250,4 +282,4 @@ Splicing a replacement theorem by cutting from the START of its docstring to the
 `check_endpoint_coverage.py` and `check_paper_wiring.py` all fail — the last two with a
 confusing "carries Paper node(s) none" curation error pointing at the wrong problem.
 Always run the four checkers after a docstring-boundary edit, and cut to the start of
-the next *docstring*, not the next declaration keyword. (Observed T8/i.)
+the next *docstring*, not the next declaration keyword.

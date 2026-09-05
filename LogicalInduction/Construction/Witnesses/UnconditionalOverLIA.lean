@@ -9,17 +9,40 @@ import LogicalInduction.Construction.Witnesses.UniversalDovetailer
 /-!
 # Unconditional instantiations over the constructed `LIA` — semimeasure & conditioning
 
-Companion to `ComputationDP.lean` (which instantiates the meta-learning and self-reference
-endpoints over the provability process `paperDP`).  Here two further property families are
-made unconditional over a constructed `LIA` inductor:
+`thm:dus` (tex:1561), `thm:strict` (tex:1575) and `thm:scon` (tex:1613), made unconditional
+over a constructed `LIA`.  Companion to `ComputationDP.lean`, which does the same for the
+meta-learning and self-reference families.
 
-* **Universal semimeasure** (`thm:dus`) over the constantly-empty deductive process, whose
-  market non-vacuity `hworld` is trivial (no stage constrains any world).
-* **Conditioning** (`thm:scon`), a *transformation* result: the constructed inductor,
-  conditioned on a computable event, is again a logical inductor over the union process.
+`thm:dus` runs in two lanes: over `emptyBitDeductiveProcess`, where `hworld` is trivial and
+atom independence is discharged vacuously, and over `paperDP T`, whose stages are non-empty
+and where `paperIndependentBitAtoms` discharges independence substantively.
 
-Where a from-below approximation of the semimeasure and its threshold-emission certificate
-(`A`/`emit`) are still needed, they stay explicit caller inputs rather than being assumed.
+Objects defined: `bitAtomTag = 7`, `paperBitAtom`, `bitExtensionWorld` (grafting a bit
+assignment at the reserved tag), `paperIndependentBitAtoms`, `paperBitPrefixCodes` and
+`paperBitPrefixSentences`.
+
+Why the tag is needed: `paperDP T = (theoremDP T).union (paperTheoryDP T)` commits to event
+atoms (payload tags `0`–`2`) and paper-prime atoms (tag `5`), while tags `3`, `4` and `6`
+belong to `productTag`, `semanticPrimeTag` and `oldLanguageTag`, so `7` is the first free
+one; `eventAtom_atomCodes_ne_bitAtomTag` and `paperDP_atomCodes_ne_bitAtomTag` prove the
+disjointness, which is what lets an arbitrary bit assignment be grafted onto a
+stage-consistent world without disturbing its verdict on the stage.  Tagging costs nothing on
+the naming side: the write-out emitter is stated for an arbitrary `PolyFueled` name map, and
+`fun k ↦ Nat.pair bitAtomTag k` is one (`def:ec` write-out metering).
+
+`thm:scon` is a *transformation* result: the constructed inductor, conditioned on a
+computable event, is again a logical inductor over the union process, in fixed and growing
+forms and at both the fuel and machine quantifiers, with the degenerate stage-unsatisfiable
+case carried by `isLogicalInductor_of_stage_unsatisfiable` and the consistent case by
+propositional compactness.  `exists_growing_conditioned_machine_inductor` is its non-vacuity
+witness, instantiated at `growingConditionProcess`, whose stages strictly grow, rather than
+at the degenerate `extra.D n = ∅` inhabitant, which would make the conclusion a restatement
+of the unconditioned theorem.
+
+The from-below approximation of the semimeasure and its threshold-emission certificate
+(`A`/`emit`) remain explicit caller inputs; the dovetail endpoints below discharge them.  As
+the README records, the input-free semimeasure endpoints hold over the constantly-empty
+process, and the substantive layer is the `_paperDP` family.
 -/
 
 namespace LogicalInduction
@@ -28,7 +51,7 @@ open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open LO.Propositional
 open Filter Topology
 
-/-! ## The empty deductive process is computable, with trivial non-vacuity -/
+/-! ## The empty deductive process -/
 
 /-- The constantly-empty deductive process is computable: one fixed program emits the code
 of `∅` on every input. -/
@@ -42,7 +65,7 @@ lemma emptyBitDeductiveProcess_hworld (n : ℕ) :
     ∃ v : PCWorld, v.ConsistentWith (emptyBitDeductiveProcess.D n) :=
   ⟨fun _ => False, by intro φ hφ; simp [emptyBitDeductiveProcess] at hφ⟩
 
-/-! ## Universal semimeasure domination, unconditional over `LIA` -/
+/-! ## Universal semimeasure domination over the empty process -/
 
 /-- `thm:dus`, unconditional over `LIA` except for the semimeasure's approximation data.
 The market / inductor / non-vacuity side is fully discharged — the inductor is the
@@ -50,7 +73,7 @@ constructed `LIA` over the (computable) empty process and `hworld` is trivial �
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
 
 The prefix-sentence presentation is the constructed `ordinaryBitPrefixSentences`, whose
-token-metered naming certificate is discharged by `ordinaryBitPrefixCodes`.
+write-out naming certificate (`BigSentenceCodes`) is discharged by `ordinaryBitPrefixCodes`.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_unconditional
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -99,26 +122,14 @@ theorem lic_domination_everyLowerSemicomputable_unconditional
         exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
     _ ≤ _ := hbelief σ
 
-/-! ### The non-degenerate witness: bit atoms over the paper's own deductive process
+/-! ## Bit atoms over the paper's own deductive process
 
-`ordinaryIndependentBitAtoms` inhabits the premise, but over the constantly empty process,
-so its `realizable` field is discharged vacuously.  This section supplies the substantive
-witness: the same literal conjunctions, over an atom family realizable against every stage
-of `paperDP T` — the process the construction actually runs on, whose stages carry the
-established theorem stream *and* the universal theorem stream of `T`, and are therefore
-saying something.
-
-The only thing that has to be arranged is **freshness**.  `paperDP T` is
-`(theoremDP T).union (paperTheoryDP T)`; its stage sentences are built from event atoms
-(payload tags `0`–`2`) and paper-prime atoms (`paperPrimeTag = 5`).  Raw atom indices would
-collide, so the bit atoms are tagged with a reserved tag, `bitAtomTag = 7` (tags `3`, `4`
-and `6` are reserved elsewhere, by `productTag`, `semanticPrimeTag` and `oldLanguageTag`).
-Disjointness then lets an arbitrary bit assignment be *grafted onto* any stage-consistent
-world without disturbing its verdict on the stage.
-
-Tagging costs nothing on the naming side: the write-out emitter above is stated for an
-arbitrary `PolyFueled` name map, and `fun k ↦ Nat.pair bitAtomTag k` is one.
--/
+`ordinaryIndependentBitAtoms` inhabits the independence premise over the constantly empty
+process, so its `realizable` field is discharged vacuously.  The atom family below is the
+substantive witness: the same literal conjunctions, realizable against every stage of
+`paperDP T`, whose stages carry the established theorem stream *and* the universal theorem
+stream of `T`.  The freshness arrangement that makes this work is `bitAtomTag`, described in
+the module header. -/
 
 section PaperBitAtoms
 
@@ -210,7 +221,7 @@ noncomputable def paperIndependentBitAtoms [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entail
         (paperDP_atomCodes_ne_bitAtomTag T hφ)).mpr (hv₀ φ hφ)
     · exact bitExtensionWorld_holds_paperBitAtom v₀ f k
 
-/-- **The tagged prefix conjunctions are efficiently nameable** (`dd:ec`, write-out
+/-- **The tagged prefix conjunctions are efficiently nameable** (`def:ec`, write-out
 metered).  The reserved tag is applied by a `PolyFueled` name map, so the emitter is the
 same one that serves the untagged family: one `Nat.pair` per token index.
 Paper node: `thm:dus` -/
@@ -229,6 +240,8 @@ noncomputable def paperBitPrefixSentences [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailm
   bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T) paperBitPrefixCodes
 
 end PaperBitAtoms
+
+/-! ## Domination at the paper's own market -/
 
 section PaperDomination
 
@@ -254,18 +267,6 @@ theorem lic_domination_universalSemimeasure_paperDP
     (paperIndependentBitAtoms T) paperBitPrefixCodes A emit
     (liaHistory (paperDP T)) (paperDP_hworld T)
 
-end PaperDomination
-
-/-! ### The same, over the paper's own market
-
-The endpoints above run over `emptyBitDeductiveProcess`, where the atoms' independence is
-vacuous.  The following two repeat them over `paperDP T`, whose stages are non-empty, so the
-independence premise is discharged substantively (`paperIndependentBitAtoms`). -/
-
-section PaperDovetail
-
-variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-
 /-- **`thm:dus` over the constructed dovetail at the paper's market, with no caller input.**
 The `paperDP` analogue of `lic_domination_dovetailSemimeasure_unconditional`: `M` is the
 explicit dovetail `M*`, whose from-below approximation and threshold emission are discharged
@@ -273,7 +274,8 @@ in `Construction/Witnesses/UniversalDovetailer.lean`, and the independence and n
 premises are discharged by `paperIndependentBitAtoms` / `paperBitPrefixCodes` over a process
 whose stages are non-empty.  **No caller input remains, and no premise is vacuous.**
 Paper node: `thm:dus` -/
-theorem lic_domination_dovetailSemimeasure_paperDP :
+theorem lic_domination_dovetailSemimeasure_paperDP
+    [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * Dovetail.universalMass σ ≤ limitingBelief (liaHistory (paperDP T))
         (bitPrefixSentence paperBitAtom σ) :=
@@ -286,6 +288,7 @@ the dovetail carries domination to *every* lower-semicomputable continuous semim
 a deductive process with non-empty stages.
 Paper node: `thm:dus` -/
 theorem lic_domination_everyLowerSemicomputable_paperDP
+    [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
     (ν : LowerSemicomputableContinuousSemimeasure) :
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * ν.mass σ ≤ limitingBelief (liaHistory (paperDP T))
@@ -298,7 +301,9 @@ theorem lic_domination_everyLowerSemicomputable_paperDP
         exact mul_le_mul_of_nonneg_left (hdom σ) hK.le
     _ ≤ _ := hbelief σ
 
-end PaperDovetail
+end PaperDomination
+
+/-! ## Strict domination -/
 
 /-- **`thm:strict` over the constructed dovetail, with no caller input.**  The separator
 argument is `strictSeparatorPresentationOfKleene`, its atom-code hypothesis is
@@ -319,8 +324,9 @@ theorem lic_strict_domination_universalSemimeasure_unconditional :
 
 /-! ## Conditioning over the constructed `LIA` -/
 
-/-- Compatibility wrapper for a caller-supplied conditioning compiler.  The paper-facing
-fixed and growing forms below construct the repaired compiler internally.
+/-- `thm:scon` over the constructed `LIA` at a caller-supplied conditioning compiler: the
+market and the inductor are discharged, the compiler is not.  The fixed and growing forms
+below construct their compiler internally and are what a client should reach for.
 Paper node: `thm:scon` -/
 theorem lic_conditioned_ofCompiler_unconditional
     (T : ArithmeticTheory) [T.Δ₁]
@@ -410,6 +416,8 @@ theorem lic_conditioned_growing_machine_unconditional
   exact ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
     (liaHistory (paperDP T)) (paperDP T) extra more
 
+/-! ## The growing form, non-vacuously -/
+
 /-- **The growing form of `thm:scon` doing visible work.**  Instantiated at
 `growingConditionProcess`, whose stages are nonempty and *strictly grow*, so the adjoined
 condition is a real sentence — never the empty conjunction `⊤` — and it changes as the
@@ -434,25 +442,5 @@ theorem exists_growing_conditioned_machine_inductor
     deductiveStageCondition_growing_ne_top, deductiveStageCondition_growing_ne,
     lic_conditioned_growing_machine_unconditional T growingConditionProcess
       growingCompactConditioningProcessComputation⟩
-
-#print axioms lic_domination_universalSemimeasure_unconditional
-#print axioms lic_domination_dovetailSemimeasure_unconditional
-#print axioms lic_domination_everyLowerSemicomputable_unconditional
-#print axioms lic_strict_domination_universalSemimeasure_unconditional
-#print axioms lic_conditioned_ofCompiler_unconditional
-#print axioms lic_conditioned_fixed_unconditional
-#print axioms lic_conditioned_growing_unconditional
-#print axioms lic_conditioned_fixed_machine_unconditional
-#print axioms lic_conditioned_growing_machine_unconditional
-#print axioms exists_growing_conditioned_machine_inductor
-
-#print axioms eventAtom_atomCodes_ne_bitAtomTag
-#print axioms paperDP_atomCodes_ne_bitAtomTag
-#print axioms paperIndependentBitAtoms
-#print axioms paperBitPrefixCodes
-#print axioms paperBitPrefixSentences
-#print axioms lic_domination_universalSemimeasure_paperDP
-#print axioms lic_domination_dovetailSemimeasure_paperDP
-#print axioms lic_domination_everyLowerSemicomputable_paperDP
 
 end LogicalInduction

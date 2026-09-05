@@ -1,41 +1,63 @@
-/-
-# Write-out emission: token streams whose token *values* may be exponential
-
-The paper's efficiently computable sequences are polynomial-time **write-out** objects:
-the machine prints a serialization whose *length* is polynomial in the day.  Nothing
-bounds the numeric value of what is printed — `δ n = 2⁻ⁿ`, an `n`-bit source string, and
-the Gödel code of a sentence naming an `n`-bit machine are all polynomial to write and
-all exponential in value.
-
-`PolySegStream` (`Framework/Computable.lean`) meters the wrong thing for that purpose: it
-asks for a poly-fueled per-*token* emitter, so each token's numeric value is polynomial in
-the day.  The criterion the traders are judged against is already write-out metered —
-`EfficientlyComputableDigit` meters base-4 digits and `undigitize` reassembles tokens of
-any size — so the restriction lives only in the certificate layer, not in the notion of
-efficiency.
-
-This file supplies the missing certificate layer.  `BigTokenStream t` says: some
-`PolySegStream` of *digits* undigitizes to `t`, block by block.  A token of value `v`
-costs `len4 v + 1` digits, so an exponential token is a polynomially long digit run, and
-`BigDigits` (`Framework/DigitArith.lean`) is exactly the certificate that emits one.
-Because `undigitize` distributes over concatenation at block boundaries
-(`TokenFold.undigitize_append_of_complete`) and `digitize` is a `flatMap` homomorphism,
-every `PolySegStream` combinator transports to `BigTokenStream` mechanically; the classes
-built on top — `BigSentenceCodes` and `BigSpliceStream` — are then combinator-for-
-combinator mirrors of `RpnSentenceCodes` and `RpnSpliceStream`, and the capstone
-`BigSpliceStream.ec` lands in the same `EfficientlyComputable`.
-
-The value-bounded classes are *not* wrong where they are used as fuel certificates: the
-fuel model is unit-cost arithmetic, so a poly-fuel run genuinely does produce a
-poly-*value* output, and dropping `IsPolyBounded` from `PolyFueled` would certify
-repeated squaring.  The error is only in applying that certificate shape to write-out
-data, and this layer is the repair.
-
-Paper node: `def:ec`
--/
 import LogicalInduction.Framework.RpnEmission
 import LogicalInduction.Framework.Machine.TokenFold
 import LogicalInduction.Framework.CodeSource
+
+/-!
+# Write-out emission: token streams whose token *values* may be exponential
+
+`def:ec` (tex:753) is a **write-out** condition: the machine prints a serialization whose
+*length* is polynomial in the day, and nothing bounds the numeric value of what is printed.
+`δ n = 2⁻ⁿ`, an `n`-bit source string, and the Gödel code of a sentence naming an `n`-bit
+machine are all polynomial to write and all exponential in value.  This module is the
+certificate layer for that condition: the classes below meter the digits a day's output
+costs to write, never the magnitude of the tokens it carries.
+
+* **`BigTokenStream t`** — some `PolySegStream` of base-4 digits undigitizes to `t n`, block
+  by block.  A token of value `v` costs `len4 v + 1` digits, so an exponential token is a
+  polynomially long digit run, and `BigDigits` (`Framework/DigitArith.lean`) is the
+  certificate that emits one.  Because `undigitize` distributes over concatenation at block
+  boundaries (`TokenFold.undigitize_append_of_complete`) and `digitize` is a `flatMap`
+  homomorphism, the `PolySegStream` combinator suite transports mechanically —
+  `ofPolySegStream`, `ofBigDigits`, `append`, `comp`, `ifZero`, `concatVar` — with `primrec`
+  and `digitizeStream` on top.
+* **`BigSentenceCodes`** — `def:ec`'s sentence-sequence class, write-out metered, with
+  `ofRpnSentenceCodes`, `ofCanonical`, `ofPolySentenceCodes`, `and`, `neg`, `bigAnd`,
+  `ifZero` and `modDispatch`.  The constructor the layer exists for is
+  `ofDigitSentenceCodes`: a sentence whose Gödel code is exponential in the day — the
+  halting claim about an `n`-bit machine, say — reaches the stream as a two-token escape
+  block whose payload is written out digit by digit.
+* **`BigSpliceStream`** — the write-out mirror of `RpnSpliceStream`, one combinator for one,
+  whose genuinely new constructor is `bigPayload`, splicing a payload token the emitter
+  knows only through its digits.  The mirror is complete on purpose: an emission assembly
+  written against `RpnSpliceStream` transfers to it by renaming combinators.
+* **The value classes.** `DigitMachineCodes` is digit access to `Code.sourceNat`, so a
+  machine with an `O(n)`-symbol source qualifies (tex:1931-1933).  `DigitRatCodes` carries
+  the numerator's `ℤ`-code, the numerator's magnitude and the denominator as three separate
+  digit runs — the split forced by the reciprocal — with `inv_of_pos` the payoff and `sign`
+  reading the sign off the code's parity.
+* **Capstones.** `ec_of_bigTokenStream`, `BigSpliceStream.ec` and the trader constructors
+  `EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`, the write-out
+  forms of the token-metered entry points in `Framework/RpnEmission.lean`.
+* **Strictness.** Four separations are proved, at the paper's own families:
+  `bigDigits_two_pow_not_polyFueled`, `bigTokenStream_not_polySegStream`,
+  `digitRatCodes_two_pow_inv_not_polyRatCodes` and
+  `bigSpliceStream_two_pow_inv_not_rpnSpliceStream`, all reducing to
+  `not_polyFueled_two_pow`.  `BigSentenceCodes` over `RpnSentenceCodes` is an inclusion
+  (`BigSentenceCodes.ofRpnSentenceCodes`) with **no** strictness proof, and is not a strict
+  enlargement as far as this development establishes.
+
+**Design** (`dd:fuel`).  The value-bounded classes are correct *as fuel certificates*: the
+fuel model is unit-cost arithmetic, so a poly-fuel run does produce a poly-*value* output,
+and dropping `IsPolyBounded` from `PolyFueled` would certify repeated squaring.  What that
+certificate shape cannot describe is write-out data, and `PolySegStream`
+(`Framework/Computable.lean`) inherits the restriction by asking for a poly-fueled
+per-*token* emitter.  The criterion the traders are judged against is itself write-out
+metered — `EfficientlyComputableDigit` meters base-4 digits and `undigitize` reassembles
+tokens of any size — so the value bound is a feature of the certificate layer alone, not of
+the notion of efficiency.
+
+Paper node: `def:ec`
+-/
 
 namespace LogicalInduction
 
@@ -215,16 +237,16 @@ lemma ofRpnSentenceCodes {φ : ℕ → Sentence} (h : RpnSentenceCodes φ) :
   exact ⟨s, BigTokenStream.ofPolySegStream hs, hp⟩
 
 /-- A written-out canonical Polish stream instantiates the class.  The write-out mirror of
-`RpnSentenceCodes.ofCanonical`: the symbol count is polynomial, and now individual symbols
+`RpnSentenceCodes.ofCanonical`: the symbol count is polynomial, while individual symbols
 may carry exponential values. -/
 lemma ofCanonical {φ : ℕ → Sentence}
     (h : BigTokenStream fun n => rpn (φ n)) : BigSentenceCodes φ :=
   ⟨_, h, fun n => by
     simpa using parseRpn_rpn (φ n) [] (le_refl (rpn (φ n)).length)⟩
 
-/-- A value-bounded code sequence, in one step.  Composition of `ofRpnSentenceCodes` with
-`RpnSentenceCodes.ofPolySentenceCodes`; kept so a consumer holding the old certificate need
-not name both adapters. -/
+/-- A value-bounded code sequence, in one step: the composition of `ofRpnSentenceCodes`
+with `RpnSentenceCodes.ofPolySentenceCodes`, so a caller holding a `PolySentenceCodes`
+certificate need not name both adapters. -/
 lemma ofPolySentenceCodes {φ : ℕ → Sentence} (h : PolySentenceCodes φ) :
     BigSentenceCodes φ :=
   ofRpnSentenceCodes (RpnSentenceCodes.ofPolySentenceCodes h)
@@ -337,7 +359,8 @@ lemma bigAnd {D : ℕ → ℕ → Sentence}
     simpa using hpb (Nat.pair z j)
   have := parseRpn_conjChain (fun j => b (Nat.pair z j)) (fun j => D z j) hblk
     (cnt z) 0 []
-    (((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j))) ++ 2 :: 0 :: 0 :: []).length
+    ((((List.range (cnt z)).flatMap fun j => 3 :: b (Nat.pair z (0 + j))) ++
+      2 :: 0 :: 0 :: []).length)
     le_rfl
   simpa using this
 
@@ -484,8 +507,9 @@ lemma payload (t : ℕ) (ht : t = 1 ∨ t = 7)
     BigSpliceStream (fun z => [t, f z]) :=
   ofRpnSpliceStream (RpnSpliceStream.payload t ht hf)
 
-/-- A rational constant with a poly-fueled code — the value-bounded case, kept so that a
-consumer still holding a `PolyRatCodes` certificate need not convert it. -/
+/-- A rational constant with a poly-fueled code: the value-bounded case, which a caller
+holding a `PolyRatCodes` certificate can use without converting it.
+`serialize_const_write` is the write-out counterpart. -/
 lemma serialize_const_comp {q : ℕ → ℚ}
     (hq : ∃ c, PolyFueled c (fun z => Encodable.encode (q z))) :
     BigSpliceStream (fun z => (EF.const (q z)).serialize) :=
@@ -504,11 +528,14 @@ lemma serialize_var {f : ℕ → ℕ} {cf : Code} (hf : PolyFueled cf f) :
     BigSpliceStream (fun z => (EF.var (f z)).serialize) :=
   ofRpnSpliceStream (RpnSpliceStream.serialize_var hf)
 
+/-- The reciprocal node, tag `5`, appended to its argument's serialization. -/
 lemma serialize_safeRecip {A : ℕ → EF}
     (hA : BigSpliceStream (fun z => (A z).serialize)) :
     BigSpliceStream (fun z => (EF.safeRecip (A z)).serialize) :=
   (hA.append (tag 5 (by norm_num))).of_eq (fun z => by simp [EF.serialize])
 
+/-- The `let` node, tag `8`, appended to the bound expression's serialization followed by
+the body's. -/
 lemma serialize_letE {X Body : ℕ → EF}
     (hX : BigSpliceStream (fun z => (X z).serialize))
     (hBody : BigSpliceStream (fun z => (Body z).serialize)) :
@@ -632,6 +659,38 @@ lemma EfficientlyComputable.ofSingleTradeBlocksBig (Tr : Trader) (f : ℕ → EF
   rw [hTr n]
   simp [serializeTrades]
 
+/-- **Variable-count realization over write-out data.**  A trader playing `count n` trades
+on day `n` (indexed `z = ⟨n, j⟩`), with a written-out spliceable coefficient stream and a
+*written-out* sentence family, is efficiently computable.  This is the write-out form of
+`def:ec`'s trade-block constructor `EfficientlyComputable.ofTradeBlocks`
+(`Framework/RpnEmission.lean`), which meters every emitted token's value and so takes
+neither an exponentially-named sentence nor a coefficient naming a constant such as the
+paper's `δ n = 2⁻ⁿ`.  No price-freeness hypothesis on the coefficients is needed here:
+`BigSpliceStream` already records how each coefficient block contracts. -/
+lemma EfficientlyComputable.ofTradeBlocksBig (Tr : Trader)
+    (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
+    (hcount : ∃ c, PolyFueled c count)
+    (hf : BigSpliceStream fun z => (f z).serialize)
+    (hφ : BigSentenceCodes φ)
+    (hTr : ∀ n, (Tr.strat n).trades =
+      (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
+    EfficientlyComputable Tr := by
+  obtain ⟨ccount, hcountF⟩ := hcount
+  have hser : ∀ l : List (EF × Sentence),
+      serializeTrades l =
+        l.flatMap fun p => p.1.serialize ++ [6, Encodable.encode p.2] := by
+    intro l
+    induction l with
+    | nil => simp [serializeTrades]
+    | cons p rest ih =>
+        obtain ⟨e, ψ⟩ := p
+        simp [serializeTrades, ih, List.append_assoc]
+  have hslot : BigSpliceStream (fun z => [6, Encodable.encode (φ z)]) :=
+    (BigSpliceStream.tradeSlot hφ PolyFueled.id).of_eq (fun _ => rfl)
+  refine BigSpliceStream.ec Tr
+    (((hf.append hslot).concatVar hcountF).of_eq (fun n => ?_))
+  rw [hTr n, hser]
+  simp [List.flatMap_map]
 
 /-! ## The write-out sequence classes for values
 
@@ -666,8 +725,11 @@ naming map.  `encodeCode` is `2 * (2 * Nat.pair (encode cf) (encode cg)) + 4` at
 merely doubles per node, is `0, 2, 4, 8, 16, 33, 67, 134, …`: exponential in the day and in
 the tree size, against the *linear* `sourceNat` source length (`len4_sourceNat_le`).  Under
 `encode`-naming that paper-admissible family would be excluded from this class; under
-`sourceNat` it is admitted (`Nat.Partrec.Code.bigDigits_sourceNat_nest`), and
-`digitMachineCodes_nest_not_polyMachineCodes` is the witness that the admission is strict.
+`sourceNat` it is admitted.  The family and its two bounds — `Nat.Partrec.Code.nest`,
+`bigDigits_sourceNat_nest` and `two_pow_le_sourceNat_nest` — are in
+`Framework/CodeSource.lean`, and the strictness statement they feed is
+`digitMachineCodes_nest_not_polyMachineCodes`
+(`Construction/Witnesses/ComputationSyntax.lean`).
 Paper node: `def:ec` -/
 def DigitMachineCodes (m : ℕ → Nat.Partrec.Code) : Prop :=
   BigDigits (fun n => Nat.Partrec.Code.sourceNat (m n))
@@ -696,7 +758,8 @@ structure DigitRatCodes (q : ℕ → ℚ) : Prop where
   den : BigDigits (fun n => (q n).den)
 
 /-- The code of a negative integer, in closed form: `-(n+1) ↦ 2n + 1`, the odd branch of
-`Equiv.intEquivNat`'s sign fold.  The even branch is `encode_int_natCast`. -/
+`Equiv.intEquivNat`'s sign fold.  The even branch is `encode_int_natCast`, with the rest of
+the family, in `Framework/Computable.lean`. -/
 lemma encode_int_negSucc (n : ℕ) : Encodable.encode (Int.negSucc n) = 2 * n + 1 := rfl
 
 /-- **The magnitude of an integer, from its code, without halving a negative branch**:
@@ -775,8 +838,8 @@ lemma natCast {v : ℕ → ℕ} (h : BigDigits v) : DigitRatCodes (fun n => (v n
 /-- **The reciprocal, by representation rather than arithmetic.**  For a positive
 rational the inverse exchanges numerator magnitude and denominator, so the two digit runs
 simply swap; the numerator's `ℤ`-code is the doubled denominator, one `BigDigits.add`.
-No digit-level division, unpairing, or normalization is involved — which is exactly why
-the split representation was chosen. -/
+No digit-level division, unpairing, or normalization is involved — which is why the
+representation is split. -/
 lemma inv_of_pos {q : ℕ → ℚ} (h : DigitRatCodes q) (hpos : ∀ n, 0 < q n) :
     DigitRatCodes (fun n => 1 / q n) := by
   have hnum : ∀ n, (1 / q n).num = ((q n).den : ℤ) := fun n => by
@@ -793,21 +856,20 @@ end DigitRatCodes
 
 /-! ## Strictness
 
-The write-out classes are not a relabeling.  Three separations are **proved** below, and
-the separating families are the paper's own — an `n`-bit natural and the tolerance
-sequence `δ n = 2⁻ⁿ`:
+The write-out classes are not a relabeling.  Four separations are **proved** below, and the
+separating families are the paper's own — an `n`-bit natural and the tolerance sequence
+`δ n = 2⁻ⁿ`:
 
 * `bigDigits_two_pow_not_polyFueled` — `BigDigits` over `∃ c, PolyFueled c v`;
 * `bigTokenStream_not_polySegStream` — `BigTokenStream` over `PolySegStream`;
-* `digitRatCodes_two_pow_inv_not_polyRatCodes` — `DigitRatCodes` over `PolyRatCodes`.
-
+* `digitRatCodes_two_pow_inv_not_polyRatCodes` — `DigitRatCodes` over `PolyRatCodes`;
 * `bigSpliceStream_two_pow_inv_not_rpnSpliceStream` — `BigSpliceStream` over
   `RpnSpliceStream`, at the constant feature for `δ n = 2⁻ⁿ`.
 
 `not_polyFueled_two_pow` is the repo's size-based separation of `PolyFueled`, and all four
 reduce to it.  The remaining pair — `BigSentenceCodes` over `RpnSentenceCodes` — is an
-inclusion here (`BigSentenceCodes.ofRpnSentenceCodes`) with **no strictness proof**; do not
-describe it as strict.  What is established for it is that its write-out constructor
+inclusion here (`BigSentenceCodes.ofRpnSentenceCodes`) with **no strictness proof**, and is
+not described as strict.  What is established for it is that its write-out constructor
 `ofDigitSentenceCodes` has no value-bounded counterpart. -/
 
 /-- The base-4 length of `2 ^ n` is `n / 2 + 1`. -/
@@ -917,7 +979,8 @@ lemma digitRatCodes_two_pow_inv :
 convergence statements quantify over, and it is a two-symbol write-out at every day; but
 its code `⟪2, 2ⁿ⟫` is exponential, so `PolyRatCodes` excludes it.  A theorem whose
 hypothesis is `PolyRatCodes δ` is therefore silent about the paper's own δ, and this is
-the concrete content of the seven qualified rows. -/
+the concrete content of the `def:ec` row's write-out charge in
+`scripts/coverage-classification.md`. -/
 lemma digitRatCodes_two_pow_inv_not_polyRatCodes :
     DigitRatCodes (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) ∧
       ¬ PolyRatCodes (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) := by
@@ -975,8 +1038,9 @@ private lemma unRpn_eq_payload_getD {ts : List ℕ} {c : ℕ} (h : unRpn ts = [1
 certificate would hand `PolySegStream`'s per-token emitter a poly-fueled program for
 `⌜2⁻ⁿ⌝ = ⟪2, 2ⁿ⟫`, which `digitRatCodes_two_pow_inv_not_polyRatCodes` refutes.
 
-This is what makes `GeneratedRatFeature.polyTok : BigSpliceStream` a genuine widening of
-the `RpnSpliceStream` field it replaced, rather than a restatement.
+This is what makes `GeneratedRatFeature.polyTok : BigSpliceStream`
+(`Framework/Expectations.lean`) a strictly wider field than an `RpnSpliceStream` one would
+be.
 Kind: `P` proved; provenance: (a) derived in-project. -/
 lemma bigSpliceStream_two_pow_inv_not_rpnSpliceStream :
     BigSpliceStream (fun n => (EF.const ((((2 ^ n : ℕ) : ℚ))⁻¹)).serialize) ∧
@@ -992,21 +1056,4 @@ lemma bigSpliceStream_two_pow_inv_not_rpnSpliceStream :
   have h1 : (1 : ℕ) < lenFn z := by rw [← hslen z]; omega
   exact (hget z 1 h1).trans hval
 
-example : ¬ RpnSpliceStream (fun n => (EF.const ((((2 ^ n : ℕ) : ℚ))⁻¹)).serialize) :=
-  bigSpliceStream_two_pow_inv_not_rpnSpliceStream.2
-
-#print axioms BigTokenStream.ofBigDigits
-#print axioms BigTokenStream.concatVar
-#print axioms ec_of_bigTokenStream
-#print axioms BigSentenceCodes.ofDigitSentenceCodes
-#print axioms BigSpliceStream.bigPayload
-#print axioms BigSpliceStream.ec
-#print axioms DigitRatCodes.toBigDigits
-#print axioms DigitRatCodes.inv_of_pos
-#print axioms bigDigits_two_pow_not_polyFueled
-#print axioms bigTokenStream_not_polySegStream
-#print axioms digitRatCodes_two_pow_inv_not_polyRatCodes
-#print axioms bigSpliceStream_two_pow_inv_not_rpnSpliceStream
-
 end LogicalInduction
-

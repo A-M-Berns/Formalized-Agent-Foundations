@@ -8,10 +8,11 @@ SurfaceProbe.lean`. Two commands:
   given endpoints, transitively through structure fields. This is the Tier-2 boundary set:
   structures whose fields are hypotheses of a Tier-1 endpoint. Seed it with the full
   `#assert_axioms_clean` list from `AxiomAudit.lean`. Results are filtered to the
-  formalization namespaces (`LogicalInduction`, `CartesianFrames`, `FiniteFactoredSets`),
-  so it serves every inventory in `AxiomAudit.lean`.  `ModalAgents` declares its surface at
-  the root namespace and so has no prefix to filter on; its Tier-2 set is maintained by
-  hand.
+  formalization namespaces this file imports (`LogicalInduction`, `CartesianFrames`,
+  `FiniteFactoredSets`), so it serves those three inventories in `AxiomAudit.lean`. The
+  `Condensation` and `FactoredSpaces` Tier-2 sets need their libraries added to the imports
+  and to `libs` below; `ModalAgents` declares its surface at the root namespace and so has
+  no prefix to filter on, and its Tier-2 set is maintained by hand.
 * `#dump_fields <structs…>` — prints each structure's field-name set, in the exact shape the
   `#assert_fields` assertions expect.
 

@@ -51,12 +51,20 @@ Every field of `UniversalContinuousSemimeasure` is proved or constructed: the se
 laws, the monotone from-below stage table with its limit, the domination constant, and the
 emission program.  `universalSemimeasure` is axiom-clean.
 
-The **polynomial** clock is discharged at the end of the file by the *self-clamped* stage
-table `dusApprox`: the exact emitter above is a fixed code, so `Code.evaln`'s own guards
-clamp both its input and its output, and `codeEvalnNat_polyFueled` makes reading it under a
-polynomial clock poly-fueled.  Scanning the stages that finished within the clock therefore
-emits an exact stage value at a stage that grows without bound — `DUSApproximationPresentation`
-and `DUSThresholdEmission` are constructed objects, so
+## Two stage tables for the polynomial clock
+
+`gridApprox` rounds the stage onto the `1 / (n+1)` grid, capping numerator and denominator
+(`encode_gridApprox_le`, `isPolyBounded_encode_gridApprox`) at the price of a drift argument.
+`dusApprox` instead *selects* an exact stage value under the self-clamping clock `⟪z, z⟫`, so
+its values are exact and monotonicity survives; `dusApproximationPresentation` and
+`dusThresholdEmission` use `dusApprox`.
+
+The self-clamped route works because `Code.evaln` guards `n ≤ k` in every clause: a fixed
+code run with fuel `k` can neither read an input above `k` nor return a value above
+`codeEvalBound c k`, which is polynomial in `k`.  That is exactly the clamp `PolyFueled.prec`
+needs, and it is already present in `evaln`'s definition.  Scanning the stages that finished
+within the clock therefore emits an exact stage value at a stage that grows without bound, so
+`DUSApproximationPresentation` and `DUSThresholdEmission` are constructed objects and
 `lic_domination_dovetailSemimeasure_unconditional` carries no semimeasure input at all.
 -/
 
@@ -79,15 +87,6 @@ def rawVal (c : Nat.Partrec.Code) (m f : ℕ) (σ : List Bool) : ℚ :=
 
 lemma rawVal_nonneg (c : Nat.Partrec.Code) (m f : ℕ) (σ : List Bool) :
     0 ≤ rawVal c m f σ := le_max_left _ _
-
-lemma rawVal_le {c : Nat.Partrec.Code} {m f : ℕ} {σ : List Bool} {B : ℚ} (hB : 0 ≤ B)
-    (h : ∀ y, c.evaln f (Nat.pair m (Encodable.encode σ)) = some y →
-      ((Encodable.decode (α := ℚ) y).getD 0 : ℚ) ≤ B) :
-    rawVal c m f σ ≤ B := by
-  refine max_le hB ?_
-  cases hy : c.evaln f (Nat.pair m (Encodable.encode σ)) with
-  | none => simpa [hy] using hB
-  | some y => simpa [hy] using h y hy
 
 /-- One dovetail step: stage `n` reads index `n.unpair.1` with fuel `n.unpair.2`. -/
 def rawStep (c : Nat.Partrec.Code) (n : ℕ) (σ : List Bool) : ℚ :=
@@ -115,11 +114,6 @@ lemma rawTable_le_succ (c : Nat.Partrec.Code) (n : ℕ) (σ : List Bool) :
 lemma rawTable_mono (c : Nat.Partrec.Code) (σ : List Bool) :
     Monotone (fun n ↦ rawTable c n σ) :=
   monotone_nat_of_le_succ (fun n ↦ rawTable_le_succ c n σ)
-
-lemma rawTable_le_of_forall {c : Nat.Partrec.Code} {σ : List Bool} {B : ℚ} (hB : 0 ≤ B)
-    (h : ∀ m f, rawVal c m f σ ≤ B) : ∀ n, rawTable c n σ ≤ B
-  | 0 => hB
-  | n + 1 => max_le (rawTable_le_of_forall hB h n) (h _ _)
 
 lemma rawVal_le_rawTable (c : Nat.Partrec.Code) (m f : ℕ) (σ : List Bool) :
     rawVal c m f σ ≤ rawTable c (Nat.pair m f + 1) σ := by
@@ -558,8 +552,9 @@ lemma rawTable_tendsto_mass (σ : List Bool) :
     rw [hval] at this
     exact_mod_cast this
 
-/-- The dovetail run on `ν`'s own approximation program reproduces `ν` exactly. Paper node: `thm:dus` -/
-theorem dovetailMass_eq_mass (σ : List Bool) :
+/-- The dovetail run on `ν`'s own approximation program reproduces `ν` exactly.
+Paper node: `thm:dus` -/
+lemma dovetailMass_eq_mass (σ : List Bool) :
     dovetailMass ν.approximation_code σ = ν.mass σ :=
   tendsto_nhds_unique (dovetailMass_tendsto _ σ)
     (trim_tendsto_of_exact ν.nonneg ν.root_le_one ν.children_le
@@ -745,6 +740,11 @@ theorem universalMass_dominates (ν : LowerSemicomputableContinuousSemimeasure) 
 
 /-! ## The emission program: column tabulation -/
 
+/-- Reading a tabulated column below its length returns the tabulated value. -/
+lemma getD_map_range {α : Type*} (f : ℕ → α) (d : α) {k m : ℕ} (h : m < k) :
+    ((List.range k).map f).getD m d = f m := by
+  rw [AffineCombination.getD_map_range_ite, if_pos h]
+
 /-- The root column: `rootVal c n = trim c n []`. -/
 def rootVal (c : Nat.Partrec.Code) (n : ℕ) : ℚ :=
   if n = 0 then 0 else min (rawTable c n []) 1
@@ -811,10 +811,6 @@ def colOf (c : Nat.Partrec.Code) (N : ℕ) (b : Bool) (r : List Bool) (pcol : Li
 def tabCol (c : Nat.Partrec.Code) (N : ℕ) : List Bool → List ℚ
   | [] => (List.range (N + 1)).map (rootVal c)
   | b :: r => colOf c N b r (tabCol c N r)
-
-lemma getD_map_range {α : Type*} (f : ℕ → α) (d : α) {k m : ℕ} (h : m < k) :
-    ((List.range k).map f).getD m d = f m := by
-  rw [AffineCombination.getD_map_range_ite, if_pos h]
 
 lemma tabCol_eq (c : Nat.Partrec.Code) (N : ℕ) : ∀ r : List Bool,
     tabCol c N r = (List.range (N + 1)).map fun n ↦ trim c n r.reverse := by
@@ -1292,8 +1288,8 @@ lemma isPolyBounded_encode_gridApprox (e : ℕ → List Bool) :
 
 /-! ### The packaging
 
-Both structures are real definitions: every analytic field is proved above, and the
-emission field is the constructed program `exists_universalApprox_code`. -/
+Every analytic field of both structures is proved above; the emission field is the
+constructed program `exists_universalApprox_code`. -/
 
 /-- The dovetail as a lower-semicomputable continuous semimeasure.
 Paper node: `thm:dus` -/
@@ -1317,18 +1313,6 @@ Paper node: `thm:dus` -/
 noncomputable def universalSemimeasure : UniversalContinuousSemimeasure where
   toLowerSemicomputableContinuousSemimeasure := lowerSemicomputable
   universal := fun ν ↦ universalMass_dominates ν
-
-#print axioms continuousSemimeasure
-#print axioms universalMass_dominates
-#print axioms dovetailMass_eq_mass
-#print axioms trim_tendsto_of_exact
-#print axioms universalApprox_tendsto
-#print axioms exists_universalApprox_code
-#print axioms lowerSemicomputable
-#print axioms universalSemimeasure
-#print axioms gridApprox_le_mass
-#print axioms gridApprox_tendsto
-#print axioms isPolyBounded_encode_gridApprox
 
 /-! ## The polynomial clock: the self-clamped stage table
 
@@ -1756,11 +1740,6 @@ theorem dusThresholdEmission : DUSThresholdEmission (dusApproximationPresentatio
     exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitRecip_eq B hB])⟩
 
 end Emission
-
-#print axioms dusApprox_tendsto
-#print axioms dusApprox_polyRatCodes
-#print axioms dusApproximationPresentation
-#print axioms dusThresholdEmission
 
 end Dovetail
 

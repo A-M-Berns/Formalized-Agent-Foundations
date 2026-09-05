@@ -1,56 +1,66 @@
-/-
+import LogicalInduction.Framework.Criterion
+
+/-!
 # Polish-notation sentence blocks: the pure coding
 
-Where a sentence travels as a single `Encodable` pair-code token, its bit size tracks
-the formula's symbol count only up to balance: skewed formulas inflate exponentially.
-The Polish-notation layer removes that residual by letting sentence slots of the flat
-strategy stream carry **Polish-notation symbol runs** instead — one token per formula
-symbol, so poly digit-stream length = poly symbol count, the paper's `𝓔𝓒` metering on
-the nose.
+Renders `def:ec`'s write-out metering on sentence slots.  Where a sentence travels as a
+single `Encodable` pair-code token its bit size tracks the formula's symbol count only up
+to balance — skewed formulas inflate exponentially — so a sentence block is instead a
+Polish-notation symbol run, one token per formula symbol, and a polynomial token count
+meters formula *symbols* rather than the magnitude of a single pair code.  This is a cost
+measure on the emission surface; the relation of the certificate class to the paper's
+runtime class is `EfficientlyComputable.toMachine` (`dd:fuel`).
 
 Symbol alphabet of a sentence block:
 
 * `0` — `⊥`;
-* `1` — **escape**: the next token is a literal pair code for the whole subformula
-  (decoded by `Encodable.decode`; this makes the inclusions from the token and digit
-  models verbatim splices);
+* `1` — **escape**: the next token is a literal `Encodable` pair code for the whole
+  subformula, or, as `[1, 0, …]`, opens a structured paper-prime block;
 * `2` / `3` / `4` — `➝` / `⋏` / `⋎`, each followed by its two operands;
 * `t + 5` — atom `t`.
 
-Prefix order is forward self-delimiting: a pending-formula counter starts at `1`,
-leaves decrement it, binary tags increment it, and the block ends exactly when it
-reaches `0` — every proper prefix keeps it positive.
+Prefix order is forward self-delimiting: a pending-formula counter starts at `1`, leaves
+decrement it, binary tags increment it, and the block ends exactly when it reaches `0` —
+every proper prefix keeps it positive.
 
-Contents: the coding and its fuelled block parser, round trips and injectivity; the
-stream transducer `unRpn` contracting sentence blocks back to pair codes; the escape
-splice `escExpand` and its simulation theorem; and code-level mirrors of the parser and
-the transducer (`parseRpnC`, `unRpnTokensC`), which compute on pair codes so the compiler
-can certify them.  Their primitive recursiveness is proved in `Framework/RpnComputation.lean`,
-and the poly-fuelled emission bridges in `Framework/RpnEmission.lean`.
+The grammar objects themselves — `rpn`, `parseRpn`, `parseRpnLegacy`, `unRpn`,
+`unRpnTokens` and `parseStructuredPaperPrime(C)` — are defined in
+`Framework/Criterion.lean`, beside the serializers they meter; this module is their lemma
+corpus.  What it defines of its own is the vocabulary built on top: `UnRpnTransparent` and
+`UnRpnContractsTo` (the splice relations), `EF.priceFree`, the escape splice
+(`escExpandTokens`, `escExpand`, `escExpandFold`), the slot automaton (`escModeStep`,
+`escModeList`), `SimOut`, and the code-level mirrors `parseRpnC` / `unRpnTokensC`.
 
-Paper node: `def:ec` (token-metered sentence slots).
+Main results and where they are consumed: the block algebra `parseRpn_rpn`,
+`parseRpn_escape`, `parseRpn_append`, `parseRpn_mono` and `parseRpn_block_head` feeds the
+`RpnSentenceCodes` combinators of `Framework/RpnSplice.lean`; `rpn_injective` is the
+round-trip; `unRpn_price_chunk_block` / `unRpn_trade_chunk_block` and the
+`UnRpnContractsTo.*` laws feed `Framework/RpnSplice.lean` and `Framework/RpnEmission.lean`;
+`strategyOfTokens_unRpn_escExpand` is the escape simulation theorem; and
+`escExpandFold_eq_escExpand`, `escExpandFold_append` and the `escModeList_*` facts are what
+`Framework/RpnEmission.lean` folds over.  `parseRpnC_eq` / `unRpnTokensC_eq` tie the
+code-level mirrors to the originals, and their primitive recursiveness is packaged in
+`Framework/RpnComputation.lean`.
+
+An efficiently computable trader emits a digit stream whose undigitized tokens form an
+RPN-expanded strategy stream, and the decode contracts sentence blocks (`unRpn`) before
+validation, so poly digit length meters formula *symbols* and sentences may be arbitrarily
+deep and skewed.  The escape tag `1` is what makes the token- and digit-metered models
+(`EfficientlyComputableTok`, `EfficientlyComputableDigit`) verbatim splices into this one.
+
+Paper node: `def:ec` (token-metered sentence slots — a subclass rendering, not the node's
+own class).
 -/
-import LogicalInduction.Framework.Criterion
 
 namespace LogicalInduction
 
 open LO.Propositional
-
-/-! ## The coding -/
-
-
-lemma rpn_ne_nil (φ : Sentence) : rpn φ ≠ [] := by
-  cases φ <;> simp [rpn]
-
-lemma rpn_length_pos (φ : Sentence) : 0 < (rpn φ).length := by
-  cases φ <;> simp [rpn]
 
 /-! ## The block parser
 
 `parseRpn fuel ts` reads one sentence block from the front of `ts` and returns the
 parsed sentence together with the unread suffix.  Fuel bounds the recursion; any
 `fuel ≥ ts.length` is enough (each call consumes at least one token). -/
-
 
 @[simp] lemma parseRpn_zero (ts : List ℕ) : parseRpn 0 ts = none := rfl
 
@@ -75,9 +85,9 @@ lemma parseRpn_cons (fuel t : ℕ) (rest : List ℕ) :
           (parseRpn fuel p.2).bind fun q => some (Formula.or p.1 q.1, q.2)
       else some (Formula.atom (t - 5), rest) := rfl
 
-/-- Generic backwards compatibility: every stream accepted by the pre-structured
-grammar has exactly the same parse under the extended grammar.  The only new dispatch
-prefix is `[1, 0]`, and sentence code zero never decoded in the legacy grammar. -/
+/-- Every stream accepted by the unstructured fragment has exactly the same parse under
+the full grammar: the only new dispatch prefix is `[1, 0]`, and sentence code `0` decodes
+to nothing in the fragment. -/
 lemma parseRpn_of_legacy : ∀ {fuel : ℕ} {ts : List ℕ} {out},
     parseRpnLegacy fuel ts = some out → parseRpn fuel ts = some out := by
   intro fuel
@@ -135,11 +145,13 @@ lemma parseRpn_of_legacy : ∀ {fuel : ℕ} {ts : List ℕ} {out},
         exact hbin Formula.or h
       simpa [h4] using h
 
-/-! ### Legacy-grammar parser facts
+/-! ### Fragment-grammar parser facts
 
-The pre-structured grammar retains its own block facts: the freeze compiler's
-positional matcher (`RpnFreeze.lean`) is scoped to this fragment, so its
-characterization needs the legacy analogues of the parse lemmas. -/
+The unstructured fragment — tags `0`-`4` and the two-token escape — is the sub-grammar the
+freeze compiler's positional matcher is scoped to, because a structured paper-prime leaf
+has no constant-depth positional pattern (`Construction/Witnesses/RpnFreeze.lean`).  Its
+characterization therefore needs the fragment analogues of the parse lemmas, and
+`parseRpn_of_legacy` carries every fragment parse into the full grammar unchanged. -/
 
 lemma parseRpnLegacy_cons (fuel t : ℕ) (rest : List ℕ) :
     parseRpnLegacy (fuel + 1) (t :: rest) =
@@ -302,17 +314,6 @@ lemma parseRpnLegacy_escape' {c : ℕ} {φ : Sentence}
       rw [parseRpnLegacy_cons, if_neg (by omega), if_pos rfl]
       simp [hdec]
 
-/-- Escape parse failure on an undecodable payload. -/
-lemma parseRpnLegacy_escape_none {c : ℕ}
-    (hdec : Encodable.decode (α := Sentence) c = none)
-    (rest : List ℕ) (fuel : ℕ) :
-    parseRpnLegacy fuel (1 :: c :: rest) = none := by
-  match fuel with
-  | 0 => rfl
-  | fuel + 1 =>
-      rw [parseRpnLegacy_cons, if_neg (by omega), if_pos rfl]
-      simp [hdec]
-
 lemma parseRpnLegacy_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {rest : List ℕ},
     parseRpnLegacy fuel ts = some (φ, rest) →
     ∃ blk, ts = blk ++ rest ∧ parseRpnLegacy blk.length blk = some (φ, []) := by
@@ -354,7 +355,8 @@ lemma parseRpnLegacy_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r
                   ((parseRpnLegacy fuel ts').bind fun p =>
                     (parseRpnLegacy fuel p.2).bind fun q =>
                       some (mk p.1 q.1, q.2)) = some (φ, rest) →
-                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨ (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
+                  ((t = 2 ∧ mk = LO.Propositional.Formula.imp) ∨
+                    (t = 3 ∧ mk = LO.Propositional.Formula.and) ∨
                     (t = 4 ∧ mk = LO.Propositional.Formula.or)) →
                   ∃ blk, t :: ts' = blk ++ rest ∧
                     parseRpnLegacy blk.length blk = some (φ, []) := by
@@ -417,7 +419,6 @@ lemma parseRpnLegacy_strip : ∀ (fuel : ℕ) (ts : List ℕ) {φ : Sentence} {r
                       parseRpnLegacy_cons, if_neg h0, if_neg h1, if_neg h2, if_neg h3,
                       if_neg h4]
 
-
 lemma readStructuredLength_suffix {ts : List ℕ} {n : ℕ} {rest : List ℕ}
     (h : readStructuredLength ts = some (n, rest)) : rest <:+ ts := by
   induction ts generalizing n rest with
@@ -460,97 +461,6 @@ lemma readStructuredLength_append {ts : List ℕ} {n : ℕ} {rest : List ℕ}
           rw [ih hr]
           rfl
       · simp [readStructuredLength, h0, h1] at h
-
-public lemma parseStructuredNat_length_lt : ∀ {fuel : ℕ} {ts : List ℕ} {n : ℕ}
-    {rest : List ℕ}, parseStructuredNat fuel ts = some (n, rest) →
-      rest.length < ts.length := by
-  intro fuel
-  induction fuel with
-  | zero => intro ts n rest h; simp [parseStructuredNat] at h
-  | succ fuel ih =>
-      intro ts n rest h
-      rcases ts with _ | ⟨t, ts⟩
-      · simp [parseStructuredNat] at h
-      rw [parseStructuredNat] at h
-      by_cases h0 : t = 0
-      · rw [if_pos h0] at h
-        obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
-        simp
-      rw [if_neg h0] at h
-      by_cases h1 : t = 1
-      · rw [if_pos h1] at h
-        rcases hp : parseStructuredNat fuel ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have := ih hp
-        simp only [List.length_cons]
-        omega
-      rw [if_neg h1] at h
-      by_cases h2 : t = 2
-      · rw [if_pos h2] at h
-        rcases hp : parseStructuredNat fuel ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have := ih hp
-        simp only [List.length_cons]
-        omega
-      simp [h2] at h
-
-public lemma parseStructuredArithmeticTerm_length_lt : ∀ {fuel depth : ℕ} {ts : List ℕ}
-    {code : ℕ} {rest : List ℕ},
-      parseStructuredArithmeticTerm fuel depth ts = some (code, rest) →
-      rest.length < ts.length := by
-  intro fuel
-  induction fuel with
-  | zero => intro depth ts code rest h; simp [parseStructuredArithmeticTerm] at h
-  | succ fuel ih =>
-      intro depth ts code rest h
-      rcases ts with _ | ⟨t, ts⟩
-      · simp [parseStructuredArithmeticTerm] at h
-      rw [parseStructuredArithmeticTerm] at h
-      split_ifs at h with h3 h4 h5 h6 hb
-      · rcases hp : parseStructuredNat fuel ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have := parseStructuredNat_length_lt hp
-        simp only [List.length_cons]
-        omega
-      · rcases hp : parseStructuredNat fuel ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have := parseStructuredNat_length_lt hp
-        simp only [List.length_cons]
-        omega
-      · obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
-        simp
-      · obtain ⟨-, rfl⟩ := Prod.mk.injEq .. ▸ Option.some.inj h
-        simp
-      · rcases hp : parseStructuredArithmeticTerm fuel 0 ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.bind_some] at h
-        rcases hq : parseStructuredArithmeticTerm fuel 0 p.2 with _ | q
-        · simp [hq] at h
-        simp only [hq, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have hpLen := ih hp
-        have hqLen := ih hq
-        simp only [List.length_cons]
-        omega
-      · rcases hp : parseStructuredArithmeticTerm fuel 0 ts with _ | p
-        · simp [hp] at h
-        simp only [hp, Option.bind_some] at h
-        rcases hq : parseStructuredArithmeticTerm fuel 0 p.2 with _ | q
-        · simp [hq] at h
-        simp only [hq, Option.map_some, Option.some.injEq, Prod.mk.injEq] at h
-        obtain ⟨-, rfl⟩ := h
-        have hpLen := ih hp
-        have hqLen := ih hq
-        simp only [List.length_cons]
-        omega
 
 public lemma parseStructuredNat_suffix : ∀ {fuel : ℕ} {ts : List ℕ} {n : ℕ}
     {rest : List ℕ}, parseStructuredNat fuel ts = some (n, rest) → rest <:+ ts := by
@@ -881,13 +791,11 @@ lemma parseStructuredArithmeticTerm_consumed_lt : ∀ {fuel depth : ℕ} {ts : L
           · exact hw₁ x hx₁
           · exact hw₂ x hx₂
 
-/-- **Statement change (Part I).**  This lemma formerly concluded `∀ x ∈ w, x < 19`.
-The structured formula grammar now also uses the tags `20` (`¬`), `21` (`⟹`) and `22`
-(`⟺`) for the paper's primitive connectives, so consumed tokens are no longer bounded
-by `19`.  The conclusion is weakened to `∀ x ∈ w, x ≠ 19`, which is exactly what the
-three consumers need — they use it only to rule out the reserved terminator `19` inside
-a consumed span.  The term and numeral sub-grammars are unchanged and still satisfy the
-stronger `< 19` bound (`parseStructuredArithmeticTerm_consumed_lt`).
+/-- A successful structured formula parse consumes a span containing no reserved
+terminator `19`.  The bound is `≠ 19` rather than `< 19` because the formula grammar uses
+tags `20`/`21`/`22` for the paper's primitive `¬`/`⟹`/`⟺` (`dd:nnf`); the term and numeral
+sub-grammars stay under `19` (`parseStructuredArithmeticTerm_consumed_lt`).  `≠ 19` is
+exactly what the three consumers use — ruling the terminator out of a consumed span.
 
 *Proof kind:* `P` proved. -/
 lemma parseStructuredArithmeticFormula_consumed_lt :
@@ -1537,8 +1445,6 @@ and `6` (trade); tags `1` and `7` carry one opaque payload token; everything els
 copied.  A failed block parse emits the undecodable code `0` and stops, preserving
 rejection.  Fuel decreases once per grammar chunk; `ts.length` always suffices. -/
 
-
-
 lemma unRpnTokens_cons (fuel t : ℕ) (rest : List ℕ) :
     unRpnTokens (fuel + 1) (t :: rest) =
       if t = 0 then
@@ -1645,27 +1551,6 @@ lemma unRpn_trade_chunk (φ : Sentence) (rest : List ℕ) :
   rw [unRpnTokens_congr rest (by simp only [List.length_append]; omega) le_rfl]
   rfl
 
-/-- A complete price chunk with an escaped canonical code contracts exactly. -/
-lemma unRpn_price_escape_chunk (φ : Sentence) (d : ℕ) (rest : List ℕ) :
-    unRpn (0 :: 1 :: Encodable.encode φ :: d :: rest) =
-      0 :: Encodable.encode φ :: d :: unRpn rest := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons, if_pos rfl,
-    parseRpn_escape φ (d :: rest) (by simp)]
-  simp only []
-  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
-  rfl
-
-/-- A complete trade chunk with an escaped canonical code contracts exactly. -/
-lemma unRpn_trade_escape_chunk (φ : Sentence) (rest : List ℕ) :
-    unRpn (6 :: 1 :: Encodable.encode φ :: rest) =
-      6 :: Encodable.encode φ :: unRpn rest := by
-  rw [unRpn, List.length_cons, unRpnTokens_cons,
-    if_neg (by norm_num), if_pos rfl,
-    parseRpn_escape φ rest (by simp)]
-  simp only []
-  rw [unRpnTokens_congr rest (by simp only [List.length_cons]; omega) le_rfl]
-  rfl
-
 /-- The contraction never lengthens a stream by more than the one trailing
 failure marker: the economic length bounds of a spliced emission transfer to its
 token-level serialization. -/
@@ -1727,6 +1612,8 @@ lemma unRpnTokens_length_le : ∀ (fuel : ℕ) (ts : List ℕ),
                   simp only [List.length_cons] at ⊢
                   omega
 
+/-- The whole-stream form of `unRpnTokens_length_le`: contraction adds at most the one
+trailing failure marker. -/
 lemma unRpn_length_le (ts : List ℕ) : (unRpn ts).length ≤ ts.length + 1 :=
   unRpnTokens_length_le ts.length ts
 
@@ -1884,6 +1771,9 @@ with `unRpn` it re-emits the *canonical* code of the decoded sentence, so the st
 need not agree token-for-token on non-canonical codes — but they parse identically,
 which is the simulation theorem below. -/
 
+/-- Fuel-clocked escape splice: each sentence-slot token becomes `[1, c]` (or `[1, 0, 2]`,
+a deliberately unparseable block, when `c = 0`), everything else copies; `ts.length` fuel
+always suffices (`escExpandTokens_congr`). -/
 def escExpandTokens : ℕ → List ℕ → List ℕ
   | _, [] => []
   | 0, _ => []
@@ -2054,6 +1944,12 @@ lemma escExpand_length_le : ∀ (n : ℕ) (ts : List ℕ), ts.length ≤ n →
           have := escExpand_length_le n rest (by omega) fuel (by omega)
           simp only [List.length_cons]
           omega
+
+/-- The escape splice preserves polynomial emission length: it at most doubles the
+stream.  This is the `escExpand` form of `escExpand_length_le`, the one a client meters
+with. -/
+lemma escExpand_length_le' (ts : List ℕ) : (escExpand ts).length ≤ 2 * ts.length :=
+  escExpand_length_le ts.length ts le_rfl ts.length le_rfl
 
 /-! ### Chunk equations for `escExpand` -/
 
@@ -2418,7 +2314,6 @@ lemma streamReadFrom_unRpn_escExpand : ∀ (n : ℕ) (ts : List ℕ), ts.length 
           exact streamReadFrom_unRpn_escExpand n rest (by omega) (m', pend')
             stack' trades' hmode
 
-
 /-- **Escape-splice correctness**: the contracted escape expansion deserializes to the
 same trades as the original stream. -/
 lemma deserializeTrades_unRpn_escExpand (ts : List ℕ) :
@@ -2440,17 +2335,7 @@ lemma strategyOfTokens_unRpn_escExpand (n : ℕ) (ts : List ℕ) :
   unfold strategyOfTokens
   rw [deserializeTrades_unRpn_escExpand]
 
-/-! ## The token-metered emission model
-
-An efficiently computable trader emits a digit stream whose undigitized tokens form an
-RPN-expanded strategy stream; the decode contracts sentence blocks (`unRpn`) before
-validation.  Poly digit length then meters formula *symbols*, so sentences may be
-arbitrarily deep and skewed.  The escape tag `1` makes the token- and digit-metered
-models (`EfficientlyComputableTok`, `EfficientlyComputableDigit`) verbatim splices into
-this one. -/
-
-
-/-! ### Compositional splice contraction
+/-! ## Compositional splice contraction (`UnRpnContractsTo`)
 
 `UnRpnContractsTo ts out`: ahead of any continuation, the contraction rewrites the
 run `ts` to `out` and proceeds.  Transparent runs contract to themselves; price and
@@ -2520,6 +2405,9 @@ mode `0` = base (tags `0`/`6` open sentence slots, `1`/`7` opaque payloads), mod
 slot, mode `4` = opaque payload.  Slots are modes `1` and `3`.  Base transitions test
 only tags `≤ 7`, so the automaton factors through the digit clamp. -/
 
+/-- One transition of the slot automaton: mode `0` base, `1` price sentence slot, `2`
+price day, `3` trade sentence slot, `4` opaque payload.  Base transitions test only tags
+`≤ 7`, so the automaton factors through the digit clamp (`escModeStep_clamp`). -/
 def escModeStep (m t : ℕ) : ℕ :=
   if m = 0 then
     if t = 0 then 1
@@ -2530,6 +2418,8 @@ def escModeStep (m t : ℕ) : ℕ :=
   else if m = 1 then 2
   else 0
 
+/-- The automaton's mode after reading a prefix; slots are the positions at mode `1` or
+`3`. -/
 def escModeList (ts : List ℕ) : ℕ := ts.foldl escModeStep 0
 
 lemma escModeStep_le (m t : ℕ) : escModeStep m t ≤ 4 := by
@@ -2654,6 +2544,9 @@ code* — `⊥ ↦ pair 0 0 + 1`, `atom t ↦ pair 1 t + 1`, binops `pair tag (p
 + 1` — and use the `Primcodable` round trip (`encode ∘ decode`) as the escape
 validity test.  These mirror `parseRpn`/`unRpnTokens` exactly. -/
 
+/-- Code-level mirror of `parseRpn`: parses straight to the `Primcodable` pair code, using
+`encode ∘ decode` as the escape-validity test, so the trading firm's compiler can certify
+the decode without `Primrec` instances for `Formula`'s constructors (`parseRpnC_eq`). -/
 def parseRpnC : ℕ → List ℕ → Option (ℕ × List ℕ)
   | 0, _ => none
   | _ + 1, [] => none
@@ -2784,6 +2677,8 @@ lemma parseRpnC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
 
 /-! ### The code-level stream contraction -/
 
+/-- Code-level mirror of `unRpnTokens` (`unRpnTokensC_eq`), the form
+`Framework/RpnComputation.lean` packages for `Primrec.nat_strong_rec`. -/
 def unRpnTokensC : ℕ → List ℕ → List ℕ
   | _, [] => []
   | 0, _ => []
@@ -2875,15 +2770,5 @@ lemma unRpnTokensC_eq : ∀ (fuel : ℕ) (ts : List ℕ),
 /-- `unRpn` through the code-level contraction. -/
 lemma unRpn_eq_unRpnTokensC (ts : List ℕ) : unRpn ts = unRpnTokensC ts.length ts :=
   (unRpnTokensC_eq ts.length ts).symm
-
-#print axioms parseRpn_rpn
-#print axioms parseRpn_escape
-#print axioms rpn_injective
-#print axioms unRpn_price_chunk
-#print axioms unRpn_trade_chunk
-#print axioms strategyOfTokens_unRpn_escExpand
-#print axioms escExpandFold_eq_escExpand
-#print axioms parseRpnC_eq
-#print axioms unRpnTokensC_eq
 
 end LogicalInduction

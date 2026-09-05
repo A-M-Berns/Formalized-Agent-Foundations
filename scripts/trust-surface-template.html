@@ -367,9 +367,15 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     read-through set.</p>
 
     <h3>Metering vocabulary</h3>
-    <p><code>RpnSentenceCodes</code> / token-metered classes are the faithful rendering of the
-    paper's <code>def:ec</code>; whole-value classes (<code>PolyNatCodes</code> &amp;c.) are
-    provably narrower and appear only where a row is marked qualified.</p>
+    <p>The <em>write-out</em> classes (<code>BigDigits</code>, <code>BigSentenceCodes</code>,
+    <code>DigitRatCodes</code>, <code>DigitMachineCodes</code>,
+    <code>BigSpliceStream</code>/<code>BigTokenStream</code>) are the faithful rendering of the
+    paper's <code>def:ec</code>: they bound the emitted symbol count and leave values
+    unrestricted. <em>Token-metered</em> classes (<code>RpnSentenceCodes</code>,
+    <code>LUV.RpnThresholdCodeSeq</code>) add a per-token value clause; they survive on the LUV
+    threshold lane, where the metered object is a string over a fixed finite alphabet and the
+    clause is vacuous. <em>Whole-value</em> classes (<code>PolyNatCodes</code> &amp;c.) bound a
+    Gödel value, are provably narrower, and carry no paper-facing row.</p>
 
     <h3>Shared vocabulary</h3>
     <p>These correspondences recur on nearly every card; each card's own note covers only
@@ -377,13 +383,13 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="vocab">
       <tr><td><code>[IsLogicalInductor P DP]</code></td><td>“let ℙ‾ be a logical inductor over D‾”; <code>P n φ</code> is ℙₙ(φ)</td></tr>
       <tr><td><code>hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)</code></td><td>each stage is propositionally consistent — ambient in the paper’s notion of deductive process, explicit here</td></tr>
-      <tr><td><code>RpnSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>PolyRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals, at the token-metered rendering of <code>def:ec</code></td></tr>
+      <tr><td><code>BigSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>DigitRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals; the sentence and rational classes are write-out metered, the LUV threshold class token-metered</td></tr>
       <tr><td><code>GeneratedRatFeature</code>, <code>PGenerableRat</code>, <code>PGenerableWeighting</code></td><td>“ℙ‾-generable” (def:ece / def:fuz): the sequence enters as market expressions, not values</td></tr>
       <tr><td><code>≈ₙ&ensp;≳ₙ&ensp;≲ₙ</code>, <code>limitingBelief P φ</code></td><td>the paper’s ≈ₙ, ≳ₙ, ≲ₙ and ℙ∞(φ)</td></tr>
       <tr><td><code>PCWorld</code>, <code>v.ConsistentWithTheory DP</code></td><td>a world <code>v</code> is the paper’s 𝕎; <code>ConsistentWithTheory</code> is membership in 𝒫𝒞(Γ), the completed (theory-consistent) worlds</td></tr>
       <tr><td><code>TheoryTruth φ DP truth</code>, <code>DeterminedViaTheory</code>, <code>WorldValued</code></td><td>Γ decides each φₙ with value truthₙ; def:affthmval (the combination has one value in every completed world); def:luv’s world-value clause</td></tr>
       <tr><td><code>(X n).expect P n</code></td><td>𝔼ₙ(Xₙ), via the def:e threshold mesh</td></tr>
-      <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]</code>, <code>paperDP T</code>, <code>liaHistory (paperDP T)</code></td><td>“Γ represents computations” (a consistent T ⊇ IΣ₁ — the Σ₁-soundness instance that used to sit here was retired 2026-08-30); Γ’s provability process; the constructed inductor over it</td></tr>
+      <tr><td><code>(T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]</code>, <code>paperDP T</code>, <code>liaHistory (paperDP T)</code></td><td>“Γ represents computations” — a consistent, Δ₁-axiomatized T containing 𝗣𝗔⁻, with no Σ₁-soundness instance anywhere; Γ’s provability process; the constructed inductor over it</td></tr>
     </table></div>
   </div>
 

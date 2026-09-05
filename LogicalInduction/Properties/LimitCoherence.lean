@@ -1,17 +1,69 @@
-/-
-# §4.1 Limit coherence (`thm:lc`, appendix `app:lc`)
-
-The Gaifman-extension step: the limiting prices define coherent probabilities on every
-finite Boolean cylinder, and compactness of `ℕ → Bool` makes the resulting cylinder content
-countably additive, hence it extends to an actual probability measure on worlds.  The
-paper-facing statement is `lic_limitCoherence`.
--/
 import LogicalInduction.Properties.Relationships
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Constructions.ProjectiveFamilyContent
 import Mathlib.MeasureTheory.OuterMeasure.OfAddContent
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# §4.1 Limit Coherence (`thm:lc`, appendix proof `app:lc`)
+
+The Gaifman-extension step.  A logical inductor's limiting prices are not merely finitely
+additive: they are the sentence-event probabilities of an actual countably additive
+probability measure on worlds, concentrated on the models of the completed deductive
+process.  The paper-facing endpoint is `lic_limitCoherence`.
+
+## Gaifman coherence
+
+`GaifmanCoherent` collects the finite conditions a `Valuation` must satisfy to be extended.
+Its `congr` and `disjoint_add` clauses are stated **semantically** — they quantify over all
+propositional worlds rather than over syntactic derivability — so the conditions factor
+through the Boolean algebra of sentence events, which is what the extension argument reads.
+
+`lic_limitingBelief_gaifman` proves the limiting belief satisfies them.  The four clauses
+are not assumed as a valuation identity; they are read off the exclusive-exhaustive learning
+law `lic_learning_exclusive_exhaustive` through `lic_limitingBelief_exactlyOne`, which turns
+a finite family that is exactly-one in every completed-theory world into a family whose
+limiting prices sum to one.  `top_eq_one` is its one-element instance,
+`lic_limitingBelief_add_neg'` and `lic_limitingBelief_congr` its two-element instances, and
+`lic_limitingBelief_disjoint_add` its three-element instance.  `GaifmanCoherent.bot_eq_zero`,
+`disjoint_sum`, `mono`, `or_le` and `le_sum_of_covers` are the finite measure-like
+consequences that follow from the structure alone, for any coherent valuation.
+
+## From finite laws to a measure
+
+`BoolProjectiveLimit` supplies the extension machinery on the Boolean product space
+`ℕ → Bool` (which is `BoolPCWorld`).  Every measurable cylinder there is closed and the
+space is compact, so a decreasing sequence of cylinders with empty intersection is
+eventually empty; that makes the cylinder content of any projective family of finite
+measures countably additive, hence extendable to a measure with the prescribed cylinder
+values.
+
+The finite laws come from sentences: `booleanLiteral` names one atom's value, `booleanCube`
+one assignment on a finite set of atoms, and `booleanEvent` an arbitrary finite-coordinate
+event.  A coherent valuation therefore assigns each finite-dimensional event a probability
+(`gaifmanFinitePMF`, `gaifmanFiniteMeasure`), and those laws are projective
+(`gaifmanFiniteMeasure_isProjective`), giving `gaifmanMeasure` on `BoolPCWorld` and its
+pushforward `gaifmanWorldMeasure` on `PCWorld`.
+
+Sentence events receive exactly their coherent probabilities (`gaifmanMeasure_sentence`,
+`gaifmanWorldMeasure_sentence`): `sentenceAtoms` bounds a sentence's dependence to a finite
+set of atoms, so its event is a finite cylinder.  Under the limiting belief the measure also
+concentrates on completed-theory worlds (`lic_gaifmanMeasure_supported`,
+`lic_gaifmanWorldMeasure_supported`), because every sentence the deductive process ever
+proves has limiting probability one (`lic_limitingBelief_theorem`).
+
+`lic_limitCoherence` bundles the three facts the paper states: a probability measure, its
+sentence-event masses, and its concentration on `cworlds(Θ)`.
+
+## Consumers
+
+`Properties/ExpectationConvergence.lean` consumes `lic_limitCoherence` to write the limiting
+belief's approximate expectation as an average over completed-theory worlds (`thm:ec`), and
+`measurable_pcWorld_holds` to know a share's payout is a measurable function of the world.
+`Properties/UniversalSemimeasure.lean` consumes `lic_limitingBelief_gaifman` together with
+`GaifmanCoherent.le_sum_of_covers`.
+-/
 
 namespace LogicalInduction
 
@@ -24,6 +76,8 @@ singleton-measurability are Mathlib's `Prop.instMeasurableSpace` and
 this file declares neither. -/
 instance pcWorldMeasurableSpace : MeasurableSpace PCWorld :=
   inferInstanceAs (MeasurableSpace (ℕ → Prop))
+
+/-! ## Projective limits on Boolean product space -/
 
 namespace BoolProjectiveLimit
 
@@ -120,7 +174,8 @@ end BoolProjectiveLimit
 
 /-- The finite Gaifman conditions needed to extend a valuation on sentences to a measure.
 The semantic clauses range over all propositional worlds, so they factor through the Boolean
-algebra of sentence events rather than through syntax. -/
+algebra of sentence events rather than through syntax.
+Paper node: `thm:lc` -/
 structure GaifmanCoherent (L : Valuation) : Prop where
   mem_Icc : ∀ φ, L φ ∈ Set.Icc 0 1
   top_eq_one : L (⊤ : Sentence) = 1
@@ -131,7 +186,8 @@ structure GaifmanCoherent (L : Valuation) : Prop where
 
 /-- A fixed finite exactly-one family has limiting probabilities summing to one.  This is
 the completed-theory form used below: the semantic premise is only about worlds satisfying
-all sentences that ever appear in the deductive process. -/
+all sentences that ever appear in the deductive process.  It is the source of every
+`thm:lc` coherence clause proved here. -/
 lemma lic_limitingBelief_exactlyOne
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -161,7 +217,8 @@ lemma lic_limitingBelief_exactlyOne
   have hlimit := tendsto_nhds_unique (hsum (List.range k)) hone
   simpa [family] using hlimit
 
-/-- Complementarity of a sentence and its negation at the limiting valuation. -/
+/-- Complementarity of a sentence and its negation at the limiting valuation: the
+two-element instance of `lic_limitingBelief_exactlyOne`, serving `thm:lc`. -/
 lemma lic_limitingBelief_add_neg'
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (φ : Sentence) :
@@ -180,7 +237,8 @@ lemma lic_limitingBelief_add_neg'
   have hrange : List.range 2 = [0, 1] := by decide
   simpa [hrange, pair] using h
 
-/-- Semantically equivalent sentences receive the same limiting probability. -/
+/-- Semantically equivalent sentences receive the same limiting probability: the
+`GaifmanCoherent.congr` clause of `thm:lc`. -/
 lemma lic_limitingBelief_congr
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -206,7 +264,8 @@ lemma lic_limitingBelief_congr
   have hcomp := lic_limitingBelief_add_neg' P DP hworld ψ
   linarith
 
-/-- Finite additivity for semantically disjoint sentences at the limiting valuation. -/
+/-- Finite additivity for semantically disjoint sentences at the limiting valuation: the
+`GaifmanCoherent.disjoint_add` clause of `thm:lc`. -/
 lemma lic_limitingBelief_disjoint_add
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -258,12 +317,20 @@ theorem lic_limitingBelief_gaifman
         LO.Propositional.Formula.Boolean.val])
     simpa [singleton] using h
 
+/-! ## Consequences of Gaifman coherence
+
+These hold of any coherent valuation, from the structure alone.  The sentence-level
+conjunction and disjunction they use, `sentenceConjunction` / `sentenceDisjunction` and
+their `Holds` characterizations, live upstream in `Framework/Criterion.lean`, beside
+`PCWorld.Holds`. -/
+
 namespace GaifmanCoherent
 
 variable {L : Valuation} (hL : GaifmanCoherent L)
 
 include hL
 
+/-- The impossible event has probability zero. -/
 lemma bot_eq_zero : L (⊥ : Sentence) = 0 := by
   have hadd := GaifmanCoherent.disjoint_add hL (φ := (⊥ : Sentence)) (ψ := ⊥) (by
     intro v
@@ -272,19 +339,6 @@ lemma bot_eq_zero : L (⊥ : Sentence) = 0 := by
     intro v
     simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val])
   linarith
-
-end GaifmanCoherent
-
-/-! ## Finite Boolean laws
-
-`sentenceConjunction` / `sentenceDisjunction` and their `Holds` characterizations live
-upstream in `Framework/Criterion.lean`, beside `PCWorld.Holds`. -/
-
-namespace GaifmanCoherent
-
-variable {L : Valuation} (hL : GaifmanCoherent L)
-
-include hL
 
 /-- Finite additivity for a pairwise-disjoint list of sentence events. -/
 lemma disjoint_sum (l : List Sentence)
@@ -366,6 +420,8 @@ lemma le_sum_of_covers {φ : Sentence} {l : List Sentence}
       exact (GaifmanCoherent.or_le hL ψ (sentenceDisjunction l)).trans (by linarith)
 
 end GaifmanCoherent
+
+/-! ## Finite Boolean laws -/
 
 /-- The sentence asserting that atom `i` has Boolean value `b`. -/
 def booleanLiteral (i : ℕ) (b : Bool) : Sentence :=
@@ -657,6 +713,11 @@ theorem gaifmanMeasure_sentence (L : Valuation) (hL : GaifmanCoherent L) (φ : S
   rw [← BoolPCWorld.eval_eq_true_iff_holds, ← BoolPCWorld.eval_eq_true_iff_holds,
     eval_extend_restrict]
 
+/-! ## Measurability of world predicates
+
+Exported for `Properties/ExpectationConvergence.lean`, which integrates payouts against the
+transported measure. -/
+
 /-- The Boolean presentation maps measurably to the proposition-valued worlds. -/
 lemma BoolPCWorld.measurable_toPCWorld : Measurable BoolPCWorld.toPCWorld := by
   apply measurable_pi_lambda
@@ -703,7 +764,8 @@ theorem gaifmanWorldMeasure_sentence (L : Valuation) (hL : GaifmanCoherent L) (�
 /-! ## Paper-facing limit coherence -/
 
 /-- A theorem of the completed deductive process has limiting probability one.  The theorem
-may first appear at any finite stage. -/
+may first appear at any finite stage.  This is what concentrates `thm:lc`'s measure on
+`cworlds(Θ)`. -/
 lemma lic_limitingBelief_theorem
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -715,7 +777,8 @@ lemma lic_limitingBelief_theorem
   exact tendsto_nhds_unique (lic_limitingBelief_tendsto P DP hworld φ) ht
 
 /-- A refutable sentence has limiting probability zero, again under completed-theory rather
-than all-stage theoremhood. -/
+than all-stage theoremhood; the negative counterpart of `lic_limitingBelief_theorem` on the
+way to `thm:lc`. -/
 lemma lic_limitingBelief_refutable
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -762,7 +825,6 @@ theorem lic_gaifmanWorldMeasure_supported
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∀ᵐ v ∂gaifmanWorldMeasure (limitingBelief P) (lic_limitingBelief_gaifman P DP hworld),
       v.ConsistentWithTheory DP := by
-  let hG := lic_limitingBelief_gaifman P DP hworld
   apply (ae_map_iff BoolPCWorld.measurable_toPCWorld.aemeasurable
     (measurable_consistentWithTheory DP).setOf).2
   exact lic_gaifmanMeasure_supported P DP hworld
@@ -784,7 +846,5 @@ theorem lic_limitCoherence
   refine ⟨gaifmanWorldMeasure (limitingBelief P) hG, inferInstance, ?_, ?_⟩
   · exact fun φ => gaifmanWorldMeasure_sentence (limitingBelief P) hG φ
   · exact lic_gaifmanWorldMeasure_supported P DP hworld
-
-#print axioms lic_limitCoherence
 
 end LogicalInduction

@@ -6,29 +6,89 @@ import LogicalInduction.Properties.ExpectationAffine
 /-!
 # Certified expectation endpoints for arithmetically presented LUVs
 
-The paper's LUV expectation theorems (`thm:expprovind`, `thm:loe`, `thm:expcoh`,
-`thm:perexpkno`, `thm:exppolymax`, `thm:wubexp`) are stated in `Properties.ExpectationAffine`
-against a finite-precision world hypothesis: every world consistent with the day-`n` deductive
-stage values the LUV within `1/n` of a fixed real.  This file discharges that hypothesis for a
-`ComputableLUV`, whose values are explicit rationals `numᵢ/denᵢ`, so that the endpoints below
-carry no world-value premise.
+Renders the paper's LUV-expectation tail: `thm:expprovind` (tex:1753), `thm:loe`, `thm:expcoh`,
+`thm:perexpkno`, `thm:exppolymax`, `thm:wubexp`.
 
-The mechanism is the scheduled-reveal deductive process `gridDP`: stage `n` contains, for every
-LUV index `i ≤ n` and grid point `j/m` with `m ≤ n + 1` and `j < m`, the threshold literal in
-whichever polarity `Θ` decides.  A world consistent with that stage therefore reads back the whole
-grid, and `expectApprox_near_ofGrid` pins its day-`n` expectation within `1/n` of `numᵢ/denᵢ`
-uniformly over consistent worlds — uniformity being what the trader argument consumes.
+`thm:expprovind` is carried at the paper's own premise: the one-sided world bound over
+`cworlds(Θ)`, with `WorldValued` the paper's own sup-definition of `W(X)`.  The `_ofDetermined`
+forms are the `def:affthmval` corollaries consumed by
+`thm:recurringunbiasednessexp`/`thm:wubexp`/`thm:prandexp`.  `linearityLUVComb` is the paper's
+combination `aX + bY − Z`, from which `thm:loe` is derived exactly as `app:loe` does.
 
-The endpoints then come in two strengths.  The `_arith` forms assume a logical inductor over
-`gridDP` and the threshold-code efficiency certificate; the `_unconditional` forms discharge both
-(`gridDP` is proved computable here, the threshold codes are poly-fueled) and run over the
-constructed inductor `liaHistory gridDP`, leaving the rational hypothesis on `numᵢ/denᵢ` as the
-sole premise.
+The remaining endpoints discharge the finite-precision world hypothesis of
+`Properties/ExpectationAffine` — every world consistent with the day-`n` deductive stage values
+the LUV within `1/n` of a fixed real — for the `dd:luv-arith` class, whose values are explicit
+rationals `numᵢ/denᵢ`, so the `_arith` endpoints carry no world-value premise.
+
+* The mechanism is the scheduled-reveal process `ComputableLUV.gridDP`: stage `n` publishes the
+  `Θ`-decided threshold literal at every grid point `j/m` with `i ≤ n`, `m ≤ n + 1` and `j < m`.
+  A world consistent with that stage reads back the whole grid, and `expectApprox_near_gridDP`
+  pins its day-`n` expectation within `1/n` of `numᵢ/denᵢ` uniformly over consistent worlds —
+  uniformity being what the trader argument consumes.
+* `gridDP_computable`, with `toLUV_polyThresholdCodes`, yields the `_unconditional` endpoints
+  over `liaHistory gridDP`, whose sole hypothesis is a rational bound on `numᵢ/denᵢ`.
+* `expcoh_arith` / `perexpkno_arith` / `exppolymax_arith` / `wubexp_arith` run over
+  `luvThresholdDP` rather than `gridDP`, because they need completed-world values at every
+  threshold.
+
+Consumed by `AxiomAudit.lean` (all `_arith`, `_arith_unconditional` and
+`lic_expect_combination_provind_*`); `docs/trust-surface.html` lists
+`lic_expect_combination_provind_ge` as the printed display of `thm:expprovind`.
 -/
 
 namespace LogicalInduction
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment Filter Topology
+
+/-! ## Expectation provability induction at the paper's premise (`thm:expprovind`) -/
+
+/-- The three bounds both one-sided forms of `thm:expprovind` run on: a rational bound `b` on
+the share norms, price-boundedness of the diagonal mesh, and a uniform magnitude bound. -/
+private lemma exists_meshAffine_bounds {As : ℕ → LUVCombination} {P : History}
+    {DP : DeductiveProcess} [IsLogicalInductor P DP]
+    (h : LUVCombination.BoundedSequence As P) :
+    ∃ b : ℚ, (∀ n, (As n).shareNorm P ≤ (b : ℝ)) ∧
+      BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P ∧
+      ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C := by
+  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
+    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
+  obtain ⟨B, hB⟩ := h.bounded
+  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
+  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
+    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
+      le_add_of_nonneg_left (abs_nonneg _)
+    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
+  refine ⟨b, hshare,
+    ⟨max B 0, le_max_right _ _, fun n m =>
+      le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
+        (fun φ => hP m φ)).trans
+        ((As n).meshAffine_l1Norm_le P (n + 1))) (hB n)) (le_max_left _ _)⟩,
+    (b : ℝ), fun n =>
+      ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
+
+/-- Eventually the diagonal mesh's price value sits within `ε` of the combination's value at
+any completed-world valuation: the `1/n` mesh error scaled by the share bound. -/
+private lemma meshAffine_eventually_near {As : ℕ → LUVCombination} {P : History} {b : ℚ}
+    (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ)) {ε : ℝ} (hε : 0 < ε) :
+    ∀ᶠ n in atTop, ∀ (v : PCWorld) (ν : LUV → ℝ), (As n).ValuesAt v ν →
+      |((As n).meshAffine (n + 1)).value P v.payout - (As n).value P ν| ≤ ε := by
+  obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
+  filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v ν hν
+  have hn0 : 0 < n := by omega
+  have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+  have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
+      (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
+    have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
+      one_div_le_one_div_of_le hnR (by linarith)
+    refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
+    simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hν
+  have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
+    mul_le_mul_of_nonneg_right (hshare n) (by positivity)
+  have hsmall : (b : ℝ) * (1 / n) ≤ ε := by
+    rw [mul_one_div, div_le_iff₀ hnR]
+    nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
+      (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
+  linarith
 
 /-- **Combination-level expectation provability induction, `≤` form, at the paper's premise.**
 
@@ -39,6 +99,8 @@ assigns *some* coherent value to every LUV of `Aₙ`, which the paper's `sup` de
 `W(X)` supplies by construction); it is what produces the valuation `ν` the bound is stated
 against.  No `def:affthmval` determinacy is required — contrast
 `lic_expect_combination_provind_le_ofDetermined`, which assumes it and is a corollary of this.
+`hval` is asked at every day rather than the paper's `n ∈ ℕ⁺`; the extra index at `n = 0` only
+strengthens the hypothesis, and the conclusion is asymptotic.
 
 Proof kind `C`; hypotheses `(a)` throughout — the diagonal mesh of `⟨A⟩` is a polynomial
 affine sequence whose completed-theory values sit within `shareNorm · (1/n)` of the LUV
@@ -54,45 +116,16 @@ theorem lic_expect_combination_provind_le
       ∀ ν, (As n).ValuesAt v ν → (As n).value P ν ≤ c)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≲ₙ (fun _ => c) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
-  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
-    ⟨max B 0, le_max_right _ _, fun n m =>
-      le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
-        (fun φ => hP m φ)).trans
-        ((As n).meshAffine_l1Norm_le P (n + 1))) (hB n)) (le_max_left _ _)⟩
-  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
-    ⟨(b : ℝ), fun n =>
-      ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
+  obtain ⟨b, hshare, hbounded, hmag⟩ := exists_meshAffine_bounds (DP := DP) h
   have hmesh : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
       ((As n).meshAffine (n + 1)).value P v.payout ≤ c + ε := by
     intro ε hε
-    obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
-    filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
-    have hn0 : 0 < n := by omega
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+    filter_upwards [meshAffine_eventually_near hshare hε] with n hnear v hv
     obtain ⟨ν, hν⟩ := hwv n v hv
     have hvalue : (As n).value P ν ≤ c := hval n v hv ν hν
-    have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
-        (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
-      have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
-        one_div_le_one_div_of_le hnR (by linarith)
-      refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
-      simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hν
-    rw [abs_le] at hnear
-    have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
-      mul_le_mul_of_nonneg_right (hshare n) (by positivity)
-    have hsmall : (b : ℝ) * (1 / n) ≤ ε := by
-      rw [mul_one_div, div_le_iff₀ hnR]
-      nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
-        (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.2, hbound, hsmall, hvalue]
+    have h1 := hnear v ν hν
+    rw [abs_le] at h1
+    linarith [h1.2]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
     (h.poly.mesh_poly).affine_provind_theory_le_const P DP hbounded hmag hworld c hmesh
 
@@ -109,45 +142,16 @@ theorem lic_expect_combination_provind_ge
       ∀ ν, (As n).ValuesAt v ν → c ≤ (As n).value P ν)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => (As n).expect P n) ≳ₙ (fun _ => c) := by
-  have hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1 :=
-    fun n φ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
-  obtain ⟨B, hB⟩ := h.bounded
-  obtain ⟨b, hbB⟩ := exists_rat_gt (max B 0)
-  have hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ) := fun n => by
-    have h1 : (As n).shareNorm P ≤ (As n).l1Norm P :=
-      le_add_of_nonneg_left (abs_nonneg _)
-    exact h1.trans ((hB n).trans ((le_max_left B 0).trans hbB.le))
-  have hbounded : BoundedAffinePrices (fun n => (As n).meshAffine (n + 1)) P :=
-    ⟨max B 0, le_max_right _ _, fun n m =>
-      le_trans (le_trans ((((As n).meshAffine (n + 1)).abs_price_le_l1Norm P m
-        (fun φ => hP m φ)).trans
-        ((As n).meshAffine_l1Norm_le P (n + 1))) (hB n)) (le_max_left _ _)⟩
-  have hmag : ∃ C : ℝ, ∀ n, ((As n).meshAffine (n + 1)).magnitude P ≤ C :=
-    ⟨(b : ℝ), fun n =>
-      ((As n).meshAffine_magnitude_le_shareNorm P (n + 1)).trans (hshare n)⟩
+  obtain ⟨b, hshare, hbounded, hmag⟩ := exists_meshAffine_bounds (DP := DP) h
   have hmesh : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
       c - ε ≤ ((As n).meshAffine (n + 1)).value P v.payout := by
     intro ε hε
-    obtain ⟨N, hN⟩ := exists_nat_gt ((b : ℝ) / ε)
-    filter_upwards [Filter.eventually_ge_atTop (max 1 N)] with n hn v hv
-    have hn0 : 0 < n := by omega
-    have hnR : (0 : ℝ) < n := by exact_mod_cast hn0
+    filter_upwards [meshAffine_eventually_near hshare hε] with n hnear v hv
     obtain ⟨ν, hν⟩ := hwv n v hv
     have hvalue : c ≤ (As n).value P ν := hval n v hv ν hν
-    have hnear : |((As n).meshAffine (n + 1)).value P v.payout -
-        (As n).value P ν| ≤ (As n).shareNorm P * (1 / (n : ℝ)) := by
-      have hstep : (1 : ℝ) / ((n : ℝ) + 1) ≤ 1 / (n : ℝ) :=
-        one_div_le_one_div_of_le hnR (by linarith)
-      refine LE.le.trans ?_ (mul_le_mul_of_nonneg_left hstep ((As n).shareNorm_nonneg P))
-      simpa using (As n).meshAffine_value_near (k := n + 1) P v ν n.succ_pos hν
-    rw [abs_le] at hnear
-    have hbound : (As n).shareNorm P * (1 / n) ≤ (b : ℝ) * (1 / n) :=
-      mul_le_mul_of_nonneg_right (hshare n) (by positivity)
-    have hsmall : (b : ℝ) * (1 / n) ≤ ε := by
-      rw [mul_one_div, div_le_iff₀ hnR]
-      nlinarith [(div_lt_iff₀ hε).mp (hN.trans_le
-        (show ((N : ℕ) : ℝ) ≤ n by exact_mod_cast le_trans (le_max_right 1 N) hn))]
-    linarith [hnear.1, hbound, hsmall, hvalue]
+    have h1 := hnear v ν hν
+    rw [abs_le] at h1
+    linarith [h1.1]
   simpa only [LUVCombination.meshAffine_price_diagonal] using
     (h.poly.mesh_poly).affine_provind_theory_ge_const P DP hbounded hmag hworld c hmesh
 
@@ -240,6 +244,8 @@ theorem lic_expect_combination_provind_zero
     (fun n => (As n).expect P n) ≈ₙ (fun _ => 0) :=
   lic_expect_combination_provind_eq_ofDetermined h hwv hdet0 0 (fun _ => rfl) hworld
 
+/-! ## Linearity of expectation (`thm:loe`) -/
+
 /-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
 def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
   const := .const 0
@@ -278,6 +284,8 @@ theorem lic_linearity_of_expectation_seq
       = (fun n => (linearityLUVComb a b X Y Z n).expect P n - 0) := by
     funext n; rw [linearityLUVComb_expect]; ring
   rw [hfun]; exact hzero
+
+/-! ## The scheduled-reveal grid process -/
 
 namespace ComputableLUV
 
@@ -373,6 +381,15 @@ lemma expectApprox_near_gridDP {v : PCWorld} {m n : ℕ} (hn : 0 < n)
     rw [hc] at this
     exact absurd this (not_lt.mpr (le_of_lt hlt))
 
+/-! ## Certified endpoints for `dd:luv-arith` LUVs -/
+
+/-- The instance of `expectApprox_near_gridDP` every certified endpoint below quotes: at
+stage `n`, the grid is read at its own precision `n + 1`. -/
+private lemma gridNear {v : PCWorld} {n i : ℕ} (hv : v.ConsistentWith ((L.gridDP).D n))
+    (hi : i ≤ n) :
+    |(toLUV i).expectApprox v.payout (n + 1) - (L.value i : ℝ)| ≤ 1 / ((n + 1 : ℕ) : ℝ) :=
+  L.expectApprox_near_gridDP (n := n + 1) (Nat.succ_pos n) hv hi le_rfl
+
 /-- **Certified expectation provability induction.**  Provability induction for a `dd:luv-arith`
 LUV, with the world-value hypothesis discharged from arithmetic: it follows from the plain
 rational bound `c ≤ numᵢ/denᵢ`.  The remaining premises are the disclosed boundaries — the
@@ -385,7 +402,7 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
   lic_expectation_provind P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), hc,
-        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
+        (by simpa using L.gridNear hv (by omega))⟩))
 
 /-- Certified expectation provability induction, upper (`≤`) form.
 Paper node: `thm:expprovind` -/
@@ -395,7 +412,7 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      ⟨(L.value i : ℝ), hc, (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
+      ⟨(L.value i : ℝ), hc, (by simpa using L.gridNear hv (by omega))⟩))
 
 /-- Certified expectation provability induction, equality (`=`) form: a determined
 `dd:luv-arith` value forces the expectation sequence to it.
@@ -406,7 +423,7 @@ theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.g
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
     ((Filter.eventually_ge_atTop (max 1 i)).mono (fun n hin v hv =>
-      hc ▸ (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))))
+      hc ▸ (by simpa using L.gridNear hv (by omega))))
 
 /-- **Certified linearity of expectation.**  Linearity for `dd:luv-arith` LUVs `Xᵢ`,
 `Xⱼ`, `Xₖ`, with the world-value and linear-relation hypotheses discharged from arithmetic: the
@@ -423,9 +440,9 @@ theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L
     hcodeI hcodeJ hcodeK L.gridDP_hcons
     ((Filter.eventually_ge_atTop (max 1 (max i (max j k)))).mono (fun n hin v hv =>
       ⟨(L.value i : ℝ), (L.value j : ℝ), (L.value k : ℝ), by exact_mod_cast hlin,
-        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega)),
-        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega)),
-        (by simpa using L.expectApprox_near_gridDP (n := n + 1) (by omega) hv (by omega) (by omega))⟩))
+        (by simpa using L.gridNear hv (by omega)),
+        (by simpa using L.gridNear hv (by omega)),
+        (by simpa using L.gridNear hv (by omega))⟩))
 
 /-- **Certified `thm:exppolymax`.**  The sequence-level polynomial-max expectation identity for a
 `dd:luv-arith` LUV-combination sequence, with the `WorldValued` *representation* hypothesis

@@ -1,24 +1,33 @@
-/-
+import LogicalInduction.Construction.Witnesses.PatternAutomaton
+import LogicalInduction.Construction.Witnesses.StructuredPatterns
+
+/-!
 # The finite-state half of the segment recognizer
+
+Renders `app:ifp` (tex:6018): a `RunAuto.BlockAutomaton` deciding `SegMatchRelaxed` exactly.
 
 `StructPat.SegMatch` is what the freeze must decide, and it is not regular: a structured
 block's unary length field must agree with its payload's token count, an `aⁿbⁿ` constraint
-that no `RunAuto.BlockAutomaton` expresses (`RunAutomaton.lean` says so at `BlockMachine`).
+that no `BlockAutomaton` expresses (see `RunAutomaton.lean`'s `BlockMachine`).  The decision
+therefore splits, and this module carries the **regular half** — `SegMatchRelaxed`, which is
+`SegMatch` with the length field left unchecked.  The counting half is a one-counter walk
+over the same segment structure and lives in `SegmentCounter.lean`.
 
-The decision therefore splits.  This file carries the **regular half**: the relaxed language
-`SegMatchRelaxed`, which is `SegMatch` with the length field left unchecked, and a
-`BlockAutomaton` deciding it exactly.  The counting half — the length field against the
-payload width — is a one-counter walk over the same segment structure and lives elsewhere.
+* `PayRec fc` is the payload-recognizer interface: a deterministic finite recognizer deciding
+  `parseStructuredArithmeticFormula`'s complete-parse condition for one fixed formula code.
+  Nothing here inhabits it; `SegRec.payRec` does.
+* `payload_tokens_lt_23`: every token the structured grammar consumes is a tag below `23`,
+  which is what the automaton's payload row enumerates.
+* State encoding with `segK p = p.length + 1` and stride `segM`: control states `k`, `K + k`,
+  `2K + k`, `3K + k`, payload states `4K + M * k + q`, and `segQ` the absorbing failure state
+  and bound.
+* `segRows` is the dispatch table, its polarity row guarded by `pol ≤ 1` because
+  `StructBlockRelaxed` demands it; `segAuto` is the automaton.
+* The run is proved phase by phase (`foldl_spay`, `foldl_slen`, `foldl_s2`, `foldl_s1`,
+  `foldl_pos_struct`) and assembled by `foldl_segAuto` into `segAuto_accepts`.
 
-The payload recognizer for a fixed formula code is taken as an interface, `PayRec`: a
-deterministic finite recognizer whose runs decide
-`parseStructuredArithmeticFormula`'s complete-parse condition.  Nothing here inhabits it.
-
-Construction infrastructure rather than a paper statement, so the declarations are `lemma`s
-and `def`s.
+Consumed by `SegmentRecognizer.lean`; `segAuto_accepts` is in `AxiomAudit.lean`.
 -/
-import LogicalInduction.Construction.Witnesses.PatternAutomaton
-import LogicalInduction.Construction.Witnesses.StructuredPatterns
 
 namespace LogicalInduction.SegAuto
 
@@ -46,6 +55,7 @@ structure PayRec (fc : ℕ) where
   spec : ∀ q : List ℕ, accept (q.foldl step init) = true ↔
     parseStructuredArithmeticFormula q.length 0 q = some (fc, [])
 
+/-! ## The relaxed language -/
 
 lemma segMatchRelaxed_nil (b : List ℕ) : SegMatchRelaxed [] b ↔ b = [] := by
   constructor
@@ -214,7 +224,6 @@ lemma payload_tokens_lt_23 {q : List ℕ} {fc : ℕ}
   subst hw
   exact hlt
 
-
 /-! ## Row-table arithmetic -/
 
 /-- `rowStep` scans its guards in order, so an appended table is tried after the prefix. -/
@@ -267,6 +276,8 @@ def segM (R : ∀ fc, PayRec fc) (p : List StructPat.PatSeg) : ℕ :=
 def segQ (R : ∀ fc, PayRec fc) (p : List StructPat.PatSeg) : ℕ :=
   4 * segK p + segM R p * segK p
 
+/-- The one statement of the control-slot count, used wherever a state decoding is unfolded
+into arithmetic. -/
 lemma segK_eq (p : List StructPat.PatSeg) : segK p = p.length + 1 := rfl
 
 lemma segM_pos (R : ∀ fc, PayRec fc) (p : List StructPat.PatSeg) : 0 < segM R p :=
@@ -360,13 +371,13 @@ lemma segAuto_step_eq (i t : ℕ) :
 lemma length_lt_segQ (R : ∀ fc, PayRec fc) (p : List StructPat.PatSeg) :
     p.length < segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   omega
 
 /-- The failure state absorbs. -/
 lemma step_rej (t : ℕ) : (segAuto H R p).step (segQ R p) t = segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p (segQ R p) = ⟨[], segQ R p⟩ := by
     unfold segRows
     rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
@@ -380,7 +391,7 @@ lemma foldl_rej : ∀ b : List ℕ, List.foldl (segAuto H R p).step (segQ R p) b
 
 lemma step_pos_end (t : ℕ) : (segAuto H R p).step p.length t = segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p p.length = ⟨[], segQ R p⟩ := by
     unfold segRows
     rw [if_pos (by omega), List.getElem?_eq_none (le_refl _)]
@@ -390,7 +401,7 @@ lemma step_pos_end (t : ℕ) : (segAuto H R p).step p.length t = segQ R p := by
 lemma step_pos_lit {k t₀ : ℕ} (hk : k < p.length) (hs : p[k] = StructPat.PatSeg.lit t₀)
     (t : ℕ) : (segAuto H R p).step k t = if t = t₀ then k + 1 else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(litGuard t₀, k + 1)], segQ R p⟩ := by
     unfold segRows
     rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
@@ -402,7 +413,7 @@ lemma step_pos_hole {k : ℕ} {χ : Sentence} (hk : k < p.length)
     (hs : p[k] = StructPat.PatSeg.hole χ) (t : ℕ) :
     (segAuto H R p).step k t = if (H.guard χ).P t = true then k + 1 else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(H.guard χ, k + 1)], segQ R p⟩ := by
     unfold segRows
     rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
@@ -414,7 +425,7 @@ lemma step_pos_struct {k pol fc : ℕ} (hk : k < p.length)
     (hs : p[k] = StructPat.PatSeg.struct pol fc) (t : ℕ) :
     (segAuto H R p).step k t = if t = 1 then segK p + k else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p k = ⟨[(litGuard 1, segK p + k)], segQ R p⟩ := by
     unfold segRows
     rw [if_pos (by omega), List.getElem?_eq_getElem hk, hs]
@@ -425,7 +436,7 @@ lemma step_pos_struct {k pol fc : ℕ} (hk : k < p.length)
 lemma step_s1 {k : ℕ} (hk : k < p.length) (t : ℕ) :
     (segAuto H R p).step (segK p + k) t = if t = 0 then 2 * segK p + k else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hrow : segRows H R p (segK p + k) = ⟨[(litGuard 0, 2 * segK p + k)], segQ R p⟩ := by
     unfold segRows
     have hsub : segK p + k - segK p = k := by omega
@@ -439,7 +450,7 @@ lemma step_s2 {k pol fc : ℕ} (hk : k < p.length)
     (segAuto H R p).step (2 * segK p + k) t =
       if t = pol then 3 * segK p + k else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hsub : 2 * segK p + k - 2 * segK p = k := by omega
   have hrow : segRows H R p (2 * segK p + k)
       = ⟨[(litGuard pol, 3 * segK p + k)], segQ R p⟩ := by
@@ -456,7 +467,7 @@ lemma step_s2_bad {k pol fc : ℕ} (hk : k < p.length)
     (hs : p[k] = StructPat.PatSeg.struct pol fc) (hpol : ¬ pol ≤ 1) (t : ℕ) :
     (segAuto H R p).step (2 * segK p + k) t = segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hsub : 2 * segK p + k - 2 * segK p = k := by omega
   have hrow : segRows H R p (2 * segK p + k) = ⟨[], segQ R p⟩ := by
     unfold segRows
@@ -474,7 +485,7 @@ lemma step_slen {k pol fc : ℕ} (hk : k < p.length)
       else if t = 0 then 4 * segK p + (segM R p * k + (R fc).init)
       else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hsub : 3 * segK p + k - 3 * segK p = k := by omega
   have hrow : segRows H R p (3 * segK p + k) =
       ⟨[(litGuard 1, 3 * segK p + k),
@@ -502,7 +513,7 @@ lemma step_spay {k q pol fc : ℕ} (hk : k < p.length)
          else 4 * segK p + (segM R p * k + (R fc).step q t))
       else segQ R p := by
   have h4 := four_segK_le_segQ R p
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   have hqm : q < segM R p := by have := payQ_lt_segM R hk hs; omega
   have hlt : segM R p * k + q < segM R p * segK p := spay_lt (by omega) (by omega)
   have hsub : 4 * segK p + (segM R p * k + q) - 4 * segK p = segM R p * k + q :=
@@ -544,19 +555,19 @@ Only `pos p.length` accepts, and every other control state is numerically above 
 lemma rej_ne : segQ R p ≠ p.length := Nat.ne_of_gt (length_lt_segQ R p)
 
 lemma s1_ne (k : ℕ) : segK p + k ≠ p.length := by
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   omega
 
 lemma s2_ne (k : ℕ) : 2 * segK p + k ≠ p.length := by
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   omega
 
 lemma slen_ne (k : ℕ) : 3 * segK p + k ≠ p.length := by
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   omega
 
 lemma spay_ne (X : ℕ) : 4 * segK p + X ≠ p.length := by
-  have hKe : segK p = p.length + 1 := rfl
+  have hKe := segK_eq p
   omega
 
 end Steps
@@ -942,7 +953,5 @@ lemma segAuto_accepts (H : PatAuto.HoleGuards) (R : ∀ fc, PayRec fc)
   exact h
 
 end Runs
-
-#print axioms LogicalInduction.SegAuto.segAuto_accepts
 
 end LogicalInduction.SegAuto

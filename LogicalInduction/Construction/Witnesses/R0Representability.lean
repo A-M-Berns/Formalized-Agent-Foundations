@@ -1,4 +1,9 @@
-/-
+import LogicalInduction.Framework.QuoteRepresentability
+import Foundation.FirstOrder.Arithmetic.R0.Representation
+import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
+import Foundation.FirstOrder.Arithmetic.Induction
+
+/-!
 # Non-vacuity of `RepresentsComputations`: the standard arithmetical theories satisfy it
 
 `LogicalInduction.RepresentsComputations` is the paper's standing hypothesis on the
@@ -24,7 +29,8 @@ demands.  The two halves of the class's `Iff` are proved by opposite routes:
   free, and there is deliberately no `of_weakerThan` lemma here.  The honest transport is
   the hypothesis `[ℕ↓[ℒₒᵣ] ⊧* U]` carried by `representsComputations_of_peanoMinus`.
 
-**Every registered instance is `ℕ`-sound, and that is a gap in the non-vacuity argument.**  `representsComputations_of_peanoMinus` requires `[ℕ↓[ℒₒᵣ] ⊧* U]`, and the three
+**Every registered instance is `ℕ`-sound, and that is a gap in the non-vacuity argument.**
+`representsComputations_of_peanoMinus` requires `[ℕ↓[ℒₒᵣ] ⊧* U]`, and the three
 instances registered below (`𝗣𝗔⁻`, `𝗜𝚺₁`, `𝗣𝗔`) are all true in the standard model.  The
 *class* is strictly weaker than that — it is a condition on `U`'s derivations only, and the
 paper's `Θ` is assumed consistent, c.e. and representing computations, with no soundness —
@@ -42,20 +48,15 @@ show the premise set is inhabited at all.
 The single-valuedness lemmas `codeAux_uniq`/`code_uniq` that the `→` direction rests on
 live in `Framework/QuoteRepresentability.lean`, which the quotation layer also cites.
 
-**Why `𝗣𝗔⁻` and not `𝗥₀`.**  The commented-out `code_uniq` in Foundation reads `𝗥₀`, but
-that text is dead: commit 593d63d8 commented the block out and weakened `𝗣𝗔⁻` to `𝗥₀` in
-one stroke, so the `𝗥₀` version was never compiled and does not go through.  The `rfind`
-case compares two putative witnesses `z`, `z'` and needs them to be comparable.  `𝗥₀ =
+**Why `𝗣𝗔⁻` and not `𝗥₀`.**  Foundation's `code_uniq` is commented out, and the commented
+text reads `𝗥₀`; it does not go through.  The `rfind` case compares two putative witnesses
+`z`, `z'` and needs them to be comparable.  `𝗥₀ =
 Ω₁–Ω₄` has no trichotomy axiom (the classical strong-representability theorem is for
 Robinson's `R`, which adds `Ω₅ : ∀x (x ≤ n̄ ∨ n̄ ≤ x)`), and Foundation records
 `𝗥₀ ⪱ 𝗣𝗔⁻`.  Keeping the ambient theory at `𝗣𝗔⁻` — whose models carry a `LinearOrder` —
 is what makes the `wlog z < z'` step legitimate.  Everything else in the argument needs
 only `𝗥₀`.
 -/
-import LogicalInduction.Framework.QuoteRepresentability
-import Foundation.FirstOrder.Arithmetic.R0.Representation
-import Foundation.FirstOrder.Arithmetic.PeanoMinus.Basic
-import Foundation.FirstOrder.Arithmetic.Induction
 
 namespace LogicalInduction
 

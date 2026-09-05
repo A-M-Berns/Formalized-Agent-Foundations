@@ -1,33 +1,51 @@
-/-
-# Base-four arithmetic on digit words, in `Complexity.FP`
-
-`Machine/DigitBits.lean` fixes the bit rendering of a base-four digit run
-(`digitsToBits`, three bits per digit, most significant bit of the digit first) and
-`Framework/DigitArith.lean` fixes the value it denotes (`digitVal`, little-endian).  This
-file is the arithmetic on that representation: addition, truncated subtraction,
-predecessor, comparison, integer square root with remainder, and `Nat.unpair` — each as a
-member of `Complexity.FP` with a value specification.
-
-Everything is built from one vehicle, `Complexity.Cobham.iterate_mem_FP`: an `FP` step
-applied `(ruler z).length` times from an `FP` initial state, subject to a uniform width
-bound.  `TokenFold.dgFold_mem_FP` cannot serve here because it gives the client no random
-access into a *second* operand, and every operation below is binary.
-
-Digits are consumed three bits at a time and reduced to *unary* immediately (`digU`), so
-all in-step arithmetic is length arithmetic — append for addition, `drop` for truncated
-subtraction, `TokenFold.leFlag` for comparison — and is written back as three bits by
-`unDig`.  A digit sum is at most `7`, so both conversions are constant-depth dispatches.
-
-Trailing zero digits do not change `digitVal`, which is what makes the loops uniform: a
-loop runs a fixed, generously over-estimated number of steps and the surplus steps append
-zero digits.  Nothing here is a paper claim, so the declarations are `lemma`s and `def`s
-and carry no `Paper node:` line.
--/
 import LogicalInduction.Framework.Machine.TokenFold
 import Complexitylib.Classes.P
 
+/-!
+# Base-four arithmetic on digit words, in `Complexity.FP`
+
+`Framework/Machine/DigitBits.lean` fixes the bit rendering of a base-four digit run
+(`digitsToBits`, three bits per digit, most significant bit of the digit first) and
+`Framework/DigitArith.lean` fixes the value it denotes (`digitVal`, little-endian).
+`IsDigitWord` and `wordVal` are this file's two predicates over that representation, and the
+file is the arithmetic on it: addition, truncated subtraction, predecessor, comparison,
+integer square root with remainder, and `Nat.unpair` — each as a member of `Complexity.FP`
+with a value specification.
+
+Naming: a `…W` suffix marks a word-level function on digit words (`addW`, `subW`, `leW`,
+`predW`, `sqrtRemW`, `unpairFstW`, `unpairSndW`), and `…W_spec` is its value specification.
+
+## The one vehicle
+
+Everything is built from `Complexity.Cobham.iterate_mem_FP`: an `FP` step applied
+`(ruler z).length` times from an `FP` initial state, subject to a uniform width bound.
+`TokenFold.dgFold_mem_FP` cannot serve here, because it gives the client no random access
+into a *second* operand, and every operation below is binary.
+
+Digits are consumed three bits at a time and reduced to *unary* immediately (`digU`), so all
+in-step arithmetic is length arithmetic — append for addition, `drop` for truncated
+subtraction, `TokenFold.leFlag` for comparison — and is written back as three bits by
+`unDig`. A digit sum is at most `7`, so both conversions are constant-depth dispatches.
+
+Trailing zero digits do not change `digitVal`, which is what makes the loops uniform: a loop
+runs a fixed, generously over-estimated number of steps and the surplus steps append zero
+digits. The width invariants (`AddBnd`, `SqBnd`) must therefore hold on *every* input, not
+only on well-formed configurations, since `iterate_mem_FP`'s clamp has to be discharged on
+malformed words too.
+
+## Where it is used
+
+`sqrtRemW_mem_FP` and `unpairW_spec` are the file's two paper-facing results
+(`app:ifp`); their sole consumer is `Construction/Witnesses/FiberTestFP.lean`. Everything
+else is infrastructure reached through them. Nothing else here is a paper claim, so the
+remaining declarations are `lemma`s and `def`s carrying no `Paper node` line.
+-/
+
 namespace LogicalInduction.DigitFP
 
+-- `Nat.sqrt` is opaque here so the square-root recurrence is driven by `sqrt_rec`'s four
+-- Mathlib characterizations rather than unfolded by the `simp`/`omega` calls in the loop
+-- proofs.
 attribute [local irreducible] Nat.sqrt
 
 open Complexity Complexity.Cobham LogicalInduction.TokenFold LogicalInduction.FPFold
@@ -50,13 +68,6 @@ Proof kind: `C` composition.  Provenance: (b) `bitsToDigits_digitsToBits`. -/
 lemma wordVal_digitsToBits {cur : List ℕ} (hcur : ∀ d ∈ cur, d < 4) :
     wordVal (digitsToBits cur) = digitVal cur := by
   rw [wordVal, bitsToDigits_digitsToBits _ (fun d hd => lt_trans (hcur d hd) (by norm_num))]
-
-lemma length_digitsToBits : ∀ ds : List ℕ, (digitsToBits ds).length = 3 * ds.length
-  | [] => rfl
-  | (d :: ds) => by
-      rw [digitsToBits_cons, List.length_append, length_digitBits, length_digitsToBits ds]
-      simp
-      omega
 
 /-! ## The two digit conversions
 
@@ -436,12 +447,6 @@ private lemma aOut_length_iterate : ∀ (n : ℕ) (v : List Bool),
       rw [Function.iterate_succ_apply, aOut_length_iterate n (addStep v), aOut_addStep]
       simp
       omega
-
-/-- The output width is fixed by the input width alone. -/
-lemma addW_length (z : List Bool) : (addW z).length = 3 * (z.length + 1) := by
-  have h : aOut (addInit z) = [] := by simp [aOut, addInit]
-  rw [addW, aOut_length_iterate, h]
-  simp [addRuler]
 
 private lemma addW_core {as bs : List ℕ} (has : ∀ d ∈ as, d < 4) (hbs : ∀ d ∈ bs, d < 4) :
     ∃ res : List ℕ, (∀ d ∈ res, d < 4) ∧
@@ -907,7 +912,8 @@ root to `2s + q` and the remainder to `r' - (4s+q)·q`.
 Proof kind: `P` proved.  Provenance: (b) `Nat.sqrt_le`, `Nat.lt_succ_sqrt`, `Nat.le_sqrt`,
 `Nat.sqrt_lt`. -/
 private lemma sqrt_rec (p d : ℕ) (hd : d < 4) :
-    Nat.sqrt (4 * p + d) = 2 * Nat.sqrt p + sqDigit (Nat.sqrt p) (4 * (p - Nat.sqrt p * Nat.sqrt p) + d)
+    Nat.sqrt (4 * p + d) = 2 * Nat.sqrt p +
+      sqDigit (Nat.sqrt p) (4 * (p - Nat.sqrt p * Nat.sqrt p) + d)
       ∧ (4 * p + d) - Nat.sqrt (4 * p + d) * Nat.sqrt (4 * p + d)
         = (4 * (p - Nat.sqrt p * Nat.sqrt p) + d)
           - (4 * Nat.sqrt p + sqDigit (Nat.sqrt p) (4 * (p - Nat.sqrt p * Nat.sqrt p) + d))
@@ -1148,7 +1154,18 @@ private lemma sqCore_mem_FP : sqCore ∈ FP := by
 `⟦s⟧ = Nat.sqrt ⟦w⟧` and `⟦r⟧ = ⟦w⟧ - ⟦s⟧²`. -/
 def sqrtRemW (z : List Bool) : List Bool := pair (aCar (sqCore z)) (aOut (sqCore z))
 
-/-- Proof kind: `C` composition.  Provenance: (b) `Complexity.Cobham.iterate_mem_FP`,
+/-- **Base-four integer square root with remainder is a polynomial-time word function.**
+
+`app:ifp` is the appendix proof of `thm:ifp`, whose efficiency step reads "only finitely many
+constants … can be hard-coded into `F`". As printed, `thm:ifp` is false, and the corrected
+statement this development proves carries **no** condition on the syntax of the moved
+sentences: both halves of the `Recognizable` condition — the compatibility hypothesis of the
+restricted form (`Construction/Witnesses/CanonicalCodes.lean`) — stand for `Complexity.FP`
+devices, and this is one of the two the development builds instead of assuming
+(`LogicalInduction/README.md`, *What differs from the paper*). The sole consumer is
+`Construction/Witnesses/FiberTestFP.lean`.
+
+Proof kind: `C` composition.  Provenance: (b) `Complexity.Cobham.iterate_mem_FP`,
 (a) `sqStep_mem_FP`, `SqBnd.iterate`.
 Paper node: `app:ifp` -/
 lemma sqrtRemW_mem_FP : sqrtRemW ∈ FP := by
@@ -1461,7 +1478,15 @@ lemma unpairSndW_mem_FP : unpairSndW ∈ FP :=
   selectHeadFn_mem_FP gtFlagSq_mem_FP sqrtFst_mem_FP
     (subWFn_mem_FP sqrtSnd_mem_FP sqrtFst_mem_FP)
 
-/-- **Unpairing is correct.**
+/-- **Unpairing is correct.** The two components `Nat.unpair` computes, read off the
+square-root loop, on digit words and with their values specified.
+
+This is the second of the two `Complexity.FP` devices that let the corrected `thm:ifp` drop
+the `Recognizable` condition of the restricted form
+(`Construction/Witnesses/CanonicalCodes.lean`; the paper states no such condition) — see
+`sqrtRemW_mem_FP` above and
+`LogicalInduction/README.md`, *What differs from the paper*. Its sole consumer is
+`Construction/Witnesses/FiberTestFP.lean`.
 
 Proof kind: `C` composition.  Provenance: (a) `sqrtRemW_spec`, `subW_spec`,
 (b) `Nat.unpair`.
@@ -1501,21 +1526,5 @@ lemma unpairW_spec {w : List Bool} (hw : IsDigitWord w) :
       rw [hsub.2, hRv', hSv']
     · rw [if_neg h, if_pos (by omega)]
       exact hSv'
-
-/-! ## Axiom accounting -/
-
-#print axioms addW_mem_FP
-#print axioms subW_mem_FP
-#print axioms leW_mem_FP
-#print axioms predW_mem_FP
-#print axioms sqrtRemW_mem_FP
-#print axioms unpairFstW_mem_FP
-#print axioms unpairSndW_mem_FP
-#print axioms sqrtRemW_spec
-#print axioms unpairW_spec
-#print axioms wordVal_addW
-#print axioms subW_spec
-#print axioms leW_spec
-#print axioms predW_spec
 
 end LogicalInduction.DigitFP

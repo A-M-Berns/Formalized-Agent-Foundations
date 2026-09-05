@@ -1,64 +1,65 @@
-/-
-# Bounded provability, and the paper's finite consistency statements — §4.10
-
-The paper's `Con(Θ′)(ν)` (tex:1855-1866) says
-
-> there is no proof of `⊥` from `⌜Θ′⌝` with `ν` or fewer symbols.
-
-This module supplies the *external* (Lean-side) side of that predicate over Foundation's
-internal derivations: bounded provability `BProv`, its decidability, the total computable
-ℕ-valued decider the represented lane needs, and the finite-consistency predicate
-`conWithin` with the soundness bridge that makes every one of its instances **true** for a
-consistent theory.
-
-## What is measured: symbols
-
-The bound is on the derivation's **symbol count**, as the paper says, and it is
-**inclusive** (`dSize d ≤ k`), as the paper says.  `Framework/DerivationSize.lean` builds
-`dSize`, the symbol count of a Foundation derivation code, by external recursion at
-`V := ℕ` — which is the only place §4.10 meters anything — and proves the equations that
-tie it to Foundation's own derivation constructors (`dSize_axL`, `dSize_cutRule`, …).
-
-The earlier `dd:proofcode` modelling substitution — metering by the derivation's *Gödel
-number* because Foundation exposes no size function — is **retired**.  What is left is a
-*convention*, not a substitution: the paper fixes neither a Gödel encoding nor an alphabet
-("written in `ℒ` using a Gödel encoding"), so some symbol-counting convention has to be
-chosen, and ours is stated in full in `DerivationSize.lean`'s header.  Nothing in this
-module depends on the choice beyond `le_G_dSize`.
-
-## Why bounded *provability*, not bounded *consistency*
-
-The represented lane must name the theory.  `conWithin T` is, for a consistent `T`,
-extensionally the constant predicate `True`, so a `γ` representing its indicator would name
-nothing — the extensionality trap: a represented predicate is pinned by its extension, so
-a constant one names no theory.  What varies with `T`'s theorems
-is bounded *provability* with the sentence code in the argument, so that is what is made
-computable here: `bprovValue T : ℕ → ℕ` decides `∃ d, Proof T d φ ∧ dSize d ≤ k` at the
-packed argument `⟨φ, k⟩`, and the day-`n` Con claim is read off it as the value `0` at
-`⟨⌜⊥⌝, f n⟩`.
-
-## How computability is obtained
-
-No proof checker is written.  Foundation's `Bootstrapping.Proof` is `𝚫₁`
-(`Proof.definable'`), so the packed proof predicate and its negation are both `𝚺₁` by
-`definability`; `re_iff_sigma1` turns each into an r.e. predicate on ℕ and
-`ComputablePred.computable_iff_re_compl_re'` turns the pair into a decider.  Foundation's
-own arithmetic pairing coincides with Mathlib's at `ℕ` (`nat_pair_eq`), which is what lets
-the definable form (stated with `π₁`/`π₂`) and the computable form (stated with
-`Nat.pair`/`Nat.unpair`) be the same predicate.
-
-That alone decides `Proof T d φ` for a *given* `d`.  What makes the symbol-metered search
-decidable — in both polarities, which is what the total decider needs — is the converse
-bound `le_G_dSize : d ≤ G (dSize d)` of `DerivationSize.lean`: a derivation with at most `k`
-symbols has code at most `G k`, so the unbounded search over `d` collapses to a bounded one
-(`bProv_iff_bounded`).  `dSize d ≤ d` is the useless direction; this is the one that does
-the work.
--/
 import Foundation.FirstOrder.Incompleteness.First
 import Foundation.FirstOrder.Incompleteness.RosserProvability
 import Mathlib.Computability.Partrec
 import LogicalInduction.Framework.RepresentsComputations
 import LogicalInduction.Framework.DerivationSizeComputable
+
+/-!
+# Bounded provability, and the paper's finite consistency statements — §4.10
+
+The *external* (Lean-side) side of the paper's `Con(Θ′)(ν)` (tex:1855-1866) — "there is no
+proof of `⊥` from `⌜Θ′⌝` with `ν` or fewer symbols" — over Foundation's internal
+derivations: bounded provability, its decidability, the total ℕ-valued decider the
+represented lane needs, and the finite-consistency predicate.
+
+The bound is on the derivation's symbol count and is inclusive (`dSize d ≤ k`), as the
+paper's is. The measure is `dSize` (`Framework/DerivationSize.lean`, `dd:symbolcount`; the
+convention is stated in full in that module's header).
+
+## Why bounded *provability*, not bounded *consistency*
+
+For a consistent `T`, `conWithin T` is extensionally the constant predicate `True`, and a
+represented predicate is pinned by its extension, so a constant one names no theory. What
+varies with `T`'s theorems is `BProv` with the sentence code in the *argument*, so that is
+what is made computable here.
+
+## What the module supplies
+
+* `ProofPacked` and `proofPacked_computable` — decidability with no proof checker written.
+  Foundation's `Bootstrapping.Proof` is `𝚫₁`, so the packed predicate and its negation are
+  both `𝚺₁` by `definability`; `re_iff_sigma1` plus
+  `ComputablePred.computable_iff_re_compl_re'` decide it. `pi₁_nat` / `pi₂_nat` bridge
+  Foundation's `π₁`/`π₂` (which `definability` sees through) to `Nat.unpair` (which
+  `Computable` wants).
+* `BProv` and `bProv_iff_bounded` — where `le_G_dSize` is spent: a derivation of at most
+  `k` symbols has code at most `G k`, so the unbounded existential collapses to a finite
+  search, decidable in both polarities and hence the day's decider total. Then `bprovValue`
+  and `bprovValue_computable`.
+* `conWithin` — the paper's `Con(T)(k)` — with `conWithin_of_consistent`: every finite
+  consistency statement about a consistent theory is true, from consistency alone and
+  independently of the counting convention. This is the truth premise of `thm:pac`.
+  `conWithin_anti` is antitonicity in the bound.
+* `conRunValue T f` — the universal decider `thm:pac` / `thm:pazfc` actually represent. It
+  evaluates the horizon `f` at the day *inside*, so `f` may grow arbitrarily and is never
+  written out, and one `γ` serves every day at that horizon; `⌜⊥⌝` enters only through the
+  argument.
+* `ProvableCode`, with `provableCode_re`, `provableCode_quote_iff`, `not_provableCode_zero`
+  and the deduction-theorem reduction `not_consistent_adjoin_iff`. `thm:incons` is about
+  *unbounded* provability, where nothing is metered.
+* Finite axiom windows: `listConj`, `exists_inconsistent_list` (no induction — a Foundation
+  proof of `⊥` carries its own axiom list as a field), `consistent_empty` and
+  `provable_neg_listConj_of_not_consistent`, which together let one fixed r.e. predicate
+  over pure logic serve every recursively axiomatized theory.
+
+The substrate takes the metered theory as an ordinary parameter, independent of the
+representing theory: `thm:pac` is the diagonal, and `thm:pazfc` a stronger metered theory
+with consistency as the paper's own explicit premise.
+
+Foundation's `Derivation T` takes `T` as a meta parameter, so there is no
+uniform-in-theory-code derivability predicate. The deduction family is the disclosed
+paraphrase that recovers uniformity: `Θ′ₙ := Θ₀ ∪ {σₙ}` is inconsistent exactly when
+`Θ₀ ⊢ ∼σₙ`, which is uniform in `⌜∼σₙ⌝`.
+-/
 
 namespace LogicalInduction
 
@@ -110,10 +111,13 @@ lemma proofPacked_computable : ComputablePred (ProofPacked T) :=
   ComputablePred.computable_iff_re_compl_re'.mpr
     ⟨re_iff_sigma1.mpr (proofPacked_sigmaOne T), re_iff_sigma1.mpr (not_proofPacked_sigmaOne T)⟩
 
+/-- The packed predicate at `z` is Foundation's `Proof` at the unpaired components: this
+is where Foundation's `π₁`/`π₂` presentation and `Nat.unpair` are identified. -/
 lemma proofPacked_iff (z : ℕ) :
     ProofPacked T z ↔ Bootstrapping.Proof (V := ℕ) T z.unpair.1 z.unpair.2 := by
   simp [ProofPacked, pi₁_nat, pi₂_nat]
 
+/-- The same identification read at an explicitly paired argument. -/
 lemma proofPacked_pair_iff (d φcode : ℕ) :
     ProofPacked T (Nat.pair d φcode) ↔ Bootstrapping.Proof (V := ℕ) T d φcode := by
   simp [proofPacked_iff]
@@ -142,8 +146,6 @@ lemma bProv_iff_bounded (φcode k : ℕ) :
 
 /-- `BProv` at a single packed argument `⟨φcode, k⟩`. -/
 def BProvPacked (z : ℕ) : Prop := BProv T z.unpair.1 z.unpair.2
-
-lemma bProvPacked_iff (z : ℕ) : BProvPacked T z ↔ BProv T z.unpair.1 z.unpair.2 := Iff.rfl
 
 /-! ## The ℕ-valued decider -/
 
@@ -202,7 +204,6 @@ lemma bprovValue_computable : Computable (bprovValue T) := by
 /-- **The paper's `Con(T)(k)`**: no `T`-derivation of `⊥` has `k` or fewer symbols. -/
 def conWithin (k : ℕ) : Prop := ¬ BProv T ⌜(⊥ : ArithmeticSentence)⌝ k
 
-set_option maxHeartbeats 1000000 in
 /-- **Soundness of the internal proof predicate at the standard model.**  A standard
 derivation code witnessing `Proof T d ⌜φ⌝` is an actual `T`-proof of `φ`.
 
@@ -360,6 +361,10 @@ axioms.  It is the substrate of `thm:incons`'s uniform rendering in
 
 /-- The conjunction of a finite list of sentences, right-nested onto `⊤`.
 
+This is the first-order counterpart of `Criterion.lean`'s propositional
+`sentenceConjunction`, over `ArithmeticSentence`; the two live at different types and do
+not interact.
+
 *Proof kind:* `Def`. -/
 def listConj (l : List ArithmeticSentence) : ArithmeticSentence := l.foldr (· ⋏ ·) ⊤
 
@@ -450,30 +455,5 @@ lemma provable_listConj {l : List ArithmeticSentence} (h : ∀ φ ∈ l, T ⊢ �
   | cons σ t ih =>
       rw [listConj_cons]
       exact Entailment.K!_intro (h σ (by simp)) (ih fun φ hφ => h φ (by simp [hφ]))
-
--- The symbol-measure computability layer, printed here so the §4.10 substrate's axiom
--- accounting is in one place.
-#print axioms dSize_computable
-#print axioms sSize_computable
-#print axioms fSize_computable
-#print axioms tSize_computable
-#print axioms G_computable
-#print axioms computable_boundedSearchValue
-
-#print axioms proofPacked_computable
-#print axioms bprovValue_computable
-#print axioms conWithin_of_consistent
-#print axioms conRunValue_computable
-#print axioms conRunValue_bot_eq_zero
-#print axioms provableCode_re
-#print axioms not_provableCode_zero
-#print axioms not_consistent_adjoin_iff
-#print axioms consistent_empty
-#print axioms exists_inconsistent_list
-#print axioms listConj
-#print axioms listConj_nil
-#print axioms listConj_cons
-#print axioms provable_neg_listConj_of_not_consistent
-#print axioms provable_listConj
 
 end LogicalInduction

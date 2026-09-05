@@ -19,7 +19,7 @@ self-delimiting integer code of `PrefixMachine.lean`:
 | --- | --- |
 | `0 ∷ natCode n` | `n` |
 | `1 ∷ 0 ∷ v` | `¬`-code of `U v` |
-| `1 ∷ 1 ∷ natCode e ++ w` | `φ_e(w)`, when `w` is in the prefix-free domain carved out for machine `e` |
+| `1 ∷ 1 ∷ natCode e ++ w` | `φ_e(w)`, for `w` in the prefix-free domain carved out for `e` |
 
 The three families are separated by their tags, each is prefix-free, and the second is
 prefix-free *because* the whole domain is (structural recursion on the codeword length),
@@ -53,7 +53,9 @@ to `κ_U` pointwise, which is what makes the weights lower-semicomputable.  That
 *is* computable — a bounded search over codewords of length `≤ |natCode ⌜φ⌝| + 1` — and its
 program (`uCode`) is constructed here, so the boundary instantiation has no operational
 input left over.
-Paper node: `thm:ob`
+
+This module renders the prefix machine `thm:ob` is instantiated at; the provenance lines sit
+on the declarations below, not on this header.
 -/
 
 namespace LogicalInduction
@@ -644,7 +646,6 @@ lemma uTab_tendsto (i : ℕ) :
 
 /-- The exact stage table, as a natural-number stream. -/
 noncomputable def uEmit (z : ℕ) : ℕ := Encodable.encode (uTab z.unpair.1 z.unpair.2)
-
 
 /-! ## The exact stage table is computable
 
@@ -1294,12 +1295,10 @@ lemma uStep_polyFueled : ∃ c, PolyFueled c uStep := by
   exact ⟨_, (ifzSel_polyFueled.comp ((hprev.pair hv).pair hv)).of_eq
     (fun w => by simp only [Nat.unpair_pair, uStep])⟩
 
--- **The poly-fuel emission certificate of the universal machine's stage table.**  The
--- polynomial clock is *constructed* here; only the exact table's code is an input.
--- Paper node: `thm:ob`
 attribute [local irreducible] Nat.sqrt uApprox uTab kappaStage uStep uState in
-/-- The clocked selection table is polynomially emitted: the `evaln` self-clamp
-lets the emitter select exact stage values under a polynomial clock.
+/-- The poly-fuel emission certificate of the universal machine's stage table: the `evaln`
+self-clamp lets the emitter *select* exact stage values under a polynomial clock, and that
+clock is constructed here — only the exact table's code is an input.
 Paper node: `thm:ob` -/
 theorem uSel_polyRatCodes : PolyRatCodes uSel := by
   obtain ⟨cs, hs⟩ := uStep_polyFueled
@@ -1439,7 +1438,7 @@ lemma uEmitRecip_eq (z : ℕ) :
 /-- The gate token emission of the universal machine, derived from its stage-table
 emission.
 Paper node: `thm:ob` -/
-theorem universalPrefixThresholdEmission :
+lemma universalPrefixThresholdEmission :
     OccamThresholdEmission universalPrefixPresentation where
   threshold_sum_codes := by
     obtain ⟨cn, hn⟩ := uNum_polyFueled
@@ -1456,12 +1455,13 @@ end Emission
 
 /-! ## Paper-facing endpoints over the universal machine -/
 
-/-- **Lower Occam bound at universal prefix complexity.**  Same statement as
-`lic_occam_lower_ofPrefixMachine`, but `κ` is now the prefix complexity of a genuine
-universal prefix machine (`kappaU_le_of_prefixMachine`), not of one fixed code.
+/-- **Lower Occam bound at universal prefix complexity.**  The same statement as
+`lic_occam_lower_ofPrefixMachine`, with `κ` the prefix complexity of the constructed
+universal machine (invariance: `kappaU_le_of_prefixMachine`) rather than of one fixed code.
 Unconditional: the stage table's emission is fully constructed (`uSel_polyRatCodes`).
 Paper node: `thm:ob` -/
-theorem lic_occam_lower_ofUniversalPrefix (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+theorem lic_occam_lower_ofUniversalPrefix (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧ ∀ φ,
       (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ) →
@@ -1473,7 +1473,8 @@ theorem lic_occam_lower_ofUniversalPrefix (P : History) (DP : DeductiveProcess) 
 by the machine's hard-wired negation instruction (overhead `2`).
 Unconditional: the stage table's emission is fully constructed (`uSel_polyRatCodes`).
 Paper node: `thm:ob` -/
-theorem lic_occamBounds_ofUniversalPrefix (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+theorem lic_occamBounds_ofUniversalPrefix (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ K : ℝ, 0 < K ∧
       (∀ φ,
@@ -1484,19 +1485,6 @@ theorem lic_occamBounds_ofUniversalPrefix (P : History) (DP : DeductiveProcess) 
         limitingBelief P φ ≤ 1 - K * prefixWeight kappaU φ) :=
   lic_occamBounds universalPrefixPresentation
     (universalPrefixThresholdEmission) kappaUNegationCompiler P DP hworld
-
-#print axioms UHalt_prefixFree
-#print axioms UHalt_functional
-#print axioms kappaU_kraft
-#print axioms kappaUNegationCompiler
-#print axioms kappaU_le_of_prefixMachine
-#print axioms kappaStage_eventually_eq
-#print axioms uMinLen_eq
-#print axioms uEmit_prim
-#print axioms exists_uCode
-#print axioms universalPrefixPresentation
-#print axioms lic_occam_lower_ofUniversalPrefix
-#print axioms lic_occamBounds_ofUniversalPrefix
 
 end UPrefix
 

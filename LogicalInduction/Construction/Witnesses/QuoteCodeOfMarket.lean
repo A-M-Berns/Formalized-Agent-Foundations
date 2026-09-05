@@ -10,9 +10,9 @@ The self-referential theorems `thm:epr` (Expectations of Probabilities), `thm:er
 (Iterated Expectations), `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:ref` (Introspection) and
 `thm:st` (Self-Trust) each ask the market to price a sentence *quoting* one of its own
 numbers.  `RationalQuoteCode` and `BooleanQuoteCode` (`QuotationAffine.lean`) are the
-objects carrying such a quote.  This file constructs them from the certified market
-program itself, so the semantic relation between the quoted syntax and the quantity it
-names is derived rather than supplied by the caller.
+objects carrying such a quote, code-indexed after `dd:quote-code`.  This module constructs
+them from the certified market program itself, so the semantic relation between the quoted
+syntax and the quantity it names is derived rather than supplied by the caller.
 
 * `arithmeticThresholdLUV_polyThresholdCodeSeq` discharges the `threshold_poly`
   obligation: one poly-fueled program emits the encoded quotation-atom threshold sentence
@@ -21,11 +21,24 @@ names is derived rather than supplied by the caller.
 * `RationalQuoteCode.ofComputable` gives a quote code to any total computable
   `[0,1]`-rational sequence; positive and negative completeness come from
   `BooleanQuoteCode.ofComputable` over the decidable comparison fiber.
-* The `theorem…QuoteCode` definitions instantiate this at the constructed `LIA` market's
-  own prices, expectations, deferred prices and confidence indicators.  The `…_closed`
-  theorems are the corresponding paper endpoints with the reflection hypotheses
-  discharged: each quoted LUV is built from the market program, and its exactness is the
-  market certificate's `quote_exact`.
+* The market's own quantities are such sequences: `MarketComputation.quote_comp_computable`
+  for its prices, and `MarketComputation.expectQuoteAt` — the exact rational expectation of
+  the LUV `X idx` at day `day`, separating the LUV selector from the evaluation day for the
+  deferred-day theorems — with its cast and range lemmas.  `ratCtsInd` is the rational form
+  of the continuous confidence value.
+* Two quoted-product LUVs.  `indicatorProductLUV` prices `1(φ) · value` and is exact
+  (`indicatorProductLUV_valuesAt`), at `LUV.BigThresholdCodeSeq`.  `meshProductLUV`
+  realizes the product for an arbitrary threshold-only source on the finite mesh of the
+  quote's own threshold atoms, hence only to within `1/(n+1)` (`dd:mesh`;
+  `meshProductLUV_valuesAt`).
+* The `thm:ccee` deferred-weight machinery — `deferredWeightQuoteCode`,
+  `conditionalExpectationQuoteCode` and `theoremDeferredWeightQuoteCode` — is parametric in
+  the market, because the exact-product lane (`ProductDefinition.lean`) needs the
+  deferred-weight quote before its definitional extension exists.
+* Everything here is market-generic (`MarketComputation P`).  The single paper-facing
+  market's own quote codes and the `_closed` endpoints are in `PaperMarket.lean`.
+* Non-vacuity: `ordinaryLUVCombinationSeq` and `ordinaryLUVCombinationSyntax` inhabit
+  `LUVCombinationSyntax` at an index-varying sequence.
 -/
 
 namespace LogicalInduction
@@ -34,7 +47,7 @@ open Nat.Partrec (Code)
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open Filter Topology
 
-/-! ## Part A — the threshold emitter for code-indexed quotation LUVs -/
+/-! ## The threshold emitter for code-indexed quotation LUVs -/
 
 @[simp] lemma arithmeticThresholdLUV_gt (code n : ℕ) (r : ℚ) :
     (arithmeticThresholdLUV code n).gt r =
@@ -79,7 +92,7 @@ lemma quoteAtom_mesh_encode_polyFueled (code : ℕ) :
   have hn := PolyFueled.left
   have hk := PolyFueled.left.comp PolyFueled.right
   have hi := PolyFueled.right.comp PolyFueled.right
-  -- Raw reduced mesh pieces via `pred (gcd i k) + 1` (equational cleanup deferred).
+  -- Raw reduced mesh pieces via `pred (gcd i k) + 1`; the equations close in `of_eq` below.
   have gPF := hgcd.comp (hi.pair hk)
   have pgPF := predc_polyFueled.comp gPF
   have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
@@ -117,11 +130,10 @@ lemma arithmeticThresholdLUV_polyThresholdCodeSeq (code : ℕ) :
   obtain ⟨c, hc⟩ := quoteAtom_mesh_encode_polyFueled code
   exact ⟨c, hc.of_eq (fun m => by rw [arithmeticThresholdLUV_gt])⟩
 
-/-! ## Part B — a quote code for any total computable rational sequence -/
+/-! ## A quote code for any total computable rational sequence -/
 
 section
--- Primrec/Computable elaboration over ℚ product types loops `whnf` on `Nat.sqrt`
--- (pair/unpair unfolding); keep it opaque throughout Parts B–C.
+-- `Nat.sqrt` is kept opaque through this section (see `notes/lean-gotchas.md`).
 attribute [local irreducible] Nat.sqrt
 
 set_option maxHeartbeats 1000000 in
@@ -169,7 +181,7 @@ noncomputable def RationalQuoteCode.ofComputable (T : ArithmeticTheory) [𝗥₀
     threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
       (arithmeticThresholdLUV_polyThresholdCodeSeq b.code) }
 
-/-! ## Part C — the market's own quotes are such a sequence -/
+/-! ## The market's own quotes -/
 
 /-- The exact rational quote of a certified market program along computable day and
 sentence-code streams is a total computable rational function. -/
@@ -196,7 +208,7 @@ lemma MarketComputation.quote_mem_Icc {P : History} (market : MarketComputation 
   rw [market.quote_exact n φ] at h
   exact ⟨by exact_mod_cast h.1, by exact_mod_cast h.2⟩
 
-/-! ## Part D — the market's own expectations are also such a sequence -/
+/-! ## The market's own expectations -/
 
 /-- Exact rational expectation of the LUV `X idx` at market day `day` (quotes from day
 `day`, mesh the day's own grid `day + 1`): the rational value whose cast is the `def:e`
@@ -303,7 +315,8 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
   have hstepC : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
       q.2.2 + market.quote q.1.2
         (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / ((q.1.2 + 1 : ℕ) : ℚ)))) := by
-    -- `( … : _)` ascriptions here and on `hcell` are load-bearing (see Part B note).
+    -- The `( … : _)` ascriptions here and on `hcell` are load-bearing, as in
+    -- `decodedQuotationRat_lt_computablePred`.
     have hc : Computable fun q : (ℕ × ℕ) × (ℕ × ℚ) =>
         market.quote q.1.2
           (Encodable.encode ((X q.1.1).gt ((q.2.1 : ℚ) / ((q.1.2 + 1 : ℕ) : ℚ)))) :=
@@ -340,8 +353,7 @@ lemma MarketComputation.expectQuote_computable {P : History}
   ((market.expectQuoteAt_computable hX).comp
     (Computable.id.pair Computable.id)).of_eq fun _ => rfl
 
-/-! ## Part E — the ctsInd-composed confidence value and the indicator product
-(`thm:st`'s reflection data, constructed) -/
+/-! ## The continuous confidence value -/
 
 /-- Rational continuous threshold indicator: the exact value whose cast is
 `ctsInd δ (q:ℝ) (p:ℝ)`. -/
@@ -355,20 +367,6 @@ lemma ratCtsInd_cast (δ q p : ℚ) :
 
 lemma ratCtsInd_mem_Icc (δ q p : ℚ) : 0 ≤ ratCtsInd δ q p ∧ ratCtsInd δ q p ≤ 1 :=
   ⟨le_min zero_le_one (le_max_left 0 _), min_le_left _ _⟩
-
-/-- A poly-coded rational sequence is computable (decode the emitted code). -/
-lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computable q := by
-  obtain ⟨c, hc⟩ := h
-  exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
-    (Computable.const 0)).of_eq fun n => by simp
-
-/-- A write-out rational sequence is computable: reassemble the Gödel code from its own
-digits (`BigDigits.primrec`) and decode.  This is what lets the market clock accept the
-wider write-out class in place of a poly-fueled value. -/
-lemma DigitRatCodes.computable {q : ℕ → ℚ} (h : DigitRatCodes q) : Computable q :=
-  (Computable.option_getD
-    (Computable.decode.comp h.toBigDigits.primrec.to_comp)
-    (Computable.const 0)).of_eq fun n => by simp
 
 /-- `ratCtsInd` is computable in its packed arguments, from the public rational
 primitives (`min a b = a + b - max a b` avoids any Boolean branch). -/
@@ -404,6 +402,25 @@ lemma ratCtsInd_computable :
   have harg : z.2.1 + (-1) * z.2.2 = z.2.1 - z.2.2 := by ring
   rw [harg]
   linarith
+
+/-! ### Rational sequences recovered from their emitted codes -/
+
+/-- A poly-coded rational sequence is computable (decode the emitted code).  A convenience
+corollary of the write-out form below, through `DigitRatCodes.ofPolyRatCodes`. -/
+lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computable q := by
+  obtain ⟨c, hc⟩ := h
+  exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
+    (Computable.const 0)).of_eq fun n => by simp
+
+/-- A write-out rational sequence is computable: reassemble the Gödel code from its own
+digits (`BigDigits.primrec`) and decode.  This is what lets the market clock accept the
+wider write-out class in place of a poly-fueled value. -/
+lemma DigitRatCodes.computable {q : ℕ → ℚ} (h : DigitRatCodes q) : Computable q :=
+  (Computable.option_getD
+    (Computable.decode.comp h.toBigDigits.primrec.to_comp)
+    (Computable.const 0)).of_eq fun n => by simp
+
+/-! ## The indicator product -/
 
 /-- The indicator-product LUV `1(φ n) · value`: thresholds are `⊤` below zero and the
 conjunction `φ n ⋏ ⌜value > r⌝` at nonnegative `r`.  Its completed-theory value is the
@@ -483,31 +500,47 @@ lemma indicatorProductLUV_bigThresholdCodeSeq {T : ArithmeticTheory} {value : �
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
   rw [indicatorProductLUV_gt, if_neg hmesh0]
 
-/-! ### The mesh product LUV — a quoted product for an *arbitrary* source family
+/-! ## The mesh product: a quoted product for an arbitrary source
 
 `indicatorProductLUV` prices `1(φ) · value` and needs the source to be an indicator.  For a
 general `[0,1]`-LUV source `X` the exact product LUV would have to carry the threshold
-`⌜X > r / value n⌝`, whose emitter would need the *value* of the quote — unavailable, and
-unbounded in output size even if it were (see the Part F note below).
+`⌜X > r / value n⌝`.  `dd:mesh` is the substitution that avoids it, and this subsection is
+where it is pinned down.
 
-`meshProductLUV q X n` gets the product without ever naming the value: its `r`-threshold is
-the width-`(n+1)` disjunction
+**Exact reflection is unreachable.**  An exact scaled threshold names the value `value n`,
+and two independent barriers block an emitter from producing it.  A P-generable weight
+(`def:ece`) exposes its value at no index to an emitter, and deferral compounds this:
+`def:deferralfunc` bounds the clock by a polynomial in `f n`, which has no polynomial bound
+in `n`.  Granting the value anyway, `PolyFueled` bounds the emitted output, while the block
+would have to spell the denominator of `r / value n`, whose size has no polynomial bound in
+`n` either.  An exact product that never names the value needs the infinite disjunction
+`⋁_{s∈ℚ} (⌜value n > s⌝ ⋏ ⌜X > r/s⌝)` — the existential this propositional substrate lacks;
+that route (a world-dependent product-atom schema entered by the deductive process) is
+recorded in `LogicalInduction/README.md`'s future-work list.
+
+**What the mesh is.**  `meshProductLUV q X n` gets the product without ever naming the
+value: its `r`-threshold is the width-`(n+1)` disjunction
 
   `⋁_{j<n+1} ( ⌜value n > j/(n+1)⌝ ⋏ ⌜X n > r(n+1)/(j+1)⌝ )`,
 
 built only from the quote's *own* threshold atoms and the source's, at rational thresholds
 whose sizes are polynomial in the index.  In a world reading `X n` at `x` and the quote at
 `c`, the disjunction is precisely `⌜x·J/(n+1) > r⌝`, where `J` counts the mesh atoms the
-world affirms; `J/(n+1)` brackets `c` from above within `1/(n+1)`.  So the product is
-realized to within `1/(n+1)` rather than exactly — the disclosed type-`(c)` substitution
-that buys `thm:ccee` for the paper's arbitrary e.c. source family.
+world affirms; `J/(n+1)` brackets `c` from above within `1/(n+1)`.  Truncating the infinite
+disjunction to that emittable grid is what realizes the product to within `1/(n+1)` rather
+than exactly (`meshProductLUV_valuesAt`), and what buys `thm:ccee` for the paper's
+arbitrary e.c. source family.
 
-An *exact* scaled-threshold rendering would need `value n > 0`, which the paper's
-`w ∈ [0,1]` does not supply.  The mesh needs no such hypothesis, and does not silently
-acquire one: at `value n = 0` the count is `J = 0` for any world that denies the boundary
-atom `⌜value n > 0⌝`, and `J = 1` for a world that affirms it — `ValuesAt` deliberately
-leaves the threshold *at* the value undetermined — whose reading `x/(n+1)` is still inside
-the same `1/(n+1)` band.  The slack absorbs the boundary case; positivity is never assumed.
+**What it costs.**  `ConditionalExpectationQuote.left_reflected` is a slack condition rather
+than an equation.  The vanishing slack passes through the trader unharmed, because it
+enters the block-price bound additively beside the three existing `1/(m+1)` grid errors.
+
+**No positivity is smuggled in.**  An *exact* scaled-threshold rendering would need
+`value n > 0`, which the paper's `w ∈ [0,1]` does not supply.  The mesh needs no such
+hypothesis, and does not silently acquire one: at `value n = 0` the count is `J = 0` for any
+world that denies the boundary atom `⌜value n > 0⌝`, and `J = 1` for a world that affirms it
+— `ValuesAt` deliberately leaves the threshold *at* the value undetermined — whose reading
+`x/(n+1)` is inside the same `1/(n+1)` band.  The slack absorbs the boundary case.
 Paper node: `thm:ccee` -/
 noncomputable def meshProductLUV {T : ArithmeticTheory} {value : ℕ → ℚ}
     (q : RationalQuoteCode T value) (X : ℕ → LUV) (n : ℕ) : LUV where
@@ -526,7 +559,7 @@ noncomputable def meshProductLUV {T : ArithmeticTheory} {value : ℕ → ℚ}
 
 /-- **The mesh product law**: a completed-theory world that reads the source at `x` reads
 the mesh product at `x · J/(n+1)` for the mesh count `J` it affirms, and that value is
-within `1/(n+1)` of the intended product `x · value n`.
+within `1/(n+1)` of the intended product `x · value n` (`dd:mesh`).
 Paper node: `thm:ccee` -/
 lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
@@ -755,49 +788,23 @@ lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
 
 section
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-/-! ## The single market's own quote codes live downstream
+/-! ## The deferred-weight quotes of `thm:ccee`
 
-The quote codes of the constructed `LIA`'s own market — its prices, expectations, deferred
+The single paper-facing market's own quote codes — its prices, expectations, deferred
 expectations, confidence indicator and interval decision — and the closed-form endpoints
-they discharge are stated over the **single** paper-facing market `paperDP`, so they live
-in `PaperMarket.lean`, downstream of the first-order theorem stream this file cannot see.
-Everything above is market-generic (`MarketComputation P`) and is what those instantiate.
+they discharge are stated over `paperDP`, so they live in `PaperMarket.lean`, downstream of
+the first-order theorem stream this module cannot see.  Everything above is market-generic
+(`MarketComputation P`) and is what those instantiate.
 
-What remains below is the `thm:ccee` weight machinery, kept here because the *exact*
-product lane (`ProductDefinition.lean`) builds its definitional extension on the literal
-stream `theoremDP` and needs the deferred-weight quote against that market before the
-extension exists. -/
-
-/-! ## Part F — the weighted conditional (`thm:ccee`), general-source closed form
+The `thm:ccee` weight machinery stays here, because the *exact* product lane
+(`ProductDefinition.lean`) builds its definitional extension on the literal stream
+`theoremDP` and needs the deferred-weight quote against that market before the extension
+exists.
 
 The source family `X` is arbitrary, as in the paper.  What is *not* the paper's is the
-exactness of the left quoted product: it reflects `x · w (f n)` only to within `1/(n+1)`
-(the `meshProductLUV` above).  That substitution is forced, and this is where it is
-pinned down.
-
-**Exact reflection is unreachable.**  An exact scaled LUV's threshold must contain
-`X.gt (r / w (f n))`, so its emitter would have to produce the value `w (f n)`.  Two
-independent barriers block that: the weight is only P-generable, so its value at *any*
-index is unavailable to an emitter (deferral compounds this — `def:deferralfunc` bounds
-the clock by a polynomial in `f n`, which has no polynomial bound in `n`); and even
-granting the value, `PolyFueled` bounds the emitted output, while the block would have to
-spell the denominator of `r / w (f n)`, whose size is not polynomially bounded in `n`.
-An exact product *without* naming the value needs the infinite disjunction
-`⋁_{s∈ℚ} (⌜w > s⌝ ⋏ ⌜X > r/s⌝)` — the existential this propositional substrate lacks; that
-route (a world-dependent product-atom schema entered by the deductive process) is recorded
-in `LogicalInduction/README.md`'s future-work list.
-
-**What the mesh buys, and what it costs.**  Truncating that disjunction to the width-`n+1`
-grid of the weight's own threshold atoms *is* emittable, and values the product within
-`1/(n+1)` (`meshProductLUV_valuesAt`); the vanishing slack passes through the trader
-unharmed because it enters the block-price bound additively beside the three existing
-`1/(m+1)` grid errors.  The cost is that `ConditionalExpectationQuote.left_reflected` is a
-slack condition rather than an equation — a disclosed type-`(c)` substitution, recorded at
-that structure, in the README's modeling-boundary list, and in
-`scripts/coverage-classification.md`.  Note that an exact scaled-threshold rendering would
-additionally need `w (f n) > 0`, which the paper's `w ∈ [0,1]` does not supply; the mesh
-does not need it, and does not smuggle it in — see the zero-weight discussion at
-`meshProductLUV`.
+exactness of the left quoted product: it reflects `x · w (f n)` only to within `1/(n+1)` —
+the `dd:mesh` substitution, pinned down at `meshProductLUV` above and carried here by
+`ConditionalExpectationQuote.left_reflected`.
 
 The residual hypotheses below are the paper's own: an e.c. LUV source with its
 completed-world values (`lem:conluvapprox`, exactly as in `thm:cee`'s closed form), a
@@ -809,7 +816,7 @@ deferred weighted expectation program. -/
 quotes the program, so deferral costs nothing at strategy-emission time.  The weight is
 P-generable (`def:ece`); its program comes from the feature presentation
 (`PGenerableRat.computable`), which is what the market program is for.  Parametric in the
-market: `def:pgen` is stated against *a* market, and the exact-product route
+market: `def:ece` is stated against *a* market, and the exact-product route
 (`Construction/Witnesses/ProductDefinition.lean`) needs this quote at a different one.
 Paper node: `thm:ccee` -/
 noncomputable def deferredWeightQuoteCode {P : History} (market : MarketComputation P)
@@ -830,7 +837,8 @@ noncomputable def conditionalExpectationQuoteCode {P : History}
     (hw : PGenerableRat P w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n => market.expectQuoteAt X n (f.f n) * w (f.f n)) :=
-  -- The `( … : _)` ascriptions are load-bearing (see the Part B note).
+  -- The `( … : _)` ascriptions are load-bearing, as in
+  -- `decodedQuotationRat_lt_computablePred`.
   have hexp : Computable fun n => market.expectQuoteAt X n (f.f n) :=
     ((market.expectQuoteAt_computable hX).comp (Computable.id.pair f.computable) : _)
   have hval : Computable fun n => market.expectQuoteAt X n (f.f n) * w (f.f n) :=
@@ -890,16 +898,5 @@ noncomputable def ordinaryLUVCombinationSyntax (code : ℕ) :
   coefficient_rank n j _ := Nat.zero_le n
   const_closed n ρ V := by simp [ordinaryLUVCombinationSeq]
   coefficient_closed z ρ V := by simp
-
-#print axioms ordinaryLUVCombinationSyntax
-
-#print axioms arithmeticThresholdLUV_polyThresholdCodeSeq
-#print axioms RationalQuoteCode.ofComputable
-#print axioms MarketComputation.expectQuote_computable
-#print axioms meshProductLUV_valuesAt
-#print axioms meshProductLUV_rpnThresholdCodeSeq
-#print axioms deferredWeightQuoteCode
-#print axioms conditionalExpectationQuoteCode
-#print axioms theoremDeferredWeightQuoteCode
 
 end LogicalInduction

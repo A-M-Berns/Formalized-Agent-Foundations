@@ -3,27 +3,29 @@ import LogicalInduction.Construction.Witnesses.StructuredPaperRpn
 /-!
 # Machines that carry the day in their own source
 
-A `def:ec` premise about a *machine sequence* is metered on what the trader writes down:
-`DigitMachineCodes m` asks for poly-fueled digit access to `(m n).sourceNat`, the tag
-stream of the machine's syntax tree read as a base-16 numeral
-(`Framework/CodeSource.lean`).  Until now that class was witnessed only at families whose
-day dependence is trivial or bespoke — constant families (`digitMachineCodes_const`) and
-the spine family `Nat.Partrec.Code.nest` (`bigDigits_sourceNat_nest`), neither of which
-*computes* anything about the day.
+A `def:ec` (tex:753) premise about a *machine sequence* is metered on what the trader
+writes down: `DigitMachineCodes m` asks for poly-fueled digit access to `(m n).sourceNat`,
+the tag stream of the machine's syntax tree read as a base-16 numeral
+(`Framework/CodeSource.lean`).  This module supplies the reusable day-varying witness for
+that class; the constant witness is `digitMachineCodes_const` and the spine witness is
+`bigDigits_sourceNat_nest`.
 
-This module supplies the reusable day-varying witness.  `dayMachine F n` is Mathlib's
-`Nat.Partrec.Code.curry F n`: the machine that runs `F` on the pair `⟨n, ·⟩`, so the day
-number sits inside the machine's own source text as the `Code.const n` numeral.  Its tag
-stream is therefore available in closed form (`sourceTags_dayMachine`) — `F`'s own stream,
-two runs of `n` repeated tags, and a fixed five-tag frame — which is exactly the shape the
-segment-stream emitters of `Framework/Computable.lean` produce.  Feeding that stream
-through the base-16 write-out bridge discharges `def:ec` for the whole family at once
+`dayMachine F n` is Mathlib's `Nat.Partrec.Code.curry F n`: the machine that runs `F` on
+the pair `⟨n, ·⟩`, so the day number sits inside the machine's own source text as the
+`Code.const n` numeral.  Its tag stream is therefore available in closed form
+(`sourceTags_dayMachine`) — `F`'s own stream, two runs of `n` repeated tags, and a fixed
+five-tag frame — which is exactly the shape the segment-stream emitters of
+`Framework/Computable.lean` produce.  Feeding that stream through the base-16 write-out
+bridge discharges `def:ec` for the whole family at once
 (`digitMachineCodes_dayMachine`), for *every* fixed `F`, with no bespoke digit-selector
-chain.
+chain.  `dayMachine_sourceNat_ne` separates the days: distinct days give distinct
+machines and hence distinct *names*, so a claim family built over `dayMachine` is
+genuinely day-varying.
 
-Consumers wanting a day-varying halting or `theoryOf` family (e.g. the `thm:incons`
-witnesses) can now take `F` to be whatever fixed machine implements the intended
-computation and get the emission certificate for free.
+A consumer wanting a day-varying halting or `theoryOf` family takes `F` to be the fixed
+machine implementing the intended computation; the `thm:incons` witnesses
+`deepDayMachine` and `infiniteDayMachine`
+(`Construction/Witnesses/ComputationRepresented.lean`) are built this way.
 
 Nothing here is paper-facing; the paper node discharged downstream is `def:ec`.
 -/
@@ -53,6 +55,8 @@ Kind C (composition).  Provenance: (b) Mathlib citation —
 lemma dayMachine_eval (F : Code) (n i : ℕ) :
     (dayMachine F n).eval i = F.eval (Nat.pair n i) :=
   Code.eval_curry F n i
+
+/-! ## The written source in closed form -/
 
 /-- The written source of the constant-`n` machine: `n` `succ` tags, a `zero`, and `n`
 `comp` tags, since `Code.const (k+1) = comp succ (Code.const k)`.
@@ -133,6 +137,8 @@ lemma polySegStream_dayMachineDigits (F : Code) :
       (PolySegStream.repeatTag 2 PolyFueled.id)).append
       (PolySegStream.constList (Code.sourceTags F).reverse)
 
+/-! ## The `def:ec` certificate -/
+
 /-- **The `def:ec` certificate**: the day machine's source is written out in time
 polynomial in the day, for every fixed `F`.  This is the reusable day-varying witness for
 `DigitMachineCodes`.
@@ -144,6 +150,8 @@ lemma digitMachineCodes_dayMachine (F : Code) : DigitMachineCodes (dayMachine F)
   (BigDigits.ofBase16PolySegStream (polySegStream_dayMachineDigits F)
     (dayMachine_digits_lt_16 F)).of_eq (fun n => by
       rw [Code.sourceNat, sourceTags_dayMachine_reverse])
+
+/-! ## Day separation -/
 
 /-- Distinct days give distinct machines, hence distinct *names*: a claim family built
 over `dayMachine` is genuinely day-varying.
@@ -157,13 +165,3 @@ lemma dayMachine_sourceNat_ne (F : Code) {m n : ℕ} (h : m ≠ n) :
   exact h (Code.curry_inj (Code.sourceNat_injective hEq)).2
 
 end LogicalInduction
-
-#print axioms LogicalInduction.dayMachine
-#print axioms LogicalInduction.dayMachine_eval
-#print axioms LogicalInduction.sourceTags_const
-#print axioms LogicalInduction.sourceTags_dayMachine
-#print axioms LogicalInduction.sourceTags_dayMachine_reverse
-#print axioms LogicalInduction.dayMachine_digits_lt_16
-#print axioms LogicalInduction.polySegStream_dayMachineDigits
-#print axioms LogicalInduction.digitMachineCodes_dayMachine
-#print axioms LogicalInduction.dayMachine_sourceNat_ne

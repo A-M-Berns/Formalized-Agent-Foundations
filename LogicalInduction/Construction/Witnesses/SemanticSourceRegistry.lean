@@ -3,16 +3,35 @@ import LogicalInduction.Construction.Witnesses.CertifiedSource
 /-!
 # Executable registry checks for certified semantic sources
 
-`CertifiedSourceLUVSeq` is the paper-facing metatheoretic package.  This file begins the
-fixed, object-level registry which can recognize such packages without inspecting their
-Lean proofs.  A tag-`0` semantic schema carries two ordinary program codes: an arbitrary
-rational threshold emitter and a cut-certificate stage finder.  The checker below runs
-both programs for bounded fuel, decodes the emitted sentence, verifies old-language
-ownership, and confirms the requested cut law in an actually decoded base-process stage.
+The object-level admission test that recognizes a `CertifiedSourceLUVSeq` — the paper-facing
+metatheoretic package — without inspecting its Lean proofs.  Construction machinery behind
+`thm:ccee`'s arbitrary e.c. source family.
 
-Timeouts, malformed outputs, invalid cut queries, and non-source schemas all return
-`none`.  Thus this is suitable as the local admission test used by a later universal
-dovetailing deductive process.
+The self-describing schema: a tag-`0` semantic schema names two `Nat.Partrec.Code`s,
+`semanticSourceEmitterCode` (an arbitrary rational threshold emitter) and
+`semanticSourceCertificateCode` (a cut-certificate stage finder).
+
+Bounded execution: `semanticSourceSentenceAtFuel`, `semanticSourceStageIndexAtFuel`, and the
+decidable old-language ownership test `semanticPrimeFreshSentenceB` with its
+`SemanticPrimeFreshSentence` characterization.
+
+The checker: `semanticSourceCutLawAtFuel` reconstructs the requested cut law (below, above or
+downward), and `semanticSourceCheckedLawAtFuel` additionally demands that the certificate
+name a decoded base stage actually containing it.  Soundness is
+`semanticSourceCheckedLawAtFuel_mem` / `_source` / `semanticSourceCheckedDownward_spec`, and
+completeness for genuine certified packages is the
+`certified_{below,above,downward}_eventually_checked` family.
+
+Finite-prefix admission: activation is by successively larger finite query prefixes, never by
+finitely observing an infinite certificate.  `semanticSourcePrefixValidAtFuel` and its
+`_prim` / `_mono` / `_fresh` / `_downward` accessors carry that, with
+`certifiedSourcePrefix_eventually_valid` the completeness statement.
+
+The results here are consumed by `SemanticSourceDP.lean`, which builds the universal process
+from these predicates, and by `SemanticRegistryProduct.lean`.
+
+Failure convention: timeouts, malformed output, invalid queries and non-source schemas all
+return `none`, which is what makes the gate safe to run universally over program codes.
 -/
 
 namespace LogicalInduction
@@ -74,8 +93,10 @@ private lemma sentenceAtomCodes_eq_atoms (φ : Sentence) :
     List.length_eq_zero_iff, List.filter_eq_nil_iff, mem_sentenceAtomOccurrences,
     sentenceAtomCodes_eq_atoms]
 
-/-! The bounded registry operations are primitive recursive.  These lemmas are kept
-separate so the eventual universal DP can reuse them without unfolding the verifier. -/
+/-! ## Primitive recursiveness of the bounded operations
+
+Stated separately from the verifier so that `semanticSourceDP`'s computability proof reuses
+them without unfolding it. -/
 
 lemma semanticSourceEmitterCode_prim : Primrec semanticSourceEmitterCode := by
   exact (Primrec.ofNat Nat.Partrec.Code).comp
@@ -172,6 +193,8 @@ private lemma freshImpSourceSentence_prim : Primrec₂ freshImpSourceSentence :=
       by_cases hr : semanticPrimeFreshSentenceB φr = true <;>
         by_cases hs : semanticPrimeFreshSentenceB φs = true <;>
         simp [freshImpSourceSentence, hr, hs]
+
+/-! ## Reconstructing a cut law -/
 
 /-- Decode a rational payload, using the repository's harmless zero default. -/
 private abbrev sourceRat (z : ℕ) : ℚ := decodedQuotationRat z
@@ -333,6 +356,8 @@ lemma semanticSourceCutLawAtFuel_prim : Primrec fun p : (ℕ × ℕ) × ℕ =>
     (Primrec.ite (htagEq 1) habove
       (Primrec.ite (htagEq 2) hdown (Primrec.const none)))).of_eq fun _ => rfl
 
+/-! ## The full admission check -/
+
 /-- Full bounded admission check for one cut-law query.
 
 Besides reconstructing the law, the checker requires the certificate program to name a
@@ -472,6 +497,8 @@ lemma semanticSourceCheckedDownward_spec {DP : DeductiveProcess}
 
 /-! ## Completeness for genuine certified packages -/
 
+/-- A program that converges to the code of a sentence decodes to that sentence at some
+finite fuel. -/
 lemma evaln_decode_sentence_eventually (code : Nat.Partrec.Code)
     (input : ℕ) (φ : Sentence) (h : Encodable.encode φ ∈ code.eval input) :
     ∃ fuel, (code.evaln fuel input).bind (Encodable.decode (α := Sentence)) = some φ := by
@@ -677,7 +704,9 @@ def semanticSourcePrefixValidAtFuel {DP : DeductiveProcess}
     (List.range (limit + 1)).all fun zr =>
       semanticSourceThresholdPrefixValidAtFuel base schema limit fuel n zr
 
-private lemma listRangeAny_prim {α : Type} [Primcodable α]
+/-- The bounded-search `Primrec` combinator: a disjunction over an inclusive index range
+whose bound and test are primitive recursive is primitive recursive. -/
+lemma listRangeAny_prim {α : Type} [Primcodable α]
     {bound : α → ℕ} {test : α → ℕ → Bool}
     (hbound : Primrec bound) (htest : Primrec₂ test) :
     Primrec fun a => (List.range (bound a + 1)).any (test a) := by
@@ -693,7 +722,9 @@ private lemma listRangeAny_prim {α : Type} [Primcodable α]
     | nil => rfl
     | cons x xs ih => simp [List.any, ih]
 
-private lemma listRangeAll_prim {α : Type} [Primcodable α]
+/-- The bounded-check `Primrec` combinator: the conjunction counterpart of
+`listRangeAny_prim`. -/
+lemma listRangeAll_prim {α : Type} [Primcodable α]
     {bound : α → ℕ} {test : α → ℕ → Bool}
     (hbound : Primrec bound) (htest : Primrec₂ test) :
     Primrec fun a => (List.range (bound a + 1)).all (test a) := by
@@ -951,7 +982,9 @@ lemma semanticSourceLawSeen_mono {DP : DeductiveProcess}
   exact (semanticSourceLawSeen_iff base schema job fuel').2
     ⟨f, hf.trans hff, law, hlaw⟩
 
-private lemma listAll_eventually_of_mono {l : List ℕ} {test : ℕ → ℕ → Bool}
+/-- Pointwise eventual truth over a finite list combines into one common clock, given
+monotonicity in the clock. -/
+lemma listAll_eventually_of_mono {l : List ℕ} {test : ℕ → ℕ → Bool}
     (hmono : ∀ x {fuel fuel'}, fuel ≤ fuel' → test x fuel = true →
       test x fuel' = true)
     (heventual : ∀ x ∈ l, ∃ fuel, test x fuel = true) :
@@ -1154,7 +1187,8 @@ lemma certifiedSourcePrefix_eventually_valid {DP : DeductiveProcess}
   intro n hn
   exact List.all_eq_true.mp hfuel n hn
 
-/-- Prefix validity exposes freshness for every admitted source query. -/
+/-- Prefix validity exposes freshness for every admitted source query: the accessor for the
+freshness conjunct, paired with `semanticSourcePrefixValidAtFuel_downward` below. -/
 lemma semanticSourcePrefixValidAtFuel_fresh {DP : DeductiveProcess}
     (base : DeductiveProcessComputation DP) {schema limit fuel n z : ℕ}
     (hvalid : semanticSourcePrefixValidAtFuel base schema limit fuel = true)
@@ -1187,9 +1221,5 @@ lemma semanticSourcePrefixValidAtFuel_downward {DP : DeductiveProcess}
   have hlast := h.2
   have hz := List.all_eq_true.mp hlast zs hzsmem
   simpa [hrs] using hz
-
-#print axioms semanticSourceCheckedLawAtFuel_prim
-#print axioms semanticSourceCheckedLawAtFuel_mem
-#print axioms certified_downward_eventually_checked
 
 end LogicalInduction

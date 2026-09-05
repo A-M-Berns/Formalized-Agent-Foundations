@@ -19,15 +19,45 @@ Three things make the transfer mechanical, and all three are proved upstream:
 * `paperMarketComputation` is the `LIA`'s own exact market program over `paperDP`, an
   instance of the process-generic `liaMarketComputation`.
 
+The family priced here is `thm:epr` (tex:2014), `thm:er` (tex:2022), `thm:ref` (tex:1969),
+`thm:cee` (tex:2045), `thm:ceu` (tex:2056), `thm:ccee` (tex:2068), `thm:st` (tex:2092) and
+`thm:lp` (tex:1992), all in the one market `liaHistory (paperDP T)`.
+
 Nothing here is a new theorem about the market: each endpoint is the generic `_ofCode` /
 `_ofRepresentation` / `_ofDiagonal` statement instantiated at those three, and each
 `_closed` form additionally constructs the quote object out of the market program itself,
-so the only hypotheses left are the caller's sequence and its `def:ec` write-out codes.
+so the only hypotheses left are the caller's sequence and its `def:ec` write-out codes.  The
+market's own quote codes are `paperDiagonalQuoteCode`, `paperPriceQuoteCode`,
+`paperExpectationQuoteCode`, `paperFutureQuoteCode`, `paperDeferredExpectationQuoteCode`,
+`paperConfidenceQuoteCode`, `paperIntervalQuoteCode`, `paperDeferredWeightQuoteCode` and
+`paperConditionalExpectationQuoteCode`.
 
-The one canonical endpoint *not* priced here is `thm:ccee`'s exact form, which keeps the
+Which certificate class each lane asks for: write-out `BigSentenceCodes` / `DigitRatCodes` on
+the sentence and tolerance lanes, `LUV.RpnThresholdCodeSeq` on the LUV threshold lane, and
+`LUV.BigThresholdCodeSeq` on `thm:st` — see the README's rendering-sensitivity note.  What
+`thm:ref` and `thm:st` ask of their bounds is `def:ece` ℙ-generability rather than efficient
+writability: computability is recovered from the feature presentation by
+`PGenerableRat.computable`, and nothing spells the bound out under a clock because the
+quoted sentence is a code-indexed atom (`dd:quote-code`); see `notes/paper-errata.md` PE6.
+
+`thm:ccee` carries a disclosed type-`(c)` substitution: the left quoted product is realized
+on a finite mesh to within `1/(n+1)` rather than exactly (`dd:mesh`).  The conclusion's form
+is unchanged, and `indicatorProductLUV_exact_left_reflected` inhabits the relaxed certificate
+at zero slack.
+
+The one canonical endpoint *not* priced here is `thm:ccee`'s generalized semantic-extension
+form `lic_no_expected_net_update_conditional_exact_canonical`, which keeps the
 semantic-lifted `canonicalCCEEDP` as its own construction by ruling
-(`SemanticLiftedCCEE.lean`); the `thm:ccee` closed form at the disclosed `1/(n+1)` slack
-is stated here, over `paperDP`, like the rest.
+(`SemanticLiftedCCEE.lean`), because that fixed enlarged language is what buys exact semantic
+multiplication for an arbitrary threshold-only source.  The paper rendering of `thm:ccee` at
+zero slack, `lic_no_expected_net_update_conditional_paperLUV_closed`
+(`PaperExactCCEE.lean`), is priced on `liaHistory (paperDP T)` like the rest, as is the
+`thm:ccee` closed form at the disclosed `1/(n+1)` slack stated here.
+
+`thm:lp` sits outside the `𝗣𝗔⁻` section because `𝗜𝚺₁ ⪯ T` implies `𝗣𝗔⁻ ⪯ T` by instance, and
+carrying both would leave a redundant pair in the elaborated signature; `omit` cannot do
+this, because instance search reaches a section variable that is in the local context whether
+or not the declaration lists it.
 -/
 
 namespace LogicalInduction
@@ -42,7 +72,6 @@ variable (T : ArithmeticTheory)
 
 section PeanoMinus
 variable [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
-
 
 /-- The canonical public diagonal quote for the single market at threshold `p`.
 Paper node: `thm:lp` -/
@@ -186,7 +215,6 @@ theorem lic_self_trust_ofRepresentation_unconditional
     confidence_reflected product_reflected
     (paperDP_hworld T)
 
-
 /-! ## The market's own quote codes, and the closed-form endpoints they discharge -/
 
 /-- The canonical quote code of the constructed `LIA` market's own prices along a
@@ -265,7 +293,9 @@ noncomputable def paperDeferredExpectationQuoteCode (f : DeferralFunction)
     (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
     RationalQuoteCode T (fun n =>
       (paperMarketComputation T).expectQuoteAt X n (f.f n)) :=
-  -- The `( … : _)` ascription is load-bearing (see the Part B note).
+  -- The `( … : _)` ascription is load-bearing: it forces the expected type before
+  -- `Computable.comp` unifies (see `decodedQuotationRat_lt_computablePred` in
+  -- `QuoteCodeOfMarket.lean` for the same point stated in full).
   have hcomp : Computable fun n =>
       (paperMarketComputation T).expectQuoteAt X n (f.f n) :=
     (((paperMarketComputation T).expectQuoteAt_computable hX).comp
@@ -321,7 +351,7 @@ a program for `p` from the feature presentation by parsing the emitted serializa
 
 What the quote code needs of the tolerance `δ` is *computability*, not efficiency: the
 quoted value is a code-indexed atom, so nothing here spells `δ n` out under a polynomial
-clock.  The hypothesis is therefore `Computable δ`, which `PolyRatCodes.computable`
+clock.  The hypothesis is therefore `Computable δ`, which `DigitRatCodes.computable`
 supplies at the call sites that do carry the efficiency certificate for other reasons.
 This is the same narrowing the sibling `thm:ref` code (`paperIntervalQuoteCode`) makes.
 Paper node: `thm:st` -/
@@ -422,11 +452,13 @@ theorem lic_introspection_closed
         (((a n : ℝ) + δ n < liaHistory (paperDP T) n (φ n) ∧
             liaHistory (paperDP T) n (φ n) < (b n : ℝ) - δ n) →
           1 - (ε n : ℝ) < liaHistory (paperDP T) n
-            ((paperIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n)) ∧
+            ((paperIntervalQuoteCode T φ hφ a b lowerFeature hlower
+              upperFeature hupper).sentence n)) ∧
         ((¬ ((a n : ℝ) - δ n < liaHistory (paperDP T) n (φ n) ∧
               liaHistory (paperDP T) n (φ n) < (b n : ℝ) + δ n)) →
           liaHistory (paperDP T) n
-            ((paperIntervalQuoteCode T φ hφ a b lowerFeature hlower upperFeature hupper).sentence n) < (ε n : ℝ)) :=
+            ((paperIntervalQuoteCode T φ hφ a b lowerFeature hlower
+              upperFeature hupper).sentence n) < (ε n : ℝ)) :=
   lic_introspection_ofCode_unconditional (T := T) φ
     hφ a b δ lowerFeature hlower
     upperFeature hupper hδ hδpos hδzero hab
@@ -487,7 +519,6 @@ theorem lic_self_trust_closed
           hδ.computable hp) φ n v hv
     rwa [← paperConfidence_value_cast T f φ δ p n] at h
 
-
 /-! ## `thm:ccee`, closed form at the disclosed mesh slack -/
 
 /-- The deferred-weight quote at the single market.
@@ -518,9 +549,11 @@ as in `thm:cee`), the
 `[0,1]` P-generable weight, and the deferral function.
 
 **Disclosed type-`(c)`:** the left quoted product is realized to within `1/(n+1)`, not
-exactly — see the Part F note above and `ConditionalExpectationQuote`.  The conclusion
-is unaffected in form (it is still an `≈ₙ` between the two market expectations); what is
-weakened is the certificate that `Z` *is* the product.
+exactly.  The substitution is `dd:mesh` in the glossary, its construction is the mesh
+product in `Construction/Witnesses/QuoteCodeOfMarket.lean`, and the slack is carried by
+`ConditionalExpectationQuote.slack`.  The conclusion is an `≈ₙ` between the two market
+expectations, exactly as printed; what carries the slack is the certificate that `Z` *is*
+the product.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_closed
     (f : DeferralFunction)
@@ -552,15 +585,14 @@ theorem lic_no_expected_net_update_conditional_closed
   rwa [Rat.cast_mul,
     ← (paperMarketComputation T).expectQuoteAt_cast X n (f.f n)] at h
 
-/-! ### Non-vacuity of the relaxed certificate
+/-! ## Inhabiting the mesh certificate at zero slack
 
-Relaxing `left_reflected` to a slack condition must not turn the certificate into
-something nothing constructs.  Two witnesses, at both ends: the mesh above inhabits it for
-an arbitrary source, and the original indicator product still inhabits it — at `slack = 0`,
-i.e. satisfying the *exact* condition the relaxed field generalizes. -/
+The slack certificate is inhabited at both ends: by the mesh product above for an arbitrary
+source, and by the indicator product below at `slack = 0`, which is the exact condition the
+certificate generalizes. -/
 
-/-- **N±.** The indicator-source product still constructs the `thm:ccee` certificate, at
-zero slack: the relaxation is a genuine weakening of an inhabited condition, not a
+/-- **N±.** The indicator-source product inhabits the `thm:ccee` certificate at zero slack,
+so the slack field is a genuine weakening of an inhabited condition rather than a
 replacement of it.
 Paper node: `thm:ccee` -/
 lemma indicatorProductLUV_exact_left_reflected
@@ -580,10 +612,9 @@ lemma indicatorProductLUV_exact_left_reflected
     (paperDeferredWeightQuoteCode T f w weight_generable weight_mem) φ n v hv
   rwa [hxeq]
 
-
 end PeanoMinus
 
-/-! ## `thm:lp` sits below `𝗣𝗔⁻`
+/-! ## `thm:lp` and its arithmetic strength
 
 The paradox-resistance endpoint is the one place on this lane where the diagonal is built,
 and Foundation's `parameterized_diagonal₁` is stated over `𝗜𝚺₁`.  Since `𝗜𝚺₁ ⪯ T` implies
@@ -621,28 +652,5 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
       (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num :
         ((2 : ℝ)⁻¹) < 1)))
     (paperDP_hworld T)
-
-#print axioms paperDiagonalQuoteCode
-#print axioms paperPriceQuoteCode
-#print axioms paperExpectationQuoteCode
-#print axioms paperFutureQuoteCode
-#print axioms paperDeferredExpectationQuoteCode
-#print axioms paperConfidenceQuoteCode
-#print axioms paperIntervalQuoteCode
-#print axioms paperDeferredWeightQuoteCode
-#print axioms paperConditionalExpectationQuoteCode
-#print axioms lic_expectations_of_probabilities_ofCode_unconditional
-#print axioms lic_iterated_expectations_ofCode_unconditional
-#print axioms lic_introspection_ofCode_unconditional
-#print axioms lic_self_trust_ofRepresentation_unconditional
-#print axioms lic_paradox_resistance_ofDiagonal_unconditional
-#print axioms lic_expectations_of_probabilities_closed
-#print axioms lic_no_expected_net_update_closed
-#print axioms lic_expected_future_expectations_closed
-#print axioms lic_iterated_expectations_closed
-#print axioms lic_introspection_closed
-#print axioms lic_self_trust_closed
-#print axioms indicatorProductLUV_exact_left_reflected
-#print axioms lic_no_expected_net_update_conditional_closed
 
 end LogicalInduction

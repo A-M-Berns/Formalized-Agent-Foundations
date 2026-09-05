@@ -1,24 +1,51 @@
-/-
-# Uniform Non-Dogmatism — §4.6, `thm:obu`
-
-The varying-sentence form of the non-dogmatism scale ladder: rung `j` buys from the
-currently enumerated sentence whenever its price falls below `1/j³`, spends at most `1/j²`
-over its lifetime, and permanently disarms after one full trigger.  A world satisfying the
-whole enumerated theory values every purchased share at one, so the ladder is bounded below
-while a single rung firing already yields profit `j − 1`.
--/
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Uniform Non-Dogmatism
+
+Renders §4.6 *Non-Dogmatism*, `thm:obu` (Uniform Non-Dogmatism).
+
+`RepeatsEveryMember` is the paper's triangular repetition preprocessing, stated
+independently of any market.
+
+The varying-sentence scale ladder is `obuBuySig` / `obuShares` / `obuCoef`: rung `j` buys
+from the currently enumerated sentence whenever its price falls below `1/j³`, spends at
+most `1/j²` over its lifetime (`obuShares_sum_le_one`), and permanently disarms after one
+full trigger (`armChain`). `obuTrader` is the summed ladder and `obuTrader_exploits` is its
+economics: a world satisfying the whole enumerated theory values every purchased share at
+one, so the ladder is bounded below by `−2` (via `sum_inv_sq_le_two`) while a single rung
+firing already yields profit `j − 1`.
+
+The token-emission half — `obuArmBlock`, `serialize_armChain_obuBuy`, `serialize_obuCoef`,
+`serialize_obuLadderEF`, `obuChunkSeg_spliceStream` — proves
+`obuTrader_ec : EfficientlyComputable (obuTrader φ)` from a `BigSentenceCodes` enumeration
+certificate. Arm blocks are variable-length once sentence slots carry blocks, so the
+combinator is `concatVar` rather than the fixed-width `blocks`.
+`exists_obu_fire_of_low_limit` is the analytic link from fixed-sentence convergence to the
+varying ladder.
+
+The endpoints are `lic_uniform_nonDogmatism_repeating`, for an enumeration that already
+repeats, and the paper-facing `lic_uniform_nonDogmatism`, which takes the explicit
+preprocessing witness `EfficientRepeatedEnumeration` — a Tier-2 `#assert_fields` structure
+that is purely syntactic, containing neither prices nor a conclusion. Both are consumed by
+`Properties/UniversalSemimeasure.lean` and
+`Construction/Witnesses/{BoundedEvaluation,ConditioningCompiler}.lean`.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
 
+/-! ## The repeating enumeration -/
+
 /-- Every member of an enumeration reappears arbitrarily late.  This is the paper's
 triangular repetition preprocessing, stated independently of any market. -/
 def RepeatsEveryMember (φ : ℕ → Sentence) : Prop :=
   ∀ i N, ∃ n, N ≤ n ∧ φ n = φ i
+
+/-! ## The varying-sentence scale ladder -/
 
 /-- Rung-`j`, day-`i` signal for the current member `φ i`. -/
 def obuBuySig (φ : ℕ → Sentence) (j i : ℕ) : EF :=
@@ -63,6 +90,8 @@ lemma obuShares_pos_sig {φ : ℕ → Sentence} {P : History} {j n : ℕ}
   · rw [obuShares, ← hs, mul_zero] at h
     exact absurd h (lt_irrefl 0)
 
+/-- Rung `j`'s purchases over `[j, N)` total `1 − armChain N`: the arm chain is exactly the
+share of the rung's single unit budget still unspent. -/
 lemma obuShares_sum (φ : ℕ → Sentence) (P : History)
     {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, obuShares φ P j n =
@@ -72,6 +101,8 @@ lemma obuShares_sum (φ : ℕ → Sentence) (P : History)
     armChain_denote_of_le (obuBuySig φ j) P
       (fun i hi ↦ obuBuySig_denote_pad φ P hi) j le_rfl]
 
+/-- Rung `j` buys at most one share over its whole lifetime, which is what makes the
+ladder's total spend summable. -/
 lemma obuShares_sum_le_one (φ : ℕ → Sentence) (P : History)
     {j N : ℕ} (h : j ≤ N) :
     ∑ n ∈ Finset.Ico j N, obuShares φ P j n ≤ 1 := by
@@ -146,6 +177,8 @@ lemma obuTrader_netWorth (φ : ℕ → Sentence) (P : History)
           (v.payout (φ n) - P n (φ n)) := by
   simp only [Trader.netWorth, obuTrader_value, obuLadderEF_denote, Finset.sum_mul]
 
+/-! ## The exploitation argument -/
+
 /-- Swap the day/rung triangle in the ladder's finite accounting sum. -/
 private lemma obu_sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
     ∑ n ∈ Finset.range N, ∑ k ∈ Finset.range n, f k n =
@@ -153,6 +186,8 @@ private lemma obu_sum_range_triangle_comm (f : ℕ → ℕ → ℝ) (N : ℕ) :
   simp only [Finset.range_eq_Ico]
   exact (Finset.sum_Ico_Ico_comm' 0 N (fun k n ↦ f k n)).symm
 
+/-- The `−1/j²` floor on what rung `j` can lose on a single day, in any world. Summing it
+over the ladder with `sum_inv_sq_le_two` gives the `−2` lower bound. -/
 lemma obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     -(obuShares φ P j n * (1 / (j : ℝ) ^ 2)) ≤
@@ -173,6 +208,8 @@ lemma obuTerm_ge (φ : ℕ → Sentence) (P : History) (v : PCWorld)
   · rw [← hb']
     norm_num
 
+/-- In a world satisfying the whole enumerated theory every purchased share is worth one,
+so no rung ever loses money. -/
 lemma obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     0 ≤ (j : ℝ) * obuShares φ P j n * (v.payout (φ n) - P n (φ n)) := by
@@ -187,6 +224,8 @@ lemma obuTerm_nonneg (φ : ℕ → Sentence) (P : History) (v : PCWorld)
   · rw [← hb']
     norm_num
 
+/-- In such a world a day's purchase at rung `j` gains at least `j·shares·(1 − 1/j³)`, so a
+single full trigger already yields profit `j − 1`. -/
 lemma obuTerm_profit (φ : ℕ → Sentence) (P : History) (v : PCWorld)
     (hv : ∀ i, v.Holds (φ i)) {j : ℕ} (hj : 1 ≤ j) (n : ℕ) :
     (j : ℝ) * obuShares φ P j n * (1 - 1 / (j : ℝ) ^ 3) ≤
@@ -296,8 +335,6 @@ lemma obuTrader_exploits
     have hB : B < ((j' + 1 : ℕ) : ℝ) - 1 := by push_cast; linarith
     have hsingle := Finset.single_le_sum hterm hjmem
     linarith
-
-#print axioms obuTrader_exploits
 
 /-! ## Uniform token emission -/
 
@@ -422,9 +459,7 @@ lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
     serializeTrades, serializeTrades, serialize_obuLadderEF]
   simp [Nat.unpair_pair]
 
-#print axioms obuTrader_ec
-
-/-! ## Uniform lower bound -/
+/-! ## Uniform Non-Dogmatism (`thm:obu`) -/
 
 /-- If one member of a repeating enumeration has limiting probability below rung `j`'s
 threshold, then that rung eventually receives a full trigger on a day when the same member
@@ -514,9 +549,5 @@ theorem lic_uniform_nonDogmatism
   refine ⟨ε, hε, fun i ↦ ?_⟩
   obtain ⟨j, hj⟩ := rep.covers i
   simpa only [hj] using hrep j
-
-#print axioms exists_obu_fire_of_low_limit
-#print axioms lic_uniform_nonDogmatism_repeating
-#print axioms lic_uniform_nonDogmatism
 
 end LogicalInduction

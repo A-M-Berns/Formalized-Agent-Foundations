@@ -3,14 +3,36 @@ import LogicalInduction.Construction.Witnesses.SemanticSourceRegistry
 /-!
 # Fixed universal semantic-source interpretation
 
-The source registry separates two responsibilities which must not be conflated:
+The single fixed universal source process — construction machinery for `thm:ccee`
+(tex:2068) at an arbitrary e.c. source family.
 
-* this process is a conservative definitional interpreter for old-language emitter output;
-* the executable cut certificate will later guard exact-product activation.
+Objects defined: `semanticSourceDefinitionJob`, `semanticSourceDefSentence` (one bounded
+definition clause), `semanticSourceStageList`, `semanticSourceDP`, and the canonical
+extension world `semanticSourceExtensionWorld`.
 
-In particular, malformed but fresh emitters cannot make this process inconsistent: every
-activated tag-`0` leaf is merely identified with one old-language sentence.  The process
-is fixed universally over program codes and inputs, before any source family is selected.
+Main results: `semanticSourceDP_computable`; `semanticSourceDP_hworld`, which exhibits an
+explicit completed world over *every* base world, so no consistency premise hides in source
+reflection; `semanticSourceSentenceAtFuel_reflected`; and the two transport lemmas
+`certifiedSource_threshold_reflected` and `certifiedSource_valuesAt_iff`.  They are consumed
+by `SemanticRegistryProduct.lean`, `EntailedSourceRegistry.lean`, `PaperCutLawDP.lean` and
+`LiftedRpnSource.lean`.
+
+The separation of concerns the process rests on: it is a conservative definitional
+interpreter for old-language emitter output, and nothing more — the executable cut
+certificate that guards exact-product activation lives in `SemanticRegistryProduct.lean`.
+
+Malformed but fresh emitters cannot make the process inconsistent, because every activated
+tag-`0` leaf is merely identified with one old-language sentence, and
+`semanticSourceSentenceAtFuel_unique` shows bounded runs of one named emitter cannot decode
+to two.  The process is fixed universally over program codes and inputs, before any source
+family is selected; all failures decode to the inert `⊤`.
+
+`semanticSourceExtensionWorld_consistentWith_union` combines the process conservatively with
+any base process whose stages stay in the old language, and `theoremSemanticSourceDP` is the
+canonical `T`-only instance of that union.  That instance, its program and its completed
+world are offered to clients as a named package; no endpoint prices against them, for the
+same reason `PaperCutLawDP.paperBaseDP` is not consumed — unioning the lane into the endpoint
+files would pull the semantic-source lane into each of them.
 -/
 
 namespace LogicalInduction
@@ -18,6 +40,8 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 attribute [local irreducible] Nat.sqrt
+
+/-! ## The universal definition clauses -/
 
 /-- A universal source-definition job packs schema, input, direction, and bounded fuel. -/
 def semanticSourceDefinitionJob (schema input direction fuel : ℕ) : ℕ :=
@@ -39,6 +63,7 @@ def semanticSourceDefSentence (e : ℕ) : Sentence :=
     | none => ⊤
   else ⊤
 
+/-- Stage `k` as a list: every definition clause with index at most `k`, newest first. -/
 def semanticSourceStageList : ℕ → List Sentence
   | 0 => [semanticSourceDefSentence 0]
   | k + 1 => semanticSourceDefSentence (k + 1) :: semanticSourceStageList k
@@ -62,6 +87,8 @@ lemma semanticSourceStageList_exists {φ : Sentence} {k : ℕ}
       rcases List.mem_cons.mp h with h | h
       · exact ⟨k + 1, h⟩
       · exact ih h
+
+/-! ## The process, and its program -/
 
 /-- The single universal source process.  It contains no chosen source, market, weight,
 or deferral data. -/
@@ -165,7 +192,7 @@ lemma semanticSourceDP_computable : ComputableDeductiveProcess semanticSourceDP 
   rw [hcode]
   exact Part.mem_some_iff.mpr (encode_toFinset_eq (semanticSourceStageList k))
 
-/-! ## Explicit non-vacuity -/
+/-! ## The canonical extension world -/
 
 /-- Bounded runs of one named emitter cannot decode to two different sentences. -/
 lemma semanticSourceSentenceAtFuel_unique {schema input fuel fuel' : ℕ}
@@ -250,6 +277,8 @@ lemma semanticSourceExtensionWorld_downward_of_seen {DP : DeductiveProcess}
   exact (semanticSourceExtensionWorld_leaf_iff v₀ schema _ f hsource hφr hfr).mpr
     (hbase hs₀)
 
+/-! ## Explicit non-vacuity -/
+
 /-- Every source-definition clause is true in the canonical extension world. -/
 lemma semanticSourceExtensionWorld_holds_defSentence (v₀ : PCWorld) (e : ℕ) :
     (semanticSourceExtensionWorld v₀).Holds (semanticSourceDefSentence e) := by
@@ -296,6 +325,12 @@ lemma semanticSourceDP_hworld (v₀ : PCWorld) :
   obtain ⟨e, rfl⟩ := semanticSourceStageList_exists (List.mem_toFinset.mp hφ)
   exact semanticSourceExtensionWorld_holds_defSentence v₀ e
 
+/-! ## The theorem-plus-source process
+
+The union offered to clients as a named package: a canonical process, its certified program,
+and its explicit completed world.  Nothing downstream prices against it, by the design
+decision recorded in the module header. -/
+
 /-- Conservative combination with any base process whose stages stay in the old language. -/
 lemma semanticSourceExtensionWorld_consistentWith_union
     (B : DeductiveProcess) (v₀ : PCWorld)
@@ -315,6 +350,8 @@ noncomputable def theoremSemanticSourceDP (T : ArithmeticTheory) [T.Δ₁]
     [Entailment.Consistent T] : DeductiveProcess :=
   (theoremDP T).union semanticSourceDP
 
+/-- The certified program for `theoremSemanticSourceDP`, the union of `theoremDP`'s own
+program and `semanticSourceDP`'s. -/
 noncomputable def theoremSemanticSourceDPComputation (T : ArithmeticTheory)
     [T.Δ₁] [Entailment.Consistent T] :
     DeductiveProcessComputation (theoremSemanticSourceDP T) :=
@@ -359,6 +396,8 @@ lemma semanticSourceDefSentence_job (schema input direction fuel : ℕ) :
         | none => ⊤
       else ⊤ := by
   simp [semanticSourceDefSentence, semanticSourceDefinitionJob]
+
+/-! ## Threshold reflection for certified sources -/
 
 /-- Any successfully decoded fresh source sentence is reflected by its semantic handle in
 every completed world of the one fixed process. -/
@@ -405,11 +444,5 @@ lemma certifiedSource_valuesAt_iff {DP : DeductiveProcess}
     exact ⟨hx0, hx1, fun r => by rw [← certifiedSource_threshold_reflected X n r v hv]; exact hx r⟩
   · rintro ⟨hx0, hx1, hx⟩
     exact ⟨hx0, hx1, fun r => by rw [certifiedSource_threshold_reflected X n r v hv]; exact hx r⟩
-
-#print axioms semanticSourceDP_computable
-#print axioms semanticSourceDP_hworld
-#print axioms theoremSemanticSourceDP_hworld
-#print axioms certifiedSource_threshold_reflected
-#print axioms certifiedSource_valuesAt_iff
 
 end LogicalInduction

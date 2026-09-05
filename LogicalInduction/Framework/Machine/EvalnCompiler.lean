@@ -1,4 +1,7 @@
-/-
+import Complexitylib.Models.TuringMachine.Registers.Pairing
+import Mathlib.Computability.PartrecCode
+
+/-!
 # Compiling `Nat.Partrec.Code` to ordinary Turing machines
 
 The arithmetic substrate is upstream, in the pinned `complexitylib` fork; this file is the
@@ -28,9 +31,9 @@ does *not* mean hoisting it out of the recursion — each compiled machine begin
 The compiled machines are **straight-line**. Rather than branching on the guard, each
 constructor computes its answer unconditionally and multiplies both result registers by
 the `0/1` guard flag (`resultTag_ite`, `resultVal_ite`). This is the same multiplicative
-mask that removed the branch from `pairTM` upstream, and it is what keeps `ifTM` — whose
-output-tape test is incompatible with the `OutAcc` emission convention — out of the
-compiler entirely. `OutAcc ys` is carried through every machine here unchanged.
+mask `pairTM` uses upstream, and it is what keeps `ifTM` — whose output-tape test is
+incompatible with the `OutAcc` emission convention — out of the compiler entirely.
+`OutAcc ys` is carried through every machine here unchanged.
 
 The cost is that a compiled machine does its work even when the guard fails and the answer
 is discarded. That is bounded work, and `codeEvalSteps` (`Framework/Machine/CodeSteps.lean`)
@@ -45,15 +48,24 @@ node address its children uniformly. `compileCodeAt` is total on every code
 (`compileCodeAt_isSome`), and `codeVals_encodes` proves the compiled machine's answer
 registers hold `evaln`'s tag and value for every `c`. The register and step bounds are in
 `Framework/Machine/EvalnRegBound.lean`.
+
+## Where it is consumed
+
+`compiledTM` and `codeVals_encodes` are consumed by `Framework/Machine/EvalnRegBound.lean`
+(the register bound `codeRegBound` and the step bound `codeMachineTime`) and by
+`Framework/Machine/TraderMachine.lean` (the trader machine), which also takes
+`resultTag`/`resultVal`, `ChildEncodes`, `runChildFixed`, `codeRegs`, `codeLocal`,
+`precSelf` and `rfSelf`. Together they are what makes `EfficientlyComputable.toMachine`
+provable, so this module is the sufficiency half of the `dd:fuel` certificate device.
+
+Two generic facts live here for want of an upstream home: `runChildFixed`, which asks for a
+child's specification only at the vector it is actually run on, and `forRegs_hoareTime`, the
+register-block loop rule.
 -/
-import Complexitylib.Models.TuringMachine.Registers.Pairing
-import Mathlib.Computability.PartrecCode
 
 namespace LogicalInduction.EvalnCompiler
 
 open Complexity Complexity.TM
-
-
 
 variable {n : ℕ}
 
@@ -84,7 +96,8 @@ lemma evaln_left_eq (k m : ℕ) :
     split_ifs with h <;> simp [h]
 
 lemma evaln_right_eq (k m : ℕ) :
-    Nat.Partrec.Code.evaln k Nat.Partrec.Code.right m = if m < k then some m.unpair.2 else none := by
+    Nat.Partrec.Code.evaln k Nat.Partrec.Code.right m
+      = if m < k then some m.unpair.2 else none := by
   cases k with
   | zero => simp [Nat.Partrec.Code.evaln]
   | succ k =>
@@ -109,6 +122,10 @@ def resultVal : Option ℕ → ℕ
 @[simp] lemma resultVal_none : resultVal none = 0 := rfl
 @[simp] lemma resultTag_some (x : ℕ) : resultTag (some x) = 1 := rfl
 @[simp] lemma resultVal_some (x : ℕ) : resultVal (some x) = x := rfl
+
+/-- The tag is always `0` or `1`, which every mask step needs. -/
+lemma resultTag_le_one (o : Option ℕ) : resultTag o ≤ 1 := by
+  cases o <;> simp
 
 /-- **The masking identity.** A guarded `evaln` result is the *product* of the guard flag
     with the unguarded answer — in both components.
@@ -164,7 +181,7 @@ def ChildEncodes (af : ℕ) (haf : 16 ≤ af) (cf : Nat.Partrec.Code)
     over-quantification is not dischargeable here: at `F := codeVals cf` the boundedness
     premise `∀ k, u k < B → ∀ k, F u k < B` is false for any usable `B` (take
     `cf = pair succ succ`, `u 0 = B - 2`, `u 1 = B - 1`). This variant asks only for the
-    instance, and is otherwise identical — a candidate for upstreaming. -/
+    instance, and is otherwise identical. -/
 lemma runChildFixed {A m : ℕ} (W : Fin m ↪ Fin A) (R : Regs A n) (M : TM n)
     (F : (Fin m → ℕ) → Fin m → ℕ) (t : ℕ)
     {inp₀ : Tape} {ys ys' : List Bool} (w₀ : Fin n → Tape)
@@ -188,6 +205,8 @@ def compileZero (r : CodeRegs n) : TM n :=
   seqTM (copyIntoTM (r 4) (r 2))
         (clearRegTM (r 3))
 
+/-- The register vector `compileZero` leaves: the guard flag `[n < fuel]` in `4`, its scratch
+in `5`, the tag in `2` and the value in `3` — `evaln`'s answer for `zero`, masked. -/
 def zeroVals (v : Fin 16 → ℕ) : Fin 16 → ℕ := fun k =>
   if k = 2 then (if v 0 < v 1 then 1 else 0)
   else if k = 3 then 0
@@ -255,6 +274,8 @@ def compileSucc (r : CodeRegs n) : TM n :=
   seqTM (clearRegTM (r 3))
         (mulAddIntoTM (r 4) (r 6) (r 3))
 
+/-- The register vector `compileSucc` leaves, in the layout `zeroVals` uses; the value is
+`n + 1` masked by the guard. -/
 def succVals (v : Fin 16 → ℕ) : Fin 16 → ℕ := fun k =>
   if k = 2 then (if v 0 < v 1 then 1 else 0)
   else if k = 3 then 0 + (if v 0 < v 1 then 1 else 0) * (v 0 + 1)
@@ -381,6 +402,8 @@ noncomputable def afterUnpair (v : Fin 16 → ℕ) : Fin 16 → ℕ :=
   writeWindow unpairWindow (afterGuard v)
     (unpairVals (fun j => afterGuard v (unpairWindow j)) (v 0))
 
+/-- The register vector `compileProj` leaves. `wj` selects the half of the unpairing window
+the projection reads, so the one machine serves both `left` and `right`. -/
 noncomputable def projVals (v : Fin 16 → ℕ) (wj : Fin 9) : Fin 16 → ℕ :=
   Function.update (Function.update (afterUnpair v) 2 (if v 0 < v 1 then 1 else 0)) 3
     (0 + (if v 0 < v 1 then 1 else 0) * afterUnpair v (unpairWindow wj))
@@ -581,12 +604,6 @@ lemma compileProj_hoareTime (r : CodeRegs n) (wj : Fin 9) (v : Fin 16 → ℕ) (
     seqEmit hinp₀ (hpv V3) h3 <|
     seqEmit hinp₀ (hpv V4) h4 h5).mono_bound (by omega)
 
-/-- `evaln k left n`, exactly. -/
-def compileLeft (r : CodeRegs n) : TM n := compileProj r 0
-
-/-- `evaln k right n`, exactly. -/
-def compileRight (r : CodeRegs n) : TM n := compileProj r 1
-
 /-! ## `pair` and `comp`: exact equations and the mask formulas
 
 Both recursive children receive the parent's fuel **undecremented** — `evaln (k+1) cf n`
@@ -664,23 +681,25 @@ lemma comp_mask_val (k : ℕ) (cf cg : Nat.Partrec.Code) (m : ℕ) :
   cases hG : Nat.Partrec.Code.evaln k cg m <;> split_ifs <;> simp [Seq.seq]
 /-! ## Ambient-arity compilation: size-indexed disjoint register intervals
 
-A compiled machine for `c` uses `16 * codeSize c` registers of an ambient file, laid out as
-disjoint intervals: the node's own sixteen first, then each child's whole subtree. Parent
-and children are all `TM n` for the *same* ambient `n`; only the naming embedding differs,
-so ordinary `seqTM` composes them and no lifting is needed.
+A compiled machine for `c` uses `codeRegs c` registers of an ambient file, laid out as
+disjoint intervals: the node's own block first — sixteen registers, thirty-three for `prec`
+and `rfind'` — then each child's whole subtree. Parent and children are all `TM n` for the
+*same* ambient `n`; only the naming embedding differs, so ordinary `seqTM` composes them and
+no lifting is needed.
 
 Because the intervals are disjoint, a child's execution cannot touch the parent's block —
 that is structural (`writeWindow_of_ne` on an index range), not a frame argument. -/
 
 /-- Registers a compiled code occupies: its own block plus its children's subtrees.
 
-    Defined *directly* rather than as a multiple of `codeSize c`, so that
-    `codeRegs (pair cf cg)` reduces to `16 + codeRegs cf + codeRegs cg`
-    **definitionally**. A `prec` node is thirty-three wide rather than sixteen: it needs
-    more working registers, and the thirty-third is its loop counter, which must sit
-    *outside* the block its loop body names (`precMain`, `precLoopIdx`). Without that every recursive call in `compileCodeAt` would need a
-    transport along an arity equation, and the dependent-type friction would spread
-    through the whole assembly. -/
+    Defined by direct structural recursion rather than through a size function, so that
+    `codeRegs (pair cf cg)` reduces to `16 + codeRegs cf + codeRegs cg` **definitionally**.
+    A `prec` or `rfind'` node is thirty-three wide rather than sixteen: it needs more
+    working registers, and the thirty-third is its loop counter, which must sit *outside*
+    the block its loop body names (`precMain`/`precLoopIdx`, `rfMain`/`rfLoopIdx`).
+    Without the definitional reduction every recursive call in the compiler would need a
+    transport along an arity equation, and the dependent-type friction would spread through
+    the whole assembly. -/
 def codeRegs : Nat.Partrec.Code → ℕ
   | .zero => 16
   | .succ => 16
@@ -694,36 +713,13 @@ def codeRegs : Nat.Partrec.Code → ℕ
 lemma codeRegs_ge (c : Nat.Partrec.Code) : 16 ≤ codeRegs c := by
   cases c <;> simp [codeRegs] <;> omega
 
-/-! ### The three intervals of a binary node
-
-For `pair cf cg` / `comp cf cg`, `codeRegs = 16 + codeRegs cf + codeRegs cg`. -/
-
-variable (cf cg : Nat.Partrec.Code)
-
-/-- Self block fits. -/
-lemma selfFits : 0 + 16 ≤ 16 + codeRegs cf + codeRegs cg := by omega
-
-/-- First child's subtree fits. -/
-lemma leftFits : 16 + codeRegs cf ≤ 16 + codeRegs cf + codeRegs cg := by omega
-
-/-- Second child's subtree fits. -/
-lemma rightFits : (16 + codeRegs cf) + codeRegs cg ≤ 16 + codeRegs cf + codeRegs cg := by
-  omega
-
-/-- The first child's *local* sixteen fit. -/
-lemma leftLocalFits : 16 + 16 ≤ 16 + codeRegs cf + codeRegs cg := by
-  have := codeRegs_ge cf; omega
-
-/-- The second child's *local* sixteen fit. -/
-lemma rightLocalFits : (16 + codeRegs cf) + 16 ≤ 16 + codeRegs cf + codeRegs cg := by
-  have := codeRegs_ge cg; omega
-
 /-! ### Windows of a binary node
 
-Ambient arity `16 + af + ag`: the node's own sixteen at offset `0`, the first child's
-subtree at `16`, the second's at `16 + af`. `selfW`/`leftLoc`/`rightLoc` name the three
-*local* sixteen-register blocks; `leftSub`/`rightSub` name the children's whole subtrees,
-which is what a child machine's spec is stated over. -/
+For `pair cf cg` / `comp cf cg` the ambient arity is `codeRegs = 16 + af + ag`, and it
+splits into three disjoint intervals: the node's own sixteen at offset `0`, the first
+child's subtree at `16`, the second's at `16 + af`. `selfW`/`leftLoc`/`rightLoc` name the
+three *local* sixteen-register blocks; `leftSub`/`rightSub` name the children's whole
+subtrees, which is what a child machine's spec is stated over. -/
 
 section Binary
 variable {af ag : ℕ}
@@ -843,6 +839,8 @@ lemma leftSub_ne_rightLoc (hag : 16 ≤ ag) (i : Fin af) (j : Fin 16) :
     leftSub af ag i ≠ rightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
+/-- **`pair`, phase A: run the children.** Copies the node's input and fuel into each child's
+local registers and runs the two child machines. -/
 def pairPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
   seqTM (copyIntoTM (R (selfW af ag 0)) (R (leftLoc af ag haf 0))) <|
@@ -852,6 +850,8 @@ def pairPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (copyIntoTM (R (selfW af ag 1)) (R (rightLoc af ag hag 1)))
         Mg
 
+/-- The ambient register vector `pairPhaseA` produces, parametric in the two child
+semantics. -/
 noncomputable def pairPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
@@ -997,12 +997,15 @@ Ten single-register stages over one ambient vector. Stated over an *arbitrary* e
 vector `W`, so it composes with Phase A by instantiation rather than by threading.
 
 The only value that can leave the size bound is `pairTM`'s output, so that is the one
-explicit hypothesis (`hfit`); the caller supplies a `B` large enough, which is exactly what
-`codeEvalBound` will do at the global step. -/
+explicit hypothesis (`hfit`); the caller supplies a `B` large enough, which is what
+`codeRegBound` (`Framework/Machine/EvalnRegBound.lean`) does at the global step. -/
 
 section PhaseB
 variable {af ag : ℕ}
 
+/-- **`pair`, phase B: combine.** Brings the children's values into the node's pairing
+window, pairs them, and masks tag and value by both children's tags and the node's own
+guard. -/
 def pairPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) : TM n :=
   seqTM (copyIntoTM (R (leftLoc af ag haf 3)) (R (selfW af ag 6))) <|
@@ -1019,6 +1022,7 @@ def pairPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (clearRegTM (R (selfW af ag 3)))
         (mulAddIntoTM (R (selfW af ag 2)) (R (selfW af ag 12)) (R (selfW af ag 3)))
 
+/-- The ambient register vector `pairPhaseB` produces. -/
 noncomputable def pairPhaseBVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (W : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
   let W7 := Function.update W (selfW af ag 6) (W (leftLoc af ag haf 3))
@@ -1076,16 +1080,6 @@ lemma pairTrans_six : (pairSlot.trans (selfW af ag)) 6 = selfW af ag 12 := by
   have h : pairSlot 6 = (12 : Fin 16) := by decide
   simp [Function.Embedding.trans_apply, h]
 
-/-- `selfW 12` is `pairTM`'s output register. -/
-lemma selfW_twelve : selfW af ag 12 = pairAmb af ag 6 := by
-  apply Fin.ext; simp [selfW, pairAmb, shiftEmb_val]
-
-lemma selfW_six : selfW af ag 6 = pairAmb af ag 0 := by
-  apply Fin.ext; simp [selfW, pairAmb, shiftEmb_val]
-
-lemma selfW_seven : selfW af ag 7 = pairAmb af ag 1 := by
-  apply Fin.ext; simp [selfW, pairAmb, shiftEmb_val]
-
 /-- Every value `pairTM` leaves in its window stays inside the bound, given that its
     output does. -/
 lemma pairVals_lt (v : Fin 8 → ℕ) (B : ℕ) (hB2 : 2 ≤ B) (hv : ∀ k, v k < B)
@@ -1100,9 +1094,10 @@ end PhaseBProof
 
 /-! ## Reading a binary node's register vector
 
-The same mechanism the `rfind'` proofs use: reading one named register out of an update to
-another is a *numeric* index test, so `simp only` plus `norm_num` evaluates a whole stage
-chain instead of a hand-ordered `rw` chain that breaks on any change of unfolding order. -/
+Reading one named register out of an update to another is a *numeric* index test, so a
+`simp only` plus `norm_num` evaluates a whole stage chain instead of a hand-ordered `rw`
+chain that breaks on any change of unfolding order. The `prec` and `rfind'` sections reuse
+this mechanism. -/
 
 section BinaryRead
 variable {af ag : ℕ}
@@ -1215,16 +1210,6 @@ lemma pairVals_apply (v : Fin 8 → ℕ) (k : Fin 8) :
       else v k := by
   simp only [pairVals, Fin.ext_iff]
   norm_num
-
-/-- `pairTM`'s output slot. -/
-lemma pairVals_six (v : Fin 8 → ℕ) : pairVals v 6 = Nat.pair (v 0) (v 1) := by
-  simp [pairVals]
-
-lemma pairWin_selfW (i : Fin 16) (h : ∀ t : Fin 8, 6 + (t : ℕ) ≠ (i : ℕ))
-    (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
-    writeWindow (pairSlot.trans (selfW af ag)) X u (selfW af ag i) = X (selfW af ag i) := by
-  rw [pairAmb_eq]
-  exact writeWindow_of_ne _ _ _ (fun t => pairAmb_ne_selfW t i (h t))
 
 /-- The pairing window as a total read-off: slots `6`–`13` of the node's block. -/
 lemma pairWin_selfW_apply (i : Fin 16) (X : Fin (16 + af + ag) → ℕ) (u : Fin 8 → ℕ) :
@@ -1599,6 +1584,9 @@ Phase B's mask discards `cf`'s answer. -/
 section CompA
 variable {af ag : ℕ}
 
+/-- **`comp`, phase A: run the inner child, then the outer one on its value.** The outer
+child runs unconditionally on `resultVal` of the inner answer, which is the canonical `0`
+when the inner call failed; the mask in phase B discards the result. -/
 def compPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) (Mf Mg : TM n) : TM n :=
   seqTM (copyIntoTM (R (selfW af ag 0)) (R (rightLoc af ag hag 0))) <|
@@ -1608,6 +1596,8 @@ def compPhaseA (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (copyIntoTM (R (selfW af ag 1)) (R (leftLoc af ag haf 1)))
         Mf
 
+/-- The ambient register vector `compPhaseA` produces, parametric in the two child
+semantics. -/
 noncomputable def compPhaseAVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (Ff : (Fin af → ℕ) → Fin af → ℕ) (Fg : (Fin ag → ℕ) → Fin ag → ℕ)
     (V : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
@@ -1756,6 +1746,8 @@ value can leave the size bound. -/
 section CompB
 variable {af ag : ℕ}
 
+/-- **`comp`, phase B: mask.** Computes the node's guard flag and multiplies tag and value by
+it and by both children's tags. -/
 def compPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (16 + af + ag) n) : TM n :=
   seqTM (ltFlagTM (R (selfW af ag 0)) (R (selfW af ag 1))
@@ -1769,6 +1761,7 @@ def compPhaseB (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
   seqTM (clearRegTM (R (selfW af ag 3)))
         (mulAddIntoTM (R (selfW af ag 2)) (R (leftLoc af ag haf 3)) (R (selfW af ag 3)))
 
+/-- The ambient register vector `compPhaseB` produces. -/
 noncomputable def compPhaseBVec (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (W : Fin (16 + af + ag) → ℕ) : Fin (16 + af + ag) → ℕ :=
   let W1 := Function.update W (selfW af ag 5) (W (selfW af ag 1) - W (selfW af ag 0))
@@ -2076,6 +2069,9 @@ lemma evaln_prec_succ (k : ℕ) (cf cg : Nat.Partrec.Code) (a j : ℕ) :
 when the base case was run at fuel `f`. It is a plain structural recursion on `j` — no
 `Code` recursion — which is exactly what the machine implements. -/
 
+/-- **The `prec` recursion as a pure iterator, with its level guards.** `precRun cf cg a f j`
+is `evaln`'s answer at level `j` when the base case ran at fuel `f`: a plain structural
+recursion on `j`, walking *upward* in fuel from the base. -/
 def precRun (cf cg : Nat.Partrec.Code) (a : ℕ) (f : ℕ) : ℕ → Option ℕ
   | 0 => if Nat.pair a 0 < f then Nat.Partrec.Code.evaln f cf a else none
   | j + 1 =>
@@ -2104,125 +2100,6 @@ lemma precRun_eq_evaln (cf cg : Nat.Partrec.Code) (a m fuel : ℕ)
   congr 1
   omega
 
-/-! ## `rfind'`: the exact equation and its pure iterator
-
-At fuel `k+1`:
-
-```
-guard (n ≤ k)
-n.unpaired fun a m => do
-  let x ← evaln (k+1) cf (Nat.pair a m)
-  if x = 0 then pure m else evaln k (rfind' cf) (Nat.pair a (m+1))
-```
-
-so the test child runs at the parent's own fuel, and the self-call *decreases* fuel while
-*increasing* the search index. Unrolling walks `(f, m) → (f-1, m+1) → …`, so a machine loop
-runs at most `f` iterations — the loop bound is the **fuel**, not the input.
-
-Contrast `prec`, whose loop bound is the unpaired index and which walks *upward* in fuel.
-The two loop constructors iterate in opposite directions; that is the main thing to keep
-straight when implementing them. -/
-
-lemma evaln_rfind_eq (k : ℕ) (cf : Nat.Partrec.Code) (a m : ℕ) :
-    Nat.Partrec.Code.evaln k cf.rfind' (Nat.pair a m)
-      = if Nat.pair a m < k then
-          (Nat.Partrec.Code.evaln k cf (Nat.pair a m) >>= fun x =>
-            if x = 0 then some m
-            else Nat.Partrec.Code.evaln (k - 1) cf.rfind' (Nat.pair a (m + 1)))
-        else none := by
-  cases k with
-  | zero => simp [Nat.Partrec.Code.evaln]
-  | succ k =>
-    simp only [Nat.Partrec.Code.evaln, Nat.lt_succ_iff, Nat.unpaired, Nat.unpair_pair]
-    split_ifs with h <;> simp [h]
-
-/-- The search, as a plain structural recursion on fuel — no `Code` recursion. This is what
-    the machine's bounded loop implements. -/
-def rfindRun (cf : Nat.Partrec.Code) (a : ℕ) : ℕ → ℕ → Option ℕ
-  | 0, _ => none
-  | f + 1, m =>
-      if Nat.pair a m < f + 1 then
-        (Nat.Partrec.Code.evaln (f + 1) cf (Nat.pair a m) >>= fun x =>
-          if x = 0 then some m else rfindRun cf a f (m + 1))
-      else none
-
-/-- **The iterator is the semantics.** -/
-lemma rfindRun_eq (cf : Nat.Partrec.Code) (a : ℕ) : ∀ f m,
-    rfindRun cf a f m = Nat.Partrec.Code.evaln f cf.rfind' (Nat.pair a m)
-  | 0, m => by rw [rfindRun, evaln_rfind_eq]; simp
-  | f + 1, m => by
-      rw [rfindRun, evaln_rfind_eq]
-      split_ifs with h
-      · simp only [Nat.add_sub_cancel]
-        congr 1
-        funext x
-        split_ifs
-        · rfl
-        · exact rfindRun_eq cf a f (m + 1)
-      · rfl
-
-/-- One step of the loop, in the form the machine's invariant consumes: the search at
-    `(f+1, m)` either finishes here or continues at `(f, m+1)`. -/
-lemma rfindRun_succ (cf : Nat.Partrec.Code) (a f m : ℕ) :
-    rfindRun cf a (f + 1) m
-      = if Nat.pair a m < f + 1 then
-          (Nat.Partrec.Code.evaln (f + 1) cf (Nat.pair a m) >>= fun x =>
-            if x = 0 then some m else rfindRun cf a f (m + 1))
-        else none := by
-  rw [rfindRun]
-
-/-! ### `precRun` in register terms
-
-The machine carries `precRun`'s value as a canonical tag/value pair, so the loop needs the
-iterator's tag and value *separately*, each as a product of `0/1` masks. The step case has
-exactly the shape of `comp` — the previous result is bound into a child's input — so the
-same masking argument applies: the child runs unconditionally on `resultVal` of the
-previous level, which is the canonical `0` when that level failed, and the `alive` factor
-discards the answer.
-
-`cf` appears only in the base case: it is setup-only, and the loop body invokes `cg`
-alone. -/
-
-lemma precRun_zero_tag (cf cg : Nat.Partrec.Code) (a f : ℕ) :
-    resultTag (precRun cf cg a f 0)
-      = (if Nat.pair a 0 < f then 1 else 0)
-          * resultTag (Nat.Partrec.Code.evaln f cf a) := by
-  rw [precRun]
-  split_ifs <;> simp
-
-lemma precRun_zero_val (cf cg : Nat.Partrec.Code) (a f : ℕ) :
-    resultVal (precRun cf cg a f 0)
-      = (if Nat.pair a 0 < f then 1 else 0)
-          * resultVal (Nat.Partrec.Code.evaln f cf a) := by
-  rw [precRun]
-  split_ifs <;> simp
-
-/-- **The step mask.** `alive` is the product of the level guard, the previous level's
-    tag, and the child's tag. -/
-lemma precRun_succ_tag (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
-    resultTag (precRun cf cg a f (j + 1))
-      = (if Nat.pair a (j + 1) < f + (j + 1) then 1 else 0)
-          * resultTag (precRun cf cg a f j)
-          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
-              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j))))) := by
-  rw [precRun]
-  cases hp : precRun cf cg a f j <;> split_ifs <;> simp [hp]
-
-lemma precRun_succ_val (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
-    resultVal (precRun cf cg a f (j + 1))
-      = (if Nat.pair a (j + 1) < f + (j + 1) then 1 else 0)
-          * resultTag (precRun cf cg a f j)
-          * resultTag (Nat.Partrec.Code.evaln (f + (j + 1)) cg
-              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j)))))
-          * resultVal (Nat.Partrec.Code.evaln (f + (j + 1)) cg
-              (Nat.pair a (Nat.pair j (resultVal (precRun cf cg a f j))))) := by
-  rw [precRun]
-  cases hp : precRun cf cg a f j <;> split_ifs <;> simp [hp]
-
-/-- The tag is always `0` or `1`, which every mask step needs. -/
-lemma resultTag_le_one (o : Option ℕ) : resultTag o ≤ 1 := by
-  cases o <;> simp
-
 /-! ### The level guards are free
 
 `precRun` re-checks a guard at every level. The machine does not have to: `Nat.pair a ·`
@@ -2230,25 +2107,6 @@ is strictly increasing, so `Nat.pair a j` grows by at least `1` per level while 
 fuel `f + j` grows by exactly `1`. Hence the outer guard at level `m` implies every level
 guard below it, and the loop body needs **no guard test** — saving a `pairTM` call and a
 comparison per iteration. -/
-
-lemma pair_lt_pair_succ (a b : ℕ) : Nat.pair a b < Nat.pair a (b + 1) := by
-  unfold Nat.pair
-  rcases lt_trichotomy a b with h | h | h
-  · rw [if_pos h, if_pos (by omega)]
-    have : (b + 1) * (b + 1) = b * b + 2 * b + 1 := by ring
-    omega
-  · subst h
-    rw [if_neg (by omega), if_pos (by omega)]
-    have : (a + 1) * (a + 1) = a * a + 2 * a + 1 := by ring
-    omega
-  · rw [if_neg (by omega)]
-    rcases Nat.lt_or_ge a (b + 1) with h2 | h2
-    · rw [if_pos h2]
-      have hb : b + 1 = a := by omega
-      rw [hb]
-      have : a * a + a + b = a * a + a + (a - 1) := by omega
-      omega
-    · rw [if_neg (by omega)]; omega
 
 /-- The index grows at least as fast as the level fuel. -/
 lemma pair_add_le (a : ℕ) : ∀ j m, j ≤ m → Nat.pair a j + (m - j) ≤ Nat.pair a m := by
@@ -2260,7 +2118,8 @@ lemma pair_add_le (a : ℕ) : ∀ j m, j ≤ m → Nat.pair a j + (m - j) ≤ Na
     rcases Nat.lt_or_ge j (m + 1) with hj | hj
     · have hjm : j ≤ m := by omega
       have h1 := ih hjm
-      have h2 := pair_lt_pair_succ a m
+      have h2 : Nat.pair a m < Nat.pair a (m + 1) :=
+        Nat.pair_lt_pair_right a (by omega)
       omega
     · have : j = m + 1 := by omega
       subst this; simp
@@ -2275,6 +2134,9 @@ lemma level_guard (a m f j : ℕ) (hj : j ≤ m) (hout : Nat.pair a m < f + m) :
 
 Under the outer guard this is what the machine's loop actually computes. -/
 
+/-- **The same iterator with the level guards dropped.** Under the node's outer guard every
+level guard is free (`level_guard`), so this is what the machine's loop actually computes;
+`precRunG_eq_precRun` reconciles the two. -/
 def precRunG (cf cg : Nat.Partrec.Code) (a f : ℕ) : ℕ → Option ℕ
   | 0 => Nat.Partrec.Code.evaln f cf a
   | j + 1 =>
@@ -2292,8 +2154,16 @@ lemma precRunG_eq_precRun (cf cg : Nat.Partrec.Code) (a m f : ℕ)
 
 /-! ### The guard-free step masks, and closure against `evaln`
 
-These are what the machine's body and finish phases target: the body proves the two mask
-identities, and the finish phase applies `precRunG_eq_evaln`. -/
+The machine carries the iterator's value as a canonical tag/value pair, so the loop needs
+the tag and the value *separately*, each as a product of `0/1` masks. The step case has
+exactly the shape of `comp` — the previous result is bound into a child's input — so the
+same masking argument applies: the child runs unconditionally on `resultVal` of the
+previous level, which is the canonical `0` when that level failed, and the tag factor
+discards the answer. `cf` appears only in the base case: it is setup-only, and the loop
+body invokes `cg` alone.
+
+These two identities are what the machine's body and finish phases target: the body proves
+the mask identities, and the finish phase applies `precRunG_eq_evaln`. -/
 
 lemma precRunG_succ_tag (cf cg : Nat.Partrec.Code) (a f j : ℕ) :
     resultTag (precRunG cf cg a f (j + 1))
@@ -2364,8 +2234,10 @@ parent reads a `prec` child exactly like any other.
 | `16`–`24` | the `unpairTM` / `pairTM` window (nine registers; `pairTM` uses eight) |
 | `25`–`31` | spare |
 
-The loop counter `7` sits in the node's own block, outside every child subtree, so
-`forRegTM` never touches a child window. -/
+The loop `forRegTM` runs is driven off the *ambient* counter `precLoopIdx`, the
+thirty-third register, outside the thirty-two this table describes; the setup copies `m`
+into it. Because the counter is outside the body's block, `forRegs_hoareTime` applies with
+no re-indexing and the loop never touches a child window. -/
 
 section PrecLayout
 variable {af ag : ℕ}
@@ -2421,11 +2293,6 @@ lemma precLeftSub_ne_rightLoc (hag : 16 ≤ ag) (i : Fin af) (j : Fin 16) :
     precLeftSub af ag i ≠ precRightLoc af ag hag j := by
   apply amb_ne; have := i.isLt; simp; omega
 
-/-- The pairing window lives inside the node's own block. -/
-lemma precPairW_eq (j : Fin 8) :
-    precPairW af ag j = precSelf af ag ⟨16 + (j : ℕ), by have := j.isLt; omega⟩ := by
-  apply Fin.ext; simp [precPairW, precSelf, shiftEmb_val]
-
 lemma precPairW_ne_self (i : Fin 8) (j : Fin 32) (h : 16 + (i : ℕ) ≠ (j : ℕ)) :
     precPairW af ag i ≠ precSelf af ag j := by
   apply amb_ne; simpa using h
@@ -2477,7 +2344,7 @@ end PrecLayout
 
 /-! ### Reading a `prec` node's register vector
 
-The same numeric-index mechanism as for a binary node and for `rfind'`. -/
+The numeric-index mechanism of `## Reading a binary node's register vector`. -/
 
 section PrecReadTools
 variable {af ag : ℕ}
@@ -2658,6 +2525,9 @@ when the previous level failed, and the `alive` factor discards the answer.
 section PrecBody
 variable {af ag : ℕ}
 
+/-- **One level of the `prec` loop.** Pairs the current level index with the accumulator,
+pairs that with `a`, runs the step child `Mg` on the result at the level's fuel, folds its
+answer into the accumulator and the `alive` mask, and advances the level. -/
 def precBodyTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (Mg : TM n) : TM n :=
   seqTM (copyIntoTM (R (precSelf af ag 9)) (R (precSelf af ag 16))) <|
@@ -3133,7 +3003,6 @@ lemma precBodyPre_self (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + a
 
 /-! #### The level -/
 
-
 lemma precChildIn_zero (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
     precChildIn af ag haf hag V ⟨0, by omega⟩
       = Nat.pair (V (precSelf af ag 6))
@@ -3582,6 +3451,9 @@ register outside the block. -/
 section PrecSetup
 variable {af ag : ℕ}
 
+/-- **The `prec` setup.** Unpairs the input into `a` and `m`, computes the base fuel
+`fuel - m`, runs the base child `Mf` on `a` at that fuel, seeds the accumulator and the
+`alive` mask, and copies `m` into the ambient loop counter `l`. -/
 def precSetupTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (l : Fin n) (Mf : TM n) : TM n :=
   seqTM (unpairTM ((precUnpairW af ag).trans R) (R (precSelf af ag 0))) <|
@@ -3841,6 +3713,8 @@ level's tag, so this is one masking level shorter than `comp`'s. -/
 section PrecFinish
 variable {af ag : ℕ}
 
+/-- **The `prec` finish.** Recomputes the node's own guard `[n < fuel]` and masks the tag and
+value registers by it and by the accumulated `alive` flag. -/
 def precFinishTM (af ag : ℕ) (R : Regs (32 + af + ag) n) : TM n :=
   seqTM (ltFlagTM (R (precSelf af ag 0)) (R (precSelf af ag 1))
           (R (precSelf af ag 5)) (R (precSelf af ag 4))) <|
@@ -3850,6 +3724,7 @@ def precFinishTM (af ag : ℕ) (R : Regs (32 + af + ag) n) : TM n :=
   seqTM (clearRegTM (R (precSelf af ag 3)))
         (mulAddIntoTM (R (precSelf af ag 2)) (R (precSelf af ag 11)) (R (precSelf af ag 3)))
 
+/-- The ambient register vector `precFinishTM` produces. -/
 noncomputable def precFinishVals (af ag : ℕ) (W : Fin (32 + af + ag) → ℕ) :
     Fin (32 + af + ag) → ℕ :=
   let W1 := Function.update W (precSelf af ag 5) (W (precSelf af ag 1) - W (precSelf af ag 0))
@@ -4007,7 +3882,6 @@ lemma precLoopVals_frame (haf : 16 ≤ af) (hag : 16 ≤ ag)
 
 /-! #### The setup -/
 
-
 lemma precSetupPre_a (haf : 16 ≤ af) (hag : 16 ≤ ag) (V : Fin (32 + af + ag) → ℕ) :
     precSetupPre af ag haf hag V (precSelf af ag 6)
       = (Nat.unpair (V (precSelf af ag 0))).1 := by
@@ -4108,13 +3982,6 @@ lemma precSetupVals_m :
   norm_num
   exact precSetupPre_m haf hag V
 
-lemma precSetupVals_base :
-    precSetupVals af ag haf hag Ff V (precSelf af ag 8)
-      = V (precSelf af ag 1) - (Nat.unpair (V (precSelf af ag 0))).2 := by
-  simp only [precSetupVals, precSelf_update_apply, precLeftSub_win_selfW]
-  norm_num
-  exact precSetupPre_base haf hag V
-
 lemma precSetupVals_j : precSetupVals af ag haf hag Ff V (precSelf af ag 9) = 0 := by
   simp only [precSetupVals, precSelf_update_apply]
   norm_num
@@ -4170,6 +4037,8 @@ register `l`, outside the block the three phases name. -/
 section PrecCompose
 variable {af ag : ℕ}
 
+/-- **The `prec` machine.** Setup, then `m` iterations of the body driven off the ambient
+counter `l`, then the finish. -/
 def precTM (af ag : ℕ) (haf : 16 ≤ af) (hag : 16 ≤ ag)
     (R : Regs (32 + af + ag) n) (l : Fin n) (Mf Mg : TM n) : TM n :=
   seqTM (precSetupTM af ag haf hag R l Mf)
@@ -4399,9 +4268,14 @@ n.unpaired fun a m => do
   if x = 0 then pure m else evaln k (rfind' cf) (Nat.pair a (m+1))
 ```
 
-so the fuel decreases by one per level while the index `m` increases by one. Unlike
-`prec`, the level guards are **not** free here: `Nat.pair a (m+t)` grows while the level
-fuel `k+1-t` shrinks, so a guard can fail part-way down and the machine must test it.
+so the test child runs at the parent's own fuel, and the self-call *decreases* fuel by one
+per level while the index `m` increases by one. Unrolling walks `(f, m) → (f-1, m+1) → …`,
+so the loop bound is the **fuel**, not the input. Contrast `prec`, whose loop bound is the
+unpaired index and which walks *upward* in fuel: the two loop constructors iterate in
+opposite directions, and that is the main thing to keep straight.
+
+Unlike `prec`, the level guards are **not** free here: `Nat.pair a (m+t)` grows while the
+level fuel `k+1-t` shrinks, so a guard can fail part-way down and the machine must test it.
 
 The machine carries three registers — `searching`, `found`, `result` — and one level is
 `rfLevel`: the guard, the child's tag, and the zero test enter multiplicatively, so there
@@ -4531,10 +4405,6 @@ lemma rfPairW_ne_loc (haf : 16 ≤ af) (i : Fin 8) (j : Fin 16) :
     rfPairW af i ≠ rfLoc af haf j := by
   apply amb_ne; have := i.isLt; simp; omega
 
-lemma rfUnpairW_ne_loc (haf : 16 ≤ af) (i : Fin 9) (j : Fin 16) :
-    rfUnpairW af i ≠ rfLoc af haf j := by
-  apply amb_ne; have := i.isLt; simp; omega
-
 /-- A child's local block is the first sixteen of its subtree. -/
 lemma rfLoc_eq (haf : 16 ≤ af) (j : Fin 16) :
     rfLoc af haf j = rfSub af ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
@@ -4548,12 +4418,6 @@ lemma rfPairW_one : (rfPairW af) 1 = rfSelf af 21 := by
 
 lemma rfPairW_six : (rfPairW af) 6 = rfSelf af 26 := by
   apply Fin.ext; simp [rfPairW, rfSelf, shiftEmb_val]
-
-lemma rfUnpairW_zero : (rfUnpairW af) 0 = rfSelf af 20 := by
-  apply Fin.ext; simp [rfUnpairW, rfSelf, shiftEmb_val]
-
-lemma rfUnpairW_one : (rfUnpairW af) 1 = rfSelf af 21 := by
-  apply Fin.ext; simp [rfUnpairW, rfSelf, shiftEmb_val]
 
 lemma rfMain_ne_loopIdx (k : Fin (32 + af)) : rfMain af k ≠ rfLoopIdx af := by
   apply Fin.ne_of_val_ne
@@ -4572,6 +4436,8 @@ multiplicatively, so there is no branch and the loop has fixed length. -/
 section RfindBody
 variable {af : ℕ}
 
+/-- **`rfind'`, phase A: run the child at the current index.** Builds `Nat.pair a m` in the
+node's pairing window and runs `Mf` on it at the level's fuel. -/
 def rfPhaseA (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
   seqTM (copyIntoTM (R (rfSelf af 6)) (R (rfSelf af 20))) <|
   seqTM (copyIntoTM (R (rfSelf af 7)) (R (rfSelf af 21))) <|
@@ -4582,6 +4448,8 @@ def rfPhaseA (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : T
           (R (rfSelf af 13)))
         Mf
 
+/-- **`rfind'`, phase B, first half.** Forms this level's `live` flag — still searching, the
+level guard held, and the child answered — and its zero test. -/
 def rfPhaseB1 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (clearRegTM (R (rfSelf af 17))) <|
   seqTM (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 13)) (R (rfSelf af 17))) <|
@@ -4592,6 +4460,8 @@ def rfPhaseB1 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (clearRegTM (R (rfSelf af 15)))
         (mulAddIntoTM (R (rfSelf af 9)) (R (rfSelf af 14)) (R (rfSelf af 15)))
 
+/-- **`rfind'`, phase B, second half.** Commits the index when the level fires, clears the
+`searching` flag, and advances the index and the fuel. -/
 def rfPhaseB2 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (mulAddIntoTM (R (rfSelf af 15)) (R (rfSelf af 7)) (R (rfSelf af 11))) <|
   seqTM (addIntoTM (R (rfSelf af 15)) (R (rfSelf af 10))) <|
@@ -4603,9 +4473,11 @@ def rfPhaseB2 (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (incRegTM (R (rfSelf af 7)))
         (decRegTM (R (rfSelf af 8)))
 
+/-- **`rfind'`, phase B.** The two halves in sequence. -/
 def rfPhaseB (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) : TM n :=
   seqTM (rfPhaseB1 af haf R) (rfPhaseB2 af haf R)
 
+/-- **One level of the `rfind'` loop:** run the child, then test and commit. -/
 def rfBodyTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (Mf : TM n) : TM n :=
   seqTM (rfPhaseA af haf R Mf) (rfPhaseB af haf R)
 
@@ -4667,6 +4539,7 @@ noncomputable def rfPhaseB2Vals (af : ℕ) (haf : 16 ≤ af) (V14 : Fin (32 + af
   let V22 := Function.update V21 (rfSelf af 7) (V21 (rfSelf af 7) + 1)
   Function.update V22 (rfSelf af 8) (V22 (rfSelf af 8) - 1)
 
+/-- The ambient register vector `rfPhaseB` produces. -/
 noncomputable def rfPhaseBVals (af : ℕ) (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
   rfPhaseB2Vals af haf (rfPhaseB1Vals af haf W)
@@ -4831,8 +4704,6 @@ lemma rfPhaseA_hoareTime (haf : 16 ≤ af)
 
 end RfindPhaseAProof
 
-
-
 section RfindPhaseBProof
 variable {af : ℕ}
 
@@ -4932,11 +4803,6 @@ lemma rfPhaseB1Vals_of_ne (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin
     (h17 : (i : ℕ) ≠ 17) :
     rfPhaseB1Vals af haf W (rfSelf af i) = W (rfSelf af i) := by
   simp [rfPhaseB1Vals, rfSelf_update_apply, rfLoc_update_apply haf, h5, h9, h14, h15, h17]
-
-/-- Phase B1 leaves the child's registers alone. -/
-lemma rfPhaseB1Vals_loc (haf : 16 ≤ af) (W : Fin (32 + af) → ℕ) (i : Fin 16) :
-    rfPhaseB1Vals af haf W (rfLoc af haf i) = W (rfLoc af haf i) := by
-  simp only [rfPhaseB1Vals, rfLoc_update_apply haf]
 
 set_option maxHeartbeats 1000000 in
 /-- **`rfPhaseB1` Hoare specification.** The guard, the child's tag and the zero test are
@@ -5261,7 +5127,7 @@ end RfindPhaseBProof
 
 /-! ### Reading an `rfind'` node's register vector
 
-The same numeric-index mechanism as for a binary node. -/
+The numeric-index mechanism of `## Reading a binary node's register vector`. -/
 
 section RfindReadTools
 variable {af : ℕ}
@@ -5322,12 +5188,6 @@ lemma rfUnpairWin_selfW_apply (i : Fin 32) (X : Fin (32 + af) → ℕ) (u : Fin 
     simp at h ⊢
     omega
 
-lemma rfSub_win_rfLoc (haf : 16 ≤ af) (j : Fin 16) (X : Fin (32 + af) → ℕ)
-    (u : Fin af → ℕ) :
-    writeWindow (rfSub af) X u (rfLoc af haf j)
-      = u ⟨(j : ℕ), by have := j.isLt; omega⟩ := by
-  rw [rfLoc_eq haf, writeWindow_apply]
-
 end RfindReadTools
 
 /-! ### `rfind'`: what the child sees, and the level guard -/
@@ -5349,10 +5209,6 @@ lemma rfPhaseAPair_selfW (V : Fin (32 + af) → ℕ) (i : Fin 32)
   have h21 : (i : ℕ) ≠ 21 := by omega
   simp only [rfPhaseAPair, rfPairWin_selfW_apply, dif_neg h, rfSelf_update_apply]
   norm_num [h20, h21]
-
-lemma rfPhaseAPair_rfLoc (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) (j : Fin 16) :
-    rfPhaseAPair af V (rfLoc af haf j) = V (rfLoc af haf j) := by
-  simp only [rfPhaseAPair, rfPairWin_rfLoc haf, rfLoc_update_apply haf]
 
 /-- The child's input register: this level's `Nat.pair a m`. -/
 lemma rfPhaseAPre_childIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
@@ -5622,7 +5478,6 @@ lemma rfPhaseB2Vals_of_ne (haf : 16 ≤ af) (X : Fin (32 + af) → ℕ) (i : Fin
 
 /-! #### The level -/
 
-
 lemma rfChildIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfChildIn af haf V ⟨0, by omega⟩
       = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
@@ -5663,12 +5518,14 @@ private lemma rfB1_frame (i : Fin 32) (hw : ¬ (20 ≤ (i : ℕ) ∧ (i : ℕ) <
   rw [rfPhaseB1Vals_of_ne haf _ i h5 h9 h14 h15 h17, rfA_self haf Ff V i hw h5 h13]
 
 lemma rfBodyVals_a : rfBodyVals af haf Ff V (rfSelf af 6) = V (rfSelf af 6) := by
-  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_of_ne haf _ 6 (by norm_num) (by norm_num) (by norm_num),
+  rw [rfBodyVals, rfPhaseBVals,
+    rfPhaseB2Vals_of_ne haf _ 6 (by norm_num) (by norm_num) (by norm_num),
     rfB1_frame haf Ff V 6 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
       (by norm_num) (by norm_num) (by norm_num)]
 
 lemma rfBodyVals_one : rfBodyVals af haf Ff V (rfSelf af 12) = V (rfSelf af 12) := by
-  rw [rfBodyVals, rfPhaseBVals, rfPhaseB2Vals_of_ne haf _ 12 (by norm_num) (by norm_num) (by norm_num),
+  rw [rfBodyVals, rfPhaseBVals,
+    rfPhaseB2Vals_of_ne haf _ 12 (by norm_num) (by norm_num) (by norm_num),
     rfB1_frame haf Ff V 12 (by norm_num) (by norm_num) (by norm_num) (by norm_num)
       (by norm_num) (by norm_num) (by norm_num)]
 
@@ -5936,6 +5793,9 @@ counter. Finish reads the two answer registers out. -/
 section RfindSetup
 variable {af : ℕ}
 
+/-- **The `rfind'` setup.** Unpairs the input into `a` and the starting index `m`, seeds the
+`searching` flag and the level fuel, and copies the node's fuel — which is also the loop's
+trip count — into the ambient counter `l`. -/
 def rfSetupTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) : TM n :=
   seqTM (unpairTM ((rfUnpairW af).trans R) (R (rfSelf af 0))) <|
   seqTM (copyIntoTM (R (rfSelf af 20)) (R (rfSelf af 6))) <|
@@ -5947,6 +5807,8 @@ def rfSetupTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) : 
   seqTM (setOneTM (R (rfSelf af 12)))
         (copyIntoTM (R (rfSelf af 1)) l)
 
+/-- The ambient register vector `rfSetupTM` produces. The loop counter is not part of it: it
+lives outside the node's block. -/
 noncomputable def rfSetupVals (af : ℕ) (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     Fin (32 + af) → ℕ :=
   let U1 := writeWindow (rfUnpairW af) V
@@ -6090,10 +5952,13 @@ lemma rfSetup_hoareTime (haf : 16 ≤ af)
 
 /-! ### The finish -/
 
+/-- **The `rfind'` finish.** Copies the `found` flag and the committed index into the answer
+registers. -/
 def rfFinishTM (af : ℕ) (R : Regs (32 + af) n) : TM n :=
   seqTM (copyIntoTM (R (rfSelf af 10)) (R (rfSelf af 2)))
         (copyIntoTM (R (rfSelf af 11)) (R (rfSelf af 3)))
 
+/-- The ambient register vector `rfFinishTM` produces. -/
 noncomputable def rfFinishVals (af : ℕ) (W : Fin (32 + af) → ℕ) : Fin (32 + af) → ℕ :=
   let W1 := Function.update W (rfSelf af 2) (W (rfSelf af 10))
   Function.update W1 (rfSelf af 3) (W1 (rfSelf af 11))
@@ -6173,6 +6038,8 @@ lemma rfLoop_hoareTime (haf : 16 ≤ af)
   exact rfBody_hoareTime haf R Mf Ff tf (rfLoopVals af haf Ff V₀ i) B inp₀ w ys hinp₀ hw
     hB2 hb hp hs hm1 hres hfound (hFfB i hi) hFfTag (hMf i hi)
 
+/-- **The `rfind'` machine.** Setup, then `fuel` iterations of the body driven off the
+ambient counter `l`, then the finish. -/
 def rfindTM (af : ℕ) (haf : 16 ≤ af) (R : Regs (32 + af) n) (l : Fin n) (Mf : TM n) :
     TM n :=
   seqTM (rfSetupTM af haf R l)
@@ -6245,11 +6112,9 @@ end RfindCompose
 section RfindCloseTwo
 variable {af : ℕ}
 
-lemma rfSetupVals_inp (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
-    rfSetupVals af haf V (rfSelf af 0) = V (rfSelf af 0) := by
-  simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
-  norm_num
-
+/-- Register `1`, the node's fuel, is preserved by the setup. For `rfind'` it is also the
+    loop's trip count, which is why `rfBlockVals` seeds the counter from it — hence the
+    name. -/
 lemma rfSetupVals_count (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfSetupVals af haf V (rfSelf af 1) = V (rfSelf af 1) := by
   simp only [rfSetupVals, rfSelf_update_apply, rfUnpairWin_selfW_apply]
@@ -6380,8 +6245,6 @@ end RfindBridge
 section PairSemantics
 variable {af ag : ℕ}
 
-
-
 lemma pairLeftIn_zero (haf : 16 ≤ af) (V : Fin (16 + af + ag) → ℕ) :
     pairLeftIn af ag haf V ⟨0, by omega⟩ = V (selfW af ag 0) := by
   have h : leftSub af ag ⟨0, by omega⟩ = leftLoc af ag haf 0 := by
@@ -6472,8 +6335,6 @@ when `cg` failed. -/
 
 section CompSemantics
 variable {af ag : ℕ}
-
-
 
 lemma compRightIn_zero (hag : 16 ≤ ag) (V : Fin (16 + af + ag) → ℕ) :
     compRightIn af ag hag V ⟨0, by omega⟩ = V (selfW af ag 0) := by
@@ -6725,6 +6586,10 @@ lemma rfBlockVals_self {af : ℕ} (haf : 16 ≤ af) (Ff : (Fin af → ℕ) → F
       = rfindVals af haf Ff (fun k => v (rfMain af k)) (rfSelf af j) :=
   rfBlockVals_main haf Ff v (rfSelf af j)
 
+/-- **The register-vector semantics of a compiled node.** `codeVals c` mirrors the compiler
+clause by clause: each constructor's phase vector, with the children's own `codeVals`
+substituted for the abstract child semantics the phase specifications are parametric in.
+`codeVals_encodes` proves it holds `evaln`'s tag and value in registers `2` and `3`. -/
 noncomputable def codeVals : (c : Nat.Partrec.Code) → (Fin (codeRegs c) → ℕ) →
     Fin (codeRegs c) → ℕ
   | .zero, v => zeroVals v
@@ -7098,10 +6963,6 @@ def compileCodeAt : (c : Nat.Partrec.Code) → Regs (codeRegs c) n → Option (T
         ((rfSub (codeRegs cf)).trans ((rfMain (codeRegs cf)).trans R))
       some (rfindTM (codeRegs cf) (codeRegs_ge cf)
         ((rfMain (codeRegs cf)).trans R) (R (rfLoopIdx (codeRegs cf))) Mf)
-
-/-- The per-constructor success lemmas. -/
-lemma compileCodeAt_isSome_zero (R : Regs (codeRegs .zero) n) :
-    (compileCodeAt .zero R).isSome := rfl
 
 lemma compileCodeAt_isSome_pair (cf cg : Nat.Partrec.Code)
     (R : Regs (codeRegs (cf.pair cg)) n)

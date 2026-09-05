@@ -1,40 +1,43 @@
-/-
+import LogicalInduction.Construction.Witnesses.SegmentAutomaton
+import LogicalInduction.Construction.Witnesses.SegmentCounter
+import LogicalInduction.Construction.Witnesses.PayloadAutomaton
+import LogicalInduction.Construction.Witnesses.FiberTestFP
+
+/-!
 # The freeze's run recognizer, with no condition on the target
 
-`PatAuto.ifParse_mem_FP` decides "this word's run denotes `ψ`" for a `NoReserved` target.
-The condition is not decoration: a reserved atom is *also* spelled by a structured
-paper-prime block, whose unary length field must be matched against the payload's own token
-count, and no finite-state device decides an `aⁿbⁿ` constraint.
+Renders `app:ifp` (tex:6018): the unconditional polynomial-time decision of "this word's run
+denotes `ψ`", for every target.  `PatAuto.ifParse_mem_FP` decides the same question only for
+a `NoReserved` target, and that condition is not decoration: a reserved atom is *also*
+spelled by a structured paper-prime block, whose unary length field must be matched against
+the payload's own token count, and no finite-state device decides an `aⁿbⁿ` constraint.
 
-This file removes the condition, by putting three pieces together.
+Three inputs remove it.
 
 * `StructPat.parseRpn_iff_segMatch` characterizes the full grammar unconditionally: a run
   denotes `ψ` exactly when it matches one of `ψ`'s finitely many *segment* patterns, a
   structured block being one segment.
 * `SegAuto.segAuto` is a finite automaton for the **relaxed** language — everything except
   the length identification — with the payload recognized by `PayAuto`, whose obligation
-  stack decides, exactly, which token strings denote one fixed formula code.
+  stack decides, exactly, which token strings denote one fixed formula code.  `payRec`
+  inhabits the `SegAuto.PayRec` interface and is its only instance.
 * `SegCtr.segCtr` is a one-counter machine for the length identification alone, and
-  `SegCtr.segMatch_iff_relaxed_and_ctr` says the split is exact.
+  `SegCtr.segMatch_iff_relaxed_and_ctr` says the split is exact.  `segMatch_iff_accepts` is
+  the resulting exact test: a run matches a pattern exactly when both machines accept it,
+  neither alone being exact.
 
-So the decision is a nest over the target's patterns, each level a conjunction of an
-automaton test and a counter test, and each of those is `Complexity.FP`
-(`RunAuto.BlockAutomaton.ifAuto_mem_FP`, `CtrAuto.ifCtr_mem_FP`).
+`segNest` is the nest over the target's patterns, each level an automaton test conjoined
+with a counter test, and each of those is `Complexity.FP`
+(`RunAuto.BlockAutomaton.ifAuto_mem_FP`, `CtrAuto.ifCtr_mem_FP`).  The nest's shape is a
+design fact, not an implementation detail: a run that matches a pattern's *relaxed* language
+but fails the counter must still be tried against the remaining patterns, since one run can
+be a relaxed match for one pattern and an exact match for another — hence the inner failure
+branch falls through to the tail rather than to `Y`.
 
-The nest's shape matters for the freeze and is not an implementation detail: a run that
-matches a pattern's *relaxed* language but fails the counter must still be tried against the
-remaining patterns, because a single run can be a relaxed match for one pattern and an exact
-match for another.  Hence the inner failure branch falls through to the tail rather than to
-`Y`.
-
-What comes out is `ifParseFull_mem_FP`, the unconditional replacement for
-`PatAuto.ifParse_mem_FP`, and with it the last syntactic side condition on the corrected
-finite-perturbation theorem disappears.
+`ifParseFull_mem_FP` is the decision the freeze asks for, at the full grammar and with no
+condition on the target; `FreezeOracle.machine_lic_iff_of_finiteSupport` consumes it.
+`segMatch_iff_accepts` and `ifParseFull_mem_FP` are in `AxiomAudit.lean`.
 -/
-import LogicalInduction.Construction.Witnesses.SegmentAutomaton
-import LogicalInduction.Construction.Witnesses.SegmentCounter
-import LogicalInduction.Construction.Witnesses.PayloadAutomaton
-import LogicalInduction.Construction.Witnesses.FiberTestFP
 
 namespace LogicalInduction.SegRec
 
@@ -50,8 +53,8 @@ attribute [local irreducible] Nat.sqrt
 
 /-- **`PayAuto` inhabits `SegAuto.PayRec`.**
 
-`SegAuto` is stated against an interface so that it could be built before the recognizer
-existed; this is the only instance, and there is no reason for a second.
+`SegAuto.PayRec` is an interface so that the automaton is independent of the payload
+recognizer's internals; `PayAuto` is its only instance.
 
 Kind `C` composition.  Provenance: (a) `PayAuto.payAuto_iff`, `PayAuto.payStep_le`,
 `PayAuto.payInit_le`. -/
@@ -167,10 +170,10 @@ lemma segNest_mem_FP (H : PatAuto.HoleGuards) {S X Y : List Bool → List Bool}
 
 /-- **Branching on "this word's run denotes `ψ`" is polynomial time — for every `ψ`.**
 
-The unconditional replacement for `PatAuto.ifParse_mem_FP`.  No `BotFree`, no `NoReserved`,
-no restriction of any kind on the target: the escape leaf's infinite decode fibre is decided
-by `FiberTest`, the structured payload by `PayAuto`, and the structured length field by
-`CtrAuto`.
+No `BotFree`, no `NoReserved`, no restriction of any kind on the target: the escape leaf's
+infinite decode fibre is decided by `FiberTest`, the structured payload by `PayAuto`, and the
+structured length field by `CtrAuto`.  `PatAuto.ifParse_mem_FP` is the same decision under
+`NoReserved`.
 
 Proof kind: `C` composition.  Provenance: (a) `segNest_pos`, `segNest_neg`,
 `segNest_mem_FP`; (b) `StructPat.parseRpn_iff_segMatch`.
@@ -190,9 +193,5 @@ lemma ifParseFull_mem_FP (H : PatAuto.HoleGuards) (ψ : Sentence)
     · rw [segNest_neg H S X Y _ z
         (fun hc => hp ((parseRpn_iff_segMatch ψ (decodeBits (S z))).mpr hc)), if_neg hp]
   rwa [heq] at h
-
-#print axioms LogicalInduction.SegRec.payRec
-#print axioms LogicalInduction.SegRec.segMatch_iff_accepts
-#print axioms LogicalInduction.SegRec.ifParseFull_mem_FP
 
 end LogicalInduction.SegRec

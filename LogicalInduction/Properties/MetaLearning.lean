@@ -1,21 +1,49 @@
-/-
-# Trust in Consistency and Reasoning about Halting — §4.9–4.10
-
-`thm:pac`, `thm:pazfc`, `thm:incons` (trust in consistency); `thm:halts`, `thm:loops`,
-`thm:dontwait` (halting patterns).
-
-The paper derives these from Provability Induction plus the assumption that the background
-theory represents computations.  The sentences here are propositional rather than
-first-order Gödel syntax, so the representation step is exposed as a narrow interface.  Its
-fields mention only sentence emission and eventual theoremhood/refutability; they never
-mention market prices or any desired asymptotic conclusion.
--/
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Framework.WriteOut
+
+/-!
+# Trust in Consistency and Reasoning about Halting
+
+Renders §4.9 *Trust in Consistency* — `thm:pac`, `thm:incons` — and §4.10 *Reasoning about
+Halting* — `thm:halts`, `thm:loops`, `thm:dontwait`. The module also supplies the
+representation interfaces the `thm:pazfc` lane consumes; that endpoint itself is
+`lic_belief_stronger_theory_consistency_unconditional` in
+`Construction/Witnesses/ComputationRepresented.lean`.
+
+The paper derives these results from Provability Induction plus Θ's representation of
+computations. The sentences here are propositional rather than first-order Gödel syntax, so
+the representation step is exposed as a narrow interface whose fields mention only sentence
+emission and eventual theoremhood or refutability — never market prices, and never a
+desired asymptotic conclusion.
+
+Those interfaces are the Tier-2 frozen structures `RepresentedSemidecidableClaims`,
+`RepresentedDecidableClaims` (which adds the negative half) and `InconsistentTheoryClaims`.
+All three are instantiated and discharged in
+`Construction/Witnesses/ComputationRepresented.lean`.
+
+`CodeHalts` and `CodeHaltsWithin` name the two computations: unbounded halting, and
+termination within a fixed interpreter clock — decidable, and what `thm:dontwait`
+represents. `InconsistentTheoryClaims.consistencySentence` is the paper's `⌜Θ′⌝ is
+consistent`, recovered syntactically as the negation of the inconsistency sentence, so
+`thm:incons`'s second conjunct costs no further representation premise.
+
+`lic_belief_finitistic_consistency` takes the *semidecidable* premise deliberately: every
+day's claim is true, so the negative field of a decidable bundle is unreachable, and callers
+holding one pass its `.toRepresentedSemidecidableClaims` projection.
+`lic_disbelief_inconsistent_theories` is the abstract boundary rather than the content:
+`inconsistent` and `hall` index the bundle by the property its witness must establish, and
+what makes it a theorem about *theories* lives entirely in the witness, where
+`inconsistent n` becomes `¬Entailment.Consistent (theoryOf (m n))` (`dd:machinetheory`).
+
+Counting and reading conventions are cited rather than restated: `dd:symbolcount` for the
+finite proof searches, `dd:machinetheory` for reading a machine as a theory.
+-/
 
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Representation interfaces -/
 
 /-- A uniformly emitted sentence family representing a semidecidable predicate.  When the
 external computation is true, its representing sentence eventually occurs in the deductive
@@ -34,6 +62,8 @@ structure RepresentedDecidableClaims (DP : DeductiveProcess) (truth : ℕ → Pr
     extends RepresentedSemidecidableClaims DP truth where
   disprovable_of_false : ∀ n, ¬truth n → ∃ k, (∼sentence n) ∈ DP.D k
 
+/-! ## The computations being represented -/
+
 /-- Halting of one `Nat.Partrec.Code` machine on one natural-number input. -/
 def CodeHalts (machine : Nat.Partrec.Code) (input : ℕ) : Prop :=
   (machine.eval input).Dom
@@ -44,11 +74,14 @@ def CodeHaltsWithin (machine : Nat.Partrec.Code) (input steps : ℕ) : Prop :=
   (Nat.Partrec.Code.evaln steps machine input).isSome = true
 
 /-- The emitted “`⌜Θ′ₙ⌝` is inconsistent” family.  One sentence sequence, not two: the paper
-defines `⌜Θ′⌝ is inconsistent` as the *negation* of `⌜Θ′⌝ is consistent` (tex:1863-1866), so
-the consistency family is recovered syntactically by `consistencySentence` below rather than
-carried as an independent field.  The earlier two-family shape existed to avoid assuming a
-syntactic negation on the abstract `Sentence` type; `Sentence` is Foundation's propositional
-`Formula`, which has one, so the reason no longer holds.
+takes `⌜Θ′⌝ is consistent` as primitive and `⌜Θ′⌝ is inconsistent` for its negation
+(tex:1861-1865), and this rendering carries the opposite orientation — the *inconsistency*
+family is the field, and `consistencySentence` below recovers the other one syntactically.
+One family suffices because `Sentence` is Foundation's propositional `Formula`, which
+carries a syntactic negation.  The inversion is a rendering choice rather than an identity:
+Foundation spells `∼φ` as `φ 🡒 ⊥`, so the Lean consistency sentence is the paper's own
+consistency sentence doubly negated.  Nothing downstream reads a sentence's internal shape,
+so the two orientations are interchangeable for every claim made here.
 Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
@@ -56,12 +89,15 @@ structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ �
   inconsistency_provable : ∀ n, inconsistent n →
     ∃ k, inconsistencySentence n ∈ DP.D k
 
-/-- **The paper's “`⌜Θ′ₙ⌝` is consistent”**: the negation of the day-`n` inconsistency
-sentence (tex:1863-1866). -/
+/-- **The paper's “`⌜Θ′ₙ⌝` is consistent”**, up to the orientation recorded at
+`InconsistentTheoryClaims`: the syntactic negation of the day-`n` inconsistency sentence,
+which is the paper's own consistency sentence doubly negated (tex:1861-1865). -/
 def InconsistentTheoryClaims.consistencySentence {DP : DeductiveProcess}
     {inconsistent : ℕ → Prop} (R : InconsistentTheoryClaims DP inconsistent) (n : ℕ) :
     Sentence :=
   ∼R.inconsistencySentence n
+
+/-! ## Trust in consistency (`thm:pac`, `thm:incons`) -/
 
 /-- **Provability induction at the negated sentence.**  `lic_provind_false` asks for `∼ψ` to
 enter the completed theory; when `ψ` is itself a negation `∼φ` of a *theorem*, that would ask
@@ -74,7 +110,7 @@ private lemma provind_neg_false (P : History) (DP : DeductiveProcess) [IsLogical
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (∼φ n)) ≈ₙ fun _ => 0 := by
   let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
-    fun n χ => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n χ
+    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
   have hψpoly := AffineCombination.sentenceAffine_polySequence (fun n => ∼φ n) hφ.neg
   have hψeq := hψpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded _ P hP)
@@ -136,6 +172,8 @@ theorem lic_disbelief_inconsistent_theories
     provind_neg_false P DP R.inconsistencySentence R.inconsistency_poly
       (fun n => R.inconsistency_provable n (hall n)) hworld⟩
 
+/-! ## Reasoning about halting (`thm:halts`, `thm:loops`, `thm:dontwait`) -/
+
 /-- **Learning of Halting Patterns** (`thm:halts`) for polynomially named machine/input
 sequences.  Machine runtime is unrestricted: only the representing sentence sequence must
 be polynomially emitted.
@@ -190,11 +228,5 @@ theorem lic_does_not_anticipate_halting
   rw [CodeHalts]
   rw [Part.dom_iff_mem]
   exact ⟨out, Nat.Partrec.Code.evaln_sound (by simpa using hout)⟩
-
-#print axioms lic_belief_finitistic_consistency
-#print axioms lic_disbelief_inconsistent_theories
-#print axioms lic_learns_halting_patterns
-#print axioms lic_learns_provable_nonhalting_patterns
-#print axioms lic_does_not_anticipate_halting
 
 end LogicalInduction

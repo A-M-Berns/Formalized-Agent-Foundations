@@ -1,26 +1,54 @@
 import LogicalInduction.Framework.Expectations
 
 /-!
-# Rational-cut semantics for abstract LUVs
+# Rational-cut semantics for abstract LUVs (`def:luv`)
 
-A completed propositional world values an abstract `LUV` whenever its true rational
-thresholds form a bounded downward cut.  This module contains only that generic semantic
-fact; it is independent of any source-presentation or executable-certificate mechanism.
+The completed-world half of `def:luv` (tex:1635): a plausible world values an abstract `LUV`
+exactly when its true rational thresholds form a bounded downward cut.
+
+* `PCWorld.RationalCutAt v X` — the three cut conditions: every threshold below `0` holds,
+  none above `1` does, and truth at a threshold is downward closed.
+* `carrier`, with `carrier_nonempty` and `carrier_bddAbove` — the set of reals cut out by the
+  true thresholds, and why it has a supremum.
+* `exists_valuesAt` — a bounded downward cut determines a `PCWorld.ValuesAt` value
+  (`Framework/Expectations.lean`), which is the world–value hypothesis every
+  `lem:conluvapprox` consumer takes.
+* `valuesAt_iff_sSup` — that value is canonical, namely `sSup (carrier v X)`, even though
+  truth at a threshold equal to the value may remain undecided.
+
+The cut hypothesis is discharged for the paper's literal first-order LUVs in
+`Construction/Witnesses/PaperLUV.lean` (`PaperLUV.source_valued`) and in
+`Construction/Witnesses/CertifiedSource.lean` — this module's only importers besides the
+`Framework.lean` roll-up.
+
+**Design.**  The module is deliberately presentation-free and certificate-free: nothing here
+mentions emission, fuel, or source syntax, and no declaration takes a code or a fuel bound.
+It is the purely semantic half of the LUV story, kept apart from the threshold-code
+interfaces of `Framework/Expectations.lean` so that a caller reasoning about worlds never
+imports the metering vocabulary.
 -/
 
 namespace LogicalInduction
 
 open Set
 
-/-- The completed-world content of a genuine paper `[0,1]` LUV. -/
+/-! ## The rational cut -/
+
+/-- The completed-world content of a genuine paper `[0,1]` LUV (`def:luv`): the thresholds
+`⌜X > r⌝` the world affirms form a downward cut of `ℚ` bounded into `[0,1]`. -/
 structure PCWorld.RationalCutAt (v : PCWorld) (X : LUV) : Prop where
+  /-- Every threshold below `0` holds. -/
   below_zero : ∀ r : ℚ, (r : ℝ) < 0 → v.Holds (X.gt r)
+  /-- No threshold above `1` holds. -/
   above_one : ∀ r : ℚ, 1 < (r : ℝ) → ¬v.Holds (X.gt r)
+  /-- Truth at a threshold is downward closed. -/
   downward : ∀ r s : ℚ, r < s → v.Holds (X.gt s) → v.Holds (X.gt r)
 
 namespace PCWorld.RationalCutAt
 
 variable {v : PCWorld} {X : LUV}
+
+/-! ## The represented value -/
 
 /-- The real set represented by the true rational thresholds of a cut. -/
 def carrier (v : PCWorld) (X : LUV) : Set ℝ :=
@@ -60,8 +88,11 @@ lemma exists_valuesAt (h : v.RationalCutAt X) : ∃ x : ℝ, v.ValuesAt X x := b
       have hrS : (r : ℝ) ∈ S := ⟨r, rfl, hHolds⟩
       exact (not_le_of_gt hr) (le_csSup hSbdd hrS)
 
-/-- The represented value is canonical, even though truth at a threshold equal to the
-value may remain undecided. -/
+/-- **Canonicity of the represented value**, the companion to `exists_valuesAt`: the value a
+cut determines is not merely *some* real but exactly `sSup (carrier v X)`, and every
+`PCWorld.ValuesAt` value of `X` at `v` is that supremum.  This holds even though truth at a
+threshold equal to the value may remain undecided, so a client that has produced a value by
+any other route may identify it with the supremum without re-deriving the cut. -/
 lemma valuesAt_iff_sSup (h : v.RationalCutAt X) {x : ℝ} :
     v.ValuesAt X x ↔ x = sSup (carrier v X) := by
   have value_eq (z : ℝ) (hz : v.ValuesAt X z) : z = sSup (carrier v X) := by
@@ -82,8 +113,5 @@ lemma valuesAt_iff_sSup (h : v.RationalCutAt X) {x : ℝ} :
     exact hy
 
 end PCWorld.RationalCutAt
-
-#print axioms PCWorld.RationalCutAt.exists_valuesAt
-#print axioms PCWorld.RationalCutAt.valuesAt_iff_sSup
 
 end LogicalInduction

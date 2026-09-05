@@ -1,20 +1,28 @@
-/-
-# `thm:ec` — Expectations Converge (§4.8)
+import LogicalInduction.Properties.AffineCoherence
+import LogicalInduction.Properties.LimitCoherence
+import LogicalInduction.Properties.ExpectationAffine
+import Mathlib.MeasureTheory.Integral.Bochner.Set
 
-The day-`n` expectation `𝔼ₙ(X)` of any `[0,1]`-LUV converges.
+/-!
+# Expectations Converge
 
-The paper derives `thm:ec` from the affine master theorems rather than from a bespoke
-trader, and so do we.  `𝔼ₙ(X)` is *exactly* the market price of the precision-`n`
-threshold bundle `X.expectAffine n` (`def:e`), an efficiently emitted affine progression.
-Hence:
+Renders §4.8's `thm:ec` (tex:1688): the day-`n` expectation `𝔼ₙ(X)` of any `[0,1]`-LUV
+converges.  Along the way it proves `lem:conluvapprox` (tex:4982) in difference form.
+
+The derivation follows the paper's, from the affine master theorems rather than a bespoke
+trader.  `𝔼ₙ(X)` is *exactly* the market price of the precision-`n` threshold bundle
+`X.expectAffine n` (`def:e`, tex:1670), an efficiently emitted affine progression, so the
+three steps are:
 
 1. **Affine Coherence** (`thm:affcoh`) traps the diagonal price sequence between the
    liminf/limsup of the *limiting belief's* valuations of the same bundles.
 2. **Limit Coherence** (`thm:lc`) presents the limiting belief as a countably additive
-   probability measure concentrated on completed-theory worlds, so the limiting belief's
-   precision-`n` valuation is the average of the worlds' precision-`n` valuations.
+   probability measure concentrated on completed-theory worlds, so its precision-`n`
+   valuation is the average of the worlds' (`expectApprox_limitingBelief_eq_integral`).
+   The measurability and integrability inputs that average needs are proved here.
 3. **`lem:conluvapprox`** bounds `|𝔼ⁿ_v(X) − 𝔼ᵐ_v(X)|` by `1/n + 1/m` in every world that
-   values `X`, making that average Cauchy.
+   values `X`, making that average Cauchy
+   (`LUV.expectApprox_limitingBelief_converges`).
 
 The world-value hypothesis is therefore consumed **only at completed-theory worlds**: step 2
 concentrates the limiting belief on `cworlds(Θ)`, so the sole place a world value is ever
@@ -22,18 +30,17 @@ read is inside a `∀ᵐ v ∂μ` over worlds consistent with *every* stage.  Th
 accordingly stated at the paper's own quantifier (`def:luv`: every `v ∈ cworlds(Θ)` values
 `X`), with no stage-indexed strengthening.
 
-Also proves `lem:conluvapprox` in difference form.
+`LUV.expect_converges` is the canonical endpoint and `LUV.expectInf` names its limit
+`𝔼_∞(X)`, characterized by `LUV.expectSeq_convergesTo_expectInf` and pinned down by
+`LUV.expectInf_eq_of_convergesTo`.  The threshold-block hypothesis `X.RpnThresholdCodes` is
+the token-metered `def:ec` interface for the paper's `Θ`-definable LUV syntax.
 -/
-import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Properties.LimitCoherence
-import LogicalInduction.Properties.ExpectationAffine
-import Mathlib.MeasureTheory.Integral.Bochner.Set
 
 namespace LogicalInduction
 
 open Filter Topology MeasureTheory
 
-/-! ### World-side inputs (`lem:conluvapprox`) -/
+/-! ## World-side inputs (`lem:conluvapprox`) -/
 
 /-- `lem:conluvapprox`, difference form: two precisions of one world's approximate
 expectation agree up to their two mesh errors. -/
@@ -48,7 +55,10 @@ lemma PCWorld.ApproxValuesUpTo.abs_expectApprox_sub_le {v : PCWorld} {X : LUV} {
         abs_sub_le _ _ _
     _ ≤ 1 / n + 1 / m := by rw [abs_sub_comm x]; linarith
 
-/-! ### Averaging the limiting belief over completed-theory worlds (`thm:lc`) -/
+/-! ## Measurability and integrability of payouts
+
+A share pays `0` or `1`, so its payout is an indicator and every average taken below is of a
+uniformly bounded measurable function. -/
 
 /-- A `φ`-share's payout is the indicator of the event "`φ` holds". -/
 lemma payout_eq_indicator (φ : Sentence) :
@@ -56,15 +66,19 @@ lemma payout_eq_indicator (φ : Sentence) :
   funext v
   by_cases h : v.Holds φ <;> simp [PCWorld.payout, h]
 
+/-- A share's payout is a measurable function of the world. -/
 lemma measurable_payout (φ : Sentence) :
     Measurable (fun v : PCWorld => v.payout φ) := by
   rw [payout_eq_indicator]
   exact measurable_one.indicator (measurable_pcWorld_holds φ).setOf
 
+/-- A share pays out in `[0,1]`: `1` when the sentence holds in the world, `0` otherwise. -/
 lemma payout_mem_Icc (v : PCWorld) (φ : Sentence) : 0 ≤ v.payout φ ∧ v.payout φ ≤ 1 := by
   unfold PCWorld.payout
   split <;> norm_num
 
+/-- A share's payout is integrable against any finite measure on worlds, being measurable
+and bounded by one. -/
 lemma integrable_payout {μ : Measure PCWorld} [IsFiniteMeasure μ] (φ : Sentence) :
     Integrable (fun v : PCWorld => v.payout φ) μ :=
   (integrable_const (1 : ℝ)).mono' (measurable_payout φ).aestronglyMeasurable
@@ -72,12 +86,16 @@ lemma integrable_payout {μ : Measure PCWorld} [IsFiniteMeasure μ] (φ : Senten
       rw [Real.norm_eq_abs, abs_of_nonneg (payout_mem_Icc v φ).1]
       exact (payout_mem_Icc v φ).2))
 
+/-- A LUV's precision-`n` approximate expectation is a measurable function of the world,
+being a finite average of share payouts. -/
 lemma measurable_expectApprox (X : LUV) (n : ℕ) :
     Measurable (fun v : PCWorld => X.expectApprox v.payout n) := by
   simp only [LUV.expectApprox]
   exact measurable_const.mul
     (Finset.measurable_sum _ (fun i _ => measurable_payout _))
 
+/-- A LUV's precision-`n` approximate expectation is integrable against any finite measure
+on worlds, being measurable and `[0,1]`-valued. -/
 lemma integrable_expectApprox {μ : Measure PCWorld} [IsFiniteMeasure μ] (X : LUV)
     (n : ℕ) : Integrable (fun v : PCWorld => X.expectApprox v.payout n) μ := by
   refine Integrable.mono' (integrable_const (1 : ℝ))
@@ -86,6 +104,8 @@ lemma integrable_expectApprox {μ : Measure PCWorld} [IsFiniteMeasure μ] (X : L
   rw [Real.norm_eq_abs, abs_of_nonneg
     (X.expectApprox_nonneg v.payout n (fun s => (payout_mem_Icc v s).1))]
   exact X.expectApprox_le_one v.payout n (fun s => (payout_mem_Icc v s).2)
+
+/-! ## Averaging the limiting belief over completed-theory worlds (`thm:lc`) -/
 
 /-- Under a limit-coherent presentation (`thm:lc`), the limiting belief's approximate
 expectation is the average of the worlds' approximate expectations. -/
@@ -163,7 +183,7 @@ lemma LUV.expectApprox_limitingBelief_converges (P : History) (DP : DeductivePro
   obtain ⟨L, hL⟩ := cauchySeq_tendsto_of_complete hCauchy
   exact ⟨L, hL⟩
 
-/-! ### The endpoint -/
+/-! ## The endpoint -/
 
 /-- **Expectations Converge** (`thm:ec`): under a logical inductor, the day-`n`
 expectation of any `[0,1]`-LUV converges, provided plausible worlds keep existing
@@ -230,14 +250,35 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
   exact tendsto_of_liminf_eq_limsup (le_antisymm (hle.trans hLhi) hLlo)
     (le_antisymm hLhi (hLlo.trans hle)) hhi hlo
 
-#print axioms LUV.expect_converges
-
-/-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`). -/
+/-- `𝔼_∞(X)` — the limiting expectation (`thm:ec`).  It is characterized by
+`LUV.expectSeq_convergesTo_expectInf`, and `LUV.expectInf_eq_of_convergesTo` says it is the
+only limit the expectation sequence has, so a client never has to unfold this choice. -/
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
     (hcode : X.RpnThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) : ℝ :=
   (X.expect_converges P DP hcode hcons hval).choose
+
+/-- The defining property of `𝔼_∞(X)`: the day-indexed expectation sequence converges to
+it. -/
+lemma LUV.expectSeq_convergesTo_expectInf (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.RpnThresholdCodes)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
+    ConvergesTo (X.expectSeq P) (X.expectInf P DP hcode hcons hval) :=
+  (X.expect_converges P DP hcode hcons hval).choose_spec
+
+/-- `𝔼_∞(X)` is the unique limit of the expectation sequence, so any independently
+identified limit is equal to it. -/
+lemma LUV.expectInf_eq_of_convergesTo (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.RpnThresholdCodes)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x)
+    {L : ℝ} (hL : ConvergesTo (X.expectSeq P) L) :
+    L = X.expectInf P DP hcode hcons hval :=
+  tendsto_nhds_unique hL (X.expectSeq_convergesTo_expectInf P DP hcode hcons hval)
 
 end LogicalInduction
