@@ -43,10 +43,8 @@ over the fuel class, and `lic_conditioned_machine`, `lic_conditioned_gated_machi
 `lic_conditioned_eventual_machine` at `def:ec`'s own class. Neither set follows from the
 other. They are stated uniformly over a `ConditioningPresentation`; the fixed-condition and
 growing-prefix instances are built in
-`Construction/Witnesses/ConditioningPresentation.lean`. Consumed by
-`Construction/Machine/CondEndpoints.lean` and
-`Construction/Witnesses/UnconditionalOverLIA.lean`, and re-exported through
-`LogicalInduction.API`.
+`Construction/Conditioning/Presentation.lean`. Consumed by
+`Construction/Conditioning/Endpoints.lean`, and re-exported through `LogicalInduction.API`.
 
 `DeductiveProcess.union` and `PCWorld.consistentWith_union_iff` give the combined process
 `Θ ∪ {ψᵢ}` over which the conclusion is stated.
@@ -1570,7 +1568,7 @@ a growing conjunction's Gödel code is exponential in the day (README, *Efficien
 computability*). `BigSentenceCodes.ofRpnSentenceCodes` embeds the token-metered
 `RpnSentenceCodes` as a sufficient subclass.
 
-Inhabitants are built in `Construction/Witnesses/ConditioningPresentation.lean`.
+Inhabitants are built in `Construction/Conditioning/Presentation.lean`.
 Paper node: `thm:scon` -/
 structure ConditioningPresentation (DP extra : DeductiveProcess) where
   condition : ℕ → Sentence
@@ -1871,8 +1869,8 @@ structure EventualConditioningOperationalWitness
   translation_ec : ∀ T, EfficientlyComputable T →
     EfficientlyComputable (T.eventualConditionedTranslation floor)
   /-- The same at the paper's own quantifier.  Its realization is the finite-zero price
-  emitter of `Construction/Machine/CondStep.lean`, whose zero-day test is a fixed-finite-set
-  dispatch clamped at the floor's cutoff. -/
+  emitter of `Construction/Conditioning/TransductionFrame.lean`, whose zero-day test is a
+  fixed-finite-set dispatch clamped at the floor's cutoff. -/
   translation_machine : ∀ T, MachineEfficientTrader T →
     MachineEfficientTrader (T.eventualConditionedTranslation floor)
 

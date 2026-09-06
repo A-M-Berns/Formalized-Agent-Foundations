@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.SelfTrust
 import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Introspection
@@ -37,7 +37,7 @@ products, and `lic_paradox_resistance` separately rules out prices bounded below
 undecidable.
 
 All six structures are `#assert_fields`-frozen and are inhabited over the constructed
-inductor in `Construction/Witnesses/QuotationAffine.lean`.
+inductor in `Construction/Quotation/Packages.lean`.
 -/
 
 namespace LogicalInduction

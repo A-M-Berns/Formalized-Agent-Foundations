@@ -1,5 +1,5 @@
 import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Trust in Consistency and Reasoning about Halting
@@ -8,7 +8,7 @@ Renders §4.9 *Trust in Consistency* — `thm:pac`, `thm:incons` — and §4.10 
 Halting* — `thm:halts`, `thm:loops`, `thm:dontwait`. The module also supplies the
 representation interfaces the `thm:pazfc` lane consumes; that endpoint itself is
 `lic_belief_stronger_theory_consistency_unconditional` in
-`Construction/Witnesses/ComputationRepresented.lean`.
+`Construction/Knowledge/Endpoints.lean`.
 
 The paper derives these results from Provability Induction plus Θ's representation of
 computations. The sentences here are propositional rather than first-order Gödel syntax, so
@@ -19,7 +19,7 @@ desired asymptotic conclusion.
 Those interfaces are the Tier-2 frozen structures `RepresentedSemidecidableClaims`,
 `RepresentedDecidableClaims` (which adds the negative half) and `InconsistentTheoryClaims`.
 All three are instantiated and discharged in
-`Construction/Witnesses/ComputationRepresented.lean`.
+`Construction/Knowledge/Endpoints.lean`.
 
 `CodeHalts` and `CodeHaltsWithin` name the two computations: unbounded halting, and
 termination within a fixed interpreter clock — decidable, and what `thm:dontwait`
@@ -156,7 +156,7 @@ the property its witness is required to establish, and the proof consumes nothin
 without dissolving the bundle's index — and it should not be: what makes `thm:incons` a
 theorem about *theories* rather than about an arbitrary emitted sentence family lives
 entirely in the witnesses (`representedInconsistentTheoryClaims` and the applied endpoints
-in `Construction/Witnesses/ComputationRepresented.lean`), where `inconsistent n` is
+in `Construction/Knowledge/Endpoints.lean`), where `inconsistent n` is
 instantiated at `¬Entailment.Consistent (theoryOf (m n))` — the freestanding day-theory
 enumerated by the day's machine, with no base theory anywhere — and discharged.
 Paper node: `thm:incons` -/

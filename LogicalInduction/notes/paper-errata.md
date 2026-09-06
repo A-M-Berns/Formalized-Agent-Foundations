@@ -52,7 +52,7 @@ step further out.
 ### Formal refutation
 
 `FinitePerturbationCounterexample.not_overgeneral_ifp`
-(`Construction/Witnesses/FinitePerturbationWitness.lean`) proves the negation of the
+(`Construction/Freeze/Counterexample.lean`) proves the negation of the
 printed statement, at the paper's own quantifier (`IsMachineLogicalInductor`,
 `MachineEfficientTrader`), with no theory parameter and no unproved hypothesis. It is
 kernel-checked and axiom-clean; `not_overgeneral_ifp_ofTheory` is the same result over any
@@ -102,7 +102,7 @@ Finite *support* is what rescues the hard-coding step, and the repository proves
 case.
 
 `FreezeOracle.machine_lic_iff_of_finiteSupport`
-(`Construction/Witnesses/FreezeOracle.lean`) is the statement to cite:
+(`Construction/Freeze/Oracle.lean`) is the statement to cite:
 
 ```lean
 theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
@@ -211,7 +211,7 @@ The underlying general form, taking a freeze certificate per market, is
 * **The fuel-class certificates remain uninhabited.** `EfficientPrefixPatch` and
   `FiniteSupportPatch` have no inhabitant anywhere: the fuel calculus does not close over
   the escape-leaf decode the frozen lookup needs (`dd:fuel`; see
-  `Construction/Witnesses/RpnFreeze.lean`). Only the machine-class certificate is
+  `Construction/Freeze/Compiler.lean`). Only the machine-class certificate is
   discharged. `lic_iff_of_finitePerturbation` and `lic_iff_of_finiteSupportPerturbation`
   therefore still carry certificate hypotheses with no exhibited witness.
 * **The degenerate discharge is available and deliberately not taken.** `S = ∅` makes the
@@ -273,10 +273,10 @@ expectation recurring theorem should read.
 
 The formalization places the hypotheses correctly and declares the correction at the
 statements. `BoundedSequence.recurringunbiasednessexp`
-(`Construction/Witnesses/HistoricalMaturity.lean`) takes a generable divergent weighting
+(`Construction/Statistics/HistoricalMaturity.lean`) takes a generable divergent weighting
 with no deferral or image-of-`f` hypothesis and concludes a limit point;
 `luv_wubexp_ofComputation` and `luv_wubexp_ofComputation_unconditional`
-(`Construction/Witnesses/FeedbackTruth.lean`, `FeedbackUnconditional.lean`) carry the
+(`Construction/Statistics/FeedbackTruth.lean`, `Construction/Statistics/Endpoints.lean`) carry the
 deferral function and the support-in-image hypothesis and conclude a full limit. This is
 forced by construction: the full-limit conclusion is not provable without the deferral
 clause, and the limit-point conclusion does not need it.
@@ -399,7 +399,7 @@ them only computable, which the printed hypotheses do give. `thm:ref` is therefo
 formalized at the paper's own hypothesis strength over the constructed inductor, and the
 defect above is confined to the printed proof.
 
-`lic_introspection_closed` (`Construction/Witnesses/QuoteCodeOfMarket.lean`) carries
+`lic_introspection_closed` (`Construction/Quotation/MarketQuoteCodes.lean`) carries
 exactly the paper's hypotheses. Two `PolyRatCodes` premises formerly stood on the interval
 bounds; they were consumed only as `.computable`, which is derivable from the endpoint's own
 `GeneratedRatFeature` data, and have been removed. The node is classified `exact`.
@@ -416,7 +416,7 @@ symbols" — an inclusive bound. Two lines later, tex:1859 glosses
 Ack(10,10) symbols"; by the definition it requires *more than* Ack(10,10).
 
 The formalization follows the definition, not the gloss: `BProv`'s bound is inclusive
-(`dSize d ≤ k`, `Framework/BoundedConsistency.lean`), so `conWithin T k` is exactly the
+(`dSize d ≤ k`, `Framework/Theory/BoundedConsistency.lean`), so `conWithin T k` is exactly the
 definition's reading. Recorded so that the inclusive bound is not misread as drift
 against the gloss.
 

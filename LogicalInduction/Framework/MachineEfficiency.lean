@@ -1,5 +1,5 @@
 import LogicalInduction.Framework.Machine.TraderMachine
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # The machine criterion, and the fuel class inside it
@@ -36,7 +36,7 @@ The compiler chain, and where each link lives:
   `MachineEfficientTrader` reads back, and the clamp `undigitize` licenses.
 
 **Design: the inclusion is one-directional.**  The converse, machine ⟹ fuel, is neither
-proved nor claimed. The `dd:fuel` model card (`Framework/Computable.lean`) defines what
+proved nor claimed. The `dd:fuel` model card (`Framework/Emission/Computable.lean`) defines what
 `EfficientlyComputable` means and states the open calibration, and
 `LogicalInduction/README.md` carries the standing disclosure.
 -/
@@ -103,7 +103,7 @@ The `thm:scon` transports are `CondStep.conditionedTranslation_preserves_machine
 `eventualConditionedTranslation_preserves_machine`. They take `def:ec`'s own write-out class
 `BigSentenceCodes` on the condition, in which a condition's Gödel code may be exponential in
 the day; what carries it into the transducer is `CondStep.machineSentenceBlocks_of_big`,
-running on `BigTokenStream.digitizeStream` (`Framework/WriteOut.lean`).
+running on `BigTokenStream.digitizeStream` (`Framework/Emission/WriteOut.lean`).
 
 For `thm:ifp` the machine form is the informative one. The freeze certificate
 `MachineFiniteSupportPatch` is **inhabited**

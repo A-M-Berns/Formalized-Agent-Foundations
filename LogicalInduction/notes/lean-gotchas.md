@@ -106,6 +106,44 @@ the settled design decisions and the correspondence table, and points here for p
 - **Doc comments on `example` are legal** in this toolchain. Do not refactor away from them
   on the assumption that they error.
 
+## Moving, merging and splitting modules
+
+- **A moved or deleted module leaves its `.olean` behind, and the import still resolves.**
+  `lake` does not garbage-collect `.lake/build/lib/lean`, so after a rename the *old* module
+  keeps compiling from a stale artifact and an importer of the old path builds green in your
+  tree and red in a fresh checkout. Sweep before the first build after any move: delete every
+  artifact under `.lake/build/lib/lean` whose source file no longer exists. Key the sweep on
+  the **first** dot of the relative path, not on `os.path.splitext` — the build directory
+  holds `Foo.olean`, `Foo.ilean`, `Foo.trace` and `Foo.hash`, and `splitext` on `Foo.hash`
+  leaves `Foo`, so a naive sweep deletes live `.hash` files and forces a full rebuild.
+- **Removing a `lean_lib` from the lakefile does not invalidate the cache**, so retiring a
+  build target costs nothing and proves nothing; the modules it rooted keep their oleans.
+- **Path-rewriting a docstring with one regex misses three shapes.** Repository paths appear
+  in prose as brace-expanded lists (`Construction/Quotation/{ExactProduct,ExactCCEE}.lean`),
+  as module-qualified references without the `.lean` (`Construction.Quotation.Packages`), and
+  as bare basenames (`Oracle.lean` for `Construction/Freeze/Oracle.lean`). A substitution pass keyed on the full path leaves
+  the other two silently stale. Finish every move with a checker that resolves *every*
+  backticked `….lean` citation against the files on disk, not with a grep for the old string.
+- **A `re.DOTALL` regex over a module header eats the file.** Module docstrings here run to
+  fifty lines with blank lines inside; a header pattern written with `.*` under `DOTALL`
+  matches from the first `/-!` to the last `-/` in the file. Parse headers line-based, and
+  name-diff every merge — the count of declarations before and after must be equal.
+- **A merge can silently move a declaration into a different namespace.** Two modules whose
+  bodies each sit under `namespace Foo … end Foo` concatenate into a file where the second
+  body lands inside the first's namespace only if the `end` was carried across with it. Diff
+  the *qualified* names, not the leaf names.
+- **A split can produce references that are wrong rather than stale.** When a module is cut
+  in two, re-pointing an importer to the half that does not hold the declaration still
+  compiles, because the other half is transitively imported. Verify that each re-pointed
+  reference names a declaration that actually lives in the file the path names.
+- **Usage scans must admit a preceding dot.** Searching for `Foo` to decide whether a module
+  is still used misses `Bar.Foo` and `X.Foo.bar`; a lookbehind that excludes identifier
+  characters but not `.` reports a live module as dead. It also misses transitive consumers:
+  before dropping an import, check what the *downstream* modules reach through it.
+- **Comparing inventories across a rename needs the old path.** `git show <rev>:<old path>`
+  is the way to diff a moved file's declaration list against its predecessor; a plain diff
+  reports the whole file as added and tells you nothing about whether a name was lost.
+
 ## Auditing names
 
 - **`rg -r` is the *replace* flag, not recursive.** `rg -rn "foo"` rewrites every match to
@@ -150,7 +188,7 @@ the settled design decisions and the correspondence table, and points here for p
   obtain ⟨v, hv⟩ := h; simp only [Code.eval, Nat.unpaired, Part.mem_map_iff, Nat.mem_rfind] at hv;
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv; simp at h1`.
 - **`Nat.ofDigits_lt_base_pow_length` / `Nat.ofDigits_div_pow_eq_ofDigits_drop`** are not
-  reachable through `Framework/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
+  reachable through `Framework/Emission/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
 - **The `models_haltingSchema_iff` transport** is exactly
   `simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using (codeOfREPred_spec hp (x := z))`;
   that triple is required. Reuse it for other `codeOfREPred` schemas.
@@ -170,7 +208,7 @@ the settled design decisions and the correspondence table, and points here for p
 - **Extracting `IsPolyBounded` from a `PolySegStream`:** `rintro ⟨ct, cl, tokenFn, lenFn, ht, hl, hlen, hget⟩;
   obtain ⟨b, hrun, hpb, hbb⟩ := hl`; `hlen n` comes back beta-unreduced — restate it with an
   explicit type ascription before `rw`. `PolySegStream.constList` is declared late in
-  `StructuredPaperRpn.lean` (Frontend section); term-level sections must use
+  `Construction/LUV/SourceCodec.lean` (Frontend section); term-level sections must use
   `PolySegStream.ofTokenStream (PolyTokenStream.const t)`.
 - **`check-paper-nodes.sh` matches inventory members by SHORT name** (everything after the last
   dot), so `PaperLUV.toLUV` is satisfied by any annotated `toLUV` anywhere — a check that can
@@ -181,12 +219,12 @@ the settled design decisions and the correspondence table, and points here for p
 - **`LUV.RpnThresholdCodes`/`RpnThresholdCodeSeq` are `def`s**, so `h.comp` dot-notation fails;
   ascribe to the unfolded `RpnSentenceCodes _` first. The index shift Seq→single is reindexing
   along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); there is no lemma
-  going the other way. In `StructuredPaperRpn.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
+  going the other way. In `Construction/LUV/SourceCodec.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
   near the END of the file — client examples at concrete LUVs must be placed after them.
 - **Adding a tag to `parseStructuredArithmeticFormula` (Framework/Criterion.lean) has FOUR obligatory
   downstream repairs:** `parseStructuredArithmeticFormula_consumed_lt` and `_suffix`
-  (Framework/RpnSentence.lean; both end in a `simp at h` closing the no-branch case),
-  `structuredFormulaGCore` + `_spec` (Framework/RpnComputation.lean, the memoized mirror), and
+  (Framework/Emission/RpnSentence.lean; both end in a `simp at h` closing the no-branch case),
+  `structuredFormulaGCore` + `_spec` (Framework/Emission/RpnComputation.lean, the memoized mirror), and
   `structuredFormulaG_prim` (Construction/LIACompiler.lean). Criterion.lean is upstream of the
   whole library: `lake env lean` downstream fails with "object file … does not exist" until a
   full ~35–45 min build replaces the oleans.
@@ -223,7 +261,7 @@ the settled design decisions and the correspondence table, and points here for p
   at `Semiformula.all/exs`; `Rewriting.emb X` vs `Rewriting.app Rew.emb X` likewise (trailing `rfl`).
 - **After editing an upstream module, `lake env lean` downstream reports spurious "unknown
   identifier"** for the new declarations — rebuild just that module first
-  (`safe-lake.sh build LogicalInduction.Framework.RepresentsComputations`).
+  (`safe-lake.sh build LogicalInduction.Framework.Theory.RepresentsComputations`).
 - **Vacuous-quantifier introduction is not in Foundation's `Theory.Proof` API** (`specialize` only
   eliminates). Route: `Theory.Proof.complete_iff : T ⊨ φ ↔ T ⊢ φ` (Foundation, `FirstOrder/Completeness/CounterModel.lean`)
   → `provable_iff_of_realize_iff`; write the model lambda as `fun M _ _ => by …` so `[Nonempty M]` is

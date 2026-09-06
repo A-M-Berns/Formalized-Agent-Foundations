@@ -5,11 +5,17 @@ import LogicalInduction.Properties.Pseudorandomness
 import Mathlib.Topology.Algebra.Order.LiminfLimsup
 
 /-!
-# Expectations (paper §4.8)
+# Expectations of LUV combinations (paper §4.8)
 
 Renders §4.8 (`sec:expectations`): LUV combinations (`def:luv`), bounded
 LUV-combination sequences (`def:blcp`), and the expectation theorems that follow from
 the affine tail.
+
+This is the last of the three §4.8 modules and the only one about *combinations*.  It imports
+`Properties/ExpectationAffine.lean` (the affine presentation of a single LUV's expectation,
+carrying `thm:ei`, `thm:loe` and `thm:expprovind`) and
+`Properties/ExpectationConvergence.lean` (`thm:ec` and `lem:conluvapprox`); the cut between
+the three is stated in the first of them.
 
 `LUVCombination` is a constant `EF` together with `EF`-weighted `[0,1]`-LUV terms.  Its
 market evaluation is `expectAt` / `expect` (`def:e`: Lean day `n` is paper day `n + 1`,
@@ -44,9 +50,9 @@ mesh-determination lemma.
 Main results: `mesh_independence` (`lem:mesh`), `exppolymax`, `perexpkno`, `expcoh`,
 `wubexp`, `recurringunbiasednessexp_of_historicalVerifiers` and the three
 `prandexp_*_of_historicalVerifiers` forms.  They are consumed by
-`Construction/Witnesses/LUVSyntax.lean` (the `_ofSyntax` forms),
-`Construction/Witnesses/HistoricalMaturity.lean` and
-`Construction/Witnesses/LUVExpectationCertified.lean` (the `_arith` forms,
+`Construction/LUV/Syntax.lean` (the `_ofSyntax` forms),
+`Construction/Statistics/HistoricalMaturity.lean` and
+`Construction/LUV/Endpoints.lean` (the `_arith` forms,
 `dd:luv-arith`), and are axiom-checked in `AxiomAudit.lean`.
 
 The limit vocabulary `≈ₙ` / `≳ₙ` / `≲ₙ` is `Framework/Asymptotics`'s (`dd:asymp`), and
@@ -80,45 +86,6 @@ Paper node: `def:luv` -/
 structure LUVCombination where
   const : EF
   terms : List (EF × LUV)
-
-namespace AffineCombination
-
-/-- Pointwise sum of two affine combinations. -/
-def add (A B : AffineCombination) : AffineCombination where
-  const := .add A.const B.const
-  terms := A.terms ++ B.terms
-
-lemma add_value (A B : AffineCombination) (P : History) (w : Valuation) :
-    (A.add B).value P w = A.value P w + B.value P w := by
-  simp only [add, value, EF.denote_add, Pi.add_apply, List.map_append, List.sum_append]
-  ring
-
-lemma add_price (A B : AffineCombination) (P : History) (n : ℕ) :
-    (A.add B).price P n = A.price P n + B.price P n := by
-  simp only [price, add_value]
-
-lemma add_magnitude (A B : AffineCombination) (P : History) :
-    (A.add B).magnitude P = A.magnitude P + B.magnitude P := by
-  simp [add, magnitude, List.map_append]
-
-/-- Pointwise difference of affine combinations. -/
-def sub (A B : AffineCombination) : AffineCombination := A.add B.neg
-
-lemma sub_value (A B : AffineCombination) (P : History) (w : Valuation) :
-    (A.sub B).value P w = A.value P w - B.value P w := by
-  rw [sub, add_value, neg_value]
-  ring
-
-lemma sub_price (A B : AffineCombination) (P : History) (n : ℕ) :
-    (A.sub B).price P n = A.price P n - B.price P n := by
-  rw [sub, add_price, neg_price]
-  ring
-
-lemma sub_magnitude (A B : AffineCombination) (P : History) :
-    (A.sub B).magnitude P = A.magnitude P + B.magnitude P := by
-  rw [sub, add_magnitude, neg_magnitude]
-
-end AffineCombination
 
 namespace LUVCombination
 
@@ -361,27 +328,6 @@ lemma l1Norm_nonneg (A : LUVCombination) (P : History) :
 
 /-! ## Cross-precision gaps -/
 
-/-- Add a closed feature to the constant coordinate of an affine combination.  Unlike
-`addConst`, this preserves the operational expression tree of a generated rational. -/
-def addConstEF (A : AffineCombination) (e : EF) : AffineCombination where
-  const := EF.add A.const e
-  terms := A.terms
-
-lemma addConstEF_value (A : AffineCombination) (e : EF)
-    (V : History) (w : Valuation) :
-    (addConstEF A e).value V w = A.value V w + e.denote V := by
-  simp [addConstEF, AffineCombination.value]
-  ring
-
-lemma addConstEF_price (A : AffineCombination) (e : EF)
-    (V : History) (n : ℕ) :
-    (addConstEF A e).price V n = A.price V n + e.denote V := by
-  simp [AffineCombination.price, addConstEF_value]
-
-@[simp] lemma addConstEF_magnitude (A : AffineCombination) (e : EF)
-    (V : History) :
-    (addConstEF A e).magnitude V = A.magnitude V := rfl
-
 /-- The closed feature denoting `-(2b/n)`: `lem:mesh`'s completed-world error allowance
 at precision `n` for a sequence of share norm at most `b`. -/
 def meshErrorFeature (n : ℕ) (b : ℚ) : EF :=
@@ -397,13 +343,13 @@ minus the precision-`j` one, less the completed-world error allowance `2b/n`.  T
 halves of `lem:mesh` are its two orientations, `meshGap` and `meshGapLower`, and the
 facts they need are proved once here. -/
 def meshGapAt (A : LUVCombination) (i j n : ℕ) (b : ℚ) : AffineCombination :=
-  addConstEF ((A.meshAffine i).sub (A.meshAffine j)) (meshErrorFeature n b)
+  AffineCombination.addConstEF ((A.meshAffine i).sub (A.meshAffine j)) (meshErrorFeature n b)
 
 lemma meshGapAt_price (A : LUVCombination) (P : History)
     (i j n : ℕ) (b : ℚ) (day : ℕ) :
     (A.meshGapAt i j n b).price P day =
       A.expectAt P i day - A.expectAt P j day - (2 * (b : ℝ) / n) := by
-  rw [meshGapAt, addConstEF_price, AffineCombination.sub_price,
+  rw [meshGapAt, AffineCombination.addConstEF_price, AffineCombination.sub_price,
     meshAffine_price, meshAffine_price]
   rw [meshErrorFeature_denote]
   push_cast
@@ -438,7 +384,7 @@ lemma meshGapAt_value_nonpos
       (A.meshAffine i).value P v.payout - (A.meshAffine j).value P v.payout ≤
         2 * ((b : ℝ) / n) := by
     linarith [hinear.2, hjnear.1]
-  rw [meshGapAt, addConstEF_value, AffineCombination.sub_value]
+  rw [meshGapAt, AffineCombination.addConstEF_value, AffineCombination.sub_value]
   rw [meshErrorFeature_denote]
   push_cast
   ring_nf at hgap ⊢
@@ -447,11 +393,11 @@ lemma meshGapAt_value_nonpos
 /-- Appendix `lem:mesh`'s cross-precision gap.  It compares precision `n` with precision
 `m` and subtracts the completed-world error allowance `2b/n`. -/
 def meshGap (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  addConstEF ((A.meshAffine n).sub (A.meshAffine m)) (meshErrorFeature n b)
+  AffineCombination.addConstEF ((A.meshAffine n).sub (A.meshAffine m)) (meshErrorFeature n b)
 
 /-- Reverse cross-precision gap for the lower half of `lem:mesh`. -/
 def meshGapLower (A : LUVCombination) (n m : ℕ) (b : ℚ) : AffineCombination :=
-  addConstEF ((A.meshAffine m).sub (A.meshAffine n)) (meshErrorFeature n b)
+  AffineCombination.addConstEF ((A.meshAffine m).sub (A.meshAffine n)) (meshErrorFeature n b)
 
 lemma meshGap_price (A : LUVCombination) (P : History)
     (n m : ℕ) (b : ℚ) (day : ℕ) :
@@ -484,7 +430,7 @@ lemma meshGapLower_value_nonpos
 The concrete portfolio that proves `lem:mesh`: each cross-precision gap receives its
 threshold signal times the mass no earlier gap claimed.  The signal vocabulary it is
 built from — `oneMinus`, `sellIndF`, `clip01` and their denotation lemmas — is
-`Properties/Hysteresis.lean`'s. -/
+`Properties/Support/Exploitation.lean`'s. -/
 
 /-- Remaining unallocated softmax mass after scanning a list of affine gaps. -/
 def softmaxRemainder (gaps : List AffineCombination) (day : ℕ)
@@ -1059,7 +1005,7 @@ allowance is a constant and contributes no magnitude. -/
 lemma meshGapAt_magnitude_le (A : LUVCombination) (P : History)
     (i j n : ℕ) (b : ℚ) :
     (A.meshGapAt i j n b).magnitude P ≤ 2 * A.shareNorm P := by
-  rw [meshGapAt, addConstEF_magnitude, AffineCombination.sub_magnitude]
+  rw [meshGapAt, AffineCombination.addConstEF_magnitude, AffineCombination.sub_magnitude]
   linarith [A.meshAffine_magnitude_le_shareNorm P i,
     A.meshAffine_magnitude_le_shareNorm P j]
 

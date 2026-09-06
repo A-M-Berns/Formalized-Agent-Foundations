@@ -53,7 +53,7 @@ validation). Each layer removes a stated residual of the one above. The
 structured-arithmetic escape grammar (`arithmeticVec2Code`, `negFormulaCode`, the
 `parseStructured*` mutual block, `parseStructuredPaperPrime`, `parseRpn`, `unRpn`) lives
 here beside the serializers because `clockedTrader` needs it; its lemma corpus is
-`Framework/RpnSentence.lean`.
+`Framework/Emission/RpnSentence.lean`.
 
 `def:ec` at the paper's own quantifier is `MachineEfficientTrader`: a `Complexity.FP`
 function of the *unary* day (`unaryDay`, so machine-polynomial means day-polynomial)
@@ -644,6 +644,15 @@ def EF.streamReadFrom (tokens : List ℕ) (state : Option EF.StreamState) :
       EF.streamReadFrom right (EF.streamReadFrom left state) := by
   simp [EF.streamReadFrom, List.foldl_append]
 
+/-- The failed state absorbs: once the parser has rejected, no suffix can revive it. -/
+@[simp] lemma EF.streamReadFrom_none (tokens : List ℕ) :
+    EF.streamReadFrom tokens none = none := by
+  induction tokens with
+  | nil => rfl
+  | cons token tokens ih =>
+      simp only [EF.streamReadFrom, List.foldl_cons, EF.streamStep]
+      simpa [EF.streamReadFrom] using ih
+
 /-- Reading one canonical feature serialization pushes exactly that feature. -/
 lemma EF.streamReadFrom_serialize_self (e : EF) (efst : List EF)
     (trades : List (EF × Sentence)) :
@@ -757,12 +766,46 @@ model.) -/
 def ConsistentWith (v : PCWorld) (D : Finset Sentence) : Prop :=
   ∀ φ ∈ D, v.Holds φ
 
+/-! ### Boolean payout laws
+
+A p.c. world evaluates compound sentences by Boolean algebra (Foundation's `val`), so its
+`{0,1}` payouts compose the way a coherent probability must.  These are the connective
+laws every §4 property family and every `Construction/` deductive process reads.  They are
+deliberately not `@[simp]` here: `Construction/Paper/ComputationDP.lean` marks
+`holds_atom` and `holds_neg` `simp` for the deductive-process lane, which is where atom and
+negation normalisation is wanted. -/
+
+/-- A world holds an atom exactly when its valuation does. -/
+lemma holds_atom (v : PCWorld) (m : ℕ) :
+    v.Holds (LO.Propositional.Formula.atom m) ↔ v m := Iff.rfl
+
+/-- Every world holds `⊤` (Foundation: `⊤ = ⊥ 🡒 ⊥`). -/
+lemma holds_top (v : PCWorld) : v.Holds (⊤ : Sentence) := fun h => h
+
+/-- `∼χ`-worlds falsify `χ` (Foundation: `∼χ = χ 🡒 ⊥`). -/
+lemma holds_neg (v : PCWorld) (χ : Sentence) : v.Holds (∼χ) ↔ ¬ v.Holds χ := by
+  simp [PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
+
+/-- A world holds a disjunction exactly when it holds one of the disjuncts. -/
+lemma holds_or (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋎ ψ) ↔ v.Holds φ ∨ v.Holds ψ := Iff.rfl
+
+/-- A world holds a conjunction exactly when it holds both conjuncts. -/
+lemma holds_and (v : PCWorld) (φ ψ : Sentence) :
+    v.Holds (φ ⋏ ψ) ↔ v.Holds φ ∧ v.Holds ψ := Iff.rfl
+
 end PCWorld
+
+/-- A share pays out in `[0,1]`: `1` when the sentence holds in the world, `0`
+otherwise. -/
+lemma payout_mem_Icc (v : PCWorld) (φ : Sentence) : 0 ≤ v.payout φ ∧ v.payout φ ≤ 1 := by
+  unfold PCWorld.payout
+  split <;> norm_num
 
 /-! ### Finite conjunctions and disjunctions of sentences
 
 Right-associated folds with the neutral element at the empty list.  They live here,
-beside `PCWorld.Holds`, because both the syntactic emission layer (`Framework/RpnSplice`,
+beside `PCWorld.Holds`, because both the syntactic emission layer (`Framework/Emission/RpnSplice`,
 which builds variable-width disjunction blocks) and the semantic coherence development
 (`Properties/LimitCoherence`) need them. -/
 
@@ -1031,6 +1074,22 @@ structure MarketComputation (P : History) where
   code : Nat.Partrec.Code
   quote_exact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ)
   code_spec : ∀ z, Encodable.encode (quote z.unpair.1 z.unpair.2) ∈ code.eval z
+
+/-- **Building a computable market from a computable rational table.**  This is the
+constructor every concrete market witness wants: supply the exact rational quote table, the
+`[0,1]` range fact, the pointwise exactness of the table, and computability of its encoded
+paired form, and the `Nat.Partrec.Code` is produced here.  Consumed by the `app:ifp` market
+witnesses (`Construction/Freeze/LIAPerturbation.lean`,
+`Construction/Freeze/Oracle.lean`,
+`Construction/Freeze/Counterexample.lean`). -/
+lemma ComputableMarket.ofComputableTable {P : History} (quote : ℕ → ℕ → ℚ)
+    (hrange : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
+    (hexact : ∀ n φ, P n φ = (quote n (Encodable.encode φ) : ℝ))
+    (hcomp : Computable fun z : ℕ => Encodable.encode (quote z.unpair.1 z.unpair.2)) :
+    ComputableMarket P := by
+  obtain ⟨code, hcode⟩ := Nat.Partrec.Code.exists_code.mp
+    (Partrec.nat_iff.mp hcomp.partrec)
+  exact ⟨hrange, quote, code, hexact, fun z => by rw [hcode]; simp⟩
 
 lemma ComputableMarket.nonemptyComputation
     {P : History} (h : ComputableMarket P) : Nonempty (MarketComputation P) := by
@@ -1449,9 +1508,9 @@ its inputs (`guard (n ≤ k)` in `Mathlib.Computability.PartrecCode`), so a fixe
 for `poly n` fuel can only *output* a value `≤ poly n` — `O(log n)` bits.
 
 That claim is **proved**, not read off the source: `codeEvaln_result_le` with
-`codeEvalBound_poly` (`Framework/Emission.lean`) bound a fixed code's output by an explicit
+`codeEvalBound_poly` (`Framework/Emission/Emission.lean`) bound a fixed code's output by an explicit
 polynomial in the fuel; compose with the clock. Note it is *not* "output `≤ fuel`" — that is
-false, and proved false (`evaln_output_can_exceed_fuel`, `Framework/Computable.lean`) — and
+false, and proved false (`evaln_output_can_exceed_fuel`, `Framework/Emission/Computable.lean`) — and
 it does not follow from Mathlib's `evaln_bound`, which bounds the input only. A strategy
 whose `Encodable.encode` is a large number (any poly-*size* but deep feature: its `toNat` value
 is `2^{poly n}`) is therefore *unemittable as one number*, though the paper's poly-*size*
@@ -1628,7 +1687,7 @@ def EfficientlyComputableDigit (Tr : Trader) : Prop :=
 Sentence slots of the flat strategy stream may carry Polish-notation symbol runs
 instead of single pair-code tokens (one token per formula symbol, escape tag `1` for
 a literal pair code).  The grammar defs live here beside the serializers; the lemma
-corpus is `Framework/RpnSentence.lean`. -/
+corpus is `Framework/Emission/RpnSentence.lean`. -/
 
 section
 open LO.Propositional
@@ -1726,7 +1785,7 @@ mutual
   /-- Parse an arithmetic term (tags `3`--`8`), returning its Foundation term code and the
   remaining tokens.  The `depth` slot is fixed at `0` throughout and carries no
   information; it is retained because it appears in the statement of the lemma corpus in
-  `Framework/RpnSentence.lean`. -/
+  `Framework/Emission/RpnSentence.lean`. -/
   public def parseStructuredArithmeticTerm : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
     | 0, _, _ => none
     | _ + 1, _, [] => none
@@ -1749,7 +1808,7 @@ mutual
   `⟹`, `⟺`, contracted into negation-normal form here), returning its Foundation formula
   code and the remaining tokens.  The `depth` slot is fixed at `0` throughout and carries
   no information; it is retained because it appears in the statement of the lemma corpus in
-  `Framework/RpnSentence.lean`. -/
+  `Framework/Emission/RpnSentence.lean`. -/
   public def parseStructuredArithmeticFormula : ℕ → ℕ → List ℕ → Option (ℕ × List ℕ)
     | 0, _, _ => none
     | _ + 1, _, [] => none
@@ -1830,7 +1889,7 @@ def parseStructuredPaperPrimeC : List ℕ → Option (ℕ × List ℕ)
   | [] => none
 
 /-- The unstructured RPN grammar: sentence blocks without the `[1, 0]` escape.
-`Construction/Witnesses/RpnFreeze.lean` states the freeze recognizer against it
+`Construction/Freeze/Compiler.lean` states the freeze recognizer against it
 (`parseRpnLegacy_iff_patMatch`, `parseRpn_imp_parseRpnLegacy`). -/
 def parseRpnLegacy : ℕ → List ℕ → Option (Sentence × List ℕ)
   | 0, _ => none
@@ -1998,14 +2057,14 @@ proves.  Every fuel certificate is a machine-efficiency certificate
 (`EfficientlyComputable.toMachine`), so `dd:fuel` is a *sufficient certification device*
 for the machine class: a machine logical inductor is one of these, and the whole property
 tail transfers unchanged through that instance.  The converse inclusion is
-neither proved nor claimed; the `dd:fuel` model card (`Framework/Computable.lean`,
+neither proved nor claimed; the `dd:fuel` model card (`Framework/Emission/Computable.lean`,
 "### `dd:fuel` model card") records what is and is not settled.
 
 This is the hypothesis the entire property tail is conditioned on
 (`[IsLogicalInductor P DP]`).
 Token-model and digit-model no-exploitation follow through the emission constructors
 `EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
-(`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/RpnEmission.lean`).
+(`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/Emission/RpnEmission.lean`).
 Paper node: `def:lic` -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Markets are computable rational pricing sequences in the paper's definition. -/

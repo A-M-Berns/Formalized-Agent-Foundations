@@ -1,8 +1,7 @@
 import LogicalInduction.Properties.AffinePersistence
-import LogicalInduction.Properties.AffineProvability
 import LogicalInduction.Properties.TimelyLearning
-import LogicalInduction.Framework.Compactness
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.BooleanWorlds
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Affine Coherence
@@ -11,20 +10,22 @@ Renders §4.5: `thm:affcoh` (Affine Coherence, appendix `app:affcoh`), all three
 forms of `thm:affprovind`, and the sentence-level `thm:provind` of §4.2 as the one-share
 special case of the affine equality form.
 
-`BoolPCWorld` is the Boolean-world toolkit: `ℕ → Bool` with `toPCWorld` / `ofPCWorld`,
-`eval`, `atomBound`, and the finite-support types `FiniteWorld B` / `bitsWorld` /
-`bitsPayoutRat`. `bitsWorld` exists for compilation rather than for the mathematics:
-`ℕ → Bool` admits no `Primcodable` instance, so routing through `List Bool` keeps every
-compiled quantity a function of `Primcodable` arguments. The toolkit is consumed by
-`Properties/{Calibration,LimitCoherence}.lean` and
-`Construction/Witnesses/{BoundedEvaluation,HistoricalMaturity}.lean`.
+The Boolean-world toolkit and the compactness bridge it carries —
+`eventually_affineValue_gt_of_theory`, which pulls a bound holding in every completed-theory
+world back to a uniform bound from some finite stage on — are
+`Framework/BooleanWorlds.lean`. The completed-theory value set is `completedAffineValues`,
+with extrema `completedAffineLow` / `completedAffineHigh` and their uniform filter bounds.
 
-The compactness bridge is `continuous_eval`: formula evaluation is continuous on the
-product space, so model sets are clopen and affine sublevel sets closed.
-`eventually_affineValue_gt_of_theory` pulls a bound holding in every completed-theory world
-back to a uniform bound from some finite stage on. The completed-theory value set is
-`completedAffineValues`, with extrema `completedAffineLow` / `completedAffineHigh` and
-their uniform filter bounds.
+The semantic engine is `PolySequence.affine_provind` (`app:affprovind`): if every
+sufficiently late plausible world values a polynomially generated affine bundle at least `c`,
+the bundle's diagonal market price cannot stay below `c`.  Its trader
+`PolySequence.buyBelowTrader` buys the day-`n` bundle with a continuous coefficient that is
+zero before `start`, one below `low`, and ramps to zero by `low + δ` — the entry gate
+`gateFeature` and the buy signal `gradualEntry` of `AffinePreemptiveLearning.lean` — and is
+certified in the write-out class through `BigSpliceStream`, one trade slot per bundle term.
+`PolySequence.affine_tendsto_zero` is the two-sided form, obtained by applying
+`affine_provind` to the family and to its negation; `ExpectationAffine.lean` reaches both for
+the expectation analogues.
 
 `PolySequence.eventualMember` is the legal fixed-portfolio progression: a polynomial affine
 sequence can uniformly emit any one of its members forever after that member's own index.
@@ -51,292 +52,170 @@ namespace LogicalInduction
 
 open Filter Topology
 
-/-! ## Boolean worlds and finite-support payouts -/
+namespace AffineCombination
 
-/-- A Boolean-valued presentation of a propositionally consistent world, used only for
-the compactness proof. -/
-abbrev BoolPCWorld := ℕ → Bool
+/-! ## The gated buy-below trader -/
 
-namespace BoolPCWorld
+/-- Buy the day-`n` affine bundle with a continuous coefficient which is zero before
+`start`, one below `low`, and ramps to zero by `low + δ`. -/
+noncomputable def PolySequence.buyBelowTrader {As : ℕ → AffineCombination}
+    (h : PolySequence As) (start : ℕ) (low δ : ℚ) : Trader where
+  strat n :=
+    let entry := gateFeature start (gradualEntry As low δ) n
+    (As n).scale entry |>.buy n
+      ((As n).scale_terms_rank_le entry (by
+        by_cases hs : start ≤ n
+        · simpa [entry, gateFeature, hs] using h.gradualEntry_rank_le low δ n
+        · simp [entry, gateFeature, hs]) (h.terms_rank n))
 
-/-- Interpret a Boolean assignment as the proposition-valued assignment used by `PCWorld`. -/
-def toPCWorld (v : BoolPCWorld) : PCWorld := fun a => v a = true
+lemma PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
+    (h : PolySequence As) (start : ℕ) (low δ : ℚ) (n : ℕ) :
+    ((h.buyBelowTrader start low δ).strat n).trades =
+      (List.range (h.termCount n)).map (fun j =>
+        (EF.mul (gateFeature start (gradualEntry As low δ) n)
+          (h.coefficient (Nat.pair n j)), h.sentence (Nat.pair n j))) := by
+  rw [PolySequence.buyBelowTrader, AffineCombination.buy_trades,
+    AffineCombination.scale, h.terms_eq]
+  simp [List.map_map, Function.comp_def]
 
-/-- Convert a proposition-valued assignment back to Booleans. -/
-noncomputable def ofPCWorld (v : PCWorld) : BoolPCWorld := fun a =>
-  @decide (v a) (Classical.propDecidable _)
+lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
+    (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
+    EfficientlyComputable (h.buyBelowTrader start low δ) := by
+  have hentry : BigSpliceStream (fun n =>
+      (gateFeature start (gradualEntry As low δ) n).serialize) :=
+    BigSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
+  have hcoeff : BigSpliceStream (fun z =>
+      (EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
+        (h.coefficient z)).serialize) :=
+    BigSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
+  have hframe := BigSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
+  have hone : BigSpliceStream (fun z => serializeTrades
+      [(EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
+          (h.coefficient z), h.sentence z)]) := by
+    refine BigSpliceStream.of_eq (hcoeff.append hframe) ?_
+    intro z
+    simp [serializeTrades]
+  refine BigSpliceStream.ec _ (BigSpliceStream.of_eq
+    (BigSpliceStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
+  intro n
+  rw [h.buyBelowTrader_trades start low δ, serializeTrades_map_singleton]
+  simp only [Nat.unpair_pair]
 
-@[simp] lemma ofPCWorld_toPCWorld (v : PCWorld) :
-    (ofPCWorld v).toPCWorld = v := by
-  funext a
-  apply propext
-  simp [ofPCWorld, toPCWorld]
+lemma PolySequence.buyBelowTrader_value {As : ℕ → AffineCombination}
+    (h : PolySequence As) (start : ℕ) (low δ : ℚ) (V : History)
+    (w : Valuation) (n : ℕ) :
+    ((h.buyBelowTrader start low δ).strat n).value V w =
+      (gateFeature start (gradualEntry As low δ) n).denote V *
+        ((As n).value V w - (As n).price V n) := by
+  rw [PolySequence.buyBelowTrader, AffineCombination.buy_value,
+    AffineCombination.scale_value, AffineCombination.scale_price]
+  ring
 
-/-- Boolean evaluation of a sentence. -/
-def eval (v : BoolPCWorld) : Sentence → Bool
-  | .atom a => v a
-  | ⊥ => false
-  | φ 🡒 ψ => !(eval v φ) || eval v ψ
-  | φ ⋏ ψ => eval v φ && eval v ψ
-  | φ ⋎ ψ => eval v φ || eval v ψ
+/-! ## The one-sided conclusion -/
 
-/-- One above the largest atom index occurring in a sentence.  This supplies the finite
-support bound used by executable maturity certificates. -/
-def atomBound : Sentence → ℕ
-  | .atom a => a + 1
-  | ⊥ => 0
-  | φ 🡒 ψ => max (atomBound φ) (atomBound ψ)
-  | φ ⋏ ψ => max (atomBound φ) (atomBound ψ)
-  | φ ⋎ ψ => max (atomBound φ) (atomBound ψ)
-
-/-- A valuation of exactly the first `B` atoms.  The type is finite and has a computable
-enumeration, unlike an unrestricted Boolean world. -/
-abbrev FiniteWorld (B : ℕ) := Fin B → Bool
-
-/-- Extend a finite assignment by `false` outside its certified support. -/
-def FiniteWorld.toBoolPCWorld {B : ℕ} (u : FiniteWorld B) : BoolPCWorld :=
-  fun a => if h : a < B then u ⟨a, h⟩ else false
-
-/-- Restrict an arbitrary Boolean world to its first `B` atoms. -/
-def FiniteWorld.restrict (v : BoolPCWorld) (B : ℕ) : FiniteWorld B :=
-  fun a => v a
-
-/-- The Boolean world denoted by a bit list; atoms past the end read `false`.
-
-This is the non-dependent cousin of `FiniteWorld.toBoolPCWorld`, and it exists for
-compilation rather than for the mathematics.  `BoolPCWorld` is `ℕ → Bool`, a *function*
-type, which admits no `Primcodable` instance — so `Primrec (eval v)` cannot even be stated
-for a world `v`.  Routing through a `List Bool` keeps every compiled quantity a function of
-`Primcodable` arguments (`List Bool × Sentence`), with the world appearing only as a
-beta-reduced intermediate.  `toBoolPCWorld_bitsToFin` and `bitsWorld_ofFn`
-(`Properties/Calibration.lean`) bridge back to the dependent finite worlds. -/
-def bitsWorld (l : List Bool) : BoolPCWorld := fun a => l.getD a false
-
-/-- Rational payout under a bit list: the non-dependent form of `FiniteWorld.payoutRat`. -/
-def bitsPayoutRat (l : List Bool) (φ : Sentence) : ℚ :=
-  if eval (bitsWorld l) φ then 1 else 0
-
-/-- Evaluation of a bounded-support sentence is unchanged by finite restriction and
-extension.  Consequently every universal payout check over finitely many sentences can
-be reduced to the finite type `FiniteWorld B`. -/
-lemma eval_toBoolPCWorld_restrict (v : BoolPCWorld) (B : ℕ) (φ : Sentence)
-    (hφ : atomBound φ ≤ B) :
-    eval ((FiniteWorld.restrict v B).toBoolPCWorld) φ = eval v φ := by
-  induction φ with
-  | atom a =>
-      simp only [atomBound] at hφ
-      have ha : a < B := by omega
-      simp [eval, FiniteWorld.toBoolPCWorld, FiniteWorld.restrict, ha]
-  | falsum => simp [eval]
-  | imp φ ψ ihφ ihψ =>
-      simp only [atomBound, max_le_iff] at hφ
-      simp [eval, ihφ hφ.1, ihψ hφ.2]
-  | and φ ψ ihφ ihψ =>
-      simp only [atomBound, max_le_iff] at hφ
-      simp [eval, ihφ hφ.1, ihψ hφ.2]
-  | or φ ψ ihφ ihψ =>
-      simp only [atomBound, max_le_iff] at hφ
-      simp [eval, ihφ hφ.1, ihψ hφ.2]
-
-/-- Executable rational payout under a finite Boolean assignment. -/
-def FiniteWorld.payoutRat {B : ℕ} (u : FiniteWorld B) (φ : Sentence) : ℚ :=
-  if eval u.toBoolPCWorld φ then 1 else 0
-
-@[simp] lemma eval_eq_true_iff_holds (v : BoolPCWorld) (φ : Sentence) :
-    eval v φ = true ↔ v.toPCWorld.Holds φ := by
-  induction φ with
-  | atom a => simp [eval, toPCWorld, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | falsum => simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | imp φ ψ ihφ ihψ =>
-      cases hφ : eval v φ <;> cases hψ : eval v ψ <;>
-        simp_all [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val]
-  | and φ ψ ihφ ihψ =>
-      simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
-  | or φ ψ ihφ ihψ =>
-      simp [eval, PCWorld.Holds, LO.Propositional.Formula.Boolean.val, ihφ, ihψ]
-
-/-- The executable finite-world payout is the exact rational payout of its extended
-proposition-valued world. -/
-lemma FiniteWorld.payoutRat_eq_toPCWorld {B : ℕ} (u : FiniteWorld B)
-    (φ : Sentence) :
-    u.payoutRat φ = u.toBoolPCWorld.toPCWorld.payoutRat φ := by
-  classical
-  unfold payoutRat PCWorld.payoutRat
-  rw [← eval_eq_true_iff_holds]
-  by_cases h : eval u.toBoolPCWorld φ = true <;> simp [h]
-
-/-- On every sentence inside the support bound, the finite rational payout obtained by
-restricting a world is exactly that world's rational payout. -/
-lemma FiniteWorld.payoutRat_restrict_ofPCWorld (v : PCWorld) (B : ℕ)
-    (φ : Sentence) (hφ : atomBound φ ≤ B) :
-    payoutRat (restrict (ofPCWorld v) B) φ = v.payoutRat φ := by
-  classical
-  unfold payoutRat
-  rw [eval_toBoolPCWorld_restrict (ofPCWorld v) B φ hφ]
-  have heval := eval_eq_true_iff_holds (ofPCWorld v) φ
-  rw [ofPCWorld_toPCWorld] at heval
-  by_cases hh : v.Holds φ
-  · have : eval (ofPCWorld v) φ = true := heval.mpr hh
-    simp [this, PCWorld.payoutRat, hh]
-  · have : eval (ofPCWorld v) φ = false := by
-      apply Bool.eq_false_of_not_eq_true
-      exact fun he => hh (heval.mp he)
-    simp [this, PCWorld.payoutRat, hh]
-
-/-! ## Compactness in the product space -/
-
-/-- Sentence evaluation depends continuously on its finitely many atoms. -/
-lemma continuous_eval (φ : Sentence) : Continuous (fun v : BoolPCWorld => eval v φ) := by
-  induction φ with
-  | atom a => exact continuous_apply a
-  | falsum => exact continuous_const
-  | imp φ ψ ihφ ihψ =>
-      exact (continuous_of_discreteTopology : Continuous
-        (fun z : Bool × Bool => (!z.1) || z.2)).comp (ihφ.prodMk ihψ)
-  | and φ ψ ihφ ihψ =>
-      exact (continuous_of_discreteTopology : Continuous
-        (fun z : Bool × Bool => z.1 && z.2)).comp (ihφ.prodMk ihψ)
-  | or φ ψ ihφ ihψ =>
-      exact (continuous_of_discreteTopology : Continuous
-        (fun z : Bool × Bool => z.1 || z.2)).comp (ihφ.prodMk ihψ)
-
-/-- The model set of one sentence is clopen in the Boolean product space. -/
-lemma isClopen_holds (φ : Sentence) :
-    IsClopen {v : BoolPCWorld | v.toPCWorld.Holds φ} := by
-  have heq : {v : BoolPCWorld | v.toPCWorld.Holds φ} =
-      (fun v => eval v φ) ⁻¹' {true} := by
-    ext v
-    simp [eval_eq_true_iff_holds]
-  rw [heq]
-  exact ⟨isClosed_singleton.preimage (continuous_eval φ),
-    (continuous_eval φ).isOpen_preimage _ (isOpen_discrete _)⟩
-
-@[simp] lemma payout_toPCWorld (v : BoolPCWorld) (φ : Sentence) :
-    v.toPCWorld.payout φ = if eval v φ = true then 1 else 0 := by
-  rw [PCWorld.payout]
-  by_cases h : eval v φ = true
-  · rw [if_pos h, if_pos ((eval_eq_true_iff_holds v φ).mp h)]
-  · rw [if_neg h, if_neg (fun hh => h ((eval_eq_true_iff_holds v φ).mpr hh))]
-
-/-- The real payout of a fixed sentence is continuous on Boolean worlds. -/
-lemma continuous_payout (φ : Sentence) :
-    Continuous (fun v : BoolPCWorld => v.toPCWorld.payout φ) := by
-  rw [show (fun v : BoolPCWorld => v.toPCWorld.payout φ) =
-      (fun b : Bool => if b = true then (1 : ℝ) else 0) ∘ (fun v => eval v φ) by
-    funext v
-    simp [Function.comp_apply]]
-  exact (continuous_of_discreteTopology : Continuous
-    (fun b : Bool => if b = true then (1 : ℝ) else 0)).comp (continuous_eval φ)
-
-/-- A fixed affine combination's value is continuous as its Boolean world varies. -/
-lemma continuous_affineValue (A : AffineCombination) (P : History) :
-    Continuous (fun v : BoolPCWorld => A.value P v.toPCWorld.payout) := by
-  have hterms : ∀ l : List (EF × Sentence), Continuous (fun v : BoolPCWorld =>
-      (l.map (fun p => p.1.denote P * v.toPCWorld.payout p.2)).sum) := by
-    intro l
-    induction l with
-    | nil => simpa using (continuous_const : Continuous (fun _ : BoolPCWorld => (0 : ℝ)))
-    | cons p ps ih =>
-        have h := ((continuous_const (y := p.1.denote P)).mul (continuous_payout p.2)).add ih
-        convert h using 1
-        funext v
-        simp [mul_ite]
-  exact continuous_const.add (hterms A.terms)
-
-/-- Boolean worlds plausible at one finite deductive stage form a closed set. -/
-lemma isClosed_consistentWith (DP : DeductiveProcess) (n : ℕ) :
-    IsClosed {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)} := by
-  have heq : {v : BoolPCWorld | v.toPCWorld.ConsistentWith (DP.D n)} =
-      ⋂ φ : {φ // φ ∈ DP.D n}, {v : BoolPCWorld | v.toPCWorld.Holds φ.1} := by
-    ext v
-    simp [PCWorld.ConsistentWith]
-  rw [heq]
-  exact isClosed_iInter (fun φ => (isClopen_holds φ.1).1)
-
-/-- A fixed affine sublevel set is closed. -/
-lemma isClosed_affineValue_le (A : AffineCombination) (P : History) (q : ℝ) :
-    IsClosed {v : BoolPCWorld | A.value P v.toPCWorld.payout ≤ q} :=
-  isClosed_Iic.preimage (continuous_affineValue A P)
-
-end BoolPCWorld
-
-/-- Closed constraints used in the compactness argument: `none` is the fixed affine
-sublevel set and `some n` is finite-stage plausibility. -/
-def affineCompactConstraint (DP : DeductiveProcess) (A : AffineCombination)
-    (P : History) (q : ℝ) : Option ℕ → Set BoolPCWorld
-  | none => {v | A.value P v.toPCWorld.payout ≤ q}
-  | some n => {v | v.toPCWorld.ConsistentWith (DP.D n)}
-
-lemma affineCompactConstraint_isClosed (DP : DeductiveProcess) (A : AffineCombination)
-    (P : History) (q : ℝ) (i : Option ℕ) :
-    IsClosed (affineCompactConstraint DP A P q i) := by
-  cases i with
-  | none => exact BoolPCWorld.isClosed_affineValue_le A P q
-  | some n => exact BoolPCWorld.isClosed_consistentWith DP n
-
-/-- Propositional compactness in the precise uniform form needed by `thm:affcoh`: if a
-fixed affine combination is strictly above `q` in every world consistent with the
-completed theory, then after some finite stage it is above `q` in every plausible world.
-
-The proof is a compact-product argument: if bad finite-stage worlds existed arbitrarily
-late, the closed finite-stage model sets together with the fixed affine sublevel set would
-have the finite intersection property, hence a completed-theory bad world. -/
-lemma eventually_affineValue_gt_of_theory
-    (DP : DeductiveProcess) (A : AffineCombination) (P : History) (q : ℝ)
-    (hall : ∀ v : PCWorld, v.ConsistentWithTheory DP → q < A.value P v.payout) :
-    ∀ᶠ n in atTop, ∀ v : PCWorld,
-      v.ConsistentWith (DP.D n) → q < A.value P v.payout := by
-  by_contra hnot
-  rw [Filter.not_eventually] at hnot
-  have hbad : ∃ᶠ n in atTop, ∃ v : PCWorld,
-      v.ConsistentWith (DP.D n) ∧ A.value P v.payout ≤ q := by
-    refine hnot.mono (fun n hn => ?_)
-    rcases not_forall.mp hn with ⟨v, hv⟩
-    rcases Classical.not_imp.mp hv with ⟨hcons, hvalue⟩
-    exact ⟨v, hcons, le_of_not_gt hvalue⟩
-  have hfip : ∀ u : Finset (Option ℕ),
-      (Set.univ ∩ ⋂ i ∈ u, affineCompactConstraint DP A P q i).Nonempty := by
-    intro u
-    let K := u.sup (fun i => i.getD 0)
-    obtain ⟨m, hmK, v, hv, hvalue⟩ := Filter.frequently_atTop.mp hbad K
-    refine ⟨BoolPCWorld.ofPCWorld v, ?_⟩
-    constructor
-    · exact Set.mem_univ _
-    simp only [Set.mem_iInter]
-    intro i hi
-    cases i with
-    | none =>
-        simpa [affineCompactConstraint] using hvalue
-    | some n =>
-        have hnK : n ≤ K := Finset.le_sup (s := u) (f := fun i => i.getD 0) hi
-        have hnm : n ≤ m := hnK.trans hmK
-        have hsub : DP.D n ⊆ DP.D m := Finset.le_iff_subset.mp
-          (monotone_nat_of_le_succ (fun k => Finset.le_iff_subset.mpr (DP.mono k)) hnm)
-        simpa [affineCompactConstraint] using
-          (show (BoolPCWorld.ofPCWorld v).toPCWorld.ConsistentWith (DP.D n) from
-            fun φ hφ => by
-              rw [BoolPCWorld.ofPCWorld_toPCWorld]
-              exact hv φ (hsub hφ))
-  obtain ⟨b, _, hb⟩ := isCompact_univ.inter_iInter_nonempty
-    (affineCompactConstraint DP A P q)
-    (affineCompactConstraint_isClosed DP A P q) hfip
-  have hbtheory : b.toPCWorld.ConsistentWithTheory DP := by
+/-- **Affine Provability Induction.**  An eventually uniform plausible-world lower bound
+on a normalized polynomial affine family is learned on the diagonal. -/
+lemma PolySequence.affine_provind {As : ℕ → AffineCombination}
+    (h : PolySequence As) (P : History) (DP : DeductiveProcess)
+    [hLI : IsLogicalInductor P DP]
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (c : ℝ)
+    (hval : ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      c ≤ (As n).value P v.payout) :
+    AsympGE (fun n => (As n).price P n) (fun _ => c) := by
+  intro ε hε
+  obtain ⟨start, hstart⟩ := Filter.eventually_atTop.mp hval
+  obtain ⟨low, hlowL, hlowU⟩ := exists_rat_btwn (show c - ε < c - ε / 2 by linarith)
+  obtain ⟨δ, hδ0, hδU⟩ := exists_rat_btwn (show (0 : ℝ) < c - (low : ℝ) by linarith)
+  have hδ : 0 < (δ : ℝ) := hδ0
+  have hsafe : (low : ℝ) + δ < c := by linarith
+  by_contra hbad
+  rw [not_eventually] at hbad
+  have hfreq : ∃ᶠ n in atTop, (As n).price P n + ε < c := by
+    simpa only [not_le] using hbad
+  let entry : ℕ → EF := fun n => gateFeature start (gradualEntry As low δ) n
+  let w : ℕ → ℝ := fun n => (entry n).denote P * (c - (As n).price P n)
+  have hnonneg : ∀ n, 0 ≤ w n := by
     intro n
-    have hn := Set.mem_iInter.mp hb (some n)
-    simpa [affineCompactConstraint] using hn
-  have hbvalue : A.value P b.toPCWorld.payout ≤ q := by
-    have hnone := Set.mem_iInter.mp hb none
-    simpa [affineCompactConstraint] using hnone
-  have := hall b.toPCWorld hbtheory
-  exact (not_lt_of_ge hbvalue) this
+    by_cases hs : start ≤ n
+    swap
+    · simp [w, entry, gateFeature, hs]
+    have he0 := (buyIndF_mem ((As n).priceFeature n) low δ P).1
+    by_cases he : (entry n).denote P = 0
+    · simp [w, he]
+    have hepos : 0 < (entry n).denote P := lt_of_le_of_ne (by
+      simpa [entry, gateFeature, hs, gradualEntry] using he0) (Ne.symm he)
+    have hp := buyIndF_pos_imp hδ (by
+      simpa [entry, gateFeature, hs, gradualEntry] using hepos)
+    rw [(As n).priceFeature_denote] at hp
+    exact mul_nonneg hepos.le (by linarith)
+  have hfreqW : ∃ᶠ n in atTop, ε ≤ w n := by
+    refine (hfreq.and_eventually (Filter.eventually_ge_atTop start)).mono ?_
+    intro n hn
+    have hs : start ≤ n := hn.2
+    have hone : (entry n).denote P = 1 := by
+      simp only [entry, gateFeature, hs, if_true, gradualEntry]
+      apply buyIndF_eq_one hδ
+      rw [(As n).priceFeature_denote]
+      linarith [hn.1]
+    simp only [w, hone, one_mul]
+    linarith [hn.1]
+  have hnet : ∀ n (v : PCWorld), v.ConsistentWith (DP.D n) →
+      ∑ i ∈ Finset.range (n + 1), w i ≤
+        (h.buyBelowTrader start low δ).netWorth P v n := by
+    intro n v hv
+    rw [Trader.netWorth]
+    refine Finset.sum_le_sum (fun i hi => ?_)
+    have hin : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)
+    by_cases his : start ≤ i
+    swap
+    · simp [w, entry, gateFeature, his, h.buyBelowTrader_value]
+    have hsub : DP.D i ⊆ DP.D n := Finset.le_iff_subset.mp
+      (monotone_nat_of_le_succ (fun k => Finset.le_iff_subset.mpr (DP.mono k)) hin)
+    have hv' : v.ConsistentWith (DP.D i) := fun φ hφ => hv φ (hsub hφ)
+    have hvi := hstart i his v hv'
+    rw [h.buyBelowTrader_value]
+    dsimp only [w, entry]
+    exact mul_le_mul_of_nonneg_left (sub_le_sub_right hvi _) (by
+      simpa [gateFeature, his, gradualEntry] using
+        (buyIndF_mem ((As i).priceFeature i) low δ P).1)
+  exact hLI.noExploit _ (h.buyBelowTrader_ec start low δ)
+    (exploits_of_ge_partialSums _ P DP w ε hε hnonneg hnet hfreqW hcons)
 
-/-- Nonempty finite-stage plausible sets have a world in their nested intersection, i.e.
-a world consistent with the completed theory. The compactness argument itself lives in
-`Framework/Compactness.lean`; this is the §4.5-local spelling of it. -/
-lemma exists_consistentWithTheory (DP : DeductiveProcess)
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    ∃ v : PCWorld, v.ConsistentWithTheory DP :=
-  DP.exists_consistentWithTheory hworld
+/-! ## The two-sided form -/
+
+/-- Two-sided affine provability: if every late plausible world values the family
+uniformly near zero, then its diagonal market price converges to zero. -/
+lemma PolySequence.affine_tendsto_zero {As : ℕ → AffineCombination}
+    (h : PolySequence As) (P : History) (DP : DeductiveProcess)
+    [IsLogicalInductor P DP]
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hval : ∀ ε > 0, ∀ᶠ n in atTop, ∀ v : PCWorld,
+      v.ConsistentWith (DP.D n) → |(As n).value P v.payout| ≤ ε) :
+    AsympEq (fun n => (As n).price P n) (fun _ => 0) := by
+  rw [asympEq_iff_eventuallyWithin]
+  intro ε hε
+  have hnear := hval (ε / 4) (by linarith)
+  have hloSem : ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      -ε / 4 ≤ (As n).value P v.payout := hnear.mono (fun n hn v hv => by
+    have := hn v hv
+    rw [abs_le] at this
+    linarith)
+  have hhiSem : ∀ᶠ n in atTop, ∀ v : PCWorld, v.ConsistentWith (DP.D n) →
+      -ε / 4 ≤ ((As n).neg).value P v.payout := hnear.mono (fun n hn v hv => by
+    have := hn v hv
+    rw [abs_le] at this
+    rw [neg_value]
+    linarith)
+  have hlo := h.affine_provind P DP hcons (-ε / 4) hloSem (ε / 4) (by linarith)
+  have hhi := h.neg.affine_provind P DP hcons (-ε / 4) hhiSem (ε / 4) (by linarith)
+  filter_upwards [hlo, hhi] with n hnlo hnhi
+  rw [neg_price] at hnhi
+  simp only [sub_zero]
+  rw [abs_le]
+  constructor <;> linarith
+
+end AffineCombination
 
 /-! ## Completed-theory affine values -/
 

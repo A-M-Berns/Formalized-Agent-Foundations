@@ -189,4 +189,37 @@ lemma convergesTo_iff_asympEq_const {f : ℕ → ℝ} {x : ℝ} :
   unfold AsympEq
   exact (tendsto_sub_nhds_zero_iff (u := f) (x := x)).symm
 
+/-- Cancel a positive fixed scale from asymptotic nonnegativity. -/
+lemma asympGE_zero_of_const_mul_pos
+    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
+    (h : (fun n => c * x n) ≳ₙ (fun _ => 0)) :
+    x ≳ₙ (fun _ => 0) := by
+  intro ε hε
+  have hs := h (c * ε) (mul_pos hc hε)
+  filter_upwards [hs] with n hn
+  have hm : 0 ≤ c * (x n + ε) := by
+    simpa only [mul_add, zero_add] using hn
+  exact (mul_nonneg_iff_of_pos_left hc).mp hm
+
+/-- Cancel a positive fixed scale from asymptotic nonpositivity. -/
+lemma asympLE_zero_of_const_mul_pos
+    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
+    (h : (fun n => c * x n) ≲ₙ (fun _ => 0)) :
+    x ≲ₙ (fun _ => 0) := by
+  intro ε hε
+  have hs := h (c * ε) (mul_pos hc hε)
+  filter_upwards [hs] with n hn
+  have hm : c * x n ≤ c * ε := by
+    simpa only [zero_add] using hn
+  simpa only [zero_add] using (mul_le_mul_iff_of_pos_left hc).mp hm
+
+/-- Cancel a positive fixed scale from asymptotic equality to zero. -/
+lemma asympEq_zero_of_const_mul_pos
+    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
+    (h : (fun n => c * x n) ≈ₙ (fun _ => 0)) :
+    x ≈ₙ (fun _ => 0) := by
+  rw [asympEq_iff_asympLE_asympGE] at h ⊢
+  exact ⟨asympLE_zero_of_const_mul_pos hc h.1,
+    asympGE_zero_of_const_mul_pos hc h.2⟩
+
 end LogicalInduction

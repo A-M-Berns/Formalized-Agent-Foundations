@@ -2,8 +2,8 @@
 """File-level closure check for the LogicalInduction library.
 
 Every `.lean` file under `LogicalInduction/` must be reachable, through `import` lines,
-from a root the lakefile builds (`LogicalInduction`, `AxiomAudit`, `APITests`, the
-`MachineExec` roots); and every `import` of a `LogicalInduction.*` module must name a
+from a root the lakefile builds (`LogicalInduction`, `AxiomAudit`, `APITests`); and every
+`import` of a `LogicalInduction.*` module must name a
 file that exists. A module nothing builds is dead weight; an import of a missing file is
 a broken build. Exit 1 on either.
 """

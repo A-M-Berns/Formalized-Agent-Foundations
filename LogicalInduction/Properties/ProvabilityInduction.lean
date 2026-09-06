@@ -1,5 +1,5 @@
-import LogicalInduction.Properties.Basic
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Properties.Support.Exploitation
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Provability Induction — §4.2
@@ -20,7 +20,7 @@ value, net-worth and efficient-computability certificates.
 
 `buyDaily_ec` runs `Code.const` on the one fixed strategy code, which halts within affine
 fuel and so fits the polynomial clock (`dd:fuel`). `buySeq_ec_big` takes the paper's `𝓔𝓒`
-sentence sequence in the write-out class `BigSentenceCodes` (`Framework/WriteOut.lean`),
+sentence sequence in the write-out class `BigSentenceCodes` (`Framework/Emission/WriteOut.lean`),
 which admits arbitrarily deep sentence families.
 
 ## Endpoints
@@ -37,7 +37,7 @@ so the hypothesis `φ n ∈ D n` is strictly stronger than the paper's. The pape
 — an efficiently computable sequence of *disprovable* sentences with `Pₙ(ψₙ) → 0` — is
 carried by `lic_provind_false` (`AffineCoherence.lean`).
 
-All exploitation routes through the engines of `Properties/Basic.lean`; nothing here
+All exploitation routes through the engines of `Properties/Support/Exploitation.lean`; nothing here
 re-derives the accumulation argument.
 -/
 
@@ -178,7 +178,7 @@ lemma buySeq_ec_big (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
 /-- **Timely-membership form of the sequence statement**: for an efficiently computable
 sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
 the price `Pₙ(φₙ) → 1`. Efficient computability is discharged directly in the **write-out**
-class from the `𝓔𝓒`-sequence hypothesis (`BigSentenceCodes`, `Framework/WriteOut.lean`),
+class from the `𝓔𝓒`-sequence hypothesis (`BigSentenceCodes`, `Framework/Emission/WriteOut.lean`),
 which admits arbitrarily deep and skewed sentence sequences.
 
 **This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need

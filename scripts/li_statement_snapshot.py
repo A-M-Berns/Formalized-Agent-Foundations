@@ -48,7 +48,6 @@ DECL = re.compile(
 IMPORTS = [
     "LogicalInduction",
     "LogicalInduction.API",
-    "LogicalInduction.Construction.Machine",
 ]
 
 

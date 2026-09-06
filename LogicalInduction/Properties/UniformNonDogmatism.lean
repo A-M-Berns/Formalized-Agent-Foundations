@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.NonDogmatism
 import LogicalInduction.Properties.AffinePersistence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Uniform Non-Dogmatism
@@ -31,7 +31,8 @@ repeats, and the paper-facing `lic_uniform_nonDogmatism`, which takes the explic
 preprocessing witness `EfficientRepeatedEnumeration` — a Tier-2 `#assert_fields` structure
 that is purely syntactic, containing neither prices nor a conclusion. Both are consumed by
 `Properties/UniversalSemimeasure.lean` and
-`Construction/Witnesses/{BoundedEvaluation,ConditioningCompiler}.lean`.
+`Construction/NonDogmatism/RepeatedEnumeration.lean` and
+`Construction/Conditioning/Compiler.lean`.
 -/
 
 namespace LogicalInduction

@@ -1,0 +1,1372 @@
+import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Basic
+import Mathlib.Computability.Partrec
+import Mathlib.Computability.Primrec.List
+import Mathlib.Data.Nat.Size
+import Mathlib.Data.Nat.Bitwise
+import Mathlib.Tactic.IntervalCases
+
+/-!
+# A symbol measure on Foundation's internal derivation codes — §4.10
+
+The paper's `Con(Θ′)(ν)` (tex:1855-1866) says there is no proof of `⊥` from `⌜Θ′⌝` with
+`ν` **or fewer symbols**.  Metering that statement needs a size function on Foundation's
+*arithmetized* derivations, and Foundation has none: there is no size, length, height or
+symbol count on internal codes anywhere in its `Bootstrapping` tree (`formulaComplexity` is
+connective depth, `bv` a bound-variable bound, and both are `V`-valued internal
+recursions).  This module supplies one, externally, at `V := ℕ` — which is the only place
+§4.10 meters anything.
+
+## The counting convention
+
+A derivation code is a tree of `⟪…⟫ + 1` nodes (`Bootstrapping/Syntax/Proof/Basic.lean`),
+whose leaves reach down through sequents (bitsets of formula codes), formulas, terms and
+term vectors (cons lists).  Writing such a derivation out costs:
+
+* one symbol for each rule name, connective, quantifier, predicate or function symbol, and
+  each variable occurrence;
+* one separator per argument-list entry;
+* the **written length of every index**, plus one marker token — a variable, function or
+  relation index is a numeral when the proof is written out, so it contributes
+  `idxLen n = Nat.size n + 1` rather than one symbol: its binary digit count *and* one
+  token separating the numeral from the material that follows it.  (So `idxLen 0 = 1` and
+  `idxLen 1 = 2`; the marker makes an index numeral self-delimiting.  Over-counting by a
+  fixed token per index is the safe direction — the measure is a metering convention, and
+  only the two bounds below are ever spent on it.)  This is what makes the measure
+  finite-fibred: without it, `^&x` would be one symbol for every `x`, and a bounded-symbol
+  search would range over unboundedly many codes.  It is also the write-out convention the
+  rest of this development meters with, `def:ec`.
+* every member of a node's sequent, and every sub-derivation, recursively.
+
+The paper fixes neither a Gödel encoding nor an alphabet ("written in `ℒ` using a Gödel
+encoding"), so a formalization must choose a counting convention; this is that choice,
+stated in full (`dd:symbolcount`).  Nothing downstream depends on the choice beyond the
+arithmetic of `dSize_pos` and `le_G_dSize`.
+
+Numbers that are not well-formed codes are given their own numeric value.  That branch is
+never observed: every use sits under `Bootstrapping.Proof`, which forces well-formedness.
+It is what makes the converse bound `d ≤ G (dSize d)` hold *unconditionally*, with no
+well-formedness hypothesis to thread.
+
+## Why the converse bound is the point
+
+`dSize d ≤ d` is the useless direction.  What the §4.10 decider needs is
+`d ≤ G (dSize d)` for a computable monotone `G`: it turns "some derivation of `φ` has at
+most `k` symbols" into a search over `d ≤ G k`, which is decidable in *both* polarities.
+`G` is a tower and no attempt is made to make it tight.
+
+## The measures are primitive recursive
+
+The measures are defined by well-founded recursion at `ℕ`, which says nothing about their
+effectivity, so the second half of the module supplies the other half of `dd:symbolcount`:
+`tSize`, `tvSize`, `fSize`, `sSize`, `dSize` and `G` are all primitive recursive, hence
+computable.  Without it the §4.10 bounded proof search is a classical existence statement
+rather than an algorithm.
+
+Each well-founded measure recurses only on values strictly below its argument, so each is
+obtained from Mathlib's course-of-values recursor `Primrec.nat_strong_rec`: the step
+function reads its recursive values out of `(List.range n).map f`, whose `i`-th entry is
+`f i` and whose length is `n`.  The entries are read with `List.getD`, because `l[i]` cannot
+be written where Foundation's binder notation registers `)[` as a token.
+
+`tSize` and `tvSize` share one recursion (`tvAux`), so they are packed into a single
+function of `2 * n + mode` before the recursor is applied; every recursive `tvAux` call
+strictly decreases that packed value.  `Nat.size` — which `idxLen` counts with — has no
+primitive-recursiveness lemma in Mathlib, so it is obtained here by the same recursor from
+`size n = size (n / 2) + 1`.  `G` recurses structurally over the private squaring function
+`P`; privacy restricts name resolution, not unfolding, so the six-fold iterate is
+definitionally the explicit tower `Gstep`, and `G_succ_eq` is `rfl`.
+
+The module closes with the `Computable` forms the §4.10 decider consumes, and with
+`computable_boundedSearchValue`: a bounded existential over a computable predicate with a
+computable bound is computable.  Mathlib offers only the `Primrec` list combinators here, so
+the scan is an explicit `Nat.rec` fed to `Computable.nat_rec`.  All of it is spent in
+`Framework/Theory/BoundedConsistency.lean`, to make `bprovValue` total and computable.
+-/
+
+namespace LogicalInduction
+
+/-! ## Reading a right-nested pairing
+
+Foundation's `⟪a₀, a₁, …, aₙ⟫` is right-nested `pair`, and at `ℕ` `pair` is `Nat.pair`
+(`nat_pair_eq`).  `arg i` reads the `i`-th component; `tail i` reads what is left after `i`
+components, which for an `(i+1)`-component pairing is the last one. -/
+
+/-- Left projection of the pairing.  Internal decoding helper. -/
+def pl (n : ℕ) : ℕ := (Nat.unpair n).1
+
+/-- Right projection of the pairing.  Internal decoding helper. -/
+def pr (n : ℕ) : ℕ := (Nat.unpair n).2
+
+lemma pl_le (n : ℕ) : pl n ≤ n := Nat.unpair_left_le n
+
+lemma pr_le (n : ℕ) : pr n ≤ n := Nat.unpair_right_le n
+
+/-- The `i`-th component of a right-nested pairing.  Internal decoding helper. -/
+def arg : ℕ → ℕ → ℕ
+  | 0, m => pl m
+  | (i + 1), m => arg i (pr m)
+
+/-- What is left of a right-nested pairing after `i` components.  Internal helper. -/
+def tail : ℕ → ℕ → ℕ
+  | 0, m => m
+  | (i + 1), m => tail i (pr m)
+
+lemma tail_le : ∀ (i m : ℕ), tail i m ≤ m
+  | 0, _ => le_rfl
+  | (i + 1), m => le_trans (tail_le i (pr m)) (pr_le m)
+
+lemma arg_le : ∀ (i m : ℕ), arg i m ≤ m
+  | 0, m => pl_le m
+  | (i + 1), m => le_trans (arg_le i (pr m)) (pr_le m)
+
+lemma arg_lt_succ (i m : ℕ) : arg i m < m + 1 := Nat.lt_succ_of_le (arg_le i m)
+
+lemma tail_lt_succ (i m : ℕ) : tail i m < m + 1 := Nat.lt_succ_of_le (tail_le i m)
+
+/-! ## Written length of an index -/
+
+/-- The written length of an index: its binary digit count `Nat.size n`, **plus one** for
+the marker token that separates the numeral from the following material.  So `idxLen 0 = 1`
+and `idxLen 1 = 2` — this is a digit count plus one, not a digit count. -/
+def idxLen (n : ℕ) : ℕ := Nat.size n + 1
+
+lemma one_le_idxLen (n : ℕ) : 1 ≤ idxLen n := Nat.le_add_left 1 _
+
+lemma lt_two_pow_idxLen (n : ℕ) : n < 2 ^ idxLen n :=
+  lt_of_lt_of_le (Nat.lt_size_self n) (Nat.pow_le_pow_right (by norm_num) (Nat.le_succ _))
+
+/-! ## Terms and term vectors
+
+Mutually recursive, packed into one function on a mode so that a single well-founded
+recursion at `ℕ` carries both: mode `0` reads a term code, any other mode a term-vector
+code.  Foundation's vectors are cons lists (`x ∷ v = ⟪x, v⟫ + 1`, nil `= 0`). -/
+
+/-- Terms and term vectors share one well-founded recursion; mode `0` reads a term code,
+any other mode a term-vector code. -/
+def tvAux : ℕ → ℕ → ℕ
+  | _, 0 => 0
+  | mode, m + 1 =>
+      if mode = 0 then
+        (if arg 0 m = 0 then 1 + idxLen (tail 1 m)
+         else if arg 0 m = 1 then 1 + idxLen (tail 1 m)
+         else if arg 0 m = 2 then
+           1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvAux 1 (tail 3 m)
+         else m + 1)
+      else 1 + tvAux 0 (arg 0 m) + tvAux 1 (tail 1 m)
+termination_by _ n => n
+decreasing_by
+  · exact tail_lt_succ 3 m
+  · exact arg_lt_succ 0 m
+  · exact tail_lt_succ 1 m
+
+/-- **Symbol count of a term code.** -/
+def tSize (t : ℕ) : ℕ := tvAux 0 t
+
+/-- **Symbol count of a term-vector code**, one separator per entry. -/
+def tvSize (v : ℕ) : ℕ := tvAux 1 v
+
+@[simp] lemma tSize_zero : tSize 0 = 0 := by rw [tSize, tvAux]
+
+@[simp] lemma tvSize_zero : tvSize 0 = 0 := by rw [tvSize, tvAux]
+
+lemma tSize_succ (m : ℕ) :
+    tSize (m + 1) =
+      (if arg 0 m = 0 then 1 + idxLen (tail 1 m)
+       else if arg 0 m = 1 then 1 + idxLen (tail 1 m)
+       else if arg 0 m = 2 then
+         1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
+       else m + 1) := by
+  rw [tSize, tvAux]; simp [tvSize]
+
+lemma tvSize_succ (m : ℕ) :
+    tvSize (m + 1) = 1 + tSize (arg 0 m) + tvSize (tail 1 m) := by
+  rw [tvSize, tvAux]; simp [tSize, tvSize]
+
+lemma tvAux_zero_eq (n : ℕ) : tvAux 0 n = tSize n := rfl
+
+lemma tvAux_one_eq (n : ℕ) : tvAux 1 n = tvSize n := rfl
+
+lemma tvAux_succ_of_ne {mode : ℕ} (h : mode ≠ 0) (m : ℕ) :
+    tvAux mode (m + 1) = 1 + tSize (arg 0 m) + tvSize (tail 1 m) := by
+  rw [tvAux, if_neg h]
+  rfl
+
+/-! ## Formulas -/
+
+/-- **Symbol count of a formula code.**  One symbol per connective, quantifier or predicate
+symbol; predicate indices and arities are written out; `^⊤` and `^⊥` are one symbol each. -/
+def fSize : ℕ → ℕ
+  | 0 => 0
+  | m + 1 =>
+      if arg 0 m = 0 ∨ arg 0 m = 1 then
+        1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
+      else if arg 0 m = 2 ∨ arg 0 m = 3 then
+        (if tail 1 m = 0 then 1 else m + 1)
+      else if arg 0 m = 4 ∨ arg 0 m = 5 then
+        1 + fSize (arg 1 m) + fSize (tail 2 m)
+      else if arg 0 m = 6 ∨ arg 0 m = 7 then
+        1 + fSize (tail 1 m)
+      else m + 1
+termination_by n => n
+decreasing_by
+  · exact arg_lt_succ 1 m
+  · exact tail_lt_succ 2 m
+  · exact tail_lt_succ 1 m
+
+/-! ## Sequents
+
+Foundation's sequents are bitsets: `p ∈ s` is `LenBit (exp p) s`, which at `ℕ` is exactly
+`s.testBit p` (`mem_iff_testBit` below).  A sequent is written out as its members. -/
+
+/-- **Symbol count of a sequent.** -/
+def sSize (s : ℕ) : ℕ := ∑ i ∈ Finset.range s, if s.testBit i then fSize i else 0
+
+/-! ## Derivations -/
+
+/-- **Symbol count of a derivation code.**  One symbol for the rule name, plus the node's
+sequent, its principal formulas and terms, and its sub-derivations. -/
+def dSize : ℕ → ℕ
+  | 0 => 0
+  | m + 1 =>
+      if arg 1 m = 0 then 1 + sSize (arg 0 m) + fSize (tail 2 m)
+      else if arg 1 m = 1 then
+        (if tail 2 m = 0 then 1 + sSize (arg 0 m) else m + 1)
+      else if arg 1 m = 2 then
+        1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+          + dSize (arg 4 m) + dSize (tail 5 m)
+      else if arg 1 m = 3 then
+        1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m) + dSize (tail 4 m)
+      else if arg 1 m = 4 then
+        1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)
+      else if arg 1 m = 5 then
+        1 + sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m) + dSize (tail 4 m)
+      else if arg 1 m = 6 ∨ arg 1 m = 7 then
+        1 + sSize (arg 0 m) + dSize (tail 2 m)
+      else if arg 1 m = 8 then
+        1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (arg 3 m) + dSize (tail 4 m)
+      else if arg 1 m = 9 then
+        1 + sSize (arg 0 m) + fSize (tail 2 m)
+      else m + 1
+termination_by n => n
+decreasing_by
+  · exact arg_lt_succ 4 m
+  · exact tail_lt_succ 5 m
+  · exact tail_lt_succ 4 m
+  · exact tail_lt_succ 3 m
+  · exact tail_lt_succ 4 m
+  · exact tail_lt_succ 2 m
+  · exact arg_lt_succ 3 m
+  · exact tail_lt_succ 4 m
+
+/-! ## The converse bound `d ≤ G (dSize d)`
+
+The bound is unconditional — no well-formedness hypothesis — because the ill-formed branch
+of each size function returns the code itself.  `G` is built to absorb, at each unit of
+size, one exponential (for a sequent bitset) and six squarings (for a six-component
+pairing node). -/
+
+private def P (b : ℕ) : ℕ := (b + 1) ^ 2
+
+private lemma succ_le_P (b : ℕ) : b + 1 ≤ P b := Nat.le_self_pow (by norm_num) _
+
+private lemma le_P (b : ℕ) : b ≤ P b := le_trans (Nat.le_succ b) (succ_le_P b)
+
+private lemma P_mono : Monotone P := fun _ _ h => Nat.pow_le_pow_left (by omega) 2
+
+private lemma P_iter_mono (j : ℕ) : Monotone (P^[j]) := by
+  induction j with
+  | zero => simpa using monotone_id
+  | succ j ih =>
+      intro a b h
+      rw [Function.iterate_succ_apply', Function.iterate_succ_apply']
+      exact P_mono (ih h)
+
+private lemma le_P_iter (j b : ℕ) : b ≤ P^[j] b := by
+  induction j with
+  | zero => simp
+  | succ j ih =>
+      rw [Function.iterate_succ_apply']
+      exact le_trans ih (le_P _)
+
+private lemma P_iter_le_of_le {i j b : ℕ} (h : i ≤ j) : P^[i] b ≤ P^[j] b := by
+  obtain ⟨k, rfl⟩ := Nat.exists_eq_add_of_le h
+  rw [Function.iterate_add_apply]
+  exact P_iter_mono i (le_P_iter k b)
+
+private lemma pair_le_P {a b B : ℕ} (ha : a ≤ B) (hb : b ≤ B) : Nat.pair a b ≤ P B :=
+  le_of_lt (lt_of_lt_of_le (Nat.pair_lt_max_add_one_sq a b) (P_mono (max_le ha hb)))
+
+private lemma pairing_le : ∀ (j m B : ℕ), (∀ i < j, arg i m ≤ B) → tail j m ≤ B →
+    m ≤ P^[j] B
+  | 0, m, B, _, ht => by simpa [tail] using ht
+  | (j + 1), m, B, ha, ht => by
+      have h0 : pl m ≤ B := by simpa [arg] using ha 0 (Nat.succ_pos j)
+      have hrec : pr m ≤ P^[j] B := by
+        refine pairing_le j (pr m) B (fun i hi => ?_) (by simpa [tail] using ht)
+        simpa [arg] using ha (i + 1) (Nat.succ_lt_succ hi)
+      have hm : m = Nat.pair (pl m) (pr m) := (Nat.pair_unpair m).symm
+      rw [Function.iterate_succ_apply', hm]
+      exact pair_le_P (le_trans h0 (le_P_iter j B)) hrec
+
+private lemma node_le {j m B : ℕ} (ha : ∀ i < j, arg i m ≤ B) (ht : tail j m ≤ B) :
+    m + 1 ≤ P^[j + 1] B := by
+  rw [Function.iterate_succ_apply']
+  exact le_trans (Nat.succ_le_succ (pairing_le j m B ha ht)) (succ_le_P _)
+
+/-- **The bounding function.**  A tower: each unit of symbol size buys one exponential and
+six squarings, which is what the sequent bitsets and the six-component derivation nodes
+respectively cost.  No attempt is made to make it tight. -/
+def G : ℕ → ℕ
+  | 0 => 1
+  | (N + 1) => P^[6] (2 ^ (G N + 1) + 9)
+
+/-- The slack available to a node of symbol size `N + 1`. -/
+private def Bd (N : ℕ) : ℕ := 2 ^ (G N + 1) + 9
+
+private lemma G_succ (N : ℕ) : G (N + 1) = P^[6] (Bd N) := rfl
+
+private lemma nine_le_Bd (N : ℕ) : 9 ≤ Bd N := Nat.le_add_left 9 _
+
+private lemma G_le_Bd (N : ℕ) : G N ≤ Bd N :=
+  le_trans (le_of_lt Nat.lt_two_pow_self)
+    (le_trans (Nat.pow_le_pow_right (by norm_num) (Nat.le_succ _)) (Nat.le_add_right _ 9))
+
+private lemma G_lt_G_succ (N : ℕ) : G N < G (N + 1) := by
+  rw [G_succ]
+  have h0 : G N < 2 ^ (G N) := Nat.lt_two_pow_self
+  have h1 : (2 : ℕ) ^ (G N) ≤ 2 ^ (G N + 1) :=
+    Nat.pow_le_pow_right (by norm_num) (Nat.le_succ _)
+  have h2 : G N < Bd N := by unfold Bd; omega
+  exact lt_of_lt_of_le h2 (le_P_iter 6 _)
+
+/-- `G` is monotone, which is what lets a bound at one size be reused at any larger one. -/
+lemma G_mono : Monotone G := monotone_nat_of_le_succ fun N => le_of_lt (G_lt_G_succ N)
+
+/-- `G` dominates the identity, the base case every `le_G_*` bound leans on. -/
+lemma self_le_G : ∀ n : ℕ, n ≤ G n
+  | 0 => Nat.zero_le _
+  | (n + 1) => Nat.succ_le_of_lt (lt_of_le_of_lt (self_le_G n) (G_lt_G_succ n))
+
+private lemma idx_le_Bd {n N : ℕ} (h : idxLen n ≤ N) : n ≤ Bd N :=
+  le_trans (le_of_lt (lt_two_pow_idxLen n))
+    (le_trans (Nat.pow_le_pow_right (by norm_num)
+      (le_trans h (le_trans (self_le_G N) (Nat.le_succ _)))) (Nat.le_add_right _ 9))
+
+private lemma sub_le_Bd {c k N : ℕ} (h1 : c ≤ G k) (h2 : k ≤ N) : c ≤ Bd N :=
+  le_trans (le_trans h1 (G_mono h2)) (G_le_Bd N)
+
+private lemma tag_le_Bd {t N : ℕ} (h : t ≤ 9) : t ≤ Bd N := le_trans h (nine_le_Bd N)
+
+private lemma node_bound {j m N : ℕ} (hj : j ≤ 5)
+    (ha : ∀ i < j, arg i m ≤ Bd N) (ht : tail j m ≤ Bd N) : m + 1 ≤ G (N + 1) := by
+  rw [G_succ]
+  exact le_trans (node_le ha ht) (P_iter_le_of_le (by omega))
+
+/-! ### Terms and term vectors -/
+
+private lemma le_G_tvAux : ∀ (n mode : ℕ), n ≤ G (tvAux mode n) := by
+  intro n
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    intro mode
+    match n with
+    | 0 => exact Nat.zero_le _
+    | (m + 1) =>
+      have ih0 : ∀ x < m + 1, x ≤ G (tSize x) := fun x hx => ih x hx 0
+      have ih1 : ∀ x < m + 1, x ≤ G (tvSize x) := fun x hx => ih x hx 1
+      by_cases hmode : mode = 0
+      · subst hmode
+        rw [tvAux_zero_eq, tSize_succ]
+        by_cases h0 : arg 0 m = 0
+        · rw [if_pos h0, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
+          refine node_bound (j := 1) (N := idxLen (tail 1 m)) (by omega) ?_ (idx_le_Bd le_rfl)
+          intro i hi
+          interval_cases i
+          exact tag_le_Bd (by omega)
+        · rw [if_neg h0]
+          by_cases h1 : arg 0 m = 1
+          · rw [if_pos h1, show 1 + idxLen (tail 1 m) = idxLen (tail 1 m) + 1 by omega]
+            refine node_bound (j := 1) (N := idxLen (tail 1 m)) (by omega) ?_ (idx_le_Bd le_rfl)
+            intro i hi
+            interval_cases i
+            exact tag_le_Bd (by omega)
+          · rw [if_neg h1]
+            by_cases h2 : arg 0 m = 2
+            · rw [if_pos h2, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m)
+                  + tvSize (tail 3 m)
+                = (idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)) + 1 by omega]
+              refine node_bound (j := 3) (by omega) ?_ ?_
+              · intro i hi
+                interval_cases i
+                · exact tag_le_Bd (by omega)
+                · exact idx_le_Bd (by omega)
+                · exact idx_le_Bd (by omega)
+              · exact sub_le_Bd (ih1 _ (tail_lt_succ 3 m)) (by omega)
+            · rw [if_neg h2]
+              exact self_le_G (m + 1)
+      · rw [tvAux_succ_of_ne hmode,
+            show 1 + tSize (arg 0 m) + tvSize (tail 1 m)
+                = (tSize (arg 0 m) + tvSize (tail 1 m)) + 1 by omega]
+        refine node_bound (j := 1) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          exact sub_le_Bd (ih0 _ (arg_lt_succ 0 m)) (by omega)
+        · exact sub_le_Bd (ih1 _ (tail_lt_succ 1 m)) (by omega)
+
+/-- The converse bound at terms: a term code is bounded by `G` of its symbol count. -/
+lemma le_G_tSize (n : ℕ) : n ≤ G (tSize n) := le_G_tvAux n 0
+
+/-- The converse bound at term vectors. -/
+lemma le_G_tvSize (n : ℕ) : n ≤ G (tvSize n) := le_G_tvAux n 1
+
+/-! ### Formulas -/
+
+/-- The converse bound at formulas: a formula code is bounded by `G` of its symbol
+count. -/
+lemma le_G_fSize (n : ℕ) : n ≤ G (fSize n) := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    match n with
+    | 0 => exact Nat.zero_le _
+    | (m + 1) =>
+      rw [fSize]
+      by_cases h01 : arg 0 m = 0 ∨ arg 0 m = 1
+      · rw [if_pos h01, show 1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
+              = (idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)) + 1 by omega]
+        refine node_bound (j := 3) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact tag_le_Bd (by rcases h01 with h | h <;> omega)
+          · exact idx_le_Bd (by omega)
+          · exact idx_le_Bd (by omega)
+        · exact sub_le_Bd (le_G_tvSize (tail 3 m)) (by omega)
+      · rw [if_neg h01]
+        by_cases h23 : arg 0 m = 2 ∨ arg 0 m = 3
+        · rw [if_pos h23]
+          by_cases hz : tail 1 m = 0
+          · rw [if_pos hz, show (1 : ℕ) = 0 + 1 by omega]
+            refine node_bound (j := 1) (N := 0) (by omega) ?_ (by rw [hz]; exact Nat.zero_le _)
+            intro i hi
+            interval_cases i
+            exact tag_le_Bd (by rcases h23 with h | h <;> omega)
+          · rw [if_neg hz]
+            exact self_le_G (m + 1)
+        · rw [if_neg h23]
+          by_cases h45 : arg 0 m = 4 ∨ arg 0 m = 5
+          · rw [if_pos h45, show 1 + fSize (arg 1 m) + fSize (tail 2 m)
+                  = (fSize (arg 1 m) + fSize (tail 2 m)) + 1 by omega]
+            refine node_bound (j := 2) (by omega) ?_ ?_
+            · intro i hi
+              interval_cases i
+              · exact tag_le_Bd (by rcases h45 with h | h <;> omega)
+              · exact sub_le_Bd (ih _ (arg_lt_succ 1 m)) (by omega)
+            · exact sub_le_Bd (ih _ (tail_lt_succ 2 m)) (by omega)
+          · rw [if_neg h45]
+            by_cases h67 : arg 0 m = 6 ∨ arg 0 m = 7
+            · rw [if_pos h67, show 1 + fSize (tail 1 m) = fSize (tail 1 m) + 1 by omega]
+              refine node_bound (j := 1) (by omega) ?_ ?_
+              · intro i hi
+                interval_cases i
+                exact tag_le_Bd (by rcases h67 with h | h <;> omega)
+              · exact sub_le_Bd (ih _ (tail_lt_succ 1 m)) (by omega)
+            · rw [if_neg h67]
+              exact self_le_G (m + 1)
+
+/-! ### Sequents -/
+
+private lemma lt_of_testBit {s i : ℕ} (h : s.testBit i = true) : i < s := by
+  by_contra hc
+  push_neg at hc
+  have hlt : s < 2 ^ i := lt_of_le_of_lt hc Nat.lt_two_pow_self
+  rw [Nat.testBit_lt_two_pow hlt] at h
+  exact Bool.noConfusion h
+
+/-- Every member of a sequent contributes its own symbols to the sequent's count. -/
+lemma fSize_le_sSize {s i : ℕ} (h : s.testBit i = true) : fSize i ≤ sSize s := by
+  have hi : i ∈ Finset.range s := Finset.mem_range.mpr (lt_of_testBit h)
+  have hsum := Finset.single_le_sum
+    (f := fun j => if s.testBit j then fSize j else 0) (fun j _ => Nat.zero_le _) hi
+  simpa [sSize, h] using hsum
+
+/-- **The sequent bound.**  A bitset whose members all have small formula codes is itself
+small: this is the one exponential the tower has to absorb per unit of size. -/
+lemma lt_two_pow_G_sSize (s : ℕ) : s < 2 ^ (G (sSize s) + 1) := by
+  have hbits : ∀ i, s.testBit (G (sSize s) + 1 + i) = false := by
+    intro i
+    cases hb : s.testBit (G (sSize s) + 1 + i) with
+    | false => rfl
+    | true =>
+        have h1 : G (sSize s) + 1 + i ≤ G (fSize (G (sSize s) + 1 + i)) := le_G_fSize _
+        have h2 : G (fSize (G (sSize s) + 1 + i)) ≤ G (sSize s) := G_mono (fSize_le_sSize hb)
+        omega
+  have hshift : s >>> (G (sSize s) + 1) = 0 :=
+    Nat.eq_of_testBit_eq fun i => by rw [Nat.testBit_shiftRight, hbits i, Nat.zero_testBit]
+  rw [Nat.shiftRight_eq_div_pow] at hshift
+  exact (Nat.div_eq_zero_iff_lt (Nat.two_pow_pos _)).mp hshift
+
+private lemma seq_le_Bd {s N : ℕ} (h : sSize s ≤ N) : s ≤ Bd N :=
+  le_trans (le_of_lt (lt_two_pow_G_sSize s))
+    (le_trans (Nat.pow_le_pow_right (by norm_num) (by have := G_mono h; omega))
+      (Nat.le_add_right _ 9))
+
+/-! ### Derivations -/
+
+/-- **The converse bound.**  A derivation code is bounded by a computable monotone function
+of its symbol count.
+
+`dSize d ≤ d` is the useless direction; this is the one that turns "some derivation of `φ`
+has at most `k` symbols" into a search over `d ≤ G k`, decidable in *both* polarities,
+which is what `bProv_iff_bounded` spends.  `G` is a tower, and no attempt is made to make
+it tight. -/
+lemma le_G_dSize (n : ℕ) : n ≤ G (dSize n) := by
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    match n with
+    | 0 => exact Nat.zero_le _
+    | (m + 1) =>
+      rw [dSize]
+      by_cases h0 : arg 1 m = 0
+      · rw [if_pos h0, show 1 + sSize (arg 0 m) + fSize (tail 2 m)
+              = (sSize (arg 0 m) + fSize (tail 2 m)) + 1 by omega]
+        refine node_bound (j := 2) (by omega) ?_ ?_
+        · intro i hi
+          interval_cases i
+          · exact seq_le_Bd (by omega)
+          · exact tag_le_Bd (by omega)
+        · exact sub_le_Bd (le_G_fSize (tail 2 m)) (by omega)
+      · rw [if_neg h0]
+        by_cases h1 : arg 1 m = 1
+        · rw [if_pos h1]
+          by_cases hz : tail 2 m = 0
+          · rw [if_pos hz, show 1 + sSize (arg 0 m) = sSize (arg 0 m) + 1 by omega]
+            refine node_bound (j := 2) (by omega) ?_ (by rw [hz]; exact Nat.zero_le _)
+            intro i hi
+            interval_cases i
+            · exact seq_le_Bd le_rfl
+            · exact tag_le_Bd (by omega)
+          · rw [if_neg hz]
+            exact self_le_G (m + 1)
+        · rw [if_neg h1]
+          by_cases h2 : arg 1 m = 2
+          · rw [if_pos h2, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+                  + dSize (arg 4 m) + dSize (tail 5 m)
+                = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+                  + dSize (arg 4 m) + dSize (tail 5 m)) + 1 by omega]
+            refine node_bound (j := 5) (by omega) ?_ ?_
+            · intro i hi
+              interval_cases i
+              · exact seq_le_Bd (by omega)
+              · exact tag_le_Bd (by omega)
+              · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+              · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
+              · exact sub_le_Bd (ih _ (arg_lt_succ 4 m)) (by omega)
+            · exact sub_le_Bd (ih _ (tail_lt_succ 5 m)) (by omega)
+          · rw [if_neg h2]
+            by_cases h3 : arg 1 m = 3
+            · rw [if_pos h3, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+                    + dSize (tail 4 m)
+                  = (sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+                    + dSize (tail 4 m)) + 1 by omega]
+              refine node_bound (j := 4) (by omega) ?_ ?_
+              · intro i hi
+                interval_cases i
+                · exact seq_le_Bd (by omega)
+                · exact tag_le_Bd (by omega)
+                · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+                · exact sub_le_Bd (le_G_fSize (arg 3 m)) (by omega)
+              · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+            · rw [if_neg h3]
+              by_cases h4 : arg 1 m = 4
+              · rw [if_pos h4, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)
+                      = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (tail 3 m)) + 1 by omega]
+                refine node_bound (j := 3) (by omega) ?_ ?_
+                · intro i hi
+                  interval_cases i
+                  · exact seq_le_Bd (by omega)
+                  · exact tag_le_Bd (by omega)
+                  · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+                · exact sub_le_Bd (ih _ (tail_lt_succ 3 m)) (by omega)
+              · rw [if_neg h4]
+                by_cases h5 : arg 1 m = 5
+                · rw [if_pos h5, show 1 + sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m)
+                        + dSize (tail 4 m)
+                      = (sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m)
+                        + dSize (tail 4 m)) + 1 by omega]
+                  refine node_bound (j := 4) (by omega) ?_ ?_
+                  · intro i hi
+                    interval_cases i
+                    · exact seq_le_Bd (by omega)
+                    · exact tag_le_Bd (by omega)
+                    · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+                    · exact sub_le_Bd (le_G_tSize (arg 3 m)) (by omega)
+                  · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+                · rw [if_neg h5]
+                  by_cases h67 : arg 1 m = 6 ∨ arg 1 m = 7
+                  · rw [if_pos h67, show 1 + sSize (arg 0 m) + dSize (tail 2 m)
+                          = (sSize (arg 0 m) + dSize (tail 2 m)) + 1 by omega]
+                    refine node_bound (j := 2) (by omega) ?_ ?_
+                    · intro i hi
+                      interval_cases i
+                      · exact seq_le_Bd (by omega)
+                      · exact tag_le_Bd (by rcases h67 with h | h <;> omega)
+                    · exact sub_le_Bd (ih _ (tail_lt_succ 2 m)) (by omega)
+                  · rw [if_neg h67]
+                    by_cases h8 : arg 1 m = 8
+                    · rw [if_pos h8, show 1 + sSize (arg 0 m) + fSize (arg 2 m)
+                            + dSize (arg 3 m) + dSize (tail 4 m)
+                          = (sSize (arg 0 m) + fSize (arg 2 m) + dSize (arg 3 m)
+                            + dSize (tail 4 m)) + 1 by omega]
+                      refine node_bound (j := 4) (by omega) ?_ ?_
+                      · intro i hi
+                        interval_cases i
+                        · exact seq_le_Bd (by omega)
+                        · exact tag_le_Bd (by omega)
+                        · exact sub_le_Bd (le_G_fSize (arg 2 m)) (by omega)
+                        · exact sub_le_Bd (ih _ (arg_lt_succ 3 m)) (by omega)
+                      · exact sub_le_Bd (ih _ (tail_lt_succ 4 m)) (by omega)
+                    · rw [if_neg h8]
+                      by_cases h9 : arg 1 m = 9
+                      · rw [if_pos h9, show 1 + sSize (arg 0 m) + fSize (tail 2 m)
+                              = (sSize (arg 0 m) + fSize (tail 2 m)) + 1 by omega]
+                        refine node_bound (j := 2) (by omega) ?_ ?_
+                        · intro i hi
+                          interval_cases i
+                          · exact seq_le_Bd (by omega)
+                          · exact tag_le_Bd (by omega)
+                        · exact sub_le_Bd (le_G_fSize (tail 2 m)) (by omega)
+                      · rw [if_neg h9]
+                        exact self_le_G (m + 1)
+
+/-! ## What the measure counts
+
+Everything above is arithmetic on numbers.  This section is the faithfulness statement: at
+`V := ℕ` the recursion really does decompose Foundation's own derivation codes, so `dSize`
+really is the symbol count of the derivation `d` denotes, node by node.  These equations are
+the thing to read against the paper. -/
+
+/-- Stated **before** Foundation's scoped `Div` instance is in scope, so every `/` here is
+unambiguously `Nat`'s: if `q` is the quotient of `s` by `2 ^ i`, then `q` is odd exactly when
+the `i`-th bit of `s` is set. -/
+private lemma not_two_dvd_iff_testBit {s i q : ℕ}
+    (h1 : q * 2 ^ i ≤ s) (h2 : s < (q + 1) * 2 ^ i) : ¬ 2 ∣ q ↔ s.testBit i = true := by
+  rw [Nat.testBit_eq_decide_div_mod_eq, Nat.div_eq_of_lt_le h1 h2, decide_eq_true_eq]
+  exact Nat.two_dvd_ne_zero
+
+open LO LO.FirstOrder LO.FirstOrder.Arithmetic LO.FirstOrder.Arithmetic.Bootstrapping
+
+/-- Foundation's `Exp.exp` is `2 ^ ·` at the standard model. -/
+lemma exp_nat_eq : ∀ n : ℕ, Exp.exp n = 2 ^ n
+  | 0 => by simp
+  | (n + 1) => by
+      have h : Exp.exp ((n : ℕ) + 1) = 2 * Exp.exp (n : ℕ) := exp_succ (V := ℕ) n
+      rw [h, exp_nat_eq n, pow_succ]
+      exact Nat.mul_comm 2 (2 ^ n)
+
+/-- **Sequent membership is bit membership.**  Foundation's `p ∈ s` on a sequent bitset is
+exactly `s.testBit p` at `V := ℕ`, which is what `sSize` sums over. -/
+lemma mem_iff_testBit (i s : ℕ) : i ∈ s ↔ s.testBit i = true := by
+  -- Foundation's `/` on a model is its own scoped instance, distinct from `Nat`'s even at
+  -- `V := ℕ`.  Unfolding first puts Foundation's quotient in the goal, which is what fixes
+  -- `q` in `not_two_dvd_iff_testBit`.
+  simp only [mem_iff_bit, Bit, exp_nat_eq, LenBit]
+  -- Foundation's `≤` on a model is `x = y ∨ x < y`, a scoped instance distinct from `Nat`'s
+  -- even at `V := ℕ`; `<`, `+`, `*` are shared, `≤` and `/` are not.
+  refine not_two_dvd_iff_testBit ?_ ?_
+  · rcases le_def.mp (div_mul_le s (2 ^ i)) with h | h
+    · exact Nat.le_of_eq h
+    · exact Nat.le_of_lt h
+  · rw [Nat.mul_comm]
+    exact lt_mul_div_succ s (Nat.two_pow_pos i)
+
+/-- Every member of a sequent contributes its own symbols, stated at Foundation's
+membership. -/
+lemma fSize_le_sSize_of_mem {s i : ℕ} (h : i ∈ s) : fSize i ≤ sSize s :=
+  fSize_le_sSize ((mem_iff_testBit i s).mp h)
+
+/-! ### The derivation equations
+
+One symbol for the rule name, then the node's sequent, its principal formulas and terms, and
+its sub-derivations. -/
+
+private lemma pair_nat (a b : ℕ) : (⟪a, b⟫ : ℕ) = Nat.pair a b := nat_pair_eq b a
+
+@[simp] lemma dSize_axL (s p : ℕ) : dSize (axL s p) = 1 + sSize s + fSize p := by
+  rw [show axL (V := ℕ) s p = Nat.pair s (Nat.pair 0 p) + 1 by simp [axL, pair_nat], dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_verumIntro (s : ℕ) : dSize (verumIntro s) = 1 + sSize s := by
+  rw [show verumIntro (V := ℕ) s = Nat.pair s (Nat.pair 1 0) + 1 by simp [verumIntro, pair_nat],
+    dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_andIntro (s p q dp dq : ℕ) :
+    dSize (andIntro s p q dp dq)
+      = 1 + sSize s + fSize p + fSize q + dSize dp + dSize dq := by
+  rw [show andIntro (V := ℕ) s p q dp dq
+        = Nat.pair s (Nat.pair 2 (Nat.pair p (Nat.pair q (Nat.pair dp dq)))) + 1 by
+      simp [andIntro, pair_nat], dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_orIntro (s p q d : ℕ) :
+    dSize (orIntro s p q d) = 1 + sSize s + fSize p + fSize q + dSize d := by
+  rw [show orIntro (V := ℕ) s p q d
+        = Nat.pair s (Nat.pair 3 (Nat.pair p (Nat.pair q d))) + 1 by simp [orIntro, pair_nat],
+    dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_allIntro (s p d : ℕ) :
+    dSize (allIntro s p d) = 1 + sSize s + fSize p + dSize d := by
+  rw [show allIntro (V := ℕ) s p d = Nat.pair s (Nat.pair 4 (Nat.pair p d)) + 1 by
+      simp [allIntro, pair_nat], dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_exsIntro (s p t d : ℕ) :
+    dSize (exsIntro s p t d) = 1 + sSize s + fSize p + tSize t + dSize d := by
+  rw [show exsIntro (V := ℕ) s p t d
+        = Nat.pair s (Nat.pair 5 (Nat.pair p (Nat.pair t d))) + 1 by simp [exsIntro, pair_nat],
+    dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_wkRule (s d : ℕ) : dSize (wkRule s d) = 1 + sSize s + dSize d := by
+  rw [show wkRule (V := ℕ) s d = Nat.pair s (Nat.pair 6 d) + 1 by simp [wkRule, pair_nat], dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_shiftRule (s d : ℕ) : dSize (shiftRule s d) = 1 + sSize s + dSize d := by
+  rw [show shiftRule (V := ℕ) s d = Nat.pair s (Nat.pair 7 d) + 1 by simp [shiftRule, pair_nat],
+    dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_cutRule (s p d₁ d₂ : ℕ) :
+    dSize (cutRule s p d₁ d₂) = 1 + sSize s + fSize p + dSize d₁ + dSize d₂ := by
+  rw [show cutRule (V := ℕ) s p d₁ d₂
+        = Nat.pair s (Nat.pair 8 (Nat.pair p (Nat.pair d₁ d₂))) + 1 by simp [cutRule, pair_nat],
+    dSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma dSize_axm (s p : ℕ) : dSize (axm s p) = 1 + sSize s + fSize p := by
+  rw [show axm (V := ℕ) s p = Nat.pair s (Nat.pair 9 p) + 1 by simp [axm, pair_nat], dSize]
+  simp [arg, tail, pl, pr]
+
+/-! ### The formula and term equations -/
+
+@[simp] lemma fSize_qqRel (k r v : ℕ) :
+    fSize (qqRel k r v) = 1 + idxLen k + idxLen r + tvSize v := by
+  rw [show qqRel (V := ℕ) k r v = Nat.pair 0 (Nat.pair k (Nat.pair r v)) + 1 by
+      simp [qqRel, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqNRel (k r v : ℕ) :
+    fSize (qqNRel k r v) = 1 + idxLen k + idxLen r + tvSize v := by
+  rw [show qqNRel (V := ℕ) k r v = Nat.pair 1 (Nat.pair k (Nat.pair r v)) + 1 by
+      simp [qqNRel, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqVerum : fSize (qqVerum : ℕ) = 1 := by
+  rw [show (qqVerum : ℕ) = Nat.pair 2 0 + 1 by simp [qqVerum, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqFalsum : fSize (qqFalsum : ℕ) = 1 := by
+  rw [show (qqFalsum : ℕ) = Nat.pair 3 0 + 1 by simp [qqFalsum, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqAnd (p q : ℕ) : fSize (qqAnd p q) = 1 + fSize p + fSize q := by
+  rw [show qqAnd (V := ℕ) p q = Nat.pair 4 (Nat.pair p q) + 1 by simp [qqAnd, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqOr (p q : ℕ) : fSize (qqOr p q) = 1 + fSize p + fSize q := by
+  rw [show qqOr (V := ℕ) p q = Nat.pair 5 (Nat.pair p q) + 1 by simp [qqOr, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqAll (p : ℕ) : fSize (qqAll p) = 1 + fSize p := by
+  rw [show qqAll (V := ℕ) p = Nat.pair 6 p + 1 by simp [qqAll, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma fSize_qqExs (p : ℕ) : fSize (qqExs p) = 1 + fSize p := by
+  rw [show qqExs (V := ℕ) p = Nat.pair 7 p + 1 by simp [qqExs, pair_nat], fSize]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma tSize_qqBvar (z : ℕ) : tSize (qqBvar z) = 1 + idxLen z := by
+  rw [show qqBvar (V := ℕ) z = Nat.pair 0 z + 1 by simp [qqBvar, pair_nat], tSize_succ]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma tSize_qqFvar (x : ℕ) : tSize (qqFvar x) = 1 + idxLen x := by
+  rw [show qqFvar (V := ℕ) x = Nat.pair 1 x + 1 by simp [qqFvar, pair_nat], tSize_succ]
+  simp [arg, tail, pl, pr]
+
+@[simp] lemma tSize_qqFunc (k f v : ℕ) :
+    tSize (qqFunc k f v) = 1 + idxLen k + idxLen f + tvSize v := by
+  rw [show qqFunc (V := ℕ) k f v = Nat.pair 2 (Nat.pair k (Nat.pair f v)) + 1 by
+      simp [qqFunc, pair_nat], tSize_succ]
+  simp [arg, tail, pl, pr]
+
+/-- A term vector is written out with one separator per entry. -/
+@[simp] lemma tvSize_adjoin (x v : ℕ) : tvSize (x ∷ v) = 1 + tSize x + tvSize v := by
+  rw [show (x ∷ v : ℕ) = Nat.pair x v + 1 by simp [adjoin_def, pair_nat], tvSize_succ]
+  simp [arg, tail, pl, pr]
+
+/-- **Every nonzero code has positive size.**  Each rule branch costs at least its own rule
+name (`1 + …`), and the ill-formed catch-all returns the code itself (`m + 1`), so `dSize`
+vanishes only at `0` — which is not a derivation code, every Foundation constructor being a
+successor. -/
+lemma dSize_pos {d : ℕ} (h : 0 < d) : 0 < dSize d := by
+  obtain ⟨m, rfl⟩ : ∃ m, d = m + 1 := ⟨d - 1, by omega⟩
+  rw [dSize]
+  split_ifs <;> omega
+
+
+end LogicalInduction
+
+namespace LogicalInduction
+
+/-! ## Reading a course-of-values list
+
+`Primrec.nat_strong_rec` hands the step function the list `(List.range n).map f`.  Its
+length is `n`, and its `i`-th entry — read with `List.getD`, since `l[i]` cannot be written
+in a module that imports Foundation's binder notation, which registers `)[` as a token — is
+`f i` for every `i < n`. -/
+
+private lemma getD_range_map (f : ℕ → ℕ) {n i : ℕ} (h : i < n) :
+    ((List.range n).map f).getD i 0 = f i := by
+  have hlen : i < ((List.range n).map f).length := by simpa using h
+  rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hlen]
+  simp
+
+/-! ## Primitive-recursion plumbing
+
+Small combinators over `α → ℕ`, so the step functions below can be assembled without
+point-free contortions. -/
+
+section Plumbing
+
+variable {α : Type*} [Primcodable α] {c f g : α → ℕ}
+
+private lemma prim_natPow : Primrec₂ ((· ^ ·) : ℕ → ℕ → ℕ) :=
+  Primrec₂.unpaired'.mp Nat.Primrec.pow
+
+private lemma pAdd (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a + g a :=
+  Primrec₂.comp Primrec.nat_add hf hg
+
+private lemma pMul (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a * g a :=
+  Primrec₂.comp Primrec.nat_mul hf hg
+
+private lemma pSub (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a - g a :=
+  Primrec₂.comp Primrec.nat_sub hf hg
+
+private lemma pDiv (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a / g a :=
+  Primrec₂.comp Primrec.nat_div hf hg
+
+private lemma pMod (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a % g a :=
+  Primrec₂.comp Primrec.nat_mod hf hg
+
+private lemma pPow (hf : Primrec f) (hg : Primrec g) : Primrec fun a => f a ^ g a :=
+  Primrec₂.comp prim_natPow hf hg
+
+private lemma prim_pl : Primrec pl := Primrec.fst.comp Primrec.unpair
+
+private lemma prim_pr : Primrec pr := Primrec.snd.comp Primrec.unpair
+
+private lemma pPl (hf : Primrec f) : Primrec fun a => pl (f a) := prim_pl.comp hf
+
+private lemma pPr (hf : Primrec f) : Primrec fun a => pr (f a) := prim_pr.comp hf
+
+private lemma pIte (k : ℕ) (hc : Primrec c) (hf : Primrec f) (hg : Primrec g) :
+    Primrec fun a => if c a = k then f a else g a :=
+  Primrec.ite (PrimrecRel.comp Primrec.eq hc (Primrec.const k)) hf hg
+
+private lemma pIte₂ (k k' : ℕ) (hc : Primrec c) (hf : Primrec f) (hg : Primrec g) :
+    Primrec fun a => if c a = k ∨ c a = k' then f a else g a :=
+  Primrec.ite (PrimrecPred.or (PrimrecRel.comp Primrec.eq hc (Primrec.const k))
+    (PrimrecRel.comp Primrec.eq hc (Primrec.const k'))) hf hg
+
+private lemma pGetD {ℓ : α → List ℕ} (hℓ : Primrec ℓ) (hf : Primrec f) :
+    Primrec fun a => List.getD (ℓ a) (f a) 0 :=
+  Primrec₂.comp (f := fun (l : List ℕ) (n : ℕ) => List.getD l n 0) (Primrec.list_getD 0) hℓ hf
+
+end Plumbing
+
+/-- `Primrec.nat_strong_rec` produces a `Primrec₂` over a dummy parameter; discharge it.
+Spelled with `f` supplied explicitly, because leaving it to unification makes Lean unfold
+the *goal's* function (`Nat.size` into `Nat.binaryRec`, `tSize` into `tvAux`) instead. -/
+private lemma ofDummy {F : ℕ → ℕ} (h : Primrec₂ fun (_ : ℕ) (n : ℕ) => F n) : Primrec F :=
+  Primrec₂.comp (f := fun (_ : ℕ) (n : ℕ) => F n) h (Primrec.const 0) Primrec.id
+
+/-! ## `Nat.size`
+
+Mathlib has no `Primrec Nat.size`.  The halving recursion `size n = size (n / 2) + 1` is
+course-of-values, so the same recursor that carries the measures carries this too. -/
+
+private lemma size_eq_succ {n : ℕ} (h : n ≠ 0) : Nat.size n = Nat.size (n / 2) + 1 := by
+  conv_lhs => rw [← Nat.bit_testBit_zero_shiftRight_one n]
+  rw [Nat.size_bit (by rw [Nat.bit_testBit_zero_shiftRight_one]; exact h)]
+  simp [Nat.shiftRight_eq_div_pow]
+
+private def gsize (L : List ℕ) : ℕ :=
+  if L.length = 0 then 0 else L.getD (L.length / 2) 0 + 1
+
+private lemma prim_gsize : Primrec gsize := by
+  have hlen : Primrec (fun L : List ℕ => L.length) := Primrec.list_length
+  have h : Primrec fun L : List ℕ =>
+      if L.length = 0 then 0 else L.getD (L.length / 2) 0 + 1 :=
+    pIte 0 hlen (Primrec.const 0)
+      (pAdd (pGetD Primrec.id (pDiv hlen (Primrec.const 2))) (Primrec.const 1))
+  exact h.of_eq fun _ => rfl
+
+private lemma gsize_correct (n : ℕ) : gsize ((List.range n).map Nat.size) = Nat.size n := by
+  rcases Nat.eq_zero_or_pos n with rfl | hn
+  · simp [gsize]
+  · have hlen : ((List.range n).map Nat.size).length = n := by simp
+    rw [gsize, hlen, if_neg (by omega), getD_range_map Nat.size (by omega)]
+    exact (size_eq_succ (by omega)).symm
+
+private lemma prim_natSize : Primrec Nat.size := by
+  have h : Primrec₂ fun (_ : ℕ) (n : ℕ) => Nat.size n :=
+    Primrec.nat_strong_rec (fun _ n => Nat.size n)
+      (g := fun (_ : ℕ) (L : List ℕ) => some (gsize L))
+      (Primrec.option_some.comp (prim_gsize.comp Primrec.snd))
+      (fun _ n => congrArg some (gsize_correct n))
+  exact ofDummy h
+
+private lemma pIdxLen {α : Type*} [Primcodable α] {f : α → ℕ} (hf : Primrec f) :
+    Primrec fun a => idxLen (f a) :=
+  pAdd (prim_natSize.comp hf) (Primrec.const 1)
+
+/-! ## Terms and term vectors
+
+`tvAux` is one recursion on two modes.  Packing the mode into the argument as `2 * n + mode`
+turns every recursive call into a strict decrease of the packed value, which is what
+`Primrec.nat_strong_rec` needs. -/
+
+private def tvPacked (z : ℕ) : ℕ := tvAux (z % 2) (z / 2)
+
+private lemma tvAux_zero (mode : ℕ) : tvAux mode 0 = 0 := by rw [tvAux]
+
+private lemma tvPacked_two_mul (n : ℕ) : tvPacked (2 * n) = tSize n := by
+  have h1 : 2 * n % 2 = 0 := by omega
+  have h2 : 2 * n / 2 = n := by omega
+  rw [tvPacked, h1, h2, tvAux_zero_eq]
+
+private lemma tvPacked_two_mul_succ (n : ℕ) : tvPacked (2 * n + 1) = tvSize n := by
+  have h1 : (2 * n + 1) % 2 = 1 := by omega
+  have h2 : (2 * n + 1) / 2 = n := by omega
+  rw [tvPacked, h1, h2, tvAux_one_eq]
+
+private def tvBody (m mode : ℕ) (L : List ℕ) : ℕ :=
+  if mode = 0 then
+    (if arg 0 m = 0 then 1 + idxLen (tail 1 m)
+     else if arg 0 m = 1 then 1 + idxLen (tail 1 m)
+     else if arg 0 m = 2 then
+       1 + idxLen (arg 1 m) + idxLen (arg 2 m) + L.getD (2 * tail 3 m + 1) 0
+     else m + 1)
+  else 1 + L.getD (2 * arg 0 m) 0 + L.getD (2 * tail 1 m + 1) 0
+
+private def gtv (L : List ℕ) : ℕ :=
+  if L.length / 2 = 0 then 0 else tvBody (L.length / 2 - 1) (L.length % 2) L
+
+private lemma prim_tvBody : Primrec fun p : ℕ × ℕ × List ℕ => tvBody p.1 p.2.1 p.2.2 := by
+  have hm : Primrec fun p : ℕ × ℕ × List ℕ => p.1 := Primrec.fst
+  have hmode : Primrec fun p : ℕ × ℕ × List ℕ => p.2.1 := Primrec.fst.comp Primrec.snd
+  have hL : Primrec fun p : ℕ × ℕ × List ℕ => p.2.2 := Primrec.snd.comp Primrec.snd
+  have h : Primrec fun p : ℕ × ℕ × List ℕ =>
+      if p.2.1 = 0 then
+        (if pl p.1 = 0 then 1 + idxLen (pr p.1)
+         else if pl p.1 = 1 then 1 + idxLen (pr p.1)
+         else if pl p.1 = 2 then
+           1 + idxLen (pl (pr p.1)) + idxLen (pl (pr (pr p.1)))
+             + p.2.2.getD (2 * pr (pr (pr p.1)) + 1) 0
+         else p.1 + 1)
+      else 1 + p.2.2.getD (2 * pl p.1) 0 + p.2.2.getD (2 * pr p.1 + 1) 0 := by
+    refine pIte 0 hmode ?_ ?_
+    · refine pIte 0 (pPl hm) (pAdd (Primrec.const 1) (pIdxLen (pPr hm))) ?_
+      refine pIte 1 (pPl hm) (pAdd (Primrec.const 1) (pIdxLen (pPr hm))) ?_
+      refine pIte 2 (pPl hm) ?_ (pAdd hm (Primrec.const 1))
+      exact pAdd (pAdd (pAdd (Primrec.const 1) (pIdxLen (pPl (pPr hm))))
+          (pIdxLen (pPl (pPr (pPr hm)))))
+        (pGetD hL (pAdd (pMul (Primrec.const 2) (pPr (pPr (pPr hm)))) (Primrec.const 1)))
+    · exact pAdd (pAdd (Primrec.const 1) (pGetD hL (pMul (Primrec.const 2) (pPl hm))))
+        (pGetD hL (pAdd (pMul (Primrec.const 2) (pPr hm)) (Primrec.const 1)))
+  exact h.of_eq fun _ => rfl
+
+private lemma prim_gtv : Primrec gtv := by
+  have hlen : Primrec (fun L : List ℕ => L.length) := Primrec.list_length
+  have hn : Primrec (fun L : List ℕ => L.length / 2) := pDiv hlen (Primrec.const 2)
+  have hmode : Primrec (fun L : List ℕ => L.length % 2) := pMod hlen (Primrec.const 2)
+  have hm : Primrec (fun L : List ℕ => L.length / 2 - 1) := pSub hn (Primrec.const 1)
+  have h : Primrec fun L : List ℕ =>
+      if L.length / 2 = 0 then 0 else tvBody (L.length / 2 - 1) (L.length % 2) L :=
+    pIte 0 hn (Primrec.const 0)
+      (prim_tvBody.comp (Primrec.pair hm (Primrec.pair hmode Primrec.id)))
+  exact h.of_eq fun _ => rfl
+
+private lemma gtv_correct (z : ℕ) : gtv ((List.range z).map tvPacked) = tvPacked z := by
+  have hlen : ((List.range z).map tvPacked).length = z := by simp
+  have hget : ∀ i, i < z → ((List.range z).map tvPacked).getD i 0 = tvPacked i :=
+    fun i hi => getD_range_map tvPacked hi
+  rw [gtv, hlen]
+  by_cases hz : z / 2 = 0
+  · rw [if_pos hz, tvPacked, hz, tvAux_zero]
+  · rw [if_neg hz]
+    obtain ⟨m, hm⟩ : ∃ m, z / 2 = m + 1 := ⟨z / 2 - 1, by omega⟩
+    have hz2 : z = 2 * (m + 1) + z % 2 := by omega
+    have hmod : z % 2 = 0 ∨ z % 2 = 1 := by omega
+    rw [hm, Nat.add_sub_cancel, tvBody, tvPacked, hm]
+    rcases hmod with h | h
+    · rw [h, if_pos rfl, tvAux_zero_eq, tSize_succ,
+        hget (2 * tail 3 m + 1) (by have := tail_le 3 m; omega), tvPacked_two_mul_succ]
+    · rw [h, if_neg one_ne_zero, tvAux_succ_of_ne one_ne_zero,
+        hget (2 * arg 0 m) (by have := arg_le 0 m; omega),
+        hget (2 * tail 1 m + 1) (by have := tail_le 1 m; omega),
+        tvPacked_two_mul, tvPacked_two_mul_succ]
+
+private lemma prim_tvPacked : Primrec tvPacked := by
+  have h : Primrec₂ fun (_ : ℕ) (z : ℕ) => tvPacked z :=
+    Primrec.nat_strong_rec (fun _ z => tvPacked z)
+      (g := fun (_ : ℕ) (L : List ℕ) => some (gtv L))
+      (Primrec.option_some.comp (prim_gtv.comp Primrec.snd))
+      (fun _ z => congrArg some (gtv_correct z))
+  exact ofDummy h
+
+/-- The symbol count of a term code is primitive recursive. -/
+lemma tSize_primrec : Primrec tSize :=
+  (prim_tvPacked.comp (pMul (Primrec.const 2) Primrec.id)).of_eq tvPacked_two_mul
+
+/-- The symbol count of a term-vector code is primitive recursive. -/
+lemma tvSize_primrec : Primrec tvSize :=
+  (prim_tvPacked.comp (pAdd (pMul (Primrec.const 2) Primrec.id) (Primrec.const 1))).of_eq
+    tvPacked_two_mul_succ
+
+/-! ## Formulas -/
+
+private def fBody (m : ℕ) (L : List ℕ) : ℕ :=
+  if arg 0 m = 0 ∨ arg 0 m = 1 then
+    1 + idxLen (arg 1 m) + idxLen (arg 2 m) + tvSize (tail 3 m)
+  else if arg 0 m = 2 ∨ arg 0 m = 3 then
+    (if tail 1 m = 0 then 1 else m + 1)
+  else if arg 0 m = 4 ∨ arg 0 m = 5 then
+    1 + L.getD (arg 1 m) 0 + L.getD (tail 2 m) 0
+  else if arg 0 m = 6 ∨ arg 0 m = 7 then
+    1 + L.getD (tail 1 m) 0
+  else m + 1
+
+private def gf (L : List ℕ) : ℕ :=
+  if L.length = 0 then 0 else fBody (L.length - 1) L
+
+private lemma prim_fBody : Primrec fun p : ℕ × List ℕ => fBody p.1 p.2 := by
+  have hm : Primrec fun p : ℕ × List ℕ => p.1 := Primrec.fst
+  have hL : Primrec fun p : ℕ × List ℕ => p.2 := Primrec.snd
+  have h : Primrec fun p : ℕ × List ℕ =>
+      if pl p.1 = 0 ∨ pl p.1 = 1 then
+        1 + idxLen (pl (pr p.1)) + idxLen (pl (pr (pr p.1))) + tvSize (pr (pr (pr p.1)))
+      else if pl p.1 = 2 ∨ pl p.1 = 3 then (if pr p.1 = 0 then 1 else p.1 + 1)
+      else if pl p.1 = 4 ∨ pl p.1 = 5 then
+        1 + p.2.getD (pl (pr p.1)) 0 + p.2.getD (pr (pr p.1)) 0
+      else if pl p.1 = 6 ∨ pl p.1 = 7 then 1 + p.2.getD (pr p.1) 0
+      else p.1 + 1 := by
+    refine pIte₂ 0 1 (pPl hm) ?_ ?_
+    · exact pAdd (pAdd (pAdd (Primrec.const 1) (pIdxLen (pPl (pPr hm))))
+        (pIdxLen (pPl (pPr (pPr hm))))) (tvSize_primrec.comp (pPr (pPr (pPr hm))))
+    refine pIte₂ 2 3 (pPl hm) (pIte 0 (pPr hm) (Primrec.const 1) (pAdd hm (Primrec.const 1))) ?_
+    refine pIte₂ 4 5 (pPl hm) ?_ ?_
+    · exact pAdd (pAdd (Primrec.const 1) (pGetD hL (pPl (pPr hm)))) (pGetD hL (pPr (pPr hm)))
+    refine pIte₂ 6 7 (pPl hm) ?_ (pAdd hm (Primrec.const 1))
+    exact pAdd (Primrec.const 1) (pGetD hL (pPr hm))
+  exact h.of_eq fun _ => rfl
+
+private lemma prim_gf : Primrec gf := by
+  have hlen : Primrec (fun L : List ℕ => L.length) := Primrec.list_length
+  have h : Primrec fun L : List ℕ => if L.length = 0 then 0 else fBody (L.length - 1) L :=
+    pIte 0 hlen (Primrec.const 0)
+      (prim_fBody.comp (Primrec.pair (pSub hlen (Primrec.const 1)) Primrec.id))
+  exact h.of_eq fun _ => rfl
+
+private lemma gf_correct (n : ℕ) : gf ((List.range n).map fSize) = fSize n := by
+  match n with
+  | 0 => simp [gf, fSize]
+  | (m + 1) =>
+    have hlen : ((List.range (m + 1)).map fSize).length = m + 1 := by simp
+    have hget : ∀ i, i < m + 1 → ((List.range (m + 1)).map fSize).getD i 0 = fSize i :=
+      fun i hi => getD_range_map fSize hi
+    rw [gf, hlen, if_neg (Nat.succ_ne_zero m), Nat.add_sub_cancel, fBody, fSize,
+      hget (arg 1 m) (arg_lt_succ 1 m), hget (tail 2 m) (tail_lt_succ 2 m),
+      hget (tail 1 m) (tail_lt_succ 1 m)]
+
+/-- The symbol count of a formula code is primitive recursive. -/
+lemma fSize_primrec : Primrec fSize := by
+  have h : Primrec₂ fun (_ : ℕ) (n : ℕ) => fSize n :=
+    Primrec.nat_strong_rec (fun _ n => fSize n)
+      (g := fun (_ : ℕ) (L : List ℕ) => some (gf L))
+      (Primrec.option_some.comp (prim_gf.comp Primrec.snd))
+      (fun _ n => congrArg some (gf_correct n))
+  exact ofDummy h
+
+/-! ## Sequents
+
+`sSize` is not recursive: it is a bounded sum over the already-computable `fSize`.  A
+`List.foldl` over `List.range` is the shape `Primrec.list_foldl` wants, and it is the shape
+`Finset.sum_range_succ` matches, since `List.range (t + 1) = List.range t ++ [t]`. -/
+
+private lemma sSize_eq_foldl (s : ℕ) :
+    sSize s =
+      (List.range s).foldl (fun acc i => acc + if s / 2 ^ i % 2 = 1 then fSize i else 0) 0 := by
+  suffices h : ∀ t : ℕ, (∑ i ∈ Finset.range t, if s.testBit i then fSize i else 0) =
+      (List.range t).foldl (fun acc i => acc + if s / 2 ^ i % 2 = 1 then fSize i else 0) 0 by
+    rw [sSize]; exact h s
+  intro t
+  induction t with
+  | zero => simp
+  | succ t ih =>
+      rw [Finset.sum_range_succ, ih, List.range_succ, List.foldl_append]
+      simp [Nat.testBit_eq_decide_div_mod_eq]
+
+/-- The symbol count of a sequent code is primitive recursive. -/
+lemma sSize_primrec : Primrec sSize := by
+  have hstep : Primrec fun q : ℕ × ℕ × ℕ =>
+      q.2.1 + if q.1 / 2 ^ q.2.2 % 2 = 1 then fSize q.2.2 else 0 := by
+    have hs : Primrec fun q : ℕ × ℕ × ℕ => q.1 := Primrec.fst
+    have hacc : Primrec fun q : ℕ × ℕ × ℕ => q.2.1 := Primrec.fst.comp Primrec.snd
+    have hi : Primrec fun q : ℕ × ℕ × ℕ => q.2.2 := Primrec.snd.comp Primrec.snd
+    exact pAdd hacc
+      (pIte 1 (pMod (pDiv hs (pPow (Primrec.const 2) hi)) (Primrec.const 2))
+        (fSize_primrec.comp hi) (Primrec.const 0))
+  have h : Primrec fun s : ℕ =>
+      (List.range s).foldl (fun acc i => acc + if s / 2 ^ i % 2 = 1 then fSize i else 0) 0 :=
+    Primrec.list_foldl (h := fun (s : ℕ) (q : ℕ × ℕ) =>
+        q.1 + if s / 2 ^ q.2 % 2 = 1 then fSize q.2 else 0)
+      Primrec.list_range (Primrec.const 0) hstep
+  exact h.of_eq fun s => (sSize_eq_foldl s).symm
+
+/-! ## Derivations -/
+
+private def dBody (m : ℕ) (L : List ℕ) : ℕ :=
+  if arg 1 m = 0 then 1 + sSize (arg 0 m) + fSize (tail 2 m)
+  else if arg 1 m = 1 then
+    (if tail 2 m = 0 then 1 + sSize (arg 0 m) else m + 1)
+  else if arg 1 m = 2 then
+    1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m)
+      + L.getD (arg 4 m) 0 + L.getD (tail 5 m) 0
+  else if arg 1 m = 3 then
+    1 + sSize (arg 0 m) + fSize (arg 2 m) + fSize (arg 3 m) + L.getD (tail 4 m) 0
+  else if arg 1 m = 4 then
+    1 + sSize (arg 0 m) + fSize (arg 2 m) + L.getD (tail 3 m) 0
+  else if arg 1 m = 5 then
+    1 + sSize (arg 0 m) + fSize (arg 2 m) + tSize (arg 3 m) + L.getD (tail 4 m) 0
+  else if arg 1 m = 6 ∨ arg 1 m = 7 then
+    1 + sSize (arg 0 m) + L.getD (tail 2 m) 0
+  else if arg 1 m = 8 then
+    1 + sSize (arg 0 m) + fSize (arg 2 m) + L.getD (arg 3 m) 0 + L.getD (tail 4 m) 0
+  else if arg 1 m = 9 then 1 + sSize (arg 0 m) + fSize (tail 2 m)
+  else m + 1
+
+private def gd (L : List ℕ) : ℕ :=
+  if L.length = 0 then 0 else dBody (L.length - 1) L
+
+private lemma prim_dBody : Primrec fun p : ℕ × List ℕ => dBody p.1 p.2 := by
+  have hm : Primrec fun p : ℕ × List ℕ => p.1 := Primrec.fst
+  have hL : Primrec fun p : ℕ × List ℕ => p.2 := Primrec.snd
+  have hs : Primrec fun p : ℕ × List ℕ => sSize (pl p.1) := sSize_primrec.comp (pPl hm)
+  have htag : Primrec fun p : ℕ × List ℕ => pl (pr p.1) := pPl (pPr hm)
+  have h : Primrec fun p : ℕ × List ℕ =>
+      if pl (pr p.1) = 0 then 1 + sSize (pl p.1) + fSize (pr (pr p.1))
+      else if pl (pr p.1) = 1 then
+        (if pr (pr p.1) = 0 then 1 + sSize (pl p.1) else p.1 + 1)
+      else if pl (pr p.1) = 2 then
+        1 + sSize (pl p.1) + fSize (pl (pr (pr p.1))) + fSize (pl (pr (pr (pr p.1))))
+          + p.2.getD (pl (pr (pr (pr (pr p.1))))) 0 + p.2.getD (pr (pr (pr (pr (pr p.1))))) 0
+      else if pl (pr p.1) = 3 then
+        1 + sSize (pl p.1) + fSize (pl (pr (pr p.1))) + fSize (pl (pr (pr (pr p.1))))
+          + p.2.getD (pr (pr (pr (pr p.1)))) 0
+      else if pl (pr p.1) = 4 then
+        1 + sSize (pl p.1) + fSize (pl (pr (pr p.1))) + p.2.getD (pr (pr (pr p.1))) 0
+      else if pl (pr p.1) = 5 then
+        1 + sSize (pl p.1) + fSize (pl (pr (pr p.1))) + tSize (pl (pr (pr (pr p.1))))
+          + p.2.getD (pr (pr (pr (pr p.1)))) 0
+      else if pl (pr p.1) = 6 ∨ pl (pr p.1) = 7 then
+        1 + sSize (pl p.1) + p.2.getD (pr (pr p.1)) 0
+      else if pl (pr p.1) = 8 then
+        1 + sSize (pl p.1) + fSize (pl (pr (pr p.1))) + p.2.getD (pl (pr (pr (pr p.1)))) 0
+          + p.2.getD (pr (pr (pr (pr p.1)))) 0
+      else if pl (pr p.1) = 9 then 1 + sSize (pl p.1) + fSize (pr (pr p.1))
+      else p.1 + 1 := by
+    refine pIte 0 htag
+      (pAdd (pAdd (Primrec.const 1) hs) (fSize_primrec.comp (pPr (pPr hm)))) ?_
+    refine pIte 1 htag
+      (pIte 0 (pPr (pPr hm)) (pAdd (Primrec.const 1) hs) (pAdd hm (Primrec.const 1))) ?_
+    refine pIte 2 htag ?_ ?_
+    · exact pAdd (pAdd (pAdd (pAdd (pAdd (Primrec.const 1) hs)
+        (fSize_primrec.comp (pPl (pPr (pPr hm)))))
+        (fSize_primrec.comp (pPl (pPr (pPr (pPr hm))))))
+        (pGetD hL (pPl (pPr (pPr (pPr (pPr hm))))))) (pGetD hL (pPr (pPr (pPr (pPr (pPr hm))))))
+    refine pIte 3 htag ?_ ?_
+    · exact pAdd (pAdd (pAdd (pAdd (Primrec.const 1) hs)
+        (fSize_primrec.comp (pPl (pPr (pPr hm)))))
+        (fSize_primrec.comp (pPl (pPr (pPr (pPr hm))))))
+        (pGetD hL (pPr (pPr (pPr (pPr hm)))))
+    refine pIte 4 htag ?_ ?_
+    · exact pAdd (pAdd (pAdd (Primrec.const 1) hs)
+        (fSize_primrec.comp (pPl (pPr (pPr hm))))) (pGetD hL (pPr (pPr (pPr hm))))
+    refine pIte 5 htag ?_ ?_
+    · exact pAdd (pAdd (pAdd (pAdd (Primrec.const 1) hs)
+        (fSize_primrec.comp (pPl (pPr (pPr hm)))))
+        (tSize_primrec.comp (pPl (pPr (pPr (pPr hm))))))
+        (pGetD hL (pPr (pPr (pPr (pPr hm)))))
+    refine pIte₂ 6 7 htag
+      (pAdd (pAdd (Primrec.const 1) hs) (pGetD hL (pPr (pPr hm)))) ?_
+    refine pIte 8 htag ?_ ?_
+    · exact pAdd (pAdd (pAdd (pAdd (Primrec.const 1) hs)
+        (fSize_primrec.comp (pPl (pPr (pPr hm)))))
+        (pGetD hL (pPl (pPr (pPr (pPr hm)))))) (pGetD hL (pPr (pPr (pPr (pPr hm)))))
+    exact pIte 9 htag
+      (pAdd (pAdd (Primrec.const 1) hs) (fSize_primrec.comp (pPr (pPr hm))))
+      (pAdd hm (Primrec.const 1))
+  exact h.of_eq fun _ => rfl
+
+-- `dBody` is a ten-branch case split; the defeq check against `gd` is large but finite.
+set_option maxHeartbeats 1000000 in
+private lemma prim_gd : Primrec gd := by
+  have hlen : Primrec (fun L : List ℕ => L.length) := Primrec.list_length
+  have h : Primrec fun L : List ℕ => if L.length = 0 then 0 else dBody (L.length - 1) L :=
+    pIte 0 hlen (Primrec.const 0)
+      (prim_dBody.comp (Primrec.pair (pSub hlen (Primrec.const 1)) Primrec.id))
+  exact h.of_eq fun _ => rfl
+
+private lemma gd_correct (n : ℕ) : gd ((List.range n).map dSize) = dSize n := by
+  match n with
+  | 0 => simp [gd, dSize]
+  | (m + 1) =>
+    have hlen : ((List.range (m + 1)).map dSize).length = m + 1 := by simp
+    have hget : ∀ i, i < m + 1 → ((List.range (m + 1)).map dSize).getD i 0 = dSize i :=
+      fun i hi => getD_range_map dSize hi
+    rw [gd, hlen, if_neg (Nat.succ_ne_zero m), Nat.add_sub_cancel, dBody, dSize,
+      hget (arg 4 m) (arg_lt_succ 4 m), hget (tail 5 m) (tail_lt_succ 5 m),
+      hget (tail 4 m) (tail_lt_succ 4 m), hget (tail 3 m) (tail_lt_succ 3 m),
+      hget (tail 2 m) (tail_lt_succ 2 m), hget (arg 3 m) (arg_lt_succ 3 m)]
+
+/-- The symbol count of a derivation code is primitive recursive: the §4.10 bounded search
+is a genuine algorithm. -/
+lemma dSize_primrec : Primrec dSize := by
+  have h : Primrec₂ fun (_ : ℕ) (n : ℕ) => dSize n :=
+    Primrec.nat_strong_rec (fun _ n => dSize n)
+      (g := fun (_ : ℕ) (L : List ℕ) => some (gd L))
+      (Primrec.option_some.comp (prim_gd.comp Primrec.snd))
+      (fun _ n => congrArg some (gd_correct n))
+  exact ofDummy h
+
+/-! ## The bounding function
+
+`G` recurses structurally, but its step is written with the `private` squaring `P`, whose
+name is not available outside `DerivationSize.lean`.  Privacy restricts name resolution,
+not unfolding, so the six-fold iterate is still *definitionally* the explicit tower below
+and `G_succ_eq` holds by `rfl`. -/
+
+private def Gstep (x : ℕ) : ℕ :=
+  ((((((2 ^ (x + 1) + 9 + 1) ^ 2 + 1) ^ 2 + 1) ^ 2 + 1) ^ 2 + 1) ^ 2 + 1) ^ 2
+
+private lemma G_succ_eq (N : ℕ) : G (N + 1) = Gstep (G N) := rfl
+
+/-- The bounding function of the converse bound `d ≤ G (dSize d)` is primitive recursive,
+which is what makes the bounded search `d ≤ G k` decidable in both polarities. -/
+lemma G_primrec : Primrec G := by
+  have hstep : Primrec Gstep := by
+    have e0 : Primrec fun x : ℕ => 2 ^ (x + 1) + 9 + 1 :=
+      pAdd (pAdd (pPow (Primrec.const 2) (pAdd Primrec.id (Primrec.const 1)))
+        (Primrec.const 9)) (Primrec.const 1)
+    have e1 := pPow e0 (Primrec.const 2)
+    have e2 := pPow (pAdd e1 (Primrec.const 1)) (Primrec.const 2)
+    have e3 := pPow (pAdd e2 (Primrec.const 1)) (Primrec.const 2)
+    have e4 := pPow (pAdd e3 (Primrec.const 1)) (Primrec.const 2)
+    have e5 := pPow (pAdd e4 (Primrec.const 1)) (Primrec.const 2)
+    have e6 := pPow (pAdd e5 (Primrec.const 1)) (Primrec.const 2)
+    exact e6.of_eq fun _ => rfl
+  have h := Primrec.nat_rec₁ (f := fun (_ : ℕ) (x : ℕ) => Gstep x) 1
+    (hstep.comp Primrec.snd)
+  refine h.of_eq fun N => ?_
+  induction N with
+  | zero => rfl
+  | succ N ih => rw [G_succ_eq, ← ih]
+
+/-! ## Computability
+
+The `Computable` forms are what the §4.10 decider consumes. -/
+
+/-- **`G` is computable.** -/
+lemma G_computable : Computable G := G_primrec.to_comp
+
+/-- **The symbol count of a term code is computable.** -/
+lemma tSize_computable : Computable tSize := tSize_primrec.to_comp
+
+/-- **The symbol count of a term-vector code is computable.** -/
+lemma tvSize_computable : Computable tvSize := tvSize_primrec.to_comp
+
+/-- **The symbol count of a formula code is computable.** -/
+lemma fSize_computable : Computable fSize := fSize_primrec.to_comp
+
+/-- **The symbol count of a sequent code is computable.** -/
+lemma sSize_computable : Computable sSize := sSize_primrec.to_comp
+
+/-- **The symbol count of a derivation code is computable.** -/
+lemma dSize_computable : Computable dSize := dSize_primrec.to_comp
+
+/-! ## Bounded search over a computable predicate
+
+The shape §4.10 needs: a bounded existential over a computable binary predicate, with a
+computable bound, is computable.  Mathlib has no `Computable.list_map` or
+`Computable.list_foldr` — only the `Primrec` versions — so the scan is written as an
+explicit `Nat.rec` over the bound and fed to `Computable.nat_rec`. -/
+
+section BoundedSearch
+
+variable {p : ℕ → ℕ → Prop} [∀ a d : ℕ, Decidable (p a d)]
+
+/-- Scanning `d = 0, …, n - 1` for a witness returns `1` exactly when one exists below `n`.
+Stated over the raw `Nat.rec` that `Computable.nat_rec` produces. -/
+private lemma scan_eq (a : ℕ) : ∀ n : ℕ,
+    Nat.rec (motive := fun _ => ℕ) 0 (fun y IH => if p a y then 1 else IH) n =
+      if ∃ d < n, p a d then 1 else 0 := by
+  intro n
+  induction n with
+  | zero => simp
+  | succ n ih =>
+      show (if p a n then 1 else
+        Nat.rec (motive := fun _ => ℕ) 0 (fun y IH => if p a y then 1 else IH) n) = _
+      rw [ih]
+      by_cases hn : p a n
+      · rw [if_pos hn, if_pos ⟨n, Nat.lt_succ_self n, hn⟩]
+      · have hnex : (∃ d < n, p a d) ↔ ∃ d < n + 1, p a d := by
+          constructor
+          · rintro ⟨d, hd, hpd⟩; exact ⟨d, by omega, hpd⟩
+          · rintro ⟨d, hd, hpd⟩
+            rcases Nat.lt_succ_iff_lt_or_eq.mp hd with h | rfl
+            · exact ⟨d, h, hpd⟩
+            · exact absurd hpd hn
+        rw [if_neg hn]
+        exact if_congr hnex rfl rfl
+
+set_option maxHeartbeats 1000000 in
+/-- **A bounded existential over a computable predicate is computable.**  With a computable
+bound `b`, deciding "some `d ≤ b a` satisfies `p a d`" is a genuine algorithm. -/
+lemma computable_boundedSearchValue
+    (hp : Computable fun x : ℕ × ℕ => decide (p x.1 x.2))
+    {b : ℕ → ℕ} (hb : Computable b) :
+    Computable fun a => if ∃ d ≤ b a, p a d then 1 else 0 := by
+  have hstep : Computable₂ fun (a : ℕ) (r : ℕ × ℕ) => if p a r.1 then 1 else r.2 := by
+    have hfst : Computable fun z : ℕ × ℕ × ℕ => z.1 := Computable.fst
+    have hy : Computable fun z : ℕ × ℕ × ℕ => z.2.1 := Computable.fst.comp Computable.snd
+    have hIH : Computable fun z : ℕ × ℕ × ℕ => z.2.2 := Computable.snd.comp Computable.snd
+    have hpair : Computable fun z : ℕ × ℕ × ℕ => ((z.1, z.2.1) : ℕ × ℕ) :=
+      Computable.pair hfst hy
+    have hc : Computable fun z : ℕ × ℕ × ℕ => decide (p z.1 z.2.1) := hp.comp hpair
+    have hone : Computable fun _ : ℕ × ℕ × ℕ => (1 : ℕ) := Computable.const 1
+    have hcond : Computable fun z : ℕ × ℕ × ℕ =>
+        cond (decide (p z.1 z.2.1)) 1 z.2.2 := Computable.cond hc hone hIH
+    exact hcond.of_eq fun _ => Bool.cond_decide _ _ _
+  have hzero : Computable fun _ : ℕ => (0 : ℕ) := Computable.const 0
+  have hsucc : Computable fun a : ℕ => Nat.succ (b a) := Computable.succ.comp hb
+  have hscan := Computable.nat_rec (σ := ℕ) hsucc hzero hstep
+  refine hscan.of_eq fun a => ?_
+  rw [scan_eq a (b a + 1)]
+  refine if_congr ?_ rfl rfl
+  constructor
+  · rintro ⟨d, hd, hpd⟩; exact ⟨d, by omega, hpd⟩
+  · rintro ⟨d, hd, hpd⟩; exact ⟨d, by omega, hpd⟩
+
+end BoundedSearch
+end LogicalInduction

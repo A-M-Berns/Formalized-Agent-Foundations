@@ -1,6 +1,5 @@
-import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.Coherence
-import LogicalInduction.Properties.Hysteresis
 
 /-!
 # §4.6 Non-Dogmatism
@@ -44,7 +43,8 @@ hence single-occurrence, and in product form is the arming chain used here; the 
 certifies it by dynamic programming (`app:dynamicprogramming`), a sharing the `dd:dsl` tree
 does not have.
 
-The arming chain `Π_{i<n}(1 − sig i)` lives in `Properties/Hysteresis.lean`; here it is padded
+The arming chain `Π_{i<n}(1 − sig i)` lives in `Properties/Support/Exploitation.lean`; here it
+is padded
 with degenerate (`δ = 0`) indicators before each rung's start day, so every rung's chain has
 the same serialization width — the shape the doubly-indexed emission needs.
 

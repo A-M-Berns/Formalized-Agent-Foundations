@@ -6,7 +6,7 @@ import Complexitylib.Classes.P
 
 `Framework/Machine/DigitBits.lean` fixes the bit rendering of a base-four digit run
 (`digitsToBits`, three bits per digit, most significant bit of the digit first) and
-`Framework/DigitArith.lean` fixes the value it denotes (`digitVal`, little-endian).
+`Framework/Emission/DigitArith.lean` fixes the value it denotes (`digitVal`, little-endian).
 `IsDigitWord` and `wordVal` are this file's two predicates over that representation, and the
 file is the arithmetic on it: addition, truncated subtraction, predecessor, comparison,
 integer square root with remainder, and `Nat.unpair` — each as a member of `Complexity.FP`
@@ -36,7 +36,7 @@ malformed words too.
 ## Where it is used
 
 `sqrtRemW_mem_FP` and `unpairW_spec` are the file's two paper-facing results
-(`app:ifp`); their sole consumer is `Construction/Witnesses/FiberTestFP.lean`. Everything
+(`app:ifp`); their sole consumer is `Construction/Freeze/FiberTest.lean`. Everything
 else is infrastructure reached through them. Nothing else here is a paper claim, so the
 remaining declarations are `lemma`s and `def`s carrying no `Paper node` line.
 -/
@@ -290,7 +290,7 @@ private lemma addStep_addCfg {c : ℕ} (hc : c ≤ 1) (out as bs : List ℕ)
 
 /-- **The addition loop, run to completion.**
 
-Proof kind: `P` proved.  Provenance: (a) `addStep_addCfg`, `TokenFold.digitVal_append`. -/
+Proof kind: `P` proved.  Provenance: (a) `addStep_addCfg`, `digitVal_append`. -/
 private lemma addStep_iterate : ∀ (n c : ℕ) (out as bs : List ℕ), c ≤ 1 →
     (∀ d ∈ as, d < 4) → (∀ d ∈ bs, d < 4) → as.length ≤ n → bs.length ≤ n →
     ∃ res : List ℕ, (∀ d ∈ res, d < 4) ∧
@@ -1160,10 +1160,10 @@ def sqrtRemW (z : List Bool) : List Bool := pair (aCar (sqCore z)) (aOut (sqCore
 constants … can be hard-coded into `F`". As printed, `thm:ifp` is false, and the corrected
 statement this development proves carries **no** condition on the syntax of the moved
 sentences: both halves of the `Recognizable` condition — the compatibility hypothesis of the
-restricted form (`Construction/Witnesses/CanonicalCodes.lean`) — stand for `Complexity.FP`
+restricted form (`Construction/Freeze/CanonicalCodes.lean`) — stand for `Complexity.FP`
 devices, and this is one of the two the development builds instead of assuming
 (`LogicalInduction/README.md`, *What differs from the paper*). The sole consumer is
-`Construction/Witnesses/FiberTestFP.lean`.
+`Construction/Freeze/FiberTest.lean`.
 
 Proof kind: `C` composition.  Provenance: (b) `Complexity.Cobham.iterate_mem_FP`,
 (a) `sqStep_mem_FP`, `SqBnd.iterate`.
@@ -1483,10 +1483,10 @@ square-root loop, on digit words and with their values specified.
 
 This is the second of the two `Complexity.FP` devices that let the corrected `thm:ifp` drop
 the `Recognizable` condition of the restricted form
-(`Construction/Witnesses/CanonicalCodes.lean`; the paper states no such condition) — see
+(`Construction/Freeze/CanonicalCodes.lean`; the paper states no such condition) — see
 `sqrtRemW_mem_FP` above and
 `LogicalInduction/README.md`, *What differs from the paper*. Its sole consumer is
-`Construction/Witnesses/FiberTestFP.lean`.
+`Construction/Freeze/FiberTest.lean`.
 
 Proof kind: `C` composition.  Provenance: (a) `sqrtRemW_spec`, `subW_spec`,
 (b) `Nat.unpair`.

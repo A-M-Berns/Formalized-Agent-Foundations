@@ -64,25 +64,6 @@ lean_lib APITests where
 lean_lib AxiomAudit where
   srcDir := "."
 
--- The executable machine side: the description bridge, the clocked simulator, and the
--- conditioning transduction, rooted at `LogicalInduction.Construction.Machine`.
--- It builds a SUBSET of what `lean_lib LogicalInduction` covers, not a superset: every
--- module this root imports is already reachable from `LogicalInduction.lean` (via
--- `Construction.lean` → `MachineTraderEnumeration` → `Machine.ClockedSim` →
--- `Machine.DescExec`, the enumeration's soundness half). What the target adds is exactly
--- the root module `LogicalInduction.Construction.Machine` itself, which nothing else
--- imports — so it is the directory-granularity build unit for iterating on
--- `Construction/Machine/`, and a `lake build MachineExec` green tells you nothing that
--- `lake build LogicalInduction` green does not.
--- `DescExec` is the only module in this repository that names a `Complexity.*`
--- declaration outside the criterion itself; its import surface is
--- `…UTM.Internal.Interp`, a 5-file / ~2.2k-line closure of the pinned fork, not the
--- whole library.
-@[default_target]
-lean_lib MachineExec where
-  srcDir := "."
-  roots := #[`LogicalInduction.Construction.Machine]
-
 -- Scratch verification of the Mathlib + Foundation substrate (not part of the
 -- formalization proper; see Scratchpad.lean). Excluded from the default target.
 lean_lib Scratchpad where
@@ -140,11 +121,10 @@ lean_lib Scratchpad where
 -- rebase carries forward. Vendoring would re-pay that port inside FAF on every toolchain
 -- bump and degrade the diff-against-upstream story each time.
 --
--- FAF's own import surface is far narrower than the fork. Since the machine reading of
--- `def:ec` became the paper-facing class, `Complexity.FP` is named at the criterion itself
--- (`Framework/Criterion.lean`), so the containment is no longer "two modules under
--- `Construction/Machine/`". It is still narrow, and the *deep* imports remain exactly two:
---   * `Construction/Machine/DescExec` imports `…UTM.Internal.Interp` (a 5-file /
+-- FAF's own import surface is far narrower than the fork. `Complexity.FP` is the
+-- paper-facing reading of `def:ec` and so is named at the criterion itself
+-- (`Framework/Criterion.lean`); the *deep* imports are exactly two:
+--   * `Framework/Machine/Descriptions` imports `…UTM.Internal.Interp` (a 5-file /
 --     ~2.2k-line closure);
 --   * `Framework/Machine/EvalnCompiler` imports `…Registers.Pairing`, the unary-register
 --     arithmetic layer.

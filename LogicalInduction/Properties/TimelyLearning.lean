@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.AffinePersistence
 import LogicalInduction.Framework.Expectations
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Timely Learning
@@ -15,8 +15,9 @@ its price and magnitude simp lemmas and the exact `BCS` witness `sentenceAffine_
 emission certificate `sentenceAffine_polySequence` is the discharge that turns the paper's
 "`⟨φ⟩` is an e.c. sequence" into the `PolySequence` argument `AffineCombination.simcal`
 takes; it is consumed by `Properties/{AffineCoherence,Calibration,MetaLearning,
-Pseudorandomness}.lean` and by the construction witnesses
-`Construction/Witnesses/{FeedbackTruth,DeferralFibre,QuotationAffine}.lean`. The
+Pseudorandomness}.lean` and, under `Construction/`, by
+`Construction/Statistics/FeedbackTruth.lean` and
+`Construction/Quotation/{DeferralFibre,Packages}.lean`. The
 presentation is kept explicit rather than inferred, so the paper's efficient-sequence
 premise is not silently widened to an arbitrary Lean function.
 

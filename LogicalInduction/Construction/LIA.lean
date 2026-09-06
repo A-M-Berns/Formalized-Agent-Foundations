@@ -12,8 +12,8 @@ The recursion is the paper's own: on day `n` the already-generated rational pref
 presented to `TradingFirm`, and `MarketMaker` returns the next rational belief state as its
 fixed point against the firm's day-`n` strategy. `liaStates` is that recursion, `liaQuote`
 its exact rational quote table, `liaHistory` the real-valued market it induces — the market
-every `_unconditional` and `_closed` endpoint is stated over
-(`Construction/Witnesses/UnconditionalOverLIA.lean`) — and `liaTrader` the ordinary trader
+every `_unconditional` and `_closed` endpoint is stated over — and `liaTrader` the ordinary
+trader
 obtained by running the adaptive firm against the realized prefix. `liaStates` and
 `liaHistory` are in `AxiomAudit.lean`'s LI-CANONICAL inventory.
 
@@ -57,8 +57,7 @@ noncomputable def liaQuote (DP : DeductiveProcess) : ℕ → Sentence → ℚ :=
   fun n => (liaStates DP n).quote
 
 /-- The real-valued history obtained by casting the exact rational quotes — the market
-`LIA` induces, and the market every `_unconditional` and `_closed` endpoint is stated over
-(`Construction/Witnesses/UnconditionalOverLIA.lean`).
+`LIA` induces, and the market every `_unconditional` and `_closed` endpoint is stated over.
 Paper node: `def:lia` -/
 noncomputable def liaHistory (DP : DeductiveProcess) : History :=
   fun n => (liaStates DP n).toValuation

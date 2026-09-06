@@ -25,7 +25,11 @@ language, and the valuation and history types that carry prices.
 Days are indexed from `0` here and from `ℕ⁺` in the paper (tex:556), so day `n` here is
 the paper's day `n+1`; ranks and price features follow the convention uniformly.
 
-The two `example`s pin the substrate facts `def:ec` relies on.
+The two `example`s pin the substrate facts `def:ec` relies on, and
+`decode_sentence_eq_ofNat'` / `encode_sentence_eq_toNat'` identify the `Encodable` coding
+with Foundation's own `Formula.ofNat` / `Formula.toNat` definitionally, which is what lets a
+code-level matcher be written in Foundation's terms and read back as a `Sentence` code
+(`Construction/Freeze/Prefix.lean`, `Construction/Freeze/CanonicalCodes.lean`).
 
 Worlds, deductive processes, features, traders, exploitation and both efficiency classes
 are `Framework/Criterion.lean` and `Framework/MachineEfficiency.lean`; this module is only
@@ -45,6 +49,15 @@ abbrev Sentence : Type := LO.Propositional.Formula ℕ
 -- The two substrate facts `def:ec` relies on, confirmed available on `Sentence`.
 example : DecidableEq Sentence := inferInstance
 example : Encodable Sentence := inferInstance
+
+/-- The `Sentence` decoder is Foundation's `Formula.ofNat`, definitionally. -/
+lemma decode_sentence_eq_ofNat' (n : ℕ) :
+    (Encodable.decode n : Option Sentence) =
+      LO.Propositional.Formula.ofNat n := rfl
+
+/-- The `Sentence` encoder is Foundation's `Formula.toNat`, definitionally. -/
+lemma encode_sentence_eq_toNat' (φ : Sentence) :
+    Encodable.encode φ = LO.Propositional.Formula.toNat φ := rfl
 
 /-! ## Valuations and histories -/
 

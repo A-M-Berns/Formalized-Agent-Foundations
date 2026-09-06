@@ -1,12 +1,12 @@
 import LogicalInduction.Framework.MachineEfficiency
-import LogicalInduction.Framework.RpnEmission
-import LogicalInduction.Framework.RpnSplice
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.RpnEmission
+import LogicalInduction.Framework.Emission.RpnSplice
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # The write-out classes, machine reading
 
-`BigTokenStream` and `BigSentenceCodes` (`Framework/WriteOut.lean`) state polynomial
+`BigTokenStream` and `BigSentenceCodes` (`Framework/Emission/WriteOut.lean`) state polynomial
 write-out through the `dd:fuel` device: a fuel-clocked digit emitter. `MachineTokenStream`
 and `MachineSentenceCodes` state the corresponding notion in the shape
 `MachineEfficientTrader` has — a `Complexity.FP` function of the *unary* day emits the word,
@@ -31,7 +31,7 @@ out, so a class defined as "a `BigTokenStream` whose decode satisfies …" gets 
 reading by composing with its own decoder. That covers `BigSentenceCodes` (decoder
 `parseRpn`, the one worked instance below) and `BigSpliceStream` (decoder
 `UnRpnContractsTo`, for which no machine reading is constructed). It does *not* cover
-`BigDigits` (`Framework/DigitArith.lean`) or the classes over it, `DigitRatCodes` and
+`BigDigits` (`Framework/Emission/DigitArith.lean`) or the classes over it, `DigitRatCodes` and
 `DigitMachineCodes`: those are poly-fueled digit *access* rather than an emitted word, so
 they are outside the pattern and have no bridge lemma.
 
@@ -42,7 +42,7 @@ reading, obtained by widening to `BigSentenceCodes` first
 ## Reach
 
 The converse of these inclusions is calibrated in the fuel model card in
-`Framework/Computable.lean`: open at the length-metered target on a named compiler
+`Framework/Emission/Computable.lean`: open at the length-metered target on a named compiler
 obstruction, and false at the value-metered one, refuted by `not_polyFueled_two_pow`. The
 `dd:fuel` glossary entry records that the converse is open and points at that card.
 
@@ -51,8 +51,8 @@ development takes. They are kept as the machine readings of the write-out classe
 beside them so that the fuel/machine calibration recorded in that model card and in
 `scripts/coverage-classification.md`'s `def:ec` row is exhibited in Lean rather than only
 asserted. `thm:scon`'s machine transports go through the separately defined
-`CondStep.MachineSentenceBlocks` (`Construction/Machine/CondStep.lean`), reached from
-`BigSentenceCodes` by `machineSentenceBlocks_of_big`.
+`CondStep.MachineSentenceBlocks` (`Construction/Conditioning/TransductionFrame.lean`),
+reached from `BigSentenceCodes` by `machineSentenceBlocks_of_big`.
 -/
 
 namespace LogicalInduction
@@ -105,8 +105,8 @@ lemma BigTokenStream.toMachine {t : ℕ → List ℕ} (h : BigTokenStream t) :
 /-- **The efficient sentence-sequence class, machine reading.** Some `Complexity.FP`
 function of the *unary* day emits a self-delimiting RPN block parsing to `φ d` and nothing
 more, read back through the same pipeline `MachineTokenStream` uses. Contrast
-`RpnSentenceCodes` (`Framework/RpnSplice.lean`), which asks for a fuel-clocked
-`PolySegStream`, and `BigSentenceCodes` (`Framework/WriteOut.lean`), which asks for a
+`RpnSentenceCodes` (`Framework/Emission/RpnSplice.lean`), which asks for a fuel-clocked
+`PolySegStream`, and `BigSentenceCodes` (`Framework/Emission/WriteOut.lean`), which asks for a
 fuel-clocked write-out; both certify here. -/
 def MachineSentenceCodes (φ : ℕ → Sentence) : Prop :=
   ∃ B : List Bool → List Bool, B ∈ Complexity.FP ∧

@@ -3,7 +3,7 @@ import LogicalInduction.Framework.ROI
 import LogicalInduction.Properties.Coherence
 import LogicalInduction.Framework.Expectations
 import Mathlib.Topology.Order.LiminfLimsup
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Affine Preemptive Learning
@@ -31,7 +31,7 @@ The conditions are supplied by a gradual-sale affine round-trip family whose ret
 investment (`app:roi`, `def:roi`) contradicts logical induction if a persistent price gap
 recurs: buy the entry-weighted combination on its launch day, then sell
 `entry · sellFraction` copies each day the price is high.  The component's state is the
-arming chain `Π (1 − sellIndF)` of `Properties/Hysteresis.lean`, whose update mentions the
+arming chain `Π (1 − sellIndF)` of `Properties/Support/Exploitation.lean`, whose update mentions the
 previous state once, so the feature tree grows linearly rather than exponentially
 (`dd:dsl` has no sharing).
 
@@ -47,7 +47,7 @@ the paper's own "without loss of generality" step, done explicitly rather than b
 changing the index set.  The overpricing half is the underpricing construction applied to
 the pointwise negation of the family (`affineFutureHigh_neg`).
 
-`gradualEntry` and `gateFeature` are consumed downstream by `AffineProvability.lean`'s
+`gradualEntry` and `gateFeature` are consumed downstream by `AffineCoherence.lean`'s
 `buyBelowTrader`.
 -/
 
@@ -365,7 +365,7 @@ lemma PolySequence.gradualEntry_closed {As : ℕ → AffineCombination}
   rw [h.priceFeature_closed n n ρ V]
 
 /-- Unsold fraction of the component opened on `buyDay`, immediately before market day
-`buyDay + t + 1`: the arming chain `Π (1 − sellIndF)` of `Properties/Hysteresis.lean` over
+`buyDay + t + 1`: the arming chain `Π (1 − sellIndF)` of `Properties/Support/Exploitation.lean` over
 the daily high-price sell signals. -/
 def gradualRemaining (A : AffineCombination) (buyDay : ℕ) (high δ : ℚ) : ℕ → EF :=
   armChain (fun t => sellIndF (A.priceFeature (buyDay + t + 1)) high δ)
@@ -458,7 +458,7 @@ def gradualRisk (As : ℕ → AffineCombination) (low δ : ℚ) (i : ℕ) : EF :
   (As i).riskFeature (gradualEntry As low δ i)
 
 /-- Zero the feature before the start day `start`, so the family is launch-gated as
-`def:emulatabletraders` requires.  `AffineProvability.lean`'s `buyBelowTrader` consumes
+`def:emulatabletraders` requires.  `AffineCoherence.lean`'s `buyBelowTrader` consumes
 it, so this gate is client-facing. -/
 def gateFeature (start : ℕ) (f : ℕ → EF) (i : ℕ) : EF :=
   if start ≤ i then f i else EF.const 0

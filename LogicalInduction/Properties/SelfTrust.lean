@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.ExpectationAffine
-import LogicalInduction.Properties.Basic
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Properties.Support.Exploitation
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Self-Trust
@@ -29,7 +29,7 @@ modeled relationally, in the way that keeps the statements non-vacuous:
 
 **Residual type-`(c)` disclosure:** the linkage hypotheses import the paper's entire
 "quoting + Θ-represents-computations" mechanism; their principled witness is the explicit
-inductor construction in `Construction/Witnesses/QuotationAffine.lean`.
+inductor construction in `Construction/Quotation/Packages.lean`.
 
 Market timing is a separate, load-bearing obligation, and the fixed-portfolio section below
 is where it is exposed: `AffineQuotePortfolio` carries the portfolio fixed on day `n`, its
@@ -46,7 +46,7 @@ diagonal price by Affine Provability Induction instead, and then divide out thro
 Each of the four theorems is stated against one bundled certificate —
 `ExpectedFutureExpectationQuote`, `FuturePriceQuote`, `ConditionalExpectationQuote`,
 `SelfTrustQuote` — inhabited over the constructed inductor in
-`Construction/Witnesses/QuotationAffine.lean`.  `thm:ccee`'s vanishing product slack is
+`Construction/Quotation/Packages.lean`.  `thm:ccee`'s vanishing product slack is
 carried explicitly as `ConditionalExpectationQuote.slack` (`dd:mesh`).  Those four
 structures and the three portfolio structures are `#assert_fields`-frozen.
 -/
@@ -184,7 +184,7 @@ exactly.  This is what makes the theorem available for an arbitrary e.c. source 
 `X`, as the paper states it: an exact product LUV would have to carry the threshold
 `⌜X > r / w (f n)⌝`, whose emitter would need the *value* of the deferred weight, which
 is unavailable (the `dd:mesh` construction in
-`Construction/Witnesses/QuoteCodeOfMarket.lean` is where this is worked out).
+`Construction/Quotation/MarketQuoteCodes.lean` is where this is worked out).
 The general-source construction instead reads the deferred weight through its own
 threshold atoms on a width-`n+1` mesh, which pins the product to within `1/(n+1)`.  The
 exact-reflection case is the `slack = 0` instance and is still inhabited (the indicator

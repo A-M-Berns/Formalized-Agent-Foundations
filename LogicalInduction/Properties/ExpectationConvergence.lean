@@ -9,6 +9,10 @@ import Mathlib.MeasureTheory.Integral.Bochner.Set
 Renders §4.8's `thm:ec` (tex:1688): the day-`n` expectation `𝔼ₙ(X)` of any `[0,1]`-LUV
 converges.  Along the way it proves `lem:conluvapprox` (tex:4982) in difference form.
 
+This is the middle of the three §4.8 modules: `Properties/ExpectationAffine.lean` supplies the
+affine presentation of a single LUV's expectation and states the cut between the three, and
+`Properties/ExpectationProperties.lean` lifts everything to `LUVCombination`.
+
 The derivation follows the paper's, from the affine master theorems rather than a bespoke
 trader.  `𝔼ₙ(X)` is *exactly* the market price of the precision-`n` threshold bundle
 `X.expectAffine n` (`def:e`, tex:1670), an efficiently emitted affine progression, so the
@@ -71,11 +75,6 @@ lemma measurable_payout (φ : Sentence) :
     Measurable (fun v : PCWorld => v.payout φ) := by
   rw [payout_eq_indicator]
   exact measurable_one.indicator (measurable_pcWorld_holds φ).setOf
-
-/-- A share pays out in `[0,1]`: `1` when the sentence holds in the world, `0` otherwise. -/
-lemma payout_mem_Icc (v : PCWorld) (φ : Sentence) : 0 ≤ v.payout φ ∧ v.payout φ ≤ 1 := by
-  unfold PCWorld.payout
-  split <;> norm_num
 
 /-- A share's payout is integrable against any finite measure on worlds, being measurable
 and bounded by one. -/

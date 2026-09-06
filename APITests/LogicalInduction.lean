@@ -9,12 +9,18 @@ condition the inductor, and transport the criterion across a corrected finite-su
 perturbation.  Then the rest of the documented interface: the certificate kit an exploiting
 trader is assembled from, the exploitation engines and indicator toolkit that prove it
 exploits, the shared asymptotic algebra, the convergence and non-dogmatism forms with their
-side conditions discharged, hypothesis-free conditioning, return on investment, and the
+side conditions discharged, hypothesis-free conditioning, return on investment, the
 constructed data (`CEEnumeration`, `ComputableHorizon`, `PresentedLUVSeq`, the LUV lanes,
-the statistical capstones) that arrives with the same import.
+the statistical capstones) that arrives with the same import, and the §4.9–4.10 family
+instantiated at `𝗣𝗔` with every binder discharged by instance search.
+
+The last section is a roll-call over all 107 endpoints `AxiomAudit.lean` publishes: the API
+documentation claims each resolves from this import and gives its address, and elaborating
+the names here is what makes that claim fail the build rather than merely age.
 
 Everything here imports `LogicalInduction.API` and nothing else — no machine, compiler or
-parser internals — and uses the API's objects rather than restating its endpoints.
+parser internals, and no deeper import, because there is none — and uses the API's objects
+rather than restating its endpoints.
 -/
 
 namespace APITests.LogicalInduction
@@ -637,44 +643,254 @@ example (X : PresentedLUVSeq) (n : ℕ) (r : ℚ) :
 example (schema : ℕ) : LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) :=
   semanticHandleLUVSeq_rpnThresholdCodeSeq schema
 
-/-! ### Reachability roll-call
+/-! ### The arithmetic-theory family at a concrete theory
 
-The remaining documented routes carry the paper's own hypothesis lists, which the library
-exercises at their proof sites; what a client needs from this import is that the names
-resolve from it, which is what these lines check. -/
+The §4.9–4.10 endpoints carry `[T.Δ₁]`, `[𝗣𝗔⁻ ⪯ T]` and the paper's own
+`[RepresentsComputations T]`.  At `𝗣𝗔` all three are discharged by instance search from this
+import alone, and `ComputableHorizon.ackermann` supplies a horizon that no primitive
+recursive function dominates, so a client instantiating the family supplies nothing at all. -/
 
-example := @lic_domination_universalSemimeasure_ofIndependentAtoms
-example := @bitPrefixSentencesOfIndependentAtoms
-example := @lic_strict_domination_universalSemimeasure_ofAtomCodes
-example := @no_nonvacuous_worldValued_presented_of_rpn
+example :=
+  lic_belief_finitistic_consistency_unconditional 𝗣𝗔 _ ComputableHorizon.ackermann
 
-example := @AffineCombination.simcal
-example := @AffineCombination.recurringunbiasedness
-example := @AffineCombination.BoundedCombinationSequence.recunbiasedaff
+/-! ## 16. The published surface, name by name
+
+`AxiomAudit.lean` publishes 107 canonical endpoints, and `LogicalInduction.API`'s claim is
+that every one of them resolves from this single import.  That claim is checked here rather
+than asserted: each line below elaborates one published name, grouped by the module the API
+documentation gives as its address, so a move or a rename fails this file before it reaches a
+reader.  A worked application of most of them would restate the paper's own theorem, which is
+not what a client test is for; the sections above are where the interface is actually
+exercised. -/
+
+-- Framework/Criterion.lean
+example := @DeductiveProcess
+example := @DeductiveProcessComputation
+example := @EfficientlyComputable
+example := @IsLogicalInductor
+example := @MachineEfficientTrader
+example := @Strategy
+example := @Trader
+
+-- Framework/MachineEfficiency.lean
+example := @EfficientlyComputable.toMachine
+example := @IsMachineLogicalInductor
+
+-- Framework/Affine.lean
+example := @AffineCombination
+example := @AffineCombination.BoundedCombinationSequence
+
+-- Framework/Expectations.lean
+example := @GeneratedRatFeature
+example := @LUV
+
+-- Properties/Coherence.lean
+example := @lic_price_convergesTo
+
+-- Properties/LimitCoherence.lean
+example := @lic_limitCoherence
+
+-- Properties/AffineCoherence.lean
+example := @AffineCombination.PolySequence.affcoh
+example := @AffineCombination.PolySequence.affine_provind_theory_eq
+example := @AffineCombination.PolySequence.affine_provind_theory_ge
+example := @AffineCombination.PolySequence.affine_provind_theory_le
+example := @lic_provind
+
+-- Properties/AffinePersistence.lean
+example := @AffineCombination.PolySequence.peraffkno
+example := @lic_limitingBelief_tendsto
+
+-- Properties/AffinePreemptiveLearning.lean
+example := @AffineCombination.BoundedCombinationSequence.affpolymax
+
+-- Properties/TimelyLearning.lean
+example := @AffineCombination.sentenceAffine_polySequence
+example := @lic_persistence_of_knowledge
+example := @lic_preemptive_learning
+
+-- Properties/Calibration.lean
+example := @PGenerableWeighting
+example := @calibrationIndicator_pgenerable
+
+-- Properties/Relationships.lean
+example := @lic_learning_exclusive_exhaustive
+
+-- Properties/NonDogmatism.lean
+example := @lic_nonDogmatism
+example := @lic_nonDogmatism_dual
+
+-- Properties/UniformNonDogmatism.lean
+example := @lic_uniform_nonDogmatism
+
+-- Properties/UniversalSemimeasure.lean
+example := @lic_domination_universalSemimeasure
+example := @lic_strict_domination_universalSemimeasure
+
+-- Properties/ExpectationConvergence.lean
+example := @LUV.expect_converges
+
+-- Properties/ExpectationAffine.lean
+example := @lic_expectation_indicator
+
+-- Properties/ExpectationProperties.lean
+example := @LUVCombination.BoundedSequence
+
+-- Properties/Introspection.lean
+example := @lic_introspection
+
+-- Properties/SelfTrust.lean
+example := @DeferralFunction
+
+-- Construction/LIA.lean
+example := @liaHistory
+example := @liaStates
+
+-- Construction/LIACompiler.lean
+example := @LIA_isMachineLogicalInductor
+example := @LIA_is_logical_inductor
+example := @exists_computable_beliefSequence_logical_inductor
+example := @exists_machine_logical_inductor
+
+-- Construction/TradingFirm.lean
+example := @trading_firm_dominance
+
+-- Construction/Statistics/HistoricalMaturity.lean
 example := @AffineCombination.BoundedCombinationSequence.prandaff
-example := @LUVCombination.BoundedSequence.recurringunbiasednessexp
+example := @AffineCombination.BoundedCombinationSequence.prandaff_above
+example := @AffineCombination.BoundedCombinationSequence.prandaff_below
+example := @AffineCombination.BoundedCombinationSequence.recunbiasedaff
+example := @AffineCombination.recurringunbiasedness
+example := @AffineCombination.simcal
 example := @LUVCombination.BoundedSequence.prandexp
-example := @lic_learning_varied_pseudorandom
+example := @LUVCombination.BoundedSequence.prandexp_below
+example := @LUVCombination.BoundedSequence.prandexp_eq
+example := @LUVCombination.BoundedSequence.recurringunbiasednessexp
 example := @lic_learning_pseudorandom_frequency
+example := @lic_learning_pseudorandom_frequency_above
+example := @lic_learning_pseudorandom_frequency_below
+example := @lic_learning_varied_pseudorandom
+example := @lic_learning_varied_pseudorandom_above
+example := @lic_learning_varied_pseudorandom_below
 
+-- Construction/Statistics/FeedbackTruth.lean
+example := @FeedbackTruth.boundedCombination_wubaff_ofComputation
+example := @FeedbackTruth.lic_wub_ofComputation
+example := @FeedbackTruth.luv_wubexp_ofComputation
+
+-- Construction/Statistics/Endpoints.lean
+example := @FeedbackTruth.boundedCombination_wubaff_ofComputation_unconditional
+example := @FeedbackTruth.lic_wub_ofComputation_unconditional
+example := @FeedbackTruth.luv_wubexp_ofComputation_unconditional
+
+-- Construction/NonDogmatism/RepeatedEnumeration.lean
+example := @lic_uniform_nonDogmatism_ofCE
+
+-- Construction/NonDogmatism/BitPrefix.lean
+example := @lic_domination_universalSemimeasure_ofIndependentAtoms
+
+-- Construction/NonDogmatism/StrictSeparators.lean
+example := @lic_strict_domination_universalSemimeasure_ofAtomCodes
+
+-- Construction/NonDogmatism/UniversalPrefix.lean
+example := @UPrefix.lic_occamBounds_ofUniversalPrefix
+
+-- Construction/Freeze/Oracle.lean
+example := @FreezeOracle.machine_lic_iff_of_finiteSupport
+
+-- Construction/Freeze/Counterexample.lean
+example := @FinitePerturbationCounterexample.not_overgeneral_ifp
+
+-- Construction/Freeze/LIAPerturbation.lean
+example := @LIAPerturbation.machineLogicalInductor_liaPerturbed
+
+-- Construction/Conditioning/Endpoints.lean
+example := @ConditioningCompile.lic_conditioned_fixed_machine
+example := @ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
+example := @ConditioningCompile.lic_conditioned_growing_machine_ofSequence
+example := @lic_conditioned_fixed_machine_unconditional
+example := @lic_conditioned_growing_machine_unconditional
+
+-- Construction/LUV/Syntax.lean
+example := @LUVCombination.BoundedSequence.expcoh_ofSyntax
+example := @LUVCombination.BoundedSequence.exppolymax_ofSyntax
+example := @LUVCombination.BoundedSequence.mesh_independence_ofSyntax
+example := @LUVCombination.BoundedSequence.perexpkno_ofSyntax
+
+-- Construction/LUV/Endpoints.lean
+example := @lic_expect_combination_provind_eq
+example := @lic_expect_combination_provind_ge
+example := @lic_expect_combination_provind_le
+example := @lic_linearity_of_expectation_seq
+
+-- Construction/LUV/PaperLUV.lean
+example := @PaperLUV
+
+-- Construction/LUV/ArithmeticSource.lean
+example := @PaperLUVCombination.boundedSequence
+example := @unitFracPaperLUVBoundedSequence
+example := @unitFracPaperLUVSeq
+
+-- Construction/Knowledge/Endpoints.lean
+example := @lia_learns_halting_patterns_unconditional
+example := @lic_belief_finitistic_consistency_unconditional
+example := @lic_belief_stronger_theory_consistency_unconditional
+example := @lic_disbelief_inconsistent_theories_unconditional
+example := @lic_does_not_anticipate_halting_unconditional
+example := @lic_learns_provable_nonhalting_patterns_unconditional
+
+-- Construction/Paper/Market.lean
+example := @lic_expectations_of_probabilities_closed
+example := @lic_expected_future_expectations_closed
+example := @lic_introspection_closed
+example := @lic_iterated_expectations_closed
+example := @lic_no_expected_net_update_closed
+example := @lic_paradox_resistance_ofDiagonal_unconditional
+example := @lic_self_trust_closed
+
+-- Construction/Quotation/ExactCCEE.lean
+example := @lic_no_expected_net_update_conditional_paperLUV_closed
+
+-- Construction/SemanticExtension/Endpoints.lean
+example := @lic_no_expected_net_update_conditional_exact_canonical
+
+/-! ### Documented routes beside the published endpoints
+
+The construction interfaces, discharge kits and non-vacuity witnesses the API documentation
+names, which are supported client tools without being paper endpoints of their own. -/
+
+-- Framework/Theory/R0Instances.lean — the paper's §2 premise, discharged at a real theory
+example := @representsComputations_of_peanoMinus
+
+-- Construction/NonDogmatism/ — the constructed presentations the §4.6 endpoints run on
+example := @bitPrefixSentencesOfIndependentAtoms
+example := @Dovetail.universalSemimeasure
+
+-- Construction/Statistics/FeedbackEmission.lean — the delayed-truth trader kit
 example := @FeedbackEmission.feedbackTraderEmissionSigns
 example := @FeedbackEmission.lic_wubaff_ofFeedbackTruth
 example := @FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth
 example := @FeedbackEmission.luv_wubexp_ofFeedbackTruth
 
+-- Construction/SemanticExtension/Prime.lean — the presented-LUV source interface
+example := @no_nonvacuous_worldValued_presented_of_rpn
+
+-- Construction/LUV/ — the certified and the literal first-order LUV frontends
 example := @ComputableLUV.toLUV_polyThresholdCodes
 example := @ComputableLUV.valuesAt_ofArithmetic
-example := @LUVCombination.BoundedSequence.mesh_independence_ofSyntax
-example := @LUVCombination.BoundedSequence.expcoh_ofSyntax
-example := @LUVCombination.BoundedSequence.perexpkno_ofSyntax
-example := @LUVCombination.BoundedSequence.exppolymax_ofSyntax
+example := @PaperLUVSeq
+example := @dyadicPaperLUVSeq
+example := @ArithSource.ofNNF
 
+-- Construction/Knowledge/Endpoints.lean — the §4.10 hypothesis-discharge kit
+example := @theoryOf_const_ofNNF
+example := @conGamma_mentions_zero_of_horizon_unbounded
+
+-- Framework/ROI.lean — `lem:type3` and the half of its input that is a real obligation
 example := @ROIBudget.noRepeatableROI
 example := @ROIBudget.noRepeatableROI_of_verifiedMaturity
 
-example := @LIA_isMachineLogicalInductor
-example := @exists_machine_logical_inductor
-example := @exists_computable_beliefSequence_logical_inductor
+-- Construction/LIACompiler.lean — the compiled bounded evaluator the existence proof runs on
 example := @liaBoundedEvaluatorCompiler
 
 end

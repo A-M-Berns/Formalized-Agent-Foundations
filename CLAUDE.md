@@ -212,7 +212,7 @@ arithmetic, has formalized nothing we didn't already assume.
 
 5. **Modeling choices are disclosed, not discovered.** The two standing type-`(c)`
    substitutions — `dd:fuel` (efficiency = a fuel-clocked interpreter, not a
-   complexity class; model card in `Framework/Computable.lean`) and the propositional
+   complexity class; model card in `Framework/Emission/Computable.lean`) and the propositional
    substrate (LUVs as threshold families) — are documented in
    `LogicalInduction/README.md`. Any new substitution gets the same treatment at the
    statement, in the README, and in the audit ledger — before an auditor finds it.

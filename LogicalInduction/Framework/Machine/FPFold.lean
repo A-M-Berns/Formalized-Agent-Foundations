@@ -13,7 +13,7 @@ freezing a price leaf, splicing a conditioning block — therefore means exhibit
 rewrite itself as an `FP` function.  This file is the reusable core of that job.
 
 The clients are not finite-state.  `RpnConditioning.rpnConditionRun`
-(`Construction/Machine/CondStep.lean`) carries a packed state `⟨mode, counter, runLen⟩`
+(`Construction/Conditioning/Transduction.lean`) carries a packed state `⟨mode, counter, runLen⟩`
 together with a buffered sentence run: `mode` is finite, but the open-subtree counter, the
 run length and the buffer are all unbounded, bounded only by the input length.  So what they
 need is not a Mealy-machine theorem but a **fold with an `FP` step whose state stays
@@ -32,8 +32,8 @@ Contents:
 * `mem_FP_withInput` — how a transduction recovers the day `n` from `unaryDay n`.
 
 `Framework/Machine/TokenFold.lean` builds the tokenizer on `foldlBits_mem_FP`, and the
-stream rewriters of `Construction/Witnesses/` reach the fold through that tokenizer;
-`Construction/Machine/CondStep.lean` takes `mem_FP_withInput`.  `constFn_mem_FP` is used
+§4-family stream rewriters under `Construction/` reach the fold through that tokenizer;
+`Construction/Conditioning/Transduction.lean` takes `mem_FP_withInput`.  `constFn_mem_FP` is used
 wherever a rewrite emits a fixed word.
 
 **Import disclosure.** This file imports `Complexitylib.Classes.P.Cobham.Internal`, which the
@@ -106,7 +106,7 @@ lemma recFold_mem_FP {A B W S : List Bool → List Bool}
 
 `recFold` peels the *head* of its argument outermost, so folding it over `s.reverse`
 consumes `s` from the front: the innermost computation is the one on `s`'s first bit.  That
-is the direction every stream rewriter in `Construction/Witnesses/` runs in. -/
+is the direction every stream rewriter in the `Construction/` lanes runs in. -/
 
 /-- A left-to-right fold over a bit string, with the step selected by the bit.  The state is
 an arbitrary word; a rewriter packs its automaton state and its output-so-far into it with

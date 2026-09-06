@@ -1,4 +1,4 @@
-import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Emission.Computable
 
 /-! # Fixed-code `evaln` runs in polynomially many interpreter steps
 
@@ -14,9 +14,9 @@ The nesting depth of the fuel-consuming clauses is what becomes the polynomial's
 
 **Where this stands in the development.** It is a calibration fact about
 `Nat.Partrec.Code.evaln` alone — no machine, no tape, no complexity class — and it is the
-*time* counterpart of the *value* bound `codeEvalBound` (`Framework/Emission.lean`), which is
-likewise polynomial in the fuel for each fixed code. It is not the bound a compiled machine's
-step count is measured against: that is `codeMachineTime`
+*time* counterpart of the *value* bound `codeEvalBound` (`Framework/Emission/Emission.lean`),
+which is likewise polynomial in the fuel for each fixed code. It is not the bound a compiled
+machine's step count is measured against: that is `codeMachineTime`
 (`Framework/Machine/EvalnRegBound.lean`), built from `evalnArithmeticCost`, `codeEvalBound` and
 the two window bounds independently of anything here. The chain from a fuel certificate to
 membership in the machine class runs through `Framework/MachineEfficiency.lean`.
@@ -31,31 +31,6 @@ polynomial in the input length.
 namespace LogicalInduction
 
 open Nat.Partrec.Code
-
-/-! ## Polynomial closure under products
-
-`Framework/Computable.lean` carries the `IsPolyBounded` closure algebra; the pointwise product
-is added here because it is what the `prec` case below needs — unrolling a fuel-decrementing
-recursion multiplies a step count by the fuel. -/
-
-/-- Polynomially bounded functions are closed under pointwise product. -/
-lemma IsPolyBounded.mul {f g : ℕ → ℕ} (hf : IsPolyBounded f) (hg : IsPolyBounded g) :
-    IsPolyBounded (fun n => f n * g n) := by
-  obtain ⟨a₁, k₁, h₁⟩ := hf
-  obtain ⟨a₂, k₂, h₂⟩ := hg
-  refine ⟨4 * (a₁ + 1) * (a₂ + 1), k₁ + k₂, fun n => ?_⟩
-  set X := (n + 1) ^ k₁ with hX
-  set Y := (n + 1) ^ k₂ with hY
-  have hX1 : 1 ≤ X := Nat.one_le_pow _ _ (by omega)
-  have hY1 : 1 ≤ Y := Nat.one_le_pow _ _ (by omega)
-  have hf' : f n ≤ 2 * a₁ * X := by have := h₁ n; nlinarith
-  have hg' : g n ≤ 2 * a₂ * Y := by have := h₂ n; nlinarith
-  have hxy : (n + 1) ^ (k₁ + k₂) = X * Y := by rw [hX, hY, pow_add]
-  calc f n * g n ≤ (2 * a₁ * X) * (2 * a₂ * Y) := Nat.mul_le_mul hf' hg'
-    _ = 4 * a₁ * a₂ * (X * Y) := by ring
-    _ ≤ 4 * (a₁ + 1) * (a₂ + 1) * (n + 1) ^ (k₁ + k₂) := by rw [hxy]; nlinarith
-    _ ≤ 4 * (a₁ + 1) * (a₂ + 1) * (n + 1) ^ (k₁ + k₂) + 4 * (a₁ + 1) * (a₂ + 1) :=
-        Nat.le_add_right _ _
 
 /-! ## The interpreter's step count -/
 

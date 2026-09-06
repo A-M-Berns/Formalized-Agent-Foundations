@@ -1,9 +1,10 @@
 import LogicalInduction.Properties.Relationships
+import LogicalInduction.Framework.BooleanWorlds
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.Constructions.ProjectiveFamilyContent
 import Mathlib.MeasureTheory.OuterMeasure.OfAddContent
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # §4.1 Limit Coherence (`thm:lc`, appendix proof `app:lc`)
@@ -25,8 +26,9 @@ are not assumed as a valuation identity; they are read off the exclusive-exhaust
 law `lic_learning_exclusive_exhaustive` through `lic_limitingBelief_exactlyOne`, which turns
 a finite family that is exactly-one in every completed-theory world into a family whose
 limiting prices sum to one.  `top_eq_one` is its one-element instance,
-`lic_limitingBelief_add_neg'` and `lic_limitingBelief_congr` its two-element instances, and
-`lic_limitingBelief_disjoint_add` its three-element instance.  `GaifmanCoherent.bot_eq_zero`,
+`lic_limitingBelief_congr` a two-element instance (`lic_limitingBelief_add_neg`, in
+`Properties/Relationships.lean`, is the other), and `lic_limitingBelief_disjoint_add` its
+three-element instance.  `GaifmanCoherent.bot_eq_zero`,
 `disjoint_sum`, `mono`, `or_le` and `le_sum_of_covers` are the finite measure-like
 consequences that follow from the structure alone, for any coherent valuation.
 
@@ -217,26 +219,6 @@ lemma lic_limitingBelief_exactlyOne
   have hlimit := tendsto_nhds_unique (hsum (List.range k)) hone
   simpa [family] using hlimit
 
-/-- Complementarity of a sentence and its negation at the limiting valuation: the
-two-element instance of `lic_limitingBelief_exactlyOne`, serving `thm:lc`. -/
-lemma lic_limitingBelief_add_neg'
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) (φ : Sentence) :
-    limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
-  let pair : ℕ → Sentence := fun j => if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, BigSentenceCodes (fun _ => pair j) := by
-    intro j hj
-    exact BigSentenceCodes.ofPolySentenceCodes
-      ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
-  have h := lic_limitingBelief_exactlyOne P DP hworld 2 (by omega) pair hcodes (by
-    intro v hv
-    have hrange : List.range 2 = [0, 1] := by decide
-    rw [hrange]
-    by_cases hp : v.Holds φ <;>
-      simp [pair, PCWorld.payout, PCWorld.holds_neg, hp])
-  have hrange : List.range 2 = [0, 1] := by decide
-  simpa [hrange, pair] using h
-
 /-- Semantically equivalent sentences receive the same limiting probability: the
 `GaifmanCoherent.congr` clause of `thm:lc`. -/
 lemma lic_limitingBelief_congr
@@ -261,7 +243,7 @@ lemma lic_limitingBelief_congr
   have hrange : List.range 2 = [0, 1] := by decide
   have hpair : limitingBelief P φ + limitingBelief P (∼ψ) = 1 := by
     simpa [hrange, pair] using hpair0
-  have hcomp := lic_limitingBelief_add_neg' P DP hworld ψ
+  have hcomp := lic_limitingBelief_add_neg P DP hworld ψ
   linarith
 
 /-- Finite additivity for semantically disjoint sentences at the limiting valuation: the
@@ -286,7 +268,7 @@ lemma lic_limitingBelief_disjoint_add
   have htriple : limitingBelief P φ + limitingBelief P ψ +
       limitingBelief P (∼(φ ⋎ ψ)) = 1 := by
     simpa [hrange, triple, add_assoc] using htriple0
-  have hcomp := lic_limitingBelief_add_neg' P DP hworld (φ ⋎ ψ)
+  have hcomp := lic_limitingBelief_add_neg P DP hworld (φ ⋎ ψ)
   linarith
 
 /-- The limiting belief state satisfies all finite Gaifman conditions.  In particular the

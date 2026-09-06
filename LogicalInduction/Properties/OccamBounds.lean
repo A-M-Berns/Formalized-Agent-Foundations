@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.UniformNonDogmatism
 import LogicalInduction.Properties.Relationships
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Occam Bounds
@@ -14,7 +14,7 @@ Renders §4.6's `thm:ob` (Occam Bounds, tex:1552).
 * Two further boundary interfaces, both syntax-only: `OccamThresholdEmission`, the gate
   compiler's two rational token streams, and `PrefixNegationCompiler`, the fixed additive
   complexity overhead of negation. All three structures are `#assert_fields`-frozen and
-  inhabited in `Construction/Witnesses/PrefixMachine.lean`.
+  inhabited in `Construction/NonDogmatism/PrefixMachine.lean`.
 * The paper allocates one unit of risk across sentences by the Kraft weights, using an
   efficiently emulatable *family* of traders indexed by the desired constant. The exploitation
   criterion quantifies over single traders, so the family is diagonalised into one: rung `j` has
@@ -26,11 +26,13 @@ Renders §4.6's `thm:ob` (Occam Bounds, tex:1552).
 * `obTrader_exploits` closes the exploitation argument. `lic_occam_lower` is the lower half of
   `thm:ob`, and `lic_occamBounds` both halves under one constant; the upper half needs only the
   negation compiler's overhead together with limit coherence for a sentence and its negation
-  (`lic_limitingBelief_add_neg`, a `thm:lc` fact the upper half consumes).
-* The arming chain the rungs carry their state in is `armChain` (`Properties/Hysteresis.lean`).
+  (`lic_limitingBelief_add_neg`, `Properties/Relationships.lean`).
+* The arming chain the rungs carry their state in is `armChain`
+  (`Properties/Support/Exploitation.lean`).
 
 Consumed by `Properties/UniversalSemimeasure.lean` (`thm:dus`, `thm:strict`) and by
-`Construction/Witnesses/PrefixMachine.lean` (`UPrefix.lic_occamBounds_ofUniversalPrefix`).
+`Construction/NonDogmatism/PrefixMachine.lean` and
+`Construction/NonDogmatism/UniversalPrefix.lean` (`UPrefix.lic_occamBounds_ofUniversalPrefix`).
 -/
 
 namespace LogicalInduction
@@ -124,54 +126,6 @@ lemma PrefixNegationCompiler.weight_div_le_neg
           field_simp
     _ = 1 / (2 : ℝ) ^ (κ φ + neg.overhead) := by rw [pow_add]
     _ ≤ 1 / (2 : ℝ) ^ κ (∼φ) := one_div_le_one_div_of_le hpos hpow
-
-/-! ### Limit coherence for a sentence and its negation -/
-
-/-- Limit coherence for a sentence and its propositional negation. Derived from the
-exclusive–exhaustive learning law, not assumed as a valuation identity.
-Paper node: `thm:lc` -/
-theorem lic_limitingBelief_add_neg
-    (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (φ : Sentence) :
-    limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
-  let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, BigSentenceCodes (pair j) := by
-    intro j hj
-    by_cases h0 : j = 0
-    · subst j
-      exact BigSentenceCodes.ofPolySentenceCodes
-        ⟨_, PolyFueled.const (Encodable.encode φ)⟩
-    · have h1 : j = 1 := by omega
-      subst j
-      exact BigSentenceCodes.ofPolySentenceCodes
-        ⟨_, PolyFueled.const (Encodable.encode (∼φ))⟩
-  have hsemantic : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
-      ((List.range 2).map (fun j ↦ v.payout (pair j n))).sum = 1 := by
-    intro n v hv
-    have hrange : List.range 2 = [0, 1] := by decide
-    rw [hrange]
-    simp only [List.map_cons, List.map_nil, List.sum_cons, List.sum_nil, add_zero]
-    simp only [pair, if_pos rfl, if_neg (by omega : (1 : ℕ) ≠ 0)]
-    by_cases hφ : v.Holds φ
-    · have hn : ¬ v.Holds (∼φ) := by
-        rw [PCWorld.holds_neg]
-        exact not_not_intro hφ
-      rw [PCWorld.payout, if_pos hφ, PCWorld.payout, if_neg hn]
-      norm_num
-    · have hn : v.Holds (∼φ) := (PCWorld.holds_neg v φ).2 hφ
-      rw [PCWorld.payout, if_neg hφ, PCWorld.payout, if_pos hn]
-      norm_num
-  have hlex0 := lic_learning_exclusive_exhaustive P DP 2 (by omega)
-    pair hcodes hworld hsemantic
-  have hlex : (fun n ↦ P n φ + P n (∼φ)) ≈ₙ (fun _ ↦ (1 : ℝ)) := by
-    have hrange : List.range 2 = [0, 1] := by decide
-    simpa [hrange, pair] using hlex0
-  have hsum := (lic_limitingBelief_tendsto P DP hworld φ).add
-    (lic_limitingBelief_tendsto P DP hworld (∼φ))
-  have hone : ConvergesTo (fun n ↦ P n φ + P n (∼φ)) 1 :=
-    convergesTo_iff_asympEq_const.mpr hlex
-  exact tendsto_nhds_unique hsum hone
 
 /-! ## The rung ladder -/
 
@@ -457,7 +411,7 @@ def obArmBlock {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
   (oneMinus (obBuySig U j i d)).serialize ++ [3]
 
 /-- The rung's arming chain serializes into fixed-width blocks: the
-`Properties/Hysteresis.lean` chain law at this file's disarm signal. -/
+`Properties/Support/Exploitation.lean` chain law at this file's disarm signal. -/
 lemma serialize_armChain_obBuy {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (j i : ℕ) : ∀ n,
     (armChain (obBuySig U j i) n).serialize =

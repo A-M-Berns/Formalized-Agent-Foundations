@@ -1,7 +1,7 @@
-import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Emission.Computable
 import LogicalInduction.Framework.Asymptotics
-import LogicalInduction.Framework.RpnSplice
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.RpnSplice
+import LogicalInduction.Framework.Emission.WriteOut
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
@@ -19,7 +19,7 @@ and self-trust results quantify.
   `X.gt r = ⌜X > r⌝`, which is a LUV's entire observable content for a market. The paper's
   LUVs are *first-order* — a formula `X(ν)` free in one variable over a theory `Θ` that
   represents computations — and that literal object is `PaperLUV`
-  (`Construction/Witnesses/PaperLUV.lean`), an actual one-variable arithmetic formula
+  (`Construction/LUV/PaperLUV.lean`), an actual one-variable arithmetic formula
   carrying object-level `T`-proofs, which compiles into this carrier. Results stated here
   are therefore stated of more families than the paper's, and `PaperLUV` is what shows the
   paper's own are among them. The paper's well-definedness (`Θ` proves a unique value)
@@ -39,6 +39,18 @@ and self-trust results quantify.
   believes `X = x`", with `PCWorld.expectApprox_near_ofGrid` and
   `PCWorld.ValuesAt.expectApprox_near` the `lem:conluvapprox` counting argument (tex:4982)
   at the single-LUV form the affine results consume.
+* `PCWorld.RationalCutAt` — the completed-world half of `def:luv` (tex:1635): a plausible
+  world values an abstract `LUV` exactly when its true rational thresholds form a downward
+  cut bounded into `[0,1]`. `carrier`, `carrier_nonempty` and `carrier_bddAbove` cut out the
+  represented set of reals; `exists_valuesAt` turns a cut into a `PCWorld.ValuesAt` value,
+  which is the world–value hypothesis every `lem:conluvapprox` consumer takes; and
+  `valuesAt_iff_sSup` identifies that value canonically with `sSup (carrier v X)`, even
+  though truth at a threshold equal to the value may remain undecided. The cut hypothesis is
+  discharged for the paper's literal first-order LUVs by `PaperLUV.source_valued`
+  (`Construction/LUV/PaperLUV.lean`) and in
+  `Construction/SemanticExtension/Source.lean`. That section is presentation-free and
+  certificate-free: no declaration in it mentions emission, fuel or source syntax, or takes
+  a code or a fuel bound.
 * `LUV.IsIndicator` — the relational rendering of the paper's `1(φ)`, quantified over
   completed-theory worlds (`PCWorld.ConsistentWithTheory`, the quantifier of `app:ei`'s own
   argument) rather than over every finite stage; `indicatorWitness_isIndicator` and
@@ -115,7 +127,7 @@ lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : DigitRatCod
 it ℙ‾-generable at any market.
 
 This is the general constructor; `PGenerableRat.ofPolyRatCodes`
-(`Construction/Witnesses/ProductDefinition.lean`) is the value-bounded corollary, kept only
+(`Construction/Quotation/ProductDefinition.lean`) is the value-bounded corollary, kept only
 for callers already holding a `PolyRatCodes` certificate.  The width is not cosmetic: the
 paper's `δ n = 2⁻ⁿ` satisfies this and refutes `PolyRatCodes`
 (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
@@ -597,4 +609,92 @@ lemma indicatorWitness_not_stagewise :
   simp [indicatorWitnessLUV, PCWorld.Holds,
     LO.Propositional.Formula.Boolean.val] at this
 
+
+section RationalCut
+
+open Set
+
+/-! ## The rational cut -/
+
+/-- The completed-world content of a genuine paper `[0,1]` LUV (`def:luv`): the thresholds
+`⌜X > r⌝` the world affirms form a downward cut of `ℚ` bounded into `[0,1]`. -/
+structure PCWorld.RationalCutAt (v : PCWorld) (X : LUV) : Prop where
+  /-- Every threshold below `0` holds. -/
+  below_zero : ∀ r : ℚ, (r : ℝ) < 0 → v.Holds (X.gt r)
+  /-- No threshold above `1` holds. -/
+  above_one : ∀ r : ℚ, 1 < (r : ℝ) → ¬v.Holds (X.gt r)
+  /-- Truth at a threshold is downward closed. -/
+  downward : ∀ r s : ℚ, r < s → v.Holds (X.gt s) → v.Holds (X.gt r)
+
+namespace PCWorld.RationalCutAt
+
+variable {v : PCWorld} {X : LUV}
+
+/-! ## The represented value -/
+
+/-- The real set represented by the true rational thresholds of a cut. -/
+def carrier (v : PCWorld) (X : LUV) : Set ℝ :=
+  {x | ∃ r : ℚ, (r : ℝ) = x ∧ v.Holds (X.gt r)}
+
+lemma carrier_nonempty (h : v.RationalCutAt X) : (carrier v X).Nonempty := by
+  refine ⟨(-1 : ℝ), (-1 : ℚ), by norm_num, ?_⟩
+  exact h.below_zero (-1) (by norm_num)
+
+lemma carrier_bddAbove (h : v.RationalCutAt X) : BddAbove (carrier v X) := by
+  refine ⟨1, ?_⟩
+  rintro x ⟨r, rfl, hr⟩
+  exact le_of_not_gt (fun hgt => h.above_one r hgt hr)
+
+/-- A bounded downward rational cut determines a repository LUV value. -/
+lemma exists_valuesAt (h : v.RationalCutAt X) : ∃ x : ℝ, v.ValuesAt X x := by
+  let S := carrier v X
+  have hSne : S.Nonempty := h.carrier_nonempty
+  have hSbdd : BddAbove S := h.carrier_bddAbove
+  refine ⟨sSup S, ?_, ?_, ?_⟩
+  · by_contra hnonneg
+    have hsupneg : sSup S < 0 := lt_of_not_ge hnonneg
+    obtain ⟨r, hsup_r, hr0⟩ := exists_rat_btwn hsupneg
+    have hrS : (r : ℝ) ∈ S := ⟨r, rfl, h.below_zero r hr0⟩
+    exact (not_le_of_gt hsup_r) (le_csSup hSbdd hrS)
+  · apply csSup_le hSne
+    rintro x ⟨r, rfl, hr⟩
+    exact le_of_not_gt (fun hgt => h.above_one r hgt hr)
+  · intro r
+    constructor
+    · intro hr
+      obtain ⟨y, ⟨s, hs, hsHolds⟩, hry⟩ := exists_lt_of_lt_csSup hSne hr
+      subst y
+      have hrs : r < s := by exact_mod_cast hry
+      exact h.downward r s hrs hsHolds
+    · intro hr hHolds
+      have hrS : (r : ℝ) ∈ S := ⟨r, rfl, hHolds⟩
+      exact (not_le_of_gt hr) (le_csSup hSbdd hrS)
+
+/-- **Canonicity of the represented value**, the companion to `exists_valuesAt`: the value a
+cut determines is not merely *some* real but exactly `sSup (carrier v X)`, and every
+`PCWorld.ValuesAt` value of `X` at `v` is that supremum.  This holds even though truth at a
+threshold equal to the value may remain undecided, so a client that has produced a value by
+any other route may identify it with the supremum without re-deriving the cut. -/
+lemma valuesAt_iff_sSup (h : v.RationalCutAt X) {x : ℝ} :
+    v.ValuesAt X x ↔ x = sSup (carrier v X) := by
+  have value_eq (z : ℝ) (hz : v.ValuesAt X z) : z = sSup (carrier v X) := by
+    apply le_antisymm
+    · by_contra hle
+      obtain ⟨r, hsup_r, hrz⟩ := exists_rat_btwn (lt_of_not_ge hle)
+      have hrHolds := (hz.2.2 r).1 hrz
+      exact (not_le_of_gt hsup_r)
+        (le_csSup h.carrier_bddAbove ⟨r, rfl, hrHolds⟩)
+    · apply csSup_le h.carrier_nonempty
+      rintro y ⟨r, rfl, hrHolds⟩
+      exact le_of_not_gt (fun hzr => (hz.2.2 r).2 hzr hrHolds)
+  constructor
+  · exact value_eq x
+  · intro hx
+    obtain ⟨y, hy⟩ := h.exists_valuesAt
+    rw [hx, ← value_eq y hy]
+    exact hy
+
+end PCWorld.RationalCutAt
+
+end RationalCut
 end LogicalInduction

@@ -25,8 +25,8 @@ convention is fixed and justified.
 `Framework/Machine/TraderMachine.lean` writes the convention, emitting `digitBits (min d 4)`
 per digit and assembling the word through `digitsToBits`; `Framework/MachineEfficiency.lean`,
 `Framework/Machine/TokenFold.lean`, `Framework/Machine/DigitArithFP.lean`,
-`Framework/Machine/WriteOutMachine.lean` and `Construction/Machine/CondStep.lean` read it
-back. No `dd:` label applies: a fixed encoding convention is not a choice the paper leaves
+`Framework/Machine/WriteOutMachine.lean` and `Construction/Conditioning/Transduction.lean`
+read it back. No `dd:` label applies: a fixed encoding convention is not a choice the paper leaves
 open. Everything here is supporting infrastructure rather than a paper claim, so the
 declarations are `lemma`s and carry no `Paper node` line.
 -/

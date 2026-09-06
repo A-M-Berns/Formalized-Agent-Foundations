@@ -1,4 +1,4 @@
-import LogicalInduction.Framework.Emission
+import LogicalInduction.Framework.Emission.Emission
 import LogicalInduction.Framework.Machine.CodeSteps
 import LogicalInduction.Framework.Machine.EvalnCompiler
 
@@ -12,7 +12,7 @@ how long they run.
 
 ## The register bound
 
-`codeEvalBound` (`Framework/Emission.lean`) bounds the value a *successful* `evaln` call
+`codeEvalBound` (`Framework/Emission/Emission.lean`) bounds the value a *successful* `evaln` call
 returns. That is not enough for the compiled machine, whose registers also hold intermediate
 values larger than any node's own answer:
 
@@ -951,21 +951,6 @@ end MachineTime
 /-! ## The step bound is polynomial for each fixed code -/
 
 section MachineTimePoly
-
-lemma IsPolyBounded.const (c : ℕ) : IsPolyBounded (fun _ : ℕ => c) :=
-  ⟨c, 0, fun _ => by simp⟩
-
-lemma IsPolyBounded.const_mul {A : ℕ → ℕ} (h : IsPolyBounded A) (c : ℕ) :
-    IsPolyBounded (fun n => c * A n) := by
-  obtain ⟨a, k, hk⟩ := h
-  refine ⟨c * a + c, k, fun n => ?_⟩
-  calc c * A n ≤ c * (a * (n + 1) ^ k + a) := Nat.mul_le_mul_left c (hk n)
-    _ = c * a * (n + 1) ^ k + c * a := by ring
-    _ ≤ (c * a + c) * (n + 1) ^ k + (c * a + c) :=
-        Nat.add_le_add (Nat.mul_le_mul_right _ (by omega)) (by omega)
-
-lemma isPolyBounded_id : IsPolyBounded (fun n : ℕ => n) :=
-  (IsPolyBounded.linear 0).of_le (fun _ => by omega)
 
 lemma evalnArithmeticCost_poly : IsPolyBounded evalnArithmeticCost :=
   ⟨500, 4, fun n => by simp [evalnArithmeticCost]⟩

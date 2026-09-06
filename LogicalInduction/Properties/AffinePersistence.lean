@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.AffinePreemptiveLearning
 import LogicalInduction.Properties.Coherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Persistence of Affine Knowledge
@@ -39,10 +39,10 @@ separated from the limiting affine value on infinitely many members. It is consu
 `peraffkno_of_noPersistenceGaps` turns it into the paper's two equalities, and the
 paper-facing carrier is `AffineCombination.PolySequence.peraffkno`, consumed by
 `Properties/AffineCoherence.lean`, `Properties/ExpectationProperties.lean` and
-`Construction/Witnesses/QuotationAffine.lean`.
+`Construction/Quotation/Packages.lean`.
 
 Also exported are the transport utilities `AffineCombination.addConst` /
-`PolySequence.addConst`, used by seven modules including `Framework/Computable.lean` and
+`PolySequence.addConst`, used by seven modules including `Framework/Emission/Computable.lean` and
 the conditioning and perturbation witnesses, and the cross-day bounds
 `BoundedAffinePrices.futureLow_le_price` / `price_le_futureHigh`.
 
@@ -622,40 +622,6 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
         (Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
           (persistenceOffset h z.unpair.1 z.unpair.2)) ρ V]
 
-/-- Type-generic form of the prefix-length lemma used by the serialized token emitter. -/
-lemma length_flatMap_eq_segPrefix_any {α : Type*} (seg : ℕ → List α)
-    (lenFn : ℕ → ℕ) (n : ℕ)
-    (hlen : ∀ j, (seg (Nat.pair n j)).length = lenFn (Nat.pair n j)) : ∀ k,
-    ((List.range k).flatMap (fun j => seg (Nat.pair n j))).length =
-      segPrefix lenFn n k
-  | 0 => by simp
-  | k + 1 => by
-      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton,
-        List.length_append, length_flatMap_eq_segPrefix_any seg lenFn n hlen k,
-        hlen, segPrefix_succ]
-
-/-- Locate an element in a variable-width flattened prefix, for arbitrary element type. -/
-lemma getD_flatMap_of_prefix_any {α : Type*} (seg : ℕ → List α)
-    (lenFn : ℕ → ℕ) (d : α) (n cnt i j : ℕ)
-    (hlen : ∀ k, (seg (Nat.pair n k)).length = lenFn (Nat.pair n k))
-    (hj : j < cnt) (hlo : segPrefix lenFn n j ≤ i)
-    (hhi : i < segPrefix lenFn n (j + 1)) :
-    ((List.range cnt).flatMap (fun k => seg (Nat.pair n k))).getD i d =
-      (seg (Nat.pair n j)).getD (i - segPrefix lenFn n j) d := by
-  induction cnt generalizing j i with
-  | zero => omega
-  | succ cnt ih =>
-      rw [List.range_succ, List.flatMap_append, List.flatMap_singleton]
-      rcases Nat.eq_or_lt_of_le (show j ≤ cnt by omega) with rfl | hjlt
-      · rw [List.getD_append_right]
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-          exact hlo
-      · rw [List.getD_append]
-        · exact ih i j hjlt hlo hhi
-        · rw [length_flatMap_eq_segPrefix_any seg lenFn n hlen]
-          exact lt_of_lt_of_le hhi (segPrefix_mono lenFn n (by omega))
-
 /-- The flattened representation used by `persistencePortfolio` is exactly the nested
 prefix mixture from the paper. -/
 lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
@@ -676,7 +642,7 @@ lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
       ((List.range (k + 1)).flatMap (fun n => seg (Nat.pair k n))).length =
         persistenceTermCount h k := by
     simpa [persistenceTermCount, lenFn] using
-      length_flatMap_eq_segPrefix_any seg lenFn k hlen (k + 1)
+      length_flatMap_eq_segPrefix seg lenFn k hlen (k + 1)
   change (List.range (persistenceTermCount h k)).map (fun j =>
       (persistenceCoefficient h start low δ (Nat.pair k j),
         persistenceSentence h (Nat.pair k j))) = _
@@ -705,7 +671,7 @@ lemma persistencePortfolio_terms_flatMap {As : ℕ → AffineCombination}
         simp [n, persistenceMember, lenFn]
       omega
     let d : EF × Sentence := (EF.const 0, h.sentence 0)
-    have hget := getD_flatMap_of_prefix_any seg lenFn d k (k + 1) j n
+    have hget := getD_flatMap_of_prefix seg lenFn d k (k + 1) j n
       hlen hnlt hlo hhi
     have hright :
         ((List.range (k + 1)).flatMap (fun q => seg (Nat.pair k q))).getD j d =

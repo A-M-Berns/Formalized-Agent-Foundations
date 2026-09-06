@@ -1,6 +1,6 @@
 import LogicalInduction.Construction.LIAComputation
-import LogicalInduction.Framework.RpnComputation
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.RpnComputation
+import LogicalInduction.Framework.Emission.WriteOut
 import Mathlib.Data.Rat.Denumerable
 
 /-!
@@ -21,21 +21,23 @@ against.
 ## The rational `EF` stack machine
 
 `efRatCompiledEval`, its correctness `efRatCompiledEval_eq` and its certificate
-`efRatCompiledEval_prim` — the evaluator that `Construction/Witnesses/BoundedEvaluation.lean`
-runs against the total quote table.
+`efRatCompiledEval_prim` — the evaluator that
+`Construction/Statistics/SettlementCompiler.lean` runs against the total quote table.
 
 ## The token decode
 
 `parseRpnC_prim`, `unRpn_prim`, `negFormulaCode_prim`,
 `parseStructuredArithmeticFormula_prim`, and the whole-value naming residues
 `RpnSentenceCodes.primrec` and `BigSentenceCodes.primrec` (each with its `.exists_code`
-corollary).  `Construction/Witnesses/SourceNumbering.lean` consumes the parser certificates
+corollary).  `Construction/Knowledge/SourceNumbering.lean` consumes the parser certificates
 `parseStructuredArithmeticFormula_prim` and `negFormulaCode_prim`; the whole-value naming
-residues are consumed by `QuoteCodeOfMarket.lean`, `ProductDefinition.lean`,
-`ConditioningPresentation.lean` and `ConditioningCompiler.lean`, and by market quote tables
-keyed by sentence code.  The parser compiled here is the one defined in
-`Framework/Criterion.lean`, whose tags `20`, `21` and `22` expand `¬`, `⟹` and `⟺` into
-normal form internally and charge nothing for it (`dd:nnf`).
+residues are consumed by `Construction/Quotation/MarketQuoteCodes.lean`,
+`Construction/Quotation/ProductDefinition.lean`,
+`Construction/Conditioning/Presentation.lean` and
+`Construction/Conditioning/Compiler.lean`, and by market quote tables keyed by sentence
+code.  The parser compiled
+here is the one defined in `Framework/Criterion.lean`, whose tags `20`, `21` and `22` expand `¬`,
+`⟹` and `⟺` into normal form internally and charge nothing for it (`dd:nnf`).
 
 ## The three components as first-order data
 
@@ -52,7 +54,9 @@ theorems consume.
 `exists_machine_logical_inductor`, `exists_logical_inductor` and
 `exists_computable_beliefSequence_logical_inductor` render `thm:li`.  They are inventoried
 in `AxiomAudit.lean` and consumed by the `_unconditional` and `_closed` endpoints in
-`Construction/Witnesses/`, chiefly `UnconditionalOverLIA.lean` and `PaperMarket.lean`.
+the §4 lanes, chiefly `Construction/Paper/Market.lean`,
+`Construction/NonDogmatism/Endpoints.lean` and
+`Construction/Conditioning/Endpoints.lean`.
 Nothing under `Properties/` imports `Construction/`; the `_closed` lemmas that do live there
 (`sumEF_closed`, `PolySequence.gradualRisk_closed`, `dusSignal_closed`) are feature-closure
 lemmas, an unrelated sense of the suffix.
@@ -272,13 +276,10 @@ private lemma formulaNormList_history (n : ℕ) :
 This is an encoding theorem only; it contains no semantic or logical-inductor premise. -/
 instance sentencePrimcodable : Primcodable Sentence where
   prim := by
-    have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-        some (formulaNormList prior)) :=
-      Primrec₂.option_some_iff.mpr (formulaNormList_prim.comp Primrec₂.right)
-    have hrec := Primrec.nat_strong_rec
-      (fun (_ : Unit) n => sentenceDecodeNorm n)
-      hstep (fun _ n => by simpa using congrArg some (formulaNormList_history n))
-    exact Primrec.nat_iff.mp ((hrec.comp (Primrec.const ()) Primrec.id).of_eq fun n => by
+    have hrec : Primrec sentenceDecodeNorm :=
+      Primrec.of_courseOfValues sentenceDecodeNorm formulaNormList_prim
+        formulaNormList_history
+    exact Primrec.nat_iff.mp (hrec.of_eq fun n => by
       change sentenceDecodeNorm n = Encodable.encode
         ((@LO.Propositional.Formula.ofNat ℕ inferInstance n) : Option Sentence)
       cases h : (@LO.Propositional.Formula.ofNat ℕ inferInstance n : Option Sentence) <;>
@@ -1396,13 +1397,8 @@ private lemma efDecodeNormStep_history (n : ℕ) :
                     · simp [efDecodeNormStep, efAuxNormIndex, EF.ofNatAux, htag]
 
 private lemma efAuxNormIndex_prim : Primrec efAuxNormIndex := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-      some (efDecodeNormStep prior)) :=
-    Primrec₂.option_some_iff.mpr (efDecodeNormStep_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxNormIndex n)
-    hstep (fun _ n => by simpa using congrArg some (efDecodeNormStep_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
+  exact Primrec.of_courseOfValues efAuxNormIndex efDecodeNormStep_prim
+    efDecodeNormStep_history
 
 /-- The project’s concrete `EF.toNat` / `EF.ofNat` encoding is primitive-recursive.
 This instance is proved from the exact decoder, including every failure branch. -/
@@ -1585,13 +1581,8 @@ private lemma efRankNormStep_history (n : ℕ) :
                     · simp [efRankNormStep, efAuxRankNormIndex, EF.ofNatAux, htag]
 
 private lemma efAuxRankNormIndex_prim : Primrec efAuxRankNormIndex := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List ℕ) =>
-      some (efRankNormStep prior)) :=
-    Primrec₂.option_some_iff.mpr (efRankNormStep_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxRankNormIndex n)
-    hstep (fun _ n => by simpa using congrArg some (efRankNormStep_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
+  exact Primrec.of_courseOfValues efAuxRankNormIndex efRankNormStep_prim
+    efRankNormStep_history
 
 private lemma efRank_prim : Primrec EF.rank := by
   have hindex : Primrec fun e : EF => Nat.pair (Encodable.encode e)
@@ -1604,7 +1595,7 @@ private lemma efRank_prim : Primrec EF.rank := by
 
 /-! ## Primitive-recursive `EF.priceQueries`
 
-`EF.priceQueries` (`Criterion.lean`) lists the `(day, sentence)` market cells a feature
+`EF.priceQueries` (`Framework/Criterion.lean`) lists the `(day, sentence)` market cells a feature
 inspects.  Its primitive recursivity is the guard that keeps the total quote table `V`
 (which substitutes `0` for an unanswered query) from silently certifying a false
 settlement test: `EF.denoteRatWithAtFuel_complete` fires only once every listed query is
@@ -1801,13 +1792,8 @@ private lemma efQueriesNormVal_history (n : ℕ) :
                     · simp [efQueriesNormVal, EF.ofNatAux, htag]
 
 private lemma efAuxQueriesVal_prim : Primrec efAuxQueriesVal := by
-  have hstep : Primrec₂ (fun (_ : Unit) (prior : List (Option EFQueryList)) =>
-      some (efQueriesNormVal prior)) :=
-    Primrec₂.option_some_iff.mpr (efQueriesNormVal_prim.comp Primrec₂.right)
-  have hrec := Primrec.nat_strong_rec
-    (fun (_ : Unit) n => efAuxQueriesVal n)
-    hstep (fun _ n => by simpa using congrArg some (efQueriesNormVal_history n))
-  exact hrec.comp (Primrec.const ()) Primrec.id
+  exact Primrec.of_courseOfValues efAuxQueriesVal efQueriesNormVal_prim
+    efQueriesNormVal_history
 
 /-- `EF.priceQueries` is primitive recursive.  The guard behind the settlement checker's
 soundness: only when every listed query is answered does the total quote table stand in
@@ -3036,7 +3022,7 @@ private lemma negFormulaG_prim : Primrec negFormulaG := by
 /-- Tag-swapping De Morgan negation on formula codes is primitive recursive.  Exported
 alongside `parseStructuredArithmeticFormula_prim`, and for the same reason: together they
 are the decoding half of the source-text naming of formulas (`negSourceFormulaCode`,
-`Construction/Witnesses/SourceNumbering.lean`). -/
+`Construction/Knowledge/SourceNumbering.lean`). -/
 lemma negFormulaCode_prim : Primrec negFormulaCode := by
   have hF : Primrec₂ (fun (_ : Unit) => negFormulaCode) :=
     Primrec.nat_strong_rec _ (negFormulaG_prim.comp Primrec.snd).to₂
@@ -3285,7 +3271,7 @@ private lemma structuredFormulaG_prim : Primrec structuredFormulaG := by
 /-- The structured arithmetic formula grammar is primitive recursive.  Exported (rather
 than private, like its siblings in this section) because it is also the decoding half of
 the source-text naming of formulas: `negSourceFormulaCode`
-(`Construction/Witnesses/SourceNumbering.lean`) recovers a formula's Godel code from the
+(`Construction/Knowledge/SourceNumbering.lean`) recovers a formula's Godel code from the
 numeral naming its written run, and needs exactly this certificate. -/
 lemma parseStructuredArithmeticFormula_prim :
     Primrec₂ fun fuel ts => parseStructuredArithmeticFormula fuel 0 ts := by
@@ -4888,8 +4874,8 @@ private lemma efRatMachine_fuel_correct {C : Type*}
 /-- Evaluate an expressible feature to an exact rational by running the stack machine of
 the section above for `efRatMachineFuel e` steps against the context's quote table `V`.
 `efRatCompiledEval_eq` identifies it with `EF.denoteRat` and `efRatCompiledEval_prim`
-certifies it primitive recursive; `Construction/Witnesses/BoundedEvaluation.lean` runs it
-against the *total* quote table, where `EF.denoteRatWithAtFuel_complete` supplies the guard
+certifies it primitive recursive; `Construction/Statistics/SettlementCompiler.lean` runs
+it against the *total* quote table, where `EF.denoteRatWithAtFuel_complete` supplies the guard
 that every listed price query was answered (`dd:dsl`). -/
 def efRatCompiledEval {C : Type*} (V : C → ℕ → Sentence → ℚ)
     (ctx : C) (e : EF) : ℚ :=

@@ -1,5 +1,5 @@
 import LogicalInduction.Framework.Machine.FPFold
-import LogicalInduction.Framework.DigitArith
+import LogicalInduction.Framework.Emission.DigitArith
 import Complexitylib.Classes.P.Cobham
 
 /-!
@@ -63,7 +63,8 @@ deliberate: an arbitrary machine word may carry a *non-canonical* run (`[1, 0]` 
 both the token `1`), so a client that compared blocks against constant words would be wrong
 on inputs `undigitize` reads identically. The supported reads are `LEUnary`'s clamp, whose
 guard makes the value a length, and the fixed-numeral test `ifNumEq_mem_FP`, justified by
-`digitVal_eq_iff_zero_padded`. Every test the conditioning and freeze automata make is a
+`digitVal_eq_iff_zero_padded` (`Framework/Emission/DigitArith.lean`, with the rest of the
+base-four numeral arithmetic). Every test the conditioning and freeze automata make is a
 comparison against a small constant or against the day, and both have a cap available.
 -/
 
@@ -87,15 +88,12 @@ lemma foldlBits_append (A B : List Bool → List Bool) (W : List Bool) :
 
 /-! ## Digits: values, bits, and slots
 
-The value a digit run denotes is `Framework/DigitArith.lean`'s `digitVal`, the same
+The value a digit run denotes is `Framework/Emission/DigitArith.lean`'s `digitVal`, the same
 little-endian base-four reading `undigitize` performs; nothing new is defined here.  What
 is new is `digitSlots`, the shape a *client* of the digit fold below can branch on.
 
 Proof kind: `P` throughout.  Provenance: (b) `Machine/DigitBits.lean`,
-`Framework/DigitArith.lean`. -/
-
-@[simp] private lemma digitVal_cons (d : ℕ) (ds : List ℕ) :
-    digitVal (d :: ds) = d + 4 * digitVal ds := rfl
+`Framework/Emission/DigitArith.lean`. -/
 
 lemma digitBits_of_bits (b0 b1 b2 : Bool) :
     digitBits (4 * b2n b0 + 2 * b2n b1 + b2n b2) = [b0, b1, b2] := by
@@ -590,88 +588,6 @@ lemma dgFold_mem_FP {STEP Wf Sf : List Bool → List Bool} {c : ℕ} {qP : Polyn
     funext z
     exact dgFold_cli STEP (Wf z) (Sf z) cli₀
   rwa [heq] at hcomp
-
-/-! ## Base-4 numerals: canonical runs, and uniqueness up to trailing zeros
-
-These are general facts about `digitVal` and `natDigits4`, used both by the guarded
-little-endian expansion below and by the token tests that compare a block's value
-against a fixed numeral.  They sit at the file top level rather than inside `LEUnary`,
-which is about one particular client of them. -/
-
-lemma digitVal_natDigits4 : ∀ n : ℕ, digitVal (natDigits4 n) = n := by
-  intro n
-  induction n using Nat.strong_induction_on with
-  | _ n ih =>
-      cases n with
-      | zero => simp [natDigits4]
-      | succ m =>
-          rw [natDigits4, digitVal_cons,
-            ih ((m + 1) / 4) (Nat.div_lt_self (Nat.succ_pos m) (by norm_num))]
-          omega
-
-/-! ### Base-4 representation is unique up to trailing zeros
-
-A token's value does not determine its digit run — `[1]` and `[1, 0]` are both the token
-`1`, which is why a client reads blocks rather than words.  It determines it *up to trailing
-zeros*, and that is what lets a token test compare against a fixed numeral: the run must
-begin with the numeral's canonical digits and continue with nothing but zeros.  Both halves
-are constant-word tests (`eqConstFn_mem_FP`, and a value-zero clamp). -/
-
-/-- `digitVal` splits over concatenation, the tail shifted by the head's width. -/
-lemma digitVal_append : ∀ (a b : List ℕ),
-    digitVal (a ++ b) = digitVal a + 4 ^ a.length * digitVal b
-  | [], b => by simp
-  | (d :: a), b => by
-      rw [List.cons_append, digitVal_cons, digitVal_cons, digitVal_append a b,
-        List.length_cons, pow_succ]
-      ring
-
-@[simp] lemma digitVal_replicate_zero (m : ℕ) : digitVal (List.replicate m 0) = 0 := by
-  induction m with
-  | zero => simp
-  | succ m ih => rw [List.replicate_succ, digitVal_cons, ih]
-
-/-- **Every digit run is its value's canonical run, zero-padded.**
-
-Proof kind: `P` proved.  Provenance: (b) `natDigits4`, `Nat.div_add_mod`. -/
-lemma exists_zero_pad_of_digitVal : ∀ (cur : List ℕ), (∀ d ∈ cur, d < 4) →
-    ∃ m : ℕ, cur = natDigits4 (digitVal cur) ++ List.replicate m 0
-  | [], _ => ⟨0, by simp [natDigits4]⟩
-  | (d :: ds), hcur => by
-      have hd : d < 4 := hcur d (List.mem_cons_self ..)
-      have hds : ∀ e ∈ ds, e < 4 := fun e he => hcur e (List.mem_cons_of_mem _ he)
-      obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal ds hds
-      rw [digitVal_cons]
-      cases hV : d + 4 * digitVal ds with
-      | zero =>
-          have hd0 : d = 0 := by omega
-          have hw0 : digitVal ds = 0 := by omega
-          refine ⟨m + 1, ?_⟩
-          rw [hd0, natDigits4, List.nil_append, List.replicate_succ]
-          congr 1
-          rw [hm, hw0, natDigits4, List.nil_append]
-      | succ v =>
-          have hmod : (v + 1) % 4 = d := by omega
-          have hdiv : (v + 1) / 4 = digitVal ds := by omega
-          refine ⟨m, ?_⟩
-          rw [natDigits4, hmod, hdiv, List.cons_append]
-          congr 1
-
-/-- **A digit run has a given value exactly when it is that value's canonical run followed
-by zeros.**  This is the shape a fixed-numeral token test checks.
-
-Proof kind: `C` composition.  Provenance: (a) `exists_zero_pad_of_digitVal`,
-`digitVal_append`, `digitVal_natDigits4`.
--/
-lemma digitVal_eq_iff_zero_padded (cur : List ℕ) (hcur : ∀ d ∈ cur, d < 4) (K : ℕ) :
-    digitVal cur = K ↔ ∃ m : ℕ, cur = natDigits4 K ++ List.replicate m 0 := by
-  constructor
-  · intro h
-    obtain ⟨m, hm⟩ := exists_zero_pad_of_digitVal cur hcur
-    exact ⟨m, by rw [hm, h]⟩
-  · rintro ⟨m, rfl⟩
-    rw [digitVal_append, digitVal_natDigits4, digitVal_replicate_zero]
-    omega
 
 /-! ## The guarded little-endian expansion
 

@@ -1,7 +1,7 @@
 import LogicalInduction.Properties.Calibration
 import LogicalInduction.Properties.SelfTrust
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Feedback and pseudorandomness
@@ -50,11 +50,12 @@ data only — no price bound, no weighting-divergence or bias premise, and no
 pseudorandom-learning conclusion — so none of them can smuggle a theorem in as a
 hypothesis.  Each is documented by what it does carry.  They are
 `FeedbackTraderEmission`, `FeedbackTraderEmissionFamily`, `FeedbackTraderEmissionSigns`
-and `FeedbackTruthSequence` (discharged in `Construction/Witnesses/FeedbackEmission.lean` and
-`FeedbackTruth.lean`), `PatientSettlementClock`
-(`BoundedEvaluation.PatientSettlementClock.ofComputations`) and
+and `FeedbackTruthSequence` (discharged in `Construction/Statistics/FeedbackEmission.lean` and
+`Construction/Statistics/FeedbackTruth.lean`), `PatientSettlementClock`
+(`PatientSettlementClock.ofComputations`, `Construction/Statistics/SettlementCompiler.lean`)
+and
 `PseudorandomFrequencyInfrastructureWithHistoricalVerifiers`
-(`Construction/Witnesses/HistoricalMaturity.lean`).
+(`Construction/Statistics/HistoricalMaturity.lean`).
 
 `dd:asymp` owns the limit vocabulary and `dd:fuel` the trader certificates.  `thm:benford`
 is proved from `thm:prand` by the paper's rational squeeze, with `p` staying real
@@ -64,11 +65,11 @@ throughout.
 
 `AffineCombination.lic_wubaff`, `AffineCombination.lic_wub` and
 `AffineCombination.BoundedCombinationSequence.wubaff` feed
-`Construction/Witnesses/FeedbackUnconditional.lean`'s `lic_wubaff_ofComputation*` forms.
+`Construction/Statistics/Endpoints.lean`'s `lic_wubaff_ofComputation*` forms.
 The `lic_prandaff_*_of_historicalVerifiers` and `BoundedCombinationSequence.prandaff*`
 forms feed `Properties/ExpectationProperties.lean` and the clock-free
 `lic_learning_varied_pseudorandom*` and `lic_learning_pseudorandom_frequency*` endpoints in
-`Construction/Witnesses/HistoricalMaturity.lean`.
+`Construction/Statistics/HistoricalMaturity.lean`.
 -/
 
 namespace LogicalInduction
@@ -255,39 +256,6 @@ lemma PseudorandomBelow.const_mul_pos
   have hm := mul_le_mul_of_nonneg_left hn hc.le
   rw [mul_add, mul_zero, mul_div_cancel₀ ε hc.ne'] at hm
   exact hm
-
-/-- Cancel a positive fixed scale from asymptotic nonnegativity. -/
-lemma asympGE_zero_of_const_mul_pos
-    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
-    (h : (fun n => c * x n) ≳ₙ (fun _ => 0)) :
-    x ≳ₙ (fun _ => 0) := by
-  intro ε hε
-  have hs := h (c * ε) (mul_pos hc hε)
-  filter_upwards [hs] with n hn
-  have hm : 0 ≤ c * (x n + ε) := by
-    simpa only [mul_add, zero_add] using hn
-  exact (mul_nonneg_iff_of_pos_left hc).mp hm
-
-/-- Cancel a positive fixed scale from asymptotic nonpositivity. -/
-lemma asympLE_zero_of_const_mul_pos
-    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
-    (h : (fun n => c * x n) ≲ₙ (fun _ => 0)) :
-    x ≲ₙ (fun _ => 0) := by
-  intro ε hε
-  have hs := h (c * ε) (mul_pos hc hε)
-  filter_upwards [hs] with n hn
-  have hm : c * x n ≤ c * ε := by
-    simpa only [zero_add] using hn
-  simpa only [zero_add] using (mul_le_mul_iff_of_pos_left hc).mp hm
-
-/-- Cancel a positive fixed scale from asymptotic equality to zero. -/
-lemma asympEq_zero_of_const_mul_pos
-    {x : ℕ → ℝ} {c : ℝ} (hc : 0 < c)
-    (h : (fun n => c * x n) ≈ₙ (fun _ => 0)) :
-    x ≈ₙ (fun _ => 0) := by
-  rw [asympEq_iff_asympLE_asympGE] at h ⊢
-  exact ⟨asympLE_zero_of_const_mul_pos hc h.1,
-    asympGE_zero_of_const_mul_pos hc h.2⟩
 
 /-- Paper `def:pseudorandom`: pseudorandomness at a fixed, possibly irrational, frequency
 `p` — every legal, divergent, `f`-patient market-generated weighting sees weighted truth
@@ -519,55 +487,6 @@ lemma feedbackWealth_not_bddAbove_of_frequently_positive_return
   have hlogLe := Real.log_le_sub_one_of_pos hwealthPos
   refine ⟨feedbackWealth δ w r k, ⟨k, rfl⟩, ?_⟩
   linarith
-
-/-! ### Expressible Kelly coefficients -/
-
-namespace ROIBudget
-
-/-- The finite product of a list of expressible features, right-folded over `EF.mul` from
-`EF.const 1`.  It is what lets multiplicative Kelly wealth be carried as explicit syntax
-the emitter can meter, matching `ROIBudget.sumFeatures` on the additive side. -/
-def prodFeatures : List EF → EF :=
-  List.foldr EF.mul (EF.const 1)
-
-lemma serialize_prodFeatures (es : List EF) :
-    (prodFeatures es).serialize = es.flatMap EF.serialize ++
-      (EF.const 1).serialize ++ List.replicate es.length 3 := by
-  induction es with
-  | nil => simp [prodFeatures, EF.serialize]
-  | cons e es ih =>
-      change e.serialize ++ (prodFeatures es).serialize ++ [3] = _
-      rw [ih]
-      simp only [List.flatMap_cons, List.length_cons]
-      rw [List.replicate_succ']
-      simp only [List.append_assoc]
-
-lemma prodFeatures_denote (es : List EF) (V : History) :
-    (prodFeatures es).denote V = (es.map (fun e ↦ e.denote V)).prod := by
-  induction es with
-  | nil => simp [prodFeatures]
-  | cons e es ih =>
-      change e.denote V * (prodFeatures es).denote V = _
-      simp [ih]
-
-lemma prodFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
-    (prodFeatures es).denoteWith ρ V =
-      (es.map (fun e ↦ e.denoteWith ρ V)).prod := by
-  induction es with
-  | nil => simp [prodFeatures]
-  | cons e es ih =>
-      change e.denoteWith ρ V * (prodFeatures es).denoteWith ρ V = _
-      simp [ih]
-
-lemma prodFeatures_rank_le (es : List EF) (n : ℕ)
-    (h : ∀ e ∈ es, e.rank ≤ n) : (prodFeatures es).rank ≤ n := by
-  induction es with
-  | nil => change 0 ≤ n; omega
-  | cons e es ih =>
-      change Nat.max e.rank (prodFeatures es).rank ≤ n
-      exact Nat.max_le.mpr ⟨h e (by simp), ih (fun x hx ↦ h x (by simp [hx]))⟩
-
-end ROIBudget
 
 namespace AffineCombination
 
@@ -2030,7 +1949,7 @@ not yet certified settled at stage `n`.
 The clock is an internal interface, **not** a modeling substitution: it is *derived* from
 the paper's own `DefinitelySettled` dovetail (`app:prandaff`).
 `PatientSettlementClock.ofComputations`
-(`Construction/Witnesses/BoundedEvaluation.lean`) runs that dovetail on the inductor's own
+(`Construction/Statistics/SettlementCompiler.lean`) runs that dovetail on the inductor's own
 market and deductive-process programs; its remaining inputs — the polynomial certificate
 `hpoly`, the determination premise `hdet`, world non-emptiness `hworld`, and the tolerance
 stream with its primitive recursiveness, reachability and error bound — are already
@@ -3109,7 +3028,7 @@ truth stream is pseudorandom with real frequency `p` is learned at frequency `p`
 The paper states no hypothesis corresponding to `hinfra`, which carries the settlement
 clocks and executable historical verifiers the squeeze needs at each rational target; it
 is conclusion-free (module docstring) and discharged in
-`Construction/Witnesses/HistoricalMaturity.lean`.
+`Construction/Statistics/HistoricalMaturity.lean`.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]

@@ -11,10 +11,14 @@ and the faithfulness record; `LogicalInduction/API.lean` is the supported client
 and `AxiomAudit.lean` the checked inventory of every public endpoint. The library follows
 the paper's own sectioning — `Framework` is §2–3 (sentences, markets, features, traders,
 exploitation, the criterion, efficient computability, expectations, and the shared
-asymptotic vocabulary), `Properties` is the §4 property tail with one file per theorem
-family, and `Construction` is the §5 existence proof, with `Construction/Witnesses/`
-holding the representation machinery that discharges the property tail's interfaces over
-the concrete constructed inductor. Every paper-facing statement cites the paper's real
+asymptotic vocabulary) together with the substrate the later directories consume (the
+background theory `Θ`, the `dd:fuel` emission calculus, and the machine compiler and
+description interpreter), `Properties` is the §4 property tail with one file per theorem
+family, and `Construction` is the §5 existence proof, with one lane directory per §4 family
+(`Paper/`, `Quotation/`, `Knowledge/`, `Statistics/`, `NonDogmatism/`, `Freeze/`,
+`Conditioning/`, `LUV/` and `SemanticExtension/`) holding the representation
+machinery that discharges the property tail's interfaces over the concrete constructed
+inductor. Every paper-facing statement cites the paper's real
 `\label`, and the citation is checked in both directions by script.
 
 ## Reading the repository against the paper
@@ -61,12 +65,12 @@ list is exhaustive; a label appearing nowhere below is not in use.
   construction enumerates and dominates *that* class. A fuel certificate is a *sufficient*
   route into it: `EfficientlyComputable.toMachine` proves every certificate lands inside
   the class. The converse is open, and nothing paper-facing depends on it; the model card
-  in `Framework/Computable.lean` states the open question.
+  in `Framework/Emission/Computable.lean` states the open question.
 * **`dd:nnf`** — the *semantic* object language is Foundation's
   **negation-normal-form** `Semiformula` (constructors `verum/falsum/rel/nrel/and/or/all/exs`,
   negation a meta-level involution, `A 🡒 B` notation for `∼A ⋎ B`, `A 🡘 B` notation for
   `(A 🡒 B) ⋏ (B 🡒 A)`), but *writing* is metered on a **source** language, not on that
-  normal form. `ArithSource k` (`Construction/Witnesses/ArithmeticSource.lean`) carries the
+  normal form. `ArithSource k` (`Construction/LUV/ArithmeticSource.lean`) carries the
   paper's own primitive connectives (tex:560) — `¬`, `∧`, `∨`, `⟹`, `⟺`, `∀`, `∃`, plus
   atomic leaves — `compile : ArithSource k → ArithmeticSemiformula ℕ k` gives it its
   meaning (`eval_compile`), and `def:ec`'s condition is `PolyArithmeticSourceSeq`: one
@@ -97,7 +101,7 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * **`dd:symbolcount`** — §4.10's finite proof searches are metered by the **symbol count
   of the derivation**, as the paper's `Con(Θ′)(ν)` is (tex:1855-1866), with the bound
   inclusive. Foundation exposes no size function on its internal derivations, so
-  `Framework/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
+  `Framework/Theory/DerivationSize.lean` builds one: `dSize`, defined by external recursion over
   the derivation codes at `V := ℕ`, with equations tying it to Foundation's own
   constructors (`dSize_axL`, `dSize_cutRule`, …) and the converse bound
   `le_G_dSize : d ≤ G (dSize d)` that keeps the metered search decidable in both
@@ -119,14 +123,14 @@ list is exhaustive; a label appearing nowhere below is not in use.
   hypotheses are quantitative in the measure.
 * **`dd:machinetheory`** — a day's theory in `thm:incons` is presented by a **machine that
   enumerates the written sources of its axioms** (`theoryOf`,
-  `Construction/Witnesses/ComputationRepresented.lean`), and reading a machine as a theory
+  `Construction/Knowledge/Endpoints.lean`), and reading a machine as a theory
   requires fixing a convention. Ours: **an output contributes the sentence a written source
   names, and anything else contributes nothing.** Concretely, an output `v` is admitted only
   if it is literally the name of its own decoded token run *and* that run is the complete
   emitted run of one `ArithSource 0` whose compiled form is a sentence (`AdmissibleName`,
-  `Construction/Witnesses/SourceWindow.lean`, deciding source-hood with the depth-tracking,
+  `Construction/Knowledge/SourceWindow.lean`, deciding source-hood with the depth-tracking,
   free-variable-rejecting recognizer `sourceRun`,
-  `Construction/Witnesses/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
+  `Construction/Knowledge/SourceRecognizer.lean`); the budget-`b` window at inputs `is` is
   `is.map (fun i => gateName ((evaln b m i).getD verumSourceNat))`, a diverging or
   inadmissible output contributing the inert `⊤`. The gate is not hygiene: without it the
   token splice is unsound, and `MachineTheoryInconsistent` holds of machines presenting the
@@ -148,8 +152,8 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * **`dd:quote-code`** — quotation data is *code-indexed*: a quote structure carries a
   selector `code : ℕ` naming the program being quoted, instead of quantifying over an
   abstract quotation schema. This is what makes the quotation presentation satisfiable; an
-  abstract free-schema version is not (`Construction/Witnesses/PaperMarket.lean`,
-  `Construction/Witnesses/QuotationAffine.lean`).
+  abstract free-schema version is not (`Construction/Paper/Market.lean`,
+  `Construction/Quotation/Packages.lean`).
 * **`dd:mesh`** — `thm:ccee`'s quoted product `⌜Xₙ · w_{f(n)}⌝` is realized on a finite
   *mesh* of the deferred weight's own threshold atoms, so it reflects the product only to
   within `1/(n+1)` rather than exactly. This is a disclosed type-`(c)` substitution, not
@@ -159,14 +163,16 @@ list is exhaustive; a label appearing nowhere below is not in use.
   slack is carried explicitly by `ConditionalExpectationQuote.slack`
   (`Properties/SelfTrust.lean`). The quotation-free deferred and paired-index affine
   machinery the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st` packages are assembled from lives
-  in `Construction/Witnesses/DeferralFibre.lean`.
+  in `Construction/Quotation/DeferralFibre.lean`.
 
 ## Naming conventions
 
 * `lic_<node>` is a consequence of the logical induction criterion, mirroring the paper
   node named in its docstring — `lic_provind` ↔ `thm:provind`, `lic_nonDogmatism` ↔
-  `thm:nd`. Such statements take `[IsLogicalInductor P DP]`. (`lic_iff_of_finitePerturbation`
-  is the one transport rather than consequence.) Where the paper's statement is about a
+  `thm:nd`. Such statements take `[IsLogicalInductor P DP]`. The `lic_iff_*` family
+  (`lic_iff_of_finitePerturbation`, `lic_iff_of_finiteSupportPerturbation` and the machine
+  and syntactically-restricted forms in `API.lean`) are transports between two markets
+  rather than consequences of one. Where the paper's statement is about a
   combination or a LUV rather than a sentence, the endpoint lives in the corresponding
   namespace; the prefix is dropped when the endpoint is a *projection off a bounded-sequence
   structure* — `AffineCombination.BoundedCombinationSequence.affpolymax` ↔ `thm:affpolymax`,

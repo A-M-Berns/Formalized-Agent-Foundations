@@ -1,11 +1,19 @@
 import LogicalInduction.Properties.AffineCoherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
-# Expectations
+# Expectations as affine combinations
 
 Renders §4.8 *Expectations*: `thm:ei` (Expectations of Indicators), `thm:loe` (Linearity of
 Expectation) and `thm:expprovind` (Expectation Provability Induction).
+
+§4.8 is carried by three modules, in import order, cut by *what an expectation is presented
+as*.  This one presents a single LUV's expectation as an affine combination of its threshold
+shares and proves the three nodes above off the affine master theorems.
+`Properties/ExpectationConvergence.lean` then proves `thm:ec` — that the day-`n` expectation
+converges — from `thm:affcoh` and `thm:lc` over the same presentation.
+`Properties/ExpectationProperties.lean` lifts both to `LUVCombination` (`def:luv`, `def:blcp`)
+and carries `lem:mesh`, `thm:expcoh`, `thm:exppolymax`, `thm:perexpkno` and `thm:wubexp`.
 
 The growing threshold bundles of `def:e` are presented as affine combinations:
 `LUV.expectAffine X k = Σ_{i<k} (1/k)·⌜X > i/k⌝`, priced on day `n` at that day's own grid
@@ -33,7 +41,7 @@ and `lic_expectation_provind`, `_ofValuesAt`, `_le` (the dual, through the negat
 `_eq`. Everything routes through
 `AffineCombination.PolySequence.affine_provind_theory_tendsto_zero` / `.affine_provind` from
 `Properties/AffineCoherence.lean`, and the endpoints are consumed by
-`Construction/Witnesses/{LUVExpectationCertified,ArithmeticSource}.lean`.
+`Construction/LUV/{Endpoints,ArithmeticSource}.lean`.
 
 Limit vocabulary is `dd:asymp`'s and is never redefined here.
 -/

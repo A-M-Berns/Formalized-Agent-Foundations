@@ -196,11 +196,6 @@ NON_PAPER_LIBRARIES = {
     "AxiomAudit": "the checked endpoint inventory itself — a gate, not a formalization",
     "Scratchpad": "scratch verification of the Mathlib/Foundation substrate; excluded "
                   "from the default target",
-    "MachineExec": "the counted-step machine (Stage 1) and the executable "
-                   "complexitylib-description bridge (Stage 3) of the efficiency-model "
-                   "program — infrastructure for a future recalibration of def:ec, not a "
-                   "paper formalization; carries no paper node and is imported by nothing "
-                   "in LogicalInduction.lean",
     "ProvabilityLogic": "vendored subset of FormalizedFormalLogic/ProvabilityLogic "
                         "(pinned in lakefile.lean) — dependency code, not a paper "
                         "formalized by this project",

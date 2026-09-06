@@ -1,8 +1,8 @@
 import LogicalInduction.Framework.Affine
-import LogicalInduction.Framework.RpnEmission
-import LogicalInduction.Framework.Computable
+import LogicalInduction.Framework.Emission.RpnEmission
+import LogicalInduction.Framework.Emission.Computable
 import Mathlib.Algebra.BigOperators.Fin
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Repeatable return on investment
@@ -68,6 +68,13 @@ form, discharging the closing days, the semantic maturity schedule and the polyn
 openness table from a single checker. `noFractionalRepeatableReturn` is the
 continuous-occupancy analogue. Limits are stated with `ConvergesTo` (`dd:asymp`).
 
+Underneath those sits the positive construction they are proved from: `repeatableROI`
+assembles the shared budgeted trader and returns both halves at once — efficient
+computability and exploitation — from a *dense* occupancy hypothesis `∀ i, δ ≤ αᵢ`, and
+`repeatableROI_of_frequently` is the same conclusion from the sparse `∃ᶠ` occupancy the
+`lem:type3` contrapositives use. `repeatableROI` is the entry point for a client that owns
+a uniformly-occupied family and wants the trader rather than the impossibility statement.
+
 Four hypotheses go beyond the printed `lem:type3`, and are named at `noRepeatableROI`
 itself: the WLOG normalisation `αₖ ≤ 1`, the summable tolerance family, the explicit
 plausible-world clause, and the polynomial maturity verifier.
@@ -75,8 +82,8 @@ plausible-world clause, and the polynomial maturity verifier.
 Consumers: `Properties/AffinePreemptiveLearning.lean`, `Properties/Calibration.lean`,
 `Properties/Pseudorandomness.lean`, `Properties/UniversalSemimeasure.lean`,
 `Construction/Budgeter.lean`, `Construction/LIACompiler.lean`,
-`Construction/Witnesses/HistoricalMaturity.lean` (the heaviest client of the maturity
-interfaces) and `Construction/Witnesses/FeedbackEmission.lean`; `API.lean` presents the
+`Construction/Statistics/HistoricalMaturity.lean` (the heaviest client of the maturity
+interfaces) and `Construction/Statistics/FeedbackEmission.lean`; `API.lean` presents the
 emulatability and budget vocabulary on the consumer surface.
 -/
 
@@ -622,18 +629,12 @@ lemma Trader.partialNetWorthRatDaysAtFuel_complete
       simp [partialNetWorthRatDaysAtFuel, Strategy.valueRatAtFuel,
         Strategy.valueRat, htoday, htail]
 
-private lemma sum_map_list_range {M : Type*} [AddCommMonoid M] (f : ℕ → M) (n : ℕ) :
-    ((List.range n).map f).sum = ∑ d ∈ Finset.range n, f d := by
-  induction n with
-  | zero => rfl
-  | succ n ih => rw [List.sum_range_succ, Finset.sum_range_succ, ih]
-
 lemma Trader.partialMagnitudeRatAtFuel_sound
     (Tr : Trader) {P : History} (market : MarketComputation P) (fuel n : ℕ)
     {q : ℚ} (h : Tr.partialMagnitudeRatAtFuel market fuel n = some q) :
     q = Tr.partialMagnitudeRat
       (fun d φ => market.quote d (Encodable.encode φ)) n := by
-  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat, sum_map_list_range] using
+  simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat, list_range_map_sum] using
     Tr.partialMagnitudeRatDaysAtFuel_sound market fuel (List.range (n + 1)) h
 
 lemma Trader.partialNetWorthRatAtFuel_sound
@@ -642,7 +643,7 @@ lemma Trader.partialNetWorthRatAtFuel_sound
     (h : Tr.partialNetWorthRatAtFuel market fuel w n = some q) :
     q = Tr.partialNetWorthRat
       (fun d φ => market.quote d (Encodable.encode φ)) w n := by
-  simpa [partialNetWorthRatAtFuel, partialNetWorthRat, sum_map_list_range] using
+  simpa [partialNetWorthRatAtFuel, partialNetWorthRat, list_range_map_sum] using
     Tr.partialNetWorthRatDaysAtFuel_sound market fuel w (List.range (n + 1)) h
 
 lemma Trader.partialMagnitudeRatAtFuel_complete
@@ -654,7 +655,7 @@ lemma Trader.partialMagnitudeRatAtFuel_complete
       (Tr.partialMagnitudeRat
         (fun d φ => market.quote d (Encodable.encode φ)) n) := by
   simpa [partialMagnitudeRatAtFuel, partialMagnitudeRat,
-    partialMagnitudeRatQueries, sum_map_list_range] using
+    partialMagnitudeRatQueries, list_range_map_sum] using
       Tr.partialMagnitudeRatDaysAtFuel_complete market fuel
         (List.range (n + 1)) hready
 
@@ -668,7 +669,7 @@ lemma Trader.partialNetWorthRatAtFuel_complete
       (Tr.partialNetWorthRat
         (fun d φ => market.quote d (Encodable.encode φ)) w n) := by
   simpa [partialNetWorthRatAtFuel, partialNetWorthRat,
-    partialNetWorthRatQueries, sum_map_list_range] using
+    partialNetWorthRatQueries, list_range_map_sum] using
       Tr.partialNetWorthRatDaysAtFuel_complete market fuel w
         (List.range (n + 1)) hready
 
@@ -820,83 +821,6 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
   · rw [gateTraderFamily, if_pos hs, h.trades_eq]
     simp [count, hs]
   · simp [gateTraderFamily, hs, Trader.zero, count]
-
-/-! ## Scaling and joining strategies
-
-General `Strategy` algebra: the budgeted trader is a join of components, each scaled by one
-expressible feature. -/
-
-namespace Strategy
-
-/-- Multiply every share coefficient in a strategy by one legal feature. -/
-def scaleBy {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n) : Strategy n where
-  trades := T.trades.map (fun p => (EF.mul e p.1, p.2))
-  rank_le := by
-    intro p hp
-    simp only [List.mem_map] at hp
-    obtain ⟨q, hq, rfl⟩ := hp
-    exact Nat.max_le.mpr ⟨he, T.rank_le q hq⟩
-
-lemma scaleBy_value {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n)
-    (V : History) (w : Valuation) :
-    (T.scaleBy e he).value V w = e.denote V * T.value V w := by
-  simp only [scaleBy, Strategy.value, List.map_map]
-  induction T.trades with
-  | nil => simp
-  | cons p ps ih =>
-      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
-        Pi.mul_apply] at ih ⊢
-      rw [ih]
-      ring
-
-lemma scaleBy_magnitude {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n)
-    (V : History) :
-    (T.scaleBy e he).magnitude V = |e.denote V| * T.magnitude V := by
-  simp only [scaleBy, Strategy.magnitude, List.map_map]
-  induction T.trades with
-  | nil => simp
-  | cons p ps ih =>
-      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
-        Pi.mul_apply, abs_mul] at ih ⊢
-      rw [ih]
-      ring
-
-/-- Concatenate a finite collection of same-day strategies. -/
-def join {n : ℕ} (ts : List (Strategy n)) : Strategy n where
-  trades := ts.flatMap Strategy.trades
-  rank_le := by
-    intro p hp
-    simp only [List.mem_flatMap] at hp
-    obtain ⟨T, hT, hp⟩ := hp
-    exact T.rank_le p hp
-
-lemma join_value {n : ℕ} (ts : List (Strategy n)) (V : History) (w : Valuation) :
-    (Strategy.join ts).value V w = (ts.map (fun T => T.value V w)).sum := by
-  induction ts with
-  | nil => simp [join, Strategy.value]
-  | cons T ts ih =>
-      calc
-        (Strategy.join (T :: ts)).value V w =
-            T.value V w + (Strategy.join ts).value V w := by
-              simp [Strategy.join, Strategy.value]
-        _ = ((T :: ts).map (fun S => S.value V w)).sum := by
-              rw [ih]
-              rfl
-
-lemma join_magnitude {n : ℕ} (ts : List (Strategy n)) (V : History) :
-    (Strategy.join ts).magnitude V = (ts.map (fun T => T.magnitude V)).sum := by
-  induction ts with
-  | nil => simp [join, Strategy.magnitude]
-  | cons T ts ih =>
-      calc
-        (Strategy.join (T :: ts)).magnitude V =
-            T.magnitude V + (Strategy.join ts).magnitude V := by
-              simp [Strategy.join, Strategy.magnitude]
-        _ = ((T :: ts).map (fun S => S.magnitude V)).sum := by
-              rw [ih]
-              rfl
-
-end Strategy
 
 namespace ROIBudget
 
@@ -2883,6 +2807,51 @@ lemma exists_maturitySchedule (Ts : ℕ → Trader) (V : History) (DP : Deductiv
     ∃ close, MaturitySchedule Ts V DP ε (fun _ => η) close :=
   ⟨fun i => Classical.choose ((hroi i).exists_matured hη),
     fun i => Classical.choose_spec ((hroi i).exists_matured hη)⟩
+
+/-! ### Expressible Kelly coefficients -/
+
+/-- The finite product of a list of expressible features, right-folded over `EF.mul` from
+`EF.const 1`.  It is what lets multiplicative Kelly wealth be carried as explicit syntax
+the emitter can meter, matching `ROIBudget.sumFeatures` on the additive side. -/
+def prodFeatures : List EF → EF :=
+  List.foldr EF.mul (EF.const 1)
+
+lemma serialize_prodFeatures (es : List EF) :
+    (prodFeatures es).serialize = es.flatMap EF.serialize ++
+      (EF.const 1).serialize ++ List.replicate es.length 3 := by
+  induction es with
+  | nil => simp [prodFeatures, EF.serialize]
+  | cons e es ih =>
+      change e.serialize ++ (prodFeatures es).serialize ++ [3] = _
+      rw [ih]
+      simp only [List.flatMap_cons, List.length_cons]
+      rw [List.replicate_succ']
+      simp only [List.append_assoc]
+
+lemma prodFeatures_denote (es : List EF) (V : History) :
+    (prodFeatures es).denote V = (es.map (fun e ↦ e.denote V)).prod := by
+  induction es with
+  | nil => simp [prodFeatures]
+  | cons e es ih =>
+      change e.denote V * (prodFeatures es).denote V = _
+      simp [ih]
+
+lemma prodFeatures_denoteWith (es : List EF) (ρ : List ℝ) (V : History) :
+    (prodFeatures es).denoteWith ρ V =
+      (es.map (fun e ↦ e.denoteWith ρ V)).prod := by
+  induction es with
+  | nil => simp [prodFeatures]
+  | cons e es ih =>
+      change e.denoteWith ρ V * (prodFeatures es).denoteWith ρ V = _
+      simp [ih]
+
+lemma prodFeatures_rank_le (es : List EF) (n : ℕ)
+    (h : ∀ e ∈ es, e.rank ≤ n) : (prodFeatures es).rank ≤ n := by
+  induction es with
+  | nil => change 0 ≤ n; omega
+  | cons e es ih =>
+      change Nat.max e.rank (prodFeatures es).rank ≤ n
+      exact Nat.max_le.mpr ⟨h e (by simp), ih (fun x hx ↦ h x (by simp [hx]))⟩
 
 end ROIBudget
 

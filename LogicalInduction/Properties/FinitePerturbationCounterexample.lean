@@ -1,8 +1,8 @@
 import LogicalInduction.Framework.Compactness
 import LogicalInduction.Framework.MachineEfficiency
-import LogicalInduction.Properties.Basic
+import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.Introspection
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # A refutation of the unrestricted finite-day perturbation theorem
@@ -454,12 +454,12 @@ would be harmless, since nothing reads `P' 0 (χ m)`.
 Tags `7`/`8` are nevertheless chosen disjoint from every tag the market perturbed here
 emits, so the advice layer is inert numerically and not merely where the proof happens to
 look.  The registry of the atom-payload space is the table at
-`ComputationClaimKind.godelCode` (`Construction/Witnesses/ComputationSyntax.lean`), and
+`ComputationClaimKind.godelCode` (`Construction/Knowledge/Syntax.lean`), and
 the process and diagonal family the downstream witness supplies draw their atoms from the
 payload tags `0`–`6` that table allocates.  Disjointness from every tag in the repository
 is a strictly stronger property, and is neither claimed nor needed: `7` also names the
-`thm:dus` bit atoms (`UnconditionalOverLIA.bitAtomTag`), which belong to a separate
-development and never enter this market.
+`thm:dus` bit atoms (`bitAtomTag`, `Construction/NonDogmatism/Endpoints.lean`), which belong
+to a separate development and never enter this market.
 -/
 
 /-- The schedule-gate advice atom for day `n`, on the fresh tag `7`. -/
@@ -799,14 +799,15 @@ theorem not_overgeneral_ifp_of_advice
 
 The concrete existential this reduction consumes — a machine logical inductor with a
 `p = 1/2` paradox-resistance diagonal, together with the computability of its perturbed
-market — cannot be stated in this module.  The single market `paperDP`, its literal-stream
-component `theoremDP` and the whole quotation layer live in
-`Construction/Witnesses/PaperTheoryDP.lean` and `ComputationDP.lean`, which reach this file
-through `ComputationSyntax` → `BoundedEvaluation` → `LogicalInduction.Properties`, so
-naming them here is an import cycle.
+market — cannot be stated in this module.  It is built over the single market `paperDP` and
+the quotation layer, which live in `Construction/Paper/` and are §5 objects, and the module
+that assembles it, `Construction/Freeze/Counterexample.lean`, imports *this* file for the
+reduction; naming the witness here would close that loop.  The directory invariant is the
+same one stated in `LogicalInduction/README.md`: nothing under `Properties/` imports
+`Construction/`.
 
 The witness and the closed refutation therefore live downstream, in
-`Construction/Witnesses/FinitePerturbationWitness.lean` — the same split
+`Construction/Freeze/Counterexample.lean` — the same split
 `lic_paradox_resistance_ofDiagonal` and `lic_paradox_resistance_ofDiagonal_unconditional`
 already use.  Everything in this file is abstract and unconditional.
 -/

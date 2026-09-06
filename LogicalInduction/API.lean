@@ -1,12 +1,19 @@
-import LogicalInduction.Properties
 import LogicalInduction.Framework.Machine.WriteOutMachine
-import LogicalInduction.Construction.Machine.CondEndpoints
-import LogicalInduction.Construction.Witnesses.FreezeOracle
-import LogicalInduction.Construction.Witnesses.FinitePerturbationWitness
-import LogicalInduction.Construction.Witnesses.HistoricalMaturity
-import LogicalInduction.Construction.Witnesses.LIAPerturbation
-import LogicalInduction.Construction.Witnesses.LUVPresentation
-import LogicalInduction.Construction.Witnesses.StrictSeparators
+import LogicalInduction.Properties
+import LogicalInduction.Construction.Conditioning.Endpoints
+import LogicalInduction.Construction.Freeze.Counterexample
+import LogicalInduction.Construction.Freeze.LIAPerturbation
+import LogicalInduction.Construction.Freeze.Oracle
+import LogicalInduction.Construction.Knowledge.Endpoints
+import LogicalInduction.Construction.LUV.Endpoints
+import LogicalInduction.Construction.LUV.Presentation
+import LogicalInduction.Construction.NonDogmatism.Endpoints
+import LogicalInduction.Construction.NonDogmatism.StrictSeparators
+import LogicalInduction.Construction.NonDogmatism.UniversalPrefix
+import LogicalInduction.Construction.Quotation.ExactCCEE
+import LogicalInduction.Construction.SemanticExtension.Endpoints
+import LogicalInduction.Construction.Statistics.Endpoints
+import LogicalInduction.Construction.Statistics.HistoricalMaturity
 
 /-!
 # Logical Induction — the supported interface
@@ -18,13 +25,24 @@ import LogicalInduction.API
 One import, and it is the interface for theoretical work over logical inductors: the
 semantic objects of the paper's §2–3, the criterion at the paper's own quantifier, the §4
 property library, the certificate kit that builds an exploiting trader, the two theorems
-that move the criterion from one market to another, and the constructed inhabitants that
-discharge the property tail's interfaces.
+that move the criterion from one market to another, every canonical endpoint of the
+formalization, and the constructed inhabitants that discharge the property tail's
+interfaces.
 
-Its import closure is 111 modules, of the 152 that `import LogicalInduction` reaches — the
-§2–3 substrate, all of §4, the whole §5 spine, and the witness modules named below — so a
-name discussed here resolves from this import alone.  What stays outside is the first-order
-instantiation layer and the semantic-extension lane, listed under *Deeper imports*.
+Its import closure is 142 of the library's 154 modules; the twelve outside are the roll-up
+maps (`LogicalInduction.lean`, `Framework.lean`, `Construction.lean` and the nine
+`Construction/` lane maps), which declare nothing.  So every one of the 107 endpoints
+`AxiomAudit.lean` publishes, and every constructed inhabitant they are stated over,
+resolves from this import; *Where the endpoints live* below is the address list.  A client
+who wants a narrower import has two graded entry points below this one —
+`LogicalInduction.Framework` (37 modules, the §2–3 vocabulary and the substrate the later
+directories consume) and `LogicalInduction.Properties` (52, §4 over an arbitrary inductor,
+importing no `Construction.*`).  `LogicalInduction` itself (153) is that same mathematics
+reached through the roll-up maps rather than through this file: it adds the maps and drops
+this module, so the re-exports and the three `thm:ifp` wrappers declared below are reached
+only from here — under that import
+`lic_iff_of_finiteSupportPerturbation_machine` is available only under its proof name
+`FreezeOracle.machine_lic_iff_of_finiteSupport`.
 
 ## The objects
 
@@ -97,10 +115,11 @@ the certificate kit is part of the interface.
   `.ofSingleTradeBlocks` and `.ofTradeBlocks` (their token-metered counterparts), fed by the
   write-out classes `BigSentenceCodes`, `BigDigits`, `DigitRatCodes`, `DigitMachineCodes`
   and the emission classes `BigTokenStream` / `BigSpliceStream`.
-* **Exploitation engines.**  `Properties.Basic` supplies the three ways a constructed
-  trader is shown to exploit: `exploits_of_ge_partialSums` (world-dependent partial-sum
-  bound), `exploits_of_nonneg_partialSums` (its world-neutral specialization) and
-  `exploits_of_bddBelow_of_unbounded` (the definitional route from a floor plus
+* **Exploitation engines.**  `Properties.Support.Exploitation` supplies the ways a
+  constructed trader is shown to exploit: `exploits_of_ge_partialSums` (world-dependent
+  partial-sum bound), `exploits_of_ge_partialSums_from` (the same from a starting day, for a
+  `Θ ⊢ χ` hypothesis), `exploits_of_nonneg_partialSums` (the world-neutral specialization)
+  and `exploits_of_bddBelow_of_unbounded` (the definitional route from a floor plus
   unboundedness).  `Trader.bddBelow_plausible_of_finiteMagnitude` discharges the
   bounded-downside half from summable total magnitude, and
   `Trader.Exploits.of_boundedDifference` transports exploitation across two markets whose
@@ -139,7 +158,14 @@ proof performs.  Both such theorems are below, at both classes.
 
 ## The §4 property library
 
-Every `lic_*` family takes `[IsLogicalInductor P DP]` and holds of *every* logical inductor:
+Almost every `lic_*` family takes `[IsLogicalInductor P DP]` and holds of *every* logical
+inductor.  The exceptions are the nine `lic_conditioned_*_machine` endpoints, which take the
+paper's own `[IsMachineLogicalInductor P DP]` — the three canonical forms
+`lic_conditioned_machine`, `lic_conditioned_gated_machine` and
+`lic_conditioned_eventual_machine` in namespace `LogicalInduction`
+(`Properties/Conditioning.lean`), and the six discharged forms in namespace
+`ConditioningCompile` (`Construction/Conditioning/Endpoints.lean`) —
+and the `lic_iff_*` criterion transports, which relate two markets rather than consume one:
 convergence and coherence, provability induction, timely learning (persistence of knowledge,
 preemptive learning), calibration and unbiasedness, pseudorandomness, logical relationships,
 non-dogmatism with its uniform and Occam forms, universal-semimeasure domination,
@@ -175,12 +201,12 @@ Neither set follows from the other, so both stand.
 
 The conditioning data is a `ConditioningPresentation DP extra`, and three constructors build
 one so a client never fills the fields by hand
-(`Construction/Witnesses/ConditioningPresentation.lean`):
+(`Construction/Conditioning/Presentation.lean`):
 `fixedConditioningPresentation` for a single sentence, `prefixConditioningPresentation` for
 the growing prefix conjunctions of a `BigSentenceCodes` family, and
 `conditioningPresentationOfComputations` from a `CompactConditioningProcessComputation`.
 Above them sit the two hypothesis-free machine endpoints in
-`LogicalInduction.ConditioningCompile` (`Construction/Machine/CondEndpoints.lean`):
+`LogicalInduction.ConditioningCompile` (`Construction/Conditioning/Endpoints.lean`):
 `lic_conditioned_fixed_machine` conditions on one sentence and
 `lic_conditioned_growing_machine_ofSequence` on an arbitrary efficiently computable
 sequence, both with **no** consistency premise — the stage and market programs are read off
@@ -235,7 +261,7 @@ explicit finite-support rational belief states — and `liaBoundedEvaluatorCompi
 compiled bounded evaluator the existence proof runs on.  The construction's internals are
 not interface.
 
-Four further families of constructed data come with it, each removing a hypothesis a §4
+Five further families of constructed data come with it, each removing a hypothesis a §4
 statement would otherwise leave to the caller:
 
 * **Non-dogmatism and semimeasures.**  `CEEnumeration source` is `thm:obu`'s "computably
@@ -246,15 +272,20 @@ statement would otherwise leave to the caller:
   `lic_domination_universalSemimeasure_ofIndependentAtoms` the endpoint over it, and
   `lic_strict_domination_universalSemimeasure_ofAtomCodes` is `thm:strict` at a family given
   by its atom codes.
-* **Statistics without a verifier.**  `Construction/Witnesses/HistoricalMaturity.lean`
-  closes the two maturity interfaces the §4.3–4.5 proofs leave open and restates their
+* **Statistics without a verifier.**  `Construction/Statistics/HistoricalMaturity.lean`
+  closes the two maturity interfaces the §4.3–4.4 proofs and their §4.5/§4.8 analogues leave
+  open, and restates their
   capstones with no verifier hypothesis: `AffineCombination.recurringunbiasedness` and
   `AffineCombination.simcal`, `AffineCombination.BoundedCombinationSequence.recunbiasedaff`
   and `.prandaff` (with its `_above`/`_below` halves),
   `LUVCombination.BoundedSequence.recurringunbiasednessexp` and `.prandexp`, and the
   pseudorandom-frequency family `lic_learning_varied_pseudorandom` and
-  `lic_learning_pseudorandom_frequency`.  The settlement clocks are constructed too, so no
-  endpoint there takes a clock as data.
+  `lic_learning_pseudorandom_frequency`.  The `BoundedCombinationSequence` capstones construct
+  their own settlement clock (`patientApproxClockOfInductor`, `patientClockOfInductor`) from
+  the computable market and deductive process `IsLogicalInductor` already carries, so they take
+  no clock as data.  The six `ApproxDeterminedViaTheory.lic_prandaff{,_above,_below}` and
+  `DeterminedViaTheory.lic_prandaff{,_above,_below}` forms in the same file do take one, at an
+  explicit `(clock : PatientSettlementClock …)` binder.
 * **Feedback.**  `FeedbackEmission.feedbackTraderEmissionSigns` is the emission certificate
   for the sign-switching feedback trader, and `FeedbackEmission.lic_wubaff_ofFeedbackTruth`,
   `FeedbackEmission.boundedCombination_wubaff_ofFeedbackTruth` and
@@ -277,62 +308,110 @@ statement would otherwise leave to the caller:
   at a bound no primitive recursive function dominates.  `PGenerableRat` is `def:ece` for
   rational sequences, with `PGenerableRat.ofDigitRatCodes` the write-out route in and
   `PGenerableRat.computable` the computability it yields against a market computation.
+* **The literal first-order layer.**  `representsComputations_of_peanoMinus`
+  (`Framework/Theory/R0Instances.lean`) discharges the paper's standing §2 premise at `𝗣𝗔⁻`,
+  `𝗜𝚺₁` and `𝗣𝗔`, so instantiating at one of those supplies nothing.  `PaperLUV` is the
+  paper's literal one-variable arithmetic LUV, carrying object-level Θ-proofs of unique
+  existence and `[0,1]` membership; `PaperLUVSeq` is the sequence interface the exact
+  `thm:ccee` route quantifies over, inhabited by `unitFracPaperLUVSeq` at `1/(n+1)` and
+  `dyadicPaperLUVSeq` at `2⁻ⁿ`, with `PaperLUVCombination.boundedSequence` and
+  `unitFracPaperLUVBoundedSequence` the `def:blcp` combinations over them.  `ArithSource`
+  is the paper's own formula-writing alphabet (`dd:nnf`) and `ArithSource.ofNNF` writes
+  every sentence of it.  `UPrefix` is the constructed self-delimiting universal machine
+  `thm:ob` is instantiated at, and `Dovetail.universalSemimeasure`
+  (`Construction/NonDogmatism/UniversalDovetailer.lean`) the constructed
+  `UniversalContinuousSemimeasure` `thm:dus` quantifies over.
 
-## Deeper imports, and when you need them
+## Where the endpoints live
 
-What this import does *not* bring is the first-order instantiation layer beyond
-`paperDP T`'s own construction, and the semantic-extension lane.  Thirteen further imports
-are the interface to those, each answering one question:
+`AxiomAudit.lean` publishes 107 canonical endpoints across 42 modules, and every one of
+them is in this closure.  `scripts/coverage-classification.md` is the label-by-label
+correspondence and `docs/trust-surface.html` renders it with full signatures; what this
+list adds is the *address*, so a reader who wants a statement's docstring and its proof
+knows which file to open.  Every unsuffixed `lic_*` holds of any `[IsLogicalInductor P DP]`.
+`_unconditional` means that instance hypothesis is discharged — the statement holds of the
+`liaHistory` over whichever constructed deductive process *that module* states it over — and
+`_closed` means the reflection and quote-code data are constructed too.  Neither suffix
+promises the paper's own market or an empty hypothesis list, and three lanes are the
+exceptions worth knowing: `Construction/LUV/Endpoints.lean` states its `_arith_unconditional`
+forms over `liaHistory gridDP` and `liaHistory luvThresholdDP`,
+`Construction/NonDogmatism/Endpoints.lean` states one of its two lanes over
+`liaHistory emptyBitDeductiveProcess`, and `Construction/SemanticExtension/Endpoints.lean`
+states its endpoint over `liaHistory (canonicalCCEEDP T)`.  Data beyond the theory instances
+also survives where the statement's own objects require it —
+`Construction/Knowledge/Endpoints.lean`'s horizons and `ComputableHorizon` certificate, and
+`Construction/Quotation/ExactCCEE.lean`'s deferral, `PaperLUVSeq` source, weight and its
+bounds and generability.
 
-Every path below is under `LogicalInduction.Construction.Witnesses` unless written out.
-
-* `R0Representability` — discharging `RepresentsComputations` at `𝗣𝗔⁻`, `𝗜𝚺₁` or `𝗣𝗔`.
-* `ComputationRepresented` — the §4.10 endpoints over `liaHistory (paperDP T)`, together
-  with the hypothesis-discharge kit below.
-* `ArithmeticSource` — writing a new literal first-order formula family (`dd:nnf`).
-* `PaperLUV` — the paper's literal first-order LUV objects, and the concrete families
-  inhabiting them across the range the paper writes.
-* `PaperExactCCEE` — `PaperLUVSeq`, and `thm:ccee` at zero mesh slack.
-* `UnconditionalOverLIA` — `thm:dus` and `thm:scon` unconditionally over the constructed
-  inductor.
-* `FeedbackUnconditional` — `thm:wub` / `thm:wubaff` / `thm:wubexp` unconditionally over it.
-* `LUVExpectationCertified` — the `_arith` LUV-expectation tail on the `dd:luv-arith` class.
-* `UniversalPrefix` — the constructed self-delimiting universal machine and its prefix
-  complexity, which `thm:ob` is instantiated at.
-* `UniversalDovetailer` — the constructed universal continuous semimeasure `thm:dus`
-  quantifies over.
-* `SemanticLiftedCCEE` — the lifted-language substrate of the generalized `thm:ccee` over
-  an arbitrary threshold-only source.
-* `LogicalInduction.Framework.BoundedConsistency` — bounded provability and the paper's
-  finite-consistency predicate `Con(Θ)(ν)` (`dd:symbolcount`).
-* `LogicalInduction` — the whole development.
+* `Framework/Criterion.lean`, `Framework/MachineEfficiency.lean` — `def:trader`,
+  `def:tradestrat`, `def:dedproc`, and `def:ec` and `def:lic` at both classes.
+* `Framework/Affine.lean`, `Framework/Expectations.lean` — `def:affcomsen`, `def:bap`,
+  `def:ece`, and `def:luv`'s abstract threshold carrier.
+* `Properties/*.lean` — the §4 theorems over an arbitrary `[IsLogicalInductor P DP]`, one
+  file per family in the paper's own subsection order: `thm:con`, `thm:lc`, `thm:provind`,
+  `thm:affcoh`, `thm:affprovind`, `thm:perkno`, `thm:tbo`, `thm:peraffkno`,
+  `thm:affpolymax`, `thm:lex`, `thm:nd`, `thm:obu`, `thm:dus`, `thm:strict`, `thm:ec`,
+  `thm:ei` and `thm:ref`, together with `def:fuz` and `def:deferralfunc`.
+* `Construction/LIA.lean`, `Construction/LIACompiler.lean`, `Construction/TradingFirm.lean`
+  — `def:lia`, `thm:li`, `thm:lia`, `lem:tfdom`.
+* `Construction/Statistics/` — §4.3–4.4 with its §4.5 affine and §4.8 expectation analogues,
+  over the constructed settlement clock and feedback
+  emitter: `thm:simcal`, `thm:recurringunbiasedness`, `thm:recunbiasedaff`,
+  `thm:recurringunbiasednessexp`, `thm:prand`, `thm:prandaff`, `thm:prandexp`,
+  `thm:benford`, `thm:wub`, `thm:wubaff`, `thm:wubexp`.
+* `Construction/NonDogmatism/` — §4.6 at constructed presentations: `thm:obu`, `thm:ob`,
+  `thm:dus`, `thm:strict`.
+* `Construction/Freeze/` — `thm:ifp`: the refutation of the printed statement, the corrected
+  theorem, and the perturbed market it moves.
+* `Construction/Conditioning/Endpoints.lean` — `thm:scon`, all five forms.
+* `Construction/LUV/` — §4.8: `thm:expcoh`, `thm:perexpkno`, `thm:exppolymax`, `lem:mesh`,
+  `thm:loe`, `thm:expprovind`, and `def:luv` / `def:blcp` at the literal first-order objects.
+* `Construction/Knowledge/Endpoints.lean` — §4.9–4.10: `thm:dontwait`, `thm:halts`,
+  `thm:loops`, `thm:incons`, `thm:pac`, `thm:pazfc`.
+* `Construction/Paper/Market.lean` — §4.11–4.12 over the single market: `thm:ref`, `thm:lp`,
+  `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:st`.
+* `Construction/Quotation/ExactCCEE.lean`, `Construction/SemanticExtension/Endpoints.lean` —
+  the two `thm:ccee` renderings: exact for a literal first-order source, and exact for an
+  arbitrary threshold-only one over a renamed process.
 
 `RepresentsComputations T` — the paper's standing §2 assumption that Θ represents
 computations, with `represents_proves`, `represents_refutes`, `represents_refutes_all` and
-`RepresentsComputations.consistent` — is already in this import's closure
-(`Framework/RepresentsComputations.lean`); only the instances discharging it need the first
-import above.  Two further binders appear beside the paper's own premise in the §4.9–4.10
+`RepresentsComputations.consistent` — is in `Framework/Theory/RepresentsComputations.lean`,
+and `representsComputations_of_peanoMinus` (`Framework/Theory/R0Instances.lean`) discharges
+it at `𝗣𝗔⁻`, `𝗜𝚺₁` and `𝗣𝗔`, so a client instantiating at one of those supplies nothing.
+Two further binders appear beside the paper's own premise in the §4.9–4.10
 endpoints, and both are disclosed in `LogicalInduction/README.md`: `[T.Δ₁]` (a
 `Δ₁`-definable axiom set — representation infrastructure) and `[𝗣𝗔⁻ ⪯ T]` (a genuine, small
 strengthening).  `[𝗜𝚺₁ ⪯ T]` is asked for by three endpoints only.  No endpoint asks for
 Σ₁-soundness.
 
-**The §4.10 hypothesis-discharge kit.**  The endpoints in `ComputationRepresented` take two
+**The §4.10 hypothesis-discharge kit.**  The `Construction/Knowledge/` endpoints take two
 side conditions that look like obligations and are not.  `theoryOf_const_ofNNF` discharges
 the `thm:incons` presentation condition for a one-axiom theory — `ArithSource.ofNNF` writes
 every sentence, so `theoryOf` of the constant machine is exactly that theory
 (`dd:machinetheory`) — and `conGamma_mentions_zero_of_horizon_unbounded` discharges the
 `Con(Θ′)(ν)` non-degeneracy condition from an unbounded horizon (`dd:symbolcount`), with
-`ComputableHorizon.ackermann` supplying one.  Import that module to reach them.
+`ComputableHorizon.ackermann` supplying one.
 
 ## Not interface
 
 Lean makes transitively imported declarations visible; visibility is not a stability
-promise.  Raw `Nat.Partrec.Code` manipulation, the register-machine simulator and its
+promise.  The closure is wide because the endpoints are, not because everything in it is
+supported.  Raw `Nat.Partrec.Code` manipulation, the register-machine simulator and its
 compilers (`Framework/Machine/`), token and bit folds, RPN parsing internals, the freeze and
 conditioning stream compilers, the written-source recognizer and its budgeted day-window
-splice (`SourceRecognizer`, `SourceWindow`, `DayMachine`), and the trader implementations
-inside the property proofs are implementation, and may be renamed or restructured.
+splice (`Construction/Knowledge/SourceRecognizer.lean`,
+`Construction/Knowledge/SourceWindow.lean`), the lifted-language substrate under the one
+generalized `thm:ccee` endpoint (`Construction/SemanticExtension/` *except* `Prime.lean`), and
+the trader implementations inside the property proofs are implementation, and may be renamed
+or restructured.
+
+`Construction/SemanticExtension/Prime.lean` is the exception in that lane and **is**
+interface: the §4.8 presented-LUV vocabulary above — `PresentedLUVSeq`,
+`PresentedLUVSeq.gt_eq`, `semanticHandleLUVSeq`, `semanticHandleLUVSeq_rpnThresholdCodeSeq`
+and `no_nonvacuous_worldValued_presented_of_rpn` — is declared there, and
+`Construction/Paper/FirstOrder.lean` imports the module, so the `Paper/` lane depends on it
+too.  The other six modules of that directory are the implementation this paragraph means.
 
 ## Two representation interfaces you will meet
 
@@ -348,11 +427,11 @@ inside the property proofs are implementation, and may be renamed or restructure
   (`PaperLUVSeq`) the product is exact —
   `lic_no_expected_net_update_conditional_paperLUV_closed` states `thm:ccee` at `slack = 0`
   over the single market `liaHistory (paperDP T)`, like every other canonical endpoint.
-  `lic_no_expected_net_update_conditional_exact_canonical` remains as the generalized
+  `lic_no_expected_net_update_conditional_exact_canonical` is the generalized
   semantic-extension form: exact for an *arbitrary* threshold-only source, but priced over a
-  renamed deductive process.  `PaperLUVSeq` itself is a construction interface and is not
-  re-exported here; import
-  `LogicalInduction.Construction.Witnesses.PaperExactCCEE` to use the exact route.
+  renamed deductive process.  `PaperLUVSeq` (`Construction/LUV/ArithmeticSource.lean`) is
+  the source interface the exact route quantifies over, inhabited by `unitFracPaperLUVSeq`
+  and `dyadicPaperLUVSeq`.
 
 `LogicalInduction/README.md` explains the modeling; `scripts/coverage-classification.md` and
 `AxiomAudit.lean` carry the exact paper correspondence and the axiom accounting.

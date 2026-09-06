@@ -1,6 +1,6 @@
 import LogicalInduction.Properties.OccamBounds
 import LogicalInduction.Properties.LimitCoherence
-import LogicalInduction.Framework.WriteOut
+import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
 # Non-dogmatism: the universal semimeasure
@@ -37,7 +37,7 @@ smuggle a theorem in as a hypothesis.  Each is documented by what it does carry.
 Prefix sentences are named by write-out metered `BigSentenceCodes` (`def:ec`).  That
 metering is forced: a literal prefix conjunction's Gödel code grows as `2 ^ 4 ^ m` against
 an enumeration index `≤ 5 ^ 2 ^ m`, so the whole-value form is unsatisfiable
-(`not_polySentenceCodes_bitPrefixSentence`, `Construction/Witnesses/BitPrefixSyntax.lean`)
+(`not_polySentenceCodes_bitPrefixSentence`, `Construction/NonDogmatism/BitPrefix.lean`)
 while the canonical Polish run is `Θ(m)` tiny tokens.
 
 The trader buys one prefix per day, at index `n.unpair.2`, so that every index recurs
@@ -52,17 +52,17 @@ Trader efficiency certificates are fuel-clocked (`dd:fuel`) and the limit vocabu
 `lic_domination_universalSemimeasure` is stated for *any* lower-semicomputable continuous
 semimeasure, where the paper assumes a universal one.  It is discharged at
 `lic_domination_universalSemimeasure_ofIndependentAtoms`
-(`Construction/Witnesses/BitPrefixSyntax.lean`) and in the `_paperDP` and `_unconditional`
-forms in `Construction/Witnesses/UnconditionalOverLIA.lean`.
+(`Construction/NonDogmatism/BitPrefix.lean`) and in the `_paperDP` and `_unconditional`
+forms in `Construction/NonDogmatism/Endpoints.lean`.
 `lic_strict_domination_universalSemimeasure` is discharged at
 `lic_strict_domination_universalSemimeasure_ofAtomCodes`
-(`Construction/Witnesses/StrictSeparators.lean`), whose separator comes from Kleene's
+(`Construction/NonDogmatism/StrictSeparators.lean`), whose separator comes from Kleene's
 recursively inseparable pair through `strictSeparatorPresentationOfKleene`.
 
 `ordinaryBitPrefixSentences` inhabits `BitPrefixSentences` over the constantly-empty
 deductive process, and is an inhabitation witness only.  The substantive layer over
 `paperDP T` is `bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T)
-paperBitPrefixCodes` (`Construction/Witnesses/UnconditionalOverLIA.lean`; see the README's
+paperBitPrefixCodes` (`Construction/NonDogmatism/Endpoints.lean`; see the README's
 non-vacuity caveat).
 -/
 
@@ -112,7 +112,7 @@ structure UniversalContinuousSemimeasure extends
 `thm:dus`: the atom family, together with the fact that every finite Boolean assignment to
 it remains compatible with every finite deductive stage.  Conclusion-free, as the module
 docstring records.  Over the paper's own process the inhabitant is
-`paperIndependentBitAtoms T` (`Construction/Witnesses/UnconditionalOverLIA.lean`).
+`paperIndependentBitAtoms T` (`Construction/NonDogmatism/Endpoints.lean`).
 Paper node: `thm:dus` -/
 structure IndependentBitAtoms (DP : DeductiveProcess) where
   atom : ℕ → Sentence
@@ -129,7 +129,7 @@ records.
 
 Over the paper's own process the inhabitant is
 `bitPrefixSentencesOfIndependentAtoms (paperIndependentBitAtoms T) paperBitPrefixCodes`
-(`Construction/Witnesses/UnconditionalOverLIA.lean`); `ordinaryBitPrefixSentences` sits
+(`Construction/NonDogmatism/Endpoints.lean`); `ordinaryBitPrefixSentences` sits
 over the constantly-empty process and is an inhabitation witness only (README, non-vacuity
 caveat).
 Paper node: `thm:dus` -/
@@ -2065,7 +2065,7 @@ theorem lic_domination_universalSemimeasure
 
 Only the market half is proved here.  It is factored over `StrictSeparatorPresentation`,
 the conclusion-free interface holding the computability-theory data, discharged by
-`strictSeparatorPresentationOfKleene` in `Construction/Witnesses/StrictSeparators.lean`,
+`strictSeparatorPresentationOfKleene` in `Construction/NonDogmatism/StrictSeparators.lean`,
 which builds it from Kleene's recursively inseparable pair.
 
 The separator data is the paper's (`app:strict`): a **c.e. constraint theory** — one
@@ -2156,7 +2156,7 @@ no positive constant `C` bounds every prefix belief by `C` times its mass.
 The paper states no hypothesis here, because `app:strict` constructs the separator inside
 the proof.  `S` is that construction's data, held at the conclusion-free interface
 described in the section header and discharged by `strictSeparatorPresentationOfKleene`
-(`Construction/Witnesses/StrictSeparators.lean`).
+(`Construction/NonDogmatism/StrictSeparators.lean`).
 Paper node: `thm:strict` -/
 theorem lic_strict_domination_universalSemimeasure
     {DP : DeductiveProcess}

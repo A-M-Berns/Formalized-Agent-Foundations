@@ -1,8 +1,8 @@
 import LogicalInduction.Framework.Criterion
 import LogicalInduction.Framework.Asymptotics
-import LogicalInduction.Framework.Computable
-import LogicalInduction.Framework.WriteOut
-import LogicalInduction.Framework.RpnEmission
+import LogicalInduction.Framework.Emission.Computable
+import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Emission.RpnEmission
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
 /-!
@@ -27,16 +27,22 @@ sequences, `def:ec` (tex:753) and `def:bap` (tex:1374).
   there once the market and the process are computable.  This is the degenerate branch of
   Closure Under Conditioning, the case that arises when the extended theory is
   inconsistent.
+* `Strategy.scaleBy` and `Strategy.join`: the `Strategy` algebra a budgeted trader is
+  assembled from — a join of components, each scaled by one expressible feature — with the
+  value and magnitude laws of both.
 * `AffineCombination` (`def:affcomsen`): the expression `c + Σ eᵢ φᵢ` with
   expressible-feature coefficients, with its `value` in a valuation, its market `price`,
   its share `magnitude` and the paper's `L¹` norm `l1Norm`, and the bounds relating them.
+  The pointwise algebra is `scale`, `neg`, `add`, `sub` and `addConstEF` — the last adding a
+  closed feature to the constant coordinate while preserving the operational expression tree
+  of a generated rational, which `addConst` does not.
 * `AffineCombination.PolySequence` (`def:ec`), the emission certificate for a uniformly
   generated rank-legal sequence of affine combinations, and `BoundedCombinationSequence`
   (`def:bap`), its `L¹`-bounded form.  The closure operations `PolySequence.scaleRat`,
   `PolySequence.neg` and `PolySequence.shift` are here; the algebra is completed
   downstream by `PolySequence.addConst` (`Properties/AffinePersistence.lean`),
-  `PolySequence.addConstEF` (`Construction/Witnesses/LUVSyntax.lean`) and
-  `PolySequence.add` (`Construction/Witnesses/QuotationAffine.lean`).
+  `PolySequence.addConstEF` (`Construction/LUV/Syntax.lean`) and
+  `PolySequence.add` (`Construction/Quotation/DeferralFibre.lean`).
 * The reified features `priceFeature`, `absFeature`, `magnitudeFeature` and `riskFeature`
   (`dd:dsl`), each with its serialization, uniform emission, denotation, rank and
   closedness lemmas: the objects the affine property proofs emit and meter.
@@ -45,7 +51,7 @@ sequences, `def:ec` (tex:753) and `def:bap` (tex:1374).
 
 The results are consumed by the affine property proofs in `Properties/` (affine coherence,
 provability, persistence, preemptive learning), by the expectation lifts built on them, and
-by the representation witnesses in `Construction/Witnesses/`.
+by the §4-family lanes under `Construction/`.
 
 ## Design
 
@@ -91,6 +97,83 @@ noncomputable def magnitude {n : ℕ} (T : Strategy n) (V : History) : ℝ :=
 lemma magnitude_nonneg {n : ℕ} (T : Strategy n) (V : History) : 0 ≤ T.magnitude V :=
   List.sum_nonneg (fun x hx => by
     simp only [List.mem_map] at hx; obtain ⟨p, _, rfl⟩ := hx; exact abs_nonneg _)
+
+end Strategy
+
+/-! ## Scaling and joining strategies
+
+General `Strategy` algebra: the budgeted trader is a join of components, each scaled by one
+expressible feature. -/
+
+namespace Strategy
+
+/-- Multiply every share coefficient in a strategy by one legal feature. -/
+def scaleBy {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n) : Strategy n where
+  trades := T.trades.map (fun p => (EF.mul e p.1, p.2))
+  rank_le := by
+    intro p hp
+    simp only [List.mem_map] at hp
+    obtain ⟨q, hq, rfl⟩ := hp
+    exact Nat.max_le.mpr ⟨he, T.rank_le q hq⟩
+
+lemma scaleBy_value {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n)
+    (V : History) (w : Valuation) :
+    (T.scaleBy e he).value V w = e.denote V * T.value V w := by
+  simp only [scaleBy, Strategy.value, List.map_map]
+  induction T.trades with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
+        Pi.mul_apply] at ih ⊢
+      rw [ih]
+      ring
+
+lemma scaleBy_magnitude {n : ℕ} (e : EF) (he : e.rank ≤ n) (T : Strategy n)
+    (V : History) :
+    (T.scaleBy e he).magnitude V = |e.denote V| * T.magnitude V := by
+  simp only [scaleBy, Strategy.magnitude, List.map_map]
+  induction T.trades with
+  | nil => simp
+  | cons p ps ih =>
+      simp only [List.map_cons, List.sum_cons, Function.comp_apply, EF.denote_mul,
+        Pi.mul_apply, abs_mul] at ih ⊢
+      rw [ih]
+      ring
+
+/-- Concatenate a finite collection of same-day strategies. -/
+def join {n : ℕ} (ts : List (Strategy n)) : Strategy n where
+  trades := ts.flatMap Strategy.trades
+  rank_le := by
+    intro p hp
+    simp only [List.mem_flatMap] at hp
+    obtain ⟨T, hT, hp⟩ := hp
+    exact T.rank_le p hp
+
+lemma join_value {n : ℕ} (ts : List (Strategy n)) (V : History) (w : Valuation) :
+    (Strategy.join ts).value V w = (ts.map (fun T => T.value V w)).sum := by
+  induction ts with
+  | nil => simp [join, Strategy.value]
+  | cons T ts ih =>
+      calc
+        (Strategy.join (T :: ts)).value V w =
+            T.value V w + (Strategy.join ts).value V w := by
+              simp [Strategy.join, Strategy.value]
+        _ = ((T :: ts).map (fun S => S.value V w)).sum := by
+              rw [ih]
+              rfl
+
+lemma join_magnitude {n : ℕ} (ts : List (Strategy n)) (V : History) :
+    (Strategy.join ts).magnitude V = (ts.map (fun T => T.magnitude V)).sum := by
+  induction ts with
+  | nil => simp [join, Strategy.magnitude]
+  | cons T ts ih =>
+      calc
+        (Strategy.join (T :: ts)).magnitude V =
+            T.magnitude V + (Strategy.join ts).magnitude V := by
+              simp [Strategy.join, Strategy.magnitude]
+        _ = ((T :: ts).map (fun S => S.magnitude V)).sum := by
+              rw [ih]
+              rfl
 
 end Strategy
 
@@ -360,6 +443,16 @@ structure PolySequence (As : ℕ → AffineCombination) where
   /-- The coefficients are closed, in the same sense as `const_closed`. -/
   coefficient_closed : ∀ z ρ V,
     (coefficient z).denoteWith ρ V = (coefficient z).denote V
+
+/-- Reading a `List.range` map past its end returns the default; below it, the map's value.
+This is the shape every fixed-width term-stream lookup in the affine syntax reduces to, via
+`PolySequence.terms_eq`. -/
+lemma getD_map_range_ite {α : Type*} (n : ℕ) (g : ℕ → α) (o : ℕ) (d : α) :
+    ((List.range n).map g).getD o d = if o < n then g o else d := by
+  by_cases ho : o < n
+  · rw [if_pos ho, List.getD_eq_getElem _ _ (by simpa using ho)]
+    simp
+  · rw [if_neg ho, List.getD_eq_default _ _ (by simpa using Nat.le_of_not_lt ho)]
 
 /-- Every coefficient of member `n` mentions no price beyond day `n`. -/
 lemma PolySequence.terms_rank {As : ℕ → AffineCombination} (h : PolySequence As)
@@ -1015,6 +1108,69 @@ def PolySequence.shift {As : ℕ → AffineCombination} (h : PolySequence As)
     exact List.mem_map.2 ⟨j, List.mem_range.2 hj, rfl⟩
   const_closed := fun n => h.const_closed (n + 1)
   coefficient_closed := fun z => h.coefficient_closed _
+
+/-! ## Pointwise sums and differences
+
+Affine combinations add coordinatewise, and the magnitude of a sum is bounded by the sum of
+the magnitudes — with equality, since `add` concatenates the term lists rather than
+collecting like sentences.
+-/
+
+/-- Pointwise sum of two affine combinations. -/
+def add (A B : AffineCombination) : AffineCombination where
+  const := .add A.const B.const
+  terms := A.terms ++ B.terms
+
+lemma add_value (A B : AffineCombination) (P : History) (w : Valuation) :
+    (A.add B).value P w = A.value P w + B.value P w := by
+  simp only [add, value, EF.denote_add, Pi.add_apply, List.map_append, List.sum_append]
+  ring
+
+lemma add_price (A B : AffineCombination) (P : History) (n : ℕ) :
+    (A.add B).price P n = A.price P n + B.price P n := by
+  simp only [price, add_value]
+
+lemma add_magnitude (A B : AffineCombination) (P : History) :
+    (A.add B).magnitude P = A.magnitude P + B.magnitude P := by
+  simp [add, magnitude, List.map_append]
+
+/-- Pointwise difference of affine combinations. -/
+def sub (A B : AffineCombination) : AffineCombination := A.add B.neg
+
+lemma sub_value (A B : AffineCombination) (P : History) (w : Valuation) :
+    (A.sub B).value P w = A.value P w - B.value P w := by
+  rw [sub, add_value, neg_value]
+  ring
+
+lemma sub_price (A B : AffineCombination) (P : History) (n : ℕ) :
+    (A.sub B).price P n = A.price P n - B.price P n := by
+  rw [sub, add_price, neg_price]
+  ring
+
+lemma sub_magnitude (A B : AffineCombination) (P : History) :
+    (A.sub B).magnitude P = A.magnitude P + B.magnitude P := by
+  rw [sub, add_magnitude, neg_magnitude]
+
+/-- Add a closed feature to the constant coordinate of an affine combination.  Unlike
+`addConst`, this preserves the operational expression tree of a generated rational. -/
+def addConstEF (A : AffineCombination) (e : EF) : AffineCombination where
+  const := EF.add A.const e
+  terms := A.terms
+
+lemma addConstEF_value (A : AffineCombination) (e : EF)
+    (V : History) (w : Valuation) :
+    (addConstEF A e).value V w = A.value V w + e.denote V := by
+  simp [addConstEF, AffineCombination.value]
+  ring
+
+lemma addConstEF_price (A : AffineCombination) (e : EF)
+    (V : History) (n : ℕ) :
+    (addConstEF A e).price V n = A.price V n + e.denote V := by
+  simp [AffineCombination.price, addConstEF_value]
+
+@[simp] lemma addConstEF_magnitude (A : AffineCombination) (e : EF)
+    (V : History) :
+    (addConstEF A e).magnitude V = A.magnitude V := rfl
 
 /-! ## Finite round trips
 

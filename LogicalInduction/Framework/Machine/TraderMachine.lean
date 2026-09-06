@@ -19,7 +19,7 @@ The exports are `traderOutput`, the word the machine emits; `traderMachine`, the
 its own arity; and `traderOutput_mem_FP`, the membership. They are consumed by
 `EfficientlyComputable.toMachine`, by `BigTokenStream.toMachine` and
 `BigSentenceCodes.toMachine` (`Framework/Machine/WriteOutMachine.lean`), and by
-`CondStep.machineSentenceBlocks_of_big` (`Construction/Machine/CondStep.lean`).
+`CondStep.machineSentenceBlocks_of_big` (`Construction/Conditioning/TransductionFrame.lean`).
 
 ## The register file
 
@@ -1685,11 +1685,6 @@ end Word
 
 /-! ## Polynomial bounds -/
 
-/-- A single monomial is polynomially bounded. It is what places `hornerCap`, the register
-bound on Horner evaluation of the day clock, inside `IsPolyBounded`. -/
-lemma IsPolyBounded.monomial (c e : ℕ) : IsPolyBounded (fun x => c * (x + 1) ^ e) :=
-  ⟨c, e, fun _ => Nat.le_add_right _ _⟩
-
 lemma opBudget_poly : IsPolyBounded opBudget := by
   refine ⟨256, 3, fun x => ?_⟩
   have h : (x + 2) ≤ 2 * (x + 1) := by omega
@@ -1875,7 +1870,7 @@ lemma traderTime_poly : IsPolyBounded (traderTime lc tc a k) := by
 Consumed by `EfficientlyComputable.toMachine` (`Framework/MachineEfficiency.lean`), by
 `BigTokenStream.toMachine` and `BigSentenceCodes.toMachine`
 (`Framework/Machine/WriteOutMachine.lean`), and by `CondStep.machineSentenceBlocks_of_big`
-(`Construction/Machine/CondStep.lean`). -/
+(`Construction/Conditioning/TransductionFrame.lean`). -/
 lemma traderOutput_mem_FP : traderOutput lc tc a k ∈ Complexity.FP := by
   rw [Complexity.mem_FP_iff_computesInTime_polynomial]
   obtain ⟨c, e, hce⟩ := traderTime_poly lc tc a k
