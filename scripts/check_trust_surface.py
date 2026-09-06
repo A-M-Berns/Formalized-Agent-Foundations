@@ -34,6 +34,7 @@ if m.group(1) != expected:
     print('trust-surface check: FAIL — docs/trust-surface.html is stale.')
     print('  One of its %d inputs changed since the page was generated. Regenerate with:'
           % count)
-    print('    python3 scripts/gen-trust-surface.py   (pip install latex2mathml)')
+    print('    python3 -m pip install -r requirements-docs.txt')
+    print('    python3 scripts/gen-trust-surface.py')
     sys.exit(1)
 print('trust-surface check: OK (page matches its %d inputs)' % count)
