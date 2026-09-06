@@ -1,6 +1,6 @@
 import LogicalInduction.Construction.NonDogmatism.BitPrefix
 import LogicalInduction.Construction.NonDogmatism.RepeatedEnumeration
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
 import Mathlib.Computability.Halting
 import Mathlib.Data.List.Sections
 

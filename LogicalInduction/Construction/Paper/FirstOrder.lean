@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.SemanticExtension.Prime
+import LogicalInduction.Construction.Knowledge.Syntax
 import Foundation.FirstOrder.Basic.Coding
 
 /-!
@@ -56,13 +56,6 @@ constructor tags, an unrelated tag space to the global atom-payload allocation t
 `paperPrimeTag = 5` (`Construction/Knowledge/Syntax.lean` records the same warning).
 
 `Construction/Paper/TheoremDP.lean` decodes the compiler's output into the published stage.
-
-**Cross-lane edge.**  This module imports `Construction/SemanticExtension/Prime.lean`, so the
-`Paper/` lane sits *downstream* of the semantic-extension lane in the import graph even though
-every `SemanticExtension/` endpoint is stated over `Paper/`'s objects.  What is used is exactly
-two things — the constant `semanticPrimeTag` and the predicate `SemanticPrimeFreshSentence` —
-in the single lemma `paperPrimeDecompose_semanticPrimeFresh`, which is the vocabulary-ownership
-fact that the two tag namespaces are disjoint.
 -/
 
 namespace LogicalInduction

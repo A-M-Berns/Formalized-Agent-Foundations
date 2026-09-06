@@ -8,7 +8,10 @@ import LogicalInduction.Framework.Emission.WriteOut
 Renders §4.12: `thm:cee` (tex:2045), `thm:ceu` (tex:2056), `thm:ccee` (tex:2068) and
 `thm:st` (tex:2092).  Two definitions the paper states in §4.3 are rendered here as well:
 `def:deferralfunc` (tex:1240), whose efficiency clause goes through the clocked interpreter
-(`dd:fuel`) and which `succDeferral` inhabits, and `def:ctsind` (tex:1174) in its
+(`dd:fuel`) and which `succDeferral` inhabits — with `DeferralFunction.tendsto_atTop` and
+`DeferralFunction.exists_clock`, the two facts every consumer of a deferral function opens it
+by, and the bounded schedule `deadlineRun` / `scheduledMatch` that is the only thing a machine
+can actually test the undecidable deadline with — and `def:ctsind` (tex:1174) in its
 real-valued form `ctsInd` — the feature-valued rendering of the same definition is
 `calibrationIndicator` in `Properties/Calibration.lean`.
 
@@ -75,6 +78,25 @@ structure DeferralFunction where
 
 instance : CoeFun DeferralFunction (fun _ => ℕ → ℕ) := ⟨DeferralFunction.f⟩
 
+/-- Strict deferral tends to infinity even when it grows too quickly to be polynomial in
+its source index. -/
+lemma DeferralFunction.tendsto_atTop (f : DeferralFunction) :
+    Tendsto f atTop atTop := by
+  apply tendsto_atTop_atTop.2
+  intro N
+  exact ⟨N, fun n hn ↦ hn.trans (f.lt n).le⟩
+
+/-- **The deferral clock.**  `DeferralFunction.fueled` states the polynomial fuel bound in
+raw arithmetic form, while every bounded evaluator in the development is clocked by
+`PrefixPatchCompile.ecClock`.  This is that bound in the `ecClock` spelling, so no consumer
+re-derives how to open `f.fueled`.  A deferred package that must name the clock parameters
+as data opens this with `Classical.choose`, since the goal it builds lives in `Type`. -/
+lemma DeferralFunction.exists_clock (f : DeferralFunction) :
+    ∃ a degree, ∀ k, Nat.Partrec.Code.evaln
+      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
+  obtain ⟨a, degree, h⟩ := f.fueled
+  exact ⟨a, degree, fun k ↦ by simpa [PrefixPatchCompile.ecClock] using h k⟩
+
 /-- **Non-vacuity of `def:deferralfunc`** — kind `N+` non-vacuity witness.  The successor
 `n ↦ n + 1` is a deferral function: it defers (`n < n + 1`) and `Nat.Partrec.Code.succ`
 returns it within one step of the clocked interpreter, well inside the polynomial-in-`f n`
@@ -86,6 +108,144 @@ def succDeferral : DeferralFunction where
   lt n := Nat.lt_succ_self n
   code := Nat.Partrec.Code.succ
   fueled := ⟨1, 1, fun n => by simp [Nat.Partrec.Code.evaln]⟩
+
+/-! ## The bounded deferral schedule
+
+`DeferralFunction.fueled` gives fuel polynomial in `f n` and **not** in `n`, so no machine can
+decide "the deferral deadline has passed".  What a machine can do is run `f`'s code under a
+budget and believe only a halting run.  `deadlineRun` is that sound under-approximation, and
+`scheduledMatch` is the day-indexed Boolean flag built on it: `1` exactly when the run
+budgeted by the day-`n` evaluator clock returns the current day.
+
+Both are stated here, beside `DeferralFunction` itself, because both `Construction/Statistics/`
+and `Construction/Quotation/` consume them; putting them in either lane would make that pair of
+lanes import each other. -/
+
+section
+
+-- `PolyFueled` elaboration over nested `Primcodable` product types reaches `Nat.unpair`, and
+-- unfolding `Nat.sqrt`'s well-founded definition sends `whnf` into a loop, so `Nat.sqrt` is
+-- opaque in this section; see `Construction/Statistics/SettlementClock.lean`'s header.
+attribute [local irreducible] Nat.sqrt
+
+open PrefixPatchCompile
+
+/-- `f`'s clocked run on `k` with budget `n`, normalized: `0` if it has not halted, else
+`f k + 1`. -/
+def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
+  codeEvalnNat f.code (Nat.pair n k)
+
+/-- A halting clocked run of a deferral code returns exactly `f k`. -/
+lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
+    deadlineRun f n k = f.f k + 1 := by
+  obtain ⟨a, kk, hspec⟩ := f.fueled
+  cases hev : Nat.Partrec.Code.evaln n f.code k with
+  | none => simp [deadlineRun, codeEvalnNat, hev] at h
+  | some out =>
+      have h1 : out ∈ Nat.Partrec.Code.eval f.code k :=
+        Nat.Partrec.Code.evaln_sound hev
+      have h2 : f.f k ∈ Nat.Partrec.Code.eval f.code k :=
+        Nat.Partrec.Code.evaln_sound (hspec k)
+      simp [deadlineRun, codeEvalnNat, hev, Part.mem_unique h1 h2]
+
+/-- A halting clocked run is unchanged by a larger budget. -/
+lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
+    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
+  cases hev : Nat.Partrec.Code.evaln n f.code k with
+  | none => simp [deadlineRun, codeEvalnNat, hev] at h
+  | some out =>
+      have hmono : Nat.Partrec.Code.evaln m f.code k = some out :=
+        Nat.Partrec.Code.evaln_mono hm hev
+      simp [deadlineRun, codeEvalnNat, hev, hmono]
+
+/-- Run the deferral program for component `k` with the day-`n` polynomial clock.
+Input is `⟨n,k⟩`; output is normalized as `0` for unfinished and `f k + 1` for finished. -/
+def scheduledRun (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
+  deadlineRun f (ecClock a degree z.unpair.1) z.unpair.2
+
+/-- The bounded scheduled run is polynomial in the paired day/component input. -/
+lemma scheduledRun_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+    ∃ c, PolyFueled c (scheduledRun f a degree) := by
+  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled f.code
+  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled a degree
+  refine ⟨_, (hsim.comp ((hclock.comp PolyFueled.left).pair PolyFueled.right)).of_eq
+    (fun z => ?_)⟩
+  simp [scheduledRun, deadlineRun]
+
+/-- `1` exactly when the day-bounded run has returned the current day `n`.
+The natural-valued flag is the form consumed by the flat stream combinators. -/
+def scheduledMatch (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
+  if scheduledRun f a degree z = z.unpair.1 + 1 then 1 else 0
+
+/-- Equality of the scheduled output and the variable day is polynomially decidable. -/
+lemma scheduledMatch_polyFueled (f : DeferralFunction) (a degree : ℕ) :
+    ∃ c, PolyFueled c (scheduledMatch f a degree) := by
+  obtain ⟨crun, hrun⟩ := scheduledRun_polyFueled f a degree
+  have hday : PolyFueled _ (fun z : ℕ => z.unpair.1 + 1) :=
+    (PolyFueled.left.succ_comp)
+  obtain ⟨cadd, hadd⟩ := addc_polyFueled
+  have hleft : PolyFueled _ (fun z =>
+      scheduledRun f a degree z - (z.unpair.1 + 1)) :=
+    (subc_polyFueled.comp (hrun.pair hday)).of_eq (fun z => by simp)
+  have hright : PolyFueled _ (fun z =>
+      (z.unpair.1 + 1) - scheduledRun f a degree z) :=
+    (subc_polyFueled.comp (hday.pair hrun)).of_eq (fun z => by simp)
+  have hgap : PolyFueled _ (fun z =>
+      (scheduledRun f a degree z - (z.unpair.1 + 1)) +
+        ((z.unpair.1 + 1) - scheduledRun f a degree z)) :=
+    (hadd.comp (hleft.pair hright)).of_eq (fun z => by simp)
+  refine ⟨_, (ifzSel_polyFueled.comp
+    (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair hgap)).of_eq
+      (fun z => ?_)⟩
+  simp only [ifzSelFn, Nat.unpair_pair, scheduledMatch]
+  by_cases h : scheduledRun f a degree z = z.unpair.1 + 1
+  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
+        ((z.unpair.1 + 1) - scheduledRun f a degree z) = 0 := by omega
+    rw [if_pos hz, if_pos h]
+  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
+        ((z.unpair.1 + 1) - scheduledRun f a degree z) ≠ 0 := by omega
+    rw [if_neg hz, if_neg h]
+
+/-- The match flag is Boolean. -/
+lemma scheduledMatch_zero_or_one (f : DeferralFunction) (a degree z : ℕ) :
+    scheduledMatch f a degree z = 0 ∨ scheduledMatch f a degree z = 1 := by
+  simp only [scheduledMatch]
+  split <;> simp
+
+/-- A successful match is sound even though the program was run only for the day clock. -/
+lemma scheduledMatch_eq_one_iff
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    (n k : ℕ) :
+    scheduledMatch f a degree (Nat.pair n k) = 1 ↔ f k = n := by
+  constructor
+  · intro h
+    have hrun : scheduledRun f a degree (Nat.pair n k) = n + 1 := by
+      simpa [scheduledMatch] using h
+    have hpos : 0 < scheduledRun f a degree (Nat.pair n k) := by omega
+    have hsound := deadlineRun_eq f hpos
+    simp only [scheduledRun, Nat.unpair_pair] at hsound hrun
+    omega
+  · intro h
+    subst n
+    simp [scheduledMatch, scheduledRun, deadlineRun, codeEvalnNat, hspec]
+
+/-- The match flag is `0` exactly when the component does not defer to this day. -/
+lemma scheduledMatch_eq_zero_iff
+    (f : DeferralFunction) {a degree : ℕ}
+    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
+    (n k : ℕ) :
+    scheduledMatch f a degree (Nat.pair n k) = 0 ↔ f k ≠ n := by
+  constructor
+  · intro hzero heq
+    have hone := (scheduledMatch_eq_one_iff f hspec n k).2 heq
+    omega
+  · intro hne
+    rcases scheduledMatch_zero_or_one f a degree (Nat.pair n k) with hzero | hone
+    · exact hzero
+    · exact (hne ((scheduledMatch_eq_one_iff f hspec n k).1 hone)).elim
+
+end
 
 /-! ## The continuous threshold indicator -/
 

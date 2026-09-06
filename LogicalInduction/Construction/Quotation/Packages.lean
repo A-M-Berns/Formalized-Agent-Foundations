@@ -1,7 +1,7 @@
 import LogicalInduction.Construction.Knowledge.Syntax
 import LogicalInduction.Framework.Emission.WriteOut
 import LogicalInduction.Framework.Theory.QuoteRepresentability
-import LogicalInduction.Construction.Statistics.FeedbackEmission
+import LogicalInduction.Construction.Primcodable
 import LogicalInduction.Construction.Quotation.DeferralFibre
 import LogicalInduction.Properties.Introspection
 import Foundation.FirstOrder.Bootstrapping.FixedPoint
@@ -249,6 +249,15 @@ lemma universalQuote_exclusive_prov (T : ArithmeticTheory) [𝗣𝗔⁻ ⪯ T] (
 noncomputable def quoteAtom (w : ℕ) : Sentence :=
   quotationClaimSentence universalQuotePos universalQuoteNeg w
 
+/-- **Tag ownership.**  A quotation literal is a single atom carrying payload tag `2`, which
+is what every freshness proof about a process emitting quotation literals appeals to. -/
+lemma sentenceAtomCodes_quoteAtom (w : ℕ) :
+    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 2 := by
+  intro a ha
+  rw [quoteAtom, quotationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
+  subst ha
+  simp [quotationClaimCode]
+
 /-- A first-order arithmetic background and one generic proof-to-public-language
 translation.  It carries no sentence family, LUV, price, affine combination, or
 asymptotic field.
@@ -267,6 +276,23 @@ structure QuotationTheoryPresentation
   quote_negative_refutes : ∀ (code input : ℕ),
     T ⊢ universalQuoteNeg/[↑(Nat.pair code input)] →
       ∃ k, (∼quoteAtom (Nat.pair code input)) ∈ DP.D k
+
+/-- **`QuotationTheoryPresentation` lifts along a process extension.**  Every field is
+either theory-side or an "enters some stage" claim, and the latter is monotone in the
+process; only the stage program has to be supplied afresh for the larger process.
+Paper node: `thm:ccee` -/
+noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
+    {T : ArithmeticTheory} (Q : QuotationTheoryPresentation DP T)
+    (hsub : ∀ k, DP.D k ⊆ DP'.D k) (proc : DeductiveProcessComputation DP') :
+    QuotationTheoryPresentation DP' T where
+  theory_deltaOne := Q.theory_deltaOne
+  process := proc
+  halting_enters z h := (Q.halting_enters z h).imp fun k hk => hsub k hk
+  halting_refutes z h := (Q.halting_refutes z h).imp fun k hk => hsub k hk
+  boundedHalting_enters z h := (Q.boundedHalting_enters z h).imp fun k hk => hsub k hk
+  boundedFailure_refutes z h := (Q.boundedFailure_refutes z h).imp fun k hk => hsub k hk
+  quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
+  quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
 
 /-! ## Boolean quote families -/
 
@@ -1484,26 +1510,6 @@ lemma CompletedAffineQuoteApprox.future_price_tendsto_zero
           q.bounded (f.lt n).le
 
 /-! ## Concrete deferred expectation quotation -/
-
-/-- Strict deferral tends to infinity even when it grows too quickly to be polynomial in
-its source index. -/
-lemma DeferralFunction.tendsto_atTop (f : DeferralFunction) :
-    Tendsto f atTop atTop := by
-  apply tendsto_atTop_atTop.2
-  intro N
-  exact ⟨N, fun n hn ↦ hn.trans (f.lt n).le⟩
-
-/-- **The deferral clock.**  `DeferralFunction.fueled` states the polynomial fuel bound in
-raw arithmetic form, while every bounded evaluator in the development is clocked by
-`PrefixPatchCompile.ecClock`.  This is that bound in the `ecClock` spelling, so no consumer
-— here or downstream — re-derives how to open `f.fueled`.  A deferred package that must
-name the clock parameters as data opens this with `Classical.choose`, since the goal it
-builds lives in `Type`. -/
-lemma DeferralFunction.exists_clock (f : DeferralFunction) :
-    ∃ a degree, ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
-  obtain ⟨a, degree, h⟩ := f.fueled
-  exact ⟨a, degree, fun k ↦ by simpa [PrefixPatchCompile.ecClock] using h k⟩
 
 /-- Construct the complete `thm:cee` quote package.  The additional `source_valued`
 premise is the explicit first-order representation fact needed to compare two threshold

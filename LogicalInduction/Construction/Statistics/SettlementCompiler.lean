@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.Statistics.SettlementClock
+import LogicalInduction.Construction.LIACompiler
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!

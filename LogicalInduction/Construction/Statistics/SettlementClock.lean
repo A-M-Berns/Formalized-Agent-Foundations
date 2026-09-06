@@ -1,4 +1,4 @@
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
 import LogicalInduction.Framework.BooleanWorlds
 import LogicalInduction.Framework.Emission.Emission
 import LogicalInduction.Properties.Pseudorandomness
@@ -14,15 +14,16 @@ that declares the interface.
 
 The deadline itself is undecidable.  A `DeferralFunction` (`def:deferralfunc`) guarantees fuel
 polynomial in `f n` and not in `n`, so no machine can test "the deferral deadline has passed".
-`deadlineRun` / `deadlinePassed` is the sound under-approximation that *can* be tested: it is
-monotone in the fuel, never true early, and eventually true.  `polyFueled_dovetailFound`
+`deadlineRun` (`Properties/SelfTrust.lean`) / `deadlinePassed` is the sound
+under-approximation that *can* be tested: it is monotone in the fuel, never true early, and
+eventually true.  `polyFueled_dovetailFound`
 (`Framework/Emission/Emission.lean`) discharges the paper's `DefinitelySettled` bullet
 (tex:4872) over it.
 
 ## Objects
 
-* `deadlineRun`, `deadlineStep`, `deadlinePassed` — the under-approximated deadline, with its
-  soundness (`deadlinePassed_sound`), monotonicity and eventual-truth lemmas.
+* `deadlineStep`, `deadlinePassed` — the under-approximated deadline over `deadlineRun`, with
+  its soundness (`deadlinePassed_sound`), monotonicity and eventual-truth lemmas.
 * `SettlementSemiDecider` — the general interface: a code semi-deciding settlement, from which
   `PatientSettlementClock.ofSemiDecider` derives every semantic field of the clock.
 * `SettlementChecker` — its purely computational specialization, with
@@ -55,35 +56,11 @@ It does not need to.  `active_through_envelope` only requires activity to be *tr
 the deadline, so a **sound under-approximation** suffices: run `f`'s code on each `k ≤ i`
 with budget `n` and certify only when every one halts with `f k < n`.  That is sound
 (a halting run returns the true `f k`), monotone in `n` (`evaln_mono`), and eventually
-fires (each `f k`, `k ≤ i`, is a fixed finite number). -/
+fires (each `f k`, `k ≤ i`, is a fixed finite number).
 
-/-- `f`'s clocked run on `k` with budget `n`, normalized: `0` if it has not halted, else
-`f k + 1`. -/
-def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
-  codeEvalnNat f.code (Nat.pair n k)
-
-/-- A halting clocked run of a deferral code returns exactly `f k`. -/
-lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
-    deadlineRun f n k = f.f k + 1 := by
-  obtain ⟨a, kk, hspec⟩ := f.fueled
-  cases hev : Nat.Partrec.Code.evaln n f.code k with
-  | none => simp [deadlineRun, codeEvalnNat, hev] at h
-  | some out =>
-      have h1 : out ∈ Nat.Partrec.Code.eval f.code k :=
-        Nat.Partrec.Code.evaln_sound hev
-      have h2 : f.f k ∈ Nat.Partrec.Code.eval f.code k :=
-        Nat.Partrec.Code.evaln_sound (hspec k)
-      simp [deadlineRun, codeEvalnNat, hev, Part.mem_unique h1 h2]
-
-/-- A halting clocked run is unchanged by a larger budget. -/
-lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
-    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
-  cases hev : Nat.Partrec.Code.evaln n f.code k with
-  | none => simp [deadlineRun, codeEvalnNat, hev] at h
-  | some out =>
-      have hmono : Nat.Partrec.Code.evaln m f.code k = some out :=
-        Nat.Partrec.Code.evaln_mono hm hev
-      simp [deadlineRun, codeEvalnNat, hev, hmono]
+`deadlineRun` and its soundness and monotonicity lemmas are stated beside `DeferralFunction`
+itself, in `Properties/SelfTrust.lean`; the schedule built on them is shared with
+`Construction/Quotation/`, and this module builds the clock out of them. -/
 
 /-- The per-`k` failure test of the deadline check, indexed as `⟨⟨i,n⟩,k⟩`. -/
 def deadlineStep (f : DeferralFunction) (z k : ℕ) : Bool :=
@@ -352,7 +329,10 @@ def SettlementChecker.toSemiDecider
 
 /-- **The patient settlement clock from a concrete checker.**  The only assumption is that
 one program recognizes one decidable predicate; every semantic field of the clock —
-including `settled_of_inactive` — is proved. -/
+including `settled_of_inactive` — is proved.  This is what makes the appendix's waiting
+argument a construction rather than a hypothesis.
+Kind `C` (composition); provenance (a) derived in-project.
+Paper node: `app:prandaff` -/
 noncomputable def PatientSettlementClock.ofChecker
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth e err : ℕ → ℝ}

@@ -14,6 +14,7 @@ Each entry states the published claim, the defect, and what this repository does
 | PE6 | `thm:ref` / `app:ref` — Introspection | printed hypotheses too weak for the printed proof |
 | PE7 | `Con(PA)(Ack)` gloss (tex:1859) | gloss contradicts its definition (off by one) |
 | PE8 | `app:incons` — proof of `thm:incons` | proof cites representability where Σ₁-completeness is needed |
+| PE9 | `def:luv` (tex:1655) — `γ_f` at a `[0,1]` codomain | notation applied outside its own definition; repairable |
 
 ---
 
@@ -441,6 +442,58 @@ The formalization proves the step by the correct route: `re_complete_mp` under
 the paper's own argument tacitly consumes arithmetical strength beyond its stated
 premises at exactly this point.
 
+
+---
+
+## PE9 — `γ_f` is applied to a `[0,1]`-valued `f` that its own definition excludes (`def:luv`)
+
+**Repaired in-repo by naming an encoding the paper defers; the paper's construction is
+fixable but not literally defined as stated.** Mild, and of the same class as PE3.
+
+tex:1655 says: "if `f : ℕ⁺ → [0,1]` is a computable function then `⌜⟨f⟩(7)⌝` is a LUV,
+because `⌜⟨f⟩(7)⌝` is shorthand for the formula `⌜γ_f(7,ν)⌝`, where `γ_f` is the predicate
+of Θ representing `f`."
+
+But `γ_f` is defined in exactly one place, the §2 "Representing computations" paragraph
+(tex:600-606), and only for a **total computable `f : ℕ⁺ → ℕ⁺`**, by
+
+```
+y = f(n)   iff   Θ ⊢ ∀ν : γ_f(⌜n⌝, ν) ⟺ ν = ⌜y⌝.
+```
+
+Two things go wrong at tex:1655. First, the condition names the value by the **numeral**
+`⌜y⌝`, which has no referent for a rational — let alone a real — `y`, so `γ_f` is simply
+undefined for the `f` the sentence applies it to. Second, the codomain as printed is the
+real interval `[0,1]`; a computable real-valued function cannot satisfy that biconditional
+at all, since it demands a single numeral per input. The sentence must be read as
+`ℚ ∩ [0,1]` under some coding of `ℚ`.
+
+The paper is aware a coding is needed and defers it rather than supplying it: tex:1633 says
+"we will need to assume that Θ is capable of representing rational numbers and proving
+things about them", and then discharges that need by assuming Θ *can represent computable
+functions* — the tex:600-606 notion, whose statement contains no clause about rationals.
+So the gap is not that the paper picks an encoding this repository disagrees with; it is
+that the notion actually assumed does not deliver the capability the next sentence uses.
+
+Nor does the paper's ambient notation for rationals close it. Elsewhere (`def:e`,
+tex:1668) rationals appear as **quotients of numerals**, `⌜i⌝/⌜k⌝`, which presupposes
+division as a total operation in the object language — not available in a language of
+ordered rings, and in any case a device for writing a *threshold*, not for naming the value
+`γ_f` must pin down uniquely.
+
+**What the repository does.** `PaperLUV` (`Construction/LUV/PaperLUV.lean`) names one
+encoding — a numerator/positive-denominator pair code, `paperRatDef` / `paperRatUnitDef`,
+with `pairDef q a b ∧ 0 < b` — and carries object-level `T`-derivations of uniqueness and
+of `[0,1]` membership as the structure's `unique` and `unit` fields, so the coding
+obligation is discharged at the object level rather than assumed. The representation is
+ordered-value rather than canonical (`1/2` and `2/4` stay distinct codes); the represented
+real is recovered through the rational cut (`rationalCutAt`, `source_valued`), which is
+`def:luv`'s own supremum construction (tex:1642-1646). tex:1655's own route — a Θ-formula
+representing a computable pair-valued function, turned into a LUV — is
+`representedPairPaperLUV` (`Construction/Quotation/RepresentedWeight.lean`). The
+consequence for the paper's printed examples is recorded in `LogicalInduction/README.md`:
+`⌜ν = 0.5⌝` and the twin-prime indicator (tex:1651-1653) have to be re-spelled through the
+pair code to be `PaperLUV`s.
 
 ---
 

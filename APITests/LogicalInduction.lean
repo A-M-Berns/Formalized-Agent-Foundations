@@ -710,7 +710,7 @@ example := @lic_persistence_of_knowledge
 example := @lic_preemptive_learning
 
 -- Properties/Calibration.lean
-example := @PGenerableWeighting
+example := @DivergentWeighting
 example := @calibrationIndicator_pgenerable
 
 -- Properties/Relationships.lean
@@ -832,7 +832,7 @@ example := @unitFracPaperLUVBoundedSequence
 example := @unitFracPaperLUVSeq
 
 -- Construction/Knowledge/Endpoints.lean
-example := @lia_learns_halting_patterns_unconditional
+example := @lic_learns_halting_patterns_unconditional
 example := @lic_belief_finitistic_consistency_unconditional
 example := @lic_belief_stronger_theory_consistency_unconditional
 example := @lic_disbelief_inconsistent_theories_unconditional
@@ -861,6 +861,9 @@ names, which are supported client tools without being paper endpoints of their o
 
 -- Framework/Theory/R0Instances.lean — the paper's §2 premise, discharged at a real theory
 example := @representsComputations_of_peanoMinus
+
+-- Properties/Calibration.lean — the emission half of "ℙ-generable divergent weighting"
+example := @PGenerableWeighting
 
 -- Construction/NonDogmatism/ — the constructed presentations the §4.6 endpoints run on
 example := @bitPrefixSentencesOfIndependentAtoms

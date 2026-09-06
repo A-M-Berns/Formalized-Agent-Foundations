@@ -1393,7 +1393,7 @@ hypothesis that the machines halt.  In particular there is no soundness instance
 *Residual hypotheses (disclosed).*  `[T.Δ₁]` and `[𝗣𝗔⁻ ⪯ T]` are the module's disclosed
 strengthenings (module header; `LogicalInduction/README.md`).
 Paper node: `thm:halts` -/
-theorem lia_learns_halting_patterns_unconditional
+theorem lic_learns_halting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
     (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
@@ -1429,7 +1429,7 @@ example :
       ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
           Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
         ≈ₙ fun _ => 1 :=
-  lia_learns_halting_patterns_unconditional T
+  lic_learns_halting_patterns_unconditional T
     Nat.Partrec.Code.nest (fun n => 2 ^ n)
     Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow
     (fun n => codeHalts_nest n (2 ^ n))

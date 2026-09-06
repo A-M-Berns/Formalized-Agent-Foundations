@@ -1658,7 +1658,7 @@ lemma ConvergencePresentation.expect_tendsto_expectInf
 /-- `lem:limexpapprox`, pointwise quantitative form: the fixed precision-`n` affine
 valuation at the market's limiting beliefs differs from the actual limiting expectation
 by at most the literal mesh-tail error. -/
-theorem BoundedSequence.mesh_limitingValue_near_expectInf
+lemma BoundedSequence.mesh_limitingValue_near_expectInf
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -1683,7 +1683,7 @@ theorem BoundedSequence.mesh_limitingValue_near_expectInf
 
 /-- `lem:limexpapprox`: limiting-belief evaluation of the diagonal threshold mesh and
 the true limiting expectation are asymptotically equal. -/
-theorem BoundedSequence.limexpapprox
+lemma BoundedSequence.limexpapprox
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2035,7 +2035,7 @@ future market days by each future day's own precision. -/
 the market's diagonal mesh price has the same lower and upper limits as the mesh's own
 future-day extrema.  This is the form `exppolymax` consumes, before `lem:mesh` replaces
 the fixed precision `n` at future market days by each future day's own precision. -/
-theorem BoundedSequence.mesh_affpolymax
+lemma BoundedSequence.mesh_affpolymax
     {As : ℕ → LUVCombination} {P : History}
     (h : BoundedSequence As P) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
@@ -2444,7 +2444,7 @@ The rational share bound `b` occurs in the *types* of `hverify` and `hverifyNeg`
 `normalizedMesh As b`, so there is no `_ofBounded` form of this statement: a client has
 to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one) before it can even
 state the verifier premises. -/
-theorem BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
+lemma BoundedSequence.recurringunbiasednessexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2622,7 +2622,7 @@ The rational share bound `b` occurs in the *types* of `clock`, `hverify` and `hv
 through `normalizedMesh As b`, so this statement and its two siblings have no `_ofBounded`
 form: a client has to choose `b` (`BoundedSequence.exists_rat_shareBound` supplies one)
 before it can state the premises. -/
-theorem BoundedSequence.prandexp_of_historicalVerifiers
+lemma BoundedSequence.prandexp_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2661,7 +2661,7 @@ theorem BoundedSequence.prandexp_of_historicalVerifiers
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
 /-- The nonpositive comparison direction of `thm:prandexp`. -/
-theorem BoundedSequence.prandexp_below_of_historicalVerifiers
+lemma BoundedSequence.prandexp_below_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)
@@ -2701,7 +2701,7 @@ theorem BoundedSequence.prandexp_below_of_historicalVerifiers
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
 /-- The equality direction mentioned in the paper immediately after `thm:prandexp`. -/
-theorem BoundedSequence.prandexp_eq_of_historicalVerifiers
+lemma BoundedSequence.prandexp_eq_of_historicalVerifiers
     {As : ℕ → LUVCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedSequence As P)

@@ -124,7 +124,7 @@ lean_lib Scratchpad where
 -- FAF's own import surface is far narrower than the fork. `Complexity.FP` is the
 -- paper-facing reading of `def:ec` and so is named at the criterion itself
 -- (`Framework/Criterion.lean`); the *deep* imports are exactly two:
---   * `Framework/Machine/Descriptions` imports `…UTM.Internal.Interp` (a 5-file /
+--   * `Construction/Descriptions` imports `…UTM.Internal.Interp` (a 5-file /
 --     ~2.2k-line closure);
 --   * `Framework/Machine/EvalnCompiler` imports `…Registers.Pairing`, the unary-register
 --     arithmetic layer.

@@ -20,8 +20,13 @@ section:
     regression guard on a declaration is not a reason to publish it.
 
 Carrying a `Paper node:` label is a third, weaker thing again: it is *provenance*, not
-publication. `thm:scon` has 54 axiom-checked carriers and 5 canonical endpoints. The other
-49 are real, checked, and deliberately not shown.
+publication. `thm:scon` is the illustration: dozens of declarations across `Properties/` and
+the `Conditioning/` lane carry that label, every one of them is named in some
+`#assert_axioms_clean` block below, and five of them are canonical endpoints. The rest are
+real, checked, and deliberately not shown. The totals are not restated here because nothing
+would gate them: `scripts/check_endpoint_coverage.py` recomputes the per-declaration coverage
+and prints it, and the *endpoints* table of `scripts/coverage-classification.md` is the list
+of what is published.
 
 `scripts/check_endpoint_coverage.py` enforces that the canonical block and the endpoints
 table name exactly the same declarations, so the three artifacts cannot drift apart.
@@ -177,8 +182,9 @@ per paper node, the paper's own printed form first.
 Every *other* `#assert_axioms_clean` block below is an **internal axiom regression
 assertion**: equally under the build gate, so every listed name has a guard, but not public
 trust surface. Being worth freezing is not a reason to put a declaration in front of a
-reader. `thm:scon` has 54 axiom-checked carriers and 5 canonical endpoints; `def:ec` has 24
-and 3.
+reader. `thm:scon` publishes five canonical endpoints and `def:ec` three; both labels are
+carried, and axiom-checked, on many more declarations than that
+(`scripts/check_endpoint_coverage.py` recomputes the totals).
 
 The delimiters are machine-read: `scripts/check_endpoint_coverage.py` fails the run unless
 the name set here equals the endpoints table's, spelling included — so the two cannot drift,
@@ -194,7 +200,7 @@ topical blocks stay the place where each endpoint is explained. -/
   AffineCombination AffineCombination.BoundedCombinationSequence LUVCombination.BoundedSequence
   PaperLUVCombination.boundedSequence unitFracPaperLUVBoundedSequence DeductiveProcess
   DeductiveProcessComputation DeferralFunction MachineEfficientTrader EfficientlyComputable
-  EfficientlyComputable.toMachine GeneratedRatFeature PGenerableWeighting liaStates liaHistory
+  EfficientlyComputable.toMachine GeneratedRatFeature DivergentWeighting liaStates liaHistory
   IsMachineLogicalInductor IsLogicalInductor PaperLUV LUV unitFracPaperLUVSeq Trader Strategy
   LUVCombination.BoundedSequence.mesh_independence_ofSyntax trading_firm_dominance
   AffineCombination.PolySequence.affcoh AffineCombination.BoundedCombinationSequence.affpolymax
@@ -211,7 +217,7 @@ topical blocks stay the place where each endpoint is explained. -/
   lic_iterated_expectations_closed LUVCombination.BoundedSequence.expcoh_ofSyntax
   LUVCombination.BoundedSequence.exppolymax_ofSyntax lic_expect_combination_provind_ge
   lic_expect_combination_provind_le lic_expect_combination_provind_eq
-  lia_learns_halting_patterns_unconditional
+  lic_learns_halting_patterns_unconditional
   FinitePerturbationCounterexample.not_overgeneral_ifp
   FreezeOracle.machine_lic_iff_of_finiteSupport
   LIAPerturbation.machineLogicalInductor_liaPerturbed
@@ -375,6 +381,15 @@ topical blocks stay the place where each endpoint is explained. -/
 #assert_axioms_clean
   FinitePerturbationCounterexample.not_overgeneral_ifp
 
+-- Properties/Calibration.lean — the §4.3 weighting vocabulary.  `DivergentWeighting` renders
+-- `def:fuz` (a `[0,1]` sequence with divergent sum) and is the canonical endpoint for that
+-- node, listed above.  `PGenerableWeighting` renders `def:ece`, but is not that node's
+-- canonical endpoint: it is the progression data *without* the denotation clause — the form
+-- the §4.3–4.5 hypotheses take — while `GeneratedRatFeature` is the paper's own "generable
+-- from ℙ" for a rational sequence.  `pGenerableWeighting_iff` relates the two.
+#assert_axioms_clean
+  DivergentWeighting PGenerableWeighting calibrationIndicator_pgenerable
+
 -- Properties/Pseudorandomness.lean
 #assert_axioms_clean
   lic_learning_pseudorandom_frequency lic_learning_pseudorandom_frequency_above
@@ -493,10 +508,12 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- patient clock it closes.
 #assert_axioms_clean
   SettlementChecker.ofComputations PatientSettlementClock.ofComputations
+  PatientSettlementClock.ofChecker
 
 -- Construction/Quotation/Packages.lean — the code-indexed quotation layer
 -- (`dd:quote-code`) and the diagonal price fixed point it makes constructible.
 #assert_axioms_clean
+  QuotationTheoryPresentation.mono
   diagonalPriceDecisionPart_partrec diagonalPriceDecisionCode_eval
   diagonalPriceQuotePos_iff diagonalPriceQuoteNeg_iff diagonalPriceFixedpoint_spec
   parameterizedDiagonalQuoteCodeOfMarket
@@ -555,6 +572,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- non-vacuously satisfiable.  Both endpoints remain proved for an arbitrary deductive
 -- process, so neither layer's limits bound the theorem.  See the declarations' docstrings.
 #assert_axioms_clean
+  BitChain.decode_chain
   not_polySentenceCodes_bitPrefixSentence ordinaryBitPrefixCodes
   bitPrefixSentencesOfIndependentAtoms ordinaryBitPrefixSentences
   lic_domination_universalSemimeasure_ofIndependentAtoms
@@ -886,6 +904,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FreezeOracle.not_recognizable_hardS
   FreezeOracle.not_recognizableSupport_hardPoint
   FreezeOracle.not_noReservedSupport_reservedPoint
+  FreezeOracle.noReservedSupport_hardPoint
   FreezeOracle.computableMarket_point
   FreezeOracle.pointHistory_ne_at
   FreezeOracle.machine_lic_iff_hardPoint
@@ -896,6 +915,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   FiberTest.holeGuards
   PatAuto.ifParseLegacy_mem_FP
   PatAuto.ifParse_mem_FP
+  PatAuto.patAuto_accepts
   RunAuto.guardedAutomaton
   RunAuto.BlockAutomaton.ifAuto_mem_FP
   tailAgree_not_finiteSupport
@@ -1034,6 +1054,18 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- halting schema, and `thm:incons` at the base theory's provability schema.  Stating them
 -- at the arithmetized families is what removes the caller-supplied-computation hypothesis
 -- from all of them.
+--
+-- Three facts about that syntax are inventoried here rather than under an endpoint, because
+-- they are what keeps the claim families honest: the public atom of a claim determines the
+-- claim (`ComputationClaim.godelCode_injective`), the `Classical.epsilon`-chosen universal
+-- halting schema cannot be one that ignores its argument
+-- (`universalHaltingSchema_not_argument_insensitive`, so the family really depends on the
+-- machine it names), and the positive branch of a presentation actually fires
+-- (`computationRepresentation_positive_path`, the `N+` witness for `halting_enters`).
+#assert_axioms_clean
+  ComputationClaim.godelCode_injective
+  universalHaltingSchema_not_argument_insensitive
+  computationRepresentation_positive_path
 
 -- Framework/Theory/RepresentsComputations.lean — the paper's representability premise.
 -- `RepresentsComputations T` is the Lean rendering of the paper's standing §2 assumption
@@ -1532,6 +1564,16 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
   lic_no_expected_net_update_conditional_paperLUV_closed
 
+-- Construction/SemanticExtension/Prime.lean — the obstruction that shapes the whole lane.
+-- `no_nonvacuous_worldValued_presented_of_rpn` proves that no fixed deductive process can
+-- wrap *every* efficiently emitted, completed-world-valued source in a `PresentedLUVSeq`
+-- reflecting its thresholds: the diagonal source negates the presentation's own schema leaf.
+-- It is the reason every admission gate in the lane below is proof-carrying or
+-- entailment-checked rather than universal, and it is inventoried so that reason stays
+-- axiom-checked.
+#assert_axioms_clean
+  no_nonvacuous_worldValued_presented_of_rpn
+
 -- Construction/SemanticExtension/Endpoints.lean — the generalized semantic-extension form
 -- of `thm:ccee`, which is not the canonical paper rendering (that is
 -- `lic_no_expected_net_update_conditional_paperLUV_closed`, on the single market).
@@ -1549,6 +1591,7 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   liftedRpnSemanticHandle_valuesAt
   liftedRpnSource_factor_eventually
   canonicalRationalQuote_factor_eventually
+  canonicalCCEE_weight_nonvacuous
   lic_no_expected_net_update_conditional_exact_canonical
 
 -- Construction/Quotation/ProductDefinition.lean — the exact-reflection route for the quoted
@@ -1581,7 +1624,6 @@ tail would otherwise assume, together with the criterion endpoints that consume 
   productLUV_valuesAt_union
   productLUV_rpnThresholdCodeSeq
   lic_no_expected_net_update_conditional_exact
-  QuotationTheoryPresentation.mono
   exactProductDP_hworld
   lic_no_expected_net_update_conditional_exact_productExtension
   lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
@@ -1595,14 +1637,14 @@ tail would otherwise assume, together with the criterion endpoints that consume 
 -- What `Construction/Paper/ComputationDP.lean` owns is the presentation
 -- (`theoremPresentation`) and the quotation lane over `theoremDP`.  The halting lane lives
 -- elsewhere:
--- `lia_learns_halting_patterns_unconditional` and
+-- `lic_learns_halting_patterns_unconditional` and
 -- `lic_learns_provable_nonhalting_patterns_unconditional` are stated in
 -- `Construction/Knowledge/Endpoints.lean` over `paperTheoryDP T` under
 -- `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]` — no soundness instance and no
 -- `[𝗜𝚺₁ ⪯ T]`, matching `thm:pac` / `thm:pazfc` / `thm:dontwait` beside them.  They are
 -- listed here because this block is the capstone roll-up, not because of where they live.
 #assert_axioms_clean
-  lia_learns_halting_patterns_unconditional
+  lic_learns_halting_patterns_unconditional
   lic_expectations_of_probabilities_ofCode_unconditional
   lic_iterated_expectations_ofCode_unconditional
   lic_introspection_ofCode_unconditional
@@ -2368,15 +2410,20 @@ Everything above is asserted of the endpoints **as stated**, and the arithmetic-
 family (`thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, `thm:ref`, `thm:epr`, `thm:er`,
 `thm:lp`, `thm:halts`, …) is stated parametrically over an arithmetic theory:
 `(T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T]` plus, per lane, `[𝗣𝗔⁻ ⪯ T]` or
-`[𝗜𝚺₁ ⪯ T]` — the consistency binder having replaced `[T.SoundOnHierarchy 𝚺 1]` on
-2026-08-30, when the quotation schemas became value fibers of one `code` formula, and the
-`𝗜𝚺₁` binder having been *deleted* in tranche 7 everywhere it was unused.
+`[𝗜𝚺₁ ⪯ T]`. No endpoint carries `[T.SoundOnHierarchy 𝚺 1]`: the quotation schemas are value
+fibers of one `code` formula, whose exclusivity is provable inside `T`, so consistency is
+what the market non-vacuity witnesses close from.
 
-**The census, and how it is taken.** Both figures below are measured by elaborating a
-generated file of `#check @name`, one line per name in the `LI-CANONICAL-BEGIN` …
-`LI-CANONICAL-END` block above, and grepping the *printed* binder lists — never by reading
-docstrings, and never by grepping the sources, which is how the `[ISigma 1 ⪯ T]` spelling in
-the semantic-lifted lane stayed invisible for two tranches.
+**The census, and how it is taken.** The figures below are measured by elaborating a
+generated file whose body is `#check @name`, one line per name in the `LI-CANONICAL-BEGIN` …
+`LI-CANONICAL-END` block above, under `import LogicalInduction.API` and
+`open LogicalInduction`, then counting the *printed* binder lists — never by reading
+docstrings, and never by grepping the sources alone, which would miss a binder inherited
+through a structure field or a section variable, and would miss the ASCII `[ISigma 1 ⪯ T]`
+spelling if it ever returned. Reproduce it with `lake env lean` on that file; the whole
+census takes one elaboration. The `[𝗜𝚺₁ ⪯ T]` list is the one figure a purely textual check
+can own, and `scripts/check_li_rollcall.py` recomputes it from the signatures and fails the
+build when it drifts from the list `LogicalInduction/README.md` names.
 
   * `[T.SoundOnHierarchy 𝚺 1]` — **0 of 107**. Every endpoint that would otherwise inherit
     the instance does so through `theoremDP_hworld`'s quotation tag, which closes from
@@ -2387,7 +2434,7 @@ the semantic-lifted lane stayed invisible for two tranches.
   * `𝗣𝗔⁻ ⪯ ·` — **16 of 107**, and `𝗥₀ ⪯ ·` — **0**.  An explicit `𝗥₀` binder is always
     redundant beside the stronger `𝗣𝗔⁻` one, since Foundation's
     `instance [𝗣𝗔⁻ ⪯ T] : 𝗥₀ ⪯ T` (`Arithmetic/Schemata.lean`) supplies it.
-    `T.Δ₁` — **23 of 107**.  Note that
+    `T.Δ₁` — **24 of 107**.  Note that
     `𝗣𝗔⁻` is **not** implied by "Θ represents computations", though it reads as if it
     should be: the paper's premise gives `Θ ⊬ n̄ = m̄` for `n ≠ m` but
     never `Θ ⊢ n̄ ≠ m̄`, and Robinson's R represents every computable function without
@@ -2396,11 +2443,13 @@ the semantic-lifted lane stayed invisible for two tranches.
     fiber exclusivity that stands in place of Σ₁-soundness at the quotation tag.  Disclosed
     globally in `scripts/coverage-classification.md`, and charged there once rather than per
     row.
-  * `𝗜𝚺₁ ⪯ ·` (either spelling) — **3 of 107**, in each case because a proof step spends it,
+  * `𝗜𝚺₁ ⪯ ·` (either spelling) — **4 of 107**, in each case because a proof step spends it,
     and in each case the substrate's own indexing rather than a theory-strength assumption
     the statement needs: `unitFracPaperLUVSeq` and `unitFracPaperLUVBoundedSequence`, the two
     literal-`PaperLUV` frontends, whose `threshold_provable_of_neg` / `rationalCutAt` /
-    `source_valued` steps prove rational-cut arithmetic *inside* `T`; and
+    `source_valued` steps prove rational-cut arithmetic *inside* `T`;
+    `lic_no_expected_net_update_conditional_paperLUV_closed` (`thm:ccee` at zero slack), which
+    is stated over a `PaperLUVSeq` and inherits the same rational-cut indexing; and
     `lic_paradox_resistance_ofDiagonal_unconditional` (`thm:lp`), whose diagonal is
     Foundation's `parameterized_diagonal₁`, stated over `𝗜𝚺₁`.  That endpoint prints
     `[T.Δ₁] [Entailment.Consistent T] [𝗜𝚺₁ ⪯ T]` and carries **no** `[𝗣𝗔⁻ ⪯ T]`: the two
@@ -2410,19 +2459,17 @@ the semantic-lifted lane stayed invisible for two tranches.
     need it.  `omit` cannot do this job: it does not take the variable out of the local
     context, so instance search still reaches it from the conclusion's
     `paperDiagonalQuoteCode`.  It is therefore
-    not one of the 17 above.
+    not one of the `𝗣𝗔⁻` endpoints counted above.
 
-The tranche-7/D step that closed the last eight was deleting `theory_sigmaOne` from
-`QuotationTheoryPresentation` (see the FIELD REMOVAL note above): the seven closed quotation
-endpoints (`thm:ref`, `thm:st`, `thm:epr`, `thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`)
-inherited `𝗜𝚺₁` from that field and from no step of their own, and now all seven read
-`[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`.  `thm:ccee` additionally required migrating the
+`QuotationTheoryPresentation` carries no `theory_sigmaOne` field (see the FIELD REMOVAL note
+above), which is why the seven closed quotation endpoints (`thm:ref`, `thm:st`, `thm:epr`,
+`thm:er`, `thm:cee`, `thm:ceu`, `thm:ccee`) read `[T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]`
+and inherit `𝗜𝚺₁` from nothing: an interface field is a binder every consumer pays, so a
+theory-strength field would have charged all seven for a step none of them takes.  The
 semantic-lifted lane (`SemanticExtension/Quote`, `SemanticExtension/Product`,
 `SemanticExtension/LanguageCopy`, `SemanticExtension/Registry`,
-`SemanticExtension/Endpoints`), where the same binder was spelled
-`[ISigma 1 ⪯ T]` rather than `[𝗜𝚺₁ ⪯ T]` and so was invisible to the earlier tranches' greps;
-all 64 of those sites are now `[𝗣𝗔⁻ ⪯ T]`.  Those endpoints are axiom-clean, but only because
-the theory data are *hypotheses*.
+`SemanticExtension/Endpoints`) reads `[𝗣𝗔⁻ ⪯ T]` throughout for the same reason.  Those
+endpoints are axiom-clean, but only because the theory data are *hypotheses*.
 
 Instantiating them at a concrete theory is a different claim, and it is pinned here so that
 a regression would fail the build. At the pinned Foundation revision it costs nothing:
@@ -2440,16 +2487,16 @@ noncomputable def concreteArithmeticInstantiation :=
 
 #assert_axioms_clean concreteArithmeticInstantiation
 
-/-! ### No Σ₁-soundness is asked for at a concrete theory (2026-08-30)
+/-! ### No Σ₁-soundness is asked for at a concrete theory
 
 `thm:ref` elaborates exactly three instance arguments — `[T.Δ₁]`, `[𝗣𝗔⁻ ⪯ T]` and
 `[Entailment.Consistent T]` — and `thm:lp` exactly three as well: `[T.Δ₁]`,
 `[Entailment.Consistent T]`, and the `[𝗜𝚺₁ ⪯ T]` its diagonal genuinely spends, with no
-`[𝗣𝗔⁻ ⪯ T]` beside it.  Both would fail to typecheck as written if
-`[T.SoundOnHierarchy 𝚺 1]` were still in either binder list; the arity is also the live
-regression test for tranche 7's `𝗜𝚺₁` deletion, since restoring the binder on `thm:ref` would
-give it a fourth argument.  The corresponding `grep` is
-`grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which now finds prose
+`[𝗣𝗔⁻ ⪯ T]` beside it.  The two `example`s below are the regression test for both facts:
+each supplies exactly three instances, so either a `[T.SoundOnHierarchy 𝚺 1]` binder or a
+restored `[𝗜𝚺₁ ⪯ T]` on `thm:ref` would give the term a fourth argument and fail to
+typecheck.  The corresponding `grep` is
+`grep -rn SoundOnHierarchy LogicalInduction/ | grep -v loopsTheory`, which finds prose
 only. -/
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
@@ -2462,14 +2509,14 @@ example :=
   @LogicalInduction.lic_paradox_resistance_ofDiagonal_unconditional 𝗜𝚺₁
     inferInstance inferInstance inferInstance
 
-/-! ### `thm:ref` below `𝗜𝚺₁` (tranche 7/D)
+/-! ### `thm:ref` below `𝗜𝚺₁`
 
-The two examples below are the positive witness that tranche 7/D's deletion of
-`QuotationTheoryPresentation.theory_sigmaOne` actually widened the closed quotation lane, not
-merely renamed a binder.  `lic_introspection_closed` now instantiates at `𝗣𝗔⁻` itself —
-a theory that proves **no** induction, so `𝗜𝚺₁ ⪯ 𝗣𝗔⁻` is false and no `𝗜𝚺₁` instance is
-available anywhere in the elaboration.  Before the field was removed this did not typecheck.
-The `𝗣𝗔` instantiation is the same statement at the theory the paper actually cares about. -/
+The closed quotation lane reaches theories strictly below `𝗜𝚺₁`, and the first example below
+is what holds it there: `lic_introspection_closed` instantiates at `𝗣𝗔⁻` itself — a theory
+that proves **no** induction, so `𝗜𝚺₁ ⪯ 𝗣𝗔⁻` is false and no `𝗜𝚺₁` instance is available
+anywhere in the elaboration.  Any step of the lane that acquired one, whether directly or
+through a `QuotationTheoryPresentation` field, would break this term.  The `𝗣𝗔`
+instantiation is the same statement at the theory the paper actually cares about. -/
 
 open LO LO.FirstOrder LO.FirstOrder.Arithmetic in
 /-- `thm:ref` at `𝗣𝗔⁻`, with no `𝗜𝚺₁ ⪯ ·` instance in scope. -/

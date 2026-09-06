@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.LUV.ArithmeticSource
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
 
 /-!
 # Reading a written formula back from its name

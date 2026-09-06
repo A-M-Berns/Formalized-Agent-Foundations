@@ -84,9 +84,9 @@ process's own world), `productLUV_rpnThresholdCodeSeq` (`def:ec` for the product
 the closed form `lic_no_expected_net_update_conditional_exact_productExtension` with its
 `_nonvacuous` companion.
 
-`sentenceAtomCodes` and `PCWorld.holds_congr_atomCodes` are general propositional-substitution
-utilities, defined here because Foundation's `Formula` carries no occurrence function; nine
-modules in the `NonDogmatism/`, `Paper/` and `SemanticExtension/` lanes use them.
+The freshness conditions here are stated against `sentenceAtomCodes`
+(`Framework/BooleanWorlds.lean`), and what discharges them for the constructed processes are
+the tag-ownership lemmas below.
 
 **Cross-lane edge.**  This module imports `Construction/Conditioning/Presentation.lean` for
 `DeductiveProcessComputation.union_toComputable`, which is what makes the definitional
@@ -99,60 +99,6 @@ namespace LogicalInduction
 
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic LO.Entailment
 open Filter Topology
-
-/-! ## Atom occurrences
-
-Foundation's `Formula` carries no occurrence function, so the two facts the freshness
-condition needs are proved here: the finite set of atoms of a sentence, and the substitution
-lemma saying a world's verdict depends only on those. -/
-
-/-- The atom indices occurring in a propositional sentence. -/
-def sentenceAtomCodes : Sentence → Finset ℕ :=
-  Formula.rec' ∅ (fun a => {a})
-    (fun _ _ s t => s ∪ t) (fun _ _ s t => s ∪ t) (fun _ _ s t => s ∪ t)
-
-@[simp] lemma sentenceAtomCodes_atom (a : ℕ) :
-    sentenceAtomCodes (Formula.atom a) = {a} := rfl
-
-@[simp] lemma sentenceAtomCodes_falsum :
-    sentenceAtomCodes (⊥ : Sentence) = ∅ := rfl
-
-@[simp] lemma sentenceAtomCodes_imp (φ ψ : Sentence) :
-    sentenceAtomCodes (φ 🡒 ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
-
-@[simp] lemma sentenceAtomCodes_and (φ ψ : Sentence) :
-    sentenceAtomCodes (φ ⋏ ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
-
-@[simp] lemma sentenceAtomCodes_or (φ ψ : Sentence) :
-    sentenceAtomCodes (φ ⋎ ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
-
-/-- **Substitution.** A p.c. world's verdict on `φ` depends only on the atoms occurring in
-`φ`: two valuations agreeing there agree on `φ`. -/
-lemma PCWorld.holds_congr_atomCodes {v v' : PCWorld} :
-    ∀ φ : Sentence, (∀ a ∈ sentenceAtomCodes φ, (v a ↔ v' a)) →
-      (v.Holds φ ↔ v'.Holds φ) := by
-  intro φ
-  induction φ using Formula.rec' with
-  | hfalsum => intro _; exact Iff.rfl
-  | hatom a => intro h; exact h a (by simp)
-  | himp φ ψ ihφ ihψ =>
-      intro h
-      have hφ := ihφ (fun a ha => h a (by simp [ha]))
-      have hψ := ihψ (fun a ha => h a (by simp [ha]))
-      show (v.Holds φ → v.Holds ψ) ↔ (v'.Holds φ → v'.Holds ψ)
-      rw [hφ, hψ]
-  | hand φ ψ ihφ ihψ =>
-      intro h
-      have hφ := ihφ (fun a ha => h a (by simp [ha]))
-      have hψ := ihψ (fun a ha => h a (by simp [ha]))
-      show (v.Holds φ ∧ v.Holds ψ) ↔ (v'.Holds φ ∧ v'.Holds ψ)
-      rw [hφ, hψ]
-  | hor φ ψ ihφ ihψ =>
-      intro h
-      have hφ := ihφ (fun a ha => h a (by simp [ha]))
-      have hψ := ihψ (fun a ha => h a (by simp [ha]))
-      show (v.Holds φ ∨ v.Holds ψ) ↔ (v'.Holds φ ∨ v'.Holds ψ)
-      rw [hφ, hψ]
 
 /-! ## The fresh product atoms -/
 
@@ -191,27 +137,6 @@ lemmas below are what discharge it: the constructed process's stages are images 
 `eventAtom`, whose atoms carry the computation-claim payload tags `0`–`1` or the quotation
 payload tag `2`, and every quotation threshold family carries tag `2`.  Nothing but
 `productLUV` uses tag `productTag = 3`. -/
-
-@[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
-    sentenceAtomCodes (∼φ) = sentenceAtomCodes φ := by
-  rw [Formula.neg_def, sentenceAtomCodes_imp, sentenceAtomCodes_falsum, Finset.union_empty]
-
-@[simp] lemma sentenceAtomCodes_verum :
-    sentenceAtomCodes (⊤ : Sentence) = ∅ := rfl
-
-lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
-    ∀ a ∈ sentenceAtomCodes (computationClaimSentence c), a.unpair.1 = c.kind.godelCode := by
-  intro a ha
-  rw [computationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
-  subst ha
-  simp [ComputationClaim.godelCode]
-
-lemma sentenceAtomCodes_quoteAtom (w : ℕ) :
-    ∀ a ∈ sentenceAtomCodes (quoteAtom w), a.unpair.1 = 2 := by
-  intro a ha
-  rw [quoteAtom, quotationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
-  subst ha
-  simp [quotationClaimCode]
 
 /-- **The constructed process's literals never carry the product tag.**  Every atom of an
 `eventAtom` is a computation claim (payload tags `0`–`1`) or a quotation claim (payload
@@ -672,8 +597,9 @@ theorem productLUV_valuesAt_union {B : DeductiveProcess} {X W : ℕ → LUV} {v 
 /-! ## Threshold emission for the product family (`def:ec`)
 
 The product LUV's threshold *is* a single fresh atom, so its emitter is the same shape as
-the quotation atom's (`quoteAtom_mesh_encode_polyFueled`): a runtime `gcdc` reduction of the
-mesh rational under a fixed atom shell.  Crucially the family does not mention `X`, `W` or
+the quotation atom's (`quoteAtom_mesh_encode_polyFueled`): the shared `gcd`-reduced quotient
+emitter `encode_natDiv_polyFueled` for the mesh rational, under a fixed atom shell.
+Crucially the family does not mention `X`, `W` or
 the weight at all — the emitted block is poly-sized in the index no matter what the weight
 is, which is exactly the barrier that forced the mesh substitution on the scaled-threshold
 route. -/
@@ -685,35 +611,17 @@ Paper node: `def:ec`, `thm:ccee` -/
 lemma productAtom_mesh_encode_polyFueled :
     ∃ c, PolyFueled c (fun m => Encodable.encode (productAtom m.unpair.1
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))) := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  obtain ⟨cad, had⟩ := addc_polyFueled
+  -- Query `m = ⟨n, ⟨k, i⟩⟩`: day `n`, denominator `k`, numerator `i`.
   have hn := PolyFueled.left
   have hk := PolyFueled.left.comp PolyFueled.right
   have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
-  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
-  have h2num := had.comp (numPF.pair numPF)
-  have meshPF := ifzSel_polyFueled.comp
-    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  -- The `gcd`-reduced mesh rational, with its zero-denominator fallback, is the shared
+  -- emitter `encode_natDiv_polyFueled` (`Framework/Emission/Computable.lean`).
+  obtain ⟨cmesh, meshPF⟩ := encode_natDiv_polyFueled hi hk
   have fullPF := ((PolyFueled.const 1).pair
     ((PolyFueled.const productTag).pair (hn.pair meshPF))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
-  rw [productAtom, encode_atom]
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, hk0]
-    norm_num
-    rfl
-  · rw [if_neg hk0]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1
-        = Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+  conv_rhs => rw [productAtom, encode_atom]
 
 /-- The product family is polynomially threshold-codeable. -/
 lemma productLUV_polyThresholdCodeSeq : LUV.PolyThresholdCodeSeq productLUV := by
@@ -983,23 +891,6 @@ Two further costs of the demonstration, stated plainly rather than buried:
 Reading this section as `thm:ccee` at an instance is therefore wrong, for exactly the
 price-transport reason above; the renderings rank mesh > this > weight-narrowing, and the
 framing above is the ranked one. -/
-
-/-- **`QuotationTheoryPresentation` lifts along a process extension.**  Every field is
-either theory-side or an "enters some stage" claim, and the latter is monotone in the
-process; only the stage program has to be supplied afresh for the larger process.
-Paper node: `thm:ccee` -/
-noncomputable def QuotationTheoryPresentation.mono {DP DP' : DeductiveProcess}
-    {T : ArithmeticTheory} (Q : QuotationTheoryPresentation DP T)
-    (hsub : ∀ k, DP.D k ⊆ DP'.D k) (proc : DeductiveProcessComputation DP') :
-    QuotationTheoryPresentation DP' T where
-  theory_deltaOne := Q.theory_deltaOne
-  process := proc
-  halting_enters z h := (Q.halting_enters z h).imp fun k hk => hsub k hk
-  halting_refutes z h := (Q.halting_refutes z h).imp fun k hk => hsub k hk
-  boundedHalting_enters z h := (Q.boundedHalting_enters z h).imp fun k hk => hsub k hk
-  boundedFailure_refutes z h := (Q.boundedFailure_refutes z h).imp fun k hk => hsub k hk
-  quote_positive_enters c i h := (Q.quote_positive_enters c i h).imp fun k hk => hsub k hk
-  quote_negative_refutes c i h := (Q.quote_negative_refutes c i h).imp fun k hk => hsub k hk
 
 section ExactClosed
 

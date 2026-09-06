@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.Freeze.Oracle
-import LogicalInduction.Construction.LIA
+import LogicalInduction.Construction.LIACompiler
 
 /-!
 # An informative instance: perturbing the constructed logical inductor

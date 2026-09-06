@@ -1,14 +1,18 @@
 import LogicalInduction.Construction.Quotation.MarketQuoteCodes
 import LogicalInduction.Framework.Emission.WriteOut
 import LogicalInduction.Construction.Quotation.ProductDefinition
+import LogicalInduction.Construction.Knowledge.Syntax
 
 /-!
 # Compact semantic-prime names, and the unrestricted-source obstruction
 
 The compact-name layer for the semantic extension of the market language, together with the
-representation-boundary result that fixes what a name may be allowed to mean.  Neither is a
-paper node: this module supplies the atom namespace that the rest of the lane prices against,
-and it feeds `thm:ccee`'s exact-product route.
+representation-boundary result that fixes what a name may be allowed to mean.  The name layer
+is not a paper node — it supplies the atom namespace the rest of the lane prices against, and
+feeds `thm:ccee`'s exact-product route.  The boundary result is: the strengthened obstruction
+`no_nonvacuous_worldValued_presented_of_rpn` carries `thm:ccee`, and is inventoried in
+`AxiomAudit.lean`, because it is what says why that node's exact route admits sources through
+proof-carrying gates rather than universally.
 
 The paper's public language is propositional over *prime* sentences, so a semantic fact can
 enter the language only as an atom.  A semantic-prime atom is a **handle**: the public name
@@ -17,11 +21,13 @@ deductive process.  No source LUV, market or value is inspected while emitting o
 
 ## The allocation
 
-`semanticPrimeTag = 4` in the global atom-payload allocation table at
-`ComputationClaimKind.godelCode` (`Construction/Knowledge/Syntax.lean`).  A handle is
-`Nat.pair 4 (Nat.pair schema input)` and is an ordinary propositional atom, so nothing about
-`Sentence` changes.  The selector is itself paired, into disjoint branches: tag `0` for
-proof-carrying source/cut presentations, tag `1` for products, tag `2` for quotation aliases.
+The reserved tag `semanticPrimeTag = 4` and the source-vocabulary predicate
+`SemanticPrimeFreshSentence` are declared beside the global atom-payload allocation table at
+`ComputationClaimKind.godelCode` (`Construction/Knowledge/Syntax.lean`), because the
+first-order lane reads them too.  A handle is `Nat.pair 4 (Nat.pair schema input)` and is an
+ordinary propositional atom, so nothing about `Sentence` changes.  The selector is itself
+paired, into disjoint branches: tag `0` for proof-carrying source/cut presentations, tag `1`
+for products, tag `2` for quotation aliases.
 
 ## The unrestricted-source obstruction
 
@@ -53,11 +59,6 @@ source in — `PresentedLUVSeq` with its `gt_eq` simp lemma, the handle-named fa
 `no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
 all five.
 
-**Cross-lane edge.**  `Construction/Paper/FirstOrder.lean` imports this module, for
-`semanticPrimeTag` and `SemanticPrimeFreshSentence` alone, so the `Paper/` lane — and with it
-`paperDP` and every endpoint priced over it — sits downstream of this one in the import graph,
-even though every `SemanticExtension/` endpoint is stated over `Paper/`'s objects.  That
-module's header records the same edge.
 -/
 
 namespace LogicalInduction
@@ -65,11 +66,6 @@ namespace LogicalInduction
 open LO LO.Propositional LO.FirstOrder LO.FirstOrder.Arithmetic
 
 /-! ## The compact handle -/
-
-/-- Reserved tag for compact handles whose denotation is supplied by a fixed semantic
-theorem process.  See the global atom-payload allocation table at
-`ComputationClaimKind.godelCode`. -/
-def semanticPrimeTag : ℕ := 4
 
 /-- The public handle consists of a schema selector and its unevaluated input. -/
 def semanticPrimeCode (schema input : ℕ) : ℕ :=
@@ -140,48 +136,25 @@ def semanticHandleLUVSeq (schema n : ℕ) : LUV where
 
 /-- Compact handles preserve the repository's token-metered threshold interface.
 
-The emitter reduces the mesh rational `⌜i/k⌝` at runtime under a fixed atom shell.  The
-reduction step is `encode_rat_natCast_div` (`Framework/Emission/Computable.lean`), whose
-whole-emitter form is `encode_natDiv_polyFueled` there; four other threshold emitters — the
-second one below, and those in `Construction/SemanticExtension/Source.lean`,
-`Construction/SemanticExtension/Product.lean` and
-`Construction/Quotation/ProductDefinition.lean` — spell the same `gcd` reduction out inline
-under their own atom shells.
+The emitter is the shared `gcd`-reduced quotient emitter `encode_natDiv_polyFueled`
+(`Framework/Emission/Computable.lean`) for the mesh rational `⌜i/k⌝`, under a fixed atom
+shell; every threshold emitter in this lane and in `Construction/Quotation/` is built that
+way.
 
 This is the whole-value form; `semanticHandleLUVSeq_rpnThresholdCodeSeq` below is its
 token-metered weakening, which is the one the presented-source interface stores. -/
 lemma semanticHandleLUVSeq_polyThresholdCodeSeq (schema : ℕ) :
     LUV.PolyThresholdCodeSeq (semanticHandleLUVSeq schema) := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  obtain ⟨cad, had⟩ := addc_polyFueled
   have hn := PolyFueled.left
   have hk := PolyFueled.left.comp PolyFueled.right
   have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
-  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
-  have h2num := had.comp (numPF.pair numPF)
-  have meshPF := ifzSel_polyFueled.comp
-    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  obtain ⟨cmesh, meshPF⟩ := encode_natDiv_polyFueled hi hk
   have fullPF := ((PolyFueled.const 1).pair
     ((PolyFueled.const semanticPrimeTag).pair
       ((PolyFueled.const schema).pair (hn.pair meshPF)))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
-  rw [semanticHandleLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode, encode_atom]
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, hk0]
-    norm_num
-    rfl
-  · rw [if_neg hk0]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
-        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+  conv_rhs =>
+    rw [semanticHandleLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode, encode_atom]
 
 /-- Compact handles preserve `def:ec`'s token-metered threshold interface: the weakening of
 the whole-value certificate above, and the form `PresentedLUVSeq.threshold_codes` stores. -/
@@ -252,11 +225,6 @@ lemma rpnThresholdSourceCode_spec {X : ℕ → LUV}
 
 /-! ## The source-language separation invariant -/
 
-/-- A sentence belongs to the pre-extension source vocabulary when none of its atoms use
-the semantic-prime tag reserved for the extension. -/
-def SemanticPrimeFreshSentence (φ : Sentence) : Prop :=
-  ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ semanticPrimeTag
-
 /-- Pointwise source-language separation for a sequence of LUV threshold families. -/
 def SemanticPrimeFreshLUVSeq (X : ℕ → LUV) : Prop :=
   ∀ n r, SemanticPrimeFreshSentence ((X n).gt r)
@@ -278,19 +246,10 @@ def semanticDiagonalLUVSeq (n : ℕ) : LUV where
 interface.  Thus it is not excluded by the paper-facing `RpnThresholdCodeSeq` premise. -/
 lemma semanticDiagonalLUVSeq_polyThresholdCodeSeq :
     LUV.PolyThresholdCodeSeq semanticDiagonalLUVSeq := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  obtain ⟨cad, had⟩ := addc_polyFueled
   have hn := PolyFueled.left
   have hk := PolyFueled.left.comp PolyFueled.right
   have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
-  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
-  have h2num := had.comp (numPF.pair numPF)
-  have meshPF := ifzSel_polyFueled.comp
-    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  obtain ⟨cmesh, meshPF⟩ := encode_natDiv_polyFueled hi hk
   have schemaPF := (PolyFueled.const 0).pair hn
   have atomPF := ((PolyFueled.const 1).pair
     ((PolyFueled.const semanticPrimeTag).pair
@@ -298,22 +257,9 @@ lemma semanticDiagonalLUVSeq_polyThresholdCodeSeq :
   have negPF := ((PolyFueled.const 2).pair
     (atomPF.pair (PolyFueled.const 1))).succ_comp
   refine ⟨_, negPF.of_eq (fun m => ?_)⟩
-  rw [semanticDiagonalLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode,
-    semanticSourceSchema, encode_negAtom]
-  simp only [Nat.unpair_pair, ifzSelFn]
-  have hpair00 : Nat.pair 0 0 = 0 := natPair_zero_zero
-  rw [hpair00]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, hk0]
-    have hrat0 : Encodable.encode (0 : ℚ) = Nat.pair 0 1 := encodeRat_zero
-    simp [hrat0]
-  · rw [if_neg hk0]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
-        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+  conv_rhs =>
+    rw [semanticDiagonalLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode,
+      semanticSourceSchema, encode_negAtom, natPair_zero_zero, Nat.zero_add]
 
 /-- The same diagonal family satisfies the exact source premise proposed for
 `presented_of_rpn`. -/
@@ -489,7 +435,10 @@ lemma semanticValuedDiagonal_not_reflected (DP : DeductiveProcess)
 
 /-- Strengthened obstruction: even restricting the universal bridge to source families
 that satisfy the exact completed-world valuedness premise of closed CCEE is incompatible
-with a non-vacuous fixed process. -/
+with a non-vacuous fixed process.  This is why `thm:ccee`'s exact-product route admits
+sources through proof-carrying gates rather than universally.
+Kind `P` (proved); provenance (a) derived in-project.
+Paper node: `thm:ccee` -/
 lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
     (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.RpnThresholdCodeSeq X →
       (∀ n (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x) →

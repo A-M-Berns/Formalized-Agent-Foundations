@@ -7,6 +7,13 @@ import LogicalInduction.Framework.Compactness
 The Boolean reading of the §2 world type, and the compactness facts about it that §4 proof
 technology consumes.
 
+## Atom occurrence
+
+`sentenceAtomCodes` is the finite set of atom indices a sentence mentions, and
+`PCWorld.holds_congr_atomCodes` the substitution lemma that a world's verdict depends only on
+them. Every freshness condition in `Construction/` — a tag namespace an emitted sentence must
+avoid — is stated against this set.
+
 ## Boolean worlds
 
 `BoolPCWorld` is `ℕ → Bool` with `toPCWorld` / `ofPCWorld` bridging it to `PCWorld`, and
@@ -42,6 +49,74 @@ settlement tests) and by `Properties/{AffineCoherence,LimitCoherence}.lean` and
 namespace LogicalInduction
 
 open Filter Topology
+
+/-! ## Atom occurrence
+
+Foundation's `Formula` carries no occurrence function, so the two facts a freshness condition
+on atoms needs are proved here: the finite set of atoms of a sentence, and the substitution
+lemma saying a world's verdict depends only on those.  `BoolPCWorld.atomBound` below is the
+numeric form of the same information — one above the largest index in this set. -/
+
+section AtomCodes
+
+open LO.Propositional
+
+/-- The atom indices occurring in a propositional sentence. -/
+def sentenceAtomCodes : Sentence → Finset ℕ :=
+  Formula.rec' ∅ (fun a => {a})
+    (fun _ _ s t => s ∪ t) (fun _ _ s t => s ∪ t) (fun _ _ s t => s ∪ t)
+
+@[simp] lemma sentenceAtomCodes_atom (a : ℕ) :
+    sentenceAtomCodes (Formula.atom a) = {a} := rfl
+
+@[simp] lemma sentenceAtomCodes_falsum :
+    sentenceAtomCodes (⊥ : Sentence) = ∅ := rfl
+
+@[simp] lemma sentenceAtomCodes_imp (φ ψ : Sentence) :
+    sentenceAtomCodes (φ 🡒 ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
+
+@[simp] lemma sentenceAtomCodes_and (φ ψ : Sentence) :
+    sentenceAtomCodes (φ ⋏ ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
+
+@[simp] lemma sentenceAtomCodes_or (φ ψ : Sentence) :
+    sentenceAtomCodes (φ ⋎ ψ) = sentenceAtomCodes φ ∪ sentenceAtomCodes ψ := rfl
+
+@[simp] lemma sentenceAtomCodes_neg (φ : Sentence) :
+    sentenceAtomCodes (∼φ) = sentenceAtomCodes φ := by
+  rw [Formula.neg_def, sentenceAtomCodes_imp, sentenceAtomCodes_falsum, Finset.union_empty]
+
+@[simp] lemma sentenceAtomCodes_verum :
+    sentenceAtomCodes (⊤ : Sentence) = ∅ := rfl
+
+/-- **Substitution.** A p.c. world's verdict on `φ` depends only on the atoms occurring in
+`φ`: two valuations agreeing there agree on `φ`. -/
+lemma PCWorld.holds_congr_atomCodes {v v' : PCWorld} :
+    ∀ φ : Sentence, (∀ a ∈ sentenceAtomCodes φ, (v a ↔ v' a)) →
+      (v.Holds φ ↔ v'.Holds φ) := by
+  intro φ
+  induction φ using Formula.rec' with
+  | hfalsum => intro _; exact Iff.rfl
+  | hatom a => intro h; exact h a (by simp)
+  | himp φ ψ ihφ ihψ =>
+      intro h
+      have hφ := ihφ (fun a ha => h a (by simp [ha]))
+      have hψ := ihψ (fun a ha => h a (by simp [ha]))
+      show (v.Holds φ → v.Holds ψ) ↔ (v'.Holds φ → v'.Holds ψ)
+      rw [hφ, hψ]
+  | hand φ ψ ihφ ihψ =>
+      intro h
+      have hφ := ihφ (fun a ha => h a (by simp [ha]))
+      have hψ := ihψ (fun a ha => h a (by simp [ha]))
+      show (v.Holds φ ∧ v.Holds ψ) ↔ (v'.Holds φ ∧ v'.Holds ψ)
+      rw [hφ, hψ]
+  | hor φ ψ ihφ ihψ =>
+      intro h
+      have hφ := ihφ (fun a ha => h a (by simp [ha]))
+      have hψ := ihψ (fun a ha => h a (by simp [ha]))
+      show (v.Holds φ ∨ v.Holds ψ) ↔ (v'.Holds φ ∨ v'.Holds ψ)
+      rw [hφ, hψ]
+
+end AtomCodes
 
 /-! ## Boolean worlds and finite-support payouts -/
 

@@ -35,10 +35,11 @@ is quantified over worlds consistent with `theoremDP T`, a *smaller* process tha
 `canonicalCCEEDP T`, hence over a **superset** of worlds — a stronger premise on the
 caller, and the form the proof consumes.
 
-Consumers: `AxiomAudit.lean` inventories all eight `Paper node: thm:ccee` declarations of this
+Consumers: `AxiomAudit.lean` inventories all nine `Paper node: thm:ccee` declarations of this
 module — `liftedCCEEBaseDP_computable`, `liftedCCEEBaseWorld_hworld`,
 `canonicalCCEEDP_computable`, `canonicalCCEEDP_hworld`, `liftedRpnSemanticHandle_valuesAt`,
-`liftedRpnSource_factor_eventually`, `canonicalRationalQuote_factor_eventually` and
+`liftedRpnSource_factor_eventually`, `canonicalRationalQuote_factor_eventually`,
+`canonicalCCEE_weight_nonvacuous` and
 `lic_no_expected_net_update_conditional_exact_canonical`; the `thm:ccee` row of
 `scripts/coverage-classification.md` records the two-rendering split.
 -/
@@ -572,7 +573,8 @@ genuinely **non-constant** weight, the harmonic sequence `n ↦ 1/(n+1)`: it is
 history-arbitrary, so the harmonic weight discharges `weight_generable` at every market
 including this one — and not constant.
 Provenance: (a) `harmonicWeight_mem`, `harmonicWeight_polyRatCodes`,
-`harmonicWeight_not_constant`. -/
+`harmonicWeight_not_constant`.
+Paper node: `thm:ccee` -/
 lemma canonicalCCEE_weight_nonvacuous
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] :
     (∀ n : ℕ, 0 ≤ 1 / ((n : ℚ) + 1) ∧ 1 / ((n : ℚ) + 1) ≤ 1) ∧

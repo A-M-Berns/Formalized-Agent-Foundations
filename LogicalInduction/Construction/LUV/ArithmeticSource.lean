@@ -1,4 +1,5 @@
 import LogicalInduction.Construction.LUV.SourceCodec
+import LogicalInduction.Construction.LUV.Syntax
 
 /-!
 # The paper's formula source language, and the literal LUV frontend over it

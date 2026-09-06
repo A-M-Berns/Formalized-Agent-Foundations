@@ -32,16 +32,14 @@ import LogicalInduction.Framework.Machine.DigitBits
 import LogicalInduction.Framework.Machine.DigitArithFP
 import LogicalInduction.Framework.Machine.TraderMachine
 import LogicalInduction.Framework.Machine.WriteOutMachine
-import LogicalInduction.Framework.Machine.Descriptions
-import LogicalInduction.Framework.Machine.ClockedSim
 
 /-!
 # Framework (`LogicalInduction.Framework`)
 
 The paper's §2–3 objects together with the substrate the later directories consume.  A
 module belongs here when it is one of those objects or serves `Properties/` (§4),
-`Construction/` (§5) or both; several modules here — all of `Theory/`, the description
-interpreter and clocked simulator of `Machine/`, `Emission.RpnComputation` — are consumed
+`Construction/` (§5) or both; several modules here — all of `Theory/`,
+`Emission.RpnComputation` — are consumed
 only by `Construction/`.  The rule is closure, not precedence: nothing under `Framework/`
 imports outside `Framework/`, so `lake build LogicalInduction.Framework` is the gate for
 all of it.
@@ -141,9 +139,8 @@ the LUV threshold lane and as strictness foils against the write-out ladder in
 ## `Machine/` — from a fuel certificate to a machine
 
 `def:ec` is read on ordinary machines (`MachineEfficientTrader`), so a fuel certificate has
-to be *compiled* into one.  This subdirectory is that compiler together with its accounting,
-the polynomial-time word arithmetic the syntactic transports need, and the description
-interpreter the §5 enumeration is indexed by.
+to be *compiled* into one.  This subdirectory is that compiler together with its accounting
+and the polynomial-time word arithmetic the syntactic transports need.
 
 * `Machine.EvalnCompiler` — `Nat.Partrec.Code` into `complexitylib` register machines,
   proved against Mathlib's clocked `evaln` rather than the unclocked `eval`.
@@ -163,10 +160,4 @@ interpreter the §5 enumeration is indexed by.
 * `Machine.TraderMachine` — the machine computing an `EfficientlyComputable` trader's day-`n`
   serialization: the last link of `EfficientlyComputable.toMachine`.
 * `Machine.WriteOutMachine` — the machine-side realization of the write-out ladder.
-* `Machine.Descriptions` — executable bounded execution of a finite `complexitylib` machine
-  description, and the compiler-facing token evaluator `machineTokens` built on it.  This is
-  what makes the §5 machine-trader enumeration effective; read its module docstring for why
-  the executable object is a *description* rather than a machine.
-* `Machine.ClockedSim` — the clocked simulator for a fixed description, and the proof that
-  the truncated run is in `Complexity.FP`: the soundness half of that enumeration.
 -/

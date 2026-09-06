@@ -1,4 +1,5 @@
-import LogicalInduction.Construction.Quotation.Packages
+import LogicalInduction.Construction.Statistics.FeedbackEmission
+import LogicalInduction.Construction.Quotation.DeferralFibre
 import LogicalInduction.Framework.Emission.WriteOut
 
 /-!
@@ -48,13 +49,14 @@ One paper defect is carried here: `thm:wubexp`'s `hsupport` clause is printed at
 `thm:recurringunbiasednessexp` instead (`PE2`, `notes/paper-errata.md`), and
 `luv_wubexp_ofComputation` states it at the feedback theorem where it belongs.
 
-**Cross-lane edge.**  This module imports `Construction/Quotation/Packages.lean`, so the
-`Statistics/` lane depends on the `Quotation/` lane, which in turn imports
-`Construction/Statistics/FeedbackEmission.lean`.  Two things are drawn across: the deferral
-clock `DeferralFunction.exists_clock` from `Packages.lean` itself, and the deferral fibre
-`deferralPreimage` (with `_at`, `_spec` and `_polyFueled`) from
-`Construction/Quotation/DeferralFibre.lean`, which `Packages.lean` imports.
-`DeferralFibre.lean` records the dependency from the `Quotation/` side.
+**Cross-lane edge.**  This module imports `Construction/Quotation/DeferralFibre.lean` for the
+deferral fibre `deferralPreimage` (with `_at`, `_spec` and `_polyFueled`) and the image flag
+beside it.  It is the only edge between the two lanes, and it runs one way: nothing in
+`Quotation/` reaches `Statistics/`, since the schedule both need is stated upstream of both in
+`Properties/SelfTrust.lean`.  `DeferralFibre.lean` records the boundary from the `Quotation/`
+side.  This module's own `Construction/Statistics/FeedbackEmission.lean` import is in-lane —
+it supplies `scheduledDeferral`, `feedbackTraderEmissionSigns` and the two `_ofFeedbackTruth`
+consumers below.
 
 `Nat.sqrt` is locally irreducible in the namespace below, for the reason stated in
 `Construction/Statistics/SettlementClock.lean`; a declaration moved across that boundary must

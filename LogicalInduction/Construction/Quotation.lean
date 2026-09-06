@@ -15,19 +15,21 @@ The §4.11–4.12 lane.  `thm:ref` (tex:1969), `thm:lp` (tex:1992), `thm:epr` (t
 supplies the quoted syntax, the portfolios that trade on it, the quote codes built from the
 market's own program, and the two routes to `thm:ccee`'s product.
 
-Seven of the eight nodes are stated in the sibling lane `Construction/Paper/Market.lean`, over
-the single market `liaHistory (paperDP T)`; what is here is everything that makes them
-mechanical.  The exception is `ExactCCEE.lean`, which states
+All eight nodes are stated in the sibling lane `Construction/Paper/Market.lean`, over the
+single market `liaHistory (paperDP T)`; what is here is everything that makes them
+mechanical.  One module of this lane states a node as well: `ExactCCEE.lean` adds
 `lic_no_expected_net_update_conditional_paperLUV_closed` — `thm:ccee` at zero slack for
-literal sources — in this directory, over that same market.
+literal sources — over that same market, an additional rendering of a node `Market.lean`
+already carries rather than that node's only home.
 
-**Cross-lane edges.**  `DeferralFibre.lean` imports `Construction/Statistics/FeedbackEmission.lean`
-for the scheduled-match emitter, and with it the entire §5 construction spine and the
-`Properties/` modules that spine rests on; `ProductDefinition.lean` imports
-`Construction/Conditioning/Presentation.lean` for `DeductiveProcessComputation.union_toComputable`.
-Both are recorded in the importing module's own header.  In the other direction,
-`Construction/Statistics/FeedbackTruth.lean` reaches back into this lane for
-`DeferralFunction.exists_clock` and `deferralPreimage`.
+**Cross-lane edges.**  Nothing here reaches the `Statistics/` lane: the scheduled-match emitter
+`DeferralFibre.lean` needs is stated in `Properties/SelfTrust.lean` beside `DeferralFunction`,
+and `Packages.lean` takes the code layer `Construction/Primcodable.lean` directly.  The
+dependency between the two lanes therefore runs one way —
+`Construction/Statistics/FeedbackTruth.lean` reaches into this lane for `deferralPreimage`.
+`ProductDefinition.lean` imports `Construction/Conditioning/Presentation.lean` for
+`DeductiveProcessComputation.union_toComputable`; that edge is recorded in the importing
+module's own header.
 
 ## The quotation apparatus
 
@@ -61,8 +63,12 @@ each paying a different price, and both are here so the trade is visible.
   `productAtom n r` for `⌜Xₙ · Wₙ > r⌝` with a decidable defining schema entered stagewise.
   Exact for an arbitrary threshold-only source, but over a different inductor — `LIA` on the
   extended process — so it diagnoses the mesh slack rather than superseding the mesh
-  endpoint.  Its `sentenceAtomCodes` and `PCWorld.holds_congr_atomCodes` are the general
-  propositional-substitution utilities the rest of the development uses.
+  endpoint.  What it adds on the substitution theme is the tag-`3` freshness layer —
+  `sentenceAtomCodes_productAtom`, the `productTag` freshness lemmas (`ProductAtomFresh`,
+  `eventAtom_atomCodes_ne_productTag`, `theoremDP_atomCodes_ne_productTag`) and
+  `productExtensionWorld_agree` — over the general propositional-substitution utilities
+  `sentenceAtomCodes` and `PCWorld.holds_congr_atomCodes`, which are stated upstream in
+  `Framework/BooleanWorlds.lean`.
 * `ExactProduct` — the exact product of two **literal** paper LUVs, which name their value
   by a numerator/denominator pair code that arithmetic multiplies exactly.  Exact on the
   same market and the same process, paying instead in generality: the source must be

@@ -12,8 +12,8 @@ and `AxiomAudit.lean` the checked inventory of every public endpoint. The librar
 the paper's own sectioning — `Framework` is §2–3 (sentences, markets, features, traders,
 exploitation, the criterion, efficient computability, expectations, and the shared
 asymptotic vocabulary) together with the substrate the later directories consume (the
-background theory `Θ`, the `dd:fuel` emission calculus, and the machine compiler and
-description interpreter), `Properties` is the §4 property tail with one file per theorem
+background theory `Θ`, the `dd:fuel` emission calculus, and the machine compiler),
+`Properties` is the §4 property tail with one file per theorem
 family, and `Construction` is the §5 existence proof, with one lane directory per §4 family
 (`Paper/`, `Quotation/`, `Knowledge/`, `Statistics/`, `NonDogmatism/`, `Freeze/`,
 `Conditioning/`, `LUV/` and `SemanticExtension/`) holding the representation

@@ -301,7 +301,8 @@ lemma luvWorld_consistent [𝗥₀ ⪯ T] [T.Δ₁] [RepresentsComputations T]
     simp only [luvEventAtom, htag, if_pos, PCWorld.holds_atom]
     exact hprov
   · -- refutation literal: `Θ` cannot also prove the positive one, by consistency
-    simp only [luvEventAtom, htag, if_neg (_root_.one_ne_zero), PCWorld.holds_neg, PCWorld.holds_atom]
+    simp only [luvEventAtom, htag, if_neg (_root_.one_ne_zero), PCWorld.holds_neg,
+      PCWorld.holds_atom]
     intro hpos
     have hpos' : T ⊢ ((L.thresholdSchema T)/[↑e.unpair.2] : ArithmeticSentence) := hpos
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance)

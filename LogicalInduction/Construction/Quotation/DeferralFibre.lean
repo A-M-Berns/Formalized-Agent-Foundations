@@ -1,6 +1,8 @@
 import LogicalInduction.Construction.Knowledge.Syntax
 import LogicalInduction.Framework.Emission.WriteOut
-import LogicalInduction.Construction.Statistics.FeedbackEmission
+import LogicalInduction.Properties.Calibration
+import LogicalInduction.Properties.Pseudorandomness
+import LogicalInduction.Properties.ExpectationProperties
 import LogicalInduction.Properties.Introspection
 import LogicalInduction.Properties.OccamBounds
 
@@ -40,16 +42,15 @@ paired-index families `crossPrecisionBlocks`, `pairedExpectationBlocks` and
 `numericQuoteBlocks` are the concrete blocks the `thm:cee`/`thm:ceu`/`thm:ccee`/`thm:st`
 packages instantiate it at.
 
-**Cross-lane edge.**  This is the module through which the whole `Quotation/` lane depends on
-the `Statistics/` lane: it imports `Construction/Statistics/FeedbackEmission.lean` for the
-scheduled-match emitter (`scheduledMatch` and its four laws) and, through that module, for
-`PGenerableWeighting` (`Properties/Calibration.lean`) and `StrictlyIncreasingDeferral`
-(`Properties/Pseudorandomness.lean`).  The whole §5 construction spine — `Brouwer`,
-`MarketMaker`, `Budgeter`, `TradingFirm`, `MachineTraderEnumeration`, `LIA`, `LIACompiler` —
-comes along that edge as collateral, being what `FeedbackEmission.lean` itself is built over.
-`Properties/Introspection.lean` and `Properties/OccamBounds.lean` are imported directly, for
-the quotation portfolio interfaces and for `ratNatCast_codes_of_polyFueled`.  In the other
-direction, `Construction/Statistics/FeedbackTruth.lean` consumes `deferralPreimage` from here.
+**Lane boundary.**  Nothing here reaches the `Statistics/` lane.  The scheduled-match emitter
+(`scheduledMatch` and its four laws) is taken from `Properties/SelfTrust.lean`, where it sits
+beside `DeferralFunction` itself; `PGenerableWeighting` (`Properties/Calibration.lean`),
+`StrictlyIncreasingDeferral` (`Properties/Pseudorandomness.lean`) and `expectAffine_priceAt`
+(`Properties/ExpectationProperties.lean`) are imported directly rather than reached through a
+`Statistics/` module, as are `Properties/Introspection.lean` and `Properties/OccamBounds.lean`
+for the quotation portfolio interfaces and for `ratNatCast_codes_of_polyFueled`.  The
+dependency between the two lanes therefore runs one way only:
+`Construction/Statistics/FeedbackTruth.lean` consumes `deferralPreimage` from here.
 -/
 
 namespace LogicalInduction
@@ -211,13 +212,13 @@ a plain price-gated sum over `f⁻¹(m)` runs into and the selector that avoids 
 /-- Number of bounded-schedule preimages of day `m` among the only possible source
 indices `k < m`. -/
 def deferralMatchCount (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  segPrefix (fun z => FeedbackEmission.scheduledMatch f a degree z) m m
+  segPrefix (fun z => scheduledMatch f a degree z) m m
 
 /-- Sum of the matching source indices.  Under injectivity there is at most one match,
 so this is the unique preimage on the image of `f` and harmlessly defaults to zero off it. -/
 def deferralPreimage (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
   segPrefix (fun z => z.unpair.2 *
-    FeedbackEmission.scheduledMatch f a degree z) m m
+    scheduledMatch f a degree z) m m
 
 /-- Boolean-as-natural image flag derived from the bounded match count. -/
 def deferralImageFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
@@ -225,14 +226,14 @@ def deferralImageFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
 
 lemma deferralMatchCount_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (deferralMatchCount f a degree) := by
-  obtain ⟨cmatch, hmatch⟩ := FeedbackEmission.scheduledMatch_polyFueled f a degree
+  obtain ⟨cmatch, hmatch⟩ := scheduledMatch_polyFueled f a degree
   obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hmatch
   exact ⟨_, (hprefix.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m => by
     simp [deferralMatchCount])⟩
 
 lemma deferralPreimage_polyFueled (f : DeferralFunction) (a degree : ℕ) :
     ∃ c, PolyFueled c (deferralPreimage f a degree) := by
-  obtain ⟨cmatch, hmatch⟩ := FeedbackEmission.scheduledMatch_polyFueled f a degree
+  obtain ⟨cmatch, hmatch⟩ := scheduledMatch_polyFueled f a degree
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   have hterm := hmul.comp (PolyFueled.right.pair hmatch)
   obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hterm
@@ -259,7 +260,7 @@ lemma deferralPreimage_at
       some (f k)) (n : ℕ) :
     deferralPreimage f a degree (f n) = n := by
   let lenFn : ℕ → ℕ := fun z => z.unpair.2 *
-    FeedbackEmission.scheduledMatch f a degree z
+    scheduledMatch f a degree z
   have hscan : ∀ k, k ≤ f n →
       segPrefix lenFn (f n) k = if n < k then n else 0 := by
     intro k hk
@@ -267,15 +268,15 @@ lemma deferralPreimage_at
     | zero => simp [segPrefix]
     | succ k ih =>
         rw [segPrefix_succ, ih (by omega)]
-        have hmatch : FeedbackEmission.scheduledMatch f a degree
+        have hmatch : scheduledMatch f a degree
             (Nat.pair (f n) k) = if k = n then 1 else 0 := by
           by_cases hkn : k = n
           · subst k
             simpa using
-              (FeedbackEmission.scheduledMatch_eq_one_iff f hspec (f n) n).2 rfl
+              (scheduledMatch_eq_one_iff f hspec (f n) n).2 rfl
           · have hne : f k ≠ f n := fun h => hkn (hinj h)
             simpa [hkn] using
-              (FeedbackEmission.scheduledMatch_eq_zero_iff f hspec (f n) k).2 hne
+              (scheduledMatch_eq_zero_iff f hspec (f n) k).2 hne
         simp only [lenFn, Nat.unpair_pair, hmatch]
         split_ifs <;> omega
   rw [deferralPreimage, hscan (f n) le_rfl]
@@ -287,7 +288,7 @@ lemma deferralMatchCount_pos_iff
       (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
     (m : ℕ) :
     0 < deferralMatchCount f a degree m ↔ ∃ k < m, f k = m := by
-  let lenFn : ℕ → ℕ := fun z => FeedbackEmission.scheduledMatch f a degree z
+  let lenFn : ℕ → ℕ := fun z => scheduledMatch f a degree z
   have hscan : ∀ r, 0 < segPrefix lenFn m r ↔
       ∃ k < r, lenFn (Nat.pair m k) = 1 := by
     intro r
@@ -295,7 +296,7 @@ lemma deferralMatchCount_pos_iff
     | zero => simp [segPrefix]
     | succ r ih =>
         rw [segPrefix_succ]
-        rcases FeedbackEmission.scheduledMatch_zero_or_one f a degree
+        rcases scheduledMatch_zero_or_one f a degree
           (Nat.pair m r) with hr | hr
         · rw [show lenFn (Nat.pair m r) = 0 by exact hr]
           simp only [add_zero, ih]
@@ -319,10 +320,10 @@ lemma deferralMatchCount_pos_iff
   constructor
   · rintro ⟨k, hk, hmatch⟩
     exact ⟨k, hk,
-      (FeedbackEmission.scheduledMatch_eq_one_iff f hspec m k).1 hmatch⟩
+      (scheduledMatch_eq_one_iff f hspec m k).1 hmatch⟩
   · rintro ⟨k, hk, hfk⟩
     exact ⟨k, hk,
-      (FeedbackEmission.scheduledMatch_eq_one_iff f hspec m k).2 hfk⟩
+      (scheduledMatch_eq_one_iff f hspec m k).2 hfk⟩
 
 lemma deferralImageFlag_eq_one_iff
     (f : DeferralFunction) {a degree : ℕ}
@@ -1473,7 +1474,7 @@ def gapNeg (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
 
 /-- The `[f k = m]` fibre-membership flag as a closed constant feature. -/
 def matchFeat (f : DeferralFunction) (a degree z : ℕ) : EF :=
-  EF.const ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℚ)
+  EF.const ((scheduledMatch f a degree z : ℕ) : ℚ)
 
 /-- Fibre-gated continuous threshold on one side of the gap. -/
 def gateBase (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (d : ℕ → EF) (z : ℕ) : EF :=
@@ -1514,19 +1515,19 @@ lemma gapNeg_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
 
 lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
     (matchFeat f a degree z).denote V =
-      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) := by
+      ((scheduledMatch f a degree z : ℕ) : ℝ) := by
   simp [matchFeat]
 
 lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
     PairedWeighting (matchFeat f a degree) :=
   PairedWeighting.ofRatCodes
     (DigitRatCodes.ofPolyRatCodes (ratNatCast_codes_of_polyFueled
-      (Classical.choose_spec (FeedbackEmission.scheduledMatch_polyFueled f a degree))))
+      (Classical.choose_spec (scheduledMatch_polyFueled f a degree))))
 
 lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History) :
     (gateBase f a degree δ d z).denote V =
-      ((FeedbackEmission.scheduledMatch f a degree z : ℕ) : ℝ) *
+      ((scheduledMatch f a degree z : ℕ) : ℝ) *
         ctsInd δ ((d z).denote V) (δ : ℝ) := by
   simp only [gateBase, EF.denote_mul, Pi.mul_apply, matchFeat_denote]
   rw [ctsIndFeature_denote (fun _ ↦ δ) d _ (fun _ ↦ hδ) V z]
@@ -1538,7 +1539,7 @@ lemma gateBase_mem (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 <
       (gateBase f a degree δ d z).denote V ≤ 1 := by
   rw [gateBase_denote f a degree δ hδ d z V]
   have hI := ctsInd_mem_Icc δ ((d z).denote V) (δ : ℝ)
-  rcases FeedbackEmission.scheduledMatch_zero_or_one f a degree z with h | h
+  rcases scheduledMatch_zero_or_one f a degree z with h | h
   · rw [h]; simp
   · rw [h]; simpa using ⟨hI.1, hI.2⟩
 
@@ -1553,7 +1554,7 @@ lemma gateBase_pos (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 <
 
 lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History)
-    (hmatch : FeedbackEmission.scheduledMatch f a degree z = 1)
+    (hmatch : scheduledMatch f a degree z = 1)
     (hbig : 2 * (δ : ℝ) ≤ (d z).denote V) :
     (gateBase f a degree δ d z).denote V = 1 := by
   rw [gateBase_denote f a degree δ hδ d z V, hmatch,
@@ -1670,23 +1671,23 @@ lemma fibre_price_eventually_small
     push_cast
     ring
   -- gates only fire inside the fibre
-  have hbP_match : ∀ m k, FeedbackEmission.scheduledMatch f a degree (Nat.pair m k) = 0 →
+  have hbP_match : ∀ m k, scheduledMatch f a degree (Nat.pair m k) = 0 →
       bP m k = 0 := by
     intro m k h
     rw [hbPeq m k, hgPdef, gateBase_denote f a degree δ hδ _ _ P, h]
     simp
-  have hbN_match : ∀ m k, FeedbackEmission.scheduledMatch f a degree (Nat.pair m k) = 0 →
+  have hbN_match : ∀ m k, scheduledMatch f a degree (Nat.pair m k) = 0 →
       bN m k = 0 := by
     intro m k h
     rw [hbNeq m k, hgNdef, gateBase_denote f a degree δ hδ _ _ P, h]
     simp
   have hcoeff_fibre : ∀ m k, (coeff (Nat.pair m k)).denote P ≠ 0 → f k = m := by
     intro m k hne
-    rcases FeedbackEmission.scheduledMatch_zero_or_one f a degree (Nat.pair m k) with h | h
+    rcases scheduledMatch_zero_or_one f a degree (Nat.pair m k) with h | h
     · exfalso
       rw [hcoeffDen m k, hwP m k, hwN m k, hbP_match m k h, hbN_match m k h] at hne
       simp at hne
-    · exact (FeedbackEmission.scheduledMatch_eq_one_iff f hspec m k).1 h
+    · exact (scheduledMatch_eq_one_iff f hspec m k).1 h
   -- gate positivity forces the gap past δ
   have hbP_forces : ∀ m k, 0 < bP m k → (δ : ℝ) ≤ pos m k := by
     intro m k h
@@ -1843,8 +1844,8 @@ lemma fibre_price_eventually_small
   refine eventually_atTop.2 ⟨M, fun m hm k hk hfk ↦ ?_⟩
   by_contra hbig
   rw [not_lt] at hbig
-  have hmatch : FeedbackEmission.scheduledMatch f a degree (Nat.pair m k) = 1 :=
-    (FeedbackEmission.scheduledMatch_eq_one_iff f hspec m k).2 hfk
+  have hmatch : scheduledMatch f a degree (Nat.pair m k) = 1 :=
+    (scheduledMatch_eq_one_iff f hspec m k).2 hfk
   have hsum_eq : (family m).price P m =
       ((1 / (2 * C) : ℚ) : ℝ) *
         ((∑ j ∈ Finset.range m, wP m j * pos m j) +

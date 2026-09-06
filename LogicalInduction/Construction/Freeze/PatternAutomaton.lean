@@ -50,8 +50,11 @@ field is an `aⁿbⁿ` constraint, which `RunAuto.BlockAutomaton` cannot express
 reserved targets would need `RunAuto.BlockMachine`.
 
 Everything here is construction infrastructure rather than a paper statement, so the
-declarations are `lemma`s and `def`s.  The two consumer-facing decisions carry `app:ifp`,
-because they are what the freeze's recognizer is; the rest do not.
+declarations are `lemma`s and `def`s.  Three of them carry a node: the two consumer-facing
+decisions carry `app:ifp`, because they are what the freeze's recognizer is, and
+`patAuto_accepts` carries `thm:ifp` — it is what makes that recognizer a `Complexity.FP`
+device rather than an assumed one, and it is inventoried in `AxiomAudit.lean`.  The rest
+carry none.
 -/
 
 namespace LogicalInduction.PatAuto
@@ -184,7 +187,11 @@ lemma foldl_patAuto (H : HoleGuards) (p : List PatTok) : ∀ (b : List ℕ) (i :
         · intro h; omega
         · intro h; exact absurd h (by simp)
 
-/-- **The automaton decides the pattern.** -/
+/-- **The automaton decides the pattern.**  The block automaton compiled from a pattern
+accepts exactly the blocks the pattern matches, which is what turns the freeze recognizer
+into a `Complexity.FP` device rather than an assumed one.
+Kind `P` (proved); provenance (a) derived in-project.
+Paper node: `thm:ifp` -/
 lemma patAuto_accepts (H : HoleGuards) (p : List PatTok) (b : List ℕ) :
     (patAuto H p).Accepts b = true ↔ PatMatch p b := by
   rw [BlockAutomaton.Accepts, patAuto, guardedAutomaton_accept, decide_eq_true_eq]

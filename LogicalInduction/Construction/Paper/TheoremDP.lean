@@ -1,5 +1,6 @@
 import LogicalInduction.Construction.Paper.FirstOrder
 import LogicalInduction.Construction.Paper.ComputationDP
+import LogicalInduction.Construction.Conditioning.Presentation
 import Foundation.FirstOrder.Bootstrapping.Syntax.Proof.Coding
 import Foundation.FirstOrder.Bootstrapping.DerivabilityCondition.D1
 import Foundation.FirstOrder.Completeness.CounterModel
@@ -36,6 +37,11 @@ Consumed by `Construction/Paper/Market.lean`, `Construction/Knowledge/Endpoints.
 `Construction/NonDogmatism/Endpoints.lean`,
 `Construction/Conditioning/Endpoints.lean`,
 `Construction/Statistics/Endpoints.lean` and `Construction/LUV/PaperLUV.lean`.
+
+**Cross-lane edge.**  Forming `paperDP` as a union of two processes is §4.7's vocabulary, so
+this module imports `Construction/Conditioning/Presentation.lean` for
+`DeductiveProcessComputation.union` and, through it, `Properties/Conditioning.lean` for
+`DeductiveProcess.union` with its stage equation.  Nothing else is drawn across.
 -/
 
 namespace LogicalInduction

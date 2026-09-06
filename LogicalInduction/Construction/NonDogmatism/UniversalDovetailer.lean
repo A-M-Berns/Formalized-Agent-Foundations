@@ -1,5 +1,5 @@
 import LogicalInduction.Properties.UniversalSemimeasure
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
 
 /-!
 # The universal dovetailer

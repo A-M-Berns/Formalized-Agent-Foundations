@@ -13,15 +13,28 @@ older first-order language (tex:566-573), fixes **one** deductive process, and p
 directory is that reading: the propositional/first-order boundary, the two literal streams
 whose union is the process, and the market itself.
 
-Every later lane — `Knowledge/`, `Quotation/`, `LUV/`, `SemanticExtension/` — *states* its
-endpoints over the objects assembled here.  The import graph is not that clean, and the
+Five later lanes price on the market assembled here: `Knowledge/`, `Quotation/`,
+`Statistics/`, `NonDogmatism/` and `Conditioning/` all state their constructed-market forms
+over `liaHistory (paperDP T)`, and `Freeze/Counterexample.lean` builds the `thm:ifp`
+counterexample's market over it too.  Two lanes build on these objects but price elsewhere,
+and the difference is worth knowing: `LUV/` states its §4.8 `_arith` forms over
+`liaHistory (L.gridDP)` and `liaHistory luvThresholdDP`, and `SemanticExtension/` states its
+one endpoint over `liaHistory (canonicalCCEEDP T)`.  Everywhere, the constructed-market
+statement stands beside a form over an *arbitrary* `[IsLogicalInductor P DP]` or
+`[IsMachineLogicalInductor P DP]`: it is the paper's instance, not the only rendering.  The
+import graph is not that clean either, and the
 exceptions are recorded rather than hidden: `Paper/FirstOrder.lean` imports
-`Construction/SemanticExtension/Prime.lean` for the two constants `semanticPrimeTag` and
-`SemanticPrimeFreshSentence` that fix the tag allocation both readings share;
+`Construction/Knowledge/Syntax.lean` for the global atom-payload allocation, whose reserved
+tags it must prove its own compiled atoms avoid;
 `Paper/ComputationDP.lean` imports `Construction/Knowledge/Syntax.lean` for the claim
 syntax, `Construction/Quotation/Packages.lean` for the quotation schemas, and
 `Construction/Statistics/SettlementCompiler.lean` for the shared stage-encoding normal form
-`encode_toFinset_eq`.  Each edge is stated in the importing module's own header.
+`encode_toFinset_eq`; `Paper/TheoremDP.lean` imports
+`Construction/Conditioning/Presentation.lean` for the process-union vocabulary `paperDP` is
+built with; and `Paper/Market.lean` imports `Construction/Quotation/MarketQuoteCodes.lean`
+and `Construction/Quotation/ProductDefinition.lean` for the quote codes and product LUVs its
+§4.11–4.12 endpoints are stated over.  Each edge is stated in the importing module's own
+header.
 
 ## The boundary and its compiler
 

@@ -1,4 +1,4 @@
-import LogicalInduction.Framework.Machine.Descriptions
+import LogicalInduction.Construction.Descriptions
 import Complexitylib.Models.TuringMachine.Registers
 import Complexitylib.Models.TuringMachine.Registers.Emit
 import Complexitylib.Models.TuringMachine.Registers.Horner
@@ -41,7 +41,7 @@ clock-preparation scratch) and the clock tape `clkTape`; the truncated output wo
 `clockedTM_computesInTime`, `clockedTimePoly_eval`, and the capstone `clockedOutput_mem_FP`,
 which `enumeratedOutput_mem_FP` (`Construction/MachineTraderEnumeration.lean`) consumes.
 
-**Interface with `Framework/Machine/Descriptions.lean`.** `clockedOutput` is stated against
+**Interface with `Construction/Descriptions.lean`.** `clockedOutput` is stated against
 `evalHalted`, so `runUntilHalt_spec` supplies the halting branch and `runUntilHalt_complete`
 the timeout branch.
 

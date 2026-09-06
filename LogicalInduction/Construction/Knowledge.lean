@@ -61,7 +61,7 @@ theory the machine presents rather than about its emitted stream.
   `lic_belief_finitistic_consistency_unconditional` (`thm:pac`),
   `lic_belief_stronger_theory_consistency_unconditional` (`thm:pazfc`),
   `lic_does_not_anticipate_halting_ofComputation` and its `_unconditional` form
-  (`thm:dontwait`), `lia_learns_halting_patterns_unconditional` (`thm:halts`),
+  (`thm:dontwait`), `lic_learns_halting_patterns_unconditional` (`thm:halts`),
   `lic_learns_provable_nonhalting_patterns_unconditional` (`thm:loops`) and
   `lic_disbelief_inconsistent_theories_unconditional` (`thm:incons`), together with the
   applied witnesses that keep each lane non-vacuous.

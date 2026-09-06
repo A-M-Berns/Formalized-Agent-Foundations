@@ -102,6 +102,24 @@ jobs:
       - name: Check LogicalInduction file closure
         run: python3 scripts/check_li_file_closure.py
 
+      # Blocking: LogicalInduction/README.md's node-by-node table is generated from the
+      # paper source, the coverage ledger's endpoints table, and a scan for each carrier's
+      # module. Running the generator in check mode is what stops the README's headline
+      # correspondence drifting away from the inventory it is derived from.
+      - name: Check the LogicalInduction node table
+        run: python3 scripts/gen-li-node-table.py
+
+      # Blocking: APITests/LogicalInduction.lean's last section elaborates every canonical
+      # endpoint by name, so that a move or a rename fails the client test before it reaches
+      # a reader. That only works while the section names exactly what AxiomAudit.lean's
+      # LI-CANONICAL block publishes, and both lists were hand-maintained — one typo apart
+      # from a published endpoint nobody elaborates, which is what this closes. It also
+      # recomputes the two hypothesis tallies the prose states (which endpoints carry
+      # `[𝗜𝚺₁ ⪯ T]`, and how many lane modules import Construction/Primcodable.lean), so
+      # those numbers are gated rather than asserted.
+      - name: Check the LogicalInduction roll-call and hypothesis tallies
+        run: python3 scripts/check_li_rollcall.py
+
       - name: Free runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL

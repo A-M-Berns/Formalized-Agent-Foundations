@@ -21,6 +21,14 @@ the settled design decisions and the correspondence table, and points here for p
   count bytes, so every line carrying `𝗜𝚺₁`, `≈ₙ`, `⊢` or a theory glyph over-reports its
   width by 3-4x. A survey that "found 60 over-long lines" found 10. Use
   `python3 -c 'len(line)'` on decoded text.
+- **Check for a file-level disclosure before reflowing to 100 columns.** The character-count
+  sweep over `LogicalInduction/` reports 124 over-long lines and 123 of them are in
+  `Construction/Brouwer.lean`, whose header states that its Sperner interior is
+  machine-generated, is not hand-edited, and is deliberately neither reflowed nor linted
+  (`set_option linter.unusedSimpArgs false`, `linter.unusedVariables false` at the top of the
+  file). Reflowing them would silently edit generated bodies. The real backlog outside that
+  file was one line. `AxiomAudit.lean`'s `#assert_axioms_clean` / `#assert_fields` name lists
+  are likewise out of scope — that file is not under `LogicalInduction/`.
 - **The worktree isolation guard rejects a command containing the substring `git` anywhere**,
   including inside an identifier like `digitAt` or a path like `DigitBits.lean`, and rejects
   shell loops and variable assignments outright. Split such commands, or drive them from a
@@ -92,9 +100,10 @@ the settled design decisions and the correspondence table, and points here for p
 - **`Complexity.FP` has `selectHead` but no `tail`.** A digit handed over as a flat
   three-bit word can be branched on once and no further; hand it over as three separately
   headable one-bit slots.
-- **Degenerate instantiations prove nothing.** `MachinePolyEC` over `Fin 0` holds for every
-  `f`, and an empty freeze table (`S = ∅`) inhabits any freeze certificate while forcing
-  `P = P'`. Neither is evidence that a machine statement has content.
+- **Degenerate instantiations prove nothing.** An efficiency predicate quantified over an
+  empty index type holds for every function, and an empty freeze table (`S = ∅`) inhabits
+  any freeze certificate while forcing `P = P'`. Neither is evidence that a machine
+  statement has content.
 
 ## Definitional shapes that fight `simp`
 
@@ -105,6 +114,16 @@ the settled design decisions and the correspondence table, and points here for p
   definitional, so close it with `rfl` after rewriting.
 - **Doc comments on `example` are legal** in this toolchain. Do not refactor away from them
   on the assumption that they error.
+- **Clearing `linter.unusedSimpArgs` is a fixed point, not a pass.** The linter names a
+  `(line, column)`, so resolve every warning to its token *before* editing — one removal
+  shifts every later column on the line — and expect a second round: removing an argument
+  can make a neighbour unused. 51 warnings in `Construction/Primcodable.lean` went to 0 in
+  one pass here, but the check is "re-run until the count is zero", not "apply the list".
+  Watch for a stranded `have`: if the deleted argument was the only consumer of a local
+  (`hof` in `intCodeNatAbs_eq_decode`), the `have` becomes dead and must go with it, or the
+  unused-variable linter — currently at zero repo-wide — starts reporting. Removing an
+  argument the linter names cannot change a `simp` call, and deleting an unreferenced `have`
+  cannot either, since these calls pass an explicit list rather than `simp [*]`.
 
 ## Moving, merging and splitting modules
 
@@ -143,6 +162,49 @@ the settled design decisions and the correspondence table, and points here for p
 - **Comparing inventories across a rename needs the old path.** `git show <rev>:<old path>`
   is the way to diff a moved file's declaration list against its predecessor; a plain diff
   reports the whole file as added and tells you nothing about whether a name was lost.
+- **Splitting a file breaks every `private` name that crosses the cut, and a static usage
+  scan will not tell you which.** A file-internal helper is invisible from the other half the
+  moment the cut lands, so before a split, diff the *private* declarations of each half
+  against the identifiers the other half mentions. Splitting `Construction/LIACompiler.lean`
+  found 23 such names — the rational and `EF` arithmetic certificates, the list-dedup
+  utilities — all of which had to become public in the new module. Publishing them is the
+  right answer here (they are the certificate layer's natural API), but it is a surface
+  decision, not a mechanical one, so it must be taken deliberately.
+- **A newly public name can collide with a `private` one downstream.** Check every
+  de-privatized name against the whole repo before landing the split: two of the 23 above
+  (`ratNeg_prim`, `ratSub_prim`) are also declared `private` in
+  `Construction/Statistics/HistoricalMaturity.lean`. That one was safe because the downstream
+  copies sit inside `namespace HistoricalMaturityCompile`, where Lean resolves the
+  namespace-local name first — but a root-namespace collision would have been an ambiguity
+  error in a file the split never touched.
+- **Cutting an import edge breaks *free riders*, not just the module you edited.** Removing
+  `Paper/FirstOrder.lean → SemanticExtension/Prime.lean` — an edge used for exactly two
+  constants — dropped 27 modules out of that lane's cone, and five of them were reaching real
+  declarations through it (`Paper/Market.lean` alone lost sixteen names, and
+  `Paper/TheoremDP.lean` lost the process-union vocabulary the *first* line of `paperDP` uses).
+  The check that finds them is a graph diff, not a grep: rebuild the import graph with the old
+  edge restored, and for every module report the declarations its old cone had, its new one
+  does not, and its text still mentions. Filter the report by hand — English words and
+  structure-field names dominate it — but do **not** filter a name away because it looks like a
+  common word: `union` in that report was `DeductiveProcess.union`, and skipping it cost a
+  50-minute gate.
+- **A free rider's real need is usually a *different* module from the one it imported.**
+  Cutting `Quotation/DeferralFibre.lean → Statistics/FeedbackEmission.lean` also stranded
+  `Quotation/Packages.lean`, which imported `FeedbackEmission` and mentioned nothing from it —
+  its single at-risk name was `ratLE_prim`, from `Construction/Primcodable.lean`, four modules
+  down the cut cone. Re-point a free rider at the module that *declares* the name the cone
+  diff reports, never at the module it happened to import; the diff on `DeferralFibre` itself
+  named three more (`PGenerableWeighting`, `StrictlyIncreasingDeferral`,
+  `expectAffine_priceAt`), each in a different `Properties/` module.
+- **The nine `Construction/` lanes are not a DAG and were never meant to be.** Seven lane
+  pairs import each other at module granularity — every lane's `Endpoints.lean` reaches
+  `Paper/TheoremDP.lean` for the market while `Paper/`'s own market definition reaches back
+  into the lanes it is assembled from, and `Conditioning`↔`Freeze`, `Knowledge`↔`LUV`,
+  `LUV`↔`Quotation` are genuine two-way subject dependencies. The *module* graph is acyclic
+  (Lean enforces that); "no lane cycle" is not an invariant of this tree, so do not treat a
+  mutual lane pair as a defect without first checking whether the two directions are about
+  different subjects. The `Quotation`↔`Statistics` pair was worth dissolving because both
+  directions were about the same object, a deferral schedule.
 
 ## Auditing names
 
@@ -172,7 +234,7 @@ the settled design decisions and the correspondence table, and points here for p
   `_root_.Computable`; `open _root_.Primrec` collides with `Code`'s constructors.
 - **Foundation name traps:** `Semantics.Not.models_not` (a class field, `@[simp]`);
   `Entailment.by_axm h` takes only the membership proof; `WeakerThan.trans` needs explicit
-  `(S := …) (T := …)`; `ISigma1.Delta1` needs
+  `(S := …) (T := …)`; `ISigma1_delta1Definable` needs
   `import Foundation.FirstOrder.Incompleteness.InductionSchemeDelta1` explicitly, and the
   failure is a bare "failed to synthesize Theory.Delta1 ISigma1".
 - **Don't `rw [thyName]` to unfold a theory built as `insert σ 𝗜𝚺₁`**; use
@@ -189,7 +251,7 @@ the settled design decisions and the correspondence table, and points here for p
   obtain ⟨a, ⟨h1, -⟩, -⟩ := hv; simp at h1`.
 - **`Nat.ofDigits_lt_base_pow_length` / `Nat.ofDigits_div_pow_eq_ofDigits_drop`** are not
   reachable through `Framework/Emission/DigitArith` — `import Mathlib.Data.Nat.Digits.Defs` explicitly.
-- **The `models_haltingSchema_iff` transport** is exactly
+- **The `codeOfREPred` → standard-model-truth transport** (inlined in `re_complete_mp`, `Construction/Knowledge/Syntax.lean`) is exactly
   `simpa [models_iff, Semiformula.eval_substs, Matrix.constant_eq_singleton] using (codeOfREPred_spec hp (x := z))`;
   that triple is required. Reuse it for other `codeOfREPred` schemas.
 - **Shell/monitoring:** `grep --include=*.lean` fails under this zsh unless quoted (a false

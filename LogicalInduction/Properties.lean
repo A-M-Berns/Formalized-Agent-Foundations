@@ -142,5 +142,7 @@ Three groups of results are stated differently, for one reason each:
   `thm:st` because it is the approximation datum `Properties.SelfTrust` states those four
   nodes over.
 * `Properties.SelfTrust` — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, and the deferral
-  functions (`def:deferralfunc`) they quantify over.
+  functions (`def:deferralfunc`) they quantify over, together with the bounded schedule
+  (`deadlineRun`, `scheduledMatch`) by which a machine tests the undecidable deferral
+  deadline; both `Construction/` lanes that read a deferral schedule read it from here.
 -/

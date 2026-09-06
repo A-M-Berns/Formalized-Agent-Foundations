@@ -29,9 +29,14 @@ is inhabited at concrete families in the `unitFracPaperLUVSeq` / `dyadicPaperLUV
 `Framework/Expectations.lean` and `Construction/LUV/Arithmetic.lean` are upstream of this
 module and refer to it in prose only.
 
-Representation choice: the object-level value is named by a numerator/positive-denominator
-pair code (`pairDef q a b` with `0 < b`) rather than by a canonical rational arithmetic
-inside ℒₒᵣ; `paperRatGtDef_eval_nat` pins down what that code means in the standard model.
+Representation choice, and what it repairs (**PE9**, `notes/paper-errata.md`): the paper
+needs a coding of ℚ for `def:luv` and defers it — tex:1633 says Θ must "be capable of
+representing rational numbers" and discharges that by assuming Θ can represent computable
+functions, which tex:600-606 defines only for `f : ℕ⁺ → ℕ⁺`, naming the value by a numeral
+— and then tex:1655 applies `γ_f` to a `[0,1]`-valued `f` regardless. Here the object-level
+value is named by a numerator/positive-denominator pair code (`pairDef q a b` with `0 < b`)
+rather than by a canonical rational arithmetic inside ℒₒᵣ; `paperRatGtDef_eval_nat` pins
+down what that code means in the standard model.
 The representation is **ordered-value, not canonical**: distinct codes such as `1/2` and
 `2/4` stay distinct object codes, `unique` fixes only which code the formula selects, and
 the thresholds determine the external cut.  That is exactly what LUV expectation semantics

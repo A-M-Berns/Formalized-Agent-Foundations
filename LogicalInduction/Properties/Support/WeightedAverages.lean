@@ -8,17 +8,14 @@ import Mathlib.Topology.Order.LiminfLimsup
 # Prefix sums, weighted averages and weighted bias
 
 The averaging vocabulary the §4.3–4.4 statistical arguments are stated in.  This module
-renders no paper node of its own: it declares four objects — `prefixSum`,
-`DivergentWeighting`, `weightedAverage` and `weightedBias` — and everything proved about them
+renders no paper node of its own: it declares three objects — `prefixSum`,
+`weightedAverage` and `weightedBias` — and everything proved about them
 is a `lemma`; nothing here carries a `Paper node` line.
 
 `prefixSum x n` is the inclusive sum of days `0` through `n`, with the Abel summation
 identity `prefixSum_mul_eq_abel` and the lower bound `prefixSum_mul_lower_of_prefixSum_lower`
-that the weighted arguments run on.
-
-`DivergentWeighting W P` is the market-generated weighting condition: realized values in
-`[0,1]` and prefix sums tending to infinity — the denominator hypothesis every weighted
-average needs.
+that the weighted arguments run on.  The paper's divergence condition on a weighting
+(`def:fuz`) is stated over `prefixSum` in `Properties/Calibration.lean`.
 
 `weightedAverage w x n` is the normalized average `Σ wᵢxᵢ / Σ wᵢ` (with a total zero branch,
 irrelevant eventually under a divergent weighting), and `weightedBias w market truth` its
@@ -124,17 +121,6 @@ lemma prefixSum_mul_lower_of_prefixSum_lower
     _ ≤ β n * prefixSum y n +
         ∑ i ∈ Finset.range n, (β i - β (i + 1)) * prefixSum y i :=
           add_le_add hlast hsum
-
-/-- A market-generated weighting is divergent when its realized values lie in `[0,1]`
-and its inclusive prefix sums tend to positive infinity. -/
-def DivergentWeighting (W : ℕ → EF) (P : History) : Prop :=
-  (∀ n, 0 ≤ (W n).denote P ∧ (W n).denote P ≤ 1) ∧
-    Tendsto (prefixSum (fun n => (W n).denote P)) atTop atTop
-
-lemma DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
-    (h : DivergentWeighting W P) :
-    ∀ᶠ n in atTop, 0 < prefixSum (fun i => (W i).denote P) n :=
-  h.2.eventually (eventually_gt_atTop 0)
 
 /-! ## Weighted averages and bias -/
 

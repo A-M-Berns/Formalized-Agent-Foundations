@@ -449,41 +449,22 @@ end
 /-! ## `def:ec` for semantic products -/
 
 /-- The product handle's name at the packed mesh index `⟨n,⟨k,i⟩⟩` is emitted under a
-polynomial fuel bound, by reducing `i/k` at runtime under a fixed atom shell. -/
+polynomial fuel bound: the shared `gcd`-reduced quotient emitter `encode_natDiv_polyFueled`
+for `i/k`, under a fixed atom shell. -/
 lemma semanticProductAtom_mesh_encode_polyFueled (left right : ℕ) :
     ∃ c, PolyFueled c (fun m => Encodable.encode (semanticProductAtom left right m.unpair.1
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)))) := by
-  obtain ⟨cg, hgcd⟩ := gcdc_polyFueled
-  obtain ⟨cdm, hdm⟩ := divmod1_polyFueled
-  obtain ⟨cad, had⟩ := addc_polyFueled
   have hn := PolyFueled.left
   have hk := PolyFueled.left.comp PolyFueled.right
   have hi := PolyFueled.right.comp PolyFueled.right
-  have gPF := hgcd.comp (hi.pair hk)
-  have pgPF := predc_polyFueled.comp gPF
-  have numPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hi))
-  have denPF := PolyFueled.left.comp (hdm.comp (pgPF.pair hk))
-  have h2num := had.comp (numPF.pair numPF)
-  have meshPF := ifzSel_polyFueled.comp
-    (((PolyFueled.const (Nat.pair 0 1)).pair (h2num.pair denPF)).pair hk)
+  obtain ⟨cmesh, meshPF⟩ := encode_natDiv_polyFueled hi hk
   have fullPF := ((PolyFueled.const 1).pair
     ((PolyFueled.const semanticPrimeTag).pair
       ((PolyFueled.const (semanticProductSchema left right)).pair
         (hn.pair meshPF)))).succ_comp
   refine ⟨_, fullPF.of_eq (fun m => ?_)⟩
-  rw [semanticProductAtom, semanticPrimeSentence, semanticPrimeCode, encode_atom]
-  simp only [Nat.unpair_pair, ifzSelFn]
-  by_cases hk0 : m.unpair.2.unpair.1 = 0
-  · rw [if_pos hk0, hk0]
-    norm_num
-    rfl
-  · rw [if_neg hk0]
-    have hg : 0 < Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.gcd_pos_of_pos_right _ (Nat.pos_of_ne_zero hk0)
-    have hg1 : (Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1).pred + 1 =
-        Nat.gcd m.unpair.2.unpair.2 m.unpair.2.unpair.1 :=
-      Nat.succ_pred_eq_of_pos hg
-    rw [hg1, encode_rat_natCast_div hk0, two_mul]
+  conv_rhs =>
+    rw [semanticProductAtom, semanticPrimeSentence, semanticPrimeCode, encode_atom]
 
 /-- The whole-value threshold certificate for a semantic product family. -/
 lemma semanticProductLUV_polyThresholdCodeSeq (X W : PresentedLUVSeq) :

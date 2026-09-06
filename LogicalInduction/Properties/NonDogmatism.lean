@@ -14,10 +14,12 @@ with `¬ v.Holds φ`.
 ## The endpoints
 
 `lic_nonDogmatism` and `lic_nonDogmatism_dual` are the canonical carriers; their conclusion
-`∃ ε > 0, ∀ᶠ n, ε ≤ Pₙ(φ)` is stronger than the paper's limit claim. `lic_limit_pos` and
-`lic_limit_lt_one` are the literal `P∞` corollaries and take the convergence as an input;
-`lic_exists_limit_pos` and `lic_exists_limit_lt_one` discharge it through
-`lic_price_convergesTo` (`thm:con`).
+`∃ ε > 0, ∀ᶠ n, ε ≤ Pₙ(φ)` is the stagewise form, which for a logical inductor is
+*equivalent* to the paper's limit claim rather than stronger, since `thm:con` supplies the
+convergence: `lic_limit_pos` and `lic_limit_lt_one` are the literal `P∞` corollaries and take
+that convergence as an input, and `lic_exists_limit_pos` and `lic_exists_limit_lt_one` prove
+the paper's printed conclusion outright from the same premises, discharging it through
+`lic_price_convergesTo`.
 
 `lic_nonDogmatism_weak` is a strictly weaker fragment: the bound `2^{-(n+2)}` decays with `n`
 rather than being bounded away from 0. Its trader is memoryless and its proof is one page.

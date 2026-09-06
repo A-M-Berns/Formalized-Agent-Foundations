@@ -26,9 +26,11 @@ meaning is fixed by a deductive process chosen before any source, market, weight
 Two proved obstructions say that such a process cannot be universal, and everything else here
 is the gate structure that makes it sound anyway.
 
-* `Prime` — the handle allocation (`semanticPrimeTag = 4`, with disjoint selector tags for
-  sources, products and quotation aliases), and the diagonalization showing that no
-  non-vacuous fixed process can reflect *every* efficiently emitted source.
+* `Prime` — the handle layer over the reserved tag `semanticPrimeTag = 4`, with disjoint
+  selector tags for sources, products and quotation aliases, and the diagonalization showing
+  that no non-vacuous fixed process can reflect *every* efficiently emitted source.  The tag
+  itself and the source-vocabulary predicate `SemanticPrimeFreshSentence` are declared with
+  the global allocation table in `Construction/Knowledge/Syntax.lean`.
 * `Quote` — the definitional bridge identifying a tag-`2` quote leaf with the universal
   quotation atom it aliases, and the shared base process
   `theoremQuoteBaseDP T = (theoremDP T).union semanticQuoteDP`.
@@ -49,15 +51,15 @@ is the gate structure that makes it sound anyway.
 * `Endpoints` — the canonical lifted-language process `canonicalCCEEDP T`, its market and
   quote codes, its explicit completed world, and the endpoint itself.
 
-`Endpoints` carries the only paper node in the directory; the other six modules render none.
+Two modules render paper nodes: `Endpoints`, whose `thm:ccee` declarations carry the endpoint
+and the market data it is stated over, and `Prime`, where the representation-boundary result
+`no_nonvacuous_worldValued_presented_of_rpn` carries `thm:ccee` as well — it is what fixes
+what a presented source may be allowed to mean.  The other five render none.
 
-**`Prime` is interface, not machinery.**  It is the seventh module and the exception to the
-sentence above.  `LogicalInduction/API.lean` advertises five of its declarations as the §4.8
-presented-LUV vocabulary — `PresentedLUVSeq`, `PresentedLUVSeq.gt_eq`, `semanticHandleLUVSeq`,
-`semanticHandleLUVSeq_rpnThresholdCodeSeq` and `no_nonvacuous_worldValued_presented_of_rpn` —
-and `APITests/LogicalInduction.lean` exercises all five.  It is also an *upstream* dependency
-of the `Paper/` lane: `Construction/Paper/FirstOrder.lean` imports it for `semanticPrimeTag`
-and `SemanticPrimeFreshSentence`, so a reverse-cone walk puts `Prime` under 37 modules across
-every other lane.  Both headers record that edge.  Only the remaining six modules are
-implementation that may be renamed or restructured.
+**`Prime` is interface, not machinery.**  `LogicalInduction/API.lean` advertises five of its
+declarations as the §4.8 presented-LUV vocabulary — `PresentedLUVSeq`, `PresentedLUVSeq.gt_eq`,
+`semanticHandleLUVSeq`, `semanticHandleLUVSeq_rpnThresholdCodeSeq` and
+`no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
+all five.  The implementation this directory means, which may be renamed or restructured, is
+the remaining five modules: `Quote`, `Product`, `Source`, `LanguageCopy` and `Registry`.
 -/

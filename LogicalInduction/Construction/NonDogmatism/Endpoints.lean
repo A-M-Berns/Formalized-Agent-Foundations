@@ -23,8 +23,9 @@ assignment at the reserved tag), `paperIndependentBitAtoms`, `paperBitPrefixCode
 `paperBitPrefixSentences`.
 
 Why the tag is needed: `paperDP T = (theoremDP T).union (paperTheoryDP T)` commits to event
-atoms (payload tags `0`–`2`) and paper-prime atoms (tag `5`), while tags `3`, `4` and `6`
-belong to `productTag`, `semanticPrimeTag` and `oldLanguageTag`, so `7` is the first free
+atoms (payload tags `0`–`2`) and paper-prime atoms (tag `5`), while tags `3`, `4` and `6` are
+allocated to quoted products, semantic handles and the old-language copy in the table at
+`ComputationClaimKind.godelCode`, so `7` is the first free
 one; `eventAtom_atomCodes_ne_bitAtomTag` and `paperDP_atomCodes_ne_bitAtomTag` prove the
 disjointness, which is what lets an arbitrary bit assignment be grafted onto a
 stage-consistent world without disturbing its verdict on the stage.  Tagging costs nothing on

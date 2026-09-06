@@ -1829,11 +1829,16 @@ theorem lic_wubaff
       (by exact hsupport) hsparse
   exact hall
 
-/-- Paper-facing `thm:wubaff` for an arbitrary `BCS`.  Its canonical positive rational
-normalization feeds the unit-risk feedback trader above; the operational emitter and
+/-- The `thm:wubaff` shape for an arbitrary `BCS`, still conditional on the operational
+emitter and truth bridge.  Its canonical positive rational
+normalization feeds the unit-risk feedback trader above; the emitter and
 truth bridge are requested only for that concrete normalized family, and the final scale
-is cancelled from weighted-bias convergence. -/
-theorem BoundedCombinationSequence.wubaff
+is cancelled from weighted-bias convergence.
+
+It carries no `Paper node` line: the node is carried by
+`FeedbackTruth.boundedCombination_wubaff_ofComputation`
+(`Construction/Statistics/FeedbackTruth.lean`), which constructs those two inputs. -/
+lemma BoundedCombinationSequence.wubaff
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)
@@ -2428,7 +2433,7 @@ namespace AffineCombination
 /-- The `≳ₙ 0` branch of `thm:prandaff`, conditional only on the two operational
 representation hypotheses: historical maturity verification for arbitrary legal
 weightings, and the settlement clock for the determined affine sequence. -/
-theorem ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+lemma ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
@@ -2500,7 +2505,7 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
 
 /-- The `≲ₙ 0` branch of `thm:prandaff`, obtained by applying the proved nonnegative
 branch to the explicitly negated affine sequence. -/
-theorem ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+lemma ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
@@ -2539,7 +2544,7 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
 /-- Exact two-sided `thm:prandaff`: pseudorandom completed-theory values force the
 diagonal affine prices to converge asymptotically to zero.  The separate declarations
 above retain the paper's one-sided variants. -/
-theorem ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+lemma ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth e err : ℕ → ℝ}
@@ -2567,7 +2572,7 @@ theorem ApproxDeterminedViaTheory.lic_prandaff_of_historicalVerifiers
       f clock hpseudo.1 hverify hverifyNeg⟩
 
 /-- Exact `thm:prandaff`, nonnegative branch: the `e = 0` specialization. -/
-theorem DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
+lemma DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
@@ -2587,7 +2592,7 @@ theorem DeterminedViaTheory.lic_prandaff_above_of_historicalVerifiers
     hverify hverifyNeg
 
 /-- Exact `thm:prandaff`, nonpositive branch: the `e = 0` specialization. -/
-theorem DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
+lemma DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
@@ -2608,7 +2613,7 @@ theorem DeterminedViaTheory.lic_prandaff_below_of_historicalVerifiers
     hverifyNeg hverifyNegNeg
 
 /-- Exact two-sided `thm:prandaff`: the `e = 0` specialization. -/
-theorem DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
+lemma DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} (hpoly : PolySequence As)
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     {truth err : ℕ → ℝ} (hdet : DeterminedViaTheory As P DP truth)
@@ -2633,7 +2638,7 @@ theorem DeterminedViaTheory.lic_prandaff_of_historicalVerifiers
 /-- The nonnegative `thm:prandaff` branch for an arbitrary `BCS`.  The patient clock and
 historical verifiers are formulated for the canonical normalized family, and
 positive-scale cancellation restores the original diagonal prices. -/
-theorem BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
+lemma BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)
@@ -2672,7 +2677,7 @@ theorem BoundedCombinationSequence.prandaff_above_of_historicalVerifiers
   exact asympGE_zero_of_const_mul_pos hq hscaled
 
 /-- The nonpositive `thm:prandaff` branch for an arbitrary `BCS`. -/
-theorem BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
+lemma BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)
@@ -2711,7 +2716,7 @@ theorem BoundedCombinationSequence.prandaff_below_of_historicalVerifiers
   exact asympLE_zero_of_const_mul_pos hq hscaled
 
 /-- Two-sided `thm:prandaff` for an arbitrary `BCS`. -/
-theorem BoundedCombinationSequence.prandaff_of_historicalVerifiers
+lemma BoundedCombinationSequence.prandaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)

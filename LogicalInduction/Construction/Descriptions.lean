@@ -50,7 +50,7 @@ follow and the executable one cannot miss a halt that occurs strictly inside its
 `length_machineTokens_le` bound the steps taken, and the length of the emitted stream, by the
 clock the index itself names. Executability, per-index polynomial-time soundness, and
 coverage of every polynomial-time trader are three different facts; the `Complexity.FP`
-statement lives in `Framework/Machine/ClockedSim.lean` and
+statement lives in `Construction/ClockedSim.lean` and
 `Construction/MachineTraderEnumeration.lean`.
 
 **Coverage bridge.** `exists_clock_of_polynomial`, `exists_desc_computesInTime_clock`,

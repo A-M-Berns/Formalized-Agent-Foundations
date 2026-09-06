@@ -1,4 +1,6 @@
 import LogicalInduction.Construction.Paper.TheoremDP
+import LogicalInduction.Construction.Quotation.MarketQuoteCodes
+import LogicalInduction.Construction.Quotation.ProductDefinition
 
 /-!
 # The single paper-facing market and its endpoints
@@ -18,6 +20,13 @@ Three things make the transfer mechanical, and all three are proved upstream:
   satisfiability — no Σ₁-soundness anywhere.
 * `paperMarketComputation` is the `LIA`'s own exact market program over `paperDP`, an
   instance of the process-generic `liaMarketComputation`.
+
+**Cross-lane edge.**  The endpoints below are stated over quote codes and product LUVs the
+`Quotation/` lane builds, so this module imports
+`Construction/Quotation/MarketQuoteCodes.lean` (`meshProductLUV`, `indicatorProductLUV`,
+`ratCtsInd`, the deferred-weight and conditional-expectation quote codes) and
+`Construction/Quotation/ProductDefinition.lean` (`PGenerableRat.ofPolyRatCodes`, the
+harmonic weight witnesses).
 
 The family priced here is `thm:epr` (tex:2014), `thm:er` (tex:2022), `thm:ref` (tex:1969),
 `thm:cee` (tex:2045), `thm:ceu` (tex:2056), `thm:ccee` (tex:2068), `thm:st` (tex:2092) and

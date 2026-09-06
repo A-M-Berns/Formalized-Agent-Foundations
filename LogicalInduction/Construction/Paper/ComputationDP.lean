@@ -284,12 +284,12 @@ lemma theoremDP_hworld [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T] (
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hpos, hfires])
   · -- tag 2: positive bounded halting
     simp only [eventFires, h] at hfires
-    simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, PCWorld.holds_atom,
-      provabilityWorld_boundedHalting] using hfires
+    simpa only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
+      PCWorld.holds_atom, provabilityWorld_boundedHalting] using hfires
   · -- tag 3: ∼bounded halting, ruled out by consistency of `T`
     simp only [eventFires, h] at hfires
-    simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence, PCWorld.holds_neg,
-      PCWorld.holds_atom, provabilityWorld_boundedHalting]
+    simp only [eventAtom, h, boundedHaltingClaimSentence, computationClaimSentence,
+      PCWorld.holds_neg, PCWorld.holds_atom, provabilityWorld_boundedHalting]
     intro hbh
     exact (Entailment.Consistent.not_bot (𝓢 := T) inferInstance) (by cl_prover [hbh, hfires])
   · -- tag 4: positive quotation

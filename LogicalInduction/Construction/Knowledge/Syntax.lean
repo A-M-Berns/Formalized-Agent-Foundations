@@ -197,7 +197,7 @@ allocated; a new atom family takes a fresh tag and a row here.
 | `1` | bounded-halting claims | `ComputationClaimKind.godelCode` |
 | `2` | quotation claims | `quotationClaimCode` (`Construction/Quotation/Packages.lean`) |
 | `3` | quoted products | `productTag` (`Construction/Quotation/ProductDefinition.lean`) |
-| `4` | semantic handles | `semanticPrimeTag` (`Construction/SemanticExtension/Prime.lean`) |
+| `4` | semantic handles | `semanticPrimeTag` (below) |
 | `5` | first-order primes | `paperPrimeTag` (`Construction/Paper/FirstOrder.lean`) |
 | `6` | old-language copy | `oldLanguageTag` (`Construction/SemanticExtension/LanguageCopy.lean`) |
 | `7` | `thm:dus` bit atoms over `paperDP` | `bitAtomTag` (`NonDogmatism/Endpoints.lean`) |
@@ -222,12 +222,28 @@ lemma ComputationClaimKind.godelCode_injective :
   intro a b h
   cases a <;> cases b <;> simp_all [ComputationClaimKind.godelCode]
 
+/-- Reserved tag `4` for the compact semantic handles of the market-language extension,
+whose denotation is supplied by a fixed semantic theorem process
+(`Construction/SemanticExtension/Prime.lean`).  The tag and the freshness predicate below
+live beside the allocation table because two independent lanes read them: the extension
+lane, which builds handles, and the first-order lane, which must prove it builds none. -/
+def semanticPrimeTag : ℕ := 4
+
+/-- A sentence belongs to the pre-extension source vocabulary when none of its atoms use
+the semantic-prime tag reserved for the extension. -/
+def SemanticPrimeFreshSentence (φ : Sentence) : Prop :=
+  ∀ a ∈ sentenceAtomCodes φ, a.unpair.1 ≠ semanticPrimeTag
+
 /-- An injective compact Gödel name for a computation claim. -/
 def ComputationClaim.godelCode (claim : ComputationClaim) : ℕ :=
   Nat.pair claim.kind.godelCode
     (Nat.pair (Encodable.encode claim.schema) claim.input)
 
-/-- Distinct claims have distinct compact Gödel names. -/
+/-- Distinct claims have distinct compact Gödel names, so the public atom of a claim
+determines the claim: this is what keeps the §4.9–4.10 claim families from collapsing two
+different computations onto one priced sentence.
+Kind `P` (proved); provenance (a) derived in-project.
+Paper node: `thm:pac`, `thm:pazfc`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 lemma ComputationClaim.godelCode_injective :
     Function.Injective ComputationClaim.godelCode := by
   rintro ⟨ka, sa, ia⟩ ⟨kb, sb, ib⟩ h
@@ -242,6 +258,15 @@ lemma ComputationClaim.godelCode_injective :
 /-- The public propositional sentence naming a quoted arithmetic computation claim. -/
 def computationClaimSentence (claim : ComputationClaim) : Sentence :=
   LO.Propositional.Formula.atom claim.godelCode
+
+/-- **Tag ownership.**  A claim sentence is a single atom, whose payload tag is the claim's
+own kind — which is what every freshness proof about a constructed process appeals to. -/
+lemma sentenceAtomCodes_computationClaimSentence (c : ComputationClaim) :
+    ∀ a ∈ sentenceAtomCodes (computationClaimSentence c), a.unpair.1 = c.kind.godelCode := by
+  intro a ha
+  rw [computationClaimSentence, sentenceAtomCodes_atom, Finset.mem_singleton] at ha
+  subst ha
+  simp [ComputationClaim.godelCode]
 
 /-- Distinct claims are named by distinct propositional atoms: the separation fact a client
 reasoning about two claims at once needs. -/
@@ -524,7 +549,8 @@ there is the general lemma `t ≠ t' → σ/[t] ≠ σ/[t']` for a `σ` mentioni
 hypothesis that this particular `σ` mentions `#0`.
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citation —
-`codeOfREPred_spec` through `universalHaltingSchema_spec`. -/
+`codeOfREPred_spec` through `universalHaltingSchema_spec`.
+Paper node: `thm:halts` -/
 lemma universalHaltingSchema_not_argument_insensitive :
     ¬ ∀ z z' : ℕ, universalHaltingSchema.Evalb ![z] ↔ universalHaltingSchema.Evalb ![z'] := by
   intro h
@@ -572,7 +598,11 @@ lemma digitMachineCodes_const (c : Nat.Partrec.Code) :
 
 /-! ## Positive and negative path witnesses -/
 
-/-- `N+`: the positive path fires for the repository's everywhere-zero program. -/
+/-- `N+`: the positive path fires for the repository's everywhere-zero program — the
+halting-claim literal of a machine that does halt really does enter some stage of the
+process, so `ComputationTheoryPresentation.halting_enters` is not vacuously satisfiable.
+Provenance: (a) derived in-project, through `re_complete_mp` at the universal schema.
+Paper node: `thm:halts` -/
 lemma computationRepresentation_positive_path
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     [𝗥₀ ⪯ T]

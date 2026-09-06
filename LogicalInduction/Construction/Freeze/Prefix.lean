@@ -1,4 +1,5 @@
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
+import LogicalInduction.Construction.LIAComputation
 import LogicalInduction.Properties.FinitePerturbations
 import LogicalInduction.Framework.Emission.FreezeTransducer
 import LogicalInduction.Framework.Emission.WriteOut

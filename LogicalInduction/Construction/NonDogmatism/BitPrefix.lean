@@ -430,7 +430,9 @@ lemma decode_bool_of_le_one {h : ℕ} (hh : h ≤ 1) :
 when every head along the chain is a legal `Bool` code, and then returns the bits the chain
 reads off.  A single malformed head sends the *whole* string to `none` — the applicative
 `decode_list_succ` does not truncate — which is why the emitter dispatches on the global
-validity scan rather than per position. -/
+validity scan rather than per position.
+Kind `P` (proved); provenance (a) derived in-project.
+Paper node: `thm:dus` -/
 lemma decode_chain : ∀ i, Encodable.decode (α := List Bool) i =
     if ChainOK i then some (chainBits i) else none := by
   intro i

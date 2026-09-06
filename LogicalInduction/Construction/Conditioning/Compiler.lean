@@ -1,6 +1,6 @@
 import LogicalInduction.Construction.Conditioning.Presentation
 import LogicalInduction.Framework.Emission.FreezeTransducer
-import LogicalInduction.Construction.LIACompiler
+import LogicalInduction.Construction.Primcodable
 import LogicalInduction.Construction.Freeze.Prefix
 import LogicalInduction.Construction.NonDogmatism.RepeatedEnumeration
 import LogicalInduction.Framework.Emission.DigitArith

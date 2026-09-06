@@ -17,10 +17,10 @@ from the market `def:ece` (tex:1218) — together with the §4.5 affine generali
 
 ## What this module builds
 
-* **The two halves of "`P`-generable divergent weighting".** `PGenerableWeighting` carries
-  `def:ece`'s emitted feature progression; `DivergentWeighting` carries `def:fuz`'s `[0,1]`
-  bound together with the divergent prefix sum.  `pGenerableWeighting_iff` places the
-  former against `GeneratedRatFeature`, which is the same data plus a denotation clause.
+* **The two halves of "ℙ-generable divergent weighting".** `DivergentWeighting` carries
+  `def:fuz`'s `[0,1]` bound together with the divergent prefix sum; `PGenerableWeighting`
+  carries `def:ece`'s emitted feature progression.  `pGenerableWeighting_iff` places the
+  latter against `GeneratedRatFeature`, which is the same data plus a denotation clause.
 * **The calibration selector.** `calibrationLower`, `calibrationUpper` and
   `calibrationIndicator` render `def:ctsind` at the feature level, and
   `calibrationIndicator_pgenerable` proves the selector generable from the paper's own
@@ -68,10 +68,28 @@ open scoped BigOperators
 
 /-! ## Divergent weightings generable from the market -/
 
+/-- A **divergent weighting**: a sequence of reals in `[0,1]` whose sum diverges.  The
+sequence is presented as the realized values `(W n).denote P` of a market feature
+progression, which is the only form §4.3 and §4.5 use it in; the paper's "ℙ-generable
+divergent weighting" is this together with `PGenerableWeighting W` below.  Divergence is
+stated as `Tendsto atTop atTop` of the inclusive prefix sums, which for nonnegative
+summands is the paper's `Σ ϝᵢ = ∞`.
+Paper node: `def:fuz` -/
+def DivergentWeighting (W : ℕ → EF) (P : History) : Prop :=
+  (∀ n, 0 ≤ (W n).denote P ∧ (W n).denote P ≤ 1) ∧
+    Tendsto (prefixSum (fun n => (W n).denote P)) atTop atTop
+
+/-- A divergent weighting's normalizing denominator is eventually positive, which is what
+lets every weighted average below divide by it. -/
+lemma DivergentWeighting.eventually_prefixSum_pos {W : ℕ → EF} {P : History}
+    (h : DivergentWeighting W P) :
+    ∀ᶠ n in atTop, 0 < prefixSum (fun i => (W i).denote P) n :=
+  h.2.eventually (eventually_gt_atTop 0)
+
 /-- A sequence of expressible features generated uniformly in polynomial time and legal
 on its own day.  Its denotation may depend continuously on the market prefix, exactly as
 in the paper's notion “generable from `P`”.
-Paper node: `def:ece`, `def:fuz` -/
+Paper node: `def:ece` -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
   polySeg : BigSpliceStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n
@@ -86,17 +104,18 @@ the day, both demand closure; they differ only in `GeneratedRatFeature`'s extra 
 clause tying the feature's value at the market to a rational sequence.  The lemmas below
 make that relation a theorem rather than a remark, in both directions.
 
-`def:fuz` has no emission content of its own — it is the `[0,1]` bound together with the
-divergent prefix sum — and that content lives below in `DivergentWeighting`. -/
+`def:fuz` is a separate condition, and a separate declaration: the `[0,1]` bound together
+with a divergent sum, carried by `DivergentWeighting` above.  The paper's "ℙ-generable
+divergent weighting" is the conjunction of the two. -/
 
-/-- The `def:ece` data forgets its denotation clause to `def:fuz` data. -/
+/-- The `def:ece` data forgets its denotation clause. -/
 lemma GeneratedRatFeature.toWeighting {P : History} {q : ℕ → ℚ} {feature : ℕ → EF}
     (h : GeneratedRatFeature P q feature) : PGenerableWeighting feature where
   polySeg := h.polyTok
   rank_le := h.rank_le
   closed := h.closed
 
-/-- Conversely, `def:fuz` data plus a denotation is `def:ece` data. -/
+/-- Conversely, that data plus a denotation clause is `def:ece` data again. -/
 lemma PGenerableWeighting.toGeneratedRatFeature {P : History} {q : ℕ → ℚ} {W : ℕ → EF}
     (h : PGenerableWeighting W) (hq : ∀ n, (W n).denote P = (q n : ℝ)) :
     GeneratedRatFeature P q W where
@@ -105,9 +124,8 @@ lemma PGenerableWeighting.toGeneratedRatFeature {P : History} {q : ℕ → ℚ} 
   closed := h.closed
   denote := hq
 
-/-- **`def:fuz` is `def:ece` minus the denotation clause**, exactly.  The
-`def:fuz` / `def:ece` annotations themselves sit on `PGenerableWeighting` and
-`GeneratedRatFeature`; this is the bridge between them. -/
+/-- **`PGenerableWeighting` is `GeneratedRatFeature` minus the denotation clause**,
+exactly.  Both render `def:ece`; this is the bridge between them. -/
 lemma pGenerableWeighting_iff {P : History} {q : ℕ → ℚ} {W : ℕ → EF} :
     GeneratedRatFeature P q W ↔
       PGenerableWeighting W ∧ ∀ n, (W n).denote P = (q n : ℝ) :=
@@ -453,7 +471,7 @@ lemma calibration_convergent_limit_mem
 as a limit point of the weighted bias for the paper's continuous calibration selector,
 both clauses of recurring calibration follow: an interval-valued limit point always
 exists, and every global limit belongs to the interval. -/
-theorem simcal_of_recurring_unbiasedness
+lemma simcal_of_recurring_unbiasedness
     (P : History) (φ : ℕ → Sentence) (truth : ℕ → ℝ)
     (a b : ℚ) (δ : ℕ → ℚ)
     (hδpos : ∀ n, 0 < (δ n : ℝ))
@@ -2171,7 +2189,7 @@ It carries no `Paper node` line by the file convention stated above: every
 `_of_historicalVerifiers` form is conditional, and the node is carried by the unconditional
 `AffineCombination.BoundedCombinationSequence.recunbiasedaff` in
 `Construction/Statistics/HistoricalMaturity.lean`, which discharges the verifier. -/
-theorem BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
+lemma BoundedCombinationSequence.recunbiasedaff_of_historicalVerifiers
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     [IsLogicalInductor P DP]
     (h : BoundedCombinationSequence As P)

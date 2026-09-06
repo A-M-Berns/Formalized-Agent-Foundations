@@ -1,4 +1,4 @@
-import LogicalInduction.Framework.Machine.ClockedSim
+import LogicalInduction.Construction.ClockedSim
 import LogicalInduction.Framework.Emission.Computable
 
 /-!
@@ -35,7 +35,7 @@ defined as "occurs in the enumeration"; that every member does occur is the cont
 `exists_enumeratedTrader_eq`. Soundness is correspondingly a real theorem rather than the
 `rfl` it is in the fuel setting, because a bogus index's trader is the described machine's
 *truncated* behaviour, and an `FP` witness for a truncation needs the clocked simulator of
-`Framework/Machine/ClockedSim.lean`: the description an index names is fixed, so the simulator's
+`Construction/ClockedSim.lean`: the description an index names is fixed, so the simulator's
 control states are the described machine's own and one transition performs one described
 step under a unary clock.
 
@@ -69,7 +69,7 @@ lemma enumeratedTrader_strat (i n : ℕ) :
 
 Named because it is the object the soundness proof places in `Complexity.FP`, which
 `enumeratedOutput_mem_FP` below does via the clocked simulator of
-`Framework/Machine/ClockedSim.lean`.
+`Construction/ClockedSim.lean`.
 `bitsToDigits_enumeratedOutput` is the other half of the connection — it identifies this
 function's output on a unary day with the index's token stream — and together the two reduce
 `enumeratedTrader_machineEfficient` to that `FP` membership. -/
@@ -93,7 +93,7 @@ lemma bitsToDigits_enumeratedOutput (i n : ℕ) :
 /-! ## Soundness
 
 Every index denotes a machine-efficient trader. The index's clock is a `Polynomial ℕ` in the
-normal form `Complexity.FP` asks for, and `Framework/Machine/ClockedSim.lean`'s simulator
+normal form `Complexity.FP` asks for, and `Construction/ClockedSim.lean`'s simulator
 computes the
 truncated run within an explicit polynomial, so the function an index computes is genuinely
 in `FP` — not merely Lean-computable, and not through a meta-level evaluation. -/

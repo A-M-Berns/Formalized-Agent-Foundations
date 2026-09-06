@@ -11,9 +11,11 @@ deferral function (`def:deferralfunc`), whose program runs in time polynomial in
 literal coefficient and sentence streams of `AffineCombination.feedbackTrader`.
 
 **The schedule.**  On day `n` the deferral program is run only for the clock justified when
-its output is exactly `n`; `scheduledRun` and `scheduledMatch` normalize an unfinished run
-to `0`, and successful runs are sound by partial-function uniqueness
-(`scheduledMatch_eq_one_iff`, `scheduledValue_eq`).
+its output is exactly `n`; `scheduledRun` and `scheduledMatch` (`Properties/SelfTrust.lean`,
+where they sit beside `DeferralFunction` because `Construction/Quotation/` consumes them too)
+normalize an unfinished run to `0`, and successful runs are sound by partial-function
+uniqueness (`scheduledMatch_eq_one_iff`, `scheduledValue_eq`).  `scheduledValue` and
+`scheduledDeferral`, the decoded lookups the features read, are here.
 
 **Bounded-schedule features.**  `scheduledReturnFeature`, `scheduledFactorFeature`,
 `scheduledWealthFeature` and `scheduledBetaFeature` are the bounded-schedule forms of the
@@ -52,94 +54,11 @@ open AffineCombination PrefixPatchCompile
 -- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
-/-! ## The bounded deferral schedule -/
+/-! ## Reading the bounded deferral schedule
 
-/-- Run the deferral program for component `k` with the day-`n` polynomial clock.
-Input is `⟨n,k⟩`; output is normalized as `0` for unfinished and `f k + 1` for finished. -/
-def scheduledRun (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
-  deadlineRun f (ecClock a degree z.unpair.1) z.unpair.2
-
-/-- The bounded scheduled run is polynomial in the paired day/component input. -/
-lemma scheduledRun_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (scheduledRun f a degree) := by
-  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled f.code
-  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled a degree
-  refine ⟨_, (hsim.comp ((hclock.comp PolyFueled.left).pair PolyFueled.right)).of_eq
-    (fun z => ?_)⟩
-  simp [scheduledRun, deadlineRun]
-
-/-- `1` exactly when the day-bounded run has returned the current day `n`.
-The natural-valued flag is the form consumed by the flat stream combinators. -/
-def scheduledMatch (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
-  if scheduledRun f a degree z = z.unpair.1 + 1 then 1 else 0
-
-/-- Equality of the scheduled output and the variable day is polynomially decidable. -/
-lemma scheduledMatch_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (scheduledMatch f a degree) := by
-  obtain ⟨crun, hrun⟩ := scheduledRun_polyFueled f a degree
-  have hday : PolyFueled _ (fun z : ℕ => z.unpair.1 + 1) :=
-    (PolyFueled.left.succ_comp)
-  obtain ⟨cadd, hadd⟩ := addc_polyFueled
-  have hleft : PolyFueled _ (fun z =>
-      scheduledRun f a degree z - (z.unpair.1 + 1)) :=
-    (subc_polyFueled.comp (hrun.pair hday)).of_eq (fun z => by simp)
-  have hright : PolyFueled _ (fun z =>
-      (z.unpair.1 + 1) - scheduledRun f a degree z) :=
-    (subc_polyFueled.comp (hday.pair hrun)).of_eq (fun z => by simp)
-  have hgap : PolyFueled _ (fun z =>
-      (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z)) :=
-    (hadd.comp (hleft.pair hright)).of_eq (fun z => by simp)
-  refine ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair hgap)).of_eq
-      (fun z => ?_)⟩
-  simp only [ifzSelFn, Nat.unpair_pair, scheduledMatch]
-  by_cases h : scheduledRun f a degree z = z.unpair.1 + 1
-  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z) = 0 := by omega
-    rw [if_pos hz, if_pos h]
-  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z) ≠ 0 := by omega
-    rw [if_neg hz, if_neg h]
-
-/-- The match flag is Boolean. -/
-lemma scheduledMatch_zero_or_one (f : DeferralFunction) (a degree z : ℕ) :
-    scheduledMatch f a degree z = 0 ∨ scheduledMatch f a degree z = 1 := by
-  simp only [scheduledMatch]
-  split <;> simp
-
-/-- A successful match is sound even though the program was run only for the day clock. -/
-lemma scheduledMatch_eq_one_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (n k : ℕ) :
-    scheduledMatch f a degree (Nat.pair n k) = 1 ↔ f k = n := by
-  constructor
-  · intro h
-    have hrun : scheduledRun f a degree (Nat.pair n k) = n + 1 := by
-      simpa [scheduledMatch] using h
-    have hpos : 0 < scheduledRun f a degree (Nat.pair n k) := by omega
-    have hsound := deadlineRun_eq f hpos
-    simp only [scheduledRun, Nat.unpair_pair] at hsound hrun
-    omega
-  · intro h
-    subst n
-    simp [scheduledMatch, scheduledRun, deadlineRun, codeEvalnNat, hspec]
-
-/-- The match flag is `0` exactly when the component does not defer to this day. -/
-lemma scheduledMatch_eq_zero_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (n k : ℕ) :
-    scheduledMatch f a degree (Nat.pair n k) = 0 ↔ f k ≠ n := by
-  constructor
-  · intro hzero heq
-    have hone := (scheduledMatch_eq_one_iff f hspec n k).2 heq
-    omega
-  · intro hne
-    rcases scheduledMatch_zero_or_one f a degree (Nat.pair n k) with hzero | hone
-    · exact hzero
-    · exact (hne ((scheduledMatch_eq_one_iff f hspec n k).1 hone)).elim
+`scheduledRun` and `scheduledMatch`, the schedule itself, are stated in
+`Properties/SelfTrust.lean` beside `DeferralFunction`, because `Construction/Quotation/`
+consumes them too.  What is here is the decoded value the feedback features read off it. -/
 
 /-- The decoded value of the scheduled run, with the unfinished sentinel normalized to
 zero.  Input is again `⟨day,component⟩`. -/

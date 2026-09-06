@@ -1,4 +1,7 @@
 import LogicalInduction.Construction.MarketMaker
+import LogicalInduction.Construction.Primcodable
+import LogicalInduction.Construction.Descriptions
+import LogicalInduction.Construction.ClockedSim
 import LogicalInduction.Construction.MachineTraderEnumeration
 import LogicalInduction.Construction.Budgeter
 import LogicalInduction.Construction.TradingFirm
@@ -35,7 +38,13 @@ logical induction criterion at the paper's own quantifier.
 * `def:ec` → `MachineTraderEnumeration` — `enumeratedTrader`, sound
   (`enumeratedTrader_machineEfficient`) and covering (`exists_enumeratedTrader_eq`) for
   `MachineEfficientTrader`. This is what makes the firm dominate the paper's own class, and
-  hence what makes the criterion hold at the paper's own quantifier.
+  hence what makes the criterion hold at the paper's own quantifier.  Its two supporting
+  modules sit beside it: `Descriptions` is the executable bounded execution of a finite
+  `complexitylib` machine *description* — read its header for why the executable object is a
+  description rather than a machine — with the compiler-facing token evaluator
+  `machineTokens` on top of it, and `ClockedSim` is the clocked simulator for a fixed
+  description together with the proof that the truncated run lies in `Complexity.FP`, which
+  is the soundness half of the enumeration.
 * `lem:budgeter` → `Budgeter` and its three parts (`Budgeter.lean`) — caps each enumerated
   trader.
 * `eq:tradingfirm` / `lem:tfdom` → `TradingFirm` — combines enumerated traders with budgets,
@@ -47,6 +56,13 @@ logical induction criterion at the paper's own quantifier.
 * `def:lia` / `alg:li` → `liaStates`, `liaHistory` (`LIA.lean`, with `liaQuote` and
   `liaTrader` beside them) — the concrete algorithm and the market it induces.
   `LIAComputation` and `LIACompiler` carry its bounded-evaluation and compilation layers.
+  `Primcodable` sits under them and is not about §5 at all: it is the concrete `Primcodable`
+  instances for `Sentence`, `ℚ`, `EF`, `Strategy n` and `Finset Sentence`, the arithmetic
+  certificates on them, and the primitive-recursive certificates for the `Framework/` token
+  parsers.  Eight modules across the `Conditioning/`, `Freeze/`, `Knowledge/`,
+  `NonDogmatism/`, `Quotation/` and `Statistics/` lanes import it directly for those codes,
+  as does `LIACompiler` itself; `scripts/check_li_rollcall.py` recomputes that count from the
+  import lines.
 * `thm:lia` → `LIA_isMachineLogicalInductor` — discharges `def:lic` at the paper's own
   quantifier; `LIA_is_logical_inductor` is its fuel-class form, which is what the §4
   property tail consumes.

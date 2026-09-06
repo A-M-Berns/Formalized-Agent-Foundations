@@ -979,7 +979,9 @@ lemma noReserved_hardSentence : NoReserved hardSentence := by
 /-- **The reserved-atom-free endpoint does reach the `hardSentence` point pair**, which is
 the positive half of the strictness statement: the same perturbation that
 `not_recognizableSupport_hardPoint` puts outside `machine_lic_iff_of_recognizableSupport` is
-inside `machine_lic_iff_of_noReservedSupport`. -/
+inside `machine_lic_iff_of_noReservedSupport`.
+Kind `N+` (non-vacuity witness); provenance (a) derived in-project.
+Paper node: `thm:ifp` -/
 lemma noReservedSupport_hardPoint :
     NoReservedSupportPerturbation
       (pointHistory hardSentence (1 / 2)) (pointHistory hardSentence (1 / 3)) := by
