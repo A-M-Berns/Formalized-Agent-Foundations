@@ -3,8 +3,9 @@
 
 One page, one section per formalized paper (`scripts/papers.py` is the registry), each
 section putting every annotated paper node beside the Lean statement that carries it.
-Paper math is converted to MathML at build time (pip install latex2mathml); the page is
-self-contained, no runtime JS libraries and no external assets.
+Paper math is converted to MathML at build time (install the pinned dependency from
+`requirements-docs.txt`); the page is self-contained, with no runtime JS libraries or
+external assets.  The pin keeps regeneration byte-reproducible across machines.
 
 The mechanical half — locate a node in the paper source, locate the Lean declaration
 citing it, render the pair — is shared.  Node location comes from
@@ -30,7 +31,9 @@ and lives in `PAPERS_EDITORIAL` below plus the page prose in
   paper reaching a milestone statement-first opts into the same treatment by naming those
   two blocks; a paper that names neither renders exactly as it always has.
 
-Run from anywhere:  python3 scripts/gen-trust-surface.py
+Run from anywhere:
+  python3 -m pip install -r requirements-docs.txt
+  python3 scripts/gen-trust-surface.py
 Regenerate after any change to a paper source, a library's annotations, the registry,
 the coverage table, or the template; `scripts/check_trust_surface.py` enforces this.
 """
