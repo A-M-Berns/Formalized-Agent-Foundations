@@ -49,6 +49,15 @@ the pointwise negation of the family (`affineFutureHigh_neg`).
 
 `gradualEntry` and `gateFeature` are consumed downstream by `AffineCoherence.lean`'s
 `buyBelowTrader`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -336,19 +345,47 @@ lemma BigSpliceStream.serialize_buyIndF {e : ℕ → EF}
           (BigSpliceStream.serialize_const (-1)) he))
       (BigSpliceStream.serialize_const (1 / δ)))
 
+/-- Machine-metered mirror of the sell ramp closure, the twin of
+`BigSpliceStream.serialize_sellIndF`. -/
+lemma MachineSpliceStream.serialize_sellIndF {e : ℕ → EF}
+    (he : MachineSpliceStream (fun n => (e n).serialize)) (high δ : ℚ) :
+    MachineSpliceStream (fun n => (sellIndF (e n) high δ).serialize) :=
+  MachineSpliceStream.serialize_clip01
+    (MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_add he
+        (MachineSpliceStream.serialize_const (δ - high)))
+      (MachineSpliceStream.serialize_const (1 / δ)))
+
+/-- Machine-metered mirror of the buy ramp closure, the twin of
+`BigSpliceStream.serialize_buyIndF`. -/
+lemma MachineSpliceStream.serialize_buyIndF {e : ℕ → EF}
+    (he : MachineSpliceStream (fun n => (e n).serialize)) (low δ : ℚ) :
+    MachineSpliceStream (fun n => (buyIndF (e n) low δ).serialize) :=
+  MachineSpliceStream.serialize_clip01
+    (MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_add
+        (MachineSpliceStream.serialize_const (low + δ))
+        (MachineSpliceStream.serialize_mul
+          (MachineSpliceStream.serialize_const (-1)) he))
+      (MachineSpliceStream.serialize_const (1 / δ)))
+
 /-- Continuous entry signal for the diagonal affine price. -/
 def gradualEntry (As : ℕ → AffineCombination) (low δ : ℚ) (n : ℕ) : EF :=
   buyIndF ((As n).priceFeature n) low δ
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 lemma PolySequence.gradualEntry_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
-    BigSpliceStream (fun n => (gradualEntry As low δ n).serialize) := by
-  have hdiag : BigSpliceStream (fun n => ((As n).priceFeature n).serialize) := by
-    refine BigSpliceStream.of_eq
-      (h.priceFeature_polySeg.comp (PolyFueled.id.pair PolyFueled.id)) ?_
+    MachineSpliceStream (fun n => (gradualEntry As low δ n).serialize) := by
+  have hdiag : MachineSpliceStream (fun n => ((As n).priceFeature n).serialize) := by
+    refine MachineSpliceStream.of_eq
+      (h.priceFeature_polySeg.comp (f := fun n : ℕ => Nat.pair n n)
+        (UnaryRuler.id.pair UnaryRuler.id)) ?_
     intro n
     simp only [Nat.unpair_pair]
-  exact BigSpliceStream.serialize_buyIndF hdiag low δ
+  exact MachineSpliceStream.serialize_buyIndF hdiag low δ
 
 lemma PolySequence.gradualEntry_rank_le {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) (n : ℕ) :
@@ -395,55 +432,72 @@ lemma gradualRemaining_serialize (A : AffineCombination) (buyDay : ℕ)
 
 /-! ### Emission -/
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 /-- Uniform emission of the two-index gradual occupancy family.  Input `z = ⟨i,t⟩`
 denotes member `Aᵢ`, opened on day `i`, after `t` gradual-sale updates. -/
 lemma PolySequence.gradualRemaining_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       ((As z.unpair.1).gradualRemaining z.unpair.1 high δ z.unpair.2).serialize) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   -- An update block is indexed by `q = ⟨⟨i,t⟩,j⟩`.
   have hmember := PolyFueled.left.comp PolyFueled.left
   have hstep := PolyFueled.right
   have hfuture := (hadd.comp (hmember.pair hstep)).succ_comp
-  have hpriceIndex := hmember.pair hfuture
-  have hprice : BigSpliceStream (fun q =>
+  have hpriceIndex := (hmember.pair hfuture).of_eq
+    (f' := fun q : ℕ =>
+      Nat.pair q.unpair.1.unpair.1 (q.unpair.1.unpair.1 + q.unpair.2 + 1))
+    (fun q => by simp only [Nat.unpair_pair])
+  have hprice : MachineSpliceStream (fun q =>
       ((As q.unpair.1.unpair.1).priceFeature
         (q.unpair.1.unpair.1 + q.unpair.2 + 1)).serialize) := by
-    refine BigSpliceStream.of_eq (h.priceFeature_polySeg.comp hpriceIndex) ?_
+    refine MachineSpliceStream.of_eq (h.priceFeature_polySeg.comp
+      (f := fun q : ℕ =>
+        Nat.pair q.unpair.1.unpair.1 (q.unpair.1.unpair.1 + q.unpair.2 + 1))
+      (UnaryRuler.of_polyFueled hpriceIndex)) ?_
     intro q
     simp only [Nat.unpair_pair]
-  have hsell := BigSpliceStream.serialize_sellIndF hprice high δ
-  have hremain := BigSpliceStream.serialize_oneMinus hsell
-  have hblock : BigSpliceStream (fun q =>
+  have hsell := MachineSpliceStream.serialize_sellIndF hprice high δ
+  have hremain := MachineSpliceStream.serialize_oneMinus hsell
+  have hblock : MachineSpliceStream (fun q =>
       (oneMinus (sellIndF
         ((As q.unpair.1.unpair.1).priceFeature
           (q.unpair.1.unpair.1 + q.unpair.2 + 1)) high δ)).serialize ++ [3]) :=
-    hremain.append (BigSpliceStream.tag 3 (by norm_num))
-  have hblocks := hblock.concatVar PolyFueled.right
-  refine BigSpliceStream.of_eq
-    ((BigSpliceStream.serialize_const 1).append hblocks) ?_
+    hremain.append (MachineSpliceStream.tag 3 (by norm_num))
+  have hblocks := hblock.concatVar (cnt := fun z : ℕ => z.unpair.2)
+    (UnaryRuler.unpairSnd)
+  refine MachineSpliceStream.of_eq
+    ((MachineSpliceStream.serialize_const 1).append hblocks) ?_
   intro z
   rw [gradualRemaining_serialize]
   simp only [Nat.unpair_pair]
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 lemma PolySequence.gradualSellFraction_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       ((As z.unpair.1).gradualSellFraction z.unpair.1 high δ z.unpair.2).serialize) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   have hmember := PolyFueled.left
   have hstep := PolyFueled.right
   have hfuture := (hadd.comp (hmember.pair hstep)).succ_comp
-  have hprice : BigSpliceStream (fun z =>
+  have hprice : MachineSpliceStream (fun z =>
       ((As z.unpair.1).priceFeature (z.unpair.1 + z.unpair.2 + 1)).serialize) := by
-    refine BigSpliceStream.of_eq
-      (h.priceFeature_polySeg.comp (hmember.pair hfuture)) ?_
+    refine MachineSpliceStream.of_eq
+      (h.priceFeature_polySeg.comp
+        (f := fun z : ℕ => Nat.pair z.unpair.1 (z.unpair.1 + z.unpair.2 + 1))
+        (UnaryRuler.of_polyFueled ((hmember.pair hfuture).of_eq
+        (f' := fun z : ℕ => Nat.pair z.unpair.1 (z.unpair.1 + z.unpair.2 + 1))
+        (fun z => by simp only [Nat.unpair_pair])))) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hsell := BigSpliceStream.serialize_sellIndF hprice high δ
-  refine BigSpliceStream.of_eq
-    (BigSpliceStream.serialize_mul (h.gradualRemaining_polySeg high δ) hsell) ?_
+  have hsell := MachineSpliceStream.serialize_sellIndF hprice high δ
+  refine MachineSpliceStream.of_eq
+    (MachineSpliceStream.serialize_mul (h.gradualRemaining_polySeg high δ) hsell) ?_
   intro z
   rfl
 
@@ -509,9 +563,55 @@ lemma BigSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
   · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
   · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
 
+/-- Machine-metered mirror of `BigSpliceStream.gateFeature`. -/
+lemma MachineSpliceStream.gateFeature {f : ℕ → EF}
+    (hf : MachineSpliceStream (fun i => (f i).serialize)) (start : ℕ) :
+    MachineSpliceStream (fun i => (gateFeature start f i).serialize) := by
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htestRaw := subc_polyFueled.comp
+    (PolyFueled.id.succ_comp.pair (PolyFueled.const start))
+  have htest : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp
+        (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right)).pair
+          (Nat.Partrec.Code.const start)))
+      (fun i => i + 1 - start) := by
+    apply PolyFueled.of_eq htestRaw
+    intro i
+    simp only [Nat.unpair_pair]
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hf
+    (t := fun i : ℕ => i + 1 - start) (UnaryRuler.of_polyFueled htest)) ?_
+  intro i
+  by_cases hs : start ≤ i
+  · rw [if_neg (by omega), AffineCombination.gateFeature, if_pos hs]
+  · rw [if_pos (by omega), AffineCombination.gateFeature, if_neg hs]
+
+/-- Machine-metered mirror of `BigSpliceStream.gateOccupancy`. -/
+lemma MachineSpliceStream.gateOccupancy {f : ℕ → ℕ → EF}
+    (hf : MachineSpliceStream (fun z => (f z.unpair.2 z.unpair.1).serialize)) (start : ℕ) :
+    MachineSpliceStream (fun z =>
+      (gateOccupancy start f z.unpair.2 z.unpair.1).serialize) := by
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htestRaw := subc_polyFueled.comp
+    (PolyFueled.right.succ_comp.pair (PolyFueled.const start))
+  have htest : PolyFueled
+      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.right).pair
+        (Nat.Partrec.Code.const start)))
+      (fun z => z.unpair.2 + 1 - start) := by
+    apply PolyFueled.of_eq htestRaw
+    intro z
+    simp only [Nat.unpair_pair]
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hf
+    (t := fun z : ℕ => z.unpair.2 + 1 - start) (UnaryRuler.of_polyFueled htest)) ?_
+  intro z
+  by_cases hs : start ≤ z.unpair.2
+  · rw [if_neg (by omega), AffineCombination.gateOccupancy, if_pos hs]
+  · rw [if_pos (by omega), AffineCombination.gateOccupancy, if_neg hs]
+
 lemma PolySequence.gradualRisk_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low δ : ℚ) :
-    BigSpliceStream (fun i => (gradualRisk As low δ i).serialize) :=
+    MachineSpliceStream (fun i => (gradualRisk As low δ i).serialize) :=
   h.riskFeature_polySeg (h.gradualEntry_polySeg low δ)
 
 lemma PolySequence.gradualRisk_rank_le {As : ℕ → AffineCombination}
@@ -552,13 +652,20 @@ member `k`, the same on every day. -/
 def gradualSentence {As : ℕ → AffineCombination} (h : PolySequence As) (z : ℕ) : Sentence :=
   h.sentence (Nat.pair z.unpair.1.unpair.1 z.unpair.2)
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 lemma PolySequence.gradualOccupancy_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (high δ : ℚ) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (gradualOccupancy As high δ z.unpair.2 z.unpair.1).serialize) := by
   have helapsed := subc_polyFueled.comp (PolyFueled.left.pair PolyFueled.right)
-  refine BigSpliceStream.of_eq
-    ((h.gradualRemaining_polySeg high δ).comp (PolyFueled.right.pair helapsed)) ?_
+  refine MachineSpliceStream.of_eq
+    ((h.gradualRemaining_polySeg high δ).comp
+      (f := fun z : ℕ => Nat.pair z.unpair.2 (z.unpair.1 - z.unpair.2))
+      (UnaryRuler.of_polyFueled ((PolyFueled.right.pair helapsed).of_eq
+        (f' := fun z : ℕ => Nat.pair z.unpair.2 (z.unpair.1 - z.unpair.2))
+        (fun z => by simp only [Nat.unpair_pair])))) ?_
   intro z
   simp only [Nat.unpair_pair, gradualOccupancy]
 
@@ -764,30 +871,34 @@ def gradualFamily (As : ℕ → AffineCombination) (low high δ : ℚ)
     (h.gradualEntry_rank_le low δ i) (h.const_rank i) (h.terms_rank i)
 
 lemma PolySequence.gradualTradeCount_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (gradualTradeCount h) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair PolyFueled.left)
-  have hraw := ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair (hcount.comp PolyFueled.left)).pair htest)
-  refine ⟨_, PolyFueled.of_eq hraw ?_⟩
+    (h : PolySequence As) : UnaryRuler (gradualTradeCount h) := by
+  have htest : UnaryRuler (fun z : ℕ => z.unpair.2 + 1 - z.unpair.1) :=
+    UnaryRuler.unpairSnd.succ.sub UnaryRuler.unpairFst
+  refine UnaryRuler.of_eq (htest.ifZero (UnaryRuler.const 0)
+    (h.termCount_poly.comp UnaryRuler.unpairFst)) ?_
   intro z
-  simp only [Nat.unpair_pair, ifzSelFn, gradualTradeCount]
+  simp only [gradualTradeCount]
   by_cases hle : z.unpair.1 ≤ z.unpair.2
   · rw [if_pos hle, if_neg (by omega)]
   · rw [if_neg hle, if_pos (by omega)]
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 lemma PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) (low high δ : ℚ) :
-    BigSpliceStream (fun z => (gradualCoefficient h low high δ z).serialize) := by
+    MachineSpliceStream (fun z => (gradualCoefficient h low high δ z).serialize) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   have hk := PolyFueled.left.comp PolyFueled.left
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
   have hcanonical := hk.pair hj
-  have hentry := (h.gradualEntry_polySeg low δ).comp hk
-  have hbase := h.coefficient_poly.comp hcanonical
-  have hbuy := BigSpliceStream.serialize_mul hentry hbase
+  have hentry := (h.gradualEntry_polySeg low δ).comp
+    (f := fun z : ℕ => z.unpair.1.unpair.1) (UnaryRuler.of_polyFueled hk)
+  have hbase := h.coefficient_poly.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.1 z.unpair.2)
+    (UnaryRuler.of_polyFueled hcanonical)
+  have hbuy := MachineSpliceStream.serialize_mul hentry hbase
   have helapsedRaw := predc_polyFueled.comp (subc_polyFueled.comp (hn.pair hk))
   have helapsed : PolyFueled
       (predc.comp (subc.comp
@@ -797,10 +908,14 @@ lemma PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
     apply PolyFueled.of_eq helapsedRaw
     intro z
     simp only [Nat.unpair_pair, Nat.pred_eq_sub_one]
-  have hsellFraction := (h.gradualSellFraction_polySeg high δ).comp (hk.pair helapsed)
-  have houter := BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1))
-    (BigSpliceStream.serialize_mul hentry hsellFraction)
-  have hsell := BigSpliceStream.serialize_mul houter hbase
+  have hsellFraction := (h.gradualSellFraction_polySeg high δ).comp
+    (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.1
+      (z.unpair.1.unpair.2 - z.unpair.1.unpair.1 - 1))
+    (UnaryRuler.of_polyFueled (hk.pair helapsed))
+  have houter := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const (-1))
+    (MachineSpliceStream.serialize_mul hentry hsellFraction)
+  have hsell := MachineSpliceStream.serialize_mul houter hbase
   have hneq := subc_polyFueled.comp (hn.pair hk)
   have hken := subc_polyFueled.comp (hk.pair hn)
   have heqtestRaw := hadd.comp (hneq.pair hken)
@@ -817,7 +932,10 @@ lemma PolySequence.gradualCoefficient_polySeg {As : ℕ → AffineCombination}
     apply PolyFueled.of_eq heqtestRaw
     intro z
     simp only [Nat.unpair_pair]
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hbuy hsell heqtest) ?_
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hbuy hsell
+    (t := fun z : ℕ => (z.unpair.1.unpair.2 - z.unpair.1.unpair.1) +
+      (z.unpair.1.unpair.1 - z.unpair.1.unpair.2))
+    (UnaryRuler.of_polyFueled heqtest)) ?_
   intro z
   simp only [gradualCoefficient, Nat.unpair_pair]
   by_cases heq : z.unpair.1.unpair.2 = z.unpair.1.unpair.1
@@ -847,18 +965,21 @@ lemma PolySequence.gradualFamily_trades_eq {As : ℕ → AffineCombination}
       simp [gradualTradeCount, hkn, gradualCoefficient, gradualSentence, heq,
         List.map_map, Function.comp_apply]
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
 /-- The gradual affine components form a structured efficiently emulatable family. -/
 noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombination}
     (h : PolySequence As) (low high δ : ℚ) :
     PolyTradeEmulatable (gradualFamily As low high δ h) := by
-  let ccount := Classical.choose h.gradualTradeCount_poly
-  have hcount := Classical.choose_spec h.gradualTradeCount_poly
   have hk := PolyFueled.left.comp PolyFueled.left
   have hj := PolyFueled.right
   have hcanonical := hk.pair hj
   have hcoeff := h.gradualCoefficient_polySeg low high δ
-  have hsentenceBlocks : BigSentenceCodes (gradualSentence h) := by
-    have := h.sentence_poly.comp hcanonical
+  have hsentenceBlocks : MachineSentenceCodes (gradualSentence h) := by
+    have := h.sentence_poly.comp
+      (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.1 z.unpair.2)
+      (UnaryRuler.of_polyFueled hcanonical)
     exact this.of_eq (fun z => rfl)
   have hzero : ∀ k n, n < k →
       (((gradualFamily As low high δ h) k).strat n).trades = [] := by
@@ -870,7 +991,7 @@ noncomputable def PolySequence.gradualFamilyPolyTrade {As : ℕ → AffineCombin
       tradeCount := gradualTradeCount h
       coefficient := gradualCoefficient h low high δ
       sentence := gradualSentence h
-      tradeCount_poly := ⟨ccount, hcount⟩
+      tradeCount_poly := h.gradualTradeCount_poly
       coefficient_poly := hcoeff
       sentence_poly := hsentenceBlocks
       trades_eq := h.gradualFamily_trades_eq low high δ }
@@ -1161,8 +1282,8 @@ lemma PolySequence.gradualRisk_converges {As : ℕ → AffineCombination}
       · simpa [occupancy, gateOccupancy, hs, baseOccupancy] using
           h.gradualOccupancy_rank_le high δ i n hin
       · simp [occupancy, gateOccupancy, hs])
-    (BigSpliceStream.gateFeature (h.gradualRisk_polySeg low δ) start)
-    (BigSpliceStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
+    (MachineSpliceStream.gateFeature (h.gradualRisk_polySeg low δ) start)
+    (MachineSpliceStream.gateOccupancy (h.gradualOccupancy_polySeg high δ) start)
     (fun i ρ W => by
       by_cases hs : start ≤ i
       · simpa [α, gateFeature, hs, baseα] using h.gradualRisk_closed low δ i ρ W

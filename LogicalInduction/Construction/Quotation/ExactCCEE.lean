@@ -58,17 +58,17 @@ lemma lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
     (fun n ↦ ((paperExactProductLUVSeq X W).luv n).toLUV.expect
         (liaHistory (paperDP T)) n) ≈ₙ
       fun n ↦ ((paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
-        X.rpnThresholdCodeSeq w weight_generable weight_mem).luv n).expect
+        X.machineThresholdCodeSeq w weight_generable weight_mem).luv n).expect
           (liaHistory (paperDP T)) n := by
   refine lic_no_expected_net_update_conditional_ofRepresentation_unconditional (T := T)
     f (fun n => (X.luv n).toLUV)
     (fun n => ((paperExactProductLUVSeq X W).luv n).toLUV)
     ((paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
-      X.rpnThresholdCodeSeq w weight_generable weight_mem).luv)
-    w weight_mem weight_generable X.rpnThresholdCodeSeq
-    (paperExactProductLUVSeq X W).rpnThresholdCodeSeq
+      X.machineThresholdCodeSeq w weight_generable weight_mem).luv)
+    w weight_mem weight_generable X.machineThresholdCodeSeq
+    (paperExactProductLUVSeq X W).machineThresholdCodeSeq
     (paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
-      X.rpnThresholdCodeSeq w weight_generable weight_mem).poly
+      X.machineThresholdCodeSeq w weight_generable weight_mem).poly
     (fun _ => 0) tendsto_const_nhds
     (fun n v hv => PaperLUV.source_valued (X.luv n) v
       (PCWorld.consistentWithTheory_union_right hv))
@@ -79,7 +79,7 @@ lemma lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq
       (weight_valued n v (PCWorld.consistentWithTheory_union_right hv))
   · have h := RationalQuoteCode.reflected (paperQuotationPresentation T)
       (paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
-        X.rpnThresholdCodeSeq w weight_generable weight_mem) n v hv
+        X.machineThresholdCodeSeq w weight_generable weight_mem) n v hv
     rwa [Rat.cast_mul,
       ← (paperMarketComputation T).expectQuoteAt_cast
         (fun n => (X.luv n).toLUV) n (f.f n)] at h
@@ -126,7 +126,7 @@ theorem lic_no_expected_net_update_conditional_paperLUV_closed
         (paperMarketComputation T) f w weight_generable weight_mem)).luv n).toLUV.expect
           (liaHistory (paperDP T)) n) ≈ₙ
       fun n ↦ ((paperConditionalExpectationQuoteCode T f (fun n => (X.luv n).toLUV)
-        X.rpnThresholdCodeSeq w weight_generable weight_mem).luv n).expect
+        X.machineThresholdCodeSeq w weight_generable weight_mem).luv n).expect
           (liaHistory (paperDP T)) n :=
   haveI := RepresentsComputations.consistent T
   lic_no_expected_net_update_conditional_paperLUV_ofWeightSeq T f X _ w weight_mem
@@ -151,7 +151,7 @@ example (f : DeferralFunction) (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n 
           weight_mem)).luv n).toLUV.expect (liaHistory (paperDP 𝗣𝗔)) n) ≈ₙ
       fun n ↦ ((paperConditionalExpectationQuoteCode 𝗣𝗔 f
         (fun n => ((unitFracPaperLUVSeq 𝗣𝗔).luv n).toLUV)
-        (unitFracPaperLUVSeq 𝗣𝗔).rpnThresholdCodeSeq w weight_generable weight_mem).luv n).expect
+        (unitFracPaperLUVSeq 𝗣𝗔).machineThresholdCodeSeq w weight_generable weight_mem).luv n).expect
           (liaHistory (paperDP 𝗣𝗔)) n :=
   lic_no_expected_net_update_conditional_paperLUV_closed 𝗣𝗔 f (unitFracPaperLUVSeq 𝗣𝗔) w
     weight_mem weight_generable
@@ -172,7 +172,7 @@ example :
           harmonicWeight_mem)).luv n).toLUV.expect (liaHistory (paperDP 𝗣𝗔)) n) ≈ₙ
       fun n ↦ ((paperConditionalExpectationQuoteCode 𝗣𝗔 succDeferral
         (fun n => ((unitFracPaperLUVSeq 𝗣𝗔).luv n).toLUV)
-        (unitFracPaperLUVSeq 𝗣𝗔).rpnThresholdCodeSeq (fun n : ℕ => 1 / ((n : ℚ) + 1))
+        (unitFracPaperLUVSeq 𝗣𝗔).machineThresholdCodeSeq (fun n : ℕ => 1 / ((n : ℚ) + 1))
         (PGenerableRat.ofPolyRatCodes harmonicWeight_polyRatCodes
           (liaHistory (paperDP 𝗣𝗔)))
         harmonicWeight_mem).luv n).expect (liaHistory (paperDP 𝗣𝗔)) n :=

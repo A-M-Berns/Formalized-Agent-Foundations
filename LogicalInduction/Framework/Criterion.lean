@@ -48,24 +48,24 @@ it, giving `EF.serialize_injective` and `serializeTrades_injective`.
 
 Under `dd:fuel`: `EfficientlyComputableTok` (token emission), `EfficientlyComputableDigit`
 (self-delimiting base-4 blocks, so poly digit length is poly *bit* size), and
-`EfficientlyComputable` (Polish-notation sentence blocks, contracted by `unRpn` before
+`PolyFueledTrader` (Polish-notation sentence blocks, contracted by `unRpn` before
 validation). Each layer removes a stated residual of the one above. The
 structured-arithmetic escape grammar (`arithmeticVec2Code`, `negFormulaCode`, the
 `parseStructured*` mutual block, `parseStructuredPaperPrime`, `parseRpn`, `unRpn`) lives
 here beside the serializers because `clockedTrader` needs it; its lemma corpus is
 `Framework/Emission/RpnSentence.lean`.
 
-`def:ec` at the paper's own quantifier is `MachineEfficientTrader`: a `Complexity.FP`
-function of the *unary* day (`unaryDay`, so machine-polynomial means day-polynomial)
-emitting the strategy through
+`def:ec` is `EfficientlyComputable`: a `Complexity.FP` function of the *unary* day
+(`unaryDay`, so machine-polynomial means day-polynomial) emitting the strategy through
 `strategyOfOutput = strategyOfTokens ∘ unRpn ∘ undigitize ∘ bitsToDigits`, introducing no
-new parser. This is the class the construction enumerates and dominates.
+new parser. This is the class the construction enumerates and dominates. `PolyFueledTrader`
+beside it is the `dd:fuel` certificate — a certification device for that class, landed
+inside it by `PolyFueledTrader.toEfficientlyComputable` (`Framework/Efficiency.lean`).
 
 ## The criterion
 
-`def:lic` → `IsLogicalInductor`, the fuel-certified compatibility reading the whole §4 tail
-is conditioned on. `IsMachineLogicalInductor` (`Framework/MachineEfficiency.lean`) is the
-paper's quantifier and implies it via `EfficientlyComputable.toMachine`.
+`def:lic` → `IsLogicalInductor`, over `EfficientlyComputable`: the paper's own quantifier,
+what the construction proves, and what the whole §4 tail is conditioned on.
 
 Non-vacuity is witnessed here too: the paper's running example `exMaxDiff` with its
 computed value, safe reciprocation landing in `(0,1]`, and `Trader.zero_not_exploits`,
@@ -83,13 +83,19 @@ A reified DSL (`dd:dsl`) with two semantics. The *syntax* `EF` is the object tha
 /-- `def:tf` (Expressible Feature), as syntax. Built from price features `pf φ n`,
 rational constants, `+`, `×`, `max(·,·)`, and the safe reciprocation `max(1,·)⁻¹`.
 
-The `var`/`letE` constructors are a **disclosed extension** of the paper's feature grammar:
-straight-line sharing (evaluate once, reference many times). Denotationally conservative —
-every `letE` term denotes the same function as its (possibly exponentially larger)
-substitution-expanded form — but load-bearing for `cost`: sharing is what keeps deep
-features (hysteresis chains, purchase counters) at polynomial *syntactic size*, which is
-the quantity `def:ec`'s token-emission model meters. A free `var` denotes `0`, keeping all
-raw syntax total. -/
+The `var`/`letE` constructors are a **disclosed extension** of the paper's feature grammar
+(`dd:dsl`; `LogicalInduction/README.md`, *What differs from the paper*): straight-line
+sharing (evaluate once, reference many times). Denotationally conservative — every `letE`
+term denotes the same function as its (possibly exponentially larger) substitution-expanded
+form — but load-bearing for `cost`: sharing is what keeps deep features (hysteresis chains,
+purchase counters) at polynomial *syntactic size*, which is the quantity `def:ec`'s
+token-emission model meters. A free `var` denotes `0`, keeping all raw syntax total.
+
+The paper licenses it: its own footnote at tex:788 reads the expressible features as "a
+generalization of arithmetic circuits", and circuits are precisely straight-line programs
+with sharing, "compactly specifiable in polynomial time".  A literal *tree* reading of
+tex:786-788's grammar would not be, so the extension enlarges `EfficientlyComputable` and
+strengthens every theorem quantified over it, including `IsLogicalInductor`. -/
 inductive EF : Type where
   /-- The price feature `φ^{*n}`: the value of `φ` on day `n`. -/
   | price (φ : Sentence) (n : ℕ) : EF
@@ -194,7 +200,7 @@ lemma denote_eq_ratCast (e : EF) (P : History) (Q : ℕ → Sentence → ℚ)
 /-- Syntactic size of an expressible feature (`def:tf`): the structural node count. An
 auxiliary complexity measure — a small feature is cheap to write down. (Efficient
 computability itself is *not* defined via `cost`; it goes through the clocked interpreter,
-see `EfficientlyComputable`. `cost` remains a convenient bound on description size.) -/
+see `PolyFueledTrader`. `cost` remains a convenient bound on description size.) -/
 def cost : EF → ℕ
   | price _ _   => 1
   | const _     => 1
@@ -873,6 +879,21 @@ development. -/
 def PCWorld.ConsistentWithTheory (v : PCWorld) (DP : DeductiveProcess) : Prop :=
   ∀ n, v.ConsistentWith (DP.D n)
 
+/-- A sentence lying in *some* finite stage holds in every world consistent with the
+completed theory.
+
+This is the sufficient condition for the semantic premise the paper's timely-learning
+theorems quantify over: under Θ-completeness (tex:740) "`φ` is a theorem" is
+`∀ v ∈ cworlds(Θ), v ⊨ φ`, and membership in a stage is one way — not the only way — for a
+world to be forced.  The converse direction, from a completed-theory consequence back to a
+finite stage that *entails* it, is `DeductiveProcess.exists_stage_entails`
+(`Framework/Compactness.lean`) and lands on entailment rather than on membership, because
+`DeductiveProcess.D` is an arbitrary nondecreasing family with no closure condition. -/
+lemma PCWorld.ConsistentWithTheory.holds_of_mem_stage {v : PCWorld} {DP : DeductiveProcess}
+    (hv : v.ConsistentWithTheory DP) {φ : Sentence} (h : ∃ k, φ ∈ DP.D k) : v.Holds φ := by
+  obtain ⟨k, hk⟩ := h
+  exact hv k φ hk
+
 /-- A deductive process is computable in the paper's unary-time sense: one fixed partial
 recursive program eventually emits the encoded finite set `D n`.  No polynomial runtime is
 required. -/
@@ -1463,9 +1484,13 @@ worth on day `n`, as valued by any world propositionally consistent with `D n`, 
 def plausibleAssessments (Tr : Trader) (V : History) (DP : DeductiveProcess) : Set ℝ :=
   { x | ∃ (n : ℕ) (v : PCWorld), v.ConsistentWith (DP.D n) ∧ x = Tr.netWorth V v n }
 
-/-- `def:exploitation`. `Tr` **exploits** the history `𝓥` relative to `DP` if its plausible
-assessments are bounded below but not bounded above — unbounded upside off bounded
-downside. -/
+/-- `Tr` **exploits** the history `𝓥` relative to `DP` if its plausible assessments are
+bounded below but not bounded above — unbounded upside off bounded downside.  This is
+tex:901 verbatim: the paper's set of values is `plausibleAssessments`, the net worth
+`∑_{i ≤ n} 𝑡ᵢ(𝓥)` assessed by every world in `pcworlds(D n)` over every day.  It is
+refutable rather than vacuously true (`Trader.zero_not_exploits`), which is what keeps
+`def:lic` from being empty.
+Paper node: `def:exploitation` -/
 def Exploits (Tr : Trader) (V : History) (DP : DeductiveProcess) : Prop :=
   BddBelow (Tr.plausibleAssessments V DP) ∧ ¬ BddAbove (Tr.plausibleAssessments V DP)
 
@@ -1526,7 +1551,7 @@ traded sentence varies with the day must carry a poly bound on `⌜φₙ⌝`. Tw
 below remove the residual: `EfficientlyComputableDigit` meters token *bits* rather than
 token values, and the Polish-notation layer replaces a sentence's single pair code by one
 token per formula symbol, so that stream length tracks symbol count even for skewed
-formulas. Their composite is the token-metered class `EfficientlyComputable`. -/
+formulas. Their composite is the token-metered class `PolyFueledTrader`. -/
 
 /-- Run a length program and then a token program under a shared clock.  The requested
 length is clamped to the clock, so every index emits a polynomial-size stream even when its
@@ -1977,18 +2002,19 @@ programs under one polynomial clock emit the digit stream of an RPN-expanded str
 serialization.  "Token" here counts emitted stream tokens, not the derivation symbols
 `dSize` counts under `dd:symbolcount`.
 Paper node: `def:ec` -/
-def EfficientlyComputable (Tr : Trader) : Prop :=
+def PolyFueledTrader (Tr : Trader) : Prop :=
   ∃ (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ),
     clockedTrader lengthCode tokenCode (fun n => a * (n + 1) ^ k + a) = Tr
 
 end
 
-/-! ### The machine class (`def:ec`, machine reading)
+/-! ### `def:ec` — the trader class
 
-`EfficientlyComputable` above renders `def:ec` through a fuel-clocked interpreter — a
-sufficient certification device, and a disclosed modeling choice. The paper's own reading is
-ordinary polynomial time, and this is it: a trader is efficient when some `Complexity.FP`
-function of the *unary* day emits its day-`n` strategy through the standard token decoding.
+`PolyFueledTrader` above is the `dd:fuel` certificate: a fuel-clocked interpreter, a
+sufficient certification device and a disclosed modeling choice, not `def:ec` itself.
+`def:ec` is ordinary polynomial time, and this is it: a trader is efficient when some
+`Complexity.FP` function of the *unary* day emits its day-`n` strategy through the standard
+token decoding.
 
 Unary days matter: `unaryDay n` has length exactly `n`, so a machine polynomial in its input
 length is polynomial in the day, which is the paper's meter. A binary rendering would
@@ -2031,40 +2057,36 @@ serialization, and it introduces no new parser. -/
 def strategyOfOutput (n : ℕ) (w : List Bool) : Strategy n :=
   strategyOfTokens n (unRpn (undigitize (bitsToDigits w)))
 
-/-- **The polynomial-time trader class** (`def:ec`, machine reading). A trader is
-machine-efficient when some honestly polynomial-time function of the *unary* day emits its
-day-`n` strategy through the standard token decoding.
+/-- **The efficiently computable trader class** (`def:ec`). A trader is efficiently
+computable when some honestly polynomial-time function of the *unary* day emits its day-`n`
+strategy through the standard token decoding.
 
-This is the class the Logical Induction construction enumerates and dominates. Contrast
-`EfficientlyComputable`, which asks for a fuel-clocked `Nat.Partrec.Code` pair; every trader
-that certifies is one of these (`EfficientlyComputable.toMachine`, in
-`Framework/MachineEfficiency.lean`), and the converse is neither needed nor claimed.
+This is the class the Logical Induction construction enumerates and dominates, and the class
+`def:lic` quantifies over. Contrast `PolyFueledTrader`, which asks for a fuel-clocked
+`Nat.Partrec.Code` pair; every trader that certifies there is one of these
+(`PolyFueledTrader.toEfficientlyComputable`, in `Framework/Efficiency.lean`), and the
+converse is neither needed nor claimed.
 Paper node: `def:ec` -/
-def MachineEfficientTrader (Tr : Trader) : Prop :=
+def EfficientlyComputable (Tr : Trader) : Prop :=
   ∃ F : List Bool → List Bool, F ∈ Complexity.FP ∧
     ∀ n, strategyOfOutput n (F (unaryDay n)) = Tr.strat n
 
 /-! ## `def:lic` — the criterion -/
 
-/-- `def:lic`, in the fuel-certified reading.  The market `P` satisfies the **Logical
-Induction Criterion** relative to `DP` if no efficiently computable trader exploits it,
-where efficiency is the token-metered class `EfficientlyComputable` above.
+/-- **The Logical Induction Criterion** (`def:lic`).  The market `P` satisfies it relative
+to `DP` when no efficiently computable trader exploits `P` — efficiency being `def:ec`
+itself, ordinary polynomial time, which is the paper's own quantifier.
 
-**This is the compatibility reading, not the paper's quantifier.**  The paper's own
-quantifier is ordinary machine polynomial time, and `IsMachineLogicalInductor`
-(`Framework/MachineEfficiency.lean`) states it; that is the criterion the construction
-proves.  Every fuel certificate is a machine-efficiency certificate
-(`EfficientlyComputable.toMachine`), so `dd:fuel` is a *sufficient certification device*
-for the machine class: a machine logical inductor is one of these, and the whole property
-tail transfers unchanged through that instance.  The converse inclusion is
-neither proved nor claimed; the `dd:fuel` model card (`Framework/Emission/Computable.lean`,
-"### `dd:fuel` model card") records what is and is not settled.
+This is the criterion the §5 construction proves (`LIA_is_logical_inductor`) and the
+hypothesis the entire §4 property tail is conditioned on (`[IsLogicalInductor P DP]`).
 
-This is the hypothesis the entire property tail is conditioned on
-(`[IsLogicalInductor P DP]`).
-Token-model and digit-model no-exploitation follow through the emission constructors
-`EfficientlyComputable.ofTokenEmitter` / `.ofDigitEmitter`
-(`IsLogicalInductor.noExploitTok` / `.noExploitDigit` in `Framework/Emission/RpnEmission.lean`).
+A client whose exploiting trader is certified in the `dd:fuel` calculus crosses one bridge,
+`PolyFueledTrader.toEfficientlyComputable`; the token-model and digit-model no-exploitation
+forms `IsLogicalInductor.noExploitTok` / `.noExploitDigit` (`Framework/Efficiency.lean`)
+package that crossing, so the fuel calculus is a *certification device* for `def:ec` rather
+than a reading of it.  The converse inclusion — machine ⟹ fuel — is neither proved nor
+claimed; the `dd:fuel` model card (`Framework/Emission/Computable.lean`, "### `dd:fuel`
+model card") records what is and is not settled.
 Paper node: `def:lic` -/
 class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Markets are computable rational pricing sequences in the paper's definition. -/
@@ -2072,9 +2094,7 @@ class IsLogicalInductor (P : History) (DP : DeductiveProcess) : Prop where
   /-- Deductive processes are computable nested finite-set sequences in the paper's
   definition. -/
   processComputable : ComputableDeductiveProcess DP
-  /-- No efficiently computable trader exploits `P`, in the fuel-certified reading. The
-  paper's own quantifier is the machine class: `IsMachineLogicalInductor` in
-  `Framework/MachineEfficiency.lean` is that criterion, and it implies this one. -/
+  /-- No efficiently computable trader exploits `P`. -/
   noExploit : ∀ Tr : Trader, EfficientlyComputable Tr → ¬ Tr.Exploits P DP
 
 /-- The pricing range carried by every logical inductor's computable-market certificate. -/

@@ -1702,15 +1702,22 @@ lemma dusEmitRecip_eq (z : ℕ) :
 Paper node: `thm:dus` -/
 theorem dusThresholdEmission : DUSThresholdEmission (dusApproximationPresentation B hB) where
   threshold_sum_codes := by
-    obtain ⟨cn, hn⟩ := dusNum_polyFueled
-    obtain ⟨cd, hd⟩ := dusGateDen_polyFueled 2
-    obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitSum_eq B hB])⟩
+    have hpoly : PolyRatCodes (fun z ↦
+        dusEmitBase (dusApproximationPresentation B hB) z +
+          dusEmitBase (dusApproximationPresentation B hB) z) := by
+      obtain ⟨cn, hn⟩ := dusNum_polyFueled
+      obtain ⟨cd, hd⟩ := dusGateDen_polyFueled 2
+      obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
+      exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitSum_eq B hB])⟩
+    exact DigitRatCodes.toMachine (DigitRatCodes.ofPolyRatCodes hpoly)
   inverse_width_codes := by
-    obtain ⟨cn, hn⟩ := dusGateDen_polyFueled 4
-    obtain ⟨cd, hd⟩ := dusNum_polyFueled
-    obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitRecip_eq B hB])⟩
+    have hpoly : PolyRatCodes (fun z ↦
+        1 / dusEmitBase (dusApproximationPresentation B hB) z) := by
+      obtain ⟨cn, hn⟩ := dusGateDen_polyFueled 4
+      obtain ⟨cd, hd⟩ := dusNum_polyFueled
+      obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
+      exact ⟨c, hc.of_eq (fun z ↦ by simp only [dusEmitRecip_eq B hB])⟩
+    exact DigitRatCodes.toMachine (DigitRatCodes.ofPolyRatCodes hpoly)
 
 end Emission
 

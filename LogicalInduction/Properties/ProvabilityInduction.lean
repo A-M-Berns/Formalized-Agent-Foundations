@@ -1,5 +1,6 @@
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # Provability Induction — §4.2
@@ -7,10 +8,11 @@ import LogicalInduction.Framework.Emission.WriteOut
 The fixed-sentence and always-deduced-sequence fragments of `thm:provind` (`app:provind`,
 `sec:provind`).
 
-The canonical carrier of `thm:provind` is `lic_provind` (`AffineCoherence.lean`), which
-assumes only what the paper assumes — that each sentence is deduced at *some* stage,
-`∀ n, ∃ k, φ n ∈ D k`. This module holds the strictly weaker forms, whose traders are
-constant and whose proofs are correspondingly short.
+The carrier of `thm:provind` is `lic_provind` (`AffineCoherence.lean`), which assumes what
+the paper assumes — that each sentence is a *theorem*, i.e. holds in every world consistent
+with the completed deductive process. This module holds forms with strictly stronger
+membership hypotheses, whose traders are constant and whose proofs are correspondingly
+short; **none of them carries the node**, and none is a `theorem`.
 
 ## Objects
 
@@ -19,9 +21,10 @@ constant and whose proofs are correspondingly short.
 value, net-worth and efficient-computability certificates.
 
 `buyDaily_ec` runs `Code.const` on the one fixed strategy code, which halts within affine
-fuel and so fits the polynomial clock (`dd:fuel`). `buySeq_ec_big` takes the paper's `𝓔𝓒`
-sentence sequence in the write-out class `BigSentenceCodes` (`Framework/Emission/WriteOut.lean`),
-which admits arbitrarily deep sentence families.
+fuel and so fits the polynomial clock (`dd:fuel`). `buySeq_ec` takes the paper's `𝓔𝓒`
+sentence sequence at `def:ec`'s own metering, `MachineSentenceCodes`
+(`Framework/Machine/SentenceMachine.lean`), which admits arbitrarily deep sentence
+families.
 
 ## Endpoints
 
@@ -31,11 +34,11 @@ which admits arbitrarily deep sentence families.
 * `lic_deducible_tendsto_one` — for a fixed always-deducible `φ`, `Pₙ(φ) → 1`.
 * `lic_provind_seq` — for an `𝓔𝓒` sequence with `φ n ∈ D n`, `Pₙ(φₙ) → 1`.
 
-`lic_provind_seq` is not the paper's statement: `thm:provind` quantifies over an efficiently
-computable sequence of *theorems*, whose proofs may arrive arbitrarily later than the index,
-so the hypothesis `φ n ∈ D n` is strictly stronger than the paper's. The paper's second half
-— an efficiently computable sequence of *disprovable* sentences with `Pₙ(ψₙ) → 0` — is
-carried by `lic_provind_false` (`AffineCoherence.lean`).
+`lic_provind_seq` is not the paper's statement and carries no node: `thm:provind` quantifies
+over an efficiently computable sequence of *theorems*, whose proofs may arrive arbitrarily
+later than the index, so the hypothesis `φ n ∈ D n` is strictly stronger than the paper's.
+The paper's second half — an efficiently computable sequence of *disprovable* sentences with
+`Pₙ(ψₙ) → 0` — is carried by `lic_provind_false` (`AffineCoherence.lean`).
 
 All exploitation routes through the engines of `Properties/Support/Exploitation.lean`; nothing here
 re-derives the accumulation argument.
@@ -88,11 +91,16 @@ lemma buyDaily_exploits (P : History) (DP : DeductiveProcess) (φ : Sentence) (�
   have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos (hv φ (hded n))]
   rw [buyDaily_netWorth, hpay]
 
-/-- **Base case of Provability Induction** (`thm:provind`), stated against `def:lic`: a
+/-- **Fixed-sentence fragment of Provability Induction**, stated against `def:lic`: a
 logical inductor cannot hold an always-deducible sentence uniformly below price 1. For
 every `ε > 0` the price rises above `1 − ε` at some day.
-Paper node: `thm:provind` -/
-theorem lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
+
+Carries **no** node: `hded : ∀ n, φ ∈ DP.D n` asks the sentence to lie in every finite
+stage, which is strictly stronger than `thm:provind`'s "is a theorem" (holds in every world
+consistent with the completed process), and the paper's statement is about a *sequence*.
+The carrier is `lic_provind` (`AffineCoherence.lean`); this is the constant-trader fragment
+whose short proof the module header describes. -/
+lemma lic_deducible_price_near_one (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (ε : ℝ) (hε : 0 < ε)
     (hded : ∀ n, φ ∈ DP.D n) (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ n, 1 - ε < P n φ := by
@@ -114,12 +122,13 @@ lemma buyDaily_exploits_freq (P : History) (DP : DeductiveProcess) (φ : Sentenc
   have hpay : v.payout φ = 1 := by rw [PCWorld.payout, if_pos (hv φ (hded n))]
   rw [buyDaily_netWorth, hpay]
 
-/-- **Provability Induction, limiting form, for a fixed sentence** (`thm:provind`): under a
-logical inductor, an always-deducible `φ` has `Pₙ(φ)` eventually within any `ε` of `1`.
-This is the criterion output — `¬(underpriced infinitely often)`. The price range is
-carried by `IsLogicalInductor`.
-Paper node: `thm:provind` -/
-theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
+/-- **Limiting form of the fixed-sentence fragment**: under a logical inductor, an
+always-deducible `φ` has `Pₙ(φ)` eventually within any `ε` of `1`. This is the criterion
+output — `¬(underpriced infinitely often)`. The price range is carried by
+`IsLogicalInductor`.
+
+Carries no node, for the reason recorded at `lic_deducible_price_near_one`. -/
+lemma lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (ε : ℝ) (hε : 0 < ε) :
@@ -131,12 +140,12 @@ theorem lic_deducible_eventually_ge (P : History) (DP : DeductiveProcess)
   exact hLI.noExploitTok (buyDaily φ) (buyDaily_ec φ)
     (buyDaily_exploits_freq P DP φ ε hε hded hP1 h hcons)
 
-/-- **Provability Induction, convergence form** (`thm:provind`): the price of an
-always-deducible sentence converges to `1`. Packages `lic_deducible_eventually_ge` with the
-upper bound `Pₙ(φ) ≤ 1` (from the inductor's market certificate) into `ConvergesTo`
-(`dd:asymp`).
-Paper node: `thm:provind` -/
-theorem lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
+/-- **Convergence form of the fixed-sentence fragment**: the price of an always-deducible
+sentence converges to `1`. Packages `lic_deducible_eventually_ge` with the upper bound
+`Pₙ(φ) ≤ 1` (from the inductor's market certificate) into `ConvergesTo` (`dd:asymp`).
+
+Carries no node, for the reason recorded at `lic_deducible_price_near_one`. -/
+lemma lic_deducible_tendsto_one (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (φ : Sentence) (hded : ∀ n, φ ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n φ) 1 := by
@@ -165,30 +174,31 @@ lemma buySeq_value (φ : ℕ → Sentence) (V : History) (v : PCWorld) (n : ℕ)
     EF.denote_const]
   rw [hpay]; push_cast; ring
 
-/-- Write-out-class certificate for the sequence buy trader: the coefficient is a
-price-free constant, so the write-out metered (`BigSentenceCodes`) 𝓔𝓒 sentence stream
-is the only varying slot.
+/-- `def:ec` certificate for the sequence buy trader: the coefficient is a price-free
+constant, so the machine-metered (`MachineSentenceCodes`) 𝓔𝓒 sentence stream is the only
+varying slot.
 Paper node: `def:ec` -/
-lemma buySeq_ec_big (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+lemma buySeq_ec (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     EfficientlyComputable (buySeq φ) :=
   EfficientlyComputable.ofSingleTradeBlocksBig _ (fun _ => .const 1) φ
-    (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
+    (MachineTokenStream.const (EF.const 1).serialize)
     (fun _ => trivial) hφ (fun _ => rfl)
 
 /-- **Timely-membership form of the sequence statement**: for an efficiently computable
 sequence of sentences `φₙ`, *each already deduced by its own day* (`hded : φ n ∈ D n`),
-the price `Pₙ(φₙ) → 1`. Efficient computability is discharged directly in the **write-out**
-class from the `𝓔𝓒`-sequence hypothesis (`BigSentenceCodes`, `Framework/Emission/WriteOut.lean`),
-which admits arbitrarily deep and skewed sentence sequences.
+the price `Pₙ(φₙ) → 1`. Efficient computability is discharged directly from the
+`𝓔𝓒`-sequence hypothesis at `def:ec`'s own metering (`MachineSentenceCodes`,
+`Framework/Machine/SentenceMachine.lean`); a client holding the fuel-metered
+`BigSentenceCodes` crosses by `BigSentenceCodes.toMachine`.
 
-**This is not the paper's `thm:provind`**, whose content is precisely that `φ n` need
-*not* be in `D n` — theorems may be proved arbitrarily later than their indices. The
-faithful sequence form is `lic_provind` (`AffineCoherence.lean`), which assumes only
-`∀ n, ∃ k, φ n ∈ D k`. The trader here is the constant buy trader of the fixed case, indexed
-by the sequence, and the hypotheses are correspondingly simpler.
-Paper node: `thm:provind` -/
-theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+**This is not the paper's `thm:provind`**, and it carries no node: `thm:provind`'s content
+is precisely that `φ n` need *not* be in `D n` — theorems may be proved arbitrarily later
+than their indices, or never enter a stage at all. The carrier is `lic_provind`
+(`AffineCoherence.lean`), which asks only that each `φ n` hold in every world consistent
+with the completed theory. The trader here is the constant buy trader of the fixed case,
+indexed by the sequence, and the hypotheses are correspondingly simpler. -/
+lemma lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hded : ∀ n, φ n ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n (φ n)) 1 := by
@@ -197,7 +207,7 @@ theorem lic_provind_seq (P : History) (DP : DeductiveProcess) [hLI : IsLogicalIn
   have hev : ∀ᶠ n in atTop, 1 - ε < P n (φ n) := by
     by_contra h
     rw [not_eventually] at h; simp only [not_lt] at h
-    refine hLI.noExploit (buySeq φ) (buySeq_ec_big φ hφ) ?_
+    refine hLI.noExploit (buySeq φ) (buySeq_ec φ hφ) ?_
     refine exploits_of_nonneg_partialSums (buySeq φ) P DP (fun i => 1 - P i (φ i)) ε hε
       (fun i => by have := hP1 i; linarith) ?_ ?_ hcons
     · intro n v hv

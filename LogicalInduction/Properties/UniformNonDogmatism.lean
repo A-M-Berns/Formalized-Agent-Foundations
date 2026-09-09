@@ -20,7 +20,7 @@ firing already yields profit `j − 1`.
 
 The token-emission half — `obuArmBlock`, `serialize_armChain_obuBuy`, `serialize_obuCoef`,
 `serialize_obuLadderEF`, `obuChunkSeg_spliceStream` — proves
-`obuTrader_ec : EfficientlyComputable (obuTrader φ)` from a `BigSentenceCodes` enumeration
+`obuTrader_ec : EfficientlyComputable (obuTrader φ)` from a `MachineSentenceCodes` enumeration
 certificate. Arm blocks are variable-length once sentence slots carry blocks, so the
 combinator is `concatVar` rather than the fixed-width `blocks`.
 `exists_obu_fire_of_low_limit` is the analytic link from fixed-sentence convergence to the
@@ -376,26 +376,35 @@ lemma serialize_obuLadderEF (φ : ℕ → Sentence) (n : ℕ) : ∀ m,
       simp [List.append_assoc]
 
 /-- Spliced varying-sentence buy-signal emitter: the sentence slot draws blocks from
-an `BigSentenceCodes` certificate, admitting deep enumerations. -/
+a `MachineSentenceCodes` certificate, admitting deep enumerations.  The two rational
+constants arrive value-metered and are written out through `BigDigits.of_polyFueled` and
+`BigDigits.toMachine`; the day index is the reindexer's own ruler. -/
 lemma obuBuySig_spliceStream_comp
-    {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ)
+    {φ : ℕ → Sentence} (hφ : MachineSentenceCodes φ)
     {af δf : ℕ → ℚ} {cj : Nat.Partrec.Code} {jf : ℕ → ℕ}
     (hj : PolyFueled cj jf)
     (ha : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (af m + δf m)))
     (hd : ∃ c, PolyFueled c (fun m ↦ Encodable.encode (1 / δf m))) :
-    BigSpliceStream (fun m ↦
-      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) :=
-  BigSpliceStream.serialize_clip01 (BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_add (BigSpliceStream.serialize_const_comp ha)
-      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1))
-        (BigSpliceStream.serialize_price hφ hj hj)))
-    (BigSpliceStream.serialize_const_comp hd))
+    MachineSpliceStream (fun m ↦
+      (buyIndEF (φ (jf m)) (af m) (δf m) (jf m)).serialize) := by
+  obtain ⟨ca, hca⟩ := ha
+  obtain ⟨cd, hcd⟩ := hd
+  have hjr : UnaryRuler jf := UnaryRuler.of_polyFueled hj
+  exact MachineSpliceStream.serialize_clip01 (MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_add
+      (MachineSpliceStream.serialize_const_write
+        (BigDigits.toMachine (BigDigits.of_polyFueled hca)))
+      (MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_const (-1))
+        (MachineSpliceStream.serialize_price hφ hjr
+          (MachineDigits.ofUnaryRuler hjr))))
+    (MachineSpliceStream.serialize_const_write
+      (BigDigits.toMachine (BigDigits.of_polyFueled hcd))))
 
 /-- Spliced arm-update block. -/
-lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
-    BigSpliceStream
+lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    MachineSpliceStream
       (fun x ↦ obuArmBlock φ (x.unpair.1.unpair.2 + 1) x.unpair.2) := by
-  have hbuy : BigSpliceStream (fun x ↦
+  have hbuy : MachineSpliceStream (fun x ↦
       (obuBuySig φ (x.unpair.1.unpair.2 + 1) x.unpair.2).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
@@ -406,25 +415,27 @@ lemma obuArmBlock_spliceStream (φ : ℕ → Sentence) (hφ : BigSentenceCodes �
           (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
         (encode_thrRecip_polyFueled
           (PolyFueled.right.comp PolyFueled.left) PolyFueled.right)
-  exact (BigSpliceStream.serialize_oneMinus hbuy).append
-    (BigSpliceStream.tag 3 (by norm_num))
+  exact (MachineSpliceStream.serialize_oneMinus hbuy).append
+    (MachineSpliceStream.tag 3 (by norm_num))
 
 /-- Spliced coefficient chunk (`obuCoef` + the ladder `add` tag): the arm blocks are
 variable-length once sentence slots carry blocks, so this uses `concatVar` rather than the
 fixed-width `blocks` combinator. -/
 lemma obuChunkSeg_spliceStream
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
-    BigSpliceStream (fun m ↦
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    MachineSpliceStream (fun m ↦
       (obuCoef φ (m.unpair.2 + 1) m.unpair.1).serialize ++ [2]) := by
-  have segA : BigSpliceStream (fun m ↦
+  obtain ⟨cr, hcr⟩ := encode_ratCast_polyFueled PolyFueled.right
+  have segA : MachineSpliceStream (fun m ↦
       (EF.const (((m.unpair.2 + 1 : ℕ) : ℚ))).serialize) :=
-    BigSpliceStream.serialize_const_comp
-      (encode_ratCast_polyFueled PolyFueled.right)
-  have segB : BigSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
-    BigSpliceStream.payload 1 (Or.inl rfl)
-      (PolyFueled.const (Encodable.encode ((1 : ℚ))))
-  have segC := (obuArmBlock_spliceStream φ hφ).concatVar PolyFueled.left
-  have segD : BigSpliceStream (fun m ↦
+    MachineSpliceStream.serialize_const_write
+      (BigDigits.toMachine (BigDigits.of_polyFueled hcr))
+  have segB : MachineSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((1 : ℚ))]) :=
+    MachineSpliceStream.bigPayload 1 (Or.inl rfl)
+      (MachineDigits.const (Encodable.encode ((1 : ℚ))))
+  have segC := (obuArmBlock_spliceStream φ hφ).concatVar
+    (UnaryRuler.unpairFst)
+  have segD : MachineSpliceStream (fun m ↦
       (obuBuySig φ (m.unpair.2 + 1) m.unpair.1).serialize) := by
     simpa only [obuBuySig, ndBuySig] using
       obuBuySig_spliceStream_comp hφ
@@ -433,27 +444,27 @@ lemma obuChunkSeg_spliceStream
         PolyFueled.left
         (encode_thrSum_polyFueled PolyFueled.right PolyFueled.left)
         (encode_thrRecip_polyFueled PolyFueled.right PolyFueled.left)
-  have segE : BigSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
-    ((BigSpliceStream.tag 3 (by norm_num)).append
-      (BigSpliceStream.tag 3 (by norm_num))).append
-        (BigSpliceStream.tag 2 (by norm_num))
-  refine BigSpliceStream.of_eq
+  have segE : MachineSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
+    ((MachineSpliceStream.tag 3 (by norm_num)).append
+      (MachineSpliceStream.tag 3 (by norm_num))).append
+        (MachineSpliceStream.tag 2 (by norm_num))
+  refine MachineSpliceStream.of_eq
     ((((segA.append segB).append segC).append segD).append segE) (fun m ↦ ?_)
   rw [serialize_obuCoef, serialize_armChain_obuBuy]
   simp [EF.serialize, Nat.unpair_pair, List.append_assoc]
 
-/-- The varying-sentence scale ladder is efficiently computable in the token-metered
-class, from an 𝓔𝓒 enumeration certificate.
+/-- The varying-sentence scale ladder is efficiently computable, from an 𝓔𝓒 enumeration
+certificate at the machine class.
 Paper node: `def:ec` -/
-lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+lemma obuTrader_ec (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     EfficientlyComputable (obuTrader φ) := by
-  have segChunks := (obuChunkSeg_spliceStream φ hφ).concatVar PolyFueled.id
-  have seg1 : BigSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
-    BigSpliceStream.payload 1 (Or.inl rfl)
-      (PolyFueled.const (Encodable.encode ((0 : ℚ))))
-  have seg3 := BigSpliceStream.tradeSlot hφ PolyFueled.id
-  refine BigSpliceStream.ec _
-    (BigSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
+  have segChunks := (obuChunkSeg_spliceStream φ hφ).concatVar UnaryRuler.id
+  have seg1 : MachineSpliceStream (fun _ : ℕ ↦ [1, Encodable.encode ((0 : ℚ))]) :=
+    MachineSpliceStream.bigPayload 1 (Or.inl rfl)
+      (MachineDigits.const (Encodable.encode ((0 : ℚ))))
+  have seg3 := MachineSpliceStream.tradeSlot hφ UnaryRuler.id
+  refine MachineSpliceStream.ec _
+    (MachineSpliceStream.of_eq ((seg1.append segChunks).append seg3) ?_)
   intro n
   show _ = serializeTrades ((obuTrader φ).strat n).trades
   rw [show ((obuTrader φ).strat n).trades = [(obuLadderEF φ n n, φ n)] from rfl,
@@ -489,7 +500,7 @@ a propositional world satisfying the entire enumerated theory.
 Paper node: `thm:obu` -/
 theorem lic_uniform_nonDogmatism_repeating
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hrepeat : RepeatsEveryMember φ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (φ i)) :
@@ -522,7 +533,7 @@ purely syntactic: it contains neither prices nor a non-dogmatism conclusion.
 Paper node: `thm:obu` -/
 structure EfficientRepeatedEnumeration (source : ℕ → Sentence) where
   sequence : ℕ → Sentence
-  sequence_poly : BigSentenceCodes sequence
+  sequence_poly : MachineSentenceCodes sequence
   repeats : RepeatsEveryMember sequence
   sound : ∀ j, ∃ i, sequence j = source i
   covers : ∀ i, ∃ j, sequence j = source i

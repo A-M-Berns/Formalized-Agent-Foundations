@@ -29,7 +29,7 @@ emitter.
 sentence run's bits, it returns the bits of `[1, quote, 8]` when the coordinate is selected
 and nothing when it is not.  It is inhabited: `Construction/Freeze/Oracle.lean`
 builds one for any finite quote table (`runOracleOf`), so `freezeStreamRewriter_of_runOracle`
-closes the chain from a finite table to an inhabited `MachineFiniteSupportPatch`.
+closes the chain from a finite table to an inhabited `FiniteSupportPatch`.
 
 Deciding whether a buffered run denotes a table sentence is what that construction does, and
 `RpnFreeze.parseRpn_iff_mem_spellings` is why it can: under two syntactic side conditions on
@@ -269,15 +269,16 @@ lemma decodeBits_freezePass {selRun : List ℕ → ℕ → Bool} {quoteRun : Lis
 
 /-- **`FreezeStreamRewriter` follows from the run-level lookup, and from nothing else.**
 
-Every link between the lookup and `MachineFiniteSupportPatch` is proved: this lemma to
+Every link between the lookup and `FiniteSupportPatch` is proved: this lemma to
 `FreezeStreamRewriter`, `RpnFreeze.freezeStreamRewriter_of_flatPass` and
 `RpnFreeze.unRpn_rpnFreezeRunOn` across the contraction,
-`MachineEfficientTrader.freezeOn` to `preserves_ec`, and
-`machineFiniteSupportPatch_of_rewriter` to the patch.  `FreezeOracle.runOracleOf` closes it
+`EfficientlyComputable.freezeOn` to `preserves_ec`, and
+`finiteSupportPatch_of_rewriter` to the patch.  `FreezeOracle.runOracleOf` closes it
 at this end, so the chain runs from a finite table to an inhabited patch.
 
-The fuel-class certificates `FiniteSupportPatch` and `EfficientPrefixPatch` are a separate
-matter and remain uninhabited (`dd:fuel`); nothing here bears on them.
+The prefix certificate `EfficientPrefixPatch` is a separate matter and remains
+uninhabited, for an obstruction about the market rather than about the calculus
+(`Properties/FinitePerturbations.lean`); nothing here bears on it.
 
 Kind `C`; hypotheses `(a)` except `E`.
 Paper node: `app:ifp` -/

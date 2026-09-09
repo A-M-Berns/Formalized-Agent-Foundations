@@ -36,6 +36,15 @@ The from-below approximation of the semimeasure and its threshold-emission certi
 (`A`/`emit`) remain explicit caller inputs; the dovetail endpoints below discharge them.  As
 the README records, the input-free semimeasure endpoints hold over the constantly-empty
 process, and the substantive layer is the `_paperDP` family.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -66,7 +75,8 @@ constructed `LIA` over the (computable) empty process and `hworld` is trivial �
 from-below approximation `A` and its threshold emission `emit` remain caller inputs.
 
 The prefix-sentence presentation is the constructed `ordinaryBitPrefixSentences`, whose
-write-out naming certificate (`BigSentenceCodes`) is discharged by `ordinaryBitPrefixCodes`.
+write-out naming certificate (`MachineSentenceCodes`) is discharged by
+`ordinaryBitPrefixCodes` across `BigSentenceCodes.toMachine`.
 Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_unconditional
     {M : LowerSemicomputableContinuousSemimeasure}
@@ -75,10 +85,12 @@ theorem lic_domination_universalSemimeasure_unconditional
     ∃ K : ℝ, 0 < K ∧ ∀ σ,
       K * M.mass σ ≤ limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) :=
-  haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess) emptyBitDeductiveProcess :=
-    LIA_is_logical_inductor emptyBitDeductiveProcess emptyBitDeductiveProcess_computable
+  haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess)
+      emptyBitDeductiveProcess :=
+    LIA_is_logical_inductor emptyBitDeductiveProcess
+      emptyBitDeductiveProcess_computable
   lic_domination_universalSemimeasure_ofIndependentAtoms ordinaryIndependentBitAtoms
-    ordinaryBitPrefixCodes A emit
+    (BigSentenceCodes.toMachine ordinaryBitPrefixCodes) A emit
     (liaHistory emptyBitDeductiveProcess)
     emptyBitDeductiveProcess_hworld
 
@@ -219,9 +231,10 @@ metered).  The reserved tag is applied by a `PolyFueled` name map, so the emitte
 same one that serves the untagged family: one `Nat.pair` per token index.
 Paper node: `thm:dus` -/
 lemma paperBitPrefixCodes :
-    BigSentenceCodes (fun i ↦ bitPrefixSentence paperBitAtom (bitStringEnumeration i)) :=
-  BitChain.bigSentenceCodes_bitPrefixSentence
-    ((PolyFueled.const bitAtomTag).pair PolyFueled.id)
+    MachineSentenceCodes (fun i ↦ bitPrefixSentence paperBitAtom (bitStringEnumeration i)) :=
+  BigSentenceCodes.toMachine
+    (BitChain.bigSentenceCodes_bitPrefixSentence
+      ((PolyFueled.const bitAtomTag).pair PolyFueled.id))
 
 /-- **The `thm:dus` / `thm:strict` presentation over the paper's own deductive process.**
 Both halves are substantive here: `prefix_codes` is the write-out emitter, and
@@ -309,8 +322,10 @@ theorem lic_strict_domination_universalSemimeasure_unconditional :
       limitingBelief (liaHistory emptyBitDeductiveProcess)
         (bitPrefixSentence ordinaryIndependentBitAtoms.atom σ) >
           C * Dovetail.universalSemimeasure.mass σ :=
-  haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess) emptyBitDeductiveProcess :=
-    LIA_is_logical_inductor emptyBitDeductiveProcess emptyBitDeductiveProcess_computable
+  haveI : IsLogicalInductor (liaHistory emptyBitDeductiveProcess)
+      emptyBitDeductiveProcess :=
+    LIA_is_logical_inductor emptyBitDeductiveProcess
+      emptyBitDeductiveProcess_computable
   lic_strict_domination_universalSemimeasure_ofAtomCodes
     (M := Dovetail.universalSemimeasure) (B := ordinaryBitPrefixSentences)
     ordinaryAtom_code_computable (liaHistory emptyBitDeductiveProcess)

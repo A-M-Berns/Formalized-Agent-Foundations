@@ -57,6 +57,15 @@ Main results: `mesh_independence` (`lem:mesh`), `exppolymax`, `perexpkno`, `expc
 
 The limit vocabulary `≈ₙ` / `≳ₙ` / `≲ₙ` is `Framework/Asymptotics`'s (`dd:asymp`), and
 coefficients are reified features rather than Lean functions (`dd:dsl`).
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -910,9 +919,9 @@ lemma BoundedSequence.exists_rat_shareBound {As : ℕ → LUVCombination} {P : H
   exact hshare.trans ((hB n).trans hB')
 
 /-- Propositional representation boundary needed to invoke `thm:ec` on every LUV
-appearing in a combination sequence.  It records only compact threshold codeability and
-completed-theory world valuation; it does not assume convergence or any expectation
-theorem.
+appearing in a combination sequence.  It records only write-out threshold codeability
+(`LUV.MachineThresholdCodes`, the machine reading of `def:ec`'s own metering) and completed-theory world valuation; it
+does not assume convergence or any expectation theorem.
 
 `world_value` sits at the paper's `def:luv` quantifier — `v ∈ cworlds(Θ)`, i.e.
 `PCWorld.ConsistentWithTheory` — matching `thm:ec`'s own `hval`.  It is exactly the
@@ -920,7 +929,7 @@ per-LUV content of `WorldValued` (see `WorldValued.convergencePresentation`); no
 stage-indexed valuation is assumed. -/
 structure ConvergencePresentation (As : ℕ → LUVCombination)
     (DP : DeductiveProcess) where
-  threshold_code : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes
+  threshold_code : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes
   world_value : ∀ n p, p ∈ (As n).terms → ∀ v : PCWorld,
     v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt p.2 x
 
@@ -930,7 +939,7 @@ carry — supplies a `ConvergencePresentation` outright once threshold codes are
 `cworlds(Θ)`, and build the presentation internally. -/
 def WorldValued.convergencePresentation {As : ℕ → LUVCombination}
     {DP : DeductiveProcess} (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes) :
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes) :
     ConvergencePresentation As DP where
   threshold_code := hcode
   world_value n p hp v hv := by
@@ -1612,7 +1621,7 @@ noncomputable def expectInf (A : LUVCombination) (P : History) : ℝ :=
 private lemma expectTerms_converge
     (l : List (EF × LUV)) (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP]
-    (hcode : ∀ p ∈ l, p.2.RpnThresholdCodes)
+    (hcode : ∀ p ∈ l, p.2.MachineThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ p ∈ l, ∀ v : PCWorld,
       v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt p.2 x) :
@@ -1625,7 +1634,7 @@ private lemma expectTerms_converge
   | cons p rest ih =>
       obtain ⟨LX, hLX⟩ := p.2.expect_converges P DP (hcode p (by simp)) hworld
         (hval p (by simp))
-      have hcodeRest : ∀ q ∈ rest, q.2.RpnThresholdCodes := by
+      have hcodeRest : ∀ q ∈ rest, q.2.MachineThresholdCodes := by
         intro q hq
         exact hcode q (by simp [hq])
       have hvalRest : ∀ q ∈ rest, ∀ v : PCWorld,
@@ -1689,7 +1698,7 @@ lemma BoundedSequence.limexpapprox
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -1711,7 +1720,7 @@ lemma BoundedSequence.limexpapprox_ofBounded
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     Tendsto (fun n =>
       |((As n).meshAffine (n + 1)).value P (limitingBelief P) - (As n).expectInf P|)
@@ -2153,7 +2162,7 @@ theorem BoundedSequence.perexpkno
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2204,7 +2213,7 @@ lemma BoundedSequence.perexpkno_ofBounded
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (futureLow As P) atTop =
         liminf (fun n => (As n).expectInf P) atTop ∧
@@ -2222,7 +2231,7 @@ theorem BoundedSequence.expcoh
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (b : ℚ) (hb : 0 ≤ (b : ℝ))
     (hshare : ∀ n, (As n).shareNorm P ≤ (b : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2295,7 +2304,7 @@ lemma BoundedSequence.expcoh_ofBounded
     (h : BoundedSequence As P)
     (ops : MeshSoftmaxOperationalWitness As P)
     (hvalued : WorldValued As DP)
-    (hcode : ∀ n p, p ∈ (As n).terms → p.2.RpnThresholdCodes)
+    (hcode : ∀ n p, p ∈ (As n).terms → p.2.MachineThresholdCodes)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (liminf (completedLow As P DP) atTop ≤
         liminf (fun n => (As n).expectInf P) atTop ∧

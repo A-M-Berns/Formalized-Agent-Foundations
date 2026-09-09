@@ -31,7 +31,7 @@ for products, tag `2` for quotation aliases.
 
 ## The unrestricted-source obstruction
 
-`LUV.RpnThresholdCodeSeq` controls how efficiently threshold sentences are emitted but not
+`LUV.MachineThresholdCodeSeq` controls how efficiently threshold sentences are emitted but not
 which propositional atoms they contain, so an efficient source can diagonalize against every
 tag-`0` semantic-source schema.  No non-vacuous fixed process can wrap every such source in a
 `PresentedLUVSeq` while identifying the wrapper's thresholds with the original thresholds in
@@ -40,7 +40,7 @@ all completed worlds.
 The two objects of proof are `semanticDiagonalLUVSeq` — thresholds are the *negations* of the
 schema-`n` leaf at index `n` — and `semanticValuedDiagonalLUVSeq`, a genuine indicator-style
 `[0,1]` LUV with value `1` when the distinguished proposition is false.  Both are certified
-`LUV.RpnThresholdCodeSeq`, so neither is excluded by the paper-facing premise.  The
+`LUV.MachineThresholdCodeSeq`, so neither is excluded by the paper-facing premise.  The
 obstruction is `no_nonvacuous_universal_presented_of_rpn`: an unrestricted fixed-process
 `presented_of_rpn` plus stage-wise non-vacuity is inconsistent, the contradiction occurring at
 the presentation's own schema index `Xhat.thresholdSchema.unpair.2`.
@@ -55,7 +55,7 @@ Unlike the rest of the lane, this module is interface.  `LogicalInduction/API.le
 five of its declarations as the §4.8 presented-LUV vocabulary a client states a threshold-only
 source in — `PresentedLUVSeq` with its `gt_eq` simp lemma, the handle-named family
 `semanticHandleLUVSeq` with its `def:ec` certificate
-`semanticHandleLUVSeq_rpnThresholdCodeSeq`, and the obstruction
+`semanticHandleLUVSeq_machineThresholdCodeSeq`, and the obstruction
 `no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
 all five.
 
@@ -134,15 +134,16 @@ def semanticHandleLUVSeq (schema n : ℕ) : LUV where
     (semanticHandleLUVSeq schema n).gt r =
       semanticPrimeSentence schema (Nat.pair n (Encodable.encode r)) := rfl
 
-/-- Compact handles preserve the repository's token-metered threshold interface.
+/-- Compact handles preserve the repository's *whole-value* threshold interface.
 
 The emitter is the shared `gcd`-reduced quotient emitter `encode_natDiv_polyFueled`
 (`Framework/Emission/Computable.lean`) for the mesh rational `⌜i/k⌝`, under a fixed atom
 shell; every threshold emitter in this lane and in `Construction/Quotation/` is built that
 way.
 
-This is the whole-value form; `semanticHandleLUVSeq_rpnThresholdCodeSeq` below is its
-token-metered weakening, which is the one the presented-source interface stores. -/
+This is the whole-value form; `semanticHandleLUVSeq_machineThresholdCodeSeq` below is its
+write-out weakening at `LUV.MachineThresholdCodeSeq`, which is the one the presented-source
+interface stores. -/
 lemma semanticHandleLUVSeq_polyThresholdCodeSeq (schema : ℕ) :
     LUV.PolyThresholdCodeSeq (semanticHandleLUVSeq schema) := by
   have hn := PolyFueled.left
@@ -156,12 +157,14 @@ lemma semanticHandleLUVSeq_polyThresholdCodeSeq (schema : ℕ) :
   conv_rhs =>
     rw [semanticHandleLUVSeq_gt, semanticPrimeSentence, semanticPrimeCode, encode_atom]
 
-/-- Compact handles preserve `def:ec`'s token-metered threshold interface: the weakening of
-the whole-value certificate above, and the form `PresentedLUVSeq.threshold_codes` stores. -/
-lemma semanticHandleLUVSeq_rpnThresholdCodeSeq (schema : ℕ) :
-    LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) :=
-  LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-    (semanticHandleLUVSeq_polyThresholdCodeSeq schema)
+/-- Compact handles preserve `def:ec`'s write-out threshold interface
+(`LUV.MachineThresholdCodeSeq`): the weakening of the whole-value certificate above, and the
+form `PresentedLUVSeq.threshold_codes` stores.  The token-metered
+`LUV.RpnThresholdCodeSeq` appears only inside this proof, as the route in. -/
+lemma semanticHandleLUVSeq_machineThresholdCodeSeq (schema : ℕ) :
+    LUV.MachineThresholdCodeSeq (semanticHandleLUVSeq schema) :=
+  RpnSentenceCodes.toMachine (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+    (semanticHandleLUVSeq_polyThresholdCodeSeq schema))
 
 /-! ## Presented LUV sequences -/
 
@@ -177,13 +180,33 @@ structure PresentedLUVSeq where
   source_schema : thresholdSchema.unpair.1 = 0
   /-- The underlying family of logically uncertain variables. -/
   toLUV : ℕ → LUV
-  /-- `def:ec`'s token-metered threshold certificate for that family. -/
-  threshold_codes : LUV.RpnThresholdCodeSeq toLUV
+  /-- `def:ec`'s write-out threshold certificate for that family,
+  `LUV.MachineThresholdCodeSeq`. -/
+  threshold_codes : LUV.MachineThresholdCodeSeq toLUV
   /-- The naming identity: the `n`-th threshold at `r` *is* the handle
   `semanticPrimeSentence thresholdSchema ⟨n, ⌜r⌝⟩`. -/
   threshold_named : ∀ n r,
     (toLUV n).gt r = semanticPrimeSentence thresholdSchema
       (Nat.pair n (Encodable.encode r))
+
+/-- **`PresentedLUVSeq` is inhabited unconditionally.**  Every emitter schema names a
+family: the handle sequence `semanticHandleLUVSeq (semanticEmitterSchema e)` is a family of
+logically uncertain variables whose thresholds *are* their own handles by definition, so the
+naming identity is `rfl` and the emission certificate is
+`semanticHandleLUVSeq_machineThresholdCodeSeq`.  The selector lies in the tag-`0` leaf branch
+by `semanticEmitterSchema_source`.
+
+Kind `N+` non-vacuity witness; provenance (a) derived in-project.
+
+What this does **not** establish is that a presented family reflects an arbitrary source:
+that is exactly what `no_nonvacuous_worldValued_presented_of_rpn` refutes below for a
+non-vacuous process. -/
+def presentedLUVSeq (e : ℕ) : PresentedLUVSeq where
+  thresholdSchema := semanticEmitterSchema e
+  source_schema := semanticEmitterSchema_source e
+  toLUV := semanticHandleLUVSeq (semanticEmitterSchema e)
+  threshold_codes := semanticHandleLUVSeq_machineThresholdCodeSeq _
+  threshold_named := fun _ _ => rfl
 
 namespace PresentedLUVSeq
 
@@ -211,13 +234,13 @@ attribute [local irreducible] Nat.sqrt
 /-- A canonical total naming program can be selected directly from the existing
 `RpnThresholdCodeSeq` certificate.  No extra named-code premise is needed. -/
 noncomputable def rpnThresholdSourceCode {X : ℕ → LUV}
-    (hX : LUV.RpnThresholdCodeSeq X) : Nat.Partrec.Code :=
+    (hX : LUV.MachineThresholdCodeSeq X) : Nat.Partrec.Code :=
   Classical.choose hX.exists_code
 
 /-- Exact specification of the selected naming program on the certificate's packed
 `⟨n,⟨k,i⟩⟩` inputs. -/
 lemma rpnThresholdSourceCode_spec {X : ℕ → LUV}
-    (hX : LUV.RpnThresholdCodeSeq X) (m : ℕ) :
+    (hX : LUV.MachineThresholdCodeSeq X) (m : ℕ) :
     Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) ∈
       (rpnThresholdSourceCode hX).eval m :=
@@ -263,10 +286,10 @@ lemma semanticDiagonalLUVSeq_polyThresholdCodeSeq :
 
 /-- The same diagonal family satisfies the exact source premise proposed for
 `presented_of_rpn`. -/
-lemma semanticDiagonalLUVSeq_rpnThresholdCodeSeq :
-    LUV.RpnThresholdCodeSeq semanticDiagonalLUVSeq :=
-  LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-    semanticDiagonalLUVSeq_polyThresholdCodeSeq
+lemma semanticDiagonalLUVSeq_machineThresholdCodeSeq :
+    LUV.MachineThresholdCodeSeq semanticDiagonalLUVSeq :=
+  RpnSentenceCodes.toMachine (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+    semanticDiagonalLUVSeq_polyThresholdCodeSeq)
 
 /-- **The diagonal argument.**  A source whose threshold at `0` negates the schema-`n` leaf
 at index `n` cannot be reflected by any `PresentedLUVSeq` in a completed world: the
@@ -305,14 +328,14 @@ is inconsistent.  Any successful bridge must restore the paper's language-separa
 (for example as a type-level source-language invariant); parser computability alone cannot
 prove it from `RpnThresholdCodeSeq`. -/
 lemma no_nonvacuous_universal_presented_of_rpn (DP : DeductiveProcess)
-    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.RpnThresholdCodeSeq X →
+    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.MachineThresholdCodeSeq X →
       ∃ Xhat : PresentedLUVSeq,
         ∀ n r (v : PCWorld), v.ConsistentWithTheory DP →
           (v.Holds ((Xhat.toLUV n).gt r) ↔ v.Holds ((X n).gt r))) :
     ¬ ∃ v : PCWorld, v.ConsistentWithTheory DP := by
   rintro ⟨v, hv⟩
   obtain ⟨Xhat, hreflect⟩ := presented_of_rpn semanticDiagonalLUVSeq
-    semanticDiagonalLUVSeq_rpnThresholdCodeSeq
+    semanticDiagonalLUVSeq_machineThresholdCodeSeq
   exact semanticDiagonal_not_reflected DP Xhat
     ⟨v, hv, fun n r => hreflect n r v hv⟩
 
@@ -395,12 +418,12 @@ lemma semanticValuedDiagonalMeshSelector_polyFueled :
     (fun m => by simp only [semanticValuedDiagonalMeshSelector, Nat.unpair_pair])⟩
 
 /-- The world-valued diagonal remains efficiently codeable. -/
-lemma semanticValuedDiagonalLUVSeq_rpnThresholdCodeSeq :
-    LUV.RpnThresholdCodeSeq semanticValuedDiagonalLUVSeq := by
+lemma semanticValuedDiagonalLUVSeq_machineThresholdCodeSeq :
+    LUV.MachineThresholdCodeSeq semanticValuedDiagonalLUVSeq := by
   obtain ⟨c, hc⟩ := semanticValuedDiagonalMeshSelector_polyFueled
   have h := RpnSentenceCodes.ifZero semanticValuedDiagonalProp_neg_rpn
     (RpnSentenceCodes.const (⊥ : Sentence)) hc
-  refine h.of_eq (fun m => ?_)
+  refine (RpnSentenceCodes.toMachine h).of_eq (fun m => ?_)
   rw [semanticValuedDiagonalLUVSeq_gt]
   have hnonneg : ¬ ((m.unpair.2.unpair.2 : ℚ) /
       (m.unpair.2.unpair.1 : ℚ)) < 0 :=
@@ -440,7 +463,7 @@ sources through proof-carrying gates rather than universally.
 Kind `P` (proved); provenance (a) derived in-project.
 Paper node: `thm:ccee` -/
 lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
-    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.RpnThresholdCodeSeq X →
+    (presented_of_rpn : ∀ (X : ℕ → LUV), LUV.MachineThresholdCodeSeq X →
       (∀ n (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X n) x) →
       ∃ Xhat : PresentedLUVSeq,
         ∀ n r (v : PCWorld), v.ConsistentWithTheory DP →
@@ -448,7 +471,7 @@ lemma no_nonvacuous_worldValued_presented_of_rpn (DP : DeductiveProcess)
     ¬ ∃ v : PCWorld, v.ConsistentWithTheory DP := by
   rintro ⟨v, hv⟩
   obtain ⟨Xhat, hreflect⟩ := presented_of_rpn semanticValuedDiagonalLUVSeq
-    semanticValuedDiagonalLUVSeq_rpnThresholdCodeSeq
+    semanticValuedDiagonalLUVSeq_machineThresholdCodeSeq
     (semanticValuedDiagonalLUVSeq_source_valued DP)
   exact semanticValuedDiagonal_not_reflected DP Xhat
     ⟨v, hv, fun n r => hreflect n r v hv⟩

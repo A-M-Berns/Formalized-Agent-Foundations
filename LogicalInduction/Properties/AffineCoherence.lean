@@ -22,7 +22,9 @@ the bundle's diagonal market price cannot stay below `c`.  Its trader
 `PolySequence.buyBelowTrader` buys the day-`n` bundle with a continuous coefficient that is
 zero before `start`, one below `low`, and ramps to zero by `low + δ` — the entry gate
 `gateFeature` and the buy signal `gradualEntry` of `AffinePreemptiveLearning.lean` — and is
-certified in the write-out class through `BigSpliceStream`, one trade slot per bundle term.
+certified in the machine-metered write-out class through `MachineSpliceStream`, one trade
+slot per bundle term, so its certificate is `EfficientlyComputable` and every result below
+that consumes it takes `[IsLogicalInductor P DP]`.
 `PolySequence.affine_tendsto_zero` is the two-sided form, obtained by applying
 `affine_provind` to the family and to its negation; `ExpectationAffine.lean` reaches both for
 the expectation analogues.
@@ -78,25 +80,39 @@ lemma PolySequence.buyBelowTrader_trades {As : ℕ → AffineCombination}
     AffineCombination.scale, h.terms_eq]
   simp [List.map_map, Function.comp_def]
 
+-- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in the deep paired-index
+-- elaboration the machine rulers go through; see `notes/lean-gotchas.md`.
+attribute [local irreducible] Nat.sqrt in
+/-- **The buy-below trader is efficiently computable.** Every emission hypothesis it consumes is
+one of `PolySequence`'s machine-metered fields, so the certificate is
+`EfficientlyComputable` — `def:ec` at the paper's own quantifier — and no fuel-class form
+of this lemma exists or could: `MachineSpliceStream` has no converse into
+`BigSpliceStream`. This is the single funnel every faithful §4 endpoint's exploiting trader
+comes through, and it is why those endpoints take `[IsLogicalInductor P DP]`. -/
 lemma PolySequence.buyBelowTrader_ec {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     EfficientlyComputable (h.buyBelowTrader start low δ) := by
-  have hentry : BigSpliceStream (fun n =>
+  have hentry : MachineSpliceStream (fun n =>
       (gateFeature start (gradualEntry As low δ) n).serialize) :=
-    BigSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
-  have hcoeff : BigSpliceStream (fun z =>
+    MachineSpliceStream.gateFeature (h.gradualEntry_polySeg low δ) start
+  have hcoeff : MachineSpliceStream (fun z =>
       (EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
         (h.coefficient z)).serialize) :=
-    BigSpliceStream.serialize_mul (hentry.comp PolyFueled.left) h.coefficient_poly
-  have hframe := BigSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
-  have hone : BigSpliceStream (fun z => serializeTrades
+    MachineSpliceStream.serialize_mul
+      (hentry.comp (f := fun z : ℕ => z.unpair.1)
+        (UnaryRuler.unpairFst))
+      h.coefficient_poly
+  have hframe := (MachineSpliceStream.tradeSlot h.sentence_poly
+    (f := fun n : ℕ => n) UnaryRuler.id).of_eq (fun _ => rfl)
+  have hone : MachineSpliceStream (fun z => serializeTrades
       [(EF.mul (gateFeature start (gradualEntry As low δ) z.unpair.1)
           (h.coefficient z), h.sentence z)]) := by
-    refine BigSpliceStream.of_eq (hcoeff.append hframe) ?_
+    refine MachineSpliceStream.of_eq (hcoeff.append hframe) ?_
     intro z
     simp [serializeTrades]
-  refine BigSpliceStream.ec _ (BigSpliceStream.of_eq
-    (BigSpliceStream.concatVar hone (Classical.choose_spec h.termCount_poly)) ?_)
+  refine MachineSpliceStream.ec _ (MachineSpliceStream.of_eq
+    (MachineSpliceStream.concatVar hone (cnt := h.termCount)
+      h.termCount_poly) ?_)
   intro n
   rw [h.buyBelowTrader_trades start low δ, serializeTrades_map_singleton]
   simp only [Nat.unpair_pair]
@@ -251,18 +267,6 @@ def eventualMember (As : ℕ → AffineCombination) (i n : ℕ) : AffineCombinat
 @[simp] lemma eventualMember_eq_empty (As : ℕ → AffineCombination) (i n : ℕ)
     (h : ¬i ≤ n) : eventualMember As i n = empty := by simp [eventualMember, h]
 
-/-- A fixed threshold between two fixed natural outputs is polynomially fueled. -/
-lemma polyFueled_if_lt_const (i a b : ℕ) :
-    ∃ c, PolyFueled c (fun n => if n < i then a else b) := by
-  have htest := subc_polyFueled.comp ((PolyFueled.const i).pair PolyFueled.id)
-  have hpick := ifzSel_polyFueled.comp
-    (((PolyFueled.const b).pair (PolyFueled.const a)).pair htest)
-  exact ⟨_, hpick.of_eq (fun n => by
-    simp only [Nat.unpair_pair, ifzSelFn]
-    by_cases h : n < i
-    · rw [if_pos h, if_neg (by omega)]
-    · rw [if_neg h, if_pos (by omega)])⟩
-
 /-- A polynomial affine sequence can uniformly emit any one of its members forever after
 that member's own index. This is the legal fixed-portfolio progression used by the first
 half of affine coherence. -/
@@ -273,22 +277,24 @@ noncomputable def PolySequence.eventualMember {As : ℕ → AffineCombination}
     ⟨_, (PolyFueled.const i).pair PolyFueled.right⟩
   let cidx := Classical.choose hidx
   have hcidx := Classical.choose_spec hidx
-  let hconst := h.const_poly.comp (PolyFueled.const i)
-  let hconstGated := BigSpliceStream.gateFeature hconst i
-  let hcoeff := h.coefficient_poly.comp hcidx
+  let hidxR := UnaryRuler.of_polyFueled hcidx
+  let hconst := h.const_poly.comp (f := fun _ : ℕ => i)
+    (UnaryRuler.const i)
+  let hconstGated := MachineSpliceStream.gateFeature hconst i
+  let hcoeff := h.coefficient_poly.comp (f := idx) hidxR
   exact {
     termCount := fun n => if n < i then 0 else h.termCount i
     coefficient := fun z => h.coefficient (idx z)
     sentence := fun z => h.sentence (idx z)
-    termCount_poly := polyFueled_if_lt_const i 0 (h.termCount i)
+    termCount_poly := UnaryRuler.ite_lt_const i 0 (h.termCount i)
     const_poly := by
-      refine BigSpliceStream.of_eq hconstGated ?_
+      refine MachineSpliceStream.of_eq hconstGated ?_
       intro n
       by_cases hin : i ≤ n
       · simp [AffineCombination.eventualMember, hin, gateFeature]
       · simp [AffineCombination.eventualMember, hin, gateFeature, AffineCombination.empty]
     coefficient_poly := hcoeff
-    sentence_poly := h.sentence_poly.comp hcidx
+    sentence_poly := h.sentence_poly.comp (f := idx) hidxR
     terms_eq := by
       intro n
       by_cases hin : i ≤ n
@@ -762,12 +768,14 @@ end AffineCombination
 /-! ## Provability Induction (`thm:provind`) -/
 
 /-- One-sided paper-facing provability induction for an efficiently codeable sequence of
-completed-theory theorems. Individual proofs may appear arbitrarily later than their
-sequence indices.
+theorems.  "Theorem" is the paper's own semantic condition under Θ-completeness (tex:740):
+`φ n` holds in every world consistent with the completed theory.  A sentence lying in some
+finite stage is one such family (`PCWorld.ConsistentWithTheory.holds_of_mem_stage`), but the
+hypothesis does not ask for a stage.
 Paper node: `thm:provind` -/
 theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
-    (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
+    (hthm : ∀ n, ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds (φ n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (φ n)) ≈ₙ fun _ => 1 := by
   let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
@@ -776,18 +784,17 @@ theorem lic_provind_true (P : History) (DP : DeductiveProcess) [IsLogicalInducto
   have hφeq := hφpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded φ P hP)
     ⟨1, fun n => by simp⟩ hworld 1 (fun n v hv => by
-      obtain ⟨k, hk⟩ := hthm n
-      have hholds := hv k (φ n) hk
       simp [AffineCombination.sentenceAffine, AffineCombination.value,
-        PCWorld.payout, hholds])
+        PCWorld.payout, hthm n v hv])
   simpa using hφeq
 
-/-- One-sided paper-facing provability induction for an efficiently codeable sequence
-whose negations are completed-theory theorems.
+/-- One-sided paper-facing provability induction for an efficiently codeable sequence of
+disprovable sentences: `∼ψ n` is a theorem of the completed theory, at the same semantic
+quantifier as `lic_provind_true`.
 Paper node: `thm:provind` -/
 theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
-    (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ)
+    (hdis : ∀ n, ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds (∼ψ n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (ψ n)) ≈ₙ fun _ => 0 := by
   let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
@@ -796,22 +803,25 @@ theorem lic_provind_false (P : History) (DP : DeductiveProcess) [IsLogicalInduct
   have hψeq := hψpoly.affine_provind_theory_eq P DP
     (AffineCombination.sentenceAffine_bounded ψ P hP)
     ⟨1, fun n => by simp⟩ hworld 0 (fun n v hv => by
-      obtain ⟨k, hk⟩ := hdis n
-      have hneg := hv k (∼ψ n) hk
-      have hfalse : ¬v.Holds (ψ n) := (PCWorld.holds_neg v (ψ n)).mp hneg
+      have hfalse : ¬v.Holds (ψ n) := (PCWorld.holds_neg v (ψ n)).mp (hdis n v hv)
       simp [AffineCombination.sentenceAffine, AffineCombination.value,
         PCWorld.payout, hfalse])
   simpa using hψeq
 
-/-- Faithful paper-facing **Provability Induction** (`thm:provind`). Efficient theorem
-and disprovable-sentence sequences need only appear somewhere in the completed deductive
-process; they need not be present by their own index.
+/-- Paper-facing **Provability Induction** (`thm:provind`), at the paper's own quantifier.
+"Efficiently computable sequence of theorems" is read through Θ-completeness (tex:740) as
+"holds in every world consistent with the completed deductive process" — which is what
+`cworlds(Θ)` is — and dually for the disprovable sequence.  The premise does not ask a
+theorem to lie in any finite stage: `DeductiveProcess.D` is an arbitrary nondecreasing
+family with no closure condition, so stage membership is strictly stronger, and
+`PCWorld.ConsistentWithTheory.holds_of_mem_stage` is the one-way bridge a caller holding a
+stage uses.
 Paper node: `thm:provind` -/
 theorem lic_provind (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : ℕ → Sentence)
-    (hφ : BigSentenceCodes φ) (hψ : BigSentenceCodes ψ)
-    (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
-    (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
+    (hφ : MachineSentenceCodes φ) (hψ : MachineSentenceCodes ψ)
+    (hthm : ∀ n, ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds (φ n))
+    (hdis : ∀ n, ∀ v : PCWorld, v.ConsistentWithTheory DP → v.Holds (∼ψ n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ((fun n => P n (φ n)) ≈ₙ fun _ => 1) ∧
       ((fun n => P n (ψ n)) ≈ₙ fun _ => 0) :=

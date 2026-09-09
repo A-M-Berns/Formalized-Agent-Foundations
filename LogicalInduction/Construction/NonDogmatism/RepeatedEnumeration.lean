@@ -10,8 +10,9 @@ import LogicalInduction.Framework.Emission.WriteOut
 arbitrarily late.  The paper builds one inside its own proof (tex:5651-5656) by padding and
 repeating; this module carries out that step, twice.
 
-* `triangularRepeat` and `EfficientRepeatedEnumeration.ofBig` — the exact witness when the
-  source is already a write-out-metered sentence stream (`BigSentenceCodes`).  The second
+* `triangularRepeat` and `EfficientRepeatedEnumeration.ofMachineCodes` — the exact witness
+  when the source is already a machine-metered write-out sentence stream
+  (`MachineSentenceCodes`).  The second
   pairing coordinate is pure padding, so every source index recurs arbitrarily late and the
   reindexing is poly-fueled.
 * `CEEnumeration` and `EfficientRepeatedEnumeration.ofCE` — the paper's own premise: an
@@ -48,18 +49,18 @@ padding, so every source index recurs arbitrarily late, and the reindexing is po
 The bounded universal-emulator extension below removes this stronger clock assumption for
 arbitrary computable/c.e. source programs.
 Paper node: `def:ec` -/
-def EfficientRepeatedEnumeration.ofBig (source : ℕ → Sentence)
-    (hsource : BigSentenceCodes source) :
+def EfficientRepeatedEnumeration.ofMachineCodes (source : ℕ → Sentence)
+    (hsource : MachineSentenceCodes source) :
     EfficientRepeatedEnumeration source where
   sequence := triangularRepeat source
-  sequence_poly := hsource.comp PolyFueled.left
+  sequence_poly := hsource.comp (UnaryRuler.unpairFst)
   repeats := triangularRepeat_repeats source
   sound j := ⟨j.unpair.1, rfl⟩
   covers i := ⟨Nat.pair i 0, by simp [triangularRepeat]⟩
 
 /-! ### General (c.e.) efficient repetition via the universal simulator
 
-`ofBig` requires the source stream to already be efficiently codeable.  The paper's Uniform
+`ofMachineCodes` requires the source stream to already be efficiently codeable.  The paper's Uniform
 Non-Dogmatism preprocesses an arbitrary **c.e.** stream, which need not be poly.  The
 bounded universal interpreter `codeEvalnNat` — itself poly-fueled by
 `codeEvalnNat_polyFueled` — removes that gap by dovetailing: on `⟨i, fuel⟩` run the
@@ -136,7 +137,7 @@ Paper node: `def:ec`, `thm:obu` -/
 noncomputable def EfficientRepeatedEnumeration.ofCE {source : ℕ → Sentence}
     (h : CEEnumeration source) : EfficientRepeatedEnumeration source where
   sequence := ceRepeatSeq h
-  sequence_poly := BigSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
+  sequence_poly := MachineSentenceCodes.ofPolySentenceCodes (ceRepeatSeq_codes h)
   repeats := by
     intro i N
     -- `ceRepeatSeq h i` is some `source i'`; that member recurs at arbitrarily large fuel.

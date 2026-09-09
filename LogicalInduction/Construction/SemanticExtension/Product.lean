@@ -77,6 +77,15 @@ canonical theorem/quotation stages — and the fixed-base form is its instance.
 The tag-`0` counterpart of these gates is `Construction/SemanticExtension/Source.lean`; the
 process that runs both of them on each product job is
 `Construction/SemanticExtension/Registry.lean`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -473,12 +482,13 @@ lemma semanticProductLUV_polyThresholdCodeSeq (X W : PresentedLUVSeq) :
     semanticProductAtom_mesh_encode_polyFueled X.thresholdSchema W.thresholdSchema
   exact ⟨c, hc.of_eq (fun m => by rw [semanticProductLUV_gt])⟩
 
-/-- **`def:ec` for semantic products.**  The token-metered threshold interface the downstream
-product lanes consume. -/
-lemma semanticProductLUV_rpnThresholdCodeSeq (X W : PresentedLUVSeq) :
-    LUV.RpnThresholdCodeSeq (semanticProductLUV X W) :=
-  LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-    (semanticProductLUV_polyThresholdCodeSeq X W)
+/-- **`def:ec` for semantic products.**  The write-out threshold interface
+(`LUV.MachineThresholdCodeSeq`) the downstream product lanes consume; the token-metered
+class appears only inside the proof, as the route in. -/
+lemma semanticProductLUV_machineThresholdCodeSeq (X W : PresentedLUVSeq) :
+    LUV.MachineThresholdCodeSeq (semanticProductLUV X W) :=
+  RpnSentenceCodes.toMachine (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+    (semanticProductLUV_polyThresholdCodeSeq X W))
 
 end LogicalInduction
 
@@ -542,12 +552,12 @@ lemma semanticFreshIncreasingLUVSeq_fresh :
 
 /-- The family is efficiently emitted: its threshold literals are selected by the mesh
 selector under a polynomial clock. -/
-lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
-    LUV.RpnThresholdCodeSeq semanticFreshIncreasingLUVSeq := by
+lemma semanticFreshIncreasingLUVSeq_machineThresholdCodeSeq :
+    LUV.MachineThresholdCodeSeq semanticFreshIncreasingLUVSeq := by
   obtain ⟨c, hc⟩ := semanticValuedDiagonalMeshSelector_polyFueled
   have h := RpnSentenceCodes.ifZero (RpnSentenceCodes.const (⊥ : Sentence))
     (RpnSentenceCodes.const (⊤ : Sentence)) hc
-  refine h.of_eq (fun m => ?_)
+  refine (RpnSentenceCodes.toMachine h).of_eq (fun m => ?_)
   rw [semanticFreshIncreasingLUVSeq_gt]
   by_cases hk0 : m.unpair.2.unpair.1 = 0
   · simp [semanticValuedDiagonalMeshSelector, hk0, ifzSelFn]
@@ -569,7 +579,7 @@ lemma semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq :
 non-vacuity: exact reflection of the fresh malformed source makes the fixed product
 closure inconsistent.  The family is syntactically fresh
 (`semanticFreshIncreasingLUVSeq_fresh`) and efficiently emitted
-(`semanticFreshIncreasingLUVSeq_rpnThresholdCodeSeq`), and neither helps. -/
+(`semanticFreshIncreasingLUVSeq_machineThresholdCodeSeq`), and neither helps. -/
 lemma semanticFreshIncreasing_not_jointly_reflected (Xhat : PresentedLUVSeq) :
     ¬∃ v : PCWorld, v.ConsistentWithTheory semanticProductDP ∧
       ∀ n r, v.Holds ((Xhat.toLUV n).gt r) ↔
@@ -1027,7 +1037,7 @@ lemma lic_no_expected_net_update_conditional_certifiedSemantic
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hZ' : LUV.MachineThresholdCodeSeq Z')
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (theoremQuoteCertifiedProductDP T) →
       ∃ x, v.ValuesAt (X.toLUV n) x)
@@ -1042,7 +1052,7 @@ lemma lic_no_expected_net_update_conditional_certifiedSemantic
   refine lic_no_expected_net_update_conditional_ofRepresentation
     (DP := theoremQuoteCertifiedProductDP T) f X.toLUV (semanticProductLUV X W) Z' w
     weight_mem weight_generable X.threshold_codes
-    (semanticProductLUV_rpnThresholdCodeSeq X W) hZ' (fun _ => 0)
+    (semanticProductLUV_machineThresholdCodeSeq X W) hZ' (fun _ => 0)
     tendsto_const_nhds source_valued (fun n v hv x hx => ?_) right_reflected
     (fun n => ⟨theoremQuoteCertifiedProductWorld T,
       theoremQuoteCertifiedProductDP_hworld T n⟩)
@@ -1054,7 +1064,8 @@ private noncomputable abbrev theoremQuoteCertifiedProductLIA
     (T : ArithmeticTheory) [T.Δ₁] [Entailment.Consistent T] :
     IsLogicalInductor (liaHistory (theoremQuoteCertifiedProductDP T))
       (theoremQuoteCertifiedProductDP T) :=
-  LIA_is_logical_inductor _ (theoremQuoteCertifiedProductDPComputation T).toComputable
+  LIA_is_logical_inductor _
+    (theoremQuoteCertifiedProductDPComputation T).toComputable
 
 /-- The generalized semantic-extension form of `thm:ccee`, over the joint
 theorem/quote/certified-product process, in constructed-inductor form.  The paper rendering
@@ -1066,7 +1077,7 @@ lemma lic_no_expected_net_update_conditional_certifiedSemantic_closed
     (f : DeferralFunction) (X W : PresentedLUVSeq) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (theoremQuoteCertifiedProductDP T)) w)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hZ' : LUV.MachineThresholdCodeSeq Z')
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (theoremQuoteCertifiedProductDP T) →
       ∃ x, v.ValuesAt (X.toLUV n) x)

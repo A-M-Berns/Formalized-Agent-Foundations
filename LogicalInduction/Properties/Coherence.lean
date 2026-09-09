@@ -1,5 +1,6 @@
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # §4.1 Convergence and Coherence

@@ -4,7 +4,7 @@ import LogicalInduction.Framework.Emission.Computable
 # Polynomial emission machinery (`dd:fuel`)
 
 The certification substrate for `def:ec` (tex:753): the polynomial-fuel interpreter
-machinery every `EfficientlyComputable` certificate is built from.
+machinery every `PolyFueledTrader` certificate is built from.
 
 `codeEvalBound` bounds, in terms of the simulated code and the clock, the value one
 successful `Nat.Partrec.Code.evaln` call can return; `codeEvalnNat` is the total

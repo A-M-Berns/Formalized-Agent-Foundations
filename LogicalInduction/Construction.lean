@@ -36,8 +36,8 @@ logical induction criterion at the paper's own quantifier.
 ## Enumeration, budgeting and the trading firm
 
 * `def:ec` → `MachineTraderEnumeration` — `enumeratedTrader`, sound
-  (`enumeratedTrader_machineEfficient`) and covering (`exists_enumeratedTrader_eq`) for
-  `MachineEfficientTrader`. This is what makes the firm dominate the paper's own class, and
+  (`enumeratedTrader_efficient`) and covering (`exists_enumeratedTrader_eq`) for
+  `EfficientlyComputable`. This is what makes the firm dominate the paper's own class, and
   hence what makes the criterion hold at the paper's own quantifier.  Its two supporting
   modules sit beside it: `Descriptions` is the executable bounded execution of a finite
   `complexitylib` machine *description* — read its header for why the executable object is a
@@ -48,7 +48,7 @@ logical induction criterion at the paper's own quantifier.
 * `lem:budgeter` → `Budgeter` and its three parts (`Budgeter.lean`) — caps each enumerated
   trader.
 * `eq:tradingfirm` / `lem:tfdom` → `TradingFirm` — combines enumerated traders with budgets,
-  and carries the dominance lemma (`trading_firm_dominance`, `trading_firm_dominance_of_ec`)
+  and carries the dominance lemma (`trading_firm_dominance`, `trading_firm_dominance_of_polyFueled`)
   over the enumeration above.
 
 ## The algorithm and the existence theorems
@@ -63,12 +63,11 @@ logical induction criterion at the paper's own quantifier.
   `NonDogmatism/`, `Quotation/` and `Statistics/` lanes import it directly for those codes,
   as does `LIACompiler` itself; `scripts/check_li_rollcall.py` recomputes that count from the
   import lines.
-* `thm:lia` → `LIA_isMachineLogicalInductor` — discharges `def:lic` at the paper's own
-  quantifier; `LIA_is_logical_inductor` is its fuel-class form, which is what the §4
-  property tail consumes.
-* `thm:li` → `exists_machine_logical_inductor`, with
+* `thm:lia` → `LIA_is_logical_inductor` — discharges `def:lic` at the paper's own
+  quantifier, which is also what the §4 property tail consumes.
+* `thm:li` → `exists_logical_inductor`, with
   `exists_computable_beliefSequence_logical_inductor` the full belief-sequence form the
-  paper states (`def:belseq`); `exists_logical_inductor` is the fuel-class projection.
+  paper states (`def:belseq`).
 
 ## The lanes that discharge the §4 interfaces
 
@@ -151,7 +150,7 @@ of map as this one.
   the `Complexity.FP` recognizer kit deciding, for an arbitrary target and with no side
   condition, that a word's token run denotes it.
 * `Step`, `Oracle` — the freeze as a polynomial-time transduction and the run-level lookup for
-  a finite quote table, carrying `machine_lic_iff_of_finiteSupport`, the corrected `thm:ifp`.
+  a finite quote table, carrying `lic_iff_of_finiteSupport`, the corrected `thm:ifp`.
 * `Counterexample`, `LIAPerturbation` — the witness refuting the printed `thm:ifp`, and the
   instance in which the corrected one does visible work.
 
@@ -164,19 +163,21 @@ of map as this one.
   denominator patch and its price floor, the flat token transducer, and the digit-metered
   residual.
 * `PricePass`, `FramePass` — the translation in the RPN symbol model (`dd:fuel`): the
-  run-aware automaton and price rewrite, then the frame legs, the two-leg join and
-  `conditionedTranslation_preserves_ecRpn`.
+  run-aware automaton and price rewrite, then the frame legs and the two-leg join.  It
+  publishes no class-preservation capstone; the automaton and scalars it supplies are what
+  the machine rendering below reuses.
 * `Transduction`, `TransductionFrame` — the same transducer as a `Complexity.FP` machine
-  function, ending in `conditionedTranslation_preserves_machine`.
-* `Endpoints` — the criterion-level `lic_conditioned*` family in both trader classes, and
-  `thm:scon` unconditional over the constructed `LIA`.
+  function, ending in `conditionedTranslation_preserves_ec`.
+* `Endpoints` — the criterion-level `lic_conditioned*` family at `def:ec`'s own quantifier,
+  and `thm:scon` unconditional over the constructed `LIA`.
 
 ### `LUV/` — §4.8 (`Construction/LUV.lean`)
 
 * `PaperLUV`, `SourceCodec`, `ArithmeticSource` — the literal first-order frontend: `def:luv`
   with an arbitrary defining formula, the RPN leaf codec and compact ℒₒᵣ numeral it is
   emitted through, and the paper's own formula source language `ArithSource` with the class
-  `PolyArithmeticSourceSeq` that meters a family as the paper writes it (`dd:nnf`).
+  `MachineArithmeticSourceSeq` that meters a family as the paper writes it (`dd:nnf`), with
+  the fuel-metered `PolyArithmeticSourceSeq` its producer route.
   `PaperLUVCombination` is `def:blcp` over it.
 * `Arithmetic`, `Presentation` — `dd:luv-arith`: the paper's worked computable LUV class, and
   the derivation of the world-value interfaces from it together with the deductive process
@@ -190,8 +191,8 @@ of map as this one.
 
 This lane exists for one endpoint,
 `lic_no_expected_net_update_conditional_exact_canonical`: `thm:ccee` at zero slack over an
-*arbitrary* threshold-only source carrying only `LUV.RpnThresholdCodeSeq`, priced on a fixed
-enlarged language rather than on `liaHistory (paperDP T)`.
+*arbitrary* threshold-only source carrying only `LUV.MachineThresholdCodeSeq`, priced on a
+fixed enlarged language rather than on `liaHistory (paperDP T)`.
 
 * `Prime` — the semantic-prime handle allocation, and the diagonalization showing no
   non-vacuous fixed process reflects every efficiently emitted source.

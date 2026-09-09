@@ -33,7 +33,7 @@ and `cornerSimplex`, and `convexCompact_hasFPP`.
 `BrouwerProof.Sperner` namespaces are public but are proof plumbing — and its sole consumer
 is `fixed_point_lemma_bounded` in `Construction/MarketMaker.lean`.
 Axiom cleanliness is gated transitively, through `AxiomAudit.lean`'s
-`lia_no_machine_trader_exploits`, whose dependency chain runs through that consumer.
+`lia_no_efficient_trader_exploits`, whose dependency chain runs through that consumer.
 
 The Sperner interior is machine-generated and its proof bodies are not hand-edited. That is
 why the unused-simp-arg and unused-variable linters are silenced here, and why the generated

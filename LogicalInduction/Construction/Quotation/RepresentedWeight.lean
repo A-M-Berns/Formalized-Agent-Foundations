@@ -299,7 +299,7 @@ noncomputable def representedPairPaperLUVSeq
     (((Semiformula.subst γ ![‘↑n’, #0] : ArithmeticSemisentence 1) :
       ArithmeticSemiformula ℕ 1))
   compiles _ := rfl
-  structural := (polyArithmeticFormulaSeq_subst_numeral γ).toSource
+  structural := (polyArithmeticFormulaSeq_subst_numeral γ).toSource.toMachine
 
 end Represented
 

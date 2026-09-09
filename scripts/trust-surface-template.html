@@ -322,7 +322,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     technology</b>. Sorted that way: sentences are propositional (<code>Formula ℕ</code>), which
     is the paper's own outer language by its Notation section, with the first-order Θ entering
     through explicit interfaces; the trader class is ordinary machine polynomial time
-    (<code>MachineEfficientTrader</code>, through <code>Complexity.FP</code>) and the
+    (<code>EfficientlyComputable</code>, through <code>Complexity.FP</code>) and the
     fuel-clocked <code>dd:fuel</code> calculus is certification technology proved to land inside
     it; <code>dd:fuel</code> on a statement's <em>own</em> data sequences is a representation
     interface, charged once at <code>def:ec</code> and not again downstream. Details:
@@ -351,8 +351,8 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     file, <code>scripts/coverage-classification.md</code>, and
     <code>scripts/check_endpoint_coverage.py</code> fails the build unless every curated
     endpoint resolves, carries the node's label, and is inside <code>AxiomAudit.lean</code>'s
-    <code>LI-CANONICAL</code> block. They used to be three independently maintained artifacts;
-    every disagreement they developed was invisible. The
+    <code>LI-CANONICAL</code> block, so the three artifacts cannot disagree without failing the
+    build. The
     <span class="tier refuted" style="font-size:10px">refuted</span>,
     <span class="tier corrected" style="font-size:10px">corrected</span> and
     <span class="tier qualified" style="font-size:10px">qualified</span> rows deserve the slow
@@ -361,21 +361,30 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <h3>What the Lean pane shows</h3>
     <p>Only the <b>canonical endpoints</b> — the small curated set a skeptical reader is asked
     to read, the paper's own printed form first. It is not every declaration carrying the label:
-    <code>thm:scon</code> has 54 axiom-checked carriers and 4 canonical endpoints. The rest are
-    listed by name under the slides, and remain under the build's axiom gate as internal
-    regression assertions; they are construction machinery and compatibility carriers, not the
-    read-through set.</p>
+    each card prints its own canonical endpoints and, beneath them, the count of further
+    axiom-checked declarations carrying the same node. Those remain under the build's axiom gate
+    as internal regression assertions; they are construction machinery and compatibility
+    carriers, not the read-through set.</p>
 
     <h3>Metering vocabulary</h3>
-    <p>The <em>write-out</em> classes (<code>BigDigits</code>, <code>BigSentenceCodes</code>,
-    <code>DigitRatCodes</code>, <code>DigitMachineCodes</code>,
-    <code>BigSpliceStream</code>/<code>BigTokenStream</code>) are the faithful rendering of the
-    paper's <code>def:ec</code>: they bound the emitted symbol count and leave values
-    unrestricted. <em>Token-metered</em> classes (<code>RpnSentenceCodes</code>,
-    <code>LUV.RpnThresholdCodeSeq</code>) add a per-token value clause; they survive on the LUV
-    threshold lane, where the metered object is a string over a fixed finite alphabet and the
-    clause is vacuous. <em>Whole-value</em> classes (<code>PolyNatCodes</code> &amp;c.) bound a
-    Gödel value, are provably narrower, and carry no paper-facing row.</p>
+    <p>Write-out metering — bound the emitted symbol count, leave the written value
+    unrestricted — is the faithful rendering of the paper's <code>def:ec</code>, and it comes in
+    two layers. The <em>statement</em> layer is the <code>Machine*</code> classes
+    (<code>MachineTokenStream</code>, <code>MachineSentenceCodes</code>,
+    <code>MachineSpliceStream</code>, <code>MachineDigits</code>,
+    <code>MachineMachineCodes</code>, <code>MachineRatCodes</code>,
+    <code>LUV.MachineThresholdCodes(Seq)</code>, <code>MachineArithmeticSourceSeq</code>, and the
+    count class <code>UnaryRuler</code>): a <code>Complexity.FP</code> function of the unary day
+    emits the word. Every canonical endpoint's emission premise is one of these. The
+    <em>certification</em> layer is the fuel-clocked <code>Big*</code>/<code>Digit*</code> classes
+    (<code>BigDigits</code>, <code>BigSentenceCodes</code>, <code>DigitRatCodes</code>,
+    <code>DigitMachineCodes</code>, <code>BigSpliceStream</code>/<code>BigTokenStream</code>),
+    which producers build and cross into the statement layer by <code>.toMachine</code>; no
+    converse is provided. <em>Token-metered</em> classes (<code>RpnSentenceCodes</code>,
+    <code>LUV.RpnThresholdCodeSeq</code>) add a per-token value clause and are a further
+    sufficient subclass; none of them is a binder on any endpoint. <em>Whole-value</em> classes
+    (<code>PolyNatCodes</code> &amp;c.) bound a Gödel value, are provably narrower, and carry no
+    paper-facing row.</p>
 
     <h3>Shared vocabulary</h3>
     <p>These correspondences recur on nearly every card; each card's own note covers only
@@ -383,7 +392,7 @@ code.fld { font-size: 10.5px; margin: 0 2px 2px 0; display: inline-block; }
     <div style="overflow-x:auto"><table class="vocab">
       <tr><td><code>[IsLogicalInductor P DP]</code></td><td>“let ℙ‾ be a logical inductor over D‾”; <code>P n φ</code> is ℙₙ(φ)</td></tr>
       <tr><td><code>hworld : ∀ n, ∃ v, v.ConsistentWith (DP.D n)</code></td><td>each stage is propositionally consistent — ambient in the paper’s notion of deductive process, explicit here</td></tr>
-      <tr><td><code>BigSentenceCodes φ</code> / <code>LUV.RpnThresholdCodeSeq X</code> / <code>DigitRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals; the sentence and rational classes are write-out metered, the LUV threshold class token-metered</td></tr>
+      <tr><td><code>MachineSentenceCodes φ</code> / <code>LUV.MachineThresholdCodeSeq X</code> / <code>MachineRatCodes p</code></td><td>“e.c. sequence” of sentences / LUVs / rationals — all three write-out metered at the <code>Complexity.FP</code> reading, which is what the endpoints bind</td></tr>
       <tr><td><code>GeneratedRatFeature</code>, <code>PGenerableRat</code>, <code>PGenerableWeighting</code></td><td>“ℙ‾-generable” (def:ece / def:fuz): the sequence enters as market expressions, not values</td></tr>
       <tr><td><code>≈ₙ&ensp;≳ₙ&ensp;≲ₙ</code>, <code>limitingBelief P φ</code></td><td>the paper’s ≈ₙ, ≳ₙ, ≲ₙ and ℙ∞(φ)</td></tr>
       <tr><td><code>PCWorld</code>, <code>v.ConsistentWithTheory DP</code></td><td>a world <code>v</code> is the paper’s 𝕎; <code>ConsistentWithTheory</code> is membership in 𝒫𝒞(Γ), the completed (theory-consistent) worlds</td></tr>

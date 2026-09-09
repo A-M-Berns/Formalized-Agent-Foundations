@@ -1,7 +1,7 @@
 import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.Emission.Computable
 import LogicalInduction.Framework.Emission.FreezeTransducer
-import LogicalInduction.Framework.MachineEfficiency
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # §4.6 Closure under finite perturbations (`thm:ifp`, `app:ifp`)
@@ -36,9 +36,11 @@ on, with `P' 0 phi = 1 - 1/2^(2^(encode phi))` — a legal market by `def:market
 trader whose day-`n` strategy prices a sentence of code `~n` at day `0` freezes to a
 `.const` whose numeral is `~2^(2^n)`, which no polynomial clock can emit
 (`codeEvaln_result_le` and `codeEvalBound_poly` give a fixed-code polynomial *output* bound,
-not an output-`≤`-fuel bound).  For that `P'`, `EfficientPrefixPatch P' 1` is uninhabited:
-the hypothesis is unsatisfiable, not merely unproved.  Neither this market nor the step it
-rests on — that no polynomial clock emits a numeral of magnitude `2^(2^n)` — is formalized.
+not an output-`≤`-fuel bound; and at `def:ec` itself the frozen constant's *numeral* is
+`~2^n` bits long, longer than any polynomial in the unary day).  For that `P'`,
+`EfficientPrefixPatch P' 1` has no inhabitant: the hypothesis is unsatisfiable, not merely
+unproved.  Neither this market nor the step it rests on — that no polynomial-time writer
+emits a numeral of magnitude `2^(2^n)` on day `n` — is formalized.
 
 The paper knows that its own construction has finite support per day (`sec:construct`, the
 remark following the belief-sequence definition) and deliberately generalizes the property
@@ -68,26 +70,27 @@ coordinates move.  That hypothesis is strictly stronger than the paper's tail ag
 `FiniteSupportPerturbation.tail_agree` proves one direction and
 `tailAgree_not_finiteSupport` refutes the other — and it is exactly the case in which the
 appendix's hard-coding step is literally valid, the constant table being a finite list of
-`(day, sentence, price)` rows.  `machine_lic_iff_of_finiteSupportPerturbation` is the
-machine-class form.  The client-facing statement, with the patch compiled from each market's
-own computability certificate and no condition on the moved sentences, is
-`FreezeOracle.machine_lic_iff_of_finiteSupport`, re-exported as
-`API.lic_iff_of_finiteSupportPerturbation_machine`.
+`(day, sentence, price)` rows.  `lic_iff_of_finiteSupportPerturbation_ofPatches` is that
+theorem with the two freeze certificates as premises.  The client-facing statement, with the
+patch compiled from each market's own computability certificate and no condition on the
+moved sentences, is
+`FreezeOracle.lic_iff_of_finiteSupport`, re-exported as
+`API.lic_iff_of_finiteSupportPerturbation`.
 
-The fuel-class carriers `lic_iff_of_finitePerturbation` and
-`lic_iff_of_finiteSupportPerturbation` keep the paper's own hypothesis shape, and their
-certificates `EfficientPrefixPatch` and `FiniteSupportPatch` are uninhabited: the fuel digit
-model is closed under the forward big-value operations and open under their inverses, and
-the escape-leaf decode the frozen lookup needs is such an inverse (`dd:fuel`; see
-`Construction/Freeze/Compiler.lean`).  The token-model content that does exist for the
-constructed inductor is `liaFreezeBefore_preserves_ecTok`
-(`Construction/Freeze/Prefix.lean`).
+`lic_iff_of_finitePerturbation` keeps the paper's own hypothesis shape — finitely many
+changed *days* — and its certificate `EfficientPrefixPatch` has no inhabitant anywhere in
+this repository: a prefix freeze must hard-code a day's quote at *every* sentence, and the
+day-`0` huge-numeral market above forces a frozen constant whose numeral is exponentially
+long in the day, which no `Complexity.FP` output word can hold.  That obstruction is a
+statement about the market, not about a certificate calculus, and it is what the corrected
+finite-support form removes.  The token-model content that does exist for the constructed
+inductor is `liaFreezeBefore_preserves_ecTok` (`Construction/Freeze/Prefix.lean`).
 
 `FreezeStreamRewriter` isolates the one `Complexity.FP` fact the machine-class patch turns
 on, and `FreezeStep.freezeStreamRewriter_of_runOracle` discharges it.  Non-vacuity is
-`FreezeOracle.machine_lic_iff_twoPoint`, a concrete pair of genuinely different computable
+`FreezeOracle.lic_iff_twoPoint`, a concrete pair of genuinely different computable
 markets, so the antecedent is satisfiable; content is
-`LIAPerturbation.machineLogicalInductor_liaPerturbed`, which moves one price of the
+`LIAPerturbation.logicalInductor_liaPerturbed`, which moves one price of the
 constructed inductor `liaHistory` and concludes that the result is still a machine logical
 inductor, with `LIAPerturbation.liaPerturbed_ne` proving the price change nonzero.  That
 instance inherits `Construction/LIA.lean`'s own two hypotheses — the market program and a
@@ -384,12 +387,13 @@ lemma Trader.Exploits.of_boundedDifference
     rw [abs_le] at herr
     linarith
 
-/-! ## The fuel-class forms
+/-! ## The paper's own hypothesis shape: finitely many changed *days*
 
-`EfficientPrefixPatch` and `FiniteSupportPatch` are the fuel-class freeze certificates, and
-the two theorems below are the compatibility carriers that keep the paper's own hypothesis
-shape at that class.  Both certificates are uninhabited, for the reason recorded at
-`EfficientPrefixPatch`; the discharged form of the theorem is at the machine class. -/
+`EfficientPrefixPatch` is the freeze certificate for a *prefix* freeze, and
+`lic_iff_of_finitePerturbation` below is the theorem that keeps the paper's own hypothesis
+shape — finitely many changed days rather than finitely many changed coordinates.  The
+certificate has no inhabitant anywhere in this repository, for the reason recorded at the
+structure; the *discharged* form of `thm:ifp` is the finite-support one below it. -/
 
 /-- The narrowly computational boundary in finite-prefix closure: the administrative syntax
 freeze above preserves token-indexed polynomial emission.  It contains no semantic market
@@ -472,92 +476,6 @@ theorem lic_iff_of_finitePerturbation
             (Tr.freezeBeforeErrorBound patchP.quote cutoff P P') hdiff
         exact hLI'.noExploit frozen hfrozenEC hfrozenExploits }
 
-/-- The efficiency certificate for the **finite-support** freeze.  Unlike
-`EfficientPrefixPatch`, the quote table here is genuinely finite: `quote` is only read at
-the finitely many coordinates in `S`, so the paper's "hard-code the constants" step is
-literally valid.  It is nevertheless **uninhabited**, for the same fuel-model reason as
-`EfficientPrefixPatch`: the digit model is open under the escape-leaf decode the lookup
-needs (`dd:fuel`).  Its machine counterpart `MachineFiniteSupportPatch` *is* inhabited; see
-there.
-Paper node: `app:ifp` -/
-structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
-  quote : ℕ → Sentence → ℚ
-  quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
-  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
-    EfficientlyComputable (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
-
-/-- **Closure under finite-support perturbations** — the *corrected* `thm:ifp`, at the
-fuel class.
-
-**This is not the paper's `thm:ifp`.**  Its hypothesis is **strictly stronger**: finite
-support of the price difference implies the paper's tail agreement
-(`FiniteSupportPerturbation.tail_agree`) and is not implied by it — the day-`0`
-huge-numeral market in the module docstring agrees with the constructed inductor's market
-from day `1` and is not finitely supported.  What this repairs is the appendix's efficiency
-step, which is valid exactly when the constant table is finite: `quote` is read only at the
-finitely many coordinates in `S`, so "hard-code the constants" is literally true here and
-false in general.  `lic_iff_of_finitePerturbation` above keeps the paper's own hypothesis
-shape, as a compatibility carrier; neither theorem reaches the unrestricted node, which is
-refuted rather than open.
-
-Kind `C`; hypotheses `(a)` except `preserves_ec`, which is the appendix's own obligation.
-Paper node: `thm:ifp` -/
-theorem lic_iff_of_finiteSupportPerturbation
-    (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
-    (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
-    (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
-    (patchP : FiniteSupportPatch P S) (patchP' : FiniteSupportPatch P' S) :
-    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
-  classical
-  have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
-  have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc
-  set sel : ℕ → Sentence → Bool := fun d φ => decide ((d, φ) ∈ S) with hsel
-  have hselF : ∀ d φ, sel d φ = false ↔ (d, φ) ∉ S := by
-    intro d φ; simp [hsel]
-  have hselT : ∀ d φ, sel d φ = true ↔ (d, φ) ∈ S := by
-    intro d φ; simp [hsel]
-  set D : Finset ℕ := Trader.freezeDays S with hD
-  have hDays : ∀ d, d ∉ D → ∀ φ, sel d φ = false := by
-    intro d hd φ
-    rw [hselF]
-    intro hmem
-    refine hd ?_
-    rw [hD, Trader.freezeDays, Finset.mem_image]
-    exact ⟨(d, φ), hmem, rfl⟩
-  constructor
-  · intro hLI
-    exact {
-      marketComputable := hP'comp
-      processComputable := hLI.processComputable
-      noExploit := by
-        intro Tr hTr hExploits
-        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P' v n - (Tr.freezeOn patchP'.quote sel).netWorth P v n| ≤
-              Tr.freezeOnErrorBound patchP'.quote sel D P' P := by
-          intro n v _
-          exact Tr.freezeOn_netWorth_difference_le patchP'.quote sel D P' P
-            (fun d φ h => patchP'.quote_exact d φ ((hselT d φ).1 h))
-            (fun d φ h => (hagree d φ ((hselF d φ).1 h)).symm)
-            hDays hP' hP v n
-        exact hLI.noExploit _ (patchP'.preserves_ec Tr hTr)
-          (hExploits.of_boundedDifference _ hdiff) }
-  · intro hLI'
-    exact {
-      marketComputable := hPcomp
-      processComputable := hLI'.processComputable
-      noExploit := by
-        intro Tr hTr hExploits
-        have hdiff : ∀ n v, v.ConsistentWith (DP.D n) →
-            |Tr.netWorth P v n - (Tr.freezeOn patchP.quote sel).netWorth P' v n| ≤
-              Tr.freezeOnErrorBound patchP.quote sel D P P' := by
-          intro n v _
-          exact Tr.freezeOn_netWorth_difference_le patchP.quote sel D P P'
-            (fun d φ h => patchP.quote_exact d φ ((hselT d φ).1 h))
-            (fun d φ h => hagree d φ ((hselF d φ).1 h))
-            hDays hP hP' v n
-        exact hLI'.noExploit _ (patchP.preserves_ec Tr hTr)
-          (hExploits.of_boundedDifference _ hdiff) }
-
 /-! ## The finite-support hypothesis and its separation from tail agreement -/
 
 /-- `P` and `P'` differ on only finitely many `(day, sentence)` price coordinates. -/
@@ -622,37 +540,37 @@ lemma tailAgree_not_finiteSupport :
     have h0 := hS 0 φ hmem
     simp at h0
 
-/-! ## The corrected theorem at the machine class -/
+/-! ## The corrected theorem -/
 
-/-- The machine-class efficiency certificate for the finite-support freeze.  This is the
-version whose obligation is dischargeable: `Nat.unpair` is polynomial time, so the
-escape-leaf decode that blocks the fuel model is available here.
+/-- The efficiency certificate for the finite-support freeze.  This is the version whose
+obligation is dischargeable: the table is finite, so the frozen lookup is a bounded
+polynomial-time rewrite of the trader's own output word.
 
 **This structure is implementation machinery, not a hypothesis.**  It is inhabited —
-unlike the fuel-class `EfficientPrefixPatch` and `FiniteSupportPatch` — and it is inhabited
-*without a caller-supplied witness*: `FreezeOracle.machineFiniteSupportPatch` compiles one
+unlike the prefix certificate `EfficientPrefixPatch` — and it is inhabited
+*without a caller-supplied witness*: `FreezeOracle.finiteSupportPatch` compiles one
 from the market's own `ComputableMarket` certificate and the coordinate set alone, with
-`FreezeOracle.machineFiniteSupportPatch_ofRecognizable` the narrower constructor that also
+`FreezeOracle.finiteSupportPatch_ofRecognizable` the narrower constructor that also
 takes a syntactic recognizability hypothesis on the moved sentences.  So the public
 corrected theorem does not mention this structure.  Read it as the compiler's interface, and
-`FreezeOracle.machine_lic_iff_of_finiteSupport` as the statement: that theorem asks for
+`FreezeOracle.lic_iff_of_finiteSupport` as the statement: that theorem asks for
 finite `(day, sentence)` support and computability of both markets, and carries no condition
 on the moved sentences.
 
-Non-vacuity and content: `FreezeOracle.machine_lic_iff_twoPoint` exhibits a concrete pair of
+Non-vacuity and content: `FreezeOracle.lic_iff_twoPoint` exhibits a concrete pair of
 genuinely different computable markets, so the antecedent is satisfiable, and
-`LIAPerturbation.machineLogicalInductor_liaPerturbed` derives that a one-price perturbation
+`LIAPerturbation.logicalInductor_liaPerturbed` derives that a one-price perturbation
 of the constructed inductor is still an inductor — which no other result here gives.
 
-`machineFiniteSupportPatch_of_rewriter` below reduces the certificate to one named
+`finiteSupportPatch_of_rewriter` below reduces the certificate to one named
 `Complexity.FP` fact, `FreezeStreamRewriter`, which `FreezeOracle` then discharges from a
 `RunOracle`.
 Paper node: `app:ifp` -/
-structure MachineFiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
+structure FiniteSupportPatch (P : History) (S : Finset (ℕ × Sentence)) where
   quote : ℕ → Sentence → ℚ
   quote_exact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ)
-  preserves_ec : ∀ Tr : Trader, MachineEfficientTrader Tr →
-    MachineEfficientTrader (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
+  preserves_ec : ∀ Tr : Trader, EfficientlyComputable Tr →
+    EfficientlyComputable (Tr.freezeOn quote (fun d φ => decide ((d, φ) ∈ S)))
 
 /-! ### The efficiency step, isolated
 
@@ -686,7 +604,7 @@ list to the strategy, and `Trader.freezeOn` is that strategy-wise.
 
 Kind `C`; hypotheses `(a)` except `hrewrite`, which is the named obligation above.
 Paper node: `app:ifp` -/
-lemma MachineEfficientTrader.freezeOn
+lemma EfficientlyComputable.freezeOn
     {quote : ℕ → Sentence → ℚ} {sel : ℕ → Sentence → Bool}
     {selCode : ℕ → ℕ → Bool} {quoteCode : ℕ → ℕ → ℕ}
     (hsel : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
@@ -694,8 +612,8 @@ lemma MachineEfficientTrader.freezeOn
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
     (hrewrite : FreezeStreamRewriter selCode quoteCode)
-    {Tr : Trader} (hTr : MachineEfficientTrader Tr) :
-    MachineEfficientTrader (Tr.freezeOn quote sel) := by
+    {Tr : Trader} (hTr : EfficientlyComputable Tr) :
+    EfficientlyComputable (Tr.freezeOn quote sel) := by
   obtain ⟨F, hF, hFspec⟩ := hTr
   obtain ⟨G, hG, hGspec⟩ := hrewrite F hF
   refine ⟨G, hG, fun n => ?_⟩
@@ -715,7 +633,7 @@ assumes anything about the market beyond `quote_exact`.
 
 Kind `C`; hypotheses `(a)` except `hrewrite`.
 Paper node: `app:ifp` -/
-def machineFiniteSupportPatch_of_rewriter
+def finiteSupportPatch_of_rewriter
     (P : History) (S : Finset (ℕ × Sentence)) (quote : ℕ → Sentence → ℚ)
     (hexact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ))
     (selCode : ℕ → ℕ → Bool) (quoteCode : ℕ → ℕ → ℕ)
@@ -724,27 +642,27 @@ def machineFiniteSupportPatch_of_rewriter
     (hquote : ∀ day code φ, Encodable.decode (α := Sentence) code = some φ →
       quoteCode day code = Encodable.encode (quote day φ))
     (hrewrite : FreezeStreamRewriter selCode quoteCode) :
-    MachineFiniteSupportPatch P S where
+    FiniteSupportPatch P S where
   quote := quote
   quote_exact := hexact
   preserves_ec := fun _ hTr =>
-    MachineEfficientTrader.freezeOn hsel hquote hrewrite hTr
+    EfficientlyComputable.freezeOn hsel hquote hrewrite hTr
 
 /-- **Closure under finite-support perturbations, at the paper's own quantifier.**  The
 same corrected statement as `lic_iff_of_finiteSupportPerturbation`, over
-`MachineEfficientTrader` rather than the fuel-certified class, and it is the primary one:
+`EfficientlyComputable` rather than the fuel-certified class, and it is the primary one:
 the whole economic argument is class-agnostic, so only the freeze certificate changes.
 Read that theorem's docstring for what "corrected" means here — the hypothesis is strictly
 stronger than the paper's, and this is not the unrestricted `thm:ifp`.
 
 Kind `C`; hypotheses `(a)` except `preserves_ec`.
 Paper node: `thm:ifp` -/
-theorem machine_lic_iff_of_finiteSupportPerturbation
+theorem lic_iff_of_finiteSupportPerturbation_ofPatches
     (P P' : History) (DP : DeductiveProcess) (S : Finset (ℕ × Sentence))
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ)
-    (patchP : MachineFiniteSupportPatch P S) (patchP' : MachineFiniteSupportPatch P' S) :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+    (patchP : FiniteSupportPatch P S) (patchP' : FiniteSupportPatch P' S) :
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
   classical
   have hP : ∀ d φ, 0 ≤ P d φ ∧ P d φ ≤ 1 := hPcomp.price_mem_Icc
   have hP' : ∀ d φ, 0 ≤ P' d φ ∧ P' d φ ≤ 1 := hP'comp.price_mem_Icc

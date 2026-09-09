@@ -8,16 +8,16 @@ import Mathlib.Tactic.IntervalCases
 /-!
 # The trader machine
 
-The register machine that computes an `EfficientlyComputable` trader's day-`n`
-serialization. It is the last link of `EfficientlyComputable.toMachine`
-(`Framework/MachineEfficiency.lean`): the trader's serialization is computed in ordinary
-machine polynomial time, so the trader lands in `MachineEfficientTrader`, the rendering of
+The register machine that computes an `PolyFueledTrader` trader's day-`n`
+serialization. It is the last link of `PolyFueledTrader.toEfficientlyComputable`
+(`Framework/Efficiency.lean`): the trader's serialization is computed in ordinary
+machine polynomial time, so the trader lands in `EfficientlyComputable`, the rendering of
 `def:ec`. On `dd:fuel`: what is compiled here is a fuel-clocked certificate, a *sufficient*
 certification device for that class, and the bridge is one-directional.
 
 The exports are `traderOutput`, the word the machine emits; `traderMachine`, the machine at
 its own arity; and `traderOutput_mem_FP`, the membership. They are consumed by
-`EfficientlyComputable.toMachine`, by `BigTokenStream.toMachine` and
+`PolyFueledTrader.toEfficientlyComputable`, by `BigTokenStream.toMachine` and
 `BigSentenceCodes.toMachine` (`Framework/Machine/WriteOutMachine.lean`), and by
 `CondStep.machineSentenceBlocks_of_big` (`Construction/Conditioning/TransductionFrame.lean`).
 
@@ -396,7 +396,7 @@ lemma digitFlagsTM_hoareTime (dr : Regs 10 n) (u : Fin 10 → ℕ) (B : ℕ)
     funext k
     fin_cases k <;>
       simp [flagVals, hW13, hW12, hW11, hW10, hW9, hW8, hW7, hW6, hW5, hW4, hW3, hW2,
-        hW1, Function.update_apply] <;> omega
+        hW1, Function.update_apply]
   rw [hfinal] at h13
   exact (seqEmit hinp₀ (parked_regsWork dr hpark W1) h1
     (seqEmit hinp₀ (parked_regsWork dr hpark W2) h2
@@ -1867,7 +1867,7 @@ lemma traderTime_poly : IsPolyBounded (traderTime lc tc a k) := by
   omega
 
 /-- **The emitted word is computable in polynomial time.** This is the file's export.
-Consumed by `EfficientlyComputable.toMachine` (`Framework/MachineEfficiency.lean`), by
+Consumed by `PolyFueledTrader.toEfficientlyComputable` (`Framework/Efficiency.lean`), by
 `BigTokenStream.toMachine` and `BigSentenceCodes.toMachine`
 (`Framework/Machine/WriteOutMachine.lean`), and by `CondStep.machineSentenceBlocks_of_big`
 (`Construction/Conditioning/TransductionFrame.lean`). -/

@@ -55,7 +55,7 @@ registers hold `evaln`'s tag and value for every `c`. The register and step boun
 (the register bound `codeRegBound` and the step bound `codeMachineTime`) and by
 `Framework/Machine/TraderMachine.lean` (the trader machine), which also takes
 `resultTag`/`resultVal`, `ChildEncodes`, `runChildFixed`, `codeRegs`, `codeLocal`,
-`precSelf` and `rfSelf`. Together they are what makes `EfficientlyComputable.toMachine`
+`precSelf` and `rfSelf`. Together they are what makes `PolyFueledTrader.toEfficientlyComputable`
 provable, so this module is the sufficiency half of the `dd:fuel` certificate device.
 
 Two generic facts live here for want of an upstream home: `runChildFixed`, which asks for a
@@ -5215,14 +5215,12 @@ lemma rfPhaseAPre_childIn_zero (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfPhaseAPre af haf V (rfLoc af haf 0)
       = Nat.pair (V (rfSelf af 6)) (V (rfSelf af 7)) := by
   simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
-  norm_num
   exact rfPhaseAPair_pairOut V
 
 /-- The child's fuel register: this level's fuel. -/
 lemma rfPhaseAPre_childIn_one (haf : 16 ≤ af) (V : Fin (32 + af) → ℕ) :
     rfPhaseAPre af haf V (rfLoc af haf 1) = V (rfSelf af 8) := by
   simp only [rfPhaseAPre, rfSelf_rfLoc_upd haf, rfLoc_rfLoc_update_apply haf]
-  norm_num
   exact rfPhaseAPair_selfW V 8 (by norm_num)
 
 /-- The level guard: `Nat.pair a m < fuel`. -/

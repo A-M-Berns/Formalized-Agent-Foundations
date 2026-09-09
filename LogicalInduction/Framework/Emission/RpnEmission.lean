@@ -7,7 +7,7 @@ import LogicalInduction.Framework.Emission.RpnSplice
 # RPN emission bridges
 
 The realization half of `def:ec` (tex:753) in the **token-metered** model: the bridges that
-turn an emission certificate into `EfficientlyComputable`, with the decode routed through
+turn an emission certificate into `PolyFueledTrader`, with the decode routed through
 `unRpn ∘ undigitize`.
 
 * **The escape splice, per position.** `escExpandFold_range` and `escExpand_eq_flatMap`
@@ -21,12 +21,13 @@ turn an emission certificate into `EfficientlyComputable`, with the decode route
   `ec_of_rawSegStream`. Its reusable step is `PolySegStream.clockedTokens_certificate`,
   which says a polynomial segment stream is a clocked emission of itself; the machine-model
   compilers and the conditioning transducer consume it too.
-* **The model inclusions.** `EfficientlyComputable.ofDigitEmitter` and `.ofTokenEmitter`
-  carry a digit- or token-metered certificate into the class, and
-  `IsLogicalInductor.noExploitTok` / `.noExploitDigit` are the no-exploitation forms the §4
-  property proofs invoke for their concretely constructed traders.
+* **The model inclusions.** `PolyFueledTrader.ofDigitEmitter` and `.ofTokenEmitter`
+  carry a digit- or token-metered certificate into the fuel class. The no-exploitation forms
+  the §4 property proofs invoke for their concretely constructed traders,
+  `IsLogicalInductor.noExploitTok` / `.noExploitDigit`, compose these with the bridge into
+  `def:ec` and so live one layer down, in `Framework/Efficiency.lean`.
 * **The trader constructors.** `RpnSpliceStream.ec`,
-  `EfficientlyComputable.ofSingleTradeBlocks` and `.ofTradeBlocks` are the token-metered
+  `PolyFueledTrader.ofSingleTradeBlocks` and `.ofTradeBlocks` are the token-metered
   entry points a client builds with; their write-out mirrors are in
   `Framework/Emission/WriteOut.lean`.
 
@@ -162,7 +163,7 @@ lemma ec_of_rawClocked (Tr : Trader) (raw : ℕ → List ℕ)
     (lengthCode tokenCode : Nat.Partrec.Code) (a k : ℕ)
     (hclock : ∀ n, clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n = raw n)
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   refine ⟨lengthCode, tokenCode, a, k, congrArg Trader.mk (funext fun n => ?_)⟩
   change strategyOfTokens n (unRpn (undigitize
     (clockedTokens lengthCode tokenCode (a * (n + 1) ^ k + a) n))) = Tr.strat n
@@ -205,11 +206,11 @@ lemma PolySegStream.clockedTokens_certificate {raw : ℕ → List ℕ} (h : Poly
     exact evaln_mono hbc key
 
 /-- Any `PolySegStream` whose contracted undigitized decode is the target trader
-realizes an `EfficientlyComputable` certificate. -/
+realizes an `PolyFueledTrader` certificate. -/
 lemma ec_of_rawSegStream (Tr : Trader) {raw : ℕ → List ℕ}
     (h : PolySegStream raw)
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (undigitize (raw n))) = Tr.strat n) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨lc, tc, a, k, hclock⟩ := h.clockedTokens_certificate
   exact ec_of_rawClocked Tr raw lc tc a k hclock hstrategy
 
@@ -224,8 +225,8 @@ digit-level rewrite whose contracted decode is the original strategy
 (`EfficientlyComputableDigit`, internal) is efficiently computable — the escape splice
 transfers the certificate verbatim.
 Paper node: `def:ec` -/
-theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
-    (h : EfficientlyComputableDigit Tr) : EfficientlyComputable Tr := by
+theorem PolyFueledTrader.ofDigitEmitter {Tr : Trader}
+    (h : EfficientlyComputableDigit Tr) : PolyFueledTrader Tr := by
   obtain ⟨lc, tc, a, k, hTr⟩ := h
   let ds : ℕ → List ℕ := fun n =>
     clockedTokens lc tc (PrefixPatchCompile.ecClock a k n) n
@@ -297,30 +298,15 @@ theorem EfficientlyComputable.ofDigitEmitter {Tr : Trader}
 (`EfficientlyComputableTok`, internal) is efficiently computable, through the digit
 emitter.
 Paper node: `def:ec` -/
-theorem EfficientlyComputable.ofTokenEmitter {Tr : Trader}
-    (h : EfficientlyComputableTok Tr) : EfficientlyComputable Tr :=
-  EfficientlyComputable.ofDigitEmitter h.toDigit
-
-/-- Token-model no-exploitation, through the emission constructor: the compat form the
-property proofs invoke for their concretely constructed exploiting traders.
-Paper node: `def:lic` -/
-lemma IsLogicalInductor.noExploitTok {P : History} {DP : DeductiveProcess}
-    [hLI : IsLogicalInductor P DP] :
-    ∀ Tr : Trader, EfficientlyComputableTok Tr → ¬ Tr.Exploits P DP :=
-  fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofTokenEmitter h)
-
-/-- Digit-model no-exploitation, through the emission constructor.
-Paper node: `def:lic` -/
-lemma IsLogicalInductor.noExploitDigit {P : History} {DP : DeductiveProcess}
-    [hLI : IsLogicalInductor P DP] :
-    ∀ Tr : Trader, EfficientlyComputableDigit Tr → ¬ Tr.Exploits P DP :=
-  fun Tr h => hLI.noExploit Tr (EfficientlyComputable.ofDigitEmitter h)
+theorem PolyFueledTrader.ofTokenEmitter {Tr : Trader}
+    (h : EfficientlyComputableTok Tr) : PolyFueledTrader Tr :=
+  PolyFueledTrader.ofDigitEmitter h.toDigit
 
 /-! ## Trader constructors
 
 The token-metered entry points a client builds an exploiting trader with. Their write-out
 mirrors — the same constructors with the per-token value bound dropped — are
-`EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`
+`PolyFueledTrader.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`
 (`Framework/Emission/WriteOut.lean`). -/
 
 /-- **The capstone realization**: a trader whose per-day trade serialization is
@@ -328,7 +314,7 @@ RPN-spliceable is efficiently computable.
 Paper node: `def:ec` -/
 lemma RpnSpliceStream.ec (Tr : Trader)
     (h : RpnSpliceStream (fun n => serializeTrades (Tr.strat n).trades)) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨s, hs, hc⟩ := h
   apply ec_of_rawSegStream Tr hs.digitizeStream
   intro n
@@ -355,13 +341,13 @@ trade per day, with a polynomially emittable price-free coefficient stream and a
 used by the copy-only property families, which need only the token-metered
 `RpnSentenceCodes` hypothesis rather than the stronger whole-value `PolySentenceCodes`.
 Paper node: `def:ec` -/
-lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
+lemma PolyFueledTrader.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
     (φ : ℕ → Sentence)
     (hf : PolySegStream fun n => (f n).serialize)
     (hfree : ∀ n, (f n).priceFree)
     (hφ : RpnSentenceCodes φ)
     (hTr : ∀ n, (Tr.strat n).trades = [(f n, φ n)]) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨sφ, hsφ, hparse⟩ := hφ
   have htag : PolySegStream (fun _ : ℕ => [6]) :=
     PolySegStream.ofTokenStream (PolyTokenStream.const 6)
@@ -404,9 +390,9 @@ lemma EfficientlyComputable.ofSingleTradeBlocks (Tr : Trader) (f : ℕ → EF)
 /-- **Variable-count realization over an 𝓔𝓒 sentence sequence**: a trader playing
 `count n` trades on day `n` (indexed `z = ⟨n, j⟩`), with polynomially emittable
 price-free coefficient streams and an `RpnSentenceCodes` sentence family, is
-efficiently computable.  `EfficientlyComputable.ofTradeBlocksBig`
+efficiently computable.  `PolyFueledTrader.ofTradeBlocksBig`
 (`Framework/Emission/WriteOut.lean`) is the same constructor over the write-out sentence class. -/
-lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
+lemma PolyFueledTrader.ofTradeBlocks (Tr : Trader)
     (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
     (hcount : ∃ c, PolyFueled c count)
     (hf : PolySegStream fun z => (f z).serialize)
@@ -414,7 +400,7 @@ lemma EfficientlyComputable.ofTradeBlocks (Tr : Trader)
     (hφ : RpnSentenceCodes φ)
     (hTr : ∀ n, (Tr.strat n).trades =
       (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨sφ, hsφ, hparse⟩ := hφ
   obtain ⟨ccount, hcountF⟩ := hcount
   have htag : PolySegStream (fun _ : ℕ => [6]) :=

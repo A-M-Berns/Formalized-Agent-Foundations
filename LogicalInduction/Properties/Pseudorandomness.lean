@@ -70,6 +70,15 @@ The `lic_prandaff_*_of_historicalVerifiers` and `BoundedCombinationSequence.pran
 forms feed `Properties/ExpectationProperties.lean` and the clock-free
 `lic_learning_varied_pseudorandom*` and `lic_learning_pseudorandom_frequency*` endpoints in
 `Construction/Statistics/HistoricalMaturity.lean`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -86,7 +95,7 @@ def constantRatFeature (q : ℚ) (_n : ℕ) : EF := EF.const q
 lemma constantRatFeature_generated (P : History) (q : ℚ) :
     GeneratedRatFeature P (fun _ ↦ q) (constantRatFeature q) where
   rank_le := by intro n; simp [constantRatFeature]
-  polyTok := BigSpliceStream.serialize_const q
+  polyTok := (BigSpliceStream.serialize_const q).toMachine
   closed := by intro n ρ V; simp [constantRatFeature]
   denote := by intro n; simp [constantRatFeature]
 
@@ -122,19 +131,20 @@ is assembled from a write-out certificate for the sentences (`def:ec`) and a
 supply for their affine family. -/
 noncomputable def sentenceMinusFeature_polySequence
     (φ : ℕ → Sentence) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) {P : History} {p : ℕ → ℚ}
+    (hφ : MachineSentenceCodes φ) {P : History} {p : ℕ → ℚ}
     (hp : GeneratedRatFeature P p pFeature) :
     PolySequence (sentenceMinusFeature φ pFeature) := by
   exact {
     termCount := fun _ ↦ 1
     coefficient := fun _ ↦ EF.const 1
     sentence := fun z ↦ φ z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-1))
+    termCount_poly := UnaryRuler.const 1
+    const_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-1))
       hp.polyTok
-    coefficient_poly := BigSpliceStream.serialize_const 1
-    sentence_poly := hφ.comp PolyFueled.left
+    coefficient_poly := MachineSpliceStream.serialize_const 1
+    sentence_poly := hφ.comp (f := fun z : ℕ => z.unpair.1)
+      (UnaryRuler.unpairFst)
     terms_eq := by intro n; simp [sentenceMinusFeature]
     const_rank := by
       intro n
@@ -845,9 +855,14 @@ structure FeedbackTraderEmission
   tradeCount : ℕ → ℕ
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
-  tradeCount_poly : ∃ c, PolyFueled c tradeCount
-  coefficient_poly : BigSpliceStream (fun z ↦ (coefficient z).serialize)
-  sentence_poly : BigSentenceCodes sentence
+  /-- Machine-metered as a unary ruler, as `AffineCombination.PolySequence.termCount_poly`
+  is: the count reindexes the emitted streams. -/
+  tradeCount_poly : UnaryRuler tradeCount
+  /-- Machine-metered, as `AffineCombination.PolySequence`'s emission fields are: the
+  witness `machineSpliceStream_scheduledTradeCoefficient` is assembled out of them. -/
+  coefficient_poly : MachineSpliceStream (fun z ↦ (coefficient z).serialize)
+  /-- Machine-metered, for the same reason as `coefficient_poly`. -/
+  sentence_poly : MachineSentenceCodes sentence
   trades_eq : ∀ n,
     ((feedbackTrader hpoly hW hstrict δ).strat n).trades =
       (List.range (tradeCount n)).map (fun j ↦
@@ -884,15 +899,16 @@ lemma feedbackTrader_ec
     (hstrict : StrictlyIncreasingDeferral f) (δ : ℚ)
     (emit : FeedbackTraderEmission hpoly hW hstrict δ) :
     EfficientlyComputable (feedbackTrader hpoly hW hstrict δ) := by
-  obtain ⟨ccount, hcount⟩ := emit.tradeCount_poly
-  have hframe := BigSpliceStream.tradeSlot emit.sentence_poly PolyFueled.id
-  have hone : BigSpliceStream (fun z ↦
+  have hframe := (MachineSpliceStream.tradeSlot emit.sentence_poly
+    (f := fun n : ℕ => n) UnaryRuler.id).of_eq (fun _ ↦ rfl)
+  have hone : MachineSpliceStream (fun z ↦
       serializeTrades [(emit.coefficient z, emit.sentence z)]) := by
-    refine BigSpliceStream.of_eq (emit.coefficient_poly.append hframe) ?_
+    refine MachineSpliceStream.of_eq (emit.coefficient_poly.append hframe) ?_
     intro z
     simp [serializeTrades]
-  refine BigSpliceStream.ec _ (BigSpliceStream.of_eq
-    (BigSpliceStream.concatVar hone hcount) ?_)
+  refine MachineSpliceStream.ec _ (MachineSpliceStream.of_eq
+    (MachineSpliceStream.concatVar hone (cnt := emit.tradeCount)
+      emit.tradeCount_poly) ?_)
   intro n
   rw [emit.trades_eq, serializeTrades_map_singleton]
 
@@ -1518,7 +1534,6 @@ lemma weightedAverage_supported_asympEq_zero_of_feedback
   have hnum := prefixSum_eq_feedbackPrefixSum_stage
     (w := fun i ↦ w i * x i) hstrict
     (fun i hi ↦ hsupport i (fun hwi ↦ hi (by
-      change w i * x i = 0
       rw [hwi, zero_mul]))) hn
   change feedbackWeightedAverage (fun k ↦ w (f k)) (fun k ↦ x (f k))
       (feedbackStage f n + 1) - 0 = weightedAverage w x n - 0
@@ -1891,7 +1906,7 @@ computational hypotheses as in the affine theorem, specialized to `sentenceAffin
 Paper node: `thm:wub` -/
 theorem lic_wub
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)
@@ -1978,7 +1993,10 @@ Paper node: `app:prandaff` -/
 structure PatientSettlementClock (As : ℕ → AffineCombination) (P : History)
     (DP : DeductiveProcess) (truth err : ℕ → ℝ) (f : DeferralFunction) where
   active : ℕ → ℕ → Bool
-  active_codes : PolyRatCodes (fun z ↦
+  /-- The activity flag is written out by a polynomial-time machine.  A producer holding a
+  value-bounded certificate crosses by `DigitRatCodes.ofPolyRatCodes` then
+  `DigitRatCodes.toMachine`; value-metered is strictly stronger than write-out metered. -/
+  active_codes : MachineRatCodes (fun z ↦
     if active z.unpair.2 z.unpair.1 then (1 : ℚ) else 0)
   antitone : ∀ i n, active i (n + 1) = true → active i n = true
   active_through_envelope : ∀ i n, n ≤ deferralEnvelope f i → active i n = true
@@ -2036,13 +2054,13 @@ lemma PatientSettlementClock.occupancy_polySeg
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
     {truth err : ℕ → ℝ} {f : DeferralFunction}
     (clock : PatientSettlementClock As P DP truth err f) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       (patientOccupancy clock z.unpair.2 z.unpair.1).serialize) := by
-  exact BigSpliceStream.serialize_const_comp clock.active_codes
+  exact MachineSpliceStream.serialize_const_write clock.active_codes.toMachineDigits
 
 lemma patientUnderpriceAttempt_polySeg {As : ℕ → AffineCombination}
     (hpoly : AffineCombination.PolySequence As) (low width : ℚ) :
-    BigSpliceStream (fun n ↦ (patientUnderpriceAttempt As low width n).serialize) :=
+    MachineSpliceStream (fun n ↦ (patientUnderpriceAttempt As low width n).serialize) :=
   hpoly.gradualEntry_polySeg low width
 
 lemma patientUnderpriceWeight_polySeg
@@ -2050,12 +2068,13 @@ lemma patientUnderpriceWeight_polySeg
     {P : History} {DP : DeductiveProcess} {truth err : ℕ → ℝ}
     {f : DeferralFunction} (clock : PatientSettlementClock As P DP truth err f)
     (low width : ℚ) :
-    BigSpliceStream (fun n ↦ (patientUnderpriceWeight clock low width n).serialize) := by
+    MachineSpliceStream (fun n ↦
+      (patientUnderpriceWeight clock low width n).serialize) := by
   have hattempt := patientUnderpriceAttempt_polySeg hpoly low width
   have hweight := ROIBudget.fractionalSharedFeatureWeight_polySeg
     (patientOccupancy clock) (patientUnderpriceAttempt As low width)
       hattempt clock.occupancy_polySeg
-  exact BigSpliceStream.serialize_mul hweight hattempt
+  exact MachineSpliceStream.serialize_mul hweight hattempt
 
 @[simp] lemma patientOccupancy_denote
     {As : ℕ → AffineCombination} {P : History} {DP : DeductiveProcess}
@@ -2781,7 +2800,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2820,7 +2839,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2859,7 +2878,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2912,7 +2931,7 @@ interpreter run under a growing budget.
 Paper node: `thm:benford` -/
 structure PseudorandomFrequencyInfrastructureWithHistoricalVerifiers
     (P : History) (DP : DeductiveProcess) (φ : ℕ → Sentence)
-    (hφ : BigSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
+    (hφ : MachineSentenceCodes φ) (truth : ℕ → ℝ) (f : DeferralFunction) where
   clock : ∀ (q : ℚ), 0 ≤ (q : ℝ) → (q : ℝ) ≤ 1 →
     PatientSettlementClock
       (AffineCombination.sentenceMinusFeature φ
@@ -2953,7 +2972,7 @@ squeeze needs (section header).
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -2992,7 +3011,7 @@ at most the real frequency `p`.  Hypotheses as in the lower half (section header
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -3037,7 +3056,7 @@ is conclusion-free (module docstring) and discharged in
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_of_historicalVerifiers
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

@@ -9,7 +9,7 @@ import LogicalInduction.Framework.Compactness
 Closure under conditioning asks that conditioning an efficiently computable trader on a
 computable sentence sequence again yield an efficiently computable trader.  This module and
 `Construction/Conditioning/FramePass.lean` render that efficiency transport in the RPN
-*symbol* model of the `dd:fuel` certificate `EfficientlyComputable`, where a sentence slot is
+*symbol* model of the `dd:fuel` certificate `PolyFueledTrader`, where a sentence slot is
 a whole token **run** rather than a single code.  The rewrite therefore walks the flat
 grammar with a run-aware automaton carrying a pending-subtree counter, and splices the
 condition sentence as a *block*, using the fact that conjunction is concatenation under the
@@ -59,10 +59,11 @@ All annotated `thm:scon`: the emitter-generic master commutation
 
 ## Emission certificates
 
-`rpnGuardedConditionRun_polySegStream(_of)` carries a digit `PolySegStream` to a digit
-`PolySegStream`.  The condition-block stream is metered on its digits only
+This module states none.  The emission obligations of the conditioning lane are discharged
+on the machine side, and the condition-block stream is metered on its digits only
 (`BigTokenStream`, from `BigSentenceCodes`), so a condition's Gödel code may be
-exponential in the day.
+exponential in the day.  What this module contributes is the symbol-level rewriting theory
+the machine-side certificates and `Construction/Freeze/Compiler.lean` build on.
 -/
 
 namespace LogicalInduction
@@ -1223,55 +1224,6 @@ lemma rpnTradeCountAt_le (tf : ℕ → ℕ) (n : ℕ) : ∀ j, rpnTradeCountAt t
       have := rpnTradeCountAt_le tf n j
       split <;> omega
 
-/-- The trade-run exit count is poly-fueled over any digit `PolySegStream`. -/
-lemma rpnTradeCountScan {s : ℕ → List ℕ} (h : PolySegStream s) :
-    ∃ c, PolyFueled c (fun z =>
-      rpnTradeCountAt (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
-        z.unpair.1 z.unpair.2) := by
-  obtain ⟨cs, hscan⟩ := rpnCondScan h
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  -- Step input `⟨n, ⟨j, prev⟩⟩`.
-  have hn := PolyFueled.left
-  have hj := PolyFueled.left.comp PolyFueled.right
-  have hprev := PolyFueled.right.comp PolyFueled.right
-  have hj1 : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.1 + 1) :=
-    (had.comp (hj.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  have hmz := PolyFueled.left.comp (hscan.comp (hn.pair hj))
-  have hmz1 := PolyFueled.left.comp (hscan.comp (hn.pair hj1))
-  have hsucc : PolyFueled _ (fun z : ℕ => z.unpair.2.unpair.2 + 1) :=
-    (had.comp (hprev.pair (PolyFueled.const 1))).of_eq fun z => by
-      simp only [Nat.unpair_pair]
-  obtain ⟨_, hA9⟩ := polyFueled_ifEq hmz 9 hsucc hprev
-  obtain ⟨_, hA⟩ := polyFueled_ifEq hmz 7 hsucc hA9
-  obtain ⟨_, hB⟩ := polyFueled_ifEq hmz 4 hsucc hA
-  obtain ⟨_, hstep⟩ := polyFueled_ifEq hmz1 0 hB hprev
-  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  refine ⟨_, PolyFueled.prec (PolyFueled.const 0) hstep
-    (st := fun n j => rpnTradeCountAt tf n j)
-    (fun n => rfl)
-    (fun n j => ?_)
-    ((IsPolyBounded.linear 0).of_le fun z =>
-      le_trans (rpnTradeCountAt_le _ _ _) (Nat.unpair_right_le z))⟩
-  simp only [Nat.unpair_pair]
-  rw [rpnTradeCountAt]
-  rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
-      rcMode (rpnCondControlAt tf n j) from rfl,
-    show (Nat.unpair (rpnCondControlAt tf n (j + 1))).1 =
-      rcMode (rpnCondControlAt tf n (j + 1)) from rfl]
-  by_cases hm1 : rcMode (rpnCondControlAt tf n (j + 1)) = 0
-  · rw [if_pos hm1]
-    by_cases hm4 : rcMode (rpnCondControlAt tf n j) = 4
-    · rw [if_pos hm4, if_pos ⟨Or.inl hm4, hm1⟩]
-    · rw [if_neg hm4]
-      by_cases hm7 : rcMode (rpnCondControlAt tf n j) = 7
-      · rw [if_pos hm7, if_pos ⟨Or.inr (Or.inl hm7), hm1⟩]
-      · rw [if_neg hm7]
-        by_cases hm9 : rcMode (rpnCondControlAt tf n j) = 9
-        · rw [if_pos hm9, if_pos ⟨Or.inr (Or.inr hm9), hm1⟩]
-        · rw [if_neg hm9, if_neg (by tauto)]
-  · rw [if_neg hm1, if_neg (by tauto)]
-
 /-! ## The emission certificate
 
 The digit stream of the guarded symbol-level price rewrite of any digit
@@ -1301,179 +1253,6 @@ lemma digitize_rpnCondWindow (tf : ℕ → ℕ) (n j : ℕ) :
         tokenBlock (tf (Nat.pair n
           (j - rcLen (rpnCondControlAt tf n j) + i))) := by
   rw [rpnCondWindow, digitize, List.flatMap_map]
-
-/-- **The certificate, for an arbitrary emitter**: the digitized guarded symbol-level
-rewrite of any digit `PolySegStream` is a `PolySegStream`, given that the emitted
-segment — read at the *clamped* day, which is exact wherever the guard passes — is
-itself polynomially emittable.
-Paper node: `thm:scon` -/
-lemma rpnGuardedConditionRun_polySegStream_of {s : ℕ → List ℕ} (h : PolySegStream s)
-    (emit : List ℕ → ℕ → List ℕ)
-    (hEmit : PolySegStream (fun z => digitize
-      (emit (rpnCondWindow (fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0)
-          z.unpair.1 z.unpair.2)
-        (min ((undigitize (s z.unpair.1)).getD z.unpair.2 0) (z.unpair.1 + 1))))) :
-    PolySegStream (fun n => digitize (rpnGuardedConditionTokens emit n
-      (undigitize (s n)))) := by
-  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
-  obtain ⟨cs, hscan⟩ := rpnCondScan h
-  obtain ⟨cf, hflag⟩ := rpnBigDayFlagScan h
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  have hmodeZ := PolyFueled.left.comp hscan
-  have hcopy := hbig.blockSeg
-  have heq2 := had.comp ((subc_polyFueled.comp (hmodeZ.pair (PolyFueled.const 2))).pair
-    (subc_polyFueled.comp ((PolyFueled.const 2).pair hmodeZ)))
-  have hseg := hEmit.ifZero hcopy heq2
-  have hassembled := hseg.concatVar hcnt
-  have hflagEnd := hflag.comp (PolyFueled.id.pair hcnt)
-  have hempty : PolySegStream (fun _ : ℕ => ([] : List ℕ)) :=
-    PolySegStream.ofTokenStream PolyTokenStream.nil
-  refine (hassembled.ifZero hempty hflagEnd).of_eq fun n => ?_
-  simp only [Nat.unpair_pair]
-  have hget : ∀ i, i < (undigitize (s n)).length →
-      tf (Nat.pair n i) = (undigitize (s n)).getD i 0 := fun i _ => by
-    rw [htf]
-    simp only [Nat.unpair_pair]
-  -- Guard equivalence between the flag and the list-level predicate.
-  have hguardIff : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0 ↔
-      ∀ j < (undigitize (s n)).length,
-        rcMode (((undigitize (s n)).take j).foldl rpnCondStep (rcPack 0 0 0)) = 2 →
-          (undigitize (s n)).getD j 0 ≤ n := by
-    rw [rpnBigDayFlagAt_eq_zero_iff]
-    constructor
-    · intro hall j hj hm
-      rw [← hget j hj]
-      refine hall j hj ?_
-      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)]
-      exact hm
-    · intro hall j hj hm
-      rw [hget j hj]
-      refine hall j hj ?_
-      rw [rpnCondControlAt_eq_foldl, vpre_eq_take hget (le_of_lt hj)] at hm
-      exact hm
-  by_cases hflagn : rpnBigDayFlagAt tf n (undigitize (s n)).length = 0
-  · rw [if_pos hflagn, rpnGuardedConditionTokens, if_pos (hguardIff.mp hflagn)]
-    have hts : undigitize (s n) =
-        (List.range (undigitize (s n)).length).map fun j => tf (Nat.pair n j) := by
-      apply List.ext_getElem
-      · simp
-      · intro i h1 h2
-        simp only [List.getElem_map, List.getElem_range]
-        rw [hget i (by simpa using h2)]
-        exact (List.getD_eq_getElem (undigitize (s n)) 0 (by simpa using h2)).symm
-    have hrun : (rpnConditionRun emit (rcPack 0 0 0, []) (undigitize (s n))).2 =
-        (List.range (undigitize (s n)).length).flatMap fun j =>
-          rpnConditionSegment tf emit (Nat.pair n j) := by
-      conv_lhs => rw [hts]
-      exact congrArg Prod.snd (rpnConditionRun_range tf emit n
-        (undigitize (s n)).length)
-    rw [hrun, digitize_flatMap]
-    refine List.flatMap_congr fun j hj => ?_
-    rw [List.mem_range] at hj
-    rw [rpnConditionSegment]
-    simp only [Nat.unpair_pair]
-    rw [show (Nat.unpair (rpnCondControlAt tf n j)).1 =
-      rcMode (rpnCondControlAt tf n j) from rfl]
-    by_cases hm : rcMode (rpnCondControlAt tf n j) = 2
-    · rw [if_pos (by omega : rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_pos hm]
-      have hdle : tf (Nat.pair n j) ≤ n :=
-        (rpnBigDayFlagAt_eq_zero_iff tf n _).mp hflagn j hj hm
-      have htfj : tf (Nat.pair n j) = (undigitize (s n)).getD j 0 := by
-        rw [htf]
-        simp only [Nat.unpair_pair]
-      rw [htfj] at hdle
-      have hclampEq : min ((undigitize (s n)).getD j 0) (n + 1) =
-          (undigitize (s n)).getD j 0 := Nat.min_eq_left (by omega)
-      simp only [Nat.unpair_pair, htf, hclampEq]
-    · rw [if_neg (by omega : ¬ rcMode (rpnCondControlAt tf n j) - 2 +
-        (2 - rcMode (rpnCondControlAt tf n j)) = 0), if_neg hm]
-      rw [htf]
-      simp only [Nat.unpair_pair]
-      simp [digitize]
-  · rw [if_neg hflagn, rpnGuardedConditionTokens,
-      if_neg (fun hguard => hflagn (hguardIff.mpr hguard))]
-    simp [digitize]
-
-/-- **The price-pass certificate**: the digitized guarded symbol-level price rewrite of
-any digit `PolySegStream` is a `PolySegStream`, over any **written-out** condition block
-stream — copied tokens are re-rendered digit blocks, the buffered run
-is copied by position (`concatVar` over the recorded run length), and the condition
-blocks are drawn at the clamped day.  The condition stream is metered on its digits
-only (`BigTokenStream`), so a condition's Gödel code may be exponential in the day.
-Paper node: `thm:scon` -/
-lemma rpnGuardedConditionRun_polySegStream {s blocks : ℕ → List ℕ}
-    (h : PolySegStream s) (hb : BigTokenStream blocks) (ε : ℚ) :
-    PolySegStream (fun n => digitize
-      (rpnGuardedConditionTokens (rpnPriceEmit blocks ε) n (undigitize (s n)))) := by
-  obtain ⟨⟨cc, hcnt⟩, hbig⟩ := h.undigitizeTokens
-  obtain ⟨cs, hscan⟩ := rpnCondScan h
-  obtain ⟨cd, hclamp⟩ := h.dayClampTokens
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  set tf : ℕ → ℕ := fun w => (undigitize (s w.unpair.1)).getD w.unpair.2 0 with htf
-  have hlenZ := PolyFueled.right.comp (PolyFueled.right.comp hscan)
-  refine rpnGuardedConditionRun_polySegStream_of h _ ?_
-  -- Day copies (clamped; exact under the guard).
-  have hD := PolySegStream.block hclamp
-  -- Constant frames.
-  have hA : PolySegStream (fun _ : ℕ => digitize
-      [1, Encodable.encode (-1 : ℚ), 1, Encodable.encode (-1 : ℚ),
-        1, Encodable.encode (1 : ℚ), 3, 1, Encodable.encode (-1 : ℚ), 0, 3]) :=
-    (PolySegStream.ofTokenStream
-      (((((((((((PolyTokenStream.const 1).append
-        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
-        (PolyTokenStream.const 1)).append
-        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
-        (PolyTokenStream.const 1)).append
-        (PolyTokenStream.const (Encodable.encode (1 : ℚ)))).append
-        (PolyTokenStream.const 3)).append
-        (PolyTokenStream.const 1)).append
-        (PolyTokenStream.const (Encodable.encode (-1 : ℚ)))).append
-        (PolyTokenStream.const 0)).append
-        (PolyTokenStream.const 3))).digitizeStream.of_eq fun n => by
-      simp
-  have hB : PolySegStream (fun _ : ℕ => digitize
-      [1, Encodable.encode (1 / ε : ℚ), 1, Encodable.encode (1 / ε : ℚ), 0]) :=
-    (PolySegStream.ofTokenStream
-      (((((PolyTokenStream.const 1).append
-        (PolyTokenStream.const (Encodable.encode (1 / ε : ℚ)))).append
-        (PolyTokenStream.const 1)).append
-        (PolyTokenStream.const (Encodable.encode (1 / ε : ℚ)))).append
-        (PolyTokenStream.const 0))).digitizeStream.of_eq fun n => by
-      simp
-  have hC : PolySegStream (fun _ : ℕ => digitize [3, 5, 3, 3, 3, 4, 3, 8]) :=
-    (PolySegStream.ofTokenStream
-      ((((((((PolyTokenStream.const 3).append
-        (PolyTokenStream.const 5)).append
-        (PolyTokenStream.const 3)).append
-        (PolyTokenStream.const 3)).append
-        (PolyTokenStream.const 3)).append
-        (PolyTokenStream.const 4)).append
-        (PolyTokenStream.const 3)).append
-        (PolyTokenStream.const 8))).digitizeStream.of_eq fun n => by
-      simp
-  -- The window copy: `concatVar` over the recorded run length.
-  have hidxE : ∃ c, PolyFueled c (fun w : ℕ => Nat.pair w.unpair.1.unpair.1
-      (w.unpair.1.unpair.2 - rcLen (rpnCondControlAt tf
-        w.unpair.1.unpair.1 w.unpair.1.unpair.2) + w.unpair.2)) := by
-    obtain ⟨cad', had'⟩ := addc_polyFueled
-    have hz : PolyFueled Code.left (fun m : ℕ => m.unpair.1) := PolyFueled.left
-    have hn2 := PolyFueled.left.comp hz
-    have hj2 := PolyFueled.right.comp hz
-    have hlenW := hlenZ.comp hz
-    have hsub := subc_polyFueled.comp (hj2.pair hlenW)
-    have hoff := had'.comp (hsub.pair PolyFueled.right)
-    exact ⟨_, (hn2.pair hoff).of_eq fun w => by
-      simp only [Nat.unpair_pair, rcLen]⟩
-  obtain ⟨cidx, hidx⟩ := hidxE
-  have hwin := (hbig.comp hidx).blockSeg.concatVar hlenZ
-  -- Condition blocks at the clamped day.
-  have hblkD := (hb.comp hclamp).digitizeStream
-  refine (((((((((hD.append hA).append hwin).append hblkD).append
-    hD).append hB).append hblkD).append hD).append hC)).of_eq fun z => ?_
-  rw [rpnPriceEmit, digitize_rpnConditionEmit, digitize_rpnCondWindow]
-  simp only [Nat.unpair_pair, htf, rcLen, List.append_assoc]
 
 /-! ## Parse localization
 

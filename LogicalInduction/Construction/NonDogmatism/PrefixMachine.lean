@@ -65,6 +65,19 @@ unconditional.
 
 The fixed code is thus the elementary instance and the universal one the paper-strength
 instance; neither subsumes the other, and both are kept.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the Occam trader is certified at
+`EfficientlyComputable` (`obTrader_ec`, `Properties/OccamBounds.lean`), and no map
+back from `MachineSpliceStream` to `BigSpliceStream` is proved or claimed, so it has no
+fuel-class form.  The data premises are at the machine classes too: this file
+discharges
+`PrefixMachinePresentation.sentence_codes` (now `MachineSentenceCodes`) and
+`OccamThresholdEmission`'s two fields (now `MachineRatCodes`) from the very same
+constructed fuel certificates, crossing at the boundary by
+`MachineSentenceCodes.ofPolySentenceCodes` and `DigitRatCodes.ofPolyRatCodes` +
+`.toMachine`, so nothing about the constructions changed.  The `_unconditional` endpoints
+discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -497,13 +510,6 @@ lemma gateInverseWidth_polyRat (hinv : ∀ i, app i = ((D i : ℕ) : ℚ)⁻¹)
   ring
 
 end GateTokens
-
-/-- The weight denominator stream extracted from the weight emission. -/
-lemma prefixDen_polyFueled (h : PolyRatCodes prefixApprox) :
-    ∃ c, PolyFueled c prefixDen := by
-  obtain ⟨c, hc⟩ := h
-  exact ⟨_, (PolyFueled.right.comp hc).of_eq (fun i => by
-    rw [encode_prefixApprox, Nat.unpair_pair])⟩
 
 /-- The query-indexed weight stream of the concrete machine. -/
 lemma prefixApprox_query_polyRat (h : PolyRatCodes prefixApprox) :
@@ -2132,7 +2138,8 @@ weights, and both fuel-model emission certificates
 Paper node: `thm:ob` -/
 def prefixMachinePresentation : PrefixMachinePresentation prefixKappa where
   sentence := prefixSentenceEnum
-  sentence_codes := prefixSentenceEnum_polySentenceCodes
+  sentence_codes :=
+    MachineSentenceCodes.ofPolySentenceCodes prefixSentenceEnum_polySentenceCodes
   approximation := fun _ i => prefixApprox i
   approximation_nonneg := fun _ i => (prefixApprox_pos i).le
   approximation_le := fun n i => (prefixApprox_eq i).le
@@ -2148,14 +2155,14 @@ Paper node: `thm:ob` -/
 def prefixThresholdEmission : OccamThresholdEmission prefixMachinePresentation where
   threshold_sum_codes := by
     obtain ⟨c, hc⟩ := prefixThresholdSum_polyRat prefixApprox_polyRatCodes
-    exact ⟨_, hc.of_eq (fun z => by
+    exact (DigitRatCodes.ofPolyRatCodes ⟨_, hc⟩).toMachine.of_eq (fun z => by
       simp [prefixEmitBase, gateEmitBase, obEmitBase, obBase, obCapacity,
-        prefixMachinePresentation])⟩
+        prefixMachinePresentation])
   inverse_width_codes := by
     obtain ⟨c, hc⟩ := prefixInverseWidth_polyRat prefixApprox_polyRatCodes
-    exact ⟨_, hc.of_eq (fun z => by
+    exact (DigitRatCodes.ofPolyRatCodes ⟨_, hc⟩).toMachine.of_eq (fun z => by
       simp [prefixEmitBase, gateEmitBase, obEmitBase, obBase, obCapacity,
-        prefixMachinePresentation])⟩
+        prefixMachinePresentation])
 
 /-! ## Paper-facing corollaries over the concrete machine -/
 

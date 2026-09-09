@@ -1,5 +1,6 @@
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.Coherence
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # §4.6 Non-Dogmatism

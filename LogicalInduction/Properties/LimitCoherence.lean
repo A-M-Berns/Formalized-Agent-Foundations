@@ -65,6 +65,15 @@ belief's approximate expectation as an average over completed-theory worlds (`th
 `measurable_pcWorld_holds` to know a share's payout is a measurable function of the world.
 `Properties/UniversalSemimeasure.lean` consumes `lic_limitingBelief_gaifman` together with
 `GaifmanCoherent.le_sum_of_covers`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -194,7 +203,7 @@ lemma lic_limitingBelief_exactlyOne
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (k : ℕ) (hk : 0 < k) (φ : ℕ → Sentence)
-    (hcodes : ∀ j < k, BigSentenceCodes (fun _ => φ j))
+    (hcodes : ∀ j < k, MachineSentenceCodes (fun _ => φ j))
     (hexact : ∀ v : PCWorld, v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j))).sum = 1) :
     ((List.range k).map (fun j => limitingBelief P (φ j))).sum = 1 := by
@@ -227,9 +236,9 @@ lemma lic_limitingBelief_congr
     {φ ψ : Sentence} (heq : ∀ v : PCWorld, v.Holds φ ↔ v.Holds ψ) :
     limitingBelief P φ = limitingBelief P ψ := by
   let pair : ℕ → Sentence := fun j => if j = 0 then φ else ∼ψ
-  have hcodes : ∀ j < 2, BigSentenceCodes (fun _ => pair j) := by
+  have hcodes : ∀ j < 2, MachineSentenceCodes (fun _ => pair j) := by
     intro j hj
-    exact BigSentenceCodes.ofPolySentenceCodes
+    exact MachineSentenceCodes.ofPolySentenceCodes
       ⟨_, PolyFueled.const (Encodable.encode (pair j))⟩
   have hpair0 := lic_limitingBelief_exactlyOne P DP hworld 2 (by omega) pair hcodes (by
     intro v hv
@@ -254,9 +263,9 @@ lemma lic_limitingBelief_disjoint_add
     {φ ψ : Sentence} (hdisj : ∀ v : PCWorld, ¬(v.Holds φ ∧ v.Holds ψ)) :
     limitingBelief P (φ ⋎ ψ) = limitingBelief P φ + limitingBelief P ψ := by
   let triple : ℕ → Sentence := fun j => if j = 0 then φ else if j = 1 then ψ else ∼(φ ⋎ ψ)
-  have hcodes : ∀ j < 3, BigSentenceCodes (fun _ => triple j) := by
+  have hcodes : ∀ j < 3, MachineSentenceCodes (fun _ => triple j) := by
     intro j hj
-    exact BigSentenceCodes.ofPolySentenceCodes
+    exact MachineSentenceCodes.ofPolySentenceCodes
       ⟨_, PolyFueled.const (Encodable.encode (triple j))⟩
   have htriple0 := lic_limitingBelief_exactlyOne P DP hworld 3 (by omega) triple hcodes (by
     intro v hv
@@ -287,9 +296,9 @@ theorem lic_limitingBelief_gaifman
       (Filter.Eventually.of_forall fun n =>
         IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ)
   · let singleton : ℕ → Sentence := fun _ => ⊤
-    have hcodes : ∀ j < 1, BigSentenceCodes (fun _ => singleton j) := by
+    have hcodes : ∀ j < 1, MachineSentenceCodes (fun _ => singleton j) := by
       intro j hj
-      exact BigSentenceCodes.ofPolySentenceCodes
+      exact MachineSentenceCodes.ofPolySentenceCodes
         ⟨_, PolyFueled.const (Encodable.encode (⊤ : Sentence))⟩
     have h := lic_limitingBelief_exactlyOne P DP hworld 1 (by omega) singleton hcodes (by
       intro v hv
@@ -752,8 +761,9 @@ lemma lic_limitingBelief_theorem
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) (hthm : ∃ k, φ ∈ DP.D k) : limitingBelief P φ = 1 := by
-  have hcodes : BigSentenceCodes (fun _ => φ) := BigSentenceCodes.const φ
-  have hone := lic_provind_true P DP (fun _ => φ) hcodes (fun _ => hthm) hworld
+  have hcodes : MachineSentenceCodes (fun _ => φ) := MachineSentenceCodes.const φ
+  have hone := lic_provind_true P DP (fun _ => φ) hcodes
+    (fun _ _ hv => hv.holds_of_mem_stage hthm) hworld
   have ht : ConvergesTo (fun n => P n φ) 1 :=
     convergesTo_iff_asympEq_const.mpr hone
   exact tendsto_nhds_unique (lic_limitingBelief_tendsto P DP hworld φ) ht
@@ -765,8 +775,9 @@ lemma lic_limitingBelief_refutable
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (φ : Sentence) (hdis : ∃ k, (∼φ) ∈ DP.D k) : limitingBelief P φ = 0 := by
-  have hcodes : BigSentenceCodes (fun _ => φ) := BigSentenceCodes.const φ
-  have hzero := lic_provind_false P DP (fun _ => φ) hcodes (fun _ => hdis) hworld
+  have hcodes : MachineSentenceCodes (fun _ => φ) := MachineSentenceCodes.const φ
+  have hzero := lic_provind_false P DP (fun _ => φ) hcodes
+    (fun _ _ hv => hv.holds_of_mem_stage hdis) hworld
   have ht : ConvergesTo (fun n => P n φ) 0 :=
     convergesTo_iff_asympEq_const.mpr hzero
   exact tendsto_nhds_unique (lic_limitingBelief_tendsto P DP hworld φ) ht

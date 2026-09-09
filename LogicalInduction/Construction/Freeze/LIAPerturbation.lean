@@ -4,25 +4,25 @@ import LogicalInduction.Construction.LIACompiler
 /-!
 # An informative instance: perturbing the constructed logical inductor
 
-`thm:ifp` (tex:1521) doing visible work.  `FreezeOracle.machine_lic_iff_twoPoint` exhibits
+`thm:ifp` (tex:1521) doing visible work.  `FreezeOracle.lic_iff_twoPoint` exhibits
 satisfiable hypotheses for the corrected theorem, but at a pair of markets that are almost
 certainly exploitable, so the equivalence there may hold because both sides are false.  The
 instance built here closes that gap.
 
-`liaHistory DP` is a machine logical inductor (`Construction/LIA.lean`, from its market
+`liaHistory DP` is a logical inductor (`Construction/LIA.lean`, from its market
 program and a computable deductive process).  Moving one price — the coordinate
 `(0, atom 0)` — gives a market that is computable, agrees with `liaHistory` everywhere else,
-and is therefore *also* a machine logical inductor, **by the corrected theorem**.  Nothing
+and is therefore *also* a logical inductor, **by the corrected theorem**.  Nothing
 else derives that: the perturbed market is the output of no construction here, and its
 inductor-hood is exactly what `thm:ifp` buys.  Market computability of `liaHistory DP` is not
-a premise either — it is a field of `LIA_isMachineLogicalInductor DP hDP`, so a computable
+a premise either — it is a field of `LIA_is_logical_inductor DP hDP`, so a computable
 deductive process is the only input.
 
 Objects defined: `atomCode`, `perturbedQuote` (a rational quote table with one entry
 overridden) and `liaPerturbed DP r` (`liaHistory DP` with the coordinate `(0, atom 0)` moved
 to `r`).
 
-Main results: `computableMarket_liaPerturbed` (`app:ifp`), `machineLogicalInductor_liaPerturbed`
+Main results: `computableMarket_liaPerturbed` (`app:ifp`), `logicalInductor_liaPerturbed`
 and `exists_informative_liaPerturbation` (`thm:ifp`).
 
 The instance is not degenerate: `exists_perturbation_value` picks a legal quote the market's
@@ -146,21 +146,21 @@ lemma liaPerturbed_ne (DP : DeductiveProcess) {r : ℚ}
 
 /-! ## The informative instance -/
 
-/-- **The perturbed inductor.**  `liaHistory DP` is a machine logical inductor; move one
+/-- **The perturbed inductor.**  `liaHistory DP` is a logical inductor; move one
 price and the result is one too — a consequence of the corrected `thm:ifp`, and of no
 construction here.  Market computability of `liaHistory DP` is not a premise: it is a field
-of `LIA_isMachineLogicalInductor DP hDP`, so the computable deductive process is the only
+of `LIA_is_logical_inductor DP hDP`, so the computable deductive process is the only
 input.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
-theorem machineLogicalInductor_liaPerturbed (DP : DeductiveProcess)
+theorem logicalInductor_liaPerturbed (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) (r : ℚ) (h0 : 0 ≤ r) (h1 : r ≤ 1) :
-    IsMachineLogicalInductor (liaPerturbed DP r) DP := by
-  have hLIA : IsMachineLogicalInductor (liaHistory DP) DP :=
-    LIA_isMachineLogicalInductor DP hDP
+    IsLogicalInductor (liaPerturbed DP r) DP := by
+  have hLIA : IsLogicalInductor (liaHistory DP) DP :=
+    LIA_is_logical_inductor DP hDP
   have hmarket : ComputableMarket (liaHistory DP) := hLIA.marketComputable
-  refine (machine_lic_iff_of_finiteSupport (liaHistory DP) (liaPerturbed DP r) DP
+  refine (lic_iff_of_finiteSupport (liaHistory DP) (liaPerturbed DP r) DP
     hmarket (computableMarket_liaPerturbed DP hmarket r h0 h1) ?_).mp hLIA
   exact ⟨exampleS, liaPerturbed_agree DP r⟩
 
@@ -177,15 +177,15 @@ theorem exists_informative_liaPerturbation (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ P' : History,
       ComputableMarket P' ∧
-      IsMachineLogicalInductor P' DP ∧
+      IsLogicalInductor P' DP ∧
       P' 0 (LO.Propositional.Formula.atom 0 : Sentence)
         ≠ liaHistory DP 0 (LO.Propositional.Formula.atom 0 : Sentence) ∧
       (∀ d φ, (d, φ) ∉ exampleS → liaHistory DP d φ = P' d φ) := by
   obtain ⟨r, h0, h1, hr⟩ := exists_perturbation_value DP
   have hmarket : ComputableMarket (liaHistory DP) :=
-    (LIA_isMachineLogicalInductor DP hDP).marketComputable
+    (LIA_is_logical_inductor DP hDP).marketComputable
   exact ⟨liaPerturbed DP r, computableMarket_liaPerturbed DP hmarket r h0 h1,
-    machineLogicalInductor_liaPerturbed DP hDP r h0 h1,
+    logicalInductor_liaPerturbed DP hDP r h0 h1,
     liaPerturbed_ne DP hr, liaPerturbed_agree DP r⟩
 
 end LogicalInduction.LIAPerturbation

@@ -23,8 +23,7 @@ target's complete parses), `runMatches` / `runQuoteFromEntries` / `runPrefixQuot
 (the run-level tables), and `freezeEmitOn` / `freezeTokensOn` / `freezeBodyOn` (the
 transducer).  The transducer is an instance of the emitter-generic run rewriter in
 `Construction/Conditioning/PricePass.lean`, so the commutation `unRpn_rpnConditionRun_of`
-and the emission
-certificate `rpnGuardedConditionRun_polySegStream_of` are reused rather than reproved.
+is reused rather than reproved.
 
 ## Why the lookup needs no automaton
 
@@ -1594,7 +1593,7 @@ theorem unRpn_rpnFreezeRun (quoteRun : List ℕ → ℕ → ℕ) (quoteCode : �
   unRpn_rpnFreezeRunOn _ quoteRun _ quoteCode (fun _ _ _ _ => rfl)
     (fun b' φ' hb' D' _ => hq b' φ' hb' D')
 
-/-! ### The machine-class obligation, moved to the flat stream
+/-! ### The machine-class obligation, on the flat stream
 
 `FreezeStreamRewriter` (`Properties/FinitePerturbations.lean`) is stated on the
 *contracted* stream, because that is what `strategyOfTokens` parses.  A machine never holds
@@ -1882,28 +1881,6 @@ lemma runQuoteFromEntriesAt_polyFueled (entries : List (Sentence × ℚ))
       obtain ⟨c, hc⟩ := polyFueled_ifEqFn hm hE.succ_comp
         (PolyFueled.const (Encodable.encode r)) hrest
       exact ⟨c, hc.of_eq fun z => by rw [runQuoteFromEntriesAt]⟩
-
-lemma runPrefixQuoteFromStatesAt_polyFueled (states : List RationalBeliefState)
-    {ct cn cp ce cd : Code} {tf N P E D : ℕ → ℕ}
-    (htf : PolyFueled ct tf) (hN : PolyFueled cn N) (hP : PolyFueled cp P)
-    (hE : PolyFueled ce E) (hD : PolyFueled cd D) :
-    ∃ c, PolyFueled c (fun z =>
-      runPrefixQuoteFromStatesAt states (D z) (fun i => tf (Nat.pair (N z) i))
-        (P z) (E z)) := by
-  induction states generalizing cd D with
-  | nil => exact ⟨_, PolyFueled.const (Encodable.encode (0 : ℚ))⟩
-  | cons state states ih =>
-      obtain ⟨centry, hentry⟩ :=
-        runQuoteFromEntriesAt_polyFueled state.entries htf hN hP hE
-      obtain ⟨cpred, hpred⟩ := polyFueled_subConst hD 1
-      obtain ⟨crest, hrest⟩ := ih hpred
-      obtain ⟨c, hc⟩ := polyFueled_ifZero hD hentry hrest
-      refine ⟨c, hc.of_eq fun z => ?_⟩
-      cases hd : D z with
-      | zero => simp only [if_pos, runPrefixQuoteFromStatesAt]
-      | succ day =>
-          simp only [Nat.succ_ne_zero, if_false, Nat.add_sub_cancel,
-            runPrefixQuoteFromStatesAt]
 
 end RpnFreeze
 end LogicalInduction

@@ -8,9 +8,9 @@ and the passes that read a priced stream; this module adds the two frame legs, a
 whole transduction, and proves the transport theorems.  Both halves are in namespace
 `CondStep`.
 
-Two declarations here are paper-facing: `conditionedTranslation_preserves_machine` and
-`eventualConditionedTranslation_preserves_machine` render `thm:scon` — closure of the
-trader class under conditioning — at `def:ec`'s own class `MachineEfficientTrader`.
+Two declarations here are paper-facing: `conditionedTranslation_preserves_ec` and
+`eventualConditionedTranslation_preserves_ec` render `thm:scon` — closure of the
+trader class under conditioning — at `def:ec`'s own class `EfficientlyComputable`.
 Everything else is a definition of the transduction they are assembled from, or a `lemma`
 about it, and carries no `Paper node` line.
 
@@ -27,9 +27,9 @@ same word-level automaton and only its emitter differs.
 
 The splicing emitter concatenates the condition block with other fragments, so it needs the
 oracle's word to carry whole blocks.  `MachineSentenceBlocks` is that reading of `def:ec`'s
-sentence class, and `machineSentenceBlocks_of_big` produces it from `BigSentenceCodes`
+sentence class, and `machineSentenceBlocks_of_machine` produces it from `MachineSentenceCodes`
 through `BigTokenStream.digitizeStream`, the downstream digit clamp `min · 4` being the
-identity on a list of base-4 digits and terminators (`mem_digitize_le_four`).
+identity on a list of base-4 digits and terminators (`TokenFold.mem_digitize_le_four`).
 
 `zeroEmitR` replaces the conditional-price expansion by the fixed run `[D, 1, ⌜1⌝, 8]` on
 the finitely many days where the condition's price is zero; `mem_zeroDays_clamp` is what
@@ -966,7 +966,8 @@ constrain the raw word's block structure.
 No strengthening of the hypothesis is needed: for **any** write-out certificate the word is
 `digitsToBits (digitize ·)` of the certificate's own token stream, and the downstream digit
 clamp `min · 4` is the identity on it because the object is a list of base-4 digits and
-terminators (`mem_digitize_le_four`) — *not* because the stream's token values are bounded.
+terminators (`TokenFold.mem_digitize_le_four`) — *not* because the stream's token values are
+bounded.
 `BigTokenStream.digitizeStream` supplies the clocked digit stream in the write-out class,
 so `MachineSentenceBlocks` is produced from `def:ec`'s own sentence class. -/
 
@@ -975,73 +976,48 @@ def MachineSentenceBlocks (ψ : ℕ → Sentence) : Prop :=
   ∃ B : List Bool → List Bool, B ∈ FP ∧ (∀ d, BlockWF (B (unaryDay d))) ∧
     ∀ d, parseRpn (blocksOf B d).length (blocksOf B d) = some (ψ d, [])
 
-lemma mem_digitize_le_four (ts : List ℕ) : ∀ d ∈ digitize ts, d ≤ 4 := by
-  intro d hd
-  rw [digitize, List.mem_flatMap] at hd
-  obtain ⟨t, -, hd⟩ := hd
-  rw [tokenBlock, List.mem_append] at hd
-  rcases hd with hd | hd
-  · exact le_of_lt (natDigits4_lt t d hd)
-  · simp at hd; omega
-
-/-- **Every write-out efficient sentence sequence is machine-metered, block-complete.**
-The word produced is `digitsToBits (digitize ·)` of the certificate's block stream, with its
-digits already below the clamp, so the clamp is the identity on it and the block structure
-survives.  The digit stream is clocked by `BigTokenStream.digitizeStream`, which needs no
-bound on token values.  Kind `P`, provenance (a). -/
-lemma machineSentenceBlocks_of_big {ψ : ℕ → Sentence} (h : BigSentenceCodes ψ) :
+/-- **Every machine-metered efficient sentence sequence is block-complete.**  The
+certificate's own `Complexity.FP` word *is* the block word: `MachineTokenStream` already
+carries block-completeness (`TokenFold.BlockWF`) and the decode law
+`TokenFold.decodeBits (F (unaryDay d)) = s d`, which is exactly `blocksOf F d = s d`, so the
+parse condition transfers unchanged.  A caller holding the fuel-metered
+`BigSentenceCodes` reaches this through `BigSentenceCodes.toMachine`, which is where the
+`digitize`/clamp argument lives; this lemma reads the block word off the `Complexity.FP`
+witness and runs none of it.  Kind `P`, provenance (a). -/
+lemma machineSentenceBlocks_of_machine {ψ : ℕ → Sentence} (h : MachineSentenceCodes ψ) :
     MachineSentenceBlocks ψ := by
-  obtain ⟨s, hs, hp⟩ := h
-  obtain ⟨lc, tc, a, k, hclk⟩ := PolySegStream.clockedTokens_certificate hs.digitizeStream
-  refine ⟨TraderMachine.traderOutput lc tc a k,
-    TraderMachine.traderOutput_mem_FP lc tc a k, fun d => ?_, fun d => ?_⟩
-  · have hout : TraderMachine.traderOutput lc tc a k (unaryDay d) = tokBits (s d) := by
-      rw [TraderMachine.traderOutput, length_unaryDay]
-      simp only [TraderMachine.clockOf]
-      rw [hclk d, tokBits]
-      congr 1
-      have hid : List.map (fun x => min x 4) (digitize (s d))
-          = List.map id (digitize (s d)) :=
-        List.map_congr_left (fun x hx => by
-          have := mem_digitize_le_four (s d) x hx
-          simp only [id_eq]
-          omega)
-      rw [hid, List.map_id]
-    rw [hout]
-    exact blockWF_tokBits _
-  · have hread : blocksOf (TraderMachine.traderOutput lc tc a k) d = s d := by
-      rw [blocksOf, decodeBits, TraderMachine.bitsToDigits_traderOutput, length_unaryDay,
-        undigitize_map_min_four]
-      simp only [TraderMachine.clockOf]
-      rw [hclk d, undigitize_digitize]
-    rw [hread]
-    exact hp d
+  obtain ⟨s, ⟨F, hF, hwf, hdec⟩, hp⟩ := h
+  refine ⟨F, hF, hwf, fun d => ?_⟩
+  have hread : blocksOf F d = s d := by rw [blocksOf, hdec d]
+  rw [hread]
+  exact hp d
 
 /-! ## The transport theorem
 
 Closure under conditioning, at the paper's own trader class: the conditioned translation of
-a *machine*-efficient trader is machine-efficient.  The witness is the passes composed,
+a efficiently computable trader is efficiently computable.  The witness is the passes composed,
 run on the packed word `pair (F x) x` so that the transduction can read the trading day off
 the machine's own input; correctness is the class-agnostic core
 `RpnConditioning.strategyOfTokens_rpnConditionOutput`, applied to the token stream the
 source word denotes. -/
 
 /-- **Closure under conditioning at the paper's own trader class, gated form**: the
-conditioned translation of a machine-efficient trader is machine-efficient.
+conditioned translation of an efficiently computable trader is efficiently computable.
 
-The `ψ` hypothesis is `BigSentenceCodes` — `def:ec`'s own write-out sentence class, in which
-a condition's Gödel code may be exponential in the day — exactly as in the fuel-class
-counterpart `RpnConditioning.conditionedTranslation_preserves_ecRpn` (whose `Rpn` names the
-RPN *symbol model* the compiler emits in, not the sentence class), so nothing about the
-sentence sequence is weakened; the trader hypothesis is the *machine* class, so the theorem
-is strictly stronger there.
+The `ψ` hypothesis is `MachineSentenceCodes` — `def:ec`'s own machine-metered write-out
+sentence class, in which
+a condition's Gödel code may be exponential in the day — and it is the class
+`ConditioningPresentation.condition_codes` itself carries, so the endpoint chain reaches this
+theorem with no crossing at all.  This is the only class-preservation statement `thm:scon`
+rests on; there is no fuel-class counterpart, because closure of the certification engine's
+own class is not a paper claim.
 Kind: `P` proved; provenance: (a) derived in-project.
 Paper node: `thm:scon` -/
-theorem conditionedTranslation_preserves_machine
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) (ε : ℚ)
-    (T : Trader) (hT : MachineEfficientTrader T) :
-    MachineEfficientTrader (T.conditionedTranslation ψ ε) := by
-  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_big hψ
+theorem conditionedTranslation_preserves_ec
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) (ε : ℚ)
+    (T : Trader) (hT : EfficientlyComputable T) :
+    EfficientlyComputable (T.conditionedTranslation ψ ε) := by
+  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_machine hψ
   obtain ⟨F, hF, hFspec⟩ := hT
   refine ⟨fun x => condOutputW ε B sndBlock fstBlock (pair (F x) x),
     mem_FP_withInput hF
@@ -1321,21 +1297,20 @@ private lemma ifConstLeLen_mem_FP {A X Y : List Bool → List Bool} (hA : A ∈ 
   exact h
 
 /-- **Closure under conditioning at the paper's own trader class, finite-zero form**: the
-eventual conditioned translation of a machine-efficient trader is machine-efficient.
+eventual conditioned translation of an efficiently computable trader is efficiently computable.
 
-As with the gated form, the `ψ` hypothesis is `BigSentenceCodes` — `def:ec`'s own write-out
-sentence class — the same one the fuel counterpart
-`RpnConditioning.eventualConditionedTranslation_preserves_ecRpn` takes (whose `Rpn` names
-the RPN *symbol model*, not the sentence class), and the trader hypothesis is the machine
-class.
+As with the gated form, the `ψ` hypothesis is `MachineSentenceCodes` — `def:ec`'s own
+machine-metered write-out sentence class, and the class
+`ConditioningPresentation.condition_codes` carries — and the trader hypothesis is `def:ec`
+itself.  There is no fuel-class counterpart, for the reason recorded at the gated form.
 Kind: `P` proved; provenance: (a) derived in-project.
 Paper node: `thm:scon` -/
-theorem eventualConditionedTranslation_preserves_machine
+theorem eventualConditionedTranslation_preserves_ec
     {P : History} {ψ : ℕ → Sentence}
-    (F : EventualConditioningFloor P ψ) (hψ : BigSentenceCodes ψ)
-    (T : Trader) (hT : MachineEfficientTrader T) :
-    MachineEfficientTrader (T.eventualConditionedTranslation F) := by
-  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_big hψ
+    (F : EventualConditioningFloor P ψ) (hψ : MachineSentenceCodes ψ)
+    (T : Trader) (hT : EfficientlyComputable T) :
+    EfficientlyComputable (T.eventualConditionedTranslation F) := by
+  obtain ⟨B, hB, hBwf, hBparse⟩ := machineSentenceBlocks_of_machine hψ
   obtain ⟨G, hG, hGspec⟩ := hT
   refine ⟨fun x =>
     (if F.cutoff ≤ (sndBlock (pair (G x) x)).length then

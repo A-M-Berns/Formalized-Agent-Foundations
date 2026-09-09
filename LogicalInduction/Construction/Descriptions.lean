@@ -86,7 +86,7 @@ all four:
 **Not a paper node.** Nothing here renders anything in arXiv:1609.03543; no declaration here
 carries a provenance line, and all are `lemma`s and `def`s rather than `theorem`s
 (`scripts/lint_paper_labels.py`).  The file is nonetheless trust-relevant: the `def:ec`
-strength row rests on `enumeratedTrader_machineEfficient` and `exists_enumeratedTrader_eq`,
+strength row rests on `enumeratedTrader_efficient` and `exists_enumeratedTrader_eq`,
 which consume the coverage bridge and `primrec_machineTokens` named above.
 -/
 
@@ -1104,7 +1104,7 @@ def progCoeff (j : ℕ) : ℕ := (Nat.unpair (Nat.unpair j).1).2
 def progDeg (j : ℕ) : ℕ := (Nat.unpair j).2
 
 /-- The polynomial clock carried by index `j`, in the `a * (n + 1) ^ k + a` normal form
-shared with `IsPolyBounded` and `EfficientlyComputable`. -/
+shared with `IsPolyBounded` and `PolyFueledTrader`. -/
 def progClock (j n : ℕ) : ℕ := progCoeff j * (n + 1) ^ progDeg j + progCoeff j
 
 /-- The same clock as a `Polynomial ℕ`, which is the form `Complexity.FP`'s normal form
@@ -1267,7 +1267,7 @@ lemma primrec_machineTokens : Primrec₂ machineTokens :=
 
 `Complexity.exists_desc_computesInTime_polynomial` hands back a description together with a
 `Polynomial ℕ` time bound. An index of this enumeration carries instead a clock in the
-`a * (n + 1) ^ k + a` normal form shared with `IsPolyBounded` and `EfficientlyComputable`.
+`a * (n + 1) ^ k + a` normal form shared with `IsPolyBounded` and `PolyFueledTrader`.
 The conversion is the only arithmetic gap between the two, and it is uniform: a
 natural-coefficient polynomial is dominated by its coefficient sum times `(n + 1)` to its
 degree, at *every* `n`.

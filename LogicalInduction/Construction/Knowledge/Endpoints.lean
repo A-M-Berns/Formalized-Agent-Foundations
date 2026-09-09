@@ -72,9 +72,13 @@ separation is a theorem, not an intention:
 The argument `⟨⟨⌜mₙ⌝, xₙ⟩, n⟩` has a value exponential in the day, so it is spelled by the
 **compact** Horner term `binNumeral` (`Construction/LUV/SourceCodec.lean`), `O(log v)` `ℒₒᵣ` nodes,
 whose symbol run is emitted digit by digit from the very write-out certificates the paper's
-hypotheses supply: `hm : DigitMachineCodes machines` and `hi : BigDigits inputs`.  Those
-two hypotheses are therefore load-bearing on the `def:ec` obligation — they are the only
-route to the `sentence_poly` field of each represented-claims bundle — and not decorative.
+hypotheses supply: `hm : MachineMachineCodes machines` and `hi : MachineDigits inputs`, the
+`Complexity.FP` readings of the write-out ladder, which is what every endpoint and every
+constructor in this file binds.  (The fuel-metered `DigitMachineCodes` / `BigDigits` are
+producer routes into them, by `.toMachine`, and are what the applied clients below cross
+from.)  Those two hypotheses are therefore load-bearing on the `def:ec` obligation — they
+are the only route to the `sentence_poly` field of each represented-claims bundle — and not
+decorative.
 Foundation's *unary* `Semiterm.Operator.numeral` would cost the argument's value in symbols;
 that is a Foundation artifact, and the paper fixes no numeral notation (tex:564, tex:614).
 Provability is insensitive to the choice (`provable_subst_iff_of_val`), so only the cost
@@ -134,6 +138,15 @@ Foundation's internal provability predicate at `V := ℕ`, whose side condition 
   `theoryOf m` for a single `m` — is not formalized, and no endpoint consumes it
   (`hinc` is stated at the caller's own machine).  `theoryOf_const_ofNNF` proves the
   singleton half exactly.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -203,13 +216,13 @@ This is where `hm`/`hi` do their work downstream: `henc` is supplied by the comp
 numeral's digit-driven emitter, which consumes the write-out certificates.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from
-`bigSentenceCodes_reprArgClaim`. -/
-lemma representedClaimSentence_bigSentenceCodes (γ : ArithmeticSemisentence 2)
+`machineSentenceCodes_reprArgClaim`. -/
+lemma representedClaimSentence_machineSentenceCodes (γ : ArithmeticSemisentence 2)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
-    (henc : ∀ l : ℕ, PolySegStream (fun n =>
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
-    BigSentenceCodes (fun n => representedClaimSentence γ (τ n)) :=
-  bigSentenceCodes_reprArgClaim γ τ henc
+    MachineSentenceCodes (fun n => representedClaimSentence γ (τ n)) :=
+  machineSentenceCodes_reprArgClaim γ τ henc
 
 variable (T : ArithmeticTheory)
 
@@ -291,11 +304,13 @@ def boundedArg (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ) (n :
 is the load-bearing use of `hm` and `hi`: they are what makes the claim family `def:ec`.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from `haltingClaimInput_digits`
-and `BigDigits.natPair`. -/
+and `MachineDigits.natPair`; the day is a `UnaryRuler` (`UnaryRuler.id`), the machine-side
+reading of the fuel proof's `PolyFueled.id`. -/
 lemma boundedArg_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
-    BigDigits (boundedArg machines inputs) :=
-  (haltingClaimInput_digits hm hi).natPair (BigDigits.of_polyFueled PolyFueled.id)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs) :
+    MachineDigits (boundedArg machines inputs) :=
+  MachineDigits.natPair (haltingClaimInput_digits hm hi)
+    (MachineDigits.ofUnaryRuler UnaryRuler.id)
 
 /-- **The universal bounded-run decider at a horizon.**  `1` if the machine whose source is
 `z.unpair.1.unpair.1` halts on `z.unpair.1.unpair.2` within `steps z.unpair.2` interpreter
@@ -338,11 +353,22 @@ lemma universalRunValue_boundedArg (machines : ℕ → Nat.Partrec.Code) (inputs
     Nat.unpair_pair, Nat.Partrec.Code.ofSource_sourceNat]
 
 /-- A write-out named machine sequence is computable: the source number is primitive
-recursive by `BigDigits.primrec`, and `Code.ofSource` inverts it. -/
+recursive by `BigDigits.primrec`, and `Code.ofSource` inverts it.  The fuel-side calibration
+of `MachineMachineCodes.computable` below, kept beside it as `BigDigits.primrec` is kept
+beside `MachineDigits.primrec`; no endpoint binds it. -/
 lemma DigitMachineCodes.computable {machines : ℕ → Nat.Partrec.Code}
     (hm : DigitMachineCodes machines) : Computable machines :=
   ((Nat.Partrec.Code.ofSource_primrec.comp (BigDigits.primrec hm)).to_comp).of_eq fun _ =>
     Nat.Partrec.Code.ofSource_sourceNat _
+
+/-- A machine-metered named machine sequence is computable: the source number is primitive
+recursive by `MachineDigits.primrec` (`Construction/MachineTraderEnumeration.lean`, read off
+the trader enumeration's coverage bridge, since `Complexity.FP ⊆ Primrec` is not available),
+and `Code.ofSource` inverts it. -/
+lemma MachineMachineCodes.computable {machines : ℕ → Nat.Partrec.Code}
+    (hm : MachineMachineCodes machines) : Computable machines :=
+  ((Nat.Partrec.Code.ofSource_primrec.comp (MachineDigits.primrec hm)).to_comp).of_eq
+    fun _ => Nat.Partrec.Code.ofSource_sourceNat _
 
 /-- A horizon named by a program is a computable function: the program's evaluation is
 partial recursive and total at every day. -/
@@ -501,15 +527,15 @@ This is the `thm:dontwait` claim family; the paper node itself is carried by the
 that consumes it, not by this constructor. -/
 noncomputable def representedBoundedClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     {machines : ℕ → Nat.Partrec.Code} {inputs steps : ℕ → ℕ}
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (γ : ArithmeticSemisentence 2)
     (hγ : ∀ z y : ℕ, y = universalRunValue steps z ↔ T ⊢ reprAll γ y z) :
     RepresentedDecidableClaims (paperDP T)
       (fun n => CodeHaltsWithin (machines n) (inputs n) (steps n)) where
   sentence n := representedClaimSentence γ (binNumeral (boundedArg machines inputs n))
   sentence_poly :=
-    representedClaimSentence_bigSentenceCodes γ _
-      (polySegStream_binNumeral_const (boundedArg_digits hm hi))
+    representedClaimSentence_machineSentenceCodes γ _
+      (machineTokenStream_binNumeral_const (boundedArg_digits hm hi))
   provable_of_true n hn := by
     refine paperDP_covers_representedClaim T γ _ ?_
     refine (provable_neg_reprAllTerm_binNumeral_iff T γ _).mpr ?_
@@ -549,7 +575,7 @@ bound. -/
 noncomputable def representedBoundedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [RepresentsComputations T]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hh : ComputableHorizon horizons) :
     RepresentedDecidableClaims (paperDP T)
       (fun n => CodeHaltsWithin (machines n) (inputs n) (horizons n)) :=
@@ -596,10 +622,11 @@ noncomputable def conClaimArg (n : ℕ) : ℕ := Nat.pair ⌜(⊥ : ArithmeticSe
 
 /-- The argument is write-out emittable: a constant paired with the day.
 
-Kind `C` (composition).  Provenance: (a) derived in-project from `BigDigits.const` and
-`BigDigits.natPair`. -/
-lemma conClaimArg_digits : BigDigits conClaimArg :=
-  (BigDigits.const _).natPair (BigDigits.of_polyFueled PolyFueled.id)
+Kind `C` (composition).  Provenance: (a) derived in-project from `MachineDigits.const` and
+`MachineDigits.natPair`. -/
+lemma conClaimArg_digits : MachineDigits conClaimArg :=
+  MachineDigits.natPair (MachineDigits.const _)
+    (MachineDigits.ofUnaryRuler UnaryRuler.id)
 
 /-- **The paper's `Con(Θ′)(⌜f⌝(⌜n⌝))`, as a propositional claim.**  The value-`0` sentence
 of the representing formula `γ` at the compact name of `⟨⌜⊥⌝, n⟩`, decomposed the paper's
@@ -612,11 +639,11 @@ noncomputable def conClaimSentence (γ : ArithmeticSemisentence 2) (n : ℕ) : S
 argument run is the compact numeral of `⟨⌜⊥⌝, n⟩`.
 
 Kind `C` (composition).  Provenance: (a) derived in-project. -/
-lemma conClaimSentence_bigSentenceCodes (γ : ArithmeticSemisentence 2) :
-    BigSentenceCodes (conClaimSentence γ) :=
-  BigSentenceCodes.neg
-    (representedClaimSentence_bigSentenceCodes γ _
-      (polySegStream_binNumeral_const conClaimArg_digits))
+lemma conClaimSentence_machineSentenceCodes (γ : ArithmeticSemisentence 2) :
+    MachineSentenceCodes (conClaimSentence γ) :=
+  MachineSentenceCodes.neg
+    (representedClaimSentence_machineSentenceCodes γ _
+      (machineTokenStream_binNumeral_const conClaimArg_digits))
 
 /-- **The Con family names the day.**  Distinct days give distinct claims, with no
 hypothesis on `T`'s theorems, because `Nat.pair` and `binNumeral` are injective.
@@ -764,7 +791,7 @@ noncomputable def representedConClaims (T' : ArithmeticTheory) [T.Δ₁] [T'.Δ�
     (hh : ComputableHorizon horizons) :
     RepresentedDecidableClaims (paperDP T) (fun n => conWithin T' (horizons n)) where
   sentence n := conClaimSentence (conGamma T T' hh) n
-  sentence_poly := conClaimSentence_bigSentenceCodes _
+  sentence_poly := conClaimSentence_machineSentenceCodes _
   provable_of_true n _ := by
     refine paperDP_covers_representedClaim_neg T _ _ ?_
     refine (provable_reprAllTerm_binNumeral_iff T _ _).mpr ?_
@@ -802,7 +829,7 @@ Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_ofComputation
     (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
@@ -927,7 +954,7 @@ strengthenings (module header; `LogicalInduction/README.md`).
 Paper node: `thm:dontwait` -/
 theorem lic_does_not_anticipate_halting_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs horizons : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hh : ComputableHorizon horizons)
     (hnever : ∀ n, ¬CodeHalts (machines n) (inputs n)) :
     (fun n => liaHistory (paperDP T) n
@@ -946,12 +973,12 @@ example :
     (fun n => liaHistory (paperDP T) n
       ((representedBoundedHaltingClaims T
           (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
-          (digitMachineCodes_const neverHaltMachine) bigDigits_two_pow
+          (digitMachineCodes_const neverHaltMachine).toMachine bigDigits_two_pow.toMachine
           (ComputableHorizon.of Computable.id)).sentence n))
         ≈ₙ fun _ => 0 :=
   lic_does_not_anticipate_halting_unconditional T
     (fun _ => neverHaltMachine) (fun n => 2 ^ n) (fun n => n)
-    (digitMachineCodes_const neverHaltMachine) bigDigits_two_pow
+    (digitMachineCodes_const neverHaltMachine).toMachine bigDigits_two_pow.toMachine
     (ComputableHorizon.of Computable.id)
     (fun n => not_codeHalts_neverHaltMachine (2 ^ n))
 
@@ -1033,7 +1060,8 @@ Two representation points, both shared with `thm:dontwait` above.
   same for every admissible machine sequence and would name nothing.  Nor does a compact name
   cost anything in symbols: `binNumeral (haltingClaimInput mₙ xₙ)` costs `O(log)` of the
   pair's value, i.e. `O(|source of mₙ| + |digits of xₙ|)` symbols, and that is exactly the
-  quantity `hm : DigitMachineCodes machines` and `hi : BigDigits inputs` bound polynomially.
+  quantity `hm : MachineMachineCodes machines` and `hi : MachineDigits inputs` bound
+  polynomially.
   `hm` and `hi` are therefore consumed by the `def:ec` obligation, on which they are
   load-bearing, rather than by a free r.e.-ness step.
 
@@ -1067,13 +1095,13 @@ naming.**  Definitionally the source certificate of
 symbol run, which is where the write-out hypotheses are spent.
 
 Kind `C` (composition).  Provenance: (a) derived in-project from
-`bigSentenceCodes_schemaArgClaim`. -/
-lemma schemaArgClaimSentence_bigSentenceCodes (σ : ArithmeticSemisentence 1)
+`machineSentenceCodes_schemaArgClaim`. -/
+lemma schemaArgClaimSentence_machineSentenceCodes (σ : ArithmeticSemisentence 1)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
-    (henc : ∀ l : ℕ, PolySegStream (fun n =>
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
-    BigSentenceCodes (fun n => schemaArgClaimSentence σ (τ n)) :=
-  bigSentenceCodes_schemaArgClaim σ τ henc
+    MachineSentenceCodes (fun n => schemaArgClaimSentence σ (τ n)) :=
+  machineSentenceCodes_schemaArgClaim σ τ henc
 
 /-- The paper decomposition of the schema claim `∃ν σ(t, ν)` is the **positive** literal
 `schemaArgClaimSentence σ t`. -/
@@ -1316,7 +1344,7 @@ lemma haltingArgClaimSentence_ne_of_source_ne
 /-- **The `thm:halts`/`thm:loops` claim family, over the paper's own deductive process.**
 
 The positive obligation is discharged by Σ₁-completeness at the *universal* schema; the
-`def:ec` obligation is discharged internally by `schemaArgClaimSentence_bigSentenceCodes` at
+`def:ec` obligation is discharged internally by `schemaArgClaimSentence_machineSentenceCodes` at
 the compact argument name, and that is what `hm` and `hi` are consumed by.
 
 Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation citation —
@@ -1324,13 +1352,13 @@ Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation cita
 carried by the endpoints that consume it, not by this constructor. -/
 noncomputable def representedHaltingClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs) :
     RepresentedSemidecidableClaims (paperDP T)
       (fun n => CodeHalts (machines n) (inputs n)) where
   sentence := haltingArgClaimSentence machines inputs
   sentence_poly :=
-    schemaArgClaimSentence_bigSentenceCodes universalHaltingSchema _
-      (polySegStream_binNumeral_const (haltingClaimInput_digits hm hi))
+    schemaArgClaimSentence_machineSentenceCodes universalHaltingSchema _
+      (machineTokenStream_binNumeral_const (haltingClaimInput_digits hm hi))
   provable_of_true n hn := by
     refine paperDP_covers_schemaArgClaim T universalHaltingSchema _ ?_
     refine (provable_subst_binNumeral_iff T universalHaltingSchema _).mpr ?_
@@ -1356,7 +1384,7 @@ Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_ofComputation
     (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
     (fun n => P n ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ
@@ -1373,7 +1401,7 @@ Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_ofComputation
     (P : History) [IsLogicalInductor P (paperDP T)]
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hloops : ∀ n : ℕ, T ⊢ ∼(haltingArgClaimInstance machines inputs n))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((paperDP T).D n)) :
     (fun n => P n ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ
@@ -1395,7 +1423,7 @@ strengthenings (module header; `LogicalInduction/README.md`).
 Paper node: `thm:halts` -/
 theorem lic_learns_halting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hhalts : ∀ n, CodeHalts (machines n) (inputs n)) :
     (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ fun _ => 1 :=
@@ -1411,7 +1439,7 @@ strengthenings (module header; `LogicalInduction/README.md`).
 Paper node: `thm:loops` -/
 theorem lic_learns_provable_nonhalting_patterns_unconditional
     (machines : ℕ → Nat.Partrec.Code) (inputs : ℕ → ℕ)
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs)
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs)
     (hloops : ∀ n : ℕ, T ⊢ ∼(haltingArgClaimInstance machines inputs n)) :
     (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T machines inputs hm hi).sentence n)) ≈ₙ fun _ => 0 :=
@@ -1427,33 +1455,25 @@ the `n`-bit string `2 ^ n`.  Nothing is left for the caller. -/
 example :
     (fun n => liaHistory (paperDP T) n
       ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
-          Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
+          Nat.Partrec.Code.bigDigits_sourceNat_nest.toMachine bigDigits_two_pow.toMachine).sentence n))
         ≈ₙ fun _ => 1 :=
   lic_learns_halting_patterns_unconditional T
     Nat.Partrec.Code.nest (fun n => 2 ^ n)
-    Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow
+    Nat.Partrec.Code.bigDigits_sourceNat_nest.toMachine bigDigits_two_pow.toMachine
     (fun n => codeHalts_nest n (2 ^ n))
 
-/-- **`thm:loops`, applied.**  Same growing machine family as `thm:halts`, same inputs, both
-class hypotheses discharged — but `hloops` remains a hypothesis of the `example`, because it
-is object-level `T`-refutability of a Π₁ fact and, *with the installed substrate*, there is
-no route to it for an arbitrary `T`.  The obstruction is representational: the only bridges
-Foundation gives to `T ⊢ …` for a `codeOfREPred` schema are positive (`re_complete`,
-`re_complete_mp`), and the schema itself is picked by `Classical.epsilon`, so its shape is
-unreachable and no `T` can be *shown* to refute a particular false instance.  What the
-example establishes is that everything else in the signature is inhabitable at a genuinely
-varying family.  `hloops` itself is separately shown inhabitable — at a specific, true, `Δ₁`
-theory — by `loopsTheory_refutes` and `thm_loops_applied_at_loopsTheory` below. -/
-example
-    (hloops : ∀ n : ℕ,
-      T ⊢ ∼(haltingArgClaimInstance Nat.Partrec.Code.nest (fun n => 2 ^ n) n)) :
-    (fun n => liaHistory (paperDP T) n
-      ((representedHaltingClaims T Nat.Partrec.Code.nest (fun n => 2 ^ n)
-          Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow).sentence n))
-        ≈ₙ fun _ => 0 :=
-  lic_learns_provable_nonhalting_patterns_unconditional T
-    Nat.Partrec.Code.nest (fun n => 2 ^ n)
-    Nat.Partrec.Code.bigDigits_sourceNat_nest bigDigits_two_pow hloops
+/-! **Why `thm:loops` gets no client at the growing `nest` family.**  The natural move — reuse
+`thm:halts`'s machine and input sequences and leave `hloops` to the caller — states a premise
+that **cannot be satisfied**: `codeHalts_nest` proves those machines halt on those inputs, so
+by Σ₁-completeness `T` proves each halting instance, and `T ⊢ ∼σ` alongside `T ⊢ σ` would
+contradict the ambient `[Entailment.Consistent T]`.  A client that leaves an unsatisfiable
+premise open exhibits nothing, so none is stated here.  `thm:loops`'s client is
+`thm_loops_applied_at_loopsTheory` below, at a family whose non-halting is *proved* and a
+theory that *provably refutes* the claims, with no hypothesis left to a caller.  What that
+client does not exercise is a **varying** diverging family: the witness theory would then
+need one refuting axiom per day and a `Δ₁` proof for that axiom set, which is not built here.
+The growth of the machine and input sequences is exercised, at satisfiable premises, by the
+`thm:halts` and `thm:dontwait` clients above. -/
 
 end HaltingEndpoints
 
@@ -1593,14 +1613,14 @@ The machine family is constant here — the growth of the machine/input sequence
 separately by the `thm:halts` and `thm:dontwait` clients above — because what this witness
 exists to show is that the refutation premise is inhabitable at all.
 Paper node: `thm:loops` -/
-theorem thm_loops_applied_at_loopsTheory :
+lemma thm_loops_applied_at_loopsTheory :
     (fun n => liaHistory (paperDP loopsTheory) n
       ((representedHaltingClaims loopsTheory (fun _ => neverHaltMachine) (fun _ => 0)
-          (digitMachineCodes_const neverHaltMachine) (BigDigits.const 0)).sentence n))
+          (digitMachineCodes_const neverHaltMachine).toMachine (MachineDigits.const 0)).sentence n))
         ≈ₙ fun _ => 0 :=
   lic_learns_provable_nonhalting_patterns_unconditional loopsTheory
     (fun _ => neverHaltMachine) (fun _ => 0)
-    (digitMachineCodes_const neverHaltMachine) (BigDigits.const 0) loopsTheory_refutes
+    (digitMachineCodes_const neverHaltMachine).toMachine (MachineDigits.const 0) loopsTheory_refutes
 
 end Halting
 
@@ -1643,8 +1663,9 @@ in range, and the day's theory entering only through the **argument**.
 
 **The `def:ec` premise.**  The day's theory is named by the numeral naming its machine's
 written source (`Nat.Partrec.Code.sourceNat`, `Framework/Emission/CodeSource.lean`), and the
-premise is `hm : DigitMachineCodes m` — the standing write-out class for machine sequences,
-the same one `thm:halts` uses.  This is the paper's own reading: "it must be possible to
+premise is `hm : MachineMachineCodes m` — the standing write-out class for machine
+sequences, the same one `thm:halts` uses, with the fuel-metered `DigitMachineCodes` as the
+producer route in (`.toMachine`).  This is the paper's own reading: "it must be possible to
 write out the source code specifying `mₙ` in time polynomial in `n`.  The runtime of an
 individual `mₙ` is
 immaterial" (tex:1931); for theories, tex:1905 asks that they be "efficiently named".  Nothing
@@ -2139,13 +2160,13 @@ Kind `C` (composition).  Provenance: (a) derived in-project; (b) Foundation cita
 `Theory.Proof` / `Entailment.deduction_iff` / `Bootstrapping.provable_iff_provable` (through
 `machineTheoryInconsistent_of_not_consistent`). -/
 noncomputable def representedInconsistentTheoryClaims [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m) :
+    (m : ℕ → Nat.Partrec.Code) (hm : MachineMachineCodes m) :
     InconsistentTheoryClaims (paperDP T)
       (fun n => ¬Entailment.Consistent (theoryOf (m n))) where
   inconsistencySentence := inconsistencyArgClaimSentence m
   inconsistency_poly :=
-    schemaArgClaimSentence_bigSentenceCodes inconsistencySchema _
-      (polySegStream_binNumeral_const hm)
+    schemaArgClaimSentence_machineSentenceCodes inconsistencySchema _
+      (machineTokenStream_binNumeral_const hm)
   inconsistency_provable n hn := by
     refine paperDP_covers_schemaArgClaim T inconsistencySchema _ ?_
     refine (provable_subst_binNumeral_iff T inconsistencySchema _).mpr ?_
@@ -2175,7 +2196,7 @@ provable in `Θ`".  Representability of computable functions does not give `𝗣
 proof is loose.
 Paper node: `thm:incons` -/
 theorem lic_disbelief_inconsistent_theories_unconditional [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
-    [Entailment.Consistent T] (m : ℕ → Nat.Partrec.Code) (hm : DigitMachineCodes m)
+    [Entailment.Consistent T] (m : ℕ → Nat.Partrec.Code) (hm : MachineMachineCodes m)
     (hinc : ∀ n, ¬Entailment.Consistent (theoryOf (m n))) :
     ((fun n => liaHistory (paperDP T) n
         ((representedInconsistentTheoryClaims T m hm).inconsistencySentence n))
@@ -2314,15 +2335,15 @@ caller.**  Every hypothesis and every instance argument is discharged: the `def:
 instances.  The day-`n` theory takes a different value for every `n`, and the day-separation
 lemma below fires at every pair of distinct days.
 Paper node: `thm:incons` -/
-theorem thm_incons_applied_deep :
+lemma thm_incons_applied_deep :
     ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
-          (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+          (digitMachineCodes_dayMachine _).toMachine).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
       ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ deepDayMachine
-          (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
+          (digitMachineCodes_dayMachine _).toMachine).consistencySentence n)) ≈ₙ fun _ => 0) :=
   lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ deepDayMachine
-    (digitMachineCodes_dayMachine _) not_consistent_theoryOf_deepDayMachine
+    (digitMachineCodes_dayMachine _).toMachine not_consistent_theoryOf_deepDayMachine
 
 /-- **The day-separation theorem, applied at every pair of distinct days** — no hypothesis and
 no behavioural side condition. -/
@@ -2387,15 +2408,15 @@ left to the caller.**  Each `Θ′ₙ` here has infinitely many axioms
 (`infinite_theoryOf_infiniteDayMachine`), each of which is astronomically large in normal form,
 and the whole sequence is named by machine sources of `O(n)` symbols.
 Paper node: `thm:incons` -/
-theorem thm_incons_applied_infinite :
+lemma thm_incons_applied_infinite :
     ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
-          (digitMachineCodes_dayMachine _)).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
+          (digitMachineCodes_dayMachine _).toMachine).inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
       ((fun n => liaHistory (paperDP 𝗜𝚺₁) n
         ((representedInconsistentTheoryClaims 𝗜𝚺₁ infiniteDayMachine
-          (digitMachineCodes_dayMachine _)).consistencySentence n)) ≈ₙ fun _ => 0) :=
+          (digitMachineCodes_dayMachine _).toMachine).consistencySentence n)) ≈ₙ fun _ => 0) :=
   lic_disbelief_inconsistent_theories_unconditional 𝗜𝚺₁ infiniteDayMachine
-    (digitMachineCodes_dayMachine _) not_consistent_theoryOf_infiniteDayMachine
+    (digitMachineCodes_dayMachine _).toMachine not_consistent_theoryOf_infiniteDayMachine
 
 end Inconsistency
 

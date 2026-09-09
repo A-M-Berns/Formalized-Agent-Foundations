@@ -40,9 +40,18 @@ as `def:ec` requires.  In the diagonal mesh at precision `n + 1`, flattened term
 
 Features are reified syntax (`dd:dsl`), so the constant and coefficient emitters are
 metered on `EF.serialize` through the write-out classes, while the threshold family is
-metered per token at `LUV.RpnThresholdCodeSeq`.  `LUVCombinationSyntax` is inhabited at a
+metered by write-out at `LUV.MachineThresholdCodeSeq`.  `LUVCombinationSyntax` is inhabited at a
 genuinely index-varying sequence by `ordinaryLUVCombinationSyntax`
 (`Construction/Quotation/MarketQuoteCodes.lean`).
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -52,28 +61,45 @@ namespace LogicalInduction
 /-- Operational syntax for a sequence of LUV combinations.  The LUV and coefficient at
 `z = ⟨n,j⟩` are the `j`th term of member `n`.
 
-The constant and coefficient emitters are the write-out classes on `EF.serialize`
-(`dd:dsl`).  The threshold field is different: `threshold_poly` is the *token-metered*
-`LUV.RpnThresholdCodeSeq`, one token per node of the threshold sentence `⌜X_j > i/k⌝`.
-It is the one token-metered retention on the canonical endpoint census — the `_ofSyntax`
-endpoints below reach it — and `scripts/coverage-classification.md`, under "LUV-threshold
-metering: rendering sensitivity, witnessed", records why that restricts who may supply the
-data rather than what is proved of it.
+Every emitter is a write-out class: the constant and coefficient emitters on
+`EF.serialize` (`dd:dsl`), and `threshold_poly` at `LUV.MachineThresholdCodeSeq`, which meters
+the threshold sentence `⌜X_j > i/k⌝` by the number of symbols it takes to write and places
+no bound on its Gödel value.  That is `def:ec`'s own metering, so the four `_ofSyntax`
+endpoints reaching this field carry no token-metered hypothesis.  Every field is
+machine-metered, exactly as in `AffineCombination.PolySequence`, which this structure feeds.
 Paper node: `def:luv` -/
 structure LUVCombinationSyntax (As : ℕ → LUVCombination) where
+  /-- Number of threshold shares in `As n`. -/
   termCount : ℕ → ℕ
+  /-- Coefficient at the paired index `⟨n,j⟩`. -/
   coefficient : ℕ → EF
+  /-- LUV at the paired index `⟨n,j⟩`. -/
   luv : ℕ → LUV
-  termCount_poly : ∃ c, PolyFueled c termCount
-  const_poly : BigSpliceStream (fun n ↦ (As n).const.serialize)
-  coefficient_poly : BigSpliceStream (fun z ↦ (coefficient z).serialize)
-  threshold_poly : LUV.RpnThresholdCodeSeq luv
+  /-- The term count is machine-metered: a polynomial-time machine, handed the unary day,
+  writes out that many marks (`UnaryRuler`, `Framework/Machine/Ruler.lean`).  This is the
+  shape every consumer needs — a count reindexes the emitted streams, and a reindexer
+  reaches the machine combinators as a ruler.  A client holding a fuel certificate
+  converts by `UnaryRuler.of_polyFueled`; no converse is claimed, so this is the strictly
+  weaker hypothesis. -/
+  termCount_poly : UnaryRuler termCount
+  /-- The combination constants are emitted as one uniform machine-metered token stream. -/
+  const_poly : MachineSpliceStream (fun n ↦ (As n).const.serialize)
+  /-- The coefficients are emitted as one uniform machine-metered token stream over the
+  paired index. -/
+  coefficient_poly : MachineSpliceStream (fun z ↦ (coefficient z).serialize)
+  /-- The threshold sentence family is emitted uniformly, machine-metered. -/
+  threshold_poly : LUV.MachineThresholdCodeSeq luv
+  /-- The projections reassemble each member's share list in order. -/
   terms_eq : ∀ n, (As n).terms = (List.range (termCount n)).map (fun j ↦
     (coefficient (Nat.pair n j), luv (Nat.pair n j)))
+  /-- Member `n`'s constant mentions no price beyond day `n`. -/
   const_rank : ∀ n, (As n).const.rank ≤ n
+  /-- Member `n`'s coefficients mention no price beyond day `n`. -/
   coefficient_rank : ∀ n j, j < termCount n →
     (coefficient (Nat.pair n j)).rank ≤ n
+  /-- The constants are closed: no free DSL variable, so the environment is irrelevant. -/
   const_closed : ∀ n ρ V, (As n).const.denoteWith ρ V = (As n).const.denote V
+  /-- The coefficients are closed, in the same sense as `const_closed`. -/
   coefficient_closed : ∀ z ρ V,
     (coefficient z).denoteWith ρ V = (coefficient z).denote V
 
@@ -110,11 +136,8 @@ def meshSentence {As : ℕ → LUVCombination}
 
 private lemma meshTermCount_poly {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) :
-    ∃ c, PolyFueled c S.meshTermCount := by
-  obtain ⟨cmul, hmul⟩ := mul_polyFueled
-  obtain ⟨ccount, hcount⟩ := S.termCount_poly
-  exact ⟨_, (hmul.comp (hcount.pair PolyFueled.id.succ_comp)).of_eq (fun n ↦ by
-      simp [meshTermCount])⟩
+    UnaryRuler S.meshTermCount :=
+  (S.termCount_poly.mul UnaryRuler.id.succ).of_eq (fun n ↦ by simp [meshTermCount])
 
 -- `Nat.sqrt` sits under `Nat.unpair`, and its unfolding whnf-loops in deep `PolyFueled`
 -- elaboration; see `notes/lean-gotchas.md`.
@@ -256,9 +279,9 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
   have hsource : PolyFueled _ (fun z ↦
       Nat.pair z.unpair.1 (S.meshMember z)) :=
     PolyFueled.left.pair hmember
-  have hcoeffSource := S.coefficient_poly.comp hsource
-  have hinvSource := BigSpliceStream.serialize_const_comp
-    ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
+  have hcoeffSource := S.coefficient_poly.comp (UnaryRuler.of_polyFueled hsource)
+  have hinvSource := (BigSpliceStream.serialize_const_comp
+    ⟨_, hinv.comp PolyFueled.left.succ_comp⟩).toMachine
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (Nat.pair z.unpair.1 (S.meshMember z))
         (Nat.pair (z.unpair.1 + 1) (S.meshOffset z))) :=
@@ -269,11 +292,12 @@ noncomputable def diagonalMeshPoly {As : ℕ → LUVCombination}
     sentence := S.meshSentence
     termCount_poly := S.meshTermCount_poly
     const_poly := S.const_poly
-    coefficient_poly := BigSpliceStream.of_eq
-      (BigSpliceStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
+    coefficient_poly := MachineSpliceStream.of_eq
+      (MachineSpliceStream.serialize_mul hcoeffSource hinvSource) (fun z ↦ by
         simp [meshCoefficient])
     sentence_poly :=
-      (BigSentenceCodes.ofRpnSentenceCodes (hthreshold.comp hquery)).of_eq (fun z ↦ by
+      (MachineSentenceCodes.comp hthreshold
+        (UnaryRuler.of_polyFueled hquery)).of_eq (fun z ↦ by
         simp [meshSentence])
     terms_eq := ?_
     const_rank := S.const_rank
@@ -339,17 +363,18 @@ structure TheorySemantics {As : ℕ → LUVCombination}
       v.Holds ((S.luv (Nat.pair n j)).gt r) ↔
         (r : ℝ) < value n (S.luv (Nat.pair n j))
 
-/-- Every LUV occurring in a member of the sequence carries the token-metered threshold
-codes, read off the presentation's `threshold_poly` field. -/
+/-- Every LUV occurring in a member of the sequence carries the write-out threshold codes,
+read off the presentation's `threshold_poly` field. -/
 lemma threshold_code {As : ℕ → LUVCombination}
     (S : LUVCombinationSyntax As) (n : ℕ) (p : EF × LUV)
-    (hp : p ∈ (As n).terms) : p.2.RpnThresholdCodes := by
+    (hp : p ∈ (As n).terms) : p.2.MachineThresholdCodes := by
   rw [S.terms_eq] at hp
   simp only [List.mem_map, List.mem_range] at hp
   obtain ⟨j, hj, rfl⟩ := hp
   have hquery : PolyFueled _ (fun m : ℕ ↦
       Nat.pair (Nat.pair n j) m) := (PolyFueled.const (Nat.pair n j)).pair PolyFueled.id
-  exact (S.threshold_poly.comp hquery).of_eq (fun m ↦ by simp)
+  exact (MachineSentenceCodes.comp S.threshold_poly
+    (UnaryRuler.of_polyFueled hquery)).of_eq (fun m ↦ by simp)
 
 /-- Compact syntax plus completed-theory representation discharges the exact presentation. -/
 def exactTheoryPresentation {As : ℕ → LUVCombination}
@@ -581,38 +606,31 @@ def triangularSentence {G : ℕ → AffineCombination}
 
 private lemma triangularMemberLength_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
-    ∃ c, PolyFueled c (triangularMemberLength hG) := by
-  obtain ⟨c, hc⟩ := hG.termCount_poly
-  have hindex : PolyFueled _ (fun z : ℕ ↦ triangularIndex z.unpair.1 z.unpair.2) :=
-    (PolyFueled.left.pair PolyFueled.right.succ_comp).of_eq (fun z ↦ by
+    UnaryRuler (triangularMemberLength hG) := by
+  have hindex : UnaryRuler (fun z : ℕ ↦ triangularIndex z.unpair.1 z.unpair.2) :=
+    (UnaryRuler.unpairFst.pair UnaryRuler.unpairSnd.succ).of_eq (fun z ↦ by
       simp [triangularIndex])
-  exact ⟨c.comp _, hc.comp hindex⟩
+  exact hG.termCount_poly.comp hindex
 
 private lemma triangularTermCount_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
-    ∃ c, PolyFueled c (triangularTermCount hG) := by
-  obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
-  obtain ⟨c, hc⟩ := segPrefix_polyFueled hlen
-  exact ⟨c.comp _, (hc.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m ↦ by
-    simp [triangularTermCount])⟩
+    UnaryRuler (triangularTermCount hG) :=
+  ((UnaryRuler.segPrefix (triangularMemberLength_poly hG)).comp
+    (UnaryRuler.id.pair UnaryRuler.id)).of_eq (fun m ↦ by simp [triangularTermCount])
 
 private lemma triangularMember_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
-    ∃ c, PolyFueled c (triangularMember hG) := by
-  obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
-  obtain ⟨c, hc⟩ := segLocate_polyFueled hlen
-  exact ⟨c.comp _, (hc.comp (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z ↦ by
-    simp [triangularMember])⟩
+    UnaryRuler (triangularMember hG) :=
+  ((UnaryRuler.segLocate (triangularMemberLength_poly hG)).comp
+    (UnaryRuler.id.pair UnaryRuler.unpairFst)).of_eq (fun z ↦ by
+      simp [triangularMember])
 
 private lemma triangularOffset_poly {G : ℕ → AffineCombination}
     (hG : PolySequence G) :
-    ∃ c, PolyFueled c (triangularOffset hG) := by
-  obtain ⟨_, hlen⟩ := triangularMemberLength_poly hG
-  obtain ⟨_, hmember⟩ := triangularMember_poly hG
-  obtain ⟨_, hprefix⟩ := segPrefix_polyFueled hlen
-  have hp := hprefix.comp (PolyFueled.left.pair hmember)
-  exact ⟨_, (subc_polyFueled.comp (PolyFueled.right.pair hp)).of_eq (fun z ↦ by
-    simp [triangularOffset])⟩
+    UnaryRuler (triangularOffset hG) := by
+  have hp := (UnaryRuler.segPrefix (triangularMemberLength_poly hG)).comp
+    (UnaryRuler.unpairFst.pair (triangularMember_poly hG))
+  exact (UnaryRuler.unpairSnd.sub hp).of_eq (fun z ↦ by simp [triangularOffset])
 
 private lemma triangularRemainder_serialize (G : ℕ → AffineCombination)
     (m i : ℕ) (threshold pad : ℚ) :
@@ -651,44 +669,50 @@ private lemma triangularFold_serialize (G : ℕ → AffineCombination)
 
 private lemma triangularSignal_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       (triangularSignal G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
   have hquery : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (triangularIndex z.unpair.1 z.unpair.2) z.unpair.1) :=
     ((PolyFueled.left.pair PolyFueled.right.succ_comp).pair
       PolyFueled.left).of_eq (fun z ↦ by simp [triangularIndex])
-  refine BigSpliceStream.of_eq
-    (BigSpliceStream.serialize_sellIndF (hG.priceFeature_polySeg.comp hquery)
+  refine MachineSpliceStream.of_eq
+    (MachineSpliceStream.serialize_sellIndF (hG.priceFeature_polySeg.comp
+      (f := fun z : ℕ => Nat.pair (triangularIndex z.unpair.1 z.unpair.2) z.unpair.1)
+      (UnaryRuler.of_polyFueled hquery))
       threshold pad) ?_
   intro z
   simp [triangularSignal]
 
 private lemma triangularRemainder_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       (triangularRemainder G z.unpair.1 z.unpair.2 threshold pad).serialize) := by
   have hsig := triangularSignal_polySeg hG threshold pad
-  have hone : BigSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hneg : BigSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have honeMinus := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hneg hsig)
-  have hblock := honeMinus.append (BigSpliceStream.tag 3 (by norm_num))
+  have hone : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hneg : MachineSpliceStream (fun _ : ℕ ↦ (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have honeMinus := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hneg hsig)
+  have hblock := honeMinus.append (MachineSpliceStream.tag 3 (by norm_num))
   have hreindex : PolyFueled _ (fun q : ℕ ↦
       Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hblocks := BigSpliceStream.concatVar (hblock.comp hreindex) PolyFueled.right
-  refine BigSpliceStream.of_eq (hone.append hblocks) ?_
+  have hblocks := MachineSpliceStream.concatVar
+    (hblock.comp (f := fun q : ℕ => Nat.pair q.unpair.1.unpair.1 q.unpair.2)
+      (UnaryRuler.of_polyFueled hreindex))
+    (cnt := fun z : ℕ => z.unpair.2)
+    (UnaryRuler.unpairSnd)
+  refine MachineSpliceStream.of_eq (hone.append hblocks) ?_
   intro z
   rw [triangularRemainder_serialize]
   simp [oneMinus]
 
 private lemma triangularWeight_polySeg {G : ℕ → AffineCombination}
     (hG : PolySequence G) (threshold pad : ℚ) :
-    BigSpliceStream (fun z ↦
+    MachineSpliceStream (fun z ↦
       (triangularWeight G z.unpair.1 z.unpair.2 threshold pad).serialize) :=
-  BigSpliceStream.serialize_mul (triangularRemainder_polySeg hG threshold pad)
+  MachineSpliceStream.serialize_mul (triangularRemainder_polySeg hG threshold pad)
     (triangularSignal_polySeg hG threshold pad)
 
 private lemma triangularMember_lt {G : ℕ → AffineCombination}
@@ -795,33 +819,40 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
       p.1.rank ≤ m) :
     PolySequence (fun m ↦
       softmaxAffine (triangularGaps G m) m threshold pad (.const 1)) := by
-  let cmember := Classical.choose (triangularMember_poly hG)
-  have hmember := Classical.choose_spec (triangularMember_poly hG)
-  let coffset := Classical.choose (triangularOffset_poly hG)
-  have hoffset := Classical.choose_spec (triangularOffset_poly hG)
-  have hcanonical : PolyFueled _ (fun z : ℕ ↦ Nat.pair
+  have hmember := triangularMember_poly hG
+  have hoffset := triangularOffset_poly hG
+  have hcanonical : UnaryRuler (fun z : ℕ ↦ Nat.pair
       (triangularIndex z.unpair.1 (triangularMember hG z))
       (triangularOffset hG z)) :=
-    ((PolyFueled.left.pair hmember.succ_comp).pair hoffset).of_eq (fun z ↦ by
+    ((UnaryRuler.unpairFst.pair hmember.succ).pair hoffset).of_eq (fun z ↦ by
       simp [triangularIndex])
   have hweight := triangularWeight_polySeg hG threshold pad
-  have hweightMember := hweight.comp (PolyFueled.left.pair hmember)
-  have hcoefficient := BigSpliceStream.serialize_mul hweightMember
-    (hG.coefficient_poly.comp hcanonical)
+  have hweightMember := hweight.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.1 (triangularMember hG z))
+    (UnaryRuler.unpairFst.pair hmember)
+  have hcoefficient := MachineSpliceStream.serialize_mul hweightMember
+    (hG.coefficient_poly.comp
+      (f := fun z : ℕ => Nat.pair
+        (triangularIndex z.unpair.1 (triangularMember hG z)) (triangularOffset hG z))
+      hcanonical)
   have hsourceIndex : PolyFueled _ (fun z : ℕ ↦
       triangularIndex z.unpair.1 z.unpair.2) :=
     (PolyFueled.left.pair PolyFueled.right.succ_comp).of_eq (fun z ↦ by
       simp [triangularIndex])
-  have hconstBlock := BigSpliceStream.serialize_mul hweight
-    (hG.const_poly.comp hsourceIndex)
-  have hconstTerms := BigSpliceStream.concatVar hconstBlock PolyFueled.id
-  have hzero : BigSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
+  have hconstBlock := MachineSpliceStream.serialize_mul hweight
+    (hG.const_poly.comp
+      (f := fun z : ℕ => triangularIndex z.unpair.1 z.unpair.2)
+      (UnaryRuler.of_polyFueled hsourceIndex))
+  have hconstTerms := MachineSpliceStream.concatVar hconstBlock
+    (cnt := fun m : ℕ => m) UnaryRuler.id
+  have hzero : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num)
+    (cnt := fun m : ℕ => m) UnaryRuler.id
   have hconstRaw := (hconstTerms.append hzero).append htags
-  have hconst : BigSpliceStream (fun m ↦
+  have hconst : MachineSpliceStream (fun m ↦
       (softmaxAffine (triangularGaps G m) m threshold pad (.const 1)).const.serialize) := by
-    refine BigSpliceStream.of_eq hconstRaw ?_
+    refine MachineSpliceStream.of_eq hconstRaw ?_
     intro m
     rw [softmaxAffine_triangular_const, triangularFold_serialize]
     simp
@@ -831,7 +862,7 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
     sentence := triangularSentence hG
     termCount_poly := triangularTermCount_poly hG
     const_poly := hconst
-    coefficient_poly := BigSpliceStream.of_eq hcoefficient (fun z ↦ by
+    coefficient_poly := MachineSpliceStream.of_eq hcoefficient (fun z ↦ by
       simp [triangularCoefficient])
     sentence_poly := ?_
     terms_eq := ?_
@@ -840,7 +871,11 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
     const_closed := ?_
     coefficient_closed := ?_
   }
-  · exact (hG.sentence_poly.comp hcanonical).of_eq (fun z ↦ by
+  · exact (hG.sentence_poly.comp
+      (f := fun z : ℕ => Nat.pair
+        (triangularIndex z.unpair.1 (triangularMember hG z))
+        (triangularOffset hG z))
+      hcanonical).of_eq (fun z ↦ by
       simp [triangularSentence])
   · intro m
     rw [softmaxAffine_triangular_terms]
@@ -857,9 +892,6 @@ noncomputable def triangularSoftmaxPoly {G : ℕ → AffineCombination}
       simpa [triangularTermCount, lenFn] using
         length_flatMap_eq_segPrefix seg lenFn m hlen m
     symm
-    change (List.range (triangularTermCount hG m)).map (fun j ↦
-      (triangularCoefficient hG threshold pad (Nat.pair m j),
-        triangularSentence hG (Nat.pair m j))) = _
     rw [show (List.range m).flatMap (fun i ↦
         ((G (triangularIndex m i)).scale
           (triangularWeight G m i threshold pad)).terms) =
@@ -965,7 +997,7 @@ noncomputable def PolySequence.addConstEF {As : ℕ → AffineCombination}
   coefficient := hA.coefficient
   sentence := hA.sentence
   termCount_poly := hA.termCount_poly
-  const_poly := BigSpliceStream.serialize_add hA.const_poly he.polySeg
+  const_poly := MachineSpliceStream.serialize_add hA.const_poly he.polySeg
   coefficient_poly := hA.coefficient_poly
   sentence_poly := hA.sentence_poly
   terms_eq := hA.terms_eq
@@ -995,17 +1027,12 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     (hprecision : ∃ c, PolyFueled c precision)
     (hsource_le : ∀ n, source n ≤ n) :
     AffineCombination.PolySequence (fun n ↦ (As (source n)).meshAffine (precision n)) := by
-  let csource := Classical.choose hsource
   have hsourcePF := Classical.choose_spec hsource
   let cprecision := Classical.choose hprecision
   have hprecisionPF := Classical.choose_spec hprecision
-  let ccount := Classical.choose S.termCount_poly
-  have hcount := Classical.choose_spec S.termCount_poly
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
   have hthreshold := S.threshold_poly
-  let cmul := Classical.choose mul_polyFueled
-  have hmul := Classical.choose_spec mul_polyFueled
   let cdm := Classical.choose divmod1_polyFueled
   have hdm := Classical.choose_spec divmod1_polyFueled
   let count : ℕ → ℕ := fun n ↦ S.termCount (source n) * precision n
@@ -1013,10 +1040,9 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     z.unpair.2 / (precision z.unpair.1 - 1 + 1)
   let offset : ℕ → ℕ := fun z ↦
     z.unpair.2 % (precision z.unpair.1 - 1 + 1)
-  have hcountPF : PolyFueled
-      (cmul.comp ((ccount.comp csource).pair cprecision)) count :=
-    (hmul.comp ((hcount.comp hsourcePF).pair hprecisionPF)).of_eq
-      (fun n ↦ by simp [count])
+  have hcountR : UnaryRuler count :=
+    ((S.termCount_poly.comp (UnaryRuler.of_polyFueled hsourcePF)).mul
+      (UnaryRuler.of_polyFueled hprecisionPF)).of_eq (fun n ↦ by simp [count])
   let cinput := (subc.comp
     ((cprecision.comp Nat.Partrec.Code.left).pair (Nat.Partrec.Code.const 1))).pair
       Nat.Partrec.Code.right
@@ -1036,7 +1062,7 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
   have hsourceTerm : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (source z.unpair.1) (member z)) :=
     (hsourcePF.comp PolyFueled.left).pair hmember
-  have hcoeffSource := S.coefficient_poly.comp hsourceTerm
+  have hcoeffSource := S.coefficient_poly.comp (UnaryRuler.of_polyFueled hsourceTerm)
   have hinvPrecision : BigSpliceStream (fun z ↦
       (EF.const (1 / (precision z.unpair.1 : ℚ))).serialize) :=
     BigSpliceStream.serialize_const_comp
@@ -1054,11 +1080,13 @@ noncomputable def meshFamilyPoly {As : ℕ → LUVCombination}
     sentence := fun z ↦
       (S.luv (Nat.pair (source z.unpair.1) (member z))).gt
         ((offset z : ℚ) / (precision z.unpair.1 : ℚ))
-    termCount_poly := ⟨_, hcountPF⟩
-    const_poly := S.const_poly.comp hsourcePF
-    coefficient_poly := BigSpliceStream.serialize_mul hcoeffSource hinvPrecision
+    termCount_poly := hcountR
+    const_poly := S.const_poly.comp (UnaryRuler.of_polyFueled hsourcePF)
+    coefficient_poly :=
+      MachineSpliceStream.serialize_mul hcoeffSource hinvPrecision.toMachine
     sentence_poly :=
-      (BigSentenceCodes.ofRpnSentenceCodes (hthreshold.comp hthresholdQuery)).of_eq
+      (MachineSentenceCodes.comp hthreshold
+        (UnaryRuler.of_polyFueled hthresholdQuery)).of_eq
         (fun z ↦ by simp)
     terms_eq := ?_
     const_rank := ?_
@@ -1185,11 +1213,11 @@ private def meshErrorWeighting (b : ℚ) (q : ℕ) : EF :=
 
 private lemma pGenerableWeighting_meshErrorWeighting (b : ℚ) :
     PGenerableWeighting (meshErrorWeighting b) := {
-  polySeg := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const (-(2 * b)))
-    (BigSpliceStream.serialize_const_comp
+  polySeg := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const (-(2 * b)))
+    ((BigSpliceStream.serialize_const_comp
       ⟨_, (Classical.choose_spec encode_inv_nat_polyFueled).comp
-        PolyFueled.right.succ_comp⟩)
+        PolyFueled.right.succ_comp⟩).toMachine)
   rank_le := by
     intro q; simp [meshErrorWeighting, LUVCombination.meshErrorFeature, EF.rank]
   closed := by

@@ -51,6 +51,15 @@ beside `DeferralFunction` itself; `PGenerableWeighting` (`Properties/Calibration
 for the quotation portfolio interfaces and for `ratNatCast_codes_of_polyFueled`.  The
 dependency between the two lanes therefore runs one way only:
 `Construction/Statistics/FeedbackTruth.lean` consumes `deferralPreimage` from here.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -86,21 +95,21 @@ lemma expectAffineSeq_magnitude_le_one (X : ℕ → LUV)
 /-- A compact varying threshold presentation emits the literal diagonal expectation
 mesh uniformly; no opaque serialized affine object is decoded. -/
 noncomputable def expectAffineSeq_polySequence (X : ℕ → LUV)
-    (hcode : LUV.BigThresholdCodeSeq X) :
+    (hcode : LUV.MachineThresholdCodeSeq X) :
     AffineCombination.PolySequence (expectAffineSeq X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
-  have hindex := PolyFueled.left.pair (PolyFueled.left.succ_comp.pair PolyFueled.right)
-  have hsentence := hcode.comp hindex
+  have hindex := (UnaryRuler.unpairFst.pair (UnaryRuler.unpairFst.succ.pair UnaryRuler.unpairSnd))
+  have hsentence := MachineSentenceCodes.comp hcode hindex
   exact {
     termCount := fun n ↦ n + 1
     coefficient := fun z ↦ .const (1 / ((z.unpair.1 + 1 : ℕ) : ℚ))
     sentence := fun z ↦
       (X z.unpair.1).gt ((z.unpair.2 : ℚ) / ((z.unpair.1 + 1 : ℕ) : ℚ))
-    termCount_poly := ⟨_, PolyFueled.id.succ_comp⟩
-    const_poly := BigSpliceStream.serialize_const 0
-    coefficient_poly := BigSpliceStream.serialize_const_comp
-      ⟨_, hinv.comp PolyFueled.left.succ_comp⟩
+    termCount_poly := UnaryRuler.id.succ
+    const_poly := MachineSpliceStream.serialize_const 0
+    coefficient_poly := (BigSpliceStream.serialize_const_comp
+      ⟨_, hinv.comp PolyFueled.left.succ_comp⟩).toMachine
     sentence_poly := hsentence.of_eq (fun z ↦ by simp)
     terms_eq := by intro n; simp [expectAffineSeq, LUV.expectAffine]
     const_rank := by intro n; simp [expectAffineSeq, LUV.expectAffine]
@@ -118,7 +127,7 @@ namespace PGenerableWeighting
 lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.mul (A n) (B n)) where
-  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := MachineSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -131,7 +140,7 @@ lemma mul {A B : ℕ → EF} (hA : PGenerableWeighting A)
 lemma add {A B : ℕ → EF} (hA : PGenerableWeighting A)
     (hB : PGenerableWeighting B) :
     PGenerableWeighting (fun n ↦ EF.add (A n) (B n)) where
-  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := MachineSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := by
     intro n
     simp only [EF.rank]
@@ -150,16 +159,17 @@ def ctsIndFeature (δ : ℕ → ℚ) (x y : ℕ → EF) (n : ℕ) : EF :=
     (EF.const (1 / δ n)))
 
 lemma ctsIndFeature_generated (δ : ℕ → ℚ) (x y : ℕ → EF)
-    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : MachineRatCodes (fun n ↦ 1 / δ n))
     (hx : PGenerableWeighting x) (hy : PGenerableWeighting y) :
     PGenerableWeighting (ctsIndFeature δ x y) := by
-  have hinv : BigSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
-    BigSpliceStream.serialize_const_write hδinv.toBigDigits
-  have hnegY := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const (-1)) hy.polySeg
+  have hinv : MachineSpliceStream (fun n ↦ (EF.const (1 / δ n)).serialize) :=
+    MachineSpliceStream.serialize_const_write hδinv.toMachineDigits
+  have hnegY := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const (-1)) hy.polySeg
   exact {
-    polySeg := BigSpliceStream.serialize_clip01
-      (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_add hx.polySeg hnegY) hinv)
+    polySeg := MachineSpliceStream.serialize_clip01
+      (MachineSpliceStream.serialize_mul
+        (MachineSpliceStream.serialize_add hx.polySeg hnegY) hinv)
     rank_le := by
       intro n
       simp only [ctsIndFeature, clip01_rank, EF.rank]
@@ -211,56 +221,45 @@ a plain price-gated sum over `f⁻¹(m)` runs into and the selector that avoids 
 
 /-- Number of bounded-schedule preimages of day `m` among the only possible source
 indices `k < m`. -/
-def deferralMatchCount (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  segPrefix (fun z => scheduledMatch f a degree z) m m
+def deferralMatchCount (f : DeferralFunction) (m : ℕ) : ℕ :=
+  segPrefix (fun z => scheduledMatch f z) m m
 
 /-- Sum of the matching source indices.  Under injectivity there is at most one match,
 so this is the unique preimage on the image of `f` and harmlessly defaults to zero off it. -/
-def deferralPreimage (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
+def deferralPreimage (f : DeferralFunction) (m : ℕ) : ℕ :=
   segPrefix (fun z => z.unpair.2 *
-    scheduledMatch f a degree z) m m
+    scheduledMatch f z) m m
 
 /-- Boolean-as-natural image flag derived from the bounded match count. -/
-def deferralImageFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  if deferralMatchCount f a degree m = 0 then 0 else 1
+def deferralImageFlag (f : DeferralFunction) (m : ℕ) : ℕ :=
+  if deferralMatchCount f m = 0 then 0 else 1
 
-lemma deferralMatchCount_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (deferralMatchCount f a degree) := by
-  obtain ⟨cmatch, hmatch⟩ := scheduledMatch_polyFueled f a degree
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hmatch
-  exact ⟨_, (hprefix.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m => by
-    simp [deferralMatchCount])⟩
+lemma unaryRuler_deferralMatchCount (f : DeferralFunction) :
+    UnaryRuler (deferralMatchCount f) :=
+  ((UnaryRuler.segPrefix (unaryRuler_scheduledMatch f)).comp
+    (UnaryRuler.id.pair UnaryRuler.id)).of_eq (fun m => by simp [deferralMatchCount])
 
-lemma deferralPreimage_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (deferralPreimage f a degree) := by
-  obtain ⟨cmatch, hmatch⟩ := scheduledMatch_polyFueled f a degree
-  obtain ⟨cmul, hmul⟩ := mul_polyFueled
-  have hterm := hmul.comp (PolyFueled.right.pair hmatch)
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hterm
-  exact ⟨_, (hprefix.comp (PolyFueled.id.pair PolyFueled.id)).of_eq (fun m => by
-    simp [deferralPreimage])⟩
+lemma unaryRuler_deferralPreimage (f : DeferralFunction) :
+    UnaryRuler (deferralPreimage f) :=
+  ((UnaryRuler.segPrefix (UnaryRuler.unpairSnd.mul (unaryRuler_scheduledMatch f))).comp
+    (UnaryRuler.id.pair UnaryRuler.id)).of_eq (fun m => by simp [deferralPreimage])
 
-lemma deferralImageFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (deferralImageFlag f a degree) := by
-  obtain ⟨ccount, hcount⟩ := deferralMatchCount_polyFueled f a degree
-  exact ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair (PolyFueled.const 1)).pair hcount)).of_eq
-      (fun m => by simp [deferralImageFlag, ifzSelFn])⟩
+lemma unaryRuler_deferralImageFlag (f : DeferralFunction) :
+    UnaryRuler (deferralImageFlag f) :=
+  ((unaryRuler_deferralMatchCount f).ifZero (UnaryRuler.const 0)
+    (UnaryRuler.const 1)).of_eq (fun m => by simp [deferralImageFlag])
 
-lemma deferralImageFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
-    deferralImageFlag f a degree m = 0 ∨ deferralImageFlag f a degree m = 1 := by
+lemma deferralImageFlag_zero_or_one (f : DeferralFunction) (m : ℕ) :
+    deferralImageFlag f m = 0 ∨ deferralImageFlag f m = 1 := by
   simp only [deferralImageFlag]
   split <;> simp
 
 lemma deferralPreimage_at
     (f : DeferralFunction) (hinj : Function.Injective f.f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
-      some (f k)) (n : ℕ) :
-    deferralPreimage f a degree (f n) = n := by
+    (n : ℕ) :
+    deferralPreimage f (f n) = n := by
   let lenFn : ℕ → ℕ := fun z => z.unpair.2 *
-    scheduledMatch f a degree z
+    scheduledMatch f z
   have hscan : ∀ k, k ≤ f n →
       segPrefix lenFn (f n) k = if n < k then n else 0 := by
     intro k hk
@@ -268,27 +267,25 @@ lemma deferralPreimage_at
     | zero => simp [segPrefix]
     | succ k ih =>
         rw [segPrefix_succ, ih (by omega)]
-        have hmatch : scheduledMatch f a degree
+        have hmatch : scheduledMatch f
             (Nat.pair (f n) k) = if k = n then 1 else 0 := by
           by_cases hkn : k = n
           · subst k
             simpa using
-              (scheduledMatch_eq_one_iff f hspec (f n) n).2 rfl
+              (scheduledMatch_eq_one_iff f (f n) n).2 rfl
           · have hne : f k ≠ f n := fun h => hkn (hinj h)
             simpa [hkn] using
-              (scheduledMatch_eq_zero_iff f hspec (f n) k).2 hne
+              (scheduledMatch_eq_zero_iff f (f n) k).2 hne
         simp only [lenFn, Nat.unpair_pair, hmatch]
         split_ifs <;> omega
   rw [deferralPreimage, hscan (f n) le_rfl]
   simp [f.lt n]
 
 lemma deferralMatchCount_pos_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (f : DeferralFunction)
     (m : ℕ) :
-    0 < deferralMatchCount f a degree m ↔ ∃ k < m, f k = m := by
-  let lenFn : ℕ → ℕ := fun z => scheduledMatch f a degree z
+    0 < deferralMatchCount f m ↔ ∃ k < m, f k = m := by
+  let lenFn : ℕ → ℕ := fun z => scheduledMatch f z
   have hscan : ∀ r, 0 < segPrefix lenFn m r ↔
       ∃ k < r, lenFn (Nat.pair m k) = 1 := by
     intro r
@@ -296,7 +293,7 @@ lemma deferralMatchCount_pos_iff
     | zero => simp [segPrefix]
     | succ r ih =>
         rw [segPrefix_succ]
-        rcases scheduledMatch_zero_or_one f a degree
+        rcases scheduledMatch_zero_or_one f
           (Nat.pair m r) with hr | hr
         · rw [show lenFn (Nat.pair m r) = 0 by exact hr]
           simp only [add_zero, ih]
@@ -320,84 +317,63 @@ lemma deferralMatchCount_pos_iff
   constructor
   · rintro ⟨k, hk, hmatch⟩
     exact ⟨k, hk,
-      (scheduledMatch_eq_one_iff f hspec m k).1 hmatch⟩
+      (scheduledMatch_eq_one_iff f m k).1 hmatch⟩
   · rintro ⟨k, hk, hfk⟩
     exact ⟨k, hk,
-      (scheduledMatch_eq_one_iff f hspec m k).2 hfk⟩
+      (scheduledMatch_eq_one_iff f m k).2 hfk⟩
 
 lemma deferralImageFlag_eq_one_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (f : DeferralFunction)
     (m : ℕ) :
-    deferralImageFlag f a degree m = 1 ↔ ∃ k < m, f k = m := by
+    deferralImageFlag f m = 1 ↔ ∃ k < m, f k = m := by
   rw [deferralImageFlag]
-  by_cases hzero : deferralMatchCount f a degree m = 0
+  by_cases hzero : deferralMatchCount f m = 0
   · rw [if_pos hzero]
     constructor
     · intro h
       omega
     · intro hex
-      have hpos := (deferralMatchCount_pos_iff f hspec m).2 hex
+      have hpos := (deferralMatchCount_pos_iff f m).2 hex
       omega
   · rw [if_neg hzero]
     constructor
     · intro _
-      exact (deferralMatchCount_pos_iff f hspec m).1 (Nat.pos_of_ne_zero hzero)
+      exact (deferralMatchCount_pos_iff f m).1 (Nat.pos_of_ne_zero hzero)
     · intro _
       rfl
 
 /-- Every scheduled day is flagged: `n` itself witnesses membership of `f n` in the
 image, so no injectivity of `f` is needed here. -/
 lemma deferralImageFlag_at
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k =
-      some (f k)) (n : ℕ) :
-    deferralImageFlag f a degree (f n) = 1 :=
-  (deferralImageFlag_eq_one_iff f hspec (f n)).2 ⟨n, f.lt n, rfl⟩
+    (f : DeferralFunction)
+    (n : ℕ) :
+    deferralImageFlag f (f n) = 1 :=
+  (deferralImageFlag_eq_one_iff f (f n)).2 ⟨n, f.lt n, rfl⟩
 
 lemma deferralPreimage_spec
     (f : DeferralFunction) (hinj : Function.Injective f.f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : deferralImageFlag f a degree m = 1) :
-    deferralPreimage f a degree m < m ∧
-      f (deferralPreimage f a degree m) = m := by
-  obtain ⟨k, hk, hfk⟩ := (deferralImageFlag_eq_one_iff f hspec m).1 hm
-  have hidx : deferralPreimage f a degree m = k := by
+    {m : ℕ} (hm : deferralImageFlag f m = 1) :
+    deferralPreimage f m < m ∧
+      f (deferralPreimage f m) = m := by
+  obtain ⟨k, hk, hfk⟩ := (deferralImageFlag_eq_one_iff f m).1 hm
+  have hidx : deferralPreimage f m = k := by
     rw [← hfk]
-    exact deferralPreimage_at f hinj hspec k
+    exact deferralPreimage_at f hinj k
   rw [hidx]
   exact ⟨hk, hfk⟩
 
 /-! ## Threshold reindexing -/
 
-/-- The token-metered threshold interface reindexes along a poly-fueled index map: only the
-paired query index is recomputed.  It is the reference form its write-out twin
-`LUV.BigThresholdCodeSeq.reindex` mirrors. -/
-lemma LUV.RpnThresholdCodeSeq.reindex
-    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X)
-    {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
-    LUV.RpnThresholdCodeSeq (fun n ↦ X (index n)) := by
-  obtain ⟨ci, hi⟩ := hindex
-  have hquery : PolyFueled _ (fun z : ℕ ↦
-      Nat.pair (index z.unpair.1) z.unpair.2) :=
-    (hi.comp PolyFueled.left).pair PolyFueled.right
-  exact (hX.comp hquery).of_eq (fun z ↦ by simp)
-
-/-- The write-out threshold interface reindexes along a poly-fueled index map, exactly as
-the token-metered one does: only the paired query index is recomputed. -/
-lemma LUV.BigThresholdCodeSeq.reindex
-    {X : ℕ → LUV} (hX : LUV.BigThresholdCodeSeq X)
-    {index : ℕ → ℕ} (hindex : ∃ c, PolyFueled c index) :
-    LUV.BigThresholdCodeSeq (fun n ↦ X (index n)) := by
-  obtain ⟨ci, hi⟩ := hindex
-  have hquery : PolyFueled _ (fun z : ℕ ↦
-      Nat.pair (index z.unpair.1) z.unpair.2) :=
-    (hi.comp PolyFueled.left).pair PolyFueled.right
-  exact (hX.comp hquery).of_eq (fun z ↦ by simp)
+/-- The machine-metered threshold interface reindexes along an index map, exactly as the
+token-metered one does: only the paired query index is recomputed.  The index map arrives as
+a unary ruler, `UnaryRuler.of_polyFueled` supplying it from a fuel certificate. -/
+lemma LUV.MachineThresholdCodeSeq.reindex
+    {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X)
+    {index : ℕ → ℕ} (hindex : UnaryRuler index) :
+    LUV.MachineThresholdCodeSeq (fun n ↦ X (index n)) := by
+  have hquery : UnaryRuler (fun z : ℕ ↦ Nat.pair (index z.unpair.1) z.unpair.2) :=
+    (hindex.comp UnaryRuler.unpairFst).pair UnaryRuler.unpairSnd
+  exact (MachineSentenceCodes.comp hX hquery).of_eq (fun z ↦ by simp)
 
 /-! ## Pointwise combinators for polynomial affine families -/
 
@@ -408,34 +384,33 @@ noncomputable def AffineCombination.PolySequence.add
     (hA : AffineCombination.PolySequence As)
     (hB : AffineCombination.PolySequence Bs) :
     AffineCombination.PolySequence (fun n ↦ (As n).add (Bs n)) := by
-  let cA := Classical.choose hA.termCount_poly
-  have hcA := Classical.choose_spec hA.termCount_poly
-  let cB := Classical.choose hB.termCount_poly
-  have hcB := Classical.choose_spec hB.termCount_poly
-  let cadd := Classical.choose addc_polyFueled
-  have hadd := Classical.choose_spec addc_polyFueled
-  have hn := PolyFueled.left
-  have hj := PolyFueled.right
-  have hcountA := hcA.comp hn
-  have htest0 := subc_polyFueled.comp (hj.succ_comp.pair hcountA)
-  have htest : PolyFueled _ (fun z : ℕ ↦
+  have hcountA : UnaryRuler (fun z : ℕ ↦ hA.termCount z.unpair.1) :=
+    hA.termCount_poly.comp UnaryRuler.unpairFst
+  have htest : UnaryRuler (fun z : ℕ ↦
       (z.unpair.2 + 1) - hA.termCount z.unpair.1) :=
-    htest0.of_eq (fun z ↦ by simp)
-  have hoffset0 := subc_polyFueled.comp (hj.pair hcountA)
-  have hoffset : PolyFueled _ (fun z : ℕ ↦
+    UnaryRuler.unpairSnd.succ.sub hcountA
+  have hoffset : UnaryRuler (fun z : ℕ ↦
       z.unpair.2 - hA.termCount z.unpair.1) :=
-    hoffset0.of_eq (fun z ↦ by simp)
-  have hqueryB : PolyFueled _ (fun z : ℕ ↦
+    UnaryRuler.unpairSnd.sub hcountA
+  have hqueryBR : UnaryRuler (fun z : ℕ ↦
       Nat.pair z.unpair.1 (z.unpair.2 - hA.termCount z.unpair.1)) :=
-    hn.pair hoffset
-  have hcoeff := BigSpliceStream.ifZero hA.coefficient_poly
-    (hB.coefficient_poly.comp hqueryB) htest
-  have hsentence : BigSentenceCodes (fun z ↦
+    UnaryRuler.unpairFst.pair hoffset
+  have htestR := htest
+  have hcoeff := MachineSpliceStream.ifZero hA.coefficient_poly
+    (hB.coefficient_poly.comp
+      (f := fun z : ℕ => Nat.pair z.unpair.1 (z.unpair.2 - hA.termCount z.unpair.1))
+      hqueryBR)
+    (t := fun z : ℕ => z.unpair.2 + 1 - hA.termCount z.unpair.1) htestR
+  have hsentence : MachineSentenceCodes (fun z ↦
       if z.unpair.2 < hA.termCount z.unpair.1 then hA.sentence z
       else hB.sentence (Nat.pair z.unpair.1
         (z.unpair.2 - hA.termCount z.unpair.1))) :=
-    (BigSentenceCodes.ifZero hA.sentence_poly
-      (hB.sentence_poly.comp hqueryB) htest).of_eq (fun z ↦ by
+    (MachineSentenceCodes.ifZero hA.sentence_poly
+      (hB.sentence_poly.comp
+        (f := fun z : ℕ => Nat.pair z.unpair.1 (z.unpair.2 - hA.termCount z.unpair.1))
+        hqueryBR)
+      (t := fun z : ℕ => z.unpair.2 + 1 - hA.termCount z.unpair.1)
+      htestR).of_eq (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos (by omega : (z.unpair.2 + 1) - hA.termCount z.unpair.1 = 0),
           if_pos hjlt]
@@ -451,10 +426,9 @@ noncomputable def AffineCombination.PolySequence.add
       hA.sentence z
       else hB.sentence (Nat.pair z.unpair.1
         (z.unpair.2 - hA.termCount z.unpair.1))
-    termCount_poly := ⟨cadd.comp (cA.pair cB),
-      (hadd.comp (hcA.pair hcB)).of_eq (fun n ↦ by simp)⟩
-    const_poly := BigSpliceStream.serialize_add hA.const_poly hB.const_poly
-    coefficient_poly := BigSpliceStream.of_eq hcoeff (fun z ↦ by
+    termCount_poly := hA.termCount_poly.add hB.termCount_poly
+    const_poly := MachineSpliceStream.serialize_add hA.const_poly hB.const_poly
+    coefficient_poly := MachineSpliceStream.of_eq hcoeff (fun z ↦ by
       by_cases hjlt : z.unpair.2 < hA.termCount z.unpair.1
       · rw [if_pos hjlt, if_pos (by omega)]
       · rw [if_neg hjlt, if_neg (by omega)])
@@ -507,9 +481,10 @@ noncomputable def AffineCombination.PolySequence.scaleFeature
   coefficient := fun z ↦ EF.mul (W z.unpair.1) (hA.coefficient z)
   sentence := hA.sentence
   termCount_poly := hA.termCount_poly
-  const_poly := BigSpliceStream.serialize_mul hW.polySeg hA.const_poly
-  coefficient_poly := BigSpliceStream.serialize_mul
-    (hW.polySeg.comp PolyFueled.left) hA.coefficient_poly
+  const_poly := MachineSpliceStream.serialize_mul hW.polySeg hA.const_poly
+  coefficient_poly := MachineSpliceStream.serialize_mul
+    (hW.polySeg.comp (f := fun z : ℕ => z.unpair.1)
+      (UnaryRuler.unpairFst)) hA.coefficient_poly
   sentence_poly := hA.sentence_poly
   terms_eq := by
     intro n
@@ -740,7 +715,7 @@ the flat term index stays a plain `range` and the block/offset inverse is divisi
 remainder rather than an inverse prefix-sum. -/
 noncomputable def PolySequence.blockSum
     {Bs : ℕ → AffineCombination} (hB : PolySequence Bs)
-    {coeff : ℕ → EF} (hcoeff : BigSpliceStream fun z => (coeff z).serialize)
+    {coeff : ℕ → EF} (hcoeff : MachineSpliceStream fun z => (coeff z).serialize)
     (hcoeffClosed : ∀ z ρ V, (coeff z).denoteWith ρ V = (coeff z).denote V)
     (hcoeffRank : ∀ m k, (coeff (Nat.pair m k)).rank ≤ m)
     {cnt width : ℕ → ℕ}
@@ -749,13 +724,12 @@ noncomputable def PolySequence.blockSum
     (hBconstRank : ∀ m k, (Bs (Nat.pair m k)).const.rank ≤ m)
     (hBcoeffRank : ∀ m k o, o < hB.termCount (Nat.pair m k) →
       (hB.coefficient (Nat.pair (Nat.pair m k) o)).rank ≤ m)
-    (pad : Sentence) (hpad : BigSentenceCodes fun _ : ℕ => pad) :
+    (pad : Sentence) (hpad : MachineSentenceCodes fun _ : ℕ => pad) :
     PolySequence (AffineCombination.blockSum Bs coeff cnt width pad) := by
   have hcntPF := Classical.choose_spec hcnt
   have hwidthPF := Classical.choose_spec hwidth
   have hmulPF := Classical.choose_spec mul_polyFueled
   have hdmPF := Classical.choose_spec divmod1_polyFueled
-  have htcPF0 := Classical.choose_spec hB.termCount_poly
   -- block index and offset of a flat term index
   have hdm0 := hdmPF.comp ((subc_polyFueled.comp ((hwidthPF.comp PolyFueled.left).pair
     (PolyFueled.const 1))).pair PolyFueled.right)
@@ -774,13 +748,13 @@ noncomputable def PolySequence.blockSum
   have hq : PolyFueled _ (fun z : ℕ ↦
       Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
         (z.unpair.2 % width z.unpair.1)) := hkey.pair hoff
-  have htest : PolyFueled _ (fun z : ℕ ↦
+  have htest : UnaryRuler (fun z : ℕ ↦
       (z.unpair.2 % width z.unpair.1 + 1) -
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))) :=
-    (subc_polyFueled.comp (hoff.succ_comp.pair (htcPF0.comp hkey))).of_eq
-      (fun z ↦ by simp)
-  have htermCount : ∃ c, PolyFueled c (fun m ↦ cnt m * width m) :=
-    ⟨_, (hmulPF.comp (hcntPF.pair hwidthPF)).of_eq (fun m ↦ by simp)⟩
+    (UnaryRuler.of_polyFueled hoff).succ.sub
+      (hB.termCount_poly.comp (UnaryRuler.of_polyFueled hkey))
+  have htermCount : UnaryRuler (fun m ↦ cnt m * width m) :=
+    (UnaryRuler.of_polyFueled hcntPF).mul (UnaryRuler.of_polyFueled hwidthPF)
   refine
     { termCount := fun m ↦ cnt m * width m
       coefficient := fun z ↦ EF.mul
@@ -805,26 +779,47 @@ noncomputable def PolySequence.blockSum
       coefficient_rank := ?_
       const_closed := ?_
       coefficient_closed := ?_ }
-  · refine BigSpliceStream.of_eq
-      ((((hcoeff.append hB.const_poly).append (BigSpliceStream.tag 3 (by norm_num))).concatVar
-        hcntPF).append ((BigSpliceStream.serialize_const 0).append
-          (BigSpliceStream.repeatTag 2 (by norm_num) hcntPF))) (fun m ↦ ?_)
+  · have hcntR := UnaryRuler.of_polyFueled hcntPF
+    refine MachineSpliceStream.of_eq
+      ((((hcoeff.append hB.const_poly).append
+          (MachineSpliceStream.tag 3 (by norm_num))).concatVar
+        (cnt := cnt) hcntR).append ((MachineSpliceStream.serialize_const 0).append
+          (MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := cnt) hcntR)))
+      (fun m ↦ ?_)
     rw [AffineCombination.blockSum, foldr_addMul_serialize]
     simp [List.append_assoc]
-  · have hif : BigSpliceStream (fun z ↦
+  · have hif : MachineSpliceStream (fun z ↦
         (if z.unpair.2 % width z.unpair.1 <
             hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)) then
           hB.coefficient (Nat.pair (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
             (z.unpair.2 % width z.unpair.1))
         else EF.const 0).serialize) := by
-      refine BigSpliceStream.of_eq (BigSpliceStream.ifZero (hB.coefficient_poly.comp hq)
-        (BigSpliceStream.serialize_const 0) htest) (fun z ↦ ?_)
+      refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero
+        (hB.coefficient_poly.comp
+          (f := fun z : ℕ => Nat.pair
+            (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+            (z.unpair.2 % width z.unpair.1))
+          (UnaryRuler.of_polyFueled hq))
+        (MachineSpliceStream.serialize_const 0)
+        (t := fun z : ℕ => z.unpair.2 % width z.unpair.1 + 1 -
+          hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)))
+        htest) (fun z ↦ ?_)
       by_cases hlt : z.unpair.2 % width z.unpair.1 <
           hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
       · rw [if_pos hlt, if_pos (show _ = 0 from by omega)]
       · rw [if_neg hlt, if_neg (show ¬ _ = 0 from by omega)]
-    exact BigSpliceStream.serialize_mul (hcoeff.comp hkey) hif
-  · refine (BigSentenceCodes.ifZero (hB.sentence_poly.comp hq) hpad htest).of_eq (fun z ↦ ?_)
+    exact MachineSpliceStream.serialize_mul
+      (hcoeff.comp (f := fun z : ℕ => Nat.pair z.unpair.1
+        (z.unpair.2 / width z.unpair.1)) (UnaryRuler.of_polyFueled hkey)) hif
+  · refine (MachineSentenceCodes.ifZero
+      (hB.sentence_poly.comp
+        (f := fun z : ℕ => Nat.pair
+          (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
+          (z.unpair.2 % width z.unpair.1))
+        (UnaryRuler.of_polyFueled hq)) hpad
+      (t := fun z : ℕ => z.unpair.2 % width z.unpair.1 + 1 -
+        hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1)))
+      htest).of_eq (fun z ↦ ?_)
     by_cases hlt : z.unpair.2 % width z.unpair.1 <
         hB.termCount (Nat.pair z.unpair.1 (z.unpair.2 / width z.unpair.1))
     · rw [if_pos (show _ = 0 from by omega), if_pos hlt]
@@ -1032,28 +1027,33 @@ lemma selectorFeature_rank {g : ℕ → EF} {m k : ℕ}
     exact hg j (le_of_lt (List.mem_range.1 hj))
 
 /-- Uniform emission of the selector weights. -/
-lemma selectorFeature_polySeg {g : ℕ → EF}
-    (hg : BigSpliceStream fun z ↦ (g z).serialize) :
-    BigSpliceStream fun z ↦ (selectorFeature g z).serialize := by
+lemma machineSpliceStream_selectorFeature {g : ℕ → EF}
+    (hg : MachineSpliceStream fun z ↦ (g z).serialize) :
+    MachineSpliceStream fun z ↦ (selectorFeature g z).serialize := by
   have hidx : PolyFueled _ (fun q : ℕ ↦ Nat.pair q.unpair.1.unpair.1 q.unpair.2) :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hfactor : BigSpliceStream fun q ↦
+  have hfactor : MachineSpliceStream fun q ↦
       (selectorFactor g (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize := by
-    refine BigSpliceStream.of_eq
-      ((((BigSpliceStream.serialize_const 1).append
-        (BigSpliceStream.serialize_const (-1))).append (hg.comp hidx)).append
-        ((BigSpliceStream.tag 3 (by norm_num)).append
-          (BigSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
+    refine MachineSpliceStream.of_eq
+      ((((MachineSpliceStream.serialize_const 1).append
+        (MachineSpliceStream.serialize_const (-1))).append
+          (hg.comp (f := fun q : ℕ => Nat.pair q.unpair.1.unpair.1 q.unpair.2)
+            (UnaryRuler.of_polyFueled hidx))).append
+        ((MachineSpliceStream.tag 3 (by norm_num)).append
+          (MachineSpliceStream.tag 2 (by norm_num)))) (fun q ↦ ?_)
     rw [selectorFactor_serialize]
     simp [List.append_assoc]
-  have hprod : BigSpliceStream fun z ↦ (selectorProd g z).serialize := by
-    refine BigSpliceStream.of_eq
-      (((hfactor.concatVar PolyFueled.right).append
-        ((BigSpliceStream.serialize_const 1).append
-          (BigSpliceStream.repeatTag 3 (by norm_num) PolyFueled.right)))) (fun z ↦ ?_)
+  have hprod : MachineSpliceStream fun z ↦ (selectorProd g z).serialize := by
+    have hrightR := UnaryRuler.of_polyFueled (cnt := fun z : ℕ => z.unpair.2)
+      PolyFueled.right
+    refine MachineSpliceStream.of_eq
+      (((hfactor.concatVar (cnt := fun z : ℕ => z.unpair.2) hrightR).append
+        ((MachineSpliceStream.serialize_const 1).append
+          (MachineSpliceStream.repeatTag 3 (by norm_num)
+            (cnt := fun z : ℕ => z.unpair.2) hrightR)))) (fun z ↦ ?_)
     rw [selectorProd, foldr_mul_serialize]
     simp [List.append_assoc]
-  exact BigSpliceStream.serialize_mul hg hprod
+  exact MachineSpliceStream.serialize_mul hg hprod
 
 /-- The additive counterpart of `list_prod_range`, definitional for the same reason. -/
 lemma list_sum_range {M : Type*} [AddCommMonoid M] (n : ℕ) (F : ℕ → M) :
@@ -1081,26 +1081,27 @@ state that refinement, and it is exactly what a fibre gate needs in order to be 
 day-`m` affine coefficient.
 Paper node: `def:ece` -/
 structure PairedWeighting (A : ℕ → EF) : Prop where
-  polySeg : BigSpliceStream fun z ↦ (A z).serialize
+  /-- Machine-metered emission, as `PGenerableWeighting.polySeg` is. -/
+  polySeg : MachineSpliceStream fun z ↦ (A z).serialize
   rank_le : ∀ z, (A z).rank ≤ z.unpair.1
   closed : ∀ z ρ V, (A z).denoteWith ρ V = (A z).denote V
 
 namespace PairedWeighting
 
-lemma ofRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) :
+lemma ofRatCodes {q : ℕ → ℚ} (hq : MachineRatCodes q) :
     PairedWeighting (fun z ↦ EF.const (q z)) where
-  polySeg := BigSpliceStream.serialize_const_write hq.toBigDigits
+  polySeg := MachineSpliceStream.serialize_const_write hq.toMachineDigits
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma const (q : ℚ) : PairedWeighting (fun _ ↦ EF.const q) where
-  polySeg := BigSpliceStream.serialize_const q
+  polySeg := (BigSpliceStream.serialize_const q).toMachine
   rank_le := by intro z; simp [EF.rank]
   closed := by intro z ρ V; simp [EF.denoteWith]
 
 lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.mul (A z) (B z)) where
-  polySeg := BigSpliceStream.serialize_mul hA.polySeg hB.polySeg
+  polySeg := MachineSpliceStream.serialize_mul hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1109,7 +1110,7 @@ lemma mul {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.add (A z) (B z)) where
-  polySeg := BigSpliceStream.serialize_add hA.polySeg hB.polySeg
+  polySeg := MachineSpliceStream.serialize_add hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1118,7 +1119,7 @@ lemma add {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
 
 lemma max {A B : ℕ → EF} (hA : PairedWeighting A) (hB : PairedWeighting B) :
     PairedWeighting (fun z ↦ EF.max (A z) (B z)) where
-  polySeg := BigSpliceStream.serialize_max hA.polySeg hB.polySeg
+  polySeg := MachineSpliceStream.serialize_max hA.polySeg hB.polySeg
   rank_le := fun z ↦ Nat.max_le.mpr ⟨hA.rank_le z, hB.rank_le z⟩
   closed := by
     intro z ρ V
@@ -1134,7 +1135,7 @@ lemma clip01 {A : ℕ → EF} (hA : PairedWeighting A) :
       (((PairedWeighting.const (-1)).mul (PairedWeighting.const 1)).max
         ((PairedWeighting.const (-1)).mul hA)))
 
-lemma ctsInd {δ : ℕ → ℚ} (hδinv : DigitRatCodes (fun z ↦ 1 / δ z))
+lemma ctsInd {δ : ℕ → ℚ} (hδinv : MachineRatCodes (fun z ↦ 1 / δ z))
     {x y : ℕ → EF} (hx : PairedWeighting x) (hy : PairedWeighting y) :
     PairedWeighting (ctsIndFeature δ x y) :=
   PairedWeighting.clip01
@@ -1142,7 +1143,7 @@ lemma ctsInd {δ : ℕ → ℚ} (hδinv : DigitRatCodes (fun z ↦ 1 / δ z))
 
 lemma selector {A : ℕ → EF} (hA : PairedWeighting A) :
     PairedWeighting (selectorFeature A) where
-  polySeg := selectorFeature_polySeg hA.polySeg
+  polySeg := machineSpliceStream_selectorFeature hA.polySeg
   rank_le := by
     intro z
     have := selectorFeature_rank (g := A) (m := z.unpair.1) (k := z.unpair.2)
@@ -1162,7 +1163,8 @@ lemma toPGenerable {A : ℕ → EF} (h : PairedWeighting A) :
 paired-index feature. -/
 lemma ofPGenerableFst {A : ℕ → EF} (h : PGenerableWeighting A) :
     PairedWeighting (fun z ↦ A z.unpair.1) where
-  polySeg := h.polySeg.comp PolyFueled.left
+  polySeg := h.polySeg.comp (f := fun z : ℕ => z.unpair.1)
+    (UnaryRuler.unpairFst)
   rank_le := fun _ ↦ h.rank_le _
   closed := fun _ ρ V ↦ h.closed _ ρ V
 
@@ -1180,7 +1182,8 @@ This is how source-indexed confidence data (a threshold, a probability expressio
 a legal day-`z.unpair.1` coefficient. -/
 lemma ofPGenerableClamped {A : ℕ → EF} (h : PGenerableWeighting A) :
     PairedWeighting (fun z ↦ A (min z.unpair.2 z.unpair.1)) where
-  polySeg := h.polySeg.comp (Classical.choose_spec clampedSource_polyFueled)
+  polySeg := h.polySeg.comp (f := fun z : ℕ => min z.unpair.2 z.unpair.1)
+    (UnaryRuler.of_polyFueled (Classical.choose_spec clampedSource_polyFueled))
   rank_le := fun _ ↦ (h.rank_le _).trans (min_le_right _ _)
   closed := fun _ ρ V ↦ h.closed _ ρ V
 
@@ -1198,11 +1201,11 @@ def LUV.crossPrecisionAffine (X : ℕ → LUV) (low high : ℕ → ℕ)
 
 /-- The uniform polynomial emitter for `LUV.crossPrecisionAffine`: the two meshes'
 term streams concatenated, the second negated, with the precision indices recomputed by the
-poly-fueled maps `low` and `high`.  It consumes a `LUV.BigThresholdCodeSeq` certificate for
+poly-fueled maps `low` and `high`.  It consumes a `LUV.MachineThresholdCodeSeq` certificate for
 the LUV family. -/
 noncomputable def LUV.crossPrecisionAffine_polySequence
     (X : ℕ → LUV) (low high : ℕ → ℕ)
-    (hX : LUV.BigThresholdCodeSeq X)
+    (hX : LUV.MachineThresholdCodeSeq X)
     (hlow : ∃ c, PolyFueled c low) (hhigh : ∃ c, PolyFueled c high) :
     AffineCombination.PolySequence (LUV.crossPrecisionAffine X low high) := by
   let clow := Classical.choose hlow
@@ -1217,10 +1220,7 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
   have hj := PolyFueled.right
   have hlo := hlow.comp hn
   have hhi := hhigh.comp hn
-  have hcount := hadd.comp (hlow.pair hhigh)
   have htest := subc_polyFueled.comp (hj.succ_comp.pair hlo)
-  have hcount' : PolyFueled _ (fun n ↦ low n + high n) :=
-    hcount.of_eq (fun n ↦ by simp)
   have htest' : PolyFueled _ (fun z : ℕ ↦
       (z.unpair.2 + 1) - low z.unpair.1) :=
     htest.of_eq (fun z ↦ by simp)
@@ -1235,41 +1235,50 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
       Nat.pair z.unpair.1 (Nat.pair (high z.unpair.1)
         (z.unpair.2 - low z.unpair.1))) :=
     hn.pair (hhi.pair hoffset')
-  have hInvLow : BigSpliceStream (fun z ↦
+  have hInvLow : MachineSpliceStream (fun z ↦
       (EF.const (1 / (low z.unpair.1 : ℚ))).serialize) :=
-    BigSpliceStream.serialize_const_comp
+    (BigSpliceStream.serialize_const_comp
       ⟨cinv.comp (clow.comp Nat.Partrec.Code.left),
-        hinv.comp (hlow.comp PolyFueled.left)⟩
-  have hInvHighNeg : BigSpliceStream (fun z ↦
+        hinv.comp (hlow.comp PolyFueled.left)⟩).toMachine
+  have hInvHighNeg : MachineSpliceStream (fun z ↦
       (EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    have hinvHigh : BigSpliceStream (fun z ↦
+    have hinvHigh : MachineSpliceStream (fun z ↦
         (EF.const (1 / (high z.unpair.1 : ℚ))).serialize) :=
-      BigSpliceStream.serialize_const_comp
+      (BigSpliceStream.serialize_const_comp
         ⟨cinv.comp (chigh.comp Nat.Partrec.Code.left),
-          hinv.comp (hhigh.comp PolyFueled.left)⟩
-    exact BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const (-1)) hinvHigh
-  have hcoeff : BigSpliceStream (fun z ↦
+          hinv.comp (hhigh.comp PolyFueled.left)⟩).toMachine
+    exact MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-1)) hinvHigh
+  have hcoeff : MachineSpliceStream (fun z ↦
       (if z.unpair.2 < low z.unpair.1 then
         EF.const (1 / (low z.unpair.1 : ℚ))
       else EF.mul (EF.const (-1))
         (EF.const (1 / (high z.unpair.1 : ℚ)))).serialize) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.ifZero hInvLow hInvHighNeg htest') ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.ifZero hInvLow hInvHighNeg
+        (t := fun z : ℕ => z.unpair.2 + 1 - low z.unpair.1)
+        (UnaryRuler.of_polyFueled htest')) ?_
     intro z
     by_cases hlt : z.unpair.2 < low z.unpair.1
     · rw [if_pos hlt, if_pos (by omega)]
     · rw [if_neg hlt, if_neg (by omega)]
-  have hsentence : BigSentenceCodes (fun z ↦
+  have hsentence : MachineSentenceCodes (fun z ↦
       if z.unpair.2 < low z.unpair.1 then
         (X z.unpair.1).gt ((z.unpair.2 : ℚ) / (low z.unpair.1 : ℚ))
       else (X z.unpair.1).gt
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))) := by
-    refine (BigSentenceCodes.ifZero
-      (hX.comp hqueryLow)
-      (hX.comp hqueryHigh)
-      htest').of_eq (fun z ↦ ?_)
+    refine (MachineSentenceCodes.ifZero
+      (MachineSentenceCodes.comp hX
+        (f := fun z : ℕ => Nat.pair z.unpair.1 (Nat.pair (low z.unpair.1) z.unpair.2))
+        (UnaryRuler.of_polyFueled hqueryLow))
+      (MachineSentenceCodes.comp hX
+        (f := fun z : ℕ => Nat.pair z.unpair.1
+          (Nat.pair (high z.unpair.1) (z.unpair.2 - low z.unpair.1)))
+        (UnaryRuler.of_polyFueled hqueryHigh))
+      (t := fun z : ℕ => z.unpair.2 + 1 - low z.unpair.1)
+      (UnaryRuler.of_polyFueled htest')).of_eq (fun z ↦ ?_)
     simp only [Nat.unpair_pair]
     by_cases hlt : z.unpair.2 < low z.unpair.1
     · rw [if_pos (show z.unpair.2 + 1 - low z.unpair.1 = 0 from by omega),
@@ -1287,8 +1296,8 @@ noncomputable def LUV.crossPrecisionAffine_polySequence
       else (X z.unpair.1).gt
         (((z.unpair.2 - low z.unpair.1 : ℕ) : ℚ) /
           (high z.unpair.1 : ℚ))
-    termCount_poly := ⟨cadd.comp (clow.pair chigh), hcount'⟩
-    const_poly := BigSpliceStream.serialize_const 0
+    termCount_poly := (UnaryRuler.of_polyFueled hlow).add (UnaryRuler.of_polyFueled hhigh)
+    const_poly := MachineSpliceStream.serialize_const 0
     coefficient_poly := hcoeff
     sentence_poly := hsentence
     terms_eq := by
@@ -1380,13 +1389,13 @@ def LUV.expectDifferenceAffine (X Y : ℕ → LUV) (n : ℕ) : AffineCombination
 
 /-- The uniform polynomial emitter for `LUV.expectDifferenceAffine`: the day-indexed mesh
 emitters of `X` and of `Y` combined by `.add` and `.neg`.  It consumes a token-metered
-`LUV.RpnThresholdCodeSeq` certificate for each family. -/
+`LUV.MachineThresholdCodeSeq` certificate for each family. -/
 noncomputable def LUV.expectDifferenceAffine_polySequence
-    (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
-    (hY : LUV.RpnThresholdCodeSeq Y) :
+    (X Y : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
+    (hY : LUV.MachineThresholdCodeSeq Y) :
     AffineCombination.PolySequence (LUV.expectDifferenceAffine X Y) :=
-  (LUV.expectAffineSeq_polySequence X hX.toBig).add
-    (LUV.expectAffineSeq_polySequence Y hY.toBig).neg
+  (LUV.expectAffineSeq_polySequence X hX).add
+    (LUV.expectAffineSeq_polySequence Y hY).neg
 
 lemma LUV.expectDifferenceAffine_priceAt
     (X Y : ℕ → LUV) (P : History) (n m : ℕ) :
@@ -1420,11 +1429,12 @@ noncomputable def featureConstantAffine_polySequence
   termCount := fun _ ↦ 0
   coefficient := fun _ ↦ EF.const 0
   sentence := fun _ ↦ ⊥
-  termCount_poly := ⟨Nat.Partrec.Code.const 0, PolyFueled.const 0⟩
+  termCount_poly := UnaryRuler.const 0
   const_poly := hH.polySeg
-  coefficient_poly := BigSpliceStream.serialize_const 0
-  sentence_poly := BigSentenceCodes.ofPolySentenceCodes
-    ⟨Nat.Partrec.Code.const (Encodable.encode (⊥ : Sentence)), PolyFueled.const _⟩
+  coefficient_poly := MachineSpliceStream.serialize_const 0
+  sentence_poly := MachineSentenceCodes.ofPolySentenceCodes
+    ⟨Nat.Partrec.Code.const (Encodable.encode (⊥ : Sentence)),
+      PolyFueled.const _⟩
   terms_eq := by intro n; simp [featureConstantAffine]
   const_rank := hH.rank_le
   coefficient_rank := by intro n j hj; simp at hj
@@ -1473,22 +1483,22 @@ def gapNeg (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
   EF.max (EF.mul (EF.const (-1)) (priceFeat Bs z)) (EF.const 0)
 
 /-- The `[f k = m]` fibre-membership flag as a closed constant feature. -/
-def matchFeat (f : DeferralFunction) (a degree z : ℕ) : EF :=
-  EF.const ((scheduledMatch f a degree z : ℕ) : ℚ)
+def matchFeat (f : DeferralFunction) (z : ℕ) : EF :=
+  EF.const ((scheduledMatch f z : ℕ) : ℚ)
 
 /-- Fibre-gated continuous threshold on one side of the gap. -/
-def gateBase (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (d : ℕ → EF) (z : ℕ) : EF :=
-  EF.mul (matchFeat f a degree z)
+def gateBase (f : DeferralFunction) (δ : ℚ) (d : ℕ → EF) (z : ℕ) : EF :=
+  EF.mul (matchFeat f z)
     (ctsIndFeature (fun _ ↦ δ) d (fun _ ↦ EF.const δ) z)
 
 /-- Two-sided first-violator coefficient: the positive-side selector minus the
 negative-side selector, normalised by `1/(2C)`. -/
-def gateCoeff (f : DeferralFunction) (a degree : ℕ) (δ C : ℚ)
+def gateCoeff (f : DeferralFunction) (δ C : ℚ)
     (Bs : ℕ → AffineCombination) (z : ℕ) : EF :=
   EF.mul (EF.const (1 / (2 * C)))
-    (EF.add (selectorFeature (gateBase f a degree δ (gapPos Bs)) z)
+    (EF.add (selectorFeature (gateBase f δ (gapPos Bs)) z)
       (EF.mul (EF.const (-1))
-        (selectorFeature (gateBase f a degree δ (gapNeg Bs)) z)))
+        (selectorFeature (gateBase f δ (gapNeg Bs)) z)))
 
 lemma priceFeat_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
     (priceFeat Bs z).denote V = (Bs z).price V z.unpair.1 :=
@@ -1500,7 +1510,9 @@ lemma priceFeat_paired {Bs : ℕ → AffineCombination}
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
     PairedWeighting (priceFeat Bs) where
   polySeg := (hB.priceFeature_polySeg.comp
-    (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z ↦ by simp [priceFeat])
+    (f := fun z : ℕ => Nat.pair z z.unpair.1)
+    (UnaryRuler.id.pair UnaryRuler.unpairFst)).of_eq
+      (fun z ↦ by simp [priceFeat])
   rank_le := fun z ↦ AffineCombination.priceFeature_rank (Bs z) le_rfl
     (hconstRank z) (htermRank z)
   closed := fun z ρ V ↦ hB.priceFeature_closed z z.unpair.1 ρ V
@@ -1513,75 +1525,75 @@ lemma gapNeg_denote (Bs : ℕ → AffineCombination) (z : ℕ) (V : History) :
     (gapNeg Bs z).denote V = Max.max (-((Bs z).price V z.unpair.1)) 0 := by
   simp [gapNeg, priceFeat_denote]
 
-lemma matchFeat_denote (f : DeferralFunction) (a degree z : ℕ) (V : History) :
-    (matchFeat f a degree z).denote V =
-      ((scheduledMatch f a degree z : ℕ) : ℝ) := by
+lemma matchFeat_denote (f : DeferralFunction) (z : ℕ) (V : History) :
+    (matchFeat f z).denote V =
+      ((scheduledMatch f z : ℕ) : ℝ) := by
   simp [matchFeat]
 
-lemma matchFeat_paired (f : DeferralFunction) (a degree : ℕ) :
-    PairedWeighting (matchFeat f a degree) :=
+lemma matchFeat_paired (f : DeferralFunction) :
+    PairedWeighting (matchFeat f) :=
   PairedWeighting.ofRatCodes
-    (DigitRatCodes.ofPolyRatCodes (ratNatCast_codes_of_polyFueled
-      (Classical.choose_spec (scheduledMatch_polyFueled f a degree))))
+    ((DigitRatCodes.toMachine (DigitRatCodes.ofPolyRatCodes
+      (ratNatCast_codes_of_polyFueled PolyFueled.id))).comp (unaryRuler_scheduledMatch f))
 
-lemma gateBase_denote (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+lemma gateBase_denote (f : DeferralFunction) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History) :
-    (gateBase f a degree δ d z).denote V =
-      ((scheduledMatch f a degree z : ℕ) : ℝ) *
+    (gateBase f δ d z).denote V =
+      ((scheduledMatch f z : ℕ) : ℝ) *
         ctsInd δ ((d z).denote V) (δ : ℝ) := by
   simp only [gateBase, EF.denote_mul, Pi.mul_apply, matchFeat_denote]
   rw [ctsIndFeature_denote (fun _ ↦ δ) d _ (fun _ ↦ hδ) V z]
   simp
 
-lemma gateBase_mem (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+lemma gateBase_mem (f : DeferralFunction) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History) :
-    0 ≤ (gateBase f a degree δ d z).denote V ∧
-      (gateBase f a degree δ d z).denote V ≤ 1 := by
-  rw [gateBase_denote f a degree δ hδ d z V]
+    0 ≤ (gateBase f δ d z).denote V ∧
+      (gateBase f δ d z).denote V ≤ 1 := by
+  rw [gateBase_denote f δ hδ d z V]
   have hI := ctsInd_mem_Icc δ ((d z).denote V) (δ : ℝ)
-  rcases scheduledMatch_zero_or_one f a degree z with h | h
+  rcases scheduledMatch_zero_or_one f z with h | h
   · rw [h]; simp
   · rw [h]; simpa using ⟨hI.1, hI.2⟩
 
-lemma gateBase_pos (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+lemma gateBase_pos (f : DeferralFunction) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History)
-    (h : 0 < (gateBase f a degree δ d z).denote V) :
+    (h : 0 < (gateBase f δ d z).denote V) :
     (δ : ℝ) < (d z).denote V := by
-  rw [gateBase_denote f a degree δ hδ d z V] at h
+  rw [gateBase_denote f δ hδ d z V] at h
   by_contra hle
   rw [ctsInd_eq_zero_of_le δ _ _ hδ (not_lt.1 hle), mul_zero] at h
   exact absurd h (lt_irrefl 0)
 
-lemma gateBase_eq_one (f : DeferralFunction) (a degree : ℕ) (δ : ℚ) (hδ : 0 < δ)
+lemma gateBase_eq_one (f : DeferralFunction) (δ : ℚ) (hδ : 0 < δ)
     (d : ℕ → EF) (z : ℕ) (V : History)
-    (hmatch : scheduledMatch f a degree z = 1)
+    (hmatch : scheduledMatch f z = 1)
     (hbig : 2 * (δ : ℝ) ≤ (d z).denote V) :
-    (gateBase f a degree δ d z).denote V = 1 := by
-  rw [gateBase_denote f a degree δ hδ d z V, hmatch,
+    (gateBase f δ d z).denote V = 1 := by
+  rw [gateBase_denote f δ hδ d z V, hmatch,
     ctsInd_eq_one_of_le_sub δ _ _ hδ (by linarith)]
   simp
 
-lemma gateBase_paired (f : DeferralFunction) (a degree : ℕ) {δ : ℚ}
-    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
-    PairedWeighting (gateBase f a degree δ d) :=
-  (matchFeat_paired f a degree).mul
+lemma gateBase_paired (f : DeferralFunction) {δ : ℚ}
+    (hδinv : MachineRatCodes (fun _ : ℕ ↦ 1 / δ)) {d : ℕ → EF} (hd : PairedWeighting d) :
+    PairedWeighting (gateBase f δ d) :=
+  (matchFeat_paired f).mul
     (PairedWeighting.ctsInd hδinv hd (PairedWeighting.const δ))
 
 lemma gateCoeff_paired {Bs : ℕ → AffineCombination}
-    (f : DeferralFunction) (a degree : ℕ) {δ C : ℚ}
-    (hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ))
+    (f : DeferralFunction) {δ C : ℚ}
+    (hδinv : MachineRatCodes (fun _ : ℕ ↦ 1 / δ))
     (hB : AffineCombination.PolySequence Bs)
     (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1) :
-    PairedWeighting (gateCoeff f a degree δ C Bs) := by
+    PairedWeighting (gateCoeff f δ C Bs) := by
   have hprice := priceFeat_paired hB hconstRank htermRank
   have hpos : PairedWeighting (gapPos Bs) := hprice.max (PairedWeighting.const 0)
   have hneg : PairedWeighting (gapNeg Bs) :=
     ((PairedWeighting.const (-1)).mul hprice).max (PairedWeighting.const 0)
   exact (PairedWeighting.const (1 / (2 * C))).mul
-    (((gateBase_paired f a degree hδinv hpos).selector).add
+    (((gateBase_paired f hδinv hpos).selector).add
       ((PairedWeighting.const (-1)).mul
-        ((gateBase_paired f a degree hδinv hneg).selector)))
+        ((gateBase_paired f hδinv hneg).selector)))
 
 /-- Only finitely many days are scheduled from below `N`, so past the largest of them every
 element of every fibre is at or above `N`.  Injectivity-free: the constraint is only that
@@ -1602,9 +1614,7 @@ keep that price at `δ/(2C)`, so eventually no fibre element's gap reaches `2δ`
 lemma fibre_price_eventually_small
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (f : DeferralFunction)
     {Bs : ℕ → AffineCombination} (hB : AffineCombination.PolySequence Bs)
     (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1)
@@ -1621,16 +1631,16 @@ lemma fibre_price_eventually_small
       |(Bs (Nat.pair m k)).price P m| < 2 * (δ : ℝ) := by
   have hCR : (0 : ℝ) < (C : ℝ) := by exact_mod_cast hC
   have hδR : (0 : ℝ) < (δ : ℝ) := by exact_mod_cast hδ
-  have hδinv : DigitRatCodes (fun _ : ℕ ↦ 1 / δ) := DigitRatCodes.const (1 / δ)
+  have hδinv : MachineRatCodes (fun _ : ℕ ↦ 1 / δ) := MachineRatCodes.const (1 / δ)
   have hnorm : (0 : ℝ) < ((1 / (2 * C) : ℚ) : ℝ) := by
     have : (0 : ℚ) < 1 / (2 * C) := by positivity
     exact_mod_cast this
   -- the two gate families and the affine coefficient
-  set gP : ℕ → EF := gateBase f a degree δ (gapPos Bs) with hgPdef
-  set gN : ℕ → EF := gateBase f a degree δ (gapNeg Bs) with hgNdef
-  set coeff : ℕ → EF := gateCoeff f a degree δ C Bs with hcoeffdef
+  set gP : ℕ → EF := gateBase f δ (gapPos Bs) with hgPdef
+  set gN : ℕ → EF := gateBase f δ (gapNeg Bs) with hgNdef
+  set coeff : ℕ → EF := gateCoeff f δ C Bs with hcoeffdef
   have hcoeffP : PairedWeighting coeff :=
-    gateCoeff_paired f a degree hδinv hB hconstRank htermRank
+    gateCoeff_paired f hδinv hB hconstRank htermRank
   -- real-valued shorthands
   set pr : ℕ → ℕ → ℝ := fun m k ↦ (Bs (Nat.pair m k)).price P m with hprdef
   set pos : ℕ → ℕ → ℝ := fun m k ↦ Max.max (pr m k) 0 with hposdef
@@ -1651,9 +1661,9 @@ lemma fibre_price_eventually_small
   have hwP : ∀ m k, wP m k = bP m k * ∏ j ∈ Finset.range k, (1 - bP m j) := fun _ _ ↦ rfl
   have hwN : ∀ m k, wN m k = bN m k * ∏ j ∈ Finset.range k, (1 - bN m j) := fun _ _ ↦ rfl
   have hbPmem : ∀ m k, 0 ≤ bP m k ∧ bP m k ≤ 1 := fun m k ↦
-    gateBase_mem f a degree δ hδ _ _ P
+    gateBase_mem f δ hδ _ _ P
   have hbNmem : ∀ m k, 0 ≤ bN m k ∧ bN m k ≤ 1 := fun m k ↦
-    gateBase_mem f a degree δ hδ _ _ P
+    gateBase_mem f δ hδ _ _ P
   have hwPnonneg : ∀ m k, 0 ≤ wP m k := fun m k ↦
     firstSuccess_weight_nonneg (hbPmem m) k
   have hwNnonneg : ∀ m k, 0 ≤ wN m k := fun m k ↦
@@ -1671,32 +1681,32 @@ lemma fibre_price_eventually_small
     push_cast
     ring
   -- gates only fire inside the fibre
-  have hbP_match : ∀ m k, scheduledMatch f a degree (Nat.pair m k) = 0 →
+  have hbP_match : ∀ m k, scheduledMatch f (Nat.pair m k) = 0 →
       bP m k = 0 := by
     intro m k h
-    rw [hbPeq m k, hgPdef, gateBase_denote f a degree δ hδ _ _ P, h]
+    rw [hbPeq m k, hgPdef, gateBase_denote f δ hδ _ _ P, h]
     simp
-  have hbN_match : ∀ m k, scheduledMatch f a degree (Nat.pair m k) = 0 →
+  have hbN_match : ∀ m k, scheduledMatch f (Nat.pair m k) = 0 →
       bN m k = 0 := by
     intro m k h
-    rw [hbNeq m k, hgNdef, gateBase_denote f a degree δ hδ _ _ P, h]
+    rw [hbNeq m k, hgNdef, gateBase_denote f δ hδ _ _ P, h]
     simp
   have hcoeff_fibre : ∀ m k, (coeff (Nat.pair m k)).denote P ≠ 0 → f k = m := by
     intro m k hne
-    rcases scheduledMatch_zero_or_one f a degree (Nat.pair m k) with h | h
+    rcases scheduledMatch_zero_or_one f (Nat.pair m k) with h | h
     · exfalso
       rw [hcoeffDen m k, hwP m k, hwN m k, hbP_match m k h, hbN_match m k h] at hne
       simp at hne
-    · exact (scheduledMatch_eq_one_iff f hspec m k).1 h
+    · exact (scheduledMatch_eq_one_iff f m k).1 h
   -- gate positivity forces the gap past δ
   have hbP_forces : ∀ m k, 0 < bP m k → (δ : ℝ) ≤ pos m k := by
     intro m k h
-    have := gateBase_pos f a degree δ hδ (gapPos Bs) (Nat.pair m k) P h
+    have := gateBase_pos f δ hδ (gapPos Bs) (Nat.pair m k) P h
     rw [hgapPos m k] at this
     exact this.le
   have hbN_forces : ∀ m k, 0 < bN m k → (δ : ℝ) ≤ neg m k := by
     intro m k h
-    have := gateBase_pos f a degree δ hδ (gapNeg Bs) (Nat.pair m k) P h
+    have := gateBase_pos f δ hδ (gapNeg Bs) (Nat.pair m k) P h
     rw [hgapNeg m k] at this
     exact this.le
   -- signed summand splits into two non-cancelling halves
@@ -1735,7 +1745,8 @@ lemma fibre_price_eventually_small
     hB.blockSum hcoeffP.polySeg hcoeffP.closed
       (fun m k ↦ by simpa using hcoeffP.rank_le (Nat.pair m k))
       ⟨_, PolyFueled.id⟩ hwidth hwidthPos hBconstRank hBcoeffRank
-      (hB.sentence 0) (hB.sentence_poly.comp (PolyFueled.const 0))
+      (hB.sentence 0) (hB.sentence_poly.comp (f := fun _ : ℕ => 0)
+        (UnaryRuler.const 0))
   have hwq : ∀ m, ∀ k < m, (Bs (Nat.pair m k)).terms.length ≤ width m :=
     fun m k hk ↦ hwide m k hk
   have hfamPrice : ∀ m day, (family m).price P day =
@@ -1844,8 +1855,8 @@ lemma fibre_price_eventually_small
   refine eventually_atTop.2 ⟨M, fun m hm k hk hfk ↦ ?_⟩
   by_contra hbig
   rw [not_lt] at hbig
-  have hmatch : scheduledMatch f a degree (Nat.pair m k) = 1 :=
-    (scheduledMatch_eq_one_iff f hspec m k).2 hfk
+  have hmatch : scheduledMatch f (Nat.pair m k) = 1 :=
+    (scheduledMatch_eq_one_iff f m k).2 hfk
   have hsum_eq : (family m).price P m =
       ((1 / (2 * C) : ℚ) : ℝ) *
         ((∑ j ∈ Finset.range m, wP m j * pos m j) +
@@ -1865,7 +1876,7 @@ lemma fibre_price_eventually_small
         rw [hpos m k]; exact max_eq_left (by linarith)
       have hhit : bP m k = 1 := by
         rw [hbPeq m k, hgPdef]
-        exact gateBase_eq_one f a degree δ hδ _ _ P hmatch
+        exact gateBase_eq_one f δ hδ _ _ P hmatch
           (by rw [hgapPos m k, hposk]; linarith)
       have h1 : (δ : ℝ) ≤ ∑ j ∈ Finset.range m, wP m j * pos m j :=
         firstSuccess_forces hk (hbPmem m) hhit (fun j _ hj ↦ hbP_forces m j hj)
@@ -1876,7 +1887,7 @@ lemma fibre_price_eventually_small
         rw [hneg m k]; exact max_eq_left (by linarith)
       have hhit : bN m k = 1 := by
         rw [hbNeq m k, hgNdef]
-        exact gateBase_eq_one f a degree δ hδ _ _ P hmatch
+        exact gateBase_eq_one f δ hδ _ _ P hmatch
           (by rw [hgapNeg m k, hnegk]; linarith)
       have h1 : (δ : ℝ) ≤ ∑ j ∈ Finset.range m, wN m j * neg m j :=
         firstSuccess_forces hk (hbNmem m) hhit (fun j _ hj ↦ hbN_forces m j hj)
@@ -1894,9 +1905,7 @@ diagonal `n ↦ ⟨f n, n⟩`. -/
 lemma deferred_block_price_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (f : DeferralFunction)
     {Bs : ℕ → AffineCombination} (hB : AffineCombination.PolySequence Bs)
     (hconstRank : ∀ z, (Bs z).const.rank ≤ z.unpair.1)
     (htermRank : ∀ z, ∀ p ∈ (Bs z).terms, p.1.rank ≤ z.unpair.1)
@@ -1917,7 +1926,7 @@ lemma deferred_block_price_tendsto_zero
     have : (q : ℝ) < ε / 3 := hqε
     linarith
   obtain ⟨M, hM⟩ := eventually_atTop.1
-    (fibre_price_eventually_small hworld f hspec hB hconstRank htermRank hwidth
+    (fibre_price_eventually_small hworld f hB hconstRank htermRank hwidth
       hwidthPos hwide hC hmag hbdd hsmall hδpos)
   refine ⟨M, fun n hn ↦ ?_⟩
   have hfn : M ≤ f n := le_trans hn (f.lt n).le
@@ -1968,16 +1977,14 @@ for every deferral function satisfying only `f n > n` plus poly-clocked emission
 lemma crossPrecision_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (X : ℕ → LUV) (hX : LUV.BigThresholdCodeSeq X)
+    (f : DeferralFunction)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (hvalued : ∀ k (v : PCWorld), v.ConsistentWithTheory DP → ∃ x, v.ValuesAt (X k) x)
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
     Tendsto (fun n ↦ (X n).expectApprox (P (f n)) (n + 1) -
       (X n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
-  have hX' : LUV.BigThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
-    hX.reindex ⟨_, PolyFueled.right⟩
+  have hX' : LUV.MachineThresholdCodeSeq (fun z ↦ X z.unpair.2) :=
+    hX.reindex (UnaryRuler.unpairSnd)
   have hB : AffineCombination.PolySequence (crossPrecisionBlocks X) :=
     LUV.crossPrecisionAffine_polySequence (fun z ↦ X z.unpair.2)
       (fun z ↦ z.unpair.2 + 1) (fun z ↦ z.unpair.1 + 1) hX'
@@ -1986,7 +1993,7 @@ lemma crossPrecision_deferred_tendsto_zero
     have h2 := Classical.choose_spec (mulc_polyFueled 2)
     obtain ⟨ca, hca⟩ := h2.addConst 2
     exact ⟨ca, hca⟩
-  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hB
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hB
     (hconstRank := fun z ↦ by
       simp [crossPrecisionBlocks, LUV.crossPrecisionAffine])
     (htermRank := crossPrecisionBlocks_terms_rank X)
@@ -2090,25 +2097,25 @@ lemma pairedExpectationBlocks_terms_rank (X : ℕ → LUV) (z : ℕ) :
 /-- The paired mesh family is emitted uniformly from the varying threshold presentation:
 the evaluation day fixes the precision and the source index selects the LUV. -/
 noncomputable def pairedExpectationBlocks_polySequence (X : ℕ → LUV)
-    (hX : LUV.BigThresholdCodeSeq X) :
+    (hX : LUV.MachineThresholdCodeSeq X) :
     AffineCombination.PolySequence (pairedExpectationBlocks X) := by
   let cinv := Classical.choose encode_inv_nat_polyFueled
   have hinv := Classical.choose_spec encode_inv_nat_polyFueled
   have hm := PolyFueled.left.comp PolyFueled.left
   have hk := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
-  have hquery := hk.pair (hm.succ_comp.pair hj)
-  have hsentence := hX.comp hquery
+  have hquery := UnaryRuler.of_polyFueled (hk.pair (hm.succ_comp.pair hj))
+  have hsentence := MachineSentenceCodes.comp hX hquery
   exact {
     termCount := fun z ↦ z.unpair.1 + 1
     coefficient := fun w ↦ .const (1 / ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
     sentence := fun w ↦
       (X w.unpair.1.unpair.2).gt ((w.unpair.2 : ℚ) /
         ((w.unpair.1.unpair.1 + 1 : ℕ) : ℚ))
-    termCount_poly := ⟨_, PolyFueled.left.succ_comp⟩
-    const_poly := BigSpliceStream.serialize_const 0
-    coefficient_poly := BigSpliceStream.serialize_const_comp
-      ⟨_, hinv.comp hm.succ_comp⟩
+    termCount_poly := UnaryRuler.unpairFst.succ
+    const_poly := MachineSpliceStream.serialize_const 0
+    coefficient_poly := (BigSpliceStream.serialize_const_comp
+      ⟨_, hinv.comp hm.succ_comp⟩).toMachine
     sentence_poly := hsentence.of_eq (fun w ↦ by simp)
     terms_eq := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
     const_rank := by intro z; simp [pairedExpectationBlocks, LUV.expectAffine]
@@ -2130,12 +2137,13 @@ lemma pairedExpectationFeature_denote (X : ℕ → LUV) (P : History) (m k : ℕ
   simp [pairedExpectationBlocks_price, LUV.expect]
 
 lemma pairedExpectationFeature_paired (X : ℕ → LUV)
-    (hX : LUV.BigThresholdCodeSeq X) :
+    (hX : LUV.MachineThresholdCodeSeq X) :
     PairedWeighting (pairedExpectationFeature X) := by
   let hmesh := pairedExpectationBlocks_polySequence X hX
   exact {
     polySeg := (hmesh.priceFeature_polySeg.comp
-      (PolyFueled.id.pair PolyFueled.left)).of_eq
+      (f := fun z : ℕ => Nat.pair z z.unpair.1)
+      (UnaryRuler.id.pair UnaryRuler.unpairFst)).of_eq
         (fun z ↦ by simp [pairedExpectationFeature])
     rank_le := fun z ↦ AffineCombination.priceFeature_rank _ le_rfl
       (pairedExpectationBlocks_const_rank X z)
@@ -2152,10 +2160,14 @@ lemma pairedPriceFeature_denote (φ : ℕ → Sentence) (P : History) (m k : ℕ
     (pairedPriceFeature φ (Nat.pair m k)).denote P = P m (φ k) := by
   simp [pairedPriceFeature]
 
-lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+lemma pairedPriceFeature_paired (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     PairedWeighting (pairedPriceFeature φ) where
-  polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.right
-    PolyFueled.left).of_eq (fun z ↦ by simp [pairedPriceFeature])
+  polySeg := (MachineSpliceStream.serialize_price hφ
+    (sf := fun z : ℕ => z.unpair.2)
+    (UnaryRuler.unpairSnd)
+    (MachineDigits.ofUnaryRuler (f := fun z : ℕ => z.unpair.1)
+      (UnaryRuler.unpairFst))).of_eq
+    (fun z ↦ by simp [pairedPriceFeature])
   rank_le := by intro z; simp [pairedPriceFeature]
   closed := by intro z ρ V; simp [pairedPriceFeature]
 
@@ -2211,14 +2223,14 @@ lemma numericQuoteBlocks_terms_rank (H : ℕ → EF) (Y : ℕ → LUV) (z : ℕ)
 /-- The uniform polynomial emitter for `numericQuoteBlocks`: the paired target as an affine
 constant, minus the paired mesh blocks.  The target certificate must be a *paired-index*
 `PairedWeighting`, since the coefficient at `⟨m,k⟩` has to be legal on the evaluation day
-`m`, not merely on `⟨m,k⟩`; the LUV family carries the token-metered threshold
-certificate. -/
+`m`, not merely on `⟨m,k⟩`; the LUV family carries the write-out threshold certificate
+`LUV.MachineThresholdCodeSeq`. -/
 noncomputable def numericQuoteBlocks_polySequence
     (H : ℕ → EF) (hH : PairedWeighting H) (Y : ℕ → LUV)
-    (hY : LUV.RpnThresholdCodeSeq Y) :
+    (hY : LUV.MachineThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteBlocks H Y) :=
   (featureConstantAffine_polySequence H hH.toPGenerable).add
-    (pairedExpectationBlocks_polySequence Y hY.toBig).neg
+    (pairedExpectationBlocks_polySequence Y hY).neg
 
 /-- **Deferred numeric quote without injectivity.**  If every completed world assigns the
 paired target `H ⟨f k, k⟩` to the quote LUV `Y k`, then the deferred market reading of
@@ -2227,18 +2239,16 @@ paired target `H ⟨f k, k⟩` to the quote LUV `Y k`, then the deferred market 
 lemma numericQuote_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
+    (f : DeferralFunction)
     (H : ℕ → EF) (hH : PairedWeighting H)
     (hHmem : ∀ z, 0 ≤ (H z).denote P ∧ (H z).denote P ≤ 1)
-    (Y : ℕ → LUV) (hY : LUV.RpnThresholdCodeSeq Y)
+    (Y : ℕ → LUV) (hY : LUV.MachineThresholdCodeSeq Y)
     (hreflected : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
       v.ValuesAt (Y k) ((H (Nat.pair m k)).denote P))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
     Tendsto (fun n ↦ (H (Nat.pair (f n) n)).denote P -
       (Y n).expectApprox (P (f n)) (f n + 1)) atTop (𝓝 0) := by
-  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f
     (numericQuoteBlocks_polySequence H hH Y hY)
     (hconstRank := numericQuoteBlocks_const_rank hH Y)
     (htermRank := numericQuoteBlocks_terms_rank H Y)
@@ -2288,11 +2298,9 @@ so it only has to vanish; it need not be tied to the grid. -/
 lemma conditional_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (X Z Z' : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
-    (hZ : LUV.RpnThresholdCodeSeq Z) (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (f : DeferralFunction)
+    (X Z Z' : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
+    (hZ : LUV.MachineThresholdCodeSeq Z) (hZ' : LUV.MachineThresholdCodeSeq Z')
     (w : ℕ → ℚ) (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdenote : ∀ m, (W m).denote P = (w m : ℝ))
     (hw : ∀ m, 0 ≤ w m ∧ w m ≤ 1)
@@ -2307,7 +2315,7 @@ lemma conditional_deferred_tendsto_zero
     (PairedWeighting.const (-1)).mul (PairedWeighting.ofPGenerableFst hW)
   have htargetP :
       PairedWeighting (fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)) :=
-    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX.toBig)
+    (PairedWeighting.ofPGenerableFst hW).mul (pairedExpectationFeature_paired X hX)
   set Wneg : ℕ → EF := fun z ↦ EF.mul (EF.const (-1)) (W z.unpair.1) with hWnegDef
   set target : ℕ → EF := fun z ↦ EF.mul (W z.unpair.1) (pairedExpectationFeature X z)
     with htargetDef
@@ -2316,8 +2324,8 @@ lemma conditional_deferred_tendsto_zero
       ((pairedExpectationBlocks X z).scale (Wneg z))).add
       (numericQuoteBlocks target Z' z) with hBsDef
   have hB : AffineCombination.PolySequence Bs :=
-    ((pairedExpectationBlocks_polySequence Z hZ.toBig).add
-      ((pairedExpectationBlocks_polySequence X hX.toBig).scaleFeature Wneg
+    ((pairedExpectationBlocks_polySequence Z hZ).add
+      ((pairedExpectationBlocks_polySequence X hX).scaleFeature Wneg
         hWnegP.toPGenerable)).add
       (numericQuoteBlocks_polySequence target htargetP Z' hZ')
   -- denotations of the two derived features
@@ -2354,7 +2362,7 @@ lemma conditional_deferred_tendsto_zero
     have h3 := Classical.choose_spec (mulc_polyFueled 3)
     obtain ⟨ca, hca⟩ := h3.addConst 3
     exact ⟨ca, hca⟩
-  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hB
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hB
     (hconstRank := by
       intro z
       have h1 : ((pairedExpectationBlocks X z).scale (Wneg z)).const.rank ≤ z.unpair.1 := by
@@ -2495,17 +2503,15 @@ plus poly-clocked emission.  The block family carries the emitted confidence *ex
 lemma selfTrust_deferred_tendsto_zero
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k))
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (f : DeferralFunction)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (p : ℕ → ℚ) (hp : ∀ m, 0 ≤ p m ∧ p m ≤ 1)
     (pF : ℕ → EF) (hpF : PairedWeighting pF)
     (hpFmem : ∀ z, 0 ≤ (pF z).denote P ∧ (pF z).denote P ≤ 1)
     (hpDenote : ∀ m k, k ≤ m → (pF (Nat.pair m k)).denote P = (p k : ℝ))
     (G : ℕ → EF) (hG : PairedWeighting G)
     (hGmem : ∀ z, 0 ≤ (G z).denote P ∧ (G z).denote P ≤ 1)
-    (A B : ℕ → LUV) (hA : LUV.BigThresholdCodeSeq A) (hB : LUV.BigThresholdCodeSeq B)
+    (A B : ℕ → LUV) (hA : LUV.MachineThresholdCodeSeq A) (hB : LUV.MachineThresholdCodeSeq B)
     (hsemantic : ∀ m k, f k = m → ∀ v : PCWorld, v.ConsistentWithTheory DP →
       v.ValuesAt (B k) ((G (Nat.pair m k)).denote P) ∧
         v.ValuesAt (A k) (v.payout (φ k) * (G (Nat.pair m k)).denote P))
@@ -2520,7 +2526,8 @@ lemma selfTrust_deferred_tendsto_zero
   have hpNeg : PairedWeighting pNeg := (PairedWeighting.const (-1)).mul hpF
   have hGNeg : PairedWeighting GNeg := (PairedWeighting.const (-1)).mul hG
   have hpG : PairedWeighting pG := hpF.mul hG
-  have hφ' : BigSentenceCodes (fun z ↦ φ z.unpair.2) := hφ.comp PolyFueled.right
+  have hφ' : MachineSentenceCodes (fun z ↦ φ z.unpair.2) :=
+    hφ.comp (UnaryRuler.unpairSnd)
   set Bs : ℕ → AffineCombination := fun z ↦
     ((((pairedExpectationBlocks A z).add
         ((pairedExpectationBlocks B z).scale (pNeg z))).add
@@ -2560,7 +2567,7 @@ lemma selfTrust_deferred_tendsto_zero
     have h2 := Classical.choose_spec (mulc_polyFueled 2)
     obtain ⟨ca, hca⟩ := h2.addConst 3
     exact ⟨ca, hca⟩
-  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hspec hBpoly
+  have hkey := deferred_block_price_tendsto_zero (P := P) (DP := DP) hworld f hBpoly
     (hconstRank := ?_) (htermRank := ?_)
     (width := fun m ↦ m * 2 + 3) (hwidth := hwidth)
     (hwidthPos := fun m ↦ by omega)

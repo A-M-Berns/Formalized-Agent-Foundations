@@ -1,17 +1,22 @@
 import LogicalInduction.Properties.ExpectationAffine
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Machine.Ruler
 
 /-!
 # Self-Trust
 
 Renders §4.12: `thm:cee` (tex:2045), `thm:ceu` (tex:2056), `thm:ccee` (tex:2068) and
 `thm:st` (tex:2092).  Two definitions the paper states in §4.3 are rendered here as well:
-`def:deferralfunc` (tex:1240), whose efficiency clause goes through the clocked interpreter
-(`dd:fuel`) and which `succDeferral` inhabits — with `DeferralFunction.tendsto_atTop` and
-`DeferralFunction.exists_clock`, the two facts every consumer of a deferral function opens it
-by, and the bounded schedule `deadlineRun` / `scheduledMatch` that is the only thing a machine
-can actually test the undecidable deadline with — and `def:ctsind` (tex:1174) in its
+`def:deferralfunc` (tex:1240), whose efficiency clause is the machine-metered graph test
+`DeferralFunction.graph_fp` and which `succDeferral` and `doublingDeferral` inhabit (the
+second at `n ↦ 2 ^ n`, so the fast-growing regime the output-sensitive clause exists to admit
+is inhabited too, and by a schedule `not_polyFueled_doublingDeferral` shows no whole-value
+fuel clock could have certified) — with
+`DeferralFunction.tendsto_atTop` and `DeferralFunction.graphFlag_ruler`, the two facts every
+consumer of a deferral function opens it by, and the day-bounded schedule `scheduledValue` /
+`scheduledMatch` / `deadlineRun` that is the only thing a machine can actually test the
+undecidable deadline with — and `def:ctsind` (tex:1174) in its
 real-valued form `ctsInd` — the feature-valued rendering of the same definition is
 `calibrationIndicator` in `Properties/Calibration.lean`.
 
@@ -52,6 +57,15 @@ Each of the four theorems is stated against one bundled certificate —
 `Construction/Quotation/Packages.lean`.  `thm:ccee`'s vanishing product slack is
 carried explicitly as `ConditionalExpectationQuote.slack` (`dd:mesh`).  Those four
 structures and the three portfolio structures are `#assert_fields`-frozen.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -60,21 +74,32 @@ open Filter Topology
 
 /-! ## Deferral functions -/
 
-/-- `def:deferralfunc`. A **deferral function**: `f n > n`, and `f` is computable within
-fuel polynomial **in `f n`** (the paper's "time polynomial in `f(n)`" — deliberately
-weaker than poly-in-`n`, since `f` may grow fast), rendered through the clocked
-interpreter (`dd:fuel`).
+/-- `def:deferralfunc`. A **deferral function**: `f n > n`, and `f` is computed within time
+polynomial **in `f n`** (the paper's "time polynomial in `f(n)`" — deliberately weaker than
+poly-in-`n`, since `f` may grow fast).
+
+The efficiency clause is rendered **at the machine model**, as the paper's own
+output-sensitive condition read on the input that carries it: the *graph* of `f` is decided
+in polynomial time on the unary pair `⟨n, m⟩`, whose length is `Nat.pair n m ≥ m`, so "time
+polynomial in the input length" *is* "time polynomial in the candidate value `m`".  The
+answer is the repo's unary flag convention — one mark when `f n = m`, none otherwise.
+
+The two readings are equivalent.  From a program computing `f n` within `h (f n)` steps,
+decide the graph at `⟨n, m⟩` by running it for `h m` steps and comparing, which is
+polynomial in the pair's length.  Conversely, from the graph decider compute `f n` by
+testing `m = n + 1, n + 2, …` until the flag fires: each test is polynomial in `m ≤ f n`
+and there are at most `f n` of them, so the search is polynomial in `f n`.  Only the first
+direction is used below — every consumer reads the day-bounded schedule off the graph.
 Paper node: `def:deferralfunc` -/
 structure DeferralFunction where
   /-- The underlying function. -/
   f : ℕ → ℕ
   /-- `f` defers: `f n > n`. -/
   lt : ∀ n, n < f n
-  /-- A code computing `f`. -/
-  code : Nat.Partrec.Code
-  /-- The code halts within fuel polynomial in `f n`. -/
-  fueled : ∃ a k : ℕ, ∀ n,
-    Nat.Partrec.Code.evaln (a * (f n + 1) ^ k + a) code n = some (f n)
+  /-- The graph of `f` is decided in polynomial time on the unary pair `⟨n, m⟩`. -/
+  graph_fp : ∃ G ∈ Complexity.FP, ∀ n m : ℕ,
+    G (List.replicate (Nat.pair n m) true)
+      = List.replicate (if f n = m then 1 else 0) false
 
 instance : CoeFun DeferralFunction (fun _ => ℕ → ℕ) := ⟨DeferralFunction.f⟩
 
@@ -86,166 +111,190 @@ lemma DeferralFunction.tendsto_atTop (f : DeferralFunction) :
   intro N
   exact ⟨N, fun n hn ↦ hn.trans (f.lt n).le⟩
 
-/-- **The deferral clock.**  `DeferralFunction.fueled` states the polynomial fuel bound in
-raw arithmetic form, while every bounded evaluator in the development is clocked by
-`PrefixPatchCompile.ecClock`.  This is that bound in the `ecClock` spelling, so no consumer
-re-derives how to open `f.fueled`.  A deferred package that must name the clock parameters
-as data opens this with `Classical.choose`, since the goal it builds lives in `Type`. -/
-lemma DeferralFunction.exists_clock (f : DeferralFunction) :
-    ∃ a degree, ∀ k, Nat.Partrec.Code.evaln
-      (PrefixPatchCompile.ecClock a degree (f k)) f.code k = some (f k) := by
-  obtain ⟨a, degree, h⟩ := f.fueled
-  exact ⟨a, degree, fun k ↦ by simpa [PrefixPatchCompile.ecClock] using h k⟩
+/-- The graph flag of `f` at the paired index `⟨n, m⟩`: one mark when `f n = m`. -/
+def DeferralFunction.graphFlag (f : DeferralFunction) (z : ℕ) : ℕ :=
+  if f z.unpair.1 = z.unpair.2 then 1 else 0
+
+/-- **The deferral clock.**  `DeferralFunction.graph_fp` states the polynomial-time graph
+test as a bare `Complexity.FP` membership on the unary pair; this is the same fact in the
+`UnaryRuler` spelling, which is how every consumer of the schedule below reads it.  No
+consumer re-derives the composition with the pairing machine. -/
+lemma DeferralFunction.graphFlag_ruler (f : DeferralFunction) : UnaryRuler f.graphFlag := by
+  obtain ⟨G, hG, hGeq⟩ := f.graph_fp
+  have h := Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hG
+  show (fun z : List Bool => List.replicate (f.graphFlag z.length) false) ∈ Complexity.FP
+  have heq : (G ∘ fun z : List Bool => List.replicate z.length true)
+      = fun z : List Bool => List.replicate (f.graphFlag z.length) false := by
+    funext z
+    simp only [Function.comp_apply]
+    have hz := hGeq z.length.unpair.1 z.length.unpair.2
+    rw [Nat.pair_unpair] at hz
+    rw [hz]
+    rfl
+  rwa [heq] at h
 
 /-- **Non-vacuity of `def:deferralfunc`** — kind `N+` non-vacuity witness.  The successor
-`n ↦ n + 1` is a deferral function: it defers (`n < n + 1`) and `Nat.Partrec.Code.succ`
-returns it within one step of the clocked interpreter, well inside the polynomial-in-`f n`
-budget.  Every `DeferralFunction` binder in this file and in the `thm:cee` / `thm:ceu` /
-`thm:ccee` / `thm:st` endpoints is therefore inhabited.
+`n ↦ n + 1` is a deferral function: it defers (`n < n + 1`), and its graph `n + 1 = m` is one
+length comparison on the unary pair, so the machine decides it in polynomial time.  Every
+`DeferralFunction` binder in this file and in the `thm:cee` / `thm:ceu` / `thm:ccee` /
+`thm:st` endpoints is therefore inhabited.
+
+This witness is **slow-growing**, so on its own it exercises none of the reason condition 2
+is stated output-sensitively; `doublingDeferral` below is the fast-growing companion.
 Provenance: (a) derived in-project. -/
 def succDeferral : DeferralFunction where
   f := (· + 1)
   lt n := Nat.lt_succ_self n
-  code := Nat.Partrec.Code.succ
-  fueled := ⟨1, 1, fun n => by simp [Nat.Partrec.Code.evaln]⟩
+  graph_fp :=
+    ⟨fun z : List Bool =>
+        List.replicate (if z.length.unpair.1 + 1 = z.length.unpair.2 then 1 else 0) false,
+      UnaryRuler.eqFlag UnaryRuler.unpairFst.succ UnaryRuler.unpairSnd,
+      fun n m => by simp⟩
 
-/-! ## The bounded deferral schedule
+/-- **A fast-growing deferral function** — kind `N+` non-vacuity witness, and the one that
+exercises why `def:deferralfunc`'s efficiency clause is stated output-sensitively.  `n ↦ 2 ^ n`
+defers (`n < 2 ^ n`), and its graph is decided in polynomial time on the unary pair because
+the *capped* power is: `2 ^ n = m` exactly when `min (2 ^ n) (m + 1) = m`, and
+`UnaryRuler.two_pow_min` computes that cap as a doubling loop truncated at `m + 1` every
+step, so the loop's state never exceeds the input's own length.  The uncapped `2 ^ n` is not
+a ruler and could not be — its word would be exponentially long — which is exactly why the
+clause is read on the pair rather than on `n` alone.
+Provenance: (a) derived in-project. -/
+def doublingDeferral : DeferralFunction where
+  f n := 2 ^ n
+  lt _ := Nat.lt_two_pow_self
+  graph_fp :=
+    ⟨fun z : List Bool =>
+        List.replicate (if min (2 ^ z.length.unpair.1) (z.length.unpair.2 + 1)
+          = z.length.unpair.2 then 1 else 0) false,
+      UnaryRuler.eqFlag
+        (UnaryRuler.two_pow_min UnaryRuler.unpairFst UnaryRuler.unpairSnd.succ
+          (fun _ => Nat.succ_pos _))
+        UnaryRuler.unpairSnd,
+      fun n m => by
+        simp only [List.length_replicate, Nat.unpair_pair]
+        have hiff : (min (2 ^ n) (m + 1) = m) ↔ (2 ^ n = m) := by omega
+        simp only [hiff]⟩
 
-`DeferralFunction.fueled` gives fuel polynomial in `f n` and **not** in `n`, so no machine can
-decide "the deferral deadline has passed".  What a machine can do is run `f`'s code under a
-budget and believe only a halting run.  `deadlineRun` is that sound under-approximation, and
-`scheduledMatch` is the day-indexed Boolean flag built on it: `1` exactly when the run
-budgeted by the day-`n` evaluator clock returns the current day.
+/-- **No whole-value fuel clock certifies `doublingDeferral`.**  `not_polyFueled_two_pow`
+refutes a `PolyFueled` certificate for `n ↦ 2 ^ n` on output size alone — the class bounds
+the value returned by a polynomial in the input, and `2 ^ n` is not so bounded.  So the
+fast-growing regime that `DeferralFunction.graph_fp` admits is *not* reachable by a
+fuel-clocked reading of the same clause, and the machine reading is doing real work here
+rather than restating a fuel condition under another name.  This is a size-based separation
+only; no time lower bound is claimed.
+Provenance: (b) `not_polyFueled_two_pow`. -/
+lemma not_polyFueled_doublingDeferral (c : Nat.Partrec.Code) :
+    ¬ PolyFueled c doublingDeferral.f :=
+  not_polyFueled_two_pow c
 
-Both are stated here, beside `DeferralFunction` itself, because both `Construction/Statistics/`
-and `Construction/Quotation/` consume them; putting them in either lane would make that pair of
-lanes import each other. -/
+/-! ## The day-bounded deferral schedule
 
-section
+The graph test is polynomial in the pair `⟨k, m⟩`, so on day `n` a machine can scan
+`m = 0, …, n` and report `f k` exactly when the deferral deadline has already fallen — and
+cannot learn it otherwise, `f k` being potentially far beyond the day's budget.
+`scheduledValue` is that day-bounded lookup, `scheduledMatch` the day-indexed flag that is
+`1` exactly when component `k` defers to the current day, and `deadlineRun` the same lookup
+in the normalized `0`/`f k + 1` shape the settlement clock tests.
 
--- `PolyFueled` elaboration over nested `Primcodable` product types reaches `Nat.unpair`, and
--- unfolding `Nat.sqrt`'s well-founded definition sends `whnf` into a loop, so `Nat.sqrt` is
--- opaque in this section; see `Construction/Statistics/SettlementClock.lean`'s header.
-attribute [local irreducible] Nat.sqrt
+All three are stated here, beside `DeferralFunction` itself, because both
+`Construction/Statistics/` and `Construction/Quotation/` consume them; putting them in
+either lane would make that pair of lanes import each other. -/
 
-open PrefixPatchCompile
+/-- The day-bounded deferral lookup at `⟨day, component⟩`: `f k` once day `n` has reached
+it, `0` before.  The scan is the prefix sum of `m ↦ m * ⟦f k = m⟧` over `m ≤ n`, which picks
+out the one matching value. -/
+def scheduledValue (f : DeferralFunction) (z : ℕ) : ℕ :=
+  segPrefix (fun w => w.unpair.2 * f.graphFlag w) z.unpair.2 (z.unpair.1 + 1)
 
-/-- `f`'s clocked run on `k` with budget `n`, normalized: `0` if it has not halted, else
-`f k + 1`. -/
-def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
-  codeEvalnNat f.code (Nat.pair n k)
+/-- The scan is the matching value once it has been passed, and `0` before. -/
+private lemma scheduledScan (f : DeferralFunction) (k : ℕ) : ∀ r : ℕ,
+    segPrefix (fun w => w.unpair.2 * f.graphFlag w) k r = if f.f k < r then f.f k else 0
+  | 0 => by simp
+  | r + 1 => by
+      rw [segPrefix_succ, scheduledScan f k r]
+      simp only [DeferralFunction.graphFlag, Nat.unpair_pair]
+      by_cases h : f.f k = r
+      · subst h
+        simp
+      · simp only [h, if_false, Nat.mul_zero, Nat.add_zero]
+        split_ifs <;> omega
 
-/-- A halting clocked run of a deferral code returns exactly `f k`. -/
-lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
-    deadlineRun f n k = f.f k + 1 := by
-  obtain ⟨a, kk, hspec⟩ := f.fueled
-  cases hev : Nat.Partrec.Code.evaln n f.code k with
-  | none => simp [deadlineRun, codeEvalnNat, hev] at h
-  | some out =>
-      have h1 : out ∈ Nat.Partrec.Code.eval f.code k :=
-        Nat.Partrec.Code.evaln_sound hev
-      have h2 : f.f k ∈ Nat.Partrec.Code.eval f.code k :=
-        Nat.Partrec.Code.evaln_sound (hspec k)
-      simp [deadlineRun, codeEvalnNat, hev, Part.mem_unique h1 h2]
+/-- The closed form of the day-bounded lookup. -/
+lemma scheduledValue_eq_ite (f : DeferralFunction) (z : ℕ) :
+    scheduledValue f z = if f.f z.unpair.2 ≤ z.unpair.1 then f.f z.unpair.2 else 0 := by
+  rw [scheduledValue, scheduledScan]
+  simp
 
-/-- A halting clocked run is unchanged by a larger budget. -/
-lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
-    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
-  cases hev : Nat.Partrec.Code.evaln n f.code k with
-  | none => simp [deadlineRun, codeEvalnNat, hev] at h
-  | some out =>
-      have hmono : Nat.Partrec.Code.evaln m f.code k = some out :=
-        Nat.Partrec.Code.evaln_mono hm hev
-      simp [deadlineRun, codeEvalnNat, hev, hmono]
+/-- Once the runtime day has reached `f k`, the lookup has converged to the true deferral
+value.  This is the fact every consumer of the schedule opens it by. -/
+lemma scheduledValue_eq (f : DeferralFunction) {n k : ℕ} (hkn : f k ≤ n) :
+    scheduledValue f (Nat.pair n k) = f k := by
+  rw [scheduledValue_eq_ite]
+  simp [hkn]
 
-/-- Run the deferral program for component `k` with the day-`n` polynomial clock.
-Input is `⟨n,k⟩`; output is normalized as `0` for unfinished and `f k + 1` for finished. -/
-def scheduledRun (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
-  deadlineRun f (ecClock a degree z.unpair.1) z.unpair.2
+/-- The day-bounded lookup is machine-metered: polynomial time in the unary pair
+`⟨day, component⟩`, whose length dominates the day. -/
+lemma unaryRuler_scheduledValue (f : DeferralFunction) :
+    UnaryRuler (scheduledValue f) :=
+  ((UnaryRuler.segPrefix (UnaryRuler.unpairSnd.mul f.graphFlag_ruler)).comp
+    (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst.succ)).of_eq
+    (fun z => by simp [scheduledValue])
 
-/-- The bounded scheduled run is polynomial in the paired day/component input. -/
-lemma scheduledRun_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (scheduledRun f a degree) := by
-  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled f.code
-  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled a degree
-  refine ⟨_, (hsim.comp ((hclock.comp PolyFueled.left).pair PolyFueled.right)).of_eq
-    (fun z => ?_)⟩
-  simp [scheduledRun, deadlineRun]
+/-- `1` exactly when component `k` defers to the current day `n`.  The natural-valued flag
+is the form consumed by the flat stream combinators. -/
+def scheduledMatch (f : DeferralFunction) (z : ℕ) : ℕ :=
+  if f z.unpair.2 = z.unpair.1 then 1 else 0
 
-/-- `1` exactly when the day-bounded run has returned the current day `n`.
-The natural-valued flag is the form consumed by the flat stream combinators. -/
-def scheduledMatch (f : DeferralFunction) (a degree : ℕ) (z : ℕ) : ℕ :=
-  if scheduledRun f a degree z = z.unpair.1 + 1 then 1 else 0
-
-/-- Equality of the scheduled output and the variable day is polynomially decidable. -/
-lemma scheduledMatch_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (scheduledMatch f a degree) := by
-  obtain ⟨crun, hrun⟩ := scheduledRun_polyFueled f a degree
-  have hday : PolyFueled _ (fun z : ℕ => z.unpair.1 + 1) :=
-    (PolyFueled.left.succ_comp)
-  obtain ⟨cadd, hadd⟩ := addc_polyFueled
-  have hleft : PolyFueled _ (fun z =>
-      scheduledRun f a degree z - (z.unpair.1 + 1)) :=
-    (subc_polyFueled.comp (hrun.pair hday)).of_eq (fun z => by simp)
-  have hright : PolyFueled _ (fun z =>
-      (z.unpair.1 + 1) - scheduledRun f a degree z) :=
-    (subc_polyFueled.comp (hday.pair hrun)).of_eq (fun z => by simp)
-  have hgap : PolyFueled _ (fun z =>
-      (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z)) :=
-    (hadd.comp (hleft.pair hright)).of_eq (fun z => by simp)
-  refine ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 1).pair (PolyFueled.const 0)).pair hgap)).of_eq
-      (fun z => ?_)⟩
-  simp only [ifzSelFn, Nat.unpair_pair, scheduledMatch]
-  by_cases h : scheduledRun f a degree z = z.unpair.1 + 1
-  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z) = 0 := by omega
-    rw [if_pos hz, if_pos h]
-  · have hz : (scheduledRun f a degree z - (z.unpair.1 + 1)) +
-        ((z.unpair.1 + 1) - scheduledRun f a degree z) ≠ 0 := by omega
-    rw [if_neg hz, if_neg h]
+/-- The match flag is machine-metered: it is the graph test at the transposed pair. -/
+lemma unaryRuler_scheduledMatch (f : DeferralFunction) :
+    UnaryRuler (scheduledMatch f) :=
+  (f.graphFlag_ruler.comp (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst)).of_eq
+    (fun z => by simp [scheduledMatch, DeferralFunction.graphFlag])
 
 /-- The match flag is Boolean. -/
-lemma scheduledMatch_zero_or_one (f : DeferralFunction) (a degree z : ℕ) :
-    scheduledMatch f a degree z = 0 ∨ scheduledMatch f a degree z = 1 := by
+lemma scheduledMatch_zero_or_one (f : DeferralFunction) (z : ℕ) :
+    scheduledMatch f z = 0 ∨ scheduledMatch f z = 1 := by
   simp only [scheduledMatch]
   split <;> simp
 
-/-- A successful match is sound even though the program was run only for the day clock. -/
-lemma scheduledMatch_eq_one_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (n k : ℕ) :
-    scheduledMatch f a degree (Nat.pair n k) = 1 ↔ f k = n := by
-  constructor
-  · intro h
-    have hrun : scheduledRun f a degree (Nat.pair n k) = n + 1 := by
-      simpa [scheduledMatch] using h
-    have hpos : 0 < scheduledRun f a degree (Nat.pair n k) := by omega
-    have hsound := deadlineRun_eq f hpos
-    simp only [scheduledRun, Nat.unpair_pair] at hsound hrun
-    omega
-  · intro h
-    subst n
-    simp [scheduledMatch, scheduledRun, deadlineRun, codeEvalnNat, hspec]
+/-- The match flag fires exactly on the deferral. -/
+lemma scheduledMatch_eq_one_iff (f : DeferralFunction) (n k : ℕ) :
+    scheduledMatch f (Nat.pair n k) = 1 ↔ f k = n := by
+  simp [scheduledMatch]
 
 /-- The match flag is `0` exactly when the component does not defer to this day. -/
-lemma scheduledMatch_eq_zero_iff
-    (f : DeferralFunction) {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (n k : ℕ) :
-    scheduledMatch f a degree (Nat.pair n k) = 0 ↔ f k ≠ n := by
-  constructor
-  · intro hzero heq
-    have hone := (scheduledMatch_eq_one_iff f hspec n k).2 heq
-    omega
-  · intro hne
-    rcases scheduledMatch_zero_or_one f a degree (Nat.pair n k) with hzero | hone
-    · exact hzero
-    · exact (hne ((scheduledMatch_eq_one_iff f hspec n k).1 hone)).elim
+lemma scheduledMatch_eq_zero_iff (f : DeferralFunction) (n k : ℕ) :
+    scheduledMatch f (Nat.pair n k) = 0 ↔ f k ≠ n := by
+  simp [scheduledMatch]
 
-end
+/-- The day-bounded lookup in the normalized shape the settlement clock tests: `0` while the
+deadline has not fallen, else `f k + 1`. -/
+def deadlineRun (f : DeferralFunction) (n k : ℕ) : ℕ :=
+  if f k ≤ n then f k + 1 else 0
+
+/-- A lookup that has fired returns exactly `f k`. -/
+lemma deadlineRun_eq (f : DeferralFunction) {n k : ℕ} (h : 0 < deadlineRun f n k) :
+    deadlineRun f n k = f.f k + 1 := by
+  simp only [deadlineRun] at h ⊢
+  split_ifs at h ⊢ <;> omega
+
+/-- A lookup that has fired is unchanged on a later day. -/
+lemma deadlineRun_mono (f : DeferralFunction) {n m k : ℕ} (hm : n ≤ m)
+    (h : 0 < deadlineRun f n k) : deadlineRun f m k = deadlineRun f n k := by
+  simp only [deadlineRun] at h ⊢
+  split_ifs at h ⊢ <;> omega
+
+/-- The normalized lookup is machine-metered.  `f k ≥ 1`, so the lookup is `0` exactly when
+the deadline has not fallen, and the sentinel is one `ifZero` on the lookup itself. -/
+lemma unaryRuler_deadlineRun (f : DeferralFunction) :
+    UnaryRuler (fun z => deadlineRun f z.unpair.1 z.unpair.2) := by
+  have hval := unaryRuler_scheduledValue f
+  refine (hval.add (hval.ifZero (UnaryRuler.const 0) (UnaryRuler.const 1))).of_eq
+    (fun z => ?_)
+  have hpos : 0 < f.f z.unpair.2 := Nat.lt_of_le_of_lt (Nat.zero_le _) (f.lt _)
+  rw [scheduledValue_eq_ite, deadlineRun]
+  split_ifs <;> omega
 
 /-! ## The continuous threshold indicator -/
 
@@ -320,8 +369,8 @@ world semantics, and the fixed-portfolio cross-grid law are one explicit trust o
 Paper node: `thm:cee` -/
 structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Y : ℕ → LUV) where
-  source_codes : LUV.RpnThresholdCodeSeq X
-  quote_codes : LUV.RpnThresholdCodeSeq Y
+  source_codes : LUV.MachineThresholdCodeSeq X
+  quote_codes : LUV.MachineThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P (f n))
   affine : AffineQuoteEq P f (fun n => (X n).expect P n - (Y n).expect P n)
@@ -330,8 +379,8 @@ structure ExpectedFutureExpectationQuote (P : History) (DP : DeductiveProcess)
 Paper node: `thm:ceu` -/
 structure FuturePriceQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  sentence_codes : BigSentenceCodes φ
-  quote_codes : LUV.RpnThresholdCodeSeq Y
+  sentence_codes : MachineSentenceCodes φ
+  quote_codes : LUV.MachineThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P (f n) (φ n))
   affine : AffineQuoteEq P f (fun n => P n (φ n) - (Y n).expect P n)
@@ -354,9 +403,9 @@ structure ConditionalExpectationQuote (P : History) (DP : DeductiveProcess)
     (f : DeferralFunction) (X Z Z' : ℕ → LUV) (w : ℕ → ℚ) where
   weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1
   weight_generable : PGenerableRat P w
-  source_codes : LUV.RpnThresholdCodeSeq X
-  left_codes : LUV.RpnThresholdCodeSeq Z
-  right_codes : LUV.RpnThresholdCodeSeq Z'
+  source_codes : LUV.MachineThresholdCodeSeq X
+  left_codes : LUV.MachineThresholdCodeSeq Z
+  right_codes : LUV.MachineThresholdCodeSeq Z'
   /-- The per-day reflection slack of the left quoted product. -/
   slack : ℕ → ℝ
   slack_tendsto : Tendsto slack atTop (𝓝 0)
@@ -378,11 +427,11 @@ matching the paper's `thm:st`: `p` may vary continuously with the market's own p
 the trader carries it as a feature *expression* rather than as a day-`n` numeral.  The
 paper's e.c. rational sequences are the special case `ratCodeFeature`, and `def:ece`'s
 emission field is **write-out** metered, so that special case reaches the paper's own
-class: `PGenerableRat.ofDigitRatCodes` admits `p n = 1 − 2⁻ⁿ` and every other sequence
+class: `PGenerableRat.ofMachineRatCodes` admits `p n = 1 − 2⁻ⁿ` and every other sequence
 whose codes are exponential but polynomially writable (`pGenerableRat_two_pow_inv`).
 
 Both quoted LUVs carry their threshold families in the **write-out** class
-(`LUV.BigThresholdCodeSeq`), the same meter `sentence_codes` uses and the one the rest of
+(`LUV.MachineThresholdCodeSeq`), the same meter `sentence_codes` uses and the one the rest of
 the day-indexed surface carries: polynomially many emitted tokens, individual token values
 unbounded.  Nothing on this lane opens a threshold certificate as value-bounded emission
 data — every consumer either reindexes it or hands it to `AffineCombination.PolySequence`,
@@ -393,10 +442,10 @@ structure SelfTrustQuote (P : History) (DP : DeductiveProcess)
     (A B : ℕ → LUV) where
   delta_pos : ∀ n, 0 < δ n
   probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1
-  sentence_codes : BigSentenceCodes φ
+  sentence_codes : MachineSentenceCodes φ
   probability_generable : PGenerableRat P p
-  product_codes : LUV.BigThresholdCodeSeq A
-  confidence_codes : LUV.BigThresholdCodeSeq B
+  product_codes : LUV.MachineThresholdCodeSeq A
+  confidence_codes : LUV.MachineThresholdCodeSeq B
   confidence_reflected : ∀ n (v : PCWorld),
     v.ConsistentWithTheory DP →
       v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n))

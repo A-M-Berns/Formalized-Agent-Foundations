@@ -12,18 +12,19 @@ families — need in order to wait for a stage at which an affine combination ha
 module inhabits it from computability data alone, and imports exactly the `Properties/` module
 that declares the interface.
 
-The deadline itself is undecidable.  A `DeferralFunction` (`def:deferralfunc`) guarantees fuel
-polynomial in `f n` and not in `n`, so no machine can test "the deferral deadline has passed".
-`deadlineRun` (`Properties/SelfTrust.lean`) / `deadlinePassed` is the sound
-under-approximation that *can* be tested: it is monotone in the fuel, never true early, and
-eventually true.  `polyFueled_dovetailFound`
+The deadline itself is not testable outright.  A `DeferralFunction` (`def:deferralfunc`)
+decides its graph in time polynomial in `f n` and not in `n`, so a machine holding a budget
+`n` can locate every `f k` below `n` and learn nothing about the ones beyond it.
+`deadlineRun` (`Properties/SelfTrust.lean`) / `deadlinePassed` is that budgeted test: it is
+monotone in the budget, never true early, and eventually true.  `polyFueled_dovetailFound`
 (`Framework/Emission/Emission.lean`) discharges the paper's `DefinitelySettled` bullet
 (tex:4872) over it.
 
 ## Objects
 
-* `deadlineStep`, `deadlinePassed` — the under-approximated deadline over `deadlineRun`, with
-  its soundness (`deadlinePassed_sound`), monotonicity and eventual-truth lemmas.
+* `deadlineStep`, `deadlinePassed` — the budgeted deadline test over `deadlineRun`, with its
+  soundness (`deadlinePassed_sound`), monotonicity, eventual-truth and machine-metering
+  (`unaryRuler_deadlinePassed`) lemmas.
 * `SettlementSemiDecider` — the general interface: a code semi-deciding settlement, from which
   `PatientSettlementClock.ofSemiDecider` derives every semantic field of the clock.
 * `SettlementChecker` — its purely computational specialization, with
@@ -44,41 +45,70 @@ section
 -- See the module header on `Nat.sqrt` opacity.
 attribute [local irreducible] Nat.sqrt
 
-/-! ### The deadline under-approximation
+/-! ### The deadline test
 
 `PatientSettlementClock` must keep component `i` active through `deferralEnvelope f i`, and
-may only go inactive once that deadline has *provably* passed.  But `DeferralFunction`
-guarantees only fuel polynomial in `f n` — **not** in `n` (the paper's "time polynomial in
-`f(n)`", deliberately weaker since `f` may grow fast).  So `deferralEnvelope f i` is not
-polynomial-time computable and the clock cannot decide the deadline exactly.
+may only go inactive once that deadline has passed.  `DeferralFunction.graph_fp` decides
+`f k = m` in time polynomial in the unary pair `⟨k, m⟩`, so a machine holding a budget `n`
+can scan `m < n` and learn `f k < n` exactly — but nothing about a `f k` beyond its budget,
+which is the sense in which the deadline stays undecidable without one.
 
-It does not need to.  `active_through_envelope` only requires activity to be *true* before
-the deadline, so a **sound under-approximation** suffices: run `f`'s code on each `k ≤ i`
-with budget `n` and certify only when every one halts with `f k < n`.  That is sound
-(a halting run returns the true `f k`), monotone in `n` (`evaln_mono`), and eventually
-fires (each `f k`, `k ≤ i`, is a fixed finite number).
+`deadlineStep` is the per-component failure flag of that scan and `deadlinePassed` its
+`k ≤ i` conjunction; both are machine-metered (`unaryRuler_deadlinePassed`), and the test is
+sound (`deadlinePassed_sound`), monotone in the budget, and eventually true.
 
 `deadlineRun` and its soundness and monotonicity lemmas are stated beside `DeferralFunction`
 itself, in `Properties/SelfTrust.lean`; the schedule built on them is shared with
 `Construction/Quotation/`, and this module builds the clock out of them. -/
 
-/-- The per-`k` failure test of the deadline check, indexed as `⟨⟨i,n⟩,k⟩`. -/
-def deadlineStep (f : DeferralFunction) (z k : ℕ) : Bool :=
-  decide ((1 - deadlineRun f z.unpair.2 k)
-    + (deadlineRun f z.unpair.2 k - z.unpair.2) ≠ 0)
+/-- A prefix sum of counts vanishes exactly when every summand does. -/
+private lemma segPrefix_eq_zero_iff (lenFn : ℕ → ℕ) (n : ℕ) : ∀ r : ℕ,
+    segPrefix lenFn n r = 0 ↔ ∀ j < r, lenFn (Nat.pair n j) = 0
+  | 0 => by simp
+  | r + 1 => by
+      rw [segPrefix_succ, Nat.add_eq_zero_iff, segPrefix_eq_zero_iff lenFn n r]
+      constructor
+      · rintro ⟨h1, h2⟩ j hj
+        rcases Nat.lt_succ_iff_lt_or_eq.1 hj with hj | rfl
+        · exact h1 j hj
+        · exact h2
+      · intro h
+        exact ⟨fun j hj => h j (by omega), h r (Nat.lt_succ_self r)⟩
 
-/-- Every `k ≤ i` has been certified `f k < n` within budget `n`. -/
+/-- The per-component failure flag of the deadline check, at the paired index `⟨n, k⟩`:
+`1` unless component `k`'s deferral has been located strictly below the budget `n`. -/
+def deadlineStep (f : DeferralFunction) (w : ℕ) : ℕ :=
+  if deadlineRun f (w.unpair.1 - 1) w.unpair.2 = 0 then 1 else 0
+
+/-- The failure flag says exactly that the deferral has not been located below the budget. -/
+lemma deadlineStep_eq (f : DeferralFunction) (n k : ℕ) :
+    deadlineStep f (Nat.pair n k) = if f.f k < n then 0 else 1 := by
+  have hpos : 0 < f.f k := Nat.lt_of_le_of_lt (Nat.zero_le _) (f.lt _)
+  simp only [deadlineStep, deadlineRun, Nat.unpair_pair]
+  split_ifs <;> omega
+
+/-- The failure flag is machine-metered: it is the day-`(n-1)` lookup tested against zero. -/
+lemma unaryRuler_deadlineStep (f : DeferralFunction) : UnaryRuler (deadlineStep f) :=
+  (((unaryRuler_deadlineRun f).comp
+      ((UnaryRuler.unpairFst.sub (UnaryRuler.const 1)).pair UnaryRuler.unpairSnd)).ifZero
+    (UnaryRuler.const 1) (UnaryRuler.const 0)).of_eq (fun w => by simp [deadlineStep])
+
+/-- Every `k ≤ i` has been located strictly below the budget `n`. -/
 def deadlinePassed (f : DeferralFunction) (i n : ℕ) : Bool :=
-  boundedNone (deadlineStep f) (Nat.pair i n) i
+  decide (segPrefix (deadlineStep f) n (i + 1) = 0)
 
 lemma deadlinePassed_eq_true_iff (f : DeferralFunction) (i n : ℕ) :
-    deadlinePassed f i n = true ↔
-      ∀ k ≤ i, 0 < deadlineRun f n k ∧ deadlineRun f n k ≤ n := by
-  rw [deadlinePassed, boundedNone_eq_true_iff]
-  simp only [deadlineStep, Nat.unpair_pair, decide_eq_false_iff_not, not_not]
+    deadlinePassed f i n = true ↔ ∀ k ≤ i, f.f k < n := by
+  rw [deadlinePassed, decide_eq_true_iff, segPrefix_eq_zero_iff]
   constructor
-  · intro h k hk; have := h k hk; omega
-  · intro h k hk; have := h k hk; omega
+  · intro h k hk
+    have hk' := h k (Nat.lt_succ_of_le hk)
+    rw [deadlineStep_eq] at hk'
+    by_contra hcon
+    rw [if_neg hcon] at hk'
+    exact one_ne_zero hk'
+  · intro h k hk
+    rw [deadlineStep_eq, if_pos (h k (Nat.lt_succ_iff.1 hk))]
 
 lemma deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
     (h : ∀ k ≤ i, f.f k < n) : deferralEnvelope f i < n := by
@@ -90,77 +120,32 @@ lemma deferralEnvelope_lt_of_forall (f : DeferralFunction) (i n : ℕ)
 
 /-- **Soundness**: certification implies the deadline really has passed. -/
 lemma deadlinePassed_sound (f : DeferralFunction) {i n : ℕ}
-    (h : deadlinePassed f i n = true) : deferralEnvelope f i < n := by
-  refine deferralEnvelope_lt_of_forall f i n (fun k hk => ?_)
-  obtain ⟨hpos, hle⟩ := (deadlinePassed_eq_true_iff f i n).1 h k hk
-  rw [deadlineRun_eq f hpos] at hle
-  omega
+    (h : deadlinePassed f i n = true) : deferralEnvelope f i < n :=
+  deferralEnvelope_lt_of_forall f i n ((deadlinePassed_eq_true_iff f i n).1 h)
 
 /-- **Monotone**: a larger budget preserves certification. -/
 lemma deadlinePassed_mono (f : DeferralFunction) {i n : ℕ}
     (h : deadlinePassed f i n = true) : deadlinePassed f i (n + 1) = true := by
   rw [deadlinePassed_eq_true_iff] at h ⊢
-  intro k hk
-  obtain ⟨hpos, hle⟩ := h k hk
-  rw [deadlineRun_mono f (Nat.le_succ n) hpos]
-  exact ⟨hpos, by omega⟩
+  exact fun k hk => Nat.lt_succ_of_lt (h k hk)
 
 /-- **Eventual completion**: every component's deadline is eventually certified. -/
 lemma deadlinePassed_eventually (f : DeferralFunction) (i : ℕ) :
     ∃ N, ∀ n, N ≤ n → deadlinePassed f i n = true := by
-  obtain ⟨a, kk, hspec⟩ := f.fueled
-  refine ⟨(Finset.range (i + 1)).sup
-    (fun k => max (a * (f.f k + 1) ^ kk + a) (f.f k + 1)), fun n hn => ?_⟩
+  refine ⟨deferralEnvelope f i + 1, fun n hn => ?_⟩
   rw [deadlinePassed_eq_true_iff]
-  intro k hk
-  have hmem : k ∈ Finset.range (i + 1) := Finset.mem_range.mpr (by omega)
-  have hsup := Finset.le_sup (f := fun k => max (a * (f.f k + 1) ^ kk + a) (f.f k + 1)) hmem
-  have hmono : Nat.Partrec.Code.evaln n f.code k = some (f.f k) :=
-    Nat.Partrec.Code.evaln_mono (le_trans (le_trans (le_max_left _ _) hsup) hn) (hspec k)
-  have hrun : deadlineRun f n k = f.f k + 1 := by
-    simp [deadlineRun, codeEvalnNat, hmono]
-  rw [hrun]
-  have : f.f k + 1 ≤ n := le_trans (le_trans (le_max_right _ _) hsup) hn
-  omega
+  exact fun k hk => lt_of_le_of_lt (deferral_le_envelope_of_le f hk) (by omega)
 
-/-- The deadline under-approximation is a polynomial Boolean table. -/
-lemma polyFueled_deadlinePassed (f : DeferralFunction) :
-    ∃ prog, PolyFueled prog
-      (fun z => if deadlinePassed f z.unpair.1 z.unpair.2 then 1 else 0) := by
-  obtain ⟨sim, hsim⟩ := codeEvalnNat_polyFueled f.code
-  obtain ⟨cad, had⟩ := addc_polyFueled
-  -- Inner step at `w = ⟨⟨i,n⟩,k⟩`: run `f` on `k` with budget `n`, then test `1 ≤ r ≤ n`.
-  have hstep : ∃ p, PolyFueled p (fun w =>
-      if deadlineStep f w.unpair.1 w.unpair.2 then 1 else 0) := by
-    obtain ⟨cr, hr⟩ : ∃ p, PolyFueled p (fun w =>
-        deadlineRun f w.unpair.1.unpair.2 w.unpair.2) :=
-      ⟨_, (hsim.comp ((PolyFueled.right.comp PolyFueled.left).pair
-        PolyFueled.right)).of_eq (fun w => by simp [deadlineRun])⟩
-    obtain ⟨c1, h1⟩ : ∃ p, PolyFueled p (fun w =>
-        1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2) :=
-      ⟨_, (subc_polyFueled.comp ((PolyFueled.const 1).pair hr)).of_eq (fun w => by simp)⟩
-    obtain ⟨c2, h2⟩ : ∃ p, PolyFueled p (fun w =>
-        deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2) :=
-      ⟨_, (subc_polyFueled.comp
-        (hr.pair (PolyFueled.right.comp PolyFueled.left))).of_eq (fun w => by simp)⟩
-    obtain ⟨cgap, hgap⟩ : ∃ p, PolyFueled p (fun w =>
-        (1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2)
-          + (deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2)) :=
-      ⟨_, (had.comp (h1.pair h2)).of_eq (fun w => by simp)⟩
-    obtain ⟨p, hp⟩ := polyFueled_selectConst hgap 0 1
-    refine ⟨p, hp.of_eq (fun w => ?_)⟩
-    by_cases hz : (1 - deadlineRun f w.unpair.1.unpair.2 w.unpair.2)
-        + (deadlineRun f w.unpair.1.unpair.2 w.unpair.2 - w.unpair.1.unpair.2) = 0
-    · have hf : deadlineStep f w.unpair.1 w.unpair.2 = false :=
-        decide_eq_false (not_not_intro hz)
-      rw [hf, if_pos hz]
-      simp
-    · have ht : deadlineStep f w.unpair.1 w.unpair.2 = true := decide_eq_true hz
-      rw [ht, if_neg hz]
-      simp
-  obtain ⟨cn, hn⟩ := polyFueled_boundedNone (deadlineStep f) hstep
-  refine ⟨_, (hn.comp (PolyFueled.id.pair PolyFueled.left)).of_eq (fun z => ?_)⟩
-  simp [deadlinePassed, Nat.unpair_pair]
+/-- The deadline test is machine-metered: the scan is a prefix sum of a ruler-metered
+per-component flag, and the conjunction is that sum tested against zero. -/
+lemma unaryRuler_deadlinePassed (f : DeferralFunction) :
+    UnaryRuler (fun z => if deadlinePassed f z.unpair.1 z.unpair.2 then 1 else 0) := by
+  have hscan : UnaryRuler (fun z =>
+      segPrefix (deadlineStep f) z.unpair.2 (z.unpair.1 + 1)) :=
+    ((UnaryRuler.segPrefix (unaryRuler_deadlineStep f)).comp
+      (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst.succ)).of_eq (fun z => by simp)
+  exact (hscan.ifZero (UnaryRuler.const 1) (UnaryRuler.const 0)).of_eq (fun z => by
+    simp [deadlinePassed])
 
 /-! ### Assembling the clock
 
@@ -234,20 +219,20 @@ noncomputable def PatientSettlementClock.ofSemiDecider
     PatientSettlementClock As P DP truth err f where
   active i n := (!(deadlinePassed f i n)) || (!(dovetailFound d.code i n))
   active_codes := by
-    obtain ⟨cdp, hdp⟩ := polyFueled_deadlinePassed f
     obtain ⟨cdf, hdf⟩ := polyFueled_dovetailFound d.code
-    obtain ⟨cml, hml⟩ := mul_polyFueled
-    obtain ⟨cprod, hprod⟩ : ∃ c, PolyFueled c (fun w =>
-        (if deadlinePassed f w.unpair.1 w.unpair.2 then 1 else 0) *
-        (if dovetailFound d.code w.unpair.1 w.unpair.2 then 1 else 0)) :=
-      ⟨_, (hml.comp (hdp.pair hdf)).of_eq (fun w => by simp)⟩
-    obtain ⟨cswap, hswap⟩ : ∃ c, PolyFueled c (fun z =>
+    have hflag : UnaryRuler (fun z ↦
         (if deadlinePassed f z.unpair.2 z.unpair.1 then 1 else 0) *
         (if dovetailFound d.code z.unpair.2 z.unpair.1 then 1 else 0)) :=
-      ⟨_, (hprod.comp (PolyFueled.right.pair PolyFueled.left)).of_eq (fun z => by simp)⟩
-    obtain ⟨c, hc⟩ := polyFueled_selectConst hswap
-      (Encodable.encode (1 : ℚ)) (Encodable.encode (0 : ℚ))
-    refine ⟨c, hc.of_eq (fun z => ?_)⟩
+      (((unaryRuler_deadlinePassed f).comp
+          (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst)).mul
+        ((UnaryRuler.of_polyFueled hdf).comp
+          (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst))).of_eq (fun z ↦ by simp)
+    have hsel : PolyRatCodes (fun i : ℕ ↦ if i = 0 then (1 : ℚ) else 0) := by
+      obtain ⟨c, hc⟩ := polyFueled_selectConst PolyFueled.id
+        (Encodable.encode (1 : ℚ)) (Encodable.encode (0 : ℚ))
+      exact ⟨c, hc.of_eq (fun i ↦ by split_ifs with h <;> simp [h])⟩
+    refine ((DigitRatCodes.toMachine (DigitRatCodes.ofPolyRatCodes hsel)).comp hflag).of_eq
+      (fun z ↦ ?_)
     by_cases h1 : deadlinePassed f z.unpair.2 z.unpair.1 = true <;>
       by_cases h2 : dovetailFound d.code z.unpair.2 z.unpair.1 = true <;>
       simp [h1, h2]
@@ -305,7 +290,13 @@ quantifies over `FiniteWorld B = Fin B → Bool` with `B` computed from the inpu
 dependent family that `Computable` cannot decompose, so no code could be shown to
 recognize it in that form.  `SettlementTestBool` ranges over `List Bool`, one
 non-dependent `Primcodable` type; `settlementTestBool_iff` bridges them.
-Paper node: `def:ec` -/
+
+**No paper node.**  This carries no `Paper node` line, deliberately: it asks for a
+recognizer and no runtime bound at all, so it renders neither `def:ec` nor any other node —
+it is a repo-side computability interface, like its siblings `SettlementSemiDecider` and
+`FamilyMaturitySemidecider`.  It stays inventoried and field-frozen because it is a data
+premise of `SettlementChecker.ofComputations`, and the exemption is recorded in
+`scripts/check-paper-nodes.sh`. -/
 structure SettlementChecker (As : ℕ → AffineCombination) (Q : ℕ → Sentence → ℚ)
     (DP : DeductiveProcess) (tol : ℕ → ℚ) where
   code : Nat.Partrec.Code

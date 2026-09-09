@@ -3,6 +3,7 @@ import LogicalInduction.Properties.Support.WeightedAverages
 import LogicalInduction.Properties.Support.SettlementDecision
 import LogicalInduction.Framework.BooleanWorlds
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Machine.Witnesses
 import Mathlib.Topology.Bases
 import Mathlib.Topology.Compactness.Compact
 
@@ -59,6 +60,15 @@ constructed market and deductive-process computations.
 Convention: `weightedAverage` is total, taking value zero when the denominator vanishes.
 Every result that divides separately proves the denominator eventually positive from
 divergence, so the paper's divergent-weighting hypothesis is never silently strengthened.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -91,7 +101,13 @@ on its own day.  Its denotation may depend continuously on the market prefix, ex
 in the paper's notion “generable from `P`”.
 Paper node: `def:ece` -/
 structure PGenerableWeighting (W : ℕ → EF) : Prop where
-  polySeg : BigSpliceStream (fun n => (W n).serialize)
+  /-- The feature progression is emitted by a machine-metered spliceable stream.  This
+  field moved from `BigSpliceStream` to `MachineSpliceStream` with
+  `AffineCombination.PolySequence`'s emission fields, because the patient-selector witness
+  `patientUnderpriceWeight_pgenerable` (`Properties/Pseudorandomness.lean`) is built out of
+  `PolySequence.priceFeature_polySeg`, which is machine-metered and has no fuel form.  A
+  client holding a fuel certificate converts by `BigSpliceStream.toMachine`. -/
+  polySeg : MachineSpliceStream (fun n => (W n).serialize)
   rank_le : ∀ n, (W n).rank ≤ n
   closed : ∀ n ρ V, (W n).denoteWith ρ V = (W n).denote V
 
@@ -99,10 +115,17 @@ structure PGenerableWeighting (W : ℕ → EF) : Prop where
 
 `PGenerableWeighting` and `GeneratedRatFeature` are two renderings of the same paper
 notion, `def:ece`: the `def:ece` progression data *without* and *with* its denotation
-clause.  Both meter the feature serialization by `BigSpliceStream`, both cap the rank at
-the day, both demand closure; they differ only in `GeneratedRatFeature`'s extra `denote`
+clause.  Both meter the feature serialization by `MachineSpliceStream`, both cap the rank
+at the day, both demand closure; they differ only in `GeneratedRatFeature`'s extra `denote`
 clause tying the feature's value at the market to a rational sequence.  The lemmas below
 make that relation a theorem rather than a remark, in both directions.
+
+Both moved from `BigSpliceStream` to `MachineSpliceStream` with
+`AffineCombination.PolySequence`'s emission fields, so a client discharges them from
+ordinary `Complexity.FP` data and never writes a `Nat.Partrec.Code`; a client holding a
+fuel certificate converts by `BigSpliceStream.toMachine`.  Primitive recursiveness of the
+progression, which `PGenerableRat.computable` consumes, comes back through
+`MachineTokenStream.primrec`.
 
 `def:fuz` is a separate condition, and a separate declaration: the `[0,1]` bound together
 with a divergent sum, carried by `DivergentWeighting` above.  The paper's "ℙ-generable
@@ -134,16 +157,34 @@ lemma pGenerableWeighting_iff {P : History} {q : ℕ → ℚ} {W : ℕ → EF} :
 /-- Operational certificate for the paper's efficiently computable positive calibration
 widths: exactly tex:1193-1195's "`⟨δ⟩` is an e.c. sequence of positive rationals", and
 nothing more.  Efficient codeability of the reciprocal `1/δ` is *derived* from these two
-(`PolyRatCodes.inv_of_pos`, `PolyPositiveWidths.inverse_codes`), never assumed. -/
+(`MachineRatCodes.inv_of_pos`, `PolyPositiveWidths.inverse_codes`), never assumed. -/
 structure PolyPositiveWidths (δ : ℕ → ℚ) : Prop where
-  codes : DigitRatCodes δ
+  /-- The widths are written out by a polynomial-time machine, three runs (numerator code,
+  numerator magnitude, denominator).  A client holding the fuel-metered `DigitRatCodes δ`
+  crosses by `DigitRatCodes.toMachine`. -/
+  codes : MachineRatCodes δ
   positive : ∀ n, 0 < (δ n : ℝ)
 
 /-- The reciprocal widths are efficiently codeable, *derived* from the paper's two
 hypotheses rather than assumed alongside them. -/
 lemma PolyPositiveWidths.inverse_codes {δ : ℕ → ℚ} (h : PolyPositiveWidths δ) :
-    DigitRatCodes (fun n => 1 / δ n) :=
+    MachineRatCodes (fun n => 1 / δ n) :=
   h.codes.inv_of_pos (fun n => by exact_mod_cast h.positive n)
+
+/-- **The data premise of `thm:simcal` is inhabited**, at the paper's own tolerance sequence
+`δ n = 2⁻ⁿ` (tex:1193-1195): its three write-out runs are `machineRatCodes_two_pow_inv`
+(`Framework/Machine/Witnesses.lean`) and its positivity is arithmetic.  The widths are a
+genuinely varying family, not a constant one — `machineRatCodes_two_pow_inv_nonconstant` —
+and the family's rational code `⟪2, 2ⁿ⟫` is exponential in the day, so it is admitted by the
+write-out class and excluded by the value-bounded one.
+
+Kind `N+` non-vacuity witness; provenance (a) derived in-project. -/
+lemma polyPositiveWidths_two_pow_inv :
+    PolyPositiveWidths (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) where
+  codes := machineRatCodes_two_pow_inv
+  positive := fun n => by
+    have h : (0 : ℚ) < (((2 ^ n : ℕ) : ℚ))⁻¹ := by positivity
+    exact_mod_cast h
 
 /-! ## The calibration selector -/
 
@@ -174,24 +215,24 @@ argument list back to the paper's.
 Paper node: `thm:simcal` -/
 lemma calibrationIndicator_pgenerable
     (φ : ℕ → Sentence) (a b : ℚ) (δ : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
+    (hφ : MachineSentenceCodes φ) (hδ : PolyPositiveWidths δ) :
     PGenerableWeighting (calibrationIndicator φ a b δ) := by
-  have hprice := BigSpliceStream.serialize_price
-    hφ PolyFueled.id PolyFueled.id
-  have hinv : BigSpliceStream (fun n => (EF.const (1 / δ n)).serialize) :=
-    BigSpliceStream.serialize_const_write hδ.inverse_codes.toBigDigits
-  have hlowerRaw := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_add hprice
-      (BigSpliceStream.serialize_const (-a))) hinv
-  have hupperRaw := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_add
-      (BigSpliceStream.serialize_const b)
-      (BigSpliceStream.serialize_mul
-        (BigSpliceStream.serialize_const (-1)) hprice)) hinv
+  have hprice := MachineSpliceStream.serialize_price
+    hφ UnaryRuler.id (MachineDigits.ofUnaryRuler UnaryRuler.id)
+  have hinv : MachineSpliceStream (fun n => (EF.const (1 / δ n)).serialize) :=
+    MachineSpliceStream.serialize_const_write hδ.inverse_codes.toMachineDigits
+  have hlowerRaw := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_add hprice
+      (MachineSpliceStream.serialize_const (-a))) hinv
+  have hupperRaw := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_add
+      (MachineSpliceStream.serialize_const b)
+      (MachineSpliceStream.serialize_mul
+        (MachineSpliceStream.serialize_const (-1)) hprice)) hinv
   refine
-    { polySeg := BigSpliceStream.serialize_efMin
-        (BigSpliceStream.serialize_clip01 hlowerRaw)
-        (BigSpliceStream.serialize_clip01 hupperRaw)
+    { polySeg := MachineSpliceStream.serialize_efMin
+        (MachineSpliceStream.serialize_clip01 hlowerRaw)
+        (MachineSpliceStream.serialize_clip01 hupperRaw)
       rank_le := ?_
       closed := ?_ }
   · intro n
@@ -606,10 +647,10 @@ carried through every recurrence body, so a single program covers all pairs `⟨
 than one program per fixed attempted-weight stream. -/
 lemma fractionalFamilyFeatureWeight_polySeg
     (occupancy : ℕ → ℕ → EF) (α : ℕ → ℕ → EF)
-    (hα : BigSpliceStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
-    (hocc : BigSpliceStream (fun z =>
+    (hα : MachineSpliceStream (fun z => (α z.unpair.1 z.unpair.2).serialize))
+    (hocc : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (ROIBudget.fractionalSharedFeatureWeight occupancy (α z.unpair.1)
         z.unpair.2).serialize) := by
   let family : ℕ → ℕ := fun z => z.unpair.1.unpair.1
@@ -627,32 +668,40 @@ lemma fractionalFamilyFeatureWeight_polySeg
     ((predc_polyFueled.comp hday).pair hcomponent)
   have hidx := hidxRaw.of_eq (f' := fun z => day z - 1 - component z) (fun z => by
     simp [day, component, Nat.pred_eq_sub_one])
-  have hvar : BigSpliceStream
+  have hvar : MachineSpliceStream
       (fun z => (EF.var (day z - 1 - component z)).serialize) :=
-    BigSpliceStream.serialize_var hidx
-  have hαterm : BigSpliceStream
+    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
+      (f := fun z : ℕ => day z - 1 - component z) (UnaryRuler.of_polyFueled hidx))
+  have hαterm : MachineSpliceStream
       (fun z => (α (family z) (component z)).serialize) :=
-    BigSpliceStream.of_eq (hα.comp (hfamily.pair hcomponent)) (fun z => by
+    MachineSpliceStream.of_eq (hα.comp
+      (f := fun z : ℕ => Nat.pair (family z) (component z))
+      (UnaryRuler.of_polyFueled (hfamily.pair hcomponent))) (fun z => by
       simp [family, component])
-  have hoccterm : BigSpliceStream
+  have hoccterm : MachineSpliceStream
       (fun z => (occupancy (component z) (day z)).serialize) :=
-    BigSpliceStream.of_eq (hocc.comp (hday.pair hcomponent)) (fun z => by
+    MachineSpliceStream.of_eq (hocc.comp
+      (f := fun z : ℕ => Nat.pair (day z) (component z))
+      (UnaryRuler.of_polyFueled (hday.pair hcomponent))) (fun z => by
       simp [day, component])
-  have hterm : BigSpliceStream (fun z => (term z).serialize) :=
-    BigSpliceStream.serialize_mul (BigSpliceStream.serialize_mul hvar hαterm) hoccterm
-  have hterms : BigSpliceStream (fun u =>
+  have hterm : MachineSpliceStream (fun z => (term z).serialize) :=
+    MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_mul hvar hαterm) hoccterm
+  have hterms : MachineSpliceStream (fun u =>
       (List.range u.unpair.2).flatMap
         (fun i => (term (Nat.pair u i)).serialize)) :=
-    BigSpliceStream.concatVar hterm PolyFueled.right
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have haddTags : BigSpliceStream (fun u => List.replicate u.unpair.2 2) :=
-    BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.right
+    MachineSpliceStream.concatVar hterm (cnt := fun u : ℕ => u.unpair.2)
+      (UnaryRuler.unpairSnd)
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have haddTags : MachineSpliceStream (fun u : ℕ => List.replicate u.unpair.2 2) :=
+    MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun u : ℕ => u.unpair.2)
+      (UnaryRuler.unpairSnd)
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : BigSpliceStream (fun u =>
+  have hsum : MachineSpliceStream (fun u =>
       (ROIBudget.sumFeatures (List.ofFn (fun i : Fin u.unpair.2 =>
         term (Nat.pair u i)))).serialize) := by
-    refine BigSpliceStream.of_eq hsumRaw ?_
+    refine MachineSpliceStream.of_eq hsumRaw ?_
     intro u
     rw [ROIBudget.serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -660,33 +709,38 @@ lemma fractionalFamilyFeatureWeight_polySeg
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : BigSpliceStream (fun _ => (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hnegone : BigSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have hbodyRaw := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hnegone hsum)
-  have hbody : BigSpliceStream (fun u =>
+  have hone : MachineSpliceStream (fun _ : ℕ => (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hnegone : MachineSpliceStream (fun _ : ℕ => (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hbodyRaw := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hnegone hsum)
+  have hbody : MachineSpliceStream (fun u =>
       (ROIBudget.fractionalWeightBody occupancy (α u.unpair.1) u.unpair.2).serialize) := by
-    refine BigSpliceStream.of_eq hbodyRaw ?_
+    refine MachineSpliceStream.of_eq hbodyRaw ?_
     intro u
     simp only [ROIBudget.fractionalWeightBody, term, family, day, component,
       Nat.unpair_pair]
   have hcanonical :=
     (PolyFueled.left.comp PolyFueled.left).pair PolyFueled.right
-  have hbodies : BigSpliceStream (fun z =>
+  have hbodies : MachineSpliceStream (fun z =>
       (List.range (z.unpair.2 + 1)).flatMap (fun j =>
         (ROIBudget.fractionalWeightBody occupancy (α z.unpair.1) j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp hcanonical)
-        PolyFueled.right.succ_comp) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.concatVar (hbody.comp
+          (f := fun w : ℕ => Nat.pair w.unpair.1.unpair.1 w.unpair.2)
+          (UnaryRuler.of_polyFueled hcanonical))
+        (cnt := fun z : ℕ => z.unpair.2 + 1)
+        (UnaryRuler.unpairSnd.succ)) ?_
     intro z
     simp only [Nat.unpair_pair]
-  have hvar0 : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun z => List.replicate (z.unpair.2 + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.right.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar0).append htags) ?_
+  have hvar0 : MachineSpliceStream (fun _ : ℕ => (EF.var 0).serialize) :=
+    MachineSpliceStream.serialize_var (MachineDigits.const 0)
+  have htags : MachineSpliceStream (fun z : ℕ => List.replicate (z.unpair.2 + 1) 8) :=
+    MachineSpliceStream.repeatTag 8 (by norm_num)
+      (cnt := fun z : ℕ => z.unpair.2 + 1)
+      (UnaryRuler.unpairSnd.succ)
+  refine MachineSpliceStream.of_eq ((hbodies.append hvar0).append htags) ?_
   intro z
   rw [ROIBudget.fractionalSharedFeatureWeight,
     ROIBudget.fractionalSharedWeights_serialize]
@@ -699,20 +753,25 @@ def biasRunAttempt (W : ℕ → EF) (rate : ℕ → ℚ) (k n : ℕ) : EF :=
 
 lemma biasRunAttempt_family_polySeg {W : ℕ → EF}
     (hW : PGenerableWeighting W) (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunAttempt W rate z.unpair.1 z.unpair.2).serialize) := by
-  have hrateSeg : BigSpliceStream (fun z => (EF.const (rate z.unpair.1)).serialize) :=
-    (BigSpliceStream.serialize_const_comp hrate).comp PolyFueled.left
-  have hWSeg : BigSpliceStream (fun z => (W z.unpair.2).serialize) :=
-    hW.polySeg.comp PolyFueled.right
-  have hlive := BigSpliceStream.serialize_mul hrateSeg hWSeg
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair PolyFueled.left)
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hlive htest) ?_
+  have hrateSeg : MachineSpliceStream (fun z => (EF.const (rate z.unpair.1)).serialize) :=
+    ((BigSpliceStream.serialize_const_comp hrate).toMachine).comp
+      (f := fun z : ℕ => z.unpair.1) (UnaryRuler.unpairFst)
+  have hWSeg : MachineSpliceStream (fun z => (W z.unpair.2).serialize) :=
+    hW.polySeg.comp (f := fun z : ℕ => z.unpair.2)
+      (UnaryRuler.unpairSnd)
+  have hlive := MachineSpliceStream.serialize_mul hrateSeg hWSeg
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htest := (subc_polyFueled.comp
+    (PolyFueled.right.succ_comp.pair PolyFueled.left)).of_eq
+    (f' := fun z : ℕ => z.unpair.2 + 1 - z.unpair.1)
+    (fun z => by simp only [Nat.unpair_pair])
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hlive
+    (t := fun z : ℕ => z.unpair.2 + 1 - z.unpair.1)
+    (UnaryRuler.of_polyFueled htest)) ?_
   intro z
-  simp only [Nat.unpair_pair]
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
   · rw [if_neg (by omega)]
     simp [biasRunAttempt, hkn]
@@ -742,15 +801,16 @@ def biasRunCoefficient (As : ℕ → AffineCombination) (W : ℕ → EF)
 lemma biasRunCoefficient_family_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunCoefficient As W rate z.unpair.1 z.unpair.2).serialize) := by
   have hattempt := biasRunAttempt_family_polySeg hW rate hrate
-  have hocc : BigSpliceStream (fun z =>
+  have hocc : MachineSpliceStream (fun z =>
       (biasRunOccupancy As z.unpair.2 z.unpair.1).serialize) := by
-    simpa [biasRunOccupancy] using h.magnitudeFeature_polySeg.comp PolyFueled.right
+    simpa [biasRunOccupancy] using h.magnitudeFeature_polySeg.comp
+      (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
   have hweight := fractionalFamilyFeatureWeight_polySeg
     (biasRunOccupancy As) (biasRunAttempt W rate) hattempt hocc
-  exact BigSpliceStream.serialize_mul hweight hattempt
+  exact MachineSpliceStream.serialize_mul hweight hattempt
 
 /-- Semantic form of the actual capped purchase coefficient. -/
 noncomputable def biasRunGamma (As : ℕ → AffineCombination) (W : ℕ → EF)
@@ -1189,14 +1249,12 @@ def biasRunTradeSentence {As : ℕ → AffineCombination}
   h.sentence (Nat.pair z.unpair.1.unpair.2 z.unpair.2)
 
 lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (biasRunTradeCount h) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.succ_comp.pair PolyFueled.left)
-  have hraw := ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair (hcount.comp PolyFueled.right)).pair htest)
-  refine ⟨_, hraw.of_eq (fun z => ?_)⟩
-  simp only [Nat.unpair_pair, ifzSelFn, biasRunTradeCount]
+    (h : PolySequence As) : UnaryRuler (biasRunTradeCount h) := by
+  have htest : UnaryRuler (fun z : ℕ => z.unpair.2 + 1 - z.unpair.1) :=
+    UnaryRuler.unpairSnd.succ.sub UnaryRuler.unpairFst
+  refine UnaryRuler.of_eq (htest.ifZero (UnaryRuler.const 0)
+    (h.termCount_poly.comp UnaryRuler.unpairSnd)) (fun z => ?_)
+  simp only [biasRunTradeCount]
   by_cases hkn : z.unpair.1 ≤ z.unpair.2
   · rw [if_pos hkn, if_neg (by omega)]
   · rw [if_neg hkn, if_pos (by omega)]
@@ -1204,28 +1262,34 @@ lemma biasRunTradeCount_poly {As : ℕ → AffineCombination}
 lemma biasRunTradeCoefficient_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (biasRunTradeCoefficient h W rate z).serialize) := by
   have hk := PolyFueled.left.comp PolyFueled.left
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
-  have hrun : BigSpliceStream (fun z =>
+  have hrun : MachineSpliceStream (fun z =>
       (biasRunCoefficient As W rate z.unpair.1.unpair.1
         z.unpair.1.unpair.2).serialize) := by
     simpa only [Nat.unpair_pair] using
-      (biasRunCoefficient_family_polySeg h hW rate hrate).comp (hk.pair hn)
-  have hbase : BigSpliceStream (fun z =>
+      (biasRunCoefficient_family_polySeg h hW rate hrate).comp
+        (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.1 z.unpair.1.unpair.2)
+        (UnaryRuler.of_polyFueled (hk.pair hn))
+  have hbase : MachineSpliceStream (fun z =>
       (h.coefficient (Nat.pair z.unpair.1.unpair.2 z.unpair.2)).serialize) := by
-    simpa only [Nat.unpair_pair] using h.coefficient_poly.comp (hn.pair hj)
+    simpa only [Nat.unpair_pair] using h.coefficient_poly.comp
+      (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.2 z.unpair.2)
+      (UnaryRuler.of_polyFueled (hn.pair hj))
   simpa only [biasRunTradeCoefficient] using
-    BigSpliceStream.serialize_mul hrun hbase
+    MachineSpliceStream.serialize_mul hrun hbase
 
 lemma biasRunTradeSentence_poly {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    BigSentenceCodes (biasRunTradeSentence h) := by
+    MachineSentenceCodes (biasRunTradeSentence h) := by
   have hn := PolyFueled.right.comp PolyFueled.left
   have hj := PolyFueled.right
-  exact (h.sentence_poly.comp (hn.pair hj)).of_eq (fun _ => rfl)
+  exact (h.sentence_poly.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.1.unpair.2 z.unpair.2)
+    (UnaryRuler.of_polyFueled (hn.pair hj))).of_eq (fun _ => rfl)
 
 lemma biasRunTrader_trades_eq {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
@@ -1246,8 +1310,6 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
     (h : PolySequence As) {W : ℕ → EF} (hW : PGenerableWeighting W)
     (rate : ℕ → ℚ) (hrate : PolyRatCodes rate) :
     PolyTradeEmulatable (biasRunTrader h hW rate) := by
-  let ccount := Classical.choose (biasRunTradeCount_poly h)
-  have hcount := Classical.choose_spec (biasRunTradeCount_poly h)
   have hcoeff := biasRunTradeCoefficient_polySeg h hW rate hrate
   have hzero : ∀ k n, n < k →
       (((biasRunTrader h hW rate) k).strat n).trades = [] := by
@@ -1258,7 +1320,7 @@ noncomputable def biasRunTrader_polyTrade {As : ℕ → AffineCombination}
       tradeCount := biasRunTradeCount h
       coefficient := biasRunTradeCoefficient h W rate
       sentence := biasRunTradeSentence h
-      tradeCount_poly := ⟨ccount, hcount⟩
+      tradeCount_poly := biasRunTradeCount_poly h
       coefficient_poly := hcoeff
       sentence_poly := biasRunTradeSentence_poly h
       trades_eq := biasRunTrader_trades_eq h hW rate }
@@ -2029,8 +2091,8 @@ lemma ApproxDeterminedViaTheory.not_eventually_weightedBias_lt_of_historicalVeri
   have hαrank : ∀ i, (α i).rank ≤ i := by
     intro i
     by_cases hi : N ≤ i <;> simp [α, gateFeature, hi]
-  have hαseg : BigSpliceStream (fun i => (α i).serialize) := by
-    apply BigSpliceStream.gateFeature (BigSpliceStream.serialize_const 1) N
+  have hαseg : MachineSpliceStream (fun i => (α i).serialize) := by
+    apply MachineSpliceStream.gateFeature (MachineSpliceStream.serialize_const 1) N
   have hαclosed : ∀ i ρ V, (α i).denoteWith ρ V = (α i).denote V := by
     intro i ρ V
     by_cases hi : N ≤ i <;>

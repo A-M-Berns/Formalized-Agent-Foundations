@@ -12,7 +12,7 @@ This module renders `thm:ccee` at zero slack over the canonical lifted-language 
 that market.
 
 What the generalized form buys is a wider input class — an abstract threshold-only source
-`X : ℕ → LUV` with `LUV.RpnThresholdCodeSeq X`, which the literal-`PaperLUVSeq` rendering
+`X : ℕ → LUV` with `LUV.MachineThresholdCodeSeq X`, which the literal-`PaperLUVSeq` rendering
 does not reach.  What it costs is pricing on a different, fixed enlarged language.
 
 Objects defined: `liftedCCEEBaseDP` (the quotation base together with an independent
@@ -37,11 +37,20 @@ caller, and the form the proof consumes.
 
 Consumers: `AxiomAudit.lean` inventories all nine `Paper node: thm:ccee` declarations of this
 module — `liftedCCEEBaseDP_computable`, `liftedCCEEBaseWorld_hworld`,
-`canonicalCCEEDP_computable`, `canonicalCCEEDP_hworld`, `liftedRpnSemanticHandle_valuesAt`,
-`liftedRpnSource_factor_eventually`, `canonicalRationalQuote_factor_eventually`,
+`canonicalCCEEDP_computable`, `canonicalCCEEDP_hworld`, `liftedMachineSemanticHandle_valuesAt`,
+`liftedMachineSource_factor_eventually`, `canonicalRationalQuote_factor_eventually`,
 `canonicalCCEE_weight_nonvacuous` and
 `lic_no_expected_net_update_conditional_exact_canonical`; the `thm:ccee` row of
 `scripts/coverage-classification.md` records the two-rendering split.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -378,47 +387,47 @@ set_option maxHeartbeats 2000000 in
 /-- Exact values of the internally represented source handle.
 
 Paper node: `thm:ccee` -/
-lemma liftedRpnSemanticHandle_valuesAt {X : ℕ → LUV}
-    (hX : LUV.RpnThresholdCodeSeq X) (n : ℕ) (v : PCWorld) (x : ℝ)
+lemma liftedMachineSemanticHandle_valuesAt {X : ℕ → LUV}
+    (hX : LUV.MachineThresholdCodeSeq X) (n : ℕ) (v : PCWorld) (x : ℝ)
     (hsource : v.ConsistentWithTheory semanticSourceDP)
     (hx : v.ValuesAt (liftLUV (X n)) x) :
     v.ValuesAt (semanticHandleLUVSeq
-      (liftedRpnSourceSchema hX) n) x := by
+      (liftedMachineSourceSchema hX) n) x := by
   refine ⟨hx.1, hx.2.1, fun r => ⟨?_, ?_⟩⟩
   · intro hr
     rw [semanticHandleLUVSeq_gt]
-    apply (liftedRpnSource_reflected hX n r v hsource).2
+    apply (liftedMachineSource_reflected hX n r v hsource).2
     by_cases hr0 : r < 0
-    · rw [liftedRpnSourceSentence, if_pos hr0]
+    · rw [liftedMachineSourceSentence, if_pos hr0]
       exact PCWorld.holds_top v
-    · simpa [liftedRpnSourceSentence, hr0, liftLUV] using (hx.2.2 r).1 hr
+    · simpa [liftedMachineSourceSentence, hr0, liftLUV] using (hx.2.2 r).1 hr
   · intro hr hleaf
     rw [semanticHandleLUVSeq_gt] at hleaf
-    have hemitted := (liftedRpnSource_reflected hX n r v hsource).1 hleaf
+    have hemitted := (liftedMachineSource_reflected hX n r v hsource).1 hleaf
     by_cases hr0 : r < 0
     · exfalso
       exact (not_lt_of_ge hx.1) (lt_trans hr (by exact_mod_cast hr0))
     · exact (hx.2.2 r).2 hr (by
-        simpa [liftedRpnSourceSentence, hr0, liftLUV] using hemitted)
+        simpa [liftedMachineSourceSentence, hr0, liftLUV] using hemitted)
 
 set_option maxHeartbeats 2000000 in
 /-- Every paper-facing valued RPN source is automatically admitted by the fixed registry.
 
 Paper node: `thm:ccee` -/
-lemma liftedRpnSource_factor_eventually
+lemma liftedMachineSource_factor_eventually
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
-    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X)
+    {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x)
     (limit : ℕ) :
     ∃ fuel, semanticFactorPrefixValidAtFuel (liftedCCEEBaseDPComputation T)
-      (liftedRpnSourceSchema hX) limit fuel = true := by
-  obtain ⟨fuel, hfuel⟩ := liftedRpnSourcePrefix_eventually_valid
+      (liftedMachineSourceSchema hX) limit fuel = true := by
+  obtain ⟨fuel, hfuel⟩ := liftedMachineSourcePrefix_eventually_valid
     (liftedCCEEBaseDPComputation T) hX source_valued
     (fun _ hv => PCWorld.consistentWithTheory_union_right hv) limit
   refine ⟨fuel, ?_⟩
-  simp [semanticFactorPrefixValidAtFuel, liftedRpnSourceSchema_source,
+  simp [semanticFactorPrefixValidAtFuel, liftedMachineSourceSchema_source,
     hfuel]
 
 set_option maxHeartbeats 2000000 in
@@ -440,7 +449,8 @@ lemma canonicalRationalQuote_factor_eventually
     if_neg (by simp [semanticQuoteSchema]), if_pos (by simp [semanticQuoteSchema])]
   simpa only [semanticQuoteSchema] using hfuel
 
-/-- The canonical process's own LIA market is a logical inductor over it. -/
+/-- The canonical process's own LIA market is a logical inductor over it, at the paper's
+own quantifier. -/
 private noncomputable abbrev canonicalCCEELIA
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T] :
@@ -482,7 +492,7 @@ noncomputable def canonicalConditionalExpectationQuoteCode
         (semanticHandleLUVSeq schema) n (f n) * w (f n)) :=
   conditionalExpectationQuoteCode T (canonicalCCEEMarketComputation T)
     f (semanticHandleLUVSeq schema)
-    (semanticHandleLUVSeq_rpnThresholdCodeSeq schema)
+    (semanticHandleLUVSeq_machineThresholdCodeSeq schema)
     w hw weight_mem
 
 /-! ## `thm:ccee`, generalized semantic-extension form -/
@@ -497,7 +507,7 @@ The paper rendering of `thm:ccee` is
 `lic_no_expected_net_update_conditional_paperLUV_closed`
 (`Construction/Quotation/ExactCCEE.lean`), priced on the single market
 `liaHistory (paperDP T)`.  This is the generalized semantic-extension form: it takes the
-wider, threshold-only source interface (`X : ℕ → LUV` with `LUV.RpnThresholdCodeSeq X`),
+wider, threshold-only source interface (`X : ℕ → LUV` with `LUV.MachineThresholdCodeSeq X`),
 which the literal-`PaperLUVSeq` rendering does not reach, and prices on the different
 process `canonicalCCEEDP T` — the one canonical endpoint outside the shared market.
 
@@ -512,20 +522,20 @@ theorem lic_no_expected_net_update_conditional_exact_canonical
     (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T]
     [Entailment.Consistent T]
     (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x)
     (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (canonicalCCEEDP T)) w) :
-    (fun n => (semanticSchemaProductLUV (liftedRpnSourceSchema hX)
+    (fun n => (semanticSchemaProductLUV (liftedMachineSourceSchema hX)
       (semanticQuoteSchema
         (canonicalDeferredWeightQuoteCode T f w weight_generable weight_mem).code) n).expect
           (liaHistory (canonicalCCEEDP T)) n) ≈ₙ
     fun n => ((canonicalConditionalExpectationQuoteCode T f
-      (liftedRpnSourceSchema hX) w weight_generable weight_mem).luv n).expect
+      (liftedMachineSourceSchema hX) w weight_generable weight_mem).luv n).expect
         (liaHistory (canonicalCCEEDP T)) n := by
   haveI := canonicalCCEELIA T
-  let sourceSchema := liftedRpnSourceSchema hX
+  let sourceSchema := liftedMachineSourceSchema hX
   let sourceHandle := semanticHandleLUVSeq sourceSchema
   let weightQ := canonicalDeferredWeightQuoteCode T f w weight_generable weight_mem
   let rightQ := canonicalConditionalExpectationQuoteCode T f sourceSchema w
@@ -534,8 +544,8 @@ theorem lic_no_expected_net_update_conditional_exact_canonical
     (DP := canonicalCCEEDP T) f sourceHandle
     (semanticSchemaProductLUV sourceSchema (semanticQuoteSchema weightQ.code))
     rightQ.luv w weight_mem weight_generable
-    (semanticHandleLUVSeq_rpnThresholdCodeSeq sourceSchema)
-    (semanticSchemaProductLUV_rpnThresholdCodeSeq sourceSchema
+    (semanticHandleLUVSeq_machineThresholdCodeSeq sourceSchema)
+    (semanticSchemaProductLUV_machineThresholdCodeSeq sourceSchema
       (semanticQuoteSchema weightQ.code)) rightQ.poly
     (fun _ => 0) tendsto_const_nhds (fun n v hv => ?_)
     (fun n v hv x hx => ?_) (fun n v hv => ?_)
@@ -547,14 +557,14 @@ theorem lic_no_expected_net_update_conditional_exact_canonical
       (liftLUV_valuesAt_iff v (X n) x).2 hx
     exact ⟨x, by
       simpa [sourceHandle, sourceSchema] using
-        liftedRpnSemanticHandle_valuesAt hX n v x
+        liftedMachineSemanticHandle_valuesAt hX n v x
           (canonicalCCEE_consistent_source hv) hxlift⟩
   · refine ⟨x * (w (f n) : ℝ), ?_, by simp⟩
     apply semanticSchemaProductLUV_valuesAt (liftedCCEEBaseDPComputation T)
       (canonicalCCEE_consistent_product hv) sourceSchema
       (semanticQuoteSchema weightQ.code)
       (fun limit => by simpa [sourceSchema] using
-        (liftedRpnSource_factor_eventually T hX source_valued limit))
+        (liftedMachineSource_factor_eventually T hX source_valued limit))
       (canonicalRationalQuote_factor_eventually T weightQ) n hx
     exact rationalQuote_semanticHandle_valuesAt weightQ n v
       (canonicalCCEE_consistent_theorem hv) (canonicalCCEE_consistent_quote hv)

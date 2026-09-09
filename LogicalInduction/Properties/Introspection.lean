@@ -38,6 +38,15 @@ undecidable.
 
 All six structures are `#assert_fields`-frozen and are inhabited over the constructed
 inductor in `Construction/Quotation/Packages.lean`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -100,8 +109,8 @@ the `affine` field is the concrete same-day portfolio consumed by the proof.
 Paper node: `thm:epr` -/
 structure CurrentPriceExpectationQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (Y : ℕ → LUV) where
-  sentence_codes : BigSentenceCodes φ
-  quote_codes : LUV.RpnThresholdCodeSeq Y
+  sentence_codes : MachineSentenceCodes φ
+  quote_codes : LUV.MachineThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) (P n (φ n))
   affine : CompletedAffineQuoteApprox P DP
@@ -112,8 +121,8 @@ expectation of `X n`.
 Paper node: `thm:er` -/
 structure CurrentExpectationQuote (P : History) (DP : DeductiveProcess)
     (X Y : ℕ → LUV) where
-  source_codes : LUV.RpnThresholdCodeSeq X
-  quote_codes : LUV.RpnThresholdCodeSeq Y
+  source_codes : LUV.MachineThresholdCodeSeq X
+  quote_codes : LUV.MachineThresholdCodeSeq Y
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     v.ValuesAt (Y n) ((X n).expect P n)
   affine : CompletedAffineQuoteApprox P DP
@@ -151,18 +160,20 @@ neither object assumes the error bounds proved below.
 Paper node: `thm:ref` -/
 structure IntrospectionIntervalQuote (P : History) (DP : DeductiveProcess)
     (φ : ℕ → Sentence) (a b δ : ℕ → ℚ) where
-  source_codes : BigSentenceCodes φ
+  source_codes : MachineSentenceCodes φ
   lower_feature : ℕ → EF
   lower_generated : GeneratedRatFeature P a lower_feature
   upper_feature : ℕ → EF
   upper_generated : GeneratedRatFeature P b upper_feature
-  inverse_width_codes : DigitRatCodes (fun n ↦ 1 / δ n)
+  /-- The reciprocal widths are written out by a polynomial-time machine; a client holding
+  the fuel-metered `DigitRatCodes` form crosses by `DigitRatCodes.toMachine`. -/
+  inverse_width_codes : MachineRatCodes (fun n ↦ 1 / δ n)
   width_pos : ∀ n, 0 < δ n
   width_tendsto_zero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0)
   probability_bounds : ∀ n,
     0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1
   quote : ℕ → Sentence
-  quote_codes : BigSentenceCodes quote
+  quote_codes : MachineSentenceCodes quote
   reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
     (v.Holds (quote n) ↔ (a n : ℝ) < P n (φ n) ∧ P n (φ n) < (b n : ℝ))
   inside_affine : CompletedAffineQuoteEq P DP (fun n ↦
@@ -315,7 +326,7 @@ Paper node: `thm:lp` -/
 structure ParadoxResistanceQuote (P : History) (DP : DeductiveProcess)
     (p : ℚ) where
   sentence : ℕ → Sentence
-  sentence_codes : BigSentenceCodes sentence
+  sentence_codes : MachineSentenceCodes sentence
   width : ℕ → ℚ
   width_pos : ∀ n, 0 < width n
   width_tendsto_zero : Tendsto (fun n => (width n : ℝ)) atTop (𝓝 0)

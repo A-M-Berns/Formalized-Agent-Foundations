@@ -175,7 +175,7 @@ the right-associated `sentenceDisjunction` of the disjuncts. -/
 
 /-- The prefix parser reads a `⋎`-tagged chain of complete blocks closed by `⊥` as the
 right-associated disjunction of the blocks' sentences, leaving the tail untouched. -/
-private lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
+lemma parseRpn_disjChain (blk : ℕ → List ℕ) (D : ℕ → Sentence)
     (hblk : ∀ b, parseRpn (blk b).length (blk b) = some (D b, [])) :
     ∀ (t a : ℕ) (rest : List ℕ) (fuel : ℕ),
       (((List.range t).flatMap fun j => 4 :: blk (a + j)) ++ 0 :: rest).length ≤ fuel →

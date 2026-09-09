@@ -3,6 +3,7 @@ import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Emission.Computable
 import LogicalInduction.Framework.Emission.WriteOut
 import LogicalInduction.Framework.Emission.RpnEmission
+import LogicalInduction.Framework.Machine.SpliceMachine
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 
 /-!
@@ -361,7 +362,8 @@ lemma Trader.not_exploits_of_stage_unsatisfiable (Tr : Trader) (V : History)
           (fun i _ _ => Strategy.magnitude_nonneg (Tr.strat i) V)
 
 /-- `def:lic` is satisfied vacuously over a deductive process with an unsatisfiable stage:
-computability of the market and of the process is all that remains to check.  This is the
+no trader of any class exploits such a process, so computability of the market and of the
+process is all that remains to check.  This is the
 degenerate branch of Closure Under Conditioning — the case the paper's `thm:scon` covers
 implicitly when the extended theory is inconsistent.
 Kind `P`; hypotheses `(a)`.
@@ -407,13 +409,24 @@ noncomputable def value (A : AffineCombination) (V : History) (w : Valuation) : 
 The uniform-emission certificate an affine family has to carry to be traded by an
 efficiently computable trader, together with the rank and closedness facts its projections
 give on each member's term list.
+
+**The three emission fields are machine-metered** (`MachineSpliceStream` /
+`MachineSentenceCodes`, `Framework/Machine/`), not fuel-metered: a client discharges them
+with ordinary `Complexity.FP` data and never writes a `Nat.Partrec.Code`, and a client
+holding fuel certificates converts by `BigSpliceStream.toMachine` /
+`BigSentenceCodes.toMachine`.  That is what lets `PolySequence.buyBelowTrader_ec`
+(`Properties/AffineCoherence.lean`) certify the exploiting trader at
+`EfficientlyComputable` — `def:ec` at the paper's own quantifier — and it is why every
+lemma consuming that trader takes `[IsLogicalInductor P DP]`.  **The term count is
+machine-metered too**, as the unary ruler `UnaryRuler` (`Framework/Machine/Ruler.lean`).
+No field of the certificate is fuel-metered.
 -/
 
 /-- Operational certificate for a polynomially generated, rank-legal sequence of affine
 combinations.  The paired index for a term is `⟨n,j⟩`: sequence member, then term number.
 This is the affine analogue of `PolyTradeEmulatable`; it exposes syntax boundaries so
 uniform transformations can emit coefficients and sentence codes without decoding an
-opaque serialized value.
+opaque serialized value.  Every field is machine-metered.
 Paper node: `def:ec` -/
 structure PolySequence (As : ℕ → AffineCombination) where
   /-- Number of sentence terms in `As n`. -/
@@ -422,14 +435,22 @@ structure PolySequence (As : ℕ → AffineCombination) where
   coefficient : ℕ → EF
   /-- Sentence at the paired index `⟨n,j⟩`. -/
   sentence : ℕ → Sentence
-  /-- The term count is computed within a polynomial fuel bound (`dd:fuel`). -/
-  termCount_poly : ∃ c, PolyFueled c termCount
-  /-- The affine constants are emitted as one uniform token stream. -/
-  const_poly : BigSpliceStream (fun n => (As n).const.serialize)
-  /-- The coefficients are emitted as one uniform token stream over the paired index. -/
-  coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
-  /-- The sentence codes are emitted uniformly over the paired index. -/
-  sentence_poly : BigSentenceCodes sentence
+  /-- The term count is machine-metered: a polynomial-time machine, handed the unary day,
+  writes out that many marks (`UnaryRuler`, `Framework/Machine/Ruler.lean`).  This is the
+  shape every consumer needs — a count reindexes the emitted streams, and a reindexer
+  reaches the machine combinators as a ruler — and the derived counts of the persistence,
+  triangular and mesh lanes are assembled at it by the ruler calculus
+  (`UnaryRuler.segPrefix`, `.segLocate`).  A client holding a fuel certificate converts by
+  `UnaryRuler.of_polyFueled`; no converse is provided or claimed, so this is the weaker
+  hypothesis. -/
+  termCount_poly : UnaryRuler termCount
+  /-- The affine constants are emitted as one uniform machine-metered token stream. -/
+  const_poly : MachineSpliceStream (fun n => (As n).const.serialize)
+  /-- The coefficients are emitted as one uniform machine-metered token stream over the
+  paired index. -/
+  coefficient_poly : MachineSpliceStream (fun z => (coefficient z).serialize)
+  /-- The sentence codes are emitted uniformly, machine-metered, over the paired index. -/
+  sentence_poly : MachineSentenceCodes sentence
   /-- The projections reassemble each member's term list in order. -/
   terms_eq : ∀ n,
     (As n).terms = (List.range (termCount n)).map (fun j =>
@@ -509,32 +530,43 @@ lemma priceFeature_serialize (A : AffineCombination) (n : ℕ) :
         simp [EF.serialize, List.append_assoc]
   exact aux A.terms A.const
 
-/-- A polynomial affine sequence has a uniform segment emitter for every cross-time price
-feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market day `m`. -/
+/-- A polynomial affine sequence has a uniform machine-metered segment emitter for every
+cross-time price feature.  Input `z = ⟨n,m⟩` denotes the feature pricing `Aₙ` on market
+day `m`.
+
+This is the fuel-metered proof with the machine combinators in place of the fuel ones:
+each `ℕ → ℕ` parameter is rendered in the role it plays — a unary ruler where it
+reindexes (`UnaryRuler.of_polyFueled`), a `MachineDigits` certificate where its value is
+written into the stream (`MachineDigits.ofUnaryRuler`). -/
 lemma PolySequence.priceFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    BigSpliceStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
+    MachineSpliceStream (fun z => ((As z.unpair.1).priceFeature z.unpair.2).serialize) := by
   -- An individual term block is indexed by `q = ⟨⟨n,m⟩,j⟩`.
   have hmember := PolyFueled.left.comp PolyFueled.left
-  have hday := PolyFueled.right.comp PolyFueled.left
+  have hdayPF := PolyFueled.right.comp PolyFueled.left
   have hterm := PolyFueled.right
-  have hcanonical := hmember.pair hterm
-  have hcoeff := h.coefficient_poly.comp hcanonical
-  have hprice := BigSpliceStream.serialize_price
+  have hcanonical := UnaryRuler.of_polyFueled (hmember.pair hterm)
+  have hday := MachineDigits.ofUnaryRuler
+    (f := fun q : ℕ => q.unpair.1.unpair.2) (UnaryRuler.of_polyFueled hdayPF)
+  have hcoeff := h.coefficient_poly.comp
+    (f := fun q : ℕ => Nat.pair q.unpair.1.unpair.1 q.unpair.2) hcanonical
+  have hprice := MachineSpliceStream.serialize_price
+    (sf := fun q : ℕ => Nat.pair q.unpair.1.unpair.1 q.unpair.2)
     h.sentence_poly hcanonical hday
-  have hblock : BigSpliceStream (fun q =>
+  have hblock : MachineSpliceStream (fun q =>
       (h.coefficient (Nat.pair q.unpair.1.unpair.1 q.unpair.2)).serialize ++
         (EF.price (h.sentence (Nat.pair q.unpair.1.unpair.1 q.unpair.2))
           q.unpair.1.unpair.2).serialize ++ [3, 2]) := by
-    refine BigSpliceStream.of_eq
-      (((hcoeff.append hprice).append (BigSpliceStream.tag 3 (by norm_num))).append
-        (BigSpliceStream.tag 2 (by norm_num))) ?_
+    refine MachineSpliceStream.of_eq
+      (((hcoeff.append hprice).append (MachineSpliceStream.tag 3 (by norm_num))).append
+        (MachineSpliceStream.tag 2 (by norm_num))) ?_
     intro q
     simp [List.append_assoc]
-  have hblocks := hblock.concatVar (hcount.comp PolyFueled.left)
-  have hconst := h.const_poly.comp PolyFueled.left
-  refine BigSpliceStream.of_eq (hconst.append hblocks) ?_
+  have hblocks := hblock.concatVar (cnt := fun z : ℕ => h.termCount z.unpair.1)
+    (h.termCount_poly.comp UnaryRuler.unpairFst)
+  have hconst := h.const_poly.comp (f := fun z : ℕ => z.unpair.1)
+    (UnaryRuler.unpairFst)
+  refine MachineSpliceStream.of_eq (hconst.append hblocks) ?_
   intro z
   rw [priceFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, Nat.unpair_pair]
@@ -758,23 +790,24 @@ lemma magnitudeFeature_serialize (A : AffineCombination) :
       rw [ih]
       simp [List.replicate_succ', List.append_assoc]
 
-/-- Uniform emission of the reified share magnitude for a polynomial affine sequence. -/
+/-- Uniform machine-metered emission of the reified share magnitude for a polynomial
+affine sequence.  The term count enters only as a unary ruler. -/
 lemma PolySequence.magnitudeFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) :
-    BigSpliceStream (fun n => (As n).magnitudeFeature.serialize) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have habs : BigSpliceStream (fun z => (absFeature (h.coefficient z)).serialize) := by
-    refine BigSpliceStream.of_eq
-      ((((h.coefficient_poly.append (BigSpliceStream.serialize_const (-1))).append
-          h.coefficient_poly).append (BigSpliceStream.tag 3 (by norm_num))).append
-        (BigSpliceStream.tag 4 (by norm_num))) ?_
+    MachineSpliceStream (fun n => (As n).magnitudeFeature.serialize) := by
+  have hruler := h.termCount_poly
+  have habs : MachineSpliceStream (fun z => (absFeature (h.coefficient z)).serialize) := by
+    refine MachineSpliceStream.of_eq
+      ((((h.coefficient_poly.append (MachineSpliceStream.serialize_const (-1))).append
+          h.coefficient_poly).append (MachineSpliceStream.tag 3 (by norm_num))).append
+        (MachineSpliceStream.tag 4 (by norm_num))) ?_
     intro z
     rw [absFeature_serialize]
     simp [EF.serialize, List.append_assoc]
-  have hterms := habs.concatVar hcount
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) hcount
-  refine BigSpliceStream.of_eq
-    ((hterms.append (BigSpliceStream.serialize_const 0)).append htags) ?_
+  have hterms := habs.concatVar (cnt := h.termCount) hruler
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := h.termCount) hruler
+  refine MachineSpliceStream.of_eq
+    ((hterms.append (MachineSpliceStream.serialize_const 0)).append htags) ?_
   intro n
   rw [magnitudeFeature_serialize, h.terms_eq]
   simp only [List.flatMap_map, List.length_map, List.length_range]
@@ -850,12 +883,13 @@ lemma riskFeature_rank_le (A : AffineCombination) (entry : EF) {n : ℕ}
   simp only [riskFeature, EF.rank]
   exact Nat.max_le.mpr ⟨hentry, A.magnitudeFeature_rank_le hterms⟩
 
-/-- Uniform launch-risk emission once the entry feature is uniformly emitted. -/
+/-- Uniform machine-metered launch-risk emission once the entry feature is uniformly
+emitted. -/
 lemma PolySequence.riskFeature_polySeg {As : ℕ → AffineCombination}
     (h : PolySequence As) {entry : ℕ → EF}
-    (hentry : BigSpliceStream (fun n => (entry n).serialize)) :
-    BigSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
-  BigSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
+    (hentry : MachineSpliceStream (fun n => (entry n).serialize)) :
+    MachineSpliceStream (fun n => ((As n).riskFeature (entry n)).serialize) :=
+  MachineSpliceStream.serialize_mul hentry h.magnitudeFeature_polySeg
 
 /-! ## Buying an affine combination
 
@@ -981,10 +1015,10 @@ def PolySequence.scaleRat {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := fun z => EF.mul (EF.const q) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const q) h.const_poly
-  coefficient_poly := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const q)
+  const_poly := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const q) h.const_poly
+  coefficient_poly := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const q)
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by
@@ -1046,10 +1080,10 @@ def PolySequence.neg {As : ℕ → AffineCombination} (h : PolySequence As) :
   coefficient := fun z => EF.mul (EF.const (-1)) (h.coefficient z)
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const (-1)) h.const_poly
-  coefficient_poly := BigSpliceStream.serialize_mul
-    (BigSpliceStream.serialize_const (-1))
+  const_poly := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const (-1)) h.const_poly
+  coefficient_poly := MachineSpliceStream.serialize_mul
+    (MachineSpliceStream.serialize_const (-1))
     h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := by
@@ -1090,14 +1124,15 @@ def PolySequence.shift {As : ℕ → AffineCombination} (h : PolySequence As)
   termCount := fun n => h.termCount (n + 1)
   coefficient := fun z => h.coefficient (Nat.pair (z.unpair.1 + 1) z.unpair.2)
   sentence := fun z => h.sentence (Nat.pair (z.unpair.1 + 1) z.unpair.2)
-  termCount_poly := by
-    obtain ⟨c, hc⟩ := h.termCount_poly
-    exact ⟨_, hc.comp PolyFueled.id.succ_comp⟩
-  const_poly := h.const_poly.comp PolyFueled.id.succ_comp
+  termCount_poly := h.termCount_poly.comp UnaryRuler.id.succ
+  const_poly := h.const_poly.comp (f := fun n : ℕ => n + 1)
+    (UnaryRuler.id.succ)
   coefficient_poly := h.coefficient_poly.comp
-    (PolyFueled.left.succ_comp.pair PolyFueled.right)
+    (f := fun z : ℕ => Nat.pair (z.unpair.1 + 1) z.unpair.2)
+    (UnaryRuler.unpairFst.succ.pair UnaryRuler.unpairSnd)
   sentence_poly := h.sentence_poly.comp
-    (PolyFueled.left.succ_comp.pair PolyFueled.right)
+    (f := fun z : ℕ => Nat.pair (z.unpair.1 + 1) z.unpair.2)
+    (UnaryRuler.unpairFst.succ.pair UnaryRuler.unpairSnd)
   terms_eq := by intro n; simpa using h.terms_eq (n + 1)
   const_rank := hconst
   coefficient_rank := by

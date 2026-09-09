@@ -48,6 +48,15 @@ the conditioning and perturbation witnesses, and the cross-day bounds
 
 The sentence-level special case `Aₙ := φₙ` is `thm:perkno`, and lives in
 `Properties/TimelyLearning.lean`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -262,15 +271,20 @@ def persistencePortfolio {As : ℕ → AffineCombination} (h : PolySequence As)
 buy-indicator block when `start < n`, the constant `0` otherwise. -/
 lemma persistenceEntry_serialize (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       (persistenceEntry As start low δ z.unpair.1 z.unpair.2).serialize) := by
-  have hprice := h.priceFeature_polySeg.comp (PolyFueled.right.pair PolyFueled.left)
-  have hbuy := BigSpliceStream.serialize_buyIndF hprice low δ
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htest := subc_polyFueled.comp
-    (PolyFueled.right.pair (PolyFueled.const start))
-  refine BigSpliceStream.of_eq (BigSpliceStream.ifZero hzero hbuy htest) ?_
+  have hprice := h.priceFeature_polySeg.comp
+    (f := fun z : ℕ => Nat.pair z.unpair.2 z.unpair.1)
+    (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst)
+  have hbuy := MachineSpliceStream.serialize_buyIndF hprice low δ
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htest := (subc_polyFueled.comp
+    (PolyFueled.right.pair (PolyFueled.const start))).of_eq
+    (f' := fun z : ℕ => z.unpair.2 - start)
+    (fun z => by simp only [Nat.unpair_pair])
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hbuy
+    (t := fun z : ℕ => z.unpair.2 - start) (UnaryRuler.of_polyFueled htest)) ?_
   intro z
   simp only [Nat.unpair_pair]
   by_cases hs : start < z.unpair.2
@@ -315,13 +329,15 @@ lemma persistenceEntrySum_serialize (As : ℕ → AffineCombination)
 the zero base case, and one `add` tag per member. -/
 lemma persistenceEntrySum_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
-  have hentries := BigSpliceStream.concatVar
-    (persistenceEntry_serialize As h start low δ) PolyFueled.id.succ_comp
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
+    MachineSpliceStream (fun k => (persistenceEntrySum As start low δ k).serialize) := by
+  have hsucc := UnaryRuler.of_polyFueled (cnt := fun k : ℕ => k + 1) PolyFueled.id.succ_comp
+  have hentries := MachineSpliceStream.concatVar
+    (persistenceEntry_serialize As h start low δ) (cnt := fun k : ℕ => k + 1) hsucc
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num)
+    (cnt := fun k : ℕ => k + 1) hsucc
+  refine MachineSpliceStream.of_eq ((hentries.append hzero).append htags) ?_
   intro k
   rw [persistenceEntrySum_serialize]
   simp only [Nat.unpair_pair]
@@ -329,10 +345,10 @@ lemma persistenceEntrySum_polySeg (As : ℕ → AffineCombination)
 /-- The normalizer is emitted as the entry-sum stream followed by the `safeRecip` tag. -/
 lemma persistenceNorm_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
-  refine BigSpliceStream.of_eq
+    MachineSpliceStream (fun k => (persistenceNorm As start low δ k).serialize) := by
+  refine MachineSpliceStream.of_eq
     ((persistenceEntrySum_polySeg As h start low δ).append
-      (BigSpliceStream.tag 5 (by norm_num))) ?_
+      (MachineSpliceStream.tag 5 (by norm_num))) ?_
   intro k
   simp [persistenceNorm, EF.serialize]
 
@@ -350,80 +366,69 @@ lemma persistenceRawConst_serialize (As : ℕ → AffineCombination)
 weighted-constant blocks, the zero base case, and the `add` tags. -/
 lemma persistenceRawConst_polySeg (As : ℕ → AffineCombination)
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
-    BigSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
-  have hblock := BigSpliceStream.serialize_mul
+    MachineSpliceStream (fun k => (persistenceRawConst As start low δ k).serialize) := by
+  have hsucc := UnaryRuler.of_polyFueled (cnt := fun k : ℕ => k + 1) PolyFueled.id.succ_comp
+  have hblock := MachineSpliceStream.serialize_mul
     (persistenceEntry_serialize As h start low δ)
-    (h.const_poly.comp PolyFueled.right)
-  have hblocks := BigSpliceStream.concatVar hblock PolyFueled.id.succ_comp
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have htags := BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
+    (h.const_poly.comp (f := fun z : ℕ => z.unpair.2)
+      (UnaryRuler.unpairSnd))
+  have hblocks := MachineSpliceStream.concatVar hblock (cnt := fun k : ℕ => k + 1) hsucc
+  have hzero : MachineSpliceStream (fun _ : ℕ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have htags := MachineSpliceStream.repeatTag 2 (by norm_num)
+    (cnt := fun k : ℕ => k + 1) hsucc
+  refine MachineSpliceStream.of_eq ((hblocks.append hzero).append htags) ?_
   intro k
   rw [persistenceRawConst_serialize]
   simp only [Nat.unpair_pair]
 
-/-- The flattened prefix portfolio's term count `Σ_{n ≤ k} termCount n` is polynomially
-fuel-bounded, hence a legal `PolySequence.termCount`. -/
+/-- The flattened prefix portfolio's term count `Σ_{n ≤ k} termCount n` is a unary ruler,
+hence a legal `PolySequence.termCount`.  This is the prefix scan `UnaryRuler.segPrefix`
+runs, at the segment lengths the source sequence's own count supplies. -/
 lemma PolySequence.persistenceTermCount_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (persistenceTermCount h) := by
-  obtain ⟨ccount, hcount⟩ := h.termCount_poly
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (persistenceMemberLength h) := (hcount.comp PolyFueled.right).of_eq (fun z => rfl)
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hlen
-  exact ⟨cprefix.comp
-      ((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
-        (Nat.Partrec.Code.succ.comp
-          (Nat.Partrec.Code.left.pair Nat.Partrec.Code.right))),
-    (hprefix.comp (PolyFueled.id.pair PolyFueled.id.succ_comp)).of_eq
-      (fun k => by simp [persistenceTermCount])⟩
+    (h : PolySequence As) : UnaryRuler (persistenceTermCount h) := by
+  have hlen : UnaryRuler (persistenceMemberLength h) :=
+    (h.termCount_poly.comp UnaryRuler.unpairSnd).of_eq (fun z => rfl)
+  exact ((UnaryRuler.segPrefix hlen).comp (UnaryRuler.id.pair UnaryRuler.id.succ)).of_eq
+    (fun k => by simp [persistenceTermCount])
 
 attribute [local irreducible] Nat.sqrt in
-/-- Locating which member of a variable-width segment layout owns a flattened index is
-polynomially fuel-bounded whenever the segment widths are. -/
-lemma prefixMember_poly (count : ℕ → ℕ)
-    (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
+/-- Locating which member of a variable-width segment layout owns a flattened index is a
+unary ruler whenever the segment widths are. -/
+lemma prefixMember_poly (count : ℕ → ℕ) (hcount : UnaryRuler count) :
+    UnaryRuler (fun z =>
       segLocate (fun q => count q.unpair.2) z.unpair.1 z.unpair.2
         (z.unpair.1 + 1)) := by
-  obtain ⟨ccount, hcount⟩ := hcount
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (fun z => count z.unpair.2) := hcount.comp PolyFueled.right
-  obtain ⟨clocate, hlocate⟩ := segLocate_polyFueled hlen
-  have hinput := (PolyFueled.left.pair PolyFueled.right).pair
-    PolyFueled.left.succ_comp
-  refine ⟨clocate.comp
-    (((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
-      (Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left))), ?_⟩
-  simpa only [Function.comp_apply, Nat.unpair_pair] using hlocate.comp hinput
+  have hlen : UnaryRuler (fun z => count z.unpair.2) := hcount.comp UnaryRuler.unpairSnd
+  have hinput : UnaryRuler (fun z =>
+      Nat.pair (Nat.pair z.unpair.1 z.unpair.2) (z.unpair.1 + 1)) :=
+    (UnaryRuler.unpairFst.pair UnaryRuler.unpairSnd).pair UnaryRuler.unpairFst.succ
+  exact ((UnaryRuler.segLocate hlen).comp hinput).of_eq
+    (fun z => by simp only [Nat.unpair_pair])
 
 attribute [local irreducible] Nat.sqrt in
-/-- Recovering a flattened index's offset within its own segment is polynomially
-fuel-bounded whenever the segment widths are. -/
-lemma prefixOffset_poly (count : ℕ → ℕ)
-    (hcount : ∃ c, PolyFueled c count) : ∃ c, PolyFueled c (fun z =>
+/-- Recovering a flattened index's offset within its own segment is a unary ruler whenever
+the segment widths are; the difference is `UnaryRuler.sub`, whose truncation at zero is the
+machine's own `List.drop`. -/
+lemma prefixOffset_poly (count : ℕ → ℕ) (hcount : UnaryRuler count) :
+    UnaryRuler (fun z =>
       z.unpair.2 - segPrefix (fun q => count q.unpair.2) z.unpair.1
         (segLocate (fun q => count q.unpair.2) z.unpair.1 z.unpair.2
           (z.unpair.1 + 1))) := by
-  obtain ⟨ccount, hcountPF⟩ := hcount
-  have hlen : PolyFueled (ccount.comp Nat.Partrec.Code.right)
-      (fun z => count z.unpair.2) := hcountPF.comp PolyFueled.right
-  obtain ⟨cprefix, hprefix⟩ := segPrefix_polyFueled hlen
-  obtain ⟨cmember, hmember⟩ := prefixMember_poly count ⟨ccount, hcountPF⟩
-  have hp := hprefix.comp (PolyFueled.left.pair hmember)
-  refine ⟨subc.comp (Nat.Partrec.Code.right.pair
-    (cprefix.comp (Nat.Partrec.Code.left.pair cmember))), ?_⟩
-  simpa only [Function.comp_apply, Nat.unpair_pair] using
-    subc_polyFueled.comp (PolyFueled.right.pair hp)
+  have hlen : UnaryRuler (fun z => count z.unpair.2) := hcount.comp UnaryRuler.unpairSnd
+  have hmember := prefixMember_poly count hcount
+  have hp := (UnaryRuler.segPrefix hlen).comp (UnaryRuler.unpairFst.pair hmember)
+  exact (UnaryRuler.unpairSnd.sub hp).of_eq (fun z => by simp only [Nat.unpair_pair])
 
-/-- The prefix portfolio's member lookup is polynomially fuel-bounded. -/
+/-- The prefix portfolio's member lookup is a unary ruler. -/
 lemma PolySequence.persistenceMember_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
+    (h : PolySequence As) : UnaryRuler (fun z =>
       persistenceMember h z.unpair.1 z.unpair.2) :=
   prefixMember_poly h.termCount h.termCount_poly
 
-/-- The prefix portfolio's within-member offset is polynomially fuel-bounded. -/
+/-- The prefix portfolio's within-member offset is a unary ruler. -/
 lemma PolySequence.persistenceOffset_poly {As : ℕ → AffineCombination}
-    (h : PolySequence As) : ∃ c, PolyFueled c (fun z =>
+    (h : PolySequence As) : UnaryRuler (fun z =>
       persistenceOffset h z.unpair.1 z.unpair.2) :=
   prefixOffset_poly h.termCount h.termCount_poly
 
@@ -564,27 +569,29 @@ sentence codes explicitly. -/
 noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineCombination}
     (h : PolySequence As) (start : ℕ) (low δ : ℚ) :
     PolySequence (persistencePortfolio h start low δ) := by
-  let ccount := Classical.choose h.persistenceTermCount_poly
-  have hcount := Classical.choose_spec h.persistenceTermCount_poly
-  let cmember := Classical.choose h.persistenceMember_poly
-  have hmember := Classical.choose_spec h.persistenceMember_poly
-  let coffset := Classical.choose h.persistenceOffset_poly
-  have hoffset := Classical.choose_spec h.persistenceOffset_poly
+  have hcount := h.persistenceTermCount_poly
+  have hmember := h.persistenceMember_poly
+  have hoffset := h.persistenceOffset_poly
   let memberPF := hmember
   let offsetPF := hoffset
   let canonicalPF := memberPF.pair offsetPF
   have hentry := (persistenceEntry_serialize As h start low δ).comp
-    (PolyFueled.left.pair memberPF)
-  have hcoeff := h.coefficient_poly.comp canonicalPF
-  have hnorm := (persistenceNorm_polySeg As h start low δ).comp PolyFueled.left
-  have hcoefficient := BigSpliceStream.serialize_mul hnorm
-    (BigSpliceStream.serialize_mul hentry hcoeff)
+    (f := fun z : ℕ => Nat.pair z.unpair.1 (persistenceMember h z.unpair.1 z.unpair.2))
+    (UnaryRuler.unpairFst.pair memberPF)
+  have hcoeff := h.coefficient_poly.comp
+    (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
+      (persistenceOffset h z.unpair.1 z.unpair.2))
+    canonicalPF
+  have hnorm := (persistenceNorm_polySeg As h start low δ).comp
+    (f := fun z : ℕ => z.unpair.1) (UnaryRuler.unpairFst)
+  have hcoefficient := MachineSpliceStream.serialize_mul hnorm
+    (MachineSpliceStream.serialize_mul hentry hcoeff)
   refine
     { termCount := persistenceTermCount h
       coefficient := persistenceCoefficient h start low δ
       sentence := persistenceSentence h
-      termCount_poly := ⟨ccount, hcount⟩
-      const_poly := BigSpliceStream.serialize_mul
+      termCount_poly := hcount
+      const_poly := MachineSpliceStream.serialize_mul
         (persistenceNorm_polySeg As h start low δ)
         (persistenceRawConst_polySeg As h start low δ)
       coefficient_poly := ?_
@@ -595,7 +602,10 @@ noncomputable def PolySequence.persistencePortfolioPoly {As : ℕ → AffineComb
       const_closed := ?_
       coefficient_closed := ?_ }
   · simpa [persistenceCoefficient] using hcoefficient
-  · exact BigSentenceCodes.of_eq (h.sentence_poly.comp canonicalPF)
+  · exact MachineSentenceCodes.of_eq (h.sentence_poly.comp
+      (f := fun z : ℕ => Nat.pair (persistenceMember h z.unpair.1 z.unpair.2)
+        (persistenceOffset h z.unpair.1 z.unpair.2))
+      canonicalPF)
       (fun z => by simp [persistenceSentence])
   · intro k
     simp only [persistencePortfolio, EF.rank, persistenceNorm]
@@ -735,8 +745,8 @@ def PolySequence.addConst {As : ℕ → AffineCombination} (h : PolySequence As)
   coefficient := h.coefficient
   sentence := h.sentence
   termCount_poly := h.termCount_poly
-  const_poly := BigSpliceStream.serialize_add h.const_poly
-    (BigSpliceStream.serialize_const q)
+  const_poly := MachineSpliceStream.serialize_add h.const_poly
+    (MachineSpliceStream.serialize_const q)
   coefficient_poly := h.coefficient_poly
   sentence_poly := h.sentence_poly
   terms_eq := h.terms_eq

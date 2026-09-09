@@ -37,6 +37,15 @@ what makes it a theorem about *theories* lives entirely in the witness, where
 
 Counting and reading conventions are cited rather than restated: `dd:symbolcount` for the
 finite proof searches, `dd:machinetheory` for reading a machine as a theory.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -51,7 +60,7 @@ process.  This is the exact propositional boundary used for halting and inconsis
 Paper node: `thm:pac`, `thm:pazfc`, `thm:incons`, `thm:halts`, `thm:loops`, `thm:dontwait` -/
 structure RepresentedSemidecidableClaims (DP : DeductiveProcess) (truth : ℕ → Prop) where
   sentence : ℕ → Sentence
-  sentence_poly : BigSentenceCodes sentence
+  sentence_poly : MachineSentenceCodes sentence
   provable_of_true : ∀ n, truth n → ∃ k, sentence n ∈ DP.D k
 
 /-- A uniformly emitted sentence family representing a decidable computation.  In addition
@@ -85,7 +94,7 @@ so the two orientations are interchangeable for every claim made here.
 Paper node: `thm:incons` -/
 structure InconsistentTheoryClaims (DP : DeductiveProcess) (inconsistent : ℕ → Prop) where
   inconsistencySentence : ℕ → Sentence
-  inconsistency_poly : BigSentenceCodes inconsistencySentence
+  inconsistency_poly : MachineSentenceCodes inconsistencySentence
   inconsistency_provable : ∀ n, inconsistent n →
     ∃ k, inconsistencySentence n ∈ DP.D k
 
@@ -99,28 +108,20 @@ def InconsistentTheoryClaims.consistencySentence {DP : DeductiveProcess}
 
 /-! ## Trust in consistency (`thm:pac`, `thm:incons`) -/
 
-/-- **Provability induction at the negated sentence.**  `lic_provind_false` asks for `∼ψ` to
-enter the completed theory; when `ψ` is itself a negation `∼φ` of a *theorem*, that would ask
-for `∼∼φ`, which the paper's prime decomposition never emits.  The price still goes to zero,
-for the same reason and by the same argument: in a world consistent with the stage, `φ` holds,
-so `∼φ` does not, so every sampled payout of `∼φ` is `0`. -/
+/-- **Provability induction at the negated sentence.**  The consumer holds `φ n` in a finite
+stage and wants the price of `∼φ n` to vanish, which is `lic_provind_false` at
+`ψ n := ∼φ n`: its disprovability premise is then `v ⊨ ∼∼φ n`, and double negation is free
+in a propositionally consistent world even though the paper's prime decomposition never
+emits the sentence `∼∼φ n` itself. -/
 private lemma provind_neg_false (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hthm : ∀ n, ∃ k, φ n ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    (fun n => P n (∼φ n)) ≈ₙ fun _ => 0 := by
-  let hP : ∀ n χ, 0 ≤ P n χ ∧ P n χ ≤ 1 :=
-    IsLogicalInductor.price_mem_Icc (P := P) (DP := DP)
-  have hψpoly := AffineCombination.sentenceAffine_polySequence (fun n => ∼φ n) hφ.neg
-  have hψeq := hψpoly.affine_provind_theory_eq P DP
-    (AffineCombination.sentenceAffine_bounded _ P hP)
-    ⟨1, fun n => by simp⟩ hworld 0 (fun n v hv => by
-      obtain ⟨k, hk⟩ := hthm n
-      have hpos := hv k (φ n) hk
-      have hfalse : ¬v.Holds (∼φ n) := fun h => (PCWorld.holds_neg v (φ n)).mp h hpos
-      simp [AffineCombination.sentenceAffine, AffineCombination.value,
-        PCWorld.payout, hfalse])
-  simpa using hψeq
+    (fun n => P n (∼φ n)) ≈ₙ fun _ => 0 :=
+  lic_provind_false P DP (fun n => ∼φ n) hφ.neg
+    (fun n v hv => (PCWorld.holds_neg v (∼φ n)).mpr
+      (fun h => (PCWorld.holds_neg v (φ n)).mp h (hv.holds_of_mem_stage (hthm n))))
+    hworld
 
 /-- **Belief in Finitistic Consistency** (`thm:pac`), at the propositional computation-
 representation boundary.  `consistentWithin n` is the truth of the finite proof search
@@ -142,7 +143,7 @@ theorem lic_belief_finitistic_consistency
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hconsistent n)) hworld
+    (fun n _ hv => hv.holds_of_mem_stage (R.provable_of_true n (hconsistent n))) hworld
 
 /-- **Disbelief in Inconsistent Theories** (`thm:incons`): timely belief in each emitted
 inconsistency sentence and, therefore, timely disbelief in its negation — the paper's
@@ -168,7 +169,7 @@ theorem lic_disbelief_inconsistent_theories
     ((fun n => P n (R.inconsistencySentence n)) ≈ₙ fun _ => 1) ∧
       ((fun n => P n (R.consistencySentence n)) ≈ₙ fun _ => 0) :=
   ⟨lic_provind_true P DP R.inconsistencySentence R.inconsistency_poly
-      (fun n => R.inconsistency_provable n (hall n)) hworld,
+      (fun n _ hv => hv.holds_of_mem_stage (R.inconsistency_provable n (hall n))) hworld,
     provind_neg_false P DP R.inconsistencySentence R.inconsistency_poly
       (fun n => R.inconsistency_provable n (hall n)) hworld⟩
 
@@ -187,7 +188,7 @@ theorem lic_learns_halting_patterns
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 1 :=
   lic_provind_true P DP R.sentence R.sentence_poly
-    (fun n => R.provable_of_true n (hhalts n)) hworld
+    (fun n _ hv => hv.holds_of_mem_stage (R.provable_of_true n (hhalts n))) hworld
 
 /-- **Learning of Provable Non-Halting Patterns** (`thm:loops`).  “Provably fails to
 halt” is rendered directly as eventual occurrence of the negated represented halting
@@ -201,7 +202,8 @@ theorem lic_learns_provable_nonhalting_patterns
     (hloops : ∀ n, ∃ k, (∼R.sentence n) ∈ DP.D k)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 0 :=
-  lic_provind_false P DP R.sentence R.sentence_poly hloops hworld
+  lic_provind_false P DP R.sentence R.sentence_poly
+    (fun n _ hv => hv.holds_of_mem_stage (hloops n)) hworld
 
 /-- **Learning not to Anticipate Halting** (`thm:dontwait`).  The compact sentence may
 refer to a fixed arbitrary computable horizon program; its day-indexed syntax is what the
@@ -217,8 +219,8 @@ theorem lic_does_not_anticipate_halting
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (fun n => P n (R.sentence n)) ≈ₙ fun _ => 0 := by
   apply lic_provind_false P DP R.sentence R.sentence_poly _ hworld
-  intro n
-  apply R.disprovable_of_false n
+  intro n _ hv
+  refine hv.holds_of_mem_stage (R.disprovable_of_false n ?_)
   intro hbounded
   obtain ⟨out, hout⟩ : ∃ out, Nat.Partrec.Code.evaln (horizons n)
       (machines n) (inputs n) = some out := by

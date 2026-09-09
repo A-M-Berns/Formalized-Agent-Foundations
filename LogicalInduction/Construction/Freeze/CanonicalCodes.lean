@@ -97,7 +97,7 @@ def NoReserved : Sentence → Prop
 The freeze's run-level lookup carries three side conditions.  Two are per-sentence
 conditions on the frozen quote table, bundled below as `Recognizable`; the third is a
 condition on the table as a whole.  Neither per-sentence condition is a hypothesis of the
-freeze endpoint `FreezeOracle.machine_lic_iff_of_finiteSupport`; both are recorded here
+freeze endpoint `FreezeOracle.lic_iff_of_finiteSupport`; both are recorded here
 because they are exactly what the `⊥`-fibre lemmas above are about, and because
 `Recognizable` is the compatibility hypothesis of the endpoint's restricted form.
 
@@ -130,7 +130,7 @@ of the table being frozen. -/
 /-- The per-sentence recognition conditions on a frozen table entry, bundled.
 
 The freeze endpoint does not take this bundle; its strongest consumer is the restricted
-form `FreezeOracle.machine_lic_iff_of_recognizableSupport`, reached through
+form `FreezeOracle.lic_iff_of_recognizableSupport`, reached through
 `FreezeOracle.RecognizableSupportPerturbation`, which `LogicalInduction.API` exports. -/
 structure Recognizable (ψ : Sentence) : Prop where
   /-- No `⊥` subformula: the escape leaf has a unique code. -/

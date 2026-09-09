@@ -54,8 +54,8 @@ step further out.
 
 `FinitePerturbationCounterexample.not_overgeneral_ifp`
 (`Construction/Freeze/Counterexample.lean`) proves the negation of the
-printed statement, at the paper's own quantifier (`IsMachineLogicalInductor`,
-`MachineEfficientTrader`), with no theory parameter and no unproved hypothesis. It is
+printed statement, at the paper's own quantifier (`IsLogicalInductor`,
+`EfficientlyComputable`), with no theory parameter and no unproved hypothesis. It is
 kernel-checked and axiom-clean; `not_overgeneral_ifp_ofTheory` is the same result over any
 Σ₁-sound Δ₁ theory extending `𝗜𝚺₁`. The abstract reduction it rests on,
 `not_overgeneral_ifp_of_advice`, lives in `Properties/FinitePerturbationCounterexample.lean`.
@@ -76,7 +76,7 @@ perturbation smuggles across.
 Made precise:
 
 * `P` is the constructed `LIA` over the `𝗜𝚺₁` theorem process — a genuine machine logical
-  inductor (`LIA_isMachineLogicalInductor`).
+  inductor (`LIA_is_logical_inductor`).
 * `χ` is the repository's diagonal price family: in every world consistent with the
   completed theory, `χ n` holds exactly when `P n (χ n) < 1/2`. A trader knowing that one
   bit earns a *certain* `≥ 1/2` on day `n` once the day has settled — buy below the
@@ -87,7 +87,7 @@ Made precise:
   advice atoms at otherwise unused tags. It is a legal `ComputableMarket`: the day-`0` row
   is a total computable search, terminating by propositional compactness
   (`DeductiveProcess.exists_stage_entails`).
-* The exploiting trader is a genuine `MachineEfficientTrader`, and never computes the
+* The exploiting trader is a genuine `EfficientlyComputable`, and never computes the
   bits. Its day-`n` coefficient is the rank-`0` feature
   `price (schedAtom n) 0 * (2 * price (signAtom n) 0 - 1)`, so the *market* supplies the
   advice at valuation time. A sparse schedule lets each round settle before the next
@@ -102,22 +102,22 @@ theorem, not merely its proof, is wrong.
 Finite *support* is what rescues the hard-coding step, and the repository proves that
 case.
 
-`FreezeOracle.machine_lic_iff_of_finiteSupport`
+`FreezeOracle.lic_iff_of_finiteSupport`
 (`Construction/Freeze/Oracle.lean`) is the statement to cite:
 
 ```lean
-theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
+theorem lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : FiniteSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP
 ```
 
 `FiniteSupportPerturbation P P'` asks for a finite set `S` of `(day, sentence)` coordinates
 off which the two markets agree, and asks nothing else — nothing about the sentences in it.
 There is no certificate hypothesis either: the freeze certificate each market needs is
 *compiled* from its own computability certificate by
-`FreezeOracle.machineFiniteSupportPatch`. The earlier
-`machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport` survive
+`FreezeOracle.finiteSupportPatch`. The earlier
+`lic_iff_of_noReservedSupport` and `lic_iff_of_recognizableSupport` survive
 as one-line compatibility corollaries.
 
 Two things about that statement, both stated at the declaration:
@@ -152,7 +152,7 @@ Two things about that statement, both stated at the declaration:
    was rebuilt around it: `RpnFreeze.patterns` replaces the finite spelling list by a finite
    list of *patterns with holes*, confining the infinite fibre inside a hole predicate, and
    `PatAuto.ifParse_mem_FP` decides the whole thing in polynomial time.
-   `FreezeOracle.machine_lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
+   `FreezeOracle.lic_iff_hardPoint` exercises the difference at `atom 0 ⋏ ⊥`, a
    sentence the previous endpoint provably could not freeze
    (`FreezeOracle.not_recognizable_hardS`).
 
@@ -182,7 +182,7 @@ Two things about that statement, both stated at the declaration:
    `StructPat.parseRpn_iff_segMatch` is the characterization the two devices are hung on: a
    run denotes `ψ` under the full grammar exactly when it matches one of `ψ`'s finitely many
    *segment* patterns, structured blocks included, for every `ψ`.
-   `FreezeOracle.machine_lic_iff_reservedPoint` exercises the difference at a reserved atom,
+   `FreezeOracle.lic_iff_reservedPoint` exercises the difference at a reserved atom,
    a coordinate neither earlier endpoint could freeze
    (`FreezeOracle.not_noReserved_pointS_reserved`).
 
@@ -193,17 +193,17 @@ Two things about that statement, both stated at the declaration:
    exactly where the printed finite-*days* proof fails and this one does not.
 
 The underlying general form, taking a freeze certificate per market, is
-`machine_lic_iff_of_finiteSupportPerturbation` (`Properties/FinitePerturbations.lean`).
+`lic_iff_of_finiteSupportPerturbation_ofPatches` (`Properties/FinitePerturbations.lean`).
 
 ### Downstream consequence
 
-* **Non-vacuous.** `FreezeOracle.machine_lic_iff_twoPoint` is the corrected theorem at a
+* **Non-vacuous.** `FreezeOracle.lic_iff_twoPoint` is the corrected theorem at a
   concrete pair of computable markets with real `Nat.Partrec.Code` tables, proved to
   differ at the frozen coordinate, discharging every hypothesis at once.
 * **Informative.** Those particular markets price everything at zero but one coordinate
   and are very likely exploitable, so the equivalence might hold there because both sides
-  fail. `LIAPerturbation.machineLogicalInductor_liaPerturbed` removes that qualification:
-  `liaHistory DP` is a machine logical inductor, and moving one price at the
+  fail. `LIAPerturbation.logicalInductor_liaPerturbed` removes that qualification:
+  `liaHistory DP` is a logical inductor, and moving one price at the
   `Recognizable` coordinate `(0, atom 0)` — a genuinely nonzero change,
   `liaPerturbed_ne` — yields a market that still is, **by this theorem and nothing else**.
   That market is the output of no construction here. The instance inherits

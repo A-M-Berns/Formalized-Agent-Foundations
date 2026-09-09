@@ -44,8 +44,9 @@ Two frontends sit here, and they fix different things.
   certificates the frontend's threshold layer consumes.
 * `ArithmeticSource` — the paper's own formula *source* language `ArithSource`, with
   `¬ ∧ ∨ ⟹ ⟺` primitive (tex:560) and one emitted token per source node, and the class
-  `PolyArithmeticSourceSeq` that meters a formula family as the paper writes it (`dd:nnf`).
-  `PaperLUVSeq` is the literal LUV family over it, compiled to `LUV.RpnThresholdCodeSeq` at
+  `PolyArithmeticSourceSeq` that meters a formula family as the paper writes it (`dd:nnf`)
+  and its machine reading `MachineArithmeticSourceSeq`, which is what `PaperLUVSeq` binds.
+  `PaperLUVSeq` is the literal LUV family over it, compiled to `LUV.MachineThresholdCodeSeq` at
   the paper's exact threshold syntax, and `PaperLUVCombination` is `def:blcp` with literal
   paper LUVs as shares.  The strictness separation
   `PolyArithmeticFormulaSeq ⊊ PolyArithmeticSourceSeq` is proved here, not asserted.

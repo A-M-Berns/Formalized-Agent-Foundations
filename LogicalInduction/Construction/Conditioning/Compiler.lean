@@ -16,7 +16,7 @@ its own.
 **The conditioned market as an exact rational program.**  `conditionalRat`, `conjunctionCode`,
 `conditionedQuoteTable`/`conditionedQuoteCode` and `conditionedMarketComputation` build the
 market `P(φ | ψ)` from the base market's own rational quote table together with a recursive
-naming program for the condition sequence (`BigSentenceCodes.exists_code`); only ordinary
+naming program for the condition sequence (`MachineSentenceCodes.exists_code`); only ordinary
 partial recursiveness of the whole code is needed, and none of it is metered.
 
 **The finite denominator patch.**  `denominatorPatchedHistory` pins the condition's price to
@@ -75,6 +75,15 @@ The operational-witness constructors and the criterion-level `thm:scon` endpoint
 (namespace `RpnConditioning`) certify the same translation in the token-metered model, and
 import this module for the raw-combinator algebra, the day-guard flag and guard honesty.
 This file carries the economic and floor content they all consume.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -206,7 +215,7 @@ private lemma conditionedQuoteTable_exact {P : History} (market : MarketComputat
 
 /-- The concrete partial-recursive program for the conditioned quote table. -/
 private noncomputable def conditionedQuoteCode {P : History} (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) : Nat.Partrec.Code := by
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) : Nat.Partrec.Code := by
   let ψCode : Nat.Partrec.Code := Classical.choose hψ.exists_code
   let conditionAt : Nat.Partrec.Code := ψCode.comp Nat.Partrec.Code.left
   let conjunctionInput : Nat.Partrec.Code :=
@@ -219,7 +228,7 @@ private noncomputable def conditionedQuoteCode {P : History} (market : MarketCom
     ((market.code.comp conjunctionInput).pair (market.code.comp denominatorInput))
 
 private lemma conditionedQuoteCode_spec {P : History} (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) (z : ℕ) :
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) (z : ℕ) :
     Encodable.encode
         (conditionedQuoteTable market ψ z.unpair.1 z.unpair.2) ∈
       (conditionedQuoteCode market ψ hψ).eval z := by
@@ -265,10 +274,10 @@ private lemma conditionedQuoteCode_spec {P : History} (market : MarketComputatio
 
 /-- The conditioned history is a computable rational market whenever the base market has a
 named computation and the condition sequence is write-out efficient (whence its whole-value
-naming program is recursive — `BigSentenceCodes.exists_code`; only ordinary partial
+naming program is recursive — `MachineSentenceCodes.exists_code`; only ordinary partial
 recursiveness of the whole code is needed here, no metering of it). -/
 noncomputable def conditionedMarketComputation {P : History}
-    (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    (market : MarketComputation P) (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     MarketComputation (conditionedHistory P ψ) where
   price_mem_Icc := conditionedHistory_mem_Icc P market.price_mem_Icc ψ
   quote := conditionedQuoteTable market ψ
@@ -380,7 +389,7 @@ private lemma denominatorPatchNormCode_spec (cutoff z : ℕ) :
 /-- Partial-recursive program for the finitely patched base market. -/
 private noncomputable def denominatorPatchedQuoteCode {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : BigSentenceCodes ψ) (cutoff : ℕ) : Nat.Partrec.Code :=
+    (hψ : MachineSentenceCodes ψ) (cutoff : ℕ) : Nat.Partrec.Code :=
   let conditionAt := (Classical.choose hψ.exists_code).comp Nat.Partrec.Code.left
   denominatorPatchNormCode cutoff |>.comp
     ((Nat.Partrec.Code.left.pair Nat.Partrec.Code.right).pair
@@ -388,7 +397,7 @@ private noncomputable def denominatorPatchedQuoteCode {P : History}
 
 private lemma denominatorPatchedQuoteCode_spec {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : BigSentenceCodes ψ) (cutoff z : ℕ) :
+    (hψ : MachineSentenceCodes ψ) (cutoff z : ℕ) :
     Encodable.encode (denominatorPatchedQuoteTable market ψ cutoff
       z.unpair.1 z.unpair.2) ∈
       (denominatorPatchedQuoteCode market ψ hψ cutoff).eval z := by
@@ -417,7 +426,7 @@ private lemma denominatorPatchedQuoteCode_spec {P : History}
 /-- Named exact computation of the finite denominator patch. -/
 noncomputable def denominatorPatchedMarketComputation {P : History}
     (market : MarketComputation P) (ψ : ℕ → Sentence)
-    (hψ : BigSentenceCodes ψ) (cutoff : ℕ) :
+    (hψ : MachineSentenceCodes ψ) (cutoff : ℕ) :
     MarketComputation (denominatorPatchedHistory P ψ cutoff) where
   price_mem_Icc := denominatorPatchedHistory_mem_Icc P ψ cutoff market.price_mem_Icc
   quote := denominatorPatchedQuoteTable market ψ cutoff
@@ -3143,13 +3152,13 @@ not a hypothesis of the paper's theorem.
 Paper node: `thm:scon` -/
 lemma exists_eventual_condition_price_floor
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     ∃ cutoff : ℕ, ∃ ε : ℚ, 0 < (ε : ℝ) ∧
       ∀ d, cutoff ≤ d → (ε : ℝ) ≤ P d (ψ d) := by
   let rep : EfficientRepeatedEnumeration ψ :=
-    EfficientRepeatedEnumeration.ofBig ψ hψ
+    EfficientRepeatedEnumeration.ofMachineCodes ψ hψ
   obtain ⟨lower, hlower, hlowerLimiting⟩ :=
     lic_uniform_nonDogmatism P DP ψ rep hjoint
   have hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) := by
@@ -3207,7 +3216,7 @@ compiler consumes. -/
 private lemma eventualConditioningFloor_nonempty_of_jointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     Nonempty (EventualConditioningFloor P ψ) := by
@@ -3221,7 +3230,7 @@ Paper node: `thm:scon` -/
 noncomputable def eventualConditioningFloorOfJointConsistency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (market : MarketComputation P)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ)
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (ψ i)) :
     EventualConditioningFloor P ψ :=
@@ -3233,7 +3242,7 @@ noncomputable def eventualConditioningFloorOfJointConsistency
 The operational-witness constructors and the criterion-level `thm:scon` endpoints are in
 `Construction/Conditioning/Endpoints.lean` (namespace `ConditioningCompile`);
 `Construction/Conditioning/PricePass.lean` and `Construction/Conditioning/FramePass.lean`
-(namespace `RpnConditioning`) prove the token-metered (`EfficientlyComputable`) translation
+(namespace `RpnConditioning`) prove the token-metered (`PolyFueledTrader`) translation
 certificates they require.  This file carries the economic and floor content both consume. -/
 
 end ConditioningCompile

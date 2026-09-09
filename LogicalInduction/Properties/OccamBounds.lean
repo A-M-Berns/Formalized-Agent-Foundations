@@ -21,8 +21,8 @@ Renders §4.6's `thm:ob` (Occam Bounds, tex:1552).
   purchase capacity `j⁴` scaled by `1/j²`, so it risks at most `1/j²` against a plausible payout
   of order `j²`, and `Σ_j 1/j²` converges.
 * The rung ladder is `obStart`, `obCapacity`, `obBase`, `obBuySig`, `obShares`, `obCoef` and
-  `obSentenceEF`; `obTrader_ecTok` certifies the assembled trader efficiently computable and
-  `obCumulativeRisk_le_two` bounds its cumulative risk by two.
+  `obSentenceEF`; `obTrader_ec` certifies the assembled trader at `EfficientlyComputable`,
+  `def:ec`'s own class, and `obCumulativeRisk_le_two` bounds its cumulative risk by two.
 * `obTrader_exploits` closes the exploitation argument. `lic_occam_lower` is the lower half of
   `thm:ob`, and `lic_occamBounds` both halves under one constant; the upper half needs only the
   negation compiler's overhead together with limit coherence for a sentence and its negation
@@ -33,6 +33,24 @@ Renders §4.6's `thm:ob` (Occam Bounds, tex:1552).
 Consumed by `Properties/UniversalSemimeasure.lean` (`thm:dus`, `thm:strict`) and by
 `Construction/NonDogmatism/PrefixMachine.lean` and
 `Construction/NonDogmatism/UniversalPrefix.lean` (`UPrefix.lic_occamBounds_ofUniversalPrefix`).
+**Both halves of `def:ec` are at the machine reading.**  The gate compiler runs on
+`MachineSpliceStream` end to end — `obBuySig_machineSpliceStream` down to `obTrader_ec`,
+which lands in `EfficientlyComputable` through `MachineSpliceStream.ec` — so every result
+here that consumes an exploiting trader takes `[IsLogicalInductor P DP]`;
+no map back from `MachineSpliceStream` to `BigSpliceStream` is
+proved or claimed, so the trader has no fuel-class form and neither do these endpoints.
+On the data side the two boundary structures are at the machine classes:
+`PrefixMachinePresentation`'s `sentence_codes` is `MachineSentenceCodes` and both fields of
+`OccamThresholdEmission` are `MachineRatCodes`, rather than the value-metered
+`PolySentenceCodes` / `PolyRatCodes`, so nothing here bounds a sentence's or a gate
+rational's Gödel code.  Data premises at the
+machine classes and a criterion premise at `def:ec` are the paper's own pairing: this is
+`thm:ob` as the paper states it, `def:ec` on both sides.  The constructed presentations in `Construction/NonDogmatism/` still prove their
+emission certificates in the fuel model and cross at the boundary
+(`MachineSentenceCodes.ofPolySentenceCodes`, `DigitRatCodes.ofPolyRatCodes` +
+`.toMachine`), so nothing about the constructions changed.  The `_unconditional` endpoints
+discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -56,10 +74,17 @@ lemma prefixWeight_pos (κ : Sentence → ℕ) (φ : Sentence) :
 paper's polynomial-time, rational, from-below approximation to `2^{-κ(sentence i)}`.
 The finite Kraft bound is stated on this enumeration, so duplicates cannot silently spend
 the same code weight twice.  This structure contains no market prices or Occam conclusion.
+
+`sentence_codes` is at `def:ec`'s own machine class `MachineSentenceCodes` — a
+`Complexity.FP` function of the unary index emits the enumerated sentence's block — which is
+strictly weaker than the value-metered `PolySentenceCodes`: nothing bounds an enumerated
+sentence's Gödel code. A caller holding either fuel
+certificate crosses by `MachineSentenceCodes.ofPolySentenceCodes` or
+`BigSentenceCodes.toMachine`.
 Paper node: `thm:ob` -/
 structure PrefixMachinePresentation (κ : Sentence → ℕ) where
   sentence : ℕ → Sentence
-  sentence_codes : PolySentenceCodes sentence
+  sentence_codes : MachineSentenceCodes sentence
   approximation : ℕ → ℕ → ℚ
   approximation_nonneg : ∀ n i, 0 ≤ approximation n i
   approximation_le : ∀ n i,
@@ -96,13 +121,20 @@ def obEmitBase {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
 /-- The two derived rational-token streams consumed by the Occam gate compiler.
 
 This is a syntax-only representation boundary: it says that rational arithmetic on the
-prefix approximation can emit the gate's threshold-sum and reciprocal-width tokens in
-polynomial fuel. It contains no market prices, worlds, exploitation, or limiting bound.
+prefix approximation can emit the gate's threshold-sum and reciprocal-width tokens. It
+contains no market prices, worlds, exploitation, or limiting bound.
+
+Both fields are at `def:ec`'s own machine class `MachineRatCodes` — three
+`Complexity.FP` digit-word emitters for numerator, `natAbs` and denominator — which is
+strictly weaker than the value-metered `PolyRatCodes`: the gate's
+rationals may have Gödel codes exponential in the rung, day and sentence index, as the
+universal machine's stage table does. A caller holding a fuel certificate crosses by
+`DigitRatCodes.ofPolyRatCodes` followed by `DigitRatCodes.toMachine`.
 Paper node: `thm:ob` -/
 structure OccamThresholdEmission {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) : Prop where
-  threshold_sum_codes : PolyRatCodes (fun z ↦ obEmitBase U z + obEmitBase U z)
-  inverse_width_codes : PolyRatCodes (fun z ↦ 1 / obEmitBase U z)
+  threshold_sum_codes : MachineRatCodes (fun z ↦ obEmitBase U z + obEmitBase U z)
+  inverse_width_codes : MachineRatCodes (fun z ↦ 1 / obEmitBase U z)
 
 /-- A fixed prefix program that negates the decoded sentence. The sole semantic content is
 the standard additive complexity overhead; it contains no prices or Occam conclusion.
@@ -164,65 +196,52 @@ lemma obBuySig_rank_le {κ : Sentence → ℕ}
   · simp [obBuySig, h]
   · simp [obBuySig, h]
 
-/-- A varying sentence index and a separately varying quotation day still form a
-polynomial segment stream when both selectors and the sentence progression are fueled. -/
-lemma PolySegStream.serialize_price_sequence_at_comp
-    {φ : ℕ → Sentence} (hφ : PolySentenceCodes φ)
-    {cs cd : Nat.Partrec.Code} {sf df : ℕ → ℕ}
-    (hs : PolyFueled cs sf) (hd : PolyFueled cd df) :
-    PolySegStream (fun x ↦ (EF.price (φ (sf x)) (df x)).serialize) := by
-  obtain ⟨cφ, hφc⟩ := hφ
-  have htok : PolyTokenStream (fun x ↦
-      [0, Encodable.encode (φ (sf x)), df x]) :=
-    (PolyTokenStream.const 0).append
-      ((PolyTokenStream.polyTok (hφc.comp hs)).append
-        (PolyTokenStream.polyTok hd))
-  exact PolySegStream.of_eq (PolySegStream.ofTokenStream htok) (fun x ↦ by
-    simp [EF.serialize])
+/-- Literal segment emission for the padded Occam buy gate, at `def:ec`'s own machine class.
 
-/-- Literal polynomial segment emission for the padded Occam buy gate. -/
-lemma obBuySig_polySegStream {κ : Sentence → ℕ}
+The three reindexers are still `PolyFueled` hypotheses, converted to unary rulers on the
+spot by `UnaryRuler.of_polyFueled`; every caller in this file supplies a projection, and the
+fuel form is what the surrounding arithmetic (`addc_polyFueled`, `subc_polyFueled`) is
+stated at. The sentence's price block comes from the machine combinator
+`MachineSpliceStream.serialize_price`; no fuel-side price helper is involved. -/
+lemma obBuySig_machineSpliceStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U)
     {cj ci cn : Nat.Partrec.Code} {jf if_ nf : ℕ → ℕ}
     (hj : PolyFueled cj jf) (hi : PolyFueled ci if_) (hn : PolyFueled cn nf) :
-    PolySegStream (fun x ↦
+    MachineSpliceStream (fun x ↦
       (obBuySig U (jf x + 1) (if_ x) (nf x)).serialize) := by
-  have hinput : PolyFueled _ (fun x ↦ Nat.pair (jf x) (Nat.pair (nf x) (if_ x))) :=
-    hj.pair (hn.pair hi)
-  have hsumCodes : PolyRatCodes (fun x ↦
+  have hinput : UnaryRuler (fun x ↦ Nat.pair (jf x) (Nat.pair (nf x) (if_ x))) :=
+    UnaryRuler.of_polyFueled (hj.pair (hn.pair hi))
+  have hsumCodes : MachineRatCodes (fun x ↦
       obBase U (jf x + 1) (nf x) (if_ x) +
-        obBase U (jf x + 1) (nf x) (if_ x)) := by
-    obtain ⟨c, hc⟩ := emit.threshold_sum_codes
-    exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by
-      simp [obEmitBase])⟩
-  have hinvCodes : PolyRatCodes (fun x ↦
-      1 / obBase U (jf x + 1) (nf x) (if_ x)) := by
-    obtain ⟨c, hc⟩ := emit.inverse_width_codes
-    exact ⟨_, (hc.comp hinput).of_eq (fun x ↦ by
-      simp [obEmitBase])⟩
-  have hprice := PolySegStream.serialize_price_sequence_at_comp
-    U.sentence_codes hi hn
-  have hsum : PolySegStream (fun x ↦
+        obBase U (jf x + 1) (nf x) (if_ x)) :=
+    (emit.threshold_sum_codes.comp hinput).of_eq (fun x ↦ by
+      simp [obEmitBase])
+  have hinvCodes : MachineRatCodes (fun x ↦
+      1 / obBase U (jf x + 1) (nf x) (if_ x)) :=
+    (emit.inverse_width_codes.comp hinput).of_eq (fun x ↦ by
+      simp [obEmitBase])
+  have hprice := MachineSpliceStream.serialize_price U.sentence_codes
+    (UnaryRuler.of_polyFueled hi)
+    (MachineDigits.ofUnaryRuler (UnaryRuler.of_polyFueled hn))
+  have hsum : MachineSpliceStream (fun x ↦
       (EF.const (obBase U (jf x + 1) (nf x) (if_ x) +
         obBase U (jf x + 1) (nf x) (if_ x))).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp hsumCodes)
-  have hinv : PolySegStream (fun x ↦
+    MachineSpliceStream.serialize_const_write hsumCodes.toMachineDigits
+  have hinv : MachineSpliceStream (fun x ↦
       (EF.const (1 / obBase U (jf x + 1) (nf x) (if_ x))).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp hinvCodes)
-  have hlive : PolySegStream (fun x ↦
+    MachineSpliceStream.serialize_const_write hinvCodes.toMachineDigits
+  have hlive : MachineSpliceStream (fun x ↦
       (buyIndEF (U.sentence (if_ x))
         (obBase U (jf x + 1) (nf x) (if_ x))
         (obBase U (jf x + 1) (nf x) (if_ x)) (nf x)).serialize) := by
-    have hraw := PolySegStream.serialize_mul
-      (PolySegStream.serialize_add hsum
-        (PolySegStream.serialize_mul
-          (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const (-1)))
+    have hraw := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_add hsum
+        (MachineSpliceStream.serialize_mul
+          (MachineSpliceStream.serialize_const (-1))
           hprice)) hinv
-    simpa [buyIndEF] using PolySegStream.serialize_clip01 hraw
-  have hzero : PolySegStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 0)
+    simpa [buyIndEF] using MachineSpliceStream.serialize_clip01 hraw
+  have hzero : MachineSpliceStream (fun _ : ℕ ↦ (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
   have hstart : PolyFueled _ (fun x ↦ obStart (jf x + 1) (if_ x)) :=
     (hadd.comp (hj.succ_comp.pair
@@ -230,11 +249,12 @@ lemma obBuySig_polySegStream {κ : Sentence → ℕ}
         (fun x ↦ by
           simp only [Nat.unpair_pair, obStart]
           omega)
-  have htest : PolyFueled _ (fun x ↦
+  have htest : UnaryRuler (fun x ↦
       nf x + 1 - obStart (jf x + 1) (if_ x)) :=
-    (subc_polyFueled.comp (hn.succ_comp.pair hstart)).of_eq
-      (fun x ↦ by simp only [Nat.unpair_pair])
-  refine PolySegStream.of_eq (PolySegStream.ifZero hzero hlive htest) ?_
+    UnaryRuler.of_polyFueled
+      ((subc_polyFueled.comp (hn.succ_comp.pair hstart)).of_eq
+        (fun x ↦ by simp only [Nat.unpair_pair]))
+  refine MachineSpliceStream.of_eq (MachineSpliceStream.ifZero hzero hlive htest) ?_
   intro x
   by_cases hpad : nf x < obStart (jf x + 1) (if_ x)
   · have ht : nf x + 1 - obStart (jf x + 1) (if_ x) = 0 := by omega
@@ -394,7 +414,13 @@ lemma obSentenceEF_rank_le {κ : Sentence → ℕ}
 
 /-! ## Literal token emission -/
 
-/-- Any polynomially fueled natural stream has polynomially fueled rational-cast tokens. -/
+/-- Any polynomially fueled natural stream has polynomially fueled rational-cast tokens.
+
+**A fuel-side lemma with a producer-side consumer outside this file**: the Occam gate
+compiler here runs at `ratNatCast_machineDigits` below, and this lemma's one consumer is
+`matchFeat_paired` (`Construction/Quotation/DeferralFibre.lean`), which reaches
+`MachineRatCodes` through it — `DigitRatCodes.ofPolyRatCodes` then `.toMachine`. That route
+has no machine-direct replacement, `MachineDigits` not being a `MachineRatCodes`. -/
 lemma ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
     (hf : PolyFueled cf f) : PolyRatCodes (fun x ↦ ((f x : ℕ) : ℚ)) := by
   obtain ⟨cadd, hadd⟩ := addc_polyFueled
@@ -404,6 +430,19 @@ lemma ratNatCast_codes_of_polyFueled {cf : Nat.Partrec.Code} {f : ℕ → ℕ}
   simp only [Nat.unpair_pair]
   congr 1
   omega
+
+/-- The flat code of a ruler-measured natural, read as a rational, is a machine-metered
+digit block: `⌜(n : ℚ)⌝ = ⟪2n, 1⟫` (`encode_rat_natCast`), so it is `MachineDigits.natPair`
+of the doubled ruler and the constant `1`.  This is what `MachineSpliceStream`'s constant
+leaf consumes, and it replaces the fuel-metered `PolyRatCodes` rational-cast helper: nothing
+here bounds `f`'s value. -/
+lemma ratNatCast_machineDigits {f : ℕ → ℕ} (hf : UnaryRuler f) :
+    MachineDigits (fun x ↦ Encodable.encode (((f x : ℕ) : ℚ))) :=
+  ((MachineDigits.ofUnaryRuler (hf.add hf)).natPair
+      (MachineDigits.ofUnaryRuler (UnaryRuler.const 1))).of_eq (fun x ↦ by
+    rw [encode_rat_natCast]
+    congr 1
+    omega)
 
 /-- One historical arm-chain multiplication block. -/
 def obArmBlock {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
@@ -443,54 +482,49 @@ lemma serialize_obSentenceEF {κ : Sentence → ℕ}
 
 /-- Segment emitter for the variable-width padded historical arm block. The input is
 `⟨⟨⟨n,i⟩,j'⟩,d⟩`; only `i`, `j'`, and historical day `d` enter the block. -/
-lemma obArmBlock_polySegStream {κ : Sentence → ℕ}
+lemma obArmBlock_machineSpliceStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
-    PolySegStream (fun x ↦ obArmBlock U
+    MachineSpliceStream (fun x ↦ obArmBlock U
       (x.unpair.1.unpair.2 + 1)
       x.unpair.1.unpair.1.unpair.2 x.unpair.2) := by
   have hz : PolyFueled _ (fun x ↦ x.unpair.1.unpair.1) :=
     PolyFueled.left.comp PolyFueled.left
-  have hsig := obBuySig_polySegStream U emit
+  have hsig := obBuySig_machineSpliceStream U emit
     (PolyFueled.right.comp PolyFueled.left)
     (PolyFueled.right.comp hz) PolyFueled.right
-  have hone := PolySegStream.serialize_oneMinus hsig
-  refine PolySegStream.of_eq
-    (hone.append (PolySegStream.ofTokenStream (PolyTokenStream.const 3))) ?_
+  have hone := MachineSpliceStream.serialize_oneMinus hsig
+  refine MachineSpliceStream.of_eq
+    (hone.append (MachineSpliceStream.tag 3 (by norm_num))) ?_
   intro x
   simp [obArmBlock]
 
 /-- Segment emitter for one rung chunk of one sentence trade. The input is
 `⟨⟨n,i⟩,j'⟩`. -/
-lemma obRungChunk_polySegStream {κ : Sentence → ℕ}
+lemma obRungChunk_machineSpliceStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
-    PolySegStream (fun m ↦
+    MachineSpliceStream (fun m ↦
       (obCoef U (m.unpair.2 + 1) m.unpair.1.unpair.2
         m.unpair.1.unpair.1).serialize ++ [2]) := by
   have hday : PolyFueled _ (fun m ↦ m.unpair.1.unpair.1) :=
     PolyFueled.left.comp PolyFueled.left
   have hidx : PolyFueled _ (fun m ↦ m.unpair.1.unpair.2) :=
     PolyFueled.right.comp PolyFueled.left
-  obtain ⟨cmul, hmul⟩ := mul_polyFueled
-  have hj1 := PolyFueled.right.succ_comp
-  have hsq : PolyFueled _ (fun m ↦ (m.unpair.2 + 1) ^ 2) :=
-    (hmul.comp (hj1.pair hj1)).of_eq (fun m ↦ by
-      simp only [Nat.unpair_pair]
-      ring)
-  have segA : PolySegStream (fun m ↦
+  have hsq : UnaryRuler (fun m ↦ (m.unpair.2 + 1) ^ 2) :=
+    (UnaryRuler.unpairSnd.succ.mul UnaryRuler.unpairSnd.succ).of_eq (fun m ↦ by ring)
+  have segA : MachineSpliceStream (fun m ↦
       (EF.const ((((m.unpair.2 + 1) ^ 2 : ℕ) : ℚ))).serialize) :=
-    PolySegStream.ofTokenStream
-      (PolyTokenStream.serialize_const_comp
-        (ratNatCast_codes_of_polyFueled hsq))
-  have segB : PolySegStream (fun _ : ℕ ↦
+    MachineSpliceStream.serialize_const_write (ratNatCast_machineDigits hsq)
+  have segB : MachineSpliceStream (fun _ : ℕ ↦
       [1, Encodable.encode ((1 : ℚ))]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
-  have segC := PolySegStream.concatVar (obArmBlock_polySegStream U emit) hday
-  have segD := obBuySig_polySegStream U emit PolyFueled.right hidx hday
-  have segE : PolySegStream (fun _ : ℕ ↦ [3, 3, 2]) :=
-    PolySegStream.ofTokenStream ((PolyTokenStream.const 3).append
-      ((PolyTokenStream.const 3).append (PolyTokenStream.const 2)))
-  refine PolySegStream.of_eq
+    (MachineSpliceStream.serialize_const (1 : ℚ)).of_eq (fun _ ↦ rfl)
+  have segC := MachineSpliceStream.concatVar (obArmBlock_machineSpliceStream U emit)
+    (UnaryRuler.of_polyFueled hday)
+  have segD := obBuySig_machineSpliceStream U emit PolyFueled.right hidx hday
+  have segE : MachineSpliceStream (fun _ : ℕ ↦ [3, 3, 2]) :=
+    ((MachineSpliceStream.tag 3 (by norm_num)).append
+      ((MachineSpliceStream.tag 3 (by norm_num)).append
+        (MachineSpliceStream.tag 2 (by norm_num)))).of_eq (fun _ ↦ rfl)
+  refine MachineSpliceStream.of_eq
     ((((segA.append segB).append segC).append segD).append segE) ?_
   intro m
   rw [serialize_obCoef, serialize_armChain_obBuy]
@@ -498,24 +532,20 @@ lemma obRungChunk_polySegStream {κ : Sentence → ℕ}
     List.append_assoc]
 
 /-- One fully framed sentence trade `⟨coefficient, sentence⟩`, indexed by `⟨n,i⟩`. -/
-lemma obTradeChunk_polySegStream {κ : Sentence → ℕ}
+lemma obTradeChunk_machineSpliceStream {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
-    PolySegStream (fun z ↦ serializeTrades
+    MachineSpliceStream (fun z ↦ serializeTrades
       [(obSentenceEF U z.unpair.1 z.unpair.2 z.unpair.1,
         U.sentence z.unpair.2)]) := by
-  have seg0 : PolySegStream (fun _ : ℕ ↦
+  have seg0 : MachineSpliceStream (fun _ : ℕ ↦
       [1, Encodable.encode ((0 : ℚ))]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 1).append (PolyTokenStream.const _))
-  have segRungs := PolySegStream.concatVar
-    (obRungChunk_polySegStream U emit) PolyFueled.left
-  obtain ⟨cs, hs⟩ := U.sentence_codes
-  have segTail : PolySegStream (fun z ↦
+    (MachineSpliceStream.serialize_const (0 : ℚ)).of_eq (fun _ ↦ rfl)
+  have segRungs := MachineSpliceStream.concatVar
+    (obRungChunk_machineSpliceStream U emit) UnaryRuler.unpairFst
+  have segTail : MachineSpliceStream (fun z ↦
       [6, Encodable.encode (U.sentence z.unpair.2)]) :=
-    PolySegStream.ofTokenStream
-      ((PolyTokenStream.const 6).append
-        (PolyTokenStream.polyTok (hs.comp PolyFueled.right)))
-  refine PolySegStream.of_eq ((seg0.append segRungs).append segTail) ?_
+    MachineSpliceStream.tradeSlot U.sentence_codes UnaryRuler.unpairSnd
+  refine MachineSpliceStream.of_eq ((seg0.append segRungs).append segTail) ?_
   intro z
   rw [serializeTrades, serializeTrades, serialize_obSentenceEF]
   simp [Nat.unpair_pair]
@@ -532,15 +562,25 @@ def obTrader {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ) : Trader
       obtain ⟨i, hi, rfl⟩ := List.mem_map.mp hp
       exact obSentenceEF_rank_le U n i n }
 
-/-- The Occam trader has a token-indexed polynomial emitter. Both nested triangular runs
-go through the variable-width prefix scanner, so the padding branches and the varying
-rational tokens are emitted literally rather than assumed of the strategy wholesale. -/
-lemma obTrader_ecTok {κ : Sentence → ℕ}
+/-- **The Occam trader is efficiently computable at `def:ec`'s own class.** Both nested
+triangular runs go through the variable-width prefix scanner: the concatenating fold is
+`MachineTokenStream.concatVar` with `TokenFold.concatUnaryPair_mem_FP`, which
+`MachineSpliceStream.concatVar` is built on, and the segment rulers `UnaryRuler.segPrefix` /
+`.segLocate` supply its widths. So the padding branches and the varying rational tokens are
+emitted literally rather than assumed of the strategy wholesale.
+
+The **data premises are machine classes** and the conclusion is `Complexity.FP` of the unary
+day, which is why every endpoint below binds `[IsLogicalInductor P DP]`. Fuel certificates do
+appear *inside* the derivation, constructed rather than assumed: `obRungChunk_machineSpliceStream`
+builds `PolyFueled` projections for its arithmetic helpers and hands them to
+`obBuySig_machineSpliceStream`, which builds further ones. That is the calculus doing
+producer-side work on index arithmetic; nothing on this lemma's boundary is fuel metered. -/
+lemma obTrader_ec {κ : Sentence → ℕ}
     (U : PrefixMachinePresentation κ) (emit : OccamThresholdEmission U) :
-    EfficientlyComputableTok (obTrader U) := by
-  have chunks := PolySegStream.concatVar
-    (obTradeChunk_polySegStream U emit) PolyFueled.id
-  refine ecTok_of_segStream _ (PolySegStream.of_eq chunks ?_)
+    EfficientlyComputable (obTrader U) := by
+  have chunks := MachineSpliceStream.concatVar
+    (obTradeChunk_machineSpliceStream U emit) UnaryRuler.id
+  refine MachineSpliceStream.ec _ (MachineSpliceStream.of_eq chunks ?_)
   intro n
   show _ = serializeTrades ((obTrader U).strat n).trades
   rw [show ((obTrader U).strat n).trades =
@@ -1028,6 +1068,12 @@ lemma obTrader_exploits {κ : Sentence → ℕ}
 
 /-- Lower half of `thm:ob`: one fixed constant works for every sentence that remains
 propositionally possible at every deductive stage.
+
+The criterion binder is `def:ec`'s own machine quantifier, because the exploiting trader is
+certified there (`obTrader_ec`) and no map back from `EfficientlyComputable` to the fuel
+class is proved or claimed.  Data premises at the machine classes (`U.sentence_codes`, `emit`) paired with a
+criterion premise at `def:ec` is the paper's own statement of `thm:ob`, which reads `def:ec`
+on both sides.
 Paper node: `thm:ob` -/
 theorem lic_occam_lower
     {κ : Sentence → ℕ} (U : PrefixMachinePresentation κ)
@@ -1072,8 +1118,8 @@ theorem lic_occam_lower
         exists_ob_fire_of_low_limit U P DP hworld hj hlowi
       obtain ⟨v, hvcons, hv⟩ := hpossible n
       exact ⟨i, n, v, hlive, ha, hprice, hvcons, by simpa only [hi] using hv⟩
-    exact IsLogicalInductor.noExploitTok (P := P) (DP := DP)
-      (obTrader U) (obTrader_ecTok U emit)
+    exact IsLogicalInductor.noExploit (P := P) (DP := DP)
+      (obTrader U) (obTrader_ec U emit)
       (obTrader_exploits U P DP hfire)
 
 /-- `thm:ob` (Occam Bounds). One fixed positive constant simultaneously supplies the

@@ -163,10 +163,23 @@ end SourceCutCertificate
 It retains efficient emission, carries the executable cut proof program, and records
 pre-extension vocabulary ownership.  The latter is a theorem about the emitted syntax;
 the universal registry must enforce it by decoding the emitter output before activation.
-Unlike `PresentedLUVSeq`, this object does not assume semantic-prime reflection. -/
+Unlike `PresentedLUVSeq`, this object does not assume semantic-prime reflection.
+
+**Inhabitation, disclosed.**  No constructed inhabitant of this structure exists in the
+development, and its satisfiability is *open*.  Three of the four fields are routine — the
+handle families of `Construction/SemanticExtension/Prime.lean` supply `threshold_codes` and
+`old_language`, and `emitter_spec` is a total substitution program.  The fourth,
+`cut_certificate : SourceCutCertificate DP toLUV`, asks every world consistent with the
+completed theory to rationally cut every member of the family, at a `DP` the caller chooses;
+the naive universal route to it is *refuted* by
+`no_nonvacuous_worldValued_presented_of_rpn` (`Prime.lean`), so an inhabitant would have to
+name a specific process with the cut property and prove it.  Everything stated over this
+structure is therefore conditional on the caller supplying one; the interface is
+proof-carrying by design, and this note is the reason it is not accompanied by an `N+`
+witness the way `PresentedLUVSeq` is (`presentedLUVSeq`). -/
 structure CertifiedSourceLUVSeq (DP : DeductiveProcess) where
   toLUV : ℕ → LUV
-  threshold_codes : LUV.RpnThresholdCodeSeq toLUV
+  threshold_codes : LUV.MachineThresholdCodeSeq toLUV
   /-- Total compiler for arbitrary rational threshold queries.  The paper supplies this by
   syntactically substituting the rational into the e.c.-emitted one-variable LUV formula;
   `RpnThresholdCodeSeq` separately certifies polynomial emission on the expectation grids. -/
@@ -203,7 +216,7 @@ noncomputable def toPresented (X : CertifiedSourceLUVSeq DP) : PresentedLUVSeq w
   thresholdSchema := X.thresholdSchema
   source_schema := X.thresholdSchema_source
   toLUV := semanticHandleLUVSeq X.thresholdSchema
-  threshold_codes := semanticHandleLUVSeq_rpnThresholdCodeSeq X.thresholdSchema
+  threshold_codes := semanticHandleLUVSeq_machineThresholdCodeSeq X.thresholdSchema
   threshold_named := fun _ _ => rfl
 
 @[simp] lemma toPresented_gt (X : CertifiedSourceLUVSeq DP) (n : ℕ) (r : ℚ) :

@@ -19,10 +19,10 @@ which is likewise polynomial in the fuel for each fixed code. It is not the boun
 machine's step count is measured against: that is `codeMachineTime`
 (`Framework/Machine/EvalnRegBound.lean`), built from `evalnArithmeticCost`, `codeEvalBound` and
 the two window bounds independently of anything here. The chain from a fuel certificate to
-membership in the machine class runs through `Framework/MachineEfficiency.lean`.
+membership in `def:ec` runs through `Framework/Efficiency.lean`.
 
 **Why the statement is over fuel rather than over the day** (`dd:fuel`). `PolyFueled c f`
-supplies a polynomial fuel bound in the numeric day `n`, and `EfficientlyComputable` supplies
+supplies a polynomial fuel bound in the numeric day `n`, and `PolyFueledTrader` supplies
 the explicit clock `a * (n + 1) ^ k + a`; phrasing the step count over fuel is what lets those
 polynomials compose. Since the paper presents the day in **unary**, polynomial in `n` is
 polynomial in the input length.

@@ -1,5 +1,5 @@
 import LogicalInduction.Framework.Compactness
-import LogicalInduction.Framework.MachineEfficiency
+import LogicalInduction.Framework.Efficiency
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.Introspection
 import LogicalInduction.Framework.Emission.WriteOut
@@ -10,8 +10,8 @@ import LogicalInduction.Framework.Emission.WriteOut
 `Properties/FinitePerturbations.lean` records that the appendix proof of `thm:ifp` has a
 gap.  This file develops the *semantic* refutation: the unrestricted statement
 
-    ∀ P P' DP N, IsMachineLogicalInductor P DP → ComputableMarket P' →
-      (∀ n ≥ N, P n = P' n) → IsMachineLogicalInductor P' DP
+    ∀ P P' DP N, IsLogicalInductor P DP → ComputableMarket P' →
+      (∀ n ≥ N, P n = P' n) → IsLogicalInductor P' DP
 
 is false, because a day-`0` perturbation may publish, as prices of otherwise inert advice
 atoms, the very bits that separate the computable from the efficiently computable.
@@ -482,20 +482,20 @@ lemma rpn_schedAtom (n : ℕ) : rpn (schedAtom n) = [Nat.pair 7 n + 5] := rfl
 lemma rpn_signAtom (n : ℕ) : rpn (signAtom n) = [Nat.pair 8 n + 5] := rfl
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_schedAtom : BigSentenceCodes schedAtom := by
+lemma rpnSentenceCodes_schedAtom : MachineSentenceCodes schedAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 7).pair PolyFueled.id).addConst 5
-  exact BigSentenceCodes.ofCanonical
-    ((BigTokenStream.ofPolySegStream
+  exact MachineSentenceCodes.ofCanonical
+    (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
       (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
-      (fun n => (rpn_schedAtom n).symm))
+      (fun n => (rpn_schedAtom n).symm)))
 
 /-- Kind `C`; hypotheses `(b)` the `Computable`/`RpnSplice` emitter suite. -/
-lemma rpnSentenceCodes_signAtom : BigSentenceCodes signAtom := by
+lemma rpnSentenceCodes_signAtom : MachineSentenceCodes signAtom := by
   obtain ⟨c, hc⟩ := ((PolyFueled.const 8).pair PolyFueled.id).addConst 5
-  exact BigSentenceCodes.ofCanonical
-    ((BigTokenStream.ofPolySegStream
+  exact MachineSentenceCodes.ofCanonical
+    (BigTokenStream.toMachine ((BigTokenStream.ofPolySegStream
       (PolySegStream.ofTokenStream (PolyTokenStream.polyTok hc))).of_eq
-      (fun n => (rpn_signAtom n).symm))
+      (fun n => (rpn_signAtom n).symm)))
 
 /-! ## The perturbed market
 
@@ -727,46 +727,46 @@ lemma adviceTrader_value_on_sched (sa si χ : ℕ → Sentence) (V : History)
   · rw [if_pos h, if_pos h]; ring
   · rw [if_neg h, if_neg h]; ring
 
-/-- **The advice trader is machine-efficient**, given `BigSentenceCodes` certificates for
-the two advice-atom families and for the traded diagonal.
+/-- **The advice trader is efficiently computable**, given `MachineSentenceCodes` certificates
+for the two advice-atom families and for the traded diagonal.
 
 Route note: the coefficient carries *price* leaves, which is the whole point of the
 construction, so the price-free entry points
-(`EfficientlyComputable.ofSingleTradeBlocks` / `ofTradeBlocks`, both of which demand
-`EF.priceFree`) do not apply.  The general splice capstone `BigSpliceStream.ec` does, with
-`BigSpliceStream.serialize_price` supplying each price leaf's sentence slot from the
-corresponding advice-atom code stream.
-Kind `C`; hypotheses `(a)`, `(b)` the `RpnSplice` combinator suite. -/
+(`EfficientlyComputable.ofSingleTradeBlocksBig` / `ofTradeBlocksBig`, both of which demand
+`EF.priceFree`) do not apply.  The general splice capstone `MachineSpliceStream.ec` does,
+with `MachineSpliceStream.serialize_price` supplying each price leaf's sentence slot from
+the corresponding advice-atom code stream.
+Kind `C`; hypotheses `(a)`, `(b)` the `SpliceMachine` combinator suite. -/
 lemma adviceTrader_efficient {sa si χ : ℕ → Sentence}
-    (hsa : BigSentenceCodes sa) (hsi : BigSentenceCodes si) (hχ : BigSentenceCodes χ) :
-    MachineEfficientTrader (adviceTrader sa si χ) := by
-  have hday : PolyFueled (Nat.Partrec.Code.const 0) (fun _ : ℕ => 0) := PolyFueled.const 0
-  have hgate : BigSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
-    BigSpliceStream.serialize_price hsa PolyFueled.id hday
-  have hsign : BigSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
-    BigSpliceStream.serialize_price hsi PolyFueled.id hday
-  have hcoef : BigSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
-    BigSpliceStream.serialize_mul hgate
-      (BigSpliceStream.serialize_add
-        (BigSpliceStream.serialize_mul (BigSpliceStream.serialize_const 2) hsign)
-        (BigSpliceStream.serialize_const (-1)))
-  have htrade : BigSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
-    BigSpliceStream.tradeSlot hχ PolyFueled.id
-  refine EfficientlyComputable.toMachine
-    (BigSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_)))
+    (hsa : MachineSentenceCodes sa) (hsi : MachineSentenceCodes si)
+    (hχ : MachineSentenceCodes χ) :
+    EfficientlyComputable (adviceTrader sa si χ) := by
+  have hday : MachineDigits (fun _ : ℕ => 0) := MachineDigits.const 0
+  have hgate : MachineSpliceStream (fun n => (EF.price (sa n) 0).serialize) :=
+    MachineSpliceStream.serialize_price hsa UnaryRuler.id hday
+  have hsign : MachineSpliceStream (fun n => (EF.price (si n) 0).serialize) :=
+    MachineSpliceStream.serialize_price hsi UnaryRuler.id hday
+  have hcoef : MachineSpliceStream (fun n => (adviceCoefficient sa si n).serialize) :=
+    MachineSpliceStream.serialize_mul hgate
+      (MachineSpliceStream.serialize_add
+        (MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_const 2) hsign)
+        (MachineSpliceStream.serialize_const (-1)))
+  have htrade : MachineSpliceStream (fun n => [6, Encodable.encode (χ n)]) :=
+    MachineSpliceStream.tradeSlot hχ UnaryRuler.id
+  refine MachineSpliceStream.ec _ ((hcoef.append htrade).of_eq (fun n => ?_))
   simp [adviceTrader, serializeTrades]
 
 /-! ## Assembly
 
-The reduction below is unconditional and complete: given a machine logical inductor, a
-computable market agreeing with it from day `1` on, a machine-efficient trader with the
+The reduction below is unconditional and complete: given a logical inductor, a
+computable market agreeing with it from day `1` on, an efficiently computable trader with the
 two interface laws, and the scheduled-day dichotomy, the unrestricted finite-perturbation
 statement is false.  Every one of those inputs is supplied by this file except the
 concrete witness, which lives downstream (see the closing section).
 -/
 
-/-- **The refutation, modulo the advice construction.**  Given a machine logical inductor
-`P`, a computable market `P'` agreeing with it from day `1` on, and a machine-efficient
+/-- **The refutation, modulo the advice construction.**  Given a logical inductor
+`P`, a computable market `P'` agreeing with it from day `1` on, and an efficiently computable
 trader whose day-`n` position is the advice-signed unit position in `χ n` on schedule and
 empty off it, the unrestricted finite-perturbation statement is false.
 
@@ -777,10 +777,10 @@ names it in the exemption list that lets an inventory member go unannotated.
 Kind `C`; hypotheses `(a)`. -/
 theorem not_overgeneral_ifp_of_advice
     (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader)
-    (hLI : IsMachineLogicalInductor P DP)
+    (hLI : IsLogicalInductor P DP)
     (hP' : ComputableMarket P')
     (hagree : ∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ)
-    (hTr : MachineEfficientTrader Tr)
+    (hTr : EfficientlyComputable Tr)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hdicho : ∀ j, Dichotomy P' DP χ (sched P' DP χ j))
     (hzero : ∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
@@ -788,16 +788,16 @@ theorem not_overgeneral_ifp_of_advice
     (hval : ∀ (v : PCWorld) j, (Tr.strat (sched P' DP χ j)).value P' v.payout
       = roundValue P' χ v (sched P' DP χ j)) :
     ¬ ∀ (Q Q' : History) (DQ : DeductiveProcess) (N : ℕ),
-        IsMachineLogicalInductor Q DQ → ComputableMarket Q' →
-        (∀ n, N ≤ n → ∀ φ, Q n φ = Q' n φ) → IsMachineLogicalInductor Q' DQ := by
+        IsLogicalInductor Q DQ → ComputableMarket Q' →
+        (∀ n, N ≤ n → ∀ φ, Q n φ = Q' n φ) → IsLogicalInductor Q' DQ := by
   intro hifp
-  have hLI' : IsMachineLogicalInductor P' DP := hifp P P' DP 1 hLI hP' hagree
+  have hLI' : IsLogicalInductor P' DP := hifp P P' DP 1 hLI hP' hagree
   exact hLI'.noExploit Tr hTr
     (exploits Tr P' DP χ hdicho hP'.1 hworld hzero hval)
 
 /-! ## Where the witness lives
 
-The concrete existential this reduction consumes — a machine logical inductor with a
+The concrete existential this reduction consumes — a logical inductor with a
 `p = 1/2` paradox-resistance diagonal, together with the computability of its perturbed
 market — cannot be stated in this module.  It is built over the single market `paperDP` and
 the quotation layer, which live in `Construction/Paper/` and are §5 objects, and the module

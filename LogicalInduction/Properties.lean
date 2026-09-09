@@ -38,15 +38,17 @@ logical inductor without pulling in the §5 construction.
 
 The dominant pattern is the paper's: assume the property fails, construct a trader that
 exploits `P` under that assumption, certify the trader efficiently computable through the
-clocked interpreter (`dd:fuel`), and invoke the criterion. The `lic_*` consequences take
-`[IsLogicalInductor P DP]`, so `IsMachineLogicalInductor.toIsLogicalInductor` makes every
-one of them available at the machine class.
+clocked interpreter (`dd:fuel`), and invoke the criterion — the certificate crossing into
+`def:ec` once, through `IsLogicalInductor.noExploitTok` / `.noExploitDigit`
+(`Framework/Efficiency.lean`). The `lic_*` consequences take `[IsLogicalInductor P DP]`,
+`def:lic` at the paper's own quantifier.
 
 Three groups of results are stated differently, for one reason each:
 
-* A theorem whose *conclusion* is the criterion cannot use that instance and is stated at
-  `[IsMachineLogicalInductor P DP]` directly — `Properties.Conditioning`'s `*_machine`
-  forms, and `Properties.FinitePerturbations`' `machine_lic_iff_of_finiteSupportPerturbation`.
+* A theorem whose *conclusion* is the criterion needs its trader class closed under whatever
+  translation the proof performs, so it carries a `Complexity.FP` transport of its own —
+  `Properties.Conditioning`'s operational witnesses, and
+  `Properties.FinitePerturbations`' `lic_iff_of_finiteSupportPerturbation_ofPatches`.
 * `Properties.FinitePerturbationCounterexample` refutes a printed statement rather than
   rendering one, so it carries no provenance annotation of its own.
 * `Properties.LimitCoherence`'s Gaifman-measure results and the conditioning transduction
@@ -120,8 +122,7 @@ Three groups of results are stated differently, for one reason each:
 * `Properties.FinitePerturbationCounterexample` — the refutation of the *unrestricted*
   `thm:ifp`, modulo its advice construction.
 * `Properties.Conditioning` — `thm:scon`, in the fixed-prefix, gated and growing-prefix
-  forms, at both classes; the `*_machine` forms are canonical, and neither set follows from
-  the other.
+  forms, at `def:lic`'s own class throughout.
 * `Properties.ExpectationConvergence` — `thm:ec`: the day-`n` expectation is the price of
   the precision-`n` threshold bundle, trapped by `thm:affcoh` and made Cauchy by
   `lem:conluvapprox`.
@@ -142,7 +143,8 @@ Three groups of results are stated differently, for one reason each:
   `thm:st` because it is the approximation datum `Properties.SelfTrust` states those four
   nodes over.
 * `Properties.SelfTrust` — `thm:cee`, `thm:ceu`, `thm:ccee`, `thm:st`, and the deferral
-  functions (`def:deferralfunc`) they quantify over, together with the bounded schedule
-  (`deadlineRun`, `scheduledMatch`) by which a machine tests the undecidable deferral
-  deadline; both `Construction/` lanes that read a deferral schedule read it from here.
+  functions (`def:deferralfunc`) they quantify over, together with the day-bounded schedule
+  (`scheduledValue`, `scheduledMatch`, `deadlineRun`) by which a machine reads a deferral
+  deadline off the graph test within its budget; both `Construction/` lanes that read a
+  deferral schedule read it from here.
 -/

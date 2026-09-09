@@ -13,7 +13,9 @@ Renders the paper's LUV-expectation tail: `thm:expprovind` (tex:1753), `thm:loe`
 `cworlds(Θ)`, with `WorldValued` the paper's own sup-definition of `W(X)`.  The `_ofDetermined`
 forms are the `def:affthmval` corollaries consumed by
 `thm:recurringunbiasednessexp`/`thm:wubexp`/`thm:prandexp`.  `linearityLUVComb` is the paper's
-combination `aX + bY − Z`, from which `thm:loe` is derived exactly as `app:loe` does.
+combination `aX + bY − Z`, from which `thm:loe` is derived exactly as `app:loe` does; its
+coefficients are the *features* that generate `⟨a⟩`, `⟨b⟩` from the market (`def:ece`), so
+the emission certificate charges their syntax rather than the coefficient values' digits.
 
 The remaining endpoints discharge the finite-precision world hypothesis of
 `Properties/ExpectationAffine` — every world consistent with the day-`n` deductive stage values
@@ -34,6 +36,15 @@ rationals `numᵢ/denᵢ`, so the `_arith` endpoints carry no world-value premis
 Consumed by `AxiomAudit.lean` (all `_arith`, `_arith_unconditional` and
 `lic_expect_combination_provind_*`); `docs/trust-surface.html` lists
 `lic_expect_combination_provind_ge` as the printed display of `thm:expprovind`.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -246,42 +257,73 @@ theorem lic_expect_combination_provind_zero
 
 /-! ## Linearity of expectation (`thm:loe`) -/
 
-/-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`. -/
-def linearityLUVComb (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
+/-- The paper's linearity LUV-combination `aₙXₙ + bₙYₙ − Zₙ`, with the coefficients
+carried as the **expressible features that generate them**.  The paper's `⟨a⟩`, `⟨b⟩` are
+bounded *ℙ-generable* sequences (tex:1701): by `def:ece` (tex:1218) each is the day-by-day
+value `âₙ(ℙ)` of an efficiently computable feature progression, and what a trader has to
+write down is that feature's syntax, not the value's digits.  Storing `.const (aₙ)` here
+instead would make the emission certificate `LUVCombination.BoundedSequence` carries write
+out the rational itself, which excludes ℙ-generable sequences whose values are long — the
+paper's own kind of example, `aₙ = 2^(−2ⁿ)`, has a short feature by repeated squaring and
+an exponentially long canonical numerator.  A client whose coefficients really are literal
+rationals passes `fun n => .const (a n)`. -/
+def linearityLUVComb (a b : ℕ → EF) (X Y Z : ℕ → LUV) (n : ℕ) : LUVCombination where
   const := .const 0
-  terms := [(.const (a n), X n), (.const (b n), Y n), (.const (-1), Z n)]
+  terms := [(a n, X n), (b n, Y n), (.const (-1), Z n)]
 
-lemma linearityLUVComb_expect (a b : ℕ → ℚ) (X Y Z : ℕ → LUV) (P : History) (n : ℕ) :
+/-- The combination's diagonal expectation, with each coefficient read at the value
+`LUVCombination.expect` gives it — its denotation at the market the combination is priced
+in. -/
+lemma linearityLUVComb_expect (a b : ℕ → EF) (X Y Z : ℕ → LUV) (P : History) (n : ℕ) :
     (linearityLUVComb a b X Y Z n).expect P n
-      = (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n - (Z n).expect P n := by
+      = (a n).denote P * (X n).expect P n + (b n).denote P * (Y n).expect P n
+        - (Z n).expect P n := by
   simp only [linearityLUVComb, LUVCombination.expect, LUVCombination.expectAt, LUV.expect,
     EF.denote_const, List.map_cons, List.map_nil, List.sum_cons, List.sum_nil]
   push_cast; ring
 
 /-- **Linearity of Expectation** (`thm:loe`), the paper's varying-sequence statement.  For
-efficiently generated bounded rational sequences `a, b` and ec sequences of `[0,1]`-LUVs `X, Y, Z`
-with `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` (encoded as the combination being valued `0`), the diagonal
+bounded ℙ-generable coefficient sequences and ec sequences of `[0,1]`-LUVs `X, Y, Z` with
+`Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` (encoded as the combination being valued `0`), the diagonal
 expectations are asymptotically linear.  Derived, as in the paper's own proof (`app:loe`), from
-`thm:expprovind` for the LUV-combination `aX+bY−Z`.  Efficiency (`BoundedSequence`) and
-representation (`WorldValued`, discharged from compact syntax in
+`thm:expprovind` for the LUV-combination `aX+bY−Z`.
+
+**The coefficients are the paper's ℙ-generable sequences, carried by their generating
+features.**  `a n` and `b n` are expressible features (`def:tf`) and the coefficient values
+are their denotations `(a n).denote P` at the market — which is what `def:ece` (tex:1218)
+means by ℙ-generable, and what `LUVCombination.expect` already reads a coefficient as.
+Boundedness and efficient generation are exactly what `h : BoundedSequence` carries: its
+`AffineCombination.PolySequence.coefficient_poly` field emits the *serialized feature*, so
+the cost charged is the feature's syntactic size, and its `bounded` field is `def:blcp`'s
+uniform `L¹` bound.  Taking `a b : ℕ → ℚ` and building `.const (a n)` instead — which this
+statement did until the C4-S06 finding — charges the emitter with writing the coefficient's
+digits, and so silently excludes ℙ-generable sequences with short features and long values
+(`2^(−2ⁿ)` by repeated squaring).  A client holding literal rationals recovers the old
+statement by passing `fun n => .const (a n)`, whose denotation is `(a n : ℝ)`.
+The printed node fixes *rational* coefficient sequences, and a feature denotes a real, so
+this statement also ranges over the ℝ-sequence case of `def:ece` — which the paper defines
+in the same breath (tex:1220: "ℙ-generable ℝ-sequences … are defined analogously").  That
+is a strengthening over the printed quantifier, not a different node.
+
+Representation (`WorldValued`, discharged from compact syntax in
 `Construction/LUV/Syntax.lean` and from arithmetic in `Construction/LUV/Presentation.lean`)
-enter as the disclosed hypotheses; `hdet0` is the paper's
-`Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` in the determined-value form of `def:affthmval`.
+enters as a disclosed hypothesis; `hdet0` is the paper's `Θ ⊢ Zₙ = aₙXₙ + bₙYₙ` in the
+determined-value form of `def:affthmval`.
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_seq
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
-    (a b : ℕ → ℚ) (X Y Z : ℕ → LUV)
+    (a b : ℕ → EF) (X Y Z : ℕ → LUV)
     (h : LUVCombination.BoundedSequence (linearityLUVComb a b X Y Z) P)
     (hwv : LUVCombination.WorldValued (linearityLUVComb a b X Y Z) DP)
     (hdet0 : LUVCombination.DeterminedViaTheory
       (linearityLUVComb a b X Y Z) P DP (fun _ => 0))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    AsympEq (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n)
+    AsympEq (fun n => (a n).denote P * (X n).expect P n + (b n).denote P * (Y n).expect P n)
       (fun n => (Z n).expect P n) := by
   have hzero := lic_expect_combination_provind_zero h hwv hdet0 hworld
   unfold AsympEq at hzero ⊢
-  have hfun : (fun n => (a n : ℝ) * (X n).expect P n + (b n : ℝ) * (Y n).expect P n
-      - (Z n).expect P n)
+  have hfun : (fun n => (a n).denote P * (X n).expect P n
+      + (b n).denote P * (Y n).expect P n - (Z n).expect P n)
       = (fun n => (linearityLUVComb a b X Y Z n).expect P n - 0) := by
     funext n; rw [linearityLUVComb_expect]; ring
   rw [hfun]; exact hzero
@@ -397,7 +439,7 @@ rational bound `c ≤ numᵢ/denᵢ`.  The remaining premises are the disclosed 
 threshold-code efficiency certificate and a logical inductor over the scheduled process.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).MachineThresholdCodes)
     (c : ℝ) (hc : c ≤ (L.value i : ℝ)) :
     AsympGE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -408,7 +450,7 @@ theorem lic_expectation_provind_arith (P : History) [IsLogicalInductor P (L.grid
 /-- Certified expectation provability induction, upper (`≤`) form.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).MachineThresholdCodes)
     (c : ℝ) (hc : (L.value i : ℝ) ≤ c) :
     AsympLE ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_le P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -419,7 +461,7 @@ theorem lic_expectation_provind_le_arith (P : History) [IsLogicalInductor P (L.g
 `dd:luv-arith` value forces the expectation sequence to it.
 Paper node: `thm:expprovind` -/
 theorem lic_expectation_provind_eq_arith (P : History) [IsLogicalInductor P (L.gridDP)]
-    (i : ℕ) (hcode : (toLUV i).RpnThresholdCodes)
+    (i : ℕ) (hcode : (toLUV i).MachineThresholdCodes)
     (c : ℝ) (hc : (L.value i : ℝ) = c) :
     AsympEq ((toLUV i).expectSeq P) (fun _ => c) :=
   lic_expectation_provind_eq P (L.gridDP) (toLUV i) hcode L.gridDP_hcons c
@@ -432,8 +474,8 @@ sole content is the plain rational identity `valueₖ = a·valueᵢ + b·value�
 Paper node: `thm:loe` -/
 theorem lic_linearity_of_expectation_arith (P : History) [IsLogicalInductor P (L.gridDP)]
     (a b : ℚ) (i j k : ℕ)
-    (hcodeI : (toLUV i).RpnThresholdCodes) (hcodeJ : (toLUV j).RpnThresholdCodes)
-    (hcodeK : (toLUV k).RpnThresholdCodes)
+    (hcodeI : (toLUV i).MachineThresholdCodes) (hcodeJ : (toLUV j).MachineThresholdCodes)
+    (hcodeK : (toLUV k).MachineThresholdCodes)
     (hlin : L.value k = a * L.value i + b * L.value j) :
     AsympEq (fun n => (a : ℝ) * (toLUV i).expect P n + (b : ℝ) * (toLUV j).expect P n)
       ((toLUV k).expectSeq P) :=
@@ -697,7 +739,8 @@ theorem lic_expectation_provind_arith_unconditional (i : ℕ) (c : ℝ)
     AsympGE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_arith (liaHistory (L.gridDP)) i
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i)))
     c hc
 
 /-- **Fully unconditional certified expectation provability induction (`≤`).**
@@ -707,7 +750,8 @@ theorem lic_expectation_provind_le_arith_unconditional (i : ℕ) (c : ℝ)
     AsympLE ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_le_arith (liaHistory (L.gridDP)) i
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i)))
     c hc
 
 /-- **Fully unconditional certified expectation provability induction (`=`).**
@@ -717,7 +761,8 @@ theorem lic_expectation_provind_eq_arith_unconditional (i : ℕ) (c : ℝ)
     AsympEq ((toLUV i).expectSeq (liaHistory (L.gridDP))) (fun _ => c) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_expectation_provind_eq_arith (liaHistory (L.gridDP)) i
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i)))
     c hc
 
 /-- **Fully unconditional certified linearity of expectation.**  The sole hypothesis is the
@@ -730,9 +775,12 @@ theorem lic_linearity_of_expectation_arith_unconditional (a b : ℚ) (i j k : �
       ((toLUV k).expectSeq (liaHistory (L.gridDP))) := by
   haveI := LIA_is_logical_inductor (L.gridDP) L.gridDP_computable
   exact L.lic_linearity_of_expectation_arith (liaHistory (L.gridDP)) a b i j k
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i))
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes j))
-    (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes k))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes i)))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes j)))
+    (RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodes.ofPolyThresholdCodes (toLUV_polyThresholdCodes k)))
     hlin
 
 end ComputableLUV

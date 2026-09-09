@@ -862,9 +862,9 @@ def semanticSchemaProductLUV (left right n : ℕ) : LUV :=
 
 /-- The schema-level product LUV carries the threshold-code certificate the expectation
 layer consumes. -/
-lemma semanticSchemaProductLUV_rpnThresholdCodeSeq (left right : ℕ) :
-    LUV.RpnThresholdCodeSeq (semanticSchemaProductLUV left right) := by
-  apply LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+lemma semanticSchemaProductLUV_machineThresholdCodeSeq (left right : ℕ) :
+    LUV.MachineThresholdCodeSeq (semanticSchemaProductLUV left right) := by
+  refine RpnSentenceCodes.toMachine (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq ?_)
   obtain ⟨c, hc⟩ := semanticProductAtom_mesh_encode_polyFueled left right
   exact ⟨c, hc.of_eq (fun _ => rfl)⟩
 

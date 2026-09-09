@@ -50,6 +50,15 @@ data, at an explicit `(clock : PatientSettlementClock …)` binder.  The LUV lan
 normalized threshold mesh, which is only approximately determined, so its clock tests
 agreement within the vanishing rational `meshTol` rather than exact agreement.  Asymptotic
 conclusions use the shared `≈ₙ`/`≳ₙ`/`≲ₙ` vocabulary (`dd:asymp`).
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -64,9 +73,7 @@ access to every member/day trade list.  This is the trader-family analogue of
 lemma PolyTradeEmulatable.trades_primrec {Ts : ℕ → Trader}
     (h : PolyTradeEmulatable Ts) :
     Primrec fun z : ℕ => ((Ts z.unpair.1).strat z.unpair.2).trades := by
-  have hcount : Primrec h.tradeCount := by
-    obtain ⟨c, hc⟩ := h.tradeCount_poly
-    exact hc.primrec
+  have hcount : Primrec h.tradeCount := h.tradeCount_poly.primrec
   have hcoefficientTokens : Primrec fun z => (h.coefficient z).serialize := by
     obtain ⟨s, hs, hcontract⟩ := h.coefficient_poly
     exact (unRpn_prim.comp hs.primrec).of_eq fun z =>
@@ -1785,7 +1792,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1814,7 +1821,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1842,7 +1849,7 @@ Paper node: `thm:prand` -/
 theorem lic_learning_varied_pseudorandom
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ : ℕ → Sentence) (p : ℕ → ℚ) (pFeature : ℕ → EF)
-    (hφ : BigSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
+    (hφ : MachineSentenceCodes φ) (hp : GeneratedRatFeature P p pFeature)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1870,7 +1877,7 @@ infrastructure hypothesis remains.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_above
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1905,7 +1912,7 @@ divergent weightings gives `P n (φ n) ≲ₙ p`, with maturity constructed inte
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency_below
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
@@ -1941,7 +1948,7 @@ historical-verifier or settlement-clock premise.
 Paper node: `thm:benford` -/
 theorem lic_learning_pseudorandom_frequency
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : AffineCombination.TheoryTruth φ DP truth)
     (p : ℝ) (hp : 0 ≤ p ∧ p ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))

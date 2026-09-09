@@ -36,7 +36,7 @@ costs to write, never the magnitude of the tokens it carries.
   digit runs — the split forced by the reciprocal — with `inv_of_pos` the payoff and `sign`
   reading the sign off the code's parity.
 * **Capstones.** `ec_of_bigTokenStream`, `BigSpliceStream.ec` and the trader constructors
-  `EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`, the write-out
+  `PolyFueledTrader.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`, the write-out
   forms of the token-metered entry points in `Framework/Emission/RpnEmission.lean`.
 * **Strictness.** Four separations are proved, at the paper's own families:
   `bigDigits_two_pow_not_polyFueled`, `bigTokenStream_not_polySegStream`,
@@ -129,47 +129,32 @@ lemma ifZero {s₀ s₁ : ℕ → List ℕ} (h₀ : BigTokenStream s₀) (h₁ :
     · simpa [hz] using hua z
     · simpa [hz] using hub z
 
-/-- Undigitizing a concatenation of complete digit runs is the concatenation of their
-decodes — the `flatMap` form of `TokenFold.undigitize_append_of_complete`, which is what
-lets variable-width concatenation transport. -/
-private lemma undigitize_flatMap_complete {ι : Type} (f : ι → List ℕ) :
-    ∀ l : List ι, (∀ j ∈ l, (blockSplit (f j)).2 = []) →
-      undigitize (l.flatMap f) = l.flatMap (fun j => undigitize (f j)) ∧
-        (blockSplit (l.flatMap f)).2 = []
-  | [], _ => ⟨rfl, rfl⟩
-  | j :: l, h => by
-      have hj := h j (List.mem_cons_self)
-      have ih := undigitize_flatMap_complete f l
-        (fun k hk => h k (List.mem_cons_of_mem _ hk))
-      rw [List.flatMap_cons, List.flatMap_cons]
-      exact ⟨by rw [TokenFold.undigitize_append_of_complete _ _ hj, ih.1],
-        by rw [TokenFold.blockSplit_append_of_complete _ _ hj]; exact ih.2⟩
-
 /-- **Variable-width concatenation**: `cnt n` written-out segments, indexed by
 `Nat.pair n j`.  The digit-level certificate is `PolySegStream.concatVar` verbatim; only
-the decode step is new. -/
+the decode step is new, and it is `TokenFold.undigitize_flatMap_complete`, the `flatMap`
+form of `TokenFold.undigitize_append_of_complete`. -/
 lemma concatVar {seg : ℕ → List ℕ} (hseg : BigTokenStream seg) {ccnt : Code}
     {cnt : ℕ → ℕ} (hcnt : PolyFueled ccnt cnt) :
     BigTokenStream (fun n => (List.range (cnt n)).flatMap fun j => seg (Nat.pair n j)) := by
   obtain ⟨ds, hds, hc, hu⟩ := hseg
   refine ⟨fun n => (List.range (cnt n)).flatMap fun j => ds (Nat.pair n j),
     hds.concatVar hcnt, fun n => ?_, fun n => ?_⟩
-  · exact (undigitize_flatMap_complete (fun j => ds (Nat.pair n j)) _
+  · exact (TokenFold.undigitize_flatMap_complete (fun j => ds (Nat.pair n j)) _
       (fun j _ => hc (Nat.pair n j))).2
-  · rw [(undigitize_flatMap_complete (fun j => ds (Nat.pair n j)) _
+  · rw [(TokenFold.undigitize_flatMap_complete (fun j => ds (Nat.pair n j)) _
       (fun j _ => hc (Nat.pair n j))).1]
     exact List.flatMap_congr (fun j _ => by rw [hu (Nat.pair n j)])
 
 end BigTokenStream
 
 /-- **The write-out capstone**: a written-out token stream whose contracted decode is the
-target trader realizes an `EfficientlyComputable` certificate.  The digit stream is
+target trader realizes an `PolyFueledTrader` certificate.  The digit stream is
 handed straight to `ec_of_rawSegStream`, so nothing about the emission pipeline changes —
 only the metering of the stream that feeds it.
 Paper node: `def:ec` -/
 lemma ec_of_bigTokenStream (Tr : Trader) {t : ℕ → List ℕ} (h : BigTokenStream t)
     (hstrategy : ∀ n, strategyOfTokens n (unRpn (t n)) = Tr.strat n) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨ds, hds, -, hu⟩ := h
   exact ec_of_rawSegStream Tr hds (fun n => by rw [hu n]; exact hstrategy n)
 
@@ -618,7 +603,7 @@ with no polynomial bound on any emitted token's value.
 Paper node: `def:ec` -/
 lemma BigSpliceStream.ec (Tr : Trader)
     (h : BigSpliceStream (fun n => serializeTrades (Tr.strat n).trades)) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨s, hs, hc⟩ := h
   refine ec_of_bigTokenStream Tr hs (fun n => ?_)
   have hun : unRpn (s n) = serializeTrades (Tr.strat n).trades := by
@@ -637,18 +622,18 @@ lemma BigSpliceStream.ec (Tr : Trader)
           obtain rfl := Option.some.inj hsome
           rw [dif_pos rank_le]
 
-/-- Write-out mirror of `EfficientlyComputable.ofSingleTradeBlocks`: a trader whose day-`n`
+/-- Write-out mirror of `PolyFueledTrader.ofSingleTradeBlocks`: a trader whose day-`n`
 strategy is the single trade `(f n, φ n)`, with a price-free coefficient stream and a
 *written-out* sentence family, is efficiently computable.  The value-bounded entry point
 cannot take an exponentially-named sentence; this one can.
 Paper node: `def:ec` -/
-lemma EfficientlyComputable.ofSingleTradeBlocksBig (Tr : Trader) (f : ℕ → EF)
+lemma PolyFueledTrader.ofSingleTradeBlocksBig (Tr : Trader) (f : ℕ → EF)
     (φ : ℕ → Sentence)
     (hf : PolySegStream fun n => (f n).serialize)
     (hfree : ∀ n, (f n).priceFree)
     (hφ : BigSentenceCodes φ)
     (hTr : ∀ n, (Tr.strat n).trades = [(f n, φ n)]) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   have hfB : BigSpliceStream (fun n => (f n).serialize) :=
     BigSpliceStream.ofPriceFree (BigTokenStream.ofPolySegStream hf) hfree
   have hslot : BigSpliceStream (fun n => [6, Encodable.encode (φ n)]) :=
@@ -657,37 +642,43 @@ lemma EfficientlyComputable.ofSingleTradeBlocksBig (Tr : Trader) (f : ℕ → EF
   rw [hTr n]
   simp [serializeTrades]
 
+/-- **The trade serialization is a `flatMap` of per-trade chunks**: coefficient block, the
+splice marker `6`, the sentence's code.  This is `serializeTrades` unfolded into the shape a
+variable-count concatenation combinator produces, and it is stated here rather than inline
+so the fuel-metered assembly below and its machine-metered mirror share one induction.
+
+Not to be confused with `serializeTrades_flatMap` (`Framework/ROI.lean`), which distributes
+`serializeTrades` over a `flatMap` of trade *lists*. -/
+lemma serializeTrades_eq_flatMap (l : List (EF × Sentence)) :
+    serializeTrades l = l.flatMap fun p => p.1.serialize ++ [6, Encodable.encode p.2] := by
+  induction l with
+  | nil => simp [serializeTrades]
+  | cons p rest ih =>
+      obtain ⟨e, ψ⟩ := p
+      simp [serializeTrades, ih, List.append_assoc]
+
 /-- **Variable-count realization over write-out data.**  A trader playing `count n` trades
 on day `n` (indexed `z = ⟨n, j⟩`), with a written-out spliceable coefficient stream and a
 *written-out* sentence family, is efficiently computable.  This is the write-out form of
-`def:ec`'s trade-block constructor `EfficientlyComputable.ofTradeBlocks`
+`def:ec`'s trade-block constructor `PolyFueledTrader.ofTradeBlocks`
 (`Framework/Emission/RpnEmission.lean`), which meters every emitted token's value and so takes
 neither an exponentially-named sentence nor a coefficient naming a constant such as the
 paper's `δ n = 2⁻ⁿ`.  No price-freeness hypothesis on the coefficients is needed here:
 `BigSpliceStream` already records how each coefficient block contracts. -/
-lemma EfficientlyComputable.ofTradeBlocksBig (Tr : Trader)
+lemma PolyFueledTrader.ofTradeBlocksBig (Tr : Trader)
     (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
     (hcount : ∃ c, PolyFueled c count)
     (hf : BigSpliceStream fun z => (f z).serialize)
     (hφ : BigSentenceCodes φ)
     (hTr : ∀ n, (Tr.strat n).trades =
       (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
-    EfficientlyComputable Tr := by
+    PolyFueledTrader Tr := by
   obtain ⟨ccount, hcountF⟩ := hcount
-  have hser : ∀ l : List (EF × Sentence),
-      serializeTrades l =
-        l.flatMap fun p => p.1.serialize ++ [6, Encodable.encode p.2] := by
-    intro l
-    induction l with
-    | nil => simp [serializeTrades]
-    | cons p rest ih =>
-        obtain ⟨e, ψ⟩ := p
-        simp [serializeTrades, ih, List.append_assoc]
   have hslot : BigSpliceStream (fun z => [6, Encodable.encode (φ z)]) :=
     (BigSpliceStream.tradeSlot hφ PolyFueled.id).of_eq (fun _ => rfl)
   refine BigSpliceStream.ec Tr
     (((hf.append hslot).concatVar hcountF).of_eq (fun n => ?_))
-  rw [hTr n, hser]
+  rw [hTr n, serializeTrades_eq_flatMap]
   simp [List.flatMap_map]
 
 /-! ## The write-out sequence classes for values

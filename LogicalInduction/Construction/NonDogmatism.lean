@@ -27,7 +27,7 @@ directory carries that node.
 
 ## The source premise
 
-* `RepeatedEnumeration` — `triangularRepeat` and `EfficientRepeatedEnumeration.ofBig` for an
+* `RepeatedEnumeration` — `triangularRepeat` and `EfficientRepeatedEnumeration.ofMachineCodes` for an
   already write-out-metered sentence stream, and `CEEnumeration` /
   `EfficientRepeatedEnumeration.ofCE` for an arbitrary computably enumerable one.  The latter
   carries out, under the interpreter clock, the padding-and-repeating step of `thm:obu`'s own
@@ -39,8 +39,9 @@ directory carries that node.
 * `Kraft` — Kraft's inequality for a finite prefix-free binary code, proved from Mathlib
   alone; it is the budget the Occam risk allocation of `thm:ob` spends.
 * `PrefixMachine` — a concrete self-delimiting sentence code discharging **every** field of
-  `PrefixMachinePresentation`, including both fuel-model emission programs and the additive
-  negation overhead `κ(∼φ) ≤ κ(φ) + 2`.
+  `PrefixMachinePresentation`, including both emission certificates — proved in the fuel
+  model and crossed to the machine classes the fields now carry — and the additive negation
+  overhead `κ(∼φ) ≤ κ(φ) + 2`.
 * `UniversalPrefix` — the same boundary at the prefix complexity of a genuine self-delimiting
   *universal* machine, so `thm:ob` is not tied to one fixed code.
 

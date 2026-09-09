@@ -2,6 +2,7 @@ import LogicalInduction.Framework.Emission.Computable
 import LogicalInduction.Framework.Asymptotics
 import LogicalInduction.Framework.Emission.RpnSplice
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Machine.SpliceMachine
 import Mathlib.Algebra.Order.BigOperators.Group.Finset
 
 /-!
@@ -12,8 +13,8 @@ This module renders §4.8 `sec:expectations` (tex:1627) — `def:luv` (tex:1635)
 and self-trust results quantify.
 
 * `GeneratedRatFeature` / `PGenerableRat` — `def:ece` for rational sequences, with the
-  emission field write-out metered (`BigSpliceStream`), and the constructor
-  `PGenerableRat.ofDigitRatCodes`. The width is load-bearing: `pGenerableRat_two_pow_inv`
+  emission field machine metered (`MachineSpliceStream`), and the constructor
+  `PGenerableRat.ofMachineRatCodes`. The width is load-bearing: `pGenerableRat_two_pow_inv`
   shows the paper's own `δ n = 2⁻ⁿ` is admitted here and refutes `PolyRatCodes`.
 * `LUV` — a `[0,1]`-logically-uncertain variable presented by its threshold sentences
   `X.gt r = ⌜X > r⌝`, which is a LUV's entire observable content for a market. The paper's
@@ -28,8 +29,15 @@ and self-trust results quantify.
 * The threshold-code interfaces, at three meters: whole-value (`LUV.PolyThresholdCodes`,
   `LUV.PolyThresholdCodeSeq`), token (`LUV.RpnThresholdCodes`, `LUV.RpnThresholdCodeSeq`)
   and write-out (`LUV.BigThresholdCodes`, `LUV.BigThresholdCodeSeq`), with the embeddings
-  `ofPolyThresholdCodes` and `toBig`. `README.md` records which endpoints bind the token
-  forms and why that is a rendering sensitivity rather than a narrowing of `def:ec`.
+  `ofPolyThresholdCodes` and `toBig`, and — one level weaker again — machine
+  (`LUV.MachineThresholdCodes`, `LUV.MachineThresholdCodeSeq`,
+  `Framework/Machine/ThresholdMachine.lean`), reached by
+  `LUV.BigThresholdCodes(Seq).toMachine` and `RpnSentenceCodes.toMachine`. **The machine pair
+  is what every statement binds**: the expectation surface,
+  `LUVCombinationSyntax.threshold_poly`, and the day-indexed quotation surface all take it,
+  and no `LUV.RpnThresholdCodes(Seq)` or `LUV.BigThresholdCodes(Seq)` binder survives on any
+  endpoint. The fuel and token pairs are producer routes. `README.md` records why the
+  threshold route is a rendering sensitivity rather than a narrowing of `def:ec`.
 * `LUV.expectApprox` and `LUV.expect` — `def:e`'s finite price sum
   `𝔼_k^V(X) = (1/k) · ∑_{i<k} V(⌜X > i/k⌝)`, with the day-`n` operator taken at precision
   `n + 1` under the repo's day-index convention (Lean day `n` = paper day `n+1`,
@@ -88,20 +96,25 @@ costs polynomially many *symbols* per day, with no bound on any single token's n
 value. That is what admits a constant leaf `EF.const (q n)` whose payload token is
 literally `⌜q n⌝` — for the paper's own `δ n = 2⁻ⁿ` an exponential value, and so outside
 the value-metered `RpnSpliceStream` (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
-`PGenerableRat.ofDigitRatCodes` is the constructor that uses the width;
+`PGenerableRat.ofMachineRatCodes` is the constructor that uses the width;
 `pGenerableRat_two_pow_inv` is the witness that it is a real one.
 Paper node: `def:ece` -/
 structure GeneratedRatFeature (P : History) (q : ℕ → ℚ)
     (feature : ℕ → EF) : Prop where
   rank_le : ∀ n, (feature n).rank ≤ n
-  polyTok : BigSpliceStream (fun n => (feature n).serialize)
+  /-- The feature progression is emitted by a machine-metered spliceable stream, as
+  `AffineCombination.PolySequence`'s emission fields are.  A client holding a fuel
+  certificate converts by `BigSpliceStream.toMachine`, and primitive recursiveness of the
+  progression — which `PGenerableRat.computable` needs — comes back through
+  `MachineTokenStream.primrec` (`Construction/MachineTraderEnumeration.lean`). -/
+  polyTok : MachineSpliceStream (fun n => (feature n).serialize)
   closed : ∀ n ρ V, (feature n).denoteWith ρ V = (feature n).denote V
   denote : ∀ n, (feature n).denote P = (q n : ℝ)
 
 /-- **ℙ̄-generability for rational sequences** — the paper's `def:ece` (tex:1218) at the
 rational case: `q` is generable from the market `P` when some efficiently computable feature
 progression denotes it day by day. `GeneratedRatFeature` is the certificate this existential
-ranges over, and `PGenerableRat.ofDigitRatCodes` is the constructor that produces one from
+ranges over, and `PGenerableRat.ofMachineRatCodes` is the constructor that produces one from
 digit access to `q`. -/
 def PGenerableRat (P : History) (q : ℕ → ℚ) : Prop :=
   ∃ feature : ℕ → EF, GeneratedRatFeature P q feature
@@ -113,13 +126,19 @@ def ratCodeFeature (q : ℕ → ℚ) (n : ℕ) : EF :=
 /-- **The write-out constructor for `def:ece`.**  A rational sequence whose numerator and
 denominator are reachable digit by digit generates itself at any market, through
 `ratCodeFeature`: the day-`n` serialization is the single payload chunk `[1, ⌜q n⌝]`,
-emitted by `BigSpliceStream.serialize_const_write`, whose payload token is written out
+emitted by `MachineSpliceStream.serialize_const_write`, whose payload token is written out
 digit by digit and so may be exponential in `n`.
+
+The hypothesis is the machine-metered `MachineRatCodes`.  It is weaker than the
+fuel-metered `DigitRatCodes`, which crosses into it by `DigitRatCodes.toMachine`; no
+converse is provided.  It reaches the emitter through `MachineRatCodes.toMachineDigits`, the
+mirror of the fuel side's route into `BigSpliceStream.serialize_const_write` through
+`DigitRatCodes.toBigDigits`.
 Kind: `P` proved; provenance: (a) derived in-project. -/
-lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : DigitRatCodes q) :
+lemma ratCodeFeature_generated (P : History) (q : ℕ → ℚ) (hq : MachineRatCodes q) :
     GeneratedRatFeature P q (ratCodeFeature q) where
   rank_le := fun n => by simp [ratCodeFeature, EF.rank]
-  polyTok := BigSpliceStream.serialize_const_write hq.toBigDigits
+  polyTok := MachineSpliceStream.serialize_const_write hq.toMachineDigits
   closed := fun n ρ V => by simp [ratCodeFeature]
   denote := fun n => by simp [ratCodeFeature]
 
@@ -131,20 +150,24 @@ This is the general constructor; `PGenerableRat.ofPolyRatCodes`
 for callers already holding a `PolyRatCodes` certificate.  The width is not cosmetic: the
 paper's `δ n = 2⁻ⁿ` satisfies this and refutes `PolyRatCodes`
 (`digitRatCodes_two_pow_inv_not_polyRatCodes`).
+
+The premise is the machine class `MachineRatCodes`, the meter `def:ec` is actually read on;
+a caller holding the fuel-metered `DigitRatCodes` crosses by `DigitRatCodes.toMachine`.
 Kind: `C` composition; provenance: (a) derived in-project. -/
-lemma PGenerableRat.ofDigitRatCodes {q : ℕ → ℚ} (hq : DigitRatCodes q) (P : History) :
+lemma PGenerableRat.ofMachineRatCodes {q : ℕ → ℚ} (hq : MachineRatCodes q) (P : History) :
     PGenerableRat P q :=
   ⟨ratCodeFeature q, ratCodeFeature_generated P q hq⟩
 
 /-- **Non-vacuity for the widened `def:ece` (kind `N+`).**  The paper's own tolerance
 sequence `δ n = 2⁻ⁿ` is ℙ‾-generable at every market, and its Gödel codes are *not*
-value-bounded — so this witness is admitted by `PGenerableRat.ofDigitRatCodes` and by no
+value-bounded — so this witness is admitted by `PGenerableRat.ofMachineRatCodes` and by no
 route through `PGenerableRat.ofPolyRatCodes`.  It is the concrete content of widening
-`GeneratedRatFeature.polyTok` from `RpnSpliceStream` to `BigSpliceStream`. -/
+`GeneratedRatFeature.polyTok` from `RpnSpliceStream` to `BigSpliceStream`, and thence to
+`MachineSpliceStream`. -/
 lemma pGenerableRat_two_pow_inv (P : History) :
     PGenerableRat P (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) ∧
       ¬ PolyRatCodes (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
-  ⟨PGenerableRat.ofDigitRatCodes digitRatCodes_two_pow_inv P,
+  ⟨PGenerableRat.ofMachineRatCodes digitRatCodes_two_pow_inv.toMachine P,
     digitRatCodes_two_pow_inv_not_polyRatCodes.2⟩
 
 /-! ## Logically uncertain variables (`def:luv`) -/
@@ -208,7 +231,13 @@ stream emitting `⌜X > i/k⌝` at index `⟨k,i⟩`, at exactly the paired-inde
 `RpnThresholdCodes`.  It is the single-LUV analogue of `BigThresholdCodeSeq`, and stands to
 `RpnThresholdCodes` as that class stands to `RpnThresholdCodeSeq`: the two differ only in the
 meter on the underlying sentence stream, `RpnThresholdCodes` bounding every emitted token's
-*value* and this one only their number. -/
+*value* and this one only their number.  It is a **producer route**, not a statement class:
+`LUV.expect_converges` (`thm:ec`), `lic_expectation_provind*` and
+`lic_linearity_of_expectation` all take the machine reading
+`LUV.MachineThresholdCodes` (`Framework/Machine/ThresholdMachine.lean`), which this class
+reaches by `LUV.BigThresholdCodes.toMachine`, with `RpnThresholdCodes.toBig` the embedding a
+caller holding the narrower certificate uses first.
+Paper node: `def:ec` -/
 def BigThresholdCodes (X : LUV) : Prop :=
   BigSentenceCodes (fun m => X.gt ((m.unpair.2 : ℚ) / (m.unpair.1 : ℚ)))
 
@@ -476,11 +505,17 @@ upstream of the affine layer avoids an import cycle. The theorems that use them 
 where the affine machinery is available.
 **General principle:** paper-side LUV *constructions* — indicators, affine
 combinations — enter our modeling as **relational predicates over arbitrary threshold
-families**, never as canonical `LUV` values. Constructing a representative (e.g. defining
-the indicator of `φ` as `gt r := φ` on `[0,1)`) would make the theorem *definitional* —
-the collapse is a modeling artifact, since the paper's thresholds are distinct sentences
-provably linked to `φ`, and the theorem's content is the inductor learning that growing
-bundle of equivalences uniformly. -/
+families** first, so that what is proved of them is proved of every family the paper's
+description fits.  A constructed representative is offered only where it is *non-degenerate*.
+Defining the indicator of `φ` by `gt r := φ` on `[0,1)` would not be: it makes `thm:ei`
+*definitional*, and the collapse is a modeling artifact, since the paper's thresholds are
+distinct sentences provably linked to `φ` and the theorem's content is the inductor learning
+that growing bundle of equivalences uniformly.  `LUV.indicatorOf` below is the representative
+that avoids it — its `[0,1)` thresholds are `φ ⋏ ∼∼φ`, propositionally equivalent to `φ` in
+every world and *not* the term `φ` (`LUV.indicatorOf_gt_ne`), so a market may price the two
+apart and the criterion is what brings them together.  `indicatorWitness_isIndicator` further
+below is the inhabitant of `LUV.IsIndicator` whose link is not propositional at all, but
+revealed only by the deductive process. -/
 
 /-- `Y` is an **indicator family for `φ`** (relational rendering of the paper's `1(φ)`):
 in every **completed-theory** world — `v ∈ cworlds(Θ)`, the exact quantifier of the paper's
@@ -526,6 +561,55 @@ lemma LUV.IsIndicator.valuesAt {Y : LUV} {φ : Sentence} {DP : DeductiveProcess}
       by_cases hr1 : (r : ℝ) < 1
       · exact fun h => hφ ((hmid (le_of_lt hr) hr1).1 h)
       · exact hhi (le_of_not_gt hr1)
+
+/-! ### The paper's `1(φ)`, at a non-degenerate threshold family -/
+
+/-- **The paper's indicator LUV** (tex:1712).  `1(φ) := ⌜(⌜φ⌝ ∧ ν = 1) ∨ (¬⌜φ⌝ ∧ ν = 0)⌝`
+reads on thresholds as: `⌜1(φ) > r⌝` is a tautology below `0`, is equivalent to `φ` on
+`[0,1)`, and is absurd at `≥ 1`.  The paper's own `[0,1)` thresholds are *arithmetic*
+sentences that `Θ` proves equivalent to `φ` and that are not the term `φ`; in the
+propositional substrate the faithful rendering of that is a threshold sentence
+propositionally equivalent to `φ` and syntactically distinct from it, and `φ ⋏ ∼∼φ` is the
+least such.
+
+Taking the threshold to be `φ` itself would be the degenerate reading: `𝔼ₙ` would then
+average `n+1` copies of `Pₙ(φₙ)` and `thm:ei` would be an arithmetic identity holding of
+every market (spelled out at `lic_expectation_indicator`).  `LUV.indicatorOf_gt_ne` is the
+proved record that this family is not that one. -/
+def LUV.indicatorOf (φ : Sentence) : LUV where
+  gt r := if r < 0 then (⊤ : Sentence) else if r < 1 then φ ⋏ ∼∼φ else (⊥ : Sentence)
+
+/-- **Anti-triviality.**  The `[0,1)` thresholds of `LUV.indicatorOf φ` are not the sentence
+`φ`, so the average `thm:ei` computes is an average of prices of a *different* sentence and
+its conclusion is not an identity.  By complexity: `φ ⋏ ∼∼φ` carries three connectives more
+than `φ`. -/
+lemma LUV.indicatorOf_gt_ne (φ : Sentence) {r : ℚ} (h0 : 0 ≤ r) (h1 : r < 1) :
+    (LUV.indicatorOf φ).gt r ≠ φ := by
+  simp only [LUV.indicatorOf, if_neg (not_lt.mpr h0), if_pos h1]
+  intro h
+  have hc := congrArg LO.Propositional.Formula.complexity h
+  simp [LO.Propositional.Formula.complexity] at hc
+  omega
+
+/-- **`LUV.indicatorOf φ` really is an indicator family for `φ`** — in *every* world and over
+*every* deductive process, since the link `φ ⋏ ∼∼φ ↔ φ` is propositional rather than
+something `Θ` has to reveal.  The `DP` argument is carried only because `LUV.IsIndicator`
+takes one; nothing about the process is used. -/
+lemma LUV.indicatorOf_isIndicator (φ : Sentence) (DP : DeductiveProcess) :
+    (LUV.indicatorOf φ).IsIndicator φ DP := by
+  intro v _ r
+  have hr0 : ((r : ℝ) < 0) ↔ r < 0 := by exact_mod_cast Iff.rfl
+  have hr1 : ((r : ℝ) < 1) ↔ r < 1 := by exact_mod_cast Iff.rfl
+  refine ⟨fun h => ?_, fun hlo hhi => ?_, fun h => ?_⟩
+  · simpa [LUV.indicatorOf, hr0.mp h] using PCWorld.holds_top v
+  · have hlo' : ¬ r < 0 := fun hc => (not_lt.mpr hlo) (hr0.mpr hc)
+    simp only [LUV.indicatorOf, if_neg hlo', if_pos (hr1.mp hhi),
+      PCWorld.holds_and, PCWorld.holds_neg]
+    tauto
+  · have hn1 : ¬ r < 1 := fun hc => (not_lt.mpr h) (hr1.mpr hc)
+    have hn0 : ¬ r < 0 := fun hc => hn1 (hc.trans (by norm_num))
+    simp [LUV.indicatorOf, hn0, hn1, PCWorld.Holds,
+      LO.Propositional.Formula.Boolean.val]
 
 /-! ### Non-vacuity of `LUV.IsIndicator` (kind `N+`)
 

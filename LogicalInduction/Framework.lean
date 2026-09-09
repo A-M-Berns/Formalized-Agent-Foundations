@@ -6,7 +6,7 @@ import LogicalInduction.Framework.Affine
 import LogicalInduction.Framework.BooleanWorlds
 import LogicalInduction.Framework.ROI
 import LogicalInduction.Framework.Expectations
-import LogicalInduction.Framework.MachineEfficiency
+import LogicalInduction.Framework.Efficiency
 import LogicalInduction.Framework.Theory.RepresentsComputations
 import LogicalInduction.Framework.Theory.R0Instances
 import LogicalInduction.Framework.Theory.SubstOccurrence
@@ -30,8 +30,13 @@ import LogicalInduction.Framework.Machine.FPFold
 import LogicalInduction.Framework.Machine.TokenFold
 import LogicalInduction.Framework.Machine.DigitBits
 import LogicalInduction.Framework.Machine.DigitArithFP
+import LogicalInduction.Framework.Machine.Ruler
 import LogicalInduction.Framework.Machine.TraderMachine
 import LogicalInduction.Framework.Machine.WriteOutMachine
+import LogicalInduction.Framework.Machine.SentenceMachine
+import LogicalInduction.Framework.Machine.SpliceMachine
+import LogicalInduction.Framework.Machine.ThresholdMachine
+import LogicalInduction.Framework.Machine.Witnesses
 
 /-!
 # Framework (`LogicalInduction.Framework`)
@@ -59,8 +64,9 @@ on, and supplies the polynomial-time word arithmetic the syntactic transports ne
   `ConvergesTo` (`dd:asymp`), never redefined per file.
 * `Criterion` — expressible features (`def:valfeature`, `def:tf`), trading strategies and
   traders (`def:tradestrat`, `def:trader`), exploitation (`def:exploitation`), deductive
-  processes (`def:dedproc`), worlds (`def:world`), and the criterion `def:lic` over the
-  fuel-certified class.
+  processes (`def:dedproc`), worlds (`def:world`), the efficient-trader class `def:ec` with
+  the `dd:fuel` certificate `PolyFueledTrader` beside it, and the criterion `def:lic` over
+  `def:ec`.
 * `Compactness` — propositional compactness over Cantor space: per-stage satisfiability of
   a deductive process yields one world consistent with every stage.
 * `Affine` — trade magnitude and net-worth bounds (`def:tradermag`, `def:bap`), the
@@ -75,9 +81,10 @@ on, and supplies the polynomial-time word arithmetic the syntactic transports ne
 * `Expectations` — logically uncertain variables (`def:luv`), the ℙ̄-generable class
   (`def:ece`), the threshold-code interfaces, the finite price sum `def:e`, and the
   rational-cut semantics by which a completed world values a LUV (`lem:conluvapprox`).
-* `MachineEfficiency` — `IsMachineLogicalInductor`, `def:lic` at the paper's own quantifier
-  over `MachineEfficientTrader`, and the bridge `EfficientlyComputable.toMachine` that lands
-  a fuel certificate inside that class.
+* `Efficiency` — the bridge `PolyFueledTrader.toEfficientlyComputable` that lands a
+  `dd:fuel` certificate inside `def:ec`, and the two no-exploitation forms of `def:lic` it
+  yields at the emission calculus's own certificates
+  (`IsLogicalInductor.noExploitTok` / `.noExploitDigit`).
 
 ## `Theory/` — the background theory `Θ`
 
@@ -131,14 +138,16 @@ on, and supplies the polynomial-time word arithmetic the syntactic transports ne
   bounded streaming transducer `EF.freezeTokenRunOn` that realizes it on a token word: what
   §4.6 transports an exploiting trader with.
 
-The four `Rpn*` modules carry the token-metered sentence classes.  Those classes survive on
-the LUV threshold lane and as strictness foils against the write-out ladder in
-`Emission.WriteOut`; the sentence slots of `def:ec` itself are discharged by
-`BigSentenceCodes`.
+The four `Rpn*` modules carry the token-metered sentence classes.  They are producer routes
+and strictness foils against the write-out ladder in `Emission.WriteOut`, and no statement
+binds one: the sentence slots of `def:ec` are at `MachineSentenceCodes` and the threshold
+surface at `LUV.MachineThresholdCodes(Seq)` (`Machine/SentenceMachine.lean`,
+`Machine/ThresholdMachine.lean`), reached from here by `RpnSentenceCodes.toMachine` and
+`LUV.BigThresholdCodes(Seq).toMachine`.
 
 ## `Machine/` — from a fuel certificate to a machine
 
-`def:ec` is read on ordinary machines (`MachineEfficientTrader`), so a fuel certificate has
+`def:ec` is ordinary polynomial time (`EfficientlyComputable`), so a fuel certificate has
 to be *compiled* into one.  This subdirectory is that compiler together with its accounting
 and the polynomial-time word arithmetic the syntactic transports need.
 
@@ -153,11 +162,31 @@ and the polynomial-time word arithmetic the syntactic transports need.
 * `Machine.TokenFold` — token-level transducers on bit words, the layer the conditioning and
   freeze transports run on.
 * `Machine.DigitBits` — the bit rendering of a digit stream (`digitBits`, `digitsToBits`)
-  and the round trip through which `MachineEfficientTrader` decodes an output word.
+  and the round trip through which `EfficientlyComputable` decodes an output word.
 * `Machine.DigitArithFP` — base-four arithmetic on digit words inside `Complexity.FP`
   (`addW`, `subW`, `leW`, `predW`, `sqrtRemW`, `unpairFstW` / `unpairSndW`), each with its
   value specification; it serves `app:ifp`.
-* `Machine.TraderMachine` — the machine computing an `EfficientlyComputable` trader's day-`n`
-  serialization: the last link of `EfficientlyComputable.toMachine`.
+* `Machine.Ruler` — `UnaryRuler`, the machine reading of a fuel-metered *count* (a value
+  that reindexes a stream rather than being emitted into one), with its closure calculus:
+  constants, identity, composition, `+`, `*`, successor, a fixed threshold, `Nat.pair` and
+  its two projections, and the two prefix-scan devices `UnaryRuler.segPrefix` and
+  `UnaryRuler.segLocate` that the variable-width concatenation needs.
+* `Machine.TraderMachine` — the machine computing an `PolyFueledTrader` trader's day-`n`
+  serialization: the last link of `PolyFueledTrader.toEfficientlyComputable`.
 * `Machine.WriteOutMachine` — the machine-side realization of the write-out ladder.
+* `Machine.SentenceMachine` — the combinator suite of `MachineSentenceCodes`, mirroring
+  `BigSentenceCodes.*` with every fuel-metered `PolyFueled` parameter rendered as a unary ruler.
+  It knows nothing about `LUV`, which is what lets `Expectations` sit *downstream* of the
+  machine classes and state its `def:ece` constructors at `MachineRatCodes`.
+* `Machine.SpliceMachine` — the combinator suite of `MachineSpliceStream`, mirroring
+  `BigSpliceStream.*`, and the trader capstones `MachineSpliceStream.ec`,
+  `EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`: the
+  exploiting-trader route stated entirely at the machine classes.
+* `Machine.ThresholdMachine` — the machine readings `LUV.MachineThresholdCodes` and
+  `LUV.MachineThresholdCodeSeq` of the two `def:ec` threshold interfaces, with their
+  `toMachine` bridges.  The one leaf of `Machine/` above `Expectations`, and the only module
+  there that may mention `LUV`.
+* `Machine.Witnesses` — one constructed, day-varying inhabitant of each machine emission
+  class, each with the lemma saying it is not a constant sequence, up to a trader whose
+  traded sentence changes every day.
 -/

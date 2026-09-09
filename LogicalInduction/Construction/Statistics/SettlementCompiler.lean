@@ -580,9 +580,7 @@ recursiveness of the family.  This closes the representation bridge needed by co
 settlement and maturity checkers. -/
 lemma AffineCombination.PolySequence.primrec {As : ℕ → AffineCombination}
     (h : PolySequence As) : Primrec As := by
-  have hcount : Primrec h.termCount := by
-    obtain ⟨c, hc⟩ := h.termCount_poly
-    exact hc.primrec
+  have hcount : Primrec h.termCount := h.termCount_poly.primrec
   have hconstTokens : Primrec fun n => (As n).const.serialize := by
     obtain ⟨s, hs, hcontract⟩ := h.const_poly
     exact (unRpn_prim.comp hs.primrec).of_eq fun n =>
@@ -877,13 +875,26 @@ lemma BigSpliceStream.feature_primrec {feature : ℕ → EF}
   exact (efFromSerializedTokens_prim.comp htokens).of_eq fun n =>
     efFromSerializedTokens_serialize (feature n)
 
+/-- The machine-metered twin: word for word the same argument, with
+`MachineTokenStream.primrec` (`Construction/MachineTraderEnumeration.lean`) in place of
+`BigTokenStream.primrec`.  This is the form `GeneratedRatFeature.polyTok` now has, and it
+is what `PGenerableRat.computable` below consumes. -/
+lemma MachineSpliceStream.feature_primrec {feature : ℕ → EF}
+    (h : MachineSpliceStream fun n => (feature n).serialize) : Primrec feature := by
+  obtain ⟨s, hs, hcontract⟩ := h
+  have htokens : Primrec fun n => (feature n).serialize := by
+    exact (unRpn_prim.comp hs.primrec).of_eq fun n =>
+      (hcontract n).unRpn_eq
+  exact (efFromSerializedTokens_prim.comp htokens).of_eq fun n =>
+    efFromSerializedTokens_serialize (feature n)
+
 /-- **A P-generable rational sequence (`def:ece`) is computable against the certified
 market.**  This is the bridge the arithmetic quote codes need in order to accept
 market-dependent thresholds: `def:ece` hands over only a feature stream, and emitting
 `⌜… > q n⌝` requires a program computing `q n`.
 
 Proof kind `C` (composition).  Provenance: the parse step is
-`BigSpliceStream.feature_primrec` (a); the evaluation step is minimization of
+`MachineSpliceStream.feature_primrec` (a); the evaluation step is minimization of
 `MarketComputation.denoteRatComp` over the interpreter clock, pinned by
 `EF.denoteRatWithAtFuel_sound`/`_complete` and
 `MarketComputation.exists_fuel_quoteAtFuel_list` (a); the bridge from `EF.denote` to
@@ -893,7 +904,7 @@ lemma PGenerableRat.computable {P : History} (market : MarketComputation P) {q :
     (h : PGenerableRat P q) : Computable q := by
   obtain ⟨feature, hfeature⟩ := h
   have hfp : Primrec feature :=
-    BigSpliceStream.feature_primrec hfeature.polyTok
+    MachineSpliceStream.feature_primrec hfeature.polyTok
   have hval : ∀ n, (feature n).denoteRat
       (fun day φ => market.quote day (Encodable.encode φ)) = q n := by
     intro n

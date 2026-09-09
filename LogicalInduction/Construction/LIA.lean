@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.TradingFirm
-import LogicalInduction.Framework.MachineEfficiency
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # `def:lia` — the logical induction algorithm
@@ -17,11 +17,9 @@ trader
 obtained by running the adaptive firm against the realized prefix. `liaStates` and
 `liaHistory` are in `AxiomAudit.lean`'s LI-CANONICAL inventory.
 
-The main results are `lia_no_machine_trader_exploits` — no machine-efficient trader
-(`def:ec`, `MachineEfficientTrader`) exploits `liaHistory` — its corollary
-`lia_no_efficient_trader_exploits` over the fuel certificates (`dd:fuel`), and the two
-assembly lemmas `lia_isMachineLogicalInductor_of_computableMarket` and
-`lia_isLogicalInductor_of_computableMarket`.
+The main results are `lia_no_efficient_trader_exploits` — no efficiently computable trader
+(`def:ec`, `EfficientlyComputable`) exploits `liaHistory` — and the assembly lemma
+`lia_isLogicalInductor_of_computableMarket` built from it.
 
 Two identifications carry the argument. Prefix invariance
 (`tradingFirmTrader_liaQuote_eq_liaTrader`) identifies the adaptive realized firm with the
@@ -142,12 +140,12 @@ lemma liaTrader_not_exploited (DP : DeductiveProcess) :
   rw [liaHistory_eq_marketMakerHistory]
   exact marketMaker_not_exploited (liaTrader DP) DP
 
-/-- Semantic logical-induction capstone: no **machine-efficient** trader exploits the
-recursive rational market. The class is ordinary machine polynomial time, through
+/-- Semantic logical-induction capstone: no **efficiently computable** trader exploits the
+recursive rational market. The class is `def:ec` itself — ordinary polynomial time, through
 `Complexity.FP`.
 Paper node: `def:lic` -/
-lemma lia_no_machine_trader_exploits (DP : DeductiveProcess)
-    (Tr : Trader) (hTr : MachineEfficientTrader Tr) :
+lemma lia_no_efficient_trader_exploits (DP : DeductiveProcess)
+    (Tr : Trader) (hTr : EfficientlyComputable Tr) :
     ¬ Tr.Exploits (liaHistory DP) DP := by
   intro hEx
   have hfirm := trading_firm_dominance DP (liaHistory DP)
@@ -156,32 +154,17 @@ lemma lia_no_machine_trader_exploits (DP : DeductiveProcess)
   rw [tradingFirmTrader_liaQuote_eq_liaTrader] at hfirm
   exact liaTrader_not_exploited DP hfirm
 
-/-- The fuel-certified corollary: everything the fuel calculus certifies is
-machine-efficient, so it cannot exploit the market either. -/
-lemma lia_no_efficient_trader_exploits (DP : DeductiveProcess)
-    (Tr : Trader) (hTr : EfficientlyComputable Tr) :
-    ¬ Tr.Exploits (liaHistory DP) DP :=
-  lia_no_machine_trader_exploits DP Tr hTr.toMachine
-
 /-- Assembly lemma: it separates the semantic content of the criterion from the
 computable-market presentation.  Every semantic field is discharged here; the presentation
 is supplied as a hypothesis, which is why this is not the paper-facing statement —
 assuming the market is computable is not exhibiting the program.
 `Construction/LIACompiler.lean` supplies it, giving `LIA_is_logical_inductor`. -/
-lemma lia_isMachineLogicalInductor_of_computableMarket (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP)
-    (hmarket : ComputableMarket (liaHistory DP)) :
-    IsMachineLogicalInductor (liaHistory DP) DP where
-  marketComputable := hmarket
-  processComputable := hDP
-  noExploit := lia_no_machine_trader_exploits DP
-
-/-- The same assembly at the fuel-class compatibility predicate, by the bridge. -/
 lemma lia_isLogicalInductor_of_computableMarket (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP)
     (hmarket : ComputableMarket (liaHistory DP)) :
-    IsLogicalInductor (liaHistory DP) DP :=
-  @IsMachineLogicalInductor.toIsLogicalInductor _ _
-    (lia_isMachineLogicalInductor_of_computableMarket DP hDP hmarket)
+    IsLogicalInductor (liaHistory DP) DP where
+  marketComputable := hmarket
+  processComputable := hDP
+  noExploit := lia_no_efficient_trader_exploits DP
 
 end LogicalInduction

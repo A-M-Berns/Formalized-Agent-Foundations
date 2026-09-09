@@ -154,7 +154,7 @@ for key, paper in sorted(PAPERS.items()):
         if os.path.basename(checker) not in ci:
             violations.append(
                 "%s: node checker %s is not referenced in %s — provenance would be "
-                "unchecked between harness runs"
+                "unchecked in continuous integration"
                 % (tag, checker, os.path.relpath(CI, ROOT)))
 
     # The guide stamps how many nodes it rendered for each registered paper, so this

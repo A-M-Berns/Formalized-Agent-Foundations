@@ -33,7 +33,7 @@ contracting to the public tag-`5` atom `paperPrimeSentence`; the normal-form-met
 `PolyArithmeticFormulaSeq`; and the compact numeral `binNumeral` with its symbol list
 `binNumeralEnc`.
 
-The main results are `structuredPaperPrime_rpnSentenceCodes`, the emission lifting the
+The main results are `structuredPaperPrime_machineSentenceCodes`, the emission lifting the
 LUV threshold layer consumes, and `polySegStream_binNumeralEnc` /
 `polySegStream_binNumeral_const`, which are what let a write-out value stream name its own
 values — consumed by `Construction/LUV/ArithmeticSource.lean` and
@@ -445,20 +445,50 @@ lemma structuredLeafBlock_polySegStream (positive : Bool) {payload : ℕ → Lis
   exact (hprefix.append (hframe.append (hpayload.append hend))).of_eq fun n => by
     simp [structuredLeafBlock, List.append_assoc]
 
-/-- The leaf blocks of a normal-form-metered family are efficiently emittable. -/
-lemma structuredPaperPrimeBlock_polySegStream (positive : Bool)
-    (φ : ℕ → ArithmeticProposition) (hφ : PolyArithmeticFormulaSeq φ) :
-    PolySegStream (fun n => structuredPaperPrimeBlock positive (φ n)) :=
-  structuredLeafBlock_polySegStream positive hφ
+/-- **Leaf emission, payload-generic, machine reading.**  Machine twin of
+`structuredLeafBlock_polySegStream`: constant framing, a unary run of the payload's
+*token* count, and the payload itself.  The count arrives as
+`MachineTokenStream.lengthRuler` — where the fuel side reads it off the certificate's own
+length code — and the unary run is `MachineTokenStream.concatVar` at the constant block
+`[1]`. -/
+lemma structuredLeafBlock_machineTokenStream (positive : Bool) {payload : ℕ → List ℕ}
+    (h : MachineTokenStream payload) :
+    MachineTokenStream (fun n => structuredLeafBlock positive (payload n)) := by
+  have hrun : MachineTokenStream (fun n => List.replicate (payload n).length 1) :=
+    MachineTokenStream.of_eq
+      (MachineTokenStream.concatVar (MachineTokenStream.const [1]) h.lengthRuler)
+      (fun n => by rw [TokenFold.flatMap_const_singleton, List.length_range])
+  refine MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [1, 0, Encodable.encode positive])
+      (MachineTokenStream.append hrun
+        (MachineTokenStream.append (MachineTokenStream.const [0])
+          (MachineTokenStream.append h (MachineTokenStream.const [19])))))
+    (fun n => ?_)
+  simp [structuredLeafBlock, List.append_assoc]
 
-/-- **The emission lifting**: a family of arithmetic propositions certified in the
-normal-form-metered class has an efficient stream of exact tag-`5` leaf blocks; the
-tag-`5` atom code is built by parser contraction and never emitted. -/
-lemma structuredPaperPrime_rpnSentenceCodes (positive : Bool)
-    (φ : ℕ → ArithmeticProposition) (hφ : PolyArithmeticFormulaSeq φ) :
-    RpnSentenceCodes (fun n => paperPrimeSentence positive (φ n)) := by
+/-- A normal-form-metered family's symbol runs are machine-metered.  The write-out bridge
+at `PolyArithmeticFormulaSeq`, which is a `PolySegStream` of symbol runs. -/
+lemma PolyArithmeticFormulaSeq.toMachine {k : ℕ} {φ : ℕ → ArithmeticSemiformula ℕ k}
+    (h : PolyArithmeticFormulaSeq φ) :
+    MachineTokenStream (fun n => encodeArithmeticFormulaSymbols (φ n)) :=
+  BigTokenStream.toMachine (BigTokenStream.ofPolySegStream h)
+
+/-- The leaf blocks of a machine-metered symbol family are machine-emittable. -/
+lemma structuredPaperPrimeBlock_machineTokenStream (positive : Bool)
+    (φ : ℕ → ArithmeticProposition)
+    (hφ : MachineTokenStream (fun n => encodeArithmeticFormulaSymbols (φ n))) :
+    MachineTokenStream (fun n => structuredPaperPrimeBlock positive (φ n)) :=
+  structuredLeafBlock_machineTokenStream positive hφ
+
+/-- **The emission lifting**: a family of arithmetic propositions whose symbol runs are
+machine-metered has a machine-metered stream of exact tag-`5` leaf blocks; the tag-`5` atom
+code is built by parser contraction and never emitted. -/
+lemma structuredPaperPrime_machineSentenceCodes (positive : Bool)
+    (φ : ℕ → ArithmeticProposition)
+    (hφ : MachineTokenStream (fun n => encodeArithmeticFormulaSymbols (φ n))) :
+    MachineSentenceCodes (fun n => paperPrimeSentence positive (φ n)) := by
   refine ⟨fun n => structuredPaperPrimeBlock positive (φ n),
-    structuredPaperPrimeBlock_polySegStream positive φ hφ, fun n => ?_⟩
+    structuredPaperPrimeBlock_machineTokenStream positive φ hφ, fun n => ?_⟩
   simpa using parseRpn_structuredPaperPrimeBlock positive (φ n) []
     (structuredPaperPrimeBlock_length_pos positive (φ n))
 
@@ -972,7 +1002,7 @@ lemma binNumeral_val {M : Type*} [ORingStructure M] [M↓[ℒₒᵣ] ⊧* 𝗣�
   have hfour : (fourTerm : Semiterm.Const ℒₒᵣ).val (![] : Fin 0 → M) = 4 := by
     rw [fourTerm]
     simp only [val_add_comp, val_mul_comp, val_one]
-    first | norm_num | ring
+    norm_num
   intro v
   induction v using Nat.strong_induction_on with
   | _ v ih =>
@@ -1075,5 +1105,231 @@ its value is superpolynomial, and a written-out family names its values compactl
 lemma binNumeralEnc_two_pow_polySegStream :
     PolySegStream (fun n => binNumeralEnc (2 ^ n)) :=
   polySegStream_binNumeralEnc bigDigits_two_pow
+
+/-! ## Emitting a compact numeral from a machine digit certificate
+
+The machine twin of `polySegStream_binNumeralEnc`, and the last device the
+`thm:halts`/`thm:loops`/`thm:dontwait`/`thm:pac` lane needed.  It is sited here rather than
+in `Framework/Machine/WriteOutMachine.lean` because it is stated in this file's vocabulary
+(`binNumeralEnc`, `binNumeralLen`, `digitEnc`, `hornerPrefix`), and this file is downstream
+of every `Framework/Machine/` module; the generic device it runs, `TokenFold.Strip`, is
+sited upstream with the other `dgFold` clients.
+
+**What the fuel proof does and the machine proof cannot.** `polySegStream_binNumeralEnc`
+reads `len4 (v n)` and `dig4 (v n) j` off `BigDigits`' two random-access programs.
+`MachineDigits` is the emitted *block*, and the block an emitter chooses need not be the
+canonical `natDigits4` run, so neither quantity is a function of the emitted word's length.
+The machine proof therefore canonicalizes first — `TokenFold.Strip` strips the high zero
+digits in one `dgFold` pass — and then **streams** both runs instead of indexing them:
+
+* the digit blocks come out of the same pass, because the strip client *prepends* its
+  per-digit emission, so a least-significant-first fold produces the most-significant-first
+  order `binNumeralEnc_eq` asks for.  No random access into the emitted word is needed at
+  any point, and none is built.  (The *indexed* reading of `binNumeralEnc_eq` does want
+  random access; the emitter does not, and it is the emitter's requirement that governs.)
+* the Horner run is `MachineTokenStream.concatVar` at the constant block `hornerPrefix`,
+  counted by a `UnaryRuler` — and that ruler is the *same* strip pass at the emission
+  `fun _ => [false]`, one mark per surviving digit, so the digit count costs a second pass
+  over the same word and no arithmetic.
+
+The value `0` is the one edge: `binNumeralLen 0 = 1` while `len4 0 = 0`, so the strip pass
+returns nothing and the constant block `digitEnc 0` is substituted, under the ruler pass's
+own emptiness test (`TokenFold.ifEqLen_mem_FP` at `0`). `canonDigits` names that run. -/
+
+/-- The digit run the compact numeral writes: the value's canonical base-four digits,
+except that `0` still occupies one digit.  Its length is `binNumeralLen`. -/
+private def canonDigits (v : ℕ) : List ℕ := if v = 0 then [0] else natDigits4 v
+
+private lemma canonDigits_lt (v : ℕ) : ∀ d ∈ canonDigits v, d < 4 := by
+  unfold canonDigits
+  split
+  · intro d hd
+    simp only [List.mem_singleton] at hd
+    omega
+  · exact natDigits4_lt v
+
+private lemma canonDigits_zero : canonDigits 0 = [0] := rfl
+
+private lemma canonDigits_cons {v : ℕ} (hv : 4 ≤ v) :
+    canonDigits v = v % 4 :: canonDigits (v / 4) := by
+  have hq : 0 < v / 4 := Nat.div_pos hv (by norm_num)
+  rw [canonDigits, if_neg (by omega), canonDigits, if_neg (by omega)]
+  cases v with
+  | zero => omega
+  | succ m => rw [natDigits4]
+
+/-- **The compact numeral in streaming digit form.**  `binNumeralEnc_eq` reads the digit
+run by *index*, `dig4 v (binNumeralLen v - 1 - j)`; this reads the same run as a list,
+most significant first, which is what a streaming emitter produces. -/
+private lemma binNumeralEnc_eq_canon (v : ℕ) :
+    binNumeralEnc v
+      = (List.range (binNumeralLen v - 1)).flatMap (fun _ => hornerPrefix)
+        ++ (canonDigits v).reverse.flatMap digitEnc := by
+  induction v using Nat.strong_induction_on with
+  | _ v ih =>
+    rcases lt_or_ge v 4 with hv | hv
+    · rw [binNumeralEnc, if_pos hv, binNumeralLen_of_lt_four hv]
+      simp only [Nat.sub_self, List.range_zero, List.flatMap_nil, List.nil_append]
+      interval_cases v <;> simp [canonDigits, natDigits4]
+    · have hlt : v / 4 < v := Nat.div_lt_self (by omega) (by omega)
+      have hq : 0 < v / 4 := Nat.div_pos hv (by norm_num)
+      have hLq : 0 < binNumeralLen (v / 4) := binNumeralLen_pos _
+      obtain ⟨K, hK⟩ : ∃ K, binNumeralLen (v / 4) = K + 1 :=
+        ⟨binNumeralLen (v / 4) - 1, by omega⟩
+      have hLv : binNumeralLen v = K + 1 + 1 := by
+        rw [binNumeralLen_div hv, hK]
+      have hhorner : (List.range (K + 1)).flatMap (fun _ : ℕ => hornerPrefix)
+          = hornerPrefix ++ (List.range K).flatMap (fun _ : ℕ => hornerPrefix) := by
+        rw [flatMap_range_const, flatMap_range_const, List.replicate_succ,
+          List.flatten_cons]
+      rw [binNumeralEnc, if_neg (by omega), ih _ hlt, canonDigits_cons hv, hLv, hK]
+      simp only [Nat.add_sub_cancel, List.reverse_cons, List.flatMap_append,
+        List.flatMap_cons, List.flatMap_nil, List.append_nil]
+      rw [hhorner]
+      simp [List.append_assoc]
+
+private lemma tail_replicate (a : Bool) : ∀ k : ℕ,
+    (List.replicate k a).tail = List.replicate (k - 1) a
+  | 0 => rfl
+  | _ + 1 => by rw [List.replicate_succ]; simp
+
+open Complexity Complexity.Cobham in
+/-- **The strip pass over a machine digit certificate, as one `FP` word function.**  At
+`unaryDay n` it is the emission `E` of the value's canonical base-four digits, most
+significant first (empty when the value is `0`).  Both runs of the compact numeral are
+instances: the digit blocks at `E = fun d => tokBits (digitEnc d)`, and the digit count at
+`E = fun _ => [false]`.
+
+Length side condition: none.  `TokenFold.Strip.stripStep_length_le` bounds the fold's state
+by `|cli| + c` at a constant `c` on *every* word, so `dgFold_mem_FP` closes with the zero
+polynomial and nothing about the value is assumed. -/
+private lemma exists_strip_word {v : ℕ → ℕ} (hv : MachineDigits v) (E : ℕ → List Bool) :
+    ∃ K : List Bool → List Bool, K ∈ Complexity.FP ∧
+      ∀ n, K (unaryDay n) = (natDigits4 (v n)).reverse.flatMap E := by
+  obtain ⟨D, hD, hDw, hDv⟩ := hv.exists_digitWord
+  have hDay : (fun z : List Bool => D (List.replicate z.length true)) ∈ Complexity.FP := by
+    simpa [Function.comp_def] using
+      Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hD
+  have hfold := TokenFold.dgFold_mem_FP (STEP := TokenFold.Strip.stripStep E)
+    (Wf := fun _ => []) (Sf := fun z => D (List.replicate z.length true))
+    (c := 2 * ((E 0).length + (E 1).length + (E 2).length + (E 3).length) + 2)
+    (qP := 0)
+    (TokenFold.Strip.stripStep_mem_FP E) (FPFold.constFn_mem_FP []) hDay
+    (fun W cli b0 b1 b2 => by
+      simpa using TokenFold.Strip.stripStep_length_le E W cli b0 b1 b2)
+    (Complexity.pair [] [])
+  refine ⟨fun z => sndBlock (TokenFold.dgFold (TokenFold.Strip.stripStep E) []
+      (Complexity.pair [] []) (bitsToDigits (D (List.replicate z.length true)))),
+    by simpa [Function.comp_def] using Complexity.mem_FP_comp hfold sndBlock_mem_FP,
+    fun n => ?_⟩
+  obtain ⟨cur, hcur, hcurw⟩ := hDw n
+  have hrep : List.replicate (unaryDay n).length true = unaryDay n := by simp [unaryDay]
+  have hbits : bitsToDigits (D (unaryDay n)) = cur := by
+    rw [hcurw, bitsToDigits_digitsToBits _ (fun d hd => lt_trans (hcur d hd) (by norm_num))]
+  have hval : digitVal cur = v n := by
+    rw [← hDv n, hcurw, DigitFP.wordVal_digitsToBits hcur]
+  simp only [hrep]
+  rw [hbits, TokenFold.Strip.dgFold_stripStep E [] cur [] [] hcur, sndBlock_pair,
+    (TokenFold.Strip.stripAcc_closed E cur).2,
+    TokenFold.Strip.trimZeros_eq_natDigits4 cur hcur, hval]
+
+/-- **The compact numeral's digit count is a unary ruler.**  The strip pass at one mark
+per surviving digit; `binNumeralLen v - 1 = len4 v - 1` because the two differ only at
+`v = 0`, where both are `0`. -/
+lemma unaryRuler_binNumeralLen_pred {v : ℕ → ℕ} (hv : MachineDigits v) :
+    UnaryRuler (fun n => binNumeralLen (v n) - 1) := by
+  obtain ⟨K, hK, hKv⟩ := exists_strip_word hv (fun _ => [false])
+  show (fun z : List Bool => List.replicate (binNumeralLen (v z.length) - 1) false)
+    ∈ Complexity.FP
+  have hDay : (fun z : List Bool => K (List.replicate z.length true)) ∈ Complexity.FP := by
+    simpa [Function.comp_def] using
+      Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hK
+  have htail := TokenFold.tail_mem_FP hDay
+  have heq : (fun z : List Bool => (K (List.replicate z.length true)).tail)
+      = fun z : List Bool => List.replicate (binNumeralLen (v z.length) - 1) false := by
+    funext z
+    have h := hKv z.length
+    have hlen : binNumeralLen (v z.length) - 1 = len4 (v z.length) - 1 := by
+      simp only [binNumeralLen]
+      omega
+    show (K (unaryDay z.length)).tail = _
+    rw [h, TokenFold.flatMap_const_singleton, List.length_reverse, tail_replicate, hlen, len4]
+  rwa [heq] at htail
+
+open Complexity Complexity.Cobham in
+/-- **The compact numeral is emittable from a machine digit certificate.**  Machine twin of
+`polySegStream_binNumeralEnc`, one metering to the left: the two uniform runs are a
+`concatVar` at the constant Horner block, counted by `unaryRuler_binNumeralLen_pred`, and
+the strip pass's own most-significant-first digit blocks.
+
+Side condition: none.  Values are unrestricted — exponential values are the point of the
+class — and the emitted word's length is what the polynomial bounds. -/
+lemma machineTokenStream_binNumeralEnc {v : ℕ → ℕ} (hv : MachineDigits v) :
+    MachineTokenStream (fun n => binNumeralEnc (v n)) := by
+  have hhorner : MachineTokenStream
+      (fun n => (List.range (binNumeralLen (v n) - 1)).flatMap fun _ => hornerPrefix) :=
+    (MachineTokenStream.const hornerPrefix).concatVar (unaryRuler_binNumeralLen_pred hv)
+  obtain ⟨Kb, hKb, hKbv⟩ :=
+    exists_strip_word hv (fun d => TokenFold.tokBits (digitEnc d))
+  obtain ⟨Kr, hKr, hKrv⟩ := exists_strip_word hv (fun _ => [false])
+  have hKbDay : (fun z : List Bool => Kb (List.replicate z.length true)) ∈ Complexity.FP := by
+    simpa [Function.comp_def] using
+      Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hKb
+  have hKrDay : (fun z : List Bool => Kr (List.replicate z.length true)) ∈ Complexity.FP := by
+    simpa [Function.comp_def] using
+      Complexity.mem_FP_comp Complexity.unaryLength_mem_FP hKr
+  have hGFP : (fun z : List Bool =>
+      if (Kr (List.replicate z.length true)).length = 0
+        then TokenFold.tokBits (digitEnc 0)
+        else Kb (List.replicate z.length true)) ∈ Complexity.FP :=
+    TokenFold.ifEqLen_mem_FP hKrDay 0 (FPFold.constFn_mem_FP _) hKbDay
+  have hG : ∀ n : ℕ,
+      (if (Kr (List.replicate (unaryDay n).length true)).length = 0
+        then TokenFold.tokBits (digitEnc 0)
+        else Kb (List.replicate (unaryDay n).length true))
+      = TokenFold.tokBits ((canonDigits (v n)).reverse.flatMap digitEnc) := by
+    intro n
+    have hrep : List.replicate (unaryDay n).length true = unaryDay n := by simp [unaryDay]
+    rw [hrep, hKrv n, hKbv n, TokenFold.flatMap_const_singleton, List.length_reverse,
+      List.length_replicate]
+    by_cases h0 : v n = 0
+    · rw [if_pos (by rw [h0]; simp [natDigits4]), h0, canonDigits_zero]
+      simp
+    · have hpos : (natDigits4 (v n)).length ≠ 0 := by
+        have hp := len4_pos (Nat.pos_of_ne_zero h0)
+        rw [len4] at hp
+        omega
+      rw [if_neg hpos, canonDigits, if_neg h0, TokenFold.tokBits_flatMap]
+  have hdigits : MachineTokenStream
+      (fun n => (canonDigits (v n)).reverse.flatMap digitEnc) :=
+    ⟨_, hGFP, fun n => by rw [hG n]; exact TokenFold.blockWF_tokBits _,
+      fun n => by rw [hG n]; exact TokenFold.decodeBits_tokBits _⟩
+  exact (hhorner.append hdigits).of_eq (fun n => (binNumeralEnc_eq_canon (v n)).symm)
+
+/-- **Non-vacuity** (`N+`) for the machine numeral emitter, at a day-varying value the
+machine knows only as a length: the day itself, whose compact numeral therefore has a
+day-varying digit run.  `machineTokenStream_binNumeralEnc` at
+`MachineDigits.ofUnaryRuler UnaryRuler.id`. -/
+lemma machineTokenStream_binNumeralEnc_id :
+    MachineTokenStream (fun n => binNumeralEnc n) :=
+  machineTokenStream_binNumeralEnc (MachineDigits.ofUnaryRuler UnaryRuler.id)
+
+lemma binNumeralEnc_nonconstant (c : List ℕ) : (fun n => binNumeralEnc n) ≠ fun _ => c := by
+  intro h
+  have h0 : binNumeralEnc 0 = c := congrFun h 0
+  have h1 : binNumeralEnc 1 = c := congrFun h 1
+  rw [binNumeralEnc, if_pos (by norm_num), digitEnc] at h0
+  rw [binNumeralEnc, if_pos (by norm_num), digitEnc] at h1
+  rw [← h0] at h1
+  simp at h1
+
+/-- **The compact numeral of a machine-metered value family is emittable as `ℒₒᵣ` term
+symbols.**  Machine twin of `polySegStream_binNumeral_const`, and the form the knowledge
+lane's claim emitters consume. -/
+lemma machineTokenStream_binNumeral_const {v : ℕ → ℕ} (hv : MachineDigits v) (l : ℕ) :
+    MachineTokenStream (fun n => encodeArithmeticTermSymbols
+      ((binNumeral (v n)).const : ArithmeticSemiterm ℕ l)) :=
+  (machineTokenStream_binNumeralEnc hv).of_eq fun n =>
+    (encodeArithmeticTermSymbols_binNumeral (k := l) (v n)).symm
 
 end LogicalInduction

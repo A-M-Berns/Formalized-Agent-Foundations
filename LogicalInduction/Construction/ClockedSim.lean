@@ -11,7 +11,7 @@ import Complexitylib.Classes.P.NormalForm
 The soundness half of `Construction/MachineTraderEnumeration.lean`. That enumeration indexes
 traders by a finite `TMDesc` together with a polynomial clock, and reads off the described
 machine's output when it halts inside that clock and `[]` when it does not; for the
-enumeration to be an enumeration *of* machine-efficient traders, that truncated behaviour has
+enumeration to be an enumeration *of* efficiently computable traders, that truncated behaviour has
 to be an ordinary `Complexity.FP` function. This file builds the machine that computes it.
 
 Because the description is *fixed* — an index names one — no interpreter is needed. The

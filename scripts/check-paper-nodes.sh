@@ -108,11 +108,71 @@ done | grep -oE '(structure|def|theorem|lemma|abbrev|class)\s+[A-Za-z_][A-Za-z0-
 # `not_overgeneral_ifp`, which is annotated.  Same discipline as
 # `check_endpoint_coverage.py`'s excuse table: an exemption is named and justified, never
 # implicit.
+# The second group is the non-vacuity witness block (AxiomAudit.lean, "Non-vacuity
+# witnesses"): declarations that INHABIT an interface rather than render a paper claim. An
+# inhabitant of `def:ec`'s machine reading is not a rendering of `def:ec`, so annotating one
+# would file a witness as a statement. They are inventoried because transitive coverage
+# reaches upstream only, so nothing else would catch a `sorry` in them. The staleness check
+# below is what keeps this list honest. `succDeferral` and `doublingDeferral` are in that
+# group (they inhabit `def:deferralfunc`, at the slow and the fast end of the growth range
+# its output-sensitive clause admits), and so is `not_polyFueled_doublingDeferral`, which
+# REFUTES a fuel certificate for the second rather than rendering anything.
+# `expectation_indicator_not_identity` is in that group for the same reason as
+# `not_polyFueled_doublingDeferral`: it REFUTES the degenerate reading of `thm:ei` at the
+# constructed indicator (a market pricing `φ` and the equivalent `φ ⋏ ∼∼φ` apart), so a
+# `thm:ei` line on it would file a refutation as a rendering of the theorem it protects.
+# The third group (`SettlementChecker`, last) is a repo-side computability interface: frozen
+# and inventoried because a canonical endpoint binds it, but rendering no paper node, since
+# it asks for a recognizer and no runtime bound at all. A `def:ec` line on it would claim an
+# efficiency obligation the structure does not impose.
+# The fourth group (the three `lic_deducible_*`) is the fixed-sentence fragment of
+# Provability Induction: `∀ n, φ ∈ DP.D n` for a *fixed* `φ` is strictly stronger than
+# `thm:provind`'s "is a theorem", and the paper's statement is about a sequence, so an
+# annotation would credit them with a node they do not render. The carrier is `lic_provind`
+# (`Properties/AffineCoherence.lean`). They stay inventoried because they are public and must
+# stay axiom-clean.
 cat > /tmp/_pn_exempt <<'EOF'
+lic_deducible_price_near_one
+lic_deducible_eventually_ge
+lic_deducible_tendsto_one
 exists_advice_perturbation
 exists_advice_perturbation_ofTheory
 not_overgeneral_ifp_ofTheory
 not_overgeneral_ifp_of_advice
+unaryRuler_triangle
+unaryRuler_triangle_nonconstant
+machineDigits_id
+machineDigits_id_nonconstant
+machineDigits_two_pow
+machineDigits_two_pow_nonconstant
+machineMachineCodes_nest
+machineMachineCodes_nest_nonconstant
+machineRatCodes_two_pow_inv
+machineDigits_ratCode_two_pow_inv
+machineRatCodes_two_pow_inv_nonconstant
+machineTokenStream_atom
+machineSentenceCodes_atom
+machineSentenceCodes_atom_nonconstant
+machineSentenceCodes_conjRange
+machineSentenceCodes_conjRange_nonconstant
+machineSpliceStream_atomTrade
+machineSpliceStream_atomTrade_nonconstant
+buyAtomDaily
+buyAtomDaily_nonconstant
+efficientlyComputable_buyAtomDaily
+machineTokenStream_marks
+machineDigits_tokenListNat_marks
+machineDigits_tokenListNat_marks_nonconstant
+zero
+zero_not_exploits
+polyPositiveWidths_two_pow_inv
+expectation_indicator_not_identity
+succDeferral
+doublingDeferral
+not_polyFueled_doublingDeferral
+presentedLUVSeq
+toDigitMachineCodes
+SettlementChecker
 EOF
 
 while read -r nm; do

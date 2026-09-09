@@ -21,7 +21,7 @@ and the difference is worth knowing: `LUV/` states its §4.8 `_arith` forms over
 `liaHistory (L.gridDP)` and `liaHistory luvThresholdDP`, and `SemanticExtension/` states its
 one endpoint over `liaHistory (canonicalCCEEDP T)`.  Everywhere, the constructed-market
 statement stands beside a form over an *arbitrary* `[IsLogicalInductor P DP]` or
-`[IsMachineLogicalInductor P DP]`: it is the paper's instance, not the only rendering.  The
+`[IsLogicalInductor P DP]`: it is the paper's instance, not the only rendering.  The
 import graph is not that clean either, and the
 exceptions are recorded rather than hidden: `Paper/FirstOrder.lean` imports
 `Construction/Knowledge/Syntax.lean` for the global atom-payload allocation, whose reserved

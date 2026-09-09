@@ -33,8 +33,8 @@ they are stated there over an arbitrary inductor too.
 ## The settlement clock
 
 * `SettlementClock` — `PatientSettlementClock` from a semi-decider or a purely computational
-  checker, over the sound under-approximation `deadlinePassed` of the undecidable deferral
-  deadline (`def:deferralfunc`), built on the `deadlineRun` stated with `DeferralFunction` in
+  checker, over the budgeted test `deadlinePassed` for the deferral deadline
+  (`def:deferralfunc`), built on the `deadlineRun` stated with `DeferralFunction` in
   `Properties/SelfTrust.lean`.
 * `SettlementCompiler` — the checker itself, compiled from a market program and a
   deductive-process program: course-of-values `Primrec` recursions on Gödel codes, the fuel

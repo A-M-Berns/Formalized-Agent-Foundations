@@ -18,10 +18,10 @@ Objects defined: `TableEntry`, `tableLookup` (keyed by *parsing*) and its senten
 
 Main results: `decodeBits_oracleOf` (the chain computes the lookup, unconditionally),
 `oracleOf_mem_FP` (it is polynomial time), `runOracleOf` (a `FreezeStep.RunOracle` for any
-finite table), `machineFiniteSupportPatch` (the patch compiled from `ComputableMarket`
-alone), and `machine_lic_iff_of_finiteSupport` -- the strongest corrected `thm:ifp`, consumed
-by `API.lic_iff_of_finiteSupportPerturbation_machine`.  The two weaker public forms
-`machine_lic_iff_of_noReservedSupport` and `machine_lic_iff_of_recognizableSupport` are
+finite table), `finiteSupportPatch` (the patch compiled from `ComputableMarket`
+alone), and `lic_iff_of_finiteSupport` -- the strongest corrected `thm:ifp`, consumed
+by `API.lic_iff_of_finiteSupportPerturbation`.  The two weaker public forms
+`lic_iff_of_noReservedSupport` and `lic_iff_of_recognizableSupport` are
 one-line corollaries kept as the API's other public names, together with the predicates
 `NoReservedSupportPerturbation` and `RecognizableSupportPerturbation` and the implications
 between them.
@@ -255,7 +255,7 @@ def runOracleOf (entries : List TableEntry) :
 
 /-! ## Matching the oracle to a market's table
 
-`runOracleOf` answers questions about *runs*; `MachineFiniteSupportPatch` asks about
+`runOracleOf` answers questions about *runs*; `FiniteSupportPatch` asks about
 *sentences*.  `parseRpn_iff_mem_spellings` is the bridge, and it is the only place the
 recognition side conditions are used. -/
 
@@ -355,18 +355,18 @@ lemma quoteRunOf_bridge {S : Finset (ℕ × Sentence)} {quote : ℕ → Sentence
 
 /-! ## The patch, for a presented table -/
 
-/-- **`MachineFiniteSupportPatch` for any market whose frozen table is presented by an
+/-- **`FiniteSupportPatch` for any market whose frozen table is presented by an
 entry list.**
 
 Kind `C`; hypotheses `(a)` except the `TablePresentation`, which is the disclosed side
 condition on the table.
 Paper node: `app:ifp` -/
-def machineFiniteSupportPatch_ofTable
+def finiteSupportPatch_ofTable
     (P : History) (S : Finset (ℕ × Sentence)) (quote : ℕ → Sentence → ℚ)
     (hexact : ∀ d φ, (d, φ) ∈ S → P d φ = (quote d φ : ℝ))
     (entries : List TableEntry) (htab : TablePresentation S quote entries) :
-    MachineFiniteSupportPatch P S :=
-  machineFiniteSupportPatch_of_rewriter P S quote hexact
+    FiniteSupportPatch P S :=
+  finiteSupportPatch_of_rewriter P S quote hexact
     (selCodeOf S) (quoteCodeOf quote)
     (fun day code φ h => selCodeOf_decode day code h)
     (fun day code φ h => quoteCodeOf_decode day code h)
@@ -377,7 +377,7 @@ def machineFiniteSupportPatch_ofTable
 
 /-! ## A concrete table: the patch is not vacuous, and not degenerate
 
-The empty table satisfies everything vacuously and would inhabit `MachineFiniteSupportPatch`
+The empty table satisfies everything vacuously and would inhabit `FiniteSupportPatch`
 while forcing `P = P'`.  That is not a discharge, so this section exhibits a table with a
 **real row**: day `0`, the sentence `atom 0`, quote `1/2`.  Its coordinate set is nonempty,
 so the perturbation it licenses moves an actual price. -/
@@ -399,7 +399,7 @@ lemma atom_zero_noReserved : ∀ pol fc : ℕ, (0 : ℕ) ≠ Nat.pair 5 (Nat.pai
 
 /-- A one-row frozen table, at an arbitrary quote value.
 
-The value is a parameter because `machine_lic_iff_of_finiteSupportPerturbation` needs a
+The value is a parameter because `lic_iff_of_finiteSupportPerturbation_ofPatches` needs a
 patch for **each** of the two markets, and each patch carries its own table — that is how
 `P` and `P'` are allowed to differ on `S` while both are patchable. -/
 def exampleEntries (q : ℚ) : List TableEntry :=
@@ -436,7 +436,7 @@ lemma examplePresentation (q : ℚ) :
         simp only [exampleS, Finset.mem_singleton, Prod.ext_iff] at hc
         exact h ⟨hc.1.symm, hc.2.symm⟩)]
 
-/-- **`MachineFiniteSupportPatch` at a table with a real row.**
+/-- **`FiniteSupportPatch` at a table with a real row.**
 
 `exampleS_nonempty` is the check that this is not the degenerate discharge: the coordinate
 set contains `(0, atom 0)`, so `P` and `P'` may genuinely differ there — and since `q` is a
@@ -446,33 +446,33 @@ Side conditions carried: the table's one sentence is `Recognizable`
 (`recognizable_atom`, `atom_zero_noReserved`) and the row presents `exampleS`/`exampleQuote`
 faithfully (`examplePresentation`).  The constant output budget is derived, not assumed.
 Paper node: `app:ifp` -/
-def machineFiniteSupportPatch_example (q : ℚ) (P : History)
+def finiteSupportPatch_example (q : ℚ) (P : History)
     (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ)) :
-    MachineFiniteSupportPatch P exampleS :=
-  machineFiniteSupportPatch_ofTable P exampleS (exampleQuote q) hexact
+    FiniteSupportPatch P exampleS :=
+  finiteSupportPatch_ofTable P exampleS (exampleQuote q) hexact
     (exampleEntries q) (examplePresentation q)
 
 /-- **Both markets of a genuine perturbation are patchable.**  `P` freezes at `q`, `P'` at
 `q'`, on the same nonempty coordinate set — so this is the two-sided hypothesis
-`machine_lic_iff_of_finiteSupportPerturbation` asks for, at a table that actually moves a
+`lic_iff_of_finiteSupportPerturbation_ofPatches` asks for, at a table that actually moves a
 price.
 
 What this does *not* supply is the markets themselves: the theorem also wants
 `ComputableMarket P`, `ComputableMarket P'` and tail agreement, and no concrete pair is
 constructed here.
 Paper node: `app:ifp` -/
-def machineFiniteSupportPatch_pair (q q' : ℚ) (P P' : History)
+def finiteSupportPatch_pair (q q' : ℚ) (P P' : History)
     (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
     (hexact' : ∀ d φ, (d, φ) ∈ exampleS → P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
-    MachineFiniteSupportPatch P exampleS × MachineFiniteSupportPatch P' exampleS :=
-  (machineFiniteSupportPatch_example q P hexact,
-    machineFiniteSupportPatch_example q' P' hexact')
+    FiniteSupportPatch P exampleS × FiniteSupportPatch P' exampleS :=
+  (finiteSupportPatch_example q P hexact,
+    finiteSupportPatch_example q' P' hexact')
 
 /-! ## The chain, end to end
 
 Every link with every hypothesis explicit:
-`RunOracle` → `FreezeStreamRewriter` → `preserves_ec` → `MachineFiniteSupportPatch` →
-`machine_lic_iff_of_finiteSupportPerturbation`. -/
+`RunOracle` → `FreezeStreamRewriter` → `preserves_ec` → `FiniteSupportPatch` →
+`lic_iff_of_finiteSupportPerturbation_ofPatches`. -/
 
 /-- **The corrected `thm:ifp`, instantiated at a table that moves a real price.**
 
@@ -481,23 +481,23 @@ each and tail agreement off `exampleS`.  No concrete such pair is constructed he
 records that the freeze side is discharged — not that the theorem has been exhibited
 non-vacuous end to end.
 
-Kind `N+` non-vacuity witness.  Provenance: (a) `machineFiniteSupportPatch_example`.
+Kind `N+` non-vacuity witness.  Provenance: (a) `finiteSupportPatch_example`.
 Paper node: `app:ifp` -/
-lemma machine_lic_iff_example (q q' : ℚ) (P P' : History) (DP : DeductiveProcess)
+lemma lic_iff_example (q q' : ℚ) (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ∉ exampleS → P d φ = P' d φ)
     (hexact : ∀ d φ, (d, φ) ∈ exampleS → P d φ = ((exampleQuote q d φ : ℚ) : ℝ))
     (hexact' : ∀ d φ, (d, φ) ∈ exampleS → P' d φ = ((exampleQuote q' d φ : ℚ) : ℝ)) :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
-  machine_lic_iff_of_finiteSupportPerturbation P P' DP exampleS hPcomp hP'comp hagree
-    (machineFiniteSupportPatch_example q P hexact)
-    (machineFiniteSupportPatch_example q' P' hexact')
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP :=
+  lic_iff_of_finiteSupportPerturbation_ofPatches P P' DP exampleS hPcomp hP'comp hagree
+    (finiteSupportPatch_example q P hexact)
+    (finiteSupportPatch_example q' P' hexact')
 
 /-! ## The patch, compiled from the market alone
 
 No caller-supplied presentation is needed: for a finite coordinate set the entry list is
 *canonical*, read straight off `S` and the market's own rational table, so the patch
-hypothesis of `machine_lic_iff_of_finiteSupportPerturbation` is discharged here rather than
+hypothesis of `lic_iff_of_finiteSupportPerturbation_ofPatches` is discharged here rather than
 assumed. -/
 
 /-- The canonical entry list for a finite coordinate set and a code-level quote table. -/
@@ -544,36 +544,36 @@ structured length field; nothing about the target restricts it.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `app:ifp` -/
-noncomputable def machineFiniteSupportPatch (P : History)
+noncomputable def finiteSupportPatch (P : History)
     (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P) :
-    MachineFiniteSupportPatch P S :=
+    FiniteSupportPatch P S :=
   let mc := hP.nonemptyComputation.some
-  machineFiniteSupportPatch_ofTable P S (fun d φ => mc.quote d (Encodable.encode φ))
+  finiteSupportPatch_ofTable P S (fun d φ => mc.quote d (Encodable.encode φ))
     (fun d φ _ => mc.quote_exact d φ) (entriesOf S mc.quote)
     (tablePresentation_entriesOf S mc.quote)
 
 /-- The patch under the reserved-atom-free hypothesis: a specialization of
-`machineFiniteSupportPatch`, which needs no condition on the frozen sentences at all.  It is
+`finiteSupportPatch`, which needs no condition on the frozen sentences at all.  It is
 one of the public names a client may already be using.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `app:ifp` -/
-noncomputable def machineFiniteSupportPatch_ofNoReserved (P : History)
+noncomputable def finiteSupportPatch_ofNoReserved (P : History)
     (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
     (_hnr : ∀ p ∈ S, NoReserved p.2) :
-    MachineFiniteSupportPatch P S :=
-  machineFiniteSupportPatch P S hP
+    FiniteSupportPatch P S :=
+  finiteSupportPatch P S hP
 
 /-- The patch under the syntactic recognizability hypothesis, likewise a specialization of
-`machineFiniteSupportPatch` and likewise one of the public names.
+`finiteSupportPatch` and likewise one of the public names.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `app:ifp` -/
-noncomputable def machineFiniteSupportPatch_ofRecognizable (P : History)
+noncomputable def finiteSupportPatch_ofRecognizable (P : History)
     (S : Finset (ℕ × Sentence)) (hP : ComputableMarket P)
     (_hrec : ∀ p ∈ S, Recognizable p.2) :
-    MachineFiniteSupportPatch P S :=
-  machineFiniteSupportPatch P S hP
+    FiniteSupportPatch P S :=
+  finiteSupportPatch P S hP
 
 /-- `P` and `P'` differ on only finitely many price coordinates, and no sentence involved
 has a **reserved-atom** subformula.
@@ -581,9 +581,9 @@ has a **reserved-atom** subformula.
 The two halves are of different kinds and should be read that way: finite support is a
 **mathematical** condition on the perturbation, while `NoReserved` is a **representation**
 condition on the sentences, forced by FAF's RPN syntax rather than by the mathematics.
-`machine_lic_iff_of_noReservedSupport` is the endpoint that takes it, and it is strictly
+`lic_iff_of_noReservedSupport` is the endpoint that takes it, and it is strictly
 weaker in reach than `FiniteSupportPerturbation`, which is all
-`machine_lic_iff_of_finiteSupport` asks for. -/
+`lic_iff_of_finiteSupport` asks for. -/
 def NoReservedSupportPerturbation (P P' : History) : Prop :=
   ∃ S : Finset (ℕ × Sentence),
     (∀ p ∈ S, NoReserved p.2) ∧ ∀ d φ, (d, φ) ∉ S → P d φ = P' d φ
@@ -613,7 +613,7 @@ lemma RecognizableSupportPerturbation.toFiniteSupport {P P' : History}
 /-- **The corrected `thm:ifp`.**
 
 Finite `(day, sentence)` support and computability of both markets — nothing else.  No
-patch certificate: the `MachineFiniteSupportPatch` both markets need is *compiled* here,
+patch certificate: the `FiniteSupportPatch` both markets need is *compiled* here,
 from `S` and their own quote tables.  And no condition on the finitely many sentences whose
 price moves: the recognizer that decides which token runs denote them
 (`SegRec.ifParseFull_mem_FP`) is unconditional.
@@ -626,43 +626,43 @@ agreement (`FiniteSupportPerturbation.tail_agree`) and the converse fails
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
-theorem machine_lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
+theorem lic_iff_of_finiteSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : FiniteSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP := by
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP := by
   obtain ⟨S, hagree⟩ := hpert
-  exact machine_lic_iff_of_finiteSupportPerturbation P P' DP S hPcomp hP'comp hagree
-    (machineFiniteSupportPatch P S hPcomp)
-    (machineFiniteSupportPatch P' S hP'comp)
+  exact lic_iff_of_finiteSupportPerturbation_ofPatches P P' DP S hPcomp hP'comp hagree
+    (finiteSupportPatch P S hPcomp)
+    (finiteSupportPatch P' S hP'comp)
 
 /-- **`thm:ifp` under the reserved-atom-free hypothesis.**  A corollary of
-`machine_lic_iff_of_finiteSupport`, since `NoReservedSupportPerturbation` implies
+`lic_iff_of_finiteSupport`, since `NoReservedSupportPerturbation` implies
 `FiniteSupportPerturbation`; it is one of the two public names a client may already be
 using.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
-theorem machine_lic_iff_of_noReservedSupport (P P' : History) (DP : DeductiveProcess)
+theorem lic_iff_of_noReservedSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : NoReservedSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
-  machine_lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP :=
+  lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
 
 /-- **`thm:ifp` under the syntactic recognizability hypothesis.**  A corollary of
-`machine_lic_iff_of_finiteSupport` through `RecognizableSupportPerturbation.toFiniteSupport`,
+`lic_iff_of_finiteSupport` through `RecognizableSupportPerturbation.toFiniteSupport`,
 and the weakest in reach of the three public forms.
 
 Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
-theorem machine_lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
+theorem lic_iff_of_recognizableSupport (P P' : History) (DP : DeductiveProcess)
     (hPcomp : ComputableMarket P) (hP'comp : ComputableMarket P')
     (hpert : RecognizableSupportPerturbation P P') :
-    IsMachineLogicalInductor P DP ↔ IsMachineLogicalInductor P' DP :=
-  machine_lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
+    IsLogicalInductor P DP ↔ IsLogicalInductor P' DP :=
+  lic_iff_of_finiteSupport P P' DP hPcomp hP'comp hpert.toFiniteSupport
 
 /-! ## Why the recognizer needs a counter and a predictive parser
 
-`machine_lic_iff_of_finiteSupport` is the strongest statement proved here and the
+`lic_iff_of_finiteSupport` is the strongest statement proved here and the
 mathematically natural one: finite `(day, sentence)` support, computability of both markets,
 nothing else.  Neither of the two syntactic hypotheses its weaker siblings carry is a
 restriction on markets, traders, or perturbations; each is a condition on the **syntax** of
@@ -702,7 +702,7 @@ the recognition problem genuinely demands.
 
 /-! ## A concrete pair of computable markets
 
-`machine_lic_iff_example` takes `ComputableMarket` for each market, so a concrete pair is
+`lic_iff_example` takes `ComputableMarket` for each market, so a concrete pair is
 what makes it say something.  The pair below prices everything at zero except a single
 coordinate `(0, φ)`, which one market prices at `q` and the other at `q'`.  They are
 computable in the sense `def:marketprocess` asks for — a rational table with a
@@ -856,15 +856,15 @@ markets.**
 
 Every hypothesis is discharged: both markets are `ComputableMarket`s with real
 `Nat.Partrec.Code` tables, they agree off `exampleS`, they *disagree* on it
-(`twoPointHistory_ne_at`), and each carries a `MachineFiniteSupportPatch` built from the
+(`twoPointHistory_ne_at`), and each carries a `FiniteSupportPatch` built from the
 run-level lookup.  Nothing is assumed.
 
 Kind `N+` non-vacuity witness.
 Paper node: `app:ifp` -/
-theorem machine_lic_iff_twoPoint (DP : DeductiveProcess) :
-    IsMachineLogicalInductor (twoPointHistory (1 / 2)) DP
-      ↔ IsMachineLogicalInductor (twoPointHistory (1 / 3)) DP :=
-  machine_lic_iff_example (1 / 2) (1 / 3) _ _ DP
+theorem lic_iff_twoPoint (DP : DeductiveProcess) :
+    IsLogicalInductor (twoPointHistory (1 / 2)) DP
+      ↔ IsLogicalInductor (twoPointHistory (1 / 3)) DP :=
+  lic_iff_example (1 / 2) (1 / 3) _ _ DP
     (computableMarket_twoPoint (1 / 2) (by norm_num) (by norm_num))
     (computableMarket_twoPoint (1 / 3) (by norm_num) (by norm_num))
     (twoPointHistory_agree _ _)
@@ -875,12 +875,12 @@ theorem machine_lic_iff_twoPoint (DP : DeductiveProcess) :
 The two sentences a `Recognizable`-restricted freeze cannot take, one for each half of the
 restriction, with the negative facts proved so that nothing rests on inspection.  A result
 covering *these* coordinates is strictly stronger in actual use than
-`machine_lic_iff_of_recognizableSupport`, and one that does not is the same theorem under a
+`lic_iff_of_recognizableSupport`, and one that does not is the same theorem under a
 different name.
 
 `hardSentence` fails `BotFree` (`not_botFree_hardSentence`), so
-`machine_lic_iff_of_recognizableSupport` does not apply to any coordinate set containing it
-(`not_recognizable_hardS`), while `machine_lic_iff_of_noReservedSupport` does
+`lic_iff_of_recognizableSupport` does not apply to any coordinate set containing it
+(`not_recognizable_hardS`), while `lic_iff_of_noReservedSupport` does
 (`noReserved_hardSentence`, `noReservedSupport_hardPoint`).  The difference is carried below
 all the way to concrete pairs of computable markets differing at exactly those
 coordinates. -/
@@ -970,16 +970,16 @@ lemma not_noReservedSupport_reservedPoint :
   · exact pointHistory_ne_at reservedSentence (hagree 0 reservedSentence hmem)
 
 /-- `hardSentence` has no reserved-atom subformula, so it is inside
-`machine_lic_iff_of_noReservedSupport`'s hypothesis while failing
-`machine_lic_iff_of_recognizableSupport`'s (`not_recognizable_hardSentence`). -/
+`lic_iff_of_noReservedSupport`'s hypothesis while failing
+`lic_iff_of_recognizableSupport`'s (`not_recognizable_hardSentence`). -/
 lemma noReserved_hardSentence : NoReserved hardSentence := by
   rw [hardSentence, noReserved_and]
   exact ⟨atom_zero_noReserved, noReserved_falsum⟩
 
 /-- **The reserved-atom-free endpoint does reach the `hardSentence` point pair**, which is
 the positive half of the strictness statement: the same perturbation that
-`not_recognizableSupport_hardPoint` puts outside `machine_lic_iff_of_recognizableSupport` is
-inside `machine_lic_iff_of_noReservedSupport`.
+`not_recognizableSupport_hardPoint` puts outside `lic_iff_of_recognizableSupport` is
+inside `lic_iff_of_noReservedSupport`.
 Kind `N+` (non-vacuity witness); provenance (a) derived in-project.
 Paper node: `thm:ifp` -/
 lemma noReservedSupport_hardPoint :
@@ -999,17 +999,17 @@ Every hypothesis is discharged — both markets are `ComputableMarket`s with rea
 disagree on it (`pointHistory_ne_at`) — and this perturbation is one the previous endpoint
 provably could not take: `not_recognizableSupport_hardPoint` establishes
 `¬ RecognizableSupportPerturbation` of the two markets outright (not merely that the
-sentence fails `Recognizable`), so `machine_lic_iff_of_recognizableSupport` is inapplicable
+sentence fails `Recognizable`), so `lic_iff_of_recognizableSupport` is inapplicable
 here by a proved *perturbation-level* negative rather than by inspection.  This is what makes
 the strengthening strict *in use* and not only in statement.
 
 Kind `N+` non-vacuity witness.  Provenance: (a) `computableMarket_point`,
-`machine_lic_iff_of_finiteSupport`.
+`lic_iff_of_finiteSupport`.
 Paper node: `app:ifp` -/
-theorem machine_lic_iff_hardPoint (DP : DeductiveProcess) :
-    IsMachineLogicalInductor (pointHistory hardSentence (1 / 2)) DP
-      ↔ IsMachineLogicalInductor (pointHistory hardSentence (1 / 3)) DP :=
-  machine_lic_iff_of_finiteSupport _ _ DP
+theorem lic_iff_hardPoint (DP : DeductiveProcess) :
+    IsLogicalInductor (pointHistory hardSentence (1 / 2)) DP
+      ↔ IsLogicalInductor (pointHistory hardSentence (1 / 3)) DP :=
+  lic_iff_of_finiteSupport _ _ DP
     (computableMarket_point hardSentence (1 / 2) (by norm_num) (by norm_num))
     (computableMarket_point hardSentence (1 / 3) (by norm_num) (by norm_num))
     ⟨pointS hardSentence, pointHistory_agree hardSentence _ _⟩
@@ -1017,8 +1017,8 @@ theorem machine_lic_iff_hardPoint (DP : DeductiveProcess) :
 /-- **The strictness regression at a *reserved* frozen sentence.**
 
 `reservedSentence` is `atom (Nat.pair 5 (Nat.pair 0 0))`, and it fails `NoReserved`
-(`not_noReserved_reservedSentence`) — so neither `machine_lic_iff_of_recognizableSupport`
-nor `machine_lic_iff_of_noReservedSupport` applies to this perturbation, established outright
+(`not_noReserved_reservedSentence`) — so neither `lic_iff_of_recognizableSupport`
+nor `lic_iff_of_noReservedSupport` applies to this perturbation, established outright
 by the perturbation-level negative `not_noReservedSupport_reservedPoint` (which forces the
 differing coordinate into every admissible support set) rather than by inspection.  It is
 exactly the case the structured paper-prime branch of
@@ -1026,17 +1026,17 @@ exactly the case the structured paper-prime branch of
 `[1, 0, pol] ++ 1^L ++ [0] ++ p ++ [19]` whose unary length field is unbounded, and the
 freeze's recognizer has to accept every one of them.
 
-Together with `machine_lic_iff_hardPoint` — which does the same for the `BotFree` half —
+Together with `lic_iff_hardPoint` — which does the same for the `BotFree` half —
 this is what makes the unrestricted endpoint strictly stronger *in use* rather than only in
 statement.
 
 Kind `N+` non-vacuity witness.  Provenance: (a) `computableMarket_point`,
-`machine_lic_iff_of_finiteSupport`.
+`lic_iff_of_finiteSupport`.
 Paper node: `app:ifp` -/
-theorem machine_lic_iff_reservedPoint (DP : DeductiveProcess) :
-    IsMachineLogicalInductor (pointHistory reservedSentence (1 / 2)) DP
-      ↔ IsMachineLogicalInductor (pointHistory reservedSentence (1 / 3)) DP :=
-  machine_lic_iff_of_finiteSupport _ _ DP
+theorem lic_iff_reservedPoint (DP : DeductiveProcess) :
+    IsLogicalInductor (pointHistory reservedSentence (1 / 2)) DP
+      ↔ IsLogicalInductor (pointHistory reservedSentence (1 / 3)) DP :=
+  lic_iff_of_finiteSupport _ _ DP
     (computableMarket_point reservedSentence (1 / 2) (by norm_num) (by norm_num))
     (computableMarket_point reservedSentence (1 / 3) (by norm_num) (by norm_num))
     ⟨pointS reservedSentence, pointHistory_agree reservedSentence _ _⟩

@@ -41,9 +41,10 @@ market's own quote codes are `paperDiagonalQuoteCode`, `paperPriceQuoteCode`,
 `paperConfidenceQuoteCode`, `paperIntervalQuoteCode`, `paperDeferredWeightQuoteCode` and
 `paperConditionalExpectationQuoteCode`.
 
-Which certificate class each lane asks for: write-out `BigSentenceCodes` / `DigitRatCodes` on
-the sentence and tolerance lanes, `LUV.RpnThresholdCodeSeq` on the LUV threshold lane, and
-`LUV.BigThresholdCodeSeq` on `thm:st` — see the README's rendering-sensitivity note.  What
+Which certificate class each lane asks for: machine-metered write-out `MachineSentenceCodes`
+on the sentence lane, `MachineRatCodes` on the tolerance lane, and
+`LUV.MachineThresholdCodeSeq` on the LUV threshold lane, `thm:st` included — see the
+README's rendering-sensitivity note.  What
 `thm:ref` and `thm:st` ask of their bounds is `def:ece` ℙ-generability rather than efficient
 writability: computability is recovered from the feature presentation by
 `PGenerableRat.computable`, and nothing spells the bound out under a clock because the
@@ -93,7 +94,7 @@ noncomputable def paperDiagonalQuoteCode (p : ℚ) :
 /-- `thm:epr`, unconditional over `LIA`.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_ofCode_unconditional
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, liaHistory (paperDP T) n (φ n) = (value n : ℝ)) :
     (fun n => liaHistory (paperDP T) n (φ n)) ≈ₙ
@@ -106,7 +107,7 @@ theorem lic_expectations_of_probabilities_ofCode_unconditional
 /-- `thm:er`, unconditional over `LIA`.
 Paper node: `thm:er` -/
 theorem lic_iterated_expectations_ofCode_unconditional
-    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    {value : ℕ → ℚ} (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect (liaHistory (paperDP T)) n = (value n : ℝ)) :
     (fun n => (X n).expect (liaHistory (paperDP T)) n) ≈ₙ
@@ -119,12 +120,12 @@ theorem lic_iterated_expectations_ofCode_unconditional
 /-- `thm:ref` (introspection), unconditional over `LIA`.
 Paper node: `thm:ref` -/
 theorem lic_introspection_ofCode_unconditional
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (paperDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (paperDP T)) b upperFeature)
-    (hδ : DigitRatCodes δ)
+    (hδ : MachineRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -148,7 +149,7 @@ theorem lic_introspection_ofCode_unconditional
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_ofRepresentation_unconditional
     (f : DeferralFunction)
-    (X Y : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
+    (X Y : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X) (hY : LUV.MachineThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
@@ -165,7 +166,7 @@ Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_ofRepresentation_unconditional
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : MachineSentenceCodes φ) (hY : LUV.MachineThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       v.ValuesAt (Y n) (liaHistory (paperDP T) (f n) (φ n))) :
     (fun n ↦ liaHistory (paperDP T) n (φ n)) ≈ₙ
@@ -182,8 +183,8 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation_unconditional
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat (liaHistory (paperDP T)) w)
-    (hX : LUV.RpnThresholdCodeSeq X) (hZ : LUV.RpnThresholdCodeSeq Z)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hX : LUV.MachineThresholdCodeSeq X) (hZ : LUV.MachineThresholdCodeSeq Z)
+    (hZ' : LUV.MachineThresholdCodeSeq Z')
     (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       ∃ x, v.ValuesAt (X n) x)
@@ -208,10 +209,10 @@ theorem lic_self_trust_ofRepresentation_unconditional
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : MachineSentenceCodes φ) (hδ : MachineRatCodes δ)
     (pFeature : ℕ → EF)
     (hp : GeneratedRatFeature (liaHistory (paperDP T)) p pFeature)
-    (hA : LUV.BigThresholdCodeSeq A) (hB : LUV.BigThresholdCodeSeq B)
+    (hA : LUV.MachineThresholdCodeSeq A) (hB : LUV.MachineThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       v.ValuesAt (B n) (ctsInd (δ n) (liaHistory (paperDP T) (f n) (φ n)) (p n)))
     (product_reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
@@ -231,7 +232,7 @@ theorem lic_self_trust_ofRepresentation_unconditional
 write-out codeable sentence sequence (`def:ec`).  No caller-supplied semantic relation: the value
 program is the market program, and range comes from its certificate.
 Paper node: `thm:epr` -/
-noncomputable def paperPriceQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+noncomputable def paperPriceQuoteCode (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (paperMarketComputation T).quote n (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -246,7 +247,7 @@ with its own expectation of the *constructed* quoted-price LUV.  The quote objec
 only remaining hypotheses are the sequence and its `def:ec` write-out codes.
 Paper node: `thm:epr` -/
 theorem lic_expectations_of_probabilities_closed
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     (fun n => liaHistory (paperDP T) n (φ n)) ≈ₙ
       fun n => ((paperPriceQuoteCode T φ hφ).luv n).expect (liaHistory (paperDP T)) n :=
   lic_expectations_of_probabilities_ofCode_unconditional (T := T) φ hφ
@@ -258,7 +259,7 @@ an efficiently codeable LUV sequence.  The value program is the expectation comp
 the market program; range and exactness come from its certificate.
 Paper node: `thm:er` -/
 noncomputable def paperExpectationQuoteCode (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.MachineThresholdCodeSeq X) :
     RationalQuoteCode T ((paperMarketComputation T).expectQuote X) :=
   RationalQuoteCode.ofComputable T
     ((paperMarketComputation T).expectQuote_computable hX)
@@ -268,7 +269,7 @@ noncomputable def paperExpectationQuoteCode (X : ℕ → LUV)
 price of the day-`n` sentence.  No caller-supplied semantic relation.
 Paper node: `thm:ceu` -/
 noncomputable def paperFutureQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     RationalQuoteCode T (fun n =>
       (paperMarketComputation T).quote (f.f n) (Encodable.encode (φ n))) :=
   RationalQuoteCode.ofComputable T
@@ -283,7 +284,7 @@ deferral function remain.
 Paper node: `thm:ceu` -/
 theorem lic_no_expected_net_update_closed
     (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     (fun n ↦ liaHistory (paperDP T) n (φ n)) ≈ₙ
       fun n ↦ ((paperFutureQuoteCode T f φ hφ).luv n).expect
         (liaHistory (paperDP T)) n :=
@@ -300,7 +301,7 @@ theorem lic_no_expected_net_update_closed
 market's own day-`f n` expectation of the day-`n` LUV.
 Paper node: `thm:cee` -/
 noncomputable def paperDeferredExpectationQuoteCode (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X) :
     RationalQuoteCode T (fun n =>
       (paperMarketComputation T).expectQuoteAt X n (f.f n)) :=
   -- The `( … : _)` ascription is load-bearing: it forces the expected type before
@@ -315,13 +316,13 @@ noncomputable def paperDeferredExpectationQuoteCode (f : DeferralFunction)
 
 /-- **`thm:cee` (expected future expectations), closed form over the constructed `LIA`**
 — the reflection data is constructed from the market program; only the source LUV
-sequence, its `def:ec` token-metered threshold codes, its own theory-valuedness
+sequence, its `def:ec` write-out threshold codes (`LUV.MachineThresholdCodeSeq`), its own theory-valuedness
 (`source_valued`, the paper's premise that `X` is a genuine LUV of the theory), and the
 deferral function remain.
 Paper node: `thm:cee` -/
 theorem lic_expected_future_expectations_closed
     (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       ∃ x, v.ValuesAt (X n) x) :
     (fun n ↦ (X n).expect (liaHistory (paperDP T)) n) ≈ₙ
@@ -339,10 +340,11 @@ theorem lic_expected_future_expectations_closed
 /-- **`thm:er`, closed form over the constructed `LIA`** — no reflection hypotheses.
 For every efficiently codeable LUV sequence, the market's expectation agrees
 asymptotically with its expectation of the *constructed* quoted-expectation LUV.  Only
-the LUV sequence and its `def:ec` token-metered threshold codes remain.
+the LUV sequence and its `def:ec` write-out threshold codes (`LUV.MachineThresholdCodeSeq`)
+remain.
 Paper node: `thm:er` -/
 theorem lic_iterated_expectations_closed
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) :
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X) :
     (fun n => (X n).expect (liaHistory (paperDP T)) n) ≈ₙ
       fun n => ((paperExpectationQuoteCode T X hX).luv n).expect
         (liaHistory (paperDP T)) n :=
@@ -361,12 +363,12 @@ a program for `p` from the feature presentation by parsing the emitted serializa
 
 What the quote code needs of the tolerance `δ` is *computability*, not efficiency: the
 quoted value is a code-indexed atom, so nothing here spells `δ n` out under a polynomial
-clock.  The hypothesis is therefore `Computable δ`, which `DigitRatCodes.computable`
+clock.  The hypothesis is therefore `Computable δ`, which `MachineRatCodes.computable`
 supplies at the call sites that do carry the efficiency certificate for other reasons.
 This is the same narrowing the sibling `thm:ref` code (`paperIntervalQuoteCode`) makes.
 Paper node: `thm:st` -/
 noncomputable def paperConfidenceQuoteCode (f : DeferralFunction)
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (δ p : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) (δ p : ℕ → ℚ)
     (hδ : Computable δ) (hp : PGenerableRat (liaHistory (paperDP T)) p) :
     RationalQuoteCode T (fun n => ratCtsInd (δ n)
       ((paperMarketComputation T).quote (f n) (Encodable.encode (φ n))) (p n)) :=
@@ -402,7 +404,7 @@ writable numeral, because the quoted sentence is a *code-indexed atom* (`dd:quot
 rather than a formula spelling `a n` and `b n` out — see the `thm:ref` entry of
 `notes/paper-errata.md` for why the paper's own proof does need the stronger property.
 Paper node: `thm:ref` -/
-noncomputable def paperIntervalQuoteCode (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+noncomputable def paperIntervalQuoteCode (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (a b : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (paperDP T)) a lowerFeature)
@@ -448,12 +450,12 @@ conditions.  See `notes/paper-errata.md` PE6 for why the paper's own proof needs
 it states, and why this route does not.
 Paper node: `thm:ref` -/
 theorem lic_introspection_closed
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) (a b δ : ℕ → ℚ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature (liaHistory (paperDP T)) a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature (liaHistory (paperDP T)) b upperFeature)
-    (hδ : DigitRatCodes δ)
+    (hδ : MachineRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1) :
@@ -479,26 +481,27 @@ hypotheses.  Both quoted LUVs are constructed: `B` is the confidence quote code 
 market's own deferred-day price, and `A` is its indicator product with `φ n`.  Only the
 sentence sequence with its `def:ec` write-out codes, the deferral function, and the
 threshold data remain.  The two threshold obligations this discharges internally are at
-the same write-out meter (`LUV.BigThresholdCodeSeq`): `A`'s comes from
-`indicatorProductLUV_bigThresholdCodeSeq`, whose `⋏`-shell is one emitted token, and `B`'s
+the same write-out meter (`LUV.MachineThresholdCodeSeq`): `A`'s comes from
+`indicatorProductLUV_machineThresholdCodeSeq`, whose `⋏`-shell is one emitted token, and `B`'s
 is the quote's own threshold stream weakened into the write-out class.  Nothing on this
 lane opens a threshold certificate as value-bounded emission data.
 
 The threshold `p` is P-generable (`def:ece`), matching the paper: the quote code recovers
 a program for `p` from the feature presentation itself (`PGenerableRat.computable`).  An
 e.c. rational sequence is the constant-feature special case — supply
-`PGenerableRat.ofDigitRatCodes hp _` for `hp : DigitRatCodes p`, the paper's own
-write-out class (`PGenerableRat.ofPolyRatCodes` is the value-bounded corollary).
+`PGenerableRat.ofMachineRatCodes hp _` for `hp : MachineRatCodes p`, `def:ec`'s own machine
+class (`PGenerableRat.ofPolyRatCodes` is the value-bounded corollary, and
+`DigitRatCodes.toMachine` crosses from a fuel certificate).
 
 The tolerance sequence `δ` carries exactly the paper's hypotheses: efficiently codeable
 and positive.  Efficient codeability of the reciprocal `1/δ` is *derived* from those two
-(`PolyRatCodes.inv_of_pos`), not assumed.
+(`MachineRatCodes.inv_of_pos`), not assumed.
 Paper node: `thm:st` -/
 theorem lic_self_trust_closed
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ)
     (delta_pos : ∀ n, 0 < δ n) (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : MachineSentenceCodes φ) (hδ : MachineRatCodes δ)
     (hp : PGenerableRat (liaHistory (paperDP T)) p) :
     (fun n ↦ (indicatorProductLUV
           (paperConfidenceQuoteCode T f φ hφ δ p
@@ -516,9 +519,9 @@ theorem lic_self_trust_closed
         hδ.computable hp).luv
     delta_pos probability_mem hφ hδ
     hp.choose hp.choose_spec
-    (indicatorProductLUV_bigThresholdCodeSeq _ hφ)
+    (indicatorProductLUV_machineThresholdCodeSeq _ hφ)
     (paperConfidenceQuoteCode T f φ hφ δ p
-        hδ.computable hp).poly.toBig
+        hδ.computable hp).poly
     (fun n v hv => ?_) (fun n v hv => ?_)
   · have h := RationalQuoteCode.reflected (paperQuotationPresentation T)
       (paperConfidenceQuoteCode T f φ hφ δ p
@@ -542,7 +545,7 @@ noncomputable def paperDeferredWeightQuoteCode (f : DeferralFunction) (w : ℕ �
 /-- The deferred weighted-expectation quote at the single market.
 Paper node: `thm:ccee` -/
 noncomputable def paperConditionalExpectationQuoteCode (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (w : ℕ → ℚ)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X) (w : ℕ → ℚ)
     (hw : PGenerableRat (liaHistory (paperDP T)) w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n =>
@@ -554,7 +557,8 @@ constructed `LIA`** — for an **arbitrary** e.c. source family `X`, as the pape
 with both quoted products constructed.  `Z` is the mesh product of `X` with the
 deferred-weight quote code, and `Z'` the quote of the market's own deferred weighted
 expectation.  The remaining hypotheses are the paper's own: the source family with its
-`def:ec` token-metered threshold codes and completed-world values (`lem:conluvapprox`,
+`def:ec` write-out threshold codes (`LUV.MachineThresholdCodeSeq`) and completed-world
+values (`lem:conluvapprox`,
 as in `thm:cee`), the
 `[0,1]` P-generable weight, and the deferral function.
 
@@ -567,7 +571,7 @@ the product.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_closed
     (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (paperDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
@@ -583,7 +587,7 @@ theorem lic_no_expected_net_update_conditional_closed
       (paperDeferredWeightQuoteCode T f w weight_generable weight_mem) X n)
     ((paperConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).luv)
     w weight_mem weight_generable hX
-    (meshProductLUV_rpnThresholdCodeSeq _ hX)
+    (meshProductLUV_machineThresholdCodeSeq _ hX)
     (paperConditionalExpectationQuoteCode T f X hX w weight_generable weight_mem).poly
     (fun n => 1 / ((n : ℝ) + 1)) tendsto_one_div_add_atTop_nhds_zero_nat
     source_valued
@@ -646,7 +650,10 @@ carried *in place of* the `[𝗣𝗔⁻ ⪯ T]` of the section above, not beside
 note.  The elaborated signature therefore carries no redundant pair.
 The tolerance width the interior construction needs is *not* a premise: the paper states no
 `δ` at this node, and `width` occurs nowhere in the conclusion, so the endpoint discharges it
-internally at the paper's own tolerance sequence `2⁻ⁿ` (`digitRatCodes_two_pow_inv`).
+internally at the paper's own tolerance sequence `2⁻ⁿ`
+(`digitRatCodes_two_pow_inv`, crossed to the machine class by `DigitRatCodes.toMachine`;
+`machineRatCodes_two_pow_inv` is the same witness named in
+`Framework/Machine/Witnesses.lean`, which this module does not import).
 Paper node: `thm:lp` -/
 theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1) :
@@ -657,7 +664,7 @@ theorem lic_paradox_resistance_ofDiagonal_unconditional [𝗜𝚺₁ ⪯ T]
   haveI := paperLIA T
   lic_paradox_resistance_ofDiagonal (paperQuotationPresentation T) (liaHistory (paperDP T))
     (paperMarketComputation T) p hp0 hp1
-    (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) digitRatCodes_two_pow_inv
+    (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) (DigitRatCodes.toMachine digitRatCodes_two_pow_inv)
     (fun n => by positivity)
     (Filter.Tendsto.congr (fun n => by push_cast; rw [inv_pow])
       (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num :

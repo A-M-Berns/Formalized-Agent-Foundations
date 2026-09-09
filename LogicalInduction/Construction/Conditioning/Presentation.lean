@@ -5,7 +5,7 @@ import LogicalInduction.Properties.Conditioning
 # Concrete presentations for Closure Under Conditioning
 
 `thm:scon` takes a `ConditioningPresentation` as data.  This file constructs one in three
-forms, so that no caller of `lic_conditioned` / `lic_conditioned_machine` has to assume one.
+forms, so that no caller of `lic_conditioned` has to assume one.
 
 **Shared machinery.**  `deductiveStageCondition` is the canonical finite conjunction of a
 deductive stage under the code-canonical `Finset` order (empty conjunction `⊤`), with its
@@ -20,14 +20,14 @@ paper's `Θ ∪ {ψ}` case, tex:6124.
 **Form 2, compact growing** (`CompactConditioningProcessComputation`,
 `conditioningPresentationOfComputations`, `lic_conditioned_gated_ofComputations`): the
 certificate carries a program emitting the actual conjunction code at the write-out class
-`BigSentenceCodes`, so a stage condition's Gödel code may be exponential in the day.  The
-certificate is destructured as emission data by `CondStep.machineSentenceBlocks_of_big`.
+`MachineSentenceCodes`, so a stage condition's Gödel code may be exponential in the day.  The
+certificate is destructured as emission data by `CondStep.machineSentenceBlocks_of_machine`.
 
 **Form 3, prefix conjunctions from an arbitrary e.c. sequence** (`prefixProcess`,
 `prefixProcessComputation`, `prefixConditioningPresentation`): the paper's own quantifier
 for the growing form (tex:1613-1618, appendix tex:6126), with write-out efficiency of the
-conditions derived from `BigSentenceCodes ψ` through `BigSentenceCodes.bigAnd`.  It is
-consumed by `ConditioningCompile.lic_conditioned_growing_machine_ofSequence`.
+conditions derived from `MachineSentenceCodes ψ` through `MachineSentenceCodes.bigAnd`.  It is
+consumed by `ConditioningCompile.lic_conditioned_growing_ofSequence`.
 
 **One design fact.**  In form 3 the condition is written in index order through the free
 `condition` field of `ConditioningPresentation`, not through
@@ -183,23 +183,23 @@ what keeps the growing form realizable: `deductiveStageCondition (extra.D n)` is
 conjunction of `|extra.D n|` sentences, so it is deep, and its pair code is exponential
 in its symbol count.
 
-This field is at `def:ec`'s own class, the write-out `BigSentenceCodes`: it bounds only
-the number of digits a poly-time writer must emit and places no bound whatever on a
-token's value, so a stage condition's Gödel code may be exponential in the day.  The
-token-metered `RpnSentenceCodes` is a sufficient subclass, embedded by
-`BigSentenceCodes.ofRpnSentenceCodes`, and is what the cheap witnesses in this file
-happen to build; nothing on the `thm:scon` lane requires it.
+This field is at `def:ec`'s own machine class `MachineSentenceCodes`: a
+`Complexity.FP` function of the unary day emits the day's condition block, and nothing bounds
+a token's value, so a stage condition's Gödel code may be exponential in the day.  Sufficient
+subclasses reach it in one step — `MachineSentenceCodes.ofPolySentenceCodes` from a
+value-bounded certificate, `BigSentenceCodes.toMachine` from a fuel-metered write-out one,
+`RpnSentenceCodes.toMachine` from a token-metered one — and the cheap witnesses in this file
+build the first of those; nothing on the `thm:scon` lane requires any of them.
 
 The certificate is consumed as **emission data**, not as an opaque predicate:
-`CondStep.machineSentenceBlocks_of_big` destructures it, clocks the digitization of its
-block stream through `BigTokenStream.digitizeStream`, and runs
-`TraderMachine.traderOutput`.  The digit clamp there is the identity because the clamped
-object is a list of base-4 digits and terminators (`CondStep.mem_digitize_le_four`) — not
-because token values are bounded — which is exactly why the write-out class suffices.
+`CondStep.machineSentenceBlocks_of_machine` destructures it and reads the block word off the
+`Complexity.FP` witness directly — a machine-metered stream already carries
+`TokenFold.BlockWF` and its decode law — so no digitize-and-clamp step stands between the
+field and the transducer.
 Paper node: `thm:scon`, `def:ec` -/
 structure CompactConditioningProcessComputation (extra : DeductiveProcess)
     extends DeductiveProcessComputation extra where
-  condition_codes : BigSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
+  condition_codes : MachineSentenceCodes fun n ↦ deductiveStageCondition (extra.D n)
 
 /-- **Inhabitation only, and degenerate.**  The compact operational interface is inhabited by
 the constantly empty deductive process, whose stage program and empty-conjunction program
@@ -208,7 +208,7 @@ nothing more: at `extra.D n = ∅` the adjoined condition is the empty conjuncti
 `DP.union extra = DP`, so instantiating the growing form of `thm:scon` here restates the
 unconditioned theorem.  It is **not** evidence that the growing endpoint has content; the
 witness that carries that burden is `growingCompactConditioningProcessComputation` below,
-put to work in `exists_growing_conditioned_machine_inductor`. -/
+put to work in `exists_growing_conditioned_inductor`. -/
 lemma compactConditioningProcessComputation_nonempty :
     ∃ extra : DeductiveProcess,
       Nonempty (CompactConditioningProcessComputation extra) := by
@@ -218,7 +218,7 @@ lemma compactConditioningProcessComputation_nonempty :
   refine ⟨extra, ⟨{
     code := Nat.Partrec.Code.const (Encodable.encode (∅ : Finset Sentence))
     code_spec := fun n ↦ by simp [extra]
-    condition_codes := BigSentenceCodes.ofPolySentenceCodes
+    condition_codes := MachineSentenceCodes.ofPolySentenceCodes
       ⟨_, (PolyFueled.const
         (Encodable.encode (deductiveStageCondition (∅ : Finset Sentence)))).of_eq
           (fun n ↦ by simp [extra])⟩ }⟩⟩
@@ -249,11 +249,12 @@ this witness cheap.
 The witness is eventually constant, for cheapness alone.  An unboundedly growing prefix
 process `n ↦ {ψ₀, …, ψₙ}` over an arbitrary e.c. sequence is reachable: see `prefixProcess`
 / `prefixConditioningPresentation` below and the arbitrary-e.c.-sequence endpoint
-`ConditioningCompile.lic_conditioned_growing_machine_ofSequence`
+`ConditioningCompile.lic_conditioned_growing_ofSequence`
 (`Construction/Conditioning/Endpoints.lean`).  The write-out class places no bound on a
 condition's code value, so a condition whose code is exponential in its symbol count is
-admissible, and `BigSentenceCodes.bigAnd` (`Framework/Emission/WriteOut.lean`) writes a
-variable-width conjunction, closing the fold on the three-token `⊤ = [2, 0, 0]` terminator.
+admissible, and `MachineSentenceCodes.bigAnd` (`Framework/Machine/SentenceMachine.lean`)
+writes a variable-width conjunction, closing the fold on the three-token `⊤ = [2, 0, 0]`
+terminator.
 
 That combinator does not rescue the `deductiveStageCondition (extra.D n) =
 (extra.D n).toList.conj₂` route used by `CompactConditioningProcessComputation`; the prefix
@@ -327,13 +328,13 @@ noncomputable def growingConditionProcessComputation :
     exists_growingConditionProcessCode.choose_spec⟩
 
 private lemma growingConditionProcess_condition_codes :
-    BigSentenceCodes fun n => deductiveStageCondition (growingConditionProcess.D n) :=
-  (BigSentenceCodes.ifZero
-      (BigSentenceCodes.const
+    MachineSentenceCodes fun n => deductiveStageCondition (growingConditionProcess.D n) :=
+  (MachineSentenceCodes.ifZero
+      (MachineSentenceCodes.const
         (deductiveStageCondition ({growingConditionAtom 0} : Finset Sentence)))
-      (BigSentenceCodes.const (deductiveStageCondition
+      (MachineSentenceCodes.const (deductiveStageCondition
         ({growingConditionAtom 0, growingConditionAtom 1} : Finset Sentence)))
-      PolyFueled.id).of_eq (fun n => by
+      UnaryRuler.id).of_eq (fun n => by
     cases n with
     | zero => simp
     | succ m => simp)
@@ -398,9 +399,9 @@ lemma deductiveStageCondition_growing_ne :
 This form reaches the paper's own quantifier for the growing form of `thm:scon`
 (tex:1613-1618, appendix tex:6126): the paper starts from an **arbitrary efficiently
 computable individual-sentence sequence** `⟨ψ⟩` and conditions on the prefix conjunctions
-`ψ₀ ⋏ ⋯ ⋏ ψₙ`.  `BigSentenceCodes.bigAnd` (`Framework/Emission/WriteOut.lean`) supplies
-`BigSentenceCodes ψ → BigSentenceCodes (n ↦ ⋀_{i≤n} ψᵢ)`, so the write-out efficiency of
-the growing conditions is derived from `BigSentenceCodes ψ` rather than taken as data.
+`ψ₀ ⋏ ⋯ ⋏ ψₙ`.  `MachineSentenceCodes.bigAnd` (`Framework/Machine/SentenceMachine.lean`)
+supplies `MachineSentenceCodes ψ → MachineSentenceCodes (n ↦ ⋀_{i≤n} ψᵢ)`, so the efficiency of
+the growing conditions is derived from `MachineSentenceCodes ψ` rather than taken as data.
 
 Two design points make this go through where the `deductiveStageCondition` /
 `CompactConditioningProcessComputation` route does not.  The condition sentence is written
@@ -451,8 +452,8 @@ def prefixProcess (ψ : ℕ → Sentence) : DeductiveProcess where
 
 /-- The prefix process's stage codes are primitive recursive: dedup-and-sort the list
 `(range (n+1)).map ψ`, whose elements come from the primitive-recursive naming program
-extracted from the write-out certificate `hψ` (`BigSentenceCodes.primrec`). -/
-private lemma exists_prefixProcessCode (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+extracted from the write-out certificate `hψ` (`MachineSentenceCodes.primrec`). -/
+private lemma exists_prefixProcessCode (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     ∃ code : Nat.Partrec.Code, ∀ n,
       Encodable.encode ((prefixProcess ψ).D n) ∈ code.eval n := by
   have hψp : Primrec ψ := Primrec.encode_iff.mp hψ.primrec
@@ -471,24 +472,25 @@ private lemma exists_prefixProcessCode (ψ : ℕ → Sentence) (hψ : BigSentenc
 
 /-- The prefix process is computable, by the code extracted above.
 Paper node: `thm:scon` -/
-noncomputable def prefixProcessComputation (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+noncomputable def prefixProcessComputation (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     DeductiveProcessComputation (prefixProcess ψ) :=
   ⟨(exists_prefixProcessCode ψ hψ).choose, (exists_prefixProcessCode ψ hψ).choose_spec⟩
 
-/-- **Prefix-conjunction presentation.**  From `BigSentenceCodes ψ` alone, the growing
+/-- **Prefix-conjunction presentation.**  From `MachineSentenceCodes ψ` alone, the growing
 `thm:scon` presentation whose condition on day `n` is `ψ₀ ⋏ ⋯ ⋏ ψₙ` (index order, with a
 harmless `⊤` tail from the empty-fold terminator), certified efficiently nameable by
-`BigSentenceCodes.bigAnd`.  This is the presentation the arbitrary-e.c.-sequence endpoint
-`lic_conditioned_growing_machine_ofSequence` consumes.
+`MachineSentenceCodes.bigAnd`.  This is the presentation the arbitrary-e.c.-sequence endpoint
+`lic_conditioned_growing_ofSequence` consumes.
 Paper node: `thm:scon` -/
 noncomputable def prefixConditioningPresentation
     {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     ConditioningPresentation DP (prefixProcess ψ) where
   condition n := sentenceConjunction ((List.range (n + 1)).map ψ)
   condition_codes :=
-    (BigSentenceCodes.bigAnd (D := fun _ j => ψ j)
-        (hψ.comp PolyFueled.right) (hcnt := PolyFueled.id.succ_comp)).of_eq (fun z => by rfl)
+    (MachineSentenceCodes.bigAnd (D := fun _ j => ψ j)
+        (hψ.comp UnaryRuler.unpairSnd)
+        (hcnt := UnaryRuler.id.succ)).of_eq (fun z => by rfl)
   holds_condition n v := by
     simp only [prefixProcess, holds_sentenceConjunction, PCWorld.ConsistentWith,
       List.mem_toFinset]
@@ -520,7 +522,7 @@ noncomputable def fixedConditioningPresentation
     ConditioningPresentation DP (fixedConditionProcess ψ) where
   condition := fun _ => ψ
   condition_codes :=
-    BigSentenceCodes.ofPolySentenceCodes
+    MachineSentenceCodes.ofPolySentenceCodes
       ⟨Nat.Partrec.Code.const (Encodable.encode ψ),
         (PolyFueled.const (Encodable.encode ψ)).of_eq (fun _ => rfl)⟩
   holds_condition := by

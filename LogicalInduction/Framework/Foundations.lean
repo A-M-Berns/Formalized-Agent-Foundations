@@ -32,7 +32,7 @@ code-level matcher be written in Foundation's terms and read back as a `Sentence
 (`Construction/Freeze/Prefix.lean`, `Construction/Freeze/CanonicalCodes.lean`).
 
 Worlds, deductive processes, features, traders, exploitation and both efficiency classes
-are `Framework/Criterion.lean` and `Framework/MachineEfficiency.lean`; this module is only
+are `Framework/Criterion.lean` and `Framework/Efficiency.lean`; this module is only
 the language and the pricing carrier.
 -/
 

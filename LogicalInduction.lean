@@ -35,18 +35,21 @@ Core vocabulary, repo name → paper name (labels are the paper's own `\label`s)
 * `EF` — an expressible feature (`def:valfeature`/`def:tf`).
 * `Trader`, `AffineCombination` — traders and their affine buy combinations
   (`def:trader`, `def:tradestrat`).
-* `MachineEfficientTrader` — `def:ec` at the paper's own quantifier: ordinary machine
-  polynomial time, through `Complexity.FP`. This is the class the construction enumerates
-  and dominates.
-* `EfficientlyComputable` / `PolyFueled` — the fuel-clocked interpreter certificates
-  (`dd:fuel`). Internal certification technology: every certificate implies membership in
-  the machine class (`EfficientlyComputable.toMachine`).
-* `IsMachineLogicalInductor` — the logical induction criterion at the machine class
-  (`def:lic`), and what the construction proves.
-* `IsLogicalInductor` — the same criterion over the fuel-certified class, and the form the
-  §4 property tail is stated against; the instance
-  `IsMachineLogicalInductor.toIsLogicalInductor` carries every §4 consequence to a machine
-  logical inductor. State a new *consequence* of the criterion against it.
+* `EfficientlyComputable` — `def:ec`: ordinary polynomial time, through `Complexity.FP`.
+  This is the class the construction enumerates and dominates, and the class `def:lic`
+  quantifies over.
+* `PolyFueledTrader` / `PolyFueled` — the fuel-clocked interpreter certificates
+  (`dd:fuel`). Internal certification technology, not a reading of `def:ec`: every
+  certificate implies membership in `EfficientlyComputable`
+  (`PolyFueledTrader.toEfficientlyComputable`). The clock never appears as a *statement*
+  device: the paper's own polynomial-in-the-output clauses are machine-metered too, on the
+  unary pair whose length carries the bound (`DeferralFunction.graph_fp`,
+  `FeedbackTruth.FeedbackTruthComputation.computes`).
+* `IsLogicalInductor` — the logical induction criterion (`def:lic`) over
+  `EfficientlyComputable`: what the construction proves, and what the whole §4 property
+  tail is stated against. State a new *consequence* of the criterion against it. A property
+  proof that certifies its exploiting trader in the fuel calculus reaches the criterion
+  through `IsLogicalInductor.noExploitTok` / `.noExploitDigit`.
 * `LUV` — a logically uncertain variable (`def:luv`).
 * `liaStates` / `liaHistory` — the paper's logical induction algorithm and the market it
   induces (`def:lia`, `alg:li`; `Construction/LIA.lean`, with `liaQuote` and `liaTrader`
@@ -60,12 +63,36 @@ list is exhaustive; a label appearing nowhere below is not in use.
 
 * **`dd:fuel`** — a trader's efficiency *certificate* is a fuel-clocked interpreter
   bound: a `Nat.Partrec.Code` program emitting its trade stream within a polynomial fuel
-  bound on Mathlib's `evaln` (`EfficientlyComputable` / `PolyFueled`). `def:ec` itself is
-  `MachineEfficientTrader` — ordinary machine polynomial time via `Complexity.FP` — and the
+  bound on Mathlib's `evaln` (`PolyFueledTrader` / `PolyFueled`). `def:ec` itself is
+  `EfficientlyComputable` — ordinary machine polynomial time via `Complexity.FP` — and the
   construction enumerates and dominates *that* class. A fuel certificate is a *sufficient*
-  route into it: `EfficientlyComputable.toMachine` proves every certificate lands inside
-  the class. The converse is open, and nothing paper-facing depends on it; the model card
-  in `Framework/Emission/Computable.lean` states the open question.
+  route into it: `PolyFueledTrader.toEfficientlyComputable` proves every certificate lands inside
+  the class. The converse is open on a *workspace* bound rather than a missing compiler —
+  at a fixed code the fuel device is poly-time with `O(log n)` workspace, since `evaln`'s
+  guard and the class's own polynomial bounds cap every value it handles by a polynomial in
+  the input, while `Complexity.FP` is poly-time with polynomial workspace, so the converse
+  is a P-versus-L-flavoured containment over tally inputs. Nothing paper-facing depends on
+  it; the model card in `Framework/Emission/Computable.lean` states the calibration in full,
+  and `Framework/Machine/WriteOutMachine.lean` exhibits the asymmetry in Lean. The choice is
+  a convenience rather than a necessity: `Framework/Machine/` carries the `Complexity.FP`
+  reading of the whole emission ladder — six classes, two closure suites and the two trader
+  capstones — so a trader can be certified at `EfficientlyComputable` with no fuel
+  certificate in the derivation, as `APITests/LogicalInduction.lean` does. Where the fuel
+  side takes a `PolyFueled c f` parameter the machine side takes a unary ruler (for
+  reindexing) or `MachineDigits f` (for a value written into the stream), and every bridge
+  between the two lanes runs fuel → machine. **No canonical endpoint takes a fuel
+  certificate as an emission premise** — printed or through a boundary structure; what is
+  still metered in this calculus on the emission side is deliberate, binds no endpoint, and
+  is named at the `def:ec` row of `scripts/coverage-classification.md`. **`dd:fuel` is a
+  certification device everywhere, including on the two premises that are not emission
+  premises**: `DeferralFunction.graph_fp` (`def:deferralfunc`, tex:1243) and
+  `FeedbackTruth.FeedbackTruthComputation.computes` (`thm:wub`, tex:1251) render the paper's
+  own *output-sensitive* clocks — runtime polynomial in the value returned, not in the day —
+  at the machine model, by handing the machine the **unary pair** whose length carries the
+  bound: the deferral function's *graph* `f n = m` is decided in `Complexity.FP` on
+  `⟨n, m⟩`, and the feedback value codes are `MachineDigits` read at `⟨k, f (k+1)⟩`.
+  Twenty-three canonical endpoints bind the first, six of them the second, and none of them
+  takes a fuel-metered data premise; the `def:ec` row is `exact`.
 * **`dd:nnf`** — the *semantic* object language is Foundation's
   **negation-normal-form** `Semiformula` (constructors `verum/falsum/rel/nrel/and/or/all/exs`,
   negation a meta-level involution, `A 🡒 B` notation for `∼A ⋎ B`, `A 🡘 B` notation for
@@ -88,7 +115,13 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * **`dd:dsl`** — expressible features (`EF`) are a *reified* datatype with two semantics
   (a denotation into `ℝ` and a token/cost semantics), rather than Lean functions. The
   syntax is what carries the efficiency certificate, so features must be objects that can
-  be emitted and metered.
+  be emitted and metered. The datatype adds `var`/`letE` — straight-line sharing — to the
+  paper's printed grammar (tex:786-788), on the licence of that grammar's own footnote
+  (tex:788: expressible features are "a generalization of arithmetic circuits", which are
+  "compactly specifiable in polynomial time"). The extension is denotationally
+  conservative but enlarges the class of *cheaply writable* features, hence enlarges
+  `EfficientlyComputable` and strengthens `IsLogicalInductor`; it is disclosed at the `EF`
+  definition and in `LogicalInduction/README.md`.
 * **`dd:asymp`** — one module, `Framework/Asymptotics`, owns the limit vocabulary
   (`≈ₙ`, `≳ₙ`, `≲ₙ`, "eventually within ε", "converges to"), built on Mathlib's
   `Tendsto` and `∀ᶠ n in atTop`, in the limiting rather than the finite-stage form. It is
@@ -170,8 +203,8 @@ list is exhaustive; a label appearing nowhere below is not in use.
 * `lic_<node>` is a consequence of the logical induction criterion, mirroring the paper
   node named in its docstring — `lic_provind` ↔ `thm:provind`, `lic_nonDogmatism` ↔
   `thm:nd`. Such statements take `[IsLogicalInductor P DP]`. The `lic_iff_*` family
-  (`lic_iff_of_finitePerturbation`, `lic_iff_of_finiteSupportPerturbation` and the machine
-  and syntactically-restricted forms in `API.lean`) are transports between two markets
+  (`lic_iff_of_finitePerturbation`, `lic_iff_of_finiteSupportPerturbation` and the
+  syntactically-restricted forms in `API.lean`) are transports between two markets
   rather than consequences of one. Where the paper's statement is about a
   combination or a LUV rather than a sentence, the endpoint lives in the corresponding
   namespace; the prefix is dropped when the endpoint is a *projection off a bounded-sequence
@@ -204,6 +237,19 @@ list is exhaustive; a label appearing nowhere below is not in use.
   `affpolymax_of_noPreemptiveGaps` — is Mathlib-style hypothesis naming, saying which
   premise the statement is factored over. It is distinct from the discharge suffix `_ofX`
   above, which names a construction that *removes* a premise.
+
+* **`Machine*` names the metering model of a certificate, never a second reading of
+  `def:ec` or of `def:lic`.** There is one efficient-trader class, `EfficientlyComputable`
+  (`def:ec`), and one criterion, `IsLogicalInductor` (`def:lic`); `PolyFueledTrader` beside
+  them is the `dd:fuel` certificate, and the marker on it is `PolyFueled`, not `Machine`.
+  The prefix survives only on the **data** classes that meter *write-out* on an ordinary
+  machine — `MachineSentenceCodes`, `MachineSpliceStream`, `MachineTokenStream`,
+  `MachineDigits`, `MachineRatCodes`, `MachineMachineCodes`, `MachineArithmeticSourceSeq`,
+  `LUV.MachineThresholdCodes(Seq)`, and the count class `UnaryRuler` beside them — where it
+  contrasts with the certification calculus's own renderings of the same data (`Big*`,
+  `Digit*`, `Poly*`, `Rpn*`), each with live producers and a `.toMachine` bridge. Both
+  readings are legitimate there and neither is a criterion. `Framework/Efficiency.lean`
+  points here.
 
 `scripts/coverage-classification.md` records, per paper label, which of these forms the
 strongest endpoint actually reaches.

@@ -4,7 +4,7 @@ import Mathlib.Tactic.IntervalCases
 /-!
 # The bit rendering of a digit stream
 
-The machine reading of `def:ec` — `MachineEfficientTrader` in `Framework/Criterion.lean` —
+The machine reading of `def:ec` — `EfficientlyComputable` in `Framework/Criterion.lean` —
 decodes a machine's output word through `bitsToDigits`, which groups three bits into a
 digit, most significant first. This file supplies the other direction and the round trip.
 
@@ -23,7 +23,7 @@ unchanged. Clamping is therefore what the machine emits, and this file is where 
 convention is fixed and justified.
 
 `Framework/Machine/TraderMachine.lean` writes the convention, emitting `digitBits (min d 4)`
-per digit and assembling the word through `digitsToBits`; `Framework/MachineEfficiency.lean`,
+per digit and assembling the word through `digitsToBits`; `Framework/Efficiency.lean`,
 `Framework/Machine/TokenFold.lean`, `Framework/Machine/DigitArithFP.lean`,
 `Framework/Machine/WriteOutMachine.lean` and `Construction/Conditioning/Transduction.lean`
 read it back. No `dd:` label applies: a fixed encoding convention is not a choice the paper leaves

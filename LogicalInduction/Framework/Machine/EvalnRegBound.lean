@@ -46,8 +46,8 @@ for all eight constructors.
 ## Where it is consumed
 
 `compiledTM_hoareTime` and `codeMachineTime_poly` are consumed by
-`Framework/Machine/TraderMachine.lean`, on the `EfficientlyComputable.toMachine` chain mapped
-in `Framework/MachineEfficiency.lean`.
+`Framework/Machine/TraderMachine.lean`, on the `PolyFueledTrader.toEfficientlyComputable` chain mapped
+in `Framework/Efficiency.lean`.
 -/
 
 namespace LogicalInduction.EvalnCompiler

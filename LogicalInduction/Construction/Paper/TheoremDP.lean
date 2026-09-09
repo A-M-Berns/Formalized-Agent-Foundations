@@ -499,7 +499,10 @@ noncomputable def paperQuotationPresentation [T.Δ₁] :
     QuotationTheoryPresentation (paperDP T) T :=
   (quotationPresentation T).mono (theoremDP_subset_paperDP T) (paperDPComputation T)
 
-/-- The constructed inductor instance for the single market, reused by every endpoint. -/
+/-- The constructed inductor instance for the single market, reused by every endpoint:
+`def:lic` at the paper's own quantifier, discharged unconditionally for `paperDP T`.  Every
+§4 result over this market takes `[IsLogicalInductor]`, and a `haveI` of this instance is
+what supplies it. -/
 noncomputable abbrev paperLIA [T.Δ₁] :
     IsLogicalInductor (liaHistory (paperDP T)) (paperDP T) :=
   LIA_is_logical_inductor (paperDP T) (paperDP_computable T)

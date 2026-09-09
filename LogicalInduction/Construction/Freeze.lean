@@ -72,7 +72,7 @@ the kit splits it into a finite-state half, a one-counter half, and a decode tes
 * `Step` — the freeze pass as a `Complexity.FP` transduction, with `RunOracle` the one
   remaining hole: the run-level lookup of a frozen suffix.
 * `Oracle` — that hole filled for a quote table given as a finite list of entries, and with it
-  `machine_lic_iff_of_finiteSupport`, the strongest corrected `thm:ifp`, together with the two
+  `lic_iff_of_finiteSupport`, the strongest corrected `thm:ifp`, together with the two
   weaker public forms the API exposes.
 * `Counterexample` — the concrete advice perturbation refuting the printed statement, and the
   closed refutation `not_overgeneral_ifp`.

@@ -9,11 +9,12 @@ import Complexitylib.Classes.P
 `Framework/Emission/DigitArith.lean` fixes the value it denotes (`digitVal`, little-endian).
 `IsDigitWord` and `wordVal` are this file's two predicates over that representation, and the
 file is the arithmetic on it: addition, truncated subtraction, predecessor, comparison,
-integer square root with remainder, and `Nat.unpair` — each as a member of `Complexity.FP`
-with a value specification.
+integer square root with remainder, `Nat.unpair`, and multiplication — each as a member of
+`Complexity.FP` with a value specification.
 
 Naming: a `…W` suffix marks a word-level function on digit words (`addW`, `subW`, `leW`,
-`predW`, `sqrtRemW`, `unpairFstW`, `unpairSndW`), and `…W_spec` is its value specification.
+`predW`, `sqrtRemW`, `unpairFstW`, `unpairSndW`, `mulW`), and `…W_spec` is its value
+specification.
 
 ## The one vehicle
 
@@ -36,9 +37,17 @@ malformed words too.
 ## Where it is used
 
 `sqrtRemW_mem_FP` and `unpairW_spec` are the file's two paper-facing results
-(`app:ifp`); their sole consumer is `Construction/Freeze/FiberTest.lean`. Everything
-else is infrastructure reached through them. Nothing else here is a paper claim, so the
+(`app:ifp`). `sqrtRemW_mem_FP`'s only consumer is `Construction/Freeze/FiberTest.lean`;
+`unpairW_spec` is used there and also by `Framework/Machine/Ruler.lean`
+(`UnaryRuler.unpairFst`, `UnaryRuler.unpairSnd`). Everything else is infrastructure reached
+through them. Nothing else here is a paper claim, so the
 remaining declarations are `lemma`s and `def`s carrying no `Paper node` line.
+
+`mulW`, `gtFlagW` and `selectHead_gtFlagW` are the second exit: `MachineDigits.natPair`
+(`Framework/Machine/WriteOutMachine.lean`) is `Nat.pair`'s square-and-add split on digit
+words, and through it `MachineRatCodes.toMachineDigits` reassembles a rational's flat code
+from its three runs. They are infrastructure for the machine reading of the write-out
+classes, not a paper claim.
 -/
 
 namespace LogicalInduction.DigitFP
@@ -980,8 +989,14 @@ private def qBranch (q : ℕ) (v : List Bool) : List Bool :=
       ((subW (pair (qRp v) (prodQ q (aCar v)))).take (aB v).length))
     (pair (qRest v) (aB v))
 
-/-- A flag whose head is `true` exactly when `⟦x⟧ > ⟦y⟧`. -/
-private def gtFlagW (x y : List Bool) : List Bool := emptyFlag (leW (pair x y))
+/-- A flag whose head is `true` exactly when `⟦x⟧ > ⟦y⟧`.
+
+Public because it is the only shape a client can branch a *comparison* on:
+`Cobham.selectHead` answers with the empty word on an empty flag, and `leW` writes `[]`
+for "no", so the `emptyFlag` wrapper is what makes the two branches exhaustive.
+`selectHead_gtFlagW` reads it and `gtFlagW_mem_FP` (at the end of the file) certifies it;
+`MachineDigits.natPair` (`Framework/Machine/WriteOutMachine.lean`) is the client. -/
+def gtFlagW (x y : List Bool) : List Bool := emptyFlag (leW (pair x y))
 
 /-- One digit of the square-root loop. -/
 def sqStep (v : List Bool) : List Bool :=
@@ -1217,7 +1232,11 @@ private lemma prodQ_spec : ∀ (q : ℕ), q < 4 → ∀ {sd : List ℕ}, (∀ x 
       wordVal_cons (by norm_num) hsd]
     ring
 
-private lemma selectHead_gtFlagW {x y : List Bool} (hx : IsDigitWord x) (hy : IsDigitWord y)
+/-- **Branching on a comparison of digit words.**  The first branch is taken exactly when
+`⟦x⟧ > ⟦y⟧`; note the *second* branch is the `≤` one.
+
+Proof kind: `C` composition.  Provenance: (a) `leW_spec`. -/
+lemma selectHead_gtFlagW {x y : List Bool} (hx : IsDigitWord x) (hy : IsDigitWord y)
     (X Y : List Bool) :
     selectHead (gtFlagW x y) X Y = if wordVal x ≤ wordVal y then Y else X := by
   rw [gtFlagW, leW_spec hx hy]
@@ -1526,5 +1545,373 @@ lemma unpairW_spec {w : List Bool} (hw : IsDigitWord w) :
       rw [hsub.2, hRv', hSv']
     · rw [if_neg h, if_pos (by omega)]
       exact hSv'
+
+/-! ## Multiplication
+
+The loop is Horner's rule on the multiplier's digits, read from the *most* significant end
+exactly as the square-root loop reads them.  The configuration is `pair (pair acc mul)
+(pair rest W)`: the running product, the multiplicand carried unchanged, the unconsumed low
+part of the multiplier, and a fixed ruler `W` at whose width the product is cut back each
+step.  One step replaces `acc` by `4·acc + d·mul`, and `d·mul` for `d < 4` is at most two
+additions (`mulD`), so the step needs no multiplier of its own.
+
+**Why the product is cut back at the ruler.**  `addW` writes a run three bits wider than its
+whole argument word, so an accumulator that merely accumulated would grow by a constant
+*factor* per step and be exponentially long after `n` of them;
+`Cobham.output_length_poly_of_mem_FP` cannot repair that inside an iterate, since it
+compounds to `p^n`.  Truncation at the ruler is what keeps the state bounded, and it is
+invisible to the value because the running product never reaches `4 ^ m` — `take_spec` is the
+same device the square-root loop uses for its two registers, and `SqBnd` is the same
+four-register invariant, so no length bound on `addW` itself is needed anywhere.
+
+The section comes last in the file because it reuses that machinery (`shiftQ`, `qRest`,
+`take_spec`, `SqBnd`); nothing above depends on it. -/
+
+/-- The multiplicand scaled by a digit below four, as at most two additions. -/
+private def mulD : ℕ → List Bool → List Bool
+  | 0, _ => []
+  | 1, x => x
+  | 2, x => addW (pair x x)
+  | 3, x => addW (pair x (addW (pair x x)))
+  | _, _ => []
+
+/-- The multiplier's leading — most significant — digit, in unary. -/
+private def mDig (v : List Bool) : List Bool := digU ((aA v).drop ((aA v).drop 3).length)
+
+/-- The configuration the loop moves to when the incoming digit is `q`. -/
+private def mBranch (q : ℕ) (v : List Bool) : List Bool :=
+  pair
+    (pair ((addW (pair (shiftQ 0 (aCar v)) (mulD q (aOut v)))).take (aB v).length) (aOut v))
+    (pair (qRest v) (aB v))
+
+/-- One digit of the multiplication loop.  The dispatch on the incoming digit is a
+*length* test on its unary form, so all four branches are configurations: `selectHead` on a
+raw bit would return the empty word on a short operand and break the width invariant. -/
+def mulStep (v : List Bool) : List Bool :=
+  selectHead (emptyFlag (aA v)) v
+    (if (mDig v).length = 3 then mBranch 3 v
+      else if (mDig v).length = 2 then mBranch 2 v
+        else if (mDig v).length = 1 then mBranch 1 v else mBranch 0 v)
+
+private lemma mulD_mem_FP : ∀ (q : ℕ) {S : List Bool → List Bool}, S ∈ FP →
+    (fun z => mulD q (S z)) ∈ FP
+  | 0, _, _ => constFn_mem_FP []
+  | 1, _, hS => hS
+  | 2, _, hS => addWFn_mem_FP hS hS
+  | 3, _, hS => addWFn_mem_FP hS (addWFn_mem_FP hS hS)
+  | (_ + 4), _, _ => constFn_mem_FP []
+
+private lemma mDig_mem_FP : mDig ∈ FP := by
+  have hdrop3 : (fun v => (aA v).drop 3) ∈ FP := by
+    simpa [three] using dropLenFn_mem_FP (constFn_mem_FP three) aA_mem_FP
+  exact digU_mem_FP (dropLenFn_mem_FP hdrop3 aA_mem_FP)
+
+private lemma mBranch_mem_FP (q : ℕ) : mBranch q ∈ FP :=
+  pairFn_mem_FP
+    (pairFn_mem_FP
+      (takeLenFn_mem_FP aB_mem_FP
+        (addWFn_mem_FP (shiftQ_mem_FP 0 aCar_mem_FP) (mulD_mem_FP q aOut_mem_FP)))
+      aOut_mem_FP)
+    (pairFn_mem_FP qRest_mem_FP aB_mem_FP)
+
+/-- Proof kind: `C` composition.  Provenance: (b) `Complexity.Cobham` combinators,
+(a) `addW_mem_FP`, `TokenFold.ifEqLen_mem_FP`. -/
+lemma mulStep_mem_FP : mulStep ∈ FP :=
+  selectHeadFn_mem_FP (emptyFlag_mem_FP aA_mem_FP) id_mem_FP
+    (ifEqLen_mem_FP mDig_mem_FP 3 (mBranch_mem_FP 3)
+      (ifEqLen_mem_FP mDig_mem_FP 2 (mBranch_mem_FP 2)
+        (ifEqLen_mem_FP mDig_mem_FP 1 (mBranch_mem_FP 1) (mBranch_mem_FP 0))))
+
+/-! ### The multiplication loop's width
+
+`SqBnd` is the invariant, unchanged: the multiplication loop's configuration has the same
+four registers as the square-root loop's, with the product in place of the root and the
+multiplicand in place of the remainder.  Both new registers are truncations — one at the
+ruler, one at the multiplier — so no register ever grows. -/
+
+private lemma SqBnd.branchMul {w k q : ℕ} {v : List Bool} (h : SqBnd w k v) :
+    SqBnd w k (mBranch q v) := by
+  obtain ⟨s, r, rest, W, rfl, hs, hr, hrest, hW⟩ := h
+  refine ⟨_, _, _, _, rfl, ?_, ?_, ?_, by simpa [aB] using hW⟩
+  · simp only [aB, sndBlock_pair, List.length_take]
+    omega
+  · simpa [aOut] using hr
+  · simp only [qRest, aA, fstBlock_pair, sndBlock_pair, List.length_take, List.length_drop]
+    omega
+
+private lemma SqBnd.stepMul {w k : ℕ} {v : List Bool} (h : SqBnd w k v) :
+    SqBnd w k (mulStep v) := by
+  rw [mulStep]
+  rcases selectHead_emptyFlag_cases (aA v) v
+      (if (mDig v).length = 3 then mBranch 3 v
+        else if (mDig v).length = 2 then mBranch 2 v
+          else if (mDig v).length = 1 then mBranch 1 v else mBranch 0 v) with h1 | h1 <;>
+    rw [h1]
+  · exact h
+  · split_ifs <;> exact h.branchMul
+
+private lemma SqBnd.iterateMul {w k : ℕ} : ∀ (n : ℕ) {v : List Bool}, SqBnd w k v →
+    SqBnd w k (mulStep^[n] v)
+  | 0, v, h => h
+  | (n + 1), v, h => by
+      rw [Function.iterate_succ_apply]
+      exact SqBnd.iterateMul n h.stepMul
+
+/-! ### `mulW` -/
+
+private def mulInit (z : List Bool) : List Bool :=
+  pair (pair [] (fstBlock z)) (pair (sndBlock z) (fstBlock z ++ sndBlock z))
+
+private def mulWidth (z : List Bool) : List Bool :=
+  List.replicate ((addRuler z).length * (List.replicate 24 true).length) false
+
+private lemma mulInit_mem_FP : mulInit ∈ FP :=
+  pairFn_mem_FP (pairFn_mem_FP (constFn_mem_FP []) fstBlock_mem_FP)
+    (pairFn_mem_FP sndBlock_mem_FP (appendFn_mem_FP fstBlock_mem_FP sndBlock_mem_FP))
+
+private lemma mulWidth_mem_FP : mulWidth ∈ FP :=
+  mulLenFn_mem_FP addRuler_mem_FP (constFn_mem_FP (List.replicate 24 true))
+
+/-- The ruler is the two operands laid end to end: a multiple of three bits wide on a
+well-formed input, and wide enough for the product, since `⟦a⟧·⟦b⟧ < 4 ^ (|a| + |b|)` in
+digits. -/
+private lemma mulInit_bnd (z : List Bool) : SqBnd (2 * z.length) z.length (mulInit z) := by
+  refine ⟨[], fstBlock z, sndBlock z, fstBlock z ++ sndBlock z, rfl, by simp, ?_, ?_, ?_⟩
+  · have := fstBlock_length_le z
+    omega
+  · exact sndBlock_length_le z
+  · have h1 := fstBlock_length_le z
+    have h2 := sndBlock_length_le z
+    rw [List.length_append]
+    omega
+
+/-- Base-four multiplication on digit words, packed as `pair a b`. -/
+def mulW (z : List Bool) : List Bool := aCar (mulStep^[(addRuler z).length] (mulInit z))
+
+/-- **Base-four multiplication on digit words is a polynomial-time word function.**
+
+Proof kind: `C` composition.  Provenance: (b) `Complexity.Cobham.iterate_mem_FP`,
+(a) `mulStep_mem_FP`, `SqBnd.iterateMul`. -/
+lemma mulW_mem_FP : mulW ∈ FP := by
+  have hbound : ∀ z, ∀ n ≤ (addRuler z).length,
+      (mulStep^[n] (mulInit z)).length ≤ (mulWidth z).length := by
+    intro z n _
+    have hb := (SqBnd.iterateMul n (mulInit_bnd z)).length_le
+    have hw : (mulWidth z).length = (z.length + 1) * 24 := by
+      simp [mulWidth, addRuler]
+    rw [hw]
+    omega
+  exact mem_FP_comp (iterate_mem_FP mulStep_mem_FP mulInit_mem_FP addRuler_mem_FP
+    mulWidth_mem_FP hbound) aCar_mem_FP
+
+/-! ### The multiplication loop's value -/
+
+private lemma mulD_spec : ∀ (q : ℕ), q < 4 → ∀ {xs : List ℕ}, (∀ x ∈ xs, x < 4) →
+    IsDigitWord (mulD q (digitsToBits xs)) ∧
+      wordVal (mulD q (digitsToBits xs)) = q * digitVal xs := by
+  intro q hq xs hxs
+  have hw : IsDigitWord (digitsToBits xs) := isDigitWord_digitsToBits hxs
+  have hv : wordVal (digitsToBits xs) = digitVal xs := wordVal_digitsToBits hxs
+  interval_cases q
+  · exact ⟨isDigitWord_nil, by simp [mulD]⟩
+  · refine ⟨hw, ?_⟩
+    rw [show mulD 1 (digitsToBits xs) = digitsToBits xs from rfl, hv, one_mul]
+  · refine ⟨isDigitWord_addW hw hw, ?_⟩
+    rw [show mulD 2 (digitsToBits xs) = addW (pair (digitsToBits xs) (digitsToBits xs)) from rfl,
+      wordVal_addW hw hw, hv]
+    ring
+  · refine ⟨isDigitWord_addW hw (isDigitWord_addW hw hw), ?_⟩
+    rw [show mulD 3 (digitsToBits xs)
+        = addW (pair (digitsToBits xs) (addW (pair (digitsToBits xs) (digitsToBits xs))))
+        from rfl,
+      wordVal_addW hw (isDigitWord_addW hw hw), wordVal_addW hw hw, hv]
+    ring
+
+/-- **One digit of the multiplication loop.**  The loop takes the incoming digit off the
+high end of the multiplier, adds `d` copies of the multiplicand to four times the product,
+and cuts the product back to the ruler.
+
+Proof kind: `P` proved.  Provenance: (a) `mulD_spec`, `take_spec`, `wordVal_addW`. -/
+private lemma mulStep_one {m : ℕ} {W : List Bool} (hW : W.length = 3 * m)
+    {d : ℕ} (hd : d < 4) {accd xd ds₀ : List ℕ}
+    (hacc : ∀ x ∈ accd, x < 4) (hxd : ∀ x ∈ xd, x < 4)
+    (hcap : 4 * digitVal accd + d * digitVal xd < 4 ^ m) :
+    ∃ accd' : List ℕ, (∀ x ∈ accd', x < 4) ∧
+      digitVal accd' = 4 * digitVal accd + d * digitVal xd ∧
+      mulStep (pair (pair (digitsToBits accd) (digitsToBits xd))
+          (pair (digitsToBits (ds₀ ++ [d])) W))
+        = pair (pair (digitsToBits accd') (digitsToBits xd)) (pair (digitsToBits ds₀) W) := by
+  set v := pair (pair (digitsToBits accd) (digitsToBits xd))
+    (pair (digitsToBits (ds₀ ++ [d])) W) with hv
+  have hCar : aCar v = digitsToBits accd := by simp [aCar, hv]
+  have hOut : aOut v = digitsToBits xd := by simp [aOut, hv]
+  have hBB : aB v = W := by simp [aB, hv]
+  have hAA : aA v = digitsToBits ds₀ ++ digitBits d := by
+    simp [aA, hv, digitsToBits_append]
+  have hdrop3 : ((aA v).drop 3).length = (digitsToBits ds₀).length := by
+    rw [hAA, List.length_drop, List.length_append, length_digitBits, length_digitsToBits]
+    omega
+  have hne : aA v ≠ [] := by
+    rw [hAA]
+    intro h
+    have hlen := congrArg List.length h
+    simp at hlen
+  have hqRest : qRest v = digitsToBits ds₀ := by
+    rw [qRest, hdrop3, hAA, List.take_left]
+  have hmDig : mDig v = List.replicate d true := by
+    rw [mDig, hdrop3, hAA, List.drop_left]
+    simpa using digU_digitBits d (by omega) []
+  have hchain : mulStep v = mBranch d v := by
+    rw [mulStep, selectHead_emptyFlag_of_ne hne, hmDig, List.length_replicate]
+    rcases (show d = 0 ∨ d = 1 ∨ d = 2 ∨ d = 3 by omega) with rfl | rfl | rfl | rfl <;>
+      norm_num
+  have hAccw : IsDigitWord (shiftQ 0 (aCar v)) := by
+    rw [hCar, shiftQ_digitsToBits]
+    exact isDigitWord_cons (by norm_num) hacc
+  have hAccv : wordVal (shiftQ 0 (aCar v)) = 4 * digitVal accd := by
+    rw [hCar, shiftQ_digitsToBits, wordVal_cons (by norm_num) hacc]
+    ring
+  have hM : IsDigitWord (mulD d (aOut v)) ∧
+      wordVal (mulD d (aOut v)) = d * digitVal xd := by
+    rw [hOut]
+    exact mulD_spec d hd hxd
+  have hSw : IsDigitWord (addW (pair (shiftQ 0 (aCar v)) (mulD d (aOut v)))) :=
+    isDigitWord_addW hAccw hM.1
+  have hSv : wordVal (addW (pair (shiftQ 0 (aCar v)) (mulD d (aOut v))))
+      = 4 * digitVal accd + d * digitVal xd := by
+    rw [wordVal_addW hAccw hM.1, hAccv, hM.2]
+  obtain ⟨accd', hacc'4, -, hacc'v, hacc'eq⟩ :=
+    take_spec hW hSw (by rw [hSv]; exact hcap)
+  refine ⟨accd', hacc'4, ?_, ?_⟩
+  · rw [hacc'v, hSv]
+  · rw [hchain, mBranch, hBB, hacc'eq, hOut, hqRest]
+
+private lemma mulStep_nil {v : List Bool} (h : aA v = []) : mulStep v = v := by
+  rw [mulStep, h]
+  exact selectHead_emptyFlag_nil _ _
+
+private lemma mulStep_iterate_nil {v : List Bool} (h : aA v = []) :
+    ∀ j : ℕ, mulStep^[j] v = v
+  | 0 => rfl
+  | (j + 1) => by rw [Function.iterate_succ_apply, mulStep_nil h, mulStep_iterate_nil h j]
+
+/-- **The multiplication loop, run to completion.**  Horner's rule: after the multiplier's
+digits are exhausted the product is `⟦acc⟧·4^k + ⟦ds⟧·⟦mul⟧`.
+
+Proof kind: `P` proved.  Provenance: (a) `mulStep_one`. -/
+private lemma mulStep_iterate {m : ℕ} {W : List Bool} (hW : W.length = 3 * m) :
+    ∀ (ds : List ℕ), (∀ x ∈ ds, x < 4) →
+    ∀ (accd xd : List ℕ), (∀ x ∈ accd, x < 4) → (∀ x ∈ xd, x < 4) →
+      digitVal accd * 4 ^ ds.length + digitVal ds * digitVal xd < 4 ^ m →
+    ∃ accd' : List ℕ, (∀ x ∈ accd', x < 4) ∧
+      digitVal accd' = digitVal accd * 4 ^ ds.length + digitVal ds * digitVal xd ∧
+      mulStep^[ds.length]
+          (pair (pair (digitsToBits accd) (digitsToBits xd)) (pair (digitsToBits ds) W))
+        = pair (pair (digitsToBits accd') (digitsToBits xd)) (pair [] W) := by
+  intro ds
+  induction ds using List.reverseRecOn with
+  | nil =>
+      intro _ accd xd hacc _ _
+      exact ⟨accd, hacc, by simp, by simp⟩
+  | append_singleton ds₀ d ih =>
+      intro hall accd xd hacc hxd hcap
+      have hd : d < 4 := hall d (by simp)
+      have hds₀ : ∀ x ∈ ds₀, x < 4 := fun x hx => hall x (by simp [hx])
+      have hlen : (ds₀ ++ [d]).length = ds₀.length + 1 := by simp
+      have hkey : digitVal accd * 4 ^ (ds₀ ++ [d]).length
+            + digitVal (ds₀ ++ [d]) * digitVal xd
+          = (4 * digitVal accd + d * digitVal xd) * 4 ^ ds₀.length
+            + digitVal ds₀ * digitVal xd := by
+        rw [hlen, digitVal_append_singleton, pow_succ]
+        ring
+      rw [hkey] at hcap ⊢
+      have hpos : 0 < 4 ^ ds₀.length := Nat.pos_of_neZero _
+      have hle : 4 * digitVal accd + d * digitVal xd
+          ≤ (4 * digitVal accd + d * digitVal xd) * 4 ^ ds₀.length :=
+        Nat.le_mul_of_pos_right _ hpos
+      obtain ⟨accd₁, hacc₁, hval₁, hstep⟩ :=
+        mulStep_one (ds₀ := ds₀) hW hd hacc hxd (by omega)
+      obtain ⟨accd', hacc', hval', hiter⟩ :=
+        ih hds₀ accd₁ xd hacc₁ hxd (by rw [hval₁]; exact hcap)
+      refine ⟨accd', hacc', ?_, ?_⟩
+      · rw [hval', hval₁]
+      · rw [hlen, Function.iterate_succ_apply, hstep, hiter]
+
+private lemma mulW_core {as bs : List ℕ} (has : ∀ d ∈ as, d < 4) (hbs : ∀ d ∈ bs, d < 4) :
+    ∃ res : List ℕ, (∀ d ∈ res, d < 4) ∧
+      mulW (pair (digitsToBits as) (digitsToBits bs)) = digitsToBits res ∧
+      digitVal res = digitVal as * digitVal bs := by
+  have hW : (digitsToBits as ++ digitsToBits bs).length = 3 * (as.length + bs.length) := by
+    rw [List.length_append, length_digitsToBits, length_digitsToBits]
+    ring
+  have hinit : mulInit (pair (digitsToBits as) (digitsToBits bs))
+      = pair (pair (digitsToBits ([] : List ℕ)) (digitsToBits as))
+          (pair (digitsToBits bs) (digitsToBits as ++ digitsToBits bs)) := by
+    rw [mulInit, fstBlock_pair, sndBlock_pair]
+    simp
+  have hcap : digitVal ([] : List ℕ) * 4 ^ bs.length + digitVal bs * digitVal as
+      < 4 ^ (as.length + bs.length) := by
+    have h1 : digitVal bs < 4 ^ bs.length := digitVal_lt bs hbs
+    have h2 : digitVal as < 4 ^ as.length := digitVal_lt as has
+    have hp : 0 < 4 ^ as.length := Nat.pos_of_neZero _
+    have h3 : digitVal bs * digitVal as ≤ digitVal bs * 4 ^ as.length :=
+      Nat.mul_le_mul_left _ (le_of_lt h2)
+    have h4 : digitVal bs * 4 ^ as.length < 4 ^ bs.length * 4 ^ as.length :=
+      Nat.mul_lt_mul_of_lt_of_le h1 (le_refl _) hp
+    have h5 : (4 : ℕ) ^ bs.length * 4 ^ as.length = 4 ^ (as.length + bs.length) := by
+      rw [← pow_add]
+      ring_nf
+    simp only [digitVal_nil, Nat.zero_mul, Nat.zero_add]
+    omega
+  obtain ⟨res, hres4, hresv, hiter⟩ :=
+    mulStep_iterate (m := as.length + bs.length) hW bs hbs [] as (by simp) has hcap
+  have hrul : (addRuler (pair (digitsToBits as) (digitsToBits bs))).length
+      = (6 * as.length + 2 * bs.length + 3) + bs.length := by
+    simp only [addRuler, List.length_append, List.length_singleton, pair_length,
+      length_digitsToBits]
+    omega
+  have hfin : aA (pair (pair (digitsToBits res) (digitsToBits as))
+      (pair ([] : List Bool) (digitsToBits as ++ digitsToBits bs))) = [] := by
+    simp [aA]
+  have hcore : mulStep^[(addRuler (pair (digitsToBits as) (digitsToBits bs))).length]
+        (mulInit (pair (digitsToBits as) (digitsToBits bs)))
+      = pair (pair (digitsToBits res) (digitsToBits as))
+          (pair [] (digitsToBits as ++ digitsToBits bs)) := by
+    rw [hrul, Function.iterate_add_apply, hinit, hiter, mulStep_iterate_nil hfin]
+  refine ⟨res, hres4, ?_, ?_⟩
+  · rw [mulW, hcore]
+    simp [aCar]
+  · rw [hresv]
+    simp only [digitVal_nil, Nat.zero_mul, Nat.zero_add]
+    ring
+
+lemma isDigitWord_mulW {a b : List Bool} (ha : IsDigitWord a) (hb : IsDigitWord b) :
+    IsDigitWord (mulW (pair a b)) := by
+  obtain ⟨as, has, rfl⟩ := ha
+  obtain ⟨bs, hbs, rfl⟩ := hb
+  obtain ⟨res, hres4, hreseq, -⟩ := mulW_core has hbs
+  exact ⟨res, hres4, hreseq⟩
+
+/-- **Multiplication is correct.**
+
+Proof kind: `P` proved.  Provenance: (a) `mulStep_iterate`. -/
+lemma wordVal_mulW {a b : List Bool} (ha : IsDigitWord a) (hb : IsDigitWord b) :
+    wordVal (mulW (pair a b)) = wordVal a * wordVal b := by
+  obtain ⟨as, has, rfl⟩ := ha
+  obtain ⟨bs, hbs, rfl⟩ := hb
+  obtain ⟨res, hres4, hreseq, hresval⟩ := mulW_core has hbs
+  rw [hreseq, wordVal_digitsToBits hres4, wordVal_digitsToBits has,
+    wordVal_digitsToBits hbs, hresval]
+
+/-- **The comparison flag is a polynomial-time word function.**  The general form of
+`gtFlagWFn_mem_FP`, which the square-root loop takes at its own two arguments; a client
+branching on `⟦x⟧ ≤ ⟦y⟧` needs this one and `selectHead_gtFlagW` above.  The `emptyFlag`
+is not decoration: `leW` answers `[]` for "no", and `Cobham.selectHead` returns the *empty*
+word rather than its second branch on an empty flag, so a raw `leW` cannot be selected on.
+
+Proof kind: `C` composition.  Provenance: (b) `Cobham.emptyFlag_mem_FP`, (a) `leW_mem_FP`. -/
+lemma gtFlagW_mem_FP {X Y : List Bool → List Bool} (hX : X ∈ FP) (hY : Y ∈ FP) :
+    (fun z => gtFlagW (X z) (Y z)) ∈ FP :=
+  emptyFlag_mem_FP (leWFn_mem_FP hX hY)
 
 end LogicalInduction.DigitFP

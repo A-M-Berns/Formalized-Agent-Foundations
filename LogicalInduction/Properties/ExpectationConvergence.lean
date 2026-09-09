@@ -36,8 +36,20 @@ accordingly stated at the paper's own quantifier (`def:luv`: every `v ∈ cworld
 
 `LUV.expect_converges` is the canonical endpoint and `LUV.expectInf` names its limit
 `𝔼_∞(X)`, characterized by `LUV.expectSeq_convergesTo_expectInf` and pinned down by
-`LUV.expectInf_eq_of_convergesTo`.  The threshold-block hypothesis `X.RpnThresholdCodes` is
-the token-metered `def:ec` interface for the paper's `Θ`-definable LUV syntax.
+`LUV.expectInf_eq_of_convergesTo`.  The threshold-block hypothesis `X.MachineThresholdCodes`
+is the *write-out* `def:ec` interface for the paper's `Θ`-definable LUV syntax: what it
+bounds is the number of symbols each threshold sentence takes to write, not the size of its
+Gödel code.  The token-metered interface embeds into it by `LUV.RpnThresholdCodes.toBig`
+(`Framework/Expectations.lean`).
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -199,12 +211,13 @@ traders are those of the affine master theorems, all constructed and e.c.-certif
 Provenance: `hcode` and `hcons` are the disclosed representation boundaries; `hval` is the
 disclosed type-`(c)` linkage above; everything else is derived in-project.
 
-The threshold-block hypothesis is the token-metered `def:ec` interface for the paper's
-`Θ`-definable LUV syntax.
+The threshold-block hypothesis is the *write-out* `def:ec` interface for the paper's
+`Θ`-definable LUV syntax, bounding the symbol count of each threshold sentence rather than
+its Gödel value.
 Paper node: `thm:ec` -/
 theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
     ∃ L : ℝ, ConvergesTo (X.expectSeq P) L := by
@@ -254,7 +267,7 @@ theorem LUV.expect_converges (P : History) (DP : DeductiveProcess)
 only limit the expectation sequence has, so a client never has to unfold this choice. -/
 noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) : ℝ :=
   (X.expect_converges P DP hcode hcons hval).choose
@@ -263,7 +276,7 @@ noncomputable def LUV.expectInf (P : History) (DP : DeductiveProcess)
 it. -/
 lemma LUV.expectSeq_convergesTo_expectInf (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
     ConvergesTo (X.expectSeq P) (X.expectInf P DP hcode hcons hval) :=
@@ -273,7 +286,7 @@ lemma LUV.expectSeq_convergesTo_expectInf (P : History) (DP : DeductiveProcess)
 identified limit is equal to it. -/
 lemma LUV.expectInf_eq_of_convergesTo (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x)
     {L : ℝ} (hL : ConvergesTo (X.expectSeq P) L) :

@@ -210,11 +210,14 @@ arithmetic, has formalized nothing we didn't already assume.
      object stands in for the intended one — the dangerous kind; eliminate it or
      disclose it).
 
-5. **Modeling choices are disclosed, not discovered.** The two standing type-`(c)`
-   substitutions — `dd:fuel` (efficiency = a fuel-clocked interpreter, not a
-   complexity class; model card in `Framework/Emission/Computable.lean`) and the propositional
-   substrate (LUVs as threshold families) — are documented in
-   `LogicalInduction/README.md`. Any new substitution gets the same treatment at the
+5. **Modeling choices are disclosed, not discovered.** The one standing type-`(c)`
+   substitution is the **propositional substrate** — the market prices propositional
+   sentences where the paper's background theory is first-order, with the paper's literal
+   object reached through explicit interfaces. `dd:fuel` is **not** a second: it is the
+   *certification device* for `def:ec` (a fuel-clocked interpreter certifies membership),
+   while the statement class everywhere is `EfficientlyComputable`, `Complexity.FP` of the
+   unary day; the model card is in `Framework/Emission/Computable.lean`. Both are documented
+   in `LogicalInduction/README.md`. Any new substitution gets the same treatment at the
    statement, in the README, and in the audit ledger — before an auditor finds it.
 
 6. **Surface friction; don't work around it silently.** If a design decision fights

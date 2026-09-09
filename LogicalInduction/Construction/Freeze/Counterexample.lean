@@ -414,8 +414,8 @@ noncomputable def cxQuote :
     ParadoxResistanceQuote (liaHistory (paperDP T)) (paperDP T) (1 / 2) :=
   paradoxResistanceQuoteOfDiagonal (paperQuotationPresentation T)
     (paperMarketComputation T) (1 / 2) (fun n : ℕ => 1 / ((n : ℚ) + 1))
-    (DigitRatCodes.ofPolyRatCodes
-      (PolyRatCodes.inv_of_pos harmonicWeight_polyRatCodes (fun n => by positivity)))
+    (DigitRatCodes.toMachine (DigitRatCodes.ofPolyRatCodes
+      (PolyRatCodes.inv_of_pos harmonicWeight_polyRatCodes (fun n => by positivity))))
     (fun n => by positivity)
     (by
       have h : ∀ n : ℕ, ((1 / ((n : ℚ) + 1) : ℚ) : ℝ) = 1 / ((n : ℝ) + 1) := by
@@ -424,7 +424,8 @@ noncomputable def cxQuote :
 
 /-- The Boolean quotation code behind that diagonal.  Naming it separately is what makes
 the sentence family's *whole-value* code available (`BooleanQuoteCode.sentence_poly`); the
-`ParadoxResistanceQuote` above carries only the write-out `BigSentenceCodes`, which
+`ParadoxResistanceQuote` above carries only the machine-metered write-out
+`MachineSentenceCodes`, which
 the day-`0` quote program cannot use. -/
 noncomputable def cxQuoteCode := (paperDiagonalQuoteCode T (1 / 2)).toBooleanQuoteCode
 
@@ -661,7 +662,7 @@ Kind `C`; hypotheses `(a)`. -/
 lemma computableMarket_cxPerturbed : ComputableMarket (cxPerturbed T) := by
   exact ComputableMarket.ofComputableTable (cxTable T)
     (fun n φ => advicePerturbed_mem_Icc (paperDP T) (cxDiagonal T)
-      (fun m ψ => (LIA_isMachineLogicalInductor (paperDP T)
+      (fun m ψ => (LIA_is_logical_inductor (paperDP T)
         (paperDP_computable T)).marketComputable.1 m ψ) n φ)
     (cxPerturbed_eq_cxTable T)
     (Computable.encode.comp (computable_cxTable T))
@@ -677,8 +678,8 @@ Refutes rather than renders, so it carries no `Paper node` line; it is inventori
 Kind `C`; hypotheses `(a)`. -/
 theorem exists_advice_perturbation_ofTheory :
     ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
-      IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
-      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ MachineEfficientTrader Tr ∧
+      IsLogicalInductor P DP ∧ ComputableMarket P' ∧
+      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ EfficientlyComputable Tr ∧
       (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
       (∀ j, Dichotomy P' DP χ (sched P' DP χ j)) ∧
       (∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
@@ -687,11 +688,11 @@ theorem exists_advice_perturbation_ofTheory :
         = roundValue P' χ v (sched P' DP χ j)) :=
   ⟨liaHistory (paperDP T), cxPerturbed T, paperDP T, cxDiagonal T,
     adviceTrader schedAtom signAtom (cxDiagonal T),
-    LIA_isMachineLogicalInductor (paperDP T) (paperDP_computable T),
+    LIA_is_logical_inductor (paperDP T) (paperDP_computable T),
     computableMarket_cxPerturbed T,
     advicePerturbed_agree _ _ _,
     adviceTrader_efficient rpnSentenceCodes_schedAtom rpnSentenceCodes_signAtom
-      (BigSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
+      (MachineSentenceCodes.ofPolySentenceCodes (cxDiagonal_poly T)),
     paperDP_hworld T,
     fun j => dichotomy_of_paradoxQuote (cxQuote T) (advicePerturbed_agree _ _ _)
       (one_le_sched _ _ _ j),
@@ -711,8 +712,8 @@ Refutes rather than renders, so it carries no `Paper node` line; it is inventori
 Kind `C`; hypotheses `(a)`. -/
 theorem not_overgeneral_ifp_ofTheory :
     ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
-        IsMachineLogicalInductor P DP → ComputableMarket P' →
-        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP := by
+        IsLogicalInductor P DP → ComputableMarket P' →
+        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsLogicalInductor P' DP := by
   obtain ⟨P, P', DP, χ, Tr, hLI, hP', hagree, hTr, hworld, hdicho, hzero, hval⟩ :=
     exists_advice_perturbation_ofTheory T
   exact not_overgeneral_ifp_of_advice P P' DP χ Tr hLI hP' hagree hTr hworld hdicho
@@ -726,8 +727,8 @@ Refutes rather than renders, so it carries no `Paper node` line; it is inventori
 Kind `C`; hypotheses `(a)`. -/
 theorem exists_advice_perturbation :
     ∃ (P P' : History) (DP : DeductiveProcess) (χ : ℕ → Sentence) (Tr : Trader),
-      IsMachineLogicalInductor P DP ∧ ComputableMarket P' ∧
-      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ MachineEfficientTrader Tr ∧
+      IsLogicalInductor P DP ∧ ComputableMarket P' ∧
+      (∀ n, 1 ≤ n → ∀ φ, P n φ = P' n φ) ∧ EfficientlyComputable Tr ∧
       (∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) ∧
       (∀ j, Dichotomy P' DP χ (sched P' DP χ j)) ∧
       (∀ (v : PCWorld) i, (∀ j, sched P' DP χ j ≠ i) →
@@ -743,7 +744,7 @@ This declaration *refutes* rather than renders `thm:ifp`, and it carries the nod
 the refutation is on the checked gates and on the read-through page: `thm:ifp` is the one
 node whose printed statement is false, and the canonical public view of it must lead with
 this theorem and with the corrected replacement
-`FreezeOracle.machine_lic_iff_of_finiteSupport`.  See `notes/paper-errata.md` PE1.
+`FreezeOracle.lic_iff_of_finiteSupport`.  See `notes/paper-errata.md` PE1.
 
 **Why the corrected theorem does not re-derive this one.**  The perturbation built here
 moves one whole pricing row, hence infinitely many `(day, sentence)` coordinates, so it
@@ -757,8 +758,8 @@ Kind `C`; hypotheses `(a)`.
 Paper node: `thm:ifp` -/
 theorem not_overgeneral_ifp :
     ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
-        IsMachineLogicalInductor P DP → ComputableMarket P' →
-        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP :=
+        IsLogicalInductor P DP → ComputableMarket P' →
+        (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsLogicalInductor P' DP :=
   not_overgeneral_ifp_ofTheory 𝗜𝚺₁
 
 end FinitePerturbationCounterexample

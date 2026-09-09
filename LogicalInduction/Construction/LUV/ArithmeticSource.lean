@@ -43,9 +43,9 @@ contraction.
 On top of the source language sits the literal first-order LUV frontend: `PaperLUVSeq`
 carries each LUV's defining formula *as written* (`source`), a proof that it denotes the
 LUV's Foundation formula (`compiles`), and the paper's efficiency condition on that
-writing (`structural`); `PaperLUVSeq.rpnThresholdCodeSeq` compiles it to
-`LUV.RpnThresholdCodeSeq` at the paper's exact threshold syntax, with
-`PaperLUV.rpnThresholdCodes` the single-LUV corollary and `PaperLUVSeq.ofNNF` the
+writing (`structural`); `PaperLUVSeq.machineThresholdCodeSeq` compiles it to
+`LUV.MachineThresholdCodeSeq` at the paper's exact threshold syntax, with
+`PaperLUV.machineThresholdCodes` the single-LUV corollary and `PaperLUVSeq.ofNNF` the
 constructor for a family presented by normal-form leaves.  Three families inhabit it —
 `unitFracPaperLUVSeq` at `1/(n+1)`, `dyadicPaperLUVSeq` at `2⁻ⁿ` (a superpolynomially
 small value named in `O(n)` symbols by `binNumeral`), and `iffPaperLUVSeq`, whose `n`-th
@@ -74,7 +74,7 @@ tokens plus a reserved terminator keep every scanner's state polynomially bounde
 *arbitrary* input, which is the property the shared grammar needs.
 
 *The decomposition bridge is head-scoped.*
-`structuredPaperSourceDecomposeAll_rpnSentenceCodes` covers quantifier-headed propositions,
+`structuredPaperSourceDecomposeAll_machineSentenceCodes` covers quantifier-headed propositions,
 which is what `PaperLUV.thresholdFormula` always produces.  Arbitrary outer Boolean
 structure would need a bracket-counting scan over the payload; no consumer here asks for it.
 -/
@@ -560,6 +560,131 @@ lemma PolyArithmeticSourceSeq.bigDigits_sourceNat {k : ℕ} {s : ℕ → ArithSo
     (h : PolyArithmeticSourceSeq s) : BigDigits (fun n => (s n).sourceNat) :=
   BigDigits.ofTokenListNat h fun n => ArithSource.sourceTokens_lt_63 (s n)
 
+/-! ## The source-metered family class, machine reading
+
+`MachineArithmeticSourceSeq` is `PolyArithmeticSourceSeq` with the metering device changed
+and nothing else: the *same* emitted source run, certified by a `Complexity.FP` writer of
+the unary day rather than by a fuel-clocked digit emitter.  It is the class every consumer
+of a written formula family now binds, and the fuel class stays as its producer route
+(`PolyArithmeticSourceSeq.toMachine`) and as `def:ec`'s fuel-side calibration exhibit,
+exactly as `BigDigits`/`MachineDigits` and `BigSentenceCodes`/`MachineSentenceCodes` are
+arranged.
+
+The class's *value* clause is vacuous either way: `PolySegStream` bounds every emitted
+token's value, but the source alphabet is `0..22` (`ArithSource.sourceTokens_lt_23`), so
+that bound never binds.  Moving to the machine class is therefore a pure metering
+weakening — nothing about what may be written changes, only what has to be exhibited to
+certify that it is written efficiently.
+
+The closure calculus below mirrors the fuel one lemma for lemma over
+`MachineTokenStream.{const, append, of_eq}`, and `.leaf` takes the machine reading of a
+symbol run (`PolyArithmeticFormulaSeq.toMachine` crosses from the normal-form-metered
+foil). -/
+
+/-- **The paper's efficiency condition on formula families, machine reading** (`def:ec`,
+tex:753): the run the paper's writer emits — one token per *source* node — is a
+`MachineTokenStream`.
+
+*Proof kind:* `Def`. -/
+def MachineArithmeticSourceSeq {k : ℕ} (s : ℕ → ArithSource k) : Prop :=
+  MachineTokenStream (fun n => ArithSource.sourceTokens (s n))
+
+/-- **Every fuel-metered source certificate is machine-metered.**  The write-out bridge at
+the emitted source run; the inclusion is stated in this direction only, as everywhere in
+the write-out ladder. -/
+lemma PolyArithmeticSourceSeq.toMachine {k : ℕ} {s : ℕ → ArithSource k}
+    (h : PolyArithmeticSourceSeq s) : MachineArithmeticSourceSeq s :=
+  BigTokenStream.toMachine (BigTokenStream.ofPolySegStream h)
+
+namespace MachineArithmeticSourceSeq
+
+open ArithSource
+
+/-! ### The closure calculus
+
+Nine lemmas, one per source constructor plus the arity coercion, each charging the
+constructor's single tag on top of the sub-family's own run — the fuel calculus of
+`PolyArithmeticSourceSeq` at the machine combinators. -/
+
+/-- A family of leaves whose symbol runs are machine-metered is source-metered, token for
+token.  `PolyArithmeticFormulaSeq.toMachine` (`Construction/LUV/SourceCodec.lean`) supplies
+the hypothesis from the normal-form-metered foil. -/
+lemma leaf {k : ℕ} {φ : ℕ → ArithmeticSemiformula ℕ k}
+    (h : MachineTokenStream (fun n => encodeArithmeticFormulaSymbols (φ n))) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.leaf (φ n)) :=
+  MachineTokenStream.of_eq h fun _ => rfl
+
+/-- A conjunction of source-metered families is source-metered: one token (`15`) plus the
+two runs. -/
+lemma and {k : ℕ} {a b : ℕ → ArithSource k} (ha : MachineArithmeticSourceSeq a)
+    (hb : MachineArithmeticSourceSeq b) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.and (a n) (b n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [15])
+      (MachineTokenStream.append ha hb)) fun _ => by simp [sourceTokens]
+
+/-- A disjunction of source-metered families is source-metered: one token (`16`) plus the
+two runs. -/
+lemma or {k : ℕ} {a b : ℕ → ArithSource k} (ha : MachineArithmeticSourceSeq a)
+    (hb : MachineArithmeticSourceSeq b) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.or (a n) (b n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [16])
+      (MachineTokenStream.append ha hb)) fun _ => by simp [sourceTokens]
+
+/-- A universally quantified source-metered family is source-metered: one token (`17`)
+plus the run. -/
+lemma all {k : ℕ} {a : ℕ → ArithSource (k + 1)} (ha : MachineArithmeticSourceSeq a) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.all (a n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [17]) ha)
+    fun _ => by simp [sourceTokens]
+
+/-- An existentially quantified source-metered family is source-metered: one token (`18`)
+plus the run. -/
+lemma exs {k : ℕ} {a : ℕ → ArithSource (k + 1)} (ha : MachineArithmeticSourceSeq a) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.exs (a n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [18]) ha)
+    fun _ => by simp [sourceTokens]
+
+/-- A negated source-metered family is source-metered: one token (`20`) plus the run.  The
+De Morgan expansion happens in the parser, off the emitted stream. -/
+lemma not {k : ℕ} {a : ℕ → ArithSource k} (ha : MachineArithmeticSourceSeq a) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.not (a n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [20]) ha)
+    fun _ => by simp [sourceTokens]
+
+/-- An implication of source-metered families is source-metered: one token (`21`) plus the
+two runs, with no negation pushed through the antecedent. -/
+lemma imp {k : ℕ} {a b : ℕ → ArithSource k} (ha : MachineArithmeticSourceSeq a)
+    (hb : MachineArithmeticSourceSeq b) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.imp (a n) (b n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [21])
+      (MachineTokenStream.append ha hb)) fun _ => by simp [sourceTokens]
+
+/-- A biconditional of source-metered families is source-metered: one token (`22`) plus
+the two runs.  This is where `⟺` is charged linearly, against the `2^Ω(n)` the normal form
+would charge (`dd:nnf`). -/
+lemma iff {k : ℕ} {a b : ℕ → ArithSource k} (ha : MachineArithmeticSourceSeq a)
+    (hb : MachineArithmeticSourceSeq b) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.iff (a n) (b n)) :=
+  MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [22])
+      (MachineTokenStream.append ha hb)) fun _ => by simp [sourceTokens]
+
+end MachineArithmeticSourceSeq
+
+/-- **The write-out certificate, delivered, machine reading.**  A family certified at the
+size `def:ec` charges is a family whose *names* are machine-metered written out.  Machine
+twin of `PolyArithmeticSourceSeq.bigDigits_sourceNat`, through
+`MachineDigits.ofTokenListNat`. -/
+lemma MachineArithmeticSourceSeq.machineDigits_sourceNat {k : ℕ} {s : ℕ → ArithSource k}
+    (h : MachineArithmeticSourceSeq s) : MachineDigits (fun n => (s n).sourceNat) :=
+  MachineDigits.ofTokenListNat h fun n => ArithSource.sourceTokens_lt_63 (s n)
+
 /-- **The old class embeds**: a normal-form-metered family is a source-metered family of
 leaves, token for token. -/
 lemma PolyArithmeticFormulaSeq.toSource {k : ℕ}
@@ -606,6 +731,14 @@ lemma structuredPaperSourcePrimeBlock_polySegStream (positive : Bool)
     PolySegStream (fun n => structuredPaperSourcePrimeBlock positive (s n)) :=
   structuredLeafBlock_polySegStream positive hs
 
+/-- The source leaf of a machine-metered source family is machine-emittable: constant
+framing, a unary run of the payload's token count, and the source payload itself.  Machine
+twin of `structuredPaperSourcePrimeBlock_polySegStream`. -/
+lemma structuredPaperSourcePrimeBlock_machineTokenStream (positive : Bool)
+    (s : ℕ → ArithSource 0) (hs : MachineArithmeticSourceSeq s) :
+    MachineTokenStream (fun n => structuredPaperSourcePrimeBlock positive (s n)) :=
+  structuredLeafBlock_machineTokenStream positive hs
+
 /-- **The source block is a `19`-free span**: the instance of `structuredLeafBlock_span`
 at the class the development actually meters, whose payload alphabet is `0..18, 20..22`
 (`sourceTokens_lt_23`) and so never contains the terminator. -/
@@ -650,27 +783,27 @@ lemma parseRpn_structuredPaperSourceDecomposeAllBlock (s : ArithSource 1) :
       some (paperPrimeDecompose (.all (ArithSource.compile s)), []) := by
   simpa using parseRpn_structuredPaperSourceDecomposeAllBlock_suffix s []
 
-/-- The `∀`-blocks of a source-metered family are efficiently emittable. -/
-lemma structuredPaperSourceDecomposeAllBlock_polySegStream
-    {s : ℕ → ArithSource 1} (hs : PolyArithmeticSourceSeq s) :
-    PolySegStream (fun n => structuredPaperSourceDecomposeAllBlock (s n)) := by
-  have hprime := structuredPaperSourcePrimeBlock_polySegStream true
-    (fun n => ArithSource.exs (ArithSource.not (s n))) hs.not.exs
-  have hshell : PolySegStream (fun _ : ℕ => ([2] : List ℕ)) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 2)
-  have hclose : PolySegStream (fun _ : ℕ => ([0] : List ℕ)) :=
-    PolySegStream.ofTokenStream (PolyTokenStream.const 0)
-  exact ((hshell.append hprime).append hclose).of_eq fun n => rfl
+/-- The `∀`-blocks of a machine-metered source family are machine-emittable. -/
+lemma structuredPaperSourceDecomposeAllBlock_machineTokenStream
+    {s : ℕ → ArithSource 1} (hs : MachineArithmeticSourceSeq s) :
+    MachineTokenStream (fun n => structuredPaperSourceDecomposeAllBlock (s n)) := by
+  have hprime := structuredPaperSourcePrimeBlock_machineTokenStream true
+    (fun n => ArithSource.exs (ArithSource.not (s n)))
+    (MachineArithmeticSourceSeq.exs (MachineArithmeticSourceSeq.not hs))
+  exact MachineTokenStream.of_eq
+    (MachineTokenStream.append
+      (MachineTokenStream.append (MachineTokenStream.const [2]) hprime)
+      (MachineTokenStream.const [0])) fun n => rfl
 
-/-- **Decompose efficiency lifting at a quantified head, source metered**: an
-efficiently *written* family of universally quantified paper formulas has an efficient
-stream of exact paper-prime decomposition blocks.  The emitter outputs only the small
-source block; the tag-`5` atom code is built by parser contraction. -/
-lemma structuredPaperSourceDecomposeAll_rpnSentenceCodes (s : ℕ → ArithSource 1)
-    (hs : PolyArithmeticSourceSeq s) :
-    RpnSentenceCodes (fun n => paperPrimeDecompose (.all (ArithSource.compile (s n)))) :=
+/-- **Decompose efficiency lifting at a quantified head**: a machine-metered family of
+universally quantified paper formulas has a machine-metered stream of exact paper-prime
+decomposition blocks.  This is the certificate `PaperLUVSeq.machineThresholdCodeSeq` runs. -/
+lemma structuredPaperSourceDecomposeAll_machineSentenceCodes (s : ℕ → ArithSource 1)
+    (hs : MachineArithmeticSourceSeq s) :
+    MachineSentenceCodes (fun n =>
+      paperPrimeDecompose (.all (ArithSource.compile (s n)))) :=
   ⟨fun n => structuredPaperSourceDecomposeAllBlock (s n),
-    structuredPaperSourceDecomposeAllBlock_polySegStream hs,
+    structuredPaperSourceDecomposeAllBlock_machineTokenStream hs,
     fun n => parseRpn_structuredPaperSourceDecomposeAllBlock (s n)⟩
 
 /-! ### Arity coercion on the source language
@@ -744,11 +877,22 @@ lemma compile_castLE : ∀ {k k' : ℕ} (h : k ≤ k') (a : ArithSource k),
 
 end ArithSource
 
-/-- Arity coercion of a source-metered family is source-metered, at the same cost. -/
+/-- Arity coercion of a source-metered family is source-metered, at the same cost.
+Producer-side API of the fuel class: nothing on the paper surface binds it — the surface
+runs `MachineArithmeticSourceSeq.castLE` — and it is kept as this class's member of the
+closure calculus, the same calibration arrangement `DigitRatCodes`/`MachineRatCodes` are
+in. -/
 lemma PolyArithmeticSourceSeq.castLE {k k' : ℕ} (h : k ≤ k') {a : ℕ → ArithSource k}
     (ha : PolyArithmeticSourceSeq a) :
     PolyArithmeticSourceSeq (fun n => ArithSource.castLE h (a n)) :=
   ha.of_eq fun n => by simp
+
+/-- Arity coercion of a machine source-metered family is source-metered, at the same
+cost. -/
+lemma MachineArithmeticSourceSeq.castLE {k k' : ℕ} (h : k ≤ k') {a : ℕ → ArithSource k}
+    (ha : MachineArithmeticSourceSeq a) :
+    MachineArithmeticSourceSeq (fun n => ArithSource.castLE h (a n)) :=
+  MachineTokenStream.of_eq ha fun n => by simp
 
 /-! ## The literal first-order LUV frontend
 
@@ -985,6 +1129,24 @@ lemma paperThresholdSource_polyArithmeticSourceSeq {s : ℕ → ArithSource 1}
     (hX.append paperRatGt_polySegStream)).of_eq fun m => by
       simp [paperThresholdSource, ArithSource.sourceTokens, ArithSource.ofNNF]
 
+/-- The threshold bodies of a machine-metered source family are machine-metered: one
+constant tag, the family's own run reindexed by the ruler `Nat.unpair.1`, and the constant
+comparison template.  Machine twin of `paperThresholdSource_polyArithmeticSourceSeq`; the
+fuel reindexer `PolyFueled.left` becomes `UnaryRuler.unpairFst`. -/
+lemma paperThresholdSource_machineArithmeticSourceSeq {s : ℕ → ArithSource 1}
+    (hs : MachineArithmeticSourceSeq s) :
+    MachineArithmeticSourceSeq (fun m =>
+      paperThresholdSource (s m.unpair.1) (queryRat m)) := by
+  have hX : MachineTokenStream (fun m => ArithSource.sourceTokens (s m.unpair.1)) :=
+    MachineTokenStream.comp hs UnaryRuler.unpairFst
+  exact MachineTokenStream.of_eq
+    (MachineTokenStream.append (MachineTokenStream.const [21])
+      (MachineTokenStream.append hX
+        (BigTokenStream.toMachine
+          (BigTokenStream.ofPolySegStream paperRatGt_polySegStream))))
+    fun m => by
+      simp [paperThresholdSource, ArithSource.sourceTokens, ArithSource.ofNNF]
+
 /-- An efficiently presented family of literal paper LUVs.  The certificate is
 structural emission of the *source* the paper writes for each LUV's defining formula —
 never a bound on Foundation codes, a caller-provided tag-`5` code, or a semantic handle.
@@ -1005,7 +1167,7 @@ The same `2⁻ⁿ` spelled with Foundation's *unary* numeral has no certificate
 (`unaryRendering_two_pow_not_polyArithmeticSourceSeq`), which is an artifact of that
 numeral rather than a restriction the paper imposes.  `PaperLUV` itself carries no such
 field; only the sequence wrapper does, and this wrapper is the route from a literal
-first-order paper LUV into `LUV.RpnThresholdCodeSeq`, with `PaperLUV.rpnThresholdCodes`
+first-order paper LUV into `LUV.MachineThresholdCodeSeq`, with `PaperLUV.machineThresholdCodes`
 its single-LUV corollary.
 Paper node: `def:luv` -/
 structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
@@ -1018,13 +1180,13 @@ structure PaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] where
   compiles : ∀ n, ArithSource.compile (source n) =
     (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
   /-- `def:ec`'s metering on that writing — one token per source node. -/
-  structural : PolyArithmeticSourceSeq source
+  structural : MachineArithmeticSourceSeq source
 
 /-- The threshold bodies inherit the family's structural certificate. -/
 lemma PaperLUVSeq.thresholdSource_structural (X : PaperLUVSeq T) :
-    PolyArithmeticSourceSeq (fun m =>
+    MachineArithmeticSourceSeq (fun m =>
       paperThresholdSource (X.source m.unpair.1) (queryRat m)) :=
-  paperThresholdSource_polyArithmeticSourceSeq X.structural
+  paperThresholdSource_machineArithmeticSourceSeq X.structural
 
 /-- **A family presented by normal-form leaves.**  The commonest way to build a
 `PaperLUVSeq`: take the LUVs' own defining formulas as the written sources, certified in
@@ -1039,7 +1201,7 @@ def PaperLUVSeq.ofNNF (luv : ℕ → PaperLUV T)
   source n := ArithSource.ofNNF
     (((luv n).formula : ArithmeticSemisentence 1) : ArithmeticSemiformula ℕ 1)
   compiles _ := rfl
-  structural := h.toSource
+  structural := h.toSource.toMachine
 
 /-- Any single literal paper LUV presents as a constant family, its own defining formula
 read as a one-leaf source.  This is a convenience, not the non-vacuity witness: see
@@ -1051,9 +1213,9 @@ def PaperLUVSeq.const (X : PaperLUV T) : PaperLUVSeq T :=
 calculus, so the abstract LUVs it compiles to carry the threshold-code certificate the
 expectation layer consumes.
 Paper node: `def:ec` -/
-lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
-    LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
-  have h := structuredPaperSourceDecomposeAll_rpnSentenceCodes
+lemma PaperLUVSeq.machineThresholdCodeSeq (X : PaperLUVSeq T) :
+    LUV.MachineThresholdCodeSeq (fun n => (X.luv n).toLUV) := by
+  have h := structuredPaperSourceDecomposeAll_machineSentenceCodes
     (fun m => paperThresholdSource (X.source m.unpair.1) (queryRat m))
     X.thresholdSource_structural
   refine h.of_eq fun m => ?_
@@ -1061,21 +1223,22 @@ lemma PaperLUVSeq.rpnThresholdCodeSeq (X : PaperLUVSeq T) :
   exact (paperLUV_gt_eq _ _).symm
 
 /-- **The single-LUV route.**  A *single* literal paper LUV carries the non-sequence
-threshold-code certificate `LUV.RpnThresholdCodes`, which is what the whole-LUV endpoints
-take as a hypothesis (`LUV.expect_converges`, `thm:ec`).  It is the constant family
+threshold-code certificate at `LUV.MachineThresholdCodes`, which is what the whole-LUV
+endpoints take as a hypothesis (`LUV.expect_converges`, `thm:ec`).  It is the constant family
 (`PaperLUVSeq.const`) reindexed along the poly-fueled map `m ↦ ⟨0, m⟩`, which turns the
 sequence's `⟨n, ⟨k, i⟩⟩` convention into the single-LUV `⟨k, i⟩` one.  No efficiency
 hypothesis is needed: a constant formula family is trivially token-metered, so this holds of
 *every* `PaperLUV`.  Kind `C`; hypotheses `(a)`.
 Paper node: `def:ec` -/
-lemma PaperLUV.rpnThresholdCodes (X : PaperLUV T) : X.toLUV.RpnThresholdCodes := by
-  have h : RpnSentenceCodes (fun m => (((PaperLUVSeq.const X).luv m.unpair.1).toLUV).gt
+lemma PaperLUV.machineThresholdCodes (X : PaperLUV T) : X.toLUV.MachineThresholdCodes := by
+  have h : MachineSentenceCodes (fun m => (((PaperLUVSeq.const X).luv m.unpair.1).toLUV).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
-    (PaperLUVSeq.const X).rpnThresholdCodeSeq
-  have hf : PolyFueled _ (fun m : ℕ => Nat.pair 0 m) :=
-    (PolyFueled.const 0).pair PolyFueled.id
-  show RpnSentenceCodes _
-  exact (h.comp hf).of_eq fun m => by simp [PaperLUVSeq.const, PaperLUVSeq.ofNNF]
+    (PaperLUVSeq.const X).machineThresholdCodeSeq
+  have hf : UnaryRuler (fun m : ℕ => Nat.pair 0 m) :=
+    ((UnaryRuler.const 0).pair UnaryRuler.id)
+  show MachineSentenceCodes _
+  exact (MachineSentenceCodes.comp h hf).of_eq
+    fun m => by simp [PaperLUVSeq.const, PaperLUVSeq.ofNNF]
 
 /-! ### Concrete families
 
@@ -1260,12 +1423,12 @@ paper uses: `unitFracPaperLUVSeq_frontend` at `1/(n+1)`, `dyadicPaperLUVSeq_fron
 the superpolynomially small `2⁻ⁿ`, and `iffPaperLUVSeq_frontend` at a family whose written
 form is linear and whose Foundation normal form is exponential.
 Paper node: `def:luv` -/
-lemma PaperLUVSeq.source_valued_and_rpnThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
+lemma PaperLUVSeq.source_valued_and_machineThresholdCodeSeq [𝗜𝚺₁ ⪯ T]
     (X : PaperLUVSeq T) :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
         ∃ x : ℝ, v.ValuesAt (X.luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => (X.luv n).toLUV) :=
-  ⟨fun n => PaperLUV.source_valued (X.luv n), X.rpnThresholdCodeSeq⟩
+      LUV.MachineThresholdCodeSeq (fun n => (X.luv n).toLUV) :=
+  ⟨fun n => PaperLUV.source_valued (X.luv n), X.machineThresholdCodeSeq⟩
 
 /-- **The frontend on a concrete family**: the literal `1/(n+1)` LUVs are valued on every
 completed world of the canonical theorem process and efficiently thresholded, so the
@@ -1275,8 +1438,8 @@ Paper node: `def:luv` -/
 lemma unitFracPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
         ∃ x : ℝ, v.ValuesAt ((unitFracPaperLUVSeq T).luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
-  (unitFracPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+      LUV.MachineThresholdCodeSeq (fun n => ((unitFracPaperLUVSeq T).luv n).toLUV) :=
+  (unitFracPaperLUVSeq T).source_valued_and_machineThresholdCodeSeq
 
 /-- The defining formulas of the `2⁻ⁿ` family are structurally emittable: the compact
 numeral of `2 ^ n` is `n` copies of the doubling block, so the whole formula is a fixed
@@ -1307,8 +1470,8 @@ Paper node: `def:luv` -/
 lemma dyadicPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
         ∃ x : ℝ, v.ValuesAt ((dyadicPaperLUVSeq T).luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => ((dyadicPaperLUVSeq T).luv n).toLUV) :=
-  (dyadicPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+      LUV.MachineThresholdCodeSeq (fun n => ((dyadicPaperLUVSeq T).luv n).toLUV) :=
+  (dyadicPaperLUVSeq T).source_valued_and_machineThresholdCodeSeq
 
 /-- **A Foundation numeral artifact, not a narrowing of the class.**  The *same* value `2⁻ⁿ`
 has an admissible rendering — `dyadicPaperLUVSeq`, whose denominator is the compact numeral
@@ -1616,7 +1779,7 @@ therefore changes nothing about the value the formula names — and multiplies t
 the Foundation object naming it by `2^Ω(n)`.  That makes it the sharp test of what the
 efficiency condition is metering: `iffPaperLUVSeq` is a family of *literal paper LUVs*
 whose `n`-th defining formula the paper writes in `O(n)` characters, which is admitted
-here (`iffPaperLUVSeq_frontend` reaches `LUV.RpnThresholdCodeSeq`), while the
+here (`iffPaperLUVSeq_frontend` reaches `LUV.MachineThresholdCodeSeq`), while the
 normal-form-metered foil rejects its `⟺`-chain core
 (`iffChain_not_polyArithmeticFormulaSeq`). -/
 
@@ -1645,6 +1808,41 @@ lemma iffPaperLUVSource_polyArithmeticSourceSeq :
   exact PolyArithmeticSourceSeq.and (PolySegStream.constList _)
     (PolySegStream.comp iffChainSource_polyArithmeticSourceSeq hodd)
 
+/-- **Non-vacuity** (`N+`) for the machine source class at a day-varying written family:
+the biconditional chain, whose emitted run is `5n + 4` tokens long
+(`sourceTokens_iffChainSource_length`) and so is not a constant sequence.  The fuel
+certificate crosses by `PolyArithmeticSourceSeq.toMachine`; nothing here is a converse. -/
+lemma machineArithmeticSourceSeq_iffChainSource :
+    MachineArithmeticSourceSeq iffChainSource :=
+  iffChainSource_polyArithmeticSourceSeq.toMachine
+
+lemma iffChainSource_nonconstant (c : ArithSource 1) : iffChainSource ≠ fun _ => c := by
+  intro h
+  have h0 : (ArithSource.sourceTokens (iffChainSource 0)).length
+      = (ArithSource.sourceTokens (iffChainSource 1)).length := by
+    rw [congrFun h 0, congrFun h 1]
+  rw [sourceTokens_iffChainSource_length, sourceTokens_iffChainSource_length] at h0
+  omega
+
+/-- **The delivery interface at a day-varying written family**: the chain's *names* are
+machine-metered, by `MachineArithmeticSourceSeq.machineDigits_sourceNat` — the value grows
+like `64 ^ (5n + 4)`, the emitted word linearly. -/
+lemma machineDigits_sourceNat_iffChainSource :
+    MachineDigits (fun n => (iffChainSource n).sourceNat) :=
+  MachineArithmeticSourceSeq.machineDigits_sourceNat machineArithmeticSourceSeq_iffChainSource
+
+lemma sourceNat_iffChainSource_nonconstant (c : ℕ) :
+    (fun n => (iffChainSource n).sourceNat) ≠ fun _ => c := by
+  intro h
+  have h01 : (iffChainSource 0).sourceNat = (iffChainSource 1).sourceNat := by
+    rw [congrFun h 0, congrFun h 1]
+  have := ArithSource.sourceNat_ne_of_sourceTokens_ne
+    (s := iffChainSource 0) (t := iffChainSource 1) (fun he => ?_) h01
+  · exact this
+  · have := congrArg List.length he
+    rw [sourceTokens_iffChainSource_length, sourceTokens_iffChainSource_length] at this
+    omega
+
 /-- **Non-vacuity** (`N+`) at a formula whose normal form is exponentially larger than its
 name: the family of literal paper LUVs of value `1`, each defined by the reciprocal
 template conjoined with the valid biconditional chain `iffChain (2n+1)`.  The conjunct is a
@@ -1659,7 +1857,7 @@ def iffPaperLUVSeq (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ ⪯ T] : PaperL
   luv n := iffPaperLUV T n
   source := iffPaperLUVSource
   compiles n := compile_iffPaperLUVSource T n
-  structural := iffPaperLUVSource_polyArithmeticSourceSeq
+  structural := iffPaperLUVSource_polyArithmeticSourceSeq.toMachine
 
 /-- **The frontend at a `def:ec`-linear, normal-form-exponential family.**  The literal
 paper LUVs whose defining formulas nest `⟺` to depth `Ω(n)` are valued on every completed
@@ -1670,41 +1868,41 @@ Paper node: `def:luv` -/
 lemma iffPaperLUVSeq_frontend [𝗜𝚺₁ ⪯ T] :
     (∀ n, ∀ v : PCWorld, v.ConsistentWithTheory (paperTheoryDP T) →
         ∃ x : ℝ, v.ValuesAt ((iffPaperLUVSeq T).luv n).toLUV x) ∧
-      LUV.RpnThresholdCodeSeq (fun n => ((iffPaperLUVSeq T).luv n).toLUV) :=
-  (iffPaperLUVSeq T).source_valued_and_rpnThresholdCodeSeq
+      LUV.MachineThresholdCodeSeq (fun n => ((iffPaperLUVSeq T).luv n).toLUV) :=
+  (iffPaperLUVSeq T).source_valued_and_machineThresholdCodeSeq
 
 /-- A client consuming the witness: the expectation-of-indicators endpoint (`thm:ei`) takes
 the threshold-code class as a hypothesis, and the `2⁻ⁿ` family discharges it outright. -/
 example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : ∀ n, (((dyadicPaperLUVSeq T).luv n).toLUV).IsIndicator (φ n) DP) :
     AsympEq (fun n => (((dyadicPaperLUVSeq T).luv n).toLUV).expect P n)
       (fun n => P n (φ n)) :=
-  lic_expectation_indicator P DP φ hφ _ (dyadicPaperLUVSeq T).rpnThresholdCodeSeq
+  lic_expectation_indicator P DP φ hφ _ (dyadicPaperLUVSeq T).machineThresholdCodeSeq
     hcons hY
 
 /-- A client of the single-LUV route: `thm:ec` applied at a *literal* paper LUV, the
 `2⁻ⁿ`-valued one, with both representation hypotheses discharged from the frontend —
-the threshold-code class by `PaperLUV.rpnThresholdCodes` and the world value by
+the threshold-code class by `PaperLUV.machineThresholdCodes` and the world value by
 `PaperLUV.source_valued`.  Only the paper's own consistency premise remains. -/
 example (P : History) [𝗜𝚺₁ ⪯ T]
     [IsLogicalInductor P (paperTheoryDP T)] (n : ℕ)
     (hcons : ∀ k, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D k)) :
     ∃ L : ℝ, ConvergesTo ((dyadicPaperLUV T n).toLUV.expectSeq P) L :=
-  LUV.expect_converges P (paperTheoryDP T) _ (dyadicPaperLUV T n).rpnThresholdCodes
+  LUV.expect_converges P (paperTheoryDP T) _ (dyadicPaperLUV T n).machineThresholdCodes
     hcons (PaperLUV.source_valued _)
 
 /-- A client at the capstone family: `thm:ei` consumes the threshold-code class, and the
 biconditional family — whose defining formulas are `O(n)` characters to write and `≥ 2ⁿ`
 Foundation nodes once compiled — discharges it outright. -/
 example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] [𝗜𝚺₁ ⪯ T]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hY : ∀ n, (((iffPaperLUVSeq T).luv n).toLUV).IsIndicator (φ n) DP) :
     AsympEq (fun n => (((iffPaperLUVSeq T).luv n).toLUV).expect P n)
       (fun n => P n (φ n)) :=
-  lic_expectation_indicator P DP φ hφ _ (iffPaperLUVSeq T).rpnThresholdCodeSeq
+  lic_expectation_indicator P DP φ hφ _ (iffPaperLUVSeq T).machineThresholdCodeSeq
     hcons hY
 
 /-- The single-LUV route at the capstone family: `thm:ec` applied at a literal paper LUV
@@ -1714,7 +1912,7 @@ example (P : History) [𝗜𝚺₁ ⪯ T]
     [IsLogicalInductor P (paperTheoryDP T)] (n : ℕ)
     (hcons : ∀ k, ∃ v : PCWorld, v.ConsistentWith ((paperTheoryDP T).D k)) :
     ∃ L : ℝ, ConvergesTo ((iffPaperLUV T n).toLUV.expectSeq P) L :=
-  LUV.expect_converges P (paperTheoryDP T) _ (iffPaperLUV T n).rpnThresholdCodes
+  LUV.expect_converges P (paperTheoryDP T) _ (iffPaperLUV T n).machineThresholdCodes
     hcons (PaperLUV.source_valued _)
 
 /-! ### `def:blcp` over literal paper LUVs
@@ -1739,12 +1937,16 @@ structure PaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] where
   const : ℕ → EF
   /-- Coefficient of the share at `⟨n,j⟩`. -/
   coefficient : ℕ → EF
-  /-- The term count is polynomially computable. -/
-  termCount_poly : ∃ c, PolyFueled c termCount
-  /-- The constants are polynomially emittable. -/
-  const_poly : BigSpliceStream (fun n => (const n).serialize)
-  /-- The coefficients are polynomially emittable. -/
-  coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
+  /-- The term count is machine-metered: a polynomial-time machine, handed the unary day,
+  writes out that many marks (`UnaryRuler`).  A client holding a fuel certificate converts
+  by `UnaryRuler.of_polyFueled`; no converse is provided or claimed, so this is the strictly weaker
+  hypothesis. -/
+  termCount_poly : UnaryRuler termCount
+  /-- The constants are emitted as one uniform machine-metered token stream. -/
+  const_poly : MachineSpliceStream (fun n => (const n).serialize)
+  /-- The coefficients are emitted as one uniform machine-metered token stream over the
+  paired index. -/
+  coefficient_poly : MachineSpliceStream (fun z => (coefficient z).serialize)
   /-- Constants read only prices of days already seen. -/
   const_rank : ∀ n, (const n).rank ≤ n
   /-- Coefficients read only prices of days already seen. -/
@@ -1763,8 +1965,9 @@ def combination (D : PaperLUVCombination T) : ℕ → LUVCombination := fun n =>
       (D.coefficient (Nat.pair n j), (D.luvs.luv (Nat.pair n j)).toLUV)) }
 
 /-- The compact combination syntax of the denoted sequence.  Its threshold-code
-certificate is the paper family's own structural one, so no code is assumed of the shares
-beyond what their defining formulas supply. -/
+certificate is the paper family's own structural one, widened to the write-out class by
+`PaperLUVSeq.machineThresholdCodeSeq`, so no code is assumed of the shares beyond what their
+defining formulas supply. -/
 def toSyntax (D : PaperLUVCombination T) : LUVCombinationSyntax D.combination where
   termCount := D.termCount
   coefficient := D.coefficient
@@ -1772,7 +1975,7 @@ def toSyntax (D : PaperLUVCombination T) : LUVCombinationSyntax D.combination wh
   termCount_poly := D.termCount_poly
   const_poly := D.const_poly
   coefficient_poly := D.coefficient_poly
-  threshold_poly := D.luvs.rpnThresholdCodeSeq
+  threshold_poly := D.luvs.machineThresholdCodeSeq
   terms_eq _ := rfl
   const_rank := D.const_rank
   coefficient_rank := D.coefficient_rank
@@ -1801,9 +2004,9 @@ def unitFracPaperLUVCombination (T : ArithmeticTheory) [T.Δ₁] [𝗜𝚺₁ �
   termCount _ := 1
   const _ := .const 0
   coefficient _ := .const 1
-  termCount_poly := ⟨_, PolyFueled.const 1⟩
-  const_poly := BigSpliceStream.serialize_const 0
-  coefficient_poly := BigSpliceStream.serialize_const 1
+  termCount_poly := UnaryRuler.const 1
+  const_poly := MachineSpliceStream.serialize_const 0
+  coefficient_poly := MachineSpliceStream.serialize_const 1
   const_rank n := Nat.zero_le n
   coefficient_rank n _ _ := Nat.zero_le n
   const_closed _ _ _ := by simp

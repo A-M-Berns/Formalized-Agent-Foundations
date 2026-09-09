@@ -27,7 +27,7 @@ syntax and the quantity it names is derived rather than supplied by the caller.
   deferred-day theorems — with its cast and range lemmas.  `ratCtsInd` is the rational form
   of the continuous confidence value.
 * Two quoted-product LUVs.  `indicatorProductLUV` prices `1(φ) · value` and is exact
-  (`indicatorProductLUV_valuesAt`), at `LUV.BigThresholdCodeSeq`.  `meshProductLUV`
+  (`indicatorProductLUV_valuesAt`), at `LUV.MachineThresholdCodeSeq`.  `meshProductLUV`
   realizes the product for an arbitrary threshold-only source on the finite mesh of the
   quote's own threshold atoms, hence only to within `1/(n+1)` (`dd:mesh`;
   `meshProductLUV_valuesAt`).
@@ -147,8 +147,9 @@ noncomputable def RationalQuoteCode.ofComputable (T : ArithmeticTheory) [𝗥₀
     neg_complete := fun n r hr => b.neg_complete (Nat.pair n (Encodable.encode r))
       (by simp only [Nat.unpair_pair, decodedQuotationRat_encode]
           exact not_lt.mpr hr.le)
-    threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-      (arithmeticThresholdLUV_polyThresholdCodeSeq b.code) }
+    threshold_poly := RpnSentenceCodes.toMachine
+      (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+        (arithmeticThresholdLUV_polyThresholdCodeSeq b.code)) }
 
 /-! ## The market's own quotes -/
 
@@ -260,11 +261,11 @@ bounded sum by `Nat.rec` on the day, and the final average by `ratDiv_prim`.  On
 why the token-metered class (`def:ec`) suffices here. -/
 lemma MarketComputation.expectQuoteAt_computable {P : History}
     (market : MarketComputation P)
-    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+    {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
     Computable fun a : ℕ × ℕ => market.expectQuoteAt X a.1 a.2 := by
   have hcX : Primrec fun m : ℕ => Encodable.encode ((X m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
-    RpnSentenceCodes.primrec hX
+    MachineSentenceCodes.primrec hX
   -- The threshold-code function of `⟨⟨idx, day⟩, i⟩`.
   have hpack : Computable fun z : (ℕ × ℕ) × ℕ =>
       Nat.pair z.1.1 (Nat.pair (z.1.2 + 1) z.2) :=
@@ -317,7 +318,7 @@ lemma MarketComputation.expectQuoteAt_computable {P : History}
 Paper node: `thm:er` -/
 lemma MarketComputation.expectQuote_computable {P : History}
     (market : MarketComputation P)
-    {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+    {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
     Computable (market.expectQuote X) :=
   ((market.expectQuoteAt_computable hX).comp
     (Computable.id.pair Computable.id)).of_eq fun _ => rfl
@@ -375,18 +376,24 @@ lemma ratCtsInd_computable :
 /-! ### Rational sequences recovered from their emitted codes -/
 
 /-- A poly-coded rational sequence is computable (decode the emitted code).  A convenience
-corollary of the write-out form below, through `DigitRatCodes.ofPolyRatCodes`. -/
+corollary of the write-out form below, through `DigitRatCodes.ofPolyRatCodes`
+and `DigitRatCodes.toMachine`. -/
 lemma PolyRatCodes.computable {q : ℕ → ℚ} (h : PolyRatCodes q) : Computable q := by
   obtain ⟨c, hc⟩ := h
   exact (Computable.option_getD (Computable.decode.comp hc.primrec.to_comp)
     (Computable.const 0)).of_eq fun n => by simp
 
-/-- A write-out rational sequence is computable: reassemble the Gödel code from its own
-digits (`BigDigits.primrec`) and decode.  This is what lets the market clock accept the
-wider write-out class in place of a poly-fueled value. -/
-lemma DigitRatCodes.computable {q : ℕ → ℚ} (h : DigitRatCodes q) : Computable q :=
+/-- A machine-metered write-out rational sequence is computable: reassemble the Gödel code
+from the emitted block (`MachineDigits.primrec`) and decode.  This is what lets the market
+clock accept the wider write-out class in place of a poly-fueled value; a caller holding
+the fuel-metered `DigitRatCodes q` crosses by `DigitRatCodes.toMachine`.
+
+`MachineDigits.primrec` is sited in `Construction/MachineTraderEnumeration.lean`, because
+`Complexity.FP ⊆ Primrec` is not available and the read-off goes through that file's
+coverage argument. -/
+lemma MachineRatCodes.computable {q : ℕ → ℚ} (h : MachineRatCodes q) : Computable q :=
   (Computable.option_getD
-    (Computable.decode.comp h.toBigDigits.primrec.to_comp)
+    (Computable.decode.comp h.toMachineDigits.primrec.to_comp)
     (Computable.const 0)).of_eq fun n => by simp
 
 /-! ## The indicator product -/
@@ -447,21 +454,22 @@ lemma indicatorProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory
       exact hφv ((PCWorld.holds_and v _ _).mp hcon).1
 
 /-- The indicator product's threshold family is 𝓔𝓒 (`def:ec`): the `⋏`-shell is emitted
-as a **token** — `BigSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
+as a **token** — `MachineSentenceCodes.and`'s fixed `3` tag in front of the sentence block and
 the quotation-atom block — rather than as a `Nat.pair` around the two Gödel values, so the
 family is metered by the number of emitted tokens and never by the code's magnitude.  The
 quotation side is the quote's own threshold stream `q.poly`, read at the paired index on
 the nose (mesh thresholds are nonnegative, so the `⊤` branch is never emitted); it is
 token-metered and weakens into the write-out class on the spot.
 Paper node: `def:ec`, `thm:st` -/
-lemma indicatorProductLUV_bigThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : BigSentenceCodes φ) :
-    LUV.BigThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
-  have hφAt : BigSentenceCodes (fun m : ℕ => φ m.unpair.1) := hφ.comp PolyFueled.left
-  have hquote : BigSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
+lemma indicatorProductLUV_machineThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {φ : ℕ → Sentence} (hφ : MachineSentenceCodes φ) :
+    LUV.MachineThresholdCodeSeq (fun n => indicatorProductLUV q φ n) := by
+  have hφAt : MachineSentenceCodes (fun m : ℕ => φ m.unpair.1) :=
+    hφ.comp (UnaryRuler.unpairFst)
+  have hquote : MachineSentenceCodes (fun m : ℕ => (q.luv m.unpair.1).gt
       ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ))) :=
-    BigSentenceCodes.ofRpnSentenceCodes q.poly
-  refine (hφAt.and hquote).of_eq (fun m => ?_)
+    q.poly
+  refine (MachineSentenceCodes.and hφAt hquote).of_eq (fun m => ?_)
   have hmesh0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
   rw [indicatorProductLUV_gt, if_neg hmesh0]
@@ -690,17 +698,18 @@ lemma meshProductLUV_valuesAt {DP : DeductiveProcess} {T : ArithmeticTheory}
           mul_le_mul hx1 hnum (abs_nonneg _) zero_le_one
       _ = 1 := one_mul 1
 
-/-- The mesh product's threshold family is 𝓔𝓒 (`def:ec`): a `RpnSentenceCodes.bigOr` of
+/-- The mesh product's threshold family is 𝓔𝓒 (`def:ec`): a `MachineSentenceCodes.bigOr` of
 `⋏`-shells over the quote's own threshold blocks and the source's, at thresholds
 `j/(n+1)` and `i(n+1)/(k(j+1))` whose components are poly-fueled products of the index
 parts.  The width varies with the index, which is why this is a variable-width block
-(`PolySegStream.concatVar`) rather than a fixed tuple; and it is why the mesh lives at
-the block interface `RpnThresholdCodeSeq` rather than the whole-value one — the encoded
-pair code of a width-`n` disjunction is not polynomially bounded, its symbol count is.
+(`MachineTokenStream.concatVar`) rather than a fixed tuple; and it is why the mesh lives at
+the block interface `LUV.MachineThresholdCodeSeq` rather than the whole-value one — the
+encoded pair code of a width-`n` disjunction is not polynomially bounded, its symbol count
+is.
 Paper node: `def:ec`, `thm:ccee` -/
-lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
-    LUV.RpnThresholdCodeSeq (meshProductLUV q X) := by
+lemma meshProductLUV_machineThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ → ℚ}
+    (q : RationalQuoteCode T value) {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
+    LUV.MachineThresholdCodeSeq (meshProductLUV q X) := by
   obtain ⟨cmul, hmul⟩ := mul_polyFueled
   -- component projections of the paired index `z = ⟨⟨n,⟨k,i⟩⟩, j⟩`
   have hn : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.1) :=
@@ -710,27 +719,30 @@ lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ →
   have hi : PolyFueled _ (fun z : ℕ => z.unpair.1.unpair.2.unpair.2) :=
     PolyFueled.right.comp (PolyFueled.right.comp PolyFueled.left)
   have hj : PolyFueled _ (fun z : ℕ => z.unpair.2) := PolyFueled.right
-  have hquote : RpnSentenceCodes (fun z : ℕ =>
+  have hquote : MachineSentenceCodes (fun z : ℕ =>
       (q.luv z.unpair.1.unpair.1).gt
         ((z.unpair.2 : ℚ) / ((z.unpair.1.unpair.1 + 1 : ℕ) : ℚ))) :=
-    (q.poly.comp (hn.pair (hn.succ_comp.pair hj))).of_eq (fun z => by simp)
+    (MachineSentenceCodes.comp q.poly
+      (UnaryRuler.of_polyFueled (hn.pair (hn.succ_comp.pair hj)))).of_eq (fun z => by simp)
   have hnum : PolyFueled _ (fun z : ℕ =>
       z.unpair.1.unpair.2.unpair.2 * (z.unpair.1.unpair.1 + 1)) :=
     (hmul.comp (hi.pair hn.succ_comp)).of_eq (fun z => by simp)
   have hden : PolyFueled _ (fun z : ℕ =>
       z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1)) :=
     (hmul.comp (hk.pair hj.succ_comp)).of_eq (fun z => by simp)
-  have hsource : RpnSentenceCodes (fun z : ℕ =>
+  have hsource : MachineSentenceCodes (fun z : ℕ =>
       (X z.unpair.1.unpair.1).gt
         (((z.unpair.1.unpair.2.unpair.2 * (z.unpair.1.unpair.1 + 1) : ℕ) : ℚ) /
           ((z.unpair.1.unpair.2.unpair.1 * (z.unpair.2 + 1) : ℕ) : ℚ))) :=
-    (hX.comp (hn.pair (hden.pair hnum))).of_eq (fun z => by simp)
-  refine (RpnSentenceCodes.bigOr (D := fun m j =>
+    (MachineSentenceCodes.comp hX
+      (UnaryRuler.of_polyFueled (hn.pair (hden.pair hnum)))).of_eq (fun z => by simp)
+  refine (MachineSentenceCodes.bigOr (D := fun m j =>
       (q.luv m.unpair.1).gt ((j : ℚ) / ((m.unpair.1 + 1 : ℕ) : ℚ)) ⋏
         (X m.unpair.1).gt
           (((m.unpair.2.unpair.2 * (m.unpair.1 + 1) : ℕ) : ℚ) /
             ((m.unpair.2.unpair.1 * (j + 1) : ℕ) : ℚ)))
-    (hquote.and hsource) PolyFueled.left.succ_comp).of_eq (fun m => ?_)
+    (MachineSentenceCodes.and hquote hsource)
+    (UnaryRuler.unpairFst.succ)).of_eq (fun m => ?_)
   have hr0 : ¬ ((m.unpair.2.unpair.2 : ℚ) / (m.unpair.2.unpair.1 : ℚ)) < 0 :=
     not_lt.mpr (div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
   rw [meshProductLUV_gt, if_neg hr0]
@@ -744,14 +756,25 @@ lemma meshProductLUV_rpnThresholdCodeSeq {T : ArithmeticTheory} {value : ℕ →
     rw [div_mul_eq_mul_div, div_div]
   rw [hthr]
 
-/-- A deferral function is (unclamped) computable: its certificate's clocked runs are
-sound for the unbounded semantics. -/
+/-- A deferral function is (unclamped) computable: its graph test is primitive recursive
+(`UnaryRuler.primrec`), and `f n` is the one value the test accepts, found by an unbounded
+search.  No complexity claim is made here — the search is not polynomial in `n`, and the
+paper does not ask it to be. -/
 lemma DeferralFunction.computable (f : DeferralFunction) : Computable f.f := by
-  obtain ⟨a, k, hf⟩ := f.fueled
-  have hpart : Partrec fun n => f.code.eval n :=
-    Nat.Partrec.Code.eval_part.comp (Computable.const f.code) Computable.id
-  exact hpart.of_eq fun n => Part.eq_some_iff.mpr
-    (Nat.Partrec.Code.evaln_sound (Option.mem_def.mpr (hf n)))
+  have hgraph : Primrec f.graphFlag := UnaryRuler.primrec f.graphFlag_ruler
+  have hquery : Primrec (fun z : ℕ × ℕ => f.graphFlag (Nat.pair z.1 z.2)) :=
+    hgraph.comp Primrec₂.natPair
+  have hpred : Primrec (fun z : ℕ × ℕ =>
+      decide (f.graphFlag (Nat.pair z.1 z.2) = 1)) :=
+    PrimrecPred.decide (PrimrecRel.comp Primrec.eq hquery (Primrec.const 1))
+  have hpart := Partrec.rfind (p := fun n m : ℕ =>
+    (Part.some (decide (f.graphFlag (Nat.pair n m) = 1)) : Part Bool))
+    (Computable₂.partrec₂ (Primrec₂.to_comp hpred))
+  refine hpart.of_eq (fun n => Part.eq_some_iff.mpr (Nat.mem_rfind.2 ⟨?_, ?_⟩))
+  · simp [DeferralFunction.graphFlag]
+  · intro m hm
+    have hne : f.f n ≠ m := Nat.ne_of_gt hm
+    simp [DeferralFunction.graphFlag, hne]
 
 section
 variable (T : ArithmeticTheory) [T.Δ₁] [𝗣𝗔⁻ ⪯ T] [Entailment.Consistent T]
@@ -802,7 +825,7 @@ same reason as `deferredWeightQuoteCode`.
 Paper node: `thm:ccee` -/
 noncomputable def conditionalExpectationQuoteCode {P : History}
     (market : MarketComputation P) (f : DeferralFunction)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X) (w : ℕ → ℚ)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X) (w : ℕ → ℚ)
     (hw : PGenerableRat P w)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1) :
     RationalQuoteCode T (fun n => market.expectQuoteAt X n (f.f n) * w (f.f n)) :=
@@ -857,11 +880,12 @@ noncomputable def ordinaryLUVCombinationSyntax (code : ℕ) :
   termCount _ := 1
   coefficient _ := .const 1
   luv z := arithmeticThresholdLUV code z
-  termCount_poly := ⟨_, PolyFueled.const 1⟩
-  const_poly := BigSpliceStream.serialize_const 0
-  coefficient_poly := BigSpliceStream.serialize_const 1
-  threshold_poly := LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
-    (arithmeticThresholdLUV_polyThresholdCodeSeq code)
+  termCount_poly := UnaryRuler.const 1
+  const_poly := MachineSpliceStream.serialize_const 0
+  coefficient_poly := MachineSpliceStream.serialize_const 1
+  threshold_poly := RpnSentenceCodes.toMachine
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq
+      (arithmeticThresholdLUV_polyThresholdCodeSeq code))
   terms_eq n := by simp [ordinaryLUVCombinationSeq]
   const_rank n := Nat.zero_le n
   coefficient_rank n j _ := Nat.zero_le n

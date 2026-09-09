@@ -56,8 +56,8 @@ therefore states the price pass against the clamped emitter `clampedEmit`.
 `rpnConditionRun_congr_of_guard` closes the gap: on a stream the guard accepts, both
 emitters are called only at days `D ≤ n`, where `min D n = D`, so
 `decodeBits_guardedPassW` states the guarded pass against the *true* emitter
-`rpnPriceEmit`.  The fuel-model certificate `rpnGuardedConditionRun_polySegStream_of` reads
-its emitted segment at the same clamped day for the same reason.
+`rpnPriceEmit`.  Any emission certificate over this rewriter reads its emitted segment at
+the same clamped day for the same reason.
 
 ## Two shapes that are load-bearing
 

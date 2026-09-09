@@ -56,6 +56,19 @@ input left over.
 
 This module renders the prefix machine `thm:ob` is instantiated at; the provenance lines sit
 on the declarations below, not on this header.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the Occam trader is certified at
+`EfficientlyComputable` (`obTrader_ec`, `Properties/OccamBounds.lean`), and no map
+back from `MachineSpliceStream` to `BigSpliceStream` is proved or claimed, so it has no
+fuel-class form.  The data premises are at the machine classes too: this file
+discharges
+`PrefixMachinePresentation.sentence_codes` (now `MachineSentenceCodes`) and
+`OccamThresholdEmission`'s two fields (now `MachineRatCodes`) from the very same
+constructed fuel certificates, crossing at the boundary by
+`MachineSentenceCodes.ofPolySentenceCodes` and `DigitRatCodes.ofPolyRatCodes` +
+`.toMachine`, so nothing about the constructions changed.  The `_unconditional` endpoints
+discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -1328,7 +1341,8 @@ Paper node: `thm:ob` -/
 noncomputable def universalPrefixPresentation :
     PrefixMachinePresentation kappaU where
   sentence := prefixSentenceEnum
-  sentence_codes := prefixSentenceEnum_polySentenceCodes
+  sentence_codes :=
+    MachineSentenceCodes.ofPolySentenceCodes prefixSentenceEnum_polySentenceCodes
   approximation := fun n i => uSel (Nat.pair n i)
   approximation_nonneg := fun n i => uSel_nonneg _
   approximation_le := fun n i => by
@@ -1444,12 +1458,14 @@ lemma universalPrefixThresholdEmission :
     obtain ⟨cn, hn⟩ := uNum_polyFueled
     obtain ⟨cd, hd⟩ := uGateDen_polyFueled 1
     obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitSum_eq])⟩
+    exact (DigitRatCodes.ofPolyRatCodes ⟨c, hc⟩).toMachine.of_eq
+      (fun z => by simp only [uEmitSum_eq])
   inverse_width_codes := by
     obtain ⟨cn, hn⟩ := uGateDen_polyFueled 2
     obtain ⟨cd, hd⟩ := uNum_polyFueled
     obtain ⟨c, hc⟩ := encode_natDiv_polyFueled hn hd
-    exact ⟨c, hc.of_eq (fun z => by simp only [uEmitRecip_eq])⟩
+    exact (DigitRatCodes.ofPolyRatCodes ⟨c, hc⟩).toMachine.of_eq
+      (fun z => by simp only [uEmitRecip_eq])
 
 end Emission
 

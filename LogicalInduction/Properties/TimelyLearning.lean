@@ -31,7 +31,7 @@ one-sided clauses `lic_persistence_of_knowledge_upper` / `_lower`, the assembled
 `lic_persistence_of_knowledge` (`thm:perkno`), and `lic_preemptive_learning` (`thm:tbo`).
 
 Beyond the paper's hypotheses, plausible-world existence is an explicit `hworld` premise;
-the price range is carried by `IsLogicalInductor`.
+the price range is carried by the criterion.
 -/
 
 namespace LogicalInduction
@@ -61,16 +61,17 @@ This is one of the two discharges that make `thm:simcal`'s endpoint reach the pa
 hypothesis set: `AffineCombination.simcal` takes `PolySequence (sentenceAffine φ)` as an
 argument, and this constructs it from the paper's "`⟨φ⟩` is an e.c. sequence".
 Paper node: `thm:simcal` -/
-noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ) :
+noncomputable def sentenceAffine_polySequence (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
     PolySequence (sentenceAffine φ) :=
   {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := BigSpliceStream.serialize_const 0
-    coefficient_poly := BigSpliceStream.serialize_const 1
-    sentence_poly := hφ.comp PolyFueled.left
+    termCount_poly := UnaryRuler.const 1
+    const_poly := MachineSpliceStream.serialize_const 0
+    coefficient_poly := MachineSpliceStream.serialize_const 1
+    sentence_poly := hφ.comp (f := fun z : ℕ => z.unpair.1)
+      (UnaryRuler.unpairFst)
     terms_eq := by intro n; simp [sentenceAffine]
     const_rank := by intro n; simp [sentenceAffine]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -89,7 +90,7 @@ lemma sentenceAffine_bounded (φ : ℕ → Sentence) (P : History)
   constructor <;> linarith [(hP m (φ n)).1, (hP m (φ n)).2]
 
 /-- The one-share sentence family as an exact paper `BCS` witness. -/
-noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+noncomputable def sentenceAffine_bcs (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (P : History) : BoundedCombinationSequence (sentenceAffine φ) P where
   poly := sentenceAffine_polySequence φ hφ
   bounded := ⟨1, fun n => by simp [l1Norm, sentenceAffine, magnitude]⟩
@@ -123,18 +124,19 @@ def sentenceMinusProbability (φ : ℕ → Sentence) (p : ℕ → ℚ) (n : ℕ)
 the Appendix proof of `thm:perkno`. -/
 noncomputable def sentenceMinusProbability_polySequence
     (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p) :
+    (hφ : MachineSentenceCodes φ) (hp : MachineRatCodes p) :
     PolySequence (sentenceMinusProbability φ p) :=
   {
     termCount := fun _ => 1
     coefficient := fun _ => .const 1
     sentence := fun z => φ z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-1))
-      (BigSpliceStream.serialize_const_write hp.toBigDigits)
-    coefficient_poly := BigSpliceStream.serialize_const 1
-    sentence_poly := hφ.comp PolyFueled.left
+    termCount_poly := UnaryRuler.const 1
+    const_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-1))
+      (MachineSpliceStream.serialize_const_write hp.toMachineDigits)
+    coefficient_poly := MachineSpliceStream.serialize_const 1
+    sentence_poly := hφ.comp (f := fun z : ℕ => z.unpair.1)
+      (UnaryRuler.unpairFst)
     terms_eq := by intro n; simp [sentenceMinusProbability]
     const_rank := by intro n; simp [sentenceMinusProbability, EF.rank]
     coefficient_rank := by intro n j hj; simp [EF.rank]
@@ -209,7 +211,7 @@ uniformly from that side.
 Paper node: `thm:perkno` -/
 theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : MachineSentenceCodes φ) (hp : MachineRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n) - (p n : ℝ)) ≲ₙ
@@ -239,7 +241,7 @@ theorem lic_centered_persistence (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : MachineSentenceCodes φ) (hp : MachineRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≲ₙ fun n => (p n : ℝ)) :
@@ -270,7 +272,7 @@ theorem lic_persistence_of_knowledge_upper (P : History) (DP : DeductiveProcess)
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge_lower (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : MachineSentenceCodes φ) (hp : MachineRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hlim : (fun n => limitingBelief P (φ n)) ≳ₙ fun n => (p n : ℝ)) :
@@ -357,7 +359,7 @@ target sequence pointwise.
 Paper node: `thm:perkno` -/
 theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
     [IsLogicalInductor P DP] (φ : ℕ → Sentence) (p : ℕ → ℚ)
-    (hφ : BigSentenceCodes φ) (hp : DigitRatCodes p)
+    (hφ : MachineSentenceCodes φ) (hp : MachineRatCodes p)
     (hpProb : ∀ n, 0 ≤ (p n : ℝ) ∧ (p n : ℝ) ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     (((fun n => limitingBelief P (φ n)) ≈ₙ fun n => (p n : ℝ)) →
@@ -385,11 +387,13 @@ theorem lic_persistence_of_knowledge (P : History) (DP : DeductiveProcess)
 sentences, the diagonal prices have exactly the same liminf as their future suprema and
 the same limsup as their future infima.
 
-The price range is carried by `IsLogicalInductor`; plausible-world existence remains an
-explicit deductive-process hypothesis.
+The price range is carried by the criterion; plausible-world existence remains an
+explicit deductive-process hypothesis.  The criterion binder is `def:lic` at the paper's
+own quantifier, the trader being certified
+is certified at `EfficientlyComputable`.
 Paper node: `thm:tbo` -/
 theorem lic_preemptive_learning (P : History) (DP : DeductiveProcess)
-    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    [IsLogicalInductor P DP] (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     liminf (fun n => P n (φ n)) atTop =
         liminf (fun n => sSup (Set.range (fun j => P (n + j) (φ n)))) atTop ∧

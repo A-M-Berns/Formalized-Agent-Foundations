@@ -10,25 +10,35 @@ computable oracle.  This file renders the delayed-feedback half of `thm:wub` (te
 `thm:wubaff` (tex:1480) and `thm:wubexp` (tex:1822): the paper's separate operational
 premise that `thmval` of the day's combination can be computed in time `O(f(n+1))`.
 
-`FeedbackTruthComputation truth f` is that premise — a rational value stream, a
-`Nat.Partrec.Code`, and an `evaln` bound at the deferral clock `ecClock a degree (f (k+1))`.
+`FeedbackTruthComputation truth f` is that premise — a rational value stream, a value-code
+stream, and a `MachineDigits` bound read at the unary pair `⟨k, f (k+1)⟩`, whose length is
+the paper's own `O(f(k+1))` meter.
 The semantic agreement `value k = truth (f k)` is recorded only on the required indices, and
 the certificate carries no price-accuracy, unbiasedness, convergence, or logical-inductor
 conclusion; uniform normalization and market bounds remain separate inputs to the public
 constructor.
 
-The premise is inhabited.  `ordinaryFeedbackTruthComputation` is the constant witness;
-`alternatingFeedbackTruthComputation_nonempty` and
+The premise is inhabited, at three strengths.  `ordinaryFeedbackTruthComputation` is the
+constant witness; `alternatingFeedbackTruthComputation_nonempty` and
 `exists_nonconstant_feedbackTruthComputation` give a genuinely two-valued stream, so the
-endpoints' dependence on `truth` is exercised by an actual inhabitant.  A stream ranging
-over unboundedly many rationals is out of reach, because `Encodable ℚ` is a `Denumerable`
-bijection with no arithmetic normal form in the `PolyFueled` toolkit (`dd:fuel`).
+endpoints' dependence on `truth` is exercised by an actual inhabitant; and
+`unboundedFeedbackTruthComputation_nonempty` and
+`exists_unbounded_feedbackTruthComputation` give a stream ranging over **unboundedly many**
+rationals — the `k`th deferred value is `(k : ℚ)`, and the truth stream it matches is
+unbounded above along the deferral image.  Nothing about the `computes` field stands in the
+way of that: `MachineDigits` bounds the symbols a poly-time writer must emit, never the
+magnitude of the value written.  The unbounded witness's certificate is
+`ratNatCast_machineDigits` (`Properties/OccamBounds.lean`) at `UnaryRuler.unpairFst` —
+`⌜(n : ℚ)⌝ = ⟪2n, 1⟫`, hence `MachineDigits.natPair` of two rulers — and the general route
+for an arbitrary rational stream is `MachineRatCodes.toMachineDigits`
+(`Framework/Machine/WriteOutMachine.lean`), which assembles `⌜q n⌝` from the class's
+numerator-code and denominator runs.
 
 `feedbackFlag`, `feedbackIndex` and `sourceIndex` recover the source component of a delayed
 feedback day through the bounded deferral evaluator, never through an unbounded inverse of
 `f`; they need only `StrictlyIncreasingDeferral`, which `thm:wubaff` itself supplies.
 
-`feedbackResidualSeq As C fa fd` is the emitted object: the sparse literal affine family
+`feedbackResidualSeq As C` is the emitted object: the sparse literal affine family
 carrying `A_{f k} - truth (f k)` on day `f (k+1)` and the zero combination on every other
 day, with `feedbackResidualSeqPoly` its uniform polynomial syntax emitter (`dd:fuel`) and
 `truthCodeAt_eq_of_flag` proving the emitted rational payload is the canonical code.
@@ -50,7 +60,7 @@ One paper defect is carried here: `thm:wubexp`'s `hsupport` clause is printed at
 `luv_wubexp_ofComputation` states it at the feedback theorem where it belongs.
 
 **Cross-lane edge.**  This module imports `Construction/Quotation/DeferralFibre.lean` for the
-deferral fibre `deferralPreimage` (with `_at`, `_spec` and `_polyFueled`) and the image flag
+deferral fibre `deferralPreimage` (with `_at`, `_spec` and `unaryRuler_`) and the image flag
 beside it.  It is the only edge between the two lanes, and it runs one way: nothing in
 `Quotation/` reaches `Statistics/`, since the schedule both need is stated upstream of both in
 `Properties/SelfTrust.lean`.  `DeferralFibre.lean` records the boundary from the `Quotation/`
@@ -61,6 +71,15 @@ consumers below.
 `Nat.sqrt` is locally irreducible in the namespace below, for the reason stated in
 `Construction/Statistics/SettlementClock.lean`; a declaration moved across that boundary must
 carry the attribute with it.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -74,47 +93,64 @@ attribute [local irreducible] Nat.sqrt
 /-! ## The delayed-truth premise -/
 
 /-- The paper's delayed truth computation premise.  Input `k` names the value of
-`A_{f k}`; the program must return its canonical rational code by day `f(k+1)`.
-The equality with the semantic real stream is recorded only on those required indices.
+`A_{f k}`; the program must return its canonical rational code within `O(f(k+1))` time
+(tex:1251).  The clause is rendered **at the machine model**, on the input that carries the
+bound: the code stream is read at the unary pair `⟨k, f (k+1)⟩`, whose length is
+`Nat.pair k (f (k+1)) ≥ f (k+1)`, so "polynomial in the input length" is a bound in the
+deferral value rather than in the day.
+
+**This is a relaxation of the paper's clause, not a restatement of it.**  The paper asks for
+*linear* time `O(f(k+1))`; polynomial time in the length of `⟨k, f (k+1)⟩` is implied by that
+and does not imply it back.  The field is therefore a **weaker** hypothesis than the printed
+premise, and every endpoint taking it is correspondingly **stronger** — the direction a
+relaxed hypothesis has to run for the rendering to be safe.  The relaxation is deliberate:
+`Complexity.FP` is a polynomial-time class and has no linear-time form.
+
+The certificate is total — `MachineDigits code` meters *every* paired index, not only the
+deferred ones — and this costs nothing: a program meeting the paper's clause on the deferred
+inputs can be clocked by the same polynomial in the input's length at every input, answering
+`0` on a timeout, which agrees with it on the deferred inputs and is machine-metered
+everywhere.  `computes_at` is what pins the answers, and the equality with the semantic real
+stream is recorded only on the required indices.
 Paper node: `thm:wubaff`, `thm:wubexp` -/
 structure FeedbackTruthComputation (truth : ℕ → ℝ) (f : DeferralFunction) where
+  /-- The delayed value stream. -/
   value : ℕ → ℚ
-  code : Nat.Partrec.Code
-  a : ℕ
-  degree : ℕ
-  computes : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f (k + 1))) code k =
-    some (Encodable.encode (value k))
+  /-- The written-out value code, read at the paired index `⟨component, day⟩`. -/
+  code : ℕ → ℕ
+  /-- The code stream is machine-metered: polynomial time in the length of the unary pair,
+  which on the deferred input `⟨k, f (k+1)⟩` is the paper's `O(f(k+1))`. -/
+  computes : MachineDigits code
+  /-- On the deferred day `f (k+1)` the stream returns the canonical code of the `k`th
+  value. -/
+  computes_at : ∀ k, code (Nat.pair k (f (k + 1))) = Encodable.encode (value k)
+  /-- The values are the semantic truths along the deferral. -/
   agrees : ∀ k, (value k : ℝ) = truth (f k)
 
 /-! ## Non-vacuity witnesses -/
 
-/-- **The delayed-truth premise is inhabited, for every deferral schedule `f`:** the
-constant program `Code.const ⌜1⌝` returns the code of `1` well inside the polynomial
-feedback clock, because `f (k+1) > k` forces the clock above the `k + ⌜1⌝ + 1` fuel that
-`fueled_const` needs.  Kind `N+`, provenance (a).
+/-- **The delayed-truth premise is inhabited, for every deferral schedule `f`:** the code
+stream is the constant `⌜(1 : ℚ)⌝`, and a fixed word is written by a machine that ignores
+its input, which is `MachineDigits.const`.  No clock is read and the schedule `f` plays no
+part in the certificate — it is total in the paired index, so `computes_at` holds at every
+`k` by `rfl`.  Kind `N+`, provenance (a).
 
 Disclosure: this witness is **degenerate in the value stream** — `value` and `truth` are
 both constant — so on its own it establishes satisfiability of the premise and nothing
-about the endpoints' dependence on `truth`.  That dependence is exercised instead by
+about the endpoints' dependence on `truth`.  That dependence is exercised by
 `alternatingFeedbackTruthComputation_nonempty` below, whose stream takes both values along
-the deferral image.  What remains out of reach is a stream ranging over *unboundedly many*
-rationals: that would need a fuel certificate for `Encodable.encode (q k)` with `q` varying
-freely, and the `Encodable ℚ` encoding is a `Denumerable` bijection with no arithmetic
-normal form in the `PolyFueled` toolkit.  A finitely-valued stream needs no such normal
-form — only constant codes selected by a poly-fueled test — which is what the alternating
-witness uses.
+the deferral image, and by `unboundedFeedbackTruthComputation_nonempty`, whose stream ranges
+over unboundedly many rationals.  The last of those is not a harder metering problem than
+this one: `MachineDigits` bounds the symbols a poly-time writer must emit, not the magnitude
+of the value, so `ratNatCast_machineDigits` certifies `k ↦ (k : ℚ)` outright, and
+`MachineRatCodes.toMachineDigits` is the general route for an arbitrary rational stream.
 Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
 def ordinaryFeedbackTruthComputation (f : DeferralFunction) :
     FeedbackTruthComputation (fun _ => (1 : ℝ)) f where
   value _ := 1
-  code := Nat.Partrec.Code.const (Encodable.encode (1 : ℚ))
-  a := Encodable.encode (1 : ℚ) + 1
-  degree := 1
-  computes k := by
-    refine Nat.Partrec.Code.evaln_mono ?_ (fueled_const (Encodable.encode (1 : ℚ)) k)
-    have hf : k + 1 < f (k + 1) := f.lt (k + 1)
-    simp only [ecClock, pow_one]
-    nlinarith [hf]
+  code _ := Encodable.encode (1 : ℚ)
+  computes := MachineDigits.const _
+  computes_at _ := rfl
   agrees k := by norm_num
 
 /-! ### A non-degenerate delayed-truth witness
@@ -124,8 +160,8 @@ value stream.  The witness below carries a genuinely two-valued stream — `1` a
 feedback indices, `0` at odd — so the endpoints' dependence on `truth` is exercised by an
 inhabitant, not only by the arbitrary-`truth` statement.  The program is a parity test
 (`BigDigits.mod_two` on the identity) feeding a two-way `ifzSel` between the two constant
-rational codes, so it stays inside the `PolyFueled` toolkit and hence inside the deferral
-clock. -/
+rational codes; that is a fuel-metered *certification device*, carried to the machine
+reading by `BigDigits.toMachine`. -/
 
 private lemma parity_polyFueled : ∃ c, PolyFueled c (fun k => k % 2) :=
   BigDigits.mod_two (BigDigits.of_polyFueled PolyFueled.id)
@@ -166,23 +202,25 @@ private lemma alternatingTruth_apply {f : DeferralFunction}
       exact h (hstrict.injective hj ▸ hj2)
     simp [alternatingTruth, alternatingValue, this, h]
 
+/-- The alternating value codes, read off the component half of the paired index. -/
+private lemma alternatingCode_machineDigits :
+    MachineDigits (fun z => Encodable.encode (alternatingValue z.unpair.1)) := by
+  obtain ⟨c, hc⟩ := alternatingValue_polyFueled
+  exact (BigDigits.of_polyFueled (hc.comp PolyFueled.left)).toMachine
+
 /-- **The delayed-truth premise is inhabited by a stream that actually varies:** the
-alternating value stream, clocked inside the deferral schedule.  The
-fuel accounting is generic — a `PolyFueled` program for the value codes always fits, since
-`ecClock a d (f (k+1)) ≥ a * (k+1)^d + a` by `f (k+1) > k`.  Kind `N+`, provenance (a).
+alternating value stream, machine-metered on the paired index.  The metering is generic —
+the value codes are two constants selected by a parity test, which is polynomial time in the
+pair's length whatever the deferral schedule is.  Kind `N+`, provenance (a).
 Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
 lemma alternatingFeedbackTruthComputation_nonempty {f : DeferralFunction}
     (hstrict : StrictlyIncreasingDeferral f) :
-    Nonempty (FeedbackTruthComputation (alternatingTruth f) f) := by
-  obtain ⟨c, b, hfuel, -, a, d, hb⟩ := alternatingValue_polyFueled
-  refine ⟨{ value := alternatingValue, code := c, a := a, degree := d
-            computes := fun k => ?_, agrees := fun k => (alternatingTruth_apply hstrict k).symm }⟩
-  refine Nat.Partrec.Code.evaln_mono ?_ (hfuel k)
-  have hf : k + 1 ≤ f (k + 1) + 1 := by have := f.lt (k + 1); omega
-  have hmono : a * (k + 1) ^ d + a ≤ a * (f (k + 1) + 1) ^ d + a := by gcongr
-  calc b k ≤ a * (k + 1) ^ d + a := hb k
-    _ ≤ a * (f (k + 1) + 1) ^ d + a := hmono
-    _ = ecClock a d (f (k + 1)) := rfl
+    Nonempty (FeedbackTruthComputation (alternatingTruth f) f) :=
+  ⟨{ value := alternatingValue
+     code := fun z => Encodable.encode (alternatingValue z.unpair.1)
+     computes := alternatingCode_machineDigits
+     computes_at := fun k => by simp
+     agrees := fun k => (alternatingTruth_apply hstrict k).symm }⟩
 
 /-- The alternating witness is genuinely non-constant on the deferral image: the theorem's
 `truth` argument takes both values at inhabited instances. -/
@@ -194,173 +232,205 @@ lemma exists_nonconstant_feedbackTruthComputation {f : DeferralFunction}
   · simpa [alternatingValue] using alternatingTruth_apply hstrict 0
   · simpa [alternatingValue] using alternatingTruth_apply hstrict 1
 
+/-! ### An unboundedly-valued delayed-truth witness
+
+The two witnesses above range over one and two rational values.  The one below ranges over
+*unboundedly many*: the `k`th deferred component has value `(k : ℚ)`, so the `truth`
+argument it instantiates is unbounded above along the deferral image.
+
+The certificate is not a harder problem than the alternating one's, and no `Encodable ℚ`
+normal form is needed for it.  `MachineDigits` meters the *symbols* a poly-time writer must
+emit, never the magnitude of the value written, and `ratNatCast_machineDigits`
+(`Properties/OccamBounds.lean`) meters the rational cast of any unary ruler outright:
+`⌜(n : ℚ)⌝ = ⟪2n, 1⟫` (`encode_rat_natCast`), which is `MachineDigits.natPair` of the doubled
+ruler and the constant `1`.  Here the ruler is `UnaryRuler.unpairFst`, the component half of
+the paired index.  For a stream of *freely varying* rationals the general route is
+`MachineRatCodes.toMachineDigits`, which assembles `⌜q n⌝` from that class's numerator-code
+and denominator runs. -/
+
+open scoped Classical in
+/-- The semantic truth stream matched to the unbounded value stream along `f`: the source
+index of a deferral day, and `0` off the deferral image. -/
+noncomputable def unboundedTruth (f : DeferralFunction) (n : ℕ) : ℝ :=
+  if h : ∃ k, f k = n then ((h.choose : ℕ) : ℝ) else 0
+
+private lemma unboundedTruth_apply {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) (k : ℕ) :
+    unboundedTruth f (f k) = ((k : ℕ) : ℝ) := by
+  classical
+  have hex : ∃ j, f j = f k := ⟨k, rfl⟩
+  rw [unboundedTruth, dif_pos hex]
+  have hchoose := hstrict.injective hex.choose_spec
+  rw [hchoose]
+
+/-- The unbounded value codes, read off the component half of the paired index. -/
+private lemma unboundedCode_machineDigits :
+    MachineDigits (fun z => Encodable.encode (((z.unpair.1 : ℕ) : ℚ))) :=
+  ratNatCast_machineDigits UnaryRuler.unpairFst
+
+/-- **The delayed-truth premise is inhabited by a stream ranging over unboundedly many
+rationals:** the `k`th deferred value is `(k : ℚ)`, whose code the program reads off the
+component half of the paired index.  The metering is generic — it is the rational cast of a
+unary ruler, polynomial time in the pair's length whatever the deferral schedule is — and
+nothing in it bounds the value stream.  Kind `N+`, provenance (a).
+Paper node: `thm:wub`, `thm:wubaff`, `thm:wubexp` -/
+lemma unboundedFeedbackTruthComputation_nonempty {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) :
+    Nonempty (FeedbackTruthComputation (unboundedTruth f) f) :=
+  ⟨{ value := fun k => ((k : ℕ) : ℚ)
+     code := fun z => Encodable.encode (((z.unpair.1 : ℕ) : ℚ))
+     computes := unboundedCode_machineDigits
+     computes_at := fun k => by simp
+     agrees := fun k => by rw [unboundedTruth_apply hstrict k]; push_cast; ring }⟩
+
+/-- The unbounded witness's `truth` argument is unbounded above along the deferral image, so
+the endpoints' dependence on `truth` is exercised by an inhabitant taking arbitrarily large
+values — not only by a finitely-valued one. -/
+lemma exists_unbounded_feedbackTruthComputation {f : DeferralFunction}
+    (hstrict : StrictlyIncreasingDeferral f) :
+    ∃ truth : ℕ → ℝ, Nonempty (FeedbackTruthComputation truth f) ∧
+      ∀ B : ℝ, ∃ k, B < truth (f k) := by
+  refine ⟨unboundedTruth f, unboundedFeedbackTruthComputation_nonempty hstrict, fun B => ?_⟩
+  obtain ⟨k, hk⟩ := exists_nat_gt B
+  exact ⟨k, by rw [unboundedTruth_apply hstrict k]; exact_mod_cast hk⟩
+
 /-! ## The shifted deferral schedule -/
 
 /-- The source component on a delayed feedback day: the preimage of `m`, minus one. -/
-def feedbackIndex (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  deferralPreimage f a degree m - 1
+def feedbackIndex (f : DeferralFunction) (m : ℕ) : ℕ :=
+  deferralPreimage f m - 1
 
 /-- A day is active exactly when it is `f(j)` for a positive index `j`.
 Natural-valued Booleans keep the schedule inside the polynomial compiler. -/
-def feedbackFlag (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  if deferralImageFlag f a degree m = 0 then 0
-  else if deferralPreimage f a degree m = 0 then 0 else 1
+def feedbackFlag (f : DeferralFunction) (m : ℕ) : ℕ :=
+  if deferralImageFlag f m = 0 then 0
+  else if deferralPreimage f m = 0 then 0 else 1
 
-lemma feedbackIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (feedbackIndex f a degree) := by
-  obtain ⟨cpre, hpre⟩ := deferralPreimage_polyFueled f a degree
-  exact ⟨_, (predc_polyFueled.comp hpre).of_eq (fun m => by
-    simp [feedbackIndex, Nat.pred_eq_sub_one])⟩
+lemma unaryRuler_feedbackIndex (f : DeferralFunction) :
+    UnaryRuler (feedbackIndex f) :=
+  ((unaryRuler_deferralPreimage f).sub (UnaryRuler.const 1)).of_eq
+    (fun m => by simp [feedbackIndex])
 
-lemma feedbackFlag_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (feedbackFlag f a degree) := by
-  obtain ⟨cflag, hflag⟩ := deferralImageFlag_polyFueled f a degree
-  obtain ⟨cpre, hpre⟩ := deferralPreimage_polyFueled f a degree
-  have hinner := ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair (PolyFueled.const 1)).pair hpre)
-  exact ⟨_, (ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair hinner).pair hflag)).of_eq (fun m => by
-      simp only [ifzSelFn]
-      simp [feedbackFlag])⟩
+lemma unaryRuler_feedbackFlag (f : DeferralFunction) :
+    UnaryRuler (feedbackFlag f) :=
+  ((unaryRuler_deferralImageFlag f).ifZero (UnaryRuler.const 0)
+    ((unaryRuler_deferralPreimage f).ifZero (UnaryRuler.const 0)
+      (UnaryRuler.const 1))).of_eq (fun m => by simp [feedbackFlag])
 
-lemma feedbackFlag_zero_or_one (f : DeferralFunction) (a degree m : ℕ) :
-    feedbackFlag f a degree m = 0 ∨ feedbackFlag f a degree m = 1 := by
+lemma feedbackFlag_zero_or_one (f : DeferralFunction) (m : ℕ) :
+    feedbackFlag f m = 0 ∨ feedbackFlag f m = 1 := by
   unfold feedbackFlag
-  by_cases hi : deferralImageFlag f a degree m = 0
+  by_cases hi : deferralImageFlag f m = 0
   · simp [hi]
-  · by_cases hp : deferralPreimage f a degree m = 0
+  · by_cases hp : deferralPreimage f m = 0
     · simp [hi, hp]
     · simp [hi, hp]
 
 lemma feedbackFlag_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (k : ℕ) : feedbackFlag f a degree (f (k + 1)) = 1 := by
+    (k : ℕ) : feedbackFlag f (f (k + 1)) = 1 := by
   rw [feedbackFlag,
-    deferralImageFlag_at f hspec (k + 1),
-    deferralPreimage_at f hstrict.injective hspec (k + 1)]
+    deferralImageFlag_at f (k + 1),
+    deferralPreimage_at f hstrict.injective (k + 1)]
   simp
 
 lemma feedbackIndex_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (k : ℕ) : feedbackIndex f a degree (f (k + 1)) = k := by
-  rw [feedbackIndex, deferralPreimage_at f hstrict.injective hspec (k + 1)]
+    (k : ℕ) : feedbackIndex f (f (k + 1)) = k := by
+  rw [feedbackIndex, deferralPreimage_at f hstrict.injective (k + 1)]
   omega
 
 /-- On every active day, the shifted schedule really names a unique feedback component. -/
 lemma feedbackFlag_spec
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : feedbackFlag f a degree m = 1) :
-    f (feedbackIndex f a degree m + 1) = m := by
-  have himage : deferralImageFlag f a degree m = 1 := by
+    {m : ℕ} (hm : feedbackFlag f m = 1) :
+    f (feedbackIndex f m + 1) = m := by
+  have himage : deferralImageFlag f m = 1 := by
     unfold feedbackFlag at hm
     split at hm <;> rename_i hflag
     · omega
-    · rcases deferralImageFlag_zero_or_one f a degree m with hz | ho
+    · rcases deferralImageFlag_zero_or_one f m with hz | ho
       · exact (hflag hz).elim
       · exact ho
-  have hpre : deferralPreimage f a degree m ≠ 0 := by
+  have hpre : deferralPreimage f m ≠ 0 := by
     unfold feedbackFlag at hm
     rw [if_neg (by omega)] at hm
     split at hm <;> omega
-  have hspec' := deferralPreimage_spec f hstrict.injective hspec himage
+  have hpair := deferralPreimage_spec f hstrict.injective himage
   rw [feedbackIndex]
-  have hpos : 1 ≤ deferralPreimage f a degree m := Nat.one_le_iff_ne_zero.2 hpre
+  have hpos : 1 ≤ deferralPreimage f m := Nat.one_le_iff_ne_zero.2 hpre
   rw [Nat.sub_add_cancel hpos]
-  exact hspec'.2
+  exact hpair.2
 
 /-- The source affine index is recovered by the same bounded deferral evaluator used by
 the feedback-trader emitter; no unbounded inverse of `f` is evaluated. -/
-def sourceIndex (f : DeferralFunction) (a degree m : ℕ) : ℕ :=
-  FeedbackEmission.scheduledDeferral f a degree m (feedbackIndex f a degree m)
+def sourceIndex (f : DeferralFunction) (m : ℕ) : ℕ :=
+  FeedbackEmission.scheduledDeferral f m (feedbackIndex f m)
 
-lemma sourceIndex_polyFueled (f : DeferralFunction) (a degree : ℕ) :
-    ∃ c, PolyFueled c (sourceIndex f a degree) := by
-  obtain ⟨cvalue, hvalue⟩ := FeedbackEmission.scheduledValue_polyFueled f a degree
-  obtain ⟨cindex, hindex⟩ := feedbackIndex_polyFueled f a degree
-  have hquery : PolyFueled _ (fun m => Nat.pair m (feedbackIndex f a degree m)) :=
-    PolyFueled.id.pair hindex
-  exact ⟨_, (hvalue.comp hquery).of_eq (fun m => by
-    simp [sourceIndex, FeedbackEmission.scheduledDeferral])⟩
+lemma unaryRuler_sourceIndex (f : DeferralFunction) :
+    UnaryRuler (sourceIndex f) :=
+  ((unaryRuler_scheduledValue f).comp
+    (UnaryRuler.id.pair (unaryRuler_feedbackIndex f))).of_eq
+    (fun m => by simp [sourceIndex, FeedbackEmission.scheduledDeferral])
 
 lemma sourceIndex_at
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    (k : ℕ) : sourceIndex f a degree (f (k + 1)) = f k := by
-  rw [sourceIndex, feedbackIndex_at f hstrict hspec k]
-  apply FeedbackEmission.scheduledDeferral_eq f hspec
+    (k : ℕ) : sourceIndex f (f (k + 1)) = f k := by
+  rw [sourceIndex, feedbackIndex_at f hstrict k]
+  apply FeedbackEmission.scheduledDeferral_eq f
   exact (hstrict (Nat.lt_succ_self k)).le
 
 lemma sourceIndex_le_of_flag
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : feedbackFlag f a degree m = 1) :
-    sourceIndex f a degree m < m := by
-  have hdeadline := feedbackFlag_spec f hstrict hspec hm
-  have hkn : f (feedbackIndex f a degree m) ≤ m := by
+    {m : ℕ} (hm : feedbackFlag f m = 1) :
+    sourceIndex f m < m := by
+  have hdeadline := feedbackFlag_spec f hstrict hm
+  have hkn : f (feedbackIndex f m) ≤ m := by
     calc
-      f (feedbackIndex f a degree m) ≤ f (feedbackIndex f a degree m + 1) :=
+      f (feedbackIndex f m) ≤ f (feedbackIndex f m + 1) :=
         (hstrict (Nat.lt_succ_self _)).le
       _ = m := hdeadline
-  have hsource : sourceIndex f a degree m = f (feedbackIndex f a degree m) := by
-    exact FeedbackEmission.scheduledDeferral_eq f hspec hkn
+  have hsource : sourceIndex f m = f (feedbackIndex f m) := by
+    exact FeedbackEmission.scheduledDeferral_eq f hkn
   calc
-    sourceIndex f a degree m = f (feedbackIndex f a degree m) := hsource
-    _ < f (feedbackIndex f a degree m + 1) := hstrict (Nat.lt_succ_self _)
+    sourceIndex f m = f (feedbackIndex f m) := hsource
+    _ < f (feedbackIndex f m + 1) := hstrict (Nat.lt_succ_self _)
     _ = m := hdeadline
 
 lemma sourceIndex_eq_of_flag
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {a degree : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock a degree (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : feedbackFlag f a degree m = 1) :
-    sourceIndex f a degree m = f (feedbackIndex f a degree m) := by
-  have hdeadline := feedbackFlag_spec f hstrict hspec hm
-  apply FeedbackEmission.scheduledDeferral_eq f hspec
+    {m : ℕ} (hm : feedbackFlag f m = 1) :
+    sourceIndex f m = f (feedbackIndex f m) := by
+  have hdeadline := feedbackFlag_spec f hstrict hm
+  apply FeedbackEmission.scheduledDeferral_eq f
   calc
-    f (feedbackIndex f a degree m) ≤ f (feedbackIndex f a degree m + 1) :=
+    f (feedbackIndex f m) ≤ f (feedbackIndex f m + 1) :=
       (hstrict (Nat.lt_succ_self _)).le
     _ = m := hdeadline
 
 /-! ## Bounded truth-code simulation -/
 
-/-- Raw canonical rational code returned by the bounded truth computation. -/
+/-- Canonical rational code returned by the delayed truth computation on day `m`: its code
+stream read at the pair `⟨source component, day⟩`. -/
 def truthCodeAt {truth : ℕ → ℝ} {f : DeferralFunction}
-    (C : FeedbackTruthComputation truth f) (fa fd m : ℕ) : ℕ :=
-  codeEvalnNat C.code (Nat.pair (ecClock C.a C.degree m) (feedbackIndex f fa fd m)) - 1
+    (C : FeedbackTruthComputation truth f) (m : ℕ) : ℕ :=
+  C.code (Nat.pair (feedbackIndex f m) m)
 
-lemma truthCodeAt_polyFueled {truth : ℕ → ℝ} {f : DeferralFunction}
-    (C : FeedbackTruthComputation truth f) (fa fd : ℕ) :
-    ∃ c, PolyFueled c (truthCodeAt C fa fd) := by
-  obtain ⟨csim, hsim⟩ := codeEvalnNat_polyFueled C.code
-  obtain ⟨cclock, hclock⟩ := ecClock_polyFueled C.a C.degree
-  obtain ⟨cindex, hindex⟩ := feedbackIndex_polyFueled f fa fd
-  have hquery := (hclock.pair hindex)
-  exact ⟨_, (predc_polyFueled.comp (hsim.comp hquery)).of_eq (fun m => by
-    simp [truthCodeAt, Nat.pred_eq_sub_one])⟩
+lemma machineDigits_truthCodeAt {truth : ℕ → ℝ} {f : DeferralFunction}
+    (C : FeedbackTruthComputation truth f) :
+    MachineDigits (truthCodeAt C) :=
+  C.computes.comp ((unaryRuler_feedbackIndex f).pair UnaryRuler.id)
 
 lemma truthCodeAt_eq_of_flag
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : feedbackFlag f fa fd m = 1) :
-    truthCodeAt C fa fd m = Encodable.encode (C.value (feedbackIndex f fa fd m)) := by
-  have hdeadline := feedbackFlag_spec f hstrict hspec hm
-  have hrun := C.computes (feedbackIndex f fa fd m)
+    {m : ℕ} (hm : feedbackFlag f m = 1) :
+    truthCodeAt C m = Encodable.encode (C.value (feedbackIndex f m)) := by
+  have hdeadline := feedbackFlag_spec f hstrict hm
+  have hrun := C.computes_at (feedbackIndex f m)
   rw [hdeadline] at hrun
-  unfold truthCodeAt codeEvalnNat
-  simp only [Nat.unpair_pair]
-  rw [hrun]
-  simp
+  exact hrun
 
 /-! ## Literal sparse affine syntax -/
 
@@ -369,47 +439,43 @@ centred at the computed value of `truth (f k)`, and the literal zero affine comb
 every other day. -/
 def feedbackResidualSeq {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
-    (fa fd m : ℕ) : AffineCombination :=
-  if feedbackFlag f fa fd m = 0 then
+    (m : ℕ) : AffineCombination :=
+  if feedbackFlag f m = 0 then
     ⟨EF.const 0, []⟩
   else
-    ⟨EF.add (As (sourceIndex f fa fd m)).const
-        (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
-      (As (sourceIndex f fa fd m)).terms⟩
+    ⟨EF.add (As (sourceIndex f m)).const
+        (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f m)))),
+      (As (sourceIndex f m)).terms⟩
 
 lemma feedbackResidualSeq_eq_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (k : ℕ) :
-    feedbackResidualSeq As C fa fd (f (k + 1)) =
+    feedbackResidualSeq As C (f (k + 1)) =
       ⟨EF.add (As (f k)).const (EF.mul (EF.const (-1)) (EF.const (C.value k))),
         (As (f k)).terms⟩ := by
-  rw [feedbackResidualSeq, feedbackFlag_at f hstrict hspec k, if_neg one_ne_zero,
-    sourceIndex_at f hstrict hspec k, feedbackIndex_at f hstrict hspec k]
+  rw [feedbackResidualSeq, feedbackFlag_at f hstrict k, if_neg one_ne_zero,
+    sourceIndex_at f hstrict k, feedbackIndex_at f hstrict k]
 
 @[simp] lemma feedbackResidualSeq_price_at
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (P : History) (k : ℕ) :
-    (feedbackResidualSeq As C fa fd (f (k + 1))).price P (f (k + 1)) =
+    (feedbackResidualSeq As C (f (k + 1))).price P (f (k + 1)) =
       (As (f k)).price P (f (k + 1)) - (C.value k : ℝ) := by
-  rw [feedbackResidualSeq_eq_at As C hstrict hspec k]
+  rw [feedbackResidualSeq_eq_at As C hstrict k]
   simp [AffineCombination.price, AffineCombination.value]
   ring
 
 @[simp] lemma feedbackResidualSeq_magnitude
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (As : ℕ → AffineCombination) (C : FeedbackTruthComputation truth f)
-    (fa fd m : ℕ) (P : History) :
-    (feedbackResidualSeq As C fa fd m).magnitude P =
-      if feedbackFlag f fa fd m = 0 then 0
-      else (As (sourceIndex f fa fd m)).magnitude P := by
+    (m : ℕ) (P : History) :
+    (feedbackResidualSeq As C m).magnitude P =
+      if feedbackFlag f m = 0 then 0
+      else (As (sourceIndex f m)).magnitude P := by
   unfold feedbackResidualSeq AffineCombination.magnitude
   split <;> simp
 
@@ -422,90 +488,85 @@ noncomputable def feedbackResidualSeqPoly
     {As : ℕ → AffineCombination} (hA : PolySequence As)
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
-    (hstrict : StrictlyIncreasingDeferral f)
-    (fa fd : ℕ)
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k)) :
-    PolySequence (feedbackResidualSeq As C fa fd) := by
-  let cflag := Classical.choose (feedbackFlag_polyFueled f fa fd)
-  have hflag := Classical.choose_spec (feedbackFlag_polyFueled f fa fd)
-  let csource := Classical.choose (sourceIndex_polyFueled f fa fd)
-  have hsource := Classical.choose_spec (sourceIndex_polyFueled f fa fd)
-  let ccount := Classical.choose hA.termCount_poly
-  have hcount := Classical.choose_spec hA.termCount_poly
-  let ctruth := Classical.choose (truthCodeAt_polyFueled C fa fd)
-  have htruth := Classical.choose_spec (truthCodeAt_polyFueled C fa fd)
+    (hstrict : StrictlyIncreasingDeferral f) :
+    PolySequence (feedbackResidualSeq As C) := by
+  have hflagR := unaryRuler_feedbackFlag f
+  have hsourceR := unaryRuler_sourceIndex f
+  have htruth := machineDigits_truthCodeAt C
   let count : ℕ → ℕ := fun m =>
-    if feedbackFlag f fa fd m = 0 then 0 else hA.termCount (sourceIndex f fa fd m)
+    if feedbackFlag f m = 0 then 0 else hA.termCount (sourceIndex f m)
   let coeff : ℕ → EF := fun z =>
-    hA.coefficient (Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2)
+    hA.coefficient (Nat.pair (sourceIndex f z.unpair.1) z.unpair.2)
   let sentence : ℕ → Sentence := fun z =>
-    hA.sentence (Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2)
-  have hcountSource := hcount.comp hsource
-  have hcountPoly : ∃ c, PolyFueled c count := by
-    exact ⟨_, (ifzSel_polyFueled.comp
-      (((PolyFueled.const 0).pair hcountSource).pair hflag)).of_eq (fun m => by
-        simp [count, ifzSelFn])⟩
-  have hquery : PolyFueled _ (fun z : ℕ =>
-      Nat.pair (sourceIndex f fa fd z.unpair.1) z.unpair.2) :=
-    (hsource.comp PolyFueled.left).pair PolyFueled.right
-  have hcoeffPoly : BigSpliceStream (fun z => (coeff z).serialize) := by
-    simpa only [coeff] using hA.coefficient_poly.comp hquery
-  have hsentencePoly : BigSentenceCodes sentence :=
-    (hA.sentence_poly.comp hquery).of_eq (fun z => rfl)
-  have hrawConst : BigSpliceStream (fun m => [1, truthCodeAt C fa fd m]) :=
-    BigSpliceStream.payload 1 (Or.inl rfl) htruth
-  have hminusRaw : BigSpliceStream (fun m =>
-      (EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) :=
-    ((BigSpliceStream.serialize_const (-1)).append hrawConst).append
-      (BigSpliceStream.tag 3 (by norm_num))
-  have hactiveRaw : BigSpliceStream (fun m =>
-      (As (sourceIndex f fa fd m)).const.serialize ++
-        ((EF.const (-1)).serialize ++ [1, truthCodeAt C fa fd m] ++ [3]) ++ [2]) :=
-    ((hA.const_poly.comp hsource).append hminusRaw).append
-      (BigSpliceStream.tag 2 (by norm_num))
-  have hconstIf := BigSpliceStream.ifZero
-    (BigSpliceStream.serialize_const 0) hactiveRaw hflag
+    hA.sentence (Nat.pair (sourceIndex f z.unpair.1) z.unpair.2)
+  have hqueryR : UnaryRuler (fun z : ℕ =>
+      Nat.pair (sourceIndex f z.unpair.1) z.unpair.2) :=
+    (hsourceR.comp UnaryRuler.unpairFst).pair UnaryRuler.unpairSnd
+  have hcountPoly : UnaryRuler count :=
+    (hflagR.ifZero (UnaryRuler.const 0) (hA.termCount_poly.comp hsourceR)).of_eq
+      (fun m => by simp [count])
+  have hcoeffPoly : MachineSpliceStream (fun z => (coeff z).serialize) := by
+    simpa only [coeff] using hA.coefficient_poly.comp
+      (f := fun z : ℕ => Nat.pair (sourceIndex f z.unpair.1) z.unpair.2) hqueryR
+  have hsentencePoly : MachineSentenceCodes sentence :=
+    (hA.sentence_poly.comp
+      (f := fun z : ℕ => Nat.pair (sourceIndex f z.unpair.1) z.unpair.2)
+      hqueryR).of_eq (fun z => rfl)
+  have hrawConst : MachineSpliceStream (fun m => [1, truthCodeAt C m]) :=
+    MachineSpliceStream.bigPayload 1 (Or.inl rfl) htruth
+  have hminusRaw : MachineSpliceStream (fun m =>
+      (EF.const (-1)).serialize ++ [1, truthCodeAt C m] ++ [3]) :=
+    ((MachineSpliceStream.serialize_const (-1)).append hrawConst).append
+      (MachineSpliceStream.tag 3 (by norm_num))
+  have hactiveRaw : MachineSpliceStream (fun m =>
+      (As (sourceIndex f m)).const.serialize ++
+        ((EF.const (-1)).serialize ++ [1, truthCodeAt C m] ++ [3]) ++ [2]) :=
+    ((hA.const_poly.comp (f := fun m : ℕ => sourceIndex f m) hsourceR).append
+      hminusRaw).append (MachineSpliceStream.tag 2 (by norm_num))
+  have hconstIf := MachineSpliceStream.ifZero
+    (MachineSpliceStream.serialize_const 0) hactiveRaw
+    (t := fun m : ℕ => feedbackFlag f m) hflagR
   exact {
     termCount := count
     coefficient := coeff
     sentence := sentence
     termCount_poly := hcountPoly
     const_poly := by
-      refine BigSpliceStream.of_eq hconstIf ?_
+      refine MachineSpliceStream.of_eq hconstIf ?_
       intro m
-      by_cases hm : feedbackFlag f fa fd m = 0
+      by_cases hm : feedbackFlag f m = 0
       · simp [feedbackResidualSeq, hm]
-      · have hm1 : feedbackFlag f fa fd m = 1 :=
-          (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
-        rw [truthCodeAt_eq_of_flag C hstrict hspec hm1]
+      · have hm1 : feedbackFlag f m = 1 :=
+          (feedbackFlag_zero_or_one f m).resolve_left hm
+        rw [truthCodeAt_eq_of_flag C hstrict hm1]
         simp [feedbackResidualSeq, hm, EF.serialize, List.append_assoc]
     coefficient_poly := hcoeffPoly
     sentence_poly := hsentencePoly
     terms_eq := by
       intro m
       unfold feedbackResidualSeq count coeff sentence
-      by_cases hm : feedbackFlag f fa fd m = 0
+      by_cases hm : feedbackFlag f m = 0
       · simp [hm]
       · simp [hm, hA.terms_eq]
     const_rank := by
       intro m
       unfold feedbackResidualSeq
-      by_cases hm : feedbackFlag f fa fd m = 0
+      by_cases hm : feedbackFlag f m = 0
       · simp [hm]
       · rw [if_neg hm]
         simp only [EF.rank]
-        have hone : feedbackFlag f fa fd m = 1 :=
-          (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
-        have hsle := (sourceIndex_le_of_flag f hstrict hspec hone).le
+        have hone : feedbackFlag f m = 1 :=
+          (feedbackFlag_zero_or_one f m).resolve_left hm
+        have hsle := (sourceIndex_le_of_flag f hstrict hone).le
         exact Nat.max_le.mpr ⟨hA.const_rank _ |>.trans hsle, by simp⟩
     coefficient_rank := by
       intro m j hj
       unfold count at hj
-      have hm : feedbackFlag f fa fd m = 1 := by
-        rcases feedbackFlag_zero_or_one f fa fd m with hz | ho
+      have hm : feedbackFlag f m = 1 := by
+        rcases feedbackFlag_zero_or_one f m with hz | ho
         · simp [hz] at hj
         · exact ho
-      have hsle := (sourceIndex_le_of_flag f hstrict hspec hm).le
+      have hsle := (sourceIndex_le_of_flag f hstrict hm).le
       unfold coeff
       simp only [Nat.unpair_pair]
       exact (hA.coefficient_rank _ j (by simpa [hm] using hj)).trans hsle
@@ -531,21 +592,19 @@ lemma feedbackResidualSeq_value_eq
     {truth : ℕ → ℝ} {f : DeferralFunction}
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
-    {m : ℕ} (hm : feedbackFlag f fa fd m = 1) (v : PCWorld) :
-    (feedbackResidualSeq As C fa fd m).value P v.payout =
-      (As (f (feedbackIndex f fa fd m))).value P v.payout -
-        truth (f (feedbackIndex f fa fd m)) := by
+    {m : ℕ} (hm : feedbackFlag f m = 1) (v : PCWorld) :
+    (feedbackResidualSeq As C m).value P v.payout =
+      (As (f (feedbackIndex f m))).value P v.payout -
+        truth (f (feedbackIndex f m)) := by
   unfold feedbackResidualSeq
   rw [if_neg (by omega)]
-  have hsource := sourceIndex_eq_of_flag f hstrict hspec hm
+  have hsource := sourceIndex_eq_of_flag f hstrict hm
   have heq :
-      (⟨EF.add (As (sourceIndex f fa fd m)).const
-          (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
-        (As (sourceIndex f fa fd m)).terms⟩ : AffineCombination).value P v.payout =
-        (As (sourceIndex f fa fd m)).value P v.payout -
-          (C.value (feedbackIndex f fa fd m) : ℝ) := by
+      (⟨EF.add (As (sourceIndex f m)).const
+          (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f m)))),
+        (As (sourceIndex f m)).terms⟩ : AffineCombination).value P v.payout =
+        (As (sourceIndex f m)).value P v.payout -
+          (C.value (feedbackIndex f m) : ℝ) := by
     simp [AffineCombination.value]
     ring
   rw [heq, hsource, C.agrees]
@@ -555,16 +614,14 @@ identity `f (i + 1) = m` plus strict monotonicity reflects `m ≥ f (N + 1)` bac
 `i ≥ N`, and `f i > i` then puts the *affine* index `f i` past `N` too. -/
 lemma le_source_of_flag
     (f : DeferralFunction) (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
-    {N m : ℕ} (hm : feedbackFlag f fa fd m = 1) (hmN : f (N + 1) ≤ m) :
-    N ≤ f (feedbackIndex f fa fd m) := by
-  have hdeadline := feedbackFlag_spec f hstrict hspec hm
-  have hle : f (N + 1) ≤ f (feedbackIndex f fa fd m + 1) := by rw [hdeadline]; exact hmN
-  have hN : N ≤ feedbackIndex f fa fd m := by
+    {N m : ℕ} (hm : feedbackFlag f m = 1) (hmN : f (N + 1) ≤ m) :
+    N ≤ f (feedbackIndex f m) := by
+  have hdeadline := feedbackFlag_spec f hstrict hm
+  have hle : f (N + 1) ≤ f (feedbackIndex f m + 1) := by rw [hdeadline]; exact hmN
+  have hN : N ≤ feedbackIndex f m := by
     have := hstrict.le_iff_le.1 hle
     omega
-  exact hN.trans (f.lt (feedbackIndex f fa fd m)).le
+  exact hN.trans (f.lt (feedbackIndex f m)).le
 
 /-- **The sparse feedback sequence's completed-world value vanishes uniformly.**
 
@@ -581,25 +638,23 @@ lemma feedbackResidualSeq_value_vanishing
     (hdet : ApproxDeterminedViaTheory As P DP truth err)
     (herr : Tendsto err atTop (𝓝 0))
     (C : FeedbackTruthComputation truth f)
-    (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k)) :
+    (hstrict : StrictlyIncreasingDeferral f) :
     ∀ ε > 0, ∀ᶠ m in atTop, ∀ v : PCWorld, v.ConsistentWithTheory DP →
-      |(feedbackResidualSeq As C fa fd m).value P v.payout| ≤ ε := by
+      |(feedbackResidualSeq As C m).value P v.payout| ≤ ε := by
   intro ε hε
   obtain ⟨N, hN⟩ := Metric.tendsto_atTop.1 herr ε hε
   rw [Filter.eventually_atTop]
   refine ⟨f (N + 1), fun m hm v hv => ?_⟩
-  by_cases hflag : feedbackFlag f fa fd m = 0
-  · have hzero : (feedbackResidualSeq As C fa fd m).value P v.payout = 0 := by
+  by_cases hflag : feedbackFlag f m = 0
+  · have hzero : (feedbackResidualSeq As C m).value P v.payout = 0 := by
       simp [feedbackResidualSeq, hflag, AffineCombination.value]
     rw [hzero, abs_zero]
     exact hε.le
-  · have hm1 : feedbackFlag f fa fd m = 1 :=
-      (feedbackFlag_zero_or_one f fa fd m).resolve_left hflag
-    rw [feedbackResidualSeq_value_eq C hstrict hspec hm1 v]
-    have hidx : N ≤ f (feedbackIndex f fa fd m) :=
-      le_source_of_flag f hstrict hspec hm1 hm
+  · have hm1 : feedbackFlag f m = 1 :=
+      (feedbackFlag_zero_or_one f m).resolve_left hflag
+    rw [feedbackResidualSeq_value_eq C hstrict hm1 v]
+    have hidx : N ≤ f (feedbackIndex f m) :=
+      le_source_of_flag f hstrict hm1 hm
     have hsmall := hN _ hidx
     rw [Real.dist_eq, sub_zero] at hsmall
     exact (hdet _ v hv).trans ((le_abs_self _).trans hsmall.le)
@@ -617,11 +672,9 @@ lemma feedbackResidualSeq_bounded
     (herr : Tendsto err atTop (𝓝 0))
     (C : FeedbackTruthComputation truth f)
     (hstrict : StrictlyIncreasingDeferral f)
-    {fa fd : ℕ}
-    (hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k))
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
-    BoundedAffinePrices (feedbackResidualSeq As C fa fd) P := by
+    BoundedAffinePrices (feedbackResidualSeq As C) P := by
   obtain ⟨B, hB0, hB⟩ := hbounded
   obtain ⟨v, hv⟩ := exists_consistentWithTheory DP hworld
   obtain ⟨M0, hM0⟩ := herr.bddAbove_range
@@ -631,16 +684,16 @@ lemma feedbackResidualSeq_bounded
   refine ⟨2 * B + 1 + M, by positivity, ?_⟩
   intro m n
   unfold feedbackResidualSeq
-  by_cases hm : feedbackFlag f fa fd m = 0
+  by_cases hm : feedbackFlag f m = 0
   · simp [hm, AffineCombination.price, AffineCombination.value]
     linarith
-  · have hm1 : feedbackFlag f fa fd m = 1 :=
-      (feedbackFlag_zero_or_one f fa fd m).resolve_left hm
+  · have hm1 : feedbackFlag f m = 1 :=
+      (feedbackFlag_zero_or_one f m).resolve_left hm
     rw [if_neg hm]
-    have hsource := sourceIndex_eq_of_flag f hstrict hspec hm1
-    have htruth : |(C.value (feedbackIndex f fa fd m) : ℝ)| ≤ B + 1 + M := by
+    have hsource := sourceIndex_eq_of_flag f hstrict hm1
+    have htruth : |(C.value (feedbackIndex f m) : ℝ)| ≤ B + 1 + M := by
       rw [C.agrees, ← hsource]
-      set i := sourceIndex f fa fd m with hi
+      set i := sourceIndex f m with hi
       have hres := hdet i v hv
       have hdiff := (As i).abs_value_sub_price_le_magnitude P v.payout i
         (hpoly.terms_rank i) (by
@@ -662,13 +715,13 @@ lemma feedbackResidualSeq_bounded
       obtain ⟨hv1, hv2⟩ := hval
       obtain ⟨hr1, hr2⟩ := hres
       constructor <;> linarith
-    have hprice := hB (sourceIndex f fa fd m) n
+    have hprice := hB (sourceIndex f m) n
     have heq :
-        (⟨EF.add (As (sourceIndex f fa fd m)).const
-            (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f fa fd m)))),
-          (As (sourceIndex f fa fd m)).terms⟩ : AffineCombination).price P n =
-          (As (sourceIndex f fa fd m)).price P n -
-            (C.value (feedbackIndex f fa fd m) : ℝ) := by
+        (⟨EF.add (As (sourceIndex f m)).const
+            (EF.mul (EF.const (-1)) (EF.const (C.value (feedbackIndex f m)))),
+          (As (sourceIndex f m)).terms⟩ : AffineCombination).price P n =
+          (As (sourceIndex f m)).price P n -
+            (C.value (feedbackIndex f m) : ℝ) := by
       simp [AffineCombination.price, AffineCombination.value]
       ring
     rw [heq, abs_le]
@@ -699,25 +752,21 @@ noncomputable def feedbackTruthSequence
     (hP : ∀ n φ, 0 ≤ P n φ ∧ P n φ ≤ 1)
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     FeedbackTruthSequence As truth P DP f := by
-  let fa := Classical.choose f.exists_clock
-  let fd := Classical.choose (Classical.choose_spec f.exists_clock)
-  have hspec : ∀ k, Nat.Partrec.Code.evaln (ecClock fa fd (f k)) f.code k = some (f k) :=
-    Classical.choose_spec (Classical.choose_spec f.exists_clock)
   exact {
     determined := ⟨err, herr, hdet⟩
-    sequence := feedbackResidualSeq As C fa fd
-    poly := feedbackResidualSeqPoly hpoly C hstrict fa fd hspec
-    bounded := feedbackResidualSeq_bounded hpoly hbounded hmag hdet herr C hstrict hspec hP hworld
+    sequence := feedbackResidualSeq As C
+    poly := feedbackResidualSeqPoly hpoly C hstrict
+    bounded := feedbackResidualSeq_bounded hpoly hbounded hmag hdet herr C hstrict hP hworld
     magnitude := by
       intro m
       rw [feedbackResidualSeq_magnitude]
       split
       · simp
       · exact hmag _
-    value_vanishing := feedbackResidualSeq_value_vanishing hdet herr C hstrict hspec
+    value_vanishing := feedbackResidualSeq_value_vanishing hdet herr C hstrict
     feedback_price := by
       intro k
-      rw [feedbackResidualSeq_price_at As C hstrict hspec P k, C.agrees]
+      rw [feedbackResidualSeq_price_at As C hstrict P k, C.agrees]
   }
 
 /-- The exactly-determined instance of `feedbackTruthSequence`, at zero residual.  This is
@@ -775,7 +824,7 @@ completed-theory truth stream, weighting, schedule, and deadline-bounded truth p
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ DP truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W P)

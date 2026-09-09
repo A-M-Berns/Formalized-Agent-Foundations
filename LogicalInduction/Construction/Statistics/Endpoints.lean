@@ -23,6 +23,15 @@ The caller supplies the paper's own substantive data: an affine or LUV sequence,
 truth program `FeedbackTruthComputation`.  No separate feedback deductive process is needed,
 because `FeedbackTruthComputation` is an operational value computation rather than a
 presentation whose literals a process must enumerate.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -45,7 +54,7 @@ are all constructed.  The caller supplies the paper's efficiently coded sentence
 completed-theory truth stream, weighting, schedule, and deadline-bounded truth program.
 Paper node: `thm:wub` -/
 theorem lic_wub_ofComputation_unconditional
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (truth : ℕ → ℝ) (htruth : TheoryTruth φ (paperDP T) truth)
     (W : ℕ → EF) (hW : PGenerableWeighting W)
     (hWdiv : DivergentWeighting W (liaHistory (paperDP T)))

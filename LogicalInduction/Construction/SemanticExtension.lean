@@ -58,7 +58,7 @@ what a presented source may be allowed to mean.  The other five render none.
 
 **`Prime` is interface, not machinery.**  `LogicalInduction/API.lean` advertises five of its
 declarations as the §4.8 presented-LUV vocabulary — `PresentedLUVSeq`, `PresentedLUVSeq.gt_eq`,
-`semanticHandleLUVSeq`, `semanticHandleLUVSeq_rpnThresholdCodeSeq` and
+`semanticHandleLUVSeq`, `semanticHandleLUVSeq_machineThresholdCodeSeq` and
 `no_nonvacuous_worldValued_presented_of_rpn` — and `APITests/LogicalInduction.lean` exercises
 all five.  The implementation this directory means, which may be renamed or restructured, is
 the remaining five modules: `Quote`, `Product`, `Source`, `LanguageCopy` and `Registry`.

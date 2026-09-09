@@ -33,8 +33,7 @@ first-order) and the exact accessors on it, and the fuel-clocked stage table
 
 ## Main results
 
-`LIA_isMachineLogicalInductor` and `LIA_is_logical_inductor` render `thm:lia`;
-`exists_machine_logical_inductor`, `exists_logical_inductor` and
+`LIA_is_logical_inductor` renders `thm:lia`; `exists_logical_inductor` and
 `exists_computable_beliefSequence_logical_inductor` render `thm:li`.  They are inventoried
 in `AxiomAudit.lean` and consumed by the `_unconditional` and `_closed` endpoints in
 the §4 lanes, chiefly `Construction/Paper/Market.lean`,
@@ -4058,45 +4057,25 @@ def liaBoundedEvaluatorCompiler {DP : DeductiveProcess}
   computable := liaEncodedQuoteNatAtFuel_computable process
 
 /-- `thm:lia`: the recursively constructed rational LIA market is a logical inductor
-over every computable deductive process, **at the paper's own quantifier** — no trader in
-ordinary machine polynomial time exploits it.
+over every computable deductive process — no efficiently computable trader (`def:ec`,
+ordinary polynomial time) exploits it.
 
 `ComputableDeductiveProcess` is the paper's own condition on `def:dedproc`, which
 `DeductiveProcess` (`Framework/Criterion.lean`) carries as a separate predicate rather than
-as a field, so the hypothesis is not a hypothesis beyond the paper.  The three theorems
+as a field, so the hypothesis is not a hypothesis beyond the paper.  The two theorems
 below take it for the same reason.
-Paper node: `thm:lia` -/
-theorem LIA_isMachineLogicalInductor (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP) :
-    IsMachineLogicalInductor (liaHistory DP) DP := by
-  obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact lia_isMachineLogicalInductor_of_compiler process
-    (liaBoundedEvaluatorCompiler process)
-
-/-- `thm:lia` at the fuel-class compatibility predicate, by the bridge. This is the form the
-property tail consumes.
 Paper node: `thm:lia` -/
 theorem LIA_is_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
-    IsLogicalInductor (liaHistory DP) DP :=
-  @IsMachineLogicalInductor.toIsLogicalInductor _ _ (LIA_isMachineLogicalInductor DP hDP)
+    IsLogicalInductor (liaHistory DP) DP := by
+  obtain ⟨process⟩ := hDP.nonemptyComputation
+  exact lia_isLogicalInductor_of_compiler process
+    (liaBoundedEvaluatorCompiler process)
 
-/-- `thm:li` at the paper's own quantifier: every computable deductive process admits a
-market no machine-polynomial-time trader exploits.
+/-- `thm:li`: every computable deductive process admits a market no efficiently computable
+trader exploits.
 
 This is the bare-market projection; the paper's own computable-belief-sequence form
-(`def:belseq`) is `exists_computable_beliefSequence_logical_inductor` below.
-Paper node: `thm:li` -/
-theorem exists_machine_logical_inductor (DP : DeductiveProcess)
-    (hDP : ComputableDeductiveProcess DP) :
-    ∃ P : History, IsMachineLogicalInductor P DP :=
-  ⟨liaHistory DP, LIA_isMachineLogicalInductor DP hDP⟩
-
-/-- `thm:li`: every computable deductive process admits a logical inductor.
-
-This is the fuel-class (`dd:fuel`) projection of `exists_machine_logical_inductor` above,
-which is the paper-quantifier form: `IsMachineLogicalInductor.toIsLogicalInductor` makes
-`IsLogicalInductor` the weaker conclusion.  The paper's own computable-belief-sequence form
 (`def:belseq`) is `exists_computable_beliefSequence_logical_inductor` below.
 Paper node: `thm:li` -/
 theorem exists_logical_inductor (DP : DeductiveProcess)
@@ -4109,10 +4088,9 @@ of a *computable belief sequence* (`def:belseq`) of finite-support `[0,1]`-ratio
 states (`def:belstate`) whose induced pricing satisfies the criterion.  The witness is the
 recursive rational belief sequence `liaStates DP : ℕ → RationalBeliefState`, and
 
-* `IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
-  logical inductor **at the paper's own quantifier**: no trader in ordinary machine
-  polynomial time exploits it.  The fuel-class reading follows by
-  `IsMachineLogicalInductor.toIsLogicalInductor`.  This class bundles the paper's
+* `IsLogicalInductor (fun n => (𝔹 n).toValuation) DP` — the induced real pricing is a
+  logical inductor **at the paper's own quantifier**: no trader in ordinary polynomial time
+  exploits it.  This class bundles the paper's
   *computable exact-rational market* certificate (`marketComputable : ComputableMarket` —
   one fixed program computes the rational quote table), the computable deductive process,
   and the no-exploitation criterion;
@@ -4130,7 +4108,7 @@ recursive rational belief sequence `liaStates DP : ℕ → RationalBeliefState`,
 `exists_logical_inductor` above is the projection to the bare existence statement.
 
 Proof kind `C` (composition).  Provenance: the criterion conjunct is
-`LIA_isMachineLogicalInductor` (a); the emission conjunct is `exists_liaEntries_code` (a) —
+`LIA_is_logical_inductor` (a); the emission conjunct is `exists_liaEntries_code` (a) —
 minimization of the primitive recursive bounded evaluator `liaEncodedEntriesAtFuel` over
 its fuel clock, pinned to the semantic states by `liaEncodedEntriesAtFuel_sound`; the
 support/range/cast conjuncts are `RationalBeliefState` facts (a).
@@ -4138,14 +4116,14 @@ Paper node: `thm:li` -/
 theorem exists_computable_beliefSequence_logical_inductor (DP : DeductiveProcess)
     (hDP : ComputableDeductiveProcess DP) :
     ∃ 𝔹 : ℕ → RationalBeliefState,
-      IsMachineLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
+      IsLogicalInductor (fun n => (𝔹 n).toValuation) DP ∧
         (∃ code : Nat.Partrec.Code, ∀ n : ℕ,
           Encodable.encode (𝔹 n).entries ∈ code.eval n) ∧
         (∀ n φ, φ ∉ (𝔹 n).support → (𝔹 n).quote φ = 0) ∧
         (∀ n φ, 0 ≤ (𝔹 n).quote φ ∧ (𝔹 n).quote φ ≤ 1) ∧
         (∀ n φ, (𝔹 n).toValuation φ = ((𝔹 n).quote φ : ℝ)) := by
   obtain ⟨process⟩ := hDP.nonemptyComputation
-  exact ⟨liaStates DP, LIA_isMachineLogicalInductor DP hDP,
+  exact ⟨liaStates DP, LIA_is_logical_inductor DP hDP,
     exists_liaEntries_code process,
     fun n φ h => (liaStates DP n).quote_eq_zero_of_not_mem h,
     fun n φ => (liaStates DP n).quote_mem_Icc φ,

@@ -3,7 +3,8 @@ import LogicalInduction.API
 /-!
 # Client-style smoke tests for `LogicalInduction.API`
 
-A downstream researcher's session, in order: build a trader, certify it efficient, use the
+A downstream researcher's session, in order: build a trader, certify it efficient — through
+the fuel calculus and again at the machine classes directly — use the
 criterion to conclude it cannot exploit the market, read a §4 property off that market,
 condition the inductor, and transport the criterion across a corrected finite-support
 perturbation.  Then the rest of the documented interface: the certificate kit an exploiting
@@ -59,62 +60,87 @@ example (V : History) (w : Valuation) : constantPortfolio.value V w = 2 := by
 
 /-! ## 2. Certifying the trader, and landing in the paper's class
 
-The certificate calculus discharges `EfficientlyComputable` compositionally; the single
-bridge `EfficientlyComputable.toMachine` lands it in `def:ec`'s machine class.  No
-`Complexity.FP` witness is written by hand, and no clocked-code construction is exposed. -/
+The certificate calculus discharges `PolyFueledTrader` compositionally; the single bridge
+`PolyFueledTrader.toEfficientlyComputable` lands it in `def:ec`.  No `Complexity.FP` witness
+is written by hand, and no clocked-code construction is exposed. -/
 
-/-- The client's trader is efficiently computable — fully discharged, no hypotheses. -/
-lemma buyOneDaily_efficientlyComputable (φ : Sentence) :
-    EfficientlyComputable (buyOneDaily φ) :=
-  EfficientlyComputable.ofSingleTradeBlocksBig _ (fun _ => EF.const 1) (fun _ => φ)
+/-- The client's trader carries a fuel certificate — fully discharged, no hypotheses. -/
+lemma buyOneDaily_polyFueled (φ : Sentence) :
+    PolyFueledTrader (buyOneDaily φ) :=
+  PolyFueledTrader.ofSingleTradeBlocksBig _ (fun _ => EF.const 1) (fun _ => φ)
     (PolySegStream.ofTokenStream (PolyTokenStream.serialize_const 1))
     (fun _ => trivial)
     (BigSentenceCodes.const φ)
     (fun _ => rfl)
 
-/-- …and therefore polynomial-time in the paper's own sense. -/
-lemma buyOneDaily_machineEfficient (φ : Sentence) :
-    MachineEfficientTrader (buyOneDaily φ) :=
-  (buyOneDaily_efficientlyComputable φ).toMachine
+/-- …and is therefore efficiently computable in the paper's own sense (`def:ec`). -/
+lemma buyOneDaily_efficientlyComputable (φ : Sentence) :
+    EfficientlyComputable (buyOneDaily φ) :=
+  (buyOneDaily_polyFueled φ).toEfficientlyComputable
 
 /-- The bridge, in general. -/
-example (T : Trader) (h : EfficientlyComputable T) : MachineEfficientTrader T :=
-  h.toMachine
+example (T : Trader) (h : PolyFueledTrader T) : EfficientlyComputable T :=
+  h.toEfficientlyComputable
 
 /-- A constant sentence family is certified without exposing the emission machinery. -/
 example (φ : Sentence) : BigSentenceCodes (fun _ => φ) :=
   BigSentenceCodes.const φ
 
+/-! ### The same certification without the fuel calculus
+
+The route above certifies `PolyFueledTrader` and then crosses one bridge.  The machine
+classes carry the same constructors natively, so a client that never names a
+`Nat.Partrec.Code` lands in `def:ec` directly: `MachineSentenceCodes` for the
+sentence family, `MachineTokenStream` for the coefficient stream, and
+`EfficientlyComputable.ofSingleTradeBlocksBig` to assemble them.  Every `ℕ → ℕ` parameter
+that is a poly-fueled code on the fuel side is a **unary ruler** here — a `Complexity.FP`
+function writing `f n` marks — which is what the variable-count constructor below takes as
+its trade count. -/
+
+/-- The client's own trader, certified at `def:ec` from machine data alone: no fuel
+certificate appears anywhere in the derivation. -/
+example (φ : Sentence) : EfficientlyComputable (buyOneDaily φ) :=
+  EfficientlyComputable.ofSingleTradeBlocksBig _ (fun _ => EF.const 1) (fun _ => φ)
+    (MachineTokenStream.const (EF.const 1).serialize)
+    (fun _ => trivial)
+    (MachineSentenceCodes.const φ)
+    (fun _ => rfl)
+
+/-- …and the variable-count constructor is available at the same classes, the trade count
+arriving as a unary ruler in place of the fuel side's poly-fueled code. -/
+example (Tr : Trader) (count : ℕ → ℕ) (f : ℕ → EF) (φ : ℕ → Sentence)
+    (hcount : UnaryRuler count)
+    (hf : MachineSpliceStream fun z => (f z).serialize)
+    (hφ : MachineSentenceCodes φ)
+    (hTr : ∀ n, (Tr.strat n).trades =
+      (List.range (count n)).map fun j => (f (Nat.pair n j), φ (Nat.pair n j))) :
+    EfficientlyComputable Tr :=
+  EfficientlyComputable.ofTradeBlocksBig Tr count f φ hcount hf hφ hTr
+
 /-! ## 3. The criterion at the paper's own quantifier -/
 
-/-- The payoff of the certification: over any machine logical inductor, the client's own
+/-- The payoff of the certification: over any logical inductor, the client's own
 trader provably cannot exploit the market. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (φ : Sentence) :
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (φ : Sentence) :
     ¬ (buyOneDaily φ).Exploits P DP :=
-  IsMachineLogicalInductor.noExploit (P := P) (DP := DP) _ (buyOneDaily_machineEfficient φ)
+  IsLogicalInductor.noExploit (P := P) (DP := DP) _ (buyOneDaily_efficientlyComputable φ)
 
 /-- A client holding a `Complexity.FP` witness directly uses it directly. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
-    (T : Trader) (hT : MachineEfficientTrader T) : ¬ T.Exploits P DP :=
-  IsMachineLogicalInductor.noExploit (P := P) (DP := DP) T hT
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (T : Trader) (hT : EfficientlyComputable T) : ¬ T.Exploits P DP :=
+  IsLogicalInductor.noExploit (P := P) (DP := DP) T hT
 
-/-- The compatibility instance carries the §4 tail to the machine class, with no side
-condition. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] :
-    IsLogicalInductor P DP :=
-  inferInstance
-
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (n : ℕ) (φ : Sentence) : 0 ≤ P n φ ∧ P n φ ≤ 1 :=
   IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
 
-/-! ## 4. A standard §4 theorem, used at the machine class
+/-! ## 4. A standard §4 theorem
 
 `lic_lex_tendsto_zero` is stated in the library against `[IsLogicalInductor …]`, and applies
 at a *machine* logical inductor without restatement: provably equivalent sentences have
 converging prices. -/
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P n φ - P n ψ) 0 :=
@@ -122,17 +148,18 @@ example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
 
 /-! ## 5. Conditioning an inductor
 
-Given the conditioning data, a client conditions a machine logical inductor and reads a §4
+Given the conditioning data, a client conditions a logical inductor and reads a §4
 property off the conditioned market.
 
-The conditioning data is assembled from a **write-out** condition certificate —
-`BigSentenceCodes`, `def:ec`'s own class, which meters how many digits a polynomial-time
-writer must emit and bounds no token's value, so a condition's Gödel code may be
-exponential in the day.  Nothing on this path meters a sentence code. -/
+The conditioning data is assembled from a **machine** condition certificate —
+`MachineSentenceCodes`, `def:ec`'s own class, in which a `Complexity.FP` function of the
+unary day emits the day's condition block and nothing bounds its Gödel code, so a
+condition's code may be exponential in the day.  Nothing on this path meters a sentence
+code, and nothing on it names a fuel certificate. -/
 
-/-- A client's conditioning presentation, built from write-out condition data. -/
+/-- A client's conditioning presentation, built from machine-metered condition data. -/
 def clientPresentation {DP extra : DeductiveProcess} (ψ : ℕ → Sentence)
-    (hψ : BigSentenceCodes ψ)
+    (hψ : MachineSentenceCodes ψ)
     (hholds : ∀ n (v : PCWorld), v.Holds (ψ n) ↔ v.ConsistentWith (extra.D n))
     (hcomb : ComputableDeductiveProcess (DP.union extra)) :
     ConditioningPresentation DP extra where
@@ -141,11 +168,12 @@ def clientPresentation {DP extra : DeductiveProcess} (ψ : ℕ → Sentence)
   holds_condition := hholds
   combined_computable := hcomb
 
-/-- Conditioning on a write-out condition family, end to end: the client supplies only a
-`BigSentenceCodes` certificate and the compiler for the presentation it builds, and reads a
-§4 convergence property off the conditioned market. -/
-example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
-    (ψc : ℕ → Sentence) (hψc : BigSentenceCodes ψc)
+/-- Conditioning on a machine-metered condition family, end to end: the client supplies only
+a `MachineSentenceCodes` certificate and the compiler for the presentation it builds, and
+reads a §4 convergence property off the conditioned market.  A client holding a fuel
+certificate crosses in one step by `BigSentenceCodes.toMachine`. -/
+example (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
+    (ψc : ℕ → Sentence) (hψc : MachineSentenceCodes ψc)
     (hholds : ∀ n (v : PCWorld), v.Holds (ψc n) ↔ v.ConsistentWith (extra.D n))
     (hcomb : ComputableDeductiveProcess (DP.union extra))
     (compiler : ConditioningTraderCompiler P DP extra
@@ -159,12 +187,12 @@ example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P 
   -- The ascription is load-bearing: without it the local instance's type mentions
   -- `(clientPresentation ψc hψc hholds hcomb).condition` rather than `ψc`, and instance
   -- search does not unfold a plain `def` to see they agree.
-  haveI : IsMachineLogicalInductor (conditionedHistory P ψc) (DP.union extra) :=
-    lic_conditioned_machine P DP extra
+  haveI : IsLogicalInductor (conditionedHistory P ψc) (DP.union extra) :=
+    lic_conditioned P DP extra
       (clientPresentation ψc hψc hholds hcomb) compiler
   exact lic_lex_tendsto_zero _ _ φ ψ h1 h2 hcons
 
-example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P DP]
+example (P : History) (DP extra : DeductiveProcess) [IsLogicalInductor P DP]
     (C : ConditioningPresentation DP extra)
     (compiler : ConditioningTraderCompiler P DP extra C)
     (φ ψ : Sentence)
@@ -174,7 +202,7 @@ example (P : History) (DP extra : DeductiveProcess) [IsMachineLogicalInductor P 
     ConvergesTo
       (fun n => conditionedHistory P C.condition n φ
         - conditionedHistory P C.condition n ψ) 0 := by
-  haveI := lic_conditioned_machine P DP extra C compiler
+  haveI := lic_conditioned P DP extra C compiler
   exact lic_lex_tendsto_zero _ _ φ ψ h1 h2 hcons
 
 /-! ## 6. Transporting the criterion across a corrected finite perturbation
@@ -200,14 +228,14 @@ lemma recognizableSupport_of_singleAtom {P P' : History}
 /-- **Composition.**  Moving a single price preserves the criterion at the paper's own
 quantifier, so every §4 consequence holds of the perturbed market too.  Nothing but the
 corrected `thm:ifp` gets us from `P` to `P'` here. -/
-example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor P DP]
+example (P P' : History) (DP : DeductiveProcess) [hP : IsLogicalInductor P DP]
     (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ≠ (0, (LO.Propositional.Formula.atom 0 : Sentence)) →
       P d φ = P' d φ)
     (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P' n φ - P' n ψ) 0 := by
-  have hP' : IsMachineLogicalInductor P' DP :=
+  have hP' : IsLogicalInductor P' DP :=
     (lic_iff_of_recognizableSupportPerturbation P P' DP
       hP.marketComputable hP'comp (recognizableSupport_of_singleAtom hagree)).mp hP
   exact lic_lex_tendsto_zero P' DP φ ψ h1 h2 hcons
@@ -248,13 +276,13 @@ lemma noReservedSupport_of_singleBotSentence {P P' : History}
 
 /-- **Composition, at the harder coordinate.**  Same client-side reasoning as above, on a
 sentence the previous endpoint's hypothesis cannot express. -/
-example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor P DP]
+example (P P' : History) (DP : DeductiveProcess) [hP : IsLogicalInductor P DP]
     (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ≠ (0, clientBotSentence) → P d φ = P' d φ)
     (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P' n φ - P' n ψ) 0 := by
-  have hP' : IsMachineLogicalInductor P' DP :=
+  have hP' : IsLogicalInductor P' DP :=
     (lic_iff_of_noReservedSupportPerturbation P P' DP
       hP.marketComputable hP'comp (noReservedSupport_of_singleBotSentence hagree)).mp hP
   exact lic_lex_tendsto_zero P' DP φ ψ h1 h2 hcons
@@ -288,14 +316,14 @@ lemma finiteSupport_of_singleReservedSentence {P P' : History}
 /-- **Composition, at a coordinate no syntactic hypothesis reaches.**  Same client-side
 reasoning as above, on a sentence whose price the earlier endpoints provably could not
 freeze. -/
-example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor P DP]
+example (P P' : History) (DP : DeductiveProcess) [hP : IsLogicalInductor P DP]
     (hP'comp : ComputableMarket P')
     (hagree : ∀ d φ, (d, φ) ≠ (0, clientReservedSentence) → P d φ = P' d φ)
     (φ ψ : Sentence) (h1 : ∀ n, (∼φ ⋎ ψ) ∈ DP.D n) (h2 : ∀ n, (∼ψ ⋎ φ) ∈ DP.D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ConvergesTo (fun n => P' n φ - P' n ψ) 0 := by
-  have hP' : IsMachineLogicalInductor P' DP :=
-    (lic_iff_of_finiteSupportPerturbation_machine P P' DP
+  have hP' : IsLogicalInductor P' DP :=
+    (lic_iff_of_finiteSupportPerturbation P P' DP
       hP.marketComputable hP'comp (finiteSupport_of_singleReservedSentence hagree)).mp hP
   exact lic_lex_tendsto_zero P' DP φ ψ h1 h2 hcons
 
@@ -303,7 +331,7 @@ example (P P' : History) (DP : DeductiveProcess) [hP : IsMachineLogicalInductor 
 
 noncomputable section
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (X : LUV) (n : ℕ) : 0 ≤ X.expect P n ∧ X.expect P n ≤ 1 :=
   X.expect_mem_Icc P n fun φ =>
     IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n φ
@@ -314,7 +342,7 @@ end
 
 `dd:fuel`'s calculus is part of the interface: an exploiting trader is built by emitting its
 feature syntax as a `PolySegStream`, naming its sentences with a write-out class, and closing
-the assembly with one of the `EfficientlyComputable.of…` constructors. -/
+the assembly with one of the `PolyFueledTrader.of…` constructors. -/
 
 /-- A rational constant serializes as a segment stream with no side conditions. -/
 example (q : ℚ) : PolySegStream (fun _ => (EF.const q).serialize) :=
@@ -354,7 +382,9 @@ example (T : Trader) (h : PolySegStream fun n => serializeTrades (T.strat n).tra
 
 /-- The shared recipe behind every machine reading: a segment stream yields a
 `Complexity.FP` word that decodes back to it. -/
-example (ds : ℕ → List ℕ) (h : PolySegStream ds) := h.exists_FP_word
+example (ds : ℕ → List ℕ) (h : PolySegStream ds) :
+    ∃ F ∈ Complexity.FP, ∀ d, TokenFold.decodeBits (F (unaryDay d)) = undigitize (ds d) :=
+  h.exists_FP_word
 
 /-- …and the write-out classes' machine readings are one step from it. -/
 example (t : ℕ → List ℕ) (h : BigTokenStream t) : MachineTokenStream t := h.toMachine
@@ -362,6 +392,111 @@ example (t : ℕ → List ℕ) (h : BigTokenStream t) : MachineTokenStream t := 
 example (φ : ℕ → Sentence) (h : BigSentenceCodes φ) : MachineSentenceCodes φ := h.toMachine
 
 example (φ : ℕ → Sentence) (h : RpnSentenceCodes φ) : MachineSentenceCodes φ := h.toMachine
+
+/-! ### The sentence lane, machine-native
+
+The §4 sentence premises are `MachineSentenceCodes`, so a client that never writes a
+`Nat.Partrec.Code` reaches them directly; the three bridges above are for a client who
+already holds a fuel certificate, and are not on the shortest path.  One example per moved
+endpoint family. -/
+
+/-- The base case, with no fuel calculus in the derivation. -/
+example (φ : Sentence) : MachineSentenceCodes (fun _ => φ) := MachineSentenceCodes.const φ
+
+/-- `thm:provind` at the machine class on both sequences, from the shape a client is most
+likely to hold: each sentence lies in some finite stage.  The endpoint itself asks only for
+the paper's semantic condition, and `holds_of_mem_stage` is the bridge. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ ψ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) (hψ : MachineSentenceCodes ψ)
+    (hthm : ∀ n, ∃ k, φ n ∈ DP.D k) (hdis : ∀ n, ∃ k, (∼ψ n) ∈ DP.D k)
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    ((fun n => P n (φ n)) ≈ₙ fun _ => 1) ∧ ((fun n => P n (ψ n)) ≈ₙ fun _ => 0) :=
+  lic_provind P DP φ ψ hφ hψ (fun n _ hv => hv.holds_of_mem_stage (hthm n))
+    (fun n _ hv => hv.holds_of_mem_stage (hdis n)) hworld
+
+/-- `thm:lex`: the fixed-`k` family, machine-metered member by member. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
+    (hφ : ∀ j < k, MachineSentenceCodes (φ j))
+    (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hee : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
+      ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :
+    (fun n => ((List.range k).map (fun j => P n (φ j n))).sum) ≈ₙ fun _ => 1 :=
+  lic_learning_exclusive_exhaustive P DP k hk φ hφ hworld hee
+
+/-- The affine engine every faithful §4 endpoint routes through, from machine data alone. -/
+noncomputable example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    AffineCombination.PolySequence (AffineCombination.sentenceAffine φ) :=
+  AffineCombination.sentenceAffine_polySequence φ hφ
+
+/-- `thm:obu`'s ladder trader is certified at `EfficientlyComputable` from machine sentence
+data, which is why the three `thm:obu` endpoints now carry `[IsLogicalInductor P DP]`
+on the criterion and `MachineSentenceCodes` on the enumeration. -/
+example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    EfficientlyComputable (obuTrader φ) :=
+  obuTrader_ec φ hφ
+
+/-- …and the efficient-repetition witness `thm:obu` takes is built from the same data. -/
+noncomputable example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    EfficientRepeatedEnumeration φ :=
+  EfficientRepeatedEnumeration.ofMachineCodes φ hφ
+
+/-! ### The LUV threshold lane, machine-native
+
+`LUV.MachineThresholdCodes` and `LUV.MachineThresholdCodeSeq` are `MachineSentenceCodes` at
+the two paired-index conventions of `Framework/Expectations.lean`, so a client certifies a
+threshold family with the ordinary sentence calculus and never names a `Nat.Partrec.Code`.
+The two forward bridges are there for a client who already holds a token- or fuel-metered
+certificate. -/
+
+example (X : LUV) (h : X.RpnThresholdCodes) : X.MachineThresholdCodes :=
+  RpnSentenceCodes.toMachine h
+
+example (X : LUV) (h : X.BigThresholdCodes) : X.MachineThresholdCodes := h.toMachine
+
+example (X : ℕ → LUV) (h : LUV.BigThresholdCodeSeq X) : LUV.MachineThresholdCodeSeq X :=
+  h.toMachine
+
+/-- A *day-varying* threshold family is machine-metered with no fuel calculus in the
+derivation.  The class is `MachineSentenceCodes` at the paired index `⟨n,⟨k,i⟩⟩`, so the
+day slot is reached by the ruler `Nat.unpair.1` and the threshold slot is ignored — which
+is what makes this exercise the index convention rather than collapse it, as the constant
+family `fun _ => ⟨fun _ => φ⟩` would. -/
+example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    LUV.MachineThresholdCodeSeq (fun n => ⟨fun _ => φ n⟩ : ℕ → LUV) :=
+  hφ.comp UnaryRuler.unpairFst
+
+/-- The paper's own indicator family `1(φₙ)` at the same class, with its threshold
+certificate *derived* from the sentence sequence — the premise `thm:ei`'s printed form
+runs on.  The `[0,1)` thresholds are `φ n ⋏ ∼∼(φ n)`, built by the sentence calculus. -/
+example (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ) :
+    LUV.MachineThresholdCodeSeq (fun n => LUV.indicatorOf (φ n)) :=
+  LUV.indicatorOf_machineThresholdCodeSeq hφ
+
+/-- Reindexing a machine-metered threshold sequence along a unary ruler. -/
+example (X : ℕ → LUV) (h : LUV.MachineThresholdCodeSeq X) :
+    LUV.MachineThresholdCodeSeq (fun n => X (n + 1)) :=
+  h.reindex (UnaryRuler.id.succ)
+
+/-- `thm:ei` as the paper states it: an e.c. sentence sequence and nothing else, with the
+indicator constructed — and the thresholds it averages are not the sentence it prices. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
+    AsympEq (fun n => (LUV.indicatorOf (φ n)).expect P n) (fun n => P n (φ n)) :=
+  lic_expectation_indicator_unconditional P DP φ hφ hcons
+
+/-- …and the relational engine, over an arbitrary indicator family: the thresholds are the
+client's own sentences, linked to `φₙ` only in completed-theory worlds, and the market has
+to learn the link.  A family whose thresholds were literally `φₙ` would make the conclusion
+an arithmetic identity, which is why none is supplied at either carrier. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
+    (Y : ℕ → LUV) (hcode : LUV.MachineThresholdCodeSeq Y)
+    (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
+    (hY : ∀ n, (Y n).IsIndicator (φ n) DP) :
+    AsympEq (fun n => (Y n).expect P n) (fun n => P n (φ n)) :=
+  lic_expectation_indicator P DP φ hφ Y hcode hcons hY
 
 /-- Variable trade count, write-out coefficients and write-out sentences: the general
 assembly constructor a `def:ec` argument ends with. -/
@@ -371,8 +506,8 @@ example (T : Trader) (count : ℕ → ℕ) (f : ℕ → EF) (ψ : ℕ → Senten
     (hψ : BigSentenceCodes ψ)
     (hT : ∀ n, (T.strat n).trades =
       (List.range (count n)).map fun j => (f (Nat.pair n j), ψ (Nat.pair n j))) :
-    EfficientlyComputable T :=
-  EfficientlyComputable.ofTradeBlocksBig T count f ψ hcount hf hψ hT
+    PolyFueledTrader T :=
+  PolyFueledTrader.ofTradeBlocksBig T count f ψ hcount hf hψ hT
 
 /-! ## 9. Showing that a trader exploits
 
@@ -482,16 +617,16 @@ example (v : PCWorld) (X : LUV) (x y : ℝ) (hx : v.ValuesAt X x) (hy : v.Values
 `LUV.expectInf` is `𝔼_∞(X)`; its two companion lemmas mean a client never unfolds the choice
 inside it. -/
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x) :
     ConvergesTo (X.expectSeq P) (X.expectInf P DP hcode hcons hval) :=
   X.expectSeq_convergesTo_expectInf P DP hcode hcons hval
 
 /-- Any independently identified limit of the expectation sequence *is* `𝔼_∞(X)`. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (X : LUV)
-    (hcode : X.RpnThresholdCodes)
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (X : LUV)
+    (hcode : X.MachineThresholdCodes)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hval : ∀ v : PCWorld, v.ConsistentWithTheory DP → ∃ x : ℝ, v.ValuesAt X x)
     {L : ℝ} (hL : ConvergesTo (X.expectSeq P) L) :
@@ -509,14 +644,14 @@ example {P : History} {gap : ℕ → ℝ} (q : AffineQuotePortfolio P gap)
 
 /-! ## 11. Convergence and non-dogmatism, with the side conditions discharged -/
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (φ : Sentence)
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (φ : Sentence)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
     ∃ L, ConvergesTo (fun n => P n φ) L :=
   lic_price_convergesTo P DP φ hcons
 
 /-- An independent sentence's price has a limit strictly inside `(0,1)`, with convergence
 supplied by the library rather than assumed by the client. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (φ : Sentence)
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (φ : Sentence)
     (hpos : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ v.Holds φ)
     (hneg : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n) ∧ ¬ v.Holds φ) :
     (∃ L, ConvergesTo (fun n => P n φ) L ∧ 0 < L) ∧
@@ -533,30 +668,42 @@ example (As : ℕ → AffineCombination) (V : History)
 
 /-! ## 12. Conditioning with no consistency premise
 
-The two machine endpoints read the stage and market programs off the inductor instance, so a
-client supplies only the condition. -/
+The two endpoints read the stage and market programs off the inductor instance, so a client
+supplies only the condition.  There is one layer of conditioning theorems and it is at
+`def:ec`'s own quantifier: `[IsLogicalInductor]` in, `IsLogicalInductor` out,
+and the condition certificate at `MachineSentenceCodes`. -/
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (ψ : Sentence) :
-    IsMachineLogicalInductor (conditionedHistory P fun _ => ψ) (DP.adjoinSentence ψ) :=
-  ConditioningCompile.lic_conditioned_fixed_machine P DP ψ
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (ψ : Sentence) :
+    IsLogicalInductor (conditionedHistory P fun _ => ψ) (DP.adjoinSentence ψ) :=
+  ConditioningCompile.lic_conditioned_fixed P DP ψ
 
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
-    IsMachineLogicalInductor
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
+    IsLogicalInductor
       (conditionedHistory P fun n => sentenceConjunction ((List.range (n + 1)).map ψ))
       (DP.union (prefixProcess ψ)) :=
-  ConditioningCompile.lic_conditioned_growing_machine_ofSequence P DP ψ hψ
+  ConditioningCompile.lic_conditioned_growing_ofSequence P DP ψ hψ
+
+/-- The same growing endpoint from a *fuel* certificate, in one extra step: a client who has
+built `ψ` in the `dd:fuel` calculus crosses by `BigSentenceCodes.toMachine` and pays nothing
+else. -/
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
+    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    IsLogicalInductor
+      (conditionedHistory P fun n => sentenceConjunction ((List.range (n + 1)).map ψ))
+      (DP.union (prefixProcess ψ)) :=
+  ConditioningCompile.lic_conditioned_growing_ofSequence P DP ψ hψ.toMachine
 
 /-- Conditioning a *machine* inductor on one sentence, then reading a §4 property off the
 conditioned market — the whole client session in three lines. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP] (ψ : Sentence)
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP] (ψ : Sentence)
     (φ χ : Sentence)
     (h1 : ∀ n, (∼φ ⋎ χ) ∈ (DP.adjoinSentence ψ).D n)
     (h2 : ∀ n, (∼χ ⋎ φ) ∈ (DP.adjoinSentence ψ).D n)
     (hcons : ∀ n, ∃ v : PCWorld, v.ConsistentWith ((DP.adjoinSentence ψ).D n)) :
     ConvergesTo (fun n => conditionedHistory P (fun _ => ψ) n φ
       - conditionedHistory P (fun _ => ψ) n χ) 0 := by
-  haveI := ConditioningCompile.lic_conditioned_fixed_machine P DP ψ
+  haveI := ConditioningCompile.lic_conditioned_fixed P DP ψ
   exact lic_lex_tendsto_zero _ _ φ χ h1 h2 hcons
 
 noncomputable section
@@ -568,7 +715,7 @@ example {DP : DeductiveProcess} (base : DeductiveProcessComputation DP) (ψ : Se
   fixedConditioningPresentation base ψ
 
 example {DP : DeductiveProcess} (base : DeductiveProcessComputation DP)
-    (ψ : ℕ → Sentence) (hψ : BigSentenceCodes ψ) :
+    (ψ : ℕ → Sentence) (hψ : MachineSentenceCodes ψ) :
     ConditioningPresentation DP (prefixProcess ψ) :=
   prefixConditioningPresentation base ψ hψ
 
@@ -595,30 +742,80 @@ end
 paper's own defect without naming the construction namespace it is proved in. -/
 
 example : ¬ ∀ (P P' : History) (DP : DeductiveProcess) (N : ℕ),
-    IsMachineLogicalInductor P DP → ComputableMarket P' →
-    (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsMachineLogicalInductor P' DP :=
+    IsLogicalInductor P DP → ComputableMarket P' →
+    (∀ n, N ≤ n → ∀ φ, P n φ = P' n φ) → IsLogicalInductor P' DP :=
   not_overgeneral_ifp
 
 /-- …and the corrected theorem doing visible work in the other direction: the constructed
-market with one price moved is still a machine logical inductor. -/
+market with one price moved is still a logical inductor. -/
 example (DP : DeductiveProcess) (hDP : ComputableDeductiveProcess DP) (r : ℚ)
     (h0 : 0 ≤ r) (h1 : r ≤ 1) :
-    IsMachineLogicalInductor (LIAPerturbation.liaPerturbed DP r) DP :=
-  LIAPerturbation.machineLogicalInductor_liaPerturbed DP hDP r h0 h1
+    IsLogicalInductor (LIAPerturbation.liaPerturbed DP r) DP :=
+  LIAPerturbation.logicalInductor_liaPerturbed DP hDP r h0 h1
 
 /-! ## 15. Constructed data that arrives with the same import -/
 
 /-- `thm:obu` at the paper's own premise: an unclocked c.e. enumeration of the source. -/
-example (P : History) (DP : DeductiveProcess) [IsMachineLogicalInductor P DP]
+example (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (source : ℕ → Sentence) (h : CEEnumeration source)
     (hjoint : ∀ n, ∃ v : PCWorld,
       v.ConsistentWith (DP.D n) ∧ ∀ i, v.Holds (source i)) :
     ∃ ε : ℝ, 0 < ε ∧ ∀ i, ε ≤ limitingBelief P (source i) :=
   lic_uniform_nonDogmatism_ofCE P DP source h hjoint
 
-/-- `def:ece` for rational sequences: the write-out route in, and the computability out. -/
-example (P : History) (q : ℕ → ℚ) (hq : DigitRatCodes q) : PGenerableRat P q :=
-  PGenerableRat.ofDigitRatCodes hq P
+/-- `def:ece` for rational sequences: the write-out route in, and the computability out.
+The premise is the machine-metered write-out class the criterion's data premises are read
+on; a client holding a fuel
+certificate crosses by `DigitRatCodes.toMachine`. -/
+example (P : History) (q : ℕ → ℚ) (hq : MachineRatCodes q) : PGenerableRat P q :=
+  PGenerableRat.ofMachineRatCodes hq P
+
+/-- The rational lane at the machine meter (P-F5c3).  A client that only knows how to
+*write out* `q` — three polynomial-time emitters, no bound on any numerator or
+denominator — gets the reciprocal by representation, the sign as a unary ruler, and a
+`Computable` program back, with no fuel certificate anywhere. -/
+example (δ : ℕ → ℚ) (hδ : MachineRatCodes δ) (hpos : ∀ n, 0 < δ n) :
+    MachineRatCodes (fun n => 1 / δ n) ∧ UnaryRuler (fun n => if (δ n).num < 0 then 1 else 0)
+      ∧ Computable δ :=
+  ⟨hδ.inv_of_pos hpos, hδ.sign, hδ.computable⟩
+
+/-- The paper's own tolerance sequence `δ n = 2⁻ⁿ` at that class, and the positive-width
+carrier `thm:simcal` takes: the witness ships beside the structure, so a client names it
+rather than reassembling it. -/
+example : PolyPositiveWidths (fun n => (((2 ^ n : ℕ) : ℚ))⁻¹) :=
+  polyPositiveWidths_two_pow_inv
+
+/-- A fuel-metered client crosses at the boundary, in one step. -/
+example (q : ℕ → ℚ) (hq : DigitRatCodes q) : MachineRatCodes q := hq.toMachine
+
+/-- The digit lane at the machine meter (P-F5c4).  A client that only knows how to *write
+out* an emitted token run — one polynomial-time emitter, no bound on any token's value —
+gets the run's own **name** back as a machine-metered value, and a `Computable` program
+from it.  This is `def:ec`'s write-out bridge for objects presented by source text. -/
+example (L : ℕ → List ℕ) (hL : MachineTokenStream L) (hlt : ∀ n, ∀ t ∈ L n, t < 63) :
+    MachineDigits (fun n => tokenListNat (L n)) ∧ UnaryRuler (fun n => (L n).length) :=
+  ⟨MachineDigits.ofTokenListNat hL hlt, hL.lengthRuler⟩
+
+/-- The compact numeral at the machine meter (P-F5c4): a machine-metered value family names
+itself in `O(log v)` `ℒₒᵣ` nodes, and that naming is itself machine-metered.  This is what
+`thm:halts`, `thm:loops`, `thm:dontwait` and `thm:incons` spend their data premises on. -/
+example (v : ℕ → ℕ) (hv : MachineDigits v) :
+    MachineTokenStream (fun n => binNumeralEnc (v n)) ∧
+      UnaryRuler (fun n => binNumeralLen (v n) - 1) :=
+  ⟨machineTokenStream_binNumeralEnc hv, unaryRuler_binNumeralLen_pred hv⟩
+
+/-- A written formula family at the machine meter (P-F5c4): the paper's own source language,
+its closure calculus, and the delivery interface that turns a written family into
+machine-metered *names*. -/
+example (a b : ℕ → ArithSource 0) (ha : MachineArithmeticSourceSeq a)
+    (hb : MachineArithmeticSourceSeq b) :
+    MachineDigits (fun n => (ArithSource.iff (a n) (b n)).sourceNat) :=
+  MachineArithmeticSourceSeq.machineDigits_sourceNat
+    (MachineArithmeticSourceSeq.iff ha hb)
+
+/-- A fuel-metered written family crosses at the boundary, in one step. -/
+example {k : ℕ} (s : ℕ → ArithSource k) (h : PolyArithmeticSourceSeq s) :
+    MachineArithmeticSourceSeq s := h.toMachine
 
 example (P : History) (market : MarketComputation P) (q : ℕ → ℚ)
     (h : PGenerableRat P q) : Computable q :=
@@ -640,8 +837,8 @@ example (X : PresentedLUVSeq) (n : ℕ) (r : ℚ) :
   X.gt_eq n r
 
 /-- …and the handle families carry `def:ec`'s threshold certificate. -/
-example (schema : ℕ) : LUV.RpnThresholdCodeSeq (semanticHandleLUVSeq schema) :=
-  semanticHandleLUVSeq_rpnThresholdCodeSeq schema
+example (schema : ℕ) : LUV.MachineThresholdCodeSeq (semanticHandleLUVSeq schema) :=
+  semanticHandleLUVSeq_machineThresholdCodeSeq schema
 
 /-! ### The arithmetic-theory family at a concrete theory
 
@@ -666,15 +863,15 @@ exercised. -/
 -- Framework/Criterion.lean
 example := @DeductiveProcess
 example := @DeductiveProcessComputation
+example := @PolyFueledTrader
 example := @EfficientlyComputable
 example := @IsLogicalInductor
-example := @MachineEfficientTrader
 example := @Strategy
 example := @Trader
+example := @Trader.Exploits
 
--- Framework/MachineEfficiency.lean
-example := @EfficientlyComputable.toMachine
-example := @IsMachineLogicalInductor
+-- Framework/Efficiency.lean
+example := @PolyFueledTrader.toEfficientlyComputable
 
 -- Framework/Affine.lean
 example := @AffineCombination
@@ -732,6 +929,7 @@ example := @LUV.expect_converges
 
 -- Properties/ExpectationAffine.lean
 example := @lic_expectation_indicator
+example := @lic_expectation_indicator_unconditional
 
 -- Properties/ExpectationProperties.lean
 example := @LUVCombination.BoundedSequence
@@ -747,10 +945,9 @@ example := @liaHistory
 example := @liaStates
 
 -- Construction/LIACompiler.lean
-example := @LIA_isMachineLogicalInductor
 example := @LIA_is_logical_inductor
 example := @exists_computable_beliefSequence_logical_inductor
-example := @exists_machine_logical_inductor
+example := @exists_logical_inductor
 
 -- Construction/TradingFirm.lean
 example := @trading_firm_dominance
@@ -796,20 +993,20 @@ example := @lic_strict_domination_universalSemimeasure_ofAtomCodes
 example := @UPrefix.lic_occamBounds_ofUniversalPrefix
 
 -- Construction/Freeze/Oracle.lean
-example := @FreezeOracle.machine_lic_iff_of_finiteSupport
+example := @FreezeOracle.lic_iff_of_finiteSupport
 
 -- Construction/Freeze/Counterexample.lean
 example := @FinitePerturbationCounterexample.not_overgeneral_ifp
 
 -- Construction/Freeze/LIAPerturbation.lean
-example := @LIAPerturbation.machineLogicalInductor_liaPerturbed
+example := @LIAPerturbation.logicalInductor_liaPerturbed
 
 -- Construction/Conditioning/Endpoints.lean
-example := @ConditioningCompile.lic_conditioned_fixed_machine
-example := @ConditioningCompile.lic_conditioned_growing_machine_ofProcessComputation
-example := @ConditioningCompile.lic_conditioned_growing_machine_ofSequence
-example := @lic_conditioned_fixed_machine_unconditional
-example := @lic_conditioned_growing_machine_unconditional
+example := @ConditioningCompile.lic_conditioned_fixed
+example := @ConditioningCompile.lic_conditioned_growing_ofProcessComputation
+example := @ConditioningCompile.lic_conditioned_growing_ofSequence
+example := @lic_conditioned_fixed_unconditional
+example := @lic_conditioned_growing_unconditional
 
 -- Construction/LUV/Syntax.lean
 example := @LUVCombination.BoundedSequence.expcoh_ofSyntax

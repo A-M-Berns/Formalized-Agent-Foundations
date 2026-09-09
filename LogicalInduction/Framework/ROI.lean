@@ -39,7 +39,8 @@ constant-size `EF.var`, keeping the index-`n` expression polynomial; they are pr
 (serialization, uniform emission, rank, denotation, closedness) at an arbitrary body
 family. `sharedFeatureWeight` and `fractionalSharedFeatureWeight` are the two instances,
 and their `_denote`, `_rank_le` and `_polySeg` specifications follow from the generic
-ones — the last of them uniform emission as a `BigSpliceStream` (`dd:fuel`).
+ones — the last of them uniform emission as a `MachineSpliceStream`, the machine-metered
+write-out class, so nothing in this lane is fuel-metered except each trade count.
 
 `scaledFamilyTrader` likewise bundles a trader family at an arbitrary coefficient family,
 and `sharedBudgetedTrader` and `fractionalBudgetedTrader` are its two instances; the
@@ -163,100 +164,18 @@ structure PolyTradeEmulatable (Ts : ℕ → Trader) where
   tradeCount : ℕ → ℕ
   coefficient : ℕ → EF
   sentence : ℕ → Sentence
-  tradeCount_poly : ∃ c, PolyFueled c tradeCount
-  coefficient_poly : BigSpliceStream (fun z => (coefficient z).serialize)
-  sentence_poly : BigSentenceCodes sentence
+  /-- The trade count is machine-metered, as a unary ruler (`UnaryRuler`,
+  `Framework/Machine/Ruler.lean`), as are the two emission fields below, and for the same
+  reason — `PolyTradeEmulatable.polySeg` feeds `MachineSpliceStream.ec`.  A client holding a
+  fuel certificate converts by `UnaryRuler.of_polyFueled`. -/
+  tradeCount_poly : UnaryRuler tradeCount
+  coefficient_poly : MachineSpliceStream (fun z => (coefficient z).serialize)
+  sentence_poly : MachineSentenceCodes sentence
   trades_eq : ∀ k n,
     ((Ts k).strat n).trades =
       (List.range (tradeCount (Nat.pair k n))).map (fun j =>
         let z := Nat.pair (Nat.pair k n) j
         (coefficient z, sentence z))
-
-/-- A paired segment emitter supplies the raw universal-program witness for an emulatable
-family.  This is the family analogue of `ecTok_of_segStream`; the proof converts polynomial
-bounds in the paired input `⟨k,n⟩` to bounds in `n` using the side condition `k ≤ n`. -/
-lemma EfficientlyEmulatable.of_polySeg {Ts : ℕ → Trader}
-    (hzero : ∀ k n, n < k → ((Ts k).strat n).trades = [])
-    (hs : PolySegStream (fun z =>
-      serializeTrades ((Ts z.unpair.1).strat z.unpair.2).trades)) :
-    EfficientlyEmulatable Ts := by
-  obtain ⟨ct, cl, tokenFn, lenFn, htok, hlen, hlens, hspec⟩ := hs
-  -- Reassociate `⟨k,⟨n,i⟩⟩` to the segment emitter's `⟨⟨k,n⟩,i⟩`.
-  let canonicalCode : Nat.Partrec.Code :=
-    ((Nat.Partrec.Code.left.pair
-      (Nat.Partrec.Code.left.comp Nat.Partrec.Code.right)).pair
-        (Nat.Partrec.Code.right.comp Nat.Partrec.Code.right))
-  have hcanonical : PolyFueled canonicalCode (fun x =>
-      Nat.pair (Nat.pair x.unpair.1 x.unpair.2.unpair.1) x.unpair.2.unpair.2) := by
-    exact (PolyFueled.left.pair (PolyFueled.left.comp PolyFueled.right)).pair
-      (PolyFueled.right.comp PolyFueled.right)
-  have htoken : PolyFueled (ct.comp canonicalCode) (fun x =>
-      tokenFn (Nat.pair (Nat.pair x.unpair.1 x.unpair.2.unpair.1)
-        x.unpair.2.unpair.2)) := htok.comp hcanonical
-  obtain ⟨bc, hfc, _, aT, kT, hkT⟩ := htoken
-  obtain ⟨_, _, hlenPoly, _⟩ := hlen
-  obtain ⟨aL, kL, hkL⟩ := hlenPoly
-  let lenBound : ℕ → ℕ := fun n => aL * (Nat.pair n n + 1) ^ kL + aL
-  have hdiagPair : IsPolyBounded (fun n => Nat.pair n n) :=
-    (IsPolyBounded.linear 0).pair (IsPolyBounded.linear 0)
-  have hlenBound : IsPolyBounded lenBound := by
-    exact (show IsPolyBounded (fun x => aL * (x + 1) ^ kL + aL) from
-      ⟨aL, kL, fun _ => le_rfl⟩).comp hdiagPair
-  let inputBound : ℕ → ℕ := fun n => Nat.pair n (Nat.pair n (lenBound n))
-  have hinputBound : IsPolyBounded inputBound :=
-    (IsPolyBounded.linear 0).pair ((IsPolyBounded.linear 0).pair hlenBound)
-  let fuelBound : ℕ → ℕ := fun n => aT * (inputBound n + 1) ^ kT + aT
-  have hfuelBound : IsPolyBounded fuelBound := by
-    exact (show IsPolyBounded (fun x => aT * (x + 1) ^ kT + aT) from
-      ⟨aT, kT, fun _ => le_rfl⟩).comp hinputBound
-  obtain ⟨A, K, hAK⟩ := hlenBound.max hfuelBound
-  refine ⟨ct.comp canonicalCode, A, K, hzero, ?_, ?_⟩
-  · intro k n hkn
-    have hstreamLen :
-        (serializeTrades ((Ts k).strat n).trades).length = lenFn (Nat.pair k n) := by
-      have raw := hlens (Nat.pair k n)
-      dsimp only at raw
-      rw [Nat.unpair_pair k n] at raw
-      exact raw
-    rw [hstreamLen]
-    have hpair : Nat.pair k n ≤ Nat.pair n n := pair_le_pair_left' n hkn
-    calc
-      lenFn (Nat.pair k n) ≤ aL * (Nat.pair k n + 1) ^ kL + aL := hkL _
-      _ ≤ lenBound n := by dsimp only [lenBound]; gcongr
-      _ ≤ A * (n + 1) ^ K + A := (le_max_left _ _).trans (hAK n)
-  · intro k n i hkn hi
-    have hstreamLen :
-        (serializeTrades ((Ts k).strat n).trades).length = lenFn (Nat.pair k n) := by
-      have raw := hlens (Nat.pair k n)
-      dsimp only at raw
-      rw [Nat.unpair_pair k n] at raw
-      exact raw
-    have hpair : Nat.pair k n ≤ Nat.pair n n := pair_le_pair_left' n hkn
-    have hlenLe : lenFn (Nat.pair k n) ≤ lenBound n :=
-      (hkL _).trans (by dsimp only [lenBound]; gcongr)
-    have hiLe : i ≤ lenBound n := by rw [hstreamLen] at hi; omega
-    have hinner : Nat.pair n i ≤ Nat.pair n (lenBound n) :=
-      pair_le_pair_right' n hiLe
-    have hx : Nat.pair k (Nat.pair n i) ≤ inputBound n := by
-      dsimp only [inputBound]
-      exact (pair_le_pair_left' (Nat.pair n i) hkn).trans
-        (pair_le_pair_right' n hinner)
-    have hbc : bc (Nat.pair k (Nat.pair n i)) ≤ A * (n + 1) ^ K + A := by
-      calc
-        bc (Nat.pair k (Nat.pair n i)) ≤
-            aT * (Nat.pair k (Nat.pair n i) + 1) ^ kT + aT := hkT _
-        _ ≤ fuelBound n := by dsimp only [fuelBound]; gcongr
-        _ ≤ A * (n + 1) ^ K + A := (le_max_right _ _).trans (hAK n)
-    have key := hfc (Nat.pair k (Nat.pair n i))
-    simp only [Nat.unpair_pair] at key
-    have hspec' : tokenFn (Nat.pair (Nat.pair k n) i) =
-        (serializeTrades ((Ts k).strat n).trades).getD i 0 := by
-      have raw := hspec (Nat.pair k n) i (by rw [← hstreamLen]; exact hi)
-      dsimp only at raw
-      rw [Nat.unpair_pair k n] at raw
-      exact raw
-    rw [hspec'] at key
-    simpa [Nat.unpair_pair] using Nat.Partrec.Code.evaln_mono hbc key
 
 /-- Drop the finite prefix of a trader family, replacing early members by the zero trader. -/
 def gateTraderFamily (start : ℕ) (Ts : ℕ → Trader) (i : ℕ) : Trader :=
@@ -739,17 +658,17 @@ lemma serializeTrades_map_singleton {α : Type} (xs : List α)
 trade list. This is the reusable bridge from trade-level boundary data back to the faithful
 `serializeTrades` representation. -/
 lemma PolyTradeEmulatable.polySeg {Ts : ℕ → Trader} (h : PolyTradeEmulatable Ts) :
-    BigSpliceStream (fun z =>
+    MachineSpliceStream (fun z =>
       serializeTrades ((Ts z.unpair.1).strat z.unpair.2).trades) := by
-  obtain ⟨ccount, hcount⟩ := h.tradeCount_poly
-  have hframe := BigSpliceStream.tradeSlot h.sentence_poly PolyFueled.id
-  have hone : BigSpliceStream (fun z =>
+  have hframe := (MachineSpliceStream.tradeSlot h.sentence_poly
+    (f := fun n : ℕ => n) UnaryRuler.id).of_eq (fun _ => rfl)
+  have hone : MachineSpliceStream (fun z =>
       serializeTrades [(h.coefficient z, h.sentence z)]) := by
-    refine BigSpliceStream.of_eq (h.coefficient_poly.append hframe) ?_
+    refine MachineSpliceStream.of_eq (h.coefficient_poly.append hframe) ?_
     intro z
     simp [serializeTrades]
-  have hall := hone.concatVar hcount
-  refine BigSpliceStream.of_eq hall ?_
+  have hall := hone.concatVar (cnt := h.tradeCount) h.tradeCount_poly
+  refine MachineSpliceStream.of_eq hall ?_
   intro z
   rw [h.trades_eq]
   rw [serializeTrades_map_singleton]
@@ -759,27 +678,17 @@ lemma PolyTradeEmulatable.polySeg {Ts : ℕ → Trader} (h : PolyTradeEmulatable
 noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     (h : PolyTradeEmulatable Ts) (start : ℕ) :
     PolyTradeEmulatable (gateTraderFamily start Ts) := by
-  let ccount := Classical.choose h.tradeCount_poly
-  have hcount := Classical.choose_spec h.tradeCount_poly
-  have htest := subc_polyFueled.comp
-    (PolyFueled.left.succ_comp.pair (PolyFueled.const start))
-  have hcountRaw := ifzSel_polyFueled.comp
-    (((PolyFueled.const 0).pair hcount).pair htest)
   let count : ℕ → ℕ := fun z => if start ≤ z.unpair.1 then h.tradeCount z else 0
-  let countCode : Nat.Partrec.Code := ifzSel.comp
-    (((Nat.Partrec.Code.const 0).pair ccount).pair
-      (subc.comp ((Nat.Partrec.Code.succ.comp Nat.Partrec.Code.left).pair
-        (Nat.Partrec.Code.const start))))
-  have hcountGate : PolyFueled countCode count := by
-    apply PolyFueled.of_eq hcountRaw
+  have hcountGate : UnaryRuler count := by
+    refine UnaryRuler.of_eq (((UnaryRuler.unpairFst.succ.sub
+      (UnaryRuler.const start)).ifZero (UnaryRuler.const 0) h.tradeCount_poly)) ?_
     intro z
-    simp only [Nat.unpair_pair, ifzSelFn, count]
+    simp only [count]
     by_cases hs : start ≤ z.unpair.1
     · rw [if_pos hs, if_neg (by omega)]
     · rw [if_neg hs, if_pos (by omega)]
-  have hzeroSeg : BigSpliceStream (fun _ => []) :=
-    BigSpliceStream.ofTransparent
-      (BigTokenStream.ofPolySegStream (PolySegStream.ofTokenStream PolyTokenStream.nil))
+  have hzeroSeg : MachineSpliceStream (fun _ : ℕ => []) :=
+    MachineSpliceStream.ofTransparent (MachineTokenStream.const [])
       (fun _ => UnRpnTransparent.nil)
   have hmemberTestRaw := subc_polyFueled.comp
     (PolyFueled.left.succ_comp.pair (PolyFueled.const start))
@@ -790,10 +699,12 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
     apply PolyFueled.of_eq hmemberTestRaw
     intro z
     simp only [Nat.unpair_pair]
-  have hstream : BigSpliceStream (fun z => serializeTrades
+  have hstream : MachineSpliceStream (fun z => serializeTrades
       (((gateTraderFamily start Ts) z.unpair.1).strat z.unpair.2).trades) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.ifZero hzeroSeg h.polySeg hmemberTest) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.ifZero hzeroSeg h.polySeg
+        (t := fun z : ℕ => z.unpair.1 + 1 - start)
+        (UnaryRuler.of_polyFueled hmemberTest)) ?_
     intro z
     simp only [gateTraderFamily]
     by_cases hs : start ≤ z.unpair.1
@@ -812,7 +723,7 @@ noncomputable def PolyTradeEmulatable.gateBefore {Ts : ℕ → Trader}
       tradeCount := count
       coefficient := h.coefficient
       sentence := h.sentence
-      tradeCount_poly := ⟨countCode, hcountGate⟩
+      tradeCount_poly := hcountGate
       coefficient_poly := h.coefficient_poly
       sentence_poly := h.sentence_poly
       trades_eq := ?_ }
@@ -926,20 +837,24 @@ lemma letChain_serialize (body : ℕ → EF) (k count : ℕ) :
 /-- Uniform polynomial-time emission of a whole chain, from uniform emission of its
 recurrence bodies. -/
 lemma sharedOf_polySeg (body : ℕ → EF)
-    (hbody : BigSpliceStream (fun k => (body k).serialize)) :
-    BigSpliceStream (fun n => (sharedOf body n).serialize) := by
-  have hbodies : BigSpliceStream (fun n =>
+    (hbody : MachineSpliceStream (fun k => (body k).serialize)) :
+    MachineSpliceStream (fun n => (sharedOf body n).serialize) := by
+  have hbodies : MachineSpliceStream (fun n =>
       (List.range (n + 1)).flatMap (fun j => (body j).serialize)) := by
-    refine BigSpliceStream.of_eq
-      (BigSpliceStream.concatVar (hbody.comp PolyFueled.right)
-        PolyFueled.id.succ_comp) ?_
+    refine MachineSpliceStream.of_eq
+      (MachineSpliceStream.concatVar
+        (hbody.comp (f := fun z : ℕ => z.unpair.2)
+          (UnaryRuler.unpairSnd))
+        (cnt := fun n : ℕ => n + 1)
+        (UnaryRuler.id.succ)) ?_
     intro n
     simp only [Nat.unpair_pair]
-  have hvar : BigSpliceStream (fun _ => (EF.var 0).serialize) :=
-    BigSpliceStream.serialize_var (PolyFueled.const 0)
-  have htags : BigSpliceStream (fun n => List.replicate (n + 1) 8) :=
-    BigSpliceStream.repeatTag 8 (by norm_num) PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
+  have hvar : MachineSpliceStream (fun _ : ℕ => (EF.var 0).serialize) :=
+    MachineSpliceStream.serialize_var (MachineDigits.const 0)
+  have htags : MachineSpliceStream (fun n : ℕ => List.replicate (n + 1) 8) :=
+    MachineSpliceStream.repeatTag 8 (by norm_num) (cnt := fun n : ℕ => n + 1)
+      (UnaryRuler.id.succ)
+  refine MachineSpliceStream.of_eq ((hbodies.append hvar).append htags) ?_
   intro n
   rw [sharedOf, letChain_serialize]
   rw [List.range_eq_range']
@@ -1029,12 +944,12 @@ def featureWeightBody (active : ℕ → ℕ → Bool) (α : ℕ → EF) (k : ℕ
       if active i k then EF.mul (EF.var (k - 1 - i)) (α i) else EF.const 0))))
 
 /-- Uniform variable-length emission of the recurrence bodies. This is the triangular
-`i < k` use of `BigSpliceStream.concatVar`: each term conditionally emits either
+`i < k` use of `MachineSpliceStream.concatVar`: each term conditionally emits either
 `var(k-1-i) * αᵢ` or zero, and the fold's postfix `add` tags form a second linear run. -/
 lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : BigSpliceStream (fun i => (α i).serialize))
+    (hα : MachineSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
-    BigSpliceStream (fun k => (featureWeightBody active α k).serialize) := by
+    MachineSpliceStream (fun k => (featureWeightBody active α k).serialize) := by
   obtain ⟨cactive, hactivePF⟩ := hactive
   let term : ℕ → EF := fun z =>
     if active z.unpair.2 z.unpair.1 then
@@ -1044,34 +959,38 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
   have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
     (fun z => by simp [Nat.pred_eq_sub_one])
-  have hvar : BigSpliceStream
+  have hvar : MachineSpliceStream
       (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_var idxPF'
-  have hαright : BigSpliceStream (fun z => (α z.unpair.2).serialize) :=
-    hα.comp PolyFueled.right
-  have hmul : BigSpliceStream (fun z =>
+    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
+      (f := fun z : ℕ => z.unpair.1 - 1 - z.unpair.2)
+      (UnaryRuler.of_polyFueled idxPF'))
+  have hαright : MachineSpliceStream (fun z => (α z.unpair.2).serialize) :=
+    hα.comp (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
+  have hmul : MachineSpliceStream (fun z =>
       (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_mul hvar hαright
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have hterm : BigSpliceStream (fun z => (term z).serialize) := by
-    have hchoose := BigSpliceStream.ifZero hzero hmul hactivePF
-    refine BigSpliceStream.of_eq hchoose ?_
+    MachineSpliceStream.serialize_mul hvar hαright
+  have hzero : MachineSpliceStream (fun _ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have hterm : MachineSpliceStream (fun z => (term z).serialize) := by
+    have hchoose := MachineSpliceStream.ifZero hzero hmul
+      (t := fun z : ℕ => if active z.unpair.2 z.unpair.1 then 1 else 0)
+      (UnaryRuler.of_polyFueled hactivePF)
+    refine MachineSpliceStream.of_eq hchoose ?_
     intro z
     simp only [term]
     by_cases h : active z.unpair.2 z.unpair.1 = true
     · simp [h]
     · have hf : active z.unpair.2 z.unpair.1 = false := Bool.eq_false_of_not_eq_true h
       simp [hf]
-  have hterms : BigSpliceStream (fun k =>
+  have hterms : MachineSpliceStream (fun k =>
       (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
-    BigSpliceStream.concatVar hterm PolyFueled.id
-  have haddTags : BigSpliceStream (fun k => List.replicate k 2) :=
-    BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
+    MachineSpliceStream.concatVar hterm (cnt := fun k : ℕ => k) UnaryRuler.id
+  have haddTags : MachineSpliceStream (fun k => List.replicate k 2) :=
+    MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun k : ℕ => k) UnaryRuler.id
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : BigSpliceStream (fun k =>
+  have hsum : MachineSpliceStream (fun k =>
       (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
-    refine BigSpliceStream.of_eq hsumRaw ?_
+    refine MachineSpliceStream.of_eq hsumRaw ?_
     intro k
     rw [serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -1079,13 +998,13 @@ lemma featureWeightBody_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : BigSpliceStream (fun _ => (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hnegone : BigSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have hbody := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hnegone hsum)
-  refine BigSpliceStream.of_eq hbody ?_
+  have hone : MachineSpliceStream (fun _ => (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hnegone : MachineSpliceStream (fun _ => (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hbody := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hnegone hsum)
+  refine MachineSpliceStream.of_eq hbody ?_
   intro k
   simp only [featureWeightBody, term]
   congr 4
@@ -1119,9 +1038,9 @@ lemma sharedWeights_serialize (active : ℕ → ℕ → Bool) (α : ℕ → EF)
 This is the representation-level companion to `sharedFeatureWeight_denote` and
 `sharedFeatureWeight_rank_le`. -/
 lemma sharedFeatureWeight_polySeg (active : ℕ → ℕ → Bool) (α : ℕ → EF)
-    (hα : BigSpliceStream (fun i => (α i).serialize))
+    (hα : MachineSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active) :
-    BigSpliceStream (fun n => (sharedFeatureWeight active α n).serialize) :=
+    MachineSpliceStream (fun n => (sharedFeatureWeight active α n).serialize) :=
   sharedOf_polySeg _ (featureWeightBody_polySeg active α hα hactive)
 
 private lemma featureWeightBody_denoteWith (active : ℕ → ℕ → Bool) (α : ℕ → EF)
@@ -1202,33 +1121,42 @@ uniformly emitted trader. The proof performs two variable-width concatenations: 
 within one component, then all components launched by day `n`. -/
 lemma scaledFamilyTrader_polySeg (Ts : ℕ → Trader) (β : ℕ → EF)
     (hβ : ∀ i, (β i).rank ≤ i)
-    (hβseg : BigSpliceStream (fun i => (β i).serialize))
+    (hβseg : MachineSpliceStream (fun i => (β i).serialize))
     (hTs : PolyTradeEmulatable Ts) :
-    BigSpliceStream (fun n =>
+    MachineSpliceStream (fun n =>
       serializeTrades ((scaledFamilyTrader Ts β hβ).strat n).trades) := by
-  obtain ⟨ccount, hcount⟩ := hTs.tradeCount_poly
   -- Input to an individual scaled trade is `q = ⟨⟨n,k⟩,j⟩`.
   have hday := PolyFueled.left.comp PolyFueled.left
   have hmember := PolyFueled.right.comp PolyFueled.left
   have htradeNo := PolyFueled.right
   have hcanonical := (hmember.pair hday).pair htradeNo
-  have hcoefficient := hβseg.comp hmember
-  have hcoeff := hTs.coefficient_poly.comp hcanonical
-  have hscaled := BigSpliceStream.serialize_mul hcoefficient hcoeff
-  have hframe := BigSpliceStream.tradeSlot hTs.sentence_poly hcanonical
-  have hone : BigSpliceStream (fun q =>
+  have hcoefficient := hβseg.comp (f := fun q : ℕ => q.unpair.1.unpair.2)
+    (UnaryRuler.of_polyFueled hmember)
+  have hcanonicalR := UnaryRuler.of_polyFueled hcanonical
+  have hcoeff := hTs.coefficient_poly.comp
+    (f := fun q : ℕ => Nat.pair (Nat.pair q.unpair.1.unpair.2 q.unpair.1.unpair.1) q.unpair.2)
+    hcanonicalR
+  have hscaled := MachineSpliceStream.serialize_mul hcoefficient hcoeff
+  have hframe := MachineSpliceStream.tradeSlot hTs.sentence_poly
+    (f := fun q : ℕ => Nat.pair (Nat.pair q.unpair.1.unpair.2 q.unpair.1.unpair.1) q.unpair.2)
+    hcanonicalR
+  have hone : MachineSpliceStream (fun q =>
       let n := q.unpair.1.unpair.1
       let k := q.unpair.1.unpair.2
       let j := q.unpair.2
       let z := Nat.pair (Nat.pair k n) j
       serializeTrades [(EF.mul (β k) (hTs.coefficient z), hTs.sentence z)]) := by
-    refine BigSpliceStream.of_eq (hscaled.append hframe) ?_
+    refine MachineSpliceStream.of_eq (hscaled.append hframe) ?_
     intro q
     simp [serializeTrades]
-  have hcountReindexed := hcount.comp (PolyFueled.right.pair PolyFueled.left)
-  have hcomponent := BigSpliceStream.concatVar hone hcountReindexed
-  have hall := BigSpliceStream.concatVar hcomponent PolyFueled.id.succ_comp
-  refine BigSpliceStream.of_eq hall ?_
+  have hcountReindexed :=
+    hTs.tradeCount_poly.comp (UnaryRuler.unpairSnd.pair UnaryRuler.unpairFst)
+  have hcomponent := MachineSpliceStream.concatVar hone
+    (cnt := fun z : ℕ => hTs.tradeCount (Nat.pair z.unpair.2 z.unpair.1))
+    hcountReindexed
+  have hall := MachineSpliceStream.concatVar hcomponent (cnt := fun n : ℕ => n + 1)
+    (UnaryRuler.id.succ)
+  refine MachineSpliceStream.of_eq hall ?_
   intro n
   rw [scaledFamilyTrader]
   simp only [Strategy.join, Strategy.scaleBy]
@@ -1296,10 +1224,10 @@ emulatable family. -/
 lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active)
     (hTs : PolyTradeEmulatable Ts) :
-    BigSpliceStream (fun n =>
+    MachineSpliceStream (fun n =>
       serializeTrades ((sharedBudgetedTrader Ts active α hαrank).strat n).trades) :=
   scaledFamilyTrader_polySeg Ts _ _
     (sharedFeatureWeight_polySeg active α hαseg hactive) hTs
@@ -1307,11 +1235,11 @@ lemma sharedBudgetedTrader_polySeg (Ts : ℕ → Trader)
 lemma sharedBudgetedTrader_ec (Ts : ℕ → Trader)
     (active : ℕ → ℕ → Bool) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hactive : PolyActiveSchedule active)
     (hTs : PolyTradeEmulatable Ts) :
     EfficientlyComputable (sharedBudgetedTrader Ts active α hαrank) :=
-  BigSpliceStream.ec _
+  MachineSpliceStream.ec _
     (sharedBudgetedTrader_polySeg Ts active α hαrank hαseg hactive hTs)
 
 lemma sharedBudgetedTrader_value (Ts : ℕ → Trader) (active : ℕ → ℕ → Bool)
@@ -1633,10 +1561,10 @@ lemma fractionalSharedWeights_serialize (occupancy : ℕ → ℕ → EF)
 /-- Uniform segment emitter for the fractional recurrence bodies. The occupancy stream is
 indexed by `⟨day, component⟩`. -/
 lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (hα : BigSpliceStream (fun i => (α i).serialize))
-    (hocc : BigSpliceStream (fun z =>
+    (α : ℕ → EF) (hα : MachineSpliceStream (fun i => (α i).serialize))
+    (hocc : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    BigSpliceStream (fun k => (fractionalWeightBody occupancy α k).serialize) := by
+    MachineSpliceStream (fun k => (fractionalWeightBody occupancy α k).serialize) := by
   let term : ℕ → EF := fun z =>
     EF.mul (EF.mul (EF.var (z.unpair.1 - 1 - z.unpair.2)) (α z.unpair.2))
       (occupancy z.unpair.2 z.unpair.1)
@@ -1644,24 +1572,26 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
     ((predc_polyFueled.comp PolyFueled.left).pair PolyFueled.right)
   have idxPF' := idxPF.of_eq (f' := fun z => z.unpair.1 - 1 - z.unpair.2)
     (fun z => by simp [Nat.pred_eq_sub_one])
-  have hvar : BigSpliceStream
+  have hvar : MachineSpliceStream
       (fun z => (EF.var (z.unpair.1 - 1 - z.unpair.2)).serialize) :=
-    BigSpliceStream.serialize_var idxPF'
-  have hαright : BigSpliceStream (fun z => (α z.unpair.2).serialize) :=
-    hα.comp PolyFueled.right
-  have hterm : BigSpliceStream (fun z => (term z).serialize) :=
-    BigSpliceStream.serialize_mul (BigSpliceStream.serialize_mul hvar hαright) hocc
-  have hterms : BigSpliceStream (fun k =>
+    MachineSpliceStream.serialize_var (MachineDigits.ofUnaryRuler
+      (f := fun z : ℕ => z.unpair.1 - 1 - z.unpair.2)
+      (UnaryRuler.of_polyFueled idxPF'))
+  have hαright : MachineSpliceStream (fun z => (α z.unpair.2).serialize) :=
+    hα.comp (f := fun z : ℕ => z.unpair.2) (UnaryRuler.unpairSnd)
+  have hterm : MachineSpliceStream (fun z => (term z).serialize) :=
+    MachineSpliceStream.serialize_mul (MachineSpliceStream.serialize_mul hvar hαright) hocc
+  have hterms : MachineSpliceStream (fun k =>
       (List.range k).flatMap (fun i => (term (Nat.pair k i)).serialize)) :=
-    BigSpliceStream.concatVar hterm PolyFueled.id
-  have hzero : BigSpliceStream (fun _ => (EF.const 0).serialize) :=
-    BigSpliceStream.serialize_const 0
-  have haddTags : BigSpliceStream (fun k => List.replicate k 2) :=
-    BigSpliceStream.repeatTag 2 (by norm_num) PolyFueled.id
+    MachineSpliceStream.concatVar hterm (cnt := fun k : ℕ => k) UnaryRuler.id
+  have hzero : MachineSpliceStream (fun _ => (EF.const 0).serialize) :=
+    MachineSpliceStream.serialize_const 0
+  have haddTags : MachineSpliceStream (fun k => List.replicate k 2) :=
+    MachineSpliceStream.repeatTag 2 (by norm_num) (cnt := fun k : ℕ => k) UnaryRuler.id
   have hsumRaw := (hterms.append hzero).append haddTags
-  have hsum : BigSpliceStream (fun k =>
+  have hsum : MachineSpliceStream (fun k =>
       (sumFeatures (List.ofFn (fun i : Fin k => term (Nat.pair k i)))).serialize) := by
-    refine BigSpliceStream.of_eq hsumRaw ?_
+    refine MachineSpliceStream.of_eq hsumRaw ?_
     intro k
     rw [serialize_sumFeatures]
     simp only [List.length_ofFn]
@@ -1669,13 +1599,13 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
     rw [← List.map_coe_finRange_eq_range]
     rw [List.flatMap_map]
     simp only [List.ofFn_eq_map, List.flatMap_map]
-  have hone : BigSpliceStream (fun _ => (EF.const 1).serialize) :=
-    BigSpliceStream.serialize_const 1
-  have hnegone : BigSpliceStream (fun _ => (EF.const (-1)).serialize) :=
-    BigSpliceStream.serialize_const (-1)
-  have hbody := BigSpliceStream.serialize_add hone
-    (BigSpliceStream.serialize_mul hnegone hsum)
-  refine BigSpliceStream.of_eq hbody ?_
+  have hone : MachineSpliceStream (fun _ => (EF.const 1).serialize) :=
+    MachineSpliceStream.serialize_const 1
+  have hnegone : MachineSpliceStream (fun _ => (EF.const (-1)).serialize) :=
+    MachineSpliceStream.serialize_const (-1)
+  have hbody := MachineSpliceStream.serialize_add hone
+    (MachineSpliceStream.serialize_mul hnegone hsum)
+  refine MachineSpliceStream.of_eq hbody ?_
   intro k
   simp only [fractionalWeightBody, term]
   congr 4
@@ -1685,10 +1615,10 @@ lemma fractionalWeightBody_polySeg (occupancy : ℕ → ℕ → EF)
 
 /-- Uniform polynomial-time emission of the day-`n` fractional budget coefficient. -/
 lemma fractionalSharedFeatureWeight_polySeg (occupancy : ℕ → ℕ → EF)
-    (α : ℕ → EF) (hα : BigSpliceStream (fun i => (α i).serialize))
-    (hocc : BigSpliceStream (fun z =>
+    (α : ℕ → EF) (hα : MachineSpliceStream (fun i => (α i).serialize))
+    (hocc : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize)) :
-    BigSpliceStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) :=
+    MachineSpliceStream (fun n => (fractionalSharedFeatureWeight occupancy α n).serialize) :=
   sharedOf_polySeg _ (fractionalWeightBody_polySeg occupancy α hα hocc)
 
 private lemma fractionalWeightBody_denoteWith
@@ -1778,11 +1708,11 @@ lemma fractionalBudgetedTrader_polySeg (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
-    (hoccSeg : BigSpliceStream (fun z =>
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hTs : PolyTradeEmulatable Ts) :
-    BigSpliceStream (fun n => serializeTrades
+    MachineSpliceStream (fun n => serializeTrades
       ((fractionalBudgetedTrader Ts occupancy α hαrank hoccRank).strat n).trades) :=
   scaledFamilyTrader_polySeg Ts _ _
     (fractionalSharedFeatureWeight_polySeg occupancy α hαseg hoccSeg) hTs
@@ -1791,13 +1721,13 @@ lemma fractionalBudgetedTrader_ec (Ts : ℕ → Trader)
     (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
-    (hoccSeg : BigSpliceStream (fun z =>
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hTs : PolyTradeEmulatable Ts) :
     EfficientlyComputable
       (fractionalBudgetedTrader Ts occupancy α hαrank hoccRank) :=
-  BigSpliceStream.ec _
+  MachineSpliceStream.ec _
     (fractionalBudgetedTrader_polySeg Ts occupancy α hαrank hoccRank
       hαseg hoccSeg hTs)
 
@@ -2080,15 +2010,18 @@ lemma fractionalBudgetedTrader_exploits
     nlinarith
 
 /-- A logical inductor admits no uniformly emulatable continuous-return family with
-eventually vanishing occupancies unless its launch-risk sizes converge to zero. -/
+eventually vanishing occupancies unless its launch-risk sizes converge to zero.
+
+The criterion binder is `def:lic` at the paper's own quantifier, the trader being certified at
+`EfficientlyComputable`. -/
 lemma noFractionalRepeatableReturn
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor V DP]
     (ε : ℝ) (hε : 0 < ε) (occupancy : ℕ → ℕ → EF) (α : ℕ → EF)
     (hαrank : ∀ i, (α i).rank ≤ i)
     (hoccRank : ∀ i n, i ≤ n → (occupancy i n).rank ≤ n)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
-    (hoccSeg : BigSpliceStream (fun z =>
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
+    (hoccSeg : MachineSpliceStream (fun z =>
       (occupancy z.unpair.2 z.unpair.1).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hoccc : ∀ i n ρ W, (occupancy i n).denoteWith ρ W = (occupancy i n).denote W)
@@ -2350,7 +2283,13 @@ the openness table consumed by the shared trader.
 -/
 
 /-- A uniformly polynomial, sound, eventually successful verifier for component maturity.
-The checker input is `⟨component, day⟩`. -/
+The checker input is `⟨component, day⟩`.
+
+`check_poly` is a **schedule predicate** — a one-bit decision about whether a maturity
+claim has been verified by a given day — not a reindexer of an emitted stream and not
+emitted data.  Nothing downstream reads a token run or a term count off it, so it is
+metered in the fuel calculus and does not cross to the machine side; correspondingly it
+appears in no canonical endpoint's premises. -/
 structure VerifiedMaturitySchedule (Ts : ℕ → Trader) (V : History)
     (DP : DeductiveProcess) (ε : ℝ) (η : ℕ → ℝ) where
   check : ℕ → ℕ → Bool
@@ -2366,7 +2305,11 @@ the post-`m` trading tail can be absorbed when it is promoted to maturity at day
 
 Keeping this structure separate from `VerifiedMaturitySchedule` makes the computational
 boundary explicit: concrete market/process code only has to enumerate finite historical
-certificates; the semantic persistence argument below is generic. -/
+certificates; the semantic persistence argument below is generic.
+
+`check_poly` is a **schedule predicate**, in the same sense as
+`VerifiedMaturitySchedule.check_poly`: a one-bit decision, not a reindexer and not emitted
+data, so it is metered in the fuel calculus and binds no canonical endpoint. -/
 structure HistoricalVerifiedMaturitySchedule (Ts : ℕ → Trader) (V : History)
     (DP : DeductiveProcess) (ε : ℝ) (η : ℕ → ℝ) where
   check : ℕ → ℕ → Bool
@@ -2668,13 +2611,13 @@ lemma sharedBudgetedTrader_exploits_of_frequently
       simp [activeUntil]
       omega) (fun i => (α i).denote V) hα0 hα1 hδ hδα
 
-/-- Full repeatable-ROI conclusion: the shared budget trader is both efficiently
-computable and exploiting. -/
+/-- Full repeatable-ROI conclusion: the shared budget trader is both efficiently computable
+and exploiting. -/
 lemma repeatableROI
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2699,7 +2642,7 @@ lemma repeatableROI_of_frequently
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2741,6 +2684,9 @@ Four hypotheses go beyond the printed lemma.
   `noRepeatableROI_of_verifiedMaturity` is the form clients should apply, discharging all
   three from one polynomial checker.
 
+The criterion binder is `IsLogicalInductor` because the trader is certified at
+`EfficientlyComputable`.
+
 This result is deliberately carried without a `Paper node` line: `lem:type3` is listed in
 `UNANNOTATED_PAPER_RESULTS` in `scripts/check_endpoint_coverage.py`, and is cited from this
 module's header instead. Do not add the annotation — it would put the label under the
@@ -2750,7 +2696,7 @@ theorem noRepeatableROI
     [hLI : IsLogicalInductor V DP]
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ) (close : ℕ → ℕ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)
@@ -2776,13 +2722,15 @@ theorem noRepeatableROI
 
 /-- Paper-facing verifier form of `noRepeatableROI`.  Callers provide only a polynomial,
 sound, eventually successful maturity checker; the bounded-verification bridge constructs
-the closing days, semantic maturity schedule, and polynomial openness table. -/
+the closing days, semantic maturity schedule, and polynomial openness table.  The binder is
+`def:lic` at the paper's own quantifier, the trader being certified at
+`EfficientlyComputable`. -/
 lemma noRepeatableROI_of_verifiedMaturity
     (Ts : ℕ → Trader) (V : History) (DP : DeductiveProcess)
     [hLI : IsLogicalInductor V DP]
     (ε : ℝ) (hε : 0 < ε) (η : ℕ → ℝ)
     (α : ℕ → EF) (hαrank : ∀ i, (α i).rank ≤ i)
-    (hαseg : BigSpliceStream (fun i => (α i).serialize))
+    (hαseg : MachineSpliceStream (fun i => (α i).serialize))
     (hαc : ∀ i ρ W, (α i).denoteWith ρ W = (α i).denote W)
     (hmag : ∀ i, (α i).denote V = (Ts i).magnitude V)
     (hα0 : ∀ i, 0 ≤ (α i).denote V) (hα1 : ∀ i, (α i).denote V ≤ 1)

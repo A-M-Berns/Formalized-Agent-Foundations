@@ -18,8 +18,8 @@ its first slot and asks that the resulting one-variable family be efficiently wr
 The main results are `polyArithmeticFormulaSeq_subst_arg` (two-variable schema) and
 `polyArithmeticFormulaSeq_schemaArgBody` (one-variable schema), each for **every**
 closed-term family `τ` whose own symbol runs the caller certifies by the parameter `henc`,
-together with the sentence-class corollaries `bigSentenceCodes_reprArgClaim` and
-`bigSentenceCodes_schemaArgClaim`, which
+together with the sentence-class corollaries `machineSentenceCodes_reprArgClaim` and
+`machineSentenceCodes_schemaArgClaim`, which
 `Construction/Knowledge/Endpoints.lean` consumes.
 
 The substituted term family is a *parameter* rather than the day numeral, so that one
@@ -126,6 +126,14 @@ private lemma polySegStream_numeralConst (m : ℕ) :
   (numeralEnc_polySegStream PolyFueled.id).of_eq fun n =>
     (encodeArithmeticTermSymbols_numeralConst (k := m) n).symm
 
+/-- The same, machine metered: the day numeral's own run, crossed at the write-out
+bridge. -/
+private lemma machineTokenStream_numeralConst (m : ℕ) :
+    MachineTokenStream (fun n => encodeArithmeticTermSymbols
+      ((Semiterm.Operator.numeral ℒₒᵣ n).const : ArithmeticSemiterm ℕ m)) :=
+  BigTokenStream.toMachine
+    (BigTokenStream.ofPolySegStream (polySegStream_numeralConst m))
+
 /-! ## The substitution invariant
 
 `GoodRew τ ω` says the family of rewritings `ω` writes the closed term `τ n` or a bound
@@ -167,36 +175,60 @@ private lemma GoodRew.q {k l : ℕ} {τ : ℕ → Semiterm.Const ℒₒᵣ}
 Both inductions run over the *value* of the Foundation syntax tree.  They never decide
 anything about it, so an opaque `γ` is as admissible as a literal one. -/
 
+/-! ### The emission calculus the inductions run on
+
+Both inductions below use exactly three closure properties of the emission class: a fixed
+token list is emitted however it was obtained, two emissions concatenate, and emission is
+congruent.  `PolySegStream` and `MachineTokenStream` both have them, so the *same*
+induction serves both meterings — a second copy of these two structural inductions at the
+machine class would be a divergent second proof of one fact. -/
+
+/-- The three closure properties the substitution inductions need of an emission class. -/
+private structure EmissionCalculus (C : (ℕ → List ℕ) → Prop) : Prop where
+  /-- A fixed token list is emitted, however it was obtained. -/
+  const : ∀ l : List ℕ, C (fun _ => l)
+  /-- Two emitted streams concatenate. -/
+  append : ∀ {a b : ℕ → List ℕ}, C a → C b → C (fun n => a n ++ b n)
+  /-- Emission is congruent. -/
+  of_eq : ∀ {a b : ℕ → List ℕ}, C a → (∀ n, a n = b n) → C b
+
+private lemma emissionCalculus_polySegStream : EmissionCalculus PolySegStream :=
+  ⟨fun l => PolySegStream.constList l, fun ha hb => PolySegStream.append ha hb,
+    fun ha he => PolySegStream.of_eq ha he⟩
+
+private lemma emissionCalculus_machineTokenStream : EmissionCalculus MachineTokenStream :=
+  ⟨fun l => MachineTokenStream.const l, fun ha hb => MachineTokenStream.append ha hb,
+    fun ha he => MachineTokenStream.of_eq ha he⟩
+
 /-- Term half: a good substitution instance of a fixed closed-variable term is emittable.
 
 Kind `P` (proved).  Provenance: (a) derived in-project. -/
-private lemma polySegStream_term {k l : ℕ} {τ : ℕ → Semiterm.Const ℒₒᵣ}
-    (henc : ∀ m : ℕ, PolySegStream (fun n =>
+private lemma emission_term {C : (ℕ → List ℕ) → Prop} (hC : EmissionCalculus C)
+    {k l : ℕ} {τ : ℕ → Semiterm.Const ℒₒᵣ}
+    (henc : ∀ m : ℕ, C (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ m)))
     {ω : ℕ → Rew ℒₒᵣ Empty k ℕ l} (hω : GoodRew τ ω)
     (t : Semiterm ℒₒᵣ Empty k) :
-    PolySegStream (fun n => encodeArithmeticTermSymbols (ω n t)) := by
+    C (fun n => encodeArithmeticTermSymbols (ω n t)) := by
   induction t with
   | bvar x =>
       rcases hω x with h | ⟨j, hj⟩
-      · exact (henc l).of_eq fun n => by rw [h n]
-      · exact (PolySegStream.constList
-          (encodeArithmeticTermSymbols (Semiterm.bvar j : ArithmeticSemiterm ℕ l))).of_eq
+      · exact hC.of_eq (henc l) fun n => by rw [h n]
+      · exact hC.of_eq (hC.const
+          (encodeArithmeticTermSymbols (Semiterm.bvar j : ArithmeticSemiterm ℕ l)))
             fun n => by rw [hj n]
   | fvar x => exact x.elim
   | func f v ih =>
       cases f with
       | zero =>
-          exact (PolySegStream.constList [5]).of_eq fun n => by
-            simp only [Rew.func]; rfl
+          exact hC.of_eq (hC.const [5]) fun n => by simp only [Rew.func]; rfl
       | one =>
-          exact (PolySegStream.constList [6]).of_eq fun n => by
-            simp only [Rew.func]; rfl
+          exact hC.of_eq (hC.const [6]) fun n => by simp only [Rew.func]; rfl
       | add =>
-          exact (((PolySegStream.constList [7]).append (ih 0)).append (ih 1)).of_eq
+          exact hC.of_eq (hC.append (hC.append (hC.const [7]) (ih 0)) (ih 1))
             fun n => by simp [Rew.func, encodeArithmeticTermSymbols]
       | mul =>
-          exact (((PolySegStream.constList [8]).append (ih 0)).append (ih 1)).of_eq
+          exact hC.of_eq (hC.append (hC.append (hC.const [8]) (ih 0)) (ih 1))
             fun n => by simp [Rew.func, encodeArithmeticTermSymbols]
 
 /-- Formula half: a good substitution instance of a fixed sentence-schema is emittable.
@@ -205,63 +237,77 @@ quantifier cases re-enter at `Rew.q` — and why `henc` must hold at every arity
 
 Kind `P` (proved).  Provenance: (a) derived in-project; (b) Foundation citations —
 `Semiformula.rec'`, `Rewriting.app_all`, `Rewriting.app_exs`. -/
-private lemma polySegStream_formula {k : ℕ} (τ : ℕ → Semiterm.Const ℒₒᵣ)
-    (henc : ∀ m : ℕ, PolySegStream (fun n =>
+private lemma emission_formula {C : (ℕ → List ℕ) → Prop} (hC : EmissionCalculus C)
+    {k : ℕ} (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ m : ℕ, C (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ m)))
     (φ : Semiformula ℒₒᵣ Empty k) :
     ∀ (l : ℕ) (ω : ℕ → Rew ℒₒᵣ Empty k ℕ l), GoodRew τ ω →
-      PolySegStream (fun n => encodeArithmeticFormulaSymbols ((ω n) ▹ φ)) := by
+      C (fun n => encodeArithmeticFormulaSymbols ((ω n) ▹ φ)) := by
   induction φ using Semiformula.rec' with
   | hverum =>
       intro l ω _
-      exact (PolySegStream.constList [9]).of_eq fun n => rfl
+      exact hC.of_eq (hC.const [9]) fun n => rfl
   | hfalsum =>
       intro l ω _
-      exact (PolySegStream.constList [10]).of_eq fun n => rfl
+      exact hC.of_eq (hC.const [10]) fun n => rfl
   | hrel r v =>
       intro l ω hω
       cases r with
       | eq =>
-          exact (((PolySegStream.constList [11]).append
-            (polySegStream_term henc hω (v 0))).append
-              (polySegStream_term henc hω (v 1))).of_eq fun n => by
-                simp [encodeArithmeticFormulaSymbols]
+          exact hC.of_eq (hC.append (hC.append (hC.const [11])
+            (emission_term hC henc hω (v 0))) (emission_term hC henc hω (v 1)))
+              fun n => by simp [encodeArithmeticFormulaSymbols]
       | lt =>
-          exact (((PolySegStream.constList [13]).append
-            (polySegStream_term henc hω (v 0))).append
-              (polySegStream_term henc hω (v 1))).of_eq fun n => by
-                simp [encodeArithmeticFormulaSymbols]
+          exact hC.of_eq (hC.append (hC.append (hC.const [13])
+            (emission_term hC henc hω (v 0))) (emission_term hC henc hω (v 1)))
+              fun n => by simp [encodeArithmeticFormulaSymbols]
   | hnrel r v =>
       intro l ω hω
       cases r with
       | eq =>
-          exact (((PolySegStream.constList [12]).append
-            (polySegStream_term henc hω (v 0))).append
-              (polySegStream_term henc hω (v 1))).of_eq fun n => by
-                simp [encodeArithmeticFormulaSymbols]
+          exact hC.of_eq (hC.append (hC.append (hC.const [12])
+            (emission_term hC henc hω (v 0))) (emission_term hC henc hω (v 1)))
+              fun n => by simp [encodeArithmeticFormulaSymbols]
       | lt =>
-          exact (((PolySegStream.constList [14]).append
-            (polySegStream_term henc hω (v 0))).append
-              (polySegStream_term henc hω (v 1))).of_eq fun n => by
-                simp [encodeArithmeticFormulaSymbols]
+          exact hC.of_eq (hC.append (hC.append (hC.const [14])
+            (emission_term hC henc hω (v 0))) (emission_term hC henc hω (v 1)))
+              fun n => by simp [encodeArithmeticFormulaSymbols]
   | hand φ ψ ihφ ihψ =>
       intro l ω hω
-      exact (((PolySegStream.constList [15]).append (ihφ l ω hω)).append
-        (ihψ l ω hω)).of_eq fun n => by simp [encodeArithmeticFormulaSymbols]
+      exact hC.of_eq (hC.append (hC.append (hC.const [15]) (ihφ l ω hω)) (ihψ l ω hω))
+        fun n => by simp [encodeArithmeticFormulaSymbols]
   | hor φ ψ ihφ ihψ =>
       intro l ω hω
-      exact (((PolySegStream.constList [16]).append (ihφ l ω hω)).append
-        (ihψ l ω hω)).of_eq fun n => by simp [encodeArithmeticFormulaSymbols]
+      exact hC.of_eq (hC.append (hC.append (hC.const [16]) (ihφ l ω hω)) (ihψ l ω hω))
+        fun n => by simp [encodeArithmeticFormulaSymbols]
   | hall φ ih =>
       intro l ω hω
-      exact ((PolySegStream.constList [17]).append
-        (ih (l + 1) (fun n => (ω n).q) hω.q)).of_eq fun n => by
-          simp [encodeArithmeticFormulaSymbols]
+      exact hC.of_eq (hC.append (hC.const [17]) (ih (l + 1) (fun n => (ω n).q) hω.q))
+        fun n => by simp [encodeArithmeticFormulaSymbols]
   | hexs φ ih =>
       intro l ω hω
-      exact ((PolySegStream.constList [18]).append
-        (ih (l + 1) (fun n => (ω n).q) hω.q)).of_eq fun n => by
-          simp [encodeArithmeticFormulaSymbols]
+      exact hC.of_eq (hC.append (hC.const [18]) (ih (l + 1) (fun n => (ω n).q) hω.q))
+        fun n => by simp [encodeArithmeticFormulaSymbols]
+
+/-- The two-variable substitution instance, at any emission calculus. -/
+private lemma emission_subst_arg {C : (ℕ → List ℕ) → Prop} (hC : EmissionCalculus C)
+    (γ : ArithmeticSemisentence 2) (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, C (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    C (fun n : ℕ => encodeArithmeticFormulaSymbols
+      ((Semiformula.subst γ ![(τ n).const, #0] : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) := by
+  have hgood : GoodRew τ (fun n : ℕ =>
+      (Rew.emb.comp (Rew.subst ![((τ n).const : Semiterm ℒₒᵣ Empty 1), Semiterm.bvar 0])
+        : Rew ℒₒᵣ Empty 2 ℕ 1)) := by
+    intro i
+    fin_cases i
+    · exact Or.inl fun n => by simp [Rew.comp_app]
+    · exact Or.inr ⟨0, fun n => by simp [Rew.comp_app]⟩
+  refine hC.of_eq (emission_formula hC τ henc γ 1 _ hgood) fun n => ?_
+  refine congrArg encodeArithmeticFormulaSymbols ?_
+  simp only [Semiformula.subst, TransitiveRewriting.comp_app]
 
 /-! ## The paper-facing families -/
 
@@ -280,17 +326,24 @@ lemma polyArithmeticFormulaSeq_subst_arg (γ : ArithmeticSemisentence 2)
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
     PolyArithmeticFormulaSeq (fun n : ℕ =>
       ((Semiformula.subst γ ![(τ n).const, #0] : ArithmeticSemisentence 1) :
-        ArithmeticSemiformula ℕ 1)) := by
-  have hgood : GoodRew τ (fun n : ℕ =>
-      (Rew.emb.comp (Rew.subst ![((τ n).const : Semiterm ℒₒᵣ Empty 1), Semiterm.bvar 0])
-        : Rew ℒₒᵣ Empty 2 ℕ 1)) := by
-    intro i
-    fin_cases i
-    · exact Or.inl fun n => by simp [Rew.comp_app]
-    · exact Or.inr ⟨0, fun n => by simp [Rew.comp_app]⟩
-  refine (polySegStream_formula τ henc γ 1 _ hgood).of_eq fun n => ?_
-  refine congrArg encodeArithmeticFormulaSymbols ?_
-  simp only [Semiformula.subst, TransitiveRewriting.comp_app]
+        ArithmeticSemiformula ℕ 1)) :=
+  emission_subst_arg emissionCalculus_polySegStream γ τ henc
+
+/-- **The same, machine metered.**  The machine reading of
+`polyArithmeticFormulaSeq_subst_arg`: same induction, same skeleton, `MachineTokenStream`
+in place of `PolySegStream`.  This is the form the knowledge lane consumes, because its
+`henc` comes from the *machine* compact-numeral emitter
+`machineTokenStream_binNumeral_const`.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from `emission_subst_arg`. -/
+lemma machineTokenStream_subst_arg (γ : ArithmeticSemisentence 2)
+    (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    MachineTokenStream (fun n : ℕ => encodeArithmeticFormulaSymbols
+      ((Semiformula.subst γ ![(τ n).const, #0] : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) :=
+  emission_subst_arg emissionCalculus_machineTokenStream γ τ henc
 
 /-- **Writing the day numeral into a fixed two-variable formula is emittable.**  The
 day-numeral instance of `polyArithmeticFormulaSeq_subst_arg`: the substituted run is the
@@ -306,7 +359,7 @@ lemma polyArithmeticFormulaSeq_subst_numeral (γ : ArithmeticSemisentence 2) :
 
 /-! ## The biconditional closure on the source language
 
-The corollary this file is *for* is `BigSentenceCodes (representedClaimSentence γ)`, the
+The corollary this file is *for* is `MachineSentenceCodes (representedClaimSentence γ)`, the
 last hypothesis of `representedBoundedClaims` in `Construction/Knowledge/Endpoints.lean`.
 
 It is discharged on the **source** language (`Construction/LUV/ArithmeticSource.lean`), not on the
@@ -398,6 +451,31 @@ lemma reprArgClaimSource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
     PolyArithmeticSourceSeq (fun n => reprArgClaimSource γ (τ n)) :=
   (reprArgBodySource_polyArithmeticSourceSeq γ τ henc).not.exs
 
+/-- **The body family is machine-metered emittable.**  Machine twin of
+`reprArgBodySource_polyArithmeticSourceSeq`, one metering to the left: the `γ`-instance
+leaf is `machineTokenStream_subst_arg`, the value equation a fixed list, the `⟺` one
+token. -/
+lemma reprArgBodySource_machineArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
+    (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    MachineArithmeticSourceSeq (fun n => reprArgBodySource γ (τ n)) := by
+  refine MachineArithmeticSourceSeq.iff ?_ ?_
+  · exact MachineArithmeticSourceSeq.leaf (machineTokenStream_subst_arg γ τ henc)
+  · exact MachineArithmeticSourceSeq.leaf
+      (MachineTokenStream.const (encodeArithmeticFormulaSymbols
+        (((“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)))
+
+/-- The whole claim source is machine-metered: the body, negated, under one `∃` node. -/
+lemma reprArgClaimSource_machineArithmeticSourceSeq (γ : ArithmeticSemisentence 2)
+    (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    MachineArithmeticSourceSeq (fun n => reprArgClaimSource γ (τ n)) :=
+  MachineArithmeticSourceSeq.exs
+    (MachineArithmeticSourceSeq.not
+      (reprArgBodySource_machineArithmeticSourceSeq γ τ henc))
+
 /-- The day-numeral instance of `reprArgBodySource_polyArithmeticSourceSeq`. -/
 lemma reprBodySource_polyArithmeticSourceSeq (γ : ArithmeticSemisentence 2) :
     PolyArithmeticSourceSeq (reprBodySource γ) :=
@@ -443,18 +521,34 @@ lemma rpnSentenceCodes_reprArgClaim (γ : ArithmeticSemisentence 2)
   simpa [compile_reprArgClaimSource] using this
 
 /-- **The write-out certificate for the represented claim family at an arbitrary
-closed-term stream.**
+closed-term stream, machine metered.**
+
+The premise is the *machine* reading of the substituted term's own symbol runs, because
+that is what the knowledge lane can supply: its `τ` is the compact numeral of a packed
+machine/input argument, emitted by `machineTokenStream_binNumeral_const` off
+`MachineMachineCodes`/`MachineDigits`.  The fuel-metered route to the same conclusion is
+`rpnSentenceCodes_reprArgClaim` followed by `RpnSentenceCodes.toMachine`; it survives as
+the fuel-side calibration and is what the day-numeral instance below runs.
 
 Kind `C` (composition).  Provenance: (a) derived in-project. -/
-lemma bigSentenceCodes_reprArgClaim (γ : ArithmeticSemisentence 2)
+lemma machineSentenceCodes_reprArgClaim (γ : ArithmeticSemisentence 2)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
-    (henc : ∀ l : ℕ, PolySegStream (fun n =>
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
-    BigSentenceCodes (fun n => paperPrimeSentence true
+    MachineSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (∼(Rewriting.emb
         (Semiformula.subst γ ![(τ n).const, #0] 🡘
-          (“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)))) :=
-  BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_reprArgClaim γ τ henc)
+          (“#0 = ↑(0 : ℕ)” : ArithmeticSemisentence 1)) : ArithmeticSemiformula ℕ 1)))) := by
+  refine ⟨fun n => structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n)),
+    structuredPaperSourcePrimeBlock_machineTokenStream true _
+      (reprArgClaimSource_machineArithmeticSourceSeq γ τ henc), fun n => ?_⟩
+  have hlen : 1 ≤
+      (structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n))).length :=
+    structuredPaperSourcePrimeBlock_length_pos true _
+  have := parseRpn_structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n)) []
+    (fuel := (structuredPaperSourcePrimeBlock true (reprArgClaimSource γ (τ n))).length)
+    hlen
+  simpa [compile_reprArgClaimSource] using this
 
 /-- The day-numeral instance.
 
@@ -466,11 +560,11 @@ lemma rpnSentenceCodes_reprClaim (γ : ArithmeticSemisentence 2) :
   rpnSentenceCodes_reprArgClaim γ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
-/-- The day-numeral instance of `bigSentenceCodes_reprArgClaim`. -/
-lemma bigSentenceCodes_reprClaim (γ : ArithmeticSemisentence 2) :
-    BigSentenceCodes (fun n => paperPrimeSentence true
+/-- The day-numeral instance of `machineSentenceCodes_reprArgClaim`. -/
+lemma machineSentenceCodes_reprClaim (γ : ArithmeticSemisentence 2) :
+    MachineSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (∼(Rewriting.emb (reprBody γ 0 n) : ArithmeticSemiformula ℕ 1)))) :=
-  BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_reprClaim γ)
+  RpnSentenceCodes.toMachine (rpnSentenceCodes_reprClaim γ)
 
 /-! ## The instance family of a fixed one-variable schema
 
@@ -481,7 +575,7 @@ into the sentence, as the substituted term `τ n`, so that the sentence names th
 and input it is about.  That argument is a packed pair `(machine source, input)`, or a
 triple with a day when a horizon is needed; the day is at most one component of it, and for
 `thm:halts`/`thm:loops` it does not appear at all.  Hence the `Arg` names below: only the
-`polyArithmeticFormulaSeq_schemaDayBody` / `bigSentenceCodes_schemaDayClaim` instances
+`polyArithmeticFormulaSeq_schemaDayBody` / `machineSentenceCodes_schemaDayClaim` instances
 below them are genuinely about the day numeral.
 
 Writing that data in is what `polyArithmeticFormulaSeq_schemaArgBody` charges for, and
@@ -525,6 +619,24 @@ Kind `P` (proved).  Provenance: (a) derived in-project. -/
 lemma schemaDayBody_eq_arg (σ : ArithmeticSemisentence 1) (n : ℕ) :
     schemaDayBody σ n = schemaArgBody σ (Semiterm.Operator.numeral ℒₒᵣ n) := rfl
 
+/-- The one-variable substitution instance, at any emission calculus. -/
+private lemma emission_schemaArgBody {C : (ℕ → List ℕ) → Prop} (hC : EmissionCalculus C)
+    (σ : ArithmeticSemisentence 1) (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, C (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    C (fun n : ℕ => encodeArithmeticFormulaSymbols
+      ((schemaArgBody σ (τ n) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) := by
+  have hgood : GoodRew τ (fun n : ℕ =>
+      (Rew.emb.comp (Rew.subst ![((τ n).const : Semiterm ℒₒᵣ Empty 1)])
+        : Rew ℒₒᵣ Empty 1 ℕ 1)) := by
+    intro i
+    fin_cases i
+    · exact Or.inl fun n => by simp [Rew.comp_app]
+  refine hC.of_eq (emission_formula hC τ henc σ 1 _ hgood) fun n => ?_
+  refine congrArg encodeArithmeticFormulaSymbols ?_
+  simp only [schemaArgBody, Semiformula.subst, TransitiveRewriting.comp_app]
+
 /-- **Writing an emittable closed term into a fixed one-variable schema is emittable.**
 The one-variable analogue of `polyArithmeticFormulaSeq_subst_arg`, and equally indifferent
 to what `σ` is: the emitter writes `σ`'s fixed skeleton plus one copy of `τ n`'s run per
@@ -537,16 +649,21 @@ lemma polyArithmeticFormulaSeq_schemaArgBody (σ : ArithmeticSemisentence 1)
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
     PolyArithmeticFormulaSeq (fun n : ℕ =>
       ((schemaArgBody σ (τ n) : ArithmeticSemisentence 1) :
-        ArithmeticSemiformula ℕ 1)) := by
-  have hgood : GoodRew τ (fun n : ℕ =>
-      (Rew.emb.comp (Rew.subst ![((τ n).const : Semiterm ℒₒᵣ Empty 1)])
-        : Rew ℒₒᵣ Empty 1 ℕ 1)) := by
-    intro i
-    fin_cases i
-    · exact Or.inl fun n => by simp [Rew.comp_app]
-  refine (polySegStream_formula τ henc σ 1 _ hgood).of_eq fun n => ?_
-  refine congrArg encodeArithmeticFormulaSymbols ?_
-  simp only [schemaArgBody, Semiformula.subst, TransitiveRewriting.comp_app]
+        ArithmeticSemiformula ℕ 1)) :=
+  emission_schemaArgBody emissionCalculus_polySegStream σ τ henc
+
+/-- **The same, machine metered.**  The form the knowledge lane consumes: its `henc` is
+the machine compact-numeral emitter.
+
+Kind `P` (proved).  Provenance: (a) derived in-project from `emission_schemaArgBody`. -/
+lemma machineTokenStream_schemaArgBody (σ : ArithmeticSemisentence 1)
+    (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    MachineTokenStream (fun n : ℕ => encodeArithmeticFormulaSymbols
+      ((schemaArgBody σ (τ n) : ArithmeticSemisentence 1) :
+        ArithmeticSemiformula ℕ 1)) :=
+  emission_schemaArgBody emissionCalculus_machineTokenStream σ τ henc
 
 /-- **Writing the day numeral into a fixed one-variable schema is emittable.**
 
@@ -594,11 +711,15 @@ lemma schemaArgSource_polyArithmeticSourceSeq (σ : ArithmeticSemisentence 1)
   (PolyArithmeticSourceSeq.leaf
     (polyArithmeticFormulaSeq_schemaArgBody σ τ henc)).exs
 
-/-- The day-numeral instance of `schemaArgSource_polyArithmeticSourceSeq`. -/
-lemma schemaDaySource_polyArithmeticSourceSeq (σ : ArithmeticSemisentence 1) :
-    PolyArithmeticSourceSeq (schemaDaySource σ) :=
-  schemaArgSource_polyArithmeticSourceSeq σ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
-    polySegStream_numeralConst
+/-- The claim sources at a machine-certified closed-term family are machine-metered: one
+`∃` node over the substituted schema leaf. -/
+lemma schemaArgSource_machineArithmeticSourceSeq (σ : ArithmeticSemisentence 1)
+    (τ : ℕ → Semiterm.Const ℒₒᵣ)
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
+      encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
+    MachineArithmeticSourceSeq (fun n => schemaArgSource σ (τ n)) :=
+  MachineArithmeticSourceSeq.exs
+    (MachineArithmeticSourceSeq.leaf (machineTokenStream_schemaArgBody σ τ henc))
 
 /-- **The emission certificate for the schema-instance claim family at an arbitrary
 closed-term stream.**  For *every* `σ` — including a `codeOfREPred` schema, hence
@@ -628,17 +749,30 @@ lemma rpnSentenceCodes_schemaArgClaim (σ : ArithmeticSemisentence 1)
   simpa [compile_schemaArgSource] using this
 
 /-- **The write-out certificate for the schema-instance claim family at an arbitrary
-closed-term stream.**
+closed-term stream, machine metered.**
+
+As `machineSentenceCodes_reprArgClaim`: the premise is the machine reading of the
+substituted term's symbol runs, which is what `thm:halts`/`thm:loops`/`thm:pac` supply
+through `machineTokenStream_binNumeral_const`.
 
 Kind `C` (composition).  Provenance: (a) derived in-project. -/
-lemma bigSentenceCodes_schemaArgClaim (σ : ArithmeticSemisentence 1)
+lemma machineSentenceCodes_schemaArgClaim (σ : ArithmeticSemisentence 1)
     (τ : ℕ → Semiterm.Const ℒₒᵣ)
-    (henc : ∀ l : ℕ, PolySegStream (fun n =>
+    (henc : ∀ l : ℕ, MachineTokenStream (fun n =>
       encodeArithmeticTermSymbols ((τ n).const : ArithmeticSemiterm ℕ l))) :
-    BigSentenceCodes (fun n => paperPrimeSentence true
+    MachineSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (Rewriting.emb (schemaArgBody σ (τ n)) :
-        ArithmeticSemiformula ℕ 1))) :=
-  BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_schemaArgClaim σ τ henc)
+        ArithmeticSemiformula ℕ 1))) := by
+  refine ⟨fun n => structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n)),
+    structuredPaperSourcePrimeBlock_machineTokenStream true _
+      (schemaArgSource_machineArithmeticSourceSeq σ τ henc), fun n => ?_⟩
+  have hlen : 1 ≤
+      (structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n))).length :=
+    structuredPaperSourcePrimeBlock_length_pos true _
+  have := parseRpn_structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n)) []
+    (fuel := (structuredPaperSourcePrimeBlock true (schemaArgSource σ (τ n))).length)
+    hlen
+  simpa [compile_schemaArgSource] using this
 
 /-! ### The day-numeral instances
 
@@ -658,10 +792,11 @@ lemma rpnSentenceCodes_schemaDayClaim (σ : ArithmeticSemisentence 1) :
   rpnSentenceCodes_schemaArgClaim σ (fun n => Semiterm.Operator.numeral ℒₒᵣ n)
     polySegStream_numeralConst
 
-/-- The day-numeral instance of `bigSentenceCodes_schemaArgClaim`. -/
-lemma bigSentenceCodes_schemaDayClaim (σ : ArithmeticSemisentence 1) :
-    BigSentenceCodes (fun n => paperPrimeSentence true
+/-- The day-numeral instance of `machineSentenceCodes_schemaArgClaim`, through the
+fuel-metered numeral emitter. -/
+lemma machineSentenceCodes_schemaDayClaim (σ : ArithmeticSemisentence 1) :
+    MachineSentenceCodes (fun n => paperPrimeSentence true
       (Semiformula.exs (Rewriting.emb (schemaDayBody σ n) : ArithmeticSemiformula ℕ 1))) :=
-  BigSentenceCodes.ofRpnSentenceCodes (rpnSentenceCodes_schemaDayClaim σ)
+  RpnSentenceCodes.toMachine (rpnSentenceCodes_schemaDayClaim σ)
 
 end LogicalInduction

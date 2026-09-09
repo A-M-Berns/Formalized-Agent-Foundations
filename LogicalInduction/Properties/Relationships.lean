@@ -1,6 +1,7 @@
 import LogicalInduction.Properties.Support.Exploitation
 import LogicalInduction.Properties.AffineCoherence
 import LogicalInduction.Framework.Emission.WriteOut
+import LogicalInduction.Framework.Efficiency
 
 /-!
 # Learning Logical Relationships
@@ -38,6 +39,15 @@ coherence for `φ` and `∼φ`, derived from the exclusive–exhaustive law rath
 a valuation identity. It lands here beside the law it is read off, and is consumed by
 `Properties/LimitCoherence.lean` (the Gaifman clauses) and `Properties/OccamBounds.lean` (the
 upper half of `thm:ob`).
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -315,16 +325,16 @@ def exclusiveExhaustiveAffine (k : ℕ) (φ : ℕ → ℕ → Sentence) (n : ℕ
 sentence sequences. -/
 noncomputable def exclusiveExhaustive_polySequence
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, BigSentenceCodes (φ j)) :
+    (hφ : ∀ j < k, MachineSentenceCodes (φ j)) :
     AffineCombination.PolySequence (exclusiveExhaustiveAffine k φ) := by
   exact {
     termCount := fun _ => k
     coefficient := fun _ => .const (1 / (k : ℚ))
     sentence := fun z => φ (z.unpair.2 % k) z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const k, PolyFueled.const k⟩
-    const_poly := BigSpliceStream.serialize_const (-(1 / (k : ℚ)))
-    coefficient_poly := BigSpliceStream.serialize_const (1 / (k : ℚ))
-    sentence_poly := BigSentenceCodes.modDispatch hk hφ
+    termCount_poly := UnaryRuler.const k
+    const_poly := MachineSpliceStream.serialize_const (-(1 / (k : ℚ)))
+    coefficient_poly := MachineSpliceStream.serialize_const (1 / (k : ℚ))
+    sentence_poly := MachineSentenceCodes.modDispatch hk hφ
     terms_eq := by
       intro n
       rw [exclusiveExhaustiveAffine]
@@ -372,7 +382,7 @@ Paper node: `thm:lex` -/
 theorem lic_learning_exclusive_exhaustive
     (P : History) (DP : DeductiveProcess) [IsLogicalInductor P DP]
     (k : ℕ) (hk : 0 < k) (φ : ℕ → ℕ → Sentence)
-    (hφ : ∀ j < k, BigSentenceCodes (φ j))
+    (hφ : ∀ j < k, MachineSentenceCodes (φ j))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n))
     (hexclusiveExhaustive : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range k).map (fun j => v.payout (φ j n))).sum = 1) :
@@ -410,7 +420,6 @@ theorem lic_learning_exclusive_exhaustive
         ring]
       rw [hexclusiveExhaustive n v hv]
       simp)
-  unfold As at hzero
   simp only [exclusiveExhaustiveAffine_price k hk φ P] at hzero
   unfold AsympEq at hzero ⊢
   convert hzero.const_mul (k : ℝ) using 1
@@ -431,15 +440,15 @@ theorem lic_limitingBelief_add_neg
     (φ : Sentence) :
     limitingBelief P φ + limitingBelief P (∼φ) = 1 := by
   let pair : ℕ → ℕ → Sentence := fun j _ ↦ if j = 0 then φ else ∼φ
-  have hcodes : ∀ j < 2, BigSentenceCodes (pair j) := by
+  have hcodes : ∀ j < 2, MachineSentenceCodes (pair j) := by
     intro j hj
     by_cases h0 : j = 0
     · subst j
-      exact BigSentenceCodes.ofPolySentenceCodes
+      exact MachineSentenceCodes.ofPolySentenceCodes
         ⟨_, PolyFueled.const (Encodable.encode φ)⟩
     · have h1 : j = 1 := by omega
       subst j
-      exact BigSentenceCodes.ofPolySentenceCodes
+      exact MachineSentenceCodes.ofPolySentenceCodes
         ⟨_, PolyFueled.const (Encodable.encode (∼φ))⟩
   have hsemantic : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ((List.range 2).map (fun j ↦ v.payout (pair j n))).sum = 1 := by

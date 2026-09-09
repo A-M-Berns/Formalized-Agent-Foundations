@@ -710,7 +710,7 @@ naming certificate for the actual literal conjunctions.
 Paper node: `thm:dus` -/
 def bitPrefixSentencesOfIndependentAtoms
     {DP : DeductiveProcess} (I : IndependentBitAtoms DP)
-    (C : BigSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i))) :
+    (C : MachineSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i))) :
     BitPrefixSentences DP where
   atom := I.atom
   prefixSentence := bitPrefixSentence I.atom
@@ -735,7 +735,8 @@ evidence that the domination endpoint has content over a substantive process.  F
 deductive process and an arbitrary inductor over it.
 Paper node: `thm:dus` -/
 def ordinaryBitPrefixSentences : BitPrefixSentences emptyBitDeductiveProcess :=
-  bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms ordinaryBitPrefixCodes
+  bitPrefixSentencesOfIndependentAtoms ordinaryIndependentBitAtoms
+    (BigSentenceCodes.toMachine ordinaryBitPrefixCodes)
 
 /-- Domination of the universal semimeasure with the opaque `BitPrefixSentences` argument
 discharged by the concrete Boolean-prefix constructor.  The semimeasure's from-below
@@ -746,7 +747,7 @@ Paper node: `thm:dus` -/
 theorem lic_domination_universalSemimeasure_ofIndependentAtoms
     {DP : DeductiveProcess}
     (I : IndependentBitAtoms DP)
-    (C : BigSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i)))
+    (C : MachineSentenceCodes (fun i ↦ bitPrefixSentence I.atom (bitStringEnumeration i)))
     {M : LowerSemicomputableContinuousSemimeasure}
     (A : DUSApproximationPresentation M
       (bitPrefixSentencesOfIndependentAtoms I C))

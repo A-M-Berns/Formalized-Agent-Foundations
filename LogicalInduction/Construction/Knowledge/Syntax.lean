@@ -343,9 +343,11 @@ Neither structure below renders `def:ec`.  Both bound the *numeric value* of the
 is what a poly-time writer of the name's **symbols** does not bound: `def:ec` meters the time
 to write an object out (tex:753-755, explicitly at tex:1931-1933), so a name of `poly n`
 symbols and magnitude up to `2^poly(n)` is admissible.  They are retained only as the foils
-that make the write-out classes provably wider — `not_polyNatCodes_ack`,
-`bigDigits_two_pow_not_polyNatCodes`, `digitMachineCodes_nest_not_polyMachineCodes` — and
-carry no `Paper node` line for that reason.  The paper's class for machine names is
+that make the write-out classes provably wider.  "Wider" is proved in both halves for
+machine names: the inclusion `PolyMachineCodes.toDigitMachineCodes` below, and its
+strictness `digitMachineCodes_nest_not_polyMachineCodes`.  For naturals the same pair is
+`BigDigits.of_polyFueled` and `bigDigits_two_pow_not_polyNatCodes`, with
+`not_polyNatCodes_ack` the Ackermann exhibit.  Neither foil carries a `Paper node` line.  The paper's class for machine names is
 `DigitMachineCodes` (`Framework/Emission/WriteOut.lean`); for naturals it is `BigDigits`. -/
 
 /-- Whole-value polynomial naming of a machine sequence: the machine's *source* number
@@ -355,23 +357,20 @@ structure PolyMachineCodes (machines : ℕ → Nat.Partrec.Code) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code (fun n => Nat.Partrec.Code.sourceNat (machines n))
 
+/-- The inclusion half of "`DigitMachineCodes` is provably wider": a whole-value name of a
+machine sequence is in particular a digit-metered one, since a poly-fueled value bound gives
+poly-fueled access to that value's digits (`BigDigits.of_polyFueled`).  With
+`digitMachineCodes_nest_not_polyMachineCodes` for the converse failure, the inclusion is
+strict. -/
+lemma PolyMachineCodes.toDigitMachineCodes {machines : ℕ → Nat.Partrec.Code}
+    (h : PolyMachineCodes machines) : DigitMachineCodes machines :=
+  BigDigits.of_polyFueled h.code_poly
+
 /-- Whole-value polynomial naming of a natural-number sequence.  A strictness foil for
 `BigDigits`; see the section note. -/
 structure PolyNatCodes (values : ℕ → ℕ) where
   code : Nat.Partrec.Code
   code_poly : PolyFueled code values
-
-/-- The claim name is assembled from the machine code, the schema and the input by
-`Nat.pair` and `+1` alone — nothing reads the value back — so digit access to the parts
-gives digit access to the whole.  This is the write-out rendering of the paper's e.c.
-requirement: polynomially many digits, value free to be exponential. -/
-lemma computationClaimSentence_digits
-    (kind : ComputationClaimKind) (schema : ArithmeticSemisentence 1)
-    {input : ℕ → ℕ} (hinput : BigDigits input) :
-    DigitSentenceCodes (fun n => computationClaimSentence ⟨kind, schema, input n⟩) := by
-  have hclaim := (BigDigits.const kind.godelCode).natPair
-    ((BigDigits.const (Encodable.encode schema)).natPair hinput)
-  exact ((BigDigits.const 1).natPair hclaim).succ.of_eq (fun _ => rfl)
 
 /-- Write-out access to the packed `⟨⌜mₙ⌝, xₙ⟩` machine/input name.
 
@@ -380,33 +379,16 @@ lemma computationClaimSentence_digits
 sentence* as the compact numeral `binNumeral (haltingClaimInput (machines n) (inputs n))`,
 whose token run this certificate is what supplies (`representedHaltingClaims`,
 `Construction/Knowledge/Endpoints.lean`).  So `hm` and `hi` are load-bearing on the `def:ec`
-obligation there, not merely on a computability step. -/
+obligation there, not merely on a computability step.
+
+Both classes are the **machine** readings (`Framework/Machine/WriteOutMachine.lean`): the
+emitter that consumes this certificate is `machineTokenStream_binNumeral_const`, itself a
+`Complexity.FP` transduction.  The fuel-metered originals certify here through
+`DigitMachineCodes.toMachine` / `BigDigits.toMachine`. -/
 lemma haltingClaimInput_digits {machines : ℕ → Nat.Partrec.Code} {inputs : ℕ → ℕ}
-    (hm : DigitMachineCodes machines) (hi : BigDigits inputs) :
-    BigDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
-  (hm.natPair hi).of_eq (fun _ => rfl)
-
-/-! ### Write-out certificates for the tag-keyed claim families
-
-The two lemmas below are the write-out certificates of the two `theoremDP` event-tag rows
-(`eventAtom` tags `0`–`3`, `Construction/Paper/ComputationDP.lean`), whose sentence families
-`haltingClaimSentence` and `boundedHaltingClaimSentence` are the atoms of `theoremDP`'s
-stage worlds.  They are the API facts for those rows and are kept alongside them.
-
-The `thm:halts` / `thm:loops` endpoints are stated over the single market `paperDP` at the
-day-indexed schema instead, and their sentences are emitted by
-`representedClaimSentence_bigSentenceCodes` (`Construction/Knowledge/Endpoints.lean`); the bounded
-lane is arranged the same way. -/
-
-/-- Write-out certificate for the unbounded-halting tag row. -/
-lemma haltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
-    DigitSentenceCodes (fun n => haltingClaimSentence (input n)) :=
-  computationClaimSentence_digits .halting universalHaltingSchema hinput
-
-/-- Write-out certificate for the bounded-halting tag row. -/
-lemma boundedHaltingClaimSentence_digits {input : ℕ → ℕ} (hinput : BigDigits input) :
-    DigitSentenceCodes (fun n => boundedHaltingClaimSentence (input n)) :=
-  computationClaimSentence_digits .boundedHalting universalBoundedHaltingSchema hinput
+    (hm : MachineMachineCodes machines) (hi : MachineDigits inputs) :
+    MachineDigits (fun n => haltingClaimInput (machines n) (inputs n)) :=
+  (MachineDigits.natPair hm hi).of_eq (fun _ => rfl)
 
 /-! ## The narrow background-theory translation premise -/
 

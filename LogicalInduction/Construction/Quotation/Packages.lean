@@ -65,6 +65,15 @@ premise.
 
 Disclosed choices: `dd:quote-code` for code-indexing, `dd:mesh` for `thm:ccee`'s
 slack-carrying product, `dd:fuel` for the emission certificates.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -400,7 +409,7 @@ structure RationalQuoteCode (T : ArithmeticTheory) (value : ℕ → ℚ) where
     T ⊢ universalQuotePos/[↑(Nat.pair code (Nat.pair n (Encodable.encode r)))]
   neg_complete : ∀ (n : ℕ) (r : ℚ), value n < r →
     T ⊢ universalQuoteNeg/[↑(Nat.pair code (Nat.pair n (Encodable.encode r)))]
-  threshold_poly : LUV.RpnThresholdCodeSeq (fun n => arithmeticThresholdLUV code n)
+  threshold_poly : LUV.MachineThresholdCodeSeq (fun n => arithmeticThresholdLUV code n)
 
 namespace RationalQuoteCode
 
@@ -414,7 +423,7 @@ noncomputable def luv {T : ArithmeticTheory} {value : ℕ → ℚ}
 /-- The quoted threshold family has a uniform polynomial threshold-syntax emitter, which is
 the certificate every portfolio built over `luv` consumes. -/
 lemma poly {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (q : RationalQuoteCode T value) : LUV.RpnThresholdCodeSeq q.luv :=
+    (q : RationalQuoteCode T value) : LUV.MachineThresholdCodeSeq q.luv :=
   q.threshold_poly
 
 /-- Every completed-theory world values the threshold family at the represented rational. -/
@@ -513,17 +522,17 @@ lemma numericQuoteAffine_magnitude (H : ℕ → EF) (Y : ℕ → LUV)
 /-- Polynomial emission of the concrete target-minus-threshold mesh. -/
 noncomputable def numericQuoteAffine_polySequence
     (H : ℕ → EF) (Y : ℕ → LUV)
-    (hH : PGenerableWeighting H) (hY : LUV.RpnThresholdCodeSeq Y) :
+    (hH : PGenerableWeighting H) (hY : LUV.MachineThresholdCodeSeq Y) :
     AffineCombination.PolySequence (numericQuoteAffine H Y) := by
-  let base := LUV.expectAffineSeq_polySequence Y hY.toBig
+  let base := LUV.expectAffineSeq_polySequence Y hY
   exact {
     termCount := base.termCount
     coefficient := fun z ↦ EF.mul (EF.const (-1)) (base.coefficient z)
     sentence := base.sentence
     termCount_poly := base.termCount_poly
     const_poly := hH.polySeg
-    coefficient_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-1))
+    coefficient_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-1))
       base.coefficient_poly
     sentence_poly := base.sentence_poly
     terms_eq := by
@@ -601,11 +610,13 @@ def currentPriceFeature (φ : ℕ → Sentence) (n : ℕ) : EF :=
   EF.price (φ n) n
 
 lemma currentPriceFeature_generated (φ : ℕ → Sentence)
-    (hφ : BigSentenceCodes φ) :
+    (hφ : MachineSentenceCodes φ) :
     PGenerableWeighting (currentPriceFeature φ) := by
   exact {
-    polySeg := (BigSpliceStream.serialize_price (hφ) PolyFueled.id
-      PolyFueled.id).of_eq (fun n ↦ by simp [currentPriceFeature])
+    polySeg := (MachineSpliceStream.serialize_price hφ
+      (sf := fun n : ℕ => n) UnaryRuler.id
+      (MachineDigits.ofUnaryRuler (f := fun n : ℕ => n)
+        UnaryRuler.id)).of_eq (fun n ↦ by simp [currentPriceFeature])
     rank_le := by intro n; simp [currentPriceFeature]
     closed := by intro n ρ V; simp [currentPriceFeature]
   }
@@ -615,7 +626,7 @@ lemma currentPriceFeature_generated (φ : ℕ → Sentence)
 emits it as a closed polynomial feature. -/
 noncomputable def currentPriceNumericTarget
     {P : History} {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ)) :
     NumericQuoteTarget P (fun n ↦ (value n : ℝ)) where
@@ -632,7 +643,7 @@ current rational price and the literal price-feature/threshold affine mesh. -/
 noncomputable def currentPriceExpectationQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
@@ -651,14 +662,15 @@ def currentExpectationFeature (X : ℕ → LUV) (n : ℕ) : EF :=
   (LUV.expectAffineSeq X n).priceFeature n
 
 lemma currentExpectationFeature_generated (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) :
+    (hX : LUV.MachineThresholdCodeSeq X) :
     PGenerableWeighting (currentExpectationFeature X) := by
-  let hmesh := LUV.expectAffineSeq_polySequence X hX.toBig
+  let hmesh := LUV.expectAffineSeq_polySequence X hX
   have hdiag : PolyFueled
       (Nat.Partrec.Code.id.pair Nat.Partrec.Code.id)
       (fun n : ℕ ↦ Nat.pair n n) := PolyFueled.id.pair PolyFueled.id
   exact {
-    polySeg := BigSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp hdiag)
+    polySeg := MachineSpliceStream.of_eq (hmesh.priceFeature_polySeg.comp
+      (f := fun n : ℕ => Nat.pair n n) (UnaryRuler.of_polyFueled hdiag))
       (fun n ↦ by simp [currentExpectationFeature])
     rank_le := by
       intro n
@@ -681,7 +693,7 @@ lemma currentExpectationFeature_denote (X : ℕ → LUV)
 feature. -/
 noncomputable def currentExpectationNumericTarget
     {P : History} {T : ArithmeticTheory} {value : ℕ → ℚ}
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect P n = (value n : ℝ)) :
     NumericQuoteTarget P (fun n ↦ (value n : ℝ)) where
@@ -700,7 +712,7 @@ expectation computation. -/
 noncomputable def currentExpectationQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     {value : ℕ → ℚ} (Q : QuotationTheoryPresentation DP T)
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect P n = (value n : ℝ))
     (hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1) :
@@ -782,13 +794,14 @@ noncomputable def gatedComplementAffine_polySequence
     termCount := fun _ ↦ 1
     coefficient := fun z ↦ EF.mul (EF.const (-scale)) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const scale) hH.polySeg
-    coefficient_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-scale))
-      (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
+    termCount_poly := UnaryRuler.const 1
+    const_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const scale) hH.polySeg
+    coefficient_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-scale))
+      (hH.polySeg.comp (f := fun z : ℕ => z.unpair.1)
+        (UnaryRuler.unpairFst))
+    sentence_poly := MachineSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedComplementAffine]
     const_rank := by
@@ -824,12 +837,13 @@ noncomputable def gatedAffirmativeAffine_polySequence
     termCount := fun _ ↦ 1
     coefficient := fun z ↦ EF.mul (EF.const scale) (H z.unpair.1)
     sentence := fun z ↦ quote z.unpair.1
-    termCount_poly := ⟨Nat.Partrec.Code.const 1, PolyFueled.const 1⟩
-    const_poly := BigSpliceStream.serialize_const 0
-    coefficient_poly := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const scale)
-      (hH.polySeg.comp PolyFueled.left)
-    sentence_poly := BigSentenceCodes.ofPolySentenceCodes
+    termCount_poly := UnaryRuler.const 1
+    const_poly := MachineSpliceStream.serialize_const 0
+    coefficient_poly := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const scale)
+      (hH.polySeg.comp (f := fun z : ℕ => z.unpair.1)
+        (UnaryRuler.unpairFst))
+    sentence_poly := MachineSentenceCodes.ofPolySentenceCodes
       ⟨cq.comp Nat.Partrec.Code.left, hcq.comp PolyFueled.left⟩
     terms_eq := by intro n; simp [gatedAffirmativeAffine]
     const_rank := by intro n; simp [gatedAffirmativeAffine]
@@ -930,13 +944,13 @@ concrete one-share portfolios; the outward sum is normalized by `1/2`. -/
 noncomputable def introspectionIntervalQuoteOfCode
     {P : History} {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
+    (hδinv : MachineRatCodes (fun n ↦ 1 / δ n))
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -1003,7 +1017,7 @@ noncomputable def introspectionIntervalQuoteOfCode
     width_tendsto_zero := hδzero
     probability_bounds := hab
     quote := q.sentence
-    quote_codes := BigSentenceCodes.ofPolySentenceCodes q.sentence_poly
+    quote_codes := MachineSentenceCodes.ofPolySentenceCodes q.sentence_poly
     reflected := by
       intro n v hv
       exact q.reflected Q n v hv
@@ -1319,7 +1333,7 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
     (Q : QuotationTheoryPresentation DP T)
     (market : MarketComputation P)
     (p : ℚ) (width : ℕ → ℚ)
-    (hwidthInv : DigitRatCodes (fun n ↦ 1 / width n))
+    (hwidthInv : MachineRatCodes (fun n ↦ 1 / width n))
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0)) :
     ParadoxResistanceQuote P DP p := by
@@ -1329,8 +1343,8 @@ noncomputable def paradoxResistanceQuoteOfDiagonal
   let pFeature : ℕ → EF := AffineCombination.constantRatFeature p
   let lower : ℕ → EF := ctsIndFeature width pFeature price
   let upper : ℕ → EF := ctsIndFeature width price pFeature
-  have hquote : BigSentenceCodes quote.sentence :=
-    BigSentenceCodes.ofPolySentenceCodes quote.sentence_poly
+  have hquote : MachineSentenceCodes quote.sentence :=
+    MachineSentenceCodes.ofPolySentenceCodes quote.sentence_poly
   have hprice : PGenerableWeighting price :=
     currentPriceFeature_generated quote.sentence hquote
   have hpFeature : PGenerableWeighting pFeature :=
@@ -1518,7 +1532,7 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction)
     (X Y : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hX : LUV.MachineThresholdCodeSeq X) (hY : LUV.MachineThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -1528,7 +1542,6 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
     ExpectedFutureExpectationQuote P DP f X Y := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  have hspec := Classical.choose_spec (Classical.choose_spec f.exists_clock)
   have quote_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
@@ -1541,19 +1554,19 @@ noncomputable def expectedFutureExpectationQuoteOfRepresentation
     exact (X k).expect_mem_Icc P m (hP m)
   have hhigh0 : Tendsto (fun n ↦ (X n).expect P (f n) - (Y n).expect P (f n))
       atTop (𝓝 0) := by
-    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
+    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f
       (DeferralFibre.pairedExpectationFeature X)
-      (DeferralFibre.pairedExpectationFeature_paired X hX.toBig) hHmem Y hY
+      (DeferralFibre.pairedExpectationFeature_paired X hX) hHmem Y hY
       (fun m k hfk v hv ↦ by
         rw [DeferralFibre.pairedExpectationFeature_denote, ← hfk]
         exact reflected k v hv) hP
     refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) h
     rw [DeferralFibre.pairedExpectationFeature_denote]
     rfl
-  have hcrossX0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    X hX.toBig source_valued hP
-  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY.toBig quote_valued hP
+  have hcrossX0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f
+    X hX source_valued hP
+  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f
+    Y hY quote_valued hP
   let raw := LUV.expectDifferenceAffine X Y
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -1611,7 +1624,7 @@ noncomputable def futurePriceQuoteOfRepresentation
     {P : History} {DP : DeductiveProcess}
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : MachineSentenceCodes φ) (hY : LUV.MachineThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     [IsLogicalInductor P DP]
@@ -1619,7 +1632,6 @@ noncomputable def futurePriceQuoteOfRepresentation
     FuturePriceQuote P DP f φ Y := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  have hspec := Classical.choose_spec (Classical.choose_spec f.exists_clock)
   have quote_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ y, v.ValuesAt (Y n) y := by
     intro n v hv
@@ -1632,7 +1644,7 @@ noncomputable def futurePriceQuoteOfRepresentation
     exact hP m (φ k)
   have hhigh0 : Tendsto (fun n ↦ P (f n) (φ n) - (Y n).expect P (f n))
       atTop (𝓝 0) := by
-    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f hspec
+    have h := DeferralFibre.numericQuote_deferred_tendsto_zero hworld f
       (DeferralFibre.pairedPriceFeature φ)
       (DeferralFibre.pairedPriceFeature_paired φ hφ) hHmem Y hY
       (fun m k hfk v hv ↦ by
@@ -1641,14 +1653,14 @@ noncomputable def futurePriceQuoteOfRepresentation
     refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) h
     rw [DeferralFibre.pairedPriceFeature_denote]
     rfl
-  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Y hY.toBig quote_valued hP
+  have hcrossY0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f
+    Y hY quote_valued hP
   let sentenceFamily := AffineCombination.sentenceAffine φ
   let quoteFamily := LUV.expectAffineSeq Y
   let raw : ℕ → AffineCombination := fun n ↦
     (sentenceFamily n).add (quoteFamily n).neg
   let hsentence := AffineCombination.sentenceAffine_polySequence φ hφ
-  let hquote := LUV.expectAffineSeq_polySequence Y hY.toBig
+  let hquote := LUV.expectAffineSeq_polySequence Y hY
   let hraw := hsentence.add hquote.neg
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -1717,9 +1729,9 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
-    (hX : LUV.RpnThresholdCodeSeq X)
-    (hZ : LUV.RpnThresholdCodeSeq Z)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hX : LUV.MachineThresholdCodeSeq X)
+    (hZ : LUV.MachineThresholdCodeSeq Z)
+    (hZ' : LUV.MachineThresholdCodeSeq Z')
     (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
@@ -1733,7 +1745,6 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
     ConditionalExpectationQuote P DP f X Z Z' w := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  have hspec := Classical.choose_spec (Classical.choose_spec f.exists_clock)
   let W := Classical.choose weight_generable
   let hWgen := Classical.choose_spec weight_generable
   let hW := hWgen.toWeighting
@@ -1755,12 +1766,12 @@ noncomputable def conditionalExpectationQuoteOfRepresentation
       ∃ z, v.ValuesAt (Z' n) z := by
     intro n v hv
     exact ⟨(X n).expect P (f n) * w (f n), right_reflected n v hv⟩
-  have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f hspec
+  have hhigh0 := DeferralFibre.conditional_deferred_tendsto_zero hworld f
     X Z Z' hX hZ hZ' w W hW hWgen.denote weight_mem slack slack_tendsto hsemantic hP
-  have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z hZ.toBig Zvalued hP
-  have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec
-    Z' hZ'.toBig Z'valued hP
+  have hcrossZ0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f
+    Z hZ Zvalued hP
+  have hcrossZ'0 := DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f
+    Z' hZ' Z'valued hP
   let raw := LUV.expectDifferenceAffine Z Z'
   let family : ℕ → AffineCombination := fun n ↦
     (raw n).scale (EF.const (1 / 2))
@@ -1839,11 +1850,11 @@ noncomputable def selfTrustQuoteOfRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : BigSentenceCodes φ)
-    (hδinv : DigitRatCodes (fun n ↦ 1 / δ n))
+    (hφ : MachineSentenceCodes φ)
+    (hδinv : MachineRatCodes (fun n ↦ 1 / δ n))
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.BigThresholdCodeSeq A)
-    (hB : LUV.BigThresholdCodeSeq B)
+    (hA : LUV.MachineThresholdCodeSeq A)
+    (hB : LUV.MachineThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
@@ -1856,10 +1867,10 @@ noncomputable def selfTrustQuoteOfRepresentation
     SelfTrustQuote P DP f φ δ p A B := by
   have hP : ∀ n s, 0 ≤ P n s ∧ P n s ≤ 1 :=
     fun n s => IsLogicalInductor.price_mem_Icc (P := P) (DP := DP) n s
-  have hspec := Classical.choose_spec (Classical.choose_spec f.exists_clock)
   let δp : ℕ → ℚ := fun z ↦ δ (min z.unpair.2 z.unpair.1)
-  have hδpInv : DigitRatCodes (fun z ↦ 1 / δp z) :=
-    hδinv.comp (Classical.choose_spec PairedWeighting.clampedSource_polyFueled)
+  have hδpInv : MachineRatCodes (fun z ↦ 1 / δp z) :=
+    hδinv.comp (UnaryRuler.of_polyFueled
+      (Classical.choose_spec PairedWeighting.clampedSource_polyFueled))
   have hδpPos : ∀ z, 0 < δp z := fun z ↦ delta_pos _
   let pF : ℕ → EF := fun z ↦ pFeature (min z.unpair.2 z.unpair.1)
   have hpF : PairedWeighting pF :=
@@ -1913,17 +1924,17 @@ noncomputable def selfTrustQuoteOfRepresentation
     (B n).expectApprox (P (f n)) (n + 1) - (B n).expect P (f n)
   have hhigh0 : Tendsto highGap atTop (𝓝 0) := by
     have hkey := DeferralFibre.selfTrust_deferred_tendsto_zero
-      (P := P) (DP := DP) hworld f hspec φ hφ p probability_mem pF hpF hpFmem
+      (P := P) (DP := DP) hworld f φ hφ p probability_mem pF hpF hpFmem
       hpDenote G hG hGmem A B hA hB hsemantic hP
     refine Tendsto.congr' (Eventually.of_forall fun n ↦ ?_) hkey
     rw [hGdenote (f n) n (f.lt n).le]
   have hcrossA0 : Tendsto crossAGap atTop (𝓝 0) := by
     simpa only [crossAGap, LUV.expect] using
-      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec A hA
+      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f A hA
         Avalued hP
   have hcrossB0 : Tendsto crossBGap atTop (𝓝 0) := by
     simpa only [crossBGap, LUV.expect] using
-      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f hspec B hB
+      DeferralFibre.crossPrecision_deferred_tendsto_zero hworld f B hB
         Bvalued hP
   have hpCrossB0 : Tendsto (fun n ↦ (p n : ℝ) * crossBGap n) atTop (𝓝 0) := by
     apply bdd_le_mul_tendsto_zero (b := (0 : ℝ)) (B := (1 : ℝ))
@@ -1941,8 +1952,8 @@ noncomputable def selfTrustQuoteOfRepresentation
   let hpOrig : PGenerableWeighting pOrig := hp.toWeighting
   let pNeg : ℕ → EF := fun n ↦ EF.mul (EF.const (-1)) (pOrig n)
   have hpNeg : PGenerableWeighting pNeg := {
-    polySeg := BigSpliceStream.serialize_mul
-      (BigSpliceStream.serialize_const (-1))
+    polySeg := MachineSpliceStream.serialize_mul
+      (MachineSpliceStream.serialize_const (-1))
       hpOrig.polySeg
     rank_le := by intro n; simp [pNeg, EF.rank, hpOrig.rank_le n]
     closed := by intro n ρ V; simp [pNeg, EF.denoteWith, hpOrig.closed n ρ V]
@@ -2050,7 +2061,7 @@ theorem lic_expected_future_expectations_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction)
     (X Y : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hX : LUV.MachineThresholdCodeSeq X) (hY : LUV.MachineThresholdCodeSeq Y)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
@@ -2067,7 +2078,7 @@ theorem lic_no_expected_net_update_ofRepresentation
     {P : History} {DP : DeductiveProcess} [IsLogicalInductor P DP]
     (f : DeferralFunction)
     (φ : ℕ → Sentence) (Y : ℕ → LUV)
-    (hφ : BigSentenceCodes φ) (hY : LUV.RpnThresholdCodeSeq Y)
+    (hφ : MachineSentenceCodes φ) (hY : LUV.MachineThresholdCodeSeq Y)
     (reflected : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       v.ValuesAt (Y n) (P (f n) (φ n)))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2085,9 +2096,9 @@ theorem lic_no_expected_net_update_conditional_ofRepresentation
     (X Z Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
-    (hX : LUV.RpnThresholdCodeSeq X)
-    (hZ : LUV.RpnThresholdCodeSeq Z)
-    (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hX : LUV.MachineThresholdCodeSeq X)
+    (hZ : LUV.MachineThresholdCodeSeq Z)
+    (hZ' : LUV.MachineThresholdCodeSeq Z')
     (slack : ℕ → ℝ) (slack_tendsto : Tendsto slack atTop (𝓝 0))
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory DP →
       ∃ x, v.ValuesAt (X n) x)
@@ -2113,10 +2124,10 @@ theorem lic_self_trust_ofRepresentation
     (φ : ℕ → Sentence) (δ p : ℕ → ℚ) (A B : ℕ → LUV)
     (delta_pos : ∀ n, 0 < δ n)
     (probability_mem : ∀ n, 0 ≤ p n ∧ p n ≤ 1)
-    (hφ : BigSentenceCodes φ) (hδ : DigitRatCodes δ)
+    (hφ : MachineSentenceCodes φ) (hδ : MachineRatCodes δ)
     (pFeature : ℕ → EF) (hp : GeneratedRatFeature P p pFeature)
-    (hA : LUV.BigThresholdCodeSeq A)
-    (hB : LUV.BigThresholdCodeSeq B)
+    (hA : LUV.MachineThresholdCodeSeq A)
+    (hB : LUV.MachineThresholdCodeSeq B)
     (confidence_reflected : ∀ n (v : PCWorld),
       v.ConsistentWithTheory DP →
         v.ValuesAt (B n) (ctsInd (δ n) (P (f n) (φ n)) (p n)))
@@ -2140,7 +2151,7 @@ theorem lic_expectations_of_probabilities_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    {value : ℕ → ℚ} (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, P n (φ n) = (value n : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2156,7 +2167,7 @@ theorem lic_iterated_expectations_ofCode
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
     {value : ℕ → ℚ} (X : ℕ → LUV)
-    (hX : LUV.RpnThresholdCodeSeq X)
+    (hX : LUV.MachineThresholdCodeSeq X)
     (q : RationalQuoteCode T value)
     (hexact : ∀ n, (X n).expect P n = (value n : ℝ))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :
@@ -2172,13 +2183,13 @@ theorem lic_introspection_ofCode
     {DP : DeductiveProcess} {T : ArithmeticTheory}
     (Q : QuotationTheoryPresentation DP T)
     (P : History) [IsLogicalInductor P DP]
-    (φ : ℕ → Sentence) (hφ : BigSentenceCodes φ)
+    (φ : ℕ → Sentence) (hφ : MachineSentenceCodes φ)
     (a b δ : ℕ → ℚ)
     (lowerFeature : ℕ → EF)
     (hlower : GeneratedRatFeature P a lowerFeature)
     (upperFeature : ℕ → EF)
     (hupper : GeneratedRatFeature P b upperFeature)
-    (hδ : DigitRatCodes δ)
+    (hδ : MachineRatCodes δ)
     (hδpos : ∀ n, 0 < δ n)
     (hδzero : Tendsto (fun n ↦ (δ n : ℝ)) atTop (𝓝 0))
     (hab : ∀ n, 0 ≤ a n ∧ a n ≤ 1 ∧ 0 ≤ b n ∧ b n ≤ 1)
@@ -2211,7 +2222,7 @@ theorem lic_paradox_resistance_ofDiagonal
     (P : History) [IsLogicalInductor P DP]
     (market : MarketComputation P)
     (p : ℚ) (hp0 : 0 < p) (hp1 : p < 1)
-    (width : ℕ → ℚ) (hwidth : DigitRatCodes width)
+    (width : ℕ → ℚ) (hwidth : MachineRatCodes width)
     (hwidthPos : ∀ n, 0 < width n)
     (hwidthZero : Tendsto (fun n ↦ (width n : ℝ)) atTop (𝓝 0))
     (hworld : ∀ n, ∃ v : PCWorld, v.ConsistentWith (DP.D n)) :

@@ -506,13 +506,13 @@ def paperExactProductLUVSeq [𝗜𝚺₁ ⪯ T] (X W : PaperLUVSeq T) : PaperLUV
     compile_paperProductSource (X.luv n).formula (W.luv n).formula _ _
       (X.compiles n) (W.compiles n)
   structural :=
-    PolyArithmeticSourceSeq.exs
-      (PolyArithmeticSourceSeq.and
-        (PolyArithmeticSourceSeq.castLE (by omega) X.structural)
-        (PolyArithmeticSourceSeq.exs
-          (PolyArithmeticSourceSeq.and
-            (PolyArithmeticSourceSeq.castLE (by omega) W.structural)
-            (PolySegStream.constList _))))
+    MachineArithmeticSourceSeq.exs
+      (MachineArithmeticSourceSeq.and
+        (MachineArithmeticSourceSeq.castLE (by omega) X.structural)
+        (MachineArithmeticSourceSeq.exs
+          (MachineArithmeticSourceSeq.and
+            (MachineArithmeticSourceSeq.castLE (by omega) W.structural)
+            (MachineTokenStream.const _))))
 
 /-- The `n`-th member of the exact product family is the pointwise product LUV — the
 field projection, in `simp` normal form. -/

@@ -6,7 +6,7 @@ import Complexitylib.Classes.P.Cobham.Internal
 /-!
 # Polynomial-time streaming folds
 
-`MachineEfficientTrader` (`def:ec`, `Framework/Criterion.lean`) asks for a `Complexity.FP`
+`EfficientlyComputable` (`def:ec`, `Framework/Criterion.lean`) asks for a `Complexity.FP`
 function of the *unary* day whose output word `strategyOfOutput` decodes to the trader's
 strategy.  Transporting a trader across a **syntactic** rewrite of that serialized stream —
 freezing a price leaf, splicing a conditioning block — therefore means exhibiting the
@@ -183,7 +183,7 @@ lemma foldlBits_mem_FP {A B W S : List Bool → List Bool}
 /-- **The composite that makes the machine's own input available to a transduction.**
 
 A transported trader's output function is `fun x => G (pair (F x) x)`: the original
-`MachineEfficientTrader` witness `F` produces the stream, and `G` rewrites it with the raw
+`EfficientlyComputable` witness `F` produces the stream, and `G` rewrites it with the raw
 input still beside it.  Since the input is `unaryDay n`, this is how the rewrite learns the
 day `n` — as the length of `sndBlock`.
 

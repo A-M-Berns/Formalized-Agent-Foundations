@@ -278,8 +278,14 @@ the settled design decisions and the correspondence table, and points here for p
 - **`safe-lake.sh build X 2>&1 | tee log | tail -40` reports `tail`'s exit status**, so a failed
   build looks like exit 0 (and a background-task notice says so too). Redirect
   (`> log 2>&1; echo EXIT=$?`) and grep the log for `^error`.
-- **`LUV.RpnThresholdCodes`/`RpnThresholdCodeSeq` are `def`s**, so `h.comp` dot-notation fails;
-  ascribe to the unfolded `RpnSentenceCodes _` first. The index shift Seq→single is reindexing
+- **The four `LUV.*ThresholdCodes(Seq)` classes are `def`s**, not structures, so dot notation on
+  them resolves only by unfolding: `h.comp` finds `RpnSentenceCodes.comp` / `BigSentenceCodes.comp`
+  where the elaborator can whnf the class away (as `S.threshold_poly.comp hquery` in
+  `Construction/LUV/Syntax.lean` does, at both meters), and fails where it cannot — ascribe to
+  the unfolded `RpnSentenceCodes _` / `BigSentenceCodes _` first when it does. Widening a
+  consumer from `RpnThresholdCodes` to `BigThresholdCodes` is usually a *deletion*: the wrapper
+  `BigSentenceCodes.ofRpnSentenceCodes h` becomes `h`, and a `sentence_poly` field that was
+  built from the hypothesis becomes the hypothesis. The index shift Seq→single is reindexing
   along `m ↦ Nat.pair 0 m` (`(PolyFueled.const 0).pair PolyFueled.id`); there is no lemma
   going the other way. In `Construction/LUV/SourceCodec.lean`, `dyadicPaperLUV`/`unitFracPaperLUV` live
   near the END of the file — client examples at concrete LUVs must be placed after them.

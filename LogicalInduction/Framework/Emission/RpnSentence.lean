@@ -9,7 +9,7 @@ to balance — skewed formulas inflate exponentially — so a sentence block is 
 Polish-notation symbol run, one token per formula symbol, and a polynomial token count
 meters formula *symbols* rather than the magnitude of a single pair code.  This is a cost
 measure on the emission surface; the relation of the certificate class to the paper's
-runtime class is `EfficientlyComputable.toMachine` (`dd:fuel`).
+runtime class is `PolyFueledTrader.toEfficientlyComputable` (`dd:fuel`).
 
 Symbol alphabet of a sentence block:
 

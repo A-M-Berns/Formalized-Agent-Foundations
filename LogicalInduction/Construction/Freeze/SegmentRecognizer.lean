@@ -35,7 +35,7 @@ be a relaxed match for one pattern and an exact match for another — hence the 
 branch falls through to the tail rather than to `Y`.
 
 `ifParseFull_mem_FP` is the decision the freeze asks for, at the full grammar and with no
-condition on the target; `FreezeOracle.machine_lic_iff_of_finiteSupport` consumes it.
+condition on the target; `FreezeOracle.lic_iff_of_finiteSupport` consumes it.
 `segMatch_iff_accepts` and `ifParseFull_mem_FP` are in `AxiomAudit.lean`.
 -/
 

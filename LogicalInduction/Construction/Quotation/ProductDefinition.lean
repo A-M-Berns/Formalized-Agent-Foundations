@@ -48,7 +48,7 @@ factors pins `productAtom n r` to exactly `x·c > r`, in both directions — i.e
 
 Indexing the factors by `⟨k,i⟩` rather than by an encoded rational is what makes the
 process's own emitter *derivable* from the two families' `def:ec` certificates
-(`LUV.RpnThresholdCodeSeq`, via `RpnSentenceCodes.primrec`) instead of an extra
+(`LUV.MachineThresholdCodeSeq`, via `RpnSentenceCodes.primrec`) instead of an extra
 caller-facing datum: the schema's threshold queries land on exactly the packed index
 `⟨n,⟨k,i⟩⟩` that certificate is stated at.
 
@@ -80,7 +80,7 @@ residue, replacing the mesh route's slack disclosure with a strictly milder one.
 The main results are `productLUV_valuesAt` and `productLUV_valuesAt_union` (exact reflection,
 with no positivity hypothesis on the weight), `productExtensionWorld_holds_schema` and
 `productDefDP_union_consistentWithTheory` (non-vacuity by construction, extending the base
-process's own world), `productLUV_rpnThresholdCodeSeq` (`def:ec` for the product family), and
+process's own world), `productLUV_machineThresholdCodeSeq` (`def:ec` for the product family), and
 the closed form `lic_no_expected_net_update_conditional_exact_productExtension` with its
 `_nonvacuous` companion.
 
@@ -93,6 +93,15 @@ the tag-ownership lemmas below.
 extension of the base process computable; through it the `Quotation/` lane also reaches
 `Properties/Conditioning.lean`'s `DeductiveProcess.union` vocabulary, which the product
 schema is stated over.
+**The criterion binder below is `def:lic` at the paper's own quantifier.**  Every result here that consumes an
+exploiting trader takes `[IsLogicalInductor P DP]`, and the trader is certified at `EfficientlyComputable`:
+it is assembled from `AffineCombination.PolySequence`'s machine-metered emission fields
+through `PolySequence.buyBelowTrader_ec` (`Properties/AffineCoherence.lean`), which has no
+fuel-class form: the bridge `BigSpliceStream.toMachine` runs fuel to machine, and no map
+back is proved or claimed.  The
+calibration is stated at `def:ec` in `Framework/Affine.lean`, and the `_unconditional`
+endpoints discharge the criterion through `LIA_is_logical_inductor`.
+
 -/
 
 namespace LogicalInduction
@@ -130,7 +139,7 @@ def ProductAtomFresh (X : ℕ → LUV) : Prop :=
 /-! ### Freshness by construction
 
 For a *genuinely arbitrary* e.c. family, `ProductAtomFresh` must be assumed: a
-`LUV.RpnThresholdCodeSeq` certificate constrains only the size of the emitted threshold
+`LUV.MachineThresholdCodeSeq` certificate constrains only the size of the emitted threshold
 blocks, never which atoms they mention, so a poly-fueled emitter is free to emit tag-`3`
 atoms.  For everything this repository constructs the condition is a *theorem*, and the
 lemmas below are what discharge it: the constructed process's stages are images of
@@ -191,7 +200,7 @@ lemma theoremDP_atomCodes_ne_productTag (T : ArithmeticTheory) [T.Δ₁]
 
 /-! ## Mesh indices for the schema's two factors
 
-`def:ec`'s block interface (`LUV.RpnThresholdCodeSeq`) emits `⌜Xₙ > i/k⌝` at the packed
+`def:ec`'s block interface (`LUV.MachineThresholdCodeSeq`) emits `⌜Xₙ > i/k⌝` at the packed
 index `⟨n,⟨k,i⟩⟩`.  The schema only ever needs *nonnegative* factors, and every nonnegative
 rational is some `i/k`, so indexing the factors that way costs nothing and buys the
 process's emitter outright. -/
@@ -631,15 +640,16 @@ lemma productLUV_polyThresholdCodeSeq : LUV.PolyThresholdCodeSeq productLUV := b
 /-- **`def:ec` for the quoted product.**  The block form used by
 `ConditionalExpectationQuote.left_codes`.
 Paper node: `def:ec`, `thm:ccee` -/
-lemma productLUV_rpnThresholdCodeSeq : LUV.RpnThresholdCodeSeq productLUV :=
-  LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq productLUV_polyThresholdCodeSeq
+lemma productLUV_machineThresholdCodeSeq : LUV.MachineThresholdCodeSeq productLUV :=
+  RpnSentenceCodes.toMachine
+    (LUV.RpnThresholdCodeSeq.ofPolyThresholdCodeSeq productLUV_polyThresholdCodeSeq)
 
 /-! ## Computability of the definitional-extension process
 
 `def:dedproc` asks only for computability — no clock — which is the whole reason the exact
 product is reachable here at all.  And because the schema's two factors are indexed the way
 `def:ec`'s block interface already indexes thresholds, the process's own emitter is
-*derived* from `LUV.RpnThresholdCodeSeq X` and `LUV.RpnThresholdCodeSeq W` — the very
+*derived* from `LUV.MachineThresholdCodeSeq X` and `LUV.MachineThresholdCodeSeq W` — the very
 premises the mesh endpoint already carries — rather than assumed as a new caller-facing
 certificate.  `RpnSentenceCodes.primrec` turns the `∃`-shaped block certificate into the
 whole-value naming program a process definition consumes. -/
@@ -655,7 +665,7 @@ lemma meshIndexRat_prim : Primrec meshIndexRat :=
 /-- **The schema enumerator is computable**, with its two threshold emitters read off the
 source families' own `def:ec` block certificates at the packed index `⟨n,⟨k,i⟩⟩`. -/
 lemma productDefSentence_computable {X W : ℕ → LUV}
-    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
+    (hX : LUV.MachineThresholdCodeSeq X) (hW : LUV.MachineThresholdCodeSeq W) :
     Computable (productDefSentence X W) := by
   classical
   refine Computable.encode_iff.mp ?_
@@ -683,11 +693,11 @@ lemma productDefSentence_computable {X W : ℕ → LUV}
   -- The two threshold emitters, derived from the `def:ec` block certificates.
   have heX : Primrec fun e : ℕ => Encodable.encode
       ((X e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.1)) := by
-    have h := (RpnSentenceCodes.primrec hX).comp (Primrec₂.natPair.comp hn hzs)
+    have h := (MachineSentenceCodes.primrec hX).comp (Primrec₂.natPair.comp hn hzs)
     simpa only [Nat.unpair_pair, meshIndexRat] using h
   have heW : Primrec fun e : ℕ => Encodable.encode
       ((W e.unpair.1).gt (meshIndexRat e.unpair.2.unpair.2.unpair.2.unpair.2)) := by
-    have h := (RpnSentenceCodes.primrec hW).comp (Primrec₂.natPair.comp hn hzt)
+    have h := (MachineSentenceCodes.primrec hW).comp (Primrec₂.natPair.comp hn hzt)
     simpa only [Nat.unpair_pair, meshIndexRat] using h
   -- The fresh product atom's code.
   have heP : Primrec fun e : ℕ =>
@@ -768,7 +778,7 @@ lemma productDefSentence_computable {X W : ℕ → LUV}
 two source families' own `def:ec` threshold certificates.
 Paper node: `def:dedproc`, `thm:ccee` -/
 lemma productDefDP_computable {X W : ℕ → LUV}
-    (hX : LUV.RpnThresholdCodeSeq X) (hW : LUV.RpnThresholdCodeSeq W) :
+    (hX : LUV.MachineThresholdCodeSeq X) (hW : LUV.MachineThresholdCodeSeq W) :
     ComputableDeductiveProcess (productDefDP X W) := by
   have hlist : Computable (productStageList X W) := by
     have hstep : Computable fun p : ℕ × List Sentence =>
@@ -828,7 +838,7 @@ theorem lic_no_expected_net_update_conditional_exact
     (f : DeferralFunction) (Z' : ℕ → LUV) (w : ℕ → ℚ)
     (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
     (weight_generable : PGenerableRat P w)
-    (hX : LUV.RpnThresholdCodeSeq X) (hZ' : LUV.RpnThresholdCodeSeq Z')
+    (hX : LUV.MachineThresholdCodeSeq X) (hZ' : LUV.MachineThresholdCodeSeq Z')
     (source_valued : ∀ n (v : PCWorld),
       v.ConsistentWithTheory (B.union (productDefDP X W)) → ∃ x, v.ValuesAt (X n) x)
     (weight_valued : ∀ n (v : PCWorld),
@@ -840,7 +850,7 @@ theorem lic_no_expected_net_update_conditional_exact
     (fun n ↦ (productLUV n).expect P n) ≈ₙ fun n ↦ (Z' n).expect P n :=
   lic_no_expected_net_update_conditional_ofRepresentation
     (DP := B.union (productDefDP X W)) f X productLUV Z' w
-    weight_mem weight_generable hX productLUV_rpnThresholdCodeSeq hZ'
+    weight_mem weight_generable hX productLUV_machineThresholdCodeSeq hZ'
     (fun _ => 0) tendsto_const_nhds source_valued
     (fun n v hv x hx => ⟨x * (w (f n) : ℝ),
       productLUV_valuesAt_union hv n hx (weight_valued n v hv), by simp⟩)
@@ -916,7 +926,7 @@ Paper node: `thm:ccee` -/
 noncomputable def exactProductDP (X : ℕ → LUV) : DeductiveProcess :=
   (theoremDP T).union (productDefDP X (exactWeightLUV T f w weight_mem weight_generable))
 
-lemma exactProductDP_computable {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+lemma exactProductDP_computable {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
     ComputableDeductiveProcess (exactProductDP T f w weight_mem weight_generable X) :=
   DeductiveProcessComputation.union_toComputable
     (theoremDP_computable T).nonemptyComputation.some
@@ -925,7 +935,7 @@ lemma exactProductDP_computable {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq 
         ).nonemptyComputation.some
 
 /-- The extended process's own exact market program. -/
-noncomputable def exactProductMarket {X : ℕ → LUV} (hX : LUV.RpnThresholdCodeSeq X) :
+noncomputable def exactProductMarket {X : ℕ → LUV} (hX : LUV.MachineThresholdCodeSeq X) :
     MarketComputation (liaHistory (exactProductDP T f w weight_mem weight_generable X)) :=
   liaMarketComputation _ (exactProductDP_computable T f w weight_mem weight_generable hX)
 
@@ -993,7 +1003,7 @@ slack; `weight_valued` (a) `RationalQuoteCode.reflected` through the lifted pres
 `LogicalInduction/README.md`, and in `scripts/coverage-classification.md`.
 Paper node: `thm:ccee` -/
 theorem lic_no_expected_net_update_conditional_exact_productExtension
-    (X : ℕ → LUV) (hX : LUV.RpnThresholdCodeSeq X)
+    (X : ℕ → LUV) (hX : LUV.MachineThresholdCodeSeq X)
     (source_valued : ∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) →
       ∃ x, v.ValuesAt (X n) x)
     (atom_fresh : ProductAtomFresh X)
@@ -1009,7 +1019,8 @@ theorem lic_no_expected_net_update_conditional_exact_productExtension
   haveI : IsLogicalInductor
       (liaHistory (exactProductDP T f w weight_mem weight_generable X))
       (exactProductDP T f w weight_mem weight_generable X) :=
-    LIA_is_logical_inductor _ (exactProductDP_computable T f w weight_mem weight_generable hX)
+    LIA_is_logical_inductor _
+      (exactProductDP_computable T f w weight_mem weight_generable hX)
   -- The quotation presentation, lifted from the base process to the extension.
   have hQ : QuotationTheoryPresentation
       (exactProductDP T f w weight_mem weight_generable X) T :=
@@ -1024,7 +1035,7 @@ theorem lic_no_expected_net_update_conditional_exact_productExtension
     (P := liaHistory (exactProductDP T f w weight_mem weight_generable X))
     (DP := exactProductDP T f w weight_mem weight_generable X)
     f X productLUV _ w weight_mem weight_generable_extended hX
-    productLUV_rpnThresholdCodeSeq
+    productLUV_machineThresholdCodeSeq
     (conditionalExpectationQuoteCode T
       (exactProductMarket T f w weight_mem weight_generable hX) f X hX w
       weight_generable_extended weight_mem).poly
@@ -1072,13 +1083,13 @@ lemma harmonicWeight_not_constant : ¬ ∀ m n : ℕ, 1 / ((m : ℚ) + 1) = 1 / 
 
 /-- Every **value-bounded** rational code sequence is `def:ece` against every market —
 the derived corollary of the general write-out constructor
-`PGenerableRat.ofDigitRatCodes`, kept for callers who already hold a `PolyRatCodes`
+`PGenerableRat.ofMachineRatCodes`, kept for callers who already hold a `PolyRatCodes`
 certificate.  It is strictly weaker: `PolyRatCodes` excludes the paper's own `δ n = 2⁻ⁿ`
 (`digitRatCodes_two_pow_inv_not_polyRatCodes`), which the general constructor admits
 (`pGenerableRat_two_pow_inv`). -/
 lemma PGenerableRat.ofPolyRatCodes {q : ℕ → ℚ} (hq : PolyRatCodes q) (P : History) :
     PGenerableRat P q :=
-  PGenerableRat.ofDigitRatCodes (DigitRatCodes.ofPolyRatCodes hq) P
+  PGenerableRat.ofMachineRatCodes (DigitRatCodes.ofPolyRatCodes hq).toMachine P
 
 /-- **N±.**  The obstruction-closure demonstration's whole premise set is jointly
 satisfiable, by an index-varying construction rather than a stand-in witness: the `def:ec`
@@ -1099,7 +1110,7 @@ theorem lic_no_expected_net_update_conditional_exact_productExtension_nonvacuous
     ∃ (w : ℕ → ℚ) (weight_mem : ∀ n, 0 ≤ w n ∧ w n ≤ 1)
       (weight_generable : PGenerableRat (liaHistory (theoremDP T)) w) (X : ℕ → LUV),
       ¬ (∀ m n, w m = w n) ∧
-      LUV.RpnThresholdCodeSeq X ∧
+      LUV.MachineThresholdCodeSeq X ∧
       (∀ n (v : PCWorld), v.ConsistentWithTheory (theoremDP T) → ∃ x, v.ValuesAt (X n) x) ∧
       ProductAtomFresh X ∧
       PGenerableRat (liaHistory (exactProductDP T f w weight_mem weight_generable X)) w := by

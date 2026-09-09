@@ -1,5 +1,5 @@
 import LogicalInduction.Construction.Budgeter
-import LogicalInduction.Framework.MachineEfficiency
+import LogicalInduction.Framework.Efficiency
 import LogicalInduction.Properties.FinitePerturbations
 
 /-!
@@ -22,11 +22,11 @@ makes the uniform cutoff executable from the expressible-feature syntax (`dd:dsl
 
 The main results are `trading_firm_dominance_of_covered` (the covered-index core),
 `trading_firm_dominance` (`lem:tfdom` at the machine quantifier) and its fuel-certified
-corollary `trading_firm_dominance_of_ec`.  `trading_firm_dominance` is consumed by
+corollary `trading_firm_dominance_of_polyFueled`.  `trading_firm_dominance` is consumed by
 `Construction/LIA.lean`; the operational and trade-list forms are consumed by
 `Construction/LIAComputation.lean` and `Construction/LIACompiler.lean`.
 
-The class quantified over is `MachineEfficientTrader` — `def:ec` at the paper's own
+The class quantified over is `EfficientlyComputable` — `def:ec` at the paper's own
 quantifier — and the enumeration it is read through, together with the coverage theorem
 `exists_enumeratedTrader_eq`, comes from `Construction/MachineTraderEnumeration.lean`.
 
@@ -1079,27 +1079,12 @@ theorem trading_firm_dominance_of_covered
     apply (le_div_iff₀ hweight).2
     linarith
 
-/-- **Trading Firm Dominance** (`lem:tfdom`): if any machine-efficient trader exploits the
-market then the Trading Firm exploits it too.  The class is `MachineEfficientTrader`
+/-- **Trading Firm Dominance** (`lem:tfdom`): if any efficiently computable trader exploits the
+market then the Trading Firm exploits it too.  The class is `EfficientlyComputable`
 (`def:ec`), and the enumeration covers all of it.  Its instance at the fuel certificates
-(`dd:fuel`) is `trading_firm_dominance_of_ec`.
+(`dd:fuel`) is `trading_firm_dominance_of_polyFueled`.
 Paper node: `lem:tfdom` -/
 theorem trading_firm_dominance
-    (DP : DeductiveProcess) (P : History)
-    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
-    (Q : ℕ → Sentence → ℚ)
-    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
-    (Tr : Trader) (hTr : MachineEfficientTrader Tr)
-    (hEx : Tr.Exploits P DP) :
-    (tradingFirmTrader DP Q).Exploits P DP :=
-  trading_firm_dominance_of_covered DP P hP Q hQ Tr
-    (exists_enumeratedTrader_eq Tr hTr) hEx
-
-/-- The fuel-certified corollary of Trading Firm Dominance.  The primary statement is
-`trading_firm_dominance`, over the machine class (`def:ec`); this is the instance the fuel
-certificates (`dd:fuel`) feed, through `EfficientlyComputable.toMachine`.
-Paper node: `lem:tfdom` -/
-theorem trading_firm_dominance_of_ec
     (DP : DeductiveProcess) (P : History)
     (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
     (Q : ℕ → Sentence → ℚ)
@@ -1107,6 +1092,21 @@ theorem trading_firm_dominance_of_ec
     (Tr : Trader) (hTr : EfficientlyComputable Tr)
     (hEx : Tr.Exploits P DP) :
     (tradingFirmTrader DP Q).Exploits P DP :=
-  trading_firm_dominance DP P hP Q hQ Tr hTr.toMachine hEx
+  trading_firm_dominance_of_covered DP P hP Q hQ Tr
+    (exists_enumeratedTrader_eq Tr hTr) hEx
+
+/-- The `dd:fuel` corollary of Trading Firm Dominance.  The primary statement is
+`trading_firm_dominance`, over `def:ec` itself; this is the instance a client holding a fuel
+certificate uses, through `PolyFueledTrader.toEfficientlyComputable`.
+Paper node: `lem:tfdom` -/
+theorem trading_firm_dominance_of_polyFueled
+    (DP : DeductiveProcess) (P : History)
+    (hP : ∀ day phi, 0 ≤ P day phi ∧ P day phi ≤ 1)
+    (Q : ℕ → Sentence → ℚ)
+    (hQ : ∀ day phi, P day phi = (Q day phi : ℝ))
+    (Tr : Trader) (hTr : PolyFueledTrader Tr)
+    (hEx : Tr.Exploits P DP) :
+    (tradingFirmTrader DP Q).Exploits P DP :=
+  trading_firm_dominance DP P hP Q hQ Tr hTr.toEfficientlyComputable hEx
 
 end LogicalInduction

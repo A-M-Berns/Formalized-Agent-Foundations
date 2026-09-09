@@ -39,8 +39,9 @@ Contents:
 * **Bounded verification tables** — `boundedAny` / `boundedNone` and their poly-fuel
   closure, for the repeatable-ROI construction's "has this component already been
   certified" question.
-* **The `dd:fuel` model card** — calibration, closure, inhabitation, separation, and the
-  open lower calibration.
+* **The `dd:fuel` model card** — calibration, closure, inhabitation, separation, the open
+  lower calibration, and the machine-side emission calculus that stands beside it in
+  `Framework/Machine/`.
 
 Where this is consumed: the §4 property files (`Properties/NonDogmatism.lean`,
 `Properties/Support/Exploitation.lean`, `Properties/OccamBounds.lean`) build their exploiting
@@ -1733,34 +1734,207 @@ interpreter `Nat.Partrec.Code.evaln`; the calibration facts are:
   (`Nat.Partrec.Code.evaln_output_can_exceed_fuel`), which is why `PolyFueled` carries a
   polynomial bound on the *output* separately from the fuel.
 
-**Lower calibration — OPEN.**  Everything above bounds the class from *above*
-(`PolyFueled.primrec`), inhabits it by real algorithms, and separates it from below by
-output size (`not_polyFueled_two_pow`).  There is **no lower-calibration theorem**: nothing
-here proves that every trader computable by a polynomial-time machine in the paper's
-`def:ec` sense is `EfficientlyComputable`.  The inclusion paper-e.c. ⊆ `EfficientlyComputable`
-is undischarged, and it is not free.  The concrete obstruction is the digit calculus's
-inverse-operation ceiling: bignum arithmetic on digit streams closes under *forward*
-poly-carry digit recurrences, but provably not under inverse operations (`sqrt`, `unpair`,
-big-divisor `div`), whose carries exceed the poly-bounded-state requirement of
-`PolyFueled.prec` — even though those operations are trivially poly-time on a binary-tape
-machine.  The full statement of that ceiling is in the docstrings of
-`Construction/Freeze/Compiler.lean`.
+**Lower calibration — OPEN, on a workspace bound.**  Everything above bounds the class
+from *above* (`PolyFueled.primrec`), inhabits it by real algorithms, and separates it from
+below by output size (`not_polyFueled_two_pow`).  There is **no lower-calibration theorem**:
+nothing here proves that every trader computable by a polynomial-time machine in the paper's
+`def:ec` sense is `PolyFueledTrader`.  The inclusion paper-e.c. ⊆
+`PolyFueledTrader` is undischarged, and what stands in its way is not a missing
+compiler.
 
-**Upper calibration — PROVED.**  `EfficientlyComputable.toMachine`
-(`Framework/MachineEfficiency.lean`) shows every trader this class certifies is
-`MachineEfficientTrader`: ordinary machine polynomial time, through `Complexity.FP`.  The
+At a *fixed* code `c`, `PolyFueled c f` says `f` is computed by a fixed finite `evaln`
+program in which every value ever handled is at most polynomial in the input — `O(log n)`
+bits — because `evaln`'s `n ≤ k` guard caps every value passed to a sub-code by the fuel
+while `IsPolyBounded` caps the fuel and the output; and the code being fixed makes the nest
+of `prec` and `rfind'` loops constant-depth.  That is a **poly-time, `O(log n)`-workspace**
+device.  `Complexity.FP` is poly-time with **polynomial** workspace.  So the inclusion says,
+in substance, that every polynomial-time write-out over tally inputs is a logspace
+write-out: a P-versus-`L`-flavoured containment, a complexity-theoretic conjecture rather
+than a lemma, and equally not refutable here.  A Turing-machine → `Nat.Partrec.Code`
+compiler carrying fuel accounting would **not** close it — even a perfect compiler yields a
+code whose `evaln` run needs fuel at least as large as the configuration's numeric *value*,
+which is `2 ^ Θ(poly n)` for a tape window of polynomial length.
+
+The bound is visible in the one loop combinator the class has.  `PolyFueled.prec` carries
+the side condition `hst : IsPolyBounded (fun m => st m.unpair.1 m.unpair.2)` — the iterated
+state's *numeric value* stays polynomial — where the machine-side bounded-iteration
+combinator `FPFold.foldlBits_mem_FP` carries `hbnd`, a bound on the iterated state's
+*length*.  `Framework/Machine/WriteOutMachine.lean` puts those two signatures side by side
+in Lean and states the same calibration at the write-out classes.  Naming the digit
+calculus's inverse operations (`sqrt`, `unpair`, big-divisor `div`) as the obstruction
+understates it: all three are logspace-computable, and what blocks the converse is the
+accumulator bound itself rather than a gap in the digit toolkit.
+
+**Upper calibration — PROVED.**  `PolyFueledTrader.toEfficientlyComputable`
+(`Framework/Efficiency.lean`) shows every trader this class certifies is
+`EfficientlyComputable`: ordinary machine polynomial time, through `Complexity.FP`.  The
 witness is a real compiler — `Nat.Partrec.Code.evaln` into a `complexitylib` register
 machine, with concrete register and step bounds — not a simulation axiom.  So the fuel
 model is a *sufficient certification device* for the paper's class rather than a
 substitution for it (`dd:fuel`).
 
-**What the open lower calibration costs.**  Nothing paper-facing depends on it: the
-construction quantifies over the machine class directly.  It is still wanted for the two
-*closure* statements whose conclusion is itself the criterion — `thm:scon` and `thm:ifp` —
-because those transport an arbitrary trader backwards across a market change and certify
-the transported trader in the fuel calculus.  Restating them at the machine class needs
-machine-class closure under those trader translations: a direct `Complexity.FP`
-transport theorem for the strategy serialization, rather than a converse inclusion. -/
+**What the open lower calibration costs.**  Nothing, paper-facing or internal.  There is
+one criterion class, `IsLogicalInductor` over `EfficientlyComputable`, and the fuel calculus
+appears only on the *producing* side of every proof, so no statement anywhere needs a trader
+to carry a fuel certificate.  The two places that could want one are the *closure* statements
+whose conclusion is itself the criterion, `thm:scon` and `thm:ifp`, because those transport an
+arbitrary trader backwards across a market change; each is proved at the machine class by a
+direct `Complexity.FP` transport theorem for the strategy serialization rather than by a
+converse inclusion (`CondStep.conditionedTranslation_preserves_ec` and its eventual twin;
+`lic_iff_of_finiteSupportPerturbation_ofPatches`).  No fuel-class layer of `thm:scon` is
+published, because closure of *this* calculus under the conditioning translation is a fact
+about the certification device and not a claim of the paper's.  The open direction is
+therefore a calibration question about `dd:fuel` and nothing else depends on it.
+
+**The machine side carries its own emission calculus.**  The `Complexity.FP` readings of the
+write-out ladder are stated and closed in `Framework/Machine/`, so an efficiency argument can
+run at `def:ec`'s own class with no fuel certificate anywhere in it.  Six classes:
+`MachineTokenStream`, `MachineSentenceCodes` and `MachineSpliceStream`, and the three value
+classes `MachineDigits`, `MachineMachineCodes` and `MachineRatCodes`, all in
+`Framework/Machine/WriteOutMachine.lean`.  Two closure suites mirror the fuel-metered ones
+one for one — `MachineSentenceCodes.*` (`Framework/Machine/SentenceMachine.lean`) against
+`BigSentenceCodes.*`, and `MachineSpliceStream.*` (`Framework/Machine/SpliceMachine.lean`)
+against `BigSpliceStream.*` — and two capstones close the ladder at the trader,
+`EfficientlyComputable.ofSingleTradeBlocksBig` and `.ofTradeBlocksBig`, both over
+`MachineSpliceStream.ec`.  `APITests/LogicalInduction.lean` exercises the pair, certifying a
+client's trader at `EfficientlyComputable` with no fuel certificate in the derivation, and
+`Framework/Machine/Witnesses.lean` inhabits each of the six classes by a family that varies
+with the day.
+
+**A fuel parameter has two machine renderings.**  Which one a combinator takes says what it
+does with the parameter.  Where a `PolyFueled c f` hypothesis *reindexes* — a dispatch test,
+a segment count, a day map — the machine reading is a **unary ruler**,
+`fun z ↦ List.replicate (f z.length) false ∈ Complexity.FP`, supplied from a fuel
+certificate by `UnaryRuler.of_polyFueled` and at the identity by `UnaryRuler.id`.  Where the
+parameter's *value is written into the stream*, the machine reading is `MachineDigits f`,
+which admits values exponential in the day and is therefore strictly more general;
+`MachineDigits.ofUnaryRuler` is the bridge from the first reading to the second.  That is why
+the fuel side's value-bounded/write-out pairs collapse into one machine combinator each
+(`payload` and `bigPayload` into `MachineSpliceStream.bigPayload`, `serialize_const_comp` and
+`serialize_const_write` into `MachineSpliceStream.serialize_const_write`).
+
+**`MachineDigits` is not the pointwise translation of `BigDigits`.**  `BigDigits` is
+poly-fueled random *access* to a value's base-four digits; `MachineDigits x` is the one-token
+write-out `MachineTokenStream (fun n ↦ [x n])` — the emitted block, which is what a splicing
+emitter consumes and what `BigTokenStream.ofBigDigits` produces.  The random-access spelling
+has no consumer and no cheap bridge, so the two calibrations differ in what they name as well
+as in how they meter it.  The forward inclusion `BigDigits.toMachine` runs in the same
+direction as every other bridge regardless.
+
+**The value lane's one missing mirror has been written.**  `MachineDigits.natPair` — and
+through it the `MachineRatCodes.toMachineDigits` mirror of `DigitRatCodes.toBigDigits` —
+needs base-four *multiplication* on digit words, the unary route being unsound for a class
+whose values may be exponential in the day.  `DigitFP.mulW`
+(`Framework/Machine/DigitArithFP.lean`) supplies it: a Horner loop over the multiplier's
+digits under `Cobham.iterate_mem_FP`, with the running product truncated at a ruler built
+from the two operands, which is what keeps the iterated state bounded.
+
+**Where that gap bites is the producer side, not the mirror.**  Nothing inside the machine
+suite consumes the two lemmas — every machine combinator is stated at the hypothesis it
+actually needs — but their *fuel-side originals* are load-bearing, and a producer whose
+write-out certificate is `DigitRatCodes` or the `DigitMachineCodes`/`BigDigits` pair reaches
+the emitted sentence through exactly them.
+`DigitRatCodes.toBigDigits` was consumed by `ratCodeFeature_generated`
+(`Framework/Expectations.lean`, hence `def:ece` and `GeneratedRatFeature`),
+`PairedWeighting.ofRatCodes` and `DeferralFibre.ctsInd`
+(`Construction/Quotation/DeferralFibre.lean`), `sentenceMinusProbability_polySequence`
+(`Properties/TimelyLearning.lean`, hence `thm:perkno`), `PolyPositiveWidths`
+(`Properties/Calibration.lean`) and `MarketQuoteCodes.lean`.  **All of those now take
+`MachineRatCodes` and cross by `.toMachineDigits`**, so `thm:ref`, `thm:st` and `thm:perkno`
+carry the machine data premise, and so does `def:ece` itself, `ratCodeFeature_generated`
+included.  That one is the layering-sensitive case: it needs
+`MachineSpliceStream.serialize_const_write`, which `Framework/Expectations.lean` can see
+only because the `LUV` threshold section lives in the leaf
+`Framework/Machine/ThresholdMachine.lean` rather than in
+`Framework/Machine/SentenceMachine.lean`, leaving `Expectations` free to import
+`SpliceMachine`.  So `ratCodeFeature_generated` and `PGenerableRat.ofMachineRatCodes` take
+the machine class like the rest.
+
+`BigDigits.natPair`'s machine twin `MachineDigits.natPair` is what
+`haltingClaimInput_digits` (`Construction/Knowledge/Syntax.lean`), `boundedArg_digits` and
+`conClaimArg_digits` (`Construction/Knowledge/Endpoints.lean`) now run, hence what
+`thm:halts`, `thm:loops`, `thm:dontwait` and `thm:pac` run.  (`thm:incons` is the one
+§4.9/§4.10 endpoint that escapes the pairing: its argument is the machine's source number
+alone.)  What those endpoints spend the premise on is the compact numeral emitter, not
+`natPair`; the fuel emitter reads `len4` and `dig4` off the certificate's random-access
+programs.  `MachineDigits` names the emitted block instead, and the block need not be the
+canonical `natDigits4` run, so `len4` — which fixes `binNumeral`'s shape exactly — is not
+recoverable from the emitted word's length.  What closed the gap is
+`machineTokenStream_binNumeral_const` (`Construction/LUV/SourceCodec.lean`), built on
+`TokenFold.Strip`, an `FP` canonicalization of a digit word; ruler-indexed random access
+into the emitted word was expected too and turned out unnecessary, because the emitter reads
+the canonical digits in order and the strip client emits them most significant first by
+prepending.  The **trader
+lane is closed** regardless.  No §4 endpoint concluding an asymptotic price statement builds its own
+trader — they route through `AffineCombination.PolySequence` and
+`PolySequence.buyBelowTrader_ec`, the single funnel — and that structure's three emission
+fields are machine-metered (`MachineSpliceStream` / `MachineSentenceCodes`), so
+`buyBelowTrader_ec` certifies at `EfficientlyComputable` and every result consuming it takes
+`[IsLogicalInductor P DP]`.  `PolyTradeEmulatable`, `PGenerableWeighting`,
+`PairedWeighting`, `GeneratedRatFeature` and `FeedbackTraderEmission` are machine-metered for
+the same reason: their witnesses are assembled out of
+`PolySequence.priceFeature_polySeg`.
+
+`termCount_poly` is machine-metered too, so **no field of `PolySequence` is fuel-metered**.
+Its machine reading is the unary ruler `UnaryRuler termCount`
+(`Framework/Machine/Ruler.lean`), and the demanding case is the derived counts: the
+persistence, triangular, mesh, gradual, bias-run and scheduled lanes build theirs on the
+fuel side by `segPrefix_polyFueled` / `segLocate_polyFueled`.
+The machine twins are `UnaryRuler.segPrefix` and `UnaryRuler.segLocate`, and neither mimics
+the fuel side's random-access prefix table: both are the *same* streaming fold
+`MachineTokenStream.concatVar` already runs (`TokenFold.concatUnaryPair_mem_FP`), run at a
+ruler instead of at a stream — appending one segment ruler's output per block gives a word
+whose length is the prefix sum, and appending one mark per block that still fits gives a word
+whose length is the locator (the blocks that fit are an initial segment, so counting them and
+scanning down for the last of them agree).  The polynomial cap is taken once, by
+`Cobham.output_length_poly_of_mem_FP` on the segment ruler at the largest paired index the
+loop reaches, never compounded inside the loop.
+
+The device that unblocked the move was **`MachineTokenStream.primrec`**
+(`Construction/MachineTraderEnumeration.lean`).  `Complexity.FP ⊆ Primrec` is not available —
+`complexitylib` carries no computability bridge at all — and three consumers read primitive
+recursiveness straight off a fuel certificate's `BigTokenStream.primrec`:
+`AffineCombination.PolySequence.primrec` and `PolyTradeEmulatable.trades_primrec`
+(the settlement and historical-maturity compilers) and `BigSpliceStream.feature_primrec`
+(`PGenerableRat.computable`, `def:ece`).  The machine twin is proved through the trader
+enumeration's own coverage argument instead: an `FP` witness names a description and a clock
+(`exists_desc_computesInTime_clock`), `machineTokens` at that fixed index *is* the described
+machine's budgeted run, and `primrec_machineTokens` is that run's primitive recursiveness.
+`UnaryRuler.primrec` is the count-level twin, by the same bridge but reading the raw output
+word's *length*: `machineTokens` returns `bitsToDigits` of that word and so loses its length
+modulo three, while a ruler's length is its value.
+No general `FP ⊆ Primrec` is claimed.
+
+**No canonical endpoint takes a fuel- or value-metered emission premise**, printed or through
+a boundary structure: the sentence, threshold, rational, digit, arithmetic-source, Occam and
+conditioning lanes are all stated at the machine classes.  What is still metered in this
+calculus on the emission side is *by design* and binds
+no endpoint premise: the two ROI maturity schedules carry `check_poly` (a schedule
+predicate, not a reindexer and not emitted data), and `DigitRatCodes`, `BigDigits`,
+`DigitMachineCodes`,
+`PolyMachineCodes`, `PolyNatCodes` and `PolyArithmeticSourceSeq` survive as the fuel-side
+producer routes and as the subjects of this file's strictness proofs.
+
+**The two premises that are not emission premises are metered at the machine model too, on
+the input that carries the bound.**  `DeferralFunction.graph_fp`
+(`Properties/SelfTrust.lean`) and `FeedbackTruth.FeedbackTruthComputation.computes`
+(`Construction/Statistics/FeedbackTruth.lean`) render the paper's own *output-sensitive*
+conditions — `f(n)` computable in time polynomial in `f(n)` (tex:1243), `Th(φ_{f(n)})`
+computable in `O(f(n+1))` time (tex:1251).  `Complexity.FP` meters the length of its input,
+so it has no form of either condition *of a machine handed the day alone* — but it has one
+of a machine handed the **unary pair**, whose length dominates the value: the deferral
+function's *graph* `f n = m` is decided in `Complexity.FP` on the unary `⟨n, m⟩`, and the
+feedback value codes are `MachineDigits` read at `⟨k, f (k+1)⟩`.  The gap recorded above is
+therefore **not** live on these two: no `evaln` clock appears in either statement, and the
+`def:ec` row of `scripts/coverage-classification.md` is `exact`.  Three of the moves are
+**trades** rather than pure strengthenings and are recorded as such — at `thm:obu`, `thm:dus`
+and `thm:ob` the exploiting trader is certified at `EfficientlyComputable`, which has no
+fuel-class form, so the data premises weaken and the criterion premise strengthens together,
+which is `def:ec` on both sides as the paper writes it.
+
+None of this is a converse.  Every bridge runs fuel → machine, every machine combinator builds
+a machine certificate out of machine certificates, and the lower calibration above stays
+open. -/
 
 /-- Polynomials do not majorize `2 ^ n`: the fuel model's size bound genuinely bites
 (`def:ec` separation substrate). -/
