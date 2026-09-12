@@ -212,9 +212,10 @@ sentence.
 
 ## Errata
 
-The erratum file is [`notes/paper-errata.md`](notes/paper-errata.md): twelve source
-defects D1–D12 found on the first reading, several confirmed or corrected by the codex
-review (`notes/codex-review-2026-09-04.md`).  In brief:
+The erratum file is [`notes/paper-errata.md`](notes/paper-errata.md): twelve source defects
+D1–D12 found on the first reading, several confirmed or corrected by the codex review
+(`notes/codex-review-2026-09-04.md`), and four more (D13–D16) found while formalizing.  In
+brief:
 
 * **D1** Definition 1's strictness clause compares `uᵢ(Π(Γˢ))` with itself; read
   `uᵢ(Π(Γˢ)) > uᵢ(Π(Γ))`.
@@ -234,11 +235,29 @@ review (`notes/codex-review-2026-09-04.md`).  In brief:
   the bound needs the deviator's action independent of the punishers' randomization.
 * **D9** Lemma 21: `Γ'ₘ = Γₘ` for `Γ'ₘ = Γₖ`, and "`Γˢ'ʳᵉᵈ` is isomorphic to `Γˢ'ʳᵉᵈ`" for
   "… to `Γʳᵉᵈ`" in the concise restatement.
-* **D10** Definition 7 is named the *strict* problem but its body omits strictness
-  (RULING 7 open).
+* **D10** Definition 7 is named the *strict* problem but its body omits strictness —
+  RULING 7 (2026-09-12) reads "strict" into the carrier
+  (`Play.StrictPerfectCoordinationSPIDecision`).
 * **D11** Proposition 23 says "unilateral" in the omnilateral subsection; Lemma 19's
   discussion says "path dependence" for independence.
 * **D12** Theorem 15 as printed projects onto the strong Pareto frontier `PF(C(Γ))`, where
-  the projections need not exist; the paper's own remark is about `C(Γ)` (RULING 8 open).
+  the projections need not exist; the paper's own remark is about `C(Γ)`.  RULING 8
+  (2026-09-12) **defers** Theorem 15: no carrier until the projection reading is settled.
+* **D13** Definition 5's non-triviality clause is satisfied by every payoff shift of a
+  subset game, so the printed (unilateral) SPI decision problem is constant-true.  RULING
+  (2026-09-12): the carrier requires the reduced *action sets* to differ (`dd:nontrivial`);
+  the printed clause is carried alongside as `…Printed` with its triviality theorem.
+* **D14** Lemma 21's length bound `m ≤ k` on the reorganized chain is false; the bound is
+  not rendered and the wrappers carry the qualitative shape only.
+* **D15** Algorithm 2 line 3 prints `minimax(i, j)`, which is *player `j`'s* strategy; the
+  punisher must play her own coordinate `minimax(j, i)` (`Prog.algorithm2`).
+* **D16** Proposition 16's proof sketch writes `u(Π(Γˢ))` where Definition 6 requires
+  `uᵉ(Π(Aˢ, uˢ))`; `u` is not defined on token outcomes.  Notation only — the carrier
+  states the expectation with `uᵉ`.
 
-D5, D8, D10 and D12 change *statements* and are disclosures; the rest are proof-level.
+The `Level` column of `notes/paper-errata.md` is authoritative.  Statement-level and
+carried as **disclosures** at the Lean statements: **D1, D2, D5, D8, D10, D12, D13** (the
+list `KNOWLEDGE.md` keeps), together with **D15** at Algorithm 2.  Also statement-level but
+either printing typos or clauses simply not rendered: D7 (rendered on `supp Π(Γ)`), D9,
+D11 (Proposition 23), D14 (the `m ≤ k` bound).  D3, D4, D6 and D16 are proof- or
+notation-level only.

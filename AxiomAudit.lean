@@ -3890,6 +3890,8 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- the reassignment construction along Assumption 2's isomorphism, Proposition 12 in both
   -- directions and as the paper's iff; two-sided witnesses (Examples/DecisionWitnesses.lean).
   SafeParetoImprovements.Play.StrictPerfectCoordinationSPIDecision
+  SafeParetoImprovements.Game.ExactCopy SafeParetoImprovements.Game.ExactCopy.isomorphic
+  SafeParetoImprovements.Game.ExactCopy.u_map SafeParetoImprovements.Game.exactCopy_tokenCopy
   SafeParetoImprovements.TokenGame.reassign SafeParetoImprovements.Play.exists_tokenGame_ue_eq
   SafeParetoImprovements.Representatives.exists_mem_support_of_frequently
   SafeParetoImprovements.Representatives.exists_support_not_paretoOptimal_of_strictSPI
@@ -3903,6 +3905,7 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   -- errata D6/D7): conditional expectation on the play's fibers, Lemma 13, Corollary 14
   -- (formula, convexity, compactness, polytope clause) and the polytope substrate.
   SafeParetoImprovements.Representatives.condExp SafeParetoImprovements.Representatives.tokenValue
+  SafeParetoImprovements.Representatives.isFiniteMeasure_cond_fiber
   SafeParetoImprovements.Representatives.condExp_comp_play
   SafeParetoImprovements.Representatives.integral_eq_sum_condExp
   SafeParetoImprovements.Representatives.condExp_mem_feasible
@@ -3965,6 +3968,42 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Examples.conflictStrictToken_isSPI
   SafeParetoImprovements.Examples.conflictStrictToken_isStrictSPI
   SafeParetoImprovements.Examples.conflictStrictToken_ue_ne
+  -- Non-vacuity for §5.3 (SafeParetoImprovements/Examples/CharacterizationWitnesses.lean,
+  -- R5-F10/F11/F12): Lemma 13 and Corollary 14 applied on the conflict game, including to a
+  -- three-action perfect-coordination SPI that is NOT isomorphic to the reduction;
+  -- `achievable` shown to hold at least two points and to be wider than the constant
+  -- reassignments; and the hand-built play family (it reads the SIZE of the game it is
+  -- handed, so the token play is not a function of `Π(Γ)`) for which `condExp` is a strict
+  -- average `(½, ½)` of values the integrand never takes -- the disclosure that every BOOK
+  -- model of this development collapses `condExp` to a point evaluation.
+  SafeParetoImprovements.Examples.conflict_exists_reassignment
+  SafeParetoImprovements.Examples.conflict_achievable_eq_improvementSum
+  SafeParetoImprovements.Examples.conflict_isPolytope_achievable
+  SafeParetoImprovements.Examples.conflict_tokenValue
+  SafeParetoImprovements.Examples.conflict_tokenValue_strict
+  SafeParetoImprovements.Examples.conflict_tokenValue_plain_eq
+  SafeParetoImprovements.Examples.conflict_tokenValue_plain
+  SafeParetoImprovements.Examples.conflict_achievable_not_singleton
+  SafeParetoImprovements.Examples.conflict_plain_not_constant_ue
+  SafeParetoImprovements.Examples.conflictThree
+  SafeParetoImprovements.Examples.conflictThree_fresh
+  SafeParetoImprovements.Examples.conflictThreeToken
+  SafeParetoImprovements.Examples.conflictThreeToken_isSPI
+  SafeParetoImprovements.Examples.conflictThreeToken_not_isomorphic
+  SafeParetoImprovements.Examples.conflict_lemma13_at_three
+  SafeParetoImprovements.Examples.mixBase SafeParetoImprovements.Examples.mixTok
+  SafeParetoImprovements.Examples.mixPlay SafeParetoImprovements.Examples.mixRepresentatives
+  SafeParetoImprovements.Examples.mixRepresentatives_play_base
+  SafeParetoImprovements.Examples.mixRepresentatives_play_tok_true
+  SafeParetoImprovements.Examples.mixRepresentatives_play_tok_false
+  SafeParetoImprovements.Examples.mixBase_mem
+  SafeParetoImprovements.Examples.mixToken
+  SafeParetoImprovements.Examples.mixToken_ue_true SafeParetoImprovements.Examples.mixToken_ue_false
+  SafeParetoImprovements.Examples.mixToken_isSPI
+  SafeParetoImprovements.Examples.mixRepresentatives_fiber_base
+  SafeParetoImprovements.Examples.mixBase_mem_support
+  SafeParetoImprovements.Examples.condExp_genuine_average
+  SafeParetoImprovements.Examples.condExp_ne_values
   -- Beyond the paper (SafeParetoImprovements/Independence.lean, RULING 9,
   -- `dd:default-instr`): default instructions, participation independence, the
   -- information stage and foreknowledge independence, and their `Prog` witnesses.

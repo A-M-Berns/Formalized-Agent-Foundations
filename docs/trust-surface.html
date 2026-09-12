@@ -10056,7 +10056,7 @@ for all a ∈ A and consequently E [u(Π(Γs ))] = E [u(Π(Γ′ ))].</pre>
       <div class="ep-slide"><div class="ep-head"><code class="ep-name">SafeParetoImprovements.Representatives.exists_reassignment_condExp_eq</code><span class="staged proved">axiom-clean</span><span class="ep-file">SafeParetoImprovements/Characterization.lean</span></div><pre class="sig">theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
     (h : Γ.reduce.HasRoomOutside Γ.S) {T&#x27; : TokenGame Γ} (hT&#x27; : T&#x27;.IsSPI R.toPlay R.certainty) :
-    ∃ T : TokenGame Γ, Γ.reduce.Isomorphic T.game ∧ T.IsSPI R.toPlay R.certainty ∧
+    ∃ T : TokenGame Γ, Γ.reduce.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
       (∀ a ∈ R.support Γ, R.condExp Γ a (fun ω =&gt; T.ue (R.play T.game ω)) =
         R.condExp Γ a (fun ω =&gt; T&#x27;.ue (R.play T&#x27;.game ω))) ∧
       R.tokenValue Γ T = R.tokenValue Γ T&#x27;</pre></div>
@@ -10308,4 +10308,4 @@ symmetry), and Γ′m ∼Ξ Γ′m+1 by application of Assumption 2 such that
 
 <!-- trust-surface-papers: logical-induction=66 cartesian-frames=60 modal-agents=12 finite-factored-sets=88 factored-space-models=50 condensation=39 safe-pareto-improvements=26 -->
 
-<!-- trust-surface-sources: 9e17963d4be077c35260d62bd65633f77b36563d62bbe386cc6e33e0439eb573 -->
+<!-- trust-surface-sources: 574227410f5bab149a7b7a314c91bc57c5d9e5724261dc7d8b24f53164975748 -->

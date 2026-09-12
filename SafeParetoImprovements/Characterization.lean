@@ -5,6 +5,7 @@ import Mathlib.Analysis.Convex.Integral
 import Mathlib.Analysis.Convex.Topology
 import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.Bochner.ContinuousLinearMap
+import Mathlib.MeasureTheory.SpecificCodomains.Pi
 
 /-!
 # Characterizing perfect-coordination SPIs (§5.3): Lemma 13 and Corollary 14
@@ -25,12 +26,28 @@ stated on the support.
   same conditional expected payoff on every supported outcome, hence the same expected
   payoff.  The copy is of `reduce Γ`, not of `Γ`: Assumption 2 speaks only about reduced
   games, so the paper's "(Â, û) is isomorphic to Γ, thus by Assumption 2 …" needs
-  Assumption 1 to first move the play into the reduction (RULING 11).
-* **Corollary 14** (`Representatives.achievable_eq_sum`, `convex_achievable`,
-  `isCompact_achievable`): the set of expected payoffs safely achievable with perfect
-  coordination is the weighted Minkowski sum `∑ₐ P(Π(Γ) = a) • {y ∈ C(Γ) | y ≥ u(a)}` over
-  the outcomes of `Γ` (erratum D7: the paper's "convex polygon" is its `n = 2` wording; the
-  polytope clause is treated in `Polytope.lean`), a convex compact set.
+  Assumption 1 to first move the play into the reduction (RULING 11).  The relabeling is
+  *exact* — the paper prints `û(â) = u(a)` — so the isomorphism is exposed with scale `1`
+  and shift `0` (`Game.ExactCopy`), not merely as `Game.Isomorphic` (R5-F01/F07).
+* **Corollary 14** (`Representatives.achievable_eq_improvementSum`, `convex_achievable`,
+  `isCompact_achievable`, `isPolytope_achievable`): the set of expected payoffs safely
+  achievable with perfect coordination is the weighted Minkowski sum
+  `∑ₐ P(Π(Γ) = a) • {y ∈ C(Γ) | y ≥ u(a)}` over the outcomes of `Γ` (erratum D7: the
+  paper's "convex polygon" is its `n = 2` wording; the polytope substrate is
+  `Polytope.lean`), a convex compact polytope.
+
+## What `condExp` is, and what it is in the in-tree models
+
+`Representatives.condExp` is a genuine Bochner integral against the conditional measure.
+In every *book* model of this development it nevertheless collapses to a point evaluation:
+a `Book` page is chosen per isomorphism class of the reduced game, so the token play is a
+function of `Π(Γ)` and the fiber `{Π(Γ) = a}` carries a single token payoff.  That is a
+property of the book construction, not of the definition — `condExp` averaging strictly
+between the values it integrates is witnessed by the hand-built family
+`Examples.mixPlay` / `Examples.mixToken` of `Examples/CharacterizationWitnesses.lean`,
+whose play reads the *size* of the game it is handed, so the token play is not a function
+of `Π(Γ)` and the conditional expectation `(½, ½)` is a value the integrand never takes
+(R5-F11).
 -/
 
 universe u v w
@@ -63,7 +80,10 @@ lemma fiber_disjoint (Γ : Game N 𝒜) {a b : ∀ i, 𝒜 i} (hab : a ≠ b) :
   intro ω ha hb
   exact hab (ha.symm.trans hb)
 
-instance (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) : IsFiniteMeasure (R.μ[|R.fiber Γ a]) := by
+/-- The conditional measure on a fiber is finite: total mass `1` on a supported fiber and
+`0` off the support. -/
+instance isFiniteMeasure_cond_fiber (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) :
+    IsFiniteMeasure (R.μ[|R.fiber Γ a]) := by
   refine ⟨?_⟩
   rw [cond_apply (R.measurableSet_fiber' Γ a), Set.inter_univ]
   by_cases h : R.μ (R.fiber Γ a) = 0
@@ -108,7 +128,15 @@ noncomputable def tokenValue [DecidableEq N] (Γ : Game N 𝒜) (T : TokenGame �
   ∫ ω, T.ue (R.play T.game ω) ∂R.μ
 
 /-- The **conditional expectation** `E[g | Π(Γ) = a]`, as the integral against the
-conditional measure on the fiber.  Meaningful on the support of `Π(Γ)` (erratum D7). -/
+conditional measure on the fiber.  Meaningful on the support of `Π(Γ)` (erratum D7).
+
+This is a genuine average, but it collapses to a point evaluation in every *book* model of
+this development: a `Book` page is chosen per isomorphism class of the reduced game, so the
+token play is a function of `Π(Γ)` and the fiber `{Π(Γ) = a}` carries a single token payoff
+(`condExp_comp_play` is then all one ever needs).  That is a property of the book
+construction, not of this definition: `Examples.condExp_genuine_average` exhibits a play
+family for which `E[uᵉ(Π(Aˢ,uˢ)) | Π(Γ) = a] = (½, ½)` while the integrand takes only the
+values `(0,0)` and `(1,1)` (R5-F11). -/
 noncomputable def condExp (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) (g : R.Ω → N → ℝ) : N → ℝ :=
   ∫ ω, g ω ∂(R.μ[|R.fiber Γ a])
 
@@ -121,19 +149,18 @@ lemma condExp_comp_play (Γ : Game N 𝒜) {a : ∀ i, 𝒜 i} (ha : a ∈ R.sup
   rw [integral_congr_ae ((R.ae_play_eq_cond Γ a).mono fun ω hω => by rw [hω]), integral_const,
     probReal_univ, one_smul]
 
-/-- A coordinate of a vector-valued integral is the integral of the coordinate. -/
-lemma integral_apply_pi {ν : Measure R.Ω} {g : R.Ω → N → ℝ} (hg : Integrable g ν) (i : N) :
-    (∫ ω, g ω ∂ν) i = ∫ ω, g ω i ∂ν :=
-  ((ContinuousLinearMap.proj (R := ℝ) (φ := fun _ : N => ℝ) i).integral_comp_comm hg).symm
+/-- Conditional expectation respects almost-everywhere order on the fiber.
 
-/-- Conditional expectation respects almost-everywhere order on the fiber. -/
+A coordinate of a vector-valued integral is the integral of the coordinate: that is
+Mathlib's `MeasureTheory.eval_integral` (`Mathlib/MeasureTheory/SpecificCodomains/Pi.lean`),
+not a lemma of this development (R5-F05). -/
 lemma condExp_mono (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) {g₁ g₂ : R.Ω → N → ℝ}
     (h₁ : Integrable g₁ (R.μ[|R.fiber Γ a])) (h₂ : Integrable g₂ (R.μ[|R.fiber Γ a]))
     (h : ∀ᵐ ω ∂(R.μ[|R.fiber Γ a]), g₁ ω ≤ g₂ ω) :
     R.condExp Γ a g₁ ≤ R.condExp Γ a g₂ := by
   intro i
   unfold condExp
-  rw [R.integral_apply_pi h₁ i, R.integral_apply_pi h₂ i]
+  rw [eval_integral (fun j => h₁.eval j) i, eval_integral (fun j => h₂.eval j) i]
   refine integral_mono_ae ((ContinuousLinearMap.proj (R := ℝ) (φ := fun _ : N => ℝ) i).integrable_comp h₁)
     ((ContinuousLinearMap.proj (R := ℝ) (φ := fun _ : N => ℝ) i).integrable_comp h₂) ?_
   exact h.mono fun ω hω => hω i
@@ -199,11 +226,17 @@ expected payoff on every outcome in the support of `Π(Γ)`, and hence the same 
 payoff.  Off the support the paper's conditional expectations are undefined (D7), and the
 reassignment there is `u` itself.
 
+The copy is exposed as a `Game.ExactCopy` — an isomorphism with scale `1` and shift `0`,
+i.e. the paper's `û(â) = u(a)` — and not merely as `Game.Isomorphic`: the witness the proof
+builds is the token relabeling `Game.tokenCopy` along `Game.tokenIso` (R5-F01/F07).  What
+is *not* exposed is which relabeling: the token map is chosen from the room hypothesis, and
+`uᵉ` is defined along whichever isomorphism Assumption 2 supplies (D6, RULING 10).
+
 Paper node: `Lemma 13` -/
 theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
     (hA1 : R.toPlay.SatisfiesA1 R.certainty) (hA2 : R.toPlay.SatisfiesA2 R.certainty)
     (h : Γ.reduce.HasRoomOutside Γ.S) {T' : TokenGame Γ} (hT' : T'.IsSPI R.toPlay R.certainty) :
-    ∃ T : TokenGame Γ, Γ.reduce.Isomorphic T.game ∧ T.IsSPI R.toPlay R.certainty ∧
+    ∃ T : TokenGame Γ, Γ.reduce.ExactCopy T.game ∧ T.IsSPI R.toPlay R.certainty ∧
       (∀ a ∈ R.support Γ, R.condExp Γ a (fun ω => T.ue (R.play T.game ω)) =
         R.condExp Γ a (fun ω => T'.ue (R.play T'.game ω))) ∧
       R.tokenValue Γ T = R.tokenValue Γ T' := by
@@ -249,11 +282,13 @@ theorem exists_reassignment_condExp_eq (Γ : Game N 𝒜)
 
 /-! ### Corollary 14 -/
 
+omit [∀ i, DecidableEq (𝒜 i)] in
 /-- **The safely achievable expected payoffs**: the expected payoffs `E[uᵉ(Π(Aˢ, uˢ))]` of
 the perfect-coordination SPIs on `Γ` for these representatives. -/
 def achievable (Γ : Game N 𝒜) : Set (N → ℝ) :=
   {y | ∃ T : TokenGame Γ, T.IsSPI R.toPlay R.certainty ∧ R.tokenValue Γ T = y}
 
+omit [∀ i, DecidableEq (𝒜 i)] in
 /-- `{y ∈ C(Γ) | y ≥ u(a)}`: the feasible payoff vectors that weakly Pareto-improve on the
 outcome `a`. -/
 def _root_.SafeParetoImprovements.Game.improvementSet (Γ : Game N 𝒜) (a : ∀ i, 𝒜 i) :
@@ -274,6 +309,7 @@ lemma _root_.SafeParetoImprovements.Game.isCompact_improvementSet (Γ : Game N �
     IsCompact (Γ.improvementSet a) :=
   Γ.isCompact_feasible.inter_right isClosed_Ici
 
+omit [∀ i, DecidableEq (𝒜 i)] in
 /-- The weighted Minkowski sum `∑ₐ P(Π(Γ) = a) • {y ∈ C(Γ) | y ≥ u(a)}` over the outcomes of
 `Γ`; outcomes outside the support contribute the singleton `{0}`. -/
 def improvementSum (Γ : Game N 𝒜) : Set (N → ℝ) :=

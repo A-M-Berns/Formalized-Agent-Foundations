@@ -152,9 +152,12 @@ ruled on but not yet carried by any declaration.
   argument permits, an impossibility is additionally stated label-free, so that it does not
   depend on how rich the universe is
   (`Examples.chicken_no_feasible_dominating_of_mean_cc`).
-* `dd:complexity` — *planned* for Theorem 9 / Proposition 10; *realized* for Lemma 11
+* `dd:complexity` — *planned* for Theorem 9 / Proposition 10; *realized* for **Lemma 11**
   (`Coordination.lean`: the LP characterization is the node's content, the "by linear
-  programming, in polynomial time" clause is disclosed as not rendered).  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
+  programming, in polynomial time" clause is disclosed as not rendered) and for
+  **Proposition 12** (`PerfectCoordination.lean`: Algorithm 1's correctness as an iff is
+  the node's content, the "can be decided in polynomial time" clause is disclosed as not
+  rendered).  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
   carried as **qualified** nodes: the paper-node label sits on the mathematical content
   (certificate characterizations, Lemma 28's reduction as an iff, the LP characterization,
   Algorithm 1's correctness) and the docstring says which complexity-class or runtime
@@ -187,6 +190,7 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Polytope.lean` | Mathlib-shaped substrate: polytopes as convex hulls of finite sets, closure under scaling and Minkowski sums, and the half-space / orthant section theorems (`IsPolytope.inter_halfspace`, `inter_Ici`) that Corollary 14's polytope clause needs and Mathlib lacks |
 | `SafeParetoImprovements/Characterization.lean` | §5.3: conditional expectation on the play's fibers (`Representatives.condExp`, law of total expectation), **Lemma 13** (`Representatives.exists_reassignment_condExp_eq`), **Corollary 14** as the weighted Minkowski-sum formula (`achievable_eq_improvementSum`), convexity, compactness and the polytope clause (`isPolytope_achievable`, RULING 12) |
 | `SafeParetoImprovements/Examples/DecisionWitnesses.lean` | Definition 7 two-sided through Proposition 12: the conflict game is a "yes" instance, Table 7 a "no" instance |
+| `SafeParetoImprovements/Examples/CharacterizationWitnesses.lean` | non-vacuity for §5.3: Lemma 13 and Corollary 14 applied on the conflict game (including to a three-action perfect-coordination SPI that is *not* isomorphic to the reduction), `achievable` shown not a singleton and wider than the constant reassignments, and the hand-built play family for which `Representatives.condExp` is a strict average rather than a point evaluation (R5-F11) |
 | `SafeParetoImprovements/Examples/Coin.lean` | the fair coin on `Bool`, shared by the examples that need a genuinely random `Π` |
 | `SafeParetoImprovements/Examples/Chicken.lean` | Table 7 over `CAct ⊕ ℕ` (`dd:room`) and **Proposition 16** (`Examples.chicken_no_perfectCoordinationSPI`): a Pareto improvement that no perfect-coordination SPI achieves in expectation, with its label-free kernel (`chicken_no_feasible_dominating_of_mean_cc`), the token games of every size that make the class non-empty, and the `Π`-dependence disclosure |
 | `SafeParetoImprovements/Examples/TokenWitnesses.lean` | the positive side of **Definition 6**: a `2 × 2` game over `Bool ⊕ ℕ` with a fresh token copy, a perfect-coordination SPI with equality at every sample point, and a *strict* one built by the paper's Demand-Game recipe with `uᵉ` defined along the book's isomorphism (erratum D6, RULING 10) |
@@ -220,3 +224,4 @@ import SafeParetoImprovements.Examples.DecisionWitnesses
 import SafeParetoImprovements.Polytope
 import SafeParetoImprovements.Characterization
 import SafeParetoImprovements.Examples.TokenWitnesses
+import SafeParetoImprovements.Examples.CharacterizationWitnesses
