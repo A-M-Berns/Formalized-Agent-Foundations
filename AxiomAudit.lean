@@ -3831,6 +3831,46 @@ blocks, a stale entry, a malformed line, a non-empty block once the paper is
   SafeParetoImprovements.Game.spiDecisionPrinted_of_nonempty
   SafeParetoImprovements.Game.unilateralSPIDecisionPrinted_of_reduced
   SafeParetoImprovements.Game.not_spiDecision_of_card_le_one
+  -- Appendix A (SafeParetoImprovements/ProgramGame.lean, Instruction.lean,
+  -- `dd:program-game`, `dd:exec-kernel`, `dd:code-eq`): threat points and the minimax
+  -- profile, the program-game interface with program equilibrium as EconCSLib Nash,
+  -- Proposition 18 over the interface, the instruction language with its realization,
+  -- Algorithm 2, and the two paper nodes.
+  SafeParetoImprovements.Game.threatPoint SafeParetoImprovements.Game.minimax
+  SafeParetoImprovements.Game.bestValue_minimax SafeParetoImprovements.Game.threatPoint_le_bestValue
+  SafeParetoImprovements.Game.expected_minimax_le_threatPoint
+  SafeParetoImprovements.Game.threatPoint_le_of_bestResponse
+  SafeParetoImprovements.ProgramGame SafeParetoImprovements.ProgramGame.payoff
+  SafeParetoImprovements.ProgramGame.toStrategic SafeParetoImprovements.ProgramGame.IsProgramEquilibrium
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_iff SafeParetoImprovements.ProgramGame.Plays
+  SafeParetoImprovements.ProgramGame.payoff_of_plays
+  SafeParetoImprovements.ProgramGame.isProgramEquilibrium_of_algorithm2
+  SafeParetoImprovements.Prog SafeParetoImprovements.Prog.execAt SafeParetoImprovements.Prog.programGame
+  SafeParetoImprovements.Prog.algorithm2 SafeParetoImprovements.Prog.plays_algorithm2
+  SafeParetoImprovements.Prog.exec_update_algorithm2
+  SafeParetoImprovements.Prog.algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Prog.exists_programEquilibrium_plays
+  -- Beyond the paper (SafeParetoImprovements/Independence.lean, RULING 9,
+  -- `dd:default-instr`): default instructions, participation independence, the
+  -- information stage and foreknowledge independence, and their `Prog` witnesses.
+  SafeParetoImprovements.ProgramGame.DefaultInstr
+  SafeParetoImprovements.ProgramGame.ParticipationIndependent
+  SafeParetoImprovements.ProgramGame.Policy SafeParetoImprovements.ProgramGame.ForeknowledgeIndependent
+  SafeParetoImprovements.ProgramGame.foreknowledgeIndependent_of_const
+  SafeParetoImprovements.Prog.default SafeParetoImprovements.Prog.defaultInstr SafeParetoImprovements.Prog.dove
+  SafeParetoImprovements.Prog.participationIndependent_dove
+  SafeParetoImprovements.Prog.not_participationIndependent_of_punish_play
+  SafeParetoImprovements.Prog.not_participationIndependent_algorithm2
+  SafeParetoImprovements.Prog.not_foreknowledgeIndependent_of_switch
+  -- Non-vacuity for the program-game layer (SafeParetoImprovements/Examples/
+  -- ProgramGameWitnesses.lean): Theorem 1's hypotheses jointly satisfied in the
+  -- Prisoner's Dilemma, and the independence predicates two-sided.
+  SafeParetoImprovements.Examples.pdRepresentatives_threatPoint_le
+  SafeParetoImprovements.Examples.prisonersDilemma_algorithm2_isProgramEquilibrium
+  SafeParetoImprovements.Examples.not_participationIndependent_pd
+  SafeParetoImprovements.Examples.participationIndependent_pd
+  SafeParetoImprovements.Examples.not_foreknowledgeIndependent_pd
+  SafeParetoImprovements.Examples.foreknowledgeIndependent_pd
 -- SPI-INVENTORY-END
 
 /-! Tier-2 freezes for Safe Pareto Improvements (R1-F10, R1-F25, R1-F33).  The mechanical
@@ -3841,7 +3881,10 @@ Each field is a premise of the paper nodes: `Game.nonempty` is the standing none
 of action sets, `Play.mem` is "`Π(Γ) ∈ A`" (the whole of Lemma 2.5 and both directions of
 Theorem 3 run on it), `GameIso.bijOn`/`scale_pos` are the two `dd:iso` repairs (erratum D5),
 `ParetoImprovingCorrespondence.typed` is Definition 4's `Φ : A ⊸ Aˢ` (R1-F05), and
-`Book.page_mem` is what makes the book's play a legal outcome. -/
+`Book.page_mem` is what makes the book's play a legal outcome; `ProgramGame.exec` is the
+execution kernel (`dd:exec-kernel`) whose product structure Proposition 18 rests on,
+`DefaultInstr.plays_default` ties the non-participation baseline to `Π(Γ₀)`, and
+`Policy`'s fields are the information stage. -/
 #assert_fields SafeParetoImprovements.Game
   S nonempty u
 #assert_fields SafeParetoImprovements.Play
@@ -3854,6 +3897,12 @@ Theorem 3 run on it), `GameIso.bijOn`/`scale_pos` are the two `dd:iso` repairs (
   corresponds improving typed
 #assert_fields SafeParetoImprovements.Book
   page page_mem
+#assert_fields SafeParetoImprovements.ProgramGame
+  Instr exec measurable_exec
+#assert_fields SafeParetoImprovements.ProgramGame.DefaultInstr
+  default plays_default
+#assert_fields SafeParetoImprovements.ProgramGame.Policy
+  Signal noInfo willNotParticipate policy
 
 -- The staged half of the Safe Pareto Improvements annotated surface: endpoints whose
 -- *statements* are final and carry a `Paper node:` line, but which are not yet

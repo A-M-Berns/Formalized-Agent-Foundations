@@ -603,6 +603,18 @@ C and E and the split "Theorem 17" header must be deduplicated by the parser).
   non-triviality, erratum D13, repaired as `dd:nontrivial`). Next: round 2 audit alongside
   the tranche E design note (`notes/instruction-layer.md`).
 
+- Harness round 2 (2026-09-12) closed at `3adb026`: 19 findings (Opus channels only; codex
+  quota-limited), all fixed — the repaired Definition 5 now has proved yes-instances, the
+  Lemma 21 wrapper exhibits its single Assumption 2 move, witness statements carry the
+  assumption clauses, and the page-varying book discharges the strict soundness side
+  condition.
+- Tranche E landed (2026-09-12): `ProgramGame.lean` (threat points, the interface,
+  Proposition 18 over it), `Instruction.lean` (`Prog`, Algorithm 2, **Proposition 18**,
+  **Theorem 1**), `Independence.lean` (PI/FI hooks per RULING 9), with the Prisoner's
+  Dilemma witnesses. Design refinement disclosed as `dd:exec-kernel`: per-player seed
+  spaces are replaced by the outcome distributions they induce (a mixed action per player
+  given `ω`, independent across players). New erratum D15 (Algorithm 2's punishment index).
+
 **Still open:**
 
 0. Scope = §2–§6 with appendix proofs (no §8 exists) — assumed, not yet explicitly

@@ -109,10 +109,32 @@ ruled on but not yet carried by any declaration.
   harness round 1).  The printed predicates are carried alongside as `…Printed` with the
   theorems that they are constant-true, and the repaired one has a "no" instance
   (`not_spiDecision_of_card_le_one`).  Ruled 2026-09-12.
-* `dd:program-game` — *planned*.  Theorem 1's program game is an abstract interface plus a
-  concrete minimal language closed under the three instructions Algorithm 2 needs, with
-  private per-player seeds for the punishers' randomization and classical code equality
-  (RULING 3); Proposition 18 is proved directly, without Theorem 17.
+* `dd:program-game` — *realized* (`ProgramGame.lean`, `Instruction.lean`).  Theorem 1's
+  program game is an abstract interface (`ProgramGame`: instruction sets, an execution
+  map, measurable fibers) with the induced game an EconCSLib `StrategicGame` and program
+  equilibrium its `IsNashEquilibrium`, plus a concrete minimal language `Prog` closed under
+  exactly the three instructions Algorithm 2 needs (RULING 3), realized as a program game
+  by `Prog.programGame`; Proposition 18 is proved directly over the interface and
+  instantiated at Algorithm 2, without Theorem 17.  Threat points are the paper's
+  min–max over independent mixtures (EconCSLib's `MixedStrategy`/`expectedPayoff`), with
+  both extrema by compactness and the minimiser chosen once per player (`Game.minimax`).
+* `dd:exec-kernel` — *realized* (`ProgramGame.lean`).  Execution returns, for each player,
+  a **mixed** action given the representatives' sample point `ω`, and the players' actions
+  are independent given `ω`: each program's own randomness is private, the only shared
+  randomness is `Π`'s.  This is what the paper's `exec : PROG ⇝ A` leaves implicit and
+  what the threat-point bound in Proposition 18 needs (erratum D8); it replaces the
+  design note's per-player seed spaces by their outcome distributions.
+* `dd:code-eq` — *realized* (`Instruction.lean`).  A `Prog` is player-agnostic (the player
+  index is a run-time input, so Algorithm 2 is submitted verbatim by everybody) and code
+  equality is classical: programs contain real payoffs and probabilities, and the
+  meta-game is a mathematical object, as the paper's is.  When several players' code
+  differs the paper punishes the first in the order `1, …, n`; `N` is unordered, so a fixed
+  classical choice stands in (immaterial for unilateral deviations).
+* `dd:default-instr` — *realized* (`Independence.lean`, beyond the paper).  A distinguished
+  non-participation instruction per player, executing as `Π(Γ₀)`, is what makes
+  participation independence and foreknowledge independence stateable (RULING 9); in
+  `Prog` it is "play `Πᵢ(Γ₀)`".  No theorem beyond non-vacuity is claimed for either
+  notion.
 * `dd:complexity` — *planned*.  Theorem 9, Proposition 10, Lemma 11 and Proposition 12 are
   carried as **qualified** nodes: the paper-node label sits on the mathematical content
   (certificate characterizations, Lemma 28's reduction as an iff, the LP characterization,
@@ -137,7 +159,11 @@ ruled on but not yet carried by any declaration.
 | `SafeParetoImprovements/Examples/DemandGame.lean` | Tables 1–2 and **Proposition 6**, both clauses (`Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI`) |
 | `SafeParetoImprovements/Examples/Temptation.lean` | Table 6 and **Proposition 7** (`Examples.temptation_isStrictSPI`) |
 | `SafeParetoImprovements/Examples/ComplicatedTemptation.lean` | Tables 4–5 and **Proposition 8** (`Examples.complicatedTemptation_isUnilateralSPI`) |
-| `SafeParetoImprovements/Examples/Witnesses.lean` | non-vacuity witnesses: a play family over `Unit` at which each of Propositions 5–8 has all its hypotheses satisfied (the strict clause of 6 through `Book.prescribed`), and the `Representatives` inhabitant `Examples.unitRepresentatives` |
+| `SafeParetoImprovements/Examples/Witnesses.lean` | non-vacuity witnesses: a play family over `Unit` at which each of Propositions 5–8 has all its hypotheses satisfied (the strict clause of 6 through `Book.prescribed`), the yes-instances of the repaired Definition 5, and the `Representatives` inhabitant `Examples.unitRepresentatives` |
+| `SafeParetoImprovements/ProgramGame.lean` | Appendix A: mixed strategies and expected payoffs from EconCSLib, threat points and the minimax profile by compactness, the `ProgramGame` interface (`dd:exec-kernel`), program equilibrium as EconCSLib Nash, and Proposition 18 over the interface |
+| `SafeParetoImprovements/Instruction.lean` | Appendix A: the instruction language `Prog` (`dd:code-eq`), its execution, the realization theorem `Prog.programGame`, Algorithm 2 as a term, **Proposition 18** (`Prog.algorithm2_isProgramEquilibrium`) and **Theorem 1** (`Prog.exists_programEquilibrium_plays`) |
+| `SafeParetoImprovements/Independence.lean` | beyond the paper (RULING 9): default instructions (`dd:default-instr`), participation independence, the information stage and foreknowledge independence, with the dove-ish and punishing instructions as witnesses |
+| `SafeParetoImprovements/Examples/ProgramGameWitnesses.lean` | non-vacuity for the program-game layer: Theorem 1's hypotheses jointly satisfied in the Prisoner's Dilemma (pure Nash equilibrium ⇒ threat-point guarantee), and the PI/FI predicates neither constant-true nor constant-false |
 -/
 import SafeParetoImprovements.Game
 import SafeParetoImprovements.Play
@@ -155,3 +181,7 @@ import SafeParetoImprovements.Examples.DemandGame
 import SafeParetoImprovements.Examples.Temptation
 import SafeParetoImprovements.Examples.ComplicatedTemptation
 import SafeParetoImprovements.Examples.Witnesses
+import SafeParetoImprovements.ProgramGame
+import SafeParetoImprovements.Instruction
+import SafeParetoImprovements.Independence
+import SafeParetoImprovements.Examples.ProgramGameWitnesses

@@ -56,6 +56,8 @@ proved — there is no `sorry` in `SafeParetoImprovements/`:
 | Definition 5 (SPI decision problem, strict and unilateral variants) as a derivation system | `Game.Step`, `Game.Deriv`; repaired non-triviality (`dd:nontrivial`, erratum D13): `Game.SPIDecision`, `Game.StrictSPIDecision`, `Game.UnilateralSPIDecision`; printed, constant-true: `Game.SPIDecisionPrinted`, `…StrictSPIDecisionPrinted`, `…UnilateralSPIDecisionPrinted` | `Derivation.lean` |
 | Lemma 21 (normal form of derivations: eliminations, one isomorphism, reverse eliminations; the printed length bound is not rendered, erratum D14) | `Game.Deriv.exists_normalForm` | `Derivation.lean` |
 | Lemma 22 (symmetry-free Pareto-improving chain to the reduction of the SPI candidate) | `Game.exists_paretoImproving_normalForm` | `Derivation.lean` |
+| **Proposition 18** (Algorithm 2 is a program equilibrium executing `Π(Γˢ)`; the deviator's payoff is *at most* the threat point, erratum D8; Algorithm 2's punishment index repaired, erratum D15) | `Prog.algorithm2_isProgramEquilibrium` | `Instruction.lean` |
+| **Theorem 1** (every SPI is played in a program equilibrium of the program game with delegation instructions, given the threat-point guarantee) | `Prog.exists_programEquilibrium_plays` | `Instruction.lean` |
 | Proposition 5 (Prisoner's Dilemma, Table 3) | `Examples.prisonersDilemma_isStrictSPI` | `Examples/PrisonersDilemma.lean` |
 | Proposition 6 (Demand Game, Tables 1–2), both clauses | `Examples.demandGame_isSPI`, `Examples.demandGame_isStrictSPI` | `Examples/DemandGame.lean` |
 | Proposition 7 (Temptation Game, Table 6) | `Examples.temptation_isStrictSPI` | `Examples/Temptation.lean` |
@@ -78,10 +80,23 @@ and the Complicated Temptation Game) alongside their no-instance, and the strict
 result's positive-probability side condition is discharged by the page-varying book
 `Book.varying`, which hits every surviving outcome.
 
-**Not yet formalized:** Theorem 1 and Proposition 18 (tranche E, `dd:program-game`);
-Theorem 9, Proposition 10 and the rest of the Appendix D chain (Propositions 23–26,
-Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`); all of §5 (tranche D).
-Theorem 17 and Lemma 27 are cited external results and are not carried.
+Beside these, for Appendix A (`ProgramGame.lean`, `Instruction.lean`): mixed strategies
+and expected payoffs are EconCSLib's, the threat point `vᵢ` and the minimax profile
+against `i` exist by compactness (`Game.threatPoint`, `Game.minimax`), the program-game
+interface `ProgramGame` has EconCSLib's Nash equilibrium as program equilibrium
+(`dd:program-game`, `dd:exec-kernel`), Proposition 18 is proved over the interface
+(`ProgramGame.isProgramEquilibrium_of_algorithm2`) and instantiated at the instruction
+language `Prog` (`dd:code-eq`), and a pure Nash equilibrium played by `Π(Γ₀)` certifies
+the threat-point hypothesis (`Game.threatPoint_le_of_bestResponse`; the Prisoner's Dilemma
+witness in `Examples/ProgramGameWitnesses.lean`).  Beyond the paper, `Independence.lean`
+makes participation independence and foreknowledge independence stateable (RULING 9,
+`dd:default-instr`): definitions, the dove-ish and punishing `Prog` instructions as
+two-sided witnesses, and no theorem about either.
+
+**Not yet formalized:** Theorem 9, Proposition 10 and the rest of the Appendix D chain
+(Propositions 23–26, Definition 8, Lemma 28 — Lemma 20's content is `Game.elim_diamond`);
+all of §5 (tranche D).  Theorem 17 and Lemma 27 are cited external results and are not
+carried.
 
 **Consumer readiness.**  There is no `SafeParetoImprovements/API.lean` and no
 `APITests/SafeParetoImprovements.lean` yet; both are mandatory before the registry status
@@ -99,7 +114,7 @@ appendix-only nodes in scope exactly insofar as Theorem 9 is.  Condensed from
 |---|---|---|
 | 2 | unnumbered: game, subset game, strict dominance, Pareto improvement, isomorphism | carriers with `§2` provenance, no node label |
 | 3, 3.1 | Definitions 1–2 | **in, landed** |
-| 3.2 | Theorem 1 (proof App. A via Proposition 18; Theorem 17 cited) | in, own tranche (E) |
+| 3.2 | Theorem 1 (proof App. A via Proposition 18; Theorem 17 cited) | **in, landed** (`Prog.exists_programEquilibrium_plays`, `dd:program-game`) |
 | 4.1 | unnumbered: multivalued functions | Mathlib `SetRel` |
 | 4.2–4.3 | Definition 3, Lemma 2, Definition 4, **Theorem 3** | **in, landed** |
 | 4.4 | Assumptions 1–2, Lemma 4, consistency of A1 + A2 (unnumbered) | **in, landed** (`dd:book` for the consistency) |
@@ -107,7 +122,7 @@ appendix-only nodes in scope exactly insofar as Theorem 9 is.  Condensed from
 | 4.6 | Definition 5, Theorem 9, Proposition 10 | Definition 5 **landed** as a derivation system with soundness (`Play.isSPI_of_deriv`); Theorem 9 / Proposition 10 complexity clauses **qualified** (RULING 6) |
 | 5 | Definitions 6–7, Lemma 11, Proposition 12, Lemma 13, Corollary 14, Theorem 15, Proposition 16 | in; Lemma 11 / Proposition 12 runtime clauses qualified; Theorem 15 blocked on RULING 8 |
 | 6 | no nodes | prose only |
-| App. A | Theorem 17 (Tennenholtz 2004) | cited external, **not** re-proved |
+| App. A | Proposition 18; Theorem 17 (Tennenholtz 2004) | Proposition 18 **landed** (`Prog.algorithm2_isProgramEquilibrium`); Theorem 17 cited external, **not** re-proved |
 | App. B | no nodes (Sen / Raub discussion) | out |
 | App. D | Lemmas 19–22, Propositions 23–26, Definition 8, Lemma 27 (Cook 1971, cited), Lemma 28 | in with Theorem 9; Lemmas 19, 21, 22 landed (Lemma 20 is absorbed by the confluence proof in `Reduction.lean`); Lemma 27 cited external |
 
